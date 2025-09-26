@@ -1,4 +1,5 @@
 `include "../define.svh"
+`include "icb_types.sv"
 
 // MMA(Matrix Multiply Accumulate) Controller
 module mma_controller #(
@@ -83,6 +84,7 @@ module mma_controller #(
     //==== Accumulator Array Interface ====
     output reg [$clog2(SIZE)-1:0]      acc_valid_depth,         // 累加器有效深度
     output reg                         acc_is_init_data,        // 累加器初始化数据指示
+    input  wire                        tile_calc_over,          // 来自accumulator: tile计算结束指示
 
     //==== Requantization Interface ====
     output reg                requant_cfg_load_common,       // 量化配置加载
@@ -108,20 +110,15 @@ module mma_controller #(
     //==== Data Setup Interface ====
     // (data_setup模块主要用于数据对齐，通常不需要额外控制信号)
 
-    //==== Memory LSU Request Interface ====
-    output                       sa_icb_cmd_valid,          // ICB命令有效
-    input                        sa_icb_cmd_ready,          // ICB命令就绪
-    output [`E203_ADDR_SIZE-1:0] sa_icb_cmd_addr,           // ICB命令地址
-    output                       sa_icb_cmd_read,           // ICB读命令
-    output [`E203_XLEN-1:0]      sa_icb_cmd_wdata,          // ICB写数据
-    output [`E203_XLEN_MW-1:0]   sa_icb_cmd_wmask,          // ICB写掩码
-    output [1:0]                 sa_icb_cmd_size,           // ICB命令数据宽度
+    //==== Memory LSU Request Interface (directional packed interfaces) ====
+    // master -> slave: command payload (输出)
+    output icb_cmd_m_t            sa_icb_cmd,
+    // slave -> master: command ready (输入)
+    input  icb_cmd_s_t            sa_icb_cmd_ready,
+    // slave -> master: response payload (输入)
+    input  icb_rsp_s_t            sa_icb_rsp,
+    // master -> slave: response ready (输出)
+    output icb_rsp_m_t            sa_icb_rsp_ready
+ );
 
-    //==== Memory LSU Response Interface ====
-    input                        sa_icb_rsp_valid,          // ICB响应有效
-    output                       sa_icb_rsp_ready,          // ICB响应就绪
-    input  [`E203_XLEN-1:0]      sa_icb_rsp_rdata,          // ICB响应数据
-    input                        sa_icb_rsp_err             // ICB响应错误
-);
-
-endmodule
+ endmodule

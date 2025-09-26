@@ -1,0 +1,135 @@
+#! /usr/bin/vvp
+:ivl_version "12.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/lib64/ivl/system.vpi";
+:vpi_module "/usr/lib64/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/lib64/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/lib64/ivl/v2005_math.vpi";
+:vpi_module "/usr/lib64/ivl/va_math.vpi";
+:vpi_module "/usr/lib64/ivl/v2009.vpi";
+S_0x563f21790500 .scope package, "$unit" "$unit" 2 1;
+ .timescale 0 0;
+S_0x563f21790690 .scope module, "bias_adder" "bias_adder" 3 22;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "clk";
+    .port_info 1 /INPUT 1 "rst_n";
+    .port_info 2 /INPUT 1 "init_bias_cfg";
+    .port_info 3 /INPUT 4 "valid_row_num";
+    .port_info 4 /INPUT 1 "need_bias";
+    .port_info 5 /INPUT 4 "bias_wr_addr";
+    .port_info 6 /INPUT 1 "bias_wr_en";
+    .port_info 7 /INPUT 32 "bias_data_in";
+    .port_info 8 /INPUT 512 "data_in";
+    .port_info 9 /INPUT 1 "calc_done_i";
+    .port_info 10 /INPUT 4 "valid_depth_i";
+    .port_info 11 /INPUT 1 "is_init_data_i";
+    .port_info 12 /OUTPUT 1 "bias_loading_done";
+    .port_info 13 /OUTPUT 512 "data_out";
+    .port_info 14 /OUTPUT 1 "output_valid_o";
+    .port_info 15 /OUTPUT 4 "valid_depth_o";
+    .port_info 16 /OUTPUT 1 "is_init_data_o";
+P_0x563f21790820 .param/l "BUS_WIDTH" 0 3 25, C4<00000000000000000000000000100000>;
+P_0x563f21790860 .param/l "DATA_WIDTH" 0 3 24, C4<00000000000000000000000000100000>;
+P_0x563f217908a0 .param/l "SIZE" 0 3 23, C4<00000000000000000000000000010000>;
+o0x7fe650f9e018 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217a2490_0 .net "bias_data_in", 31 0, o0x7fe650f9e018;  0 drivers
+v0x563f217de070_0 .var "bias_loading_done", 0 0;
+o0x7fe650f9e078 .functor BUFZ 4, C4<zzzz>; HiZ drive
+v0x563f217de130_0 .net "bias_wr_addr", 3 0, o0x7fe650f9e078;  0 drivers
+o0x7fe650f9e0a8 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217de220_0 .net "bias_wr_en", 0 0, o0x7fe650f9e0a8;  0 drivers
+o0x7fe650f9e0d8 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217de2e0_0 .net "calc_done_i", 0 0, o0x7fe650f9e0d8;  0 drivers
+o0x7fe650f9e108 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217de3f0_0 .net "clk", 0 0, o0x7fe650f9e108;  0 drivers
+o0x7fe650f9e138 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0 .array "data_in", 15 0;
+v0x563f217de4b0_0 .net v0x563f217de4b0 0, 31 0, o0x7fe650f9e138; 0 drivers
+o0x7fe650f9e168 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_1 .net v0x563f217de4b0 1, 31 0, o0x7fe650f9e168; 0 drivers
+o0x7fe650f9e198 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_2 .net v0x563f217de4b0 2, 31 0, o0x7fe650f9e198; 0 drivers
+o0x7fe650f9e1c8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_3 .net v0x563f217de4b0 3, 31 0, o0x7fe650f9e1c8; 0 drivers
+o0x7fe650f9e1f8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_4 .net v0x563f217de4b0 4, 31 0, o0x7fe650f9e1f8; 0 drivers
+o0x7fe650f9e228 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_5 .net v0x563f217de4b0 5, 31 0, o0x7fe650f9e228; 0 drivers
+o0x7fe650f9e258 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_6 .net v0x563f217de4b0 6, 31 0, o0x7fe650f9e258; 0 drivers
+o0x7fe650f9e288 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_7 .net v0x563f217de4b0 7, 31 0, o0x7fe650f9e288; 0 drivers
+o0x7fe650f9e2b8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_8 .net v0x563f217de4b0 8, 31 0, o0x7fe650f9e2b8; 0 drivers
+o0x7fe650f9e2e8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_9 .net v0x563f217de4b0 9, 31 0, o0x7fe650f9e2e8; 0 drivers
+o0x7fe650f9e318 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_10 .net v0x563f217de4b0 10, 31 0, o0x7fe650f9e318; 0 drivers
+o0x7fe650f9e348 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_11 .net v0x563f217de4b0 11, 31 0, o0x7fe650f9e348; 0 drivers
+o0x7fe650f9e378 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_12 .net v0x563f217de4b0 12, 31 0, o0x7fe650f9e378; 0 drivers
+o0x7fe650f9e3a8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_13 .net v0x563f217de4b0 13, 31 0, o0x7fe650f9e3a8; 0 drivers
+o0x7fe650f9e3d8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_14 .net v0x563f217de4b0 14, 31 0, o0x7fe650f9e3d8; 0 drivers
+o0x7fe650f9e408 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de4b0_15 .net v0x563f217de4b0 15, 31 0, o0x7fe650f9e408; 0 drivers
+o0x7fe650f9e438 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770 .array "data_out", 15 0;
+v0x563f217de770_0 .net v0x563f217de770 0, 31 0, o0x7fe650f9e438; 0 drivers
+o0x7fe650f9e468 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_1 .net v0x563f217de770 1, 31 0, o0x7fe650f9e468; 0 drivers
+o0x7fe650f9e498 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_2 .net v0x563f217de770 2, 31 0, o0x7fe650f9e498; 0 drivers
+o0x7fe650f9e4c8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_3 .net v0x563f217de770 3, 31 0, o0x7fe650f9e4c8; 0 drivers
+o0x7fe650f9e4f8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_4 .net v0x563f217de770 4, 31 0, o0x7fe650f9e4f8; 0 drivers
+o0x7fe650f9e528 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_5 .net v0x563f217de770 5, 31 0, o0x7fe650f9e528; 0 drivers
+o0x7fe650f9e558 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_6 .net v0x563f217de770 6, 31 0, o0x7fe650f9e558; 0 drivers
+o0x7fe650f9e588 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_7 .net v0x563f217de770 7, 31 0, o0x7fe650f9e588; 0 drivers
+o0x7fe650f9e5b8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_8 .net v0x563f217de770 8, 31 0, o0x7fe650f9e5b8; 0 drivers
+o0x7fe650f9e5e8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_9 .net v0x563f217de770 9, 31 0, o0x7fe650f9e5e8; 0 drivers
+o0x7fe650f9e618 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_10 .net v0x563f217de770 10, 31 0, o0x7fe650f9e618; 0 drivers
+o0x7fe650f9e648 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_11 .net v0x563f217de770 11, 31 0, o0x7fe650f9e648; 0 drivers
+o0x7fe650f9e678 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_12 .net v0x563f217de770 12, 31 0, o0x7fe650f9e678; 0 drivers
+o0x7fe650f9e6a8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_13 .net v0x563f217de770 13, 31 0, o0x7fe650f9e6a8; 0 drivers
+o0x7fe650f9e6d8 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_14 .net v0x563f217de770 14, 31 0, o0x7fe650f9e6d8; 0 drivers
+o0x7fe650f9e708 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x563f217de770_15 .net v0x563f217de770 15, 31 0, o0x7fe650f9e708; 0 drivers
+o0x7fe650f9e738 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217dea30_0 .net "init_bias_cfg", 0 0, o0x7fe650f9e738;  0 drivers
+o0x7fe650f9e768 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217deaf0_0 .net "is_init_data_i", 0 0, o0x7fe650f9e768;  0 drivers
+o0x7fe650f9e798 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217debb0_0 .net "is_init_data_o", 0 0, o0x7fe650f9e798;  0 drivers
+o0x7fe650f9e7c8 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217dec70_0 .net "need_bias", 0 0, o0x7fe650f9e7c8;  0 drivers
+o0x7fe650f9e7f8 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217ded30_0 .net "output_valid_o", 0 0, o0x7fe650f9e7f8;  0 drivers
+o0x7fe650f9e828 .functor BUFZ 1, C4<z>; HiZ drive
+v0x563f217dedf0_0 .net "rst_n", 0 0, o0x7fe650f9e828;  0 drivers
+o0x7fe650f9e858 .functor BUFZ 4, C4<zzzz>; HiZ drive
+v0x563f217deeb0_0 .net "valid_depth_i", 3 0, o0x7fe650f9e858;  0 drivers
+o0x7fe650f9e888 .functor BUFZ 4, C4<zzzz>; HiZ drive
+v0x563f217def90_0 .net "valid_depth_o", 3 0, o0x7fe650f9e888;  0 drivers
+o0x7fe650f9e8b8 .functor BUFZ 4, C4<zzzz>; HiZ drive
+v0x563f217df070_0 .net "valid_row_num", 3 0, o0x7fe650f9e8b8;  0 drivers
+# The file index is used to find the file name in the following table.
+:file_names 4;
+    "N/A";
+    "<interactive>";
+    "-";
+    "/home/etc/FPGA/tflm_ai_dsa/sub_modules/bias_adder.sv";

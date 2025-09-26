@@ -6,6 +6,7 @@ module ws_systolic_array #(
     input  wire                              store_weight_req,    // 权重加载请求，单个信号控制所有行
     input  wire signed [7:0]                 weight_in          [SIZE],
     input  wire signed [15:0]                data_in            [SIZE],
+    input  wire signed [31:0]                sum_in             [SIZE],  // 累加器反馈输入
     output wire signed [31:0]                sum_out            [SIZE]
 );
 
@@ -23,7 +24,7 @@ module ws_systolic_array #(
                     .store_weight_req(col == 0 ? store_weight_req : 1'b0),  // 所有行在第一列时都使用同一个信号
                     .weight_in(row == 0 ? weight_in[col] : weight_pipe[row-1][col]),
                     .data_in(col == 0 ? data_in[row] : data_pipe[row][col-1]),
-                    .sum_in(row == 0 ? 32'b0 : sum_pipe[row-1][col]),
+                    .sum_in(row == 0 ? sum_in[col] : sum_pipe[row-1][col]),
                     .data_out(data_pipe[row][col]),
                     .weight_out(weight_pipe[row][col]),
                     .sum_out(sum_pipe[row][col])

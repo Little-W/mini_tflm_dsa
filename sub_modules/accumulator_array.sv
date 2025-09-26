@@ -10,8 +10,7 @@ module accumulator_array #(
     output wire                    calc_done_o,
     input  wire [$clog2(SIZE)-1:0] valid_depth_i,
     input  wire                    is_init_data_i,
-    output wire [$clog2(SIZE)-1:0] valid_depth_o,
-    output wire                    is_init_data_o
+    output reg                     tile_calc_over_o
 );
 
     wire [          SIZE:0] calc_done_chain;
@@ -23,9 +22,7 @@ module accumulator_array #(
     assign calc_done_o           = calc_done_chain[SIZE];
     assign input_valid_chain[0]  = input_valid_i;
     assign valid_depth_chain[0]  = valid_depth_i;
-    assign valid_depth_o         = valid_depth_chain[SIZE];
     assign is_init_data_chain[0] = is_init_data_i;
-    assign is_init_data_o        = is_init_data_chain[SIZE];
 
     genvar i;
     generate
@@ -49,5 +46,11 @@ module accumulator_array #(
             );
         end
     endgenerate
+
+    reg calc_done_o_d;
+    always @(posedge clk) begin
+        calc_done_o_d <= calc_done_o;
+        tile_calc_over_o <= calc_done_o_d & ~calc_done_o; // 检测下降沿
+    end
 
 endmodule
