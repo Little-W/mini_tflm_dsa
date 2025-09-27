@@ -63,9 +63,9 @@ module vec_s8_to_fifo #(
     input  wire                           in_valid,
     input  wire signed [             7:0] in_vec_s8        [VLEN],
     output wire                           output_req,
-    input  wire                           req_ack,
     input  wire        [$clog2(VLEN)-1:0] vec_valid_num_col,
     output wire                           output_valid,
+    output wire                           output_switch_row,
     input  wire                           output_ready,
     output wire        [             3:0] output_mask,
     output wire        [            31:0] output_data,
@@ -98,49 +98,6 @@ module vec_s8_to_fifo #(
     reg     [  $clog2(VLEN):0] output_ptr;  // 输出指针（32位打包索引）
 
     // 输出状态机
-    always @(posedge clk or negedge rstn) begin
-        if (!rstn) begin
-            output_state     <= IDLE;
-            stored_valid_num <= 0;
-            output_ptr       <= 0;
-            fifo_read_sel    <= 0;
-        end else begin
-            case (output_state)
-                IDLE: begin
-                    if ((fifo_read_sel == 0 && fifo_count0 > 0) || 
-                        (fifo_read_sel == 1 && fifo_count1 > 0)) begin
-                        output_state <= REQ;
-                    end
-                end
-                REQ: begin
-                    if (req_ack) begin
-                        stored_valid_num <= vec_valid_num_col;
-                        output_ptr       <= 0;
-                        output_state     <= OUTPUT;
-                    end
-                end
-                OUTPUT: begin
-                    if (output_valid && output_ready) begin
-                        // 握手成功后才更新指针
-                        if (output_ptr == (VLEN / 4 - 1)) begin  // 输出完成
-                            output_state <= IDLE;
-                            output_ptr   <= 0;
-                            // 清空当前读区域并切换
-                            if (fifo_read_sel == 0) begin
-                                fifo_count0 <= fifo_count0 - 1;
-                                if (fifo_count0 == 1) fifo_read_sel <= 1;
-                            end else begin
-                                fifo_count1 <= fifo_count1 - 1;
-                                if (fifo_count1 == 1) fifo_read_sel <= 0;
-                            end
-                        end else begin
-                            output_ptr <= output_ptr + 1;
-                        end
-                    end
-                end
-            endcase
-        end
-    end
 
     // 写入FIFO：存储完整向量
     integer j;
@@ -173,12 +130,12 @@ module vec_s8_to_fifo #(
     end
 
     // 32位打包逻辑（基于stored_valid_num和当前读区域数据）
-    reg [31:0] pack_data;
-    reg [3:0] pack_mask;
+    reg [          31:0] pack_data;
+    reg [           3:0] pack_mask;
     reg [$clog2(VLEN):0] read_vec_ptr;
-    reg [31:0] pack_data_reg;
-    reg [3:0] pack_mask_reg;
-    reg output_valid_reg;
+    reg [          31:0] pack_data_reg;
+    reg [           3:0] pack_mask_reg;
+    reg                  output_valid_reg;
 
     // 组合逻辑：根据当前output_ptr生成输出数据
     always_comb begin
@@ -208,13 +165,13 @@ module vec_s8_to_fifo #(
     // 时序逻辑：注册输出数据和有效信号
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
-            pack_data_reg <= 0;
-            pack_mask_reg <= 0;
+            pack_data_reg    <= 0;
+            pack_mask_reg    <= 0;
             output_valid_reg <= 0;
         end else begin
             if (output_state == OUTPUT) begin
-                pack_data_reg <= pack_data;
-                pack_mask_reg <= pack_mask;
+                pack_data_reg    <= pack_data;
+                pack_mask_reg    <= pack_mask;
                 output_valid_reg <= 1'b1;
             end else begin
                 output_valid_reg <= 1'b0;

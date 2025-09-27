@@ -1,6 +1,5 @@
 // ICB 类型定义（打包）
-`ifndef ICB_TYPES_SV
-`define ICB_TYPES_SV
+`include "define.svh"
 
 // 为了解决端口方向性问题，将命令/响应拆分为方向化的打包结构
 // Master -> Slave: 命令有效载荷（master 驱动）
@@ -30,4 +29,3 @@ typedef struct packed {
     logic                       rsp_ready;                   // master 输出
 } icb_rsp_m_t;
 
-`endif // ICB_TYPES_SV

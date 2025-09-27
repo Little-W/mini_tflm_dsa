@@ -1,4 +1,4 @@
-// filepath: /home/etc/FPGA/tflm_ai_dsa/basic/ws_systolic_array.sv
+
 module ws_systolic_array #(
     parameter int unsigned SIZE = 16
 ) (

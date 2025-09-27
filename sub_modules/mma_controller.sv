@@ -1,124 +1,68 @@
-`include "../define.svh"
-`include "icb_types.sv"
+`include "../inc/define.svh"
+`include "../inc/icb_types.svh"
 
 // MMA(Matrix Multiply Accumulate) Controller
 module mma_controller #(
-    parameter int unsigned WEIGHT_WIDTH  = 8,   // 权重数据宽度
-    parameter int unsigned DATA_WIDTH    = 16,  // IA数据宽度
-    parameter int unsigned SIZE          = 16,  // 阵列大小
-    parameter int unsigned BUS_WIDTH     = 32,  // 总线宽度
-    parameter int unsigned REG_WIDTH     = 32   // 寄存器宽度
+    parameter int unsigned WEIGHT_WIDTH = 8,   // 权重数据宽度
+    parameter int unsigned DATA_WIDTH   = 16,  // IA数据宽度
+    parameter int unsigned SIZE         = 16,  // 阵列大小
+    parameter int unsigned BUS_WIDTH    = 32,  // 总线宽度
+    parameter int unsigned REG_WIDTH    = 32   // 寄存器宽度
 ) (
     //==== Clock & Control Signals ====
-    input  wire clk,                // 时钟
-    input  wire rst_n,              // 异步复位，低有效
-    input  wire calc_start,         // 计算开始
-    output wire sa_ready,           // 控制器就绪
+    input  wire clk,         // 时钟
+    input  wire rst_n,       // 异步复位，低有效
+    input  wire calc_start,  // 计算开始
+    output wire sa_ready,    // 控制器就绪
 
-    //==== Parameter Inputs ====
-    // --- base pointers (byte addresses) ---
-    input  logic [REG_WIDTH-1:0] lhs_base,            // A base (MULT_LHS_PTR)
-    input  logic [REG_WIDTH-1:0] rhs_base,            // B base (s8) (MULT_RHS_PTR)
-    input  logic [REG_WIDTH-1:0] dst_base,            // C base (s8) (MULT_DST_PTR)
-    input  logic [REG_WIDTH-1:0] bias_base,           // bias s32 (0=none) (MULT_BIAS_PTR)
-    input  logic [REG_WIDTH-1:0] ksum_base,           // kernel-sum (0=unused)(MULT_KSUM_PTR)
+    //==== Control Signals ====
+    input  wire                 tile_calc_over,    // 来自accumulator的tile计算结束指示
+    output reg  [          2:0] icb_sel,           // ICB多路复用器选择信号
+    output reg                  init_cfg_ia,       // IA Loader 配置初始化（单拍）
+    output reg                  init_cfg_weight,   // Kernel Loader 配置初始化（单拍）
+    output reg                  init_cfg_bias,     // Bias Loader 配置初始化（单拍）
+    output reg                  init_cfg_requant,  // Vec Requant 配置初始化（单拍）
+    output reg                  init_cfg_oa,       // OA Writer 配置初始化（单拍）
+    output reg                  need_bias,         // 是否需要偏置信号
+    output reg                  ia_use_offset,     // IA偏移量使能信号
+    output reg                  use_16bits,        // 16位数据指示信号
+    output reg  [REG_WIDTH-1:0] tile_count,        // 分块计数信号
 
-    // --- quantization & zero-points ---
-    input  logic signed [REG_WIDTH-1:0] lhs_zp,              // A zero-point (s32)
-    input  logic signed [REG_WIDTH-1:0] dst_zp,              // C zero-point (s32)
-    input  logic signed [REG_WIDTH-1:0] q_mult_pt,           // per-tensor mult
-    input  logic signed [REG_WIDTH-1:0] q_shift_pt,          // per-tensor rshift (+N => >>N)
-    input  logic [REG_WIDTH-1:0] q_mult_pc_base,      // per-channel mult[]
-    input  logic [REG_WIDTH-1:0] q_shift_pc_base,     // per-channel rsh[]
-    input  logic                         use_per_channel,     // 1: per-channel; 0: per-tensor
-
-    // --- dimensions ---
-    input  logic [REG_WIDTH-1:0] k,                   // (MULT_RHS_COLS)
-    input  logic [REG_WIDTH-1:0] n,                   // (MULT_RHS_ROWS)
-    input  logic [REG_WIDTH-1:0] m,                   // (MULT_LHS_ROWS)
-
-    // --- row strides (all in BYTES) ---
-    input  logic [REG_WIDTH-1:0] lhs_row_stride_b,    // A row stride
-    input  logic [REG_WIDTH-1:0] dst_row_stride_b,    // C row stride
-    input  logic [REG_WIDTH-1:0] rhs_row_stride_b,    // B row stride
-
-    // --- activation clamp ---
-    input  logic signed [REG_WIDTH-1:0] act_min,             // (MULT_ACT_MIN)
-    input  logic signed [REG_WIDTH-1:0] act_max,             // (MULT_ACT_MAX)
-
-    //==== Systolic Array Control ====
-    output reg last_tile_done,                      // 最后分块完成指示
+    //==== IA Loader Interface ====
+    input  wire load_ia_req,      // IA加载请求
+    output reg  load_ia_granted,  // IA加载授权
+    output reg  send_ia_trigger,  // IA发送触发
+    input  wire ia_sending_done,  // IA发送完成
+    input  wire ia_row_valid,     // IA行数据有效
+    input  wire ia_is_init_data,  // IA初始化数据标志
+    input  wire ia_calc_done,     // IA计算完成
+    input  wire ia_data_valid,    // IA数据有效
 
     //==== Weight Loader Interface ====
-    output reg                         load_weight_trigger,    // 触发权重加载
-    output wire [BUS_WIDTH-1:0]        weight_data_bus,        // 权重数据总线输出
-    output reg [$clog2(SIZE)-1:0]      valid_row_num,          // 当前有效权重行数
-    output reg [$clog2(SIZE)-1:0]      valid_col_num,          // 当前有效权重列数
-    output reg [$clog2(SIZE*SIZE)-1:0] weight_wr_addr,         // 权重写入地址
-    output reg                         weight_wr_en,           // 权重写使能
-    input  wire                        weight_loading_done,    // 权重加载完成
+    input  wire load_weight_req,      // 权重加载请求
+    output reg  load_weight_granted,  // 权重加载授权
+    output reg  send_weight_trigger,  // 权重发送触发
+    input  wire weight_sending_done,  // 权重发送完成
+    input  wire weight_data_valid,    // 权重数据有效
 
-    //==== Bias Adder Interface ====
-    output reg                         init_bias_cfg,          // 触发加载偏置的相关参数
-    output wire [BUS_WIDTH-1:0]        bias_data_bus,          // 偏置数据总线输出
-    output reg [$clog2(SIZE)-1:0]      bias_valid_row_num,     // 当前有效偏置行数
-    output reg                         need_bias,              // 是否需要偏置
-    output reg [$clog2(SIZE)-1:0]      bias_wr_addr,           // 偏置写入地址
-    output reg                         bias_wr_en,             // 偏置写使能
-    input  wire                        bias_loading_done,      // 偏置加载完成
+    //==== Bias Loader Interface ====
+    input  wire load_bias_req,      // 偏置加载请求
+    output reg  load_bias_granted,  // 偏置加载授权
+    input  wire bias_valid,         // 偏置数据有效
 
-    //==== Input Activation Loader Interface ====
-    output reg                         load_ia_trigger,         // 触发输入激活加载
-    output reg [$clog2(SIZE)-1:0]      ia_valid_row_num,        // 当前有效输入行数
-    output reg [$clog2(SIZE*SIZE)-1:0] ia_wr_addr,              // 输入激活写入地址
-    output reg                         ia_wr_en,                // 输入激活写使能
-    output wire [BUS_WIDTH-1:0]        ia_data_bus,             // 输入激活数据总线输出
-    output reg signed [31:0]           lhs_offset,              // 输入激活零点偏移
-    output reg                         ia_use_offset,           // 输入激活零点偏移使能
-    output reg                         use_16bits,              // 输入数据类型指示，1为s16，0为s8
-    output reg                         is_last_tile,            // 当前输入的行已经是最后一个tile
-    input  wire                        ia_loading_done,         // 输入激活加载完成
-    input  wire                        ia_row_valid,            // 当前行数据有效
-    input  wire                        ia_calc_done,            // 当前输入行为最后一个tile
-
-    //==== Accumulator Array Interface ====
-    output reg [$clog2(SIZE)-1:0]      acc_valid_depth,         // 累加器有效深度
-    output reg                         acc_is_init_data,        // 累加器初始化数据指示
-    input  wire                        tile_calc_over,          // 来自accumulator: tile计算结束指示
-
-    //==== Requantization Interface ====
-    output reg                requant_cfg_load_common,       // 量化配置加载
-    output reg                requant_cfg_per_channel,       // per-channel模式
-    output reg                cfg_init_quant,                // per-channel初始化
-    output reg                data_valid,                    // per-channel数据有效
-    output reg signed [31:0]  data_in_s32,                   // per-channel数据输入
-    output reg                requant_in_valid,              // requant输入有效
-    input  wire               requant_out_valid,             // requant输出有效
-    input  wire               requant_done,                  // requant完成
+    // Requantization Interface
+    input  wire load_quant_req,      // 申请下一次量化参数访存
+    output wire load_quant_granted,  // 量化参数访存授权
+    input  wire quant_params_valid,  // 量化参数有效
 
     //==== FIFO Interface ====
-    output reg                fifo_in_valid,                 // FIFO输入有效
-    input  wire               fifo_output_req,               // FIFO输出请求
-    output reg                fifo_req_ack,                  // FIFO请求确认
-    output reg [$clog2(SIZE)-1:0] fifo_vec_valid_num_col,    // FIFO有效列数
-    input  wire               fifo_output_valid,             // FIFO输出有效
-    output reg                fifo_output_ready,             // FIFO输出就绪
-    input  wire [3:0]         fifo_output_mask,              // FIFO输出mask
-    input  wire [31:0]        fifo_output_data,              // FIFO输出数据
-    input  wire               fifo_full_flag,                // FIFO满信号
+    input  wire                    fifo_full_flag,          // FIFO满信号
 
-    //==== Data Setup Interface ====
-    // (data_setup模块主要用于数据对齐，通常不需要额外控制信号)
+    //==== OA Writer Interface ====
+    input  wire write_oa_req,      // OA写回请求
+    output reg  write_oa_granted,  // OA写回授权
+    input  wire write_done,        // 写回完成
+    input  wire oa_calc_over       // OA计算完成
+);
 
-    //==== Memory LSU Request Interface (directional packed interfaces) ====
-    // master -> slave: command payload (输出)
-    output icb_cmd_m_t            sa_icb_cmd,
-    // slave -> master: command ready (输入)
-    input  icb_cmd_s_t            sa_icb_cmd_ready,
-    // slave -> master: response payload (输入)
-    input  icb_rsp_s_t            sa_icb_rsp,
-    // master -> slave: response ready (输出)
-    output icb_rsp_m_t            sa_icb_rsp_ready
- );
-
- endmodule
+endmodule

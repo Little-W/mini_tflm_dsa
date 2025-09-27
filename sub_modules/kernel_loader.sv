@@ -1,51 +1,51 @@
 /*
- * 权重加载控制器设计说明（自主访存版本）
+ * kernel_loader 权重加载控制器设计说明（自主访存版本）
  * ------------------------------------------------------------
  * 功能概述:
- *  本模块负责面向分块矩阵运算，从外部存储器自主读取权重数据（rhs），并将权重数据输出到脉动阵列。
- *  模块采用自主驱动模式：init_cfg 后自动开始第一次分块访存，每次完成后申请下一次访存授权。
- *  模块通过 ICB 总线作为主设备主动发起读请求并接收响应数据，采用单缓冲区结构。
+ *  本模块负责面向分块矩阵运算，从外部存储器自主读取权重数据（RHS），并按行输出到脉动阵列。
+ *  模块内部负责计算每个权重分块（Weight Tile）的访存地址、发起 ICB 读请求、缓存并按需输出权重。
+ *  设计目标：支持权重在多个IA Tile间复用，完成一次权重Tile的发送后自动申请并加载下一批权重，以保证计算流水的连续性。
  *
- * 存储与输出格式:
- *  - 权重在外部存储器按行主序存储（N x M），即 {w00, w01, ..., w0(M-1), w10, w11, ..., w1(M-1), ...}
- *  - 模块内部按列主序重新排列并缓存，即 {w00, w10, ..., w(N-1)0, w01, w11, ..., w(N-1)1, ...}
- *  - 输出时按行输出到脉动阵列：weight_out[i] 为第 i 行的权重向量
+ * 分块与存储格式（更新）:
+ *  - 权重矩阵 B 的尺寸：K 行 × N 列（或写作 n × m，模块接口使用 n、m）
+ *  - 外部存储格式：权重在外部存储中按列主序（column-major）排列，即内存中相邻元素沿列方向排列
+ *    * 例如列主序：{w00, w10, w20, ..., w01, w11, w21, ...}
+ *  - Weight Tile: k 行 × SIZE 列（k <= SIZE），模块读取时需根据列主序的布局按列或按块进行访存，并在内部缓冲中重排为按行输出格式
+ *  - 输出格式：脉动阵列需要按行（row-major）接收权重，模块在读取并重排后按行输出
  *
- * 工作流程:
- *  1) 配置阶段（通过 init_cfg 触发）
- *     - 当 init_cfg 有效时，模块锁存配置：n、m、rhs_zp、rhs_base、rhs_row_stride_b、tile_count。
- *     - n: 权重矩阵行数（对应 RHS_ROWS）
- *     - m: 权重矩阵列数（对应 LHS_ROWS，即输出行数）
- *     - rhs_zp: 权重零点偏移
- *     - rhs_base: 权重数据基地址（第一个分块）
- *     - rhs_row_stride_b: 权重行间地址间距
- *     - tile_count: 总分块数量
- *     - 配置完成后，模块自动开始第一次分块权重读取。
+ *  访存与地址生成策略（列主序考虑）:
+ *  - 模块在 init_cfg 时锁存基地址（cfg_rhs_base）、行/列间距（cfg_rhs_row_stride_b）和分块尺寸
+ *  - 对于列主序存储，计算每个 Weight Tile 的访存地址时需要以列为主的偏移步长：
+ *      tile_base = cfg_rhs_base + tile_col * cfg_rhs_col_stride + tile_row * cfg_rhs_row_stride (按实现约定)
+ *  - 实现上可以按列逐列读取 tile（每次读取 k 个连续元素），或按块化读取后在缓冲区内做重排
+ *  - 读取完成后模块将数据重排为按行格式，然后置 weight_data_valid=1，表示当前 Tile 已准备好发送
  *
- *  2) 自主Load阶段
- *     - 模块自动通过 ICB 主接口从当前分块基地址开始按行读取权重数据。
- *     - 总共读取 n 行，每行 m 个元素，行间地址偏移为 rhs_row_stride_b。
- *     - 读取到的数据按列主序重新排列存储到内部缓冲区，当分块权重读取完毕，模块置 weight_data_valid=1。
+ * 自动重触发行为:
+ *  - 在每次权重Tile的发送完成（weight_sending_done）后，模块自动增加 tile 索引并驱动 load_weight_req=1
+ *  - 外部控制器通过 load_weight_granted 授权后，模块开始下一个 Weight Tile 的访存
+ *  - 当所有 Weight Tile 读取并发送完成后，模块停止申请
  *
- *  3) Send阶段（通过 send_weight_trigger 触发）
- *     - send_weight_trigger 为单周期触发信号。触发时模块进入 SEND 状态。
- *     - 在 SEND 状态，模块将内部缓存的权重按行输出到 weight_out 总线，同时置 store_weight_req=1 指示脉动阵列加载权重。
- *     - 输出规则：根据锁存的 n 和 m，只输出有效的行和列；无效部分填零。
- *     - SEND 完成后，模块置 weight_sending_done=1。
+ * 信号语义与时序（关键）:
+ *  - weight_out[SIZE]: 并行输出的一整行权重数据（signed [DATA_WIDTH-1:0]）
+ *    * 在 store_weight_req=1 且发送周期内，weight_out 上的数据为有效，脉动阵列应在该周期采样
+ *    * 对于矩阵边界处无效元素，应输出0或定义的填充值
+ *  - store_weight_req: 与 weight_out 同步的有效指示，表示当前周期 weight_out 可被阵列加载
+ *  - weight_data_valid: 指示内部已完成当前 Weight Tile 的全部行读取并可用于发送
+ *  - weight_sending_done: 指示当前 Weight Tile 的逐行发送已全部完成（SEND 完结）
  *
- *  4) 自动重触发阶段
- *     - 每次完成一个分块的处理后，模块驱动 load_weight_req=1 申请下一次访存授权。
- *     - 外部控制器通过 load_weight_granted 握手信号确认授权，模块开始下一个分块的访存。
- *     - 模块内部维护分块地址指针，每次访存时自动计算下一个分块的基地址。
- *     - 当所有分块处理完成时，停止申请重触发。
+ * ICB 及错误处理:
+ *  - 模块作为 ICB Master 发起读命令，驱动 icb_cmd_m；从端通过 icb_cmd_s.ready/ icb_rsp_s 提供握手
+ *  - 模块需检测并处理响应中的错误标志（若 icb_rsp_s 表示错误，则进入错误处理分支并向上层上报）
  *
- *  ICB 握手：
- *   - ICB 命令通道：模块作为 Master，驱动 icb_cmd_m，从端驱动 icb_cmd_s.ready。
- *   - ICB 响应通道：从端驱动 icb_rsp_s，模块驱动 icb_rsp_m.rsp_ready。
- *   - 模块应正确处理 ICB 握手协议及错误处理。
+ * 实现建议:
+ *  - 在模块内部维护 tile_row_idx、tile_col_idx、current_tile_base、rows_to_read 等控制变量
+ *  - 对列主序数据，可按列块读取并在内部缓冲区完成按行重排（transpose/pack）以便按行输出
+ *  - 在 SEND 完成后立即设置 load_weight_req，等待 load_weight_granted 后开始读下一个tile
+ *  - 将 weight_data_valid 与 store_weight_req/weight_sending_done 保持明确的握手顺序，避免竞态
  */
 
-`include "icb_types.sv"
+`include "../inc/define.svh"
+`include "../inc/icb_types.svh"
 
 module kernel_loader #(
     parameter int unsigned DATA_WIDTH = 8,      // 权重数据宽度
@@ -66,9 +66,9 @@ module kernel_loader #(
     input  wire                        send_weight_trigger, // 触发发送权重到脉动阵列（单拍触发）
 
     // 矩阵尺寸与分块配置（在 init_cfg 时被锁存）
-    input  wire [REG_WIDTH-1:0]        n,                 // 权重矩阵行数（RHS_ROWS）
-    input  wire [REG_WIDTH-1:0]        m,                 // 权重矩阵列数（LHS_ROWS）
-    input  wire [REG_WIDTH-1:0]        tile_count,        // 总分块数量
+    input  wire [REG_WIDTH-1:0]        k,                 // 输入激活矩阵列数（RHS_COLS）
+    input  wire [REG_WIDTH-1:0]        n,                 // 输入激活矩阵行数（RHS_ROWS）
+    input  wire [REG_WIDTH-1:0]        m,                 // 输出矩阵列数（LHS_COLS），用于计算是否为最后一个tile
 
     // 配置寄存器（在 init_cfg 时锁存）
     input  wire signed [REG_WIDTH-1:0] rhs_zp,            // 权重零点（s32）
