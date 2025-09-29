@@ -9,7 +9,8 @@ module accumulator_array #(
     input  wire                    is_init_data_i,
     output wire [  DATA_WIDTH-1:0] data_out      [0:SIZE-1],
     output wire                    calc_done_o,
-    output reg                     tile_calc_over_o
+    output reg                     tile_calc_over_o,
+    output reg                     partial_sum_calc_over
 );
 
     wire [          SIZE:0] calc_done_chain;
@@ -53,9 +54,12 @@ module accumulator_array #(
     endgenerate
 
     reg calc_done_o_d;
+    reg input_valid_chain_d;
     always @(posedge clk) begin
         calc_done_o_d <= calc_done_o;
+        input_valid_chain_d <= input_valid_chain[SIZE];
         tile_calc_over_o <= calc_done_o_d & ~calc_done_o; // 检测下降沿
+        partial_sum_calc_over <= input_valid_chain_d & ~input_valid_chain[SIZE]; // 基于 input_valid_chain[SIZE] 的下降沿
     end
 
 endmodule

@@ -43,8 +43,6 @@
  *  - 为避免竞态，quant_params_valid 在加载完成的同一个时钟域内置1，并由 tile_calc_start 在确定安全的时刻清零。
  *  - 对于通道数不足 VLEN 的最后一组参数，应在内部用合理的默认值或复制策略填充，或在使用时对超出范围的通道进行保护。
  *  - 建议在仿真/验证中分别验证 per-tensor 与 per-channel 的时序、以及 load_quant_req/granted 的交互。
- *
- * 本注释为模块实现与上层调度器交互提供规范说明，代码实现应严格按照上述握手与时序约定保持一致。
  */
 
 `include "../inc/define.svh"

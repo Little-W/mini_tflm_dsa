@@ -62,14 +62,6 @@
  *  - ia_sending_done: 指示当前 IA Tile 的逐行发送已全部完成（SEND 完结）
  *  - ia_calc_done: 与 ia_data_valid 同步（见上），用于标记当前Tile在计算流程中的特殊语义（例如表明该Tile为最后一次用于某输出元素的部分和）
  *
- * ICB 及错误处理:
- *  - 模块作为 ICB Master 发起读命令，驱动 icb_cmd_m；从端通过 icb_cmd_s.ready/ icb_rsp_s 提供握手
- *  - 模块需处理响应中的错误标志（若 icb_rsp_s 表示错误，则触发错误处理流程并上报）
- *
- * 参考实现:
- *  在代码中将提供一个等价的控制逻辑（计算 ia_tiles_per_oa_row、weight_tiles_per_oa_col，维护 current_ia_tile、reuse_count），
- *  并通过 ia_data_valid、ia_row_valid、ia_sending_done 等信号与外部脉动阵列/调度器进行同步。
- *
  * 重加载逻辑（Reloading）：
  *  - 当一个 IA Tile 的逐行发送完成并且 ia_sending_done 置1 时，模块应自动驱动 load_ia_req=1，申请下一次访存授权。
  *  - 在收到外部调度器的 load_ia_granted 授权后，模块计算下一个 IA Tile 的基地址（基于 cfg_lhs_base 与 tile 索引、cfg_lhs_row_stride_b 等）并进入 LOAD 状态发起读请求。

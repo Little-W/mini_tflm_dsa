@@ -18,19 +18,19 @@ module mma_top #(
     output wire sa_ready,    // 系统就绪信号
 
     // --- base pointers
-    input logic [REG_WIDTH-1:0] lhs_base,   // A base         (MULT_LHS_PTR)
-    input logic [REG_WIDTH-1:0] rhs_base,   // B base (s8)    (MULT_RHS_PTR, N x K row-major)
-    input logic [REG_WIDTH-1:0] dst_base,   // C base (s8)    (MULT_DST_PTR)
-    input logic [REG_WIDTH-1:0] bias_base,  // bias s32 (0=none)   (MULT_BIAS_PTR)
+    input logic [REG_WIDTH-1:0] lhs_base,  // A base         (MULT_LHS_PTR)
+    input logic [REG_WIDTH-1:0] rhs_base,  // B base (s8)    (MULT_RHS_PTR, N x K row-major)
+    input logic [REG_WIDTH-1:0] dst_base,  // C base (s8)    (MULT_DST_PTR)
+    input logic [REG_WIDTH-1:0] bias_base, // bias s32 (0=none)   (MULT_BIAS_PTR)
 
     // --- quantization & zero-points ---
-    input logic signed [REG_WIDTH-1:0] lhs_zp,           // A zero-point (s32)  (MULT_LHS_OFFSET)
-    input logic signed [REG_WIDTH-1:0] rhs_zp,           // B zero-point (s32)  (MULT_RHS_OFFSET)
-    input logic signed [REG_WIDTH-1:0] dst_zp,           // C zero-point (s32)  (MULT_DST_OFFSET)
-    input logic signed [REG_WIDTH-1:0] q_mult_pt,        // per-tensor mult     (MULT_DST_MULT)
-    input logic signed [REG_WIDTH-1:0] q_shift_pt,       // per-tensor rshift
+    input logic signed [REG_WIDTH-1:0] lhs_zp,          // A zero-point (s32)  (MULT_LHS_OFFSET)
+    input logic signed [REG_WIDTH-1:0] rhs_zp,          // B zero-point (s32)  (MULT_RHS_OFFSET)
+    input logic signed [REG_WIDTH-1:0] dst_zp,          // C zero-point (s32)  (MULT_DST_OFFSET)
+    input logic signed [REG_WIDTH-1:0] q_mult_pt,       // per-tensor mult     (MULT_DST_MULT)
+    input logic signed [REG_WIDTH-1:0] q_shift_pt,      // per-tensor rshift
     // (MULT_DST_SHIFT, +N => >>N)
-    input logic                        use_per_channel,  // 1: per-channel; 0: per-tensor
+    input logic                        use_per_channel, // 1: per-channel; 0: per-tensor
 
     // --- dimensions ---
     input logic [REG_WIDTH-1:0] k,  // (MULT_RHS_COLS)
@@ -121,6 +121,7 @@ module mma_top #(
     // Accumulator Array 内部信号
     wire                           acc_calc_done;
     wire                           tile_calc_over;
+    wire                           partial_sum_calc_over;
     wire        [            31:0] acc_data_out                              [SIZE];
 
     // Systolic Array 内部信号
@@ -213,47 +214,48 @@ module mma_top #(
         .calc_start(calc_start),
         .sa_ready  (sa_ready),
 
-        .tile_calc_over        (tile_calc_over),
-        .icb_sel               (icb_sel),
-        .init_cfg_ia           (init_cfg_ia),
-        .init_cfg_weight       (init_cfg_weight),
-        .init_cfg_bias         (init_cfg_bias),
-        .init_cfg_requant      (init_cfg_requant),
-        .init_cfg_oa           (init_cfg_oa),
-        .need_bias             (need_bias),
-        .ia_use_offset         (ia_use_offset),
-        .use_16bits            (use_16bits),
-        .tile_count            (tile_count),
+        .tile_calc_over       (tile_calc_over),
+        .partial_sum_calc_over(partial_sum_calc_over),
+        .icb_sel              (icb_sel),
+        .init_cfg_ia          (init_cfg_ia),
+        .init_cfg_weight      (init_cfg_weight),
+        .init_cfg_bias        (init_cfg_bias),
+        .init_cfg_requant     (init_cfg_requant),
+        .init_cfg_oa          (init_cfg_oa),
+        .need_bias            (need_bias),
+        .ia_use_offset        (ia_use_offset),
+        .use_16bits           (use_16bits),
+        .tile_count           (tile_count),
         // IA Loader Interface
-        .load_ia_req           (load_ia_req),
-        .load_ia_granted       (load_ia_granted),
-        .send_ia_trigger       (send_ia_trigger),
-        .ia_sending_done       (ia_sending_done),
-        .ia_row_valid          (ia_row_valid),
-        .ia_is_init_data       (ia_is_init_data),
-        .ia_calc_done          (ia_calc_done),
-        .ia_data_valid         (ia_data_valid),
+        .load_ia_req          (load_ia_req),
+        .load_ia_granted      (load_ia_granted),
+        .send_ia_trigger      (send_ia_trigger),
+        .ia_sending_done      (ia_sending_done),
+        .ia_row_valid         (ia_row_valid),
+        .ia_is_init_data      (ia_is_init_data),
+        .ia_calc_done         (ia_calc_done),
+        .ia_data_valid        (ia_data_valid),
         // Weight Loader Interface
-        .load_weight_req       (load_weight_req),
-        .load_weight_granted   (load_weight_granted),
-        .send_weight_trigger   (send_weight_trigger),
-        .weight_sending_done   (weight_sending_done),
-        .weight_data_valid     (weight_data_valid),
+        .load_weight_req      (load_weight_req),
+        .load_weight_granted  (load_weight_granted),
+        .send_weight_trigger  (send_weight_trigger),
+        .weight_sending_done  (weight_sending_done),
+        .weight_data_valid    (weight_data_valid),
         // Bias Loader Interface
-        .load_bias_req         (load_bias_req),
-        .load_bias_granted     (load_bias_granted),
-        .bias_valid            (bias_valid),
+        .load_bias_req        (load_bias_req),
+        .load_bias_granted    (load_bias_granted),
+        .bias_valid           (bias_valid),
         // Requantization Interface
-        .load_quant_req        (load_quant_req),
-        .load_quant_granted    (load_quant_granted),
-        .quant_params_valid    (quant_params_valid),
+        .load_quant_req       (load_quant_req),
+        .load_quant_granted   (load_quant_granted),
+        .quant_params_valid   (quant_params_valid),
         // FIFO Interface
-        .fifo_full_flag        (fifo_full_flag),
+        .fifo_full_flag       (fifo_full_flag),
         // OA Writer Interface
-        .write_oa_req          (write_oa_req),
-        .write_oa_granted      (write_oa_granted),
-        .write_done            (write_done),
-        .oa_calc_over          (oa_calc_over)
+        .write_oa_req         (write_oa_req),
+        .write_oa_granted     (write_oa_granted),
+        .write_done           (write_done),
+        .oa_calc_over         (oa_calc_over)
     );
 
     // IA Loader
@@ -376,14 +378,15 @@ module mma_top #(
         .SIZE      (SIZE),
         .DATA_WIDTH(32)
     ) u_accumulator_array (
-        .clk             (clk),
-        .data_in         (sa_sum_out),
-        .calc_done_i     (data_setup_calc_done),
-        .input_valid_i   (data_setup_input_valid),
-        .is_init_data_i  (data_setup_is_init_data),
-        .data_out        (acc_data_out),
-        .calc_done_o     (acc_calc_done),
-        .tile_calc_over_o(tile_calc_over)
+        .clk                  (clk),
+        .data_in              (sa_sum_out),
+        .calc_done_i          (data_setup_calc_done),
+        .input_valid_i        (data_setup_input_valid),
+        .is_init_data_i       (data_setup_is_init_data),
+        .data_out             (acc_data_out),
+        .calc_done_o          (acc_calc_done),
+        .partial_sum_calc_over(partial_sum_calc_over),
+        .tile_calc_over_o     (tile_calc_over)
     );
 
     // Vec Requant

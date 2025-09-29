@@ -17,6 +17,7 @@ module mma_controller #(
 
     //==== Control Signals ====
     input  wire                 tile_calc_over,    // 来自accumulator的tile计算结束指示
+    input wire                  partial_sum_calc_over, // 来自accumulator的部分和计算结束指示
     output reg  [          2:0] icb_sel,           // ICB多路复用器选择信号
     output reg                  init_cfg_ia,       // IA Loader 配置初始化（单拍）
     output reg                  init_cfg_weight,   // Kernel Loader 配置初始化（单拍）
