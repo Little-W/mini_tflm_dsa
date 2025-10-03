@@ -46,42 +46,42 @@ module mma_top #(
     input logic signed [REG_WIDTH-1:0] act_min,  // (MULT_ACT_MIN)
     input logic signed [REG_WIDTH-1:0] act_max,  // (MULT_ACT_MAX)
 
-    //==== Memory LSU 接口 ====
+    //==== Memory LSU 接口（改为 icb_ext 三通道） ====
     // master -> slave: command payload
-    output icb_cmd_m_t sa_icb_cmd,
+    output icb_ext_cmd_m_t   sa_icb_cmd,
+    // master -> slave: write-data payload
+    output icb_ext_wr_m_t sa_icb_wr,
     // slave -> master: command ready
-    input  icb_cmd_s_t sa_icb_cmd_ready,
+    input  icb_ext_cmd_s_t   sa_icb_cmd_ready,
+    // slave -> master: write-data ready
+    input  icb_ext_wr_s_t sa_icb_w_ready,
     // slave -> master: response payload
-    input  icb_rsp_s_t sa_icb_rsp,
+    input  icb_ext_rsp_s_t   sa_icb_rsp,
     // master -> slave: response ready
-    output icb_rsp_m_t sa_icb_rsp_ready
+    output icb_ext_rsp_m_t   sa_icb_rsp_ready
 );
 
     //========================================
     // 内部信号定义
     //========================================
 
-    // ICB 多路复用器信号
-    icb_cmd_m_t mux_m_cmd;
-    icb_cmd_s_t mux_m_cmd_rsp;
-    icb_rsp_s_t mux_m_rsp;
-    icb_rsp_m_t mux_m_rsp_ready;
+    // ICB 多路复用器信号（扩展）
+    icb_ext_cmd_m_t   mux_m_cmd;
+    icb_ext_wr_m_t mux_m_wr;
+    icb_ext_cmd_s_t   mux_m_cmd_rsp;
+    icb_ext_wr_s_t mux_m_wr_rsp;
+    icb_ext_rsp_s_t   mux_m_rsp;
+    icb_ext_rsp_m_t   mux_m_rsp_ready;
 
-    // 各子模块的 ICB 接口信号
-    icb_cmd_m_t ia_loader_cmd, kernel_loader_cmd, bias_loader_cmd, vec_requant_cmd, oa_writer_cmd;
-    icb_cmd_s_t
-        ia_loader_cmd_ready,
-        kernel_loader_cmd_ready,
-        bias_loader_cmd_ready,
-        vec_requant_cmd_ready,
-        oa_writer_cmd_ready;
-    icb_rsp_s_t ia_loader_rsp, kernel_loader_rsp, bias_loader_rsp, vec_requant_rsp, oa_writer_rsp;
-    icb_rsp_m_t
-        ia_loader_rsp_ready,
-        kernel_loader_rsp_ready,
-        bias_loader_rsp_ready,
-        vec_requant_rsp_ready,
-        oa_writer_rsp_ready;
+    // 各子模块的 ICB 接口信号（扩展）
+    icb_ext_cmd_m_t   ia_loader_cmd,   kernel_loader_cmd,   bias_loader_cmd,   vec_requant_cmd,   oa_writer_cmd;
+    icb_ext_wr_m_t ia_loader_wr, kernel_loader_wr, bias_loader_wr, vec_requant_wr, oa_writer_wr;
+
+    icb_ext_cmd_s_t   ia_loader_cmd_ready,   kernel_loader_cmd_ready,   bias_loader_cmd_ready,   vec_requant_cmd_ready,   oa_writer_cmd_ready;
+    icb_ext_wr_s_t ia_loader_w_ready,     kernel_loader_w_ready,     bias_loader_w_ready,     vec_requant_w_ready,     oa_writer_w_ready;
+
+    icb_ext_rsp_s_t   ia_loader_rsp, kernel_loader_rsp, bias_loader_rsp, vec_requant_rsp, oa_writer_rsp;
+    icb_ext_rsp_m_t   ia_loader_rsp_ready, kernel_loader_rsp_ready, bias_loader_rsp_ready, vec_requant_rsp_ready, oa_writer_rsp_ready;
 
     // ICB 选择信号
     reg         [             2:0] icb_sel;
@@ -112,20 +112,11 @@ module mma_top #(
     wire                           bias_valid;
     wire        [            31:0] bias_data_out                             [SIZE];
 
-    // Data Setup 内部信号
-    wire signed [  DATA_WIDTH-1:0] data_setup_out                            [SIZE];
-    wire                           data_setup_input_valid;
-    wire                           data_setup_calc_done;
-    wire                           data_setup_is_init_data;
-
-    // Accumulator Array 内部信号
-    wire                           acc_calc_done;
+    // Accumulator Array 输出（来自封装模块）
+    wire                           acc_data_valid;
     wire                           tile_calc_over;
     wire                           partial_sum_calc_over;
     wire        [            31:0] acc_data_out                              [SIZE];
-
-    // Systolic Array 内部信号
-    wire signed [            31:0] sa_sum_out                                [SIZE];
 
     // Requantization 内部信号
     wire                           load_quant_req;
@@ -166,40 +157,54 @@ module mma_top #(
     // 模块实例化
     //========================================
 
-    // ICB 5选1多路复用器
+    // ICB 5选1多路复用器（扩展）
     icb_mux_5to1 u_icb_mux (
-        .m_cmd       (mux_m_cmd),
-        .m_cmd_rsp   (mux_m_cmd_rsp),
-        .m_rsp       (mux_m_rsp),
-        .m_rsp_ready (mux_m_rsp_ready),
-        .s0_cmd      (ia_loader_cmd),
-        .s0_cmd_ready(ia_loader_cmd_ready),
-        .s0_rsp      (ia_loader_rsp),
-        .s0_rsp_ready(ia_loader_rsp_ready),
-        .s1_cmd      (kernel_loader_cmd),
-        .s1_cmd_ready(kernel_loader_cmd_ready),
-        .s1_rsp      (kernel_loader_rsp),
-        .s1_rsp_ready(kernel_loader_rsp_ready),
-        .s2_cmd      (bias_loader_cmd),
-        .s2_cmd_ready(bias_loader_cmd_ready),
-        .s2_rsp      (bias_loader_rsp),
-        .s2_rsp_ready(bias_loader_rsp_ready),
-        .s3_cmd      (vec_requant_cmd),
-        .s3_cmd_ready(vec_requant_cmd_ready),
-        .s3_rsp      (vec_requant_rsp),
-        .s3_rsp_ready(vec_requant_rsp_ready),
-        .s4_cmd      (oa_writer_cmd),
-        .s4_cmd_ready(oa_writer_cmd_ready),
-        .s4_rsp      (oa_writer_rsp),
-        .s4_rsp_ready(oa_writer_rsp_ready),
-        .sel         (icb_sel)
+        .m_cmd        (mux_m_cmd),
+        .m_wr      (mux_m_wr),
+        .m_cmd_rsp    (mux_m_cmd_rsp),
+        .m_wr_rsp  (mux_m_wr_rsp),
+        .m_rsp        (mux_m_rsp),
+        .m_rsp_ready  (mux_m_rsp_ready),
+        .s0_cmd       (ia_loader_cmd),
+        .s0_wr     (ia_loader_wr),
+        .s0_cmd_ready (ia_loader_cmd_ready),
+        .s0_wr_ready(ia_loader_w_ready),
+        .s0_rsp       (ia_loader_rsp),
+        .s0_rsp_ready (ia_loader_rsp_ready),
+        .s1_cmd       (kernel_loader_cmd),
+        .s1_wr     (kernel_loader_wr),
+        .s1_cmd_ready (kernel_loader_cmd_ready),
+        .s1_wr_ready(kernel_loader_w_ready),
+        .s1_rsp       (kernel_loader_rsp),
+        .s1_rsp_ready (kernel_loader_rsp_ready),
+        .s2_cmd       (bias_loader_cmd),
+        .s2_wr     (bias_loader_wr),
+        .s2_cmd_ready (bias_loader_cmd_ready),
+        .s2_wr_ready(bias_loader_w_ready),
+        .s2_rsp       (bias_loader_rsp),
+        .s2_rsp_ready (bias_loader_rsp_ready),
+        .s3_cmd       (vec_requant_cmd),
+        .s3_wr     (vec_requant_wr),
+        .s3_cmd_ready (vec_requant_cmd_ready),
+        .s3_wr_ready(vec_requant_w_ready),
+        .s3_rsp       (vec_requant_rsp),
+        .s3_rsp_ready (vec_requant_rsp_ready),
+        .s4_cmd       (oa_writer_cmd),
+        .s4_wr     (oa_writer_wr),
+        .s4_cmd_ready (oa_writer_cmd_ready),
+        .s4_wr_ready(oa_writer_w_ready),
+        .s4_rsp       (oa_writer_rsp),
+        .s4_rsp_ready (oa_writer_rsp_ready),
+        .sel          (icb_sel)
     );
 
     // 将多路复用器连接到外部ICB接口
-    assign sa_icb_cmd       = mux_m_cmd;
-    assign mux_m_cmd_rsp    = sa_icb_cmd_ready;
-    assign mux_m_rsp        = sa_icb_rsp;
-    assign sa_icb_rsp_ready = mux_m_rsp_ready;
+    assign sa_icb_cmd        = mux_m_cmd;
+    assign sa_icb_wr      = mux_m_wr;
+    assign mux_m_cmd_rsp     = sa_icb_cmd_ready;
+    assign mux_m_wr_rsp   = sa_icb_w_ready;
+    assign mux_m_rsp         = sa_icb_rsp;
+    assign sa_icb_rsp_ready  = mux_m_rsp_ready;
 
     // MMA 控制器
     mma_controller #(
@@ -326,67 +331,42 @@ module mma_top #(
         .DATA_WIDTH(32),
         .REG_WIDTH (REG_WIDTH)
     ) u_bias_loader (
-        .clk                (clk),
-        .rst_n              (rst_n),
-        .init_cfg           (init_cfg_bias),
-        .load_bias_req      (load_bias_req),
-        .load_bias_granted  (load_bias_granted),
-        .need_bias          (need_bias),
-        .bias_base          (bias_base),
-        .k                  (k),
-        .m                  (m),
-        .icb_cmd_m          (bias_loader_cmd),
-        .icb_cmd_s          (bias_loader_cmd_ready),
-        .icb_rsp_s          (bias_loader_rsp),
-        .icb_rsp_m          (bias_loader_rsp_ready),
-        .ia_loader_calc_done(ia_calc_done),
-        .tile_calc_start    (send_ia_trigger),
-        .bias_valid         (bias_valid),
-        .data_out           (bias_data_out)
+        .clk              (clk),
+        .rst_n            (rst_n),
+        .init_cfg         (init_cfg_bias),
+        .load_bias_req    (load_bias_req),
+        .load_bias_granted(load_bias_granted),
+        .need_bias        (need_bias),
+        .bias_base        (bias_base),
+        .k                (k),
+        .m                (m),
+        .icb_cmd_m        (bias_loader_cmd),
+        .icb_cmd_s        (bias_loader_cmd_ready),
+        .icb_rsp_s        (bias_loader_rsp),
+        .icb_rsp_m        (bias_loader_rsp_ready),
+        .tile_calc_over   (tile_calc_over),
+        .tile_calc_start  (send_ia_trigger),
+        .bias_valid       (bias_valid),
+        .data_out         (bias_data_out)
     );
 
-    // Data Setup (数据对齐)
-    data_setup #(
-        .DATA_WIDTH(DATA_WIDTH),
-        .DATA_NUM  (SIZE)
-    ) u_data_setup (
-        .clk           (clk),
-        .data_in       (ia_out),
-        .data_out      (data_setup_out),
-        .input_valid_i (ia_row_valid),
-        .calc_done_i   (ia_calc_done),
-        .is_init_data_i(ia_is_init_data),
-        .input_valid_o (data_setup_input_valid),
-        .calc_done_o   (data_setup_calc_done),
-        .is_init_data_o(data_setup_is_init_data)
-    );
-
-    // Systolic Array
-    ws_systolic_array #(
-        .SIZE(SIZE)
-    ) u_systolic_array (
-        .clk             (clk),
-        .store_weight_req(store_weight_req),
-        .weight_in       (weight_out),
-        .data_in         (data_setup_out),
-        .sum_in          (bias_data_out),     // 来自bias_loader
-        .sum_out         (sa_sum_out)
-    );
-
-    // Accumulator Array
-    accumulator_array #(
+    // 脉动阵列计算核心
+    compute_core #(
         .SIZE      (SIZE),
-        .DATA_WIDTH(32)
-    ) u_accumulator_array (
+        .DATA_WIDTH(DATA_WIDTH)
+    ) u_compute_core (
         .clk                  (clk),
-        .data_in              (sa_sum_out),
-        .calc_done_i          (data_setup_calc_done),
-        .input_valid_i        (data_setup_input_valid),
-        .is_init_data_i       (data_setup_is_init_data),
-        .data_out             (acc_data_out),
-        .calc_done_o          (acc_calc_done),
-        .partial_sum_calc_over(partial_sum_calc_over),
-        .tile_calc_over_o     (tile_calc_over)
+        .store_weight_req     (store_weight_req),
+        .weight_in            (weight_out),
+        .ia_vec_in            (ia_out),
+        .ia_row_valid         (ia_row_valid),
+        .ia_calc_done         (ia_calc_done),
+        .ia_is_init_data      (ia_is_init_data),
+        .bias_in              (bias_data_out),
+        .acc_data_out         (acc_data_out),
+        .acc_data_valid       (acc_data_valid),
+        .tile_calc_over       (tile_calc_over),
+        .partial_sum_calc_over(partial_sum_calc_over)
     );
 
     // Vec Requant
@@ -412,7 +392,7 @@ module mma_top #(
         .icb_cmd_s         (vec_requant_cmd_ready),
         .icb_rsp_s         (vec_requant_rsp),
         .icb_rsp_m         (vec_requant_rsp_ready),
-        .in_valid          (acc_calc_done),
+        .in_valid          (acc_data_valid),
         .in_vec_s32        (acc_data_out),
         .out_valid         (requant_out_valid),
         .out_vec_s8        (requant_out)

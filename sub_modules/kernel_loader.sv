@@ -13,7 +13,7 @@
  *  - Weight Tile: k 行 × SIZE 列（k <= SIZE），模块读取时需根据列主序的布局按列或按块进行访存，并在内部缓冲中重排为按行输出格式
  *  - 输出格式：脉动阵列需要按行（row-major）接收权重，模块在读取并重排后按行输出
  *
- *  访存与地址生成策略（列主序考虑）:
+ *  访存与地址生成策略（列主序考虑）：
  *  - 模块在 init_cfg 时锁存基地址（cfg_rhs_base）、行/列间距（cfg_rhs_row_stride_b）和分块尺寸
  *  - 对于列主序存储，计算每个 Weight Tile 的访存地址时需要以列为主的偏移步长：
  *      tile_base = cfg_rhs_base + tile_col * cfg_rhs_col_stride + tile_row * cfg_rhs_row_stride (按实现约定)
@@ -25,7 +25,7 @@
  *  - 外部控制器通过 load_weight_granted 授权后，模块开始下一个 Weight Tile 的访存
  *  - 当所有 Weight Tile 读取并发送完成后，模块停止申请
  *
- * 信号语义与时序（关键）:
+ * 信号语义与时序（关键）：
  *  - weight_out[SIZE]: 并行输出的一整行权重数据（signed [DATA_WIDTH-1:0]）
  *    * 在 store_weight_req=1 且发送周期内，weight_out 上的数据为有效，脉动阵列应在该周期采样
  *    * 对于矩阵边界处无效元素，应输出0或定义的填充值
@@ -75,11 +75,13 @@ module kernel_loader #(
     input  wire [REG_WIDTH-1:0]        rhs_base,          // 权重数据基地址（第一个分块）
     input  wire [REG_WIDTH-1:0]        rhs_row_stride_b,  // 权重行间地址间距
 
-    // ICB 主接口（模块作为 Master）
-    output icb_cmd_m_t                  icb_cmd_m,         // Master -> Slave: 命令有效载荷
-    input  icb_cmd_s_t                  icb_cmd_s,         // Slave -> Master: 命令就绪
-    input  icb_rsp_s_t                  icb_rsp_s,         // Slave -> Master: 响应有效载荷
-    output icb_rsp_m_t                  icb_rsp_m,         // Master -> Slave: 响应就绪
+    // ICB 主接口（模块作为 Master, 扩展三通道）
+    output icb_ext_cmd_m_t              icb_cmd_m,         // Master -> Slave: 命令有效载荷
+    output icb_ext_wr_m_t            icb_wr_m,       // Master -> Slave: 写数据有效载荷
+    input  icb_ext_cmd_s_t              icb_cmd_s,         // Slave -> Master: 命令就绪
+    input  icb_ext_wr_s_t            icb_wr_s,       // Slave -> Master: 写数据就绪
+    input  icb_ext_rsp_s_t              icb_rsp_s,         // Slave -> Master: 响应有效载荷
+    output icb_ext_rsp_m_t              icb_rsp_m,         // Master -> Slave: 响应就绪
 
     // 输出信号到脉动阵列
     output reg                         weight_sending_done, // 权重发送完成
@@ -99,14 +101,10 @@ module kernel_loader #(
 
     state_t state;
 
-    // ICB 命令与响应内部信号与连接
-    // 使用寄存器存储可变字段，通过连续赋值将 size 字段固定为 2'b10
+    // ICB 命令与响应内部信号与连接（保持旧打包以便内部逻辑复用）
     icb_cmd_m_t icb_cmd_m_reg; // 驱动可变字段的寄存器
     icb_cmd_m_t icb_cmd_m_wire; // 由寄存器与常量 size 组合成的输出线网
-    icb_rsp_m_t icb_rsp_m_wire;
-    // 将 wire 输出到模块端口
-    assign icb_cmd_m = icb_cmd_m_wire;
-    assign icb_rsp_m = icb_rsp_m_wire;
+    icb_rsp_m_t icb_rsp_m_wire_legacy;
     // 固定 size 字段为 2'b10，其余字段从寄存器取值
     assign icb_cmd_m_wire = '{ icb_cmd_m_reg.valid,
                                icb_cmd_m_reg.addr,
@@ -114,6 +112,19 @@ module kernel_loader #(
                                icb_cmd_m_reg.wdata,
                                icb_cmd_m_reg.wmask,
                                2'b10 };
+
+    // 将旧版打包信号映射到扩展三通道端口
+    assign icb_cmd_m.valid = icb_cmd_m_wire.valid;
+    assign icb_cmd_m.addr  = icb_cmd_m_wire.addr;
+    assign icb_cmd_m.read  = icb_cmd_m_wire.read;
+    assign icb_cmd_m.len   = 3'd0; // 默认单拍
+
+    assign icb_wr_m.w_valid = icb_cmd_m_reg.valid & (~icb_cmd_m_reg.read);
+    assign icb_wr_m.wdata   = icb_cmd_m_reg.wdata;
+    assign icb_wr_m.wmask   = icb_cmd_m_reg.wmask;
+
+    // 响应就绪沿用旧版寄存器名
+    assign icb_rsp_m = '{ icb_rsp_m_wire_legacy.rsp_ready };
 
     // 权重缓冲区（按列主序存储）
     reg signed [DATA_WIDTH-1:0] weight_buffer [SIZE*SIZE];
@@ -148,6 +159,6 @@ module kernel_loader #(
         end
     end
 
-    // 状态机实现
+    // 状态机实现（待补充）
 
 endmodule

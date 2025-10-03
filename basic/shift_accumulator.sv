@@ -30,17 +30,27 @@ module shift_accumulator #(
     // 输入有效信号的时序采样，用于检测下降沿
     reg input_valid_i_d;
 
-    integer i;
-
     // 主时序逻辑：数据累加与信号寄存
     always @(posedge clk) begin
         // 采样input_valid_i用于下降沿检测
-        input_valid_i_d <= input_valid_i;
+        input_valid_i_d  <= input_valid_i;
+
+        // 相关信号每拍寄存
+        is_init_data_reg <= is_init_data_i;
+        input_valid_reg  <= input_valid_i;
+        calc_done_reg    <= calc_done_i;
 
         if (input_valid_i) begin
             // 若为初始化数据，直接写入FIFO
             if (is_init_data_i) begin
-                acc_fifo[write_ptr] <= data_in;
+                if (~is_init_data_reg) begin
+                    acc_fifo[0] <= data_in;
+                    write_ptr   <= 1;
+                end
+                else begin
+                    acc_fifo[write_ptr] <= data_in;
+                    write_ptr <= write_ptr + 1;
+                end
             end else begin
                 // 否则将新数据与FIFO当前位置数据累加，并做饱和限幅
                 reg signed [DATA_WIDTH:0] sum;
@@ -57,17 +67,9 @@ module shift_accumulator #(
                 end else begin
                     acc_fifo[write_ptr] <= sum[DATA_WIDTH-1:0];
                 end
-            end
-            // 相关信号寄存一拍，用于输出
-            is_init_data_reg <= is_init_data_i;
-            input_valid_reg  <= input_valid_i;
-            calc_done_reg    <= calc_done_i;
-            // 写指针加1，循环使用FIFO
-            if (write_ptr == STAGE_NUM - 1) begin
-                write_ptr <= 0;
-            end else begin
                 write_ptr <= write_ptr + 1;
             end
+
         end
         // 输入有效信号下降沿时，写指针复位
         if (~input_valid_i && input_valid_i_d) begin

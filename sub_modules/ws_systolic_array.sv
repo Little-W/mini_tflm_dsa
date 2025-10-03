@@ -1,4 +1,3 @@
-
 module ws_systolic_array #(
     parameter int unsigned SIZE = 16
 ) (
@@ -21,7 +20,7 @@ module ws_systolic_array #(
             for (col = 0; col < SIZE; col++) begin : gen_col
                 ws_systolic_cell ws_cell (
                     .clk(clk),
-                    .store_weight_req(col == 0 ? store_weight_req : 1'b0),  // 所有行在第一列时都使用同一个信号
+                    .store_weight_req(store_weight_req),
                     .weight_in(row == 0 ? weight_in[col] : weight_pipe[row-1][col]),
                     .data_in(col == 0 ? data_in[row] : data_pipe[row][col-1]),
                     .sum_in(row == 0 ? sum_in[col] : sum_pipe[row-1][col]),
@@ -31,8 +30,9 @@ module ws_systolic_array #(
                 );
             end
         end
-        for (genvar col = 0; col < SIZE; col++) begin : gen_sum_out
-            assign sum_out[col] = sum_pipe[SIZE-1][col];
+        // 修复 VARHIDDEN 警告，避免 genvar col 重复声明
+        for (genvar sum_col = 0; sum_col < SIZE; sum_col++) begin : gen_sum_out
+            assign sum_out[sum_col] = sum_pipe[SIZE-1][sum_col];
         end
     endgenerate
 

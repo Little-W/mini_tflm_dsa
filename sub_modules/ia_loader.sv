@@ -110,11 +110,13 @@ module ia_loader #(
     input  wire                        ia_use_offset,     // 是否使用零点偏移
     input  wire                        use_16bits,        // 输入数据类型指示，1为s16，0为s8
 
-    // ICB 主接口（模块作为 Master）
-    output icb_cmd_m_t                  icb_cmd_m,         // Master -> Slave: 命令有效载荷（模块驱动）
-    input  icb_cmd_s_t                  icb_cmd_s,         // Slave -> Master: 命令就绪（从设备驱动）
-    input  icb_rsp_s_t                  icb_rsp_s,         // Slave -> Master: 响应有效载荷（从设备驱动）
-    output icb_rsp_m_t                  icb_rsp_m,         // Master -> Slave: 响应就绪（模块驱动）
+    // ICB 主接口（模块作为 Master, 扩展三通道）
+    output icb_ext_cmd_m_t              icb_cmd_m,         // Master -> Slave: 命令有效载荷（模块驱动）
+    output icb_ext_wr_m_t            icb_wr_m,       // Master -> Slave: 写数据有效载荷
+    input  icb_ext_cmd_s_t              icb_cmd_s,         // Slave -> Master: 命令就绪（从设备驱动）
+    input  icb_ext_wr_s_t            icb_wr_s,       // Slave -> Master: 写数据就绪
+    input  icb_ext_rsp_s_t              icb_rsp_s,         // Slave -> Master: 响应有效载荷（从设备驱动）
+    output icb_ext_rsp_m_t              icb_rsp_m,         // Master -> Slave: 响应就绪（模块驱动）
 
     // 输出信号到脉动阵列
     output wire                         ia_sending_done,   // trigger后，一整个tile已经输出完毕
@@ -136,21 +138,30 @@ module ia_loader #(
 
     state_t state;
 
-    // ICB 命令与响应内部信号与连接
-    // 使用寄存器存储可变字段，通过连续赋值将 size 字段固定为 2'b10
+    // ICB 命令与响应内部信号与连接（保持旧打包以便内部逻辑复用）
     icb_cmd_m_t icb_cmd_m_reg; // 驱动可变字段的寄存器
     icb_cmd_m_t icb_cmd_m_wire; // 由寄存器与常量 size 组合成的输出线网
-    icb_rsp_m_t icb_rsp_m_wire;
-    // 将 wire 输出到模块端口
-    assign icb_cmd_m = icb_cmd_m_wire;
-    assign icb_rsp_m = icb_rsp_m_wire;
-    // 固定 size 字段为 2'b10，其余字段从寄存器取值（按 struct 定义顺序）
+    icb_rsp_m_t icb_rsp_m_wire_legacy;
+    // 固定 size 字段为 2'b10，其余字段从寄存器取值（旧版）
     assign icb_cmd_m_wire = '{ icb_cmd_m_reg.valid,
                                icb_cmd_m_reg.addr,
                                icb_cmd_m_reg.read,
                                icb_cmd_m_reg.wdata,
                                icb_cmd_m_reg.wmask,
                                2'b10 };
+
+    // 将旧版打包信号映射到扩展三通道端口
+    assign icb_cmd_m.valid = icb_cmd_m_wire.valid;
+    assign icb_cmd_m.addr  = icb_cmd_m_wire.addr;
+    assign icb_cmd_m.read  = icb_cmd_m_wire.read;
+    assign icb_cmd_m.len   = 3'd0; // 默认单拍（可由后续实现按需拉长）
+
+    assign icb_wr_m.w_valid = icb_cmd_m_reg.valid & (~icb_cmd_m_reg.read);
+    assign icb_wr_m.wdata   = icb_cmd_m_reg.wdata;
+    assign icb_wr_m.wmask   = icb_cmd_m_reg.wmask;
+
+    // 响应就绪沿用旧版寄存器名
+    assign icb_rsp_m = '{ icb_rsp_m_wire_legacy.rsp_ready };
 
     // 行数据缓存（单缓冲区：保存最近读取的一行）
     reg signed [DATA_WIDTH-1:0] line_buffer [SIZE];
@@ -192,6 +203,6 @@ module ia_loader #(
         end
     end
 
-    // 状态机与主控逻辑
+    // 状态机与主控逻辑（待实现）
 
 endmodule

@@ -77,13 +77,15 @@ module bias_loader #(
     input wire [REG_WIDTH-1:0] k,  // 输入激活矩阵列数（RHS_COLS）
     input wire [REG_WIDTH-1:0] m,  // 输出矩阵列数（LHS_COLS）
 
-    // ICB 主接口（模块作为 Master）
-    output icb_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
-    input  icb_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
-    input  icb_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
-    output icb_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
+    // ICB 主接口（模块作为 Master, 扩展三通道）
+    output icb_ext_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
+    output icb_ext_wr_m_t icb_wr_m, // Master -> Slave: 写数据有效载荷（本模块读取为主，通常不使用）
+    input  icb_ext_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
+    input  icb_ext_wr_s_t icb_wr_s, // Slave -> Master: 写数据就绪
+    input  icb_ext_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
+    output icb_ext_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
 
-    input wire ia_loader_calc_done,  // 来自 ia_loader 的 calc_done 信号
+    input wire tile_calc_over,  // 来自compute_core的当前OA tile计算完成信号
     input wire tile_calc_start,  // 触发当前tile的计算开始
     output reg bias_valid,  // 偏置数据已准备好信号
     // 输出信号
@@ -102,14 +104,10 @@ module bias_loader #(
 
     state_t     state;
 
-    // ICB 命令与响应内部信号与连接
-    // 使用寄存器存储可变字段，通过连续赋值将 size 字段固定为 2'b10
+    // ICB 命令与响应内部信号与连接（保留旧打包并映射到新接口）
     icb_cmd_m_t icb_cmd_m_reg;  // 驱动可变字段的寄存器
     icb_cmd_m_t icb_cmd_m_wire;  // 由寄存器与常量 size 组合成的输出线网
-    icb_rsp_m_t icb_rsp_m_wire;
-    // 将 wire 输出到模块端口
-    assign icb_cmd_m = icb_cmd_m_wire;
-    assign icb_rsp_m = icb_rsp_m_wire;
+    icb_rsp_m_t icb_rsp_m_wire_legacy;
     // 固定 size 字段为 2'b10，其余字段从寄存器取值
     assign icb_cmd_m_wire = '{
             icb_cmd_m_reg.valid,
@@ -119,6 +117,18 @@ module bias_loader #(
             icb_cmd_m_reg.wmask,
             2'b10
         };
+
+    // 新端口映射
+    assign icb_cmd_m.valid = icb_cmd_m_wire.valid;
+    assign icb_cmd_m.addr  = icb_cmd_m_wire.addr;
+    assign icb_cmd_m.read  = icb_cmd_m_wire.read;
+    assign icb_cmd_m.len   = 3'd0; // 默认单拍
+
+    assign icb_wr_m.w_valid = 1'b0; // 本模块通常只读
+    assign icb_wr_m.wdata   = '0;
+    assign icb_wr_m.wmask   = '0;
+
+    assign icb_rsp_m = '{ icb_rsp_m_wire_legacy.rsp_ready };
 
     // 偏置缓冲区（单缓冲区存储）
     reg     [    DATA_WIDTH-1:0] bias_buffer         [SIZE];
@@ -156,79 +166,6 @@ module bias_loader #(
         end
     end
 
-    // 偏置加载与计算状态机
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            state           <= IDLE;
-            load_bias_req   <= 0;
-            bias_valid      <= 0;
-            cur_addr        <= '0;
-            load_count      <= '0;
-        end else begin
-            case (state)
-                IDLE: begin
-                    // 等待配置与 IA 计算完成信号
-                    if (init_cfg && cfg_need_bias) begin
-                        // 锁存配置后，计算首个偏置块的地址
-                        cur_addr <= cfg_bias_base;
-                        // 进入等待 IA 计算完成的状态
-                        state <= WAIT_FOR_IA_DONE;
-                    end
-                end
-
-                WAIT_FOR_IA_DONE: begin
-                    // 监测 ia_loader_calc_done 的下降沿
-                    if (ia_loader_calc_done_d1 && !ia_loader_calc_done) begin
-                        // 下降沿到来，开始计数延迟周期
-                        delay_counter <= 0;
-                        state <= REQUEST_LOAD;
-                    end
-                end
-
-                REQUEST_LOAD: begin
-                    // 延迟计数完成后，驱动 load_bias_req 请求访存授权
-                    if (delay_counter == DELAY_CYCLES-1) begin
-                        load_bias_req <= 1;
-                        state <= WAIT_FOR_LOAD_GRANT;
-                    end else begin
-                        delay_counter <= delay_counter + 1;
-                    end
-                end
-
-                WAIT_FOR_LOAD_GRANT: begin
-                    // 等待外部授权信号 load_bias_granted
-                    if (load_bias_granted) begin
-                        // 授权到位，发起 ICB 读事务
-                        state <= LOAD;
-                    end
-                end
-
-                LOAD: begin
-                    // ICB 读事务进行中
-                    if (icb_rsp_s.rsp_valid && icb_rsp_m.rsp_ready) begin
-                        // 读取完成，缓存偏置数据
-                        // 使用锁存的 cfg_m 作为输出通道数，且不超过内部缓冲区 SIZE
-                        for (i = 0; i < cfg_m && i < SIZE; i = i + 1) begin
-                            bias_buffer[i] <= icb_rsp_s.rsp_rdata[i];
-                        end
-                        bias_valid <= 1;
-                        state <= IDLE;
-                    end
-                end
-
-                default: state <= IDLE;
-            endcase
-        end
-    end
-
-    // 生成 ia_loader_calc_done 的延迟信号，用于检测下降沿
-    reg ia_loader_calc_done_d1;
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            ia_loader_calc_done_d1 <= 0;
-        end else begin
-            ia_loader_calc_done_d1 <= ia_loader_calc_done;
-        end
-    end
+    // 偏置加载与计算状态机（待实现）
 
 endmodule
