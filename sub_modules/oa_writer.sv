@@ -81,10 +81,12 @@ module oa_writer #(
     input  wire [31:0] output_data,   // 32位输出数据
 
     // ICB 主接口（模块作为 Master）
-    output icb_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
-    input  icb_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
-    input  icb_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
-    output icb_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
+    output icb_ext_cmd_m_t icb_ext_cmd_m,  // Master -> Slave: 命令有效载荷
+    input  icb_ext_cmd_s_t icb_ext_cmd_s,  // Slave -> Master: 命令就绪
+    output icb_ext_wr_m_t  icb_ext_wr_m,   // Master -> Slave: 写数据有效载荷
+    input  icb_ext_wr_s_t  icb_ext_wr_s,   // Slave -> Master: 写数据就绪
+    input  icb_ext_rsp_s_t icb_ext_rsp_s,  // Slave -> Master: 响应有效载荷
+    output icb_ext_rsp_m_t icb_ext_rsp_m,  // Master -> Slave: 响应就绪
 
     // 状态输出
     output wire write_done,   // 写回完成信号
@@ -100,22 +102,21 @@ module oa_writer #(
     state_t     state;
 
     // ICB 命令与响应内部信号与连接
-    // 使用寄存器存储可变字段，通过连续赋值将 size 字段固定为 2'b10
-    icb_cmd_m_t icb_cmd_m_reg;  // 驱动可变字段的寄存器
-    icb_cmd_m_t icb_cmd_m_wire;  // 由寄存器与常量 size 组合成的输出线网
-    icb_rsp_m_t icb_rsp_m_wire;
-    // 将 wire 输出到模块端口
-    assign icb_cmd_m = icb_cmd_m_wire;
-    assign icb_rsp_m = icb_rsp_m_wire;
-    // 固定 size 字段为 2'b10，其余字段从寄存器取值
-    assign icb_cmd_m_wire = '{
-            icb_cmd_m_reg.valid,
-            icb_cmd_m_reg.addr,
-            icb_cmd_m_reg.read,
-            icb_cmd_m_reg.wdata,
-            icb_cmd_m_reg.wmask,
-            2'b10
-        };
+    icb_ext_cmd_m_t icb_ext_cmd_m_reg;
+    icb_ext_wr_m_t  icb_ext_wr_m_reg;
+    icb_ext_rsp_m_t icb_ext_rsp_m_wire;
+
+    // 固定 size 字段为 2'b01
+    assign icb_ext_cmd_m = '{ 
+        valid: icb_ext_cmd_m_reg.valid,
+        addr:  icb_ext_cmd_m_reg.addr,
+        read:  icb_ext_cmd_m_reg.read,
+        len:   icb_ext_cmd_m_reg.len,
+        size:  2'b01
+    };
+
+    assign icb_ext_wr_m  = icb_ext_wr_m_reg;
+    assign icb_ext_rsp_m = icb_ext_rsp_m_wire;
 
     // 锁存的配置信号
     reg [REG_WIDTH-1:0] cfg_dst_base;

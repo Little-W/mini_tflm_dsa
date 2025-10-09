@@ -107,7 +107,6 @@ module ia_loader #(
     input  wire signed [REG_WIDTH-1:0] lhs_zp,            // 输入激活零点（s32）
     input  wire [REG_WIDTH-1:0]        lhs_row_stride_b,  // 每行之间的地址间距（以调用方约定的单位）
     input  wire [REG_WIDTH-1:0]        lhs_base,          // 读取基地址（第一个分块）
-    input  wire                        ia_use_offset,     // 是否使用零点偏移
     input  wire                        use_16bits,        // 输入数据类型指示，1为s16，0为s8
 
     // ICB 主接口（模块作为 Master, 扩展三通道）
@@ -173,7 +172,6 @@ module ia_loader #(
     reg signed [REG_WIDTH-1:0] cfg_lhs_zp;
     reg [REG_WIDTH-1:0] cfg_lhs_row_stride_b;
     reg [REG_WIDTH-1:0] cfg_lhs_base;
-    reg cfg_ia_use_offset;
     reg cfg_use_16bits;
 
     // 计数器与状态寄存器
@@ -190,7 +188,6 @@ module ia_loader #(
             cfg_lhs_zp <= '0;
             cfg_lhs_row_stride_b <= '0;
             cfg_lhs_base <= '0;
-            cfg_ia_use_offset <= 0;
             cfg_use_16bits <= 0;
         end else if (init_cfg) begin
             cfg_k <= k;
@@ -198,7 +195,6 @@ module ia_loader #(
             cfg_lhs_zp <= lhs_zp;
             cfg_lhs_row_stride_b <= lhs_row_stride_b;
             cfg_lhs_base <= lhs_base;
-            cfg_ia_use_offset <= ia_use_offset;
             cfg_use_16bits <= use_16bits;
         end
     end

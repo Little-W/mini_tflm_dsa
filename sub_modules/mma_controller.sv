@@ -13,6 +13,7 @@ module mma_controller #(
     input  wire clk,         // 时钟
     input  wire rst_n,       // 异步复位，低有效
     input  wire calc_start,  // 计算开始
+    input  wire cfg_16bits_ia, // 使用16位IA数据
     output wire sa_ready,    // 控制器就绪
 
     //==== Control Signals ====
@@ -25,7 +26,6 @@ module mma_controller #(
     output reg                  init_cfg_requant,  // Vec Requant 配置初始化（单拍）
     output reg                  init_cfg_oa,       // OA Writer 配置初始化（单拍）
     output reg                  need_bias,         // 是否需要偏置信号
-    output reg                  ia_use_offset,     // IA偏移量使能信号
     output reg                  use_16bits,        // 16位数据指示信号
     output reg  [REG_WIDTH-1:0] tile_count,        // 分块计数信号
 
