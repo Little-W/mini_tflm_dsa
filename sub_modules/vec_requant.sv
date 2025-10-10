@@ -69,17 +69,19 @@ module vec_requant #(
     // ===== Load/Init 控制接口（仅per-channel模式使用） =====
     output reg  load_quant_req,      // 申请下一次访存授权（输出到外部控制器）
     input  wire load_quant_granted,  // 外部控制器授权下一次访存（握手信号）
-    output reg  quant_params_valid,  // 量化参数已加载完成信号
+    output reg  quant_params_valid,  // 量化参数已加载完成信号，multiplier等读完后拉高，in_valid上升沿后拉低
 
     // 矩阵尺寸与分块配置（在 init_cfg 时被锁存）
     input wire [REG_WIDTH-1:0] k,  // 输入激活矩阵列数（RHS_COLS）
     input wire [REG_WIDTH-1:0] m,  // 输出矩阵列数（LHS_COLS）
 
     // ICB 主接口（模块作为 Master，仅per-channel模式使用）
-    output icb_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
-    input  icb_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
-    input  icb_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
-    output icb_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
+    output icb_ext_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
+    output icb_ext_wr_m_t icb_wr_m, // Master -> Slave: 写数据有效载荷（本模块读取为主，通常不使用）
+    input icb_ext_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
+    input icb_ext_wr_s_t icb_wr_s,  // Slave -> Master: 写数据就绪
+    input icb_ext_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
+    output icb_ext_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
 
     // ===== 工作阶段：并行输入/输出 =====
     input wire               in_valid,         // 一拍喂入一个"并行向量"

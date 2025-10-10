@@ -4,12 +4,11 @@
  * 设计目标：
  *  - 模块为每个 OA Tile 的“第一次部分和”提供偏置数据；同一 OA Tile 的后续部分和偏置恒为0。
  *  - 不实现总线访存细节，仅实现控制、状态与 data_out 选择逻辑。
- * 关键时序与信号：
- *  - init_cfg：锁存 need_bias、bias_base 等配置。
- *  - partial_sum_calc_over：一次部分和结束后触发，可启动下一轮（为“下一块 OA Tile 的第一次部分和”）的偏置预取。
- *  - tile_calc_over：当前 OA Tile 计算结束；随后的 tile_calc_start 视为新的 OA Tile 的“第一次部分和”。
+ * 关键时序与信号（已修正）：
+ *  - partial_sum_calc_over：一次部分和结束后触发；在该脉冲到来后，应将偏置输出置0（本 OA Tile 内后续 IA/W tile 不输出偏置），直到当前 OA Tile 结束。
+ *  - tile_calc_over：当前 OA Tile 计算结束；随后到来的 tile_calc_start 所对应的那次部分和被视为“某个 OA Tile 的第一个 IA/W tile”，该次可以输出偏置（如果偏置已准备好）。
  *  - tile_calc_start：计算开始；在其后一个时钟周期，将 data_out 连接为：
- *      • 若本次开始的是“第一次部分和”，则输出 bias_buffer；
+ *      • 若本次开始的是“第一个 IA/W tile 且偏置已准备好”，则输出 bias_buffer；
  *      • 否则输出全0。
  *  - bias_valid：表示 bias_buffer 已经就绪（一次预取完成后置1；在消耗于“第一次部分和”开始时清0，等待下一次预取）。
  *
@@ -185,11 +184,13 @@ module bias_loader #(
                 is_first_ps <= 1'b0;  // 开始后，其余部分和不再使用偏置
             end
 
-            // 管理 first_ia_w_flag：partial_sum_calc_over 表示“下一次”为第一个 IA/W，tile_calc_over 清除（OA Tile 结束）
-            if (ps_over_pulse) begin
+            // 管理 first_ia_w_flag（修正：tile_calc_over 表示 OA Tile 结束，下一次为第一个 IA/W；partial_sum_calc_over 表示部分和结束，随后禁止偏置输出）
+            if (tile_over_pulse) begin
+                // OA Tile 结束：下次启动属于新的 OA Tile 的第一个 IA/W tile
                 first_ia_w_flag <= 1'b1;
             end
-            if (tile_over_pulse) begin
+            if (ps_over_pulse) begin
+                // 部分和完成：在当前 OA Tile 内后续 IA/W 不再输出偏置
                 first_ia_w_flag <= 1'b0;
             end
 
@@ -212,8 +213,8 @@ module bias_loader #(
                 end
             end
 
-            // 预取请求：部分和结束后（为下一块 OA Tile 准备偏置）
-            if (ps_over_pulse && cfg_need_bias && !bias_valid) begin
+            // 预取请求：OA Tile 结束时为下一 OA Tile 准备偏置
+            if (tile_over_pulse && cfg_need_bias && !bias_valid) begin
                 load_bias_req <= 1'b1;
             end
 
