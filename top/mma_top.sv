@@ -166,7 +166,6 @@ module mma_top #(
     wire                           init_cfg_bias;
     wire                           init_cfg_requant;
     wire                           init_cfg_oa;
-    wire                           need_bias;  // 是否需要偏置信号
     wire                           use_16bits;  // 16位数据指示信号
     wire        [   REG_WIDTH-1:0] tile_count;  // 分块计数信号
 
@@ -245,7 +244,6 @@ module mma_top #(
         .init_cfg_bias        (init_cfg_bias),
         .init_cfg_requant     (init_cfg_requant),
         .init_cfg_oa          (init_cfg_oa),
-        .need_bias            (need_bias),
         .use_16bits           (use_16bits),
         .tile_count           (tile_count),
         // IA Loader Interface
@@ -352,7 +350,6 @@ module mma_top #(
         .init_cfg             (init_cfg_bias),
         .load_bias_req        (load_bias_req),
         .load_bias_granted    (load_bias_granted),
-        .need_bias            (need_bias),
         .bias_base            (bias_base),
         .k                    (k),
         .m                    (m),
@@ -406,7 +403,9 @@ module mma_top #(
         .k                 (k),
         .m                 (m),
         .icb_cmd_m         (vec_requant_cmd),
+        .icb_wr_m          (vec_requant_wr),
         .icb_cmd_s         (vec_requant_cmd_ready),
+        .icb_wr_s          (vec_requant_w_ready),
         .icb_rsp_s         (vec_requant_rsp),
         .icb_rsp_m         (vec_requant_rsp_ready),
         .in_valid          (acc_data_valid),

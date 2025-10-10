@@ -25,7 +25,6 @@ module mma_controller #(
     output reg                  init_cfg_bias,     // Bias Loader 配置初始化（单拍）
     output reg                  init_cfg_requant,  // Vec Requant 配置初始化（单拍）
     output reg                  init_cfg_oa,       // OA Writer 配置初始化（单拍）
-    output reg                  need_bias,         // 是否需要偏置信号
     output reg                  use_16bits,        // 16位数据指示信号
     output reg  [REG_WIDTH-1:0] tile_count,        // 分块计数信号
 

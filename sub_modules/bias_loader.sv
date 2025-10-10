@@ -62,7 +62,6 @@ module bias_loader #(
     input  wire load_bias_granted, // 外部控制器授权下一次访存（握手信号）
 
     // 偏置配置参数（在 init_cfg 时锁存）
-    input wire                 need_bias,  // 是否需要偏置加法
     input wire [REG_WIDTH-1:0] bias_base,  // 偏置数据基地址（第一个分块）
 
     input wire [REG_WIDTH-1:0] k,  // 输入激活矩阵列数（RHS_COLS）
@@ -168,7 +167,7 @@ module bias_loader #(
             partial_sum_calc_over_d <= partial_sum_calc_over;
 
             if (init_cfg) begin
-                cfg_need_bias <= need_bias;
+                cfg_need_bias <= (bias_base != '0);  // 仅当基地址非零时启用偏置
                 cfg_bias_base <= bias_base;
                 cfg_k         <= k;
                 cfg_m         <= m;
