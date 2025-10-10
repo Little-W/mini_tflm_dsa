@@ -362,6 +362,7 @@ module mma_top #(
         .icb_rsp_m            (bias_loader_rsp_ready),
         .partial_sum_calc_over(partial_sum_calc_over),
         .tile_calc_start      (send_ia_trigger),
+        .tile_calc_over       (tile_calc_over),
         .bias_valid           (bias_valid),
         .data_out             (bias_data_out)
     );

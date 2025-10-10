@@ -13,6 +13,12 @@
  *      • 否则输出全0。
  *  - bias_valid：表示 bias_buffer 已经就绪（一次预取完成后置1；在消耗于“第一次部分和”开始时清0，等待下一次预取）。
  *
+ * 补充说明（与原有时序一致，作为明确约定）：
+ *  - 仅在某个 OA Tile 流程中的“第一个 IA tile 与第一个 W tile”上输出偏置，其余 IA/W tile 输出应为 0。
+ *  - 当 partial_sum_calc_over 上升沿到来时，表示下一次启动的部分和属于某个 OA Tile 的第一个 IA/W tile（模块可据此准备/预取偏置）。
+ *  - 当 tile_calc_over 上升沿到来时，表示当前 OA Tile 流程结束；随后到来的 tile_calc_start 不应再输出此前 OA Tile 的偏置，直到再次由 partial_sum_calc_over 标记新的第一个 IA/W。
+ *  - tile_calc_start 作为实际输出时刻：若该次被判定为“第一个 IA/W 并且偏置已准备好”，则在下一拍将 bias_buffer 放到 data_out；否则放 0。
+ *
  * 预取策略（无总线实现占位）：
  *  - 在 partial_sum_calc_over 上升沿，若 need_bias 且当前没有就绪的偏置（bias_valid=0），则提出 load_bias_req。
  *  - 收到 load_bias_granted 后撤销请求；总线细节未实现，这里直接置 bias_valid=1 作为占位。
@@ -124,11 +130,14 @@ module bias_loader #(
     reg tile_calc_over_d;
     reg partial_sum_calc_over_d;
 
+    // 新增：标志表示“下一次是 OA Tile 流程中的第一个 IA/W tile”
+    reg first_ia_w_flag;
+
     wire tile_start_pulse = tile_calc_start & ~tile_calc_start_d;
     wire tile_over_pulse = tile_calc_over & ~tile_calc_over_d;
     wire ps_over_pulse = partial_sum_calc_over & ~partial_sum_calc_over_d;
 
-    // 在 tile_calc_start 捕获当次是否需要使用偏置，并在下一拍更新 data_out
+    // 在 tile_calc_start 捕获当次是否需要使用偏置，并由 first_ia_w_flag 限制
     reg use_bias_this_run;
     reg arm_output_update;  // 在 tile_calc_start 后一拍拉高1拍，用于更新输出寄存器
 
@@ -165,6 +174,8 @@ module bias_loader #(
                 cfg_k         <= k;
                 cfg_m         <= m;
                 bias_valid    <= 1'b0;
+                // 初始化 first_ia_w_flag（配置变动时清除）
+                first_ia_w_flag <= 1'b0;
             end
 
             // 每个 OA Tile 的第一次部分和标记
@@ -174,9 +185,17 @@ module bias_loader #(
                 is_first_ps <= 1'b0;  // 开始后，其余部分和不再使用偏置
             end
 
-            // 在 tile_calc_start 捕获是否需要使用偏置
+            // 管理 first_ia_w_flag：partial_sum_calc_over 表示“下一次”为第一个 IA/W，tile_calc_over 清除（OA Tile 结束）
+            if (ps_over_pulse) begin
+                first_ia_w_flag <= 1'b1;
+            end
+            if (tile_over_pulse) begin
+                first_ia_w_flag <= 1'b0;
+            end
+
+            // 在 tile_calc_start 捕获是否需要使用偏置（仅当配置需要、是 OA Tile 的第一次部分和，且 first_ia_w_flag 有效）
             if (tile_start_pulse) begin
-                use_bias_this_run <= (cfg_need_bias && is_first_ps);
+                use_bias_this_run <= (cfg_need_bias && is_first_ps && first_ia_w_flag);
             end
 
             // tile_calc_start 后一拍更新 data_out
@@ -208,6 +227,8 @@ module bias_loader #(
             // 在“第一次部分和”开始时消费当前偏置并清除 valid，等待下一轮预取
             if (tile_start_pulse && use_bias_this_run) begin
                 bias_valid <= 1'b0;
+                // 偏置已被消费，清除 first_ia_w_flag，确保同一 OA Tile 不重复输出偏置
+                first_ia_w_flag <= 1'b0;
             end
         end
     end
