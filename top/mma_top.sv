@@ -14,8 +14,9 @@ module mma_top #(
     input wire rst_n, // 异步复位，低有效
 
     //==== 外部控制接口 ====
-    input  wire calc_start,  // 计算开始信号
-    output wire sa_ready,    // 系统就绪信号
+    input  wire calc_start,     // 计算开始信号
+    input  wire cfg_16bits_ia,  // 使用16位IA数据
+    output wire sa_ready,       // 系统就绪信号
 
     // --- base pointers
     input logic [REG_WIDTH-1:0] lhs_base,  // A base         (MULT_LHS_PTR)
@@ -48,17 +49,17 @@ module mma_top #(
 
     //==== Memory LSU 接口（改为 icb_ext 三通道） ====
     // master -> slave: command payload
-    output icb_ext_cmd_m_t   sa_icb_cmd,
+    output icb_ext_cmd_m_t sa_icb_cmd,
     // master -> slave: write-data payload
-    output icb_ext_wr_m_t sa_icb_wr,
+    output icb_ext_wr_m_t  sa_icb_wr,
     // slave -> master: command ready
-    input  icb_ext_cmd_s_t   sa_icb_cmd_ready,
+    input  icb_ext_cmd_s_t sa_icb_cmd_ready,
     // slave -> master: write-data ready
-    input  icb_ext_wr_s_t sa_icb_w_ready,
+    input  icb_ext_wr_s_t  sa_icb_w_ready,
     // slave -> master: response payload
-    input  icb_ext_rsp_s_t   sa_icb_rsp,
+    input  icb_ext_rsp_s_t sa_icb_rsp,
     // master -> slave: response ready
-    output icb_ext_rsp_m_t   sa_icb_rsp_ready
+    output icb_ext_rsp_m_t sa_icb_rsp_ready
 );
 
     //========================================
@@ -66,22 +67,39 @@ module mma_top #(
     //========================================
 
     // ICB 多路复用器信号（扩展）
-    icb_ext_cmd_m_t   mux_m_cmd;
-    icb_ext_wr_m_t mux_m_wr;
-    icb_ext_cmd_s_t   mux_m_cmd_rsp;
-    icb_ext_wr_s_t mux_m_wr_rsp;
-    icb_ext_rsp_s_t   mux_m_rsp;
-    icb_ext_rsp_m_t   mux_m_rsp_ready;
+    icb_ext_cmd_m_t mux_m_cmd;
+    icb_ext_wr_m_t  mux_m_wr;
+    icb_ext_cmd_s_t mux_m_cmd_rsp;
+    icb_ext_wr_s_t  mux_m_wr_rsp;
+    icb_ext_rsp_s_t mux_m_rsp;
+    icb_ext_rsp_m_t mux_m_rsp_ready;
 
     // 各子模块的 ICB 接口信号（扩展）
-    icb_ext_cmd_m_t   ia_loader_cmd,   kernel_loader_cmd,   bias_loader_cmd,   vec_requant_cmd,   oa_writer_cmd;
+    icb_ext_cmd_m_t
+        ia_loader_cmd, kernel_loader_cmd, bias_loader_cmd, vec_requant_cmd, oa_writer_cmd;
     icb_ext_wr_m_t ia_loader_wr, kernel_loader_wr, bias_loader_wr, vec_requant_wr, oa_writer_wr;
 
-    icb_ext_cmd_s_t   ia_loader_cmd_ready,   kernel_loader_cmd_ready,   bias_loader_cmd_ready,   vec_requant_cmd_ready,   oa_writer_cmd_ready;
-    icb_ext_wr_s_t ia_loader_w_ready,     kernel_loader_w_ready,     bias_loader_w_ready,     vec_requant_w_ready,     oa_writer_w_ready;
+    icb_ext_cmd_s_t
+        ia_loader_cmd_ready,
+        kernel_loader_cmd_ready,
+        bias_loader_cmd_ready,
+        vec_requant_cmd_ready,
+        oa_writer_cmd_ready;
+    icb_ext_wr_s_t
+        ia_loader_w_ready,
+        kernel_loader_w_ready,
+        bias_loader_w_ready,
+        vec_requant_w_ready,
+        oa_writer_w_ready;
 
-    icb_ext_rsp_s_t   ia_loader_rsp, kernel_loader_rsp, bias_loader_rsp, vec_requant_rsp, oa_writer_rsp;
-    icb_ext_rsp_m_t   ia_loader_rsp_ready, kernel_loader_rsp_ready, bias_loader_rsp_ready, vec_requant_rsp_ready, oa_writer_rsp_ready;
+    icb_ext_rsp_s_t
+        ia_loader_rsp, kernel_loader_rsp, bias_loader_rsp, vec_requant_rsp, oa_writer_rsp;
+    icb_ext_rsp_m_t
+        ia_loader_rsp_ready,
+        kernel_loader_rsp_ready,
+        bias_loader_rsp_ready,
+        vec_requant_rsp_ready,
+        oa_writer_rsp_ready;
 
     // ICB 选择信号
     reg         [             2:0] icb_sel;
@@ -94,7 +112,7 @@ module mma_top #(
     wire                           ia_row_valid;
     wire                           ia_is_init_data;
     wire                           ia_calc_done;
-    wire signed [  DATA_WIDTH-1:0] ia_out                                    [SIZE];
+    wire signed [  DATA_WIDTH-1:0] ia_out                                 [SIZE];
     wire                           ia_data_valid;
 
     // Kernel Loader 内部信号
@@ -103,27 +121,27 @@ module mma_top #(
     wire                           send_weight_trigger;
     wire                           weight_sending_done;
     wire                           store_weight_req;
-    wire signed [WEIGHT_WIDTH-1:0] weight_out                                [SIZE];
+    wire signed [WEIGHT_WIDTH-1:0] weight_out                             [SIZE];
     wire                           weight_data_valid;
 
     // Bias Loader 内部信号
     wire                           load_bias_req;
     wire                           load_bias_granted;
     wire                           bias_valid;
-    wire        [            31:0] bias_data_out                             [SIZE];
+    wire        [            31:0] bias_data_out                          [SIZE];
 
     // Accumulator Array 输出（来自封装模块）
     wire                           acc_data_valid;
     wire                           tile_calc_over;
     wire                           partial_sum_calc_over;
-    wire        [            31:0] acc_data_out                              [SIZE];
+    wire        [            31:0] acc_data_out                           [SIZE];
 
     // Requantization 内部信号
     wire                           load_quant_req;
     wire                           load_quant_granted;
     wire                           quant_params_valid;
     wire                           requant_out_valid;
-    wire signed [             7:0] requant_out                               [SIZE];
+    wire signed [             7:0] requant_out                            [SIZE];
 
     // FIFO 内部信号
     wire                           fifo_output_req;
@@ -149,7 +167,6 @@ module mma_top #(
     wire                           init_cfg_requant;
     wire                           init_cfg_oa;
     wire                           need_bias;  // 是否需要偏置信号
-    wire                           ia_use_offset;  // IA偏移量使能信号
     wire                           use_16bits;  // 16位数据指示信号
     wire        [   REG_WIDTH-1:0] tile_count;  // 分块计数信号
 
@@ -159,52 +176,52 @@ module mma_top #(
 
     // ICB 5选1多路复用器（扩展）
     icb_mux_5to1 u_icb_mux (
-        .m_cmd        (mux_m_cmd),
-        .m_wr      (mux_m_wr),
-        .m_cmd_rsp    (mux_m_cmd_rsp),
-        .m_wr_rsp  (mux_m_wr_rsp),
-        .m_rsp        (mux_m_rsp),
-        .m_rsp_ready  (mux_m_rsp_ready),
-        .s0_cmd       (ia_loader_cmd),
-        .s0_wr     (ia_loader_wr),
-        .s0_cmd_ready (ia_loader_cmd_ready),
-        .s0_wr_ready(ia_loader_w_ready),
-        .s0_rsp       (ia_loader_rsp),
-        .s0_rsp_ready (ia_loader_rsp_ready),
-        .s1_cmd       (kernel_loader_cmd),
-        .s1_wr     (kernel_loader_wr),
-        .s1_cmd_ready (kernel_loader_cmd_ready),
-        .s1_wr_ready(kernel_loader_w_ready),
-        .s1_rsp       (kernel_loader_rsp),
-        .s1_rsp_ready (kernel_loader_rsp_ready),
-        .s2_cmd       (bias_loader_cmd),
-        .s2_wr     (bias_loader_wr),
-        .s2_cmd_ready (bias_loader_cmd_ready),
-        .s2_wr_ready(bias_loader_w_ready),
-        .s2_rsp       (bias_loader_rsp),
-        .s2_rsp_ready (bias_loader_rsp_ready),
-        .s3_cmd       (vec_requant_cmd),
-        .s3_wr     (vec_requant_wr),
-        .s3_cmd_ready (vec_requant_cmd_ready),
-        .s3_wr_ready(vec_requant_w_ready),
-        .s3_rsp       (vec_requant_rsp),
-        .s3_rsp_ready (vec_requant_rsp_ready),
-        .s4_cmd       (oa_writer_cmd),
-        .s4_wr     (oa_writer_wr),
-        .s4_cmd_ready (oa_writer_cmd_ready),
-        .s4_wr_ready(oa_writer_w_ready),
-        .s4_rsp       (oa_writer_rsp),
-        .s4_rsp_ready (oa_writer_rsp_ready),
-        .sel          (icb_sel)
+        .m_cmd       (mux_m_cmd),
+        .m_wr        (mux_m_wr),
+        .m_cmd_rsp   (mux_m_cmd_rsp),
+        .m_wr_rsp    (mux_m_wr_rsp),
+        .m_rsp       (mux_m_rsp),
+        .m_rsp_ready (mux_m_rsp_ready),
+        .s0_cmd      (ia_loader_cmd),
+        .s0_wr       (ia_loader_wr),
+        .s0_cmd_ready(ia_loader_cmd_ready),
+        .s0_wr_ready (ia_loader_w_ready),
+        .s0_rsp      (ia_loader_rsp),
+        .s0_rsp_ready(ia_loader_rsp_ready),
+        .s1_cmd      (kernel_loader_cmd),
+        .s1_wr       (kernel_loader_wr),
+        .s1_cmd_ready(kernel_loader_cmd_ready),
+        .s1_wr_ready (kernel_loader_w_ready),
+        .s1_rsp      (kernel_loader_rsp),
+        .s1_rsp_ready(kernel_loader_rsp_ready),
+        .s2_cmd      (bias_loader_cmd),
+        .s2_wr       (bias_loader_wr),
+        .s2_cmd_ready(bias_loader_cmd_ready),
+        .s2_wr_ready (bias_loader_w_ready),
+        .s2_rsp      (bias_loader_rsp),
+        .s2_rsp_ready(bias_loader_rsp_ready),
+        .s3_cmd      (vec_requant_cmd),
+        .s3_wr       (vec_requant_wr),
+        .s3_cmd_ready(vec_requant_cmd_ready),
+        .s3_wr_ready (vec_requant_w_ready),
+        .s3_rsp      (vec_requant_rsp),
+        .s3_rsp_ready(vec_requant_rsp_ready),
+        .s4_cmd      (oa_writer_cmd),
+        .s4_wr       (oa_writer_wr),
+        .s4_cmd_ready(oa_writer_cmd_ready),
+        .s4_wr_ready (oa_writer_w_ready),
+        .s4_rsp      (oa_writer_rsp),
+        .s4_rsp_ready(oa_writer_rsp_ready),
+        .sel         (icb_sel)
     );
 
     // 将多路复用器连接到外部ICB接口
-    assign sa_icb_cmd        = mux_m_cmd;
-    assign sa_icb_wr      = mux_m_wr;
-    assign mux_m_cmd_rsp     = sa_icb_cmd_ready;
-    assign mux_m_wr_rsp   = sa_icb_w_ready;
-    assign mux_m_rsp         = sa_icb_rsp;
-    assign sa_icb_rsp_ready  = mux_m_rsp_ready;
+    assign sa_icb_cmd       = mux_m_cmd;
+    assign sa_icb_wr        = mux_m_wr;
+    assign mux_m_cmd_rsp    = sa_icb_cmd_ready;
+    assign mux_m_wr_rsp     = sa_icb_w_ready;
+    assign mux_m_rsp        = sa_icb_rsp;
+    assign sa_icb_rsp_ready = mux_m_rsp_ready;
 
     // MMA 控制器
     mma_controller #(
@@ -214,10 +231,11 @@ module mma_top #(
         .BUS_WIDTH   (BUS_WIDTH),
         .REG_WIDTH   (REG_WIDTH)
     ) u_mma_controller (
-        .clk       (clk),
-        .rst_n     (rst_n),
-        .calc_start(calc_start),
-        .sa_ready  (sa_ready),
+        .clk          (clk),
+        .rst_n        (rst_n),
+        .calc_start   (calc_start),
+        .cfg_16bits_ia(cfg_16bits_ia),
+        .sa_ready     (sa_ready),
 
         .tile_calc_over       (tile_calc_over),
         .partial_sum_calc_over(partial_sum_calc_over),
@@ -228,7 +246,6 @@ module mma_top #(
         .init_cfg_requant     (init_cfg_requant),
         .init_cfg_oa          (init_cfg_oa),
         .need_bias            (need_bias),
-        .ia_use_offset        (ia_use_offset),
         .use_16bits           (use_16bits),
         .tile_count           (tile_count),
         // IA Loader Interface
@@ -282,7 +299,6 @@ module mma_top #(
         .lhs_zp          (lhs_zp),
         .lhs_row_stride_b(lhs_row_stride_b),
         .lhs_base        (lhs_base),
-        .ia_use_offset   (ia_use_offset),
         .use_16bits      (use_16bits),
         .icb_cmd_m       (ia_loader_cmd),
         .icb_cmd_s       (ia_loader_cmd_ready),
@@ -331,23 +347,23 @@ module mma_top #(
         .DATA_WIDTH(32),
         .REG_WIDTH (REG_WIDTH)
     ) u_bias_loader (
-        .clk              (clk),
-        .rst_n            (rst_n),
-        .init_cfg         (init_cfg_bias),
-        .load_bias_req    (load_bias_req),
-        .load_bias_granted(load_bias_granted),
-        .need_bias        (need_bias),
-        .bias_base        (bias_base),
-        .k                (k),
-        .m                (m),
-        .icb_cmd_m        (bias_loader_cmd),
-        .icb_cmd_s        (bias_loader_cmd_ready),
-        .icb_rsp_s        (bias_loader_rsp),
-        .icb_rsp_m        (bias_loader_rsp_ready),
-        .tile_calc_over   (tile_calc_over),
-        .tile_calc_start  (send_ia_trigger),
-        .bias_valid       (bias_valid),
-        .data_out         (bias_data_out)
+        .clk                  (clk),
+        .rst_n                (rst_n),
+        .init_cfg             (init_cfg_bias),
+        .load_bias_req        (load_bias_req),
+        .load_bias_granted    (load_bias_granted),
+        .need_bias            (need_bias),
+        .bias_base            (bias_base),
+        .k                    (k),
+        .m                    (m),
+        .icb_cmd_m            (bias_loader_cmd),
+        .icb_cmd_s            (bias_loader_cmd_ready),
+        .icb_rsp_s            (bias_loader_rsp),
+        .icb_rsp_m            (bias_loader_rsp_ready),
+        .partial_sum_calc_over(partial_sum_calc_over),
+        .tile_calc_start      (send_ia_trigger),
+        .bias_valid           (bias_valid),
+        .data_out             (bias_data_out)
     );
 
     // 脉动阵列计算核心
@@ -438,10 +454,12 @@ module mma_top #(
         .output_ready     (fifo_output_ready),
         .output_mask      (fifo_output_mask),
         .output_data      (fifo_output_data),
-        .icb_cmd_m        (oa_writer_cmd),
-        .icb_cmd_s        (oa_writer_cmd_ready),
-        .icb_rsp_s        (oa_writer_rsp),
-        .icb_rsp_m        (oa_writer_rsp_ready),
+        .icb_ext_cmd_m    (oa_writer_cmd),
+        .icb_ext_cmd_s    (oa_writer_cmd_ready),
+        .icb_ext_wr_m     (oa_writer_wr),
+        .icb_ext_wr_s     (oa_writer_w_ready),
+        .icb_ext_rsp_s    (oa_writer_rsp),
+        .icb_ext_rsp_m    (oa_writer_rsp_ready),
         .write_done       (write_done),
         .oa_calc_over     (oa_calc_over)
     );

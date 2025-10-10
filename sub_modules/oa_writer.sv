@@ -106,15 +106,7 @@ module oa_writer #(
     icb_ext_wr_m_t  icb_ext_wr_m_reg;
     icb_ext_rsp_m_t icb_ext_rsp_m_wire;
 
-    // 固定 size 字段为 2'b01
-    assign icb_ext_cmd_m = '{ 
-        valid: icb_ext_cmd_m_reg.valid,
-        addr:  icb_ext_cmd_m_reg.addr,
-        read:  icb_ext_cmd_m_reg.read,
-        len:   icb_ext_cmd_m_reg.len,
-        size:  2'b01
-    };
-
+    assign icb_ext_cmd_m = icb_ext_cmd_m_reg;
     assign icb_ext_wr_m  = icb_ext_wr_m_reg;
     assign icb_ext_rsp_m = icb_ext_rsp_m_wire;
 
