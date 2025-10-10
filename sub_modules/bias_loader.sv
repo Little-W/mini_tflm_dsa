@@ -87,7 +87,6 @@ module bias_loader #(
     // ICB 命令与响应内部信号与连接（保留旧打包并映射到新接口）
     icb_cmd_m_t icb_cmd_m_reg;  // 驱动可变字段的寄存器
     icb_cmd_m_t icb_cmd_m_wire;  // 由寄存器与常量 size 组合成的输出线网
-    icb_rsp_m_t icb_rsp_m_wire_legacy;
     // 固定 size 字段为 2'b10，其余字段从寄存器取值
     assign icb_cmd_m_wire = '{
             icb_cmd_m_reg.valid,
@@ -108,7 +107,8 @@ module bias_loader #(
     assign icb_wr_m.wdata = '0;
     assign icb_wr_m.wmask = '0;
 
-    assign icb_rsp_m = '{icb_rsp_m_wire_legacy.rsp_ready};
+    // 直接使用 icb_ext rsp 接口，表明 Master 可以接收响应（占位为可用）
+    assign icb_rsp_m = '{ rsp_ready: 1'b1 };
 
     // 偏置缓冲区（单缓冲区存储）
     reg [DATA_WIDTH-1:0] bias_buffer[SIZE];
