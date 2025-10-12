@@ -45,8 +45,8 @@
  *  - 该时序保证上游 FIFO 能安全读取 vec_valid_num_col 并避免在未授权时向总线发送数据，从而避免总线冲突或丢失数据。
  */
 
-`include "../inc/define.svh"
-`include "../inc/icb_types.svh"
+`include "define.svh"
+`include "icb_types.svh"
 
 module oa_writer #(
     parameter int unsigned DATA_WIDTH = 8,  // 输出数据元素宽度

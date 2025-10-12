@@ -1,0 +1,56 @@
+[*]
+[*] GTKWave Analyzer v3.3.114 (w)1999-2023 BSI
+[*] Sun Oct 12 02:20:37 2025
+[*]
+[dumpfile] "/home/etc/FPGA/tflm_ai_dsa/test/compute_core/wave.vcd"
+[dumpfile_mtime] "Sun Oct 12 02:16:21 2025"
+[dumpfile_size] 176576
+[savefile] "/home/etc/FPGA/tflm_ai_dsa/test/compute_core/testwave.gtkw"
+[timestart] 0
+[size] 2327 1237
+[pos] -1 -1
+*-17.000000 135000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_compute_core.
+[treeopen] tb_compute_core.u_dut.
+[sst_width] 325
+[signals_width] 302
+[sst_expanded] 1
+[sst_vpaned_height] 366
+@28
+tb_compute_core.u_dut.clk
+@200
+-
+@420
+tb_compute_core.u_dut.ia_vec_in[0][15:0]
+tb_compute_core.u_dut.ia_vec_in[1][15:0]
+tb_compute_core.u_dut.ia_vec_in[2][15:0]
+tb_compute_core.u_dut.ia_vec_in[3][15:0]
+@28
+tb_compute_core.u_dut.ia_row_valid
+tb_compute_core.u_dut.ia_is_init_data
+tb_compute_core.u_dut.ia_calc_done
+@200
+-
+@420
+tb_compute_core.u_dut.data_setup_out[0][15:0]
+tb_compute_core.u_dut.data_setup_out[1][15:0]
+tb_compute_core.u_dut.data_setup_out[2][15:0]
+tb_compute_core.u_dut.data_setup_out[3][15:0]
+@200
+-
+@420
+tb_compute_core.u_dut.sa_sum_out[0][31:0]
+tb_compute_core.u_dut.sa_sum_out[1][31:0]
+tb_compute_core.u_dut.sa_sum_out[2][31:0]
+tb_compute_core.u_dut.sa_sum_out[3][31:0]
+@200
+-
+@420
+tb_compute_core.u_dut.acc_data_out[0][31:0]
+tb_compute_core.u_dut.acc_data_out[1][31:0]
+tb_compute_core.u_dut.acc_data_out[2][31:0]
+tb_compute_core.u_dut.acc_data_out[3][31:0]
+@28
+tb_compute_core.u_dut.acc_data_valid
+[pattern_trace] 1
+[pattern_trace] 0

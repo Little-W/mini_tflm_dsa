@@ -76,8 +76,8 @@
  *  - 在跳过访存的场景下，需保证 ia_data_valid、ia_sending_done 时序仍然正确，避免上层误判数据准备或发送完成。
  */
 
-`include "../inc/define.svh"
-`include "../inc/icb_types.svh"
+`include "define.svh"
+`include "icb_types.svh"
 
 // 输入激活加载控制器，双缓冲区交替向脉动阵列加载输入数据
 module ia_loader #(

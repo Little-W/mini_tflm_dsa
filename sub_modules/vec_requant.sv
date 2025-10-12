@@ -45,8 +45,8 @@
  *  - 建议在仿真/验证中分别验证 per-tensor 与 per-channel 的时序、以及 load_quant_req/granted 的交互。
  */
 
-`include "../inc/define.svh"
-`include "../inc/icb_types.svh"
+`include "define.svh"
+`include "icb_types.svh"
 
 module vec_requant #(
     parameter integer VLEN = 16,

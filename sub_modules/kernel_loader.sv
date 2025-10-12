@@ -44,117 +44,119 @@
  *  - 将 weight_data_valid 与 store_weight_req/weight_sending_done 保持明确的握手顺序，避免竞态
  */
 
-`include "../inc/define.svh"
-`include "../inc/icb_types.svh"
+`include "define.svh"
+`include "icb_types.svh"
 
 module kernel_loader #(
-    parameter int unsigned DATA_WIDTH = 8,      // 权重数据宽度
-    parameter int unsigned SIZE = 16,           // 阵列大小
-    parameter int unsigned BUS_WIDTH = 32,      // 总线宽度
-    parameter int unsigned REG_WIDTH = 32       // 配置寄存器宽度
+    parameter int unsigned DATA_WIDTH = 8,   // 权重数据宽度
+    parameter int unsigned SIZE       = 16,  // 阵列大小
+    parameter int unsigned BUS_WIDTH  = 32,  // 总线宽度
+    parameter int unsigned REG_WIDTH  = 32   // 配置寄存器宽度
 ) (
     // 时钟与复位
-    input  wire                        clk,               // 时钟信号
-    input  wire                        rst_n,             // 异步复位，低有效
+    input wire clk,   // 时钟信号
+    input wire rst_n, // 异步复位，低有效
 
     // 配置控制接口
-    input  wire                        init_cfg,          // 触发配置参数锁存
+    input wire init_cfg,  // 触发配置参数锁存
 
     // 自动重触发控制接口
-    output reg                         load_weight_req,     // 申请下一次访存授权（输出到外部控制器）
-    input  wire                        load_weight_granted, // 外部控制器授权下一次访存（握手信号）
-    input  wire                        send_weight_trigger, // 触发发送权重到脉动阵列（单拍触发）
+    output reg  load_weight_req,      // 申请下一次访存授权（输出到外部控制器）
+    input  wire load_weight_granted,  // 外部控制器授权下一次访存（握手信号）
+    input  wire send_weight_trigger,  // 触发发送权重到脉动阵列（单拍触发）
 
     // 矩阵尺寸与分块配置（在 init_cfg 时被锁存）
-    input  wire [REG_WIDTH-1:0]        k,                 // 输入激活矩阵列数（RHS_COLS）
-    input  wire [REG_WIDTH-1:0]        n,                 // 输入激活矩阵行数（RHS_ROWS）
+    input wire [REG_WIDTH-1:0] k,  // 输入激活矩阵列数（RHS_COLS）
+    input wire [REG_WIDTH-1:0] n,  // 输入激活矩阵行数（RHS_ROWS）
     input  wire [REG_WIDTH-1:0]        m,                 // 输出矩阵列数（LHS_COLS），用于计算是否为最后一个tile
 
     // 配置寄存器（在 init_cfg 时锁存）
-    input  wire signed [REG_WIDTH-1:0] rhs_zp,            // 权重零点（s32）
-    input  wire [REG_WIDTH-1:0]        rhs_base,          // 权重数据基地址（第一个分块）
-    input  wire [REG_WIDTH-1:0]        rhs_row_stride_b,  // 权重行间地址间距
+    input wire signed [REG_WIDTH-1:0] rhs_zp,  // 权重零点（s32）
+    input wire [REG_WIDTH-1:0] rhs_base,  // 权重数据基地址（第一个分块）
+    input wire [REG_WIDTH-1:0] rhs_row_stride_b,  // 权重行间地址间距
 
     // ICB 主接口（模块作为 Master, 扩展三通道）
-    output icb_ext_cmd_m_t              icb_cmd_m,         // Master -> Slave: 命令有效载荷
-    output icb_ext_wr_m_t            icb_wr_m,       // Master -> Slave: 写数据有效载荷
-    input  icb_ext_cmd_s_t              icb_cmd_s,         // Slave -> Master: 命令就绪
-    input  icb_ext_wr_s_t            icb_wr_s,       // Slave -> Master: 写数据就绪
-    input  icb_ext_rsp_s_t              icb_rsp_s,         // Slave -> Master: 响应有效载荷
-    output icb_ext_rsp_m_t              icb_rsp_m,         // Master -> Slave: 响应就绪
+    output icb_ext_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
+    output icb_ext_wr_m_t  icb_wr_m,   // Master -> Slave: 写数据有效载荷
+    input  icb_ext_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
+    input  icb_ext_wr_s_t  icb_wr_s,   // Slave -> Master: 写数据就绪
+    input  icb_ext_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
+    output icb_ext_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
 
     // 输出信号到脉动阵列
-    output reg                         weight_sending_done, // 权重发送完成
-    output reg                         store_weight_req,    // 控制脉动阵列权重加载
+    output reg weight_sending_done,  // 权重发送完成
+    output reg store_weight_req,  // 控制脉动阵列权重加载
     output reg signed [DATA_WIDTH-1:0] weight_out[SIZE],   // 输出到脉动阵列的权重（按行输出）
 
     // 新增输出：当完成所有权重读取时指示数据已准备好
-    output reg                         weight_data_valid   // 所有权重数据已读取完毕并可用于发送
+    output reg weight_data_valid  // 所有权重数据已读取完毕并可用于发送
 );
 
     // 状态定义
     typedef enum logic [1:0] {
-        IDLE = 2'b00,     // 空闲状态
-        LOAD = 2'b01,     // 读取权重数据状态
-        SEND = 2'b10      // 发送权重数据状态
+        IDLE = 2'b00,  // 空闲状态
+        LOAD = 2'b01,  // 读取权重数据状态
+        SEND = 2'b10   // 发送权重数据状态
     } state_t;
 
-    state_t state;
+    state_t     state;
 
     // ICB 命令与响应内部信号与连接（保持旧打包以便内部逻辑复用）
-    icb_cmd_m_t icb_cmd_m_reg; // 驱动可变字段的寄存器
-    icb_cmd_m_t icb_cmd_m_wire; // 由寄存器与常量 size 组合成的输出线网
+    icb_cmd_m_t icb_cmd_m_reg;  // 驱动可变字段的寄存器
+    icb_cmd_m_t icb_cmd_m_wire;  // 由寄存器与常量 size 组合成的输出线网
     icb_rsp_m_t icb_rsp_m_wire_legacy;
     // 固定 size 字段为 2'b10，其余字段从寄存器取值
-    assign icb_cmd_m_wire = '{ icb_cmd_m_reg.valid,
-                               icb_cmd_m_reg.addr,
-                               icb_cmd_m_reg.read,
-                               icb_cmd_m_reg.wdata,
-                               icb_cmd_m_reg.wmask,
-                               2'b10 };
+    assign icb_cmd_m_wire = '{
+            icb_cmd_m_reg.valid,
+            icb_cmd_m_reg.addr,
+            icb_cmd_m_reg.read,
+            icb_cmd_m_reg.wdata,
+            icb_cmd_m_reg.wmask,
+            2'b10
+        };
 
     // 将旧版打包信号映射到扩展三通道端口
     assign icb_cmd_m.valid = icb_cmd_m_wire.valid;
-    assign icb_cmd_m.addr  = icb_cmd_m_wire.addr;
-    assign icb_cmd_m.read  = icb_cmd_m_wire.read;
-    assign icb_cmd_m.len   = 3'd0; // 默认单拍
+    assign icb_cmd_m.addr = icb_cmd_m_wire.addr;
+    assign icb_cmd_m.read = icb_cmd_m_wire.read;
+    assign icb_cmd_m.len = 3'd0;  // 默认单拍
 
     assign icb_wr_m.w_valid = icb_cmd_m_reg.valid & (~icb_cmd_m_reg.read);
-    assign icb_wr_m.wdata   = icb_cmd_m_reg.wdata;
-    assign icb_wr_m.wmask   = icb_cmd_m_reg.wmask;
+    assign icb_wr_m.wdata = icb_cmd_m_reg.wdata;
+    assign icb_wr_m.wmask = icb_cmd_m_reg.wmask;
 
     // 响应就绪沿用旧版寄存器名
-    assign icb_rsp_m = '{ icb_rsp_m_wire_legacy.rsp_ready };
+    assign icb_rsp_m = '{icb_rsp_m_wire_legacy.rsp_ready};
 
     // 权重缓冲区（按列主序存储）
-    reg signed [DATA_WIDTH-1:0] weight_buffer [SIZE*SIZE];
+    reg signed [DATA_WIDTH-1:0] weight_buffer[SIZE*SIZE];
     integer i, j;
 
     // 锁存的配置信号
-    reg [REG_WIDTH-1:0] cfg_n;
-    reg [REG_WIDTH-1:0] cfg_m;
+    reg        [REG_WIDTH-1:0] cfg_n;
+    reg        [REG_WIDTH-1:0] cfg_m;
     reg signed [REG_WIDTH-1:0] cfg_rhs_zp;
-    reg [REG_WIDTH-1:0] cfg_rhs_base;
-    reg [REG_WIDTH-1:0] cfg_rhs_row_stride_b;
+    reg        [REG_WIDTH-1:0] cfg_rhs_base;
+    reg        [REG_WIDTH-1:0] cfg_rhs_row_stride_b;
 
     // 计数器与状态寄存器
-    reg [REG_WIDTH-1:0] load_row_count;
-    reg [REG_WIDTH-1:0] load_col_count;
-    reg [REG_WIDTH-1:0] cur_addr;
+    reg        [REG_WIDTH-1:0] load_row_count;
+    reg        [REG_WIDTH-1:0] load_col_count;
+    reg        [REG_WIDTH-1:0] cur_addr;
 
     // 配置参数锁存
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            cfg_n <= '0;
-            cfg_m <= '0;
-            cfg_rhs_zp <= '0;
-            cfg_rhs_base <= '0;
+            cfg_n                <= '0;
+            cfg_m                <= '0;
+            cfg_rhs_zp           <= '0;
+            cfg_rhs_base         <= '0;
             cfg_rhs_row_stride_b <= '0;
         end else if (init_cfg) begin
-            cfg_n <= n;
-            cfg_m <= m;
-            cfg_rhs_zp <= rhs_zp;
-            cfg_rhs_base <= rhs_base;
+            cfg_n                <= n;
+            cfg_m                <= m;
+            cfg_rhs_zp           <= rhs_zp;
+            cfg_rhs_base         <= rhs_base;
             cfg_rhs_row_stride_b <= rhs_row_stride_b;
         end
     end
