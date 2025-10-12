@@ -7,11 +7,11 @@ task automatic simulate_weight_loader();
     load_count = 0;
 
     $display("%s  === Weight loader started ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
-
+    // 发起加载请求
+    @(weight_if.cb);
+    weight_if.cb.load_weight_req <= 1'b1;
     while (load_count < 16) begin
-        // 发起加载请求
-        @(weight_if.cb);
-        weight_if.cb.load_weight_req <= 1'b1;
+
         $display("  [%0t] Weight loader: requesting load (count=%0d)", $time, load_count);
 
         // 等待授权
@@ -24,7 +24,7 @@ task automatic simulate_weight_loader();
         weight_if.cb.load_weight_req     <= 1'b0;
 
         // 模拟数据加载延迟
-        repeat (4) @(weight_if.cb);
+        repeat (64) @(weight_if.cb);
         weight_if.cb.weight_data_valid <= 1'b1;
         $display("  [%0t] Weight data valid (count=%0d)", $time, load_count);
 
@@ -37,7 +37,7 @@ task automatic simulate_weight_loader();
         weight_if.cb.weight_data_valid <= 1'b0;
 
         // 模拟发送延迟
-        repeat (5) @(weight_if.cb);
+        repeat (16) @(weight_if.cb);
         weight_if.cb.weight_sending_done <= 1'b1;
         $display("  [%0t] Weight sending done (count=%0d)", $time, load_count);
 
@@ -45,9 +45,13 @@ task automatic simulate_weight_loader();
 
         // 如果还有分块未完成，在发送完成后等待一个周期，准备下一次请求
         if (load_count < 16) begin
-            @(weight_if.cb);
-            @(posedge clk);
-            weight_if.cb.weight_sending_done <= 1'b0;
+            weight_if.cb.load_weight_req <= 1'b1;
+        end
+        @(weight_if.cb);
+        @(posedge clk);
+        weight_if.cb.weight_sending_done <= 1'b0;
+        if (weight_if.load_weight_granted) begin
+            weight_if.cb.load_weight_req <= 1'b0;
         end
     end
 
@@ -62,10 +66,11 @@ task automatic simulate_ia_loader();
 
     $display("%s  === IA loader started ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
 
+    @(ia_if.cb);
+    // 发起加载请求
+    ia_if.cb.load_ia_req <= 1'b1;
     while (load_count < 16) begin
-        // 发起加载请求
-        @(ia_if.cb);
-        ia_if.cb.load_ia_req <= 1'b1;
+
         $display("  [%0t] IA loader: requesting load (count=%0d)", $time, load_count);
 
         // 等待授权
@@ -78,7 +83,7 @@ task automatic simulate_ia_loader();
         ia_if.cb.load_ia_req     <= 1'b0;
 
         // 模拟数据加载延迟
-        repeat (4) @(ia_if.cb);
+        repeat (64) @(ia_if.cb);
         ia_if.cb.ia_data_valid <= 1'b1;
         $display("  [%0t] IA data valid (count=%0d)", $time, load_count);
 
@@ -91,7 +96,7 @@ task automatic simulate_ia_loader();
         ia_if.cb.ia_data_valid <= 1'b0;
 
         // 模拟发送延迟
-        repeat (5) @(ia_if.cb);
+        repeat (16) @(ia_if.cb);
         ia_if.cb.ia_sending_done <= 1'b1;
         $display("  [%0t] IA sending done (count=%0d)", $time, load_count);
 
@@ -99,9 +104,14 @@ task automatic simulate_ia_loader();
 
         // 如果还有分块未完成，在发送完成后等待一个周期，准备下一次请求
         if (load_count < 16) begin
-            @(ia_if.cb);
-            @(posedge clk);
-            ia_if.cb.ia_sending_done <= 1'b0;
+            ia_if.cb.load_ia_req <= 1'b1;
+        end
+
+        @(ia_if.cb);
+        @(posedge clk);
+        ia_if.cb.ia_sending_done <= 1'b0;
+        if (ia_if.load_ia_granted) begin
+            ia_if.cb.load_ia_req <= 1'b0;
         end
     end
 
@@ -116,9 +126,9 @@ task automatic simulate_bias_loader();
 
     $display("%s  === Bias loader started ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
 
+    @(bias_if.cb);
     while (load_count < 4) begin
         // 发起加载请求
-        @(bias_if.cb);
         bias_if.cb.load_bias_req <= 1'b1;
         $display("  [%0t] Bias loader: requesting load (tile=%0d)", $time, load_count);
 
@@ -130,7 +140,7 @@ task automatic simulate_bias_loader();
         bias_if.cb.load_bias_req <= 1'b0;
 
         // 模拟加载延迟后使偏置数据有效
-        repeat (4) @(bias_if.cb);
+        repeat (16) @(bias_if.cb);
         bias_if.cb.bias_valid <= 1'b1;
         $display("  [%0t] Bias data valid (tile=%0d)", $time, load_count);
 
@@ -138,7 +148,6 @@ task automatic simulate_bias_loader();
         wait (comp_if.tile_calc_over);
         $display("  [%0t] Bias loader: tile done, clearing valid (tile=%0d)", $time, load_count);
 
-        @(bias_if.cb);
         bias_if.cb.bias_valid <= 1'b0;
 
         load_count++;
@@ -155,9 +164,9 @@ task automatic simulate_quant_loader();
 
     $display("%s  === Quant loader started ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
 
+    @(quant_if.cb);
     while (load_count < 4) begin
         // 发起加载请求
-        @(quant_if.cb);
         quant_if.cb.load_quant_req <= 1'b1;
         $display("  [%0t] Quant loader: requesting load (tile=%0d)", $time, load_count);
 
@@ -169,7 +178,7 @@ task automatic simulate_quant_loader();
         quant_if.cb.load_quant_req <= 1'b0;
 
         // 模拟加载延迟后使量化参数有效
-        repeat (4) @(quant_if.cb);
+        repeat (16) @(quant_if.cb);
         quant_if.cb.quant_params_valid <= 1'b1;
         $display("  [%0t] Quant params valid (tile=%0d)", $time, load_count);
 
@@ -177,7 +186,6 @@ task automatic simulate_quant_loader();
         wait (comp_if.tile_calc_over);
         $display("  [%0t] Quant loader: tile done, clearing valid (tile=%0d)", $time, load_count);
 
-        @(quant_if.cb);
         quant_if.cb.quant_params_valid <= 1'b0;
 
         load_count++;
@@ -211,29 +219,29 @@ task automatic simulate_oa_writer();
         oa_if.cb.write_oa_req <= 1'b0;
 
         // 模拟写回延迟
-        repeat (10) @(oa_if.cb);
+        repeat (64) @(oa_if.cb);
         oa_if.cb.write_done <= 1'b1;
         $display("%s  [%0t] OA writer: write_done asserted%s", COLOR_MAGENTA, $time, COLOR_RESET);
-
-        // 在一个时钟沿后清除 write_done
-        @(oa_if.cb);
-        @(posedge clk);
-        oa_if.cb.write_done <= 1'b0;
 
         write_count++;
 
         // 如果所有 4 个 tile 都写回完毕（tile_idx = 0..3 -> count == 4），设置 oa_calc_over 并退出
         if (write_count == 4) begin
-            @(oa_if.cb);
             oa_if.cb.oa_calc_over <= 1'b1;
             $display("%s  [%0t] OA writer: all tiles written, oa_calc_over asserted%s",
                      COLOR_BOLD_MAGENTA, $time, COLOR_RESET);
-            @(oa_if.cb);
-            @(posedge clk);
-            oa_if.cb.oa_calc_over <= 1'b0;
+        end
+
+        // 在一个时钟沿后清除 write_done
+        @(oa_if.cb);
+        @(posedge clk);
+        oa_if.cb.write_done <= 1'b0;
+        if (write_count == 4) begin
             $display("%s  === OA writer finished ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
+            oa_if.cb.oa_calc_over <= 1'b0;
             return;
         end
+
     end
 endtask
 
@@ -254,7 +262,7 @@ task automatic simulate_compute_core();
                  COLOR_RESET);
 
         // 模拟部分和计算延迟
-        repeat (10) @(comp_if.cb);
+        repeat (47) @(comp_if.cb);
 
         // 断言 partial_sum_calc_over
         comp_if.cb.partial_sum_calc_over <= 1'b1;

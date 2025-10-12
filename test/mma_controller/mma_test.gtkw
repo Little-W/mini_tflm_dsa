@@ -1,16 +1,17 @@
 [*]
 [*] GTKWave Analyzer v3.3.114 (w)1999-2023 BSI
-[*] Sat Oct 11 17:00:48 2025
+[*] Sun Oct 12 05:51:05 2025
 [*]
 [dumpfile] "/home/etc/FPGA/tflm_ai_dsa/test/mma_controller/wave.vcd"
-[dumpfile_mtime] "Sat Oct 11 16:58:56 2025"
-[dumpfile_size] 24642
+[dumpfile_mtime] "Sun Oct 12 05:50:07 2025"
+[dumpfile_size] 79071
 [savefile] "/home/etc/FPGA/tflm_ai_dsa/test/mma_controller/mma_test.gtkw"
-[timestart] 154300
+[timestart] 0
 [size] 2327 1237
 [pos] -1 -1
-*-15.000000 200500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-22.000000 534000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_mma_controller.
+[treeopen] tb_mma_controller.comp_if.
 [treeopen] tb_mma_controller.ctrl_if.
 [treeopen] tb_mma_controller.dut.
 [treeopen] tb_mma_controller.weight_if.
@@ -21,6 +22,9 @@
 @28
 tb_mma_controller.clk
 tb_mma_controller.rst_n
+@200
+-
+@28
 tb_mma_controller.ctrl_if.calc_start
 tb_mma_controller.ctrl_if.cfg_16bits_ia
 tb_mma_controller.ctrl_if.fifo_full_flag
@@ -38,25 +42,40 @@ tb_mma_controller.ctrl_if.use_16bits
 @200
 -
 @28
-tb_mma_controller.bias_if.bias_valid
-tb_mma_controller.bias_if.load_bias_granted
+tb_mma_controller.weight_if.load_weight_req
+tb_mma_controller.weight_if.load_weight_granted
+tb_mma_controller.weight_if.send_weight_trigger
+tb_mma_controller.weight_if.weight_sending_done
+tb_mma_controller.weight_if.weight_data_valid
+@200
+-
+@28
+tb_mma_controller.ia_if.load_ia_req
+tb_mma_controller.ia_if.load_ia_granted
+tb_mma_controller.ia_if.send_ia_trigger
+tb_mma_controller.ia_if.ia_sending_done
+tb_mma_controller.ia_if.ia_data_valid
+@29
+tb_mma_controller.ia_if.ia_calc_done
+@200
+-
+@28
 tb_mma_controller.bias_if.load_bias_req
+tb_mma_controller.bias_if.load_bias_granted
+tb_mma_controller.comp_if.tile_calc_over
+tb_mma_controller.bias_if.bias_valid
+@200
+-
+@28
+tb_mma_controller.quant_if.load_quant_req
+tb_mma_controller.quant_if.load_quant_granted
+tb_mma_controller.comp_if.tile_calc_over
+tb_mma_controller.quant_if.quant_params_valid
 @200
 -
 @28
 tb_mma_controller.comp_if.partial_sum_calc_over
 tb_mma_controller.comp_if.tile_calc_over
-@22
-tb_mma_controller.ctrl_if.REG_WIDTH[31:0]
-@200
--
-@28
-tb_mma_controller.ia_if.ia_calc_done
-tb_mma_controller.ia_if.ia_data_valid
-tb_mma_controller.ia_if.ia_sending_done
-tb_mma_controller.ia_if.load_ia_granted
-tb_mma_controller.ia_if.load_ia_req
-tb_mma_controller.ia_if.send_ia_trigger
 @200
 -
 @28
@@ -66,30 +85,12 @@ tb_mma_controller.oa_if.write_oa_granted
 tb_mma_controller.oa_if.write_oa_req
 @200
 -
-@28
-tb_mma_controller.quant_if.load_quant_granted
-tb_mma_controller.quant_if.load_quant_req
-tb_mma_controller.quant_if.quant_params_valid
-@200
 -
 @28
-tb_mma_controller.weight_if.load_weight_granted
-tb_mma_controller.weight_if.load_weight_req
-tb_mma_controller.weight_if.send_weight_trigger
-tb_mma_controller.weight_if.weight_data_valid
-tb_mma_controller.weight_if.weight_sending_done
+tb_mma_controller.dut.u_icb_arbiter.bus_busy
 @200
 -
-@28
-tb_mma_controller.comp_if.partial_sum_calc_over
-tb_mma_controller.comp_if.tile_calc_over
-@200
 -
-@28
-tb_mma_controller.dut.current_state[2:0]
-@200
--
-@201
 -icb arbt
 @800200
 -kernel_loader
