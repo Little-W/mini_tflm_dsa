@@ -4,6 +4,11 @@ module tb_compute_core;
     localparam int unsigned SIZE = 4;
     localparam int unsigned DATA_WIDTH = 16;
 
+    // 添加 ANSI 颜色常量
+    localparam string C_GREEN = "\033[0;32m";
+    localparam string C_RED   = "\033[0;31m";
+    localparam string C_RESET = "\033[0m";
+
     // clock
     logic clk;
     initial clk = 0;
@@ -150,8 +155,8 @@ module tb_compute_core;
             end
         end
 
-        if (errors == 0) $display("PASS: compute_core 4x16 * 16x4 matched expected");
-        else $display("FAIL: %0d mismatches", errors);
+        if (errors == 0) $display("%sPASS: compute_core 4x16 * 16x4 matched expected%s", C_GREEN, C_RESET);
+        else               $display("%sFAIL: %0d mismatches%s", C_RED, errors, C_RESET);
 
         #20;
         $finish;

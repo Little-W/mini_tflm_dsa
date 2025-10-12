@@ -39,7 +39,7 @@ typedef struct packed {
     logic                       valid;                       // master 输出
     logic [`E203_ADDR_SIZE-1:0] addr;                        // master 输出
     logic                       read;                        // master 输出
-    logic [2:0]                 len;                         // burst长度，支持最多8 beat（0~7）
+    logic [`ICB_LEN_W-1:0]      len;                         // master 输出，突发长度，0表示1个数据
 } icb_ext_cmd_m_t;
 
 // 上游写数据通道

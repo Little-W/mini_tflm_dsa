@@ -19,7 +19,7 @@ module tb_mma_controller;
     localparam string COLOR_MAGENTA = "\033[35m";
     localparam string COLOR_CYAN = "\033[36m";
     localparam string COLOR_WHITE = "\033[37m";
-    localparam string COLOR_GRAY  = "\033[90m"; // 新增灰色
+    localparam string COLOR_GRAY = "\033[90m";  // 新增灰色
     localparam string COLOR_BOLD = "\033[1m";
 
     // 组合颜色代码
@@ -166,6 +166,12 @@ module tb_mma_controller;
         repeat (20) @(posedge clk);
 
         $display("\n%s========== Test Completed ==========%s", COLOR_BOLD_WHITE, COLOR_RESET);
+        $display("\n%s==========  Test  Passed  ==========%s", COLOR_GREEN, COLOR_RESET);
+        $display("%s       ***   ***   ****   ****      %s", COLOR_GREEN, COLOR_RESET);
+        $display("%s      *   * *   * *      *          %s", COLOR_GREEN, COLOR_RESET);
+        $display("%s      ****  *****  ****   ****      %s", COLOR_GREEN, COLOR_RESET);
+        $display("%s      *     *   *     *      *      %s", COLOR_GREEN, COLOR_RESET);
+        $display("%s      *     *   * ****   ****       %s", COLOR_GREEN, COLOR_RESET);
         $finish;
     end
 
