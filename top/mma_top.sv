@@ -1,5 +1,5 @@
-`include "../inc/define.svh"
-`include "../inc/icb_types.svh"
+`include "define.svh"
+`include "icb_types.svh"
 
 // 矩阵乘累加(MMA)顶层模块
 module mma_top #(
@@ -173,6 +173,18 @@ module mma_top #(
     // 模块实例化
     //========================================
 
+    /*
+     * ICB 5选1多路复用器（icb_mux_5to1）实例化
+     * 该模块用于在五个子模块之间进行ICB总线的多路复用，端口连接如下：
+     * - m_* 端口：主接口，连接到顶层或主控模块
+     * - s0_* 端口：连接到 ia_loader 模块
+     * - s1_* 端口：连接到 kernel_loader 模块
+     * - s2_* 端口：连接到 bias_loader 模块
+     * - s3_* 端口：连接到 vec_requant 模块
+     * - s4_* 端口：连接到 oa_writer 模块
+     * - sel 端口：选择信号，用于选择当前激活的子模块
+     * 每个子模块均有命令、写入、响应及对应的 ready 信号，实现完整的ICB协议交互。
+     */
     // ICB 5选1多路复用器（扩展）
     icb_mux_5to1 u_icb_mux (
         .m_cmd       (mux_m_cmd),
@@ -236,7 +248,6 @@ module mma_top #(
         .cfg_16bits_ia(cfg_16bits_ia),
         .sa_ready     (sa_ready),
 
-        .tile_calc_over       (tile_calc_over),
         .partial_sum_calc_over(partial_sum_calc_over),
         .icb_sel              (icb_sel),
         .init_cfg_ia          (init_cfg_ia),
@@ -251,9 +262,6 @@ module mma_top #(
         .load_ia_granted      (load_ia_granted),
         .send_ia_trigger      (send_ia_trigger),
         .ia_sending_done      (ia_sending_done),
-        .ia_row_valid         (ia_row_valid),
-        .ia_is_init_data      (ia_is_init_data),
-        .ia_calc_done         (ia_calc_done),
         .ia_data_valid        (ia_data_valid),
         // Weight Loader Interface
         .load_weight_req      (load_weight_req),

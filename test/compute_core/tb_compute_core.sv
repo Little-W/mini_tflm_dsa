@@ -9,20 +9,8 @@ module tb_compute_core;
     initial clk = 0;
     always #5 clk <= ~clk;  // 100MHz
 
-    // DUT inputs
-    logic                         store_weight_req;
-    logic signed [           7:0] weight_in             [     SIZE];
-    logic signed [DATA_WIDTH-1:0] ia_vec_in             [     SIZE];
-    logic                         ia_row_valid;
-    logic                         ia_calc_done;
-    logic                         ia_is_init_data;
-    logic signed [          31:0] bias_in               [     SIZE];
-
-    // DUT outputs
-    wire signed  [          31:0] acc_data_out          [     SIZE];
-    wire                          acc_data_valid;
-    wire                          tile_calc_over;
-    wire                          partial_sum_calc_over;
+    // Instantiate interface
+    tb_compute_core_if tb_if(clk);
 
     // memories for stimuli and expected
     // 先用原始位宽的临时数组读文件，再打包到32位数组
@@ -46,36 +34,15 @@ module tb_compute_core;
     integer                       NUM_K;
     integer                       NUM_SEG;
 
-    // register inputs and control signals
-    logic                         store_weight_req_reg;
-    logic                         ia_row_valid_reg;
-    logic                         ia_calc_done_reg;
-    logic                         ia_is_init_data_reg;
-    logic signed [          31:0] bias_in_reg           [     SIZE];
-    logic signed [           7:0] weight_in_reg         [     SIZE];
-    logic signed [DATA_WIDTH-1:0] ia_vec_in_reg         [     SIZE];
-
     // tile_buf声明移到模块顶部
     logic signed [7:0] tile_buf [SIZE][SIZE];
 
     // init defaults
     initial begin
-        store_weight_req_reg = 0;
-        ia_row_valid_reg     = 0;
-        ia_calc_done_reg     = 0;
-        ia_is_init_data_reg  = 0;
         out_rows             = 0;
         errors               = 0;
         NUM_K                = 16;
         NUM_SEG              = NUM_K / SIZE;
-        for (int i = 0; i < SIZE; i++) begin
-            bias_in[i]       = 32'sd0;
-            weight_in[i]     = 8'sd0;
-            ia_vec_in[i]     = '0;
-            weight_in_reg[i] = 8'sd0;
-            ia_vec_in_reg[i] = 0;
-            bias_in_reg[i]   = 32'sd0;
-        end
     end
 
     // DUT
@@ -84,17 +51,17 @@ module tb_compute_core;
         .DATA_WIDTH(DATA_WIDTH)
     ) u_dut (
         .clk                  (clk),
-        .store_weight_req     (store_weight_req),
-        .weight_in            (weight_in),
-        .ia_vec_in            (ia_vec_in),
-        .ia_row_valid         (ia_row_valid),
-        .ia_calc_done         (ia_calc_done),
-        .ia_is_init_data      (ia_is_init_data),
-        .bias_in              (bias_in),
-        .acc_data_out         (acc_data_out),
-        .acc_data_valid       (acc_data_valid),
-        .tile_calc_over       (tile_calc_over),
-        .partial_sum_calc_over(partial_sum_calc_over)
+        .store_weight_req     (tb_if.store_weight_req),
+        .weight_in            (tb_if.weight_in),
+        .ia_vec_in            (tb_if.ia_vec_in),
+        .ia_row_valid         (tb_if.ia_row_valid),
+        .ia_calc_done         (tb_if.ia_calc_done),
+        .ia_is_init_data      (tb_if.ia_is_init_data),
+        .bias_in              (tb_if.bias_in),
+        .acc_data_out         (tb_if.acc_data_out),
+        .acc_data_valid       (tb_if.acc_data_valid),
+        .tile_calc_over       (tb_if.tile_calc_over),
+        .partial_sum_calc_over(tb_if.partial_sum_calc_over)
     );
 
     // waveform dump
@@ -105,10 +72,9 @@ module tb_compute_core;
 
     // capture outputs when valid: each cycle a row of SIZE outputs
     always @(posedge clk) begin
-        if (acc_data_valid) begin
+        if (tb_if.acc_data_valid) begin
             for (int c = 0; c < SIZE; c++) begin
-                // write directly without a temporary to avoid blocking assignment warning
-                out_buf[out_rows*SIZE+c] <= acc_data_out[c];
+                out_buf[out_rows*SIZE+c] <= tb_if.acc_data_out[c];
             end
             out_rows <= out_rows + 1;
         end
@@ -136,18 +102,15 @@ module tb_compute_core;
         end
 
         // small delay for stability
-        repeat (5) @(posedge clk);
+        repeat (5) @(tb_if.cb);
 
         // 分段（K方向按SIZE=4切分）：每段先加载4行权重，再输入4拍IA
-        // int NUM_K = 16;
-        // int NUM_SEG = NUM_K / SIZE;  // =4 段
-
         for (int seg = 0; seg < NUM_SEG; seg++) begin
             // 在加载下一段权重前，必须等待上一段部分和完成
             if (seg != 0) begin
                 $display("[TB] Wait partial_sum_calc_over before next weight seg=%0d", seg);
-                wait (partial_sum_calc_over == 1'b1);
-                @(posedge clk);
+                wait (tb_if.partial_sum_calc_over == 1'b1);
+                @(tb_if.cb);
             end
 
             // 1) 加载本段权重：store_weight_req=1，每拍一行（共SIZE行）
@@ -158,7 +121,7 @@ module tb_compute_core;
             load_bias(seg);
 
             // 空转一拍，便于DUT内部状态稳定
-            @(posedge clk);
+            @(tb_if.cb);
 
             // 2) 输入本段IA向量：ia_row_valid=1，连续SIZE拍
             $display("[TB] Streaming IA tile seg=%0d", seg);
@@ -167,9 +130,9 @@ module tb_compute_core;
 
         // 3) 等待整个tile完成，再进行结果对比
         $display("[TB] Waiting for tile_calc_over...");
-        wait (tile_calc_over == 1'b1);
+        wait (tb_if.tile_calc_over == 1'b1);
         $display("[TB] tile_calc_over detected");
-        repeat (2) @(posedge clk);
+        repeat (2) @(tb_if.cb);
 
         if (out_rows < SIZE) begin
             $display("ERROR: output rows=%0d < expected=%0d", out_rows, SIZE);
@@ -194,29 +157,16 @@ module tb_compute_core;
         $finish;
     end
 
-    // 输入数据和控制信号打一拍再输入 DUT
-    always @(posedge clk) begin
-        store_weight_req <= store_weight_req_reg;
-        ia_row_valid     <= ia_row_valid_reg;
-        ia_calc_done     <= ia_calc_done_reg;
-        ia_is_init_data  <= ia_is_init_data_reg;
-        for (int i = 0; i < SIZE; i++) begin
-            weight_in[i] <= weight_in_reg[i];
-            ia_vec_in[i] <= ia_vec_in_reg[i];
-            bias_in[i]   <= bias_in_reg[i];
-        end
-    end
-
     // 偏置加载任务。仅在首个seg加载偏置，其余seg清零。
     task automatic load_bias(input int seg);
         begin
             if (seg == 0) begin
                 for (int c = 0; c < SIZE; c++) begin
-                    bias_in_reg[c] = bias_mem[c];
+                    tb_if.cb.bias_in[c] <= bias_mem[c];
                 end
             end else begin
                 for (int c = 0; c < SIZE; c++) begin
-                    bias_in_reg[c] = 32'sd0;
+                    tb_if.cb.bias_in[c] <= 32'sd0;
                 end
             end
         end
@@ -224,7 +174,7 @@ module tb_compute_core;
 
     task automatic load_weight_tile(input int seg);
         begin
-            store_weight_req_reg = 1'b1;
+            tb_if.cb.store_weight_req <= 1'b1;
             // 每列一次性读取4个8bit权重（一个32bit）
             for (int c = 0; c < SIZE; c++) begin
                 int base_idx8;
@@ -240,35 +190,35 @@ module tb_compute_core;
             // 按行输出
             for (int k = SIZE - 1; k >= 0; k--) begin
                 for (int j = 0; j < SIZE; j++) begin
-                    weight_in_reg[j] = tile_buf[k][j];
+                    tb_if.cb.weight_in[j] <= tile_buf[k][j];
                 end
-                @(posedge clk);
+                @(tb_if.cb);
             end
-            store_weight_req_reg = 1'b0;
+            tb_if.cb.store_weight_req <= 1'b0;
         end
     endtask
 
     task automatic stream_ia_tile(input int seg);
         begin
-            ia_row_valid_reg    = 1'b1;
-            ia_is_init_data_reg = (seg == 0);
-            ia_calc_done_reg    = (seg == (NUM_SEG - 1));
+            tb_if.cb.ia_row_valid <= 1'b1;
+            tb_if.cb.ia_is_init_data <= (seg == 0);
+            tb_if.cb.ia_calc_done <= (seg == (NUM_SEG - 1));
             for (int k = 0; k < SIZE; k++) begin
                 int base16;
                 logic [31:0] p0, p1;
                 base16 = seg * SIZE + k * NUM_K; // 对齐到2个16bit
                 p0 = ia_mem[ base16       >> 1]; // 包含base16, base16+1
                 p1 = ia_mem[(base16 + 2) >> 1]; // 包含base16+2, base16+3
-                ia_vec_in_reg[0] = p0[15:0];
-                ia_vec_in_reg[1] = p0[31:16];
-                ia_vec_in_reg[2] = p1[15:0];
-                ia_vec_in_reg[3] = p1[31:16];
-                @(posedge clk);
+                tb_if.cb.ia_vec_in[0] <= p0[15:0];
+                tb_if.cb.ia_vec_in[1] <= p0[31:16];
+                tb_if.cb.ia_vec_in[2] <= p1[15:0];
+                tb_if.cb.ia_vec_in[3] <= p1[31:16];
+                @(tb_if.cb);
             end
-            ia_row_valid_reg    = 1'b0;
-            ia_is_init_data_reg = 1'b0;
-            ia_calc_done_reg    = 1'b0;
-            for (int r = 0; r < SIZE; r++) ia_vec_in_reg[r] = 0;
+            tb_if.cb.ia_row_valid <= 1'b0;
+            tb_if.cb.ia_is_init_data <= 1'b0;
+            tb_if.cb.ia_calc_done <= 1'b0;
+            for (int r = 0; r < SIZE; r++) tb_if.cb.ia_vec_in[r] <= 0;
         end
     endtask
 

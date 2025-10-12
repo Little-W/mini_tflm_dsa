@@ -11,14 +11,13 @@ VERILATOR_FLAGS := -sv -Wall --trace --timing \
 
 SRCS := \
 	$(TB) \
+	tb_compute_core_if.sv \
 	$(SUB_MODULES_DIR)/compute_core.sv \
 	$(SUB_MODULES_DIR)/ws_systolic_array.sv \
 	$(BASIC_MODULES_DIR)/ws_systolic_cell.sv \
 	$(BASIC_MODULES_DIR)/shift_accumulator.sv \
 	$(SUB_MODULES_DIR)/accumulator_array.sv \
 	$(SUB_MODULES_DIR)/data_setup.sv
-
-.PHONY: all gen build run clean
 
 all: run
 
@@ -36,3 +35,4 @@ wave: run
 
 clean:
 	rm -rf $(VEXE) *.vcd *.hex *.txt obj_dir tiles
+.PHONY: all gen build run clean

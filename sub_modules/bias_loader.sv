@@ -42,8 +42,8 @@
  *  5) bias_valid：表示偏置已准备好，消耗后清零，等待下一次预取。
  */
 
-`include "../inc/define.svh"
-`include "../inc/icb_types.svh"
+`include "define.svh"
+`include "icb_types.svh"
 
 module bias_loader #(
     parameter int unsigned SIZE = 16,

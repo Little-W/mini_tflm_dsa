@@ -2,8 +2,8 @@
 `ifndef ICB_MUX_5TO1_SV
 `define ICB_MUX_5TO1_SV
 
-`include "../inc/define.svh"
-`include "../inc/icb_types.svh"
+`include "define.svh"
+`include "icb_types.svh"
 
 // 5选1 ICB 多路器（主设备 -> 5 个从设备，响应由被选中的从设备返回主设备）
 module icb_mux_5to1 (
