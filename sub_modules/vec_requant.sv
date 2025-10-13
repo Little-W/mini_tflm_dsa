@@ -72,8 +72,8 @@ module vec_requant #(
     output reg  quant_params_valid,  // 量化参数已加载完成信号，multiplier等读完后拉高，in_valid上升沿后拉低
 
     // 矩阵尺寸与分块配置（在 init_cfg 时被锁存）
-    input wire [REG_WIDTH-1:0] k,  // 输入激活矩阵列数（RHS_COLS）
-    input wire [REG_WIDTH-1:0] m,  // 输出矩阵列数（LHS_COLS）
+    input wire [REG_WIDTH-1:0] k,                 // 输出矩阵行数
+    input wire [REG_WIDTH-1:0] m,                 // 输出矩阵列数
 
     // ICB 主接口（模块作为 Master，仅per-channel模式使用）
     output icb_ext_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷

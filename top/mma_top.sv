@@ -34,14 +34,14 @@ module mma_top #(
     input logic                        use_per_channel, // 1: per-channel; 0: per-tensor
 
     // --- dimensions ---
-    input logic [REG_WIDTH-1:0] k,  // (MULT_RHS_COLS)
-    input logic [REG_WIDTH-1:0] n,  // (MULT_RHS_ROWS)
-    input logic [REG_WIDTH-1:0] m,  // (MULT_LHS_ROWS)
+    input logic [REG_WIDTH-1:0] k,  // IA矩阵行数
+    input logic [REG_WIDTH-1:0] n,  // IA矩阵列数 = W矩阵行数
+    input logic [REG_WIDTH-1:0] m,  // W矩阵列数
 
     // --- row strides (all in BYTES) ---
     input logic [REG_WIDTH-1:0] lhs_row_stride_b,  // A row stride       (MULT_LHS_COLS_OFFSET)
     input logic [REG_WIDTH-1:0] dst_row_stride_b,  // C row stride       (MULT_ROW_ADDR_OFFSET)
-    input logic [REG_WIDTH-1:0] rhs_row_stride_b,  // B row stride       (MULT_RHS_ROW_STRIDE)
+    input logic [REG_WIDTH-1:0] rhs_row_stride_b,  // B row stride       (MULT_RHS_ROW_STRIDE) （转置后的右矩阵是列展平的，所以这个步长本质上是列步长）
 
     // --- activation clamp ---
     input logic signed [REG_WIDTH-1:0] act_min,  // (MULT_ACT_MIN)

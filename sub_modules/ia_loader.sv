@@ -99,8 +99,8 @@ module ia_loader #(
     input  wire                        send_ia_trigger,   // 触发发送输入激活到脉动阵列
 
     // 矩阵尺寸配置（在 init_cfg 时被锁存）
-    input  wire [REG_WIDTH-1:0]        k,                 // 输入激活矩阵列数（RHS_COLS）
-    input  wire [REG_WIDTH-1:0]        n,                 // 输入激活矩阵行数（RHS_ROWS）
+    input  wire [REG_WIDTH-1:0]        k,                 // 输入激活矩阵行数
+    input  wire [REG_WIDTH-1:0]        n,                 // 输入激活矩阵列数
     input  wire [REG_WIDTH-1:0]        m,                 // 输出矩阵列数（LHS_COLS），用于计算是否为最后一个tile
 
     // 配置寄存器（在 init_cfg 时锁存）
