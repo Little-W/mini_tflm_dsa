@@ -7,7 +7,8 @@ module mma_top #(
     parameter int unsigned DATA_WIDTH   = 16,  // IA数据宽度
     parameter int unsigned SIZE         = 16,  // 阵列大小
     parameter int unsigned BUS_WIDTH    = 32,  // 总线宽度
-    parameter int unsigned REG_WIDTH    = 32   // 寄存器宽度
+    parameter int unsigned REG_WIDTH    = 32,  // 寄存器宽度
+    parameter int unsigned ADDR_WIDTH   = 19  // 地址宽度
 ) (
     //==== 时钟与复位 ====
     input wire clk,   // 系统时钟
@@ -17,6 +18,11 @@ module mma_top #(
     input  wire calc_start,     // 计算开始信号
     input  wire cfg_16bits_ia,  // 使用16位IA数据
     output wire sa_ready,       // 系统就绪信号
+
+    //==== 写回握手接口 ====
+    output wire        wb_valid,   // 写回有效信号
+    input  wire        wb_ready,   // 写回就绪信号
+    output wire [1:0]  err_code,   // 写回状态码
 
     // --- base pointers
     input logic [REG_WIDTH-1:0] lhs_base,  // A base         (MULT_LHS_PTR)
@@ -34,9 +40,9 @@ module mma_top #(
     input logic                        use_per_channel, // 1: per-channel; 0: per-tensor
 
     // --- dimensions ---
-    input logic [REG_WIDTH-1:0] k,  // (MULT_RHS_COLS)
+    input logic [REG_WIDTH-1:0] k,  // (MULT_LHS_ROWS)
     input logic [REG_WIDTH-1:0] n,  // (MULT_RHS_ROWS)
-    input logic [REG_WIDTH-1:0] m,  // (MULT_LHS_ROWS)
+    input logic [REG_WIDTH-1:0] m,  // (MULT_RHS_COLS)
 
     // --- row strides (all in BYTES) ---
     input logic [REG_WIDTH-1:0] lhs_row_stride_b,  // A row stride       (MULT_LHS_COLS_OFFSET)
@@ -47,19 +53,20 @@ module mma_top #(
     input logic signed [REG_WIDTH-1:0] act_min,  // (MULT_ACT_MIN)
     input logic signed [REG_WIDTH-1:0] act_max,  // (MULT_ACT_MAX)
 
-    //==== Memory LSU 接口（改为 icb_ext 三通道） ====
-    // master -> slave: command payload
-    output icb_ext_cmd_m_t sa_icb_cmd,
-    // master -> slave: write-data payload
-    output icb_ext_wr_m_t  sa_icb_wr,
-    // slave -> master: command ready
-    input  icb_ext_cmd_s_t sa_icb_cmd_ready,
-    // slave -> master: write-data ready
-    input  icb_ext_wr_s_t  sa_icb_w_ready,
-    // slave -> master: response payload
-    input  icb_ext_rsp_s_t sa_icb_rsp,
-    // master -> slave: response ready
-    output icb_ext_rsp_m_t sa_icb_rsp_ready
+    //==== 扁平化 ICB 接口 ====
+    output logic                      sa_icb_cmd_valid,
+    input  logic                      sa_icb_cmd_ready,
+    output logic [ADDR_WIDTH-1:0]     sa_icb_cmd_addr,
+    output logic                      sa_icb_cmd_read,
+    output logic [`ICB_LEN_W-1:0]      sa_icb_cmd_len,
+    output logic [BUS_WIDTH-1:0]      sa_icb_cmd_wdata,
+    output logic [BUS_WIDTH/8-1:0]    sa_icb_cmd_wmask,
+    output logic                      sa_icb_w_valid,
+    input  logic                      sa_icb_w_ready,
+    input  logic                      sa_icb_rsp_valid,
+    output logic                      sa_icb_rsp_ready,
+    input  logic [BUS_WIDTH-1:0]      sa_icb_rsp_rdata,
+    input  logic                      sa_icb_rsp_err
 );
 
     //========================================
@@ -173,6 +180,36 @@ module mma_top #(
     // 模块实例化
     //========================================
 
+    // ICB 扁平化适配器
+    icb_ext_flat_adapter #(
+        .WIDTH (BUS_WIDTH),
+        .ADDR_W(ADDR_WIDTH),
+        .LEN_W (`ICB_LEN_W),
+        .MW    (BUS_WIDTH/8)
+    ) u_icb_flat_adapter (
+        .clk              (clk),
+        .rst_n            (rst_n),
+        .icb_cmd_m        (mux_m_cmd),
+        .icb_wr_m         (mux_m_wr),
+        .icb_cmd_s        (mux_m_cmd_rsp),
+        .icb_wr_s         (mux_m_wr_rsp),
+        .icb_rsp_s        (mux_m_rsp),
+        .icb_rsp_m        (mux_m_rsp_ready),
+        .sa_icb_cmd_valid (sa_icb_cmd_valid),
+        .sa_icb_cmd_ready (sa_icb_cmd_ready),
+        .sa_icb_cmd_addr  (sa_icb_cmd_addr),
+        .sa_icb_cmd_read  (sa_icb_cmd_read),
+        .sa_icb_cmd_len   (sa_icb_cmd_len),
+        .sa_icb_cmd_wdata (sa_icb_cmd_wdata),
+        .sa_icb_cmd_wmask (sa_icb_cmd_wmask),
+        .sa_icb_w_valid   (sa_icb_w_valid),
+        .sa_icb_w_ready   (sa_icb_w_ready),
+        .sa_icb_rsp_valid (sa_icb_rsp_valid),
+        .sa_icb_rsp_ready (sa_icb_rsp_ready),
+        .sa_icb_rsp_rdata (sa_icb_rsp_rdata),
+        .sa_icb_rsp_err   (sa_icb_rsp_err)
+    );
+
     /*
      * ICB 5选1多路复用器（icb_mux_5to1）实例化
      * 该模块用于在五个子模块之间进行ICB总线的多路复用，端口连接如下：
@@ -226,14 +263,6 @@ module mma_top #(
         .sel         (icb_sel)
     );
 
-    // 将多路复用器连接到外部ICB接口
-    assign sa_icb_cmd       = mux_m_cmd;
-    assign sa_icb_wr        = mux_m_wr;
-    assign mux_m_cmd_rsp    = sa_icb_cmd_ready;
-    assign mux_m_wr_rsp     = sa_icb_w_ready;
-    assign mux_m_rsp        = sa_icb_rsp;
-    assign sa_icb_rsp_ready = mux_m_rsp_ready;
-
     // MMA 控制器
     mma_controller #(
         .WEIGHT_WIDTH(WEIGHT_WIDTH),
@@ -283,7 +312,11 @@ module mma_top #(
         .write_oa_req         (write_oa_req),
         .write_oa_granted     (write_oa_granted),
         .write_done           (write_done),
-        .oa_calc_over         (oa_calc_over)
+        .oa_calc_over         (oa_calc_over),
+        // Writeback Handshake Interface
+        .wb_valid             (wb_valid),
+        .wb_ready             (wb_ready),
+        .err_code             (err_code)
     );
 
     // IA Loader
@@ -472,4 +505,5 @@ module mma_top #(
         .oa_calc_over     (oa_calc_over)
     );
 
+    assign calc_done = oa_calc_over;
 endmodule

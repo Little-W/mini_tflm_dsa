@@ -2,6 +2,33 @@
 `include "icb_types.svh"
 
 // MMA(Matrix Multiply Accumulate) Controller
+//
+// ==== 参数配置规则 ====
+// 1. 基地址指针 (base pointers):
+//    - lhs_base:  A 矩阵基地址，不允许为 0
+//    - rhs_base:  B 矩阵基地址，不允许为 0
+//    - dst_base:  C 矩阵基地址，不允许为 0
+//    - bias_base: 偏置基地址，允许为 0（表示无偏置）
+//
+// 2. 矩阵维度 (dimensions):
+//    - k: A 矩阵行数 / B 矩阵列数，不允许为 0
+//    - n: B 矩阵行数 / C 矩阵行数，不允许为 0
+//    - m: B 矩阵列数 / C 矩阵列数，不允许为 0
+//
+// 3. 行步长 (row strides):
+//    - lhs_row_stride_b: A 矩阵行步长（字节），不允许为 0
+//    - rhs_row_stride_b: B 矩阵行步长（字节），不允许为 0
+//    - dst_row_stride_b: C 矩阵行步长（字节），不允许为 0
+//
+// 4. 量化参数 (quantization):
+//    - 当 use_per_channel = 1 时，q_mult_pt 和 q_shift_pt 不允许为 0
+//    - 当 use_per_channel = 0 时，无此限制（per-tensor 模式下可为 0）
+//
+// 5. 错误码 (err_code):
+//    - 2'b00: 正常完成
+//    - 2'b01: 无效/不支持的配置（非法参数组合）
+//    - 2'b10: 必需资源缺失或指针为 0
+//
 module mma_controller #(
     parameter int unsigned WEIGHT_WIDTH = 8,   // 权重数据宽度
     parameter int unsigned DATA_WIDTH   = 16,  // IA数据宽度
@@ -15,6 +42,28 @@ module mma_controller #(
     input  wire calc_start,     // 计算开始
     input  wire cfg_16bits_ia,  // 使用16位IA数据
     output wire sa_ready,       // 控制器就绪
+
+    //==== Configuration Parameters ====
+    // Base pointers
+    input logic [REG_WIDTH-1:0] lhs_base,  // A base         (MULT_LHS_PTR)
+    input logic [REG_WIDTH-1:0] rhs_base,  // B base (s8)    (MULT_RHS_PTR, N x K row-major)
+    input logic [REG_WIDTH-1:0] dst_base,  // C base (s8)    (MULT_DST_PTR)
+    input logic [REG_WIDTH-1:0] bias_base, // bias s32 (0=none)   (MULT_BIAS_PTR)
+
+    // Quantization & zero-points
+    input logic signed [REG_WIDTH-1:0] q_mult_pt,  // per-tensor mult     (MULT_DST_MULT)
+    input logic signed [REG_WIDTH-1:0] q_shift_pt,      // per-tensor rshift   (MULT_DST_SHIFT, +N => >>N)
+    input logic use_per_channel,  // 1: per-channel; 0: per-tensor
+
+    // Dimensions
+    input logic [REG_WIDTH-1:0] k,  // (MULT_LHS_ROWS)
+    input logic [REG_WIDTH-1:0] n,  // (MULT_RHS_ROWS)
+    input logic [REG_WIDTH-1:0] m,  // (MULT_RHS_COLS)
+
+    // Row strides (all in BYTES)
+    input logic [REG_WIDTH-1:0] lhs_row_stride_b,  // A row stride       (MULT_LHS_COLS_OFFSET)
+    input logic [REG_WIDTH-1:0] dst_row_stride_b,  // C row stride       (MULT_ROW_ADDR_OFFSET)
+    input logic [REG_WIDTH-1:0] rhs_row_stride_b,  // B row stride       (MULT_RHS_ROW_STRIDE)
 
     //==== Control Signals ====
     output reg [          2:0] icb_sel,           // ICB多路复用器选择信号
@@ -60,32 +109,86 @@ module mma_controller #(
     input  wire write_oa_req,      // OA写回请求
     output reg  write_oa_granted,  // OA写回授权
     input  wire write_done,        // 写回完成
-    input  wire oa_calc_over       // OA计算完成
+    input  wire oa_calc_over,      // OA计算完成
+
+    //==== Writeback Handshake Interface ====
+    output wire       wb_valid,  // 写回有效信号
+    input  wire       wb_ready,  // 写回就绪信号
+    output reg  [1:0] err_code   // 写回状态码: 00=正常, 01=配置错误, 10=资源缺失
 );
 
     // 状态机定义
-    typedef enum logic [2:0] {
-        IDLE = 3'b000,
-        INIT = 3'b001,
-        WEIGHT_START = 3'b010,
-        IA_START = 3'b011,
-        WAIT_PARTIAL_SUM = 3'b100,
-        WEIGHT_WAIT = 3'b101,  // 新增：在发送权重触发后等待发送完成
-        IA_WAIT = 3'b110  // 新增：在发送IA触发后等待发送完成（保证单拍脉冲）
+    typedef enum logic [3:0] {
+        IDLE = 4'b0000,
+        INIT = 4'b0001,
+        WEIGHT_START = 4'b0010,
+        IA_START = 4'b0011,
+        WAIT_PARTIAL_SUM = 4'b0100,
+        WEIGHT_WAIT = 4'b0101,  // 在发送权重触发后等待发送完成
+        IA_WAIT = 4'b0110,      // 在发送IA触发后等待发送完成（保证单拍脉冲）
+        WAIT_WB = 4'b0111,      // 等待写回握手完成
+        ERROR = 4'b1000         // 参数配置错误状态
     } state_t;
 
     state_t current_state, next_state;
-    reg cfg_16bits_ia_reg;  // 锁存的16位IA配置
+    reg       cfg_16bits_ia_reg;  // 锁存的16位IA配置
+    reg       config_error;  // 参数配置错误标志
+    reg [1:0] error_type;  // 错误类型: 01=配置错误, 10=资源缺失
+
+    // 参数校验函数
+    function automatic logic check_config_valid();
+        logic ptr_error;
+        logic dim_error;
+        logic stride_error;
+        logic quant_error;
+
+        // 检查必需指针（bias_base 允许为 0）
+        ptr_error = (lhs_base == '0) || (rhs_base == '0) || (dst_base == '0);
+
+        // 检查矩阵维度
+        dim_error = (k == '0) || (n == '0) || (m == '0);
+
+        // 检查行步长
+        stride_error = (lhs_row_stride_b == '0) || (rhs_row_stride_b == '0) || (dst_row_stride_b == '0);
+
+        // 检查量化参数（仅当 use_per_channel = 1 时）
+        quant_error = use_per_channel && (q_mult_pt == '0) && (q_shift_pt == '0);
+
+        return ptr_error || dim_error || stride_error || quant_error;
+    endfunction
+
+    // 确定错误类型
+    function automatic logic [1:0] get_error_type();
+        logic ptr_error;
+        logic config_err;
+
+        // 必需资源缺失（指针错误）
+        ptr_error = (lhs_base == '0) || (rhs_base == '0) || (dst_base == '0);
+
+        // 配置错误（维度、步长、量化参数）
+        config_err = (k == '0) || (n == '0) || (m == '0) ||
+                     (lhs_row_stride_b == '0) || (rhs_row_stride_b == '0) || (dst_row_stride_b == '0) ||
+                     (use_per_channel && ((q_mult_pt == '0) || (q_shift_pt == '0)));
+
+        if (ptr_error) return 2'b10;  // 资源缺失
+        else if (config_err) return 2'b01;  // 配置错误
+        else return 2'b00;  // 无错误
+    endfunction
 
     // 状态寄存器
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             current_state     <= IDLE;
             cfg_16bits_ia_reg <= 1'b0;
+            config_error      <= 1'b0;
+            error_type        <= 2'b00;
         end else begin
             current_state <= next_state;
             if (current_state == IDLE && calc_start) begin
                 cfg_16bits_ia_reg <= cfg_16bits_ia;
+                // 在收到 calc_start 时检查参数配置
+                config_error      <= check_config_valid();
+                error_type        <= get_error_type();
             end
         end
     end
@@ -96,7 +199,12 @@ module mma_controller #(
         case (current_state)
             IDLE: begin
                 if (calc_start) begin
-                    next_state = INIT;
+                    // 检查参数配置，如果有错误则进入 ERROR 状态
+                    if (check_config_valid()) begin
+                        next_state = ERROR;
+                    end else begin
+                        next_state = INIT;
+                    end
                 end
             end
 
@@ -106,9 +214,13 @@ module mma_controller #(
 
             WEIGHT_START: begin
                 if (oa_calc_over) begin
-                    next_state = IDLE;
+                    // 当计算完成时，检查写回握手
+                    if (wb_ready) begin
+                        next_state = IDLE;
+                    end else begin
+                        next_state = WAIT_WB;
+                    end
                 end else if (weight_data_valid && !weight_sending_done) begin
-                    // 当有权重数据且尚未发送完成，发出触发并进入等待状态（保证触发为单拍）
                     next_state = WEIGHT_WAIT;
                 end
             end
@@ -116,7 +228,12 @@ module mma_controller #(
             // 新增等待状态：在发出触发后等待 weight_sending_done 完成
             WEIGHT_WAIT: begin
                 if (oa_calc_over) begin
-                    next_state = IDLE;
+                    // 当计算完成时，检查写回握手
+                    if (wb_ready) begin
+                        next_state = IDLE;
+                    end else begin
+                        next_state = WAIT_WB;
+                    end
                 end else if (weight_sending_done) begin
                     next_state = IA_START;
                 end
@@ -143,6 +260,20 @@ module mma_controller #(
                 end
             end
 
+            // 新增 WAIT_WB 状态：等待写回握手完成
+            WAIT_WB: begin
+                if (wb_ready) begin
+                    next_state = IDLE;
+                end
+            end
+
+            // 新增 ERROR 状态：等待写回握手完成后返回 IDLE
+            ERROR: begin
+                if (wb_ready) begin
+                    next_state = IDLE;
+                end
+            end
+
             default: begin
                 next_state = IDLE;
             end
@@ -160,6 +291,7 @@ module mma_controller #(
             use_16bits          <= 1'b0;
             send_weight_trigger <= 1'b0;
             send_ia_trigger     <= 1'b0;
+            err_code            <= 2'b00;
         end else begin
             // 默认值
             init_cfg_ia         <= 1'b0;
@@ -167,10 +299,14 @@ module mma_controller #(
             init_cfg_bias       <= 1'b0;
             init_cfg_requant    <= 1'b0;
             init_cfg_oa         <= 1'b0;
-            send_weight_trigger <= 1'b0;  // 默认清零，保证脉冲行为
-            send_ia_trigger     <= 1'b0;  // 默认清零，保证脉冲行为
+            send_weight_trigger <= 1'b0;
+            send_ia_trigger     <= 1'b0;
 
             case (current_state)
+                IDLE: begin
+                    err_code <= 2'b00;  // 清除错误码
+                end
+
                 INIT: begin
                     // 初始化所有模块（单拍脉冲）
                     init_cfg_ia      <= 1'b1;
@@ -204,6 +340,11 @@ module mma_controller #(
                     // 等待 ia_sending_done 完成，不重复发出触发
                 end
 
+                ERROR: begin
+                    // 设置错误码
+                    err_code <= error_type;
+                end
+
                 default: begin
                 end
             endcase
@@ -212,6 +353,9 @@ module mma_controller #(
 
     // sa_ready信号
     assign sa_ready = (current_state == IDLE);
+
+    // 写回有效信号
+    assign wb_valid = oa_calc_over || (current_state == WAIT_WB) || (current_state == ERROR);
 
     // 实例化ICB仲裁器
     icb_arbiter u_icb_arbiter (
