@@ -178,7 +178,7 @@ task automatic simulate_quant_loader();
         quant_if.cb.load_quant_req <= 1'b0;
 
         // 模拟加载延迟后使量化参数有效
-        repeat (16) @(quant_if.cb);
+        repeat (32) @(quant_if.cb);
         quant_if.cb.quant_params_valid <= 1'b1;
         $display("  [%0t] Quant params valid (tile=%0d)", $time, load_count);
 

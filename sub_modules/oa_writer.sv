@@ -69,8 +69,8 @@ module oa_writer #(
     // 配置寄存器（在 init_cfg 时锁存）
     input wire [REG_WIDTH-1:0] dst_base,          // 输出矩阵基地址（第一个分块）
     input wire [REG_WIDTH-1:0] dst_row_stride_b,  // 行间地址间距（字节）
-    input wire [REG_WIDTH-1:0] k,                 // 输出矩阵列数
-    input wire [REG_WIDTH-1:0] m,                 // 输出矩阵行数
+    input wire [REG_WIDTH-1:0] k,                 // 输出矩阵行数
+    input wire [REG_WIDTH-1:0] m,                 // 输出矩阵列数
     input wire [REG_WIDTH-1:0] tile_count,        // 总分块数量
 
     // 数据输入接口（来自脉动阵列）
