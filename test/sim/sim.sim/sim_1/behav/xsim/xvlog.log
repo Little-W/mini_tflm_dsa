@@ -1,0 +1,14 @@
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/etc/FPGA/tflm_ai_dsa/sub_modules/accumulator_array.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module accumulator_array
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/etc/FPGA/tflm_ai_dsa/sub_modules/compute_core.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module compute_core
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/etc/FPGA/tflm_ai_dsa/sub_modules/data_setup.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module data_setup
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/etc/FPGA/tflm_ai_dsa/basic/shift_accumulator.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module shift_accumulator
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/etc/FPGA/tflm_ai_dsa/sub_modules/ws_systolic_array.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module ws_systolic_array
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/etc/FPGA/tflm_ai_dsa/basic/ws_systolic_cell.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module ws_systolic_cell
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "/home/etc/FPGA/tflm_ai_dsa/test/compute_core/tb_compute_core_timing.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module tb_compute_core

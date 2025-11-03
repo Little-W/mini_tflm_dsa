@@ -1,0 +1,12 @@
+0.7
+2020.2
+Dec 15 2024
+09:04:49
+/home/etc/FPGA/tflm_ai_dsa/basic/shift_accumulator.sv,1759314540,systemVerilog,,/home/etc/FPGA/tflm_ai_dsa/sub_modules/ws_systolic_array.sv,,shift_accumulator,,uvm,,,,,,
+/home/etc/FPGA/tflm_ai_dsa/basic/ws_systolic_cell.sv,1759318691,systemVerilog,,/home/etc/FPGA/tflm_ai_dsa/test/compute_core/tb_compute_core_timing.sv,,ws_systolic_cell,,uvm,,,,,,
+/home/etc/FPGA/tflm_ai_dsa/sub_modules/accumulator_array.sv,1759314760,systemVerilog,,/home/etc/FPGA/tflm_ai_dsa/sub_modules/compute_core.sv,,accumulator_array,,uvm,,,,,,
+/home/etc/FPGA/tflm_ai_dsa/sub_modules/compute_core.sv,1759303817,systemVerilog,,/home/etc/FPGA/tflm_ai_dsa/sub_modules/data_setup.sv,,compute_core,,uvm,,,,,,
+/home/etc/FPGA/tflm_ai_dsa/sub_modules/data_setup.sv,1759324244,systemVerilog,,/home/etc/FPGA/tflm_ai_dsa/basic/shift_accumulator.sv,,data_setup,,uvm,,,,,,
+/home/etc/FPGA/tflm_ai_dsa/sub_modules/ws_systolic_array.sv,1759309818,systemVerilog,,/home/etc/FPGA/tflm_ai_dsa/basic/ws_systolic_cell.sv,,ws_systolic_array,,uvm,,,,,,
+/home/etc/FPGA/tflm_ai_dsa/test/compute_core/tb_compute_core_timing.sv,1759322367,systemVerilog,,,,tb_compute_core,,uvm,,,,,,
+/home/etc/FPGA/tflm_ai_dsa/test/sim/sim.sim/sim_1/behav/xsim/glbl.v,1724786425,verilog,,,,glbl,,uvm,,,,,,
