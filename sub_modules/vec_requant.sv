@@ -1,272 +1,523 @@
-/*
- * vec_requant: 并行向量量化缩放模块（支持 per-tensor 与 per-channel，带自主访存能力）
- * ============================================================================
- * 设计目标：
- *  - 对向量数据并行执行量化缩放（左移、乘法高位取整、右移四舍五入、加偏移、激活裁剪），兼容 CMSIS-NN/NMSIS-NN 算法。
- *  - 支持 per-tensor 模式（全通道共享 multiplier/shift）与 per-channel 模式（每通道独立 multiplier/shift）。
- *  - 在 per-channel 模式下模块可作为 ICB Master 自主发起访存，按分块读取每组通道的量化参数并在读取完成后通知可用。
- *  - 模块能够根据 OA Tile 的尺寸（由上层矩阵维度 k,m 等推断）自动计算每次需要读取的 multiplier/shift 的内存基地址与访问次数。
- *  - 支持自动重触发：当上一个 OA Tile 的计算完成时（由 in_valid 的下降沿或上层信号指示），模块自动申请并读取下一批量化参数，保证计算流水连续。
- *
- * 主要信号与语义：
- *  - init_cfg (一拍)：锁存配置，包括量化模式(per-tensor/per-channel)、activation_min/max、dst_offset、multiplier/shift（或其基地址）、输出通道数等。
- *  - cfg_per_channel (1=per-channel,0=per-tensor)：决定参数来源。
- *  - per-tensor 模式：multiplier_in/shift_in 直接作为量化参数值，用于整个向量处理。
- *  - per-channel 模式：multiplier_in/shift_in 被视为内存基地址，模块将按块读取一组通道的 multiplier/shift。
- *
- * 访存/地址推断策略（per-channel）：
- *  - 模块在 init_cfg 时已知输出通道数（即 OA Tile 的列宽或其它上层提供的尺寸），据此自动计算每次需要读取的通道数（通常为 VLEN）和地址偏移。
- *  - 例如：每次读取 VLEN 个 multiplier/shift；下一组的地址 = 当前基地址 + VLEN * sizeof(param)
- *  - 模块维护内部指针（current_param_addr、load_count 等）并在每次授权后发起连续 ICB 读事务以加载所需参数。
- *  - 读取完成后，模块将参数写入内部 ch_multiplier_r[]/ch_shift_r[] 并置 quant_params_valid = 1。
- *
- * 自动重触发与完成检测：
- *  - OA Tile 完成检测：模块通过捕捉 in_valid 的下降沿判断一次 OA Tile 的向量计算已完成（上层不再输入该Tile的数据），此时视为该Tile的计算周期结束。
- *  - 在检测到 OA Tile 完成后，若处于 per-channel 模式且还有剩余参数未加载，模块自动驱动 load_quant_req = 1 申请下一次访存授权。
- *  - 外部控制器通过 load_quant_granted 授权后，模块开始下一个分块参数的读取。
- *  - 每次参数加载完成后，模块将 quant_params_valid 置为 1，指示量化参数可用于后续计算。
- *  - quant_params_valid 的有效期：由模块在参数加载完成后保持为 1，直到收到 tile_calc_start（上层信号，或其它约定的计算开始/清除信号）使其被清零，为下一次参数加载做准备。
- *    * 注：当前实现也可在 in_valid 的下降沿配合使用来清除或触发状态机，具体时序应以上层控制流程为准。
- *
- * 时序与握手要点：
- *  - load_quant_req / load_quant_granted：模块在需要新一组参数时提出请求，外部通过 load_quant_granted 授权以避免总线冲突或仲裁。
- *  - ICB 读事务应正确处理响应握手（icb_cmd_s.ready、icb_rsp_s）和错误标志；出现错误时应进入错误处理或回退流程。
- *  - quant_params_valid 与 out_valid/计算流程需要清晰定义的握手关系：在 quant_params_valid=1 且参数被使用后，上层可通过 tile_calc_start 将 quant_params_valid 清零并开始下一轮的参数加载节拍。
- *
- * 行为总结（按阶段）：
- *  1) init_cfg：锁存配置；若为 per-channel 模式，模块自动准备并可立即申请第一次参数加载。
- *  2) LOAD（仅 per-channel）：模块根据内部指针与OA尺寸推断出读地址与长度，发起 ICB 读事务；读完置 quant_params_valid=1。
- *  3) COMPUTE：若 in_valid 上升沿喂入数据并且 quant_params_valid=1，模块按并行通道执行量化；out_valid 与输出对齐。
- *  4) TILE_COMPLETE：当检测到 in_valid 的下降沿（或上层通过 tile_calc_start 明确指示）表示此 OA Tile 的计算已结束；模块据此自动驱动 load_quant_req 以准备下一组参数。
- *
- * 实现注意事项：
- *  - 为避免竞态，quant_params_valid 在加载完成的同一个时钟域内置1，并由 tile_calc_start 在确定安全的时刻清零。
- *  - 对于通道数不足 VLEN 的最后一组参数，应在内部用合理的默认值或复制策略填充，或在使用时对超出范围的通道进行保护。
- *  - 建议在仿真/验证中分别验证 per-tensor 与 per-channel 的时序、以及 load_quant_req/granted 的交互。
- */
-
-`include "define.svh"
+//`include "define.svh"
+`include "e203_defines.v"
 `include "icb_types.svh"
 
 module vec_requant #(
-    parameter integer VLEN = 16,
-    parameter integer REG_WIDTH = 32
+    parameter int VLEN      = 16,
+    parameter int REG_WIDTH = 32
 ) (
-    input wire clk,
-    input wire rstn,
+    input logic clk,
+    input logic rst_n,
 
-    // ===== 模式 & 公共配置一拍加载 =====
-    input wire init_cfg,  // 高电平一拍：加载激活阈值和dst_offset
-    input wire cfg_per_channel,  // 1=per-channel, 0=per-tensor
-    input wire signed [31:0] activation_min_in,
-    input wire signed [31:0] activation_max_in,
-    input wire signed [31:0] dst_offset_in,
+    // 配置
+    input logic               init_cfg,
+    input logic               cfg_per_channel,
+    input logic signed [31:0] activation_min_in,
+    input logic signed [31:0] activation_max_in,
+    input logic signed [31:0] dst_offset_in,
+    // per-tensor 常量；per-channel 下这两个做为“基地址”使用
+    input logic signed [31:0] multiplier_in,
+    input logic signed [31:0] shift_in,
+    input logic        [31:0] k,                  // 行数
+    input logic        [31:0] m,                  // 列数
 
-    // 复用信号：per-tensor时为参数值，per-channel时为内存基地址
-    input wire signed [31:0] multiplier_in,  // per-tensor: 量化参数值; per-channel: multiplier数组基地址
-    input wire signed [31:0] shift_in,       // per-tensor: 量化参数值; per-channel: shift数组基地址
+    // 量化参数装载握手（外部可用；TB里通常 grant=req）
+    output logic load_quant_req,
+    input  logic load_quant_granted,
+    output logic quant_params_valid,
 
-    // ===== Load/Init 控制接口（仅per-channel模式使用） =====
-    output reg  load_quant_req,      // 申请下一次访存授权（输出到外部控制器）
-    input  wire load_quant_granted,  // 外部控制器授权下一次访存（握手信号）
-    output reg  quant_params_valid,  // 量化参数已加载完成信号，multiplier等读完后拉高，in_valid上升沿后拉低
+    // ICB
+    output    icb_ext_cmd_m_t icb_cmd_m,
+    //output    icb_ext_wr_m_t  icb_wr_m,
+    input var icb_ext_cmd_s_t icb_cmd_s,
+    input var icb_ext_wr_s_t  icb_wr_s,
+    input var icb_ext_rsp_s_t icb_rsp_s,
+    output    icb_ext_rsp_m_t icb_rsp_m,
 
-    // 矩阵尺寸与分块配置（在 init_cfg 时被锁存）
-    input wire [REG_WIDTH-1:0] k,                 // 输出矩阵行数
-    input wire [REG_WIDTH-1:0] m,                 // 输出矩阵列数
-
-    // ICB 主接口（模块作为 Master，仅per-channel模式使用）
-    output icb_ext_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
-    output icb_ext_wr_m_t icb_wr_m, // Master -> Slave: 写数据有效载荷（本模块读取为主，通常不使用）
-    input icb_ext_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
-    input icb_ext_wr_s_t icb_wr_s,  // Slave -> Master: 写数据就绪
-    input icb_ext_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
-    output icb_ext_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
-
-    // ===== 工作阶段：并行输入/输出 =====
-    input wire               in_valid,         // 一拍喂入一个"并行向量"
-    input wire signed [31:0] in_vec_s32[VLEN],
-
-    output reg              out_valid,        // 与输出对齐
-    output reg signed [7:0] out_vec_s8[VLEN]
+    // 数据口
+    input  logic               in_valid,
+    input  logic signed [31:0] in_vec_s32[VLEN],
+    output logic               out_valid,
+    output logic signed [ 7:0] out_vec_s8[VLEN]
 );
 
-    // -------------------------
-    // 状态定义
-    // -------------------------
-    typedef enum logic [1:0] {
-        IDLE = 2'b00,  // 空闲状态
-        LOAD = 2'b01   // 读取量化参数状态
-    } state_t;
+  // ----------------------------
+  // 常量与类型
+  // ----------------------------
+  localparam int BYTES_PER_WORD = `E203_XLEN / 8;  // 32位=4
+  typedef logic [`ICB_LEN_W-1:0] icb_len_t;
 
-    state_t     state;
+  // ----------------------------
+  // 状态机与游标
+  // ----------------------------
+  typedef enum logic [1:0] {
+    IDLE,
+    LOAD,
+    COMPUTE,
+    TILE_COMPLETE
+  } state_e;
+  state_e state, state_n;
 
-    // ICB 命令与响应内部信号与连接
-    // 使用寄存器存储可变字段，通过连续赋值将 size 字段固定为 2'b10
-    icb_cmd_m_t icb_cmd_m_reg;  // 驱动可变字段的寄存器
-    icb_cmd_m_t icb_cmd_m_wire;  // 由寄存器与常量 size 组合成的输出线网
-    icb_rsp_m_t icb_rsp_m_wire;
-    // 将 wire 输出到模块端口
-    assign icb_cmd_m = icb_cmd_m_wire;
-    assign icb_rsp_m = icb_rsp_m_wire;
-    // 固定 size 字段为 2'b10，其余字段从寄存器取值
-    assign icb_cmd_m_wire = '{
-            icb_cmd_m_reg.valid,
-            icb_cmd_m_reg.addr,
-            icb_cmd_m_reg.read,
-            icb_cmd_m_reg.wdata,
-            icb_cmd_m_reg.wmask,
-            2'b10
-        };
+  // 只保留 4 个状态名，LOAD 内部用 phase 区分 mul/shift
+  typedef enum logic [0:0] {
+    PH_MUL   = 1'b0,
+    PH_SHIFT = 1'b1
+  } phase_e;
+  phase_e          load_phase;  // 当前子阶段（先 mul 后 shift）
 
-    // -------------------------
-    // 模式与公共参数寄存（init_cfg 一拍装载）
-    // -------------------------
-    reg mode_per_channel;
-    reg signed [31:0] activation_min_r, activation_max_r, dst_offset_r;
-    reg signed [31:0] pt_multiplier_r, pt_shift_r;
-    reg signed [31:0] cfg_multiplier_base, cfg_shift_base;
+  logic     [31:0] tile_col;  // 当前列 tile 号
+  logic     [ 4:0] row_in_tile_cnt;  // 0..15：本 tile 已完成的行数
+  logic     [31:0] lane_need_cur;  // 本 tile 需要的列数（尾块可能 < VLEN）
+  logic     [31:0] tile_row;  // 当前行 tile 号
+  logic     [31:0] rows_need_cur;  // 当前行 tile 需要的行数（最后一块为余数）
+  logic     [31:0] lane_need_q;  // 锁存，用于计算/屏蔽无效 lane
+  icb_len_t        burst_len_cur;  // = lane_need_cur - 1
 
-    always @(posedge clk or negedge rstn) begin
-        if (!rstn) begin
-            mode_per_channel    <= 1'b0;
-            activation_min_r    <= -128;
-            activation_max_r    <= 127;
-            dst_offset_r        <= 0;
-            pt_multiplier_r     <= 0;
-            pt_shift_r          <= 0;
-            cfg_multiplier_base <= 0;
-            cfg_shift_base      <= 0;
-        end else if (init_cfg) begin
-            // 锁存模式 + 公共三件套 + 输出通道数
-            mode_per_channel    <= cfg_per_channel;
-            activation_min_r    <= activation_min_in;
-            activation_max_r    <= activation_max_in;
-            dst_offset_r        <= dst_offset_in;
-            // 若 per-tensor，直接从端口加载两量化参数
-            if (!cfg_per_channel) begin
-                pt_multiplier_r <= multiplier_in;
-                pt_shift_r      <= shift_in;
+  // per-channel：mul/shift 两次突发的采样计数
+  logic     [ 5:0] rd_beats_cnt;
+  logic     [ 5:0] beats_expect;
+  logic            cmd_busy;
+
+  // track number of tiles & finished flag
+  logic     [31:0] num_row_tiles;
+  logic     [31:0] num_col_tiles;
+  logic            all_tiles_done;
+
+  // ----------------------------
+  // 配置寄存
+  // ----------------------------
+  logic signed [31:0] activation_min_r, activation_max_r, dst_offset_r;
+  logic signed [31:0] pt_multiplier_r, pt_shift_r;  // per-tensor 常量
+  logic [31:0] k_r, m_r;  // 锁存的尺寸
+  logic [31:0] mul_base_r, sh_base_r;  // per-channel 基地址
+
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      activation_min_r <= '0;
+      activation_max_r <= '0;
+      dst_offset_r     <= '0;
+      pt_multiplier_r  <= '0;
+      pt_shift_r       <= '0;
+      k_r              <= '0;
+      m_r              <= '0;
+      mul_base_r       <= '0;
+      sh_base_r        <= '0;
+    end else if (init_cfg) begin
+      activation_min_r <= activation_min_in;
+      activation_max_r <= activation_max_in;
+      dst_offset_r     <= dst_offset_in;
+      pt_multiplier_r  <= multiplier_in;
+      pt_shift_r       <= shift_in;
+      k_r              <= k;
+      m_r              <= m;
+      // per-channel 基地址（接口复用 multiplier_in/shift_in）
+      mul_base_r       <= multiplier_in;
+      sh_base_r        <= shift_in;
+    end
+  end
+
+  // compute number of tiles (rows/cols)
+  always_comb begin
+    // safe ceil_div: (n + VLEN -1) / VLEN
+    num_row_tiles = (k_r == 0) ? 0 : ((k_r + VLEN - 1) / VLEN);
+    num_col_tiles = (m_r == 0) ? 0 : ((m_r + VLEN - 1) / VLEN);
+  end
+
+  // ----------------------------
+  // tile 列需要多少 lane（尾块）
+  // ----------------------------
+  function automatic [31:0] f_lane_need(input [31:0] cols, input [31:0] vlen, input [31:0] tcol);
+    reg [31:0] remain;
+    begin
+      remain = (cols > (tcol * vlen)) ? (cols - tcol * vlen) : 32'd0;
+      f_lane_need = (remain >= vlen) ? vlen : remain;
+    end
+  endfunction
+
+  function automatic [31:0] f_rows_need(input [31:0] rows, input [31:0] vlen, input [31:0] trow);
+    reg [31:0] remain;
+    begin
+      remain = (rows > (trow * vlen)) ? (rows - trow * vlen) : 32'd0;
+      f_rows_need = (remain >= vlen) ? vlen : remain;
+    end
+  endfunction
+
+  // 每次进入 LOAD 前计算 lane_need\row_need
+  always_comb begin
+    lane_need_cur = f_lane_need(m_r, VLEN, tile_col);
+  end
+
+  always_comb begin
+    rows_need_cur = f_rows_need(k_r, VLEN, tile_row);
+  end
+
+  // 参数就绪拍锁存（供计算屏蔽尾块）
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      lane_need_q <= '0;
+    end else begin
+      // per-tensor 模式下：所有 lane 都有效
+      if (!cfg_per_channel) begin
+        lane_need_q <= f_lane_need(m, VLEN, 32'd0);  // 或 32'(VLEN) ，lane_need_q 是 32 位
+      end  // per-channel 模式下：在 quant_params_valid 时锁存当前需要的 lanes
+      else if (quant_params_valid) begin
+        lane_need_q <= lane_need_cur;
+      end
+    end
+  end
+
+
+  // ICB len = 需要拍数-1（0 表示 1 拍）
+  always_comb begin
+    burst_len_cur = icb_len_t'((lane_need_cur > 0) ? (lane_need_cur - 1) : 0);
+  end
+
+  // ----------------------------
+  // ICB 命令/响应
+  // ----------------------------
+  icb_ext_cmd_m_t icb_cmd_m_reg, icb_cmd_m_wire;
+  icb_ext_rsp_m_t icb_rsp_m_wire;
+
+  wire cmd_hskd = icb_cmd_m_reg.valid && icb_cmd_s.ready;
+  wire rsp_hskd = icb_rsp_s.rsp_valid && icb_rsp_m.rsp_ready;
+
+  // master 侧：响应 ready 常 1；不使用写通道
+  //assign icb_wr_m  = '{default: '0};
+  assign icb_rsp_m = '{rsp_ready: 1'b1};
+  assign icb_cmd_m = icb_cmd_m_wire;
+  always_comb icb_cmd_m_wire = icb_cmd_m_reg;
+
+
+  // ----------------------------
+  // per-channel 参数缓冲
+  // ----------------------------
+  logic signed [31:0] ch_multiplier_r[VLEN];
+  logic signed [31:0] ch_shift_r     [VLEN];
+
+
+  // ----------------------------
+  // 主状态机（只保留 4 个状态名）
+  // ----------------------------
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      // reset all sequential state
+      state              <= IDLE;
+      load_phase         <= PH_MUL;
+      quant_params_valid <= 1'b0;
+      row_in_tile_cnt    <= 5'd0;
+      rd_beats_cnt       <= 6'd0;
+      beats_expect       <= 6'd0;
+      cmd_busy           <= 1'b0;
+      load_quant_req     <= 1'b0;
+      tile_col           <= 32'd0;
+      tile_row           <= 32'd0;
+      icb_cmd_m_reg      <= '{default: '0};
+      all_tiles_done     <= 1'b0;
+    end else begin
+      // default per-cycle de-asserts (will be overridden in branches)
+      icb_cmd_m_reg.valid <= 1'b0;
+      icb_cmd_m_reg.read  <= 1'b0;
+      //load_quant_req      <= 1'b0;  
+      // note: do NOT clear quant_params_valid/lane_need_q here (they are cleared when tile completes)
+
+      // handle init_cfg (single-cycle reset of per-tile counters)
+      if (init_cfg) begin
+        state              <= IDLE;
+        quant_params_valid <= (cfg_per_channel ? 1'b0 : 1'b1);
+        row_in_tile_cnt    <= 5'd0;
+        rd_beats_cnt       <= 6'd0;
+        cmd_busy           <= 1'b0;
+        tile_col           <= 32'd0;
+        tile_row           <= 32'd0;
+        all_tiles_done     <= 1'b0;  // clear done on re-config
+      end else begin
+
+        case (state)
+          // ----------------------
+          IDLE: begin
+            rd_beats_cnt    <= 6'd0;
+            cmd_busy        <= 1'b0;
+            row_in_tile_cnt <= 5'd0;
+
+            // 如果所有 tile 都做完了 -> stay IDLE 等待 init_cfg 清除
+            if (all_tiles_done) begin
+              load_quant_req <= 1'b0;
+              // remain idle
             end else begin
-                // per-channel 模式，保存内存基地址
-                cfg_multiplier_base <= multiplier_in;
-                cfg_shift_base      <= shift_in;
-            end
-        end
-    end
-
-    // -------------------------
-    // per-channel 量化参数存储
-    // -------------------------
-    reg signed [31:0] ch_multiplier_r[VLEN];
-    reg signed [31:0] ch_shift_r[VLEN];
-
-    // 计数器与状态寄存器
-    reg [$clog2(VLEN*2+1)-1:0] load_count;
-    reg [REG_WIDTH-1:0] cur_addr;
-    reg loading_multipliers;  // 1: 正在加载multipliers; 0: 正在加载shifts
-
-    // in_valid 边沿检测用于清除 quant_params_valid
-    reg in_valid_d1;
-    wire in_valid_falling_edge;
-    assign in_valid_falling_edge = in_valid_d1 & ~in_valid;
-
-    // -------------------------
-    // NMSIS/CMSIS-NN 等价函数
-    // -------------------------
-    function automatic signed [31:0] left_shift_apply;
-        input signed [31:0] val, shift_s;
-        reg [5:0] lsh;
-        begin
-            lsh              = (shift_s > 0) ? shift_s[5:0] : 6'd0;
-            left_shift_apply = (lsh == 0) ? val : (val <<< lsh);
-        end
-    endfunction
-
-    function automatic signed [31:0] doubling_high_mult_round;
-        input signed [31:0] a, m;
-        reg signed [63:0] prod, prod2, adj;
-        begin
-            prod                     = $signed(a) * $signed(m);
-            prod2                    = prod <<< 1;  // 2*a*m
-            adj                      = prod2 + 64'sh0000_0000_4000_0000;  // +2^30
-            doubling_high_mult_round = adj >>> 31;  // round((a*m)/2^31)
-        end
-    endfunction
-
-    function automatic signed [31:0] divide_by_power_of_two_round;
-        input signed [31:0] val;
-        input [5:0] rsh;
-        reg signed [31:0] add;
-        begin
-            if (rsh == 0) divide_by_power_of_two_round = val;
-            else begin
-                add = (val >= 0) ? (32'sd1 <<< (rsh - 1)) : ((32'sd1 <<< (rsh - 1)) - 32'sd1);
-                divide_by_power_of_two_round = (val + add) >>> rsh;
-            end
-        end
-    endfunction
-
-    // -------------------------
-    // 并行计算：一拍输入 -> 一拍后并行输出
-    // -------------------------
-    wire              work_mode = (state == IDLE) && (!load_quant_req);
-    wire              work_accept = in_valid & work_mode;
-
-    reg               in_valid_q;
-    reg signed [31:0] in_vec_q                                         [VLEN];
-
-    integer           mm;
-    always @(posedge clk or negedge rstn) begin
-        if (!rstn) begin
-            in_valid_q <= 1'b0;
-            for (mm = 0; mm < VLEN; mm = mm + 1) in_vec_q[mm] <= 32'sd0;
-        end else begin
-            in_valid_q <= work_accept;
-            if (work_accept) begin
-                for (mm = 0; mm < VLEN; mm = mm + 1) in_vec_q[mm] <= in_vec_s32[mm];
-            end
-        end
-    end
-
-    integer j;
-    always @(posedge clk or negedge rstn) begin
-        if (!rstn) begin
-            out_valid <= 1'b0;
-            for (j = 0; j < VLEN; j = j + 1) out_vec_s8[j] <= 8'sd0;
-        end else begin
-            out_valid <= in_valid_q;
-            if (in_valid_q) begin
-                for (j = 0; j < VLEN; j = j + 1) begin : LANE
-                    reg signed [31:0] cur_m, cur_s, a_shifted, high_mul, rq;
-                    reg [ 5:0] right_s;
-                    reg [31:0] cur_s_neg;
-
-                    // 选参：per-channel or per-tensor
-                    cur_m     = mode_per_channel ? ch_multiplier_r[j] : pt_multiplier_r;
-                    cur_s     = mode_per_channel ? ch_shift_r[j] : pt_shift_r;
-                    cur_s_neg = ~cur_s + 1'b1;
-                    right_s   = (cur_s < 0) ? cur_s_neg[5:0] : 6'd0;
-
-                    // 量化流程
-                    a_shifted = left_shift_apply(in_vec_q[j], cur_s);
-                    high_mul  = doubling_high_mult_round(a_shifted, cur_m);
-                    rq        = divide_by_power_of_two_round(high_mul, right_s);
-
-                    rq        = rq + dst_offset_r;
-                    if (rq < activation_min_r) rq = activation_min_r;
-                    if (rq > activation_max_r) rq = activation_max_r;
-
-                    if (rq > 32'sd127) out_vec_s8[j] <= 8'sd127;
-                    else if (rq < -32'sd128) out_vec_s8[j] <= -8'sd128;
-                    else out_vec_s8[j] <= rq[7:0];
+              // 保持请求直到 grant（避免单拍丢失）
+              if (cfg_per_channel && !quant_params_valid && (lane_need_cur != 0)) begin
+                load_quant_req <= 1'b1;
+                if (load_quant_granted) begin
+                  load_quant_req <= 1'b0;
+                  load_phase     <= PH_MUL;
+                  state          <= LOAD;
+                  // do not clear load_quant_req here; default loop will clear next cycle if needed
                 end
-            end
-        end
-    end
+              end
 
-    // -------------------------
-    // 状态机实现（仅per-channel模式使用ICB主动访存）
-    // -------------------------
+              // per-tensor 或 已有参数: 直接响应输入
+              if (!cfg_per_channel || quant_params_valid) begin
+                if (in_valid) begin
+                  // start compute for this tile/row-stream
+                  state <= COMPUTE;
+                  // ensure counter starts at 0 when entering a fresh compute
+                  // row_in_tile_cnt will be incremented on out_valid
+                  // do not clear quant_params_valid here (should remain valid during compute)
+                end
+              end
+            end
+          end
+
+          // ----------------------
+          LOAD: begin
+            if (load_quant_granted) load_quant_req <= 1'b0;
+            row_in_tile_cnt <= 5'd0;
+            // 1) 若当前没有在途命令，则按 phase 发一条读命令（valid/ready handshake）
+            if (!cmd_busy) begin
+              icb_cmd_m_reg.valid <= 1'b1;
+              icb_cmd_m_reg.read <= 1'b1;
+              icb_cmd_m_reg.addr  <= (load_phase==PH_MUL)
+                                    ? (mul_base_r + tile_col*VLEN*BYTES_PER_WORD)
+                                    : (sh_base_r  + tile_col*VLEN*BYTES_PER_WORD);
+              icb_cmd_m_reg.len <= burst_len_cur;  // len = lane_need_cur - 1
+
+              if (cmd_hskd) begin
+                // 命令已被对端接受，本次突发开始
+                cmd_busy            <= 1'b1;
+                icb_cmd_m_reg.valid <= 1'b0;  // 下拍取消 valid
+                rd_beats_cnt        <= 6'd0;
+                beats_expect        <= lane_need_cur[5:0];  // 需要收的拍数
+              end
+            end
+
+            // 2) 接收响应拍：mul/shift 缓冲写入
+            if (icb_rsp_s.rsp_valid && icb_rsp_m.rsp_ready && cmd_busy) begin
+              // 防护断言（仿真）
+`ifndef SYNTHESIS
+              if (beats_expect > VLEN) begin
+                $display("[%0t] ERROR: beats_expect (%0d) > VLEN", $time, beats_expect);
+                $fatal;
+              end
+              if (rd_beats_cnt >= VLEN) begin
+                $display("[%0t] ERROR: rd_beats_cnt (%0d) >= VLEN", $time, rd_beats_cnt);
+                $fatal;
+              end
+`endif
+
+              if (load_phase == PH_MUL) ch_multiplier_r[rd_beats_cnt] <= icb_rsp_s.rsp_rdata;
+              else ch_shift_r[rd_beats_cnt] <= icb_rsp_s.rsp_rdata;
+
+              rd_beats_cnt <= rd_beats_cnt + 1;
+
+              // 3) 本次突发收满：决定是切 phase 还是完成 LOAD
+              if ((rd_beats_cnt + 1) == beats_expect) begin
+                cmd_busy <= 1'b0;  // 本突发结束
+                if (load_phase == PH_MUL) begin
+                  // mul 收满 -> 切到 shift，下一拍会去发 shift 的命令
+                  load_phase <= PH_SHIFT;
+                end else begin
+                  // shift 也收满，参数就绪：同时锁存 lane_need，并根据当拍 in_valid 决定是否直接进 COMPUTE
+                  quant_params_valid <= 1'b1;
+                  //lane_need_q        <= lane_need_cur;   // <-- 把 lane_need 在参数就绪时锁存
+
+                  if (in_valid) begin
+                    state <= COMPUTE; // 允许在同一时钟周期观察到 in_valid 并直接进入 COMPUTE
+                  end else begin
+                    state <= IDLE;
+                  end
+                end
+              end
+            end
+          end
+
+          // ----------------------
+          COMPUTE: begin
+            // 现在 COMPUTE 负责一整块 tile 的所有行：
+            // 在 out_valid 的上升周期计数；当计数达到 rows_need_cur 时转到 TILE_COMPLETE
+            load_phase <= PH_MUL;
+
+            if (out_valid) begin
+              if (row_in_tile_cnt == rows_need_cur[4:0] - 1) begin
+                // 本 tile 行数已全部处理完毕 -> 执行收尾
+                if (cfg_per_channel) begin
+                  load_quant_req <= 1'b1;
+                  quant_params_valid <= 1'b0;
+                end
+                state <= TILE_COMPLETE;
+                row_in_tile_cnt <= 5'd0;
+              end else begin
+                // 继续在 COMPUTE 等下一行的输入
+                row_in_tile_cnt <= row_in_tile_cnt + 1;
+                // 继续在 COMPUTE 等下一行的输入
+                state <= COMPUTE;
+              end
+            end
+            if ((tile_col + 1 == num_col_tiles) && (tile_row + 1 == num_row_tiles) && row_in_tile_cnt == rows_need_cur[4:0]-1)
+              all_tiles_done <= 1'b1;
+            // 否则保持在 COMPUTE，等待 out_valid（或者下一次 in_valid 进入流水线）
+          end
+
+          // ----------------------
+          TILE_COMPLETE: begin
+
+            // 到这里意味着本 tile 的所有行已经计算完（由 COMPUTE 决定）
+            // 做收尾工作：清参数就绪、推进 tile 坐标。
+            row_in_tile_cnt <= row_in_tile_cnt + 1;
+            //quant_params_valid <= 1'b0;
+            all_tiles_done  <= 1'b0;
+            // 推进 tile_row/tile_col，并根据是否已完成全部 tile 设定 all_tiles_done
+            if ((tile_col + 1) >= num_col_tiles) begin
+              // 当前列已经是最后一列 -> 列回 0，并推进行
+              tile_col <= 32'd0;
+              if ((tile_row + 1) >= num_row_tiles) begin
+                // 行也到末尾 -> 所有 tile 完成
+                tile_row <= 32'd0;
+
+                //quant_params_valid <= 1'b0;
+              end else begin
+                tile_row <= tile_row + 1;
+              end
+            end else begin
+              // 还没到最后列 -> 仅推进列
+              tile_col <= tile_col + 1;
+            end
+
+            if (all_tiles_done && !cfg_per_channel) begin
+              quant_params_valid <= 1'b0;
+            end
+
+
+            if ((tile_col + 1 == num_col_tiles) && (tile_row + 1 == num_row_tiles)) begin
+              state <= IDLE;
+            end else if (!cfg_per_channel) state <= COMPUTE;
+            else state <= LOAD;
+
+            // 仿真断言：超出范围直接暴露
+`ifndef SYNTHESIS
+            if (row_in_tile_cnt > VLEN) begin
+              $display("[%0t] ERROR: row_in_tile_cnt (%0d) > VLEN", $time, row_in_tile_cnt);
+              $fatal;
+            end
+`endif
+          end
+
+          // ----------------------
+          default: begin
+            // 保底：防止卡死
+            state <= IDLE;
+          end
+
+        endcase
+      end  // !init_cfg
+    end  // !rst_n
+  end
+
+
+  // ----------------------------
+  // 数据通路（1 拍管线：in_valid -> out_valid）
+  // ----------------------------
+  logic out_valid_q;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      out_valid_q <= 1'b0;
+    end else begin
+      out_valid_q <= in_valid && ((!cfg_per_channel) || quant_params_valid);
+    end
+  end
+
+  assign out_valid = (!cfg_per_channel) ? out_valid_q : (out_valid_q && quant_params_valid);
+
+  function automatic signed [31:0] round_divide_by_power_of_two(input signed [31:0] x,
+                                                                input integer rshift);
+    reg signed [31:0] shifted;
+    reg signed [31:0] mask;
+    reg signed [31:0] remainder;
+    reg signed [31:0] threshold;
+    begin
+      if (rshift == 0) begin
+        round_divide_by_power_of_two = x;
+      end else begin
+        shifted   = x >>> rshift;
+        mask      = (32'sd1 <<< rshift) - 1;
+        remainder = x & mask;
+        threshold = mask >>> 1;
+        if (x < 0) threshold = threshold + 1;
+
+        round_divide_by_power_of_two = shifted + (remainder > threshold);
+      end
+    end
+  endfunction
+
+
+  // CMSIS-NN 风格重量化函数
+  function automatic signed [31:0] cmsis_nn_requantize(input signed [31:0] acc,
+                                                       input signed [31:0] multiplier,  // Q31
+                                                       input signed [31:0] shift_s       // can be + or -
+);
+    reg signed [63:0] acc_ext;
+    reg signed [63:0] prod;
+    reg signed [63:0] round64;
+    reg signed [31:0] result;
+    integer lshift;
+    integer rshift;
+    begin
+      // -------- split shift --------
+      lshift = (shift_s > 0) ? shift_s : 0;
+      rshift = (shift_s < 0) ? -shift_s : 0;
+
+      // -------- LEFT_SHIFT --------
+      acc_ext = $signed(acc) <<< lshift;
+
+      // -------- Q31 multiply + rounding (doubling high mult) --------
+      prod    = acc_ext * $signed(multiplier);
+      round64 = prod + (64'sd1 <<< 30);
+      result  = round64 >>> 31;
+
+      // -------- RIGHT_SHIFT with rounding --------
+      if (rshift > 0) cmsis_nn_requantize = round_divide_by_power_of_two(result, rshift);
+      else cmsis_nn_requantize = result;
+    end
+  endfunction
+
+  // 做一行（16 lane），尾块屏蔽
+  genvar j;
+  for (j = 0; j < VLEN; j++) begin : LANE
+    // 局部变量声明放最前
+    logic lane_en;
+    logic signed [31:0] cur_m, cur_s;
+    logic signed [31:0] rq_tmp;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+
+      rq_tmp = '0;
+      cur_m  = '0;
+      cur_s  = '0;
+
+      if (!rst_n) begin
+        out_vec_s8[j] <= '0;
+      end else if (in_valid) begin
+        // 选择 per-channel 缓冲或 per-tensor 常量
+        cur_m  = cfg_per_channel ? ch_multiplier_r[j] : pt_multiplier_r;
+        cur_s  = cfg_per_channel ? ch_shift_r[j] : pt_shift_r;
+
+        rq_tmp = cmsis_nn_requantize(in_vec_s32[j], cur_m, cur_s);
+        rq_tmp = rq_tmp + dst_offset_r;
+
+        if (rq_tmp < activation_min_r) rq_tmp = activation_min_r;
+        if (rq_tmp > activation_max_r) rq_tmp = activation_max_r;
+
+        lane_en = (j < lane_need_q);
+
+        if (lane_en) begin
+          if (rq_tmp > 32'sd127) out_vec_s8[j] <= 8'sd127;
+          else if (rq_tmp < -32'sd128) out_vec_s8[j] <= -32'sd128;
+          else out_vec_s8[j] <= rq_tmp[7:0];
+        end else begin
+          out_vec_s8[j] <= 8'sd0;
+        end
+      end
+    end
+  end
 
 endmodule
