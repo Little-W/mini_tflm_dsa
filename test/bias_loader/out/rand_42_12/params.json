@@ -1,0 +1,13 @@
+{
+  "case": "rand_42_12",
+  "M": 38,
+  "last_loop": 1,
+  "num_blocks": 5,
+  "last_block_elems": 6,
+  "seq_len": 5,
+  "grant_bp_en": 0,
+  "grant_bp_cycles": 0,
+  "bp_target_req_idx": 0,
+  "bp_target_req_cycles": 0,
+  "check_valid_drop": 0
+}

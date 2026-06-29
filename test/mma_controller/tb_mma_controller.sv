@@ -41,6 +41,7 @@ module tb_mma_controller;
     oa_writer_if oa_if (clk);
     compute_core_if comp_if (clk);
 
+    /* verilator lint_off PINCONNECTEMPTY */
     // 实例化DUT
     mma_controller #(
         .WEIGHT_WIDTH(WEIGHT_WIDTH),
@@ -83,8 +84,26 @@ module tb_mma_controller;
         .write_oa_req         (oa_if.write_oa_req),
         .write_oa_granted     (oa_if.write_oa_granted),
         .write_done           (oa_if.write_done),
-        .oa_calc_over         (oa_if.oa_calc_over)
+        .oa_calc_over         (oa_if.oa_calc_over),
+        // 新增端口连接
+        .lhs_base             (1),  // 连接到常量1
+        .rhs_base             (1),  // 连接到常量1
+        .dst_base             (1),  // 连接到常量1
+        .bias_base            (1),  // 连接到常量1
+        .q_mult_pt            (1),  // 连接到常量1
+        .q_shift_pt           (1),  // 连接到常量1
+        .use_per_channel      (1),  // 连接到常量1
+        .k                    (1),  // 连接到常量1
+        .n                    (1),  // 连接到常量1
+        .m                    (1),  // 连接到常量1
+        .lhs_row_stride_b     (1),  // 连接到常量1
+        .dst_row_stride_b     (1),  // 连接到常量1
+        .rhs_row_stride_b     (1),  // 连接到常量1
+        .wb_valid             (),   // 新增输出端口，无需连接
+        .wb_ready             (1'b1), // 假设连接到1（测试台输入）
+        .err_code             ()    // 新增输出端口，无需连接
     );
+    /* verilator lint_on PINCONNECTEMPTY */
 
     // 时钟生成
     initial begin
@@ -153,7 +172,7 @@ module tb_mma_controller;
         // 测试1：基本计算流程（封装为 task）
         $display("\n%s[Test 1] Basic computation flow (8-bit mode) - task%s", COLOR_BOLD_CYAN,
                  COLOR_RESET);
-        simulate_block_computation(1'b0);  // 8-bit 模式
+        simulate_block_computation(1'b0,1);
 
         // 可以再次以 16-bit 模式调用： simulate_block_computation(1'b1);
         // repeat (20) @(posedge clk);

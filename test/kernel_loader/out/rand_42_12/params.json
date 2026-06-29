@@ -1,0 +1,16 @@
+{
+  "case": "rand_42_12",
+  "k": 10,
+  "n": 16,
+  "m": 8,
+  "ia_reuse_num": 4,
+  "w_reuse_num": 4,
+  "rhs_zp": 5,
+  "base_addr": 258,
+  "grant_bp_en": 0,
+  "grant_bp_cycles": 0,
+  "tile_rows": 3,
+  "tile_cols": 4,
+  "l2_groups": 1,
+  "total_tiles": 48
+}

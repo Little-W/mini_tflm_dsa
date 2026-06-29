@@ -1,0 +1,13 @@
+# Case: rand_42_1
+# M=2 SIZE=8 NUM_BLOCKS=1 LAST_ELEMS=2
+
+BLOCK 0 elems=2
+  1
+  2
+  0
+  0
+  0
+  0
+  0
+  0
+

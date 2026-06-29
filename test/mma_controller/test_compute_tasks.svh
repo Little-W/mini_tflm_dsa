@@ -120,79 +120,97 @@ task automatic simulate_ia_loader();
 endtask
 
 // Bias Loader 独立循环执行（4次：每个 tile 一次）
-task automatic simulate_bias_loader();
+task automatic simulate_bias_loader(input bit skip);
     int load_count;
     load_count = 0;
 
-    $display("%s  === Bias loader started ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
+    $display("%s  === Bias loader started (skip=%0b) ===%s", COLOR_BOLD_BLUE, skip, COLOR_RESET);
 
-    @(bias_if.cb);
-    while (load_count < 4) begin
-        // 发起加载请求
-        bias_if.cb.load_bias_req <= 1'b1;
-        $display("  [%0t] Bias loader: requesting load (tile=%0d)", $time, load_count);
-
-        // 等待授权
-        wait (bias_if.load_bias_granted);
-        $display("  [%0t] Bias loader: granted (tile=%0d)", $time, load_count);
-
+    if (skip) begin
+        // 跳过加载，直接设置 valid 并等待 tile 完成
         @(bias_if.cb);
-        bias_if.cb.load_bias_req <= 1'b0;
-
-        // 模拟加载延迟后使偏置数据有效
-        repeat (16) @(bias_if.cb);
         bias_if.cb.bias_valid <= 1'b1;
-        $display("  [%0t] Bias data valid (tile=%0d)", $time, load_count);
+        $display("  [%0t] Bias loader: skipped loading, bias_valid set to 1", $time);
+        $display("%s  === Bias loader finished (skipped) ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
+    end else begin
+        // 原有逻辑
+        @(bias_if.cb);
+        while (load_count < 4) begin
+            // 发起加载请求
+            bias_if.cb.load_bias_req <= 1'b1;
+            $display("  [%0t] Bias loader: requesting load (tile=%0d)", $time, load_count);
 
-        // 等待该 tile 完成（通过 tile_calc_over）
-        wait (comp_if.tile_calc_over);
-        $display("  [%0t] Bias loader: tile done, clearing valid (tile=%0d)", $time, load_count);
+            // 等待授权
+            wait (bias_if.load_bias_granted);
+            $display("  [%0t] Bias loader: granted (tile=%0d)", $time, load_count);
 
-        bias_if.cb.bias_valid <= 1'b0;
+            @(bias_if.cb);
+            bias_if.cb.load_bias_req <= 1'b0;
 
-        load_count++;
+            // 模拟加载延迟后使偏置数据有效
+            repeat (16) @(bias_if.cb);
+            bias_if.cb.bias_valid <= 1'b1;
+            $display("  [%0t] Bias data valid (tile=%0d)", $time, load_count);
+
+            // 等待该 tile 完成（通过 tile_calc_over）
+            wait (comp_if.tile_calc_over);
+            $display("  [%0t] Bias loader: tile done, clearing valid (tile=%0d)", $time, load_count);
+
+            bias_if.cb.bias_valid <= 1'b0;
+
+            load_count++;
+        end
+
+        $display("%s  === Bias loader finished (total=%0d tiles) ===%s", COLOR_BOLD_BLUE, load_count,
+                 COLOR_RESET);
     end
-
-    $display("%s  === Bias loader finished (total=%0d tiles) ===%s", COLOR_BOLD_BLUE, load_count,
-             COLOR_RESET);
 endtask
 
 // Quant Loader 独立循环执行（4次：每个 tile 一次）
-task automatic simulate_quant_loader();
+task automatic simulate_quant_loader(input bit skip);
     int load_count;
     load_count = 0;
 
-    $display("%s  === Quant loader started ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
+    $display("%s  === Quant loader started (skip=%0b) ===%s", COLOR_BOLD_BLUE, skip, COLOR_RESET);
 
-    @(quant_if.cb);
-    while (load_count < 4) begin
-        // 发起加载请求
-        quant_if.cb.load_quant_req <= 1'b1;
-        $display("  [%0t] Quant loader: requesting load (tile=%0d)", $time, load_count);
-
-        // 等待授权
-        wait (quant_if.load_quant_granted);
-        $display("  [%0t] Quant loader: granted (tile=%0d)", $time, load_count);
-
+    if (skip) begin
+        // 跳过加载，直接设置 valid 并等待 tile 完成
         @(quant_if.cb);
-        quant_if.cb.load_quant_req <= 1'b0;
-
-        // 模拟加载延迟后使量化参数有效
-        repeat (32) @(quant_if.cb);
         quant_if.cb.quant_params_valid <= 1'b1;
-        $display("  [%0t] Quant params valid (tile=%0d)", $time, load_count);
+        $display("  [%0t] Quant loader: skipped loading, quant_params_valid set to 1", $time);
+        $display("%s  === Quant loader finished (skipped) ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
+    end else begin
+        // 原有逻辑
+        @(quant_if.cb);
+        while (load_count < 4) begin
+            // 发起加载请求
+            quant_if.cb.load_quant_req <= 1'b1;
+            $display("  [%0t] Quant loader: requesting load (tile=%0d)", $time, load_count);
 
-        // 等待该 tile 完成（通过 tile_calc_over）
-        wait (comp_if.tile_calc_over);
-        $display("  [%0t] Quant loader: tile done, clearing valid (tile=%0d)", $time, load_count);
+            // 等待授权
+            wait (quant_if.load_quant_granted);
+            $display("  [%0t] Quant loader: granted (tile=%0d)", $time, load_count);
 
-        quant_if.cb.quant_params_valid <= 1'b0;
+            @(quant_if.cb);
+            quant_if.cb.load_quant_req <= 1'b0;
 
-        load_count++;
+            // 模拟加载延迟后使量化参数有效
+            repeat (32) @(quant_if.cb);
+            quant_if.cb.quant_params_valid <= 1'b1;
+            $display("  [%0t] Quant params valid (tile=%0d)", $time, load_count);
+
+            // 等待该 tile 完成（通过 tile_calc_over）
+            wait (comp_if.tile_calc_over);
+            $display("  [%0t] Quant loader: tile done, clearing valid (tile=%0d)", $time, load_count);
+
+            quant_if.cb.quant_params_valid <= 1'b0;
+
+            load_count++;
+        end
+
+        $display("%s  === Quant loader finished (total=%0d tiles) ===%s", COLOR_BOLD_BLUE, load_count,
+                 COLOR_RESET);
     end
-
-    $display("%s  === Quant loader finished (total=%0d tiles) ===%s", COLOR_BOLD_BLUE, load_count,
-             COLOR_RESET);
 endtask
 
 // OA Writer 任务保持不变（已经是独立循环）
@@ -290,8 +308,8 @@ task automatic simulate_compute_core();
 endtask
 
 // 主计算任务 - 启动所有独立任务并等待完成
-task automatic simulate_block_computation(input bit cfg16);
-    $display("\n%s  === Starting block computation (cfg16=%0b) ===%s", COLOR_BOLD_BLUE, cfg16,
+task automatic simulate_block_computation(input bit cfg16, input bit skip_bias_quant);
+    $display("\n%s  === Starting block computation (cfg16=%0b, skip_bias_quant=%0b) ===%s", COLOR_BOLD_BLUE, cfg16, skip_bias_quant,
              COLOR_RESET);
 
     // 配置位与启动
@@ -311,8 +329,8 @@ task automatic simulate_block_computation(input bit cfg16);
     fork
         simulate_weight_loader();
         simulate_ia_loader();
-        simulate_bias_loader();
-        simulate_quant_loader();
+        simulate_bias_loader(skip_bias_quant);
+        simulate_quant_loader(skip_bias_quant);
         simulate_oa_writer();
         simulate_compute_core();
     join

@@ -1,0 +1,16 @@
+{
+  "case": "grant_bp_r2_w2",
+  "k": 16,
+  "n": 16,
+  "m": 16,
+  "ia_reuse_num": 2,
+  "w_reuse_num": 2,
+  "rhs_zp": 0,
+  "base_addr": 256,
+  "grant_bp_en": 1,
+  "grant_bp_cycles": 4,
+  "tile_rows": 4,
+  "tile_cols": 4,
+  "l2_groups": 2,
+  "total_tiles": 32
+}

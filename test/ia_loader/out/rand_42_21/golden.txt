@@ -1,0 +1,24 @@
+# Case: rand_42_21
+# K=15 N=3 M=21 R=2 W=1 SIZE=8
+# HTN=1 VTN=2 G2=1 G1=1 R_act=2
+
+TILE 0 0 vrows=8 is_first=1 calc_done=1
+  ROW 0:      1      2      3      0      0      0      0      0
+  ROW 1:      4      5      6      0      0      0      0      0
+  ROW 2:      7      8      9      0      0      0      0      0
+  ROW 3:     10     11     12      0      0      0      0      0
+  ROW 4:     13     14     15      0      0      0      0      0
+  ROW 5:     16     17     18      0      0      0      0      0
+  ROW 6:     19     20     21      0      0      0      0      0
+  ROW 7:     22     23     24      0      0      0      0      0
+
+TILE 1 0 vrows=7 is_first=1 calc_done=1
+  ROW 0:     25     26     27      0      0      0      0      0
+  ROW 1:     28     29     30      0      0      0      0      0
+  ROW 2:     31     32     33      0      0      0      0      0
+  ROW 3:     34     35     36      0      0      0      0      0
+  ROW 4:     37     38     39      0      0      0      0      0
+  ROW 5:     40     41     42      0      0      0      0      0
+  ROW 6:     43     44     45      0      0      0      0      0
+
+# Total tiles sent: 2

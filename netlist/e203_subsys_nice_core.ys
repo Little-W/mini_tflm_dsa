@@ -1,0 +1,4 @@
+read_verilog -sv -formal -overwrite {workspace}/aiEngine/trash/icb_unalign_bridge copy.sv
+read_verilog -sv -formal -overwrite {workspace}/eai/nice_core_top/e203_subsys_nice_core.sv
+design -reset-vlog; proc;
+write_json {workspace}/netlist/e203_subsys_nice_core.json

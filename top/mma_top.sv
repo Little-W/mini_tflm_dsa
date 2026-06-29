@@ -504,7 +504,7 @@ module mma_top #(
   );
 
   // 脉动阵列计算核心
-  compute_core #(
+    compute_core #(
       .SIZE      (SIZE),
       .DATA_WIDTH(DATA_WIDTH)
   ) u_compute_core (

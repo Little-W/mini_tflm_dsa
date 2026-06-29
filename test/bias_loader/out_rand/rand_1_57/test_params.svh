@@ -1,0 +1,14 @@
+// Auto-generated for case: rand_1_57
+localparam int TC_K = 32;
+localparam int TC_M = 32;
+localparam int TC_BASE_ADDR = 32'h00000100;
+localparam int TC_NUM_BLOCKS = 4;
+localparam int TC_LAST_BLOCK_ELEMS = 8;
+localparam int TC_SEQ_LEN = 4;
+localparam int TC_LAST_LOOP = 1;
+localparam int TC_GRANT_BP_EN = 0;
+localparam int TC_GRANT_BP_CYCLES = 0;
+localparam int TC_BP_TARGET_REQ_IDX = 0;
+localparam int TC_BP_TARGET_REQ_CYCLES = 0;
+localparam int TC_CHECK_VALID_DROP = 0;
+localparam int TC_SRAM_DEPTH = 256;

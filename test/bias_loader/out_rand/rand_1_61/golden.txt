@@ -1,0 +1,22 @@
+# Case: rand_1_61
+# M=15 SIZE=8 NUM_BLOCKS=2 LAST_ELEMS=7
+
+BLOCK 0 elems=8
+  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+BLOCK 1 elems=7
+  9
+  10
+  11
+  12
+  13
+  14
+  15
+  0
+

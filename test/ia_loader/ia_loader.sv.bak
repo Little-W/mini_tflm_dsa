@@ -1,0 +1,717 @@
+/*
+ * ia_loader v1.1 — 输入激活加载控制器（增强版）
+ * ============================================================
+ * 功能：
+ *   从外部存储器自主读取 IA Tile，写入多槽缓存 RAM，
+ *   按 L1/L2 两级分组复用策略循环发送，
+ *   并在输出端内置对角化延迟（取代外部 data_setup）。
+ *
+ * 子模块：
+ *   ia_loader_cache_mgr — 缓存 RAM 管理、对角化输出、控制信号生成
+ *
+ * 设计约束：
+ *   - SIZE、ia_reuse_num、w_reuse_num 要求为 2 的幂次
+ *   - CACHE_BLOCKS ≥ 2 × ia_reuse_num
+ */
+
+`include "e203_defines.v"
+`include "icb_types.svh"
+
+module ia_loader #(
+    parameter int unsigned DATA_WIDTH   = 16,
+    parameter int unsigned SIZE         = 16,
+    parameter int unsigned BUS_WIDTH    = 32,
+    parameter int unsigned REG_WIDTH    = 32,
+    parameter int unsigned CACHE_BLOCKS = 4
+) (
+    input  logic clk,
+    input  logic rst_n,
+
+    // ---- 配置与控制 ----
+    input  logic                        init_cfg,
+    output logic                        load_ia_req,
+    input  logic                        load_ia_granted,
+    input  logic                        send_ia_trigger,
+
+    // ---- 矩阵尺寸（init_cfg 高时须稳定）----
+    input  logic [REG_WIDTH-1:0]        k,
+    input  logic [REG_WIDTH-1:0]        n,
+    input  logic [REG_WIDTH-1:0]        m,
+    input  logic [REG_WIDTH-1:0]        lhs_base,
+    input  logic [REG_WIDTH-1:0]        lhs_row_stride_b,
+    input  logic signed [REG_WIDTH-1:0] lhs_zp,
+    input  logic                        use_16bits,
+
+    // ---- 复用控制（init_cfg 高时须稳定）----
+    input  logic [REG_WIDTH-1:0]        ia_reuse_num,   // R
+    input  logic [REG_WIDTH-1:0]        w_reuse_num,    // W
+
+    // ---- ICB 主接口 ----
+    output logic                        icb_cmd_valid,
+    input  logic                        icb_cmd_ready,
+    output logic                        icb_cmd_read,
+    output logic [REG_WIDTH-1:0]        icb_cmd_addr,
+    output logic [3:0]                  icb_cmd_len,
+    input  logic                        icb_rsp_valid,
+    output logic                        icb_rsp_ready,
+    input  logic [BUS_WIDTH-1:0]        icb_rsp_rdata,
+    input  logic                        icb_rsp_err,
+
+    // ---- 输出到脉动阵列（SIZE 维数组，含对角延迟）----
+    output logic signed [DATA_WIDTH-1:0] ia_out          [SIZE],
+    output logic                         ia_row_valid    [SIZE],
+    output logic                         ia_is_init_data [SIZE],
+    output logic                         ia_calc_done    [SIZE],
+    output logic                         ia_sending_done,
+    output logic                         ia_data_valid
+);
+
+  // =======================================================================
+  // 局部参数
+  // =======================================================================
+  localparam int BYTE_PER_BEAT        = BUS_WIDTH / 8;
+  localparam int LOG2_SIZE            = $clog2(SIZE);
+  localparam int LOG2_BYTE_PER_BEAT   = $clog2(BYTE_PER_BEAT);
+
+  // =======================================================================
+  // 状态机
+  // =======================================================================
+  typedef enum logic [1:0] {
+    IDLE = 2'b00,
+    INIT = 2'b11,
+    LOAD = 2'b01,
+    SEND = 2'b10
+  } state_t;
+
+  state_t state, state_nxt;
+
+  // =======================================================================
+  // 配置寄存器（init_cfg 锁存）
+  // =======================================================================
+  logic [REG_WIDTH-1:0] cfg_k, cfg_n, cfg_m;
+  logic signed [REG_WIDTH-1:0] cfg_lhs_zp;
+  logic [REG_WIDTH-1:0] cfg_lhs_row_stride_b, cfg_lhs_base;
+  logic                 cfg_use_16bits;
+  logic [REG_WIDTH-1:0] cfg_ia_reuse_num;  // R
+  logic [REG_WIDTH-1:0] cfg_w_reuse_num;   // W 
+
+  // =======================================================================
+  // Tile / 分组 派生参数
+  // =======================================================================
+  logic [REG_WIDTH-1:0] horizontal_tile_num;  // HTN = ceil(n/SIZE)
+  logic [REG_WIDTH-1:0] vertical_tile_num;    // VTN = ceil(k/SIZE)
+  logic [REG_WIDTH-1:0] loop_row_num;         // LRN = ceil(m/SIZE)
+  logic [REG_WIDTH-1:0] row_tile_rem;         // 最后列 Tile 无效列数
+  logic [REG_WIDTH-1:0] col_tile_rem;         // 最后行 Tile 无效行数
+
+  logic [REG_WIDTH-1:0] l2_group_num;         // G2 = ceil(VTN/R)
+  logic [REG_WIDTH-1:0] l1_per_l2;            // G1 = ceil(LRN/W)
+  logic [REG_WIDTH-1:0] ia_reuse_num_act;     // R_act
+  logic [REG_WIDTH-1:0] w_reuse_num_act;      // W_act
+
+  // ICB burst 参数
+  logic [REG_WIDTH-1:0] rsp_beats_per_row_normal;
+  logic [REG_WIDTH-1:0] rsp_beats_per_row_last;
+  logic [REG_WIDTH-1:0] rsp_rows_last_tile;
+
+  // =======================================================================
+  // 循环计数器
+  // =======================================================================
+  logic [REG_WIDTH-1:0] l2_idx;    // 当前 L2 组索引
+  logic [REG_WIDTH-1:0] l1_idx;    // L2 组内 L1 组索引
+  logic [REG_WIDTH-1:0] w_cnt;     // L1 组内 W 轴循环
+  logic [REG_WIDTH-1:0] ia_idx;    // L1 组内 IA 轮转索引
+
+  // 当前 Tile 的行列坐标（由 l2_idx, ia_idx -> 行; l1_idx, w_cnt -> 列）
+  logic [REG_WIDTH-1:0] tile_row_idx;  // = l2_idx * R + ia_idx
+  logic [REG_WIDTH-1:0] tile_col_idx;  // = l1_idx * W + w_cnt (逻辑意义，实际仅需要 l1_idx)
+  // 注意：每次 L1 组 W 轮循环时 tile_col_idx 不变（因为同一 L1 组的 IA Tile 被复用）
+
+  // =======================================================================
+  // 地址计算
+  // =======================================================================
+  logic [REG_WIDTH-1:0] current_tile_base;    // 当前 Tile 的起始字节地址
+  logic [REG_WIDTH-1:0] current_row_addr;     // 逐行累加的行地址
+  logic [REG_WIDTH-1:0] current_read_row;     // 已发送请求的行数
+  logic [REG_WIDTH-1:0] rows_to_read;         // 当前 Tile 需读取的行数
+  logic [REG_WIDTH-1:0] valid_rows;           // 当前 Tile 有效行数
+  logic [REG_WIDTH-1:0] read_burst_length;
+
+  // L2 组内行基地址：l2_idx 切换时更新
+  logic [REG_WIDTH-1:0] l2_row_base;          // l2_idx * R * SIZE 行的基地址
+
+  // =======================================================================
+  // 辅助判断
+  // =======================================================================
+  logic is_last_col_tile;  // tile_col_idx == HTN-1（当前 Tile 处于最后一列）
+  logic is_last_row_tile;  // tile_row_idx == VTN-1
+  logic is_first_tile;     // tile_col_idx == 0 且 ia_idx == 0
+
+  wire cmd_hs = icb_cmd_valid && icb_cmd_ready;
+  wire rsp_hs = icb_rsp_valid && icb_rsp_ready;
+
+  // 当前 L1 组 W 轴上界
+  logic [REG_WIDTH-1:0] w_cur;
+  assign w_cur = (l1_idx == l1_per_l2 - 1) ? w_reuse_num_act : cfg_w_reuse_num;
+
+  // 当前 L2 组 R 轴上界
+  logic [REG_WIDTH-1:0] r_cur;
+  assign r_cur = (l2_idx == l2_group_num - 1) ? ia_reuse_num_act : cfg_ia_reuse_num;
+
+  // 缓存管理子模块交互信号
+  logic                        cache_wr_en;
+  logic [$clog2(CACHE_BLOCKS)-1:0] cache_wr_slot;
+  logic [$clog2(SIZE)-1:0]     cache_wr_row;
+  logic [$clog2(SIZE)-1:0]     cache_wr_col;
+  logic signed [DATA_WIDTH-1:0] cache_wr_data;
+
+  logic                        cache_send_start;
+  logic [$clog2(CACHE_BLOCKS)-1:0] cache_send_slot;
+  logic [REG_WIDTH-1:0]       cache_send_valid_rows;
+  logic                        cache_send_is_init;
+  logic                        cache_send_calc_done;
+  logic                        cache_send_done;  // 从子模块返回的 sending_done
+
+  // =======================================================================
+  // slot 管理：简单的 FIFO 式分配
+  // =======================================================================
+  logic [$clog2(CACHE_BLOCKS)-1:0] wr_slot_ptr;      // 下一个写入的槽位
+  logic [$clog2(CACHE_BLOCKS)-1:0] rd_slot_ptr;      // 当前读出的槽位（L1 组内基址）
+  logic [$clog2(CACHE_BLOCKS)-1:0] current_rd_slot;  // rd_slot_ptr + ia_idx
+
+  assign current_rd_slot = rd_slot_ptr + ia_idx[$clog2(CACHE_BLOCKS)-1:0];
+  assign cache_send_slot = current_rd_slot;
+
+  // =======================================================================
+  // 状态机 — 现态更新
+  // =======================================================================
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) state <= IDLE;
+    else        state <= state_nxt;
+  end
+
+  // =======================================================================
+  // 状态机 — 次态逻辑
+  // =======================================================================
+  always_comb begin
+    state_nxt = state;
+    case (state)
+      IDLE: if (init_cfg) state_nxt = INIT;
+
+      INIT: if (load_ia_granted) state_nxt = LOAD;
+
+      LOAD: if (ia_data_valid) state_nxt = SEND;
+
+      SEND: begin
+        if (cache_send_done) begin
+          // 全部完毕
+          if (l2_idx == l2_group_num - 1 &&
+              l1_idx == l1_per_l2 - 1 &&
+              w_cnt  == w_cur - 1 &&
+              ia_idx == r_cur - 1)
+            state_nxt = IDLE;
+          // REUSE：同一 L1 组，w_cnt 尚未到头
+          else if (ia_idx == r_cur - 1 && w_cnt < w_cur - 1)
+            state_nxt = SEND;  // 保持，直接复用
+          // 需要加载新 L1 组
+          else if (ia_idx == r_cur - 1 && w_cnt == w_cur - 1)
+            state_nxt = LOAD;
+          // L1 组内 ia_idx 还没走完
+          else
+            state_nxt = SEND;
+        end
+        // 后台预加载完成也可转换（LOAD+SEND 并发在下一版考虑）
+      end
+
+      default: state_nxt = IDLE;
+    endcase
+  end
+
+  // =======================================================================
+  // 配置参数锁存与派生参数计算（IDLE -> INIT）
+  // =======================================================================
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      cfg_k               <= '0;
+      cfg_n               <= '0;
+      cfg_m               <= '0;
+      cfg_lhs_zp          <= '0;
+      cfg_lhs_row_stride_b<= '0;
+      cfg_lhs_base        <= '0;
+      cfg_use_16bits      <= '0;
+      cfg_ia_reuse_num    <= '0;
+      cfg_w_reuse_num     <= '0;
+
+      horizontal_tile_num <= '0;
+      vertical_tile_num   <= '0;
+      loop_row_num        <= '0;
+      row_tile_rem        <= '0;
+      col_tile_rem        <= '0;
+
+      l2_group_num        <= '0;
+      l1_per_l2           <= '0;
+      ia_reuse_num_act    <= '0;
+      w_reuse_num_act     <= '0;
+
+      rsp_beats_per_row_normal <= '0;
+      rsp_beats_per_row_last   <= '0;
+      rsp_rows_last_tile       <= '0;
+    end else if (state == IDLE && init_cfg) begin
+      // 基本参数锁存
+      cfg_k               <= k;
+      cfg_n               <= n;
+      cfg_m               <= m;
+      cfg_lhs_zp          <= lhs_zp;
+      cfg_lhs_row_stride_b<= lhs_row_stride_b;
+      cfg_lhs_base        <= lhs_base;
+      cfg_use_16bits      <= use_16bits;
+      cfg_ia_reuse_num    <= ia_reuse_num;
+      cfg_w_reuse_num     <= w_reuse_num;
+
+      // Tile 总数
+      horizontal_tile_num <= (n + SIZE - 1) >> LOG2_SIZE;
+      vertical_tile_num   <= (k + SIZE - 1) >> LOG2_SIZE;
+      loop_row_num        <= (m + SIZE - 1) >> LOG2_SIZE;
+
+      // 余量
+      row_tile_rem <= (((n + SIZE - 1) >> LOG2_SIZE) << LOG2_SIZE) - n;
+      col_tile_rem <= (((k + SIZE - 1) >> LOG2_SIZE) << LOG2_SIZE) - k;
+
+      // L2/L1 组参数
+      l2_group_num     <= (((k + SIZE - 1) >> LOG2_SIZE) + ia_reuse_num - 1) >> $clog2(ia_reuse_num);
+      l1_per_l2        <= (((m + SIZE - 1) >> LOG2_SIZE) + w_reuse_num  - 1) >> $clog2(w_reuse_num);
+
+      // R_act: VTN mod R, 为 0 则取 R
+      begin
+        automatic logic [REG_WIDTH-1:0] vtn_tmp = (k + SIZE - 1) >> LOG2_SIZE;
+        automatic logic [REG_WIDTH-1:0] r_mod   = vtn_tmp & (ia_reuse_num - 1);
+        ia_reuse_num_act <= (r_mod == 0) ? ia_reuse_num : r_mod;
+      end
+
+      // W_act: LRN mod W, 为 0 则取 W
+      begin
+        automatic logic [REG_WIDTH-1:0] lrn_tmp = (m + SIZE - 1) >> LOG2_SIZE;
+        automatic logic [REG_WIDTH-1:0] w_mod   = lrn_tmp & (w_reuse_num - 1);
+        w_reuse_num_act <= (w_mod == 0) ? w_reuse_num : w_mod;
+      end
+
+      // ICB burst 参数
+      rsp_beats_per_row_normal <= ((SIZE << (use_16bits ? 1 : 0)) + BYTE_PER_BEAT - 1) >> LOG2_BYTE_PER_BEAT;
+
+      begin
+        automatic logic [REG_WIDTH-1:0] last_cols = SIZE - ((((n + SIZE - 1) >> LOG2_SIZE) << LOG2_SIZE) - n);
+        rsp_beats_per_row_last <= ((last_cols << (use_16bits ? 1 : 0)) + BYTE_PER_BEAT - 1) >> LOG2_BYTE_PER_BEAT;
+      end
+
+      begin
+        automatic logic [REG_WIDTH-1:0] tmp_col_rem = (((k + SIZE - 1) >> LOG2_SIZE) << LOG2_SIZE) - k;
+        rsp_rows_last_tile <= SIZE - tmp_col_rem;
+      end
+    end
+  end
+
+  // =======================================================================
+  // Tile 行列坐标
+  // =======================================================================
+  // tile_row_idx = l2_idx * R + ia_idx  (用移位: l2_idx << log2(R) | ia_idx)
+  // tile_col_idx = l1_idx * W + w_cnt   (用移位: l1_idx << log2(W) | w_cnt)
+  always_comb begin
+    tile_row_idx = (l2_idx << $clog2(cfg_ia_reuse_num)) + ia_idx;
+    tile_col_idx = (l1_idx << $clog2(cfg_w_reuse_num))  + w_cnt;
+  end
+
+  assign is_last_col_tile = (tile_col_idx == horizontal_tile_num - 1);
+  assign is_last_row_tile = (tile_row_idx == vertical_tile_num   - 1);
+  assign is_first_tile    = (tile_col_idx == 0 && ia_idx == 0);
+
+  // =======================================================================
+  // 循环计数器管理
+  // =======================================================================
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      l2_idx <= '0;
+      l1_idx <= '0;
+      w_cnt  <= '0;
+      ia_idx <= '0;
+    end else if (state == INIT) begin
+      l2_idx <= '0;
+      l1_idx <= '0;
+      w_cnt  <= '0;
+      ia_idx <= '0;
+    end else if (state == SEND && cache_send_done) begin
+      // 最内层 ia_idx 递增
+      if (ia_idx < r_cur - 1) begin
+        ia_idx <= ia_idx + 1;
+      end else begin
+        ia_idx <= '0;
+        // w_cnt 递增
+        if (w_cnt < w_cur - 1) begin
+          w_cnt <= w_cnt + 1;
+        end else begin
+          w_cnt <= '0;
+          // l1_idx 递增
+          if (l1_idx < l1_per_l2 - 1) begin
+            l1_idx <= l1_idx + 1;
+          end else begin
+            l1_idx <= '0;
+            // l2_idx 递增
+            if (l2_idx < l2_group_num - 1) begin
+              l2_idx <= l2_idx + 1;
+            end
+            // else: 全部完毕，FSM 回 IDLE
+          end
+        end
+      end
+    end
+  end
+
+  // =======================================================================
+  // 地址计算
+  // =======================================================================
+  // l2_row_base: 每个 L2 组起始行的基地址
+  // current_tile_base: 当前 Tile 的首字节地址
+  //   = l2_row_base + ia_idx * SIZE * stride + tile_col_idx * SIZE * elem_bytes
+  // 为避免乘法，使用累加寄存器
+
+  // L2 行基地址：L2 切换时用累加方式更新
+  logic [REG_WIDTH-1:0] l2_row_base_nxt;
+  logic [REG_WIDTH-1:0] ia_row_offset;  // ia_idx 行内偏移
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      l2_row_base <= '0;
+    end else if (state == IDLE && init_cfg) begin
+      l2_row_base <= lhs_base;
+    end else if (state == SEND && cache_send_done) begin
+      // L2 组切换时更新
+      if (ia_idx == r_cur - 1 && w_cnt == w_cur - 1 && l1_idx == l1_per_l2 - 1) begin
+        // l2_row_base += R * SIZE * stride
+        l2_row_base <= l2_row_base + (cfg_ia_reuse_num << LOG2_SIZE) * cfg_lhs_row_stride_b;
+      end
+    end
+  end
+
+  // 当前 Tile 基地址计算
+  // tile_base = l2_row_base + ia_idx * SIZE * stride + tile_col_idx * SIZE * elem_bytes
+  // 用寄存器在 LOAD 开始时计算
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      current_tile_base <= '0;
+    end else if (state == IDLE && init_cfg) begin
+      current_tile_base <= lhs_base;
+    end else if (state == INIT) begin
+      current_tile_base <= cfg_lhs_base;
+    end else if (state == SEND && cache_send_done) begin
+      // 计算下一个 Tile 的基地址
+      // 下一个 Tile 的 ia_idx 和 tile_col_idx 取决于计数器的下一值
+      // 为简化，在进入 LOAD 时再重新计算
+      // 这里仅在 REUSE 路径清场（ia_idx 递增，同行不同 slot）
+    end
+  end
+
+  // 在 LOAD 开始的第一个周期计算正确的 tile 基地址
+  // current_tile_base = l2_row_base
+  //                   + tile_row_idx_within_l2 * SIZE * stride   (ia_idx * SIZE * stride)
+  //                   + tile_col_idx * SIZE * elem_bytes
+  logic load_addr_computed;
+  logic [REG_WIDTH-1:0] tile_col_byte_offset;
+
+  assign tile_col_byte_offset = tile_col_idx << (LOG2_SIZE + (cfg_use_16bits ? 1 : 0));
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      load_addr_computed <= '0;
+    end else if (state == LOAD && !load_addr_computed) begin
+      load_addr_computed <= 1'b1;
+    end else if (state != LOAD) begin
+      load_addr_computed <= '0;
+    end
+  end
+
+  // tile 基地址 = l2_row_base + ia_idx * SIZE * stride + col_byte_offset
+  // ia_idx * SIZE * stride: 使用移位  ia_idx << LOG2_SIZE 得行数，再乘 stride
+  logic [REG_WIDTH-1:0] computed_tile_base;
+  assign computed_tile_base = l2_row_base 
+                            + (ia_idx << LOG2_SIZE) * cfg_lhs_row_stride_b 
+                            + tile_col_byte_offset;
+
+  // =======================================================================
+  // ICB 读请求逻辑
+  // =======================================================================
+  // 有效行数
+  assign valid_rows = is_last_row_tile ? rsp_rows_last_tile : SIZE;
+  assign rows_to_read = valid_rows;
+
+  // burst 长度
+  logic [REG_WIDTH-1:0] current_burst_len;
+  assign current_burst_len = is_last_col_tile ? rsp_beats_per_row_last : rsp_beats_per_row_normal;
+
+  assign icb_cmd_read = 1'b1;
+  assign icb_cmd_len  = current_burst_len[3:0] - 1;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      icb_cmd_valid    <= 1'b0;
+      icb_cmd_addr     <= '0;
+      current_row_addr <= '0;
+      current_read_row <= '0;
+    end else begin
+      case (state)
+        LOAD: begin
+          if (current_read_row < rows_to_read) begin
+            if (!icb_cmd_valid || cmd_hs) begin
+              icb_cmd_valid <= 1'b1;
+              if (current_read_row == 0) begin
+                icb_cmd_addr     <= computed_tile_base;
+                current_row_addr <= computed_tile_base + cfg_lhs_row_stride_b;
+              end else begin
+                icb_cmd_addr     <= current_row_addr;
+                current_row_addr <= current_row_addr + cfg_lhs_row_stride_b;
+              end
+              current_read_row <= current_read_row + 1;
+            end
+          end else begin
+            if (cmd_hs || !icb_cmd_valid) begin
+              icb_cmd_valid <= 1'b0;
+            end
+          end
+        end
+        default: begin
+          icb_cmd_valid    <= 1'b0;
+          current_read_row <= '0;
+        end
+      endcase
+    end
+  end
+
+  // =======================================================================
+  // ICB 读响应接收 — 解包写入缓存
+  // =======================================================================
+  localparam int ELEM_PER_BEAT_S8  = BYTE_PER_BEAT;
+  localparam int ELEM_PER_BEAT_S16 = BYTE_PER_BEAT >> 1;
+
+  logic [REG_WIDTH-1:0] rsp_row_cnt;
+  logic [REG_WIDTH-1:0] rsp_beat_cnt;
+
+  logic [$clog2(SIZE)-1:0] rsp_col_base;
+  assign rsp_col_base = cfg_use_16bits 
+                       ? rsp_beat_cnt[$clog2(SIZE)-1:0] << $clog2(ELEM_PER_BEAT_S16)
+                       : rsp_beat_cnt[$clog2(SIZE)-1:0] << $clog2(ELEM_PER_BEAT_S8);
+
+  // 响应通道计数
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      rsp_row_cnt  <= '0;
+      rsp_beat_cnt <= '0;
+      icb_rsp_ready <= 1'b0;
+    end else begin
+      case (state)
+        LOAD: begin
+          icb_rsp_ready <= 1'b1;
+          if (rsp_hs) begin
+            if (rsp_beat_cnt == current_burst_len - 1) begin
+              rsp_beat_cnt <= '0;
+              if (rsp_row_cnt == rows_to_read - 1) begin
+                rsp_row_cnt <= '0;
+              end else begin
+                rsp_row_cnt <= rsp_row_cnt + 1;
+              end
+            end else begin
+              rsp_beat_cnt <= rsp_beat_cnt + 1;
+            end
+          end
+        end
+        default: begin
+          rsp_row_cnt   <= '0;
+          rsp_beat_cnt  <= '0;
+          icb_rsp_ready <= 1'b0;
+        end
+      endcase
+    end
+  end
+
+  // =======================================================================
+  // 数据解包 → 写入缓存子模块
+  // =======================================================================
+  // 对每个 beat 中的多个元素，逐个驱动 cache_wr_*
+  // 为简化：使用 generate 直接将 beat 数据扇出到子模块的多写端口
+  // 但子模块内部使用 SIZE 组 RAM bank，每 bank 只写一次
+  // 此处先通过组合逻辑完成解包和零点偏移
+
+  logic signed [DATA_WIDTH-1:0] unpacked_data [BYTE_PER_BEAT];  // 最多 BYTE_PER_BEAT 个元素
+  logic                         unpacked_valid[BYTE_PER_BEAT];
+
+  always_comb begin
+    for (int i = 0; i < BYTE_PER_BEAT; i++) begin
+      unpacked_data[i]  = '0;
+      unpacked_valid[i] = 1'b0;
+    end
+
+    if (rsp_hs) begin
+      if (cfg_use_16bits) begin
+        // s16 模式：每 beat ELEM_PER_BEAT_S16 个元素
+        for (int i = 0; i < ELEM_PER_BEAT_S16; i++) begin
+          if (rsp_col_base + i < SIZE) begin
+            unpacked_data[i]  = DATA_WIDTH'($signed(icb_rsp_rdata[i*16 +: 16]) + cfg_lhs_zp[15:0]);
+            unpacked_valid[i] = 1'b1;
+          end
+        end
+      end else begin
+        // s8 模式：每 beat ELEM_PER_BEAT_S8 个元素，符号扩展到 DATA_WIDTH
+        for (int i = 0; i < ELEM_PER_BEAT_S8; i++) begin
+          if (rsp_col_base + i < SIZE) begin
+            unpacked_data[i]  = DATA_WIDTH'($signed({{8{icb_rsp_rdata[i*8+7]}}, icb_rsp_rdata[i*8 +: 8]}) + cfg_lhs_zp[15:0]);
+            unpacked_valid[i] = 1'b1;
+          end
+        end
+      end
+    end
+  end
+
+  // =======================================================================
+  // ia_data_valid 生成
+  // =======================================================================
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      ia_data_valid <= 1'b0;
+    end else begin
+      case (state)
+        LOAD: begin
+          if (rsp_hs && rsp_beat_cnt == current_burst_len - 1 
+                     && rsp_row_cnt  == rows_to_read - 1)
+            ia_data_valid <= 1'b1;
+        end
+        SEND: begin
+          if (cache_send_done) begin
+            // ia_idx 未走完：同一 L1 组内下一个 tile 已在缓存中，直接置高
+            if (ia_idx < r_cur - 1)
+              ia_data_valid <= 1'b1;
+            // REUSE 路径：ia_idx 走完但 w_cnt 未满，同组数据复用，直接置高
+            else if (ia_idx == r_cur - 1 && w_cnt < w_cur - 1)
+              ia_data_valid <= 1'b1;
+            else
+              ia_data_valid <= 1'b0;
+          end else if (send_ia_trigger) begin
+            ia_data_valid <= 1'b0;
+          end
+        end
+        default: ia_data_valid <= 1'b0;
+      endcase
+    end
+  end
+
+  // =======================================================================
+  // load_ia_req 生成
+  // =======================================================================
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      load_ia_req <= 1'b0;
+    end else begin
+      if (state == INIT && !load_ia_req)
+        load_ia_req <= 1'b1;
+      else if (load_ia_granted)
+        load_ia_req <= 1'b0;
+      else if (state == SEND && cache_send_done) begin
+        // 需要新 LOAD（L1 组切换）
+        if (ia_idx == r_cur - 1 && w_cnt == w_cur - 1) begin
+          // 非全部完成
+          if (!(l2_idx == l2_group_num - 1 && l1_idx == l1_per_l2 - 1))
+            load_ia_req <= 1'b1;
+        end
+      end
+    end
+  end
+
+  // =======================================================================
+  // slot 管理
+  // =======================================================================
+  // 简化版本：每个 L1 组加载时使用 R 个连续 slot
+  // wr_slot_ptr: 递增写入
+  // rd_slot_ptr: L1 组的基 slot
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      wr_slot_ptr <= '0;
+      rd_slot_ptr <= '0;
+    end else if (state == INIT) begin
+      wr_slot_ptr <= '0;
+      rd_slot_ptr <= '0;
+    end else if (state == LOAD) begin
+      // 进入 LOAD 时 wr_slot_ptr 指向当前 L1 组的 ia_idx 对应 slot
+      // 完成一个 tile 加载后递增
+      if (rsp_hs && rsp_beat_cnt == current_burst_len - 1 
+                  && rsp_row_cnt == rows_to_read - 1) begin
+        wr_slot_ptr <= wr_slot_ptr + 1;
+      end
+    end else if (state == SEND && cache_send_done) begin
+      // L1 组切换时，rd_slot_ptr 移到下一组
+      if (ia_idx == r_cur - 1 && w_cnt == w_cur - 1) begin
+        rd_slot_ptr <= rd_slot_ptr + r_cur[$clog2(CACHE_BLOCKS)-1:0];
+      end
+    end
+  end
+
+  // =======================================================================
+  // 向缓存管理子模块传递发送命令
+  // =======================================================================
+  // 当 SEND 状态收到 send_ia_trigger 时，启动对角化发送
+  logic send_active;
+  logic cache_send_is_init_base;
+  logic cache_send_calc_done_base;
+
+  assign cache_send_is_init_base  = is_first_tile;
+  // ia_calc_done: L2 组内最后一个 L1 组的发送
+  assign cache_send_calc_done_base = (l1_idx == l1_per_l2 - 1);
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      cache_send_start <= 1'b0;
+    end else begin
+      if (state == SEND && send_ia_trigger && ia_data_valid)
+        cache_send_start <= 1'b1;
+      else
+        cache_send_start <= 1'b0;
+    end
+  end
+
+  // =======================================================================
+  // ia_sending_done 直通
+  // =======================================================================
+  assign ia_sending_done = cache_send_done;
+
+  // =======================================================================
+  // 缓存管理子模块例化
+  // =======================================================================
+  ia_loader_cache_mgr #(
+    .DATA_WIDTH   (DATA_WIDTH),
+    .SIZE         (SIZE),
+    .BUS_WIDTH    (BUS_WIDTH),
+    .REG_WIDTH    (REG_WIDTH),
+    .CACHE_BLOCKS (CACHE_BLOCKS)
+  ) u_cache_mgr (
+    .clk           (clk),
+    .rst_n         (rst_n),
+
+    // ---- 写入端（ICB 响应解包后的数据）----
+    .wr_slot       (wr_slot_ptr),
+    .wr_row        (rsp_row_cnt[$clog2(SIZE)-1:0]),
+    .wr_col_base   (rsp_col_base),
+    .wr_data       (unpacked_data),
+    .wr_valid      (unpacked_valid),
+    .wr_use_16bits (cfg_use_16bits),
+
+    // ---- 对角化发送控制 ----
+    .send_start    (cache_send_start),
+    .send_slot     (cache_send_slot),
+    .send_valid_rows(valid_rows),
+    .send_is_init  (cache_send_is_init_base),
+    .send_calc_done(cache_send_calc_done_base),
+    .send_done     (cache_send_done),
+
+    // ---- 输出到脉动阵列 ----
+    .ia_out         (ia_out),
+    .ia_row_valid   (ia_row_valid),
+    .ia_is_init_data(ia_is_init_data),
+    .ia_calc_done   (ia_calc_done)
+  );
+
+endmodule

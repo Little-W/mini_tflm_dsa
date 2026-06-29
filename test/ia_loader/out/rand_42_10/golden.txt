@@ -1,0 +1,65 @@
+# Case: rand_42_10
+# K=3 N=47 M=30 R=4 W=2 SIZE=8
+# HTN=6 VTN=1 G2=1 G1=6 R_act=1
+
+TILE 0 0 vrows=3 is_first=1 calc_done=0
+  ROW 0:      1      2      3      4      5      6      7      8
+  ROW 1:     48     49     50     51     52     53     54     55
+  ROW 2:     95     96     97     98     99    100    101    102
+
+TILE 0 0 vrows=3 is_first=1 calc_done=0
+  ROW 0:      1      2      3      4      5      6      7      8
+  ROW 1:     48     49     50     51     52     53     54     55
+  ROW 2:     95     96     97     98     99    100    101    102
+
+TILE 0 1 vrows=3 is_first=0 calc_done=0
+  ROW 0:      9     10     11     12     13     14     15     16
+  ROW 1:     56     57     58     59     60     61     62     63
+  ROW 2:    103    104    105    106    107    108    109    110
+
+TILE 0 1 vrows=3 is_first=0 calc_done=0
+  ROW 0:      9     10     11     12     13     14     15     16
+  ROW 1:     56     57     58     59     60     61     62     63
+  ROW 2:    103    104    105    106    107    108    109    110
+
+TILE 0 2 vrows=3 is_first=0 calc_done=0
+  ROW 0:     17     18     19     20     21     22     23     24
+  ROW 1:     64     65     66     67     68     69     70     71
+  ROW 2:    111    112    113    114    115    116    117    118
+
+TILE 0 2 vrows=3 is_first=0 calc_done=0
+  ROW 0:     17     18     19     20     21     22     23     24
+  ROW 1:     64     65     66     67     68     69     70     71
+  ROW 2:    111    112    113    114    115    116    117    118
+
+TILE 0 3 vrows=3 is_first=0 calc_done=0
+  ROW 0:     25     26     27     28     29     30     31     32
+  ROW 1:     72     73     74     75     76     77     78     79
+  ROW 2:    119    120    121    122    123    124    125    126
+
+TILE 0 3 vrows=3 is_first=0 calc_done=0
+  ROW 0:     25     26     27     28     29     30     31     32
+  ROW 1:     72     73     74     75     76     77     78     79
+  ROW 2:    119    120    121    122    123    124    125    126
+
+TILE 0 4 vrows=3 is_first=0 calc_done=0
+  ROW 0:     33     34     35     36     37     38     39     40
+  ROW 1:     80     81     82     83     84     85     86     87
+  ROW 2:    127    128    129    130    131    132    133    134
+
+TILE 0 4 vrows=3 is_first=0 calc_done=0
+  ROW 0:     33     34     35     36     37     38     39     40
+  ROW 1:     80     81     82     83     84     85     86     87
+  ROW 2:    127    128    129    130    131    132    133    134
+
+TILE 0 5 vrows=3 is_first=0 calc_done=1
+  ROW 0:     41     42     43     44     45     46     47      0
+  ROW 1:     88     89     90     91     92     93     94      0
+  ROW 2:    135    136    137    138    139    140    141      0
+
+TILE 0 5 vrows=3 is_first=0 calc_done=1
+  ROW 0:     41     42     43     44     45     46     47      0
+  ROW 1:     88     89     90     91     92     93     94      0
+  ROW 2:    135    136    137    138    139    140    141      0
+
+# Total tiles sent: 12

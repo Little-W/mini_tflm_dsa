@@ -1,6 +1,6 @@
 /* verilator lint_off TIMESCALEMOD */
 `include "e203_defines.v"
-`include "define.svh"
+// `include "define.svh"
 `include "icb_types.svh"
 /* verilator lint_on TIMESCALEMOD */
 
