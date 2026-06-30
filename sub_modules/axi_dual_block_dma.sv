@@ -17,7 +17,8 @@ module axi_dual_block_dma #(
     parameter int unsigned SIZE         = 16,
     parameter int unsigned BUS_WIDTH    = 32,
     parameter int unsigned REG_WIDTH    = 32,
-    parameter int unsigned CACHE_BLOCKS = 4
+    parameter int unsigned CACHE_BLOCKS = 4,
+    parameter int unsigned READ_OUTSTANDING = 4
 ) (
     input logic clk,
     input logic rst_n,
@@ -108,6 +109,10 @@ module axi_dual_block_dma #(
     localparam int unsigned ELEM_PER_BEAT_S8 = BYTE_PER_BEAT;
     localparam int unsigned ELEM_PER_BEAT_S16 = BYTE_PER_BEAT >> 1;
     localparam int unsigned AXI_SIZE_VALUE = $clog2(BYTE_PER_BEAT);
+    localparam int unsigned RD_OUTS_MAX =
+        (READ_OUTSTANDING < 1) ? 1 : READ_OUTSTANDING;
+    localparam int unsigned RD_OUTS_W =
+        (RD_OUTS_MAX < 2) ? 1 : $clog2(RD_OUTS_MAX + 1);
 
     wire rd_ar_hs = m_axi_arvalid && m_axi_arready;
     wire rd_r_hs  = m_axi_rvalid && m_axi_rready;
@@ -136,6 +141,7 @@ module axi_dual_block_dma #(
     logic [REG_WIDTH-1:0] rd_rsp_row_r;
     logic [$clog2(SIZE)-1:0] rd_rsp_col_base_r;
     logic rd_rsp_valid_r;
+    logic [RD_OUTS_W-1:0] rd_outstanding_cnt;
     logic rd_cmd_inflight;
     logic rd_active;
     logic rd_done_r;
@@ -150,6 +156,7 @@ module axi_dual_block_dma #(
     assign m_axi_arsize  = 3'(AXI_SIZE_VALUE);
     assign m_axi_arburst = 2'b01; // INCR
     assign m_axi_rready  = rd_active;
+    assign rd_cmd_inflight = (rd_outstanding_cnt != '0);
 
     wire [REG_WIDTH-1:0] rd_cfg_burst_len_ext = REG_WIDTH'(rd_cfg_burst_len_m1);
     wire [REG_WIDTH-1:0] byte_per_beat_ext = REG_WIDTH'(BYTE_PER_BEAT);
@@ -216,23 +223,24 @@ module axi_dual_block_dma #(
             m_axi_arlen     <= '0;
             rd_cmd_row_cnt  <= '0;
             rd_cmd_beat_cnt <= '0;
-            rd_cmd_inflight <= 1'b0;
+            rd_outstanding_cnt <= '0;
         end else if (rd_start && !rd_active) begin
             m_axi_arvalid   <= 1'b0;
             m_axi_araddr    <= rd_base_addr;
             m_axi_arlen     <= '0;
             rd_cmd_row_cnt  <= '0;
             rd_cmd_beat_cnt <= '0;
-            rd_cmd_inflight <= 1'b0;
+            rd_outstanding_cnt <= '0;
         end else if (rd_active) begin
             if (rd_done_r) begin
                 m_axi_arvalid   <= 1'b0;
-                rd_cmd_inflight <= 1'b0;
+                rd_outstanding_cnt <= '0;
             end else begin
                 if (rd_ar_hs) begin
-                    m_axi_arvalid   <= 1'b0;
-                    rd_cmd_inflight <= 1'b1;
-                end else if (!m_axi_arvalid && !rd_cmd_inflight && (rd_cmd_row_cnt < rd_cfg_rows)) begin
+                    m_axi_arvalid <= 1'b0;
+                end else if (!m_axi_arvalid &&
+                             (rd_outstanding_cnt < RD_OUTS_W'(RD_OUTS_MAX)) &&
+                             (rd_cmd_row_cnt < rd_cfg_rows)) begin
                     m_axi_arvalid <= 1'b1;
                     m_axi_arlen   <= rd_single_beat ? 8'd0 : 8'(rd_cfg_burst_len_m1);
                     if (rd_cfg_linear_read) begin
@@ -254,13 +262,17 @@ module axi_dual_block_dma #(
                     end
                 end
 
-                if (rd_rsp_done) rd_cmd_inflight <= 1'b0;
+                unique case ({rd_ar_hs, rd_rsp_done})
+                    2'b10: rd_outstanding_cnt <= rd_outstanding_cnt + 1'b1;
+                    2'b01: rd_outstanding_cnt <= rd_outstanding_cnt - 1'b1;
+                    default: rd_outstanding_cnt <= rd_outstanding_cnt;
+                endcase
             end
         end else begin
             m_axi_arvalid   <= 1'b0;
             rd_cmd_row_cnt  <= '0;
             rd_cmd_beat_cnt <= '0;
-            rd_cmd_inflight <= 1'b0;
+            rd_outstanding_cnt <= '0;
         end
     end
 

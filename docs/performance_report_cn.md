@@ -317,6 +317,118 @@ EAI 同步验证：
 |---|---|---|
 | `test/eai` | CSR 读写、MMA 指令发起、响应反压；MMA AXI 端口连接本地 AXI DDR 模型 | PASS |
 
+### 2026-06-30 补充：AXI 读命令流水化与 per-channel 尾块修复
+
+#### AXI read outstanding 设计
+
+AXI 顶层切换后，`SIZE=16,K=64,N=93,M=107,R=1,W=1,lhs=s16` 的主要气泡仍集中在读侧数据供给：
+
+- `ia_data_stall=37,385`，`weight_data_stall=13,720`
+- `dma_busy_ia=50,344`，`dma_busy_kernel=28,068`
+- `axi_ar=5,320`，`axi_r=31,528`
+
+这说明写回解耦已经生效，但读侧 DMA 仍以接近“一行 AR 等一行 R”的方式推进。为减少 AR 命令间气泡，本轮对原生 AXI DMA 增加读命令流水化：
+
+- `axi_dual_block_dma`
+  - 新增 `READ_OUTSTANDING` 参数，默认 4。
+  - 用 `rd_outstanding_cnt` 替代单 bit `rd_cmd_inflight`；保留 `rd_cmd_inflight` 层级名作为 debug 兼容信号。
+  - 当 `rd_outstanding_cnt < READ_OUTSTANDING` 且仍有未发读行时，可以继续发下一条 `AR`。
+  - `rd_done` 仍由最后一条 `R` 响应决定，读数据路由和 s8/s16 解包不变。
+
+- `axi_block_dma_arbiter`
+  - 将 `READ_OUTSTANDING` 透传给共享读 DMA。
+  - 读客户端优先级保持 kernel > IA > quant > bias。尝试临时改成 IA 优先后，`ia_data_stall` 下降但 `weight_data_stall` 上升更多，总周期从 81,466 变差到 81,764，因此未采用。
+
+- `mma_top` / `test/mma_top`
+  - 新增顶层参数 `AXI_READ_OUTSTANDING`，TB 和 Makefile 增加同名配置。
+  - 仿真 build 目录加入 `_ro$(AXI_READ_OUTSTANDING)`，避免 ro=1/4/8 二进制误复用。
+
+- `ddr_axi_mem_model`
+  - 读地址通道增加 `RDQ_DEPTH` 请求队列，能够先接收多条 `AR`，再按 AXI 单 ID 顺序吐 `R`。
+  - 随机命令延迟改为作用在 `ARREADY` 接收节奏上，便于模拟 DDR/互连对读命令的反压。
+
+#### outstanding 扫参结果
+
+同一 case、同一 mem 文件、DDR 随机延迟关闭：
+
+| AXI_READ_OUTSTANDING | cycles | IA row util | ACC util | IA data stall | Weight data stall | IA DMA busy | Kernel DMA busy |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 81,466 | 3.29% | 0.54% | 37,385 | 13,720 | 50,344 | 28,068 |
+| 4 | 71,554 | 3.75% | 0.62% | 33,155 | 10,468 | 45,304 | 23,196 |
+| 8 | 71,554 | 3.75% | 0.62% | 33,155 | 10,468 | 45,304 | 23,196 |
+
+结论：
+
+- ro=4 相对 ro=1 降周期 12.17%，主要来自 AR 间隙被提前排队吸收。
+- `ia_data_stall` 降低 4,230 cycles，`weight_data_stall` 降低 3,252 cycles。
+- `dma_busy_ia` 降低约 10.0%，`dma_busy_kernel` 降低约 17.4%。
+- ro=8 与 ro=4 完全相同，说明当前瓶颈已经不在 AR outstanding 深度，而在单读数据通道吞吐、读客户端串行服务和 loader/compute 触发粒度。
+
+同一 ro=4 case 在随机 DDR 延迟下也通过：
+
+| DDR 模式 | cycles | IA row util | ACC util | IA data stall | Weight data stall | axi_ar / axi_r |
+|---|---:|---:|---:|---:|---:|---|
+| no random latency | 71,554 | 3.75% | 0.62% | 33,155 | 10,468 | 5,320 / 31,528 |
+| random latency (`cmd=3,w=2,rsp=5`) | 150,733 | 1.78% | 0.29% | 77,012 | 27,636 | 5,320 / 31,528 |
+
+随机延迟下周期明显上升，但功能正确；读请求数和读 beat 数不变，说明差异来自 DDR 命令/响应等待而不是控制流重放。
+
+#### per-channel requant 尾块死锁修复
+
+在 `SIZE=4,CACHE=2` 边界随机中发现一个稳定 timeout：
+
+- seed `3301`
+- `K=3,N=8,M=14,lhs=s8,mode=WS,R=1,W=4,per_channel=1`
+- DDR 随机延迟开关无关，关掉随机延迟也会 timeout。
+
+trace 现象：
+
+- `acc_valid=12`，但 `requant_valid=8`。
+- FIFO 没有 bank ready，OA writer 从未开始写回。
+- DMA 和 AXI 均已空闲，控制器停在 `WEIGHT_START`。
+
+根因是 `vec_requant` 的状态机和数据通路对第一拍输入的消费语义不一致：
+
+1. `vec_requant` 在 `IDLE` 且 `quant_params_valid=1` 时看到第一拍 `in_valid`，数据通路已经计算并寄存输出。
+2. 旧状态机只切到 `COMPUTE`，没有同步推进 `row_in_tile_cnt`，所以状态机少数了一行。
+3. tile 最后一行进入数据通路时，状态机清掉 `quant_params_valid` 并开始加载下一列 per-channel 参数。
+4. `out_valid_q` 下一拍已经为 1，但旧输出又用当前 `quant_params_valid` 二次门控，导致最后一行 valid 被压掉。
+
+修复：
+
+- `IDLE` 中接住第一拍 `in_valid` 时同步推进 `row_in_tile_cnt`。
+- 如果第一拍同时是 `in_tile_done`，直接执行 tile advance，覆盖 K=1 等极小 tile。
+- `out_valid/out_tile_done` 直接使用已经采样过 qvalid 的 `out_valid_q/out_tile_done_q`，不再被当前 `quant_params_valid` 二次门控。
+
+修复后同一失败 case：
+
+| 配置 | 修复前 | 修复后 |
+|---|---:|---:|
+| no random latency | timeout，`acc_valid=12/requant_valid=8` | PASS，cycles 423，`acc_valid=12/requant_valid=12` |
+| random latency (`cmd=3,w=2,rsp=5,seed=3301`) | timeout | PASS，cycles 623 |
+
+#### 本轮新增回归
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| `test/axi_dual_block_dma` | AXI 读写基础单测 | PASS |
+| `test/axi_block_dma_arbiter` | 读写 overlap，`overlap=1` | PASS |
+| `mma_top` large ro=4 | `SIZE=16,CACHE=4,K=64,N=93,M=107,DDR_RAND_LAT=0` | PASS，71,554 cycles |
+| `mma_top` large ro=4 | 同上，`DDR_RAND_LAT=1,cmd=3,w=2,rsp=5` | PASS，150,733 cycles |
+| 失败点复现 | `SIZE=4,CACHE=2,seed=3301,per_channel=1` | PASS |
+| 边界单行 | `SIZE=4,CACHE=2,K=N=M=1,DDR_RAND_LAT=1` | PASS |
+| 随机 dataflow | `SIZE=4,CACHE=2,COUNT=5,SEED=3300,random_dataflow,random_per_channel,DDR_RAND_LAT=1` | PASS=5 FAIL=0 |
+| cache sweep | `SIZE=4,CACHE=2/4/8,COUNT=1,random_dataflow,random_per_channel,DDR_RAND_LAT=1` | PASS=3 FAIL=0 |
+
+#### 当前瓶颈判断
+
+read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 队列”已经到瓶颈。下一步如果继续追阵列利用率，应优先考虑：
+
+- 读侧跨客户端排队：在一个客户端 R 数据返回期间，允许下一客户端的 AR 提前进入命令队列，并用响应元数据队列路由到对应 loader。
+- IA/kernel 双缓冲触发：减少 `WEIGHT_START -> IA_START` 间对 `*_data_valid` 的串行等待。
+- per-channel 参数双缓冲：让下一列 tile 的 quant 参数加载不影响当前 tile 最后一行输出，进一步减少 `quant_stall`。
+- 保持 de-diagonalizer 连续 stream 不清空 delay line；当前主要气泡仍来自数据供给，不是反对角恢复本身。
+
 ### 本次日志目录
 
 - `runs/s8_tail_combo_after_cleanup_v2`

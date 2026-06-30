@@ -21,10 +21,14 @@ module tb_mma_top;
 `ifndef TB_PS_FRAME_COUNT
 `define TB_PS_FRAME_COUNT 8
 `endif
+`ifndef TB_AXI_READ_OUTSTANDING
+`define TB_AXI_READ_OUTSTANDING 4
+`endif
 
     localparam int unsigned SIZE = `TB_SIZE;
     localparam int unsigned IA_CACHE_BLOCKS = `TB_IA_CACHE_BLOCKS;
     localparam int unsigned PS_FRAME_COUNT = `TB_PS_FRAME_COUNT;
+    localparam int unsigned AXI_READ_OUTSTANDING = `TB_AXI_READ_OUTSTANDING;
     localparam int unsigned REGW = 32;
 
     localparam int unsigned CFG_WORDS = 32;
@@ -125,7 +129,8 @@ module tb_mma_top;
         .SIZE(SIZE),
         .ICB_LEN_W(4),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
-        .PS_FRAME_COUNT(PS_FRAME_COUNT)
+        .PS_FRAME_COUNT(PS_FRAME_COUNT),
+        .AXI_READ_OUTSTANDING(AXI_READ_OUTSTANDING)
     ) u_dut (
         .clk          (clk),
         .rst_n        (rst_n),

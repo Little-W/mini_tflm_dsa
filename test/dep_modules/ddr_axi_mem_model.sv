@@ -2,7 +2,8 @@ module ddr_axi_mem_model #(
     parameter int unsigned WIDTH  = 32,
     parameter int unsigned ADDR_W = 32,
     parameter int unsigned MW     = WIDTH / 8,
-    parameter int unsigned DP     = 131072
+    parameter int unsigned DP     = 131072,
+    parameter int unsigned RDQ_DEPTH = 8
 ) (
     input  logic              clk,
     input  logic              rst_n,
@@ -37,7 +38,6 @@ module ddr_axi_mem_model #(
 
     typedef enum logic [1:0] {
         R_IDLE,
-        R_AR_WAIT,
         R_DATA_WAIT,
         R_DATA
     } r_state_t;
@@ -58,15 +58,26 @@ module ddr_axi_mem_model #(
     int unsigned rsp_max_lat;
     int unsigned seed;
 
+    localparam int unsigned RDQ_DEPTH_SAFE = (RDQ_DEPTH < 1) ? 1 : RDQ_DEPTH;
+    localparam int unsigned RDQ_PTR_W = (RDQ_DEPTH_SAFE < 2) ? 1 : $clog2(RDQ_DEPTH_SAFE);
+    localparam int unsigned RDQ_CNT_W = (RDQ_DEPTH_SAFE < 2) ? 1 : $clog2(RDQ_DEPTH_SAFE + 1);
+
     r_state_t r_state;
     w_state_t w_state;
     int unsigned r_wait_cnt;
+    int unsigned ar_wait_cnt;
     int unsigned w_wait_cnt;
     logic [ADDR_W-1:0] r_addr;
     logic [ADDR_W-1:0] w_addr;
     logic [8:0] r_left;
     logic [8:0] w_left;
     logic [WIDTH-1:0] r_data_r;
+    logic [ADDR_W-1:0] rdq_addr [0:RDQ_DEPTH_SAFE-1];
+    logic [7:0] rdq_len [0:RDQ_DEPTH_SAFE-1];
+    logic [RDQ_PTR_W-1:0] rdq_wptr;
+    logic [RDQ_PTR_W-1:0] rdq_rptr;
+    logic [RDQ_CNT_W-1:0] rdq_count;
+    wire rdq_pop = (r_state == R_IDLE) && (rdq_count != '0);
 
     wire ar_hs = m_axi_arvalid && m_axi_arready;
     wire r_hs  = m_axi_rvalid && m_axi_rready;
@@ -111,7 +122,7 @@ module ddr_axi_mem_model #(
         end
     end
 
-    assign m_axi_arready = (r_state == R_AR_WAIT) && (r_wait_cnt == 0);
+    assign m_axi_arready = (rdq_count < RDQ_CNT_W'(RDQ_DEPTH_SAFE)) && (ar_wait_cnt == 0);
     assign m_axi_rvalid  = (r_state == R_DATA);
     assign m_axi_rdata   = r_data_r;
     assign m_axi_rresp   = 2'b00;
@@ -121,27 +132,49 @@ module ddr_axi_mem_model #(
         if (!rst_n) begin
             r_state    <= R_IDLE;
             r_wait_cnt <= 0;
+            ar_wait_cnt <= 0;
             r_addr     <= '0;
             r_left     <= '0;
             r_data_r   <= '0;
+            rdq_wptr   <= '0;
+            rdq_rptr   <= '0;
+            rdq_count  <= '0;
         end else begin
+            if (ar_wait_cnt != 0) begin
+                ar_wait_cnt <= ar_wait_cnt - 1;
+            end
+
+            if (ar_hs) begin
+                rdq_addr[rdq_wptr] <= m_axi_araddr;
+                rdq_len[rdq_wptr]  <= m_axi_arlen;
+                if (rdq_wptr == RDQ_PTR_W'(RDQ_DEPTH_SAFE - 1)) begin
+                    rdq_wptr <= '0;
+                end else begin
+                    rdq_wptr <= rdq_wptr + 1'b1;
+                end
+                ar_wait_cnt <= pick_wait(cmd_max_lat);
+            end
+
+            if (rdq_pop) begin
+                if (rdq_rptr == RDQ_PTR_W'(RDQ_DEPTH_SAFE - 1)) begin
+                    rdq_rptr <= '0;
+                end else begin
+                    rdq_rptr <= rdq_rptr + 1'b1;
+                end
+            end
+
+            unique case ({ar_hs, rdq_pop})
+                2'b10: rdq_count <= rdq_count + 1'b1;
+                2'b01: rdq_count <= rdq_count - 1'b1;
+                default: rdq_count <= rdq_count;
+            endcase
+
             case (r_state)
                 R_IDLE: begin
-                    if (m_axi_arvalid) begin
-                        r_wait_cnt <= pick_wait(cmd_max_lat);
-                        r_state    <= R_AR_WAIT;
-                    end
-                end
-
-                R_AR_WAIT: begin
-                    if (!m_axi_arvalid) begin
-                        r_state <= R_IDLE;
-                    end else if (r_wait_cnt != 0) begin
-                        r_wait_cnt <= r_wait_cnt - 1;
-                    end else if (ar_hs) begin
-                        r_addr     <= m_axi_araddr;
-                        r_left     <= {1'b0, m_axi_arlen} + 9'd1;
-                        r_data_r   <= mem_word(m_axi_araddr);
+                    if (rdq_pop) begin
+                        r_addr     <= rdq_addr[rdq_rptr];
+                        r_left     <= {1'b0, rdq_len[rdq_rptr]} + 9'd1;
+                        r_data_r   <= mem_word(rdq_addr[rdq_rptr]);
                         r_wait_cnt <= pick_wait(rsp_max_lat);
                         r_state    <= R_DATA_WAIT;
                     end
