@@ -31,9 +31,9 @@ def main():
 
     k_dim = size * tile_count
 
-    # A: SIZE x K int16 (IA), B: K x SIZE int8 (Weights)
+    # A: SIZE x K int16 (IA), B: K x SIZE int16 (Weights)
     A = np.random.randint(-8, 8, size=(size, k_dim), dtype=np.int16)
-    B = np.random.randint(-8, 8, size=(k_dim, size), dtype=np.int8)
+    B = np.random.randint(-8, 8, size=(k_dim, size), dtype=np.int16)
     # Per-output-channel bias (int32)
     bias = np.random.randint(-64, 64, size=(size,), dtype=np.int32)
     C = A.astype(np.int32) @ B.astype(np.int32)
@@ -57,7 +57,7 @@ def main():
     with open("weight_mem.hex", "w") as f:
         for c in range(size):
             for k in range(k_dim):
-                f.write(to_hex(int(B[k, c]), 8) + "\n")
+                f.write(to_hex(int(B[k, c]), 16) + "\n")
 
     # Write Bias memory: one 32-bit per output channel c (0..3)
     with open("bias_mem.hex", "w") as f:
@@ -100,7 +100,7 @@ def main():
         with open(f"tiles/tile_{t}_weight_mem.hex", "w") as f:
             for c in range(size):
                 for kk in range(size):
-                    f.write(to_hex(int(B[k0 + kk, c]), 8) + "\n")
+                    f.write(to_hex(int(B[k0 + kk, c]), 16) + "\n")
 
     # Accumulated results after each tile (reference for partial_sum_calc_over)
     acc = np.zeros((size, size), dtype=np.int32)

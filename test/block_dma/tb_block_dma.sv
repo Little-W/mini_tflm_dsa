@@ -32,9 +32,11 @@ module tb_block_dma;
   logic icb_cmd_read;
   logic [REG_WIDTH-1:0] icb_cmd_addr;
   logic [3:0] icb_cmd_len;
-  logic [BUS_WIDTH-1:0] icb_cmd_wdata;
-  logic [BUS_WIDTH/8-1:0] icb_cmd_wmask;
-  logic icb_rsp_valid;
+	  logic [BUS_WIDTH-1:0] icb_cmd_wdata;
+	  logic [BUS_WIDTH/8-1:0] icb_cmd_wmask;
+	  logic icb_w_valid;
+	  logic icb_w_ready = 1'b1;
+	  logic icb_rsp_valid;
   logic icb_rsp_ready;
   logic [BUS_WIDTH-1:0] icb_rsp_rdata;
   logic icb_rsp_err;
@@ -43,8 +45,12 @@ module tb_block_dma;
   logic [$clog2(SIZE)-1:0] wr_row;
   logic [$clog2(SIZE)-1:0] wr_col_base;
   logic signed [DATA_WIDTH-1:0] wr_data [BUS_WIDTH/8];
-  logic wr_valid [BUS_WIDTH/8];
-  logic wr_use_16bits;
+	  logic wr_valid [BUS_WIDTH/8];
+	  logic wr_use_16bits;
+	  logic [BUS_WIDTH-1:0] rd_raw_data;
+	  logic rd_raw_valid;
+	  logic [$clog2(SIZE)-1:0] rd_raw_row;
+	  logic [$clog2(SIZE)-1:0] rd_raw_col_base;
 
   block_dma #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -75,20 +81,26 @@ module tb_block_dma;
     .icb_cmd_ready(icb_cmd_ready),
     .icb_cmd_read(icb_cmd_read),
     .icb_cmd_addr(icb_cmd_addr),
-    .icb_cmd_len(icb_cmd_len),
-    .icb_cmd_wdata(icb_cmd_wdata),
-    .icb_cmd_wmask(icb_cmd_wmask),
-    .icb_rsp_valid(icb_rsp_valid),
+	    .icb_cmd_len(icb_cmd_len),
+	    .icb_cmd_wdata(icb_cmd_wdata),
+	    .icb_cmd_wmask(icb_cmd_wmask),
+	    .icb_w_valid(icb_w_valid),
+	    .icb_w_ready(icb_w_ready),
+	    .icb_rsp_valid(icb_rsp_valid),
     .icb_rsp_ready(icb_rsp_ready),
     .icb_rsp_rdata(icb_rsp_rdata),
     .icb_rsp_err(icb_rsp_err),
     .wr_slot(wr_slot),
     .wr_row(wr_row),
     .wr_col_base(wr_col_base),
-    .wr_data(wr_data),
-    .wr_valid(wr_valid),
-    .wr_use_16bits(wr_use_16bits)
-  );
+	    .wr_data(wr_data),
+	    .wr_valid(wr_valid),
+	    .wr_use_16bits(wr_use_16bits),
+	    .rd_raw_data(rd_raw_data),
+	    .rd_raw_valid(rd_raw_valid),
+	    .rd_raw_row(rd_raw_row),
+	    .rd_raw_col_base(rd_raw_col_base)
+	  );
 
   tb_sram_model #(
     .DEPTH(256),
@@ -102,9 +114,9 @@ module tb_block_dma;
     .cmd_ready(icb_cmd_ready),
     .cmd_addr(icb_cmd_addr),
     .cmd_read(icb_cmd_read),
-    .cmd_wdata(icb_cmd_wdata),
-    .cmd_wmask(icb_cmd_wmask),
-    .rsp_valid(icb_rsp_valid),
+	    .cmd_wdata(icb_cmd_wdata),
+	    .cmd_wmask(icb_cmd_wmask),
+	    .rsp_valid(icb_rsp_valid),
     .rsp_ready(icb_rsp_ready),
     .rsp_rdata(icb_rsp_rdata),
     .rsp_err(icb_rsp_err)

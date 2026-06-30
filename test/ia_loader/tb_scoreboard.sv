@@ -46,17 +46,20 @@
     send_queue_size = 0;
     for (int l2 = 0; l2 < TC_G2; l2++) begin
       automatic int r_cur = (l2 == TC_G2-1) ? TC_R_ACT : TC_R;
-      for (int l1 = 0; l1 < TC_G1; l1++) begin
-        for (int w = 0; w < TC_W; w++) begin
-          for (int ia = 0; ia < r_cur; ia++) begin
-            automatic int tr = l2 * TC_R + ia;
-            automatic int tc = l1;
-            send_queue[send_queue_size].tile_r    = tr;
-            send_queue[send_queue_size].tile_c    = tc;
-            send_queue[send_queue_size].vrows     = (tr == TC_VTN-1) ? (TC_K - tr * SIZE) : SIZE;
-            send_queue[send_queue_size].is_first  = (l1 == 0) ? 1'b1 : 1'b0;
-            send_queue[send_queue_size].calc_done = (l1 == TC_G1-1) ? 1'b1 : 1'b0;
-            send_queue_size++;
+      for (int wg = 0; wg < TC_WG; wg++) begin
+        automatic int w_cur = ((TC_LRN - wg * TC_W) > TC_W) ? TC_W : (TC_LRN - wg * TC_W);
+        for (int l1 = 0; l1 < TC_G1; l1++) begin
+          for (int w = 0; w < w_cur; w++) begin
+            for (int ia = 0; ia < r_cur; ia++) begin
+              automatic int tr = l2 * TC_R + ia;
+              automatic int tc = l1;
+              send_queue[send_queue_size].tile_r    = tr;
+              send_queue[send_queue_size].tile_c    = tc;
+              send_queue[send_queue_size].vrows     = (tr == TC_VTN-1) ? (TC_K - tr * SIZE) : SIZE;
+              send_queue[send_queue_size].is_first  = (l1 == 0) ? 1'b1 : 1'b0;
+              send_queue[send_queue_size].calc_done = (l1 == TC_G1-1) ? 1'b1 : 1'b0;
+              send_queue_size++;
+            end
           end
         end
       end

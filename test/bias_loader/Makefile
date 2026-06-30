@@ -4,6 +4,7 @@
 
 PROJECT_ROOT := ../..
 DEP_MODULES_DIR := $(PROJECT_ROOT)/test/dep_modules
+SUB_MODULES_DIR := $(PROJECT_ROOT)/sub_modules
 INC_DIR := $(PROJECT_ROOT)/inc
 VEXE := sim_bias_loader
 
@@ -16,17 +17,18 @@ VERILATOR_FLAGS := -sv -Wall --trace --timing \
 	-Wno-UNUSED -Wno-UNUSEDGENVAR -Wno-WIDTHTRUNC -Wno-CASEINCOMPLETE \
 	-Wno-UNOPTFLAT -Wno-BLKANDNBLK -Wno-INITIALDLY -Wno-MULTIDRIVEN \
 	-Wno-IMPLICITSTATIC -Wno-WIDTHCONCAT -Wno-LATCH -Wno-TIMESCALEMOD \
-	-Wno-EOFNEWLINE -Wno-PINCONNECTEMPTY -Wno-BLKSEQ
+	-Wno-EOFNEWLINE -Wno-PINCONNECTEMPTY -Wno-BLKSEQ \
+	-Wno-PROCASSINIT -Wno-SYNCASYNCNET
 
 INCLUDES := -I$(INC_DIR) -Iout
 
 SRCS := \
 	tb_bias_loader.sv \
 	tb_sram_model.sv \
-	bias_loader.sv \
-	bias_loader_ctrl.sv \
-	bias_loader_buffer.sv \
-	../ia_loader/block_dma.sv \
+	$(SUB_MODULES_DIR)/bias_loader.sv \
+	$(SUB_MODULES_DIR)/bias_loader_ctrl.sv \
+	$(SUB_MODULES_DIR)/bias_loader_buffer.sv \
+	$(SUB_MODULES_DIR)/block_dma.sv \
 	$(DEP_MODULES_DIR)/icb_unalign_bridge.sv
 
 all: run

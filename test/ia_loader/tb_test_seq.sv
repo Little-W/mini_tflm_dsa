@@ -22,10 +22,19 @@
   // bias_sleep / bias_switch 监视：
   // 1) 当前 L1 组属于 init group 时，bias_sleep 必须保持低电平
   // 2) 非 init group 时，bias_sleep 必须保持高电平
-  // 3) bias_switch 必须与 ia_sending_done 同拍，且只在 bias_sleep=0 时发出
+  // 3) bias_switch 必须按新版列复用边界发出
   // 4) bias_last_loop 必须只在最后一个 L2 group 时拉高
   logic bias_monitor_pending;
   logic bias_monitor_active;
+  logic expected_bias_switch_by_col;
+
+  assign expected_bias_switch_by_col =
+      u_dut.u_ctrl.cache_l1_done &&
+      (u_dut.u_ctrl.ia_idx == u_dut.u_ctrl.r_cur - 1) &&
+      (u_dut.u_ctrl.output_col_tile_num > 1) &&
+      (((u_dut.u_ctrl.l1_idx == '0) && (u_dut.u_ctrl.w_cnt < u_dut.u_ctrl.w_cur - 1)) ||
+       (u_dut.u_ctrl.cache_l1_calc_done && (u_dut.u_ctrl.w_cnt == u_dut.u_ctrl.w_cur - 1))) &&
+      !u_dut.u_ctrl.last_send;
 
   logic send_ia_trigger_d1;
   logic trigger_latency_active;
@@ -60,8 +69,9 @@
           $finish;
         end
 
-        if (bias_switch !== (ia_sending_done && !bias_sleep)) begin
-          $display("[SEQ] ERROR: bias_switch must align with ia_sending_done and be gated by bias_sleep=0!");
+        if (bias_switch !== expected_bias_switch_by_col) begin
+          $display("[SEQ] ERROR: bias_switch mismatch: got=%0b exp=%0b",
+                   bias_switch, expected_bias_switch_by_col);
           $finish;
         end
 
@@ -88,29 +98,68 @@
     end
   end
 
-  // 等待整个 L1 组的 ia_sending_done，并按列独立计数捕获数据
+  // 等待整个 L1 组的 ia_sending_done，并按对角化有效窗口捕获数据
   //
   // 对角化输出下，各列数据相互错开：col j 比 col 0 滞后 j 拍。
-  // 用 per-column 计数器 col_cnt[j] 记录该列已接收的行数，
-  // 数据有效判断：ia_out[j] !== '0（测试数据保证有效行 ≥ 1）。
+  // s8 随机数据可能合法为 0，因此不能再用 ia_out[j] != 0 作为有效条件。
   // 整个 L1 组在同一缓冲中积累，不在 tile 边界重置。
-  task automatic wait_l1_done_and_capture(input int total_l1_rows, input int timeout_cycles);
-    int col_cnt [SIZE];
+  task automatic wait_l1_done_and_capture(input int ti_start, input int r_cur, input int timeout_cycles);
+    int active_age   [CACHE_BLOCKS];
+    int active_base  [CACHE_BLOCKS];
+    int active_vrows [CACHE_BLOCKS];
+    bit active_valid [CACHE_BLOCKS];
+    int next_tile = 0;
+    int row_offset = 0;
     int cnt = 0;
-    for (int j = 0; j < SIZE; j++) col_cnt[j] = 0;
+    for (int t = 0; t < CACHE_BLOCKS; t++) begin
+      active_age[t]   = 0;
+      active_base[t]  = 0;
+      active_vrows[t] = 0;
+      active_valid[t] = 1'b0;
+    end
     for (int r = 0; r < TC_K; r++)
       for (int j = 0; j < SIZE; j++)
         captured_l1[r][j] = '0;
 
+    // The first tile_start can occur on the trigger-accept cycle just before
+    // this task starts, so arm the first tile window immediately.
+    if (r_cur > 0) begin
+      automatic int vrows = int'(send_queue[ti_start].vrows);
+      active_age[0]   = 0;
+      active_base[0]  = row_offset;
+      active_vrows[0] = vrows;
+      active_valid[0] = 1'b1;
+      row_offset += vrows;
+      next_tile = 1;
+    end
+
     forever begin
       @(posedge clk);
       cnt++;
-      for (int j = 0; j < SIZE; j++) begin
-        if (ia_out[j] !== '0 && col_cnt[j] < total_l1_rows) begin
-          captured_l1[col_cnt[j]][j] = ia_out[j];
-          col_cnt[j]++;
+      for (int t = 0; t < CACHE_BLOCKS; t++) begin
+        if (active_valid[t]) begin
+          active_age[t]++;
+          for (int j = 0; j < SIZE; j++) begin
+            automatic int rel_row = active_age[t] - 1 - j;
+            if (rel_row >= 0 && rel_row < active_vrows[t]) begin
+              captured_l1[active_base[t] + rel_row][j] = ia_out[j];
+            end
+          end
+          if (active_age[t] > active_vrows[t] + SIZE)
+            active_valid[t] = 1'b0;
         end
       end
+
+      if (ia_tile_start && next_tile < r_cur) begin
+        automatic int vrows = int'(send_queue[ti_start + next_tile].vrows);
+        active_age[next_tile]   = -1;
+        active_base[next_tile]  = row_offset;
+        active_vrows[next_tile] = vrows;
+        active_valid[next_tile] = 1'b1;
+        row_offset += vrows;
+        next_tile++;
+      end
+
       if (ia_sending_done) break;
       if (cnt >= timeout_cycles) begin
         $display("[SEQ] TIMEOUT waiting for ia_sending_done after %0d cycles!", timeout_cycles);
@@ -212,11 +261,6 @@
       automatic int l2_idx = int'(send_queue[ti].tile_r) / TC_R;
       automatic int r_cur  = (l2_idx == TC_G2 - 1) ? TC_R_ACT : TC_R;
 
-      // 计算本 L1 组的总有效行数（各 tile vrows 之和）
-      automatic int total_l1_rows = 0;
-      for (int t = 0; t < r_cur; t++)
-        total_l1_rows += int'(send_queue[ti + t].vrows);
-
       // 等 ia_data_valid 后发一次 trigger
       wait_data_valid(50000);
       @(posedge clk);
@@ -225,7 +269,7 @@
       send_ia_trigger = 0;
 
       // 等待 L1 组发送完成，同时逆对角化捕获数据
-      wait_l1_done_and_capture(total_l1_rows, 50000);
+      wait_l1_done_and_capture(ti, r_cur, 50000);
 
       // 比对整个 L1 组
       check_l1_output(ti, r_cur);

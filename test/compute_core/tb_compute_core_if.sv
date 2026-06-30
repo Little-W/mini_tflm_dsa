@@ -1,10 +1,11 @@
 interface tb_compute_core_if(input logic clk);
     import test_params_pkg::*;
     localparam int unsigned DATA_WIDTH = 16;
+    localparam int unsigned WEIGHT_WIDTH = 16;
 
     // DUT inputs
     logic                         store_weight_req;
-    logic signed [           7:0] weight_in             [     SIZE];
+    logic signed [WEIGHT_WIDTH-1:0] weight_in           [     SIZE];
     logic signed [DATA_WIDTH-1:0] ia_vec_in             [     SIZE];
     logic                         ia_row_valid;
     logic                         ia_calc_done;

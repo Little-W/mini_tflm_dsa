@@ -9,6 +9,9 @@ interface mma_top_if #(
   // 控制信号
   logic                       calc_start;
   logic                       cfg_16bits_ia;
+  logic                       cfg_dataflow_mode;
+  logic [REG_WIDTH-1:0]       cfg_ia_reuse_num;
+  logic [REG_WIDTH-1:0]       cfg_w_reuse_num;
   logic                       sa_ready;
 
   // Base pointers
@@ -42,7 +45,7 @@ interface mma_top_if #(
   // Clocking block for testbench (驱动配置)
   clocking cb_cfg @(posedge clk);
     default input #1step output #1step;
-    output calc_start, cfg_16bits_ia;
+    output calc_start, cfg_16bits_ia, cfg_dataflow_mode, cfg_ia_reuse_num, cfg_w_reuse_num;
     output lhs_base, rhs_base, dst_base, bias_base;
     output lhs_zp, rhs_zp, dst_zp, q_mult_pt, q_shift_pt, use_per_channel;
     output k, n, m;
@@ -54,7 +57,7 @@ interface mma_top_if #(
   // DUT modport
   modport dut (
     input  clk, rst_n,
-    input  calc_start, cfg_16bits_ia,
+    input  calc_start, cfg_16bits_ia, cfg_dataflow_mode, cfg_ia_reuse_num, cfg_w_reuse_num,
     output sa_ready,
     input  lhs_base, rhs_base, dst_base, bias_base,
     input  lhs_zp, rhs_zp, dst_zp, q_mult_pt, q_shift_pt, use_per_channel,

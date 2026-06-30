@@ -7,14 +7,15 @@ VEXE := sim_ps_buffer
 VERILATOR_FLAGS := -sv -Wall --trace --timing \
 	-Wno-GENUNNAMED -Wno-VARHIDDEN -Wno-WIDTHEXPAND -Wno-UNUSEDSIGNAL -Wno-UNUSED -Wno-UNUSEDGENVAR \
 	-Wno-WIDTHTRUNC -Wno-CASEINCOMPLETE -Wno-UNOPTFLAT -Wno-BLKANDNBLK -Wno-INITIALDLY -Wno-MULTIDRIVEN \
-	-Wno-IMPLICITSTATIC -Wno-WIDTHCONCAT -Wno-LATCH -Wno-TIMESCALEMOD -Wno-EOFNEWLINE -Wno-PINCONNECTEMPTY -Wno-BLKSEQ
+	-Wno-IMPLICITSTATIC -Wno-WIDTHCONCAT -Wno-LATCH -Wno-TIMESCALEMOD -Wno-EOFNEWLINE -Wno-PINCONNECTEMPTY -Wno-BLKSEQ \
+	-Wno-PROCASSINIT -Wno-SYNCASYNCNET
 
 SRCS := \
 	$(TB) \
-	ps_buffer.sv \
-	de_diagonalizer.sv \
+	$(SUB_MODULES_DIR)/ps_buffer.sv \
+	$(SUB_MODULES_DIR)/de_diagonalizer.sv \
 	$(BASIC_MODULES_DIR)/pseudo_dual_port_ram.v \
-	ps_buffer_fifo.sv
+	$(SUB_MODULES_DIR)/ps_buffer_fifo.sv
 
 all: run
 

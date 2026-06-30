@@ -28,8 +28,15 @@ module tb_bias_loader;
   logic load_bias_req;
   logic load_bias_granted;
   logic bias_valid;
+  logic next_bias_valid;
+  logic bias_group_valid;
+  logic load_bias_done;
 
   logic signed [DATA_WIDTH-1:0] data_out [SIZE];
+  logic signed [DATA_WIDTH-1:0] next_data_out [SIZE];
+  logic signed [DATA_WIDTH-1:0] group_data_out [SIZE];
+  logic signed [7:0]            ext_dma_wr_data [BUS_WIDTH/8];
+  logic                         ext_dma_wr_valid[BUS_WIDTH/8];
 
   logic                        dut_cmd_valid, dut_cmd_ready, dut_cmd_read;
   logic [REG_WIDTH-1:0]        dut_cmd_addr;
@@ -58,13 +65,19 @@ module tb_bias_loader;
     .bias_base         (bias_base),
     .k                 (k_in),
     .m                 (m_in),
+    .bias_step_blocks  (REG_WIDTH'(1)),
     .bias_switch       (bias_switch),
     .bias_sleep        (bias_sleep),
     .bias_last_loop    (bias_last_loop),
     .load_bias_req     (load_bias_req),
     .load_bias_granted (load_bias_granted),
     .bias_valid        (bias_valid),
+    .next_bias_valid   (next_bias_valid),
+    .bias_group_valid  (bias_group_valid),
+    .load_bias_done    (load_bias_done),
     .data_out          (data_out),
+    .next_data_out     (next_data_out),
+    .group_data_out    (group_data_out),
     .icb_cmd_valid     (dut_cmd_valid),
     .icb_cmd_ready     (dut_cmd_ready),
     .icb_cmd_read      (dut_cmd_read),
@@ -73,8 +86,33 @@ module tb_bias_loader;
     .icb_rsp_valid     (dut_rsp_valid),
     .icb_rsp_ready     (dut_rsp_ready),
     .icb_rsp_rdata     (dut_rsp_rdata),
-    .icb_rsp_err       (dut_rsp_err)
+    .icb_rsp_err       (dut_rsp_err),
+    .ext_dma_start     (),
+    .ext_dma_is_write  (),
+    .ext_dma_linear_read_mode(),
+    .ext_dma_base_addr (),
+    .ext_dma_row_stride(),
+    .ext_dma_rows_to_read(),
+    .ext_dma_burst_len_m1(),
+    .ext_dma_slot_id   (),
+    .ext_dma_use_16bits(),
+    .ext_dma_lhs_zp    (),
+    .ext_dma_busy      (1'b0),
+    .ext_dma_done      (1'b0),
+    .ext_dma_wr_slot   (1'b0),
+    .ext_dma_wr_row    ('0),
+    .ext_dma_wr_col_base('0),
+    .ext_dma_wr_data   (ext_dma_wr_data),
+    .ext_dma_wr_valid  (ext_dma_wr_valid),
+    .ext_dma_wr_use_16bits(1'b0)
   );
+
+  initial begin
+    for (int ext_i = 0; ext_i < BUS_WIDTH/8; ext_i++) begin
+      ext_dma_wr_data[ext_i]  = '0;
+      ext_dma_wr_valid[ext_i] = 1'b0;
+    end
+  end
 
   icb_unalign_bridge #(
     .WIDTH     (BUS_WIDTH),

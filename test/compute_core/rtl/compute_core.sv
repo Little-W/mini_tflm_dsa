@@ -1,4 +1,4 @@
-module compute_core_test #(
+module compute_core #(
     parameter int unsigned SIZE       = 16,
     parameter int unsigned DATA_WIDTH = 16,
     parameter int unsigned WEIGHT_WIDTH = 16,
@@ -57,11 +57,20 @@ module compute_core_test #(
     logic                ps_group_switch_d;
     logic                final_group_calc_pending;
     logic                partial_sum_calc_over_r;
+    logic [SIZE:0]       ia_tile_start_pipe;
+    logic                ps_tile_start_aligned;
+    bit                  compute_trace_en;
+
+    initial begin
+        compute_trace_en = 1'b0;
+        if ($test$plusargs("MMA_COMPUTE_TRACE")) compute_trace_en = 1'b1;
+    end
 
     localparam int unsigned PS_EFFECTIVE_FRAME_COUNT =
         (PS_FRAME_COUNT < 1) ? MAX_IA_REUSE : (PS_FRAME_COUNT * MAX_IA_REUSE);
 
-    assign ps_burst_start = ia_row_valid & ~ia_row_valid_d;
+    assign ps_tile_start_aligned = ia_tile_start_pipe[SIZE];
+    assign ps_burst_start = ps_tile_start_aligned;
 
     // IA cache emits a whole L1 group as one tall diagonal stream.  Keep the
     // partial-sum stream valid for all IA rows, then drain SIZE-1 tail cycles.
@@ -86,9 +95,11 @@ module compute_core_test #(
             ps_group_switch_d <= 1'b0;
             final_group_calc_pending <= 1'b0;
             partial_sum_calc_over_r  <= 1'b0;
+            ia_tile_start_pipe       <= '0;
         end else begin
             partial_sum_calc_over_r <= 1'b0;
             ia_row_valid_d <= ia_row_valid;
+            ia_tile_start_pipe <= {ia_tile_start_pipe[SIZE-1:0], ia_tile_start};
             ps_stream_valid_d <= ps_stream_valid;
             ps_burst_start_d  <= ps_burst_start;
             ps_calc_done_d    <= ps_calc_done;
@@ -124,6 +135,15 @@ module compute_core_test #(
             if ((final_group_calc_pending || (ps_group_switch_d && ps_calc_done_d)) && ps_tile_calc_over) begin
                 partial_sum_calc_over_r  <= 1'b1;
                 final_group_calc_pending <= 1'b0;
+            end
+
+            if (compute_trace_en &&
+                (ia_tile_start || ps_burst_start_d || ps_calc_done_d ||
+                 ps_acc_data_valid || ps_tile_calc_over || partial_sum_calc_over_r)) begin
+                $display("[COMPUTE_TRACE] time=%0t ia_start=%0d ia_valid=%0d ia_calc=%0d ps_start=%0d ps_calc_d=%0d acc_valid=%0d tile_over=%0d partial_over=%0d",
+                         $time, ia_tile_start, ia_row_valid, ia_calc_done,
+                         ps_burst_start_d, ps_calc_done_d, ps_acc_data_valid,
+                         ps_tile_calc_over, partial_sum_calc_over_r);
             end
         end
     end

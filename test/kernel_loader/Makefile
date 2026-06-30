@@ -1,5 +1,6 @@
 PROJECT_ROOT := ../..
 OUT_DIR := out
+SUB_MODULES_DIR := $(PROJECT_ROOT)/sub_modules
 VEXE := sim_kernel_loader
 
 CASE ?= exact_4x4_r2_w2
@@ -10,7 +11,8 @@ VERILATOR_FLAGS := -sv -Wall --trace --timing \
 	-Wno-UNUSEDSIGNAL -Wno-UNOPTFLAT -Wno-INITIALDLY -Wno-WIDTHCONCAT \
 	-Wno-WIDTHEXPAND -Wno-WIDTHTRUNC \
 	-Wno-LATCH -Wno-BLKSEQ -Wno-PINCONNECTEMPTY -Wno-CASEINCOMPLETE \
-	-Wno-BLKANDNBLK -Wno-UNUSED -Wno-EOFNEWLINE
+	-Wno-BLKANDNBLK -Wno-UNUSED -Wno-EOFNEWLINE \
+	-Wno-PROCASSINIT -Wno-SYNCASYNCNET
 
 INCLUDES := -I. -I$(OUT_DIR)
 
@@ -20,10 +22,10 @@ SRCS := \
 	tb_kernel_loader.sv \
 	tb_sram_model.sv \
 	../dep_modules/icb_unalign_bridge.sv \
-	kernel_loader.sv \
-	kernel_loader_ctrl.sv \
-	kernel_loader_buffer.sv \
-	block_dma.sv
+	$(SUB_MODULES_DIR)/kernel_loader.sv \
+	$(SUB_MODULES_DIR)/kernel_loader_ctrl.sv \
+	$(SUB_MODULES_DIR)/kernel_loader_buffer.sv \
+	$(SUB_MODULES_DIR)/kernel_block_dma.sv
 
 all: run
 
@@ -48,9 +50,17 @@ run_all:
 		echo "════════════════════════════════════════"; \
 		echo "  Case: $$c"; \
 		echo "════════════════════════════════════════"; \
-		python3 gen_test_data.py --case $$c --out_dir $(OUT_DIR) && \
-		verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_kernel_loader 2>&1 | tail -1 && \
-		./obj_dir/$(VEXE) +WAVE_FILE=$(OUT_DIR)/wave_$$c.vcd 2>&1 | tee /tmp/kernel_loader_$$c.log && \
+		python3 gen_test_data.py --case $$c --out_dir $(OUT_DIR) || { FAIL=$$((FAIL+1)); SUMMARY="$$SUMMARY\n  $$c: GEN_FAIL"; continue; }; \
+		build_log=/tmp/kernel_loader_$$c.build.log; \
+		if ! verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_kernel_loader > "$$build_log" 2>&1; then \
+			cat "$$build_log"; \
+			FAIL=$$((FAIL+1)); \
+			echo "  !! BUILD FAILED: $$c"; \
+			SUMMARY="$$SUMMARY\n  $$c: BUILD_FAIL"; \
+			continue; \
+		fi; \
+		tail -1 "$$build_log"; \
+		./obj_dir/$(VEXE) +WAVE_FILE=$(OUT_DIR)/wave_$$c.vcd 2>&1 | tee /tmp/kernel_loader_$$c.log; \
 		if grep -q 'PASS' /tmp/kernel_loader_$$c.log; then \
 			PASS=$$((PASS+1)); \
 			SUMMARY="$$SUMMARY\n  $$c: PASS"; \
@@ -76,9 +86,16 @@ run_random:
 		echo "════════════════════════════════════════"; \
 		echo "  Random case: $$c"; \
 		echo "════════════════════════════════════════"; \
-		cp $(OUT_DIR)/$$c/* $(OUT_DIR)/ && \
-		verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_kernel_loader 2>&1 | tail -1 && \
-		./obj_dir/$(VEXE) +WAVE_FILE=$(OUT_DIR)/wave_$$c.vcd 2>&1 | tee /tmp/kernel_loader_$$c.log && \
+		cp $(OUT_DIR)/$$c/* $(OUT_DIR)/ || { FAIL=$$((FAIL+1)); continue; }; \
+		build_log=/tmp/kernel_loader_$$c.build.log; \
+		if ! verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_kernel_loader > "$$build_log" 2>&1; then \
+			cat "$$build_log"; \
+			FAIL=$$((FAIL+1)); \
+			echo "  !! BUILD FAILED: $$c"; \
+			continue; \
+		fi; \
+		tail -1 "$$build_log"; \
+		./obj_dir/$(VEXE) +WAVE_FILE=$(OUT_DIR)/wave_$$c.vcd 2>&1 | tee /tmp/kernel_loader_$$c.log; \
 		if grep -q 'PASS' /tmp/kernel_loader_$$c.log; then \
 			PASS=$$((PASS+1)); \
 		else \

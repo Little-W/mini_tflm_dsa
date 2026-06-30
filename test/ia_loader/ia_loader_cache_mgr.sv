@@ -43,6 +43,7 @@ module ia_loader_cache_mgr #(
     input  logic [REG_WIDTH-1:0]              slot_rows [CACHE_BLOCKS], // 每 slot 有效行数
     output logic                              tile_done,       // 单 tile 输出完成
     output logic                              l1_done,         // L1组全部输出完成
+    output logic                              ia_tile_start,   // 单 tile 首行到达输出端
 
     // ---- 输出到脉动阵列（SIZE 维数据 + 最后一列指示信号）----
     output logic signed [DATA_WIDTH-1:0]         ia_out          [SIZE],
@@ -118,8 +119,8 @@ module ia_loader_cache_mgr #(
   //   1) 只在“初始列(col0)”做发射调度：决定本拍是否发射一行(row)
   //   2) 将 col0 的 rd_en/rd_addr 通过移位寄存器送往各列
   //      第 j 列天然获得 j 拍延迟，实现对角化
-  //   3) tile 边界时，若下一 slot ready，col0 可下一拍直接发射
-  //      不依赖 diag_step 比较，避免跨 tile 间隔
+  //   3) tile 边界时插入 SIZE 拍 drain，让 ps_buffer/de-diagonalizer
+  //      完整排出当前 slot 的尾部，并留 1 拍 bubble 再启动下一 slot
   //
   localparam int SLOT_W = $clog2(CACHE_BLOCKS);
 
@@ -130,11 +131,18 @@ module ia_loader_cache_mgr #(
   logic [REG_WIDTH-1:0] issue_rows_r;    // 当前 slot 总有效行数
   logic send_is_init_r;
   logic send_calc_done_r;
+  localparam int unsigned ISSUE_GAP_CYCLES = (SIZE > 1) ? SIZE : 0;
+  localparam int unsigned GAP_CNT_W = (ISSUE_GAP_CYCLES < 2) ? 1 :
+                                      $clog2(ISSUE_GAP_CYCLES + 1);
+  logic [GAP_CNT_W-1:0] issue_gap_cnt;
+  logic                 issue_gap_active;
+  assign issue_gap_active = (issue_gap_cnt != '0);
 
   // col0 源信号（每拍最多发射 1 行）
   logic              src_rd_en;
   logic [ADDR_W-1:0] src_rd_addr;
   logic              src_tile_last;
+  logic              src_tile_first;
   logic              src_l1_last;
 
   logic              start_issue_now;
@@ -142,6 +150,7 @@ module ia_loader_cache_mgr #(
   logic [REG_WIDTH-1:0] issue_row_idx_now;
   logic [REG_WIDTH-1:0] issue_rows_now;
   logic [SLOT_W-1:0]   l1_slot_end_now;
+  logic                 issue_slot_ready;
 
   always_comb begin
     start_issue_now   = l1_start && !l1_issue_active && blk_valid_in[l1_slot_start];
@@ -153,12 +162,14 @@ module ia_loader_cache_mgr #(
     src_rd_en       = 1'b0;
     src_rd_addr     = '0;
     src_tile_last   = 1'b0;
+    src_tile_first  = 1'b0;
     src_l1_last     = 1'b0;
 
-    if (start_issue_now || (l1_issue_active && issue_slot_ready)) begin
+    if (start_issue_now || (l1_issue_active && issue_slot_ready && !issue_gap_active)) begin
       src_rd_en     = 1'b1;
       src_rd_addr   = ADDR_W'({issue_slot_now, LOG2_SIZE'(issue_row_idx_now)});
       src_tile_last = (issue_row_idx_now == issue_rows_now - 1);
+      src_tile_first= (issue_row_idx_now == '0);
       src_l1_last   = src_tile_last && (issue_slot_now == l1_slot_end_now);
     end
   end
@@ -166,11 +177,11 @@ module ia_loader_cache_mgr #(
   // 各列移位管线
   logic              rd_en_pipe      [SIZE];
   logic [ADDR_W-1:0] rd_addr_pipe    [SIZE];
+  logic              tile_first_pipe [SIZE];
   logic              tile_last_pipe  [SIZE];
   logic              l1_last_pipe    [SIZE];
 
   // 当前 slot ready
-  logic issue_slot_ready;
   assign issue_slot_ready = blk_valid_in[issue_slot_r];
 
   // 下一 slot（自然回绕）
@@ -186,21 +197,23 @@ module ia_loader_cache_mgr #(
       issue_rows_r    <= '0;
       send_is_init_r  <= 1'b0;
       send_calc_done_r<= 1'b0;
-      src_rd_en       <= 1'b0;
-      src_rd_addr     <= '0;
-      src_tile_last   <= 1'b0;
-      src_l1_last     <= 1'b0;
+      issue_gap_cnt   <= '0;
       tile_done       <= 1'b0;
       l1_done         <= 1'b0;
       for (int j = 0; j < SIZE; j++) begin
         rd_en_pipe[j]     <= 1'b0;
         rd_addr_pipe[j]   <= '0;
+        tile_first_pipe[j]<= 1'b0;
         tile_last_pipe[j] <= 1'b0;
         l1_last_pipe[j]   <= 1'b0;
       end
     end else begin
       tile_done     <= 1'b0;
       l1_done       <= 1'b0;
+
+      if (issue_gap_cnt != '0) begin
+        issue_gap_cnt <= issue_gap_cnt - 1'b1;
+      end
 
       // 启动新的 L1 组发射
       if (l1_start && !l1_issue_active) begin
@@ -219,6 +232,7 @@ module ia_loader_cache_mgr #(
               issue_slot_r    <= next_issue_slot;
               issue_row_idx_r <= '0;
               issue_rows_r    <= slot_rows[next_issue_slot];
+              issue_gap_cnt   <= GAP_CNT_W'(ISSUE_GAP_CYCLES);
             end
           end else begin
             issue_row_idx_r <= 'd1;
@@ -229,7 +243,7 @@ module ia_loader_cache_mgr #(
       end
 
       // col0 发射调度
-      if (l1_issue_active && issue_slot_ready) begin
+      if (l1_issue_active && issue_slot_ready && !issue_gap_active) begin
         if (issue_row_idx_r == issue_rows_r - 1) begin
           // 当前 tile 最后一行在 col0 发射
           if (issue_slot_r == l1_slot_end_r) begin
@@ -240,6 +254,7 @@ module ia_loader_cache_mgr #(
             issue_slot_r    <= next_issue_slot;
             issue_row_idx_r <= '0;
             issue_rows_r    <= slot_rows[next_issue_slot];
+            issue_gap_cnt   <= GAP_CNT_W'(ISSUE_GAP_CYCLES);
           end
         end else begin
           issue_row_idx_r <= issue_row_idx_r + 1;
@@ -249,11 +264,13 @@ module ia_loader_cache_mgr #(
       // 移位管线更新
       rd_en_pipe[0]     <= src_rd_en;
       rd_addr_pipe[0]   <= src_rd_addr;
+      tile_first_pipe[0]<= src_tile_first;
       tile_last_pipe[0] <= src_tile_last;
       l1_last_pipe[0]   <= src_l1_last;
       for (int j = 1; j < SIZE; j++) begin
         rd_en_pipe[j]     <= rd_en_pipe[j-1];
         rd_addr_pipe[j]   <= rd_addr_pipe[j-1];
+        tile_first_pipe[j]<= tile_first_pipe[j-1];
         tile_last_pipe[j] <= tile_last_pipe[j-1];
         l1_last_pipe[j]   <= l1_last_pipe[j-1];
       end
@@ -280,15 +297,21 @@ module ia_loader_cache_mgr #(
   // 输出数据：RAM 读出数据直接作为 ia_out（RAM 寄存器输出，延迟 1 拍）
   // =====================================================================
   logic ram_rd_en_d1 [SIZE];
+  logic tile_first_out_d1;
+  logic src_rd_en_d1;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       for (int j = 0; j < SIZE; j++)
         ram_rd_en_d1[j] <= 1'b0;
-    end else begin
-      for (int j = 0; j < SIZE; j++)
-        ram_rd_en_d1[j] <= ram_rd_en[j];
-    end
-  end
+	      tile_first_out_d1 <= 1'b0;
+	      src_rd_en_d1      <= 1'b0;
+	    end else begin
+	      for (int j = 0; j < SIZE; j++)
+	        ram_rd_en_d1[j] <= ram_rd_en[j];
+	      tile_first_out_d1 <= rd_en_pipe[SIZE-1] && tile_first_pipe[SIZE-1];
+	      src_rd_en_d1      <= src_rd_en;
+	    end
+	  end
 
   // ia_out: 对角化时序保持不变；无效期间 gate 为 0
   always_comb begin
@@ -297,7 +320,10 @@ module ia_loader_cache_mgr #(
   end
 
   // ia_row_valid: 最大延迟列（SIZE-1）的 rd_en
-  assign ia_row_valid = ram_rd_en_d1[SIZE-1];
+	  assign ia_row_valid = ram_rd_en_d1[SIZE-1];
+	  // Early burst start: col0 issue begins here.  This is intentionally ahead
+	  // of ia_row_valid so ps_buffer replay can absorb the cache/systolic delay.
+	  assign ia_tile_start = src_rd_en & ~src_rd_en_d1;
 
   // =====================================================================
   // ia_is_init_data / ia_calc_done

@@ -21,10 +21,14 @@ task automatic simulate_weight_loader();
         // 清除请求并清除之前的 done 信号
         @(weight_if.cb);
         weight_if.cb.weight_sending_done <= 1'b0;
+        weight_if.cb.load_weight_done    <= 1'b0;
         weight_if.cb.load_weight_req     <= 1'b0;
 
         // 模拟数据加载延迟
         repeat (64) @(weight_if.cb);
+        weight_if.cb.load_weight_done <= 1'b1;
+        @(weight_if.cb);
+        weight_if.cb.load_weight_done <= 1'b0;
         weight_if.cb.weight_data_valid <= 1'b1;
         $display("  [%0t] Weight data valid (count=%0d)", $time, load_count);
 
@@ -50,6 +54,7 @@ task automatic simulate_weight_loader();
         @(weight_if.cb);
         @(posedge clk);
         weight_if.cb.weight_sending_done <= 1'b0;
+        weight_if.cb.load_weight_done    <= 1'b0;
         if (weight_if.load_weight_granted) begin
             weight_if.cb.load_weight_req <= 1'b0;
         end
@@ -129,7 +134,10 @@ task automatic simulate_bias_loader(input bit skip);
     if (skip) begin
         // 跳过加载，直接设置 valid 并等待 tile 完成
         @(bias_if.cb);
-        bias_if.cb.bias_valid <= 1'b1;
+        bias_if.cb.bias_valid     <= 1'b1;
+        bias_if.cb.load_bias_done <= 1'b1;
+        @(bias_if.cb);
+        bias_if.cb.load_bias_done <= 1'b0;
         $display("  [%0t] Bias loader: skipped loading, bias_valid set to 1", $time);
         $display("%s  === Bias loader finished (skipped) ===%s", COLOR_BOLD_BLUE, COLOR_RESET);
     end else begin
@@ -145,10 +153,14 @@ task automatic simulate_bias_loader(input bit skip);
             $display("  [%0t] Bias loader: granted (tile=%0d)", $time, load_count);
 
             @(bias_if.cb);
-            bias_if.cb.load_bias_req <= 1'b0;
+            bias_if.cb.load_bias_req  <= 1'b0;
+            bias_if.cb.load_bias_done <= 1'b0;
 
             // 模拟加载延迟后使偏置数据有效
             repeat (16) @(bias_if.cb);
+            bias_if.cb.load_bias_done <= 1'b1;
+            @(bias_if.cb);
+            bias_if.cb.load_bias_done <= 1'b0;
             bias_if.cb.bias_valid <= 1'b1;
             $display("  [%0t] Bias data valid (tile=%0d)", $time, load_count);
 
@@ -156,7 +168,8 @@ task automatic simulate_bias_loader(input bit skip);
             wait (comp_if.tile_calc_over);
             $display("  [%0t] Bias loader: tile done, clearing valid (tile=%0d)", $time, load_count);
 
-            bias_if.cb.bias_valid <= 1'b0;
+            bias_if.cb.bias_valid     <= 1'b0;
+            bias_if.cb.load_bias_done <= 1'b0;
 
             load_count++;
         end

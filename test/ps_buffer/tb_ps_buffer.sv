@@ -12,11 +12,14 @@ module tb_ps_buffer;
     logic signed [DATA_WIDTH-1:0] data_in [0:SIZE-1];
     logic                         ia_row_valid;
     logic                         ia_calc_done;
+    logic                         ia_tile_start;
     logic                         ia_l1_switch;
     logic                         send_ia_trigger;
     logic                         ia_is_init_data;
+    logic                         replay_enable;
 
     logic signed [DATA_WIDTH-1:0] dut_data_out [0:SIZE-1];
+    logic signed [DATA_WIDTH-1:0] dut_acc_data_out [0:SIZE-1];
     logic                         dut_acc_data_valid_o;
     logic                         dut_tile_calc_over_o;
 
@@ -31,10 +34,13 @@ module tb_ps_buffer;
         .data_in        (data_in),
         .ia_row_valid   (ia_row_valid),
         .ia_calc_done   (ia_calc_done),
+        .ia_tile_start  (ia_tile_start),
         .ia_l1_switch   (ia_l1_switch),
         .send_ia_trigger(send_ia_trigger),
         .ia_is_init_data(ia_is_init_data),
+        .replay_enable  (replay_enable),
         .data_out       (dut_data_out),
+        .acc_data_out   (dut_acc_data_out),
         .acc_data_valid (dut_acc_data_valid_o),
         .tile_calc_over (dut_tile_calc_over_o)
     );
@@ -62,13 +68,23 @@ module tb_ps_buffer;
         end
     endfunction
 
+    function automatic logic signed [DATA_WIDTH-1:0] make_frame_value(
+        input int tag,
+        input int step_idx,
+        input int lane_idx
+    );
+        return $signed(tag * 10000 + step_idx * 100 + lane_idx);
+    endfunction
+
     task automatic clear_inputs();
         begin
             ia_row_valid    = 1'b0;
             ia_calc_done    = 1'b0;
+            ia_tile_start   = 1'b0;
             ia_l1_switch    = 1'b0;
             send_ia_trigger = 1'b0;
             ia_is_init_data = 1'b0;
+            replay_enable   = 1'b1;
             for (int lane = 0; lane < SIZE; lane++) begin
                 data_in[lane] = '0;
             end
@@ -140,9 +156,9 @@ module tb_ps_buffer;
             end
 
             for (int lane = 0; lane < SIZE; lane++) begin
-                if (dut_data_out[lane] !== make_value(tag, row_idx, lane)) begin
+                if (dut_acc_data_out[lane] !== make_value(tag, row_idx, lane)) begin
                     $display("[TB] ERROR %s row %0d lane %0d de-diagonalized data mismatch: dut=%0d exp=%0d",
-                             label, row_idx, lane, dut_data_out[lane],
+                             label, row_idx, lane, dut_acc_data_out[lane],
                              make_value(tag, row_idx, lane));
                     errors++;
                 end
@@ -162,7 +178,7 @@ module tb_ps_buffer;
                 for (int lane = 0; lane < SIZE; lane++) begin
                     data_in[lane] = make_stair_value(tag, step, lane);
                 end
-                ia_row_valid    = (step < SIZE);
+                ia_row_valid    = 1'b1;
                 ia_calc_done    = 1'b0;
                 ia_l1_switch    = 1'b0;
                 send_ia_trigger = 1'b0;
@@ -199,6 +215,73 @@ module tb_ps_buffer;
             @(posedge clk);
             #1;
             check_control_idle("fifo replay done");
+        end
+    endtask
+
+    task automatic capture_variable_frame(input int tag, input int frame_len_in);
+        begin
+            for (int step = 0; step < frame_len_in; step++) begin
+                @(negedge clk);
+                for (int lane = 0; lane < SIZE; lane++) begin
+                    data_in[lane] = make_frame_value(tag, step, lane);
+                end
+                ia_row_valid    = 1'b1;
+                ia_calc_done    = 1'b0;
+                ia_l1_switch    = 1'b0;
+                send_ia_trigger = 1'b0;
+                ia_is_init_data = 1'b1;
+                @(posedge clk);
+                #1;
+                check_control_idle($sformatf("variable frame capture tag=%0d step=%0d", tag, step));
+            end
+
+            @(negedge clk);
+            clear_inputs();
+            ia_l1_switch = 1'b1;
+            @(posedge clk);
+            #1;
+            check_control_idle($sformatf("variable frame switch tag=%0d", tag));
+            @(negedge clk);
+            ia_l1_switch = 1'b0;
+        end
+    endtask
+
+    task automatic replay_variable_frame(input int tag, input int frame_len_in);
+        begin
+            @(negedge clk);
+            send_ia_trigger = 1'b1;
+            @(posedge clk);
+            #1;
+            check_control_idle($sformatf("variable frame trigger tag=%0d", tag));
+
+            @(negedge clk);
+            send_ia_trigger = 1'b0;
+
+            for (int step = 0; step < frame_len_in; step++) begin
+                @(posedge clk);
+                #1;
+                check_control_idle($sformatf("variable frame replay tag=%0d step=%0d", tag, step));
+                for (int lane = 0; lane < SIZE; lane++) begin
+                    if (dut_data_out[lane] !== make_frame_value(tag, step, lane)) begin
+                        $display("[TB] ERROR variable frame tag=%0d step=%0d lane=%0d dut=%0d exp=%0d",
+                                 tag, step, lane, dut_data_out[lane],
+                                 make_frame_value(tag, step, lane));
+                        errors++;
+                    end
+                end
+            end
+        end
+    endtask
+
+    task automatic run_variable_length_fifo_test();
+        begin
+            $display("[TB] variable-length FIFO replay test start");
+            apply_reset();
+
+            capture_variable_frame(3, STAIR_STEPS);
+            capture_variable_frame(4, STAIR_STEPS - 1);
+            replay_variable_frame(3, STAIR_STEPS);
+            replay_variable_frame(4, STAIR_STEPS - 1);
         end
     endtask
 
@@ -283,6 +366,7 @@ module tb_ps_buffer;
 
     initial begin
         run_diagonal_partial_sum_fifo_test(1);
+        run_variable_length_fifo_test();
         run_calc_done_de_diagonalizer_test(2);
 
         if (errors == 0) begin

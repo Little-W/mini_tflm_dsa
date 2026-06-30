@@ -13,6 +13,7 @@
 PROJECT_ROOT := ../..
 DEP_MODULES_DIR := $(PROJECT_ROOT)/test/dep_modules
 BASIC_MODULES_DIR := $(PROJECT_ROOT)/basic
+SUB_MODULES_DIR := $(PROJECT_ROOT)/sub_modules
 INC_DIR := $(PROJECT_ROOT)/inc
 VEXE := sim_ia_loader
 
@@ -26,17 +27,18 @@ VERILATOR_FLAGS := -sv -Wall --trace --timing \
 	-Wno-UNUSED -Wno-UNUSEDGENVAR -Wno-WIDTHTRUNC -Wno-CASEINCOMPLETE \
 	-Wno-UNOPTFLAT -Wno-BLKANDNBLK -Wno-INITIALDLY -Wno-MULTIDRIVEN \
 	-Wno-IMPLICITSTATIC -Wno-WIDTHCONCAT -Wno-LATCH -Wno-TIMESCALEMOD \
-	-Wno-EOFNEWLINE -Wno-PINCONNECTEMPTY -Wno-BLKSEQ
+	-Wno-EOFNEWLINE -Wno-PINCONNECTEMPTY -Wno-BLKSEQ \
+	-Wno-PROCASSINIT -Wno-SYNCASYNCNET
 
 INCLUDES := -I$(INC_DIR) -Iout
 
 SRCS := \
 	tb_ia_loader.sv \
 	tb_sram_model.sv \
-	ia_loader.sv \
-	ia_loader_ctrl.sv \
-	block_dma.sv \
-	ia_loader_cache_mgr.sv \
+	$(SUB_MODULES_DIR)/ia_loader.sv \
+	$(SUB_MODULES_DIR)/ia_loader_ctrl.sv \
+	$(SUB_MODULES_DIR)/block_dma.sv \
+	$(SUB_MODULES_DIR)/ia_loader_cache_mgr.sv \
 	$(DEP_MODULES_DIR)/icb_unalign_bridge.sv \
 	$(BASIC_MODULES_DIR)/pseudo_dual_port_ram.v
 
@@ -64,9 +66,16 @@ run_all:
 		echo "════════════════════════════════════════"; \
 		echo "  Case: $$c"; \
 		echo "════════════════════════════════════════"; \
-		python3 gen_test_data.py --case $$c --out_dir out && \
-		verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_ia_loader 2>&1 | tail -1 && \
-		mkdir -p out && ./obj_dir/$(VEXE) +WAVE_FILE=out/wave_$$c.vcd 2>&1 | tee /tmp/ia_loader_$$c.log && \
+		python3 gen_test_data.py --case $$c --out_dir out || { FAIL=$$((FAIL+1)); SUMMARY="$$SUMMARY\n  $$c: GEN_FAIL"; continue; }; \
+		build_log=/tmp/ia_loader_$$c.build.log; \
+		if ! verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_ia_loader > "$$build_log" 2>&1; then \
+			cat "$$build_log"; \
+			FAIL=$$((FAIL+1)); \
+			echo "  !! BUILD FAILED: $$c"; \
+			continue; \
+		fi; \
+		tail -1 "$$build_log"; \
+		mkdir -p out && ./obj_dir/$(VEXE) +WAVE_FILE=out/wave_$$c.vcd 2>&1 | tee /tmp/ia_loader_$$c.log; \
 		if grep -q 'PASS' /tmp/ia_loader_$$c.log; then \
 			PASS=$$((PASS+1)); \
 		else \
@@ -90,9 +99,16 @@ run_random:
 		echo "════════════════════════════════════════"; \
 		echo "  Random case: $$c"; \
 		echo "════════════════════════════════════════"; \
-		cp out/$$c/* out/ && \
-		verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_ia_loader 2>&1 | tail -1 && \
-		mkdir -p out && ./obj_dir/$(VEXE) +WAVE_FILE=out/wave_$$c.vcd 2>&1 | tee /tmp/ia_loader_$$c.log && \
+		cp out/$$c/* out/ || { FAIL=$$((FAIL+1)); continue; }; \
+		build_log=/tmp/ia_loader_$$c.build.log; \
+		if ! verilator $(VERILATOR_FLAGS) $(INCLUDES) --binary $(SRCS) -o $(VEXE) --top-module tb_ia_loader > "$$build_log" 2>&1; then \
+			cat "$$build_log"; \
+			FAIL=$$((FAIL+1)); \
+			echo "  !! BUILD FAILED: $$c"; \
+			continue; \
+		fi; \
+		tail -1 "$$build_log"; \
+		mkdir -p out && ./obj_dir/$(VEXE) +WAVE_FILE=out/wave_$$c.vcd 2>&1 | tee /tmp/ia_loader_$$c.log; \
 		if grep -q 'PASS' /tmp/ia_loader_$$c.log; then \
 			PASS=$$((PASS+1)); \
 		else \

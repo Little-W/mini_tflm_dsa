@@ -37,14 +37,14 @@ CASES = {
 }
 
 
-def write_init_mem(out_dir: str, k: int, n: int, base_addr: int) -> None:
+def write_init_mem(out_dir: str, rows: int, cols: int, base_addr: int) -> None:
     mem = [0] * SRAM_DEPTH
     bytes_per_elem = DATA_WIDTH // 8
-    row_stride_b = n * bytes_per_elem
+    row_stride_b = cols * bytes_per_elem
 
-    for r in range(k):
-        for c in range(n):
-            value = (r * n + c + 1) & 0xFF
+    for r in range(rows):
+        for c in range(cols):
+            value = (r * cols + c + 1) & 0xFF
             if value >= 0x80:
                 value -= 0x100
             byte_addr = base_addr + r * row_stride_b + c * bytes_per_elem
@@ -59,10 +59,17 @@ def write_init_mem(out_dir: str, k: int, n: int, base_addr: int) -> None:
 
 def write_params(out_dir: str, case: str, k: int, n: int, m: int, ia_reuse_num: int, w_reuse_num: int,
                  rhs_zp: int, base_addr: int, grant_bp_en: int = 0, grant_bp_cycles: int = 0) -> None:
-    tile_rows = ceil_div(k, SIZE)
-    tile_cols = ceil_div(n, SIZE)
+    # GEMM shape is (K x N) * (N x M).  The kernel/RHS matrix therefore has
+    # N rows and M columns.  K only controls how many output-row groups consume
+    # the same RHS stream.
+    tile_rows = ceil_div(n, SIZE)
+    tile_cols = ceil_div(m, SIZE)
+    output_row_tiles = ceil_div(k, SIZE)
     l2_groups = ceil_div(tile_cols, w_reuse_num)
-    total_tiles = ia_reuse_num * tile_rows * tile_cols
+    repeat_total = ceil_div(output_row_tiles, ia_reuse_num)
+    if repeat_total == 0:
+        repeat_total = 1
+    total_tiles = repeat_total * tile_rows * tile_cols
 
     with open(os.path.join(out_dir, "test_params.svh"), "w", encoding="utf-8") as fp:
         fp.write(f"// Auto-generated for {case}\n")
@@ -73,10 +80,12 @@ def write_params(out_dir: str, case: str, k: int, n: int, m: int, ia_reuse_num: 
         fp.write(f"localparam int TC_W_REUSE_NUM = {w_reuse_num};\n")
         fp.write(f"localparam int TC_TILE_ROWS = {tile_rows};\n")
         fp.write(f"localparam int TC_TILE_COLS = {tile_cols};\n")
+        fp.write(f"localparam int TC_OUTPUT_ROW_TILES = {output_row_tiles};\n")
+        fp.write(f"localparam int TC_REPEAT_TOTAL = {repeat_total};\n")
         fp.write(f"localparam int TC_L2_GROUPS = {l2_groups};\n")
         fp.write(f"localparam int TC_TOTAL_TILES = {total_tiles};\n")
         fp.write(f"localparam int TC_BASE_ADDR = 32'h{base_addr:08x};\n")
-        fp.write(f"localparam int TC_ROW_STRIDE_B = {n};\n")
+        fp.write(f"localparam int TC_ROW_STRIDE_B = {m};\n")
         fp.write(f"localparam int TC_RHS_ZP = {rhs_zp};\n")
         fp.write(f"localparam int TC_SRAM_DEPTH = {SRAM_DEPTH};\n")
         fp.write(f"localparam int TC_GRANT_BP_EN = {grant_bp_en};\n")
@@ -96,6 +105,8 @@ def write_params(out_dir: str, case: str, k: int, n: int, m: int, ia_reuse_num: 
             "grant_bp_cycles": grant_bp_cycles,
             "tile_rows": tile_rows,
             "tile_cols": tile_cols,
+            "output_row_tiles": output_row_tiles,
+            "repeat_total": repeat_total,
             "l2_groups": l2_groups,
             "total_tiles": total_tiles,
         }, fp, indent=2)
@@ -125,7 +136,7 @@ def generate_case(case_name: str, params: dict, out_dir: str) -> None:
     grant_bp_cycles = int(params.get("grant_bp_cycles", 0))
 
     os.makedirs(out_dir, exist_ok=True)
-    write_init_mem(out_dir, k, n, base_addr)
+    write_init_mem(out_dir, n, m, base_addr)
     write_params(out_dir, case_name, k, n, m, ia_reuse_num, w_reuse_num, rhs_zp, base_addr,
                  grant_bp_en, grant_bp_cycles)
     print(f"Generated {case_name} into {out_dir}")

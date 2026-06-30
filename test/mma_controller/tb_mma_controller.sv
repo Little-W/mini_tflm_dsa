@@ -54,6 +54,7 @@ module tb_mma_controller;
         .rst_n                (rst_n),
         .calc_start           (ctrl_if.calc_start),
         .cfg_16bits_ia        (ctrl_if.cfg_16bits_ia),
+        .cfg_dataflow_mode    (1'b0),
         .sa_ready             (ctrl_if.sa_ready),
         .icb_sel              (ctrl_if.icb_sel),
         .init_cfg_ia          (ctrl_if.init_cfg_ia),
@@ -62,8 +63,8 @@ module tb_mma_controller;
         .init_cfg_requant     (ctrl_if.init_cfg_requant),
         .init_cfg_oa          (ctrl_if.init_cfg_oa),
         .use_16bits           (ctrl_if.use_16bits),
-        .tile_count           (ctrl_if.tile_count),
         .partial_sum_calc_over(comp_if.partial_sum_calc_over),
+        .tile_calc_over       (comp_if.tile_calc_over),
         .load_ia_req          (ia_if.load_ia_req),
         .load_ia_granted      (ia_if.load_ia_granted),
         .send_ia_trigger      (ia_if.send_ia_trigger),
@@ -71,12 +72,15 @@ module tb_mma_controller;
         .ia_data_valid        (ia_if.ia_data_valid),
         .load_weight_req      (weight_if.load_weight_req),
         .load_weight_granted  (weight_if.load_weight_granted),
+        .load_weight_done     (weight_if.load_weight_done),
         .send_weight_trigger  (weight_if.send_weight_trigger),
         .weight_sending_done  (weight_if.weight_sending_done),
         .weight_data_valid    (weight_if.weight_data_valid),
         .load_bias_req        (bias_if.load_bias_req),
         .load_bias_granted    (bias_if.load_bias_granted),
         .bias_valid           (bias_if.bias_valid),
+        .bias_sleep           (bias_if.bias_sleep),
+        .load_bias_done       (bias_if.load_bias_done),
         .load_quant_req       (quant_if.load_quant_req),
         .load_quant_granted   (quant_if.load_quant_granted),
         .quant_params_valid   (quant_if.quant_params_valid),
@@ -98,7 +102,7 @@ module tb_mma_controller;
         .m                    (1),  // 连接到常量1
         .lhs_row_stride_b     (1),  // 连接到常量1
         .dst_row_stride_b     (1),  // 连接到常量1
-        .rhs_row_stride_b     (1),  // 连接到常量1
+        .rhs_col_stride_b     (1),  // 连接到常量1
         .wb_valid             (),   // 新增输出端口，无需连接
         .wb_ready             (1'b1), // 假设连接到1（测试台输入）
         .err_code             ()    // 新增输出端口，无需连接
@@ -146,12 +150,15 @@ module tb_mma_controller;
 
         @(weight_if.cb);
         weight_if.cb.load_weight_req     <= 1'b0;
+        weight_if.cb.load_weight_done    <= 1'b0;
         weight_if.cb.weight_sending_done <= 1'b0;
         weight_if.cb.weight_data_valid   <= 1'b0;
 
         @(bias_if.cb);
-        bias_if.cb.load_bias_req <= 1'b0;
-        bias_if.cb.bias_valid    <= 1'b0;
+        bias_if.cb.load_bias_req  <= 1'b0;
+        bias_if.cb.bias_valid     <= 1'b0;
+        bias_if.cb.bias_sleep     <= 1'b0;
+        bias_if.cb.load_bias_done <= 1'b0;
 
         @(quant_if.cb);
         quant_if.cb.load_quant_req     <= 1'b0;

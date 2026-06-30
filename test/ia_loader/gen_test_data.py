@@ -141,13 +141,16 @@ def generate_case(params, out_dir, case_name):
     LRN = ceil_div(M, SIZE)
     G2 = ceil_div(VTN, R)
     G1 = HTN
+    WG = ceil_div(LRN, W)
     R_act = VTN % R if VTN % R != 0 else R
 
     # 计算总发送次数
     total_sends = 0
     for l2 in range(G2):
         r_cur = R_act if l2 == G2 - 1 else R
-        total_sends += G1 * W * r_cur
+        for wg in range(WG):
+            w_cur = min(W, LRN - wg * W)
+            total_sends += G1 * w_cur * r_cur
 
     # ── test_params.svh ──
     with open(os.path.join(out_dir, "test_params.svh"), 'w') as f:
@@ -164,8 +167,10 @@ def generate_case(params, out_dir, case_name):
         f.write(f"localparam int TC_USE_16BITS = {use_16bits};\n")
         f.write(f"localparam int TC_HTN        = {HTN};\n")
         f.write(f"localparam int TC_VTN        = {VTN};\n")
+        f.write(f"localparam int TC_LRN        = {LRN};\n")
         f.write(f"localparam int TC_G2         = {G2};\n")
         f.write(f"localparam int TC_G1         = {G1};\n")
+        f.write(f"localparam int TC_WG         = {WG};\n")
         f.write(f"localparam int TC_R_ACT      = {R_act};\n")
         f.write(f"localparam int TC_TOTAL_SENDS= {total_sends};\n")
         f.write(f"localparam int TC_SRAM_DEPTH = {actual_sram_depth};\n")
@@ -176,39 +181,42 @@ def generate_case(params, out_dir, case_name):
     with open(os.path.join(out_dir, "golden.txt"), 'w') as f:
         f.write(f"# Case: {case_name}\n")
         f.write(f"# K={K} N={N} M={M} R={R} W={W} U16={use_16bits} SIZE={SIZE}\n")
-        f.write(f"# HTN={HTN} VTN={VTN} G2={G2} G1={G1} R_act={R_act}\n\n")
+        f.write(f"# HTN={HTN} VTN={VTN} LRN={LRN} G2={G2} G1={G1} WG={WG} R_act={R_act}\n\n")
         cnt = 0
         for l2 in range(G2):
             r_cur = R_act if l2 == G2 - 1 else R
-            for l1 in range(G1):
-                for w_rep in range(W):
-                    for ia in range(r_cur):
-                        tile_r = l2 * R + ia
-                        tile_c = l1
-                        vrows = K - tile_r * SIZE if tile_r == VTN - 1 else SIZE
-                        is_first = int(l1 == 0)
-                        is_calc_done = int(l1 == G1 - 1)
-                        f.write(f"TILE {tile_r} {tile_c} vrows={vrows} "
-                                f"is_first={is_first} calc_done={is_calc_done}\n")
-                        for row in range(vrows):
-                            vals = []
-                            for col in range(SIZE):
-                                mat_r = tile_r * SIZE + row
-                                mat_c = tile_c * SIZE + col
-                                if mat_r < K and mat_c < N:
-                                    vals.append(ia_matrix[mat_r][mat_c] + lhs_zp)
-                                else:
-                                    vals.append(0)
-                            f.write(f"  ROW {row}: {' '.join(f'{v:6d}' for v in vals)}\n")
-                        cnt += 1
-                        f.write("\n")
+            for wg in range(WG):
+                w_cur = min(W, LRN - wg * W)
+                for l1 in range(G1):
+                    for w_rep in range(w_cur):
+                        for ia in range(r_cur):
+                            tile_r = l2 * R + ia
+                            tile_c = l1
+                            vrows = K - tile_r * SIZE if tile_r == VTN - 1 else SIZE
+                            is_first = int(l1 == 0)
+                            is_calc_done = int(l1 == G1 - 1)
+                            f.write(f"TILE {tile_r} {tile_c} wg={wg} w={w_rep} "
+                                    f"vrows={vrows} is_first={is_first} "
+                                    f"calc_done={is_calc_done}\n")
+                            for row in range(vrows):
+                                vals = []
+                                for col in range(SIZE):
+                                    mat_r = tile_r * SIZE + row
+                                    mat_c = tile_c * SIZE + col
+                                    if mat_r < K and mat_c < N:
+                                        vals.append(ia_matrix[mat_r][mat_c] + lhs_zp)
+                                    else:
+                                        vals.append(0)
+                                f.write(f"  ROW {row}: {' '.join(f'{v:6d}' for v in vals)}\n")
+                            cnt += 1
+                            f.write("\n")
         f.write(f"# Total tiles sent: {cnt}\n")
 
     # ── params.json ──
     with open(os.path.join(out_dir, "params.json"), 'w') as f:
         json.dump(dict(case=case_name, K=K, N=N, M=M, R=R, W=W,
                        use_16bits=use_16bits, lhs_zp=lhs_zp,
-                       HTN=HTN, VTN=VTN, G2=G2, G1=G1, R_act=R_act,
+                       HTN=HTN, VTN=VTN, LRN=LRN, G2=G2, G1=G1, WG=WG, R_act=R_act,
                        total_sends=total_sends, sram_depth=actual_sram_depth,
                        grant_bp_en=grant_bp_en, grant_bp_cycles=grant_bp_cycles),
                   f, indent=2)

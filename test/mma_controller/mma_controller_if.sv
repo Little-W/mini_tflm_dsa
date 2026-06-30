@@ -42,6 +42,7 @@ endinterface
 interface weight_loader_if(input logic clk);
     logic load_weight_req;
     logic load_weight_granted;
+    logic load_weight_done;
     logic send_weight_trigger;
     logic weight_sending_done;
     logic weight_data_valid;
@@ -51,6 +52,7 @@ interface weight_loader_if(input logic clk);
         default input #1ns output #1ns;
         output load_weight_req;
         input  load_weight_granted;
+        output load_weight_done;
         input  send_weight_trigger;
         output weight_sending_done;
         output weight_data_valid;
@@ -59,6 +61,7 @@ interface weight_loader_if(input logic clk);
     modport controller (
         input  load_weight_req,
         output load_weight_granted,
+        input  load_weight_done,
         output send_weight_trigger,
         input  weight_sending_done,
         input  weight_data_valid
@@ -67,6 +70,7 @@ interface weight_loader_if(input logic clk);
     modport tb (
         output load_weight_req,
         input  load_weight_granted,
+        output load_weight_done,
         input  send_weight_trigger,
         output weight_sending_done,
         output weight_data_valid
@@ -78,6 +82,8 @@ interface bias_loader_if(input logic clk);
     logic load_bias_req;
     logic load_bias_granted;
     logic bias_valid;
+    logic bias_sleep;
+    logic load_bias_done;
 
     // Clocking block for testbench
     clocking cb @(posedge clk);
@@ -85,18 +91,24 @@ interface bias_loader_if(input logic clk);
         output load_bias_req;
         input  load_bias_granted;
         output bias_valid;
+        output bias_sleep;
+        output load_bias_done;
     endclocking
 
     modport controller (
         input  load_bias_req,
         output load_bias_granted,
-        input  bias_valid
+        input  bias_valid,
+        input  bias_sleep,
+        input  load_bias_done
     );
 
     modport tb (
         output load_bias_req,
         input  load_bias_granted,
-        output bias_valid
+        output bias_valid,
+        output bias_sleep,
+        output load_bias_done
     );
 endinterface
 

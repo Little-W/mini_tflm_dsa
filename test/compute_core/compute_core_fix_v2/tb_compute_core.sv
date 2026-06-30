@@ -4,6 +4,7 @@ module tb_compute_core;
     import test_params_pkg::*;
 
     localparam int unsigned DATA_WIDTH       = 16;
+    localparam int unsigned WEIGHT_WIDTH     = 16;
     localparam int unsigned NUM_SEG          = NUM_K / SIZE;
     localparam int unsigned STAIR_STEPS      = (2 * SIZE) - 1;
     localparam int unsigned VALID_START_STEP = SIZE - 1;
@@ -22,7 +23,7 @@ module tb_compute_core;
 
     tb_compute_core_if tb_if(clk);
 
-    logic signed [7:0]   weight_mem_raw [SIZE * NUM_K];
+    logic signed [WEIGHT_WIDTH-1:0] weight_mem_raw [SIZE * NUM_K];
     logic signed [15:0]  ia_mem_raw     [SIZE * NUM_K];
     logic signed [31:0]  bias_mem       [SIZE];
     logic signed [31:0]  exp_mem        [SIZE * SIZE];
@@ -36,8 +37,9 @@ module tb_compute_core;
     string  data_dir;
 
     compute_core_test #(
-        .SIZE      (SIZE),
-        .DATA_WIDTH(DATA_WIDTH)
+        .SIZE        (SIZE),
+        .DATA_WIDTH  (DATA_WIDTH),
+        .WEIGHT_WIDTH(WEIGHT_WIDTH)
     ) dut (
         .clk             (clk),
         .rst_n           (rst_n),
@@ -45,6 +47,7 @@ module tb_compute_core;
         .weight_in       (tb_if.weight_in),
         .ia_vec_in       (tb_if.ia_vec_in),
         .ia_row_valid    (tb_if.ia_row_valid),
+        .ia_tile_start   (tb_if.send_ia_trigger),
         .ia_calc_done    (tb_if.ia_calc_done),
         .ia_is_init_data (tb_if.ia_is_init_data),
         .ia_l1_switch    (tb_if.ia_l1_switch),
@@ -206,45 +209,25 @@ module tb_compute_core;
         end
     endtask
 
-    task automatic check_partial_replay(
+    task automatic check_no_early_output(
         input int seg,
         input int step_idx
     );
-        logic signed [31:0] exp_val;
-        int prev_seg;
-        int diag_step;
         begin
-            if (seg == 0) begin
+            if (seg == NUM_SEG - 1) begin
                 return;
             end
 
-            // ps_buffer now stores and replays the complete diagonalized
-            // vector stream. Therefore the replayed data for the previous
-            // segment must correspond to diagonal steps 0 .. 2*SIZE-2.
-            if (step_idx < STAIR_STEPS) begin
-                prev_seg  = seg - 1;
-                diag_step = step_idx;
+            if (tb_if.acc_data_valid !== 1'b0) begin
+                $display("[TB] EARLY OUTPUT ERROR seg=%0d step=%0d acc_data_valid asserted before final segment",
+                         seg, step_idx);
+                errors++;
+            end
 
-                for (int lane = 0; lane < SIZE; lane++) begin
-                    exp_val = expected_diag_value(prev_seg, diag_step, lane);
-                    if (tb_if.acc_data_out[lane] !== exp_val) begin
-                        $display("[TB] PS_REPLAY ERROR seg=%0d prev_seg=%0d step=%0d lane=%0d got=%0d exp=%0d",
-                                 seg, prev_seg, step_idx, lane, tb_if.acc_data_out[lane], exp_val);
-                        errors++;
-                    end
-                end
-
-                if (tb_if.acc_data_valid !== 1'b0) begin
-                    $display("[TB] PS_REPLAY ERROR seg=%0d step=%0d acc_data_valid should be 0 during FIFO replay",
-                             seg, step_idx);
-                    errors++;
-                end
-
-                if (tb_if.tile_calc_over !== 1'b0) begin
-                    $display("[TB] PS_REPLAY ERROR seg=%0d step=%0d tile_calc_over should be 0 during FIFO replay",
-                             seg, step_idx);
-                    errors++;
-                end
+            if (tb_if.tile_calc_over !== 1'b0) begin
+                $display("[TB] EARLY OUTPUT ERROR seg=%0d step=%0d tile_calc_over asserted before final segment",
+                         seg, step_idx);
+                errors++;
             end
         end
     endtask
@@ -347,7 +330,7 @@ module tb_compute_core;
                          tb_if.acc_data_out[0], tb_if.acc_data_out[1],
                          tb_if.acc_data_out[2], tb_if.acc_data_out[3]);
 
-                check_partial_replay(seg, step);
+                check_no_early_output(seg, step);
                 capture_final_if_valid(seg, "stream", step);
             end
 
@@ -358,8 +341,6 @@ module tb_compute_core;
             for (int lane = 0; lane < SIZE; lane++) begin
                 tb_if.ia_vec_in[lane] = '0;
             end
-
-            pulse_l1_switch(seg);
 
             // Allow possible output drain and verify that tile_calc_over is a
             // one-cycle pulse aligned with the last valid final row.

@@ -42,6 +42,17 @@ module top_sram_icb_bridge #(
   wire [WIDTH-1:0]             m_icb_rsp_rdata;
   wire                         m_icb_rsp_err; // sram_icb 无 err，绑 0
 
+  wire                         ddr_icb_cmd_valid;
+  wire                         ddr_icb_cmd_ready;
+  wire [ADDR_W-1:0]            ddr_icb_cmd_addr;
+  wire                         ddr_icb_cmd_read;
+  wire [WIDTH-1:0]             ddr_icb_cmd_wdata;
+  wire [MW-1:0]                ddr_icb_cmd_wmask;
+
+  wire                         ddr_icb_rsp_valid;
+  wire                         ddr_icb_rsp_ready;
+  wire [WIDTH-1:0]             ddr_icb_rsp_rdata;
+
   wire [USR_W-1:0]             sram_rsp_usr;
 
   // 将下游 err 固定为 0（sram_icb 没有 err 信号）
@@ -81,6 +92,38 @@ module top_sram_icb_bridge #(
     .m_icb_rsp_err     (m_icb_rsp_err)
   );
 
+  icb_aligned_random_latency #(
+    .WIDTH(WIDTH),
+    .ADDR_W(ADDR_W),
+    .MW(MW),
+    .USR_W(USR_W)
+  ) u_ddr_latency (
+    .clk            (clk),
+    .rst_n          (rst_n),
+    .s_icb_cmd_valid(m_icb_cmd_valid),
+    .s_icb_cmd_ready(m_icb_cmd_ready),
+    .s_icb_cmd_read (m_icb_cmd_read),
+    .s_icb_cmd_addr (m_icb_cmd_addr),
+    .s_icb_cmd_wdata(m_icb_cmd_wdata),
+    .s_icb_cmd_wmask(m_icb_cmd_wmask),
+    .s_icb_cmd_usr  ({USR_W{1'b0}}),
+    .s_icb_rsp_valid(m_icb_rsp_valid),
+    .s_icb_rsp_ready(m_icb_rsp_ready),
+    .s_icb_rsp_rdata(m_icb_rsp_rdata),
+    .s_icb_rsp_usr  (),
+    .m_icb_cmd_valid(ddr_icb_cmd_valid),
+    .m_icb_cmd_ready(ddr_icb_cmd_ready),
+    .m_icb_cmd_read (ddr_icb_cmd_read),
+    .m_icb_cmd_addr (ddr_icb_cmd_addr),
+    .m_icb_cmd_wdata(ddr_icb_cmd_wdata),
+    .m_icb_cmd_wmask(ddr_icb_cmd_wmask),
+    .m_icb_cmd_usr  (),
+    .m_icb_rsp_valid(ddr_icb_rsp_valid),
+    .m_icb_rsp_ready(ddr_icb_rsp_ready),
+    .m_icb_rsp_rdata(ddr_icb_rsp_rdata),
+    .m_icb_rsp_usr  (sram_rsp_usr)
+  );
+
   // instantiate existing sram_icb (作为从设备)
   sram_icb #(
     .DW(WIDTH),
@@ -94,16 +137,16 @@ module top_sram_icb_bridge #(
     .clk                (clk),
     .rst_n              (rst_n),
     // ICB 从接口（sram_icb 的 i_icb_*）
-    .i_icb_cmd_valid    (m_icb_cmd_valid),
-    .i_icb_cmd_ready    (m_icb_cmd_ready),
-    .i_icb_cmd_read     (m_icb_cmd_read),
-    .i_icb_cmd_addr     (m_icb_cmd_addr),
-    .i_icb_cmd_wdata    (m_icb_cmd_wdata),
-    .i_icb_cmd_wmask    (m_icb_cmd_wmask),
+    .i_icb_cmd_valid    (ddr_icb_cmd_valid),
+    .i_icb_cmd_ready    (ddr_icb_cmd_ready),
+    .i_icb_cmd_read     (ddr_icb_cmd_read),
+    .i_icb_cmd_addr     (ddr_icb_cmd_addr),
+    .i_icb_cmd_wdata    (ddr_icb_cmd_wdata),
+    .i_icb_cmd_wmask    (ddr_icb_cmd_wmask),
     .i_icb_cmd_usr      ({USR_W{1'b0}}),
-    .i_icb_rsp_valid    (m_icb_rsp_valid),
-    .i_icb_rsp_ready    (m_icb_rsp_ready),
-    .i_icb_rsp_rdata    (m_icb_rsp_rdata),
+    .i_icb_rsp_valid    (ddr_icb_rsp_valid),
+    .i_icb_rsp_ready    (ddr_icb_rsp_ready),
+    .i_icb_rsp_rdata    (ddr_icb_rsp_rdata),
     .i_icb_rsp_usr      (sram_rsp_usr),
     .tcm_cgstop         (tcm_cgstop),
     .test_mode          (test_mode)

@@ -11,6 +11,7 @@ module kernel_loader_ctrl #(
     input  logic [REG_WIDTH-1:0]        cfg_rhs_base,
     input  logic [REG_WIDTH-1:0]        cfg_rhs_row_stride_b,
     input  logic signed [REG_WIDTH-1:0] cfg_rhs_zp,
+    input  logic                        cfg_use_16bits,
     input  logic [REG_WIDTH-1:0]        cfg_ia_reuse_num,
     input  logic [REG_WIDTH-1:0]        cfg_w_reuse_num,
     input  logic                        load_weight_granted,
@@ -38,6 +39,7 @@ module kernel_loader_ctrl #(
 
   logic [REG_WIDTH-1:0] tile_rows_total;
   logic [REG_WIDTH-1:0] tile_cols_total;
+  logic [REG_WIDTH-1:0] output_row_tiles_total;
   logic [REG_WIDTH-1:0] l2_groups_total;
   logic [REG_WIDTH-1:0] repeat_total;
   logic [REG_WIDTH-1:0] current_group_width;
@@ -61,10 +63,15 @@ module kernel_loader_ctrl #(
   endfunction
 
   always_comb begin
-    tile_rows_total   = ceil_div(cfg_k, SIZE);
-    tile_cols_total   = ceil_div(cfg_n, SIZE);
+    // Top-level GEMM dimensions are KxN times NxM.  The RHS/kernel matrix
+    // therefore has cfg_n rows and cfg_m columns; cfg_k controls how many
+    // output-row groups consume the same RHS stream.
+    tile_rows_total   = ceil_div(cfg_n, SIZE);
+    tile_cols_total   = ceil_div(cfg_m, SIZE);
+    output_row_tiles_total = ceil_div(cfg_k, SIZE);
     l2_groups_total   = ceil_div(tile_cols_total, (cfg_w_reuse_num == 0) ? 1 : cfg_w_reuse_num);
-    repeat_total      = (cfg_ia_reuse_num == 0) ? 1 : cfg_ia_reuse_num;
+    repeat_total      = ceil_div(output_row_tiles_total, (cfg_ia_reuse_num == 0) ? 1 : cfg_ia_reuse_num);
+    if (repeat_total == 0) repeat_total = 1;
     group_base_col    = cur_l2 * ((cfg_w_reuse_num == 0) ? 1 : cfg_w_reuse_num);
     current_group_width = min_u(cfg_w_reuse_num, tile_cols_total - group_base_col);
     if (current_group_width == 0) begin
@@ -75,7 +82,7 @@ module kernel_loader_ctrl #(
     tile_col_dbg = group_base_col + cur_col_in_group;
     repeat_dbg   = cur_repeat;
 
-    rows_remaining = cfg_k - (cur_tile_row * SIZE);
+    rows_remaining = cfg_n - (cur_tile_row * SIZE);
 
     load_weight_req = (state == S_REQ_LOAD);
     dma_start       = (state == S_REQ_LOAD) && load_weight_granted;
@@ -87,12 +94,12 @@ module kernel_loader_ctrl #(
 
     dma_tile_base_addr = cfg_rhs_base
                        + (cur_tile_row * SIZE * cfg_rhs_row_stride_b)
-                       + ((group_base_col + cur_col_in_group) * SIZE);
+                       + ((group_base_col + cur_col_in_group) * SIZE * (cfg_use_16bits ? 2 : 1));
     dma_rows_to_read   = min_u(SIZE, rows_remaining);
     dma_row_stride_b   = cfg_rhs_row_stride_b;
     dma_rhs_zp         = cfg_rhs_zp;
-    if ((group_base_col + cur_col_in_group + 1) * SIZE > cfg_n) begin
-      dma_valid_cols = cfg_n - ((group_base_col + cur_col_in_group) * SIZE);
+    if ((group_base_col + cur_col_in_group + 1) * SIZE > cfg_m) begin
+      dma_valid_cols = cfg_m - ((group_base_col + cur_col_in_group) * SIZE);
     end else begin
       dma_valid_cols = SIZE;
     end

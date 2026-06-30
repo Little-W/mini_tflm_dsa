@@ -1,4 +1,4 @@
-  logic signed [DATA_WIDTH-1:0] golden [TC_K][TC_N];
+  logic signed [DATA_WIDTH-1:0] golden [TC_N][TC_M];
 
   int queue_tile_row [TC_TOTAL_TILES];
   int queue_tile_col [TC_TOTAL_TILES];
@@ -10,14 +10,14 @@
   int error_count;
 
   initial begin
-    for (int r = 0; r < TC_K; r++) begin
-      for (int c = 0; c < TC_N; c++) begin
-        golden[r][c] = DATA_WIDTH'(r * TC_N + c + 1);
+    for (int r = 0; r < TC_N; r++) begin
+      for (int c = 0; c < TC_M; c++) begin
+        golden[r][c] = DATA_WIDTH'(r * TC_M + c + 1);
       end
     end
 
     queue_idx = 0;
-    for (int rep = 0; rep < TC_IA_REUSE_NUM; rep++) begin
+    for (int rep = 0; rep < TC_REPEAT_TOTAL; rep++) begin
       for (int l2 = 0; l2 < TC_L2_GROUPS; l2++) begin
         int base_col = l2 * TC_W_REUSE_NUM;
         int group_width = (l2 == TC_L2_GROUPS - 1)
@@ -56,7 +56,7 @@
 
       for (int c = 0; c < SIZE; c++) begin
         mat_c = tc * SIZE + c;
-        if (mat_r < TC_K && mat_c < TC_N) begin
+        if (mat_r < TC_N && mat_c < TC_M) begin
           expected = golden[mat_r][mat_c];
           expected = expected + DATA_WIDTH'(TC_RHS_ZP);
         end else begin

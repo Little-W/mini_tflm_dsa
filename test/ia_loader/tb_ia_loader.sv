@@ -24,6 +24,9 @@ module tb_ia_loader;
   localparam int BUS_WIDTH    = 32;
   localparam int REG_WIDTH    = 32;
   localparam int CACHE_BLOCKS = 4;
+  localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
+  localparam int CACHE_SLOT_W  = $clog2(CACHE_BLOCKS);
+  localparam int SIZE_W        = $clog2(SIZE);
 
   // ================================================================
   // 测试参数（由 gen_test_data.py 生成）
@@ -77,6 +80,7 @@ module tb_ia_loader;
   // ================================================================
   logic signed [DATA_WIDTH-1:0] ia_out          [SIZE];
   logic                         ia_row_valid;     // 最大延迟列有效标志
+  logic                         ia_tile_start;
   logic                         ia_is_init_data;
   logic                         ia_calc_done;
   logic                         ia_sending_done;
@@ -86,6 +90,33 @@ module tb_ia_loader;
   logic                         bias_switch;
   logic                         bias_last_loop;
 
+  logic                         dummy_ext_dma_start;
+  logic                         dummy_ext_dma_is_write;
+  logic                         dummy_ext_dma_linear_read_mode;
+  logic [REG_WIDTH-1:0]         dummy_ext_dma_base_addr;
+  logic [REG_WIDTH-1:0]         dummy_ext_dma_row_stride;
+  logic [REG_WIDTH-1:0]         dummy_ext_dma_rows_to_read;
+  logic [3:0]                   dummy_ext_dma_burst_len_m1;
+  logic [CACHE_SLOT_W-1:0]      dummy_ext_dma_slot_id;
+  logic                         dummy_ext_dma_use_16bits;
+  logic signed [REG_WIDTH-1:0]  dummy_ext_dma_lhs_zp;
+  logic [CACHE_SLOT_W-1:0]      dummy_ext_dma_wr_slot;
+  logic [SIZE_W-1:0]            dummy_ext_dma_wr_row;
+  logic [SIZE_W-1:0]            dummy_ext_dma_wr_col_base;
+  logic signed [DATA_WIDTH-1:0] dummy_ext_dma_wr_data [BYTE_PER_BEAT];
+  logic                         dummy_ext_dma_wr_valid[BYTE_PER_BEAT];
+  logic                         dummy_ia_group_calc_done;
+
+  always_comb begin
+    dummy_ext_dma_wr_slot     = '0;
+    dummy_ext_dma_wr_row      = '0;
+    dummy_ext_dma_wr_col_base = '0;
+    for (int i = 0; i < BYTE_PER_BEAT; i++) begin
+      dummy_ext_dma_wr_data[i]  = '0;
+      dummy_ext_dma_wr_valid[i] = 1'b0;
+    end
+  end
+
   // ================================================================
   // DUT
   // ================================================================
@@ -94,7 +125,8 @@ module tb_ia_loader;
     .SIZE         (SIZE),
     .BUS_WIDTH    (BUS_WIDTH),
     .REG_WIDTH    (REG_WIDTH),
-    .CACHE_BLOCKS (CACHE_BLOCKS)
+    .CACHE_BLOCKS (CACHE_BLOCKS),
+    .EXTERNAL_DMA (1'b0)
   ) u_dut (
     .clk              (clk),
     .rst_n            (rst_n),
@@ -109,6 +141,7 @@ module tb_ia_loader;
     .lhs_row_stride_b (lhs_row_stride_b),
     .lhs_zp           (lhs_zp),
     .use_16bits       (use_16bits),
+    .bias_by_row_mode (1'b0),
     .ia_reuse_num     (ia_reuse_num_in),
     .w_reuse_num      (w_reuse_num_in),
     .icb_cmd_valid    (dut_cmd_valid),
@@ -120,11 +153,31 @@ module tb_ia_loader;
     .icb_rsp_ready    (dut_rsp_ready),
     .icb_rsp_rdata    (dut_rsp_rdata),
     .icb_rsp_err      (dut_rsp_err),
+    .ext_dma_start            (dummy_ext_dma_start),
+    .ext_dma_is_write         (dummy_ext_dma_is_write),
+    .ext_dma_linear_read_mode (dummy_ext_dma_linear_read_mode),
+    .ext_dma_base_addr        (dummy_ext_dma_base_addr),
+    .ext_dma_row_stride       (dummy_ext_dma_row_stride),
+    .ext_dma_rows_to_read     (dummy_ext_dma_rows_to_read),
+    .ext_dma_burst_len_m1     (dummy_ext_dma_burst_len_m1),
+    .ext_dma_slot_id          (dummy_ext_dma_slot_id),
+    .ext_dma_use_16bits       (dummy_ext_dma_use_16bits),
+    .ext_dma_lhs_zp           (dummy_ext_dma_lhs_zp),
+    .ext_dma_busy             (1'b0),
+    .ext_dma_done             (1'b0),
+    .ext_dma_wr_slot          (dummy_ext_dma_wr_slot),
+    .ext_dma_wr_row           (dummy_ext_dma_wr_row),
+    .ext_dma_wr_col_base      (dummy_ext_dma_wr_col_base),
+    .ext_dma_wr_data          (dummy_ext_dma_wr_data),
+    .ext_dma_wr_valid         (dummy_ext_dma_wr_valid),
+    .ext_dma_wr_use_16bits    (1'b0),
     .ia_out           (ia_out),
     .ia_row_valid     (ia_row_valid),
+    .ia_tile_start    (ia_tile_start),
     .ia_is_init_data  (ia_is_init_data),
     .ia_calc_done     (ia_calc_done),
     .ia_sending_done  (ia_sending_done),
+    .ia_group_calc_done(dummy_ia_group_calc_done),
     .ia_l1_switch     (ia_l1_switch),
     .ia_data_valid    (ia_data_valid),
     .bias_sleep       (bias_sleep),

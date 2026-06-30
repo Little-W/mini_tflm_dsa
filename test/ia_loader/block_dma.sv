@@ -48,6 +48,8 @@ module block_dma #(
     output logic [            3:0] icb_cmd_len,
     output logic [  BUS_WIDTH-1:0] icb_cmd_wdata,
     output logic [BUS_WIDTH/8-1:0] icb_cmd_wmask,
+    output logic                   icb_w_valid,
+    input  logic                   icb_w_ready,
     input  logic                   icb_rsp_valid,
     output logic                   icb_rsp_ready,
     input  logic [  BUS_WIDTH-1:0] icb_rsp_rdata,
@@ -59,7 +61,13 @@ module block_dma #(
     output logic        [        $clog2(SIZE)-1:0] wr_col_base,
     output logic signed [          DATA_WIDTH-1:0] wr_data      [BUS_WIDTH/8],
     output logic                                   wr_valid     [BUS_WIDTH/8],
-    output logic                                   wr_use_16bits
+    output logic                                   wr_use_16bits,
+
+    // ---- 原始读响应旁路：供量化参数等 32-bit word 流复用同一 DMA ----
+    output logic [   BUS_WIDTH-1:0] rd_raw_data,
+    output logic                    rd_raw_valid,
+    output logic [$clog2(SIZE)-1:0] rd_raw_row,
+    output logic [$clog2(SIZE)-1:0] rd_raw_col_base
 );
 
     localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
@@ -67,6 +75,7 @@ module block_dma #(
     localparam int ELEM_PER_BEAT_S16 = BYTE_PER_BEAT >> 1;
 
     wire                                    cmd_hs = icb_cmd_valid && icb_cmd_ready;
+    wire                                    w_hs = icb_w_valid && icb_w_ready;
     wire                                    rsp_hs = icb_rsp_valid && icb_rsp_ready;
 
     logic        [           REG_WIDTH-1:0] cfg_base_addr;
@@ -94,6 +103,7 @@ module block_dma #(
     logic        [           REG_WIDTH-1:0] wr_row_cnt;
     logic        [           REG_WIDTH-1:0] wr_beat_cnt;
     logic                                   wr_cmd_inflight;
+    logic                                   wr_w_pending;
     logic        [           BUS_WIDTH-1:0] wr_data_buf;
     logic        [         BUS_WIDTH/8-1:0] wr_mask_buf;
     logic                                   wr_data_buf_valid;
@@ -104,6 +114,7 @@ module block_dma #(
     assign busy          = active;
     assign wr_use_16bits = cfg_use_16bits;
     assign wr_slot       = cfg_slot;
+    assign icb_w_valid   = active && cfg_is_write && wr_w_pending && wr_data_buf_valid;
 
     // ICB 固定信号
     assign icb_rsp_ready = active;
@@ -172,9 +183,11 @@ module block_dma #(
 
     // 源写数据就绪：仅写模式且缓存空、当前无 outstanding
     assign src_wready = active && cfg_is_write
-                   && !wr_data_buf_valid
-                   && !icb_cmd_valid
-                   && !wr_cmd_inflight;
+	                   && !wr_data_buf_valid
+	                   && !icb_cmd_valid
+	                   && !wr_w_pending
+	                   && !wr_cmd_inflight
+	                   && (wr_row_cnt < cfg_rows);
 
     // 命令发送
     always_ff @(posedge clk or negedge rst_n) begin
@@ -187,6 +200,7 @@ module block_dma #(
             wr_beat_cnt       <= '0;
             rd_cmd_inflight   <= 1'b0;
             wr_cmd_inflight   <= 1'b0;
+            wr_w_pending      <= 1'b0;
             wr_data_buf       <= '0;
             wr_mask_buf       <= '0;
             wr_data_buf_valid <= 1'b0;
@@ -199,6 +213,7 @@ module block_dma #(
             wr_beat_cnt       <= '0;
             rd_cmd_inflight   <= 1'b0;
             wr_cmd_inflight   <= 1'b0;
+            wr_w_pending      <= 1'b0;
             wr_data_buf       <= '0;
             wr_mask_buf       <= '0;
             wr_data_buf_valid <= 1'b0;
@@ -214,6 +229,7 @@ module block_dma #(
                 icb_cmd_valid     <= 1'b0;
                 rd_cmd_inflight   <= 1'b0;
                 wr_cmd_inflight   <= 1'b0;
+                wr_w_pending      <= 1'b0;
                 wr_data_buf_valid <= 1'b0;
             end else if (!cfg_is_write) begin
                 // 读模式：块读（逐行 burst）或线性 1D 读（单拍顺序）
@@ -237,17 +253,21 @@ module block_dma #(
                 if (read_rsp_done) rd_cmd_inflight <= 1'b0;
             end else begin
                 // 写模式：按 row/beat 发单拍写命令（len=0）
-                if (!icb_cmd_valid && !wr_cmd_inflight) begin
+                if (!icb_cmd_valid && !wr_w_pending && !wr_cmd_inflight) begin
                     if (wr_data_buf_valid && (wr_row_cnt < cfg_rows)) begin
                         icb_cmd_valid <= 1'b1;
                         icb_cmd_addr  <= cfg_base_addr + wr_row_cnt * cfg_row_stride + wr_beat_cnt * BYTE_PER_BEAT;
                     end
                 end else if (cmd_hs) begin
-                    icb_cmd_valid     <= 1'b0;
-                    wr_data_buf_valid <= 1'b0;
+                    icb_cmd_valid <= 1'b0;
+                    wr_w_pending  <= 1'b1;
                 end
 
-                if (cmd_hs) wr_cmd_inflight <= 1'b1;
+                if (w_hs) begin
+                    wr_w_pending      <= 1'b0;
+                    wr_cmd_inflight   <= 1'b1;
+                    wr_data_buf_valid <= 1'b0;
+                end
                 if (rsp_hs) wr_cmd_inflight <= 1'b0;
             end
 
@@ -267,6 +287,7 @@ module block_dma #(
             wr_beat_cnt       <= '0;
             rd_cmd_inflight   <= 1'b0;
             wr_cmd_inflight   <= 1'b0;
+            wr_w_pending      <= 1'b0;
             wr_data_buf       <= '0;
             wr_mask_buf       <= '0;
             wr_data_buf_valid <= 1'b0;
@@ -325,8 +346,12 @@ module block_dma #(
     end
 
     // 读模式数据解包
-    assign wr_row      = rsp_row_r;
-    assign wr_col_base = rsp_col_base_r;
+    assign wr_row          = rsp_row_r;
+    assign wr_col_base     = rsp_col_base_r;
+    assign rd_raw_data     = rsp_data_r;
+    assign rd_raw_valid    = rsp_valid_r && !cfg_is_write;
+    assign rd_raw_row      = rsp_row_r;
+    assign rd_raw_col_base = rsp_col_base_r;
 
     always_comb begin
         for (int i = 0; i < BYTE_PER_BEAT; i++) begin

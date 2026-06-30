@@ -49,9 +49,9 @@ task automatic simple_arbiter_test();
     @(weight_if.cb);
     weight_if.cb.load_weight_req <= 1'b0;
     repeat (3) @(weight_if.cb);
-    weight_if.cb.weight_data_valid <= 1'b1;
+    weight_if.cb.load_weight_done <= 1'b1;
     @(weight_if.cb);
-    weight_if.cb.weight_data_valid <= 1'b0;
+    weight_if.cb.load_weight_done <= 1'b0;
 
     // IA Loader应该获得授权
     repeat (2) @(posedge clk);
@@ -83,9 +83,9 @@ task automatic simple_arbiter_test();
     @(bias_if.cb);
     bias_if.cb.load_bias_req <= 1'b0;
     repeat (3) @(bias_if.cb);
-    bias_if.cb.bias_valid <= 1'b1;
+    bias_if.cb.load_bias_done <= 1'b1;
     @(bias_if.cb);
-    bias_if.cb.bias_valid <= 1'b0;
+    bias_if.cb.load_bias_done <= 1'b0;
 
     repeat (10) @(posedge clk);
 endtask
@@ -141,9 +141,9 @@ task automatic test_complex_arbitration();
     @(weight_if.cb);
     weight_if.cb.load_weight_req <= 1'b0;
     repeat (2) @(weight_if.cb);
-    weight_if.cb.weight_data_valid <= 1'b1;
+    weight_if.cb.load_weight_done <= 1'b1;
     @(weight_if.cb);
-    weight_if.cb.weight_data_valid <= 1'b0;
+    weight_if.cb.load_weight_done <= 1'b0;
 
     repeat (2) @(posedge clk);
 
@@ -179,9 +179,9 @@ task automatic test_complex_arbitration();
     quant_if.cb.load_quant_req <= 1'b0;
     if (bias_if.load_bias_granted) begin
         repeat (2) @(bias_if.cb);
-        bias_if.cb.bias_valid <= 1'b1;
+        bias_if.cb.load_bias_done <= 1'b1;
         @(bias_if.cb);
-        bias_if.cb.bias_valid <= 1'b0;
+        bias_if.cb.load_bias_done <= 1'b0;
     end
     if (quant_if.load_quant_granted) begin
         repeat (2) @(quant_if.cb);
@@ -218,9 +218,9 @@ task automatic test_complex_arbitration();
         // 完成当前事务
         @(bias_if.cb);
         bias_if.cb.load_bias_req <= 1'b0;
-        bias_if.cb.bias_valid <= 1'b1;
+        bias_if.cb.load_bias_done <= 1'b1;
         @(bias_if.cb);
-        bias_if.cb.bias_valid <= 1'b0;
+        bias_if.cb.load_bias_done <= 1'b0;
 
         repeat (2) @(posedge clk);
 
@@ -248,9 +248,9 @@ task automatic test_complex_arbitration();
         weight_if.cb.load_weight_req <= 1'b1;
         repeat (2) @(weight_if.cb);
         weight_if.cb.load_weight_req <= 1'b0;
-        weight_if.cb.weight_data_valid <= 1'b1;
+        weight_if.cb.load_weight_done <= 1'b1;
         @(weight_if.cb);
-        weight_if.cb.weight_data_valid <= 1'b0;
+        weight_if.cb.load_weight_done <= 1'b0;
         $display("%s  [%0t] [INFO] Weight request cycle %0d completed%s", 
                  COLOR_CYAN, $time, i + 1, COLOR_RESET);
         repeat (2) @(posedge clk);
@@ -284,9 +284,9 @@ task automatic test_complex_arbitration();
             @(weight_if.cb);
             weight_if.cb.load_weight_req <= 1'b0;
             repeat (3) @(weight_if.cb);
-            weight_if.cb.weight_data_valid <= 1'b1;
+            weight_if.cb.load_weight_done <= 1'b1;
             @(weight_if.cb);
-            weight_if.cb.weight_data_valid <= 1'b0;
+            weight_if.cb.load_weight_done <= 1'b0;
         end
         begin
             repeat (4) @(oa_if.cb);
