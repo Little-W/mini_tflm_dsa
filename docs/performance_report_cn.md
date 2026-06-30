@@ -272,18 +272,50 @@ DDR 随机延迟打开，`DDR_CMD_MAX_LAT=3`，`DDR_W_MAX_LAT=2`，`DDR_RSP_MAX_
 |---|---|---|
 | `test/axi_block_dma_arbiter` | kernel 读和 OA 写同周期请求、AXI `AR/R` 与 `AW/W/B` 并行推进、`kernel_busy && oa_busy` overlap、读解包和多 beat 写回正确 | PASS，`overlap=1` |
 
-这一步还没有把 `mma_top` 顶层切换到 AXI，但已经把“共享 ICB DMA 串行仲裁”拆成了“读侧仲裁 + 写侧独立”的可综合模块。下一步应把 `mma_top` 中 `u_block_dma_arbiter` 替换为该 AXI arbiter，并把 `test/mma_top` 的 DDR 模型切为 AXI 五通道模型。替换完成后，再重新采样 `+MMA_UTIL_TRACE`，重点观察：
+### 2026-06-30 补充：`mma_top` 顶层切换到 AXI
 
-- `dma_busy_oa` 是否与 `dma_busy_ia/kernel` 大量重叠，而不是顺序相加。
-- `weight_data_stall` 与 `ia_data_stall` 是否下降。
-- `ia_row_util_bp` 和 `acc_util_bp` 是否提升；如果仍然低，则继续追控制器触发间隔、IA L1 group 连续输出、ps_buffer replay 和 bias/quant 有效窗口。
+本轮已把 `mma_top` 的最终外部数据口从 `sa_icb_*` 切换为 AXI4 master 五通道，顶层不再通过 ICB-to-AXI adapter 访问 DDR。内部替换点如下：
 
-下一步 AXI 迁移需要完成的 RTL 事项：
+- `u_block_dma_arbiter` 的实例名保留，但模块已替换为 `axi_block_dma_arbiter`，便于沿用原有调试层级。
+- IA/kernel/bias/quant 只进入 AXI `AR/R` 读侧仲裁；OA writer 独占 `AW/W/B` 写侧。
+- `test/mma_top` 的 DDR 模型切换为 `ddr_axi_mem_model`，保留 `mem_r` 层级数组，因此统一 mem case 和直接内存结果校验流程不变。
+- 性能统计从旧 `bus_cmd/bus_rsp` 改为 `axi_ar/axi_r/axi_aw/axi_w/axi_b`，可以直接观察读写通道是否并行推进。
+- 清理了 `kernel_loader_buffer` 与 `vec_requant` 中固定访问 lane 4 的 trace 打印，避免 `SIZE=4` 边界编译越界。
 
-- 在 `mma_top` 增加 AXI master 顶层端口，移除 `sa_icb_*` 作为最终外部接口。
-- 用读侧仲裁器连接 IA/kernel/bias/quant 到 `axi_dual_block_dma` 的读引擎；OA writer 连接写引擎，避免 OA 写回阻塞读侧预取。
-- 更新 `test/mma_top` DDR 模型为 AXI 五通道模型，并增加随机 `AR/AW/W/R/B` 延迟，验证读写全双工下结果一致。
-- 在 EAI 外层删除 `icb_unalign_bridge`，将系统集成边界切到 AXI4-Full master。
+新增/重跑验证：
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| `make run` | `SIZE=4,CACHE=4,DDR_RAND_LAT=0` | PASS |
+| `run_random` | `SIZE=4,CACHE=4,COUNT=5,SEED=2100,DDR_RAND_LAT=1` | PASS=5 FAIL=0 |
+| `run_random` | `SIZE=4,CACHE=4,COUNT=8,SEED=2200,random_dataflow,DDR_RAND_LAT=1` | PASS=8 FAIL=0 |
+| `run_param_random` | `SIZE={4,8,16},CACHE={2,4,8},COUNT=2,random_dataflow,DDR_RAND_LAT=1` | PASS=18 FAIL=0 |
+
+AXI 顶层后的大矩阵性能锚点如下，DDR 随机延迟关闭：
+
+| SIZE | Case | 旧 cycles | 新 cycles | 改善 | 新 IA row util | 新 ACC util | 新 AXI 事务统计 |
+|---:|---|---:|---:|---:|---:|---:|---|
+| 8 | `K=67,N=56,M=59,R=2,W=8,lhs=s16` | 26,657 | 22,779 | 14.5% | 16.47% | 2.35% | AR 2,749 / R 6,371 / AW 536 / W 1,005 / B 536 |
+| 16 | `K=64,N=93,M=107,R=1,W=1,lhs=s16` | 85,468 | 81,466 | 4.7% | 3.29% | 0.54% | AR 5,320 / R 31,528 / AW 448 / W 1,728 / B 448 |
+
+结果分析：
+
+- `SIZE=8` 样本收益更明显，原因是旧共享 DMA 中 OA 写回会穿插阻塞后续读侧预取；AXI 后写回只占 `AW/W/B`，读侧可继续推进，`weight_data_stall` 从 9,891 降到 8,219。
+- `SIZE=16` 样本收益较小但方向正确，总周期下降约 4,002，`ia_data_stall` 从 46,038 降到 37,385。该样本 `R=1,W=1` 复用不足，IA 读侧仍是绝对主瓶颈，AXI 写回解耦只能消掉一部分串行等待。
+- 新统计中 `axi_w` 大于 `axi_aw/axi_b`，符合每行写回可能多 beat 的预期；`axi_ar` 与 `axi_r` 分离后，可以继续观察未来读命令流水化是否真正提升通道占用。
+
+下一步性能优化重点：
+
+- 读侧 DMA 仍基本按“发一行/收一行”推进，应考虑给 `axi_dual_block_dma` 增加小深度 read command outstanding 队列，重叠 AR 延迟和 R 数据返回。
+- `oa_writer` 目前仍以 tile 为粒度等待 write done 后再申请下一 tile，后续可把 tile 元数据和写数据流解耦，减少写侧 tile 间气泡。
+- de-diagonalizer/IA 输出路径需要继续流水化，但当前大样本主要气泡仍在 `ia_data_stall`、`weight_data_stall` 和 controller 等待。优化顺序应先保证 IA cache group 和 kernel buffer 对计算触发的供给连续，再看阵列内部反对角恢复逻辑。
+- EAI 外层已同步删除 MMA 侧 `icb_unalign_bridge`，`e203_subsys_nice_core` 额外暴露 MMA AXI master；原 NICE ICB LSU 口暂时保持空闲兼容。
+
+EAI 同步验证：
+
+| 测试 | 覆盖点 | 结果 |
+|---|---|---|
+| `test/eai` | CSR 读写、MMA 指令发起、响应反压；MMA AXI 端口连接本地 AXI DDR 模型 | PASS |
 
 ### 本次日志目录
 

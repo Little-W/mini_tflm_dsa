@@ -94,19 +94,31 @@ module tb_mma_top;
     wire        wb_ready = 1'b1;
     wire [ 1:0] err_code;
 
-    wire        icb_cmd_valid;
-    wire        icb_cmd_ready;
-    wire [18:0] icb_cmd_addr;
-    wire        icb_cmd_read;
-    wire [ 3:0] icb_cmd_len;
-    wire [31:0] icb_cmd_wdata;
-    wire [ 3:0] icb_cmd_wmask;
-    wire        icb_w_valid;
-    wire        icb_w_ready;
-    wire        icb_rsp_valid;
-    wire        icb_rsp_ready;
-    wire [31:0] icb_rsp_rdata;
-    wire        icb_rsp_err;
+    wire        m_axi_arvalid;
+    wire        m_axi_arready;
+    wire [31:0] m_axi_araddr;
+    wire [ 7:0] m_axi_arlen;
+    wire [ 2:0] m_axi_arsize;
+    wire [ 1:0] m_axi_arburst;
+    wire        m_axi_rvalid;
+    wire        m_axi_rready;
+    wire [31:0] m_axi_rdata;
+    wire [ 1:0] m_axi_rresp;
+    wire        m_axi_rlast;
+    wire        m_axi_awvalid;
+    wire        m_axi_awready;
+    wire [31:0] m_axi_awaddr;
+    wire [ 7:0] m_axi_awlen;
+    wire [ 2:0] m_axi_awsize;
+    wire [ 1:0] m_axi_awburst;
+    wire        m_axi_wvalid;
+    wire        m_axi_wready;
+    wire [31:0] m_axi_wdata;
+    wire [ 3:0] m_axi_wstrb;
+    wire        m_axi_wlast;
+    wire        m_axi_bvalid;
+    wire        m_axi_bready;
+    wire [ 1:0] m_axi_bresp;
 
     // DUT 实例
     mma_top #(
@@ -150,44 +162,67 @@ module tb_mma_top;
         .act_min(act_min),
         .act_max(act_max),
 
-        .sa_icb_cmd_valid(icb_cmd_valid),
-        .sa_icb_cmd_ready(icb_cmd_ready),
-        .sa_icb_cmd_addr (icb_cmd_addr),
-        .sa_icb_cmd_read (icb_cmd_read),
-        .sa_icb_cmd_len  (icb_cmd_len),
-        .sa_icb_cmd_wdata(icb_cmd_wdata),
-        .sa_icb_cmd_wmask(icb_cmd_wmask),
-        .sa_icb_w_valid  (icb_w_valid),
-        .sa_icb_w_ready  (icb_w_ready),
-        .sa_icb_rsp_valid(icb_rsp_valid),
-        .sa_icb_rsp_ready(icb_rsp_ready),
-        .sa_icb_rsp_rdata(icb_rsp_rdata),
-        .sa_icb_rsp_err  (icb_rsp_err)
+        .m_axi_arvalid(m_axi_arvalid),
+        .m_axi_arready(m_axi_arready),
+        .m_axi_araddr (m_axi_araddr),
+        .m_axi_arlen  (m_axi_arlen),
+        .m_axi_arsize (m_axi_arsize),
+        .m_axi_arburst(m_axi_arburst),
+        .m_axi_rvalid (m_axi_rvalid),
+        .m_axi_rready (m_axi_rready),
+        .m_axi_rdata  (m_axi_rdata),
+        .m_axi_rresp  (m_axi_rresp),
+        .m_axi_rlast  (m_axi_rlast),
+        .m_axi_awvalid(m_axi_awvalid),
+        .m_axi_awready(m_axi_awready),
+        .m_axi_awaddr (m_axi_awaddr),
+        .m_axi_awlen  (m_axi_awlen),
+        .m_axi_awsize (m_axi_awsize),
+        .m_axi_awburst(m_axi_awburst),
+        .m_axi_wvalid (m_axi_wvalid),
+        .m_axi_wready (m_axi_wready),
+        .m_axi_wdata  (m_axi_wdata),
+        .m_axi_wstrb  (m_axi_wstrb),
+        .m_axi_wlast  (m_axi_wlast),
+        .m_axi_bvalid (m_axi_bvalid),
+        .m_axi_bready (m_axi_bready),
+        .m_axi_bresp  (m_axi_bresp)
     );
 
-    // 直接 DDR 行为模型：支持独立写数据通道和随机 cmd/write/response 延迟。
-    ddr_icb_mem_model #(
+    // 直接 AXI DDR 行为模型：读写通道独立，支持随机 cmd/write/response 延迟。
+    ddr_axi_mem_model #(
         .WIDTH (32),
-        .ADDR_W(19),
-        .LEN_W (4),
+        .ADDR_W(32),
         .MW    (4),
         .DP    (131072)
     ) u_mem (
-        .clk              (clk),
-        .rst_n            (rst_n),
-        .sa_icb_cmd_valid(icb_cmd_valid),
-        .sa_icb_cmd_ready(icb_cmd_ready),
-        .sa_icb_cmd_addr (icb_cmd_addr),
-        .sa_icb_cmd_read (icb_cmd_read),
-        .sa_icb_cmd_len  (icb_cmd_len),
-        .sa_icb_cmd_wdata(icb_cmd_wdata),
-        .sa_icb_cmd_wmask(icb_cmd_wmask),
-        .sa_icb_w_valid  (icb_w_valid),
-        .sa_icb_w_ready  (icb_w_ready),
-        .sa_icb_rsp_valid(icb_rsp_valid),
-        .sa_icb_rsp_ready(icb_rsp_ready),
-        .sa_icb_rsp_rdata(icb_rsp_rdata),
-        .sa_icb_rsp_err  (icb_rsp_err)
+        .clk          (clk),
+        .rst_n        (rst_n),
+        .m_axi_arvalid(m_axi_arvalid),
+        .m_axi_arready(m_axi_arready),
+        .m_axi_araddr (m_axi_araddr),
+        .m_axi_arlen  (m_axi_arlen),
+        .m_axi_arsize (m_axi_arsize),
+        .m_axi_arburst(m_axi_arburst),
+        .m_axi_rvalid (m_axi_rvalid),
+        .m_axi_rready (m_axi_rready),
+        .m_axi_rdata  (m_axi_rdata),
+        .m_axi_rresp  (m_axi_rresp),
+        .m_axi_rlast  (m_axi_rlast),
+        .m_axi_awvalid(m_axi_awvalid),
+        .m_axi_awready(m_axi_awready),
+        .m_axi_awaddr (m_axi_awaddr),
+        .m_axi_awlen  (m_axi_awlen),
+        .m_axi_awsize (m_axi_awsize),
+        .m_axi_awburst(m_axi_awburst),
+        .m_axi_wvalid (m_axi_wvalid),
+        .m_axi_wready (m_axi_wready),
+        .m_axi_wdata  (m_axi_wdata),
+        .m_axi_wstrb  (m_axi_wstrb),
+        .m_axi_wlast  (m_axi_wlast),
+        .m_axi_bvalid (m_axi_bvalid),
+        .m_axi_bready (m_axi_bready),
+        .m_axi_bresp  (m_axi_bresp)
     );
 
     // 使用 clocking block 初始化配置
@@ -601,35 +636,47 @@ module tb_mma_top;
                  u_dut.fifo_output_ready,
                  u_dut.u_vec_s8_to_fifo.bank_count0,
                  u_dut.u_vec_s8_to_fifo.bank_count1);
-        $display("[TB][DBG] dma_arb active=%0b client=%0d started=%0b dma_busy=%0b dma_done=%0b icb_cmd_v=%0b icb_cmd_r=%0b icb_rsp_v=%0b icb_rsp_r=%0b",
-                 u_dut.u_block_dma_arbiter.active,
-                 u_dut.u_block_dma_arbiter.active_client,
-                 u_dut.u_block_dma_arbiter.dma_started,
-                 u_dut.u_block_dma_arbiter.dma_busy,
-                 u_dut.u_block_dma_arbiter.dma_done,
-                 u_dut.u_block_dma_arbiter.icb_cmd_valid,
-                 icb_cmd_ready,
-                 icb_rsp_valid,
-                 icb_rsp_ready);
-        $display("[TB][DBG] dma row cmd=%0d rsp_row=%0d rsp_beat=%0d rd_inflight=%0b active=%0b tile_done=%0b",
-                 u_dut.u_block_dma_arbiter.u_dma.cmd_row_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.rsp_row_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.rsp_beat_cnt,
+        $display("[TB][DBG] dma_arb rd_active=%0b rd_client=%0d rd_started=%0b rd_busy=%0b rd_done=%0b wr_active=%0b wr_started=%0b wr_busy=%0b wr_done=%0b",
+                 u_dut.u_block_dma_arbiter.rd_active,
+                 u_dut.u_block_dma_arbiter.rd_client,
+                 u_dut.u_block_dma_arbiter.rd_started,
+                 u_dut.u_block_dma_arbiter.rd_dma_busy,
+                 u_dut.u_block_dma_arbiter.rd_dma_done,
+                 u_dut.u_block_dma_arbiter.wr_active,
+                 u_dut.u_block_dma_arbiter.wr_started,
+                 u_dut.u_block_dma_arbiter.wr_dma_busy,
+                 u_dut.u_block_dma_arbiter.wr_dma_done);
+        $display("[TB][DBG] dma rd_cmd_row=%0d rd_rsp_row=%0d rd_rsp_beat=%0d rd_inflight=%0b rd_active=%0b rd_done=%0b wr_row=%0d wr_beat=%0d wr_row_active=%0b wr_b_pending=%0b",
+                 u_dut.u_block_dma_arbiter.u_dma.rd_cmd_row_cnt,
+                 u_dut.u_block_dma_arbiter.u_dma.rd_rsp_row_cnt,
+                 u_dut.u_block_dma_arbiter.u_dma.rd_rsp_beat_cnt,
                  u_dut.u_block_dma_arbiter.u_dma.rd_cmd_inflight,
-                 u_dut.u_block_dma_arbiter.u_dma.active,
-                 u_dut.u_block_dma_arbiter.u_dma.tile_done);
-        $display("[TB][DBG] ddr state=%0d wait=%0d rsp_left=%0d cmd_v=%0b cmd_r=%0b w_v=%0b w_r=%0b rsp_v=%0b rsp_r=%0b read=%0b addr=%h",
-                 u_mem.state,
-                 u_mem.wait_cnt,
-                 u_mem.rsp_left,
-                 icb_cmd_valid,
-                 icb_cmd_ready,
-                 icb_w_valid,
-                 icb_w_ready,
-                 icb_rsp_valid,
-                 icb_rsp_ready,
-                 u_mem.cmd_read_r,
-                 u_mem.cmd_addr_r);
+                 u_dut.u_block_dma_arbiter.u_dma.rd_active,
+                 u_dut.u_block_dma_arbiter.u_dma.rd_done,
+                 u_dut.u_block_dma_arbiter.u_dma.wr_row_cnt,
+                 u_dut.u_block_dma_arbiter.u_dma.wr_beat_cnt,
+                 u_dut.u_block_dma_arbiter.u_dma.wr_row_active,
+                 u_dut.u_block_dma_arbiter.u_dma.wr_b_pending);
+        $display("[TB][DBG] axi ar_v=%0b ar_r=%0b r_v=%0b r_r=%0b aw_v=%0b aw_r=%0b w_v=%0b w_r=%0b b_v=%0b b_r=%0b",
+                 m_axi_arvalid,
+                 m_axi_arready,
+                 m_axi_rvalid,
+                 m_axi_rready,
+                 m_axi_awvalid,
+                 m_axi_awready,
+                 m_axi_wvalid,
+                 m_axi_wready,
+                 m_axi_bvalid,
+                 m_axi_bready);
+        $display("[TB][DBG] ddr_axi r_state=%0d w_state=%0d r_wait=%0d w_wait=%0d r_left=%0d w_left=%0d r_addr=%h w_addr=%h",
+                 u_mem.r_state,
+                 u_mem.w_state,
+                 u_mem.r_wait_cnt,
+                 u_mem.w_wait_cnt,
+                 u_mem.r_left,
+                 u_mem.w_left,
+                 u_mem.r_addr,
+                 u_mem.w_addr);
         $display("[TB][DBG] counts acc=%0d requant=%0d fifo_req=%0d write_done=%0d tile_calc_over=%0d ia_rise=%0d ia_calc_done_cycles=%0d",
                  acc_valid_count,
                  requant_valid_count,

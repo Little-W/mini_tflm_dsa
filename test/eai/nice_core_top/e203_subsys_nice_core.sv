@@ -38,7 +38,33 @@ module e203_subsys_nice_core (
     input                   nice_icb_rsp_valid,  // ICB 响应有效
     output                  nice_icb_rsp_ready,  // ICB 响应就绪
     input  [`E203_XLEN-1:0] nice_icb_rsp_rdata,  // ICB 响应数据
-    input                   nice_icb_rsp_err     // ICB 响应错误
+    input                   nice_icb_rsp_err,    // ICB 响应错误
+
+    output                  m_axi_arvalid,
+    input                   m_axi_arready,
+    output [`E203_XLEN-1:0] m_axi_araddr,
+    output [           7:0] m_axi_arlen,
+    output [           2:0] m_axi_arsize,
+    output [           1:0] m_axi_arburst,
+    input                   m_axi_rvalid,
+    output                  m_axi_rready,
+    input  [`E203_XLEN-1:0] m_axi_rdata,
+    input  [           1:0] m_axi_rresp,
+    input                   m_axi_rlast,
+    output                  m_axi_awvalid,
+    input                   m_axi_awready,
+    output [`E203_XLEN-1:0] m_axi_awaddr,
+    output [           7:0] m_axi_awlen,
+    output [           2:0] m_axi_awsize,
+    output [           1:0] m_axi_awburst,
+    output                  m_axi_wvalid,
+    input                   m_axi_wready,
+    output [`E203_XLEN-1:0] m_axi_wdata,
+    output [`E203_XLEN_MW-1:0] m_axi_wstrb,
+    output                  m_axi_wlast,
+    input                   m_axi_bvalid,
+    output                  m_axi_bready,
+    input  [           1:0] m_axi_bresp
 );
 
   // ========================================================================
@@ -95,21 +121,6 @@ module e203_subsys_nice_core (
 
   // 指令退休跟踪信号
   wire retire_mem_holdup;  // 退休跟踪器输出的内存暂停信号
-
-  // MMA 内部 ICB 接口信号（连接 MMA 和 ICB Bridge）
-  wire sa_icb_cmd_valid;  // MMA ICB命令有效
-  wire sa_icb_cmd_ready;  // MMA ICB命令就绪
-  wire [`E203_ADDR_SIZE-1:0] sa_icb_cmd_addr;  // MMA ICB命令地址
-  wire sa_icb_cmd_read;  // MMA ICB读命令
-  wire [`ICB_LEN_W-1:0] sa_icb_cmd_len;  // MMA ICB命令长度（burst）
-  wire [`E203_XLEN-1:0] sa_icb_cmd_wdata;  // MMA ICB写数据
-  wire [`E203_XLEN_MW-1:0] sa_icb_cmd_wmask;  // MMA ICB写掩码
-  wire sa_icb_w_valid;  // MMA ICB写数据有效
-  wire sa_icb_w_ready;  // MMA ICB写数据就绪
-  wire sa_icb_rsp_valid;  // MMA ICB响应有效
-  wire sa_icb_rsp_ready;  // MMA ICB响应就绪
-  wire [`E203_XLEN-1:0] sa_icb_rsp_rdata;  // MMA ICB响应数据
-  wire sa_icb_rsp_err;  // MMA ICB响应错误
 
   // ========================================================================
   // Decoder & Dispatcher 模块实例化
@@ -189,53 +200,31 @@ module e203_subsys_nice_core (
       .rhs_col_stride_b(rhs_col_stride_b),
       .act_min         (act_min),
       .act_max         (act_max),
-      .sa_icb_cmd_valid(sa_icb_cmd_valid),
-      .sa_icb_cmd_ready(sa_icb_cmd_ready),
-      .sa_icb_cmd_addr (sa_icb_cmd_addr),
-      .sa_icb_cmd_read (sa_icb_cmd_read),
-      .sa_icb_cmd_len  (sa_icb_cmd_len),
-      .sa_icb_cmd_wdata(sa_icb_cmd_wdata),
-      .sa_icb_cmd_wmask(sa_icb_cmd_wmask),
-      .sa_icb_w_valid  (sa_icb_w_valid),
-      .sa_icb_w_ready  (sa_icb_w_ready),
-      .sa_icb_rsp_valid(sa_icb_rsp_valid),
-      .sa_icb_rsp_ready(sa_icb_rsp_ready),
-      .sa_icb_rsp_rdata(sa_icb_rsp_rdata),
-      .sa_icb_rsp_err  (sa_icb_rsp_err)
-  );
-
-  // 实例化 icb_unalign_bridge，转接 ICB 接口
-  icb_unalign_bridge #(
-      .WIDTH     (`E203_XLEN),
-      .ADDR_W    (`E203_ADDR_SIZE),
-      .OUTS_DEPTH(`SA_SIZE),
-      .ICB_LEN_W (`ICB_LEN_W)
-  ) u_icb_bridge (
-      .clk             (nice_clk),
-      .rst_n           (nice_rst_n),
-      .sa_icb_cmd_valid(sa_icb_cmd_valid),
-      .sa_icb_cmd_ready(sa_icb_cmd_ready),
-      .sa_icb_cmd_addr (sa_icb_cmd_addr),
-      .sa_icb_cmd_read (sa_icb_cmd_read),
-      .sa_icb_cmd_len  (sa_icb_cmd_len),
-      .sa_icb_cmd_wdata(sa_icb_cmd_wdata),
-      .sa_icb_cmd_wmask(sa_icb_cmd_wmask),
-      .sa_icb_w_valid  (sa_icb_w_valid),
-      .sa_icb_w_ready  (sa_icb_w_ready),
-      .sa_icb_rsp_valid(sa_icb_rsp_valid),
-      .sa_icb_rsp_ready(sa_icb_rsp_ready),
-      .sa_icb_rsp_rdata(sa_icb_rsp_rdata),
-      .sa_icb_rsp_err  (sa_icb_rsp_err),
-      .m_icb_cmd_valid (nice_icb_cmd_valid),
-      .m_icb_cmd_ready (nice_icb_cmd_ready),
-      .m_icb_cmd_addr  (nice_icb_cmd_addr),
-      .m_icb_cmd_read  (nice_icb_cmd_read),
-      .m_icb_cmd_wdata (nice_icb_cmd_wdata),
-      .m_icb_cmd_wmask (nice_icb_cmd_wmask),
-      .m_icb_rsp_valid (nice_icb_rsp_valid),
-      .m_icb_rsp_ready (nice_icb_rsp_ready),
-      .m_icb_rsp_rdata (nice_icb_rsp_rdata),
-      .m_icb_rsp_err   (nice_icb_rsp_err)
+      .m_axi_arvalid   (m_axi_arvalid),
+      .m_axi_arready   (m_axi_arready),
+      .m_axi_araddr    (m_axi_araddr),
+      .m_axi_arlen     (m_axi_arlen),
+      .m_axi_arsize    (m_axi_arsize),
+      .m_axi_arburst   (m_axi_arburst),
+      .m_axi_rvalid    (m_axi_rvalid),
+      .m_axi_rready    (m_axi_rready),
+      .m_axi_rdata     (m_axi_rdata),
+      .m_axi_rresp     (m_axi_rresp),
+      .m_axi_rlast     (m_axi_rlast),
+      .m_axi_awvalid   (m_axi_awvalid),
+      .m_axi_awready   (m_axi_awready),
+      .m_axi_awaddr    (m_axi_awaddr),
+      .m_axi_awlen     (m_axi_awlen),
+      .m_axi_awsize    (m_axi_awsize),
+      .m_axi_awburst   (m_axi_awburst),
+      .m_axi_wvalid    (m_axi_wvalid),
+      .m_axi_wready    (m_axi_wready),
+      .m_axi_wdata     (m_axi_wdata),
+      .m_axi_wstrb     (m_axi_wstrb),
+      .m_axi_wlast     (m_axi_wlast),
+      .m_axi_bvalid    (m_axi_bvalid),
+      .m_axi_bready    (m_axi_bready),
+      .m_axi_bresp     (m_axi_bresp)
   );
 
   // ========================================================================
@@ -314,7 +303,12 @@ module e203_subsys_nice_core (
   // ========================================================================
   // 内存访问接口（nice_icb_*）
   // ========================================================================
-  // 移除临时赋值，已通过 bridge 连接
+  assign nice_icb_cmd_valid = 1'b0;
+  assign nice_icb_cmd_addr  = '0;
+  assign nice_icb_cmd_read  = 1'b0;
+  assign nice_icb_cmd_wdata = '0;
+  assign nice_icb_cmd_wmask = '0;
+  assign nice_icb_rsp_ready = 1'b1;
   assign nice_icb_cmd_size = 2'b10;  // 固定字（4字节）访问
 
   // ========================================================================

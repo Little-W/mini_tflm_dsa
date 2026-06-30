@@ -22,6 +22,32 @@ module tb_e203_nice;
         .rst_n(rst_n)
     );
 
+    wire        m_axi_arvalid;
+    wire        m_axi_arready;
+    wire [31:0] m_axi_araddr;
+    wire [ 7:0] m_axi_arlen;
+    wire [ 2:0] m_axi_arsize;
+    wire [ 1:0] m_axi_arburst;
+    wire        m_axi_rvalid;
+    wire        m_axi_rready;
+    wire [31:0] m_axi_rdata;
+    wire [ 1:0] m_axi_rresp;
+    wire        m_axi_rlast;
+    wire        m_axi_awvalid;
+    wire        m_axi_awready;
+    wire [31:0] m_axi_awaddr;
+    wire [ 7:0] m_axi_awlen;
+    wire [ 2:0] m_axi_awsize;
+    wire [ 1:0] m_axi_awburst;
+    wire        m_axi_wvalid;
+    wire        m_axi_wready;
+    wire [31:0] m_axi_wdata;
+    wire [ 3:0] m_axi_wstrb;
+    wire        m_axi_wlast;
+    wire        m_axi_bvalid;
+    wire        m_axi_bready;
+    wire [ 1:0] m_axi_bresp;
+
     // DUT instantiation
     e203_subsys_nice_core u_nice_core (
         .nice_clk          (clk),
@@ -45,7 +71,67 @@ module tb_e203_nice;
         .nice_icb_rsp_valid(nice_if_inst.icb_rsp_valid),
         .nice_icb_rsp_ready(nice_if_inst.icb_rsp_ready),
         .nice_icb_rsp_rdata(nice_if_inst.icb_rsp_rdata),
-        .nice_icb_rsp_err  (nice_if_inst.icb_rsp_err)
+        .nice_icb_rsp_err  (nice_if_inst.icb_rsp_err),
+        .m_axi_arvalid     (m_axi_arvalid),
+        .m_axi_arready     (m_axi_arready),
+        .m_axi_araddr      (m_axi_araddr),
+        .m_axi_arlen       (m_axi_arlen),
+        .m_axi_arsize      (m_axi_arsize),
+        .m_axi_arburst     (m_axi_arburst),
+        .m_axi_rvalid      (m_axi_rvalid),
+        .m_axi_rready      (m_axi_rready),
+        .m_axi_rdata       (m_axi_rdata),
+        .m_axi_rresp       (m_axi_rresp),
+        .m_axi_rlast       (m_axi_rlast),
+        .m_axi_awvalid     (m_axi_awvalid),
+        .m_axi_awready     (m_axi_awready),
+        .m_axi_awaddr      (m_axi_awaddr),
+        .m_axi_awlen       (m_axi_awlen),
+        .m_axi_awsize      (m_axi_awsize),
+        .m_axi_awburst     (m_axi_awburst),
+        .m_axi_wvalid      (m_axi_wvalid),
+        .m_axi_wready      (m_axi_wready),
+        .m_axi_wdata       (m_axi_wdata),
+        .m_axi_wstrb       (m_axi_wstrb),
+        .m_axi_wlast       (m_axi_wlast),
+        .m_axi_bvalid      (m_axi_bvalid),
+        .m_axi_bready      (m_axi_bready),
+        .m_axi_bresp       (m_axi_bresp)
+    );
+
+    ddr_axi_mem_model #(
+        .WIDTH (32),
+        .ADDR_W(32),
+        .MW    (4),
+        .DP    (131072)
+    ) u_mma_mem (
+        .clk          (clk),
+        .rst_n        (rst_n),
+        .m_axi_arvalid(m_axi_arvalid),
+        .m_axi_arready(m_axi_arready),
+        .m_axi_araddr (m_axi_araddr),
+        .m_axi_arlen  (m_axi_arlen),
+        .m_axi_arsize (m_axi_arsize),
+        .m_axi_arburst(m_axi_arburst),
+        .m_axi_rvalid (m_axi_rvalid),
+        .m_axi_rready (m_axi_rready),
+        .m_axi_rdata  (m_axi_rdata),
+        .m_axi_rresp  (m_axi_rresp),
+        .m_axi_rlast  (m_axi_rlast),
+        .m_axi_awvalid(m_axi_awvalid),
+        .m_axi_awready(m_axi_awready),
+        .m_axi_awaddr (m_axi_awaddr),
+        .m_axi_awlen  (m_axi_awlen),
+        .m_axi_awsize (m_axi_awsize),
+        .m_axi_awburst(m_axi_awburst),
+        .m_axi_wvalid (m_axi_wvalid),
+        .m_axi_wready (m_axi_wready),
+        .m_axi_wdata  (m_axi_wdata),
+        .m_axi_wstrb  (m_axi_wstrb),
+        .m_axi_wlast  (m_axi_wlast),
+        .m_axi_bvalid (m_axi_bvalid),
+        .m_axi_bready (m_axi_bready),
+        .m_axi_bresp  (m_axi_bresp)
     );
 
     // Clock generation - use non-blocking assignment

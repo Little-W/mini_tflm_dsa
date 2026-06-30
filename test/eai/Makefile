@@ -25,6 +25,7 @@ RTL_SRCS := \
 	$(SUB_MODULES_DIR)/csr_unit.v \
 	$(SUB_MODULES_DIR)/wbu.v \
 	$(SUB_MODULES_DIR)/inst_tracker.v \
+	$(PROJECT_ROOT)/test/dep_modules/ddr_axi_mem_model.sv \
 	$(PROJECT_ROOT)/top/mma_top.sv \
 	$(shell find $(MMA_SUB_MODULES_DIR) -maxdepth 1 -type f \( -name "*.sv" -o -name "*.v" \)) \
 	$(PROJECT_ROOT)/basic/pseudo_dual_port_ram.v \

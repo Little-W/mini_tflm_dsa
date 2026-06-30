@@ -466,11 +466,13 @@ module vec_requant #(
 
             if (in_valid) begin
               if (requant_trace_en) begin
-                $display("[%0t] REQ in tile=(%0d,%0d) row_cnt=%0d/%0d done=%0d acc0=%0d acc1=%0d acc2=%0d acc3=%0d acc4=%0d",
-                         $time, tile_row, tile_col, row_in_tile_cnt,
-                         rows_need_cur, in_tile_done,
-                         in_vec_s32[0], in_vec_s32[1], in_vec_s32[2],
-                         in_vec_s32[3], in_vec_s32[4]);
+                $write("[%0t] REQ in tile=(%0d,%0d) row_cnt=%0d/%0d done=%0d acc=",
+                       $time, tile_row, tile_col, row_in_tile_cnt,
+                       rows_need_cur, in_tile_done);
+                for (int dbg_i = 0; dbg_i < VLEN; dbg_i++) begin
+                  $write("%0d%s", in_vec_s32[dbg_i], (dbg_i == VLEN - 1) ? "" : ",");
+                end
+                $write("\n");
               end
 
               if (in_tile_done) begin
