@@ -456,9 +456,9 @@ read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 
 | Case | 报告早期新版记录 | 本轮最终 RTL | 差异 |
 |---|---:|---:|---:|
 | `hello_world` | 425,071 | 430,815 | +1.35% |
-| `micro_speech` | 15,590,371 | 15,720,065 | +0.83% |
-| `my_model` | 77,111,410 | 77,020,480 | -0.12% |
-| `person_detection` | 238,905,507 | 237,339,024 | -0.66% |
+| `micro_speech` | 15,590,371 | 15,720,057 | +0.83% |
+| `my_model` | 77,111,410 | 77,016,232 | -0.12% |
+| `person_detection` | 238,905,507 | 237,333,374 | -0.66% |
 
 最终验证：
 
@@ -467,3 +467,33 @@ read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 
 | S8 SoC 随机回归 | `SIZE=8,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1` | PASS 24/24 |
 | S16 SoC 随机回归 | `SIZE=16,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1` | PASS 24/24 |
 | TFLM | `hello_world/micro_speech/my_model/person_detection,SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS |
+
+### 2026-07-01 补充：SoC/MMA active 拆分与量化读调度
+
+带 `+MMA_UTIL_TRACE` 的 SoC/TFLM 复查说明，SoC 端到端周期不能直接当作 MMA latency：`soc_finish` 包含 Pico 启动、TFLM tensor allocation、算子调度、普通 CPU 算子、MMIO 配置、输出检查和 UART 打印。
+
+| Case | SoC cycles | MMA ops | MMA active sum | active / SoC |
+|---|---:|---:|---:|---:|
+| `hello_world` | 430,815 | 0 | 0 | 0.00% |
+| `micro_speech` | 15,720,065 | 1 | 32,330 | 0.21% |
+| `my_model` | 77,020,480 | 90 | 471,924 | 0.61% |
+
+因此，小模型端到端指标会显著稀释单独 MMA 的优化收益。大矩阵 SoC runtime 仍显示 cache/reuse 在 SoC 上有效：WS/s8/per-tensor、DDR 随机延迟关闭时，C8 相对 C4 在 `64/128/256/384` 方阵上分别快约 `1.94%/5.91%/12.32%/17.35%`。
+
+本轮还把 `axi_block_dma_arbiter` 读侧优先级从 `kernel > IA > quant > bias` 调整为 `kernel > quant > IA > bias`。原因是 TFLM per-channel 算子每次需要一小段量化参数读，提前完成可以避免 IA 数据到达后继续等待 `quant_params_valid`。per-tensor 不发 `quant_req`，不受影响。
+
+优化后对比：
+
+| Case | cycles before | cycles after | MMA active before | MMA active after | quant stall before | quant stall after |
+|---|---:|---:|---:|---:|---:|---:|
+| `micro_speech` | 15,720,065 | 15,720,057 | 32,330 | 32,319 | 321 | 0 |
+| `my_model` | 77,020,480 | 77,016,232 | 471,924 | 469,134 | 42,370 | 0 |
+| `person_detection` | 237,339,024 | 237,333,374 | 未采样 | 未采样 | 未采样 | 未采样 |
+
+补充验证：
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| TFLM | `micro_speech/my_model/person_detection,SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS |
+| S16 边界随机回归 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},MIN_DIM=1,MAX_DIM=65,unaligned_layout,DDR_RAND_LAT=1,seed=61000` | PASS 8/8 |
+| S8 边界随机回归 | `SIZE=8,CACHE=4,PS_FRAME=8,DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},MIN_DIM=1,MAX_DIM=65,unaligned_layout,DDR_RAND_LAT=1,seed=62000` | PASS 8/8 |
