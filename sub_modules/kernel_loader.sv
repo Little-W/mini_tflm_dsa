@@ -1,166 +1,336 @@
-/*
- * kernel_loader 权重加载控制器设计说明（自主访存版本）
- * ------------------------------------------------------------
- * 功能概述:
- *  本模块负责面向分块矩阵运算，从外部存储器自主读取权重数据（RHS），并按行输出到脉动阵列。
- *  模块内部负责计算每个权重分块（Weight Tile）的访存地址、发起 ICB 读请求、缓存并按需输出权重。
- *  设计目标：支持权重在多个IA Tile间复用，完成一次权重Tile的发送后自动申请并加载下一批权重，以保证计算流水的连续性。
- *
- * 分块与存储格式（更新）:
- *  - 权重矩阵 B 的尺寸：K 行 × N 列（或写作 n × m，模块接口使用 n、m）
- *  - 外部存储格式：权重在外部存储中按列主序（column-major）排列，即内存中相邻元素沿列方向排列
- *    * 例如列主序：{w00, w10, w20, ..., w01, w11, w21, ...}
- *  - Weight Tile: k 行 × SIZE 列（k <= SIZE），模块读取时需根据列主序的布局按列或按块进行访存，并在内部缓冲中重排为按行输出格式
- *  - 输出格式：脉动阵列需要按行（row-major）接收权重，模块在读取并重排后按行输出
- *
- *  访存与地址生成策略（列主序考虑）：
- *  - 模块在 init_cfg 时锁存基地址（cfg_rhs_base）、行/列间距（cfg_rhs_row_stride_b）和分块尺寸
- *  - 对于列主序存储，计算每个 Weight Tile 的访存地址时需要以列为主的偏移步长：
- *      tile_base = cfg_rhs_base + tile_col * cfg_rhs_col_stride + tile_row * cfg_rhs_row_stride (按实现约定)
- *  - 实现上可以按列逐列读取 tile（每次读取 k 个连续元素），或按块化读取后在缓冲区内做重排
- *  - 读取完成后模块将数据重排为按行格式，然后置 weight_data_valid=1，表示当前 Tile 已准备好发送
- *
- * 自动重触发行为:
- *  - 在每次权重Tile的发送完成（weight_sending_done）后，模块自动增加 tile 索引并驱动 load_weight_req=1
- *  - 外部控制器通过 load_weight_granted 授权后，模块开始下一个 Weight Tile 的访存
- *  - 当所有 Weight Tile 读取并发送完成后，模块停止申请
- *
- * 信号语义与时序（关键）：
- *  - weight_out[SIZE]: 并行输出的一整行权重数据（signed [DATA_WIDTH-1:0]）
- *    * 在 store_weight_req=1 且发送周期内，weight_out 上的数据为有效，脉动阵列应在该周期采样
- *    * 对于矩阵边界处无效元素，应输出0或定义的填充值
- *  - store_weight_req: 与 weight_out 同步的有效指示，表示当前周期 weight_out 可被阵列加载
- *  - weight_data_valid: 指示内部已完成当前 Weight Tile 的全部行读取并可用于发送
- *  - weight_sending_done: 指示当前 Weight Tile 的逐行发送已全部完成（SEND 完结）
- *
- * ICB 及错误处理:
- *  - 模块作为 ICB Master 发起读命令，驱动 icb_cmd_m；从端通过 icb_cmd_s.ready/ icb_rsp_s 提供握手
- *  - 模块需检测并处理响应中的错误标志（若 icb_rsp_s 表示错误，则进入错误处理分支并向上层上报）
- *
- * 实现建议:
- *  - 在模块内部维护 tile_row_idx、tile_col_idx、current_tile_base、rows_to_read 等控制变量
- *  - 对列主序数据，可按列块读取并在内部缓冲区完成按行重排（transpose/pack）以便按行输出
- *  - 在 SEND 完成后立即设置 load_weight_req，等待 load_weight_granted 后开始读下一个tile
- *  - 将 weight_data_valid 与 store_weight_req/weight_sending_done 保持明确的握手顺序，避免竞态
- */
-
-`include "define.svh"
-`include "icb_types.svh"
-
 module kernel_loader #(
-    parameter int unsigned DATA_WIDTH = 8,   // 权重数据宽度
-    parameter int unsigned SIZE       = 16,  // 阵列大小
-    parameter int unsigned BUS_WIDTH  = 32,  // 总线宽度
-    parameter int unsigned REG_WIDTH  = 32   // 配置寄存器宽度
-) (
-    // 时钟与复位
-    input wire clk,   // 时钟信号
-    input wire rst_n, // 异步复位，低有效
-
-    // 配置控制接口
-    input wire init_cfg,  // 触发配置参数锁存
-
-    // 自动重触发控制接口
-    output reg  load_weight_req,      // 申请下一次访存授权（输出到外部控制器）
-    input  wire load_weight_granted,  // 外部控制器授权下一次访存（握手信号）
-    input  wire send_weight_trigger,  // 触发发送权重到脉动阵列（单拍触发）
-
-    // 矩阵尺寸与分块配置（在 init_cfg 时被锁存）
-    input wire [REG_WIDTH-1:0] k,  // 输入激活矩阵行数
-    input wire [REG_WIDTH-1:0] n,  // 输入激活矩阵列数
-    input  wire [REG_WIDTH-1:0]        m,                 // 输出矩阵列数（LHS_COLS），用于计算是否为最后一个tile
-
-    // 配置寄存器（在 init_cfg 时锁存）
-    input wire signed [REG_WIDTH-1:0] rhs_zp,  // 权重零点（s32）
-    input wire [REG_WIDTH-1:0] rhs_base,  // 权重数据基地址（第一个分块）
-    input wire [REG_WIDTH-1:0] rhs_row_stride_b,  // 权重行间地址间距
-
-    // ICB 主接口（模块作为 Master, 扩展三通道）
-    output icb_ext_cmd_m_t icb_cmd_m,  // Master -> Slave: 命令有效载荷
-    output icb_ext_wr_m_t  icb_wr_m,   // Master -> Slave: 写数据有效载荷
-    input  icb_ext_cmd_s_t icb_cmd_s,  // Slave -> Master: 命令就绪
-    input  icb_ext_wr_s_t  icb_wr_s,   // Slave -> Master: 写数据就绪
-    input  icb_ext_rsp_s_t icb_rsp_s,  // Slave -> Master: 响应有效载荷
-    output icb_ext_rsp_m_t icb_rsp_m,  // Master -> Slave: 响应就绪
-
-    // 输出信号到脉动阵列
-    output reg weight_sending_done,  // 权重发送完成
-    output reg store_weight_req,  // 控制脉动阵列权重加载
-    output reg signed [DATA_WIDTH-1:0] weight_out[SIZE],   // 输出到脉动阵列的权重（按行输出）
-
-    // 新增输出：当完成所有权重读取时指示数据已准备好
-    output reg weight_data_valid  // 所有权重数据已读取完毕并可用于发送
+	    parameter int unsigned DATA_WIDTH   = 8,
+	    parameter int unsigned SIZE         = 4,
+	    parameter int unsigned BUS_WIDTH    = 32,
+	    parameter int unsigned REG_WIDTH    = 32,
+	    parameter int unsigned CACHE_BLOCKS = 1,
+	    parameter bit          EXTERNAL_DMA = 1'b0
+	) (
+    input  logic                        clk,
+    input  logic                        rst_n,
+    input  logic                        init_cfg,
+    output logic                        load_weight_req,
+    input  logic                        load_weight_granted,
+    input  logic                        send_weight_trigger,
+    input  logic [REG_WIDTH-1:0]        k,
+    input  logic [REG_WIDTH-1:0]        n,
+    input  logic [REG_WIDTH-1:0]        m,
+    input  logic [REG_WIDTH-1:0]        rhs_base,
+    input  logic [REG_WIDTH-1:0]        rhs_row_stride_b,
+    input  logic signed [REG_WIDTH-1:0] rhs_zp,
+    input  logic                        use_16bits,
+    input  logic [REG_WIDTH-1:0]        ia_reuse_num,
+    input  logic [REG_WIDTH-1:0]        w_reuse_num,
+    output logic                        icb_cmd_valid,
+    input  logic                        icb_cmd_ready,
+    output logic                        icb_cmd_read,
+    output logic [REG_WIDTH-1:0]        icb_cmd_addr,
+    output logic [3:0]                  icb_cmd_len,
+	    input  logic                        icb_rsp_valid,
+	    output logic                        icb_rsp_ready,
+	    input  logic [BUS_WIDTH-1:0]        icb_rsp_rdata,
+	    input  logic                        icb_rsp_err,
+	    output logic                        ext_dma_start,
+	    output logic                        ext_dma_is_write,
+	    output logic                        ext_dma_linear_read_mode,
+	    output logic [REG_WIDTH-1:0]        ext_dma_base_addr,
+	    output logic [REG_WIDTH-1:0]        ext_dma_row_stride,
+	    output logic [REG_WIDTH-1:0]        ext_dma_rows_to_read,
+	    output logic [3:0]                  ext_dma_burst_len_m1,
+	    output logic                        ext_dma_slot_id,
+	    output logic                        ext_dma_use_16bits,
+	    output logic signed [REG_WIDTH-1:0] ext_dma_lhs_zp,
+	    input  logic                        ext_dma_busy,
+	    input  logic                        ext_dma_done,
+	    input  logic [$clog2(SIZE)-1:0]     ext_dma_wr_row,
+	    input  logic [$clog2(SIZE)-1:0]     ext_dma_wr_col_base,
+	    input  logic signed [DATA_WIDTH-1:0] ext_dma_wr_data [BUS_WIDTH/8],
+	    input  logic                        ext_dma_wr_valid[BUS_WIDTH/8],
+	    output logic                        weight_sending_done,
+	    output logic                        load_weight_done,
+	    output logic                        store_weight_req,
+    output logic signed [DATA_WIDTH-1:0] weight_out [SIZE],
+    output logic                        weight_data_valid
 );
 
-    // 状态定义
-    typedef enum logic [1:0] {
-        IDLE = 2'b00,  // 空闲状态
-        LOAD = 2'b01,  // 读取权重数据状态
-        SEND = 2'b10   // 发送权重数据状态
-    } state_t;
+  typedef enum logic [1:0] {TOP_IDLE, TOP_INIT, TOP_RUN} top_state_t;
 
-    state_t     state;
+  top_state_t top_state;
 
-    // ICB 命令与响应内部信号与连接（保持旧打包以便内部逻辑复用）
-    icb_cmd_m_t icb_cmd_m_reg;  // 驱动可变字段的寄存器
-    icb_cmd_m_t icb_cmd_m_wire;  // 由寄存器与常量 size 组合成的输出线网
-    icb_rsp_m_t icb_rsp_m_wire_legacy;
-    // 固定 size 字段为 2'b10，其余字段从寄存器取值
-    assign icb_cmd_m_wire = '{
-            icb_cmd_m_reg.valid,
-            icb_cmd_m_reg.addr,
-            icb_cmd_m_reg.read,
-            icb_cmd_m_reg.wdata,
-            icb_cmd_m_reg.wmask,
-            2'b10
-        };
+  logic [REG_WIDTH-1:0] cfg_k, cfg_n, cfg_m;
+  logic [REG_WIDTH-1:0] cfg_rhs_base, cfg_rhs_row_stride_b;
+  logic signed [REG_WIDTH-1:0] cfg_rhs_zp;
+  logic cfg_use_16bits;
+  logic [REG_WIDTH-1:0] cfg_ia_reuse_num, cfg_w_reuse_num;
 
-    // 将旧版打包信号映射到扩展三通道端口
-    assign icb_cmd_m.valid = icb_cmd_m_wire.valid;
-    assign icb_cmd_m.addr = icb_cmd_m_wire.addr;
-    assign icb_cmd_m.read = icb_cmd_m_wire.read;
-    assign icb_cmd_m.len = 3'd0;  // 默认单拍
+  logic cfg_valid;
+  logic ctrl_all_done;
 
-    assign icb_wr_m.w_valid = icb_cmd_m_reg.valid & (~icb_cmd_m_reg.read);
-    assign icb_wr_m.wdata = icb_cmd_m_reg.wdata;
-    assign icb_wr_m.wmask = icb_cmd_m_reg.wmask;
+  logic                        dma_start;
+  logic [REG_WIDTH-1:0]        dma_tile_base_addr;
+  logic [REG_WIDTH-1:0]        dma_rows_to_read;
+  logic [REG_WIDTH-1:0]        dma_row_stride_b;
+  logic [REG_WIDTH-1:0]        dma_valid_cols;
+  logic signed [REG_WIDTH-1:0] dma_rhs_zp;
+  logic                        buf_load_start;
+  logic                        buf_send_start;
+  logic                        dma_busy;
+	  logic                        dma_done;
+	  assign load_weight_done = dma_done;
 
-    // 响应就绪沿用旧版寄存器名
-    assign icb_rsp_m = '{icb_rsp_m_wire_legacy.rsp_ready};
+	  logic                        dma_row_valid;
+	  logic [$clog2(SIZE)-1:0]     dma_row_idx;
+	  logic signed [DATA_WIDTH-1:0] dma_row_data [SIZE];
+	  localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
+	  localparam int ELEM_PER_BEAT_S8 = BYTE_PER_BEAT;
+	  localparam int ELEM_PER_BEAT_S16 = BYTE_PER_BEAT / 2;
+	  logic [REG_WIDTH-1:0] dma_elems_per_beat;
+	  logic [REG_WIDTH-1:0] dma_beats_per_row;
+	  logic [3:0]           dma_burst_len_m1;
 
-    // 权重缓冲区（按列主序存储）
-    reg signed [DATA_WIDTH-1:0] weight_buffer[SIZE*SIZE];
-    integer i, j;
+	  always_comb begin
+	    dma_elems_per_beat = cfg_use_16bits ? REG_WIDTH'(ELEM_PER_BEAT_S16) : REG_WIDTH'(ELEM_PER_BEAT_S8);
+	    if (dma_valid_cols == 0) begin
+	      dma_beats_per_row = REG_WIDTH'(1);
+	    end else begin
+	      dma_beats_per_row = (dma_valid_cols + dma_elems_per_beat - 1) / dma_elems_per_beat;
+	      if (dma_beats_per_row == 0) dma_beats_per_row = REG_WIDTH'(1);
+	    end
+	    dma_burst_len_m1 = 4'(dma_beats_per_row - 1);
+	  end
 
-    // 锁存的配置信号
-    reg        [REG_WIDTH-1:0] cfg_n;
-    reg        [REG_WIDTH-1:0] cfg_m;
-    reg signed [REG_WIDTH-1:0] cfg_rhs_zp;
-    reg        [REG_WIDTH-1:0] cfg_rhs_base;
-    reg        [REG_WIDTH-1:0] cfg_rhs_row_stride_b;
+	  assign ext_dma_start            = dma_start;
+	  assign ext_dma_is_write         = 1'b0;
+	  assign ext_dma_linear_read_mode = 1'b0;
+	  assign ext_dma_base_addr        = dma_tile_base_addr;
+	  assign ext_dma_row_stride       = dma_row_stride_b;
+	  assign ext_dma_rows_to_read     = dma_rows_to_read;
+	  assign ext_dma_burst_len_m1     = dma_burst_len_m1;
+	  assign ext_dma_slot_id          = 1'b0;
+	  assign ext_dma_use_16bits       = cfg_use_16bits;
+	  assign ext_dma_lhs_zp           = dma_rhs_zp;
 
-    // 计数器与状态寄存器
-    reg        [REG_WIDTH-1:0] load_row_count;
-    reg        [REG_WIDTH-1:0] load_col_count;
-    reg        [REG_WIDTH-1:0] cur_addr;
-
-    // 配置参数锁存
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            cfg_n                <= '0;
-            cfg_m                <= '0;
-            cfg_rhs_zp           <= '0;
-            cfg_rhs_base         <= '0;
-            cfg_rhs_row_stride_b <= '0;
-        end else if (init_cfg) begin
-            cfg_n                <= n;
-            cfg_m                <= m;
-            cfg_rhs_zp           <= rhs_zp;
-            cfg_rhs_base         <= rhs_base;
-            cfg_rhs_row_stride_b <= rhs_row_stride_b;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      top_state          <= TOP_IDLE;
+      cfg_valid          <= 1'b0;
+      cfg_k              <= '0;
+      cfg_n              <= '0;
+      cfg_m              <= '0;
+      cfg_rhs_base       <= '0;
+      cfg_rhs_row_stride_b <= '0;
+      cfg_rhs_zp         <= '0;
+      cfg_use_16bits     <= 1'b0;
+      cfg_ia_reuse_num   <= '0;
+      cfg_w_reuse_num    <= '0;
+    end else begin
+      case (top_state)
+        TOP_IDLE: begin
+          cfg_valid <= 1'b0;
+          if (init_cfg) begin
+            top_state <= TOP_INIT;
+          end
         end
-    end
 
-    // 状态机实现（待补充）
+        TOP_INIT: begin
+          cfg_k               <= k;
+          cfg_n               <= n;
+          cfg_m               <= m;
+          cfg_rhs_base        <= rhs_base;
+          cfg_rhs_row_stride_b<= rhs_row_stride_b;
+          cfg_rhs_zp          <= rhs_zp;
+          cfg_use_16bits      <= use_16bits;
+          cfg_ia_reuse_num    <= ia_reuse_num;
+          cfg_w_reuse_num     <= w_reuse_num;
+          cfg_valid           <= 1'b1;
+          top_state           <= TOP_RUN;
+        end
+
+        TOP_RUN: begin
+          if (ctrl_all_done) begin
+            cfg_valid  <= 1'b0;
+            top_state  <= TOP_IDLE;
+          end
+        end
+      endcase
+    end
+  end
+
+  kernel_loader_ctrl #(
+    .SIZE      (SIZE),
+    .REG_WIDTH (REG_WIDTH)
+  ) u_ctrl (
+    .clk                   (clk),
+    .rst_n                 (rst_n),
+    .cfg_valid             (cfg_valid),
+    .cfg_k                 (cfg_k),
+    .cfg_n                 (cfg_n),
+    .cfg_m                 (cfg_m),
+    .cfg_rhs_base          (cfg_rhs_base),
+    .cfg_rhs_row_stride_b  (cfg_rhs_row_stride_b),
+    .cfg_rhs_zp            (cfg_rhs_zp),
+    .cfg_use_16bits        (cfg_use_16bits),
+    .cfg_ia_reuse_num      (cfg_ia_reuse_num),
+    .cfg_w_reuse_num       (cfg_w_reuse_num),
+    .load_weight_granted   (load_weight_granted),
+    .send_weight_trigger    (send_weight_trigger),
+    .buf_weight_data_valid  (weight_data_valid),
+    .buf_weight_sending_done(weight_sending_done),
+    .load_weight_req       (load_weight_req),
+    .dma_start             (dma_start),
+    .dma_tile_base_addr    (dma_tile_base_addr),
+    .dma_rows_to_read      (dma_rows_to_read),
+    .dma_row_stride_b      (dma_row_stride_b),
+    .dma_valid_cols        (dma_valid_cols),
+    .dma_rhs_zp            (dma_rhs_zp),
+    .buf_load_start        (buf_load_start),
+    .buf_send_start        (buf_send_start),
+    .ctrl_all_done         (ctrl_all_done),
+    .tile_row_dbg          (),
+    .tile_col_dbg          (),
+    .repeat_dbg            ()
+  );
+
+	  generate
+	    if (EXTERNAL_DMA) begin : gen_external_dma
+	      logic signed [DATA_WIDTH-1:0] row_acc [SIZE];
+	      logic signed [DATA_WIDTH-1:0] row_acc_n [SIZE];
+	      logic signed [DATA_WIDTH-1:0] row_emit [SIZE];
+	      logic signed [DATA_WIDTH-1:0] row_emit_n [SIZE];
+	      logic row_valid_pending;
+	      logic [$clog2(SIZE)-1:0] row_idx_pending;
+	      logic ext_done_q;
+	      logic beat_valid;
+	      logic last_ext_beat;
+
+	      always_comb begin
+	        beat_valid = 1'b0;
+	        for (int i = 0; i < BYTE_PER_BEAT; i++) begin
+	          beat_valid |= ext_dma_wr_valid[i];
+	        end
+	        last_ext_beat = beat_valid &&
+	          ((REG_WIDTH'(ext_dma_wr_col_base) + dma_elems_per_beat) >= dma_valid_cols);
+	        for (int c = 0; c < SIZE; c++) begin
+	          row_acc_n[c] = row_acc[c];
+	          row_emit_n[c] = row_acc[c];
+	        end
+	        if (dma_start) begin
+	          for (int c = 0; c < SIZE; c++) begin
+	            row_acc_n[c] = '0;
+	            row_emit_n[c] = '0;
+	          end
+	        end
+	        if (beat_valid) begin
+	          for (int i = 0; i < BYTE_PER_BEAT; i++) begin
+	            automatic int col;
+	            col = int'(ext_dma_wr_col_base) + i;
+	            if (ext_dma_wr_valid[i] && col < SIZE && REG_WIDTH'(col) < dma_valid_cols) begin
+	              row_emit_n[col] = ext_dma_wr_data[i];
+	              if (!last_ext_beat) row_acc_n[col] = ext_dma_wr_data[i];
+	            end
+	          end
+	          if (last_ext_beat) begin
+	            for (int c = 0; c < SIZE; c++) begin
+	              row_acc_n[c] = '0;
+	            end
+	          end
+	        end
+	      end
+
+	      always_ff @(posedge clk or negedge rst_n) begin
+	        if (!rst_n) begin
+	          dma_busy <= 1'b0;
+	          dma_done <= 1'b0;
+	          dma_row_valid <= 1'b0;
+	          dma_row_idx <= '0;
+	          row_valid_pending <= 1'b0;
+	          row_idx_pending <= '0;
+	          ext_done_q <= 1'b0;
+	          for (int c = 0; c < SIZE; c++) begin
+	            row_acc[c] <= '0;
+	            row_emit[c] <= '0;
+	            dma_row_data[c] <= '0;
+	          end
+	        end else begin
+	          dma_busy <= ext_dma_busy;
+	          ext_done_q <= ext_dma_done;
+	          dma_done <= ext_done_q;
+	          dma_row_valid <= row_valid_pending;
+	          if (row_valid_pending) begin
+	            dma_row_idx <= row_idx_pending;
+	            for (int c = 0; c < SIZE; c++) begin
+	              dma_row_data[c] <= row_emit[c];
+	            end
+	          end
+	          row_valid_pending <= 1'b0;
+	          for (int c = 0; c < SIZE; c++) begin
+	            row_acc[c] <= row_acc_n[c];
+	          end
+	          if (last_ext_beat) begin
+	            row_valid_pending <= 1'b1;
+	            row_idx_pending <= ext_dma_wr_row;
+	            for (int c = 0; c < SIZE; c++) begin
+	              row_emit[c] <= row_emit_n[c];
+	            end
+	          end
+	        end
+	      end
+
+	      assign icb_cmd_valid = 1'b0;
+	      assign icb_cmd_read  = 1'b1;
+	      assign icb_cmd_addr  = '0;
+	      assign icb_cmd_len   = '0;
+	      assign icb_rsp_ready = 1'b0;
+	    end else begin : gen_internal_dma
+	      kernel_block_dma #(
+	        .DATA_WIDTH (DATA_WIDTH),
+	        .SIZE       (SIZE),
+	        .BUS_WIDTH  (BUS_WIDTH),
+	        .REG_WIDTH  (REG_WIDTH)
+	      ) u_dma (
+	        .clk            (clk),
+	        .rst_n          (rst_n),
+	        .start          (dma_start),
+	        .tile_base_addr (dma_tile_base_addr),
+	        .row_stride_b   (dma_row_stride_b),
+	        .rows_to_read   (dma_rows_to_read),
+	        .valid_cols     (dma_valid_cols),
+	        .rhs_zp         (dma_rhs_zp),
+	        .use_16bits     (cfg_use_16bits),
+	        .busy           (dma_busy),
+	        .done           (dma_done),
+	        .row_valid      (dma_row_valid),
+	        .row_idx        (dma_row_idx),
+	        .row_data       (dma_row_data),
+	        .icb_cmd_valid  (icb_cmd_valid),
+	        .icb_cmd_ready  (icb_cmd_ready),
+	        .icb_cmd_read   (icb_cmd_read),
+	        .icb_cmd_addr   (icb_cmd_addr),
+	        .icb_cmd_len    (icb_cmd_len),
+	        .icb_rsp_valid  (icb_rsp_valid),
+	        .icb_rsp_ready  (icb_rsp_ready),
+	        .icb_rsp_rdata  (icb_rsp_rdata),
+	        .icb_rsp_err    (icb_rsp_err)
+	      );
+	    end
+	  endgenerate
+
+  kernel_loader_buffer #(
+    .DATA_WIDTH (DATA_WIDTH),
+    .SIZE       (SIZE)
+  ) u_buf (
+    .clk                 (clk),
+    .rst_n               (rst_n),
+    .load_start          (buf_load_start),
+    .row_valid           (dma_row_valid),
+    .row_idx             (dma_row_idx),
+    .row_data            (dma_row_data),
+    .load_done           (dma_done),
+    .send_start          (buf_send_start),
+    .weight_data_valid   (weight_data_valid),
+    .weight_sending_done (weight_sending_done),
+    .store_weight_req    (store_weight_req),
+    .weight_out          (weight_out)
+  );
 
 endmodule
