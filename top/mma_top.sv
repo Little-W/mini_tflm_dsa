@@ -12,8 +12,9 @@ module mma_top #(
     parameter int unsigned ADDR_WIDTH = 19,  // 地址宽度
     parameter int unsigned ICB_LEN_W = 4,  // ICB 突发长度宽度
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
-    parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
-    parameter int unsigned AXI_READ_OUTSTANDING = 4  // AXI 读通道最多提前排队的 burst 数
+	    parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
+	    parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
+	    parameter int unsigned AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING  // AXI 写通道最多提前排队的 burst 数
 ) (
     //==== 时钟与复位 ====
     input wire clk,   // 系统时钟
@@ -257,26 +258,37 @@ module mma_top #(
 	    localparam int unsigned IA_REUSE_NUM_MAX =
 	        (IA_CACHE_BLOCKS < 2) ? 1 : (IA_CACHE_BLOCKS / 2);
 		    localparam int unsigned IA_REUSE_NUM_DEFAULT = IA_REUSE_NUM_MAX;
+	    localparam int unsigned W_REUSE_NUM_MAX =
+	        (PS_FRAME_COUNT < 1) ? 1 : PS_FRAME_COUNT;
 	    localparam int unsigned OA_FIFO_BANKS = PS_FRAME_COUNT * IA_REUSE_NUM_MAX;
 		    localparam int unsigned IS_BIAS_ROWS = IA_REUSE_NUM_MAX * SIZE;
 		    localparam int unsigned IS_BIAS_ROW_W = (IS_BIAS_ROWS <= 1) ? 1 : $clog2(IS_BIAS_ROWS);
 		    wire signed [31:0] bias_group_data_out[IS_BIAS_ROWS];
 
 	    wire [REG_WIDTH-1:0] output_col_tile_num = (stream_m + REG_WIDTH'(SIZE - 1)) >> $clog2(SIZE);
+	    wire [REG_WIDTH-1:0] w_reuse_capacity_limit =
+	      ((output_col_tile_num != '0) && (output_col_tile_num < REG_WIDTH'(W_REUSE_NUM_MAX)))
+	          ? output_col_tile_num
+	          : REG_WIDTH'(W_REUSE_NUM_MAX);
     wire        [   REG_WIDTH-1:0] ia_reuse_num_raw =
       (cfg_ia_reuse_num == '0) ? REG_WIDTH'(IA_REUSE_NUM_DEFAULT) : cfg_ia_reuse_num;
     wire        [   REG_WIDTH-1:0] w_reuse_num_raw =
-      (cfg_w_reuse_num == '0) ? output_col_tile_num : cfg_w_reuse_num;
+      (cfg_w_reuse_num == '0) ? w_reuse_capacity_limit : cfg_w_reuse_num;
     wire        [   REG_WIDTH-1:0] ia_reuse_num_eff_ws =
       (ia_reuse_num_raw == '0) ? REG_WIDTH'(1) :
       (ia_reuse_num_raw > REG_WIDTH'(IA_REUSE_NUM_MAX))
           ? REG_WIDTH'(IA_REUSE_NUM_MAX)
           : ia_reuse_num_raw;
-    wire [REG_WIDTH-1:0] ia_reuse_num_eff = ia_reuse_num_eff_ws;
+    wire [REG_WIDTH-1:0] ia_reuse_num_eff =
+      (is_mode && (ia_reuse_num_eff_ws > REG_WIDTH'(W_REUSE_NUM_MAX)))
+          ? REG_WIDTH'(W_REUSE_NUM_MAX)
+          : ia_reuse_num_eff_ws;
 	    wire [REG_WIDTH-1:0] w_reuse_num_clamped_max =
 	      (w_reuse_num_raw == '0) ? REG_WIDTH'(1) :
 	      ((output_col_tile_num != '0) && (w_reuse_num_raw > output_col_tile_num))
 	          ? output_col_tile_num
+	      : (w_reuse_num_raw > REG_WIDTH'(W_REUSE_NUM_MAX))
+	          ? REG_WIDTH'(W_REUSE_NUM_MAX)
 	          : w_reuse_num_raw;
 	    wire [REG_WIDTH-1:0] w_reuse_num_eff =
 	      (is_mode && (w_reuse_num_clamped_max < ia_reuse_num_eff) &&
@@ -292,7 +304,8 @@ module mma_top #(
 	        .BUS_WIDTH   (BUS_WIDTH),
 	        .REG_WIDTH   (REG_WIDTH),
 	        .CACHE_BLOCKS(IA_CACHE_BLOCKS),
-	        .READ_OUTSTANDING(AXI_READ_OUTSTANDING)
+	        .READ_OUTSTANDING(AXI_READ_OUTSTANDING),
+	        .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING)
 	    ) u_block_dma_arbiter (
 	        .clk                     (clk),
 	        .rst_n                   (rst_n),

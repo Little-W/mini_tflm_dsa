@@ -14,7 +14,7 @@
 - cache 增大带来的复用收益已经能在新架构内部稳定体现：C8 相对 C2 在所有 WS 尺寸上均更快，256 点降周期约 40.65%。
 - 主要性能修复来自三处：OA 写回从单 beat 命令改成按输出行 burst；reuse=0 保留为 RTL 自动最大复用路径；runtime case 头和输出清零/比较去掉 volatile 字节循环开销。
 - TFLM 端到端结果和裸 MMA 不完全一致：端到端包含算子调度、转置/打包、CPU 侧循环和模型结构，旧版部分大模型此前会 timeout；本报告使用加大 timeout 后的重跑日志更新该结论。
-- 修改 `MMA_IA_CACHE_BLOCKS` 时，驱动公式会同步改变：Makefile 把它编译成 `-DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS)`，普通 SoC runtime 和 TFLM kernel 都使用该宏选择 reuse 参数。
+- 修改 `MMA_IA_CACHE_BLOCKS` 和 `MMA_PS_FRAME_COUNT` 时，驱动公式会同步改变：Makefile 把它们编译成 `-DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS)` 和 `-DDSA_PS_FRAME_COUNT=$(MMA_PS_FRAME_COUNT)`。普通 SoC runtime 使用这两个宏选择并限制 reuse 参数；TFLM kernel 的直接 MMA 路径以 `SIZE` 列为一组提交，当前配置下 `W_REUSE=1`，主要受 `DSA_IA_CACHE_BLOCKS` 控制。
 
 ## 图 1：新版 cache 大小对周期的影响
 
@@ -83,7 +83,7 @@
 
 ### 5. 驱动 cache 参数是否同步
 
-已确认同步。`veri/sim/Makefile` 中 `SOC_HW_DEFINES := -DDSA_TILE_SIZE=$(MMA_SIZE) -DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS)`，并用于 SoC runtime 编译和 TFLM 库编译。普通驱动和 `veri/soc_csrc/dsa_accel_mmio.c` 都保留 `reuse=0` 的自动路径；显式非零 reuse 才会按 `DSA_IA_CACHE_BLOCKS` 和输出列 tile 数 clamp。TFLM 的 `conv.cc/depthwise_conv.cc` 也把 `DSA_IA_CACHE_BLOCKS` 编译成 `kMmaIaCacheBlocks` 参与 reuse 选择。
+已确认同步。`veri/sim/Makefile` 中 `SOC_HW_DEFINES := -DDSA_TILE_SIZE=$(MMA_SIZE) -DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS) -DDSA_PS_FRAME_COUNT=$(MMA_PS_FRAME_COUNT)`，并用于 SoC runtime 编译和 TFLM 库编译。普通驱动和 `veri/soc_csrc/dsa_accel_mmio.c` 都保留 `reuse=0` 的自动路径；显式非零 reuse 会按 `DSA_IA_CACHE_BLOCKS`、`DSA_PS_FRAME_COUNT` 和输出列 tile 数 clamp。TFLM 的 `conv.cc/depthwise_conv.cc` 也把 `DSA_IA_CACHE_BLOCKS` 编译成 `kMmaIaCacheBlocks` 参与 reuse 选择。
 
 ## 功能正确性与 timeout 处理
 
@@ -435,3 +435,35 @@ read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 
 - `runs/s16_boundary_after_cleanup`
 - `runs/s8_cache_rand_after_cleanup`
 - `runs/s16_cache_rand_after_cleanup`
+
+### 2026-07-01 补充：SoC 性能回退深排查
+
+本轮对“单独 MMA 已优化，但 SoC/TFLM 端到端部分用例变慢”的问题做了回归排查。结论是：MMA 本体优化仍有效，SoC 端差异主要来自 Pico/AXI/DDR 访问路径、UART 正确等待、reuse 写回窗口边界和仿真并行基础设施。
+
+最终保留的修复：
+
+- `mma_top` 和 C 驱动把 `W_REUSE` 上限限制在输出列 tile 数与 `PS_FRAME_COUNT` 内，避免默认 reuse 超过写回 FIFO/PS frame 窗口。
+- `DSA_PS_FRAME_COUNT` 进入 SoC runtime/TFLM 编译宏和 build dir key，避免修改 `MMA_PS_FRAME_COUNT` 后复用旧目标。
+- VCS 编译使用独立 `-Mdir=$(SIMV).csrc`，避免并行仿真共享 `csrc/hsim/hsim.sdb` 导致 `VFS_SDB_SYNC_FAIL`。
+- SoC RAM 保留单 beat 读快路径和 `AW/W` 同周期接收；写响应仍走 B 队列。
+- SoC interconnect 修复 CPU 侧 `AR/R`、`AW/B` 同周期握手时 active 状态被旧响应清掉的问题。
+- UART AXI-Lite 写必须等待 `simpleuart` 非 busy 才返回 B，避免打印字符丢失。
+
+失败实验也记录在案：RAM 直接 B 快路径可以让 `hello_world` 回到 `425071 cycles`，但会让 `micro_speech` 稳定卡在 `progress=0x5b313000`。因此当前代码不保留直接 B，优先保证 TFLM 正确性。
+
+最终 TFLM 对比：
+
+| Case | 报告早期新版记录 | 本轮最终 RTL | 差异 |
+|---|---:|---:|---:|
+| `hello_world` | 425,071 | 430,815 | +1.35% |
+| `micro_speech` | 15,590,371 | 15,720,065 | +0.83% |
+| `my_model` | 77,111,410 | 77,020,480 | -0.12% |
+| `person_detection` | 238,905,507 | 237,339,024 | -0.66% |
+
+最终验证：
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| S8 SoC 随机回归 | `SIZE=8,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1` | PASS 24/24 |
+| S16 SoC 随机回归 | `SIZE=16,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1` | PASS 24/24 |
+| TFLM | `hello_world/micro_speech/my_model/person_detection,SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS |
