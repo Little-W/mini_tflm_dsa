@@ -39,6 +39,17 @@
 #define CSR_MULT_DST_SHIFT  0x7CE  // per-tensor shift 或 per-channel shift 指针
 #define CSR_MULT_ACT_MIN    0x7CF  // 激活下限
 #define CSR_MULT_ACT_MAX    0x7D0  // 激活上限
+#define CSR_MULT_IA_REUSE   0x7D1  // IA reuse depth，0 表示 RTL 自动
+#define CSR_MULT_W_REUSE    0x7D2  // W reuse window，0 表示 RTL 自动
+#define CSR_MULT_DATAFLOW   0x7D3  // 0=WS, 1=IS
+
+#ifndef DSA_TILE_SIZE
+#define DSA_TILE_SIZE 16u
+#endif
+
+#ifndef DSA_IA_CACHE_BLOCKS
+#define DSA_IA_CACHE_BLOCKS 4u
+#endif
 
 /* ========== 配置字位域定义 ========== */
 /* OUT_W 输出位宽 [2:0] */
@@ -87,6 +98,11 @@ typedef enum {
     DSA_QUANT_PER_CHANNEL = 1
 } dsa_quant_mode_t;
 
+typedef enum {
+    DSA_DATAFLOW_WS = 0,
+    DSA_DATAFLOW_IS = 1
+} dsa_dataflow_mode_t;
+
 /* ========== 矩阵乘法配置结构 ========== */
 typedef struct {
     /* 数据指针 */
@@ -110,6 +126,7 @@ typedef struct {
     dsa_dtype_t rhs_dtype;   // B的数据类型(固定s8)
     dsa_dtype_t bias_dtype;  // Bias数据类型
     dsa_dtype_t out_dtype;   // 输出数据类型(固定s8)
+    dsa_dataflow_mode_t dataflow_mode;  // 0=WS, 1=IS
     
     /* 量化参数 */
     dsa_quant_mode_t quant_mode;  // 量化模式
@@ -128,6 +145,10 @@ typedef struct {
     /* 激活限制 */
     int32_t act_min;
     int32_t act_max;
+
+    /* reuse 配置；0 表示交给 RTL 按 cache/尺寸自动取最大合法复用 */
+    uint32_t ia_reuse_num;
+    uint32_t w_reuse_num;
 } dsa_matmul_config_t;
 
 /* ========== 底层CSR访问宏 ========== */
@@ -191,5 +212,10 @@ uint32_t dsa_build_cfg_word(const dsa_matmul_config_t *config);
  * @param config 待初始化的配置结构
  */
 void dsa_matmul_config_init(dsa_matmul_config_t *config);
+void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
+                             uint32_t ia_cache_blocks,
+                             dsa_dataflow_mode_t dataflow_mode,
+                             uint32_t *ia_reuse_num,
+                             uint32_t *w_reuse_num);
 
 #endif /* DSA_ACCEL_H */

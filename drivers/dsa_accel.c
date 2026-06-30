@@ -17,6 +17,85 @@ static uint32_t get_dtype_size(dsa_dtype_t dtype) {
     }
 }
 
+static uint32_t ceil_div_u32(uint32_t a, uint32_t b) {
+    return (b == 0u) ? 0u : ((a + b - 1u) / b);
+}
+
+static uint32_t max_u32(uint32_t a, uint32_t b) {
+    return (a > b) ? a : b;
+}
+
+static void dsa_matmul_legalize_reuse(uint32_t K, uint32_t M,
+                                      uint32_t ia_cache_blocks,
+                                      dsa_dataflow_mode_t dataflow_mode,
+                                      uint32_t *ia_reuse_num,
+                                      uint32_t *w_reuse_num) {
+    uint32_t stream_m;
+    uint32_t output_col_tiles;
+    uint32_t ia_limit;
+
+    if ((ia_reuse_num == 0) || (w_reuse_num == 0)) {
+        return;
+    }
+
+    if (ia_cache_blocks == 0u) {
+        ia_cache_blocks = DSA_IA_CACHE_BLOCKS;
+    }
+
+    stream_m = (dataflow_mode == DSA_DATAFLOW_IS) ? K : M;
+    output_col_tiles = max_u32(1u, ceil_div_u32(stream_m, DSA_TILE_SIZE));
+    ia_limit = (ia_cache_blocks < 2u) ? 1u : (ia_cache_blocks / 2u);
+    ia_limit = max_u32(1u, ia_limit);
+
+    if ((*ia_reuse_num != 0u) && (*ia_reuse_num > ia_limit)) {
+        *ia_reuse_num = ia_limit;
+    }
+    if ((*w_reuse_num != 0u) && (*w_reuse_num > output_col_tiles)) {
+        *w_reuse_num = output_col_tiles;
+    }
+    if ((dataflow_mode == DSA_DATAFLOW_IS) &&
+        (*ia_reuse_num != 0u) && (*w_reuse_num != 0u) &&
+        (*w_reuse_num < *ia_reuse_num) &&
+        (output_col_tiles >= *ia_reuse_num)) {
+        *w_reuse_num = *ia_reuse_num;
+    }
+}
+
+void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
+                             uint32_t ia_cache_blocks,
+                             dsa_dataflow_mode_t dataflow_mode,
+                             uint32_t *ia_reuse_num,
+                             uint32_t *w_reuse_num) {
+    uint32_t stream_cols;
+    uint32_t output_col_tiles;
+    uint32_t ia_limit;
+
+    if ((ia_reuse_num == 0) || (w_reuse_num == 0)) {
+        return;
+    }
+
+    if ((K == 0u) || (N == 0u) || (M == 0u)) {
+        *ia_reuse_num = 1u;
+        *w_reuse_num = 1u;
+        return;
+    }
+
+    if (ia_cache_blocks == 0u) {
+        ia_cache_blocks = DSA_IA_CACHE_BLOCKS;
+    }
+
+    stream_cols = (dataflow_mode == DSA_DATAFLOW_IS) ? K : M;
+    output_col_tiles = max_u32(1u, ceil_div_u32(stream_cols, DSA_TILE_SIZE));
+    ia_limit = (ia_cache_blocks < 2u) ? 1u : (ia_cache_blocks / 2u);
+    ia_limit = max_u32(1u, ia_limit);
+
+    (void)N;
+    *ia_reuse_num = ia_limit;
+    *w_reuse_num = output_col_tiles;
+    dsa_matmul_legalize_reuse(K, M, ia_cache_blocks, dataflow_mode,
+                              ia_reuse_num, w_reuse_num);
+}
+
 /**
  * 构建配置字
  */
@@ -54,6 +133,7 @@ void dsa_matmul_config_init(dsa_matmul_config_t *config) {
     config->rhs_dtype = DSA_DTYPE_S8;   // B固定s8
     config->bias_dtype = DSA_DTYPE_S32;
     config->out_dtype = DSA_DTYPE_S8;   // 输出固定s8
+    config->dataflow_mode = DSA_DATAFLOW_WS;
     
     /* 默认per-tensor量化 */
     config->quant_mode = DSA_QUANT_PER_TENSOR;
@@ -66,7 +146,9 @@ void dsa_matmul_config_init(dsa_matmul_config_t *config) {
 /**
  * 配置所有CSR寄存器
  */
-static uint32_t configure_csr_registers(const dsa_matmul_config_t *config) {
+static uint32_t configure_csr_registers(const dsa_matmul_config_t *config,
+                                        uint32_t ia_reuse_num,
+                                        uint32_t w_reuse_num) {
     /* 检查必需指针 */
     if (!config->lhs_ptr || !config->rhs_ptr || !config->dst_ptr) {
         return DSA_ERR_NULL_PTR;
@@ -114,6 +196,9 @@ static uint32_t configure_csr_registers(const dsa_matmul_config_t *config) {
     /* 激活限制 */
     DSA_CSRWR(CSR_MULT_ACT_MIN, config->act_min);
     DSA_CSRWR(CSR_MULT_ACT_MAX, config->act_max);
+    DSA_CSRWR(CSR_MULT_IA_REUSE, ia_reuse_num);
+    DSA_CSRWR(CSR_MULT_W_REUSE, w_reuse_num);
+    DSA_CSRWR(CSR_MULT_DATAFLOW, (uint32_t)config->dataflow_mode);
     
     return DSA_SUCCESS;
 }
@@ -123,14 +208,22 @@ static uint32_t configure_csr_registers(const dsa_matmul_config_t *config) {
  */
 uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
     uint32_t status;
+    uint32_t ia_reuse_num;
+    uint32_t w_reuse_num;
     
     /* 参数校验 */
     if (!config) {
         return DSA_ERR_NULL_PTR;
     }
     
+    ia_reuse_num = config->ia_reuse_num;
+    w_reuse_num = config->w_reuse_num;
+    dsa_matmul_legalize_reuse(config->K, config->M, DSA_IA_CACHE_BLOCKS,
+                              config->dataflow_mode,
+                              &ia_reuse_num, &w_reuse_num);
+
     /* 配置CSR寄存器 */
-    status = configure_csr_registers(config);
+    status = configure_csr_registers(config, ia_reuse_num, w_reuse_num);
     if (status != DSA_SUCCESS) {
         return status;
     }

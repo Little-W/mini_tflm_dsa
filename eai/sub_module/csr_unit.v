@@ -42,13 +42,18 @@ module csr_unit #(
     output wire [REG_WIDTH-1:0] n,  // N (MULT_RHS_ROWS)
 
     // --- Row Strides (in BYTES) ---
-    output wire [REG_WIDTH-1:0] lhs_row_stride_b,  // A row stride (MULT_LHS_COLS_OFFSET)
-    output wire [REG_WIDTH-1:0] dst_row_stride_b,  // C row stride (MULT_ROW_ADDR_OFFSET)
-    output wire [REG_WIDTH-1:0] rhs_row_stride_b,  // B row stride (MULT_RHS_ROW_STRIDE)
+    output wire [REG_WIDTH-1:0] lhs_row_stride_b,  // A row stride (MULT_LHS_ROW_STRIDE)
+    output wire [REG_WIDTH-1:0] dst_row_stride_b,  // C row stride (MULT_DST_ROW_STRIDE)
+    output wire [REG_WIDTH-1:0] rhs_col_stride_b,  // B col stride (MULT_RHS_COL_STRIDE)
 
     // --- Activation Clamp ---
     output wire signed [REG_WIDTH-1:0] act_min,  // MULT_ACT_MIN
-    output wire signed [REG_WIDTH-1:0] act_max   // MULT_ACT_MAX
+    output wire signed [REG_WIDTH-1:0] act_max,  // MULT_ACT_MAX
+
+    // --- Reuse/dataflow controls ---
+    output wire [REG_WIDTH-1:0] cfg_ia_reuse_num,
+    output wire [REG_WIDTH-1:0] cfg_w_reuse_num,
+    output wire                 cfg_dataflow_mode
 );
 
     // ========================================================================
@@ -64,9 +69,9 @@ module csr_unit #(
     localparam MULT_LHS_ROWS = 12'h7C4;        // K (A 的行数)
     localparam MULT_RHS_COLS = 12'h7C5;        // N (B 的行数/内积长度)
     localparam MULT_RHS_ROWS = 12'h7C6;        // M (B 的列数/输出通道数)
-    localparam MULT_ROW_ADDR_OFFSET = 12'h7C7; // 输出行步距
-    localparam MULT_LHS_COLS_OFFSET = 12'h7C8; // A 行步距
-    localparam MULT_RHS_ROW_STRIDE = 12'h7C9;  // B 行步距
+    localparam MULT_DST_ROW_STRIDE = 12'h7C7; // C 行步长
+    localparam MULT_LHS_ROW_STRIDE = 12'h7C8; // A 行步长
+    localparam MULT_RHS_COL_STRIDE = 12'h7C9; // B 列步长
 
     // --- Quantization/Activation CSRs ---
     localparam MULT_LHS_OFFSET = 12'h7CA;  // A 零点偏移
@@ -76,6 +81,9 @@ module csr_unit #(
     localparam MULT_DST_SHIFT = 12'h7CE;   // per-tensor shift 或 per-channel shift 指针
     localparam MULT_ACT_MIN = 12'h7CF;     // 激活下限
     localparam MULT_ACT_MAX = 12'h7D0;     // 激活上限
+    localparam MULT_IA_REUSE = 12'h7D1;    // IA reuse depth
+    localparam MULT_W_REUSE = 12'h7D2;     // W reuse window
+    localparam MULT_DATAFLOW = 12'h7D3;    // 0=WS, 1=IS
 
     // ========================================================================
     // CSR 寄存器定义
@@ -87,14 +95,14 @@ module csr_unit #(
     reg        [REG_WIDTH-1:0] csr_bias_base;
 
     // --- Dimensions ---
-    reg        [REG_WIDTH-1:0] csr_k;  // K (MULT_LHS_ROWS)
-    reg        [REG_WIDTH-1:0] csr_n;  // N (MULT_RHS_COLS)
-    reg        [REG_WIDTH-1:0] csr_m;  // M (MULT_RHS_ROWS)
+    reg        [REG_WIDTH-1:0] csr_k;  // K (A 的行数)
+    reg        [REG_WIDTH-1:0] csr_n;  // N (B 的行数/内积长度)
+    reg        [REG_WIDTH-1:0] csr_m;  // M (B 的列数/输出通道数)
 
     // --- Strides ---
-    reg        [REG_WIDTH-1:0] csr_dst_row_stride_b;  // MULT_ROW_ADDR_OFFSET
-    reg        [REG_WIDTH-1:0] csr_lhs_row_stride_b;  // MULT_LHS_COLS_OFFSET
-    reg        [REG_WIDTH-1:0] csr_rhs_row_stride_b;  // MULT_RHS_ROW_STRIDE
+    reg        [REG_WIDTH-1:0] csr_dst_row_stride_b;  // MULT_DST_ROW_STRIDE
+    reg        [REG_WIDTH-1:0] csr_lhs_row_stride_b;  // MULT_LHS_ROW_STRIDE
+    reg        [REG_WIDTH-1:0] csr_rhs_col_stride_b;  // MULT_RHS_COL_STRIDE
 
     // --- Quantization ---
     reg signed [REG_WIDTH-1:0] csr_lhs_zp;      // MULT_LHS_OFFSET
@@ -106,6 +114,11 @@ module csr_unit #(
     // --- Activation ---
     reg signed [REG_WIDTH-1:0] csr_act_min;  // MULT_ACT_MIN
     reg signed [REG_WIDTH-1:0] csr_act_max;  // MULT_ACT_MAX
+
+    // --- Reuse/dataflow ---
+    reg        [REG_WIDTH-1:0] csr_ia_reuse_num;
+    reg        [REG_WIDTH-1:0] csr_w_reuse_num;
+    reg                        csr_dataflow_mode;
 
     // ========================================================================
     // 输出连接
@@ -121,7 +134,7 @@ module csr_unit #(
 
     assign lhs_row_stride_b = csr_lhs_row_stride_b;
     assign dst_row_stride_b = csr_dst_row_stride_b;
-    assign rhs_row_stride_b = csr_rhs_row_stride_b;
+    assign rhs_col_stride_b = csr_rhs_col_stride_b;
 
     assign lhs_zp           = csr_lhs_zp;
     assign rhs_zp           = csr_rhs_zp;
@@ -131,6 +144,9 @@ module csr_unit #(
 
     assign act_min          = csr_act_min;
     assign act_max          = csr_act_max;
+    assign cfg_ia_reuse_num = csr_ia_reuse_num;
+    assign cfg_w_reuse_num  = csr_w_reuse_num;
+    assign cfg_dataflow_mode = csr_dataflow_mode;
 
     // ========================================================================
     // CSR 写操作
@@ -147,14 +163,18 @@ module csr_unit #(
             csr_m                <= {REG_WIDTH{1'b0}};
             csr_lhs_row_stride_b <= {REG_WIDTH{1'b0}};
             csr_dst_row_stride_b <= {REG_WIDTH{1'b0}};
-            csr_rhs_row_stride_b <= {REG_WIDTH{1'b0}};
-            csr_lhs_zp           <= {REG_WIDTH{1'b0}};
-            csr_rhs_zp           <= {REG_WIDTH{1'b0}};
-            csr_dst_zp           <= {REG_WIDTH{1'b0}};
-            csr_q_mult_pt        <= {REG_WIDTH{1'b0}};
-            csr_q_shift_pt       <= {REG_WIDTH{1'b0}};
-            csr_act_min          <= {REG_WIDTH{1'b0}};
-            csr_act_max          <= {REG_WIDTH{1'b0}};
+            csr_rhs_col_stride_b <= {REG_WIDTH{1'b0}};
+            // Cast resets to signed to avoid unsigned->signed warnings in DC
+            csr_lhs_zp           <= $signed({REG_WIDTH{1'b0}});
+            csr_rhs_zp           <= $signed({REG_WIDTH{1'b0}});
+            csr_dst_zp           <= $signed({REG_WIDTH{1'b0}});
+            csr_q_mult_pt        <= $signed({REG_WIDTH{1'b0}});
+            csr_q_shift_pt       <= $signed({REG_WIDTH{1'b0}});
+            csr_act_min          <= $signed({REG_WIDTH{1'b0}});
+            csr_act_max          <= $signed({REG_WIDTH{1'b0}});
+            csr_ia_reuse_num     <= {REG_WIDTH{1'b0}};
+            csr_w_reuse_num      <= {REG_WIDTH{1'b0}};
+            csr_dataflow_mode    <= 1'b0;
         end else if (csr_req && !is_csr_read) begin
             // Write operation
             case (csr_addr)
@@ -166,9 +186,9 @@ module csr_unit #(
                 MULT_LHS_ROWS:        csr_k <= csr_wdata;  // K
                 MULT_RHS_COLS:        csr_n <= csr_wdata;  // N
                 MULT_RHS_ROWS:        csr_m <= csr_wdata;  // M
-                MULT_ROW_ADDR_OFFSET: csr_dst_row_stride_b <= csr_wdata;
-                MULT_LHS_COLS_OFFSET: csr_lhs_row_stride_b <= csr_wdata;
-                MULT_RHS_ROW_STRIDE:  csr_rhs_row_stride_b <= csr_wdata;
+                MULT_DST_ROW_STRIDE: csr_dst_row_stride_b <= csr_wdata;
+                MULT_LHS_ROW_STRIDE: csr_lhs_row_stride_b <= csr_wdata;
+                MULT_RHS_COL_STRIDE: csr_rhs_col_stride_b <= csr_wdata;
 
                 MULT_LHS_OFFSET: csr_lhs_zp <= $signed(csr_wdata);
                 MULT_RHS_OFFSET: csr_rhs_zp <= $signed(csr_wdata);
@@ -177,6 +197,9 @@ module csr_unit #(
                 MULT_DST_SHIFT:  csr_q_shift_pt <= $signed(csr_wdata);
                 MULT_ACT_MIN:    csr_act_min <= $signed(csr_wdata);
                 MULT_ACT_MAX:    csr_act_max <= $signed(csr_wdata);
+                MULT_IA_REUSE:   csr_ia_reuse_num <= csr_wdata;
+                MULT_W_REUSE:    csr_w_reuse_num <= csr_wdata;
+                MULT_DATAFLOW:   csr_dataflow_mode <= csr_wdata[0];
 
                 default: ;  // Ignore writes to unimplemented CSRs
             endcase
@@ -197,17 +220,21 @@ module csr_unit #(
                 MULT_LHS_ROWS:        csr_rdata = csr_k;   // K
                 MULT_RHS_COLS:        csr_rdata = csr_n;   // N
                 MULT_RHS_ROWS:        csr_rdata = csr_m;   // M
-                MULT_ROW_ADDR_OFFSET: csr_rdata = csr_dst_row_stride_b;
-                MULT_LHS_COLS_OFFSET: csr_rdata = csr_lhs_row_stride_b;
-                MULT_RHS_ROW_STRIDE:  csr_rdata = csr_rhs_row_stride_b;
+                MULT_DST_ROW_STRIDE: csr_rdata = csr_dst_row_stride_b;
+                MULT_LHS_ROW_STRIDE: csr_rdata = csr_lhs_row_stride_b;
+                MULT_RHS_COL_STRIDE: csr_rdata = csr_rhs_col_stride_b;
 
-                MULT_LHS_OFFSET: csr_rdata = csr_lhs_zp;
-                MULT_RHS_OFFSET: csr_rdata = csr_rhs_zp;
-                MULT_DST_OFFSET: csr_rdata = csr_dst_zp;
-                MULT_DST_MULT:   csr_rdata = csr_q_mult_pt;
-                MULT_DST_SHIFT:  csr_rdata = csr_q_shift_pt;
-                MULT_ACT_MIN:    csr_rdata = csr_act_min;
-                MULT_ACT_MAX:    csr_rdata = csr_act_max;
+                // Cast signed CSRs to unsigned bus width for readback
+                MULT_LHS_OFFSET: csr_rdata = $unsigned(csr_lhs_zp);
+                MULT_RHS_OFFSET: csr_rdata = $unsigned(csr_rhs_zp);
+                MULT_DST_OFFSET: csr_rdata = $unsigned(csr_dst_zp);
+                MULT_DST_MULT:   csr_rdata = $unsigned(csr_q_mult_pt);
+                MULT_DST_SHIFT:  csr_rdata = $unsigned(csr_q_shift_pt);
+                MULT_ACT_MIN:    csr_rdata = $unsigned(csr_act_min);
+                MULT_ACT_MAX:    csr_rdata = $unsigned(csr_act_max);
+                MULT_IA_REUSE:   csr_rdata = csr_ia_reuse_num;
+                MULT_W_REUSE:    csr_rdata = csr_w_reuse_num;
+                MULT_DATAFLOW:   csr_rdata = {{(REG_WIDTH-1){1'b0}}, csr_dataflow_mode};
 
                 default: csr_rdata = {REG_WIDTH{1'b0}};  // Unimplemented CSRs return 0
             endcase
