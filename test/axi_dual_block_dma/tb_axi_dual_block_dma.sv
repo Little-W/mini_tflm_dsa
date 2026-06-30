@@ -265,8 +265,8 @@ module tb_axi_dual_block_dma;
   endtask
 
   int rd_cnt;
-  logic signed [DATA_WIDTH-1:0] rd_cap [0:3];
-  int rd_rows [0:1];
+  logic signed [DATA_WIDTH-1:0] rd_cap [0:15];
+  int rd_rows [0:3];
   logic rd_done_seen;
   logic wr_done_seen;
 
@@ -280,19 +280,27 @@ module tb_axi_dual_block_dma;
       if (rd_done) rd_done_seen <= 1'b1;
       if (wr_done) wr_done_seen <= 1'b1;
     end
-    if (rd_wr_valid[0]) begin
-      rd_cap[idx] <= rd_wr_data[0];
-      idx = idx + 1;
-    end
-    if (rd_wr_valid[1]) begin
-      rd_cap[idx] <= rd_wr_data[1];
-      idx = idx + 1;
+    for (int lane = 0; lane < BUS_WIDTH / 8; lane++) begin
+      if (rd_wr_valid[lane]) begin
+        rd_cap[idx] <= rd_wr_data[lane];
+        idx = idx + 1;
+      end
     end
     rd_cnt <= idx;
     if (rd_wr_valid[0] && rd_wr_col_base == '0) begin
       rd_rows[rd_wr_row] <= rd_wr_row;
     end
   end
+
+  task automatic clear_scoreboard();
+    begin
+      rd_cnt = 0;
+      rd_done_seen = 1'b0;
+      wr_done_seen = 1'b0;
+      foreach (rd_cap[i]) rd_cap[i] = '0;
+      foreach (rd_rows[i]) rd_rows[i] = -1;
+    end
+  endtask
 
   initial begin
     rd_start = 1'b0;
@@ -314,11 +322,7 @@ module tb_axi_dual_block_dma;
     src_wdata = '0;
     src_wmask = '0;
     src_wvalid = 1'b0;
-    rd_cnt = 0;
-    rd_done_seen = 1'b0;
-    wr_done_seen = 1'b0;
-    foreach (rd_cap[i]) rd_cap[i] = '0;
-    foreach (rd_rows[i]) rd_rows[i] = -1;
+    clear_scoreboard();
     for (int i = 0; i < MEM_DEPTH; i++) mem[i] = '0;
     mem[0] = 32'h0002_0001;
     mem[1] = 32'h0004_0003;
@@ -356,6 +360,58 @@ module tb_axi_dual_block_dma;
         mem[18] != 32'h99aa_bbcc || mem[19] != 32'hddee_ff00) begin
       $display("[AXI_DUAL_DMA][WRITE] FAIL mem=%08x,%08x,%08x,%08x",
                mem[16], mem[17], mem[18], mem[19]);
+      $finish;
+    end
+
+    clear_scoreboard();
+    rd_base_addr = 32'h1;
+    rd_row_stride = 32'd5;
+    rd_rows_to_read = 32'd2;
+    rd_valid_cols = 32'd4;
+    rd_burst_len_m1 = 4'd0;
+    rd_use_16bits = 1'b0;
+
+    wr_base_addr = 32'h61;
+    wr_row_stride = 32'd5;
+    wr_rows_to_write = 32'd2;
+    wr_burst_len_m1 = 4'd0;
+
+    for (int i = 0; i < MEM_DEPTH; i++) mem[i] = '0;
+    mem[0] = 32'h0403_0201;
+    mem[1] = 32'h0807_0605;
+    mem[2] = 32'h0c0b_0a09;
+
+    repeat (2) @(posedge clk);
+    pulse_start();
+
+    fork
+      begin
+        send_write_beat(32'hddcc_bbaa);
+        send_write_beat(32'h4433_2211);
+      end
+    join_none
+
+    wait (rd_done_seen && wr_done_seen);
+    repeat (2) @(posedge clk);
+
+    if (rd_error || wr_error) begin
+      $display("[AXI_DUAL_DMA][UNALIGN] FAIL err rd=%0b wr=%0b", rd_error, wr_error);
+      $finish;
+    end
+    if (rd_cnt != 8 ||
+        rd_cap[0] != 32'sd2 || rd_cap[1] != 32'sd3 ||
+        rd_cap[2] != 32'sd4 || rd_cap[3] != 32'sd5 ||
+        rd_cap[4] != 32'sd7 || rd_cap[5] != 32'sd8 ||
+        rd_cap[6] != 32'sd9 || rd_cap[7] != 32'sd10) begin
+      $display("[AXI_DUAL_DMA][UNALIGN READ] FAIL cnt=%0d cap=%0d,%0d,%0d,%0d,%0d,%0d,%0d,%0d",
+               rd_cnt, rd_cap[0], rd_cap[1], rd_cap[2], rd_cap[3],
+               rd_cap[4], rd_cap[5], rd_cap[6], rd_cap[7]);
+      $finish;
+    end
+    if (mem[24] != 32'hccbbaa00 || mem[25] != 32'h221100dd ||
+        mem[26] != 32'h00004433) begin
+      $display("[AXI_DUAL_DMA][UNALIGN WRITE] FAIL mem=%08x,%08x,%08x",
+               mem[24], mem[25], mem[26]);
       $finish;
     end
 
