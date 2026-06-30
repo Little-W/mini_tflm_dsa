@@ -544,3 +544,35 @@ TFLM_SOC_MMA_MIN_MACS
 2. 为常见小 shape 设计更轻量的 MMA 提交路径，减少 descriptor 配置和缓存 fill 固定成本。
 3. 如果要降低纯 CPU store 开销，应设计有序 posted-write/store-buffer，并在读/MMIO 前显式 drain，而不是让 RAM 立即返回 B response。
 4. 继续保留大矩阵随机回归和 TFLM 模型回归作为双重门禁：前者验证 MMA 数据流，后者验证 SoC 软件/外设真实端到端效果。
+
+### 2026-07-01 补充：per-channel quant 原生 DMA 化与 ICB 控制残留清理
+
+本轮继续沿 AXI 原生化方向收敛内部路径。此前外部总线已经从 ICB 转到 AXI，OA 写回独占 AXI 写通道，IA/kernel/bias/quant 共享 AXI 读通道；但 `vec_requant` 的 per-channel 量化参数仍保留一个内部 ICB 风格命令/响应端口，再通过 `icb_read_dma_adapter` 转成共享 DMA 请求。控制器中也还保留旧 `icb_arbiter`，其 grant 输出在 `mma_top` 中已经接到 unused 线，实际授权由 `axi_block_dma_arbiter` 完成。
+
+本轮清理：
+
+- `vec_requant` 直接输出 native quant DMA client 信号：`dma_start/base_addr/rows/burst_len`，并直接接收 `dma_raw_valid/raw_data`。
+- 删除 `mma_top` 中的 `icb_read_dma_adapter` 实例、`vec_requant_*` ICB 类型信号，以及 `quant_req = load_quant_req || adapter_req` 的双请求路径。
+- `mma_controller` 删除旧 `icb_sel`、各 loader/OA 的旧 grant 端口和内部 `icb_arbiter` 实例。控制器只保留真正参与计算调度的 `send_weight_trigger/send_ia_trigger`、配置初始化和完成握手。
+- 集成仓 `dut_axil.f` 不再编译旧 ICB-only adapter/arbiter：`icb_arbiter`、`icb_ext_flat_adapter`、`icb_mux_5to1`、`icb_read_dma_adapter`、`icb_write_dma_adapter`、`block_dma_arbiter`、`kernel_block_dma`、旧 `block_dma`。
+
+#### TFLM trace 对比
+
+配置：`SIZE=16,CACHE=4,PS_FRAME=16,O3,+MMA_UTIL_TRACE`，DDR 随机延迟关闭。
+
+| Case | SoC cycles before | SoC cycles after | MMA ops | MMA active before | MMA active after | IA stall before | IA stall after | quant DMA busy before | quant DMA busy after | quant stall |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `micro_speech` | 15,720,057 | 15,720,062 | 1 | 32,319 | 32,313 | 21,188 | 21,182 | 40 | 39 | 0 -> 0 |
+| `my_model` | 77,016,232 | 77,016,620 | 90 | 469,134 | 468,754 | 325,408 | 325,028 | 6,280 | 6,262 | 0 -> 0 |
+
+结论：硬件内部累计 active 和 `ia_data_stall` 均下降，`my_model` 中各减少 380 cycles，说明 direct quant DMA 确实减少了少量转接/等待气泡。端到端 TFLM cycles 基本持平，再次说明当前小模型瓶颈主要在 Pico/TFLM/外设固定开销，而不是 per-channel quant 这一级短读本身。
+
+#### 验证
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| AXI SoC 编译 | `SIZE=16,CACHE=4,PS_FRAME=16,RO=4,WO=4` | PASS |
+| S16 SoC 随机边界回归 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},per-channel,unaligned_layout,DDR_RAND_LAT=1,MIN_DIM=1,MAX_DIM=65,seed=71000` | PASS 32/32 |
+| S8 SoC 随机边界回归 | `SIZE=8,CACHE=4,PS_FRAME=8,DF={WS,IS},lhs={s8,s16},per-channel,unaligned_layout,DDR_RAND_LAT=1,MIN_DIM=1,MAX_DIM=65,seed=72000` | PASS 24/24 |
+| `tflm_micro_speech_run` | `SIZE=16,CACHE=4,PS_FRAME=16,+MMA_UTIL_TRACE` | PASS，15,720,062 cycles |
+| `tflm_my_model_run` | `SIZE=16,CACHE=4,PS_FRAME=16,+MMA_UTIL_TRACE` | PASS，77,016,620 cycles |
