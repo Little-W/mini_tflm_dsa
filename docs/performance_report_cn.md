@@ -306,7 +306,7 @@ AXI 顶层后的大矩阵性能锚点如下，DDR 随机延迟关闭：
 
 下一步性能优化重点：
 
-- 读侧 DMA 仍基本按“发一行/收一行”推进，应考虑给 `axi_dual_block_dma` 增加小深度 read command outstanding 队列，重叠 AR 延迟和 R 数据返回。
+- 对齐读侧已经支持小深度 `READ_OUTSTANDING`，可以重叠 AR 延迟和 R 数据返回；非对齐读目前仍按单行推进，以保证跨 beat 拼接时上一拍数据归属明确。若后续继续压气泡，需要在响应侧增加行元数据队列后再放开非对齐 outstanding。
 - `oa_writer` 目前仍以 tile 为粒度等待 write done 后再申请下一 tile，后续可把 tile 元数据和写数据流解耦，减少写侧 tile 间气泡。
 - de-diagonalizer/IA 输出路径需要继续流水化，但当前大样本主要气泡仍在 `ia_data_stall`、`weight_data_stall` 和 controller 等待。优化顺序应先保证 IA cache group 和 kernel buffer 对计算触发的供给连续，再看阵列内部反对角恢复逻辑。
 - EAI 外层已同步删除 MMA 侧 `icb_unalign_bridge`，`e203_subsys_nice_core` 额外暴露 MMA AXI master；原 NICE ICB LSU 口暂时保持空闲兼容。
@@ -317,118 +317,6 @@ EAI 同步验证：
 |---|---|---|
 | `test/eai` | CSR 读写、MMA 指令发起、响应反压；MMA AXI 端口连接本地 AXI DDR 模型 | PASS |
 
-### 2026-06-30 补充：AXI 读命令流水化与 per-channel 尾块修复
-
-#### AXI read outstanding 设计
-
-AXI 顶层切换后，`SIZE=16,K=64,N=93,M=107,R=1,W=1,lhs=s16` 的主要气泡仍集中在读侧数据供给：
-
-- `ia_data_stall=37,385`，`weight_data_stall=13,720`
-- `dma_busy_ia=50,344`，`dma_busy_kernel=28,068`
-- `axi_ar=5,320`，`axi_r=31,528`
-
-这说明写回解耦已经生效，但读侧 DMA 仍以接近“一行 AR 等一行 R”的方式推进。为减少 AR 命令间气泡，本轮对原生 AXI DMA 增加读命令流水化：
-
-- `axi_dual_block_dma`
-  - 新增 `READ_OUTSTANDING` 参数，默认 4。
-  - 用 `rd_outstanding_cnt` 替代单 bit `rd_cmd_inflight`；保留 `rd_cmd_inflight` 层级名作为 debug 兼容信号。
-  - 当 `rd_outstanding_cnt < READ_OUTSTANDING` 且仍有未发读行时，可以继续发下一条 `AR`。
-  - `rd_done` 仍由最后一条 `R` 响应决定，读数据路由和 s8/s16 解包不变。
-
-- `axi_block_dma_arbiter`
-  - 将 `READ_OUTSTANDING` 透传给共享读 DMA。
-  - 读客户端优先级保持 kernel > IA > quant > bias。尝试临时改成 IA 优先后，`ia_data_stall` 下降但 `weight_data_stall` 上升更多，总周期从 81,466 变差到 81,764，因此未采用。
-
-- `mma_top` / `test/mma_top`
-  - 新增顶层参数 `AXI_READ_OUTSTANDING`，TB 和 Makefile 增加同名配置。
-  - 仿真 build 目录加入 `_ro$(AXI_READ_OUTSTANDING)`，避免 ro=1/4/8 二进制误复用。
-
-- `ddr_axi_mem_model`
-  - 读地址通道增加 `RDQ_DEPTH` 请求队列，能够先接收多条 `AR`，再按 AXI 单 ID 顺序吐 `R`。
-  - 随机命令延迟改为作用在 `ARREADY` 接收节奏上，便于模拟 DDR/互连对读命令的反压。
-
-#### outstanding 扫参结果
-
-同一 case、同一 mem 文件、DDR 随机延迟关闭：
-
-| AXI_READ_OUTSTANDING | cycles | IA row util | ACC util | IA data stall | Weight data stall | IA DMA busy | Kernel DMA busy |
-|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 81,466 | 3.29% | 0.54% | 37,385 | 13,720 | 50,344 | 28,068 |
-| 4 | 71,554 | 3.75% | 0.62% | 33,155 | 10,468 | 45,304 | 23,196 |
-| 8 | 71,554 | 3.75% | 0.62% | 33,155 | 10,468 | 45,304 | 23,196 |
-
-结论：
-
-- ro=4 相对 ro=1 降周期 12.17%，主要来自 AR 间隙被提前排队吸收。
-- `ia_data_stall` 降低 4,230 cycles，`weight_data_stall` 降低 3,252 cycles。
-- `dma_busy_ia` 降低约 10.0%，`dma_busy_kernel` 降低约 17.4%。
-- ro=8 与 ro=4 完全相同，说明当前瓶颈已经不在 AR outstanding 深度，而在单读数据通道吞吐、读客户端串行服务和 loader/compute 触发粒度。
-
-同一 ro=4 case 在随机 DDR 延迟下也通过：
-
-| DDR 模式 | cycles | IA row util | ACC util | IA data stall | Weight data stall | axi_ar / axi_r |
-|---|---:|---:|---:|---:|---:|---|
-| no random latency | 71,554 | 3.75% | 0.62% | 33,155 | 10,468 | 5,320 / 31,528 |
-| random latency (`cmd=3,w=2,rsp=5`) | 150,733 | 1.78% | 0.29% | 77,012 | 27,636 | 5,320 / 31,528 |
-
-随机延迟下周期明显上升，但功能正确；读请求数和读 beat 数不变，说明差异来自 DDR 命令/响应等待而不是控制流重放。
-
-#### per-channel requant 尾块死锁修复
-
-在 `SIZE=4,CACHE=2` 边界随机中发现一个稳定 timeout：
-
-- seed `3301`
-- `K=3,N=8,M=14,lhs=s8,mode=WS,R=1,W=4,per_channel=1`
-- DDR 随机延迟开关无关，关掉随机延迟也会 timeout。
-
-trace 现象：
-
-- `acc_valid=12`，但 `requant_valid=8`。
-- FIFO 没有 bank ready，OA writer 从未开始写回。
-- DMA 和 AXI 均已空闲，控制器停在 `WEIGHT_START`。
-
-根因是 `vec_requant` 的状态机和数据通路对第一拍输入的消费语义不一致：
-
-1. `vec_requant` 在 `IDLE` 且 `quant_params_valid=1` 时看到第一拍 `in_valid`，数据通路已经计算并寄存输出。
-2. 旧状态机只切到 `COMPUTE`，没有同步推进 `row_in_tile_cnt`，所以状态机少数了一行。
-3. tile 最后一行进入数据通路时，状态机清掉 `quant_params_valid` 并开始加载下一列 per-channel 参数。
-4. `out_valid_q` 下一拍已经为 1，但旧输出又用当前 `quant_params_valid` 二次门控，导致最后一行 valid 被压掉。
-
-修复：
-
-- `IDLE` 中接住第一拍 `in_valid` 时同步推进 `row_in_tile_cnt`。
-- 如果第一拍同时是 `in_tile_done`，直接执行 tile advance，覆盖 K=1 等极小 tile。
-- `out_valid/out_tile_done` 直接使用已经采样过 qvalid 的 `out_valid_q/out_tile_done_q`，不再被当前 `quant_params_valid` 二次门控。
-
-修复后同一失败 case：
-
-| 配置 | 修复前 | 修复后 |
-|---|---:|---:|
-| no random latency | timeout，`acc_valid=12/requant_valid=8` | PASS，cycles 423，`acc_valid=12/requant_valid=12` |
-| random latency (`cmd=3,w=2,rsp=5,seed=3301`) | timeout | PASS，cycles 623 |
-
-#### 本轮新增回归
-
-| 测试 | 配置 | 结果 |
-|---|---|---|
-| `test/axi_dual_block_dma` | AXI 读写基础单测 | PASS |
-| `test/axi_block_dma_arbiter` | 读写 overlap，`overlap=1` | PASS |
-| `mma_top` large ro=4 | `SIZE=16,CACHE=4,K=64,N=93,M=107,DDR_RAND_LAT=0` | PASS，71,554 cycles |
-| `mma_top` large ro=4 | 同上，`DDR_RAND_LAT=1,cmd=3,w=2,rsp=5` | PASS，150,733 cycles |
-| 失败点复现 | `SIZE=4,CACHE=2,seed=3301,per_channel=1` | PASS |
-| 边界单行 | `SIZE=4,CACHE=2,K=N=M=1,DDR_RAND_LAT=1` | PASS |
-| 随机 dataflow | `SIZE=4,CACHE=2,COUNT=5,SEED=3300,random_dataflow,random_per_channel,DDR_RAND_LAT=1` | PASS=5 FAIL=0 |
-| cache sweep | `SIZE=4,CACHE=2/4/8,COUNT=1,random_dataflow,random_per_channel,DDR_RAND_LAT=1` | PASS=3 FAIL=0 |
-
-#### 当前瓶颈判断
-
-read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 队列”已经到瓶颈。下一步如果继续追阵列利用率，应优先考虑：
-
-- 读侧跨客户端排队：在一个客户端 R 数据返回期间，允许下一客户端的 AR 提前进入命令队列，并用响应元数据队列路由到对应 loader。
-- IA/kernel 双缓冲触发：减少 `WEIGHT_START -> IA_START` 间对 `*_data_valid` 的串行等待。
-- per-channel 参数双缓冲：让下一列 tile 的 quant 参数加载不影响当前 tile 最后一行输出，进一步减少 `quant_stall`。
-- 保持 de-diagonalizer 连续 stream 不清空 delay line；当前主要气泡仍来自数据供给，不是反对角恢复本身。
-
 ### 本次日志目录
 
 - `runs/s8_tail_combo_after_cleanup_v2`
@@ -436,78 +324,224 @@ read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 
 - `runs/s8_cache_rand_after_cleanup`
 - `runs/s16_cache_rand_after_cleanup`
 
-### 2026-07-01 补充：SoC 性能回退深排查
+### 2026-07-01 补充：非对齐访问集成到 AXI DMA
 
-本轮对“单独 MMA 已优化，但 SoC/TFLM 端到端部分用例变慢”的问题做了回归排查。结论是：MMA 本体优化仍有效，SoC 端差异主要来自 Pico/AXI/DDR 访问路径、UART 正确等待、reuse 写回窗口边界和仿真并行基础设施。
+本轮把原先外置 `icb_unalign_bridge` 承担的非对齐访问能力收进 `axi_dual_block_dma`，外层 AXI wrapper 不再保留 MMA 侧 ICB-to-AXI/unalign 适配链路。实现要点如下：
 
-最终保留的修复：
+- 读侧按行计算真实 byte address，AXI `ARADDR` 向下对齐到 beat 边界；当行首 offset 非 0 时，`ARLEN` 自动多取 1 beat，用上一拍和当前拍拼出逻辑数据 beat。
+- 对齐读仍允许 `READ_OUTSTANDING` 多行命令流水化；非对齐读为了保证“上一拍/当前拍”拼接语义，临时限制为单行 outstanding。这是有意的正确性约束，后续若继续优化，需要给响应侧增加按行元数据队列。
+- 写侧 `AWADDR` 同样向下对齐，`WDATA/WSTRB` 按 offset 左移并缓存尾部；行尾自动发一个 tail beat，不再要求 OA writer 或外部 bridge 拆分非对齐写。
+- SoC runtime case 生成器新增 `--unaligned_layout`，Makefile 新增 `SOC_UNALIGNED_LAYOUT`，回归入口新增 `SOC_REGRESS_UNALIGNED_LAYOUT`，默认不改变原有对齐测试和性能测试。
 
-- `mma_top` 和 C 驱动把 `W_REUSE` 上限限制在输出列 tile 数与 `PS_FRAME_COUNT` 内，避免默认 reuse 超过写回 FIFO/PS frame 窗口。
-- `DSA_PS_FRAME_COUNT` 进入 SoC runtime/TFLM 编译宏和 build dir key，避免修改 `MMA_PS_FRAME_COUNT` 后复用旧目标。
-- VCS 编译使用独立 `-Mdir=$(SIMV).csrc`，避免并行仿真共享 `csrc/hsim/hsim.sdb` 导致 `VFS_SDB_SYNC_FAIL`。
-- SoC RAM 保留单 beat 读快路径和 `AW/W` 同周期接收；写响应仍走 B 队列。
-- SoC interconnect 修复 CPU 侧 `AR/R`、`AW/B` 同周期握手时 active 状态被旧响应清掉的问题。
-- UART AXI-Lite 写必须等待 `simpleuart` 非 busy 才返回 B，避免打印字符丢失。
+同步到集成仓库后的 wrapper/SoC 改动：
 
-失败实验也记录在案：RAM 直接 B 快路径可以让 `hello_world` 回到 `425071 cycles`，但会让 `micro_speech` 稳定卡在 `progress=0x5b313000`。因此当前代码不保留直接 B，优先保证 TFLM 正确性。
+- `mma_axil_top.sv` 删除 MMA 侧 `m_icb_*`、`icb_unalign_bridge` 和 `icb2axi`，直接暴露并连接 `mma_top` AXI4 master 五通道。
+- `axil_top_with_ram.sv`、`soc_top.sv`、`axi_sim_ram.v` 的 `ARLEN/AWLEN` 改为 8 bit，并补齐 AXI burst 读写行为，避免只验证单 beat 造成假通过。
+- `dut_axil.f` 和 MMA 相关 flist 增加 `axi_block_dma_arbiter.sv`、`axi_dual_block_dma.sv`，不再把外置 unalign/ICB-to-AXI bridge 放在主 AXI SoC 路径。
 
-最终 TFLM 对比：
-
-| Case | 报告早期新版记录 | 本轮最终 RTL | 差异 |
-|---|---:|---:|---:|
-| `hello_world` | 425,071 | 430,815 | +1.35% |
-| `micro_speech` | 15,590,371 | 15,720,057 | +0.83% |
-| `my_model` | 77,111,410 | 77,016,232 | -0.12% |
-| `person_detection` | 238,905,507 | 237,333,374 | -0.66% |
-
-最终验证：
+新增和重跑验证：
 
 | 测试 | 配置 | 结果 |
 |---|---|---|
-| S8 SoC 随机回归 | `SIZE=8,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1` | PASS 24/24 |
-| S16 SoC 随机回归 | `SIZE=16,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1` | PASS 24/24 |
-| TFLM | `hello_world/micro_speech/my_model/person_detection,SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS |
+| `test/axi_dual_block_dma` | 非对齐读 `base=1,stride=5`，非对齐写 `base=0x61,stride=5`，逐 byte lane 校验 | PASS |
+| `test/axi_block_dma_arbiter` | kernel 读/OA 写并行，AXI 读写通道 overlap | PASS |
+| `test/mma_top` | `SIZE=4,CACHE=2,COUNT=3,DDR_RAND_LAT=1` | PASS |
+| `veri/sim run` | `SIZE=4,CACHE=2,WS,s8,per-tensor,unaligned_layout,DDR_RAND_LAT=1` | PASS；样本低两位：LHS=2、RHS=1、Bias=1、Out=1、Expected=3 |
+| `veri/sim soc_regress` | `SIZE=4,CACHE=2,DF={WS,IS},LHS={s8,s16},Q={per-tensor,per-channel},2 seeds,unaligned_layout,DDR_RAND_LAT=1` | PASS=16 FAIL=0 |
 
-### 2026-07-01 补充：SoC/MMA active 拆分与量化读调度
+这轮验证的关键意义：
 
-带 `+MMA_UTIL_TRACE` 的 SoC/TFLM 复查说明，SoC 端到端周期不能直接当作 MMA latency：`soc_finish` 包含 Pico 启动、TFLM tensor allocation、算子调度、普通 CPU 算子、MMIO 配置、输出检查和 UART 打印。
+- IS+s16 的小矩阵非对齐 case 已经闭环，说明目前 LHS 16bit 的 IS 数据预转置、kernel 侧读取和写回转置路径至少在边界尺寸下功能正确。
+- 非对齐写回不再依赖外部拆包桥，因此 OA writer 只需要提供连续逻辑 beat 和 `WSTRB`；字节 lane 对齐、尾 beat 和 AXI `WLAST` 都由 DMA 统一处理。
+- DDR 随机延迟下 PASS，说明 `AR/R`、`AW/W/B` 的 ready/valid 语义没有依赖零延迟内存模型。
 
-| Case | SoC cycles | MMA ops | MMA active sum | active / SoC |
-|---|---:|---:|---:|---:|
-| `hello_world` | 430,815 | 0 | 0 | 0.00% |
-| `micro_speech` | 15,720,065 | 1 | 32,330 | 0.21% |
-| `my_model` | 77,020,480 | 90 | 471,924 | 0.61% |
+### 2026-07-01 补充：SoC 顶层 AXI 化和双向 outstanding
 
-因此，小模型端到端指标会显著稀释单独 MMA 的优化收益。大矩阵 SoC runtime 仍显示 cache/reuse 在 SoC 上有效：WS/s8/per-tensor、DDR 随机延迟关闭时，C8 相对 C4 在 `64/128/256/384` 方阵上分别快约 `1.94%/5.91%/12.32%/17.35%`。
+本轮对 `rtl/nice_coprocessor/soc_top.sv` 做了结构收敛：顶层只保留 Pico、Pico-to-AXI bridge、AXI interconnect、MMA、RAM、UART 和 SoC ctrl 的实例化与连线。具体功能下沉到 `rtl/nice_coprocessor/soc/`：
 
-本轮还把 `axi_block_dma_arbiter` 读侧优先级从 `kernel > IA > quant > bias` 调整为 `kernel > quant > IA > bias`。原因是 TFLM per-channel 算子每次需要一小段量化参数读，提前完成可以避免 IA 数据到达后继续等待 `quant_params_valid`。per-tensor 不发 `quant_req`，不受影响。
+- `pico_native_to_axi.sv`：封装 PicoRV32 官方 AXI adapter 语义，并补齐 AXI4 burst/size/cache/wlast 属性。修复了早期自写 FSM 中 `mem_ready` 寄存后一拍导致 `_start` 在 `progress=0x5a000001` 后 trap 的问题。
+- `soc_axi_interconnect.sv`：连接 Pico 和 MMA 两个 AXI master，RAM 读写通道分别按 owner 锁定，并允许同一 owner 连续发起多笔 outstanding。读写 outstanding 深度分别由 `READ_OUTSTANDING/WRITE_OUTSTANDING` 参数限制。
+- `soc_axi_ram.sv`：统一承载 CPU 程序和 MMA runtime 数据，支持 AXI burst、读写 outstanding、随机命令/写/响应延迟。修复了读通道在“同周期接收新 AR 且返回非最后一拍 R”时 outstanding 计数不增加的边界问题。
+- `soc_axil_simpleuart.sv`、`soc_axil_ctrl.sv`：UART 和 SoC finish/status/progress 通过 AXI-Lite 接入 interconnect，不再在 `soc_top` 中直接译码。
+
+MMA AXI 写侧同步改为真正 outstanding：
+
+- `axi_dual_block_dma` 新增 `WRITE_OUTSTANDING` 参数，`AW` 可按行提前排队，`W` 按已接收地址顺序连续流式发送，`B` 独立回收。
+- `axi_block_dma_arbiter`、`mma_top`、`mma_axil_top`、`soc_top` 均透传 `AXI_WRITE_OUTSTANDING`，默认值跟随 `AXI_READ_OUTSTANDING`，也可以从 Makefile 用 `SOC_AXI_WRITE_OUTSTANDING` 单独覆盖。
+- `veri/sim/Makefile` 新增 `SOC_AXI_READ_OUTSTANDING` 和 `SOC_AXI_WRITE_OUTSTANDING`，用于 SoC 仿真 elaboration；这与此前 ro=4 的性能测试入口保持一致。
+
+新增验证结果：
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| AXI SoC 编译 | `SIZE=4,CACHE=2,PS_FRAME=8,RO=4,WO=4` | PASS |
+| Pico 启动 trace | `+SOC_CPU_AXI_TRACE +SOC_PROGRESS_TRACE,DDR_RAND_LAT=0` | PASS，`progress=0x5a000001/2/3` 均到达 |
+| SoC runtime smoke | `unaligned_layout,DDR_RAND_LAT=0,RO=4,WO=4` | PASS，24409 cycles |
+| SoC runtime 随机 DDR 延迟 | `cmd/w/rsp max=3/2/8,RO=4,WO=4` | PASS，38360 cycles |
+| outstanding 最小深度边界 | `cmd/w/rsp max=3/2/8,RO=1,WO=1` | PASS |
+
+对性能语义的影响：
+
+- Pico 和 UART 接入 AXI interconnect 后，CPU 启动、UART 打印和 MMA CSR 都走同一套 AXI-Lite/AXI 路径，后续 SoC 级性能统计不会再绕过 interconnect。
+- RAM/interconnect 读写 outstanding 对称后，DMA 读侧 ro=4 的收益不会被写回侧串行 B 响应拖住；OA 写回可在写通道内排队，读侧仍能继续推进 IA/kernel 预取。
+- outstanding=1 边界仍通过，说明新增节流逻辑没有依赖“深度大于 1”这一隐含条件；后续性能 sweep 可以安全比较 `RO/WO=1/2/4/8` 的曲线。
+
+### 2026-07-01 补充：SoC 性能回退深排查
+
+背景：单独 MMA 仿真中 cache/reuse/AXI DMA 已经带来明显加速，但 SoC/TFLM 端到端最初出现部分用例不如本报告早期记录的现象。本轮排查把问题拆成三类：MMA reuse 边界、Pico/AXI/DDR 访问气泡、以及仿真基础设施的并行污染。
+
+最终保留的修复如下：
+
+- `mma_top`、普通驱动和 `veri/soc_csrc/dsa_accel_mmio.c` 将 `W_REUSE` 上限同时限制在输出列 tile 数和 `PS_FRAME_COUNT` 内。此前 `SIZE=8,CACHE=2,PS_FRAME=8,seed=43000,K=88,N=112,M=88` 在默认 `W_REUSE=11` 时会写回错序；显式 `W_REUSE<=8` 通过，因此默认路径必须按写回窗口 clamp。
+- `veri/sim/Makefile` 将 `DSA_PS_FRAME_COUNT` 编译进 SoC runtime 和 TFLM 库，并把 runtime/TFLM build dir 加上 `P$(MMA_PS_FRAME_COUNT)`，避免不同 `PS_FRAME_COUNT` 复用旧目标文件。
+- VCS 增加 `-Mdir=$(SIMV).csrc`，并在 `clean` 中删除 `*.csrc`。此前并行跑 S8/S16/TFLM 时会共享 `csrc/hsim/hsim.sdb`，出现 `VFS_SDB_SYNC_FAIL` 或 `rmapats.so` 生成失败，这不是 RTL 功能失败。
+- `soc_axi_ram` 保留单 beat 读快路径和 `AW/W` 同周期接收，让 Pico 指令/数据读和连续 store 少一部分气泡；写响应仍走 B 队列。
+- `soc_axi_interconnect` 修复 CPU 侧 `AR` 与上一笔 `R`、`AW` 与上一笔 `B` 同周期握手时的 active 状态覆盖问题。旧逻辑会在同一 always block 中先记录新请求、再被旧响应清掉 active，属于 AXI 时序边界 bug。
+- `soc_axil_simpleuart` 修复 UART data 写：当 `simpleuart` 忙时 AXI-Lite 写请求必须等待，不能提前返回 B 响应后丢字符。因此 UART 打印路径的周期比旧的“丢字符但快”的实现更可信。
+
+本轮也做过一个失败的性能实验：让 `soc_axi_ram` 在无随机 DDR 延迟、B 队列为空时直接给写响应。该实验能让 `hello_world` 回到 `425071 cycles`，但 `micro_speech` 会稳定卡在 `progress=0x5b313000`，即第一段 `depthwise_conv` 提交 MMA 前后。即使补了 interconnect 同周期 active 修复，直接 B 仍会触发该超时。因此当前提交不保留直接 B，优先保证 TFLM 功能正确。
+
+#### TFLM 最终对比
+
+| Case | 报告早期新版记录 | 本轮最终 RTL | 差异 | 结论 |
+|---|---:|---:|---:|---|
+| `hello_world` | 425,071 | 430,815 | +1.35% | 小幅变慢，主要来自保留正确 UART/队列 B；直接 B 虽可追回但会破坏 `micro_speech` |
+| `micro_speech` | 15,590,371 | 15,720,057 | +0.83% | 小幅变慢，属于 SoC CPU/AXI 路径开销；功能已通过 |
+| `my_model` | 77,111,410 | 77,016,232 | -0.12% | 略快于报告记录 |
+| `person_detection` | 238,905,507 | 237,333,374 | -0.66% | 略快于报告记录 |
+
+解释：
+
+- 裸 MMA 仿真只覆盖控制器、DMA、cache、阵列和写回；TFLM/SoC 还包含 Pico 执行、tensor allocation、im2col/打包、算子调度、UART 打印和 MMA MMIO 配置。小模型更容易被 CPU/AXI 固定开销淹没。
+- `hello_world` 和 `micro_speech` 的剩余小幅回退集中在 CPU/AXI 写响应与 UART 正确等待；为了避免 `micro_speech` 超时，当前没有采用直接 B 快路径。
+- `my_model` 和 `person_detection` 的大模型仍快于早期报告，说明 MMA 侧 cache/reuse 和写回优化在真实模型里没有被 SoC 集成抵消。
+
+#### 最终验证记录
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| S8 SoC 随机回归 | `SIZE=8,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1,seed=47000` | PASS 24/24 |
+| S16 SoC 随机回归 | `SIZE=16,CACHE={2,4,8},DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1,seed=48000` | PASS 24/24 |
+| `tflm_hello_world_run` | `SIZE=16,CACHE=4,PS_FRAME=16,O3,UART_CLKDIV=8` | PASS，430,815 cycles |
+| `tflm_micro_speech_run` | 同上 | PASS，15,720,057 cycles |
+| `tflm_my_model_run` | 同上 | PASS，77,016,232 cycles |
+| `tflm_person_detection_run` | 同上 | PASS，237,333,374 cycles |
+
+日志目录：
+
+- `runs/axi_soc_full_s8_final`
+- `runs/axi_soc_full_s16_final`
+- `runs/tflm_perf_diag/hello_final_uart8`
+- `runs/tflm_perf_diag/micro_final_uart8`
+- `runs/tflm_perf_diag/my_model_final_uart8`
+- `runs/tflm_perf_diag/person_final_uart8`
+
+### 2026-07-01 补充：SoC 劣化深排查与 per-channel 量化调度优化
+
+本轮重新跑了带 `+MMA_UTIL_TRACE` 的 SoC/TFLM trace。核心结论是：SoC 端到端周期不能直接当作 MMA latency。`soc_finish` 统计包含 Pico 启动、TFLM tensor allocation、算子调度、普通 CPU 算子、MMA MMIO 配置、输出校验和 UART 打印。小模型里 MMA active 占比很低，因此单独 MMA 优化会被软件和外设固定开销稀释。
+
+#### SoC runtime 大矩阵 trace
+
+当前 RTL、DDR 随机延迟关闭、WS/s8/per-tensor、reuse=0 自动配置下，大矩阵仍能体现 cache/reuse 收益：
+
+| K=N=M | C4 cycles | C8 cycles | C8 相对 C4 | C4 MMA active | C8 MMA active |
+|---:|---:|---:|---:|---:|---:|
+| 64 | 85,263 | 83,644 | 1.94% faster | 7,232 | 5,608 |
+| 128 | 295,789 | 279,289 | 5.91% faster | 45,033 | 28,533 |
+| 256 | 1,255,357 | 1,117,637 | 12.32% faster | 316,473 | 178,766 |
+| 384 | 3,184,536 | 2,713,799 | 17.35% faster | 1,098,761 | 628,024 |
+
+说明：矩阵变大后，C8 通过更大的 `IA_REUSE` 减少 IA/kernel 重复读，SoC 上仍然保持正收益；所谓“单测快、SoC 慢”主要发生在小模型端到端指标，而不是大矩阵 MMA 数据流失效。
+
+#### TFLM active 拆分
+
+| Case | SoC cycles | MMA ops | MMA active sum | active / SoC | 主要结论 |
+|---|---:|---:|---:|---:|---|
+| `hello_world` | 430,815 | 0 | 0 | 0.00% | 未触发 MMA，不能用于评估 MMA 性能 |
+| `micro_speech` | 15,720,065 | 1 | 32,330 | 0.21% | 端到端几乎全是 TFLM/CPU/外设开销 |
+| `my_model` | 77,020,480 | 90 | 471,924 | 0.61% | 触发多次小/中等 MMA，但仍被软件层稀释 |
+
+`my_model` 旧 trace 中，90 次 MMA 合计 `weight_data_stall=136104`、`ia_data_stall=173014`、`quant_stall=42370`、`tail_pending=85536`。其中 `quant_stall` 来自 per-channel 量化参数读：这些短读原本排在 IA 大块读取之后，导致 IA 数据已经到达时仍要等待量化参数。
+
+#### 优化修改
+
+`axi_block_dma_arbiter` 的读侧优先级从：
+
+```text
+kernel > IA > quant > bias
+```
+
+调整为：
+
+```text
+kernel > quant > IA > bias
+```
+
+kernel 仍保持最高优先级；quant 是每个 per-channel op 的短读，把它放到 IA 前可以提前完成量化参数加载。这个改动不改变接口语义，也不影响 per-tensor case，因为 per-tensor 不发 `quant_req`。
 
 优化后对比：
 
-| Case | cycles before | cycles after | MMA active before | MMA active after | quant stall before | quant stall after |
+| Case | SoC cycles before | SoC cycles after | MMA active before | MMA active after | quant stall before | quant stall after |
 |---|---:|---:|---:|---:|---:|---:|
 | `micro_speech` | 15,720,065 | 15,720,057 | 32,330 | 32,319 | 321 | 0 |
 | `my_model` | 77,020,480 | 77,016,232 | 471,924 | 469,134 | 42,370 | 0 |
 | `person_detection` | 237,339,024 | 237,333,374 | 未采样 | 未采样 | 未采样 | 未采样 |
 
-补充验证：
+代价和解释：
+
+- `quant_stall` 被清零，但一部分等待会转成 `ia_data_stall`，因为 quant 短读提前占用了少量读通道窗口。
+- 净收益仍为正：`my_model` 快 4,248 cycles，`person_detection` 快 5,650 cycles。收益幅度小，是因为 MMA active 只占端到端的一小部分。
+- 这不是“刷分式”绕过：UART 正确等待、B 响应队列和 CPU/TFLM 工作都仍计入 `soc_finish`。
+
+#### 补充验证
 
 | 测试 | 配置 | 结果 |
 |---|---|---|
-| TFLM | `micro_speech/my_model/person_detection,SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS |
+| `tflm_micro_speech_run` | `SIZE=16,CACHE=4,PS_FRAME=16,O3,+MMA_UTIL_TRACE` | PASS，15,720,057 cycles |
+| `tflm_my_model_run` | 同上 | PASS，77,016,232 cycles |
+| `tflm_person_detection_run` | `SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS，237,333,374 cycles |
 | S16 边界随机回归 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},MIN_DIM=1,MAX_DIM=65,unaligned_layout,DDR_RAND_LAT=1,seed=61000` | PASS 8/8 |
 | S8 边界随机回归 | `SIZE=8,CACHE=4,PS_FRAME=8,DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},MIN_DIM=1,MAX_DIM=65,unaligned_layout,DDR_RAND_LAT=1,seed=62000` | PASS 8/8 |
 
-### 2026-07-01 补充：SoC 小模型回退复核
+新增日志目录：
 
-本轮再次复现 RAM 无延迟 B 旁路实验：`hello_world` 可回到 `425071 cycles`，但 `micro_speech` 会稳定超时在 `progress=0x5b313000`，即第一段 `depthwise_conv` 打包 LHS 后、提交 MMA 前。结论保持不变：小模型回退中确实有 CPU store/B 响应固定开销，但不能用 RAM 立即 B 的方式追回；后续若要减少该开销，应实现显式 posted-write buffer，并在读/MMIO 前 drain。
+- `runs/soc_deep_trace_current`
+- `runs/soc_deep_trace_large_current`
+- `runs/tflm_deep_trace/hello_util`
+- `runs/tflm_deep_trace/micro_util`
+- `runs/tflm_deep_trace/micro_quant_prio`
+- `runs/tflm_deep_trace/my_model_util`
+- `runs/tflm_deep_trace/my_model_quant_prio`
+- `runs/tflm_deep_trace/person_quant_prio`
+- `runs/soc_quant_prio_regress_s16`
+- `runs/soc_quant_prio_regress_s8`
 
-集成仓同时修复了 `picorv32_axi_adapter` 的复位稳健性：复位时补清 `ack_arvalid`、`ack_wvalid` 和 `xfer_done`。该问题在 `+vcs+initreg+0` 下不显性，但硬件复位语义原本不完整。修复后 TFLM 复核：
+### 2026-07-01 补充：SoC 小模型回退复核与 Pico AXI reset 修复
+
+为进一步确认“裸 MMA 单测变快、SoC 小模型端到端略慢”的来源，本轮复现实验把 `soc_axi_ram` 的无延迟写响应改成 B 队列旁路。结果再次证明该方向不能直接采用：
+
+| 实验 | 结果 | 结论 |
+|---|---|---|
+| `hello_world` + RAM B 旁路 | PASS，425,071 cycles | 能追回早期记录，说明小模型回退确实有一部分来自 CPU store/B 响应固定开销 |
+| `micro_speech` + RAM B 旁路 | TIMEOUT，`progress=0x5b313000` | 卡在第一段 `depthwise_conv` 打包 LHS 后、提交 MMA 前；快路径破坏了复杂 store 循环/AXI 响应时序假设 |
+| 撤销 B 旁路后的基线 | `micro_speech` PASS，15,720,057 cycles | 当前保留 B 队列是正确性优先的稳定实现 |
+
+结合 PicoRV32 官方 `picorv32_axi_adapter` 的实现可以看到，`mem_ready` 直接由 `BVALID/RVALID` 产生，而内部 `xfer_done` 延后一拍清 `ack_awvalid/ack_wvalid`。过早返回 B 会压缩 Pico native 访问和 AXI 写响应之间的保护窗口；虽然这能减少 `hello_world` 的纯 CPU store 开销，但会让 `micro_speech` 的 depthwise 打包循环稳定卡死。因此性能优化不能再走“RAM 立即 B”这条路，后续如需减少 CPU store 开销，应设计显式 store buffer/posted write，并在 MMIO/read 前做有序 drain。
+
+本轮同时修复了一个独立的复位稳健性问题：`picorv32_axi_adapter` 复位分支原本只清 `ack_awvalid`，没有清 `ack_arvalid`、`ack_wvalid` 和 `xfer_done`。仿真使用 `+vcs+initreg+0` 时该问题不显性，但硬件复位语义不完整。修复后验证：
 
 | 测试 | 配置 | 结果 |
 |---|---|---|
 | `tflm_hello_world_run` | `SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS，430,815 cycles |
 | `tflm_micro_speech_run` | `SIZE=16,CACHE=4,PS_FRAME=16,O3,+MMA_UTIL_TRACE` | PASS，15,720,057 cycles；MMA active=32,319，`quant_stall=0` |
+
+新增日志目录：
+
+- `runs/soc_deep_bypass_b/hello`
+- `runs/soc_deep_bypass_b/micro`
+- `runs/soc_deep_rebaseline/micro`
+- `runs/soc_pico_reset_fix/hello`
+- `runs/soc_pico_reset_fix/micro`
 
 ### 2026-07-01 补充：TFLM 小算子 MMA 阈值实验
 
@@ -517,9 +551,9 @@ read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 
 TFLM_SOC_MMA_MIN_MACS
 ```
 
-当该宏为 0 时保持原行为；非 0 时，只有 `rows * inner * cols >= TFLM_SOC_MMA_MIN_MACS` 的 int8 conv/depthwise 才走 MMA。集成仓 `veri/sim/Makefile` 新增 `TFLM_EXTRA_DEFINES`，用于在不改源码的情况下给 TFLM 库和 SoC app 同步传入该宏。
+当该宏为 0 时保持原行为；非 0 时，只有 `rows * inner * cols >= TFLM_SOC_MMA_MIN_MACS` 的 int8 conv/depthwise 才走 MMA。`veri/sim/Makefile` 新增 `TFLM_EXTRA_DEFINES`，用于在不改源码的情况下给 TFLM 库和 SoC app 同步传入该宏。
 
-同时修复了集成仓 `run_axi_soc_perf_sweep.py` 的利用率解析：旧逻辑会把多条 `MMA_UTIL/MMA_CTRL_UTIL` 覆盖成最后一条 op 的值；新逻辑会对所有 op 聚合，并从总 `mma_active` 重新计算 `mma_ia_row_util_bp` 与 `mma_acc_util_bp`。因此下面的 active/stall 均为整次模型运行的累计值。
+同时修复了 `run_axi_soc_perf_sweep.py` 的利用率解析：旧逻辑会把多条 `MMA_UTIL/MMA_CTRL_UTIL` 覆盖成最后一条 op 的值；新逻辑会对所有 op 聚合，并从总 `mma_active` 重新计算 `mma_ia_row_util_bp` 与 `mma_acc_util_bp`。因此下面的 active/stall 均为整次模型运行的累计值。
 
 ![TFLM my_model min MACs sweep](perf_plots/tflm_min_macs_threshold_sweep.png)
 
@@ -536,14 +570,22 @@ TFLM_SOC_MMA_MIN_MACS
 - `8192` 阈值没有减少实际 MMA op，不能证明“小算子过滤”有效；0.58% 的变化更可能来自编译后代码布局、分支预测或 Pico 指令路径的轻微扰动。
 - `12288/16384/32768` 的确减少了 MMA active 和控制器 stall，但端到端 cycles 反而增加。也就是说，当前模型里被过滤掉的 conv/depthwise 在 CPU 上执行代价高于 MMA 启动、DMA 和收尾气泡。
 - 因此 SoC 小模型劣化的主因不是某个小 MMA op 应该被 fallback，而是 TFLM 端到端粒度过碎：Pico 执行、tensor/算子调度、打包、MMIO 配置、UART/校验等固定开销占大头。硬件侧 cache/reuse 在大矩阵和较大模型中仍是正收益。
-- 当前集成仓保留 `TFLM_SOC_MMA_MIN_MACS=0` 作为默认值，阈值只作为后续模型特定调参或性能诊断入口，不作为通用优化策略。
+- 当前提交保留 `TFLM_SOC_MMA_MIN_MACS=0` 作为默认值，阈值只作为后续模型特定调参或性能诊断入口，不作为通用优化策略。
 
 后续真正值得投入的方向：
 
 1. 在软件层合并/批量提交相邻的小 conv/depthwise，减少 MMIO 启动次数和打包循环反复进入退出。
 2. 为常见小 shape 设计更轻量的 MMA 提交路径，减少 descriptor 配置和缓存 fill 固定成本。
-3. 如果要降低纯 CPU store 开销，应设计有序 posted-write/store-buffer，并在读/MMIO 前显式 drain，而不是让 RAM 立即返回 B response。
+3. 如果要降低纯 CPU store 开销，应设计有序 posted-write/store-buffer，并在 MMIO/read 前显式 drain，而不是让 RAM 立即返回 B response。
 4. 继续保留大矩阵随机回归和 TFLM 模型回归作为双重门禁：前者验证 MMA 数据流，后者验证 SoC 软件/外设真实端到端效果。
+
+验证日志：
+
+- `runs/tflm_deep_trace/my_model_quant_prio`
+- `runs/tflm_threshold/my_model_min8192_trace`
+- `runs/tflm_threshold/my_model_min12288_trace`
+- `runs/tflm_threshold/my_model_min16384_trace`
+- `runs/tflm_threshold/my_model_min32768_trace`
 
 ### 2026-07-01 补充：per-channel quant 原生 DMA 化与 ICB 控制残留清理
 
@@ -554,7 +596,9 @@ TFLM_SOC_MMA_MIN_MACS
 - `vec_requant` 直接输出 native quant DMA client 信号：`dma_start/base_addr/rows/burst_len`，并直接接收 `dma_raw_valid/raw_data`。
 - 删除 `mma_top` 中的 `icb_read_dma_adapter` 实例、`vec_requant_*` ICB 类型信号，以及 `quant_req = load_quant_req || adapter_req` 的双请求路径。
 - `mma_controller` 删除旧 `icb_sel`、各 loader/OA 的旧 grant 端口和内部 `icb_arbiter` 实例。控制器只保留真正参与计算调度的 `send_weight_trigger/send_ia_trigger`、配置初始化和完成握手。
-- 集成仓 `dut_axil.f` 不再编译旧 ICB-only adapter/arbiter：`icb_arbiter`、`icb_ext_flat_adapter`、`icb_mux_5to1`、`icb_read_dma_adapter`、`icb_write_dma_adapter`、`block_dma_arbiter`、`kernel_block_dma`、旧 `block_dma`。
+- `dut_axil.f` 不再编译旧 ICB-only adapter/arbiter：`icb_arbiter`、`icb_ext_flat_adapter`、`icb_mux_5to1`、`icb_read_dma_adapter`、`icb_write_dma_adapter`、`block_dma_arbiter`、`kernel_block_dma`、旧 `block_dma`。
+
+这次改动的性能目标不是新增总线带宽，而是去掉 quant 短读前的一层内部转接 FSM，让 AXI 主路径语义更直接。VCS AXI SoC 编译通过后，`dut_axil.f` 只解析 36 个主路径模块，旧 ICB adapter 不再进入 AXI SoC elaboration。
 
 #### TFLM trace 对比
 
@@ -565,7 +609,12 @@ TFLM_SOC_MMA_MIN_MACS
 | `micro_speech` | 15,720,057 | 15,720,062 | 1 | 32,319 | 32,313 | 21,188 | 21,182 | 40 | 39 | 0 -> 0 |
 | `my_model` | 77,016,232 | 77,016,620 | 90 | 469,134 | 468,754 | 325,408 | 325,028 | 6,280 | 6,262 | 0 -> 0 |
 
-结论：硬件内部累计 active 和 `ia_data_stall` 均下降，`my_model` 中各减少 380 cycles，说明 direct quant DMA 确实减少了少量转接/等待气泡。端到端 TFLM cycles 基本持平，再次说明当前小模型瓶颈主要在 Pico/TFLM/外设固定开销，而不是 per-channel quant 这一级短读本身。
+解释：
+
+- 硬件内部累计 active 和 `ia_data_stall` 均下降：`my_model` 中各减少 380 cycles，说明 direct quant DMA 确实减少了少量转接/等待气泡。
+- `dma_busy_quant` 小幅下降，符合删除 `icb_read_dma_adapter` 后量化短读启动路径变短的预期。
+- 端到端 TFLM cycles 基本持平，`my_model` 多 388 cycles，`micro_speech` 多 5 cycles。这再次说明小模型的 SoC 终点由 Pico/TFLM/外设固定成本主导，几百个 MMA 内部周期会被端到端控制噪声和软件路径淹没。
+- `quant_stall` 保持为 0，说明前一轮 `kernel > quant > IA > bias` 的读优先级优化仍然有效。
 
 #### 验证
 
@@ -576,3 +625,87 @@ TFLM_SOC_MMA_MIN_MACS
 | S8 SoC 随机边界回归 | `SIZE=8,CACHE=4,PS_FRAME=8,DF={WS,IS},lhs={s8,s16},per-channel,unaligned_layout,DDR_RAND_LAT=1,MIN_DIM=1,MAX_DIM=65,seed=72000` | PASS 24/24 |
 | `tflm_micro_speech_run` | `SIZE=16,CACHE=4,PS_FRAME=16,+MMA_UTIL_TRACE` | PASS，15,720,062 cycles |
 | `tflm_my_model_run` | `SIZE=16,CACHE=4,PS_FRAME=16,+MMA_UTIL_TRACE` | PASS，77,016,620 cycles |
+
+日志目录：
+
+- `runs/native_quant_compile`
+- `runs/native_quant_regress_s16`
+- `runs/native_quant_regress_s8`
+- `runs/native_quant_tflm/micro`
+- `runs/native_quant_tflm/my_model`
+
+### 2026-07-01 补充：SoC 劣化闭环、`.noinit` 与 FC-MMA 修复
+
+本轮针对“裸 MMA 单独仿真性能已经优化，但 SoC 上端到端反而劣化”的现象做了更细的 trace。结论是：MMA/cache/reuse 数据流本身没有退化，AXI outstanding 也在工作；SoC 端的主要损失来自软件和启动路径，尤其是 TFLM 临时 buffer 启动清零、FullyConnected 仍走 CPU reference、以及小矩阵提交导致阵列有效计算拍占比很低。
+
+新增诊断：
+
+- `axi_dual_block_dma.sv` 增加 `+MMA_DMA_TRACE`，统计每次 DMA 的 AR/AW/R/W/B beat、非对齐/跨 beat 访问和最大 outstanding。`micro_speech` 中未触发 unaligned 读，读/写 outstanding 可达到 4，说明本轮问题不是 DMA 对齐或 outstanding 失效。
+- `soc_axil_ctrl.sv` 增加 `+SOC_PROGRESS_TRACE`，为 TFLM progress 写入打 cycle 戳，用来拆开启动、tensor allocation、conv/depthwise/FC/softmax 和校验阶段。
+- `veri/sim/Makefile` 将 `fully_connected.cc` 加入 `TFLM_RV32_REBUILD_DEPS`。此前 FC 源码变化可能不会触发 `libtflite-micro.a` 重新构建，容易造成“源码已改、仿真还在跑旧库”的误判。
+
+修复和优化：
+
+- 将 conv/depthwise/fully_connected 的 MMA 临时 buffer 放入 `.noinit.mma`，并在 `link.ld` 中新增 `.noinit (NOLOAD)` 段，避免启动阶段对数百 KB 临时 buffer 做 `.bss` 清零。
+- 为 int8 FullyConnected 增加 SoC MMA 路径，支持 per-tensor/per-channel 输出量化。当前硬件缓冲上限为 `rows <= 16` 分块、`inner <= 4096`、输出列按 `DSA_TILE_SIZE` 分块；不满足 shape、filter zero-point 非 0 或异常维度时自动 fallback 到原 reference。
+- FC RHS packing 使用预计算列指针，避免内层重复计算 `(col_base + col) * inner`。之前尝试过 word copy/`__builtin_memcpy` 打包，实际让 `micro_speech` 变慢，因此未保留。
+
+#### 端到端性能结果
+
+![SoC TFLM noinit + FC-MMA cycles](perf_plots/soc_tflm_fc_noinit_cycles.png)
+
+| Case | 修复前 cycles | 修复后 cycles | 变化 | 说明 |
+|---|---:|---:|---:|---|
+| `hello_world` | 430,815 | 372,504 | -13.53% | 12 个极小 FC 均走硬件，启动清零也明显减少 |
+| `micro_speech` | 15,720,062 | 13,659,301 | -13.11% | `.noinit` 节省约 1.39M cycles，FC-MMA 再减少约 0.67M cycles |
+| `my_model` | 77,016,620 | 74,079,370 | -3.81% | 大模型仍主要受 TFLM 调度和 conv/depthwise 打包支配，但未再劣化 |
+
+对 `micro_speech` 的阶段拆分：
+
+- 启动 `.bss` 清零从约 1,543,422 cycles 降到 149,823 cycles，说明 `.noinit` 是端到端收益最大的单点。
+- 原 FC CPU reference 约 1,299,861 cycles；FC-MMA 后 FC 总段约 632K cycles，其中 RHS packing 约 585K cycles，硬件 active 只有 13,664 cycles。
+- 这说明 FC 的算术本身已经很快，剩余瓶颈主要是 TFLM 侧为硬件格式做打包/转置，而不是阵列计算。
+
+#### 利用率解释
+
+最新 trace 汇总如下：
+
+| Case | SoC cycles | MMA ops | MMA active | `acc_valid` | acc 利用率 | `ia_row` | IA 行利用率 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `hello_world` | 372,504 | 12 | 2,532 | 12 | 0.47% | 12 | 0.47% |
+| `micro_speech` | 13,659,301 | 2 | 45,977 | 501 | 1.08% | 2,750 | 5.98% |
+| `my_model` | 74,079,370 | 94 | 471,882 | 7,556 | 1.60% | 27,792 | 5.88% |
+
+这些数字解释了为什么裸 MMA 的收益在小模型 SoC 端不总是线性体现：
+
+- `hello_world` 和 FC 层多为 `rows=1` 的极小矩阵，MMA 每次只能产生 1 个或少量有效 accumulator，阵列大部分时间花在固定启动、DMA、量化和写回尾部。
+- `micro_speech` 的 FC 为 `1x4000 * 4000x4`，输出列只有 4，硬件 active 主要被 kernel 侧 4000 个权重加载和软件 RHS packing 支配。
+- `my_model` 虽然有更多 conv/depthwise 能摊薄固定开销，但端到端仍包含 Pico 执行、TFLM tensor/算子调度、打包、MMIO 配置、UART/校验等软件路径，因此 MMA active 只占 SoC 总周期的一小部分。
+
+因此，本轮“劣化”不是 cache/reuse 设计失效，而是 SoC 指标把硬件计算和软件准备混在一起统计。修复后，三个 TFLM 模型端到端均不再比前一版差；其中 `micro_speech` 从此前小幅劣化变为明显收益。
+
+#### 验证
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| `tflm_hello_world_run` | `SIZE=16,CACHE=4,PS_FRAME=16,+SOC_PROGRESS_TRACE,+MMA_UTIL_TRACE` | PASS，372,504 cycles |
+| `tflm_micro_speech_run` | `SIZE=16,CACHE=4,PS_FRAME=16,+SOC_PROGRESS_TRACE,+MMA_UTIL_TRACE` | PASS，13,659,301 cycles |
+| `tflm_my_model_run` | `SIZE=16,CACHE=4,PS_FRAME=16,+SOC_PROGRESS_TRACE,+MMA_UTIL_TRACE` | PASS，74,079,370 cycles |
+| SoC 随机边界回归 | `SIZE={8,16},CACHE={2,4},DF={WS,IS},lhs=s8,per-channel,unaligned_layout,DDR_RAND_LAT=1,MIN_DIM=1,MAX_DIM=65,seed=81000..81001` | PASS 16/16 |
+
+日志目录：
+
+- `runs/soc_deep_dma_trace/micro`
+- `runs/soc_deep_stage_trace/micro`
+- `runs/soc_deep_stage_trace/my_model`
+- `runs/soc_deep_final/hello_latest`
+- `runs/soc_deep_final/micro_latest`
+- `runs/soc_deep_final/my_model_latest`
+- `runs/soc_deep_final/rand_boundary`
+
+后续优化方向：
+
+1. 对常量权重的 FC/conv 做离线或 Prepare 阶段预打包，减少每次 Invoke 中的 RHS transpose/packing。
+2. 为 `rows=1`、`cols` 很小的 FC 增加轻量提交路径，减少 MMIO 配置、DMA 启动和写回尾部固定成本。
+3. 若继续优化 Pico store/软件打包，应设计显式有序 store buffer，并在 MMIO/read 前 drain；不要回到 RAM 立即 B response 的实验路径。
+4. 继续将 SoC TFLM 回归和裸 MMA 大矩阵回归分开看：前者衡量真实软件端到端，后者衡量 cache/reuse/阵列数据流本身。
