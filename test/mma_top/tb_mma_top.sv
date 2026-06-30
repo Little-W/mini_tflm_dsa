@@ -403,7 +403,7 @@ module tb_mma_top;
             end
             if (debug_stream && u_dut.requant_out_valid) begin
                 $write("[DBG][RQ]  t=%0t done=%0b out=",
-                       $time, u_dut.requant_tile_done);
+                       $time, u_dut.requant_out_tile_done);
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
                     $write("%0d%s", u_dut.requant_out[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
@@ -563,12 +563,11 @@ module tb_mma_top;
                  u_dut.u_ia_loader.u_ctrl.w_cnt,
                  u_dut.u_ia_loader.u_ctrl.ia_idx,
                  u_dut.u_ia_loader.ctrl_all_done);
-        $display("[TB][DBG] w_ctrl_state=%0d w_tile_row=%0d w_l2=%0d w_col=%0d w_rep=%0d w_all_done=%0b",
+        $display("[TB][DBG] w_ctrl_state=%0d w_tile_row=%0d w_tile_col=%0d w_rep=%0d w_all_done=%0b",
                  u_dut.u_kernel_loader.u_ctrl.state,
-                 u_dut.u_kernel_loader.u_ctrl.cur_tile_row,
-                 u_dut.u_kernel_loader.u_ctrl.cur_l2,
-                 u_dut.u_kernel_loader.u_ctrl.cur_col_in_group,
-                 u_dut.u_kernel_loader.u_ctrl.cur_repeat,
+                 u_dut.u_kernel_loader.u_ctrl.tile_row_dbg,
+                 u_dut.u_kernel_loader.u_ctrl.tile_col_dbg,
+                 u_dut.u_kernel_loader.u_ctrl.repeat_dbg,
                  u_dut.u_kernel_loader.ctrl_all_done);
         $display("[TB][DBG] oa_state=%0d tiles_done=%0d tile_row=%0d tile_col=%0d write_req=%0b write_done=%0b",
                  u_dut.u_oa_writer.state,

@@ -48,6 +48,7 @@ module ddr_icb_mem_model #(
     logic [WIDTH-1:0] cmd_wdata_r;
     logic [MW-1:0] cmd_wmask_r;
     logic [LEN_W:0] rsp_left;
+    logic [LEN_W:0] write_left;
     logic [ADDR_W-1:0] rsp_addr;
     logic [WIDTH-1:0] rsp_data_r;
 
@@ -101,6 +102,7 @@ module ddr_icb_mem_model #(
             cmd_wdata_r <= '0;
             cmd_wmask_r <= '0;
             rsp_left   <= '0;
+            write_left <= '0;
             rsp_addr   <= '0;
             rsp_data_r <= '0;
         end else begin
@@ -125,11 +127,13 @@ module ddr_icb_mem_model #(
                         cmd_wmask_r <= sa_icb_cmd_wmask;
                         if (sa_icb_cmd_read) begin
                             rsp_left   <= {1'b0, sa_icb_cmd_len} + 1'b1;
+                            write_left <= '0;
                             rsp_addr   <= sa_icb_cmd_addr;
                             rsp_data_r <= mem_r[bus_word_idx];
                             wait_cnt   <= pick_wait(rsp_max_lat);
                             state      <= S_RSP_WAIT;
                         end else begin
+                            write_left <= {1'b0, sa_icb_cmd_len} + 1'b1;
                             wait_cnt <= pick_wait(w_max_lat);
                             state    <= S_WRITE_WAIT;
                         end
@@ -141,13 +145,20 @@ module ddr_icb_mem_model #(
                         wait_cnt <= wait_cnt - 1;
                     end else if (w_hs) begin
                         for (int b = 0; b < MW; b++) begin
-                            if (cmd_wmask_r[b]) begin
-                                mem_r[cmd_word_idx][b*8+:8] <= cmd_wdata_r[b*8+:8];
+                            if (sa_icb_cmd_wmask[b]) begin
+                                mem_r[cmd_word_idx][b*8+:8] <= sa_icb_cmd_wdata[b*8+:8];
                             end
                         end
-                        rsp_data_r <= '0;
-                        wait_cnt   <= pick_wait(rsp_max_lat);
-                        state      <= S_RSP_WAIT;
+                        if (write_left > 1) begin
+                            write_left <= write_left - 1'b1;
+                            cmd_addr_r <= cmd_addr_r + ADDR_W'(MW);
+                            wait_cnt   <= pick_wait(w_max_lat);
+                        end else begin
+                            write_left <= '0;
+                            rsp_data_r <= '0;
+                            wait_cnt   <= pick_wait(rsp_max_lat);
+                            state      <= S_RSP_WAIT;
+                        end
                     end
                 end
 

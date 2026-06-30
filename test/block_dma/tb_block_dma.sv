@@ -32,11 +32,11 @@ module tb_block_dma;
   logic icb_cmd_read;
   logic [REG_WIDTH-1:0] icb_cmd_addr;
   logic [3:0] icb_cmd_len;
-	  logic [BUS_WIDTH-1:0] icb_cmd_wdata;
-	  logic [BUS_WIDTH/8-1:0] icb_cmd_wmask;
-	  logic icb_w_valid;
-	  logic icb_w_ready = 1'b1;
-	  logic icb_rsp_valid;
+  logic [BUS_WIDTH-1:0] icb_cmd_wdata;
+  logic [BUS_WIDTH/8-1:0] icb_cmd_wmask;
+  logic icb_w_valid;
+  logic icb_w_ready;
+  logic icb_rsp_valid;
   logic icb_rsp_ready;
   logic [BUS_WIDTH-1:0] icb_rsp_rdata;
   logic icb_rsp_err;
@@ -45,12 +45,33 @@ module tb_block_dma;
   logic [$clog2(SIZE)-1:0] wr_row;
   logic [$clog2(SIZE)-1:0] wr_col_base;
   logic signed [DATA_WIDTH-1:0] wr_data [BUS_WIDTH/8];
-	  logic wr_valid [BUS_WIDTH/8];
-	  logic wr_use_16bits;
-	  logic [BUS_WIDTH-1:0] rd_raw_data;
-	  logic rd_raw_valid;
-	  logic [$clog2(SIZE)-1:0] rd_raw_row;
-	  logic [$clog2(SIZE)-1:0] rd_raw_col_base;
+  logic wr_valid [BUS_WIDTH/8];
+  logic wr_use_16bits;
+  logic [BUS_WIDTH-1:0] rd_raw_data;
+  logic rd_raw_valid;
+  logic [$clog2(SIZE)-1:0] rd_raw_row;
+  logic [$clog2(SIZE)-1:0] rd_raw_col_base;
+
+  localparam int SRAM_DEPTH = 256;
+  localparam int BUS_BYTES = BUS_WIDTH / 8;
+
+  logic [BUS_WIDTH-1:0] mem [0:SRAM_DEPTH-1];
+  logic tb_rd_active;
+  logic tb_wr_active;
+  logic tb_wr_rsp_pending;
+  logic [REG_WIDTH-1:0] tb_rd_addr;
+  logic [REG_WIDTH-1:0] tb_wr_addr;
+  logic [3:0] tb_rd_len;
+  logic [3:0] tb_wr_len;
+  logic [3:0] tb_rd_beat;
+  logic [3:0] tb_wr_beat;
+
+  wire tb_cmd_hs = icb_cmd_valid && icb_cmd_ready;
+  wire tb_w_hs = icb_w_valid && icb_w_ready;
+
+  assign icb_cmd_ready = !tb_rd_active && !tb_wr_active && !tb_wr_rsp_pending && !icb_rsp_valid;
+  assign icb_w_ready   = tb_wr_active && !tb_wr_rsp_pending && !icb_rsp_valid;
+  assign icb_rsp_err   = 1'b0;
 
   block_dma #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -67,6 +88,7 @@ module tb_block_dma;
     .tile_base_addr(tile_base_addr),
     .row_stride(row_stride),
     .rows_to_read(rows_to_read),
+    .valid_cols(REG_WIDTH'(SIZE)),
     .burst_len_m1(burst_len_m1),
     .slot_id(slot_id),
     .use_16bits(use_16bits),
@@ -81,46 +103,100 @@ module tb_block_dma;
     .icb_cmd_ready(icb_cmd_ready),
     .icb_cmd_read(icb_cmd_read),
     .icb_cmd_addr(icb_cmd_addr),
-	    .icb_cmd_len(icb_cmd_len),
-	    .icb_cmd_wdata(icb_cmd_wdata),
-	    .icb_cmd_wmask(icb_cmd_wmask),
-	    .icb_w_valid(icb_w_valid),
-	    .icb_w_ready(icb_w_ready),
-	    .icb_rsp_valid(icb_rsp_valid),
+    .icb_cmd_len(icb_cmd_len),
+    .icb_cmd_wdata(icb_cmd_wdata),
+    .icb_cmd_wmask(icb_cmd_wmask),
+    .icb_w_valid(icb_w_valid),
+    .icb_w_ready(icb_w_ready),
+    .icb_rsp_valid(icb_rsp_valid),
     .icb_rsp_ready(icb_rsp_ready),
     .icb_rsp_rdata(icb_rsp_rdata),
     .icb_rsp_err(icb_rsp_err),
     .wr_slot(wr_slot),
     .wr_row(wr_row),
     .wr_col_base(wr_col_base),
-	    .wr_data(wr_data),
-	    .wr_valid(wr_valid),
-	    .wr_use_16bits(wr_use_16bits),
-	    .rd_raw_data(rd_raw_data),
-	    .rd_raw_valid(rd_raw_valid),
-	    .rd_raw_row(rd_raw_row),
-	    .rd_raw_col_base(rd_raw_col_base)
-	  );
-
-  tb_sram_model #(
-    .DEPTH(256),
-    .DATA_W(BUS_WIDTH),
-    .ADDR_W(REG_WIDTH),
-    .INIT_FILE("init.mem")
-  ) u_sram (
-    .clk(clk),
-    .rst_n(rst_n),
-    .cmd_valid(icb_cmd_valid),
-    .cmd_ready(icb_cmd_ready),
-    .cmd_addr(icb_cmd_addr),
-    .cmd_read(icb_cmd_read),
-	    .cmd_wdata(icb_cmd_wdata),
-	    .cmd_wmask(icb_cmd_wmask),
-	    .rsp_valid(icb_rsp_valid),
-    .rsp_ready(icb_rsp_ready),
-    .rsp_rdata(icb_rsp_rdata),
-    .rsp_err(icb_rsp_err)
+    .wr_data(wr_data),
+    .wr_valid(wr_valid),
+    .wr_use_16bits(wr_use_16bits),
+    .rd_raw_data(rd_raw_data),
+    .rd_raw_valid(rd_raw_valid),
+    .rd_raw_row(rd_raw_row),
+    .rd_raw_col_base(rd_raw_col_base)
   );
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      tb_rd_active      <= 1'b0;
+      tb_wr_active      <= 1'b0;
+      tb_wr_rsp_pending <= 1'b0;
+      tb_rd_addr        <= '0;
+      tb_wr_addr        <= '0;
+      tb_rd_len         <= '0;
+      tb_wr_len         <= '0;
+      tb_rd_beat        <= '0;
+      tb_wr_beat        <= '0;
+      icb_rsp_valid     <= 1'b0;
+      icb_rsp_rdata     <= '0;
+    end else begin
+      if (icb_rsp_valid && icb_rsp_ready) begin
+        icb_rsp_valid <= 1'b0;
+      end
+
+      if (tb_cmd_hs) begin
+        if (icb_cmd_read) begin
+          tb_rd_active <= 1'b1;
+          tb_rd_addr   <= icb_cmd_addr;
+          tb_rd_len    <= icb_cmd_len;
+          tb_rd_beat   <= '0;
+        end else begin
+          tb_wr_active <= 1'b1;
+          tb_wr_addr   <= icb_cmd_addr;
+          tb_wr_len    <= icb_cmd_len;
+          tb_wr_beat   <= '0;
+        end
+      end
+
+      if (tb_w_hs) begin
+        if ((tb_wr_addr >> $clog2(BUS_BYTES)) < REG_WIDTH'(SRAM_DEPTH)) begin
+          for (int b = 0; b < BUS_BYTES; b++) begin
+            if (icb_cmd_wmask[b]) begin
+              mem[tb_wr_addr >> $clog2(BUS_BYTES)][b*8 +: 8] <= icb_cmd_wdata[b*8 +: 8];
+            end
+          end
+        end
+        if (tb_wr_beat == tb_wr_len) begin
+          tb_wr_active      <= 1'b0;
+          tb_wr_rsp_pending <= 1'b1;
+          tb_wr_beat        <= '0;
+        end else begin
+          tb_wr_addr <= tb_wr_addr + REG_WIDTH'(BUS_BYTES);
+          tb_wr_beat <= tb_wr_beat + 4'd1;
+        end
+      end
+
+      if (!icb_rsp_valid) begin
+        if (tb_rd_active) begin
+          if ((tb_rd_addr >> $clog2(BUS_BYTES)) < REG_WIDTH'(SRAM_DEPTH)) begin
+            icb_rsp_rdata <= mem[tb_rd_addr >> $clog2(BUS_BYTES)];
+          end else begin
+            icb_rsp_rdata <= {BUS_WIDTH{1'b1}};
+          end
+          icb_rsp_valid <= 1'b1;
+          if (tb_rd_beat == tb_rd_len) begin
+            tb_rd_active <= 1'b0;
+            tb_rd_beat   <= '0;
+          end else begin
+            tb_rd_addr <= tb_rd_addr + REG_WIDTH'(BUS_BYTES);
+            tb_rd_beat <= tb_rd_beat + 4'd1;
+          end
+        end else if (tb_wr_rsp_pending) begin
+          icb_rsp_rdata     <= '0;
+          icb_rsp_valid     <= 1'b1;
+          tb_wr_rsp_pending <= 1'b0;
+        end
+      end
+    end
+  end
 
   task automatic pulse_start();
     @(posedge clk);
@@ -192,14 +268,17 @@ module tb_block_dma;
     src_wmask = '0;
     src_wvalid = 1'b0;
     clear_capture();
+    for (int i = 0; i < SRAM_DEPTH; i++) begin
+      mem[i] = '0;
+    end
 
     rst_n = 0;
     repeat (5) @(posedge clk);
 
     // 预置读测试数据：2行，每行1个beat，16bitx2；
     // DUT 输出宽度提升到 32 位后，这里验证的是 sign-extend 后的 32-bit 结果。
-    u_sram.mem[0] = 32'h0002_0001;
-    u_sram.mem[1] = 32'h0004_0003;
+    mem[0] = 32'h0002_0001;
+    mem[1] = 32'h0004_0003;
 
     rst_n = 1;
     repeat (2) @(posedge clk);
@@ -229,8 +308,8 @@ module tb_block_dma;
     clear_capture();
 
     // ---------------- linear 1D read case ----------------
-    u_sram.mem[8] = 32'h0006_0005;
-    u_sram.mem[9] = 32'h0008_0007;
+    mem[8] = 32'h0006_0005;
+    mem[9] = 32'h0008_0007;
 
     is_write         = 1'b0;
     linear_read_mode = 1'b1;
@@ -268,8 +347,8 @@ module tb_block_dma;
     wait (tile_done);
     @(posedge clk);
 
-    if (u_sram.mem[16] != 32'h1122_3344 || u_sram.mem[17] != 32'h5566_7788) begin
-      $display("[BLOCK_DMA][WRITE] FAIL mem16=%08x mem17=%08x", u_sram.mem[16], u_sram.mem[17]);
+    if (mem[16] != 32'h1122_3344 || mem[17] != 32'h5566_7788) begin
+      $display("[BLOCK_DMA][WRITE] FAIL mem16=%08x mem17=%08x", mem[16], mem[17]);
       $finish;
     end else begin
       $display("[BLOCK_DMA][WRITE] PASS");
