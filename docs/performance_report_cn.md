@@ -257,6 +257,27 @@ DDR 随机延迟打开，`DDR_CMD_MAX_LAT=3`，`DDR_W_MAX_LAT=2`，`DDR_RSP_MAX_
 |---|---|---|
 | `test/axi_dual_block_dma` | AXI 读写同周期启动、读数据解包、两行多 beat 写回、读写 done 独立完成 | PASS |
 
+### 2026-06-30 补充：AXI 读仲裁与 OA 独立写通道
+
+在 `axi_dual_block_dma` 基础上继续推进到客户端仲裁层，新增 `sub_modules/axi_block_dma_arbiter.sv`：
+
+- 读侧保留 IA/kernel/bias/quant 四类客户端仲裁，优先级为 kernel > IA > quant > bias，接口语义与旧 `block_dma_arbiter` 对齐，便于后续替换 `mma_top`。
+- OA writer 不再进入读侧仲裁，而是直接绑定 AXI 写引擎。这样 OA 写回过程只占用 `AW/W/B`，不会阻塞下一批 IA/kernel 的 `AR/R` 读取。
+- `ia_done/kernel_done/bias_done/quant_done` 只由读引擎完成脉冲路由；`oa_done` 只由写引擎完成脉冲路由，删除了“读写都必须共享一个 dma_done”的串行隐含约束。
+- `oa_src_wready` 只由写通道反压决定，读侧 busy 不会再压住 OA FIFO 输出。
+
+新增验证：
+
+| 测试 | 覆盖点 | 结果 |
+|---|---|---|
+| `test/axi_block_dma_arbiter` | kernel 读和 OA 写同周期请求、AXI `AR/R` 与 `AW/W/B` 并行推进、`kernel_busy && oa_busy` overlap、读解包和多 beat 写回正确 | PASS，`overlap=1` |
+
+这一步还没有把 `mma_top` 顶层切换到 AXI，但已经把“共享 ICB DMA 串行仲裁”拆成了“读侧仲裁 + 写侧独立”的可综合模块。下一步应把 `mma_top` 中 `u_block_dma_arbiter` 替换为该 AXI arbiter，并把 `test/mma_top` 的 DDR 模型切为 AXI 五通道模型。替换完成后，再重新采样 `+MMA_UTIL_TRACE`，重点观察：
+
+- `dma_busy_oa` 是否与 `dma_busy_ia/kernel` 大量重叠，而不是顺序相加。
+- `weight_data_stall` 与 `ia_data_stall` 是否下降。
+- `ia_row_util_bp` 和 `acc_util_bp` 是否提升；如果仍然低，则继续追控制器触发间隔、IA L1 group 连续输出、ps_buffer replay 和 bias/quant 有效窗口。
+
 下一步 AXI 迁移需要完成的 RTL 事项：
 
 - 在 `mma_top` 增加 AXI master 顶层端口，移除 `sa_icb_*` 作为最终外部接口。
