@@ -497,3 +497,14 @@ read outstanding 后，ro=8 已无额外收益，说明“继续单纯加深 AR 
 | TFLM | `micro_speech/my_model/person_detection,SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS |
 | S16 边界随机回归 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},MIN_DIM=1,MAX_DIM=65,unaligned_layout,DDR_RAND_LAT=1,seed=61000` | PASS 8/8 |
 | S8 边界随机回归 | `SIZE=8,CACHE=4,PS_FRAME=8,DF={WS,IS},lhs={s8,s16},Q={per-tensor,per-channel},MIN_DIM=1,MAX_DIM=65,unaligned_layout,DDR_RAND_LAT=1,seed=62000` | PASS 8/8 |
+
+### 2026-07-01 补充：SoC 小模型回退复核
+
+本轮再次复现 RAM 无延迟 B 旁路实验：`hello_world` 可回到 `425071 cycles`，但 `micro_speech` 会稳定超时在 `progress=0x5b313000`，即第一段 `depthwise_conv` 打包 LHS 后、提交 MMA 前。结论保持不变：小模型回退中确实有 CPU store/B 响应固定开销，但不能用 RAM 立即 B 的方式追回；后续若要减少该开销，应实现显式 posted-write buffer，并在读/MMIO 前 drain。
+
+集成仓同时修复了 `picorv32_axi_adapter` 的复位稳健性：复位时补清 `ack_arvalid`、`ack_wvalid` 和 `xfer_done`。该问题在 `+vcs+initreg+0` 下不显性，但硬件复位语义原本不完整。修复后 TFLM 复核：
+
+| 测试 | 配置 | 结果 |
+|---|---|---|
+| `tflm_hello_world_run` | `SIZE=16,CACHE=4,PS_FRAME=16,O3` | PASS，430,815 cycles |
+| `tflm_micro_speech_run` | `SIZE=16,CACHE=4,PS_FRAME=16,O3,+MMA_UTIL_TRACE` | PASS，15,720,057 cycles；MMA active=32,319，`quant_stall=0` |
