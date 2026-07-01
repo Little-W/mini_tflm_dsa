@@ -27,6 +27,9 @@
   logic bias_monitor_pending;
   logic bias_monitor_active;
   logic expected_bias_switch_by_col;
+  logic expected_bias_switch_d1;
+  logic expected_bias_last_loop_d1;
+  logic expected_bias_last_loop_d2;
 
   assign expected_bias_switch_by_col =
       u_dut.u_ctrl.cache_l1_done &&
@@ -44,6 +47,9 @@
     if (!rst_n) begin
       bias_monitor_pending <= 1'b0;
       bias_monitor_active <= 1'b0;
+      expected_bias_switch_d1 <= 1'b0;
+      expected_bias_last_loop_d1 <= 1'b0;
+      expected_bias_last_loop_d2 <= 1'b0;
       send_ia_trigger_d1 <= 1'b0;
       trigger_latency_active <= 1'b0;
       trigger_latency_cnt <= 0;
@@ -69,17 +75,25 @@
           $finish;
         end
 
-        if (bias_switch !== expected_bias_switch_by_col) begin
+        if (bias_switch !== expected_bias_switch_d1) begin
           $display("[SEQ] ERROR: bias_switch mismatch: got=%0b exp=%0b",
-                   bias_switch, expected_bias_switch_by_col);
+                   bias_switch, expected_bias_switch_d1);
           $finish;
         end
 
-        if (bias_last_loop !== ((u_dut.state != 2'b00) && (u_dut.u_ctrl.l2_idx == TC_G2 - 1))) begin
-          $display("[SEQ] ERROR: bias_last_loop must match the last L2 group!");
+        if ((u_dut.state != 2'b00) &&
+            (bias_last_loop !== expected_bias_last_loop_d2)) begin
+          $display("[SEQ] ERROR: bias_last_loop must match the last L2 group! got=%0b exp=%0b state=%0b l2_idx=%0d is_last=%0b",
+                   bias_last_loop, expected_bias_last_loop_d2,
+                   u_dut.state, u_dut.u_ctrl.l2_idx,
+                   u_dut.u_ctrl.is_last_l2_group);
           $finish;
         end
       end
+
+      expected_bias_switch_d1 <= expected_bias_switch_by_col;
+      expected_bias_last_loop_d2 <= expected_bias_last_loop_d1;
+      expected_bias_last_loop_d1 <= (u_dut.state != 2'b00) && u_dut.u_ctrl.is_last_l2_group;
 
       if (send_ia_trigger && !send_ia_trigger_d1) begin
         trigger_latency_active <= 1'b1;

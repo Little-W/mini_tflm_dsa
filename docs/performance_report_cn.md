@@ -753,3 +753,129 @@ TFLM_SOC_MMA_MIN_MACS
 - `runs/soc_bias_prefetch_tflm/hello`
 - `runs/soc_bias_prefetch_tflm/micro`
 - `runs/soc_bias_prefetch_tflm/my_model`
+
+### 2026-07-01 补充：W 列展平硬件转置与 AXI 仲裁器接口瘦身
+
+本轮针对全连接路径里 `repack_rhs_for_ws` 带来的额外内存操作做了硬件修正。设计约束是：DDR 中 W 按输出列展平存放，DMA 仍应沿一列内的 K/N 元素连续 burst 读取；但脉动阵列消费的 weight vector 方向与该 DDR 布局相反，因此转置应在 kernel loader 的缓存写入侧完成，而不是在软件 Invoke 阶段重新打包 RHS。
+
+RTL 修正：
+
+- `kernel_loader_ctrl` 的 W 地址公式改为 `rhs_base + output_col * SIZE * rhs_stride + k_tile * SIZE * elem_bytes`。也就是说，每个 DMA row 对应一个输出列，row 内 burst 连续读取该列上的 K/N 元素。
+- `kernel_loader_buffer` 将 DMA row 写成 `mem[slot][k_idx][output_col_idx] <= row_data[k_idx]`，在缓存内完成转置；后续发送给阵列的顺序保持不变。
+- case 生成器和 SoC runtime 改为直接使用列展平 RHS，NMSIS ExtraAcc 中删除 `repack_rhs_for_ws()` 和静态 RHS repack buffer。这样硬件保持连续读，软件不再做重复转置搬运。
+
+功能验证：
+
+| 验证项 | 配置 | 结果 |
+|---|---|---|
+| TFLM micro_speech W 布局验证 | `OUT_DIR=runs/tflm_hw_w_col/micro,+SOC_AXI_STATS` | PASS，`invoke_cycles=2102227` |
+| SoC 随机回归 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},quant={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1,seed=86200` | PASS 8/8 |
+| 非 16 对齐尾块回归 | `MIN_DIM=1,MAX_DIM=65,DIM_MULTIPLE=1,seed=86210..86211` | PASS 16/16 |
+| AXI 仲裁器接口瘦身后回归 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},quant={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1,seed=87300` | PASS 8/8 |
+| 控制器旧标志删除后回归 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},quant={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1,seed=87310` | PASS 8/8 |
+| W 连续读与硬件转置复核 | `SIZE=16,CACHE=4,DF={WS,IS},lhs={s8,s16},quant={per-tensor,per-channel},unaligned_layout,DDR_RAND_LAT=1,seed=87400` | PASS 8/8 |
+
+W 布局修正后的利用率锚点如下，均为 `SIZE=16,CACHE=8,PS_FRAME=16,WS,s8,per-tensor,+MMA_UTIL_TRACE,+MMA_CTRL_UTIL,+SOC_AXI_STATS`，DDR 随机延迟关闭：
+
+| K=N=M | SoC cycles | MMA active | IA 行利用率 | acc 利用率 | weight_data_stall | ia_data_stall | bias_stall | DMA busy IA/kernel/OA |
+|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 64 | 83,936 | 6,573 | 15.57% | 3.89% | 2,574 | 1,280 | 853 | 2,638 / 2,641 / 1,360 |
+| 128 | 284,757 | 34,657 | 23.63% | 2.95% | 16,998 | 986 | 1,799 | 10,564 / 21,071 / 5,440 |
+
+这组数据说明：W 转置方向修正后，结果正确且不再需要软件 repack；但大矩阵 active 内部的主气泡仍来自 kernel/weight 供给。`128x128x128` 中 kernel DMA busy 达到 21,071 cycles，`weight_data_stall` 为 16,998 cycles，明显高于 IA/bias 等其它等待项。
+
+为了确认 cache/reuse 对该瓶颈的影响，本轮进一步对比了 `IA_CACHE_BLOCKS=8` 与 `IA_CACHE_BLOCKS=16`。当前驱动和 RTL 的默认 reuse 上限为 `IA_CACHE_BLOCKS / 2`，因此 C8 对应 `IA_REUSE=4`，C16 对应 `IA_REUSE=8`；其它配置保持一致：`SIZE=16,PS_FRAME=16,WS,s8,per-tensor,+MMA_UTIL_TRACE,+MMA_CTRL_UTIL,+SOC_AXI_STATS`，DDR 随机延迟关闭。
+
+| K=N=M | Cache | SoC cycles | MMA active | active 改善 | IA 行利用率 | acc 利用率 | weight_trig | kernel DMA busy | weight_data_stall |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 128 | 8 | 284,757 | 34,657 | 基线 | 23.63% | 2.95% | 128 | 21,071 | 16,998 |
+| 128 | 16 | 276,535 | 26,444 | 23.7% | 30.97% | 3.87% | 64 | 10,554 | 10,970 |
+| 256 | 8 | 1,159,276 | 221,048 | 基线 | 29.64% | 1.85% | 1,024 | 168,632 | 96,967 |
+| 256 | 16 | 1,077,595 | 139,357 | 37.0% | 47.02% | 2.93% | 512 | 84,341 | 42,322 |
+
+这组数据把瓶颈来源暴露得比较清楚：
+
+- C16 将 `weight_trig` 和 `kernel DMA busy` 基本减半，说明 cache 增大后最直接的收益是减少同一 W tile 随 IA row group 重复读取。
+- 256 点比 128 点收益更明显：MMA active 从 221,048 降到 139,357，改善约 37.0%；IA 行利用率从 29.64% 提升到 47.02%。矩阵越大，W tile 重读占比越高，cache/reuse 的收益越能覆盖固定启动和写回开销。
+- SoC 端到端 cycles 的改善小于 MMA active 改善，128 点约 2.9%，256 点约 7.0%。这是因为当前统计包含 CPU 驱动、case 控制、AXI 竞争和写回等待等固定开销；若只看 MMA active，cache 对阵列供数气泡的改善更明显。
+- C16 的 `dma_busy_ia` 基本不变，而 `dma_busy_kernel` 减半，说明继续优化时应优先压低 W 重读，而不是在 IA de-diagonalizer 上继续挤小气泡。
+
+本轮还做了几个未保留的性能实验，用来确认瓶颈位置：
+
+| 实验 | 64 点结果 | 128 点结果 | 结论 |
+|---|---:|---:|---|
+| kernel buffer slot 从 2 增到 4 | active 6,872，变慢 | active 34,606，仅快约 0.15% | 更深预取主要把 `weight_data_stall` 转移为 IA/bias 等读侧等待，不值得保留 |
+| 读仲裁改为 `quant > bias > IA > kernel` | active 6,525，小幅变快 | active 34,687，变慢 | 小矩阵减少 bias/IA 等待，但大矩阵 kernel 供给被饿住 |
+| 读仲裁改为 `kernel > quant > bias > IA` | active 6,666，变慢 | 未继续跑 | IA 等待显著增加，说明静态调优优先级无法根治瓶颈 |
+
+因此，当前 de-diagonalizer/IA 连续输出不是主瓶颈：当 IA cache 中分块全部缓存好后，IA 侧确实能连续吐出多个分块；剩余大气泡集中在“同一组 W 随 IA row group 重复读”和共享 AXI 读侧调度。下一步若要继续提升阵列利用率，应优先做权重 tile 复用窗口或 loop order 重排，减少相同 W tile 在不同 IA reuse repeat 间的重复 DMA，而不是继续增加普通 kernel buffer 深度或改静态仲裁优先级。
+
+本轮也检查了是否能直接做局部 weight replay。当前 IA 侧分块顺序是：在同一个输出 row group 内遍历 `W group -> reduction tile`，然后才切到下一个 row group；kernel 侧只有少量 FIFO slot，无法保存完整 `reduction tile x W group` 的权重集合。因此如果只让 kernel buffer replay 最近一两个 tile，序列会和 IA/PS/OA 的分组语义错位。真正减少跨 row group 的 W 重读，需要新增可寻址 W tile cache，或把 IA loop order、ps_buffer 归属和 OA 写回顺序一起重排。
+
+接口精简：
+
+- `axi_block_dma_arbiter` 删除旧统一 DMA 接口残留的 `*_is_write` 输入，以及 OA 写侧不再使用的 `linear_read_mode/slot_id/use_16bits/lhs_zp` 输入。
+- `rd_error/wr_error` 和未使用的 raw row/col 输出改为未连接，不再通过 `unused_*` wire 保留。
+- `ia_group_calc_done` 只用于 controller debug 打印，已从 `ia_loader`、`mma_top` 和 `mma_controller` 接口中删除；计算尾部控制仍由 `partial_sum_calc_over/tile_calc_over/ia_sending_done` 路径承担。
+- `mma_top` 中对应的旧中间 wire 删除；loader/oa_writer 自身的通用 DMA 输出暂时保留为未连接，因为旧 `block_dma_arbiter`/非 AXI 路径仍复用这些模块接口。
+
+这次接口瘦身不改变性能曲线，但让 AXI 主路径语义更清楚：IA/kernel/bias/quant 是只读客户端，OA 是只写客户端，读写并行由 `axi_dual_block_dma` 的独立 AR/R 与 AW/W/B 通道承担。
+
+### 2026-07-01 补充：时序 buffer 后的 SoC 性能劣化复核
+
+本轮复核用户指出的“时序优化后 SoC 性能反而劣化”问题。结论是：MMA 计算吞吐没有劣化，旧报告中的大幅总周期劣化来自两个混在一起的因素：
+
+1. RAM 侧 `soc_axi_pingpong_buffer` 是普通 2-entry register FIFO，burst 填满后可每拍吞吐，但空 FIFO 不能首拍旁路。对 DMA burst 影响较小，对 PicoRV32 这种单 outstanding 取指/访存会把每次请求的首拍延迟放大。
+2. current 回归使用了 `--unaligned-layout`，实际 runtime header 中 `output_addr=0x0009eba3`，输出地址非 4 字节对齐，`clear_runtime_output()` 和 `compare_runtime_output()` 都走 byte loop；旧版基准没有这个参数，不能直接拿总 `soc_finish` cycles 对比。
+
+RTL/仿真改动：
+
+- `soc_top` 新增 `BYPASS_RAM_PINGPONG`，默认旁路 RAM 侧 pingpong buffer；Makefile 暴露 `SOC_BYPASS_RAM_PINGPONG`，需要复现实验时可设为 0。
+- `pico_native_to_axi` 新增小型指令行缓存，只缓存 `mem_instr` 读；miss 通过 AXI burst 填 4 word line，hit 直接响应 Pico。这样仍保持 Pico 通过 AXI 访问统一内存模型，但热循环不再每条取指都打到 interconnect。
+- `pico_native_to_axi` 增加 `+SOC_CPU_AXI_STATS` 仿真统计，输出 Pico read/write 请求、取指/数据请求、等待周期和 I-cache hit/miss/fill beat。
+- `ia_loader_ctrl` 的预取进入条件从“避开所有 `cache_tile_done` 拍”收窄为“只避开真正 L1 退休拍”，避免非退休 tile 完成拍过度保守；该修改对主 SoC 总周期影响小，但语义更准确。
+
+主对比 case：`seed=87500,K=256,N=256,M=224,SIZE=16,IA_CACHE_BLOCKS=32,PS_FRAME=16,WS,s8,per-channel,DDR_RAND_LAT=1`。
+
+| 版本/配置 | layout | RAM pingpong | SoC cycles | DSA execute | 非 DSA cycles | 说明 |
+|---|---|---|---:|---:|---:|---|
+| 旧版 `0da2dcc` | aligned | 旧直连 memory | 1,234,413 | 420,084 | 814,329 | 旧报告基准 |
+| current 时序 buffer 版 | unaligned | enabled | 8,303,708 | 352,838 | 7,950,870 | 旧“劣化”观测点，混入非对齐 byte loop 和 RAM FIFO 首拍延迟 |
+| current + RAM 旁路 | unaligned | bypass | 5,968,481 | 318,875 | 5,649,606 | 旁路 RAM FIFO 后总周期下降约 28% |
+| current + RAM 旁路 + I-cache | unaligned | bypass | 4,103,122 | 288,796 | 3,814,326 | 非对齐验证仍会显著放大 CPU clear/compare |
+| current + RAM 旁路 + I-cache | aligned | bypass | 1,003,980 | 258,104 | 745,876 | 与旧版公平对齐布局对比，总周期快约 18.7%，DSA 执行快约 38.6% |
+
+对齐布局 current 的 AXI 统计：
+
+```text
+[SOC_AXI_STATS] cpu_ar_wait=87 mma_ar_wait=1712 cpu_aw_wait=0 mma_aw_wait=599 rd_yield=130 wr_yield=0
+[SOC_CPU_AXI_STATS] read_req=283471 write_req=14726 instr_req=243117 data_req=55080 read_wait=66781 write_wait=79544 ic_hit=242871 ic_miss=246 ic_fill_beats=984
+```
+
+分析：
+
+- 对齐布局下 current 总周期和 DSA 执行周期都优于旧版，因此时序优化没有降低 MMA 吞吐。
+- `--unaligned-layout` 是功能边界测试，不能和 aligned 性能基准直接混比。非对齐输出会让 clear/compare 从 word loop 退化到 byte loop，非 DSA cycles 从 745,876 放大到 3,814,326。
+- RAM 侧 pingpong buffer 是满吞吐 FIFO，但对 Pico 单请求路径不是“无代价流水线”。默认旁路后，MMA DMA 的 outstanding 仍由 `axi_dual_block_dma`、`soc_axi_interconnect` 和 `soc_axi_ram` 支持。
+- I-cache 后对齐布局只有 246 次取指 miss，242,871 次 hit；CPU 取指不再对 interconnect 形成持续压力，`cpu_ar_wait` 降到 87 cycles。
+
+边界验证：
+
+| 验证项 | 配置 | 结果 |
+|---|---|---|
+| 对齐小矩阵边界 | `SIZE=16,CACHE={8,32},DF={WS,IS},lhs={s8,s16},quant={per-tensor,per-channel},MIN_DIM=1,MAX_DIM=33,seed=88000..88001` | PASS 32/32 |
+| 非对齐小矩阵边界 | 同上，`--unaligned-layout,seed=88100..88101` | PASS 32/32 |
+| RAM pingpong 分支烟测 | `SOC_BYPASS_RAM_PINGPONG=0,SIZE=16,CACHE=8,WS,s8,per-tensor,seed=88210` | PASS |
+
+日志目录：
+
+- `runs/current_c32_seed87500_q1_randlat_icache_aligned_stats_v2`
+- `runs/current_c32_seed87500_q1_randlat_icache_cpu_stats`
+- `runs/current_boundary_icache_aligned_rerun`
+- `runs/current_boundary_icache_unaligned`
+
+后续注意事项：
+
+- 性能报告默认使用 aligned layout；非对齐 layout 只用于功能/边界验证，除非明确分析非对齐软件开销。
+- 不能把“满吞吐 FIFO”直接等同为“对单请求 CPU 无性能影响”。Pico 单 outstanding 路径需要低首拍延迟、lookahead 或 I-cache。
+- 继续做时序切断时，优先在真正超时的 DMA 地址递推、quant 控制、loader 控制路径内部插入流水或重写算术结构，不要用 RAM 口额外延迟掩盖内部路径。

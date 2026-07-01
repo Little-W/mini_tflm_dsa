@@ -105,7 +105,6 @@ module tb_ia_loader;
   logic [SIZE_W-1:0]            dummy_ext_dma_wr_col_base;
   logic signed [DATA_WIDTH-1:0] dummy_ext_dma_wr_data [BYTE_PER_BEAT];
   logic                         dummy_ext_dma_wr_valid[BYTE_PER_BEAT];
-  logic                         dummy_ia_group_calc_done;
 
   always_comb begin
     dummy_ext_dma_wr_slot     = '0;
@@ -177,7 +176,6 @@ module tb_ia_loader;
     .ia_is_init_data  (ia_is_init_data),
     .ia_calc_done     (ia_calc_done),
     .ia_sending_done  (ia_sending_done),
-    .ia_group_calc_done(dummy_ia_group_calc_done),
     .ia_l1_switch     (ia_l1_switch),
     .ia_data_valid    (ia_data_valid),
     .bias_sleep       (bias_sleep),
