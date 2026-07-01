@@ -30,6 +30,7 @@ module kernel_loader_buffer #(
   logic send_active;
   logic send_pending;
   logic load_busy;
+`ifndef SYNTHESIS
   bit kernel_buf_trace_en;
 
   assign load_ready = !load_busy && (valid_count < COUNT_W'(SLOT_COUNT));
@@ -39,6 +40,12 @@ module kernel_loader_buffer #(
     kernel_buf_trace_en = 1'b0;
     if ($test$plusargs("MMA_KERNEL_BUF_TRACE")) kernel_buf_trace_en = 1'b1;
   end
+`else
+  localparam bit kernel_buf_trace_en = 1'b0;
+
+  assign load_ready = !load_busy && (valid_count < COUNT_W'(SLOT_COUNT));
+  assign weight_data_valid = (valid_count != '0) && !send_active && !send_pending;
+`endif
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -83,7 +90,7 @@ module kernel_loader_buffer #(
 
       if (row_valid && load_busy) begin
         for (int c = 0; c < SIZE; c++) begin
-          mem[load_slot][row_idx][c] <= row_data[c];
+          mem[load_slot][c][row_idx] <= row_data[c];
         end
       end
 
