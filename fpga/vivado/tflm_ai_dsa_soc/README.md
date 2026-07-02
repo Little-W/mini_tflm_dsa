@@ -48,3 +48,42 @@ vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_synth.tcl \
 `ICB_LEN_W` is computed from `SIZE` by the project Tcl.
 `CORE_CLK_MHZ` defaults to 150 MHz and is produced from the 50 MHz board clock
 through Clocking Wizard.
+
+## Export Self-Contained Project
+
+Use `export_project.tcl` when the Vivado project should be moved or opened
+without depending on the live source trees. It copies RTL from this repository
+and `AIENGINE_ROOT`, copies the CPU memory image into the exported directory,
+and sets `CPU_MEM_PATH` to the copied file's absolute path.
+
+```sh
+vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl
+```
+
+The default export is:
+
+```text
+vivado_export/tflm_ai_dsa_soc/project/tflm_ai_dsa_soc.xpr
+```
+
+To export a specific configuration and immediately generate a bitstream:
+
+```sh
+VIVADO_JOBS=8 vivado -mode batch \
+  -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
+  -tclargs vivado_export/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 \
+  /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_runtime_build_S16_C4_P16/cpu.mem \
+  150.000 1 0 1 1 Flow_AreaOptimized_high Performance_Explore
+```
+
+Argument order:
+
+```text
+<export_root> <part> <SIZE> <IA_CACHE_BLOCKS> <CPU_MEM_DP> <CPU_MEM_PATH>
+<CORE_CLK_MHZ> <CPU_AXI_WRITE_TIMING_BUFFER> <BYPASS_RAM_PINGPONG>
+<RAM_WRITE_TIMING_BUFFER> <RUN_IMPL> <SYNTH_STRATEGY> <IMPL_STRATEGY>
+```
+
+The exported directory contains a short `README.md`, copied source files,
+constraints, `mem/cpu.mem`, routed reports when `RUN_IMPL=1`, and
+`fpga_top.bit` after bitstream generation.

@@ -24,6 +24,7 @@ test/*/__pycache__/
 
 # Vivado generated outputs
 /build/
+/vivado_export/
 *.jou
 *.str
 *.runs/
