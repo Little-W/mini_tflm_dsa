@@ -215,8 +215,6 @@ def compute_layout(case, args, rng):
     k = case["k"]
     n = case["n"]
     m = case["m"]
-    is_mode = case["dataflow_mode"] == 1
-
     def stride(min_bytes):
         if args.tight_strides:
             return min_bytes
@@ -225,27 +223,20 @@ def compute_layout(case, args, rng):
         extra_words = rng.randint(0, 2) if args.random else 0
         return align_up(min_bytes, WORD_BYTES) + extra_words * WORD_BYTES
 
-    if is_mode:
-        lhs_row_stride_b = stride(k * lhs_elem_bytes)
-        rhs_row_stride_b = stride(n)
-    else:
-        lhs_row_stride_b = stride(n * lhs_elem_bytes)
-        rhs_row_stride_b = stride(m)
+    # Both WS and IS consume the external LHS as K row-major rows.  In IS mode
+    # the RTL swaps the internal roles (RHS becomes IA, LHS becomes kernel) and
+    # transposes the writeback, so the case image must not pre-transpose LHS.
+    lhs_row_stride_b = stride(n * lhs_elem_bytes)
+    rhs_row_stride_b = stride(n)
     dst_row_stride_b = stride(m)
 
     cur = 0x100
     lhs_base = cur
-    if is_mode:
-        lhs_end = lhs_base + (n - 1) * lhs_row_stride_b + k * lhs_elem_bytes
-    else:
-        lhs_end = lhs_base + (k - 1) * lhs_row_stride_b + n * lhs_elem_bytes
+    lhs_end = lhs_base + (k - 1) * lhs_row_stride_b + n * lhs_elem_bytes
 
     cur = align_up(lhs_end, 0x100)
     rhs_base = cur
-    if is_mode:
-        rhs_end = rhs_base + (m - 1) * rhs_row_stride_b + n
-    else:
-        rhs_end = rhs_base + (n - 1) * rhs_row_stride_b + m
+    rhs_end = rhs_base + (m - 1) * rhs_row_stride_b + n
 
     cur = align_up(rhs_end, 0x100)
     bias_base = cur
@@ -292,36 +283,22 @@ def fill_images(case, layout, lhs, rhs, bias):
     img_init = bytearray(layout["mem_words"] * WORD_BYTES)
     img_golden = bytearray(layout["mem_words"] * WORD_BYTES)
     lhs_elem_bytes = 2 if case["lhs_dtype"] == 2 else 1
-    is_mode = case["dataflow_mode"] == 1
+    for row in range(case["k"]):
+        row_base = layout["lhs_base"] + row * layout["lhs_row_stride_b"]
+        for col in range(case["n"]):
+            off = row_base + col * lhs_elem_bytes
+            if lhs_elem_bytes == 2:
+                put_s16(img_init, off, lhs[row][col])
+            else:
+                put_s8(img_init, off, lhs[row][col])
 
-    if is_mode:
-        for row in range(case["n"]):
-            row_base = layout["lhs_base"] + row * layout["lhs_row_stride_b"]
-            for col in range(case["k"]):
-                off = row_base + col * lhs_elem_bytes
-                if lhs_elem_bytes == 2:
-                    put_s16(img_init, off, lhs[col][row])
-                else:
-                    put_s8(img_init, off, lhs[col][row])
-
-        for row in range(case["m"]):
-            row_base = layout["rhs_base"] + row * layout["rhs_row_stride_b"]
-            for col in range(case["n"]):
-                put_s8(img_init, row_base + col, rhs[col][row])
-    else:
-        for row in range(case["k"]):
-            row_base = layout["lhs_base"] + row * layout["lhs_row_stride_b"]
-            for col in range(case["n"]):
-                off = row_base + col * lhs_elem_bytes
-                if lhs_elem_bytes == 2:
-                    put_s16(img_init, off, lhs[row][col])
-                else:
-                    put_s8(img_init, off, lhs[row][col])
-
-        for row in range(case["n"]):
-            row_base = layout["rhs_base"] + row * layout["rhs_row_stride_b"]
-            for col in range(case["m"]):
-                put_s8(img_init, row_base + col, rhs[row][col])
+    # RHS/W is stored as column-flattened rows: one output column per DMA row,
+    # with contiguous reduction-axis elements in memory.  IS reuses this layout
+    # as the IA stream and transposes writeback internally.
+    for row in range(case["m"]):
+        row_base = layout["rhs_base"] + row * layout["rhs_row_stride_b"]
+        for col in range(case["n"]):
+            put_s8(img_init, row_base + col, rhs[col][row])
 
     for col in range(case["m"]):
         put_s32(img_init, layout["bias_base"] + 4 * col, bias[col])
@@ -457,7 +434,7 @@ def main():
     parser.add_argument("--ia_reuse_num", type=int)
     parser.add_argument("--w_reuse_num", type=int)
     parser.add_argument("--dataflow_mode", type=int, choices=[0, 1], default=0,
-                        help="0=WS, 1=IS with pre-transposed inputs")
+                        help="0=WS, 1=IS internal role swap with transposed writeback")
     parser.add_argument("--random_dataflow", action="store_true")
     parser.add_argument("--ps_frame_count", type=int, default=8)
     args = parser.parse_args()

@@ -375,7 +375,7 @@ module tb_mma_top;
             end
             if (debug_stream && (u_dut.bias_switch || u_dut.load_bias_granted ||
                                  u_dut.load_bias_done || u_dut.u_bias_loader.u_ctrl.switch_pending)) begin
-                $display("[DBG][BIAS] t=%0t state=%0d sw=%0b sleep=%0b last=%0b req=%0b grant=%0b done=%0b pending=%0b cur=%0d load=%0d next=%0d act_bank=%0b load_bank=%0b valid=%0b next_valid=%0b group=%0b data=%0d,%0d next_data=%0d,%0d",
+                $display("[DBG][BIAS] t=%0t state=%0d sw=%0b sleep=%0b last=%0b req=%0b grant=%0b done=%0b pending=%0b cur=%0d load=%0d act_bank=%0b load_bank=%0b valid=%0b group=%0b data=%0d,%0d",
                          $time,
                          u_dut.u_bias_loader.u_ctrl.state,
                          u_dut.bias_switch,
@@ -387,16 +387,12 @@ module tb_mma_top;
                          u_dut.u_bias_loader.u_ctrl.switch_pending,
                          u_dut.u_bias_loader.u_ctrl.current_block_idx,
                          u_dut.u_bias_loader.u_ctrl.load_block_idx,
-                         u_dut.u_bias_loader.u_ctrl.next_block_idx,
                          u_dut.u_bias_loader.u_ctrl.active_bank,
                          u_dut.u_bias_loader.u_ctrl.load_bank,
                          u_dut.bias_valid,
-                         u_dut.next_bias_valid,
                          u_dut.bias_group_valid,
                          u_dut.bias_data_out[0],
-                         u_dut.bias_data_out[1],
-                         u_dut.next_bias_data_out[0],
-                         u_dut.next_bias_data_out[1]);
+                         u_dut.bias_data_out[1]);
             end
             if (debug_stream && u_dut.ia_row_valid) begin
                 $display("[DBG][IA]  t=%0t done=%0b init=%0b tile_start=%0b bias_valid=%0b bias=%0d,%0d ia=%0d,%0d,%0d,%0d",
@@ -405,16 +401,16 @@ module tb_mma_top;
                          u_dut.ia_out[0], u_dut.ia_out[1],
                          u_dut.ia_out[2], u_dut.ia_out[3]);
             end
-            if (debug_stream && (u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.replay_data_valid ||
-                                 u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.ram_write_en ||
-                                 u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.send_ia_trigger_i)) begin
+            if (debug_stream && (u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.replay_data_valid ||
+                                 u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.ram_write_en ||
+                                 u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.send_ia_trigger_i)) begin
                 $write("[DBG][PS]  t=%0t trig=%0b replay=%0b rcnt=%0d wren=%0b len=%0d ps=",
                          $time,
-                         u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.send_ia_trigger_i,
-                         u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.replay_data_valid,
-                         u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.replay_count,
-                         u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.ram_write_en,
-                         u_dut.u_compute_core.u_ps_buffer.gen_ps_buffer_fifo[0].u_ps_buffer_fifo.frame_len);
+                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.send_ia_trigger_i,
+                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.replay_data_valid,
+                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.replay_count,
+                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.ram_write_en,
+                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.frame_len);
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
                     $write("%0d%s", u_dut.u_compute_core.ps_data_out[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
@@ -451,9 +447,9 @@ module tb_mma_top;
                 $write("\n");
             end
             if (debug_stream && u_dut.fifo_output_valid && u_dut.fifo_output_ready) begin
-                $display("[DBG][WR]  t=%0t tile=(%0d,%0d) row=%0d addr=%h data=%h mask=%b sw=%0b",
+                $display("[DBG][WR]  t=%0t tile=(%0d,%0d) row=%0d data=%h mask=%b sw=%0b",
                          $time, u_dut.u_oa_writer.tile_row_idx, u_dut.u_oa_writer.tile_col_idx,
-                         u_dut.u_oa_writer.row_in_tile, u_dut.u_oa_writer.cur_addr,
+                         u_dut.u_oa_writer.row_in_tile,
                          u_dut.fifo_output_data, u_dut.fifo_output_mask,
                          u_dut.fifo_output_switch_row);
             end
@@ -584,9 +580,8 @@ module tb_mma_top;
         #20000000;
         $display("[TB] FATAL: timeout, sa_ready=%0b wb_valid=%0b err_code=%0b",
                  sa_ready, wb_valid, err_code);
-        $display("[TB][DBG] ctrl_state=%0d icb_sel=%0d ia_valid=%0b ia_done=%0b w_valid=%0b w_done=%0b bias_valid=%0b bias_sleep=%0b quant_valid=%0b tile_calc_over=%0b oa_calc_over=%0b",
+        $display("[TB][DBG] ctrl_state=%0d ia_valid=%0b ia_done=%0b w_valid=%0b w_done=%0b bias_valid=%0b bias_sleep=%0b quant_valid=%0b tile_calc_over=%0b oa_calc_over=%0b",
                  u_dut.u_mma_controller.current_state,
-                 u_dut.icb_sel,
                  u_dut.ia_data_valid,
                  u_dut.ia_sending_done,
                  u_dut.weight_data_valid,
@@ -651,17 +646,14 @@ module tb_mma_top;
                  u_dut.u_block_dma_arbiter.wr_started,
                  u_dut.u_block_dma_arbiter.wr_dma_busy,
                  u_dut.u_block_dma_arbiter.wr_dma_done);
-        $display("[TB][DBG] dma rd_cmd_row=%0d rd_rsp_row=%0d rd_rsp_beat=%0d rd_inflight=%0b rd_active=%0b rd_done=%0b wr_row=%0d wr_beat=%0d wr_row_active=%0b wr_b_pending=%0b",
+        $display("[TB][DBG] dma rd_cmd_row=%0d rd_rsp_row=%0d rd_rsp_beat=%0d rd_inflight=%0b rd_active=%0b rd_done=%0b wr_beat=%0d",
                  u_dut.u_block_dma_arbiter.u_dma.rd_cmd_row_cnt,
                  u_dut.u_block_dma_arbiter.u_dma.rd_rsp_row_cnt,
                  u_dut.u_block_dma_arbiter.u_dma.rd_rsp_beat_cnt,
                  u_dut.u_block_dma_arbiter.u_dma.rd_cmd_inflight,
                  u_dut.u_block_dma_arbiter.u_dma.rd_active,
                  u_dut.u_block_dma_arbiter.u_dma.rd_done,
-                 u_dut.u_block_dma_arbiter.u_dma.wr_row_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.wr_beat_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.wr_row_active,
-                 u_dut.u_block_dma_arbiter.u_dma.wr_b_pending);
+                 u_dut.u_block_dma_arbiter.u_dma.wr_beat_cnt);
         $display("[TB][DBG] axi ar_v=%0b ar_r=%0b r_v=%0b r_r=%0b aw_v=%0b aw_r=%0b w_v=%0b w_r=%0b b_v=%0b b_r=%0b",
                  m_axi_arvalid,
                  m_axi_arready,

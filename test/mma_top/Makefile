@@ -9,18 +9,23 @@ IA_CACHE_BLOCKS ?= 4
 PS_FRAME_COUNT ?= 8
 AXI_READ_OUTSTANDING ?= 4
 BUILD_ROOT ?= obj_dir
-BUILD_DIR := $(BUILD_ROOT)/s$(SIZE)_c$(IA_CACHE_BLOCKS)_ps$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)
+TRACE ?= 1
+TRACE_ENABLED := $(filter 1 yes true TRUE,$(TRACE))
+TRACE_TAG := $(if $(TRACE_ENABLED),trace,notrace)
+TRACE_FLAGS := $(if $(TRACE_ENABLED),--trace,)
+BUILD_DIR := $(BUILD_ROOT)/s$(SIZE)_c$(IA_CACHE_BLOCKS)_ps$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_$(TRACE_TAG)
 SIM_BIN := $(BUILD_DIR)/$(VEXE)
 VERILATOR_OPT_FLAGS ?= -O3 -CFLAGS -O3 -LDFLAGS -O3
 
 # Verilator参数
-VERILATOR_FLAGS := -sv -Wall --trace --timing --top-module tb_mma_top \
+VERILATOR_FLAGS := -sv -Wall $(TRACE_FLAGS) --timing --top-module tb_mma_top \
 	$(VERILATOR_OPT_FLAGS) \
 	-Wno-GENUNNAMED -Wno-VARHIDDEN -Wno-WIDTHEXPAND -Wno-UNUSEDSIGNAL \
 	-Wno-UNUSED -Wno-UNUSEDGENVAR -Wno-UNDRIVEN -Wno-PINMISSING \
 	-Wno-STMTDLY -Wno-DECLFILENAME -Wno-CASEINCOMPLETE -Wno-EOFNEWLINE \
 	-Wno-PROCASSINIT -Wno-SYNCASYNCNET -Wno-COMBDLY -Wno-PINCONNECTEMPTY \
 	-Wno-WIDTHTRUNC -Wno-ASCRANGE -Wno-INITIALDLY -Wno-BLKSEQ -Wno-MULTIDRIVEN \
+	-Wno-LATCH \
 	-DTB_SIZE=$(SIZE) -DTB_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS) -DTB_PS_FRAME_COUNT=$(PS_FRAME_COUNT) \
 	-DTB_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING)
 
@@ -97,9 +102,9 @@ run_param_random: $(OUT_DIR)
 	for size in $(SIZES); do \
 		for cache in $(CACHE_BLOCKS_LIST); do \
 			build_log="$(OUT_DIR)/build_s$${size}_c$${cache}.log"; \
-			$(MAKE) --no-print-directory build_only SIZE=$${size} IA_CACHE_BLOCKS=$${cache} PS_FRAME_COUNT=$(PS_FRAME_COUNT) AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) > "$${build_log}" 2>&1 || { \
+			$(MAKE) --no-print-directory build_only SIZE=$${size} IA_CACHE_BLOCKS=$${cache} PS_FRAME_COUNT=$(PS_FRAME_COUNT) AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) BUILD_ROOT=$(BUILD_ROOT) TRACE=$(TRACE) > "$${build_log}" 2>&1 || { \
 				cat "$${build_log}"; fail=$$((fail + $(COUNT))); idx=$$((idx + $(COUNT))); continue; }; \
-			bin="$(BUILD_ROOT)/s$${size}_c$${cache}_ps$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)/$(VEXE)"; \
+			bin="$(BUILD_ROOT)/s$${size}_c$${cache}_ps$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_$(TRACE_TAG)/$(VEXE)"; \
 			for i in $$(seq 0 $$(( $(COUNT) - 1 ))); do \
 				seed=$$(( $(SEED) + $$idx )); idx=$$((idx + 1)); \
 				log="$(OUT_DIR)/param_s$${size}_c$${cache}_$${seed}.log"; \
@@ -113,6 +118,7 @@ run_param_random: $(OUT_DIR)
 	echo "[run_param_random] PASS=$${pass} FAIL=$${fail}"; \
 	test "$${fail}" -eq 0
 
+wave: TRACE=1
 wave: run
 	gtkwave wave.vcd
 
