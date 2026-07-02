@@ -21,3 +21,15 @@ test/*/tiles/
 **/tiles/
 test/*/__pycache__/
 **/__pycache__/
+
+# Vivado generated outputs
+/build/
+*.jou
+*.str
+*.runs/
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.srcs/
+*.gen/
