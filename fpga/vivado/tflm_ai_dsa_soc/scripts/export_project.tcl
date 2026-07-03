@@ -104,11 +104,56 @@ proc copy_one_file {src dst} {
 
 proc localize_path {src export_root dsa_root ai_root} {
     set abs_src [file normalize $src]
-    if {[starts_with_path $abs_src $dsa_root]} {
-        return [file join $export_root src tflm_ai_dsa [rel_under_root $abs_src $dsa_root]]
+
+    set flow_root [file normalize [file join $dsa_root fpga vivado tflm_ai_dsa_soc]]
+    set dsa_rtl_root [file join $dsa_root rtl]
+    set dsa_inc_root [file join $dsa_root inc]
+    set ai_rtl_root [file join $ai_root rtl axi_accelerator]
+    set ai_pico_root [file join $ai_root picorv32]
+
+    if {[starts_with_path $abs_src [file join $flow_root constraints]]} {
+        return [file join $export_root constraints [rel_under_root $abs_src [file join $flow_root constraints]]]
+    }
+    if {[starts_with_path $abs_src [file join $flow_root rtl]]} {
+        return [file join $export_root src rtl fpga [rel_under_root $abs_src [file join $flow_root rtl]]]
+    }
+    if {[starts_with_path $abs_src [file join $flow_root sim]]} {
+        return [file join $export_root src sim [rel_under_root $abs_src [file join $flow_root sim]]]
+    }
+    if {[starts_with_path $abs_src $dsa_rtl_root]} {
+        return [file join $export_root src rtl [rel_under_root $abs_src $dsa_rtl_root]]
+    }
+    if {[starts_with_path $abs_src $dsa_inc_root]} {
+        return [file join $export_root src include [rel_under_root $abs_src $dsa_inc_root]]
+    }
+    if {[starts_with_path $abs_src $ai_pico_root]} {
+        return [file join $export_root src rtl cpu picorv32 [rel_under_root $abs_src $ai_pico_root]]
+    }
+    if {[starts_with_path $abs_src [file join $ai_rtl_root soc]]} {
+        return [file join $export_root src rtl soc [rel_under_root $abs_src [file join $ai_rtl_root soc]]]
+    }
+    if {[starts_with_path $abs_src [file join $ai_rtl_root axi_top]]} {
+        return [file join $export_root src rtl npu shell [rel_under_root $abs_src [file join $ai_rtl_root axi_top]]]
+    }
+    if {[starts_with_path $abs_src $ai_rtl_root]} {
+        set rel [rel_under_root $abs_src $ai_rtl_root]
+        set tail [file tail $abs_src]
+        if {$tail eq "soc_top.sv"} {
+            return [file join $export_root src rtl soc top $tail]
+        }
+        if {[string match "axil_reg_if*" $tail]} {
+            return [file join $export_root src rtl axi_lite $tail]
+        }
+        if {$tail eq "csr_unit.v" || $tail eq "wbu.v" || $tail eq "wb_pingpong_buf.v"} {
+            return [file join $export_root src rtl npu shell $tail]
+        }
+        return [file join $export_root src rtl soc $rel]
     }
     if {[starts_with_path $abs_src $ai_root]} {
         return [file join $export_root src aiEngine_integrated [rel_under_root $abs_src $ai_root]]
+    }
+    if {[starts_with_path $abs_src $dsa_root]} {
+        return [file join $export_root src tflm_ai_dsa [rel_under_root $abs_src $dsa_root]]
     }
     set drive_safe [string map [list ":" "_" "\\" "/" " " "_"] [file dirname $abs_src]]
     set drive_safe [string trimleft $drive_safe "/"]
