@@ -1,6 +1,16 @@
 `timescale 1ns / 1ps
 
-module fpga_top_post_impl_tb;
+module fpga_top_post_impl_tb #(
+    parameter int unsigned SIZE = 16,
+    parameter int unsigned ICB_LEN_W = 4,
+    parameter int unsigned IA_CACHE_BLOCKS = 4,
+    parameter int unsigned CPU_MEM_DP = 65536,
+    parameter string       CPU_MEM_PATH = "",
+    parameter int unsigned CPU_ENABLE_ICACHE = 1,
+    parameter int unsigned CPU_AXI_WRITE_TIMING_BUFFER = 1,
+    parameter int unsigned BYPASS_RAM_PINGPONG = 0,
+    parameter int unsigned RAM_WRITE_TIMING_BUFFER = 1
+);
     localparam int unsigned MAX_SYS_CYCLES = 2_000_000;
 
     logic       sys_clk = 1'b0;

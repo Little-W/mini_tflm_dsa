@@ -72,9 +72,15 @@ To export a specific configuration and immediately generate a bitstream:
 VIVADO_JOBS=8 vivado -mode batch \
   -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
   -tclargs vivado_export/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 \
-  /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_runtime_build_S16_C4_P16/cpu.mem \
+  /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_case/cpu.mem \
   150.000 1 0 1 1 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1
 ```
+
+For a bitstream smoke test, use a self-contained `cpu.mem` generated with
+`SOC_APP=case`, because the faster `SOC_APP=runtime` flow keeps its data payload
+in a separate `runtime_data.mem` overlay at `0x00080000`. Passing only the
+runtime `cpu.mem` to Vivado will synthesize a program image without the data
+payload and the post-implementation CPU smoke will trap.
 
 Argument order:
 
@@ -90,8 +96,17 @@ matches the SoC performance regressions. It can also be overridden with the
 `VIVADO_CPU_ENABLE_ICACHE` environment variable.
 
 The exported directory contains a short `README.md`, copied source files,
-constraints, `mem/cpu.mem`, routed reports when `RUN_IMPL=1`, and
-`fpga_top.bit` after bitstream generation.
+constraints, simulation testbenches, `mem/cpu.mem`, routed reports when
+`RUN_IMPL=1`, and `fpga_top.bit` after bitstream generation.
+
+The exported project adds these simulation tops to `sim_1`. The default
+simulation top is `fpga_top_post_impl_tb`, so the Vivado GUI can immediately run
+a post-implementation functional waveform after implementation is complete:
+
+- `fpga_top_behav_smoke_tb` for behavioral simulation. The export flow sets its
+  generics to the copied absolute `mem/cpu.mem` path.
+- `fpga_top_post_impl_tb` for post-implementation functional simulation. It
+  uses the implemented netlist and the BRAM INIT baked in during synthesis.
 
 ## Post-Implementation Smoke
 

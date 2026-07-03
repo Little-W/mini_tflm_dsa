@@ -4,7 +4,7 @@
 #   vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl
 #   vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
 #       -tclargs vivado_export/tflm_ai_dsa_soc xc7a200tfbg484-3 16 4 65536 \
-#       /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_runtime_build_S16_C4_P16/cpu.mem \
+#       /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_case/cpu.mem \
 #       150.000 1 0 1 1 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1
 #
 # Tcl arguments:
@@ -65,6 +65,11 @@ if {[info exists ::env(VIVADO_CPU_ENABLE_ICACHE)] && $::env(VIVADO_CPU_ENABLE_IC
 
 source [file join $script_dir sources.tcl]
 source [file join $script_dir clk_wiz_ip.tcl]
+
+set sim_sources [list \
+    [file join $flow_root sim fpga_top_behav_smoke_tb.sv] \
+    [file join $flow_root sim fpga_top_post_impl_tb.sv] \
+]
 
 proc ceil_log2 {value} {
     set n [expr {int($value)}]
@@ -197,6 +202,7 @@ set local_design_sources [copy_path_list $design_sources $export_root $dsa_root 
 set local_timing_constraint_files [copy_path_list $timing_constraint_files $export_root $dsa_root $ai_root timing_constraint]
 set local_implementation_constraint_files [copy_path_list $implementation_constraint_files $export_root $dsa_root $ai_root implementation_constraint]
 set local_constraint_files [concat $local_timing_constraint_files $local_implementation_constraint_files]
+set local_sim_sources [copy_path_list $sim_sources $export_root $dsa_root $ai_root simulation]
 
 set local_include_dirs [list]
 foreach inc_dir $include_dirs {
@@ -240,6 +246,7 @@ create_tflm_soc_clk_wiz $core_clk_mhz_value
 add_files -norecurse -fileset sources_1 $local_design_sources
 add_files -norecurse -fileset constrs_1 $local_timing_constraint_files
 add_files -norecurse -fileset constrs_1 $local_implementation_constraint_files
+add_files -norecurse -fileset sim_1 $local_sim_sources
 foreach xdc_file $local_implementation_constraint_files {
     set_property used_in_synthesis false [get_files $xdc_file]
 }
@@ -248,7 +255,22 @@ set_property include_dirs $local_include_dirs [get_filesets sources_1]
 set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1} [get_filesets sources_1]
 set_property top fpga_top [get_filesets sources_1]
 set_property generic $top_generics [get_filesets sources_1]
+set tb_generics [list \
+    SIZE=$size_value \
+    ICB_LEN_W=$icb_len_w_value \
+    IA_CACHE_BLOCKS=$ia_cache_blocks_value \
+    CPU_MEM_DP=$cpu_mem_dp_value \
+    CPU_ENABLE_ICACHE=$cpu_enable_icache_value \
+    CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value \
+    BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value \
+    RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value \
+]
+lappend tb_generics "CPU_MEM_PATH=\"$cpu_mem_path_escaped\""
+set_property top fpga_top_post_impl_tb [get_filesets sim_1]
+set_property generic $tb_generics [get_filesets sim_1]
+set_property xsim.simulate.runtime all [get_filesets sim_1]
 update_compile_order -fileset sources_1
+update_compile_order -fileset sim_1
 
 set synth_run [get_runs synth_1]
 set_property strategy $synth_strategy_value $synth_run
