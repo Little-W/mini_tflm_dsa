@@ -20,7 +20,7 @@ module ws_systolic_cell #(
     reg signed  [    ACC_WIDTH-1:0] sum_reg;
 
     wire signed [    ACC_WIDTH-1:0] mult_result;  // s16*s8 -> s24
-    wire signed [      ACC_WIDTH:0] sum_ext;  // 扩一位用于饱和判断
+    wire signed [      ACC_WIDTH:0] sum_ext;
 
     assign mult_result = data_reg * weight_reg;
     // 显式符号扩展后相加，避免表达式宽度截断
@@ -45,15 +45,7 @@ module ws_systolic_cell #(
     assign data_out = data_reg;
     assign weight_out = weight_reg;
 
-    // 饱和到 ACC_WIDTH 位（改为连续赋值以兼容 iverilog 对 always_* 的限制）
-    assign sum_out = (sum_ext > $signed(
-        {1'b0, {(ACC_WIDTH - 1) {1'b1}}}
-    )) ? $signed(
-        {1'b0, {(ACC_WIDTH - 1) {1'b1}}}
-    ) : (sum_ext < $signed(
-        {1'b1, {(ACC_WIDTH - 1) {1'b0}}}
-    )) ? $signed(
-        {1'b1, {(ACC_WIDTH - 1) {1'b0}}}
-    ) : sum_ext[ACC_WIDTH-1:0];
+    // NMSIS-NN 的 int32 accumulator 语义不是逐 PE 饱和；保持低 ACC_WIDTH 位以匹配硬件累加器。
+    assign sum_out = sum_ext[ACC_WIDTH-1:0];
 
 endmodule
