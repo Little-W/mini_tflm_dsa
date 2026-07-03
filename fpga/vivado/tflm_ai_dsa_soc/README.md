@@ -73,7 +73,7 @@ VIVADO_JOBS=8 vivado -mode batch \
   -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
   -tclargs vivado_export/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 \
   /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_runtime_build_S16_C4_P16/cpu.mem \
-  150.000 1 0 1 1 Flow_AreaOptimized_high Performance_Explore
+  150.000 1 0 1 1 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1
 ```
 
 Argument order:
@@ -82,8 +82,26 @@ Argument order:
 <export_root> <part> <SIZE> <IA_CACHE_BLOCKS> <CPU_MEM_DP> <CPU_MEM_PATH>
 <CORE_CLK_MHZ> <CPU_AXI_WRITE_TIMING_BUFFER> <BYPASS_RAM_PINGPONG>
 <RAM_WRITE_TIMING_BUFFER> <RUN_IMPL> <SYNTH_STRATEGY> <IMPL_STRATEGY>
+<CPU_ENABLE_ICACHE>
 ```
+
+`CPU_ENABLE_ICACHE` defaults to `1` in the export flow so the FPGA project
+matches the SoC performance regressions. It can also be overridden with the
+`VIVADO_CPU_ENABLE_ICACHE` environment variable.
 
 The exported directory contains a short `README.md`, copied source files,
 constraints, `mem/cpu.mem`, routed reports when `RUN_IMPL=1`, and
 `fpga_top.bit` after bitstream generation.
+
+## Post-Implementation Smoke
+
+After implementation, run a minimal functional netlist simulation with:
+
+```sh
+vivado -mode batch \
+  -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_post_impl_smoke.tcl \
+  -tclargs vivado_export/tflm_ai_dsa_soc_s16_c4/project/tflm_ai_dsa_soc.xpr
+```
+
+The smoke test waits for `user_led_tri_o[1]` (`soc_finish`) and fails if
+`user_led_tri_o[2]` (`cpu_trap`) asserts.

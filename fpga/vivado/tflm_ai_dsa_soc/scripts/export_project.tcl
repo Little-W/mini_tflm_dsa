@@ -5,12 +5,13 @@
 #   vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
 #       -tclargs vivado_export/tflm_ai_dsa_soc xc7a200tfbg484-3 16 4 65536 \
 #       /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_runtime_build_S16_C4_P16/cpu.mem \
-#       150.000 1 0 1 1 Flow_AreaOptimized_high Performance_Explore
+#       150.000 1 0 1 1 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1
 #
 # Tcl arguments:
 #   <export_root> <part> <SIZE> <IA_CACHE_BLOCKS> <CPU_MEM_DP> <CPU_MEM_PATH>
 #   <CORE_CLK_MHZ> <CPU_AXI_WRITE_TIMING_BUFFER> <BYPASS_RAM_PINGPONG>
 #   <RAM_WRITE_TIMING_BUFFER> <RUN_IMPL> <SYNTH_STRATEGY> <IMPL_STRATEGY>
+#   <CPU_ENABLE_ICACHE>
 
 set script_dir [file dirname [file normalize [info script]]]
 set flow_root [file normalize [file join $script_dir ..]]
@@ -29,6 +30,7 @@ set ram_write_timing_buffer_value 1
 set run_impl_value 0
 set synth_strategy_value Flow_PerfOptimized_high
 set impl_strategy_value Performance_Explore
+set cpu_enable_icache_value 1
 
 if {[llength $argv] >= 1} {
     set export_root [file normalize [lindex $argv 0]]
@@ -47,6 +49,7 @@ if {[llength $argv] >= 10} { set ram_write_timing_buffer_value [lindex $argv 9] 
 if {[llength $argv] >= 11} { set run_impl_value [lindex $argv 10] }
 if {[llength $argv] >= 12} { set synth_strategy_value [lindex $argv 11] }
 if {[llength $argv] >= 13} { set impl_strategy_value [lindex $argv 12] }
+if {[llength $argv] >= 14} { set cpu_enable_icache_value [lindex $argv 13] }
 if {[info exists ::env(VIVADO_SYNTH_STRATEGY)] && $::env(VIVADO_SYNTH_STRATEGY) ne ""} {
     set synth_strategy_value $::env(VIVADO_SYNTH_STRATEGY)
 }
@@ -55,6 +58,9 @@ if {[info exists ::env(VIVADO_IMPL_STRATEGY)] && $::env(VIVADO_IMPL_STRATEGY) ne
 }
 if {[info exists ::env(VIVADO_RUN_IMPL)] && $::env(VIVADO_RUN_IMPL) ne ""} {
     set run_impl_value $::env(VIVADO_RUN_IMPL)
+}
+if {[info exists ::env(VIVADO_CPU_ENABLE_ICACHE)] && $::env(VIVADO_CPU_ENABLE_ICACHE) ne ""} {
+    set cpu_enable_icache_value $::env(VIVADO_CPU_ENABLE_ICACHE)
 }
 
 source [file join $script_dir sources.tcl]
@@ -136,7 +142,7 @@ proc copy_dir_contents {src_dir dst_dir} {
     }
 }
 
-proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache_blocks_value core_clk_mhz_value} {
+proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value} {
     set f [open $path w]
     puts $f "# Self-contained TFLM AI DSA Vivado Project"
     puts $f ""
@@ -153,7 +159,7 @@ proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache
     puts $f "$mem_path"
     puts $f "```"
     puts $f ""
-    puts $f "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CORE_CLK_MHZ=$core_clk_mhz_value"
+    puts $f "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CORE_CLK_MHZ=$core_clk_mhz_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value"
     if {$bit_path ne ""} {
         puts $f ""
         puts $f "Latest generated bitstream:"
@@ -210,6 +216,7 @@ set top_generics [list \
     IA_CACHE_BLOCKS=$ia_cache_blocks_value \
     CPU_MEM_DP=$cpu_mem_dp_value \
     CPU_MEM_INIT_EN=1 \
+    CPU_ENABLE_ICACHE=$cpu_enable_icache_value \
     CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value \
     BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value \
     RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value \
@@ -281,14 +288,14 @@ if {$run_impl_value} {
 }
 
 write_export_readme [file join $export_root README.md] $project_xpr $bit_path \
-    $local_mem_path $size_value $ia_cache_blocks_value $core_clk_mhz_value
+    $local_mem_path $size_value $ia_cache_blocks_value $core_clk_mhz_value $cpu_enable_icache_value
 
 puts "Self-contained Vivado project exported."
 puts "Project: $project_xpr"
 puts "CPU mem: $local_mem_path"
 puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
-puts "SIZE=$size_value ICB_LEN_W=$icb_len_w_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value"
+puts "SIZE=$size_value ICB_LEN_W=$icb_len_w_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value"
 puts "SYNTH_STRATEGY=$synth_strategy_value IMPL_STRATEGY=$impl_strategy_value RUN_IMPL=$run_impl_value"
 if {$bit_path ne ""} {
     puts "Bitstream: $bit_path"
