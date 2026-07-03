@@ -9,7 +9,7 @@
  *
  * 子模块：
  *   ia_loader_ctrl      — 缓存调度、循环计数、发送控制
- *   block_dma            — 分块 DMA 引擎（读写双向）
+ *   AXI block DMA client — 通过 mma_top 的共享 AXI DMA 读入分块
  *   ia_loader_cache_mgr — 缓存 RAM 管理、对角化输出、控制信号生成
  *
  * 相对 v1.1 的改进：
@@ -28,8 +28,7 @@ module ia_loader #(
     parameter int unsigned BUS_WIDTH    = 32,
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned CACHE_BLOCKS = 4,
-    parameter int unsigned PS_FRAME_COUNT = SIZE,
-    parameter bit          EXTERNAL_DMA = 1'b0
+    parameter int unsigned PS_FRAME_COUNT = SIZE
 ) (
     input logic clk,
     input logic rst_n,
@@ -54,18 +53,7 @@ module ia_loader #(
     input logic [REG_WIDTH-1:0] ia_reuse_num,  // R
     input logic [REG_WIDTH-1:0] w_reuse_num,   // W
 
-    // ---- ICB 主接口 ----
-    output logic                 icb_cmd_valid,
-    input  logic                 icb_cmd_ready,
-    output logic                 icb_cmd_read,
-    output logic [REG_WIDTH-1:0] icb_cmd_addr,
-    output logic [          3:0] icb_cmd_len,
-    input  logic                 icb_rsp_valid,
-    output logic                 icb_rsp_ready,
-    input  logic [BUS_WIDTH-1:0] icb_rsp_rdata,
-    input  logic                 icb_rsp_err,
-
-    // ---- 共享 block_dma 客户端接口（EXTERNAL_DMA=1 时使用）----
+    // ---- 共享 AXI block_dma 客户端接口 ----
     output logic                                   ext_dma_start,
     output logic                                   ext_dma_is_write,
     output logic                                   ext_dma_linear_read_mode,
@@ -73,12 +61,12 @@ module ia_loader #(
     output logic        [           REG_WIDTH-1:0] ext_dma_row_stride,
     output logic        [           REG_WIDTH-1:0] ext_dma_rows_to_read,
     output logic        [                     7:0] ext_dma_burst_len_m1,
-    output logic        [$clog2(CACHE_BLOCKS)-1:0] ext_dma_slot_id,
+    output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] ext_dma_slot_id,
     output logic                                   ext_dma_use_16bits,
     output logic signed [           REG_WIDTH-1:0] ext_dma_lhs_zp,
     input  logic                                   ext_dma_busy,
     input  logic                                   ext_dma_done,
-    input  logic        [$clog2(CACHE_BLOCKS)-1:0] ext_dma_wr_slot,
+    input  logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] ext_dma_wr_slot,
     input  logic        [        $clog2(SIZE)-1:0] ext_dma_wr_row,
     input  logic        [        $clog2(SIZE)-1:0] ext_dma_wr_col_base,
     input  logic signed [          DATA_WIDTH-1:0] ext_dma_wr_data         [BUS_WIDTH/8],
@@ -299,7 +287,7 @@ module ia_loader #(
     logic        [           REG_WIDTH-1:0] tl_rows_to_read;
     logic        [           REG_WIDTH-1:0] tl_valid_cols;
     logic        [                     7:0] tl_burst_len_m1;
-    logic        [$clog2(CACHE_BLOCKS)-1:0] tl_slot_id;
+	    logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] tl_slot_id;
     logic                                   tl_use_16bits;
     logic signed [           REG_WIDTH-1:0] tl_lhs_zp;
     logic                                   tl_busy;
@@ -307,8 +295,8 @@ module ia_loader #(
 
     // ---- ctrl ↔ cache_mgr （L1组级接口）----
     logic                                   cache_l1_start;
-    logic        [$clog2(CACHE_BLOCKS)-1:0] cache_l1_slot_start;
-    logic        [$clog2(CACHE_BLOCKS)-1:0] cache_l1_slot_end;
+	    logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] cache_l1_slot_start;
+	    logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] cache_l1_slot_end;
     logic                                   cache_l1_is_init;
     logic                                   cache_l1_calc_done;
     logic        [        CACHE_BLOCKS-1:0] cache_blk_valid;
@@ -317,7 +305,7 @@ module ia_loader #(
     logic                                   cache_l1_done;
 
     // ---- tile_loader ↔ cache_mgr（写端口）----
-    logic        [$clog2(CACHE_BLOCKS)-1:0] tl_wr_slot;
+	    logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] tl_wr_slot;
     logic        [        $clog2(SIZE)-1:0] tl_wr_row;
     logic        [        $clog2(SIZE)-1:0] tl_wr_col_base;
     logic signed [          DATA_WIDTH-1:0] tl_wr_data          [BYTE_PER_BEAT];
@@ -412,95 +400,34 @@ module ia_loader #(
     );
 
     // =======================================================================
-    // DMA 接入：单模块测试保留内建 DMA，顶层集成复用共享 block_dma
+    // DMA 接入：通过 mma_top 的共享 AXI block_dma 写入本地 cache
     // =======================================================================
+    logic [REG_WIDTH-1:0] active_valid_cols;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            active_valid_cols <= REG_WIDTH'(SIZE);
+        end else if (tl_start) begin
+            active_valid_cols <= (tl_valid_cols == '0) ? REG_WIDTH'(SIZE) : tl_valid_cols;
+        end
+    end
+
+    assign tl_busy          = ext_dma_busy;
+    assign tl_tile_done     = ext_dma_done;
+    assign tl_wr_slot       = ext_dma_wr_slot;
+    assign tl_wr_row        = ext_dma_wr_row;
+    assign tl_wr_col_base   = ext_dma_wr_col_base;
+    assign tl_wr_use_16bits = ext_dma_wr_use_16bits;
+
     generate
-        if (EXTERNAL_DMA) begin : gen_external_dma
-            logic [REG_WIDTH-1:0] active_valid_cols;
-
-            always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) begin
-                    active_valid_cols <= REG_WIDTH'(SIZE);
-                end else if (tl_start) begin
-                    active_valid_cols <= (tl_valid_cols == '0) ? REG_WIDTH'(SIZE) : tl_valid_cols;
-                end
-            end
-
-            assign icb_cmd_valid    = 1'b0;
-            assign icb_cmd_read     = 1'b1;
-            assign icb_cmd_addr     = '0;
-            assign icb_cmd_len      = '0;
-            assign icb_rsp_ready    = 1'b0;
-            assign tl_busy          = ext_dma_busy;
-            assign tl_tile_done     = ext_dma_done;
-            assign tl_wr_slot       = ext_dma_wr_slot;
-            assign tl_wr_row        = ext_dma_wr_row;
-            assign tl_wr_col_base   = ext_dma_wr_col_base;
-            assign tl_wr_use_16bits = ext_dma_wr_use_16bits;
-            for (genvar dma_i = 0; dma_i < BYTE_PER_BEAT; dma_i++) begin : gen_ext_wr
-                localparam int unsigned DMA_I = dma_i;
-                wire [REG_WIDTH-1:0] elem_col =
-                    REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(DMA_I);
-                wire elem_in_tile = elem_col < REG_WIDTH'(SIZE);
-                wire elem_valid   = elem_col < active_valid_cols;
-                assign tl_wr_data[dma_i]  = elem_valid ? ext_dma_wr_data[dma_i] : '0;
-                assign tl_wr_valid[dma_i] = ext_dma_wr_valid[dma_i] && elem_in_tile;
-            end
-        end else begin : gen_internal_dma
-            block_dma #(
-                .DATA_WIDTH  (DATA_WIDTH),
-                .SIZE        (SIZE),
-                .BUS_WIDTH   (BUS_WIDTH),
-                .REG_WIDTH   (REG_WIDTH),
-                .CACHE_BLOCKS(CACHE_BLOCKS)
-            ) u_block_dma (
-                .clk  (clk),
-                .rst_n(rst_n),
-
-                .start           (tl_start),
-                .is_write        (1'b0),
-                .linear_read_mode(1'b0),
-                .tile_base_addr  (tl_base_addr),
-                .row_stride      (tl_row_stride),
-                .rows_to_read    (tl_rows_to_read),
-                .valid_cols      (tl_valid_cols),
-                .burst_len_m1    (tl_burst_len_m1[3:0]),
-                .slot_id         (tl_slot_id),
-                .use_16bits      (tl_use_16bits),
-                .lhs_zp          (tl_lhs_zp),
-                .busy            (tl_busy),
-                .tile_done       (tl_tile_done),
-
-                .src_wdata ('0),
-                .src_wmask ('0),
-                .src_wvalid(1'b0),
-                .src_wready(),
-
-                .icb_cmd_valid(icb_cmd_valid),
-                .icb_cmd_ready(icb_cmd_ready),
-                .icb_cmd_read (icb_cmd_read),
-                .icb_cmd_addr (icb_cmd_addr),
-                .icb_cmd_len  (icb_cmd_len),
-                .icb_cmd_wdata(),
-                .icb_cmd_wmask(),
-                .icb_w_valid  (),
-                .icb_w_ready  (1'b1),
-                .icb_rsp_valid(icb_rsp_valid),
-                .icb_rsp_ready(icb_rsp_ready),
-                .icb_rsp_rdata(icb_rsp_rdata),
-                .icb_rsp_err  (icb_rsp_err),
-
-                .wr_slot        (tl_wr_slot),
-                .wr_row         (tl_wr_row),
-                .wr_col_base    (tl_wr_col_base),
-                .wr_data        (tl_wr_data),
-                .wr_valid       (tl_wr_valid),
-                .wr_use_16bits  (tl_wr_use_16bits),
-                .rd_raw_data    (),
-                .rd_raw_valid   (),
-                .rd_raw_row     (),
-                .rd_raw_col_base()
-            );
+        for (genvar dma_i = 0; dma_i < BYTE_PER_BEAT; dma_i++) begin : gen_ext_wr
+            localparam int unsigned DMA_I = dma_i;
+            wire [REG_WIDTH-1:0] elem_col =
+                REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(DMA_I);
+            wire elem_in_tile = elem_col < REG_WIDTH'(SIZE);
+            wire elem_valid   = elem_col < active_valid_cols;
+            assign tl_wr_data[dma_i]  = elem_valid ? ext_dma_wr_data[dma_i] : '0;
+            assign tl_wr_valid[dma_i] = ext_dma_wr_valid[dma_i] && elem_in_tile;
         end
     endgenerate
 

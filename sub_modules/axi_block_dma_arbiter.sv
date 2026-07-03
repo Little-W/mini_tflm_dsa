@@ -30,12 +30,12 @@ module axi_block_dma_arbiter #(
     input  logic [REG_WIDTH-1:0] ia_row_stride,
     input  logic [REG_WIDTH-1:0] ia_rows_to_read,
     input  logic [7:0] ia_burst_len_m1,
-    input  logic [$clog2(CACHE_BLOCKS)-1:0] ia_slot_id,
+    input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] ia_slot_id,
     input  logic ia_use_16bits,
     input  logic signed [REG_WIDTH-1:0] ia_lhs_zp,
     output logic ia_busy,
     output logic ia_done,
-    output logic [$clog2(CACHE_BLOCKS)-1:0] ia_wr_slot,
+    output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] ia_wr_slot,
     output logic [$clog2(SIZE)-1:0] ia_wr_row,
     output logic [$clog2(SIZE)-1:0] ia_wr_col_base,
     output logic signed [DATA_WIDTH-1:0] ia_wr_data [BUS_WIDTH/8],
@@ -160,11 +160,11 @@ module axi_block_dma_arbiter #(
     logic [REG_WIDTH-1:0] rd_dma_row_stride;
     logic [REG_WIDTH-1:0] rd_dma_rows_to_read;
     logic [7:0] rd_dma_burst_len_m1;
-    logic [$clog2(CACHE_BLOCKS)-1:0] rd_dma_slot_id;
+    logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_dma_slot_id;
     logic rd_dma_use_16bits;
     logic signed [REG_WIDTH-1:0] rd_dma_lhs_zp;
 
-    logic [$clog2(CACHE_BLOCKS)-1:0] dma_wr_slot;
+    logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] dma_wr_slot;
     logic [$clog2(DMA_SIZE)-1:0] dma_wr_row;
     logic [$clog2(DMA_SIZE)-1:0] dma_wr_col_base;
     logic signed [DATA_WIDTH-1:0] dma_wr_data [BYTE_PER_BEAT];

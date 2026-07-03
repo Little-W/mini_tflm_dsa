@@ -5,8 +5,7 @@ module mma_top #(
     parameter int unsigned SIZE = 16,  // 阵列大小
     parameter int unsigned BUS_WIDTH = 32,  // 总线宽度
     parameter int unsigned REG_WIDTH = 32,  // 寄存器宽度
-    parameter int unsigned ADDR_WIDTH = 19,  // 地址宽度
-    parameter int unsigned ICB_LEN_W = 4,  // Legacy wrapper parameter; native AXI datapath does not use it
+    parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
     parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
     parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
@@ -164,11 +163,12 @@ module mma_top #(
 	    logic ia_dma_start, ia_dma_linear_read_mode;
 	    logic [REG_WIDTH-1:0] ia_dma_base_addr, ia_dma_row_stride, ia_dma_rows_to_read;
 	    logic [7:0] ia_dma_burst_len_m1;
-	    logic [$clog2(IA_CACHE_BLOCKS)-1:0] ia_dma_slot_id;
+	    localparam int unsigned IA_CACHE_SLOT_W = (IA_CACHE_BLOCKS <= 1) ? 1 : $clog2(IA_CACHE_BLOCKS);
+	    logic [IA_CACHE_SLOT_W-1:0] ia_dma_slot_id;
 	    logic ia_dma_use_16bits;
 	    logic signed [REG_WIDTH-1:0] ia_dma_lhs_zp;
 	    logic ia_dma_busy, ia_dma_done;
-	    logic [$clog2(IA_CACHE_BLOCKS)-1:0] ia_dma_wr_slot;
+	    logic [IA_CACHE_SLOT_W-1:0] ia_dma_wr_slot;
 	    logic [$clog2(SIZE)-1:0] ia_dma_wr_row, ia_dma_wr_col_base;
 	    logic signed [DATA_WIDTH-1:0] ia_dma_wr_data[BUS_WIDTH/8];
 	    logic ia_dma_wr_valid[BUS_WIDTH/8];
@@ -667,15 +667,14 @@ module mma_top #(
         .err_code             (err_code)
     );
 	    // IA Loader
-	    ia_loader #(
-	        .DATA_WIDTH  (DATA_WIDTH),
-	        .SIZE        (SIZE),
-	        .BUS_WIDTH   (BUS_WIDTH),
-	        .REG_WIDTH   (REG_WIDTH),
-	        .CACHE_BLOCKS(IA_CACHE_BLOCKS),
-	        .PS_FRAME_COUNT(PS_FRAME_COUNT),
-	        .EXTERNAL_DMA(1'b1)
-	    ) u_ia_loader (
+		    ia_loader #(
+		        .DATA_WIDTH  (DATA_WIDTH),
+		        .SIZE        (SIZE),
+		        .BUS_WIDTH   (BUS_WIDTH),
+		        .REG_WIDTH   (REG_WIDTH),
+		        .CACHE_BLOCKS(IA_CACHE_BLOCKS),
+		        .PS_FRAME_COUNT(PS_FRAME_COUNT)
+		    ) u_ia_loader (
         .clk             (clk),
         .rst_n           (rst_n),
         .init_cfg        (init_cfg_ia),
@@ -691,22 +690,7 @@ module mma_top #(
         .use_16bits      (ia_use_16bits_eff),
         .bias_by_row_mode(is_mode),
         .ia_reuse_num    (ia_reuse_num_eff),
-        .w_reuse_num     (w_reuse_num_eff),
-
-
-        // .icb_cmd_m       (ia_loader_cmd),
-        // .icb_cmd_s       (ia_loader_cmd_ready),
-        // .icb_rsp_s       (ia_loader_rsp),
-        // .icb_rsp_m       (ia_loader_rsp_ready),
-	        .icb_cmd_valid(),
-	        .icb_cmd_ready(1'b0),
-	        .icb_cmd_read (),
-	        .icb_cmd_addr (),
-	        .icb_cmd_len  (),
-	        .icb_rsp_valid(1'b0),
-	        .icb_rsp_ready(),
-	        .icb_rsp_rdata('0),
-	        .icb_rsp_err  (1'b0),
+	        .w_reuse_num     (w_reuse_num_eff),
 	        .ext_dma_start(ia_dma_start),
 	        .ext_dma_is_write(),
 	        .ext_dma_linear_read_mode(ia_dma_linear_read_mode),
@@ -740,13 +724,12 @@ module mma_top #(
         .ia_l1_switch   (ia_l1_switch)
     );
 	    // Kernel Loader
-	    kernel_loader #(
-	        .DATA_WIDTH(WEIGHT_WIDTH),
-	        .SIZE      (SIZE),
-	        .BUS_WIDTH (BUS_WIDTH),
-	        .REG_WIDTH (REG_WIDTH),
-	        .EXTERNAL_DMA(1'b1)
-	    ) u_kernel_loader (
+		    kernel_loader #(
+		        .DATA_WIDTH(WEIGHT_WIDTH),
+		        .SIZE      (SIZE),
+		        .BUS_WIDTH (BUS_WIDTH),
+		        .REG_WIDTH (REG_WIDTH)
+		    ) u_kernel_loader (
         .clk                (clk),
         .rst_n              (rst_n),
         .init_cfg           (init_cfg_weight),
@@ -761,21 +744,7 @@ module mma_top #(
         .rhs_row_stride_b   (weight_stride_eff),
         .ia_reuse_num       (ia_reuse_num_eff),
         .w_reuse_num        (w_reuse_num_eff),
-        .use_16bits         (weight_use_16bits_eff),
-
-        // .icb_cmd_m       (ia_loader_cmd),
-        // .icb_cmd_s       (ia_loader_cmd_ready),
-        // .icb_rsp_s       (ia_loader_rsp),
-        // .icb_rsp_m       (ia_loader_rsp_ready),
-	        .icb_cmd_valid(),
-	        .icb_cmd_ready(1'b0),
-	        .icb_cmd_read (),
-	        .icb_cmd_addr (),
-	        .icb_cmd_len  (),
-	        .icb_rsp_valid(1'b0),
-	        .icb_rsp_ready(),
-	        .icb_rsp_rdata('0),
-	        .icb_rsp_err  (1'b0),
+	        .use_16bits         (weight_use_16bits_eff),
 	        .ext_dma_start(kernel_dma_start),
 	        .ext_dma_is_write(),
 	        .ext_dma_linear_read_mode(kernel_dma_linear_read_mode),
@@ -805,11 +774,10 @@ module mma_top #(
 	    bias_loader #(
 	        .SIZE      (SIZE),
 	        .DATA_WIDTH(32),
-	        .BUS_WIDTH (BUS_WIDTH),
-	        .REG_WIDTH (REG_WIDTH),
-	        .GROUP_BLOCKS_MAX(IA_REUSE_NUM_MAX),
-	        .EXTERNAL_DMA(1'b1)
-	    ) u_bias_loader (
+		        .BUS_WIDTH (BUS_WIDTH),
+		        .REG_WIDTH (REG_WIDTH),
+		        .GROUP_BLOCKS_MAX(IA_REUSE_NUM_MAX)
+		    ) u_bias_loader (
         .clk              (clk),
         .rst_n            (rst_n),
         .init_cfg         (init_cfg_bias),
@@ -824,18 +792,9 @@ module mma_top #(
         .bias_last_loop   (bias_last_loop),
         .bias_valid       (bias_valid),
         .bias_group_valid (bias_group_valid),
-        .load_bias_done   (load_bias_done),
-        .data_out         (bias_data_out),
-        .group_data_out   (bias_group_data_out),
-	        .icb_cmd_valid    (),
-	        .icb_cmd_ready    (1'b0),
-	        .icb_cmd_read     (),
-	        .icb_cmd_addr     (),
-	        .icb_cmd_len      (),
-	        .icb_rsp_valid    (1'b0),
-	        .icb_rsp_ready    (),
-	        .icb_rsp_rdata    ('0),
-	        .icb_rsp_err      (1'b0),
+	        .load_bias_done   (load_bias_done),
+	        .data_out         (bias_data_out),
+	        .group_data_out   (bias_group_data_out),
 		        .ext_dma_start    (bias_dma_start),
 		        .ext_dma_is_write (),
 	        .ext_dma_linear_read_mode(bias_dma_linear_read_mode),

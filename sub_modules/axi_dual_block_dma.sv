@@ -2,14 +2,14 @@
  * axi_dual_block_dma -- native AXI4 read/write block DMA
  * ======================================================
  *
- * This module is the AXI-native replacement building block for the shared ICB
- * block_dma.  Read and write commands are split into independent engines:
+ * This module is the shared AXI block DMA for accelerator memory traffic.
+ * Read and write commands are split into independent engines:
  *
  *   - read  engine: AXI AR/R, used by IA/kernel/bias/quant loaders
  *   - write engine: AXI AW/W/B, used by OA writer
  *
  * The two engines can be active at the same time, allowing AXI full-duplex
- * memory traffic without an ICB-to-AXI bridge.
+ * memory traffic without a protocol bridge.
  */
 
 module axi_dual_block_dma #(
@@ -32,7 +32,7 @@ module axi_dual_block_dma #(
     input  logic        [           REG_WIDTH-1:0] rd_rows_to_read,
     input  logic        [           REG_WIDTH-1:0] rd_valid_cols,
     input  logic        [                     7:0] rd_burst_len_m1,
-    input  logic        [$clog2(CACHE_BLOCKS)-1:0] rd_slot_id,
+    input  logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id,
     input  logic                                   rd_use_16bits,
     input  logic signed [           REG_WIDTH-1:0] rd_lhs_zp,
     output logic                                   rd_busy,
@@ -89,7 +89,7 @@ module axi_dual_block_dma #(
     input  logic [            1:0] m_axi_bresp,
 
     // ---- Read unpack output ----
-    output logic        [$clog2(CACHE_BLOCKS)-1:0] wr_slot,
+    output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot,
     output logic        [        $clog2(SIZE)-1:0] wr_row,
     output logic        [        $clog2(SIZE)-1:0] wr_col_base,
     output logic signed [          DATA_WIDTH-1:0] wr_data      [BUS_WIDTH/8],
@@ -142,7 +142,7 @@ module axi_dual_block_dma #(
     logic [REG_WIDTH-1:0] rd_cfg_rows;
     logic [REG_WIDTH-1:0] rd_cfg_valid_cols;
     logic [7:0] rd_cfg_burst_len_m1;
-    logic [$clog2(CACHE_BLOCKS)-1:0] rd_cfg_slot;
+    logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_cfg_slot;
     logic rd_cfg_linear_read;
     logic rd_cfg_use_16bits;
     logic signed [REG_WIDTH-1:0] rd_cfg_zp;

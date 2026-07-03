@@ -126,7 +126,6 @@ module tb_mma_top;
     // DUT 实例
     mma_top #(
         .SIZE(SIZE),
-        .ICB_LEN_W(4),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .AXI_READ_OUTSTANDING(AXI_READ_OUTSTANDING)

@@ -3,7 +3,7 @@
  * ============================================================
  * 功能：
  *   1. 管理 SIZE 组伪双端口 RAM bank（每组深度 CACHE_BLOCKS × SIZE）
- *   2. 将 ICB 响应解包后的数据写入指定 slot/row/col
+ *   2. 将 AXI DMA 解包后的数据写入指定 slot/row/col
  *   3. 接收发送命令后，按对角化时序从 RAM 读出数据
  *   4. 生成延迟对齐的 ia_row_valid[j], ia_is_init_data[j], ia_calc_done[j]
  *   5. 在所有列输出完毕后产生 send_done 脉冲
@@ -25,7 +25,7 @@ module ia_loader_cache_mgr #(
     input  logic rst_n,
 
     // ---- 写入端 ----
-    input  logic [$clog2(CACHE_BLOCKS)-1:0]      wr_slot,
+    input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]      wr_slot,
     input  logic [$clog2(SIZE)-1:0]              wr_row,
     input  logic [$clog2(SIZE)-1:0]              wr_col_base,
     input  logic signed [DATA_WIDTH-1:0]         wr_data  [BUS_WIDTH/8],  // 最多 BYTE_PER_BEAT 个
@@ -35,8 +35,8 @@ module ia_loader_cache_mgr #(
     // ---- L1组对角化发送控制 ----
     // ctrl 一次性指定 L1 组的起始/终止 slot，cache_mgr 自主完成整组输出
     input  logic                              l1_start,        // L1组发送启动脉冲
-    input  logic [$clog2(CACHE_BLOCKS)-1:0]   l1_slot_start,   // 起始 slot
-    input  logic [$clog2(CACHE_BLOCKS)-1:0]   l1_slot_end,     // 终止 slot（含，支持回绕）
+    input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   l1_slot_start,   // 起始 slot
+    input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   l1_slot_end,     // 终止 slot（含，支持回绕）
     input  logic                              l1_is_init,      // L1组 is_init 标记
     input  logic                              l1_calc_done,    // L1组 calc_done 标记
     input  logic [CACHE_BLOCKS-1:0]           blk_valid_in,    // ctrl 提供的 slot 有效状态
@@ -63,7 +63,7 @@ module ia_loader_cache_mgr #(
   // =====================================================================
   // SIZE 组伪双端口 RAM
   // =====================================================================
-  // 写端口：LOAD 阶段从 ICB 响应写入
+  // 写端口：LOAD 阶段从 AXI DMA 响应写入
   // 读端口：SEND 阶段对角化读出
   logic              ram_wr_en   [SIZE];
   logic [ADDR_W-1:0] ram_wr_addr [SIZE];
@@ -122,7 +122,7 @@ module ia_loader_cache_mgr #(
   //   3) L1 组内 slot 连续发射。compute_core/ps_buffer 将整组看成一条
   //      tall stream，de-diagonalizer 在输出侧按 tile_start 标记切分。
   //
-  localparam int SLOT_W = $clog2(CACHE_BLOCKS);
+  localparam int SLOT_W = (CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS);
   localparam int ROW_CNT_W = $clog2(SIZE + 1);
 
   logic l1_issue_active;                  // 仍有行需要在 col0 发射
@@ -162,7 +162,7 @@ module ia_loader_cache_mgr #(
     issue_row_idx_now = start_issue_now ? '0 : issue_row_idx_r;
     slot_rows_start_now = ROW_CNT_W'(slot_rows[l1_slot_start]);
     l1_slot_end_now   = start_issue_now ? l1_slot_end : l1_slot_end_r;
-    next_issue_slot_now = issue_slot_now + 1'b1;
+    next_issue_slot_now = (CACHE_BLOCKS <= 1) ? '0 : (issue_slot_now + SLOT_W'(1));
     slot_rows_next_now = ROW_CNT_W'(slot_rows[next_issue_slot_now]);
     issue_rows_now    = start_issue_now ? slot_rows_start_now : issue_rows_r;
     issue_row_idx_inc_now = issue_row_idx_now + ROW_CNT_W'(1);
@@ -190,7 +190,7 @@ module ia_loader_cache_mgr #(
 
   // 下一 slot（自然回绕）
   logic [SLOT_W-1:0] next_issue_slot;
-  assign next_issue_slot = issue_slot_r + 1'b1;
+  assign next_issue_slot = (CACHE_BLOCKS <= 1) ? '0 : (issue_slot_r + SLOT_W'(1));
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin

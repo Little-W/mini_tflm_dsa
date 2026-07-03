@@ -1,7 +1,7 @@
 /*
  * bias_loader — 顶层汇聚
  * ============================================================
- * 复用现成 block_dma 做一维块读取，ctrl 负责顺序/切换，buffer 负责 bank 存储。
+ * 复用 mma_top 的共享 AXI block_dma 做一维块读取，ctrl 负责顺序/切换，buffer 负责 bank 存储。
  * 每个 bias block 采用一次 burst 连续读取，避免单 beat 访问开销。
  */
 
@@ -10,8 +10,7 @@ module bias_loader #(
 	    parameter int unsigned DATA_WIDTH = 32,
 	    parameter int unsigned BUS_WIDTH  = 32,
 	    parameter int unsigned REG_WIDTH  = 32,
-	    parameter int unsigned GROUP_BLOCKS_MAX = 1,
-	    parameter bit          EXTERNAL_DMA = 1'b0
+	    parameter int unsigned GROUP_BLOCKS_MAX = 1
 	) (
     input logic clk,
     input logic rst_n,
@@ -32,19 +31,9 @@ module bias_loader #(
     output logic                         bias_group_valid,
     output logic                         load_bias_done,
     output logic signed [DATA_WIDTH-1:0] data_out  [SIZE],
-    output logic signed [DATA_WIDTH-1:0] group_data_out [GROUP_BLOCKS_MAX * SIZE],
+	    output logic signed [DATA_WIDTH-1:0] group_data_out [GROUP_BLOCKS_MAX * SIZE],
 
-    output logic                 icb_cmd_valid,
-    input  logic                 icb_cmd_ready,
-    output logic                 icb_cmd_read,
-    output logic [REG_WIDTH-1:0] icb_cmd_addr,
-    output logic [          3:0] icb_cmd_len,
-	    input  logic                 icb_rsp_valid,
-	    output logic                 icb_rsp_ready,
-	    input  logic [BUS_WIDTH-1:0] icb_rsp_rdata,
-	    input  logic                 icb_rsp_err,
-
-	    // ---- 共享 block_dma 客户端接口（EXTERNAL_DMA=1 时使用）----
+		    // ---- 共享 AXI block_dma 客户端接口 ----
 	    output logic                 ext_dma_start,
 	    output logic                 ext_dma_is_write,
 	    output logic                 ext_dma_linear_read_mode,
@@ -87,13 +76,10 @@ module bias_loader #(
     assign load_bias_done = dma_done;
     logic        [       $clog2(2)-1:0] dma_wr_slot;
     logic        [$clog2(DMA_SIZE)-1:0] dma_wr_row;
-    logic        [$clog2(DMA_SIZE)-1:0] dma_wr_col_base;
-    logic signed [                7:0] dma_wr_data            [BUS_WIDTH/8];
-    logic                               dma_wr_valid           [BUS_WIDTH/8];
-    logic                               dma_wr_use_16bits;
-    logic        [       BUS_WIDTH-1:0] dma_cmd_wdata_unused;
-	    logic        [     BUS_WIDTH/8-1:0] dma_cmd_wmask_unused;
-	    logic                               dma_src_wready_unused;
+	    logic        [$clog2(DMA_SIZE)-1:0] dma_wr_col_base;
+	    logic signed [                7:0] dma_wr_data            [BUS_WIDTH/8];
+	    logic                               dma_wr_valid           [BUS_WIDTH/8];
+	    logic                               dma_wr_use_16bits;
 
 	    assign ext_dma_start            = ctrl_dma_start;
 	    assign ext_dma_is_write         = 1'b0;
@@ -135,74 +121,17 @@ module bias_loader #(
         .switch_pending   (ctrl_switch_pending)
     );
 
+	    assign dma_busy          = ext_dma_busy;
+	    assign dma_done          = ext_dma_done;
+	    assign dma_wr_slot       = ext_dma_wr_slot;
+	    assign dma_wr_row        = ext_dma_wr_row;
+	    assign dma_wr_col_base   = ext_dma_wr_col_base;
+	    assign dma_wr_use_16bits = ext_dma_wr_use_16bits;
+
 	    generate
-	        if (EXTERNAL_DMA) begin : gen_external_dma
-	            assign icb_cmd_valid    = 1'b0;
-	            assign icb_cmd_read     = 1'b1;
-	            assign icb_cmd_addr     = '0;
-	            assign icb_cmd_len      = '0;
-	            assign icb_rsp_ready    = 1'b0;
-	            assign dma_busy         = ext_dma_busy;
-	            assign dma_done         = ext_dma_done;
-	            assign dma_wr_slot      = ext_dma_wr_slot;
-	            assign dma_wr_row       = ext_dma_wr_row;
-	            assign dma_wr_col_base  = ext_dma_wr_col_base;
-	            assign dma_wr_use_16bits = ext_dma_wr_use_16bits;
-	            for (genvar dma_i = 0; dma_i < BUS_WIDTH/8; dma_i++) begin : gen_ext_wr
-	                assign dma_wr_data[dma_i]  = ext_dma_wr_data[dma_i];
-	                assign dma_wr_valid[dma_i] = ext_dma_wr_valid[dma_i];
-	            end
-	        end else begin : gen_internal_dma
-	            block_dma #(
-	                .DATA_WIDTH  (8),
-	                .SIZE        (DMA_SIZE),
-	                .BUS_WIDTH   (BUS_WIDTH),
-	                .REG_WIDTH   (REG_WIDTH),
-	                .CACHE_BLOCKS(2)
-	            ) u_dma (
-	                .clk             (clk),
-	                .rst_n           (rst_n),
-	                .start           (ctrl_dma_start),
-	                .is_write        (1'b0),
-	                .linear_read_mode(1'b0),
-	                .tile_base_addr  (ctrl_dma_base_addr),
-	                .row_stride      (REG_WIDTH'(SIZE * (DATA_WIDTH / 8))),
-	                .rows_to_read    (ctrl_dma_rows_to_read),
-	                .valid_cols      (REG_WIDTH'(DMA_SIZE)),
-	                .burst_len_m1    (ctrl_dma_burst_len_m1[3:0]),
-	                .slot_id         (ctrl_load_bank),
-	                .use_16bits      (1'b0),
-	                .lhs_zp          ('0),
-	                .busy            (dma_busy),
-	                .tile_done       (dma_done),
-	                .src_wdata       ('0),
-	                .src_wmask       ('0),
-	                .src_wvalid      (1'b0),
-	                .src_wready      (dma_src_wready_unused),
-	                .icb_cmd_valid   (icb_cmd_valid),
-	                .icb_cmd_ready   (icb_cmd_ready),
-	                .icb_cmd_read    (icb_cmd_read),
-	                .icb_cmd_addr    (icb_cmd_addr),
-	                .icb_cmd_len     (icb_cmd_len),
-	                .icb_cmd_wdata   (dma_cmd_wdata_unused),
-	                .icb_cmd_wmask   (dma_cmd_wmask_unused),
-	                .icb_w_valid     (),
-	                .icb_w_ready     (1'b1),
-	                .icb_rsp_valid   (icb_rsp_valid),
-	                .icb_rsp_ready   (icb_rsp_ready),
-	                .icb_rsp_rdata   (icb_rsp_rdata),
-	                .icb_rsp_err     (icb_rsp_err),
-	                .wr_slot         (dma_wr_slot),
-	                .wr_row          (dma_wr_row),
-	                .wr_col_base     (dma_wr_col_base),
-	                .wr_data         (dma_wr_data),
-	                .wr_valid        (dma_wr_valid),
-	                .wr_use_16bits   (dma_wr_use_16bits),
-	                .rd_raw_data     (),
-	                .rd_raw_valid    (),
-	                .rd_raw_row      (),
-	                .rd_raw_col_base ()
-	            );
+	        for (genvar dma_i = 0; dma_i < BUS_WIDTH/8; dma_i++) begin : gen_ext_wr
+	            assign dma_wr_data[dma_i]  = ext_dma_wr_data[dma_i];
+	            assign dma_wr_valid[dma_i] = ext_dma_wr_valid[dma_i];
 	        end
 	    endgenerate
 

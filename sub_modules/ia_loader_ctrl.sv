@@ -75,7 +75,7 @@ module ia_loader_ctrl #(
     output logic [REG_WIDTH-1:0]        tl_rows_to_read,
     output logic [REG_WIDTH-1:0]        tl_valid_cols,
     output logic [7:0]                  tl_burst_len_m1,
-    output logic [$clog2(CACHE_BLOCKS)-1:0] tl_slot_id,
+    output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] tl_slot_id,
     output logic                        tl_use_16bits,
     output logic signed [REG_WIDTH-1:0] tl_lhs_zp,
     input  logic                        tl_busy,
@@ -83,8 +83,8 @@ module ia_loader_ctrl #(
 
     // ---- cache_mgr 发送接口（L1组级别）----
     output logic                              cache_l1_start,       // L1组发送启动脉冲
-    output logic [$clog2(CACHE_BLOCKS)-1:0]   cache_l1_slot_start,  // 起始 slot
-    output logic [$clog2(CACHE_BLOCKS)-1:0]   cache_l1_slot_end,    // 终止 slot（含，支持回绕）
+    output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   cache_l1_slot_start,  // 起始 slot
+    output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   cache_l1_slot_end,    // 终止 slot（含，支持回绕）
     output logic                              cache_l1_is_init,     // L1 组 is_init 标记
     output logic                              cache_l1_calc_done,   // L1 组 calc_done 标记
     output logic [CACHE_BLOCKS-1:0]           cache_blk_valid,      // slot 有效状态总线
@@ -99,7 +99,7 @@ module ia_loader_ctrl #(
   localparam int LOG2_SIZE     = $clog2(SIZE);
   localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
   localparam int LOG2_BPB      = $clog2(BYTE_PER_BEAT);
-  localparam int SLOT_W        = $clog2(CACHE_BLOCKS);
+  localparam int SLOT_W        = (CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS);
   localparam int LOAD_CNT_W    = $clog2(CACHE_BLOCKS + 1);
   localparam int W_CNT_W       = (PS_FRAME_COUNT <= 1) ? 1 : ($clog2(PS_FRAME_COUNT) + 1);
 
@@ -372,10 +372,10 @@ module ia_loader_ctrl #(
 
   // 当前读 slot = rd_slot_base + ia_idx
   logic [SLOT_W-1:0] current_rd_slot;
-  assign current_rd_slot = rd_slot_base + ia_idx[SLOT_W-1:0];
+  assign current_rd_slot = (CACHE_BLOCKS <= 1) ? '0 : (rd_slot_base + ia_idx[SLOT_W-1:0]);
 
   // 下一个要发送的 slot（用于 blk_busy 管理）
-  assign next_rd_slot = rd_slot_base + SLOT_W'(ia_idx + 1);
+  assign next_rd_slot = (CACHE_BLOCKS <= 1) ? '0 : (rd_slot_base + SLOT_W'(ia_idx + 1));
 
   // slot_rows_reg: 存储每个 slot 的有效行数，在 tl_tile_done 时写入
   logic [REG_WIDTH-1:0] slot_rows_reg [CACHE_BLOCKS];
@@ -466,7 +466,7 @@ module ia_loader_ctrl #(
     send_group_ready = 1'b1;
     for (int gi = 0; gi < CACHE_BLOCKS; gi++) begin
       if (REG_WIDTH'(gi) < r_cur) begin
-        send_group_ready &= blk_valid[rd_slot_base + SLOT_W'(gi)];
+        send_group_ready &= blk_valid[(CACHE_BLOCKS <= 1) ? 0 : (rd_slot_base + SLOT_W'(gi))];
       end
     end
   end
@@ -841,7 +841,7 @@ module ia_loader_ctrl #(
   // cache_l1 信号生成
   // =====================================================================
   assign cache_l1_slot_start = rd_slot_base;
-  assign cache_l1_slot_end   = rd_slot_base + SLOT_W'(r_cur - 1);  // 自然回绕
+  assign cache_l1_slot_end   = (CACHE_BLOCKS <= 1) ? '0 : (rd_slot_base + SLOT_W'(r_cur - 1));  // 自然回绕
   assign cache_l1_is_init    = is_first_tile;
   assign cache_l1_calc_done  = is_last_l1_group;
 
