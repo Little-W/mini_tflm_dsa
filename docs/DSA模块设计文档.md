@@ -1,6 +1,6 @@
-# AI-DSA MMA 模块设计文档（v2.0）
+# AI-DSA NPU 模块设计文档（v2.0）
 
-> 本文面向 RTL 联调、驱动编写、验证和综合实现，记录当前 `mma_top` 及其主要子模块的端口语义、握手约定、数据流和实现约束。当前顶层为原生 AXI4 master，多个 loader/writer 通过统一 `axi_block_dma_arbiter + axi_dual_block_dma` 访问内存；旧版 ICB 顶层仲裁模型已废弃。
+> 本文面向 RTL 联调、驱动编写、验证和综合实现，记录当前 `npu_top` 及其主要子模块的端口语义、握手约定、数据流和实现约束。当前顶层为原生 AXI4 master，多个 loader/writer 通过统一 `axi_block_dma_arbiter + axi_dual_block_dma` 访问内存；旧版 ICB 顶层仲裁模型已废弃。
 
 ---
 
@@ -16,7 +16,7 @@
 
 ### 0.2 L1/L2 术语
 
-本文中的 L1/L2 只表示 MMA 内部 IA cache 的分块复用调度层级，不表示 CPU 或 SoC cache 层级。CPU 取指缓存统一写作 `CPU I-cache` 或 `PicoRV32 instruction cache`。
+本文中的 L1/L2 只表示 NPU 内部 IA cache 的分块复用调度层级，不表示 CPU 或 SoC cache 层级。CPU 取指缓存统一写作 `CPU I-cache` 或 `PicoRV32 instruction cache`。
 
 | 术语 | 当前含义 |
 |---|---|
@@ -41,8 +41,8 @@
 
 ```text
 CSR/calc_start
-  -> mma_top 配置裁剪与 WS/IS 视角生成
-  -> mma_controller 下发 init_cfg 与 send_trigger
+  -> npu_top 配置裁剪与 WS/IS 视角生成
+  -> npu_controller 下发 init_cfg 与 send_trigger
   -> ia_loader / kernel_loader / bias_loader / vec_requant / oa_writer 请求 DMA
   -> axi_block_dma_arbiter 选择读 client，OA writer 独占写 client
   -> axi_dual_block_dma 发 AXI4 AR/R/AW/W/B
@@ -56,7 +56,7 @@ CSR/calc_start
 
 ---
 
-## 1. 顶层 `mma_top`
+## 1. 顶层 `npu_top`
 
 ### 1.1 参数
 
@@ -91,11 +91,11 @@ CSR/calc_start
 | `q_mult_pt/q_shift_pt/use_per_channel` | In | per-tensor 或 per-channel 量化配置 |
 | `k/n/m` | In | 逻辑 GEMM 维度，`C[K,M]=A[K,N]xB[N,M]` |
 | `lhs_row_stride_b/rhs_col_stride_b/dst_row_stride_b` | In | LHS 行步长、RHS 列/channel 步长、DST 行步长 |
-| `m_axi_*` | AXI4 master | MMA 对 SoC RAM/DDR 的原生 AXI4 读写接口 |
+| `m_axi_*` | AXI4 master | NPU 对 SoC RAM/DDR 的原生 AXI4 读写接口 |
 
 ### 1.3 配置裁剪
 
-`mma_top` 在接受 `calc_start` 后用三级配置流水生成运行配置：
+`npu_top` 在接受 `calc_start` 后用三级配置流水生成运行配置：
 
 1. 根据 `cfg_dataflow_mode` 生成流式视角：
    - WS：`stream_k = k`，`stream_m = m`
@@ -122,9 +122,9 @@ cfg_*_reuse_num = 0 时使用对应容量上限
 
 ---
 
-## 2. 控制器 `mma_controller`
+## 2. 控制器 `npu_controller`
 
-`mma_controller` 是任务级调度器，不直接产生 AXI 命令。它负责：
+`npu_controller` 是任务级调度器，不直接产生 AXI 命令。它负责：
 
 - 接受 `ctrl_calc_start`，拉低 `sa_ready`。
 - 下发 `init_cfg_ia/init_cfg_weight/init_cfg_bias/init_cfg_requant/init_cfg_oa`。
@@ -404,17 +404,17 @@ IS 模式：
 |---|---|
 | `soc_top.sv` | 顶层只保留实例化和连接 |
 | `pico_native_to_axi.sv` | Pico native memory 访问转 AXI，尽量按通道 ready/valid 直接握手 |
-| `soc_axi_interconnect.sv` | CPU、UART、MMA 到 RAM 的 AXI 仲裁，支持 outstanding |
+| `soc_axi_interconnect.sv` | CPU、UART、NPU 到 RAM 的 AXI 仲裁，支持 outstanding |
 | `soc_axi_pingpong_buffer.sv` | 截断 interconnect/RAM 边界长路径 |
 | `soc_axi_ram.sv` | 同步一拍读 AXI RAM，支持 read/write outstanding |
-| `soc_axil_ctrl.sv` | 软件 CSR 到 MMA 配置口 |
+| `soc_axil_ctrl.sv` | 软件 CSR 到 NPU 配置口 |
 | `soc_axil_simpleuart.sv` | UART AXI-Lite 外设 |
 
 原则：
 
 - RAM 不额外增加数据返回延迟。
 - 时序优化主要放在 pingpong/timing buffer 和本地控制寄存。
-- CPU I-cache 是 CPU 取指优化，和 MMA IA cache 概念分开。
+- CPU I-cache 是 CPU 取指优化，和 NPU IA cache 概念分开。
 
 ---
 
@@ -463,11 +463,11 @@ IS 模式：
 
 | plusarg | 说明 |
 |---|---|
-| `+MMA_UTIL_TRACE` | MMA active window、IA/acc/requant/FIFO/AXI 周期统计 |
-| `+MMA_CTRL_UTIL` | 控制器状态与 stall 统计 |
-| `+SOC_AXI_STATS` | SoC AXI 仲裁等待、MMA/CPU 争用 |
+| `+NPU_UTIL_TRACE` | NPU active window、IA/acc/requant/FIFO/AXI 周期统计 |
+| `+NPU_CTRL_UTIL` | 控制器状态与 stall 统计 |
+| `+SOC_AXI_STATS` | SoC AXI 仲裁等待、NPU/CPU 争用 |
 | `+SOC_CPU_AXI_STATS` | CPU 取指/数据访问、CPU I-cache hit/miss |
-| `+MMA_DMA_TRACE` | DMA AR/R/AW/W/B 事务统计 |
+| `+NPU_DMA_TRACE` | DMA AR/R/AW/W/B 事务统计 |
 
 性能统计口径：
 
@@ -516,7 +516,7 @@ PASS, dsa_execute_cycles=6149
 以下旧口径不再适用于当前设计：
 
 - 顶层 legacy ICB 统一主口模型。
-- `sa_icb_cmd/sa_icb_rsp` 作为当前 MMA 顶层主接口。
+- `sa_icb_cmd/sa_icb_rsp` 作为当前 NPU 顶层主接口。
 - `data_setup` 作为主要对角化模块。当前 IA loader 已内置对角化输出。
 - RHS 永远固定 s8 且硬件不能处理 kernel 侧 16bit 的说法。
 - OA writer 连续线性写 tile 的假设。

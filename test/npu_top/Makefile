@@ -1,9 +1,11 @@
 PROJECT_ROOT := ../..
-SUB_MODULES_DIR := $(PROJECT_ROOT)/sub_modules
+RTL_ROOT := $(PROJECT_ROOT)/rtl
+NPU_RTL_DIR := $(RTL_ROOT)/npu
+COMMON_RTL_DIR := $(RTL_ROOT)/common
 
 # 顶层tb与可执行名
-TB := tb_mma_top.sv
-VEXE := sim_mma_top
+TB := tb_npu_top.sv
+VEXE := sim_npu_top
 SIZE ?= 4
 IA_CACHE_BLOCKS ?= 4
 PS_FRAME_COUNT ?= 8
@@ -18,7 +20,7 @@ SIM_BIN := $(BUILD_DIR)/$(VEXE)
 VERILATOR_OPT_FLAGS ?= -O3 -CFLAGS -O3 -LDFLAGS -O3
 
 # Verilator参数
-VERILATOR_FLAGS := -sv -Wall $(TRACE_FLAGS) --timing --top-module tb_mma_top \
+VERILATOR_FLAGS := -sv -Wall $(TRACE_FLAGS) --timing --top-module tb_npu_top \
 	$(VERILATOR_OPT_FLAGS) \
 	-Wno-GENUNNAMED -Wno-VARHIDDEN -Wno-WIDTHEXPAND -Wno-UNUSEDSIGNAL \
 	-Wno-UNUSED -Wno-UNUSEDGENVAR -Wno-UNDRIVEN -Wno-PINMISSING \
@@ -32,18 +34,15 @@ VERILATOR_FLAGS := -sv -Wall $(TRACE_FLAGS) --timing --top-module tb_mma_top \
 # 测试任务头文件
 TEST_TASKS :=
 
-# 工程源：tb、bridge、mma_top 以及 sub_modules
-MMA_TOP_SRC ?= $(PROJECT_ROOT)/top/mma_top.sv
-SUB_SV := $(shell find $(SUB_MODULES_DIR) -maxdepth 5 -type f \( -name "*.sv" -o -name "*.v" \))
+# 工程源：tb、bridge、npu_top 以及 rtl/npu 分层源码
+NPU_TOP_SRC ?= $(NPU_RTL_DIR)/top/npu_top.sv
+NPU_SV := $(shell find $(NPU_RTL_DIR) -mindepth 2 -type f \( -name "*.sv" -o -name "*.v" \) ! -path "$(NPU_TOP_SRC)")
 DEP_SV := $(shell find $(PROJECT_ROOT)/test/dep_modules -maxdepth 1 -type f \( -name "*.sv" -o -name "*.v" \))
-BASIC_SV := \
-        $(PROJECT_ROOT)/basic/pseudo_dual_port_ram.v \
-        $(PROJECT_ROOT)/basic/ws_systolic_cell.sv \
-        $(PROJECT_ROOT)/basic/shift_accumulator.sv
+COMMON_SV := $(shell find $(COMMON_RTL_DIR) -maxdepth 1 -type f \( -name "*.sv" -o -name "*.v" \))
 
 # 添加新的 interface 文件
 SRCS := $(TB) tb_sirv_stubs.v \
-        $(DEP_SV) $(MMA_TOP_SRC) $(SUB_SV) $(BASIC_SV)
+        $(DEP_SV) $(NPU_TOP_SRC) $(NPU_SV) $(COMMON_SV)
 
 # 输出目录与mem文件
 OUT_DIR := out

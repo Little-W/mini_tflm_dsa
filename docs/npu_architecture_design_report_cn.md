@@ -1,12 +1,12 @@
-# MMA 架构与模块设计报告
+# NPU 架构与模块设计报告
 
 日期：2026-07-02
 
-本文记录当前 TFLM AI DSA 中 MMA 加速器的体系结构、模块划分、分块矩阵数据流、内部 IA cache、统一 AXI DMA、写回与量化流水，以及这些设计对性能、面积和时序的影响。本文定位为设计报告和知识库，不替代验证报告、性能报告或时序报告；验证数据和性能图表可继续参考 `docs/performance_report_cn.md`、`docs/size_cache_hw_sw_perf_report_cn.md`、`veri/doc/bus_optimization_report_cn.md`、`veri/doc/area_optimization_report_cn.md` 和 `veri/doc/timing_optimization_report_cn.md`。
+本文记录当前 TFLM AI DSA 中 NPU 加速器的体系结构、模块划分、分块矩阵数据流、内部 IA cache、统一 AXI DMA、写回与量化流水，以及这些设计对性能、面积和时序的影响。本文定位为设计报告和知识库，不替代验证报告、性能报告或时序报告；验证数据和性能图表可继续参考 `docs/performance_report_cn.md`、`docs/size_cache_hw_sw_perf_report_cn.md`、`veri/doc/bus_optimization_report_cn.md`、`veri/doc/area_optimization_report_cn.md` 和 `veri/doc/timing_optimization_report_cn.md`。
 
 ## 1. 设计目标与系统定位
 
-当前加速器面向 TFLite Micro / NMSIS-NN 端侧推理，核心目标不是做一个孤立的矩阵乘单元，而是在 PicoRV32 SoC 中提供可由 NMSIS-NN 魔改入口直接调用的矩阵乘、全连接和卷积 im2col 后端。软件侧通过 CSR/AXI-Lite 配置矩阵基址、尺寸、stride、量化参数和数据流模式，然后触发一次完整 MMA 任务；硬件侧自主完成输入加载、权重加载、偏置加载、矩阵乘累加、重量化、FIFO 打包和 AXI 写回。
+当前加速器面向 TFLite Micro / NMSIS-NN 端侧推理，核心目标不是做一个孤立的矩阵乘单元，而是在 PicoRV32 SoC 中提供可由 NMSIS-NN 魔改入口直接调用的矩阵乘、全连接和卷积 im2col 后端。软件侧通过 CSR/AXI-Lite 配置矩阵基址、尺寸、stride、量化参数和数据流模式，然后触发一次完整 NPU 任务；硬件侧自主完成输入加载、权重加载、偏置加载、矩阵乘累加、重量化、FIFO 打包和 AXI 写回。
 
 设计目标可以分为四层：
 
@@ -21,14 +21,14 @@
 
 ## 2. 顶层系统架构
 
-当前 SoC 结构由 PicoRV32、AXI-Lite 控制接口、MMA AXI master、UART、AXI interconnect 和 AXI RAM 组成。Pico 负责运行 TFLM/NMSIS-NN runtime，MMA 负责大块矩阵计算，UART 只用于仿真和调试输出。
+当前 SoC 结构由 PicoRV32、AXI-Lite 控制接口、NPU AXI master、UART、AXI interconnect 和 AXI RAM 组成。Pico 负责运行 TFLM/NMSIS-NN runtime，NPU 负责大块矩阵计算，UART 只用于仿真和调试输出。
 
 ```mermaid
 flowchart LR
     CPU[PicoRV32 / TFLM runtime]
     NMSIS[NMSIS-NN ExtraAccFunctions]
     AXIL[AXI-Lite CSR bridge]
-    MMA[mma_axil_top + mma_top]
+    NPU[AXI-Lite shell + npu_top]
     DMA[axi_dual_block_dma]
     IC[soc_axi_interconnect]
     RAM[soc_axi_ram]
@@ -36,15 +36,15 @@ flowchart LR
 
     CPU --> NMSIS
     NMSIS --> AXIL
-    AXIL --> MMA
-    MMA --> DMA
+    AXIL --> NPU
+    NPU --> DMA
     DMA --> IC
     CPU --> IC
     UART --> IC
     IC --> RAM
 ```
 
-`mma_axil_top` 将软件寄存器映射为 `mma_top` 的配置端口，`mma_top` 内部再连接各 loader、compute core、requant 和 writer。SoC interconnect 支持 outstanding，MMA 和 CPU 读写均可排队；AXI RAM 保持同步读一拍延迟，但读响应可 full-pipe 连续返回。顶层还在关键 AXI 边界插入 pingpong/timing buffer，用于切断跨模块 ready/valid 长路径，同时保持通道吞吐。
+AXI-Lite shell 将软件寄存器映射为 `npu_top` 的配置端口，`npu_top` 内部再连接各 loader、compute core、requant 和 writer。SoC interconnect 支持 outstanding，NPU 和 CPU 读写均可排队；AXI RAM 保持同步读一拍延迟，但读响应可 full-pipe 连续返回。顶层还在关键 AXI 边界插入 pingpong/timing buffer，用于切断跨模块 ready/valid 长路径，同时保持通道吞吐。
 
 当前最终选定 Vivado 工程位于：
 
@@ -54,24 +54,24 @@ flowchart LR
 
 对应 bitstream 位于 `/home/etc/FPGA/tflm_ai_dsa/vivado_export/tflm_ai_dsa_soc_s16_c4_icache_pipe_syncrst_v6/fpga_top.bit`。本阶段已停止继续追 `+0.1ns`，以满足 `WNS >= +0.05ns` 且面积受控的 `syncrst_v6` 作为最终交付基线。
 
-## 3. MMA 顶层模块树
+## 3. NPU 顶层模块树
 
-`mma_top` 是硬件计算域的顶层，采用“控制面 + 数据面 + DMA 面”三层结构。
+`npu_top` 是硬件计算域的顶层，采用“控制面 + 数据面 + DMA 面”三层结构。
 
 | 模块 | 主要职责 | 关键文件 |
 |---|---|---|
-| `mma_top` | 配置流水、reuse 参数裁剪、模块连接、统一 DMA client 汇聚 | `top/mma_top.sv` |
-| `mma_controller` | 发送 IA/W 触发、检查 bias/quant/FIFO 条件、任务完成握手 | `sub_modules/mma_controller.sv` |
-| `ia_loader` | IA 分块加载、IA cache 管理、cache 组连续对角化输出 | `sub_modules/ia_loader*.sv` |
-| `kernel_loader` | W 分块加载、列展平权重转置输出、W reuse 调度 | `sub_modules/kernel_loader*.sv` |
-| `bias_loader` | 按 group 读取 s32 bias，支持 IS 下多行 bias group | `sub_modules/bias_loader*.sv` |
-| `compute_core` | WS 脉动阵列、bias/partial-sum 选择、PS buffer 回灌 | `sub_modules/compute_core.sv` |
-| `ps_buffer` | 部分和缓存、IA cache 组切换回灌、最终结果输出 | `sub_modules/ps_buffer.sv` |
-| `vec_requant` | per-tensor/per-channel 重量化与 s8 裁剪 | `sub_modules/vec_requant.sv` |
-| `vec_s8_to_fifo` | s8 向量打包成 32-bit 写回数据和 byte mask | `sub_modules/vec_s8_to_fifo.sv` |
-| `oa_writer` | DMA 写回、tile 顺序展开、WS/IS 输出地址映射 | `sub_modules/oa_writer.sv` |
-| `axi_block_dma_arbiter` | 多 loader/writer DMA client 仲裁 | `sub_modules/axi_block_dma_arbiter.sv` |
-| `axi_dual_block_dma` | 统一 AXI4 读写 DMA，含非对齐访问支持 | `sub_modules/axi_dual_block_dma.sv` |
+| `npu_top` | 配置流水、reuse 参数裁剪、模块连接、统一 DMA client 汇聚 | `rtl/npu/top/npu_top.sv` |
+| `npu_controller` | 发送 IA/W 触发、检查 bias/quant/FIFO 条件、任务完成握手 | `rtl/npu/control/npu_controller.sv` |
+| `ia_loader` | IA 分块加载、IA cache 管理、cache 组连续对角化输出 | `rtl/npu/loaders/ia_loader*.sv` |
+| `kernel_loader` | W 分块加载、列展平权重转置输出、W reuse 调度 | `rtl/npu/loaders/kernel_loader*.sv` |
+| `bias_loader` | 按 group 读取 s32 bias，支持 IS 下多行 bias group | `rtl/npu/loaders/bias_loader*.sv` |
+| `compute_core` | WS 脉动阵列、bias/partial-sum 选择、PS buffer 回灌 | `rtl/npu/compute/compute_core.sv` |
+| `ps_buffer` | 部分和缓存、IA cache 组切换回灌、最终结果输出 | `rtl/npu/buffers/ps_buffer.sv` |
+| `vec_requant` | per-tensor/per-channel 重量化与 s8 裁剪 | `rtl/npu/writeback/vec_requant.sv` |
+| `vec_s8_to_fifo` | s8 向量打包成 32-bit 写回数据和 byte mask | `rtl/npu/writeback/vec_s8_to_fifo.sv` |
+| `oa_writer` | DMA 写回、tile 顺序展开、WS/IS 输出地址映射 | `rtl/npu/writeback/oa_writer.sv` |
+| `axi_block_dma_arbiter` | 多 loader/writer DMA client 仲裁 | `rtl/npu/dma/axi_block_dma_arbiter.sv` |
+| `axi_dual_block_dma` | 统一 AXI4 读写 DMA，含非对齐访问支持 | `rtl/npu/dma/axi_dual_block_dma.sv` |
 
 模块之间的核心握手可以概括为：
 
@@ -124,7 +124,7 @@ flowchart TB
 
 ### 4.2 IA cache / L1 / L2 / reuse 术语
 
-本报告中的 `L1 group`、`L2 group` 只描述 MMA 内部 IA cache 的分块调度层级；它们不是 SoC/CPU 的 cache 层级。PicoRV32 取指侧的缓存会明确写成 `CPU I-cache` 或 `PicoRV32 instruction cache`。
+本报告中的 `L1 group`、`L2 group` 只描述 NPU 内部 IA cache 的分块调度层级；它们不是 SoC/CPU 的 cache 层级。PicoRV32 取指侧的缓存会明确写成 `CPU I-cache` 或 `PicoRV32 instruction cache`。
 
 | 名称 | 含义 |
 |---|---|
@@ -164,7 +164,7 @@ IS，即 Input Stationary，设计目标是让 IA 和 W 的角色可交换，以
 1. 输入侧预转置：原始 IA 是行展平，而 W 是列展平。硬件必须保持 DMA 连续读取，同时在内部把 W 输出转置成阵列需要的方向。
 2. 输出侧转置：IS 下输出 tile 的产生顺序和最终内存行优先顺序不同，写回 FIFO/oa_writer 不能简单流式连续写，而需要按 tile 坐标重新组织。
 
-当前架构通过 `cfg_dataflow_mode` 贯穿 `mma_top`、`ia_loader`、`kernel_loader`、`vec_requant` 和 `oa_writer`。IS/s16 子集已经能运行；后续若继续增强 IS，需要重点优化写回转置缓冲，避免为了转置而在 FIFO 中引入过多 bank 或额外 stall。
+当前架构通过 `cfg_dataflow_mode` 贯穿 `npu_top`、`ia_loader`、`kernel_loader`、`vec_requant` 和 `oa_writer`。IS/s16 子集已经能运行；后续若继续增强 IS，需要重点优化写回转置缓冲，避免为了转置而在 FIFO 中引入过多 bank 或额外 stall。
 
 ## 6. IA Loader 与内部 IA Cache
 
@@ -270,7 +270,7 @@ flowchart TB
 | raw read | per-channel quant 等模块可直接取 32-bit 参数 |
 | write mask | OA writer 可按尾列生成 byte mask，避免覆盖无效输出 |
 
-SoC 总线报告显示，当前 `SIZE=16/CACHE_BLOCKS=4` 在 256 点方阵上 MMA 活跃窗口内有效 AXI beat 占比达到约 `89.3%`。`CACHE_BLOCKS=16` 的 beat util 较低但周期更短，原因是 IA cache/reuse 减少了必须搬运的数据，而不是总线性能退化。
+SoC 总线报告显示，当前 `SIZE=16/CACHE_BLOCKS=4` 在 256 点方阵上 NPU 活跃窗口内有效 AXI beat 占比达到约 `89.3%`。`CACHE_BLOCKS=16` 的 beat util 较低但周期更短，原因是 IA cache/reuse 减少了必须搬运的数据，而不是总线性能退化。
 
 ## 9. Compute Core、脉动阵列与 PS Buffer
 
@@ -331,7 +331,7 @@ per-channel 模式下，模块通过 DMA raw read 加载 multiplier 和 shift；
 
 ## 11. 参数化设计
 
-当前 MMA 的关键参数如下：
+当前 NPU 的关键参数如下：
 
 | 参数/端口 | 作用 |
 |---|---|
@@ -355,7 +355,7 @@ per-channel 模式下，模块通过 DMA raw read 加载 multiplier 和 shift；
 
 ## 12. 面积与时序友好设计原则
 
-当前 FPGA 目标是让 MMA 面积压缩到 35000 LUT 以内，并优先保证 150 MHz 时序。设计中采用了以下约束：
+当前 FPGA 目标是让 NPU 面积压缩到 35000 LUT 以内，并优先保证 150 MHz 时序。设计中采用了以下约束：
 
 | 原则 | 落地方式 |
 |---|---|
@@ -395,7 +395,7 @@ SoC interconnect outstanding 能力
 
 ## 14. 验证与回归策略
 
-当前验证环境以 VCS + Verilator 兼容的统一 testbench 为目标，使用 Python 生成 case 配置和 memory image。SoC C runtime 在仿真中直接写 CSR、触发 MMA，然后读取 DDR/mem 中结果和 golden 对比。这样比波形级逐拍检查更快，适合大规模随机回归。
+当前验证环境以 VCS + Verilator 兼容的统一 testbench 为目标，使用 Python 生成 case 配置和 memory image。SoC C runtime 在仿真中直接写 CSR、触发 NPU，然后读取 DDR/mem 中结果和 golden 对比。这样比波形级逐拍检查更快，适合大规模随机回归。
 
 主要覆盖维度：
 
@@ -407,7 +407,7 @@ SoC interconnect outstanding 能力
 | 数据流 | WS/IS |
 | 量化 | per-tensor、per-channel |
 | 内存 | 1 拍 RAM、随机 DDR 延迟、非对齐布局 |
-| 性能 | MMA active、AXI beats、fifo_full、stall breakdown |
+| 性能 | NPU active、AXI beats、fifo_full、stall breakdown |
 | TFLM | MLP、MNIST CNN、im2col batch32 |
 
 最近与时序优化相关的 smoke 结果：
@@ -433,7 +433,7 @@ SoC interconnect outstanding 能力
 
 | 类型 | 文件 |
 |---|---|
-| 顶层 RTL | `top/mma_top.sv` |
+| 顶层 RTL | `rtl/npu/top/npu_top.sv` |
 | IA loader 文档 | `docs/ia_loader_enhanced_design.md` |
 | kernel loader 文档 | `docs/kernel_loader_enhanced_design.md` |
 | compute core 文档 | `docs/compute_core_enhanced_design.md` |
@@ -444,4 +444,4 @@ SoC interconnect outstanding 能力
 
 ## 附录 B：一句话总结
 
-当前 MMA 的核心不是单个 `SIZE x SIZE` 阵列，而是围绕这个阵列构建的一套分块外积式数据流：IA cache 保存多个输入 tile，kernel loader 保持权重连续读和正确转置，PS buffer 承接跨归约 tile 的部分和，OA writer 负责按最终内存布局重排写回，统一 AXI DMA 和 SoC outstanding 则把这些模块的访存组织成尽量连续、可重叠、可综合的硬件流水。
+当前 NPU 的核心不是单个 `SIZE x SIZE` 阵列，而是围绕这个阵列构建的一套分块外积式数据流：IA cache 保存多个输入 tile，kernel loader 保持权重连续读和正确转置，PS buffer 承接跨归约 tile 的部分和，OA writer 负责按最终内存布局重排写回，统一 AXI DMA 和 SoC outstanding 则把这些模块的访存组织成尽量连续、可重叠、可综合的硬件流水。

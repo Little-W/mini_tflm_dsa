@@ -1147,7 +1147,7 @@ Cycle | ctrl 状态 | 事件说明
 
 2. **R/W 幂次要求**：`ia_reuse_num`（R）和 `w_reuse_num`（W）须为 2 的幂次；`ia_reuse_num_act` 的计算使用 `& (R-1)` 位掩码，非 2 幂时结果错误。如需支持任意值，需将位掩码改为减法比较。
 
-3. **L1 组对角化发送总时长**：`Σvrows_i + SIZE - 1` 拍（求和遍历 L1 组内所有 `r_cur` 个 tile 的有效行数 `vrows_i`；从 `cache_l1_start` 后 col0 开始发射第一行，到 `ia_sending_done` 脉冲出现）。若每个 tile 有效行数均为 SIZE，则简化为 `r_cur × SIZE + SIZE - 1` 拍。上游 `mma_controller` 的窗口时序计算须基于此值，不能按单 tile 的 `valid_rows` 拍计算。
+3. **L1 组对角化发送总时长**：`Σvrows_i + SIZE - 1` 拍（求和遍历 L1 组内所有 `r_cur` 个 tile 的有效行数 `vrows_i`；从 `cache_l1_start` 后 col0 开始发射第一行，到 `ia_sending_done` 脉冲出现）。若每个 tile 有效行数均为 SIZE，则简化为 `r_cur × SIZE + SIZE - 1` 拍。上游 `npu_controller` 的窗口时序计算须基于此值，不能按单 tile 的 `valid_rows` 拍计算。
 
 4. **RAM 读写时序**：伪双端口 RAM 的读延迟为 1 拍（同步 RAM），`cache_mgr` 中标量 `ia_row_valid`（= `ram_rd_en_d1[SIZE-1]`）对齐至最后一列的数据有效时刻，较 col0 读使能延迟 `SIZE` 拍（`SIZE-1` 级 shift-register + 1 级 RAM 延迟）。
 

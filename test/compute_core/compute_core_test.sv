@@ -32,6 +32,7 @@ module compute_core_test #(
     logic signed [31:0] ps_acc_out     [0:SIZE-1];
     logic               ps_acc_data_valid;
     logic               ps_tile_calc_over;
+    logic               ps_stream_calc_over;
 
     localparam int unsigned PS_BURST_CYCLES = (2 * SIZE) - 1;
     localparam int unsigned PS_CNT_W        = (PS_BURST_CYCLES < 2) ? 1 :
@@ -171,7 +172,8 @@ module compute_core_test #(
         .data_out       (ps_data_out),
         .acc_data_out   (ps_acc_out),
         .acc_data_valid (ps_acc_data_valid),
-        .tile_calc_over (ps_tile_calc_over)
+        .tile_calc_over (ps_tile_calc_over),
+        .stream_calc_over(ps_stream_calc_over)
     );
 
     assign acc_data_valid = ps_acc_data_valid;

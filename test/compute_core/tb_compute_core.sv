@@ -34,6 +34,7 @@ module tb_compute_core;
     integer errors;
     int     final_rows_count;
     bit     final_tile_over_seen;
+    logic   dut_partial_sum_calc_over;
     string  data_dir;
 
     compute_core_test #(
@@ -56,6 +57,7 @@ module tb_compute_core;
         .bias_in         (tb_if.bias_in),
         .acc_data_out    (tb_if.acc_data_out),
         .acc_data_valid  (tb_if.acc_data_valid),
+        .partial_sum_calc_over(dut_partial_sum_calc_over),
         .tile_calc_over  (tb_if.tile_calc_over)
     );
 

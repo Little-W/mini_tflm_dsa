@@ -1,6 +1,6 @@
 VEXE := sim_axi_dual_block_dma
 PROJECT_ROOT := ../..
-SUB_MODULES_DIR := $(PROJECT_ROOT)/sub_modules
+NPU_DMA_DIR := $(PROJECT_ROOT)/rtl/npu/dma
 
 VERILATOR_FLAGS := -sv -Wall --trace --timing \
 	-Wno-GENUNNAMED -Wno-VARHIDDEN -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC \
@@ -10,7 +10,7 @@ VERILATOR_FLAGS := -sv -Wall --trace --timing \
 
 SRCS := \
 	tb_axi_dual_block_dma.sv \
-	$(SUB_MODULES_DIR)/axi_dual_block_dma.sv
+	$(NPU_DMA_DIR)/axi_dual_block_dma.sv
 
 all: run
 

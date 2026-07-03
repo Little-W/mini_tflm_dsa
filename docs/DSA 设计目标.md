@@ -1,6 +1,6 @@
 # DSA 设计目标与规格说明（Spec v2.0）
 
-> 本文描述当前 AI-DSA / MMA 加速器的设计目标、软件映射、数据类型、内存布局、数据流和可实现性约束。当前版本以 `mma_top` 原生 AXI4 master、统一 `axi_dual_block_dma`、IA cache 分块复用和 WS/IS 数据流切换为准，旧版 ICB 多路器和单 tile 顺序执行模型不再作为顶层设计口径。
+> 本文描述当前 AI-DSA / NPU 加速器的设计目标、软件映射、数据类型、内存布局、数据流和可实现性约束。当前版本以 `npu_top` 原生 AXI4 master、统一 `axi_dual_block_dma`、IA cache 分块复用和 WS/IS 数据流切换为准，旧版 ICB 多路器和单 tile 顺序执行模型不再作为顶层设计口径。
 
 ---
 
@@ -37,7 +37,7 @@ C[K, M] = A[K, N] x B[N, M]
 | `riscv_nn_mat_mult_kernel_s8_s16` | s16 LHS 与 s8 RHS 的矩阵乘；当前硬件通过 16bit 数据路径支持 |
 | `riscv_nn_mat_mult_kernel_row_offset_s8_s16` | 同上，并使用 `dst_row_stride_b` 支持非致密输出行步进 |
 | Fully Connected | 直接映射为 GEMM |
-| Conv / 1x1 Conv / im2col | im2col 后的矩阵乘由 MMA 执行；小型或 int4 场景可由软件 fallback |
+| Conv / 1x1 Conv / im2col | im2col 后的矩阵乘由 NPU 执行；小型或 int4 场景可由软件 fallback |
 
 不在当前硬件直接目标内的内容：
 
@@ -49,7 +49,7 @@ C[K, M] = A[K, N] x B[N, M]
 
 ## 3. 术语约定
 
-本文中的 `L1 group`、`L2 group` 只表示 MMA 内部 IA cache 的分块复用调度层级，不表示 CPU 或 SoC cache 层级。PicoRV32 取指侧缓存统一写作 `CPU I-cache` 或 `PicoRV32 instruction cache`。
+本文中的 `L1 group`、`L2 group` 只表示 NPU 内部 IA cache 的分块复用调度层级，不表示 CPU 或 SoC cache 层级。PicoRV32 取指侧缓存统一写作 `CPU I-cache` 或 `PicoRV32 instruction cache`。
 
 | 名称 | 含义 |
 |---|---|
@@ -149,8 +149,8 @@ C[i : i+R-1, j : j+W-1] += A[i : i+R-1, r] x B[r, j : j+W-1]
 
 1. 软件写 CSR，配置基址、维度、stride、量化、数据类型、WS/IS 和 reuse。
 2. `calc_start` 在 `sa_ready=1` 时拉高一拍。
-3. `mma_top` 对 reuse 参数做容量裁剪，并按 WS/IS 生成流式视角。
-4. `mma_controller` 下发 `init_cfg_*`，各子模块锁存配置。
+3. `npu_top` 对 reuse 参数做容量裁剪，并按 WS/IS 生成流式视角。
+4. `npu_controller` 下发 `init_cfg_*`，各子模块锁存配置。
 5. IA/kernel/bias/quant/OA writer 通过统一 `axi_block_dma_arbiter` 申请 DMA。
 6. `axi_dual_block_dma` 通过 AXI4 发出读写 burst，读写通道可同时工作。
 7. `ia_loader` 将 IA tile 写入 IA cache，并按 L1 group 连续对角化输出。
@@ -167,7 +167,7 @@ C[i : i+R-1, j : j+W-1] += A[i : i+R-1, r] x B[r, j : j+W-1]
 
 当前 SoC 集成目标：
 
-- PicoRV32、UART、MMA 统一接入 AXI interconnect。
+- PicoRV32、UART、NPU 统一接入 AXI interconnect。
 - Pico 和 UART 控制侧可使用 AXI-Lite 简化桥接。
 - DMA 读写通道均支持 outstanding，读写能力对等。
 - AXI RAM 保持同步一拍读取，不通过额外加 RAM 数据延迟换时序。
@@ -242,8 +242,8 @@ Bitstream: generated successfully
 
 当前阶段的完成判据为：
 
-- 功能：MMA 随机回归、SoC 大矩阵回归和 TFLM 模型回归通过。
+- 功能：NPU 随机回归、SoC 大矩阵回归和 TFLM 模型回归通过。
 - 性能：硬件加速相对纯软件有明确收益，并能解释不同 `SIZE/CACHE_BLOCKS` 下阵列利用率与总线利用率变化。
-- 面积：MMA/SoC 资源在 Artix-7 上可实现，历史目标为 MMA 相关逻辑压到 35000 LUT 以内。
+- 面积：NPU/SoC 资源在 Artix-7 上可实现，历史目标为 NPU 相关逻辑压到 35000 LUT 以内。
 - 时序：150 MHz Vivado implementation WNS/TNS 转正，最终基线 WNS 达到 `+0.05ns` 级别；RAM async-control 类 DRC 继续作为后续清理项跟踪。
 - 文档：设计目标、模块文档、性能报告、面积报告、时序报告与当前 RTL 一致。

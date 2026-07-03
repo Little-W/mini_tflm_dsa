@@ -20,9 +20,9 @@
 
 本节只验证“时序优化是否引入吞吐气泡”，不再拿最早的非 cache 架构做对比。old 基线定义为 IA timing 优化前的 cached dataflow 稳定组合：
 
-- old：`/home/etc/FPGA/tflm_ai_dsa` commit `7e81ae4` 的 MMA submodules，加上 integrated repo commit `5f607cd` 的 pre-timing `mma_top.sv`。
+- old：`/home/etc/FPGA/tflm_ai_dsa` commit `7e81ae4` 的 MMA submodules，加上 integrated repo commit `5f607cd` 的 pre-timing `npu_top.sv`。
 - new：`/home/etc/FPGA/tflm_ai_dsa` 当前同步后的 MMA RTL。
-- testbench：两边使用同一份修正后的 `test/mma_top` harness。修正点是 WS 下 RHS/W 按列展平写入，匹配硬件 W 侧“每个输出列连续读取 N 个元素”的 DMA 语义。
+- testbench：两边使用同一份修正后的 `test/npu_top` harness。修正点是 WS 下 RHS/W 按列展平写入，匹配硬件 W 侧“每个输出列连续读取 N 个元素”的 DMA 语义。
 - 配置：`SIZE=16`，`IA_CACHE_BLOCKS=4`，`lhs=s8`，`dataflow=WS`，`IA_REUSE_NUM=2`，`W_REUSE_NUM=4`，DDR 随机延迟关闭。`K=N=M=16/32/64/128/256` 使用 `PS_FRAME_COUNT=16`；`384` 点使用 `PS_FRAME_COUNT=32`。
 - cycle 统计：直接 MMA testbench 中 `calc_start` 到 `sa_ready` done 的计算段，不包含 SoC/TFLM 初始化。
 
@@ -233,7 +233,7 @@ DDR 随机延迟打开，`DDR_CMD_MAX_LAT=3`，`DDR_W_MAX_LAT=2`，`DDR_RSP_MAX_
 
 同步到 `/home/etc/FPGA/tflm_ai_dsa` 后，`test/block_dma` 单测同步更新为拆分写通道模型：写命令握手后再通过 `icb_w_valid/icb_w_ready` 提供写数据，读块、线性读和写块均 PASS。
 
-`test/mma_top` 中旧 debug 打印曾直接引用已删除的内部控制器计数器，现改为使用新版已有的 `requant_out_tile_done` 和 kernel loader debug 输出，避免 TB 因私有层级信号变化而无法编译。
+`test/npu_top` 中旧 debug 打印曾直接引用已删除的内部控制器计数器，现改为使用新版已有的 `requant_out_tile_done` 和 kernel loader debug 输出，避免 TB 因私有层级信号变化而无法编译。
 
 目标仓库 DDR 行为模型也补齐了写 burst 语义：写命令握手后锁存地址与 `cmd_len`，随后按 `len+1` 个 `w_hs` 连续写入并递增地址，最后才返回写 response。这个修复解决了 `SIZE=8,CACHE=8,K=1,N=15,M=8` 中 OA writer 一行 2 个 beat 写回时，旧模型在第 1 个 beat 后提前 response、导致第 2 个 beat 永久无 `w_ready` 的 timeout。
 
@@ -242,12 +242,12 @@ DDR 随机延迟打开，`DDR_CMD_MAX_LAT=3`，`DDR_W_MAX_LAT=2`，`DDR_RSP_MAX_
 | 测试 | 配置 | 结果 |
 |---|---|---|
 | `test/block_dma` | 读块、线性读、写块 | PASS |
-| `test/mma_top run_random` | `SIZE=8,CACHE=8,SEED=730001,DDR_RAND_LAT=0` | PASS |
-| `test/mma_top run_random` | `SIZE=8,CACHE=8,COUNT=3,SEED=730010,DDR_CMD_MAX_LAT=3,DDR_W_MAX_LAT=2,DDR_RSP_MAX_LAT=8` | PASS=3 FAIL=0 |
+| `test/npu_top run_random` | `SIZE=8,CACHE=8,SEED=730001,DDR_RAND_LAT=0` | PASS |
+| `test/npu_top run_random` | `SIZE=8,CACHE=8,COUNT=3,SEED=730010,DDR_CMD_MAX_LAT=3,DDR_W_MAX_LAT=2,DDR_RSP_MAX_LAT=8` | PASS=3 FAIL=0 |
 
 ### 2026-06-30 补充：脉动阵列利用率与 AXI 原生迁移起点
 
-本轮先用 `+MMA_UTIL_TRACE` 对较大矩阵进行利用率采样，目标是区分“阵列内部气泡”和“外部数据供给气泡”。采样命令均使用统一 `test/mma_top` 仿真，DDR 随机延迟关闭，避免内存模型噪声掩盖 RTL 调度问题。
+本轮先用 `+MMA_UTIL_TRACE` 对较大矩阵进行利用率采样，目标是区分“阵列内部气泡”和“外部数据供给气泡”。采样命令均使用统一 `test/npu_top` 仿真，DDR 随机延迟关闭，避免内存模型噪声掩盖 RTL 调度问题。
 
 | SIZE | Case | cycles | IA row util | ACC util | 主要 DMA busy | 主要 controller stall |
 |---:|---|---:|---:|---:|---|---|
@@ -268,7 +268,7 @@ DDR 随机延迟打开，`DDR_CMD_MAX_LAT=3`，`DDR_W_MAX_LAT=2`，`DDR_RSP_MAX_
 
 本轮已新增 AXI 原生迁移基础模块：
 
-- `sub_modules/axi_dual_block_dma.sv`
+- `rtl/npu/dma/axi_dual_block_dma.sv`
   - 读侧直接输出 AXI4 `AR/R`，保留分块读、线性读、尾列 `valid_cols`、s8/s16 解包和 zero-point 补偿。
   - 写侧直接输出 AXI4 `AW/W/B`，支持按行 burst 写回，`src_wready` 仅由写数据通道反压决定。
   - 读写状态机完全独立：`rd_busy/rd_done` 与 `wr_busy/wr_done` 分离，后续可由读仲裁器服务 IA/kernel/bias/quant，同时让 OA writer 独占写通道。
@@ -282,9 +282,9 @@ DDR 随机延迟打开，`DDR_CMD_MAX_LAT=3`，`DDR_W_MAX_LAT=2`，`DDR_RSP_MAX_
 
 ### 2026-06-30 补充：AXI 读仲裁与 OA 独立写通道
 
-在 `axi_dual_block_dma` 基础上继续推进到客户端仲裁层，新增 `sub_modules/axi_block_dma_arbiter.sv`：
+在 `axi_dual_block_dma` 基础上继续推进到客户端仲裁层，新增 `rtl/npu/dma/axi_block_dma_arbiter.sv`：
 
-- 读侧保留 IA/kernel/bias/quant 四类客户端仲裁，优先级为 kernel > IA > quant > bias，接口语义与旧 `block_dma_arbiter` 对齐，便于后续替换 `mma_top`。
+- 读侧保留 IA/kernel/bias/quant 四类客户端仲裁，优先级为 kernel > IA > quant > bias，接口语义与旧 `block_dma_arbiter` 对齐，便于后续替换 `npu_top`。
 - OA writer 不再进入读侧仲裁，而是直接绑定 AXI 写引擎。这样 OA 写回过程只占用 `AW/W/B`，不会阻塞下一批 IA/kernel 的 `AR/R` 读取。
 - `ia_done/kernel_done/bias_done/quant_done` 只由读引擎完成脉冲路由；`oa_done` 只由写引擎完成脉冲路由，删除了“读写都必须共享一个 dma_done”的串行隐含约束。
 - `oa_src_wready` 只由写通道反压决定，读侧 busy 不会再压住 OA FIFO 输出。
@@ -295,13 +295,13 @@ DDR 随机延迟打开，`DDR_CMD_MAX_LAT=3`，`DDR_W_MAX_LAT=2`，`DDR_RSP_MAX_
 |---|---|---|
 | `test/axi_block_dma_arbiter` | kernel 读和 OA 写同周期请求、AXI `AR/R` 与 `AW/W/B` 并行推进、`kernel_busy && oa_busy` overlap、读解包和多 beat 写回正确 | PASS，`overlap=1` |
 
-### 2026-06-30 补充：`mma_top` 顶层切换到 AXI
+### 2026-06-30 补充：`npu_top` 顶层切换到 AXI
 
-本轮已把 `mma_top` 的最终外部数据口从 `sa_icb_*` 切换为 AXI4 master 五通道，顶层不再通过 ICB-to-AXI adapter 访问 DDR。内部替换点如下：
+本轮已把 `npu_top` 的最终外部数据口从 `sa_icb_*` 切换为 AXI4 master 五通道，顶层不再通过 ICB-to-AXI adapter 访问 DDR。内部替换点如下：
 
 - `u_block_dma_arbiter` 的实例名保留，但模块已替换为 `axi_block_dma_arbiter`，便于沿用原有调试层级。
 - IA/kernel/bias/quant 只进入 AXI `AR/R` 读侧仲裁；OA writer 独占 `AW/W/B` 写侧。
-- `test/mma_top` 的 DDR 模型切换为 `ddr_axi_mem_model`，保留 `mem_r` 层级数组，因此统一 mem case 和直接内存结果校验流程不变。
+- `test/npu_top` 的 DDR 模型切换为 `ddr_axi_mem_model`，保留 `mem_r` 层级数组，因此统一 mem case 和直接内存结果校验流程不变。
 - 性能统计从旧 `bus_cmd/bus_rsp` 改为 `axi_ar/axi_r/axi_aw/axi_w/axi_b`，可以直接观察读写通道是否并行推进。
 - 清理了 `kernel_loader_buffer` 与 `vec_requant` 中固定访问 lane 4 的 trace 打印，避免 `SIZE=4` 边界编译越界。
 
@@ -358,7 +358,7 @@ EAI 同步验证：
 
 同步到集成仓库后的 wrapper/SoC 改动：
 
-- `mma_axil_top.sv` 删除 MMA 侧 `m_icb_*`、`icb_unalign_bridge` 和 `icb2axi`，直接暴露并连接 `mma_top` AXI4 master 五通道。
+- `mma_axil_top.sv` 删除 MMA 侧 `m_icb_*`、`icb_unalign_bridge` 和 `icb2axi`，直接暴露并连接 `npu_top` AXI4 master 五通道。
 - `axil_top_with_ram.sv`、`soc_top.sv`、`axi_sim_ram.v` 的 `ARLEN/AWLEN` 改为 8 bit，并补齐 AXI burst 读写行为，避免只验证单 beat 造成假通过。
 - `dut_axil.f` 和 MMA 相关 flist 增加 `axi_block_dma_arbiter.sv`、`axi_dual_block_dma.sv`，不再把外置 unalign/ICB-to-AXI bridge 放在主 AXI SoC 路径。
 
@@ -368,7 +368,7 @@ EAI 同步验证：
 |---|---|---|
 | `test/axi_dual_block_dma` | 非对齐读 `base=1,stride=5`，非对齐写 `base=0x61,stride=5`，逐 byte lane 校验 | PASS |
 | `test/axi_block_dma_arbiter` | kernel 读/OA 写并行，AXI 读写通道 overlap | PASS |
-| `test/mma_top` | `SIZE=4,CACHE=2,COUNT=3,DDR_RAND_LAT=1` | PASS |
+| `test/npu_top` | `SIZE=4,CACHE=2,COUNT=3,DDR_RAND_LAT=1` | PASS |
 | `veri/sim run` | `SIZE=4,CACHE=2,WS,s8,per-tensor,unaligned_layout,DDR_RAND_LAT=1` | PASS；样本低两位：LHS=2、RHS=1、Bias=1、Out=1、Expected=3 |
 | `veri/sim soc_regress` | `SIZE=4,CACHE=2,DF={WS,IS},LHS={s8,s16},Q={per-tensor,per-channel},2 seeds,unaligned_layout,DDR_RAND_LAT=1` | PASS=16 FAIL=0 |
 
@@ -390,7 +390,7 @@ EAI 同步验证：
 MMA AXI 写侧同步改为真正 outstanding：
 
 - `axi_dual_block_dma` 新增 `WRITE_OUTSTANDING` 参数，`AW` 可按行提前排队，`W` 按已接收地址顺序连续流式发送，`B` 独立回收。
-- `axi_block_dma_arbiter`、`mma_top`、`mma_axil_top`、`soc_top` 均透传 `AXI_WRITE_OUTSTANDING`，默认值跟随 `AXI_READ_OUTSTANDING`，也可以从 Makefile 用 `SOC_AXI_WRITE_OUTSTANDING` 单独覆盖。
+- `axi_block_dma_arbiter`、`npu_top`、`mma_axil_top`、`soc_top` 均透传 `AXI_WRITE_OUTSTANDING`，默认值跟随 `AXI_READ_OUTSTANDING`，也可以从 Makefile 用 `SOC_AXI_WRITE_OUTSTANDING` 单独覆盖。
 - `veri/sim/Makefile` 新增 `SOC_AXI_READ_OUTSTANDING` 和 `SOC_AXI_WRITE_OUTSTANDING`，用于 SoC 仿真 elaboration；这与此前 ro=4 的性能测试入口保持一致。
 
 新增验证结果：
@@ -415,7 +415,7 @@ MMA AXI 写侧同步改为真正 outstanding：
 
 最终保留的修复如下：
 
-- `mma_top`、普通驱动和 `veri/soc_csrc/dsa_accel_mmio.c` 将 `W_REUSE` 上限同时限制在输出列 tile 数和 `PS_FRAME_COUNT` 内。此前 `SIZE=8,CACHE=2,PS_FRAME=8,seed=43000,K=88,N=112,M=88` 在默认 `W_REUSE=11` 时会写回错序；显式 `W_REUSE<=8` 通过，因此默认路径必须按写回窗口 clamp。
+- `npu_top`、普通驱动和 `veri/soc_csrc/dsa_accel_mmio.c` 将 `W_REUSE` 上限同时限制在输出列 tile 数和 `PS_FRAME_COUNT` 内。此前 `SIZE=8,CACHE=2,PS_FRAME=8,seed=43000,K=88,N=112,M=88` 在默认 `W_REUSE=11` 时会写回错序；显式 `W_REUSE<=8` 通过，因此默认路径必须按写回窗口 clamp。
 - `veri/sim/Makefile` 将 `DSA_PS_FRAME_COUNT` 编译进 SoC runtime 和 TFLM 库，并把 runtime/TFLM build dir 加上 `P$(MMA_PS_FRAME_COUNT)`，避免不同 `PS_FRAME_COUNT` 复用旧目标文件。
 - VCS 增加 `-Mdir=$(SIMV).csrc`，并在 `clean` 中删除 `*.csrc`。此前并行跑 S8/S16/TFLM 时会共享 `csrc/hsim/hsim.sdb`，出现 `VFS_SDB_SYNC_FAIL` 或 `rmapats.so` 生成失败，这不是 RTL 功能失败。
 - `soc_axi_ram` 保留单 beat 读快路径和 `AW/W` 同周期接收，让 Pico 指令/数据读和连续 store 少一部分气泡；写响应仍走 B 队列。
@@ -617,8 +617,8 @@ TFLM_SOC_MMA_MIN_MACS
 本轮清理：
 
 - `vec_requant` 直接输出 native quant DMA client 信号：`dma_start/base_addr/rows/burst_len`，并直接接收 `dma_raw_valid/raw_data`。
-- 删除 `mma_top` 中量化短读的旧 ICB-to-DMA adapter 实例、`vec_requant_*` ICB 类型信号，以及 `quant_req = load_quant_req || adapter_req` 的双请求路径。
-- `mma_controller` 删除旧总线选择、各 loader/OA 的旧 grant 端口和内部 legacy 仲裁实例。控制器只保留真正参与计算调度的 `send_weight_trigger/send_ia_trigger`、配置初始化和完成握手。
+- 删除 `npu_top` 中量化短读的旧 ICB-to-DMA adapter 实例、`vec_requant_*` ICB 类型信号，以及 `quant_req = load_quant_req || adapter_req` 的双请求路径。
+- `npu_controller` 删除旧总线选择、各 loader/OA 的旧 grant 端口和内部 legacy 仲裁实例。控制器只保留真正参与计算调度的 `send_weight_trigger/send_ia_trigger`、配置初始化和完成握手。
 - `dut_axil.f` 不再编译旧 ICB-only adapter/arbiter，只保留统一 AXI DMA 主路径。
 
 这次改动的性能目标不是新增总线带宽，而是去掉 quant 短读前的一层内部转接 FSM，让 AXI 主路径语义更直接。VCS AXI SoC 编译通过后，`dut_axil.f` 只解析 36 个主路径模块，旧 ICB adapter 不再进入 AXI SoC elaboration。
@@ -739,7 +739,7 @@ TFLM_SOC_MMA_MIN_MACS
 
 本轮 RTL 改动：
 
-- `mma_controller` 删除 v2 数据流后不再参与决策的 `WAIT_PARTIAL_SUM`、`compute_tail_is_final`、`ia_send_done_seen`，并在 `weight_sending_done` 或 `ia_sending_done` 到来且下一侧已 ready 时直接发下一侧 trigger，减少 START 空拍。
+- `npu_controller` 删除 v2 数据流后不再参与决策的 `WAIT_PARTIAL_SUM`、`compute_tail_is_final`、`ia_send_done_seen`，并在 `weight_sending_done` 或 `ia_sending_done` 到来且下一侧已 ready 时直接发下一侧 trigger，减少 START 空拍。
 - `bias_loader_ctrl` 利用已有双 bank，在当前 bias group 可用后后台预取下一 group；若消费端提前 `bias_switch`，则把后台加载提升为前台等待，保持原有握手语义。
 - 读仲裁优先级最终保持 `kernel > quant > IA > bias`。实验中把 bias 提到最高优先级可把 `bias_stall` 压到 239 cycles，但会把 `weight_data_stall` 推高到 140,394 cycles，净收益不如保持 kernel 优先。
 
@@ -839,8 +839,8 @@ W 布局修正后的利用率锚点如下，均为 `SIZE=16,CACHE=8,PS_FRAME=16,
 
 - `axi_block_dma_arbiter` 删除旧统一 DMA 接口残留的 `*_is_write` 输入，以及 OA 写侧不再使用的 `linear_read_mode/slot_id/use_16bits/lhs_zp` 输入。
 - `rd_error/wr_error` 和未使用的 raw row/col 输出改为未连接，不再通过 `unused_*` wire 保留。
-- `ia_group_calc_done` 只用于 controller debug 打印，已从 `ia_loader`、`mma_top` 和 `mma_controller` 接口中删除；计算尾部控制仍由 `partial_sum_calc_over/tile_calc_over/ia_sending_done` 路径承担。
-- `mma_top` 中对应的旧中间 wire 删除；loader/oa_writer 自身的通用 DMA 输出暂时保留为未连接，因为旧 `block_dma_arbiter`/非 AXI 路径仍复用这些模块接口。
+- `ia_group_calc_done` 只用于 controller debug 打印，已从 `ia_loader`、`npu_top` 和 `npu_controller` 接口中删除；计算尾部控制仍由 `partial_sum_calc_over/tile_calc_over/ia_sending_done` 路径承担。
+- `npu_top` 中对应的旧中间 wire 删除；loader/oa_writer 自身的通用 DMA 输出暂时保留为未连接，因为旧 `block_dma_arbiter`/非 AXI 路径仍复用这些模块接口。
 
 这次接口瘦身不改变性能曲线，但让 AXI 主路径语义更清楚：IA/kernel/bias/quant 是只读客户端，OA 是只写客户端，读写并行由 `axi_dual_block_dma` 的独立 AR/R 与 AW/W/B 通道承担。
 
@@ -1117,7 +1117,7 @@ CPU/总线侧对比：
 
 前一版固定容量 sweep 中 `SIZE=32, IA_CACHE_BLOCKS=4` 在 `128^3/256^3/512^3` 都出现数值错误。错误第一个点位于 `row=0, col=16`，和 32-lane 输出中后 16 lane 的 bias/quant 读取缺失完全吻合。排查后确认 AXI DMA 客户端的 `burst_len_m1` 仍是 4bit，`SIZE=32` 时 `SIZE-1=31` 被截断为 15，导致 bias loader 和 per-channel quant loader 只读 16 个 32-bit beat。
 
-本轮已将 AXI DMA 通路的 `burst_len_m1` 从 4bit 扩到 8bit，覆盖 `axi_dual_block_dma`、`axi_block_dma_arbiter`、`mma_top` 内部连线、`bias_loader_ctrl`、`vec_requant`、`ia_loader_ctrl`、`kernel_loader` 和 `oa_writer`。旧 ICB DMA 路径仍保留 4bit 端口并在本地做低 4bit 连接；SoC/AXI 路径现在支持 `SIZE=32` 的 32-beat bias/quant burst。
+本轮已将 AXI DMA 通路的 `burst_len_m1` 从 4bit 扩到 8bit，覆盖 `axi_dual_block_dma`、`axi_block_dma_arbiter`、`npu_top` 内部连线、`bias_loader_ctrl`、`vec_requant`、`ia_loader_ctrl`、`kernel_loader` 和 `oa_writer`。旧 ICB DMA 路径仍保留 4bit 端口并在本地做低 4bit 连接；SoC/AXI 路径现在支持 `SIZE=32` 的 32-beat bias/quant burst。
 
 复现命令：
 
@@ -1180,8 +1180,8 @@ MMA active 口径下的阵列吞吐：
 - `ia_loader_ctrl` 的 `load_burst_len_m1` 不再使用 `rsp_beats_per_row_*[3:0] - 1`，改为对完整 beat 数做 8bit cast。否则 `SIZE=64 + s16 IA` 的 32-beat 行读取会被错误截断。
 - `vec_requant` 的 per-channel 参数装载 phase 在进入新 `LOAD` 前显式复位为 `PH_MUL`，同时清零 `load_offset`。旧逻辑依赖多行 tile 经过 `COMPUTE` 状态顺手复位 phase；当 `SIZE=64,K=129,M=65` 时最后一个 row tile/col tile 都只有 1 个有效元素，状态机会从 `IDLE` 直接进入下一个 `LOAD`，导致只加载 shift、不重新加载 multiplier，最终右下角输出错误。
 - AXI 主路径的 `burst_len_m1` 保持 8bit，对应 AXI `ARLEN/AWLEN` 的协议宽度；这已经覆盖 `SIZE=64` 的 64-beat bias/quant 读取。旧 ICB/native `block_dma` 路径仍是 4bit 命令长度，不作为 `SIZE=64` 的支持路径。
-- `test/mma_top/Makefile` 新增 `TRACE=0` 开关，并将 build 目录区分为 `_trace/_notrace`，避免大 SIZE 回归被波形 C++ 编译严重拖慢。
-- `test/mma_top/gen_mem.py` 修正 IS 模式 case 布局：外部 LHS 仍保持 K 行主序、RHS 保持列展平；IS 的角色交换和输出转置由 RTL 完成。旧 TB 生成器把 LHS 预转置成 `N x K`，会造成纯 MMA IS 回归从第 0 行开始大面积误报。
+- `test/npu_top/Makefile` 新增 `TRACE=0` 开关，并将 build 目录区分为 `_trace/_notrace`，避免大 SIZE 回归被波形 C++ 编译严重拖慢。
+- `test/npu_top/gen_mem.py` 修正 IS 模式 case 布局：外部 LHS 仍保持 K 行主序、RHS 保持列展平；IS 的角色交换和输出转置由 RTL 完成。旧 TB 生成器把 LHS 预转置成 `N x K`，会造成纯 MMA IS 回归从第 0 行开始大面积误报。
 
 边界验证：
 
@@ -1201,21 +1201,21 @@ MMA active 口径下的阵列吞吐：
 ```bash
 cd /home/etc/FPGA/tflm_ai_dsa
 
-make -C test/mma_top run_random \
+make -C test/npu_top run_random \
   SIZE=32 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=16 COUNT=1 SEED=32002 \
   BUILD_ROOT=/tmp/tflm_ai_dsa_mma_obj_param \
   OUT_DIR=/tmp/tflm_ai_dsa_mma_s32_seed32002_param \
   RANDOM_GEN_ARGS='--random --random_quant --lhs_dtype 0 --min_dim 16 --max_dim 64 --ps_frame_count 16' \
   SIM_ARGS='+DDR_RAND_LAT=1 +DDR_CMD_MAX_LAT=3 +DDR_W_MAX_LAT=2 +DDR_RSP_MAX_LAT=8'
 
-make -C test/mma_top run_random \
+make -C test/npu_top run_random \
   SIZE=64 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=16 COUNT=1 SEED=64000 \
   BUILD_ROOT=/tmp/tflm_ai_dsa_mma_obj_s64 \
   OUT_DIR=/tmp/tflm_ai_dsa_mma_s64_out \
   RANDOM_GEN_ARGS='--random --per_channel --lhs_dtype 2 --K 63 --N 70 --M 65 --ia_reuse_num 2 --w_reuse_num 1 --dataflow_mode 0 --ps_frame_count 16' \
   SIM_ARGS='+DDR_RAND_LAT=1 +DDR_CMD_MAX_LAT=3 +DDR_W_MAX_LAT=2 +DDR_RSP_MAX_LAT=8'
 
-make -C test/mma_top build_only \
+make -C test/npu_top build_only \
   SIZE=4 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=8 TRACE=0 \
   BUILD_ROOT=/tmp/tflm_ai_dsa_mma_notrace_smoke \
   OUT_DIR=/tmp/tflm_ai_dsa_mma_notrace_smoke_out

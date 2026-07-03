@@ -12,9 +12,9 @@ module tb_axi_block_dma_arbiter;
   always #5 clk = ~clk;
 
   logic ia_req, ia_granted, ia_start, ia_busy, ia_done;
-  logic ia_is_write, ia_linear_read_mode, ia_use_16bits;
+  logic ia_linear_read_mode, ia_use_16bits;
   logic [REG_WIDTH-1:0] ia_base_addr, ia_row_stride, ia_rows_to_read;
-  logic [3:0] ia_burst_len_m1;
+  logic [7:0] ia_burst_len_m1;
   logic [$clog2(CACHE_BLOCKS)-1:0] ia_slot_id;
   logic signed [REG_WIDTH-1:0] ia_lhs_zp;
   logic [$clog2(CACHE_BLOCKS)-1:0] ia_wr_slot;
@@ -24,18 +24,18 @@ module tb_axi_block_dma_arbiter;
   logic ia_wr_use_16bits;
 
   logic kernel_req, kernel_granted, kernel_start, kernel_busy, kernel_done;
-  logic kernel_is_write, kernel_linear_read_mode, kernel_use_16bits, kernel_slot_id;
+  logic kernel_linear_read_mode, kernel_use_16bits, kernel_slot_id;
   logic [REG_WIDTH-1:0] kernel_base_addr, kernel_row_stride, kernel_rows_to_read;
-  logic [3:0] kernel_burst_len_m1;
+  logic [7:0] kernel_burst_len_m1;
   logic signed [REG_WIDTH-1:0] kernel_lhs_zp;
   logic [$clog2(SIZE)-1:0] kernel_wr_row, kernel_wr_col_base;
   logic signed [KERNEL_WIDTH-1:0] kernel_wr_data [BUS_WIDTH/8];
   logic kernel_wr_valid [BUS_WIDTH/8];
 
   logic bias_req, bias_granted, bias_start, bias_busy, bias_done;
-  logic bias_is_write, bias_linear_read_mode, bias_use_16bits, bias_slot_id;
+  logic bias_linear_read_mode, bias_use_16bits, bias_slot_id;
   logic [REG_WIDTH-1:0] bias_base_addr, bias_row_stride, bias_rows_to_read;
-  logic [3:0] bias_burst_len_m1;
+  logic [7:0] bias_burst_len_m1;
   logic signed [REG_WIDTH-1:0] bias_lhs_zp;
   logic bias_wr_slot, bias_wr_use_16bits;
   logic [$clog2(SIZE)-1:0] bias_wr_row, bias_wr_col_base;
@@ -43,18 +43,16 @@ module tb_axi_block_dma_arbiter;
   logic bias_wr_valid [BUS_WIDTH/8];
 
   logic quant_req, quant_granted, quant_start, quant_busy, quant_done;
-  logic quant_is_write, quant_linear_read_mode, quant_use_16bits, quant_slot_id;
+  logic quant_linear_read_mode, quant_use_16bits, quant_slot_id;
   logic [REG_WIDTH-1:0] quant_base_addr, quant_row_stride, quant_rows_to_read;
-  logic [3:0] quant_burst_len_m1;
+  logic [7:0] quant_burst_len_m1;
   logic signed [REG_WIDTH-1:0] quant_lhs_zp;
   logic [BUS_WIDTH-1:0] quant_raw_data;
   logic quant_raw_valid;
 
   logic oa_req, oa_granted, oa_start, oa_busy, oa_done;
-  logic oa_is_write, oa_linear_read_mode, oa_use_16bits, oa_slot_id;
   logic [REG_WIDTH-1:0] oa_base_addr, oa_row_stride, oa_rows_to_read;
-  logic [3:0] oa_burst_len_m1;
-  logic signed [REG_WIDTH-1:0] oa_lhs_zp;
+  logic [7:0] oa_burst_len_m1;
   logic [BUS_WIDTH-1:0] oa_src_wdata;
   logic [BUS_WIDTH/8-1:0] oa_src_wmask;
   logic oa_src_wvalid, oa_src_wready;
@@ -96,7 +94,6 @@ module tb_axi_block_dma_arbiter;
     .ia_req(ia_req),
     .ia_granted(ia_granted),
     .ia_start(ia_start),
-    .ia_is_write(ia_is_write),
     .ia_linear_read_mode(ia_linear_read_mode),
     .ia_base_addr(ia_base_addr),
     .ia_row_stride(ia_row_stride),
@@ -116,7 +113,6 @@ module tb_axi_block_dma_arbiter;
     .kernel_req(kernel_req),
     .kernel_granted(kernel_granted),
     .kernel_start(kernel_start),
-    .kernel_is_write(kernel_is_write),
     .kernel_linear_read_mode(kernel_linear_read_mode),
     .kernel_base_addr(kernel_base_addr),
     .kernel_row_stride(kernel_row_stride),
@@ -134,7 +130,6 @@ module tb_axi_block_dma_arbiter;
     .bias_req(bias_req),
     .bias_granted(bias_granted),
     .bias_start(bias_start),
-    .bias_is_write(bias_is_write),
     .bias_linear_read_mode(bias_linear_read_mode),
     .bias_base_addr(bias_base_addr),
     .bias_row_stride(bias_row_stride),
@@ -154,7 +149,6 @@ module tb_axi_block_dma_arbiter;
     .quant_req(quant_req),
     .quant_granted(quant_granted),
     .quant_start(quant_start),
-    .quant_is_write(quant_is_write),
     .quant_linear_read_mode(quant_linear_read_mode),
     .quant_base_addr(quant_base_addr),
     .quant_row_stride(quant_row_stride),
@@ -170,15 +164,10 @@ module tb_axi_block_dma_arbiter;
     .oa_req(oa_req),
     .oa_granted(oa_granted),
     .oa_start(oa_start),
-    .oa_is_write(oa_is_write),
-    .oa_linear_read_mode(oa_linear_read_mode),
     .oa_base_addr(oa_base_addr),
     .oa_row_stride(oa_row_stride),
     .oa_rows_to_read(oa_rows_to_read),
     .oa_burst_len_m1(oa_burst_len_m1),
-    .oa_slot_id(oa_slot_id),
-    .oa_use_16bits(oa_use_16bits),
-    .oa_lhs_zp(oa_lhs_zp),
     .oa_src_wdata(oa_src_wdata),
     .oa_src_wmask(oa_src_wmask),
     .oa_src_wvalid(oa_src_wvalid),
@@ -351,7 +340,6 @@ module tb_axi_block_dma_arbiter;
   initial begin
     ia_req = 1'b0;
     ia_start = 1'b0;
-    ia_is_write = 1'b0;
     ia_linear_read_mode = 1'b0;
     ia_base_addr = '0;
     ia_row_stride = 32'd4;
@@ -363,7 +351,6 @@ module tb_axi_block_dma_arbiter;
 
     kernel_req = 1'b0;
     kernel_start = 1'b0;
-    kernel_is_write = 1'b0;
     kernel_linear_read_mode = 1'b0;
     kernel_base_addr = 32'h0;
     kernel_row_stride = 32'd4;
@@ -375,7 +362,6 @@ module tb_axi_block_dma_arbiter;
 
     bias_req = 1'b0;
     bias_start = 1'b0;
-    bias_is_write = 1'b0;
     bias_linear_read_mode = 1'b0;
     bias_base_addr = '0;
     bias_row_stride = 32'd4;
@@ -387,7 +373,6 @@ module tb_axi_block_dma_arbiter;
 
     quant_req = 1'b0;
     quant_start = 1'b0;
-    quant_is_write = 1'b0;
     quant_linear_read_mode = 1'b0;
     quant_base_addr = '0;
     quant_row_stride = 32'd4;
@@ -399,15 +384,10 @@ module tb_axi_block_dma_arbiter;
 
     oa_req = 1'b0;
     oa_start = 1'b0;
-    oa_is_write = 1'b1;
-    oa_linear_read_mode = 1'b0;
     oa_base_addr = 32'h40;
     oa_row_stride = 32'd8;
     oa_rows_to_read = 32'd2;
     oa_burst_len_m1 = 4'd1;
-    oa_slot_id = 1'b0;
-    oa_use_16bits = 1'b0;
-    oa_lhs_zp = '0;
     oa_src_wdata = '0;
     oa_src_wmask = '0;
     oa_src_wvalid = 1'b0;

@@ -10,6 +10,16 @@ if {[info exists ::env(AIENGINE_ROOT)] && $::env(AIENGINE_ROOT) ne ""} {
 
 set soc_root [file join $ai_root rtl axi_accelerator]
 set pico_root [file join $ai_root picorv32]
+set rtl_root [file join $dsa_root rtl]
+set common_root [file join $rtl_root common]
+set npu_root [file join $rtl_root npu]
+set npu_top_root [file join $npu_root top]
+set npu_control_root [file join $npu_root control]
+set npu_dma_root [file join $npu_root dma]
+set npu_loaders_root [file join $npu_root loaders]
+set npu_compute_root [file join $npu_root compute]
+set npu_buffers_root [file join $npu_root buffers]
+set npu_writeback_root [file join $npu_root writeback]
 
 set include_dirs [list \
     [file join $dsa_root inc] \
@@ -27,34 +37,34 @@ set design_sources [list \
     [file join $soc_root wb_pingpong_buf.v] \
     [file join $soc_root wbu.v] \
     [file join $soc_root axi_top mma_axil_top.sv] \
-    [file join $dsa_root sub_modules accumulator_array.sv] \
-    [file join $dsa_root sub_modules axi_block_dma_arbiter.sv] \
-    [file join $dsa_root sub_modules axi_dual_block_dma.sv] \
-    [file join $dsa_root sub_modules bias_loader.sv] \
-    [file join $dsa_root sub_modules bias_loader_buffer.sv] \
-    [file join $dsa_root sub_modules bias_loader_ctrl.sv] \
-    [file join $dsa_root sub_modules bias_mux.sv] \
-    [file join $dsa_root sub_modules compute_core.sv] \
-    [file join $dsa_root sub_modules data_setup.sv] \
-    [file join $dsa_root sub_modules de_diagonalizer.sv] \
-    [file join $dsa_root sub_modules ia_buffer_wrapper.sv] \
-    [file join $dsa_root sub_modules ia_loader.sv] \
-    [file join $dsa_root sub_modules ia_loader_cache_mgr.sv] \
-    [file join $dsa_root sub_modules ia_loader_ctrl.sv] \
-    [file join $dsa_root sub_modules kernel_loader.sv] \
-    [file join $dsa_root sub_modules kernel_loader_buffer.sv] \
-    [file join $dsa_root sub_modules kernel_loader_ctrl.sv] \
-    [file join $dsa_root sub_modules mma_controller.sv] \
-    [file join $dsa_root top mma_top.sv] \
-    [file join $dsa_root sub_modules oa_writer.sv] \
-    [file join $dsa_root sub_modules ps_buffer.sv] \
-    [file join $dsa_root sub_modules ps_buffer_fifo.sv] \
-    [file join $dsa_root basic pseudo_dual_port_ram.v] \
-    [file join $dsa_root basic shift_accumulator.sv] \
-    [file join $dsa_root sub_modules vec_requant.sv] \
-    [file join $dsa_root sub_modules vec_s8_to_fifo.sv] \
-    [file join $dsa_root sub_modules ws_systolic_array.sv] \
-    [file join $dsa_root basic ws_systolic_cell.sv] \
+    [file join $npu_compute_root accumulator_array.sv] \
+    [file join $npu_dma_root axi_block_dma_arbiter.sv] \
+    [file join $npu_dma_root axi_dual_block_dma.sv] \
+    [file join $npu_loaders_root bias_loader.sv] \
+    [file join $npu_loaders_root bias_loader_buffer.sv] \
+    [file join $npu_loaders_root bias_loader_ctrl.sv] \
+    [file join $npu_compute_root bias_mux.sv] \
+    [file join $npu_compute_root compute_core.sv] \
+    [file join $npu_compute_root data_setup.sv] \
+    [file join $npu_compute_root de_diagonalizer.sv] \
+    [file join $npu_loaders_root ia_buffer_wrapper.sv] \
+    [file join $npu_loaders_root ia_loader.sv] \
+    [file join $npu_loaders_root ia_loader_cache_mgr.sv] \
+    [file join $npu_loaders_root ia_loader_ctrl.sv] \
+    [file join $npu_loaders_root kernel_loader.sv] \
+    [file join $npu_loaders_root kernel_loader_buffer.sv] \
+    [file join $npu_loaders_root kernel_loader_ctrl.sv] \
+    [file join $npu_control_root npu_controller.sv] \
+    [file join $npu_top_root npu_top.sv] \
+    [file join $npu_writeback_root oa_writer.sv] \
+    [file join $npu_buffers_root ps_buffer.sv] \
+    [file join $npu_buffers_root ps_buffer_fifo.sv] \
+    [file join $common_root pseudo_dual_port_ram.v] \
+    [file join $npu_compute_root shift_accumulator.sv] \
+    [file join $npu_writeback_root vec_requant.sv] \
+    [file join $npu_writeback_root vec_s8_to_fifo.sv] \
+    [file join $npu_compute_root ws_systolic_array.sv] \
+    [file join $npu_compute_root ws_systolic_cell.sv] \
     [file join $soc_root soc pico_native_to_axi.sv] \
     [file join $soc_root soc soc_axi_interconnect.sv] \
     [file join $soc_root soc soc_axi_pingpong_buffer.sv] \

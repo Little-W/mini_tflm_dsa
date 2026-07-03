@@ -2,13 +2,13 @@
 
 ## 0. 交付说明与五轮迭代记录
 
-本文只记录 RTL 仿真验证，不重复设计文档中的结构说明。验证对象包括独立 MMA/NPU 顶层、AXI block DMA、带随机延迟的 DDR 仿真模型、PicoRV32 SoC 集成环境、TFLM/NMSIS NN 调用路径以及性能计数器输出。仿真环境按当前仓库实际情况编写为 VCS + Verilator：独立 MMA 随机回归主要使用 Verilator，SoC/TFLM 集成回归主要使用 VCS。资料不足处标记为【待补充】，不把未运行的内容写成已通过。
+本文只记录 RTL 仿真验证，不重复设计文档中的结构说明。验证对象包括独立 NPU/NPU 顶层、AXI block DMA、带随机延迟的 DDR 仿真模型、PicoRV32 SoC 集成环境、TFLM/NMSIS NN 调用路径以及性能计数器输出。仿真环境按当前仓库实际情况编写为 VCS + Verilator：独立 NPU 随机回归主要使用 Verilator，SoC/TFLM 集成回归主要使用 VCS。资料不足处标记为【待补充】，不把未运行的内容写成已通过。
 
 五轮迭代记录如下。
 
 | 轮次 | 工作内容 | 已读取或运行的资料 | 结论 |
 |---|---|---|---|
-| 第 1 轮 | 验证资料盘点 | `test/mma_top/Makefile`、`test/mma_top/tb_mma_top.sv`、`/media/proj_tmp/aiEngine_integrated/veri/sim`、已有 `runs` 日志 | 明确当前环境为 VCS + Verilator |
+| 第 1 轮 | 验证资料盘点 | `test/npu_top/Makefile`、`test/npu_top/tb_npu_top.sv`、`/media/proj_tmp/aiEngine_integrated/veri/sim`、已有 `runs` 日志 | 明确当前环境为 VCS + Verilator |
 | 第 2 轮 | 用例和证据归类 | 4×4 本地随机回归、固定容量 SIZE/CACHE sweep、MNIST MLP/CNN SoC 日志 | 可支撑矩阵计算、随机延迟、CPU/NPU 协同和标准数据集小样本验证 |
 | 第 3 轮 | 报告主体整理 | AXI-Lite、AXI Burst、DMA、4×4 阵列、AI 推理、性能计数器章节 | 将功能验证与性能统计拆开描述 |
 | 第 4 轮 | 缺口检查 | 覆盖率目录、VCS `.daidir`、FSDB/VCD 路径、日志状态 | 未找到可引用覆盖率汇总，因此覆盖率 ≥95% 不能写达成 |
@@ -28,24 +28,24 @@
 | DMA 验证 | TC_DMA_001 | 读写 DMA、随机 DDR 延迟、非对齐/尾块 | memory compare PASS | 已在顶层回归中覆盖，独立最大 outstanding 用例【待补充】 |
 | 总线仲裁验证 | TC_AXI_ARB_001 | CPU/NPU 读等待、NPU 读客户端仲裁 | 无死锁，SoC 正常结束 | 已通过 SoC 日志，公平性证明【待补充】 |
 | 标准数据集推理 | TC_AI_001 / TC_AI_002 | MNIST MLP、MNIST CNN | 标签预测正确，程序 PASS | 已通过小样本仿真 |
-| 性能计数器 | TC_PERF_001 | `MMA_UTIL`、`SOC_AXI_STATS`、周期统计 | 日志有输出，字段可解释 | 已采集，独立 monitor 对照【待补充】 |
+| 性能计数器 | TC_PERF_001 | `NPU_UTIL`、`SOC_AXI_STATS`、周期统计 | 日志有输出，字段可解释 | 已采集，独立 monitor 对照【待补充】 |
 | 代码覆盖率 ≥95% | TC_COV_ALL | line/branch/toggle | 覆盖率报告 ≥95% | 【待补充：覆盖率汇总】 |
 | 低功耗验证 | TC_LOWPOWER_001 | 当前 RTL 未实现 | 不建立通过项 | 未覆盖 |
 
 ## 2. 被测对象简述
 
-独立 MMA/NPU 被测顶层为 `top/mma_top.sv`，参数包括 `SIZE`、`IA_CACHE_BLOCKS`、`PS_FRAME_COUNT`、`BUS_WIDTH`、`ADDR_WIDTH` 等。报告中的基础赛题配置使用 `SIZE=4`，因此阵列为 4 行 × 4 列，共 16 个 PE。该顶层连接 controller、IA loader、kernel loader、bias loader、vec requant、ps buffer/fifo、OA writer、AXI DMA arbiter 和 `axi_dual_block_dma`。testbench 通过 mem 文件加载输入、权重、bias、量化参数和 golden 输出，再启动 `calc_start`，等待 `sa_ready` 返回，最后直接比较仿真 RAM 中的输出区域。
+独立 NPU/NPU 被测顶层为 `rtl/npu/top/npu_top.sv`，参数包括 `SIZE`、`IA_CACHE_BLOCKS`、`PS_FRAME_COUNT`、`BUS_WIDTH`、`ADDR_WIDTH` 等。报告中的基础赛题配置使用 `SIZE=4`，因此阵列为 4 行 × 4 列，共 16 个 PE。该顶层连接 controller、IA loader、kernel loader、bias loader、vec requant、ps buffer/fifo、OA writer、AXI DMA arbiter 和 `axi_dual_block_dma`。testbench 通过 mem 文件加载输入、权重、bias、量化参数和 golden 输出，再启动 `calc_start`，等待 `sa_ready` 返回，最后直接比较仿真 RAM 中的输出区域。
 
-SoC 集成被测对象位于 `/media/proj_tmp/aiEngine_integrated`，CPU 为 PicoRV32，CPU 原生存储接口经 `pico_native_to_axi.sv` 转成 AXI，NPU 作为 AXI master 访问共享 RAM。TFLM/NMSIS NN 程序被编译成 `cpu.mem`，VCS SoC testbench 加载该镜像，运行 C 程序，程序通过 UART 风格日志打印 `[tflm_perf]`、`PASS/FAIL`、`SOC_AXI_STATS` 和 `MMA_UTIL`。硬件加速路径由 NMSIS NN 调用加速器，纯软件路径通过关闭加速宏或使用软件 case 作为对照。
+SoC 集成被测对象位于 `/media/proj_tmp/aiEngine_integrated`，CPU 为 PicoRV32，CPU 原生存储接口经 `pico_native_to_axi.sv` 转成 AXI，NPU 作为 AXI master 访问共享 RAM。TFLM/NMSIS NN 程序被编译成 `cpu.mem`，VCS SoC testbench 加载该镜像，运行 C 程序，程序通过 UART 风格日志打印 `[tflm_perf]`、`PASS/FAIL`、`SOC_AXI_STATS` 和 `NPU_UTIL`。硬件加速路径由 NMSIS NN 调用加速器，纯软件路径通过关闭加速宏或使用软件 case 作为对照。
 
 ## 3. VCS + Verilator 仿真环境
 
-本地工具版本已经确认。Verilator 版本为 `Verilator 5.040 2025-08-30 rev v5.040`。VCS 版本为 `VCS W-2024.09-SP1`，脚本版本 `W-2024.09`。独立 MMA 回归使用 `make -C test/mma_top run_random`，可通过 `SIZE`、`IA_CACHE_BLOCKS`、`PS_FRAME_COUNT`、`COUNT`、`SEED`、`BUILD_ROOT`、`OUT_DIR`、`RANDOM_GEN_ARGS`、`SIM_ARGS` 参数复用编译产物并生成多组随机 case。SoC 回归使用 `/media/proj_tmp/aiEngine_integrated/veri/sim` 下的 VCS 编译结果，例如 `simv_axi_soc_S16_C4_P16`，通过 plusarg 指定 `SOC_CASE_DIR`、`SOC_CPU_MEM`、`MMA_UTIL_TRACE`、`MMA_UTIL_SUMMARY`、`SOC_AXI_STATS`、`SOC_CPU_AXI_STATS` 和 FSDB 输出路径。
+本地工具版本已经确认。Verilator 版本为 `Verilator 5.040 2025-08-30 rev v5.040`。VCS 版本为 `VCS W-2024.09-SP1`，脚本版本 `W-2024.09`。独立 NPU 回归使用 `make -C test/npu_top run_random`，可通过 `SIZE`、`IA_CACHE_BLOCKS`、`PS_FRAME_COUNT`、`COUNT`、`SEED`、`BUILD_ROOT`、`OUT_DIR`、`RANDOM_GEN_ARGS`、`SIM_ARGS` 参数复用编译产物并生成多组随机 case。SoC 回归使用 `/media/proj_tmp/aiEngine_integrated/veri/sim` 下的 VCS 编译结果，例如 `simv_axi_soc_S16_C4_P16`，通过 plusarg 指定 `SOC_CASE_DIR`、`SOC_CPU_MEM`、`NPU_UTIL_TRACE`、`NPU_UTIL_SUNPURY`、`SOC_AXI_STATS`、`SOC_CPU_AXI_STATS` 和 FSDB 输出路径。
 
-本次可复现的独立 MMA 命令如下。
+本次可复现的独立 NPU 命令如下。
 
 ```bash
-make -C test/mma_top run_random \
+make -C test/npu_top run_random \
   SIZE=4 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=8 \
   COUNT=2 SEED=41000 TRACE=0 \
   BUILD_ROOT=/tmp/tflm_ai_dsa_report_obj \
@@ -62,7 +62,7 @@ make -C test/mma_top run_random \
   +DUT_SEL=axi_soc \
   +SOC_CASE_DIR=../tb/axi_soc_tflm_mnist_mlp_hw \
   +SOC_CPU_MEM=../tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem \
-  +MMA_UTIL_TRACE +MMA_CTRL_UTIL +SOC_AXI_STATS +SOC_CPU_AXI_STATS \
+  +NPU_UTIL_TRACE +NPU_CTRL_UTIL +SOC_AXI_STATS +SOC_CPU_AXI_STATS \
   +fsdbfile+runs/ai_axi_soc_c_test/seed_1/tb_top.fsdb \
   +UVM_TESTNAME=ai_axi_soc_c_test +case=ai_axi_soc_c_test \
   +ntb_random_seed=1 +vcs+initreg+0
@@ -76,16 +76,16 @@ make -C test/mma_top run_random \
 
 | TC ID | 名称 | 目标模块 | 激励类型 | 检查方式 | 证据 |
 |---|---|---|---|---|---|
-| TC_RESET_001 | 复位与启动完成 | `mma_top`、controller | directed/random | `sa_ready`、PASS 日志 | `/tmp/tflm_ai_dsa_report_s4/random_41000.log` |
+| TC_RESET_001 | 复位与启动完成 | `npu_top`、controller | directed/random | `sa_ready`、PASS 日志 | `/tmp/tflm_ai_dsa_report_s4/random_41000.log` |
 | TC_AXIL_001 | AXI-Lite 写控制寄存器 | SoC MMIO/UART/control | directed C 程序 | 程序完成状态、UART 输出 | MNIST/TFLM VCS 日志；逐地址波形【待补充】 |
 | TC_AXIL_002 | AXI-Lite 读状态 | SoC MMIO/UART/control | directed C 程序 | CPU 读完成状态 | `soc_finish`、`soc_status=0x00000001` |
-| TC_AXI_BURST_001 | AXI Burst 读 | DMA read engine | random + SoC | memory compare、`axi_ar/axi_r` | MMA PASS、`MMA_UTIL` |
-| TC_AXI_BURST_002 | AXI Burst 写 | OA writer + DMA write | random + SoC | `WSTRB` 写回、memory compare | MMA PASS、`axi_aw/axi_w/axi_b` |
+| TC_AXI_BURST_001 | AXI Burst 读 | DMA read engine | random + SoC | memory compare、`axi_ar/axi_r` | NPU PASS、`NPU_UTIL` |
+| TC_AXI_BURST_002 | AXI Burst 写 | OA writer + DMA write | random + SoC | `WSTRB` 写回、memory compare | NPU PASS、`axi_aw/axi_w/axi_b` |
 | TC_HETERO_001 | CPU 配置 NPU | PicoRV32 + NPU | SoC C 程序 | TFLM PASS、`UVM_ERROR=0` | MNIST MLP/CNN 日志 |
 | TC_SA_001 | 4×4 阵列基础计算 | systolic array | random | golden mem | K=8/N=2/M=5 PASS |
 | TC_SA_002 | tail tile 边界 | loader/requant/OA | random | golden mem | K=5/N=7/M=7 PASS |
 | TC_DMA_001 | 随机 DDR 延迟 | AXI DMA + DDR model | random | PASS，无死锁 | `+DDR_RAND_LAT=1` |
-| TC_PERF_001 | 性能计数器采集 | controller/NPU/SoC | perf run | 计数字段存在且与任务规模相关 | `MMA_UTIL`、`SOC_AXI_STATS` |
+| TC_PERF_001 | 性能计数器采集 | controller/NPU/SoC | perf run | 计数字段存在且与任务规模相关 | `NPU_UTIL`、`SOC_AXI_STATS` |
 | TC_AI_001 | MNIST MLP | TFLM/NMSIS NN | dataset sample | 标签正确、PASS | MLP HW/SW 日志 |
 | TC_AI_002 | MNIST CNN | TFLM/NMSIS NN | dataset sample | 标签正确、PASS | CNN HW/SW 日志 |
 | TC_COV_ALL | 覆盖率 | 全 RTL | coverage run | ≥95% 汇总 | 【待补充】 |
@@ -129,7 +129,7 @@ AXI Burst 是 NPU 访问 IA、weight、bias、quant 和 output 的主数据通�
 
 这两个用例覆盖了非 4 倍数的 K/N/M 组合，其中 `K=5,N=7,M=7` 同时包含 K tail、N tail 和 M tail。testbench 直接比较 `GOLDEN_MEM` 和仿真输出区域，说明读 burst 的地址递增、写 burst 的地址递增、输出 mask 以及 tail 写回都没有破坏最终 memory。
 
-SoC 性能日志提供了 AXI 计数器侧证据。MNIST MLP 硬件路径第一层 `MMA_UTIL` 记录 `axi_ar=25252 axi_r=101800 axi_aw=32 axi_w=128 axi_b=32`；CNN batch32 summary 记录 `axi_ar=17586 axi_r=68064 axi_aw=2955 axi_w=7113 axi_b=2955`。这些字段说明仿真中存在大量读写 burst 传输，而不是 CPU 逐字节搬运。逐拍 `ARADDR = BASE + i*4`、`AWADDR = BASE + i*4` 的地址列表尚未从 FSDB 中导出，故地址波形证据标记为【待补充：波形地址序列】。
+SoC 性能日志提供了 AXI 计数器侧证据。MNIST MLP 硬件路径第一层 `NPU_UTIL` 记录 `axi_ar=25252 axi_r=101800 axi_aw=32 axi_w=128 axi_b=32`；CNN batch32 summary 记录 `axi_ar=17586 axi_r=68064 axi_aw=2955 axi_w=7113 axi_b=2955`。这些字段说明仿真中存在大量读写 burst 传输，而不是 CPU 逐字节搬运。逐拍 `ARADDR = BASE + i*4`、`AWADDR = BASE + i*4` 的地址列表尚未从 FSDB 中导出，故地址波形证据标记为【待补充：波形地址序列】。
 
 AXI Burst 读 WaveDrom：
 
@@ -192,9 +192,9 @@ SoC 总线统计说明 CPU/NPU 协同时确实存在共享读资源竞争。MNIS
 
 ## 9. DMA 验证
 
-DMA 验证覆盖读和写两部分。读侧服务 IA、kernel、bias、quant；写侧服务 OA writer。独立 MMA 回归中，DDR model 对命令、写数据和读响应都插入随机延迟，能够暴露 `valid/ready` 握手遗漏、burst 长度错误和响应乱序处理问题。`random_41000` 与 `random_41001` 在随机延迟下均 PASS，说明 DMA 在当前 `SIZE=4`、`CACHE=4`、tail 矩阵下没有死锁，也没有因为延迟造成数据错位。
+DMA 验证覆盖读和写两部分。读侧服务 IA、kernel、bias、quant；写侧服务 OA writer。独立 NPU 回归中，DDR model 对命令、写数据和读响应都插入随机延迟，能够暴露 `valid/ready` 握手遗漏、burst 长度错误和响应乱序处理问题。`random_41000` 与 `random_41001` 在随机延迟下均 PASS，说明 DMA 在当前 `SIZE=4`、`CACHE=4`、tail 矩阵下没有死锁，也没有因为延迟造成数据错位。
 
-SoC 日志中的 `MMA_UTIL` 进一步证明 DMA 读写路径在真实 C 程序中被频繁使用。MNIST MLP 硬件路径第一层记录 `dma_busy_ia=1175 dma_busy_kernel=251853 dma_busy_bias=1184 dma_busy_quant=1156 dma_busy_oa=384`，说明 kernel 读是主要等待来源；CNN batch32 summary 记录 `dma_busy_ia=47691 dma_busy_kernel=117036 dma_busy_bias=2757 dma_busy_quant=5085 dma_busy_oa=11475`，说明卷积类任务中 IA 和 OA 写回占比也明显上升。DMA 最大 outstanding、错误响应和超长 burst 的 dedicated directed 用例还未整理成单独报告，标记为【待补充：DMA 极限用例】。
+SoC 日志中的 `NPU_UTIL` 进一步证明 DMA 读写路径在真实 C 程序中被频繁使用。MNIST MLP 硬件路径第一层记录 `dma_busy_ia=1175 dma_busy_kernel=251853 dma_busy_bias=1184 dma_busy_quant=1156 dma_busy_oa=384`，说明 kernel 读是主要等待来源；CNN batch32 summary 记录 `dma_busy_ia=47691 dma_busy_kernel=117036 dma_busy_bias=2757 dma_busy_quant=5085 dma_busy_oa=11475`，说明卷积类任务中 IA 和 OA 写回占比也明显上升。DMA 最大 outstanding、错误响应和超长 burst 的 dedicated directed 用例还未整理成单独报告，标记为【待补充：DMA 极限用例】。
 
 ## 10. AXI 共享总线与仲裁验证
 
@@ -271,7 +271,7 @@ CNN 小样本对照：
 
 建议补充流程如下：
 
-1. 独立 MMA 使用 Verilator coverage 或 VCS coverage 编译，覆盖 `SIZE=4` 基础配置和若干扩展配置。
+1. 独立 NPU 使用 Verilator coverage 或 VCS coverage 编译，覆盖 `SIZE=4` 基础配置和若干扩展配置。
 2. SoC/TFLM 使用 VCS coverage 跑 MLP、CNN、随机矩阵和 AXI directed 用例。
 3. 将 line、branch、toggle 分开统计，过滤仿真模型、未使用 debug 代码和明确不在本版本支持范围内的低功耗/DFS RTL。
 4. 生成可引用的 HTML/text summary，并把每个未覆盖模块对应到具体原因。
@@ -306,15 +306,15 @@ CNN 小样本对照：
 |---|---|---|
 | RTL 仿真环境 | 明确为 VCS + Verilator | VCS W-2024.09-SP1，Verilator 5.040 |
 | 4×4 脉动阵列功能 | 通过基础随机回归 | `random_41000.log`、`random_41001.log` |
-| AXI Burst 读写 | 通过 memory compare 和 SoC 计数器验证 | 随机 DDR 延迟 PASS、`MMA_UTIL` |
+| AXI Burst 读写 | 通过 memory compare 和 SoC 计数器验证 | 随机 DDR 延迟 PASS、`NPU_UTIL` |
 | CPU/NPU 协同 | 通过 SoC C 程序验证 | MNIST MLP/CNN PASS，`UVM_ERROR=0` |
 | 标准数据集小样本推理 | 通过 | MLP 3/3，CNN 3/3 |
 | 推理速度对比 | 硬件显著快于纯软件 | MLP 约 99.4×，CNN sample1 约 14.39× |
-| 性能计数器 | 已采集，可用于趋势分析 | `MMA_UTIL`、`SOC_AXI_STATS` |
+| 性能计数器 | 已采集，可用于趋势分析 | `NPU_UTIL`、`SOC_AXI_STATS` |
 | 覆盖率 ≥95% | 未证明 | 【待补充：覆盖率报告】 |
 | 低功耗 | 未覆盖 | 当前未实现 |
 
-总体结论：当前 RTL 在独立 MMA 和 SoC/TFLM 两个层面已经有可引用的 VCS + Verilator 仿真证据。4×4 基础阵列、AXI Burst 数据访问、随机 DDR 延迟下的 memory compare、CPU/NPU 协同、MNIST MLP/CNN 小样本推理均有 PASS 日志。性能统计显示硬件加速能显著减少推理计算周期，同时也揭示当前 32 位总线和共享 RAM 会限制大阵列利用率。未完成项主要是覆盖率汇总、AXI-Lite 逐寄存器波形、AXI 错误响应和完整数据集准确率，这些需要在后续回归中补齐。
+总体结论：当前 RTL 在独立 NPU 和 SoC/TFLM 两个层面已经有可引用的 VCS + Verilator 仿真证据。4×4 基础阵列、AXI Burst 数据访问、随机 DDR 延迟下的 memory compare、CPU/NPU 协同、MNIST MLP/CNN 小样本推理均有 PASS 日志。性能统计显示硬件加速能显著减少推理计算周期，同时也揭示当前 32 位总线和共享 RAM 会限制大阵列利用率。未完成项主要是覆盖率汇总、AXI-Lite 逐寄存器波形、AXI 错误响应和完整数据集准确率，这些需要在后续回归中补齐。
 
 ## 18. 附录：关键日志清单
 
@@ -337,9 +337,9 @@ CNN 小样本对照：
 
 | 类别 | 文件或目录 | 说明 |
 |---|---|---|
-| 独立 MMA TB | `test/mma_top/tb_mma_top.sv` | 加载 `init.mem/golden.mem/config.mem`，启动 `calc_start`，等待 `sa_ready`，直接比较 memory |
-| case 生成 | `test/mma_top/gen_mem.py` | 生成随机矩阵、量化参数、golden 输出和配置 mem |
-| Verilator 入口 | `test/mma_top/Makefile` | `run_random` 支持 `SIZE/IA_CACHE_BLOCKS/COUNT/SEED/SIM_ARGS` |
+| 独立 NPU TB | `test/npu_top/tb_npu_top.sv` | 加载 `init.mem/golden.mem/config.mem`，启动 `calc_start`，等待 `sa_ready`，直接比较 memory |
+| case 生成 | `test/npu_top/gen_mem.py` | 生成随机矩阵、量化参数、golden 输出和配置 mem |
+| Verilator 入口 | `test/npu_top/Makefile` | `run_random` 支持 `SIZE/IA_CACHE_BLOCKS/COUNT/SEED/SIM_ARGS` |
 | DDR AXI 模型 | `test/dep_modules/ddr_axi_mem_model.sv` | 支持随机命令、写、读响应延迟 |
 | SoC VCS 入口 | `/media/proj_tmp/aiEngine_integrated/veri/sim/Makefile` | 生成 `simv_axi_soc_S16_C4_P16` 等 VCS 仿真程序 |
 | MLP 日志 | `runs/mnist_mlp_hw_sw/mnist_mlp_big_hw_s16_c4_p16.log` | 硬件路径 3 样本 PASS、性能计数器 |
@@ -354,7 +354,7 @@ CNN 小样本对照：
 | 项目 | 内容 |
 |---|---|
 | 用例编号 | TC_RESET_001 |
-| 验证目标 | 验证 `mma_top` 复位后处于空闲，`calc_start` 后能够进入计算，完成后 `sa_ready` 回到 1，testbench 能结束 |
+| 验证目标 | 验证 `npu_top` 复位后处于空闲，`calc_start` 后能够进入计算，完成后 `sa_ready` 回到 1，testbench 能结束 |
 | 初始条件 | Verilator 编译 `SIZE=4 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=8`，DDR 随机延迟开启 |
 | 输入配置 | seed 41000：`K=5,N=7,M=7,mode=WS,R=2,W=2`；seed 41001：`K=8,N=2,M=5,mode=WS,R=1,W=2` |
 | 输入数据来源 | `/tmp/tflm_ai_dsa_report_s4/init.mem`、`golden.mem`、`config.mem` |
@@ -379,7 +379,7 @@ CNN 小样本对照：
 | 关键观察信号 | `m_axi_arvalid/arready/araddr/arlen/arburst`、`m_axi_rvalid/rready/rlast`、`m_axi_awvalid/awready/awaddr/awlen`、`m_axi_wstrb/wlast`、`m_axi_bvalid/bready` |
 | 预期行为 | `arburst/awburst=INCR`，`arlen/awlen` 为 beat 数减 1，响应延迟不造成数据错位，tail 写回不覆盖无效字节 |
 | 实际行为 | 两个随机 case 均 PASS；MLP 日志第一层 `axi_ar=25252 axi_r=101800 axi_aw=32 axi_w=128 axi_b=32`；CNN summary `axi_ar=17586 axi_r=68064 axi_aw=2955 axi_w=7113 axi_b=2955` |
-| 波形或日志证据 | 随机回归日志、MLP/CNN `MMA_UTIL`；逐拍地址序列【待补充：FSDB 导出】 |
+| 波形或日志证据 | 随机回归日志、MLP/CNN `NPU_UTIL`；逐拍地址序列【待补充：FSDB 导出】 |
 | Golden 对比方式 | Verilator TB memory compare；SoC C 程序检查 TFLM 输出标签 |
 | 结论 | 功能通过，逐拍 AXI 地址递增波形待补充 |
 
@@ -410,7 +410,7 @@ CNN 小样本对照：
 | 输入配置 | MNIST MLP/CNN TFLM 程序，硬件加速路径和软件对照路径 |
 | 输入数据来源 | `../tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem`、`../tb/axi_soc_tflm_mnist_cnn_hw/cpu.mem` |
 | 激励步骤 | CPU 启动 TFLM，NMSIS NN 调用 ExtraAccFunctions，驱动写 `DSA_REG_CTRL`，轮询 `DSA_REG_STATUS`，读取 `DSA_REG_WB_DATA` |
-| 关键观察信号 | `[tflm_perf]`、`[MMA_UTIL]`、`[SOC_AXI_STATS]`、`soc_finish`、`soc_status`、`cpu_trap`、`UVM_ERROR` |
+| 关键观察信号 | `[tflm_perf]`、`[NPU_UTIL]`、`[SOC_AXI_STATS]`、`soc_finish`、`soc_status`、`cpu_trap`、`UVM_ERROR` |
 | 预期行为 | 样本标签预测正确，C 程序返回 PASS，SoC 无 trap，UVM 无 error |
 | 实际行为 | MLP 3 样本 `7/2/1` 全部正确，CNN 3 样本 `7/2/1` 全部正确，`UVM_ERROR : 0` |
 | 波形或日志证据 | `mnist_mlp_big_hw_s16_c4_p16.log`、`mnist_cnn_hw_s16_c4_p16_batch32_summary.log` |
@@ -422,11 +422,11 @@ CNN 小样本对照：
 | 项目 | 内容 |
 |---|---|
 | 用例编号 | TC_PERF_001 |
-| 验证目标 | 验证日志能采集推理周期、MMA 活跃周期、阵列利用率相关字段、AXI beat 和 SoC 总线等待 |
-| 初始条件 | VCS 加 `+MMA_UTIL_TRACE` 或 `+MMA_UTIL_SUMMARY`，加 `+SOC_AXI_STATS +SOC_CPU_AXI_STATS` |
+| 验证目标 | 验证日志能采集推理周期、NPU 活跃周期、阵列利用率相关字段、AXI beat 和 SoC 总线等待 |
+| 初始条件 | VCS 加 `+NPU_UTIL_TRACE` 或 `+NPU_UTIL_SUNPURY`，加 `+SOC_AXI_STATS +SOC_CPU_AXI_STATS` |
 | 输入配置 | MLP 3 样本、CNN 3 样本、固定容量 SIZE/CACHE sweep |
 | 输入数据来源 | VCS SoC 日志和 `perf.csv` |
-| 激励步骤 | 运行 SoC 程序，硬件路径每次 NPU 调用打印 `MMA_UTIL`，推理结束打印 `tflm_perf` |
+| 激励步骤 | 运行 SoC 程序，硬件路径每次 NPU 调用打印 `NPU_UTIL`，推理结束打印 `tflm_perf` |
 | 关键观察信号 | `active`、`ia_row_util_bp`、`acc_util_bp`、`dma_busy_*`、`axi_ar/axi_r/axi_aw/axi_w/axi_b`、`cpu_ar_wait/mma_ar_wait/rd_yield` |
 | 预期行为 | 计数字段随任务规模变化，硬件路径推理周期显著少于软件路径，SIZE/CACHE sweep 均 PASS |
 | 实际行为 | MLP 硬件 avg 443903 cycles，软件 avg 44126602 cycles；CNN 硬件 avg 4200423 cycles，软件 sample1 60410324 cycles；fixed sweep `total=12 pass=12` |
@@ -464,7 +464,7 @@ CNN 小样本对照：
 
 ## 21. Golden Model 对比方式补充
 
-独立 MMA 回归的 Golden Model 在 `gen_mem.py` 中生成，输出为 `golden.mem`。testbench 不通过打印文本判断数值，而是直接比较仿真 memory 中 `dst` 区域。该方式比 UART 日志更快，也能发现 tail mask、stride、非对齐写或量化舍入造成的单字节错误。SoC/TFLM 回归的 Golden 判断分两层：第一层是模型样本标签，MLP/CNN 程序打印 `label` 与 `pred`，预测一致才 PASS；第二层是软件路径对照，同一模型在纯软件日志中也 PASS，推理输出标签一致。当前尚未把每层 tensor dump 与 Python reference 做逐元素比较，因此完整中间 tensor golden 标记为【待补充：tensor dump 对比】。
+独立 NPU 回归的 Golden Model 在 `gen_mem.py` 中生成，输出为 `golden.mem`。testbench 不通过打印文本判断数值，而是直接比较仿真 memory 中 `dst` 区域。该方式比 UART 日志更快，也能发现 tail mask、stride、非对齐写或量化舍入造成的单字节错误。SoC/TFLM 回归的 Golden 判断分两层：第一层是模型样本标签，MLP/CNN 程序打印 `label` 与 `pred`，预测一致才 PASS；第二层是软件路径对照，同一模型在纯软件日志中也 PASS，推理输出标签一致。当前尚未把每层 tensor dump 与 Python reference 做逐元素比较，因此完整中间 tensor golden 标记为【待补充：tensor dump 对比】。
 
 ## 22. 低功耗与非 RTL 范围声明
 

@@ -2,7 +2,7 @@
 # Pin locations and I/O standards follow the Alkaid Artix-7 board reference:
 # /home/etc/FPGA/jichuangsai/alkaid_soc/rv_test.srcs/constrs_1/new/con_1.xdc
 #
-# The board input clock is 50 MHz. clk_wiz_0 generates the internal SoC/MMA
+# The board input clock is 50 MHz. clk_wiz_0 generates the internal SoC/NPU
 # clock, and Vivado derives the generated clock from the Clocking Wizard XDC.
 
 set_property CFGBVS VCCO [current_design]

@@ -369,13 +369,13 @@ def write_params_svh(path, case, layout):
 
 
 def write_config_mem(path, case, layout):
-    # Keep this index order in sync with tb_mma_top.sv CFG_*_IDX.
+    # Keep this index order in sync with tb_npu_top.sv CFG_*_IDX.
     words = [0] * 32
 
     def put(idx, value):
         words[idx] = int(value) & 0xFFFFFFFF
 
-    put(0, 0x4D4D4131)  # "MMA1"
+    put(0, 0x4E505531)  # "NPU1"
     put(1, SIZE)
     put(2, case["ia_cache_blocks"])
     put(3, case["k"])

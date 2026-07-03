@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-interface mma_top_if #(
+interface npu_top_if #(
   parameter int REG_WIDTH = 32
 )(
   input logic clk,

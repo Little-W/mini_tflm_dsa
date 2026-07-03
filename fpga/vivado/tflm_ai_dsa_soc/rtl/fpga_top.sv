@@ -16,7 +16,7 @@ module fpga_top #(
     parameter string CPU_MEM_PATH = "",
     parameter int unsigned CPU_MEM_INIT_EN = 0,
     parameter int unsigned CPU_ENABLE_ICACHE = 0,
-    parameter int unsigned MMA_AXI_TIMING_BUFFER = 1,
+    parameter int unsigned NPU_AXI_TIMING_BUFFER = 1,
     parameter int unsigned CPU_AXI_WRITE_TIMING_BUFFER = 1,
     parameter int unsigned BYPASS_RAM_PINGPONG = 0,
     parameter int unsigned RAM_WRITE_TIMING_BUFFER = 1
@@ -72,7 +72,7 @@ module fpga_top #(
         .CPU_MEM_PATH(CPU_MEM_PATH),
         .CPU_MEM_INIT_EN(CPU_MEM_INIT_EN),
         .CPU_ENABLE_ICACHE(CPU_ENABLE_ICACHE),
-        .MMA_AXI_TIMING_BUFFER(MMA_AXI_TIMING_BUFFER),
+        .NPU_AXI_TIMING_BUFFER(NPU_AXI_TIMING_BUFFER),
         .CPU_AXI_WRITE_TIMING_BUFFER(CPU_AXI_WRITE_TIMING_BUFFER),
         .BYPASS_RAM_PINGPONG(BYPASS_RAM_PINGPONG),
         .RAM_WRITE_TIMING_BUFFER(RAM_WRITE_TIMING_BUFFER)

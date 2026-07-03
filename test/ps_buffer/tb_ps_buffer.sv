@@ -22,6 +22,7 @@ module tb_ps_buffer;
     logic signed [DATA_WIDTH-1:0] dut_acc_data_out [0:SIZE-1];
     logic                         dut_acc_data_valid_o;
     logic                         dut_tile_calc_over_o;
+    logic                         dut_stream_calc_over_o;
 
     integer errors = 0;
 
@@ -42,7 +43,8 @@ module tb_ps_buffer;
         .data_out       (dut_data_out),
         .acc_data_out   (dut_acc_data_out),
         .acc_data_valid (dut_acc_data_valid_o),
-        .tile_calc_over (dut_tile_calc_over_o)
+        .tile_calc_over (dut_tile_calc_over_o),
+        .stream_calc_over(dut_stream_calc_over_o)
     );
 
     function automatic logic signed [DATA_WIDTH-1:0] make_value(

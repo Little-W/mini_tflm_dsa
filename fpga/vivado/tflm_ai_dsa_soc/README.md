@@ -5,7 +5,7 @@ The project uses `fpga_top` as the FPGA wrapper, maps pins with an Alkaid-style
 board pinout inside the project XDC, and pulls the accelerator RTL from this
 repository.
 The board clock constraint is 50 MHz; `clk_wiz_0` is generated automatically by
-the Tcl flow and creates the internal SoC/MMA clock.
+the Tcl flow and creates the internal SoC/NPU clock.
 
 ## Create Project
 

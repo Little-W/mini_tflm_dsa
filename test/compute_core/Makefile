@@ -1,7 +1,8 @@
 PROJECT_ROOT := ../..
-SUB_MODULES_DIR := $(PROJECT_ROOT)/sub_modules
-BASIC_MODULES_DIR := $(PROJECT_ROOT)/basic
-PS_BUFFER_DIR := $(PROJECT_ROOT)/test/ps_buffer
+RTL_ROOT := $(PROJECT_ROOT)/rtl
+COMMON_RTL_DIR := $(RTL_ROOT)/common
+NPU_COMPUTE_DIR := $(RTL_ROOT)/npu/compute
+NPU_BUFFERS_DIR := $(RTL_ROOT)/npu/buffers
 TB := tb_compute_core.sv
 TEST_PARAMS := test_params_pkg.sv
 VEXE := sim_compute_core
@@ -12,20 +13,21 @@ COUNT ?= 32
 # Suppress non-critical Verilator warnings to allow build
 VERILATOR_FLAGS := -sv -Wall --trace --timing \
 	-Wno-GENUNNAMED -Wno-VARHIDDEN -Wno-WIDTHEXPAND -Wno-UNUSEDSIGNAL -Wno-UNUSED -Wno-UNUSEDGENVAR \
-	-Wno-EOFNEWLINE -Wno-MULTITOP -Wno-BLKSEQ -Wno-WIDTHTRUNC -Wno-UNDRIVEN
+	-Wno-EOFNEWLINE -Wno-MULTITOP -Wno-BLKSEQ -Wno-WIDTHTRUNC -Wno-UNDRIVEN \
+	-Wno-SYNCASYNCNET -Wno-DECLFILENAME
 
 SRCS := \
 	$(TEST_PARAMS) \
 	$(TB) \
 	tb_compute_core_if.sv \
 	compute_core_test.sv \
-	bias_mux.sv \
-	$(PS_BUFFER_DIR)/ps_buffer.sv \
-	$(PS_BUFFER_DIR)/ps_buffer_fifo.sv \
-	$(PS_BUFFER_DIR)/de_diagonalizer.sv \
-	$(BASIC_MODULES_DIR)/pseudo_dual_port_ram.v \
-	$(SUB_MODULES_DIR)/ws_systolic_array.sv \
-	$(BASIC_MODULES_DIR)/ws_systolic_cell.sv
+	$(NPU_COMPUTE_DIR)/bias_mux.sv \
+	$(NPU_BUFFERS_DIR)/ps_buffer.sv \
+	$(NPU_BUFFERS_DIR)/ps_buffer_fifo.sv \
+	$(NPU_COMPUTE_DIR)/de_diagonalizer.sv \
+	$(COMMON_RTL_DIR)/pseudo_dual_port_ram.v \
+	$(NPU_COMPUTE_DIR)/ws_systolic_array.sv \
+	$(NPU_COMPUTE_DIR)/ws_systolic_cell.sv
 
 all: run
 

@@ -65,7 +65,7 @@ module compute_core #(
 
     initial begin
         compute_trace_en = 1'b0;
-        if ($test$plusargs("MMA_COMPUTE_TRACE")) compute_trace_en = 1'b1;
+        if ($test$plusargs("NPU_COMPUTE_TRACE")) compute_trace_en = 1'b1;
     end
 
     localparam int unsigned PS_EFFECTIVE_FRAME_COUNT =

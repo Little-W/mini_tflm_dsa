@@ -147,8 +147,8 @@ Agent 必须至少完成 5 轮迭代。不得在第 1 轮或第 2 轮就声称�
 包括但不限于：
 
 * `npu_top`
-* `mma_top`
-* `mma_controller`
+* `npu_top`
+* `npu_controller`
 * `decode_dispatch`
 * `csr_unit`
 * `inst_tracker`
@@ -257,7 +257,7 @@ Agent 必须至少完成 5 轮迭代。不得在第 1 轮或第 2 轮就声称�
 
 例如：
 
-“本模块不包含独立状态机，其控制完全由上游 `mma_controller` 的 `send_ia_trigger` 和 `load_ia_granted` 信号驱动。”
+“本模块不包含独立状态机，其控制完全由上游 `npu_controller` 的 `send_ia_trigger` 和 `load_ia_granted` 信号驱动。”
 
 ---
 
@@ -409,7 +409,7 @@ outstanding_cycles ≈ pipeline_startup + total_beats
 * ICB 总线写回宽度通常是 32 bit。
 * 为什么需要 `Width Converter FIFO`。
 * 双 FIFO / ping-pong 结构如何让量化输出和写回解耦。
-* `fifo_full_flag` 如何向 `mma_controller` 反压。
+* `fifo_full_flag` 如何向 `npu_controller` 反压。
 * `output_mask` 如何避免无效列写回。
 * 有效列小于完整向量时如何缩短输出周期。
 * 对写回周期和总线写字节数的影响。
@@ -466,7 +466,7 @@ outstanding_cycles ≈ pipeline_startup + total_beats
 | 优化点         | 对应模块                                     | 关键机制           | 影响指标                    | 可能副作用        |
 | ----------- | ---------------------------------------- | -------------- | ----------------------- | ------------ |
 | 权重固定数据流     | `ws_systolic_array` / `kernel_loader`    | 权重驻留 PE        | 降低权重重复读取，提高 compute 利用率 | tile 切换需重载   |
-| Tile 化计算    | `mma_controller` / loaders / accumulator | 分块处理大矩阵        | 降低片上 buffer 需求          | 增加 tile 调度开销 |
+| Tile 化计算    | `npu_controller` / loaders / accumulator | 分块处理大矩阵        | 降低片上 buffer 需求          | 增加 tile 调度开销 |
 | 请求响应解耦      | `ia_loader` / `kernel_loader`            | cmd/rsp 独立计数   | 隐藏访存延迟，提高 bus busy      | 控制逻辑更复杂      |
 | burst 传输    | `axi_dual_block_dma`                     | 合并连续访问         | 降低命令握手开销                | 对齐和边界处理复杂    |
 | outstanding | `axi_dual_block_dma`                     | 多请求在途          | 提高带宽利用率                 | 需要 FIFO 管理   |
@@ -1388,7 +1388,7 @@ Agent 最终输出：
 必须输出仿真命令，按实际工程写，例如：
 
 ```bash
-make -C test/mma_top run_random ...
+make -C test/npu_top run_random ...
 make -C /media/proj_tmp/aiEngine_integrated/veri/sim ...
 verilator --version
 vcs -full64 -sverilog ...

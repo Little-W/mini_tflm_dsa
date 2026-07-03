@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module tb_mma_top;
+module tb_npu_top;
     // 时钟复位
     logic clk = 0;
     always #5 clk = ~clk;  // 100MHz
@@ -31,7 +31,7 @@ module tb_mma_top;
     localparam int unsigned REGW = 32;
 
     localparam int unsigned CFG_WORDS = 32;
-    localparam logic [31:0] CFG_MAGIC = 32'h4d4d4131; // "MMA1"
+    localparam logic [31:0] CFG_MAGIC = 32'h4e505531; // "NPU1"
     localparam int CFG_MAGIC_IDX             = 0;
     localparam int CFG_SIZE_IDX              = 1;
     localparam int CFG_IA_CACHE_BLOCKS_IDX   = 2;
@@ -124,7 +124,7 @@ module tb_mma_top;
     wire [ 1:0] m_axi_bresp;
 
     // DUT 实例
-    mma_top #(
+    npu_top #(
         .SIZE(SIZE),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
@@ -499,7 +499,7 @@ module tb_mma_top;
 
         if ($test$plusargs("WAVE")) begin
             $dumpfile("wave.vcd");
-            $dumpvars(0, tb_mma_top);
+            $dumpvars(0, tb_npu_top);
         end
 
         $readmemh(init_mem_path, u_mem.mem_r);
@@ -579,7 +579,7 @@ module tb_mma_top;
         $display("[TB] FATAL: timeout, sa_ready=%0b wb_valid=%0b err_code=%0b",
                  sa_ready, wb_valid, err_code);
         $display("[TB][DBG] ctrl_state=%0d ia_valid=%0b ia_done=%0b w_valid=%0b w_done=%0b bias_valid=%0b bias_sleep=%0b quant_valid=%0b tile_calc_over=%0b oa_calc_over=%0b",
-                 u_dut.u_mma_controller.current_state,
+                 u_dut.u_npu_controller.current_state,
                  u_dut.ia_data_valid,
                  u_dut.ia_sending_done,
                  u_dut.weight_data_valid,

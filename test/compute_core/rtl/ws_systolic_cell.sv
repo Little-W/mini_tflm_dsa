@@ -1,4 +1,4 @@
-// filepath: /home/etc/FPGA/tflm_ai_dsa/basic/ws_systolic_cell.sv
+// filepath: /home/etc/FPGA/tflm_ai_dsa/test/compute_core/rtl/ws_systolic_cell.sv
 module ws_systolic_cell #(
     parameter int unsigned DATA_IN_WIDTH = 16,  // s16 输入数据
     parameter int unsigned WEIGHT_WIDTH  = 8,   // s8  权重
