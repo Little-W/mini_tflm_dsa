@@ -200,10 +200,6 @@ Agent 必须至少完成 5 轮迭代。不得在第 1 轮或第 2 轮就声称�
 * `ia_loader`
 * `kernel_loader`
 * `bias_loader`
-* `icb_arbiter`
-* `icb_unalign_bridge`
-* `icb_mux`
-* `icb_ext_flat_adapter`
 * DMA / loader / writer 类模块
 
 每个 C 类模块正文不少于 2200 中文字，且必须包含：
@@ -472,11 +468,11 @@ outstanding_cycles ≈ pipeline_startup + total_beats
 | 权重固定数据流     | `ws_systolic_array` / `kernel_loader`    | 权重驻留 PE        | 降低权重重复读取，提高 compute 利用率 | tile 切换需重载   |
 | Tile 化计算    | `mma_controller` / loaders / accumulator | 分块处理大矩阵        | 降低片上 buffer 需求          | 增加 tile 调度开销 |
 | 请求响应解耦      | `ia_loader` / `kernel_loader`            | cmd/rsp 独立计数   | 隐藏访存延迟，提高 bus busy      | 控制逻辑更复杂      |
-| burst 传输    | `icb_unalign_bridge`                     | 合并连续访问         | 降低命令握手开销                | 对齐和边界处理复杂    |
-| outstanding | `icb_unalign_bridge`                     | 多请求在途          | 提高带宽利用率                 | 需要 FIFO 管理   |
+| burst 传输    | `axi_dual_block_dma`                     | 合并连续访问         | 降低命令握手开销                | 对齐和边界处理复杂    |
+| outstanding | `axi_dual_block_dma`                     | 多请求在途          | 提高带宽利用率                 | 需要 FIFO 管理   |
 | 输出 FIFO     | `vec_s8_to_fifo`                         | 量化与写回解耦        | 减少写回反压                  | 增加 buffer 面积 |
 | 字节掩码写回      | `oa_writer`                              | tail column 裁剪 | 减少无效写字节                 | mask 生成复杂    |
-| 仲裁策略        | `icb_arbiter`                            | 多 master 调度    | 减少冲突和饥饿                 | 优先级需调参       |
+| 仲裁策略        | `axi_block_dma_arbiter`                  | 多 client 调度    | 减少冲突和饥饿                 | 优先级需调参       |
 | 性能计数器       | `perf_regs`                              | 周期/字节/MAC 统计   | 定位瓶颈                    | 需要软件读取       |
 
 ---

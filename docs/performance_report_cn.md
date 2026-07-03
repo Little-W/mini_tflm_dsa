@@ -332,7 +332,7 @@ AXI 顶层后的大矩阵性能锚点如下，DDR 随机延迟关闭：
 - 对齐读侧已经支持小深度 `READ_OUTSTANDING`，可以重叠 AR 延迟和 R 数据返回；非对齐读目前仍按单行推进，以保证跨 beat 拼接时上一拍数据归属明确。若后续继续压气泡，需要在响应侧增加行元数据队列后再放开非对齐 outstanding。
 - `oa_writer` 目前仍以 tile 为粒度等待 write done 后再申请下一 tile，后续可把 tile 元数据和写数据流解耦，减少写侧 tile 间气泡。
 - de-diagonalizer/IA 输出路径需要继续流水化，但当前大样本主要气泡仍在 `ia_data_stall`、`weight_data_stall` 和 controller 等待。优化顺序应先保证 IA cache group 和 kernel buffer 对计算触发的供给连续，再看阵列内部反对角恢复逻辑。
-- EAI 外层已同步删除 MMA 侧 `icb_unalign_bridge`，`e203_subsys_nice_core` 额外暴露 MMA AXI master；原 NICE ICB LSU 口暂时保持空闲兼容。
+- EAI 外层已同步删除旧 NICE/ICB 包装层，MMA/SoC 主路径统一收敛到 AXI4 master。
 
 EAI 同步验证：
 
@@ -612,14 +612,14 @@ TFLM_SOC_MMA_MIN_MACS
 
 ### 2026-07-01 补充：per-channel quant 原生 DMA 化与 ICB 控制残留清理
 
-本轮继续沿 AXI 原生化方向收敛内部路径。此前外部总线已经从 ICB 转到 AXI，OA 写回独占 AXI 写通道，IA/kernel/bias/quant 共享 AXI 读通道；但 `vec_requant` 的 per-channel 量化参数仍保留一个内部 ICB 风格命令/响应端口，再通过 `icb_read_dma_adapter` 转成共享 DMA 请求。控制器中也还保留旧 `icb_arbiter`，其 grant 输出在 `mma_top` 中已经接到 unused 线，实际授权由 `axi_block_dma_arbiter` 完成。
+本轮继续沿 AXI 原生化方向收敛内部路径。此前外部总线已经从 ICB 转到 AXI，OA 写回独占 AXI 写通道，IA/kernel/bias/quant 共享 AXI 读通道；但 `vec_requant` 的 per-channel 量化参数仍保留一个内部 ICB 风格命令/响应端口，再通过旧 read-DMA adapter 转成共享 DMA 请求。控制器中也还保留旧总线仲裁输出，实际授权由 `axi_block_dma_arbiter` 完成。
 
 本轮清理：
 
 - `vec_requant` 直接输出 native quant DMA client 信号：`dma_start/base_addr/rows/burst_len`，并直接接收 `dma_raw_valid/raw_data`。
-- 删除 `mma_top` 中的 `icb_read_dma_adapter` 实例、`vec_requant_*` ICB 类型信号，以及 `quant_req = load_quant_req || adapter_req` 的双请求路径。
-- `mma_controller` 删除旧 `icb_sel`、各 loader/OA 的旧 grant 端口和内部 `icb_arbiter` 实例。控制器只保留真正参与计算调度的 `send_weight_trigger/send_ia_trigger`、配置初始化和完成握手。
-- `dut_axil.f` 不再编译旧 ICB-only adapter/arbiter：`icb_arbiter`、`icb_ext_flat_adapter`、`icb_mux_5to1`、`icb_read_dma_adapter`、`icb_write_dma_adapter`、`block_dma_arbiter`、`kernel_block_dma`、旧 `block_dma`。
+- 删除 `mma_top` 中量化短读的旧 ICB-to-DMA adapter 实例、`vec_requant_*` ICB 类型信号，以及 `quant_req = load_quant_req || adapter_req` 的双请求路径。
+- `mma_controller` 删除旧总线选择、各 loader/OA 的旧 grant 端口和内部 legacy 仲裁实例。控制器只保留真正参与计算调度的 `send_weight_trigger/send_ia_trigger`、配置初始化和完成握手。
+- `dut_axil.f` 不再编译旧 ICB-only adapter/arbiter，只保留统一 AXI DMA 主路径。
 
 这次改动的性能目标不是新增总线带宽，而是去掉 quant 短读前的一层内部转接 FSM，让 AXI 主路径语义更直接。VCS AXI SoC 编译通过后，`dut_axil.f` 只解析 36 个主路径模块，旧 ICB adapter 不再进入 AXI SoC elaboration。
 
@@ -635,7 +635,7 @@ TFLM_SOC_MMA_MIN_MACS
 解释：
 
 - 硬件内部累计 active 和 `ia_data_stall` 均下降：`my_model` 中各减少 380 cycles，说明 direct quant DMA 确实减少了少量转接/等待气泡。
-- `dma_busy_quant` 小幅下降，符合删除 `icb_read_dma_adapter` 后量化短读启动路径变短的预期。
+- `dma_busy_quant` 小幅下降，符合删除旧量化短读 adapter 后启动路径变短的预期。
 - 端到端 TFLM cycles 基本持平，`my_model` 多 388 cycles，`micro_speech` 多 5 cycles。这再次说明小模型的 SoC 终点由 Pico/TFLM/外设固定成本主导，几百个 MMA 内部周期会被端到端控制噪声和软件路径淹没。
 - `quant_stall` 保持为 0，说明前一轮 `kernel > quant > IA > bias` 的读优先级优化仍然有效。
 

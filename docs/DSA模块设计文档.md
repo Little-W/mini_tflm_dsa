@@ -1,6 +1,6 @@
 # AI-DSA MMA 模块设计文档（v2.0）
 
-> 本文面向 RTL 联调、驱动编写、验证和综合实现，记录当前 `mma_top` 及其主要子模块的端口语义、握手约定、数据流和实现约束。当前顶层为原生 AXI4 master，多个 loader/writer 通过统一 `axi_block_dma_arbiter + axi_dual_block_dma` 访问内存；旧版 `icb_mux_5to1` 顶层仲裁模型已废弃。
+> 本文面向 RTL 联调、驱动编写、验证和综合实现，记录当前 `mma_top` 及其主要子模块的端口语义、握手约定、数据流和实现约束。当前顶层为原生 AXI4 master，多个 loader/writer 通过统一 `axi_block_dma_arbiter + axi_dual_block_dma` 访问内存；旧版 ICB 顶层仲裁模型已废弃。
 
 ---
 
@@ -515,7 +515,7 @@ PASS, dsa_execute_cycles=6149
 
 以下旧口径不再适用于当前设计：
 
-- 顶层 `icb_mux_5to1` 统一主口模型。
+- 顶层 legacy ICB 统一主口模型。
 - `sa_icb_cmd/sa_icb_rsp` 作为当前 MMA 顶层主接口。
 - `data_setup` 作为主要对角化模块。当前 IA loader 已内置对角化输出。
 - RHS 永远固定 s8 且硬件不能处理 kernel 侧 16bit 的说法。
