@@ -44,24 +44,8 @@ if {[info exists ::env(VIVADO_SYNTH_STRATEGY)] && $::env(VIVADO_SYNTH_STRATEGY) 
 source [file join $script_dir sources.tcl]
 source [file join $script_dir clk_wiz_ip.tcl]
 
-proc ceil_log2 {value} {
-    set n [expr {int($value)}]
-    if {$n <= 1} {
-        return 1
-    }
-    set width 0
-    set limit 1
-    while {$limit < $n} {
-        set limit [expr {$limit << 1}]
-        incr width
-    }
-    return $width
-}
-
-set icb_len_w_value [ceil_log2 $size_value]
 set top_generics [list \
     SIZE=$size_value \
-    ICB_LEN_W=$icb_len_w_value \
     IA_CACHE_BLOCKS=$ia_cache_blocks_value \
     CPU_MEM_DP=$cpu_mem_dp_value \
     CPU_MEM_INIT_EN=$cpu_mem_init_en_value \
@@ -129,5 +113,5 @@ puts "Batch synthesis completed."
 puts "Reports written to $out_dir"
 puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
-puts "SIZE=$size_value ICB_LEN_W=$icb_len_w_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value"
+puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value"
 puts "SYNTH_STRATEGY=$synth_strategy_value"

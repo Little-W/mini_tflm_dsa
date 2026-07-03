@@ -2,7 +2,6 @@
 
 module fpga_top_behav_smoke_tb #(
     parameter int unsigned SIZE = 16,
-    parameter int unsigned ICB_LEN_W = 4,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
     parameter int unsigned CPU_MEM_DP = 65536,
     parameter string       CPU_MEM_PATH = "",
@@ -20,7 +19,6 @@ module fpga_top_behav_smoke_tb #(
 
     fpga_top #(
         .SIZE(SIZE),
-        .ICB_LEN_W(ICB_LEN_W),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .CPU_MEM_DP(CPU_MEM_DP),
         .CPU_MEM_PATH(CPU_MEM_PATH),

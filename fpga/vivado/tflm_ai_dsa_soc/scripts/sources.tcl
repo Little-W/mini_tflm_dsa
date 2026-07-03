@@ -8,12 +8,11 @@ if {[info exists ::env(AIENGINE_ROOT)] && $::env(AIENGINE_ROOT) ne ""} {
     set ai_root [file normalize "/media/proj_tmp/aiEngine_integrated"]
 }
 
-set soc_root [file join $ai_root rtl nice_coprocessor]
+set soc_root [file join $ai_root rtl axi_accelerator]
 set pico_root [file join $ai_root picorv32]
 
 set include_dirs [list \
     [file join $dsa_root inc] \
-    [file join $soc_root inc] \
 ]
 
 set design_sources [list \
@@ -24,9 +23,9 @@ set design_sources [list \
     [file join $soc_root axil_reg_if_wr.v] \
     [file join $soc_root axil_reg_if_rd.v] \
     [file join $soc_root axil_reg_if.v] \
-    [file join $dsa_root eai sub_module csr_unit.v] \
-    [file join $dsa_root eai sub_module wb_pingpong_buf.v] \
-    [file join $dsa_root eai sub_module wbu.v] \
+    [file join $soc_root csr_unit.v] \
+    [file join $soc_root wb_pingpong_buf.v] \
+    [file join $soc_root wbu.v] \
     [file join $soc_root axi_top mma_axil_top.sv] \
     [file join $dsa_root sub_modules accumulator_array.sv] \
     [file join $dsa_root sub_modules axi_block_dma_arbiter.sv] \
@@ -35,7 +34,6 @@ set design_sources [list \
     [file join $dsa_root sub_modules bias_loader_buffer.sv] \
     [file join $dsa_root sub_modules bias_loader_ctrl.sv] \
     [file join $dsa_root sub_modules bias_mux.sv] \
-    [file join $dsa_root sub_modules block_dma.sv] \
     [file join $dsa_root sub_modules compute_core.sv] \
     [file join $dsa_root sub_modules data_setup.sv] \
     [file join $dsa_root sub_modules de_diagonalizer.sv] \
@@ -43,7 +41,6 @@ set design_sources [list \
     [file join $dsa_root sub_modules ia_loader.sv] \
     [file join $dsa_root sub_modules ia_loader_cache_mgr.sv] \
     [file join $dsa_root sub_modules ia_loader_ctrl.sv] \
-    [file join $dsa_root sub_modules kernel_block_dma.sv] \
     [file join $dsa_root sub_modules kernel_loader.sv] \
     [file join $dsa_root sub_modules kernel_loader_buffer.sv] \
     [file join $dsa_root sub_modules kernel_loader_ctrl.sv] \

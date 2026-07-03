@@ -2,7 +2,6 @@
 
 module fpga_top_post_impl_tb #(
     parameter int unsigned SIZE = 16,
-    parameter int unsigned ICB_LEN_W = 4,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
     parameter int unsigned CPU_MEM_DP = 65536,
     parameter string       CPU_MEM_PATH = "",

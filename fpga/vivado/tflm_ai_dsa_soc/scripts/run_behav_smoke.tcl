@@ -33,28 +33,12 @@ if {![file exists $mem_path]} {
     error "CPU memory image not found: $mem_path"
 }
 
-proc ceil_log2 {value} {
-    set n [expr {int($value)}]
-    if {$n <= 1} {
-        return 1
-    }
-    set width 0
-    set limit 1
-    while {$limit < $n} {
-        set limit [expr {$limit << 1}]
-        incr width
-    }
-    return $width
-}
-
 set size_value 16
 set ia_cache_blocks_value 4
 set cpu_mem_dp_value 65536
 if {[llength $argv] >= 3} { set size_value [lindex $argv 2] }
 if {[llength $argv] >= 4} { set ia_cache_blocks_value [lindex $argv 3] }
 if {[llength $argv] >= 5} { set cpu_mem_dp_value [lindex $argv 4] }
-set icb_len_w_value [ceil_log2 $size_value]
-
 open_project $project_xpr
 
 if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0} {
@@ -64,7 +48,6 @@ if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0}
 set mem_path_escaped [string map [list "\\" "\\\\" "\"" "\\\""] $mem_path]
 set tb_generics [list \
     SIZE=$size_value \
-    ICB_LEN_W=$icb_len_w_value \
     IA_CACHE_BLOCKS=$ia_cache_blocks_value \
     CPU_MEM_DP=$cpu_mem_dp_value \
     CPU_ENABLE_ICACHE=1 \

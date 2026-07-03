@@ -45,7 +45,6 @@ vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_synth.tcl \
 
 `AIENGINE_ROOT` may be set when the full SoC shell lives outside the default
 `/media/proj_tmp/aiEngine_integrated` path.
-`ICB_LEN_W` is computed from `SIZE` by the project Tcl.
 `CORE_CLK_MHZ` defaults to 150 MHz and is produced from the 50 MHz board clock
 through Clocking Wizard.
 
