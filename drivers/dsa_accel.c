@@ -90,6 +90,8 @@ static void dsa_matmul_legalize_reuse(uint32_t K, uint32_t M,
                                       uint32_t *ia_reuse_num,
                                       uint32_t *w_reuse_num) {
     uint32_t stream_m;
+    uint32_t stream_k;
+    uint32_t output_row_tiles;
     uint32_t output_col_tiles;
     uint32_t ia_limit;
     uint32_t w_limit;
@@ -102,21 +104,23 @@ static void dsa_matmul_legalize_reuse(uint32_t K, uint32_t M,
         ia_cache_blocks = DSA_IA_CACHE_BLOCKS;
     }
 
+    stream_k = (dataflow_mode == DSA_DATAFLOW_IS) ? M : K;
     stream_m = (dataflow_mode == DSA_DATAFLOW_IS) ? K : M;
+    output_row_tiles = max_u32(1u, ceil_div_u32(stream_k, DSA_TILE_SIZE));
     output_col_tiles = max_u32(1u, ceil_div_u32(stream_m, DSA_TILE_SIZE));
     ia_limit = (ia_cache_blocks < 2u) ? 1u : (ia_cache_blocks / 2u);
-    ia_limit = max_u32(1u, ia_limit);
+    ia_limit = floor_pow2_u32(min_u32(output_row_tiles, max_u32(1u, ia_limit)));
     w_limit = max_u32(1u, DSA_PS_FRAME_COUNT);
-    w_limit = min_u32(output_col_tiles, w_limit);
+    w_limit = floor_pow2_u32(min_u32(output_col_tiles, w_limit));
     if (dataflow_mode == DSA_DATAFLOW_IS) {
         ia_limit = min_u32(ia_limit, w_limit);
     }
 
-    if ((*ia_reuse_num != 0u) && (*ia_reuse_num > ia_limit)) {
-        *ia_reuse_num = ia_limit;
+    if (*ia_reuse_num != 0u) {
+        *ia_reuse_num = floor_pow2_u32(min_u32(*ia_reuse_num, ia_limit));
     }
-    if ((*w_reuse_num != 0u) && (*w_reuse_num > w_limit)) {
-        *w_reuse_num = w_limit;
+    if (*w_reuse_num != 0u) {
+        *w_reuse_num = floor_pow2_u32(min_u32(*w_reuse_num, w_limit));
     }
     if ((dataflow_mode == DSA_DATAFLOW_IS) &&
         (*ia_reuse_num != 0u) && (*w_reuse_num != 0u) &&
@@ -132,6 +136,8 @@ void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
                              uint32_t *ia_reuse_num,
                              uint32_t *w_reuse_num) {
     uint32_t stream_cols;
+    uint32_t stream_rows;
+    uint32_t output_row_tiles;
     uint32_t output_col_tiles;
     uint32_t ia_limit;
     uint32_t w_limit;
@@ -150,12 +156,14 @@ void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
         ia_cache_blocks = DSA_IA_CACHE_BLOCKS;
     }
 
+    stream_rows = (dataflow_mode == DSA_DATAFLOW_IS) ? M : K;
     stream_cols = (dataflow_mode == DSA_DATAFLOW_IS) ? K : M;
+    output_row_tiles = max_u32(1u, ceil_div_u32(stream_rows, DSA_TILE_SIZE));
     output_col_tiles = max_u32(1u, ceil_div_u32(stream_cols, DSA_TILE_SIZE));
     ia_limit = (ia_cache_blocks < 2u) ? 1u : (ia_cache_blocks / 2u);
-    ia_limit = max_u32(1u, ia_limit);
+    ia_limit = floor_pow2_u32(min_u32(output_row_tiles, max_u32(1u, ia_limit)));
     w_limit = max_u32(1u, DSA_PS_FRAME_COUNT);
-    w_limit = min_u32(output_col_tiles, w_limit);
+    w_limit = floor_pow2_u32(min_u32(output_col_tiles, w_limit));
     if (dataflow_mode == DSA_DATAFLOW_IS) {
         ia_limit = min_u32(ia_limit, w_limit);
     }
@@ -213,35 +221,35 @@ static uint32_t configure_mmio_registers(const dsa_matmul_config_t *config,
         }
     }
 
-    dsa_reg_write(CSR_MULT_LHS_PTR, config->lhs_ptr);
-    dsa_reg_write(CSR_MULT_RHS_PTR, config->rhs_ptr);
-    dsa_reg_write(CSR_MULT_DST_PTR, config->dst_ptr);
-    dsa_reg_write(CSR_MULT_BIAS_PTR, config->bias_ptr);
+    dsa_reg_write(NPU_REG_LHS_BASE, config->lhs_ptr);
+    dsa_reg_write(NPU_REG_RHS_BASE, config->rhs_ptr);
+    dsa_reg_write(NPU_REG_DST_BASE, config->dst_ptr);
+    dsa_reg_write(NPU_REG_BIAS_BASE, config->bias_ptr);
 
-    dsa_reg_write(CSR_MULT_LHS_ROWS, config->K);
-    dsa_reg_write(CSR_MULT_RHS_COLS, config->N);
-    dsa_reg_write(CSR_MULT_RHS_ROWS, config->M);
+    dsa_reg_write(NPU_REG_K, config->K);
+    dsa_reg_write(NPU_REG_N, config->N);
+    dsa_reg_write(NPU_REG_M, config->M);
 
-    dsa_reg_write(CSR_MULT_LHS_COLS_OFFSET, config->lhs_row_stride);
-    dsa_reg_write(CSR_MULT_RHS_ROW_STRIDE, config->rhs_row_stride);
-    dsa_reg_write(CSR_MULT_ROW_ADDR_OFFSET, config->dst_row_stride);
+    dsa_reg_write(NPU_REG_LHS_STRIDE_B, config->lhs_row_stride);
+    dsa_reg_write(NPU_REG_RHS_STRIDE_B, config->rhs_row_stride);
+    dsa_reg_write(NPU_REG_DST_STRIDE_B, config->dst_row_stride);
 
-    dsa_reg_write(CSR_MULT_LHS_OFFSET, (uint32_t)config->lhs_offset);
-    dsa_reg_write(CSR_MULT_RHS_OFFSET, (uint32_t)config->rhs_offset);
-    dsa_reg_write(CSR_MULT_DST_OFFSET, (uint32_t)config->dst_offset);
+    dsa_reg_write(NPU_REG_LHS_ZP, (uint32_t)config->lhs_offset);
+    dsa_reg_write(NPU_REG_RHS_ZP, (uint32_t)config->rhs_offset);
+    dsa_reg_write(NPU_REG_DST_ZP, (uint32_t)config->dst_offset);
 
     if (config->quant_mode == DSA_QUANT_PER_TENSOR) {
-        dsa_reg_write(CSR_MULT_DST_MULT, (uint32_t)config->dst_mult);
-        dsa_reg_write(CSR_MULT_DST_SHIFT, (uint32_t)config->dst_shift);
+        dsa_reg_write(NPU_REG_Q_MULT, (uint32_t)config->dst_mult);
+        dsa_reg_write(NPU_REG_Q_SHIFT, (uint32_t)config->dst_shift);
     } else {
-        dsa_reg_write(CSR_MULT_DST_MULT, config->dst_mult_ptr);
-        dsa_reg_write(CSR_MULT_DST_SHIFT, config->dst_shift_ptr);
+        dsa_reg_write(NPU_REG_Q_MULT, config->dst_mult_ptr);
+        dsa_reg_write(NPU_REG_Q_SHIFT, config->dst_shift_ptr);
     }
 
-    dsa_reg_write(CSR_MULT_ACT_MIN, (uint32_t)config->act_min);
-    dsa_reg_write(CSR_MULT_ACT_MAX, (uint32_t)config->act_max);
-    dsa_reg_write(DSA_REG_IA_REUSE, ia_reuse_num);
-    dsa_reg_write(DSA_REG_W_REUSE, w_reuse_num);
+    dsa_reg_write(NPU_REG_ACT_MIN, (uint32_t)config->act_min);
+    dsa_reg_write(NPU_REG_ACT_MAX, (uint32_t)config->act_max);
+    dsa_reg_write(NPU_REG_IA_REUSE, ia_reuse_num);
+    dsa_reg_write(NPU_REG_W_REUSE, w_reuse_num);
 
     return DSA_SUCCESS;
 }
@@ -272,22 +280,22 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
     cfg_word = dsa_build_cfg_word(config);
     (void)cfg_word;
 
-    ctrl = DSA_CTRL_START | DSA_CTRL_CLEAR_DONE | DSA_CTRL_CLEAR_WB_VALID;
+    ctrl = NPU_CTRL_START | NPU_CTRL_CLEAR_DONE | NPU_CTRL_CLEAR_WB_VALID;
     if (config->lhs_dtype == DSA_DTYPE_S16) {
-        ctrl |= DSA_CTRL_CFG_16BITS_IA;
+        ctrl |= NPU_CTRL_CFG_16BITS_IA;
     }
     if (config->quant_mode == DSA_QUANT_PER_CHANNEL) {
-        ctrl |= DSA_CTRL_PER_CHANNEL;
+        ctrl |= NPU_CTRL_PER_CHANNEL;
     }
     if (config->dataflow_mode == DSA_DATAFLOW_IS) {
-        ctrl |= DSA_CTRL_DATAFLOW_IS;
+        ctrl |= NPU_CTRL_DATAFLOW_IS;
     }
     dsa_memory_barrier();
-    dsa_reg_write(DSA_REG_CTRL, ctrl);
+    dsa_reg_write(NPU_REG_CTRL, ctrl);
 
     do {
-        status = dsa_reg_read(DSA_REG_STATUS);
-        if (status & DSA_STATUS_DONE) {
+        status = dsa_reg_read(NPU_REG_STATUS);
+        if (status & NPU_STATUS_DONE) {
             break;
         }
     } while (--timeout != 0u);
@@ -296,10 +304,10 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
         return 0x80000001u;
     }
 
-    if (status & DSA_STATUS_ERR_MASK) {
-        return (status & DSA_STATUS_ERR_MASK) >> DSA_STATUS_ERR_SHIFT;
+    if (status & NPU_STATUS_ERR_MASK) {
+        return (status & NPU_STATUS_ERR_MASK) >> NPU_STATUS_ERR_SHIFT;
     }
 
     dsa_memory_barrier();
-    return dsa_reg_read(DSA_REG_WB_DATA);
+    return dsa_reg_read(NPU_REG_WB_DATA);
 }

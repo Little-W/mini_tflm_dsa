@@ -575,7 +575,10 @@ module tb_npu_top;
     end
 
     initial begin
-        #20000000;
+        longint unsigned timeout_cycles;
+        timeout_cycles = 2_000_000;
+        void'($value$plusargs("TB_TIMEOUT_CYCLES=%d", timeout_cycles));
+        repeat (timeout_cycles) @(posedge clk);
         $display("[TB] FATAL: timeout, sa_ready=%0b wb_valid=%0b err_code=%0b",
                  sa_ready, wb_valid, err_code);
         $display("[TB][DBG] ctrl_state=%0d ia_valid=%0b ia_done=%0b w_valid=%0b w_done=%0b bias_valid=%0b bias_sleep=%0b quant_valid=%0b tile_calc_over=%0b oa_calc_over=%0b",

@@ -1,10 +1,10 @@
-# DSA 自定义指令加速器驱动
+# DSA AXI/MMIO 加速器驱动
 
 ## 概述
 
-本驱动提供了对自定义矩阵乘法加速器指令的C语言接口封装，支持：
-- CSR寄存器访问（csrrd/csrwr）
-- 矩阵乘法指令（mat_mult_t）
+本驱动提供了对新版 AXI 外设的 C 语言接口封装，支持：
+- MMIO 寄存器访问
+- 矩阵乘法启动/轮询
 - Per-tensor和per-channel量化
 - 灵活的数据类型配置（s4/s8/s16/s32/s64）
 
@@ -12,6 +12,11 @@
 
 - `dsa_accel.h` - 驱动头文件，定义所有接口
 - `dsa_accel.c` - 驱动实现文件
+- `registers_v2.md` - 新版 AXI/MMIO 寄存器说明
+
+## 寄存器文档
+
+新版外设的详细寄存器定义见 [registers_v2.md](registers_v2.md)。文档按基地址、控制/状态位、矩阵配置寄存器和访问顺序整理，适合驱动联调时直接查阅。
 
 ## 使用示例
 
@@ -20,23 +25,25 @@
 ```c
 #include "dsa_accel.h"
 
-int8_t A[128 * 256];  // M=128, K=256
-int8_t B[256 * 64];   // K=256, N=64
-int8_t C[128 * 64];   // M=128, N=64
-int32_t bias[64];     // N=64
+int8_t A[128 * 256];  // K=128, N=256
+int8_t B[256 * 64];   // N=256, M=64, column-major
+int8_t C[128 * 64];   // K=128, M=64
+int32_t bias[64];     // M=64
 
 dsa_matmul_config_t config;
 dsa_matmul_config_init(&config);
 
-config.lhs_ptr = A;
-config.rhs_ptr = B;
-config.dst_ptr = C;
-config.bias_ptr = bias;
+config.lhs_ptr = (uint32_t)(uintptr_t)A;
+config.rhs_ptr = (uint32_t)(uintptr_t)B;
+config.dst_ptr = (uint32_t)(uintptr_t)C;
+config.bias_ptr = (uint32_t)(uintptr_t)bias;
 
-config.M = 128;
-config.K = 256;
-config.N = 64;
-config.K_aligned = 256;
+config.K = 128;
+config.N = 256;
+config.M = 64;
+config.lhs_row_stride = 256;  // 每行 256 字节
+config.rhs_row_stride = 256;  // 每列 256 字节
+config.dst_row_stride = 64;   // 每行 64 字节
 
 config.lhs_offset = 128;  // 零点偏移
 config.dst_mult = 1234567;
@@ -58,24 +65,23 @@ dsa_matmul_config_init(&config);
 // ...existing code...
 
 config.quant_mode = DSA_QUANT_PER_CHANNEL;
-config.dst_mult_ptr = mult_per_ch;
-config.dst_shift_ptr = shift_per_ch;
+config.dst_mult_ptr = (uint32_t)(uintptr_t)mult_per_ch;
+config.dst_shift_ptr = (uint32_t)(uintptr_t)shift_per_ch;
 
 uint32_t status = dsa_matmul_execute(&config);
 ```
 
-### 3. 底层CSR直接访问
+### 3. 底层 MMIO 直接访问
 
 ```c
-// 写入CSR
-dsa_csrwr(CSR_MULT_LHS_PTR, (uint32_t)A);
+// 写入寄存器
+dsa_reg_write(NPU_REG_LHS_BASE, (uint32_t)(uintptr_t)A);
 
-// 读取CSR
-uint32_t value = dsa_csrrd(CSR_MULT_LHS_ROWS);
+// 读取寄存器
+uint32_t value = dsa_reg_read(NPU_REG_K);
 
-// 直接执行指令
-uint32_t cfg = CFG_OUT_W_S8 | CFG_A_W_S8 | CFG_B_W_S8 | CFG_PER_TENSOR;
-uint32_t status = dsa_mat_mult_t((uint32_t)C, cfg);
+// 直接调用高层 API
+uint32_t status = dsa_matmul_execute(&config);
 ```
 
 ## 返回状态码
@@ -87,13 +93,13 @@ uint32_t status = dsa_mat_mult_t((uint32_t)C, cfg);
 ## 编译说明
 
 ```bash
-riscv32-unknown-elf-gcc -c dsa_accel.c -o dsa_accel.o
+riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -c dsa_accel.c -o dsa_accel.o
 ```
 
 ## 注意事项
 
-1. 所有指针必须是有效的物理地址
-2. K_aligned必须≥K，且满足硬件对齐要求
-3. Per-channel模式下，mult/shift数组长度必须等于N
+1. `DSA_MMIO_BASE` 当前与 `soc_top.sv` 保持一致，为 `0x10000000u`
+2. 配置结构中的地址字段是 RV32 物理地址值，赋值时使用 `(uint32_t)(uintptr_t)ptr`
+3. Per-channel模式下，mult/shift数组长度必须等于M
 4. 激活范围需根据输出数据类型合理设置
-5. 步进值为0时，驱动会自动计算默认步进
+5. 步进值按字节配置；当前 SoC 回归使用显式 stride

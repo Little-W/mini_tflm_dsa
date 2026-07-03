@@ -30,13 +30,8 @@ set design_sources [list \
     [file join $project_export_dir rtl clk_wiz_0_sim_stub.sv] \
     [file join $pico_root picorv32.v] \
     [file join $pico_root picosoc simpleuart.v] \
-    [file join $soc_root axil_reg_if_wr.v] \
-    [file join $soc_root axil_reg_if_rd.v] \
-    [file join $soc_root axil_reg_if.v] \
-    [file join $soc_root csr_unit.v] \
-    [file join $soc_root wb_pingpong_buf.v] \
-    [file join $soc_root wbu.v] \
-    [file join $soc_root axi_top mma_axil_top.sv] \
+    [file join $soc_root axi_top npu_axil_reg_if.sv] \
+    [file join $soc_root axi_top npu_axil_top.sv] \
     [file join $npu_compute_root accumulator_array.sv] \
     [file join $npu_dma_root axi_block_dma_arbiter.sv] \
     [file join $npu_dma_root axi_dual_block_dma.sv] \

@@ -18,9 +18,11 @@ TRACE_FLAGS := $(if $(TRACE_ENABLED),--trace,)
 BUILD_DIR := $(BUILD_ROOT)/s$(SIZE)_c$(IA_CACHE_BLOCKS)_ps$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_$(TRACE_TAG)
 SIM_BIN := $(BUILD_DIR)/$(VEXE)
 VERILATOR_OPT_FLAGS ?= -O3 -CFLAGS -O3 -LDFLAGS -O3
+VERILATOR_BUILD_JOBS ?= 8
 
 # Verilator参数
 VERILATOR_FLAGS := -sv -Wall $(TRACE_FLAGS) --timing --top-module tb_npu_top \
+	--build-jobs $(VERILATOR_BUILD_JOBS) \
 	$(VERILATOR_OPT_FLAGS) \
 	-Wno-GENUNNAMED -Wno-VARHIDDEN -Wno-WIDTHEXPAND -Wno-UNUSEDSIGNAL \
 	-Wno-UNUSED -Wno-UNUSEDGENVAR -Wno-UNDRIVEN -Wno-PINMISSING \
@@ -50,7 +52,7 @@ MEM_INIT := $(OUT_DIR)/init.mem
 MEM_GOLDEN := $(OUT_DIR)/golden.mem
 MEM_CASE := $(OUT_DIR)/config.mem
 GEN_ARGS ?=
-RANDOM_GEN_ARGS ?= --random --random_quant --lhs_dtype 0 --min_dim 1 --max_dim 32 --ps_frame_count 8
+RANDOM_GEN_ARGS ?= --random --random_quant --lhs_dtype 0 --min_dim 1 --max_dim 32
 COUNT ?= 20
 SEED ?= 1000
 SIZES ?= 4 8 16
@@ -66,7 +68,7 @@ $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
 
 gen: $(OUT_DIR)
-	python3 gen_mem.py --out_dir $(OUT_DIR) --size $(SIZE) --ia_cache_blocks $(IA_CACHE_BLOCKS) $(GEN_ARGS)
+	python3 gen_mem.py --out_dir $(OUT_DIR) --size $(SIZE) --ia_cache_blocks $(IA_CACHE_BLOCKS) $(GEN_ARGS) --ps_frame_count $(PS_FRAME_COUNT)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -89,7 +91,7 @@ run_random: $(OUT_DIR) build_only
 		seed=$$(( $(SEED) + $$i )); \
 		log="$(OUT_DIR)/random_$${seed}.log"; \
 		echo "[run_random] size=$(SIZE) cache=$(IA_CACHE_BLOCKS) seed=$${seed}"; \
-		python3 gen_mem.py --out_dir $(OUT_DIR) --size $(SIZE) --ia_cache_blocks $(IA_CACHE_BLOCKS) --seed $${seed} $(RANDOM_GEN_ARGS) || exit 1; \
+		python3 gen_mem.py --out_dir $(OUT_DIR) --size $(SIZE) --ia_cache_blocks $(IA_CACHE_BLOCKS) --seed $${seed} $(RANDOM_GEN_ARGS) --ps_frame_count $(PS_FRAME_COUNT) || exit 1; \
 		$(SIM_BIN) +INIT_MEM=$(MEM_INIT) +GOLDEN_MEM=$(MEM_GOLDEN) +CASE_MEM=$(MEM_CASE) $(SIM_ARGS) +DDR_SEED=$${seed} | tee "$${log}"; \
 		if grep -q "\\[TB\\] PASS" "$${log}"; then pass=$$((pass + 1)); else fail=$$((fail + 1)); fi; \
 	done; \
@@ -108,7 +110,7 @@ run_param_random: $(OUT_DIR)
 				seed=$$(( $(SEED) + $$idx )); idx=$$((idx + 1)); \
 				log="$(OUT_DIR)/param_s$${size}_c$${cache}_$${seed}.log"; \
 				echo "[run_param_random] size=$${size} cache=$${cache} seed=$${seed}"; \
-				python3 gen_mem.py --out_dir $(OUT_DIR) --size $${size} --ia_cache_blocks $${cache} --seed $${seed} $(RANDOM_GEN_ARGS) || exit 1; \
+				python3 gen_mem.py --out_dir $(OUT_DIR) --size $${size} --ia_cache_blocks $${cache} --seed $${seed} $(RANDOM_GEN_ARGS) --ps_frame_count $(PS_FRAME_COUNT) || exit 1; \
 				"$${bin}" +INIT_MEM=$(MEM_INIT) +GOLDEN_MEM=$(MEM_GOLDEN) +CASE_MEM=$(MEM_CASE) $(SIM_ARGS) +DDR_SEED=$${seed} | tee "$${log}"; \
 				if grep -q "\\[TB\\] PASS" "$${log}"; then pass=$$((pass + 1)); else fail=$$((fail + 1)); fi; \
 			done; \

@@ -141,12 +141,6 @@ proc localize_path {src export_root dsa_root ai_root} {
         if {$tail eq "soc_top.sv"} {
             return [file join $export_root src rtl soc top $tail]
         }
-        if {[string match "axil_reg_if*" $tail]} {
-            return [file join $export_root src rtl axi_lite $tail]
-        }
-        if {$tail eq "csr_unit.v" || $tail eq "wbu.v" || $tail eq "wb_pingpong_buf.v"} {
-            return [file join $export_root src rtl npu shell $tail]
-        }
         return [file join $export_root src rtl soc $rel]
     }
     if {[starts_with_path $abs_src $ai_root]} {
