@@ -1,5 +1,7 @@
 # ia_loader 验证总结（v2.1）
 
+术语说明：本文中的 L1/L2 只表示 MMA 内部 IA cache 的分块复用调度层级，不表示 CPU 或 SoC cache 层级。涉及 PicoRV32 取指侧缓存时统一写作 `CPU I-cache`。
+
 ## 1. 验证综合表
 
 | 项目 | 内容 | 结论 |

@@ -42,6 +42,8 @@ v2.1 版本在 v2.0 功能基础上进行了**对角化输出架构升级**，�
 
 ## 1. 模块层级与架构设计
 
+本文沿用 `L1 group`/`L2 group` 作为 IA cache 调度术语：`L1 group` 是 cache 内连续 IA tile 发射组，`L2 group` 是更外层的 IA/W 遍历组。它们不表示 CPU 的 L1/L2 cache；SoC 取指缓存会明确写成 CPU I-cache。
+
 ### 1.1 模块层级图
 
 ```mermaid

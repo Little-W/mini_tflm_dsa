@@ -6,6 +6,8 @@
 
 > **ia_loader** 自主从外部存储器读取输入激活（IA）分块矩阵，通过内部多槽缓存实现 L1/L2 两级数据复用，并以**对角化（Diagonal Skewing）方式**连续输出到 Weight-Stationary 脉动阵列。
 
+> 术语说明：本文中的 L1/L2 只表示 MMA 内部 IA cache 的分块复用调度层级，不表示 CPU 或 SoC cache 层级。涉及 PicoRV32 取指侧缓存时统一写作 `CPU I-cache`。
+
 ---
 
 ## 二、模块层级结构
