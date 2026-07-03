@@ -74,11 +74,7 @@ set_param general.maxThreads $vivado_jobs_value
 create_tflm_soc_clk_wiz $core_clk_mhz_value
 
 add_files -norecurse -fileset sources_1 $design_sources
-add_files -norecurse -fileset constrs_1 $timing_constraint_files
-add_files -norecurse -fileset constrs_1 $implementation_constraint_files
-foreach xdc_file $implementation_constraint_files {
-    set_property used_in_synthesis false [get_files $xdc_file]
-}
+add_files -norecurse -fileset constrs_1 $constraint_files
 
 set_property include_dirs $include_dirs [get_filesets sources_1]
 set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1} [get_filesets sources_1]

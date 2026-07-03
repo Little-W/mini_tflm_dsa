@@ -2,7 +2,8 @@
 
 This directory exports an openable Vivado project for the board-level SoC top.
 The project uses `fpga_top` as the FPGA wrapper, maps pins with an Alkaid-style
-XDC, and pulls the accelerator RTL from this repository.
+board pinout inside the project XDC, and pulls the accelerator RTL from this
+repository.
 The board clock constraint is 50 MHz; `clk_wiz_0` is generated automatically by
 the Tcl flow and creates the internal SoC/MMA clock.
 
@@ -72,7 +73,7 @@ VIVADO_JOBS=8 vivado -mode batch \
   -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
   -tclargs vivado_export/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 \
   /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_case/cpu.mem \
-  150.000 1 0 1 1 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1
+  150.000 1 0 1 1 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1 2000000
 ```
 
 For a bitstream smoke test, use a self-contained `cpu.mem` generated with
@@ -87,12 +88,26 @@ Argument order:
 <export_root> <part> <SIZE> <IA_CACHE_BLOCKS> <CPU_MEM_DP> <CPU_MEM_PATH>
 <CORE_CLK_MHZ> <CPU_AXI_WRITE_TIMING_BUFFER> <BYPASS_RAM_PINGPONG>
 <RAM_WRITE_TIMING_BUFFER> <RUN_IMPL> <SYNTH_STRATEGY> <IMPL_STRATEGY>
-<CPU_ENABLE_ICACHE>
+<CPU_ENABLE_ICACHE> <SIM_MAX_SYS_CYCLES>
 ```
 
 `CPU_ENABLE_ICACHE` defaults to `1` in the export flow so the FPGA project
 matches the SoC performance regressions. It can also be overridden with the
 `VIVADO_CPU_ENABLE_ICACHE` environment variable.
+`SIM_MAX_SYS_CYCLES` defaults to `2000000`; use a larger value for full TFLM
+programs such as MNIST MLP. It can also be overridden with
+`VIVADO_SIM_MAX_SYS_CYCLES`.
+
+Final 150 MHz MNIST MLP project export:
+
+```sh
+VIVADO_JOBS=8 vivado -mode batch \
+  -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
+  -tclargs vivado_export/tflm_ai_dsa_soc_final_150m_mnist_mlp \
+  xc7a200tfbg484-3 16 4 65536 \
+  /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem \
+  150.000 1 0 1 0 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1 30000000
+```
 
 The exported directory contains a short `README.md`, copied source files,
 constraints, simulation testbenches, `mem/cpu.mem`, routed reports when

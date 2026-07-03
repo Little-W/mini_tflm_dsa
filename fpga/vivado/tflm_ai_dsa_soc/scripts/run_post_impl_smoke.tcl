@@ -5,7 +5,7 @@
 #       -tclargs vivado_export/<export_name>/project/tflm_ai_dsa_soc.xpr
 
 if {[llength $argv] < 1} {
-    error "Usage: run_post_impl_smoke.tcl <project.xpr>"
+    error "Usage: run_post_impl_smoke.tcl <project.xpr> ?MAX_SYS_CYCLES?"
 }
 
 set script_dir [file dirname [file normalize [info script]]]
@@ -26,6 +26,9 @@ if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0}
 }
 
 set_property top fpga_top_post_impl_tb [get_filesets sim_1]
+if {[llength $argv] >= 2} {
+    set_property generic [list MAX_SYS_CYCLES=[lindex $argv 1]] [get_filesets sim_1]
+}
 set_property xsim.simulate.runtime all [get_filesets sim_1]
 update_compile_order -fileset sim_1
 

@@ -6,7 +6,7 @@
 #       vivado_export/<export_name>/mem/cpu.mem
 
 if {[llength $argv] < 1} {
-    error "Usage: run_behav_smoke.tcl <project.xpr> ?cpu.mem? ?SIZE? ?IA_CACHE_BLOCKS? ?CPU_MEM_DP?"
+    error "Usage: run_behav_smoke.tcl <project.xpr> ?cpu.mem? ?SIZE? ?IA_CACHE_BLOCKS? ?CPU_MEM_DP? ?MAX_SYS_CYCLES?"
 }
 
 set script_dir [file dirname [file normalize [info script]]]
@@ -36,9 +36,11 @@ if {![file exists $mem_path]} {
 set size_value 16
 set ia_cache_blocks_value 4
 set cpu_mem_dp_value 65536
+set max_sys_cycles_value 2000000
 if {[llength $argv] >= 3} { set size_value [lindex $argv 2] }
 if {[llength $argv] >= 4} { set ia_cache_blocks_value [lindex $argv 3] }
 if {[llength $argv] >= 5} { set cpu_mem_dp_value [lindex $argv 4] }
+if {[llength $argv] >= 6} { set max_sys_cycles_value [lindex $argv 5] }
 open_project $project_xpr
 
 if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0} {
@@ -54,7 +56,7 @@ set tb_generics [list \
     CPU_AXI_WRITE_TIMING_BUFFER=1 \
     BYPASS_RAM_PINGPONG=0 \
     RAM_WRITE_TIMING_BUFFER=1 \
-    MAX_SYS_CYCLES=2000000 \
+    MAX_SYS_CYCLES=$max_sys_cycles_value \
 ]
 lappend tb_generics "CPU_MEM_PATH=\"$mem_path_escaped\""
 

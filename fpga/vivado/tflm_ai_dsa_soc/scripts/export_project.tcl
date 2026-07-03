@@ -11,7 +11,7 @@
 #   <export_root> <part> <SIZE> <IA_CACHE_BLOCKS> <CPU_MEM_DP> <CPU_MEM_PATH>
 #   <CORE_CLK_MHZ> <CPU_AXI_WRITE_TIMING_BUFFER> <BYPASS_RAM_PINGPONG>
 #   <RAM_WRITE_TIMING_BUFFER> <RUN_IMPL> <SYNTH_STRATEGY> <IMPL_STRATEGY>
-#   <CPU_ENABLE_ICACHE>
+#   <CPU_ENABLE_ICACHE> <SIM_MAX_SYS_CYCLES>
 
 set script_dir [file dirname [file normalize [info script]]]
 set flow_root [file normalize [file join $script_dir ..]]
@@ -31,6 +31,7 @@ set run_impl_value 0
 set synth_strategy_value Flow_PerfOptimized_high
 set impl_strategy_value Performance_Explore
 set cpu_enable_icache_value 1
+set sim_max_sys_cycles_value 2000000
 
 if {[llength $argv] >= 1} {
     set export_root [file normalize [lindex $argv 0]]
@@ -50,6 +51,7 @@ if {[llength $argv] >= 11} { set run_impl_value [lindex $argv 10] }
 if {[llength $argv] >= 12} { set synth_strategy_value [lindex $argv 11] }
 if {[llength $argv] >= 13} { set impl_strategy_value [lindex $argv 12] }
 if {[llength $argv] >= 14} { set cpu_enable_icache_value [lindex $argv 13] }
+if {[llength $argv] >= 15} { set sim_max_sys_cycles_value [lindex $argv 14] }
 if {[info exists ::env(VIVADO_SYNTH_STRATEGY)] && $::env(VIVADO_SYNTH_STRATEGY) ne ""} {
     set synth_strategy_value $::env(VIVADO_SYNTH_STRATEGY)
 }
@@ -61,6 +63,9 @@ if {[info exists ::env(VIVADO_RUN_IMPL)] && $::env(VIVADO_RUN_IMPL) ne ""} {
 }
 if {[info exists ::env(VIVADO_CPU_ENABLE_ICACHE)] && $::env(VIVADO_CPU_ENABLE_ICACHE) ne ""} {
     set cpu_enable_icache_value $::env(VIVADO_CPU_ENABLE_ICACHE)
+}
+if {[info exists ::env(VIVADO_SIM_MAX_SYS_CYCLES)] && $::env(VIVADO_SIM_MAX_SYS_CYCLES) ne ""} {
+    set sim_max_sys_cycles_value $::env(VIVADO_SIM_MAX_SYS_CYCLES)
 }
 
 source [file join $script_dir sources.tcl]
@@ -133,7 +138,7 @@ proc copy_dir_contents {src_dir dst_dir} {
     }
 }
 
-proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value} {
+proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value sim_max_sys_cycles_value} {
     set f [open $path w]
     puts $f "# Self-contained TFLM AI DSA Vivado Project"
     puts $f ""
@@ -150,7 +155,7 @@ proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache
     puts $f "$mem_path"
     puts $f "```"
     puts $f ""
-    puts $f "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CORE_CLK_MHZ=$core_clk_mhz_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value"
+    puts $f "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CORE_CLK_MHZ=$core_clk_mhz_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value SIM_MAX_SYS_CYCLES=$sim_max_sys_cycles_value"
     if {$bit_path ne ""} {
         puts $f ""
         puts $f "Latest generated bitstream:"
@@ -185,9 +190,7 @@ file mkdir [file join $export_root project]
 file mkdir [file join $export_root mem]
 
 set local_design_sources [copy_path_list $design_sources $export_root $dsa_root $ai_root RTL]
-set local_timing_constraint_files [copy_path_list $timing_constraint_files $export_root $dsa_root $ai_root timing_constraint]
-set local_implementation_constraint_files [copy_path_list $implementation_constraint_files $export_root $dsa_root $ai_root implementation_constraint]
-set local_constraint_files [concat $local_timing_constraint_files $local_implementation_constraint_files]
+set local_constraint_files [copy_path_list $constraint_files $export_root $dsa_root $ai_root constraint]
 set local_sim_sources [copy_path_list $sim_sources $export_root $dsa_root $ai_root simulation]
 
 set local_include_dirs [list]
@@ -228,12 +231,8 @@ set_param general.maxThreads $vivado_jobs_value
 create_tflm_soc_clk_wiz $core_clk_mhz_value
 
 add_files -norecurse -fileset sources_1 $local_design_sources
-add_files -norecurse -fileset constrs_1 $local_timing_constraint_files
-add_files -norecurse -fileset constrs_1 $local_implementation_constraint_files
+add_files -norecurse -fileset constrs_1 $local_constraint_files
 add_files -norecurse -fileset sim_1 $local_sim_sources
-foreach xdc_file $local_implementation_constraint_files {
-    set_property used_in_synthesis false [get_files $xdc_file]
-}
 
 set_property include_dirs $local_include_dirs [get_filesets sources_1]
 set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1} [get_filesets sources_1]
@@ -247,6 +246,7 @@ set tb_generics [list \
     CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value \
     BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value \
     RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value \
+    MAX_SYS_CYCLES=$sim_max_sys_cycles_value \
 ]
 lappend tb_generics "CPU_MEM_PATH=\"$cpu_mem_path_escaped\""
 set_property top fpga_top_post_impl_tb [get_filesets sim_1]
@@ -293,7 +293,8 @@ if {$run_impl_value} {
 }
 
 write_export_readme [file join $export_root README.md] $project_xpr $bit_path \
-    $local_mem_path $size_value $ia_cache_blocks_value $core_clk_mhz_value $cpu_enable_icache_value
+    $local_mem_path $size_value $ia_cache_blocks_value $core_clk_mhz_value \
+    $cpu_enable_icache_value $sim_max_sys_cycles_value
 
 puts "Self-contained Vivado project exported."
 puts "Project: $project_xpr"
@@ -301,6 +302,7 @@ puts "CPU mem: $local_mem_path"
 puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value"
+puts "SIM_MAX_SYS_CYCLES=$sim_max_sys_cycles_value"
 puts "SYNTH_STRATEGY=$synth_strategy_value IMPL_STRATEGY=$impl_strategy_value RUN_IMPL=$run_impl_value"
 if {$bit_path ne ""} {
     puts "Bitstream: $bit_path"

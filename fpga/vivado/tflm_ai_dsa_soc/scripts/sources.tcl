@@ -64,15 +64,9 @@ set design_sources [list \
     [file join $soc_root soc_top.sv] \
 ]
 
-set timing_constraint_files [list \
-    [file join $project_export_dir constraints fpga_top_timing.xdc] \
+set constraint_files [list \
+    [file join $project_export_dir constraints tflm_ai_dsa_soc.xdc] \
 ]
-
-set implementation_constraint_files [list \
-    [file join $project_export_dir constraints alkaid_soc_fpga_top.xdc] \
-]
-
-set constraint_files [concat $timing_constraint_files $implementation_constraint_files]
 
 proc require_files {files label} {
     set missing [list]

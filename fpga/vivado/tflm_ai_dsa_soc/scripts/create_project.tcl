@@ -71,9 +71,6 @@ set_param general.maxThreads $vivado_jobs_value
 
 add_files -norecurse -fileset sources_1 $design_sources
 add_files -norecurse -fileset constrs_1 $constraint_files
-foreach xdc_file $implementation_constraint_files {
-    set_property used_in_synthesis false [get_files $xdc_file]
-}
 
 create_tflm_soc_clk_wiz $core_clk_mhz_value
 
