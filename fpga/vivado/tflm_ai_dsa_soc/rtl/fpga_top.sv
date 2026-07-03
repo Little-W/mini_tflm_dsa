@@ -28,9 +28,9 @@ module fpga_top #(
     output wire [3:0] user_led_tri_o
 );
 
-    wire        mma_busy;
-    wire [31:0] mma_irq;
-    wire [31:0] mma_eoi;
+    wire        npu_busy;
+    wire [31:0] npu_irq;
+    wire [31:0] npu_eoi;
     wire        soc_finish;
     wire [31:0] soc_status;
     wire        cpu_trap;
@@ -80,9 +80,9 @@ module fpga_top #(
         .clk(soc_clk),
         .rst_n(soc_rst_n_sync[2]),
         .mem_reload_req(1'b0),
-        .mma_busy(mma_busy),
-        .mma_irq(mma_irq),
-        .mma_eoi(mma_eoi),
+        .npu_busy(npu_busy),
+        .npu_irq(npu_irq),
+        .npu_eoi(npu_eoi),
         .uart_tx(UART_0_txd),
         .uart_rx(UART_0_rxd),
         .soc_finish(soc_finish),
@@ -90,9 +90,9 @@ module fpga_top #(
         .cpu_trap(cpu_trap)
     );
 
-    assign user_led_tri_o[0] = mma_busy;
+    assign user_led_tri_o[0] = npu_busy;
     assign user_led_tri_o[1] = soc_finish;
     assign user_led_tri_o[2] = cpu_trap;
-    assign user_led_tri_o[3] = ^soc_status ^ |mma_irq ^ |mma_eoi;
+    assign user_led_tri_o[3] = ^soc_status ^ |npu_irq ^ |npu_eoi;
 
 endmodule
