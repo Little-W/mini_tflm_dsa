@@ -11,9 +11,6 @@
  * 测试参数从 out/test_params.svh 读入，由 gen_test_data.py 生成。
  */
 
-`include "e203_defines.v"
-`include "icb_types.svh"
-
 module tb_ia_loader;
 
   // ================================================================

@@ -94,7 +94,7 @@ module sirv_1cyc_sram_ctrl #(
 
    wire ram_clk_en = ram_cs | tcm_cgstop;
 
-   e203_clkgate u_ram_clkgate(
+   sirv_clkgate u_ram_clkgate(
      .clk_in   (clk        ),
      .test_mode(test_mode  ),
      .clock_en (ram_clk_en),
@@ -106,4 +106,3 @@ module sirv_1cyc_sram_ctrl #(
    assign sram_ctrl_active = uop_cmd_valid | uop_rsp_valid;
 
 endmodule
-

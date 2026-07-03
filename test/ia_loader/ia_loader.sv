@@ -22,9 +22,6 @@
  *   - CACHE_BLOCKS ≥ 2 × ia_reuse_num
  */
 
-`include "e203_defines.v"
-`include "icb_types.svh"
-
 module ia_loader #(
     parameter int unsigned DATA_WIDTH   = 16,
     parameter int unsigned SIZE         = 16,

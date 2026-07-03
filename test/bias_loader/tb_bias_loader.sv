@@ -2,9 +2,6 @@
  * tb_bias_loader — bias_loader 参数化验证顶层
  */
 
-`include "e203_defines.v"
-`include "icb_types.svh"
-
 module tb_bias_loader;
 
   localparam int SIZE       = 8;

@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "icb_types.svh"
 
 module tb_mma_top;
     // 时钟复位

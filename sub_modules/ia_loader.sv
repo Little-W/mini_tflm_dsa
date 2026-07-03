@@ -9,7 +9,7 @@
  *
  * 子模块：
  *   ia_loader_ctrl      — 缓存调度、循环计数、发送控制
- *   block_dma            — ICB 分块DMA引擎（读写双向）
+ *   block_dma            — 分块 DMA 引擎（读写双向）
  *   ia_loader_cache_mgr — 缓存 RAM 管理、对角化输出、控制信号生成
  *
  * 相对 v1.1 的改进：
@@ -21,9 +21,6 @@
  *   - SIZE、ia_reuse_num、w_reuse_num 要求为 2 的幂次
  *   - CACHE_BLOCKS ≥ 2 × ia_reuse_num
  */
-
-`include "e203_defines.v"
-`include "icb_types.svh"
 
 module ia_loader #(
     parameter int unsigned DATA_WIDTH   = 16,

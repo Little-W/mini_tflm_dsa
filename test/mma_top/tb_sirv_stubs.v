@@ -57,7 +57,7 @@ module sirv_gnrl_dfflrs #(
   end
 endmodule
 
-module e203_clkgate (
+module sirv_clkgate (
   input  wire clk_in,
   input  wire test_mode,
   input  wire clock_en,

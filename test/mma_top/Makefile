@@ -42,7 +42,7 @@ BASIC_SV := \
         $(PROJECT_ROOT)/basic/shift_accumulator.sv
 
 # 添加新的 interface 文件
-SRCS := $(TB) tb_e203_sirv_stubs.v \
+SRCS := $(TB) tb_sirv_stubs.v \
         $(DEP_SV) $(MMA_TOP_SRC) $(SUB_SV) $(BASIC_SV)
 
 # 输出目录与mem文件
