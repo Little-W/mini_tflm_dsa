@@ -61,15 +61,22 @@ module compute_core #(
     logic [SIZE:0]       ia_tile_start_pipe;
     logic                ps_tile_start_aligned;
     logic                final_l1_calc_done_seen;
+`ifndef SYNTHESIS
     bit                  compute_trace_en;
 
     initial begin
         compute_trace_en = 1'b0;
         if ($test$plusargs("NPU_COMPUTE_TRACE")) compute_trace_en = 1'b1;
     end
+`else
+    localparam bit compute_trace_en = 1'b0;
+`endif
 
+    // PS_FRAME_COUNT is the architectural number of output-column frames that
+    // may be replayed. IA reuse is emitted as one tall L1 stream, so multiplying
+    // the frame count by the maximum reuse depth only over-provisions BRAM.
     localparam int unsigned PS_EFFECTIVE_FRAME_COUNT =
-        (PS_FRAME_COUNT < 1) ? MAX_IA_REUSE : (PS_FRAME_COUNT * MAX_IA_REUSE);
+        (PS_FRAME_COUNT < 1) ? MAX_IA_REUSE : PS_FRAME_COUNT;
 
     assign ps_tile_start_aligned = ia_tile_start_pipe[SIZE];
     assign ps_burst_start = ps_tile_start_aligned;

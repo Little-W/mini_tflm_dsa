@@ -93,8 +93,8 @@ module tb_npu_top;
     logic [REGW-1:0]            rhs_row_stride_b;
     logic signed [REGW-1:0]     act_min;
     logic signed [REGW-1:0]     act_max;
-    wire        wb_valid;
-    wire        wb_ready = 1'b1;
+    wire        done_valid;
+    wire        done_ready = 1'b1;
     wire [ 1:0] err_code;
 
     wire        m_axi_arvalid;
@@ -138,8 +138,8 @@ module tb_npu_top;
         .cfg_ia_reuse_num(cfg_ia_reuse_num),
         .cfg_w_reuse_num (cfg_w_reuse_num),
         .sa_ready     (sa_ready),
-        .wb_valid     (wb_valid),
-        .wb_ready     (wb_ready),
+        .done_valid   (done_valid),
+        .done_ready   (done_ready),
         .err_code     (err_code),
 
         .lhs_base (lhs_base),
@@ -579,8 +579,8 @@ module tb_npu_top;
         timeout_cycles = 2_000_000;
         void'($value$plusargs("TB_TIMEOUT_CYCLES=%d", timeout_cycles));
         repeat (timeout_cycles) @(posedge clk);
-        $display("[TB] FATAL: timeout, sa_ready=%0b wb_valid=%0b err_code=%0b",
-                 sa_ready, wb_valid, err_code);
+        $display("[TB] FATAL: timeout, sa_ready=%0b done_valid=%0b err_code=%0b",
+                 sa_ready, done_valid, err_code);
         $display("[TB][DBG] ctrl_state=%0d ia_valid=%0b ia_done=%0b w_valid=%0b w_done=%0b bias_valid=%0b bias_sleep=%0b quant_valid=%0b tile_calc_over=%0b oa_calc_over=%0b",
                  u_dut.u_npu_controller.current_state,
                  u_dut.ia_data_valid,
