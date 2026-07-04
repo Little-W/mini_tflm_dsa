@@ -15,6 +15,8 @@ module fpga_top_behav_smoke_tb #(
     parameter int unsigned NPU_ENABLE_IS_MODE = 1,
     parameter int unsigned NPU_ENABLE_PER_CHANNEL = 1,
     parameter int unsigned NPU_ENABLE_CLOCK_GATING = 1,
+    parameter int unsigned RESET_CYCLES = 20,
+    parameter int unsigned FINISH_DRAIN_CYCLES = 100,
     parameter int unsigned MAX_SYS_CYCLES = 2_000_000
 );
     logic      sys_clk = 1'b0;
@@ -50,19 +52,42 @@ module fpga_top_behav_smoke_tb #(
     always #10ns sys_clk = ~sys_clk;
 
     initial begin
-        repeat (20) @(posedge sys_clk);
+        if (CPU_MEM_PATH == "") begin
+            $display("[BEHAV_SMOKE] FAIL: CPU_MEM_PATH is empty");
+            $finish;
+        end
+        $display("[BEHAV_SMOKE] cfg SIZE=%0d IA_CACHE_BLOCKS=%0d WEIGHT_WIDTH=%0d DATA_WIDTH=%0d CPU_MEM_DP=%0d",
+                 SIZE, IA_CACHE_BLOCKS, WEIGHT_WIDTH, DATA_WIDTH, CPU_MEM_DP);
+        $display("[BEHAV_SMOKE] cfg CPU_MEM_PATH=%s", CPU_MEM_PATH);
+        $display("[BEHAV_SMOKE] cfg NPU_ADDR_WIDTH=%0d IS=%0d PER_CHANNEL=%0d CLK_GATE=%0d MAX_SYS_CYCLES=%0d",
+                 NPU_ADDR_WIDTH, NPU_ENABLE_IS_MODE, NPU_ENABLE_PER_CHANNEL,
+                 NPU_ENABLE_CLOCK_GATING, MAX_SYS_CYCLES);
+        repeat (RESET_CYCLES) @(posedge sys_clk);
         sys_rst_n = 1'b1;
     end
 
     initial begin : watchdog
-        int unsigned cycle_count;
+        longint unsigned cycle_count;
         logic [31:0] last_progress;
+        logic [3:0]  last_led;
+        logic        test_done;
 
         cycle_count = 0;
         last_progress = 32'hffff_ffff;
+        last_led = 4'hx;
+        test_done = 1'b0;
         forever begin
             @(posedge sys_clk);
+            if (test_done) begin
+                continue;
+            end
             cycle_count++;
+
+            if (user_led !== last_led) begin
+                last_led = user_led;
+                $display("[BEHAV_SMOKE] user_led=%b at sys_cycle=%0d",
+                         user_led, cycle_count);
+            end
 
             if (dut.u_soc_top.soc_progress !== last_progress) begin
                 last_progress = dut.u_soc_top.soc_progress;
@@ -71,26 +96,31 @@ module fpga_top_behav_smoke_tb #(
             end
 
             if (user_led[2] === 1'b1) begin
-                $fatal(1,
-                       "[BEHAV_SMOKE] FAIL: cpu_trap at sys_cycle=%0d status=0x%08x progress=0x%08x",
-                       cycle_count, dut.soc_status, dut.u_soc_top.soc_progress);
+                $display("[BEHAV_SMOKE] FAIL: cpu_trap at sys_cycle=%0d status=0x%08x progress=0x%08x",
+                         cycle_count, dut.soc_status, dut.u_soc_top.soc_progress);
+                test_done = 1'b1;
+                $finish;
             end
 
             if (user_led[1] === 1'b1) begin
-                repeat (100) @(posedge sys_clk);
+                repeat (FINISH_DRAIN_CYCLES) @(posedge sys_clk);
                 if (user_led[2] === 1'b1) begin
-                    $fatal(1, "[BEHAV_SMOKE] FAIL: cpu_trap asserted after finish");
+                    $display("[BEHAV_SMOKE] FAIL: cpu_trap asserted after finish");
+                    test_done = 1'b1;
+                    $finish;
                 end
                 $display("[BEHAV_SMOKE] PASS: soc_finish at sys_cycle=%0d status=0x%08x progress=0x%08x",
                          cycle_count, dut.soc_status, dut.u_soc_top.soc_progress);
+                test_done = 1'b1;
                 $finish;
             end
 
             if (cycle_count >= MAX_SYS_CYCLES) begin
-                $fatal(1,
-                       "[BEHAV_SMOKE] TIMEOUT after %0d sys_clk cycles status=0x%08x progress=0x%08x trap=%0b",
-                       MAX_SYS_CYCLES, dut.soc_status, dut.u_soc_top.soc_progress,
-                       user_led[2]);
+                $display("[BEHAV_SMOKE] TIMEOUT after %0d sys_clk cycles status=0x%08x progress=0x%08x led=%b trap=%0b",
+                         MAX_SYS_CYCLES, dut.soc_status, dut.u_soc_top.soc_progress,
+                         user_led, user_led[2]);
+                test_done = 1'b1;
+                $finish;
             end
         end
     end

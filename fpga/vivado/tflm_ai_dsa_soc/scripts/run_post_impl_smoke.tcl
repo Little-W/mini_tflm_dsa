@@ -19,6 +19,73 @@ if {![file exists $repo_tb_file]} {
     error "Post-impl smoke testbench not found: $repo_tb_file"
 }
 
+proc upsert_generic_value {generic_items name value} {
+    set out [list]
+    set replaced 0
+    foreach item $generic_items {
+        set eq_pos [string first "=" $item]
+        if {$eq_pos <= 0} {
+            lappend out $item
+            continue
+        }
+        set key [string range $item 0 [expr {$eq_pos - 1}]]
+        if {$key eq $name} {
+            lappend out "$name=$value"
+            set replaced 1
+        } else {
+            lappend out $item
+        }
+    }
+    if {!$replaced} {
+        lappend out "$name=$value"
+    }
+    return $out
+}
+
+proc find_latest_sim_log {project_xpr} {
+    set project_dir [file dirname $project_xpr]
+    set project_name [file rootname [file tail $project_xpr]]
+    set sim_root [file join $project_dir "${project_name}.sim" sim_1]
+    set logs [list]
+    foreach pattern [list \
+        [file join $sim_root * xsim simulate.log] \
+        [file join $sim_root * * xsim simulate.log] \
+        [file join $sim_root * * * xsim simulate.log] \
+    ] {
+        foreach log [glob -nocomplain $pattern] {
+            lappend logs $log
+        }
+    }
+    if {[llength $logs] == 0} {
+        error "Simulation log not found under $sim_root"
+    }
+
+    set latest [lindex $logs 0]
+    foreach log $logs {
+        if {[file mtime $log] > [file mtime $latest]} {
+            set latest $log
+        }
+    }
+    return $latest
+}
+
+proc check_smoke_log {project_xpr pass_tag fail_prefix} {
+    set log [find_latest_sim_log $project_xpr]
+    set f [open $log r]
+    set text [read $f]
+    close $f
+
+    if {[string first "\[$fail_prefix\] FAIL" $text] >= 0 ||
+        [string first "\[$fail_prefix\] TIMEOUT" $text] >= 0 ||
+        [string first "Fatal:" $text] >= 0} {
+        error [format {Simulation failed; see %s} $log]
+    }
+    if {[string first $pass_tag $text] < 0} {
+        error [format {Simulation PASS tag not found (%s); see %s} $pass_tag $log]
+    }
+    puts [format {SMOKE PASS: found "%s" in %s} $pass_tag $log]
+}
+
 set project_root [file dirname [file dirname $project_xpr]]
 set tb_file [file normalize [file join $project_root src sim fpga_top_post_impl_tb.sv]]
 if {[file exists [file dirname $tb_file]]} {
@@ -39,8 +106,12 @@ if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0}
 }
 
 set_property top fpga_top_post_impl_tb [get_filesets sim_1]
+set tb_generics [get_property generic [get_filesets sim_1]]
 if {[llength $argv] >= 2} {
-    set_property generic [list MAX_SYS_CYCLES=[lindex $argv 1]] [get_filesets sim_1]
+    set tb_generics [upsert_generic_value $tb_generics MAX_SYS_CYCLES [lindex $argv 1]]
+}
+if {[llength $tb_generics] != 0} {
+    set_property generic $tb_generics [get_filesets sim_1]
 }
 set fast_uart_wait_bypass 0
 if {[llength $argv] >= 3} {
@@ -80,6 +151,30 @@ if {$fast_uart_wait_bypass != 0} {
     }
     puts "POST_IMPL_SMOKE INFO: forced UART busy counters low for post-implementation runtime reduction"
 }
-run all
-close_sim
-close_project
+
+set sim_failed 0
+set sim_error_msg ""
+
+if {[catch {
+    run all
+} run_msg]} {
+    set sim_failed 1
+    set sim_error_msg $run_msg
+}
+
+catch {close_sim}
+
+if {!$sim_failed} {
+    if {[catch {
+        check_smoke_log $project_xpr {[POST_IMPL_SMOKE] PASS:} {POST_IMPL_SMOKE}
+    } check_msg]} {
+        set sim_failed 1
+        set sim_error_msg $check_msg
+    }
+}
+
+catch {close_project}
+
+if {$sim_failed} {
+    error $sim_error_msg
+}
