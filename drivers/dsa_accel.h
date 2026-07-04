@@ -38,10 +38,9 @@
 #define NPU_CTRL_CFG_16BITS_IA  (1u << 1)
 #define NPU_CTRL_PER_CHANNEL    (1u << 2)
 #define NPU_CTRL_DATAFLOW_IS    (1u << 3)
-#define NPU_CTRL_CLEAR_DONE     (1u << 8)
-#define NPU_CTRL_CLEAR_WB_VALID (1u << 9)
 
 #define NPU_STATUS_DONE      (1u << 2)
+#define NPU_STATUS_WB_VALID  (1u << 3)
 #define NPU_STATUS_ERR_SHIFT 4u
 #define NPU_STATUS_ERR_MASK  (3u << NPU_STATUS_ERR_SHIFT)
 
