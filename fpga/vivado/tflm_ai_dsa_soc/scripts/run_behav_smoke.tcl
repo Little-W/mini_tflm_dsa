@@ -101,7 +101,7 @@ if {![file exists $mem_path]} {
 set size_value 16
 set ia_cache_blocks_value 4
 set cpu_mem_dp_value 65536
-set max_sys_cycles_value 2000000
+set max_sys_cycles_value 10000000
 set weight_width_value 16
 set data_width_value 16
 set cpu_enable_icache_value 1

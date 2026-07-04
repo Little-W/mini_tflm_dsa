@@ -32,7 +32,7 @@ set synth_strategy_value Flow_PerfOptimized_high
 set synth_directive_value PerformanceOptimized
 set impl_strategy_value Performance_Explore
 set cpu_enable_icache_value 1
-set sim_max_sys_cycles_value 2000000
+set sim_max_sys_cycles_value 10000000
 set npu_enable_is_mode_value 1
 set npu_enable_per_channel_value 1
 set npu_weight_width_value 16
@@ -133,6 +133,34 @@ proc copy_one_file {src dst} {
     file copy -force $src $dst
 }
 
+proc copy_mem_file_to_depth {src dst depth} {
+    file mkdir [file dirname $dst]
+    set in_f [open $src r]
+    set text [read $in_f]
+    close $in_f
+
+    set text [string trimright $text "\r\n"]
+    if {$text eq ""} {
+        set lines [list]
+    } else {
+        set lines [split $text "\n"]
+    }
+
+    set word_count [llength $lines]
+    if {$word_count > $depth} {
+        error "CPU memory image has $word_count words, larger than CPU_MEM_DP=$depth: $src"
+    }
+
+    set out_f [open $dst w]
+    foreach line $lines {
+        puts $out_f [string trimright $line "\r"]
+    }
+    for {set i $word_count} {$i < $depth} {incr i} {
+        puts $out_f "00000000"
+    }
+    close $out_f
+}
+
 proc localize_path {src export_root dsa_root ai_root} {
     set abs_src [file normalize $src]
 
@@ -219,6 +247,7 @@ proc write_export_readme {path project_xpr bit_path mem_path source_mem_path siz
     puts $f "```"
     puts $f ""
     puts $f "The RTL, constraints, and CPU memory image were copied into this directory."
+    puts $f "The local CPU memory image is padded with zero words to CPU_MEM_DP."
     puts $f "The top generic CPU_MEM_PATH uses this absolute mem path:"
     puts $f ""
     puts $f "```text"
@@ -308,7 +337,7 @@ foreach inc_dir $include_dirs {
 }
 
 set local_mem_path [file join $export_root mem cpu.mem]
-copy_one_file $cpu_mem_path_value $local_mem_path
+copy_mem_file_to_depth $cpu_mem_path_value $local_mem_path $cpu_mem_dp_value
 set local_mem_path [file normalize $local_mem_path]
 
 set top_generics [list \

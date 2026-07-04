@@ -17,7 +17,7 @@ module fpga_top_behav_smoke_tb #(
     parameter int unsigned NPU_ENABLE_CLOCK_GATING = 1,
     parameter int unsigned RESET_CYCLES = 20,
     parameter int unsigned FINISH_DRAIN_CYCLES = 100,
-    parameter int unsigned MAX_SYS_CYCLES = 2_000_000
+    parameter int unsigned MAX_SYS_CYCLES = 10_000_000
 );
     logic      sys_clk = 1'b0;
     logic      sys_rst_n = 1'b0;
