@@ -28,10 +28,10 @@ module npu_top #(
     input  logic [REG_WIDTH-1:0] cfg_w_reuse_num,   // W 侧复用窗口，0 表示使用参数默认值
     output wire sa_ready,  // 系统就绪信号
 
-    //==== 写回握手接口 ====
-    output wire       wb_valid,  // 写回有效信号
-    input  wire       wb_ready,  // 写回就绪信号
-    output wire [1:0] err_code,  // 写回状态码
+    //==== 完成握手接口 ====
+    output wire       done_valid,  // 任务完成有效信号
+    input  wire       done_ready,  // 任务完成接收就绪信号
+    output wire [1:0] err_code,  // 完成状态码
 
     // --- base pointers
     input logic [REG_WIDTH-1:0] lhs_base,  // A base         (MULT_LHS_PTR)
@@ -678,9 +678,9 @@ module npu_top #(
         .fifo_full_flag       (fifo_full_flag),
 	        // OA Writer Interface
 	        .oa_calc_over         (oa_calc_over),
-        // Writeback Handshake Interface
-        .wb_valid             (wb_valid),
-        .wb_ready             (wb_ready),
+        // Task Completion Handshake Interface
+        .done_valid             (done_valid),
+        .done_ready             (done_ready),
         .err_code             (err_code)
     );
 	    // IA Loader
@@ -1164,7 +1164,7 @@ module npu_top #(
     end
 
     wire top_util_start_event = calc_start && sa_ready;
-    wire top_util_finish_event = top_util_active && wb_valid && wb_ready;
+    wire top_util_finish_event = top_util_active && done_valid && done_ready;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
