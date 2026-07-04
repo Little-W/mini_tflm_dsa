@@ -5,7 +5,7 @@
 #   vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
 #       -tclargs vivado_export/tflm_ai_dsa_soc xc7a200tfbg484-3 16 4 65536 \
 #       /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_case/cpu.mem \
-#       150.000 1 0 1 1 Flow_AreaOptimized_high Performance_ExplorePostRoutePhysOpt 1
+#       150.000 1 0 1 1 Flow_PerfOptimized_high Performance_Explore 1
 #
 # Tcl arguments:
 #   <export_root> <part> <SIZE> <IA_CACHE_BLOCKS> <CPU_MEM_DP> <CPU_MEM_PATH>
@@ -29,9 +29,15 @@ set bypass_ram_pingpong_value 0
 set ram_write_timing_buffer_value 1
 set run_impl_value 0
 set synth_strategy_value Flow_PerfOptimized_high
+set synth_directive_value PerformanceOptimized
 set impl_strategy_value Performance_Explore
 set cpu_enable_icache_value 1
 set sim_max_sys_cycles_value 2000000
+set npu_enable_is_mode_value 1
+set npu_enable_per_channel_value 1
+set npu_weight_width_value 16
+set npu_data_width_value 16
+set npu_addr_width_value 32
 
 if {[llength $argv] >= 1} {
     set export_root [file normalize [lindex $argv 0]]
@@ -55,6 +61,9 @@ if {[llength $argv] >= 15} { set sim_max_sys_cycles_value [lindex $argv 14] }
 if {[info exists ::env(VIVADO_SYNTH_STRATEGY)] && $::env(VIVADO_SYNTH_STRATEGY) ne ""} {
     set synth_strategy_value $::env(VIVADO_SYNTH_STRATEGY)
 }
+if {[info exists ::env(VIVADO_SYNTH_DIRECTIVE)] && $::env(VIVADO_SYNTH_DIRECTIVE) ne ""} {
+    set synth_directive_value $::env(VIVADO_SYNTH_DIRECTIVE)
+}
 if {[info exists ::env(VIVADO_IMPL_STRATEGY)] && $::env(VIVADO_IMPL_STRATEGY) ne ""} {
     set impl_strategy_value $::env(VIVADO_IMPL_STRATEGY)
 }
@@ -66,6 +75,21 @@ if {[info exists ::env(VIVADO_CPU_ENABLE_ICACHE)] && $::env(VIVADO_CPU_ENABLE_IC
 }
 if {[info exists ::env(VIVADO_SIM_MAX_SYS_CYCLES)] && $::env(VIVADO_SIM_MAX_SYS_CYCLES) ne ""} {
     set sim_max_sys_cycles_value $::env(VIVADO_SIM_MAX_SYS_CYCLES)
+}
+if {[info exists ::env(VIVADO_NPU_ENABLE_IS_MODE)] && $::env(VIVADO_NPU_ENABLE_IS_MODE) ne ""} {
+    set npu_enable_is_mode_value $::env(VIVADO_NPU_ENABLE_IS_MODE)
+}
+if {[info exists ::env(VIVADO_NPU_ENABLE_PER_CHANNEL)] && $::env(VIVADO_NPU_ENABLE_PER_CHANNEL) ne ""} {
+    set npu_enable_per_channel_value $::env(VIVADO_NPU_ENABLE_PER_CHANNEL)
+}
+if {[info exists ::env(VIVADO_NPU_WEIGHT_WIDTH)] && $::env(VIVADO_NPU_WEIGHT_WIDTH) ne ""} {
+    set npu_weight_width_value $::env(VIVADO_NPU_WEIGHT_WIDTH)
+}
+if {[info exists ::env(VIVADO_NPU_DATA_WIDTH)] && $::env(VIVADO_NPU_DATA_WIDTH) ne ""} {
+    set npu_data_width_value $::env(VIVADO_NPU_DATA_WIDTH)
+}
+if {[info exists ::env(VIVADO_NPU_ADDR_WIDTH)] && $::env(VIVADO_NPU_ADDR_WIDTH) ne ""} {
+    set npu_addr_width_value $::env(VIVADO_NPU_ADDR_WIDTH)
 }
 
 source [file join $script_dir sources.tcl]
@@ -177,7 +201,7 @@ proc copy_dir_contents {src_dir dst_dir} {
     }
 }
 
-proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value sim_max_sys_cycles_value} {
+proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value sim_max_sys_cycles_value synth_strategy_value synth_directive_value impl_strategy_value} {
     set f [open $path w]
     puts $f "# Self-contained TFLM AI DSA Vivado Project"
     puts $f ""
@@ -195,6 +219,7 @@ proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache
     puts $f "```"
     puts $f ""
     puts $f "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CORE_CLK_MHZ=$core_clk_mhz_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value SIM_MAX_SYS_CYCLES=$sim_max_sys_cycles_value"
+    puts $f "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value IMPL_STRATEGY=$impl_strategy_value"
     if {$bit_path ne ""} {
         puts $f ""
         puts $f "Latest generated bitstream:"
@@ -232,6 +257,27 @@ set local_design_sources [copy_path_list $design_sources $export_root $dsa_root 
 set local_constraint_files [copy_path_list $constraint_files $export_root $dsa_root $ai_root constraint]
 set local_sim_sources [copy_path_list $sim_sources $export_root $dsa_root $ai_root simulation]
 
+# Vivado 7-series BRAM cascade DRC can be over-constrained for the byte-write
+# SoC RAM when the memory is exported into a standalone project.  Keep the
+# source project untouched, but annotate the local copy so implementation uses
+# power decomposition instead of an illegal cascade packing.
+foreach local_src $local_design_sources {
+    if {[file tail $local_src] eq "soc_axi_ram.sv"} {
+        set f [open $local_src r]
+        set text [read $f]
+        close $f
+        if {[string first "ram_decomp" $text] < 0} {
+            set text [string map [list \
+                {(* ram_style = "block" *) logic [DW-1:0] mem_r [0:DP-1];} \
+                {(* ram_style = "block", ram_decomp = "power" *) logic [DW-1:0] mem_r [0:DP-1];} \
+            ] $text]
+            set f [open $local_src w]
+            puts -nonewline $f $text
+            close $f
+        }
+    }
+}
+
 set local_include_dirs [list]
 foreach inc_dir $include_dirs {
     set dst_dir [localize_path $inc_dir $export_root $dsa_root $ai_root]
@@ -252,6 +298,11 @@ set top_generics [list \
     CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value \
     BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value \
     RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value \
+    WEIGHT_WIDTH=$npu_weight_width_value \
+    DATA_WIDTH=$npu_data_width_value \
+    NPU_ADDR_WIDTH=$npu_addr_width_value \
+    NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value \
+    NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value \
 ]
 set cpu_mem_path_escaped [string map [list "\\" "\\\\" "\"" "\\\""] $local_mem_path]
 lappend top_generics "CPU_MEM_PATH=\"$cpu_mem_path_escaped\""
@@ -285,6 +336,7 @@ set tb_generics [list \
     CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value \
     BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value \
     RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value \
+    NPU_ADDR_WIDTH=$npu_addr_width_value \
     MAX_SYS_CYCLES=$sim_max_sys_cycles_value \
 ]
 lappend tb_generics "CPU_MEM_PATH=\"$cpu_mem_path_escaped\""
@@ -296,6 +348,7 @@ update_compile_order -fileset sim_1
 
 set synth_run [get_runs synth_1]
 set_property strategy $synth_strategy_value $synth_run
+set_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE $synth_directive_value $synth_run
 set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY rebuilt $synth_run
 
 set impl_run [get_runs impl_1]
@@ -331,9 +384,14 @@ if {$run_impl_value} {
     write_bitstream -force $bit_path
 }
 
-write_export_readme [file join $export_root README.md] $project_xpr $bit_path \
+set export_readme_path [file join $export_root README.md]
+write_export_readme $export_readme_path $project_xpr $bit_path \
     $local_mem_path $size_value $ia_cache_blocks_value $core_clk_mhz_value \
-    $cpu_enable_icache_value $sim_max_sys_cycles_value
+    $cpu_enable_icache_value $sim_max_sys_cycles_value $synth_strategy_value \
+    $synth_directive_value $impl_strategy_value
+set f [open $export_readme_path a]
+puts $f "NPU_ADDR_WIDTH=$npu_addr_width_value NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value"
+close $f
 
 puts "Self-contained Vivado project exported."
 puts "Project: $project_xpr"
@@ -341,8 +399,11 @@ puts "CPU mem: $local_mem_path"
 puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value"
+puts "NPU WEIGHT_WIDTH=$npu_weight_width_value DATA_WIDTH=$npu_data_width_value"
+puts "NPU_ADDR_WIDTH=$npu_addr_width_value"
+puts "NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value"
 puts "SIM_MAX_SYS_CYCLES=$sim_max_sys_cycles_value"
-puts "SYNTH_STRATEGY=$synth_strategy_value IMPL_STRATEGY=$impl_strategy_value RUN_IMPL=$run_impl_value"
+puts "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value IMPL_STRATEGY=$impl_strategy_value RUN_IMPL=$run_impl_value"
 if {$bit_path ne ""} {
     puts "Bitstream: $bit_path"
 }

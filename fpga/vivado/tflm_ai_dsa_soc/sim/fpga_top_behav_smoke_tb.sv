@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module fpga_top_behav_smoke_tb #(
+    parameter int unsigned WEIGHT_WIDTH = 16,
+    parameter int unsigned DATA_WIDTH = 16,
     parameter int unsigned SIZE = 16,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
     parameter int unsigned CPU_MEM_DP = 65536,
@@ -9,6 +11,9 @@ module fpga_top_behav_smoke_tb #(
     parameter int unsigned CPU_AXI_WRITE_TIMING_BUFFER = 1,
     parameter int unsigned BYPASS_RAM_PINGPONG = 0,
     parameter int unsigned RAM_WRITE_TIMING_BUFFER = 1,
+    parameter int unsigned NPU_ADDR_WIDTH = 32,
+    parameter int unsigned NPU_ENABLE_IS_MODE = 1,
+    parameter int unsigned NPU_ENABLE_PER_CHANNEL = 1,
     parameter int unsigned MAX_SYS_CYCLES = 2_000_000
 );
     logic      sys_clk = 1'b0;
@@ -18,6 +23,8 @@ module fpga_top_behav_smoke_tb #(
     wire [3:0] user_led;
 
     fpga_top #(
+        .WEIGHT_WIDTH(WEIGHT_WIDTH),
+        .DATA_WIDTH(DATA_WIDTH),
         .SIZE(SIZE),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .CPU_MEM_DP(CPU_MEM_DP),
@@ -26,7 +33,10 @@ module fpga_top_behav_smoke_tb #(
         .CPU_ENABLE_ICACHE(CPU_ENABLE_ICACHE),
         .CPU_AXI_WRITE_TIMING_BUFFER(CPU_AXI_WRITE_TIMING_BUFFER),
         .BYPASS_RAM_PINGPONG(BYPASS_RAM_PINGPONG),
-        .RAM_WRITE_TIMING_BUFFER(RAM_WRITE_TIMING_BUFFER)
+        .RAM_WRITE_TIMING_BUFFER(RAM_WRITE_TIMING_BUFFER),
+        .NPU_ADDR_WIDTH(NPU_ADDR_WIDTH),
+        .NPU_ENABLE_IS_MODE(NPU_ENABLE_IS_MODE),
+        .NPU_ENABLE_PER_CHANNEL(NPU_ENABLE_PER_CHANNEL)
     ) dut (
         .sys_clk(sys_clk),
         .sys_rst_n(sys_rst_n),

@@ -35,3 +35,4 @@ set_property IOSTANDARD LVCMOS15 [get_ports {user_led_tri_o[2]}]
 set_property IOSTANDARD LVCMOS15 [get_ports {user_led_tri_o[3]}]
 
 set_false_path -from [get_ports sys_rst_n]
+set_false_path -quiet -from [get_pins -hierarchical -quiet *soc_rst_n_sync_reg*/Q]

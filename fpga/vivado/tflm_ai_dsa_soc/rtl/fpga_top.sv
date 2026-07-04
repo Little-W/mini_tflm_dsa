@@ -9,6 +9,7 @@ module fpga_top #(
     parameter int unsigned AXIL_DATA_WIDTH = 32,
     parameter int unsigned AXIL_ADDR_WIDTH = 16,
     parameter int unsigned AXI_ADDR_WIDTH = 32,
+    parameter int unsigned NPU_ADDR_WIDTH = AXI_ADDR_WIDTH,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
     parameter int unsigned AXI_READ_OUTSTANDING = 4,
     parameter int unsigned AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,
@@ -19,7 +20,9 @@ module fpga_top #(
     parameter int unsigned NPU_AXI_TIMING_BUFFER = 1,
     parameter int unsigned CPU_AXI_WRITE_TIMING_BUFFER = 1,
     parameter int unsigned BYPASS_RAM_PINGPONG = 0,
-    parameter int unsigned RAM_WRITE_TIMING_BUFFER = 1
+    parameter int unsigned RAM_WRITE_TIMING_BUFFER = 1,
+    parameter int unsigned NPU_ENABLE_IS_MODE = 1,
+    parameter int unsigned NPU_ENABLE_PER_CHANNEL = 1
 ) (
     input  wire       sys_clk,
     input  wire       sys_rst_n,
@@ -45,10 +48,8 @@ module fpga_top #(
         .clk_in1(sys_clk)
     );
 
-    always_ff @(posedge soc_clk or negedge sys_rst_n) begin
-        if (!sys_rst_n) begin
-            soc_rst_n_sync <= 3'b000;
-        end else if (!clk_wiz_locked) begin
+    always_ff @(posedge soc_clk) begin
+        if (!sys_rst_n || !clk_wiz_locked) begin
             soc_rst_n_sync <= 3'b000;
         end else begin
             soc_rst_n_sync <= {soc_rst_n_sync[1:0], 1'b1};
@@ -64,6 +65,7 @@ module fpga_top #(
         .BUS_WIDTH(BUS_WIDTH),
         .REG_WIDTH(REG_WIDTH),
         .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
+        .NPU_ADDR_WIDTH(NPU_ADDR_WIDTH),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .PS_FRAME_COUNT(SIZE),
         .AXI_READ_OUTSTANDING(AXI_READ_OUTSTANDING),
@@ -75,7 +77,9 @@ module fpga_top #(
         .NPU_AXI_TIMING_BUFFER(NPU_AXI_TIMING_BUFFER),
         .CPU_AXI_WRITE_TIMING_BUFFER(CPU_AXI_WRITE_TIMING_BUFFER),
         .BYPASS_RAM_PINGPONG(BYPASS_RAM_PINGPONG),
-        .RAM_WRITE_TIMING_BUFFER(RAM_WRITE_TIMING_BUFFER)
+        .RAM_WRITE_TIMING_BUFFER(RAM_WRITE_TIMING_BUFFER),
+        .NPU_ENABLE_IS_MODE(NPU_ENABLE_IS_MODE),
+        .NPU_ENABLE_PER_CHANNEL(NPU_ENABLE_PER_CHANNEL)
     ) u_soc_top (
         .clk(soc_clk),
         .rst_n(soc_rst_n_sync[2]),

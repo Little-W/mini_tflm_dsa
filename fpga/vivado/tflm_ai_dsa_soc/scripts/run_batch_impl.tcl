@@ -20,6 +20,7 @@ set cpu_axi_write_timing_buffer_value 1
 set bypass_ram_pingpong_value 0
 set ram_write_timing_buffer_value 1
 set synth_strategy_value Flow_PerfOptimized_high
+set synth_directive_value PerformanceOptimized
 set impl_strategy_value Performance_Explore
 
 if {[llength $argv] >= 1} {
@@ -41,6 +42,9 @@ if {[llength $argv] >= 12} { set synth_strategy_value [lindex $argv 11] }
 if {[llength $argv] >= 13} { set impl_strategy_value [lindex $argv 12] }
 if {[info exists ::env(VIVADO_SYNTH_STRATEGY)] && $::env(VIVADO_SYNTH_STRATEGY) ne ""} {
     set synth_strategy_value $::env(VIVADO_SYNTH_STRATEGY)
+}
+if {[info exists ::env(VIVADO_SYNTH_DIRECTIVE)] && $::env(VIVADO_SYNTH_DIRECTIVE) ne ""} {
+    set synth_directive_value $::env(VIVADO_SYNTH_DIRECTIVE)
 }
 if {[info exists ::env(VIVADO_IMPL_STRATEGY)] && $::env(VIVADO_IMPL_STRATEGY) ne ""} {
     set impl_strategy_value $::env(VIVADO_IMPL_STRATEGY)
@@ -89,6 +93,7 @@ update_compile_order -fileset sources_1
 
 set synth_run [get_runs synth_1]
 set_property strategy $synth_strategy_value $synth_run
+set_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE $synth_directive_value $synth_run
 set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY rebuilt $synth_run
 
 set impl_run [get_runs impl_1]
@@ -122,4 +127,4 @@ puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
 puts "Bitstream written to [file join $out_dir fpga_top.bit]"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value"
-puts "SYNTH_STRATEGY=$synth_strategy_value IMPL_STRATEGY=$impl_strategy_value"
+puts "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value IMPL_STRATEGY=$impl_strategy_value"
