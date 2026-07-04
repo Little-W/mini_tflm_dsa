@@ -55,7 +55,7 @@ run_random: build
 		python3 gen_mats.py --seed $$seed --random-shape; \
 		$(MAKE) build_only; \
 		./obj_dir/$(VEXE) +SKIP_COMPARE=1 2>&1 | tee /tmp/compute_core_$$seed.log; \
-		if grep -q 'PASS: compute_core 4x16 \* 16x4 matched expected' /tmp/compute_core_$$seed.log; then \
+		if grep -Eq 'PASS: compute_core( 4x16 \* 16x4)? matched expected' /tmp/compute_core_$$seed.log; then \
 			PASS=$$((PASS+1)); \
 		else \
 			FAIL=$$((FAIL+1)); \

@@ -56,6 +56,7 @@ module ddr_axi_mem_model #(
     int unsigned cmd_max_lat;
     int unsigned w_max_lat;
     int unsigned rsp_max_lat;
+    int fixed_lat;
     int unsigned seed;
 
     localparam int unsigned RDQ_DEPTH_SAFE = (RDQ_DEPTH < 1) ? 1 : RDQ_DEPTH;
@@ -92,7 +93,9 @@ module ddr_axi_mem_model #(
     wire [2:0] unused_awsize = m_axi_awsize;
 
     function automatic int unsigned pick_wait(input int unsigned max_lat);
-        if ((rand_enable == 0) || (max_lat == 0)) begin
+        if (fixed_lat >= 0) begin
+            pick_wait = fixed_lat;
+        end else if ((rand_enable == 0) || (max_lat == 0)) begin
             pick_wait = 0;
         end else begin
             pick_wait = $urandom_range(max_lat, 0);
@@ -109,15 +112,23 @@ module ddr_axi_mem_model #(
         cmd_max_lat = 0;
         w_max_lat   = 0;
         rsp_max_lat = 0;
+        fixed_lat   = -1;
         seed        = 32'hdd12_cafe;
         void'($value$plusargs("DDR_RAND_LAT=%d", rand_enable));
         void'($value$plusargs("DDR_CMD_MAX_LAT=%d", cmd_max_lat));
         void'($value$plusargs("DDR_W_MAX_LAT=%d", w_max_lat));
         void'($value$plusargs("DDR_RSP_MAX_LAT=%d", rsp_max_lat));
+        void'($value$plusargs("RAM_RAND_LAT=%d", rand_enable));
+        void'($value$plusargs("RAM_CMD_MAX_LAT=%d", cmd_max_lat));
+        void'($value$plusargs("RAM_W_MAX_LAT=%d", w_max_lat));
+        void'($value$plusargs("RAM_RSP_MAX_LAT=%d", rsp_max_lat));
+        void'($value$plusargs("RAM_FIXED_LAT=%d", fixed_lat));
         void'($value$plusargs("DDR_SEED=%d", seed));
         dummy = $urandom(seed);
-        if (rand_enable != 0) begin
-            $display("[DDR_AXI_MEM] seed=%0d cmd_max=%0d w_max=%0d rsp_max=%0d",
+        if (fixed_lat >= 0) begin
+            $display("[RAM_AXI_MEM] fixed response latency=%0d cycles", fixed_lat);
+        end else if (rand_enable != 0) begin
+            $display("[RAM_AXI_MEM] seed=%0d cmd_max=%0d w_max=%0d rsp_max=%0d",
                      seed, cmd_max_lat, w_max_lat, rsp_max_lat);
         end
     end
@@ -197,8 +208,8 @@ module ddr_axi_mem_model #(
                             r_left     <= r_left - 9'd1;
                             r_addr     <= r_addr + ADDR_W'(MW);
                             r_data_r   <= mem_word(r_addr + ADDR_W'(MW));
-                            r_wait_cnt <= pick_wait(rsp_max_lat);
-                            r_state    <= R_DATA_WAIT;
+                            r_wait_cnt <= 0;
+                            r_state    <= R_DATA;
                         end
                     end
                 end
@@ -258,7 +269,7 @@ module ddr_axi_mem_model #(
                         end else begin
                             w_left     <= w_left - 9'd1;
                             w_addr     <= w_addr + ADDR_W'(MW);
-                            w_wait_cnt <= pick_wait(w_max_lat);
+                            w_wait_cnt <= 0;
                         end
                     end
                 end

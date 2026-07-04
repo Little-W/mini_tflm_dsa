@@ -10,7 +10,11 @@ module npu_top #(
     parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
     parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
     parameter int unsigned AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,  // AXI 写通道最多提前排队的 burst 数
-    parameter int unsigned OA_FIFO_BANKS_MAX = (IA_CACHE_BLOCKS < 4) ? 4 : IA_CACHE_BLOCKS  // 写回 FIFO 最大 tile bank 数；随 IA cache 深度派生以控制面积
+    parameter int unsigned ENABLE_IS_MODE = 1,  // 置 0 时综合裁剪 IS 转置/分组 bias 支持
+    parameter int unsigned ENABLE_PER_CHANNEL = 1,  // 置 0 时综合裁剪 per-channel 量化装载路径
+    parameter int unsigned OA_FIFO_BANKS_MAX =
+        ((ENABLE_IS_MODE == 0) && (ENABLE_PER_CHANNEL == 0)) ? 16 :
+        ((IA_CACHE_BLOCKS < 32) ? 32 : IA_CACHE_BLOCKS)  // 写回 FIFO 最大 tile bank 数；裁剪版用更浅线性 FIFO 压低面积
 ) (
     //==== 时钟与复位 ====
     input wire clk,   // 系统时钟
@@ -222,20 +226,32 @@ module npu_top #(
 	    localparam int unsigned IA_REUSE_NUM_MAX =
 	        (IA_CACHE_BLOCKS < 2) ? 1 : (IA_CACHE_BLOCKS / 2);
 	    localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
+	    localparam int unsigned DIM_COUNT_WIDTH =
+	        (ADDR_WIDTH <= SIZE_SHIFT) ? 1 :
+	        (((ADDR_WIDTH - SIZE_SHIFT + 1) > REG_WIDTH) ? REG_WIDTH :
+	         (ADDR_WIDTH - SIZE_SHIFT + 1));
 	    localparam int unsigned W_REUSE_NUM_MAX =
 	        (PS_FRAME_COUNT < 1) ? 1 : PS_FRAME_COUNT;
 	    localparam int unsigned IA_REUSE_W =
 	        (IA_REUSE_NUM_MAX <= 1) ? 1 : ($clog2(IA_REUSE_NUM_MAX) + 1);
 	    localparam int unsigned W_REUSE_W =
 	        (W_REUSE_NUM_MAX <= 1) ? 1 : ($clog2(W_REUSE_NUM_MAX) + 1);
-		    localparam int unsigned OA_FIFO_BANKS_RAW = PS_FRAME_COUNT * IA_REUSE_NUM_MAX;
-		    localparam int unsigned OA_FIFO_BANKS =
-		        (OA_FIFO_BANKS_RAW <= OA_FIFO_BANKS_MAX) ? OA_FIFO_BANKS_RAW : OA_FIFO_BANKS_MAX;
-				    localparam int unsigned IS_BIAS_ROWS = IA_REUSE_NUM_MAX * SIZE;
+	    localparam int unsigned OA_FIFO_BANKS_RAW = PS_FRAME_COUNT * IA_REUSE_NUM_MAX;
+	    localparam int unsigned OA_FIFO_BANKS =
+	        (OA_FIFO_BANKS_RAW <= OA_FIFO_BANKS_MAX) ? OA_FIFO_BANKS_RAW : OA_FIFO_BANKS_MAX;
+				    localparam int unsigned BIAS_GROUP_BLOCKS_MAX =
+				        (ENABLE_IS_MODE != 0) ? IA_REUSE_NUM_MAX : 1;
+				    localparam int unsigned REQUANT_MAX_IA_REUSE =
+				        ((ENABLE_IS_MODE != 0) && (ENABLE_PER_CHANNEL != 0)) ? IA_REUSE_NUM_MAX : 1;
+				    localparam int unsigned IS_BIAS_ROWS = BIAS_GROUP_BLOCKS_MAX * SIZE;
 				    localparam int unsigned IS_BIAS_ROW_W = (IS_BIAS_ROWS <= 1) ? 1 : $clog2(IS_BIAS_ROWS);
 				    localparam int unsigned IS_BIAS_VALID_W =
 				        (IS_BIAS_ROWS <= 1) ? 1 : ($clog2(IS_BIAS_ROWS) + 1);
-				    wire signed [31:0] bias_group_data_out[IS_BIAS_ROWS];
+				    logic [IS_BIAS_ROW_W-1:0] is_bias_row_idx;
+				    wire signed [31:0] bias_group_scalar;
+	    wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
+	    wire use_per_channel_eff = (ENABLE_PER_CHANNEL != 0) ? use_per_channel : 1'b0;
+	    wire cfg_16bits_ia_eff = (DATA_WIDTH > 8) ? cfg_16bits_ia : 1'b0;
 
 	    function automatic logic [REG_WIDTH-1:0] floor_pow2_ia(input logic [IA_REUSE_W-1:0] value);
 	        logic [REG_WIDTH-1:0] out;
@@ -419,13 +435,13 @@ module npu_top #(
 
 		            if (cfg_start_event) begin
 		                cfg_stage0_valid <= 1'b1;
-	                cfg_mode_s0 <= cfg_dataflow_mode;
-	                cfg_use16_s0 <= cfg_16bits_ia;
+	                cfg_mode_s0 <= cfg_dataflow_mode_eff;
+	                cfg_use16_s0 <= cfg_16bits_ia_eff;
 	                cfg_k_s0 <= k;
 	                cfg_m_s0 <= m;
 		                cfg_n_s0 <= n;
-		                cfg_stream_k_s0 <= cfg_dataflow_mode ? m : k;
-		                cfg_stream_m_s0 <= cfg_dataflow_mode ? k : m;
+		                cfg_stream_k_s0 <= cfg_dataflow_mode_eff ? m : k;
+		                cfg_stream_m_s0 <= cfg_dataflow_mode_eff ? k : m;
 		                cfg_ia_req_s0 <= cfg_ia_reuse_num;
 		                cfg_w_req_s0 <= cfg_w_reuse_num;
 		            end
@@ -469,15 +485,15 @@ module npu_top #(
 	        end
 	    end
 
-	    wire is_mode = run_is_mode;
+	    wire is_mode = (ENABLE_IS_MODE != 0) ? run_is_mode : 1'b0;
 	    wire [REG_WIDTH-1:0] ia_base_eff = is_mode ? rhs_base : lhs_base;
 	    wire [REG_WIDTH-1:0] ia_stride_eff = is_mode ? rhs_col_stride_b : lhs_row_stride_b;
 	    wire signed [REG_WIDTH-1:0] ia_zp_eff = is_mode ? rhs_zp : lhs_zp;
-	    wire ia_use_16bits_eff = is_mode ? 1'b0 : run_use_16bits;
+	    wire ia_use_16bits_eff = ((DATA_WIDTH > 8) && !is_mode) ? run_use_16bits : 1'b0;
 	    wire [REG_WIDTH-1:0] weight_base_eff = is_mode ? lhs_base : rhs_base;
 	    wire [REG_WIDTH-1:0] weight_stride_eff = is_mode ? lhs_row_stride_b : rhs_col_stride_b;
 	    wire signed [REG_WIDTH-1:0] weight_zp_eff = is_mode ? lhs_zp : rhs_zp;
-	    wire weight_use_16bits_eff = is_mode ? run_use_16bits : 1'b0;
+	    wire weight_use_16bits_eff = ((WEIGHT_WIDTH > 8) && is_mode) ? run_use_16bits : 1'b0;
 	    wire compute_bias_sleep = bias_sleep;
 
 	    axi_block_dma_arbiter #(
@@ -488,6 +504,7 @@ module npu_top #(
 	        .BUS_WIDTH   (BUS_WIDTH),
 	        .REG_WIDTH   (REG_WIDTH),
 	        .CACHE_BLOCKS(IA_CACHE_BLOCKS),
+	        .ENABLE_QUANT_CLIENT(ENABLE_PER_CHANNEL),
 	        .READ_OUTSTANDING(AXI_READ_OUTSTANDING),
 	        .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING)
 	    ) u_block_dma_arbiter (
@@ -618,8 +635,8 @@ module npu_top #(
         .clk              (clk),
         .rst_n            (rst_n),
         .calc_start       (ctrl_calc_start),
-        .cfg_16bits_ia    (cfg_16bits_ia),
-        .cfg_dataflow_mode(cfg_dataflow_mode),
+        .cfg_16bits_ia    (cfg_16bits_ia_eff),
+        .cfg_dataflow_mode(cfg_dataflow_mode_eff),
         .sa_ready         (ctrl_sa_ready),
 
         .partial_sum_calc_over(partial_sum_calc_over),
@@ -637,7 +654,7 @@ module npu_top #(
         .bias_base            (bias_base),
         .q_mult_pt            (q_mult_pt),
         .q_shift_pt           (q_shift_pt),
-        .use_per_channel      (use_per_channel),
+        .use_per_channel      (use_per_channel_eff),
         .k                    (k),
         .n                    (n),
         .m                    (m),
@@ -672,6 +689,7 @@ module npu_top #(
 		        .SIZE        (SIZE),
 		        .BUS_WIDTH   (BUS_WIDTH),
 		        .REG_WIDTH   (REG_WIDTH),
+		        .COUNT_WIDTH (DIM_COUNT_WIDTH),
 		        .CACHE_BLOCKS(IA_CACHE_BLOCKS),
 		        .PS_FRAME_COUNT(PS_FRAME_COUNT)
 		    ) u_ia_loader (
@@ -728,7 +746,8 @@ module npu_top #(
 		        .DATA_WIDTH(WEIGHT_WIDTH),
 		        .SIZE      (SIZE),
 		        .BUS_WIDTH (BUS_WIDTH),
-		        .REG_WIDTH (REG_WIDTH)
+		        .REG_WIDTH (REG_WIDTH),
+		        .COUNT_WIDTH(DIM_COUNT_WIDTH)
 		    ) u_kernel_loader (
         .clk                (clk),
         .rst_n              (rst_n),
@@ -776,7 +795,8 @@ module npu_top #(
 	        .DATA_WIDTH(32),
 		        .BUS_WIDTH (BUS_WIDTH),
 		        .REG_WIDTH (REG_WIDTH),
-		        .GROUP_BLOCKS_MAX(IA_REUSE_NUM_MAX)
+		        .COUNT_WIDTH(DIM_COUNT_WIDTH),
+		        .GROUP_BLOCKS_MAX(BIAS_GROUP_BLOCKS_MAX)
 		    ) u_bias_loader (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -790,11 +810,12 @@ module npu_top #(
         .bias_switch      (bias_switch),
         .bias_sleep       (bias_sleep),
         .bias_last_loop   (bias_last_loop),
-        .bias_valid       (bias_valid),
-        .bias_group_valid (bias_group_valid),
+	        .bias_valid       (bias_valid),
+	        .bias_group_valid (bias_group_valid),
 	        .load_bias_done   (load_bias_done),
+	        .group_read_idx   (is_bias_row_idx),
 	        .data_out         (bias_data_out),
-	        .group_data_out   (bias_group_data_out),
+	        .group_data_scalar(bias_group_scalar),
 		        .ext_dma_start    (bias_dma_start),
 		        .ext_dma_is_write (),
 	        .ext_dma_linear_read_mode(bias_dma_linear_read_mode),
@@ -882,13 +903,11 @@ module npu_top #(
     );
 
     // Vec Requant
-	    logic [IS_BIAS_ROW_W-1:0] is_bias_row_idx;
 	    logic [REG_WIDTH-1:0] is_bias_group_base;
 	    logic [REG_WIDTH-1:0] is_bias_last_group_base;
 	    logic [IS_BIAS_VALID_W-1:0] is_bias_last_rows;
 	    logic [IS_BIAS_VALID_W-1:0] is_bias_rows_valid;
 	    logic [IS_BIAS_VALID_W-1:0] is_bias_rows_valid_pending;
-	    logic signed [31:0] is_bias_tile_data[IS_BIAS_ROWS];
 	    wire [REG_WIDTH-1:0] is_bias_group_rows_target_ext =
 	      REG_WIDTH'(is_bias_group_rows_target);
 	    wire [REG_WIDTH-1:0] is_bias_target_mask_ext =
@@ -921,7 +940,7 @@ module npu_top #(
 	    wire [IS_BIAS_VALID_W-1:0] is_bias_rows_valid_step =
 	      is_bias_group_step_is_last ? is_bias_last_rows : is_bias_group_rows_target;
     wire signed [31:0] is_bias_scalar =
-      (is_mode && (bias_base != '0)) ? is_bias_tile_data[is_bias_row_idx] : 32'sd0;
+      (is_mode && (bias_base != '0)) ? bias_group_scalar : 32'sd0;
     wire signed [31:0] requant_in_vec[SIZE];
 
 	    always_ff @(posedge clk or negedge rst_n) begin
@@ -932,9 +951,6 @@ module npu_top #(
 	            is_bias_last_rows <= IS_BIAS_VALID_W'(1);
 	            is_bias_rows_valid <= IS_BIAS_VALID_W'(1);
 	            is_bias_rows_valid_pending <= IS_BIAS_VALID_W'(1);
-	            for (int bi = 0; bi < IS_BIAS_ROWS; bi = bi + 1) begin
-	                is_bias_tile_data[bi] <= '0;
-	            end
 	        end else begin
 	            if (init_cfg_ia) begin
 	                is_bias_row_idx <= '0;
@@ -943,9 +959,6 @@ module npu_top #(
 	                is_bias_last_rows <= is_bias_tail_rows_calc;
 	                is_bias_rows_valid <= IS_BIAS_VALID_W'(1);
 	                is_bias_rows_valid_pending <= is_bias_first_rows_valid;
-	                for (int bi = 0; bi < IS_BIAS_ROWS; bi = bi + 1) begin
-	                    is_bias_tile_data[bi] <= '0;
-	                end
 	            end else begin
 	                if (is_mode && acc_data_valid) begin
 	                    if (is_bias_rows_valid <= IS_BIAS_VALID_W'(1)) begin
@@ -966,9 +979,6 @@ module npu_top #(
 	                if (is_mode && send_ia_trigger && !bias_sleep) begin
 	                    is_bias_row_idx <= '0;
 	                    is_bias_rows_valid <= is_bias_rows_valid_pending;
-	                    for (int bi = 0; bi < IS_BIAS_ROWS; bi = bi + 1) begin
-	                        is_bias_tile_data[bi] <= bias_group_valid ? bias_group_data_out[bi] : 32'sd0;
-	                    end
 	                end
 	            end
 	        end
@@ -985,13 +995,15 @@ module npu_top #(
 	    vec_requant #(
 	        .VLEN        (SIZE),
 	        .REG_WIDTH   (REG_WIDTH),
-	        .MAX_IA_REUSE(IA_REUSE_NUM_MAX)
+	        .MAX_IA_REUSE(REQUANT_MAX_IA_REUSE),
+	        .ENABLE_PER_CHANNEL(ENABLE_PER_CHANNEL),
+	        .ENABLE_IS_MODE(ENABLE_IS_MODE)
     ) u_vec_requant (
         .clk               (clk),
         .rst_n             (rst_n),
         .init_cfg          (init_cfg_requant),
-        .cfg_per_channel   (use_per_channel),
-        .cfg_dataflow_mode (cfg_dataflow_mode),
+        .cfg_per_channel   (use_per_channel_eff),
+        .cfg_dataflow_mode (cfg_dataflow_mode_eff),
         .activation_min_in (act_min),
         .activation_max_in (act_max),
         .dst_offset_in     (dst_zp),
@@ -1036,7 +1048,8 @@ module npu_top #(
     // FIFO
     vec_s8_to_fifo #(
         .VLEN (SIZE),
-        .BANKS(OA_FIFO_BANKS)
+        .BANKS(OA_FIFO_BANKS),
+        .ENABLE_TRANSPOSE(ENABLE_IS_MODE)
     ) u_vec_s8_to_fifo (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -1064,7 +1077,9 @@ module npu_top #(
 	        .VLEN      (SIZE),
 	        .DATA_WIDTH(8),
 	        .REG_WIDTH (REG_WIDTH),
-	        .BUS_WIDTH (BUS_WIDTH)
+	        .BUS_WIDTH (BUS_WIDTH),
+	        .COUNT_WIDTH(DIM_COUNT_WIDTH),
+	        .ENABLE_IS_MODE(ENABLE_IS_MODE)
 	    ) u_oa_writer (
         .clk              (clk),
         .rst_n            (rst_n),

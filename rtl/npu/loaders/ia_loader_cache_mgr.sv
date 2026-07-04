@@ -39,8 +39,7 @@ module ia_loader_cache_mgr #(
     input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   l1_slot_end,     // 终止 slot（含，支持回绕）
     input  logic                              l1_is_init,      // L1组 is_init 标记
     input  logic                              l1_calc_done,    // L1组 calc_done 标记
-    input  logic [CACHE_BLOCKS-1:0]           blk_valid_in,    // ctrl 提供的 slot 有效状态
-    input  logic [REG_WIDTH-1:0]              slot_rows [CACHE_BLOCKS], // 每 slot 有效行数
+    input  logic [$clog2(SIZE + 1)-1:0]       slot_rows [CACHE_BLOCKS], // 每 slot 有效行数
     output logic                              tile_done,       // 单 tile 输出完成
     output logic                              l1_done,         // L1组全部输出完成
     output logic                              ia_tile_start,   // 单 tile 首行到达输出端
@@ -192,7 +191,7 @@ module ia_loader_cache_mgr #(
   logic [SLOT_W-1:0] next_issue_slot;
   assign next_issue_slot = (CACHE_BLOCKS <= 1) ? '0 : (issue_slot_r + SLOT_W'(1));
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk) begin
     if (!rst_n) begin
       l1_issue_active <= 1'b0;
       issue_slot_r    <= '0;
@@ -298,7 +297,7 @@ module ia_loader_cache_mgr #(
   // 输出数据：RAM 读出数据直接作为 ia_out（RAM 寄存器输出，延迟 1 拍）
   // =====================================================================
   logic ram_rd_en_d1 [SIZE];
-  always_ff @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk) begin
     if (!rst_n) begin
       for (int j = 0; j < SIZE; j++)
         ram_rd_en_d1[j] <= 1'b0;
