@@ -98,6 +98,9 @@ implementation strategy `Performance_Explore`.
 `CPU_ENABLE_ICACHE` defaults to `1` in the export flow so the FPGA project
 matches the SoC performance regressions. It can also be overridden with the
 `VIVADO_CPU_ENABLE_ICACHE` environment variable.
+`NPU_ENABLE_CLOCK_GATING` defaults to `1` and gates the complete `npu_top`
+clock while the accelerator is idle. It can also be overridden with the
+`VIVADO_NPU_ENABLE_CLOCK_GATING` environment variable.
 `SIM_MAX_SYS_CYCLES` defaults to `2000000`; use a larger value for full TFLM
 programs such as MNIST MLP. It can also be overridden with
 `VIVADO_SIM_MAX_SYS_CYCLES`.

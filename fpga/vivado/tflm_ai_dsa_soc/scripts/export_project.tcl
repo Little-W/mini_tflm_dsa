@@ -38,6 +38,7 @@ set npu_enable_per_channel_value 1
 set npu_weight_width_value 16
 set npu_data_width_value 16
 set npu_addr_width_value 32
+set npu_enable_clock_gating_value 1
 
 if {[llength $argv] >= 1} {
     set export_root [file normalize [lindex $argv 0]]
@@ -90,6 +91,9 @@ if {[info exists ::env(VIVADO_NPU_DATA_WIDTH)] && $::env(VIVADO_NPU_DATA_WIDTH) 
 }
 if {[info exists ::env(VIVADO_NPU_ADDR_WIDTH)] && $::env(VIVADO_NPU_ADDR_WIDTH) ne ""} {
     set npu_addr_width_value $::env(VIVADO_NPU_ADDR_WIDTH)
+}
+if {[info exists ::env(VIVADO_NPU_ENABLE_CLOCK_GATING)] && $::env(VIVADO_NPU_ENABLE_CLOCK_GATING) ne ""} {
+    set npu_enable_clock_gating_value $::env(VIVADO_NPU_ENABLE_CLOCK_GATING)
 }
 
 source [file join $script_dir sources.tcl]
@@ -303,6 +307,7 @@ set top_generics [list \
     NPU_ADDR_WIDTH=$npu_addr_width_value \
     NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value \
     NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value \
+    NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value \
 ]
 set cpu_mem_path_escaped [string map [list "\\" "\\\\" "\"" "\\\""] $local_mem_path]
 lappend top_generics "CPU_MEM_PATH=\"$cpu_mem_path_escaped\""
@@ -325,10 +330,12 @@ add_files -norecurse -fileset constrs_1 $local_constraint_files
 add_files -norecurse -fileset sim_1 $local_sim_sources
 
 set_property include_dirs $local_include_dirs [get_filesets sources_1]
-set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1} [get_filesets sources_1]
+set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1 XILINX_FPGA=1} [get_filesets sources_1]
 set_property top fpga_top [get_filesets sources_1]
 set_property generic $top_generics [get_filesets sources_1]
 set tb_generics [list \
+    WEIGHT_WIDTH=$npu_weight_width_value \
+    DATA_WIDTH=$npu_data_width_value \
     SIZE=$size_value \
     IA_CACHE_BLOCKS=$ia_cache_blocks_value \
     CPU_MEM_DP=$cpu_mem_dp_value \
@@ -337,6 +344,9 @@ set tb_generics [list \
     BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value \
     RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value \
     NPU_ADDR_WIDTH=$npu_addr_width_value \
+    NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value \
+    NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value \
+    NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value \
     MAX_SYS_CYCLES=$sim_max_sys_cycles_value \
 ]
 lappend tb_generics "CPU_MEM_PATH=\"$cpu_mem_path_escaped\""
@@ -390,7 +400,7 @@ write_export_readme $export_readme_path $project_xpr $bit_path \
     $cpu_enable_icache_value $sim_max_sys_cycles_value $synth_strategy_value \
     $synth_directive_value $impl_strategy_value
 set f [open $export_readme_path a]
-puts $f "NPU_ADDR_WIDTH=$npu_addr_width_value NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value"
+puts $f "NPU_ADDR_WIDTH=$npu_addr_width_value NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value"
 close $f
 
 puts "Self-contained Vivado project exported."
@@ -401,7 +411,7 @@ puts "Core clock: $core_clk_mhz_value MHz"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value"
 puts "NPU WEIGHT_WIDTH=$npu_weight_width_value DATA_WIDTH=$npu_data_width_value"
 puts "NPU_ADDR_WIDTH=$npu_addr_width_value"
-puts "NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value"
+puts "NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value"
 puts "SIM_MAX_SYS_CYCLES=$sim_max_sys_cycles_value"
 puts "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value IMPL_STRATEGY=$impl_strategy_value RUN_IMPL=$run_impl_value"
 if {$bit_path ne ""} {

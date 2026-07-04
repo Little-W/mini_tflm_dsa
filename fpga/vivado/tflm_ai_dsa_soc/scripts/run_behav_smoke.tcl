@@ -6,7 +6,7 @@
 #       vivado_export/<export_name>/mem/cpu.mem
 
 if {[llength $argv] < 1} {
-    error "Usage: run_behav_smoke.tcl <project.xpr> ?cpu.mem? ?SIZE? ?IA_CACHE_BLOCKS? ?CPU_MEM_DP? ?MAX_SYS_CYCLES? ?WEIGHT_WIDTH? ?DATA_WIDTH? ?NPU_ENABLE_IS_MODE? ?NPU_ENABLE_PER_CHANNEL? ?NPU_ADDR_WIDTH?"
+    error "Usage: run_behav_smoke.tcl <project.xpr> ?cpu.mem? ?SIZE? ?IA_CACHE_BLOCKS? ?CPU_MEM_DP? ?MAX_SYS_CYCLES? ?WEIGHT_WIDTH? ?DATA_WIDTH? ?NPU_ENABLE_IS_MODE? ?NPU_ENABLE_PER_CHANNEL? ?NPU_ADDR_WIDTH? ?NPU_ENABLE_CLOCK_GATING?"
 }
 
 set script_dir [file dirname [file normalize [info script]]]
@@ -49,6 +49,7 @@ set data_width_value 16
 set npu_enable_is_mode_value 1
 set npu_enable_per_channel_value 1
 set npu_addr_width_value 32
+set npu_enable_clock_gating_value 1
 if {[llength $argv] >= 3} { set size_value [lindex $argv 2] }
 if {[llength $argv] >= 4} { set ia_cache_blocks_value [lindex $argv 3] }
 if {[llength $argv] >= 5} { set cpu_mem_dp_value [lindex $argv 4] }
@@ -58,6 +59,7 @@ if {[llength $argv] >= 8} { set data_width_value [lindex $argv 7] }
 if {[llength $argv] >= 9} { set npu_enable_is_mode_value [lindex $argv 8] }
 if {[llength $argv] >= 10} { set npu_enable_per_channel_value [lindex $argv 9] }
 if {[llength $argv] >= 11} { set npu_addr_width_value [lindex $argv 10] }
+if {[llength $argv] >= 12} { set npu_enable_clock_gating_value [lindex $argv 11] }
 open_project $project_xpr
 
 if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0} {
@@ -78,6 +80,7 @@ set tb_generics [list \
     NPU_ADDR_WIDTH=$npu_addr_width_value \
     NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value \
     NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value \
+    NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value \
     MAX_SYS_CYCLES=$max_sys_cycles_value \
 ]
 lappend tb_generics "CPU_MEM_PATH=\"$mem_path_escaped\""

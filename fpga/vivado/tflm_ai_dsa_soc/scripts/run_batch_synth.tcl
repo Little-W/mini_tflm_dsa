@@ -81,7 +81,7 @@ add_files -norecurse -fileset sources_1 $design_sources
 add_files -norecurse -fileset constrs_1 $constraint_files
 
 set_property include_dirs $include_dirs [get_filesets sources_1]
-set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1} [get_filesets sources_1]
+set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1 XILINX_FPGA=1} [get_filesets sources_1]
 set_property top fpga_top [get_filesets sources_1]
 set_property generic $top_generics [get_filesets sources_1]
 update_compile_order -fileset sources_1

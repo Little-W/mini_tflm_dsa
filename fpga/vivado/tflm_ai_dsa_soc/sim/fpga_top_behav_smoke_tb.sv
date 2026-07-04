@@ -14,6 +14,7 @@ module fpga_top_behav_smoke_tb #(
     parameter int unsigned NPU_ADDR_WIDTH = 32,
     parameter int unsigned NPU_ENABLE_IS_MODE = 1,
     parameter int unsigned NPU_ENABLE_PER_CHANNEL = 1,
+    parameter int unsigned NPU_ENABLE_CLOCK_GATING = 1,
     parameter int unsigned MAX_SYS_CYCLES = 2_000_000
 );
     logic      sys_clk = 1'b0;
@@ -36,7 +37,8 @@ module fpga_top_behav_smoke_tb #(
         .RAM_WRITE_TIMING_BUFFER(RAM_WRITE_TIMING_BUFFER),
         .NPU_ADDR_WIDTH(NPU_ADDR_WIDTH),
         .NPU_ENABLE_IS_MODE(NPU_ENABLE_IS_MODE),
-        .NPU_ENABLE_PER_CHANNEL(NPU_ENABLE_PER_CHANNEL)
+        .NPU_ENABLE_PER_CHANNEL(NPU_ENABLE_PER_CHANNEL),
+        .NPU_ENABLE_CLOCK_GATING(NPU_ENABLE_CLOCK_GATING)
     ) dut (
         .sys_clk(sys_clk),
         .sys_rst_n(sys_rst_n),

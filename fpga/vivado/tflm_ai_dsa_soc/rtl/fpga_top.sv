@@ -22,7 +22,8 @@ module fpga_top #(
     parameter int unsigned BYPASS_RAM_PINGPONG = 0,
     parameter int unsigned RAM_WRITE_TIMING_BUFFER = 1,
     parameter int unsigned NPU_ENABLE_IS_MODE = 1,
-    parameter int unsigned NPU_ENABLE_PER_CHANNEL = 1
+    parameter int unsigned NPU_ENABLE_PER_CHANNEL = 1,
+    parameter int unsigned NPU_ENABLE_CLOCK_GATING = 1
 ) (
     input  wire       sys_clk,
     input  wire       sys_rst_n,
@@ -32,8 +33,7 @@ module fpga_top #(
 );
 
     wire        npu_busy;
-    wire [31:0] npu_irq;
-    wire [31:0] npu_eoi;
+    wire        npu_irq;
     wire        soc_finish;
     wire [31:0] soc_status;
     wire        cpu_trap;
@@ -79,14 +79,14 @@ module fpga_top #(
         .BYPASS_RAM_PINGPONG(BYPASS_RAM_PINGPONG),
         .RAM_WRITE_TIMING_BUFFER(RAM_WRITE_TIMING_BUFFER),
         .NPU_ENABLE_IS_MODE(NPU_ENABLE_IS_MODE),
-        .NPU_ENABLE_PER_CHANNEL(NPU_ENABLE_PER_CHANNEL)
+        .NPU_ENABLE_PER_CHANNEL(NPU_ENABLE_PER_CHANNEL),
+        .NPU_ENABLE_CLOCK_GATING(NPU_ENABLE_CLOCK_GATING)
     ) u_soc_top (
         .clk(soc_clk),
         .rst_n(soc_rst_n_sync[2]),
         .mem_reload_req(1'b0),
         .npu_busy(npu_busy),
         .npu_irq(npu_irq),
-        .npu_eoi(npu_eoi),
         .uart_tx(UART_0_txd),
         .uart_rx(UART_0_rxd),
         .soc_finish(soc_finish),
@@ -97,6 +97,6 @@ module fpga_top #(
     assign user_led_tri_o[0] = npu_busy;
     assign user_led_tri_o[1] = soc_finish;
     assign user_led_tri_o[2] = cpu_trap;
-    assign user_led_tri_o[3] = ^soc_status ^ |npu_irq ^ |npu_eoi;
+    assign user_led_tri_o[3] = ^soc_status ^ npu_irq;
 
 endmodule
