@@ -74,6 +74,9 @@ if {[info exists ::env(VIVADO_RUN_IMPL)] && $::env(VIVADO_RUN_IMPL) ne ""} {
 if {[info exists ::env(VIVADO_CPU_ENABLE_ICACHE)] && $::env(VIVADO_CPU_ENABLE_ICACHE) ne ""} {
     set cpu_enable_icache_value $::env(VIVADO_CPU_ENABLE_ICACHE)
 }
+if {[info exists ::env(VIVADO_CPU_MEM_PATH)] && $::env(VIVADO_CPU_MEM_PATH) ne "" && $cpu_mem_path_value eq ""} {
+    set cpu_mem_path_value $::env(VIVADO_CPU_MEM_PATH)
+}
 if {[info exists ::env(VIVADO_SIM_MAX_SYS_CYCLES)] && $::env(VIVADO_SIM_MAX_SYS_CYCLES) ne ""} {
     set sim_max_sys_cycles_value $::env(VIVADO_SIM_MAX_SYS_CYCLES)
 }
@@ -205,7 +208,7 @@ proc copy_dir_contents {src_dir dst_dir} {
     }
 }
 
-proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value sim_max_sys_cycles_value synth_strategy_value synth_directive_value impl_strategy_value} {
+proc write_export_readme {path project_xpr bit_path mem_path source_mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value sim_max_sys_cycles_value synth_strategy_value synth_directive_value impl_strategy_value} {
     set f [open $path w]
     puts $f "# Self-contained TFLM AI DSA Vivado Project"
     puts $f ""
@@ -222,6 +225,12 @@ proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache
     puts $f "$mem_path"
     puts $f "```"
     puts $f ""
+    puts $f "The CPU memory image was copied from:"
+    puts $f ""
+    puts $f "```text"
+    puts $f "$source_mem_path"
+    puts $f "```"
+    puts $f ""
     puts $f "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CORE_CLK_MHZ=$core_clk_mhz_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value SIM_MAX_SYS_CYCLES=$sim_max_sys_cycles_value"
     puts $f "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value IMPL_STRATEGY=$impl_strategy_value"
     if {$bit_path ne ""} {
@@ -236,7 +245,16 @@ proc write_export_readme {path project_xpr bit_path mem_path size_value ia_cache
 }
 
 if {$cpu_mem_path_value eq ""} {
-    set cpu_mem_path_value [file join $ai_root veri tb "axi_soc_runtime_build_S${size_value}_C${ia_cache_blocks_value}_P${size_value}" cpu.mem]
+    set tflm_mnist_hw_mem [file join $ai_root veri tb axi_soc_tflm_mnist_mlp_hw cpu.mem]
+    set fpga_runtime_mem [file join $ai_root veri tb "axi_soc_runtime_build_S${size_value}_C${ia_cache_blocks_value}_P${size_value}_D${cpu_mem_dp_value}_UART115200" cpu.mem]
+    set legacy_runtime_mem [file join $ai_root veri tb "axi_soc_runtime_build_S${size_value}_C${ia_cache_blocks_value}_P${size_value}" cpu.mem]
+    if {[file exists $tflm_mnist_hw_mem]} {
+        set cpu_mem_path_value $tflm_mnist_hw_mem
+    } elseif {[file exists $fpga_runtime_mem]} {
+        set cpu_mem_path_value $fpga_runtime_mem
+    } else {
+        set cpu_mem_path_value $legacy_runtime_mem
+    }
 }
 set cpu_mem_path_value [file normalize $cpu_mem_path_value]
 if {![file exists $cpu_mem_path_value]} {
@@ -396,7 +414,7 @@ if {$run_impl_value} {
 
 set export_readme_path [file join $export_root README.md]
 write_export_readme $export_readme_path $project_xpr $bit_path \
-    $local_mem_path $size_value $ia_cache_blocks_value $core_clk_mhz_value \
+    $local_mem_path $cpu_mem_path_value $size_value $ia_cache_blocks_value $core_clk_mhz_value \
     $cpu_enable_icache_value $sim_max_sys_cycles_value $synth_strategy_value \
     $synth_directive_value $impl_strategy_value
 set f [open $export_readme_path a]
@@ -406,6 +424,7 @@ close $f
 puts "Self-contained Vivado project exported."
 puts "Project: $project_xpr"
 puts "CPU mem: $local_mem_path"
+puts "CPU mem source: $cpu_mem_path_value"
 puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_ENABLE_ICACHE=$cpu_enable_icache_value"

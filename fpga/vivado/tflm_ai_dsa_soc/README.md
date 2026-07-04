@@ -55,6 +55,12 @@ Use `export_project.tcl` when the Vivado project should be moved or opened
 without depending on the live source trees. It copies RTL from this repository
 and `AIENGINE_ROOT`, copies the CPU memory image into the exported directory,
 and sets `CPU_MEM_PATH` to the copied file's absolute path.
+When no CPU memory image is passed, the export script first looks for the
+current TFLM MNIST MLP hardware image at
+`/media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem`.
+For the 150 MHz FPGA UART at 115200 bps, regenerate that image with
+`SOC_UART_CLKDIV=1300` so the firmware programs the simple UART divider
+correctly.
 
 ```sh
 vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl
@@ -108,10 +114,20 @@ programs such as MNIST MLP. It can also be overridden with
 Final 150 MHz MNIST MLP project export:
 
 ```sh
-VIVADO_JOBS=8 vivado -mode batch \
+make -C /media/proj_tmp/aiEngine_integrated/veri/sim tflm_mnist_mlp_soc_c \
+  SOC_CASE=axi_soc_tflm_mnist_mlp_hw \
+  TFLM_SOC_MMA_ENABLE=1 TFLM_NMSIS_NN_ENABLE=1 \
+  MMA_SIZE=4 MMA_IA_CACHE_BLOCKS=32 MMA_PS_FRAME_COUNT=4 \
+  SOC_CPU_MEM_DP=65536 SOC_UART_CLKDIV=1300
+
+VIVADO_JOBS=8 \
+VIVADO_NPU_WEIGHT_WIDTH=8 \
+VIVADO_NPU_DATA_WIDTH=8 \
+VIVADO_NPU_ENABLE_CLOCK_GATING=1 \
+vivado -mode batch \
   -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
   -tclargs vivado_export/tflm_ai_dsa_soc_final_150m_mnist_mlp \
-  xc7a200tfbg484-3 16 4 65536 \
+  xc7a200tfbg484-3 4 32 65536 \
   /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem \
   150.000 1 0 1 0 Flow_PerfOptimized_high Performance_Explore 1 30000000
 ```
