@@ -79,7 +79,7 @@ VIVADO_JOBS=8 vivado -mode batch \
   -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
   -tclargs vivado_export/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 \
   /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_case/cpu.mem \
-  150.000 1 0 1 1 Flow_PerfOptimized_high Performance_Explore 1 10000000
+  150.000 1 0 1 1 Flow_AreaOptimized_high Performance_Explore 1 10000000
 ```
 
 For a bitstream smoke test, use a self-contained `cpu.mem` generated with
@@ -97,8 +97,8 @@ Argument order:
 <CPU_ENABLE_ICACHE> <SIM_MAX_SYS_CYCLES>
 ```
 
-The default FPGA timing-closure preset is synthesis strategy
-`Flow_PerfOptimized_high` with synthesis directive `PerformanceOptimized`, and
+The default FPGA export preset is area-prioritized synthesis strategy
+`Flow_AreaOptimized_high` with synthesis directive `AreaOptimized_high`, and
 implementation strategy `Performance_Explore`.
 
 `CPU_ENABLE_ICACHE` defaults to `1` in the export flow so the FPGA project
@@ -129,7 +129,7 @@ vivado -mode batch \
   -tclargs vivado_export/tflm_ai_dsa_soc_final_150m_mnist_mlp \
   xc7a200tfbg484-3 4 32 65536 \
   /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem \
-  150.000 1 0 1 0 Flow_PerfOptimized_high Performance_Explore 1 30000000
+  150.000 1 0 1 0 Flow_AreaOptimized_high Performance_Explore 1 30000000
 ```
 
 The exported directory contains a short `README.md`, copied source files,

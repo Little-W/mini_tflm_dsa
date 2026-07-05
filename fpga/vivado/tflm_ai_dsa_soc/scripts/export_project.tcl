@@ -5,7 +5,7 @@
 #   vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
 #       -tclargs vivado_export/tflm_ai_dsa_soc xc7a200tfbg484-3 16 4 65536 \
 #       /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_case/cpu.mem \
-#       150.000 1 0 1 1 Flow_PerfOptimized_high Performance_Explore 1
+#       150.000 1 0 1 1 Flow_AreaOptimized_high Performance_Explore 1
 #
 # Tcl arguments:
 #   <export_root> <part> <SIZE> <IA_CACHE_BLOCKS> <CPU_MEM_DP> <CPU_MEM_PATH>
@@ -28,8 +28,8 @@ set cpu_axi_write_timing_buffer_value 1
 set bypass_ram_pingpong_value 0
 set ram_write_timing_buffer_value 1
 set run_impl_value 0
-set synth_strategy_value Flow_PerfOptimized_high
-set synth_directive_value PerformanceOptimized
+set synth_strategy_value Flow_AreaOptimized_high
+set synth_directive_value AreaOptimized_high
 set impl_strategy_value Performance_Explore
 set cpu_enable_icache_value 1
 set sim_max_sys_cycles_value 10000000
@@ -433,6 +433,7 @@ if {$run_impl_value} {
         -file [file join $report_dir fpga_top_timing_summary_routed.rpt]
     report_timing -delay_type max -sort_by group -max_paths 400 -nworst 1 \
         -file [file join $report_dir fpga_top_timing_paths_routed.rpt]
+    report_power -file [file join $report_dir fpga_top_power_routed.rpt]
     report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
         -file [file join $report_dir fpga_top_high_fanout_routed.rpt]
 
