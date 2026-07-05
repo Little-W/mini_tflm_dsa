@@ -68,7 +68,8 @@ module fpga_top_post_impl_tb #(
             end
 
             if (user_led[2] === 1'b1) begin
-                $display("[POST_IMPL_SMOKE] FAIL: cpu_trap asserted at sys_cycle=%0d", cycle_count);
+                $display("[POST_IMPL_SMOKE] FAIL: fail_led asserted at sys_cycle=%0d led=%b",
+                         cycle_count, user_led);
                 test_done = 1'b1;
                 $finish;
             end

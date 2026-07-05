@@ -184,6 +184,20 @@ if {[catch {
 
 catch {close_sim}
 
+catch {
+    set post_tb_file [file normalize [file join $project_root src sim fpga_top_post_impl_tb.sv]]
+    if {![file exists $post_tb_file]} {
+        set post_tb_file [file normalize [file join $project_root sim fpga_top_post_impl_tb.sv]]
+    }
+    if {[file exists $post_tb_file]} {
+        if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $post_tb_file]] == 0} {
+            add_files -norecurse -fileset sim_1 $post_tb_file
+        }
+        set_property top fpga_top_post_impl_tb [get_filesets sim_1]
+        update_compile_order -fileset sim_1
+    }
+}
+
 if {!$sim_failed} {
     if {[catch {
         check_smoke_log $project_xpr {[BEHAV_SMOKE] PASS:} {BEHAV_SMOKE}

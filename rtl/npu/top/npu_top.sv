@@ -97,6 +97,11 @@ module npu_top #(
 	    localparam int unsigned BIAS_DMA_SIZE = SIZE * 4;
 	    localparam int unsigned SHARED_DMA_SIZE =
 	        (BIAS_DMA_SIZE > SIZE) ? BIAS_DMA_SIZE : SIZE;
+	    // int8 operands plus zero-point offsets need more than 8 signed bits.
+	    localparam int unsigned IA_DATA_WIDTH =
+	        (DATA_WIDTH < 16) ? 16 : DATA_WIDTH;
+	    localparam int unsigned KERNEL_DATA_WIDTH =
+	        (WEIGHT_WIDTH < 16) ? 16 : WEIGHT_WIDTH;
 
     // IA Loader 内部信号
     wire load_ia_req;
@@ -108,7 +113,7 @@ module npu_top #(
     wire ia_is_init_data;
     wire ia_calc_done;
     wire partial_sum_calc_over;
-    wire signed [DATA_WIDTH-1:0] ia_out[SIZE];
+    wire signed [IA_DATA_WIDTH-1:0] ia_out[SIZE];
     wire ia_data_valid;
     wire ia_l1_switch;
     wire bias_sleep;
@@ -122,7 +127,7 @@ module npu_top #(
     wire weight_sending_done;
     wire load_weight_done;
     wire store_weight_req;
-    wire signed [WEIGHT_WIDTH-1:0] weight_out[SIZE];
+    wire signed [KERNEL_DATA_WIDTH-1:0] weight_out[SIZE];
     wire weight_data_valid;
 
     // Bias Loader 内部信号
@@ -174,7 +179,7 @@ module npu_top #(
 	    logic ia_dma_busy, ia_dma_done;
 	    logic [IA_CACHE_SLOT_W-1:0] ia_dma_wr_slot;
 	    logic [$clog2(SIZE)-1:0] ia_dma_wr_row, ia_dma_wr_col_base;
-	    logic signed [DATA_WIDTH-1:0] ia_dma_wr_data[BUS_WIDTH/8];
+	    logic signed [IA_DATA_WIDTH-1:0] ia_dma_wr_data[BUS_WIDTH/8];
 	    logic ia_dma_wr_valid[BUS_WIDTH/8];
 	    logic ia_dma_wr_use_16bits;
 
@@ -185,7 +190,7 @@ module npu_top #(
 	    logic signed [REG_WIDTH-1:0] kernel_dma_lhs_zp;
 	    logic kernel_dma_busy, kernel_dma_done;
 	    logic [$clog2(SIZE)-1:0] kernel_dma_wr_row, kernel_dma_wr_col_base;
-	    logic signed [WEIGHT_WIDTH-1:0] kernel_dma_wr_data[BUS_WIDTH/8];
+	    logic signed [KERNEL_DATA_WIDTH-1:0] kernel_dma_wr_data[BUS_WIDTH/8];
 	    logic kernel_dma_wr_valid[BUS_WIDTH/8];
 
 	    logic bias_dma_start, bias_dma_linear_read_mode;
@@ -251,7 +256,7 @@ module npu_top #(
 				    wire signed [31:0] bias_group_scalar;
 	    wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
 	    wire use_per_channel_eff = (ENABLE_PER_CHANNEL != 0) ? use_per_channel : 1'b0;
-	    wire cfg_16bits_ia_eff = (DATA_WIDTH > 8) ? cfg_16bits_ia : 1'b0;
+	    wire cfg_16bits_ia_eff = (IA_DATA_WIDTH > 8) ? cfg_16bits_ia : 1'b0;
 
 	    function automatic logic [REG_WIDTH-1:0] floor_pow2_ia(input logic [IA_REUSE_W-1:0] value);
 	        logic [REG_WIDTH-1:0] out;
@@ -489,16 +494,16 @@ module npu_top #(
 	    wire [REG_WIDTH-1:0] ia_base_eff = is_mode ? rhs_base : lhs_base;
 	    wire [REG_WIDTH-1:0] ia_stride_eff = is_mode ? rhs_col_stride_b : lhs_row_stride_b;
 	    wire signed [REG_WIDTH-1:0] ia_zp_eff = is_mode ? rhs_zp : lhs_zp;
-	    wire ia_use_16bits_eff = ((DATA_WIDTH > 8) && !is_mode) ? run_use_16bits : 1'b0;
+	    wire ia_use_16bits_eff = ((IA_DATA_WIDTH > 8) && !is_mode) ? run_use_16bits : 1'b0;
 	    wire [REG_WIDTH-1:0] weight_base_eff = is_mode ? lhs_base : rhs_base;
 	    wire [REG_WIDTH-1:0] weight_stride_eff = is_mode ? lhs_row_stride_b : rhs_col_stride_b;
 	    wire signed [REG_WIDTH-1:0] weight_zp_eff = is_mode ? lhs_zp : rhs_zp;
-	    wire weight_use_16bits_eff = ((WEIGHT_WIDTH > 8) && is_mode) ? run_use_16bits : 1'b0;
+	    wire weight_use_16bits_eff = ((KERNEL_DATA_WIDTH > 8) && is_mode) ? run_use_16bits : 1'b0;
 	    wire compute_bias_sleep = bias_sleep;
 
 	    axi_block_dma_arbiter #(
-	        .DATA_WIDTH  (DATA_WIDTH),
-	        .KERNEL_WIDTH(WEIGHT_WIDTH),
+	        .DATA_WIDTH  (IA_DATA_WIDTH),
+	        .KERNEL_WIDTH(KERNEL_DATA_WIDTH),
 	        .SIZE        (SIZE),
 	        .DMA_SIZE    (SHARED_DMA_SIZE),
 	        .BUS_WIDTH   (BUS_WIDTH),
@@ -626,8 +631,8 @@ module npu_top #(
 
 	    // NPU 控制器
     npu_controller #(
-        .WEIGHT_WIDTH(WEIGHT_WIDTH),
-        .DATA_WIDTH  (DATA_WIDTH),
+        .WEIGHT_WIDTH(KERNEL_DATA_WIDTH),
+        .DATA_WIDTH  (IA_DATA_WIDTH),
         .SIZE        (SIZE),
         .BUS_WIDTH   (BUS_WIDTH),
         .REG_WIDTH   (REG_WIDTH)
@@ -685,7 +690,7 @@ module npu_top #(
     );
 	    // IA Loader
 		    ia_loader #(
-		        .DATA_WIDTH  (DATA_WIDTH),
+		        .DATA_WIDTH  (IA_DATA_WIDTH),
 		        .SIZE        (SIZE),
 		        .BUS_WIDTH   (BUS_WIDTH),
 		        .REG_WIDTH   (REG_WIDTH),
@@ -743,7 +748,7 @@ module npu_top #(
     );
 	    // Kernel Loader
 		    kernel_loader #(
-		        .DATA_WIDTH(WEIGHT_WIDTH),
+		        .DATA_WIDTH(KERNEL_DATA_WIDTH),
 		        .SIZE      (SIZE),
 		        .BUS_WIDTH (BUS_WIDTH),
 		        .REG_WIDTH (REG_WIDTH),
@@ -877,8 +882,8 @@ module npu_top #(
 
     compute_core #(
         .SIZE          (SIZE),
-        .DATA_WIDTH    (DATA_WIDTH),
-        .WEIGHT_WIDTH  (WEIGHT_WIDTH),
+        .DATA_WIDTH    (IA_DATA_WIDTH),
+        .WEIGHT_WIDTH  (KERNEL_DATA_WIDTH),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .MAX_IA_REUSE  (IA_REUSE_NUM_MAX)
     ) u_compute_core (

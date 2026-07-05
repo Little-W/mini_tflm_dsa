@@ -17,13 +17,18 @@ module fpga_top_behav_smoke_tb #(
     parameter int unsigned NPU_ENABLE_CLOCK_GATING = 1,
     parameter int unsigned RESET_CYCLES = 20,
     parameter int unsigned FINISH_DRAIN_CYCLES = 100,
-    parameter int unsigned MAX_SYS_CYCLES = 10_000_000
+    parameter int unsigned MAX_SYS_CYCLES = 10_000_000,
+    parameter bit          UART_MONITOR_ENABLE = 1'b1,
+    parameter int unsigned UART_LINE_MAX = 256
 );
     logic      sys_clk = 1'b0;
     logic      sys_rst_n = 1'b0;
     logic      uart_rx = 1'b1;
     wire       uart_tx;
     wire [3:0] user_led;
+    logic      uart_fail_seen = 1'b0;
+    string     uart_line = "";
+    string     uart_fail_line = "";
 
     fpga_top #(
         .WEIGHT_WIDTH(WEIGHT_WIDTH),
@@ -51,6 +56,74 @@ module fpga_top_behav_smoke_tb #(
 
     always #10ns sys_clk = ~sys_clk;
 
+    function automatic bit str_contains(input string text, input string needle);
+        int text_len;
+        int needle_len;
+        int idx;
+
+        text_len = text.len();
+        needle_len = needle.len();
+        if (needle_len == 0) begin
+            return 1'b1;
+        end
+        if (text_len < needle_len) begin
+            return 1'b0;
+        end
+        for (idx = 0; idx <= text_len - needle_len; idx++) begin
+            if (text.substr(idx, idx + needle_len - 1) == needle) begin
+                return 1'b1;
+            end
+        end
+        return 1'b0;
+    endfunction
+
+    task automatic check_uart_line(input string line);
+        if (line.len() == 0) begin
+            return;
+        end
+
+        $display("[BEHAV_UART] %s", line);
+        if (str_contains(line, "mismatch") ||
+            str_contains(line, "FAIL") ||
+            str_contains(line, "failed") ||
+            str_contains(line, "Failed") ||
+            str_contains(line, "error") ||
+            str_contains(line, "Error")) begin
+            uart_fail_seen = 1'b1;
+            uart_fail_line = line;
+            $display("[BEHAV_UART] FAIL: %s", line);
+        end
+    endtask
+
+    task automatic record_uart_byte(input byte ch);
+        if (ch == 8'h0d) begin
+            return;
+        end
+        if (ch == 8'h0a) begin
+            check_uart_line(uart_line);
+            uart_line = "";
+        end else if ((ch >= 8'h20) && (ch < 8'h7f)) begin
+            if (uart_line.len() < UART_LINE_MAX) begin
+                uart_line = {uart_line, ch};
+            end
+        end
+    endtask
+
+    initial begin : uart_monitor
+        if (UART_MONITOR_ENABLE) begin
+            wait (sys_rst_n === 1'b1);
+            $display("[BEHAV_UART] monitor enabled on simpleuart accepted bytes");
+
+            forever begin
+                @(posedge dut.soc_clk);
+                if (dut.u_soc_top.u_soc_uart.u_simpleuart.reg_dat_we &&
+                    (dut.u_soc_top.u_soc_uart.u_simpleuart.send_bitcnt == 0)) begin
+                    record_uart_byte(byte'(dut.u_soc_top.u_soc_uart.u_simpleuart.reg_dat_di[7:0]));
+                end
+            end
+        end
+    end
+
     initial begin
         if (CPU_MEM_PATH == "") begin
             $display("[BEHAV_SMOKE] FAIL: CPU_MEM_PATH is empty");
@@ -68,12 +141,10 @@ module fpga_top_behav_smoke_tb #(
 
     initial begin : watchdog
         longint unsigned cycle_count;
-        logic [31:0] last_progress;
         logic [3:0]  last_led;
         logic        test_done;
 
         cycle_count = 0;
-        last_progress = 32'hffff_ffff;
         last_led = 4'hx;
         test_done = 1'b0;
         forever begin
@@ -89,15 +160,19 @@ module fpga_top_behav_smoke_tb #(
                          user_led, cycle_count);
             end
 
-            if (dut.u_soc_top.soc_progress !== last_progress) begin
-                last_progress = dut.u_soc_top.soc_progress;
-                $display("[BEHAV_SMOKE] progress=0x%08x at sys_cycle=%0d",
-                         last_progress, cycle_count);
+            if (user_led[2] === 1'b1) begin
+                $display("[BEHAV_SMOKE] FAIL: fail_led asserted at sys_cycle=%0d led=%b",
+                         cycle_count, user_led);
+                if (uart_fail_line.len() != 0) begin
+                    $display("[BEHAV_SMOKE] FAIL: UART line: %s", uart_fail_line);
+                end
+                test_done = 1'b1;
+                $finish;
             end
 
-            if (user_led[2] === 1'b1) begin
-                $display("[BEHAV_SMOKE] FAIL: cpu_trap at sys_cycle=%0d status=0x%08x progress=0x%08x",
-                         cycle_count, dut.soc_status, dut.u_soc_top.soc_progress);
+            if (uart_fail_seen) begin
+                $display("[BEHAV_SMOKE] FAIL: UART reported failure at sys_cycle=%0d line=\"%s\"",
+                         cycle_count, uart_fail_line);
                 test_done = 1'b1;
                 $finish;
             end
@@ -109,16 +184,15 @@ module fpga_top_behav_smoke_tb #(
                     test_done = 1'b1;
                     $finish;
                 end
-                $display("[BEHAV_SMOKE] PASS: soc_finish at sys_cycle=%0d status=0x%08x progress=0x%08x",
-                         cycle_count, dut.soc_status, dut.u_soc_top.soc_progress);
+                $display("[BEHAV_SMOKE] PASS: soc_finish at sys_cycle=%0d led=%b",
+                         cycle_count, user_led);
                 test_done = 1'b1;
                 $finish;
             end
 
             if (cycle_count >= MAX_SYS_CYCLES) begin
-                $display("[BEHAV_SMOKE] TIMEOUT after %0d sys_clk cycles status=0x%08x progress=0x%08x led=%b trap=%0b",
-                         MAX_SYS_CYCLES, dut.soc_status, dut.u_soc_top.soc_progress,
-                         user_led, user_led[2]);
+                $display("[BEHAV_SMOKE] TIMEOUT after %0d sys_clk cycles led=%b trap=%0b",
+                         MAX_SYS_CYCLES, user_led, user_led[2]);
                 test_done = 1'b1;
                 $finish;
             end

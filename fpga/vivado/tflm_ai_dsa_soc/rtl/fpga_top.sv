@@ -37,6 +37,8 @@ module fpga_top #(
     wire        soc_finish;
     wire [31:0] soc_status;
     wire        cpu_trap;
+    wire        soc_pass;
+    wire        soc_fail;
     wire        soc_clk;
     wire        clk_wiz_locked;
     logic [2:0] soc_rst_n_sync = 3'b000;
@@ -94,9 +96,12 @@ module fpga_top #(
         .cpu_trap(cpu_trap)
     );
 
+    assign soc_pass = soc_finish && (soc_status == 32'h0000_0001);
+    assign soc_fail = soc_finish && (soc_status != 32'h0000_0001);
+
     assign user_led_tri_o[0] = npu_busy;
-    assign user_led_tri_o[1] = soc_finish;
-    assign user_led_tri_o[2] = cpu_trap;
+    assign user_led_tri_o[1] = soc_pass;
+    assign user_led_tri_o[2] = cpu_trap || soc_fail;
     assign user_led_tri_o[3] = ^soc_status ^ npu_irq;
 
 endmodule
