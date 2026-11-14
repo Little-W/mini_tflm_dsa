@@ -55,6 +55,7 @@ tflm_ai_dsa/
   fpga/vivado/tflm_ai_dsa_soc/      # FPGA SoC wrapper、约束、仿真和工程脚本
   docs/                             # 架构、验证、性能和项目文档
   paper/                            # 本地论文工作台，独立于 Git 管理
+  archive/                          # 历史项目资料与 Git 历史
   scripts/                          # 辅助脚本
 ```
 

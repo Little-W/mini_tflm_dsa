@@ -61,3 +61,6 @@ test/*/__pycache__/
 /sub_proj/
 /veri/python_model/build/
 /dataflow_sim/*_log.*
+
+# Local materials retained with the project
+/archive/
