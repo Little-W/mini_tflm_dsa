@@ -19,11 +19,11 @@ VCS_CXX ?= g++
 case     ?= ai_mem_gen_smoke_test
 seed     ?= 1
 DUT_MODE ?= axil
-PAPER_ENGINE ?= 0
+PCR_ENGINE ?= 0
 PS_POOL_BYTES ?= 179200
 PANEL_MAX_R ?= 16
 PANEL_MAX_W ?= 16
-ifeq ($(PAPER_ENGINE),1)
+ifeq ($(PCR_ENGINE),1)
 MODE_DEFINES += GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES) GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R) GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W)
 endif
 SOC_CASE ?= axi_soc_case
@@ -62,7 +62,7 @@ SOC_AXI_WRITE_OUTSTANDING ?= $(SOC_AXI_READ_OUTSTANDING)
 SOC_CPU_ENABLE_ICACHE ?= 0
 SOC_BYPASS_RAM_PINGPONG ?= 1
 SOC_RAM_WRITE_TIMING_BUFFER ?= 1
-SIMV     ?= simv_$(DUT_MODE)_E$(PAPER_ENGINE)$(if $(filter 1,$(PAPER_ENGINE)),_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W),)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)
+SIMV     ?= simv_$(DUT_MODE)_E$(PCR_ENGINE)$(if $(filter 1,$(PCR_ENGINE)),_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W),)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)
 SOC_TIMEOUT_CYCLES ?=
 SOC_C_SRC ?= ../soc_csrc/soc_main.c
 SOC_RUNTIME_C_SRC ?= ../soc_csrc/soc_runtime_main.c
@@ -390,8 +390,8 @@ ifeq ($(SOC_APP),tflm)
 RUN_DEPS += tflm_soc_c
 else ifeq ($(SOC_APP),nmsis_abi)
 RUN_DEPS += nmsis_abi_soc_c
-else ifeq ($(SOC_APP),paper_nmsis)
-RUN_DEPS += paper_nmsis_soc_c
+else ifeq ($(SOC_APP),pcr_nmsis)
+RUN_DEPS += pcr_nmsis_soc_c
 else ifeq ($(SOC_APP),tflm_micro_speech)
 RUN_DEPS += tflm_micro_speech_soc_c
 else ifeq ($(SOC_APP),tflm_hello_world)
@@ -463,10 +463,10 @@ soc_case:
 > @mkdir -p $(SOC_CASE_DIR)
 > @python3 ../tb/generate_axi_soc_case.py $(SOC_GEN_ARGS) --out_dir $(SOC_CASE_DIR)
 
-.PHONY: paper_nmsis_soc_c
-paper_nmsis_soc_c:
+.PHONY: pcr_nmsis_soc_c
+pcr_nmsis_soc_c:
 > @mkdir -p $(SOC_CASE_DIR)
-> $(SOC_GCC) $(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) -ffreestanding -fno-builtin -nostdlib -nostartfiles -I$(TFLM_NMSIS_NN_SOURCE_DIR)/../Include -I../../drivers $(SOC_LINK_FLAGS) ../soc_csrc/start.S ../soc_csrc/gempact_paper_soc_main.c $(TFLM_NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.c $(SOC_BARE_LIBS) -o $(SOC_CASE_DIR)/cpu.elf
+> $(SOC_GCC) $(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) -ffreestanding -fno-builtin -nostdlib -nostartfiles -I$(TFLM_NMSIS_NN_SOURCE_DIR)/../Include -I../../drivers $(SOC_LINK_FLAGS) ../soc_csrc/start.S ../soc_csrc/gempact_pcr_soc_main.c $(TFLM_NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.c $(SOC_BARE_LIBS) -o $(SOC_CASE_DIR)/cpu.elf
 > $(SOC_OBJCOPY) -O binary $(SOC_CASE_DIR)/cpu.elf $(SOC_CASE_DIR)/cpu.bin
 > python3 ../tb/elf_to_mem.py $(SOC_CASE_DIR)/cpu.bin $(SOC_CASE_DIR)/cpu.mem --depth $(SOC_CPU_MEM_DP)
 

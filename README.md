@@ -66,7 +66,7 @@ tflm_ai_dsa/
 
 - `rtl/README.md` 记录 RTL 分层原则。
 - `drivers/README.md` 记录 C 驱动用法。
-- `drivers/tflm/README.md` 说明模型选择、NMSIS 源码与论文引擎的构建方法。
+- `drivers/tflm/README.md` 说明模型选择、NMSIS 源码与PCR 面板引擎的构建方法。
 - `fpga/vivado/tflm_ai_dsa_soc/README.md` 记录 FPGA SoC 子目录的脚本入口和参数。
 - `test/compute_core/README.md` 记录 compute core 测试平台的控制协议说明。
 

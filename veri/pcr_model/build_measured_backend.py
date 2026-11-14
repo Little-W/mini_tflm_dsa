@@ -98,13 +98,13 @@ def main():
     snapshot=dest/"source_snapshot"
     if snapshot.exists():shutil.rmtree(snapshot)
     shutil.copytree(ROOT/"rtl", snapshot/"rtl")
-    shutil.copytree(ROOT/"test/paper", snapshot/"test/paper")
-    snapshot_here=snapshot/"veri/paper_model"
+    shutil.copytree(ROOT/"test/pcr", snapshot/"test/pcr")
+    snapshot_here=snapshot/"veri/pcr_model"
     shutil.copytree(HERE,snapshot_here,ignore=shutil.ignore_patterns("build","backends","__pycache__"))
     npu = snapshot / "rtl/npu"
     sources = sorted(npu.rglob("*.sv")) + sorted(npu.rglob("*.v"))
-    sources += [snapshot / "rtl/common/pseudo_dual_port_ram.v", snapshot / "test/paper/ddr_axi_mem_model.sv",
-                snapshot / "test/paper/tb_npu_top.sv", snapshot_here / "cycle_probe.sv"]
+    sources += [snapshot / "rtl/common/pseudo_dual_port_ram.v", snapshot / "test/pcr/ddr_axi_mem_model.sv",
+                snapshot / "test/pcr/tb_npu_top.sv", snapshot_here / "cycle_probe.sv"]
     flags = ["-DGEMPACT_PANEL_ENGINE",
         f"-DTB_OPERAND_CACHE_ENABLE={int(args.operand_cache)}", "--assert",
         "--timing", "-sv", "--top-module", "tb_npu_top", "-Wno-fatal",

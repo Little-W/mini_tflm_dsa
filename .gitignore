@@ -67,9 +67,9 @@ test/*/__pycache__/
 # Local release packages
 /deliverables/
 
-/veri/paper_model/build/
-/veri/paper_model/backends/
-/veri/paper_model/runtime_cache/
+/veri/pcr_model/build/
+/veri/pcr_model/backends/
+/veri/pcr_model/runtime_cache/
 
 # Local document and analysis archives
 /local_archive/

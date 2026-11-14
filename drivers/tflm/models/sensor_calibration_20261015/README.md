@@ -17,17 +17,16 @@ requires the AD7124 PGA code (0–7).
 
 ## Regenerate and test
 
-From the repository root, in the `tf_2_18` conda environment:
+From the repository root, set `CALIBRATION_RELEASE_DIR` to the release data directory and add the RISC-V cross compiler to `PATH`. In the `tf_2_18` conda environment:
 
 ```bash
 TF_CPP_MIN_LOG_LEVEL=3 conda run -n tf_2_18 \
   python veri/tools/prepare_sensor_calibration_release_20261015.py \
-  --soc-samples 3 --force
+  --release-root "$CALIBRATION_RELEASE_DIR" --soc-samples 3 --force
 
 make -C veri/sim tflm_sensor_calibration_release_20261015_host_run
 
 make -C veri/sim tflm_sensor_calibration_release_20261015_run \
-  SOC_TOOLCHAIN_DIR=/media/proj_tmp/alioth_simulator/deps/software-level/bin/gcc_open/bin \
   SOC_CPU_MEM_DP=131072 \
   SOC_CASE_DIR=../tb/axi_soc_tflm_sensor_calibration_release_20261015_hw
 ```

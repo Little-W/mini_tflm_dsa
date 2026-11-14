@@ -82,7 +82,7 @@ add_files -norecurse -fileset constrs_1 $constraint_files
 
 set_property include_dirs $include_dirs [get_filesets sources_1]
 set rtl_defines {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1 XILINX_FPGA=1}
-if {[info exists ::env(GEMPACT_PAPER_ENGINE)] && $::env(GEMPACT_PAPER_ENGINE) eq "1"} {
+if {[info exists ::env(GEMPACT_PCR_ENGINE)] && $::env(GEMPACT_PCR_ENGINE) eq "1"} {
     lappend rtl_defines GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS
     set pool_bytes 179200
     if {[info exists ::env(GEMPACT_PS_POOL_BYTES)] && $::env(GEMPACT_PS_POOL_BYTES) ne ""} {

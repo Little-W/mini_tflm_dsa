@@ -57,7 +57,7 @@ def stage(dest,resume=False):
     dest.mkdir(parents=True,exist_ok=resume)
     for rel in ["rtl","picorv32","include","test","scripts","docs","asic",
                 "veri/env","veri/interface","veri/uvc","veri/test","veri/flist",
-                "veri/soc_csrc","veri/tools","veri/top_regression","veri/paper_model"]:
+                "veri/soc_csrc","veri/tools","veri/top_regression","veri/pcr_model"]:
         source_tree(ROOT/rel,dest/rel)
     for folder in ["veri/sim","veri/tb"]:
         for p in (ROOT/folder).iterdir():

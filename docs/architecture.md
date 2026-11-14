@@ -12,4 +12,4 @@ NPU 顶层 `rtl/npu/top/npu_top.sv` 组织任务控制器、DMA、输入与权�
 
 ## PCR 面板引擎
 
-`PAPER_ENGINE=1` 选择 GEMPACT PCR 面板引擎。此配置使用 16×16 阵列、32 位总线和 INT8 输入，要求零输入偏移、无 bias、逐张量量化，矩阵尺寸及地址跨度为 16 的整数倍。`PS_POOL_BYTES` 配置部分和页池容量，`PANEL_MAX_R`、`PANEL_MAX_W` 配置面板尺寸上限。更多命令见 [TFLM 说明](../drivers/tflm/README.md)。
+`PCR_ENGINE=1` 选择 GEMPACT PCR 面板引擎。此配置使用 16×16 阵列、32 位总线和 INT8 输入，要求零输入偏移、无 bias、逐张量量化，矩阵尺寸及地址跨度为 16 的整数倍。`PS_POOL_BYTES` 配置部分和页池容量，`PANEL_MAX_R`、`PANEL_MAX_W` 配置面板尺寸上限。更多命令见 [TFLM 说明](../drivers/tflm/README.md)。

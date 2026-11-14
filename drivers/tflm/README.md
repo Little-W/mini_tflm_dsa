@@ -17,21 +17,21 @@ NMSIS 源码位于 `NMSIS/`，加速器接口位于 `NMSIS/NN/Source/ExtraAccFun
 
 ## NPU 配置
 
-默认 NPU 数据通路支持 INT8、INT16 输入及 TFLM 所需量化接口。论文中的 PCR 面板引擎通过 `PAPER_ENGINE=1` 选择，要求 `SIZE=16`、32 位总线、INT8 输入、零输入偏移、无 bias、per-tensor 量化，以及 16 的整数倍矩阵尺寸和地址跨度。它使用编译期配置的部分和页池；例如：
+默认 NPU 数据通路支持 INT8、INT16 输入及 TFLM 所需量化接口。PCR 面板引擎通过 `PCR_ENGINE=1` 选择，要求 `SIZE=16`、32 位总线、INT8 输入、零输入偏移、无 bias、per-tensor 量化，以及 16 的整数倍矩阵尺寸和地址跨度。它使用编译期配置的部分和页池；例如：
 
 ```bash
-make vcs-top PAPER_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=64 PS_FRAME_COUNT=25 \
+make vcs-top PCR_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=64 PS_FRAME_COUNT=25 \
   GEN_ARGS='--K 32 --N 32 --M 32 --lhs_dtype 1 --no_bias --lhs_zp 0 --rhs_zp 0 --tight_strides --ia_reuse_num 2 --w_reuse_num 2'
 ```
 
-`PS_POOL_BYTES` 指定页池字节数，默认 179200；`PANEL_MAX_R` 和 `PANEL_MAX_W` 指定面板上限，默认均为 16。FPGA 综合脚本使用环境变量 `GEMPACT_PAPER_ENGINE=1` 启用该引擎，`GEMPACT_PS_POOL_BYTES` 指定页池大小。
+`PS_POOL_BYTES` 指定页池字节数，默认 179200；`PANEL_MAX_R` 和 `PANEL_MAX_W` 指定面板上限，默认均为 16。FPGA 综合脚本使用环境变量 `GEMPACT_PCR_ENGINE=1` 启用该引擎，`GEMPACT_PS_POOL_BYTES` 指定页池大小。
 
-论文引擎的 Python 周期接口位于 `veri/paper_model/`。运行前使用 Verilator 构建相应容量配置：
+PCR 面板引擎的 Python 周期接口位于 `veri/pcr_model/`。运行前使用 Verilator 构建相应容量配置：
 
 ```bash
-python3 veri/paper_model/build_measured_backend.py --size 16 --cache 64 --ps 25 \
+python3 veri/pcr_model/build_measured_backend.py --size 16 --cache 64 --ps 25 \
   --mem-words 131072 --ps-sector-codec --ps-pool-bytes 179200 \
   --panel-rows 16 --panel-cols 16 --pcr-ps --reference
 ```
 
-后端生成在 `veri/paper_model/backends/`。Python 仿真使用 `run.py --backend <后端目录> --case <输入目录>`；独立 RTL 程序 `rtl_reference` 可对相同输入进行周期比较。
+后端生成在 `veri/pcr_model/backends/`。Python 仿真使用 `run.py --backend <后端目录> --case <输入目录>`；独立 RTL 程序 `rtl_reference` 可对相同输入进行周期比较。
