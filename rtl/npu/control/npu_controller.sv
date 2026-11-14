@@ -82,6 +82,7 @@ module npu_controller #(
     input  wire ia_data_valid,    // IA数据有效
 
     //==== Weight Loader Interface ====
+    output reg  weight_commit,
     output reg  send_weight_trigger,  // 权重发送触发
     input  wire weight_sending_done,  // 权重发送完成
     input  wire weight_data_valid,    // 权重数据有效
@@ -416,9 +417,7 @@ module npu_controller #(
                 if (compute_tail_done) begin
                     util_tail_done_count <= util_tail_done_count + 1'b1;
                 end
-	                if (((current_state == WEIGHT_START) ||
-	                     (current_state == IA_WAIT && ia_sending_done)) &&
-	                    issue_weight_now) begin
+	                if (send_weight_trigger) begin
 	                    util_weight_trigger_count <= util_weight_trigger_count + 1'b1;
 	                end
 	                if (((current_state == IA_START) ||
@@ -500,210 +499,60 @@ module npu_controller #(
     end
 `endif
 
-	    // 状态转换逻辑
+
+    // Load the NEXT weights into shadow registers while the current tall IA
+    // stream computes. Commit only after the previous PS tail has drained.
+    logic shadow_inflight, shadow_ready;
+    wire commit_now = current_state==WEIGHT_START && shadow_ready &&
+                      weight_safe_to_send && !oa_calc_over;
+    wire prefetch_now = (current_state==WEIGHT_START || current_state==IA_WAIT) &&
+                        !shadow_inflight && !shadow_ready &&
+                        weight_data_valid && !weight_sending_done && !oa_calc_over;
     always_comb begin
-        next_state = current_state;
-        case (current_state)
-            IDLE: begin
-                if (calc_start) begin
-                    // 检查参数配置，如果有错误则进入 ERROR 状态
-                    if (check_config_valid()) begin
-                        next_state = ERROR;
-                    end else begin
-                        next_state = INIT;
-                    end
-                end
-            end
-
-            INIT: begin
-                next_state = WEIGHT_START;
-            end
-
+        next_state=current_state;
+        case(current_state)
+            IDLE: if(calc_start) next_state=check_config_valid()?ERROR:INIT;
+            INIT: next_state=WEIGHT_START;
             WEIGHT_START: begin
-                if (oa_calc_over) begin
-                    // 当计算完成时，检查完成握手
-                    if (done_ready) begin
-                        next_state = IDLE;
-                    end else begin
-                        next_state = WAIT_DONE;
-                    end
-`ifndef SYNTHESIS
-                    if (ctrl_trace_en) begin
-                        $display("NPU Controller: Calculation completed.");
-                    end
-`endif
-                end else if (issue_weight_now) begin
-		                    next_state = WEIGHT_WAIT;
-		                end
+                if(oa_calc_over) next_state=done_ready?IDLE:WAIT_DONE;
+                else if(commit_now) next_state=IA_START;
             end
-
-            // 新增等待状态：在发出触发后等待 weight_sending_done 完成
-            WEIGHT_WAIT: begin
-                if (oa_calc_over) begin
-                    // 当计算完成时，检查完成握手
-                    if (done_ready) begin
-                        next_state = IDLE;
-                    end else begin
-                        next_state = WAIT_DONE;
-                    end
-`ifndef SYNTHESIS
-                    if (ctrl_trace_en) begin
-                        $display("NPU Controller: Calculation completed.");
-                    end
-`endif
-                end else if (weight_sending_done) begin
-                    next_state = issue_ia_now ? IA_WAIT : IA_START;
-                end
-            end
-
-            IA_START: begin
-                // 如果满足发送条件，发出一次触发并进入 IA_WAIT（保证触发为单拍）
-                if (issue_ia_now) begin
-                    next_state = IA_WAIT;
-                end
-            end
-
-            // 新增 IA_WAIT：在发出 IA 触发后等待 ia_sending_done 完成
-            IA_WAIT: begin
-                if (ia_sending_done) begin
-                    if (oa_calc_over) begin
-                        if (done_ready) begin
-                            next_state = IDLE;
-                        end else begin
-                            next_state = WAIT_DONE;
-                        end
-                    end else begin
-                        next_state = issue_weight_now ? WEIGHT_WAIT : WEIGHT_START;
-                    end
-                end
-            end
-
-            // 新增 WAIT_DONE 状态：等待完成握手
-            WAIT_DONE: begin
-                if (done_ready) begin
-                    next_state = IDLE;
-                end
-            end
-
-            // 新增 ERROR 状态：等待完成握手后返回 IDLE
-            ERROR: begin
-                if (done_ready) begin
-                    next_state = IDLE;
-                end
-            end
-
-            default: begin
-                next_state = IDLE;
-            end
+            IA_START: if(issue_ia_now) next_state=IA_WAIT;
+            IA_WAIT: if(ia_sending_done) next_state=WEIGHT_START;
+            WAIT_DONE, ERROR: if(done_ready) next_state=IDLE;
+            default: next_state=IDLE;
         endcase
     end
-
-    // 输出逻辑
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            init_cfg_ia         <= 1'b0;
-            init_cfg_weight     <= 1'b0;
-            init_cfg_bias       <= 1'b0;
-            init_cfg_requant    <= 1'b0;
-            init_cfg_oa         <= 1'b0;
-            use_16bits          <= 1'b0;
-            send_weight_trigger <= 1'b0;
-            send_ia_trigger     <= 1'b0;
-            err_code            <= 2'b00;
+        if(!rst_n) begin
+            init_cfg_ia<=0; init_cfg_weight<=0; init_cfg_bias<=0;
+            init_cfg_requant<=0; init_cfg_oa<=0; use_16bits<=0;
+            send_weight_trigger<=0; send_ia_trigger<=0; weight_commit<=0;
+            shadow_inflight<=0; shadow_ready<=0; err_code<=0;
         end else begin
-            // 默认值
-            init_cfg_ia         <= 1'b0;
-            init_cfg_weight     <= 1'b0;
-            init_cfg_bias       <= 1'b0;
-            init_cfg_requant    <= 1'b0;
-            init_cfg_oa         <= 1'b0;
-            send_weight_trigger <= 1'b0;
-            send_ia_trigger     <= 1'b0;
-
-            case (current_state)
-                IDLE: begin
-                    err_code <= 2'b00;  // 清除错误码
-                end
-
-                INIT: begin
-                    // 初始化所有模块（单拍脉冲）
-                    init_cfg_ia      <= 1'b1;
-                    init_cfg_weight  <= 1'b1;
-                    init_cfg_bias    <= 1'b1;
-                    init_cfg_requant <= 1'b1;
-                    init_cfg_oa      <= 1'b1;
-                    use_16bits       <= cfg_16bits_ia_reg;
-                end
-
-	                WEIGHT_START: begin
-	                    // 仅在 WEIGHT_START 一拍内发出发送触发，之后转到 WEIGHT_WAIT 等待完成 -> 保证单拍脉冲
-			                    if (issue_weight_now) begin
-			                        send_weight_trigger <= 1'b1;
-`ifndef SYNTHESIS
-			                        if (ctrl_trace_en) begin
-			                            $display("[%0t] CTRL send_weight", $time);
-			                        end
-`endif
-			                    end
-		                end
-
-                WEIGHT_WAIT: begin
-	                    if (weight_sending_done && issue_ia_now) begin
-	                        send_ia_trigger <= 1'b1;
-`ifndef SYNTHESIS
-	                        if (ctrl_trace_en) begin
-	                            $display("[%0t] CTRL arm_ia_bypass", $time);
-	                        end
-`endif
-	                    end
-                end
-
-                IA_START: begin
-                    // 仅在 IA_START 一拍内发出发送触发，之后转到 IA_WAIT 等待完成 -> 保证单拍脉冲
-			                    if (issue_ia_now) begin
-			                        send_ia_trigger <= 1'b1;
-`ifndef SYNTHESIS
-			                        if (ctrl_trace_en) begin
-			                            $display("[%0t] CTRL arm_ia", $time);
-			                        end
-`endif
-			                    end
-		                end
-
-                IA_WAIT: begin
-	                    if (ia_sending_done && issue_weight_now) begin
-	                        send_weight_trigger <= 1'b1;
-`ifndef SYNTHESIS
-	                        if (ctrl_trace_en) begin
-	                            $display("[%0t] CTRL send_weight_bypass", $time);
-	                        end
-`endif
-	                    end
-                end
-
-                ERROR: begin
-                    // 设置错误码
-                    err_code <= error_type;
-                end
-
-                default: begin
-                end
-            endcase
+            init_cfg_ia<=0; init_cfg_weight<=0; init_cfg_bias<=0;
+            init_cfg_requant<=0; init_cfg_oa<=0;
+            send_weight_trigger<=prefetch_now;
+            send_ia_trigger<=current_state==IA_START && issue_ia_now;
+            weight_commit<=commit_now;
+            if(prefetch_now) shadow_inflight<=1;
+            if(shadow_inflight && weight_sending_done) begin
+                shadow_inflight<=0; shadow_ready<=1;
+            end
+            if(commit_now) shadow_ready<=0;
+            if(current_state==IDLE) err_code<=0;
+            if(current_state==ERROR) err_code<=error_type;
+            if(current_state==INIT) begin
+                init_cfg_ia<=1; init_cfg_weight<=1; init_cfg_bias<=1;
+                init_cfg_requant<=1; init_cfg_oa<=1;
+                use_16bits<=cfg_16bits_ia_reg;
+                shadow_inflight<=0; shadow_ready<=0;
+            end
         end
     end
-
-    // sa_ready信号
-    assign sa_ready = (current_state == IDLE);
-
-    // 任务完成有效信号
-    wire done_valid_next = oa_calc_over || (current_state == WAIT_DONE) || (current_state == ERROR);
-
+    assign sa_ready=current_state==IDLE;
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            done_valid <= 1'b0;
-        end else begin
-            done_valid <= done_valid_next;
-        end
+        if(!rst_n) done_valid<=0;
+        else done_valid<=oa_calc_over || current_state==WAIT_DONE || current_state==ERROR;
     end
-
 endmodule

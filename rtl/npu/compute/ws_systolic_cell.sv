@@ -5,6 +5,7 @@ module ws_systolic_cell #(
     parameter int unsigned ACC_WIDTH     = 32   // 累加/输出位宽，默认32位
 ) (
     input  wire                            clk,
+    input  wire                            weight_commit,
     input  wire                            store_weight_req,  // 置位时加载新权重
     input  wire signed [ WEIGHT_WIDTH-1:0] weight_in,
     input  wire signed [DATA_IN_WIDTH-1:0] data_in,
@@ -16,7 +17,8 @@ module ws_systolic_cell #(
 
     // 寄存保持：权重驻留（WS），数据流水透传
     reg signed  [DATA_IN_WIDTH-1:0] data_reg;
-    reg signed  [ WEIGHT_WIDTH-1:0] weight_reg;
+    (* DONT_TOUCH = "true" *) reg signed [WEIGHT_WIDTH-1:0] weight_reg;
+    (* DONT_TOUCH = "true" *) reg signed [WEIGHT_WIDTH-1:0] weight_shadow;
     reg signed  [    ACC_WIDTH-1:0] sum_reg;
 
     (* use_dsp = "yes" *) wire signed [ACC_WIDTH-1:0] mult_result;
@@ -31,8 +33,9 @@ module ws_systolic_cell #(
     );
 
     always_ff @(posedge clk) begin
-        if (store_weight_req) begin
-            weight_reg <= weight_in;
+        if (store_weight_req) weight_shadow <= weight_in;
+        if (weight_commit) begin
+            weight_reg <= weight_shadow;
             sum_reg    <= '0;
             data_reg   <= '0;
         end else begin
@@ -43,7 +46,7 @@ module ws_systolic_cell #(
 
     // 输出透传到相邻单元
     assign data_out = data_reg;
-    assign weight_out = weight_reg;
+    assign weight_out = weight_shadow;
 
     // NMSIS-NN 的 int32 accumulator 语义不是逐 PE 饱和；去掉比较器也能缩短 DSP->LUT 临界路径。
     assign sum_out = sum_ext[ACC_WIDTH-1:0];

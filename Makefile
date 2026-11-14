@@ -12,13 +12,23 @@ DUT_MODE ?= axil
 SIM_ARGS ?=
 GEN_ARGS ?=
 DEBUG ?= 0
+PAPER_ENGINE ?= 0
+PS_POOL_BYTES ?= 179200
+PANEL_MAX_R ?= 16
+PANEL_MAX_W ?= 16
+PAPER_DEFINES = $(if $(filter 1,$(PAPER_ENGINE)),+define+GEMPACT_PANEL_ENGINE+GEMPACT_PCR_PS+GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES)+GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R)+GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W),)
 LOG_NAME ?= sim
 COUNT ?= 20
 RANDOM_GEN_ARGS ?= --random --random_quant --lhs_dtype 0 --min_dim 1 --max_dim 32
 SIZES ?= 4 8 16
 CACHE_BLOCKS_LIST ?= 2 4 8
 COMPUTE_DATA_DIR ?= $(UNIT_BUILD)/compute_case
-TFLM_APP ?= mnist_mlp_int16x8
+-include drivers/tflm/model_selection.mk
+DEPLOY_TFLM_APP ?= mnist_mlp_int16x8
+DEPLOY_BUILD_TARGET ?= tflm_mnist_mlp_int16x8_soc_c
+DEPLOY_CPU_MEM_WORDS ?= 65536
+SOC_CPU_MEM_DP ?= $(DEPLOY_CPU_MEM_WORDS)
+TFLM_APP ?= $(DEPLOY_TFLM_APP)
 
 UNIT_TESTS := axi_dual_block_dma axi_block_dma_arbiter ps_buffer compute_core npu_top
 UNIT_BUILD := $(ROOT)/build/vcs/unit
@@ -32,15 +42,15 @@ SRCS_axi_dual_block_dma := test/axi_dual_block_dma/tb_axi_dual_block_dma.sv rtl/
 SRCS_axi_block_dma_arbiter := test/axi_block_dma_arbiter/tb_axi_block_dma_arbiter.sv rtl/npu/dma/axi_block_dma_arbiter.sv rtl/npu/dma/axi_dual_block_dma.sv
 SRCS_ps_buffer := test/ps_buffer/tb_ps_buffer.sv $(BUFFER_RTL)/ps_buffer.sv $(BUFFER_RTL)/ps_buffer_fifo.sv $(COMPUTE_RTL)/de_diagonalizer.sv $(RAM_RTL)
 SRCS_compute_core := $(COMPUTE_DATA_DIR)/test_params_pkg.sv test/compute_core/tb_compute_core.sv test/compute_core/tb_compute_core_if.sv test/compute_core/compute_core_test.sv $(COMPUTE_RTL)/bias_mux.sv $(BUFFER_RTL)/ps_buffer.sv $(BUFFER_RTL)/ps_buffer_fifo.sv $(COMPUTE_RTL)/de_diagonalizer.sv $(RAM_RTL) $(COMPUTE_RTL)/ws_systolic_array.sv $(COMPUTE_RTL)/ws_systolic_cell.sv
-SRCS_npu_top := test/npu_top/tb_npu_top.sv test/npu_top/tb_sirv_stubs.v test/dep_modules/ddr_axi_mem_model.sv $(NPU_RTL) $(RAM_RTL)
+SRCS_npu_top := $(if $(filter 1,$(PAPER_ENGINE)),test/paper/tb_npu_top.sv test/paper/ddr_axi_mem_model.sv,test/npu_top/tb_npu_top.sv test/npu_top/tb_sirv_stubs.v test/dep_modules/ddr_axi_mem_model.sv) $(NPU_RTL) $(RAM_RTL)
 PASS_axi_dual_block_dma := [AXI_DUAL_DMA] ALL PASS
 PASS_axi_block_dma_arbiter := [AXI_ARB] ALL PASS
 PASS_ps_buffer := PASS: diagonal partial-sum
 PASS_compute_core := PASS: compute_core matched
 PASS_npu_top := [TB] PASS
 CONFIG_TAG := s$(SIZE)_c$(IA_CACHE_BLOCKS)_p$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)
-UNIT_DIR = $(UNIT_BUILD)/$(UNIT)$(if $(filter npu_top,$(UNIT)),/$(CONFIG_TAG),)$(if $(filter 1,$(DEBUG)),_debug,)
-UNIT_DEFINES = $(if $(filter npu_top,$(UNIT)),+define+TB_SIZE=$(SIZE)+TB_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS)+TB_PS_FRAME_COUNT=$(PS_FRAME_COUNT)+TB_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING),)
+UNIT_DIR = $(UNIT_BUILD)/$(UNIT)$(if $(filter npu_top,$(UNIT)),/$(CONFIG_TAG),)$(if $(filter 1,$(PAPER_ENGINE)),_paper_b$(PS_POOL_BYTES)_r$(PANEL_MAX_R)_w$(PANEL_MAX_W),)$(if $(filter 1,$(DEBUG)),_debug,)
+UNIT_DEFINES = $(if $(filter 1,$(PAPER_ENGINE)),+define+TB_MEM_WORDS=131072,) $(if $(filter npu_top,$(UNIT)),+define+TB_SIZE=$(SIZE)+TB_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS)+TB_PS_FRAME_COUNT=$(PS_FRAME_COUNT)+TB_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING),)
 
 .PHONY: help vcs-unit vcs-unit-% vcs-unit-build vcs-uvm vcs-axil vcs-soc vcs-top vcs-tflm vcs-nmsis-abi clean-vcs prepare-vcs-python
 
@@ -51,7 +61,11 @@ help:
 	@echo 'make vcs-soc CASE=<name>      Run a SoC UVM test'
 	@echo 'make vcs-uvm DUT_MODE=<mode> CASE=<name>  Run an integrated UVM test'
 	@echo 'make vcs-top                  Run the NPU top test with VCS'
+	@echo 'make vcs-paper-soc            Run the paper engine in the SoC'
 	@echo 'make vcs-tflm TFLM_APP=<name> Run TFLM inference on the SoC'
+	@echo 'make model-list               List deployment models'
+	@echo 'make model-select MODEL=<name> Select a deployment model'
+	@echo 'make model-build              Build selected model firmware'
 	@echo 'make vcs-nmsis-abi            Run the NMSIS driver integration test'
 	@echo 'make vcs-random-npu           Run randomized NPU top tests'
 	@echo 'make vcs-random-compute       Run randomized compute core tests'
@@ -71,7 +85,7 @@ vcs-unit-build:
 	  cd '$(COMPUTE_DATA_DIR)' && $(PYTHON) '$(ROOT)/test/compute_core/gen_mats.py' --seed $(SEED); \
 	fi
 	$(VCS) -full64 -sverilog -timescale=1ns/1ps $(if $(filter 1,$(DEBUG)),-debug_access+all,) -top tb_$(UNIT) \
-	  $(UNIT_DEFINES) +incdir+$(ROOT)/test/compute_core \
+	  $(UNIT_DEFINES) $(PAPER_DEFINES) +incdir+$(ROOT)/rtl/npu/gempact +incdir+$(ROOT)/test/compute_core \
 	  -Mdir='$(UNIT_DIR)/csrc' -o '$(UNIT_DIR)/simv' \
 	  -l '$(UNIT_DIR)/compile.log' $(foreach src,$(SRCS_$(UNIT)),$(if $(filter /%,$(src)),$(src),$(ROOT)/$(src)))
 
@@ -114,7 +128,7 @@ prepare-vcs-python:
 vcs-uvm: prepare-vcs-python
 	$(MAKE) -C veri/sim run DUT_MODE=$(DUT_MODE) case=$(CASE) seed=$(SEED) \
 	  MMA_SIZE=$(SIZE) MMA_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS) MMA_PS_FRAME_COUNT=$(PS_FRAME_COUNT) \
-	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
+	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) PAPER_ENGINE=$(PAPER_ENGINE) PS_POOL_BYTES=$(PS_POOL_BYTES) PANEL_MAX_R=$(PANEL_MAX_R) PANEL_MAX_W=$(PANEL_MAX_W) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
 
 vcs-axil:
 	$(MAKE) vcs-uvm DUT_MODE=axil CASE=$(CASE)
@@ -126,9 +140,24 @@ vcs-nmsis-abi:
 	$(MAKE) vcs-soc SOC_APP=nmsis_abi SOC_CASE=axi_soc_case_nmsis_abi
 
 vcs-tflm: prepare-vcs-python
-	$(MAKE) -C veri/sim tflm_$(TFLM_APP)_run MMA_SIZE=$(SIZE) \
+	$(MAKE) -C veri/sim tflm_$(TFLM_APP)_run SOC_CPU_MEM_DP=$(SOC_CPU_MEM_DP) MMA_SIZE=$(SIZE) \
 	  MMA_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS) MMA_PS_FRAME_COUNT=$(PS_FRAME_COUNT) \
-	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
+	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) PAPER_ENGINE=$(PAPER_ENGINE) PS_POOL_BYTES=$(PS_POOL_BYTES) PANEL_MAX_R=$(PANEL_MAX_R) PANEL_MAX_W=$(PANEL_MAX_W) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
 
 clean-vcs:
 	rm -rf '$(UNIT_BUILD)'
+
+.PHONY: model-list model-select model-build
+model-list:
+	$(PYTHON) drivers/tflm/select_model.py --list
+
+model-select:
+	$(PYTHON) drivers/tflm/select_model.py $(if $(MODEL),--select $(MODEL),)
+
+model-build:
+	$(MAKE) -C veri/sim $(DEPLOY_BUILD_TARGET) SOC_CASE=axi_soc_tflm_deploy SOC_CPU_MEM_DP=$(SOC_CPU_MEM_DP) \
+	  MMA_SIZE=$(SIZE) MMA_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS) MMA_PS_FRAME_COUNT=$(PS_FRAME_COUNT)
+
+.PHONY: vcs-paper-soc
+vcs-paper-soc:
+	$(MAKE) vcs-soc PAPER_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=64 PS_FRAME_COUNT=25 SOC_APP=paper_nmsis SOC_CASE=axi_soc_case_paper_nmsis

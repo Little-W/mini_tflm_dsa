@@ -149,12 +149,19 @@ module axi_block_dma_arbiter #(
         C_NONE   = 3'd7
     } client_e;
 
-    client_e rd_client, rd_next_client;
+    client_e rd_client, rd_next_client, rd_command_client, rd_response_client;
     logic rd_active;
     logic rd_started;
     logic rd_dma_start;
     logic rd_dma_busy;
     logic rd_dma_done;
+    logic rd_finish_beat;
+    wire rd_launch_window = !rd_active || rd_finish_beat;
+    assign rd_command_client = rd_launch_window ? rd_next_client : rd_client;
+    always_ff @(posedge clk) begin
+        if (!rst_n) rd_response_client <= C_NONE;
+        else rd_response_client <= rd_client;
+    end
 
     logic rd_dma_linear_read_mode;
     logic [REG_WIDTH-1:0] rd_dma_base_addr;
@@ -187,58 +194,44 @@ module axi_block_dma_arbiter #(
     wire quant_req_eff = (ENABLE_QUANT_CLIENT != 0) ? quant_req : 1'b0;
 
     always_comb begin
-        if (kernel_req) rd_next_client = C_KERNEL;
-        else if (quant_req_eff) rd_next_client = C_QUANT;
-        else if (ia_req) rd_next_client = C_IA;
-        else if (bias_req) rd_next_client = C_BIAS;
+        if (kernel_req && !(rd_finish_beat && rd_client == C_KERNEL) && !(rd_dma_done && rd_response_client == C_KERNEL)) rd_next_client = C_KERNEL;
+        else if (quant_req_eff && !(rd_finish_beat && rd_client == C_QUANT) && !(rd_dma_done && rd_response_client == C_QUANT)) rd_next_client = C_QUANT;
+        else if (ia_req && !(rd_finish_beat && rd_client == C_IA) && !(rd_dma_done && rd_response_client == C_IA)) rd_next_client = C_IA;
+        else if (bias_req && !(rd_finish_beat && rd_client == C_BIAS) && !(rd_dma_done && rd_response_client == C_BIAS)) rd_next_client = C_BIAS;
         else rd_next_client = C_NONE;
     end
 
+    // Accept the next client's command on the final R edge. Completion and
+    // the registered last data beat keep their previous client tag.
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            rd_client  <= C_NONE;
-            rd_active  <= 1'b0;
-            rd_started <= 1'b0;
-        end else begin
-            if (!rd_active) begin
-                if (rd_next_client != C_NONE) begin
-                    rd_client  <= rd_next_client;
-                    rd_active  <= 1'b1;
-                    rd_started <= 1'b0;
-                end
-            end else if (!rd_started) begin
-                if (rd_dma_start) begin
-                    rd_started <= 1'b1;
-                end else if ((rd_client == C_IA     && !ia_req) ||
-                             (rd_client == C_KERNEL && !kernel_req) ||
-                             (rd_client == C_BIAS   && !bias_req) ||
-                             (rd_client == C_QUANT  && !quant_req_eff)) begin
-                    rd_client  <= C_NONE;
-                    rd_active  <= 1'b0;
-                    rd_started <= 1'b0;
-                end
-            end else if (rd_dma_done) begin
-                rd_client  <= C_NONE;
-                rd_active  <= 1'b0;
-                rd_started <= 1'b0;
+            rd_client <= C_NONE; rd_active <= 1'b0; rd_started <= 1'b0;
+        end else if (rd_launch_window) begin
+            rd_client <= rd_next_client;
+            rd_active <= (rd_next_client != C_NONE);
+            rd_started <= rd_dma_start;
+        end else if (!rd_started) begin
+            if (rd_dma_start) rd_started <= 1'b1;
+            else if ((rd_client == C_IA && !ia_req) ||
+                     (rd_client == C_KERNEL && !kernel_req) ||
+                     (rd_client == C_BIAS && !bias_req) ||
+                     (rd_client == C_QUANT && !quant_req_eff)) begin
+                rd_client <= C_NONE; rd_active <= 1'b0; rd_started <= 1'b0;
             end
         end
     end
-
-    assign ia_granted     = rd_active && (rd_client == C_IA);
-    assign kernel_granted = rd_active && (rd_client == C_KERNEL);
-    assign bias_granted   = rd_active && (rd_client == C_BIAS);
-    assign quant_granted  = (ENABLE_QUANT_CLIENT != 0) && rd_active && (rd_client == C_QUANT);
-
-    assign ia_busy     = ia_granted && rd_dma_busy;
-    assign kernel_busy = kernel_granted && rd_dma_busy;
-    assign bias_busy   = bias_granted && rd_dma_busy;
-    assign quant_busy  = quant_granted && rd_dma_busy;
-
-    assign ia_done     = ia_granted && rd_dma_done;
-    assign kernel_done = kernel_granted && rd_dma_done;
-    assign bias_done   = bias_granted && rd_dma_done;
-    assign quant_done  = quant_granted && rd_dma_done;
+    assign ia_granted = (rd_command_client == C_IA);
+    assign kernel_granted = (rd_command_client == C_KERNEL);
+    assign bias_granted = (rd_command_client == C_BIAS);
+    assign quant_granted = (ENABLE_QUANT_CLIENT != 0) && (rd_command_client == C_QUANT);
+    assign ia_busy = rd_active && rd_client == C_IA && rd_dma_busy;
+    assign kernel_busy = rd_active && rd_client == C_KERNEL && rd_dma_busy;
+    assign bias_busy = rd_active && rd_client == C_BIAS && rd_dma_busy;
+    assign quant_busy = rd_active && rd_client == C_QUANT && rd_dma_busy;
+    assign ia_done = rd_response_client == C_IA && rd_dma_done;
+    assign kernel_done = rd_response_client == C_KERNEL && rd_dma_done;
+    assign bias_done = rd_response_client == C_BIAS && rd_dma_done;
+    assign quant_done = rd_response_client == C_QUANT && rd_dma_done;
 
     always_comb begin
         rd_dma_start            = 1'b0;
@@ -251,9 +244,9 @@ module axi_block_dma_arbiter #(
         rd_dma_use_16bits       = 1'b0;
         rd_dma_lhs_zp           = '0;
 
-        unique case (rd_client)
+        unique case (rd_command_client)
             C_IA: begin
-                rd_dma_start            = ia_start && ia_granted && !rd_started;
+                rd_dma_start            = ia_start && ia_granted && (!rd_started || rd_launch_window);
                 rd_dma_linear_read_mode = ia_linear_read_mode;
                 rd_dma_base_addr        = ia_base_addr;
                 rd_dma_row_stride       = ia_row_stride;
@@ -264,7 +257,7 @@ module axi_block_dma_arbiter #(
                 rd_dma_lhs_zp           = ia_lhs_zp;
             end
             C_KERNEL: begin
-                rd_dma_start            = kernel_start && kernel_granted && !rd_started;
+                rd_dma_start            = kernel_start && kernel_granted && (!rd_started || rd_launch_window);
                 rd_dma_linear_read_mode = kernel_linear_read_mode;
                 rd_dma_base_addr        = kernel_base_addr;
                 rd_dma_row_stride       = kernel_row_stride;
@@ -276,7 +269,7 @@ module axi_block_dma_arbiter #(
                 rd_dma_lhs_zp           = kernel_lhs_zp;
             end
             C_BIAS: begin
-                rd_dma_start            = bias_start && bias_granted && !rd_started;
+                rd_dma_start            = bias_start && bias_granted && (!rd_started || rd_launch_window);
                 rd_dma_linear_read_mode = bias_linear_read_mode;
                 rd_dma_base_addr        = bias_base_addr;
                 rd_dma_row_stride       = bias_row_stride;
@@ -289,7 +282,7 @@ module axi_block_dma_arbiter #(
             end
             C_QUANT: begin
                 if (ENABLE_QUANT_CLIENT != 0) begin
-                    rd_dma_start            = quant_start && quant_granted && !rd_started;
+                    rd_dma_start            = quant_start && quant_granted && (!rd_started || rd_launch_window);
                     rd_dma_linear_read_mode = quant_linear_read_mode;
                     rd_dma_base_addr        = quant_base_addr;
                     rd_dma_row_stride       = quant_row_stride;
@@ -337,11 +330,11 @@ module axi_block_dma_arbiter #(
 
     for (genvar i = 0; i < BYTE_PER_BEAT; i++) begin : gen_route_wr
         assign ia_wr_data[i]      = dma_wr_data[i];
-        assign ia_wr_valid[i]     = ia_granted && dma_wr_valid[i];
+        assign ia_wr_valid[i]     = (rd_response_client == C_IA) && dma_wr_valid[i];
         assign kernel_wr_data[i]  = KERNEL_WIDTH'($signed(dma_wr_data[i]));
-        assign kernel_wr_valid[i] = kernel_granted && dma_wr_valid[i];
+        assign kernel_wr_valid[i] = (rd_response_client == C_KERNEL) && dma_wr_valid[i];
         assign bias_wr_data[i]    = dma_wr_data[i][7:0];
-        assign bias_wr_valid[i]   = bias_granted && dma_wr_valid[i];
+        assign bias_wr_valid[i]   = (rd_response_client == C_BIAS) && dma_wr_valid[i];
     end
 
     assign ia_wr_slot       = dma_wr_slot;
@@ -358,7 +351,44 @@ module axi_block_dma_arbiter #(
     assign bias_wr_use_16bits = dma_wr_use_16bits;
 
     assign quant_raw_data  = (ENABLE_QUANT_CLIENT != 0) ? dma_raw_data : '0;
-    assign quant_raw_valid = quant_granted && dma_raw_valid;
+    assign quant_raw_valid = (rd_response_client == C_QUANT) && dma_raw_valid;
+
+    // Registered command descriptor separates client arbitration from DMA
+    // address arithmetic. Client grants and completion tags keep their order.
+    logic rd_dma_start_q;
+    logic rd_dma_linear_read_mode_q;
+    logic [REG_WIDTH-1:0] rd_dma_base_addr_q;
+    logic [REG_WIDTH-1:0] rd_dma_row_stride_q;
+    logic [REG_WIDTH-1:0] rd_dma_rows_to_read_q;
+    logic [8-1:0] rd_dma_burst_len_m1_q;
+    logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_dma_slot_id_q;
+    logic rd_dma_use_16bits_q;
+    logic [REG_WIDTH-1:0] rd_dma_lhs_zp_q;
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            rd_dma_start_q <= '0;
+            rd_dma_linear_read_mode_q <= '0;
+            rd_dma_base_addr_q <= '0;
+            rd_dma_row_stride_q <= '0;
+            rd_dma_rows_to_read_q <= '0;
+            rd_dma_burst_len_m1_q <= '0;
+            rd_dma_slot_id_q <= '0;
+            rd_dma_use_16bits_q <= '0;
+            rd_dma_lhs_zp_q <= '0;
+        end else begin
+            rd_dma_start_q <= rd_dma_start;
+            if (rd_dma_start) begin
+                rd_dma_linear_read_mode_q <= rd_dma_linear_read_mode;
+                rd_dma_base_addr_q <= rd_dma_base_addr;
+                rd_dma_row_stride_q <= rd_dma_row_stride;
+                rd_dma_rows_to_read_q <= rd_dma_rows_to_read;
+                rd_dma_burst_len_m1_q <= rd_dma_burst_len_m1;
+                rd_dma_slot_id_q <= rd_dma_slot_id;
+                rd_dma_use_16bits_q <= rd_dma_use_16bits;
+                rd_dma_lhs_zp_q <= rd_dma_lhs_zp;
+            end
+        end
+    end
 
     axi_dual_block_dma #(
         .DATA_WIDTH       (DATA_WIDTH),
@@ -371,18 +401,19 @@ module axi_block_dma_arbiter #(
     ) u_dma (
         .clk                (clk),
         .rst_n              (rst_n),
-        .rd_start           (rd_dma_start),
-        .rd_linear_read_mode(rd_dma_linear_read_mode),
-        .rd_base_addr       (rd_dma_base_addr),
-        .rd_row_stride      (rd_dma_row_stride),
-        .rd_rows_to_read    (rd_dma_rows_to_read),
+        .rd_start           (rd_dma_start_q),
+        .rd_linear_read_mode(rd_dma_linear_read_mode_q),
+        .rd_base_addr       (rd_dma_base_addr_q),
+        .rd_row_stride      (rd_dma_row_stride_q),
+        .rd_rows_to_read    (rd_dma_rows_to_read_q),
         .rd_valid_cols      (REG_WIDTH'(DMA_SIZE)),
-        .rd_burst_len_m1    (rd_dma_burst_len_m1),
-        .rd_slot_id         (rd_dma_slot_id),
-        .rd_use_16bits      (rd_dma_use_16bits),
-        .rd_lhs_zp          (rd_dma_lhs_zp),
+        .rd_burst_len_m1    (rd_dma_burst_len_m1_q),
+        .rd_slot_id         (rd_dma_slot_id_q),
+        .rd_use_16bits      (rd_dma_use_16bits_q),
+        .rd_lhs_zp          (rd_dma_lhs_zp_q),
         .rd_busy            (rd_dma_busy),
         .rd_done            (rd_dma_done),
+        .rd_finish_beat     (rd_finish_beat),
         .wr_start           (wr_dma_start),
         .wr_base_addr       (oa_base_addr),
         .wr_row_stride      (oa_row_stride),

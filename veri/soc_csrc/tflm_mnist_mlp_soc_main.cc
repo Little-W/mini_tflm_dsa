@@ -179,6 +179,7 @@ uint32_t RunMnistMlpTest() {
   }
 
   for (int sample = 0; sample < kRunSampleCount; ++sample) {
+#if defined(TFLM_MNIST_MLP_INT16X8)
     if (is_int16x8_model) {
       int16_t* input_data = tflite::GetTensorData<int16_t>(input);
       for (int pixel = 0; pixel < kMnistMlpInputSize; ++pixel) {
@@ -190,7 +191,9 @@ uint32_t RunMnistMlpTest() {
              (1u << 16)) >>
             17);
       }
-    } else {
+    } else
+#endif
+    {
       memcpy(tflite::GetTensorData<int8_t>(input),
              g_mnist_mlp_test_images[sample], kMnistMlpInputSize);
     }
@@ -212,6 +215,7 @@ uint32_t RunMnistMlpTest() {
                                   kMnistMlpClassCount)
                          : ArgMax(tflite::GetTensorData<int8_t>(output),
                                   kMnistMlpClassCount);
+#if defined(TFLM_MNIST_MLP_INT16X8)
     if (is_int16x8_model) {
       const TfLiteEvalTensor* hidden =
           interpreter.GetTensor(kMnistMlpHiddenTensorIndex);
@@ -273,6 +277,7 @@ uint32_t RunMnistMlpTest() {
         }
       }
     }
+#endif
     const int label = static_cast<int>(g_mnist_mlp_test_labels[sample]);
     picosoc_uart_puts("[tflm_perf] mnist_mlp");
     LogI32(" sample=", sample);

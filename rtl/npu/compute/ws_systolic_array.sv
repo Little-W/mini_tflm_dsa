@@ -5,6 +5,7 @@ module ws_systolic_array #(
     parameter int unsigned ACC_WIDTH     = 32
 ) (
     input  wire                              clk,
+    input  wire                              weight_commit,
     input  wire                              store_weight_req,    // 权重加载请求，单个信号控制所有行
     input  wire signed [WEIGHT_WIDTH-1:0]    weight_in          [SIZE],
     input  wire signed [DATA_IN_WIDTH-1:0]   data_in            [SIZE],
@@ -76,6 +77,7 @@ generate
                 ) ws_cell (
                     .clk(clk),
                     .store_weight_req(store_weight_req_col[col]),
+                    .weight_commit(weight_commit),
                     .weight_in(weight_in[col]),
                     .data_in(data_in[row]),
                     .sum_in(sum_in[col]),
@@ -91,6 +93,7 @@ generate
                 ) ws_cell (
                     .clk(clk),
                     .store_weight_req(store_weight_req_col[col]),
+                    .weight_commit(weight_commit),
                     .weight_in(weight_in[col]),
                     .data_in(data_pipe[row][col-1]),
                     .sum_in(sum_in[col]),
@@ -106,6 +109,7 @@ generate
                 ) ws_cell (
                     .clk(clk),
                     .store_weight_req(store_weight_req_col[col]),
+                    .weight_commit(weight_commit),
                     .weight_in(weight_pipe[row-1][col]),
                     .data_in(data_in[row]),
                     .sum_in(sum_pipe[row-1][col]),
@@ -121,6 +125,7 @@ generate
                 ) ws_cell (
                     .clk(clk),
                     .store_weight_req(store_weight_req_col[col]),
+                    .weight_commit(weight_commit),
                     .weight_in(weight_pipe[row-1][col]),
                     .data_in(data_pipe[row][col-1]),
                     .sum_in(sum_pipe[row-1][col]),

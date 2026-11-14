@@ -18,7 +18,8 @@ module ps_buffer #(
     output logic signed [DATA_WIDTH-1:0] acc_data_out  [0:SIZE-1],
     output logic                         acc_data_valid,
     output logic                         tile_calc_over,
-    output logic                         stream_calc_over
+    output logic                         stream_calc_over,
+    output logic                         capacity_fault
 );
     localparam int unsigned MAX_FRAME_LEN = ((MAX_IA_REUSE + 1) * SIZE) - 1;
     // Store at most FRAME_COUNT reusable partial-sum frames, but keep one
@@ -57,6 +58,7 @@ module ps_buffer #(
         .ia_l1_switch_i   (ia_l1_switch),
         .send_ia_trigger_i(send_ia_trigger),
         .replay_enable_i  (replay_enable),
+        .capacity_fault   (capacity_fault),
         .data_out         (fifo_data_out_vec)
     );
 
@@ -102,7 +104,8 @@ module ps_buffer_wide_fifo #(
     input  logic                  ia_l1_switch_i,
     input  logic                  send_ia_trigger_i,
     input  logic                  replay_enable_i,
-    output logic [DATA_WIDTH-1:0] data_out
+    output logic [DATA_WIDTH-1:0] data_out,
+    output logic capacity_fault
 );
     localparam int unsigned ADDR_W      = (DEPTH <= 1) ? 1 : $clog2(DEPTH);
     localparam int unsigned CNT_W       = (DEPTH <= 1) ? 1 : $clog2(DEPTH + 1);
@@ -190,7 +193,20 @@ module ps_buffer_wide_fifo #(
 
     assign data_out = replay_data_valid ? ram_read_data : '0;
 
-    pseudo_dual_port_ram #(
+`ifdef GEMMORA_PS_SECTOR_CODEC
+    ps_sector_store #(
+        .LOGICAL_ROWS(DEPTH), .POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .ADDR_WIDTH(ADDR_W), .FAIL_STOP(0)
+    ) u_ps_fifo_ram (
+        .clk(clk), .rst_n(rst_n),
+        .write_en(ram_write_en_q), .read_en(ram_read_en),
+        .write_addr(ram_write_addr_q), .read_addr(ram_read_addr),
+        .write_data(ram_write_data_q), .read_data(ram_read_data),
+        .capacity_fault(capacity_fault)
+    );
+`else
+    assign capacity_fault=1'b0;
+    ps_buffer_exact_ram #(
+        .DEPTH(DEPTH),
         .DATA_WIDTH(DATA_WIDTH),
         .ADDR_WIDTH (ADDR_W)
     ) u_ps_fifo_ram (
@@ -203,6 +219,7 @@ module ps_buffer_wide_fifo #(
         .addrb (ram_read_addr),
         .dob   (ram_read_data)
     );
+`endif
 
     always_ff @(posedge clk) begin
         ram_write_addr_q <= ram_write_addr;
@@ -292,4 +309,18 @@ module ps_buffer_wide_fifo #(
             end
         end
     end
+endmodule
+
+// Exact-depth synchronous 1R1W SRAM. Ring addresses already wrap at DEPTH.
+module ps_buffer_exact_ram #(
+    parameter int DEPTH=16, DATA_WIDTH=512, ADDR_WIDTH=$clog2(DEPTH)
+)(input logic clk, ena, enb, wea,
+  input logic [ADDR_WIDTH-1:0] addra, addrb,
+  input logic [DATA_WIDTH-1:0] dia,
+  output logic [DATA_WIDTH-1:0] dob);
+  (* ram_style="block" *) logic [DATA_WIDTH-1:0] ram [DEPTH];
+  always_ff @(posedge clk) begin
+    if (ena && wea) ram[addra] <= dia;
+    if (enb) dob <= ram[addrb];
+  end
 endmodule

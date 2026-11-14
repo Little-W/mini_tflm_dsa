@@ -1,3 +1,6 @@
+`ifndef GEMMORA_PS_POOL_BYTES
+`define GEMMORA_PS_POOL_BYTES 179200
+`endif
 // NPU 顶层模块：矩阵/卷积算子的分块计算、量化和写回数据通路
 module npu_top #(
     parameter int unsigned WEIGHT_WIDTH = 16,  // 权重数据宽度；WS 下 s8 符号扩展，IS+s16 下使用 16bit LHS
@@ -7,20 +10,23 @@ module npu_top #(
     parameter int unsigned REG_WIDTH = 32,  // 寄存器宽度
     parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
+    parameter int unsigned OPERAND_CACHE_ENABLE = 0,
     parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
+    parameter int unsigned OPERAND_STREAM_BYTES = (PS_FRAME_COUNT >= 16) ? 65536 : 262144,
     parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
     parameter int unsigned AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,  // AXI 写通道最多提前排队的 burst 数
     parameter int unsigned ENABLE_IS_MODE = 1,  // 置 0 时综合裁剪 IS 转置/分组 bias 支持
     parameter int unsigned ENABLE_PER_CHANNEL = 1,  // 置 0 时综合裁剪 per-channel 量化装载路径
     parameter int unsigned OA_FIFO_BANKS_MAX =
         ((ENABLE_IS_MODE == 0) && (ENABLE_PER_CHANNEL == 0)) ? 16 :
-        ((IA_CACHE_BLOCKS < 32) ? 32 : IA_CACHE_BLOCKS)  // 写回 FIFO 最大 tile bank 数；裁剪版用更浅线性 FIFO 压低面积
+        32  // common 8 KiB output FIFO in this experiment; 写回 FIFO 最大 tile bank 数；裁剪版用更浅线性 FIFO 压低面积
 ) (
     //==== 时钟与复位 ====
     input wire clk,   // 系统时钟
     input wire rst_n, // 异步复位，低有效
 
     //==== 外部控制接口 ====
+    input wire cfg_operand_fetch64, // 0: 16-byte sectors; 1: 64-byte read allocation
     input wire calc_start,  // 计算开始信号
     input wire cfg_16bits_ia,  // 使用16位IA数据
     input wire cfg_16x8,  // TFLM s16 activation x s8 weight, s32 bias, s16 output
@@ -96,6 +102,139 @@ module npu_top #(
     input  logic [            1:0] m_axi_bresp
 );
 
+
+`ifdef GEMPACT_PANEL_ENGINE
+    gempact_panel_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(.*);
+`elsif GEMPACT_RESIDENT_ENGINE
+    gempact_resident_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(.*);
+`else
+
+    localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
+    wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
+    logic cfg_use16_s2, cfg_16x8_s2;
+    logic [REG_WIDTH-1:0] cfg_stream_k_s2, cfg_stream_m_s2;
+    logic [REG_WIDTH-1:0] cfg_ia_reuse_eff_s2, cfg_w_reuse_eff_s2;
+    wire cfg_stage2_fire;
+    logic cache_axi_arvalid, cache_axi_arready, cache_axi_rvalid, cache_axi_rready, cache_axi_rlast;
+    logic [REG_WIDTH-1:0] cache_axi_araddr;
+    logic [7:0] cache_axi_arlen;
+    logic [2:0] cache_axi_arsize;
+    logic [1:0] cache_axi_arburst, cache_axi_rresp;
+    logic [BUS_WIDTH-1:0] cache_axi_rdata;
+    generate if (OPERAND_CACHE_ENABLE) begin : g_operand_cache
+        // Snapshot the task and pipeline range arithmetic. The original SoC
+        // keeps configuration in AXI-Lite registers, so an unpipelined 32x32
+        // extent product plus base addition is a real clocked timing path.
+        localparam int HALF = (REG_WIDTH + 1) / 2;
+        logic [3:0] range_stage;
+        logic range_ready, fetch64_q;
+        logic [REG_WIDTH-1:0] a_base_cfg, b_base_cfg;
+        logic [REG_WIDTH-1:0] ax, ay, bx, by;
+        (* use_dsp="yes" *) logic [REG_WIDTH-1:0] a_ll, a_lh, a_hl, b_ll, b_lh, b_hl;
+        logic [REG_WIDTH-1:0] a_bytes_cfg, b_bytes_cfg;
+        logic cache_request_ready;
+        logic single_group_bypass;
+        wire retained_arvalid, retained_rvalid, retained_rready, retained_rlast;
+        wire [REG_WIDTH-1:0] retained_araddr;
+        wire [7:0] retained_arlen;
+        wire [2:0] retained_arsize;
+        wire [1:0] retained_arburst, retained_rresp;
+        wire [BUS_WIDTH-1:0] retained_rdata;
+        wire accept_cache_task = calc_start && sa_ready;
+        // A complete output workgroup already retains every required A/B K
+        // tile in the native IA/PS schedule. It has no cross-group cache hits.
+        // Select the direct path once per task, before any DMA request starts.
+        // Keep allocated retention SRAM available for all other task shapes.
+        always_ff @(posedge clk) begin
+            if (!rst_n) single_group_bypass <= 1'b0;
+            else begin
+                if (accept_cache_task) single_group_bypass <= 1'b0;
+                if (cfg_stage2_fire)
+                    single_group_bypass <= !fetch64_q && !cfg_use16_s2 && !cfg_16x8_s2 &&
+                        cfg_stream_k_s2 != 0 && cfg_stream_m_s2 != 0 &&
+                        cfg_stream_k_s2 <= (cfg_ia_reuse_eff_s2 << SIZE_SHIFT) &&
+                        cfg_stream_m_s2 <= (cfg_w_reuse_eff_s2 << SIZE_SHIFT);
+            end
+        end
+        always_ff @(posedge clk) begin
+            if (!rst_n) begin
+                range_stage <= 0; range_ready <= 0; fetch64_q <= 0;
+                a_base_cfg <= 0; b_base_cfg <= 0;
+                ax <= 0; ay <= 0; bx <= 0; by <= 0;
+                a_ll <= 0; a_lh <= 0; a_hl <= 0;
+                b_ll <= 0; b_lh <= 0; b_hl <= 0;
+                a_bytes_cfg <= 0; b_bytes_cfg <= 0;
+            end else begin
+                range_stage <= {range_stage[2:0],accept_cache_task};
+                if (accept_cache_task) begin
+                    range_ready <= 0;
+                    fetch64_q <= cfg_operand_fetch64;
+                    a_base_cfg <= cfg_dataflow_mode_eff ? rhs_base : lhs_base;
+                    b_base_cfg <= cfg_dataflow_mode_eff ? lhs_base : rhs_base;
+                    ax <= cfg_dataflow_mode_eff ? m : k;
+                    ay <= cfg_dataflow_mode_eff ? rhs_col_stride_b : lhs_row_stride_b;
+                    bx <= cfg_dataflow_mode_eff ? k : m;
+                    by <= cfg_dataflow_mode_eff ? lhs_row_stride_b : rhs_col_stride_b;
+                end
+                if (range_stage[0]) begin
+                    a_ll <= ax[HALF-1:0] * ay[HALF-1:0];
+                    a_lh <= ax[HALF-1:0] * ay[REG_WIDTH-1:HALF];
+                    a_hl <= ax[REG_WIDTH-1:HALF] * ay[HALF-1:0];
+                    b_ll <= bx[HALF-1:0] * by[HALF-1:0];
+                    b_lh <= bx[HALF-1:0] * by[REG_WIDTH-1:HALF];
+                    b_hl <= bx[REG_WIDTH-1:HALF] * by[HALF-1:0];
+                end
+                if (range_stage[1]) begin
+                    a_bytes_cfg <= a_ll + ((a_lh + a_hl) << HALF);
+                    b_bytes_cfg <= b_ll + ((b_lh + b_hl) << HALF);
+                end
+                if (range_stage[3]) range_ready <= 1;
+            end
+        end
+        assign cache_axi_arready = (single_group_bypass ? m_axi_arready : cache_request_ready) && range_ready;
+        assign m_axi_arvalid = single_group_bypass ? (cache_axi_arvalid && range_ready) : retained_arvalid;
+        assign m_axi_araddr = single_group_bypass ? cache_axi_araddr : retained_araddr;
+        assign m_axi_arlen = single_group_bypass ? cache_axi_arlen : retained_arlen;
+        assign m_axi_arsize = single_group_bypass ? cache_axi_arsize : retained_arsize;
+        assign m_axi_arburst = single_group_bypass ? cache_axi_arburst : retained_arburst;
+        assign cache_axi_rvalid = single_group_bypass ? m_axi_rvalid : retained_rvalid;
+        assign cache_axi_rdata = single_group_bypass ? m_axi_rdata : retained_rdata;
+        assign cache_axi_rresp = single_group_bypass ? m_axi_rresp : retained_rresp;
+        assign cache_axi_rlast = single_group_bypass ? m_axi_rlast : retained_rlast;
+        assign m_axi_rready = single_group_bypass ? cache_axi_rready : retained_rready;
+        operand_read_cache #(.AW(REG_WIDTH), .DW(BUS_WIDTH), .A_BYTES(OPERAND_STREAM_BYTES)) u_cache (
+            .clk(clk), .rst_n(rst_n), .flush(range_stage[2]),
+            .prefetch_enable(fetch64_q),
+            // The large retention bank follows the streamed IA operand.
+            // WS retains A; IS retains physical B (the internal C^T problem).
+            .a_base(a_base_cfg), .a_bytes(a_bytes_cfg),
+            .b_base(b_base_cfg), .b_bytes(b_bytes_cfg),
+            .s_arvalid(cache_axi_arvalid && range_ready && !single_group_bypass), .m_arvalid(retained_arvalid),
+            .s_arready(cache_request_ready), .m_arready(m_axi_arready),
+            .s_araddr(cache_axi_araddr), .m_araddr(retained_araddr),
+            .s_arlen(cache_axi_arlen), .m_arlen(retained_arlen),
+            .s_arsize(cache_axi_arsize), .m_arsize(retained_arsize),
+            .s_arburst(cache_axi_arburst), .m_arburst(retained_arburst),
+            .s_rvalid(retained_rvalid), .m_rvalid(m_axi_rvalid && !single_group_bypass),
+            .s_rready(cache_axi_rready && !single_group_bypass), .m_rready(retained_rready),
+            .s_rdata(retained_rdata), .m_rdata(m_axi_rdata),
+            .s_rresp(retained_rresp), .m_rresp(m_axi_rresp),
+            .s_rlast(retained_rlast), .m_rlast(m_axi_rlast)
+        );
+    end else begin : g_no_operand_cache
+        assign m_axi_arvalid=cache_axi_arvalid;
+        assign cache_axi_arready=m_axi_arready;
+        assign m_axi_araddr=cache_axi_araddr;
+        assign m_axi_arlen=cache_axi_arlen;
+        assign m_axi_arsize=cache_axi_arsize;
+        assign m_axi_arburst=cache_axi_arburst;
+        assign cache_axi_rvalid=m_axi_rvalid;
+        assign m_axi_rready=cache_axi_rready;
+        assign cache_axi_rdata=m_axi_rdata;
+        assign cache_axi_rresp=m_axi_rresp;
+        assign cache_axi_rlast=m_axi_rlast;
+    end endgenerate
+
     //========================================
     // 内部信号定义
     //========================================
@@ -103,10 +242,16 @@ module npu_top #(
     localparam int unsigned SHARED_DMA_SIZE =
         (BIAS_DMA_SIZE > SIZE) ? BIAS_DMA_SIZE : SIZE;
     // int8 activations plus zero-point need more than 8 signed bits.
+`ifdef GEMMORA_INT8_PROFILE
+    // This profile requires INT8 operands with zero offsets; validate at launch.
+    localparam int unsigned IA_DATA_WIDTH = DATA_WIDTH;
+    localparam int unsigned KERNEL_DATA_WIDTH = WEIGHT_WIDTH;
+`else
     localparam int unsigned IA_DATA_WIDTH =
         (DATA_WIDTH < 16) ? 16 : DATA_WIDTH;
     localparam int unsigned KERNEL_DATA_WIDTH =
         (WEIGHT_WIDTH < 16) ? 16 : WEIGHT_WIDTH;
+`endif
 
     // IA Loader 内部信号
     wire load_ia_req;
@@ -132,6 +277,7 @@ module npu_top #(
     wire weight_sending_done;
     wire load_weight_done;
     wire store_weight_req;
+    wire weight_commit;
     wire signed [KERNEL_DATA_WIDTH-1:0] weight_out[SIZE];
     wire weight_data_valid;
 
@@ -175,6 +321,7 @@ module npu_top #(
     wire [3:0] fifo_output_mask;
     wire [31:0] fifo_output_data;
     wire fifo_full_flag;
+    wire ia_output_pending;
     wire fifo_s8_output_req;
     wire fifo_s8_output_valid;
     wire fifo_s8_output_switch_row;
@@ -245,6 +392,23 @@ module npu_top #(
     logic [BUS_WIDTH/8-1:0] oa_dma_src_wmask;
     logic oa_dma_src_wvalid, oa_dma_src_wready, oa_dma_busy, oa_dma_done;
 
+    wire ps_capacity_fault;
+    wire controller_done_valid;
+    wire [1:0] controller_err_code;
+`ifdef GEMMORA_INT8_PROFILE
+    wire profile_input_invalid=cfg_16bits_ia || cfg_16x8 || lhs_zp!=0 || rhs_zp!=0;
+    logic profile_error;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if(!rst_n)profile_error<=1'b0;
+        else if(calc_start && profile_input_invalid)profile_error<=1'b1;
+    end
+`else
+    wire profile_input_invalid=1'b0;
+    wire profile_error=1'b0;
+`endif
+    assign done_valid=controller_done_valid || ps_capacity_fault || profile_error;
+    assign err_code=ps_capacity_fault ? 2'b11 : profile_error ? 2'b01 : controller_err_code;
+
     // 添加缺少的内部信号
     // per-submodule init_cfg signals (由npu_controller产生的单拍脉冲)
     wire init_cfg_ia;
@@ -256,7 +420,6 @@ module npu_top #(
     wire [REG_WIDTH-1:0] tile_count;  // 分块计数信号
         localparam int unsigned IA_REUSE_NUM_MAX =
             (IA_CACHE_BLOCKS < 2) ? 1 : (IA_CACHE_BLOCKS / 2);
-        localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
         localparam int unsigned DIM_COUNT_WIDTH =
             (ADDR_WIDTH <= SIZE_SHIFT) ? 1 :
             (((ADDR_WIDTH - SIZE_SHIFT + 1) > REG_WIDTH) ? REG_WIDTH :
@@ -280,7 +443,6 @@ module npu_top #(
             (IS_BIAS_ROWS <= 1) ? 1 : ($clog2(IS_BIAS_ROWS) + 1);
         logic [IS_BIAS_ROW_W-1:0] is_bias_row_idx;
         wire signed [31:0] bias_group_scalar;
-        wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
         wire use_per_channel_eff = (ENABLE_PER_CHANNEL != 0)
                                  ? use_per_channel : 1'b0;
         wire cfg_16bits_ia_eff = (IA_DATA_WIDTH > 8) ? cfg_16bits_ia : 1'b0;
@@ -310,19 +472,13 @@ module npu_top #(
         logic [REG_WIDTH-1:0] cfg_ia_req_s1;
         logic [REG_WIDTH-1:0] cfg_w_req_s1;
         logic cfg_mode_s2;
-        logic cfg_use16_s2;
-        logic cfg_16x8_s2;
         logic [REG_WIDTH-1:0] cfg_k_s2;
         logic [REG_WIDTH-1:0] cfg_m_s2;
         logic [REG_WIDTH-1:0] cfg_n_s2;
-        logic [REG_WIDTH-1:0] cfg_stream_k_s2;
-        logic [REG_WIDTH-1:0] cfg_stream_m_s2;
-        logic [REG_WIDTH-1:0] cfg_ia_reuse_eff_s2;
-        logic [REG_WIDTH-1:0] cfg_w_reuse_eff_s2;
         logic [IS_BIAS_VALID_W-1:0] cfg_bias_rows_target_s2;
 
         wire cfg_start_event = calc_start && sa_ready;
-        wire cfg_stage2_fire = cfg_stage2_valid && ctrl_sa_ready;
+        assign cfg_stage2_fire = cfg_stage2_valid && ctrl_sa_ready;
         wire ctrl_calc_start = cfg_stage2_fire;
         assign sa_ready = ctrl_sa_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid;
 
@@ -575,17 +731,17 @@ module npu_top #(
             .oa_src_wready           (oa_dma_src_wready),
             .oa_busy                 (oa_dma_busy),
             .oa_done                 (oa_dma_done),
-            .m_axi_arvalid           (m_axi_arvalid),
-            .m_axi_arready           (m_axi_arready),
-            .m_axi_araddr            (m_axi_araddr),
-            .m_axi_arlen             (m_axi_arlen),
-            .m_axi_arsize            (m_axi_arsize),
-            .m_axi_arburst           (m_axi_arburst),
-            .m_axi_rvalid            (m_axi_rvalid),
-            .m_axi_rready            (m_axi_rready),
-            .m_axi_rdata             (m_axi_rdata),
-            .m_axi_rresp             (m_axi_rresp),
-            .m_axi_rlast             (m_axi_rlast),
+            .m_axi_arvalid           (cache_axi_arvalid),
+            .m_axi_arready           (cache_axi_arready),
+            .m_axi_araddr            (cache_axi_araddr),
+            .m_axi_arlen             (cache_axi_arlen),
+            .m_axi_arsize            (cache_axi_arsize),
+            .m_axi_arburst           (cache_axi_arburst),
+            .m_axi_rvalid            (cache_axi_rvalid),
+            .m_axi_rready            (cache_axi_rready),
+            .m_axi_rdata             (cache_axi_rdata),
+            .m_axi_rresp             (cache_axi_rresp),
+            .m_axi_rlast             (cache_axi_rlast),
             .m_axi_awvalid           (m_axi_awvalid),
             .m_axi_awready           (m_axi_awready),
             .m_axi_awaddr            (m_axi_awaddr),
@@ -653,6 +809,7 @@ module npu_top #(
             .ia_data_valid        (ia_data_valid),
                 // Weight Loader Interface
             .send_weight_trigger  (send_weight_trigger),
+            .weight_commit(weight_commit),
         .weight_sending_done  (weight_sending_done),
         .weight_data_valid    (weight_data_valid),
             // Bias Loader Interface
@@ -661,13 +818,13 @@ module npu_top #(
             // Requantization Interface
             .quant_params_valid   (quant_params_valid),
         // FIFO Interface
-        .fifo_full_flag       (fifo_full_flag),
+        .fifo_full_flag       (fifo_full_flag && ia_output_pending),
             // OA Writer Interface
             .oa_calc_over         (oa_calc_over),
         // Task Completion Handshake Interface
-        .done_valid             (done_valid),
+        .done_valid             (controller_done_valid),
         .done_ready             (done_ready),
-        .err_code             (err_code)
+        .err_code             (controller_err_code)
     );
         // IA Loader
             ia_loader #(
@@ -726,6 +883,7 @@ module npu_top #(
             .ia_calc_done   (ia_calc_done),
             .ia_out         (ia_out),
             .ia_data_valid  (ia_data_valid),
+            .ia_output_pending(ia_output_pending),
             .bias_sleep     (bias_sleep),
         .bias_switch    (bias_switch),
         .bias_last_loop (bias_last_loop),
@@ -878,9 +1036,11 @@ module npu_top #(
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .MAX_IA_REUSE  (IA_REUSE_NUM_MAX)
     ) u_compute_core (
+        .ps_capacity_fault(ps_capacity_fault),
         .clk             (clk),
         .rst_n           (rst_n),
         .store_weight_req(store_weight_req),
+        .weight_commit(weight_commit),
         .weight_in       (weight_out),
         .ia_vec_in       (ia_out),
         .ia_row_valid    (ia_row_valid),
@@ -1029,7 +1189,7 @@ module npu_top #(
             .dma_lhs_zp        (quant_dma_lhs_zp),
             .dma_raw_data      (quant_dma_raw_data),
             .dma_raw_valid     (quant_dma_raw_valid),
-            .in_valid          (acc_data_valid),
+            .in_valid          (acc_data_valid && !ps_capacity_fault),
             .in_tile_done      (tile_calc_over),
             .in_vec_s32        (requant_in_vec),
         .out_valid         (requant_s8_valid),
@@ -1039,6 +1199,11 @@ module npu_top #(
             .quant_shift_lane(requant_shift_lane)
         );
 
+`ifdef GEMMORA_INT8_PROFILE
+    assign requant_s16_valid=1'b0;
+    assign requant_s16_tile_done=1'b0;
+    assign requant_out_s16='{default:'0};
+`else
     vec_requant_s64 #(
         .VLEN(SIZE)
     ) u_vec_requant_s64 (
@@ -1056,6 +1221,8 @@ module npu_top #(
         .out_tile_done     (requant_s16_tile_done),
         .out_vec_s16       (requant_out_s16)
     );
+
+`endif
 
     assign requant_out_valid = run_16x8 ? requant_s16_valid : requant_s8_valid;
     assign requant_out_tile_done = run_16x8 ? requant_s16_tile_done : requant_s8_tile_done;
@@ -1078,6 +1245,40 @@ module npu_top #(
     assign fifo_output_data = run_16x8 ? fifo_s16_output_data : fifo_s8_output_data;
     assign fifo_full_flag = run_16x8 ? fifo_s16_full_flag : fifo_s8_full_flag;
 
+    // Reorder bounded column segments in the existing output FIFO. The segment
+    // holds at most 128 tiles; wider matrices drain several strided segments.
+    logic [4:0] oa_chunk_cols_pre;
+    always_comb begin
+        if (w_reuse_num_eff >= 16 && run_m >= 256 && dst_base[7:0] == 0 &&
+            (int'(ia_reuse_num_eff) * 16 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 16;
+        else if (w_reuse_num_eff >= 8 && run_m >= 128 && dst_base[6:0] == 0 &&
+            (int'(ia_reuse_num_eff) * 8 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 8;
+        else if (w_reuse_num_eff >= 4 && run_m >= 64 && dst_base[5:0] == 0 &&
+            (int'(ia_reuse_num_eff) * 4 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 4;
+        else if (w_reuse_num_eff >= 2 && run_m >= 32 && dst_base[4:0] == 0 &&
+            (int'(ia_reuse_num_eff) * 2 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 2;
+        else oa_chunk_cols_pre = 1;
+    end
+    wire oa_row_coalesce_pre = (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
+        !is_mode && !run_16x8 && run_k != 0 &&
+        ia_reuse_num_eff <= 16 && oa_chunk_cols_pre >= 2 &&
+        (run_k & ((ia_reuse_num_eff << 4) - 1'b1)) == 0 &&
+        (run_m & ((REG_WIDTH'(oa_chunk_cols_pre) << 4) - 1'b1)) == 0 &&
+        dst_row_stride_b == run_m;
+    logic oa_row_coalesce;
+    logic [4:0] oa_coalesce_rows, oa_coalesce_cols;
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            oa_row_coalesce <= 0;
+            oa_coalesce_rows <= 0;
+            oa_coalesce_cols <= 0;
+        end else if (init_cfg_oa) begin
+            oa_row_coalesce <= oa_row_coalesce_pre;
+            oa_coalesce_rows <= ia_reuse_num_eff[4:0];
+            oa_coalesce_cols <= oa_chunk_cols_pre;
+        end
+    end
+
     // FIFO
     vec_s8_to_fifo #(
         .VLEN (SIZE),
@@ -1091,6 +1292,9 @@ module npu_top #(
         .in_vec_s8        (in_vec_s8),
         .oa_fifo_req      (fifo_s8_output_req),
         .transpose_mode   (is_mode),
+        .coalesce_enable  (oa_row_coalesce),
+        .coalesce_rows    (REG_WIDTH'(oa_coalesce_rows)),
+        .coalesce_cols    (REG_WIDTH'(oa_coalesce_cols)),
         .reserve_banks    (ia_reuse_num_eff),
         .vec_valid_num_col(fifo_vec_valid_num_col),
         .vec_valid_num_row(fifo_vec_valid_num_row),
@@ -1102,6 +1306,14 @@ module npu_top #(
         .fifo_full_flag   (fifo_s8_full_flag)
     );
 
+`ifdef GEMMORA_INT8_PROFILE
+    assign fifo_s16_output_req=1'b0;
+    assign fifo_s16_output_valid=1'b0;
+    assign fifo_s16_output_switch_row=1'b0;
+    assign fifo_s16_output_mask='0;
+    assign fifo_s16_output_data='0;
+    assign fifo_s16_full_flag=1'b0;
+`else
     vec_s16_to_fifo #(
         .VLEN (SIZE),
         .BANKS(OA_FIFO_BANKS)
@@ -1121,6 +1333,8 @@ module npu_top #(
         .output_data      (fifo_s16_output_data),
         .fifo_full_flag   (fifo_s16_full_flag)
     );
+
+`endif
 
     // OA Writer
         oa_writer #(
@@ -1147,6 +1361,8 @@ module npu_top #(
         .ia_reuse_num     (ia_reuse_num_eff),
         .is_mode          (is_mode),
         .output_16bits    (run_16x8),
+        .coalesce_enable  (oa_row_coalesce_pre),
+        .coalesce_cols    (oa_chunk_cols_pre),
         .output_valid     (fifo_output_valid),
         .switch_row       (fifo_output_switch_row),
             .output_ready     (fifo_output_ready),
@@ -1379,4 +1595,5 @@ module npu_top #(
 `endif
 
     //assign calc_done = oa_calc_over;
+`endif
 endmodule

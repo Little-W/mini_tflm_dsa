@@ -11,7 +11,7 @@ make model-build
 make vcs-tflm
 ```
 
-不指定 `MODEL` 时，`make model-select` 显示编号菜单。也可以运行 `python3 drivers/tflm/select_model.py --list` 或 `--select <名称>`。选择结果保存在 `model_selection.mk`；`model-build` 和 `vcs-tflm` 使用该配置。命令行的 `TFLM_APP` 可单次覆盖仿真应用。
+不指定 `MODEL` 时，`make model-select` 显示编号菜单。也可以运行 `python3 drivers/tflm/select_model.py --list` 或 `--select <名称>`。选择结果保存在 `model_selection.mk`；`model-build` 和 `vcs-tflm` 使用该配置及模型对应的 SoC 存储深度。命令行的 `TFLM_APP` 可单次覆盖仿真应用。
 
 NMSIS 源码位于 `NMSIS/`，加速器接口位于 `NMSIS/NN/Source/ExtraAccFunctions/` 和 `NMSIS/NN/Include/`。TFLM 内原有的模型和依赖引用使用相对符号链接，构建产物位于构建目录。
 
@@ -24,7 +24,7 @@ make vcs-top PAPER_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=64 PS_FRAME_COUNT=25 \
   GEN_ARGS='--K 32 --N 32 --M 32 --lhs_dtype 1 --no_bias --lhs_zp 0 --rhs_zp 0 --tight_strides --ia_reuse_num 2 --w_reuse_num 2'
 ```
 
-`PS_POOL_BYTES` 指定页池字节数，默认 179200。FPGA 综合脚本使用环境变量 `GEMPACT_PAPER_ENGINE=1` 启用该引擎，`GEMPACT_PS_POOL_BYTES` 指定页池大小。
+`PS_POOL_BYTES` 指定页池字节数，默认 179200；`PANEL_MAX_R` 和 `PANEL_MAX_W` 指定面板上限，默认均为 16。FPGA 综合脚本使用环境变量 `GEMPACT_PAPER_ENGINE=1` 启用该引擎，`GEMPACT_PS_POOL_BYTES` 指定页池大小。
 
 论文引擎的 Python 周期接口位于 `veri/paper_model/`。运行前使用 Verilator 构建相应容量配置：
 

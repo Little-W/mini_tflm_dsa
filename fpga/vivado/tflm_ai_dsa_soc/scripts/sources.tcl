@@ -18,6 +18,7 @@ set npu_writeback_root [file join $npu_root writeback]
 
 set include_dirs [list \
     [file join $dsa_root include] \
+    [file join $npu_root gempact] \
 ]
 
 set design_sources [list \
@@ -45,6 +46,21 @@ set design_sources [list \
     [file join $npu_loaders_root kernel_loader_buffer.sv] \
     [file join $npu_loaders_root kernel_loader_ctrl.sv] \
     [file join $npu_control_root npu_controller.sv] \
+    [file join $npu_root gempact gempact_c_pack.sv] \
+    [file join $npu_root gempact gempact_frame_array.sv] \
+    [file join $npu_root gempact gempact_paged_ps.sv] \
+    [file join $npu_root gempact gempact_panel_cache.sv] \
+    [file join $npu_root gempact gempact_panel_engine.sv] \
+    [file join $npu_root gempact gempact_ps_bank.sv] \
+    [file join $npu_root gempact gempact_resident_engine.sv] \
+    [file join $npu_root gempact gempact_stream_ps.sv] \
+    [file join $npu_root gempact gempact_stream_ps_pcr.sv] \
+    [file join $npu_root gempact gempact_tagged_array.sv] \
+    [file join $npu_root gempact gempact_tile_core.sv] \
+    [file join $npu_root gempact operand_read_cache.sv] \
+    [file join $npu_root gempact ps_capacity_schedule.sv] \
+    [file join $npu_root gempact ps_codec_measure.sv] \
+    [file join $npu_root gempact ps_sector_store.sv] \
     [file join $npu_top_root npu_top.sv] \
     [file join $npu_writeback_root oa_writer.sv] \
     [file join $npu_buffers_root ps_buffer.sv] \

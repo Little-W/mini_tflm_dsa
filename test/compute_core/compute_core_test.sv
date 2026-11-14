@@ -139,6 +139,13 @@ module compute_core_test #(
         .sum_in    (bias_or_ps_sum)
     );
 
+    logic store_weight_req_q;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) store_weight_req_q <= 1'b0;
+        else store_weight_req_q <= store_weight_req;
+    end
+    wire weight_commit = store_weight_req_q && !store_weight_req;
+
     ws_systolic_array #(
         .SIZE         (SIZE),
         .DATA_IN_WIDTH(DATA_WIDTH),
@@ -147,6 +154,7 @@ module compute_core_test #(
     ) u_systolic_array (
         .clk             (clk),
         .store_weight_req(store_weight_req),
+        .weight_commit(weight_commit),
         .weight_in       (weight_in),
         .data_in         (ia_vec_in),
         .sum_in          (bias_or_ps_sum),

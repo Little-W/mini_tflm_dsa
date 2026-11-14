@@ -47,6 +47,7 @@ def main():
                 ROOT / "test/npu_top/tb_npu_top.sv", HERE / "cycle_probe.sv"]
     flags = [
         "--timing", "-sv", "--top-module", "tb_npu_top", "-Wno-fatal",
+        f"-I{npu / 'gempact'}",
         *[f"-Wno-{warning}" for warning in WARNINGS],
         f"-DTB_SIZE={args.size}", f"-DTB_IA_CACHE_BLOCKS={args.cache}",
         f"-DTB_PS_FRAME_COUNT={args.ps}", "-DTB_AXI_READ_OUTSTANDING=4",

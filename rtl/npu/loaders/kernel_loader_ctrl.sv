@@ -43,6 +43,11 @@ module kernel_loader_ctrl #(
   localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
   localparam int unsigned CNT_W = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
   typedef logic [CNT_W-1:0] count_t;
+  // A task contains K tiles * output-column tiles * row groups. These totals
+  // need a product width, unlike a single dimension. A 16-bit total wrapped
+  // at 65,536 loads and could retire the task with its final tile still queued.
+  localparam int unsigned TOTAL_CNT_W = 3 * CNT_W;
+  typedef logic [TOTAL_CNT_W-1:0] total_count_t;
 
   typedef enum logic [1:0] {S_IDLE, S_INIT, S_RUN, S_DONE} state_t;
 
@@ -77,8 +82,8 @@ module kernel_loader_ctrl #(
   count_t load_col_in_group;
   count_t group_base_col;
   count_t load_tile_col;
-  count_t loaded_count;
-  count_t sent_count;
+  total_count_t loaded_count;
+  total_count_t sent_count;
   logic                 load_complete;
   logic                 all_loads_done;
   logic                 last_col_in_group;
@@ -87,7 +92,7 @@ module kernel_loader_ctrl #(
   logic                 last_repeat;
   logic                 final_load_done;
   logic                 load_complete_after;
-  count_t loaded_count_after;
+  total_count_t loaded_count_after;
   count_t w_reuse_total;
   logic [REG_WIDTH-1:0] base_addr_reg;
   logic [REG_WIDTH-1:0] col_addr_step;
@@ -189,7 +194,7 @@ module kernel_loader_ctrl #(
     last_l2_group     = (load_l2 + count_t'(1) >= l2_groups_total);
     last_repeat       = (load_repeat + count_t'(1) >= repeat_total);
     final_load_done   = load_done && last_col_in_group && last_tile_row && last_l2_group && last_repeat;
-    loaded_count_after = loaded_count + (load_done ? count_t'(1) : count_t'(0));
+    loaded_count_after = loaded_count + (load_done ? total_count_t'(1) : total_count_t'(0));
 
     load_complete = all_loads_done;
     load_complete_after = all_loads_done || final_load_done;
@@ -253,13 +258,13 @@ module kernel_loader_ctrl #(
             all_loads_done      <= 1'b0;
             tile_rows_total     <= cfg_tile_rows_total;
             tile_cols_total     <= cfg_tile_cols_total;
-            l2_groups_total     <= cfg_l2_groups_total;
-            repeat_total        <= cfg_repeat_total;
+            l2_groups_total <= cfg_l2_groups_total;
+            repeat_total <= cfg_repeat_total;
+            last_group_width <= cfg_last_group_width;
             last_n_rows         <= cfg_last_n_rows;
             last_m_cols         <= cfg_last_m_cols;
             current_group_width <= count_t'(1);
             w_reuse_total       <= w_reuse_norm;
-            last_group_width    <= cfg_last_group_width;
             base_addr_reg       <= cfg_rhs_base;
             col_addr_step       <= cfg_col_addr_step;
             row_addr_step       <= cfg_row_addr_step;
@@ -317,7 +322,7 @@ module kernel_loader_ctrl #(
 
           if (buf_weight_sending_done) begin
             sent_count <= sent_count + 1'b1;
-            if (load_complete_after && (sent_count + 1 >= loaded_count_after)) begin
+            if (load_complete_after && (sent_count + total_count_t'(1) >= loaded_count_after)) begin
               state <= S_DONE;
             end
           end

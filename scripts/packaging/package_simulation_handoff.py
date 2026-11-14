@@ -15,7 +15,7 @@ ROOT=Path(__file__).resolve().parents[2]
 PM=ROOT/"veri/python_model"
 DEFAULT_LABEL="aiEngine_python_cycle_handoff_20261109"
 BAD_DIRS={".git",".svn","__pycache__","obj_dir","out","runs","CMakeFiles",
-          ".Xil",".cache",".github",".vscode","proofs"}
+          ".Xil",".cache",".github",".vscode","proofs","backends","runtime_cache"}
 BAD_SUFFIXES={".o",".a",".so",".pyc",".log",".jou",".fsdb",".vcd",".elf",
               ".bin",".map",".zip",".tgz",".gz",".xz"}
 
@@ -57,7 +57,7 @@ def stage(dest,resume=False):
     dest.mkdir(parents=True,exist_ok=resume)
     for rel in ["rtl","picorv32","include","test","scripts",
                 "veri/env","veri/interface","veri/uvc","veri/test","veri/flist",
-                "veri/soc_csrc","veri/tools","veri/top_regression"]:
+                "veri/soc_csrc","veri/tools","veri/top_regression","veri/paper_model"]:
         source_tree(ROOT/rel,dest/rel)
     for folder in ["veri/sim","veri/tb"]:
         for p in (ROOT/folder).iterdir():
@@ -73,6 +73,11 @@ def stage(dest,resume=False):
         if p.is_file(): copy_file(p,dest/"drivers"/p.name)
     for rel in ["drivers/tflm/inc","drivers/tflm/src"]:
         source_tree(ROOT/rel,dest/rel)
+    source_tree(ROOT/"drivers/tflm/models",dest/"drivers/tflm/models")
+    for part in ("Core", "NN"):
+        source_tree(ROOT/"drivers/tflm/NMSIS"/part, dest/"drivers/tflm/NMSIS"/part)
+    for name in ("select_model.py", "model_selection.mk", "README.md"):
+        copy_file(ROOT/"drivers/tflm"/name, dest/"drivers/tflm"/name)
     tflm=ROOT/"drivers/tflm/tflm"
     for p in tflm.iterdir():
         if p.is_file() and (p.name=="Makefile" or p.suffix in {".cc",".md",".cmake"}):
@@ -96,11 +101,21 @@ def stage(dest,resume=False):
             with p.open("rb") as f:
                 if f.read(4)==b"\x7fELF": continue
             copy_file(p,dest/p.relative_to(ROOT))
+    link_sources = [micro/name for name in ("my_model", "mnist_mlp", "mnist_cnn", "sensor_calibration", "sensor_calibration_20261015")]
+    link_sources += [micro/"gen/my_model", downloads/"nuclei_sdk/NMSIS", downloads/"nmsis"]
+    generated = micro/"gen/linux_x86_64_default/genfiles/tensorflow/lite/micro"
+    link_sources += [generated/"examples"/name for name in ("hello_world", "micro_speech", "person_detection")]
+    link_sources += [generated/"models"/f"person_detect_model_data.{ext}" for ext in ("cc", "h")]
+    for source in link_sources:
+        if source.is_symlink():
+            link = dest/source.relative_to(ROOT)
+            link.parent.mkdir(parents=True, exist_ok=True)
+            if not link.exists() and not link.is_symlink():
+                link.symlink_to(os.readlink(source), target_is_directory=source.is_dir())
     # Python adapter, checked binaries, and the complete validation evidence.
     for p in PM.iterdir():
         if p.is_file() and p.suffix in {".py",".sv",".cpp",".hpp",".md"}:
             copy_file(p,dest/p.relative_to(ROOT))
-    source_tree(PM/"backends",dest/"veri/python_model/backends")
     shutil.copytree(PM/"validation",dest/"veri/python_model/validation",copy_function=copy_file,dirs_exist_ok=True)
     for name in ["ws_int8_tail","ws_s16_output","is_s16_per_channel"]:
         if not (PM/"validation"/name/"case").is_dir(): continue
@@ -127,23 +142,11 @@ def stage(dest,resume=False):
         "Build and run the Python RTL interface as described in "
         "`veri/python_model/README.md`. VCS simulation targets are listed by "
         "`make help`.\n", encoding="utf-8")
-    # External model binaries referenced by the existing SoC build, now local.
-    external_models={
-        "sensor_calibration_20261016/sensor_calibrator_int16.tflite":
-            Path("/home/etc/FPGA/BIT_PROJ_S1/Vitis/sensor_sw_v2/src/calibration/sim_20261016/sensor_calibrator_int16.tflite"),
-        "sensor_calibration_20261019/sensor_calibrator_complete_int16.tflite":
-            Path("/home/etc/FPGA/BIT_PROJ_S1/Vitis/sensor_sw_v2/src/calibration/sim_20261019/sensor_calibrator_complete_int16.tflite"),
-    }
     model_index=[]
-    for rel,external in external_models.items():
-        source=ROOT/"models"/rel if (ROOT/"models"/rel).is_file() else external
-        if not source.is_file(): continue
-        copy_file(source,dest/"models"/rel)
-        model_index.append({"file":"models/"+rel,"bytes":source.stat().st_size,"sha256":hash_file(source)})
-    for p in sorted((dest/"drivers/tflm/tflm/tflite-micro").rglob("*.tflite")):
+    for p in sorted((dest/"drivers/tflm/models").rglob("*.tflite")):
         model_index.append({"file":str(p.relative_to(dest)),"bytes":p.stat().st_size,"sha256":hash_file(p)})
-    (dest/"models").mkdir(exist_ok=True)
-    (dest/"models/INDEX.json").write_text(json.dumps(model_index,ensure_ascii=False,indent=2)+"\n")
+    (dest/"drivers/tflm/models/MODEL_INDEX.json").write_text(
+        json.dumps(model_index,ensure_ascii=False,indent=2)+"\n")
     status=subprocess.check_output(["git","status","--short"],cwd=ROOT,text=True)
     (dest/"SOURCE_STATUS.txt").write_text(status)
     snapshot={
@@ -161,7 +164,7 @@ def shipped(path,dest):
     return not any(part in {"build_frozen","__pycache__","results"} for part in parts)
 
 def finalize(dest):
-    files=sorted(p for p in dest.rglob("*") if p.is_file() and
+    files=sorted(p for p in dest.rglob("*") if not p.is_symlink() and p.is_file() and
                  p.name!="MANIFEST.sha256" and shipped(p,dest))
     manifest="\n".join(f"{hash_file(p)}  {p.relative_to(dest).as_posix()}" for p in files)+"\n"
     (dest/"MANIFEST.sha256").write_text(manifest)
@@ -169,6 +172,11 @@ def finalize(dest):
     archive=dest.with_suffix(".zip")
     with zipfile.ZipFile(archive,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:
         for p in files: z.write(p,arcname=(Path(dest.name)/p.relative_to(dest)).as_posix())
+        for p in sorted(p for p in dest.rglob("*") if p.is_symlink() and shipped(p,dest)):
+            info=zipfile.ZipInfo((Path(dest.name)/p.relative_to(dest)).as_posix())
+            info.create_system=3
+            info.external_attr=(stat.S_IFLNK | 0o777) << 16
+            z.writestr(info,os.readlink(p))
     with zipfile.ZipFile(archive) as z:
         bad=z.testzip()
         if bad: raise RuntimeError(f"ZIP integrity failed at {bad}")

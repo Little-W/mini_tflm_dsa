@@ -86,7 +86,21 @@ add_files -norecurse -fileset constrs_1 $constraint_files
 create_tflm_soc_clk_wiz $core_clk_mhz_value
 
 set_property include_dirs $include_dirs [get_filesets sources_1]
-set_property verilog_define {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1 XILINX_FPGA=1} [get_filesets sources_1]
+set rtl_defines {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1 XILINX_FPGA=1}
+if {[info exists ::env(GEMPACT_PAPER_ENGINE)] && $::env(GEMPACT_PAPER_ENGINE) eq "1"} {
+    lappend rtl_defines GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS
+    set pool_bytes 179200
+    if {[info exists ::env(GEMPACT_PS_POOL_BYTES)] && $::env(GEMPACT_PS_POOL_BYTES) ne ""} {
+        set pool_bytes $::env(GEMPACT_PS_POOL_BYTES)
+    }
+    lappend rtl_defines GEMMORA_PS_POOL_BYTES=$pool_bytes
+    foreach {name default} {GEMPACT_PANEL_MAX_R 16 GEMPACT_PANEL_MAX_W 16} {
+        set value $default
+        if {[info exists ::env($name)] && $::env($name) ne ""} { set value $::env($name) }
+        lappend rtl_defines $name=$value
+    }
+}
+set_property verilog_define $rtl_defines [get_filesets sources_1]
 set_property top fpga_top [get_filesets sources_1]
 set_property generic $top_generics [get_filesets sources_1]
 

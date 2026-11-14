@@ -8,6 +8,7 @@ module compute_core #(
     input  logic                         clk,
     input  logic                         rst_n,
 
+    input  logic                         weight_commit,
     input  logic                         store_weight_req,
     input  logic signed [WEIGHT_WIDTH-1:0] weight_in [SIZE],
     input  logic signed [DATA_WIDTH-1:0] ia_vec_in   [SIZE],
@@ -24,7 +25,8 @@ module compute_core #(
     output logic signed [31:0]           acc_data_out[SIZE],
     output logic                         acc_data_valid,
     output logic                         partial_sum_calc_over,
-    output logic                         tile_calc_over
+    output logic                         tile_calc_over,
+    output logic                         ps_capacity_fault
 );
 
     logic signed [31:0] bias_or_ps_sum [0:SIZE-1];
@@ -184,6 +186,7 @@ module compute_core #(
     ) u_systolic_array (
         .clk             (clk),
         .store_weight_req(store_weight_req),
+        .weight_commit(weight_commit),
         .weight_in       (weight_in),
         .data_in         (ia_vec_in),
         .sum_in          (bias_or_ps_sum),
@@ -196,6 +199,7 @@ module compute_core #(
         .FRAME_COUNT(PS_EFFECTIVE_FRAME_COUNT),
         .MAX_IA_REUSE(MAX_IA_REUSE)
     ) u_ps_buffer (
+        .capacity_fault(ps_capacity_fault),
         .clk            (clk),
         .rst_n          (rst_n),
         .data_in        (systolic_sum),

@@ -142,6 +142,7 @@ module ia_loader_ctrl #(
       REG_WIDTH'(4):  l2_group_row_step_b_comb = tile_row_step_b_comb << 2;
       REG_WIDTH'(8):  l2_group_row_step_b_comb = tile_row_step_b_comb << 3;
       REG_WIDTH'(16): l2_group_row_step_b_comb = tile_row_step_b_comb << 4;
+      REG_WIDTH'(25): l2_group_row_step_b_comb = (tile_row_step_b_comb << 4) + (tile_row_step_b_comb << 3) + tile_row_step_b_comb;
       REG_WIDTH'(32): l2_group_row_step_b_comb = tile_row_step_b_comb << 5;
       REG_WIDTH'(64): l2_group_row_step_b_comb = tile_row_step_b_comb << 6;
       default:        l2_group_row_step_b_comb = tile_row_step_b_comb;

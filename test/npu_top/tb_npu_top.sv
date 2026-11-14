@@ -144,6 +144,7 @@ module tb_npu_top;
     ) u_dut (
         .clk          (clk),
         .rst_n        (rst_n),
+        .cfg_operand_fetch64(1'b0),
         .calc_start   (calc_start),
         .cfg_16bits_ia(cfg_16bits_ia),
         .cfg_16x8(cfg_16x8),

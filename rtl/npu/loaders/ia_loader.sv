@@ -18,7 +18,7 @@
  *   - 早期释放：tile 完成最后一次 reuse 后立即释放 slot
  *
  * 设计约束：
- *   - SIZE、ia_reuse_num、w_reuse_num 要求为 2 的幂次
+ *   - SIZE 为2的幂；复用深度支持2的幂以及本实验的25
  *   - CACHE_BLOCKS ≥ 2 × ia_reuse_num
  */
 
@@ -86,6 +86,7 @@ module ia_loader #(
     output logic                         ia_tile_start,          // 单 tile 首行到达输出端
     output logic                         ia_sending_done,
     output logic                         ia_data_valid,
+    output logic                         ia_output_pending,
     output logic                         bias_sleep,
     output logic                         bias_switch,
     output logic                         bias_last_loop,
@@ -238,16 +239,16 @@ module ia_loader #(
             horizontal_tile_num <= (n + SIZE - 1) >> LOG2_SIZE;
             vertical_tile_num <= (k + SIZE - 1) >> LOG2_SIZE;
 
-            l2_group_num <= l2_group_num_comb;
             l1_per_l2 <= (n + SIZE - 1) >> LOG2_SIZE;
-            ia_reuse_num_act <= ia_reuse_num_act_comb;
             output_col_tile_num <= output_col_tile_num_comb;
-            w_groups_total <= w_groups_total_comb;
-            w_group_last_width <= w_group_last_width_comb;
             rsp_beats_per_row_normal <= ((SIZE << (use_16bits ? 1 : 0)) + BYTE_PER_BEAT - 1) >> LOG2_BYTE_PER_BEAT;
             rsp_beats_per_row_last <= rsp_beats_per_row_last_comb;
             rsp_rows_last_tile <= rsp_rows_last_tile_comb;
 
+            l2_group_num <= l2_group_num_comb;
+            ia_reuse_num_act <= ia_reuse_num_act_comb;
+            w_groups_total <= w_groups_total_comb;
+            w_group_last_width <= w_group_last_width_comb;
             cfg_valid <= 1'b1;
         end else if (state == INIT) begin
             cfg_valid <= 1'b0;
@@ -380,6 +381,8 @@ module ia_loader #(
         .cache_tile_done    (cache_tile_done),
         .cache_l1_done      (cache_l1_done)
     );
+
+    assign ia_output_pending = cache_l1_calc_done;
 
     // Stage the L1 launch command between ctrl and cache_mgr.  The command is
     // not throughput-critical (one pulse per L1 group), and this breaks a long

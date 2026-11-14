@@ -10,7 +10,8 @@
     "directory": "mnist_mlp",
     "app": "mnist_mlp",
     "build_target": "tflm_mnist_mlp_soc_c",
-    "description": "MNIST MLP INT8"
+    "description": "MNIST MLP INT8",
+    "cpu_mem_words": 131072
   },
   "mnist_mlp_int16x8": {
     "directory": "mnist_mlp",
@@ -22,7 +23,8 @@
     "directory": "mnist_cnn",
     "app": "mnist_cnn",
     "build_target": "tflm_mnist_cnn_soc_c",
-    "description": "MNIST CNN"
+    "description": "MNIST CNN",
+    "cpu_mem_words": 262144
   },
   "sensor_calibration": {
     "directory": "sensor_calibration",
@@ -47,7 +49,8 @@
     "directory": "micro_speech",
     "app": "micro_speech",
     "build_target": "tflm_micro_speech_soc_c",
-    "description": "语音识别"
+    "description": "语音识别",
+    "cpu_mem_words": 131072
   },
   "person_detection": {
     "directory": "person_detection",
@@ -55,5 +58,19 @@
     "build_target": "tflm_person_detection_soc_c",
     "description": "人员检测",
     "cpu_mem_words": 262144
+  },
+  "sensor_calibrator_20261016": {
+    "directory": "sensor_calibrator_20261016",
+    "app": "sensor_calibrator_20261016",
+    "build_target": "tflm_sensor_calibrator_20261016_soc_c",
+    "description": "传感器校准完整模型",
+    "cpu_mem_words": 3112960
+  },
+  "sensor_calibration_20261019": {
+    "directory": "sensor_calibration_20261019",
+    "app": "sensor_calibration_20261019",
+    "build_target": "tflm_sensor_calibration_20261019_soc_c",
+    "description": "传感器校准组合模型",
+    "cpu_mem_words": 1048576
   }
 }

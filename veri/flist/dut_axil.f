@@ -1,3 +1,4 @@
++incdir+../../rtl/npu/gempact
 ../../rtl/axi_top/npu_axil_reg_if.sv
 ../../rtl/axi_top/npu_axil_top.sv
 ../../rtl/axi_top/axil_top_with_ram.sv
@@ -27,3 +28,19 @@
 ../../rtl/npu/writeback/vec_s16_to_fifo.sv
 ../../rtl/npu/compute/ws_systolic_array.sv
 ../../rtl/npu/compute/ws_systolic_cell.sv
+
+../../rtl/npu/gempact/gempact_c_pack.sv
+../../rtl/npu/gempact/gempact_frame_array.sv
+../../rtl/npu/gempact/gempact_paged_ps.sv
+../../rtl/npu/gempact/gempact_panel_cache.sv
+../../rtl/npu/gempact/gempact_panel_engine.sv
+../../rtl/npu/gempact/gempact_ps_bank.sv
+../../rtl/npu/gempact/gempact_resident_engine.sv
+../../rtl/npu/gempact/gempact_stream_ps.sv
+../../rtl/npu/gempact/gempact_stream_ps_pcr.sv
+../../rtl/npu/gempact/gempact_tagged_array.sv
+../../rtl/npu/gempact/gempact_tile_core.sv
+../../rtl/npu/gempact/operand_read_cache.sv
+../../rtl/npu/gempact/ps_capacity_schedule.sv
+../../rtl/npu/gempact/ps_codec_measure.sv
+../../rtl/npu/gempact/ps_sector_store.sv

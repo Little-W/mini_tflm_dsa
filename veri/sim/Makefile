@@ -19,6 +19,13 @@ VCS_CXX ?= g++
 case     ?= ai_mem_gen_smoke_test
 seed     ?= 1
 DUT_MODE ?= axil
+PAPER_ENGINE ?= 0
+PS_POOL_BYTES ?= 179200
+PANEL_MAX_R ?= 16
+PANEL_MAX_W ?= 16
+ifeq ($(PAPER_ENGINE),1)
+MODE_DEFINES += GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES) GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R) GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W)
+endif
 SOC_CASE ?= axi_soc_case
 SOC_CASE_DIR ?= ../tb/$(SOC_CASE)
 SOC_K ?= 24
@@ -55,7 +62,7 @@ SOC_AXI_WRITE_OUTSTANDING ?= $(SOC_AXI_READ_OUTSTANDING)
 SOC_CPU_ENABLE_ICACHE ?= 0
 SOC_BYPASS_RAM_PINGPONG ?= 1
 SOC_RAM_WRITE_TIMING_BUFFER ?= 1
-SIMV     ?= simv_$(DUT_MODE)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)
+SIMV     ?= simv_$(DUT_MODE)_E$(PAPER_ENGINE)$(if $(filter 1,$(PAPER_ENGINE)),_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W),)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)
 SOC_TIMEOUT_CYCLES ?=
 SOC_C_SRC ?= ../soc_csrc/soc_main.c
 SOC_RUNTIME_C_SRC ?= ../soc_csrc/soc_runtime_main.c
@@ -144,7 +151,7 @@ TFLM_ACCEL_TAG := $(if $(filter 1 yes true TRUE,$(TFLM_NMSIS_NN_ENABLE)),$(if $(
 TFLM_BUILD_DIR ?= build-$(SOC_ARCH_TAG)-$(TFLM_ACCEL_TAG)-S$(MMA_SIZE)-C$(MMA_IA_CACHE_BLOCKS)-P$(MMA_PS_FRAME_COUNT)
 TFLM_LIB ?= $(TFLM_DIR)/$(TFLM_BUILD_DIR)/libtflite-micro.a
 TFLM_GENFILES ?= $(TFLM_ROOT)/gen/linux_x86_64_default/genfiles
-TFLM_HOST_BUILD_DIR ?= build-host
+TFLM_HOST_BUILD_DIR ?= build-host-reference
 TFLM_HOST_LIB ?= $(TFLM_DIR)/$(TFLM_HOST_BUILD_DIR)/libtflite-micro.a
 TFLM_MNIST_ACCURACY_BIN ?= $(TFLM_DIR)/$(TFLM_HOST_BUILD_DIR)/tflm_mnist_accuracy
 TFLM_MNIST_ACCURACY_OUT ?= runs/tflm_mnist_accuracy
@@ -155,10 +162,10 @@ TFLM_SENSOR_CALIBRATION_SOC_CASE ?= axi_soc_tflm_sensor_calibration_int16x8_$(TF
 TFLM_SENSOR_CALIBRATION_RELEASE_SOC_CASE ?= axi_soc_tflm_sensor_calibration_release_20261015_$(TFLM_ACCEL_TAG)
 TFLM_SENSOR_CALIBRATION_20261019_SOC_CASE ?= axi_soc_tflm_sensor_calibration_20261019_$(TFLM_ACCEL_TAG)
 TFLM_SENSOR_CALIBRATOR_20261016_SOC_CASE ?= axi_soc_tflm_sensor_calibrator_20261016_$(TFLM_ACCEL_TAG)
-TFLM_SENSOR_CALIBRATOR_20261016_MODEL ?= /home/etc/FPGA/BIT_PROJ_S1/Vitis/sensor_sw_v2/src/calibration/sim_20261016/sensor_calibrator_int16.tflite
+TFLM_SENSOR_CALIBRATOR_20261016_MODEL ?= ../../drivers/tflm/models/sensor_calibrator_20261016/sensor_calibrator_int16.tflite
 TFLM_SENSOR_CALIBRATOR_20261016_TIMEOUT_CYCLES ?= 2000000000
 TFLM_SENSOR_CALIBRATOR_20261016_MEM_DP ?= 3112960
-TFLM_SENSOR_CALIBRATION_20261019_MODEL ?= /home/etc/FPGA/BIT_PROJ_S1/Vitis/sensor_sw_v2/src/calibration/sim_20261019/sensor_calibrator_complete_int16.tflite
+TFLM_SENSOR_CALIBRATION_20261019_MODEL ?= ../../drivers/tflm/models/sensor_calibration_20261019/sensor_calibrator_complete_int16.tflite
 TFLM_SENSOR_CALIBRATION_20261019_TIMEOUT_CYCLES ?= 2000000000
 TFLM_SENSOR_CALIBRATION_20261019_ARENA_SIZE ?= 262144
 TFLM_MNIST_CNN_SOC_CASE ?= axi_soc_tflm_mnist_cnn_$(TFLM_ACCEL_TAG)
@@ -177,7 +184,7 @@ TFLM_HELLO_WORLD_TIMEOUT_CYCLES ?= 5000000
 TFLM_PERSON_DETECTION_TIMEOUT_CYCLES ?= 320000000
 SOC_HW_DEFINES := -DDSA_TILE_SIZE=$(MMA_SIZE) -DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS) -DDSA_PS_FRAME_COUNT=$(MMA_PS_FRAME_COUNT)
 TFLM_EXTRA_DEFINES ?=
-TFLM_NMSIS_NN_SOURCE_DIR := $(TFLM_ROOT)/tensorflow/lite/micro/tools/make/downloads/nuclei_sdk/NMSIS/NN/Source
+TFLM_NMSIS_NN_SOURCE_DIR := ../../drivers/tflm/NMSIS/NN/Source
 TFLM_NMSIS_SRCS := $(wildcard $(TFLM_NMSIS_NN_SOURCE_DIR)/*/*.c)
 TFLM_RV32_REBUILD_DEPS := \
                 $(TFLM_DIR)/Makefile \
@@ -383,6 +390,8 @@ ifeq ($(SOC_APP),tflm)
 RUN_DEPS += tflm_soc_c
 else ifeq ($(SOC_APP),nmsis_abi)
 RUN_DEPS += nmsis_abi_soc_c
+else ifeq ($(SOC_APP),paper_nmsis)
+RUN_DEPS += paper_nmsis_soc_c
 else ifeq ($(SOC_APP),tflm_micro_speech)
 RUN_DEPS += tflm_micro_speech_soc_c
 else ifeq ($(SOC_APP),tflm_hello_world)
@@ -454,6 +463,13 @@ soc_case:
 > @mkdir -p $(SOC_CASE_DIR)
 > @python3 ../tb/generate_axi_soc_case.py $(SOC_GEN_ARGS) --out_dir $(SOC_CASE_DIR)
 
+.PHONY: paper_nmsis_soc_c
+paper_nmsis_soc_c:
+> @mkdir -p $(SOC_CASE_DIR)
+> $(SOC_GCC) $(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) -ffreestanding -fno-builtin -nostdlib -nostartfiles -I$(TFLM_NMSIS_NN_SOURCE_DIR)/../Include -I../../drivers $(SOC_LINK_FLAGS) ../soc_csrc/start.S ../soc_csrc/gempact_paper_soc_main.c $(TFLM_NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.c $(SOC_BARE_LIBS) -o $(SOC_CASE_DIR)/cpu.elf
+> $(SOC_OBJCOPY) -O binary $(SOC_CASE_DIR)/cpu.elf $(SOC_CASE_DIR)/cpu.bin
+> python3 ../tb/elf_to_mem.py $(SOC_CASE_DIR)/cpu.bin $(SOC_CASE_DIR)/cpu.mem --depth $(SOC_CPU_MEM_DP)
+
 .PHONY: nmsis_abi_soc_c
 nmsis_abi_soc_c:
 > @mkdir -p $(SOC_CASE_DIR)
@@ -481,7 +497,7 @@ $(TFLM_LIB): $(TFLM_RV32_REBUILD_DEPS)
 > $(MAKE) -C $(TFLM_DIR) BUILD_DIR=$(TFLM_BUILD_DIR) USE_NMSIS_NN=$(TFLM_NMSIS_NN_ENABLE) CC=$(SOC_GCC) CXX=$(SOC_GXX) AR=$(SOC_AR) TARGET_FLAGS="$(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) $(TFLM_EXTRA_DEFINES) -DTFLM_SOC_PROGRESS $(TFLM_SOC_MMA_DEFINE)" BUILD_TYPE=Release $(TFLM_BUILD_DIR)/libtflite-micro.a
 
 $(TFLM_HOST_LIB):
-> $(MAKE) -C $(TFLM_DIR) BUILD_DIR=$(TFLM_HOST_BUILD_DIR) TARGET_FLAGS="$(HOST_OPT_LEVEL)" BUILD_TYPE=Release $(TFLM_HOST_BUILD_DIR)/libtflite-micro.a
+> $(MAKE) -C $(TFLM_DIR) BUILD_DIR=$(TFLM_HOST_BUILD_DIR) USE_NMSIS_NN=0 TARGET_FLAGS="$(HOST_OPT_LEVEL)" BUILD_TYPE=Release $(TFLM_HOST_BUILD_DIR)/libtflite-micro.a
 
 $(TFLM_MNIST_ACCURACY_BIN): ../tools/tflm_mnist_accuracy.cc $(TFLM_HOST_LIB)
 > $(CXX) -std=c++17 $(HOST_OPT_LEVEL) -fno-rtti -fno-exceptions -fno-threadsafe-statics -DTF_LITE_DISABLE_X86_NEON -DTF_LITE_STRIP_ERROR_STRINGS -I$(TFLM_ROOT) -I$(TFLM_GENFILES) -I$(TFLM_ROOT)/tensorflow/lite/micro/tools/make/downloads -I$(TFLM_ROOT)/tensorflow/lite/micro/tools/make/downloads/gemmlowp -I$(TFLM_ROOT)/tensorflow/lite/micro/tools/make/downloads/flatbuffers/include -I$(TFLM_ROOT)/tensorflow/lite/micro/tools/make/downloads/kissfft -I$(TFLM_ROOT)/tensorflow/lite/micro/tools/make/downloads/ruy $< $(TFLM_HOST_LIB) -lm -o $@

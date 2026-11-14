@@ -311,6 +311,7 @@ module npu_axil_top #(
     ) u_npu_top (
         .clk(npu_core_clk),
         .rst_n(rst_n),
+        .cfg_operand_fetch64(1'b0),
         .calc_start(npu_core_calc_start),
         .cfg_16bits_ia(cfg_16bits_ia_reg),
         .cfg_16x8(cfg_16x8_reg),
