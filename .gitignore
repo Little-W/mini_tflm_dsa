@@ -2,6 +2,7 @@
 *.o.*
 .*
 !.gitignore
+!.gitmodules
 *.tar*
 a.out
 obj_dir/
@@ -68,3 +69,6 @@ test/*/__pycache__/
 /veri/paper_model/build/
 /veri/paper_model/backends/
 /veri/paper_model/runtime_cache/
+
+# Local document and analysis archives
+/local_archive/

@@ -43,7 +43,7 @@ def source_tree(source,dest):
             path=Path(current)/name
             if path.suffix.lower() in BAD_SUFFIXES or name.endswith(("~",".swp",".ninja")):
                 continue
-            if path.name in {"cmake_install.cmake","CMakeCache.txt"}:
+            if path.name in {".git","cmake_install.cmake","CMakeCache.txt"}:
                 continue
             if path.is_symlink() and not path.resolve().is_file(): continue
             if not path.is_file(): continue
@@ -55,7 +55,7 @@ def stage(dest,resume=False):
     if dest.exists() and not resume:
         raise FileExistsError(f"{dest} exists; use a different --label or --finalize")
     dest.mkdir(parents=True,exist_ok=resume)
-    for rel in ["rtl","picorv32","include","test","scripts",
+    for rel in ["rtl","picorv32","include","test","scripts","docs","dataflow_sim",
                 "veri/env","veri/interface","veri/uvc","veri/test","veri/flist",
                 "veri/soc_csrc","veri/tools","veri/top_regression","veri/paper_model"]:
         source_tree(ROOT/rel,dest/rel)
@@ -121,20 +121,7 @@ def stage(dest,resume=False):
         if not (PM/"validation"/name/"case").is_dir(): continue
         shutil.copytree(PM/"validation"/name/"case",
                         dest/"veri/python_model/examples"/name,copy_function=copy_file,dirs_exist_ok=True)
-    # Current project design reports and the performance analysis with figures.
-    for rel in ["doc/研究所项目/详细设计报告","doc/研究所项目/简明设计报告","doc/throughput_analysis"]:
-        source_tree(ROOT/"docs/integrated"/Path(rel).relative_to("doc"),dest/rel)
-    doc_names=[
-        "DSA 设计目标.md","DSA模块设计文档.md","mma_architecture_design_report_cn.md",
-        "项目设计方案.md","项目设计方案v2.md","axi_soc_readme.md",
-        "performance_report_cn.md","size_cache_hw_sw_perf_report_cn.md",
-        "bus_optimization_report_cn.md","coverage_report_cn.md",
-        "rtl_simulation_report.md","原版报告_技术报告.docx",
-        "奶龙粉丝团-30017-芯片设计及评估报告.docx",
-    ]
-    for name in doc_names: copy_file(ROOT/"docs/integrated"/name,dest/"doc"/name)
-    for rel in ["doc/perf_plots","doc/rtl_verification_figs"]:
-        source_tree(ROOT/"docs/integrated"/Path(rel).relative_to("doc"),dest/rel)
+    copy_file(ROOT/"fpga/vivado/tflm_ai_dsa_soc/README.md",dest/"fpga/vivado/tflm_ai_dsa_soc/README.md")
     copy_file(ROOT/"README.md",dest/"PROJECT_README.md")
     copy_file(ROOT/"Makefile",dest/"Makefile")
     (dest/"README.md").write_text(

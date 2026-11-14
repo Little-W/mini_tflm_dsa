@@ -7,10 +7,10 @@
 | `rtl/` | NPU、AXI 接口与 SoC 硬件源码 |
 | `include/` | RTL 公共头文件 |
 | `drivers/` | MMIO 驱动、配置接口及 TFLM/NMSIS-NN 集成 |
-| `picorv32/` | PicoRV32 处理器与外设源码 |
+| `picorv32/` | PicoRV32 处理器与外设的上游 Git 子模块 |
 | `veri/` | 验证环境、测试程序、仿真接口及运行脚本 |
 | `veri/legacy/` | 历史验证源码 |
-| `docs/` | 设计报告、验证说明、性能分析与插图 |
+| `docs/` | 架构、使用和验证文档 |
 | `scripts/` | 按用途分类的工程工具 |
 | `build/` | 编译和 FPGA 实现产生的文件 |
 | `deliverables/` | 通过脚本生成的发布包 |

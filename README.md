@@ -19,6 +19,8 @@
 - [开发建议](#开发建议)
 - [常见问题](#常见问题)
 
+获取源码后，运行 `git submodule update --init --recursive` 初始化 PicoRV32。新建工作目录可使用 `git clone --recurse-submodules <repository-url>`。
+
 ## 项目特性
 
 - 参数化 `SIZE x SIZE` 脉动阵列，测试中覆盖 `SIZE=4/8/16/32` 等组合。
@@ -48,12 +50,13 @@ tflm_ai_dsa/
     axi_top/                        # AXI-Lite 配置接口
     soc/                            # CPU 桥接、互连、RAM 和 UART
     soc_top.sv                      # SoC 顶层
-  picorv32/                         # 处理器及串口源码
+  picorv32/                         # PicoRV32 上游 Git 子模块
   drivers/                          # 裸机 MMIO 驱动、TFLM 集成和寄存器文档
   test/                             # 模块级与 NPU 顶层测试平台
   veri/                             # UVM 环境、SoC 测试程序和仿真工具
   fpga/vivado/tflm_ai_dsa_soc/      # FPGA SoC wrapper、约束、仿真和工程脚本
-  docs/                             # 架构、验证、性能和项目文档
+  docs/                             # 项目文档
+  dataflow_sim/                     # 数据流分析程序
   paper/                            # 本地论文工作台，独立于 Git 管理
   deliverables/                     # FPGA 发布包和仿真交付资料
   scripts/                          # 辅助脚本
@@ -288,20 +291,14 @@ fpga/vivado/tflm_ai_dsa_soc/
 
 ## 文档索引
 
-建议优先阅读：
+请从 [文档中心](docs/README.md) 阅读项目文档：
 
-| 文档 | 内容 |
-|---|---|
-| `docs/npu_architecture_design_report_cn.md` | NPU 架构、模块树、分块数据流、IA cache、DMA、写回与量化 |
-| `docs/rtl_verification_report_cn.md` | RTL 模块级、NPU 顶层、SoC、TFLM 和覆盖率验证报告 |
-| `docs/performance_report_cn.md` | 新旧 MMA、IA cache 和 TFLM 性能对比 |
-| `docs/size_cache_hw_sw_perf_report_cn.md` | SIZE/cache 对硬件与软件性能的影响 |
-| `docs/DSA模块设计文档.md` | DSA 模块级设计说明 |
-| `docs/DSA 设计目标.md` | DSA 目标说明 |
-| `docs/soc_integration.md` | SoC 集成、统一仿真和 FPGA 工程入口 |
-| `drivers/registers_v2.md` | NPU AXI-Lite 寄存器表 |
-| `docs/面向TFLM的自定义神经网络加速指令集.md` | 自定义指令扩展草案 |
-| `docs/项目设计方案.md` | 项目背景、系统设计和 AI 校准方案 |
+- [快速开始](docs/getting-started.md)
+- [硬件架构](docs/architecture.md)
+- [软件与模型](docs/software.md)
+- [仿真与 FPGA](docs/verification.md)
+- [数据流分析](docs/dataflow.md)
+- [NPU 寄存器](drivers/registers_v2.md)
 
 ## 开发建议
 
@@ -315,7 +312,7 @@ fpga/vivado/tflm_ai_dsa_soc/
 
 ### Vivado 脚本提示缺少 RTL 文件
 
-确认仓库中的 `rtl/`、`picorv32/` 和 FPGA 约束文件完整，然后从仓库根目录运行导出脚本。
+执行 `git submodule update --init --recursive` 获取 PicoRV32，然后确认 `rtl/` 和 FPGA 约束文件完整，并从仓库根目录运行导出脚本。
 
 ### NPU 顶层随机仿真超时或输出不一致
 
