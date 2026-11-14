@@ -6,7 +6,7 @@
 
 ## NPU
 
-NPU 顶层 `rtl/npu/top/npu_top.sv` 组织任务控制器、DMA、输入与权重加载器、计算阵列、部分和存储及输出量化和写回。`SIZE` 配置阵列边长，`IA_CACHE_BLOCKS` 和 `PS_FRAME_COUNT` 控制相关片上存储规模。硬件支持 WS 和 IS 数据流；工作组参数由软件计算后写入寄存器。
+NPU 顶层 `rtl/npu/top/npu_top.sv` 组织任务控制器、DMA、输入与权重加载器、计算阵列、部分和存储及输出量化和写回。`SIZE` 配置阵列边长，`IA_CACHE_BLOCKS` 和 `PS_FRAME_COUNT` 控制相关片上存储规模。硬件同时支持 WS 和 IS 数据流，通过 `NPU_REG_DATAFLOW` 寄存器选择，配置值分别为 `0` 和 `1`；工作组参数由软件计算后写入寄存器。
 
 数据路径为输入加载、分块矩阵乘累加、输出量化及 AXI 写回。驱动支持 INT8 和 INT16 输入，并提供逐张量及逐通道量化接口。模块目录说明见 [RTL 说明](../rtl/README.md)。
 

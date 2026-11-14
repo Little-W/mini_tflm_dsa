@@ -24,7 +24,7 @@
 ## 项目特性
 
 - 参数化 `SIZE x SIZE` 脉动阵列，测试中覆盖 `SIZE=4/8/16/32` 等组合。
-- Weight Stationary (WS) 数据流为主，RTL 回归中也覆盖 Input Stationary (IS) 子集。
+- 同时支持 Weight Stationary (WS) 和 Input Stationary (IS) 数据流，可通过配置寄存器切换。
 - 支持 int8 与 int16 输入路径。
 - 支持 per-tensor 与 per-channel 重量化，输出侧包含激活范围裁剪。
 - IA cache、W reuse、PS buffer 和 output FIFO 共同支持分块复用。
@@ -113,7 +113,7 @@ AXI-Lite registers
 
 ### 数据流与复用
 
-硬件按 `SIZE x SIZE` tile 执行分块矩阵乘。WS 模式下权重驻留在阵列中，IA 经过对角化流入阵列。IA cache 允许一个 IA group 在多个 W group 上复用，PS buffer 保存中间 partial sum 并支持后续归约 tile 回灌。
+硬件按 `SIZE x SIZE` tile 执行分块矩阵乘。`NPU_REG_DATAFLOW` 选择 WS 或 IS 数据流，分别使用配置值 `0` 和 `1`。WS 模式下权重驻留在阵列中，IA 经过对角化流入阵列。IA cache 允许一个 IA group 在多个 W group 上复用，PS buffer 保存中间 partial sum 并支持后续归约 tile 回灌。
 
 驱动根据矩阵尺寸和缓存容量计算复用窗口与工作组参数，并写入配置寄存器。配置接口及外部预计算方法见 `drivers/registers_v2.md`。
 
