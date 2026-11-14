@@ -923,8 +923,8 @@ RTL/仿真改动：
 cd /media/proj_tmp/aiEngine_integrated
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate tf_2_18
-python drivers/tflm/my_tflm/tflite-micro/mnist_mlp/generate_mnist_mlp.py \
-  --out_dir drivers/tflm/my_tflm/tflite-micro/mnist_mlp \
+python drivers/tflm/tflm/tflite-micro/mnist_mlp/generate_mnist_mlp.py \
+  --out_dir drivers/tflm/tflm/tflite-micro/mnist_mlp \
   --hidden_units 512,256,128 \
   --train_samples 30000 \
   --epochs 4 \
@@ -997,8 +997,8 @@ make tflm_mnist_mlp_run \
 
 - 硬件日志：`veri/sim/runs/mnist_mlp_hw_sw/mnist_mlp_big_hw_s16_c4_p16.log`
 - 纯软件日志：`veri/sim/runs/mnist_mlp_hw_sw/mnist_mlp_big_sw_s16_c4_p16.log`
-- 模型生成脚本：`drivers/tflm/my_tflm/tflite-micro/mnist_mlp/generate_mnist_mlp.py`
-- 模型 metadata：`drivers/tflm/my_tflm/tflite-micro/mnist_mlp/metadata.json`
+- 模型生成脚本：`drivers/tflm/tflm/tflite-micro/mnist_mlp/generate_mnist_mlp.py`
+- 模型 metadata：`drivers/tflm/tflm/tflite-micro/mnist_mlp/metadata.json`
 - SoC 程序：`veri/soc_csrc/tflm_mnist_mlp_soc_main.cc`
 
 ### 2026-07-01 补充：Conv im2col batch 从 16 行调整为 32 行

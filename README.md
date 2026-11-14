@@ -1,6 +1,6 @@
 # TFLM AI DSA
 
-面向 TensorFlow Lite Micro / NMSIS-NN 端侧推理的自定义神经网络加速器工程。仓库主体是一套 SystemVerilog NPU RTL，围绕矩阵乘、全连接和卷积 im2col 后端构建，配套提供 AXI-Lite/MMIO 驱动、Verilator 测试平台、FPGA SoC wrapper 与设计/验证/性能文档。
+面向 TensorFlow Lite Micro / NMSIS-NN 端侧推理的自定义神经网络加速器工程。仓库主体是一套 SystemVerilog NPU RTL，围绕矩阵乘、全连接和卷积 im2col 后端构建，配套提供 AXI-Lite/MMIO 驱动、VCS/UVM 验证环境、FPGA SoC wrapper 与设计/验证/性能文档。
 
 当前 NPU 的目标是在 RISC-V SoC 中由软件通过 MMIO 配置任务，由硬件自主完成输入加载、权重加载、偏置读取、分块矩阵乘累加、重量化、s8 写回和完成状态上报，从而加速 TFLM 推理中的密集线性代数路径。
 
@@ -16,7 +16,7 @@
 - [FPGA SoC 目录](#fpga-soc-目录)
 - [关键参数](#关键参数)
 - [文档索引](#文档索引)
-- [开发约定](#开发约定)
+- [开发建议](#开发建议)
 - [常见问题](#常见问题)
 
 ## 项目特性
@@ -28,7 +28,7 @@
 - IA cache、W reuse、PS buffer 和 output FIFO 共同支持分块复用。
 - 统一 `axi_dual_block_dma` 与 `axi_block_dma_arbiter` 负责 loader/writer 的 AXI4 读写访问。
 - 标准 AXI-Lite MMIO 寄存器接口，软件侧提供 `drivers/dsa_accel.c/.h` 封装。
-- Verilator 分层测试覆盖 DMA、PS buffer、compute core 和 NPU top。
+- VCS 分层测试覆盖 DMA、PS buffer、compute core、NPU 顶层、AXI-Lite 和 SoC。
 - 文档目录包含架构设计、模块设计、RTL 验证、性能分析和项目方案材料。
 
 ## 仓库结构
@@ -45,10 +45,16 @@ tflm_ai_dsa/
       compute/                      # 脉动阵列、累加、de-diagonalizer
       buffers/                      # partial-sum buffer / FIFO
       writeback/                    # requant、s8 打包、OA writer
-  drivers/                          # 裸机 MMIO 驱动和寄存器文档
-  test/                             # Verilator 模块级与 NPU 顶层 testbench
+    axi_top/                        # AXI-Lite 配置接口
+    soc/                            # CPU 桥接、互连、RAM 和 UART
+    soc_top.sv                      # SoC 顶层
+  picorv32/                         # 处理器及串口源码
+  drivers/                          # 裸机 MMIO 驱动、TFLM 集成和寄存器文档
+  test/                             # 模块级与 NPU 顶层测试平台
+  veri/                             # UVM 环境、SoC 测试程序和仿真工具
   fpga/vivado/tflm_ai_dsa_soc/      # FPGA SoC wrapper、约束、仿真和工程脚本
   docs/                             # 架构、验证、性能和项目文档
+  paper/                            # 本地论文工作台，独立于 Git 管理
   scripts/                          # 辅助脚本
 ```
 
@@ -104,7 +110,7 @@ AXI-Lite registers
 
 硬件按 `SIZE x SIZE` tile 执行分块矩阵乘。WS 模式下权重驻留在阵列中，IA 经过对角化流入阵列。IA cache 允许一个 IA group 在多个 W group 上复用，PS buffer 保存中间 partial sum 并支持后续归约 tile 回灌。
 
-软件可写入 `NPU_REG_IA_REUSE` 和 `NPU_REG_W_REUSE` 显式配置复用窗口；写 0 时驱动和 RTL 会按 `IA_CACHE_BLOCKS`、`PS_FRAME_COUNT` 和矩阵 tile 数裁剪。
+驱动根据矩阵尺寸和缓存容量计算复用窗口与工作组参数，并写入配置寄存器。配置接口及外部预计算方法见 `drivers/registers_v2.md`。
 
 ## 软件接口
 
@@ -121,7 +127,7 @@ NPU AXI-Lite 窗口基地址为：
 | Byte offset | 名称 | 用途 |
 |---:|---|---|
 | `0x000` | `NPU_REG_CTRL` | start、输入位宽、量化模式、dataflow 控制 |
-| `0x004` | `NPU_REG_STATUS` | ready/busy/done/error 状态，done/writeback valid 写 1 清除 |
+| `0x004` | `NPU_REG_STATUS` | ready/busy/done/error 状态，done 写 1 清除 |
 | `0x010` | `NPU_REG_LHS_BASE` | LHS/IA 基地址 |
 | `0x014` | `NPU_REG_RHS_BASE` | RHS/W 基地址 |
 | `0x018` | `NPU_REG_DST_BASE` | 输出基地址 |
@@ -134,6 +140,8 @@ NPU AXI-Lite 窗口基地址为：
 | `0x054` | `NPU_REG_IA_REUSE` | IA cache 复用深度 |
 | `0x058` | `NPU_REG_W_REUSE` | W 侧复用窗口 |
 | `0x05c` | `NPU_REG_DATAFLOW` | `0=WS`，`1=IS` |
+| `0x060`–`0x06c` | 工作组配置 | 外部计算的行列工作组数量和尾组大小 |
+| `0x070` | `NPU_REG_CONFIG_ABI` | 配置接口版本 |
 | `0x0fc` | `NPU_REG_ID` | 固定 ID，`0x4e50_5531` |
 
 ### C 驱动
@@ -183,88 +191,63 @@ per-channel 量化时，将 `cfg.quant_mode` 设置为 `DSA_QUANT_PER_CHANNEL`�
 
 ## 环境依赖
 
-建议环境：
-
-- Linux shell 环境。
-- Verilator 5.x，用于模块级和 NPU 顶层仿真。
-- Python 3，用于生成随机矩阵和 memory case。
-- RISC-V 裸机工具链，用于驱动或 SoC firmware 编译。
-- Vivado 相关脚本依赖外部 SoC shell 与 PicoRV32 源码；默认路径在子目录 README 中说明。
+- Linux、GNU Make、Python 3 和 NumPy。
+- Synopsys VCS 与 UVM 1.2；可通过 `VCS` 和 `SIM_LAUNCHER` 指定工具及运行方式。
+- RISC-V 裸机工具链，用于 SoC 固件和 TFLM 构建。
+- Vivado，用于 FPGA 工程导出和综合。
+- Verilator 与 C++ 编译器，用于构建可由 Python 控制的周期级 RTL 模型。
 
 ## 快速开始
 
-### 1. 查看源码结构
+在仓库根目录执行：
 
 ```bash
-cd /home/etc/FPGA/tflm_ai_dsa
-find rtl/npu -maxdepth 2 -type f | sort
+make help
+make vcs-unit
+make vcs-axil
+make vcs-soc
 ```
 
-### 2. 运行一个 NPU 顶层随机仿真
-
-```bash
-make -C test/npu_top run_random \
-  SIZE=4 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=8 \
-  COUNT=2 SEED=41000 TRACE=0 \
-  RANDOM_GEN_ARGS='--random --random_quant --lhs_dtype 1 --min_dim 1 --max_dim 12 --ps_frame_count 8' \
-  SIM_ARGS='+DDR_RAND_LAT=1 +DDR_CMD_MAX_LAT=3 +DDR_W_MAX_LAT=2 +DDR_RSP_MAX_LAT=8'
-```
-
-通过时日志中应出现：
-
-```text
-[TB] PASS
-[run_random] PASS=2 FAIL=0
-```
-
-### 3. 运行模块级 smoke
-
-```bash
-make -C test/axi_dual_block_dma run
-make -C test/axi_block_dma_arbiter run
-make -C test/ps_buffer run
-make -C test/compute_core run_random COUNT=2 SEED=42
-```
-
-### 4. 运行参数扫描
-
-```bash
-make -C test/npu_top run_param_random \
-  SIZES='4 8 16' CACHE_BLOCKS_LIST='2 4 8' \
-  COUNT=4 TRACE=0
-```
+`vcs-unit` 运行 DMA、仲裁器、部分和缓存、计算核心和 NPU 顶层测试。`vcs-axil` 和 `vcs-soc` 分别运行 AXI-Lite 与 SoC 的 UVM 测试。编译及运行日志位于 `build/vcs/unit/` 和 `veri/sim/runs/`。
 
 ## 仿真与验证
 
-`test/` 下保留了可直接运行的 Verilator testbench。
+| 命令 | 验证对象 |
+|---|---|
+| `make vcs-unit-axi_dual_block_dma` | AXI 读写 DMA |
+| `make vcs-unit-axi_block_dma_arbiter` | DMA 请求仲裁 |
+| `make vcs-unit-ps_buffer` | 部分和缓存及输出 |
+| `make vcs-unit-compute_core` | 计算核心和结果检查 |
+| `make vcs-top` | NPU 顶层与矩阵结果比较 |
+| `make vcs-axil` | AXI-Lite 寄存器与 NPU UVM 测试 |
+| `make vcs-soc` | PicoRV32、互连、NPU 和固件联合测试 |
+| `make vcs-nmsis-abi` | NMSIS 驱动的寄存器配置与 INT16 输出 |
+| `make vcs-tflm` | TFLM INT16 模型的 SoC 推理测试 |
 
-| 目录 | 入口 | 覆盖内容 |
-|---|---|---|
-| `test/axi_dual_block_dma` | `make -C test/axi_dual_block_dma run` | AXI 读写通道、burst、完成握手 |
-| `test/axi_block_dma_arbiter` | `make -C test/axi_block_dma_arbiter run` | 多 client 仲裁和重叠请求 |
-| `test/ps_buffer` | `make -C test/ps_buffer run` | partial sum replay、de-diagonalize、FIFO bypass |
-| `test/compute_core` | `make -C test/compute_core run_random` | 脉动阵列输出、final row、`tile_calc_over` 检查 |
-| `test/npu_top` | `make -C test/npu_top run_random` | 完整 loader/compute/requant/writeback 和 RAM golden compare |
+测试输入与阵列参数可由命令行指定：
 
-NPU 顶层测试由 `test/npu_top/gen_mem.py` 生成：
+```bash
+make vcs-random-npu COUNT=2 SEED=41000 \
+  SIZE=4 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=8 \
+  RANDOM_GEN_ARGS='--random --random_quant --lhs_dtype 1 --min_dim 1 --max_dim 12' \
+  SIM_ARGS='+DDR_RAND_LAT=1 +DDR_CMD_MAX_LAT=3 +DDR_W_MAX_LAT=2 +DDR_RSP_MAX_LAT=8'
+make vcs-random-compute COUNT=2 SEED=42
+make vcs-param-npu SIZES='4 8 16' CACHE_BLOCKS_LIST='2 4 8' COUNT=2
+make vcs-uvm DUT_MODE=axil CASE=ai_axil_reg_directed_test
+```
 
-- `out/init.mem`
-- `out/golden.mem`
-- `out/config.mem`
+顶层测试使用 `veri/top_regression/gen_mem.py` 生成输入、配置和参考结果。模块测试检查成功标记及进程退出状态；UVM 测试检查错误与致命错误计数。原有 `test/*/Makefile` 入口调用仓库根目录的 VCS 命令。
 
-仿真时 RAM 模型加载 `init.mem`，NPU 完成后测试平台读取输出区域并与 `golden.mem` 比较。这条路径能直接覆盖 tail tile、byte mask、非对齐写回和 RAM 随机响应延时。
+使用 `make -C test/npu_top wave` 或 `make -C test/compute_core wave` 可生成 VCD 波形，文件位于对应的 `build/vcs/unit/` 目录。
 
-常用参数：
+TFLM 应用可通过仓库根目录的 Makefile 运行：
 
-| 参数 | 默认值 | 说明 |
-|---|---:|---|
-| `SIZE` | 4 | 阵列边长 |
-| `IA_CACHE_BLOCKS` | 4 | IA cache block 数 |
-| `PS_FRAME_COUNT` | 8 | PS/output buffer 帧数 |
-| `AXI_READ_OUTSTANDING` | 4 | AXI 读 outstanding 深度 |
-| `COUNT` | 20 | 随机用例数量 |
-| `SEED` | 1000 | 起始随机种子 |
-| `TRACE` | 1 | 是否生成 Verilator trace |
+```bash
+make vcs-tflm TFLM_APP=mnist_mlp_int16x8 \
+  SIZE=4 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=8
+```
+
+使用容器运行 VCS 时，`make vcs-uvm` 会将主机的 NumPy 安装复制到 `build/vcs/python_deps/`，供容器中的 Python 使用。Python 解释器需具有相同的主版本与次版本。可用 `+PYTHON_BIN=<路径>` 指定仿真内调用的 Python。
 
 ## FPGA SoC 目录
 
@@ -279,11 +262,7 @@ fpga/vivado/tflm_ai_dsa_soc/
   scripts/                                # 工程、仿真、导出和分析脚本
 ```
 
-该目录中的 `scripts/sources.tcl` 统一枚举 FPGA SoC 需要的 NPU RTL、外部 SoC shell 源码和约束文件。若外部 SoC shell 不在默认路径，需要设置：
-
-```bash
-export AIENGINE_ROOT=/path/to/aiEngine_integrated
-```
+该目录中的 `scripts/sources.tcl` 枚举本仓库的 NPU、SoC 和 PicoRV32 源码及板级约束。
 
 ## 关键参数
 
@@ -317,40 +296,37 @@ export AIENGINE_ROOT=/path/to/aiEngine_integrated
 | `docs/size_cache_hw_sw_perf_report_cn.md` | SIZE/cache 对硬件与软件性能的影响 |
 | `docs/DSA模块设计文档.md` | DSA 模块级设计说明 |
 | `docs/DSA 设计目标.md` | DSA 目标说明 |
+| `docs/soc_integration.md` | SoC 集成、统一仿真和 FPGA 工程入口 |
 | `drivers/registers_v2.md` | NPU AXI-Lite 寄存器表 |
 | `docs/面向TFLM的自定义神经网络加速指令集.md` | 自定义指令扩展草案 |
 | `docs/项目设计方案.md` | 项目背景、系统设计和 AI 校准方案 |
 
-## 开发约定
+## 开发建议
 
 - RTL 源文件按功能域放在 `rtl/npu/*`。
 - 修改 ready/valid、AXI、DMA、FIFO、PS buffer 或 loader 控制后，应至少运行对应模块级 smoke 和 `test/npu_top` 随机 golden compare。
 - 修改参数裁剪、`SIZE`、`IA_CACHE_BLOCKS`、`PS_FRAME_COUNT`、WS/IS 或 per-channel 相关路径后，应运行参数化回归。
-- FPGA SoC 目录依赖外部 SoC shell 源码时，通过 `AIENGINE_ROOT` 指定路径。
+- FPGA SoC 与仿真共用本仓库的 RTL 源码。
 - 测试输出、波形、工具日志和工程生成目录体积较大，提交前应确认是否确实需要归档。
 
 ## 常见问题
 
 ### Vivado 脚本提示缺少 RTL 文件
 
-检查 `AIENGINE_ROOT` 是否指向包含 `rtl/axi_accelerator` 和 `picorv32` 的外部集成工程：
-
-```bash
-export AIENGINE_ROOT=/media/proj_tmp/aiEngine_integrated
-```
+确认仓库中的 `rtl/`、`picorv32/` 和 FPGA 约束文件完整，然后从仓库根目录运行导出脚本。
 
 ### NPU 顶层随机仿真超时或输出不一致
 
 先降低随机范围并关闭 trace 复现：
 
 ```bash
-make -C test/npu_top run_random \
+make vcs-random-npu \
   SIZE=4 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=8 \
-  COUNT=1 TRACE=0 SEED=<seed> \
+  COUNT=1 SEED=<seed> \
   RANDOM_GEN_ARGS='--random --random_quant --lhs_dtype 1 --min_dim 1 --max_dim 12'
 ```
 
-若是数值错，优先检查 `compute_core`、`ps_buffer` 和 `vec_requant`；若是死锁，优先检查 DMA、arbiter、RAM 随机响应延时和 FIFO full/empty 条件。
+若数值不一致，优先检查 `compute_core`、`ps_buffer` 和 `vec_requant`；若发生死锁，优先检查 DMA、arbiter、RAM 随机响应延时和 FIFO full/empty 条件。
 
 ### per-channel 模式返回资源缺失
 
@@ -358,4 +334,4 @@ per-channel 模式下 `NPU_REG_Q_MULT` 和 `NPU_REG_Q_SHIFT` 被解释为数组�
 
 ## License
 
-仓库当前未包含明确的开源许可证文件。对外分发、复用或并入其他工程前，请先补充 LICENSE 并确认第三方依赖和外部 SoC shell 的授权边界。
+仓库包含的第三方源码遵循各自目录中的许可证。

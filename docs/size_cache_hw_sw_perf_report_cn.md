@@ -45,7 +45,7 @@
 
 ![TFLM HW/SW inference cycles and GOPS](perf_plots/hw_sw_inference_cycles_gops.png)
 
-MNIST MLP 使用 `conda activate tf_2_18` 后训练和导出，结构为 `784 -> 512 -> 256 -> 128 -> 10`，全 int8 TFLite，float test accuracy `96.93%`。导出文件位于 `drivers/tflm/my_tflm/tflite-micro/mnist_mlp/`，SoC 程序为 `veri/soc_csrc/tflm_mnist_mlp_soc_main.cc`。
+MNIST MLP 使用 `conda activate tf_2_18` 后训练和导出，结构为 `784 -> 512 -> 256 -> 128 -> 10`，全 int8 TFLite，float test accuracy `96.93%`。导出文件位于 `drivers/tflm/tflm/tflite-micro/mnist_mlp/`，SoC 程序为 `veri/soc_csrc/tflm_mnist_mlp_soc_main.cc`。
 
 CNN 使用 `Conv(8) -> MaxPool -> Conv(16) -> MaxPool -> FC(64) -> FC(10)`，全 int8 TFLite，float test accuracy `97.74%`。CNN 主要用于观察 Conv im2col 和小 batch 卷积下的端到端瓶颈。
 
@@ -188,8 +188,8 @@ MLP 模型生成：
 cd /media/proj_tmp/aiEngine_integrated
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate tf_2_18
-python drivers/tflm/my_tflm/tflite-micro/mnist_mlp/generate_mnist_mlp.py \
-  --out_dir drivers/tflm/my_tflm/tflite-micro/mnist_mlp \
+python drivers/tflm/tflm/tflite-micro/mnist_mlp/generate_mnist_mlp.py \
+  --out_dir drivers/tflm/tflm/tflite-micro/mnist_mlp \
   --hidden_units 512,256,128 \
   --train_samples 30000 \
   --epochs 4 \

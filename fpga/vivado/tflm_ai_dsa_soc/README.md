@@ -44,8 +44,7 @@ vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_synth.tcl \
   -tclargs build/vivado/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 0 "" 150.000
 ```
 
-`AIENGINE_ROOT` may be set when the full SoC shell lives outside the default
-`/media/proj_tmp/aiEngine_integrated` path.
+The SoC shell and PicoRV32 sources are contained in this repository.
 `CORE_CLK_MHZ` defaults to 150 MHz and is produced from the 50 MHz board clock
 through Clocking Wizard.
 
@@ -53,11 +52,11 @@ through Clocking Wizard.
 
 Use `export_project.tcl` when the Vivado project should be moved or opened
 without depending on the live source trees. It copies RTL from this repository
-and `AIENGINE_ROOT`, copies the CPU memory image into the exported directory,
+and copies the CPU memory image into the exported directory,
 and sets `CPU_MEM_PATH` to the copied file's absolute path.
 When no CPU memory image is passed, the export script first looks for the
 current TFLM MNIST MLP hardware image at
-`/media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem`.
+`/home/etc/FPGA/tflm_ai_dsa/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem`.
 For the 150 MHz FPGA UART at 115200 bps, regenerate that image with
 `SOC_UART_CLKDIV=1300` so the firmware programs the simple UART divider
 correctly.
@@ -78,7 +77,7 @@ To export a specific configuration and immediately generate a bitstream:
 VIVADO_JOBS=8 vivado -mode batch \
   -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
   -tclargs vivado_export/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 \
-  /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_case/cpu.mem \
+  /home/etc/FPGA/tflm_ai_dsa/veri/tb/axi_soc_case/cpu.mem \
   150.000 1 0 1 1 Flow_AreaOptimized_high Performance_Explore 1 10000000
 ```
 
@@ -114,7 +113,7 @@ smoke program with margin. It can also be overridden with
 Final 150 MHz MNIST MLP project export:
 
 ```sh
-make -C /media/proj_tmp/aiEngine_integrated/veri/sim tflm_mnist_mlp_soc_c \
+make -C /home/etc/FPGA/tflm_ai_dsa/veri/sim tflm_mnist_mlp_soc_c \
   SOC_CASE=axi_soc_tflm_mnist_mlp_hw \
   TFLM_SOC_MMA_ENABLE=1 TFLM_NMSIS_NN_ENABLE=1 \
   MMA_SIZE=4 MMA_IA_CACHE_BLOCKS=32 MMA_PS_FRAME_COUNT=4 \
@@ -128,7 +127,7 @@ vivado -mode batch \
   -source fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl \
   -tclargs vivado_export/tflm_ai_dsa_soc_final_150m_mnist_mlp \
   xc7a200tfbg484-3 4 32 65536 \
-  /media/proj_tmp/aiEngine_integrated/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem \
+  /home/etc/FPGA/tflm_ai_dsa/veri/tb/axi_soc_tflm_mnist_mlp_hw/cpu.mem \
   150.000 1 0 1 0 Flow_AreaOptimized_high Performance_Explore 1 30000000
 ```
 
