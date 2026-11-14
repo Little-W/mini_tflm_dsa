@@ -10,9 +10,9 @@ function(configure_nmsis_nn)
     message(STATUS "Configuring NMSIS-NN optimization...")
     
     # 设置 NMSIS 和 NMSIS-NN 路径（兼容通用 架构 构建）
-    set(NMSIS_DEFAULT_DOWNLOAD_PATH ${DOWNLOADS_DIR}/nmsis)
+    set(NMSIS_DEFAULT_DOWNLOAD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../NMSIS)
     set(NMSIS_PATH ${NMSIS_DEFAULT_DOWNLOAD_PATH})
-    set(NMSIS_NN_DEFAULT_DOWNLOAD_PATH ${DOWNLOADS_DIR}/nmsis/NN)
+    set(NMSIS_NN_DEFAULT_DOWNLOAD_PATH ${NMSIS_DEFAULT_DOWNLOAD_PATH}/NN)
     set(NMSIS_NN_PATH ${NMSIS_NN_DEFAULT_DOWNLOAD_PATH})
     
     # 默认排除 DSP，只有显式开启才包含 DSP 相关头文件/源文件

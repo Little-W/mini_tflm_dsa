@@ -9,8 +9,8 @@ MAKEFILE_DIR := $(TENSORFLOW_ROOT)$(RELATIVE_MAKEFILE_DIR)
 # 下载目录：存放下载的第三方库
 DOWNLOADS_DIR := $(MAKEFILE_DIR)/downloads
 USE_NMSIS_NN ?= 1
-NMSIS_NN_ROOT := $(DOWNLOADS_DIR)/nuclei_sdk/NMSIS/NN
-NMSIS_CORE_ROOT := $(DOWNLOADS_DIR)/nuclei_sdk/NMSIS/Core
+NMSIS_NN_ROOT := $(abspath ../NMSIS/NN)
+NMSIS_CORE_ROOT := $(abspath ../NMSIS/Core)
 NMSIS_NN_SOURCE_DIR := $(NMSIS_NN_ROOT)/Source
 
 # 构建目录：存放所有构建产物

@@ -1,0 +1,59 @@
+{
+  "my_model": {
+    "directory": "my_model",
+    "app": "my_model",
+    "build_target": "tflm_soc_c",
+    "description": "手势识别",
+    "cpu_mem_words": 262144
+  },
+  "mnist_mlp": {
+    "directory": "mnist_mlp",
+    "app": "mnist_mlp",
+    "build_target": "tflm_mnist_mlp_soc_c",
+    "description": "MNIST MLP INT8"
+  },
+  "mnist_mlp_int16x8": {
+    "directory": "mnist_mlp",
+    "app": "mnist_mlp_int16x8",
+    "build_target": "tflm_mnist_mlp_int16x8_soc_c",
+    "description": "MNIST MLP INT16×INT8"
+  },
+  "mnist_cnn": {
+    "directory": "mnist_cnn",
+    "app": "mnist_cnn",
+    "build_target": "tflm_mnist_cnn_soc_c",
+    "description": "MNIST CNN"
+  },
+  "sensor_calibration": {
+    "directory": "sensor_calibration",
+    "app": "sensor_calibration_int16x8",
+    "build_target": "tflm_sensor_calibration_int16x8_soc_c",
+    "description": "传感器校准"
+  },
+  "sensor_calibration_release": {
+    "directory": "sensor_calibration_20261015",
+    "app": "sensor_calibration_release_20261015",
+    "build_target": "tflm_sensor_calibration_release_20261015_soc_c",
+    "description": "传感器校准发布模型",
+    "cpu_mem_words": 131072
+  },
+  "hello_world": {
+    "directory": "hello_world",
+    "app": "hello_world",
+    "build_target": "tflm_hello_world_soc_c",
+    "description": "Hello World"
+  },
+  "micro_speech": {
+    "directory": "micro_speech",
+    "app": "micro_speech",
+    "build_target": "tflm_micro_speech_soc_c",
+    "description": "语音识别"
+  },
+  "person_detection": {
+    "directory": "person_detection",
+    "app": "person_detection",
+    "build_target": "tflm_person_detection_soc_c",
+    "description": "人员检测",
+    "cpu_mem_words": 262144
+  }
+}

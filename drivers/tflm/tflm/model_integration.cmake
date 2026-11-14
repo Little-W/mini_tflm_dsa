@@ -46,7 +46,7 @@ function(quick_model_integration MODEL_NAME TFLITE_FILE INPUT_FILES CATEGORIES E
   message(STATUS "  Example type: ${EXAMPLE_TYPE}")
   
   # 创建模型专用目录
-  set(MODEL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/models/${MODEL_NAME})
+  set(MODEL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../models/${MODEL_NAME})
   file(MAKE_DIRECTORY ${MODEL_DIR})
   
   # 生成模型设置头文件
