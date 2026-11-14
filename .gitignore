@@ -62,5 +62,5 @@ test/*/__pycache__/
 /veri/python_model/build/
 /dataflow_sim/*_log.*
 
-# Local materials retained with the project
-/archive/
+# Local release packages
+/deliverables/

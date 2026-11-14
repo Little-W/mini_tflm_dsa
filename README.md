@@ -55,13 +55,11 @@ tflm_ai_dsa/
   fpga/vivado/tflm_ai_dsa_soc/      # FPGA SoC wrapper、约束、仿真和工程脚本
   docs/                             # 架构、验证、性能和项目文档
   paper/                            # 本地论文工作台，独立于 Git 管理
-  archive/                          # 历史项目资料与 Git 历史
+  deliverables/                     # FPGA 发布包和仿真交付资料
   scripts/                          # 辅助脚本
 ```
 
 补充说明：
-
-历史项目的源码快照及交付资料保存在 `archive/integrated_snapshot/`，历史 Git 数据保存在 `archive/integrated_history.git/`。可使用 `git --git-dir=archive/integrated_history.git log` 查看提交历史。
 
 - `rtl/README.md` 记录 RTL 分层原则。
 - `drivers/README.md` 记录 C 驱动用法。

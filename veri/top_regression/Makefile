@@ -103,7 +103,7 @@ run_param_random: $(OUT_DIR)
 				cat "$${build_log}"; \
 				python3 summarize_regression.py append --prefix "$${summary_prefix}" --case param_build --log "$${build_log}" --seed "$${idx}" --size "$${size}" --cache "$${cache}" --ps-frame-count "$(PS_FRAME_COUNT)" --status FAIL --reason build_failed; \
 				fail=$$((fail + $(COUNT))); idx=$$((idx + $(COUNT))); continue; }; \
-			bin="$(BUILD_ROOT)/s$${size}_c$${cache}_ps$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_$(TRACE_TAG)/$(VEXE)"; \
+			bin="$(BUILD_ROOT)/s$${size}_c$${cache}_w$(WEIGHT_WIDTH)_d$(DATA_WIDTH)_ps$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_$(TRACE_TAG)/$(VEXE)"; \
 			for i in $$(seq 0 $$(( $(COUNT) - 1 ))); do \
 				seed=$$(( $(SEED) + $$idx )); idx=$$((idx + 1)); \
 				log="$(OUT_DIR)/param_s$${size}_c$${cache}_$${seed}.log"; \
