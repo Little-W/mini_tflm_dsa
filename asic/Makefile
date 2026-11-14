@@ -1,0 +1,24 @@
+SHELL := /bin/bash
+ROOT := $(abspath ..)
+SRAM_ROOT ?= /media/6/IC/lib/SRAM_Lib_2025
+IVERILOG ?= iverilog
+VVP ?= vvp
+.PHONY: sram-test npu-test paper-test syn summary
+sram-test:
+	mkdir -p "$(ROOT)/build/asic/tests"
+	$(IVERILOG) -g2012 -s tb_sram_1r1w -o "$(ROOT)/build/asic/tests/sram" \
+	  tests/tb_sram_1r1w.sv rtl/smic40_sram_1r1w.sv \
+	  "$(SRAM_ROOT)/RAMTP128X16/verilog/RAMTP128X16.v" \
+	  "$(SRAM_ROOT)/RAMTP1024X16/verilog/RAMTP1024X16.v"
+	$(VVP) "$(ROOT)/build/asic/tests/sram"
+	$(IVERILOG) -g2012 -DASIC_SRAM -s tb_ia_buffer -o "$(ROOT)/build/asic/tests/ia_buffer" \
+	  tests/tb_sram_1r1w.sv rtl/smic40_sram_1r1w.sv "$(ROOT)/rtl/npu/loaders/ia_buffer_wrapper.sv" \
+	  "$(SRAM_ROOT)/RAMTP128X16/verilog/RAMTP128X16.v" \
+	  "$(SRAM_ROOT)/RAMTP1024X16/verilog/RAMTP1024X16.v"
+	$(VVP) "$(ROOT)/build/asic/tests/ia_buffer"
+npu-test:
+	$(MAKE) -C "$(ROOT)" vcs-top ASIC_SRAM=1 SRAM_ROOT="$(SRAM_ROOT)"
+paper-test:
+	$(MAKE) -C "$(ROOT)" vcs-top ASIC_SRAM=1 SRAM_ROOT="$(SRAM_ROOT)" PAPER_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=64 PS_FRAME_COUNT=25 PANEL_MAX_R=2 PANEL_MAX_W=2 GEN_ARGS='--K 32 --N 32 --M 32 --lhs_dtype 1 --no_bias --lhs_zp 0 --rhs_zp 0 --tight_strides --ia_reuse_num 2 --w_reuse_num 2'
+syn summary:
+	$(MAKE) -C synthesis $@

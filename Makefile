@@ -13,10 +13,12 @@ SIM_ARGS ?=
 GEN_ARGS ?=
 DEBUG ?= 0
 PAPER_ENGINE ?= 0
+ASIC_SRAM ?= 0
+SRAM_ROOT ?= /media/6/IC/lib/SRAM_Lib_2025
 PS_POOL_BYTES ?= 179200
 PANEL_MAX_R ?= 16
 PANEL_MAX_W ?= 16
-PAPER_DEFINES = $(if $(filter 1,$(PAPER_ENGINE)),+define+GEMPACT_PANEL_ENGINE+GEMPACT_PCR_PS+GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES)+GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R)+GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W),)
+PAPER_DEFINES = $(if $(filter 1,$(PAPER_ENGINE)),+define+GEMPACT_PANEL_ENGINE+GEMPACT_PCR_PS+GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES)+GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R)+GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W),) $(if $(filter 1,$(ASIC_SRAM)),+define+ASIC_SRAM,)
 LOG_NAME ?= sim
 COUNT ?= 20
 RANDOM_GEN_ARGS ?= --random --random_quant --lhs_dtype 0 --min_dim 1 --max_dim 32
@@ -33,6 +35,7 @@ TFLM_APP ?= $(DEPLOY_TFLM_APP)
 UNIT_TESTS := axi_dual_block_dma axi_block_dma_arbiter ps_buffer compute_core npu_top
 UNIT_BUILD := $(ROOT)/build/vcs/unit
 NPU_RTL := $(sort $(shell find $(ROOT)/rtl/npu -type f \( -name '*.sv' -o -name '*.v' \)))
+NPU_RTL += $(if $(filter 1,$(ASIC_SRAM)),$(ROOT)/asic/rtl/smic40_sram_1r1w.sv $(SRAM_ROOT)/RAMTP128X16/verilog/RAMTP128X16.v $(SRAM_ROOT)/RAMTP1024X16/verilog/RAMTP1024X16.v,)
 RAM_RTL := $(ROOT)/rtl/common/pseudo_dual_port_ram.v
 COMPUTE_RTL := $(ROOT)/rtl/npu/compute
 BUFFER_RTL := $(ROOT)/rtl/npu/buffers
@@ -49,7 +52,7 @@ PASS_ps_buffer := PASS: diagonal partial-sum
 PASS_compute_core := PASS: compute_core matched
 PASS_npu_top := [TB] PASS
 CONFIG_TAG := s$(SIZE)_c$(IA_CACHE_BLOCKS)_p$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)
-UNIT_DIR = $(UNIT_BUILD)/$(UNIT)$(if $(filter npu_top,$(UNIT)),/$(CONFIG_TAG),)$(if $(filter 1,$(PAPER_ENGINE)),_paper_b$(PS_POOL_BYTES)_r$(PANEL_MAX_R)_w$(PANEL_MAX_W),)$(if $(filter 1,$(DEBUG)),_debug,)
+UNIT_DIR = $(UNIT_BUILD)/$(UNIT)$(if $(filter npu_top,$(UNIT)),/$(CONFIG_TAG),)$(if $(filter 1,$(PAPER_ENGINE)),_paper_b$(PS_POOL_BYTES)_r$(PANEL_MAX_R)_w$(PANEL_MAX_W),)$(if $(filter 1,$(ASIC_SRAM)),_asic_sram,)$(if $(filter 1,$(DEBUG)),_debug,)
 UNIT_DEFINES = $(if $(filter 1,$(PAPER_ENGINE)),+define+TB_MEM_WORDS=131072,) $(if $(filter npu_top,$(UNIT)),+define+TB_SIZE=$(SIZE)+TB_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS)+TB_PS_FRAME_COUNT=$(PS_FRAME_COUNT)+TB_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING),)
 
 .PHONY: help vcs-unit vcs-unit-% vcs-unit-build vcs-uvm vcs-axil vcs-soc vcs-top vcs-tflm vcs-nmsis-abi clean-vcs prepare-vcs-python
@@ -61,6 +64,8 @@ help:
 	@echo 'make vcs-soc CASE=<name>      Run a SoC UVM test'
 	@echo 'make vcs-uvm DUT_MODE=<mode> CASE=<name>  Run an integrated UVM test'
 	@echo 'make vcs-top                  Run the NPU top test with VCS'
+	@echo 'make -C asic sram-test         Test SRAM macro wrappers'
+	@echo 'make -C asic syn               Run SMIC40 synthesis'
 	@echo 'make vcs-paper-soc            Run the paper engine in the SoC'
 	@echo 'make vcs-tflm TFLM_APP=<name> Run TFLM inference on the SoC'
 	@echo 'make model-list               List deployment models'
@@ -99,7 +104,7 @@ vcs-unit-run: vcs-unit-build
 	  --log '$(UNIT_DIR)/$(LOG_NAME).log' --pass '$(PASS_$(UNIT))' -- \
 	  '$(ROOT)/veri/sim/run_simv_lxc.sh' '$(UNIT_DIR)/simv' \
 	  $(if $(filter compute_core,$(UNIT)),+DATA_DIR=$(COMPUTE_DATA_DIR),) \
-	  $(if $(filter npu_top,$(UNIT)),+INIT_MEM=$(UNIT_DIR)/case/init.mem +GOLDEN_MEM=$(UNIT_DIR)/case/golden.mem +CASE_MEM=$(UNIT_DIR)/case/config.mem,) $(SIM_ARGS)
+	  $(if $(filter npu_top,$(UNIT)),+INIT_MEM=$(UNIT_DIR)/case/init.mem +GOLDEN_MEM=$(UNIT_DIR)/case/golden.mem +CASE_MEM=$(UNIT_DIR)/case/config.mem,) $(if $(filter 1,$(ASIC_SRAM)),+notimingcheck,) $(SIM_ARGS)
 
 vcs-top: vcs-unit-npu_top
 

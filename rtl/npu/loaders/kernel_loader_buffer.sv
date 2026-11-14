@@ -248,6 +248,11 @@ module kernel_loader_row_ram #(
     output logic [DATA_WIDTH-1:0] rd_data
 );
 
+`ifdef ASIC_SRAM
+  smic40_sram_1r1w #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH), .ADDR_WIDTH(ADDR_WIDTH)) u_sram (
+    .clk(clk), .write_enable(wr_en), .write_address(wr_addr), .write_data(wr_data),
+    .write_mask({DATA_WIDTH{1'b1}}), .read_enable(rd_en), .read_address(rd_addr), .read_data(rd_data));
+`else
   (* ram_style = "block" *) logic [DATA_WIDTH-1:0] mem [0:DEPTH-1];
 
   always_ff @(posedge clk) begin
@@ -258,5 +263,7 @@ module kernel_loader_row_ram #(
       rd_data <= mem[rd_addr];
     end
   end
+
+`endif
 
 endmodule

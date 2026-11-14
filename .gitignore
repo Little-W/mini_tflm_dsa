@@ -52,16 +52,17 @@ test/*/__pycache__/
 *.gen/
 
 # ASIC synthesis generated outputs
-/asic/syn/WORK/
-/asic/syn/alib-52/
-/asic/syn/output/
-/asic/syn/*.svf
+/asic/syn/
+/asic/synthesis/WORK/
+/asic/synthesis/alib-52/
+/asic/synthesis/output/
+/asic/synthesis/*.svf
 
 # Local workspaces and generated Python simulation files
 /paper
 /sub_proj/
 /veri/python_model/build/
-/dataflow_sim/*_log.*
+/dataflow_sim/
 
 # Local release packages
 /deliverables/
@@ -72,3 +73,6 @@ test/*/__pycache__/
 
 # Local document and analysis archives
 /local_archive/
+
+# Library Compiler outputs
+/lc_output.txt

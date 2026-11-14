@@ -29,3 +29,7 @@ vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_batch_synth.t
 ```
 
 实际时序和资源使用量以对应配置的综合及实现报告为准。
+
+## ASIC
+
+SMIC40 标准单元、SRAM 宏、综合与功能仿真入口见 [ASIC 综合环境](../asic/README.md)。

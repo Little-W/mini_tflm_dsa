@@ -19,11 +19,19 @@ module gempact_ps_bank #(
  logic[127:0] part_data[PARTS];logic[SW-1:0] part_select;
  for(genvar p=0;p<PARTS;p++)begin:g_part
   localparam integer WORDS=DEPTH-p*1024>=1024?1024:DEPTH-p*1024;
+`ifdef ASIC_SRAM
+  smic40_sram_1r1w #(.DATA_WIDTH(128),.DEPTH(WORDS),.ADDR_WIDTH(10)) u_sram (
+   .clk(clk),.write_enable(write_enable_q && (write_address_q>>10)==p),
+   .write_address(10'(write_address_q)),.write_data(write_data_q),.write_mask({128{1'b1}}),
+   .read_enable(read_enable_q && (read_address_q>>10)==p),
+   .read_address(10'(read_address_q)),.read_data(part_data[p]));
+`else
   (* ram_style="block" *)logic[127:0] ram[0:WORDS-1];
   always_ff @(posedge clk)begin
    if(write_enable_q && (write_address_q>>10)==p)ram[write_address_q&10'h3ff]<=write_data_q;
    if(read_enable_q && (read_address_q>>10)==p)part_data[p]<=ram[read_address_q&10'h3ff];
   end
+`endif
  end
  always_ff @(posedge clk)begin
   if(read_enable_q)part_select<=SW'(read_address_q>>10);

@@ -55,7 +55,7 @@ def stage(dest,resume=False):
     if dest.exists() and not resume:
         raise FileExistsError(f"{dest} exists; use a different --label or --finalize")
     dest.mkdir(parents=True,exist_ok=resume)
-    for rel in ["rtl","picorv32","include","test","scripts","docs","dataflow_sim",
+    for rel in ["rtl","picorv32","include","test","scripts","docs","asic",
                 "veri/env","veri/interface","veri/uvc","veri/test","veri/flist",
                 "veri/soc_csrc","veri/tools","veri/top_regression","veri/paper_model"]:
         source_tree(ROOT/rel,dest/rel)

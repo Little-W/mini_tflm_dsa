@@ -12,6 +12,11 @@ module pseudo_dual_port_ram #(
     output reg [DATA_WIDTH-1:0] dob    // 端口B数据输出
 );
 
+`ifdef ASIC_SRAM
+    smic40_sram_1r1w #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(1<<ADDR_WIDTH), .ADDR_WIDTH(ADDR_WIDTH)) u_sram (
+        .clk(clk), .write_enable(ena && wea), .write_address(addra), .write_data(dia),
+        .write_mask({DATA_WIDTH{1'b1}}), .read_enable(enb), .read_address(addrb), .read_data(dob));
+`else
     // Synchronous-read block RAM friendly storage.
     (* ram_style = "block" *) reg [DATA_WIDTH-1:0] ram [(1<<ADDR_WIDTH)-1:0];
 
@@ -37,5 +42,7 @@ module pseudo_dual_port_ram #(
             dob <= ram[addrb]; // 端口B读取数据
         end
     end
+
+`endif
 
 endmodule

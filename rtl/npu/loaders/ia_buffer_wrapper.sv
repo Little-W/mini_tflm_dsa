@@ -29,6 +29,22 @@ module ia_buffer_wrapper #(
     output reg  [DATA_WIDTH-1:0]     rd_data
 );
 
+`ifdef ASIC_SRAM
+    wire [DATA_WIDTH-1:0] macro_data;
+    wire [DATA_WIDTH-1:0] bit_mask;
+    reg read_valid;
+    for (genvar byte_index=0; byte_index<DATA_WIDTH/8; byte_index=byte_index+1) begin : g_write_mask
+        assign bit_mask[byte_index*8 +: 8] = {8{wr_mask[byte_index]}};
+    end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) read_valid <= 1'b0;
+        else if (rd_en) read_valid <= 1'b1;
+    end
+    assign rd_data = read_valid ? macro_data : {DATA_WIDTH{1'b0}};
+    smic40_sram_1r1w #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH), .ADDR_WIDTH(ADDR_WIDTH)) u_sram (
+        .clk(clk), .write_enable(wr_en), .write_address(wr_addr), .write_data(wr_data),
+        .write_mask(bit_mask), .read_enable(rd_en && rst_n), .read_address(rd_addr), .read_data(macro_data));
+`else
     // 内部存储阵列：不做复位清零，便于 FPGA 推断同步读 BRAM。
     (* ram_style = "block" *) reg [DATA_WIDTH-1:0] mem [DEPTH];
     
@@ -56,5 +72,7 @@ module ia_buffer_wrapper #(
     end
     
     assign rd_data = rd_data_reg;
+
+`endif
 
 endmodule

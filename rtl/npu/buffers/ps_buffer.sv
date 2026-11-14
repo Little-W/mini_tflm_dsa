@@ -318,9 +318,16 @@ module ps_buffer_exact_ram #(
   input logic [ADDR_WIDTH-1:0] addra, addrb,
   input logic [DATA_WIDTH-1:0] dia,
   output logic [DATA_WIDTH-1:0] dob);
+`ifdef ASIC_SRAM
+  smic40_sram_1r1w #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH), .ADDR_WIDTH(ADDR_WIDTH)) u_sram (
+    .clk(clk), .write_enable(ena && wea), .write_address(addra), .write_data(dia),
+    .write_mask({DATA_WIDTH{1'b1}}), .read_enable(enb), .read_address(addrb), .read_data(dob));
+`else
   (* ram_style="block" *) logic [DATA_WIDTH-1:0] ram [DEPTH];
   always_ff @(posedge clk) begin
     if (ena && wea) ram[addra] <= dia;
     if (enb) dob <= ram[addrb];
   end
+`endif
+
 endmodule

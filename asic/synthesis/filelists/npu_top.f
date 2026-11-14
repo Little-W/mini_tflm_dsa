@@ -1,4 +1,4 @@
-+incdir+../../inc
++incdir+../../include
 +incdir+../../rtl
 +incdir+../../rtl/common
 +incdir+../../rtl/npu
@@ -9,6 +9,7 @@
 +incdir+../../rtl/npu/loaders
 +incdir+../../rtl/npu/top
 +incdir+../../rtl/npu/writeback
++incdir+../../rtl/npu/gempact
 
 ../../rtl/common/pseudo_dual_port_ram.v
 ../../rtl/common/single_port_ram.v
@@ -46,3 +47,19 @@
 
 ../../rtl/npu/control/npu_controller.sv
 ../../rtl/npu/top/npu_top.sv
+
+../../rtl/npu/gempact/gempact_c_pack.sv
+../../rtl/npu/gempact/gempact_frame_array.sv
+../../rtl/npu/gempact/gempact_paged_ps.sv
+../../rtl/npu/gempact/gempact_panel_cache.sv
+../../rtl/npu/gempact/gempact_panel_engine.sv
+../../rtl/npu/gempact/gempact_ps_bank.sv
+../../rtl/npu/gempact/gempact_resident_engine.sv
+../../rtl/npu/gempact/gempact_stream_ps.sv
+../../rtl/npu/gempact/gempact_stream_ps_pcr.sv
+../../rtl/npu/gempact/gempact_tagged_array.sv
+../../rtl/npu/gempact/gempact_tile_core.sv
+../../rtl/npu/gempact/operand_read_cache.sv
+../../rtl/npu/gempact/ps_capacity_schedule.sv
+../../rtl/npu/gempact/ps_codec_measure.sv
+../../rtl/npu/gempact/ps_sector_store.sv

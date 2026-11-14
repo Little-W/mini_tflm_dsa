@@ -104,7 +104,9 @@ module gempact_stream_ps #(
  logic[MAX_TILES-1:0][1:0] allocated_map;
  (* ram_style="distributed" *)logic[207:0] row_directory[0:MAX_TILES-1];
  (* ram_style="distributed" *)logic[3*PW-1:0] extension_pages[0:MAX_TILES-1];
+`ifndef ASIC_SRAM
  (* ram_style="block" *)logic[PW-1:0] free_stack[0:PAGES-1];
+`endif
  logic[PW-1:0] stack_out;
  logic[11:0] count,initial_pages,stack_count,next_unused;
  logic[10:0] tiles,c_count;
@@ -334,10 +336,25 @@ module gempact_stream_ps #(
   end
  end
 
+`ifdef ASIC_SRAM
+ wire[PW-1:0] stack_sram_out;
+ logic[PW-1:0] stack_fresh_out;
+ logic stack_from_sram;
+ assign stack_out=stack_from_sram?stack_sram_out:stack_fresh_out;
+ always_ff @(posedge clk)if(pop_page)begin
+  stack_from_sram<=stack_count!=0;
+  if(stack_count==0)stack_fresh_out<=PW'(next_unused);
+ end
+ smic40_sram_1r1w #(.DATA_WIDTH(PW),.DEPTH(PAGES),.ADDR_WIDTH(PW)) u_free_stack (
+  .clk(clk),.write_enable(push_page && !initializing),.write_address(PW'(stack_count)),
+  .write_data(push_value),.write_mask({PW{1'b1}}),
+  .read_enable(pop_page && stack_count!=0),.read_address(PW'(stack_count-1'b1)),.read_data(stack_sram_out));
+`else
  always_ff @(posedge clk)begin
   if(pop_page)begin if(stack_count!=0)stack_out<=free_stack[stack_count-1'b1];else stack_out<=PW'(next_unused);end
   if(push_page && !initializing)free_stack[stack_count]<=push_value;
  end
+`endif
  always_ff @(posedge clk)begin
   if(!rst_n)begin
    valid_map<=0;c_map<=0;safe24_map<='1;allocated_map<=0;

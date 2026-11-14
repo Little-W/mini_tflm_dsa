@@ -19,9 +19,9 @@ foreach path [list $std_db_path $mem_db_path $sync_db_path $io_db_path $lpk_db_p
 }
 
 set search_path [concat $std_db_path $afe_db_path $mem_db_path $search_path $sync_db_path $io_db_path $lpk_db_path]
-set target_library [concat $std_db_list $afe_db_list $mem_db_list $io_db_list $lpk_db_list]
+set target_library [concat $std_db_list $afe_db_list $io_db_list $lpk_db_list]
 set synthetic_library [list dw_foundation.sldb]
-set link_library [concat * $target_library $synthetic_library]
+set link_library [concat * $target_library $mem_db_list $synthetic_library]
 
 puts "Library setup:"
 puts "  search_path      = $search_path"

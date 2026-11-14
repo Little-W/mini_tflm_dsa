@@ -37,6 +37,7 @@
 
 ```text
 tflm_ai_dsa/
+  asic/                            # ASIC 综合、工艺 SRAM 封装与测试
   rtl/
     common/                         # 通用 RAM/基础单元
     npu/
@@ -56,7 +57,6 @@ tflm_ai_dsa/
   veri/                             # UVM 环境、SoC 测试程序和仿真工具
   fpga/vivado/tflm_ai_dsa_soc/      # FPGA SoC wrapper、约束、仿真和工程脚本
   docs/                             # 项目文档
-  dataflow_sim/                     # 数据流分析程序
   paper/                            # 本地论文工作台，独立于 Git 管理
   deliverables/                     # FPGA 发布包和仿真交付资料
   scripts/                          # 辅助脚本
@@ -297,8 +297,8 @@ fpga/vivado/tflm_ai_dsa_soc/
 - [硬件架构](docs/architecture.md)
 - [软件与模型](docs/software.md)
 - [仿真与 FPGA](docs/verification.md)
-- [数据流分析](docs/dataflow.md)
 - [NPU 寄存器](drivers/registers_v2.md)
+- [ASIC 综合环境](asic/README.md)
 
 ## 开发建议
 

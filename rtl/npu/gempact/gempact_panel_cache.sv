@@ -54,12 +54,28 @@ module gempact_panel_cache #(
   panel_words=(kk-panel_offset>=64)?6'd16:6'((kk-panel_offset)>>2);
  end
  for(genvar l=0;l<16;l++)begin:g_bank
+`ifndef ASIC_SRAM
   (* ram_style="block" *)logic signed[7:0] aram[0:128*MAX_R-1];
   (* ram_style="block" *)logic[31:0] bram[0:32*MAX_W-1];
+`endif
   wire [$clog2(128*MAX_R)-1:0] a_phys=
       $clog2(128*MAX_R)'((int'(a_addr[l][11])*4+int'(a_addr[l][10:9]))*(16*MAX_R)+int'(a_addr[l][8:0]));
   wire [$clog2(32*MAX_W)-1:0] b_phys=
       $clog2(32*MAX_W)'((int'(b_addr[9])*MAX_W+int'(b_addr[8:4]))*16+int'(b_addr[3:0]));
+`ifdef ASIC_SRAM
+  wire a_write = r_fire && !read_b && (int'(response_beat[1:0]) == (l/4));
+  wire b_write = r_fire && read_b && response_row[3:0] == l;
+  wire [$clog2(128*MAX_R)-1:0] a_write_addr =
+      $clog2(128*MAX_R)'((int'(buffer_sel)*4+int'(response_beat[3:2]))*(16*MAX_R)+int'(response_row));
+  wire [$clog2(32*MAX_W)-1:0] b_write_addr =
+      $clog2(32*MAX_W)'((int'(buffer_sel)*MAX_W+int'(response_row[8:4]))*16+int'(response_beat));
+  smic40_sram_1r1w #(.DATA_WIDTH(8),.DEPTH(128*MAX_R),.ADDR_WIDTH($clog2(128*MAX_R))) u_a_sram (
+   .clk(clk),.write_enable(a_write),.write_address(a_write_addr),.write_data(rdata[(l%4)*8+:8]),
+   .write_mask(8'hff),.read_enable(a_re[l]),.read_address(a_phys),.read_data(a_data[l]));
+  smic40_sram_1r1w #(.DATA_WIDTH(32),.DEPTH(32*MAX_W),.ADDR_WIDTH($clog2(32*MAX_W))) u_b_sram (
+   .clk(clk),.write_enable(b_write),.write_address(b_write_addr),.write_data(rdata),
+   .write_mask(32'hffffffff),.read_enable(b_re),.read_address(b_phys),.read_data(b_data[l]));
+`else
   always_ff @(posedge clk)begin
    if(r_fire)begin
     if(read_b && response_row[3:0]==l)bram[(int'(buffer_sel)*MAX_W+int'(response_row[8:4]))*16+int'(response_beat)]<=rdata;
@@ -69,6 +85,7 @@ module gempact_panel_cache #(
    if(a_re[l])a_data[l]<=aram[a_phys];
    if(b_re)b_data[l]<=bram[b_phys];
   end
+`endif
 `ifndef SYNTHESIS
   always @(posedge clk)if(rst_n)begin
    if(a_re[l])assert(int'(a_addr[l][8:0])<16*MAX_R)else $fatal(1,"A panel address exceeds physical row capacity");
