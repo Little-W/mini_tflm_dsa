@@ -14,7 +14,7 @@ import os
 import random
 from typing import List
 
-BASE = "/home/etc/FPGA/tflm_ai_dsa"
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE, "data")
 MEM_DIR = os.path.join(BASE, "sim", "mem")
 

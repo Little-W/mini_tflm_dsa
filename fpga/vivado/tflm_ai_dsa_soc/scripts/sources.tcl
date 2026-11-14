@@ -17,7 +17,7 @@ set npu_buffers_root [file join $npu_root buffers]
 set npu_writeback_root [file join $npu_root writeback]
 
 set include_dirs [list \
-    [file join $dsa_root inc] \
+    [file join $dsa_root include] \
 ]
 
 set design_sources [list \
