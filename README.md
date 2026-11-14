@@ -61,6 +61,8 @@ tflm_ai_dsa/
 
 补充说明：
 
+历史项目的源码快照及交付资料保存在 `archive/integrated_snapshot/`，历史 Git 数据保存在 `archive/integrated_history.git/`。可使用 `git --git-dir=archive/integrated_history.git log` 查看提交历史。
+
 - `rtl/README.md` 记录 RTL 分层原则。
 - `drivers/README.md` 记录 C 驱动用法。
 - `fpga/vivado/tflm_ai_dsa_soc/README.md` 记录 FPGA SoC 子目录的脚本入口和参数。
