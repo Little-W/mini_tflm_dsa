@@ -1,0 +1,12 @@
+/downloads/*
+!/downloads/flatbuffers/
+!/downloads/gemmlowp/
+!/downloads/kissfft/
+!/downloads/ruy/
+!/downloads/nuclei_sdk/
+/downloads/nuclei_sdk/*
+!/downloads/nuclei_sdk/NMSIS/
+/downloads/nuclei_sdk/NMSIS/*
+!/downloads/nuclei_sdk/NMSIS/Core/
+!/downloads/nuclei_sdk/NMSIS/NN/
+
