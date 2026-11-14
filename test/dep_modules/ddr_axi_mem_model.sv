@@ -139,7 +139,7 @@ module ddr_axi_mem_model #(
     assign m_axi_rresp   = 2'b00;
     assign m_axi_rlast   = (r_left == 9'd1);
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             r_state    <= R_IDLE;
             r_wait_cnt <= 0;
@@ -224,7 +224,7 @@ module ddr_axi_mem_model #(
     assign m_axi_bvalid  = (w_state == W_B);
     assign m_axi_bresp   = 2'b00;
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             w_state    <= W_IDLE;
             w_wait_cnt <= 0;

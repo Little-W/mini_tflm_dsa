@@ -1,0 +1,626 @@
+#!/usr/bin/env python3
+import argparse
+import concurrent.futures
+import csv
+import itertools
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+DEFAULT_SOC_CPU_MEM_DP = int(os.environ.get("SOC_CPU_MEM_DP", "65536"), 0)
+PASS_RE = re.compile(r"\[TEST_RESULT\]\s+TEST PASS")
+CYCLES_RE = re.compile(r"soc_finish asserted after\s+(\d+)\s+cycles")
+UTIL_LINE_RE = re.compile(r"\[((?:MMA|NPU)_UTIL|(?:MMA|NPU)_CTRL_UTIL|(?:MMA|NPU)_UTIL_SUMMARY|(?:MMA|NPU)_CTRL_UTIL_SUMMARY)\]\s+(.*)")
+UTIL_KV_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(-?\d+)")
+SOC_AXI_RE = re.compile(r"\[SOC_AXI_STATS\]\s+(.*)")
+SOC_CPU_AXI_RE = re.compile(r"\[SOC_CPU_AXI_STATS\]\s+(.*)")
+
+UTIL_FIELDNAMES = [
+    "ctrl_util_ops",
+    "ctrl_active",
+    "ctrl_weight_start",
+    "ctrl_weight_wait",
+    "ctrl_ia_start",
+    "ctrl_ia_wait",
+    "ctrl_wait_done",
+    "ctrl_weight_tail_stall",
+    "ctrl_weight_data_stall",
+    "ctrl_weight_done_wait",
+    "ctrl_ia_data_stall",
+    "ctrl_bias_stall",
+    "ctrl_quant_stall",
+    "ctrl_fifo_stall",
+    "ctrl_ia_done_wait",
+    "ctrl_tail_pending",
+    "ctrl_tail_done",
+    "ctrl_weight_trig",
+    "ctrl_ia_trig",
+    "mma_util_ops",
+    "mma_active",
+    "mma_ia_row",
+    "mma_ia_row_util_bp",
+    "mma_acc_valid",
+    "mma_acc_util_bp",
+    "mma_requant_valid",
+    "mma_fifo_valid",
+    "mma_fifo_full",
+    "mma_store_weight",
+    "mma_send_weight",
+    "mma_send_ia",
+    "mma_tile_start",
+    "mma_tile_over",
+    "mma_partial_over",
+    "mma_l1_switch",
+    "mma_dma_busy_ia",
+    "mma_dma_busy_kernel",
+    "mma_dma_busy_bias",
+    "mma_dma_busy_quant",
+    "mma_dma_busy_oa",
+    "mma_axi_ar",
+    "mma_axi_r",
+    "mma_axi_aw",
+    "mma_axi_w",
+    "mma_axi_b",
+]
+
+SOC_AXI_FIELDNAMES = [
+    "soc_cpu_ar_wait",
+    "soc_mma_ar_wait",
+    "soc_cpu_aw_wait",
+    "soc_mma_aw_wait",
+    "soc_rd_yield",
+    "soc_wr_yield",
+]
+
+SOC_CPU_AXI_FIELDNAMES = [
+    "cpu_read_req",
+    "cpu_write_req",
+    "cpu_instr_req",
+    "cpu_data_req",
+    "cpu_read_wait",
+    "cpu_write_wait",
+    "cpu_ic_hit",
+    "cpu_ic_miss",
+    "cpu_ic_fill_beats",
+]
+
+
+def parse_int_list(text):
+    if text is None:
+        return []
+    out = []
+    for item in re.split(r"[,\s]+", str(text).strip()):
+        if item:
+            out.append(int(item, 0))
+    return out
+
+
+def parse_dims(text):
+    dims = []
+    for item in re.split(r"[,\s]+", str(text).strip()):
+        if not item:
+            continue
+        parts = re.split(r"[xX:]", item)
+        if len(parts) != 3:
+            raise ValueError(f"invalid dim tuple '{item}', expected KxNxM")
+        dims.append(tuple(int(part, 0) for part in parts))
+    return dims
+
+
+def parse_size_cache_pairs(text):
+    pairs = []
+    for item in re.split(r"[,\s]+", str(text).strip()):
+        if not item:
+            continue
+        parts = re.split(r"[:xX/]", item)
+        if len(parts) != 2:
+            raise ValueError(f"invalid SIZE:CACHE pair '{item}'")
+        pairs.append((int(parts[0], 0), int(parts[1], 0)))
+    return pairs
+
+
+def powers_of_two_upto(limit):
+    values = []
+    value = 1
+    while value <= max(1, limit):
+        values.append(value)
+        value <<= 1
+    return values
+
+
+def floor_pow2(value):
+    out = 1
+    while (out << 1) <= max(1, value):
+        out <<= 1
+    return out
+
+
+def ceil_div(a, b):
+    return (a + b - 1) // b
+
+
+def default_reuse_lists(size, cache_blocks, ps_frame_count, dataflow_mode, dims):
+    k, _n, m = dims
+    stream_rows = m if dataflow_mode == 1 else k
+    stream_cols = k if dataflow_mode == 1 else m
+    output_row_tiles = max(1, ceil_div(stream_rows, size))
+    output_col_tiles = max(1, ceil_div(stream_cols, size))
+    ps_limit = max(1, ps_frame_count)
+    ia_limit = floor_pow2(min(output_row_tiles, max(1, cache_blocks // 2)))
+    w_limit = floor_pow2(max(1, min(ps_limit, output_col_tiles)))
+    if dataflow_mode == 1:
+        ia_limit = min(ia_limit, w_limit)
+    return powers_of_two_upto(ia_limit), powers_of_two_upto(w_limit)
+
+
+def effective_reuse(size, cache_blocks, ps_frame_count, dataflow_mode, dims, ia_reuse, w_reuse):
+    k, _n, m = dims
+    stream_rows = m if dataflow_mode == 1 else k
+    stream_cols = k if dataflow_mode == 1 else m
+    output_row_tiles = max(1, ceil_div(stream_rows, size))
+    output_col_tiles = max(1, ceil_div(stream_cols, size))
+    ps_limit = max(1, ps_frame_count)
+    ia_max = floor_pow2(min(output_row_tiles, max(1, cache_blocks // 2)))
+    w_max = floor_pow2(max(1, min(ps_limit, output_col_tiles)))
+    if dataflow_mode == 1:
+        ia_max = min(ia_max, w_max)
+    ia_raw = ia_max if ia_reuse == 0 else ia_reuse
+    ia_eff = floor_pow2(max(1, min(ia_raw, ia_max)))
+    w_raw = w_max if w_reuse == 0 else w_reuse
+    w_eff = floor_pow2(max(1, min(w_raw, w_max)))
+    if dataflow_mode == 1 and w_eff < ia_eff and output_col_tiles >= ia_eff:
+        w_eff = ia_eff
+    return ia_eff, w_eff
+
+
+def build_sim_args(args):
+    parts = []
+    if args.sim_args:
+        parts.append(args.sim_args)
+    if args.ddr_rand_lat:
+        parts.append("+RAM_RAND_LAT=1")
+        parts.append(f"+RAM_CMD_MAX_LAT={args.ddr_cmd_max_lat}")
+        parts.append(f"+RAM_W_MAX_LAT={args.ddr_w_max_lat}")
+        parts.append(f"+RAM_RSP_MAX_LAT={args.ddr_rsp_max_lat}")
+    if args.ram_fixed_lat is not None:
+        parts.append(f"+RAM_FIXED_LAT={args.ram_fixed_lat}")
+    return " ".join(parts)
+
+
+def run_command(cmd, cwd, log_path, timeout):
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("w", encoding="utf-8", errors="replace") as log_file:
+        process = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        output = []
+        try:
+            assert process.stdout is not None
+            for line in process.stdout:
+                output.append(line)
+                log_file.write(line)
+                log_file.flush()
+            return_code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            output.append(f"\n[TIMEOUT] Command exceeded {timeout} seconds\n")
+            log_file.write(output[-1])
+            return_code = 124
+    return return_code, "".join(output)
+
+
+def make_vars(seed, case_name, case_dir, size, cache_blocks, ps_frame_count,
+              dims, dataflow_mode, lhs_dtype, quant_mode, ia_reuse, w_reuse,
+              sim_args, soc_cpu_mem_dp, soc_timeout_cycles=0,
+              soc_cpu_enable_icache=None):
+    k, n, m = dims
+    vars_for_make = [
+        "DUT_MODE=axi_soc",
+        "SOC_APP=runtime",
+        "case=ai_axi_soc_c_test",
+        f"seed={seed}",
+        f"SOC_SEED={seed}",
+        f"SOC_CASE={case_name}",
+        f"SOC_CASE_DIR={case_dir}",
+        f"MMA_SIZE={size}",
+        f"MMA_IA_CACHE_BLOCKS={cache_blocks}",
+        f"MMA_PS_FRAME_COUNT={ps_frame_count}",
+        "SOC_RANDOM=0",
+        "SOC_FIX_MODE=1",
+        f"SOC_K={k}",
+        f"SOC_N={n}",
+        f"SOC_M={m}",
+        f"SOC_LHS_DTYPE={lhs_dtype}",
+        f"SOC_QUANT_MODE={quant_mode}",
+        f"SOC_DATAFLOW_MODE={dataflow_mode}",
+        f"SOC_IA_REUSE_NUM={ia_reuse}",
+        f"SOC_W_REUSE_NUM={w_reuse}",
+        f"SOC_CPU_MEM_DP={soc_cpu_mem_dp}",
+        "DUMPOPTS=0",
+    ]
+    if soc_cpu_enable_icache is not None:
+        vars_for_make.append(f"SOC_CPU_ENABLE_ICACHE={soc_cpu_enable_icache}")
+    if sim_args:
+        vars_for_make.append(f"SIM_ARGS={sim_args}")
+    if soc_timeout_cycles:
+        vars_for_make.append(f"SOC_TIMEOUT_CYCLES={soc_timeout_cycles}")
+    return vars_for_make
+
+
+def passed(output):
+    if not PASS_RE.search(output):
+        return False
+    if re.search(r"UVM_ERROR\s*:\s*[1-9]", output):
+        return False
+    if re.search(r"UVM_FATAL\s*:\s*[1-9]", output):
+        return False
+    return True
+
+
+def parse_cycles(output):
+    match = CYCLES_RE.search(output)
+    return int(match.group(1)) if match else None
+
+
+def parse_util_trace(output):
+    parsed = {name: "" for name in UTIL_FIELDNAMES}
+    sums = {}
+    ctrl_ops = 0
+    mma_ops = 0
+    for match in UTIL_LINE_RE.finditer(output):
+        kind, payload = match.groups()
+        values = {key: int(value) for key, value in UTIL_KV_RE.findall(payload)}
+        if kind in ("MMA_CTRL_UTIL_SUMMARY", "NPU_CTRL_UTIL_SUMMARY"):
+            ctrl_ops = values.get("ops", ctrl_ops)
+            prefix = "ctrl_"
+            for key, value in values.items():
+                if key == "ops":
+                    continue
+                field = f"{prefix}{key}"
+                if field in parsed:
+                    sums[field] = value
+            continue
+        if kind in ("MMA_UTIL_SUMMARY", "NPU_UTIL_SUMMARY"):
+            mma_ops = values.get("ops", mma_ops)
+            prefix = "mma_"
+            for key, value in values.items():
+                if key == "ops":
+                    continue
+                field = f"{prefix}{key}"
+                if field in parsed:
+                    sums[field] = value
+            continue
+        if kind in ("MMA_CTRL_UTIL", "NPU_CTRL_UTIL"):
+            ctrl_ops += 1
+            prefix = "ctrl_"
+        else:
+            mma_ops += 1
+            prefix = "mma_"
+        for key, value in values.items():
+            if key == "op":
+                continue
+            field = f"{prefix}{key}"
+            if field in parsed:
+                sums[field] = sums.get(field, 0) + value
+    parsed.update(sums)
+    parsed["ctrl_util_ops"] = ctrl_ops
+    parsed["mma_util_ops"] = mma_ops
+    mma_active = parsed.get("mma_active") or 0
+    if mma_active:
+        parsed["mma_ia_row_util_bp"] = (parsed.get("mma_ia_row", 0) * 10000) // mma_active
+        parsed["mma_acc_util_bp"] = (parsed.get("mma_acc_valid", 0) * 10000) // mma_active
+    return parsed
+
+
+def parse_soc_axi_stats(output):
+    parsed = {name: "" for name in SOC_AXI_FIELDNAMES + SOC_CPU_AXI_FIELDNAMES}
+    for match in SOC_AXI_RE.finditer(output):
+        values = {key: int(value) for key, value in UTIL_KV_RE.findall(match.group(1))}
+        parsed["soc_cpu_ar_wait"] = values.get("cpu_ar_wait", "")
+        parsed["soc_mma_ar_wait"] = values.get("mma_ar_wait", values.get("npu_ar_wait", ""))
+        parsed["soc_cpu_aw_wait"] = values.get("cpu_aw_wait", "")
+        parsed["soc_mma_aw_wait"] = values.get("mma_aw_wait", values.get("npu_aw_wait", ""))
+        parsed["soc_rd_yield"] = values.get("rd_yield", "")
+        parsed["soc_wr_yield"] = values.get("wr_yield", "")
+    for match in SOC_CPU_AXI_RE.finditer(output):
+        values = {key: int(value) for key, value in UTIL_KV_RE.findall(match.group(1))}
+        parsed["cpu_read_req"] = values.get("read_req", "")
+        parsed["cpu_write_req"] = values.get("write_req", "")
+        parsed["cpu_instr_req"] = values.get("instr_req", "")
+        parsed["cpu_data_req"] = values.get("data_req", "")
+        parsed["cpu_read_wait"] = values.get("read_wait", "")
+        parsed["cpu_write_wait"] = values.get("write_wait", "")
+        parsed["cpu_ic_hit"] = values.get("ic_hit", "")
+        parsed["cpu_ic_miss"] = values.get("ic_miss", "")
+        parsed["cpu_ic_fill_beats"] = values.get("ic_fill_beats", "")
+    return parsed
+
+
+def write_summary(summary_path, rows):
+    passed_rows = [row for row in rows if row["result"] == "pass" and row["cycles"]]
+    with summary_path.open("w", encoding="utf-8") as f:
+        f.write(f"total={len(rows)} pass={len(passed_rows)}\n")
+        grouped = {}
+        for row in passed_rows:
+            key = (row["size"], row["cache_blocks"], row["dataflow"],
+                   row["lhs_dtype"], row["quant_mode"], row["K"], row["N"], row["M"])
+            grouped.setdefault(key, []).append(row)
+        for key in sorted(grouped):
+            best = min(grouped[key], key=lambda row: row["cycles"])
+            size, cache_blocks, dataflow, lhs_dtype, quant_mode, k, n, m = key
+            f.write(
+                "best "
+                f"S{size}_C{cache_blocks}_DF{dataflow}_D{lhs_dtype}_Q{quant_mode}_"
+                f"{k}x{n}x{m}: cycles={best['cycles']} "
+                f"ia_reuse={best['ia_reuse']} w_reuse={best['w_reuse']} "
+                f"eff=R{best['ia_reuse_eff']}/W{best['w_reuse_eff']} "
+                f"log={best['log']}\n"
+            )
+
+
+def run_perf_job(job, sim_dir, log_root, exception_root, timeout):
+    label = job["label"]
+    log_path = log_root / f"{label}.log"
+    out_dir = log_root / "sim_out" / label
+    case_name = f"axi_soc_perf_{label}"
+    case_dir = f"../tb/{case_name}"
+    vars_for_make = make_vars(
+        job["seed"], case_name, case_dir, job["size"], job["cache_blocks"],
+        job["ps_frame_count"], job["dims"], job["dataflow"], job["lhs_dtype"],
+        job["quant_mode"], job["ia_reuse"], job["w_reuse"], job["sim_args"],
+        job["soc_cpu_mem_dp"], job["soc_timeout_cycles"],
+        job.get("soc_cpu_enable_icache"))
+    vars_for_make.append(f"OUT_DIR={out_dir}")
+    code, output = run_command(
+        ["make", "sim", *vars_for_make], sim_dir, log_path, timeout)
+    result = "pass" if code == 0 and passed(output) else "fail"
+    cycles = parse_cycles(output)
+    k, n, m = job["dims"]
+    row = {
+        "result": result,
+        "cycles": cycles if cycles is not None else "",
+        "size": job["size"],
+        "cache_blocks": job["cache_blocks"],
+        "ps_frame_count": job["ps_frame_count"],
+        "dataflow": job["dataflow"],
+        "lhs_dtype": job["lhs_dtype"],
+        "quant_mode": job["quant_mode"],
+        "K": k,
+        "N": n,
+        "M": m,
+        "ia_reuse": job["ia_reuse"],
+        "w_reuse": job["w_reuse"],
+        "ia_reuse_eff": job["ia_reuse_eff"],
+        "w_reuse_eff": job["w_reuse_eff"],
+        "seed": job["seed"],
+        "log": str(log_path),
+    }
+    row.update(parse_util_trace(output))
+    row.update(parse_soc_axi_stats(output))
+    if result != "pass":
+        case_path = (sim_dir / case_dir).resolve()
+        dst = exception_root / label
+        if dst.exists():
+            shutil.rmtree(dst)
+        dst.mkdir(parents=True, exist_ok=True)
+        if case_path.exists():
+            shutil.copytree(case_path, dst / "case")
+        if log_path.exists():
+            shutil.copy2(log_path, dst / log_path.name)
+    return row
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--timeout", type=int, default=900)
+    parser.add_argument("--soc-timeout-cycles", type=int, default=0,
+                        help="0 keeps the testbench default SOC_TIMEOUT_CYCLES")
+    parser.add_argument("--soc-cpu-mem-dp", type=int, default=DEFAULT_SOC_CPU_MEM_DP,
+                        help="CPU RAM depth in 32-bit words; default matches FPGA CPU_MEM_DP")
+    parser.add_argument("--soc-cpu-enable-icache", type=int, choices=[0, 1], default=None,
+                        help="override SOC_CPU_ENABLE_ICACHE when compiling/running the SoC simulation")
+    parser.add_argument("--log-root", type=Path, default=Path("runs/axi_soc_perf_sweep"))
+    parser.add_argument("--seed", type=int, default=80000)
+    parser.add_argument("--sizes", default="16")
+    parser.add_argument("--cache-blocks", default="4")
+    parser.add_argument("--size-cache-pairs", default="",
+                        help="space/comma separated SIZE:CACHE pairs; overrides --sizes x --cache-blocks product")
+    parser.add_argument("--ps-frame-counts", default="")
+    parser.add_argument("--dataflow-modes", default="0 1")
+    parser.add_argument("--lhs-dtypes", default="1")
+    parser.add_argument("--quant-modes", default="0")
+    parser.add_argument("--dims", default="32x32x32",
+                        help="space/comma separated KxNxM tuples")
+    parser.add_argument("--ia-reuse-list", default="",
+                        help="empty means powers of two up to CACHE_BLOCKS/2")
+    parser.add_argument("--w-reuse-list", default="",
+                        help="empty means powers of two up to output col tiles")
+    parser.add_argument("--include-auto", action="store_true",
+                        help="also run ia_reuse=0,w_reuse=0 through the driver selector")
+    parser.add_argument("--keep-going", action="store_true")
+    parser.add_argument("--force-compile", action="store_true",
+                        help="rebuild simv once per SIZE/CACHE/PS tuple instead of reusing it")
+    parser.add_argument("--jobs", type=int, default=1,
+                        help="number of simulation cases to run in parallel")
+    parser.add_argument("--sim-args", default="")
+    parser.add_argument("--ddr-rand-lat", action="store_true")
+    parser.add_argument("--ddr-cmd-max-lat", type=int, default=3)
+    parser.add_argument("--ddr-w-max-lat", type=int, default=2)
+    parser.add_argument("--ddr-rsp-max-lat", type=int, default=8)
+    parser.add_argument("--ram-fixed-lat", type=int, default=None,
+                        help="fixed RAM response latency in cycles; burst data remains continuous")
+    args = parser.parse_args()
+
+    sim_dir = Path(__file__).resolve().parent
+    log_root = (sim_dir / args.log_root).resolve()
+    log_root.mkdir(parents=True, exist_ok=True)
+    csv_path = log_root / "perf.csv"
+    summary_path = log_root / "summary.txt"
+    exception_root = log_root / "exception_cases"
+
+    sizes = parse_int_list(args.sizes)
+    cache_blocks_list = parse_int_list(args.cache_blocks)
+    size_cache_pairs = parse_size_cache_pairs(args.size_cache_pairs)
+    ps_frame_counts = parse_int_list(args.ps_frame_counts)
+    dataflow_modes = parse_int_list(args.dataflow_modes)
+    lhs_dtypes = parse_int_list(args.lhs_dtypes)
+    quant_modes = parse_int_list(args.quant_modes)
+    dims_list = parse_dims(args.dims)
+    explicit_ia_reuse = parse_int_list(args.ia_reuse_list)
+    explicit_w_reuse = parse_int_list(args.w_reuse_list)
+    sim_args = build_sim_args(args)
+    jobs = max(1, args.jobs)
+
+    rows = []
+    compiled = set()
+    case_jobs = []
+
+    fieldnames = [
+        "result", "cycles", "size", "cache_blocks", "ps_frame_count",
+        "dataflow", "lhs_dtype", "quant_mode", "K", "N", "M",
+        "ia_reuse", "w_reuse", "ia_reuse_eff", "w_reuse_eff", "seed", "log",
+    ]
+    fieldnames.extend(UTIL_FIELDNAMES)
+    fieldnames.extend(SOC_AXI_FIELDNAMES)
+    fieldnames.extend(SOC_CPU_AXI_FIELDNAMES)
+    with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        size_cache_iter = size_cache_pairs if size_cache_pairs else list(
+            itertools.product(sizes, cache_blocks_list))
+        for (size, cache_blocks), dataflow, lhs_dtype, quant_mode, dims in itertools.product(
+                size_cache_iter, dataflow_modes, lhs_dtypes, quant_modes, dims_list):
+            ps_values = ps_frame_counts if ps_frame_counts else [size]
+            for ps_frame_count in ps_values:
+                compile_key = (
+                    size,
+                    cache_blocks,
+                    ps_frame_count,
+                    args.soc_cpu_mem_dp,
+                    args.soc_cpu_enable_icache,
+                )
+                if compile_key not in compiled:
+                    combo_name = f"perf_compile_S{size}_C{cache_blocks}_P{ps_frame_count}"
+                    build_log = log_root / f"{combo_name}.log"
+                    build_vars = make_vars(
+                        args.seed, combo_name, f"../tb/{combo_name}",
+                        size, cache_blocks, ps_frame_count, dims,
+                        dataflow, lhs_dtype, quant_mode, 0, 0, sim_args,
+                        args.soc_cpu_mem_dp, args.soc_timeout_cycles,
+                        args.soc_cpu_enable_icache)
+                    print(f"compile: S{size}_C{cache_blocks}_P{ps_frame_count}")
+                    compile_target = "force_com" if args.force_compile else "com"
+                    code, _ = run_command(
+                        ["make", compile_target, "soc_runtime_c", *build_vars],
+                        sim_dir, build_log, args.timeout)
+                    if code != 0:
+                        print(f"compile failed: {build_log}")
+                        return 1
+                    compiled.add(compile_key)
+
+                if explicit_ia_reuse:
+                    ia_values = explicit_ia_reuse
+                else:
+                    ia_values, _ = default_reuse_lists(
+                        size, cache_blocks, ps_frame_count, dataflow, dims)
+                if explicit_w_reuse:
+                    w_values = explicit_w_reuse
+                else:
+                    _, w_values = default_reuse_lists(
+                        size, cache_blocks, ps_frame_count, dataflow, dims)
+                reuse_pairs = list(itertools.product(ia_values, w_values))
+                if args.include_auto:
+                    reuse_pairs.insert(0, (0, 0))
+
+                for ia_reuse, w_reuse in reuse_pairs:
+                    k, n, m = dims
+                    ia_eff, w_eff = effective_reuse(
+                        size, cache_blocks, ps_frame_count, dataflow, dims,
+                        ia_reuse, w_reuse)
+                    label = (
+                        f"S{size}_C{cache_blocks}_P{ps_frame_count}_DF{dataflow}_"
+                        f"D{lhs_dtype}_Q{quant_mode}_{k}x{n}x{m}_R{ia_reuse}_W{w_reuse}"
+                    )
+                    case_name = f"axi_soc_perf_{label}"
+                    case_dir = f"../tb/{case_name}"
+                    case_jobs.append({
+                        "label": label,
+                        "seed": args.seed,
+                        "size": size,
+                        "cache_blocks": cache_blocks,
+                        "ps_frame_count": ps_frame_count,
+                        "dims": dims,
+                        "dataflow": dataflow,
+                        "lhs_dtype": lhs_dtype,
+                        "quant_mode": quant_mode,
+                        "ia_reuse": ia_reuse,
+                        "w_reuse": w_reuse,
+                        "ia_reuse_eff": ia_eff,
+                        "w_reuse_eff": w_eff,
+                        "sim_args": sim_args,
+                        "soc_cpu_mem_dp": args.soc_cpu_mem_dp,
+                        "soc_cpu_enable_icache": args.soc_cpu_enable_icache,
+                        "soc_timeout_cycles": args.soc_timeout_cycles,
+                    })
+
+        def record_row(row):
+            rows.append(row)
+            writer.writerow(row)
+            csv_file.flush()
+            if row["result"] == "pass":
+                if (row["ia_reuse_eff"] != row["ia_reuse"] or
+                        row["w_reuse_eff"] != row["w_reuse"]):
+                    print(
+                        f"pass: {Path(row['log']).stem} cycles={row['cycles']} "
+                        f"eff=R{row['ia_reuse_eff']}/W{row['w_reuse_eff']}"
+                    )
+                else:
+                    print(f"pass: {Path(row['log']).stem} cycles={row['cycles']}")
+            else:
+                print(f"fail: {Path(row['log']).stem} log={row['log']}")
+
+        if jobs == 1:
+            for job in case_jobs:
+                print(f"run: {job['label']}")
+                row = run_perf_job(job, sim_dir, log_root, exception_root, args.timeout)
+                record_row(row)
+                if row["result"] != "pass" and not args.keep_going:
+                    write_summary(summary_path, rows)
+                    return 1
+        else:
+            print(f"running {len(case_jobs)} cases with jobs={jobs}")
+            failed = False
+            with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
+                futures = {
+                    executor.submit(
+                        run_perf_job, job, sim_dir, log_root, exception_root,
+                        args.timeout): job
+                    for job in case_jobs
+                }
+                for future in concurrent.futures.as_completed(futures):
+                    row = future.result()
+                    record_row(row)
+                    failed = failed or row["result"] != "pass"
+            if failed and not args.keep_going:
+                write_summary(summary_path, rows)
+                return 1
+
+    write_summary(summary_path, rows)
+    print(f"wrote {csv_path}")
+    print(f"wrote {summary_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

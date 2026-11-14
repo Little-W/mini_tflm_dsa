@@ -168,7 +168,7 @@ module tb_axi_dual_block_dma;
   assign m_axi_rresp = 2'b00;
   assign m_axi_bresp = 2'b00;
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       rd_mem_active <= 1'b0;
       rd_mem_addr <= '0;
@@ -203,7 +203,7 @@ module tb_axi_dual_block_dma;
     end
   end
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       wr_mem_active <= 1'b0;
       wr_mem_addr <= '0;
@@ -253,14 +253,15 @@ module tb_axi_dual_block_dma;
 
   task automatic send_write_beat(input logic [31:0] data);
     begin
-      while (!src_wready) @(posedge clk);
-      src_wdata <= data;
-      src_wmask <= 4'hF;
-      src_wvalid <= 1'b1;
-      @(posedge clk);
-      src_wvalid <= 1'b0;
-      src_wdata <= '0;
-      src_wmask <= '0;
+      @(negedge clk);
+      src_wdata = data;
+      src_wmask = 4'hF;
+      src_wvalid = 1'b1;
+      do @(posedge clk); while (!src_wready);
+      @(negedge clk);
+      src_wvalid = 1'b0;
+      src_wdata = '0;
+      src_wmask = '0;
     end
   endtask
 
@@ -270,7 +271,7 @@ module tb_axi_dual_block_dma;
   logic rd_done_seen;
   logic wr_done_seen;
 
-  always_ff @(posedge clk) begin
+  always @(posedge clk) begin
     int idx;
     idx = rd_cnt;
     if (!rst_n) begin
@@ -363,6 +364,7 @@ module tb_axi_dual_block_dma;
       $finish;
     end
 
+    @(negedge clk);
     clear_scoreboard();
     rd_base_addr = 32'h1;
     rd_row_stride = 32'd5;
@@ -422,7 +424,7 @@ module tb_axi_dual_block_dma;
 
   initial begin
     #2000000;
-    $display("[AXI_DUAL_DMA] TIMEOUT");
+    $display("[AXI_DUAL_DMA] TIMEOUT rd_done=%b wr_done=%b rd_cnt=%0d rd_busy=%b wr_busy=%b src_ready=%b", rd_done_seen, wr_done_seen, rd_cnt, rd_busy, wr_busy, src_wready);
     $finish;
   end
 endmodule

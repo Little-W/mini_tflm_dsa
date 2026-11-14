@@ -220,7 +220,7 @@ module tb_axi_block_dma_arbiter;
   assign m_axi_rresp = 2'b00;
   assign m_axi_bresp = 2'b00;
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       rd_mem_active <= 1'b0;
       rd_mem_addr <= '0;
@@ -254,7 +254,7 @@ module tb_axi_block_dma_arbiter;
     end
   end
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       wr_mem_active <= 1'b0;
       wr_mem_addr <= '0;
@@ -297,14 +297,15 @@ module tb_axi_block_dma_arbiter;
 
   task automatic send_write_beat(input logic [31:0] data);
     begin
-      while (!oa_src_wready) @(posedge clk);
-      oa_src_wdata <= data;
-      oa_src_wmask <= 4'hF;
-      oa_src_wvalid <= 1'b1;
-      @(posedge clk);
-      oa_src_wvalid <= 1'b0;
-      oa_src_wdata <= '0;
-      oa_src_wmask <= '0;
+      @(negedge clk);
+      oa_src_wdata = data;
+      oa_src_wmask = 4'hF;
+      oa_src_wvalid = 1'b1;
+      do @(posedge clk); while (!oa_src_wready);
+      @(negedge clk);
+      oa_src_wvalid = 1'b0;
+      oa_src_wdata = '0;
+      oa_src_wmask = '0;
     end
   endtask
 
@@ -314,7 +315,7 @@ module tb_axi_block_dma_arbiter;
   logic oa_done_seen;
   logic overlap_seen;
 
-  always_ff @(posedge clk) begin
+  always @(posedge clk) begin
     int idx;
     idx = rd_cnt;
     if (!rst_n) begin
@@ -448,7 +449,7 @@ module tb_axi_block_dma_arbiter;
 
   initial begin
     #2000000;
-    $display("[AXI_ARB] TIMEOUT");
+    $display("[AXI_ARB] TIMEOUT kernel_done=%b oa_done=%b rd_cnt=%0d kernel_busy=%b oa_busy=%b src_ready=%b", kernel_done_seen, oa_done_seen, rd_cnt, kernel_busy, oa_busy, oa_src_wready);
     $finish;
   end
 endmodule
