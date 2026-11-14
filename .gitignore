@@ -1,6 +1,7 @@
 *.o
 *.o.*
 .*
+!.gitignore
 *.tar*
 a.out
 obj_dir/
@@ -11,6 +12,20 @@ obj_dir/
 *.fst
 *.fsdb
 *.log
+*.a
+*.so
+*.pyc
+/veri/python_model/backends/*/rtl_server
+/veri/python_model/backends/*/rtl_reference
+/veri/python_model/backends/*/manifest.json
+/drivers/tflm/tflm/build-*/
+/veri/tb/axi_soc_case*/
+/veri/tb/axi_soc_runtime_*/
+/veri/tb/axi_soc_tflm*/
+/veri/tb/ai_mem_gen_smoke_test/
+/veri/tb/ai_ral_mem_gen_on_calc_start_test/
+/veri/tb/ai_smoke_test/
+/veri/tb/main_extram.mem
 *.orig
 *.part
 test/*/out/
@@ -34,3 +49,15 @@ test/*/__pycache__/
 *.sim/
 *.srcs/
 *.gen/
+
+# ASIC synthesis generated outputs
+/asic/syn/WORK/
+/asic/syn/alib-52/
+/asic/syn/output/
+/asic/syn/*.svf
+
+# Local workspaces and generated Python simulation files
+/paper
+/sub_proj/
+/veri/python_model/build/
+/dataflow_sim/*_log.*
