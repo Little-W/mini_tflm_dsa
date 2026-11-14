@@ -44,7 +44,7 @@ vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_synth.tcl \
   -tclargs build/vivado/tflm_ai_dsa_soc_s16_c4 xc7a200tfbg484-3 16 4 65536 0 "" 150.000
 ```
 
-The SoC shell and PicoRV32 sources are contained in this repository.
+The SoC shell is contained in this repository. Initialize the PicoRV32 submodule with `git submodule update --init --recursive` before creating the project.
 `CORE_CLK_MHZ` defaults to 150 MHz and is produced from the 50 MHz board clock
 through Clocking Wizard.
 
