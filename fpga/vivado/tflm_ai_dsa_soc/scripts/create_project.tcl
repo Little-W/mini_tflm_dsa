@@ -6,7 +6,6 @@
 #       -tclargs build/vivado/tflm_ai_dsa_soc_custom xc7a200tfbg484-3 16 4
 #
 # Optional environment:
-#   AIENGINE_ROOT=/media/proj_tmp/aiEngine_integrated
 #   VIVADO_JOBS=8
 
 set script_dir [file dirname [file normalize [info script]]]
@@ -108,4 +107,4 @@ puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value"
 puts "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value IMPL_STRATEGY=$impl_strategy_value"
-puts "AIENGINE_ROOT=$ai_root"
+puts "PROJECT_ROOT=$dsa_root"

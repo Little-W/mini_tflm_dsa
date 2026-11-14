@@ -2,14 +2,9 @@ set flow_dir [file dirname [file normalize [info script]]]
 set project_export_dir [file normalize [file join $flow_dir ..]]
 set dsa_root [file normalize [file join $project_export_dir .. .. ..]]
 
-if {[info exists ::env(AIENGINE_ROOT)] && $::env(AIENGINE_ROOT) ne ""} {
-    set ai_root [file normalize $::env(AIENGINE_ROOT)]
-} else {
-    set ai_root [file normalize "/media/proj_tmp/aiEngine_integrated"]
-}
-
-set soc_root [file join $ai_root rtl axi_accelerator]
-set pico_root [file join $ai_root picorv32]
+set ai_root $dsa_root
+set soc_root [file join $dsa_root rtl]
+set pico_root [file join $dsa_root picorv32]
 set rtl_root [file join $dsa_root rtl]
 set common_root [file join $rtl_root common]
 set npu_root [file join $rtl_root npu]
@@ -57,6 +52,8 @@ set design_sources [list \
     [file join $common_root pseudo_dual_port_ram.v] \
     [file join $npu_compute_root shift_accumulator.sv] \
     [file join $npu_writeback_root vec_requant.sv] \
+    [file join $npu_writeback_root vec_requant_s64.sv] \
+    [file join $npu_writeback_root vec_s16_to_fifo.sv] \
     [file join $npu_writeback_root vec_s8_to_fifo.sv] \
     [file join $npu_compute_root ws_systolic_array.sv] \
     [file join $npu_compute_root ws_systolic_cell.sv] \

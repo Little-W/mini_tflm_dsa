@@ -5,6 +5,9 @@
 ```text
 rtl/
   common/          # 可被多个设计复用的 RAM/基础单元
+  axi_top/         # AXI-Lite 控制接口
+  soc/             # CPU 桥接、互连和外设
+  soc_top.sv       # SoC 顶层
   npu/
     top/           # NPU 顶层
     control/       # 控制器和任务调度
@@ -15,4 +18,4 @@ rtl/
     writeback/     # requant、s8 打包和 OA writer
 ```
 
-Vivado 工程源文件由 `fpga/vivado/tflm_ai_dsa_soc/scripts/sources.tcl` 统一枚举；独立 NPU/模块级 Verilator testbench 从该目录读取源码。
+Vivado 工程源文件由 `fpga/vivado/tflm_ai_dsa_soc/scripts/sources.tcl` 统一枚举；VCS 的 NPU 和模块测试从该目录读取源码。

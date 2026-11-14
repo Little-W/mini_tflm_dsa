@@ -49,11 +49,15 @@ wire                              store_weight_req_col [SIZE];
 generate
     for (genvar sw_col = 0; sw_col < SIZE; sw_col++) begin : gen_store_weight_buf
 `ifdef SYNTHESIS
+`ifndef ASIC_SYNTHESIS
         (* DONT_TOUCH = "TRUE" *)
         LUT1 #(.INIT(2'b10)) u_store_weight_buf (
             .I0(store_weight_req),
             .O (store_weight_req_col[sw_col])
         );
+`else
+        assign store_weight_req_col[sw_col] = store_weight_req;
+`endif
 `else
         assign store_weight_req_col[sw_col] = store_weight_req;
 `endif
