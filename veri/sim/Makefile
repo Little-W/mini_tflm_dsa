@@ -1,4 +1,6 @@
 SHELL := /bin/bash
+.DEFAULT_GOAL := run
+include $(dir $(abspath $(lastword $(MAKEFILE_LIST))))../../config/npu_config.mk
 .RECIPEPREFIX := >
 
 TOP      ?= tb_top
@@ -25,6 +27,9 @@ PANEL_MAX_R ?= 16
 PANEL_MAX_W ?= 16
 ifeq ($(PCR_ENGINE),1)
 MODE_DEFINES += GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES) GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R) GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W)
+ifeq ($(PS_FORCE_RAW),1)
+MODE_DEFINES += GEMMORA_PS_FORCE_RAW
+endif
 endif
 SOC_CASE ?= axi_soc_case
 SOC_CASE_DIR ?= ../tb/$(SOC_CASE)
@@ -62,7 +67,13 @@ SOC_AXI_WRITE_OUTSTANDING ?= $(SOC_AXI_READ_OUTSTANDING)
 SOC_CPU_ENABLE_ICACHE ?= 0
 SOC_BYPASS_RAM_PINGPONG ?= 1
 SOC_RAM_WRITE_TIMING_BUFFER ?= 1
-SIMV     ?= simv_$(DUT_MODE)_E$(PCR_ENGINE)$(if $(filter 1,$(PCR_ENGINE)),_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W),)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)
+SIMV     ?= simv_$(DUT_MODE)_E$(PCR_ENGINE)$(if $(filter 1,$(PCR_ENGINE)),_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W)_F$(PS_FORCE_RAW),)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)
+NPU_CAPACITY_SIZE = $(MMA_SIZE)
+NPU_CAPACITY_CACHE = $(MMA_IA_CACHE_BLOCKS)
+NPU_CAPACITY_FRAMES = $(MMA_PS_FRAME_COUNT)
+NPU_CAPACITY_READ_OUTSTANDING = $(SOC_AXI_READ_OUTSTANDING)
+PCR_CONFIG_TAG = $(if $(filter 1,$(PCR_ENGINE)),_E1_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W)_F$(PS_FORCE_RAW),)
+NPU_BUILD_STAMP := $(SIMV).npu-config
 SOC_TIMEOUT_CYCLES ?=
 SOC_C_SRC ?= ../soc_csrc/soc_main.c
 SOC_RUNTIME_C_SRC ?= ../soc_csrc/soc_runtime_main.c
@@ -139,7 +150,7 @@ SOC_RUNTIME_BASE_ADDR ?= $(shell python3 -c 'print(hex((int("$(SOC_CPU_MEM_DP)",
 # Runtime firmware embeds SOC_RUNTIME_CASE_BASE, which is derived from
 # SOC_CPU_MEM_DP. Keep the memory depth in the build directory name so cached
 # cpu.mem images cannot be reused with a stale runtime data base address.
-SOC_RUNTIME_BUILD_DIR ?= ../tb/axi_soc_runtime_build_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)
+SOC_RUNTIME_BUILD_DIR ?= ../tb/axi_soc_runtime_build_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)$(PCR_CONFIG_TAG)
 SOC_RUNTIME_CPU_MEM ?= $(SOC_RUNTIME_BUILD_DIR)/cpu.mem
 TFLM_DIR ?= ../../drivers/tflm/tflm
 TFLM_ROOT ?= $(TFLM_DIR)/tflite-micro
@@ -148,7 +159,7 @@ TFLM_NMSIS_NN_ENABLE ?= $(TFLM_SOC_MMA_ENABLE)
 TFLM_NMSIS_NN_DEFINE := $(if $(filter 1 yes true TRUE,$(TFLM_NMSIS_NN_ENABLE)),-DNMSIS_NN,)
 TFLM_SOC_MMA_DEFINE := $(if $(filter 1 yes true TRUE,$(TFLM_NMSIS_NN_ENABLE)),$(if $(filter 1 yes true TRUE,$(TFLM_SOC_MMA_ENABLE)),-DTFLM_SOC_MMA,),)
 TFLM_ACCEL_TAG := $(if $(filter 1 yes true TRUE,$(TFLM_NMSIS_NN_ENABLE)),$(if $(filter 1 yes true TRUE,$(TFLM_SOC_MMA_ENABLE)),hw,nmsis),sw)
-TFLM_BUILD_DIR ?= build-$(SOC_ARCH_TAG)-$(TFLM_ACCEL_TAG)-S$(MMA_SIZE)-C$(MMA_IA_CACHE_BLOCKS)-P$(MMA_PS_FRAME_COUNT)
+TFLM_BUILD_DIR ?= build-$(SOC_ARCH_TAG)-$(TFLM_ACCEL_TAG)-S$(MMA_SIZE)-C$(MMA_IA_CACHE_BLOCKS)-P$(MMA_PS_FRAME_COUNT)$(PCR_CONFIG_TAG)
 TFLM_LIB ?= $(TFLM_DIR)/$(TFLM_BUILD_DIR)/libtflite-micro.a
 TFLM_GENFILES ?= $(TFLM_ROOT)/gen/linux_x86_64_default/genfiles
 TFLM_HOST_BUILD_DIR ?= build-host-reference
@@ -182,11 +193,15 @@ TFLM_MNIST_CNN_TIMEOUT_CYCLES ?= 320000000
 TFLM_MICRO_SPEECH_TIMEOUT_CYCLES ?= 50000000
 TFLM_HELLO_WORLD_TIMEOUT_CYCLES ?= 5000000
 TFLM_PERSON_DETECTION_TIMEOUT_CYCLES ?= 320000000
-SOC_HW_DEFINES := -DDSA_TILE_SIZE=$(MMA_SIZE) -DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS) -DDSA_PS_FRAME_COUNT=$(MMA_PS_FRAME_COUNT)
+SOC_HW_DEFINES := -DDSA_TILE_SIZE=$(MMA_SIZE) -DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS) -DDSA_PS_FRAME_COUNT=$(MMA_PS_FRAME_COUNT) \
+                 -DDSA_PCR_ENGINE=$(PCR_ENGINE) -DDSA_PANEL_MAX_R=$(PANEL_MAX_R) -DDSA_PANEL_MAX_W=$(PANEL_MAX_W) \
+                 -DDSA_PS_POOL_BYTES=$(if $(filter 1,$(PCR_ENGINE)),$(PS_POOL_BYTES),0) -DDSA_PS_FORCE_RAW=$(PS_FORCE_RAW)
 TFLM_EXTRA_DEFINES ?=
 TFLM_NMSIS_NN_SOURCE_DIR := ../../drivers/tflm/NMSIS/NN/Source
 TFLM_NMSIS_SRCS := $(wildcard $(TFLM_NMSIS_NN_SOURCE_DIR)/*/*.c)
 TFLM_RV32_REBUILD_DEPS := \
+                $(NPU_CONFIG) \
+                $(NPU_CONFIG_ROOT)/config/npu_config.mk \
                 $(TFLM_DIR)/Makefile \
                 ../../drivers/gempact_tiling.h \
                 $(TFLM_NMSIS_NN_SOURCE_DIR)/../Include/dsa_accel.h \
@@ -464,7 +479,7 @@ soc_case:
 > @python3 ../tb/generate_axi_soc_case.py $(SOC_GEN_ARGS) --out_dir $(SOC_CASE_DIR)
 
 .PHONY: pcr_nmsis_soc_c
-pcr_nmsis_soc_c:
+pcr_nmsis_soc_c: capacity-check
 > @mkdir -p $(SOC_CASE_DIR)
 > $(SOC_GCC) $(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) -ffreestanding -fno-builtin -nostdlib -nostartfiles -I$(TFLM_NMSIS_NN_SOURCE_DIR)/../Include -I../../drivers $(SOC_LINK_FLAGS) ../soc_csrc/start.S ../soc_csrc/gempact_pcr_soc_main.c $(TFLM_NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.c $(SOC_BARE_LIBS) -o $(SOC_CASE_DIR)/cpu.elf
 > $(SOC_OBJCOPY) -O binary $(SOC_CASE_DIR)/cpu.elf $(SOC_CASE_DIR)/cpu.bin
@@ -484,7 +499,7 @@ soc_c: soc_case
 > $(SOC_OBJCOPY) -O binary $(SOC_CASE_DIR)/cpu.elf $(SOC_CASE_DIR)/cpu.bin
 > python3 ../tb/elf_to_mem.py $(SOC_CASE_DIR)/cpu.bin $(SOC_CASE_DIR)/cpu.mem --depth $(SOC_CPU_MEM_DP)
 
-$(SOC_RUNTIME_CPU_MEM): $(SOC_RUNTIME_C_SRC) ../../drivers/dsa_accel.c ../../drivers/dsa_accel.h ../../drivers/gempact_tiling.h ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../soc_csrc/picosoc_bsp.h ../soc_csrc/dsa_accel_mmio.c ../soc_csrc/dsa_accel_mmio.h ../soc_csrc/link.ld Makefile
+$(SOC_RUNTIME_CPU_MEM): $(SOC_RUNTIME_C_SRC) ../../drivers/dsa_accel.c ../../drivers/dsa_accel.h ../../drivers/gempact_tiling.h ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../soc_csrc/picosoc_bsp.h ../soc_csrc/dsa_accel_mmio.c ../soc_csrc/dsa_accel_mmio.h ../soc_csrc/link.ld Makefile $(NPU_CONFIG) $(NPU_CONFIG_ROOT)/config/npu_config.mk $(NPU_BUILD_STAMP) | capacity-check
 > @mkdir -p $(@D)
 > @echo "[SOC_RUNTIME_C] $(SOC_RUNTIME_C_SRC) -> $@"
 > $(SOC_GCC) $(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) -DSOC_RUNTIME_CASE_BASE=$(SOC_RUNTIME_BASE_ADDR) -ffreestanding -nostdlib -nostartfiles -DPICOSOC_UART_CLKDIV=$(SOC_UART_CLKDIV) -I../soc_csrc $(SOC_LINK_FLAGS) ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../../drivers/dsa_accel.c ../soc_csrc/dsa_accel_mmio.c $(SOC_RUNTIME_C_SRC) $(SOC_BARE_LIBS) -o $(@D)/cpu.elf
@@ -493,7 +508,7 @@ $(SOC_RUNTIME_CPU_MEM): $(SOC_RUNTIME_C_SRC) ../../drivers/dsa_accel.c ../../dri
 
 soc_runtime_c: $(SOC_RUNTIME_CPU_MEM)
 
-$(TFLM_LIB): $(TFLM_RV32_REBUILD_DEPS)
+$(TFLM_LIB): $(TFLM_RV32_REBUILD_DEPS) $(NPU_BUILD_STAMP) | capacity-check
 > $(MAKE) -C $(TFLM_DIR) BUILD_DIR=$(TFLM_BUILD_DIR) USE_NMSIS_NN=$(TFLM_NMSIS_NN_ENABLE) CC=$(SOC_GCC) CXX=$(SOC_GXX) AR=$(SOC_AR) TARGET_FLAGS="$(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) $(TFLM_EXTRA_DEFINES) -DTFLM_SOC_PROGRESS $(TFLM_SOC_MMA_DEFINE)" BUILD_TYPE=Release $(TFLM_BUILD_DIR)/libtflite-micro.a
 
 $(TFLM_HOST_LIB):
@@ -590,7 +605,14 @@ tflm_mnist_cnn_soc_c: $(TFLM_LIB) $(TFLM_MNIST_CNN_APP_SRCS)
 > $(SOC_OBJCOPY) -O binary $(SOC_CASE_DIR)/cpu.elf $(SOC_CASE_DIR)/cpu.bin
 > python3 ../tb/elf_to_mem.py $(SOC_CASE_DIR)/cpu.bin $(SOC_CASE_DIR)/cpu.mem --depth $(SOC_CPU_MEM_DP)
 
-$(SIMV): $(VCS_FILELISTS) $(VCS_SRC_DEPS) Makefile
+$(NPU_BUILD_STAMP): npu-config-force
+> @mkdir -p '$(@D)'
+> @temporary=$$(mktemp '$@.XXXXXX'); \
+>   printf '%s\n' 'NPU_CONFIG=$(NPU_CONFIG)' '$(NPU_EFFECTIVE_CONFIG_VALUES)' \
+>     'MMA_PARAM_OPTS=$(MMA_PARAM_OPTS)' 'MODE_DEFINES=$(MODE_DEFINES)' 'DEFINES=$(DEFINES)' > "$$temporary"; \
+>   if cmp -s "$$temporary" '$@'; then rm -f "$$temporary"; else mv -f "$$temporary" '$@'; fi
+
+$(SIMV): $(VCS_FILELISTS) $(VCS_SRC_DEPS) Makefile $(NPU_CONFIG) $(NPU_CONFIG_ROOT)/config/npu_config.mk $(NPU_BUILD_STAMP) | capacity-check
 > @mkdir -p $(OUT_DIR)
 > @echo "[COMPILE] VCS -> $(SIMV) (DUT_MODE=$(DUT_MODE), case=$(case), seed=$(seed))"
 > $(VCS) $(VCS_OPTS) $(MMA_PARAM_OPTS) $(INCDIRS:%=-y %) $(DEFINES:%=+define+%) $(MODE_DEFINES:%=+define+%) -f $(FILELIST) -top $(TOP) -l $(COMPILE_LOG) -o $(SIMV) +vcs+initreg+random

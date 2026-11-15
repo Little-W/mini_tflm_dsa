@@ -89,6 +89,19 @@ void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
                              uint32_t *ia_reuse_num,
                              uint32_t *w_reuse_num)
 {
+#if DSA_PCR_ENGINE
+    gempact_tiling_t tiling;
+    (void)ia_cache_blocks;
+    if (!ia_reuse_num || !w_reuse_num) return;
+    *ia_reuse_num=0u; *w_reuse_num=0u;
+    if (N && !(N&15u) && N<(1u<<20) &&
+        gempact_plan_panel(K,M,DSA_PANEL_MAX_R,DSA_PANEL_MAX_W,
+            DSA_PS_POOL_BYTES,0,0,dataflow_mode==DSA_DATAFLOW_IS,
+            DSA_PS_FORCE_RAW,&tiling,0)) {
+        *ia_reuse_num=tiling.ia_reuse;
+        *w_reuse_num=tiling.w_reuse;
+    }
+#else
     uint32_t stream_cols;
     uint32_t stream_rows;
     uint32_t output_row_tiles;
@@ -127,6 +140,7 @@ void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
     *w_reuse_num = w_limit;
     dsa_matmul_legalize_reuse(K, M, ia_cache_blocks, dataflow_mode,
                               ia_reuse_num, w_reuse_num);
+#endif
 }
 
 uint32_t dsa_build_cfg_word(const dsa_matmul_config_t *config)
@@ -173,6 +187,12 @@ static uint32_t configure_mmio_registers(const dsa_matmul_config_t *config,
                     config->rhs_dtype == DSA_DTYPE_S8 &&
                     config->bias_dtype == DSA_DTYPE_S32 &&
                     config->out_dtype == DSA_DTYPE_S16);
+#if DSA_PCR_ENGINE
+    if (config->lhs_dtype!=DSA_DTYPE_S8 || config->rhs_dtype!=DSA_DTYPE_S8 ||
+        config->out_dtype!=DSA_DTYPE_S8 || config->bias_ptr ||
+        config->lhs_offset || config->rhs_offset || !config->N ||
+        (config->N&15u) || config->N>=(1u<<20)) return DSA_ERR_INVALID_DIM;
+#endif
     if ((config->lhs_ptr == 0) || (config->rhs_ptr == 0) ||
         (config->dst_ptr == 0)) {
         return DSA_ERR_NULL_PTR;
@@ -251,6 +271,7 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config)
 
     ia_reuse_num = cfg_local.ia_reuse_num;
     w_reuse_num = cfg_local.w_reuse_num;
+#if !DSA_PCR_ENGINE
     if ((ia_reuse_num == 0u) || (w_reuse_num == 0u)) {
         uint32_t auto_ia = 1u;
         uint32_t auto_w = 1u;
@@ -268,6 +289,7 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config)
     dsa_matmul_legalize_reuse(cfg_local.K, cfg_local.M, DSA_IA_CACHE_BLOCKS,
                               cfg_local.dataflow_mode,
                               &ia_reuse_num, &w_reuse_num);
+#endif
 
     status = configure_mmio_registers(&cfg_local, ia_reuse_num, w_reuse_num);
     if (status != DSA_SUCCESS) {

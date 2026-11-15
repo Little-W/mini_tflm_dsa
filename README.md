@@ -10,6 +10,7 @@ NPU 通过 AXI-Lite 接收任务配置，通过 AXI 访问存储器，执行分�
 - 支持 Weight Stationary（WS）和 Input Stationary（IS）数据流，可通过寄存器切换。
 - 标准数据通路支持 INT8、INT16 输入，以及逐张量和逐通道量化。
 - 提供 PCR 面板引擎，使用无损部分和压缩和可配置的页池管理片上存储。
+- 提供固定容量求解器，自动选择 PCR 面板与 PS RAM 配比，并更新统一硬件配置。
 - 提供 AXI-Lite 寄存器接口、C 驱动、TFLM 和 NMSIS-NN 集成。
 - 提供模块级、NPU 顶层和 SoC 仿真，以及 FPGA 和 ASIC 综合入口。
 
@@ -54,6 +55,16 @@ make vcs-unit
 
 构建产物和日志位于 `build/vcs/unit/`。其他仿真入口见[仿真与 FPGA](docs/verification.md)。
 
+### 按容量自动配置 PCR 引擎
+
+```bash
+make capacity-solve MAX_RAM_KIB=128
+make capacity-show
+make vcs-top
+```
+
+求解器将 A/B 面板与 PS 数据 RAM 合计限制在 128 KiB 内，并自动更新 [`config/npu.mk`](config/npu.mk)。若要把目录、控制和流水寄存器等也纳入论文中的完整逻辑状态预算，使用 `MAX_STATE_KIB=128`。求解与构建分两次 Make 调用；默认使用八个矩阵任务，也可通过 `SHAPE`、`SHAPES` 或 `WORKLOADS` 自定义。配置范围、目标函数和 Verilator 入口见[容量求解器说明](docs/capacity.md)。
+
 ### 选择模型并运行 SoC 仿真
 
 SoC 固件构建需要 RISC-V 裸机交叉编译工具链；TFLM 仿真还需要 VCS、UVM 和 NumPy。
@@ -76,6 +87,9 @@ make vcs-tflm
 | `make vcs-soc` | 运行 PicoRV32 SoC 仿真 |
 | `make vcs-nmsis-abi` | 运行 NMSIS 驱动接口仿真 |
 | `make vcs-pcr-soc` | 运行 PCR 面板引擎的 SoC 仿真 |
+| `make capacity-solve MAX_RAM_KIB=<n>` | 求解 PCR 面板/PS 容量并更新配置 |
+| `make capacity-test` | 验证求解器、配置传递和软件分块 |
+| `make pcr-backend` | 用当前 PCR 配置编译 Verilator 后端 |
 | `make -C asic sram-test` | 使用 SRAM 宏功能模型测试存储器封装 |
 | `make -C asic syn` | 使用 Design Compiler 综合 NPU |
 
@@ -88,6 +102,7 @@ FPGA 工程使用 AMD Vivado，入口和参数见 [FPGA 工程说明](fpga/vivad
 | 路径 | 内容 |
 |---|---|
 | [`rtl/`](rtl/) | NPU、AXI 接口和 SoC RTL |
+| [`config/`](config/) | 统一硬件参数与容量求解任务集合 |
 | [`drivers/`](drivers/) | 加速器驱动、TFLM、NMSIS 和部署模型 |
 | [`test/`](test/) | 模块级和 NPU 顶层测试平台 |
 | [`veri/`](veri/) | UVM 环境、SoC 测试程序和 Python 仿真接口 |
@@ -102,6 +117,7 @@ FPGA 工程使用 AMD Vivado，入口和参数见 [FPGA 工程说明](fpga/vivad
 - [文档中心](docs/README.md)
 - [快速开始](docs/getting-started.md)
 - [硬件架构](docs/architecture.md)
+- [容量求解器](docs/capacity.md)
 - [软件与模型](docs/software.md)
 - [仿真与 FPGA](docs/verification.md)
 - [NPU 寄存器](drivers/registers_v2.md)

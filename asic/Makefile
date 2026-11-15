@@ -1,4 +1,6 @@
 SHELL := /bin/bash
+.DEFAULT_GOAL := sram-test
+include $(dir $(abspath $(lastword $(MAKEFILE_LIST))))../config/npu_config.mk
 ROOT := $(abspath ..)
 SRAM_ROOT ?= /media/6/IC/lib/SRAM_Lib_2025
 IVERILOG ?= iverilog
@@ -19,6 +21,6 @@ sram-test:
 npu-test:
 	$(MAKE) -C "$(ROOT)" vcs-top ASIC_SRAM=1 SRAM_ROOT="$(SRAM_ROOT)"
 pcr-test:
-	$(MAKE) -C "$(ROOT)" vcs-top ASIC_SRAM=1 SRAM_ROOT="$(SRAM_ROOT)" PCR_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=64 PS_FRAME_COUNT=25 PANEL_MAX_R=2 PANEL_MAX_W=2 GEN_ARGS='--K 32 --N 32 --M 32 --lhs_dtype 1 --no_bias --lhs_zp 0 --rhs_zp 0 --tight_strides --ia_reuse_num 2 --w_reuse_num 2'
+	$(MAKE) -C "$(ROOT)" vcs-top ASIC_SRAM=1 SRAM_ROOT="$(SRAM_ROOT)" PCR_ENGINE=1 SIZE=16 GEN_ARGS='--K 32 --N 32 --M 32 --lhs_dtype 1 --no_bias --lhs_zp 0 --rhs_zp 0 --tight_strides'
 syn summary:
 	$(MAKE) -C synthesis $@

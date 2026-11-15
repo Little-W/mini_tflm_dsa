@@ -1,4 +1,6 @@
 SHELL := /bin/bash
+.DEFAULT_GOAL := help
+include $(dir $(abspath $(lastword $(MAKEFILE_LIST))))config/npu_config.mk
 ROOT := $(abspath .)
 VCS ?= vcs
 PYTHON ?= python3
@@ -18,7 +20,7 @@ SRAM_ROOT ?= /media/6/IC/lib/SRAM_Lib_2025
 PS_POOL_BYTES ?= 179200
 PANEL_MAX_R ?= 16
 PANEL_MAX_W ?= 16
-PCR_DEFINES = $(if $(filter 1,$(PCR_ENGINE)),+define+GEMPACT_PANEL_ENGINE+GEMPACT_PCR_PS+GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES)+GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R)+GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W),) $(if $(filter 1,$(ASIC_SRAM)),+define+ASIC_SRAM,)
+PCR_DEFINES = $(if $(filter 1,$(PCR_ENGINE)),+define+GEMPACT_PANEL_ENGINE+GEMPACT_PCR_PS+GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES)+GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R)+GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W)$(if $(filter 1,$(PS_FORCE_RAW)),+GEMMORA_PS_FORCE_RAW,),) $(if $(filter 1,$(ASIC_SRAM)),+define+ASIC_SRAM,)
 LOG_NAME ?= sim
 COUNT ?= 20
 RANDOM_GEN_ARGS ?= --random --random_quant --lhs_dtype 0 --min_dim 1 --max_dim 32
@@ -52,12 +54,17 @@ PASS_ps_buffer := PASS: diagonal partial-sum
 PASS_compute_core := PASS: compute_core matched
 PASS_npu_top := [TB] PASS
 CONFIG_TAG := s$(SIZE)_c$(IA_CACHE_BLOCKS)_p$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)
-UNIT_DIR = $(UNIT_BUILD)/$(UNIT)$(if $(filter npu_top,$(UNIT)),/$(CONFIG_TAG),)$(if $(filter 1,$(PCR_ENGINE)),_pcr_b$(PS_POOL_BYTES)_r$(PANEL_MAX_R)_w$(PANEL_MAX_W),)$(if $(filter 1,$(ASIC_SRAM)),_asic_sram,)$(if $(filter 1,$(DEBUG)),_debug,)
+UNIT_DIR = $(UNIT_BUILD)/$(UNIT)$(if $(filter npu_top,$(UNIT)),/$(CONFIG_TAG),)$(if $(filter 1,$(PCR_ENGINE)),_pcr_b$(PS_POOL_BYTES)_r$(PANEL_MAX_R)_w$(PANEL_MAX_W)_f$(PS_FORCE_RAW),)$(if $(filter 1,$(ASIC_SRAM)),_asic_sram,)$(if $(filter 1,$(DEBUG)),_debug,)
 UNIT_DEFINES = $(if $(filter 1,$(PCR_ENGINE)),+define+TB_MEM_WORDS=131072,) $(if $(filter npu_top,$(UNIT)),+define+TB_SIZE=$(SIZE)+TB_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS)+TB_PS_FRAME_COUNT=$(PS_FRAME_COUNT)+TB_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING),)
 
 .PHONY: help vcs-unit vcs-unit-% vcs-unit-build vcs-uvm vcs-axil vcs-soc vcs-top vcs-tflm vcs-nmsis-abi clean-vcs prepare-vcs-python
 
 help:
+	@echo 'make capacity-show/check     Show or validate effective NPU_CONFIG parameters'
+	@echo 'make capacity-solve MAX_RAM_KIB=<n>    Optimize buffer RAM and update NPU_CONFIG'
+	@echo 'make capacity-solve MAX_STATE_KIB=<n>  Optimize complete logical state'
+	@echo 'make capacity-test           Test solver and configuration integration'
+	@echo 'make pcr-backend             Build a Verilator backend from the PCR configuration'
 	@echo 'make vcs-unit                 Run all module and NPU tests with VCS'
 	@echo 'make vcs-unit-<name>          Run one test: $(UNIT_TESTS)'
 	@echo 'make vcs-axil CASE=<name>     Run an AXI-Lite UVM test'
@@ -74,6 +81,7 @@ help:
 	@echo 'make vcs-nmsis-abi            Run the NMSIS driver integration test'
 	@echo 'make vcs-random-npu           Run randomized NPU top tests'
 	@echo 'make vcs-random-compute       Run randomized compute core tests'
+	@echo 'Config: NPU_CONFIG=$(NPU_CONFIG) (command-line parameters take priority)'
 	@echo 'Parameters: SIZE IA_CACHE_BLOCKS PS_FRAME_COUNT AXI_READ_OUTSTANDING SEED SIM_ARGS'
 
 vcs-unit:
@@ -82,7 +90,7 @@ vcs-unit:
 vcs-unit-%:
 	@$(MAKE) --no-print-directory vcs-unit-run UNIT=$*
 
-vcs-unit-build:
+vcs-unit-build: capacity-check $(NPU_CONFIG)
 	@test -n "$(SRCS_$(UNIT))" || { echo 'Unknown unit: $(UNIT)' >&2; exit 2; }
 	@mkdir -p '$(UNIT_DIR)'
 	@if [ '$(UNIT)' = compute_core ] && [ '$(COMPUTE_DATA_DIR)' = '$(UNIT_BUILD)/compute_case' ]; then \
@@ -98,13 +106,14 @@ vcs-unit-build:
 vcs-unit-run: vcs-unit-build
 	@if [ '$(UNIT)' = npu_top ]; then \
 	  $(PYTHON) test/npu_top/gen_mem.py --out_dir '$(UNIT_DIR)/case' \
-	    --size $(SIZE) --ia_cache_blocks $(IA_CACHE_BLOCKS) --ps_frame_count $(PS_FRAME_COUNT) $(GEN_ARGS); \
+	    --size $(SIZE) --ia_cache_blocks $(IA_CACHE_BLOCKS) --ps_frame_count $(PS_FRAME_COUNT) $(GEN_ARGS) \
+	    $(if $(filter 1,$(PCR_ENGINE)),--pcr-engine --panel-max-r $(PANEL_MAX_R) --panel-max-w $(PANEL_MAX_W) --ps_pool_bytes $(PS_POOL_BYTES) $(if $(filter 1,$(PS_FORCE_RAW)),--ps-force-raw,),); \
 	fi
 	@cd '$(UNIT_DIR)' && $(PYTHON) '$(ROOT)/veri/sim/run_checked.py' \
 	  --log '$(UNIT_DIR)/$(LOG_NAME).log' --pass '$(PASS_$(UNIT))' -- \
 	  '$(ROOT)/veri/sim/run_simv_lxc.sh' '$(UNIT_DIR)/simv' \
 	  $(if $(filter compute_core,$(UNIT)),+DATA_DIR=$(COMPUTE_DATA_DIR),) \
-	  $(if $(filter npu_top,$(UNIT)),+INIT_MEM=$(UNIT_DIR)/case/init.mem +GOLDEN_MEM=$(UNIT_DIR)/case/golden.mem +CASE_MEM=$(UNIT_DIR)/case/config.mem,) $(if $(filter 1,$(ASIC_SRAM)),+notimingcheck,) $(SIM_ARGS)
+	  $(if $(filter npu_top,$(UNIT)),+INIT_MEM=$(UNIT_DIR)/case/init.mem +GOLDEN_MEM=$(UNIT_DIR)/case/golden.mem +CASE_MEM=$(UNIT_DIR)/case/config.mem $(if $(filter 1,$(PCR_ENGINE)),+ACC_I32_MEM=$(UNIT_DIR)/case/acc.mem,),) $(if $(filter 1,$(ASIC_SRAM)),+notimingcheck,) $(SIM_ARGS)
 
 vcs-top: vcs-unit-npu_top
 
@@ -133,7 +142,7 @@ prepare-vcs-python:
 vcs-uvm: prepare-vcs-python
 	$(MAKE) -C veri/sim run DUT_MODE=$(DUT_MODE) case=$(CASE) seed=$(SEED) \
 	  MMA_SIZE=$(SIZE) MMA_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS) MMA_PS_FRAME_COUNT=$(PS_FRAME_COUNT) \
-	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) PCR_ENGINE=$(PCR_ENGINE) PS_POOL_BYTES=$(PS_POOL_BYTES) PANEL_MAX_R=$(PANEL_MAX_R) PANEL_MAX_W=$(PANEL_MAX_W) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
+	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) PCR_ENGINE=$(PCR_ENGINE) PS_POOL_BYTES=$(PS_POOL_BYTES) PANEL_MAX_R=$(PANEL_MAX_R) PANEL_MAX_W=$(PANEL_MAX_W) PS_FORCE_RAW=$(PS_FORCE_RAW) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
 
 vcs-axil:
 	$(MAKE) vcs-uvm DUT_MODE=axil CASE=$(CASE)
@@ -147,7 +156,7 @@ vcs-nmsis-abi:
 vcs-tflm: prepare-vcs-python
 	$(MAKE) -C veri/sim tflm_$(TFLM_APP)_run SOC_CPU_MEM_DP=$(SOC_CPU_MEM_DP) MMA_SIZE=$(SIZE) \
 	  MMA_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS) MMA_PS_FRAME_COUNT=$(PS_FRAME_COUNT) \
-	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) PCR_ENGINE=$(PCR_ENGINE) PS_POOL_BYTES=$(PS_POOL_BYTES) PANEL_MAX_R=$(PANEL_MAX_R) PANEL_MAX_W=$(PANEL_MAX_W) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
+	  SOC_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING) PCR_ENGINE=$(PCR_ENGINE) PS_POOL_BYTES=$(PS_POOL_BYTES) PANEL_MAX_R=$(PANEL_MAX_R) PANEL_MAX_W=$(PANEL_MAX_W) PS_FORCE_RAW=$(PS_FORCE_RAW) DUMPOPTS=0 SIM_ARGS='$(SIM_ARGS)'
 
 clean-vcs:
 	rm -rf '$(UNIT_BUILD)'
@@ -165,4 +174,18 @@ model-build:
 
 .PHONY: vcs-pcr-soc
 vcs-pcr-soc:
-	$(MAKE) vcs-soc PCR_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=64 PS_FRAME_COUNT=25 SOC_APP=pcr_nmsis SOC_CASE=axi_soc_case_pcr_nmsis
+	$(MAKE) vcs-soc PCR_ENGINE=1 SIZE=16 SOC_APP=pcr_nmsis SOC_CASE=axi_soc_case_pcr_nmsis
+
+PCR_BACKEND_OUTPUT ?= $(ROOT)/build/pcr_model
+PCR_BACKEND_JOBS ?= 2
+PCR_BACKEND_MEM_WORDS ?= 8388608
+PCR_BACKEND_REFERENCE ?= 0
+.PHONY: pcr-backend
+pcr-backend: capacity-check
+	@test '$(PCR_ENGINE)' = 1 || { echo 'pcr-backend requires PCR_ENGINE=1; run capacity-solve first or explicitly select a valid PCR configuration.' >&2; exit 2; }
+	$(PYTHON) '$(ROOT)/veri/pcr_model/build_measured_backend.py' \
+	  --size '$(SIZE)' --cache '$(IA_CACHE_BLOCKS)' --ps '$(PS_FRAME_COUNT)' \
+	  --panel-rows '$(PANEL_MAX_R)' --panel-cols '$(PANEL_MAX_W)' --ps-pool-bytes '$(PS_POOL_BYTES)' \
+	  --ps-sector-codec --pcr-ps --pcr-enable 1 --pcr-fast-enable 1 \
+	  $(if $(filter 1,$(PS_FORCE_RAW)),--force-raw,) $(if $(filter 1,$(PCR_BACKEND_REFERENCE)),--reference,) \
+	  --mem-words '$(PCR_BACKEND_MEM_WORDS)' --jobs '$(PCR_BACKEND_JOBS)' --output-root '$(abspath $(PCR_BACKEND_OUTPUT))'
