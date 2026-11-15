@@ -11,7 +11,12 @@ endif
 NPU_CONFIG ?= $(NPU_CONFIG_ROOT)/config/npu.mk
 override NPU_CONFIG := $(abspath $(NPU_CONFIG))
 export NPU_CONFIG
+ifneq ($(filter menuconfig,$(MAKECMDGOALS)),)
+# An interactive editor may create a new configuration when the user saves.
+-include $(NPU_CONFIG)
+else
 include $(NPU_CONFIG)
+endif
 
 # The legacy entry points have different historical array-size defaults. Only
 # the PCR mode shares SIZE across them; the panel engine requires SIZE=16.
@@ -27,6 +32,7 @@ NPU_AXI_READ_OUTSTANDING ?= $(AXI_READ_OUTSTANDING)
 endif
 
 CAPACITY_SOLVER := $(NPU_CONFIG_ROOT)/scripts/capacity/solve.py
+NPU_MENUCONFIG := $(NPU_CONFIG_ROOT)/scripts/capacity/menuconfig.py
 CAPACITY_OUTPUT ?= $(NPU_CONFIG_ROOT)/build/capacity/solution.json
 WORKLOADS ?= $(NPU_CONFIG_ROOT)/config/capacity_workloads.json
 CAPACITY_SHAPES = $(strip $(SHAPE) $(SHAPES))
@@ -50,9 +56,17 @@ NPU_EFFECTIVE_CONFIG_VALUES = PCR_ENGINE=$(PCR_ENGINE) SIZE=$(NPU_CAPACITY_SIZE)
   CAPACITY_REPRESENTATION=$(CAPACITY_REPRESENTATION)
 NPU_CAPACITY_SET_ARGS = $(foreach setting,$(NPU_EFFECTIVE_CONFIG_VALUES),--set '$(setting)')
 
-ifneq ($(filter capacity-solve,$(MAKECMDGOALS)),)
+# The editor starts from the persistent file. Import only explicit common-key
+# command-line overrides, not each legacy entry point's effective defaults.
+NPU_CONFIG_KEYS := PCR_ENGINE SIZE IA_CACHE_BLOCKS PS_FRAME_COUNT AXI_READ_OUTSTANDING \
+  PANEL_MAX_R PANEL_MAX_W PS_POOL_BYTES PS_FORCE_RAW CAPACITY_BUDGET_BYTES \
+  CAPACITY_BUDGET_SCOPE CAPACITY_REPRESENTATION
+NPU_MENUCONFIG_SET_ARGS = $(foreach key,$(NPU_CONFIG_KEYS),$(if $(filter command line,$(origin $(key))),--set '$(key)=$($(key))',))
+MENUCONFIG_ARGS ?=
+
+ifneq ($(filter capacity-solve menuconfig,$(MAKECMDGOALS)),)
 ifneq ($(words $(MAKECMDGOALS)),1)
-$(error capacity-solve cannot share a Make invocation with other targets; run it first, then invoke the build so the new configuration is read)
+$(error $(filter capacity-solve menuconfig,$(MAKECMDGOALS)) cannot share a Make invocation with other targets; run it first, then invoke the build so the new configuration is read)
 endif
 ifneq ($(strip $(MAX_RAM_KIB)),)
 ifneq ($(strip $(MAX_STATE_KIB)),)
@@ -61,7 +75,12 @@ endif
 endif
 endif
 
-.PHONY: capacity-solve capacity-show capacity-check capacity-test npu-config-force
+.PHONY: menuconfig capacity-solve capacity-show capacity-check capacity-test npu-config-force
+menuconfig:
+	@$(PYTHON) '$(NPU_MENUCONFIG)' --config '$(NPU_CONFIG)' $(NPU_MENUCONFIG_SET_ARGS) \
+	  $(CAPACITY_LIMIT_ARGS) $(CAPACITY_REPR_ARGS) $(CAPACITY_TASK_ARGS) \
+	  --output '$(abspath $(CAPACITY_OUTPUT))' $(MENUCONFIG_ARGS)
+
 capacity-solve:
 	$(PYTHON) '$(CAPACITY_SOLVER)' --config '$(NPU_CONFIG)' $(NPU_CAPACITY_SET_ARGS) \
 	  $(CAPACITY_LIMIT_ARGS) $(CAPACITY_REPR_ARGS) $(CAPACITY_TASK_ARGS) \

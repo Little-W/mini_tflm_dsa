@@ -144,8 +144,24 @@ def atomic_write(path, text):
 
 def update_config(path, updates):
     """Update capacity fields only, preserving other settings and comments."""
+    return _update_settings(path, updates, MANAGED_KEYS,
+                            "GEMPACT capacity parameters (updated by scripts/capacity/solve.py)")
+
+
+def update_settings(path, updates):
+    """Update any supported hardware setting, preserving unrelated content.
+
+    The interactive editor can change the legacy interface parameters as well
+    as the solver-managed fields. The solver's narrower update_config contract
+    remains unchanged.
+    """
+    return _update_settings(path, updates, tuple(DEFAULTS),
+                            "NPU parameters (updated by menuconfig)")
+
+
+def _update_settings(path, updates, allowed_keys, section_comment):
     path = Path(path).resolve()
-    unexpected = set(updates) - set(MANAGED_KEYS)
+    unexpected = set(updates) - set(allowed_keys)
     if unexpected:
         raise ValueError("cannot update unrelated configuration keys: " + ", ".join(sorted(unexpected)))
     existing = read_config(path) if path.exists() else {}
@@ -166,11 +182,11 @@ def update_config(path, updates):
                 line += "  #" + comment
             replaced.add(key)
         lines.append(line)
-    new_keys = [key for key in MANAGED_KEYS if key in updates and key not in replaced]
+    new_keys = [key for key in allowed_keys if key in updates and key not in replaced]
     if new_keys:
         if lines and lines[-1]:
             lines.append("")
-        lines.append("# GEMPACT capacity parameters (updated by scripts/capacity/solve.py)")
+        lines.append("# " + section_comment)
         lines.extend(f"{key} ?= {updates[key]}" for key in new_keys)
     return atomic_write(path, "\n".join(lines) + "\n")
 

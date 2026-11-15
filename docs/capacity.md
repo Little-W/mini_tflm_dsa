@@ -92,6 +92,53 @@ make vcs-top NPU_CONFIG=build/configs/npu_64k.mk
 
 PCR 构建产物名称包含池容量、面板上限与 RAW 标志。`veri/sim` 还记录有效参数内容戳，即使手工固定 `SIMV` 文件名，参数变化也会触发重编；固件构建使用同样的物理参数。
 
+## 终端配置菜单
+
+`make menuconfig` 打开交互式终端界面，直接编辑同一份 `config/npu.mk`。可以手动调整参数，也可以在菜单中调用容量求解器。
+
+```bash
+# 编辑默认配置
+make menuconfig
+
+# 以 128 KiB 数据 RAM 预算打开；尚未保存前不会修改文件
+make menuconfig MAX_RAM_KIB=128
+
+# 编辑另一份配置；文件不存在时，保存会创建它
+make menuconfig NPU_CONFIG=build/configs/npu_custom.mk
+
+# 为界面中的 Optimize 指定任务集合
+make menuconfig MAX_STATE_KIB=64 SHAPES='128,1024,128 512,1024,512'
+```
+
+菜单包含引擎选择、阵列大小、预算范围和容量、部分和表示策略、A/B 面板上限、PS 池大小，以及旧引擎缓存和 AXI 参数。界面实时显示 A/B 面板、PS 池、数据 RAM 合计、完整状态模型和剩余预算；旧引擎模式会注明 PCR 容量模型未启用。
+
+| 操作 | 按键 |
+|---|---|
+| 选择项目 | `↑` / `↓` 或 `k` / `j` |
+| 翻页 | `Page Up` / `Page Down` |
+| 编辑参数 | `Enter` |
+| 切换布尔值或枚举 | `Space`、`←` / `→` |
+| 自动求解当前预算 | `O` |
+| 校验并保存 | `S` |
+| 从文件重新加载 | `L` |
+| 退出 | `Q` 或 `Esc` |
+| 查看当前参数帮助 | `?`、`H` 或 `F1` |
+| 清空输入框 | `Ctrl-U` |
+
+容量输入支持字节数和二进制单位，例如 `131072`、`128 KiB`、`1 MiB`；PS 池仍必须按 256 字节整页配置。启用 PCR 时会将 `SIZE` 设为 16，部分和表示策略与 `PS_FORCE_RAW` 保持同步。
+
+修改先保存在菜单中的未保存状态。按 `O` 会用当前预算和指定任务集合求解并填入参数；按 `S` 才会校验并写回配置。超预算或其它非法配置可以继续编辑，但不能保存。退出时有未保存修改，可选择保存、放弃或取消退出；如果文件被其他程序修改，菜单会阻止覆盖并提示重新加载。
+
+菜单从配置文件中的持久参数开始编辑；显式传入的公共参数，例如 `make menuconfig PANEL_MAX_R=8`，会作为待保存修改载入。子 Make 的旧引擎默认参数不会自动写回配置。`MAX_RAM_KIB`、`MAX_STATE_KIB`、`REPRESENTATION`、`SHAPE/SHAPES`、`WORKLOADS` 和 `CAPACITY_OUTPUT` 与命令行求解入口一致。界面内求解后保存，会同时导出对应的解；手动编辑后需要再次求解才能导出新的求解报告。
+
+菜单要求交互式终端及可用的 Python `curses` 模块，支持 80×24 终端、滚动和窗口尺寸变化。若系统 Python 未包含 `curses`，需通过系统的软件包管理器安装带该模块的 Python；不需要 `dialog` 或 `Kconfiglib`。直接调用脚本也可查看帮助：
+
+```bash
+python3 scripts/capacity/menuconfig.py --help
+```
+
+保存并退出后，再单独运行 `make capacity-check` 或构建命令。与求解入口相同，`make menuconfig vcs-top` 会被拒绝，保证构建重新读取保存后的参数。
+
 ## 自定义任务和表示策略
 
 求解器采用标准 GEMM 维度：`A[M,K] × B[K,N] = C[M,N]`。

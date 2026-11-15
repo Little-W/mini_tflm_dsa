@@ -26,6 +26,35 @@ Python uses only its standard library. Make tests skip if GNU Make is absent;
 C tests skip if no native C compiler is available. VCS, a RISC-V toolchain and
 an RTL compiler are not needed for this regression.
 
+## Terminal configuration editor
+
+`test_menuconfig.py` checks the draft/save transaction, byte-unit input,
+dependent PCR/RAW settings, failed optimization, external-edit protection,
+and configuration creation. It also checks all four Make entry points and
+rejects mixed edit/build goals before any configuration is changed.
+
+On POSIX systems with GNU Make and Python curses, three tests open **real
+pseudoterminals** and run `make menuconfig` with disposable configuration files:
+
+- Edit the budget, optimize in memory, cancel an exit, save, and quit.
+- Attempt an over-budget save, observe the error, and discard the draft.
+- Resize from 80×24 to 40×8 and back, then exit without modifying the file.
+
+The PTY driver uses normal navigation and editor keystrokes, with a controlling
+terminal and foreground process group; it does not replace curses or the
+configuration editor. Raw terminal transcripts are written to
+`build/capacity/menuconfig/*.pty.log`. These are functional editor checks, not
+RTL simulations. On platforms without POSIX PTYs/curses, only those terminal
+tests are skipped; the configuration and noninteractive CLI checks still run.
+
+Run just the menuconfig regression with:
+
+```sh
+python3 -m unittest discover -s test/capacity -p test_menuconfig.py -v
+```
+
+## RTL capacity elaboration
+
 For a real RTL elaboration, first solve or select a legal PCR configuration,
 then use a Verilator with `--json-only` support (validated with version 5.48):
 

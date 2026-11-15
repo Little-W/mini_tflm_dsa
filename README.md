@@ -57,6 +57,14 @@ make vcs-unit
 
 ### 按容量自动配置 PCR 引擎
 
+可以在终端菜单中编辑硬件参数、查看容量占用并调用求解器：
+
+```bash
+make menuconfig
+```
+
+方向键选择参数，回车编辑；`O` 自动求解、`S` 保存、`Q` 退出。界面使用 Python 标准库 `curses`。也可以直接通过命令行求解：
+
 ```bash
 make capacity-solve MAX_RAM_KIB=128
 make capacity-show
@@ -87,6 +95,7 @@ make vcs-tflm
 | `make vcs-soc` | 运行 PicoRV32 SoC 仿真 |
 | `make vcs-nmsis-abi` | 运行 NMSIS 驱动接口仿真 |
 | `make vcs-pcr-soc` | 运行 PCR 面板引擎的 SoC 仿真 |
+| `make menuconfig` | 在终端菜单中编辑硬件配置、查看容量并自动求解 |
 | `make capacity-solve MAX_RAM_KIB=<n>` | 求解 PCR 面板/PS 容量并更新配置 |
 | `make capacity-test` | 验证求解器、配置传递和软件分块 |
 | `make pcr-backend` | 用当前 PCR 配置编译 Verilator 后端 |

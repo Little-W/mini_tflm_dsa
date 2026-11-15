@@ -60,6 +60,7 @@ UNIT_DEFINES = $(if $(filter 1,$(PCR_ENGINE)),+define+TB_MEM_WORDS=131072,) $(if
 .PHONY: help vcs-unit vcs-unit-% vcs-unit-build vcs-uvm vcs-axil vcs-soc vcs-top vcs-tflm vcs-nmsis-abi clean-vcs prepare-vcs-python
 
 help:
+	@echo 'make menuconfig               Edit NPU parameters in an interactive terminal menu'
 	@echo 'make capacity-show/check     Show or validate effective NPU_CONFIG parameters'
 	@echo 'make capacity-solve MAX_RAM_KIB=<n>    Optimize buffer RAM and update NPU_CONFIG'
 	@echo 'make capacity-solve MAX_STATE_KIB=<n>  Optimize complete logical state'

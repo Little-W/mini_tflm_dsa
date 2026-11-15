@@ -23,7 +23,7 @@
 | 目录 | 用途 | 示例 |
 |---|---|---|
 | `scripts/fpga/` | 综合、实现、硬件平台导出与部署 | `vivado -mode batch -source scripts/fpga/vivado_synth_soc.tcl` |
-| `scripts/capacity/` | 固定容量下联合求解 PCR 面板与 PS 页池 | `make capacity-solve MAX_RAM_KIB=128`，见[容量求解器](../docs/capacity.md) |
+| `scripts/capacity/` | 终端菜单配置，以及固定容量下联合求解 PCR 面板与 PS 页池 | `make menuconfig`、`make capacity-solve MAX_RAM_KIB=128`，见[容量求解器](../docs/capacity.md) |
 | `scripts/models/` | 模型检查与 RAM 初始化文件生成 | `inspect_tflite_metadata.cc`、`prepare_vu3p_uram_init.py` |
 | `scripts/packaging/` | 仿真代码导出与使用说明模板 | `python3 scripts/packaging/package_simulation_handoff.py --help` |
 | `scripts/maintenance/` | 工具临时文件清理 | `python3 scripts/maintenance/clean_tool_outputs.py --apply` |
