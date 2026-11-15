@@ -9,6 +9,7 @@ NPU 通过 AXI-Lite 接收任务配置，通过 AXI 访问存储器，执行分�
 - 参数化二维脉动阵列，支持可配置的输入缓存和部分和存储。
 - 支持 Weight Stationary（WS）和 Input Stationary（IS）数据流，可通过寄存器切换。
 - 标准数据通路支持 INT8、INT16 输入，以及逐张量和逐通道量化。
+- 标准核心集成 DW、池化与向量运算引擎，默认 8 PE，支持 4 PE；复用 DMA 内部的 im2col。
 - 提供 PCR 面板引擎，使用无损部分和压缩和可配置的页池管理片上存储。
 - 提供固定容量求解器，自动选择 PCR 面板与 PS RAM 配比，并更新统一硬件配置。
 - 提供 AXI-Lite 寄存器接口、C 驱动、TFLM 和 NMSIS-NN 集成。
@@ -54,6 +55,21 @@ make vcs-unit
 ```
 
 构建产物和日志位于 `build/vcs/unit/`。其他仿真入口见[仿真与 FPGA](docs/verification.md)。
+
+### DW、池化与向量运算
+
+新增引擎支持 s8 depthwise convolution、平均/最大/最小池化，以及 s8/s16
+求和、最大值、最小值、点积和 Hadamard 积。默认使用 8 个 PE，4 个 PE 配置
+使用相同的软件接口。实际硬件构建选择标准核心 `PCR_ENGINE=0`。
+
+使用 Verilator 运行驱动、RTL、NMSIS 协同仿真和原功能回归：
+
+```bash
+make dw-pool-test VERILATOR=/path/to/verilator DW_PE_COUNT=8
+make dw-pool-sweep VERILATOR=/path/to/verilator
+```
+
+结构、支持范围、寄存器、4/8 PE 实验与测试结果见 [DW、池化与向量运算引擎](docs/dw_pool_engine.md)。
 
 ### 按容量自动配置 PCR 引擎
 

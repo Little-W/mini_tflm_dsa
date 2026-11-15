@@ -83,6 +83,12 @@ riscv_nmsis_nn_status riscv_avgpool_s8(const nmsis_nn_context *ctx,
                                    const nmsis_nn_dims *output_dims,
                                    int8_t *dst)
 {
+#if DSA_NN_DW_POOL_ENABLE
+    riscv_nmsis_nn_status dsa_status;
+    if (riscv_pool_s8_try_dsa(DSA_DW_OP_AVGPOOL_S8, pool_params,
+            input_dims, src, filter_dims, output_dims, dst, &dsa_status))
+        return dsa_status;
+#endif
     const int32_t input_y = input_dims->h;
     const int32_t input_x = input_dims->w;
     const int32_t output_y = output_dims->h;

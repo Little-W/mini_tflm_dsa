@@ -34,6 +34,7 @@ module axi_dual_block_dma #(
     input  logic conv_cfg_valid = 1'b0,
     output logic conv_cfg_ready,
     input  logic conv_enable = 1'b0,
+    input  logic dma_range_enable = 1'b0,
     input  conv_im2col_pkg::conv_cfg_t conv_cfg = '0,
     input  logic [31:0] conv_sched_r = 32'd0,
     input  logic [31:0] conv_sched_groups = 32'd0,
@@ -139,7 +140,7 @@ module axi_dual_block_dma #(
     localparam bit CONV_SUPPORTED = DATA_WIDTH >= 16 && BUS_WIDTH == 32 &&
                                    REG_WIDTH == 32 && IM2COL_SIZE <= SIZE;
 
-    logic job_conv;
+    logic job_conv, job_range;
     logic cfg_fire;
     logic linear_start, linear_busy, linear_done, linear_finish, linear_error;
     logic [SLOT_W-1:0] linear_slot;
@@ -180,7 +181,7 @@ module axi_dual_block_dma #(
     logic conv_active, conv_pending, conv_finished, conv_command_error;
     logic conv_done_r, conv_done_error, descriptor_error, command_im2col;
     logic [31:0] p0_q, q0_q, group_q;
-    logic [CONV_RW-1:0] rows_q;
+    logic [CONV_RW-1:0] rows_q, cols_q;
     logic [SLOT_W-1:0] slot_q;
     logic accept_read;
     assign rd_busy = linear_busy || conv_active || fe_busy || !guard_idle || !mux_idle;
@@ -200,15 +201,16 @@ module axi_dual_block_dma #(
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            job_conv <= 1'b0; conv_active <= 1'b0; conv_pending <= 1'b0;
+            job_conv <= 1'b0; job_range <= 1'b0; conv_active <= 1'b0; conv_pending <= 1'b0;
             conv_finished <= 1'b0; conv_command_error <= 1'b0;
             conv_done_r <= 1'b0; conv_done_error <= 1'b0;
             descriptor_error <= 1'b0; command_im2col <= 1'b0;
-            p0_q <= '0; q0_q <= '0; group_q <= '0; rows_q <= '0; slot_q <= '0;
+            p0_q <= '0; q0_q <= '0; group_q <= '0; rows_q <= '0; cols_q <= '0; slot_q <= '0;
         end else begin
             conv_done_r <= 1'b0;
             if (cfg_fire) begin
                 job_conv <= conv_enable && CONV_SUPPORTED;
+                job_range <= dma_range_enable;
                 descriptor_error <= conv_enable && !CONV_SUPPORTED;
                 conv_command_error <= 1'b0;
             end
@@ -218,6 +220,8 @@ module axi_dual_block_dma #(
                     conv_active <= 1'b1;
                     p0_q <= rd_p0; q0_q <= rd_q0; group_q <= rd_group;
                     rows_q <= CONV_RW'(rd_rows_to_read); slot_q <= rd_slot_id;
+                    cols_q <= (rd_valid_cols > 0 && rd_valid_cols <= REG_WIDTH'(IM2COL_SIZE)) ?
+                              CONV_RW'(rd_valid_cols) : CONV_RW'(IM2COL_SIZE);
                     if (!CONV_SUPPORTED || !job_conv || fe_error ||
                         rd_rows_to_read == 0 || rd_rows_to_read > REG_WIDTH'(IM2COL_SIZE)) begin
                         conv_pending <= 1'b0; conv_finished <= 1'b1;
@@ -298,7 +302,7 @@ module axi_dual_block_dma #(
             .clk, .rst_n, .cfg_valid(cfg_fire && conv_enable), .cfg_ready(fe_cfg_ready),
             .cfg(conv_cfg), .cfg_sched_r(conv_sched_r), .cfg_sched_groups(conv_sched_groups),
             .tile_valid(conv_pending), .tile_ready(fe_tile_ready),
-            .tile_p0(p0_q), .tile_q0(q0_q), .tile_rows(rows_q),
+            .tile_p0(p0_q), .tile_q0(q0_q), .tile_rows(rows_q), .tile_cols(cols_q),
             .tile_slot(slot_q), .tile_group(group_q),
             .wr_valid(fe_wr_valid), .wr_ready(1'b1), .wr_slot(fe_slot),
             .wr_row(fe_row), .wr_col(fe_col), .wr_data(fe_data), .wr_mask(fe_mask),
@@ -312,7 +316,7 @@ module axi_dual_block_dma #(
         // Only ordinary matrix reads need allocation padding/4-KiB repair.
         // The im2col span reader already emits exact legal byte/word transfers.
         conv_axi_read_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH)) u_read_guard (
-            .clk, .rst_n, .enable(job_conv), .cfg_valid(cfg_fire),
+            .clk, .rst_n, .enable(job_conv || job_range), .cfg_valid(cfg_fire),
             .cfg_base(conv_range_base), .cfg_end(conv_range_end),
             .s_arvalid(linear_arvalid), .s_arready(linear_arready),
             .s_araddr(linear_araddr), .s_arlen(linear_arlen),
@@ -327,7 +331,7 @@ module axi_dual_block_dma #(
             .idle(guard_idle)
         );
         conv_axi_read_mux #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH)) u_read_mux (
-            .clk, .rst_n, .enable(job_conv),
+            .clk, .rst_n, .enable(job_conv || job_range),
             .a_arvalid(guard_arvalid), .a_arready(guard_arready),
             .a_araddr(guard_araddr), .a_arlen(guard_arlen),
             .a_arsize(guard_arsize), .a_arburst(guard_arburst),

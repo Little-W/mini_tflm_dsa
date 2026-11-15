@@ -218,6 +218,18 @@ module tb_conv_dma;
         $display("DMA_MATRIX_PASS case=%0d owner=%0d im2col=%0d error=%0d p=%0d q=%0d rows=%0d elements=%0d cycles=%0d job_input_bytes=%0d",id,owner,im2col,fail,p,q,rows,returned[owner],cycles-start_cycle,input_read_bytes);
     endtask
 
+    logic concurrent_request = 0;
+    logic concurrent_done = 0;
+    initial begin : queued_producer
+        forever begin
+            @(posedge concurrent_request);
+            concurrent_done = 0;
+            while(!ia_busy) @(negedge clk);
+            request(1,1,5,0,SIZE,1,0,0,1);
+            concurrent_done = 1;
+        end
+    end
+
     initial begin : run
         string trace_path;
         int p_tail,q_tail;
@@ -237,13 +249,10 @@ module tb_conv_dma;
         request(0,0,0,0,3,2,0,0,1);
         // Queue the next producer during an ordinary read. Its command can be
         // accepted on the old final-R edge; the old final data must retain IA.
-        fork
-            request(0,0,0,0,3,2,0,0,1);
-            begin
-                while(!ia_busy)@(negedge clk);
-                request(1,1,5,0,SIZE,1,0,0,1);
-            end
-        join
+        concurrent_request=1;
+        request(0,0,0,0,3,2,0,0,1);
+        while(!concurrent_done) @(negedge clk);
+        concurrent_request=0;
         configure(1,12,0,0,-127,0);
         request(1,1,5,0,SIZE,1,0,1,0);
         configure(1,13,0,1,-127,0);

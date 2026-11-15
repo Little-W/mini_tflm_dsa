@@ -1,4 +1,7 @@
 ../../rtl/npu/conv/00_conv_im2col_pkg.sv
+../../rtl/npu/conv/01_dw_pool_pkg.sv
+../../rtl/npu/conv/dw_pool_pe.sv
+../../rtl/npu/conv/dw_pool_engine.sv
 ../../rtl/npu/conv/conv_axi_read_guard.sv
 ../../rtl/npu/conv/conv_axi_read_mux.sv
 ../../rtl/npu/conv/conv_axi_span_reader.sv

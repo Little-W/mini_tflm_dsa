@@ -31,6 +31,7 @@ module axi_block_dma_arbiter #(
     input  logic conv_cfg_valid = 1'b0,
     output logic conv_cfg_ready,
     input  logic conv_enable = 1'b0,
+    input  logic dma_range_enable = 1'b0,
     input  conv_im2col_pkg::conv_cfg_t conv_cfg = '0,
     input  logic [31:0] conv_sched_r = 32'd0,
     input  logic [31:0] conv_sched_groups = 32'd0,
@@ -121,6 +122,40 @@ module axi_block_dma_arbiter #(
     output logic [BUS_WIDTH-1:0] quant_raw_data,
     output logic quant_raw_valid,
 
+    // Vector and window-reduction client. Descriptors are accepted after grant.
+    input  logic dw_req = 1'b0,
+    output logic dw_granted,
+    input  logic dw_start = 1'b0,
+    input  logic dw_im2col = 1'b0,
+    input  logic [31:0] dw_p0 = '0, dw_q0 = '0, dw_group = '0,
+    input  logic dw_linear_read_mode = 1'b0,
+    input  logic [REG_WIDTH-1:0] dw_base_addr = '0,
+    input  logic [REG_WIDTH-1:0] dw_row_stride = '0,
+    input  logic [REG_WIDTH-1:0] dw_rows_to_read = '0,
+    input  logic [REG_WIDTH-1:0] dw_valid_cols = REG_WIDTH'(DMA_SIZE),
+    input  logic [7:0] dw_burst_len_m1 = '0,
+    input  logic dw_use_16bits = 1'b0,
+    input  logic signed [REG_WIDTH-1:0] dw_lhs_zp = '0,
+    output logic dw_busy, dw_done, dw_error,
+    output logic [$clog2(DMA_SIZE)-1:0] dw_row, dw_col_base,
+    output logic signed [DATA_WIDTH-1:0] dw_data [BUS_WIDTH/8],
+    output logic dw_valid [BUS_WIDTH/8],
+    output logic [BUS_WIDTH-1:0] dw_raw_data,
+    output logic dw_raw_valid,
+
+    input  logic dw_wr_req = 1'b0,
+    output logic dw_wr_granted,
+    input  logic dw_wr_start = 1'b0,
+    input  logic [REG_WIDTH-1:0] dw_wr_base_addr = '0,
+    input  logic [REG_WIDTH-1:0] dw_wr_row_stride = '0,
+    input  logic [REG_WIDTH-1:0] dw_wr_rows_to_write = '0,
+    input  logic [7:0] dw_wr_burst_len_m1 = '0,
+    input  logic [BUS_WIDTH-1:0] dw_src_wdata = '0,
+    input  logic [BUS_WIDTH/8-1:0] dw_src_wmask = '0,
+    input  logic dw_src_wvalid = 1'b0,
+    output logic dw_src_wready,
+    output logic dw_wr_busy, dw_wr_done, dw_wr_error,
+
     input  logic oa_req,
     output logic oa_granted,
     input  logic oa_start,
@@ -172,6 +207,7 @@ module axi_block_dma_arbiter #(
         C_KERNEL = 3'd1,
         C_BIAS   = 3'd2,
         C_QUANT  = 3'd3,
+        C_DW     = 3'd4,
         C_NONE   = 3'd7
     } client_e;
 
@@ -195,6 +231,7 @@ module axi_block_dma_arbiter #(
     logic [REG_WIDTH-1:0] rd_dma_base_addr;
     logic [REG_WIDTH-1:0] rd_dma_row_stride;
     logic [REG_WIDTH-1:0] rd_dma_rows_to_read;
+    logic [REG_WIDTH-1:0] rd_dma_valid_cols;
     logic [7:0] rd_dma_burst_len_m1;
     logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_dma_slot_id;
     logic rd_dma_use_16bits;
@@ -215,6 +252,7 @@ module axi_block_dma_arbiter #(
 
     logic wr_active;
     logic wr_started;
+    logic wr_owner_dw;
     logic wr_dma_start;
     logic wr_dma_busy;
     logic wr_dma_done;
@@ -228,7 +266,8 @@ module axi_block_dma_arbiter #(
     end
 
     always_comb begin
-        if (kernel_req && !(rd_finish_beat && rd_client == C_KERNEL) && !(rd_dma_done && rd_response_client == C_KERNEL)) rd_next_client = C_KERNEL;
+        if (dw_req && !(rd_finish_beat && rd_client == C_DW) && !(rd_dma_done && rd_response_client == C_DW)) rd_next_client = C_DW;
+        else if (kernel_req && !(rd_finish_beat && rd_client == C_KERNEL) && !(rd_dma_done && rd_response_client == C_KERNEL)) rd_next_client = C_KERNEL;
         else if (quant_req_eff && !(rd_finish_beat && rd_client == C_QUANT) && !(rd_dma_done && rd_response_client == C_QUANT)) rd_next_client = C_QUANT;
         else if (ia_req && !(rd_finish_beat && rd_client == C_IA) && !(rd_dma_done && rd_response_client == C_IA)) rd_next_client = C_IA;
         else if (bias_req && !(rd_finish_beat && rd_client == C_BIAS) && !(rd_dma_done && rd_response_client == C_BIAS)) rd_next_client = C_BIAS;
@@ -249,11 +288,16 @@ module axi_block_dma_arbiter #(
             else if ((rd_client == C_IA && !ia_req) ||
                      (rd_client == C_KERNEL && !kernel_req) ||
                      (rd_client == C_BIAS && !bias_req) ||
-                     (rd_client == C_QUANT && !quant_req_eff)) begin
+                     (rd_client == C_QUANT && !quant_req_eff) ||
+                     (rd_client == C_DW && !dw_req)) begin
                 rd_client <= C_NONE; rd_active <= 1'b0; rd_started <= 1'b0;
             end
         end
     end
+    assign dw_granted = (rd_command_client == C_DW);
+    assign dw_busy = rd_active && rd_client == C_DW && rd_dma_busy;
+    assign dw_done = rd_response_client == C_DW && rd_dma_done;
+    assign dw_error = dw_done && dma_rd_error;
     assign ia_granted = (rd_command_client == C_IA);
     assign kernel_granted = (rd_command_client == C_KERNEL);
     assign bias_granted = (rd_command_client == C_BIAS);
@@ -283,12 +327,28 @@ module axi_block_dma_arbiter #(
         rd_dma_base_addr        = '0;
         rd_dma_row_stride       = '0;
         rd_dma_rows_to_read     = '0;
+        rd_dma_valid_cols       = REG_WIDTH'(DMA_SIZE);
         rd_dma_burst_len_m1     = '0;
         rd_dma_slot_id          = '0;
         rd_dma_use_16bits       = 1'b0;
         rd_dma_lhs_zp           = '0;
 
         unique case (rd_command_client)
+            C_DW: begin
+                rd_dma_start = dw_start && dw_granted && (!rd_started || rd_launch_window);
+                rd_dma_im2col = dw_im2col;
+                rd_dma_p0 = dw_p0;
+                rd_dma_q0 = dw_q0;
+                rd_dma_group = dw_group;
+                rd_dma_linear_read_mode = dw_linear_read_mode;
+                rd_dma_base_addr = dw_base_addr;
+                rd_dma_row_stride = dw_row_stride;
+                rd_dma_rows_to_read = dw_rows_to_read;
+                rd_dma_valid_cols = dw_valid_cols;
+                rd_dma_burst_len_m1 = dw_burst_len_m1;
+                rd_dma_use_16bits = dw_use_16bits;
+                rd_dma_lhs_zp = dw_lhs_zp;
+            end
             C_IA: begin
                 rd_dma_start            = ia_start && ia_granted && (!rd_started || rd_launch_window);
                 rd_dma_im2col           = ia_im2col;
@@ -354,16 +414,18 @@ module axi_block_dma_arbiter #(
         if (!rst_n) begin
             wr_active  <= 1'b0;
             wr_started <= 1'b0;
+            wr_owner_dw <= 1'b0;
         end else begin
             if (!wr_active) begin
-                if (oa_req) begin
+                if (dw_wr_req || oa_req) begin
+                    wr_owner_dw <= dw_wr_req;
                     wr_active  <= 1'b1;
                     wr_started <= 1'b0;
                 end
             end else if (!wr_started) begin
                 if (wr_dma_start) begin
                     wr_started <= 1'b1;
-                end else if (!oa_req) begin
+                end else if (wr_owner_dw ? !dw_wr_req : !oa_req) begin
                     wr_active  <= 1'b0;
                     wr_started <= 1'b0;
                 end
@@ -374,13 +436,21 @@ module axi_block_dma_arbiter #(
         end
     end
 
-    assign oa_granted = wr_active;
-    assign wr_dma_start = oa_start && oa_granted && !wr_started;
+    assign oa_granted = wr_active && !wr_owner_dw;
+    assign dw_wr_granted = wr_active && wr_owner_dw;
+    assign wr_dma_start = !wr_started &&
+        ((oa_start && oa_granted) || (dw_wr_start && dw_wr_granted));
+    assign dw_wr_busy = dw_wr_granted && wr_dma_busy;
+    assign dw_wr_done = dw_wr_granted && wr_dma_done;
+    assign dw_wr_error = dw_wr_done && dma_wr_error;
+    assign dw_src_wready = dw_wr_granted && wr_src_wready;
     assign oa_busy = oa_granted && wr_dma_busy;
     assign oa_done = oa_granted && wr_dma_done;
     assign oa_src_wready = oa_granted && wr_src_wready;
 
     for (genvar i = 0; i < BYTE_PER_BEAT; i++) begin : gen_route_wr
+        assign dw_data[i] = dma_wr_data[i];
+        assign dw_valid[i] = (rd_response_client == C_DW) && dma_wr_valid[i];
         assign ia_wr_data[i]      = dma_wr_data[i];
         assign ia_wr_valid[i]     = (rd_response_client == C_IA) && dma_wr_valid[i];
         assign kernel_wr_data[i]  = KERNEL_WIDTH'($signed(dma_wr_data[i]));
@@ -388,6 +458,11 @@ module axi_block_dma_arbiter #(
         assign bias_wr_data[i]    = dma_wr_data[i][7:0];
         assign bias_wr_valid[i]   = (rd_response_client == C_BIAS) && dma_wr_valid[i];
     end
+
+    assign dw_row = dma_wr_row;
+    assign dw_col_base = dma_wr_col_base;
+    assign dw_raw_data = dma_raw_data;
+    assign dw_raw_valid = (rd_response_client == C_DW) && dma_raw_valid;
 
     assign ia_wr_slot       = dma_wr_slot;
     assign ia_wr_row        = dma_wr_row[$clog2(SIZE)-1:0];
@@ -418,6 +493,7 @@ module axi_block_dma_arbiter #(
     logic [REG_WIDTH-1:0] rd_dma_base_addr_q;
     logic [REG_WIDTH-1:0] rd_dma_row_stride_q;
     logic [REG_WIDTH-1:0] rd_dma_rows_to_read_q;
+    logic [REG_WIDTH-1:0] rd_dma_valid_cols_q;
     logic [8-1:0] rd_dma_burst_len_m1_q;
     logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_dma_slot_id_q;
     logic rd_dma_use_16bits_q;
@@ -433,6 +509,7 @@ module axi_block_dma_arbiter #(
             rd_dma_base_addr_q <= '0;
             rd_dma_row_stride_q <= '0;
             rd_dma_rows_to_read_q <= '0;
+            rd_dma_valid_cols_q <= '0;
             rd_dma_burst_len_m1_q <= '0;
             rd_dma_slot_id_q <= '0;
             rd_dma_use_16bits_q <= '0;
@@ -448,6 +525,7 @@ module axi_block_dma_arbiter #(
                 rd_dma_base_addr_q <= rd_dma_base_addr;
                 rd_dma_row_stride_q <= rd_dma_row_stride;
                 rd_dma_rows_to_read_q <= rd_dma_rows_to_read;
+                rd_dma_valid_cols_q <= rd_dma_valid_cols;
                 rd_dma_burst_len_m1_q <= rd_dma_burst_len_m1;
                 rd_dma_slot_id_q <= rd_dma_slot_id;
                 rd_dma_use_16bits_q <= rd_dma_use_16bits;
@@ -470,7 +548,7 @@ module axi_block_dma_arbiter #(
     ) u_dma (
         .clk                (clk),
         .rst_n              (rst_n),
-        .conv_cfg_valid, .conv_cfg_ready, .conv_enable, .conv_cfg,
+        .conv_cfg_valid, .conv_cfg_ready, .conv_enable, .dma_range_enable, .conv_cfg,
         .conv_sched_r, .conv_sched_groups, .conv_range_base, .conv_range_end,
         .conv_error, .conv_busy, .conv_stat_hits, .conv_stat_misses, .conv_stat_read_bytes,
         .rd_start           (rd_dma_start_q),
@@ -482,7 +560,7 @@ module axi_block_dma_arbiter #(
         .rd_base_addr       (rd_dma_base_addr_q),
         .rd_row_stride      (rd_dma_row_stride_q),
         .rd_rows_to_read    (rd_dma_rows_to_read_q),
-        .rd_valid_cols      (REG_WIDTH'(DMA_SIZE)),
+        .rd_valid_cols      (rd_dma_valid_cols_q),
         .rd_burst_len_m1    (rd_dma_burst_len_m1_q),
         .rd_slot_id         (rd_dma_slot_id_q),
         .rd_use_16bits      (rd_dma_use_16bits_q),
@@ -491,15 +569,15 @@ module axi_block_dma_arbiter #(
         .rd_done            (rd_dma_done),
         .rd_finish_beat     (rd_finish_beat),
         .wr_start           (wr_dma_start),
-        .wr_base_addr       (oa_base_addr),
-        .wr_row_stride      (oa_row_stride),
-        .wr_rows_to_write   (oa_rows_to_read),
-        .wr_burst_len_m1    (oa_burst_len_m1),
+        .wr_base_addr       (wr_owner_dw ? dw_wr_base_addr : oa_base_addr),
+        .wr_row_stride      (wr_owner_dw ? dw_wr_row_stride : oa_row_stride),
+        .wr_rows_to_write   (wr_owner_dw ? dw_wr_rows_to_write : oa_rows_to_read),
+        .wr_burst_len_m1    (wr_owner_dw ? dw_wr_burst_len_m1 : oa_burst_len_m1),
         .wr_busy            (wr_dma_busy),
         .wr_done            (wr_dma_done),
-        .src_wdata          (oa_src_wdata),
-        .src_wmask          (oa_src_wmask),
-        .src_wvalid         (oa_src_wvalid),
+        .src_wdata          (wr_owner_dw ? dw_src_wdata : oa_src_wdata),
+        .src_wmask          (wr_owner_dw ? dw_src_wmask : oa_src_wmask),
+        .src_wvalid         (wr_owner_dw ? dw_src_wvalid : oa_src_wvalid),
         .src_wready         (wr_src_wready),
         .m_axi_arvalid      (m_axi_arvalid),
         .m_axi_arready      (m_axi_arready),

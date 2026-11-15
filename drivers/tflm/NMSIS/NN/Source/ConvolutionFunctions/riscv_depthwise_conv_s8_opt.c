@@ -161,7 +161,7 @@ riscv_nmsis_nn_status riscv_depthwise_conv_s8_opt(const nmsis_nn_context *ctx,
             {
                 q15_t *col_pos = col_buffer_start + row_shift;
                 const q7_t *row_pos = kernel + row_shift;
-                q31_t sum = *bias++;
+                q31_t sum = bias ? *bias++ : 0;
                 const uint16_t col_count = (kernel_x * kernel_y);
                 row_shift += 1;
 

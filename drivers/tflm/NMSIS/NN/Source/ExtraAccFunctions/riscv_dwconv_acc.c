@@ -1,258 +1,234 @@
-#include <stdio.h>
-#include <string.h>
-
+/* SPDX-License-Identifier: Apache-2.0 */
+#include <stdint.h>
 #include "dsa_accel.h"
-#include "riscv_nn_mat_mult_acc.h"
 #include "riscv_nnfunctions.h"
-#include "riscv_nnsupportfunctions.h"
 
-#ifndef DSA_CONV_IM2COL_BATCH_ROWS
-#define DSA_CONV_IM2COL_BATCH_ROWS 32
+#if DSA_NN_DW_POOL_ENABLE
+static int dw_pool_nn_dim(int32_t value)
+{
+    return value > 0 && value <= 65535;
+}
+
+static int dw_pool_nn_address(const void *pointer, uint64_t bytes)
+{
+    return pointer && (uintptr_t)pointer <= UINT32_MAX && bytes &&
+           (uint64_t)(uintptr_t)pointer + bytes < (UINT64_C(1) << 32);
+}
+
+static int dw_pool_nn_separate(const void *a, uint64_t a_bytes,
+                               const void *b, uint64_t b_bytes)
+{
+    return (uint64_t)(uintptr_t)a + a_bytes <= (uintptr_t)b ||
+           (uint64_t)(uintptr_t)b + b_bytes <= (uintptr_t)a;
+}
+
+static int dw_pool_nn_capable(uint32_t required, uint32_t taps)
+{
+    const uint32_t caps = dsa_dw_pool_capabilities();
+    return (caps & required) == required && ((caps >> 8) & 0xffu) &&
+           taps <= ((caps >> 16) & 0xffu);
+}
+
+static int dw_pool_nn_run_batches(dsa_dw_pool_config_t *config,
+                                 uint32_t batches, uint64_t input_batch,
+                                 uint64_t output_batch,
+                                 riscv_nmsis_nn_status *status)
+{
+    const uint32_t input_base = config->input_base;
+    const uint32_t output_base = config->output_base;
+    for (uint32_t batch = 0u; batch < batches; ++batch) {
+        uint32_t result;
+        config->input_base = (uint32_t)((uint64_t)input_base + batch * input_batch);
+        config->output_base = (uint32_t)((uint64_t)output_base + batch * output_batch);
+        result = dsa_dw_pool_execute(config);
+        if (result != DSA_SUCCESS) {
+            if (!batch && result == DSA_ERR_UNSUPPORTED) return 0;
+            *status = RISCV_NMSIS_NN_NO_IMPL_ERROR;
+            return 1;
+        }
+    }
+    *status = RISCV_NMSIS_NN_SUCCESS;
+    return 1;
+}
 #endif
 
-/*
- * Accelerated s8 depthwise convolution function.
- *
- * 深度可分离卷积：每个输入通道独立卷积，产生 depth_multiplier 个输出通道
- * 卷积核布局: [1, kernel_y, kernel_x, input_ch * depth_multiplier]
- *
- * 使用 im2col + 矩阵乘法加速，每次处理一个输入通道的所有输出位置
- */
-riscv_nmsis_nn_status
-riscv_depthwise_conv_s8_acc(const nmsis_nn_context *ctx,
-                        const nmsis_nn_dw_conv_params *dw_conv_params,
-                        const nmsis_nn_per_channel_quant_params *quant_params,
-                        const nmsis_nn_dims *input_dims, const int8_t *input,
-                        const nmsis_nn_dims *filter_dims, const int8_t *kernel,
-                        const nmsis_nn_dims *bias_dims, const int32_t *bias,
-                        const nmsis_nn_dims *output_dims, int8_t *output)
+int riscv_depthwise_conv_s8_try_dsa(
+    const nmsis_nn_dw_conv_params *p,
+    const nmsis_nn_per_channel_quant_params *q,
+    const nmsis_nn_dims *in, const int8_t *input,
+    const nmsis_nn_dims *filter_dims, const int8_t *filter,
+    const int32_t *bias, const nmsis_nn_dims *out, int8_t *output,
+    riscv_nmsis_nn_status *status)
 {
-    (void)bias_dims;
+#if !DSA_NN_DW_POOL_ENABLE
+    (void)p; (void)q; (void)in; (void)input; (void)filter_dims; (void)filter;
+    (void)bias; (void)out; (void)output; (void)status;
+    return 0;
+#else
+    dsa_dw_pool_config_t c;
+    uint64_t input_batch, output_batch, taps, parameters;
+    if (!status) return 0;
+    *status = RISCV_NMSIS_NN_ARG_ERROR;
+    if (!p || !q || !in || !filter_dims || !out || !input || !filter ||
+        !output || !q->multiplier || !q->shift) return 1;
+    if (in->n <= 0 || out->n != in->n || in->h <= 0 || in->w <= 0 ||
+        in->c <= 0 || out->h <= 0 || out->w <= 0 || out->c <= 0 ||
+        filter_dims->h <= 0 || filter_dims->w <= 0 || p->ch_mult <= 0 ||
+        (int64_t)in->c * p->ch_mult != out->c ||
+        p->stride.h <= 0 || p->stride.w <= 0 ||
+        p->dilation.h <= 0 || p->dilation.w <= 0 ||
+        p->padding.h < 0 || p->padding.w < 0 ||
+        p->input_offset < -127 || p->input_offset > 128 ||
+        p->output_offset < -128 || p->output_offset > 127 ||
+        p->activation.min < -128 || p->activation.max > 127 ||
+        p->activation.min > p->activation.max) return 1;
+    if (p->ch_mult != 1 || !dw_pool_nn_dim(in->h) ||
+        !dw_pool_nn_dim(in->w) || !dw_pool_nn_dim(in->c) ||
+        !dw_pool_nn_dim(out->h) || !dw_pool_nn_dim(out->w) ||
+        !dw_pool_nn_dim(filter_dims->h) || !dw_pool_nn_dim(filter_dims->w) ||
+        !dw_pool_nn_dim(p->stride.h) || !dw_pool_nn_dim(p->stride.w) ||
+        !dw_pool_nn_dim(p->dilation.h) || !dw_pool_nn_dim(p->dilation.w) ||
+        p->padding.h > 65535 || p->padding.w > 65535) return 0;
 
-    if (ctx->buf == NULL) {
-        return RISCV_NMSIS_NN_ARG_ERROR;
-    }
+    taps = (uint64_t)filter_dims->h * filter_dims->w;
+    input_batch = (uint64_t)in->h * in->w * in->c;
+    output_batch = (uint64_t)out->h * out->w * out->c;
+    parameters = (uint64_t)out->c * 4u;
+    if (taps > DSA_DW_POOL_MAX_TAPS || input_batch > UINT32_MAX ||
+        output_batch > UINT32_MAX) return 0;
+    if (!dw_pool_nn_address(input, input_batch * (uint32_t)in->n) ||
+        !dw_pool_nn_address(output, output_batch * (uint32_t)in->n) ||
+        !dw_pool_nn_address(filter, taps * (uint32_t)out->c) ||
+        !dw_pool_nn_address(q->multiplier, parameters) ||
+        !dw_pool_nn_address(q->shift, parameters) ||
+        (bias && !dw_pool_nn_address(bias, parameters))) return 0;
+    if (!dw_pool_nn_separate(input, input_batch * (uint32_t)in->n,
+                             output, output_batch * (uint32_t)in->n) ||
+        !dw_pool_nn_separate(filter, taps * (uint32_t)out->c,
+                             output, output_batch * (uint32_t)in->n) ||
+        !dw_pool_nn_separate(q->multiplier, parameters,
+                             output, output_batch * (uint32_t)in->n) ||
+        !dw_pool_nn_separate(q->shift, parameters,
+                             output, output_batch * (uint32_t)in->n) ||
+        (bias && !dw_pool_nn_separate(bias, parameters,
+                                      output, output_batch * (uint32_t)in->n))) return 0;
 
-    int8_t *buffer_a = (int8_t *)ctx->buf;
-
-    const int32_t input_batches = input_dims->n;
-    const int32_t input_x = input_dims->w;
-    const int32_t input_y = input_dims->h;
-    const int32_t input_ch = input_dims->c;
-    const int32_t kernel_x = filter_dims->w;
-    const int32_t kernel_y = filter_dims->h;
-    const int32_t output_x = output_dims->w;
-    const int32_t output_y = output_dims->h;
-    const int32_t output_ch = output_dims->c;
-
-    const int32_t pad_x = dw_conv_params->padding.w;
-    const int32_t pad_y = dw_conv_params->padding.h;
-    const int32_t stride_x = dw_conv_params->stride.w;
-    const int32_t stride_y = dw_conv_params->stride.h;
-    const int32_t dilation_x = dw_conv_params->dilation.w;
-    const int32_t dilation_y = dw_conv_params->dilation.h;
-    const int32_t out_offset = dw_conv_params->output_offset;
-    const int32_t out_activation_min = dw_conv_params->activation.min;
-    const int32_t out_activation_max = dw_conv_params->activation.max;
-    const int32_t input_offset = dw_conv_params->input_offset;
-    const int32_t depth_multiplier = dw_conv_params->ch_mult;
-
-    const int32_t *output_mult = quant_params->multiplier;
-    const int32_t *output_shift = quant_params->shift;
-
-    // 验证输出通道数
-    if (output_ch != input_ch * depth_multiplier) {
-        return RISCV_NMSIS_NN_ARG_ERROR;
-    }
-
-    // 每个输入通道的卷积核大小
-    const int32_t rhs_cols = kernel_x * kernel_y;
-    const int32_t remainder = rhs_cols % 4;
-    const int32_t aligned_rhs_cols = remainder != 0 ? rhs_cols + 4 - remainder : rhs_cols;
-
-    // 批处理行数
-    const int32_t batch_rows = DSA_CONV_IM2COL_BATCH_ROWS;
-
-    int8_t *im2col_buf_base = buffer_a;
-    int8_t *kernel_pack_base = im2col_buf_base + batch_rows * aligned_rhs_cols;
-
-    for (int i_batch = 0; i_batch < input_batches; i_batch++) {
-        // 对每个输入通道进行处理
-        for (int32_t i_in_ch = 0; i_in_ch < input_ch; i_in_ch++) {
-            // 当前输入通道对应的输出通道起始索引
-            const int32_t out_ch_start = i_in_ch * depth_multiplier;
-
-            // 当前输入通道对应的卷积核
-            // 卷积核布局: [ker_y, ker_x, out_ch] -> 对于当前输入通道，需要提取对应的列
-            // 重新组织卷积核: 提取 kernel[ker_y * ker_x * output_ch + out_ch_start : out_ch_start + depth_multiplier]
-
-            // 量化参数指针
-            const int32_t *output_mult_ptr = &output_mult[out_ch_start];
-            const int32_t *output_shift_ptr = &output_shift[out_ch_start];
-            const int32_t *bias_ptr = bias ? &bias[out_ch_start] : NULL;
-
-            for (int32_t i_ch_mult = 0; i_ch_mult < depth_multiplier;
-                 i_ch_mult++) {
-                int8_t *dst_kernel =
-                    kernel_pack_base + i_ch_mult * rhs_cols;
-                const int32_t out_ch = out_ch_start + i_ch_mult;
-                for (int32_t i_ker_y = 0; i_ker_y < kernel_y; i_ker_y++) {
-                    for (int32_t i_ker_x = 0; i_ker_x < kernel_x;
-                         i_ker_x++) {
-                        const int32_t k_idx =
-                            (i_ker_y * kernel_x + i_ker_x) * output_ch +
-                            out_ch;
-                        *dst_kernel++ = kernel[k_idx];
-                    }
-                }
-            }
-
-            // 输出起始位置: 第一个输出位置的第 out_ch_start 个通道
-            int8_t *out = output + out_ch_start;
-
-            int32_t lhs_rows = 0;
-
-            for (int i_out_y = 0; i_out_y < output_y; i_out_y++) {
-                for (int i_out_x = 0; i_out_x < output_x; i_out_x++) {
-                    const int32_t base_idx_y = stride_y * i_out_y - pad_y;
-                    const int32_t base_idx_x = stride_x * i_out_x - pad_x;
-
-                    // 当前行的 im2col 缓冲区位置
-                    int8_t *current_im2col_row = im2col_buf_base + lhs_rows * aligned_rhs_cols;
-
-                    // 执行 im2col：提取当前输入通道的卷积窗口
-                    int8_t *im2col_ptr = current_im2col_row;
-                    for (int32_t i_ker_y = 0; i_ker_y < kernel_y; i_ker_y++) {
-                        const int32_t k_y = base_idx_y + dilation_y * i_ker_y;
-
-                        for (int32_t i_ker_x = 0; i_ker_x < kernel_x; i_ker_x++) {
-                            const int32_t k_x = base_idx_x + dilation_x * i_ker_x;
-
-                            if (k_y < 0 || k_y >= input_y || k_x < 0 || k_x >= input_x) {
-                                // 填充区域
-                                *im2col_ptr = (int8_t)(-input_offset);
-                            } else {
-                                // 提取单个输入通道的值
-                                *im2col_ptr = input[(k_y * input_x + k_x) * input_ch + i_in_ch];
-                            }
-                            im2col_ptr++;
-                        }
-                    }
-
-                    // 填充对齐部分
-                    for (int32_t i = rhs_cols; i < aligned_rhs_cols; i++) {
-                        *im2col_ptr++ = 0;
-                    }
-
-                    lhs_rows++;
-
-                    // 当批次满时，执行矩阵乘法
-                    if (lhs_rows == batch_rows) {
-                        // 使用 row_offset 版本处理交错输出
-                        out = riscv_nn_mat_mult_kernel_row_offset_s8_acc(
-                            kernel_pack_base,
-                            im2col_buf_base,     // im2col 数据
-                            depth_multiplier,    // 每个输入通道产生的输出通道数
-                            output_shift_ptr,
-                            output_mult_ptr,
-                            out_offset,
-                            input_offset,
-                            out_activation_min,
-                            out_activation_max,
-                            rhs_cols,
-                            aligned_rhs_cols,
-                            bias_ptr,
-                            output_ch,           // row_address_offset = output_ch
-                            out,
-                            batch_rows);
-
-                        if (out == NULL) {
-                            return RISCV_NMSIS_NN_NO_IMPL_ERROR;
-                        }
-
-                        lhs_rows = 0;
-                    }
-                }
-            }
-
-            // 处理剩余的行
-            if (lhs_rows != 0) {
-                out = riscv_nn_mat_mult_kernel_row_offset_s8_acc(
-                    kernel_pack_base,
-                    im2col_buf_base,
-                    depth_multiplier,
-                    output_shift_ptr,
-                    output_mult_ptr,
-                    out_offset,
-                    input_offset,
-                    out_activation_min,
-                    out_activation_max,
-                    rhs_cols,
-                    aligned_rhs_cols,
-                    bias_ptr,
-                    output_ch,
-                    out,
-                    lhs_rows);
-
-                if (out == NULL) {
-                    return RISCV_NMSIS_NN_NO_IMPL_ERROR;
-                }
-            }
-        }
-
-        // 移动到下一个 batch
-        input += (input_x * input_y * input_ch);
-        output += (output_x * output_y * output_ch);
-    }
-
-    return RISCV_NMSIS_NN_SUCCESS;
+    dsa_dw_pool_config_init(&c);
+    c.operation = DSA_DW_OP_DW_S8;
+    c.input_base = (uint32_t)(uintptr_t)input;
+    c.rhs_base = (uint32_t)(uintptr_t)filter;
+    c.output_base = (uint32_t)(uintptr_t)output;
+    c.bias_base = (uint32_t)(uintptr_t)bias;
+    c.multiplier_base = (uint32_t)(uintptr_t)q->multiplier;
+    c.shift_base = (uint32_t)(uintptr_t)q->shift;
+    c.input_h = (uint32_t)in->h; c.input_w = (uint32_t)in->w;
+    c.input_c = (uint32_t)in->c;
+    c.kernel_h = (uint32_t)filter_dims->h; c.kernel_w = (uint32_t)filter_dims->w;
+    c.output_h = (uint32_t)out->h; c.output_w = (uint32_t)out->w;
+    c.stride_h = (uint32_t)p->stride.h; c.stride_w = (uint32_t)p->stride.w;
+    c.dilation_h = (uint32_t)p->dilation.h; c.dilation_w = (uint32_t)p->dilation.w;
+    c.pad_top = (uint32_t)p->padding.h; c.pad_left = (uint32_t)p->padding.w;
+    c.input_offset = p->input_offset; c.output_offset = p->output_offset;
+    c.activation_min = p->activation.min; c.activation_max = p->activation.max;
+    if (dsa_dw_pool_validate(&c) != DSA_SUCCESS ||
+        !dw_pool_nn_capable(DSA_DW_POOL_CAP_DW_S8, (uint32_t)taps)) return 0;
+    /* Only dimensions and addresses are inspected here. The engine loads
+     * tensor data, bias, multipliers and shifts through DMA. */
+    return dw_pool_nn_run_batches(&c, (uint32_t)in->n, input_batch, output_batch, status);
+#endif
 }
 
-/*
- * Get the required buffer size for riscv_depthwise_conv_s8_acc.
- */
-int32_t riscv_depthwise_conv_wrapper_s8_get_buffer_size_acc(
-    const nmsis_nn_dw_conv_params *dw_conv_params,
-    const nmsis_nn_dims *input_dims,
+int riscv_pool_s8_try_dsa(
+    uint32_t operation, const nmsis_nn_pool_params *p,
+    const nmsis_nn_dims *in, const int8_t *input,
     const nmsis_nn_dims *filter_dims,
-    const nmsis_nn_dims *output_dims)
+    const nmsis_nn_dims *out, int8_t *output,
+    riscv_nmsis_nn_status *status)
 {
-    (void)dw_conv_params;
-    (void)input_dims;
-    (void)output_dims;
+#if !DSA_NN_DW_POOL_ENABLE
+    (void)operation; (void)p; (void)in; (void)input;
+    (void)filter_dims; (void)out; (void)output; (void)status;
+    return 0;
+#else
+    dsa_dw_pool_config_t c;
+    uint64_t input_batch, output_batch, taps;
+    int64_t last_y, last_x;
+    if (!status) return 0;
+    *status = RISCV_NMSIS_NN_ARG_ERROR;
+    if (!p || !in || !filter_dims || !out || !input || !output ||
+        operation < DSA_DW_OP_AVGPOOL_S8 || operation > DSA_DW_OP_MINPOOL_S8)
+        return 1;
+    if (in->n <= 0 || out->n != in->n || in->h <= 0 || in->w <= 0 ||
+        in->c <= 0 || out->h <= 0 || out->w <= 0 || out->c != in->c ||
+        filter_dims->h <= 0 || filter_dims->w <= 0 ||
+        p->stride.h <= 0 || p->stride.w <= 0 ||
+        p->padding.h < 0 || p->padding.w < 0 ||
+        p->activation.min < -128 || p->activation.max > 127 ||
+        p->activation.min > p->activation.max) return 1;
+    last_y = (int64_t)(out->h - 1) * p->stride.h - p->padding.h;
+    last_x = (int64_t)(out->w - 1) * p->stride.w - p->padding.w;
+    if (p->padding.h >= filter_dims->h || p->padding.w >= filter_dims->w ||
+        last_y >= in->h || last_x >= in->w) return 1;
+    if (!dw_pool_nn_dim(in->h) || !dw_pool_nn_dim(in->w) ||
+        !dw_pool_nn_dim(in->c) || !dw_pool_nn_dim(out->h) ||
+        !dw_pool_nn_dim(out->w) || !dw_pool_nn_dim(filter_dims->h) ||
+        !dw_pool_nn_dim(filter_dims->w) || !dw_pool_nn_dim(p->stride.h) ||
+        !dw_pool_nn_dim(p->stride.w) || p->padding.h > 65535 ||
+        p->padding.w > 65535) return 0;
+    taps = (uint64_t)filter_dims->h * filter_dims->w;
+    input_batch = (uint64_t)in->h * in->w * in->c;
+    output_batch = (uint64_t)out->h * out->w * out->c;
+    if (taps > DSA_DW_POOL_MAX_TAPS || input_batch > UINT32_MAX ||
+        output_batch > UINT32_MAX) return 0;
+    if (!dw_pool_nn_address(input, input_batch * (uint32_t)in->n) ||
+        !dw_pool_nn_address(output, output_batch * (uint32_t)in->n) ||
+        !dw_pool_nn_separate(input, input_batch * (uint32_t)in->n,
+                             output, output_batch * (uint32_t)in->n)) return 0;
 
-    const int32_t rhs_cols = filter_dims->w * filter_dims->h;
-    const int32_t remainder = rhs_cols % 4;
-    const int32_t aligned_rhs_cols = remainder != 0 ? rhs_cols + 4 - remainder : rhs_cols;
-
-    const int32_t depth_multiplier = dw_conv_params->ch_mult;
-    const int32_t im2col_size =
-        DSA_CONV_IM2COL_BATCH_ROWS * aligned_rhs_cols *
-        (int32_t)sizeof(int8_t);
-    const int32_t kernel_pack_size =
-        depth_multiplier * rhs_cols * (int32_t)sizeof(int8_t);
-    const int32_t buffer_size = im2col_size + kernel_pack_size;
-
-    return buffer_size;
+    dsa_dw_pool_config_init(&c);
+    c.operation = operation;
+    c.input_base = (uint32_t)(uintptr_t)input;
+    c.output_base = (uint32_t)(uintptr_t)output;
+    c.input_h = (uint32_t)in->h; c.input_w = (uint32_t)in->w;
+    c.input_c = (uint32_t)in->c;
+    c.kernel_h = (uint32_t)filter_dims->h; c.kernel_w = (uint32_t)filter_dims->w;
+    c.output_h = (uint32_t)out->h; c.output_w = (uint32_t)out->w;
+    c.stride_h = (uint32_t)p->stride.h; c.stride_w = (uint32_t)p->stride.w;
+    c.pad_top = (uint32_t)p->padding.h; c.pad_left = (uint32_t)p->padding.w;
+    c.activation_min = p->activation.min; c.activation_max = p->activation.max;
+    if (dsa_dw_pool_validate(&c) != DSA_SUCCESS ||
+        !dw_pool_nn_capable(DSA_DW_POOL_CAP_POOL_S8, (uint32_t)taps)) return 0;
+    return dw_pool_nn_run_batches(&c, (uint32_t)in->n, input_batch, output_batch, status);
+#endif
 }
 
-/*
- * Wrapper function for depthwise convolution s8.
- */
+riscv_nmsis_nn_status riscv_depthwise_conv_s8_acc(
+    const nmsis_nn_context *ctx, const nmsis_nn_dw_conv_params *p,
+    const nmsis_nn_per_channel_quant_params *q,
+    const nmsis_nn_dims *in, const int8_t *input,
+    const nmsis_nn_dims *filter_dims, const int8_t *filter,
+    const nmsis_nn_dims *bias_dims, const int32_t *bias,
+    const nmsis_nn_dims *out, int8_t *output)
+{
+    return riscv_depthwise_conv_wrapper_s8(ctx, p, q, in, input,
+                                           filter_dims, filter, bias_dims, bias, out, output);
+}
+
 riscv_nmsis_nn_status riscv_depthwise_conv_wrapper_s8_acc(
-    const nmsis_nn_context *ctx,
-    const nmsis_nn_dw_conv_params *dw_conv_params,
-    const nmsis_nn_per_channel_quant_params *quant_params,
-    const nmsis_nn_dims *input_dims,
-    const int8_t *input,
-    const nmsis_nn_dims *filter_dims,
-    const int8_t *filter,
-    const nmsis_nn_dims *bias_dims,
-    const int32_t *bias,
-    const nmsis_nn_dims *output_dims,
-    int8_t *output)
+    const nmsis_nn_context *ctx, const nmsis_nn_dw_conv_params *p,
+    const nmsis_nn_per_channel_quant_params *q,
+    const nmsis_nn_dims *in, const int8_t *input,
+    const nmsis_nn_dims *filter_dims, const int8_t *filter,
+    const nmsis_nn_dims *bias_dims, const int32_t *bias,
+    const nmsis_nn_dims *out, int8_t *output)
 {
-    return riscv_depthwise_conv_s8_acc(ctx, dw_conv_params, quant_params,
-                                       input_dims, input, filter_dims, filter,
-                                       bias_dims, bias, output_dims, output);
+    return riscv_depthwise_conv_wrapper_s8(ctx, p, q, in, input,
+                                           filter_dims, filter, bias_dims, bias, out, output);
+}
+
+int32_t riscv_depthwise_conv_wrapper_s8_get_buffer_size_acc(
+    const nmsis_nn_dw_conv_params *p, const nmsis_nn_dims *in,
+    const nmsis_nn_dims *filter_dims, const nmsis_nn_dims *out)
+{
+    return riscv_depthwise_conv_wrapper_s8_get_buffer_size(p, in, filter_dims, out);
 }

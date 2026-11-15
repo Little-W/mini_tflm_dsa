@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "dsa_conv.h"
+#include "dsa_dw_pool.h"
 
 /* ========== AXI-Lite MMIO 基地址 ========== */
 /* axi_soc maps the accelerator window at 0x1000_0000 in soc_top.sv. */

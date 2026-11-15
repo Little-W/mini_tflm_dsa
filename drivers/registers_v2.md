@@ -46,6 +46,9 @@
 | 3 | `NPU_CTRL_DATAFLOW_IS` | `1=IS`，`0=WS` |
 | 4 | `NPU_CTRL_IRQ_ENABLE` | `1` 表示任务完成后允许 `irq` 拉高 |
 | 5 | `NPU_CTRL_CFG_16X8` | 使用 INT16 输入、INT8 权重和 INT16 输出 |
+| 6 | `NPU_CTRL_CONV` | 使用普通 Conv 模式 |
+| 7 | `NPU_CTRL_CONV_BYPASS` | 输入窗口缓存旁路 |
+| 8 | `NPU_CTRL_DW_POOL` | 使用 DW、池化或向量模式，与 bit 6 互斥 |
 
 ## STATUS 位定义
 
@@ -148,3 +151,41 @@ CPU 只检查量化和 bias 数组，以保守数值界排除可能溢出的配�
 
 验证入口与证据分类见 `test/conv_driver/README.md`。寄存器/CPU 路径测试与实际
 RTL 端到端输出对比是两项独立验证，不能用前者替代后者。
+
+## DW、池化与向量扩展
+
+`CTRL[8]=1` 选择 `dw_pool_engine`。操作由 `DW_POOL_OP` 指定，图像几何复用
+Conv 寄存器，输入、权重、输出、bias、multiplier 和 shift 复用公共地址寄存器。
+输入基地址同时写入 `LHS_BASE` 和 `CONV_INPUT_BASE`。
+DW 采用 `[Kh, Kw, C]` 权重、NHWC 输入输出和逐通道量化；每条命令处理一个 batch。
+向量模式使用 `LHS_BASE`、`RHS_BASE` 和 `DST_BASE`，长度由专用寄存器给出。
+
+| Byte offset | Word offset | Name | Access | 字段 |
+|---:|---:|---|---|---|
+| `0x0b0` | `0x02c` | `DW_POOL_OP` | RW | bits 3:0 为操作，bit 8 为 s16 向量输入 |
+| `0x0b4` | `0x02d` | `DW_POOL_LENGTH` | RW | 向量元素数，大于 0 |
+| `0x0b8` | `0x02e` | `DW_POOL_CAPS` | RO | 能力、PE 数量、最大窗口面积和扩展版本 |
+| `0x0bc` | `0x02f` | `DW_POOL_CYCLES` | RO | 本次引擎任务周期 |
+| `0x0c0` | `0x030` | `DW_POOL_COMPUTE` | RO | PE 执行周期 |
+| `0x0c4` | `0x031` | `DW_POOL_DMA_WAIT` | RO | 读取、窗口返回、写回及相关等待周期 |
+
+操作编码：`0=DW_S8`，`1=AVGPOOL_S8`，`2=MAXPOOL_S8`，`3=MINPOOL_S8`，
+`4=SUM`，`5=MAX`，`6=MIN`，`7=DOT`，`8=HADAMARD`。
+向量输入可为 s8 或 s16；归约结果为一个 s32，Hadamard 输出为 s32 向量。
+图像模式使用 s8 输入输出，`DW_POOL_OP[8]=0`，`CTRL[8]=1`。
+
+`DW_POOL_CAPS` 的 bits 0/1/2/3 分别表示 DW s8、池化 s8、向量 s8、向量 s16；
+bits 15:8 为 PE 数量，bits 23:16 为最大窗口面积，bits 31:24 为版本 1。
+默认 8 PE、49 个窗口位置返回 `0x0131080f`；4 PE 返回 `0x0131040f`。
+设备不支持该扩展时返回 0。软件先检查设备 ID、配置 ABI 2 和扩展版本，再启动任务。
+统计寄存器在引擎接受 START 时清零。顶层拒绝的双模式命令不启动引擎，统计值
+保留为上一次引擎任务的结果。
+
+任务期间配置寄存器不接受更新。完成、中断和 DONE 写 1 清除沿用公共状态接口。
+配置无效时报告错误码 `01`；DMA 响应异常或读取后的量化参数无效时报告 `10`。
+同一任务同时设置 Conv 与 DW 模式将被拒绝。错误完成前，已提交的 DMA 事务会结束。
+
+`dsa_dw_pool_validate()` 不访问 MMIO 或张量内存；`dsa_dw_pool_execute()` 完成
+检查、配置和等待。`DSA_DW_POOL_TIMEOUT` 表示状态寄存器轮询次数，默认继承
+`DSA_MATMUL_TIMEOUT`。超时返回时设备仍可能执行，缓冲区再次使用前应由平台确认
+设备停止或完成复位。支持范围和完整测试结果见 [DW 引擎说明](../docs/dw_pool_engine.md)。

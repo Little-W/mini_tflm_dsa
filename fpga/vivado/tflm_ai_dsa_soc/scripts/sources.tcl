@@ -23,12 +23,16 @@ set include_dirs [list \
 
 set design_sources [list \
     [file join $npu_root conv 00_conv_im2col_pkg.sv] \
+    [file join $npu_root conv 01_dw_pool_pkg.sv] \
+    [file join $npu_root conv dw_pool_pe.sv] \
+    [file join $npu_root conv dw_pool_engine.sv] \
     [file join $npu_root conv conv_axi_read_guard.sv] \
     [file join $npu_root conv conv_axi_read_mux.sv] \
     [file join $npu_root conv conv_axi_span_reader.sv] \
     [file join $npu_root conv conv_ia_tile_path.sv] \
     [file join $npu_root conv conv_ia_write_adapter.sv] \
     [file join $npu_root conv conv_im2col_frontend.sv] \
+    [file join $npu_root conv conv_next_use_predictor.sv] \
     [file join $npu_root conv conv_read_cache.sv] \
     [file join $npu_root conv conv_sdp_ram.sv] \
     [file join $npu_root conv conv_udiv32.sv] \
@@ -41,6 +45,7 @@ set design_sources [list \
     [file join $npu_compute_root accumulator_array.sv] \
     [file join $npu_dma_root axi_block_dma_arbiter.sv] \
     [file join $npu_dma_root axi_dual_block_dma.sv] \
+    [file join $npu_dma_root axi_linear_block_dma.sv] \
     [file join $npu_loaders_root bias_loader.sv] \
     [file join $npu_loaders_root bias_loader_buffer.sv] \
     [file join $npu_loaders_root bias_loader_ctrl.sv] \

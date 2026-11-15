@@ -39,6 +39,7 @@
 
 #include "riscv_nn_math_types.h"
 #include "riscv_nn_types.h"
+#include "riscv_dw_pool_acc.h"
 #include "riscv_nn_mat_mult_acc.h"
 
 #define USE_INTRINSIC

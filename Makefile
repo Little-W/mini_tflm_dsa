@@ -68,6 +68,8 @@ help:
 	@echo 'make capacity-test           Test solver and configuration integration'
 	@echo 'make pcr-backend             Build a Verilator backend from the PCR configuration'
 	@echo 'make conv-verify VERILATOR=/path/to/verilator YOSYS=yosys  Run hardware Conv validation'
+	@echo 'make dw-pool-test VERILATOR=/path/to/verilator DW_PE_COUNT=8  Run DW/pooling and vector validation'
+	@echo 'make dw-pool-sweep VERILATOR=/path/to/verilator  Compare PE counts with RTL cycle measurements'
 	@echo 'make conv-npu conv-reuse       Check real NPU outputs and external input reuse'
 	@echo 'make conv-dma                 Check unified DMA matrix/Conv commands in WS and IS'
 	@echo 'make conv-soc-perf            Compare original CPU im2col and hardware Conv on PicoRV32'
@@ -304,3 +306,44 @@ conv-gemm-regression:
 
 conv-ram-inference:
 	$(PYTHON) test/conv_ram_inference/run.py --yosys '$(YOSYS)'
+
+# DW/pooling runners select the standard core independently of PCR settings.
+# DW_PE_COUNT is a compile-time arithmetic width; DW_TILE sets staging capacity.
+DW_BUILD_DIR ?= $(ROOT)/build/dw_pool_verify
+DW_PE_COUNT ?= 8
+DW_TILE ?= 16
+DW_JOBS ?= 1
+DW_PE_SWEEP ?= 1 2 4 8 16
+
+.PHONY: dw-pool-test dw-pool-driver dw-pool-unit dw-pool-regs dw-pool-cosim dw-pool-disabled dw-pool-regression dw-pool-sweep dw-pool-area
+
+dw-pool-test:
+	@set -e; for target in dw-pool-driver dw-pool-unit dw-pool-regs dw-pool-cosim dw-pool-disabled dw-pool-regression; do \
+	  $(MAKE) --no-print-directory $$target; \
+	done
+
+dw-pool-driver:
+	$(PYTHON) test/dw_pool_driver/run.py --out '$(DW_BUILD_DIR)/driver'
+
+dw-pool-unit:
+	$(PYTHON) test/dw_pool/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --tile $(DW_TILE) --pes $(DW_PE_COUNT) --out '$(DW_BUILD_DIR)/unit'
+
+dw-pool-regs:
+	$(PYTHON) test/dw_pool_regs/run.py --verilator '$(VERILATOR)' --out '$(DW_BUILD_DIR)/registers'
+
+dw-pool-cosim:
+	$(PYTHON) test/dw_pool_cosim/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --size $(DW_TILE) --pe-count $(DW_PE_COUNT) --out '$(DW_BUILD_DIR)/cosim'
+
+dw-pool-disabled:
+	$(PYTHON) test/dw_pool_cosim/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --size $(DW_TILE) --pe-count $(DW_PE_COUNT) --disabled --out '$(DW_BUILD_DIR)/disabled'
+
+dw-pool-regression:
+	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --legacy-only --out '$(DW_BUILD_DIR)/regression/legacy'
+	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --sizes 4 16 --out '$(DW_BUILD_DIR)/regression/matrix'
+	$(PYTHON) test/conv_npu/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --sizes 4 --out '$(DW_BUILD_DIR)/regression/conv'
+
+dw-pool-sweep:
+	$(PYTHON) test/dw_pool/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --tile $(DW_TILE) --pes $(DW_PE_SWEEP) --perf --out '$(DW_BUILD_DIR)/pe_sweep'
+
+dw-pool-area:
+	$(PYTHON) test/dw_pool/synth_pe.py --yosys '$(YOSYS)' --counts $(DW_PE_SWEEP) --out '$(DW_BUILD_DIR)/pe_area'

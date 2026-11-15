@@ -1,0 +1,572 @@
+{
+  "date": "2026-11-15",
+  "repository": "https://github.com/Little-W/mini_tflm_dsa",
+  "base_commit": "f9602e4eb20be8039ed08e706957f5412462106d",
+  "default_pe_count": 8,
+  "alternative_pe_count": 4,
+  "configuration": {
+    "tile": 16,
+    "max_taps": 49,
+    "axi_data_bits": 32,
+    "shared_input_cache_bytes": 1024,
+    "core": "standard",
+    "pcr_engine": 0
+  },
+  "tools": {
+    "verilator": "Verilator 5.054 2026-11-01 rev vUNKNOWN-built20261115-e4c9411",
+    "yosys": "Yosys 0.71 (native pyosys)",
+    "riscv_gcc": "riscv64-unknown-elf-gcc (14.2.0+19) 14.2.0"
+  },
+  "cycle_scope": "Accepted engine task through completion, including parameter reads, windows, compute, quantization/division and writes; excludes CPU configuration. No injected external wait states in performance runs.",
+  "pe_synthesis_scope": "Combinational PE bank only; excludes engine control, storage, DMA and physical implementation.",
+  "engine_functional": [
+    {
+      "pe_count": 1,
+      "cases": 97,
+      "passed": true
+    },
+    {
+      "pe_count": 2,
+      "cases": 97,
+      "passed": true
+    },
+    {
+      "pe_count": 4,
+      "cases": 97,
+      "passed": true
+    },
+    {
+      "pe_count": 8,
+      "cases": 97,
+      "passed": true
+    },
+    {
+      "pe_count": 16,
+      "cases": 97,
+      "passed": true
+    }
+  ],
+  "performance": [
+    {
+      "pe_count": 1,
+      "cases": [
+        {
+          "name": "perf_dw_c16",
+          "cycles": 95026,
+          "compute": 7744,
+          "dma_wait": 79743,
+          "read_bytes": 1392,
+          "write_bytes": 1024,
+          "bursts": 91
+        },
+        {
+          "name": "perf_dw_c32",
+          "cycles": 193973,
+          "compute": 15488,
+          "dma_wait": 163409,
+          "read_bytes": 4820,
+          "write_bytes": 2048,
+          "bursts": 294
+        },
+        {
+          "name": "perf_dw_c64_s2",
+          "cycles": 445381,
+          "compute": 33856,
+          "dma_wait": 381195,
+          "read_bytes": 67388,
+          "write_bytes": 4096,
+          "bursts": 4182
+        },
+        {
+          "name": "perf_avg_c32",
+          "cycles": 255075,
+          "compute": 15488,
+          "dma_wait": 163095,
+          "read_bytes": 4080,
+          "write_bytes": 2048,
+          "bursts": 260
+        },
+        {
+          "name": "perf_max_c32",
+          "cycles": 27499,
+          "compute": 2048,
+          "dma_wait": 23655,
+          "read_bytes": 4080,
+          "write_bytes": 512,
+          "bursts": 260
+        },
+        {
+          "name": "perf_dot_s8",
+          "cycles": 2460,
+          "compute": 1024,
+          "dma_wait": 1223,
+          "read_bytes": 2552,
+          "write_bytes": 4,
+          "bursts": 148
+        },
+        {
+          "name": "perf_hadamard_s16",
+          "cycles": 12211,
+          "compute": 1024,
+          "dma_wait": 8944,
+          "read_bytes": 4600,
+          "write_bytes": 4096,
+          "bursts": 164
+        }
+      ],
+      "passed": true
+    },
+    {
+      "pe_count": 2,
+      "cases": [
+        {
+          "name": "perf_dw_c16",
+          "cycles": 91154,
+          "compute": 3872,
+          "dma_wait": 79743,
+          "read_bytes": 1392,
+          "write_bytes": 1024,
+          "bursts": 91
+        },
+        {
+          "name": "perf_dw_c32",
+          "cycles": 186229,
+          "compute": 7744,
+          "dma_wait": 163409,
+          "read_bytes": 4820,
+          "write_bytes": 2048,
+          "bursts": 294
+        },
+        {
+          "name": "perf_dw_c64_s2",
+          "cycles": 428453,
+          "compute": 16928,
+          "dma_wait": 381195,
+          "read_bytes": 67388,
+          "write_bytes": 4096,
+          "bursts": 4182
+        },
+        {
+          "name": "perf_avg_c32",
+          "cycles": 247331,
+          "compute": 7744,
+          "dma_wait": 163095,
+          "read_bytes": 4080,
+          "write_bytes": 2048,
+          "bursts": 260
+        },
+        {
+          "name": "perf_max_c32",
+          "cycles": 26475,
+          "compute": 1024,
+          "dma_wait": 23655,
+          "read_bytes": 4080,
+          "write_bytes": 512,
+          "bursts": 260
+        },
+        {
+          "name": "perf_dot_s8",
+          "cycles": 1948,
+          "compute": 512,
+          "dma_wait": 1223,
+          "read_bytes": 2552,
+          "write_bytes": 4,
+          "bursts": 148
+        },
+        {
+          "name": "perf_hadamard_s16",
+          "cycles": 11699,
+          "compute": 512,
+          "dma_wait": 8944,
+          "read_bytes": 4600,
+          "write_bytes": 4096,
+          "bursts": 164
+        }
+      ],
+      "passed": true
+    },
+    {
+      "pe_count": 4,
+      "cases": [
+        {
+          "name": "perf_dw_c16",
+          "cycles": 89218,
+          "compute": 1936,
+          "dma_wait": 79743,
+          "read_bytes": 1392,
+          "write_bytes": 1024,
+          "bursts": 91
+        },
+        {
+          "name": "perf_dw_c32",
+          "cycles": 182357,
+          "compute": 3872,
+          "dma_wait": 163409,
+          "read_bytes": 4820,
+          "write_bytes": 2048,
+          "bursts": 294
+        },
+        {
+          "name": "perf_dw_c64_s2",
+          "cycles": 419989,
+          "compute": 8464,
+          "dma_wait": 381195,
+          "read_bytes": 67388,
+          "write_bytes": 4096,
+          "bursts": 4182
+        },
+        {
+          "name": "perf_avg_c32",
+          "cycles": 243459,
+          "compute": 3872,
+          "dma_wait": 163095,
+          "read_bytes": 4080,
+          "write_bytes": 2048,
+          "bursts": 260
+        },
+        {
+          "name": "perf_max_c32",
+          "cycles": 25963,
+          "compute": 512,
+          "dma_wait": 23655,
+          "read_bytes": 4080,
+          "write_bytes": 512,
+          "bursts": 260
+        },
+        {
+          "name": "perf_dot_s8",
+          "cycles": 1692,
+          "compute": 256,
+          "dma_wait": 1223,
+          "read_bytes": 2552,
+          "write_bytes": 4,
+          "bursts": 148
+        },
+        {
+          "name": "perf_hadamard_s16",
+          "cycles": 11443,
+          "compute": 256,
+          "dma_wait": 8944,
+          "read_bytes": 4600,
+          "write_bytes": 4096,
+          "bursts": 164
+        }
+      ],
+      "passed": true
+    },
+    {
+      "pe_count": 8,
+      "cases": [
+        {
+          "name": "perf_dw_c16",
+          "cycles": 88250,
+          "compute": 968,
+          "dma_wait": 79743,
+          "read_bytes": 1392,
+          "write_bytes": 1024,
+          "bursts": 91
+        },
+        {
+          "name": "perf_dw_c32",
+          "cycles": 180421,
+          "compute": 1936,
+          "dma_wait": 163409,
+          "read_bytes": 4820,
+          "write_bytes": 2048,
+          "bursts": 294
+        },
+        {
+          "name": "perf_dw_c64_s2",
+          "cycles": 415757,
+          "compute": 4232,
+          "dma_wait": 381195,
+          "read_bytes": 67388,
+          "write_bytes": 4096,
+          "bursts": 4182
+        },
+        {
+          "name": "perf_avg_c32",
+          "cycles": 241523,
+          "compute": 1936,
+          "dma_wait": 163095,
+          "read_bytes": 4080,
+          "write_bytes": 2048,
+          "bursts": 260
+        },
+        {
+          "name": "perf_max_c32",
+          "cycles": 25707,
+          "compute": 256,
+          "dma_wait": 23655,
+          "read_bytes": 4080,
+          "write_bytes": 512,
+          "bursts": 260
+        },
+        {
+          "name": "perf_dot_s8",
+          "cycles": 1564,
+          "compute": 128,
+          "dma_wait": 1223,
+          "read_bytes": 2552,
+          "write_bytes": 4,
+          "bursts": 148
+        },
+        {
+          "name": "perf_hadamard_s16",
+          "cycles": 11315,
+          "compute": 128,
+          "dma_wait": 8944,
+          "read_bytes": 4600,
+          "write_bytes": 4096,
+          "bursts": 164
+        }
+      ],
+      "passed": true
+    },
+    {
+      "pe_count": 16,
+      "cases": [
+        {
+          "name": "perf_dw_c16",
+          "cycles": 87766,
+          "compute": 484,
+          "dma_wait": 79743,
+          "read_bytes": 1392,
+          "write_bytes": 1024,
+          "bursts": 91
+        },
+        {
+          "name": "perf_dw_c32",
+          "cycles": 179453,
+          "compute": 968,
+          "dma_wait": 163409,
+          "read_bytes": 4820,
+          "write_bytes": 2048,
+          "bursts": 294
+        },
+        {
+          "name": "perf_dw_c64_s2",
+          "cycles": 413641,
+          "compute": 2116,
+          "dma_wait": 381195,
+          "read_bytes": 67388,
+          "write_bytes": 4096,
+          "bursts": 4182
+        },
+        {
+          "name": "perf_avg_c32",
+          "cycles": 240555,
+          "compute": 968,
+          "dma_wait": 163095,
+          "read_bytes": 4080,
+          "write_bytes": 2048,
+          "bursts": 260
+        },
+        {
+          "name": "perf_max_c32",
+          "cycles": 25579,
+          "compute": 128,
+          "dma_wait": 23655,
+          "read_bytes": 4080,
+          "write_bytes": 512,
+          "bursts": 260
+        },
+        {
+          "name": "perf_dot_s8",
+          "cycles": 1500,
+          "compute": 64,
+          "dma_wait": 1223,
+          "read_bytes": 2552,
+          "write_bytes": 4,
+          "bursts": 148
+        },
+        {
+          "name": "perf_hadamard_s16",
+          "cycles": 11251,
+          "compute": 64,
+          "dma_wait": 8944,
+          "read_bytes": 4600,
+          "write_bytes": 4096,
+          "bursts": 164
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "pe_synthesis": [
+    {
+      "pe_count": 1,
+      "multipliers": 1,
+      "generic_cell_count": 2384,
+      "passed": true
+    },
+    {
+      "pe_count": 2,
+      "multipliers": 2,
+      "generic_cell_count": 4470,
+      "passed": true
+    },
+    {
+      "pe_count": 4,
+      "multipliers": 4,
+      "generic_cell_count": 8927,
+      "passed": true
+    },
+    {
+      "pe_count": 8,
+      "multipliers": 8,
+      "generic_cell_count": 17850,
+      "passed": true
+    },
+    {
+      "pe_count": 16,
+      "multipliers": 16,
+      "generic_cell_count": 35642,
+      "passed": true
+    }
+  ],
+  "cosimulation": [
+    {
+      "profile": "cosim_s16_pe4",
+      "passed": true,
+      "current_sources_match": true,
+      "source_count": 94,
+      "size": 16,
+      "pe_count": 4,
+      "enabled": true,
+      "pcr": false,
+      "runs": [
+        {
+          "cases": 64,
+          "outputs": 2989,
+          "hardware_commands": 60,
+          "name": "fixed",
+          "passed": true
+        },
+        {
+          "cases": 64,
+          "outputs": 2989,
+          "hardware_commands": 60,
+          "name": "random",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "profile": "cosim_s16_pe8",
+      "passed": true,
+      "current_sources_match": true,
+      "source_count": 94,
+      "size": 16,
+      "pe_count": 8,
+      "enabled": true,
+      "pcr": false,
+      "runs": [
+        {
+          "cases": 64,
+          "outputs": 2989,
+          "hardware_commands": 60,
+          "name": "fixed",
+          "passed": true
+        },
+        {
+          "cases": 64,
+          "outputs": 2989,
+          "hardware_commands": 60,
+          "name": "random",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "profile": "cosim_disabled_pe8",
+      "passed": true,
+      "current_sources_match": true,
+      "source_count": 94,
+      "size": 16,
+      "pe_count": 8,
+      "enabled": false,
+      "pcr": false,
+      "runs": [
+        {
+          "cases": 17,
+          "outputs": 2340,
+          "hardware_commands": 1,
+          "name": "fixed",
+          "passed": true
+        },
+        {
+          "cases": 17,
+          "outputs": 2340,
+          "hardware_commands": 1,
+          "name": "random",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "profile": "cosim_pcr_pe8",
+      "passed": true,
+      "current_sources_match": true,
+      "source_count": 94,
+      "size": 16,
+      "pe_count": 8,
+      "enabled": false,
+      "pcr": true,
+      "runs": [
+        {
+          "cases": 17,
+          "outputs": 2340,
+          "hardware_commands": 1,
+          "name": "fixed",
+          "passed": true
+        },
+        {
+          "cases": 17,
+          "outputs": 2340,
+          "hardware_commands": 1,
+          "name": "random",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "driver": {
+    "ubsan_assertions": {
+      "standalone": 798,
+      "nmsis": 1254,
+      "software": 816
+    },
+    "independent_software_link": true
+  },
+  "register_checks": 89,
+  "existing_regression": {
+    "legacy_tests": 2,
+    "matrix_descriptors": 28,
+    "matrix_elements": 2322,
+    "conv_commands": 18,
+    "conv_output_bytes": 1905,
+    "passed": true
+  },
+  "rv32": {
+    "arch": "rv32im",
+    "abi": "ilp32",
+    "production_objects": 11,
+    "software_objects": 9,
+    "static_links": 3,
+    "undefined_symbols": 0,
+    "native_fence_present": true,
+    "passed": true
+  },
+  "source_sha256": {
+    "rtl/npu/conv/dw_pool_engine.sv": "acb8e5569fbbbdd5c51dce7b304f6c6e81d1e033edbc3c2b878ddaa21ea6e77e",
+    "rtl/npu/conv/dw_pool_pe.sv": "1b6cb69887af3e0829f5ef723283e3dd5ed00caf1bf51fea0d1d1f713870fe1b",
+    "drivers/dsa_dw_pool_impl.h": "a6014937f3e50409bd1bab592255fbe3f2406e49782dfe27c814f04b8443e118",
+    "drivers/tflm/NMSIS/NN/Source/ExtraAccFunctions/riscv_dwconv_acc.c": "91599c9bf3853cbacee41a17fafc1339112af0eb09aa7e5a99ad711894c12cd8"
+  },
+  "limitations": [
+    "No physical FPGA or ASIC area/timing measurement.",
+    "No RISC-V CPU execution cycle comparison.",
+    "PE synthesis excludes the engine controller, storage, shared quantization/division and DMA."
+  ]
+}

@@ -3,7 +3,10 @@ module npu_axil_reg_if #(
     parameter int unsigned AXIL_ADDR_WIDTH = 16,
     parameter int unsigned REG_WIDTH       = 32,
     parameter bit CONV_CAPABLE = 1'b1,
-    parameter bit CONV_IS_CAPABLE = 1'b0
+    parameter bit CONV_IS_CAPABLE = 1'b0,
+    parameter bit DW_POOL_CAPABLE = 1'b0,
+    parameter int unsigned DW_PE_COUNT = 8,
+    parameter int unsigned DW_MAX_TAPS = 49
 ) (
     input  wire                         clk,
     input  wire                         rst_n,
@@ -30,6 +33,13 @@ module npu_axil_reg_if #(
 
     output logic                        calc_start,
     output logic                        cfg_conv_enable,
+    output logic                        cfg_dw_enable,
+    output logic [3:0]                  cfg_dw_op,
+    output logic                        cfg_dw_vector_s16,
+    output logic [31:0]                 cfg_dw_length,
+    input logic [31:0] dw_stat_cycles = '0,
+    input logic [31:0] dw_stat_compute = '0,
+    input logic [31:0] dw_stat_dma_wait = '0,
     output conv_im2col_pkg::conv_cfg_t    cfg_conv,
     input logic [31:0] conv_stat_hits = '0,
     input logic [31:0] conv_stat_misses = '0,
@@ -104,6 +114,12 @@ module npu_axil_reg_if #(
     localparam logic [11:0] REG_COL_GROUPS = 12'h01a; // 0x068
     localparam logic [11:0] REG_COL_TAIL_TILES = 12'h01b; // 0x06c
     localparam logic [11:0] REG_CONFIG_ABI = 12'h01c; // 0x070, read-only
+    localparam logic [11:0] REG_DW_OP = 12'h02c;
+    localparam logic [11:0] REG_DW_LENGTH = 12'h02d;
+    localparam logic [11:0] REG_DW_CAPS = 12'h02e;
+    localparam logic [11:0] REG_DW_CYCLES = 12'h02f;
+    localparam logic [11:0] REG_DW_COMPUTE = 12'h030;
+    localparam logic [11:0] REG_DW_DMA_WAIT = 12'h031;
     localparam logic [11:0] REG_ID           = 12'h03f; // 0x0fc
     localparam logic [REG_WIDTH-1:0] NPU_ID  = 32'h4e50_5531;
 
@@ -174,9 +190,17 @@ module npu_axil_reg_if #(
         read_data_next = '0;
         case (rd_word_addr)
             REG_CTRL: begin
+                read_data_next[8] = cfg_dw_enable;
                 read_data_next[7:1] = {cfg_conv.bypass_cache, cfg_conv_enable, cfg_16x8, irq_enable, cfg_dataflow_mode,
                                        use_per_channel, cfg_16bits_ia};
             end
+            REG_DW_OP: read_data_next = {23'b0, cfg_dw_vector_s16, 4'b0, cfg_dw_op};
+            REG_DW_LENGTH: read_data_next = cfg_dw_length;
+            REG_DW_CAPS: read_data_next = DW_POOL_CAPABLE ?
+                {8'd1, 8'(DW_MAX_TAPS), 8'(DW_PE_COUNT), 8'h0f} : 32'd0;
+            REG_DW_CYCLES: read_data_next = dw_stat_cycles;
+            REG_DW_COMPUTE: read_data_next = dw_stat_compute;
+            REG_DW_DMA_WAIT: read_data_next = dw_stat_dma_wait;
             REG_STATUS:       read_data_next[7:0] = status_bits[7:0];
             REG_WB_DATA:      read_data_next = last_done_data;
             REG_LHS_BASE:     read_data_next = lhs_base;
@@ -256,6 +280,10 @@ module npu_axil_reg_if #(
             act_max             <= '0;
             cfg_16bits_ia       <= 1'b0;
             cfg_conv_enable     <= 1'b0;
+            cfg_dw_enable       <= 1'b0;
+            cfg_dw_op           <= '0;
+            cfg_dw_vector_s16   <= 1'b0;
+            cfg_dw_length       <= '0;
             cfg_conv            <= '0;
             last_err_code       <= '0;
             cfg_16x8            <= 1'b0;
@@ -304,6 +332,7 @@ module npu_axil_reg_if #(
                     bresp_q <= 2'b10;
                 end else case (wr_word_addr)
                     REG_CTRL: begin
+                        if (wr_strb[1]) cfg_dw_enable <= wr_data[8];
                         if (wr_strb[0]) begin
                             cfg_16bits_ia     <= wr_data[1];
                             use_per_channel   <= wr_data[2];
@@ -320,6 +349,11 @@ module npu_axil_reg_if #(
                             end
                         end
                     end
+                    REG_DW_OP: begin
+                        if (wr_strb[0]) cfg_dw_op <= wr_data[3:0];
+                        if (wr_strb[1]) cfg_dw_vector_s16 <= wr_data[8];
+                    end
+                    REG_DW_LENGTH: cfg_dw_length <= apply_wstrb(cfg_dw_length, wr_data, wr_strb);
                     REG_STATUS: begin
                         if (wr_strb[0]) begin
                             if (wr_data[2]) begin

@@ -13,6 +13,9 @@ module npu_axil_top #(
     parameter CONV_CACHE_WAYS = 2,
     parameter CONV_LINE_BYTES = 16,
     parameter CONV_CACHE_POLICY = 2,
+    parameter ENABLE_DW_POOL = 1,
+    parameter DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
+    parameter DW_MAX_TAPS = 49,
     parameter PS_FRAME_COUNT  = SIZE,
     parameter AXI_READ_OUTSTANDING = 4,
     parameter AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,
@@ -101,15 +104,43 @@ module npu_axil_top #(
     wire signed [REG_WIDTH-1:0] act_min_reg;
     wire signed [REG_WIDTH-1:0] act_max_reg;
     wire cfg_conv_enable_reg;
+    wire cfg_dw_enable_reg, cfg_dw_vector_s16_reg;
+    wire [3:0] cfg_dw_op_reg;
+    wire [31:0] cfg_dw_length_reg;
+    wire [31:0] dw_stat_cycles, dw_stat_compute, dw_stat_dma_wait;
+    dw_pool_pkg::dw_pool_cfg_t cfg_dw_reg;
+    always_comb begin
+        cfg_dw_reg = '0;
+        cfg_dw_reg.op = cfg_dw_op_reg;
+        cfg_dw_reg.vector_s16 = cfg_dw_vector_s16_reg;
+        cfg_dw_reg.length = cfg_dw_length_reg;
+        cfg_dw_reg.input_base = lhs_base_reg;
+        cfg_dw_reg.rhs_base = rhs_base_reg;
+        cfg_dw_reg.output_base = dst_base_reg;
+        cfg_dw_reg.bias_base = bias_base_reg;
+        cfg_dw_reg.multiplier_base = q_mult_pt_reg;
+        cfg_dw_reg.shift_base = q_shift_pt_reg;
+        cfg_dw_reg.output_offset = dst_zp_reg;
+        cfg_dw_reg.activation_min = act_min_reg;
+        cfg_dw_reg.activation_max = act_max_reg;
+        cfg_dw_reg.image = cfg_conv_reg;
+    end
     conv_im2col_pkg::conv_cfg_t cfg_conv_reg;
     wire [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes, conv_stat_cycles;
 `ifdef GEMPACT_PANEL_ENGINE
     localparam bit CONV_CAPABLE = 1'b0;
+    localparam bit DW_POOL_CAPABLE = 1'b0;
 `elsif GEMPACT_RESIDENT_ENGINE
     localparam bit CONV_CAPABLE = 1'b0;
+    localparam bit DW_POOL_CAPABLE = 1'b0;
 `elsif GEMMORA_INT8_PROFILE
     localparam bit CONV_CAPABLE = 1'b0;
+    localparam bit DW_POOL_CAPABLE = 1'b0;
 `else
+    localparam bit DW_POOL_CAPABLE = ENABLE_DW_POOL != 0 && BUS_WIDTH == 32 && REG_WIDTH == 32 &&
+        SIZE >= 2 && SIZE <= 64 && ((SIZE & (SIZE-1)) == 0) &&
+        DW_MAX_TAPS >= 1 && DW_MAX_TAPS <= 255 && DW_PE_COUNT >= 1 &&
+        DW_PE_COUNT <= SIZE && ((DW_PE_COUNT & (DW_PE_COUNT-1)) == 0);
     localparam bit CONV_CAPABLE = DATA_WIDTH >= 16 && BUS_WIDTH == 32 && REG_WIDTH == 32 && ENABLE_PER_CHANNEL != 0;
 `endif
     // The normal core promotes KERNEL_DATA_WIDTH to at least 16 even when the
@@ -255,7 +286,8 @@ module npu_axil_top #(
     npu_axil_reg_if #(
         .AXIL_DATA_WIDTH(AXIL_DATA_WIDTH),
         .AXIL_ADDR_WIDTH(AXIL_ADDR_WIDTH),
-        .REG_WIDTH(REG_WIDTH), .CONV_CAPABLE(CONV_CAPABLE), .CONV_IS_CAPABLE(CONV_IS_CAPABLE)
+        .REG_WIDTH(REG_WIDTH), .CONV_CAPABLE(CONV_CAPABLE), .CONV_IS_CAPABLE(CONV_IS_CAPABLE),
+        .DW_POOL_CAPABLE(DW_POOL_CAPABLE), .DW_PE_COUNT(DW_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS)
     ) u_npu_axil_reg_if (
         .clk(clk),
         .rst_n(rst_n),
@@ -279,6 +311,10 @@ module npu_axil_top #(
         .s_axil_rvalid(s_axil_rvalid),
         .s_axil_rready(s_axil_rready),
         .calc_start(calc_start_pulse),
+        .cfg_dw_enable(cfg_dw_enable_reg), .cfg_dw_op(cfg_dw_op_reg),
+        .cfg_dw_vector_s16(cfg_dw_vector_s16_reg), .cfg_dw_length(cfg_dw_length_reg),
+        .dw_stat_cycles(dw_stat_cycles), .dw_stat_compute(dw_stat_compute),
+        .dw_stat_dma_wait(dw_stat_dma_wait),
         .cfg_16bits_ia(cfg_16bits_ia_reg),
         .cfg_conv_enable(cfg_conv_enable_reg), .cfg_conv(cfg_conv_reg),
         .conv_stat_hits(conv_stat_hits), .conv_stat_misses(conv_stat_misses),
@@ -330,6 +366,7 @@ module npu_axil_top #(
         .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
         .CONV_LINE_BYTES(CONV_LINE_BYTES),
         .CONV_CACHE_POLICY(CONV_CACHE_POLICY),
+        .ENABLE_DW_POOL(ENABLE_DW_POOL), .DW_PE_COUNT(DW_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .AXI_READ_OUTSTANDING(AXI_READ_OUTSTANDING),
         .AXI_WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING),
@@ -340,6 +377,9 @@ module npu_axil_top #(
         .rst_n(rst_n),
         .cfg_operand_fetch64(1'b0),
         .calc_start(npu_core_calc_start),
+        .cfg_dw_enable(cfg_dw_enable_reg), .cfg_dw(cfg_dw_reg),
+        .dw_stat_cycles(dw_stat_cycles), .dw_stat_compute(dw_stat_compute),
+        .dw_stat_dma_wait(dw_stat_dma_wait),
         .cfg_16bits_ia(cfg_16bits_ia_reg),
         .cfg_conv_enable(cfg_conv_enable_reg), .cfg_conv(cfg_conv_reg),
         .conv_stat_hits(conv_stat_hits), .conv_stat_misses(conv_stat_misses),

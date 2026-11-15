@@ -25,6 +25,7 @@ module conv_im2col_frontend #(
   output logic tile_ready,
   input logic [31:0] tile_p0, tile_q0,
   input logic [RW-1:0] tile_rows,
+  input logic [RW-1:0] tile_cols = '0, // Zero selects the full SIZE columns.
   input logic [SLOT_W-1:0] tile_slot,
   input logic [31:0] tile_group = 32'd0,
   output logic wr_valid,
@@ -56,7 +57,7 @@ module conv_im2col_frontend #(
   logic [63:0] cfg_input_bytes, cfg_red;
   logic [31:0] cfg_positions;
   logic [31:0] reduction_len, position_count, tensor_bytes;
-  logic [31:0] p0, q0, tap0, row_idx, col_idx, rows_q;
+  logic [31:0] p0, q0, tap0, row_idx, col_idx, rows_q, cols_q;
   logic [31:0] ox, oy, ky, kx, ch, ky0, kx0, ch0;
   logic [32:0] q_current;
   logic signed [63:0] ix, iy;
@@ -157,7 +158,7 @@ module conv_im2col_frontend #(
   );
   always_comb begin
     chunk_count = LANES;
-    if (chunk_count > SIZE-col_idx) chunk_count = SIZE-col_idx;
+    if (chunk_count > cols_q-col_idx) chunk_count = cols_q-col_idx;
     if (q_current < {1'b0,reduction_len}) begin
       if (chunk_count > 32'(c.group_c)-ch) chunk_count = 32'(c.group_c)-ch;
       if (33'(chunk_count) > ({1'b0,reduction_len}-q_current))
@@ -172,7 +173,7 @@ module conv_im2col_frontend #(
     if (!rst_n) begin
       state<=IDLE; c<='0; configured<=0; error<=0; tile_done<=0; tile_error<=0;
       reduction_len<=0; position_count<=0; tensor_bytes<=0;
-      p0<=0; q0<=0; tap0<=0; row_idx<=0; col_idx<=0; rows_q<=0;
+      p0<=0; q0<=0; tap0<=0; row_idx<=0; col_idx<=0; rows_q<=0; cols_q<=SIZE;
       ox<=0; oy<=0; ky<=0; kx<=0; ch<=0; ky0<=0; kx0<=0; ch0<=0;
       q_current<=0; ix<=0; iy<=0; pixel_index<=0; pad_q<=0; addr<=0;
       word_buf<=0; word_addr<=0; word_valid<=0; slot_q<=0; send_count<=0;
@@ -190,14 +191,15 @@ module conv_im2col_frontend #(
         groups_q<=cfg_sched_groups;geometry_tile<=0;line_hint_valid<=0;
       end else case (state)
         IDLE: if (tile_valid && tile_ready) begin
-          if (tile_rows==0 || 32'(tile_rows)>SIZE || tile_q0>=reduction_len ||
+          if (tile_rows==0 || 32'(tile_rows)>SIZE || 32'(tile_cols)>SIZE || tile_q0>=reduction_len ||
               ({1'b0,tile_p0}+33'(tile_rows) > {1'b0,position_count})) begin
             tile_error<=1; error<=1;
           end else begin
             p0<=tile_p0; q0<=tile_q0; q_current<={1'b0,tile_q0};
-            rows_q<=32'(tile_rows); row_idx<=0; col_idx<=0; slot_q<=tile_slot;
+            rows_q<=32'(tile_rows); cols_q <= (tile_cols==0) ? 32'(SIZE) : 32'(tile_cols);
+            row_idx<=0; col_idx<=0; slot_q<=tile_slot;
             group_q<=tile_group;
-            geometry_tile<=pred_enabled && tile_p0[3:0]==0 && tile_q0[3:0]==0 &&
+            geometry_tile<=pred_enabled && (tile_cols==0 || 32'(tile_cols)==SIZE) && tile_p0[3:0]==0 && tile_q0[3:0]==0 &&
                            tile_group<groups_q;
             state<=P_START;
           end
@@ -256,7 +258,7 @@ module conv_im2col_frontend #(
           state<=SEND;
         end
         SEND: if (wr_ready) begin
-          if (col_idx+send_count==SIZE) begin
+          if (col_idx+send_count==cols_q) begin
             if (row_idx+1==rows_q) begin tile_done<=1; state<=IDLE; end
             else begin
               row_idx<=row_idx+1; col_idx<=0; q_current<={1'b0,q0};
@@ -296,7 +298,7 @@ module conv_im2col_frontend #(
     if (div_done) assert (!div_zero);
     if (wr_valid) begin
       assert (wr_mask!='0 && send_count!=0);
-      assert (col_idx+send_count<=SIZE && row_idx<rows_q);
+      assert (col_idx+send_count<=cols_q && row_idx<rows_q);
     end
     if (cache_req_valid) begin
       assert (addr>=c.input_base);

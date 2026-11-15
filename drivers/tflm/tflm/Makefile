@@ -343,7 +343,7 @@ MICROLITE_NMSIS_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(NMSIS_NN_C_SRCS))
 # 默认目标
 all: $(MICROLITE_LIB_NAME) keyword_benchmark person_detection_benchmark
 
-$(BUILD_DIR)/$(NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.o: $(NMSIS_NN_ROOT)/Include/dsa_accel.h $(TENSORFLOW_ROOT)../../../gempact_tiling.h $(TENSORFLOW_ROOT)../../../dsa_conv.h $(TENSORFLOW_ROOT)../../../dsa_conv_impl.h
+$(BUILD_DIR)/$(NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.o: $(NMSIS_NN_ROOT)/Include/dsa_accel.h $(TENSORFLOW_ROOT)../../../gempact_tiling.h $(TENSORFLOW_ROOT)../../../dsa_conv.h $(TENSORFLOW_ROOT)../../../dsa_conv_impl.h $(TENSORFLOW_ROOT)../../../dsa_dw_pool.h $(TENSORFLOW_ROOT)../../../dsa_dw_pool_impl.h
 
 # 生成数据文件目标
 generate_all_data: $(KEYWORD_BENCHMARK_GENERATED) $(PERSON_DETECTION_GENERATED)

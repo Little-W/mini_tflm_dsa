@@ -8,6 +8,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include "../../../../dsa_conv.h"
+#include "../../../../dsa_dw_pool.h"
 
 /* axi_soc maps the accelerator AXI-Lite window at 0x1000_0000. */
 #define DSA_MMIO_BASE 0x10000000u

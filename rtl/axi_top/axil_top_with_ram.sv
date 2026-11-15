@@ -8,6 +8,9 @@ module axil_top_with_ram #(
     parameter REG_WIDTH       = 32,
     parameter AXI_ADDR_WIDTH  = 32,
     parameter IA_CACHE_BLOCKS = 4,
+    parameter ENABLE_DW_POOL = 1,
+    parameter DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
+    parameter DW_MAX_TAPS = 49,
     parameter PS_FRAME_COUNT  = SIZE,
     parameter AXI_READ_OUTSTANDING = 4,
     parameter NPU_ENABLE_CLOCK_GATING = 1,
@@ -92,6 +95,7 @@ module axil_top_with_ram #(
         .REG_WIDTH(REG_WIDTH),
         .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
+        .ENABLE_DW_POOL(ENABLE_DW_POOL), .DW_PE_COUNT(DW_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .AXI_READ_OUTSTANDING(AXI_READ_OUTSTANDING),
         .ENABLE_CLOCK_GATING(NPU_ENABLE_CLOCK_GATING)
