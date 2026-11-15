@@ -63,7 +63,8 @@ int32_t riscv_depthwise_conv_wrapper_s8_get_buffer_size(const nmsis_nn_dw_conv_p
                                                       const nmsis_nn_dims *filter_dims,
                                                       const nmsis_nn_dims *output_dims)
 {
-    int32_t size = 0;
+    int32_t size = riscv_depthwise_conv_s8_dsa_buffer_size(
+        dw_conv_params, input_dims, filter_dims, output_dims);
 
     if (input_dims->c == output_dims->c && input_dims->n == 1 && dw_conv_params->dilation.w == 1 &&
         dw_conv_params->dilation.h == 1)
@@ -73,7 +74,8 @@ int32_t riscv_depthwise_conv_wrapper_s8_get_buffer_size(const nmsis_nn_dw_conv_p
         {
             return size;
         }
-        size = riscv_depthwise_conv_s8_opt_get_buffer_size(input_dims, filter_dims);
+        const int32_t software_size = riscv_depthwise_conv_s8_opt_get_buffer_size(input_dims, filter_dims);
+        if (software_size > size) size = software_size;
     }
 
     return size;
@@ -84,7 +86,8 @@ int32_t riscv_depthwise_conv_wrapper_s8_get_buffer_size_dsp(const nmsis_nn_dw_co
                                                           const nmsis_nn_dims *filter_dims,
                                                           const nmsis_nn_dims *output_dims)
 {
-    int32_t size = 0;
+    int32_t size = riscv_depthwise_conv_s8_dsa_buffer_size(
+        dw_conv_params, input_dims, filter_dims, output_dims);
 
     if (input_dims->c == output_dims->c && input_dims->n == 1 && dw_conv_params->dilation.w == 1 &&
         dw_conv_params->dilation.h == 1)
@@ -94,7 +97,8 @@ int32_t riscv_depthwise_conv_wrapper_s8_get_buffer_size_dsp(const nmsis_nn_dw_co
         {
             return size;
         }
-        size = riscv_depthwise_conv_s8_opt_get_buffer_size_dsp(input_dims, filter_dims);
+        const int32_t software_size = riscv_depthwise_conv_s8_opt_get_buffer_size_dsp(input_dims, filter_dims);
+        if (software_size > size) size = software_size;
     }
 
     return size;

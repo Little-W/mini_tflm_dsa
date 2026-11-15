@@ -45,7 +45,7 @@ int riscv_convolve_s8_try_dsa(
     uint64_t input_batch, output_batch, weights_size, bound;
     int64_t lo, hi;
     dsa_conv_s8_config_t c = {0};
-    if (!status) return 0;
+    if (!dsa_nn_accelerator_enabled(DSA_NN_ACCEL_CONV) || !status) return 0;
     *status = RISCV_NMSIS_NN_ARG_ERROR;
     if (!p || !q || !in || !f || !out || !input || !filter || !output ||
         !q->multiplier || !q->shift) return 1;
@@ -125,8 +125,7 @@ int riscv_convolve_s8_try_dsa(
         if (abs_bias < 0) abs_bias = -abs_bias;
         if (shift < -31 || shift > 30 || q->multiplier[oc] < 0) return 0;
         channel_bound = bound + (uint64_t)abs_bias;
-        if (channel_bound > INT32_MAX - 128u ||
-            (shift > 0 && (channel_bound << shift) > INT32_MAX - 128u)) return 0;
+        if (channel_bound > INT32_MAX) return 0;
     }
     for (batch = 0; batch < (uint32_t)in->n; ++batch) {
         c.input_base = (uint32_t)((uintptr_t)input + batch * input_batch);

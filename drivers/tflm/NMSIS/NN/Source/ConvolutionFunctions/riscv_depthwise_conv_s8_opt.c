@@ -180,7 +180,7 @@ riscv_nmsis_nn_status riscv_depthwise_conv_s8_opt(const nmsis_nn_context *ctx,
                 }
                 sum += __riscv_vmv_x_s_i32m1_i32(v_temp);
                 sum = riscv_nn_requantize(sum, *output_mult++, *output_shift++);
-                sum += output_offset;
+                sum = riscv_nn_add_s32_sat(sum, output_offset);
                 sum = MAX(sum, output_activation_min);
                 sum = MIN(sum, output_activation_max);
                 *output++ = (q7_t)sum;
@@ -270,24 +270,24 @@ riscv_nmsis_nn_status riscv_depthwise_conv_s8_opt(const nmsis_nn_context *ctx,
                     col_count--;
                 }
                 sum = riscv_nn_requantize(sum, *output_mult++, *output_shift++);
-                sum += output_offset;
+                sum = riscv_nn_add_s32_sat(sum, output_offset);
                 sum = MAX(sum, output_activation_min);
                 sum = MIN(sum, output_activation_max);
                 *output++ = (int8_t)sum;
 
                 sum_2 = riscv_nn_requantize(sum_2, *output_mult++, *output_shift++);
-                sum_2 += output_offset;
+                sum_2 = riscv_nn_add_s32_sat(sum_2, output_offset);
                 sum_2 = MAX(sum_2, output_activation_min);
                 sum_2 = MIN(sum_2, output_activation_max);
                 *output++ = (int8_t)sum_2;
                 sum_3 = riscv_nn_requantize(sum_3, *output_mult++, *output_shift++);
-                sum_3 += output_offset;
+                sum_3 = riscv_nn_add_s32_sat(sum_3, output_offset);
                 sum_3 = MAX(sum_3, output_activation_min);
                 sum_3 = MIN(sum_3, output_activation_max);
                 *output++ = (int8_t)sum_3;
 
                 sum_4 = riscv_nn_requantize(sum_4, *output_mult++, *output_shift++);
-                sum_4 += output_offset;
+                sum_4 = riscv_nn_add_s32_sat(sum_4, output_offset);
                 sum_4 = MAX(sum_4, output_activation_min);
                 sum_4 = MIN(sum_4, output_activation_max);
                 *output++ = (int8_t)sum_4;
@@ -313,7 +313,7 @@ riscv_nmsis_nn_status riscv_depthwise_conv_s8_opt(const nmsis_nn_context *ctx,
                     sum += row_pos[i * input_ch] * col_pos[i * input_ch];
                 }
                 sum = riscv_nn_requantize(sum, *output_mult++, *output_shift++);
-                sum += output_offset;
+                sum = riscv_nn_add_s32_sat(sum, output_offset);
                 sum = MAX(sum, output_activation_min);
                 sum = MIN(sum, output_activation_max);
                 *output++ = (int8_t)sum;

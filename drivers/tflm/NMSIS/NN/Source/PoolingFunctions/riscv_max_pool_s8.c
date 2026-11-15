@@ -175,9 +175,9 @@ riscv_nmsis_nn_status riscv_max_pool_s8(const nmsis_nn_context *ctx,
                                     const nmsis_nn_dims *output_dims,
                                     int8_t *dst)
 {
-#if DSA_NN_DW_POOL_ENABLE
+#if DSA_NN_VECTOR_ENABLE
     riscv_nmsis_nn_status dsa_status;
-    if (riscv_pool_s8_try_dsa(DSA_DW_OP_MAXPOOL_S8, pool_params,
+    if (riscv_pool_s8_try_dsa(DSA_VECTOR_OP_MAXPOOL_S8, pool_params,
             input_dims, src, filter_dims, output_dims, dst, &dsa_status))
         return dsa_status;
 #endif

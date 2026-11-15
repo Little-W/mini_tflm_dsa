@@ -54,7 +54,47 @@ extern "C" {
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #define CLAMP(x, h, l) MAX(MIN((x), (h)), (l))
-#define REDUCE_MULTIPLIER(_mult) ((_mult < 0x7FFF0000) ? ((_mult + (1 << 15)) >> 16) : 0x7FFF)
+/* Integer rounding is nearest, with an even result at an exact half. */
+__STATIC_FORCEINLINE int64_t riscv_nn_round_shift_s64(int64_t value, int32_t exponent)
+{
+    if (exponent <= 0) return value;
+    if (exponent > 63) return 0;
+    const uint64_t magnitude = value < 0 ? UINT64_C(0) - (uint64_t)value : (uint64_t)value;
+    const uint64_t quotient = magnitude >> exponent;
+    const uint64_t remainder = magnitude & ((UINT64_C(1) << exponent) - 1u);
+    const uint64_t half = UINT64_C(1) << (exponent - 1);
+    const uint64_t rounded = quotient + (remainder > half || (remainder == half && (quotient & 1u)));
+    return value < 0 ? -(int64_t)rounded : (int64_t)rounded;
+}
+
+__STATIC_FORCEINLINE int32_t riscv_nn_saturate_s32(int64_t value)
+{
+    return value > INT32_MAX ? INT32_MAX : value < INT32_MIN ? INT32_MIN : (int32_t)value;
+}
+
+__STATIC_FORCEINLINE int32_t riscv_nn_add_s32_sat(int32_t a, int32_t b)
+{
+    return riscv_nn_saturate_s32((int64_t)a + b);
+}
+
+/* count must be positive. The remainder comparison avoids doubling it. */
+__STATIC_FORCEINLINE int32_t riscv_nn_divide_rne(int64_t value, int32_t count)
+{
+    const int64_t quotient = value / count;
+    const int64_t rem = value % count;
+    const uint64_t magnitude = rem < 0 ? (uint64_t)(-rem) : (uint64_t)rem;
+    const uint64_t other_half = (uint32_t)count - magnitude;
+    const int increment = magnitude > other_half ||
+                          (magnitude == other_half && ((uint64_t)quotient & 1u));
+    return riscv_nn_saturate_s32(quotient + (value < 0 ? -increment : increment));
+}
+
+__STATIC_FORCEINLINE int32_t riscv_nn_reduce_multiplier_rne(int32_t multiplier)
+{
+    const int32_t reduced = (int32_t)riscv_nn_round_shift_s64(multiplier, 16);
+    return reduced > INT16_MAX ? INT16_MAX : reduced;
+}
+#define REDUCE_MULTIPLIER(_mult) riscv_nn_reduce_multiplier_rne((_mult))
 
 /*
  * Use RVV may help if data length > RVV_OPT_THRESHOLD, otherwise use pure C version
@@ -2051,196 +2091,58 @@ void riscv_nn_softmax_common_s8(const int8_t *input,
 #define EXP_ON_NEG(x) riscv_nn_exp_on_negative_values((x))
 #define ONE_OVER1(x) riscv_nn_one_over_one_plus_x_for_x_in_0_1((x))
 
-/**
- * @brief           Saturating doubling high multiply. Result matches
- *                  NEON instruction VQRDMULH.
- * @param[in]       m1        Multiplicand. Range: {NN_Q31_MIN, NN_Q31_MAX}
- * @param[in]       m2        Multiplier. Range: {NN_Q31_MIN, NN_Q31_MAX}
- * @return          Result of multiplication.
- *
- */
+/** Saturating Q31 product, rounded once to nearest even. */
 __STATIC_FORCEINLINE int32_t riscv_nn_doubling_high_mult(const int32_t m1, const int32_t m2)
 {
-    int32_t result = 0;
-    // Rounding offset to add for a right shift of 31
-    int64_t mult = 1 << 30;
-
-    if ((m1 < 0) ^ (m2 < 0))
-    {
-        mult = 1 - mult;
-    }
-    // Gets resolved as a SMLAL instruction
-    mult = mult + (int64_t)m1 * m2;
-
-    // Utilize all of the upper 32 bits. This is the doubling step
-    // as well.
-    result = (int32_t)(mult / (1ll << 31));
-
-    if ((m1 == m2) && (m1 == (int32_t)NN_Q31_MIN))
-    {
-        result = NN_Q31_MAX;
-    }
-    return result;
+    return riscv_nn_saturate_s32(riscv_nn_round_shift_s64((int64_t)m1 * m2, 31));
 }
 
-/**
- * @brief           Doubling high multiply without saturation. This is intended
- *                  for requantization where the scale is a positive integer
- *
- * @param[in]       m1        Multiplicand. Range: {NN_Q31_MIN, NN_Q31_MAX}
- * @param[in]       m2        Multiplier Range: {NN_Q31_MIN, NN_Q31_MAX}
- * @return          Result of multiplication.
- * @note            The result of this matches that of neon instruction
- *                  VQRDMULH for m1 in range {NN_Q31_MIN, NN_Q31_MAX} and m2 in
- *                  range {NN_Q31_MIN + 1, NN_Q31_MAX}. Saturation occurs when
- *                  m1 equals m2 equals NN_Q31_MIN and that is not handled by
- *                  this function.
- *
- */
 __STATIC_FORCEINLINE int32_t riscv_nn_doubling_high_mult_no_sat(const int32_t m1, const int32_t m2)
 {
-    int32_t result = 0;
-    union riscv_nn_long_long mult;
-
-    // Rounding offset to add for a right shift of 31
-    mult.word.low = 1 << 30;
-    mult.word.high = 0;
-
-    // Gets resolved as a SMLAL instruction
-    mult.long_long = mult.long_long + (int64_t)m1 * m2;
-
-    // Utilize all of the upper 32 bits. This is the doubling step
-    // as well.
-    result = (int32_t)(mult.long_long >> 31);
-
-    return result;
+    return riscv_nn_doubling_high_mult(m1, m2);
 }
 
-/**
- * @brief           Rounding divide by power of two.
- * @param[in]       dividend - Dividend
- * @param[in]       exponent - Divisor = power(2, exponent)
- *                             Range: [0, 31]
- * @return          Rounded result of division. Midpoint is rounded away from zero.
- *
- */
+/** Divide by 2^exponent, exponent in [0,31], with nearest-even rounding. */
 __STATIC_FORCEINLINE int32_t riscv_nn_divide_by_power_of_two(const int32_t dividend, const int32_t exponent)
 {
-    int32_t result = 0;
-    const int32_t remainder_mask = (1 << exponent) - 1;
-    int32_t remainder = remainder_mask & dividend;
-
-    // Basic division
-    result = dividend >> exponent;
-
-    // Adjust 'result' for rounding (mid point away from zero)
-    int32_t threshold = remainder_mask >> 1;
-    if (result < 0)
-    {
-        threshold++;
-    }
-    if (remainder > threshold)
-    {
-        result++;
-    }
-
-    return result;
+    return (int32_t)riscv_nn_round_shift_s64(dividend, exponent);
 }
 
-/**
- * @brief           Requantize a given value.
- * @details         Essentially returns (val * multiplier)/(2 ^ shift) with different rounding depending if
- *                  NMSIS_NN_USE_SINGLE_ROUNDING is defined or not.
- * @param[in]       val         Value to be requantized
- * @param[in]       multiplier  Multiplier. Range {NN_Q31_MIN + 1, Q32_MAX}
- * @param[in]       shift       Shift. Range: {-31, 30}
- *                              Default branch:
- *                                  If shift is positive left shift 'val * multiplier' with shift
- *                                  If shift is negative right shift 'val * multiplier' with abs(shift)
- *                              Single round branch:
- *                                  Input for total_shift in divide by '2 ^ total_shift'
- *
- * @return          Default branch:
- *                      Returns (val * multiplier) with rounding divided by (2 ^ shift) with rounding
- *                  Single round branch:
- *                      Returns (val * multiplier)/(2 ^ (31 - shift)) with rounding
- *
- */
+/** RNE(val * multiplier / 2^(31-shift)), followed by int32 saturation.
+ * The complete Q31 product is retained. shift must be in [-31,30]. */
 __STATIC_FORCEINLINE int32_t riscv_nn_requantize(const int32_t val, const int32_t multiplier, const int32_t shift)
 {
-    return riscv_nn_divide_by_power_of_two(riscv_nn_doubling_high_mult_no_sat(val * (1 << LEFT_SHIFT(shift)), multiplier),
-                                         RIGHT_SHIFT(shift));
+    return riscv_nn_saturate_s32(riscv_nn_round_shift_s64((int64_t)val * multiplier, 31 - shift));
 }
 
 #if defined(RISCV_MATH_VECTOR)
-__STATIC_FORCEINLINE vint32m4_t riscv_nn_requantize_m4_rvv(vint32m4_t valm4, size_t l, const q31_t multiplier, const q31_t shift)
+__STATIC_FORCEINLINE vint32m4_t riscv_nn_requantize_m4_rvv(vint32m4_t value, size_t length,
+                                                       const q31_t multiplier, const q31_t shift)
 {
-    if (shift >= 0) {
-        valm4 = __riscv_vsmul_vx_i32m4(__riscv_vsll_vx_i32m4(valm4, shift, l), multiplier, __RISCV_VXRM_RNU, l);
-    } else {
-        q31_t exponent = -shift;
-        q31_t remainder_mask = (1 << exponent) - 1;
-        q31_t threshold = remainder_mask >> 1;
-        vint32m4_t b32m4, c32m4;
-        valm4 = __riscv_vsmul_vx_i32m4(valm4, multiplier, __RISCV_VXRM_RNU, l);
-        b32m4 = __riscv_vsra_vx_i32m4(valm4, exponent, l);
-        valm4 = __riscv_vand_vx_i32m4(valm4, remainder_mask, l);
-
-        c32m4 = __riscv_vmv_v_x_i32m4(threshold, l);
-        vbool8_t mask = __riscv_vmslt_vx_i32m4_b8(b32m4, 0, l);
-        c32m4 = __riscv_vadd_vx_i32m4_tumu(mask, c32m4, c32m4, 1, l);
-
-        mask = __riscv_vmsgt_vv_i32m4_b8(valm4, c32m4, l);
-        valm4 = __riscv_vadd_vx_i32m4_tumu(mask, b32m4, b32m4, 1, l);
-    }
-    return valm4;
+    int32_t lanes[length];
+    __riscv_vse32_v_i32m4(lanes, value, length);
+    for (size_t i = 0; i < length; ++i) lanes[i] = riscv_nn_requantize(lanes[i], multiplier, shift);
+    return __riscv_vle32_v_i32m4(lanes, length);
 }
 
-__STATIC_FORCEINLINE vint32m8_t riscv_nn_requantize_m8_rvv(vint32m8_t valm8, size_t l, const q31_t multiplier, const q31_t shift)
+__STATIC_FORCEINLINE vint32m8_t riscv_nn_requantize_m8_rvv(vint32m8_t value, size_t length,
+                                                       const q31_t multiplier, const q31_t shift)
 {
-    if (shift >= 0) {
-        valm8 = __riscv_vsmul_vx_i32m8(__riscv_vsll_vx_i32m8(valm8, shift, l), multiplier, __RISCV_VXRM_RNU, l);
-    } else {
-        q31_t exponent = -shift;
-        q31_t remainder_mask = (1 << exponent) - 1;
-        q31_t threshold = remainder_mask >> 1;
-        vint32m8_t b32m8, c32m8;
-        valm8 = __riscv_vsmul_vx_i32m8(valm8, multiplier, __RISCV_VXRM_RNU, l);
-        b32m8 = __riscv_vsra_vx_i32m8(valm8, exponent, l);
-        valm8 = __riscv_vand_vx_i32m8(valm8, remainder_mask, l);
-
-        c32m8 = __riscv_vmv_v_x_i32m8(threshold, l);
-        vbool4_t mask = __riscv_vmslt_vx_i32m8_b4(b32m8, 0, l);
-        c32m8 = __riscv_vadd_vx_i32m8_tumu(mask, c32m8, c32m8, 1, l);
-
-        mask = __riscv_vmsgt_vv_i32m8_b4(valm8, c32m8, l);
-        valm8 = __riscv_vadd_vx_i32m8_tumu(mask, b32m8, b32m8, 1, l);
-    }
-    return valm8;
+    int32_t lanes[length];
+    __riscv_vse32_v_i32m8(lanes, value, length);
+    for (size_t i = 0; i < length; ++i) lanes[i] = riscv_nn_requantize(lanes[i], multiplier, shift);
+    return __riscv_vle32_v_i32m8(lanes, length);
 }
-
 #endif
 
-/**
- * @brief           Requantize a given 64 bit value.
- * @param[in]       val                 Value to be requantized in the range {-(1<<47)} to {(1<<47) - 1}
- * @param[in]       reduced_multiplier  Reduced multiplier in the range {NN_Q31_MIN + 1, Q32_MAX} to {Q16_MIN + 1,
- * Q16_MAX}
- * @param[in]       shift               Left or right shift for 'val * multiplier' in the range {-31} to {7}
- *
- * @return          Returns (val * multiplier)/(2 ^ shift)
- *
- */
+/** Reduced Q15 interface: val is in [-2^47,2^47-1], multiplier is signed
+ * 16-bit and shift is in [-31,7]. RNE(val*multiplier / 2^(15-shift)) is
+ * computed before saturating to int32. */
 __STATIC_FORCEINLINE int32_t riscv_nn_requantize_s64(const int64_t val,
                                                    const int32_t reduced_multiplier,
                                                    const int32_t shift)
 {
-    const int64_t new_val = val * reduced_multiplier;
-
-    int32_t result = new_val >> (14 - shift); // 64->32 bit reduction
-    result = (result + 1) >> 1;               // Last shift position and insert round
-
-    return result;
+    return riscv_nn_saturate_s32(riscv_nn_round_shift_s64(val * reduced_multiplier, 15 - shift));
 }
 
 /**

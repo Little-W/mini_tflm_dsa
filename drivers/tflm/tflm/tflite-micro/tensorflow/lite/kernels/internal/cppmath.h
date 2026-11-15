@@ -32,7 +32,14 @@ namespace tflite {
     return TF_LITE_GLOBAL_STD_PREFIX::std_name(x);    \
   }
 
-DECLARE_STD_GLOBAL_SWITCH1(TfLiteRound, round)
+template <class T>
+inline T TfLiteRound(const T x) {
+  if (!TF_LITE_GLOBAL_STD_PREFIX::isfinite(x)) return x;
+  const T lower = TF_LITE_GLOBAL_STD_PREFIX::floor(x);
+  const T fraction = x - lower;
+  return lower + (fraction > T(0.5) ||
+      (fraction == T(0.5) && TF_LITE_GLOBAL_STD_PREFIX::fmod(lower, T(2)) != T(0)));
+}
 DECLARE_STD_GLOBAL_SWITCH1(TfLiteExpm1, expm1)
 
 }  // namespace tflite

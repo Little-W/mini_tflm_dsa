@@ -220,10 +220,10 @@ riscv_nmsis_nn_status riscv_depthwise_conv_3x3_s8(const nmsis_nn_context *ctx,
                 out_buff2 = riscv_nn_requantize(out_buff2, output_mult[in_ch + 2], output_shift[in_ch + 2]);
                 out_buff3 = riscv_nn_requantize(out_buff3, output_mult[in_ch + 3], output_shift[in_ch + 3]);
 
-                out_buff0 += output_offset;
-                out_buff1 += output_offset;
-                out_buff2 += output_offset;
-                out_buff3 += output_offset;
+                out_buff0 = riscv_nn_add_s32_sat(out_buff0, output_offset);
+                out_buff1 = riscv_nn_add_s32_sat(out_buff1, output_offset);
+                out_buff2 = riscv_nn_add_s32_sat(out_buff2, output_offset);
+                out_buff3 = riscv_nn_add_s32_sat(out_buff3, output_offset);
 
                 out_buff0 = MIN(MAX(out_buff0, output_activation_min), output_activation_max);
                 out_buff1 = MIN(MAX(out_buff1, output_activation_min), output_activation_max);
@@ -267,7 +267,7 @@ riscv_nmsis_nn_status riscv_depthwise_conv_3x3_s8(const nmsis_nn_context *ctx,
                 }
 
                 out_buff = riscv_nn_requantize(out_buff, output_mult[in_ch], output_shift[in_ch]);
-                out_buff += output_offset;
+                out_buff = riscv_nn_add_s32_sat(out_buff, output_offset);
                 out_buff = MIN(MAX(out_buff, output_activation_min), output_activation_max);
                 output[out_idx++] = (int8_t)out_buff;
             }

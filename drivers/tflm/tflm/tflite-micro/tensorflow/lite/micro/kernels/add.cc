@@ -30,6 +30,10 @@ limitations under the License.
 #include "tensorflow/lite/micro/memory_helpers.h"
 #include "tensorflow/lite/micro/micro_log.h"
 
+#if defined(NMSIS_NN)
+#include "riscv_vector_acc.h"
+#endif
+
 namespace tflite {
 
 TfLiteStatus EvalAdd(TfLiteContext* context, TfLiteNode* node,
@@ -121,6 +125,23 @@ TfLiteStatus EvalAddQuantized(TfLiteContext* context, TfLiteNode* node,
             tflite::micro::GetTensorShape(output),
             tflite::micro::GetTensorData<int8_t>(output));
       } else {
+#if defined(NMSIS_NN) && DSA_NN_VECTOR_ENABLE
+        const dsa_vector_add_params_t quant = {
+            data->input1_offset, data->input2_offset,
+            data->input1_multiplier, data->input1_shift,
+            data->input2_multiplier, data->input2_shift,
+            data->left_shift, data->output_multiplier, data->output_shift};
+        riscv_nmsis_nn_status status;
+        if (riscv_add_s8_try_dsa(&quant,
+                tflite::micro::GetTensorData<int8_t>(input1),
+                tflite::micro::GetTensorData<int8_t>(input2),
+                tflite::micro::GetTensorData<int8_t>(output),
+                tflite::micro::GetTensorShape(output).FlatSize(), data->output_offset,
+                data->output_activation_min, data->output_activation_max, &status)) {
+          TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
+          break;
+        }
+#endif
         reference_integer_ops::Add(
             op_params, tflite::micro::GetTensorShape(input1),
             tflite::micro::GetTensorData<int8_t>(input1),

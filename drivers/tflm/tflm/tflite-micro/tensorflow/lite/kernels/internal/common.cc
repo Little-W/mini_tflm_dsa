@@ -17,87 +17,48 @@ limitations under the License.
 
 namespace tflite {
 
-// Single-rounding MultiplyByQuantizedMultiplier
-#if TFLITE_SINGLE_ROUNDING
-int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t quantized_multiplier,
-                                      int shift) {
-  TFLITE_DCHECK(quantized_multiplier >= 0);
+namespace {
+int32_t SaturateInt32(int64_t value) {
+  return static_cast<int32_t>(std::max<int64_t>(INT32_MIN,
+      std::min<int64_t>(INT32_MAX, value)));
+}
+}  // namespace
+
+int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift) {
   TFLITE_DCHECK(shift >= -31 && shift <= 30);
-
-  const int64_t total_shift = 31 - shift;
-  const int64_t round = static_cast<int64_t>(1) << (total_shift - 1);
-  int64_t result = x * static_cast<int64_t>(quantized_multiplier) + round;
-  result = result >> total_shift;
-
-  TFLITE_DCHECK(result >= std::numeric_limits<int32_t>::min() &&
-                result <= std::numeric_limits<int32_t>::max());
-  return static_cast<int32_t>(result);
+  return SaturateInt32(gemmlowp::RoundingDivideByPOTInt64(
+      static_cast<int64_t>(x) * multiplier, 31 - shift));
 }
 
-int32_t MultiplyByQuantizedMultiplier(int64_t x, int32_t quantized_multiplier,
-                                      int shift) {
-  // Inputs:
-  // - quantized_multiplier has fixed point at bit 31
-  // - shift is -31 to +7 (negative for right shift)
-  //
-  // Assumptions: The following input ranges are assumed
-  // - quantize_scale>=0  (the usual range is (1<<30) to (1>>31)-1)
-  // - scaling is chosen so final scaled result fits in int32_t
-  // - input x is in the range -(1<<47) <= x < (1<<47)
-  TFLITE_DCHECK(quantized_multiplier >= 0);
-  TFLITE_DCHECK(shift >= -31 && shift < 8);
-  TFLITE_DCHECK(x >= -(static_cast<int64_t>(1) << 47) &&
-                x < (static_cast<int64_t>(1) << 47));
-
-  const int32_t reduced_multiplier =
-      (quantized_multiplier < 0x7FFF0000)
-          ? ((quantized_multiplier + (1 << 15)) >> 16)
-          : 0x7FFF;
-  const int64_t total_shift = 15 - shift;
-  const int64_t round = static_cast<int64_t>(1) << (total_shift - 1);
-  int64_t result = x * static_cast<int64_t>(reduced_multiplier) + round;
-  result = result >> total_shift;
-
-  TFLITE_DCHECK(result >= std::numeric_limits<int32_t>::min() &&
-                result <= std::numeric_limits<int32_t>::max());
-  return static_cast<int32_t>(result);
+// Q31 multiplication with a 96-bit unsigned magnitude. No reduced coefficient
+// or intermediate rounding is used; the final result saturates to int32.
+int32_t MultiplyByQuantizedMultiplier(int64_t x, int32_t multiplier, int shift) {
+  TFLITE_DCHECK(shift >= -31 && shift <= 30);
+  const bool negative = (x < 0) != (multiplier < 0);
+  const uint64_t magnitude = x < 0 ? uint64_t(0) - static_cast<uint64_t>(x)
+                                  : static_cast<uint64_t>(x);
+  const uint32_t factor = multiplier < 0 ? uint32_t(0) - static_cast<uint32_t>(multiplier)
+                                         : static_cast<uint32_t>(multiplier);
+  const uint64_t low = uint64_t(static_cast<uint32_t>(magnitude)) * factor;
+  const uint64_t high = (magnitude >> 32) * factor + (low >> 32);
+  const uint32_t words[3] = {static_cast<uint32_t>(low),
+                            static_cast<uint32_t>(high), static_cast<uint32_t>(high >> 32)};
+  const int right = 31 - shift;
+  uint64_t quotient = 0;
+  for (int bit = 95; bit >= right; --bit) {
+    if ((words[bit / 32] >> (bit % 32)) & 1u) {
+      if (bit - right >= 32) return negative ? INT32_MIN : INT32_MAX;
+      quotient |= uint64_t(1) << (bit - right);
+    }
+  }
+  const bool half = ((words[(right - 1) / 32] >> ((right - 1) % 32)) & 1u) != 0;
+  bool remainder = false;
+  for (int bit = right - 2; bit >= 0; --bit)
+    remainder |= ((words[bit / 32] >> (bit % 32)) & 1u) != 0;
+  quotient += half && (remainder || (quotient & 1u));
+  const uint64_t limit = negative ? uint64_t(1) << 31 : INT32_MAX;
+  if (quotient >= limit) return negative ? INT32_MIN : INT32_MAX;
+  return negative ? -static_cast<int32_t>(quotient) : static_cast<int32_t>(quotient);
 }
-// Double-rounding MultiplyByQuantizedMultiplier
-#else
-int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t quantized_multiplier,
-                                      int shift) {
-  using gemmlowp::RoundingDivideByPOT;
-  using gemmlowp::SaturatingRoundingDoublingHighMul;
-  int left_shift = shift > 0 ? shift : 0;
-  int right_shift = shift > 0 ? 0 : -shift;
-  return RoundingDivideByPOT(SaturatingRoundingDoublingHighMul(
-                                 x * (1 << left_shift), quantized_multiplier),
-                             right_shift);
-}
-
-int32_t MultiplyByQuantizedMultiplier(int64_t x, int32_t quantized_multiplier,
-                                      int shift) {
-  // Inputs:
-  // - quantized_multiplier has fixed point at bit 31
-  // - shift is -31 to +7 (negative for right shift)
-  //
-  // Assumptions: The following input ranges are assumed
-  // - quantize_scale>=0  (the usual range is (1<<30) to (1>>31)-1)
-  // - scaling is chosen so final scaled result fits in int32_t
-  // - input x is in the range -(1<<47) <= x < (1<<47)
-  assert(quantized_multiplier >= 0);
-  assert(shift >= -31 && shift < 8);
-  assert(x >= -(static_cast<int64_t>(1) << 47) &&
-         x < (static_cast<int64_t>(1) << 47));
-
-  int32_t reduced_multiplier = (quantized_multiplier < 0x7FFF0000)
-                                   ? ((quantized_multiplier + (1 << 15)) >> 16)
-                                   : 0x7FFF;
-  int total_shift = 15 - shift;
-  x = (x * (int64_t)reduced_multiplier) + ((int64_t)1 << (total_shift - 1));
-  int32_t result = x >> total_shift;
-  return result;
-}
-#endif  // TFLITE_SINGLE_ROUNDING
 
 }  // namespace tflite

@@ -39,7 +39,8 @@
 
 #include "riscv_nn_math_types.h"
 #include "riscv_nn_types.h"
-#include "riscv_dw_pool_acc.h"
+#include "riscv_nn_dsa.h"
+#include "riscv_vector_acc.h"
 #include "riscv_nn_mat_mult_acc.h"
 
 #define USE_INTRINSIC
@@ -2516,20 +2517,25 @@ q7_t *riscv_nn_mat_mult_kernel_q7(const q7_t * pA,
  * @param[in]       input_1_vect        pointer to input vector 1
  * @param[in]       input_2_vect        pointer to input vector 2
  * @param[in]       input_1_offset      offset for input 1. Range: -127 to 128
- * @param[in]       input_1_mult        multiplier for input 1
- * @param[in]       input_1_shift       shift for input 1
+ * @param[in]       input_1_mult        nonnegative Q31 multiplier for input 1
+ * @param[in]       input_1_shift       shift for input 1, in [-31,0]
  * @param[in]       input_2_offset      offset for input 2. Range: -127 to 128
- * @param[in]       input_2_mult        multiplier for input 2
- * @param[in]       input_2_shift       shift for input 2
- * @param[in]       left_shift          input left shift
+ * @param[in]       input_2_mult        nonnegative Q31 multiplier for input 2
+ * @param[in]       input_2_shift       shift for input 2, in [-31,0]
+ * @param[in]       left_shift          input left shift, in [0,22]
  * @param[in,out]   output              pointer to output vector
  * @param[in]       out_offset          output offset.  Range: -128 to 127
- * @param[in]       out_mult            output multiplier
- * @param[in]       out_shift           output shift
+ * @param[in]       out_mult            nonnegative Q31 output multiplier
+ * @param[in]       out_shift           output shift, in [-31,30]
  * @param[in]       out_activation_min  minimum value to clamp output to. Min: -128
  * @param[in]       out_activation_max  maximum value to clamp output to. Max: 127
  * @param[in]       block_size          number of samples
- * @return          The function returns    RISCV_NMSIS_NN_SUCCESS
+ * @return          RISCV_NMSIS_NN_SUCCESS on completion, RISCV_NMSIS_NN_ARG_ERROR
+ *                  for invalid parameters or partial output overlap, and
+ *                  RISCV_NMSIS_NN_NO_IMPL_ERROR for device failure.
+ * @note            Each of the three rescalings uses nearest-even rounding.
+ *                  Exact in-place output is evaluated by software. A zero
+ *                  block_size performs no tensor or device access.
  */
 riscv_nmsis_nn_status riscv_elementwise_add_s8(const int8_t *input_1_vect,
                                            const int8_t *input_2_vect,

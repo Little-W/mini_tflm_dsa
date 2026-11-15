@@ -298,7 +298,7 @@ riscv_nmsis_nn_status riscv_convolve_s8(const nmsis_nn_context *ctx,
                     }
 
                     sum = riscv_nn_requantize(sum, output_mult_ptr[i], output_shift_ptr[i]);
-                    sum += out_offset;
+                    sum = riscv_nn_add_s32_sat(sum, out_offset);
                     sum = MAX(sum, out_activation_min);
                     sum = MIN(sum, out_activation_max);
                     *out++ = (int8_t)sum;

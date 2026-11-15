@@ -41,12 +41,10 @@ static void scale_q31_to_q15_and_clamp(const int32_t *buffer,
                                        const int act_min,
                                        const int act_max)
 {
-    const int half_count = count / 2;
 
     for (int i = 0; i < length; i++)
     {
-        int32_t sum = buffer[i] > 0 ? (buffer[i] + half_count) : (buffer[i] - half_count);
-        sum = sum / count;
+        int32_t sum = riscv_nn_divide_rne(buffer[i], count);
         sum = MAX(sum, act_min);
         sum = MIN(sum, act_max);
 
@@ -208,7 +206,7 @@ riscv_nmsis_nn_status riscv_avgpool_s16(const nmsis_nn_context *ctx,
                         return RISCV_NMSIS_NN_ARG_ERROR;
                     }
 
-                    sum = sum > 0 ? (sum + count / 2) / count : (sum - count / 2) / count;
+                    sum = riscv_nn_divide_rne(sum, count);
                     sum = MAX(sum, act_min);
                     sum = MIN(sum, act_max);
 

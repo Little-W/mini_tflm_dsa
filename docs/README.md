@@ -4,7 +4,8 @@
 
 - [快速开始](getting-started.md)：获取依赖、选择模型及运行仿真。
 - [硬件架构](architecture.md)：SoC、NPU 和论文计算引擎的组成。
-- [DW、池化与向量运算引擎](dw_pool_engine.md)：共享 DMA、默认 8 PE、4 PE 配置、NMSIS 接口与实验结果。
+- [向量计算引擎](vector_engine.md)：共享 DW、池化、Add 数据通路，输入复用、最近偶数舍入和完整模型测试。
+- [VCE 完整模型测试结果](vce_model_performance.md)：32 位总线下的完整推理、逐算子周期、占比和正确性检查。
 - [容量求解器](capacity.md)：在 RAM 或完整逻辑状态预算内选择面板/PS 容量，自动更新构建配置。
 - [软件与模型](software.md)：寄存器、驱动、模型选择与 NMSIS。
 - [仿真与 FPGA](verification.md)：VCS、Python 接口和 Vivado 的使用。

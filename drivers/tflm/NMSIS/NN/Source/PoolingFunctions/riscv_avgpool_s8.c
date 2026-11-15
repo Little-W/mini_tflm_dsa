@@ -40,21 +40,9 @@ static void scale_q31_to_q7_and_clamp(const int32_t *buffer,
                                       const int act_min,
                                       const int act_max)
 {
-    const int half_count = count / 2;
-    size_t l;
-    vint32m8_t vx, vy;
-    uint32_t blkCnt = length;
-    for (; (l = __riscv_vsetvl_e32m8(blkCnt)) > 0; blkCnt -= l) {
-        vx = __riscv_vle32_v_i32m8(buffer, l);
-        buffer += l;
-        vbool4_t mask = __riscv_vmsgt_vx_i32m8_b4(vx, 0, l);
-        vy = __riscv_vadd_vx_i32m8(vx, half_count, l);
-        vx = __riscv_vsub_vx_i32m8(vx, half_count, l);
-        vx = __riscv_vmerge_vvm_i32m8(vx, vy, mask, l);
-        vx = __riscv_vdiv_vx_i32m8(vx, count, l);
-        vx = __riscv_vmin_vx_i32m8(__riscv_vmax_vx_i32m8(vx, act_min, l), act_max, l);
-        __riscv_vse8_v_i8m2(target, __riscv_vnsra_wx_i8m2(__riscv_vnsra_wx_i16m4(vx, 0, l), 0, l), l);
-        target += l;
+    for (int32_t i = 0; i < length; ++i) {
+        const int32_t value = riscv_nn_divide_rne(buffer[i], count);
+        target[i] = (int8_t)MAX(act_min, MIN(act_max, value));
     }
 }
 #endif
@@ -83,9 +71,9 @@ riscv_nmsis_nn_status riscv_avgpool_s8(const nmsis_nn_context *ctx,
                                    const nmsis_nn_dims *output_dims,
                                    int8_t *dst)
 {
-#if DSA_NN_DW_POOL_ENABLE
+#if DSA_NN_VECTOR_ENABLE
     riscv_nmsis_nn_status dsa_status;
-    if (riscv_pool_s8_try_dsa(DSA_DW_OP_AVGPOOL_S8, pool_params,
+    if (riscv_pool_s8_try_dsa(DSA_VECTOR_OP_AVGPOOL_S8, pool_params,
             input_dims, src, filter_dims, output_dims, dst, &dsa_status))
         return dsa_status;
 #endif
@@ -209,7 +197,7 @@ riscv_nmsis_nn_status riscv_avgpool_s8(const nmsis_nn_context *ctx,
                         return RISCV_NMSIS_NN_ARG_ERROR;
                     }
 
-                    sum = sum > 0 ? (sum + count / 2) / count : (sum - count / 2) / count;
+                    sum = riscv_nn_divide_rne(sum, count);
                     sum = MAX(sum, act_min);
                     sum = MIN(sum, act_max);
 

@@ -110,6 +110,7 @@ module tb_conv_npu;
     );
     conv_test_axi_memory #(.WORDS(WORDS)) u_mem(
         .clk(clk),.rst_n(rst_n),.new_job(new_job),.protect_input(saved_cfg[32][0]),.inject_error(saved_cfg[53][0]),
+        .inject_write_error(saved_cfg[53][1]),
         .input_lo(saved_cfg[33]),.input_hi(saved_cfg[33]+tensor_bytes),.error_injected(injected),
         .other_lo(other_lo),.other_hi(other_hi),
         .read_bytes(read_bytes),.input_read_bytes(input_read_bytes),.read_requests(read_requests),.write_bytes(write_bytes),
@@ -171,7 +172,7 @@ module tb_conv_npu;
                 observed_error=err_code;
                 end_cycle=cycle;
                 assert(err_code==saved_cfg[52][1:0])else $fatal(1,"task id=%0d expected error=%0d got=%0d",task_number,saved_cfg[52],err_code);
-                if(saved_cfg[53][0])assert(injected)else $fatal(1,"requested RRESP was never injected");
+                if(saved_cfg[53][1:0]!=0)assert(injected)else $fatal(1,"requested AXI error was never injected");
                 repeat(3)begin
                     @(negedge clk);
                     assert(done_valid && err_code==observed_error)else $fatal(1,"unstable completion under backpressure");

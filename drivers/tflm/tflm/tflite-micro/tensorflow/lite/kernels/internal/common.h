@@ -264,7 +264,7 @@ TFLITE_NOINLINE int32_t MultiplyByQuantizedMultiplier(
 TFLITE_NOINLINE int32_t MultiplyByQuantizedMultiplier(
     int64_t x, int32_t quantized_multiplier, int shift);
 
-// Single-rounding MultiplyByQuantizedMultiplier
+// Scalar Q31 rescaling uses the complete product and nearest-even rounding.
 #if TFLITE_SINGLE_ROUNDING
 inline int32_t MultiplyByQuantizedMultiplierSmallerThanOneExp(
     int32_t x, int32_t quantized_multiplier, int shift) {
@@ -310,21 +310,16 @@ inline int32x4x4_t MultiplyByQuantizedMultiplier4Rows(
   return result;
 }
 #endif  // USE_NEON
-// Double-rounding MultiplyByQuantizedMultiplier
+// Scalar rescaling retains the same rule under both build configurations.
 #else
 inline int32_t MultiplyByQuantizedMultiplierSmallerThanOneExp(
     int32_t x, int32_t quantized_multiplier, int left_shift) {
-  using gemmlowp::RoundingDivideByPOT;
-  using gemmlowp::SaturatingRoundingDoublingHighMul;
-  return RoundingDivideByPOT(
-      SaturatingRoundingDoublingHighMul(x, quantized_multiplier), -left_shift);
+  return MultiplyByQuantizedMultiplier(x, quantized_multiplier, left_shift);
 }
 
 inline int32_t MultiplyByQuantizedMultiplierGreaterThanOne(
     int32_t x, int32_t quantized_multiplier, int left_shift) {
-  using gemmlowp::SaturatingRoundingDoublingHighMul;
-  return SaturatingRoundingDoublingHighMul(x * (1 << left_shift),
-                                           quantized_multiplier);
+  return MultiplyByQuantizedMultiplier(x, quantized_multiplier, left_shift);
 }
 
 #ifdef USE_NEON
@@ -766,17 +761,8 @@ SaturatingRoundingMultiplyByPOTParam(
 inline void DownScaleInt32ToInt16Multiplier(int32_t multiplier_int32_t,
                                             int16_t* multiplier_int16_t) {
   TFLITE_DCHECK_GE(multiplier_int32_t, 0);
-  static constexpr int32_t kRoundingOffset = 1 << 15;
-  if (multiplier_int32_t >=
-      std::numeric_limits<int32_t>::max() - kRoundingOffset) {
-    *multiplier_int16_t = std::numeric_limits<int16_t>::max();
-    return;
-  }
-  const int32_t result = (multiplier_int32_t + kRoundingOffset) >> 16;
-  TFLITE_DCHECK_LE(result << 16, multiplier_int32_t + kRoundingOffset);
-  TFLITE_DCHECK_GT(result << 16, multiplier_int32_t - kRoundingOffset);
-  *multiplier_int16_t = result;
-  TFLITE_DCHECK_EQ(*multiplier_int16_t, result);
+  const int32_t result = static_cast<int32_t>(gemmlowp::RoundingDivideByPOTInt64(multiplier_int32_t, 16));
+  *multiplier_int16_t = static_cast<int16_t>(std::min<int32_t>(INT16_MAX, result));
 }
 
 // Minimum output bits to accommodate log of maximum input range.  It actually

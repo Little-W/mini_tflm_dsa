@@ -121,10 +121,10 @@ riscv_nmsis_nn_status riscv_nn_mat_mult_nt_t_s8(const int8_t *lhs,
             res11 = riscv_nn_requantize(res11, dst_multipliers[rhs_rows_idx + 1], dst_shifts[rhs_rows_idx + 1]);
 
             // Add offset
-            res00 += dst_offset;
-            res01 += dst_offset;
-            res10 += dst_offset;
-            res11 += dst_offset;
+            res00 = riscv_nn_add_s32_sat(res00, dst_offset);
+            res01 = riscv_nn_add_s32_sat(res01, dst_offset);
+            res10 = riscv_nn_add_s32_sat(res10, dst_offset);
+            res11 = riscv_nn_add_s32_sat(res11, dst_offset);
 
             // Clamp the result
             res00 = MAX(res00, activation_min);
@@ -175,8 +175,8 @@ riscv_nmsis_nn_status riscv_nn_mat_mult_nt_t_s8(const int8_t *lhs,
             res01 = riscv_nn_requantize(res01, dst_multipliers[rhs_rows_idx + 1], dst_shifts[rhs_rows_idx + 1]);
 
             // Add offset
-            res00 += dst_offset;
-            res01 += dst_offset;
+            res00 = riscv_nn_add_s32_sat(res00, dst_offset);
+            res01 = riscv_nn_add_s32_sat(res01, dst_offset);
 
             // Clamp the result
             res00 = MAX(res00, activation_min);
@@ -223,7 +223,7 @@ riscv_nmsis_nn_status riscv_nn_mat_mult_nt_t_s8(const int8_t *lhs,
             res00 = riscv_nn_requantize(res00, dst_multipliers[rhs_rows - 1], dst_shifts[rhs_rows - 1]);
 
             // Add offset
-            res00 += dst_offset;
+            res00 = riscv_nn_add_s32_sat(res00, dst_offset);
 
             // Clamp the result
             res00 = MAX(res00, activation_min);

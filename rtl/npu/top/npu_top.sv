@@ -17,7 +17,10 @@ module npu_top #(
     parameter int unsigned CONV_CACHE_POLICY = 2,
     parameter int unsigned ENABLE_DW_POOL = 1,
     parameter int unsigned DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
+    parameter int unsigned ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
+    parameter int unsigned VECTOR_PE_COUNT = DW_PE_COUNT,
     parameter int unsigned DW_MAX_TAPS = 49,
+    parameter int unsigned POOL_MAX_TAPS = 256,
     parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
     parameter int unsigned OPERAND_STREAM_BYTES = (PS_FRAME_COUNT >= 16) ? 65536 : 262144,
     parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
@@ -36,9 +39,9 @@ module npu_top #(
     input wire cfg_operand_fetch64, // 0: 16-byte sectors; 1: 64-byte read allocation
     input wire cfg_conv_enable = 1'b0,
     input conv_im2col_pkg::conv_cfg_t cfg_conv = '0,
-    input wire cfg_dw_enable = 1'b0,
-    input dw_pool_pkg::dw_pool_cfg_t cfg_dw = '0,
-    output logic [31:0] dw_stat_cycles, dw_stat_compute, dw_stat_dma_wait,
+    input wire cfg_vector_enable = 1'b0,
+    input vector_engine_pkg::vector_engine_cfg_t cfg_vector = '0,
+    output logic [31:0] vector_stat_cycles, vector_stat_compute, vector_stat_dma_wait,
     output logic [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes, conv_stat_cycles,
     input wire calc_start,  // 计算开始信号
     input wire cfg_16bits_ia,  // 使用16位IA数据
@@ -122,7 +125,7 @@ module npu_top #(
     logic unsupported_conv_done;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) unsupported_conv_done <= 1'b0;
-        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_dw_enable)) unsupported_conv_done <= 1'b1;
+        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable)) unsupported_conv_done <= 1'b1;
         else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
     end
     assign sa_ready = alt_ready && !unsupported_conv_done;
@@ -132,11 +135,11 @@ module npu_top #(
     assign conv_stat_misses = '0;
     assign conv_stat_read_bytes = '0;
     assign conv_stat_cycles = '0;
-    assign dw_stat_cycles = '0;
-    assign dw_stat_compute = '0;
-    assign dw_stat_dma_wait = '0;
+    assign vector_stat_cycles = '0;
+    assign vector_stat_compute = '0;
+    assign vector_stat_dma_wait = '0;
     gempact_panel_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(
-        .calc_start(calc_start && !cfg_conv_enable && !cfg_dw_enable), .sa_ready(alt_ready),
+        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable), .sa_ready(alt_ready),
         .done_valid(alt_done), .err_code(alt_error), .*);
 `elsif GEMPACT_RESIDENT_ENGINE
     wire alt_ready, alt_done;
@@ -144,7 +147,7 @@ module npu_top #(
     logic unsupported_conv_done;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) unsupported_conv_done <= 1'b0;
-        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_dw_enable)) unsupported_conv_done <= 1'b1;
+        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable)) unsupported_conv_done <= 1'b1;
         else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
     end
     assign sa_ready = alt_ready && !unsupported_conv_done;
@@ -154,52 +157,53 @@ module npu_top #(
     assign conv_stat_misses = '0;
     assign conv_stat_read_bytes = '0;
     assign conv_stat_cycles = '0;
-    assign dw_stat_cycles = '0;
-    assign dw_stat_compute = '0;
-    assign dw_stat_dma_wait = '0;
+    assign vector_stat_cycles = '0;
+    assign vector_stat_compute = '0;
+    assign vector_stat_dma_wait = '0;
     gempact_resident_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(
-        .calc_start(calc_start && !cfg_conv_enable && !cfg_dw_enable), .sa_ready(alt_ready),
+        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable), .sa_ready(alt_ready),
         .done_valid(alt_done), .err_code(alt_error), .*);
 `else
 
     // A Conv task is immutable after acceptance. The legacy software keeps
     // the other task fields stable; the AXI-Lite interface locks writes while busy.
-    logic run_conv, run_dw, dw_rejected;
-    logic dw_engine_ready, dw_engine_done;
-    logic [1:0] dw_engine_error;
+    logic run_conv, run_vector, vector_rejected;
+    logic vector_engine_ready, vector_engine_done;
+    logic [1:0] vector_engine_error;
     logic normal_done_valid;
     logic [1:0] normal_err_code;
-    logic dw_dma_cfg_valid, dw_dma_conv_enable, dw_dma_range_enable;
-    conv_im2col_pkg::conv_cfg_t dw_dma_conv_cfg;
-    logic [31:0] dw_dma_range_base [4], selected_range_base [4];
-    logic [32:0] dw_dma_range_end [4], selected_range_end [4];
+    logic vector_dma_cfg_valid, vector_dma_conv_enable, vector_dma_range_enable;
+    conv_im2col_pkg::conv_cfg_t vector_dma_conv_cfg;
+    logic [31:0] vector_dma_range_base [4], selected_range_base [4];
+    logic [32:0] vector_dma_range_end [4], selected_range_end [4];
 `ifdef GEMMORA_INT8_PROFILE
-    localparam bit DW_POOL_CAPABLE = 1'b0;
+    localparam bit VECTOR_ENGINE_CAPABLE = 1'b0;
 `else
-    localparam bit DW_POOL_CAPABLE = ENABLE_DW_POOL != 0 && BUS_WIDTH == 32 && REG_WIDTH == 32 &&
+    localparam bit VECTOR_ENGINE_CAPABLE = ENABLE_VECTOR_ENGINE != 0 && BUS_WIDTH == 32 && REG_WIDTH == 32 &&
         SIZE >= 2 && SIZE <= 64 && ((SIZE & (SIZE-1)) == 0) &&
-        DW_MAX_TAPS >= 1 && DW_MAX_TAPS <= 255 && DW_PE_COUNT >= 1 &&
-        DW_PE_COUNT <= SIZE && ((DW_PE_COUNT & (DW_PE_COUNT-1)) == 0);
+        DW_MAX_TAPS >= 1 && DW_MAX_TAPS <= 255 &&
+        POOL_MAX_TAPS >= 1 && POOL_MAX_TAPS <= 65535 && VECTOR_PE_COUNT >= 1 &&
+        VECTOR_PE_COUNT <= SIZE && ((VECTOR_PE_COUNT & (VECTOR_PE_COUNT-1)) == 0);
 `endif
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            run_dw <= 1'b0;
-            dw_rejected <= 1'b0;
+            run_vector <= 1'b0;
+            vector_rejected <= 1'b0;
         end else begin
             if (calc_start && sa_ready) begin
-                run_dw <= cfg_dw_enable;
-                dw_rejected <= cfg_dw_enable && (!DW_POOL_CAPABLE || cfg_conv_enable);
-            end else if (run_dw && done_valid && done_ready) begin
-                run_dw <= 1'b0;
-                dw_rejected <= 1'b0;
+                run_vector <= cfg_vector_enable;
+                vector_rejected <= cfg_vector_enable && (!VECTOR_ENGINE_CAPABLE || cfg_conv_enable);
+            end else if (run_vector && done_valid && done_ready) begin
+                run_vector <= 1'b0;
+                vector_rejected <= 1'b0;
             end
         end
     end
-    assign done_valid = run_dw ? (dw_rejected || dw_engine_done) : normal_done_valid;
-    assign err_code = run_dw ? (dw_rejected ? 2'b01 : dw_engine_error) : normal_err_code;
+    assign done_valid = run_vector ? (vector_rejected || vector_engine_done) : normal_done_valid;
+    assign err_code = run_vector ? (vector_rejected ? 2'b01 : vector_engine_error) : normal_err_code;
     for (genvar r = 0; r < 4; r++) begin : g_dma_ranges
-        assign selected_range_base[r] = run_dw ? dw_dma_range_base[r] : conv_range_base[r];
-        assign selected_range_end[r] = run_dw ? dw_dma_range_end[r] : conv_range_end[r];
+        assign selected_range_base[r] = run_vector ? vector_dma_range_base[r] : conv_range_base[r];
+        assign selected_range_end[r] = run_vector ? vector_dma_range_end[r] : conv_range_end[r];
     end
     conv_im2col_pkg::conv_cfg_t conv_cfg_q;
     logic conv_error, conv_busy, dma_bus_error, dma_idle;
@@ -226,6 +230,7 @@ module npu_top #(
     typedef enum logic [1:0] {AB_IDLE, AB_DRAIN, AB_RESET, AB_DONE} abort_t;
     abort_t abort_state;
     wire abort_pending = abort_state != AB_IDLE;
+    wire matrix_fault = (run_conv && conv_error) || (!run_vector && dma_bus_error);
     wire core_rst_n = rst_n && (abort_state != AB_RESET);
     logic conv_count_active, conv_stats_started;
 `ifdef GEMMORA_INT8_PROFILE
@@ -260,10 +265,10 @@ module npu_top #(
             conv_stat_cycles <= '0; conv_count_active <= 1'b0; conv_stats_started <= 1'b0;
         end else begin
             if (calc_start && sa_ready) begin
-                run_conv <= cfg_conv_enable && !cfg_dw_enable;
+                run_conv <= cfg_conv_enable && !cfg_vector_enable;
                 conv_cfg_q <= cfg_conv;
                 conv_stats_started <= 1'b0;
-                if (cfg_conv_enable && !cfg_dw_enable) begin
+                if (cfg_conv_enable && !cfg_vector_enable) begin
                     conv_stat_hits <= '0; conv_stat_misses <= '0;
                     conv_stat_read_bytes <= '0; conv_stat_cycles <= '0;
                     conv_count_active <= 1'b1;
@@ -280,7 +285,7 @@ module npu_top #(
             if (init_cfg_ia && run_conv) conv_stats_started <= 1'b1;
             if (done_valid) conv_count_active <= 1'b0;
             case (abort_state)
-                AB_IDLE: if (run_conv && (conv_error || dma_bus_error)) abort_state <= AB_DRAIN;
+                AB_IDLE: if (matrix_fault) abort_state <= AB_DRAIN;
                 AB_DRAIN: if (dma_idle && !conv_busy && operand_cache_idle) abort_state <= AB_RESET;
                 AB_RESET: abort_state <= AB_DONE;
                 AB_DONE: if (done_ready) begin abort_state <= AB_IDLE; run_conv <= 1'b0; end
@@ -344,7 +349,7 @@ module npu_top #(
         always_ff @(posedge clk) begin
             if (!core_rst_n) single_group_bypass <= 1'b0;
             else begin
-                if (accept_cache_task) single_group_bypass <= cfg_conv_enable || cfg_dw_enable;
+                if (accept_cache_task) single_group_bypass <= cfg_conv_enable || cfg_vector_enable;
                 if (cfg_stage2_fire)
                     single_group_bypass <= run_conv || (!fetch64_q && !cfg_use16_s2 && !cfg_16x8_s2 &&
                         cfg_stream_k_s2 != 0 && cfg_stream_m_s2 != 0 &&
@@ -599,7 +604,7 @@ module npu_top #(
     logic [31:0] dw_rd_rows_to_read, dw_rd_valid_cols;
     logic [7:0] dw_rd_burst_len_m1;
     logic dw_rd_busy, dw_rd_done, dw_rd_error;
-    logic signed [IA_DATA_WIDTH-1:0] dw_dma_data [BUS_WIDTH/8];
+    logic signed [IA_DATA_WIDTH-1:0] vector_dma_data [BUS_WIDTH/8];
     logic signed [15:0] dw_rd_data [4];
     logic dw_rd_valid [BUS_WIDTH/8];
     logic [$clog2(SHARED_DMA_SIZE)-1:0] dw_rd_col_base;
@@ -611,22 +616,22 @@ module npu_top #(
     logic [BUS_WIDTH-1:0] dw_src_wdata;
     logic [BUS_WIDTH/8-1:0] dw_src_wmask;
     logic dw_src_wvalid, dw_src_wready, dw_wr_busy, dw_wr_done, dw_wr_error;
-    generate if (DW_POOL_CAPABLE) begin : g_dw_pool
+    generate if (VECTOR_ENGINE_CAPABLE) begin : g_vector_engine
         for (genvar lane = 0; lane < 4; lane++) begin : g_data
-            assign dw_rd_data[lane] = 16'($signed(dw_dma_data[lane]));
+            assign dw_rd_data[lane] = 16'($signed(vector_dma_data[lane]));
         end
-        dw_pool_engine #(.TILE(SIZE), .DMA_SIZE(SHARED_DMA_SIZE),
-            .PE_COUNT(DW_PE_COUNT), .MAX_TAPS(DW_MAX_TAPS)) u_engine (
+        vector_engine #(.TILE(SIZE), .DMA_SIZE(SHARED_DMA_SIZE),
+            .PE_COUNT(VECTOR_PE_COUNT), .MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS)) u_engine (
             .clk, .rst_n(core_rst_n),
-            .start(calc_start && sa_ready && cfg_dw_enable && !cfg_conv_enable),
-            .cfg(cfg_dw), .ready(dw_engine_ready), .done_valid(dw_engine_done),
-            .done_ready(done_ready && run_dw), .error(dw_engine_error),
-            .stat_cycles(dw_stat_cycles), .stat_compute(dw_stat_compute),
-            .stat_dma_wait(dw_stat_dma_wait),
-            .dma_cfg_valid(dw_dma_cfg_valid), .dma_cfg_ready(conv_cfg_ready && run_dw),
-            .dma_conv_enable(dw_dma_conv_enable), .dma_range_enable(dw_dma_range_enable),
-            .dma_conv_cfg(dw_dma_conv_cfg), .dma_range_base(dw_dma_range_base),
-            .dma_range_end(dw_dma_range_end),
+            .start(calc_start && sa_ready && cfg_vector_enable && !cfg_conv_enable),
+            .cfg(cfg_vector), .ready(vector_engine_ready), .done_valid(vector_engine_done),
+            .done_ready(done_ready && run_vector), .error(vector_engine_error),
+            .stat_cycles(vector_stat_cycles), .stat_compute(vector_stat_compute),
+            .stat_dma_wait(vector_stat_dma_wait),
+            .dma_cfg_valid(vector_dma_cfg_valid), .dma_cfg_ready(conv_cfg_ready && run_vector),
+            .dma_conv_enable(vector_dma_conv_enable), .dma_range_enable(vector_dma_range_enable),
+            .dma_conv_cfg(vector_dma_conv_cfg), .dma_range_base(vector_dma_range_base),
+            .dma_range_end(vector_dma_range_end),
             .rd_req(dw_rd_req), .rd_start(dw_rd_start), .rd_granted(dw_rd_granted),
             .rd_im2col(dw_rd_im2col), .rd_p0(dw_rd_p0), .rd_q0(dw_rd_q0),
             .rd_base_addr(dw_rd_base_addr), .rd_row_stride(dw_rd_row_stride),
@@ -642,15 +647,15 @@ module npu_top #(
             .src_wready(dw_src_wready), .wr_busy(dw_wr_busy), .wr_done(dw_wr_done),
             .wr_error(dw_wr_error)
         );
-    end else begin : g_no_dw_pool
-        assign dw_engine_ready = 1'b1;
-        assign dw_engine_done = 1'b0;
-        assign dw_engine_error = 2'b01;
-        assign dw_stat_cycles = '0; assign dw_stat_compute = '0; assign dw_stat_dma_wait = '0;
-        assign dw_dma_cfg_valid = 1'b0; assign dw_dma_conv_enable = 1'b0;
-        assign dw_dma_range_enable = 1'b0; assign dw_dma_conv_cfg = '0;
+    end else begin : g_no_vector_engine
+        assign vector_engine_ready = 1'b1;
+        assign vector_engine_done = 1'b0;
+        assign vector_engine_error = 2'b01;
+        assign vector_stat_cycles = '0; assign vector_stat_compute = '0; assign vector_stat_dma_wait = '0;
+        assign vector_dma_cfg_valid = 1'b0; assign vector_dma_conv_enable = 1'b0;
+        assign vector_dma_range_enable = 1'b0; assign vector_dma_conv_cfg = '0;
         for (genvar r = 0; r < 4; r++) begin : g_ranges
-            assign dw_dma_range_base[r] = '0; assign dw_dma_range_end[r] = '0;
+            assign vector_dma_range_base[r] = '0; assign vector_dma_range_end[r] = '0;
         end
         assign dw_rd_req = 1'b0; assign dw_rd_start = 1'b0; assign dw_rd_im2col = 1'b0;
         assign dw_rd_use_16bits = 1'b0; assign dw_rd_p0 = '0; assign dw_rd_q0 = '0;
@@ -687,14 +692,14 @@ module npu_top #(
     logic profile_error;
     always_ff @(posedge clk or negedge core_rst_n) begin
         if(!core_rst_n)profile_error<=1'b0;
-        else if(calc_start && !cfg_dw_enable && profile_input_invalid)profile_error<=1'b1;
+        else if(calc_start && !cfg_vector_enable && profile_input_invalid)profile_error<=1'b1;
     end
 `else
     wire profile_input_invalid=1'b0;
     wire profile_error=1'b0;
 `endif
     assign normal_done_valid=(abort_state == AB_DONE) ||
-        ((abort_state == AB_IDLE) && !(run_conv && (conv_error || dma_bus_error)) &&
+        ((abort_state == AB_IDLE) && !matrix_fault &&
          operand_cache_idle &&
          ((controller_done_valid && !operand_completion_seen) || ps_capacity_fault || profile_error));
     assign normal_err_code=(abort_state == AB_DONE) ? 2'b11 : ps_capacity_fault ? 2'b11 : profile_error ? 2'b01 : controller_err_code;
@@ -767,10 +772,10 @@ module npu_top #(
         logic [REG_WIDTH-1:0] cfg_n_s2;
         logic [IS_BIAS_VALID_W-1:0] cfg_bias_rows_target_s2;
 
-        wire cfg_start_event = calc_start && sa_ready && !cfg_dw_enable;
+        wire cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
         assign cfg_stage2_fire = cfg_stage2_valid && ctrl_sa_ready;
         wire ctrl_calc_start = cfg_stage2_fire;
-        assign sa_ready = !run_dw && !dw_rejected && dw_engine_ready && ctrl_sa_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
+        assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
                           (abort_state == AB_IDLE) && operand_cache_idle;
 
         // ABI 2: external software provides effective, legal R/W values.
@@ -945,15 +950,15 @@ module npu_top #(
             .rst_n                   (core_rst_n),
             // Reconfigure even for GEMM so a previous Conv task cannot leave
             // image bounds or cache policy active on ordinary matrix reads.
-            .conv_cfg_valid          (run_dw ? dw_dma_cfg_valid : init_cfg_ia),
+            .conv_cfg_valid          (run_vector ? vector_dma_cfg_valid : init_cfg_ia),
             .conv_cfg_ready          (conv_cfg_ready),
-            .conv_enable             (run_dw ? dw_dma_conv_enable : run_conv),
-            .dma_range_enable       (run_dw && dw_dma_range_enable),
-            .conv_cfg                (run_dw ? dw_dma_conv_cfg : conv_cfg_q),
-            .conv_sched_r            (run_dw ? 32'd0 : 32'(ia_reuse_num_eff)),
+            .conv_enable             (run_vector ? vector_dma_conv_enable : run_conv),
+            .dma_range_enable       (run_vector && vector_dma_range_enable),
+            .conv_cfg                (run_vector ? vector_dma_conv_cfg : conv_cfg_q),
+            .conv_sched_r            (run_vector ? 32'd0 : 32'(ia_reuse_num_eff)),
             // The geometry predictor's rank follows the WS loop order. IS
             // retains raw-input caching but uses its generic fallback policy.
-            .conv_sched_groups       ((run_dw || is_mode) ? 32'd0 : 32'(cfg_col_groups)),
+            .conv_sched_groups       ((run_vector || is_mode) ? 32'd0 : 32'(cfg_col_groups)),
             .conv_range_base         (selected_range_base),
             .conv_range_end          (selected_range_end),
             .conv_error              (conv_error),
@@ -968,7 +973,7 @@ module npu_top #(
             .dw_rows_to_read(dw_rd_rows_to_read), .dw_valid_cols(dw_rd_valid_cols),
             .dw_burst_len_m1(dw_rd_burst_len_m1), .dw_use_16bits(dw_rd_use_16bits),
             .dw_busy(dw_rd_busy), .dw_done(dw_rd_done), .dw_error(dw_rd_error),
-            .dw_data(dw_dma_data), .dw_valid(dw_rd_valid), .dw_row(), .dw_col_base(dw_rd_col_base),
+            .dw_data(vector_dma_data), .dw_valid(dw_rd_valid), .dw_row(), .dw_col_base(dw_rd_col_base),
             .dw_raw_data(dw_rd_raw_data), .dw_raw_valid(dw_rd_raw_valid),
             .dw_wr_req(dw_wr_req), .dw_wr_granted(dw_wr_granted), .dw_wr_start(dw_wr_start),
             .dw_wr_base_addr(dw_wr_base_addr), .dw_wr_row_stride(dw_wr_row_stride),

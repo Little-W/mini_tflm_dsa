@@ -154,7 +154,7 @@ riscv_nmsis_nn_status riscv_transpose_conv_s8(const nmsis_nn_context *ctx,
                         {
                             int32_t result = *buf_out++;
                             result = riscv_nn_requantize(result, *output_multiplier_ptr++, *output_shift_ptr++);
-                            result += out_offset;
+                            result = riscv_nn_add_s32_sat(result, out_offset);
                             result = MAX(result, activation_min);
                             result = MIN(result, activation_max);
                             *output++ = result;
@@ -199,7 +199,7 @@ riscv_nmsis_nn_status riscv_transpose_conv_s8(const nmsis_nn_context *ctx,
                         int32_t result = *buf_out++;
 
                         result = riscv_nn_requantize(result, *output_multiplier_ptr++, *output_shift_ptr++);
-                        result += out_offset;
+                        result = riscv_nn_add_s32_sat(result, out_offset);
                         result = MAX(result, activation_min);
                         result = MIN(result, activation_max);
                         *output++ = result;

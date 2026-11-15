@@ -52,11 +52,6 @@ constexpr uint32_t kFractionRoundingThreshold = 0x00200000;
 
 void QuantizeMultiplier(double double_multiplier, int32_t* quantized_multiplier,
                         int* shift) {
-#if TFLITE_SINGLE_ROUNDING
-  // Single-rounding MultiplyByQuantizedMultiplier only supports positive
-  // multipliers.
-  // TFLITE_DCHECK(double_multiplier >= 0);
-#endif
   if (double_multiplier == 0.) {
     *quantized_multiplier = 0;
     *shift = 0;
@@ -92,14 +87,11 @@ void QuantizeMultiplier(double double_multiplier, int32_t* quantized_multiplier,
     *shift = 0;
     q_fixed = 0;
   }
-#if TFLITE_SINGLE_ROUNDING
-  // Single-rounding MultiplyByQuantizedMultiplier doesn't support a shift > 30,
-  // saturate it.
+  // The Q31 rescaling interface accepts shifts through 30.
   if (*shift > 30) {
     *shift = 30;
     q_fixed = (1LL << 31) - 1;
   }
-#endif
   *quantized_multiplier = static_cast<int32_t>(q_fixed);
 }
 
@@ -177,7 +169,8 @@ int64_t IntegerFrExp(double input, int* shift) {
   // frexp implementation here we'll apply rounding by adding one to the least
   // significant bit of the result if the discarded portion is over half of the
   // maximum.
-  if ((u & kFractionRoundingMask) > kFractionRoundingThreshold) {
+  if ((u & kFractionRoundingMask) > kFractionRoundingThreshold ||
+      ((u & kFractionRoundingMask) == kFractionRoundingThreshold && (fraction & 1))) {
     fraction += 1;
   }
   // Negate the fraction if the sign bit was set.

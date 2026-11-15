@@ -43,7 +43,7 @@ COMPUTE_RTL := $(ROOT)/rtl/npu/compute
 BUFFER_RTL := $(ROOT)/rtl/npu/buffers
 DMA_RTL := $(ROOT)/rtl/npu/dma
 
-UNIT_DMA_RTL := rtl/npu/conv/00_conv_im2col_pkg.sv $(filter-out rtl/npu/conv/00_conv_im2col_pkg.sv,$(sort $(wildcard rtl/npu/conv/*.sv))) rtl/npu/dma/axi_linear_block_dma.sv rtl/npu/dma/axi_dual_block_dma.sv
+UNIT_DMA_RTL := rtl/npu/conv/00_conv_im2col_pkg.sv $(filter-out rtl/npu/conv/00_conv_im2col_pkg.sv,$(sort $(wildcard rtl/npu/conv/*.sv))) rtl/npu/dma/axi_linear_block_dma.sv rtl/npu/dma/axi_write_page_guard.sv rtl/npu/dma/axi_dual_block_dma.sv
 SRCS_axi_dual_block_dma := $(UNIT_DMA_RTL) test/axi_dual_block_dma/tb_axi_dual_block_dma.sv
 SRCS_axi_block_dma_arbiter := $(UNIT_DMA_RTL) rtl/npu/dma/axi_block_dma_arbiter.sv test/axi_block_dma_arbiter/tb_axi_block_dma_arbiter.sv
 SRCS_ps_buffer := test/ps_buffer/tb_ps_buffer.sv $(BUFFER_RTL)/ps_buffer.sv $(BUFFER_RTL)/ps_buffer_fifo.sv $(COMPUTE_RTL)/de_diagonalizer.sv $(RAM_RTL)
@@ -68,8 +68,9 @@ help:
 	@echo 'make capacity-test           Test solver and configuration integration'
 	@echo 'make pcr-backend             Build a Verilator backend from the PCR configuration'
 	@echo 'make conv-verify VERILATOR=/path/to/verilator YOSYS=yosys  Run hardware Conv validation'
-	@echo 'make dw-pool-test VERILATOR=/path/to/verilator DW_PE_COUNT=8  Run DW/pooling and vector validation'
-	@echo 'make dw-pool-sweep VERILATOR=/path/to/verilator  Compare PE counts with RTL cycle measurements'
+	@echo 'make vector-engine-test VERILATOR=/path/to/verilator VECTOR_PE_COUNT=8  Run DW/pooling and vector validation'
+	@echo 'make vector-engine-sweep VERILATOR=/path/to/verilator  Compare PE counts with RTL cycle measurements'
+	@echo 'make vector-engine-soc              Run CNN, MobileNetV1, DS-CNN and ResNet-8 on PicoRV32'
 	@echo 'make conv-npu conv-reuse       Check real NPU outputs and external input reuse'
 	@echo 'make conv-dma                 Check unified DMA matrix/Conv commands in WS and IS'
 	@echo 'make conv-soc-perf            Compare original CPU im2col and hardware Conv on PicoRV32'
@@ -308,42 +309,53 @@ conv-ram-inference:
 	$(PYTHON) test/conv_ram_inference/run.py --yosys '$(YOSYS)'
 
 # DW/pooling runners select the standard core independently of PCR settings.
-# DW_PE_COUNT is a compile-time arithmetic width; DW_TILE sets staging capacity.
-DW_BUILD_DIR ?= $(ROOT)/build/dw_pool_verify
-DW_PE_COUNT ?= 8
-DW_TILE ?= 16
-DW_JOBS ?= 1
-DW_PE_SWEEP ?= 1 2 4 8 16
+# VECTOR_PE_COUNT is a compile-time arithmetic width; VECTOR_TILE sets staging capacity.
+VECTOR_BUILD_DIR ?= $(ROOT)/build/vector_engine_verify
+VECTOR_PE_COUNT ?= 8
+VECTOR_TILE ?= 16
+VECTOR_JOBS ?= 1
+VECTOR_PE_SWEEP ?= 1 2 4 8 16
+MODEL_BENCHMARK_OUT ?= $(ROOT)/build/model_benchmark
+MODEL_BENCHMARK_PREPARED ?= $(MODEL_BENCHMARK_OUT)/prepared
+MODEL_BENCHMARK_GCC ?= riscv-none-elf-gcc
+MODEL_BENCHMARK_RUN_JOBS ?= 4
+MODEL_BENCHMARK_ARGS ?=
 
-.PHONY: dw-pool-test dw-pool-driver dw-pool-unit dw-pool-regs dw-pool-cosim dw-pool-disabled dw-pool-regression dw-pool-sweep dw-pool-area
+.PHONY: vector-engine-test vector-engine-driver vector-engine-unit vector-engine-regs vector-engine-cosim vector-engine-disabled vector-engine-regression vector-engine-sweep vector-engine-area vector-engine-soc
 
-dw-pool-test:
-	@set -e; for target in dw-pool-driver dw-pool-unit dw-pool-regs dw-pool-cosim dw-pool-disabled dw-pool-regression; do \
+vector-engine-test:
+	@set -e; for target in vector-engine-driver vector-engine-unit vector-engine-regs vector-engine-cosim vector-engine-disabled vector-engine-regression; do \
 	  $(MAKE) --no-print-directory $$target; \
 	done
 
-dw-pool-driver:
-	$(PYTHON) test/dw_pool_driver/run.py --out '$(DW_BUILD_DIR)/driver'
+vector-engine-driver:
+	$(PYTHON) test/vector_engine_driver/run.py --out '$(VECTOR_BUILD_DIR)/driver'
 
-dw-pool-unit:
-	$(PYTHON) test/dw_pool/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --tile $(DW_TILE) --pes $(DW_PE_COUNT) --out '$(DW_BUILD_DIR)/unit'
+vector-engine-unit:
+	$(PYTHON) test/vector_engine/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --tile $(VECTOR_TILE) --pes $(VECTOR_PE_COUNT) --out '$(VECTOR_BUILD_DIR)/unit'
 
-dw-pool-regs:
-	$(PYTHON) test/dw_pool_regs/run.py --verilator '$(VERILATOR)' --out '$(DW_BUILD_DIR)/registers'
+vector-engine-regs:
+	$(PYTHON) test/vector_engine_regs/run.py --verilator '$(VERILATOR)' --out '$(VECTOR_BUILD_DIR)/registers'
 
-dw-pool-cosim:
-	$(PYTHON) test/dw_pool_cosim/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --size $(DW_TILE) --pe-count $(DW_PE_COUNT) --out '$(DW_BUILD_DIR)/cosim'
+vector-engine-cosim:
+	$(PYTHON) test/vector_engine_cosim/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --size $(VECTOR_TILE) --pe-count $(VECTOR_PE_COUNT) --out '$(VECTOR_BUILD_DIR)/cosim'
 
-dw-pool-disabled:
-	$(PYTHON) test/dw_pool_cosim/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --size $(DW_TILE) --pe-count $(DW_PE_COUNT) --disabled --out '$(DW_BUILD_DIR)/disabled'
+vector-engine-disabled:
+	$(PYTHON) test/vector_engine_cosim/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --size $(VECTOR_TILE) --pe-count $(VECTOR_PE_COUNT) --disabled --out '$(VECTOR_BUILD_DIR)/disabled'
 
-dw-pool-regression:
-	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --legacy-only --out '$(DW_BUILD_DIR)/regression/legacy'
-	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --sizes 4 16 --out '$(DW_BUILD_DIR)/regression/matrix'
-	$(PYTHON) test/conv_npu/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --sizes 4 --out '$(DW_BUILD_DIR)/regression/conv'
+vector-engine-regression:
+	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --legacy-only --out '$(VECTOR_BUILD_DIR)/regression/legacy'
+	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --sizes 4 16 --out '$(VECTOR_BUILD_DIR)/regression/matrix'
+	$(PYTHON) test/conv_npu/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --sizes 4 --out '$(VECTOR_BUILD_DIR)/regression/conv'
 
-dw-pool-sweep:
-	$(PYTHON) test/dw_pool/run.py --verilator '$(VERILATOR)' --jobs $(DW_JOBS) --tile $(DW_TILE) --pes $(DW_PE_SWEEP) --perf --out '$(DW_BUILD_DIR)/pe_sweep'
+vector-engine-sweep:
+	$(PYTHON) test/vector_engine/run.py --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) --tile $(VECTOR_TILE) --pes $(VECTOR_PE_SWEEP) --perf --out '$(VECTOR_BUILD_DIR)/pe_sweep'
 
-dw-pool-area:
-	$(PYTHON) test/dw_pool/synth_pe.py --yosys '$(YOSYS)' --counts $(DW_PE_SWEEP) --out '$(DW_BUILD_DIR)/pe_area'
+vector-engine-area:
+	$(PYTHON) test/vector_engine/synth_pe.py --yosys '$(YOSYS)' --counts $(VECTOR_PE_SWEEP) --out '$(VECTOR_BUILD_DIR)/pe_area'
+
+vector-engine-soc:
+	$(PYTHON) test/model_benchmark/run_suite.py --out '$(MODEL_BENCHMARK_OUT)' \
+	  --prepared '$(MODEL_BENCHMARK_PREPARED)' --gcc '$(MODEL_BENCHMARK_GCC)' \
+	  --verilator '$(VERILATOR)' --jobs $(VECTOR_JOBS) \
+	  --run-jobs $(MODEL_BENCHMARK_RUN_JOBS) $(MODEL_BENCHMARK_ARGS)

@@ -116,10 +116,10 @@ depthwise_conv_s8_mult_4(const int8_t *input,
                     out_buff[2] = riscv_nn_requantize(out_buff[2], *output_mult++, *output_shift++);
                     out_buff[3] = riscv_nn_requantize(out_buff[3], *output_mult++, *output_shift++);
 
-                    out_buff[0] += output_offset;
-                    out_buff[1] += output_offset;
-                    out_buff[2] += output_offset;
-                    out_buff[3] += output_offset;
+                    out_buff[0] = riscv_nn_add_s32_sat(out_buff[0], output_offset);
+                    out_buff[1] = riscv_nn_add_s32_sat(out_buff[1], output_offset);
+                    out_buff[2] = riscv_nn_add_s32_sat(out_buff[2], output_offset);
+                    out_buff[3] = riscv_nn_add_s32_sat(out_buff[3], output_offset);
 
                     out_buff[0] = MIN(MAX(out_buff[0], output_activation_min), output_activation_max);
                     out_buff[1] = MIN(MAX(out_buff[1], output_activation_min), output_activation_max);
@@ -235,7 +235,7 @@ static void depthwise_conv_s8_generic(const int8_t *input,
 
                         /* Requantize and clamp output to provided range */
                         acc_0 = riscv_nn_requantize(acc_0, output_mult[idx_out_ch], output_shift[idx_out_ch]);
-                        acc_0 += output_offset;
+                        acc_0 = riscv_nn_add_s32_sat(acc_0, output_offset);
                         acc_0 = MAX(acc_0, output_activation_min);
                         acc_0 = MIN(acc_0, output_activation_max);
 
@@ -268,9 +268,9 @@ riscv_nmsis_nn_status riscv_depthwise_conv_s8(const nmsis_nn_context *ctx,
                                           const nmsis_nn_dims *output_dims,
                                           int8_t *output)
 {
-#if DSA_NN_DW_POOL_ENABLE
+#if DSA_NN_VECTOR_ENABLE
     riscv_nmsis_nn_status dsa_status;
-    if (riscv_depthwise_conv_s8_try_dsa(dw_conv_params, quant_params,
+    if (riscv_depthwise_conv_s8_try_dsa(ctx, dw_conv_params, quant_params,
             input_dims, input, filter_dims, kernel, bias, output_dims,
             output, &dsa_status)) return dsa_status;
 #endif

@@ -9,6 +9,10 @@ MAKEFILE_DIR := $(TENSORFLOW_ROOT)$(RELATIVE_MAKEFILE_DIR)
 # 下载目录：存放下载的第三方库
 DOWNLOADS_DIR := $(MAKEFILE_DIR)/downloads
 USE_NMSIS_NN ?= 1
+DSA_NN_RUNTIME_CONTROL ?= 0
+DSA_NN_CONV_ENABLE ?= 1
+DSA_NN_VECTOR_ENABLE ?= $(if $(DSA_NN_DW_POOL_ENABLE),$(DSA_NN_DW_POOL_ENABLE),1)
+DSA_NN_FC_ENABLE ?= 1
 NMSIS_NN_ROOT := $(abspath ../NMSIS/NN)
 NMSIS_CORE_ROOT := $(abspath ../NMSIS/Core)
 NMSIS_NN_SOURCE_DIR := $(NMSIS_NN_ROOT)/Source
@@ -76,7 +80,11 @@ COMMON_FLAGS := \
   -DTF_LITE_DISABLE_X86_NEON
 
 ifneq ($(filter 1 yes true TRUE,$(USE_NMSIS_NN)),)
-COMMON_FLAGS += -DNMSIS_NN
+COMMON_FLAGS += -DNMSIS_NN \
+  -DDSA_NN_RUNTIME_CONTROL=$(DSA_NN_RUNTIME_CONTROL) \
+  -DDSA_NN_CONV_ENABLE=$(DSA_NN_CONV_ENABLE) \
+  -DDSA_NN_VECTOR_ENABLE=$(DSA_NN_VECTOR_ENABLE) \
+  -DDSA_NN_FC_ENABLE=$(DSA_NN_FC_ENABLE)
 endif
 
 # C++ 编译选项
@@ -319,12 +327,14 @@ ifneq ($(filter 1 yes true TRUE,$(USE_NMSIS_NN)),)
 MICROLITE_CC_KERNEL_SRCS := $(filter-out \
   $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/conv.cc \
   $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/depthwise_conv.cc \
-  $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/fully_connected.cc, \
+  $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/fully_connected.cc \
+  $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/pooling.cc, \
   $(MICROLITE_CC_KERNEL_SRCS))
 MICROLITE_CC_KERNEL_SRCS += \
   $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/nmsis_nn/conv.cc \
   $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/nmsis_nn/depthwise_conv.cc \
-  $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/nmsis_nn/fully_connected.cc
+  $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/nmsis_nn/fully_connected.cc \
+  $(TENSORFLOW_ROOT)tensorflow/lite/micro/kernels/nmsis_nn/pooling.cc
 
 NMSIS_NN_C_SRCS := $(wildcard $(NMSIS_NN_SOURCE_DIR)/*/*.c)
 endif
@@ -343,7 +353,7 @@ MICROLITE_NMSIS_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(NMSIS_NN_C_SRCS))
 # 默认目标
 all: $(MICROLITE_LIB_NAME) keyword_benchmark person_detection_benchmark
 
-$(BUILD_DIR)/$(NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.o: $(NMSIS_NN_ROOT)/Include/dsa_accel.h $(TENSORFLOW_ROOT)../../../gempact_tiling.h $(TENSORFLOW_ROOT)../../../dsa_conv.h $(TENSORFLOW_ROOT)../../../dsa_conv_impl.h $(TENSORFLOW_ROOT)../../../dsa_dw_pool.h $(TENSORFLOW_ROOT)../../../dsa_dw_pool_impl.h
+$(BUILD_DIR)/$(NMSIS_NN_SOURCE_DIR)/ExtraAccFunctions/dsa_accel.o: $(NMSIS_NN_ROOT)/Include/dsa_accel.h $(TENSORFLOW_ROOT)../../../gempact_tiling.h $(TENSORFLOW_ROOT)../../../dsa_conv.h $(TENSORFLOW_ROOT)../../../dsa_conv_impl.h $(TENSORFLOW_ROOT)../../../dsa_vector.h $(TENSORFLOW_ROOT)../../../dsa_vector_impl.h
 
 # 生成数据文件目标
 generate_all_data: $(KEYWORD_BENCHMARK_GENERATED) $(PERSON_DETECTION_GENERATED)

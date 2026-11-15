@@ -31,6 +31,7 @@
 
 #include "riscv_nnfunctions.h"
 #include "riscv_nnsupportfunctions.h"
+#include "riscv_vector_acc.h"
 
 /**
  *  @ingroup Public
@@ -48,7 +49,7 @@
  *
  */
 
-/* Note: __SHIFT is expected to be <=0 */
+/* Input shifts are in [-31,0]; the output shift is in [-31,30]. */
 
 riscv_nmsis_nn_status riscv_elementwise_add_s8(const int8_t *input_1_vect,
                                            const int8_t *input_2_vect,
@@ -67,6 +68,19 @@ riscv_nmsis_nn_status riscv_elementwise_add_s8(const int8_t *input_1_vect,
                                            const int32_t out_activation_max,
                                            const int32_t block_size)
 {
+    const dsa_vector_add_params_t params = {
+        input_1_offset, input_2_offset, input_1_mult, input_1_shift,
+        input_2_mult, input_2_shift, left_shift, out_mult, out_shift
+    };
+    if (!dsa_vector_add_quantization_valid(&params, out_offset, out_activation_min, out_activation_max) ||
+        !riscv_vector_add_buffers_valid(input_1_vect, input_2_vect, output, block_size))
+        return RISCV_NMSIS_NN_ARG_ERROR;
+    if (!block_size) return RISCV_NMSIS_NN_SUCCESS;
+#if DSA_NN_VECTOR_ENABLE
+    riscv_nmsis_nn_status status;
+    if (riscv_add_s8_try_dsa(&params, input_1_vect, input_2_vect, output, block_size,
+                           out_offset, out_activation_min, out_activation_max, &status)) return status;
+#endif
     int32_t loop_count;
     int32_t input_1;
     int32_t input_2;
@@ -95,7 +109,10 @@ riscv_nmsis_nn_status riscv_elementwise_add_s8(const int8_t *input_1_vect,
         /* sum = riscv_nn_requantize(sum, out_mult, out_shift); */
         sum0m4 = riscv_nn_requantize_m4_rvv(sum0m4, l, out_mult, out_shift);
 
-        sum0m4 = __riscv_vadd_vx_i32m4(sum0m4, out_offset, l);
+        int32_t shifted_lanes[l];
+        __riscv_vse32_v_i32m4(shifted_lanes, sum0m4, l);
+        for (size_t i = 0; i < l; ++i) shifted_lanes[i] = riscv_nn_add_s32_sat(shifted_lanes[i], out_offset);
+        sum0m4 = __riscv_vle32_v_i32m4(shifted_lanes, l);
         sum0m4 = __riscv_vmax_vx_i32m4(sum0m4, out_activation_min, l);
         sum0m4 = __riscv_vmin_vx_i32m4(sum0m4, out_activation_max, l);
         __riscv_vse8_v_i8m1(output, __riscv_vnsra_wx_i8m1(__riscv_vnsra_wx_i16m2(sum0m4, 0, l), 0, l), l);
@@ -109,8 +126,8 @@ riscv_nmsis_nn_status riscv_elementwise_add_s8(const int8_t *input_1_vect,
 
     int8_t r1, r2, r3, r4;
 
-    offset_1_packed = (input_1_offset << 16U) | (input_1_offset & 0x0FFFFL);
-    offset_2_packed = (input_2_offset << 16U) | (input_2_offset & 0x0FFFFL);
+    offset_1_packed = ((uint32_t)input_1_offset << 16U) | (input_1_offset & 0x0FFFFL);
+    offset_2_packed = ((uint32_t)input_2_offset << 16U) | (input_2_offset & 0x0FFFFL);
 
     loop_count = block_size >> 2;
 
@@ -128,58 +145,58 @@ riscv_nmsis_nn_status riscv_elementwise_add_s8(const int8_t *input_1_vect,
         b_2 = __SADD16(b_2, offset_2_packed);
 
         /* Sum 1 */
-        input_1 = (b_1 & 0x0FFFF) << left_shift;
+        input_1 = (int16_t)b_1 * (1 << left_shift);
 
         input_1 = riscv_nn_requantize(input_1, input_1_mult, input_1_shift);
 
-        input_2 = (b_2 & 0x0FFFF) << left_shift;
+        input_2 = (int16_t)b_2 * (1 << left_shift);
         input_2 = riscv_nn_requantize(input_2, input_2_mult, input_2_shift);
 
         sum = input_1 + input_2;
         sum = riscv_nn_requantize(sum, out_mult, out_shift);
-        sum += out_offset;
+        sum = riscv_nn_add_s32_sat(sum, out_offset);
         sum = MAX(sum, out_activation_min);
         sum = MIN(sum, out_activation_max);
         r1 = (int8_t)sum;
 
         /* Sum 3 */
-        input_1 = ((b_1 >> 16) & 0x0FFFF) << left_shift;
+        input_1 = (int16_t)((uint32_t)b_1 >> 16) * (1 << left_shift);
         input_1 = riscv_nn_requantize(input_1, input_1_mult, input_1_shift);
 
-        input_2 = ((b_2 >> 16) & 0x0FFFF) << left_shift;
+        input_2 = (int16_t)((uint32_t)b_2 >> 16) * (1 << left_shift);
         input_2 = riscv_nn_requantize(input_2, input_2_mult, input_2_shift);
 
         sum = input_1 + input_2;
         sum = riscv_nn_requantize(sum, out_mult, out_shift);
-        sum += out_offset;
+        sum = riscv_nn_add_s32_sat(sum, out_offset);
         sum = MAX(sum, out_activation_min);
         sum = MIN(sum, out_activation_max);
         r3 = (int8_t)sum;
 
         /* Sum 2 */
-        input_1 = (a_1 & 0x0FFFF) << left_shift;
+        input_1 = (int16_t)a_1 * (1 << left_shift);
         input_1 = riscv_nn_requantize(input_1, input_1_mult, input_1_shift);
 
-        input_2 = (a_2 & 0x0FFFF) << left_shift;
+        input_2 = (int16_t)a_2 * (1 << left_shift);
         input_2 = riscv_nn_requantize(input_2, input_2_mult, input_2_shift);
 
         sum = input_1 + input_2;
         sum = riscv_nn_requantize(sum, out_mult, out_shift);
-        sum += out_offset;
+        sum = riscv_nn_add_s32_sat(sum, out_offset);
         sum = MAX(sum, out_activation_min);
         sum = MIN(sum, out_activation_max);
         r2 = (int8_t)sum;
 
         /* Sum 4 */
-        input_1 = ((a_1 >> 16) & 0x0FFFF) << left_shift;
+        input_1 = (int16_t)((uint32_t)a_1 >> 16) * (1 << left_shift);
         input_1 = riscv_nn_requantize(input_1, input_1_mult, input_1_shift);
 
-        input_2 = ((a_2 >> 16) & 0x0FFFF) << left_shift;
+        input_2 = (int16_t)((uint32_t)a_2 >> 16) * (1 << left_shift);
         input_2 = riscv_nn_requantize(input_2, input_2_mult, input_2_shift);
 
         sum = input_1 + input_2;
         sum = riscv_nn_requantize(sum, out_mult, out_shift);
-        sum += out_offset;
+        sum = riscv_nn_add_s32_sat(sum, out_offset);
         sum = MAX(sum, out_activation_min);
         sum = MIN(sum, out_activation_max);
         r4 = (int8_t)sum;
@@ -198,15 +215,15 @@ riscv_nmsis_nn_status riscv_elementwise_add_s8(const int8_t *input_1_vect,
     {
         /* C = A + B */
 
-        input_1 = (*input_1_vect++ + input_1_offset) << left_shift;
-        input_2 = (*input_2_vect++ + input_2_offset) << left_shift;
+        input_1 = (*input_1_vect++ + input_1_offset) * (1 << left_shift);
+        input_2 = (*input_2_vect++ + input_2_offset) * (1 << left_shift);
 
         input_1 = riscv_nn_requantize(input_1, input_1_mult, input_1_shift);
         input_2 = riscv_nn_requantize(input_2, input_2_mult, input_2_shift);
 
         sum = input_1 + input_2;
         sum = riscv_nn_requantize(sum, out_mult, out_shift);
-        sum += out_offset;
+        sum = riscv_nn_add_s32_sat(sum, out_offset);
 
         sum = MAX(sum, out_activation_min);
         sum = MIN(sum, out_activation_max);

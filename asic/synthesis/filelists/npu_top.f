@@ -1,7 +1,7 @@
 ../../rtl/npu/conv/00_conv_im2col_pkg.sv
-../../rtl/npu/conv/01_dw_pool_pkg.sv
-../../rtl/npu/conv/dw_pool_pe.sv
-../../rtl/npu/conv/dw_pool_engine.sv
+../../rtl/npu/conv/01_vector_engine_pkg.sv
+../../rtl/npu/conv/vector_pe.sv
+../../rtl/npu/conv/vector_engine.sv
 ../../rtl/npu/conv/conv_axi_read_guard.sv
 ../../rtl/npu/conv/conv_axi_read_mux.sv
 ../../rtl/npu/conv/conv_axi_span_reader.sv
@@ -40,6 +40,7 @@
 ../../rtl/npu/compute/compute_core.sv
 
 ../../rtl/npu/dma/axi_linear_block_dma.sv
+../../rtl/npu/dma/axi_write_page_guard.sv
 ../../rtl/npu/dma/axi_dual_block_dma.sv
 ../../rtl/npu/dma/axi_block_dma_arbiter.sv
 

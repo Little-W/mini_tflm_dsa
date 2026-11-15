@@ -223,8 +223,23 @@ bool Any(tIntegerType a) {
   return a;
 }
 
-// Returns (a+b)/2, rounded to the nearest integer.
-// Equivalent to VRHADD in the ARM NEON instruction set.
+// Signed nearest-even division by a power of two. The unsigned magnitude
+// also represents INT64_MIN without signed negation overflow.
+inline std::int64_t RoundingDivideByPOTInt64(std::int64_t value, int exponent) {
+  assert(exponent >= 0 && exponent <= 63);
+  if (exponent == 0) return value;
+  const std::uint64_t magnitude = value < 0 ? std::uint64_t(0) -
+      static_cast<std::uint64_t>(value) : static_cast<std::uint64_t>(value);
+  const std::uint64_t quotient = magnitude >> exponent;
+  const std::uint64_t remainder = magnitude & ((std::uint64_t(1) << exponent) - 1);
+  const std::uint64_t half = std::uint64_t(1) << (exponent - 1);
+  const std::uint64_t rounded = quotient + (remainder > half ||
+      (remainder == half && (quotient & 1)));
+  return value < 0 ? -static_cast<std::int64_t>(rounded)
+                   : static_cast<std::int64_t>(rounded);
+}
+
+// Returns (a+b)/2 with nearest-even rounding.
 template <typename IntegerType>
 IntegerType RoundingHalfSum(IntegerType a, IntegerType b) {
   static_assert(std::is_same<IntegerType, void>::value, "unimplemented");
@@ -234,20 +249,14 @@ IntegerType RoundingHalfSum(IntegerType a, IntegerType b) {
 
 template <>
 inline std::int32_t RoundingHalfSum(std::int32_t a, std::int32_t b) {
-  std::int64_t a64 = a;
-  std::int64_t b64 = b;
-  std::int64_t sum = a64 + b64;
-  std::int64_t sign = sum >= 0 ? 1 : -1;
-  return static_cast<std::int32_t>((sum + sign) / 2);
+  return static_cast<std::int32_t>(RoundingDivideByPOTInt64(
+      static_cast<std::int64_t>(a) + b, 1));
 }
 
 template <>
 inline std::int16_t RoundingHalfSum(std::int16_t a, std::int16_t b) {
-  std::int32_t a32 = a;
-  std::int32_t b32 = b;
-  std::int32_t sum = a32 + b32;
-  std::int32_t sign = sum >= 0 ? 1 : -1;
-  return static_cast<std::int16_t>((sum + sign) / 2);
+  return static_cast<std::int16_t>(RoundingDivideByPOTInt64(
+      static_cast<std::int64_t>(a) + b, 1));
 }
 
 template <typename IntegerType>
@@ -315,7 +324,7 @@ IntegerType AddSaturatingIf16Bit(IntegerType a, IntegerType b) {
 //
 // [End of the explanation specializing to int32.]
 //
-// This is equivalent to the VQRDMULH instruction in ARM NEON.
+// Exact half values use the even representable result.
 template <typename IntegerType>
 IntegerType SaturatingRoundingDoublingHighMul(IntegerType a, IntegerType b) {
   static_assert(std::is_same<IntegerType, void>::value, "unimplemented");
@@ -323,32 +332,23 @@ IntegerType SaturatingRoundingDoublingHighMul(IntegerType a, IntegerType b) {
   return a;
 }
 
-// This function implements the same computation as the ARMv7 NEON VQRDMULH
-// instruction.
+// The complete product is rounded before saturation.
 template <>
 inline std::int32_t SaturatingRoundingDoublingHighMul(std::int32_t a,
                                                       std::int32_t b) {
-  bool overflow = a == b && a == std::numeric_limits<std::int32_t>::min();
-  std::int64_t a_64(a);
-  std::int64_t b_64(b);
-  std::int64_t ab_64 = a_64 * b_64;
-  std::int32_t nudge = ab_64 >= 0 ? (1 << 30) : (1 - (1 << 30));
-  std::int32_t ab_x2_high32 =
-      static_cast<std::int32_t>((ab_64 + nudge) / (1ll << 31));
-  return overflow ? std::numeric_limits<std::int32_t>::max() : ab_x2_high32;
+  const std::int64_t rounded = RoundingDivideByPOTInt64(
+      static_cast<std::int64_t>(a) * b, 31);
+  return static_cast<std::int32_t>(std::min<std::int64_t>(
+      std::numeric_limits<std::int32_t>::max(), rounded));
 }
 
 template <>
 inline std::int16_t SaturatingRoundingDoublingHighMul(std::int16_t a,
                                                       std::int16_t b) {
-  bool overflow = a == b && a == std::numeric_limits<std::int16_t>::min();
-  std::int32_t a_32(a);
-  std::int32_t b_32(b);
-  std::int32_t ab_32 = a_32 * b_32;
-  std::int16_t nudge = ab_32 >= 0 ? (1 << 14) : (1 - (1 << 14));
-  std::int16_t ab_x2_high16 =
-      static_cast<std::int16_t>((ab_32 + nudge) / (1 << 15));
-  return overflow ? std::numeric_limits<std::int16_t>::max() : ab_x2_high16;
+  const std::int64_t rounded = RoundingDivideByPOTInt64(
+      static_cast<std::int64_t>(a) * b, 15);
+  return static_cast<std::int16_t>(std::min<std::int64_t>(
+      std::numeric_limits<std::int16_t>::max(), rounded));
 }
 
 // Correctly-rounded-to-nearest division by a power-of-two.
@@ -358,13 +358,14 @@ inline IntegerType RoundingDivideByPOT(IntegerType x, int exponent) {
   assert(exponent >= 0);
   assert(exponent <= 31);
   const IntegerType mask = Dup<IntegerType>((1ll << exponent) - 1);
-  const IntegerType zero = Dup<IntegerType>(0);
   const IntegerType one = Dup<IntegerType>(1);
   const IntegerType remainder = BitAnd(x, mask);
-  const IntegerType threshold =
-      Add(ShiftRight(mask, 1), BitAnd(MaskIfLessThan(x, zero), one));
-  return Add(ShiftRight(x, exponent),
-             BitAnd(MaskIfGreaterThan(remainder, threshold), one));
+  const IntegerType quotient = ShiftRight(x, exponent);
+  const IntegerType half = Dup<IntegerType>(exponent ? (1ll << (exponent - 1)) : 0);
+  const IntegerType greater = MaskIfGreaterThan(remainder, half);
+  const IntegerType tie_odd = BitAnd(MaskIfEqual(remainder, half), BitAnd(quotient, one));
+  const IntegerType increment = BitAnd(BitOr(greater, tie_odd), one);
+  return exponent == 0 ? x : Add(quotient, increment);
 }
 
 // Returns the product of a run-time integer value by a compile-time power

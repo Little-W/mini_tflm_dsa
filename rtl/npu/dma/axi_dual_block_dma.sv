@@ -155,6 +155,14 @@ module axi_dual_block_dma #(
     logic [7:0] linear_arlen;
     logic [2:0] linear_arsize;
     logic [1:0] linear_arburst, linear_rresp;
+    logic linear_awvalid, linear_awready, linear_wvalid, linear_wready, linear_wlast;
+    logic linear_bvalid, linear_bready, write_guard_idle;
+    logic [REG_WIDTH-1:0] linear_awaddr;
+    logic [7:0] linear_awlen;
+    logic [2:0] linear_awsize;
+    logic [1:0] linear_awburst, linear_bresp;
+    logic [BUS_WIDTH-1:0] linear_wdata;
+    logic [BUS_WIDTH/8-1:0] linear_wstrb;
     logic guard_arvalid, guard_arready, guard_rvalid, guard_rready, guard_rlast;
     logic [REG_WIDTH-1:0] guard_araddr;
     logic [BUS_WIDTH-1:0] guard_rdata;
@@ -285,12 +293,33 @@ module axi_dual_block_dma #(
         .m_axi_arsize(linear_arsize), .m_axi_arburst(linear_arburst),
         .m_axi_rvalid(linear_rvalid), .m_axi_rready(linear_rready),
         .m_axi_rdata(linear_rdata), .m_axi_rresp(linear_rresp), .m_axi_rlast(linear_rlast),
-        .m_axi_awvalid, .m_axi_awready, .m_axi_awaddr, .m_axi_awlen,
-        .m_axi_awsize, .m_axi_awburst, .m_axi_wvalid, .m_axi_wready,
-        .m_axi_wdata, .m_axi_wstrb, .m_axi_wlast, .m_axi_bvalid, .m_axi_bready, .m_axi_bresp,
+        .m_axi_awvalid(linear_awvalid), .m_axi_awready(linear_awready),
+        .m_axi_awaddr(linear_awaddr), .m_axi_awlen(linear_awlen),
+        .m_axi_awsize(linear_awsize), .m_axi_awburst(linear_awburst),
+        .m_axi_wvalid(linear_wvalid), .m_axi_wready(linear_wready),
+        .m_axi_wdata(linear_wdata), .m_axi_wstrb(linear_wstrb), .m_axi_wlast(linear_wlast),
+        .m_axi_bvalid(linear_bvalid), .m_axi_bready(linear_bready), .m_axi_bresp(linear_bresp),
         .wr_slot(linear_slot), .wr_row(linear_row), .wr_col_base(linear_col),
         .wr_data(linear_data), .wr_valid(linear_valid), .wr_use_16bits(linear_use_16bits),
         .rd_raw_data, .rd_raw_valid, .rd_raw_row, .rd_raw_col_base
+    );
+
+    axi_write_page_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH),
+        .WRITE_OUTSTANDING(WRITE_OUTSTANDING)) u_write_guard (
+        .clk, .rst_n,
+        .s_awvalid(linear_awvalid), .s_awready(linear_awready),
+        .s_awaddr(linear_awaddr), .s_awlen(linear_awlen),
+        .s_awsize(linear_awsize), .s_awburst(linear_awburst),
+        .s_wvalid(linear_wvalid), .s_wready(linear_wready),
+        .s_wdata(linear_wdata), .s_wstrb(linear_wstrb), .s_wlast(linear_wlast),
+        .s_bvalid(linear_bvalid), .s_bready(linear_bready), .s_bresp(linear_bresp),
+        .m_awvalid(m_axi_awvalid), .m_awready(m_axi_awready),
+        .m_awaddr(m_axi_awaddr), .m_awlen(m_axi_awlen),
+        .m_awsize(m_axi_awsize), .m_awburst(m_axi_awburst),
+        .m_wvalid(m_axi_wvalid), .m_wready(m_axi_wready),
+        .m_wdata(m_axi_wdata), .m_wstrb(m_axi_wstrb), .m_wlast(m_axi_wlast),
+        .m_bvalid(m_axi_bvalid), .m_bready(m_axi_bready), .m_bresp(m_axi_bresp),
+        .idle(write_guard_idle)
     );
 
     generate if (CONV_SUPPORTED) begin : g_im2col
@@ -315,7 +344,8 @@ module axi_dual_block_dma #(
         );
         // Only ordinary matrix reads need allocation padding/4-KiB repair.
         // The im2col span reader already emits exact legal byte/word transfers.
-        conv_axi_read_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH)) u_read_guard (
+        conv_axi_read_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH),
+            .SPLIT_GEMM_4K(1'b1), .READ_OUTSTANDING(READ_OUTSTANDING)) u_read_guard (
             .clk, .rst_n, .enable(job_conv || job_range), .cfg_valid(cfg_fire),
             .cfg_base(conv_range_base), .cfg_end(conv_range_end),
             .s_arvalid(linear_arvalid), .s_arready(linear_arready),
@@ -375,6 +405,7 @@ module axi_dual_block_dma #(
             for (int i=0; i<LANES; i++) assert(!linear_valid[i]);
         end
         assert(!(linear_done && conv_done_r));
+        if (!wr_busy) assert(write_guard_idle);
     end
 `endif
 endmodule

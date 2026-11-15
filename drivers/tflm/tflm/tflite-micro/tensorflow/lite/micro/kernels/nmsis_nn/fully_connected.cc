@@ -36,7 +36,6 @@ struct OpData {
   OpDataFullyConnected reference_op_data;
 
   // Index to buffers for optimizations if applicable.
-  int buffer_conv_1x1_idx;
   int buffer_idx;
 
   int32_t* kernel_sums;
@@ -107,7 +106,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
 
   // Set buffer index to a reset value
   data->buffer_idx = -1;
-  data->buffer_conv_1x1_idx = -1;
+  data->kernel_sums = nullptr;
   data->int16_bias_s32 = nullptr;
 
   TF_LITE_ENSURE_STATUS(CalculateOpDataFullyConnected(
@@ -132,51 +131,30 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
     }
     buf_size = riscv_fully_connected_s16_get_buffer_size(&filter_dims);
   } else if (input->type == kTfLiteInt8 && filter->type != kTfLiteInt4) {
-    const bool is_conv_1x1_possible =
-        output_dim_count > 2 && data->accum_depth % 4 == 0;
-
-    if (is_conv_1x1_possible) {
-      // In case per tensor quantization we use a scratch buffer to fake
-      // conv1x1 per channel quantization.
-      if (!data->reference_op_data.is_per_channel) {
-        const int total_per_channel_quantization_size =
-            data->output_depth * sizeof(int32_t) * 2;
-        TF_LITE_ENSURE_STATUS(context->RequestScratchBufferInArena(
-            context, total_per_channel_quantization_size,
-            &data->buffer_conv_1x1_idx));
-      }
-
-      nmsis_nn_dims input_dims;
-      input_dims.n = data->batches;
-      input_dims.h = 1;
-      input_dims.w = 1;
-      input_dims.c = data->accum_depth;
-      buf_size = riscv_convolve_1x1_s8_fast_get_buffer_size(&input_dims);
-    } else if (input->type == kTfLiteInt8) {
-      buf_size = riscv_fully_connected_s8_get_buffer_size(&filter_dims);
-
-      data->kernel_sums = nullptr;
+    buf_size = riscv_fully_connected_s8_get_buffer_size(&filter_dims);
 
 #if defined(KERNELS_OPTIMIZED_FOR_SPEED)
-      const int8_t* filter_data = GetTensorData<const int8_t>(filter);
+    const int8_t* filter_data = GetTensorData<const int8_t>(filter);
 
-      if (buf_size > 0 && filter_data != nullptr) {
-        const int32_t input_offset = -data->reference_op_data.input_zero_point;
-        const int32_t filter_offset =
-            -data->reference_op_data.filter_zero_point;
+    if (buf_size > 0 && filter_data != nullptr) {
+      const int32_t input_offset = -data->reference_op_data.input_zero_point;
+      const int32_t filter_offset =
+          -data->reference_op_data.filter_zero_point;
 
-        data->kernel_sums = static_cast<int32_t*>(
-            context->AllocatePersistentBuffer(context, buf_size));
+      data->kernel_sums = static_cast<int32_t*>(
+          context->AllocatePersistentBuffer(context, buf_size));
+      TF_LITE_ENSURE(context, data->kernel_sums != nullptr);
 
-        riscv_vector_sum_s8(data->kernel_sums, filter_dims.n, data->output_depth,
-                          filter_data, input_offset, filter_offset,
-                          tflite::GetTensorData<int32_t>(bias));
+      const riscv_nmsis_nn_status status = riscv_vector_sum_s8(
+          data->kernel_sums, filter_dims.n, data->output_depth, filter_data,
+          input_offset, filter_offset,
+          bias == nullptr ? nullptr : tflite::GetTensorData<int32_t>(bias));
+      TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
 
-        // Do not request a scratch buffer since using persistent memory
-        buf_size = 0;
-      }
-#endif
+      // Kernel sums remain available to the software FC implementation.
+      buf_size = 0;
     }
+#endif
   }
 
   if (buf_size > 0) {
@@ -277,9 +255,6 @@ TfLiteStatus EvalQuantizedInt8(TfLiteContext* context, TfLiteNode* node,
                                const TfLiteEvalTensor* filter,
                                const TfLiteEvalTensor* bias,
                                TfLiteEvalTensor* output) {
-  const RuntimeShape output_shape = tflite::micro::GetTensorShape(output);
-  const int output_dim_count = output_shape.DimensionsCount();
-
   nmsis_nn_per_tensor_quant_params per_tensor_quant_params;
   nmsis_nn_dims input_dims;
   nmsis_nn_dims filter_dims;
@@ -293,86 +268,42 @@ TfLiteStatus EvalQuantizedInt8(TfLiteContext* context, TfLiteNode* node,
   const int32_t* bias_data =
       tflite::micro::GetOptionalTensorData<int32_t>(bias);
 
-  if (output_dim_count > 2 && data.accum_depth % 4 == 0) {
-    nmsis_nn_conv_params conv_params;
-    conv_params.dilation.h = 1;
-    conv_params.dilation.w = 1;
-    conv_params.input_offset = -data.reference_op_data.input_zero_point;
-    conv_params.output_offset = data.reference_op_data.output_zero_point;
-    conv_params.stride.h = 1;
-    conv_params.stride.w = 1;
-    conv_params.padding.h = 0;
-    conv_params.padding.w = 0;
-    conv_params.activation.min = data.reference_op_data.output_activation_min;
-    conv_params.activation.max = data.reference_op_data.output_activation_max;
+  nmsis_nn_fc_params fc_params;
+  fc_params.input_offset = -data.reference_op_data.input_zero_point;
+  fc_params.filter_offset = -data.reference_op_data.filter_zero_point;
+  fc_params.output_offset = data.reference_op_data.output_zero_point;
+  fc_params.activation.min = data.reference_op_data.output_activation_min;
+  fc_params.activation.max = data.reference_op_data.output_activation_max;
 
-    nmsis_nn_per_channel_quant_params per_channel_quant_params;
-    if (data.reference_op_data.is_per_channel) {
-      per_channel_quant_params.multiplier =
-          data.reference_op_data.per_channel_output_multiplier;
-      per_channel_quant_params.shift =
-          data.reference_op_data.per_channel_output_shift;
-    } else {
-      TFLITE_DCHECK_GE(data.buffer_conv_1x1_idx, 4);
-      per_channel_quant_params.multiplier = static_cast<int32_t*>(
-          context->GetScratchBuffer(context, data.buffer_conv_1x1_idx));
-      per_channel_quant_params.shift =
-          per_channel_quant_params.multiplier + data.output_depth;
+  nmsis_nn_quant_params quant_params;
+  quant_params.is_per_channel = data.reference_op_data.is_per_channel;
 
-      for (int i = 0; i < data.output_depth; i++) {
-        per_channel_quant_params.multiplier[i] =
-            per_tensor_quant_params.multiplier;
-        per_channel_quant_params.shift[i] = per_tensor_quant_params.shift;
-      }
-    }
-
-    TF_LITE_ENSURE_EQ(
-        context,
-        riscv_convolve_1x1_s8_fast_acc(
-            &ctx, &conv_params, &per_channel_quant_params, &input_dims,
-            tflite::micro::GetTensorData<int8_t>(input), &filter_dims,
-            tflite::micro::GetTensorData<int8_t>(filter), &bias_dims, bias_data,
-            &output_dims, tflite::micro::GetTensorData<int8_t>(output)),
-        RISCV_NMSIS_NN_SUCCESS);
+  if (quant_params.is_per_channel) {
+    quant_params.multiplier =
+        data.reference_op_data.per_channel_output_multiplier;
+    quant_params.shift = data.reference_op_data.per_channel_output_shift;
   } else {
-    nmsis_nn_fc_params fc_params;
-    fc_params.input_offset = -data.reference_op_data.input_zero_point;
-    fc_params.filter_offset = -data.reference_op_data.filter_zero_point;
-    fc_params.output_offset = data.reference_op_data.output_zero_point;
-    fc_params.activation.min = data.reference_op_data.output_activation_min;
-    fc_params.activation.max = data.reference_op_data.output_activation_max;
-
-    nmsis_nn_quant_params quant_params;
-    quant_params.is_per_channel = data.reference_op_data.is_per_channel;
-
-    if (quant_params.is_per_channel) {
-      quant_params.multiplier =
-          data.reference_op_data.per_channel_output_multiplier;
-      quant_params.shift = data.reference_op_data.per_channel_output_shift;
-    } else {
-      quant_params.multiplier = &per_tensor_quant_params.multiplier;
-      quant_params.shift = &per_tensor_quant_params.shift;
-    }
-
-    if (data.kernel_sums != nullptr) {
-      ctx.buf = data.kernel_sums;
-    } else if (ctx.buf != nullptr) {
-      // If behaving like batch matmul we calculate kernel sums in eval.
-      riscv_vector_sum_s8(
-          static_cast<int32_t*>(ctx.buf), filter_dims.n, data.output_depth,
-          tflite::micro::GetTensorData<int8_t>(filter), fc_params.input_offset,
-          fc_params.filter_offset, bias_data);
-    }
-
-    TF_LITE_ENSURE_EQ(
-        context,
-        riscv_fully_connected_wrapper_s8_acc(
-            &ctx, &fc_params, &quant_params, &input_dims,
-            tflite::micro::GetTensorData<int8_t>(input), &filter_dims,
-            tflite::micro::GetTensorData<int8_t>(filter), &bias_dims, bias_data,
-            &output_dims, tflite::micro::GetTensorData<int8_t>(output)),
-        RISCV_NMSIS_NN_SUCCESS);
+    quant_params.multiplier = &per_tensor_quant_params.multiplier;
+    quant_params.shift = &per_tensor_quant_params.shift;
   }
+
+  if (data.kernel_sums != nullptr) {
+    ctx.buf = data.kernel_sums;
+  } else if (ctx.buf != nullptr) {
+    const riscv_nmsis_nn_status status = riscv_vector_sum_s8(
+        static_cast<int32_t*>(ctx.buf), filter_dims.n, data.output_depth,
+        tflite::micro::GetTensorData<int8_t>(filter), fc_params.input_offset,
+        fc_params.filter_offset, bias_data);
+    TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
+  }
+
+  const riscv_nmsis_nn_status status =
+      riscv_fully_connected_wrapper_s8_acc(
+          &ctx, &fc_params, &quant_params, &input_dims,
+          tflite::micro::GetTensorData<int8_t>(input), &filter_dims,
+          tflite::micro::GetTensorData<int8_t>(filter), &bias_dims, bias_data,
+          &output_dims, tflite::micro::GetTensorData<int8_t>(output));
+  TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
   return kTfLiteOk;
 }
 

@@ -131,6 +131,7 @@ module axi_linear_block_dma #(
 
     wire rd_ar_hs = m_axi_arvalid && m_axi_arready;
     wire rd_r_hs  = m_axi_rvalid && m_axi_rready;
+    wire rd_r_last_hs = rd_r_hs && m_axi_rlast;
     wire wr_aw_hs = m_axi_awvalid && m_axi_awready;
     wire wr_w_hs  = m_axi_wvalid && m_axi_wready;
     wire wr_b_hs  = m_axi_bvalid && m_axi_bready;
@@ -218,8 +219,8 @@ module axi_linear_block_dma #(
     end
     wire rd_rsp_emit = !rd_rsp_cross || (rd_rsp_beat_cnt != '0);
 
-    assign rd_rsp_done = rd_r_hs
-                    && ((rd_rsp_beat_cnt == rd_rsp_aligned_last_beat) || m_axi_rlast);
+    // A physical burst may end within one logical row at a page boundary.
+    assign rd_rsp_done = rd_r_hs && (rd_rsp_beat_cnt == rd_rsp_aligned_last_beat);
 
     wire last_rd_rsp = rd_rsp_done && (rd_rsp_row_cnt == (rd_cfg_rows - row_count_t'(1)));
     assign rd_finish_beat = rd_active && last_rd_rsp;
@@ -270,21 +271,36 @@ module axi_linear_block_dma #(
     logic rd_arvalid_r;
     logic [REG_WIDTH-1:0] rd_araddr_r;
     logic [7:0] rd_arlen_r;
-    wire rd_first_ar_valid = rd_accept_start && (row_count_t'(rd_rows_to_read) != '0);
+    logic [REG_WIDTH-1:0] rd_follow_addr;
+    beat_count_t rd_follow_beats;
+    function automatic beat_count_t read_segment_beats(
+        input logic [REG_WIDTH-1:0] address, input beat_count_t remaining);
+        logic [12:0] page_beats;
+        beat_count_t result;
+        begin
+            page_beats = (13'd4096 - {1'b0,address[11:0]}) >> ADDR_LSB;
+            result = remaining > 9'd256 ? 9'd256 : remaining;
+            if (13'(result) > page_beats) result = beat_count_t'(page_beats);
+            return result;
+        end
+    endfunction
     wire [REG_WIDTH-1:0] rd_first_ar_addr =
         {rd_base_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}};
-    wire [7:0] rd_first_ar_len = (rd_linear_read_mode ? 8'd0 : rd_burst_len_m1)
-        + ((rd_base_addr[ADDR_LSB-1:0] != '0) ? 8'd1 : 8'd0);
+    wire [BEAT_CNT_W-1:0] rd_first_beats = beat_count_t'(1)
+        + (rd_linear_read_mode ? beat_count_t'(0) : beat_count_t'(rd_burst_len_m1))
+        + beat_count_t'(rd_base_addr[ADDR_LSB-1:0] != '0);
+    wire [BEAT_CNT_W-1:0] rd_first_segment = read_segment_beats(rd_first_ar_addr,rd_first_beats);
     assign m_axi_arvalid = rd_arvalid_r;
     assign m_axi_araddr = rd_araddr_r;
     assign m_axi_arlen = rd_arlen_r;
-    wire rd_first_ar_hs = 1'b0; // first AR is registered to break response-to-request timing
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             rd_arvalid_r   <= 1'b0;
             rd_araddr_r    <= '0;
             rd_arlen_r     <= '0;
+            rd_follow_addr <= '0;
+            rd_follow_beats <= '0;
             rd_cmd_row_cnt  <= '0;
             rd_cmd_row_addr <= '0;
             rd_outstanding_cnt <= '0;
@@ -293,17 +309,19 @@ module axi_linear_block_dma #(
             // Prepare the first registered AR together with the command.
             // The handshake still occurs after configuration is captured;
             // all following rows retain the normal outstanding accounting.
-            rd_arvalid_r   <= (row_count_t'(rd_rows_to_read) != '0) && !rd_first_ar_hs;
-            rd_araddr_r    <= {rd_base_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}};
-            rd_arlen_r     <= (rd_linear_read_mode ? 8'd0 : rd_burst_len_m1)
-                              + ((rd_base_addr[ADDR_LSB-1:0] != '0) ? 8'd1 : 8'd0);
+            rd_arvalid_r   <= (row_count_t'(rd_rows_to_read) != '0);
+            rd_araddr_r    <= rd_first_ar_addr;
+            rd_arlen_r     <= 8'(rd_first_segment - beat_count_t'(1));
+            rd_follow_addr <= rd_first_ar_addr + (REG_WIDTH'(rd_first_segment) << ADDR_LSB);
+            rd_follow_beats <= rd_first_beats - rd_first_segment;
             rd_cmd_row_cnt  <= (row_count_t'(rd_rows_to_read) != '0) ? row_count_t'(1) : '0;
             rd_cmd_row_addr <= rd_base_addr + rd_row_stride;
-            rd_outstanding_cnt <= rd_first_ar_hs ? RD_OUTS_W'(1) : '0;
+            rd_outstanding_cnt <= '0;
             rd_pending_cmd_cross <= (rd_base_addr[ADDR_LSB-1:0] != '0);
         end else if (rd_active) begin
             if (rd_finish_beat) begin
                 rd_arvalid_r   <= 1'b0;
+                rd_follow_beats <= '0;
                 rd_outstanding_cnt <= '0;
                 rd_pending_cmd_cross <= 1'b0;
             end else begin
@@ -314,22 +332,31 @@ module axi_linear_block_dma #(
                              (rd_unaligned_mode
                                 ? (rd_outstanding_cnt == '0)
                                 : (rd_outstanding_cnt < RD_OUTS_W'(RD_OUTS_MAX))) &&
-                             (rd_cmd_row_cnt < rd_cfg_rows)) begin
+                             ((rd_follow_beats != '0) || (rd_cmd_row_cnt < rd_cfg_rows))) begin
                     logic [ADDR_LSB-1:0] cmd_offset_cur;
+                    logic [REG_WIDTH-1:0] cmd_addr;
+                    beat_count_t cmd_beats, segment_beats;
 
                     cmd_offset_cur = rd_cmd_row_addr[ADDR_LSB-1:0];
+                    cmd_addr = (rd_follow_beats != '0) ? rd_follow_addr :
+                        {rd_cmd_row_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}};
+                    cmd_beats = (rd_follow_beats != '0) ? rd_follow_beats :
+                        beat_count_t'(1) + (rd_cfg_linear_read ? beat_count_t'(0) :
+                        beat_count_t'(rd_cfg_burst_len_m1)) + beat_count_t'(cmd_offset_cur != '0);
+                    segment_beats = read_segment_beats(cmd_addr,cmd_beats);
                     rd_arvalid_r <= 1'b1;
-                    rd_araddr_r  <= rd_unaligned_mode
-                                   ? {rd_cmd_row_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
-                                   : rd_cmd_row_addr;
-                    rd_arlen_r   <= (rd_cfg_linear_read ? 8'd0 : rd_cfg_burst_len_m1)
-                                   + ((rd_unaligned_mode && (cmd_offset_cur != '0)) ? 8'd1 : 8'd0);
-                    rd_cmd_row_cnt <= rd_cmd_row_cnt + row_count_t'(1);
-                    rd_cmd_row_addr <= rd_cmd_row_addr + rd_cfg_row_stride;
-                    rd_pending_cmd_cross <= rd_unaligned_mode && (cmd_offset_cur != '0);
+                    rd_araddr_r <= cmd_addr;
+                    rd_arlen_r <= 8'(segment_beats - beat_count_t'(1));
+                    rd_follow_addr <= cmd_addr + (REG_WIDTH'(segment_beats) << ADDR_LSB);
+                    rd_follow_beats <= cmd_beats - segment_beats;
+                    if (rd_follow_beats == '0) begin
+                        rd_cmd_row_cnt <= rd_cmd_row_cnt + row_count_t'(1);
+                        rd_cmd_row_addr <= rd_cmd_row_addr + rd_cfg_row_stride;
+                    end
+                    rd_pending_cmd_cross <= (rd_follow_beats == '0) && (cmd_offset_cur != '0);
                 end
 
-                unique case ({rd_ar_hs, rd_rsp_done})
+                unique case ({rd_ar_hs, rd_r_last_hs})
                     2'b10: rd_outstanding_cnt <= rd_outstanding_cnt + 1'b1;
                     2'b01: rd_outstanding_cnt <= rd_outstanding_cnt - 1'b1;
                     default: rd_outstanding_cnt <= rd_outstanding_cnt;
@@ -338,6 +365,7 @@ module axi_linear_block_dma #(
             end
         end else begin
             rd_arvalid_r   <= 1'b0;
+            rd_follow_beats <= '0;
             rd_cmd_row_cnt  <= '0;
             rd_cmd_row_addr <= '0;
             rd_outstanding_cnt <= '0;
@@ -364,9 +392,9 @@ module axi_linear_block_dma #(
                 rd_trace_ar_count <= rd_trace_ar_count + 1'b1;
                 if (rd_unaligned_mode) rd_trace_unaligned_ar_count <= rd_trace_unaligned_ar_count + 1'b1;
                 if (rd_pending_cmd_cross) rd_trace_cross_ar_count <= rd_trace_cross_ar_count + 1'b1;
-                if (!rd_rsp_done && ((rd_outstanding_cnt + 1'b1) > rd_trace_max_outs)) begin
+                if (!rd_r_last_hs && ((rd_outstanding_cnt + 1'b1) > rd_trace_max_outs)) begin
                     rd_trace_max_outs <= rd_outstanding_cnt + 1'b1;
-                end else if (rd_rsp_done && (rd_outstanding_cnt > rd_trace_max_outs)) begin
+                end else if (rd_r_last_hs && (rd_outstanding_cnt > rd_trace_max_outs)) begin
                     rd_trace_max_outs <= rd_outstanding_cnt;
                 end
             end

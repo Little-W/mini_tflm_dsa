@@ -360,4 +360,4 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
 
 /* Shared explicit Conv MMIO protocol for both existing driver frontends. */
 #include "dsa_conv_impl.h"
-#include "dsa_dw_pool_impl.h"
+#include "dsa_vector_impl.h"

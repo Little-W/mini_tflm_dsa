@@ -23,9 +23,9 @@ set include_dirs [list \
 
 set design_sources [list \
     [file join $npu_root conv 00_conv_im2col_pkg.sv] \
-    [file join $npu_root conv 01_dw_pool_pkg.sv] \
-    [file join $npu_root conv dw_pool_pe.sv] \
-    [file join $npu_root conv dw_pool_engine.sv] \
+    [file join $npu_root conv 01_vector_engine_pkg.sv] \
+    [file join $npu_root conv vector_pe.sv] \
+    [file join $npu_root conv vector_engine.sv] \
     [file join $npu_root conv conv_axi_read_guard.sv] \
     [file join $npu_root conv conv_axi_read_mux.sv] \
     [file join $npu_root conv conv_axi_span_reader.sv] \
@@ -44,6 +44,7 @@ set design_sources [list \
     [file join $soc_root axi_top npu_axil_top.sv] \
     [file join $npu_compute_root accumulator_array.sv] \
     [file join $npu_dma_root axi_block_dma_arbiter.sv] \
+    [file join $npu_dma_root axi_write_page_guard.sv] \
     [file join $npu_dma_root axi_dual_block_dma.sv] \
     [file join $npu_dma_root axi_linear_block_dma.sv] \
     [file join $npu_loaders_root bias_loader.sv] \

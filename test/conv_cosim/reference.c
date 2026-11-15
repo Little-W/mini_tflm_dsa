@@ -2,8 +2,18 @@
 #include <stdint.h>
 #include <limits.h>
 #include "riscv_nnsupportfunctions.h"
-/* Independent direct NHWC/OHWI convolution; all rounding comes from the
- * unmodified repository NMSIS scalar helper. No accelerator or im2col calls. */
+/* Direct NHWC/OHWI convolution and signed quotient/remainder RNE. */
+static int64_t reference_rne(int64_t numerator, int shift)
+{
+    int64_t denominator = INT64_C(1) << shift;
+    int64_t q = numerator / denominator;
+    int64_t r = numerator % denominator;
+    int64_t magnitude = r < 0 ? -r : r;
+    if (magnitude > denominator - magnitude ||
+        (magnitude == denominator - magnitude && q % 2 != 0))
+        q += numerator < 0 ? -1 : 1;
+    return q;
+}
 int cosim_reference(const int8_t *input, const int8_t *filter,
                     const int32_t *bias, const int32_t *mult, const int32_t *shift,
                     const nmsis_nn_dims *in, const nmsis_nn_dims *f,
@@ -26,8 +36,7 @@ int cosim_reference(const int8_t *input, const int8_t *filter,
             }
         }
         if(sum<INT32_MIN||sum>INT32_MAX)return 1;
-        if(shift[oc]>0 && (sum*((int64_t)1<<shift[oc])<INT32_MIN || sum*((int64_t)1<<shift[oc])>INT32_MAX))return 2;
-        int32_t value=riscv_nn_requantize((int32_t)sum,mult[oc],shift[oc])+p->output_offset;
+        int64_t value=reference_rne(sum*mult[oc],31-shift[oc])+p->output_offset;
         if(value<p->activation.min)value=p->activation.min;
         if(value>p->activation.max)value=p->activation.max;
         result[((b*out->h+y)*out->w+x)*out->c+oc]=(int8_t)value;

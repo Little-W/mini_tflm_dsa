@@ -310,14 +310,14 @@ TfLiteStatus EvalQuantizedPerChannel(TfLiteContext* context, TfLiteNode* node,
 
   // riscv_convolve_wrapper_[type] dispatches the optimized kernel accordingly
   // with the parameters passed
-  TFLITE_DCHECK_EQ(
+  const riscv_nmsis_nn_status status =
       convolve_wrapper(
           &ctx, &conv_params, &quant_params, &input_dims,
           tflite::micro::GetTensorData<ActType>(input), &filter_dims,
           tflite::micro::GetTensorData<int8_t>(filter), &bias_dims,
           tflite::micro::GetOptionalTensorData<BiasType>(bias), &output_dims,
-          tflite::micro::GetTensorData<ActType>(output), type),
-      RISCV_NMSIS_NN_SUCCESS);
+          tflite::micro::GetTensorData<ActType>(output), type);
+  TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
 
   return kTfLiteOk;
 }

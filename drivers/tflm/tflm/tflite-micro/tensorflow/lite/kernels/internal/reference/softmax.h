@@ -129,8 +129,8 @@ inline void Softmax(const SoftmaxParams& params,
             FixedPointScaledDiff::FromRaw(input_diff_rescaled);
 
         FixedPoint0 exp_in_0 = exp_on_negative_values(scaled_diff_f8);
-        int32_t unsat_output = gemmlowp::RoundingDivideByPOT(
-            (shifted_scale * exp_in_0).raw(), exponent);
+        int32_t unsat_output = static_cast<int32_t>(gemmlowp::RoundingDivideByPOTInt64(
+            static_cast<int64_t>(shifted_scale.raw()) * exp_in_0.raw(), 31 + exponent));
 
         const int32_t shifted_output =
             unsat_output +

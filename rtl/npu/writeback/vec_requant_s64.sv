@@ -25,15 +25,33 @@ module vec_requant_s64 #(
     logic [4:0] valid_pipe;
     logic [4:0] tile_done_pipe;
 
+  function automatic logic signed [63:0] round_shift_even(
+      input logic signed [63:0] value, input integer amount);
+    logic signed [63:0] quotient;
+    logic [63:0] remainder, mask, half;
+    begin
+      if (amount <= 0) begin
+        round_shift_even = value;
+      end else if (amount > 63) begin
+        round_shift_even = 64'sd0;
+      end else begin
+        quotient = value >>> amount;
+        mask = 64'hffffffffffffffff >> (64 - amount);
+        remainder = $unsigned(value) & mask;
+        half = 64'd1 << (amount - 1);
+        round_shift_even = quotient + 64'((remainder > half) ||
+            ((remainder == half) && quotient[0]));
+      end
+    end
+  endfunction
+
     function automatic logic signed [31:0] reduce_multiplier(
         input logic signed [31:0] multiplier
     );
+        logic signed [63:0] reduced;
         begin
-            if (multiplier < 32'sh7fff0000) begin
-                reduce_multiplier = (multiplier + 32'sd32768) >>> 16;
-            end else begin
-                reduce_multiplier = 32'sh00007fff;
-            end
+            reduced = round_shift_even({{32{multiplier[31]}}, multiplier}, 16);
+            reduce_multiplier = (reduced > 64'sd32767) ? 32'sd32767 : reduced[31:0];
         end
     endfunction
 
@@ -63,12 +81,12 @@ module vec_requant_s64 #(
         logic signed [31:0] shift_s0;
         (* use_dsp = "yes" *) logic signed [63:0] product_s1;
         logic signed [31:0] shift_s1;
-        logic signed [31:0] shifted_s2;
-        logic signed [31:0] rounded_s3;
+        logic signed [63:0] rounded_s2;
+        logic signed [63:0] rounded_s3;
         integer right_shift_i;
 
         always_comb begin
-            right_shift_i = 14 - shift_s1;
+            right_shift_i = 15 - shift_s1;
             if (right_shift_i < 0) begin
                 right_shift_i = 0;
             end else if (right_shift_i > 63) begin
@@ -83,7 +101,7 @@ module vec_requant_s64 #(
                 shift_s0 <= '0;
                 product_s1 <= '0;
                 shift_s1 <= '0;
-                shifted_s2 <= '0;
+                rounded_s2 <= '0;
                 rounded_s3 <= '0;
                 out_vec_s16[lane] <= '0;
             end else begin
@@ -94,8 +112,8 @@ module vec_requant_s64 #(
                 end
                 product_s1 <= acc_s0 * multiplier_s0;
                 shift_s1 <= shift_s0;
-                shifted_s2 <= product_s1 >>> right_shift_i;
-                rounded_s3 <= (shifted_s2 + 32'sd1) >>> 1;
+                rounded_s2 <= round_shift_even(product_s1, right_shift_i);
+                rounded_s3 <= rounded_s2;
 
                 if (valid_pipe[3]) begin
                     if (rounded_s3 < activation_min_r) begin

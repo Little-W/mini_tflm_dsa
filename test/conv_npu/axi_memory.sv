@@ -8,6 +8,7 @@ module conv_test_axi_memory #(
 ) (
     input logic clk, rst_n, new_job,
     input logic protect_input, inject_error,
+    input logic inject_write_error=1'b0,
     input logic [31:0] input_lo, input_hi,
     input logic [31:0] other_lo[4],other_hi[4],
     output logic error_injected,
@@ -59,13 +60,12 @@ module conv_test_axi_memory #(
     assign arready=rst_n && count<QUEUE_DEPTH && (!random_wait || random_state[0]);
     assign awready=rst_n && !wr_active && !bvalid && (!random_wait || random_state[3]);
     assign wready=rst_n && wr_active && (!random_wait || random_state[7]);
-    assign bresp=2'b00;
 
     always @(posedge clk) begin
         if(!rst_n)begin
             for(int i=0;i<65536;i++)input_hist[i]=0;
             wp<=0;rp<=0;count<=0;rd_active<=0;wr_active<=0;
-            rvalid<=0;rlast<=0;rdata<=0;rresp<=0;bvalid<=0;
+            rvalid<=0;rlast<=0;rdata<=0;rresp<=0;bvalid<=0;bresp<=0;
             read_bytes<=0;input_read_bytes<=0;read_requests<=0;write_bytes<=0;
             error_injected<=0;random_state<=32'h12345678;
         end else begin
@@ -107,7 +107,7 @@ module conv_test_axi_memory #(
                     end
                 end
                 qa[wp]<=araddr;qn[wp]<={1'b0,arlen}+9'd1;qs[wp]<=arsize;qe[wp]<=0;
-                if(input_access && inject_error && !error_injected)begin
+                if((input_access || !protect_input) && inject_error && !error_injected)begin
                     qe[wp]<=2'b10;error_injected<=1;
                 end
                 wp<=wp==QUEUE_DEPTH-1?0:wp+1;
@@ -131,13 +131,17 @@ module conv_test_axi_memory #(
             if(awvalid && awready)begin
                 assert(awsize<=2 && awburst==2'b01) else $fatal(1,"unsupported AXI write");
                 assert(64'(awaddr)+((64'(awlen)+1)<<awsize)<=64'(WORDS)*4) else $fatal(1,"write out of range");
+                assert((64'(awaddr)&4095)+((64'(awlen)+1)<<awsize)<=4096) else $fatal(1,"AXI write crosses 4 KiB");
                 wr_active<=1;wr_addr<=awaddr;wr_left<={1'b0,awlen}+9'd1;wr_size<=awsize;
             end
             if(wvalid && wready)begin
                 assert(wlast==(wr_left==1)) else $fatal(1,"bad WLAST");
                 for(int i=0;i<4;i++)if(wstrb[i])mem[int'(wr_addr>>2)][i*8+:8]<=wdata[i*8+:8];
                 write_bytes<=write_bytes+64'($countones(wstrb));
-                if(wr_left==1)begin wr_active<=0;bvalid<=1;end
+                if(wr_left==1)begin
+                    wr_active<=0;bvalid<=1;bresp<=0;
+                    if(inject_write_error && !error_injected)begin bresp<=2'b10;error_injected<=1;end
+                end
                 else begin wr_left<=wr_left-1;wr_addr<=(wr_addr&~((32'd1<<wr_size)-1))+(32'd1<<wr_size);end
             end
             if(bvalid && bready)bvalid<=0;

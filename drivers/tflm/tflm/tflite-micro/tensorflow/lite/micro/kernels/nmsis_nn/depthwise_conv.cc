@@ -37,6 +37,7 @@ struct OpData {
 
   // Index to buffer for optimizations if applicable.
   int buffer_idx;
+  int32_t buffer_size;
 };
 
 // Always inline for optimal code size.
@@ -60,6 +61,8 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TFLITE_DCHECK(node->builtin_data != nullptr);
 
   OpData* data = static_cast<OpData*>(node->user_data);
+  data->buffer_idx = -1;
+  data->buffer_size = 0;
   const auto& params =
       *(reinterpret_cast<TfLiteDepthwiseConvParams*>(node->builtin_data));
 
@@ -147,7 +150,6 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
 
     const int batch_size = MatchingDim(input_shape, 0, output_shape, 0);
     const int output_depth = MatchingDim(output_shape, 3, filter_shape, 3);
-    TFLITE_DCHECK_EQ(batch_size, 1); /* Only batch = 1 is supported */
 
     nmsis_nn_dims input_dims;
     input_dims.n = batch_size;
@@ -195,6 +197,8 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
       return kTfLiteError;
     }
 
+    TF_LITE_ENSURE(context, buf_size >= 0);
+    data->buffer_size = buf_size;
     if (buf_size > 0) {
       TF_LITE_ENSURE_STATUS(context->RequestScratchBufferInArena(
           context, buf_size, &data->buffer_idx));
@@ -273,7 +277,7 @@ inline void PopulateDwConvParams(
   output_dims->c = output_depth;
 }
 
-void EvalQuantizedPerChannel(TfLiteContext* context, TfLiteNode* node,
+TfLiteStatus EvalQuantizedPerChannel(TfLiteContext* context, TfLiteNode* node,
                              const TfLiteDepthwiseConvParams& params,
                              const OpData& data, const TfLiteEvalTensor* input,
                              const TfLiteEvalTensor* filter,
@@ -292,21 +296,21 @@ void EvalQuantizedPerChannel(TfLiteContext* context, TfLiteNode* node,
 
   nmsis_nn_context ctx;
   ctx.buf = nullptr;
-  /* 'size' is unused */
-  ctx.size = 0;
+  ctx.size = data.buffer_size;
 
   if (data.buffer_idx > -1) {
     ctx.buf = context->GetScratchBuffer(context, data.buffer_idx);
   }
 
-  TFLITE_DCHECK_EQ(
+  const riscv_nmsis_nn_status status =
       riscv_depthwise_conv_wrapper_s8_acc(
           &ctx, &dw_conv_params, &quant_params, &input_dims,
           tflite::micro::GetTensorData<int8_t>(input), &filter_dims,
           tflite::micro::GetTensorData<int8_t>(filter), &bias_dims,
           tflite::micro::GetOptionalTensorData<int32_t>(bias), &output_dims,
-          tflite::micro::GetTensorData<int8_t>(output)),
-      RISCV_NMSIS_NN_SUCCESS);
+          tflite::micro::GetTensorData<int8_t>(output));
+  TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
+  return kTfLiteOk;
 }
 
 void EvalQuantizedPerChannelInt4(TfLiteContext* context, TfLiteNode* node,
@@ -329,8 +333,7 @@ void EvalQuantizedPerChannelInt4(TfLiteContext* context, TfLiteNode* node,
 
   nmsis_nn_context ctx;
   ctx.buf = nullptr;
-  /* 'size' is unused */
-  ctx.size = 0;
+  ctx.size = data.buffer_size;
 
   if (data.buffer_idx > -1) {
     ctx.buf = context->GetScratchBuffer(context, data.buffer_idx);
@@ -415,9 +418,8 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
     case kTfLiteInt8:
       switch (filter->type) {
         case kTfLiteInt8: {
-          EvalQuantizedPerChannel(context, node, params, data, input, filter,
-                                  bias, output);
-          break;
+          return EvalQuantizedPerChannel(context, node, params, data, input,
+                                          filter, bias, output);
         }
         case kTfLiteInt4: {
           EvalQuantizedPerChannelInt4(context, node, params, data, input,
@@ -462,9 +464,8 @@ TfLiteStatus EvalInt8(TfLiteContext* context, TfLiteNode* node) {
           ? tflite::micro::GetEvalInput(context, node, kDepthwiseConvBiasTensor)
           : nullptr;
 
-  EvalQuantizedPerChannel(context, node, params, data, input, filter, bias,
-                          output);
-  return kTfLiteOk;
+  return EvalQuantizedPerChannel(context, node, params, data, input, filter,
+                                  bias, output);
 }
 
 TfLiteStatus EvalInt16x8(TfLiteContext* context, TfLiteNode* node) {

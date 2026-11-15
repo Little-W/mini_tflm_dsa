@@ -70,8 +70,12 @@ inline bool AveragePool(const PoolParams& params,
           }
           if (filter_count == 0) return false;
           // Round to the closest integer value.
-          acc = acc > 0 ? (acc + filter_count / 2) / filter_count
-                        : (acc - filter_count / 2) / filter_count;
+          const int quotient = acc / filter_count;
+          const int remainder = acc % filter_count;
+          const int magnitude = remainder < 0 ? -remainder : remainder;
+          const bool increment = magnitude > filter_count - magnitude ||
+              (magnitude == filter_count - magnitude && (quotient % 2));
+          acc = quotient + (acc < 0 ? -static_cast<int>(increment) : static_cast<int>(increment));
           acc = std::max(acc, params.quantized_activation_min);
           acc = std::min(acc, params.quantized_activation_max);
           output_data[Offset(output_shape, batch, out_y, out_x, channel)] =
@@ -188,8 +192,12 @@ inline bool AveragePool(const PoolParams& params,
           }
           if (filter_count == 0) return false;
           // Round to the closest integer value.
-          acc = acc > 0 ? (acc + filter_count / 2) / filter_count
-                        : (acc - filter_count / 2) / filter_count;
+          const int quotient = acc / filter_count;
+          const int remainder = acc % filter_count;
+          const int magnitude = remainder < 0 ? -remainder : remainder;
+          const bool increment = magnitude > filter_count - magnitude ||
+              (magnitude == filter_count - magnitude && (quotient % 2));
+          acc = quotient + (acc < 0 ? -static_cast<int>(increment) : static_cast<int>(increment));
           acc = std::max(acc, params.quantized_activation_min);
           acc = std::min(acc, params.quantized_activation_max);
           output_data[Offset(output_shape, batch, out_y, out_x, channel)] =

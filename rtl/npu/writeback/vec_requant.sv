@@ -191,6 +191,26 @@ module vec_requant_tensor_ws #(
     output logic signed [ 7:0] out_vec_s8[VLEN]
 );
 
+  function automatic logic signed [63:0] round_shift_even(
+      input logic signed [63:0] value, input integer amount);
+    logic signed [63:0] quotient;
+    logic [63:0] remainder, mask, half;
+    begin
+      if (amount <= 0) begin
+        round_shift_even = value;
+      end else if (amount > 63) begin
+        round_shift_even = 64'sd0;
+      end else begin
+        quotient = value >>> amount;
+        mask = 64'hffffffffffffffff >> (64 - amount);
+        remainder = $unsigned(value) & mask;
+        half = 64'd1 << (amount - 1);
+        round_shift_even = quotient + 64'((remainder > half) ||
+            ((remainder == half) && quotient[0]));
+      end
+    end
+  endfunction
+
   localparam int VLEN_SHIFT = $clog2(VLEN);
   localparam int VLEN_CNT_W = (VLEN <= 1) ? 1 : $clog2(VLEN + 1);
   localparam int TILE_CNT_W = (REG_WIDTH < 16) ? REG_WIDTH : 16;
@@ -270,8 +290,6 @@ module vec_requant_tensor_ws #(
   logic [5:0]         rshift_s3;
   logic [5:0]         rshift_s4;
   logic [5:0]         rshift_s5;
-  logic [5:0]         rshift_s6;
-  logic [5:0]         rshift_s7;
 
   assign load_quant_req       = 1'b0;
   assign dma_start            = 1'b0;
@@ -466,8 +484,6 @@ module vec_requant_tensor_ws #(
       rshift_s3 <= 6'd0;
       rshift_s4 <= 6'd0;
       rshift_s5 <= 6'd0;
-      rshift_s6 <= 6'd0;
-      rshift_s7 <= 6'd0;
     end else begin
       mult_s0   <= pt_multiplier_r;
       mult_s1   <= mult_s0;
@@ -483,8 +499,6 @@ module vec_requant_tensor_ws #(
       rshift_s3 <= rshift_s2;
       rshift_s4 <= rshift_s3;
       rshift_s5 <= rshift_s4;
-      rshift_s6 <= rshift_s5;
-      rshift_s7 <= rshift_s6;
     end
   end
 
@@ -497,19 +511,12 @@ module vec_requant_tensor_ws #(
       logic signed [63:0] prod_s3;
       logic signed [63:0] prod_s4;
       logic signed [63:0] prod_s5;
-      logic signed [63:0] prod_shifted_s6;
-      logic signed [31:0] high_s7;
-      logic signed [31:0] shifted_next_s7;
-      logic signed [31:0] remainder_next_s7;
-      logic signed [31:0] threshold_next_s7;
-      logic               has_rshift_next_s7;
-      logic signed [31:0] shifted_s8;
-      logic signed [31:0] remainder_s8;
-      logic signed [31:0] threshold_s8;
-      logic               has_rshift_s8;
-      logic signed [31:0] shifted_s9;
-      logic               round_up_s9;
-      logic signed [31:0] rounded_s10;
+      logic signed [63:0] product_s6;
+      integer round_shift_s6;
+      logic signed [63:0] rounded_s7;
+      logic signed [63:0] rounded_s8;
+      logic signed [63:0] rounded_s9;
+      logic signed [63:0] rounded_s10;
       logic               lane_en_s0;
       logic               lane_en_s1;
       logic               lane_en_s2;
@@ -521,27 +528,6 @@ module vec_requant_tensor_ws #(
       logic               lane_en_s8;
       logic               lane_en_s9;
       logic               lane_en_s10;
-
-      always_comb begin
-        logic [4:0]         rshift_amt;
-        logic signed [31:0] mask;
-
-        rshift_amt = 5'd0;
-        mask = 32'sd0;
-        if (rshift_s7 == 6'd0) begin
-          shifted_next_s7    = high_s7;
-          remainder_next_s7  = 32'sd0;
-          threshold_next_s7  = 32'sd0;
-          has_rshift_next_s7 = 1'b0;
-        end else begin
-          rshift_amt = (rshift_s7 > 6'd31) ? 5'd31 : rshift_s7[4:0];
-          mask       = (32'sd1 <<< rshift_amt) - 32'sd1;
-          shifted_next_s7    = high_s7 >>> rshift_amt;
-          remainder_next_s7  = high_s7 & mask;
-          threshold_next_s7  = (mask >>> 1) + (high_s7[31] ? 32'sd1 : 32'sd0);
-          has_rshift_next_s7 = 1'b1;
-        end
-      end
 
       always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -607,15 +593,12 @@ module vec_requant_tensor_ws #(
           prod_s3 <= prod_s2;
           prod_s4 <= prod_s3;
           prod_s5 <= prod_s4;
-          prod_shifted_s6 <= prod_s5 <<< lshift_s5;
-          high_s7 <= 32'((prod_shifted_s6 + (64'sd1 <<< 30)) >>> 31);
-          shifted_s8 <= shifted_next_s7;
-          remainder_s8 <= remainder_next_s7;
-          threshold_s8 <= threshold_next_s7;
-          has_rshift_s8 <= has_rshift_next_s7;
-          shifted_s9 <= shifted_s8;
-          round_up_s9 <= has_rshift_s8 && (remainder_s8 > threshold_s8);
-          rounded_s10 <= shifted_s9 + dst_offset_r + (round_up_s9 ? 32'sd1 : 32'sd0);
+          product_s6 <= prod_s5;
+          round_shift_s6 <= 31 + integer'(rshift_s5) - integer'(lshift_s5);
+          rounded_s7 <= round_shift_even(product_s6, round_shift_s6);
+          rounded_s8 <= rounded_s7;
+          rounded_s9 <= rounded_s8;
+          rounded_s10 <= rounded_s9 + {{32{dst_offset_r[31]}}, dst_offset_r};
         end
       end
     end
@@ -680,6 +663,26 @@ module vec_requant_full #(
   // ----------------------------
   // 常量与类型
   // ----------------------------
+  function automatic logic signed [63:0] round_shift_even(
+      input logic signed [63:0] value, input integer amount);
+    logic signed [63:0] quotient;
+    logic [63:0] remainder, mask, half;
+    begin
+      if (amount <= 0) begin
+        round_shift_even = value;
+      end else if (amount > 63) begin
+        round_shift_even = 64'sd0;
+      end else begin
+        quotient = value >>> amount;
+        mask = 64'hffffffffffffffff >> (64 - amount);
+        remainder = $unsigned(value) & mask;
+        half = 64'd1 << (amount - 1);
+        round_shift_even = quotient + 64'((remainder > half) ||
+            ((remainder == half) && quotient[0]));
+      end
+    end
+  endfunction
+
   localparam int BYTES_PER_WORD = REG_WIDTH / 8;  // 32位=4
   localparam int QBUF_DEPTH     = VLEN * MAX_IA_REUSE;
   localparam int QBUF_IDX_W     = (QBUF_DEPTH <= 1) ? 1 : $clog2(QBUF_DEPTH);
@@ -1477,30 +1480,17 @@ module vec_requant_full #(
     logic [5:0]         rshift_s5;
     logic               lane_en_s5;
 
-    logic signed [63:0] prod_shifted_s6;
-    logic [5:0]         rshift_s6;
-    logic               lane_en_s6;
-
-    logic signed [31:0] high_s7;
-    logic [5:0]         rshift_s7;
-    logic               lane_en_s7;
-
-    logic signed [31:0] shifted_next_s7;
-    logic signed [31:0] remainder_next_s7;
-    logic signed [31:0] threshold_next_s7;
-    logic               has_rshift_next_s7;
-    logic signed [31:0] shifted_s8;
-    logic signed [31:0] remainder_s8;
-    logic signed [31:0] threshold_s8;
-    logic               has_rshift_s8;
-    logic               lane_en_s8;
-
-    logic signed [31:0] shifted_s9;
-    logic               round_up_s9;
-    logic               lane_en_s9;
-
-    logic signed [31:0] rounded_s10;
-    logic               lane_en_s10;
+    logic signed [63:0] product_s6;
+    integer round_shift_s6;
+    logic lane_en_s6;
+    logic signed [63:0] rounded_s7;
+    logic lane_en_s7;
+    logic signed [63:0] rounded_s8;
+    logic lane_en_s8;
+    logic signed [63:0] rounded_s9;
+    logic lane_en_s9;
+    logic signed [63:0] rounded_s10;
+    logic lane_en_s10;
 
     always_comb begin
       if (cfg_per_channel_eff) begin
@@ -1517,27 +1507,6 @@ module vec_requant_full #(
       end
       quant_multiplier_lane[j] = mult_sel;
       quant_shift_lane[j] = shift_sel_raw;
-    end
-
-    always_comb begin
-      logic [4:0]         rshift_amt;
-      logic signed [31:0] mask;
-
-      rshift_amt = 5'd0;
-      mask       = 32'sd0;
-      if (rshift_s7 == 6'd0) begin
-        shifted_next_s7    = high_s7;
-        remainder_next_s7  = 32'sd0;
-        threshold_next_s7  = 32'sd0;
-        has_rshift_next_s7 = 1'b0;
-      end else begin
-        rshift_amt = (rshift_s7 > 6'd31) ? 5'd31 : rshift_s7[4:0];
-        mask       = (32'sd1 <<< rshift_amt) - 32'sd1;
-        shifted_next_s7    = high_s7 >>> rshift_amt;
-        remainder_next_s7  = high_s7 & mask;
-        threshold_next_s7  = (mask >>> 1) + (high_s7[31] ? 32'sd1 : 32'sd0);
-        has_rshift_next_s7 = 1'b1;
-      end
     end
 
     always_ff @(posedge clk) begin
@@ -1624,21 +1593,12 @@ module vec_requant_full #(
         lshift_s5 <= lshift_s4;
         rshift_s5 <= rshift_s4;
 
-        prod_shifted_s6 <= prod_s5 <<< lshift_s5;
-        rshift_s6 <= rshift_s5;
-
-        high_s7   <= 32'((prod_shifted_s6 + (64'sd1 <<< 30)) >>> 31);
-        rshift_s7 <= rshift_s6;
-
-        shifted_s8    <= shifted_next_s7;
-        remainder_s8  <= remainder_next_s7;
-        threshold_s8  <= threshold_next_s7;
-        has_rshift_s8 <= has_rshift_next_s7;
-
-        shifted_s9 <= shifted_s8;
-        round_up_s9 <= has_rshift_s8 && (remainder_s8 > threshold_s8);
-
-        rounded_s10 <= shifted_s9 + dst_offset_r + (round_up_s9 ? 32'sd1 : 32'sd0);
+        product_s6 <= prod_s5;
+        round_shift_s6 <= 31 + integer'(rshift_s5) - integer'(lshift_s5);
+        rounded_s7 <= round_shift_even(product_s6, round_shift_s6);
+        rounded_s8 <= rounded_s7;
+        rounded_s9 <= rounded_s8;
+        rounded_s10 <= rounded_s9 + {{32{dst_offset_r[31]}}, dst_offset_r};
       end
     end
   end

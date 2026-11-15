@@ -486,7 +486,8 @@ module axi_block_dma_arbiter #(
     assign idle = !rd_dma_busy && !wr_dma_busy && !rd_dma_start_q &&
                   !rd_dma_start && !wr_dma_start;
     assign bus_error = (m_axi_rvalid && m_axi_rready && m_axi_rresp[1]) ||
-                       (m_axi_bvalid && m_axi_bready && m_axi_bresp[1]);
+                       (m_axi_bvalid && m_axi_bready && m_axi_bresp[1]) ||
+                       (rd_dma_done && dma_rd_error) || (wr_dma_done && dma_wr_error);
     logic rd_dma_linear_read_mode_q;
     logic rd_dma_im2col_q;
     logic [31:0] rd_dma_p0_q, rd_dma_q0_q, rd_dma_group_q;

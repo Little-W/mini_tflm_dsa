@@ -48,7 +48,7 @@
 | 5 | `NPU_CTRL_CFG_16X8` | 使用 INT16 输入、INT8 权重和 INT16 输出 |
 | 6 | `NPU_CTRL_CONV` | 使用普通 Conv 模式 |
 | 7 | `NPU_CTRL_CONV_BYPASS` | 输入窗口缓存旁路 |
-| 8 | `NPU_CTRL_DW_POOL` | 使用 DW、池化或向量模式，与 bit 6 互斥 |
+| 8 | `NPU_CTRL_VECTOR_ENGINE` | 使用 VCE 执行 DW、池化、Add 或基础向量运算，与 bit 6 互斥 |
 
 ## STATUS 位定义
 
@@ -135,7 +135,7 @@ NMSIS 公共入口在任何软件 im2col 或 scratch 检查之前分发，CPU �
 仅循环配置命令。所有受支持路径都不读取激活/权重、不展开窗口，也不执行 Conv MAC。
 CPU 只检查量化和 bias 数组，以保守数值界排除可能溢出的配置。
 
-当前软件范围：NHWC s8、OHWI s8、s32 bias/累加、逐通道双舍入、s8 输出，
+当前软件范围：NHWC s8、OHWI s8、s32 bias/累加、逐通道最近偶数舍入、s8 输出，
 矩形卷积核、stride、dilation、padding、batch 与通道组；几何字段不超过 65535，
 归约长度不超过 65535，所有张量与参数落在 32 位地址空间，量化/bias 地址按 4 字节对齐。
 标准 NMSIS 的 `filter_dims.n` 不参与命令计算（TFLM 此处通常置 1）。
@@ -152,40 +152,41 @@ CPU 只检查量化和 bias 数组，以保守数值界排除可能溢出的配�
 验证入口与证据分类见 `test/conv_driver/README.md`。寄存器/CPU 路径测试与实际
 RTL 端到端输出对比是两项独立验证，不能用前者替代后者。
 
-## DW、池化与向量扩展
+## VCE 扩展
 
-`CTRL[8]=1` 选择 `dw_pool_engine`。操作由 `DW_POOL_OP` 指定，图像几何复用
-Conv 寄存器，输入、权重、输出、bias、multiplier 和 shift 复用公共地址寄存器。
-输入基地址同时写入 `LHS_BASE` 和 `CONV_INPUT_BASE`。
-DW 采用 `[Kh, Kw, C]` 权重、NHWC 输入输出和逐通道量化；每条命令处理一个 batch。
-向量模式使用 `LHS_BASE`、`RHS_BASE` 和 `DST_BASE`，长度由专用寄存器给出。
+`CTRL[8]=1` 选择 `vector_engine`。图像几何复用 Conv 寄存器，
+输入、权重、输出及逐通道量化参数复用公共地址寄存器。
+向量和 Add 使用 `LHS_BASE`、`RHS_BASE`、`DST_BASE` 与 `NPU_REG_VECTOR_LENGTH`。
 
-| Byte offset | Word offset | Name | Access | 字段 |
-|---:|---:|---|---|---|
-| `0x0b0` | `0x02c` | `DW_POOL_OP` | RW | bits 3:0 为操作，bit 8 为 s16 向量输入 |
-| `0x0b4` | `0x02d` | `DW_POOL_LENGTH` | RW | 向量元素数，大于 0 |
-| `0x0b8` | `0x02e` | `DW_POOL_CAPS` | RO | 能力、PE 数量、最大窗口面积和扩展版本 |
-| `0x0bc` | `0x02f` | `DW_POOL_CYCLES` | RO | 本次引擎任务周期 |
-| `0x0c0` | `0x030` | `DW_POOL_COMPUTE` | RO | PE 执行周期 |
-| `0x0c4` | `0x031` | `DW_POOL_DMA_WAIT` | RO | 读取、窗口返回、写回及相关等待周期 |
+| 字节偏移 | C 标识符 | 访问 | 字段 |
+|---:|---|---|---|
+| `0x0b0` | `NPU_REG_VECTOR_OP` | RW | bits 3:0 操作，bit 8 表示 INT16 输入 |
+| `0x0b4` | `NPU_REG_VECTOR_LENGTH` | RW | 向量元素数 |
+| `0x0b8` | `NPU_REG_VECTOR_CAPS` | RO | 能力、PE 数、DW 核面积上限和版本 |
+| `0x0bc` | `NPU_REG_VECTOR_CYCLES` | RO | 本次引擎周期 |
+| `0x0c0` | `NPU_REG_VECTOR_COMPUTE` | RO | 运算状态周期 |
+| `0x0c4` | `NPU_REG_VECTOR_DMA_WAIT` | RO | DMA 及相关等待周期 |
+| `0x0c8` | `NPU_REG_POOL_MAX_TAPS` | RO | 池化窗口上限 256 |
+| `0x0cc` | `NPU_REG_VECTOR_ADD_INPUT1_MULT` | RW | 输入 1 的 Q31 系数 |
+| `0x0d0` | `NPU_REG_VECTOR_ADD_INPUT1_SHIFT` | RW | 输入 1 的指数 |
+| `0x0d4` | `NPU_REG_VECTOR_ADD_INPUT2_MULT` | RW | 输入 2 的 Q31 系数 |
+| `0x0d8` | `NPU_REG_VECTOR_ADD_INPUT2_SHIFT` | RW | 输入 2 的指数 |
+| `0x0dc` | `NPU_REG_VECTOR_ADD_LEFT_SHIFT` | RW | 两输入的共同左移量 |
 
-操作编码：`0=DW_S8`，`1=AVGPOOL_S8`，`2=MAXPOOL_S8`，`3=MINPOOL_S8`，
-`4=SUM`，`5=MAX`，`6=MIN`，`7=DOT`，`8=HADAMARD`。
-向量输入可为 s8 或 s16；归约结果为一个 s32，Hadamard 输出为 s32 向量。
-图像模式使用 s8 输入输出，`DW_POOL_OP[8]=0`，`CTRL[8]=1`。
+操作编码为 `0=DW_S8`、`1=AVGPOOL_S8`、`2=MAXPOOL_S8`、`3=MINPOOL_S8`、
+`4=SUM`、`5=MAX`、`6=MIN`、`7=DOT`、`8=HADAMARD`、`9=ADD_S8`。
+Add 使用 INT8 输入输出，`OP[8]=0`。输入 offset 分别使用公共 `LHS_ZP` 和 `RHS_ZP`，
+输出 offset、multiplier、shift 和激活范围同样复用公共字段。
 
-`DW_POOL_CAPS` 的 bits 0/1/2/3 分别表示 DW s8、池化 s8、向量 s8、向量 s16；
-bits 15:8 为 PE 数量，bits 23:16 为最大窗口面积，bits 31:24 为版本 1。
-默认 8 PE、49 个窗口位置返回 `0x0131080f`；4 PE 返回 `0x0131040f`。
-设备不支持该扩展时返回 0。软件先检查设备 ID、配置 ABI 2 和扩展版本，再启动任务。
-统计寄存器在引擎接受 START 时清零。顶层拒绝的双模式命令不启动引擎，统计值
-保留为上一次引擎任务的结果。
+`CAPS[3:0]` 表示 DW、池化、INT8 向量和 INT16 向量能力，`CAPS[4]` 表示设备提供池化窗口上限寄存器，
+`CAPS[5]` 表示 Add。bits 15:8 为 PE 数，bits 23:16 为 DW 核面积上限 49，
+bits 31:24 为版本 1。8 PE 返回 `0x0131083f`，4 PE 返回 `0x0131043f`。
+能力不可用时返回 0。
 
-任务期间配置寄存器不接受更新。完成、中断和 DONE 写 1 清除沿用公共状态接口。
-配置无效时报告错误码 `01`；DMA 响应异常或读取后的量化参数无效时报告 `10`。
-同一任务同时设置 Conv 与 DW 模式将被拒绝。错误完成前，已提交的 DMA 事务会结束。
+配置在任务启动时保存，运行期间不能修改。完成、中断和 DONE 写 1 清除沿用公共接口。
+描述符无效返回错误码 `01`，DMA 响应错误或装载后的量化数组无效返回 `10`。
+同时选择 Conv 与 VCE 时，顶层拒绝任务。
+已提交的 DMA 事务完成后才报告错误，超时后由平台确认设备停止再使用相关缓冲区。
 
-`dsa_dw_pool_validate()` 不访问 MMIO 或张量内存；`dsa_dw_pool_execute()` 完成
-检查、配置和等待。`DSA_DW_POOL_TIMEOUT` 表示状态寄存器轮询次数，默认继承
-`DSA_MATMUL_TIMEOUT`。超时返回时设备仍可能执行，缓冲区再次使用前应由平台确认
-设备停止或完成复位。支持范围和完整测试结果见 [DW 引擎说明](../docs/dw_pool_engine.md)。
+`dsa_vector_validate()` 在提交前检查描述符，`dsa_vector_execute()` 完成能力查询、
+寄存器写入和完成等待。完整描述见 [VCE 设计说明](../docs/vector_engine.md)。

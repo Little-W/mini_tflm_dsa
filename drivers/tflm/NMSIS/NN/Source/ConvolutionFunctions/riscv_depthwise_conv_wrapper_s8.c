@@ -60,9 +60,9 @@ riscv_nmsis_nn_status riscv_depthwise_conv_wrapper_s8(const nmsis_nn_context *ct
                                                   const nmsis_nn_dims *output_dims,
                                                   int8_t *output)
 {
-#if DSA_NN_DW_POOL_ENABLE
+#if DSA_NN_VECTOR_ENABLE
     riscv_nmsis_nn_status dsa_status;
-    if (riscv_depthwise_conv_s8_try_dsa(dw_conv_params, quant_params,
+    if (riscv_depthwise_conv_s8_try_dsa(ctx, dw_conv_params, quant_params,
             input_dims, input, filter_dims, filter, bias, output_dims,
             output, &dsa_status)) return dsa_status;
 #endif

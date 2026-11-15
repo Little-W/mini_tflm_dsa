@@ -6,7 +6,10 @@ module npu_axil_reg_if #(
     parameter bit CONV_IS_CAPABLE = 1'b0,
     parameter bit DW_POOL_CAPABLE = 1'b0,
     parameter int unsigned DW_PE_COUNT = 8,
-    parameter int unsigned DW_MAX_TAPS = 49
+    parameter bit VECTOR_ENGINE_CAPABLE = DW_POOL_CAPABLE,
+    parameter int unsigned VECTOR_PE_COUNT = DW_PE_COUNT,
+    parameter int unsigned DW_MAX_TAPS = 49,
+    parameter int unsigned POOL_MAX_TAPS = 256
 ) (
     input  wire                         clk,
     input  wire                         rst_n,
@@ -33,13 +36,18 @@ module npu_axil_reg_if #(
 
     output logic                        calc_start,
     output logic                        cfg_conv_enable,
-    output logic                        cfg_dw_enable,
-    output logic [3:0]                  cfg_dw_op,
-    output logic                        cfg_dw_vector_s16,
-    output logic [31:0]                 cfg_dw_length,
-    input logic [31:0] dw_stat_cycles = '0,
-    input logic [31:0] dw_stat_compute = '0,
-    input logic [31:0] dw_stat_dma_wait = '0,
+    output logic                        cfg_vector_enable,
+    output logic [3:0]                  cfg_vector_op,
+    output logic                        cfg_vector_s16,
+    output logic [31:0]                 cfg_vector_length,
+    output logic signed [31:0]          cfg_add_input1_multiplier,
+    output logic signed [31:0]          cfg_add_input1_shift,
+    output logic signed [31:0]          cfg_add_input2_multiplier,
+    output logic signed [31:0]          cfg_add_input2_shift,
+    output logic signed [31:0]          cfg_add_left_shift,
+    input logic [31:0] vector_stat_cycles = '0,
+    input logic [31:0] vector_stat_compute = '0,
+    input logic [31:0] vector_stat_dma_wait = '0,
     output conv_im2col_pkg::conv_cfg_t    cfg_conv,
     input logic [31:0] conv_stat_hits = '0,
     input logic [31:0] conv_stat_misses = '0,
@@ -114,12 +122,18 @@ module npu_axil_reg_if #(
     localparam logic [11:0] REG_COL_GROUPS = 12'h01a; // 0x068
     localparam logic [11:0] REG_COL_TAIL_TILES = 12'h01b; // 0x06c
     localparam logic [11:0] REG_CONFIG_ABI = 12'h01c; // 0x070, read-only
-    localparam logic [11:0] REG_DW_OP = 12'h02c;
-    localparam logic [11:0] REG_DW_LENGTH = 12'h02d;
-    localparam logic [11:0] REG_DW_CAPS = 12'h02e;
-    localparam logic [11:0] REG_DW_CYCLES = 12'h02f;
-    localparam logic [11:0] REG_DW_COMPUTE = 12'h030;
-    localparam logic [11:0] REG_DW_DMA_WAIT = 12'h031;
+    localparam logic [11:0] REG_VECTOR_OP = 12'h02c;
+    localparam logic [11:0] REG_VECTOR_LENGTH = 12'h02d;
+    localparam logic [11:0] REG_VECTOR_CAPS = 12'h02e;
+    localparam logic [11:0] REG_VECTOR_CYCLES = 12'h02f;
+    localparam logic [11:0] REG_VECTOR_COMPUTE = 12'h030;
+    localparam logic [11:0] REG_VECTOR_DMA_WAIT = 12'h031;
+    localparam logic [11:0] REG_POOL_MAX_TAPS = 12'h032; // 0x0c8, read-only
+    localparam logic [11:0] REG_ADD_INPUT1_MULT = 12'h033; // 0x0cc
+    localparam logic [11:0] REG_ADD_INPUT1_SHIFT = 12'h034; // 0x0d0
+    localparam logic [11:0] REG_ADD_INPUT2_MULT = 12'h035; // 0x0d4
+    localparam logic [11:0] REG_ADD_INPUT2_SHIFT = 12'h036; // 0x0d8
+    localparam logic [11:0] REG_ADD_LEFT_SHIFT = 12'h037; // 0x0dc
     localparam logic [11:0] REG_ID           = 12'h03f; // 0x0fc
     localparam logic [REG_WIDTH-1:0] NPU_ID  = 32'h4e50_5531;
 
@@ -190,17 +204,23 @@ module npu_axil_reg_if #(
         read_data_next = '0;
         case (rd_word_addr)
             REG_CTRL: begin
-                read_data_next[8] = cfg_dw_enable;
+                read_data_next[8] = cfg_vector_enable;
                 read_data_next[7:1] = {cfg_conv.bypass_cache, cfg_conv_enable, cfg_16x8, irq_enable, cfg_dataflow_mode,
                                        use_per_channel, cfg_16bits_ia};
             end
-            REG_DW_OP: read_data_next = {23'b0, cfg_dw_vector_s16, 4'b0, cfg_dw_op};
-            REG_DW_LENGTH: read_data_next = cfg_dw_length;
-            REG_DW_CAPS: read_data_next = DW_POOL_CAPABLE ?
-                {8'd1, 8'(DW_MAX_TAPS), 8'(DW_PE_COUNT), 8'h0f} : 32'd0;
-            REG_DW_CYCLES: read_data_next = dw_stat_cycles;
-            REG_DW_COMPUTE: read_data_next = dw_stat_compute;
-            REG_DW_DMA_WAIT: read_data_next = dw_stat_dma_wait;
+            REG_VECTOR_OP: read_data_next = {23'b0, cfg_vector_s16, 4'b0, cfg_vector_op};
+            REG_VECTOR_LENGTH: read_data_next = cfg_vector_length;
+            REG_VECTOR_CAPS: read_data_next = VECTOR_ENGINE_CAPABLE ?
+                {8'd1, 8'(DW_MAX_TAPS), 8'(VECTOR_PE_COUNT), 8'h3f} : 32'd0;
+            REG_VECTOR_CYCLES: read_data_next = vector_stat_cycles;
+            REG_VECTOR_COMPUTE: read_data_next = vector_stat_compute;
+            REG_VECTOR_DMA_WAIT: read_data_next = vector_stat_dma_wait;
+            REG_POOL_MAX_TAPS: read_data_next = VECTOR_ENGINE_CAPABLE ? 32'(POOL_MAX_TAPS) : 32'd0;
+            REG_ADD_INPUT1_MULT: read_data_next = cfg_add_input1_multiplier;
+            REG_ADD_INPUT1_SHIFT: read_data_next = cfg_add_input1_shift;
+            REG_ADD_INPUT2_MULT: read_data_next = cfg_add_input2_multiplier;
+            REG_ADD_INPUT2_SHIFT: read_data_next = cfg_add_input2_shift;
+            REG_ADD_LEFT_SHIFT: read_data_next = cfg_add_left_shift;
             REG_STATUS:       read_data_next[7:0] = status_bits[7:0];
             REG_WB_DATA:      read_data_next = last_done_data;
             REG_LHS_BASE:     read_data_next = lhs_base;
@@ -280,10 +300,15 @@ module npu_axil_reg_if #(
             act_max             <= '0;
             cfg_16bits_ia       <= 1'b0;
             cfg_conv_enable     <= 1'b0;
-            cfg_dw_enable       <= 1'b0;
-            cfg_dw_op           <= '0;
-            cfg_dw_vector_s16   <= 1'b0;
-            cfg_dw_length       <= '0;
+            cfg_vector_enable       <= 1'b0;
+            cfg_vector_op           <= '0;
+            cfg_vector_s16   <= 1'b0;
+            cfg_vector_length       <= '0;
+            cfg_add_input1_multiplier <= '0;
+            cfg_add_input1_shift <= '0;
+            cfg_add_input2_multiplier <= '0;
+            cfg_add_input2_shift <= '0;
+            cfg_add_left_shift <= '0;
             cfg_conv            <= '0;
             last_err_code       <= '0;
             cfg_16x8            <= 1'b0;
@@ -332,7 +357,7 @@ module npu_axil_reg_if #(
                     bresp_q <= 2'b10;
                 end else case (wr_word_addr)
                     REG_CTRL: begin
-                        if (wr_strb[1]) cfg_dw_enable <= wr_data[8];
+                        if (wr_strb[1]) cfg_vector_enable <= wr_data[8];
                         if (wr_strb[0]) begin
                             cfg_16bits_ia     <= wr_data[1];
                             use_per_channel   <= wr_data[2];
@@ -349,11 +374,16 @@ module npu_axil_reg_if #(
                             end
                         end
                     end
-                    REG_DW_OP: begin
-                        if (wr_strb[0]) cfg_dw_op <= wr_data[3:0];
-                        if (wr_strb[1]) cfg_dw_vector_s16 <= wr_data[8];
+                    REG_VECTOR_OP: begin
+                        if (wr_strb[0]) cfg_vector_op <= wr_data[3:0];
+                        if (wr_strb[1]) cfg_vector_s16 <= wr_data[8];
                     end
-                    REG_DW_LENGTH: cfg_dw_length <= apply_wstrb(cfg_dw_length, wr_data, wr_strb);
+                    REG_VECTOR_LENGTH: cfg_vector_length <= apply_wstrb(cfg_vector_length, wr_data, wr_strb);
+                    REG_ADD_INPUT1_MULT: cfg_add_input1_multiplier <= apply_wstrb(cfg_add_input1_multiplier, wr_data, wr_strb);
+                    REG_ADD_INPUT1_SHIFT: cfg_add_input1_shift <= apply_wstrb(cfg_add_input1_shift, wr_data, wr_strb);
+                    REG_ADD_INPUT2_MULT: cfg_add_input2_multiplier <= apply_wstrb(cfg_add_input2_multiplier, wr_data, wr_strb);
+                    REG_ADD_INPUT2_SHIFT: cfg_add_input2_shift <= apply_wstrb(cfg_add_input2_shift, wr_data, wr_strb);
+                    REG_ADD_LEFT_SHIFT: cfg_add_left_shift <= apply_wstrb(cfg_add_left_shift, wr_data, wr_strb);
                     REG_STATUS: begin
                         if (wr_strb[0]) begin
                             if (wr_data[2]) begin

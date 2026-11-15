@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "dsa_conv.h"
+#include "dsa_vector.h"
 #include "dsa_dw_pool.h"
 
 /* ========== AXI-Lite MMIO 基地址 ========== */
