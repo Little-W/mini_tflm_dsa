@@ -1,7 +1,9 @@
 module npu_axil_reg_if #(
     parameter int unsigned AXIL_DATA_WIDTH = 32,
     parameter int unsigned AXIL_ADDR_WIDTH = 16,
-    parameter int unsigned REG_WIDTH       = 32
+    parameter int unsigned REG_WIDTH       = 32,
+    parameter bit CONV_CAPABLE = 1'b1,
+    parameter bit CONV_IS_CAPABLE = 1'b0
 ) (
     input  wire                         clk,
     input  wire                         rst_n,
@@ -27,6 +29,12 @@ module npu_axil_reg_if #(
     input  wire                         s_axil_rready,
 
     output logic                        calc_start,
+    output logic                        cfg_conv_enable,
+    output conv_im2col_pkg::conv_cfg_t    cfg_conv,
+    input logic [31:0] conv_stat_hits = '0,
+    input logic [31:0] conv_stat_misses = '0,
+    input logic [31:0] conv_stat_read_bytes = '0,
+    input logic [31:0] conv_stat_cycles = '0,
     output logic                        cfg_16bits_ia,
     output logic                        cfg_16x8,
     output logic                        cfg_dataflow_mode,
@@ -105,6 +113,7 @@ module npu_axil_reg_if #(
     logic [STRB_WIDTH-1:0]      wstrb_q;
     logic                       wvalid_q;
     logic                       bvalid_q;
+    logic [1:0] bresp_q;
     logic [AXIL_DATA_WIDTH-1:0] rdata_q;
     logic                       rvalid_q;
 
@@ -112,6 +121,7 @@ module npu_axil_reg_if #(
     logic                       irq_enable;
     logic                       done_sticky;
     logic                       npu_busy_q;
+    logic [1:0] last_err_code;
 
     wire aw_accept = s_axil_awvalid && s_axil_awready;
     wire w_accept  = s_axil_wvalid  && s_axil_wready;
@@ -124,13 +134,13 @@ module npu_axil_reg_if #(
 
     wire [11:0] wr_word_addr = wr_addr[13:2];
     wire [11:0] rd_word_addr = s_axil_araddr[13:2];
-    wire ctrl_start_commit = write_commit && (wr_word_addr == REG_CTRL) && wr_strb[0] && wr_data[0];
+    wire ctrl_start_commit = write_commit && !npu_busy_q && npu_sa_ready && (wr_word_addr == REG_CTRL) && wr_strb[0] && wr_data[0];
 
     logic [AXIL_DATA_WIDTH-1:0] read_data_next;
 
     assign s_axil_awready = !awvalid_q && !bvalid_q;
     assign s_axil_wready  = !wvalid_q && !bvalid_q;
-    assign s_axil_bresp   = 2'b00;
+    assign s_axil_bresp   = bresp_q;
     assign s_axil_bvalid  = bvalid_q;
 
     assign s_axil_arready = !rvalid_q;
@@ -141,7 +151,7 @@ module npu_axil_reg_if #(
     assign npu_done_ready = 1'b1;
     assign npu_busy = npu_busy_q;
     assign irq = done_sticky && irq_enable;
-    assign status_bits = {26'b0, 1'b1, npu_err_code,
+    assign status_bits = {26'b0, 1'b1, last_err_code,
                           done_sticky, npu_busy_q, npu_sa_ready};
 
     function automatic [REG_WIDTH-1:0] apply_wstrb(
@@ -164,7 +174,7 @@ module npu_axil_reg_if #(
         read_data_next = '0;
         case (rd_word_addr)
             REG_CTRL: begin
-                read_data_next[5:1] = {cfg_16x8, irq_enable, cfg_dataflow_mode,
+                read_data_next[7:1] = {cfg_conv.bypass_cache, cfg_conv_enable, cfg_16x8, irq_enable, cfg_dataflow_mode,
                                        use_per_channel, cfg_16bits_ia};
             end
             REG_STATUS:       read_data_next[7:0] = status_bits[7:0];
@@ -194,6 +204,22 @@ module npu_axil_reg_if #(
             REG_COL_GROUPS: read_data_next = cfg_col_groups;
             REG_COL_TAIL_TILES: read_data_next = cfg_col_tail_tiles;
             REG_CONFIG_ABI: read_data_next = 32'd2;
+            12'h01d: read_data_next = cfg_conv.input_base;
+            12'h01e: read_data_next = {cfg_conv.input_w, cfg_conv.input_h};
+            12'h01f: read_data_next = {cfg_conv.group_c, cfg_conv.input_c};
+            12'h020: read_data_next = {16'b0, cfg_conv.group_offset};
+            12'h021: read_data_next = {cfg_conv.kernel_w, cfg_conv.kernel_h};
+            12'h022: read_data_next = {cfg_conv.output_w, cfg_conv.output_h};
+            12'h023: read_data_next = {cfg_conv.stride_w, cfg_conv.stride_h};
+            12'h024: read_data_next = {cfg_conv.dilation_w, cfg_conv.dilation_h};
+            12'h025: read_data_next = {cfg_conv.pad_left, cfg_conv.pad_top};
+            12'h026: read_data_next = {{16{cfg_conv.input_offset[15]}}, cfg_conv.input_offset};
+            12'h027: read_data_next = CONV_CAPABLE ?
+                (32'h0001_0003 | (CONV_IS_CAPABLE ? 32'h0000_0004 : 32'b0)) : 32'b0;
+            12'h028: read_data_next = conv_stat_hits;
+            12'h029: read_data_next = conv_stat_misses;
+            12'h02a: read_data_next = conv_stat_read_bytes;
+            12'h02b: read_data_next = conv_stat_cycles;
             REG_ID:           read_data_next = NPU_ID;
             default: begin
             end
@@ -208,6 +234,7 @@ module npu_axil_reg_if #(
             wstrb_q             <= '0;
             wvalid_q            <= 1'b0;
             bvalid_q            <= 1'b0;
+            bresp_q             <= 2'b00;
             rdata_q             <= '0;
             rvalid_q            <= 1'b0;
             lhs_base            <= '0;
@@ -228,6 +255,9 @@ module npu_axil_reg_if #(
             act_min             <= '0;
             act_max             <= '0;
             cfg_16bits_ia       <= 1'b0;
+            cfg_conv_enable     <= 1'b0;
+            cfg_conv            <= '0;
+            last_err_code       <= '0;
             cfg_16x8            <= 1'b0;
             cfg_dataflow_mode   <= 1'b0;
             use_per_channel     <= 1'b0;
@@ -265,7 +295,14 @@ module npu_axil_reg_if #(
                 wvalid_q  <= 1'b0;
                 bvalid_q  <= 1'b1;
 
-                case (wr_word_addr)
+                // Reject configuration changes and duplicate starts while a
+                // task is active. STATUS W1C remains available during execution.
+                bresp_q <= 2'b00;
+                if (npu_busy_q && wr_word_addr != REG_STATUS) begin
+                    bresp_q <= 2'b10;
+                end else if (wr_word_addr == REG_CTRL && wr_strb[0] && wr_data[0] && !npu_sa_ready) begin
+                    bresp_q <= 2'b10;
+                end else case (wr_word_addr)
                     REG_CTRL: begin
                         if (wr_strb[0]) begin
                             cfg_16bits_ia     <= wr_data[1];
@@ -273,9 +310,13 @@ module npu_axil_reg_if #(
                             cfg_dataflow_mode <= wr_data[3];
                             irq_enable        <= wr_data[4];
                             cfg_16x8           <= wr_data[5];
+                            cfg_conv_enable     <= wr_data[6];
+                            cfg_conv.bypass_cache <= wr_data[7];
                             if (wr_data[0]) begin
                                 calc_start    <= 1'b1;
                                 npu_busy_q    <= 1'b1;
+                                done_sticky   <= 1'b0;
+                                last_err_code <= 2'b00;
                             end
                         end
                     end
@@ -309,6 +350,16 @@ module npu_axil_reg_if #(
                     REG_ROW_TAIL_TILES: cfg_row_tail_tiles <= apply_wstrb(cfg_row_tail_tiles, wr_data, wr_strb);
                     REG_COL_GROUPS: cfg_col_groups <= apply_wstrb(cfg_col_groups, wr_data, wr_strb);
                     REG_COL_TAIL_TILES: cfg_col_tail_tiles <= apply_wstrb(cfg_col_tail_tiles, wr_data, wr_strb);
+                    12'h01d: cfg_conv.input_base <= apply_wstrb(cfg_conv.input_base, wr_data, wr_strb);
+                    12'h01e: {cfg_conv.input_w,cfg_conv.input_h} <= apply_wstrb({cfg_conv.input_w,cfg_conv.input_h}, wr_data, wr_strb);
+                    12'h01f: {cfg_conv.group_c,cfg_conv.input_c} <= apply_wstrb({cfg_conv.group_c,cfg_conv.input_c}, wr_data, wr_strb);
+                    12'h020: cfg_conv.group_offset <= 16'(apply_wstrb({16'b0,cfg_conv.group_offset}, wr_data, wr_strb));
+                    12'h021: {cfg_conv.kernel_w,cfg_conv.kernel_h} <= apply_wstrb({cfg_conv.kernel_w,cfg_conv.kernel_h}, wr_data, wr_strb);
+                    12'h022: {cfg_conv.output_w,cfg_conv.output_h} <= apply_wstrb({cfg_conv.output_w,cfg_conv.output_h}, wr_data, wr_strb);
+                    12'h023: {cfg_conv.stride_w,cfg_conv.stride_h} <= apply_wstrb({cfg_conv.stride_w,cfg_conv.stride_h}, wr_data, wr_strb);
+                    12'h024: {cfg_conv.dilation_w,cfg_conv.dilation_h} <= apply_wstrb({cfg_conv.dilation_w,cfg_conv.dilation_h}, wr_data, wr_strb);
+                    12'h025: {cfg_conv.pad_left,cfg_conv.pad_top} <= apply_wstrb({cfg_conv.pad_left,cfg_conv.pad_top}, wr_data, wr_strb);
+                    12'h026: cfg_conv.input_offset <= 16'(apply_wstrb({{16{cfg_conv.input_offset[15]}},cfg_conv.input_offset}, wr_data, wr_strb));
                     REG_DATAFLOW: begin
                         if (wr_strb[0]) begin
                             cfg_dataflow_mode <= wr_data[0];
@@ -336,6 +387,7 @@ module npu_axil_reg_if #(
                 npu_busy_q    <= 1'b0;
                 done_sticky   <= 1'b1;
                 last_done_data <= {{(REG_WIDTH-2){1'b0}}, npu_err_code};
+                last_err_code <= npu_err_code;
             end
         end
     end

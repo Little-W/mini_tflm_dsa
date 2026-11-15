@@ -1,7 +1,9 @@
 #include "dsa_accel.h"
 #include "gempact_tiling.h"
 
+#ifndef DSA_MATMUL_TIMEOUT
 #define DSA_MATMUL_TIMEOUT 2000000u
+#endif
 
 static uint32_t ceil_div_u32(uint32_t a, uint32_t b) {
     return (b == 0u) ? 0u : ((a + b - 1u) / b);
@@ -38,7 +40,7 @@ static void dsa_memory_barrier(void) {
 #endif
 }
 
-static uint32_t eval_reuse_time(uint32_t x_int, uint32_t y_int,
+static inline uint32_t eval_reuse_time(uint32_t x_int, uint32_t y_int,
                                 uint32_t z_int, uint32_t a,
                                 uint32_t b) {
     uint32_t xyz;
@@ -355,3 +357,6 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
     dsa_memory_barrier();
     return result;
 }
+
+/* Shared explicit Conv MMIO protocol for both existing driver frontends. */
+#include "dsa_conv_impl.h"

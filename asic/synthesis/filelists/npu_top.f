@@ -1,3 +1,14 @@
+../../rtl/npu/conv/00_conv_im2col_pkg.sv
+../../rtl/npu/conv/conv_axi_read_guard.sv
+../../rtl/npu/conv/conv_axi_read_mux.sv
+../../rtl/npu/conv/conv_axi_span_reader.sv
+../../rtl/npu/conv/conv_ia_tile_path.sv
+../../rtl/npu/conv/conv_ia_write_adapter.sv
+../../rtl/npu/conv/conv_im2col_frontend.sv
+../../rtl/npu/conv/conv_next_use_predictor.sv
+../../rtl/npu/conv/conv_read_cache.sv
+../../rtl/npu/conv/conv_sdp_ram.sv
+../../rtl/npu/conv/conv_udiv32.sv
 +incdir+../../include
 +incdir+../../rtl
 +incdir+../../rtl/common
@@ -25,6 +36,7 @@
 ../../rtl/npu/buffers/ps_buffer.sv
 ../../rtl/npu/compute/compute_core.sv
 
+../../rtl/npu/dma/axi_linear_block_dma.sv
 ../../rtl/npu/dma/axi_dual_block_dma.sv
 ../../rtl/npu/dma/axi_block_dma_arbiter.sv
 

@@ -24,7 +24,8 @@ module operand_read_cache #(
     output logic [1:0] m_arburst,
     input logic m_rvalid, output logic m_rready,
     input logic [DW-1:0] m_rdata,
-    input logic [1:0] m_rresp, input logic m_rlast
+    input logic [1:0] m_rresp, input logic m_rlast,
+    output logic idle
 );
     localparam int AL=$clog2(A_BYTES), BL=$clog2(B_BYTES), BI=BL-4;
     localparam int QW=$clog2(OUTSTANDING), CW=$clog2(OUTSTANDING+1);
@@ -142,6 +143,11 @@ module operand_read_cache #(
     wire [AW-1:0] hit_next_offset=AW'(beat+8'd1)<<2;
 
     assign m_arvalid=issue_phase && count<OUTSTANDING && !issue_hit && !flush && !flush_pending;
+    // A requested sector can finish before the rest of its wide allocation.
+    // Task retirement must wait for the physical RLAST and metadata commit;
+    // flushing earlier would discard the owner of the remaining R beats.
+    assign idle=rst_n && req_state==RQ_EMPTY && count==0 && !commit_pending &&
+                !flush && !flush_pending && !s_arvalid;
     assign s_arready=(req_state==RQ_EMPTY || push) && !flush && !flush_pending && rst_n;
     assign m_araddr=wide ? fetch64 : req_addr;
     assign m_arlen=wide ? 8'd15 : req_len;

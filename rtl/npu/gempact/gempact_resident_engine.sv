@@ -218,6 +218,7 @@ module gempact_resident_engine #(
  assign rd_start=state==LOAD_A || state==LOAD_B;
  assign wr_start=state==WRITE_START;
  axi_dual_block_dma #(.DATA_WIDTH(8),.SIZE(16),.CACHE_BLOCKS(64),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) u_dma(
+ .conv_cfg_ready(),.conv_error(),.conv_busy(),.conv_stat_hits(),.conv_stat_misses(),.conv_stat_read_bytes(),
  .clk(clk),.rst_n(rst_n),.rd_start(rd_start),.rd_linear_read_mode(1'b0),.rd_base_addr(fetch_b?b_addr:a_addr),
  .rd_row_stride(fetch_b?bstride:astride),.rd_rows_to_read(32'd16),.rd_valid_cols(32'd16),.rd_burst_len_m1(8'd3),
  .rd_slot_id(fetch_b?{5'b0,b_slot}:a_slot),.rd_use_16bits(1'b0),.rd_lhs_zp(32'b0),.rd_busy(rd_busy),.rd_done(rd_done),.rd_finish_beat(),

@@ -1,403 +1,197 @@
-#include <stdio.h>
-#include <string.h>
-
+/* SPDX-License-Identifier: Apache-2.0 */
+#include <limits.h>
+#include <stdint.h>
 #include "dsa_accel.h"
-#include "riscv_nn_mat_mult_acc.h"
 #include "riscv_nnfunctions.h"
-#include "riscv_nnsupportfunctions.h"
 
-#ifndef DSA_CONV_IM2COL_BATCH_ROWS
-#define DSA_CONV_IM2COL_BATCH_ROWS 32
+#ifndef DSA_NN_CONV_ENABLE
+#define DSA_NN_CONV_ENABLE 1
 #endif
 
-/*
- * Basic s8 convolution function with acceleration support, processing im2col in
- * batches of DSA_CONV_IM2COL_BATCH_ROWS rows.
- *
- * Refer header file for details. Optimal use case for the DSP implementation is
- * when input and output channels are multiples of 4 or atleast greater than 4.
- *
+/* Select the shared-DMA Conv dataflow for all NMSIS s8 entry points in this
+ * translation unit: 0 = WS (default), 1 = IS. Unsupported hardware still
+ * falls back before START; this is not a runtime global configuration. */
+#ifndef DSA_NN_CONV_DATAFLOW_MODE
+#define DSA_NN_CONV_DATAFLOW_MODE 0
+#endif
+#if DSA_NN_CONV_DATAFLOW_MODE != 0 && DSA_NN_CONV_DATAFLOW_MODE != 1
+#error "DSA_NN_CONV_DATAFLOW_MODE must be 0 (WS) or 1 (IS)"
+#endif
+
+#if DSA_NN_CONV_ENABLE
+static int nn_conv_dim(int32_t v) { return v > 0 && v <= 65535; }
+static int nn_conv_address(const void *p, uint64_t size)
+{
+    return p && (uintptr_t)p <= UINT32_MAX && size &&
+           (uint64_t)(uintptr_t)p + size <= UINT32_MAX;
+}
+#endif
+
+int riscv_convolve_s8_try_dsa(
+    const nmsis_nn_conv_params *p,
+    const nmsis_nn_per_channel_quant_params *q,
+    const nmsis_nn_dims *in, const int8_t *input,
+    const nmsis_nn_dims *f, const int8_t *filter,
+    const int32_t *bias, const nmsis_nn_dims *upscale,
+    const nmsis_nn_dims *out, int8_t *output,
+    riscv_nmsis_nn_status *status)
+{
+#if !DSA_NN_CONV_ENABLE
+    (void)p; (void)q; (void)in; (void)input; (void)f; (void)filter;
+    (void)bias; (void)upscale; (void)out; (void)output; (void)status;
+    return 0;
+#else
+    uint32_t groups, group_outputs, reduction, batch, group, oc;
+    uint64_t input_batch, output_batch, weights_size, bound;
+    int64_t lo, hi;
+    dsa_conv_s8_config_t c = {0};
+    if (!status) return 0;
+    *status = RISCV_NMSIS_NN_ARG_ERROR;
+    if (!p || !q || !in || !f || !out || !input || !filter || !output ||
+        !q->multiplier || !q->shift) return 1;
+    if (in->h <= 0 || in->w <= 0 || in->c <= 0 ||
+        f->h <= 0 || f->w <= 0 || f->c <= 0 ||
+        out->h <= 0 || out->w <= 0 || out->c <= 0 ||
+        in->n <= 0 || out->n != in->n || f->c > in->c || in->c % f->c ||
+        p->stride.h <= 0 || p->stride.w <= 0 ||
+        p->dilation.h <= 0 || p->dilation.w <= 0 ||
+        p->padding.h < 0 || p->padding.w < 0 ||
+        p->input_offset < -127 || p->input_offset > 128 ||
+        p->output_offset < -128 || p->output_offset > 127 ||
+        p->activation.min < -128 || p->activation.max > 127 ||
+        p->activation.min > p->activation.max) return 1;
+    groups = (uint32_t)in->c / (uint32_t)f->c;
+    if ((uint32_t)out->c % groups) return 1;
+    group_outputs = (uint32_t)out->c / groups;
+    /* Valid NMSIS dimensions beyond the hardware's u16 fields are unsupported,
+     * not malformed: preserve the software fallback contract. */
+    if (!nn_conv_dim(in->h) || !nn_conv_dim(in->w) || !nn_conv_dim(in->c) ||
+        !nn_conv_dim(f->h) || !nn_conv_dim(f->w) || !nn_conv_dim(f->c) ||
+        !nn_conv_dim(out->h) || !nn_conv_dim(out->w) || !nn_conv_dim(out->c) ||
+        !nn_conv_dim(p->stride.h) || !nn_conv_dim(p->stride.w) ||
+        !nn_conv_dim(p->dilation.h) || !nn_conv_dim(p->dilation.w) ||
+        p->padding.h > 65535 || p->padding.w > 65535) return 0;
+    /* Transposed/upscaled convolution is deliberately left to NMSIS. */
+    if (upscale && (upscale->h != 1 || upscale->w != 1)) return 0;
+    if ((uint64_t)f->h * f->w * f->c > 65535u) return 0;
+    reduction = (uint32_t)f->h * (uint32_t)f->w * (uint32_t)f->c;
+    input_batch = (uint64_t)in->h * in->w * in->c;
+    output_batch = (uint64_t)out->h * out->w * out->c;
+    weights_size = (uint64_t)out->c * reduction;
+    /* Bound these before multiplying by batch count (which is signed s32). */
+    if (input_batch > UINT32_MAX || output_batch > UINT32_MAX) return 0;
+    /* Check the entire batch/group sequence before any START. No pointer
+     * truncation and no partially executed layer followed by software retry. */
+    if (!nn_conv_address(input, input_batch * (uint32_t)in->n) ||
+        !nn_conv_address(output, output_batch * (uint32_t)in->n) ||
+        !nn_conv_address(filter, weights_size) ||
+        !nn_conv_address(q->multiplier, (uint64_t)out->c * 4u) ||
+        !nn_conv_address(q->shift, (uint64_t)out->c * 4u) ||
+        (bias && !nn_conv_address(bias, (uint64_t)out->c * 4u))) return 0;
+    c.input_base = (uint32_t)(uintptr_t)input;
+    c.filter_base = (uint32_t)(uintptr_t)filter;
+    c.output_base = (uint32_t)(uintptr_t)output;
+    c.bias_base = (uint32_t)(uintptr_t)bias;
+    c.multiplier_base = (uint32_t)(uintptr_t)q->multiplier;
+    c.shift_base = (uint32_t)(uintptr_t)q->shift;
+    c.input_h = (uint32_t)in->h; c.input_w = (uint32_t)in->w;
+    c.input_c = (uint32_t)in->c; c.group_c = (uint32_t)f->c;
+    c.kernel_h = (uint32_t)f->h; c.kernel_w = (uint32_t)f->w;
+    c.output_h = (uint32_t)out->h; c.output_w = (uint32_t)out->w;
+    c.output_channels = group_outputs; c.dst_row_stride = (uint32_t)out->c;
+    c.stride_h = (uint32_t)p->stride.h; c.stride_w = (uint32_t)p->stride.w;
+    c.dilation_h = (uint32_t)p->dilation.h; c.dilation_w = (uint32_t)p->dilation.w;
+    c.pad_top = (uint32_t)p->padding.h; c.pad_left = (uint32_t)p->padding.w;
+    c.input_offset = p->input_offset; c.output_offset = p->output_offset;
+    c.activation_min = p->activation.min; c.activation_max = p->activation.max;
+    c.dataflow_mode = DSA_NN_CONV_DATAFLOW_MODE;
+    if (dsa_conv_s8_validate(&c) != DSA_SUCCESS) return 0;
+    {
+        const uint32_t required_caps = DSA_CONV_CAP_S8 | DSA_CONV_CAP_NARROW_READ |
+            (DSA_NN_CONV_DATAFLOW_MODE ? DSA_CONV_CAP_IS : 0u);
+        if ((dsa_conv_capabilities() & required_caps) != required_caps) return 0;
+    }
+    /* Only channel parameters are inspected on the CPU; no activation/window
+     * expansion or filter dot product occurs here. This conservative bound
+     * ensures agreement with NMSIS's s32, double-rounding numeric contract. */
+    lo = -128 + p->input_offset; hi = 127 + p->input_offset;
+    if (lo < 0) lo = -lo;
+    if (hi < 0) hi = -hi;
+    bound = (uint64_t)(lo > hi ? lo : hi) * 128u * reduction;
+    for (oc = 0; oc < (uint32_t)out->c; ++oc) {
+        int32_t shift = q->shift[oc];
+        int64_t abs_bias = bias ? bias[oc] : 0;
+        uint64_t channel_bound;
+        if (abs_bias < 0) abs_bias = -abs_bias;
+        if (shift < -31 || shift > 30 || q->multiplier[oc] < 0) return 0;
+        channel_bound = bound + (uint64_t)abs_bias;
+        if (channel_bound > INT32_MAX - 128u ||
+            (shift > 0 && (channel_bound << shift) > INT32_MAX - 128u)) return 0;
+    }
+    for (batch = 0; batch < (uint32_t)in->n; ++batch) {
+        c.input_base = (uint32_t)((uintptr_t)input + batch * input_batch);
+        for (group = 0; group < groups; ++group) {
+            uint32_t first_channel = group * group_outputs;
+            uint32_t result;
+            c.group_offset = group * (uint32_t)f->c;
+            c.filter_base = (uint32_t)((uintptr_t)filter + (uint64_t)first_channel * reduction);
+            c.output_base = (uint32_t)((uintptr_t)output + batch * output_batch + first_channel);
+            c.bias_base = bias ? (uint32_t)((uintptr_t)bias + first_channel * 4u) : 0u;
+            c.multiplier_base = (uint32_t)((uintptr_t)q->multiplier + first_channel * 4u);
+            c.shift_base = (uint32_t)((uintptr_t)q->shift + first_channel * 4u);
+            result = dsa_conv_s8_execute(&c);
+            if (result != DSA_SUCCESS) {
+                *status = RISCV_NMSIS_NN_NO_IMPL_ERROR;
+                return 1;
+            }
+        }
+    }
+    *status = RISCV_NMSIS_NN_SUCCESS;
+    return 1;
+#endif
+}
+
+/* All public accelerated entry points share the ordinary NMSIS dispatcher.
+ * Its probe runs before software im2col; unsupported hardware/configurations
+ * use the original software kernels with their original scratch requirements.
  */
 riscv_nmsis_nn_status riscv_convolve_s8_acc(
-    const nmsis_nn_context *ctx, const nmsis_nn_conv_params *conv_params,
-    const nmsis_nn_per_channel_quant_params *quant_params,
-    const nmsis_nn_dims *input_dims, const int8_t *input_data,
-    const nmsis_nn_dims *filter_dims, const int8_t *filter_data,
-    const nmsis_nn_dims *bias_dims, const int32_t *bias_data,
-    const nmsis_nn_dims *upscale_dims, const nmsis_nn_dims *output_dims,
-    int8_t *output_data)
+    const nmsis_nn_context *ctx, const nmsis_nn_conv_params *p,
+    const nmsis_nn_per_channel_quant_params *q,
+    const nmsis_nn_dims *in, const int8_t *input,
+    const nmsis_nn_dims *f, const int8_t *filter,
+    const nmsis_nn_dims *bd, const int32_t *bias,
+    const nmsis_nn_dims *upscale, const nmsis_nn_dims *out, int8_t *output)
 {
-    (void)bias_dims;
-
-    if (ctx->buf == NULL) {
-        return RISCV_NMSIS_NN_ARG_ERROR;
-    }
-
-    // 直接使用 s8 缓冲区，不再需要 s16 缓冲区
-    int8_t *buffer_a = (int8_t *)ctx->buf;
-
-    const int32_t input_batches = input_dims->n;
-    const uint16_t input_x = input_dims->w;
-    const uint16_t input_y = input_dims->h;
-    const uint16_t input_ch = input_dims->c;
-    const uint16_t kernel_x = filter_dims->w;
-    const uint16_t kernel_y = filter_dims->h;
-    const uint16_t kernel_ch = filter_dims->c;
-    const uint16_t output_x = output_dims->w;
-    const uint16_t output_y = output_dims->h;
-    const uint16_t output_ch = output_dims->c;
-
-    const uint16_t pad_x = conv_params->padding.w;
-    const uint16_t pad_y = conv_params->padding.h;
-    const uint16_t stride_x = conv_params->stride.w;
-    const uint16_t stride_y = conv_params->stride.h;
-    const int32_t dilation_x = conv_params->dilation.w;
-    const int32_t dilation_y = conv_params->dilation.h;
-    const int32_t out_offset = conv_params->output_offset;
-    const int32_t out_activation_min = conv_params->activation.min;
-    const int32_t out_activation_max = conv_params->activation.max;
-    const int32_t input_offset = conv_params->input_offset;
-
-    const int32_t groups = input_ch / kernel_ch;
-    const int32_t rhs_cols = kernel_x * kernel_y * kernel_ch;
-    const int32_t output_ch_per_group = output_ch / groups;
-
-    const int32_t *output_mult = quant_params->multiplier;
-    const int32_t *output_shift = quant_params->shift;
-
-    if (input_ch % groups != 0 || output_ch % groups != 0) {
-        return RISCV_NMSIS_NN_ARG_ERROR;
-    }
-
-    uint32_t y_rshift = 0;
-    uint32_t x_rshift = 0;
-
-    if (upscale_dims) {
-        y_rshift = upscale_dims->h == 2 ? 1 : 0;
-        x_rshift = upscale_dims->w == 2 ? 1 : 0;
-    }
-
-    const int32_t input_x_rshifted = input_x >> x_rshift;
-    const int32_t input_y_rshifted = input_y >> y_rshift;
-
-    const int32_t remainder = rhs_cols % 4;
-    const int32_t aligned_rhs_cols =
-        remainder != 0 ? rhs_cols + 4 - remainder : rhs_cols;
-
-    // 批处理行数
-    const int32_t batch_rows = DSA_CONV_IM2COL_BATCH_ROWS;
-
-    // im2col 缓冲区: batch_rows 行，每行 rhs_cols 个 s8 元素
-
-    for (int i_batch = 0; i_batch < input_batches; i_batch++) {
-        const int8_t *filter_data_ptr = &filter_data[0];
-        const int32_t *bias_data_ptr = &bias_data[0];
-        const int32_t *output_mult_ptr = &output_mult[0];
-        const int32_t *output_shift_ptr = &output_shift[0];
-
-        for (int32_t i_group = 0; i_group < groups; i_group++) {
-            // 每个 group 开始时重置缓冲区指针和行计数
-            int8_t *im2col_buf_ptr = buffer_a;
-            int32_t lhs_rows = 0;
-
-            int8_t *out = output_data + i_group * output_ch_per_group;
-
-            for (int i_out_y = 0; i_out_y < output_y; i_out_y++) {
-                for (int i_out_x = 0; i_out_x < output_x; i_out_x++) {
-                    const int32_t base_idx_x = stride_x * i_out_x - pad_x;
-                    const int32_t base_idx_y = stride_y * i_out_y - pad_y;
-
-                    // 当前行的 im2col 缓冲区位置，按 aligned_rhs_cols 对齐
-                    int8_t *current_im2col_row =
-                        im2col_buf_ptr + lhs_rows * aligned_rhs_cols;
-
-                    if (y_rshift == 1 || x_rshift == 1) {
-                        riscv_memset_s8(
-                            current_im2col_row, (int8_t)-input_offset,
-                            sizeof(int8_t) * kernel_ch * kernel_x * kernel_y);
-                        int8_t *im2col_ptr = current_im2col_row;
-                        for (int32_t i_ker_y = 0; i_ker_y < kernel_y;
-                             i_ker_y++) {
-                            const int32_t k_y =
-                                base_idx_y + dilation_y * i_ker_y;
-
-                            if ((k_y < 0 || k_y >= input_y) ||
-                                (k_y % 2 && y_rshift == 1)) {
-                                im2col_ptr += kernel_ch * kernel_x;
-                            } else {
-                                const int32_t k_y_rshifted = k_y >> y_rshift;
-                                for (int32_t i_ker_x = 0; i_ker_x < kernel_x;
-                                     i_ker_x++) {
-                                    const int32_t k_x =
-                                        base_idx_x + dilation_x * i_ker_x;
-
-                                    if ((k_x >= 0 && k_x < input_x) &&
-                                        ((k_x % 2 == 0) || x_rshift == 0)) {
-                                        const int32_t k_x_rshifted =
-                                            k_x >> x_rshift;
-                                        riscv_memcpy_s8_asm_unroll4(
-                                            im2col_ptr,
-                                            input_data +
-                                                (k_y_rshifted *
-                                                     input_x_rshifted +
-                                                 k_x_rshifted) *
-                                                    input_ch +
-                                                i_group * kernel_ch,
-                                            sizeof(int8_t) * kernel_ch);
-                                    }
-                                    im2col_ptr += kernel_ch;
-                                }
-                            }
-                        }
-                    } else {
-                        int8_t *im2col_ptr = current_im2col_row;
-                        for (int32_t i_ker_y = 0; i_ker_y < kernel_y;
-                             i_ker_y++) {
-                            for (int32_t i_ker_x = 0; i_ker_x < kernel_x;
-                                 i_ker_x++) {
-                                const int32_t k_y =
-                                    base_idx_y + dilation_y * i_ker_y;
-                                const int32_t k_x =
-                                    base_idx_x + dilation_x * i_ker_x;
-
-                                if (k_y < 0 || k_y >= input_y || k_x < 0 ||
-                                    k_x >= input_x) {
-                                    riscv_memset_s8(im2col_ptr,
-                                                    (int8_t)-input_offset,
-                                                    sizeof(int8_t) * kernel_ch);
-                                } else {
-                                    riscv_memcpy_s8_asm_unroll4(im2col_ptr,
-                                                    input_data +
-                                                        (k_y * input_x + k_x) *
-                                                            input_ch +
-                                                        i_group * kernel_ch,
-                                                    sizeof(int8_t) * kernel_ch);
-                                }
-                                im2col_ptr += kernel_ch;
-                            }
-                        }
-                    }
-
-                    lhs_rows++;
-
-                    if (lhs_rows == batch_rows) {
-                        if (groups > 1) {
-                            out = riscv_nn_mat_mult_kernel_row_offset_s8_acc(
-                                filter_data_ptr, im2col_buf_ptr,
-                                output_ch_per_group, output_shift_ptr,
-                                output_mult_ptr, out_offset, input_offset,
-                                out_activation_min, out_activation_max,
-                                rhs_cols, aligned_rhs_cols, bias_data_ptr,
-                                output_ch, out, batch_rows);
-                        } else {
-                            out = riscv_nn_mat_mult_kernel_s8_acc(
-                                filter_data_ptr, im2col_buf_ptr,
-                                output_ch_per_group, output_shift_ptr,
-                                output_mult_ptr, out_offset, input_offset,
-                                out_activation_min, out_activation_max,
-                                rhs_cols, aligned_rhs_cols, bias_data_ptr, out,
-                                batch_rows);
-                        }
-
-                        lhs_rows = 0;
-                    }
-                }
-            }
-
-            if (out == NULL) {
-                return RISCV_NMSIS_NN_NO_IMPL_ERROR;
-            }
-
-            /* Handle left over columns */
-            if (lhs_rows != 0) {
-                if (groups > 1) {
-                    out = riscv_nn_mat_mult_kernel_row_offset_s8_acc(
-                        filter_data_ptr, im2col_buf_ptr, output_ch_per_group,
-                        output_shift_ptr, output_mult_ptr, out_offset,
-                        input_offset, out_activation_min, out_activation_max,
-                        rhs_cols, aligned_rhs_cols, bias_data_ptr, output_ch,
-                        out, lhs_rows);
-                } else {
-                    out = riscv_nn_mat_mult_kernel_s8_acc(
-                        filter_data_ptr, im2col_buf_ptr, output_ch_per_group,
-                        output_shift_ptr, output_mult_ptr, out_offset,
-                        input_offset, out_activation_min, out_activation_max,
-                        rhs_cols, aligned_rhs_cols, bias_data_ptr, out,
-                        lhs_rows);
-                }
-            }
-
-            filter_data_ptr += output_ch_per_group * rhs_cols;
-            bias_data_ptr += output_ch_per_group;
-            output_mult_ptr += output_ch_per_group;
-            output_shift_ptr += output_ch_per_group;
-        }
-        /* Advance to the next batch */
-        input_data += (input_x_rshifted * input_y_rshifted * input_ch);
-        output_data += (output_x * output_y * output_ch);
-    }
-
-    /* Return to application */
-    return RISCV_NMSIS_NN_SUCCESS;
+    return riscv_convolve_s8(ctx, p, q, in, input, f, filter, bd, bias, upscale, out, output);
 }
 
-/*
- * Accelerated s8 1x1 convolution function with no padding and stride of 1.
- */
-riscv_nmsis_nn_status riscv_convolve_1x1_s8_acc(
-    const nmsis_nn_context *ctx, const nmsis_nn_conv_params *conv_params,
-    const nmsis_nn_per_channel_quant_params *quant_params,
-    const nmsis_nn_dims *input_dims, const int8_t *input_data,
-    const nmsis_nn_dims *filter_dims, const int8_t *filter_data,
-    const nmsis_nn_dims *bias_dims, const int32_t *bias_data,
-    const nmsis_nn_dims *output_dims, int8_t *output_data)
+#define DSA_CONV_FORWARD(name, target) \
+riscv_nmsis_nn_status name( \
+    const nmsis_nn_context *ctx, const nmsis_nn_conv_params *p, \
+    const nmsis_nn_per_channel_quant_params *q, \
+    const nmsis_nn_dims *in, const int8_t *input, \
+    const nmsis_nn_dims *f, const int8_t *filter, \
+    const nmsis_nn_dims *bd, const int32_t *bias, \
+    const nmsis_nn_dims *out, int8_t *output) \
+{ return target(ctx, p, q, in, input, f, filter, bd, bias, out, output); }
+
+DSA_CONV_FORWARD(riscv_convolve_1x1_s8_acc, riscv_convolve_1x1_s8)
+DSA_CONV_FORWARD(riscv_convolve_1x1_s8_fast_acc, riscv_convolve_1x1_s8_fast)
+DSA_CONV_FORWARD(riscv_convolve_wrapper_s8_acc, riscv_convolve_wrapper_s8)
+
+int32_t riscv_convolve_s8_get_buffer_size_acc(const nmsis_nn_dims *in,
+                                            const nmsis_nn_dims *f)
 {
-    (void)ctx;
-    (void)filter_dims;
-    (void)bias_dims;
-    if (conv_params->padding.w != 0 || conv_params->padding.h != 0) {
-        return RISCV_NMSIS_NN_ARG_ERROR;
-    }
-
-    const int32_t lhs_rows = output_dims->w;
-    const int32_t rhs_rows = output_dims->c;
-    const int32_t rhs_cols = input_dims->c;
-    const int32_t stride_w = conv_params->stride.w;
-    const int32_t input_inc = input_dims->w * conv_params->stride.h * rhs_cols;
-    const int32_t output_inc = output_dims->w * rhs_rows;
-    const int32_t output_h = output_dims->h;
-    const int32_t batch = input_dims->n;
-    const int8_t *input_data_ref = input_data;
-
-    for (int i_batch = 0; i_batch < batch; i_batch++) {
-        input_data = input_data_ref +
-                     (i_batch * rhs_cols * input_dims->w * input_dims->h);
-        for (int i_output_h = 0; i_output_h < output_h; i_output_h++) {
-            // Process one input row
-            riscv_nmsis_nn_status result = riscv_nn_mat_mult_nt_t_s8_acc(
-                input_data, filter_data, bias_data, output_data,
-                quant_params->multiplier, quant_params->shift, lhs_rows,
-                rhs_rows, rhs_cols, conv_params->input_offset,
-                conv_params->output_offset, conv_params->activation.min,
-                conv_params->activation.max, rhs_rows, rhs_cols * stride_w);
-            if (result != RISCV_NMSIS_NN_SUCCESS) {
-                return result;
-            }
-            input_data += input_inc;
-            output_data += output_inc;
-        }
-    }
-
-    /* Return to application */
-    return RISCV_NMSIS_NN_SUCCESS;
+    return riscv_convolve_s8_get_buffer_size(in, f);
 }
 
-/*
- * Fast s8 version for 1x1 convolution (non-square shape)
- *
- * Refer header file for details.
- *
- */
-riscv_nmsis_nn_status riscv_convolve_1x1_s8_fast_acc(
-    const nmsis_nn_context *ctx, const nmsis_nn_conv_params *conv_params,
-    const nmsis_nn_per_channel_quant_params *quant_params,
-    const nmsis_nn_dims *input_dims, const int8_t *input_data,
-    const nmsis_nn_dims *filter_dims, const int8_t *filter_data,
-    const nmsis_nn_dims *bias_dims, const int32_t *bias_data,
-    const nmsis_nn_dims *output_dims, int8_t *output_data)
-{
-    if (conv_params->padding.w != 0 || conv_params->padding.h != 0 ||
-        conv_params->stride.w != 1 || conv_params->stride.h != 1) {
-        return RISCV_NMSIS_NN_ARG_ERROR;
-    }
-
-    (void)filter_dims;
-    (void)bias_dims;
-
-    const int32_t rhs_cols = input_dims->c;
-    const int32_t rhs_rows = output_dims->c;
-    int32_t lhs_rows = input_dims->w * input_dims->h * input_dims->n;
-
-    (void)ctx;
-
-    riscv_nn_mat_mult_nt_t_s8_acc(
-        input_data, filter_data, bias_data, output_data,
-        quant_params->multiplier, quant_params->shift, lhs_rows, rhs_rows,
-        rhs_cols, conv_params->input_offset, conv_params->output_offset,
-        conv_params->activation.min, conv_params->activation.max, rhs_rows,
-        rhs_cols);
-
-    /* Return to application */
-    return RISCV_NMSIS_NN_SUCCESS;
-}
-
-/**
- * @} end of NNConv group
- */
-
-int32_t riscv_convolve_s8_get_buffer_size_acc(const nmsis_nn_dims *input_dims,
-                                              const nmsis_nn_dims *filter_dims)
-{
-    const int32_t rhs_cols = filter_dims->w * filter_dims->h * input_dims->c;
-    const int32_t remainder = rhs_cols % 4;
-    const int32_t aligned_rhs_cols =
-        remainder != 0 ? rhs_cols + 4 - remainder : rhs_cols;
-
-    // s8 缓冲区: DSA_CONV_IM2COL_BATCH_ROWS 行 x aligned_rhs_cols 个 int8_t
-    const int32_t s8_buffer_size =
-        (DSA_CONV_IM2COL_BATCH_ROWS * aligned_rhs_cols) *
-        (int32_t)sizeof(int8_t);
-
-    return s8_buffer_size;
-}
-
-/*
- * Get the required buffer size for riscv_convolve_wrapper_s8. This is the
- * recommended function convolve wrapper s8 function.
- *
- * Refer to header file for details.
- *
- */
 int32_t riscv_convolve_wrapper_s8_get_buffer_size_acc(
-    const nmsis_nn_conv_params *conv_params, const nmsis_nn_dims *input_dims,
-    const nmsis_nn_dims *filter_dims, const nmsis_nn_dims *output_dims)
+    const nmsis_nn_conv_params *p, const nmsis_nn_dims *in,
+    const nmsis_nn_dims *f, const nmsis_nn_dims *out)
 {
-#if defined(RISCV_MATH_DSP)
-    return riscv_convolve_wrapper_s8_get_buffer_size_dsp(
-        conv_params, input_dims, filter_dims, output_dims);
-#else
-    (void)output_dims;
-    if ((conv_params->padding.w == 0) && (conv_params->padding.h == 0) &&
-        (filter_dims->w == 1) && (filter_dims->h == 1) &&
-        (conv_params->dilation.w == 1 && conv_params->dilation.h == 1)) {
-        // 1x1 卷积统一使用加速版本，需要的缓冲区大小为 0
-        return 0;
-    } else {
-        return riscv_convolve_s8_get_buffer_size_acc(input_dims, filter_dims);
-    }
-#endif
-}
-
-riscv_nmsis_nn_status riscv_convolve_wrapper_s8_acc(
-    const nmsis_nn_context *ctx, const nmsis_nn_conv_params *conv_params,
-    const nmsis_nn_per_channel_quant_params *quant_params,
-    const nmsis_nn_dims *input_dims, const int8_t *input_data,
-    const nmsis_nn_dims *filter_dims, const int8_t *filter_data,
-    const nmsis_nn_dims *bias_dims, const int32_t *bias_data,
-    const nmsis_nn_dims *output_dims, int8_t *output_data)
-{
-    if ((conv_params->padding.w == 0) && (conv_params->padding.h == 0) &&
-        (filter_dims->w == 1) && (filter_dims->h == 1) &&
-        (conv_params->dilation.w == 1 && conv_params->dilation.h == 1) &&
-        (input_dims->c == filter_dims->c)) {
-        // 所有 1x1 卷积统一使用加速版本
-        return riscv_convolve_1x1_s8_acc(
-            ctx, conv_params, quant_params, input_dims, input_data, filter_dims,
-            filter_data, bias_dims, bias_data, output_dims, output_data);
-    } else {
-        // 其他卷积使用通用加速版本
-        return riscv_convolve_s8_acc(
-            ctx, conv_params, quant_params, input_dims, input_data, filter_dims,
-            filter_data, bias_dims, bias_data, NULL, output_dims, output_data);
-    }
+    /* Reserve the ordinary fallback scratch even when the hardware path will
+     * not touch it. Geometry alone cannot predict capability/numeric fallback. */
+    (void)p; (void)out;
+    return riscv_convolve_s8_get_buffer_size(in, f);
 }

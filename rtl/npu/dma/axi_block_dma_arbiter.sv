@@ -18,14 +18,34 @@ module axi_block_dma_arbiter #(
     parameter int unsigned CACHE_BLOCKS = 4,
     parameter int unsigned ENABLE_QUANT_CLIENT = 1,
     parameter int unsigned READ_OUTSTANDING = 4,
-    parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING
+    parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
+    parameter int unsigned CONV_CACHE_SETS = 32,
+    parameter int unsigned CONV_CACHE_WAYS = 2,
+    parameter int unsigned CONV_LINE_BYTES = 16,
+    parameter int unsigned CONV_CACHE_POLICY = 2
 ) (
     input logic clk,
     input logic rst_n,
 
+    // Job context belongs to the shared DMA, never to an individual loader.
+    input  logic conv_cfg_valid = 1'b0,
+    output logic conv_cfg_ready,
+    input  logic conv_enable = 1'b0,
+    input  conv_im2col_pkg::conv_cfg_t conv_cfg = '0,
+    input  logic [31:0] conv_sched_r = 32'd0,
+    input  logic [31:0] conv_sched_groups = 32'd0,
+    input  logic [31:0] conv_range_base [4] = '{default:'0},
+    input  logic [32:0] conv_range_end [4] = '{default:'0},
+    output logic conv_error, conv_busy,
+    output logic [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes,
+
     input  logic ia_req,
     output logic ia_granted,
     input  logic ia_start,
+    input  logic ia_im2col = 1'b0,
+    input  logic [31:0] ia_p0 = 32'd0,
+    input  logic [31:0] ia_q0 = 32'd0,
+    input  logic [31:0] ia_group = 32'd0,
     input  logic ia_linear_read_mode,
     input  logic [REG_WIDTH-1:0] ia_base_addr,
     input  logic [REG_WIDTH-1:0] ia_row_stride,
@@ -46,6 +66,10 @@ module axi_block_dma_arbiter #(
     input  logic kernel_req,
     output logic kernel_granted,
     input  logic kernel_start,
+    input  logic kernel_im2col = 1'b0,
+    input  logic [31:0] kernel_p0 = 32'd0,
+    input  logic [31:0] kernel_q0 = 32'd0,
+    input  logic [31:0] kernel_group = 32'd0,
     input  logic kernel_linear_read_mode,
     input  logic [REG_WIDTH-1:0] kernel_base_addr,
     input  logic [REG_WIDTH-1:0] kernel_row_stride,
@@ -136,7 +160,9 @@ module axi_block_dma_arbiter #(
     output logic                   m_axi_wlast,
     input  logic                   m_axi_bvalid,
     output logic                   m_axi_bready,
-    input  logic [            1:0] m_axi_bresp
+    input  logic [            1:0] m_axi_bresp,
+    output logic                   idle,
+    output logic                   bus_error
 );
 
     localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
@@ -164,6 +190,8 @@ module axi_block_dma_arbiter #(
     end
 
     logic rd_dma_linear_read_mode;
+    logic rd_dma_im2col;
+    logic [31:0] rd_dma_p0, rd_dma_q0, rd_dma_group;
     logic [REG_WIDTH-1:0] rd_dma_base_addr;
     logic [REG_WIDTH-1:0] rd_dma_row_stride;
     logic [REG_WIDTH-1:0] rd_dma_rows_to_read;
@@ -191,7 +219,13 @@ module axi_block_dma_arbiter #(
     logic wr_dma_busy;
     logic wr_dma_done;
     logic wr_src_wready;
+    logic conv_job_q;
     wire quant_req_eff = (ENABLE_QUANT_CLIENT != 0) ? quant_req : 1'b0;
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) conv_job_q <= 1'b0;
+        else if (conv_cfg_valid && conv_cfg_ready) conv_job_q <= conv_enable;
+    end
 
     always_comb begin
         if (kernel_req && !(rd_finish_beat && rd_client == C_KERNEL) && !(rd_dma_done && rd_response_client == C_KERNEL)) rd_next_client = C_KERNEL;
@@ -228,13 +262,23 @@ module axi_block_dma_arbiter #(
     assign kernel_busy = rd_active && rd_client == C_KERNEL && rd_dma_busy;
     assign bias_busy = rd_active && rd_client == C_BIAS && rd_dma_busy;
     assign quant_busy = rd_active && rd_client == C_QUANT && rd_dma_busy;
-    assign ia_done = rd_response_client == C_IA && rd_dma_done;
-    assign kernel_done = rd_response_client == C_KERNEL && rd_dma_done;
+    // Internal completion always releases the DMA owner, including errors.
+    // A failed Conv operand must not publish a successful tile commit to its
+    // loader; the task's error/drain/reset path discards its partial writes.
+    // GEMM retains the original completion semantics.
+    assign ia_done = rd_response_client == C_IA && rd_dma_done &&
+                     (!conv_job_q || !dma_rd_error);
+    assign kernel_done = rd_response_client == C_KERNEL && rd_dma_done &&
+                         (!conv_job_q || !dma_rd_error);
     assign bias_done = rd_response_client == C_BIAS && rd_dma_done;
     assign quant_done = rd_response_client == C_QUANT && rd_dma_done;
 
     always_comb begin
         rd_dma_start            = 1'b0;
+        rd_dma_im2col           = 1'b0;
+        rd_dma_p0               = '0;
+        rd_dma_q0               = '0;
+        rd_dma_group            = '0;
         rd_dma_linear_read_mode = 1'b0;
         rd_dma_base_addr        = '0;
         rd_dma_row_stride       = '0;
@@ -247,6 +291,10 @@ module axi_block_dma_arbiter #(
         unique case (rd_command_client)
             C_IA: begin
                 rd_dma_start            = ia_start && ia_granted && (!rd_started || rd_launch_window);
+                rd_dma_im2col           = ia_im2col;
+                rd_dma_p0               = ia_p0;
+                rd_dma_q0               = ia_q0;
+                rd_dma_group            = ia_group;
                 rd_dma_linear_read_mode = ia_linear_read_mode;
                 rd_dma_base_addr        = ia_base_addr;
                 rd_dma_row_stride       = ia_row_stride;
@@ -258,6 +306,10 @@ module axi_block_dma_arbiter #(
             end
             C_KERNEL: begin
                 rd_dma_start            = kernel_start && kernel_granted && (!rd_started || rd_launch_window);
+                rd_dma_im2col           = kernel_im2col;
+                rd_dma_p0               = kernel_p0;
+                rd_dma_q0               = kernel_q0;
+                rd_dma_group            = kernel_group;
                 rd_dma_linear_read_mode = kernel_linear_read_mode;
                 rd_dma_base_addr        = kernel_base_addr;
                 rd_dma_row_stride       = kernel_row_stride;
@@ -356,7 +408,13 @@ module axi_block_dma_arbiter #(
     // Registered command descriptor separates client arbitration from DMA
     // address arithmetic. Client grants and completion tags keep their order.
     logic rd_dma_start_q;
+    assign idle = !rd_dma_busy && !wr_dma_busy && !rd_dma_start_q &&
+                  !rd_dma_start && !wr_dma_start;
+    assign bus_error = (m_axi_rvalid && m_axi_rready && m_axi_rresp[1]) ||
+                       (m_axi_bvalid && m_axi_bready && m_axi_bresp[1]);
     logic rd_dma_linear_read_mode_q;
+    logic rd_dma_im2col_q;
+    logic [31:0] rd_dma_p0_q, rd_dma_q0_q, rd_dma_group_q;
     logic [REG_WIDTH-1:0] rd_dma_base_addr_q;
     logic [REG_WIDTH-1:0] rd_dma_row_stride_q;
     logic [REG_WIDTH-1:0] rd_dma_rows_to_read_q;
@@ -367,6 +425,10 @@ module axi_block_dma_arbiter #(
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             rd_dma_start_q <= '0;
+            rd_dma_im2col_q <= '0;
+            rd_dma_p0_q <= '0;
+            rd_dma_q0_q <= '0;
+            rd_dma_group_q <= '0;
             rd_dma_linear_read_mode_q <= '0;
             rd_dma_base_addr_q <= '0;
             rd_dma_row_stride_q <= '0;
@@ -378,6 +440,10 @@ module axi_block_dma_arbiter #(
         end else begin
             rd_dma_start_q <= rd_dma_start;
             if (rd_dma_start) begin
+                rd_dma_im2col_q <= rd_dma_im2col;
+                rd_dma_p0_q <= rd_dma_p0;
+                rd_dma_q0_q <= rd_dma_q0;
+                rd_dma_group_q <= rd_dma_group;
                 rd_dma_linear_read_mode_q <= rd_dma_linear_read_mode;
                 rd_dma_base_addr_q <= rd_dma_base_addr;
                 rd_dma_row_stride_q <= rd_dma_row_stride;
@@ -393,15 +459,25 @@ module axi_block_dma_arbiter #(
     axi_dual_block_dma #(
         .DATA_WIDTH       (DATA_WIDTH),
         .SIZE             (DMA_SIZE),
+        .IM2COL_SIZE      (SIZE),
         .BUS_WIDTH        (BUS_WIDTH),
         .REG_WIDTH        (REG_WIDTH),
         .CACHE_BLOCKS     (CACHE_BLOCKS),
         .READ_OUTSTANDING (READ_OUTSTANDING),
-        .WRITE_OUTSTANDING(WRITE_OUTSTANDING)
+        .WRITE_OUTSTANDING(WRITE_OUTSTANDING),
+        .CONV_CACHE_SETS(CONV_CACHE_SETS), .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
+        .CONV_LINE_BYTES(CONV_LINE_BYTES), .CONV_CACHE_POLICY(CONV_CACHE_POLICY)
     ) u_dma (
         .clk                (clk),
         .rst_n              (rst_n),
+        .conv_cfg_valid, .conv_cfg_ready, .conv_enable, .conv_cfg,
+        .conv_sched_r, .conv_sched_groups, .conv_range_base, .conv_range_end,
+        .conv_error, .conv_busy, .conv_stat_hits, .conv_stat_misses, .conv_stat_read_bytes,
         .rd_start           (rd_dma_start_q),
+        .rd_im2col          (rd_dma_im2col_q),
+        .rd_p0              (rd_dma_p0_q),
+        .rd_q0              (rd_dma_q0_q),
+        .rd_group           (rd_dma_group_q),
         .rd_linear_read_mode(rd_dma_linear_read_mode_q),
         .rd_base_addr       (rd_dma_base_addr_q),
         .rd_row_stride      (rd_dma_row_stride_q),

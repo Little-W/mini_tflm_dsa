@@ -10,6 +10,20 @@
 extern "C" {
 #endif
 
+/* Shared dispatch probe used before every ordinary s8 Conv software path.
+ * 1 means handled (including an explicit hardware error), 0 means unsupported
+ * and the caller may execute its existing software implementation.
+ * Set DSA_NN_CONV_ENABLE=0 when building a software-only NMSIS oracle.
+ */
+int riscv_convolve_s8_try_dsa(
+    const nmsis_nn_conv_params *conv_params,
+    const nmsis_nn_per_channel_quant_params *quant_params,
+    const nmsis_nn_dims *input_dims, const int8_t *input_data,
+    const nmsis_nn_dims *filter_dims, const int8_t *filter_data,
+    const int32_t *bias_data, const nmsis_nn_dims *upscale_dims,
+    const nmsis_nn_dims *output_dims, int8_t *output_data,
+    riscv_nmsis_nn_status *status);
+
 /**
  * @brief DSA hardware accelerated 1x1 s8 convolution with non-unity stride
  * support

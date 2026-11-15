@@ -228,6 +228,7 @@ module gempact_panel_engine #(
   end
  end
  axi_dual_block_dma #(.DATA_WIDTH(8),.SIZE(16),.CACHE_BLOCKS(64),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) u_writer(
+  .conv_cfg_ready(),.conv_error(),.conv_busy(),.conv_stat_hits(),.conv_stat_misses(),.conv_stat_read_bytes(),
   .clk(clk),.rst_n(rst_n),.rd_start(1'b0),.rd_linear_read_mode(1'b0),.rd_base_addr(32'b0),.rd_row_stride(32'b0),.rd_rows_to_read(32'b0),.rd_valid_cols(32'b0),.rd_burst_len_m1(8'b0),.rd_slot_id(6'b0),.rd_use_16bits(1'b0),.rd_lhs_zp(32'b0),.rd_busy(),.rd_done(),.rd_finish_beat(),
   .wr_start(state==FLUSH_START),.wr_base_addr(write_base_q),.wr_row_stride(write_stride_q),.wr_rows_to_write(write_rows_q),.wr_burst_len_m1(write_len_q),.wr_busy(wr_busy),.wr_done(wr_done),.src_wdata(fifo_data),.src_wmask(4'hf),.src_wvalid(fifo_valid),.src_wready(fifo_ready),
   .wr_slot(),.wr_row(),.wr_col_base(),.wr_data(),.wr_valid(),.wr_use_16bits(),.rd_raw_data(),.rd_raw_valid(),.rd_raw_row(),.rd_raw_col_base(),.rd_error(),.wr_error(wr_error),

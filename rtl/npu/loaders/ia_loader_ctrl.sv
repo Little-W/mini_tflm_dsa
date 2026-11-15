@@ -72,6 +72,11 @@ module ia_loader_ctrl #(
     // ---- tile_loader 接口 ----
     output logic                        tl_start,
     output logic [REG_WIDTH-1:0]        tl_base_addr,
+    // Logical matrix coordinates, captured with tl_start. Shared block DMA
+    // uses these for image-derived reads; the loader consumes ordinary blocks.
+    output logic [REG_WIDTH-1:0]        tl_p0,
+    output logic [REG_WIDTH-1:0]        tl_q0,
+    output logic [REG_WIDTH-1:0]        tl_group,
     output logic [REG_WIDTH-1:0]        tl_row_stride,
     output logic [REG_WIDTH-1:0]        tl_rows_to_read,
     output logic [REG_WIDTH-1:0]        tl_valid_cols,
@@ -428,6 +433,10 @@ module ia_loader_ctrl #(
 
   logic [REG_WIDTH-1:0] computed_tile_base;
   logic [REG_WIDTH-1:0] load_cursor_row_base;
+  logic [REG_WIDTH-1:0] load_cursor_p0;
+  wire [REG_WIDTH-1:0] next_group_p0 =
+      (REG_WIDTH'(l2_tile_row_base) +
+       (next_group_advances_l2 ? cfg_ia_reuse_num : REG_WIDTH'(0))) << LOG2_SIZE;
   assign computed_tile_base = load_cursor_row_base +
                               (prefetch_active ? pf_tile_col_byte_offset : tile_col_byte_offset);
 
@@ -669,6 +678,9 @@ module ia_loader_ctrl #(
     if (!rst_n) begin
       tl_start_r        <= 1'b0;
       tl_base_addr_r    <= '0;
+      tl_p0            <= '0;
+      tl_q0            <= '0;
+      tl_group         <= '0;
       tl_row_stride_r   <= '0;
       tl_rows_to_read_r <= '0;
       tl_valid_cols_r   <= '0;
@@ -680,6 +692,9 @@ module ia_loader_ctrl #(
       tl_start_r <= load_issue;
       if (load_issue) begin
         tl_base_addr_r    <= computed_tile_base;
+        tl_p0            <= load_cursor_p0;
+        tl_q0            <= REG_WIDTH'(prefetch_active ? next_l1_idx : tile_col_idx) << LOG2_SIZE;
+        tl_group         <= REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
         tl_row_stride_r   <= cfg_lhs_row_stride_b;
         tl_rows_to_read_r <= load_rows_cur;
         tl_valid_cols_r   <= load_cols_cur;
@@ -709,6 +724,7 @@ module ia_loader_ctrl #(
       load_ia_cursor      <= '0;
       load_tiles_done     <= '0;
       load_cursor_row_base <= '0;
+      load_cursor_p0       <= '0;
       load_l2_is_last     <= 1'b1;
     end else begin
       // L1 组切换时重置（仅在非预取模式下；预取模式下计数器已切换到下一组）
@@ -716,22 +732,26 @@ module ia_loader_ctrl #(
         load_ia_cursor      <= '0;
         load_tiles_done     <= '0;
         load_cursor_row_base <= next_l2_row_base;
+        load_cursor_p0       <= next_group_p0;
         load_l2_is_last     <= next_group_is_last_l2;
       end else if (state == S_INIT) begin
         load_ia_cursor      <= '0;
         load_tiles_done     <= '0;
         load_cursor_row_base <= cfg_lhs_base;
+        load_cursor_p0       <= '0;
         load_l2_is_last     <= is_last_l2_group;
       end else if (prefetch_entering) begin
         // 进入预取模式：重置计数器，开始为下一组加载
         load_ia_cursor      <= '0;
         load_tiles_done     <= '0;
         load_cursor_row_base <= next_l2_row_base;
+        load_cursor_p0       <= next_group_p0;
         load_l2_is_last     <= next_group_is_last_l2;
       end else if ((state == S_LOAD || state == S_SEND) && tl_tile_done) begin
         load_tiles_done     <= load_tiles_done + 1;
         load_ia_cursor      <= load_ia_cursor + 1;
         load_cursor_row_base <= load_cursor_row_base + tile_row_step_b;
+        load_cursor_p0       <= load_cursor_p0 + REG_WIDTH'(SIZE);
       end
     end
   end

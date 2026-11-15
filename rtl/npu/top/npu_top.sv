@@ -11,6 +11,10 @@ module npu_top #(
     parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
     parameter int unsigned OPERAND_CACHE_ENABLE = 0,
+    parameter int unsigned CONV_CACHE_SETS = 32,
+    parameter int unsigned CONV_CACHE_WAYS = 2,
+    parameter int unsigned CONV_LINE_BYTES = 16,
+    parameter int unsigned CONV_CACHE_POLICY = 2,
     parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
     parameter int unsigned OPERAND_STREAM_BYTES = (PS_FRAME_COUNT >= 16) ? 65536 : 262144,
     parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
@@ -27,6 +31,9 @@ module npu_top #(
 
     //==== 外部控制接口 ====
     input wire cfg_operand_fetch64, // 0: 16-byte sectors; 1: 64-byte read allocation
+    input wire cfg_conv_enable = 1'b0,
+    input conv_im2col_pkg::conv_cfg_t cfg_conv = '0,
+    output logic [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes, conv_stat_cycles,
     input wire calc_start,  // 计算开始信号
     input wire cfg_16bits_ia,  // 使用16位IA数据
     input wire cfg_16x8,  // TFLM s16 activation x s8 weight, s32 bias, s16 output
@@ -104,10 +111,149 @@ module npu_top #(
 
 
 `ifdef GEMPACT_PANEL_ENGINE
-    gempact_panel_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(.*);
+    wire alt_ready, alt_done;
+    wire [1:0] alt_error;
+    logic unsupported_conv_done;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) unsupported_conv_done <= 1'b0;
+        else if (calc_start && sa_ready && cfg_conv_enable) unsupported_conv_done <= 1'b1;
+        else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
+    end
+    assign sa_ready = alt_ready && !unsupported_conv_done;
+    assign done_valid = alt_done || unsupported_conv_done;
+    assign err_code = unsupported_conv_done ? 2'b01 : alt_error;
+    assign conv_stat_hits = '0;
+    assign conv_stat_misses = '0;
+    assign conv_stat_read_bytes = '0;
+    assign conv_stat_cycles = '0;
+    gempact_panel_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(
+        .calc_start(calc_start && !cfg_conv_enable), .sa_ready(alt_ready),
+        .done_valid(alt_done), .err_code(alt_error), .*);
 `elsif GEMPACT_RESIDENT_ENGINE
-    gempact_resident_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(.*);
+    wire alt_ready, alt_done;
+    wire [1:0] alt_error;
+    logic unsupported_conv_done;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) unsupported_conv_done <= 1'b0;
+        else if (calc_start && sa_ready && cfg_conv_enable) unsupported_conv_done <= 1'b1;
+        else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
+    end
+    assign sa_ready = alt_ready && !unsupported_conv_done;
+    assign done_valid = alt_done || unsupported_conv_done;
+    assign err_code = unsupported_conv_done ? 2'b01 : alt_error;
+    assign conv_stat_hits = '0;
+    assign conv_stat_misses = '0;
+    assign conv_stat_read_bytes = '0;
+    assign conv_stat_cycles = '0;
+    gempact_resident_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(
+        .calc_start(calc_start && !cfg_conv_enable), .sa_ready(alt_ready),
+        .done_valid(alt_done), .err_code(alt_error), .*);
 `else
+
+    // A Conv task is immutable after acceptance. The legacy software keeps
+    // the other task fields stable; the AXI-Lite interface locks writes while busy.
+    logic run_conv;
+    conv_im2col_pkg::conv_cfg_t conv_cfg_q;
+    logic conv_error, conv_busy, dma_bus_error, dma_idle;
+    logic conv_cfg_ready;
+    wire operand_cache_idle;
+    logic arbiter_ia_granted;
+    logic [31:0] conv_hits_raw, conv_misses_raw, conv_read_bytes_raw;
+    logic legacy_axi_arvalid, legacy_axi_arready, legacy_axi_rvalid, legacy_axi_rready, legacy_axi_rlast;
+    logic [REG_WIDTH-1:0] legacy_axi_araddr;
+    logic [BUS_WIDTH-1:0] legacy_axi_rdata;
+    logic [7:0] legacy_axi_arlen;
+    logic [2:0] legacy_axi_arsize;
+    logic [1:0] legacy_axi_arburst, legacy_axi_rresp;
+    logic [31:0] conv_range_base[4];
+    logic [32:0] conv_range_end[4];
+    assign conv_range_base[0] = 32'(rhs_base);
+    assign conv_range_base[1] = 32'(bias_base);
+    assign conv_range_base[2] = use_per_channel ? 32'(q_mult_pt) : 32'd0;
+    assign conv_range_base[3] = use_per_channel ? 32'(q_shift_pt) : 32'd0;
+    assign conv_range_end[0] = 33'(rhs_base) + 33'(64'(n)*64'(m));
+    assign conv_range_end[1] = 33'(bias_base) + (33'(m)<<2);
+    assign conv_range_end[2] = 33'($unsigned(q_mult_pt)) + (33'(m)<<2);
+    assign conv_range_end[3] = 33'($unsigned(q_shift_pt)) + (33'(m)<<2);
+    typedef enum logic [1:0] {AB_IDLE, AB_DRAIN, AB_RESET, AB_DONE} abort_t;
+    abort_t abort_state;
+    wire abort_pending = abort_state != AB_IDLE;
+    wire core_rst_n = rst_n && (abort_state != AB_RESET);
+    logic conv_count_active, conv_stats_started;
+`ifdef GEMMORA_INT8_PROFILE
+    localparam bit CONV_CORE_SUPPORTED = 1'b0;
+`else
+    localparam bit CONV_CORE_SUPPORTED = DATA_WIDTH >= 16 && BUS_WIDTH == 32 && REG_WIDTH == 32 && ENABLE_PER_CHANNEL != 0;
+`endif
+    wire [63:0] conv_input_bytes = 64'(conv_cfg_q.input_h) * 64'(conv_cfg_q.input_w) * 64'(conv_cfg_q.input_c);
+    wire conv_config_invalid = run_conv &&
+        (!CONV_CORE_SUPPORTED ||
+         (cfg_dataflow_mode && (ENABLE_IS_MODE == 0 || KERNEL_DATA_WIDTH < 16)) ||
+         !cfg_16bits_ia || cfg_16x8 || conv_cfg_q.input_s16 ||
+         (lhs_zp != 0) || (rhs_zp != 0) ||
+         conv_cfg_q.input_h == 0 || conv_cfg_q.input_w == 0 || conv_cfg_q.input_c == 0 ||
+         conv_cfg_q.kernel_h == 0 || conv_cfg_q.kernel_w == 0 || conv_cfg_q.group_c == 0 ||
+         conv_cfg_q.output_h == 0 || conv_cfg_q.output_w == 0 ||
+         conv_cfg_q.stride_h == 0 || conv_cfg_q.stride_w == 0 ||
+         conv_cfg_q.dilation_h == 0 || conv_cfg_q.dilation_w == 0 ||
+         (32'(conv_cfg_q.group_offset)+32'(conv_cfg_q.group_c) > 32'(conv_cfg_q.input_c)) ||
+         $signed(conv_cfg_q.input_offset) < -127 || $signed(conv_cfg_q.input_offset) > 128 ||
+         (64'(conv_cfg_q.input_base) + conv_input_bytes >= 64'h1_0000_0000) ||
+         (64'(rhs_base) + 64'(n)*64'(m) >= 64'h1_0000_0000) ||
+         (64'(bias_base) + (64'(m)<<2) >= 64'h1_0000_0000) ||
+         (use_per_channel && (64'($unsigned(q_mult_pt))+(64'(m)<<2) >= 64'h1_0000_0000 ||
+                              64'($unsigned(q_shift_pt))+(64'(m)<<2) >= 64'h1_0000_0000)) ||
+         (64'(conv_cfg_q.output_h) * 64'(conv_cfg_q.output_w) != 64'(k)) ||
+         (64'(conv_cfg_q.kernel_h) * 64'(conv_cfg_q.kernel_w) * 64'(conv_cfg_q.group_c) != 64'(n)));
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            run_conv <= 1'b0; conv_cfg_q <= '0; abort_state <= AB_IDLE;
+            conv_stat_hits <= '0; conv_stat_misses <= '0; conv_stat_read_bytes <= '0;
+            conv_stat_cycles <= '0; conv_count_active <= 1'b0; conv_stats_started <= 1'b0;
+        end else begin
+            if (calc_start && sa_ready) begin
+                run_conv <= cfg_conv_enable;
+                conv_cfg_q <= cfg_conv;
+                conv_stats_started <= 1'b0;
+                if (cfg_conv_enable) begin
+                    conv_stat_hits <= '0; conv_stat_misses <= '0;
+                    conv_stat_read_bytes <= '0; conv_stat_cycles <= '0;
+                    conv_count_active <= 1'b1;
+                end
+            end
+            if (conv_count_active) begin
+                conv_stat_cycles <= conv_stat_cycles + 32'd1;
+                if (conv_stats_started && abort_state != AB_RESET && abort_state != AB_DONE) begin
+                    conv_stat_hits <= conv_hits_raw;
+                    conv_stat_misses <= conv_misses_raw;
+                    conv_stat_read_bytes <= conv_read_bytes_raw;
+                end
+            end
+            if (init_cfg_ia && run_conv) conv_stats_started <= 1'b1;
+            if (done_valid) conv_count_active <= 1'b0;
+            case (abort_state)
+                AB_IDLE: if (run_conv && (conv_error || dma_bus_error)) abort_state <= AB_DRAIN;
+                AB_DRAIN: if (dma_idle && !conv_busy && operand_cache_idle) abort_state <= AB_RESET;
+                AB_RESET: abort_state <= AB_DONE;
+                AB_DONE: if (done_ready) begin abort_state <= AB_IDLE; run_conv <= 1'b0; end
+                default: abort_state <= AB_IDLE;
+            endcase
+        end
+    end
+    // Both operand loaders always use the shared matrix-block DMA. Its read
+    // engine owns im2col, the raw-input cache and the ordinary-read guard/mux.
+    assign load_ia_granted = arbiter_ia_granted;
+    assign m_axi_arvalid = legacy_axi_arvalid;
+    assign legacy_axi_arready = m_axi_arready;
+    assign m_axi_araddr = legacy_axi_araddr;
+    assign m_axi_arlen = legacy_axi_arlen;
+    assign m_axi_arsize = legacy_axi_arsize;
+    assign m_axi_arburst = legacy_axi_arburst;
+    assign legacy_axi_rvalid = m_axi_rvalid;
+    assign m_axi_rready = legacy_axi_rready;
+    assign legacy_axi_rdata = m_axi_rdata;
+    assign legacy_axi_rresp = m_axi_rresp;
+    assign legacy_axi_rlast = m_axi_rlast;
 
     localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
     wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
@@ -121,7 +267,7 @@ module npu_top #(
     logic [2:0] cache_axi_arsize;
     logic [1:0] cache_axi_arburst, cache_axi_rresp;
     logic [BUS_WIDTH-1:0] cache_axi_rdata;
-    generate if (OPERAND_CACHE_ENABLE) begin : g_operand_cache
+    generate if (OPERAND_CACHE_ENABLE != 0) begin : g_operand_cache
         // Snapshot the task and pipeline range arithmetic. The original SoC
         // keeps configuration in AXI-Lite registers, so an unpipelined 32x32
         // extent product plus base addition is a real clocked timing path.
@@ -144,20 +290,22 @@ module npu_top #(
         // A complete output workgroup already retains every required A/B K
         // tile in the native IA/PS schedule. It has no cross-group cache hits.
         // Select the direct path once per task, before any DMA request starts.
-        // Keep allocated retention SRAM available for all other task shapes.
+        // Conv always bypasses this optional matrix-operand cache: the shared
+        // DMA owns raw-image reuse, and a virtual im2col stride is not an
+        // external allocation. GEMM retains the original task-dependent path.
         always_ff @(posedge clk) begin
-            if (!rst_n) single_group_bypass <= 1'b0;
+            if (!core_rst_n) single_group_bypass <= 1'b0;
             else begin
-                if (accept_cache_task) single_group_bypass <= 1'b0;
+                if (accept_cache_task) single_group_bypass <= cfg_conv_enable;
                 if (cfg_stage2_fire)
-                    single_group_bypass <= !fetch64_q && !cfg_use16_s2 && !cfg_16x8_s2 &&
+                    single_group_bypass <= run_conv || (!fetch64_q && !cfg_use16_s2 && !cfg_16x8_s2 &&
                         cfg_stream_k_s2 != 0 && cfg_stream_m_s2 != 0 &&
                         cfg_stream_k_s2 <= (cfg_ia_reuse_eff_s2 << SIZE_SHIFT) &&
-                        cfg_stream_m_s2 <= (cfg_w_reuse_eff_s2 << SIZE_SHIFT);
+                        cfg_stream_m_s2 <= (cfg_w_reuse_eff_s2 << SIZE_SHIFT));
             end
         end
         always_ff @(posedge clk) begin
-            if (!rst_n) begin
+            if (!core_rst_n) begin
                 range_stage <= 0; range_ready <= 0; fetch64_q <= 0;
                 a_base_cfg <= 0; b_base_cfg <= 0;
                 ax <= 0; ay <= 0; bx <= 0; by <= 0;
@@ -191,48 +339,50 @@ module npu_top #(
                 if (range_stage[3]) range_ready <= 1;
             end
         end
-        assign cache_axi_arready = (single_group_bypass ? m_axi_arready : cache_request_ready) && range_ready;
-        assign m_axi_arvalid = single_group_bypass ? (cache_axi_arvalid && range_ready) : retained_arvalid;
-        assign m_axi_araddr = single_group_bypass ? cache_axi_araddr : retained_araddr;
-        assign m_axi_arlen = single_group_bypass ? cache_axi_arlen : retained_arlen;
-        assign m_axi_arsize = single_group_bypass ? cache_axi_arsize : retained_arsize;
-        assign m_axi_arburst = single_group_bypass ? cache_axi_arburst : retained_arburst;
-        assign cache_axi_rvalid = single_group_bypass ? m_axi_rvalid : retained_rvalid;
-        assign cache_axi_rdata = single_group_bypass ? m_axi_rdata : retained_rdata;
-        assign cache_axi_rresp = single_group_bypass ? m_axi_rresp : retained_rresp;
-        assign cache_axi_rlast = single_group_bypass ? m_axi_rlast : retained_rlast;
-        assign m_axi_rready = single_group_bypass ? cache_axi_rready : retained_rready;
+        assign cache_axi_arready = (single_group_bypass ? legacy_axi_arready : cache_request_ready) && range_ready;
+        assign legacy_axi_arvalid = single_group_bypass ? (cache_axi_arvalid && range_ready) : retained_arvalid;
+        assign legacy_axi_araddr = single_group_bypass ? cache_axi_araddr : retained_araddr;
+        assign legacy_axi_arlen = single_group_bypass ? cache_axi_arlen : retained_arlen;
+        assign legacy_axi_arsize = single_group_bypass ? cache_axi_arsize : retained_arsize;
+        assign legacy_axi_arburst = single_group_bypass ? cache_axi_arburst : retained_arburst;
+        assign cache_axi_rvalid = single_group_bypass ? legacy_axi_rvalid : retained_rvalid;
+        assign cache_axi_rdata = single_group_bypass ? legacy_axi_rdata : retained_rdata;
+        assign cache_axi_rresp = single_group_bypass ? legacy_axi_rresp : retained_rresp;
+        assign cache_axi_rlast = single_group_bypass ? legacy_axi_rlast : retained_rlast;
+        assign legacy_axi_rready = single_group_bypass ? cache_axi_rready : retained_rready;
         operand_read_cache #(.AW(REG_WIDTH), .DW(BUS_WIDTH), .A_BYTES(OPERAND_STREAM_BYTES)) u_cache (
-            .clk(clk), .rst_n(rst_n), .flush(range_stage[2]),
+            .clk(clk), .rst_n(core_rst_n), .flush(range_stage[2]),
+            .idle(operand_cache_idle),
             .prefetch_enable(fetch64_q),
             // The large retention bank follows the streamed IA operand.
             // WS retains A; IS retains physical B (the internal C^T problem).
             .a_base(a_base_cfg), .a_bytes(a_bytes_cfg),
             .b_base(b_base_cfg), .b_bytes(b_bytes_cfg),
             .s_arvalid(cache_axi_arvalid && range_ready && !single_group_bypass), .m_arvalid(retained_arvalid),
-            .s_arready(cache_request_ready), .m_arready(m_axi_arready),
+            .s_arready(cache_request_ready), .m_arready(legacy_axi_arready),
             .s_araddr(cache_axi_araddr), .m_araddr(retained_araddr),
             .s_arlen(cache_axi_arlen), .m_arlen(retained_arlen),
             .s_arsize(cache_axi_arsize), .m_arsize(retained_arsize),
             .s_arburst(cache_axi_arburst), .m_arburst(retained_arburst),
-            .s_rvalid(retained_rvalid), .m_rvalid(m_axi_rvalid && !single_group_bypass),
+            .s_rvalid(retained_rvalid), .m_rvalid(legacy_axi_rvalid && !single_group_bypass),
             .s_rready(cache_axi_rready && !single_group_bypass), .m_rready(retained_rready),
-            .s_rdata(retained_rdata), .m_rdata(m_axi_rdata),
-            .s_rresp(retained_rresp), .m_rresp(m_axi_rresp),
-            .s_rlast(retained_rlast), .m_rlast(m_axi_rlast)
+            .s_rdata(retained_rdata), .m_rdata(legacy_axi_rdata),
+            .s_rresp(retained_rresp), .m_rresp(legacy_axi_rresp),
+            .s_rlast(retained_rlast), .m_rlast(legacy_axi_rlast)
         );
     end else begin : g_no_operand_cache
-        assign m_axi_arvalid=cache_axi_arvalid;
-        assign cache_axi_arready=m_axi_arready;
-        assign m_axi_araddr=cache_axi_araddr;
-        assign m_axi_arlen=cache_axi_arlen;
-        assign m_axi_arsize=cache_axi_arsize;
-        assign m_axi_arburst=cache_axi_arburst;
-        assign cache_axi_rvalid=m_axi_rvalid;
-        assign m_axi_rready=cache_axi_rready;
-        assign cache_axi_rdata=m_axi_rdata;
-        assign cache_axi_rresp=m_axi_rresp;
-        assign cache_axi_rlast=m_axi_rlast;
+        assign operand_cache_idle=1'b1;
+        assign legacy_axi_arvalid=cache_axi_arvalid;
+        assign cache_axi_arready=legacy_axi_arready;
+        assign legacy_axi_araddr=cache_axi_araddr;
+        assign legacy_axi_arlen=cache_axi_arlen;
+        assign legacy_axi_arsize=cache_axi_arsize;
+        assign legacy_axi_arburst=cache_axi_arburst;
+        assign cache_axi_rvalid=legacy_axi_rvalid;
+        assign legacy_axi_rready=cache_axi_rready;
+        assign cache_axi_rdata=legacy_axi_rdata;
+        assign cache_axi_rresp=legacy_axi_rresp;
+        assign cache_axi_rlast=legacy_axi_rlast;
     end endgenerate
 
     //========================================
@@ -343,6 +493,8 @@ module npu_top #(
 
     // Shared block_dma client signals
     logic ia_dma_start, ia_dma_linear_read_mode;
+    logic ia_dma_im2col;
+    logic [REG_WIDTH-1:0] ia_dma_p0, ia_dma_q0, ia_dma_group;
     logic [REG_WIDTH-1:0] ia_dma_base_addr, ia_dma_row_stride, ia_dma_rows_to_read;
     logic [7:0] ia_dma_burst_len_m1;
     localparam int unsigned IA_CACHE_SLOT_W = (IA_CACHE_BLOCKS <= 1) ? 1 : $clog2(IA_CACHE_BLOCKS);
@@ -357,6 +509,8 @@ module npu_top #(
     logic ia_dma_wr_use_16bits;
 
     logic kernel_dma_start, kernel_dma_linear_read_mode;
+    logic kernel_dma_im2col;
+    logic [REG_WIDTH-1:0] kernel_dma_p0, kernel_dma_q0, kernel_dma_group;
     logic [REG_WIDTH-1:0] kernel_dma_base_addr, kernel_dma_row_stride, kernel_dma_rows_to_read;
     logic [7:0] kernel_dma_burst_len_m1;
     logic kernel_dma_slot_id, kernel_dma_use_16bits;
@@ -395,19 +549,38 @@ module npu_top #(
     wire ps_capacity_fault;
     wire controller_done_valid;
     wire [1:0] controller_err_code;
+    wire operand_completion_seen;
+    generate if (OPERAND_CACHE_ENABLE != 0) begin : g_operand_retirement
+        logic completion_seen;
+        assign operand_completion_seen=completion_seen;
+        // WAIT_DONE holds the controller until the physical cache tail drains.
+        // Its registered valid has one trailing cycle after the handshake;
+        // expose exactly one completion, including after a prolonged wait.
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) completion_seen<=1'b0;
+            else if (!controller_done_valid) completion_seen<=1'b0;
+            else if (abort_state==AB_IDLE && done_valid && done_ready)
+                completion_seen<=1'b1;
+        end
+    end else begin : g_no_operand_retirement
+        assign operand_completion_seen=1'b0;
+    end endgenerate
 `ifdef GEMMORA_INT8_PROFILE
     wire profile_input_invalid=cfg_16bits_ia || cfg_16x8 || lhs_zp!=0 || rhs_zp!=0;
     logic profile_error;
-    always_ff @(posedge clk or negedge rst_n) begin
-        if(!rst_n)profile_error<=1'b0;
+    always_ff @(posedge clk or negedge core_rst_n) begin
+        if(!core_rst_n)profile_error<=1'b0;
         else if(calc_start && profile_input_invalid)profile_error<=1'b1;
     end
 `else
     wire profile_input_invalid=1'b0;
     wire profile_error=1'b0;
 `endif
-    assign done_valid=controller_done_valid || ps_capacity_fault || profile_error;
-    assign err_code=ps_capacity_fault ? 2'b11 : profile_error ? 2'b01 : controller_err_code;
+    assign done_valid=(abort_state == AB_DONE) ||
+        ((abort_state == AB_IDLE) && !(run_conv && (conv_error || dma_bus_error)) &&
+         operand_cache_idle &&
+         ((controller_done_valid && !operand_completion_seen) || ps_capacity_fault || profile_error));
+    assign err_code=(abort_state == AB_DONE) ? 2'b11 : ps_capacity_fault ? 2'b11 : profile_error ? 2'b01 : controller_err_code;
 
     // 添加缺少的内部信号
     // per-submodule init_cfg signals (由npu_controller产生的单拍脉冲)
@@ -480,7 +653,8 @@ module npu_top #(
         wire cfg_start_event = calc_start && sa_ready;
         assign cfg_stage2_fire = cfg_stage2_valid && ctrl_sa_ready;
         wire ctrl_calc_start = cfg_stage2_fire;
-        assign sa_ready = ctrl_sa_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid;
+        assign sa_ready = ctrl_sa_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
+                          (abort_state == AB_IDLE) && operand_cache_idle;
 
         // ABI 2: external software provides effective, legal R/W values.
         // There is no automatic rounding or resizing after the host computes groups.
@@ -495,8 +669,8 @@ module npu_top #(
             ext_w_small<=W_REUSE_W'(W_REUSE_NUM_MAX) &&
             (((ext_w_small & (ext_w_small-W_REUSE_W'(1)))==0) || ext_w_small==25);
 
-        always_ff @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) begin
                     cfg_stage0_valid <= 1'b0;
                     cfg_stage1_valid <= 1'b0;
                     cfg_stage2_valid <= 1'b0;
@@ -595,8 +769,8 @@ module npu_top #(
         logic [REG_WIDTH-1:0] w_reuse_num_eff;
         logic [IS_BIAS_VALID_W-1:0] is_bias_group_rows_target;
 
-        always_ff @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) begin
                 run_is_mode <= 1'b0;
                 run_use_16bits <= 1'b0;
                 run_16x8 <= 1'b0;
@@ -644,14 +818,39 @@ module npu_top #(
             .CACHE_BLOCKS(IA_CACHE_BLOCKS),
             .ENABLE_QUANT_CLIENT(ENABLE_PER_CHANNEL),
             .READ_OUTSTANDING(AXI_READ_OUTSTANDING),
-            .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING)
+            .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING),
+            .CONV_CACHE_SETS(CONV_CACHE_SETS),
+            .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
+            .CONV_LINE_BYTES(CONV_LINE_BYTES),
+            .CONV_CACHE_POLICY(CONV_CACHE_POLICY)
         ) u_block_dma_arbiter (
             .clk                     (clk),
-            .rst_n                   (rst_n),
-                .ia_req                  (load_ia_req),
-                .ia_granted              (load_ia_granted),
-                .ia_start                (ia_dma_start),
-                .ia_linear_read_mode     (ia_dma_linear_read_mode),
+            .rst_n                   (core_rst_n),
+            // Reconfigure even for GEMM so a previous Conv task cannot leave
+            // image bounds or cache policy active on ordinary matrix reads.
+            .conv_cfg_valid          (init_cfg_ia),
+            .conv_cfg_ready          (conv_cfg_ready),
+            .conv_enable             (run_conv),
+            .conv_cfg                (conv_cfg_q),
+            .conv_sched_r            (32'(ia_reuse_num_eff)),
+            // The geometry predictor's rank follows the WS loop order. IS
+            // retains raw-input caching but uses its generic fallback policy.
+            .conv_sched_groups       (is_mode ? 32'd0 : 32'(cfg_col_groups)),
+            .conv_range_base         (conv_range_base),
+            .conv_range_end          (conv_range_end),
+            .conv_error              (conv_error),
+            .conv_busy               (conv_busy),
+            .conv_stat_hits          (conv_hits_raw),
+            .conv_stat_misses        (conv_misses_raw),
+            .conv_stat_read_bytes    (conv_read_bytes_raw),
+            .ia_req                  (load_ia_req && !abort_pending),
+            .ia_granted              (arbiter_ia_granted),
+            .ia_start                (ia_dma_start),
+            .ia_linear_read_mode     (ia_dma_linear_read_mode),
+            .ia_im2col               (ia_dma_im2col),
+            .ia_p0                   (ia_dma_p0),
+            .ia_q0                   (ia_dma_q0),
+            .ia_group                (ia_dma_group),
             .ia_base_addr            (ia_dma_base_addr),
             .ia_row_stride           (ia_dma_row_stride),
             .ia_rows_to_read         (ia_dma_rows_to_read),
@@ -667,10 +866,14 @@ module npu_top #(
             .ia_wr_data              (ia_dma_wr_data),
             .ia_wr_valid             (ia_dma_wr_valid),
             .ia_wr_use_16bits        (ia_dma_wr_use_16bits),
-                .kernel_req              (load_weight_req),
+                .kernel_req(load_weight_req && !abort_pending),
                 .kernel_granted          (load_weight_granted),
                 .kernel_start            (kernel_dma_start),
                 .kernel_linear_read_mode (kernel_dma_linear_read_mode),
+            .kernel_im2col           (kernel_dma_im2col),
+            .kernel_p0               (kernel_dma_p0),
+            .kernel_q0               (kernel_dma_q0),
+            .kernel_group            (kernel_dma_group),
             .kernel_base_addr        (kernel_dma_base_addr),
             .kernel_row_stride       (kernel_dma_row_stride),
             .kernel_rows_to_read     (kernel_dma_rows_to_read),
@@ -684,7 +887,7 @@ module npu_top #(
             .kernel_wr_col_base      (kernel_dma_wr_col_base),
             .kernel_wr_data          (kernel_dma_wr_data),
             .kernel_wr_valid         (kernel_dma_wr_valid),
-                .bias_req                (load_bias_req),
+                .bias_req(load_bias_req && !abort_pending),
                 .bias_granted            (load_bias_granted),
                 .bias_start              (bias_dma_start),
                 .bias_linear_read_mode   (bias_dma_linear_read_mode),
@@ -703,7 +906,7 @@ module npu_top #(
             .bias_wr_data            (bias_dma_wr_data),
             .bias_wr_valid           (bias_dma_wr_valid),
             .bias_wr_use_16bits      (bias_dma_wr_use_16bits),
-                .quant_req               (load_quant_req),
+                .quant_req(load_quant_req && !abort_pending),
                 .quant_granted           (load_quant_granted),
                 .quant_start             (quant_dma_start),
                 .quant_linear_read_mode  (quant_dma_linear_read_mode),
@@ -718,7 +921,7 @@ module npu_top #(
             .quant_done              (quant_dma_done),
             .quant_raw_data          (quant_dma_raw_data),
             .quant_raw_valid         (quant_dma_raw_valid),
-                .oa_req                  (write_oa_req),
+                .oa_req(write_oa_req && !abort_pending),
                 .oa_granted              (write_oa_granted),
                 .oa_start                (oa_dma_start),
                 .oa_base_addr            (oa_dma_base_addr),
@@ -755,8 +958,16 @@ module npu_top #(
             .m_axi_wlast             (m_axi_wlast),
             .m_axi_bvalid            (m_axi_bvalid),
             .m_axi_bready            (m_axi_bready),
-            .m_axi_bresp             (m_axi_bresp)
+            .m_axi_bresp             (m_axi_bresp),
+            .idle(dma_idle), .bus_error(dma_bus_error)
         );
+
+`ifndef SYNTHESIS
+        always_ff @(posedge clk) if (core_rst_n && init_cfg_ia) begin
+            assert(conv_cfg_ready);
+            assert(!ia_dma_start && !kernel_dma_start);
+        end
+`endif
 
         //========================================
     // 模块实例化
@@ -771,11 +982,11 @@ module npu_top #(
         .REG_WIDTH   (REG_WIDTH)
     ) u_npu_controller (
         .clk              (clk),
-        .rst_n            (rst_n),
+        .rst_n            (core_rst_n),
         .calc_start       (ctrl_calc_start),
         .cfg_16bits_ia    (cfg_16bits_ia_eff | cfg_16x8),
         .cfg_dataflow_mode(cfg_dataflow_mode_eff),
-        .cfg_tiling_error ((!ext_r_legal) || (!ext_w_legal) || (cfg_row_groups == 0) || (cfg_col_groups == 0) ||
+        .cfg_tiling_error (conv_config_invalid || (!ext_r_legal) || (!ext_w_legal) || (cfg_row_groups == 0) || (cfg_col_groups == 0) ||
             (cfg_row_tail_tiles == 0) || (cfg_col_tail_tiles == 0) ||
             (cfg_row_tail_tiles > cfg_ia_reuse_eff_s2) || (cfg_col_tail_tiles > cfg_w_reuse_eff_s2) ||
             ((cfg_row_groups >> DIM_COUNT_WIDTH) != 0) || ((cfg_col_groups >> DIM_COUNT_WIDTH) != 0)),
@@ -823,7 +1034,7 @@ module npu_top #(
             .oa_calc_over         (oa_calc_over),
         // Task Completion Handshake Interface
         .done_valid             (controller_done_valid),
-        .done_ready             (done_ready),
+        .done_ready             (done_ready && operand_cache_idle),
         .err_code             (controller_err_code)
     );
         // IA Loader
@@ -837,8 +1048,9 @@ module npu_top #(
                 .PS_FRAME_COUNT(PS_FRAME_COUNT)
             ) u_ia_loader (
         .clk             (clk),
-        .rst_n           (rst_n),
+        .rst_n           (core_rst_n),
         .init_cfg        (init_cfg_ia),
+        .cfg_im2col(run_conv && !is_mode),
         .load_ia_req     (load_ia_req),
         .load_ia_granted (load_ia_granted),
             .send_ia_trigger (send_ia_trigger),
@@ -859,6 +1071,10 @@ module npu_top #(
             .ext_dma_start(ia_dma_start),
             .ext_dma_is_write(),
             .ext_dma_linear_read_mode(ia_dma_linear_read_mode),
+            .ext_dma_im2col(ia_dma_im2col),
+            .ext_dma_p0(ia_dma_p0),
+            .ext_dma_q0(ia_dma_q0),
+            .ext_dma_group(ia_dma_group),
             .ext_dma_base_addr(ia_dma_base_addr),
             .ext_dma_row_stride(ia_dma_row_stride),
             .ext_dma_rows_to_read(ia_dma_rows_to_read),
@@ -898,8 +1114,9 @@ module npu_top #(
                 .COUNT_WIDTH(DIM_COUNT_WIDTH)
             ) u_kernel_loader (
         .clk                (clk),
-        .rst_n              (rst_n),
+        .rst_n              (core_rst_n),
         .init_cfg           (init_cfg_weight),
+        .cfg_im2col          (run_conv && is_mode),
         .load_weight_req    (load_weight_req),
         .load_weight_granted(load_weight_granted),
             .send_weight_trigger(send_weight_trigger),
@@ -919,6 +1136,10 @@ module npu_top #(
             .ext_dma_start(kernel_dma_start),
             .ext_dma_is_write(),
             .ext_dma_linear_read_mode(kernel_dma_linear_read_mode),
+            .ext_dma_im2col(kernel_dma_im2col),
+            .ext_dma_p0(kernel_dma_p0),
+            .ext_dma_q0(kernel_dma_q0),
+            .ext_dma_group(kernel_dma_group),
             .ext_dma_base_addr(kernel_dma_base_addr),
             .ext_dma_row_stride(kernel_dma_row_stride),
             .ext_dma_rows_to_read(kernel_dma_rows_to_read),
@@ -951,7 +1172,7 @@ module npu_top #(
                 .GROUP_BLOCKS_MAX(BIAS_GROUP_BLOCKS_MAX)
             ) u_bias_loader (
         .clk              (clk),
-        .rst_n            (rst_n),
+        .rst_n            (core_rst_n),
         .init_cfg         (init_cfg_bias),
         .load_bias_req    (load_bias_req),
             .load_bias_granted(load_bias_granted),
@@ -995,8 +1216,8 @@ module npu_top #(
   wire capture_compute_bias = !is_mode && (bias_base != '0) &&
                               ia_tile_start && !bias_sleep;
 
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
+  always_ff @(posedge clk or negedge core_rst_n) begin
+    if (!core_rst_n) begin
       for (int bi = 0; bi < SIZE; bi = bi + 1) begin
         bias_data_hold[bi] <= '0;
         compute_bias_latched[bi] <= '0;
@@ -1038,7 +1259,7 @@ module npu_top #(
     ) u_compute_core (
         .ps_capacity_fault(ps_capacity_fault),
         .clk             (clk),
-        .rst_n           (rst_n),
+        .rst_n           (core_rst_n),
         .store_weight_req(store_weight_req),
         .weight_commit(weight_commit),
         .weight_in       (weight_out),
@@ -1100,8 +1321,8 @@ module npu_top #(
     wire signed [31:0] requant_in_vec[SIZE];
     wire signed [63:0] requant_in_vec_s64[SIZE];
 
-        always_ff @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) begin
                 is_bias_row_idx <= '0;
                 is_bias_group_base <= '0;
                 is_bias_last_group_base <= '0;
@@ -1162,7 +1383,7 @@ module npu_top #(
             .ENABLE_IS_MODE(ENABLE_IS_MODE)
     ) u_vec_requant (
         .clk               (clk),
-        .rst_n             (rst_n),
+        .rst_n             (core_rst_n),
         .init_cfg          (init_cfg_requant),
         .cfg_per_channel   (use_per_channel_eff),
         .cfg_dataflow_mode (cfg_dataflow_mode_eff),
@@ -1208,7 +1429,7 @@ module npu_top #(
         .VLEN(SIZE)
     ) u_vec_requant_s64 (
         .clk               (clk),
-        .rst_n             (rst_n),
+        .rst_n             (core_rst_n),
         .init_cfg          (init_cfg_requant),
         .activation_min_in (act_min),
         .activation_max_in (act_max),
@@ -1268,7 +1489,7 @@ module npu_top #(
     logic oa_row_coalesce;
     logic [4:0] oa_coalesce_rows, oa_coalesce_cols;
     always_ff @(posedge clk) begin
-        if (!rst_n) begin
+        if (!core_rst_n) begin
             oa_row_coalesce <= 0;
             oa_coalesce_rows <= 0;
             oa_coalesce_cols <= 0;
@@ -1286,7 +1507,7 @@ module npu_top #(
         .ENABLE_TRANSPOSE(ENABLE_IS_MODE)
     ) u_vec_s8_to_fifo (
         .clk              (clk),
-        .rst_n            (rst_n),
+        .rst_n            (core_rst_n),
         .in_valid         (requant_s8_valid),
         .in_tile_done     (requant_s8_tile_done),
         .in_vec_s8        (in_vec_s8),
@@ -1319,7 +1540,7 @@ module npu_top #(
         .BANKS(OA_FIFO_BANKS)
     ) u_vec_s16_to_fifo (
         .clk              (clk),
-        .rst_n            (rst_n),
+        .rst_n            (core_rst_n),
         .in_valid         (requant_s16_valid),
         .in_tile_done     (requant_s16_tile_done),
         .in_vec_s16       (in_vec_s16),
@@ -1346,7 +1567,7 @@ module npu_top #(
             .ENABLE_IS_MODE(ENABLE_IS_MODE)
         ) u_oa_writer (
         .clk              (clk),
-        .rst_n            (rst_n),
+        .rst_n            (core_rst_n),
         .init_cfg         (init_cfg_oa),
         .oa_fifo_req      (fifo_output_req),
         .vec_valid_num_col(fifo_vec_valid_num_col),
@@ -1433,8 +1654,8 @@ module npu_top #(
     wire top_util_start_event = calc_start && sa_ready;
     wire top_util_finish_event = top_util_active && done_valid && done_ready;
 
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+    always_ff @(posedge clk or negedge core_rst_n) begin
+        if (!core_rst_n) begin
             top_util_active                 <= 1'b0;
             top_util_op_id                  <= '0;
             top_util_active_cycles          <= '0;

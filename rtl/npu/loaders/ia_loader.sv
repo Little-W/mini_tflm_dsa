@@ -36,6 +36,9 @@ module ia_loader #(
 
     // ---- 配置与控制 ----
     input  logic init_cfg,
+    // Select a matrix-block request generated from the original image by DMA.
+    // This loader does not own image geometry, an input cache or an AXI path.
+    input  logic cfg_im2col = 1'b0,
     output logic load_ia_req,
     input  logic load_ia_granted,
     input  logic send_ia_trigger,
@@ -62,6 +65,10 @@ module ia_loader #(
     output logic                                   ext_dma_start,
     output logic                                   ext_dma_is_write,
     output logic                                   ext_dma_linear_read_mode,
+    output logic                                   ext_dma_im2col,
+    output logic        [           REG_WIDTH-1:0] ext_dma_p0,
+    output logic        [           REG_WIDTH-1:0] ext_dma_q0,
+    output logic        [           REG_WIDTH-1:0] ext_dma_group,
     output logic        [           REG_WIDTH-1:0] ext_dma_base_addr,
     output logic        [           REG_WIDTH-1:0] ext_dma_row_stride,
     output logic        [           REG_WIDTH-1:0] ext_dma_rows_to_read,
@@ -261,6 +268,7 @@ module ia_loader #(
 
     // ---- ctrl ↔ block_dma ----
     logic                                   tl_start;
+    logic [REG_WIDTH-1:0]                    tl_p0, tl_q0, tl_group;
     logic        [           REG_WIDTH-1:0] tl_base_addr;
     logic        [           REG_WIDTH-1:0] tl_row_stride;
     logic        [           REG_WIDTH-1:0] tl_rows_to_read;
@@ -299,9 +307,19 @@ module ia_loader #(
     logic                                   ctrl_init_start;
     assign ctrl_init_start          = cfg_valid;
 
+    logic im2col_q;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) im2col_q <= 1'b0;
+        else if (init_cfg) im2col_q <= cfg_im2col;
+    end
+
     assign ext_dma_start            = tl_start;
     assign ext_dma_is_write         = 1'b0;
     assign ext_dma_linear_read_mode = 1'b0;
+    assign ext_dma_im2col           = im2col_q;
+    assign ext_dma_p0               = tl_p0;
+    assign ext_dma_q0               = tl_q0;
+    assign ext_dma_group            = tl_group;
     assign ext_dma_base_addr        = tl_base_addr;
     assign ext_dma_row_stride       = tl_row_stride;
     assign ext_dma_rows_to_read     = tl_rows_to_read;
@@ -362,6 +380,9 @@ module ia_loader #(
 
         .tl_start       (tl_start),
         .tl_base_addr   (tl_base_addr),
+        .tl_p0          (tl_p0),
+        .tl_q0          (tl_q0),
+        .tl_group       (tl_group),
         .tl_row_stride  (tl_row_stride),
         .tl_rows_to_read(tl_rows_to_read),
         .tl_valid_cols  (tl_valid_cols),
@@ -418,6 +439,8 @@ module ia_loader #(
         end
     end
 
+    // Every read, including im2col, returns through the ordinary shared DMA
+    // matrix-block interface. DMA owns input fetching, padding and correction.
     assign tl_busy          = ext_dma_busy;
     assign tl_tile_done     = ext_dma_done;
     assign tl_wr_slot       = ext_dma_wr_slot;
@@ -431,8 +454,8 @@ module ia_loader #(
             wire [REG_WIDTH-1:0] elem_col =
                 REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(DMA_I);
             wire elem_in_tile = elem_col < REG_WIDTH'(SIZE);
-            wire elem_valid   = elem_col < active_valid_cols;
-            assign tl_wr_data[dma_i]  = elem_valid ? ext_dma_wr_data[dma_i] : '0;
+            wire elem_valid = elem_col < active_valid_cols;
+            assign tl_wr_data[dma_i] = elem_valid ? ext_dma_wr_data[dma_i] : '0;
             assign tl_wr_valid[dma_i] = ext_dma_wr_valid[dma_i] && elem_in_tile;
         end
     endgenerate

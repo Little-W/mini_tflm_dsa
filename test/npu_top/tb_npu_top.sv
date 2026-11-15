@@ -698,13 +698,13 @@ module tb_npu_top;
                  u_dut.u_block_dma_arbiter.wr_dma_busy,
                  u_dut.u_block_dma_arbiter.wr_dma_done);
         $display("[TB][DBG] dma rd_cmd_row=%0d rd_rsp_row=%0d rd_rsp_beat=%0d rd_inflight=%0b rd_active=%0b rd_done=%0b wr_beat=%0d",
-                 u_dut.u_block_dma_arbiter.u_dma.rd_cmd_row_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.rd_rsp_row_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.rd_rsp_beat_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.rd_cmd_inflight,
-                 u_dut.u_block_dma_arbiter.u_dma.rd_active,
-                 u_dut.u_block_dma_arbiter.u_dma.rd_done,
-                 u_dut.u_block_dma_arbiter.u_dma.wr_beat_cnt);
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_cmd_row_cnt,
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_rsp_row_cnt,
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_rsp_beat_cnt,
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_cmd_inflight,
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_active,
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_done,
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.wr_beat_cnt);
         $display("[TB][DBG] axi ar_v=%0b ar_r=%0b r_v=%0b r_r=%0b aw_v=%0b aw_r=%0b w_v=%0b w_r=%0b b_v=%0b b_r=%0b",
                  m_axi_arvalid,
                  m_axi_arready,

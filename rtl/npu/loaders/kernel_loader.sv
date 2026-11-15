@@ -9,6 +9,8 @@ module kernel_loader #(
     input  logic                        clk,
     input  logic                        rst_n,
     input  logic                        init_cfg,
+    // IS Conv uses this ordinary matrix loader for image-derived A blocks.
+    input  logic                        cfg_im2col = 1'b0,
     output logic                        load_weight_req,
     input  logic                        load_weight_granted,
     input  logic                        send_weight_trigger,
@@ -28,6 +30,10 @@ module kernel_loader #(
 	    output logic                        ext_dma_start,
 	    output logic                        ext_dma_is_write,
 	    output logic                        ext_dma_linear_read_mode,
+    output logic                        ext_dma_im2col,
+    output logic [REG_WIDTH-1:0]        ext_dma_p0,
+    output logic [REG_WIDTH-1:0]        ext_dma_q0,
+    output logic [REG_WIDTH-1:0]        ext_dma_group,
 	    output logic [REG_WIDTH-1:0]        ext_dma_base_addr,
 	    output logic [REG_WIDTH-1:0]        ext_dma_row_stride,
 	    output logic [REG_WIDTH-1:0]        ext_dma_rows_to_read,
@@ -56,12 +62,14 @@ module kernel_loader #(
   logic [REG_WIDTH-1:0] cfg_rhs_base, cfg_rhs_row_stride_b;
   logic signed [REG_WIDTH-1:0] cfg_rhs_zp;
   logic cfg_use_16bits;
+  logic im2col_q;
   logic [REG_WIDTH-1:0] cfg_ia_reuse_num, cfg_w_reuse_num;
 
   logic cfg_valid;
   logic ctrl_all_done;
 
   logic                        dma_start;
+  logic [REG_WIDTH-1:0]        dma_p0, dma_q0, dma_group;
   logic [REG_WIDTH-1:0]        dma_tile_base_addr;
   logic [REG_WIDTH-1:0]        dma_rows_to_read;
   logic [REG_WIDTH-1:0]        dma_row_stride_b;
@@ -102,6 +110,10 @@ module kernel_loader #(
 	  assign ext_dma_start            = dma_start;
 	  assign ext_dma_is_write         = 1'b0;
 	  assign ext_dma_linear_read_mode = 1'b0;
+  assign ext_dma_im2col           = im2col_q;
+  assign ext_dma_p0               = dma_p0;
+  assign ext_dma_q0               = dma_q0;
+  assign ext_dma_group            = dma_group;
 	  assign ext_dma_base_addr        = dma_tile_base_addr;
 	  assign ext_dma_row_stride       = dma_row_stride_b;
 	  assign ext_dma_rows_to_read     = dma_rows_to_read;
@@ -109,6 +121,11 @@ module kernel_loader #(
 	  assign ext_dma_slot_id          = 1'b0;
 	  assign ext_dma_use_16bits       = cfg_use_16bits;
 	  assign ext_dma_lhs_zp           = dma_rhs_zp;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) im2col_q <= 1'b0;
+    else if (init_cfg) im2col_q <= cfg_im2col;
+  end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -189,6 +206,9 @@ module kernel_loader #(
     .load_done               (dma_done),
     .load_weight_req       (load_weight_req),
     .dma_start             (dma_start),
+    .dma_p0                (dma_p0),
+    .dma_q0                (dma_q0),
+    .dma_group             (dma_group),
     .dma_tile_base_addr    (dma_tile_base_addr),
     .dma_rows_to_read      (dma_rows_to_read),
     .dma_row_stride_b      (dma_row_stride_b),
@@ -215,13 +235,17 @@ module kernel_loader #(
 
 	  always_comb begin
 	        beat_valid = 1'b0;
+	        last_ext_beat = 1'b0;
 	        for (int i = 0; i < BYTE_PER_BEAT; i++) begin
 	          beat_valid |= ext_dma_wr_valid[i];
+	          // Image-derived blocks may return a single lane at a tap or
+	          // input-word boundary. Only an actually valid final element
+	          // completes the row; nominal bus width can otherwise commit it
+	          // early and discard the accumulated prefix on the next beat.
+	          if (ext_dma_wr_valid[i] &&
+	              (REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(i) + REG_WIDTH'(1)
+	               >= ext_dma_valid_cols_r)) last_ext_beat = 1'b1;
 	        end
-		        last_ext_beat = beat_valid &&
-		          ((REG_WIDTH'(ext_dma_wr_col_base) +
-		            (cfg_use_16bits ? REG_WIDTH'(ELEM_PER_BEAT_S16) : REG_WIDTH'(ELEM_PER_BEAT_S8)))
-		           >= ext_dma_valid_cols_r);
 	        for (int c = 0; c < SIZE; c++) begin
 	          row_acc_n[c] = row_acc[c];
 	          row_emit_n[c] = row_acc[c];
@@ -269,7 +293,10 @@ module kernel_loader #(
 	          ext_done_q <= ext_dma_done;
 	          dma_done <= ext_done_q;
 	          if (dma_start) begin
-	            ext_dma_valid_cols_r <= dma_valid_cols;
+                // The image block is returned as a complete SIZE-column row,
+                // including explicit zero reduction-tail elements. Commit it
+                // once at SIZE, rather than re-emitting after each padded beat.
+	            ext_dma_valid_cols_r <= im2col_q ? REG_WIDTH'(SIZE) : dma_valid_cols;
 	          end
 	          dma_row_valid <= row_valid_pending;
 	          if (row_valid_pending) begin

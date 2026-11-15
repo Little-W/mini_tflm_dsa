@@ -2,6 +2,7 @@
 #define DSA_ACCEL_H
 
 #include <stdint.h>
+#include "dsa_conv.h"
 
 /* ========== AXI-Lite MMIO 基地址 ========== */
 /* axi_soc maps the accelerator window at 0x1000_0000 in soc_top.sv. */
@@ -66,6 +67,11 @@
 #define DSA_PS_FRAME_COUNT DSA_TILE_SIZE
 #endif
 
+/* Optional platform/host-test hooks, with identical register programming. */
+#ifdef DSA_MMIO_CUSTOM
+void dsa_mmio_write(uint32_t addr, uint32_t data);
+uint32_t dsa_mmio_read(uint32_t addr);
+#else
 static inline void dsa_mmio_write(uint32_t addr, uint32_t data)
 {
     *(volatile uint32_t *)(uintptr_t)addr = data;
@@ -75,6 +81,8 @@ static inline uint32_t dsa_mmio_read(uint32_t addr)
 {
     return *(volatile uint32_t *)(uintptr_t)addr;
 }
+
+#endif
 
 static inline void dsa_reg_write(uint32_t byte_offset, uint32_t data)
 {

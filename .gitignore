@@ -67,6 +67,30 @@ test/*/__pycache__/
 # Local release packages
 /deliverables/
 
+# Conv tests keep source and generate all results and vectors under /build/.
+# Scoped guards also prevent accidentally checking in outputs written beneath
+# a test directory through a custom output argument. Existing upstream inputs
+# elsewhere in the repository are not covered by these rules.
+/test/conv_*/**/results*/
+/test/conv_*/**/evidence*/
+/test/conv_*/**/development/
+/test/conv_*/**/pre_optional_drain/
+/test/conv_*/**/source_snapshot/
+/test/conv_*/**/harness_snapshot/
+/test/conv_*/**/*.json
+/test/conv_*/**/*.csv
+/test/conv_*/**/*.mem
+/test/conv_*/**/*.suite
+/test/conv_*/**/*.bin
+/test/conv_*/**/*.elf
+/test/conv_*/**/*.map
+/test/conv_*/**/*.nm
+/test/conv_*/**/*.d
+/test/conv_*/**/*.gz
+/test/conv_*/**/*.zip
+/test/conv_*/**/*vectors*.txt
+/test/conv_*/**/config.txt
+
 /veri/pcr_model/build/
 /veri/pcr_model/backends/
 /veri/pcr_model/runtime_cache/

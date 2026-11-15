@@ -27,6 +27,9 @@ module kernel_loader_ctrl #(
     input  logic                        load_done,
     output logic                        load_weight_req,
     output logic                        dma_start,
+    output logic [REG_WIDTH-1:0]        dma_p0,
+    output logic [REG_WIDTH-1:0]        dma_q0,
+    output logic [REG_WIDTH-1:0]        dma_group,
     output logic [REG_WIDTH-1:0]        dma_tile_base_addr,
     output logic [REG_WIDTH-1:0]        dma_rows_to_read,
     output logic [REG_WIDTH-1:0]        dma_row_stride_b,
@@ -211,6 +214,11 @@ module kernel_loader_ctrl #(
 
     // W is column-flattened: each DMA "row" is one output column,
     // and each burst reads contiguous N/K elements from that column.
+    // In IS, this same loader reads image-derived A rows: output positions
+    // replace output channels, while reduction columns keep their direction.
+    dma_p0            = REG_WIDTH'(load_tile_col) << SIZE_SHIFT;
+    dma_q0            = REG_WIDTH'(load_tile_row) << SIZE_SHIFT;
+    dma_group         = REG_WIDTH'(load_repeat);
     dma_tile_base_addr = group_base_addr + row_addr_offset + col_addr_offset;
     dma_rows_to_read   = REG_WIDTH'(valid_m_cols);
     dma_row_stride_b   = cfg_rhs_row_stride_b;

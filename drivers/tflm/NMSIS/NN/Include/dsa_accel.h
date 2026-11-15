@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "../../../../dsa_conv.h"
 
 /* axi_soc maps the accelerator AXI-Lite window at 0x1000_0000. */
 #define DSA_MMIO_BASE 0x10000000u
@@ -38,6 +39,7 @@ extern "C" {
 #define NPU_REG_ROW_TAIL_TILES 0x064u
 #define NPU_REG_COL_GROUPS     0x068u
 #define NPU_REG_COL_TAIL_TILES 0x06Cu
+#define NPU_REG_CONFIG_ABI    0x070u
 #define NPU_REG_ID           0x0FCu
 
 #define DSA_REG_CTRL     NPU_REG_CTRL
@@ -73,6 +75,11 @@ extern "C" {
 #define DSA_PS_POOL_BYTES 0u
 #endif
 
+/* Optional platform/host-test hooks, with identical register programming. */
+#ifdef DSA_MMIO_CUSTOM
+void dsa_mmio_write(uint32_t addr, uint32_t data);
+uint32_t dsa_mmio_read(uint32_t addr);
+#else
 static inline void dsa_mmio_write(uint32_t addr, uint32_t data)
 {
     *(volatile uint32_t *)(uintptr_t)addr = data;
@@ -82,6 +89,8 @@ static inline uint32_t dsa_mmio_read(uint32_t addr)
 {
     return *(volatile uint32_t *)(uintptr_t)addr;
 }
+
+#endif
 
 static inline void dsa_reg_write(uint32_t byte_offset, uint32_t data)
 {

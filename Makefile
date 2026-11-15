@@ -43,8 +43,9 @@ COMPUTE_RTL := $(ROOT)/rtl/npu/compute
 BUFFER_RTL := $(ROOT)/rtl/npu/buffers
 DMA_RTL := $(ROOT)/rtl/npu/dma
 
-SRCS_axi_dual_block_dma := test/axi_dual_block_dma/tb_axi_dual_block_dma.sv rtl/npu/dma/axi_dual_block_dma.sv
-SRCS_axi_block_dma_arbiter := test/axi_block_dma_arbiter/tb_axi_block_dma_arbiter.sv rtl/npu/dma/axi_block_dma_arbiter.sv rtl/npu/dma/axi_dual_block_dma.sv
+UNIT_DMA_RTL := rtl/npu/conv/00_conv_im2col_pkg.sv $(filter-out rtl/npu/conv/00_conv_im2col_pkg.sv,$(sort $(wildcard rtl/npu/conv/*.sv))) rtl/npu/dma/axi_linear_block_dma.sv rtl/npu/dma/axi_dual_block_dma.sv
+SRCS_axi_dual_block_dma := $(UNIT_DMA_RTL) test/axi_dual_block_dma/tb_axi_dual_block_dma.sv
+SRCS_axi_block_dma_arbiter := $(UNIT_DMA_RTL) rtl/npu/dma/axi_block_dma_arbiter.sv test/axi_block_dma_arbiter/tb_axi_block_dma_arbiter.sv
 SRCS_ps_buffer := test/ps_buffer/tb_ps_buffer.sv $(BUFFER_RTL)/ps_buffer.sv $(BUFFER_RTL)/ps_buffer_fifo.sv $(COMPUTE_RTL)/de_diagonalizer.sv $(RAM_RTL)
 SRCS_compute_core := $(COMPUTE_DATA_DIR)/test_params_pkg.sv test/compute_core/tb_compute_core.sv test/compute_core/tb_compute_core_if.sv test/compute_core/compute_core_test.sv $(COMPUTE_RTL)/bias_mux.sv $(BUFFER_RTL)/ps_buffer.sv $(BUFFER_RTL)/ps_buffer_fifo.sv $(COMPUTE_RTL)/de_diagonalizer.sv $(RAM_RTL) $(COMPUTE_RTL)/ws_systolic_array.sv $(COMPUTE_RTL)/ws_systolic_cell.sv
 SRCS_npu_top := $(if $(filter 1,$(PCR_ENGINE)),test/pcr/tb_npu_top.sv test/pcr/ddr_axi_mem_model.sv,test/npu_top/tb_npu_top.sv test/npu_top/tb_sirv_stubs.v test/dep_modules/ddr_axi_mem_model.sv) $(NPU_RTL) $(RAM_RTL)
@@ -66,6 +67,12 @@ help:
 	@echo 'make capacity-solve MAX_STATE_KIB=<n>  Optimize complete logical state'
 	@echo 'make capacity-test           Test solver and configuration integration'
 	@echo 'make pcr-backend             Build a Verilator backend from the PCR configuration'
+	@echo 'make conv-verify VERILATOR=/path/to/verilator YOSYS=yosys  Run hardware Conv validation'
+	@echo 'make conv-npu conv-reuse       Check real NPU outputs and external input reuse'
+	@echo 'make conv-dma                 Check unified DMA matrix/Conv commands in WS and IS'
+	@echo 'make conv-soc-perf            Compare original CPU im2col and hardware Conv on PicoRV32'
+	@echo 'make conv-vectors             Generate deterministic CNN vectors under build/'
+	@echo 'make conv-real-cnn             Compare five caches on real CNN layer dimensions'
 	@echo 'make vcs-unit                 Run all module and NPU tests with VCS'
 	@echo 'make vcs-unit-<name>          Run one test: $(UNIT_TESTS)'
 	@echo 'make vcs-axil CASE=<name>     Run an AXI-Lite UVM test'
@@ -190,3 +197,110 @@ pcr-backend: capacity-check
 	  --ps-sector-codec --pcr-ps --pcr-enable 1 --pcr-fast-enable 1 \
 	  $(if $(filter 1,$(PS_FORCE_RAW)),--force-raw,) $(if $(filter 1,$(PCR_BACKEND_REFERENCE)),--reference,) \
 	  --mem-words '$(PCR_BACKEND_MEM_WORDS)' --jobs '$(PCR_BACKEND_JOBS)' --output-root '$(abspath $(PCR_BACKEND_OUTPUT))'
+
+# Conv validation uses the production RTL and C entry points. Existing VCS
+# targets remain available; these targets require Verilator, GCC and Python.
+# Conv regressions select fixed standard-core profiles in their Python runners;
+# menuconfig's PCR capacity settings do not configure these fixtures. The
+# legacy GEMM regression additionally checks the PCR profile explicitly.
+VERILATOR ?= verilator
+YOSYS ?= yosys
+CONV_BUILD_DIR ?= $(ROOT)/build/conv_verify
+CONV_JOBS ?= 2
+CONV_SIZES ?= 4 8 16
+CONV_DMA_SIZES ?= 4 16
+CONV_COSIM_SIZES ?= 4 16
+CONV_RISCV_GCC ?= riscv64-unknown-elf-gcc
+CONV_SOC_FLAGS ?=
+CONV_CACHE_SETS ?= 32
+CONV_CACHE_POLICY ?= 2
+CONV_BASELINE ?=
+CONV_BASELINE_REF ?= 148964d180f52cb852c5a7e3d5c89773fa0a8ea5
+CONV_TOOL_ENV = PATH="$(dir $(abspath $(VERILATOR))):$$PATH"
+
+.PHONY: conv-verify conv-vectors conv-model conv-frontend conv-soc-ram conv-read-guard conv-reuse conv-driver conv-pcr-guard conv-dma conv-operand-drain conv-npu conv-input-audit conv-capacity conv-real-cnn conv-replacement conv-cosim conv-axil-protocol conv-disabled-config conv-narrow-kernel conv-gemm-regression conv-ram-inference conv-soc-perf
+
+conv-verify:
+	@set -e; for target in conv-model conv-frontend conv-soc-ram conv-read-guard conv-reuse conv-driver conv-pcr-guard conv-dma conv-npu conv-input-audit conv-real-cnn conv-replacement conv-cosim conv-axil-protocol conv-disabled-config conv-narrow-kernel conv-gemm-regression conv-ram-inference; do \
+	  $(MAKE) --no-print-directory $$target; \
+	done
+
+conv-model:
+	$(PYTHON) test/conv_frontend/tests/run_model_tests.py
+
+conv-vectors:
+	$(PYTHON) test/conv_models/generate_vectors.py --out '$(CONV_BUILD_DIR)/vectors'
+
+conv-frontend:
+	$(CONV_TOOL_ENV) $(PYTHON) test/conv_frontend/tools/run_rtl_suite.py
+
+conv-soc-ram:
+	$(CONV_TOOL_ENV) $(PYTHON) test/conv_soc_ram/run.py
+
+conv-read-guard:
+	$(CONV_TOOL_ENV) $(PYTHON) test/conv_guard/run.py
+
+conv-reuse:
+	$(CONV_TOOL_ENV) $(PYTHON) test/conv_reuse/run.py
+
+conv-driver:
+	$(PYTHON) test/conv_driver/run.py
+
+conv-pcr-guard:
+	$(PYTHON) test/conv_pcr_guard/run.py --out '$(CONV_BUILD_DIR)/pcr_guard'
+
+conv-dma:
+	$(PYTHON) test/conv_dma/run.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --sizes $(CONV_DMA_SIZES) --out '$(CONV_BUILD_DIR)/dma/matrix'
+	$(PYTHON) test/conv_dma/run.py --legacy-only --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/dma/legacy'
+	$(PYTHON) test/conv_dma/npu_cases.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --sizes $(CONV_DMA_SIZES) --out '$(CONV_BUILD_DIR)/dma/npu'
+	$(MAKE) conv-operand-drain
+
+conv-operand-drain:
+	$(PYTHON) test/conv_dma/operand_drain/run.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/dma/operand_drain'
+
+conv-npu:
+	$(PYTHON) test/conv_npu/run.py --verilator '$(VERILATOR)' --sizes $(CONV_SIZES) --cache-sets $(CONV_CACHE_SETS) --cache-policy $(CONV_CACHE_POLICY) --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/npu'
+
+conv-input-audit:
+	$(PYTHON) test/conv_npu/run.py --reuse-audit --verilator '$(VERILATOR)' --sizes $(CONV_SIZES) --cache-sets $(CONV_CACHE_SETS) --cache-policy $(CONV_CACHE_POLICY) --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/input_audit'
+
+conv-capacity:
+	$(PYTHON) test/conv_npu/capacity.py --verilator '$(VERILATOR)' --cache-policy $(CONV_CACHE_POLICY) --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/capacity'
+
+conv-real-cnn: conv-capacity
+	$(PYTHON) test/conv_npu/model_shapes.py --tiling-policy driver-auto --cache-policy $(CONV_CACHE_POLICY) --binaries-root '$(CONV_BUILD_DIR)/capacity' --out '$(CONV_BUILD_DIR)/real_cnn' --bypass
+
+conv-replacement:
+	mkdir -p '$(CONV_BUILD_DIR)/replacement'
+	$(PYTHON) test/conv_replacement/trace_model.py --out '$(CONV_BUILD_DIR)/replacement/traces'
+	$(PYTHON) test/conv_replacement/geometry_oracle.py --out '$(CONV_BUILD_DIR)/replacement/geometry_validation.json'
+	$(PYTHON) test/conv_replacement/predictor_test.py --verilator '$(VERILATOR)' --build '$(CONV_BUILD_DIR)/replacement/predictor_build' --out '$(CONV_BUILD_DIR)/replacement/predictor_validation.json'
+	$(PYTHON) test/conv_replacement/run_cache_policy.py --verilator '$(VERILATOR)' --out '$(CONV_BUILD_DIR)/replacement/cache'
+	$(PYTHON) test/conv_replacement/rtl_compare.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/replacement/npu/core_18' --profiles 2:512 2:1024 2:2048 1:1024 0:1024 2:4096
+	$(PYTHON) test/conv_replacement/rtl_compare.py --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/replacement/npu/remaining_7' --profiles 2:1024 --skip-build --reuse-builds-root '$(CONV_BUILD_DIR)/replacement/npu/core_18' --layers mnist_cnn:sg0:op0 mnist_cnn:sg0:op2 justure_detect:sg0:op1 justure_detect:sg0:op10 person_detect:sg0:op6 person_detect:sg0:op10 mobilenet_v2:sg0:op32
+
+conv-cosim:
+	@set -e; for size in $(CONV_COSIM_SIZES); do \
+	  $(PYTHON) test/conv_cosim/run.py --size $$size --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --build '$(CONV_BUILD_DIR)/cosim_build' --out '$(CONV_BUILD_DIR)/cosim_s'$$size; \
+	done
+
+conv-axil-protocol:
+	$(PYTHON) test/conv_cosim/run.py --axil-protocol-only --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --build '$(CONV_BUILD_DIR)/cosim_build'
+
+conv-disabled-config:
+	$(PYTHON) test/conv_cosim/run.py --disabled-per-channel --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --build '$(CONV_BUILD_DIR)/cosim_build'
+	$(PYTHON) test/conv_cosim/run.py --disabled-is --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --build '$(CONV_BUILD_DIR)/cosim_build'
+
+conv-narrow-kernel:
+	$(PYTHON) test/conv_cosim/run.py --narrow-kernel --verilator '$(VERILATOR)' --jobs $(CONV_JOBS) --build '$(CONV_BUILD_DIR)/cosim_build' --out '$(CONV_BUILD_DIR)/cosim_narrow_kernel'
+
+# Requires the pinned PicoRV32 submodule and a bare-metal RISC-V C toolchain.
+# Kept separate from host-only conv-verify; see test/conv_soc_perf/README.md.
+conv-soc-perf:
+	$(PYTHON) test/conv_soc_perf/run.py --verilator '$(VERILATOR)' --gcc '$(CONV_RISCV_GCC)' --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/soc_perf' $(CONV_SOC_FLAGS)
+
+conv-gemm-regression:
+	$(PYTHON) test/conv_regression/run.py --root '$(ROOT)' --verilator '$(VERILATOR)' --pcr --jobs $(CONV_JOBS) --out '$(CONV_BUILD_DIR)/gemm' $(if $(strip $(CONV_BASELINE)),--compare '$(CONV_BASELINE)',--baseline-ref '$(CONV_BASELINE_REF)')
+
+conv-ram-inference:
+	$(PYTHON) test/conv_ram_inference/run.py --yosys '$(YOSYS)'

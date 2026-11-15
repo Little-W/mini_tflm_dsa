@@ -204,6 +204,8 @@ TFLM_RV32_REBUILD_DEPS := \
                 $(NPU_CONFIG_ROOT)/config/npu_config.mk \
                 $(TFLM_DIR)/Makefile \
                 ../../drivers/gempact_tiling.h \
+                ../../drivers/dsa_conv.h \
+                ../../drivers/dsa_conv_impl.h \
                 $(TFLM_NMSIS_NN_SOURCE_DIR)/../Include/dsa_accel.h \
                 $(TFLM_ROOT)/tensorflow/lite/micro/kernels/shape.cc \
                 $(TFLM_ROOT)/tensorflow/lite/micro/kernels/fill.cc \
@@ -499,7 +501,7 @@ soc_c: soc_case
 > $(SOC_OBJCOPY) -O binary $(SOC_CASE_DIR)/cpu.elf $(SOC_CASE_DIR)/cpu.bin
 > python3 ../tb/elf_to_mem.py $(SOC_CASE_DIR)/cpu.bin $(SOC_CASE_DIR)/cpu.mem --depth $(SOC_CPU_MEM_DP)
 
-$(SOC_RUNTIME_CPU_MEM): $(SOC_RUNTIME_C_SRC) ../../drivers/dsa_accel.c ../../drivers/dsa_accel.h ../../drivers/gempact_tiling.h ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../soc_csrc/picosoc_bsp.h ../soc_csrc/dsa_accel_mmio.c ../soc_csrc/dsa_accel_mmio.h ../soc_csrc/link.ld Makefile $(NPU_CONFIG) $(NPU_CONFIG_ROOT)/config/npu_config.mk $(NPU_BUILD_STAMP) | capacity-check
+$(SOC_RUNTIME_CPU_MEM): $(SOC_RUNTIME_C_SRC) ../../drivers/dsa_accel.c ../../drivers/dsa_accel.h ../../drivers/dsa_conv.h ../../drivers/dsa_conv_impl.h ../../drivers/gempact_tiling.h ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../soc_csrc/picosoc_bsp.h ../soc_csrc/dsa_accel_mmio.c ../soc_csrc/dsa_accel_mmio.h ../soc_csrc/link.ld Makefile $(NPU_CONFIG) $(NPU_CONFIG_ROOT)/config/npu_config.mk $(NPU_BUILD_STAMP) | capacity-check
 > @mkdir -p $(@D)
 > @echo "[SOC_RUNTIME_C] $(SOC_RUNTIME_C_SRC) -> $@"
 > $(SOC_GCC) $(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) -DSOC_RUNTIME_CASE_BASE=$(SOC_RUNTIME_BASE_ADDR) -ffreestanding -nostdlib -nostartfiles -DPICOSOC_UART_CLKDIV=$(SOC_UART_CLKDIV) -I../soc_csrc $(SOC_LINK_FLAGS) ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../../drivers/dsa_accel.c ../soc_csrc/dsa_accel_mmio.c $(SOC_RUNTIME_C_SRC) $(SOC_BARE_LIBS) -o $(@D)/cpu.elf

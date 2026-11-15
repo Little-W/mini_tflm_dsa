@@ -60,6 +60,13 @@ riscv_nmsis_nn_status riscv_convolve_wrapper_s8(const nmsis_nn_context *ctx,
                                             const nmsis_nn_dims *output_dims,
                                             int8_t *output_data)
 {
+    /* Hardware reads the original NHWC tensor; this precedes scratch-buffer
+     * checks and every software im2col/optimized matrix path. */
+    riscv_nmsis_nn_status dsa_status;
+    if (riscv_convolve_s8_try_dsa(conv_params, quant_params, input_dims,
+            input_data, filter_dims, filter_data, bias_data, NULL,
+            output_dims, output_data, &dsa_status)) return dsa_status;
+
     if ((conv_params->padding.w == 0) && (conv_params->padding.h == 0) && (filter_dims->w == 1) &&
         (filter_dims->h == 1) && (conv_params->dilation.w == 1 && conv_params->dilation.h == 1) &&
         (input_dims->c == filter_dims->c))
