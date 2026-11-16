@@ -1,0 +1,1191 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "scope": "Complete official accelerator RTL with common INT8 operands, INT32 bias, exact RNE scale 1/32, and identical 32-bit external memory service. Mathematical tensors and outputs are checked between all groups.",
+  "hardware_dma_parameter": "configuration.dma_max_bytes",
+  "official_software_header_max_bytes": 64,
+  "read_response_effective_payload_limit_bytes": 255,
+  "complete_gemm_profiles": [
+    {
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_best_official/sp64_acc16/results/results.json",
+        "sha256": "f4f03abdaaa051e6f1d9cea673250bb126cc3a55d9b3bcb81647e34581745127"
+      },
+      "configuration": {
+        "array_rows": 16,
+        "array_columns": 16,
+        "input_bits": 8,
+        "weight_bits": 8,
+        "accumulator_bits": 32,
+        "scratchpad_bytes": 65536,
+        "spatial_array_output_bits": 20,
+        "accumulator_bytes": 16384,
+        "dma_bus_bits": 32,
+        "dma_max_bytes": 64,
+        "dma_outstanding_per_direction": 4,
+        "has_im2col": false,
+        "has_loop_conv": true,
+        "has_dw_convs": true,
+        "has_first_layer_optimizations": true,
+        "clock_gate": false,
+        "host_cpu_instantiated": false,
+        "memory_interface": "official TLToAXI4 and AXI4UserYanker"
+      },
+      "memory_service": {
+        "read_request_queue_depth": 16,
+        "first_read_latency_cycles": 3,
+        "read_beat_interval_cycles": 2,
+        "inter_burst_read_gap_cycles": 3,
+        "write_outstanding": 1,
+        "aw_to_first_w_min_cycles": 1,
+        "last_w_to_b_min_cycles": 1
+      },
+      "case_count": 31,
+      "all_output_and_memory_checks_passed": true,
+      "total_cycles": 513838,
+      "build_manifest_sha256": "a69016b1e80e44c841201b2cca4b9ee1e9b34fa51501a077c96b2ea43ae914ab",
+      "profile": "sp64_acc16"
+    },
+    {
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_best_official/sp32_acc32/results/results.json",
+        "sha256": "abc6dac0d05185cdeefdad796ce0d6dd14573c5197910b1c17fde1a5a12120f3"
+      },
+      "configuration": {
+        "array_rows": 16,
+        "array_columns": 16,
+        "input_bits": 8,
+        "weight_bits": 8,
+        "accumulator_bits": 32,
+        "scratchpad_bytes": 32768,
+        "spatial_array_output_bits": 20,
+        "accumulator_bytes": 32768,
+        "dma_bus_bits": 32,
+        "dma_max_bytes": 64,
+        "dma_outstanding_per_direction": 4,
+        "has_im2col": false,
+        "has_loop_conv": true,
+        "has_dw_convs": true,
+        "has_first_layer_optimizations": true,
+        "clock_gate": false,
+        "host_cpu_instantiated": false,
+        "memory_interface": "official TLToAXI4 and AXI4UserYanker"
+      },
+      "memory_service": {
+        "read_request_queue_depth": 16,
+        "first_read_latency_cycles": 3,
+        "read_beat_interval_cycles": 2,
+        "inter_burst_read_gap_cycles": 3,
+        "write_outstanding": 1,
+        "aw_to_first_w_min_cycles": 1,
+        "last_w_to_b_min_cycles": 1
+      },
+      "case_count": 31,
+      "all_output_and_memory_checks_passed": true,
+      "total_cycles": 513902,
+      "build_manifest_sha256": "10df18586de412b5fe5b09c9b99ff8f571b187ec4376af814c51257c44263ae5",
+      "profile": "sp32_acc32"
+    },
+    {
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_best_official/sp256_acc64/results/results.json",
+        "sha256": "b0501984e8b5b0b1625719fff4381ef6e2b676a79688b6f5441013aea8b2162a"
+      },
+      "configuration": {
+        "array_rows": 16,
+        "array_columns": 16,
+        "input_bits": 8,
+        "weight_bits": 8,
+        "accumulator_bits": 32,
+        "scratchpad_bytes": 262144,
+        "spatial_array_output_bits": 20,
+        "accumulator_bytes": 65536,
+        "dma_bus_bits": 32,
+        "dma_max_bytes": 64,
+        "dma_outstanding_per_direction": 4,
+        "has_im2col": false,
+        "has_loop_conv": true,
+        "has_dw_convs": true,
+        "has_first_layer_optimizations": true,
+        "clock_gate": false,
+        "host_cpu_instantiated": false,
+        "memory_interface": "official TLToAXI4 and AXI4UserYanker"
+      },
+      "memory_service": {
+        "read_request_queue_depth": 16,
+        "first_read_latency_cycles": 3,
+        "read_beat_interval_cycles": 2,
+        "inter_burst_read_gap_cycles": 3,
+        "write_outstanding": 1,
+        "aw_to_first_w_min_cycles": 1,
+        "last_w_to_b_min_cycles": 1
+      },
+      "case_count": 31,
+      "all_output_and_memory_checks_passed": true,
+      "total_cycles": 512935,
+      "build_manifest_sha256": "ba8cb5c70e4e17da4bc2613895a971864ccb6230b9efb7ac22f3f8f16a14187e",
+      "profile": "sp256_acc64"
+    },
+    {
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_best_official_dma128/sp256_acc64_dma128/results/results.json",
+        "sha256": "8953bf94169c2e6921fb2a3f40a5e5add94d3f7ed42487707b13f0444040a2f2"
+      },
+      "configuration": {
+        "array_rows": 16,
+        "array_columns": 16,
+        "input_bits": 8,
+        "weight_bits": 8,
+        "accumulator_bits": 32,
+        "scratchpad_bytes": 262144,
+        "spatial_array_output_bits": 20,
+        "accumulator_bytes": 65536,
+        "dma_bus_bits": 32,
+        "dma_max_bytes": 128,
+        "dma_outstanding_per_direction": 4,
+        "has_im2col": false,
+        "has_loop_conv": true,
+        "has_dw_convs": true,
+        "has_first_layer_optimizations": true,
+        "clock_gate": false,
+        "host_cpu_instantiated": false,
+        "memory_interface": "official TLToAXI4 and AXI4UserYanker"
+      },
+      "memory_service": {
+        "read_request_queue_depth": 16,
+        "first_read_latency_cycles": 3,
+        "read_beat_interval_cycles": 2,
+        "inter_burst_read_gap_cycles": 3,
+        "write_outstanding": 1,
+        "aw_to_first_w_min_cycles": 1,
+        "last_w_to_b_min_cycles": 1
+      },
+      "case_count": 31,
+      "all_output_and_memory_checks_passed": true,
+      "total_cycles": 505972,
+      "build_manifest_sha256": "b0e985497ee40697e423b90f7a9a246ba8552022b5ac0ea429268f2b8c59d3e1",
+      "profile": "sp256_acc64_dma128"
+    }
+  ],
+  "dma128_search": {
+    "searches": [
+      {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_schedule_search_dma128",
+        "tensor_alignment_bytes": 64,
+        "transpose": "none",
+        "cases": 31,
+        "candidates": 8401,
+        "status_counts": {
+          "excluded_by_elapsed_cycles": 1506,
+          "excluded_by_payload_bound": 4070,
+          "excluded_by_read_service_bound": 2533,
+          "passed": 292,
+          "rtl_failure": 0
+        }
+      },
+      {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_schedule_search_dma128_a",
+        "tensor_alignment_bytes": 64,
+        "transpose": "a",
+        "cases": 31,
+        "candidates": 3935,
+        "status_counts": {
+          "excluded_by_elapsed_cycles": 845,
+          "excluded_by_payload_bound": 1726,
+          "excluded_by_read_service_bound": 1007,
+          "passed": 357,
+          "rtl_failure": 0
+        }
+      },
+      {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_schedule_search_dma128_b",
+        "tensor_alignment_bytes": 64,
+        "transpose": "b",
+        "cases": 31,
+        "candidates": 3935,
+        "status_counts": {
+          "excluded_by_elapsed_cycles": 850,
+          "excluded_by_payload_bound": 1676,
+          "excluded_by_read_service_bound": 1121,
+          "passed": 288,
+          "rtl_failure": 0
+        }
+      },
+      {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_schedule_search_dma128_align128",
+        "tensor_alignment_bytes": 128,
+        "transpose": "none",
+        "cases": 31,
+        "candidates": 8401,
+        "status_counts": {
+          "excluded_by_elapsed_cycles": 1413,
+          "excluded_by_payload_bound": 4026,
+          "excluded_by_read_service_bound": 2651,
+          "passed": 311,
+          "rtl_failure": 0
+        }
+      },
+      {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_schedule_search_dma128_align128_a",
+        "tensor_alignment_bytes": 128,
+        "transpose": "a",
+        "cases": 31,
+        "candidates": 3935,
+        "status_counts": {
+          "excluded_by_elapsed_cycles": 833,
+          "excluded_by_payload_bound": 1733,
+          "excluded_by_read_service_bound": 1070,
+          "passed": 299,
+          "rtl_failure": 0
+        }
+      },
+      {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_schedule_search_dma128_align128_b",
+        "tensor_alignment_bytes": 128,
+        "transpose": "b",
+        "cases": 31,
+        "candidates": 3935,
+        "status_counts": {
+          "excluded_by_elapsed_cycles": 779,
+          "excluded_by_payload_bound": 1676,
+          "excluded_by_read_service_bound": 1176,
+          "passed": 304,
+          "rtl_failure": 0
+        }
+      }
+    ],
+    "candidates": 32542,
+    "completed_rtl_candidates": 1851,
+    "tensor_start_selection_counts": {
+      "64": 24,
+      "128": 7
+    },
+    "formal_reexecution_cases": 31
+  },
+  "verified_additional_configuration_coverage": [
+    {
+      "dma_max_bytes": 256,
+      "memory_capacity_bytes": 327680,
+      "groups": [
+        {
+          "commands": "selected",
+          "attempted": 31,
+          "completed_and_verified": 26,
+          "complete_suite": false,
+          "source": {
+            "path": "/workspace/scratch/dc14ec427142/gemmini_dma_sensitivity/passed_dma256_selected/results.json",
+            "sha256": "bbede6508382b2f85b7962fd88d34712cfa53b6c57272697ea5c825e71d9cfc9"
+          }
+        },
+        {
+          "commands": "auto",
+          "attempted": 31,
+          "completed_and_verified": 24,
+          "complete_suite": false,
+          "source": {
+            "path": "/workspace/scratch/dc14ec427142/gemmini_dma_sensitivity/passed_dma256_auto/results.json",
+            "sha256": "205b702f802feac13b7665a5f09fadd2ff3a55edd990b64ce29c86644bf0403d"
+          }
+        }
+      ]
+    },
+    {
+      "dma_max_bytes": 1024,
+      "memory_capacity_bytes": 327680,
+      "groups": [
+        {
+          "commands": "selected",
+          "attempted": 31,
+          "completed_and_verified": 19,
+          "complete_suite": false,
+          "source": {
+            "path": "/workspace/scratch/dc14ec427142/gemmini_dma_sensitivity/passed_dma1024_selected/results.json",
+            "sha256": "1aaa200279d97a3ae8c37832a814a70a06b3b0cb911bfd3e3df319bcc01044fa"
+          }
+        },
+        {
+          "commands": "auto",
+          "attempted": 31,
+          "completed_and_verified": 16,
+          "complete_suite": false,
+          "source": {
+            "path": "/workspace/scratch/dc14ec427142/gemmini_dma_sensitivity/passed_dma1024_auto/results.json",
+            "sha256": "4ea446901fc5f846a848bff77af50d902e58eabee2bc113893b4c3893cfe0622"
+          }
+        }
+      ]
+    }
+  ],
+  "native_convolution": [
+    {
+      "profile": "sp64_acc16",
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_compare_modern/results_conv_sp64_acc16/results.json",
+        "sha256": "1adaed661946d36cd215ffbdc0e5b659fe75a20de054a6ed43a4b15509d7ee9f"
+      },
+      "total_cycles": 397377,
+      "cases": [
+        {
+          "name": "conv3x3_s2_96_c3_o8",
+          "cycles": 89414,
+          "read_bytes": 111672,
+          "read_requests": 11089,
+          "write_requests": 2304,
+          "loop_conv_launches": 18,
+          "loop_depthwise_launches": 0,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "966e3ff9f5091ac83d2aba9c0a1ab4b82be6552a78eb219bfe64d1e918c06e85"
+        },
+        {
+          "name": "dw3x3_s1_48_c8",
+          "cycles": 191054,
+          "read_bytes": 106304,
+          "read_requests": 26576,
+          "write_requests": 18432,
+          "loop_conv_launches": 144,
+          "loop_depthwise_launches": 144,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28"
+        },
+        {
+          "name": "dw3x3_s2_48_c8",
+          "cycles": 116909,
+          "read_bytes": 86464,
+          "read_requests": 21616,
+          "write_requests": 4608,
+          "loop_conv_launches": 48,
+          "loop_depthwise_launches": 48,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "c9c540dc43e5313db0b8b1090acda1e53e7e67d9252c50931e6d67273e33081c"
+        }
+      ]
+    },
+    {
+      "profile": "sp32_acc32",
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_compare_modern/results_conv_sp32_acc32/results.json",
+        "sha256": "c079a817ac8e0e41358fced9eb007614d4ab287b4db834ccd9dfca520f54fd06"
+      },
+      "total_cycles": 366083,
+      "cases": [
+        {
+          "name": "conv3x3_s2_96_c3_o8",
+          "cycles": 86569,
+          "read_bytes": 107640,
+          "read_requests": 10677,
+          "write_requests": 2304,
+          "loop_conv_launches": 12,
+          "loop_depthwise_launches": 0,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "966e3ff9f5091ac83d2aba9c0a1ab4b82be6552a78eb219bfe64d1e918c06e85"
+        },
+        {
+          "name": "dw3x3_s1_48_c8",
+          "cycles": 166080,
+          "read_bytes": 93728,
+          "read_requests": 23432,
+          "write_requests": 18432,
+          "loop_conv_launches": 72,
+          "loop_depthwise_launches": 72,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28"
+        },
+        {
+          "name": "dw3x3_s2_48_c8",
+          "cycles": 113434,
+          "read_bytes": 83456,
+          "read_requests": 20864,
+          "write_requests": 4608,
+          "loop_conv_launches": 32,
+          "loop_depthwise_launches": 32,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "c9c540dc43e5313db0b8b1090acda1e53e7e67d9252c50931e6d67273e33081c"
+        }
+      ]
+    },
+    {
+      "profile": "sp256_acc64",
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_compare_modern/results_conv_sp256_acc64/results.json",
+        "sha256": "f93af8564d2209584ec70c43164fdefe452e4c8ecfa7449f45edab011770d76e"
+      },
+      "total_cycles": 370846,
+      "cases": [
+        {
+          "name": "conv3x3_s2_96_c3_o8",
+          "cycles": 85266,
+          "read_bytes": 109496,
+          "read_requests": 10567,
+          "write_requests": 2304,
+          "loop_conv_launches": 9,
+          "loop_depthwise_launches": 0,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "966e3ff9f5091ac83d2aba9c0a1ab4b82be6552a78eb219bfe64d1e918c06e85"
+        },
+        {
+          "name": "dw3x3_s1_48_c8",
+          "cycles": 172232,
+          "read_bytes": 96800,
+          "read_requests": 24200,
+          "write_requests": 18432,
+          "loop_conv_launches": 72,
+          "loop_depthwise_launches": 72,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28"
+        },
+        {
+          "name": "dw3x3_s2_48_c8",
+          "cycles": 113348,
+          "read_bytes": 83456,
+          "read_requests": 20864,
+          "write_requests": 4608,
+          "loop_conv_launches": 32,
+          "loop_depthwise_launches": 32,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "c9c540dc43e5313db0b8b1090acda1e53e7e67d9252c50931e6d67273e33081c"
+        }
+      ]
+    },
+    {
+      "profile": "sp256_acc64_dma128",
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/gemmini_compare_dma128/results_conv/results.json",
+        "sha256": "43f100b6827cbecbc1cb40d7471f76143db1af273ed297d295750251d3799a97"
+      },
+      "total_cycles": 379486,
+      "cases": [
+        {
+          "name": "conv3x3_s2_96_c3_o8",
+          "cycles": 93906,
+          "read_bytes": 127496,
+          "read_requests": 10417,
+          "write_requests": 2304,
+          "loop_conv_launches": 9,
+          "loop_depthwise_launches": 0,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "966e3ff9f5091ac83d2aba9c0a1ab4b82be6552a78eb219bfe64d1e918c06e85"
+        },
+        {
+          "name": "dw3x3_s1_48_c8",
+          "cycles": 172232,
+          "read_bytes": 96800,
+          "read_requests": 24200,
+          "write_requests": 18432,
+          "loop_conv_launches": 72,
+          "loop_depthwise_launches": 72,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28"
+        },
+        {
+          "name": "dw3x3_s2_48_c8",
+          "cycles": 113348,
+          "read_bytes": 83456,
+          "read_requests": 20864,
+          "write_requests": 4608,
+          "loop_conv_launches": 32,
+          "loop_depthwise_launches": 32,
+          "independent_im2col_active_cycles": 0,
+          "observed_output_sha256": "c9c540dc43e5313db0b8b1090acda1e53e7e67d9252c50931e6d67273e33081c"
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "name": "model_m1024_n16_k144",
+      "m": 1024,
+      "n": 16,
+      "k": 144,
+      "dma64_best_cycles": 84243,
+      "dma128_best_cycles": 82513,
+      "dma128_read_bytes": 153856,
+      "dma128_read_requests": 1360,
+      "dma128_write_requests": 1024,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        8,
+        1,
+        9
+      ],
+      "output_sha256": "715640445dc2f839926ca4dbd9c42ba34feccf9a7bc4389cfa79c14904c7cf06"
+    },
+    {
+      "name": "model_m1024_n16_k27",
+      "m": 1024,
+      "n": 16,
+      "k": 27,
+      "dma64_best_cycles": 20237,
+      "dma128_best_cycles": 20365,
+      "dma128_read_bytes": 32256,
+      "dma128_read_requests": 528,
+      "dma128_write_requests": 1024,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        4,
+        1,
+        1
+      ],
+      "output_sha256": "d7e1814b995b2b7609da4c4e35d484ed48c161b70452ba2c9814d0b5efc08ccb"
+    },
+    {
+      "name": "model_m125_n64_k40",
+      "m": 125,
+      "n": 64,
+      "k": 40,
+      "dma64_best_cycles": 7837,
+      "dma128_best_cycles": 8506,
+      "dma128_read_bytes": 11908,
+      "dma128_read_requests": 207,
+      "dma128_write_requests": 250,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        8,
+        2,
+        2
+      ],
+      "output_sha256": "2519f0db487a9ceb99a03101ac5789d76ae8aecacd8ce8ba4189611217856ae5"
+    },
+    {
+      "name": "model_m125_n64_k64",
+      "m": 125,
+      "n": 64,
+      "k": 64,
+      "dma64_best_cycles": 9007,
+      "dma128_best_cycles": 8593,
+      "dma128_read_bytes": 14144,
+      "dma128_read_requests": 205,
+      "dma128_write_requests": 125,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 128,
+      "dma128_explicit_tile": [
+        1,
+        4,
+        4
+      ],
+      "output_sha256": "402bd5bb1ac322628f97ce6d0ccc3dd2ff55f65eed7ecab7a2a5149917b1b6f1"
+    },
+    {
+      "name": "model_m144_n64_k32",
+      "m": 144,
+      "n": 64,
+      "k": 32,
+      "dma64_best_cycles": 6867,
+      "dma128_best_cycles": 6267,
+      "dma128_read_bytes": 8960,
+      "dma128_read_requests": 194,
+      "dma128_write_requests": 144,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 128,
+      "dma128_explicit_tile": [
+        1,
+        4,
+        2
+      ],
+      "output_sha256": "9761446caeff8aaf02556d2f998f75bdeb87231d37fb92f46ba54d956095bfe8"
+    },
+    {
+      "name": "model_m144_n64_k64",
+      "m": 144,
+      "n": 64,
+      "k": 64,
+      "dma64_best_cycles": 9972,
+      "dma128_best_cycles": 9516,
+      "dma128_read_bytes": 15616,
+      "dma128_read_requests": 226,
+      "dma128_write_requests": 144,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        1,
+        4,
+        4
+      ],
+      "output_sha256": "69e3256552cb721a4b6e7ca534e915be3e3dc7c4d2966a2f36fd0f5f70f3cfa4"
+    },
+    {
+      "name": "model_m196_n16_k72",
+      "m": 196,
+      "n": 16,
+      "k": 72,
+      "dma64_best_cycles": 11052,
+      "dma128_best_cycles": 12379,
+      "dma128_read_bytes": 21804,
+      "dma128_read_requests": 413,
+      "dma128_write_requests": 196,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        6,
+        1,
+        5
+      ],
+      "output_sha256": "e7070af425963815fb527228ab71cfd2dedb21dac32c195f2ba96eee1bc9b99d"
+    },
+    {
+      "name": "model_m1_n10_k64",
+      "m": 1,
+      "n": 10,
+      "k": 64,
+      "dma64_best_cycles": 833,
+      "dma128_best_cycles": 833,
+      "dma128_read_bytes": 1152,
+      "dma128_read_requests": 35,
+      "dma128_write_requests": 1,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "b",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        1,
+        1,
+        2
+      ],
+      "output_sha256": "a9fca07e33e074df2cb69611b15226ec7f271d2d0541b5e72647c2c89602cdd4"
+    },
+    {
+      "name": "model_m1_n12_k64",
+      "m": 1,
+      "n": 12,
+      "k": 64,
+      "dma64_best_cycles": 837,
+      "dma128_best_cycles": 837,
+      "dma128_read_bytes": 1152,
+      "dma128_read_requests": 35,
+      "dma128_write_requests": 1,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "b",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        1,
+        1,
+        2
+      ],
+      "output_sha256": "42b8cc1e8a38832ed6b16b9b13c4737a1b564e793839824ab78ca2c8a16fd7b6"
+    },
+    {
+      "name": "model_m1_n2_k256",
+      "m": 1,
+      "n": 2,
+      "k": 256,
+      "dma64_best_cycles": 1316,
+      "dma128_best_cycles": 1284,
+      "dma128_read_bytes": 1288,
+      "dma128_read_requests": 259,
+      "dma128_write_requests": 1,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        0,
+        0,
+        0
+      ],
+      "output_sha256": "47dc540c94ceb704a23875c11273e16bb0b8a87aed84de911f2133568115f254"
+    },
+    {
+      "name": "model_m1_n64_k784",
+      "m": 1,
+      "n": 64,
+      "k": 784,
+      "dma64_best_cycles": 27554,
+      "dma128_best_cycles": 27430,
+      "dma128_read_bytes": 51216,
+      "dma128_read_requests": 793,
+      "dma128_write_requests": 1,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 128,
+      "dma128_explicit_tile": [
+        1,
+        4,
+        48
+      ],
+      "output_sha256": "15efa3f0448fa22667b5ada3827f0cd14a98c5a97647fe08ceb9763ea33dfee1"
+    },
+    {
+      "name": "model_m2304_n16_k8",
+      "m": 2304,
+      "n": 16,
+      "k": 8,
+      "dma64_best_cycles": 24406,
+      "dma128_best_cycles": 24406,
+      "dma128_read_bytes": 27776,
+      "dma128_read_requests": 2464,
+      "dma128_write_requests": 2304,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "b",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        4,
+        1,
+        1
+      ],
+      "output_sha256": "f7638a1be62d15a458476a70a661c4b0c113f3fedfb01b1638201af88d38f5ff"
+    },
+    {
+      "name": "model_m2304_n8_k27",
+      "m": 2304,
+      "n": 8,
+      "k": 27,
+      "dma64_best_cycles": 40821,
+      "dma128_best_cycles": 40821,
+      "dma128_read_bytes": 67072,
+      "dma128_read_requests": 1148,
+      "dma128_write_requests": 2304,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        4,
+        1,
+        1
+      ],
+      "output_sha256": "04dc2c25fe3e82b3da5a6232dace105717cdce4c010a7e98a110de54daeef6b8"
+    },
+    {
+      "name": "model_m256_n32_k144",
+      "m": 256,
+      "n": 32,
+      "k": 144,
+      "dma64_best_cycles": 24994,
+      "dma128_best_cycles": 24324,
+      "dma128_read_bytes": 43520,
+      "dma128_read_requests": 592,
+      "dma128_write_requests": 256,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        12,
+        2,
+        8
+      ],
+      "output_sha256": "c78517cf4eba9b2879de17f85b7f08b5737e75d750a72c7780609320ecf43635"
+    },
+    {
+      "name": "model_m256_n32_k16",
+      "m": 256,
+      "n": 32,
+      "k": 16,
+      "dma64_best_cycles": 5767,
+      "dma128_best_cycles": 5203,
+      "dma128_read_bytes": 6656,
+      "dma128_read_requests": 160,
+      "dma128_write_requests": 256,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        2,
+        2,
+        1
+      ],
+      "output_sha256": "98260410220397b9159875283bbfd2d31e8da7be272d71ab2b04c03cb36c0da6"
+    },
+    {
+      "name": "model_m256_n32_k288",
+      "m": 256,
+      "n": 32,
+      "k": 288,
+      "dma64_best_cycles": 47125,
+      "dma128_best_cycles": 46110,
+      "dma128_read_bytes": 84992,
+      "dma128_read_requests": 1168,
+      "dma128_write_requests": 256,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        12,
+        2,
+        16
+      ],
+      "output_sha256": "7a3d71bf83b48c1fc59a1dd7b9e4208df3f2111942296462ed7566bd52347738"
+    },
+    {
+      "name": "model_m36_n128_k128",
+      "m": 36,
+      "n": 128,
+      "k": 128,
+      "dma64_best_cycles": 13124,
+      "dma128_best_cycles": 12823,
+      "dma128_read_bytes": 22528,
+      "dma128_read_requests": 432,
+      "dma128_write_requests": 108,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        3,
+        6,
+        8
+      ],
+      "output_sha256": "02b5a556bc07dd5810b0a138cc3dd6f0c608ec7990551975dd407bac5b7cf9b8"
+    },
+    {
+      "name": "model_m36_n128_k64",
+      "m": 36,
+      "n": 128,
+      "k": 64,
+      "dma64_best_cycles": 7531,
+      "dma128_best_cycles": 7330,
+      "dma128_read_bytes": 12032,
+      "dma128_read_requests": 176,
+      "dma128_write_requests": 72,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        2,
+        4,
+        4
+      ],
+      "output_sha256": "64d294e035388dac022d4907b3e88d703789fd40fba03025a6887286da3dd533"
+    },
+    {
+      "name": "model_m576_n32_k16",
+      "m": 576,
+      "n": 32,
+      "k": 16,
+      "dma64_best_cycles": 11590,
+      "dma128_best_cycles": 10653,
+      "dma128_read_bytes": 14336,
+      "dma128_read_requests": 340,
+      "dma128_write_requests": 576,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        2,
+        2,
+        1
+      ],
+      "output_sha256": "f253ebc52aac1dfd6697ea25fb6006f7fdf7a26b7dc5a0bc6795b895fcd93055"
+    },
+    {
+      "name": "model_m576_n32_k32",
+      "m": 576,
+      "n": 32,
+      "k": 32,
+      "dma64_best_cycles": 15768,
+      "dma128_best_cycles": 14770,
+      "dma128_read_bytes": 24064,
+      "dma128_read_requests": 644,
+      "dma128_write_requests": 576,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        1,
+        2,
+        2
+      ],
+      "output_sha256": "2b4e1ecbfd6befed64bfa19cbfac0bd1b84b603e993e132a5ebb1ebda6fd137f"
+    },
+    {
+      "name": "model_m64_n64_k288",
+      "m": 64,
+      "n": 64,
+      "k": 288,
+      "dma64_best_cycles": 21273,
+      "dma128_best_cycles": 21731,
+      "dma128_read_bytes": 37888,
+      "dma128_read_requests": 872,
+      "dma128_write_requests": 64,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        2,
+        4,
+        18
+      ],
+      "output_sha256": "fc288c9e51a9037577b847b8393032f951c42b2a0ef2c21b1451f26b353bb8a7"
+    },
+    {
+      "name": "model_m64_n64_k32",
+      "m": 64,
+      "n": 64,
+      "k": 32,
+      "dma64_best_cycles": 3902,
+      "dma128_best_cycles": 3646,
+      "dma128_read_bytes": 5120,
+      "dma128_read_requests": 168,
+      "dma128_write_requests": 64,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        1,
+        4,
+        1
+      ],
+      "output_sha256": "cf862850b4d1e0ca79ac511221734211a50af063c5f4b16dcfefc41a4691ef25"
+    },
+    {
+      "name": "model_m64_n64_k576",
+      "m": 64,
+      "n": 64,
+      "k": 576,
+      "dma64_best_cycles": 40743,
+      "dma128_best_cycles": 40125,
+      "dma128_read_bytes": 74752,
+      "dma128_read_requests": 908,
+      "dma128_write_requests": 128,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "b",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        4,
+        3,
+        32
+      ],
+      "output_sha256": "0418f3e26f7b88b880f8e5f7d942f77b8fb72c11643d05770d761ce29dc6280e"
+    },
+    {
+      "name": "model_m784_n8_k9",
+      "m": 784,
+      "n": 8,
+      "k": 9,
+      "dma64_best_cycles": 7567,
+      "dma128_best_cycles": 8422,
+      "dma128_read_bytes": 10096,
+      "dma128_read_requests": 170,
+      "dma128_write_requests": 784,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "a",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        8,
+        1,
+        1
+      ],
+      "output_sha256": "835d39ef1b6eea118b85556dd217d6e6d6357ecfeb503659d6f18885a5a35f79"
+    },
+    {
+      "name": "model_m9_n256_k128",
+      "m": 9,
+      "n": 256,
+      "k": 128,
+      "dma64_best_cycles": 19138,
+      "dma128_best_cycles": 18669,
+      "dma128_read_bytes": 34944,
+      "dma128_read_requests": 278,
+      "dma128_write_requests": 63,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "b",
+      "dma128_tensor_alignment_bytes": 128,
+      "dma128_explicit_tile": [
+        1,
+        3,
+        8
+      ],
+      "output_sha256": "b1387f43e83e18ae9767189d2c8a0d8c49ae3627b5242f83323e61fca09aad7e"
+    },
+    {
+      "name": "model_m9_n256_k256",
+      "m": 9,
+      "n": 256,
+      "k": 256,
+      "dma64_best_cycles": 37138,
+      "dma128_best_cycles": 36101,
+      "dma128_read_bytes": 68864,
+      "dma128_read_requests": 542,
+      "dma128_write_requests": 45,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "b",
+      "dma128_tensor_alignment_bytes": 128,
+      "dma128_explicit_tile": [
+        1,
+        5,
+        16
+      ],
+      "output_sha256": "2506056e69324cc3489b9c599662fa703a85f3e4301617c97ae079cd1b7477f4"
+    },
+    {
+      "name": "tail17",
+      "m": 17,
+      "n": 23,
+      "k": 19,
+      "dma64_best_cycles": 1445,
+      "dma128_best_cycles": 1760,
+      "dma128_read_bytes": 2292,
+      "dma128_read_requests": 45,
+      "dma128_write_requests": 36,
+      "dma128_dataflow": "os",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 128,
+      "dma128_explicit_tile": [
+        0,
+        0,
+        0
+      ],
+      "output_sha256": "de02dbd78faa1380616baa13afad6e6fcaf991c03fe790cd73ba5b62bbfc35c4"
+    },
+    {
+      "name": "tile16",
+      "m": 16,
+      "n": 16,
+      "k": 16,
+      "dma64_best_cycles": 581,
+      "dma128_best_cycles": 581,
+      "dma128_read_bytes": 576,
+      "dma128_read_requests": 33,
+      "dma128_write_requests": 16,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        0,
+        0,
+        0
+      ],
+      "output_sha256": "69ce56722c76955b54ee8358b729cb59332644c02c72d8b39bcf9143f8e30247"
+    },
+    {
+      "name": "tile32",
+      "m": 32,
+      "n": 32,
+      "k": 32,
+      "dma64_best_cycles": 1682,
+      "dma128_best_cycles": 1649,
+      "dma128_read_bytes": 2304,
+      "dma128_read_requests": 66,
+      "dma128_write_requests": 32,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        1,
+        2,
+        2
+      ],
+      "output_sha256": "d841a8ab7e25323f3762e8881aafec344f04b50ee7ae910dfd0f617545095327"
+    },
+    {
+      "name": "tile64",
+      "m": 64,
+      "n": 64,
+      "k": 64,
+      "dma64_best_cycles": 6017,
+      "dma128_best_cycles": 5785,
+      "dma128_read_bytes": 9216,
+      "dma128_read_requests": 136,
+      "dma128_write_requests": 64,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 64,
+      "dma128_explicit_tile": [
+        1,
+        4,
+        4
+      ],
+      "output_sha256": "2f4b9bdd7a6e745823e95040c37cde979d7525ebeb776873ed59fe4fa57abfb2"
+    },
+    {
+      "name": "vector_m1",
+      "m": 1,
+      "n": 64,
+      "k": 64,
+      "dma64_best_cycles": 2568,
+      "dma128_best_cycles": 2540,
+      "dma128_read_bytes": 4416,
+      "dma128_read_requests": 67,
+      "dma128_write_requests": 1,
+      "dma128_dataflow": "ws",
+      "dma128_transpose": "none",
+      "dma128_tensor_alignment_bytes": 128,
+      "dma128_explicit_tile": [
+        0,
+        0,
+        0
+      ],
+      "output_sha256": "03932b5f80702f94ab53732858104fdbc7ca144488c8c5e971828632c85df8e9"
+    }
+  ],
+  "final_npu_reference_comparison": {
+    "path": "/workspace/scratch/dc14ec427142/operator_comparison/outstanding_final_reference_set.json",
+    "sha256": "eaaf325fcb4ed809a9242feeaeec161204ea18a046e1dc76eff16d06a7f711a1"
+  },
+  "final_npu_statistics": {
+    "path": "/workspace/scratch/dc14ec427142/operator_comparison/outstanding_final_statistics.json",
+    "sha256": "d72fb23d7eb59a79e316e01df57e97a1790d62034cc3450da2605040a1e583c9"
+  },
+  "supplemental_checks": {
+    "default64_generation_reproduction": {
+      "path": "/workspace/scratch/dc14ec427142/gemmini_dma_alignment_analysis/default64_reproduction.json",
+      "sha256": "f8a2f47fd51b47ee757f742a33d70640a0d152538f4b64afa77a15e97370056f"
+    },
+    "dma64_tensor_address_invariance": {
+      "path": "/workspace/scratch/dc14ec427142/gemmini_dma_alignment_analysis/dma64_address_invariance.json",
+      "sha256": "aaa443ac0f752884a18a09a1947793f1094ac74c98fb9537d0dc25aa8c04d92c"
+    },
+    "dma128_native_conv_128byte_addresses": {
+      "path": "/workspace/scratch/dc14ec427142/gemmini_dma_alignment_analysis/results128_conv/results.json",
+      "sha256": "1a25b4dbaef42690e7fa2228bbbb0fa830744488641d220350cd4014f3ca9ece"
+    }
+  },
+  "npu_production_commit": "9a145ff6e6f3f0c87689d0378e03034cabb5749f",
+  "final_npu_validation": {
+    "path": "/workspace/scratch/dc14ec427142/operator_comparison/outstanding_final_validation.json",
+    "sha256": "79ca913350d4c79652661019b172361013aa4a895c4cdf4e9ebac4da56592c6f"
+  },
+  "final_npu_timing": {
+    "path": "/workspace/scratch/dc14ec427142/operator_comparison/outstanding_final_timing_fairness.json",
+    "sha256": "9a39760f80461eb62b518f3a5231ecb3ece4523ad8ce620d5ee0ff5d478856f3"
+  },
+  "depthwise_mapping": {
+    "path": "/workspace/scratch/dc14ec427142/operator_comparison/outstanding_final_depthwise_mapping.json",
+    "sha256": "94032144ccf24932b8a4b038b0c8ccefb715001d70e927cc1d1a26a14e17c2eb"
+  },
+  "npu_measurements": [
+    {
+      "operation": "gemm_joint_layout",
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/comparison_outstanding_final_gemm/summary.json",
+        "sha256": "f04f757d919ea7d5380025ba10506e2722a146ba33bf145ff6b9cb6112769b43"
+      },
+      "source_commit": "9a145ff6e6f3f0c87689d0378e03034cabb5749f",
+      "production_rtl_commit": "9a145ff6e6f3f0c87689d0378e03034cabb5749f",
+      "build_manifest_sha256": "d09844eafe707b2e22457a489c94952bda619bf4b3da884f244a14a9e2d36e0f",
+      "binary_sha256": "ff516263c384f6c14ee986ee1552cec30d4a6e0ce63c4cd622c652e5c8c00774",
+      "case_count": 31,
+      "total_cycles": 468131
+    },
+    {
+      "operation": "gemm_rowmajor",
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/comparison_outstanding_final_gemm_rowmajor/summary.json",
+        "sha256": "0f0df09cca2513a4cc67fa24f246c31480fc3104427d1441650ab3dd65b279f5"
+      },
+      "source_commit": "7fdb33fda718c2c53645cf1596cfd47d4acfde81",
+      "production_rtl_commit": "9a145ff6e6f3f0c87689d0378e03034cabb5749f",
+      "build_manifest_sha256": "d09844eafe707b2e22457a489c94952bda619bf4b3da884f244a14a9e2d36e0f",
+      "binary_sha256": "ff516263c384f6c14ee986ee1552cec30d4a6e0ce63c4cd622c652e5c8c00774",
+      "case_count": 31,
+      "total_cycles": 530569
+    },
+    {
+      "operation": "native_convolution",
+      "source": {
+        "path": "/workspace/scratch/dc14ec427142/comparison_outstanding_final_conv/summary.json",
+        "sha256": "e6b4b8b2cd5093d10c31b1047df18c95c832203547e88c84a2eb7b96bd8bb825"
+      },
+      "source_commit": "7fdb33fda718c2c53645cf1596cfd47d4acfde81",
+      "production_rtl_commit": "9a145ff6e6f3f0c87689d0378e03034cabb5749f",
+      "build_manifest_sha256": "3f820e6a5183b2cfb21a29220bc10f65c4731d0a5f800497e458b338bc71ecbd",
+      "binary_sha256": "ee44807392d9684413375aa3d0a255dc5af03bd47b5cac78ebf2af6fc4424403",
+      "case_count": 3,
+      "total_cycles": 110814
+    }
+  ]
+}
