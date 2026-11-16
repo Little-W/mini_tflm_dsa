@@ -4,10 +4,43 @@
 `define SOC_NETWORK_RAM_WORDS 524288
 `endif
 `ifndef SOC_NETWORK_ICACHE
-`define SOC_NETWORK_ICACHE 0
+`define SOC_NETWORK_ICACHE 1
+`endif
+`ifndef SOC_NETWORK_CPU_ENABLE_MUL
+`define SOC_NETWORK_CPU_ENABLE_MUL 1
+`endif
+`ifndef SOC_NETWORK_CPU_ENABLE_FAST_MUL
+`define SOC_NETWORK_CPU_ENABLE_FAST_MUL 1
+`endif
+`ifndef SOC_NETWORK_CPU_ENABLE_DIV
+`define SOC_NETWORK_CPU_ENABLE_DIV 1
+`endif
+`ifndef SOC_NETWORK_CPU_ENABLE_REGS_DUALPORT
+`define SOC_NETWORK_CPU_ENABLE_REGS_DUALPORT 1
+`endif
+`ifndef SOC_NETWORK_CPU_TWO_STAGE_SHIFT
+`define SOC_NETWORK_CPU_TWO_STAGE_SHIFT 1
+`endif
+`ifndef SOC_NETWORK_CPU_BARREL_SHIFTER
+`define SOC_NETWORK_CPU_BARREL_SHIFTER 1
+`endif
+`ifndef SOC_NETWORK_CPU_TWO_CYCLE_COMPARE
+`define SOC_NETWORK_CPU_TWO_CYCLE_COMPARE 0
+`endif
+`ifndef SOC_NETWORK_CPU_TWO_CYCLE_ALU
+`define SOC_NETWORK_CPU_TWO_CYCLE_ALU 0
 `endif
 `ifndef SOC_NETWORK_PE_COUNT
 `define SOC_NETWORK_PE_COUNT 8
+`endif
+`ifndef SOC_NETWORK_READ_FIRST_LATENCY
+`define SOC_NETWORK_READ_FIRST_LATENCY 8
+`endif
+`ifndef SOC_NETWORK_BUS_WIDTH
+`define SOC_NETWORK_BUS_WIDTH 64
+`endif
+`ifndef SOC_NETWORK_DMA_MAX_BYTES
+`define SOC_NETWORK_DMA_MAX_BYTES (256 * (`SOC_NETWORK_BUS_WIDTH / 8))
 `endif
 `ifndef SOC_NETWORK_IA_CACHE_BLOCKS
 `define SOC_NETWORK_IA_CACHE_BLOCKS 8
@@ -21,17 +54,28 @@
 module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                       output logic [31:0] progress, pc);
     localparam int RAM_WORDS = `SOC_NETWORK_RAM_WORDS;
-    localparam int RAM_INDEX_BITS = $clog2(RAM_WORDS);
+    localparam int BUS_BYTES = `SOC_NETWORK_BUS_WIDTH / 8;
+    localparam int RAM_INDEX_BITS = $clog2(RAM_WORDS*4/BUS_BYTES);
     wire npu_busy, npu_irq, uart_tx, soc_finish, cpu_trap;
     wire [31:0] soc_status;
     soc_top #(
-        .SIZE(16), .DATA_WIDTH(16), .WEIGHT_WIDTH(16), .BUS_WIDTH(32),
+        .SIZE(16), .DATA_WIDTH(16), .WEIGHT_WIDTH(16), .BUS_WIDTH(`SOC_NETWORK_BUS_WIDTH),
         .IA_CACHE_BLOCKS(`SOC_NETWORK_IA_CACHE_BLOCKS), .PS_FRAME_COUNT(16),
         .PS_STORAGE_ROWS(`SOC_NETWORK_PS_STORAGE_ROWS),
         .OA_S16_FIFO_BANKS_MAX(`SOC_NETWORK_S16_OUTPUT_BANKS),
         .ENABLE_VECTOR_ENGINE(1), .VECTOR_PE_COUNT(`SOC_NETWORK_PE_COUNT), .DW_MAX_TAPS(49), .POOL_MAX_TAPS(256),
         .CPU_MEM_DP(RAM_WORDS), .CPU_MEM_PATH(""), .CPU_MEM_INIT_EN(1),
         .CPU_ENABLE_ICACHE(`SOC_NETWORK_ICACHE),
+        .CPU_ENABLE_MUL(`SOC_NETWORK_CPU_ENABLE_MUL),
+        .CPU_ENABLE_FAST_MUL(`SOC_NETWORK_CPU_ENABLE_FAST_MUL),
+        .CPU_ENABLE_DIV(`SOC_NETWORK_CPU_ENABLE_DIV),
+        .CPU_ENABLE_REGS_DUALPORT(`SOC_NETWORK_CPU_ENABLE_REGS_DUALPORT),
+        .CPU_TWO_STAGE_SHIFT(`SOC_NETWORK_CPU_TWO_STAGE_SHIFT),
+        .CPU_BARREL_SHIFTER(`SOC_NETWORK_CPU_BARREL_SHIFTER),
+        .CPU_TWO_CYCLE_COMPARE(`SOC_NETWORK_CPU_TWO_CYCLE_COMPARE),
+        .CPU_TWO_CYCLE_ALU(`SOC_NETWORK_CPU_TWO_CYCLE_ALU),
+        .DMA_MAX_BYTES(`SOC_NETWORK_DMA_MAX_BYTES),
+        .RAM_READ_FIRST_LATENCY(`SOC_NETWORK_READ_FIRST_LATENCY),
         .AXI_READ_OUTSTANDING(4), .AXI_WRITE_OUTSTANDING(4),
         .NPU_ENABLE_IS_MODE(1), .NPU_ENABLE_PER_CHANNEL(1),
         .NPU_ENABLE_CLOCK_GATING(1), .BYPASS_RAM_PINGPONG(1),
@@ -43,6 +87,19 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
     assign progress = dut.soc_progress;
     assign pc = dut.u_picorv32.reg_pc;
     assign finished = soc_finish;
+
+    initial begin
+        assert(dut.u_axi_sim_ram.DW==`SOC_NETWORK_BUS_WIDTH &&
+               dut.u_axi_sim_ram.DP*BUS_BYTES==RAM_WORDS*4 &&
+               dut.u_pico_axi_bridge.DATA_WIDTH==32)
+            else $fatal(1,"CPU or shared-memory data width differs from the profile");
+        $display("SOC_NETWORK_CPU_PROFILE cpu_enable_mul=%0d cpu_enable_fast_mul=%0d cpu_enable_div=%0d cpu_enable_regs_dualport=%0d cpu_two_stage_shift=%0d cpu_barrel_shifter=%0d cpu_two_cycle_compare=%0d cpu_two_cycle_alu=%0d cpu_icache=%0d",
+            dut.u_picorv32.ENABLE_MUL, dut.u_picorv32.ENABLE_FAST_MUL,
+            dut.u_picorv32.ENABLE_DIV, dut.u_picorv32.ENABLE_REGS_DUALPORT,
+            dut.u_picorv32.TWO_STAGE_SHIFT, dut.u_picorv32.BARREL_SHIFTER,
+            dut.u_picorv32.TWO_CYCLE_COMPARE, dut.u_picorv32.TWO_CYCLE_ALU,
+            dut.u_pico_axi_bridge.ENABLE_ICACHE);
+    end
 
     typedef struct packed {
         logic [63:0] cycles, npu_busy_cycles, cpu_instruction_reads, cpu_data_reads;
@@ -65,6 +122,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
     typedef enum logic [2:0] {JOB_GEMM, JOB_CONV, JOB_DW, JOB_POOL, JOB_VECTOR, JOB_ADD, JOB_SOFTMAX} job_kind_t;
     job_kind_t job_kind;
     int outstanding_reads, outstanding_writes;
+    longint unsigned max_npu_read_burst_bytes, max_npu_write_burst_bytes;
     longint unsigned window_requested_elements, window_response_elements;
     longint unsigned window_first_response_cycle, window_last_response_cycle;
     logic [31:0] read_address[32], read_current[32], write_address[32];
@@ -138,10 +196,10 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
 
     function automatic logic [31:0] ram_word(input int unsigned addr);
         assert(addr < RAM_WORDS*4 && addr[1:0]==0) else $fatal(1,"invalid observed word address");
-        return dut.u_axi_sim_ram.mem_r[RAM_INDEX_BITS'(addr>>2)];
+        return 32'(dut.u_axi_sim_ram.mem_r[RAM_INDEX_BITS'(addr/BUS_BYTES)] >> (8*(addr% BUS_BYTES)));
     endfunction
     function automatic logic [7:0] ram_byte(input int unsigned addr);
-        return 8'(dut.u_axi_sim_ram.mem_r[RAM_INDEX_BITS'(addr>>2)] >> (8*(addr&3)));
+        return 8'(dut.u_axi_sim_ram.mem_r[RAM_INDEX_BITS'(addr/BUS_BYTES)] >> (8*(addr% BUS_BYTES)));
     endfunction
     function automatic longint unsigned read_bytes(
         input logic [31:0] addr, input logic [7:0] len,
@@ -223,6 +281,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
             progress_seen=0;network_open=0;network_complete=0;layer_open=0;
             layer_index=0;layer_count=0;job_inflight=0;job_kind=JOB_GEMM;
             outstanding_reads=0;outstanding_writes=0;
+            max_npu_read_burst_bytes=0;max_npu_write_burst_bytes=0;
             window_requested_elements=0;window_response_elements=0;
             window_first_response_cycle=0;window_last_response_cycle=0;
             read_head=0;read_tail=0;write_head=0;write_tail=0;
@@ -252,10 +311,14 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
             end
             if(dut.npu_axi_arvalid && dut.npu_axi_arready) begin
                 assert(outstanding_reads<32) else $fatal(1,"read observer capacity exceeded");
-                assert(dut.npu_axi_arburst==1 && dut.npu_axi_arsize<=2)
+                assert(dut.npu_axi_arburst==1 && dut.npu_axi_arsize<=$clog2(BUS_BYTES))
                     else $fatal(1,"unsupported NPU read command");
-                assert((64'(dut.npu_axi_araddr)&4095)+((64'(dut.npu_axi_arlen)+1)<<dut.npu_axi_arsize)<=4096)
+                assert(((64'(dut.npu_axi_araddr)&4095)&~((64'd1<<dut.npu_axi_arsize)-1))+((64'(dut.npu_axi_arlen)+1)<<dut.npu_axi_arsize)<=4096)
                     else $fatal(1,"NPU read crosses 4 KiB");
+                assert(((64'(dut.npu_axi_arlen)+1)<<dut.npu_axi_arsize)<=`SOC_NETWORK_DMA_MAX_BYTES)
+                    else $fatal(1,"NPU read exceeds configured DMA transaction length");
+                if(((64'(dut.npu_axi_arlen)+1)<<dut.npu_axi_arsize)>max_npu_read_burst_bytes)
+                    max_npu_read_burst_bytes=(64'(dut.npu_axi_arlen)+1)<<dut.npu_axi_arsize;
                 read_address[read_tail]=dut.npu_axi_araddr;read_current[read_tail]=dut.npu_axi_araddr;
                 read_beats[read_tail]=0;
                 read_length[read_tail]=dut.npu_axi_arlen;read_size[read_tail]=dut.npu_axi_arsize;
@@ -281,10 +344,14 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
             end
             if(dut.npu_axi_awvalid && dut.npu_axi_awready) begin
                 assert(outstanding_writes<32) else $fatal(1,"write observer capacity exceeded");
-                assert(dut.npu_axi_awburst==1 && dut.npu_axi_awsize==2 && dut.npu_axi_awaddr[1:0]==0)
+                assert(dut.npu_axi_awburst==1 && dut.npu_axi_awsize==$clog2(BUS_BYTES) && (dut.npu_axi_awaddr&(BUS_BYTES-1))==0)
                     else $fatal(1,"unsupported NPU write command");
-                assert((64'(dut.npu_axi_awaddr)&4095)+((64'(dut.npu_axi_awlen)+1)<<dut.npu_axi_awsize)<=4096)
+                assert(((64'(dut.npu_axi_awaddr)&4095)&~((64'd1<<dut.npu_axi_awsize)-1))+((64'(dut.npu_axi_awlen)+1)<<dut.npu_axi_awsize)<=4096)
                     else $fatal(1,"NPU write crosses 4 KiB");
+                assert(((64'(dut.npu_axi_awlen)+1)<<dut.npu_axi_awsize)<=`SOC_NETWORK_DMA_MAX_BYTES)
+                    else $fatal(1,"NPU write exceeds configured DMA transaction length");
+                if(((64'(dut.npu_axi_awlen)+1)<<dut.npu_axi_awsize)>max_npu_write_burst_bytes)
+                    max_npu_write_burst_bytes=(64'(dut.npu_axi_awlen)+1)<<dut.npu_axi_awsize;
                 write_address[write_tail]=dut.npu_axi_awaddr;write_length[write_tail]=dut.npu_axi_awlen;
                 write_beats[write_tail]=0;write_data_done[write_tail]=0;outstanding_write_data++;
                 write_size[write_tail]=dut.npu_axi_awsize;write_tail=(write_tail+1)%32;
@@ -457,6 +524,10 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                 assert(outstanding_reads==0 && outstanding_writes==0 && !npu_busy && !job_inflight)
                     else $fatal(1,"unfinished accelerator operation");
                 assert(network_complete && !network_open && !layer_open) else $fatal(1,"missing completed network interval");
+                $display("SOC_NETWORK_DMA_PROFILE read_first_latency=%0d observed_ram_first_min=%0d observed_ram_first_max=%0d ram_read_requests=%0d bus_width=%0d dma_max_bytes=%0d max_read_burst_bytes=%0d max_write_burst_bytes=%0d",
+                         dut.u_axi_sim_ram.ram_read_first_latency,
+                         dut.u_axi_sim_ram.read_first_latency_min,dut.u_axi_sim_ram.read_first_latency_max,
+                         dut.u_axi_sim_ram.read_first_latency_samples,dut.BUS_WIDTH,dut.DMA_MAX_BYTES,max_npu_read_burst_bytes,max_npu_write_burst_bytes);
                 $display("SOC_NETWORK_PASS status=%0d cycles=%0d layers=%0d tensors=%0d output_bytes=%0d",
                          soc_status,total.cycles,layer_count,trace_count,output_bytes);
                 $finish;

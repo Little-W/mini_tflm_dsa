@@ -15,30 +15,66 @@ DS-CNN Keyword Spotting 和 ResNet-8 CIFAR-10，每个模型使用两个已记�
 
 | 项目 | 配置 |
 |---|---|
-| CPU | PicoRV32，RV32IM，硬件乘法和除法启用 |
-| CPU 指令缓存 | 关闭 |
+| CPU | PicoRV32，RV32IM，`performance` 配置，快速乘法、硬件除法和桶形移位器启用 |
+| CPU 寄存器与运算 | 双读端口；`TWO_CYCLE_ALU=0`，`TWO_CYCLE_COMPARE=0` |
+| CPU 指令缓存 | 默认开启，64 行，每行 4 个 32 位字，数据容量 1 KiB |
 | NPU 核心 | 标准核心，`PCR_ENGINE=0` |
 | 脉动阵列 | 16×16 |
 | VCE | 8 个 PE，`TILE=16` |
-| AXI 数据接口 | 32 位 |
+| AXI 数据接口 | 64 位，`--bus-width 32` 可选择 32 位 |
 | 外部 RAM | 2 MiB |
+| RAM 读取 | 上升沿同步读取，数据经过寄存器返回 |
+| RAM 最早首拍延迟 | 默认 8 周期，从 RAM 的 AR 握手开始计算，使用 `--first-read-latency` 设置 |
+| RAM 连续返回 | 每周期一拍；就绪的相邻突发之间有 0 个空闲周期 |
 | RAM 附加固定延迟 | 默认 0，可用 `--latency` 指定 |
 | IA 缓冲 | 8 个块 |
-| PS 缓冲 | 16 个 frame，799 行物理存储 |
+| PS 缓冲 | 16 个 frame；公平比较配置使用 720 行物理存储 |
 | 输出缓冲 | INT8 32 个块，INT16 4 个块 |
 | 静态权重 | Prepare 阶段打包为 16×16 块 |
 | 矩阵调度 | Prepare 阶段计算 WS/IS 和复用参数 |
 | 张量 arena 上限 | 512 KiB，实际使用量逐模型记录 |
 | AXI 未完成读写请求数 | 各 4 |
+| AXI 突发 | INCR 最多 256 拍，遵守 4 KiB 边界；64 位时每个完整数据拍传输 8 B |
 | DMA 窗口描述在途数 | 最多 4，返回携带 2 位输入区域标识 |
 | 共享窗口缓存需求在途数 | 最多 4，按接收顺序返回 |
 | 算术 | INT8，最近偶数舍入 |
 | 编译 | C 和 C++ 同时设置软件或硬件开关，`-O3`、RV32IM |
 | 输入 | 相同模型文件和相同输入字节 |
 
-接口保留总线参数；此测试程序固定选择 32 位配置。
+测试程序默认选择 64 位 AXI。CPU 原生数据通路和指令缓存保持 32 位，
+互连按地址选择共享 64 位总线中的字节位置。CPU 与加速器使用同一块 2 MiB RAM，
+RAM 的物理行数随总线宽度调整。稀疏 32 位固件和数据镜像在运行前合并，
+再按小端格式组合为 64 位 RAM 数据，生成文件及其 SHA-256 写入测量记录。
 PicoRV32 使用仓库指定提交 `ef203c2b0a3fb793280f5114941416c425c5b461`。
 编译器、仿真器、依赖、模型、输入、可执行文件和参与构建的源码均记录 SHA-256。
+
+每个读请求独立记录最早响应时间。设置 `--first-read-latency 8` 后，空闲读通道且
+`RREADY=1` 时，RAM 在接受 AR 后第 8 个上升沿完成首拍数据握手。
+后续已接受请求的等待与当前 burst 的返回重叠；下一个请求已就绪时，其首拍可以
+紧接前一个 burst 的 `RLAST`，在下一个上升沿传输。RAM 记录实际首拍延迟，
+运行程序检查最小值不低于设置值。SoC 仲裁、时序缓冲、读通道占用和接收端暂停
+造成的额外等待计入实际测量。参数定义和公式见
+[64 位 AXI 比较配置](../../docs/axi64_configuration.md)。
+
+CPU 参数通过 `--cpu-profile` 选择，指令缓存通过 `--icache 0|1` 单独配置。
+软件和硬件使用同一份 SoC 仿真程序及相同 CPU 参数。实际展开后的参数在仿真中
+输出为 `SOC_NETWORK_CPU_PROFILE`，运行程序检查其与 `sim/build.json` 一致。
+
+| PicoRV32 参数 | `standard` | `performance`（默认） |
+|---|---:|---:|
+| `ENABLE_MUL` | 1 | 1 |
+| `ENABLE_FAST_MUL` | 0 | 1 |
+| `ENABLE_DIV` | 1 | 1 |
+| `BARREL_SHIFTER` | 0 | 1 |
+| `ENABLE_REGS_DUALPORT` | 1 | 1 |
+| `TWO_STAGE_SHIFT` | 1 | 1 |
+| `TWO_CYCLE_COMPARE` | 0 | 0 |
+| `TWO_CYCLE_ALU` | 0 | 0 |
+| `COMPRESSED_ISA` | 0 | 0 |
+
+`ENABLE_FAST_MUL=1` 时，PicoRV32 选择快速乘法实现。两个配置均执行相同的 RV32IM
+固件。`--cpu-profile standard --icache 0` 可复现原有 CPU 参数；
+`--cpu-profile performance --icache 0` 用于单独检查处理器内部性能选项的影响。
 
 ## 数据准备
 
@@ -67,8 +103,15 @@ python test/model_benchmark/run_suite.py \
   --prepared /path/to/prepared \
   --gcc /path/to/riscv-none-elf-gcc \
   --verilator /path/to/verilator \
+  --cpu-profile performance --icache 1 --bus-width 64 --ps-storage-rows 720 \
+  --first-read-latency 8 --latency 0 \
   --jobs 1 --run-jobs 4
 ```
+
+与 Gemmini 进行等容量测试时，在上述命令中增加
+`--ia-cache-blocks 8 --ps-storage-rows 720 --s16-output-banks 4`。
+CPU、外部 RAM、阵列、VCE 和 DMA 均采用上表配置。驱动在每次模型初始化时读取
+实际 PS 容量，并据此重新计算复用参数。不同容量的测量应分别保存到独立目录。
 
 默认构建一个 SoC 仿真器和四份固件，完成 32 次独立仿真：
 
@@ -96,6 +139,19 @@ python test/model_benchmark/run_suite.py \
 `--resume` 只复用已通过且模型、输入、源码构建结果、RAM 时序完全相同的运行。
 `--build-only` 在构建后结束。
 
+32 次运行完成后，可以生成 1000× 目标预算和 DW 供数、MAC 利用率统计：
+
+```bash
+python test/performance_analysis/analyze_model_budget.py \
+  --measurements build/model_benchmark --target-speedup 1000
+```
+
+输出 `model_budget.json` 保留源结果摘要、初始化周期、每模型 Invoke 预算、
+算子周期组成和 DW 缓存计数。算子周期来自独立 trace 固件，目标预算使用 perf 固件的
+Invoke 周期；两者的差额单独记录。
+为另一容量配置生成同样的报告后，可增加 `--reference-measurements /path/to/other_measurements`
+比较 PS 容量影响。程序检查两组模型、输入、固件和 RTL 源码相同，且仅 PS 行数发生变化。
+
 ## 周期与占比
 
 完整模型周期由 CPU 在 `Invoke()` 前后读取 `rdcycle` 得到，包含算子执行、
@@ -122,6 +178,11 @@ python test/model_benchmark/run_suite.py \
 每个硬件算子的任务数量须符合图结构，所有已启动任务须完成，AXI 和 NPU 错误数须为零。
 纯软件执行期间 NPU 保持空闲，硬件任务数量和 NPU DMA 读写字节均须为零。
 运行结束后再次核对模型与输入内容，确认没有修改。
+
+每次 NPU 的 AXI 读、写请求握手均检查事务字节数不超过配置上限。
+运行结束时输出 `SOC_NETWORK_DMA_PROFILE`，保存实际最大读写事务长度；
+Python 程序同时核对硬件参数、实际事务长度以及构建记录中的 `bus_width` 和 `dma_max_bytes`。
+`dma_max_bytes` 根据 256 拍和总线宽度计算，64 位配置为 2048 B。
 
 汇总中的 `functional_passed` 表示已记录运行的正确性检查结果，`complete` 表示
 32 次运行是否全部完成；性能目标分别保存在 `dw_all_layers_above_20x` 和

@@ -13,6 +13,14 @@ import subprocess
 
 HERE=Path(__file__).resolve().parent
 ROOT=HERE.parents[1]
+CPU_PROFILES = {
+    'standard': {'cpu_enable_mul':1, 'cpu_enable_fast_mul':0, 'cpu_enable_div':1,
+                 'cpu_enable_regs_dualport':1, 'cpu_two_stage_shift':1,
+                 'cpu_barrel_shifter':0, 'cpu_two_cycle_compare':0, 'cpu_two_cycle_alu':0},
+    'performance': {'cpu_enable_mul':1, 'cpu_enable_fast_mul':1, 'cpu_enable_div':1,
+                    'cpu_enable_regs_dualport':1, 'cpu_two_stage_shift':1,
+                    'cpu_barrel_shifter':1, 'cpu_two_cycle_compare':0, 'cpu_two_cycle_alu':0},
+}
 
 
 def digest(path):
@@ -57,11 +65,14 @@ def filelist_sources(path,cwd,picorv32):
     return sources,arguments
 
 
-def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=524288,pe_count=8,picorv32=None,
-              ia_cache_blocks=8,ps_storage_rows=799,s16_output_banks=4):
+def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=524288,pe_count=8,picorv32=None,
+              ia_cache_blocks=8,ps_storage_rows=799,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=64,first_read_latency=8):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
+    protocol_max_bytes=256*(bus_width//8)
+    if dma_max_bytes is None:dma_max_bytes=protocol_max_bytes
     if (jobs<1 or pe_count not in (4,8) or icache not in (0,1) or ram_words<1 or
-        ia_cache_blocks<1 or ps_storage_rows<0 or s16_output_banks<0):
+        ia_cache_blocks<1 or ps_storage_rows<0 or s16_output_banks<0 or cpu_profile not in CPU_PROFILES or
+        bus_width not in (32,64) or ram_words*32%bus_width or dma_max_bytes!=protocol_max_bytes or first_read_latency<1):
         raise ValueError('Invalid simulator configuration')
     if picorv32 is None:
         picorv32=os.environ.get('PICORV32_ROOT')
@@ -84,15 +95,19 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=5
              'ia_cache_blocks':ia_cache_blocks,'ps_frame_count':16,
              'ps_storage_rows':ps_storage_rows,'output_banks_s16_max':s16_output_banks,
              'matrix_tile_packed':True,'axi_read_outstanding':4,
-             'axi_write_outstanding':4,'core':'standard','pcr_engine':0,
+             'axi_write_outstanding':4,'dma_max_bytes':dma_max_bytes,'core':'standard','pcr_engine':0,
              'data_width':16,'weight_width':16,'dw_max_taps':49,
-             'pool_max_taps':256,'bus_width':32,'rounding_mode':'nearest_even',
+             'pool_max_taps':256,'ram_read_first_latency':first_read_latency,
+             'ram_read_latency_origin':'accepted_AR','ram_continuous_read_beat_cycles':1,'bus_width':bus_width,'cpu_axi_data_bits':32,'rounding_mode':'nearest_even',
              'vector_engine':'VCE','add_s8':True,'softmax_s8':True,'capability_version':1,
              'conv_cache_data_bytes':4096,'conv_cache_policy':'windowed',
              'conv_cache_prefetch':True,'vector_line_cache_bytes':0,
              'conv_cache_demand_outstanding':4,'vector_window_outstanding':4,
              'im2col_corrected_elements_per_cycle':4,
-             'cpu':'PicoRV32','cpu_enable_mul':1,'cpu_enable_div':1,
+             'cpu':'PicoRV32','cpu_profile':cpu_profile,**CPU_PROFILES[cpu_profile],
+             'cpu_isa':'RV32IM','cpu_compressed_isa':0,
+             'cpu_icache_lines':64,'cpu_icache_line_words':4,
+             'cpu_icache_data_bytes':1024 if icache else 0,
              'cpu_axi_read_timing_buffer':1,'cpu_axi_write_timing_buffer':1,
              'npu_axi_timing_buffer':1,'bypass_ram_pingpong':1,'ram_write_timing_buffer':1}
     if skip:
@@ -107,6 +122,9 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=5
           '--output-groups','0','--output-split','12000',
           '-CFLAGS','-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
           f'-DSOC_NETWORK_RAM_WORDS={ram_words}',f'-DSOC_NETWORK_ICACHE={icache}',
+          f'-DSOC_NETWORK_DMA_MAX_BYTES={dma_max_bytes}',f'-DSOC_NETWORK_BUS_WIDTH={bus_width}',
+          f'-DSOC_NETWORK_READ_FIRST_LATENCY={first_read_latency}',
+          *[f'-DSOC_NETWORK_{key.upper()}={value}' for key,value in CPU_PROFILES[cpu_profile].items()],
           f'-DSOC_NETWORK_IA_CACHE_BLOCKS={ia_cache_blocks}',
           f'-DSOC_NETWORK_PS_STORAGE_ROWS={ps_storage_rows}',
           f'-DSOC_NETWORK_S16_OUTPUT_BANKS={s16_output_banks}',
@@ -132,8 +150,14 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=5
 
 
 def parse_log(path):
-    text=Path(path).read_text();counters=[];window_jobs=[]
+    text=Path(path).read_text();counters=[];window_jobs=[];cpu_profiles=[];dma_profiles=[]
     for line in text.splitlines():
+        if line.startswith('SOC_NETWORK_CPU_PROFILE '):
+            cpu_profiles.append({key:int(value) for key,value in re.findall(r'(\w+)=([^\s]+)',line)})
+            continue
+        if line.startswith('SOC_NETWORK_DMA_PROFILE '):
+            dma_profiles.append({key:int(value) for key,value in re.findall(r'(\w+)=([^\s]+)',line)})
+            continue
         if line.startswith('SOC_NETWORK_WINDOW_JOB '):
             window_jobs.append({key:int(value) for key,value in re.findall(r'(\w+)=([^\s]+)',line)})
             continue
@@ -141,7 +165,35 @@ def parse_log(path):
         values=dict(re.findall(r'(\w+)=([^\s]+)',line))
         counters.append({key:(value if key=='scope' else int(value)) for key,value in values.items()})
     return {'passed':'SOC_NETWORK_PASS ' in text and '%Error' not in text,
-            'counters':counters,'window_jobs':window_jobs}
+            'counters':counters,'window_jobs':window_jobs,'cpu_profiles':cpu_profiles,'dma_profiles':dma_profiles}
+
+
+def pack_memory_images(firmware, data, output, *, ram_words, data_base_word=0):
+    """Overlay sparse 32-bit images, then form little-endian 64-bit RAM rows."""
+    words={}
+    for path,start in ((firmware,0),(data,data_base_word)):
+        if path is None:continue
+        content=re.sub(r'/\*.*?\*/|//[^\n]*','',Path(path).read_text(),flags=re.S)
+        address=start
+        for token in content.split():
+            if token.startswith('@'):
+                address=int(token[1:],16)
+                continue
+            value=int(token.replace('_',''),16)
+            if value<0 or value>0xffffffff or not 0<=address<ram_words:
+                raise ValueError(f'Invalid 32-bit memory word at {address:#x} in {path}')
+            words[address]=value
+            address+=1
+    rows={}
+    for address,value in words.items():
+        index=address//2
+        rows[index]=rows.get(index,0)|(value<<(32*(address%2)))
+    with Path(output).open('w') as stream:
+        previous=-2
+        for index,value in sorted(rows.items()):
+            if index!=previous+1:stream.write(f'@{index:08x}\n')
+            stream.write(f'{value:016x}\n')
+            previous=index
 
 
 def run_sim(binary,out,mem,*,data_mem=None,result_addr=0,result_words=26,
@@ -150,21 +202,47 @@ def run_sim(binary,out,mem,*,data_mem=None,result_addr=0,result_words=26,
             ram_fixed_lat=0,network_begin=0xc0f10001,network_end=0xc0f10002,
             tensor_marker=0xc0f20000,expected_status=0,extra_plusargs=()):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
-    args=[str(binary),f'+SOC_CPU_MEM={Path(mem).resolve()}',f'+TIMEOUT_CYCLES={timeout_cycles}',
-          f'+RAM_FIXED_LAT={ram_fixed_lat}',f'+NETWORK_BEGIN={network_begin:08x}',
+    manifest=json.loads((Path(binary).resolve().parents[1]/'build.json').read_text())
+    profile=manifest['profile']
+    memory_path=Path(mem).resolve()
+    packed_memory=None
+    if profile['bus_width']==64:
+        base_word=0
+        for argument in extra_plusargs:
+            if argument.startswith('+SOC_DATA_MEM_BASE_WORD='):
+                base_word=int(argument.split('=',1)[1],0)
+        memory_path=out/'memory_axi64.mem'
+        pack_memory_images(mem,data_mem,memory_path,ram_words=profile['ram_words'],data_base_word=base_word)
+        packed_memory={'path':str(memory_path),'sha256':digest(memory_path),'word_bits':64}
+    args=[str(binary),f'+SOC_CPU_MEM={memory_path}',f'+TIMEOUT_CYCLES={timeout_cycles}', 
+          f'+RAM_FIXED_LAT={ram_fixed_lat}',
+          f'+RAM_READ_FIRST_LATENCY={profile.get("ram_read_first_latency",2)}',f'+NETWORK_BEGIN={network_begin:08x}',
           f'+NETWORK_END={network_end:08x}',f'+TENSOR_MARKER={tensor_marker:08x}',
           f'+RESULT_ADDR={result_addr:08x}',f'+RESULT_WORDS={result_words}',
           f'+RESULT_FILE={out/"result.bin"}',f'+OUTPUT_ADDR={output_addr:08x}',
           f'+OUTPUT_BYTES={output_bytes}',f'+OUTPUT_ADDR_WORD={output_addr_word}',
           f'+OUTPUT_BYTES_WORD={output_bytes_word}',f'+OUTPUT_FILE={out/"output.bin"}',
           f'+EXPECTED_STATUS={expected_status}']
-    if data_mem is not None:args.append(f'+SOC_DATA_MEM={Path(data_mem).resolve()}')
+    if data_mem is not None and profile['bus_width']==32:args.append(f'+SOC_DATA_MEM={Path(data_mem).resolve()}')
     if trace_addr:
         (out/'tensors').mkdir(exist_ok=True)
         args.extend([f'+TRACE_ADDR={trace_addr:08x}',f'+TRACE_DIR={out/"tensors"}',f'+TRACE_FILE={out/"trace.txt"}'])
     args.extend(extra_plusargs)
     rc=command(args,out/'run.log',timeout=timeout_seconds)
     report=parse_log(out/'run.log');report['returncode']=rc;report['passed']&=rc==0
+    expected_cpu={key:profile[key] for key in CPU_PROFILES[profile['cpu_profile']]}
+    expected_cpu['cpu_icache']=profile['cpu_icache']
+    report['cpu_profile_matches_build']=report['cpu_profiles']==[expected_cpu]
+    report['passed']&=report['cpu_profile_matches_build']
+    report['dma_bursts_within_limit']=(len(report['dma_profiles'])==1 and
+        report['dma_profiles'][0]['dma_max_bytes']==profile['dma_max_bytes'] and
+        report['dma_profiles'][0]['bus_width']==profile['bus_width'] and
+        report['dma_profiles'][0]['read_first_latency']==profile['ram_read_first_latency'] and
+        report['dma_profiles'][0]['observed_ram_first_min']>=profile['ram_read_first_latency'] and
+        report['dma_profiles'][0]['max_read_burst_bytes']<=profile['dma_max_bytes'] and
+        report['dma_profiles'][0]['max_write_burst_bytes']<=profile['dma_max_bytes'])
+    report['passed']&=report['dma_bursts_within_limit']
+    if packed_memory is not None:report['packed_memory']=packed_memory
     report['command']=args;report['simulator_sha256']=digest(binary);report['firmware_memory_sha256']=digest(mem)
     if data_mem is not None:report['data_memory_sha256']=digest(data_mem)
     if (out/'result.bin').exists():
@@ -182,7 +260,10 @@ def main():
     parser.add_argument('--jobs',type=int,default=1)
     parser.add_argument('--skip-build',action='store_true')
     parser.add_argument('--build-only',action='store_true')
-    parser.add_argument('--icache',type=int,choices=[0,1],default=0)
+    parser.add_argument('--icache',type=int,choices=[0,1],default=1)
+    parser.add_argument('--cpu-profile',choices=CPU_PROFILES,default='performance')
+    parser.add_argument('--first-read-latency',type=int,default=8)
+    parser.add_argument('--bus-width',type=int,choices=(32,64),default=64)
     parser.add_argument('--ram-words',type=int,default=524288)
     parser.add_argument('--pe-count',type=int,default=8)
     parser.add_argument('--ia-cache-blocks',type=int,default=8)
@@ -207,7 +288,8 @@ def main():
     binary=build_sim(args.build_dir,args.verilator,args.jobs,skip=args.skip_build,
                      icache=args.icache,ram_words=args.ram_words,pe_count=args.pe_count,picorv32=args.picorv32,
                      ia_cache_blocks=args.ia_cache_blocks,ps_storage_rows=args.ps_storage_rows,
-                     s16_output_banks=args.s16_output_banks)
+                     s16_output_banks=args.s16_output_banks,cpu_profile=args.cpu_profile,
+                     bus_width=args.bus_width,first_read_latency=args.first_read_latency)
     if args.build_only:print(binary);return 0
     if args.out is None or args.mem is None:parser.error('--out and --mem are required for execution')
     report=run_sim(binary,args.out,args.mem,data_mem=args.data_mem,result_addr=args.result_addr,

@@ -11,7 +11,7 @@ import re
 import struct
 
 from build_firmware import abi_fields, abi_constant
-from build_sim import build_sim, run_sim
+from build_sim import CPU_PROFILES, build_sim, run_sim
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -177,6 +177,8 @@ def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_l
     value.update(passed=False, case_dir=str(out), simulator=simulator, checks={}, trace=[])
     checks = value['checks']
     checks['simulator_completed'] = simulator['passed']
+    checks['cpu_profile_matches_build'] = simulator['cpu_profile_matches_build']
+    checks['dma_bursts_within_limit'] = simulator['dma_bursts_within_limit']
     try:
         if len(simulator['result_words']) != len(fields):
             raise ValueError('Incomplete firmware result')
@@ -336,7 +338,10 @@ def main():
     parser.add_argument('--modes', type=int, nargs='+', choices=MODE_NAMES, default=None)
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--run-jobs', type=int, default=1)
-    parser.add_argument('--icache', type=int, choices=[0, 1], default=0)
+    parser.add_argument('--icache', type=int, choices=[0, 1], default=1)
+    parser.add_argument('--cpu-profile', choices=CPU_PROFILES, default='performance')
+    parser.add_argument('--first-read-latency',type=int,default=8)
+    parser.add_argument('--bus-width', type=int, choices=(32,64), default=64)
     parser.add_argument('--pe-count', type=int, choices=[4, 8], default=8)
     parser.add_argument('--ram-words', type=int, default=524288)
     parser.add_argument('--latency', type=int, default=0)
@@ -355,7 +360,8 @@ def main():
         if digest(fw_dir/name) != firmware[key]:
             raise RuntimeError('Firmware payload differs: ' + name)
     binary = build_sim(args.simulator, args.verilator, args.jobs, skip=args.skip_sim_build,
-                       icache=args.icache, ram_words=args.ram_words, pe_count=args.pe_count)
+                       icache=args.icache, ram_words=args.ram_words, pe_count=args.pe_count,
+                       cpu_profile=args.cpu_profile,bus_width=args.bus_width,first_read_latency=args.first_read_latency)
     samples = [s for s in prepared['samples'] if args.samples is None or s['sample_index'] in args.samples]
     if not samples:
         parser.error('No prepared samples selected')

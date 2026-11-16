@@ -31,6 +31,10 @@ def summarize(out,prepared_root):
     out=Path(out); prepared_root=Path(prepared_root)
     destination=out/'summary';destination.mkdir(parents=True,exist_ok=True)
     runs=[json.loads(p.read_text()) for p in sorted((out/'results/cases').glob('*/*/*/result.json'))]
+    build_path=out/'sim/build.json'
+    build=json.loads(build_path.read_text()) if build_path.is_file() else None
+    if build and any(r['simulator']['simulator_sha256']!=build['binary_sha256'] for r in runs):
+        raise ValueError('Model summary requires all runs to use the recorded simulator')
     indexed={(r['model_id'],r['sample_index'],r['kind'],r['mode']):r for r in runs if r['passed']}
     models=[];layers=[];operators=[]
     for name in MODELS:
@@ -119,7 +123,10 @@ def summarize(out,prepared_root):
         'dw_aggregate_speedup':sum(r['sw_cycles'] for r in dw)/sum(r['hw_cycles'] for r in dw) if dw else None,
         'dw_minimum_layer_speedup':min(r['speedup'] for r in dw) if dw else None,
         'model_targets_met':len(models)==4 and all(r['target_met'] is not False for r in models),
-        'rounding_mode':'nearest_even','bus_width':32,'systolic_size':16,'vector_pes':8,
+        'soc_profile':build['profile'] if build else None,
+        'simulator_sha256':build['binary_sha256'] if build else None,
+        'picorv32_commit':build['picorv32_commit'] if build else None,
+        'rounding_mode':'nearest_even','bus_width':build['profile']['bus_width'] if build else None,'systolic_size':16,'vector_pes':8,
         'ram_bytes':2097152,'measurement':'Full Invoke cycles from performance firmware; operator shares from separate profiling firmware',
         'runs':[{'model':r['model_id'],'sample':r['sample_index'],'kind':r['kind'],
                  'mode':r['mode_name'],'passed':r['passed'],'case_dir':r['case_dir']} for r in runs]}

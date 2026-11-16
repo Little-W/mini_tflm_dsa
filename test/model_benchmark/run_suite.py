@@ -8,7 +8,7 @@ from pathlib import Path
 import time
 
 from build_firmware import build_firmware
-from build_sim import build_sim
+from build_sim import CPU_PROFILES, build_sim
 from model_data import MODELS, validate_model
 from run import HARDWARE_MODE, create_case, digest, execute_case, verify_sources, write_json
 from report import summarize
@@ -21,6 +21,10 @@ def main():
     p.add_argument('--gcc', default='riscv-none-elf-gcc')
     p.add_argument('--verilator', default='verilator')
     p.add_argument('--picorv32', type=Path)
+    p.add_argument('--cpu-profile', choices=CPU_PROFILES, default='performance')
+    p.add_argument('--icache', type=int, choices=(0,1), default=1)
+    p.add_argument('--first-read-latency',type=int,default=8)
+    p.add_argument('--bus-width', type=int, choices=(32,64), default=64)
     p.add_argument('--ia-cache-blocks', type=int, default=8)
     p.add_argument('--ps-storage-rows', type=int, default=799)
     p.add_argument('--s16-output-banks', type=int, default=4)
@@ -46,9 +50,10 @@ def main():
         validate_model(prepared_root/name)
         prepared[name] = json.loads((prepared_root/name/'manifest.json').read_text())
     binary = build_sim(out/'sim', a.verilator, a.jobs, skip=a.skip_build,
-                       icache=0, ram_words=524288, pe_count=8, picorv32=a.picorv32,
+                       icache=a.icache, ram_words=524288, pe_count=8, picorv32=a.picorv32,
                        ia_cache_blocks=a.ia_cache_blocks,ps_storage_rows=a.ps_storage_rows,
-                       s16_output_banks=a.s16_output_banks)
+                       s16_output_banks=a.s16_output_banks,cpu_profile=a.cpu_profile,
+                       bus_width=a.bus_width,first_read_latency=a.first_read_latency)
     firmwares = {}
     for mode in a.modes:
         for kind in a.kinds:
