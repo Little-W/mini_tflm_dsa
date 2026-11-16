@@ -19,7 +19,18 @@ int schedule_oracle(const uint32_t *words, size_t count, uint64_t *values)
     values[9]=p.read_words; values[10]=p.read_requests;
     values[11]=p.write_words; values[12]=p.write_requests;
     values[13]=p.compute_cycles; values[14]=p.ps_payload_bytes;
+    values[15]=p.read_beats; values[16]=p.write_beats;
     return 1;
+}
+
+void operand_oracle(const uint32_t *words, size_t count, uint32_t rows,
+    uint32_t width, uint32_t stride, uint32_t address, uint32_t merge,
+    uint32_t packed, uint64_t *values)
+{
+    dsa_schedule_config_t c;
+    if (count*sizeof(*words)!=sizeof(c)) {values[0]=values[1]=UINT64_MAX;return;}
+    memcpy(&c,words,sizeof(c));
+    dsa_schedule_operand(&c,rows,width,stride,address,merge,packed,&values[0],&values[1]);
 }
 
 int schedule_defaults(uint32_t *words, size_t count)

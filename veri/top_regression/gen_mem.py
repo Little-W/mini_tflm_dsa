@@ -31,33 +31,25 @@ def sat_s16(value):
 
 
 def round_divide_by_power_of_two(value, rshift):
-    if rshift == 0:
+    """Round an integer quotient to nearest, resolving exact halves to even."""
+    if rshift <= 0:
         return value
-    shifted = value >> rshift
-    mask = (1 << rshift) - 1
-    remainder = value & mask
-    threshold = mask >> 1
-    if value < 0:
-        threshold += 1
-    return shifted + (1 if remainder > threshold else 0)
+    quotient, remainder = divmod(abs(value), 1 << rshift)
+    half = 1 << (rshift - 1)
+    rounded = quotient + (remainder > half or (remainder == half and quotient & 1))
+    return -rounded if value < 0 else rounded
 
 
 def cmsis_nn_requantize(acc, multiplier, shift):
-    lshift = shift if shift > 0 else 0
-    rshift = -shift if shift < 0 else 0
-    acc_ext = acc << lshift
-    prod = acc_ext * multiplier
-    result = (prod + (1 << 30)) >> 31
-    if rshift > 0:
-        result = round_divide_by_power_of_two(result, rshift)
-    return result
+    """Apply the repository's full-product Q31 requantization."""
+    result = round_divide_by_power_of_two(acc * multiplier, 31 - shift)
+    return max(-(1 << 31), min((1 << 31) - 1, result))
 
 
 def nmsis_nn_requantize_s64(acc, multiplier, shift):
-    reduced_multiplier = ((multiplier + (1 << 15)) >> 16
-                          if multiplier < 0x7FFF0000 else 0x7FFF)
-    result = (acc * reduced_multiplier) >> (14 - shift)
-    return (result + 1) >> 1
+    reduced_multiplier = min(0x7FFF, round_divide_by_power_of_two(multiplier, 16))
+    result = round_divide_by_power_of_two(acc * reduced_multiplier, 15 - shift)
+    return max(-(1 << 31), min((1 << 31) - 1, result))
 
 
 def pack_words_le(bytearr):

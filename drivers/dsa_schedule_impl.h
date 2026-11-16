@@ -11,11 +11,13 @@ static void dsa_matrix_default_limits(dsa_matrix_limits_t *limits)
     limits->tile_size=DSA_TILE_SIZE;
     limits->output_banks_s8=0u;
     limits->output_banks_s16=0u;
+    limits->axi_data_bits=DSA_SCHEDULE_AXI_DATA_BITS;
+    limits->dma_max_bytes=256u*(limits->axi_data_bits/8u);
 }
 
 void dsa_matrix_query(dsa_matrix_limits_t *limits)
 {
-    uint32_t caps,banks;
+    uint32_t caps,banks,dma,bus;
     if (!limits) return;
     dsa_matrix_default_limits(limits);
     if (dsa_reg_read(NPU_REG_ID)!=0x4e505531u ||
@@ -30,6 +32,12 @@ void dsa_matrix_query(dsa_matrix_limits_t *limits)
     banks=dsa_reg_read(NPU_REG_MATRIX_OUTPUT_BANKS);
     limits->output_banks_s8=banks&65535u;
     limits->output_banks_s16=banks>>16;
+    bus=dsa_reg_read(NPU_REG_AXI_DATA_BITS);
+    if (bus==32u || bus==64u) limits->axi_data_bits=bus;
+    limits->dma_max_bytes=256u*(limits->axi_data_bits/8u);
+    dma=dsa_reg_read(NPU_REG_DMA_MAX_BYTES);
+    if (dma>=limits->axi_data_bits/8u && dma<=limits->dma_max_bytes &&
+        !(dma&(dma-1u))) limits->dma_max_bytes=dma;
 }
 
 static void dsa_schedule_set_limits(dsa_schedule_config_t *c,
@@ -42,6 +50,8 @@ static void dsa_schedule_set_limits(dsa_schedule_config_t *c,
     c->ps_pool_bytes=DSA_PS_POOL_BYTES;
     c->output_banks_s8=limits->output_banks_s8;
     c->output_banks_s16=limits->output_banks_s16;
+    c->axi_data_bits=limits->axi_data_bits ? limits->axi_data_bits:DSA_SCHEDULE_AXI_DATA_BITS;
+    c->dma_max_bytes=limits->dma_max_bytes ? limits->dma_max_bytes:256u*dsa_schedule_bus_bytes(c);
     c->allow_is=(limits->flags&DSA_MATRIX_CAP_IS_SUPPORTED)!=0u;
 }
 
@@ -97,9 +107,11 @@ uint32_t dsa_matmul_plan(const dsa_matmul_config_t *config,
                 DSA_PS_POOL_BYTES,c.requested_r,c.requested_w,flow,
                 DSA_PS_FORCE_RAW,&p.tiling,&p.ps_payload_bytes)) continue;
             p.dataflow_mode=flow;
-            p.read_words=((uint64_t)c.rows*c.depth*p.tiling.col_groups+
-                          (uint64_t)c.cols*c.depth*p.tiling.row_groups+3u)/4u;
-            p.estimated_cycles=p.read_words*c.read_beat_cycles;
+            p.read_beats=((uint64_t)c.rows*c.depth*p.tiling.col_groups+
+                          (uint64_t)c.cols*c.depth*p.tiling.row_groups+dsa_schedule_bus_bytes(&c)-1u)/
+                          dsa_schedule_bus_bytes(&c);
+            p.read_words=p.read_beats*(dsa_schedule_bus_bytes(&c)/4u);
+            p.estimated_cycles=p.read_beats*c.read_beat_cycles;
             if (!found || dsa_schedule_better(&p,&best)) {best=p;found=1;}
         }
         if (!found) return DSA_ERR_INVALID_DIM;

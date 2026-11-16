@@ -2,17 +2,37 @@
 
 ## 概述
 
-本驱动提供了对新版 AXI 外设的 C 语言接口封装，支持：
+本驱动提供 AXI 外设的 C 语言接口，支持：
+
 - MMIO 寄存器访问
-- 矩阵乘法启动/轮询
-- Per-tensor和per-channel量化
-- 灵活的数据类型配置（s4/s8/s16/s32/s64）
+- 矩阵乘法启动、轮询和 WS/IS 自动调度
+- 逐张量和逐通道量化
+- INT8 输入、INT8 权重、INT8 输出，以及 INT16 输入、INT8 权重、INT16 输出；偏置使用 INT32
 
 ## 文件说明
 
 - `dsa_accel.h` - 驱动头文件，定义所有接口
 - `dsa_accel.c` - 驱动实现文件
+- `dsa_matrix.h` - 矩阵能力查询与 16×16 数据排列
+- `dsa_schedule.h` - WS/IS 数据流、复用参数与传输成本计算
 - `registers_v2.md` - 新版 AXI/MMIO 寄存器说明
+
+## 自动矩阵调度与 AXI64
+
+将 `dataflow_mode` 设为 `DSA_DATAFLOW_AUTO`，并将 `ia_reuse_num`、`w_reuse_num` 设为 0，驱动会在硬件容量允许的候选中计算 WS/IS 数据流及复用参数。`dsa_matmul_plan()` 可在启动前返回所选数据流、分组、物理总线数据拍数和预计周期。指定数据流时保持该选择；非零复用参数作为搜索上限。
+
+评分分别计算读数据传输、写数据传输、阵列计算和 IA 输入调度所需的时间。IA 调度估计包含流式操作数读取与驻留操作数装载，最后取各项最大值。输入和权重的行跨度、起始地址余数、尾部尺寸与分块排列都会影响数据拍及事务数量。`veri/top_regression/host_schedule.py` 提供相同的 Python 算法。
+
+`dsa_matrix_query()` 从 `0x0f0` 读取 DMA 最大突发字节数，从 `0x0f4` 读取物理 AXI 数据宽度。AXI64 每拍 8 B，完整突发最多 256 拍、2,048 B，并在 4 KiB 边界拆分。AXI32 每拍 4 B，最多 1,024 B。配置 MMIO 仍使用 32 位访问。
+
+调度结果中的 `read_beats`、`write_beats` 使用物理 AXI 数据拍，`read_words`、`write_words` 使用 32 位字。平台需按实际连续传输能力设置 `DSA_SCHEDULE_READ_BEAT_CYCLES`；同步 RAM 能够每周期返回一拍时，构建驱动使用：
+
+```sh
+riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 \
+  -DDSA_SCHEDULE_READ_BEAT_CYCLES=1 -c dsa_accel.c -o dsa_accel.o
+```
+
+首拍延迟按每个已接受请求计算，可由 outstanding 请求和突发传输重叠隐藏。数据拍间隔、DMA 最大突发长度与首拍延迟分别描述吞吐、事务大小和请求等待时间。
 
 ## 寄存器文档
 
@@ -88,7 +108,7 @@ uint32_t status = dsa_matmul_execute(&config);
 
 - `DSA_SUCCESS (0x00000000)` - 执行成功
 - `DSA_ERR_NULL_PTR (0x00000002)` - 必需指针为空
-- `DSA_ERR_INVALID_DIM (0x00000003)` - 尺寸不满足对齐要求
+- `DSA_ERR_INVALID_DIM (0x00000003)` - 尺寸、数据类型或容量配置不满足要求
 
 ## 编译说明
 

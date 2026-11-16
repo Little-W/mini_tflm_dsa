@@ -9,6 +9,8 @@
 #define NPU_REG_MATRIX_CAPS 0x0e4u
 #define NPU_REG_MATRIX_PS_ROWS 0x0e8u
 #define NPU_REG_MATRIX_OUTPUT_BANKS 0x0ecu
+#define NPU_REG_DMA_MAX_BYTES 0x0f0u
+#define NPU_REG_AXI_DATA_BITS 0x0f4u
 #define NPU_CTRL_LHS_TILE_PACKED (1u << 9)
 #define NPU_CTRL_RHS_TILE_PACKED (1u << 10)
 #define DSA_MATRIX_CAP_LHS_TILE_PACKED (1u << 0)
@@ -26,6 +28,7 @@
 typedef struct {
     uint32_t flags, ia_cache_blocks, ps_frame_count, ps_storage_rows, tile_size;
     uint32_t output_banks_s8, output_banks_s16;
+    uint32_t dma_max_bytes, axi_data_bits;
 } dsa_matrix_limits_t;
 
 #ifdef __cplusplus

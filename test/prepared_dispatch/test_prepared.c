@@ -373,10 +373,12 @@ static void test_matrix_planning(void)
     registers[NPU_REG_MATRIX_CAPS/4u] = 7u | (8u<<8) | (16u<<16) | (16u<<24);
     registers[NPU_REG_MATRIX_PS_ROWS/4u] = 799u;
     registers[NPU_REG_MATRIX_OUTPUT_BANKS/4u] = 32u | (4u<<16);
+    registers[NPU_REG_DMA_MAX_BYTES/4u] = 64u;
     dsa_matrix_query(&limits);
     CHECK(limits.flags==7u && limits.tile_size==16u && limits.ia_cache_blocks==8u);
     CHECK(limits.ps_frame_count==16u && limits.ps_storage_rows==799u);
     CHECK(limits.output_banks_s8==32u && limits.output_banks_s16==4u);
+    CHECK(limits.dma_max_bytes==64u);
     dsa_matmul_config_init(&matrix);
     matrix.K=64u;matrix.N=576u;matrix.M=64u;
     matrix.lhs_row_stride=matrix.rhs_row_stride=576u;matrix.dst_row_stride=64u;

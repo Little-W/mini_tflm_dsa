@@ -26,53 +26,87 @@ def default_config(rows, depth, cols, size=16, ia_blocks=4, ps_frames=16, **opti
                   per_channel=0, has_bias=0, spatial=0, read_beat_cycles=2,
                   write_beat_cycles=1, read_request_cycles=1, write_request_cycles=3,
                   merge_contiguous_rows=1, lhs_tile_packed=0, rhs_tile_packed=0,
-                  output_banks_s8=0, output_banks_s16=0)
+                  output_banks_s8=0, output_banks_s16=0, dma_max_bytes=1024, axi_data_bits=32)
     unknown = options.keys() - config.keys()
     if unknown:
         raise ValueError("Unknown schedule options: " + str(unknown))
     config.update(options)
+    if "dma_max_bytes" not in options:
+        config["dma_max_bytes"] = 256 * bus_bytes(config)
     return config
+
+
+def bus_bytes(c):
+    return (c.get("axi_data_bits", 32) or 32) // 8
+
+
+def dma_bytes(c):
+    return c["dma_max_bytes"] or 256 * bus_bytes(c)
 
 
 def operand(c, rows, width, stride, address, merge, packed):
     size, depth = c["size"], c["depth"]
+    beat_bytes, max_bytes = bus_bytes(c), dma_bytes(c)
+    max_beats = max_bytes // beat_bytes
     if packed:
         kt, row_bytes = ceildiv(depth, size), size * width
-        return rows * kt * row_bytes // 4, kt * ((rows // size) * ceildiv(size * row_bytes, 1024) + ceildiv((rows % size) * row_bytes, 1024))
-    if merge and c["merge_contiguous_rows"] and depth <= size and stride == depth * width and size * depth * width <= 1024 and depth * width % 4 == 0 and address % 4 == 0:
+        row_beats = ceildiv(row_bytes, beat_bytes)
+        if address % beat_bytes:
+            row_beats += 1
+            return (rows * kt * row_beats * (beat_bytes//4),
+                    rows * kt * ceildiv(row_beats, max_beats))
+        return (rows * kt * row_beats * (beat_bytes//4),
+                kt * ((rows // size) * ceildiv(size * row_bytes, max_bytes) +
+                      ceildiv((rows % size) * row_bytes, max_bytes)))
+    if (merge and c["merge_contiguous_rows"] and depth <= size and
+            stride == depth * width and size * depth * width <= 256*beat_bytes and
+            depth * width % beat_bytes == 0 and address % beat_bytes == 0):
         row_bytes = depth * width
         block_bytes = size * row_bytes
         tail_bytes = (rows % size) * row_bytes
-        return add(mul(rows, row_bytes), 3) // 4, (rows // size) * ceildiv(block_bytes, 1024) + ceildiv(tail_bytes, 1024)
+        return mul(rows, row_bytes) // 4, (rows // size) * ceildiv(block_bytes, max_bytes) + ceildiv(tail_bytes, max_bytes)
     full, tail = divmod(depth, size)
-    words = 0
-    for i in range(4):
-        times = rows // 4 + (i < rows % 4)
-        residue = (address + i * stride) % 4
-        per_row = full * ceildiv(size * width + residue, 4)
+    beats = requests = 0
+    for i in range(beat_bytes):
+        times = rows // beat_bytes + (i < rows % beat_bytes)
+        row_residue = (address + i * stride) % beat_bytes
+        per_row = per_requests = 0
+        for j in range(beat_bytes):
+            tiles = full // beat_bytes + (j < full % beat_bytes)
+            residue = (row_residue + j*size*width) % beat_bytes
+            length = ceildiv(size*width, beat_bytes) + int(residue != 0)
+            per_row += tiles*length
+            per_requests += tiles*ceildiv(length, max_beats)
         if tail:
-            per_row += ceildiv(tail * width, 4) + int(residue != 0)
-        words = add(words, mul(times, per_row))
-    return words, rows * (full + bool(tail))
+            residue = (row_residue + full*size*width) % beat_bytes
+            length = ceildiv(tail*width, beat_bytes) + int(residue != 0)
+            per_row += length
+            per_requests += ceildiv(length, max_beats)
+        beats = add(beats, mul(times, per_row))
+        requests = add(requests, mul(times, per_requests))
+    return mul(beats, beat_bytes//4), requests
 
 
-def contiguous_writes(address, byte_count, descriptor_bytes):
+def contiguous_writes(address, byte_count, descriptor_bytes, max_bytes, beat_bytes=4):
     if not byte_count:
         return 0
-    requests = byte_count // descriptor_bytes
-    if descriptor_bytes == 1024 and address % 4:
-        return 2 * requests
-    if address % descriptor_bytes:
-        requests += (address + byte_count - 1) // 4096 - address // 4096
-    return requests
+    aligned = address & ~(beat_bytes-1)
+    span = descriptor_bytes + (beat_bytes if address % beat_bytes else 0)
+    base = ceildiv(span, max_bytes)
+    offset = descriptor_bytes - aligned % descriptor_bytes
+    split = ceildiv(offset, max_bytes) + ceildiv(span-offset, max_bytes)
+    pages = (aligned + byte_count + span - descriptor_bytes - 1) // 4096 - aligned // 4096
+    return byte_count // descriptor_bytes * base + pages * (split-base)
 
 
-def dense_write_bytes(group_bytes, row_bytes):
-    return next((n for n in (1024, 512, 256) if group_bytes % n == 0), row_bytes)
+def dense_write_bytes(group_bytes, row_bytes, beat_bytes=4):
+    lengths = (2048, 1024, 512, 256) if beat_bytes == 8 else (1024, 512, 256)
+    return next((n for n in lengths if group_bytes % n == 0), row_bytes)
 
 
-def output_requests(c, mode, r, w):
+def output_traffic(c, mode, r, w):
     rows, cols, size = c["rows"], c["cols"], c["size"]
+    max_bytes, beat_bytes = dma_bytes(c), bus_bytes(c)
     banks = c["output_banks_s8"] or min(32, c["ps_frames"] * max(1, c["ia_blocks"] // 2))
     chunk = 1
     if (not mode and c["allow_is"] and size == 16 and c["output_bytes"] == 1 and
@@ -88,15 +122,44 @@ def output_requests(c, mode, r, w):
             if cols == 16 * chunk:
                 full_rows = rows // (16 * r) * (16 * r)
                 full_bytes, tail_bytes = full_rows * cols, (rows - full_rows) * cols
-                return (contiguous_writes(c["output_address"], full_bytes, dense_write_bytes(16*r*cols, cols)) +
-                        contiguous_writes(c["output_address"] + full_bytes, tail_bytes, dense_write_bytes(tail_bytes, cols)))
-            return contiguous_writes(c["output_address"], rows * cols, 16 * chunk)
+                full_len = dense_write_bytes(16*r*cols, cols, beat_bytes)
+                tail_len = dense_write_bytes(tail_bytes, cols, beat_bytes)
+                beats = (full_bytes//full_len*(full_len//beat_bytes + int(c["output_address"]%beat_bytes != 0)) +
+                         tail_bytes//tail_len*(tail_len//beat_bytes + int((c["output_address"]+full_bytes)%beat_bytes != 0)))
+                return beats, (contiguous_writes(c["output_address"], full_bytes, full_len, max_bytes, beat_bytes) +
+                        contiguous_writes(c["output_address"] + full_bytes, tail_bytes, tail_len, max_bytes, beat_bytes))
+            beats = rows*cols//(16*chunk)*(16*chunk//beat_bytes + int(c["output_address"]%beat_bytes != 0))
+            return beats, contiguous_writes(c["output_address"], rows * cols, 16 * chunk, max_bytes, beat_bytes)
         chunk = 1
     if (mode and size == 16 and c["output_bytes"] == 1 and r in (2, 4, 8, 16) and
             r <= banks and cols % (16*r) == 0 and c["output_address"] % (16*r) == 0 and
             c["output_stride"] % (16*r) == 0):
         chunk = r
-    return rows * ceildiv(cols, size * chunk)
+    full, tail = divmod(cols, size * chunk)
+    beats = requests = 0
+    max_beats = max_bytes//beat_bytes
+    for i in range(beat_bytes):
+        times = rows//beat_bytes + (i < rows%beat_bytes)
+        row_residue = (c["output_address"] + i*c["output_stride"]) % beat_bytes
+        per_row = per_requests = 0
+        for j in range(beat_bytes):
+            tiles = full//beat_bytes + (j < full%beat_bytes)
+            residue = (row_residue + j*size*chunk*c["output_bytes"]) % beat_bytes
+            length = ceildiv(size*chunk*c["output_bytes"], beat_bytes) + int(residue != 0)
+            per_row += tiles*length
+            per_requests += tiles*ceildiv(length, max_beats)
+        if tail:
+            residue = (row_residue + full*size*chunk*c["output_bytes"]) % beat_bytes
+            length = ceildiv(tail*c["output_bytes"], beat_bytes) + int(residue != 0)
+            per_row += length
+            per_requests += ceildiv(length, max_beats)
+        beats = add(beats, mul(times, per_row))
+        requests = add(requests, mul(times, per_requests))
+    return beats, requests
+
+
+def output_requests(c, mode, r, w):
+    return output_traffic(c, mode, r, w)[1]
 
 
 def schedules(c):
@@ -106,6 +169,9 @@ def schedules(c):
             c["size"] & (c["size"] - 1) or c["size"] > 256 or c["flow"] > 2 or
             any(c[x] not in (1, 2) for x in ("lhs_bytes", "rhs_bytes", "output_bytes")) or
             c["per_channel"] > 1 or c["has_bias"] > 1 or
+            c.get("axi_data_bits", 32) not in (0, 32, 64) or
+            (c["dma_max_bytes"] and (c["dma_max_bytes"] < bus_bytes(c) or c["dma_max_bytes"] > 256*bus_bytes(c) or
+             c["dma_max_bytes"] & (c["dma_max_bytes"]-1))) or
             c["lhs_tile_packed"] > 1 or c["rhs_tile_packed"] > 1 or
             ((c["lhs_tile_packed"] or c["rhs_tile_packed"]) and c["size"] != 16) or
             (c["spatial"] and c["lhs_tile_packed"]) or (c["flow"] == 1 and not c["allow_is"])):
@@ -141,18 +207,27 @@ def schedules(c):
                 ap, bp = (rg, cg) if mode else (cg, rg)
                 pp = 1 if mode or cols <= size else rg
                 tables = c["has_bias"] + 2 * c["per_channel"]
-                read_words = add(add(mul(aw, ap), mul(bw, bp)), cols * pp * tables)
-                read_requests = add(add(mul(ar, ap), mul(br, bp)), ceildiv(cols, 16) * pp * tables)
-                write_words = rows * ceildiv(cols * c["output_bytes"], 4)
-                write_requests = output_requests(c, mode, r, w)
+                beat_bytes, max_bytes = bus_bytes(c), dma_bytes(c)
+                parameter_beats = ((cols//16)*(64//beat_bytes) + ceildiv((cols%16)*4, beat_bytes))*pp*tables
+                read_words = add(add(mul(aw, ap), mul(bw, bp)), parameter_beats*(beat_bytes//4))
+                parameter_requests = ((cols//16)*ceildiv(64, max_bytes) + ceildiv((cols%16)*4, max_bytes))*pp*tables
+                read_requests = add(add(mul(ar, ap), mul(br, bp)), parameter_requests)
+                read_beats = read_words//(beat_bytes//4)
+                write_beats, write_requests = output_traffic(c, mode, r, w)
+                write_words = write_beats*(beat_bytes//4)
                 compute_cycles = add(mul(sr * tc, kt), mul(mul(rg * tc, kt), 2 * size + 2))
-                read_cycles = add(mul(read_words, c["read_beat_cycles"]), mul(read_requests, c["read_request_cycles"]))
-                write_cycles = add(mul(write_words, c["write_beat_cycles"]), mul(write_requests, c["write_request_cycles"]))
+                read_cycles = add(mul(read_beats, c["read_beat_cycles"]), mul(read_requests, c["read_request_cycles"]))
+                write_cycles = add(mul(write_beats, c["write_beat_cycles"]), mul(write_requests, c["write_request_cycles"]))
+                stream_words = mul(bw, bp) if mode else mul(aw, ap)
+                stream_requests = mul(br, bp) if mode else mul(ar, ap)
+                stream_cycles = add(mul(stream_words//(beat_bytes//4), c["read_beat_cycles"]),
+                    add(mul(stream_requests, c["read_request_cycles"]), mul(mul(rg*tc, kt), size)))
                 yield dict(dataflow_mode=mode, tiling=dict(ia_reuse=r, w_reuse=w, row_groups=rg,
                     col_groups=cg, row_tail_tiles=tr - (rg - 1) * r, col_tail_tiles=tc - (cg - 1) * w),
-                    estimated_cycles=max(read_cycles, write_cycles, compute_cycles), read_words=read_words,
+                    estimated_cycles=max(read_cycles, write_cycles, compute_cycles, stream_cycles), read_words=read_words,
                     read_requests=read_requests, write_words=write_words, write_requests=write_requests,
-                    compute_cycles=compute_cycles, ps_payload_bytes=payload)
+                    compute_cycles=compute_cycles, ps_payload_bytes=payload,
+                    read_beats=read_beats, write_beats=write_beats)
 
 
 def schedule_key(candidate):

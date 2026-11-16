@@ -34,6 +34,11 @@
 | `0x068` | `0x01a` | `NPU_REG_COL_GROUPS` | RW | 内部流列工作组总数，外部预计算 |
 | `0x06c` | `0x01b` | `NPU_REG_COL_TAIL_TILES` | RW | 最后一列工作组的 tile 数，整除时写 W |
 | `0x070` | `0x01c` | `NPU_REG_CONFIG_ABI` | RO | 配置 ABI 版本，当前为 2 |
+| `0x0e4` | `0x039` | `NPU_REG_MATRIX_CAPS` | RO | 矩阵布局、数据流、IA 和部分和容量 |
+| `0x0e8` | `0x03a` | `NPU_REG_MATRIX_PS_ROWS` | RO | 物理部分和 RAM 行数 |
+| `0x0ec` | `0x03b` | `NPU_REG_MATRIX_OUTPUT_BANKS` | RO | 低 16 位为 INT8 输出 bank 数，高 16 位为 INT16 输出 bank 数 |
+| `0x0f0` | `0x03c` | `NPU_REG_DMA_MAX_BYTES` | RO | 单个 AXI DMA 突发允许的最大字节数 |
+| `0x0f4` | `0x03d` | `NPU_REG_AXI_DATA_BITS` | RO | 物理 AXI 数据端口宽度，单位 bit，支持 32 或 64 |
 | `0x0fc` | `0x03f` | `NPU_REG_ID` | RO | 固定为 `0x4e50_5531` |
 
 ## CTRL 位定义
@@ -49,6 +54,8 @@
 | 6 | `NPU_CTRL_CONV` | 使用普通 Conv 模式 |
 | 7 | `NPU_CTRL_CONV_BYPASS` | 输入窗口缓存旁路 |
 | 8 | `NPU_CTRL_VECTOR_ENGINE` | 使用 VCE 执行 DW、池化、Add 或基础向量运算，与 bit 6 互斥 |
+| 9 | `NPU_CTRL_LHS_TILE_PACKED` | LHS 使用 16×16 分块排列 |
+| 10 | `NPU_CTRL_RHS_TILE_PACKED` | RHS 使用 16×16 分块排列 |
 
 ## STATUS 位定义
 
@@ -82,6 +89,16 @@ COL_TAIL_TILES = col_tiles % W; 若为 0，则写 W
 `drivers/gempact_tiling.h` 提供独立 C 计算函数；`veri/top_regression/host_tiling.py` 提供相同的 Python 实现。驱动已在配置寄存器时调用 C 函数，写入显式 R、W 及四个字段。固定形状可以保存这些结果并直接配置，无须每次运行除法。
 
 RTL 只检查非零、尾组不超过生效 R/W，以及组数字段能否放入计数器；无效配置返回 `err_code=01`。乘积关系和完整维度一致性由外部保证，RTL 不重新做除法验证。
+
+### 矩阵能力与 AXI 位宽查询
+
+`dsa_matrix_query()` 先验证设备 ID 和 ABI，再读取上述只读能力寄存器。`MATRIX_CAPS` 的 bit 0、1、2 分别表示 LHS 分块排列、RHS 分块排列和 IS 数据流；bit 15:8 为 IA cache 块数，bit 23:16 为部分和帧数，bit 31:24 为方形阵列边长。矩阵调度同时检查部分和 RAM 行数和输出 bank 数。
+
+AXI64 配置下每个完整数据拍为 8 B，最多 256 拍，对应 2,048 B 突发；AXI32 配置下分别为 4 B 和 1,024 B。DMA 还按照 4 KiB 边界拆分事务。地址与行跨度始终使用字节单位，描述符长度使用物理数据拍。配置寄存器仍是 32 位 AXI-Lite。
+
+`axi_data_bits` 和 `dma_max_bytes` 分别保存数据宽度与突发字节上限。调度结果中的 `read_beats`、`write_beats` 表示实际宽度的数据拍数；`read_words`、`write_words` 以 32 位字为单位，便于按 `words × 4` 计算总线占用字节数。尾部写回的有效字节数由 `WSTRB` 决定。
+
+内存数据拍间隔由平台通过 `DSA_SCHEDULE_READ_BEAT_CYCLES` 和 `DSA_SCHEDULE_WRITE_BEAT_CYCLES` 配置。每周期能够提供一个读数据拍的同步 RAM 使用 `DSA_SCHEDULE_READ_BEAT_CYCLES=1`。首拍等待和 outstanding 请求的成熟时间由内存控制器实现；数据拍间隔参数描述连续数据传输吞吐。
 
 独立 RTL 仿真的 32 字 `config.mem` 保留 word29 的原有取数模式；word30 的低／高 16 位分别为行／列组数，word31 的低／高 16 位分别为行／列尾组大小。旧输入应先通过 `host_tiling.py SOURCE DESTINATION` 转换。硬件寄存器为 32 位，当前仿真描述符及计数器配置最多支持 65535 组。
 

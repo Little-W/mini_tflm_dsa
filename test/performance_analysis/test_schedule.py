@@ -11,7 +11,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "veri/top_regression"))
-from host_schedule import default_config, plan_schedule, schedules, plan_layout, operand, output_requests
+from host_schedule import default_config, plan_schedule, schedules, plan_layout, operand, output_requests, output_traffic
 
 
 def main():
@@ -49,7 +49,8 @@ def main():
             rhs_stride=k + rng.randrange(4), output_stride=n * width,
             lhs_address=rng.randrange(4), rhs_address=rng.randrange(4),
             output_address=rng.randrange(16) * 16, allow_is=rng.randrange(2),
-            per_channel=rng.randrange(2), has_bias=rng.randrange(2), spatial=rng.randrange(2)))
+            per_channel=rng.randrange(2), has_bias=rng.randrange(2), spatial=rng.randrange(2),
+            dma_max_bytes=rng.choice((4, 16, 64, 128, 1024))))
     for m, n, k in ((1, 10, 64), (17, 17, 17), (36, 128, 128), (64, 64, 576), (144, 64, 64)):
         for lhs_packed, rhs_packed in ((0, 1), (1, 0), (1, 1)):
             for flow in (0, 1, 2):
@@ -75,10 +76,16 @@ def main():
                     output_banks_s8=banks, output_banks_s16=16)
                 output_merge_configs.append(cfg)
                 configs.append(cfg)
+    configs += [dict(cfg, axi_data_bits=64, dma_max_bytes=rng.choice((8, 64, 2048)),
+                     read_beat_cycles=rng.choice((1, 2)),
+                     lhs_address=rng.randrange(8), rhs_address=rng.randrange(8))
+                for cfg in list(configs)]
+    configs += [default_config(1, 64, 10, axi_data_bits=bits, dma_max_bytes=limit)
+                for bits,limit in ((16,64),(128,2048),(64,4),(64,4096),(32,2048),(64,96))]
     passed = invalid = 0
     for cfg in configs:
         data = (ctypes.c_uint32 * len(cfg))(*cfg.values())
-        values = (ctypes.c_uint64 * 15)()
+        values = (ctypes.c_uint64 * 17)()
         rc = dll.schedule_oracle(data, len(cfg), values)
         try:
             result = plan_schedule(cfg)
@@ -90,7 +97,8 @@ def main():
         expected = [result["dataflow_mode"], t["ia_reuse"], t["w_reuse"], t["row_groups"],
                     t["row_tail_tiles"], t["col_groups"], t["col_tail_tiles"], result["candidates"],
                     result["estimated_cycles"], result["read_words"], result["read_requests"],
-                    result["write_words"], result["write_requests"], result["compute_cycles"], result["ps_payload_bytes"]]
+                    result["write_words"], result["write_requests"], result["compute_cycles"], result["ps_payload_bytes"],
+                    result["read_beats"], result["write_beats"]]
         assert rc == 1 and list(values) == expected, (cfg, list(values), expected)
         for candidate in schedules(cfg):
             tile = candidate["tiling"]
@@ -117,48 +125,68 @@ def main():
                                           ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32]
     dll.write_requests_oracle.restype = ctypes.c_uint64
     output_burst_cases = 0
-    for m, n, r, w, chunk in ((1, 256, 1, 16, 16), (2, 256, 1, 16, 2),
-            (9, 256, 1, 16, 2), (15, 64, 1, 4, 2), (17, 64, 2, 4, 4),
-            (36, 128, 4, 8, 8), (64, 64, 4, 4, 4), (65, 128, 4, 8, 8),
-            (79, 256, 4, 16, 8), (128, 512, 4, 16, 8)):
-        for address in (0, 1, 2, 3, 64, 128, 4093, 4095):
-            cfg = default_config(m, 32, n, ia_blocks=8, ps_frames=16,
-                                 output_address=address, output_banks_s8=32)
-            expected = 0
-            for row in range(0, m, 16*r):
-                count = min(16*r, m-row)
-                for col in range(0, n, 16*chunk):
-                    if n == 16*chunk:
-                        total = count*n
-                        length = next((v for v in (1024, 512, 256) if total % v == 0), n)
-                        descriptors = [(address+row*n+i, length) for i in range(0, total, length)]
-                    else:
-                        descriptors = [(address+(row+i)*n+col, 16*chunk) for i in range(count)]
-                    for start, length in descriptors:
-                        word_address = start & ~3
-                        words = (start % 4 + length + 3)//4
-                        while words:
-                            beats = min(words, 256, (4096-word_address % 4096)//4)
-                            assert beats > 0
-                            expected += 1
-                            words -= beats
-                            word_address += beats*4
-            raw_config = (ctypes.c_uint32 * len(cfg))(*cfg.values())
-            assert output_requests(cfg, 0, r, w) == expected, (cfg, r, w, expected)
-            assert dll.write_requests_oracle(raw_config, len(cfg), 0, r, w) == expected
-            output_burst_cases += 1
+    for bus_bits in (32, 64):
+        beat_bytes = bus_bits//8
+        descriptor_lengths = (2048,1024,512,256) if bus_bits == 64 else (1024,512,256)
+        for m, n, r, w, chunk in ((1, 256, 1, 16, 16), (2, 256, 1, 16, 2),
+                (9, 256, 1, 16, 2), (15, 64, 1, 4, 2), (17, 64, 2, 4, 4),
+                (36, 128, 4, 8, 8), (64, 64, 4, 4, 4), (65, 128, 4, 8, 8),
+                (79, 256, 4, 16, 8), (128, 512, 4, 16, 8)):
+            for max_bytes in (beat_bytes, 64, 256*beat_bytes):
+                for address in (*range(beat_bytes), 64, 128, 4093, 4095):
+                    cfg = default_config(m, 32, n, ia_blocks=8, ps_frames=16,
+                        output_address=address, output_banks_s8=32,
+                        dma_max_bytes=max_bytes, axi_data_bits=bus_bits)
+                    expected = expected_beats = 0
+                    for row in range(0, m, 16*r):
+                        count = min(16*r, m-row)
+                        for col in range(0, n, 16*chunk):
+                            if n == 16*chunk:
+                                total = count*n
+                                length = next((v for v in descriptor_lengths if total % v == 0), n)
+                                descriptors = [(address+row*n+i, length) for i in range(0, total, length)]
+                            else:
+                                descriptors = [(address+(row+i)*n+col, 16*chunk) for i in range(count)]
+                            for start, length in descriptors:
+                                word_address = start & ~(beat_bytes-1)
+                                words = (length+beat_bytes-1)//beat_bytes + int(start%beat_bytes != 0)
+                                expected_beats += words
+                                while words:
+                                    beats = min(words, max_bytes//beat_bytes,
+                                                (4096-word_address % 4096)//beat_bytes)
+                                    assert beats > 0
+                                    expected += 1
+                                    words -= beats
+                                    word_address += beats*beat_bytes
+                    raw_config = (ctypes.c_uint32 * len(cfg))(*cfg.values())
+                    assert output_traffic(cfg, 0, r, w) == (expected_beats,expected), (cfg, r, w, expected)
+                    assert dll.write_requests_oracle(raw_config, len(cfg), 0, r, w) == expected
+                    output_burst_cases += 1
+    dll.operand_oracle.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_size_t] + [ctypes.c_uint32]*6 + [ctypes.POINTER(ctypes.c_uint64)]
     tail_read_cases = 0
-    for width in (1, 2):
-        for depth in (1, 3, 7, 9, 15, 17, 19, 27, 31):
-            for residue in range(4):
-                cfg = default_config(1, depth, 1)
-                words, requests = operand(cfg, 1, width, depth*width, residue, False, False)
-                full, tail = divmod(depth, 16)
-                expected = full*(4*width + int(residue != 0))
-                if tail:
-                    expected += (tail*width+3)//4 + int(residue != 0)
-                assert (words, requests) == (expected, full+int(tail != 0))
-                tail_read_cases += 1
+    for bus_bits in (32,64):
+        beat_bytes=bus_bits//8
+        for width in (1,2):
+            for depth in (1,3,7,9,15,17,19,27,31,64):
+                for rows in (1,7,16,31):
+                    for residue in range(beat_bytes):
+                        stride=depth*width+3
+                        cfg=default_config(rows,depth,1,axi_data_bits=bus_bits)
+                        expected_beats=0
+                        expected_requests=0
+                        for row in range(rows):
+                            for k in range(0,depth,16):
+                                length=min(16,depth-k)*width
+                                start=residue+row*stride+k*width
+                                expected_beats+=(length+beat_bytes-1)//beat_bytes+int(start%beat_bytes != 0)
+                                expected_requests+=1
+                        expected=(expected_beats*(beat_bytes//4),expected_requests)
+                        assert operand(cfg,rows,width,stride,residue,False,False)==expected
+                        values=(ctypes.c_uint64*2)()
+                        data=(ctypes.c_uint32*len(cfg))(*cfg.values())
+                        dll.operand_oracle(data,len(cfg),rows,width,stride,residue,0,0,values)
+                        assert list(values)==list(expected)
+                        tail_read_cases+=1
     config = default_config(784, 9, 8, ia_blocks=8, ps_frames=16,
                             ps_storage_rows=799, flow=1, has_bias=1)
     assert plan_schedule(config)["read_words"] == 3068
@@ -211,13 +239,22 @@ def main():
                     packing_cases += 1
     for dimensions in ((0, 1, 1), (1, 0, 1), (1, 1, 3), (0xffffffff, 0xffffffff, 1), (65536, 65536, 1)):
         assert dll.packed_bytes_oracle(*dimensions) == 0
-    result = dict(passed=True, configurations=len(configs), legal=passed, rejected=invalid,
+    capability_binary=a.out/"bus_capabilities"
+    capability_command=["gcc","-std=c11","-O2","-Wall","-Wextra","-Werror",
+        "-DDSA_MMIO_CUSTOM","-ffunction-sections","-fdata-sections",
+        "-fsanitize=undefined","-fno-sanitize-recover=all","-I",str(ROOT/"drivers"),
+        str(ROOT/"drivers/dsa_accel.c"),str(Path(__file__).with_name("bus_capabilities.c")),
+        "-Wl,--gc-sections","-o",str(capability_binary)]
+    subprocess.run(capability_command,check=True)
+    capability_run=subprocess.run([str(capability_binary)],check=True,capture_output=True,text=True)
+    (a.out/"bus_capabilities.log").write_text(capability_run.stdout+capability_run.stderr)
+    result = dict(passed=True, capability_cases=10, configurations=len(configs), legal=passed, rejected=invalid,
                   output_burst_cases=output_burst_cases,
                   packing_cases=packing_cases, layout_cases=layout_cases,
                   output_merge_configurations=len(output_merge_configs),
                   tail_read_cases=tail_read_cases,
                   source_sha256={str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                    for p in (ROOT / "drivers/dsa_schedule.h", ROOT / "drivers/dsa_matrix.h", ROOT / "veri/top_regression/host_schedule.py")})
+                    for p in (ROOT / "drivers/dsa_schedule.h", ROOT / "drivers/dsa_matrix.h", ROOT / "drivers/dsa_schedule_impl.h", ROOT / "veri/top_regression/host_schedule.py")})
     (a.out / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
 

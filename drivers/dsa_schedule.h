@@ -12,6 +12,9 @@
 #ifndef DSA_PS_STORAGE_ROWS
 #define DSA_PS_STORAGE_ROWS 0u
 #endif
+#ifndef DSA_SCHEDULE_AXI_DATA_BITS
+#define DSA_SCHEDULE_AXI_DATA_BITS 32u
+#endif
 #ifndef DSA_SCHEDULE_READ_BEAT_CYCLES
 #define DSA_SCHEDULE_READ_BEAT_CYCLES 2u
 #endif
@@ -44,6 +47,7 @@ typedef struct {
     uint32_t read_request_cycles, write_request_cycles;
     uint32_t merge_contiguous_rows;
     uint32_t lhs_tile_packed, rhs_tile_packed, output_banks_s8, output_banks_s16;
+    uint32_t dma_max_bytes, axi_data_bits;
 } dsa_schedule_config_t;
 
 typedef struct {
@@ -51,6 +55,7 @@ typedef struct {
     uint32_t dataflow_mode, candidates;
     uint64_t estimated_cycles, read_words, read_requests, write_words;
     uint64_t write_requests, compute_cycles, ps_payload_bytes;
+    uint64_t read_beats, write_beats;
 } dsa_schedule_t;
 
 static inline uint64_t dsa_schedule_add(uint64_t a, uint64_t b)
@@ -90,47 +95,79 @@ static inline void dsa_schedule_init(dsa_schedule_config_t *c,
     c->read_request_cycles=DSA_SCHEDULE_READ_REQUEST_CYCLES;
     c->write_request_cycles=DSA_SCHEDULE_WRITE_REQUEST_CYCLES;
     c->merge_contiguous_rows=DSA_SCHEDULE_MERGE_CONTIGUOUS_ROWS;
+    c->axi_data_bits=DSA_SCHEDULE_AXI_DATA_BITS;
+    c->dma_max_bytes=256u*(c->axi_data_bits/8u);
 }
 
-/* Count the four possible address residues without iterating over rows.
- * A contiguous block of up to SIZE rows uses the DMA row-merge path when
- * the complete reduction fits one tile and the physical stride is dense.
- * Page boundaries can add requests; the score is a scheduling estimate.
- */
+/* Traffic words retain their 32-bit unit; AXI beats use the discovered bus
+ * width. Each unaligned logical row adds the DMA realignment beat. Read
+ * request estimates precede 4 KiB splitting of individual descriptors. */
+static inline uint32_t dsa_schedule_bus_bytes(const dsa_schedule_config_t *c)
+{
+    return (c->axi_data_bits ? c->axi_data_bits:DSA_SCHEDULE_AXI_DATA_BITS)/8u;
+}
+
+static inline uint32_t dsa_schedule_dma_bytes(const dsa_schedule_config_t *c)
+{
+    return c->dma_max_bytes ? c->dma_max_bytes:256u*dsa_schedule_bus_bytes(c);
+}
+
 static inline void dsa_schedule_operand(const dsa_schedule_config_t *c,
     uint32_t rows, uint32_t bytes, uint32_t stride, uint32_t address,
     int merge, int packed, uint64_t *words, uint64_t *requests)
 {
-    uint64_t count=0;
+    uint64_t count=0, request_count=0;
     uint32_t full=c->depth/c->size, tail=c->depth%c->size;
+    uint32_t beat_bytes=dsa_schedule_bus_bytes(c);
+    uint32_t max_bytes=dsa_schedule_dma_bytes(c), max_beats=max_bytes/beat_bytes;
     if (packed) {
         uint64_t kt=full+(tail!=0u),row_bytes=(uint64_t)c->size*bytes;
-        *words=(uint64_t)rows*kt*(row_bytes/4u);
-        *requests=kt*((uint64_t)(rows/c->size)*((c->size*row_bytes+1023u)/1024u)+
-                     ((rows%c->size)*row_bytes+1023u)/1024u);
+        uint64_t row_beats=(row_bytes+beat_bytes-1u)/beat_bytes;
+        if (address&(beat_bytes-1u)) {
+            ++row_beats;
+            *words=(uint64_t)rows*kt*row_beats*(beat_bytes/4u);
+            *requests=(uint64_t)rows*kt*((row_beats+max_beats-1u)/max_beats);
+        } else {
+            *words=(uint64_t)rows*kt*row_beats*(beat_bytes/4u);
+            *requests=kt*((uint64_t)(rows/c->size)*((c->size*row_bytes+max_bytes-1u)/max_bytes)+
+                         ((rows%c->size)*row_bytes+max_bytes-1u)/max_bytes);
+        }
         return;
     }
     if (merge && c->merge_contiguous_rows && c->depth<=c->size &&
         (uint64_t)stride==(uint64_t)c->depth*bytes &&
-        (uint64_t)c->size*c->depth*bytes<=1024u &&
-        ((c->depth*bytes)&3u)==0u && (address&3u)==0u) {
+        (uint64_t)c->size*c->depth*bytes<=256u*beat_bytes &&
+        (c->depth*bytes)%beat_bytes==0u && address%beat_bytes==0u) {
         uint64_t row_bytes=(uint64_t)c->depth*bytes;
         uint64_t block_bytes=(uint64_t)c->size*row_bytes;
         uint64_t tail_bytes=(uint64_t)(rows%c->size)*row_bytes;
-        *words=dsa_schedule_add(dsa_schedule_mul(rows,row_bytes),3u)/4u;
-        *requests=(uint64_t)(rows/c->size)*((block_bytes+1023u)/1024u)+
-                  (tail_bytes+1023u)/1024u;
+        *words=dsa_schedule_mul(rows,row_bytes)/4u;
+        *requests=(uint64_t)(rows/c->size)*((block_bytes+max_bytes-1u)/max_bytes)+
+                  (tail_bytes+max_bytes-1u)/max_bytes;
         return;
     }
-    for (uint32_t i=0;i<4u;++i) {
-        uint64_t times=rows/4u+(i<rows%4u);
-        uint32_t residue=(address+i*stride)&3u;
-        uint64_t per_row=(uint64_t)full*((c->size*bytes+residue+3u)/4u);
-        if (tail) per_row+=(tail*bytes+3u)/4u+(residue!=0u);
+    for (uint32_t i=0;i<beat_bytes;++i) {
+        uint64_t times=rows/beat_bytes+(i<rows%beat_bytes);
+        uint32_t row_residue=(address+i*stride)&(beat_bytes-1u);
+        uint64_t per_row=0u,per_requests=0u;
+        for (uint32_t j=0;j<beat_bytes;++j) {
+            uint64_t tiles=full/beat_bytes+(j<full%beat_bytes);
+            uint32_t residue=(row_residue+j*c->size*bytes)&(beat_bytes-1u);
+            uint32_t beats=gempact_ceil_div(c->size*bytes,beat_bytes)+(residue!=0u);
+            per_row+=tiles*beats;
+            per_requests+=tiles*gempact_ceil_div(beats,max_beats);
+        }
+        if (tail) {
+            uint32_t residue=(row_residue+full*c->size*bytes)&(beat_bytes-1u);
+            uint32_t beats=gempact_ceil_div(tail*bytes,beat_bytes)+(residue!=0u);
+            per_row+=beats;
+            per_requests+=gempact_ceil_div(beats,max_beats);
+        }
         count=dsa_schedule_add(count,dsa_schedule_mul(times,per_row));
+        request_count=dsa_schedule_add(request_count,dsa_schedule_mul(times,per_requests));
     }
-    *words=count;
-    *requests=(uint64_t)rows*(full+(tail!=0u));
+    *words=dsa_schedule_mul(count,beat_bytes/4u);
+    *requests=request_count;
 }
 
 /* This bound matches npu_top's physical PS admission check, including one
@@ -146,33 +183,39 @@ static inline uint64_t dsa_schedule_ps_bytes(const dsa_schedule_config_t *c,
            (dsa_schedule_min(w,tc)+1u)*c->size*4u;
 }
 
-/* Contiguous, equal-sized descriptors cover this byte interval. The write
- * DMA splits each descriptor at 256 beats and at a 4 KiB page boundary. */
+/* Dense output descriptors have a power-of-two byte length dividing 4 KiB.
+ * Count the configured burst limit, the unaligned boundary word, and page
+ * splits without iterating over tensor rows. */
 static inline uint64_t dsa_schedule_contiguous_writes(uint64_t address,
-    uint64_t bytes, uint32_t descriptor_bytes)
+    uint64_t bytes, uint32_t descriptor_bytes, uint32_t max_bytes, uint32_t beat_bytes)
 {
-    uint64_t requests;
+    uint64_t aligned,span,pages,base,split,offset;
     if (!bytes) return 0u;
-    requests=bytes/descriptor_bytes;
-    if (descriptor_bytes==1024u && (address&3u)) return requests*2u;
-    if (address%descriptor_bytes)
-        requests+=(address+bytes-1u)/4096u-address/4096u;
-    return requests;
+    aligned=address&~(uint64_t)(beat_bytes-1u);
+    span=descriptor_bytes+((address&(beat_bytes-1u))!=0u ? beat_bytes:0u);
+    base=(span+max_bytes-1u)/max_bytes;
+    offset=descriptor_bytes-(aligned%descriptor_bytes);
+    split=(offset+max_bytes-1u)/max_bytes+(span-offset+max_bytes-1u)/max_bytes;
+    pages=(aligned+bytes+(span-descriptor_bytes)-1u)/4096u-aligned/4096u;
+    return (bytes/descriptor_bytes)*base+pages*(split-base);
 }
 
 static inline uint32_t dsa_schedule_dense_write_bytes(uint64_t group_bytes,
-                                                       uint32_t row_bytes)
+                                                       uint32_t row_bytes, uint32_t beat_bytes)
 {
+    if (beat_bytes==8u && group_bytes%2048u==0u) return 2048u;
     if (group_bytes%1024u==0u) return 1024u;
     if (group_bytes%512u==0u) return 512u;
     if (group_bytes%256u==0u) return 256u;
     return row_bytes;
 }
 
-static inline uint64_t dsa_schedule_writes(const dsa_schedule_config_t *c,
-    uint32_t mode, uint32_t r, uint32_t w)
+static inline uint64_t dsa_schedule_write_traffic(const dsa_schedule_config_t *c,
+    uint32_t mode, uint32_t r, uint32_t w, uint64_t *beats)
 {
     uint32_t chunk=1u;
+    uint32_t max_bytes=dsa_schedule_dma_bytes(c);
+    uint32_t beat_bytes=dsa_schedule_bus_bytes(c);
     uint32_t banks=c->output_banks_s8 ? c->output_banks_s8:
         dsa_schedule_min(32u,c->ps_frames*(c->ia_blocks<2u?1u:c->ia_blocks/2u));
     if (!mode && c->allow_is && c->size==16u && c->output_bytes==1u &&
@@ -187,13 +230,17 @@ static inline uint64_t dsa_schedule_writes(const dsa_schedule_config_t *c,
                 uint32_t full_rows=c->rows/(r*16u)*(r*16u);
                 uint64_t full_bytes=(uint64_t)full_rows*c->cols;
                 uint64_t tail_bytes=(uint64_t)(c->rows-full_rows)*c->cols;
-                uint32_t full_len=dsa_schedule_dense_write_bytes((uint64_t)r*16u*c->cols,c->cols);
-                uint32_t tail_len=dsa_schedule_dense_write_bytes(tail_bytes,c->cols);
-                return dsa_schedule_contiguous_writes(c->output_address,full_bytes,full_len)+
-                    dsa_schedule_contiguous_writes((uint64_t)c->output_address+full_bytes,tail_bytes,tail_len);
+                uint32_t full_len=dsa_schedule_dense_write_bytes((uint64_t)r*16u*c->cols,c->cols,beat_bytes);
+                uint32_t tail_len=dsa_schedule_dense_write_bytes(tail_bytes,c->cols,beat_bytes);
+                *beats=full_bytes/full_len*(full_len/beat_bytes+(c->output_address%beat_bytes!=0u))+
+                    tail_bytes/tail_len*(tail_len/beat_bytes+((c->output_address+full_bytes)%beat_bytes!=0u));
+                return dsa_schedule_contiguous_writes(c->output_address,full_bytes,full_len,max_bytes,beat_bytes)+
+                    dsa_schedule_contiguous_writes((uint64_t)c->output_address+full_bytes,tail_bytes,tail_len,max_bytes,beat_bytes);
             }
+            *beats=(uint64_t)c->rows*c->cols/(chunk*16u)*
+                (chunk*16u/beat_bytes+(c->output_address%beat_bytes!=0u));
             return dsa_schedule_contiguous_writes(c->output_address,
-                (uint64_t)c->rows*c->cols,chunk*16u);
+                (uint64_t)c->rows*c->cols,chunk*16u,max_bytes,beat_bytes);
         }
         chunk=1u;
     }
@@ -201,7 +248,40 @@ static inline uint64_t dsa_schedule_writes(const dsa_schedule_config_t *c,
         r>=2u && r<=16u && (r&(r-1u))==0u && r<=banks &&
         c->cols%(16u*r)==0u && c->output_address%(16u*r)==0u &&
         c->output_stride%(16u*r)==0u) chunk=r;
-    return (uint64_t)c->rows*gempact_ceil_div(c->cols,c->size*chunk);
+    {
+        uint32_t columns=c->size*chunk,full=c->cols/columns,tail=c->cols%columns;
+        uint64_t requests=0u,beat_count=0u;
+        uint32_t max_beats=max_bytes/beat_bytes;
+        for (uint32_t i=0;i<beat_bytes;++i) {
+            uint64_t times=c->rows/beat_bytes+(i<c->rows%beat_bytes);
+            uint32_t row_residue=(c->output_address+i*c->output_stride)&(beat_bytes-1u);
+            uint64_t per_row=0u,per_requests=0u;
+            for (uint32_t j=0;j<beat_bytes;++j) {
+                uint64_t tiles=full/beat_bytes+(j<full%beat_bytes);
+                uint32_t residue=(row_residue+j*columns*c->output_bytes)&(beat_bytes-1u);
+                uint32_t length=gempact_ceil_div(columns*c->output_bytes,beat_bytes)+(residue!=0u);
+                per_row+=tiles*length;
+                per_requests+=tiles*gempact_ceil_div(length,max_beats);
+            }
+            if (tail) {
+                uint32_t residue=(row_residue+full*columns*c->output_bytes)&(beat_bytes-1u);
+                uint32_t length=gempact_ceil_div(tail*c->output_bytes,beat_bytes)+(residue!=0u);
+                per_row+=length;
+                per_requests+=gempact_ceil_div(length,max_beats);
+            }
+            beat_count=dsa_schedule_add(beat_count,dsa_schedule_mul(times,per_row));
+            requests=dsa_schedule_add(requests,dsa_schedule_mul(times,per_requests));
+        }
+        *beats=beat_count;
+        return requests;
+    }
+}
+
+static inline uint64_t dsa_schedule_writes(const dsa_schedule_config_t *c,
+    uint32_t mode, uint32_t r, uint32_t w)
+{
+    uint64_t beats;
+    return dsa_schedule_write_traffic(c,mode,r,w,&beats);
 }
 
 static inline int dsa_schedule_better(const dsa_schedule_t *a,
@@ -234,6 +314,10 @@ static inline int dsa_schedule_plan(const dsa_schedule_config_t *c,
         ((c->lhs_tile_packed || c->rhs_tile_packed) && c->size!=16u) ||
         (c->spatial && c->lhs_tile_packed) || !c->read_beat_cycles ||
         !c->write_beat_cycles ||
+        (c->axi_data_bits && c->axi_data_bits!=32u && c->axi_data_bits!=64u) ||
+        (c->dma_max_bytes && (c->dma_max_bytes<dsa_schedule_bus_bytes(c) ||
+         c->dma_max_bytes>256u*dsa_schedule_bus_bytes(c) ||
+         (c->dma_max_bytes&(c->dma_max_bytes-1u)))) ||
         (c->flow==DSA_SCHEDULE_IS && !c->allow_is)) return 0;
     rcap=c->ia_blocks<2u ? 1u:c->ia_blocks/2u;
     wcap=c->ps_frames;
@@ -256,6 +340,7 @@ static inline int dsa_schedule_plan(const dsa_schedule_config_t *c,
             for (uint32_t wi=0;wi<17u;++wi) {
                 uint32_t w=wi==16u ? 25u:(1u<<wi),rg,cg;
                 uint64_t payload,read_cycles,write_cycles,parameter_words,parameter_requests;
+                uint64_t stream_words,stream_requests,stream_cycles,stationary_commits;
                 uint32_t a_passes,b_passes,parameter_passes;
                 dsa_schedule_t candidate={0};
                 if (w>wcap || (w>tc && w/2u>=tc)) continue;
@@ -271,23 +356,43 @@ static inline int dsa_schedule_plan(const dsa_schedule_config_t *c,
                 candidate.dataflow_mode=mode; candidate.ps_payload_bytes=payload;
                 a_passes=mode ? rg:cg; b_passes=mode ? cg:rg;
                 parameter_passes=mode || c->cols<=c->size ? 1u:rg;
-                parameter_words=(uint64_t)c->cols*parameter_passes*(c->has_bias+2u*c->per_channel);
-                parameter_requests=(uint64_t)gempact_ceil_div(c->cols,16u)*parameter_passes*
-                                   (c->has_bias+2u*c->per_channel);
+                {
+                    uint32_t beat_bytes=dsa_schedule_bus_bytes(c);
+                    uint32_t max_bytes=dsa_schedule_dma_bytes(c);
+                    parameter_words=((uint64_t)(c->cols/16u)*(64u/beat_bytes)+
+                        gempact_ceil_div((c->cols%16u)*4u,beat_bytes))*(beat_bytes/4u)*
+                        parameter_passes*(c->has_bias+2u*c->per_channel);
+                    parameter_requests=((uint64_t)(c->cols/16u)*gempact_ceil_div(64u,max_bytes)+
+                        gempact_ceil_div((c->cols%16u)*4u,max_bytes))*parameter_passes*
+                        (c->has_bias+2u*c->per_channel);
+                }
                 candidate.read_words=dsa_schedule_add(dsa_schedule_add(
                     dsa_schedule_mul(a_words,a_passes),dsa_schedule_mul(b_words,b_passes)),parameter_words);
                 candidate.read_requests=dsa_schedule_add(dsa_schedule_add(
                     dsa_schedule_mul(a_requests,a_passes),dsa_schedule_mul(b_requests,b_passes)),parameter_requests);
-                candidate.write_words=(uint64_t)c->rows*((((uint64_t)c->cols*c->output_bytes)+3u)/4u);
-                candidate.write_requests=dsa_schedule_writes(c,mode,r,w);
+                candidate.read_beats=candidate.read_words/(dsa_schedule_bus_bytes(c)/4u);
+                candidate.write_requests=dsa_schedule_write_traffic(c,mode,r,w,&candidate.write_beats);
+                candidate.write_words=candidate.write_beats*(dsa_schedule_bus_bytes(c)/4u);
                 candidate.compute_cycles=dsa_schedule_add(
                     dsa_schedule_mul((uint64_t)sr*tc,kt),
                     dsa_schedule_mul(dsa_schedule_mul((uint64_t)rg*tc,kt),2u*c->size+2u));
-                read_cycles=dsa_schedule_add(dsa_schedule_mul(candidate.read_words,c->read_beat_cycles),
+                read_cycles=dsa_schedule_add(dsa_schedule_mul(candidate.read_beats,c->read_beat_cycles),
                     dsa_schedule_mul(candidate.read_requests,c->read_request_cycles));
-                write_cycles=dsa_schedule_add(dsa_schedule_mul(candidate.write_words,c->write_beat_cycles),
+                write_cycles=dsa_schedule_add(dsa_schedule_mul(candidate.write_beats,c->write_beat_cycles),
                     dsa_schedule_mul(candidate.write_requests,c->write_request_cycles));
-                candidate.estimated_cycles=dsa_schedule_max(dsa_schedule_max(read_cycles,write_cycles),candidate.compute_cycles);
+                stream_words=dsa_schedule_mul(mode ? b_words:a_words,mode ? b_passes:a_passes);
+                stream_requests=dsa_schedule_mul(mode ? b_requests:a_requests,mode ? b_passes:a_passes);
+                stationary_commits=dsa_schedule_mul((uint64_t)rg*tc,kt);
+                /* IA refills and stationary-operand installation form a
+                 * separate scheduling path. Each installation consumes SIZE
+                 * array cycles before the streamed operand can execute. */
+                stream_cycles=dsa_schedule_add(
+                    dsa_schedule_mul(stream_words/(dsa_schedule_bus_bytes(c)/4u),c->read_beat_cycles),
+                    dsa_schedule_add(dsa_schedule_mul(stream_requests,c->read_request_cycles),
+                                     dsa_schedule_mul(stationary_commits,c->size)));
+                candidate.estimated_cycles=dsa_schedule_max(
+                    dsa_schedule_max(read_cycles,write_cycles),
+                    dsa_schedule_max(candidate.compute_cycles,stream_cycles));
                 ++candidates;
                 if (!found || dsa_schedule_better(&candidate,out)) {*out=candidate;found=1;}
             }
