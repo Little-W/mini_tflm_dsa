@@ -1,0 +1,12 @@
+diff --git a/src/main/scala/gemmini/DMA.scala b/src/main/scala/gemmini/DMA.scala
+--- a/src/main/scala/gemmini/DMA.scala
++++ b/src/main/scala/gemmini/DMA.scala
+@@ -45,7 +45,7 @@ class StreamReadResponse[U <: Data](spadWidth: Int, accWidth: Int, spad_rows: Int, a
+   val pixel_repeats = UInt(16.W) // TODO magic number
+   val len = UInt(16.W) // TODO magic number
+   val last = Bool()
+-  val bytes_read = UInt(8.W) // TODO magic number
++  val bytes_read = UInt(16.W)
+   val cmd_id = UInt(8.W) // TODO magic number
+ 
+ }

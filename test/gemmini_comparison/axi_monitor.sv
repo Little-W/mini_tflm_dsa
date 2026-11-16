@@ -1,6 +1,14 @@
 `timescale 1ns/1ps
+`ifndef TB_BUS_WIDTH
+`define TB_BUS_WIDTH 32
+`endif
+`ifndef TB_DMA_MAX_BYTES
+`define TB_DMA_MAX_BYTES (256*(`TB_BUS_WIDTH/8))
+`endif
 
-module common_gemm_axi_monitor (
+module common_gemm_axi_monitor #(
+    parameter int unsigned DMA_MAX_BYTES = `TB_DMA_MAX_BYTES
+) (
     input logic clk, rst_n, launch, done_valid,
     input logic arvalid, arready, rvalid, rready, rlast,
     input logic awvalid, awready, wvalid, wready, wlast, bvalid, bready,
@@ -40,6 +48,8 @@ module common_gemm_axi_monitor (
                     read_accept_tick[read_commands % 64] = tick;
                     read_commands++;
                     bytes_in_burst = (64'(arlen) + 1) << arsize;
+                    assert (bytes_in_burst <= DMA_MAX_BYTES)
+                        else $fatal(1, "AXI read exceeds the configured DMA limit");
                     if (bytes_in_burst > read_burst_bytes_max) read_burst_bytes_max = bytes_in_burst;
                 end
                 if (rvalid && rready) begin
@@ -60,6 +70,8 @@ module common_gemm_axi_monitor (
                     if (first_aw < 0) first_aw = longint'(tick - launch_tick);
                     write_commands++;
                     bytes_in_burst = (64'(awlen) + 1) << awsize;
+                    assert (bytes_in_burst <= DMA_MAX_BYTES)
+                        else $fatal(1, "AXI write exceeds the configured DMA limit");
                     if (bytes_in_burst > write_burst_bytes_max) write_burst_bytes_max = bytes_in_burst;
                 end
                 if (wvalid && wready) begin

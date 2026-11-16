@@ -1,4 +1,19 @@
 `timescale 1ns/1ps
+`ifndef TB_BUS_WIDTH
+`define TB_BUS_WIDTH 32
+`endif
+`ifndef TB_READ_BEAT_CYCLES
+`define TB_READ_BEAT_CYCLES 1
+`endif
+`ifndef TB_READ_FIRST_LATENCY
+`define TB_READ_FIRST_LATENCY 8
+`endif
+`ifndef TB_PIPELINED_READ
+`define TB_PIPELINED_READ 1
+`endif
+`ifndef TB_DMA_MAX_BYTES
+`define TB_DMA_MAX_BYTES (256*(`TB_BUS_WIDTH/8))
+`endif
 `ifndef TB_CONV_CACHE_SETS
 `define TB_CONV_CACHE_SETS 128
 `endif
@@ -33,11 +48,12 @@ module tb_common_conv;
     logic [31:0] hits, misses, conv_bytes, conv_cycles;
     logic [31:0] vector_cycles, vector_compute, vector_dma_wait;
     logic arvalid, arready, rvalid, rready, rlast, awvalid, awready, wvalid, wready, wlast, bvalid, bready;
-    logic [31:0] araddr, rdata, awaddr, wdata;
+    logic [31:0] araddr, awaddr;
+    logic [`TB_BUS_WIDTH-1:0] rdata, wdata;
     logic [7:0] arlen, awlen;
     logic [2:0] arsize, awsize;
     logic [1:0] arburst, rresp, awburst, bresp;
-    logic [3:0] wstrb;
+    logic [`TB_BUS_WIDTH/8-1:0] wstrb;
     logic [31:0] other_lo[4], other_hi[4];
     logic error_injected;
     longint unsigned read_bytes, input_read_bytes, read_requests, write_bytes;
@@ -75,7 +91,8 @@ module tb_common_conv;
         other_lo[3] = cfg[59][0] ? cfg[25] : 0; other_hi[3] = cfg[25] + 4 * cfg[5];
     end
 
-    npu_top #(.SIZE(16), .DATA_WIDTH(16), .WEIGHT_WIDTH(16), .IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),
+    npu_top #(.BUS_WIDTH(`TB_BUS_WIDTH),.SIZE(16), .DATA_WIDTH(16), .WEIGHT_WIDTH(16), .IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),
+              .DMA_MAX_BYTES(`TB_DMA_MAX_BYTES),
               .PS_FRAME_COUNT(`TB_PS_FRAME_COUNT), .PS_STORAGE_ROWS(`TB_PS_STORAGE_ROWS),
               .OA_S16_FIFO_BANKS_MAX(`TB_OA_S16_FIFO_BANKS_MAX),
               .AXI_READ_OUTSTANDING(4), .CONV_CACHE_SETS(`TB_CONV_CACHE_SETS),
@@ -102,7 +119,9 @@ module tb_common_conv;
         .m_axi_wdata(wdata), .m_axi_wstrb(wstrb), .m_axi_wlast(wlast),
         .m_axi_bvalid(bvalid), .m_axi_bready(bready), .m_axi_bresp(bresp)
     );
-    conv_test_axi_memory #(.WORDS(WORDS)) u_mem (
+    conv_test_axi_memory #(.WORDS(WORDS),.BUS_WIDTH(`TB_BUS_WIDTH),
+        .READ_BEAT_CYCLES(`TB_READ_BEAT_CYCLES),
+        .READ_FIRST_LATENCY(`TB_READ_FIRST_LATENCY),.PIPELINED_READ(`TB_PIPELINED_READ)) u_mem (
         .clk, .rst_n, .new_job, .protect_input(1'b1), .inject_error(1'b0), .error_injected,
         .input_lo(cfg[33]), .input_hi(cfg[33] + cfg[34] * cfg[35] * cfg[36]), .other_lo, .other_hi,
         .read_bytes, .input_read_bytes, .read_requests, .write_bytes,

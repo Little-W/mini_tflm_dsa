@@ -89,10 +89,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=20261116)
+    parser.add_argument("--extended", action="store_true",
+                        help="Include the 32x32 C16 and 8x8 C64 convolution cases")
     args = parser.parse_args()
     records = [create_case(args.out, "conv3x3_s2_96_c3_o8", "conv2d", 96, 96, 3, 8, 2, 0, args.seed),
                create_case(args.out, "dw3x3_s1_48_c8", "depthwise", 48, 48, 8, 8, 1, 1, args.seed),
                create_case(args.out, "dw3x3_s2_48_c8", "depthwise", 48, 48, 8, 8, 2, 0, args.seed)]
+    if args.extended:
+        records.extend([
+            create_case(args.out, "conv3x3_32_c16_o16", "conv2d", 32, 32, 16, 16, 1, 1, args.seed),
+            create_case(args.out, "conv3x3_8_c64_o64", "conv2d", 8, 8, 64, 64, 1, 1, args.seed),
+        ])
     catalogue = {"format_version": 1, "scope": "Raw NHWC input through hardware Conv/DW input gathering and output writeback",
                  "arithmetic": "signed_int8_inputs_int32_bias_accumulation_rne_divide32_int8_output",
                  "cases": [{"name": record["name"], "operator": record["operator"],

@@ -1,0 +1,51 @@
+{
+  "tool_versions": {
+    "java": "17",
+    "sbt": "1.9.7",
+    "scala": "2.12.15",
+    "chisel": "3.5.2",
+    "verilator_tested": "5.054"
+  },
+  "repositories": {
+    "chipyard": {
+      "location": "chipyard",
+      "url": "https://github.com/ucb-bar/chipyard.git",
+      "commit": "757d354410adbd886b76cd79299b35d5f8a0265c"
+    },
+    "rocket_chip": {
+      "location": "chipyard/generators/rocket-chip",
+      "url": "https://github.com/chipsalliance/rocket-chip.git",
+      "commit": "44b0b8249279d25bd75ea693b725d9ff1b96e2ab"
+    },
+    "hardfloat": {
+      "location": "chipyard/generators/rocket-chip/hardfloat",
+      "url": "https://github.com/ucb-bar/berkeley-hardfloat.git",
+      "commit": "70455e53f233a06cb5a342d125e22b7b1505c271"
+    },
+    "api_config": {
+      "location": "chipyard/generators/rocket-chip/api-config-chipsalliance",
+      "url": "https://github.com/chipsalliance/api-config-chipsalliance.git",
+      "commit": "fd8df1105a92065425cd353b6855777e35bd79b4"
+    },
+    "testchipip": {
+      "location": "chipyard/generators/testchipip",
+      "url": "https://github.com/ucb-bar/testchipip.git",
+      "commit": "f99b1eb59a34d7934059904f03237d5bc8d4a680"
+    },
+    "firesim": {
+      "location": "chipyard/sims/firesim",
+      "url": "https://github.com/firesim/firesim.git",
+      "commit": "8176b657ee779ac4901b6b03aea0ac23a0b8874d"
+    },
+    "gemmini": {
+      "location": "gemmini",
+      "url": "https://github.com/dwconv/gemmini-dwconv.git",
+      "commit": "4a33b75f975297e309847f41f81f4c0f8b20b81d"
+    },
+    "gemmini_rocc_tests": {
+      "location": "gemmini/software/gemmini-rocc-tests",
+      "url": "https://github.com/dwconv/gemmini-rocc-tests-dwconv.git",
+      "commit": "576f08c217dfefb9fa2e3e087575f23699565560"
+    }
+  }
+}

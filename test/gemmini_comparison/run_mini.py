@@ -59,6 +59,10 @@ def build_comparison(runner, repository: Path, out: Path, args,
                f"-DTB_PS_STORAGE_ROWS={getattr(args, 'ps_storage_rows', 0)}",
                f"-DTB_OA_S16_FIFO_BANKS_MAX={getattr(args, 's16_output_banks', 0)}",
                f"-DTB_CONV_CACHE_SETS={args.cache_sets}", f"-DTB_CONV_CACHE_POLICY={args.cache_policy}",
+               f"-DTB_BUS_WIDTH={args.bus_width}", f"-DTB_DMA_MAX_BYTES={args.dma_max_bytes}",
+               f"-DTB_READ_BEAT_CYCLES={args.read_beat_cycles}",
+               f"-DTB_READ_FIRST_LATENCY={args.first_read_latency}",
+               f"-DTB_PIPELINED_READ={int(args.memory_timing == 'pipelined')}",
                "--Mdir", out / "obj", "-j", args.jobs, "-CFLAGS", "-std=c++20 -O1",
                "-MAKEFLAGS", "OPT_FAST=-O1 OPT_SLOW=-O0", *comparison_defines, *sources, *comparison_sources]
     before = {str(path.relative_to(repository)): sha256(path) for path in sources}
@@ -68,6 +72,9 @@ def build_comparison(runner, repository: Path, out: Path, args,
     log = (out / "compile.log").read_text()
     after = {str(path.relative_to(repository)): sha256(path) for path in sources}
     build = {"returncode": returncode, "size": 16, "cache_sets": args.cache_sets,
+             "dma_max_bytes": args.dma_max_bytes, "bus_width": args.bus_width,
+             "read_beat_cycles": args.read_beat_cycles,
+             "first_read_latency": args.first_read_latency, "memory_timing": args.memory_timing,
              "ia_cache_blocks": getattr(args, "ia_cache_blocks", 4), "ps_frames": getattr(args, "ps_frames", 16),
              "ps_storage_rows": getattr(args, "ps_storage_rows", 0),
              "s16_output_banks_max": getattr(args, "s16_output_banks", 0),
@@ -91,6 +98,19 @@ def records(log: str, prefix: str) -> list[dict]:
             for line in log.splitlines() if line.startswith(prefix)]
 
 
+def memory_profile(args) -> dict:
+    pipelined = args.memory_timing == "pipelined"
+    return {"implementation": "test/conv_npu/axi_memory.sv", "random_wait": False,
+            "read_request_queue": 16, "read_first_beat_latency_idle": args.first_read_latency,
+            "read_beat_interval_cycles": args.read_beat_cycles,
+            "read_burst_transition_interval_min": 1 if pipelined else 3,
+            "read_latency_semantics": "per_request_from_ar_handshake" if pipelined else "queued_service",
+            "read_latency_overlap": pipelined, "registered_synchronous_read": True,
+            "write_active_transactions_max": 1, "write_first_beat_after_aw_min": 1,
+            "write_beat_interval_min": 1, "write_response_after_last_w_min": 1,
+            "read_write_independent": True}
+
+
 def pack_matrix(data: bytes, rows: int, depth: int, element_bytes: int = 1) -> bytes:
     if len(data) != rows * depth * element_bytes:
         raise ValueError("Physical source does not match its logical matrix shape")
@@ -111,7 +131,8 @@ def prepare_case(runner, source: Path, out: Path, ia_cache_blocks: int = 4,
                  ps_frames: int = 16, ps_storage_rows: int = 0, *,
                  schedule_mode: str = "legacy", dataflow: str = "auto",
                  layout: str = "row-major", requested_r: int = 0, requested_w: int = 0,
-                 s16_output_banks: int = 0) -> dict:
+                 s16_output_banks: int = 0, dma_max_bytes: int = 2048, bus_width: int = 64,
+                 read_beat_cycles: int = 1) -> dict:
     description = json.loads((source / "case.json").read_text())
     m, n, k = (description[key] for key in ("m", "n", "k"))
     data = {name: payload(source, tensor) for name, tensor in description["tensors"].items()}
@@ -138,7 +159,8 @@ def prepare_case(runner, source: Path, out: Path, ia_cache_blocks: int = 4,
             requested_r=requested_r, requested_w=requested_w, has_bias=1,
             lhs_address=addresses["a"], rhs_address=addresses["b_transposed"], output_address=addresses["c"],
             lhs_tile_packed=int(lhs_packed), rhs_tile_packed=int(rhs_packed),
-            output_banks_s16=s16_output_banks)
+            output_banks_s16=s16_output_banks, dma_max_bytes=dma_max_bytes, axi_data_bits=bus_width,
+            read_beat_cycles=read_beat_cycles)
         schedule = plan_schedule(planning) if schedule_mode == "auto" else None
         choices.append(dict(layout=candidate_layout, physical=physical, addresses=addresses,
                             planning=planning, schedule=schedule))
@@ -210,12 +232,28 @@ def main() -> int:
     parser.add_argument("--ps-frames", type=int, default=16)
     parser.add_argument("--ps-storage-rows", type=int, default=799)
     parser.add_argument("--s16-output-banks", type=int, default=4)
+    parser.add_argument("--bus-width", type=int, choices=(32, 64), default=64)
+    parser.add_argument("--read-beat-cycles", type=int, choices=(1, 2), default=1,
+                        help="Cycles between consecutive read beats within one burst")
+    parser.add_argument("--memory-timing", choices=("pipelined", "legacy"), default="pipelined")
+    parser.add_argument("--first-read-latency", "--read-latency-cycles", type=int,
+                        help="AR-to-first-R latency; defaults to 8 for pipelined memory and 3 for legacy memory")
+    parser.add_argument("--dma-max-bytes", type=int, help="Optional physical burst limit; default: 256 bus beats")
     parser.add_argument("--layout", choices=("auto", "row-major", "lhs-packed", "rhs-packed", "both-packed"), default="auto")
     parser.add_argument("--schedule", choices=("auto", "legacy"), default="auto")
     parser.add_argument("--dataflow", choices=("auto", "ws", "is"), default="auto")
     parser.add_argument("--ia-reuse", type=int, default=0)
     parser.add_argument("--w-reuse", type=int, default=0)
     args = parser.parse_args()
+    if args.first_read_latency is None:
+        args.first_read_latency = 8 if args.memory_timing == "pipelined" else 3
+    if args.first_read_latency < 1 or (args.memory_timing == "legacy" and args.first_read_latency != 3):
+        parser.error("Pipelined latency must be at least one cycle; legacy memory has three cycles")
+    if args.dma_max_bytes is None:
+        args.dma_max_bytes = 256 * (args.bus_width // 8)
+    if (args.dma_max_bytes < args.bus_width // 8 or args.dma_max_bytes > 256 * (args.bus_width // 8)
+        or args.dma_max_bytes & (args.dma_max_bytes - 1)):
+        parser.error("DMA limit must be 1 through 256 complete bus beats with a power-of-two byte length")
     repository, workloads, out = args.repo.resolve(), args.workloads.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     runner = load_runner(repository)
@@ -231,7 +269,8 @@ def main() -> int:
         cases.append(prepare_case(runner, manifest_path.parent, out / "cases" / row["name"],
             args.ia_cache_blocks, args.ps_frames, args.ps_storage_rows, schedule_mode=args.schedule,
             dataflow=args.dataflow, layout=args.layout, requested_r=args.ia_reuse, requested_w=args.w_reuse,
-            s16_output_banks=args.s16_output_banks))
+            s16_output_banks=args.s16_output_banks, dma_max_bytes=args.dma_max_bytes, bus_width=args.bus_width,
+            read_beat_cycles=args.read_beat_cycles))
     build_dir = out / "sim"
     build_dir.mkdir(exist_ok=True)
     if args.skip_build:
@@ -239,6 +278,13 @@ def main() -> int:
         if (build["size"] != 16 or build["cache_sets"] != args.cache_sets or
                 build["cache_policy"] != args.cache_policy or build["returncode"]):
             raise ValueError("Compiled NPU profile differs from requested profile")
+        if build.get("dma_max_bytes", 1024) != args.dma_max_bytes or build.get("bus_width", 32) != args.bus_width:
+            raise ValueError("Compiled DMA transaction limit differs from requested limit")
+        if build.get("read_beat_cycles", 2) != args.read_beat_cycles:
+            raise ValueError("Compiled memory read throughput differs from requested throughput")
+        if (build.get("first_read_latency", 3) != args.first_read_latency or
+                build.get("memory_timing", "legacy") != args.memory_timing):
+            raise ValueError("Compiled memory latency differs from requested latency")
         if (build.get("ia_cache_blocks", 4) != args.ia_cache_blocks or
                 build.get("ps_frames", 16) != args.ps_frames):
             raise ValueError("Compiled operand/partial-sum capacities differ")
@@ -277,6 +323,10 @@ def main() -> int:
             row["timing"] = timing[0]
             if timing[0]["done"] != measurements[0]["cycles"]:
                 raise ValueError("Independent timing monitor disagrees with testbench cycle count")
+            if timing[0]["read_latency_min"] < args.first_read_latency:
+                raise ValueError("Observed AXI response precedes the configured synchronous latency")
+            if max(timing[0]["read_burst_bytes_max"], timing[0]["write_burst_bytes_max"]) > args.dma_max_bytes:
+                raise ValueError("Observed AXI transaction exceeds the configured DMA limit")
             row["effective_array_utilization"] = row["dense_macs"] / (256 * measurements[0]["cycles"])
         else:
             print(log[-6000:])
@@ -298,7 +348,8 @@ def main() -> int:
               "binary_sha256": sha256(binary), "workload_catalogue_sha256": sha256(workloads / "workloads.json"),
               "profile": {"array": [16, 16], "activation_datapath_bits": 16, "weight_datapath_bits": 16,
                           "external_operand_bits": 8, "accumulator_bits": 32, "output_bits": 8,
-                          "bus_bits": 32, "ia_cache_blocks": args.ia_cache_blocks, "ps_frames": args.ps_frames,
+                          "bus_bits": args.bus_width, "ia_cache_blocks": args.ia_cache_blocks, "ps_frames": args.ps_frames,
+                          "dma_max_bytes": args.dma_max_bytes, "bus_width": args.bus_width,
                           "ps_storage_rows": args.ps_storage_rows,
                           "s16_output_banks_max": args.s16_output_banks,
                           "physical_layout": args.layout, "schedule": args.schedule,
@@ -310,13 +361,7 @@ def main() -> int:
                           "window_cache_policy": args.cache_policy,
                           "window_cache_used_for_common_gemm": False,
                           "cold_start": "Each case starts a fresh simulator process and resets the complete DUT; only external tensor memory is initialized.",
-                          "memory": {"implementation": "test/conv_npu/axi_memory.sv", "random_wait": False,
-                                     "read_request_queue": 16, "read_first_beat_latency_idle": 3,
-                                     "read_beat_interval_cycles": 2, "read_burst_transition_interval_min": 3,
-                                     "write_active_transactions_max": 1, "write_first_beat_after_aw_min": 1,
-                                     "write_beat_interval_min": 1, "write_response_after_last_w_min": 1,
-                                     "read_write_independent": True,
-                                     "note": "Read beat spacing is a testbench service limit even with NO_RANDOM_WAIT. Observed DMA outstanding counts and burst sizes are stored per case."},
+                          "memory": memory_profile(args),
                           "timing": "Cycle 0 is the accepted calc_start rising edge; done is the first rising edge observing done_valid. Every AXI read completion and write response must precede or coincide with done. Last write-response time is reported separately. Excludes host preparation and the three-cycle completion backpressure check."},
               "cases": cases}
     (out / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
