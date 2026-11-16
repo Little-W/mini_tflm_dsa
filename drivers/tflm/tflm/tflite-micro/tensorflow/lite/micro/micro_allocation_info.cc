@@ -199,6 +199,7 @@ TfLiteStatus AllocationInfoBuilder::InitializeAllocationInfo(
 
       current->first_created = kUninitializedLifetime;
       current->last_used = kUninitializedLifetime;
+      current->alias_of = -1;
       current->needs_allocating =
           (eval_tensors[i].data.data == nullptr) &&
           (!subgraph->tensors()->Get(i)->is_variable()) &&
@@ -226,8 +227,65 @@ TfLiteStatus AllocationInfoBuilder::InitializeAllocationInfo(
     current->last_used = kUninitializedLifetime;
     current->needs_allocating = true;
     current->offline_offset = kOnlinePlannedBuffer;
+    current->alias_of = -1;
   }
   return kTfLiteOk;
+}
+
+void AllocationInfoBuilder::CoalesceReshapeAllocations() {
+  if (model_->subgraphs()->size() != 1) return;
+  const SubGraph* subgraph = model_->subgraphs()->Get(0);
+  const uint32_t operator_count = NumSubgraphOperators(subgraph);
+  AllocationInfo* allocation_info = info_.allocation_info;
+
+  for (uint32_t i = 0; i < operator_count; ++i) {
+    const Operator* op = subgraph->operators()->Get(i);
+    if (model_->operator_codes()->Get(op->opcode_index())->builtin_code() !=
+            BuiltinOperator_RESHAPE ||
+        op->inputs() == nullptr || op->inputs()->size() == 0 ||
+        op->outputs() == nullptr || op->outputs()->size() != 1) {
+      continue;
+    }
+    const int input_index = op->inputs()->Get(0);
+    const int output_index = op->outputs()->Get(0);
+    if (input_index < 0 || output_index < 0 || input_index == output_index ||
+        static_cast<size_t>(input_index) >= info_.tensor_count ||
+        static_cast<size_t>(output_index) >= info_.tensor_count) {
+      continue;
+    }
+    AllocationInfo& input = allocation_info[input_index];
+    AllocationInfo& output = allocation_info[output_index];
+    const int owner_index = input.alias_of < 0 ? input_index : input.alias_of;
+    AllocationInfo& owner = allocation_info[owner_index];
+    const Tensor* input_tensor = subgraph->tensors()->Get(input_index);
+    const Tensor* output_tensor = subgraph->tensors()->Get(output_index);
+    if (!owner.needs_allocating || !output.needs_allocating ||
+        input_tensor->is_variable() || output_tensor->is_variable() ||
+        input_tensor->type() != output_tensor->type() ||
+        owner.bytes == 0 || owner.bytes != output.bytes ||
+        owner.offline_offset != kOnlinePlannedBuffer ||
+        output.offline_offset != kOnlinePlannedBuffer ||
+        input.first_created <= 0 || input.first_created >= output.first_created ||
+        output.first_created != static_cast<int>(i + 1)) {
+      continue;
+    }
+
+    // A tensor written by multiple operators must keep its own storage.
+    int input_producers = 0;
+    int output_producers = 0;
+    for (uint32_t j = 0; j < operator_count; ++j) {
+      const auto* outputs = subgraph->operators()->Get(j)->outputs();
+      for (size_t k = 0; outputs != nullptr && k < outputs->size(); ++k) {
+        input_producers += outputs->Get(k) == input_index;
+        output_producers += outputs->Get(k) == output_index;
+      }
+    }
+    if (input_producers != 1 || output_producers != 1) continue;
+
+    owner.last_used = std::max(owner.last_used, output.last_used);
+    output.needs_allocating = false;
+    output.alias_of = owner_index;
+  }
 }
 
 TfLiteStatus AllocationInfoBuilder::MarkAllocationLifetimes(

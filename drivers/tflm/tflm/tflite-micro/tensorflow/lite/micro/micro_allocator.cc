@@ -141,6 +141,14 @@ TfLiteStatus CommitPlan(MicroMemoryPlanner* planner, uint8_t* starting_point,
       ++planner_index;
     }
   }
+  // Owners have all received their addresses before aliases are committed.
+  for (size_t i = 0; i < allocation_info_size; ++i) {
+    const AllocationInfo* current = &allocation_info[i];
+    if (current->alias_of >= 0) {
+      *current->output_ptr =
+          *allocation_info[current->alias_of].output_ptr;
+    }
+  }
   return kTfLiteOk;
 }
 
@@ -1155,6 +1163,10 @@ TfLiteStatus MicroAllocator::CommitStaticMemoryPlan(
       GetScratchBufferRequests();
   TF_LITE_ENSURE_STATUS(builder.MarkAllocationLifetimes(
       0, scratch_buffer_requests, scratch_buffer_handles, allocations));
+  if (offline_planner_offsets == nullptr &&
+      !memory_planner_->preserves_all_tensors()) {
+    builder.CoalesceReshapeAllocations();
+  }
   int allocation_info_count = builder.AllocationCount();
   AllocationInfo* allocation_info = builder.Finish();
 

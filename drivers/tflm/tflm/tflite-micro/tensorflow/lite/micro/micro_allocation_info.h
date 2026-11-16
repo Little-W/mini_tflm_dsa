@@ -31,6 +31,8 @@ struct AllocationInfo {
   int last_used;
   int32_t offline_offset;
   bool needs_allocating;
+  // Index of the allocation whose storage this tensor shares, or -1.
+  int alias_of;
 };
 
 // Used to hold the allocation info list and related metadata for the entire
@@ -91,6 +93,10 @@ class AllocationInfoBuilder {
       int subgraph_idx, internal::ScratchBufferRequest* scratch_buffer_request,
       ScratchBufferHandle* scratch_buffer_handles,
       SubgraphAllocations* allocations);
+
+  // Share immutable intermediate storage across static reshape operators in
+  // a single subgraph, extending each owner through all alias consumers.
+  void CoalesceReshapeAllocations();
 
   // Identify control flow operators and recursively mark all subgraphs which
   // that operator can invoke. The lifetime of all tensors within a subgraph
