@@ -10,7 +10,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "veri/top_regression"))
-from host_schedule import schedules
+from host_schedule import schedules, bus_bytes
 
 
 def digest(path: Path) -> str:
@@ -36,6 +36,7 @@ def audit(summary: dict) -> dict:
         rows.append(dict(
             name=case["name"], m=case["m"], n=case["n"], k=case["k"],
             dataflow=case["dataflow"], physical_layout=case["physical_layout"],
+            axi_data_bits=bus_bytes(config)*8,
             ia_reuse=reuse["ia_reuse"], w_reuse=reuse["w_reuse"],
             workload_manifest_sha256=case["workload_manifest_sha256"],
             predicted_read_bytes=expected_read_bytes,
@@ -45,8 +46,10 @@ def audit(summary: dict) -> dict:
             measured_read_requests=measured["ar_requests"],
             read_request_delta=measured["ar_requests"]-estimate["read_requests"],
             predicted_write_words=estimate["write_words"],
-            measured_write_words=timing["write_beats"],
-            write_word_delta=timing["write_beats"]-estimate["write_words"],
+            measured_write_words=timing["write_beats"]*(bus_bytes(config)//4),
+            write_word_delta=timing["write_beats"]*(bus_bytes(config)//4)-estimate["write_words"],
+            predicted_write_beats=estimate["write_beats"],
+            measured_write_beats=timing["write_beats"],
             predicted_write_requests=estimate["write_requests"],
             measured_write_requests=timing["write_commands"],
             write_requests_match=estimate["write_requests"] == timing["write_commands"],
@@ -58,9 +61,9 @@ def audit(summary: dict) -> dict:
         exact_read_byte_cases=sum(row["read_bytes_match"] for row in rows),
         exact_write_request_cases=sum(row["write_requests_match"] for row in rows),
         definitions={
-            "read_bytes": "Physical 32-bit AXI read data, including operand repetition, word alignment, packing padding and parameter tables",
+            "read_bytes": "Physical AXI read bytes at the recorded bus width, including operand repetition, beat alignment, packing padding and parameter tables",
             "read_requests": "Scheduling estimate before 4 KiB splitting; parameter request grouping is approximated by 16-channel blocks",
-            "write_words": "Dense row word estimate; per-tile unaligned output transfers may add physical words",
+            "write_words": "Physical output traffic in 32-bit word units; write_beats counts native AXI beats",
             "write_requests": "Output tile or eligible coalesced-group requests; boundary splitting can add requests for other output layouts",
             "timing": "Measured accelerator launch through completion; estimated traffic is not an elapsed-cycle measurement",
         },
