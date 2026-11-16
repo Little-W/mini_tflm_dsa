@@ -16,6 +16,7 @@ limitations under the License.
 #include "tensorflow/lite/micro/kernels/conv.h"
 
 #include "riscv_nnfunctions.h"
+#include "tensorflow/lite/micro/kernels/nmsis_nn/prepared.h"
 #include "tensorflow/lite/c/builtin_op_data.h"
 #include "tensorflow/lite/c/common.h"
 #include "tensorflow/lite/kernels/internal/common.h"
@@ -35,6 +36,10 @@ struct OpData {
 
   // Index to buffer for optimizations if applicable.
   int buffer_idx;
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  dsa_prepared_t prepared;
+  nmsis_nn::PreparedTensorBindings bindings;
+#endif
 };
 
 void* Init(TfLiteContext* context, const char* buffer, size_t length) {
@@ -50,6 +55,9 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   const auto& params =
       *(static_cast<const TfLiteConvParams*>(node->builtin_data));
   OpData* data = static_cast<OpData*>(node->user_data);
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  dsa_prepared_invalidate(&data->prepared);
+#endif
 
   MicroContext* micro_context = GetMicroContext(context);
 
@@ -63,7 +71,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
       micro_context->AllocateTempOutputTensor(node, kConvOutputTensor);
   TF_LITE_ENSURE(context, output != nullptr);
   TfLiteTensor* bias =
-      micro_context->AllocateTempOutputTensor(node, kConvBiasTensor);
+      micro_context->AllocateTempInputTensor(node, kConvBiasTensor);
   TfLiteType bias_type = bias != nullptr ? bias->type : kTfLiteNoType;
 
   TF_LITE_ENSURE_EQ(context, input->type, output->type);
@@ -95,9 +103,8 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TFLITE_DCHECK_EQ(output->dims->data[3] % groups, 0);
   // Bias size equal to output channels
   if (bias != nullptr) {
-    TF_LITE_ENSURE_EQ(context, bias->dims->size, 4);
     const int bias_size = NumElements(bias->dims);
-    TFLITE_DCHECK_EQ(bias_size, output->dims->data[3]);
+    TF_LITE_ENSURE_EQ(context, bias_size, output->dims->data[3]);
   }
 
   // Initialize nmsis_nn dimensions
@@ -168,6 +175,51 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
       data->buffer_idx = -1;
     }
   }
+
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  if (input->type == kTfLiteInt8 && filter->type == kTfLiteInt8 &&
+      input_dims.n == 1 && groups == 1 && filter->params.zero_point == 0 &&
+      nmsis_nn::PreparedConstant(filter) &&
+      (!bias || (bias->type == kTfLiteInt32 && nmsis_nn::PreparedConstant(bias)))) {
+    dsa_conv_s8_config_t config = {};
+    config.filter_base = nmsis_nn::PreparedAddress(filter->data.raw_const);
+    config.bias_base = bias ? nmsis_nn::PreparedAddress(bias->data.raw_const) : 0u;
+    config.multiplier_base = nmsis_nn::PreparedAddress(
+        data->reference_op_data.per_channel_output_multiplier);
+    config.shift_base = nmsis_nn::PreparedAddress(
+        data->reference_op_data.per_channel_output_shift);
+    config.input_h = input_dims.h;
+    config.input_w = input_dims.w;
+    config.input_c = config.group_c = input_dims.c;
+    config.kernel_h = filter_dims.h;
+    config.kernel_w = filter_dims.w;
+    config.output_h = output_dims.h;
+    config.output_w = output_dims.w;
+    config.output_channels = config.dst_row_stride = output_dims.c;
+    config.stride_h = params.stride_height;
+    config.stride_w = params.stride_width;
+    config.dilation_h = params.dilation_height_factor;
+    config.dilation_w = params.dilation_width_factor;
+    config.pad_top = data->reference_op_data.padding.height;
+    config.pad_left = data->reference_op_data.padding.width;
+    config.input_offset = -data->reference_op_data.input_zero_point;
+    config.output_offset = data->reference_op_data.output_zero_point;
+    config.activation_min = data->reference_op_data.output_activation_min;
+    config.activation_max = data->reference_op_data.output_activation_max;
+    config.dataflow_mode = DSA_NN_CONV_DATAFLOW_MODE;
+    const uint32_t source_filter_base = config.filter_base;
+    config.rhs_tile_packed = nmsis_nn::PreparedPackWeights(
+        context, filter->data.raw_const, config.output_channels,
+        config.kernel_h * config.kernel_w * config.group_c, &config.filter_base);
+    if (dsa_prepare_conv_s8(&data->prepared, &config) == DSA_SUCCESS)
+      data->prepared.source_filter_base = source_filter_base;
+  }
+#endif
+
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  if (data->prepared.valid==DSA_PREPARED_VALID)
+    data->bindings.Prepare(context,node,true);
+#endif
 
   micro_context->DeallocateTempTfLiteTensor(output);
   micro_context->DeallocateTempTfLiteTensor(input);
@@ -249,6 +301,16 @@ TfLiteStatus EvalQuantizedPerChannel(TfLiteContext* context, TfLiteNode* node,
                                      const TfLiteEvalTensor* filter,
                                      const TfLiteEvalTensor* bias,
                                      TfLiteEvalTensor* output) {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  if (type == kTfLiteInt8 &&
+      nmsis_nn::PreparedWeightsMatch(data.prepared, filter, bias) &&
+      dsa_nn_accelerator_enabled(DSA_NN_ACCEL_CONV)) {
+    const uint32_t status =
+        dsa_prepared_execute(&data.prepared, input->data.raw_const, output->data.raw);
+    TF_LITE_ENSURE_EQ(context, status, 0u);
+    return kTfLiteOk;
+  }
+#endif
   nmsis_nn_conv_params conv_params;
   conv_params.dilation.h = params.dilation_height_factor;
   conv_params.dilation.w = params.dilation_width_factor;
@@ -482,7 +544,11 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
 }  // namespace
 
 TFLMRegistration Register_CONV_2D() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  return tflite::micro::RegisterOp(Init, Prepare, nmsis_nn::InvokePrepared<OpData,Eval,DSA_NN_ACCEL_CONV>);
+#else
   return tflite::micro::RegisterOp(Init, Prepare, Eval);
+#endif
 }
 
 TFLMRegistration Register_CONV_2D_INT4() {
@@ -490,7 +556,11 @@ TFLMRegistration Register_CONV_2D_INT4() {
 }
 
 TFLMRegistration Register_CONV_2D_INT8() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  return tflite::micro::RegisterOp(Init, Prepare, nmsis_nn::InvokePrepared<OpData,EvalInt8,DSA_NN_ACCEL_CONV>);
+#else
   return tflite::micro::RegisterOp(Init, Prepare, EvalInt8);
+#endif
 }
 
 TFLMRegistration Register_CONV_2D_INT16() {

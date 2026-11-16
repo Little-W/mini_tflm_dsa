@@ -119,6 +119,17 @@ int main(void)
         CHECK(riscv_convolve_wrapper_s8_acc(&context, &p, &q, &in, input,
               &f, filter, &bd, bias, &out, output) == RISCV_NMSIS_NN_SUCCESS);
         check_dispatch(mask, DSA_NN_ACCEL_CONV, 2, output, expected, 60);
+#if DSA_NN_POINTWISE_DIRECT
+        if (mask & DSA_NN_ACCEL_CONV) {
+            CHECK(!(regs[NPU_REG_CTRL / 4] & (NPU_CTRL_HW_CONV | DSA_CTRL_CFG_16BITS_IA)));
+            CHECK(regs[NPU_REG_K / 4] == 6u);
+            CHECK(regs[NPU_REG_N / 4] == 3u && regs[NPU_REG_M / 4] == 5u);
+            CHECK(regs[NPU_REG_LHS_STRIDE_B / 4] == 3u);
+            CHECK(regs[NPU_REG_LHS_ZP / 4] == 7u);
+            CHECK(regs[NPU_REG_LHS_BASE / 4] == (uint32_t)(uintptr_t)(input + 18));
+            CHECK(regs[NPU_REG_DST_BASE / 4] == (uint32_t)(uintptr_t)(output + 30));
+        }
+#endif
 
         in = (nmsis_nn_dims){2,4,3,3}; f = (nmsis_nn_dims){1,3,2,3};
         out = (nmsis_nn_dims){2,4,2,3};
@@ -199,6 +210,16 @@ int main(void)
     }
 
     dsa_nn_set_accelerators(DSA_NN_ACCEL_ALL);
+    {
+        const nmsis_nn_dims point_input={1,2,3,3}, point_filter={5,1,1,3},
+                            point_output={1,2,3,5};
+        const nmsis_nn_conv_params point_params={.stride={1,1},.dilation={1,1},
+                                                 .activation={-128,127}};
+        reset_device(); regs[NPU_REG_STATUS/4]=2u;
+        CHECK(riscv_convolve_wrapper_s8_acc(&context,&point_params,&q,&point_input,input,
+            &point_filter,filter,&bd,bias,&point_output,output)==RISCV_NMSIS_NN_NO_IMPL_ERROR);
+        CHECK(starts==0u && writes==0u);
+    }
     nmsis_nn_dims in={1,1,1,7},f={7,1,1,5},out={1,1,1,5};
     nmsis_nn_fc_params fc={.activation={-128,127}};
     nmsis_nn_quant_params fq={.multiplier=mult,.shift=shift,.is_per_channel=1};

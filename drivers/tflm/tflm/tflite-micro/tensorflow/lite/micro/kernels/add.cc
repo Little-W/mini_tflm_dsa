@@ -32,9 +32,53 @@ limitations under the License.
 
 #if defined(NMSIS_NN)
 #include "riscv_vector_acc.h"
+#include "riscv_nn_prepared.h"
+#include "tensorflow/lite/micro/micro_context.h"
 #endif
 
 namespace tflite {
+
+#if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+struct OpDataAddPrepared {
+  OpDataAdd reference;
+  dsa_prepared_add_s8_t prepared;
+};
+
+TfLiteStatus AddPreparePrepared(TfLiteContext* context, TfLiteNode* node) {
+  auto* data = static_cast<OpDataAddPrepared*>(node->user_data);
+  data->prepared.valid = 0u;
+  TF_LITE_ENSURE_STATUS(AddPrepare(context, node));
+  MicroContext* micro_context = GetMicroContext(context);
+  TfLiteTensor* input1 =
+      micro_context->AllocateTempInputTensor(node, kAddInputTensor1);
+  TfLiteTensor* input2 =
+      micro_context->AllocateTempInputTensor(node, kAddInputTensor2);
+  TfLiteTensor* output =
+      micro_context->AllocateTempOutputTensor(node, kAddOutputTensor);
+  TF_LITE_ENSURE(context, input1 && input2 && output);
+  if (input1->type == kTfLiteInt8 && input2->type == kTfLiteInt8 &&
+      output->type == kTfLiteInt8 && !data->reference.requires_broadcast) {
+    const OpDataAdd& reference = data->reference;
+    const dsa_vector_add_params_t quantization = {
+        reference.input1_offset, reference.input2_offset,
+        reference.input1_multiplier, reference.input1_shift,
+        reference.input2_multiplier, reference.input2_shift,
+        reference.left_shift, reference.output_multiplier, reference.output_shift};
+    const int length = NumElements(output->dims);
+    if (length > 0 && NumElements(input1->dims) == length &&
+        NumElements(input2->dims) == length) {
+      (void)dsa_prepare_add_s8(&data->prepared, static_cast<uint32_t>(length),
+                             &quantization, reference.output_offset,
+                             reference.output_activation_min,
+                             reference.output_activation_max);
+    }
+  }
+  micro_context->DeallocateTempTfLiteTensor(output);
+  micro_context->DeallocateTempTfLiteTensor(input2);
+  micro_context->DeallocateTempTfLiteTensor(input1);
+  return kTfLiteOk;
+}
+#endif
 
 TfLiteStatus EvalAdd(TfLiteContext* context, TfLiteNode* node,
                      TfLiteAddParams* params, const OpDataAdd* data,
@@ -183,7 +227,11 @@ TfLiteStatus EvalAddQuantized(TfLiteContext* context, TfLiteNode* node,
 
 void* AddInit(TfLiteContext* context, const char* buffer, size_t length) {
   TFLITE_DCHECK(context->AllocatePersistentBuffer != nullptr);
+#if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  return context->AllocatePersistentBuffer(context, sizeof(OpDataAddPrepared));
+#else
   return context->AllocatePersistentBuffer(context, sizeof(OpDataAdd));
+#endif
 }
 
 TfLiteStatus AddEval(TfLiteContext* context, TfLiteNode* node) {
@@ -198,6 +246,20 @@ TfLiteStatus AddEval(TfLiteContext* context, TfLiteNode* node) {
       tflite::micro::GetEvalInput(context, node, kAddInputTensor2);
   TfLiteEvalTensor* output =
       tflite::micro::GetEvalOutput(context, node, kAddOutputTensor);
+
+#if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  const auto& prepared =
+      static_cast<const OpDataAddPrepared*>(node->user_data)->prepared;
+  if (prepared.valid == DSA_PREPARED_VALID &&
+      dsa_nn_accelerator_enabled(DSA_NN_ACCEL_ADD) &&
+      input1->data.raw_const != output->data.raw &&
+      input2->data.raw_const != output->data.raw) {
+    const uint32_t status = dsa_prepared_add_s8_execute(
+        &prepared, input1->data.int8, input2->data.int8, output->data.int8);
+    TF_LITE_ENSURE_EQ(context, status, 0u);
+    return kTfLiteOk;
+  }
+#endif
 
   if (output->type == kTfLiteFloat32 || output->type == kTfLiteInt32) {
     TF_LITE_ENSURE_OK(
@@ -215,7 +277,11 @@ TfLiteStatus AddEval(TfLiteContext* context, TfLiteNode* node) {
 }
 
 TFLMRegistration Register_ADD() {
+#if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  return tflite::micro::RegisterOp(AddInit, AddPreparePrepared, AddEval);
+#else
   return tflite::micro::RegisterOp(AddInit, AddPrepare, AddEval);
+#endif
 }
 
 }  // namespace tflite

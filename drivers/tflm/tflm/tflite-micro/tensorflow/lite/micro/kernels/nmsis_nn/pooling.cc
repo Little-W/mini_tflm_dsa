@@ -15,6 +15,7 @@ limitations under the License.
 #include "tensorflow/lite/kernels/internal/reference/pooling.h"
 
 #include "riscv_nnfunctions.h"
+#include "tensorflow/lite/micro/kernels/nmsis_nn/prepared.h"
 #include "tensorflow/lite/c/builtin_op_data.h"
 #include "tensorflow/lite/c/common.h"
 #include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
@@ -32,7 +33,44 @@ struct OpData {
 
   // Index to buffer for optimizations if applicable.
   int buffer_idx;
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  dsa_prepared_t prepared;
+  nmsis_nn::PreparedTensorBindings bindings;
+#endif
 };
+
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+void PrepareSpatial(TfLiteContext* context, TfLiteNode* node,
+                    OpData* data, const TfLitePoolParams* params,
+                    const TfLiteTensor* input, const TfLiteTensor* output,
+                    uint32_t operation) {
+  dsa_prepared_invalidate(&data->prepared);
+  if (input->type != kTfLiteInt8 || output->type != kTfLiteInt8 ||
+      input->dims->size != 4 || output->dims->size != 4 ||
+      input->dims->data[0] != 1 || output->dims->data[0] != 1 ||
+      input->dims->data[3] != output->dims->data[3] ||
+      input->params.zero_point != output->params.zero_point ||
+      input->params.scale != output->params.scale) return;
+  dsa_vector_config_t config = {};
+  config.operation = operation;
+  config.input_h = input->dims->data[1];
+  config.input_w = input->dims->data[2];
+  config.input_c = input->dims->data[3];
+  config.output_h = output->dims->data[1];
+  config.output_w = output->dims->data[2];
+  config.kernel_h = params->filter_height;
+  config.kernel_w = params->filter_width;
+  config.stride_h = params->stride_height;
+  config.stride_w = params->stride_width;
+  config.dilation_h = config.dilation_w = 1u;
+  config.pad_top = data->reference_op_data.padding.height;
+  config.pad_left = data->reference_op_data.padding.width;
+  config.activation_min = data->reference_op_data.activation_min;
+  config.activation_max = data->reference_op_data.activation_max;
+  if (dsa_prepare_spatial_s8(&data->prepared, &config)==DSA_SUCCESS)
+    data->bindings.Prepare(context,node,false);
+}
+#endif
 
 void PopulateCommonParams(
     TfLiteContext* const context, nmsis_nn_dims* const input_dims,
@@ -74,6 +112,15 @@ TfLiteStatus AverageEvalQuantized(TfLiteContext* context, const TfLiteNode* node
                           const TfLitePoolParams* params, const OpData& data,
                           const TfLiteEvalTensor* input,
                           TfLiteEvalTensor* output) {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  if (data.prepared.valid == DSA_PREPARED_VALID &&
+      dsa_nn_accelerator_enabled(DSA_NN_ACCEL_POOL)) {
+    const uint32_t status =
+        dsa_prepared_execute(&data.prepared, input->data.raw_const, output->data.raw);
+    TF_LITE_ENSURE_EQ(context, status, 0u);
+    return kTfLiteOk;
+  }
+#endif
   TFLITE_DCHECK((input->type == kTfLiteInt8) || (input->type == kTfLiteInt16));
 
   RuntimeShape input_shape = micro::GetTensorShape(input);
@@ -111,6 +158,15 @@ TfLiteStatus MaxEvalQuantized(TfLiteContext* context, const TfLiteNode* node,
                               const TfLitePoolParams* params,
                               const OpData& data, const TfLiteEvalTensor* input,
                               TfLiteEvalTensor* output) {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  if (data.prepared.valid == DSA_PREPARED_VALID &&
+      dsa_nn_accelerator_enabled(DSA_NN_ACCEL_POOL)) {
+    const uint32_t status =
+        dsa_prepared_execute(&data.prepared, input->data.raw_const, output->data.raw);
+    TF_LITE_ENSURE_EQ(context, status, 0u);
+    return kTfLiteOk;
+  }
+#endif
   TFLITE_DCHECK((input->type == kTfLiteInt8) || (input->type == kTfLiteInt16));
 
   RuntimeShape input_shape = micro::GetTensorShape(input);
@@ -154,6 +210,19 @@ TfLiteStatus MaxPrepare(TfLiteContext* context, TfLiteNode* node) {
   TF_LITE_ENSURE_STATUS(PoolingPrepare(context, node));
   // Set buffer index to a reset value
   static_cast<OpData*>(node->user_data)->buffer_idx = -1;
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  MicroContext* micro_context = GetMicroContext(context);
+  TfLiteTensor* input =
+      micro_context->AllocateTempInputTensor(node, kPoolingInputTensor);
+  TfLiteTensor* output =
+      micro_context->AllocateTempOutputTensor(node, kPoolingOutputTensor);
+  TF_LITE_ENSURE(context, input && output);
+  PrepareSpatial(context,node,static_cast<OpData*>(node->user_data),
+                 static_cast<const TfLitePoolParams*>(node->builtin_data),
+                 input, output, DSA_VECTOR_OP_MAXPOOL_S8);
+  micro_context->DeallocateTempTfLiteTensor(output);
+  micro_context->DeallocateTempTfLiteTensor(input);
+#endif
   return kTfLiteOk;
 }
 
@@ -191,6 +260,11 @@ TfLiteStatus AveragePrepare(TfLiteContext* context, TfLiteNode* node) {
     }
   }
 
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  PrepareSpatial(context,node,static_cast<OpData*>(node->user_data),
+                 static_cast<const TfLitePoolParams*>(node->builtin_data),
+                 input, output, DSA_VECTOR_OP_AVGPOOL_S8);
+#endif
   micro_context->DeallocateTempTfLiteTensor(output);
   micro_context->DeallocateTempTfLiteTensor(input);
   return kTfLiteOk;
@@ -315,7 +389,11 @@ TfLiteStatus MaxEvalInt16(TfLiteContext* context, TfLiteNode* node) {
 }  // namespace
 
 TFLMRegistration Register_AVERAGE_POOL_2D_INT8() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  return tflite::micro::RegisterOp(Init, AveragePrepare, nmsis_nn::InvokePrepared<OpData,AverageEvalInt8,DSA_NN_ACCEL_POOL>);
+#else
   return tflite::micro::RegisterOp(Init, AveragePrepare, AverageEvalInt8);
+#endif
 }
 
 TFLMRegistration Register_AVERAGE_POOL_2D_INT16() {
@@ -323,11 +401,19 @@ TFLMRegistration Register_AVERAGE_POOL_2D_INT16() {
 }
 
 TFLMRegistration Register_AVERAGE_POOL_2D() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  return tflite::micro::RegisterOp(Init, AveragePrepare, nmsis_nn::InvokePrepared<OpData,AverageEval,DSA_NN_ACCEL_POOL>);
+#else
   return tflite::micro::RegisterOp(Init, AveragePrepare, AverageEval);
+#endif
 }
 
 TFLMRegistration Register_MAX_POOL_2D_INT8() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  return tflite::micro::RegisterOp(Init, MaxPrepare, nmsis_nn::InvokePrepared<OpData,MaxEvalInt8,DSA_NN_ACCEL_POOL>);
+#else
   return tflite::micro::RegisterOp(Init, MaxPrepare, MaxEvalInt8);
+#endif
 }
 
 TFLMRegistration Register_MAX_POOL_2D_INT16() {
@@ -335,7 +421,11 @@ TFLMRegistration Register_MAX_POOL_2D_INT16() {
 }
 
 TFLMRegistration Register_MAX_POOL_2D() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  return tflite::micro::RegisterOp(Init, MaxPrepare, nmsis_nn::InvokePrepared<OpData,MaxEval,DSA_NN_ACCEL_POOL>);
+#else
   return tflite::micro::RegisterOp(Init, MaxPrepare, MaxEval);
+#endif
 }
 
 }  // namespace tflite

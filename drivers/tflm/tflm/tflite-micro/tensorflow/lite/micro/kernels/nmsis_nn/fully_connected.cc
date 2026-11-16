@@ -16,6 +16,7 @@ limitations under the License.
 #include "tensorflow/lite/kernels/internal/reference/fully_connected.h"
 
 #include "riscv_nnfunctions.h"
+#include "tensorflow/lite/micro/kernels/nmsis_nn/prepared.h"
 #include "tensorflow/lite/c/builtin_op_data.h"
 #include "tensorflow/lite/c/common.h"
 #include "tensorflow/lite/kernels/internal/common.h"
@@ -44,6 +45,10 @@ struct OpData {
   int32_t batches;
   int32_t accum_depth;
   int32_t output_depth;
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+  dsa_prepared_t prepared;
+  nmsis_nn::PreparedTensorBindings bindings;
+#endif
 };
 
 void* Init(TfLiteContext* context, const char* buffer, size_t length) {
@@ -56,6 +61,9 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   TFLITE_DCHECK(node->builtin_data != nullptr);
 
   OpData* data = static_cast<OpData*>(node->user_data);
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+  dsa_prepared_invalidate(&data->prepared);
+#endif
   const auto params =
       static_cast<const TfLiteFullyConnectedParams*>(node->builtin_data);
 
@@ -162,6 +170,43 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
         context, buf_size, &data->buffer_idx));
   }
 
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+  if (input->type == kTfLiteInt8 && filter->type == kTfLiteInt8 &&
+      nmsis_nn::PreparedConstant(filter) &&
+      (!bias || (bias->type == kTfLiteInt32 && nmsis_nn::PreparedConstant(bias)))) {
+    dsa_prepared_matmul_s8_config_t config = {};
+    config.filter_base = nmsis_nn::PreparedAddress(filter->data.raw_const);
+    config.bias_base = bias ? nmsis_nn::PreparedAddress(bias->data.raw_const) : 0u;
+    config.rows = data->batches;
+    config.depth = config.input_stride = config.filter_stride = data->accum_depth;
+    config.channels = config.output_stride = data->output_depth;
+    config.per_channel = data->reference_op_data.is_per_channel;
+    config.input_offset = -data->reference_op_data.input_zero_point;
+    config.filter_offset = -data->reference_op_data.filter_zero_point;
+    config.output_offset = data->reference_op_data.output_zero_point;
+    config.activation_min = data->reference_op_data.output_activation_min;
+    config.activation_max = data->reference_op_data.output_activation_max;
+    config.multiplier = data->reference_op_data.output_multiplier;
+    config.shift = data->reference_op_data.output_shift;
+    config.multiplier_base = nmsis_nn::PreparedAddress(
+        data->reference_op_data.per_channel_output_multiplier);
+    config.shift_base = nmsis_nn::PreparedAddress(
+        data->reference_op_data.per_channel_output_shift);
+    config.dataflow_mode = DSA_SCHEDULE_AUTO;
+    const uint32_t source_filter_base = config.filter_base;
+    config.rhs_tile_packed = nmsis_nn::PreparedPackWeights(
+        context, filter->data.raw_const, config.channels, config.depth,
+        &config.filter_base);
+    if (dsa_prepare_matmul_s8(&data->prepared, &config) == DSA_SUCCESS)
+      data->prepared.source_filter_base = source_filter_base;
+  }
+#endif
+
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+  if (data->prepared.valid==DSA_PREPARED_VALID)
+    data->bindings.Prepare(context,node,true);
+#endif
+
   micro_context->DeallocateTempTfLiteTensor(output);
   micro_context->DeallocateTempTfLiteTensor(input);
   micro_context->DeallocateTempTfLiteTensor(filter);
@@ -255,6 +300,15 @@ TfLiteStatus EvalQuantizedInt8(TfLiteContext* context, TfLiteNode* node,
                                const TfLiteEvalTensor* filter,
                                const TfLiteEvalTensor* bias,
                                TfLiteEvalTensor* output) {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+  if (nmsis_nn::PreparedWeightsMatch(data.prepared, filter, bias) &&
+      dsa_nn_accelerator_enabled(DSA_NN_ACCEL_FC)) {
+    const uint32_t status =
+        dsa_prepared_execute(&data.prepared, input->data.raw_const, output->data.raw);
+    TF_LITE_ENSURE_EQ(context, status, 0u);
+    return kTfLiteOk;
+  }
+#endif
   nmsis_nn_per_tensor_quant_params per_tensor_quant_params;
   nmsis_nn_dims input_dims;
   nmsis_nn_dims filter_dims;
@@ -510,7 +564,11 @@ TfLiteStatus EvalInt16(TfLiteContext* context, TfLiteNode* node) {
 }  // namespace
 
 TFLMRegistration Register_FULLY_CONNECTED() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+  return tflite::micro::RegisterOp(Init, Prepare, nmsis_nn::InvokePrepared<OpData,Eval,DSA_NN_ACCEL_FC>);
+#else
   return tflite::micro::RegisterOp(Init, Prepare, Eval);
+#endif
 }
 
 TFLMRegistration Register_FULLY_CONNECTED_INT4() {
@@ -518,7 +576,11 @@ TFLMRegistration Register_FULLY_CONNECTED_INT4() {
 }
 
 TFLMRegistration Register_FULLY_CONNECTED_INT8() {
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+  return tflite::micro::RegisterOp(Init, Prepare, nmsis_nn::InvokePrepared<OpData,EvalInt8,DSA_NN_ACCEL_FC>);
+#else
   return tflite::micro::RegisterOp(Init, Prepare, EvalInt8);
+#endif
 }
 
 TFLMRegistration Register_FULLY_CONNECTED_INT16() {

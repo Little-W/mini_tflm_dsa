@@ -7,6 +7,10 @@
 static riscv_nmsis_nn_status selected_status;
 static int calls, observed_input_batches, observed_output_batches;
 static TfLiteEvalTensor tensors[2];
+extern uint32_t prepared_result;
+extern unsigned prepared_calls;
+extern const void* prepared_input;
+extern void* prepared_output;
 
 #define POOL_RESULT(name, type) \
 extern "C" riscv_nmsis_nn_status name(const nmsis_nn_context*, \
@@ -65,6 +69,23 @@ int main()
             assert(observed_input_batches == 2 && observed_output_batches == 2); ++checks;
         }
     }
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+    tensors[0].type = tensors[1].type = kTfLiteInt8;
+    data.prepared.valid = DSA_PREPARED_VALID;
+    for (int kind = 0; kind < 2; ++kind) for (int error = 0; error < 2; ++error) {
+        prepared_result = error ? DSA_ERR_TIMEOUT : DSA_SUCCESS;
+        prepared_calls = 0u;
+        calls = 0;
+        tensors[0].data.int8 = reinterpret_cast<int8_t*>(input) + kind;
+        tensors[1].data.int8 = reinterpret_cast<int8_t*>(output) + kind;
+        const TfLiteStatus result = kind ? tflite::MaxEvalInt8(&context, &node) :
+            tflite::AverageEvalInt8(&context, &node);
+        assert(result == (error ? kTfLiteError : kTfLiteOk)); ++checks;
+        assert(prepared_calls == 1u && calls == 0); ++checks;
+        assert(prepared_input == tensors[0].data.int8 &&
+               prepared_output == tensors[1].data.int8); ++checks;
+    }
+#endif
     std::printf("TFLM_POOLING_ADAPTER_PASS checks=%d\n",checks);
     return 0;
 }

@@ -48,7 +48,7 @@ def main():
     (out/'run.log').write_text(run.stdout+run.stderr)
     print(run.stdout+run.stderr, end='')
     report = {'passed': run.returncode == 0 and 'NMSIS_RUNTIME_PASS' in run.stdout,
-              'verification': 'Host UBSan; all 32 runtime masks including Add; numerical software outputs; MMIO dispatch; status errors, timeouts and completion errors after START',
+              'verification': 'Host UBSan; all runtime mask combinations for Conv, DW, Pool, FC and Add dispatch; numerical software outputs; MMIO dispatch; status errors, timeouts and completion errors after START',
               'result': run.stdout.strip(), 'build_command': command,
               'source_sha256': {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}}
     if not report['passed']:
@@ -57,6 +57,7 @@ def main():
     tflm = ROOT/'drivers/tflm/tflm/tflite-micro'
     downloads = tflm/'tensorflow/lite/micro/tools/make/downloads'
     adapter_sources = [Path(__file__).with_name('test_pooling_adapter.cc'),
+        Path(__file__).with_name('prepared_stubs.cc'),
         tflm/'tensorflow/lite/micro/kernels/kernel_util.cc',
         tflm/'tensorflow/lite/micro/kernels/pooling_common.cc',
         tflm/'tensorflow/lite/kernels/internal/runtime_shape.cc',
@@ -87,6 +88,7 @@ def main():
     adapter_sources.append(tflm/'tensorflow/lite/micro/kernels/nmsis_nn/pooling.cc')
     report['source_sha256'].update({str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in adapter_sources})
     fc_sources = [Path(__file__).with_name('test_fc_adapter.cc'),
+        Path(__file__).with_name('prepared_stubs.cc'),
         tflm/'tensorflow/lite/core/c/common.cc',
         tflm/'tensorflow/lite/kernels/internal/tensor_ctypes.cc',
         tflm/'tensorflow/lite/micro/kernels/kernel_util.cc',
