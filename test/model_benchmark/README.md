@@ -23,9 +23,15 @@ DS-CNN Keyword Spotting 和 ResNet-8 CIFAR-10，每个模型使用两个已记�
 | AXI 数据接口 | 32 位 |
 | 外部 RAM | 2 MiB |
 | RAM 附加固定延迟 | 默认 0，可用 `--latency` 指定 |
-| IA 缓冲 | 4 个块 |
-| PS 缓冲 | 16 个 frame |
+| IA 缓冲 | 8 个块 |
+| PS 缓冲 | 16 个 frame，799 行物理存储 |
+| 输出缓冲 | INT8 32 个块，INT16 4 个块 |
+| 静态权重 | Prepare 阶段打包为 16×16 块 |
+| 矩阵调度 | Prepare 阶段计算 WS/IS 和复用参数 |
+| 张量 arena 上限 | 512 KiB，实际使用量逐模型记录 |
 | AXI 未完成读写请求数 | 各 4 |
+| DMA 窗口描述在途数 | 最多 4，返回携带 2 位输入区域标识 |
+| 共享窗口缓存需求在途数 | 最多 4，按接收顺序返回 |
 | 算术 | INT8，最近偶数舍入 |
 | 编译 | C 和 C++ 同时设置软件或硬件开关，`-O3`、RV32IM |
 | 输入 | 相同模型文件和相同输入字节 |
@@ -73,7 +79,7 @@ python test/model_benchmark/run_suite.py \
 
 每份固件运行四个模型的两个输入。每次输入均启动新仿真进程并复位 SoC。
 纯软件固件在 C 和 C++ 编译时关闭 Conv、VCE 和 FC 加速；运行时加速掩码为 0。
-硬件固件使用掩码 31，启用 Conv、DW、Pool、FC 和 Add。
+硬件固件使用掩码 63，启用 Conv、DW、Pool、FC、Add 和 Softmax。
 DW 核面积上限为 49，池化窗口上限为 256；DS-CNN 的 25×5 和 ResNet-8 的
 8×8 平均池化均属于硬件测试范围。ResNet-8 的三个 Add 节点采用独立输入缩放、
 输出缩放与三次最近偶数舍入。TFLM 通用软件 Add 用于纯软件性能比较。
@@ -93,7 +99,7 @@ python test/model_benchmark/run_suite.py \
 ## 周期与占比
 
 完整模型周期由 CPU 在 `Invoke()` 前后读取 `rdcycle` 得到，包含算子执行、
-硬件任务配置、DMA、状态轮询和解释器调度。模型初始化、张量分配、输入装载和结果检查
+硬件任务配置、DMA、状态轮询和解释器调度。模型初始化、静态权重打包、调度参数计算、张量分配、输入装载和结果检查
 分别位于计时区间之外，两种执行模式使用相同边界。
 
 完整模型加速比按 `软件 Invoke 周期 / 硬件 Invoke 周期` 计算。
@@ -122,8 +128,32 @@ python test/model_benchmark/run_suite.py \
 `model_targets_met`，须结合完整运行结果读取。
 
 DW 的目标检查覆盖每一层、每一个输入，要求加速比超过 20。
-CNN、MobileNetV1 和 ResNet-8 的目标检查要求每个输入的完整 Invoke 加速比超过 100。
-DS-CNN 同时用于 DW 和 25×5 平均池化的正确性与性能测试。
+四个模型的完整 Invoke 目标均为每个输入达到 1,000 倍加速。
+目标检查单独报告；功能检查始终验证实际输出与内存行为。
+
+### 窗口请求和返回统计
+
+每个 DW 或池化任务完成时，仿真器输出 `SOC_NETWORK_WINDOW_JOB`，在
+`result.json` 的 `simulator.window_jobs` 中保存请求数、完成数、最大在途数、
+返回拍数、连续返回次数、请求与返回同时发生的次数，以及有效返回元素数。
+有效元素数只累计成功握手数据拍中的有效通道；请求数按描述握手统计。
+任务完成时检查所有已接受描述均已返回，且请求和返回的元素总数相同。
+
+`return_span_cycles` 是首个成功返回拍到最后一个成功返回拍的包含端点周期数。
+它包含期间的等待，可用于计算该区间的实际返回吞吐。
+`consecutive_responses` 统计相邻周期连续成功返回，不将其作为 PE 利用率。
+窗口通道未参与的全局池化任务保留零请求记录。
+
+完成八次硬件逐层运行后，可以独立检查卷积几何与返回元素计数：
+
+```bash
+python test/performance_analysis/collect_window_pipeline.py \
+  --measurements build/model_benchmark
+```
+
+该程序根据输入尺寸、卷积核、步幅、扩张率及填充计算 DW 的有效输入次数，
+核对每层描述数与返回元素数，并生成 `window_pipeline.json`。
+可选 `--previous` 指向另一个完整模型测量目录，比较相同模型和输入的硬件忙周期。
 
 ## 输出文件
 
@@ -137,6 +167,7 @@ DS-CNN 同时用于 DW 和 25×5 平均池化的正确性与性能测试。
 | `summary/operators.csv` | 每类算子的周期、占比和加速比 |
 | `summary/layers.csv` | 每层、每输入的周期及数据访问量 |
 | `summary/summary.json` | 完整结构化汇总 |
+| `window_pipeline.json` | 窗口并行请求、返回吞吐与独立几何计数检查 |
 
 可独立重新生成汇总：
 

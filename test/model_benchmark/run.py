@@ -10,12 +10,13 @@ from pathlib import Path
 import re
 import struct
 
-from build_firmware import abi_fields
+from build_firmware import abi_fields, abi_constant
 from build_sim import build_sim, run_sim
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-MODE_NAMES = {0: 'software', 31: 'hardware'}
+HARDWARE_MODE = abi_constant('MODE_HARDWARE')
+MODE_NAMES = {0: 'software', HARDWARE_MODE: 'hardware'}
 
 
 def digest(path):
@@ -65,13 +66,26 @@ def overlay(path, regions):
             previous_end = address + len(data)
 
 
+def direct_pointwise(node):
+    if node['op'] != 'CONV_2D':
+        return False
+    options = node['options']
+    source, weights = node['input_shapes'][:2]
+    output = node['output_shapes'][0]
+    return (options['kernel_h'] == options['kernel_w'] == 1 and
+            options['stride_h'] == options['stride_w'] == 1 and
+            options.get('dilation_h_factor', 1) == options.get('dilation_w_factor', 1) == 1 and
+            source[1:3] == output[1:3] and weights[-1] == source[-1])
+
+
 def expected_jobs(prepared, mode):
-    result = {name: 0 for name in ('conv_jobs', 'dw_jobs', 'pool_jobs', 'vector_jobs', 'add_jobs', 'gemm_jobs')}
+    result = {name: 0 for name in ('conv_jobs', 'dw_jobs', 'pool_jobs', 'vector_jobs',
+                                  'add_jobs', 'gemm_jobs', 'softmax_jobs')}
     if mode:
         for node in prepared['graph']['nodes']:
             op = node['op']
             if op == 'CONV_2D':
-                result['conv_jobs'] += 1
+                result['gemm_jobs' if direct_pointwise(node) else 'conv_jobs'] += 1
             elif op == 'DEPTHWISE_CONV_2D':
                 if node['options']['depth_multiplier'] != 1:
                     raise ValueError('This suite requires channel-multiplier-one depthwise layers')
@@ -86,6 +100,11 @@ def expected_jobs(prepared, mode):
                 result['add_jobs'] += 1
             elif op == 'FULLY_CONNECTED':
                 result['gemm_jobs'] += 1
+            elif op == 'SOFTMAX':
+                depth = node['input_shapes'][0][-1]
+                if depth > 16:
+                    raise ValueError('Softmax depth exceeds this hardware configuration')
+                result['softmax_jobs'] += 1
     result['jobs'] = sum(result.values())
     return result
 
@@ -200,12 +219,28 @@ def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_l
         checks['completion_count'] = network['done_jobs'] == network['jobs'] == total['jobs'] == total['done_jobs']
         checks['operation_completion_counts'] = all(
             network[name+'_jobs'] == network[name+'_done'] == total[name+'_jobs'] == total[name+'_done']
-            for name in ('conv', 'dw', 'pool', 'vector', 'add', 'gemm'))
+            for name in ('conv', 'dw', 'pool', 'vector', 'add', 'gemm', 'softmax'))
         checks['axi_responses'] = total['axi_errors'] == 0
         checks['npu_errors'] = total['npu_errors'] == 0
-        checks['window_clients'] = (network['kernel_windows'] == 0 and
-            (network['ia_windows'] > 0) == (case['expected_jobs']['conv_jobs'] > 0) and
+        checks['window_clients'] = (
+            (network['ia_windows'] + network['kernel_windows'] > 0) == (case['expected_jobs']['conv_jobs'] > 0) and
             (network['dw_windows'] == 0 or case['expected_jobs']['dw_jobs'] + case['expected_jobs']['pool_jobs'] > 0))
+        window_jobs = simulator['window_jobs']
+        checks['window_completion_records'] = len(window_jobs) == network['dw_jobs'] + network['pool_jobs']
+        checks['window_request_completion'] = all(row['requests'] == row['completions'] for row in window_jobs)
+        checks['window_response_elements'] = all(row['requested_elements'] == row['response_elements'] for row in window_jobs)
+        checks['window_outstanding_capacity'] = all(
+            (1 <= row['peak_outstanding'] <= min(4, row['requests'])) if row['requests'] else row['peak_outstanding'] == 0
+            for row in window_jobs)
+        checks['window_request_count'] = sum(row['requests'] for row in window_jobs) == network['dw_windows']
+        checks['depthwise_window_activity'] = all(row['requests'] > 0 and row['response_elements'] > 0
+                                                  for row in window_jobs if row['operation'] == 2)
+        checks['window_response_counters'] = all(
+            row['response_beats'] <= row['response_elements'] <= 4 * row['response_beats'] and
+            row['response_beats'] <= row['return_span_cycles'] and
+            0 <= row['consecutive_responses'] <= max(0, row['response_beats'] - 1) and
+            0 <= row['request_response_overlap'] <= row['requests']
+            for row in window_jobs)
         if case['mode'] == 0:
             checks['cpu_only'] = all(total[key] == 0 for key in
                 ('jobs', 'done_jobs', 'npu_busy_cycles', 'npu_read_bytes', 'npu_write_bytes',
@@ -238,7 +273,7 @@ def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_l
                     all(layer[key] == count for key, count in expected.items()) and
                     layer['jobs'] == layer['done_jobs'] and layer['axi_errors'] == layer['npu_errors'] == 0 and
                     all(layer[name+'_jobs'] == layer[name+'_done']
-                        for name in ('conv', 'dw', 'pool', 'vector', 'add', 'gemm')))
+                        for name in ('conv', 'dw', 'pool', 'vector', 'add', 'gemm', 'softmax')))
             checks['layer_command_totals'] = all(
                 sum(layer[key] for layer in layers) == network[key] for key in case['expected_jobs'])
             value['layers'] = layers
@@ -260,7 +295,7 @@ def summarize(out):
               if r['passed'] and r['kind'] == 'perf'}
     for model, sample in sorted({(k[0], k[1]) for k in by_key}):
         for reference in (0,):
-            old, new = by_key.get((model, sample, reference)), by_key.get((model, sample, 31))
+            old, new = by_key.get((model, sample, reference)), by_key.get((model, sample, HARDWARE_MODE))
             if old and new:
                 if (old['simulator']['simulator_sha256'] != new['simulator']['simulator_sha256'] or
                     old['ram_fixed_lat'] != new['ram_fixed_lat'] or

@@ -10,7 +10,7 @@ import time
 from build_firmware import build_firmware
 from build_sim import build_sim
 from model_data import MODELS, validate_model
-from run import create_case, digest, execute_case, verify_sources, write_json
+from run import HARDWARE_MODE, create_case, digest, execute_case, verify_sources, write_json
 from report import summarize
 
 
@@ -21,6 +21,9 @@ def main():
     p.add_argument('--gcc', default='riscv-none-elf-gcc')
     p.add_argument('--verilator', default='verilator')
     p.add_argument('--picorv32', type=Path)
+    p.add_argument('--ia-cache-blocks', type=int, default=8)
+    p.add_argument('--ps-storage-rows', type=int, default=799)
+    p.add_argument('--s16-output-banks', type=int, default=4)
     p.add_argument('--jobs', type=int, default=1)
     p.add_argument('--run-jobs', type=int, default=4)
     p.add_argument('--models', nargs='+', choices=MODELS, default=list(MODELS))
@@ -43,7 +46,9 @@ def main():
         validate_model(prepared_root/name)
         prepared[name] = json.loads((prepared_root/name/'manifest.json').read_text())
     binary = build_sim(out/'sim', a.verilator, a.jobs, skip=a.skip_build,
-                       icache=0, ram_words=524288, pe_count=8, picorv32=a.picorv32)
+                       icache=0, ram_words=524288, pe_count=8, picorv32=a.picorv32,
+                       ia_cache_blocks=a.ia_cache_blocks,ps_storage_rows=a.ps_storage_rows,
+                       s16_output_banks=a.s16_output_banks)
     firmwares = {}
     for mode in a.modes:
         for kind in a.kinds:
@@ -56,7 +61,7 @@ def main():
             else:
                 manifest = build_firmware(directory, a.gcc, hardware=mode=='hw',
                     trace=kind=='trace', jobs=a.jobs, object_cache=out/'firmware_objects')
-            if (not manifest['passed'] or manifest['supported_modes'] != ([31] if mode=='hw' else [0]) or
+            if (not manifest['passed'] or manifest['supported_modes'] != ([HARDWARE_MODE] if mode=='hw' else [0]) or
                 manifest['trace_enabled'] != (kind=='trace') or manifest['hardware'] != (mode=='hw') or
                 manifest.get('rounding_mode') != 'nearest_even'):
                 raise RuntimeError('Firmware mode does not match the selected build')
@@ -72,7 +77,7 @@ def main():
                 for sample in model['samples']:
                     if a.samples is not None and sample['sample_index'] not in a.samples:
                         continue
-                    directory = out/'results/cases'/name/f'sample_{sample["sample_index"]:04d}'/f'{kind}_{31 if mode=="hw" else 0}'
+                    directory = out/'results/cases'/name/f'sample_{sample["sample_index"]:04d}'/f'{kind}_{HARDWARE_MODE if mode=="hw" else 0}'
                     if (directory/'result.json').exists():
                         old = json.loads((directory/'result.json').read_text())
                         if not a.resume:
@@ -85,7 +90,7 @@ def main():
                             continue
                         raise RuntimeError('Existing run does not match this execution: '+str(directory))
                     case = create_case(directory,prepared_root/name,model,sample,
-                                       31 if mode=='hw' else 0,fw_directory,fw)
+                                       HARDWARE_MODE if mode=='hw' else 0,fw_directory,fw)
                     work.append((directory,case,fw))
     def execute(item):
         directory,case,fw = item

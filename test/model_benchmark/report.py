@@ -8,7 +8,7 @@ from pathlib import Path
 from statistics import mean
 
 from model_data import MODELS
-from run import write_json
+from run import HARDWARE_MODE, write_json
 
 
 def write_csv(path, rows):
@@ -38,10 +38,10 @@ def summarize(out,prepared_root):
         samples=[s['sample_index'] for s in manifest['samples']]
         complete_perf=[];complete_trace=[]
         for sample in samples:
-            sw=indexed.get((name,sample,'perf',0));hw=indexed.get((name,sample,'perf',31))
+            sw=indexed.get((name,sample,'perf',0));hw=indexed.get((name,sample,'perf',HARDWARE_MODE))
             if sw and hw:
                 pair(sw,hw);complete_perf.append((sw,hw))
-            sw=indexed.get((name,sample,'trace',0));hw=indexed.get((name,sample,'trace',31))
+            sw=indexed.get((name,sample,'trace',0));hw=indexed.get((name,sample,'trace',HARDWARE_MODE))
             if not(sw and hw):continue
             pair(sw,hw)
             complete_trace.append((sw,hw))
@@ -68,13 +68,12 @@ def summarize(out,prepared_root):
         if complete_perf:
             a=[s['result']['invoke_cycles'] for s,h in complete_perf]
             b=[h['result']['invoke_cycles'] for s,h in complete_perf]
-            targets={'mnist_cnn':100,'mobilenet_v1_vww':100,'resnet8_cifar10':100}
-            target=targets.get(name)
+            target=1000
             models.append({'model':name,'samples':len(a),'sw_cycles_mean':mean(a),
                 'hw_cycles_mean':mean(b),'speedup':sum(a)/sum(b),
                 'minimum_sample_speedup':min(x/y for x,y in zip(a,b)),
-                'target_speedup':target or '',
-                'target_met':all(x/y>target for x,y in zip(a,b)) if target else '',
+                'target_speedup':target,
+                'target_met':all(x/y>=target for x,y in zip(a,b)),
                 'hw_jobs_per_inference':mean(h['network']['jobs'] for s,h in complete_perf),
                 'model_sha256':manifest['model']['sha256']})
         for op in sorted({r['op'] for r in layers if r['model']==name}):

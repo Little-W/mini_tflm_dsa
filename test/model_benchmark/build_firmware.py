@@ -52,6 +52,15 @@ def abi_fields(name):
     return re.findall(r'X\((\w+)\)', match.group(1))
 
 
+def abi_constant(name):
+    text = (HERE / 'full_network_abi.h').read_text()
+    match = re.search(r'^#define FULL_NETWORK_' + re.escape(name) +
+                      r'\s+(0x[0-9a-fA-F]+|[0-9]+)u?\s*$', text, re.M)
+    if not match:
+        raise ValueError('missing ABI constant: ' + name)
+    return int(match.group(1), 0)
+
+
 def compiler_sibling(gcc, suffix):
     path = str(Path(shutil.which(str(gcc)) or gcc).resolve())
     if not path.endswith('gcc'):
@@ -85,7 +94,7 @@ def dependency_files(path):
 
 
 def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
-                   jobs=1, object_cache=None, arena_bytes=256*1024):
+                   jobs=1, object_cache=None, arena_bytes=512*1024):
     out = Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     cache = Path(object_cache or out.parent/'firmware_objects').resolve()
@@ -239,12 +248,14 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
         manifest = {'passed':stable, 'returncode':0, 'sources_unchanged_during_build':stable,
             'profile':'hardware' if hardware else 'software', 'hardware':hardware, 'trace_enabled':trace,
             'rounding_mode':'nearest_even',
+            'prepared_dispatch':bool(hardware),
+            'direct_pointwise':bool(hardware),'softmax_s8':bool(hardware),
             'compile_defines':{'DSA_NN_RUNTIME_CONTROL':1,
                               'DSA_NN_CONV_ENABLE':int(hardware), 'DSA_NN_VECTOR_ENABLE':int(hardware),
                               'DSA_NN_FC_ENABLE':int(hardware),
                               'FULL_NETWORK_TRACE_ENABLED':int(trace),
                               'NMSIS_NN':True, 'DSA_PCR_ENGINE':0},
-            'supported_modes':[31] if hardware else [0], 'preserve_all_tensors':False,
+            'supported_modes':[abi_constant('MODE_HARDWARE')] if hardware else [0], 'preserve_all_tensors':False,
             'trace_mechanism':'separate verification ELF; existing MicroProfilerInterface EndEvent' if trace else 'none',
             'timing':'actual CPU rdcycle around complete MicroInterpreter::Invoke; excludes initialization and output checking',
             'ram_bytes':RAM_BYTES, 'arena_bytes':arena_bytes,
@@ -258,7 +269,7 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
             'elf':str(elf), 'mem':str(out/'cpu.mem'), 'elf_sha256':digest(elf),
             'mem_sha256':digest(out/'cpu.mem'), 'binary_sha256':digest(out/'cpu.bin'),
             'link_command':[str(x) for x in link], 'compilations':records,
-            'dispatch':'Compile-time C/C++ accelerator enable plus runtime mask 31' if hardware else 'Compile-time C/C++ accelerators disabled; mask 0'}
+            'dispatch':f"Compile-time C/C++ accelerator enable plus runtime mask {abi_constant('MODE_HARDWARE')}" if hardware else 'Compile-time C/C++ accelerators disabled; mask 0'}
         write_json(out/'firmware.json',manifest)
         if stable: (out/'build_failure.json').unlink(missing_ok=True)
         if not stable: raise RuntimeError('sources changed during firmware build')
@@ -276,7 +287,7 @@ def main():
     p.add_argument('--runtime-root', type=Path, help='Optional standalone official GCC C++ and newlib runtime installation')
     p.add_argument('--object-cache',type=Path)
     p.add_argument('--jobs',type=int,default=1)
-    p.add_argument('--arena-bytes',type=int,default=256*1024)
+    p.add_argument('--arena-bytes',type=int,default=512*1024)
     p.add_argument('--trace',action='store_true')
     p.add_argument('--hardware', action=argparse.BooleanOptionalAction, default=True)
     args=p.parse_args()
