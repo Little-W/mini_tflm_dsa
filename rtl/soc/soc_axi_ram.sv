@@ -5,7 +5,8 @@ module soc_axi_ram #(
     parameter string       MEM_PATH = "",
     parameter int unsigned INIT_EN = 0,
     parameter int unsigned READ_OUTSTANDING = 4,
-    parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING
+    parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
+    parameter int unsigned READ_FIRST_LATENCY = 2
 ) (
     input  wire             clk,
     input  wire             rst_n,
@@ -64,6 +65,9 @@ module soc_axi_ram #(
 
     (* ram_style = "block" *) logic [DW-1:0] mem_r [0:DP-1];
 
+    logic [63:0] memory_cycle_q;
+    logic [63:0] rd_ready_cycle_q [0:RD_DEPTH-1];
+    logic [63:0] rd_ready_active_q;
     logic [AW-1:0] rd_addr_q [0:RD_DEPTH-1];
     logic [7:0]    rd_len_q  [0:RD_DEPTH-1];
     logic [2:0]    rd_size_q [0:RD_DEPTH-1];
@@ -87,11 +91,18 @@ module soc_axi_ram #(
 
     logic [AW-1:0] wr_addr_q [0:WR_DEPTH-1];
     logic [7:0]    wr_len_q  [0:WR_DEPTH-1];
+    logic [2:0]    wr_size_q [0:WR_DEPTH-1];
+    logic [1:0]    wr_burst_q[0:WR_DEPTH-1];
+    logic          wr_bad_q  [0:WR_DEPTH-1];
     logic [WR_PTR_W-1:0] wr_aw_wr_ptr_q;
     logic [WR_PTR_W-1:0] wr_aw_rd_ptr_q;
     logic [WR_CNT_W-1:0] wr_aw_count_q;
     logic wr_cmd_valid_q;
-    logic [WORD_ADDR_BITS-1:0] wr_word_addr_q;
+    logic [AW:0] wr_byte_addr_q;
+    logic [2:0] wr_size_active_q;
+    logic [1:0] wr_burst_active_q;
+    logic wr_cmd_error_q;
+    wire [WORD_ADDR_BITS:0] wr_word_addr_q = wr_byte_addr_q[AW:ADDR_LSB];
     logic [7:0] wr_len_active_q;
     logic [7:0] wr_beat_q;
     logic wr_error_accum_q;
@@ -116,6 +127,7 @@ module soc_axi_ram #(
     integer ddr_w_max_lat;
     integer ddr_rsp_max_lat;
     integer ram_fixed_lat;
+    integer ram_read_first_latency;
     integer data_mem_base_word_q;
     string mem_path_q;
     string data_mem_path_q;
@@ -123,6 +135,7 @@ module soc_axi_ram #(
     localparam int ddr_cmd_max_lat = 0;
     localparam int ddr_w_max_lat   = 0;
     localparam int ddr_rsp_max_lat = 0;
+    localparam int ram_read_first_latency = READ_FIRST_LATENCY;
 `endif
 
     wire ar_fire = s_axi_arvalid && s_axi_arready;
@@ -130,6 +143,39 @@ module soc_axi_ram #(
     wire aw_fire = s_axi_awvalid && s_axi_awready;
     wire w_fire  = s_axi_wvalid  && s_axi_wready;
     wire b_fire  = s_axi_bvalid  && s_axi_bready;
+    wire [63:0] ar_ready_cycle = memory_cycle_q + 64'(ram_read_first_latency-1);
+    wire rd_active_mature = memory_cycle_q >= rd_ready_active_q;
+    wire rd_queue_mature = memory_cycle_q >= rd_ready_cycle_q[rd_rd_ptr_q];
+
+    // Each accepted address waits independently. The synchronous RAM read
+    // registers data one edge before its earliest permitted R handshake.
+    always_ff @(posedge clk) begin
+        if (!rst_n) memory_cycle_q <= 64'd0;
+        else memory_cycle_q <= memory_cycle_q + 64'd1;
+    end
+    initial begin
+        assert(READ_FIRST_LATENCY >= 1)
+            else $fatal(1,"READ_FIRST_LATENCY must be at least one clock cycle");
+    end
+
+`ifndef SYNTHESIS
+    longint unsigned read_first_latency_min,read_first_latency_max,read_first_latency_samples;
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            read_first_latency_min <= 64'hffffffffffffffff;
+            read_first_latency_max <= 0;
+            read_first_latency_samples <= 0;
+        end else if (r_fire && rd_beat_q == 0) begin
+            longint unsigned latency;
+            latency = memory_cycle_q-rd_ready_active_q+64'(ram_read_first_latency-1);
+            assert(latency >= 64'(ram_read_first_latency))
+                else $fatal(1,"RAM first response precedes its configured clock edge");
+            if (latency < read_first_latency_min) read_first_latency_min <= latency;
+            if (latency > read_first_latency_max) read_first_latency_max <= latency;
+            read_first_latency_samples <= read_first_latency_samples+1;
+        end
+    end
+`endif
 
     function automatic [RD_PTR_W-1:0] inc_rd_ptr(input [RD_PTR_W-1:0] ptr);
         if (RD_DEPTH <= 1) inc_rd_ptr = '0;
@@ -162,21 +208,21 @@ module soc_axi_ram #(
 `endif
     endfunction
 
-    // Supported AXI reads: FIXED and INCR, up to the physical bus width.
+    // Supported AXI transfers: FIXED and INCR, up to the physical bus width.
     // Unaligned first beats use the addressed byte lanes; subsequent INCR
     // beats begin on the transfer-size boundary, as required by AXI.
-    function automatic logic [AW:0] read_next_addr(
+    function automatic logic [AW:0] axi_next_addr(
         input logic [AW:0] byte_addr, input logic [2:0] size,
         input logic [1:0] burst);
         logic [AW:0] step;
         begin
             step = (AW+1)'(1) << size;
-            read_next_addr = (burst == 2'b00) ? byte_addr :
+            axi_next_addr = (burst == 2'b00) ? byte_addr :
                              ((byte_addr & ~(step - 1'b1)) + step);
         end
     endfunction
 
-    function automatic logic read_command_bad(
+    function automatic logic axi_command_bad(
         input logic [AW-1:0] byte_addr, input logic [7:0] len,
         input logic [2:0] size, input logic [1:0] burst);
         logic [31:0] step, page_start, page_end;
@@ -184,7 +230,7 @@ module soc_axi_ram #(
             step = 32'd1 << size;
             page_start = (32'(byte_addr) & 32'hfff) & ~(step-1'b1);
             page_end = page_start + ((burst == 2'b00) ? step : ((32'(len)+1'b1) << size));
-            read_command_bad = (32'(size) > ADDR_LSB) || (burst > 2'b01) ||
+            axi_command_bad = (32'(size) > ADDR_LSB) || (burst > 2'b01) ||
                                ((burst == 2'b00) && len > 8'd15) || (page_end > 32'd4096);
         end
     endfunction
@@ -218,26 +264,28 @@ module soc_axi_ram #(
 `endif
     wire rd_pipe_beat = s_axi_rvalid && s_axi_rready && !s_axi_rlast;
     wire rd_pipe_cmd_base = rd_pipe_cmd_mode && s_axi_rvalid && s_axi_rready && s_axi_rlast;
-    wire rd_pipe_cmd_from_queue = rd_pipe_cmd_base && (rd_count_q != '0);
-    wire rd_pipe_cmd_from_ar = rd_pipe_cmd_base && (rd_count_q == '0) && ar_fire;
-    wire rd_pipe_cmd = rd_pipe_cmd_from_queue || rd_pipe_cmd_from_ar;
+    wire rd_pipe_cmd_from_queue = rd_pipe_cmd_base && (rd_count_q != '0) && rd_queue_mature;
+    wire rd_pipe_cmd_from_ar = rd_pipe_cmd_base && (rd_count_q == '0) && ar_fire && ram_read_first_latency == 1;
+    wire rd_start_cmd_from_ar = !rd_cmd_valid_q && !s_axi_rvalid &&
+        (rd_count_q == '0) && ar_fire && ram_read_first_latency == 1;
+    wire rd_pipe_cmd = rd_pipe_cmd_from_queue || rd_pipe_cmd_from_ar || rd_start_cmd_from_ar;
     wire [AW:0] rd_pipe_cmd_byte_addr =
         rd_pipe_cmd_from_queue ? {1'b0,rd_addr_q[rd_rd_ptr_q]} : {1'b0,s_axi_araddr};
     wire [7:0] rd_pipe_cmd_len =
         rd_pipe_cmd_from_queue ? rd_len_q[rd_rd_ptr_q] : s_axi_arlen;
     wire rd_pipe_cmd_bad = rd_pipe_cmd_from_queue ? rd_bad_q[rd_rd_ptr_q] :
-        read_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
+        axi_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
     wire [7:0] rd_issue_beat = rd_pipe_cmd ? 8'd0 :
                                rd_pipe_beat ? (rd_beat_q + 8'd1) : rd_beat_q;
     wire [7:0] rd_issue_len = rd_pipe_cmd ? rd_pipe_cmd_len : rd_len_active_q;
     wire [AW:0] rd_issue_byte_addr = rd_pipe_cmd ? rd_pipe_cmd_byte_addr :
-        rd_pipe_beat ? read_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q) : rd_byte_addr_q;
+        rd_pipe_beat ? axi_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q) : rd_byte_addr_q;
     wire [WORD_ADDR_BITS:0] rd_issue_word_addr = rd_issue_byte_addr[AW:ADDR_LSB];
     // Compare against the actual word count, also for non-power-of-two RAMs.
     wire rd_issue_oob = rd_issue_word_addr >= (WORD_ADDR_BITS+1)'(DP);
     wire rd_issue_fault = rd_issue_oob || (rd_pipe_cmd ? rd_pipe_cmd_bad : rd_cmd_error_q);
-    wire rd_can_issue = rd_cmd_valid_q && (!s_axi_rvalid || rd_pipe_beat || rd_pipe_cmd) &&
-                        r_rsp_delay_clear;
+    wire rd_can_issue = rd_cmd_valid_q && rd_active_mature &&
+                        (!s_axi_rvalid || rd_pipe_beat || rd_pipe_cmd) && r_rsp_delay_clear;
     wire rd_issue_any = rd_can_issue || rd_pipe_cmd;
     wire rd_issue_last = (rd_issue_beat == rd_issue_len);
     wire [1:0] rd_issue_resp =
@@ -259,8 +307,16 @@ module soc_axi_ram #(
     wire wr_b_queue_full = (wr_b_count_q == WR_CNT_W'(WR_DEPTH));
     wire wr_b_pop = b_fire;
     wire wr_has_addr_for_w = wr_cmd_valid_q;
-    wire wr_active_oob = (WORD_ADDR_BITS > ADDR_BITS) ?
-                         |wr_word_addr_q[WORD_ADDR_BITS-1:ADDR_BITS] : 1'b0;
+    wire wr_active_oob = wr_word_addr_q >= (WORD_ADDR_BITS+1)'(DP);
+    wire [31:0] wr_lane_first = 32'(wr_byte_addr_q) & (BYTEW-1);
+    wire [31:0] wr_lane_end = (wr_lane_first & ~((32'd1 << wr_size_active_q)-1)) +
+                             (32'd1 << wr_size_active_q);
+    logic [BYTEW-1:0] wr_legal_lanes;
+    always_comb begin
+        for (int i=0; i<BYTEW; i++)
+            wr_legal_lanes[i] = 32'(i) >= wr_lane_first && 32'(i) < wr_lane_end;
+    end
+    wire wr_strobe_error = |(s_axi_wstrb & ~wr_legal_lanes);
     wire wr_last_expected = (wr_beat_q == wr_len_active_q);
 
     assign s_axi_arready = !rd_queue_full && ar_ready_delay_clear;
@@ -277,7 +333,7 @@ module soc_axi_ram #(
     end
 
     always @(posedge clk) begin
-        if (w_fire && !wr_active_oob) begin
+        if (w_fire && !wr_active_oob && !wr_cmd_error_q && !wr_strobe_error) begin
             for (int i = 0; i < DW/8; i++) begin
                 if (s_axi_wstrb[i]) begin
                     mem_r[wr_word_addr_q[ADDR_BITS-1:0]][8*i +: 8] <=
@@ -294,6 +350,7 @@ module soc_axi_ram #(
             rd_count_q        <= '0;
             rd_cmd_valid_q    <= 1'b0;
             rd_byte_addr_q    <= '0;
+            rd_ready_active_q <= '0;
             rd_size_active_q  <= 3'(ADDR_LSB);
             rd_burst_active_q <= 2'b01;
             rd_cmd_error_q    <= 1'b0;
@@ -327,10 +384,11 @@ module soc_axi_ram #(
             if (ar_fire) begin
                 if (!rd_cmd_load_from_ar) begin
                     rd_addr_q[rd_wr_ptr_q] <= s_axi_araddr;
+                    rd_ready_cycle_q[rd_wr_ptr_q] <= ar_ready_cycle;
                     rd_len_q[rd_wr_ptr_q]  <= s_axi_arlen;
                     rd_size_q[rd_wr_ptr_q] <= s_axi_arsize;
                     rd_burst_q[rd_wr_ptr_q] <= s_axi_arburst;
-                    rd_bad_q[rd_wr_ptr_q] <= read_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
+                    rd_bad_q[rd_wr_ptr_q] <= axi_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
                     rd_wr_ptr_q <= inc_rd_ptr(rd_wr_ptr_q);
                 end
                 ar_ready_delay_q <= ram_response_delay(ddr_cmd_max_lat);
@@ -340,10 +398,11 @@ module soc_axi_ram #(
 `else
             if (ar_fire && !rd_cmd_load_from_ar) begin
                 rd_addr_q[rd_wr_ptr_q] <= s_axi_araddr;
+                    rd_ready_cycle_q[rd_wr_ptr_q] <= ar_ready_cycle;
                 rd_len_q[rd_wr_ptr_q]  <= s_axi_arlen;
                 rd_size_q[rd_wr_ptr_q] <= s_axi_arsize;
                 rd_burst_q[rd_wr_ptr_q] <= s_axi_arburst;
-                rd_bad_q[rd_wr_ptr_q] <= read_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
+                rd_bad_q[rd_wr_ptr_q] <= axi_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
                 rd_wr_ptr_q <= inc_rd_ptr(rd_wr_ptr_q);
             end
 `endif
@@ -373,7 +432,7 @@ module soc_axi_ram #(
                     rd_error_accum_q <= 1'b0;
                 end else begin
                     rd_beat_q      <= rd_beat_q + 8'd1;
-                    rd_byte_addr_q <= read_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q);
+                    rd_byte_addr_q <= axi_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q);
 `ifndef SYNTHESIS
                     r_rsp_delay_q  <= 8'd0;
 `endif
@@ -391,6 +450,7 @@ module soc_axi_ram #(
 `endif
                 rd_cmd_valid_q  <= 1'b1;
                 rd_byte_addr_q  <= {1'b0,rd_addr_q[rd_rd_ptr_q]};
+                rd_ready_active_q <= rd_ready_cycle_q[rd_rd_ptr_q];
                 rd_size_active_q <= rd_size_q[rd_rd_ptr_q];
                 rd_burst_active_q <= rd_burst_q[rd_rd_ptr_q];
                 rd_cmd_error_q <= rd_bad_q[rd_rd_ptr_q];
@@ -404,9 +464,10 @@ module soc_axi_ram #(
 `endif
                 rd_cmd_valid_q  <= 1'b1;
                 rd_byte_addr_q  <= {1'b0,s_axi_araddr};
+                rd_ready_active_q <= ar_ready_cycle;
                 rd_size_active_q <= s_axi_arsize;
                 rd_burst_active_q <= s_axi_arburst;
-                rd_cmd_error_q <= read_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
+                rd_cmd_error_q <= axi_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);
                 rd_len_active_q <= s_axi_arlen;
                 rd_beat_q       <= 8'd0;
                 rd_error_accum_q <= rd_pipe_cmd ? rd_issue_fault : 1'b0;
@@ -420,7 +481,10 @@ module soc_axi_ram #(
             wr_aw_rd_ptr_q    <= '0;
             wr_aw_count_q     <= '0;
             wr_cmd_valid_q    <= 1'b0;
-            wr_word_addr_q    <= '0;
+            wr_byte_addr_q    <= '0;
+            wr_size_active_q  <= 3'(ADDR_LSB);
+            wr_burst_active_q <= 2'b01;
+            wr_cmd_error_q    <= 1'b0;
             wr_len_active_q   <= 8'd0;
             wr_beat_q         <= 8'd0;
             wr_error_accum_q  <= 1'b0;
@@ -457,6 +521,9 @@ module soc_axi_ram #(
                 if (!wr_cmd_load_from_aw) begin
                     wr_addr_q[wr_aw_wr_ptr_q] <= s_axi_awaddr;
                     wr_len_q[wr_aw_wr_ptr_q]  <= s_axi_awlen;
+                    wr_size_q[wr_aw_wr_ptr_q] <= s_axi_awsize;
+                    wr_burst_q[wr_aw_wr_ptr_q] <= s_axi_awburst;
+                    wr_bad_q[wr_aw_wr_ptr_q] <= axi_command_bad(s_axi_awaddr,s_axi_awlen,s_axi_awsize,s_axi_awburst);
                     wr_aw_wr_ptr_q <= inc_wr_ptr(wr_aw_wr_ptr_q);
                 end
                 aw_ready_delay_q <= ram_response_delay(ddr_cmd_max_lat);
@@ -467,6 +534,9 @@ module soc_axi_ram #(
             if (aw_fire && !wr_cmd_load_from_aw) begin
                 wr_addr_q[wr_aw_wr_ptr_q] <= s_axi_awaddr;
                 wr_len_q[wr_aw_wr_ptr_q]  <= s_axi_awlen;
+                    wr_size_q[wr_aw_wr_ptr_q] <= s_axi_awsize;
+                    wr_burst_q[wr_aw_wr_ptr_q] <= s_axi_awburst;
+                    wr_bad_q[wr_aw_wr_ptr_q] <= axi_command_bad(s_axi_awaddr,s_axi_awlen,s_axi_awsize,s_axi_awburst);
                 wr_aw_wr_ptr_q <= inc_wr_ptr(wr_aw_wr_ptr_q);
             end
 `endif
@@ -476,7 +546,7 @@ module soc_axi_ram #(
                 logic wr_error_next;
 
                 wr_oob = wr_active_oob;
-                wr_error_next = wr_error_accum_q | wr_oob | (s_axi_wlast != wr_last_expected);
+                wr_error_next = wr_error_accum_q | wr_oob | wr_cmd_error_q | wr_strobe_error | (s_axi_wlast != wr_last_expected);
 
                 if (s_axi_wlast || wr_last_expected) begin
                     wr_b_push_resp = wr_error_next ? 2'b10 : 2'b00;
@@ -486,7 +556,7 @@ module soc_axi_ram #(
                     wr_error_accum_q <= 1'b0;
                 end else begin
                     wr_beat_q <= wr_beat_q + 8'd1;
-                    wr_word_addr_q <= wr_word_addr_q + WORD_ADDR_BITS'(1);
+                    wr_byte_addr_q <= axi_next_addr(wr_byte_addr_q,wr_size_active_q,wr_burst_active_q);
                     wr_error_accum_q <= wr_error_next;
                 end
             end
@@ -507,7 +577,10 @@ module soc_axi_ram #(
                 w_ready_delay_q  <= ram_response_delay(ddr_w_max_lat);
 `endif
                 wr_cmd_valid_q  <= 1'b1;
-                wr_word_addr_q  <= wr_addr_q[wr_aw_rd_ptr_q][AW-1:ADDR_LSB];
+                wr_byte_addr_q  <= {1'b0,wr_addr_q[wr_aw_rd_ptr_q]};
+                wr_size_active_q <= wr_size_q[wr_aw_rd_ptr_q];
+                wr_burst_active_q <= wr_burst_q[wr_aw_rd_ptr_q];
+                wr_cmd_error_q <= wr_bad_q[wr_aw_rd_ptr_q];
                 wr_len_active_q <= wr_len_q[wr_aw_rd_ptr_q];
                 wr_beat_q       <= 8'd0;
                 wr_error_accum_q <= 1'b0;
@@ -517,7 +590,10 @@ module soc_axi_ram #(
                 w_ready_delay_q  <= ram_response_delay(ddr_w_max_lat);
 `endif
                 wr_cmd_valid_q  <= 1'b1;
-                wr_word_addr_q  <= s_axi_awaddr[AW-1:ADDR_LSB];
+                wr_byte_addr_q  <= {1'b0,s_axi_awaddr};
+                wr_size_active_q <= s_axi_awsize;
+                wr_burst_active_q <= s_axi_awburst;
+                wr_cmd_error_q <= axi_command_bad(s_axi_awaddr,s_axi_awlen,s_axi_awsize,s_axi_awburst);
                 wr_len_active_q <= s_axi_awlen;
                 wr_beat_q       <= 8'd0;
                 wr_error_accum_q <= 1'b0;
@@ -577,6 +653,7 @@ module soc_axi_ram #(
         ddr_w_max_lat = 0;
         ddr_rsp_max_lat = 0;
         ram_fixed_lat = -1;
+        ram_read_first_latency = READ_FIRST_LATENCY;
         data_mem_base_word_q = 0;
         mem_path_q = MEM_PATH;
         data_mem_path_q = "";
@@ -594,6 +671,10 @@ module soc_axi_ram #(
         void'($value$plusargs("RAM_W_MAX_LAT=%d", ddr_w_max_lat));
         void'($value$plusargs("RAM_RSP_MAX_LAT=%d", ddr_rsp_max_lat));
         void'($value$plusargs("RAM_FIXED_LAT=%d", ram_fixed_lat));
+        void'($value$plusargs("RAM_READ_FIRST_LATENCY=%d", ram_read_first_latency));
+        assert(ram_read_first_latency >= 1)
+            else $fatal(1,"RAM_READ_FIRST_LATENCY must be at least one clock cycle");
+        $display("soc_axi_ram: synchronous read first-response latency=%0d cycles",ram_read_first_latency);
 
         if (ram_fixed_lat >= 0) begin
             $display("soc_axi_ram: RAM fixed response latency enabled fixed=%0d cycles",
@@ -620,7 +701,7 @@ module soc_axi_ram #(
 `endif
 
     wire _unused_axi_attr =
-        |s_axi_awcache | |s_axi_awprot | |s_axi_awlock | |s_axi_awburst | |s_axi_awsize |
+        |s_axi_awcache | |s_axi_awprot | |s_axi_awlock |
         |s_axi_arcache | |s_axi_arprot | |s_axi_arlock;
 
 endmodule

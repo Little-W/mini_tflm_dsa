@@ -24,7 +24,7 @@ module soc_axi_interconnect #(
     input  wire [2:0]                   s0_axi_arsize,
     output logic                        s0_axi_rvalid,
     input  wire                         s0_axi_rready,
-    output logic [DATA_WIDTH-1:0]       s0_axi_rdata,
+    output logic [31:0]                 s0_axi_rdata,
     output logic [1:0]                  s0_axi_rresp,
     output logic                        s0_axi_rlast,
     input  wire                         s0_axi_awvalid,
@@ -38,8 +38,8 @@ module soc_axi_interconnect #(
     input  wire [2:0]                   s0_axi_awsize,
     input  wire                         s0_axi_wvalid,
     output logic                        s0_axi_wready,
-    input  wire [DATA_WIDTH-1:0]        s0_axi_wdata,
-    input  wire [DATA_WIDTH/8-1:0]      s0_axi_wstrb,
+    input  wire [31:0]                  s0_axi_wdata,
+    input  wire [3:0]                   s0_axi_wstrb,
     input  wire                         s0_axi_wlast,
     output logic                        s0_axi_bvalid,
     input  wire                         s0_axi_bready,
@@ -213,6 +213,35 @@ module soc_axi_interconnect #(
     logic                  cpu_arq_rd_sel_q;
     logic                  cpu_arq_wr_sel_q;
     logic [1:0]            cpu_arq_count_q;
+
+    // PicoRV32 and its instruction cache retain their 32-bit data path.
+    // AXI narrow transfers select the corresponding lanes of the shared bus.
+    logic [ADDR_WIDTH-1:0] cpu_ram_read_addr_q;
+    logic [2:0] cpu_ram_read_size_q;
+    logic [1:0] cpu_ram_read_burst_q;
+    logic [ADDR_WIDTH-1:0] cpu_ram_write_addr_q;
+    logic [2:0] cpu_ram_write_size_q;
+    logic [1:0] cpu_ram_write_burst_q;
+    wire [ADDR_WIDTH-1:0] cpu_write_beat_addr = cpu_wr_active_q ?
+        cpu_ram_write_addr_q : s0_axi_awaddr;
+    wire [31:0] cpu_read_lane = (32'(cpu_ram_read_addr_q) & (DATA_WIDTH/8-1)) & ~32'd3;
+    wire [31:0] cpu_write_lane = (32'(cpu_write_beat_addr) & (DATA_WIDTH/8-1)) & ~32'd3;
+
+    function automatic [ADDR_WIDTH-1:0] cpu_next_addr(
+        input logic [ADDR_WIDTH-1:0] addr, input logic [2:0] size,
+        input logic [1:0] burst);
+        logic [ADDR_WIDTH-1:0] step;
+        begin
+            step = ADDR_WIDTH'(1) << size;
+            cpu_next_addr = burst == 2'b00 ? addr :
+                (addr & ~(step - 1'b1)) + step;
+        end
+    endfunction
+
+    initial begin
+        assert(DATA_WIDTH == 32 || DATA_WIDTH == 64)
+            else $fatal(1,"shared AXI data width must be 32 or 64 bits");
+    end
 
     function automatic dest_e decode_cpu_addr(input logic [ADDR_WIDTH-1:0] addr);
         logic [31:0] offset;
@@ -389,7 +418,7 @@ module soc_axi_interconnect #(
         end else if (ram_rd_active_q && (ram_rd_owner_q == OWNER_CPU) &&
                      (cpu_rd_dest_q == D_RAM)) begin
             s0_axi_rvalid = m_ram_rvalid;
-            s0_axi_rdata  = m_ram_rdata;
+            s0_axi_rdata  = 32'(m_ram_rdata >> (8*cpu_read_lane));
             s0_axi_rresp  = m_ram_rresp;
             s0_axi_rlast  = m_ram_rlast;
             m_ram_rready  = s0_axi_rready;
@@ -481,8 +510,8 @@ module soc_axi_interconnect #(
             s1_axi_wready = m_ram_wready;
         end else if (ram_w_from_cpu) begin
             m_ram_wvalid = s0_axi_wvalid && (cpu_w_dest == D_RAM);
-            m_ram_wdata  = s0_axi_wdata;
-            m_ram_wstrb  = s0_axi_wstrb;
+            m_ram_wdata  = DATA_WIDTH'(s0_axi_wdata) << (8*cpu_write_lane);
+            m_ram_wstrb  = (DATA_WIDTH/8)'(s0_axi_wstrb) << cpu_write_lane;
             m_ram_wlast  = s0_axi_wlast;
             s0_axi_wready = m_ram_wready;
         end
@@ -679,6 +708,12 @@ module soc_axi_interconnect #(
             cpu_arq_rd_sel_q <= 1'b0;
             cpu_arq_wr_sel_q <= 1'b0;
             cpu_arq_count_q  <= 2'd0;
+            cpu_ram_read_addr_q <= '0;
+            cpu_ram_read_size_q <= 3'd2;
+            cpu_ram_read_burst_q <= 2'b01;
+            cpu_ram_write_addr_q <= '0;
+            cpu_ram_write_size_q <= 3'd2;
+            cpu_ram_write_burst_q <= 2'b01;
             for (int i = 0; i < 2; i++) begin
                 cpu_arq_addr_q[i]  <= '0;
                 cpu_arq_cache_q[i] <= '0;
@@ -690,6 +725,23 @@ module soc_axi_interconnect #(
                 cpu_arq_dest_q[i]  <= D_ERR;
             end
         end else begin
+            if (cpu_ram_ar_hs) begin
+                cpu_ram_read_addr_q <= cpu_arq_addr;
+                cpu_ram_read_size_q <= cpu_arq_size;
+                cpu_ram_read_burst_q <= cpu_arq_burst;
+            end else if (s0_axi_rvalid && s0_axi_rready && cpu_rd_dest_q == D_RAM) begin
+                cpu_ram_read_addr_q <= cpu_next_addr(cpu_ram_read_addr_q,
+                    cpu_ram_read_size_q,cpu_ram_read_burst_q);
+            end
+            if (cpu_aw_hs && cpu_aw_dest == D_RAM) begin
+                cpu_ram_write_addr_q <= cpu_w_hs ?
+                    cpu_next_addr(s0_axi_awaddr,s0_axi_awsize,s0_axi_awburst) : s0_axi_awaddr;
+                cpu_ram_write_size_q <= s0_axi_awsize;
+                cpu_ram_write_burst_q <= s0_axi_awburst;
+            end else if (cpu_w_hs && cpu_w_dest == D_RAM) begin
+                cpu_ram_write_addr_q <= cpu_next_addr(cpu_ram_write_addr_q,
+                    cpu_ram_write_size_q,cpu_ram_write_burst_q);
+            end
             if (cpu_arq_push) begin
                 cpu_arq_addr_q[cpu_arq_wr_sel_q]  <= s0_axi_araddr;
                 cpu_arq_cache_q[cpu_arq_wr_sel_q] <= s0_axi_arcache;

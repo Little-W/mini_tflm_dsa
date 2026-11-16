@@ -18,6 +18,8 @@ module soc_top #(
     parameter PS_FRAME_COUNT  = SIZE,
     parameter PS_STORAGE_ROWS = ((3*SIZE)-1)*(PS_FRAME_COUNT+1),
     parameter OA_S16_FIFO_BANKS_MAX = 4,
+    parameter int unsigned DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8),
+    parameter int unsigned RAM_READ_FIRST_LATENCY = 2,
     parameter AXI_READ_OUTSTANDING  = 4,
     parameter AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,
     parameter NPU_ENABLE_IS_MODE = 1,
@@ -27,6 +29,14 @@ module soc_top #(
     parameter CPU_MEM_PATH    = "../tb/axi_soc_case/cpu.mem",
     parameter CPU_MEM_INIT_EN = 1,
     parameter CPU_ENABLE_ICACHE = 0,
+    parameter CPU_ENABLE_MUL = 1,
+    parameter CPU_ENABLE_FAST_MUL = 0,
+    parameter CPU_ENABLE_DIV = 1,
+    parameter CPU_ENABLE_REGS_DUALPORT = 1,
+    parameter CPU_TWO_STAGE_SHIFT = 1,
+    parameter CPU_BARREL_SHIFTER = 0,
+    parameter CPU_TWO_CYCLE_COMPARE = 0,
+    parameter CPU_TWO_CYCLE_ALU = 0,
     parameter CPU_AXI_READ_TIMING_BUFFER = 1,
     parameter NPU_AXI_TIMING_BUFFER = 1,
     parameter CPU_AXI_WRITE_TIMING_BUFFER = 1,
@@ -68,7 +78,7 @@ module soc_top #(
     wire [2:0]  cpu_axi_arsize;
     wire        cpu_axi_rvalid;
     wire        cpu_axi_rready;
-    wire [BUS_WIDTH-1:0] cpu_axi_rdata;
+    wire [31:0] cpu_axi_rdata;
     wire [1:0]  cpu_axi_rresp;
     wire        cpu_axi_rlast;
     wire        cpu_axi_awvalid;
@@ -82,8 +92,8 @@ module soc_top #(
     wire [2:0]  cpu_axi_awsize;
     wire        cpu_axi_wvalid;
     wire        cpu_axi_wready;
-    wire [BUS_WIDTH-1:0] cpu_axi_wdata;
-    wire [BUS_WIDTH/8-1:0] cpu_axi_wstrb;
+    wire [31:0] cpu_axi_wdata;
+    wire [3:0] cpu_axi_wstrb;
     wire        cpu_axi_wlast;
     wire        cpu_axi_bvalid;
     wire        cpu_axi_bready;
@@ -100,7 +110,7 @@ module soc_top #(
     wire [2:0]  cpu_bus_axi_arsize;
     wire        cpu_bus_axi_rvalid;
     wire        cpu_bus_axi_rready;
-    wire [BUS_WIDTH-1:0] cpu_bus_axi_rdata;
+    wire [31:0] cpu_bus_axi_rdata;
     wire [1:0]  cpu_bus_axi_rresp;
     wire        cpu_bus_axi_rlast;
     wire        cpu_bus_axi_awvalid;
@@ -114,8 +124,8 @@ module soc_top #(
     wire [2:0]  cpu_bus_axi_awsize;
     wire        cpu_bus_axi_wvalid;
     wire        cpu_bus_axi_wready;
-    wire [BUS_WIDTH-1:0] cpu_bus_axi_wdata;
-    wire [BUS_WIDTH/8-1:0] cpu_bus_axi_wstrb;
+    wire [31:0] cpu_bus_axi_wdata;
+    wire [3:0] cpu_bus_axi_wstrb;
     wire        cpu_bus_axi_wlast;
     wire        cpu_bus_axi_bvalid;
     wire        cpu_bus_axi_bready;
@@ -354,16 +364,17 @@ module soc_top #(
         .ENABLE_COUNTERS(1),
         .ENABLE_COUNTERS64(0),
         .ENABLE_REGS_16_31(1),
-        .ENABLE_REGS_DUALPORT(1),
-        .TWO_STAGE_SHIFT(1),
-        .BARREL_SHIFTER(0),
-        .TWO_CYCLE_COMPARE(0),
-        .TWO_CYCLE_ALU(0),
+        .ENABLE_REGS_DUALPORT(CPU_ENABLE_REGS_DUALPORT),
+        .TWO_STAGE_SHIFT(CPU_TWO_STAGE_SHIFT),
+        .BARREL_SHIFTER(CPU_BARREL_SHIFTER),
+        .TWO_CYCLE_COMPARE(CPU_TWO_CYCLE_COMPARE),
+        .TWO_CYCLE_ALU(CPU_TWO_CYCLE_ALU),
         .COMPRESSED_ISA(0),
         .CATCH_MISALIGN(1),
         .CATCH_ILLINSN(1),
-        .ENABLE_MUL(1),
-        .ENABLE_DIV(1),
+        .ENABLE_MUL(CPU_ENABLE_MUL),
+        .ENABLE_FAST_MUL(CPU_ENABLE_FAST_MUL),
+        .ENABLE_DIV(CPU_ENABLE_DIV),
         .ENABLE_IRQ(0),
         .PROGADDR_RESET(CPU_RAM_BASE),
         .STACKADDR(CPU_RAM_BASE + (CPU_MEM_DP * 4))
@@ -399,7 +410,7 @@ module soc_top #(
 
     pico_native_to_axi #(
         .ADDR_WIDTH(REG_WIDTH),
-        .DATA_WIDTH(BUS_WIDTH),
+        .DATA_WIDTH(32),
         .ENABLE_ICACHE(CPU_ENABLE_ICACHE)
     ) u_pico_axi_bridge (
         .clk(clk),
@@ -448,7 +459,7 @@ module soc_top #(
         if (CPU_AXI_READ_TIMING_BUFFER) begin : g_cpu_axi_read_timing_buffer
             soc_axi_read_pingpong_buffer #(
                 .ADDR_WIDTH(REG_WIDTH),
-                .DATA_WIDTH(BUS_WIDTH)
+                .DATA_WIDTH(32)
             ) u_cpu_axi_read_pingpong (
                 .clk(clk),
                 .rst_n(rst_n),
@@ -503,7 +514,7 @@ module soc_top #(
         if (CPU_AXI_WRITE_TIMING_BUFFER) begin : g_cpu_axi_write_timing_buffer
             soc_axi_write_pingpong_buffer #(
                 .ADDR_WIDTH(REG_WIDTH),
-                .DATA_WIDTH(BUS_WIDTH)
+                .DATA_WIDTH(32)
             ) u_cpu_axi_write_pingpong (
                 .clk(clk),
                 .rst_n(rst_n),
@@ -776,6 +787,7 @@ module soc_top #(
     );
 
     npu_axil_top #(
+        .DMA_MAX_BYTES(DMA_MAX_BYTES),
         .AXIL_DATA_WIDTH(AXIL_DATA_WIDTH),
         .AXIL_ADDR_WIDTH(AXIL_ADDR_WIDTH),
         .WEIGHT_WIDTH(WEIGHT_WIDTH),
@@ -1111,7 +1123,8 @@ module soc_top #(
     endgenerate
 
     soc_axi_ram #(
-        .DP(CPU_MEM_DP),
+        .READ_FIRST_LATENCY(RAM_READ_FIRST_LATENCY),
+        .DP(CPU_MEM_DP * 32 / BUS_WIDTH),
         .DW(BUS_WIDTH),
         .AW(REG_WIDTH),
         .MEM_PATH(CPU_MEM_PATH),
@@ -1157,7 +1170,7 @@ module soc_top #(
 
     soc_axil_pingpong_buffer #(
         .ADDR_WIDTH(REG_WIDTH),
-        .DATA_WIDTH(BUS_WIDTH)
+        .DATA_WIDTH(32)
     ) u_uart_axil_pingpong (
         .clk(clk),
         .rst_n(rst_n),
@@ -1203,7 +1216,7 @@ module soc_top #(
 
     soc_axil_simpleuart #(
         .AXIL_ADDR_WIDTH(REG_WIDTH),
-        .AXIL_DATA_WIDTH(BUS_WIDTH)
+        .AXIL_DATA_WIDTH(32)
     ) u_soc_uart (
         .clk(clk),
         .rst_n(rst_n),
@@ -1233,7 +1246,7 @@ module soc_top #(
 
     soc_axil_ctrl #(
         .AXIL_ADDR_WIDTH(REG_WIDTH),
-        .AXIL_DATA_WIDTH(BUS_WIDTH)
+        .AXIL_DATA_WIDTH(32)
     ) u_soc_ctrl (
         .clk(clk),
         .rst_n(rst_n),
