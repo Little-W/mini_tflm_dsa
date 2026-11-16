@@ -9,13 +9,13 @@
 #endif
 
 /* Select the shared-DMA Conv dataflow for all NMSIS s8 entry points in this
- * translation unit: 0 = WS (default), 1 = IS. Unsupported hardware still
+ * translation unit: 0 = WS, 1 = IS, 2 = automatic (default). Unsupported hardware
  * falls back before START; this is not a runtime global configuration. */
 #ifndef DSA_NN_CONV_DATAFLOW_MODE
-#define DSA_NN_CONV_DATAFLOW_MODE 0
+#define DSA_NN_CONV_DATAFLOW_MODE 2
 #endif
-#if DSA_NN_CONV_DATAFLOW_MODE != 0 && DSA_NN_CONV_DATAFLOW_MODE != 1
-#error "DSA_NN_CONV_DATAFLOW_MODE must be 0 (WS) or 1 (IS)"
+#if DSA_NN_CONV_DATAFLOW_MODE < 0 || DSA_NN_CONV_DATAFLOW_MODE > 2
+#error "DSA_NN_CONV_DATAFLOW_MODE must be 0 (WS), 1 (IS), or 2 (automatic)"
 #endif
 
 #if DSA_NN_CONV_ENABLE
@@ -108,12 +108,12 @@ int riscv_convolve_s8_try_dsa(
     if (dsa_conv_s8_validate(&c) != DSA_SUCCESS) return 0;
     {
         const uint32_t required_caps = DSA_CONV_CAP_S8 | DSA_CONV_CAP_NARROW_READ |
-            (DSA_NN_CONV_DATAFLOW_MODE ? DSA_CONV_CAP_IS : 0u);
+            (DSA_NN_CONV_DATAFLOW_MODE == 1 ? DSA_CONV_CAP_IS : 0u);
         if ((dsa_conv_capabilities() & required_caps) != required_caps) return 0;
     }
     /* Only channel parameters are inspected on the CPU; no activation/window
      * expansion or filter dot product occurs here. This conservative bound
-     * ensures agreement with NMSIS's s32, double-rounding numeric contract. */
+     * ensures agreement with the repository's s32 integer RNE quantization. */
     lo = -128 + p->input_offset; hi = 127 + p->input_offset;
     if (lo < 0) lo = -lo;
     if (hi < 0) hi = -hi;
@@ -127,6 +127,46 @@ int riscv_convolve_s8_try_dsa(
         channel_bound = bound + (uint64_t)abs_bias;
         if (channel_bound > INT32_MAX) return 0;
     }
+#if DSA_NN_POINTWISE_DIRECT && !DSA_PCR_ENGINE
+    if (groups == 1u && f->h == 1 && f->w == 1 &&
+        p->stride.h == 1 && p->stride.w == 1 &&
+        p->dilation.h == 1 && p->dilation.w == 1 &&
+        p->padding.h == 0 && p->padding.w == 0 &&
+        in->h == out->h && in->w == out->w &&
+        (uint64_t)out->h * out->w <= 65535u) {
+        dsa_matmul_config_t direct;
+        if (dsa_reg_read(NPU_REG_STATUS) & (1u << 1)) {
+            *status = RISCV_NMSIS_NN_NO_IMPL_ERROR;
+            return 1;
+        }
+        dsa_matmul_config_init(&direct);
+        direct.rhs_ptr = filter;
+        direct.bias_ptr = bias;
+        direct.K = (uint32_t)out->h * (uint32_t)out->w;
+        direct.N = (uint32_t)in->c;
+        direct.M = (uint32_t)out->c;
+        direct.lhs_row_stride = direct.rhs_row_stride = (uint32_t)in->c;
+        direct.dst_row_stride = (uint32_t)out->c;
+        direct.quant_mode = DSA_QUANT_PER_CHANNEL;
+        direct.dst_mult_ptr = q->multiplier;
+        direct.dst_shift_ptr = q->shift;
+        direct.lhs_offset = p->input_offset;
+        direct.dst_offset = p->output_offset;
+        direct.act_min = p->activation.min;
+        direct.act_max = p->activation.max;
+        direct.dataflow_mode = (dsa_dataflow_mode_t)DSA_NN_CONV_DATAFLOW_MODE;
+        for (batch = 0u; batch < (uint32_t)in->n; ++batch) {
+            direct.lhs_ptr = input + batch * input_batch;
+            direct.dst_ptr = output + batch * output_batch;
+            if (dsa_matmul_execute(&direct) != DSA_SUCCESS) {
+                *status = RISCV_NMSIS_NN_NO_IMPL_ERROR;
+                return 1;
+            }
+        }
+        *status = RISCV_NMSIS_NN_SUCCESS;
+        return 1;
+    }
+#endif
     for (batch = 0; batch < (uint32_t)in->n; ++batch) {
         c.input_base = (uint32_t)((uintptr_t)input + batch * input_batch);
         for (group = 0; group < groups; ++group) {

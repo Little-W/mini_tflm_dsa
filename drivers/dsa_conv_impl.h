@@ -34,8 +34,9 @@ uint32_t dsa_conv_capabilities(void)
 
 uint32_t dsa_conv_s8_validate(const dsa_conv_s8_config_t *c)
 {
-    uint64_t n, rows, input_bytes, stride;
-    gempact_tiling_t tiling;
+    uint64_t n, rows, input_bytes, stride, filter_bytes;
+    dsa_schedule_t schedule;
+    dsa_matrix_limits_t limits;
     if (!c) return DSA_ERR_NULL_PTR;
     if (!dsa_conv_dim(c->input_h) || !dsa_conv_dim(c->input_w) ||
         !dsa_conv_dim(c->input_c) || !dsa_conv_dim(c->group_c) ||
@@ -47,7 +48,7 @@ uint32_t dsa_conv_s8_validate(const dsa_conv_s8_config_t *c)
         (uint64_t)c->group_offset + c->group_c > c->input_c ||
         c->pad_top > 65535u || c->pad_left > 65535u ||
         c->dst_row_stride < c->output_channels || c->bypass_cache > 1u ||
-        c->dataflow_mode > 1u ||
+        c->dataflow_mode > DSA_SCHEDULE_AUTO || c->rhs_tile_packed > 1u ||
         c->input_offset < -127 || c->input_offset > 128 ||
         c->output_offset < -128 || c->output_offset > 127 ||
         c->activation_min < -128 || c->activation_max > 127 ||
@@ -56,12 +57,15 @@ uint32_t dsa_conv_s8_validate(const dsa_conv_s8_config_t *c)
     rows = (uint64_t)c->output_h * c->output_w;
     input_bytes = (uint64_t)c->input_h * c->input_w * c->input_c;
     stride = ((n + DSA_TILE_SIZE - 1u) / DSA_TILE_SIZE) * DSA_TILE_SIZE * 2u;
+    filter_bytes = c->rhs_tile_packed ?
+        dsa_matrix_packed_bytes(c->output_channels,(uint32_t)n,1u):n*c->output_channels;
     /* Conservative NMSIS s8 contract; the scalar reference uses a u16 column
      * count, and the hardware uses s32 accumulation. Larger reductions fall
      * back instead of silently truncating either implementation's counters. */
     if (n > 65535u || rows > UINT32_MAX || stride > UINT32_MAX ||
         !dsa_conv_span(c->input_base, input_bytes) ||
-        !dsa_conv_span(c->filter_base, n * c->output_channels) ||
+        !dsa_conv_span(c->filter_base, filter_bytes) ||
+        (c->rhs_tile_packed && (c->filter_base&3u)) ||
         !dsa_conv_span(c->output_base,
                        (rows - 1u) * c->dst_row_stride + c->output_channels) ||
         !dsa_conv_span(c->multiplier_base, (uint64_t)c->output_channels * 4u) ||
@@ -69,10 +73,9 @@ uint32_t dsa_conv_s8_validate(const dsa_conv_s8_config_t *c)
         ((c->multiplier_base | c->shift_base | c->bias_base) & 3u) ||
         (c->bias_base && !dsa_conv_span(c->bias_base, (uint64_t)c->output_channels * 4u)))
         return DSA_ERR_INVALID_DIM;
-    if (!gempact_plan_capacity((uint32_t)rows, c->output_channels,
-            DSA_TILE_SIZE, DSA_IA_CACHE_BLOCKS, DSA_PS_FRAME_COUNT,
-            c->ia_reuse_num, c->w_reuse_num, c->dataflow_mode != 0u,
-            1, DSA_PS_POOL_BYTES, &tiling, 0))
+    dsa_matrix_default_limits(&limits);
+    limits.flags=DSA_MATRIX_CAP_RHS_TILE_PACKED | DSA_MATRIX_CAP_IS_SUPPORTED;
+    if (dsa_conv_plan(c,&limits,1u,&schedule)!=DSA_SUCCESS)
         return DSA_ERR_INVALID_DIM;
     return DSA_SUCCESS;
 }
@@ -80,6 +83,8 @@ uint32_t dsa_conv_s8_validate(const dsa_conv_s8_config_t *c)
 uint32_t dsa_conv_s8_execute(const dsa_conv_s8_config_t *c)
 {
     gempact_tiling_t tiling;
+    dsa_schedule_t schedule;
+    dsa_matrix_limits_t limits;
     uint32_t status, ctrl, result, n, rows, stride, caps;
     uint32_t timeout = DSA_MATMUL_TIMEOUT;
     status = dsa_conv_s8_validate(c);
@@ -87,15 +92,15 @@ uint32_t dsa_conv_s8_execute(const dsa_conv_s8_config_t *c)
     caps = dsa_conv_capabilities();
     if ((caps & (DSA_CONV_CAP_S8 | DSA_CONV_CAP_NARROW_READ)) !=
         (DSA_CONV_CAP_S8 | DSA_CONV_CAP_NARROW_READ)) return DSA_ERR_UNSUPPORTED;
-    if (c->dataflow_mode && !(caps & DSA_CONV_CAP_IS)) return DSA_ERR_UNSUPPORTED;
+    if (c->dataflow_mode==DSA_SCHEDULE_IS && !(caps & DSA_CONV_CAP_IS)) return DSA_ERR_UNSUPPORTED;
     if (dsa_reg_read(NPU_REG_STATUS) & (1u << 1)) return DSA_ERR_BUSY;
     n = c->kernel_h * c->kernel_w * c->group_c;
     rows = c->output_h * c->output_w;
     stride = ((n + DSA_TILE_SIZE - 1u) / DSA_TILE_SIZE) * DSA_TILE_SIZE * 2u;
-    if (!gempact_plan_capacity(rows, c->output_channels, DSA_TILE_SIZE,
-            DSA_IA_CACHE_BLOCKS, DSA_PS_FRAME_COUNT, c->ia_reuse_num,
-            c->w_reuse_num, c->dataflow_mode != 0u, 1,
-            DSA_PS_POOL_BYTES, &tiling, 0)) return DSA_ERR_INVALID_DIM;
+    dsa_matrix_query(&limits);
+    status=dsa_conv_plan(c,&limits,(caps&DSA_CONV_CAP_IS)!=0u,&schedule);
+    if (status!=DSA_SUCCESS) return status;
+    tiling=schedule.tiling;
 
     dsa_reg_write(NPU_REG_LHS_BASE, c->input_base);
     dsa_reg_write(NPU_REG_RHS_BASE, c->filter_base);
@@ -120,7 +125,7 @@ uint32_t dsa_conv_s8_execute(const dsa_conv_s8_config_t *c)
     dsa_reg_write(NPU_REG_ROW_TAIL_TILES, tiling.row_tail_tiles);
     dsa_reg_write(NPU_REG_COL_GROUPS, tiling.col_groups);
     dsa_reg_write(NPU_REG_COL_TAIL_TILES, tiling.col_tail_tiles);
-    dsa_reg_write(NPU_REG_DATAFLOW, c->dataflow_mode);
+    dsa_reg_write(NPU_REG_DATAFLOW, schedule.dataflow_mode);
     dsa_reg_write(NPU_REG_CONV_INPUT_BASE, c->input_base);
     dsa_reg_write(NPU_REG_CONV_INPUT_HW, dsa_conv_pair(c->input_h, c->input_w));
     dsa_reg_write(NPU_REG_CONV_CHANNELS, dsa_conv_pair(c->input_c, c->group_c));
@@ -134,7 +139,8 @@ uint32_t dsa_conv_s8_execute(const dsa_conv_s8_config_t *c)
     dsa_reg_write(NPU_REG_STATUS, 1u << 2);
     /* INT16 IA -> existing INT8 output pipeline, not the separate 16x8 mode. */
     ctrl = (1u << 0) | (1u << 1) | (1u << 2) | (1u << 4) | NPU_CTRL_HW_CONV;
-    if (c->dataflow_mode) ctrl |= 1u << 3;
+    if (schedule.dataflow_mode) ctrl |= 1u << 3;
+    if (c->rhs_tile_packed) ctrl |= NPU_CTRL_RHS_TILE_PACKED;
     if (c->bypass_cache) ctrl |= NPU_CTRL_CONV_BYPASS;
     dsa_memory_barrier();
     dsa_reg_write(NPU_REG_CTRL, ctrl);

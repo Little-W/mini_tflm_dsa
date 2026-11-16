@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-/* Runtime selection applies to the s8 NMSIS Conv, DW, pooling, FC and Add paths.
+/* Runtime selection applies to the s8 Conv, DW, pooling, FC, Add and Softmax paths.
  * Set the mask while the accelerator is idle, before invoking a layer.
  * Compile-time DSA_NN_*_ENABLE settings remain authoritative.
  */
@@ -13,8 +13,9 @@
 #define DSA_NN_ACCEL_POOL (1u << 2)
 #define DSA_NN_ACCEL_FC   (1u << 3)
 #define DSA_NN_ACCEL_ADD  (1u << 4)
+#define DSA_NN_ACCEL_SOFTMAX (1u << 5)
 #define DSA_NN_ACCEL_ALL (DSA_NN_ACCEL_CONV | DSA_NN_ACCEL_DW | \
-                          DSA_NN_ACCEL_POOL | DSA_NN_ACCEL_FC | DSA_NN_ACCEL_ADD)
+                          DSA_NN_ACCEL_POOL | DSA_NN_ACCEL_FC | DSA_NN_ACCEL_ADD | DSA_NN_ACCEL_SOFTMAX)
 
 #ifndef DSA_NN_RUNTIME_CONTROL
 #define DSA_NN_RUNTIME_CONTROL 0

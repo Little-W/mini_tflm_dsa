@@ -2,6 +2,11 @@
 #ifndef DSA_CONV_H
 #define DSA_CONV_H
 #include <stdint.h>
+#include "dsa_matrix.h"
+
+#ifndef DSA_NN_POINTWISE_DIRECT
+#define DSA_NN_POINTWISE_DIRECT 1
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,7 +44,7 @@ extern "C" {
  * for a grouped convolution; output_channels is this group's Cout.
  * Input is s8; block DMA applies input_offset and returns corrected s16
  * matrix blocks to the active loader (IA in WS, kernel in IS).
- * Bias/accumulation are s32; output is s8 with per-channel double rounding.
+ * Bias/accumulation are s32; output is s8 with per-channel integer round-to-nearest, ties-to-even.
  * The caller guarantees no signed accumulator/pre-quantization overflow.
  */
 typedef struct {
@@ -52,9 +57,10 @@ typedef struct {
     uint32_t output_channels, dst_row_stride;
     int32_t input_offset, output_offset, activation_min, activation_max;
     uint32_t bypass_cache, ia_reuse_num, w_reuse_num;
-    /* 0: WS, 1: IS. Zero-initialized existing callers retain WS behavior.
+    /* 0: WS, 1: IS, 2: automatic. Zero-initialized callers retain WS behavior.
      * Public dimensions, NHWC input and OHWI filter layout do not change. */
     uint32_t dataflow_mode;
+    uint32_t rhs_tile_packed;
 } dsa_conv_s8_config_t;
 
 uint32_t dsa_conv_capabilities(void);

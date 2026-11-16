@@ -21,6 +21,7 @@ extern "C" {
 #define NPU_REG_VECTOR_ADD_INPUT2_MULT  0x0d4u
 #define NPU_REG_VECTOR_ADD_INPUT2_SHIFT 0x0d8u
 #define NPU_REG_VECTOR_ADD_LEFT_SHIFT   0x0dcu
+#define NPU_REG_SOFTMAX_MAX_DEPTH 0x0e0u
 #define DSA_VECTOR_VECTOR_S16    (1u << 8)
 
 #define DSA_VECTOR_CAP_DW_S8     (1u << 0)
@@ -29,6 +30,7 @@ extern "C" {
 #define DSA_VECTOR_CAP_VECTOR_S16 (1u << 3)
 #define DSA_VECTOR_CAP_LARGE_POOL (1u << 4)
 #define DSA_VECTOR_CAP_ADD_S8     (1u << 5)
+#define DSA_VECTOR_CAP_SOFTMAX_S8 (1u << 6)
 #define DSA_POOL_MAX_TAPS 256u
 #define DSA_VECTOR_CAP_VERSION  1u
 #define DSA_DW_MAX_TAPS     49u
@@ -43,7 +45,8 @@ typedef enum {
     DSA_VECTOR_OP_MIN = 6,
     DSA_VECTOR_OP_DOT = 7,
     DSA_VECTOR_OP_HADAMARD = 8,
-    DSA_VECTOR_OP_ADD_S8 = 9
+    DSA_VECTOR_OP_ADD_S8 = 9,
+    DSA_VECTOR_OP_SOFTMAX_S8 = 10
 } dsa_vector_operation_t;
 
 typedef struct {
@@ -76,6 +79,8 @@ static inline int dsa_vector_add_quantization_valid(
  * or signed s16; reduction outputs are one s32 and Hadamard outputs are
  * length s32 elements. Reduction arithmetic uses modulo 2^32 accumulation.
  * ADD_S8 reads two length-byte inputs and writes one length-byte output.
+ * SOFTMAX_S8 reads one length-byte input and a 256-entry Q31 exponent table
+ * at rhs_base, then writes one length-byte output with zero point -128.
  * Addresses are 32-bit bus addresses. Quantization arrays contain one
  * s32 entry per channel. A zero bias_base selects zero bias.
  * Output storage must be separate from every input and parameter array.

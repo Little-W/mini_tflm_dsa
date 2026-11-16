@@ -80,9 +80,9 @@ static void test_low_level(void)
     assert(regs[NPU_REG_LHS_BASE/4] == c.input_base && regs[NPU_REG_RHS_BASE/4] == c.filter_base);
 #if DSA_TILE_SIZE == 16u && DSA_IA_CACHE_BLOCKS == 4u && DSA_PS_FRAME_COUNT == 16u && DSA_PS_POOL_BYTES == 0u
     /* IS streams Cout rows and stations output-position columns: 1 x 7 tiles. */
-    assert(regs[NPU_REG_IA_REUSE/4] == 1u && regs[NPU_REG_W_REUSE/4] == 4u);
+    assert(regs[NPU_REG_IA_REUSE/4] == 1u && regs[NPU_REG_W_REUSE/4] == 8u);
     assert(regs[NPU_REG_ROW_GROUPS/4] == 1u && regs[NPU_REG_ROW_TAIL_TILES/4] == 1u);
-    assert(regs[NPU_REG_COL_GROUPS/4] == 2u && regs[NPU_REG_COL_TAIL_TILES/4] == 3u);
+    assert(regs[NPU_REG_COL_GROUPS/4] == 1u && regs[NPU_REG_COL_TAIL_TILES/4] == 7u);
 #endif
     reset_mock(); caps = 0x00010003u;
     assert(dsa_conv_s8_execute(&c) == DSA_ERR_UNSUPPORTED && !writes && !starts);
@@ -116,7 +116,7 @@ static void test_low_level(void)
     assert(dsa_conv_s8_execute(&bad) == DSA_ERR_INVALID_DIM && !writes);
     bad = c; bad.kernel_h = bad.kernel_w = 65535;
     assert(dsa_conv_s8_execute(&bad) == DSA_ERR_INVALID_DIM && !writes);
-    bad = c; bad.dataflow_mode = 2;
+    bad = c; bad.dataflow_mode = 3;
     assert(dsa_conv_s8_execute(&bad) == DSA_ERR_INVALID_DIM && !writes);
     /* Existing GEMM must clear Conv/bypass mode on a following command. */
     reset_mock();
@@ -188,7 +188,7 @@ static void test_dispatch(void)
     assert(riscv_convolve_wrapper_s8_acc(NULL,&p,&q,&in,input,&f,filter,&bd,bias,&out,output) == RISCV_NMSIS_NN_NO_IMPL_ERROR && starts == 0);
     reset_mock(); caps = 0;
     assert(riscv_convolve_s8_acc(NULL,&p,&q,&in,input,&f,filter,&bd,bias,NULL,&out,output) == RISCV_NMSIS_NN_ARG_ERROR && !starts);
-    reset_mock(); shift[0] = 30;
+    reset_mock(); shift[0] = 31;
     assert(!riscv_convolve_s8_try_dsa(&p,&q,&in,input,&f,filter,bias,NULL,&out,output,&status) && !starts);
     shift[0] = -3;
     reset_mock(); f.c = 0;

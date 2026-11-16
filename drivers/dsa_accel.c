@@ -1,5 +1,6 @@
 #include "dsa_accel.h"
 #include "gempact_tiling.h"
+#include "dsa_schedule_impl.h"
 
 #ifndef DSA_MATMUL_TIMEOUT
 #define DSA_MATMUL_TIMEOUT 2000000u
@@ -219,37 +220,34 @@ void dsa_matmul_config_init(dsa_matmul_config_t *config) {
     config->rhs_dtype = DSA_DTYPE_S8;
     config->bias_dtype = DSA_DTYPE_S32;
     config->out_dtype = DSA_DTYPE_S8;
-    config->dataflow_mode = DSA_DATAFLOW_WS;
+    config->dataflow_mode = DSA_DATAFLOW_AUTO;
     config->quant_mode = DSA_QUANT_PER_TENSOR;
     config->act_min = -128;
     config->act_max = 127;
 }
 
 static uint32_t configure_mmio_registers(const dsa_matmul_config_t *config,
-                                         uint32_t ia_reuse_num,
-                                         uint32_t w_reuse_num) {
+                                         uint32_t *dataflow_mode)
+{
+    dsa_schedule_t schedule;
+    dsa_matrix_limits_t limits;
     gempact_tiling_t tiling;
-    int mode16x8=(config->lhs_dtype==DSA_DTYPE_S16 && config->rhs_dtype==DSA_DTYPE_S8 &&
-                  config->bias_dtype==DSA_DTYPE_S32 && config->out_dtype==DSA_DTYPE_S16);
+    uint32_t status;
 #if DSA_PCR_ENGINE
     if (config->lhs_dtype!=DSA_DTYPE_S8 || config->rhs_dtype!=DSA_DTYPE_S8 ||
         config->out_dtype!=DSA_DTYPE_S8 || config->bias_ptr ||
         config->lhs_offset || config->rhs_offset || !config->N ||
         (config->N&15u) || config->N>=(1u<<20)) return DSA_ERR_INVALID_DIM;
 #endif
-    if (!gempact_plan_capacity(config->K,config->M,DSA_TILE_SIZE,DSA_IA_CACHE_BLOCKS,
-        DSA_PS_FRAME_COUNT,ia_reuse_num,w_reuse_num,
-        config->dataflow_mode==DSA_DATAFLOW_IS && !mode16x8,
-        config->quant_mode==DSA_QUANT_PER_CHANNEL,DSA_PS_POOL_BYTES,&tiling,0)) return DSA_ERR_INVALID_DIM;
-    if ((config->lhs_ptr == 0u) || (config->rhs_ptr == 0u) || (config->dst_ptr == 0u)) {
+    if (!config->lhs_ptr || !config->rhs_ptr || !config->dst_ptr)
         return DSA_ERR_NULL_PTR;
-    }
-
-    if (config->quant_mode == DSA_QUANT_PER_CHANNEL) {
-        if ((config->dst_mult_ptr == 0u) || (config->dst_shift_ptr == 0u)) {
-            return DSA_ERR_NULL_PTR;
-        }
-    }
+    if (config->quant_mode==DSA_QUANT_PER_CHANNEL &&
+        (!config->dst_mult_ptr || !config->dst_shift_ptr)) return DSA_ERR_NULL_PTR;
+    dsa_matrix_query(&limits);
+    status=dsa_matmul_plan(config,&limits,&schedule);
+    if (status!=DSA_SUCCESS) return status;
+    tiling=schedule.tiling;
+    *dataflow_mode=schedule.dataflow_mode;
 
     dsa_reg_write(NPU_REG_LHS_BASE, config->lhs_ptr);
     dsa_reg_write(NPU_REG_RHS_BASE, config->rhs_ptr);
@@ -288,27 +286,13 @@ static uint32_t configure_mmio_registers(const dsa_matmul_config_t *config,
     return DSA_SUCCESS;
 }
 
-uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
-    uint32_t status;
-    uint32_t ctrl;
-    uint32_t cfg_word;
-    uint32_t timeout = DSA_MATMUL_TIMEOUT;
-    uint32_t ia_reuse_num;
-    uint32_t w_reuse_num;
-    uint32_t result;
-
-    if (config == 0) {
-        return DSA_ERR_NULL_PTR;
-    }
-
-    ia_reuse_num = config->ia_reuse_num;
-    w_reuse_num = config->w_reuse_num;
-
-
-    status = configure_mmio_registers(config, ia_reuse_num, w_reuse_num);
-    if (status != DSA_SUCCESS) {
-        return status;
-    }
+uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config)
+{
+    uint32_t status,ctrl,cfg_word,result,dataflow_mode;
+    uint32_t timeout=DSA_MATMUL_TIMEOUT;
+    if (!config) return DSA_ERR_NULL_PTR;
+    status=configure_mmio_registers(config,&dataflow_mode);
+    if (status!=DSA_SUCCESS) return status;
 
     cfg_word = dsa_build_cfg_word(config);
     (void)cfg_word;
@@ -322,7 +306,7 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
     if (config->quant_mode == DSA_QUANT_PER_CHANNEL) {
         ctrl |= NPU_CTRL_PER_CHANNEL;
     }
-    if (config->dataflow_mode == DSA_DATAFLOW_IS) {
+    if (dataflow_mode == DSA_DATAFLOW_IS) {
         ctrl |= NPU_CTRL_DATAFLOW_IS;
     }
     if ((config->lhs_dtype == DSA_DTYPE_S16) &&
@@ -331,6 +315,8 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
         (config->out_dtype == DSA_DTYPE_S16)) {
         ctrl |= NPU_CTRL_CFG_16X8;
     }
+    if (config->lhs_tile_packed) ctrl |= NPU_CTRL_LHS_TILE_PACKED;
+    if (config->rhs_tile_packed) ctrl |= NPU_CTRL_RHS_TILE_PACKED;
     dsa_memory_barrier();
     dsa_reg_write(NPU_REG_CTRL, ctrl);
 
@@ -361,3 +347,5 @@ uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config) {
 /* Shared explicit Conv MMIO protocol for both existing driver frontends. */
 #include "dsa_conv_impl.h"
 #include "dsa_vector_impl.h"
+
+#include "dsa_prepared_impl.h"

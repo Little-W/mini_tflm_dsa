@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "../../../../dsa_matrix.h"
 #include "../../../../dsa_conv.h"
 #include "../../../../dsa_vector.h"
 #include "../../../../dsa_dw_pool.h"
@@ -176,7 +177,8 @@ typedef enum {
 
 typedef enum {
     DSA_DATAFLOW_WS = 0,
-    DSA_DATAFLOW_IS = 1
+    DSA_DATAFLOW_IS = 1,
+    DSA_DATAFLOW_AUTO = 2
 } dsa_dataflow_mode_t;
 
 typedef struct {
@@ -216,8 +218,12 @@ typedef struct {
 
     uint32_t ia_reuse_num;
     uint32_t w_reuse_num;
+    uint32_t lhs_tile_packed, rhs_tile_packed;
 } dsa_matmul_config_t;
 
+/* Pure schedule selection; use dsa_matrix_query once during preparation. */
+uint32_t dsa_matmul_plan(const dsa_matmul_config_t *config,
+    const dsa_matrix_limits_t *limits, dsa_schedule_t *schedule);
 uint32_t dsa_matmul_execute(const dsa_matmul_config_t *config);
 uint32_t dsa_build_cfg_word(const dsa_matmul_config_t *config);
 void dsa_matmul_config_init(dsa_matmul_config_t *config);

@@ -57,8 +57,19 @@ uint32_t dsa_vector_validate(const dsa_vector_config_t *c)
 {
     uint64_t input_bytes, output_bytes, taps, parameters;
     if (!c) return DSA_ERR_NULL_PTR;
-    if (c->operation > DSA_VECTOR_OP_ADD_S8 || c->vector_s16 > 1u ||
+    if (c->operation > DSA_VECTOR_OP_SOFTMAX_S8 || c->vector_s16 > 1u ||
         c->bypass_cache > 1u) return DSA_ERR_INVALID_DIM;
+
+    if (c->operation == DSA_VECTOR_OP_SOFTMAX_S8) {
+        if (c->vector_s16 || !c->length || (c->rhs_base & 3u) ||
+            !dsa_vector_span(c->input_base, c->length) ||
+            !dsa_vector_span(c->rhs_base, 1024u) ||
+            !dsa_vector_span(c->output_base, c->length) ||
+            !dsa_vector_separate(c->input_base, c->length, c->output_base, c->length) ||
+            !dsa_vector_separate(c->rhs_base, 1024u, c->output_base, c->length))
+            return DSA_ERR_INVALID_DIM;
+        return DSA_SUCCESS;
+    }
 
     if (c->operation == DSA_VECTOR_OP_ADD_S8) {
         if (c->vector_s16 || !c->length ||
@@ -141,7 +152,8 @@ uint32_t dsa_vector_execute(const dsa_vector_config_t *c)
     uint32_t caps, required, ctrl, polls, result, tap_capacity;
     if (status != DSA_SUCCESS) return status;
     caps = dsa_vector_capabilities();
-    required = c->operation == DSA_VECTOR_OP_ADD_S8 ? DSA_VECTOR_CAP_ADD_S8 :
+    required = c->operation == DSA_VECTOR_OP_SOFTMAX_S8 ? DSA_VECTOR_CAP_SOFTMAX_S8 :
+               c->operation == DSA_VECTOR_OP_ADD_S8 ? DSA_VECTOR_CAP_ADD_S8 :
                c->operation == DSA_VECTOR_OP_DW_S8 ? DSA_VECTOR_CAP_DW_S8 :
                c->operation < DSA_VECTOR_OP_SUM ? DSA_VECTOR_CAP_POOL_S8 :
                c->vector_s16 ? DSA_VECTOR_CAP_VECTOR_S16 : DSA_VECTOR_CAP_VECTOR_S8;
@@ -152,6 +164,8 @@ uint32_t dsa_vector_execute(const dsa_vector_config_t *c)
         (c->operation < DSA_VECTOR_OP_SUM &&
          c->kernel_h * c->kernel_w > tap_capacity))
         return DSA_ERR_UNSUPPORTED;
+    if (c->operation == DSA_VECTOR_OP_SOFTMAX_S8 &&
+        c->length > dsa_reg_read(NPU_REG_SOFTMAX_MAX_DEPTH)) return DSA_ERR_UNSUPPORTED;
     if (dsa_reg_read(NPU_REG_STATUS) & (1u << 1)) return DSA_ERR_BUSY;
 
     dsa_reg_write(NPU_REG_LHS_BASE, c->input_base);
