@@ -3,6 +3,10 @@
 本目录介绍 TFLM AI DSA 的硬件结构、构建方法和验证入口。
 
 - [快速开始](getting-started.md)：获取依赖、选择模型及运行仿真。
+- [64 位 AXI 比较配置](axi64_configuration.md)：性能配置 PicoRV32、等容量数据 RAM、同步读取、可配置首拍延迟和多个在途请求。
+- [64 位 AXI 算子比较](axi64_operators_sync8.md)：相同内存时序下的 GEMM、Conv、DW，以及 Dense 逐项 1.2 倍性能检查。
+- [64 位 AXI 完整模型比较](fair_axi64_models.md)：四个 TFLM 模型、第三方 DWConv Gemmini 与硬件 Im2Col、逐层输出检查和 1000 倍周期预算。
+- [64 位 AXI 瓶颈分析](axi64_bottlenecks.md)：Dense 外部带宽、DW 窗口返回、Conv 数据复用和部分和调度的实测与理论下界。
 - [Gemmini 对等测试与性能分析](gemmini_comparison.md)：三种 Gemmini 存储配置、34 个共同算子、四个完整模型、PE 利用率、存储带宽与初始化开销。
 - [硬件架构](architecture.md)：SoC、NPU 和论文计算引擎的组成。
 - [向量计算引擎](vector_engine.md)：共享 DW、池化、Add 数据通路，输入复用、最近偶数舍入和完整模型测试；Softmax 与共享窗口缓存的当前设计见 Gemmini 性能分析。
