@@ -57,9 +57,11 @@ def filelist_sources(path,cwd,picorv32):
     return sources,arguments
 
 
-def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=524288,pe_count=8,picorv32=None):
+def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=524288,pe_count=8,picorv32=None,
+              ia_cache_blocks=8,ps_storage_rows=799,s16_output_banks=4):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
-    if jobs<1 or pe_count not in (4,8) or icache not in (0,1) or ram_words<1:
+    if (jobs<1 or pe_count not in (4,8) or icache not in (0,1) or ram_words<1 or
+        ia_cache_blocks<1 or ps_storage_rows<0 or s16_output_banks<0):
         raise ValueError('Invalid simulator configuration')
     if picorv32 is None:
         picorv32=os.environ.get('PICORV32_ROOT')
@@ -79,11 +81,17 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=5
                 {str(p):digest(p) for p in sorted(set(sources)) if not p.is_relative_to(ROOT)})
     before,external_before=hashes();binary=out/'obj/Vtb_model_benchmark';manifest_path=out/'build.json'
     profile={'size':16,'pe_count':pe_count,'ram_words':ram_words,'cpu_icache':icache,
-             'ia_cache_blocks':4,'ps_frame_count':16,'axi_read_outstanding':4,
+             'ia_cache_blocks':ia_cache_blocks,'ps_frame_count':16,
+             'ps_storage_rows':ps_storage_rows,'output_banks_s16_max':s16_output_banks,
+             'matrix_tile_packed':True,'axi_read_outstanding':4,
              'axi_write_outstanding':4,'core':'standard','pcr_engine':0,
              'data_width':16,'weight_width':16,'dw_max_taps':49,
              'pool_max_taps':256,'bus_width':32,'rounding_mode':'nearest_even',
-             'vector_engine':'VCE','add_s8':True,'capability_version':1,
+             'vector_engine':'VCE','add_s8':True,'softmax_s8':True,'capability_version':1,
+             'conv_cache_data_bytes':4096,'conv_cache_policy':'windowed',
+             'conv_cache_prefetch':True,'vector_line_cache_bytes':0,
+             'conv_cache_demand_outstanding':4,'vector_window_outstanding':4,
+             'im2col_corrected_elements_per_cycle':4,
              'cpu':'PicoRV32','cpu_enable_mul':1,'cpu_enable_div':1,
              'cpu_axi_read_timing_buffer':1,'cpu_axi_write_timing_buffer':1,
              'npu_axi_timing_buffer':1,'bypass_ram_pingpong':1,'ram_write_timing_buffer':1}
@@ -99,6 +107,9 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=5
           '--output-groups','0','--output-split','12000',
           '-CFLAGS','-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
           f'-DSOC_NETWORK_RAM_WORDS={ram_words}',f'-DSOC_NETWORK_ICACHE={icache}',
+          f'-DSOC_NETWORK_IA_CACHE_BLOCKS={ia_cache_blocks}',
+          f'-DSOC_NETWORK_PS_STORAGE_ROWS={ps_storage_rows}',
+          f'-DSOC_NETWORK_S16_OUTPUT_BANKS={s16_output_banks}',
           f'-DSOC_NETWORK_PE_COUNT={pe_count}',*source_args,
           HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp']
     rc=command(args,out/'elaborate.log',cwd=cwd)
@@ -121,13 +132,16 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=0,ram_words=5
 
 
 def parse_log(path):
-    text=Path(path).read_text();counters=[]
+    text=Path(path).read_text();counters=[];window_jobs=[]
     for line in text.splitlines():
+        if line.startswith('SOC_NETWORK_WINDOW_JOB '):
+            window_jobs.append({key:int(value) for key,value in re.findall(r'(\w+)=([^\s]+)',line)})
+            continue
         if not line.startswith('SOC_NETWORK_COUNTER '):continue
         values=dict(re.findall(r'(\w+)=([^\s]+)',line))
         counters.append({key:(value if key=='scope' else int(value)) for key,value in values.items()})
     return {'passed':'SOC_NETWORK_PASS ' in text and '%Error' not in text,
-            'counters':counters}
+            'counters':counters,'window_jobs':window_jobs}
 
 
 def run_sim(binary,out,mem,*,data_mem=None,result_addr=0,result_words=26,
@@ -171,6 +185,9 @@ def main():
     parser.add_argument('--icache',type=int,choices=[0,1],default=0)
     parser.add_argument('--ram-words',type=int,default=524288)
     parser.add_argument('--pe-count',type=int,default=8)
+    parser.add_argument('--ia-cache-blocks',type=int,default=8)
+    parser.add_argument('--ps-storage-rows',type=int,default=799)
+    parser.add_argument('--s16-output-banks',type=int,default=4)
     parser.add_argument('--picorv32',type=Path)
     parser.add_argument('--out',type=Path)
     parser.add_argument('--mem',type=Path)
@@ -188,7 +205,9 @@ def main():
     parser.add_argument('--plusarg',action='append',default=[])
     args=parser.parse_args()
     binary=build_sim(args.build_dir,args.verilator,args.jobs,skip=args.skip_build,
-                     icache=args.icache,ram_words=args.ram_words,pe_count=args.pe_count,picorv32=args.picorv32)
+                     icache=args.icache,ram_words=args.ram_words,pe_count=args.pe_count,picorv32=args.picorv32,
+                     ia_cache_blocks=args.ia_cache_blocks,ps_storage_rows=args.ps_storage_rows,
+                     s16_output_banks=args.s16_output_banks)
     if args.build_only:print(binary);return 0
     if args.out is None or args.mem is None:parser.error('--out and --mem are required for execution')
     report=run_sim(binary,args.out,args.mem,data_mem=args.data_mem,result_addr=args.result_addr,

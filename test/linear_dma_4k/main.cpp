@@ -23,7 +23,8 @@ class Simulation {
     VerilatedContext context;
     Vlinear_dma_4k_top top{&context};
     std::vector<uint8_t> memory;
-    std::deque<Burst> requested, expected_requests;
+    std::deque<Burst> requested;
+    std::deque<uint32_t> expected_addresses;
     std::deque<Output> expected_outputs;
     uint32_t random_state = 0x45c7a21u;
     bool random_delay, held = false;
@@ -57,12 +58,9 @@ class Simulation {
             uint32_t base = command.address + row * command.stride;
             unsigned words = command.linear ? 1 : command.words;
             uint32_t aligned = base & ~3u;
-            unsigned remaining = words + unsigned((base&3u) != 0);
-            while (remaining) {
-                unsigned part = std::min({remaining, 256u, (4096u-(aligned&4095u))/4u});
-                require(part != 0, "empty expected AXI burst");
-                expected_requests.push_back({aligned, part});aligned += part*4;remaining -= part;
-            }
+            unsigned physical_words = words + unsigned((base&3u) != 0);
+            for (unsigned word = 0; word < physical_words; ++word)
+                expected_addresses.push_back(aligned + word*4);
             for (unsigned word = 0; word < words; ++word) {
                 unsigned col = ((command.linear ? row : word) * (command.use16 ? 2 : 4)) & 15u;
                 expected_outputs.push_back({read(base+word*4), command.linear ? 0u : row,
@@ -130,9 +128,11 @@ public:
             require(top.m_axi_arsize==2 && top.m_axi_arburst==1, "unexpected AXI request attributes");
             require((accepted.address&3)==0, "unaligned physical AXI request");
             require((accepted.address&4095u)+accepted.words*4u<=4096, "AXI burst crosses 4 KiB");
-            require(!expected_requests.empty(), "unexpected AXI request");
-            const auto e=expected_requests.front();expected_requests.pop_front();
-            require(accepted.address==e.address && accepted.words==e.words, "AXI segmentation/address mismatch");
+            for (unsigned word=0; word<accepted.words; ++word) {
+                require(!expected_addresses.empty(), "unexpected AXI request");
+                const auto address=expected_addresses.front();expected_addresses.pop_front();
+                require(accepted.address+word*4==address, "AXI read address mismatch");
+            }
         }
         top.clk=1;context.timeInc(1);top.eval();++cycles;
         if (r) {
@@ -149,14 +149,16 @@ public:
         require(cycles<10000000, "simulation timeout");
         return chained;
     }
-    void run(const Command& command) {
-        require(!top.rd_busy && requested.empty() && expected_outputs.empty() && expected_requests.empty(),
+    void run(const Command& command, unsigned expected_bursts=0) {
+        require(!top.rd_busy && requested.empty() && expected_outputs.empty() && expected_addresses.empty(),
                 "previous command still active");
         const auto target=completions+1;
+        const auto start_bursts=bursts;
         set_command(command);expect(command);tick();top.rd_start=0;
         while (completions<target) tick();
-        require(!top.rd_busy && requested.empty() && expected_requests.empty() && expected_outputs.empty(),
+        require(!top.rd_busy && requested.empty() && expected_addresses.empty() && expected_outputs.empty(),
                 "completion before descriptor drained");
+        if (expected_bursts) require(bursts-start_bursts==expected_bursts, "unexpected contiguous read burst count");
         require(bool(top.rd_error)==command.expect_error, "incorrect read error status");
         tick();
     }
@@ -168,7 +170,7 @@ public:
             if (tick(chained ? nullptr : &second)) chained=true;
             top.rd_start=0;
         }
-        require(chained && !top.rd_busy && requested.empty() && expected_requests.empty() && expected_outputs.empty(),
+        require(chained && !top.rd_busy && requested.empty() && expected_addresses.empty() && expected_outputs.empty(),
                 "back-to-back command did not drain");
         require(!top.rd_error, "unexpected chained read error");tick();
     }
@@ -206,10 +208,20 @@ int main(int argc, char** argv) {
                 for (bool use16 : {false,true})
                     sim.run({0x30ffcu+offset,stride,16,256,13, use16 ? 1234 : -91,
                              offset,true,use16});
-        sim.run({0x1ffffcu,4,2,1,16,0,0,false,false,true});
-        sim.run({0x12340u,16,16,4,0,0,1,false,false});
+        sim.run({0x1ffffcu,4,2,1,16,0,0,false,false,true},2);
+        for (unsigned words : {1u,4u,8u,16u})
+            for (bool linear : {false,true})
+                for (bool use16 : {false,true}) {
+                    const unsigned row_words=linear ? 1u : words;
+                    sim.run({0x12340u,row_words*4,16,words,0,0,1,linear,use16},1);
+                    sim.run({0x12ffcu,row_words*4,16,words,11,37,2,linear,use16},2);
+                }
         sim.run_chained({0x40fffu,8,1,4,7,-128,3,false,false},
                         {0x51ffdu,15,3,8,13,12345,1,false,true});
+        sim.run_chained({0x60fe0u,16,16,4,16,-13,0,false,false},
+                        {0x71ffdu,15,3,8,13,12345,1,false,true});
+        sim.run_chained({0x80fffu,8,1,4,7,-128,3,false,false},
+                        {0x91fe0u,32,16,8,15,-94,2,false,true});
         sim.finish();return 0;
     } catch (const std::exception& error) {
         std::fprintf(stderr,"LINEAR_DMA_4K_FAIL %s\n",error.what());return 1;

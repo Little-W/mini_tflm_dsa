@@ -13,6 +13,7 @@ module kernel_loader_ctrl #(
     input  logic [REG_WIDTH-1:0]        cfg_rhs_row_stride_b,
     input  logic signed [REG_WIDTH-1:0] cfg_rhs_zp,
     input  logic                        cfg_use_16bits,
+    input  logic                        cfg_tile_packed = 1'b0,
     input  logic [REG_WIDTH-1:0]        cfg_ia_reuse_num,
     input  logic [REG_WIDTH-1:0]        cfg_w_reuse_num,
     input logic [REG_WIDTH-1:0] cfg_row_groups,
@@ -174,8 +175,11 @@ module kernel_loader_ctrl #(
     if (valid_m_cols == 0) valid_m_cols = count_t'(1);
     elem_bytes = cfg_use_16bits ? REG_WIDTH'(2) : REG_WIDTH'(1);
 
-    cfg_col_addr_step = cfg_rhs_row_stride_b << SIZE_SHIFT;
-    cfg_row_addr_step = cfg_use_16bits ? (REG_WIDTH'(SIZE) << 1) : REG_WIDTH'(SIZE);
+    cfg_col_addr_step = cfg_tile_packed ?
+        (REG_WIDTH'(cfg_tile_rows_total) << (2*SIZE_SHIFT + (cfg_use_16bits ? 1 : 0))) :
+        (cfg_rhs_row_stride_b << SIZE_SHIFT);
+    cfg_row_addr_step = REG_WIDTH'(1) <<
+        ((cfg_tile_packed ? 2*SIZE_SHIFT : SIZE_SHIFT) + (cfg_use_16bits ? 1 : 0));
     unique case (w_reuse_norm)
       count_t'(1):    cfg_group_addr_step = cfg_col_addr_step;
       count_t'(2):    cfg_group_addr_step = cfg_col_addr_step << 1;
@@ -221,7 +225,8 @@ module kernel_loader_ctrl #(
     dma_group         = REG_WIDTH'(load_repeat);
     dma_tile_base_addr = group_base_addr + row_addr_offset + col_addr_offset;
     dma_rows_to_read   = REG_WIDTH'(valid_m_cols);
-    dma_row_stride_b   = cfg_rhs_row_stride_b;
+    dma_row_stride_b   = cfg_tile_packed ?
+        (REG_WIDTH'(SIZE) << (cfg_use_16bits ? 1 : 0)) : cfg_rhs_row_stride_b;
     dma_rhs_zp         = cfg_rhs_zp;
     dma_valid_cols     = REG_WIDTH'(valid_n_rows);
   end

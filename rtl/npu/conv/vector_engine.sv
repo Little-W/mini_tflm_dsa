@@ -5,8 +5,7 @@ module vector_engine #(
   parameter int DMA_SIZE = 4*TILE,
   parameter int PE_COUNT = (TILE < 8) ? TILE : 8,
   parameter int MAX_TAPS = 49,
-  parameter int POOL_MAX_TAPS = 256,
-  parameter int LINE_CACHE_MAX_WIDTH = 64
+  parameter int POOL_MAX_TAPS = 256
 ) (
   input logic clk, rst_n,
   input logic start,
@@ -22,6 +21,18 @@ module vector_engine #(
   output conv_im2col_pkg::conv_cfg_t dma_conv_cfg,
   output logic [31:0] dma_range_base [4],
   output logic [32:0] dma_range_end [4],
+
+  output logic win_req_valid,
+  input logic win_req_ready,
+  output logic [31:0] win_req_p0,win_req_q0,win_req_cols,
+  output logic [1:0] win_req_tag,
+  input logic win_rsp_valid,
+  output logic win_rsp_ready,
+  input logic [1:0] win_rsp_tag,
+  input logic [31:0] win_rsp_col,
+  input logic signed [15:0] win_rsp_data[4],
+  input logic [3:0] win_rsp_mask,
+  input logic win_rsp_last,win_rsp_error,win_busy,
 
   output logic rd_req, rd_start,
   input logic rd_granted,
@@ -49,19 +60,18 @@ module vector_engine #(
   import vector_engine_pkg::*;
   typedef enum logic [5:0] {
     IDLE, CHECK, CONFIGURE, TILE_INIT, LOAD_REQ, LOAD_WAIT,
-    OUTPUT_INIT, TAP_CHECK, WINDOW_REQ, WINDOW_WAIT, EXECUTE, TAP_NEXT,
-    QUANT_INIT, Q_SHIFT, Q_MULT, Q_ROUND, Q_STORE, AVG_START, AVG_WAIT,
-    POOL_STORE, WRITE_PREP, WRITE_REQ, WRITE_DATA, WRITE_WAIT,
+    OUTPUT_INIT, TAP_CHECK, WINDOW_WAIT, EXECUTE, TAP_NEXT,
+    QUANT_INIT, AVG_START, AVG_WAIT, POOL_STORE, WRITE_PREP,
     OUTPUT_NEXT, VECTOR_INIT, VECTOR_NEXT, VECTOR_REDUCE, FAILED, DONE,
     ADD_MULT, ADD_ROUND, ADD_SUM, ADD_STORE,
-    CACHE_CONFIGURE, CACHE_CHECK, CACHE_LOAD_PREP, CACHE_LOAD_REQ, CACHE_LOAD_WAIT,
-    POOL_LOAD_PREP, POOL_LOAD_REQ, POOL_LOAD_WAIT
+    POOL_LOAD_PREP, POOL_LOAD_REQ, POOL_LOAD_WAIT,
+    DRAIN, DRAIN_TILE, SOFT_START, SOFT_RUN, SOFT_LUT_REQ, SOFT_LUT_WAIT
   } state_t;
-  typedef enum logic [2:0] {LD_WEIGHT, LD_BIAS, LD_MULT, LD_SHIFT, LD_A, LD_B} load_t;
+  typedef enum logic [2:0] {LD_WEIGHT, LD_BIAS, LD_MULT, LD_SHIFT, LD_A, LD_B, LD_LUT} load_t;
   state_t state;
   load_t load_kind;
   vector_engine_cfg_t c;
-  logic spatial, depthwise, binary_vector, add_s8, byte_output;
+  logic spatial, depthwise, binary_vector, add_s8, softmax_s8, byte_output;
   logic [31:0] channels, taps, active, channel_base, position;
   logic [31:0] ox, oy, kx, ky, tap, load_tap, valid_taps;
   logic [31:0] vector_offset, compute_index, quant_index, reduce_index;
@@ -88,32 +98,49 @@ module vector_engine #(
   logic [63:0] input_bytes, output_bytes, weight_bytes, parameter_bytes;
   logic [63:0] kernel_count, position_count;
   logic [31:0] load_bytes;
-  logic signed [31:0] q_accumulator;
+  logic signed [31:0] q_accumulator, q_multiplier;
   logic signed [63:0] q_product, q_rounded, q_with_offset;
-  logic [5:0] q_right;
-  logic div_start, div_busy, div_done, div_zero, avg_negative;
-  logic [31:0] div_numerator, div_quotient, div_remainder, avg_magnitude;
-  logic [31:0] write_origin, write_total, write_index, write_count;
-  logic [31:0] write_addr_q, write_data_q;
-  logic [3:0] write_mask_q;
+  logic [5:0] q_right_0, q_right_1;
+  logic [2:0] q_valid;
+  logic [31:0] q_index_0, q_index_1, q_index_2, q_issue, q_count;
+  logic q_active, q_bank, q_next_bank, produce_bank, write_bank;
+  typedef enum logic [2:0] {BANK_FREE, BANK_RAW, BANK_QUANT, BANK_READY, BANK_WRITE} bank_state_t;
+  bank_state_t bank_state[2];
+  logic [31:0] bank_address[2], bank_bytes[2], bank_count[2];
+  typedef enum logic [1:0] {WB_IDLE, WB_REQ, WB_DATA, WB_WAIT} wb_state_t;
+  wb_state_t wb_state;
+  logic [31:0] write_origin, write_total, write_index;
   logic [31:0] pack_addr, pack_count, pack_data;
   logic [3:0] pack_mask;
-  localparam int CACHE_BANKS = (PE_COUNT < 4) ? 4 : PE_COUNT;
-  localparam int CACHE_WIDTH = (LINE_CACHE_MAX_WIDTH < 1) ? 1 : LINE_CACHE_MAX_WIDTH;
-  localparam int CACHE_GROUPS = (TILE+CACHE_BANKS-1)/CACHE_BANKS;
-  localparam int CACHE_ROW_SIZE = CACHE_WIDTH*CACHE_GROUPS;
-  logic signed [7:0] line_buf [CACHE_BANKS][3*CACHE_ROW_SIZE];
-  logic cache_enabled, input_range_mode, cache_power_two;
-  logic [2:0] line_valid;
-  logic [15:0] line_y [3];
-  logic [1:0] line_slots [3], cache_scan, cache_slot, cache_requested_slot;
-  logic signed [63:0] cache_requested_y;
-  logic [31:0] cache_y, cache_x, cache_pixels, cache_received;
-  logic [31:0] cache_next_pixels, cache_elements, cache_store_pixel [4], cache_store_channel [4];
+  logic div_start, div_busy, div_done, div_zero, avg_negative, avg_power_two;
+  logic [5:0] avg_shift;
+  logic [31:0] div_numerator, div_quotient, div_remainder, avg_magnitude;
+  logic input_range_mode, cache_power_two;
   logic [5:0] cache_channel_shift;
   logic [2:0] cache_received_count;
-  logic cache_lane_valid [4];
-  logic [2:0] cache_lane_prefix [4];
+  logic cache_lane_valid[4];
+  logic [2:0] cache_lane_prefix[4];
+  logic [1:0] read_bank,wf_bank,input_bank_mask;
+  logic [3:0] input_ready,input_reserved;
+  logic [31:0] input_position[4],input_tap[4];
+  logic [31:0] input_read_base,input_response_base,window_received;
+  logic [2:0] window_response_count;
+  logic window_response_fire,window_request_fire;
+  logic window_fetch_enabled, window_fetch_in_bounds, window_fetch_advance;
+  logic [31:0] fetch_position, fetch_tap, fetch_ox, fetch_kx;
+  logic signed [63:0] fetch_x, fetch_y, fetch_origin_x, fetch_origin_y;
+  logic next_window_valid;
+  logic signed [63:0] next_window_x, next_window_y;
+  logic soft_ready, soft_done, soft_exp_we, soft_out_we;
+  logic [1:0] soft_error;
+  logic [$clog2(TILE)-1:0] soft_input_index, soft_exp_index, soft_out_index;
+  logic soft_lut_req_valid, soft_lut_req_ready, soft_lut_rsp_valid;
+  logic [7:0] soft_lut_index;
+  logic [31:0] soft_lut_data;
+  logic signed [31:0] soft_exp_data, soft_mul_a, soft_mul_b;
+  logic signed [7:0] soft_out_data;
+  logic signed [31:0] multiplier_a, multiplier_b;
+  logic signed [63:0] multiplier_product;
   logic global_pool;
   logic [31:0] pool_offset, pool_pixels, pool_received, pool_pixel;
   logic [31:0] pool_elements, pool_next_pixels, pool_input_index;
@@ -121,7 +148,8 @@ module vector_engine #(
   assign spatial = c.op <= MINPOOL_S8;
   assign depthwise = c.op == DW_S8;
   assign add_s8 = c.op == ADD_S8;
-  assign byte_output = spatial || add_s8;
+  assign softmax_s8 = c.op == SOFTMAX_S8;
+  assign byte_output = spatial || add_s8 || softmax_s8;
   assign binary_vector = c.op == VEC_DOT || c.op == VEC_HADAMARD || add_s8;
   assign q_with_offset = q_rounded + $signed(64'(c.output_offset));
   assign ready = state == IDLE;
@@ -138,15 +166,34 @@ module vector_engine #(
                        c.image.kernel_h==c.image.input_h && c.image.kernel_w==c.image.input_w &&
                        c.image.pad_top==0 && c.image.pad_left==0 &&
                        c.image.dilation_h==1 && c.image.dilation_w==1;
-  assign cache_enabled = LINE_CACHE_MAX_WIDTH!=0 && spatial && !global_pool && !c.image.bypass_cache &&
-                         ((depthwise && c.image.kernel_h==3 && c.image.kernel_w==3) ||
-                          (!depthwise && c.image.kernel_h<=3 && c.image.kernel_w<=3)) &&
-                         c.image.dilation_h==1 && c.image.dilation_w==1 &&
-                         32'(c.image.input_w)<=32'(LINE_CACHE_MAX_WIDTH);
-  assign cache_requested_y = $signed(64'(oy)*64'(c.image.stride_h)) -
-                            $signed(64'(c.image.pad_top)) + $signed(64'(cache_scan));
-  assign cache_requested_slot = 2'(32'(cache_requested_y)%32'd3);
-
+  // The existing input storage holds two full channel groups or four half
+  // groups. Reserved slots allow DMA requests to precede ordered responses.
+  assign window_fetch_enabled=spatial && !global_pool &&
+    (state==OUTPUT_INIT || state==TAP_CHECK || state==WINDOW_WAIT ||
+     state==EXECUTE || state==TAP_NEXT || state==QUANT_INIT || state==OUTPUT_NEXT ||
+     state==AVG_START || state==AVG_WAIT || state==POOL_STORE || state==WRITE_PREP);
+  assign window_fetch_in_bounds=fetch_x>=0 && fetch_y>=0 &&
+    fetch_x<$signed(64'(c.image.input_w)) && fetch_y<$signed(64'(c.image.input_h));
+  assign input_bank_mask=active<=TILE/2 ? 2'b11 : 2'b01;
+  assign input_read_base=active<=TILE/2 ? (32'(read_bank)<<($clog2(TILE)-1)) : (32'(read_bank)<<$clog2(TILE));
+  assign input_response_base=active<=TILE/2 ? (32'(win_rsp_tag)<<($clog2(TILE)-1)) : (32'(win_rsp_tag)<<$clog2(TILE));
+  assign win_req_valid=window_fetch_enabled && fetch_position<32'(position_count) &&
+    !input_ready[wf_bank] && !input_reserved[wf_bank] && window_fetch_in_bounds;
+  assign win_req_p0=fetch_position;
+  assign win_req_q0=fetch_tap*channels+channel_base;
+  assign win_req_cols=active;
+  assign win_req_tag=wf_bank;
+  assign win_rsp_ready=1'b1;
+  assign window_request_fire=win_req_valid && win_req_ready;
+  assign window_response_fire=win_rsp_valid && win_rsp_ready;
+  assign window_fetch_advance=window_request_fire ||
+    (window_fetch_enabled && fetch_position<32'(position_count) &&
+     !input_ready[wf_bank] && !input_reserved[wf_bank] && !window_fetch_in_bounds);
+  always_comb begin
+    window_response_count=0;
+    for(int lane=0;lane<4;lane++) if(win_rsp_mask[lane])
+      window_response_count=window_response_count+1'b1;
+  end
   always_comb begin
     cache_power_two=1'b1;
     case (active)
@@ -159,10 +206,6 @@ module vector_engine #(
       32'd64: cache_channel_shift=6;
       default: begin cache_channel_shift=0;cache_power_two=1'b0;end
     endcase
-    cache_next_pixels = cache_power_two && active>=4 ? 32'(DMA_SIZE)>>cache_channel_shift : 32'd1;
-    if (cache_next_pixels>32'(c.image.input_w)-cache_x)
-      cache_next_pixels=32'(c.image.input_w)-cache_x;
-    cache_elements=cache_power_two ? cache_pixels<<cache_channel_shift : active;
     pool_next_pixels=cache_power_two && active>=4 ? 32'(DMA_SIZE)>>cache_channel_shift : 32'd1;
     if (pool_next_pixels>taps-pool_offset) pool_next_pixels=taps-pool_offset;
     pool_elements=cache_power_two ? pool_pixels<<cache_channel_shift : active;
@@ -172,14 +215,25 @@ module vector_engine #(
       cache_lane_valid[l]=rd_valid[l] && 32'(rd_col_base)+32'(l)<rd_valid_cols;
       cache_lane_prefix[l]=cache_received_count;
       if (cache_lane_valid[l]) cache_received_count=cache_received_count+1'b1;
-      cache_store_pixel[l]=cache_x;
-      cache_store_channel[l]=cache_received+32'(cache_lane_prefix[l]);
-      if (cache_power_two) begin
-        cache_store_pixel[l]=cache_x+((cache_received+32'(cache_lane_prefix[l]))>>cache_channel_shift);
-        cache_store_channel[l]=(cache_received+32'(cache_lane_prefix[l]))&(active-1);
-      end
     end
+    next_window_x=input_x+$signed(64'(c.image.dilation_w));
+    next_window_y=input_y;
+    if (kx+1==32'(c.image.kernel_w)) begin
+      next_window_x=$signed(64'(ox)*64'(c.image.stride_w))-$signed(64'(c.image.pad_left));
+      next_window_y=input_y+$signed(64'(c.image.dilation_h));
+    end
+    next_window_valid=spatial && !global_pool && tap+1<taps &&
+      next_window_x>=0 && next_window_y>=0 &&
+      next_window_x<$signed(64'(c.image.input_w)) && next_window_y<$signed(64'(c.image.input_h));
+    avg_power_two=valid_taps!=0 && (valid_taps&(valid_taps-1))==0;
+    avg_shift=0;
+    for (int bit_index=0;bit_index<32;bit_index++) if (valid_taps[bit_index]) avg_shift=6'(bit_index);
   end
+
+  function automatic logic signed [31:0] result_bank_data(input logic bank, input logic [31:0] index);
+    if (!bank) return result_buf[index];
+    return $signed({input_buf[2*TILE+2*index+1],input_buf[2*TILE+2*index]});
+  endfunction
 
   function automatic logic range_ok(input logic [31:0] base, input logic [63:0] bytes);
     range_ok = bytes != 0 && (64'(base)+bytes < 64'h1_0000_0000);
@@ -215,8 +269,8 @@ module vector_engine #(
     input_bytes = spatial ? 64'(c.image.input_h)*64'(c.image.input_w)*64'(channels) :
                             64'(c.length)*(c.vector_s16 ? 2 : 1);
     output_bytes = spatial ? position_count*64'(channels) :
-                     add_s8 ? 64'(c.length) : c.op==VEC_HADAMARD ? 64'(c.length)*4 : 64'd4;
-    cfg_ok = c.op <= ADD_S8 && range_ok(c.input_base,input_bytes) &&
+                     (add_s8 || softmax_s8) ? 64'(c.length) : c.op==VEC_HADAMARD ? 64'(c.length)*4 : 64'd4;
+    cfg_ok = c.op <= SOFTMAX_S8 && range_ok(c.input_base,input_bytes) &&
              range_ok(c.output_base,output_bytes) &&
              separate_ranges(c.input_base,input_bytes,c.output_base,output_bytes);
     if (spatial) begin
@@ -244,13 +298,16 @@ module vector_engine #(
           ((64'(c.image.output_w)-1)*64'(c.image.stride_w) < 64'(c.image.input_w)+64'(c.image.pad_left));
       end
     end else begin
-      cfg_ok = cfg_ok && c.length!=0 && (add_s8 || c.output_base[1:0]==0);
+      cfg_ok = cfg_ok && c.length!=0 && (add_s8 || softmax_s8 || c.output_base[1:0]==0);
       if (c.vector_s16) cfg_ok = cfg_ok && c.input_base[0]==0;
       if (binary_vector) begin
         cfg_ok = cfg_ok && range_ok(c.rhs_base,input_bytes) &&
           separate_ranges(c.rhs_base,input_bytes,c.output_base,output_bytes);
         if (c.vector_s16) cfg_ok = cfg_ok && c.rhs_base[0]==0;
       end
+      if (softmax_s8) cfg_ok = cfg_ok && !c.vector_s16 && c.length<=32'(TILE) &&
+        c.rhs_base[1:0]==0 && range_ok(c.rhs_base,64'd1024) &&
+        separate_ranges(c.rhs_base,64'd1024,c.output_base,output_bytes);
       if (add_s8) cfg_ok = cfg_ok && !c.vector_s16 &&
         c.add.input1_offset>=-127 && c.add.input1_offset<=128 &&
         c.add.input2_offset>=-127 && c.add.input2_offset<=128 &&
@@ -267,7 +324,7 @@ module vector_engine #(
   // Parameter and cached-input phases configure their exact allocation ranges
   // after the preceding transfers have completed. The descriptor stays fixed.
   always_comb begin
-    dma_cfg_valid = (state==CONFIGURE || state==CACHE_CONFIGURE) && dma_cfg_ready;
+    dma_cfg_valid = state==CONFIGURE && dma_cfg_ready;
     dma_conv_enable = spatial;
     dma_range_enable = 1'b1;
     dma_conv_cfg = c.image;
@@ -275,8 +332,10 @@ module vector_engine #(
     dma_conv_cfg.group_c = c.image.input_c;
     dma_conv_cfg.group_offset = 0;
     dma_conv_cfg.input_s16 = 0;
+    dma_conv_cfg.windowed = spatial;
+    dma_conv_cfg.prefetch_enable = 1;
     for (int i=0;i<4;i++) begin dma_range_base[i]=0; dma_range_end[i]=0; end
-    if ((cache_enabled || global_pool) && input_range_mode) begin
+    if (global_pool && input_range_mode) begin
       dma_range_base[0]=c.input_base;dma_range_end[0]=33'(64'(c.input_base)+input_bytes);
     end else if (depthwise) begin
       dma_range_base[0]=c.rhs_base; dma_range_end[0]=33'(64'(c.rhs_base)+weight_bytes);
@@ -287,18 +346,19 @@ module vector_engine #(
       dma_range_base[3]=c.shift_base; dma_range_end[3]=33'(64'(c.shift_base)+parameter_bytes);
     end else if (!spatial) begin
       dma_range_base[0]=c.input_base; dma_range_end[0]=33'(64'(c.input_base)+input_bytes);
-      if (binary_vector) begin
-        dma_range_base[1]=c.rhs_base; dma_range_end[1]=33'(64'(c.rhs_base)+input_bytes);
+      if (binary_vector || softmax_s8) begin
+        dma_range_base[1]=c.rhs_base;
+        dma_range_end[1]=33'(64'(c.rhs_base)+(softmax_s8 ? 64'd1024 : input_bytes));
       end
     end
   end
 
-  assign rd_req = state==LOAD_REQ || state==WINDOW_REQ || state==CACHE_LOAD_REQ || state==POOL_LOAD_REQ;
+  assign rd_req = state==LOAD_REQ || state==POOL_LOAD_REQ || state==SOFT_LUT_REQ;
   assign rd_start = rd_req && rd_granted;
   always_comb begin
-    rd_im2col = state==WINDOW_REQ;
-    rd_p0 = position;
-    rd_q0 = tap*channels+channel_base;
+    rd_im2col = 1'b0;
+    rd_p0 = 0;
+    rd_q0 = 0;
     rd_base_addr = 0;
     rd_row_stride = 0;
     rd_rows_to_read = 1;
@@ -319,17 +379,9 @@ module vector_engine #(
       default: ;
     endcase
     rd_burst_len_m1 = 8'(((load_bytes+3)>>2)-1);
-    if (state==WINDOW_REQ) begin rd_use_16bits=1; rd_valid_cols=active; end
-    if (state==CACHE_LOAD_REQ || state==CACHE_LOAD_WAIT) begin
-      rd_base_addr=c.input_base+(cache_y*32'(c.image.input_w)+cache_x)*channels+channel_base;
-      rd_use_16bits=0;
-      if (channels==active) begin
-        rd_rows_to_read=1;rd_valid_cols=cache_elements;rd_row_stride=0;
-        rd_burst_len_m1=8'(((cache_elements+3)>>2)-1);
-      end else begin
-        rd_rows_to_read=cache_pixels;rd_valid_cols=active;rd_row_stride=channels;
-        rd_burst_len_m1=8'(((active+3)>>2)-1);
-      end
+    if (state==SOFT_LUT_REQ || state==SOFT_LUT_WAIT) begin
+      rd_base_addr=c.rhs_base+({24'd0,soft_lut_index}<<2);
+      rd_use_16bits=0;rd_valid_cols=4;rd_burst_len_m1=0;
     end
     if (state==POOL_LOAD_REQ || state==POOL_LOAD_WAIT) begin
       rd_base_addr=c.input_base+pool_offset*channels+channel_base;rd_use_16bits=0;
@@ -367,13 +419,9 @@ module vector_engine #(
       pe_a[l]=0; pe_b[l]=0; pe_acc[l]=0;
       add_operand[l]=add_sum[l];
       if (compute_index+32'(l)<active) begin
-        pe_a[l]=input_buf[compute_index+32'(l)];
+        pe_a[l]=input_buf[(spatial && !global_pool ? input_read_base : 0)+compute_index+32'(l)];
         if (state==EXECUTE && global_pool)
           pe_a[l]=input_buf[pool_input_index+compute_index+32'(l)];
-        if (state==EXECUTE && cache_enabled)
-          pe_a[l]=16'($signed(line_buf[(compute_index+32'(l))%CACHE_BANKS]
-                     [32'(line_slots[ky])*CACHE_ROW_SIZE+32'(input_x)*CACHE_GROUPS+
-                      (compute_index+32'(l))/CACHE_BANKS])) + c.image.input_offset;
         pe_b[l]=depthwise ? 16'($signed(weight_buf[tap*TILE+compute_index+32'(l)])) : rhs_buf[compute_index+32'(l)];
         pe_acc[l]=acc_buf[compute_index+32'(l)];
         if (add_stage==0) add_operand[l]=32'($signed(input_buf[compute_index+32'(l)]))+c.add.input1_offset;
@@ -412,7 +460,7 @@ module vector_engine #(
     if (c.op==VEC_MAX) reduce_next=reduce_acc>acc_buf[reduce_index] ? reduce_acc : acc_buf[reduce_index];
     if (c.op==VEC_MIN) reduce_next=reduce_acc<acc_buf[reduce_index] ? reduce_acc : acc_buf[reduce_index];
   end
-  assign div_start = state==AVG_START;
+  assign div_start = state==AVG_START && !avg_power_two;
   assign div_numerator = acc_buf[quant_index]<0 ? $unsigned(-acc_buf[quant_index]) :
                            $unsigned(acc_buf[quant_index]);
   assign avg_magnitude = div_quotient + 32'(div_remainder > valid_taps-div_remainder ||
@@ -421,28 +469,40 @@ module vector_engine #(
     .divisor(valid_taps),.busy(div_busy),.done(div_done),.div_zero,
     .quotient(div_quotient),.remainder(div_remainder));
 
-  assign wr_req = state==WRITE_REQ;
+  assign multiplier_a=softmax_s8 ? soft_mul_a : q_accumulator;
+  assign multiplier_b=softmax_s8 ? soft_mul_b : q_multiplier;
+  assign multiplier_product=$signed(multiplier_a)*$signed(multiplier_b);
+  assign soft_lut_req_ready=state==SOFT_LUT_REQ && rd_granted;
+  assign soft_lut_rsp_valid=state==SOFT_LUT_WAIT && rd_done;
+  vector_softmax #(.MAX_DEPTH(TILE)) u_softmax (
+    .clk,.rst_n,.start(state==SOFT_START),.depth(c.length),.ready(soft_ready),.done(soft_done),.error(soft_error),
+    .input_index(soft_input_index),.input_data(8'(input_buf[32'(soft_input_index)])),
+    .lut_req_valid(soft_lut_req_valid),.lut_req_ready(soft_lut_req_ready),.lut_index(soft_lut_index),
+    .lut_rsp_valid(soft_lut_rsp_valid),.lut_rsp_data(rd_raw_valid ? rd_raw_data : soft_lut_data),.lut_rsp_error(rd_error),
+    .exp_we(soft_exp_we),.exp_index(soft_exp_index),.exp_wdata(soft_exp_data),.exp_rdata(acc_buf[soft_exp_index]),
+    .out_we(soft_out_we),.out_index(soft_out_index),.out_data(soft_out_data),
+    .mul_a(soft_mul_a),.mul_b(soft_mul_b),.mul_product(multiplier_product)
+  );
+
+  assign wr_req = wb_state==WB_REQ;
   assign wr_start = wr_req && wr_granted;
-  // A single aligned write beat never crosses 4 KiB. Byte strobes preserve
-  // neighbours of an unaligned NHWC output or a partial channel group.
   always_comb begin
-    pack_addr = write_origin+write_index;
-    pack_count = 4-{30'd0,pack_addr[1:0]};
-    if (pack_count>write_total-write_index) pack_count=write_total-write_index;
-    pack_data=0; pack_mask=0;
+    pack_addr=bank_address[write_bank]+write_index;
+    pack_count=4-{30'd0,pack_addr[1:0]};
+    if (pack_count>bank_bytes[write_bank]-write_index) pack_count=bank_bytes[write_bank]-write_index;
+    pack_data=0;pack_mask=0;
     for (int b=0;b<4;b++) begin
       if (32'(b)>=32'(pack_addr[1:0]) && 32'(b)<32'(pack_addr[1:0])+pack_count) begin
         pack_mask[b]=1;
-        if (byte_output) pack_data[b*8+:8]=8'(result_buf[write_index+32'(b)-32'(pack_addr[1:0])]);
-        else pack_data[b*8+:8]=8'(result_buf[(write_index+32'(b)-32'(pack_addr[1:0]))>>2] >>
-          (((write_index+32'(b)-32'(pack_addr[1:0]))&3)*8));
+        if (byte_output) pack_data[b*8+:8]=8'(result_bank_data(write_bank,write_index+32'(b)-32'(pack_addr[1:0])));
+        else pack_data[b*8+:8]=8'(result_bank_data(write_bank,(write_index+32'(b)-32'(pack_addr[1:0]))>>2) >>
+            (((write_index+32'(b)-32'(pack_addr[1:0]))&3)*8));
       end
     end
-
-    wr_base_addr = write_addr_q;
-    wr_row_stride=0; wr_rows_to_write=1; wr_burst_len_m1=0;
-    src_wdata=write_data_q; src_wmask=write_mask_q;
-    src_wvalid=state==WRITE_DATA;
+    wr_base_addr={bank_address[write_bank][31:2],2'b00};
+    wr_row_stride=0;wr_rows_to_write=1;
+    wr_burst_len_m1=8'(((32'(bank_address[write_bank][1:0])+bank_bytes[write_bank]+3)>>2)-1);
+    src_wdata=pack_data;src_wmask=pack_mask;src_wvalid=wb_state==WB_DATA;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -457,23 +517,118 @@ module vector_engine #(
         add_product[l]<=0;add_scaled_a[l]<=0;add_scaled_b[l]<=0;
         add_sum[l]<=0;add_rounded[l]<=0;
       end
-      q_accumulator<=0;q_rounded<=0;q_product<=0;q_right<=0;avg_negative<=0;
-      write_origin<=0;write_total<=0;write_index<=0;write_count<=0;
-      write_addr_q<=0;write_data_q<=0;write_mask_q<=0;
-      stat_cycles<=0;stat_compute<=0;stat_dma_wait<=0;
-      input_range_mode<=0;line_valid<=0;cache_scan<=0;cache_slot<=0;
-      cache_y<=0;cache_x<=0;cache_pixels<=0;cache_received<=0;
+      q_accumulator<=0;q_multiplier<=0;q_rounded<=0;q_product<=0;q_right_0<=0;q_right_1<=0;
+      q_valid<=0;q_index_0<=0;q_index_1<=0;q_index_2<=0;q_issue<=0;q_count<=0;
+      q_active<=0;q_bank<=0;q_next_bank<=0;produce_bank<=0;write_bank<=0;
+      wb_state<=WB_IDLE;read_bank<=0;wf_bank<=0;input_ready<=0;input_reserved<=0;
+      window_received<=0;soft_lut_data<=0;avg_negative<=0;
+      fetch_position<=0;fetch_tap<=0;fetch_ox<=0;fetch_kx<=0;
+      fetch_x<=0;fetch_y<=0;fetch_origin_x<=0;fetch_origin_y<=0;
+      for (int b=0;b<2;b++) begin
+        bank_state[b]<=BANK_FREE;bank_address[b]<=0;bank_bytes[b]<=0;bank_count[b]<=0;
+      end
+      for(int b=0;b<4;b++) begin input_position[b]<=0;input_tap[b]<=0;end
+      write_origin<=0;write_total<=0;write_index<=0;
+      stat_cycles<=0;stat_compute<=0;stat_dma_wait<=0;input_range_mode<=0;
       pool_offset<=0;pool_pixels<=0;pool_received<=0;pool_pixel<=0;
-      for (int i=0;i<3;i++) begin line_y[i]<=0;line_slots[i]<=0;end
     end else begin
       if (state!=IDLE && state!=DONE) stat_cycles<=stat_cycles+1;
       if (state==EXECUTE || state==ADD_MULT || state==ADD_ROUND ||
-          state==ADD_SUM || state==ADD_STORE) stat_compute<=stat_compute+1;
-      if (state==LOAD_WAIT || state==WINDOW_WAIT || state==CACHE_LOAD_WAIT || state==POOL_LOAD_WAIT || state==WRITE_DATA || state==WRITE_WAIT ||
-          ((state==LOAD_REQ || state==WINDOW_REQ || state==CACHE_LOAD_REQ || state==POOL_LOAD_REQ) && !rd_granted) ||
-          (state==WRITE_REQ && !wr_granted) ||
-          ((state==CONFIGURE || state==CACHE_CONFIGURE) && !dma_cfg_ready))
-        stat_dma_wait<=stat_dma_wait+1;
+          state==ADD_SUM || state==ADD_STORE ||
+          (state==SOFT_RUN && !soft_lut_req_valid && !soft_done)) stat_compute<=stat_compute+1;
+      if (state==LOAD_WAIT || win_busy || state==POOL_LOAD_WAIT ||
+          wb_state==WB_DATA || wb_state==WB_WAIT || state==SOFT_LUT_WAIT ||
+          (rd_req && !rd_granted) || (wr_req && !wr_granted) ||
+          (state==CONFIGURE && !dma_cfg_ready)) stat_dma_wait<=stat_dma_wait+1;
+
+      if (softmax_s8) begin
+        if (soft_exp_we) acc_buf[soft_exp_index]<=soft_exp_data;
+        if (soft_out_we) result_buf[soft_out_index]<=32'($signed(soft_out_data));
+        if (state==SOFT_LUT_WAIT && rd_raw_valid) soft_lut_data<=rd_raw_data;
+      end
+
+      // Two existing result banks decouple accumulation, quantization and AXI writes.
+      if (depthwise && state!=IDLE && state!=FAILED && state!=DONE) begin
+        if (!q_active && bank_state[q_next_bank]==BANK_RAW) begin
+          q_active<=1;q_bank<=q_next_bank;q_count<=bank_count[q_next_bank];q_issue<=0;q_valid<=0;
+          bank_state[q_next_bank]<=BANK_QUANT;
+        end else if (q_active) begin
+          q_valid<={q_valid[1:0],q_issue<q_count};
+          if (q_issue<q_count) begin
+            q_accumulator<=result_bank_data(q_bank,q_issue);q_multiplier<=mult_buf[q_issue];
+            q_right_0<=6'(31-shift_buf[q_issue]);q_index_0<=q_issue;q_issue<=q_issue+1;
+          end
+          if (q_valid[0]) begin
+            q_product<=multiplier_product;q_right_1<=q_right_0;q_index_1<=q_index_0;
+          end
+          if (q_valid[1]) begin
+            q_rounded<=round_shift_even(q_product,q_right_1);q_index_2<=q_index_1;
+          end
+          if (q_valid[2]) begin
+            if (!q_bank) result_buf[q_index_2]<=clamp_s8(q_with_offset,c.activation_min,c.activation_max);
+            else begin
+              input_buf[2*TILE+2*q_index_2]<=16'(clamp_s8(q_with_offset,c.activation_min,c.activation_max));
+              input_buf[2*TILE+2*q_index_2+1]<=16'(clamp_s8(q_with_offset,c.activation_min,c.activation_max)>>>16);
+            end
+            if (q_index_2+1==q_count) begin
+              q_active<=0;q_valid<=0;bank_state[q_bank]<=BANK_READY;q_next_bank<=!q_next_bank;
+            end
+          end
+        end
+      end
+      case (wb_state)
+        WB_IDLE: if (state!=IDLE && state!=FAILED && state!=DONE && bank_state[write_bank]==BANK_READY) begin
+          write_index<=0;bank_state[write_bank]<=BANK_WRITE;wb_state<=WB_REQ;
+        end
+        WB_REQ: if (wr_granted) wb_state<=WB_DATA;
+        WB_DATA: if (src_wready) begin
+          if (write_index+pack_count==bank_bytes[write_bank]) wb_state<=WB_WAIT;
+          else write_index<=write_index+pack_count;
+        end
+        WB_WAIT: if (wr_done) begin
+          bank_state[write_bank]<=BANK_FREE;wb_state<=WB_IDLE;
+          if (depthwise) write_bank<=!write_bank;
+        end
+        default: wb_state<=WB_IDLE;
+      endcase
+
+      if (window_fetch_advance) begin
+        if (fetch_tap+1==taps) begin
+          fetch_position<=fetch_position+1;fetch_tap<=0;fetch_kx<=0;
+          if (fetch_ox+1==32'(c.image.output_w)) begin
+            fetch_ox<=0;
+            fetch_origin_x<=-$signed(64'(c.image.pad_left));
+            fetch_origin_y<=fetch_origin_y+$signed(64'(c.image.stride_h));
+            fetch_x<=-$signed(64'(c.image.pad_left));
+            fetch_y<=fetch_origin_y+$signed(64'(c.image.stride_h));
+          end else begin
+            fetch_ox<=fetch_ox+1;
+            fetch_origin_x<=fetch_origin_x+$signed(64'(c.image.stride_w));
+            fetch_x<=fetch_origin_x+$signed(64'(c.image.stride_w));fetch_y<=fetch_origin_y;
+          end
+        end else begin
+          fetch_tap<=fetch_tap+1;
+          if (fetch_kx+1==32'(c.image.kernel_w)) begin
+            fetch_kx<=0;fetch_x<=fetch_origin_x;fetch_y<=fetch_y+$signed(64'(c.image.dilation_h));
+          end else begin
+            fetch_kx<=fetch_kx+1;fetch_x<=fetch_x+$signed(64'(c.image.dilation_w));
+          end
+        end
+      end
+      if (window_request_fire) begin
+        input_reserved[wf_bank]<=1;
+        input_position[wf_bank]<=fetch_position;input_tap[wf_bank]<=fetch_tap;
+        wf_bank<=(wf_bank+1'b1)&input_bank_mask;
+      end
+      if (window_response_fire) begin
+        for(int lane=0;lane<4;lane++) if(win_rsp_mask[lane] && win_rsp_col+32'(lane)<active)
+          input_buf[input_response_base+win_rsp_col+32'(lane)]<=win_rsp_data[lane];
+        window_received<=window_received+32'(window_response_count);
+        if(win_rsp_last) begin
+          input_reserved[win_rsp_tag]<=0;input_ready[win_rsp_tag]<=!win_rsp_error;
+          window_received<=0;
+        end
+      end
       if (param_bad) param_bad_seen<=1;
       if (state==LOAD_WAIT) begin
         for (int l=0;l<4;l++) if (rd_valid[l] && 32'(rd_col_base)+32'(l)<active) begin
@@ -493,17 +648,6 @@ module vector_engine #(
           endcase
         end
       end
-      if (state==WINDOW_WAIT) begin
-        for (int l=0;l<4;l++) if (rd_valid[l] && 32'(rd_col_base)+32'(l)<active)
-          input_buf[32'(rd_col_base)+32'(l)]<=rd_data[l];
-      end
-      if (state==CACHE_LOAD_WAIT) begin
-        cache_received<=cache_received+32'(cache_received_count);
-        for (int l=0;l<4;l++) if (cache_lane_valid[l] && cache_received+32'(cache_lane_prefix[l])<cache_elements)
-          line_buf[cache_store_channel[l]%CACHE_BANKS]
-                  [32'(cache_slot)*CACHE_ROW_SIZE+cache_store_pixel[l]*CACHE_GROUPS+
-                   cache_store_channel[l]/CACHE_BANKS]<=8'(rd_data[l]);
-      end
       if (state==POOL_LOAD_WAIT) begin
         pool_received<=pool_received+32'(cache_received_count);
         for (int l=0;l<4;l++) if (cache_lane_valid[l] && pool_received+32'(cache_lane_prefix[l])<pool_elements)
@@ -512,12 +656,14 @@ module vector_engine #(
       case (state)
         IDLE: if (start) begin
           c<=cfg; error<=0; state<=CHECK;
-          input_range_mode<=0;
+          input_range_mode<=0;bank_state[0]<=BANK_FREE;bank_state[1]<=BANK_FREE;
+          q_active<=0;q_valid<=0;q_next_bank<=0;produce_bank<=0;write_bank<=0;
+          input_ready<=0;input_reserved<=0;read_bank<=0;wf_bank<=0;wb_state<=WB_IDLE;window_received<=0;
           stat_cycles<=0;stat_compute<=0;stat_dma_wait<=0;param_bad_seen<=0;
         end
         CHECK: if (!cfg_ok) begin error<=2'b01;state<=FAILED;end
           else begin
-            taps<=32'(kernel_count);channel_base<=0;input_range_mode<=(cache_enabled || global_pool) && !depthwise;
+            taps<=32'(kernel_count);channel_base<=0;input_range_mode<=global_pool;
             state<=CONFIGURE;
           end
         CONFIGURE: if (dma_cfg_ready) state<=spatial ? TILE_INIT : VECTOR_INIT;
@@ -525,7 +671,10 @@ module vector_engine #(
           active<=channels-channel_base<TILE ? channels-channel_base : 32'(TILE);
           position<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=LD_WEIGHT;
           for (int l=0;l<TILE;l++) bias_buf[l]<=0;
-          line_valid<=0;cache_scan<=0;
+          input_ready<=0;input_reserved<=0;read_bank<=0;wf_bank<=0;window_received<=0;
+          fetch_position<=0;fetch_tap<=0;fetch_ox<=0;fetch_kx<=0;
+          fetch_x<=-$signed(64'(c.image.pad_left));fetch_y<=-$signed(64'(c.image.pad_top));
+          fetch_origin_x<=-$signed(64'(c.image.pad_left));fetch_origin_y<=-$signed(64'(c.image.pad_top));
           state<=depthwise ? LOAD_REQ : OUTPUT_INIT;
         end
         LOAD_REQ: if (rd_granted) state<=LOAD_WAIT;
@@ -536,10 +685,9 @@ module vector_engine #(
               else begin load_kind<=c.bias_base==0 ? LD_MULT : LD_BIAS;state<=LOAD_REQ;end
             LD_BIAS: begin load_kind<=LD_MULT;state<=LOAD_REQ;end
             LD_MULT: begin load_kind<=LD_SHIFT;state<=LOAD_REQ;end
-            LD_SHIFT: if (cache_enabled) begin input_range_mode<=1;state<=CACHE_CONFIGURE;end
-              else state<=OUTPUT_INIT;
+            LD_SHIFT: state<=OUTPUT_INIT;
             LD_A: if (binary_vector) begin load_kind<=LD_B;state<=LOAD_REQ;end
-              else begin compute_index<=0;state<=EXECUTE;end
+              else begin compute_index<=0;state<=softmax_s8 ? SOFT_START : EXECUTE;end
             LD_B: begin
               compute_index<=0;add_stage<=0;add_part<=0;
               state<=add_s8 ? ADD_MULT : EXECUTE;
@@ -557,34 +705,7 @@ module vector_engine #(
           tap<=0;kx<=0;ky<=0;valid_taps<=0;
           if (global_pool) begin
             valid_taps<=taps;pool_offset<=0;state<=POOL_LOAD_PREP;
-          end else if (cache_enabled && ox==0) begin cache_scan<=0;state<=CACHE_CHECK;end
-          else state<=TAP_CHECK;
-        end
-        CACHE_CONFIGURE: if (dma_cfg_ready) state<=OUTPUT_INIT;
-        CACHE_CHECK: if (32'(cache_scan)==32'(c.image.kernel_h)) state<=TAP_CHECK;
-          else if (cache_requested_y<0 || cache_requested_y>=$signed(64'(c.image.input_h)))
-            cache_scan<=cache_scan+1'b1;
-          else begin
-            line_slots[cache_scan]<=cache_requested_slot;
-            if (line_valid[cache_requested_slot] && line_y[cache_requested_slot]==16'(cache_requested_y))
-              cache_scan<=cache_scan+1'b1;
-            else begin
-              cache_y<=32'(cache_requested_y);cache_slot<=cache_requested_slot;cache_x<=0;
-              line_valid[cache_requested_slot]<=0;state<=CACHE_LOAD_PREP;
-            end
-          end
-        CACHE_LOAD_PREP: begin
-          cache_pixels<=cache_next_pixels;cache_received<=0;state<=CACHE_LOAD_REQ;
-        end
-        CACHE_LOAD_REQ: if (rd_granted) state<=CACHE_LOAD_WAIT;
-        CACHE_LOAD_WAIT: if (rd_done) begin
-          if (rd_error || cache_received+32'(cache_received_count)!=cache_elements) begin error<=2'b10;state<=FAILED;end
-          else if (cache_x+cache_pixels<32'(c.image.input_w)) begin
-            cache_x<=cache_x+cache_pixels;state<=CACHE_LOAD_PREP;
-          end else begin
-            line_valid[cache_slot]<=1;line_y[cache_slot]<=16'(cache_y);
-            cache_scan<=cache_scan+1'b1;state<=CACHE_CHECK;
-          end
+          end else state<=TAP_CHECK;
         end
         POOL_LOAD_PREP: begin
           pool_pixels<=pool_next_pixels;pool_received<=0;pool_pixel<=0;state<=POOL_LOAD_REQ;
@@ -595,15 +716,12 @@ module vector_engine #(
           else begin compute_index<=0;state<=EXECUTE;end
         end
         TAP_CHECK: if (in_bounds) begin
-            valid_taps<=valid_taps+1;compute_index<=0;state<=cache_enabled ? EXECUTE : WINDOW_REQ;
+            valid_taps<=valid_taps+1;compute_index<=0;
+            state<=input_ready[read_bank] ? EXECUTE : WINDOW_WAIT;
           end
           else state<=TAP_NEXT;
-        WINDOW_REQ: if (rd_granted) state<=WINDOW_WAIT;
-        WINDOW_WAIT: if (rd_done) begin
-          if (rd_error) begin error<=2'b10;state<=FAILED;end
-          else begin compute_index<=0;state<=EXECUTE;end
-        end
-        EXECUTE: begin
+        WINDOW_WAIT: if (input_ready[read_bank]) begin compute_index<=0;state<=EXECUTE;end
+        EXECUTE: if (c.op!=VEC_HADAMARD || bank_state[0]==BANK_FREE) begin
           for (int l=0;l<PE_COUNT;l++) if (compute_index+32'(l)<active) begin
             if (c.op==VEC_HADAMARD) result_buf[compute_index+32'(l)]<=pe_result[l];
             else acc_buf[compute_index+32'(l)]<=pe_result[l];
@@ -614,9 +732,20 @@ module vector_engine #(
             else if (pool_offset+pool_pixels<taps) begin pool_offset<=pool_offset+pool_pixels;state<=POOL_LOAD_PREP;end
             else begin quant_index<=0;state<=QUANT_INIT;end
           end
-          else if (spatial) state<=TAP_NEXT;
+          else if (spatial) begin
+            input_ready[read_bank]<=0;read_bank<=(read_bank+1'b1)&input_bank_mask;compute_index<=0;
+            if (tap+1==taps) begin quant_index<=0;state<=QUANT_INIT;end
+            else begin
+              tap<=tap+1;
+              if (kx+1==32'(c.image.kernel_w)) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
+              if (next_window_valid) begin
+                valid_taps<=valid_taps+1;
+                state<=input_ready[(read_bank+1'b1)&input_bank_mask] ? EXECUTE : WINDOW_WAIT;
+              end else state<=TAP_CHECK;
+            end
+          end
           else if (c.op==VEC_HADAMARD) begin
-            write_origin<=c.output_base+(vector_offset<<2);write_total<=active<<2;write_index<=0;state<=WRITE_PREP;
+            write_origin<=c.output_base+(vector_offset<<2);write_total<=active<<2;state<=WRITE_PREP;
           end else state<=VECTOR_NEXT;
         end
         ADD_MULT: begin
@@ -641,14 +770,14 @@ module vector_engine #(
             add_sum[l]<=32'(add_acc_next[l]);
           add_stage<=2;state<=ADD_MULT;
         end
-        ADD_STORE: begin
+        ADD_STORE: if (bank_state[0]==BANK_FREE) begin
           for (int l=0;l<PE_COUNT;l++) if (compute_index+32'(l)<active)
             result_buf[compute_index+32'(l)]<=clamp_s8(add_rounded[l]+$signed(64'(c.output_offset)),
                                                       c.activation_min,c.activation_max);
           if (compute_index+32'(PE_COUNT)<active) begin
             compute_index<=compute_index+32'(PE_COUNT);add_stage<=0;add_part<=0;state<=ADD_MULT;
           end else begin
-            write_origin<=c.output_base+vector_offset;write_total<=active;write_index<=0;state<=WRITE_PREP;
+            write_origin<=c.output_base+vector_offset;write_total<=active;state<=WRITE_PREP;
           end
         end
         TAP_NEXT: if (tap+1==taps) begin quant_index<=0;state<=QUANT_INIT;end
@@ -658,52 +787,46 @@ module vector_engine #(
             state<=TAP_CHECK;
           end
         QUANT_INIT: begin
-          if (depthwise) state<=Q_SHIFT;
-          else if (c.op==AVGPOOL_S8) begin
-            if (valid_taps==0) begin error<=2'b01;state<=FAILED;end else state<=AVG_START;
-          end else state<=POOL_STORE;
-        end
-        Q_SHIFT: begin
-          q_accumulator<=acc_buf[quant_index];
-          q_right<=6'(31-shift_buf[quant_index]);
-          state<=Q_MULT;
-        end
-        Q_MULT: begin q_product<=q_accumulator*mult_buf[quant_index];state<=Q_ROUND;end
-        Q_ROUND: begin q_rounded<=round_shift_even(q_product,q_right);state<=Q_STORE;end
-        Q_STORE: begin
-          result_buf[quant_index]<=clamp_s8(q_with_offset,c.activation_min,c.activation_max);
-          if (quant_index+1<active) begin quant_index<=quant_index+1;state<=QUANT_INIT;end
-          else begin
-            write_origin<=c.output_base+position*channels+channel_base;
-            write_total<=active;write_index<=0;state<=WRITE_PREP;
+          if (depthwise) begin
+            if (bank_state[produce_bank]==BANK_FREE) begin
+              for (int l=0;l<TILE;l++) if (32'(l)<active) begin
+                if (!produce_bank) result_buf[l]<=acc_buf[l];
+                else begin input_buf[2*TILE+2*l]<=acc_buf[l][15:0];input_buf[2*TILE+2*l+1]<=acc_buf[l][31:16];end
+              end
+              bank_address[produce_bank]<=c.output_base+position*channels+channel_base;
+              bank_bytes[produce_bank]<=active;bank_count[produce_bank]<=active;
+              bank_state[produce_bank]<=BANK_RAW;produce_bank<=!produce_bank;state<=OUTPUT_NEXT;
+            end
+          end else if (bank_state[0]==BANK_FREE) begin
+            if (c.op==AVGPOOL_S8) begin
+              if (valid_taps==0) begin error<=2'b01;state<=FAILED;end else state<=AVG_START;
+            end else state<=POOL_STORE;
           end
         end
-        AVG_START: begin avg_negative<=acc_buf[quant_index]<0;state<=AVG_WAIT;end
+        AVG_START: if (avg_power_two) begin
+          result_buf[quant_index]<=clamp_s8(round_shift_even($signed(64'(acc_buf[quant_index])),avg_shift),c.activation_min,c.activation_max);
+          if (quant_index+1<active) quant_index<=quant_index+1;
+          else begin write_origin<=c.output_base+position*channels+channel_base;write_total<=active;state<=WRITE_PREP;end
+        end else begin avg_negative<=acc_buf[quant_index]<0;state<=AVG_WAIT;end
         AVG_WAIT: if (div_done) begin
           result_buf[quant_index]<=clamp_s8(avg_negative ? -$signed(64'(avg_magnitude)) : $signed(64'(avg_magnitude)),
                                            c.activation_min,c.activation_max);
           if (quant_index+1<active) begin quant_index<=quant_index+1;state<=QUANT_INIT;end
           else begin write_origin<=c.output_base+position*channels+channel_base;
-            write_total<=active;write_index<=0;state<=WRITE_PREP;end
+            write_total<=active;state<=WRITE_PREP;end
         end
         POOL_STORE: begin
-          result_buf[quant_index]<=clamp_s8($signed(64'(acc_buf[quant_index])),c.activation_min,c.activation_max);
-          if (quant_index+1<active) begin quant_index<=quant_index+1;state<=QUANT_INIT;end
-          else begin write_origin<=c.output_base+position*channels+channel_base;
-            write_total<=active;write_index<=0;state<=WRITE_PREP;end
+          for (int l=0;l<TILE;l++) if (32'(l)<active)
+            result_buf[l]<=clamp_s8($signed(64'(acc_buf[l])),c.activation_min,c.activation_max);
+          write_origin<=c.output_base+position*channels+channel_base;
+          write_total<=active;state<=WRITE_PREP;
         end
-        WRITE_PREP: begin
-          write_addr_q<={pack_addr[31:2],2'b00};write_data_q<=pack_data;write_mask_q<=pack_mask;
-          write_count<=pack_count;state<=WRITE_REQ;
-        end
-        WRITE_REQ: if (wr_granted) state<=WRITE_DATA;
-        WRITE_DATA: if (src_wready) state<=WRITE_WAIT;
-        WRITE_WAIT: if (wr_done) begin
-          if (wr_error) begin error<=2'b10;state<=FAILED;end
-          else if (write_index+write_count<write_total) begin write_index<=write_index+write_count;state<=WRITE_PREP;end
-          else if (spatial) state<=OUTPUT_NEXT;
+        WRITE_PREP: if (bank_state[0]==BANK_FREE) begin
+          bank_address[0]<=write_origin;bank_bytes[0]<=write_total;bank_count[0]<=active;
+          bank_state[0]<=BANK_READY;write_bank<=0;
+          if (spatial) state<=OUTPUT_NEXT;
           else if (c.op==VEC_HADAMARD || add_s8) state<=VECTOR_NEXT;
-          else state<=DONE;
+          else state<=DRAIN;
         end
         OUTPUT_NEXT: begin
           if (position+1<32'(position_count)) begin
@@ -711,11 +834,21 @@ module vector_engine #(
             if (ox+1==32'(c.image.output_w)) begin ox<=0;oy<=oy+1;end else ox<=ox+1;
             state<=OUTPUT_INIT;
           end else if (channel_base+active<channels) begin
-            channel_base<=channel_base+active;input_range_mode<=!depthwise;
-            state<=cache_enabled || global_pool ? CONFIGURE : TILE_INIT;
+            channel_base<=channel_base+active;state<=DRAIN_TILE;
           end
-          else state<=DONE;
+          else state<=DRAIN;
         end
+        DRAIN_TILE: if (bank_state[0]==BANK_FREE && bank_state[1]==BANK_FREE && !win_busy && input_reserved==0 && !q_active)
+          state<=TILE_INIT;
+        DRAIN: if (bank_state[0]==BANK_FREE && bank_state[1]==BANK_FREE && !win_busy && input_reserved==0 && !q_active && wb_state==WB_IDLE && dma_cfg_ready)
+          state<=DONE;
+        SOFT_START: if (soft_ready) state<=SOFT_RUN;
+        SOFT_RUN: if (soft_done) begin
+          if (soft_error!=0) begin error<=soft_error;state<=FAILED;end
+          else begin write_origin<=c.output_base;write_total<=active;state<=WRITE_PREP;end
+        end else if (soft_lut_req_valid) begin soft_lut_data<=0;state<=SOFT_LUT_REQ;end
+        SOFT_LUT_REQ: if (rd_granted) state<=SOFT_LUT_WAIT;
+        SOFT_LUT_WAIT: if (rd_done) state<=SOFT_RUN;
         VECTOR_INIT: begin
           for (int l=0;l<TILE;l++) begin
             if (c.op==VEC_MAX) acc_buf[l]<=32'sh8000_0000;
@@ -729,7 +862,7 @@ module vector_engine #(
           vector_offset<=vector_offset+active;
           active<=c.length-vector_offset-active<TILE ? c.length-vector_offset-active : 32'(TILE);
           load_kind<=LD_A;state<=LOAD_REQ;
-        end else if (c.op==VEC_HADAMARD || add_s8) state<=DONE;
+        end else if (c.op==VEC_HADAMARD || add_s8) state<=DRAIN;
         else begin
           reduce_acc<=c.op==VEC_MAX ? 32'sh8000_0000 : c.op==VEC_MIN ? 32'sh7fff_ffff : 32'sd0;
           reduce_index<=0;state<=VECTOR_REDUCE;
@@ -737,12 +870,19 @@ module vector_engine #(
         VECTOR_REDUCE: begin
           reduce_acc<=reduce_next;
           if (reduce_index+1<TILE) reduce_index<=reduce_index+1;
-          else begin result_buf[0]<=reduce_next;write_origin<=c.output_base;write_index<=0;write_total<=4;state<=WRITE_PREP;end
+          else begin result_buf[0]<=reduce_next;write_origin<=c.output_base;write_total<=4;state<=WRITE_PREP;end
         end
-        FAILED: if (!rd_busy && !wr_busy && dma_cfg_ready) state<=DONE;
+        FAILED: if (!rd_busy && !wr_busy && !win_busy && wb_state==WB_IDLE && dma_cfg_ready) begin
+          bank_state[0]<=BANK_FREE;bank_state[1]<=BANK_FREE;q_active<=0;q_valid<=0;
+          wb_state<=WB_IDLE;input_reserved<=0;input_ready<=0;state<=DONE;
+        end
         DONE: if (done_ready) state<=IDLE;
         default: begin error<=2'b10;state<=FAILED;end
       endcase
+      if ((wb_state==WB_WAIT && wr_done && wr_error) ||
+          (window_response_fire && win_rsp_last && (win_rsp_error || window_received+32'(window_response_count)!=active))) begin
+        error<=2'b10;state<=FAILED;
+      end
     end
   end
 
@@ -752,7 +892,6 @@ module vector_engine #(
     assert(PE_COUNT>=1 && PE_COUNT<=TILE && TILE%PE_COUNT==0);
     assert(DMA_SIZE>=4*TILE && MAX_TAPS>=1 && MAX_TAPS<=255);
     assert(POOL_MAX_TAPS>=1 && POOL_MAX_TAPS<=65535);
-    assert(LINE_CACHE_MAX_WIDTH>=0 && LINE_CACHE_MAX_WIDTH<=65535);
   end
   always_ff @(posedge clk) if (rst_n) begin
     if (src_wvalid && !src_wready) begin
@@ -765,21 +904,28 @@ module vector_engine #(
       if (state==ADD_SUM) for (int l=0;l<PE_COUNT;l++) if (compute_index+32'(l)<active)
         assert(add_acc_next[l]>=-64'sd2147483648 && add_acc_next[l]<=64'sd2147483647);
     end
-    if (state==WINDOW_REQ) assert(in_bounds && tap<taps);
-    if (state==CACHE_LOAD_REQ) begin
-      assert(cache_enabled && input_range_mode && cache_pixels>0 && cache_elements<=DMA_SIZE);
-      assert(cache_x+cache_pixels<=32'(c.image.input_w) && cache_y<32'(c.image.input_h));
+    if (window_request_fire) begin
+      assert(!input_ready[wf_bank] && !input_reserved[wf_bank]);
+      assert(win_req_cols>0 && win_req_cols<=TILE);
     end
-    if (state==EXECUTE && cache_enabled) begin
-      assert(in_bounds && ky<3 && line_valid[line_slots[ky]]);
-      assert(line_y[line_slots[ky]]==16'(input_y));
+    if (window_response_fire) begin
+      assert(input_reserved[win_rsp_tag]);
+      if(!win_rsp_error) begin
+        assert(win_rsp_mask!=0 && win_rsp_col+32'(window_response_count)<=active);
+        if(win_rsp_last) assert(window_received+32'(window_response_count)==active);
+      end
     end
+    if (state==WINDOW_WAIT) assert(in_bounds && tap<taps);
     if (state==POOL_LOAD_REQ) begin
       assert(global_pool && input_range_mode && pool_pixels>0 && pool_elements<=DMA_SIZE);
       assert(pool_offset+pool_pixels<=taps);
     end
     if (state==EXECUTE && global_pool) assert(pool_pixel<pool_pixels && pool_input_index+active<=pool_elements);
-    if (state==WRITE_REQ) assert(write_count>0 && write_count<=4 && write_mask_q!=0);
+    if (wb_state==WB_DATA) assert(pack_count>0 && pack_count<=4 && pack_mask!=0);
+    if (state==EXECUTE && spatial && !global_pool) begin
+      assert(input_ready[read_bank]);
+      assert(input_position[read_bank]==position && input_tap[read_bank]==tap);
+    end
   end
 `endif
 endmodule

@@ -3,7 +3,8 @@ module compute_core #(
     parameter int unsigned DATA_WIDTH = 16,
     parameter int unsigned WEIGHT_WIDTH = 16,
     parameter int unsigned PS_FRAME_COUNT = SIZE,
-    parameter int unsigned MAX_IA_REUSE = 2
+    parameter int unsigned MAX_IA_REUSE = 2,
+    parameter int unsigned PS_STORAGE_ROWS = 0
 ) (
     input  logic                         clk,
     input  logic                         rst_n,
@@ -197,7 +198,8 @@ module compute_core #(
         .SIZE      (SIZE),
         .DATA_WIDTH(32),
         .FRAME_COUNT(PS_EFFECTIVE_FRAME_COUNT),
-        .MAX_IA_REUSE(MAX_IA_REUSE)
+        .MAX_IA_REUSE(MAX_IA_REUSE),
+        .STORAGE_ROWS(PS_STORAGE_ROWS)
     ) u_ps_buffer (
         .capacity_fault(ps_capacity_fault),
         .clk            (clk),

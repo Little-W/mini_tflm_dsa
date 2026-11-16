@@ -289,7 +289,19 @@ module axi_linear_block_dma #(
     wire [BEAT_CNT_W-1:0] rd_first_beats = beat_count_t'(1)
         + (rd_linear_read_mode ? beat_count_t'(0) : beat_count_t'(rd_burst_len_m1))
         + beat_count_t'(rd_base_addr[ADDR_LSB-1:0] != '0);
-    wire [BEAT_CNT_W-1:0] rd_first_segment = read_segment_beats(rd_first_ar_addr,rd_first_beats);
+    // Adjacent logical rows share one physical burst. Response row/column
+    // counters still advance at each logical row, independently of RLAST.
+    // A page boundary splits the combined span without changing its bytes.
+    wire [REG_WIDTH-1:0] rd_contiguous_beats =
+        REG_WIDTH'(row_count_t'(rd_rows_to_read)) * REG_WIDTH'(rd_first_beats);
+    wire rd_merge_rows = rd_base_addr[ADDR_LSB-1:0] == '0 &&
+        rd_row_stride == (REG_WIDTH'(rd_first_beats) << ADDR_LSB) &&
+        row_count_t'(rd_rows_to_read) > row_count_t'(1) &&
+        rd_contiguous_beats <= REG_WIDTH'(256);
+    wire [BEAT_CNT_W-1:0] rd_first_span_beats =
+        rd_merge_rows ? beat_count_t'(rd_contiguous_beats) : rd_first_beats;
+    wire [BEAT_CNT_W-1:0] rd_first_segment =
+        read_segment_beats(rd_first_ar_addr,rd_first_span_beats);
     assign m_axi_arvalid = rd_arvalid_r;
     assign m_axi_araddr = rd_araddr_r;
     assign m_axi_arlen = rd_arlen_r;
@@ -313,8 +325,9 @@ module axi_linear_block_dma #(
             rd_araddr_r    <= rd_first_ar_addr;
             rd_arlen_r     <= 8'(rd_first_segment - beat_count_t'(1));
             rd_follow_addr <= rd_first_ar_addr + (REG_WIDTH'(rd_first_segment) << ADDR_LSB);
-            rd_follow_beats <= rd_first_beats - rd_first_segment;
-            rd_cmd_row_cnt  <= (row_count_t'(rd_rows_to_read) != '0) ? row_count_t'(1) : '0;
+            rd_follow_beats <= rd_first_span_beats - rd_first_segment;
+            rd_cmd_row_cnt  <= rd_merge_rows ? row_count_t'(rd_rows_to_read) :
+                              ((row_count_t'(rd_rows_to_read) != '0) ? row_count_t'(1) : '0);
             rd_cmd_row_addr <= rd_base_addr + rd_row_stride;
             rd_outstanding_cnt <= '0;
             rd_pending_cmd_cross <= (rd_base_addr[ADDR_LSB-1:0] != '0);
@@ -533,15 +546,17 @@ module axi_linear_block_dma #(
     logic [7:0] wr_cfg_burst_len_m1;
     write_row_count_t wr_cmd_row_cnt;
     logic [REG_WIDTH-1:0] wr_cmd_row_addr_cur;
+    beat_count_t wr_cmd_beat_cnt;
     write_row_count_t wr_data_row_cnt;
     logic [REG_WIDTH-1:0] wr_data_row_addr_cur;
-    write_row_count_t wr_resp_row_cnt;
     beat_count_t wr_beat_cnt;
+    beat_count_t wr_segment_beat_cnt, wr_segment_last_beat;
     logic [BUS_WIDTH-1:0] wr_tail_data;
     logic [BUS_WIDTH/8-1:0] wr_tail_mask;
     logic wr_active;
     logic wr_data_active;
     logic [WR_OUTS_W-1:0] wr_outstanding_cnt;
+    logic [WR_OUTS_W-1:0] wr_pending_data_cnt;
     logic wr_done_r;
     logic wr_error_r;
     logic wr_pending_cmd_cross;
@@ -562,13 +577,38 @@ module axi_linear_block_dma #(
     wire wr_row_cross = (wr_row_offset != '0);
     wire [BEAT_CNT_W-1:0] wr_aligned_last_beat =
         wr_cfg_burst_len_ext + (wr_row_cross ? BEAT_CNT_W'(1) : BEAT_CNT_W'(0));
+    wire [BEAT_CNT_W-1:0] wr_cmd_row_beats = wr_cfg_burst_len_ext + beat_count_t'(1)
+        + beat_count_t'(wr_cmd_row_offset != '0);
+    wire [REG_WIDTH-1:0] wr_cmd_segment_addr =
+        {wr_cmd_row_addr_cur[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
+        + (REG_WIDTH'(wr_cmd_beat_cnt) << ADDR_LSB);
+    wire [REG_WIDTH-1:0] wr_data_segment_addr =
+        {wr_data_row_addr_cur[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
+        + (REG_WIDTH'(wr_beat_cnt) << ADDR_LSB);
+    function automatic beat_count_t write_segment_beats(
+        input logic [REG_WIDTH-1:0] address, input beat_count_t remaining);
+        logic [12:0] page_beats;
+        beat_count_t result;
+        begin
+            page_beats = (13'd4096 - {1'b0,address[11:0]}) >> ADDR_LSB;
+            result = remaining > 9'd256 ? 9'd256 : remaining;
+            if (13'(result) > page_beats) result = beat_count_t'(page_beats);
+            return result;
+        end
+    endfunction
+    wire [BEAT_CNT_W-1:0] wr_cmd_segment_beats =
+        write_segment_beats(wr_cmd_segment_addr, wr_cmd_row_beats-wr_cmd_beat_cnt);
+    wire [BEAT_CNT_W-1:0] wr_data_segment_beats =
+        write_segment_beats(wr_data_segment_addr,
+                            wr_aligned_last_beat + beat_count_t'(1) - wr_beat_cnt);
     wire wr_tail_beat = wr_row_cross && (wr_beat_cnt == wr_aligned_last_beat);
     wire wr_need_src_beat = !wr_tail_beat;
     wire wr_can_issue_aw = wr_active &&
                             (wr_cmd_row_cnt < wr_cfg_rows) &&
                             (wr_outstanding_cnt < WR_OUTS_W'(WR_OUTS_MAX));
     wire wr_can_start_data = wr_active && !wr_data_active &&
-                              (wr_data_row_cnt < wr_cmd_row_cnt);
+                              (wr_pending_data_cnt != '0);
+    wire wr_segment_done = wr_w_hs && m_axi_wlast;
 
     logic [BUS_WIDTH-1:0] wr_aligned_wdata;
     logic [BUS_WIDTH/8-1:0] wr_aligned_wstrb;
@@ -595,12 +635,13 @@ module axi_linear_block_dma #(
     assign m_axi_wstrb   = wr_aligned_wstrb;
     assign m_axi_wvalid  = wr_active && wr_data_active &&
                            (wr_need_src_beat ? src_wvalid : 1'b1);
-    assign m_axi_wlast   = (wr_beat_cnt == wr_aligned_last_beat);
+    assign m_axi_wlast   = (wr_segment_beat_cnt == wr_segment_last_beat);
     assign m_axi_bready  = wr_active;
     assign src_wready    = wr_active && wr_data_active &&
                            wr_need_src_beat && m_axi_wready;
 
-    wire last_wr_b = wr_b_hs && (wr_resp_row_cnt == (wr_cfg_rows - write_row_count_t'(1)));
+    wire last_wr_b = wr_b_hs && (wr_outstanding_cnt == WR_OUTS_W'(1)) &&
+        (wr_cmd_row_cnt == wr_cfg_rows) && !m_axi_awvalid;
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -638,14 +679,17 @@ module axi_linear_block_dma #(
             m_axi_awlen   <= '0;
             wr_cmd_row_cnt <= '0;
             wr_cmd_row_addr_cur <= '0;
+            wr_cmd_beat_cnt <= '0;
             wr_data_row_cnt <= '0;
             wr_data_row_addr_cur <= '0;
-            wr_resp_row_cnt <= '0;
             wr_beat_cnt   <= '0;
+            wr_segment_beat_cnt <= '0;
+            wr_segment_last_beat <= '0;
             wr_tail_data   <= '0;
             wr_tail_mask   <= '0;
             wr_data_active <= 1'b0;
             wr_outstanding_cnt <= '0;
+            wr_pending_data_cnt <= '0;
             wr_pending_cmd_cross <= 1'b0;
         end else if (wr_start && !wr_active) begin
             m_axi_awvalid <= 1'b0;
@@ -653,34 +697,41 @@ module axi_linear_block_dma #(
             m_axi_awlen   <= wr_burst_len_m1;
             wr_cmd_row_cnt <= '0;
             wr_cmd_row_addr_cur <= wr_base_addr;
+            wr_cmd_beat_cnt <= '0;
             wr_data_row_cnt <= '0;
             wr_data_row_addr_cur <= wr_base_addr;
-            wr_resp_row_cnt <= '0;
             wr_beat_cnt   <= '0;
+            wr_segment_beat_cnt <= '0;
+            wr_segment_last_beat <= '0;
             wr_tail_data   <= '0;
             wr_tail_mask   <= '0;
             wr_data_active <= 1'b0;
             wr_outstanding_cnt <= '0;
+            wr_pending_data_cnt <= '0;
             wr_pending_cmd_cross <= 1'b0;
         end else if (wr_active) begin
             if (wr_done_r) begin
                 m_axi_awvalid <= 1'b0;
                 wr_data_active <= 1'b0;
                 wr_outstanding_cnt <= '0;
+                wr_pending_data_cnt <= '0;
                 wr_pending_cmd_cross <= 1'b0;
             end else begin
                 if (wr_aw_hs) begin
                     m_axi_awvalid <= 1'b0;
-                    wr_cmd_row_cnt <= wr_cmd_row_cnt + write_row_count_t'(1);
-                    wr_cmd_row_addr_cur <= wr_cmd_row_addr_cur + wr_cfg_row_stride;
+                    if (wr_cmd_beat_cnt + beat_count_t'(m_axi_awlen) + beat_count_t'(1) == wr_cmd_row_beats) begin
+                        wr_cmd_row_cnt <= wr_cmd_row_cnt + write_row_count_t'(1);
+                        wr_cmd_row_addr_cur <= wr_cmd_row_addr_cur + wr_cfg_row_stride;
+                        wr_cmd_beat_cnt <= '0;
+                    end else begin
+                        wr_cmd_beat_cnt <= wr_cmd_beat_cnt + beat_count_t'(m_axi_awlen) + beat_count_t'(1);
+                    end
                     wr_pending_cmd_cross <= 1'b0;
                 end else if (!m_axi_awvalid && wr_can_issue_aw) begin
                     m_axi_awvalid <= 1'b1;
-                    m_axi_awaddr  <= {wr_cmd_row_addr_cur[REG_WIDTH-1:ADDR_LSB],
-                                      {ADDR_LSB{1'b0}}};
-                    m_axi_awlen   <= wr_cfg_burst_len_m1
-                                   + ((wr_cmd_row_offset != '0) ? 8'd1 : 8'd0);
-                    wr_pending_cmd_cross <= (wr_cmd_row_offset != '0);
+                    m_axi_awaddr  <= wr_cmd_segment_addr;
+                    m_axi_awlen   <= 8'(wr_cmd_segment_beats - beat_count_t'(1));
+                    wr_pending_cmd_cross <= (wr_cmd_beat_cnt == '0) && (wr_cmd_row_offset != '0);
                 end
 
                 unique case ({wr_aw_hs, wr_b_hs})
@@ -689,14 +740,27 @@ module axi_linear_block_dma #(
                     default: wr_outstanding_cnt <= wr_outstanding_cnt;
                 endcase
 
+                // Accepted physical addresses and completed W bursts are
+                // counted independently from logical row progress.
+                unique case ({wr_aw_hs, wr_segment_done})
+                    2'b10: wr_pending_data_cnt <= wr_pending_data_cnt + 1'b1;
+                    2'b01: wr_pending_data_cnt <= wr_pending_data_cnt - 1'b1;
+                    default: wr_pending_data_cnt <= wr_pending_data_cnt;
+                endcase
+
                 if (wr_can_start_data) begin
                     wr_data_active <= 1'b1;
-                    wr_beat_cnt   <= '0;
-                    wr_tail_data   <= '0;
-                    wr_tail_mask   <= '0;
+                    wr_segment_beat_cnt <= '0;
+                    wr_segment_last_beat <= wr_data_segment_beats - beat_count_t'(1);
                 end
 
                 if (wr_w_hs) begin
+                    if (wr_segment_done) begin
+                        wr_data_active <= 1'b0;
+                        wr_segment_beat_cnt <= '0;
+                    end else begin
+                        wr_segment_beat_cnt <= wr_segment_beat_cnt + beat_count_t'(1);
+                    end
                     if (wr_need_src_beat && wr_row_cross) begin
                         wr_tail_data <= src_wdata >> ((BYTE_PER_BEAT - int'(wr_row_offset)) * 8);
                         wr_tail_mask <= src_wmask >> (BYTE_PER_BEAT - int'(wr_row_offset));
@@ -713,22 +777,22 @@ module axi_linear_block_dma #(
                     end
                 end
 
-                if (wr_b_hs) begin
-                    if (wr_resp_row_cnt < wr_cfg_rows) wr_resp_row_cnt <= wr_resp_row_cnt + write_row_count_t'(1);
-                end
             end
         end else begin
             m_axi_awvalid <= 1'b0;
             wr_cmd_row_cnt <= '0;
             wr_cmd_row_addr_cur <= '0;
+            wr_cmd_beat_cnt <= '0;
             wr_data_row_cnt <= '0;
             wr_data_row_addr_cur <= '0;
-            wr_resp_row_cnt <= '0;
             wr_beat_cnt   <= '0;
+            wr_segment_beat_cnt <= '0;
+            wr_segment_last_beat <= '0;
             wr_tail_data   <= '0;
             wr_tail_mask   <= '0;
             wr_data_active <= 1'b0;
             wr_outstanding_cnt <= '0;
+            wr_pending_data_cnt <= '0;
             wr_pending_cmd_cross <= 1'b0;
         end
     end

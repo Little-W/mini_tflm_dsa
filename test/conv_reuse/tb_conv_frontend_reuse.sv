@@ -1,6 +1,7 @@
 module tb_conv_frontend_reuse;
     import conv_im2col_pkg::*;
-    logic clk;
+    logic unused_wr_last;
+  logic clk;
     initial begin clk=0;forever #5 clk=~clk;end
     logic rst_n=0,cfg_valid=0,cfg_ready;
     conv_cfg_t cfg,reference_cfg;
@@ -25,7 +26,8 @@ module tb_conv_frontend_reuse;
     int written=0,tiles=0;
     bit seen[4][4];
     conv_im2col_frontend #(.SIZE(4),.SLOT_W(2),.CACHE_SETS(2)) dut(
-        .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.*);
+        .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.stat_prefetch_lines(unused_prefetch[0]),.stat_prefetch_used(unused_prefetch[1]),.stat_prefetch_wasted(unused_prefetch[2]),.stat_prefetch_unused(unused_prefetch[3]),.stat_prefetch_bytes(unused_prefetch[4]),.stat_prefetch_late(unused_prefetch[5]),.wr_last(unused_wr_last),.*);
+  logic [31:0] unused_prefetch[6];
     axi_counted_memory mem(.clk,.rst_n,.allocation_base,.allocation_bytes,.epoch,.block_ar,
         .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast,
         .read_bytes,.ar_count,.active(mem_active));

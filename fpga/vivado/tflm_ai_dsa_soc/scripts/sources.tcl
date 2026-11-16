@@ -25,12 +25,14 @@ set design_sources [list \
     [file join $npu_root conv 00_conv_im2col_pkg.sv] \
     [file join $npu_root conv 01_vector_engine_pkg.sv] \
     [file join $npu_root conv vector_pe.sv] \
+    [file join $npu_root conv vector_softmax.sv] \
     [file join $npu_root conv vector_engine.sv] \
     [file join $npu_root conv conv_axi_read_guard.sv] \
     [file join $npu_root conv conv_axi_read_mux.sv] \
     [file join $npu_root conv conv_axi_span_reader.sv] \
     [file join $npu_root conv conv_ia_tile_path.sv] \
     [file join $npu_root conv conv_ia_write_adapter.sv] \
+    [file join $npu_root conv conv_window_queue.sv] \
     [file join $npu_root conv conv_im2col_frontend.sv] \
     [file join $npu_root conv conv_next_use_predictor.sv] \
     [file join $npu_root conv conv_read_cache.sv] \

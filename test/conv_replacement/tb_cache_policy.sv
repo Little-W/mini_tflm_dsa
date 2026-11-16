@@ -8,6 +8,8 @@ module tb_cache_policy;
     logic req_geometry=1,req_event_first=0,hint_valid=0,hint_pending;
     logic [31:0] req_addr=0,hint_next=32'hffffffff,rsp_data;
     logic [31:0] stat_hits,stat_misses,stat_read_bytes;
+    logic prefetch_ready;
+    logic [31:0] stat_prefetch_lines,stat_prefetch_used,stat_prefetch_wasted,stat_prefetch_unused,stat_prefetch_bytes,stat_prefetch_late;
     logic arvalid,arready,rvalid,rready,rlast;
     logic [31:0] araddr,rdata;
     logic [7:0] arlen;
@@ -19,7 +21,11 @@ module tb_cache_policy;
     int requests=0;
     assign rresp=fail_reads ? 2'b10 : mem_rresp;
 
-    conv_read_cache #(.SETS(2),.WAYS(2),.LINE_BYTES(16),.CACHE_POLICY(2)) dut(.*);
+    conv_read_cache #(.SETS(2),.WAYS(2),.LINE_BYTES(16),.CACHE_POLICY(2)) dut(.cfg_windowed(1'b0),.cfg_prefetch_enable(1'b0),
+        .req_window_index_valid(1'b0),.req_window_index(0),.req_window_epoch(0),
+        .req_window_retire(32'hffffffff),.req_window_progress(0),.prefetch_valid(1'b0),
+        .prefetch_addr(0),.prefetch_window_index_valid(1'b0),.prefetch_window_index(0),
+        .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),.*);
     axi_counted_memory #(.TRACK_BASE(32'h1000),.TRACK_BYTES(8192)) mem(
         .clk,.rst_n,.allocation_base(cfg_base),.allocation_bytes(cfg_bytes),.epoch,.block_ar,
         .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,

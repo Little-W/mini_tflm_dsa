@@ -1,13 +1,6 @@
 /*
- * bias_loader_ctrl -- compact on-demand bias group loader.
- *
- * The previous controller kept a prefetch path plus duplicated "next group"
- * metadata.  That was good for hiding a small amount of bias latency, but it
- * cost several thousand LUTs after synthesis.  This version keeps the external
- * handshake semantics and the two-bank buffer, but loads the next group only
- * when the compute schedule raises bias_switch.  The NPU controller already
- * waits for bias_valid before issuing IA, so correctness is preserved while the
- * control network is much smaller.
+ * Bias groups remain available in the two data banks until replacement or
+ * init_cfg. A requested group selects its resident bank or starts a DMA load.
  */
 
 module bias_loader_ctrl #(
@@ -31,11 +24,14 @@ module bias_loader_ctrl #(
     input  logic                 dma_busy,
     input  logic                 dma_done,
     input  logic                 load_block_valid,
+    input  logic                 load_block_bank,
 
     output logic                 dma_start,
     output logic [REG_WIDTH-1:0] dma_base_addr,
     output logic [REG_WIDTH-1:0] dma_rows_to_read,
     output logic [7:0]           dma_burst_len_m1,
+    output logic [COUNT_WIDTH-1:0] dma_row_offset,
+    output logic                 load_group_done,
     output logic                 load_bank,
 
     output logic [COUNT_WIDTH-1:0] current_block_idx,
@@ -76,8 +72,13 @@ module bias_loader_ctrl #(
   count_t last_group_start_idx;
   logic                 current_is_last_group;
   logic                 bias_switch_d;
+  logic                 tail_pending;
 
   wire bias_switch_rise = bias_switch && !bias_switch_d;
+  wire split_tail_group = current_is_last_group &&
+                          (group_blocks_needed > count_t'(1)) &&
+                          (last_block_elems != count_t'(SIZE));
+  assign load_group_done = dma_done && !tail_pending;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -101,6 +102,8 @@ module bias_loader_ctrl #(
       dma_base_addr          <= '0;
       dma_rows_to_read       <= '0;
       dma_burst_len_m1       <= '0;
+      dma_row_offset        <= '0;
+      tail_pending          <= 1'b0;
       bias_switch_d          <= 1'b0;
     end else begin
       dma_start     <= 1'b0;
@@ -125,6 +128,8 @@ module bias_loader_ctrl #(
         dma_base_addr        <= bias_base;
         dma_rows_to_read     <= '0;
         dma_burst_len_m1     <= '0;
+        dma_row_offset      <= '0;
+        tail_pending        <= 1'b0;
         state                <= S_INIT_GEOM;
       end else begin
         unique case (state)
@@ -173,7 +178,9 @@ module bias_loader_ctrl #(
 
           S_CMD: begin
             dma_base_addr    <= cfg_bias_base + (REG_WIDTH'(load_block_idx) << BLOCK_ADDR_SHIFT);
-            dma_rows_to_read <= REG_WIDTH'(group_blocks_needed);
+            dma_rows_to_read <= REG_WIDTH'(group_blocks_needed) - (split_tail_group ? REG_WIDTH'(1) : '0);
+            dma_row_offset  <= '0;
+            tail_pending    <= split_tail_group;
             if (group_blocks_needed == '0) begin
               dma_burst_len_m1 <= 8'd0;
             end else if ((group_blocks_needed == count_t'(1)) &&
@@ -182,9 +189,20 @@ module bias_loader_ctrl #(
             end else begin
               dma_burst_len_m1 <= 8'(SIZE - 1);
             end
-            switch_pending <= (group_blocks_needed != '0);
-            load_bias_req  <= (group_blocks_needed != '0);
-            state          <= (group_blocks_needed == '0) ? S_IDLE : S_REQ;
+            if (group_blocks_needed == '0) begin
+              switch_pending <= 1'b0;
+              load_bias_req  <= 1'b0;
+              state          <= S_IDLE;
+            end else if (load_block_valid) begin
+              active_bank    <= load_block_bank;
+              switch_pending <= 1'b0;
+              load_bias_req  <= 1'b0;
+              state          <= S_WAIT;
+            end else begin
+              switch_pending <= 1'b1;
+              load_bias_req  <= 1'b1;
+              state          <= S_REQ;
+            end
           end
 
           S_REQ: begin
@@ -198,9 +216,22 @@ module bias_loader_ctrl #(
 
           S_LOAD: begin
             if (dma_done) begin
-              active_bank    <= load_bank;
-              switch_pending <= 1'b0;
-              state          <= S_WAIT;
+              if (tail_pending) begin
+                // The final partial block has its own bounded read. Both
+                // requests fill the same resident group before it is visible.
+                dma_base_addr <= cfg_bias_base +
+                    ((REG_WIDTH'(load_block_idx) + REG_WIDTH'(group_blocks_needed) - 1) << BLOCK_ADDR_SHIFT);
+                dma_rows_to_read <= REG_WIDTH'(1);
+                dma_burst_len_m1 <= 8'(last_block_elems - count_t'(1));
+                dma_row_offset <= group_blocks_needed - count_t'(1);
+                tail_pending <= 1'b0;
+                load_bias_req <= 1'b1;
+                state <= S_REQ;
+              end else begin
+                active_bank    <= load_bank;
+                switch_pending <= 1'b0;
+                state          <= S_WAIT;
+              end
             end
           end
 
@@ -246,6 +277,5 @@ module bias_loader_ctrl #(
   end
 
   wire unused_dma_busy = dma_busy;
-  wire unused_load_block_valid = load_block_valid;
 
 endmodule

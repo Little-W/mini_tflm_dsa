@@ -22,6 +22,8 @@ module oa_writer #(
     input logic                 output_16bits,
     input logic                 coalesce_enable,
     input logic [4:0]           coalesce_cols,
+    output logic                coalesce_group_start,
+    output logic [4:0]          coalesce_row_tiles,
 
     input  logic                    oa_fifo_req,
     output logic [$clog2(VLEN)-1:0] vec_valid_num_col,
@@ -205,7 +207,8 @@ module oa_writer #(
             default:        init_group_row_addr_step = init_row_addr_step;
         endcase
 
-        tile_row_inc = tile_row_idx + count_t'(1);
+        tile_row_inc = tile_row_idx +
+                       ((cfg_coalesce && cfg_is_mode) ? cfg_ia_reuse_num : count_t'(1));
         tile_col_inc = tile_col_idx + count_t'(1);
         reuse_group_base_cur = row_group_base_idx;
         reuse_group_next_base_cur = row_group_next_base_idx;
@@ -272,38 +275,60 @@ module oa_writer #(
     assign dma_is_write = 1'b1;
     assign dma_linear_read_mode = 1'b0;
     assign dma_base_addr = tile_base_addr_cur;
-    // Descriptors are prepared after configuration, before any output exists.
+    // Each descriptor covers the populated rows of the current WS group.
     logic [8:0] co_dma_rows;
     logic [REG_WIDTH-1:0] co_dma_stride;
     logic [7:0] co_dma_len;
-    wire [8:0] co_config_tiles = 9'(cfg_ia_reuse_num[4:0] * cfg_coalesce_cols);
+    wire [REG_WIDTH-1:0] co_rows_remaining = cfg_k -
+        (REG_WIDTH'(row_group_base_idx) << VCOL_W);
+    wire [REG_WIDTH-1:0] co_rows_limit = REG_WIDTH'(cfg_ia_reuse_num) << VCOL_W;
+    wire [8:0] co_valid_rows = 9'(co_rows_remaining < co_rows_limit
+        ? co_rows_remaining : co_rows_limit);
     wire [REG_WIDTH-1:0] co_chunk_bytes = REG_WIDTH'(cfg_coalesce_cols) << 4;
+    logic [16:0] co_group_bytes;
+    always_comb begin
+        case (cfg_coalesce_cols)
+            5'd16: co_group_bytes = 17'(co_valid_rows) << 8;
+            5'd8:  co_group_bytes = 17'(co_valid_rows) << 7;
+            5'd4:  co_group_bytes = 17'(co_valid_rows) << 6;
+            5'd2:  co_group_bytes = 17'(co_valid_rows) << 5;
+            default: co_group_bytes = 17'(co_valid_rows) << 4;
+        endcase
+    end
+    assign coalesce_row_tiles = cfg_is_mode ? 5'd1 :
+        5'((co_valid_rows + 9'd15) >> 4);
+    assign coalesce_group_start = dma_start && cfg_coalesce && !cfg_is_mode;
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             co_dma_rows <= 0; co_dma_stride <= 0; co_dma_len <= 0;
-        end else if (cfg_lat_tick) begin
-            if (cfg_m == co_chunk_bytes && cfg_dst_base[9:0] == 0 && co_config_tiles[1:0] == 0) begin
-                co_dma_rows <= co_config_tiles >> 2;
+        end else if (cfg_lat_tick || (state == S_REQ && write_oa_granted)) begin
+            if (cfg_is_mode) begin
+                co_dma_rows <= 0;
+                co_dma_stride <= 0;
+                co_dma_len <= 8'(cfg_coalesce_cols << 2) - 1'b1;
+            end else if (cfg_m == co_chunk_bytes && co_group_bytes[9:0] == 0) begin
+                co_dma_rows <= 9'(co_group_bytes >> 10);
                 co_dma_stride <= 11'd1024;
                 co_dma_len <= 8'd255;
-            end else if (cfg_m == co_chunk_bytes && cfg_dst_base[8:0] == 0 && co_config_tiles[0] == 0) begin
-                co_dma_rows <= co_config_tiles >> 1;
+            end else if (cfg_m == co_chunk_bytes && co_group_bytes[8:0] == 0) begin
+                co_dma_rows <= 9'(co_group_bytes >> 9);
                 co_dma_stride <= 11'd512;
                 co_dma_len <= 8'd127;
-            end else if (cfg_m == co_chunk_bytes && cfg_dst_base[7:0] == 0) begin
-                co_dma_rows <= co_config_tiles;
+            end else if (cfg_m == co_chunk_bytes && co_group_bytes[7:0] == 0) begin
+                co_dma_rows <= 9'(co_group_bytes >> 8);
                 co_dma_stride <= 11'd256;
                 co_dma_len <= 8'd63;
             end else begin
-                co_dma_rows <= 9'(cfg_ia_reuse_num) << 4;
+                co_dma_rows <= co_valid_rows;
                 co_dma_stride <= cfg_dst_row_stride_b;
                 co_dma_len <= 8'(cfg_coalesce_cols << 2) - 1'b1;
             end
         end
     end
-    assign dma_row_stride = cfg_coalesce ? REG_WIDTH'(co_dma_stride) : cfg_dst_row_stride_b;
-    assign dma_rows_to_read = cfg_coalesce ? REG_WIDTH'(co_dma_rows)
-                                             : REG_WIDTH'(rows_valid_cur_tile);
+    assign dma_row_stride = (cfg_coalesce && !cfg_is_mode) ? REG_WIDTH'(co_dma_stride)
+                                                        : cfg_dst_row_stride_b;
+    assign dma_rows_to_read = (cfg_coalesce && !cfg_is_mode) ? REG_WIDTH'(co_dma_rows)
+                                                           : REG_WIDTH'(rows_valid_cur_tile);
     assign dma_burst_len_m1 = cfg_coalesce ? co_dma_len
         : ((beats_per_row_cur_tile == '0) ? 8'd0 : 8'(beats_per_row_cur_tile - 1'b1));
     assign dma_slot_id = 1'b0;
@@ -512,7 +537,7 @@ module oa_writer #(
                         if (write_done) begin
                             tiles_done <= tiles_done + 1'b1;
 
-                            if (cfg_coalesce) begin
+                            if (cfg_coalesce && !cfg_is_mode) begin
                                 if (col_offset_addr_cur + co_chunk_bytes < cfg_m) begin
                                     col_offset_addr_cur <= col_offset_addr_cur + co_chunk_bytes;
                                     tile_base_addr_cur <= tile_base_addr_cur + co_chunk_bytes;

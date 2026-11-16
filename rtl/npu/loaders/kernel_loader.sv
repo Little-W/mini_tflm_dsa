@@ -11,6 +11,7 @@ module kernel_loader #(
     input  logic                        init_cfg,
     // IS Conv uses this ordinary matrix loader for image-derived A blocks.
     input  logic                        cfg_im2col = 1'b0,
+    input  logic                        cfg_tile_packed = 1'b0,
     output logic                        load_weight_req,
     input  logic                        load_weight_granted,
     input  logic                        send_weight_trigger,
@@ -63,6 +64,7 @@ module kernel_loader #(
   logic signed [REG_WIDTH-1:0] cfg_rhs_zp;
   logic cfg_use_16bits;
   logic im2col_q;
+  logic tile_packed_q;
   logic [REG_WIDTH-1:0] cfg_ia_reuse_num, cfg_w_reuse_num;
 
   logic cfg_valid;
@@ -95,7 +97,9 @@ module kernel_loader #(
 	  logic [7:0]           dma_burst_len_m1;
 
 	  always_comb begin
-	    if (dma_valid_cols == 0) begin
+	    if (tile_packed_q) begin
+	      dma_beats_per_row = REG_WIDTH'(SIZE / ELEM_PER_BEAT_S8) << (cfg_use_16bits ? 1 : 0);
+	    end else if (dma_valid_cols == 0) begin
 	      dma_beats_per_row = REG_WIDTH'(1);
 	    end else if (cfg_use_16bits) begin
 	      dma_beats_per_row =
@@ -138,6 +142,7 @@ module kernel_loader #(
       cfg_rhs_row_stride_b <= '0;
       cfg_rhs_zp         <= '0;
       cfg_use_16bits     <= 1'b0;
+      tile_packed_q      <= 1'b0;
       cfg_ia_reuse_num   <= '0;
       cfg_w_reuse_num    <= '0;
     end else begin
@@ -157,6 +162,7 @@ module kernel_loader #(
           cfg_rhs_row_stride_b<= rhs_row_stride_b;
           cfg_rhs_zp          <= rhs_zp;
           cfg_use_16bits      <= use_16bits;
+          tile_packed_q       <= cfg_tile_packed;
           cfg_ia_reuse_num    <= ia_reuse_num;
           cfg_w_reuse_num     <= w_reuse_num;
           cfg_valid           <= 1'b1;
@@ -192,6 +198,7 @@ module kernel_loader #(
     .cfg_rhs_row_stride_b  (cfg_rhs_row_stride_b),
     .cfg_rhs_zp            (cfg_rhs_zp),
     .cfg_use_16bits        (cfg_use_16bits),
+    .cfg_tile_packed       (tile_packed_q),
     .cfg_ia_reuse_num      (cfg_ia_reuse_num),
     .cfg_w_reuse_num       (cfg_w_reuse_num),
     .cfg_row_groups (row_groups),
@@ -224,14 +231,20 @@ module kernel_loader #(
 
 	  logic signed [DATA_WIDTH-1:0] row_acc [SIZE];
 	  logic signed [DATA_WIDTH-1:0] row_acc_n [SIZE];
-	  logic signed [DATA_WIDTH-1:0] row_emit [SIZE];
 	  logic signed [DATA_WIDTH-1:0] row_emit_n [SIZE];
-	  logic row_valid_pending;
-	  logic [$clog2(SIZE)-1:0] row_idx_pending;
-	  logic ext_done_q;
 	  logic beat_valid;
 	  logic last_ext_beat;
 	  logic [REG_WIDTH-1:0] ext_dma_valid_cols_r;
+	  logic [REG_WIDTH-1:0] ext_dma_logical_cols_r;
+
+      // The buffer registers each assembled row before writing its RAM.
+      // Completion uses the same register stage as the final row.
+      assign dma_row_valid = last_ext_beat;
+      assign dma_row_idx = ext_dma_wr_row;
+      assign dma_done = ext_dma_done;
+      always_comb begin
+        for (int c = 0; c < SIZE; c++) dma_row_data[c] = row_emit_n[c];
+      end
 
 	  always_comb begin
 	        beat_valid = 1'b0;
@@ -261,8 +274,9 @@ module kernel_loader #(
 	            automatic int col;
 	            col = int'(ext_dma_wr_col_base) + i;
 	            if (ext_dma_wr_valid[i] && col < SIZE && REG_WIDTH'(col) < ext_dma_valid_cols_r) begin
-	              row_emit_n[col] = ext_dma_wr_data[i];
-	              if (!last_ext_beat) row_acc_n[col] = ext_dma_wr_data[i];
+	              row_emit_n[col] = REG_WIDTH'(col) < ext_dma_logical_cols_r ? ext_dma_wr_data[i] : '0;
+	              if (!last_ext_beat) row_acc_n[col] =
+                    REG_WIDTH'(col) < ext_dma_logical_cols_r ? ext_dma_wr_data[i] : '0;
 	            end
 	          end
 	          if (last_ext_beat) begin
@@ -276,45 +290,22 @@ module kernel_loader #(
 	  always_ff @(posedge clk or negedge rst_n) begin
 	        if (!rst_n) begin
 	          dma_busy <= 1'b0;
-	          dma_done <= 1'b0;
-	          dma_row_valid <= 1'b0;
-	          dma_row_idx <= '0;
-	          row_valid_pending <= 1'b0;
-	          row_idx_pending <= '0;
-	          ext_done_q <= 1'b0;
 	          ext_dma_valid_cols_r <= REG_WIDTH'(SIZE);
+	          ext_dma_logical_cols_r <= REG_WIDTH'(SIZE);
 	          for (int c = 0; c < SIZE; c++) begin
 	            row_acc[c] <= '0;
-	            row_emit[c] <= '0;
-	            dma_row_data[c] <= '0;
 	          end
 	        end else begin
 	          dma_busy <= ext_dma_busy;
-	          ext_done_q <= ext_dma_done;
-	          dma_done <= ext_done_q;
 	          if (dma_start) begin
                 // The image block is returned as a complete SIZE-column row,
                 // including explicit zero reduction-tail elements. Commit it
                 // once at SIZE, rather than re-emitting after each padded beat.
-	            ext_dma_valid_cols_r <= im2col_q ? REG_WIDTH'(SIZE) : dma_valid_cols;
+	            ext_dma_valid_cols_r <= (im2col_q || tile_packed_q) ? REG_WIDTH'(SIZE) : dma_valid_cols;
+	            ext_dma_logical_cols_r <= im2col_q ? REG_WIDTH'(SIZE) : dma_valid_cols;
 	          end
-	          dma_row_valid <= row_valid_pending;
-	          if (row_valid_pending) begin
-	            dma_row_idx <= row_idx_pending;
-	            for (int c = 0; c < SIZE; c++) begin
-	              dma_row_data[c] <= row_emit[c];
-	            end
-	          end
-	          row_valid_pending <= 1'b0;
 	          for (int c = 0; c < SIZE; c++) begin
 	            row_acc[c] <= row_acc_n[c];
-	          end
-	          if (last_ext_beat) begin
-	            row_valid_pending <= 1'b1;
-	            row_idx_pending <= ext_dma_wr_row;
-	            for (int c = 0; c < SIZE; c++) begin
-	              row_emit[c] <= row_emit_n[c];
-	            end
 	          end
 	        end
 	  end

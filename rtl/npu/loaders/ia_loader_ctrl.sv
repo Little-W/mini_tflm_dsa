@@ -36,6 +36,7 @@ module ia_loader_ctrl #(
     input  logic [REG_WIDTH-1:0]        cfg_k,
     input  logic [REG_WIDTH-1:0]        cfg_n,
     input  logic                        cfg_use_16bits,
+    input  logic                        cfg_tile_packed = 1'b0,
     input  logic                        cfg_bias_by_row_mode,
     input  logic [REG_WIDTH-1:0]        cfg_lhs_base,
     input  logic [REG_WIDTH-1:0]        cfg_lhs_row_stride_b,
@@ -138,7 +139,11 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] tile_row_step_b_comb;
   logic [REG_WIDTH-1:0] l2_group_row_step_b_comb;
 
-  assign tile_row_step_b_comb = cfg_lhs_row_stride_b << LOG2_SIZE;
+  wire [REG_WIDTH-1:0] packed_k_tiles = (cfg_n >> LOG2_SIZE) +
+      REG_WIDTH'((cfg_n & REG_WIDTH'(SIZE-1)) != 0);
+  assign tile_row_step_b_comb = cfg_tile_packed ?
+      (packed_k_tiles << (2*LOG2_SIZE + (cfg_use_16bits ? 1 : 0))) :
+      (cfg_lhs_row_stride_b << LOG2_SIZE);
 
   always_comb begin
     unique case (cfg_ia_reuse_num)
@@ -379,7 +384,9 @@ module ia_loader_ctrl #(
 
   // burst 长度
   logic [7:0] load_burst_len_m1;
-  assign load_burst_len_m1 = load_is_last_col_tile ? 
+  assign load_burst_len_m1 = cfg_tile_packed ?
+                             8'((SIZE / BYTE_PER_BEAT) * (cfg_use_16bits ? 2 : 1) - 1) :
+                             load_is_last_col_tile ?
                              8'(rsp_beats_per_row_last - REG_WIDTH'(1)) :
                              8'(rsp_beats_per_row_normal - REG_WIDTH'(1));
 
@@ -420,10 +427,12 @@ module ia_loader_ctrl #(
 
   // tile 基地址
   logic [REG_WIDTH-1:0] tile_col_byte_offset;
-  assign tile_col_byte_offset = REG_WIDTH'(tile_col_idx) << (LOG2_SIZE + (cfg_use_16bits ? 1 : 0));
+  assign tile_col_byte_offset = REG_WIDTH'(tile_col_idx) <<
+      ((cfg_tile_packed ? 2*LOG2_SIZE : LOG2_SIZE) + (cfg_use_16bits ? 1 : 0));
 
   // prefetch 地址参数
-  assign pf_tile_col_byte_offset = REG_WIDTH'(next_l1_idx) << (LOG2_SIZE + (cfg_use_16bits ? 1 : 0));
+  assign pf_tile_col_byte_offset = REG_WIDTH'(next_l1_idx) <<
+      ((cfg_tile_packed ? 2*LOG2_SIZE : LOG2_SIZE) + (cfg_use_16bits ? 1 : 0));
   always_comb begin
     if (next_group_advances_l2)
       next_l2_row_base = l2_row_base + l2_group_row_step_b;
@@ -695,7 +704,8 @@ module ia_loader_ctrl #(
         tl_p0            <= load_cursor_p0;
         tl_q0            <= REG_WIDTH'(prefetch_active ? next_l1_idx : tile_col_idx) << LOG2_SIZE;
         tl_group         <= REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
-        tl_row_stride_r   <= cfg_lhs_row_stride_b;
+        tl_row_stride_r   <= cfg_tile_packed ?
+            (REG_WIDTH'(SIZE) << (cfg_use_16bits ? 1 : 0)) : cfg_lhs_row_stride_b;
         tl_rows_to_read_r <= load_rows_cur;
         tl_valid_cols_r   <= load_cols_cur;
         tl_burst_len_m1_r <= load_burst_len_m1;

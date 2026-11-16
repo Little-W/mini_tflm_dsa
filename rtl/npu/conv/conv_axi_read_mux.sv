@@ -34,10 +34,14 @@ module conv_axi_read_mux #(
     output logic idle
 );
     logic active, owner, hold_grant, held_owner, prefer_b;
-    logic select_b;
+    logic select_b, retire, address_slot;
+    assign retire = active && m_rvalid && (owner ? b_rready : a_rready) && m_rlast;
+    assign address_slot = !active || retire;
     assign select_b = hold_grant ? held_owner :
                       (b_arvalid && (!a_arvalid || prefer_b));
-    assign idle = !active && !hold_grant && !m_arvalid;
+    // Clients report their pending work separately. This status describes the
+    // transactions and stalled address grants retained inside the arbiter.
+    assign idle = !active && !hold_grant;
     always_comb begin
         a_arready = 1'b0; b_arready = 1'b0;
         a_rvalid = 1'b0; b_rvalid = 1'b0;
@@ -51,13 +55,13 @@ module conv_axi_read_mux #(
             a_arready = m_arready;
             a_rvalid = m_rvalid;
         end else begin
-            m_arvalid = !active && (select_b ? b_arvalid : a_arvalid);
+            m_arvalid = address_slot && (select_b ? b_arvalid : a_arvalid);
             m_araddr = select_b ? b_araddr : a_araddr;
             m_arlen = select_b ? b_arlen : a_arlen;
             m_arsize = select_b ? b_arsize : a_arsize;
             m_arburst = select_b ? b_arburst : a_arburst;
-            a_arready = !active && !select_b && m_arready;
-            b_arready = !active && select_b && m_arready;
+            a_arready = address_slot && !select_b && m_arready;
+            b_arready = address_slot && select_b && m_arready;
             a_rvalid = active && !owner && m_rvalid;
             b_rvalid = active && owner && m_rvalid;
             m_rready = active && (owner ? b_rready : a_rready);
@@ -70,7 +74,8 @@ module conv_axi_read_mux #(
         end else if (!enable) begin
             active <= 1'b0; hold_grant <= 1'b0; prefer_b <= 1'b0;
         end else begin
-            if (!active && m_arvalid) begin
+            if (retire) active <= 1'b0;
+            if (address_slot && m_arvalid) begin
                 if (m_arready) begin
                     active <= 1'b1; owner <= select_b;
                     hold_grant <= 1'b0; prefer_b <= !select_b;
@@ -78,7 +83,6 @@ module conv_axi_read_mux #(
                     hold_grant <= 1'b1; held_owner <= select_b;
                 end
             end
-            if (active && m_rvalid && m_rready && m_rlast) active <= 1'b0;
         end
     end
 `ifndef SYNTHESIS

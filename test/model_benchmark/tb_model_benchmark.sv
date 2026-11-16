@@ -9,6 +9,15 @@
 `ifndef SOC_NETWORK_PE_COUNT
 `define SOC_NETWORK_PE_COUNT 8
 `endif
+`ifndef SOC_NETWORK_IA_CACHE_BLOCKS
+`define SOC_NETWORK_IA_CACHE_BLOCKS 8
+`endif
+`ifndef SOC_NETWORK_PS_STORAGE_ROWS
+`define SOC_NETWORK_PS_STORAGE_ROWS 799
+`endif
+`ifndef SOC_NETWORK_S16_OUTPUT_BANKS
+`define SOC_NETWORK_S16_OUTPUT_BANKS 4
+`endif
 module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                       output logic [31:0] progress, pc);
     localparam int RAM_WORDS = `SOC_NETWORK_RAM_WORDS;
@@ -17,7 +26,9 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
     wire [31:0] soc_status;
     soc_top #(
         .SIZE(16), .DATA_WIDTH(16), .WEIGHT_WIDTH(16), .BUS_WIDTH(32),
-        .IA_CACHE_BLOCKS(4), .PS_FRAME_COUNT(16),
+        .IA_CACHE_BLOCKS(`SOC_NETWORK_IA_CACHE_BLOCKS), .PS_FRAME_COUNT(16),
+        .PS_STORAGE_ROWS(`SOC_NETWORK_PS_STORAGE_ROWS),
+        .OA_S16_FIFO_BANKS_MAX(`SOC_NETWORK_S16_OUTPUT_BANKS),
         .ENABLE_VECTOR_ENGINE(1), .VECTOR_PE_COUNT(`SOC_NETWORK_PE_COUNT), .DW_MAX_TAPS(49), .POOL_MAX_TAPS(256),
         .CPU_MEM_DP(RAM_WORDS), .CPU_MEM_PATH(""), .CPU_MEM_INIT_EN(1),
         .CPU_ENABLE_ICACHE(`SOC_NETWORK_ICACHE),
@@ -40,14 +51,22 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         logic [63:0] jobs, conv_jobs, dw_jobs, pool_jobs, vector_jobs, gemm_jobs, add_jobs;
         logic [63:0] conv_done, dw_done, pool_done, vector_done, gemm_done, add_done, npu_errors;
         logic [63:0] done_jobs, axi_errors, ia_windows, kernel_windows, dw_windows;
+        logic [63:0] array_jobs_busy_cycles, array_ia_valid_cycles, array_weight_commits;
+        logic [63:0] array_controller_cycles, array_wait_weight_tail, array_wait_weight_data;
+        logic [63:0] array_wait_ia_data, array_wait_bias, array_wait_quant;
+        logic [63:0] array_wait_output, array_wait_ia_done, window_cache_hits;
+        logic [63:0] window_cache_misses, window_cache_read_bytes, vector_compute_cycles;
+        logic [63:0] vector_dma_wait_cycles, softmax_jobs, softmax_done;
     } counters_t;
     counters_t total, network_start, layer_start;
     logic [31:0] progress_seen, network_begin_marker, network_end_marker, tensor_marker;
     bit network_open, network_complete, layer_open, job_inflight;
     int unsigned layer_index, layer_count;
-    typedef enum logic [2:0] {JOB_GEMM, JOB_CONV, JOB_DW, JOB_POOL, JOB_VECTOR, JOB_ADD} job_kind_t;
+    typedef enum logic [2:0] {JOB_GEMM, JOB_CONV, JOB_DW, JOB_POOL, JOB_VECTOR, JOB_ADD, JOB_SOFTMAX} job_kind_t;
     job_kind_t job_kind;
     int outstanding_reads, outstanding_writes;
+    longint unsigned window_requested_elements, window_response_elements;
+    longint unsigned window_first_response_cycle, window_last_response_cycle;
     logic [31:0] read_address[32], read_current[32], write_address[32];
     logic [7:0] read_length[32], write_length[32];
     logic [2:0] read_size[32], write_size[32];
@@ -96,6 +115,24 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         c.ia_windows=a.ia_windows-b.ia_windows;
         c.kernel_windows=a.kernel_windows-b.kernel_windows;
         c.dw_windows=a.dw_windows-b.dw_windows;
+        c.array_jobs_busy_cycles=a.array_jobs_busy_cycles-b.array_jobs_busy_cycles;
+        c.array_ia_valid_cycles=a.array_ia_valid_cycles-b.array_ia_valid_cycles;
+        c.array_weight_commits=a.array_weight_commits-b.array_weight_commits;
+        c.array_controller_cycles=a.array_controller_cycles-b.array_controller_cycles;
+        c.array_wait_weight_tail=a.array_wait_weight_tail-b.array_wait_weight_tail;
+        c.array_wait_weight_data=a.array_wait_weight_data-b.array_wait_weight_data;
+        c.array_wait_ia_data=a.array_wait_ia_data-b.array_wait_ia_data;
+        c.array_wait_bias=a.array_wait_bias-b.array_wait_bias;
+        c.array_wait_quant=a.array_wait_quant-b.array_wait_quant;
+        c.array_wait_output=a.array_wait_output-b.array_wait_output;
+        c.array_wait_ia_done=a.array_wait_ia_done-b.array_wait_ia_done;
+        c.window_cache_hits=a.window_cache_hits-b.window_cache_hits;
+        c.window_cache_misses=a.window_cache_misses-b.window_cache_misses;
+        c.window_cache_read_bytes=a.window_cache_read_bytes-b.window_cache_read_bytes;
+        c.vector_compute_cycles=a.vector_compute_cycles-b.vector_compute_cycles;
+        c.vector_dma_wait_cycles=a.vector_dma_wait_cycles-b.vector_dma_wait_cycles;
+        c.softmax_jobs=a.softmax_jobs-b.softmax_jobs;
+        c.softmax_done=a.softmax_done-b.softmax_done;
         return c;
     endfunction
 
@@ -123,13 +160,19 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         $fclose(handle);
     endtask
     task automatic report(input string scope, input int unsigned index, input counters_t c);
-        $display("SOC_NETWORK_COUNTER scope=%s index=%0d cycles=%0d npu_busy_cycles=%0d cpu_instruction_reads=%0d cpu_data_reads=%0d cpu_data_write_bytes=%0d cpu_mmio_reads=%0d cpu_mmio_write_bytes=%0d npu_read_bytes=%0d npu_write_bytes=%0d npu_read_bursts=%0d npu_write_bursts=%0d jobs=%0d conv_jobs=%0d dw_jobs=%0d pool_jobs=%0d vector_jobs=%0d gemm_jobs=%0d add_jobs=%0d conv_done=%0d dw_done=%0d pool_done=%0d vector_done=%0d gemm_done=%0d add_done=%0d npu_errors=%0d done_jobs=%0d axi_errors=%0d ia_windows=%0d kernel_windows=%0d dw_windows=%0d",
+        $display("SOC_NETWORK_COUNTER scope=%s index=%0d cycles=%0d npu_busy_cycles=%0d cpu_instruction_reads=%0d cpu_data_reads=%0d cpu_data_write_bytes=%0d cpu_mmio_reads=%0d cpu_mmio_write_bytes=%0d npu_read_bytes=%0d npu_write_bytes=%0d npu_read_bursts=%0d npu_write_bursts=%0d jobs=%0d conv_jobs=%0d dw_jobs=%0d pool_jobs=%0d vector_jobs=%0d gemm_jobs=%0d add_jobs=%0d conv_done=%0d dw_done=%0d pool_done=%0d vector_done=%0d gemm_done=%0d add_done=%0d npu_errors=%0d done_jobs=%0d axi_errors=%0d ia_windows=%0d kernel_windows=%0d dw_windows=%0d array_jobs_busy_cycles=%0d array_ia_valid_cycles=%0d array_weight_commits=%0d array_controller_cycles=%0d array_wait_weight_tail=%0d array_wait_weight_data=%0d array_wait_ia_data=%0d array_wait_bias=%0d array_wait_quant=%0d array_wait_output=%0d array_wait_ia_done=%0d window_cache_hits=%0d window_cache_misses=%0d window_cache_read_bytes=%0d vector_compute_cycles=%0d vector_dma_wait_cycles=%0d softmax_jobs=%0d softmax_done=%0d",
             scope,index,c.cycles,c.npu_busy_cycles,c.cpu_instruction_reads,c.cpu_data_reads,
             c.cpu_data_write_bytes,c.cpu_mmio_reads,c.cpu_mmio_write_bytes,c.npu_read_bytes,
             c.npu_write_bytes,c.npu_read_bursts,c.npu_write_bursts,c.jobs,c.conv_jobs,c.dw_jobs,
             c.pool_jobs,c.vector_jobs,c.gemm_jobs,c.add_jobs,c.conv_done,c.dw_done,c.pool_done,
             c.vector_done,c.gemm_done,c.add_done,c.npu_errors,c.done_jobs,c.axi_errors,
-            c.ia_windows,c.kernel_windows,c.dw_windows);
+            c.ia_windows,c.kernel_windows,c.dw_windows,
+            c.array_jobs_busy_cycles,c.array_ia_valid_cycles,c.array_weight_commits,
+            c.array_controller_cycles,c.array_wait_weight_tail,c.array_wait_weight_data,
+            c.array_wait_ia_data,c.array_wait_bias,c.array_wait_quant,
+            c.array_wait_output,c.array_wait_ia_done,c.window_cache_hits,
+            c.window_cache_misses,c.window_cache_read_bytes,c.vector_compute_cycles,
+            c.vector_dma_wait_cycles,c.softmax_jobs,c.softmax_done);
     endtask
 
     initial begin
@@ -180,11 +223,24 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
             progress_seen=0;network_open=0;network_complete=0;layer_open=0;
             layer_index=0;layer_count=0;job_inflight=0;job_kind=JOB_GEMM;
             outstanding_reads=0;outstanding_writes=0;
+            window_requested_elements=0;window_response_elements=0;
+            window_first_response_cycle=0;window_last_response_cycle=0;
             read_head=0;read_tail=0;write_head=0;write_tail=0;
             write_data_head=0;outstanding_write_data=0;
         end else begin
             total.cycles++;
             if(npu_busy) total.npu_busy_cycles++;
+            // IA-valid counts rows injected into the WS array. It excludes
+            // the fill and drain periods and is independent of shape padding.
+            if(job_inflight && (job_kind==JOB_CONV || job_kind==JOB_GEMM)) begin
+                if(npu_busy) total.array_jobs_busy_cycles++;
+                if(dut.u_npu_axil_top.npu_clk_gate_en) begin
+                    if(dut.u_npu_axil_top.u_npu_top.ia_row_valid)
+                        total.array_ia_valid_cycles++;
+                    if(dut.u_npu_axil_top.u_npu_top.weight_commit)
+                        total.array_weight_commits++;
+                end
+            end
             if(dut.pico_mem_valid && dut.pico_mem_ready) begin
                 if(dut.pico_mem_wstrb==0) begin
                     if(dut.pico_mem_instr) total.cpu_instruction_reads++;
@@ -257,6 +313,24 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                 outstanding_writes--;
                 write_head=(write_head+1)%32;
             end
+            if(dut.u_npu_axil_top.npu_clk_gate_en) begin
+                if(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.cfg_fire) begin
+                    window_requested_elements=0;window_response_elements=0;
+                    window_first_response_cycle=0;window_last_response_cycle=0;
+                end
+                if(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_req_valid &&
+                   dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_req_ready) begin
+                    total.dw_windows++;
+                    window_requested_elements+=64'(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_req_cols);
+                end
+                if(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_rsp_valid &&
+                   dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_rsp_ready &&
+                   !dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_rsp_error) begin
+                    if(window_response_elements==0) window_first_response_cycle=total.cycles;
+                    window_last_response_cycle=total.cycles;
+                    window_response_elements+=64'($countones(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_rsp_mask));
+                end
+            end
             if(dut.u_npu_axil_top.npu_core_calc_start && dut.u_npu_axil_top.npu_sa_ready) begin
                 assert(!job_inflight) else $fatal(1,"NPU command already active");
                 job_inflight=1;total.jobs++;
@@ -265,6 +339,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                         4'd0:begin total.dw_jobs++;job_kind=JOB_DW;end
                         4'd1,4'd2,4'd3:begin total.pool_jobs++;job_kind=JOB_POOL;end
                         4'd9:begin total.add_jobs++;job_kind=JOB_ADD;end
+                        4'd10:begin total.softmax_jobs++;job_kind=JOB_SOFTMAX;end
                         default:begin total.vector_jobs++;job_kind=JOB_VECTOR;end
                     endcase
                 end else if(dut.u_npu_axil_top.cfg_conv_enable_reg) begin total.conv_jobs++;job_kind=JOB_CONV;end
@@ -274,6 +349,47 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                 assert(job_inflight) else $fatal(1,"NPU completion without command");
                 total.done_jobs++;job_inflight=0;
                 if(dut.u_npu_axil_top.npu_err_code!=0) total.npu_errors++;
+                // The controller counters are stable when the wrapper
+                // reports completion. Wait reasons within each issue state
+                // are mutually exclusive; IA-valid is an independent measure.
+                if(job_kind==JOB_CONV || job_kind==JOB_GEMM) begin
+                    total.array_controller_cycles+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_active_cycles;
+                    total.array_wait_weight_tail+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_weight_tail_cycles;
+                    total.array_wait_weight_data+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_weight_data_cycles;
+                    total.array_wait_ia_data+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_ia_data_cycles;
+                    total.array_wait_bias+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_bias_cycles;
+                    total.array_wait_quant+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_quant_cycles;
+                    total.array_wait_output+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_fifo_cycles;
+                    total.array_wait_ia_done+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_ia_done_cycles;
+                end else begin
+                    total.vector_compute_cycles+=64'(dut.u_npu_axil_top.u_npu_top.vector_stat_compute);
+                    total.vector_dma_wait_cycles+=64'(dut.u_npu_axil_top.u_npu_top.vector_stat_dma_wait);
+                end
+                if(job_kind==JOB_CONV || job_kind==JOB_DW || job_kind==JOB_POOL) begin
+                    total.window_cache_hits+=64'(dut.u_npu_axil_top.u_npu_top.conv_stat_hits);
+                    total.window_cache_misses+=64'(dut.u_npu_axil_top.u_npu_top.conv_stat_misses);
+                    total.window_cache_read_bytes+=64'(dut.u_npu_axil_top.u_npu_top.conv_stat_read_bytes);
+                end
+                if(job_kind==JOB_DW || job_kind==JOB_POOL) begin
+                    assert(!dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_busy)
+                        else $fatal(1,"window requests remain at job completion");
+                    assert(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_requests==
+                           dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_completions)
+                        else $fatal(1,"window completion count differs from accepted requests");
+                    if(dut.u_npu_axil_top.npu_err_code==0)
+                        assert(window_requested_elements==window_response_elements)
+                            else $fatal(1,"window response elements differ from requested elements");
+                    $display("SOC_NETWORK_WINDOW_JOB job=%0d layer=%0d operation=%0d requests=%0d completions=%0d peak_outstanding=%0d response_beats=%0d consecutive_responses=%0d request_response_overlap=%0d requested_elements=%0d response_elements=%0d return_span_cycles=%0d",
+                        total.jobs-1,layer_open ? int'(layer_index) : -1,int'(job_kind),
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_requests,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_completions,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_peak_outstanding,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_response_beats,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_consecutive_responses,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_request_response_overlap,
+                        window_requested_elements,window_response_elements,
+                        window_response_elements==0 ? 64'd0 : window_last_response_cycle-window_first_response_cycle+1);
+                end
                 case(job_kind)
                     JOB_GEMM:total.gemm_done++;
                     JOB_CONV:total.conv_done++;
@@ -281,6 +397,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                     JOB_POOL:total.pool_done++;
                     JOB_VECTOR:total.vector_done++;
                     JOB_ADD:total.add_done++;
+                    JOB_SOFTMAX:total.softmax_done++;
                     default:$fatal(1,"invalid completed operation");
                 endcase
             end

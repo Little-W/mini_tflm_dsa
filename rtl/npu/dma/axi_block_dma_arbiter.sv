@@ -19,13 +19,27 @@ module axi_block_dma_arbiter #(
     parameter int unsigned ENABLE_QUANT_CLIENT = 1,
     parameter int unsigned READ_OUTSTANDING = 4,
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
-    parameter int unsigned CONV_CACHE_SETS = 32,
+    parameter int unsigned WINDOW_OUTSTANDING = 4,
+    parameter int unsigned CONV_CACHE_SETS = 128,
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
-    parameter int unsigned CONV_CACHE_POLICY = 2
+    parameter int unsigned CONV_CACHE_POLICY = 3
 ) (
     input logic clk,
     input logic rst_n,
+
+    // Independent ordered window requests use destination tags and credits.
+    input logic win_req_valid = 1'b0,
+    output logic win_req_ready,
+    input logic [31:0] win_req_p0 = '0, win_req_q0 = '0, win_req_cols = '0,
+    input logic [1:0] win_req_tag = '0,
+    output logic win_rsp_valid,
+    input logic win_rsp_ready = 1'b1,
+    output logic [1:0] win_rsp_tag,
+    output logic [31:0] win_rsp_col,
+    output logic signed [15:0] win_rsp_data[4],
+    output logic [3:0] win_rsp_mask,
+    output logic win_rsp_last,win_rsp_error,win_busy,
 
     // Job context belongs to the shared DMA, never to an individual loader.
     input  logic conv_cfg_valid = 1'b0,
@@ -218,7 +232,7 @@ module axi_block_dma_arbiter #(
     logic rd_dma_busy;
     logic rd_dma_done;
     logic rd_finish_beat;
-    wire rd_launch_window = !rd_active || rd_finish_beat;
+    wire rd_launch_window = (!rd_active && !rd_dma_busy && !conv_cfg_valid) || rd_finish_beat;
     assign rd_command_client = rd_launch_window ? rd_next_client : rd_client;
     always_ff @(posedge clk) begin
         if (!rst_n) rd_response_client <= C_NONE;
@@ -269,8 +283,8 @@ module axi_block_dma_arbiter #(
         if (dw_req && !(rd_finish_beat && rd_client == C_DW) && !(rd_dma_done && rd_response_client == C_DW)) rd_next_client = C_DW;
         else if (kernel_req && !(rd_finish_beat && rd_client == C_KERNEL) && !(rd_dma_done && rd_response_client == C_KERNEL)) rd_next_client = C_KERNEL;
         else if (quant_req_eff && !(rd_finish_beat && rd_client == C_QUANT) && !(rd_dma_done && rd_response_client == C_QUANT)) rd_next_client = C_QUANT;
-        else if (ia_req && !(rd_finish_beat && rd_client == C_IA) && !(rd_dma_done && rd_response_client == C_IA)) rd_next_client = C_IA;
         else if (bias_req && !(rd_finish_beat && rd_client == C_BIAS) && !(rd_dma_done && rd_response_client == C_BIAS)) rd_next_client = C_BIAS;
+        else if (ia_req && !(rd_finish_beat && rd_client == C_IA) && !(rd_dma_done && rd_response_client == C_IA)) rd_next_client = C_IA;
         else rd_next_client = C_NONE;
     end
 
@@ -483,6 +497,12 @@ module axi_block_dma_arbiter #(
     // Registered command descriptor separates client arbitration from DMA
     // address arithmetic. Client grants and completion tags keep their order.
     logic rd_dma_start_q;
+    logic win_dma_req_ready, win_accept_allowed;
+    // A granted ordinary read owns the registered command stage through
+    // launch. Window descriptors use credits only when that stage is free.
+    assign win_accept_allowed = !rd_active && rd_next_client == C_NONE &&
+                                !rd_dma_start && !rd_dma_start_q;
+    assign win_req_ready = win_dma_req_ready && win_accept_allowed;
     assign idle = !rd_dma_busy && !wr_dma_busy && !rd_dma_start_q &&
                   !rd_dma_start && !wr_dma_start;
     assign bus_error = (m_axi_rvalid && m_axi_rready && m_axi_rresp[1]) ||
@@ -539,6 +559,7 @@ module axi_block_dma_arbiter #(
         .DATA_WIDTH       (DATA_WIDTH),
         .SIZE             (DMA_SIZE),
         .IM2COL_SIZE      (SIZE),
+        .WINDOW_OUTSTANDING(WINDOW_OUTSTANDING),
         .BUS_WIDTH        (BUS_WIDTH),
         .REG_WIDTH        (REG_WIDTH),
         .CACHE_BLOCKS     (CACHE_BLOCKS),
@@ -549,6 +570,10 @@ module axi_block_dma_arbiter #(
     ) u_dma (
         .clk                (clk),
         .rst_n              (rst_n),
+        .win_req_valid(win_req_valid && win_accept_allowed),.win_req_ready(win_dma_req_ready),
+        .win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
+        .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
+        .win_rsp_last,.win_rsp_error,.win_busy,
         .conv_cfg_valid, .conv_cfg_ready, .conv_enable, .dma_range_enable, .conv_cfg,
         .conv_sched_r, .conv_sched_groups, .conv_range_base, .conv_range_end,
         .conv_error, .conv_busy, .conv_stat_hits, .conv_stat_misses, .conv_stat_read_bytes,

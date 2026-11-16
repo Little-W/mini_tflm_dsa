@@ -48,7 +48,8 @@ module kernel_loader_buffer #(
 `ifndef SYNTHESIS
   bit kernel_buf_trace_en;
 
-  assign load_ready = !load_busy && (valid_count < COUNT_W'(SLOT_COUNT));
+  assign load_ready = (!load_busy && (valid_count < COUNT_W'(SLOT_COUNT))) ||
+                      (load_busy && load_done_q && valid_count == '0);
   assign weight_data_valid = (valid_count != '0) && !send_active && !send_pending && !send_prefetch;
 
   initial begin
@@ -58,7 +59,8 @@ module kernel_loader_buffer #(
 `else
   localparam bit kernel_buf_trace_en = 1'b0;
 
-  assign load_ready = !load_busy && (valid_count < COUNT_W'(SLOT_COUNT));
+  assign load_ready = (!load_busy && (valid_count < COUNT_W'(SLOT_COUNT))) ||
+                      (load_busy && load_done_q && valid_count == '0);
   assign weight_data_valid = (valid_count != '0) && !send_active && !send_pending && !send_prefetch;
 `endif
 
@@ -143,12 +145,6 @@ module kernel_loader_buffer #(
       weight_sending_done <= 1'b0;
       row_rd_en           <= 1'b0;
 
-      if (load_start && load_ready) begin
-        load_busy <= 1'b1;
-        load_slot <= wr_slot;
-        load_valid_cols <= '0;
-      end
-
       if (row_valid_q && load_busy) begin
         load_valid_cols <= row_valid_cols_next;
       end
@@ -157,6 +153,14 @@ module kernel_loader_buffer #(
         load_busy <= 1'b0;
         wr_slot   <= wr_slot + 1'b1;
         slot_valid_cols[load_slot] <= row_valid_cols_next;
+      end
+
+      // The final registered write and a new load use different slots when
+      // the other slot is empty. The completed slot keeps its own metadata.
+      if (load_start && load_ready) begin
+        load_busy <= 1'b1;
+        load_slot <= wr_slot + SLOT_W'(load_complete_event);
+        load_valid_cols <= '0;
       end
 
       if (send_start && weight_data_valid) begin

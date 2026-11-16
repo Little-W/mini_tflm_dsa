@@ -12,6 +12,7 @@ module vec_s8_to_fifo_full #(
     output reg                  oa_fifo_req,
     input  wire                 transpose_mode,
     input  wire                 coalesce_enable,
+    input  wire                 coalesce_group_start,
     input  wire [31:0]          coalesce_rows,
     input  wire [31:0]          coalesce_cols,
     input  wire [          31:0] reserve_banks,
@@ -58,8 +59,8 @@ module vec_s8_to_fifo_full #(
   logic issue_transpose_mode;
   logic ram_read_en;
   wire transpose_mode_eff = (ENABLE_TRANSPOSE != 0) ? transpose_mode : 1'b0;
-  // A group arrives as [column tile][R row tiles]. Read the same RAM as
-  // [matrix row][column tile][four 32-bit beats], making each row contiguous.
+  // WS groups arrive as [column tile][R row tiles]. IS groups contain R
+  // transposed channel tiles. Both drain as contiguous logical output rows.
   logic co_active, co_data_valid;
   logic [8:0] co_row;
   logic [4:0] co_col;
@@ -68,17 +69,21 @@ module vec_s8_to_fifo_full #(
   logic [4:0] co_next_col;
   logic [1:0] co_next_beat;
   wire [BANK_COUNT_WIDTH-1:0] co_tiles = BANK_COUNT_WIDTH'(coalesce_rows[4:0] * coalesce_cols[4:0]);
-  wire co_start = start_permitted && coalesce_enable && !co_active && ready_bank_count_q != 0 && co_tiles != 0;
+  wire co_start = start_permitted && coalesce_enable && !co_active &&
+      ready_bank_count_q != 0 && co_tiles != 0 &&
+      (transpose_mode_eff || coalesce_group_start);
   wire co_fire = coalesce_enable && co_active && co_data_valid && output_ready;
   logic [BANK_WIDTH-1:0] co_following_bank;
+  logic [BANK_WIDTH-1:0] co_current_bank;
   logic [4:0] co_last_col_q, co_last_tile_row_q;
   wire co_col_last = co_col == co_last_col_q;
   wire co_row_last = co_col_last && co_beat == 3;
-  wire co_group_last = co_row_last && co_row[3:0] == 15 &&
-                       (co_row[8:4] == co_last_tile_row_q);
+  wire co_group_last = co_row_last &&
+      (transpose_mode_eff ? (co_row[3:0] == vec_valid_num_row)
+                          : (co_row[8:4] == co_last_tile_row_q &&
+                             COUNT_WIDTH'(co_row[3:0]) + COUNT_WIDTH'(1) >= bank_count[co_current_bank]));
   wire co_finish = co_fire && co_group_last;
   wire [BANK_WIDTH-1:0] co_bank_after = BANK_WIDTH'((int'(read_bank) + int'(co_tiles)) % BANKS);
-  logic [BANK_WIDTH-1:0] co_current_bank;
   wire co_load_waiting = coalesce_enable && co_active && !co_data_valid && bank_ready[co_current_bank];
   logic [BANK_WIDTH-1:0] co_issue_bank;
   logic [MEM_ADDR_W-1:0] co_ram_addr;
@@ -99,7 +104,8 @@ module vec_s8_to_fifo_full #(
     co_issue_bank = co_current_bank;
     if (co_start) co_issue_bank = read_bank;
     else if (co_fire && co_beat == 3) co_issue_bank = co_following_bank;
-    co_ram_addr = MEM_ADDR_W'(int'(co_issue_bank) * ROW_BEATS + ((int'(co_next_row) & 15) >> 2));
+    co_ram_addr = MEM_ADDR_W'(int'(co_issue_bank) * ROW_BEATS +
+        (transpose_mode_eff ? int'(co_next_beat) : ((int'(co_next_row) & 15) >> 2)));
   end
 
   // Prepare the next column's bank during its first three beats. The
@@ -114,7 +120,8 @@ module vec_s8_to_fifo_full #(
       end
       if (co_active && co_beat != 3) begin
         if (co_col_last)
-          co_following_bank <= BANK_WIDTH'((int'(read_bank) + ((int'(co_row)+1)>>4)) % BANKS);
+          co_following_bank <= transpose_mode_eff ? read_bank :
+              BANK_WIDTH'((int'(read_bank) + ((int'(co_row)+1)>>4)) % BANKS);
         else
           co_following_bank <= BANK_WIDTH'((int'(co_current_bank) + int'(coalesce_rows[4:0])) % BANKS);
       end
@@ -189,7 +196,8 @@ module vec_s8_to_fifo_full #(
     fifo_watermark_full = (free_bank_count < reserve_bank_count);
   end
 
-  assign fifo_full_flag = write_bank_blocked || next_write_bank_blocked || fifo_watermark_full;
+  assign fifo_full_flag = write_bank_blocked || fifo_watermark_full ||
+      (!coalesce_enable && next_write_bank_blocked);
   assign ram_read_en = coalesce_enable ? (co_start || co_load_waiting ||
        (co_fire && !co_group_last && bank_ready[co_issue_bank]))
                                       : (start_stream || stream_has_next);
@@ -387,7 +395,12 @@ module vec_s8_to_fifo_full #(
     if (valid_in_beat_i < 0) valid_in_beat_i = 0;
 
     if (coalesce_enable && co_active) begin
-      output_data = ram_rd_data[co_row[1:0]][co_beat*32+:32];
+      if (transpose_mode_eff) begin
+        for (out_byte_i = 0; out_byte_i < 4; out_byte_i = out_byte_i + 1)
+          output_data[out_byte_i*8+:8] = ram_rd_data[out_byte_i][co_row[3:0]*8+:8];
+      end else begin
+        output_data = ram_rd_data[co_row[1:0]][co_beat*32+:32];
+      end
       output_mask = 4'b1111;
     end else if (stream_active) begin
       if (transpose_mode_tmp) begin
@@ -568,6 +581,11 @@ module vec_s8_to_fifo_linear #(
       oa_fifo_req <= read_bank_ready && !stream_active;
       ram_read_valid_q <= ram_read_en;
 
+      // The writer publishes the next tile width after its DMA response.
+      // Keep the first waiting beat's mask synchronized with that descriptor.
+      if (stream_active && read_ptr == '0 && beat_idx == '0 && !output_ready)
+        vec_valid_num_col_tmp <= vec_valid_num_col;
+
       if (finish_write_bank && !write_bank_blocked) begin
         bank_count[write_bank] <= write_rows_next;
         bank_ready[write_bank] <= 1'b1;
@@ -654,6 +672,7 @@ module vec_s8_to_fifo #(
     output wire                 oa_fifo_req,
     input  wire                 transpose_mode,
     input  wire                 coalesce_enable,
+    input  wire                 coalesce_group_start,
     input  wire [31:0]          coalesce_rows,
     input  wire [31:0]          coalesce_cols,
     input  wire [          31:0] reserve_banks,
@@ -759,6 +778,7 @@ module vec_s8_to_fifo #(
         .oa_fifo_req      (inner_req),
         .transpose_mode   (transpose_mode),
         .coalesce_enable  (coalesce_enable),
+        .coalesce_group_start(coalesce_group_start),
         .coalesce_rows    (coalesce_rows),
         .coalesce_cols    (coalesce_cols),
         .reserve_banks    (reserve_banks),

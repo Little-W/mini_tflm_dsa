@@ -3,10 +3,15 @@
 // Generate vectors with tests/gen_rtl_vectors.py; run with +VECTORS=<path>.
 module tb_conv_im2col_frontend;
   import conv_im2col_pkg::*;
-  parameter int SIZE=16;
+  parameter int SIZE=16, LANES=2, CACHE_POLICY=3;
+  parameter bit PREFETCH=0, WINDOWED=0;
   parameter int CACHE_SETS=128, CACHE_WAYS=2, LINE_BYTES=16;
   parameter bit USE_TILE_PATH=0;
+  parameter logic [31:0] NATIVE_SCHED_R=0, NATIVE_SCHED_GROUPS=0;
+  parameter int EXPECT_GEOMETRY_PREDICTIONS=-1;
+  parameter int unsigned MAX_CYCLES=100000000;
   localparam int CW=$clog2(SIZE), RW=$clog2(SIZE+1), MEM_BYTES=1048576;
+  logic unused_wr_last;
   logic clk;
   initial begin clk=0; forever #5 clk=~clk; end
   logic rst_n=0, cfg_valid=0, cfg_ready;
@@ -18,10 +23,11 @@ module tb_conv_im2col_frontend;
   logic wr_valid,wr_ready;
   logic [2:0] wr_slot;
   logic [CW-1:0] wr_row,wr_col;
-  logic signed [15:0] wr_data[2];
-  logic [1:0] wr_mask;
+  logic signed [15:0] wr_data[LANES];
+  logic [LANES-1:0] wr_mask;
   logic tile_done,tile_error,error,busy;
   logic [31:0] stat_hits,stat_misses,stat_read_bytes;
+  logic [31:0] stat_prefetch_lines,stat_prefetch_used,stat_prefetch_wasted,stat_prefetch_unused,stat_prefetch_bytes,stat_prefetch_late;
   logic arvalid,arready,rvalid,rready,rlast;
   logic [31:0] araddr,rdata;
   logic [7:0] arlen;
@@ -36,6 +42,8 @@ module tb_conv_im2col_frontend;
   longint unsigned job_bus_start=0;
   bit inject_error=0, error_injected;
   longint unsigned cycles,bus_byte_count;
+  longint unsigned geometry_predictions;
+  logic geometry_prediction_start;
   logic [31:0] lfsr;
   bit mem_active;
   int unsigned mem_addr,mem_left,mem_size;
@@ -45,13 +53,16 @@ module tb_conv_im2col_frontend;
   string vectors;
   logic [31:0] virtual_stride;
   generate if (!USE_TILE_PATH) begin : g_direct
-    conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(3),.CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES)) dut (
+    conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(3),.LANES(LANES),.CACHE_POLICY(CACHE_POLICY),.CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES)) dut (
       .clk,.rst_n,.cfg_valid,.cfg_ready,.cfg,
+      .cfg_sched_r(NATIVE_SCHED_R),.cfg_sched_groups(NATIVE_SCHED_GROUPS),
       .tile_valid,.tile_ready,.tile_p0,.tile_q0,.tile_rows,.tile_slot,
-      .wr_valid,.wr_ready,.wr_slot,.wr_row,.wr_col,.wr_data,.wr_mask,
+      .wr_valid,.wr_ready,.wr_slot,.wr_row,.wr_col,.wr_data,.wr_mask,.wr_last(unused_wr_last),
       .tile_done,.tile_error,.error,.busy,.stat_hits,.stat_misses,.stat_read_bytes,
+      .stat_prefetch_lines,.stat_prefetch_used,.stat_prefetch_wasted,.stat_prefetch_unused,.stat_prefetch_bytes,.stat_prefetch_late,
       .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
     );
+    assign geometry_prediction_start=dut.pred_start;
   end else begin : g_tile_path
     logic path_busy, use16;
     logic signed [15:0] data4[4];
@@ -70,6 +81,13 @@ module tb_conv_im2col_frontend;
       .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
     );
     assign busy=path_busy;
+    assign geometry_prediction_start=1'b0;
+    assign stat_prefetch_lines=0;
+    assign stat_prefetch_used=0;
+    assign stat_prefetch_wasted=0;
+    assign stat_prefetch_unused=0;
+    assign stat_prefetch_bytes=0;
+    assign stat_prefetch_late=0;
     assign tile_ready=!path_busy && !cfg_valid;
     assign tile_error=error;
     assign wr_valid=valid4[0] || valid4[1];
@@ -86,10 +104,11 @@ module tb_conv_im2col_frontend;
     if (!rst_n) begin
       arready<=0;rvalid<=0;rlast<=0;rdata<=0;rresp<=0;wr_ready<=0;
       mem_active=0; mem_addr=0;mem_left=0;mem_size=0;
-      lfsr<=32'hca17cafe;cycles<=0;bus_byte_count<=0;
+      lfsr<=32'hca17cafe;cycles<=0;bus_byte_count<=0;geometry_predictions<=0;
     end else begin
       if (wr_valid && !busy) $fatal(1,"write when frontend idle");
       cycles<=cycles+1;
+      if (geometry_prediction_start) geometry_predictions<=geometry_predictions+1;
       lfsr<={lfsr[30:0],lfsr[31]^lfsr[21]^lfsr[1]^lfsr[0]};
       wr_ready<=USE_TILE_PATH || lfsr[5] || lfsr[9];
       arready<=!mem_active && (lfsr[0] || lfsr[3]);
@@ -118,7 +137,7 @@ module tb_conv_im2col_frontend;
       end
       if (wr_valid && wr_ready) begin
         if (32'(wr_slot)!=expected_slot) $fatal(1,"wrong slot");
-        for (int l=0;l<2;l++) if (wr_mask[l]) begin
+        for (int l=0;l<LANES;l++) if (wr_mask[l]) begin
           if (32'(wr_row)>=active_rows || int'(wr_col)+l>=SIZE) $fatal(1,"write coordinate overflow");
           if (seen[wr_row][int'(wr_col)+l]) $fatal(1,"duplicate write");
           if (32'($signed(wr_data[l]))!=expected[wr_row][int'(wr_col)+l])
@@ -127,12 +146,12 @@ module tb_conv_im2col_frontend;
           seen[wr_row][int'(wr_col)+l]=1; written=written+1;
         end
       end
-      if (cycles>100000000) $fatal(1,"global timeout");
+      if (cycles>64'(MAX_CYCLES)) $fatal(1,"global timeout");
     end
   end
 
   initial begin
-    cfg='0;
+    cfg='0;cfg.windowed=WINDOWED;cfg.prefetch_enable=PREFETCH;
     if (!$value$plusargs("VECTORS=%s",vectors)) $fatal(1,"missing +VECTORS");
     fd=$fopen(vectors,"r"); if (fd==0) $fatal(1,"cannot open vectors");
     rc=$fscanf(fd,"%d",jobs); if(rc!=1) $fatal(1,"bad vector header");
@@ -159,7 +178,7 @@ module tb_conv_im2col_frontend;
       do @(posedge clk); while(!cfg_ready);
       @(negedge clk);cfg_valid=0;
       // Drive unrelated values after handshake: active configuration must be latched.
-      cfg='0;
+      cfg='0;cfg.windowed=WINDOWED;cfg.prefetch_enable=PREFETCH;
       if(error)$fatal(1,"valid cfg rejected");
       for(ti=0;ti<ntiles;ti++) begin
         for(int j=0;j<4;j++) begin rc=$fscanf(fd,"%d",v[j]);if(rc!=1)$fatal(1,"bad tile");end
@@ -181,13 +200,21 @@ module tb_conv_im2col_frontend;
         end
         @(negedge clk);
       end
+      while(busy && !error) @(negedge clk);
       if (64'(stat_read_bytes) != bus_byte_count-job_bus_start)
         $fatal(1,"read byte counter mismatch");
       if (mem_active || rvalid) $fatal(1,"job ended without draining accepted reads");
       $display("RTL_FRONTEND_JOB_PASS job=%0d tiles=%0d hits=%0d misses=%0d read_bytes=%0d fault=%0d",
         job,ntiles,stat_hits,stat_misses,stat_read_bytes,expect_fault);
+      if (!USE_TILE_PATH && stat_prefetch_lines!=stat_prefetch_used+stat_prefetch_wasted+stat_prefetch_unused)
+        $fatal(1,"prefetch accounting mismatch");
     end
     $fclose(fd);
+    if (EXPECT_GEOMETRY_PREDICTIONS>=0) begin
+      if (geometry_predictions!=64'(EXPECT_GEOMETRY_PREDICTIONS))
+        $fatal(1,"geometry prediction count=%0d expected=%0d",geometry_predictions,EXPECT_GEOMETRY_PREDICTIONS);
+      $display("RTL_NATIVE_GEOMETRY_PASS predictions=%0d",geometry_predictions);
+    end
     $display("RTL_FRONTEND_PASS jobs=%0d cycles=%0d cache_sets=%0d cache_ways=%0d line_bytes=%0d tile_path=%0d (not upstream full NPU)",jobs,cycles,CACHE_SETS,CACHE_WAYS,LINE_BYTES,USE_TILE_PATH);
     $finish;
   end

@@ -7,7 +7,7 @@ module axil_top_with_ram #(
     parameter BUS_WIDTH       = 32,
     parameter REG_WIDTH       = 32,
     parameter AXI_ADDR_WIDTH  = 32,
-    parameter IA_CACHE_BLOCKS = 4,
+    parameter IA_CACHE_BLOCKS = 8,
     parameter ENABLE_DW_POOL = 1,
     parameter DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
     parameter ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
@@ -15,6 +15,8 @@ module axil_top_with_ram #(
     parameter DW_MAX_TAPS = 49,
     parameter POOL_MAX_TAPS = 256,
     parameter PS_FRAME_COUNT  = SIZE,
+    parameter PS_STORAGE_ROWS = ((3*SIZE)-1)*(PS_FRAME_COUNT+1),
+    parameter OA_S16_FIFO_BANKS_MAX = 4,
     parameter AXI_READ_OUTSTANDING = 4,
     parameter NPU_ENABLE_CLOCK_GATING = 1,
     parameter MEM_DP          = 512,
@@ -100,6 +102,8 @@ module axil_top_with_ram #(
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .ENABLE_VECTOR_ENGINE(ENABLE_VECTOR_ENGINE), .VECTOR_PE_COUNT(VECTOR_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
+        .PS_STORAGE_ROWS(PS_STORAGE_ROWS),
+        .OA_S16_FIFO_BANKS_MAX(OA_S16_FIFO_BANKS_MAX),
         .AXI_READ_OUTSTANDING(AXI_READ_OUTSTANDING),
         .ENABLE_CLOCK_GATING(NPU_ENABLE_CLOCK_GATING)
     ) u_npu_axil_top (

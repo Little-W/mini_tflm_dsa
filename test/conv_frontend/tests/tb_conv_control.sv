@@ -2,13 +2,14 @@
 // Configuration/descriptor rejection and recovery; valid windows are all padding.
 module tb_conv_control;
   import conv_im2col_pkg::*;
+  logic unused_wr_last;
   logic clk;
   initial begin clk=0;forever #5 clk=~clk;end
   logic rst_n=0,cfg_valid=0,cfg_ready;
   conv_cfg_t cfg,good,bad;
   logic tile_valid=0,tile_ready;
   logic [31:0] tile_p0=0,tile_q0=0;
-  logic [2:0] tile_rows=0;
+  logic [2:0] tile_rows=0,tile_cols=0;
   logic [1:0] tile_slot=0,wr_slot;
   logic wr_valid,wr_ready=1;
   logic [1:0] wr_row,wr_col,wr_mask;
@@ -22,8 +23,9 @@ module tb_conv_control;
   logic [1:0] arburst,rresp=0;
   int checked=0,written=0,cycles=0;
   conv_im2col_frontend #(.SIZE(4),.SLOT_W(2),.CACHE_SETS(2)) dut (
-      .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.*);
+      .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.stat_prefetch_lines(unused_prefetch[0]),.stat_prefetch_used(unused_prefetch[1]),.stat_prefetch_wasted(unused_prefetch[2]),.stat_prefetch_unused(unused_prefetch[3]),.stat_prefetch_bytes(unused_prefetch[4]),.stat_prefetch_late(unused_prefetch[5]),.wr_last(unused_wr_last),.*);
 
+  logic [31:0] unused_prefetch[6];
   always @(posedge clk) if(rst_n) begin
     cycles<=cycles+1;
     if(cycles>10000) $fatal(1,"control timeout");
@@ -43,7 +45,10 @@ module tb_conv_control;
     @(negedge clk);cfg=value;cfg_valid=1;
     do @(posedge clk);while(!cfg_ready);
     @(negedge clk);cfg_valid=0;cfg='0;
-    if(error!=want_error || busy || tile_done || tile_error) $fatal(1,"bad configuration result");
+    while(busy) @(negedge clk);
+    if(error!=want_error || busy || tile_done || tile_error)
+      $fatal(1,"bad configuration result case=%0d error=%0b expected=%0b busy=%0b done=%0b tile_error=%0b",
+        checked,error,want_error,busy,tile_done,tile_error);
     if(want_error && tile_ready) $fatal(1,"invalid configuration accepted a tile");
     checked=checked+1;
   endtask

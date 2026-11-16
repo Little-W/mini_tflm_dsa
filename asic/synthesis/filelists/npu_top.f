@@ -1,12 +1,14 @@
 ../../rtl/npu/conv/00_conv_im2col_pkg.sv
 ../../rtl/npu/conv/01_vector_engine_pkg.sv
 ../../rtl/npu/conv/vector_pe.sv
+../../rtl/npu/conv/vector_softmax.sv
 ../../rtl/npu/conv/vector_engine.sv
 ../../rtl/npu/conv/conv_axi_read_guard.sv
 ../../rtl/npu/conv/conv_axi_read_mux.sv
 ../../rtl/npu/conv/conv_axi_span_reader.sv
 ../../rtl/npu/conv/conv_ia_tile_path.sv
 ../../rtl/npu/conv/conv_ia_write_adapter.sv
+../../rtl/npu/conv/conv_window_queue.sv
 ../../rtl/npu/conv/conv_im2col_frontend.sv
 ../../rtl/npu/conv/conv_next_use_predictor.sv
 ../../rtl/npu/conv/conv_read_cache.sv

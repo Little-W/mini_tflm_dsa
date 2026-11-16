@@ -2,7 +2,8 @@ module ps_buffer #(
     parameter int unsigned SIZE       = 16,
     parameter int unsigned DATA_WIDTH = 32,
     parameter int unsigned FRAME_COUNT = SIZE,
-    parameter int unsigned MAX_IA_REUSE = 2
+    parameter int unsigned MAX_IA_REUSE = 2,
+    parameter int unsigned STORAGE_ROWS = 0
 ) (
     input  logic                         clk,
     input  logic                         rst_n,
@@ -22,10 +23,11 @@ module ps_buffer #(
     output logic                         capacity_fault
 );
     localparam int unsigned MAX_FRAME_LEN = ((MAX_IA_REUSE + 1) * SIZE) - 1;
-    // Store at most FRAME_COUNT reusable partial-sum frames, but keep one
-    // extra max-sized frame worth of storage so a newly generated frame never
-    // overwrites the frame that is being replayed in the same L1 pass.
-    localparam int unsigned DEPTH = MAX_FRAME_LEN * (FRAME_COUNT + 1);
+    // Frames occupy their actual stream length in a circular SRAM. The host
+    // admits a group only when its retained frames and one replacement frame
+    // fit; the physical capacity is independent of the maximum IA reuse.
+    localparam int unsigned DEPTH = STORAGE_ROWS != 0 ? STORAGE_ROWS :
+                                   MAX_FRAME_LEN * (FRAME_COUNT + 1);
     localparam int unsigned FIFO_VEC_WIDTH = DATA_WIDTH * SIZE;
 
     logic signed [DATA_WIDTH-1:0] fifo_data_out    [0:SIZE-1];

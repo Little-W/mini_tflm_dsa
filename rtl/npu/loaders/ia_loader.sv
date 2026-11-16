@@ -39,6 +39,7 @@ module ia_loader #(
     // Select a matrix-block request generated from the original image by DMA.
     // This loader does not own image geometry, an input cache or an AXI path.
     input  logic cfg_im2col = 1'b0,
+    input  logic cfg_tile_packed = 1'b0,
     output logic load_ia_req,
     input  logic load_ia_granted,
     input  logic send_ia_trigger,
@@ -146,6 +147,7 @@ module ia_loader #(
     logic signed [REG_WIDTH-1:0] cfg_lhs_zp;
     logic [REG_WIDTH-1:0] cfg_lhs_row_stride_b, cfg_lhs_base;
     logic                 cfg_use_16bits;
+    logic                 tile_packed_q;
     logic                 cfg_bias_by_row_mode;
     logic [REG_WIDTH-1:0] cfg_ia_reuse_num;
     logic [REG_WIDTH-1:0] cfg_w_reuse_num;
@@ -212,6 +214,7 @@ module ia_loader #(
             cfg_lhs_row_stride_b     <= '0;
             cfg_lhs_base             <= '0;
             cfg_use_16bits           <= '0;
+            tile_packed_q            <= 1'b0;
             cfg_bias_by_row_mode     <= 1'b0;
             cfg_ia_reuse_num         <= '0;
             cfg_w_reuse_num          <= '0;
@@ -239,6 +242,7 @@ module ia_loader #(
             cfg_lhs_row_stride_b <= lhs_row_stride_b;
             cfg_lhs_base <= lhs_base;
             cfg_use_16bits <= use_16bits;
+            tile_packed_q <= cfg_tile_packed;
             cfg_bias_by_row_mode <= bias_by_row_mode;
             cfg_ia_reuse_num <= ia_reuse_num_safe;
             cfg_w_reuse_num <= w_reuse_num_safe;
@@ -347,6 +351,7 @@ module ia_loader #(
         .cfg_k               (cfg_k),
         .cfg_n               (cfg_n),
         .cfg_use_16bits      (cfg_use_16bits),
+        .cfg_tile_packed     (tile_packed_q),
         .cfg_bias_by_row_mode(cfg_bias_by_row_mode),
         .cfg_lhs_base        (cfg_lhs_base),
         .cfg_lhs_row_stride_b(cfg_lhs_row_stride_b),

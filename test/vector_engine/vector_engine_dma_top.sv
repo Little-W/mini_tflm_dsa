@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), LINE_WIDTH=64)(
+module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3)(
   input logic clk,rst_n,start,done_ready,
   input logic [31:0] config_words[40],
   output logic [31:0] pe_count,
-  output logic [31:0] observed_cache_elements, expected_cache_elements,
+  output logic [31:0] observed_window_elements, expected_window_elements,
   output logic ready,done_valid,
   output logic [1:0] error,
   output logic [31:0] stat_cycles,stat_compute,stat_dma_wait,cache_reads,
+  output logic [31:0] cache_hits,cache_misses,cache_prefetch_lines,cache_prefetch_used,
+  output logic [31:0] cache_prefetch_wasted,cache_prefetch_unused,cache_prefetch_bytes,cache_prefetch_late,
+  output logic [31:0] quant_inputs,quant_consecutive,mac_quant_overlap,mac_write_overlap,all_overlap,
+  output logic [31:0] write_bursts16,write_beats16,
+  output logic [31:0] window_requests,window_completions,window_peak_outstanding,
+  output logic [31:0] window_response_beats,window_consecutive_responses,window_request_response_overlap,
   output logic m_axi_arvalid,input logic m_axi_arready,
   output logic [31:0] m_axi_araddr,output logic [7:0] m_axi_arlen,
   output logic [2:0] m_axi_arsize,output logic [1:0] m_axi_arburst,
@@ -23,8 +29,8 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   localparam int DMA_SIZE=4*TILE;
   vector_engine_cfg_t cfg;
   assign pe_count=32'(PE_COUNT);
-  assign observed_cache_elements=engine.cache_received;
-  assign expected_cache_elements=engine.cache_elements;
+  assign observed_window_elements=engine.window_received;
+  assign expected_window_elements=engine.active;
   always_comb begin
     cfg='0;
     cfg.op=4'(config_words[0]); cfg.vector_s16=config_words[0][8];cfg.length=config_words[1];
@@ -49,6 +55,12 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   logic dma_cfg_valid,dma_cfg_ready,dma_conv_enable,dma_range_enable;
   conv_im2col_pkg::conv_cfg_t dma_conv_cfg;
   logic [31:0] dma_range_base[4];logic [32:0] dma_range_end[4];
+    logic win_req_valid,win_req_ready,win_rsp_valid,win_rsp_ready;
+    logic [31:0] win_req_p0,win_req_q0,win_req_cols,win_rsp_col;
+    logic [1:0] win_req_tag,win_rsp_tag;
+    logic signed [15:0] win_rsp_data[4];
+    logic [3:0] win_rsp_mask;
+    logic win_rsp_last,win_rsp_error,win_busy;
   logic rd_req,rd_start,rd_granted,rd_im2col,rd_use_16bits,rd_busy,rd_done,rd_error;
   logic [31:0] rd_p0,rd_q0,rd_base_addr,rd_row_stride,rd_rows_to_read,rd_valid_cols,rd_raw_data;
   logic [7:0] rd_burst_len_m1;logic rd_raw_valid;logic signed [15:0] rd_data[4];logic rd_valid[4];
@@ -56,13 +68,67 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   logic wr_req,wr_start,wr_granted,src_wvalid,src_wready,wr_busy,wr_done,wr_error;
   logic [31:0] wr_base_addr,wr_row_stride,wr_rows_to_write,src_wdata;
   logic [7:0] wr_burst_len_m1;logic [3:0] src_wmask;
-  vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT),.LINE_CACHE_MAX_WIDTH(LINE_WIDTH)) engine(.*);
+  vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT)) engine(.*);
+  assign window_requests=dma.u_dma.win_stat_requests;
+  assign window_completions=dma.u_dma.win_stat_completions;
+  assign window_peak_outstanding=dma.u_dma.win_stat_peak_outstanding;
+  assign window_response_beats=dma.u_dma.win_stat_response_beats;
+  assign window_consecutive_responses=dma.u_dma.win_stat_consecutive_responses;
+  assign window_request_response_overlap=dma.u_dma.win_stat_request_response_overlap;
+  logic mac_active,quant_issue,quant_active,write_active;
+  logic previous_quant_issue,previous_quant_more,previous_quant_bank,write16;
+  logic [31:0] previous_quant_index,write16_beats;
+  assign mac_active=engine.depthwise && engine.state==engine.EXECUTE;
+  assign quant_active=engine.depthwise && engine.q_active && engine.state!=engine.FAILED;
+  assign quant_issue=quant_active && engine.q_issue<engine.q_count;
+  assign write_active=engine.depthwise && engine.wb_state!=engine.WB_IDLE;
+  assign cache_prefetch_lines=dma.u_dma.conv_stat_prefetch_lines;
+  assign cache_prefetch_used=dma.u_dma.conv_stat_prefetch_used;
+  assign cache_prefetch_wasted=dma.u_dma.conv_stat_prefetch_wasted;
+  assign cache_prefetch_unused=dma.u_dma.conv_stat_prefetch_unused;
+  assign cache_prefetch_bytes=dma.u_dma.conv_stat_prefetch_bytes;
+  assign cache_prefetch_late=dma.u_dma.conv_stat_prefetch_late;
+  always_ff @(posedge clk) begin
+    if (!rst_n || (start && ready)) begin
+      quant_inputs<=0;quant_consecutive<=0;mac_quant_overlap<=0;mac_write_overlap<=0;all_overlap<=0;
+      write_bursts16<=0;write_beats16<=0;write16<=0;write16_beats<=0;
+      previous_quant_issue<=0;previous_quant_more<=0;previous_quant_bank<=0;previous_quant_index<=0;
+    end else begin
+      previous_quant_issue<=quant_issue;
+      previous_quant_more<=quant_issue && engine.q_issue+1<engine.q_count;
+      previous_quant_bank<=engine.q_bank;previous_quant_index<=engine.q_issue;
+      if (quant_issue) quant_inputs<=quant_inputs+1;
+      if (quant_issue && previous_quant_issue) quant_consecutive<=quant_consecutive+1;
+      if (previous_quant_more && engine.state!=engine.FAILED) begin
+        assert(quant_issue && engine.q_bank==previous_quant_bank);
+        assert(engine.q_issue==previous_quant_index+1);
+      end
+      if (mac_active && quant_active) mac_quant_overlap<=mac_quant_overlap+1;
+      if (mac_active && write_active) mac_write_overlap<=mac_write_overlap+1;
+      if (mac_active && quant_active && write_active) all_overlap<=all_overlap+1;
+      if (wr_start) begin
+        write16<=engine.depthwise && engine.bank_bytes[engine.write_bank]==16 &&
+                 engine.bank_address[engine.write_bank][1:0]==0;
+        write16_beats<=0;
+        if (engine.depthwise && engine.bank_bytes[engine.write_bank]==16 &&
+            engine.bank_address[engine.write_bank][1:0]==0) begin
+          assert(wr_burst_len_m1==3);
+          write_bursts16<=write_bursts16+1;
+        end
+      end
+      if (write16 && src_wvalid && src_wready) begin
+        write16_beats<=write16_beats+1;write_beats16<=write_beats16+1;
+        assert(src_wmask==4'b1111);
+      end
+      if (write16 && wr_done) begin assert(write16_beats==4);write16<=0;end
+    end
+  end
   axi_block_dma_arbiter #(.SIZE(TILE),.DMA_SIZE(DMA_SIZE),.DATA_WIDTH(16),
-    .CONV_CACHE_POLICY(0)) dma(
+    .CONV_CACHE_SETS(CACHE_SETS),.CONV_CACHE_POLICY(CACHE_POLICY)) dma(
     .clk,.rst_n,.conv_cfg_valid(dma_cfg_valid),.conv_cfg_ready(dma_cfg_ready),
     .conv_enable(dma_conv_enable),.dma_range_enable,.conv_cfg(dma_conv_cfg),
     .conv_range_base(dma_range_base),.conv_range_end(dma_range_end),
-    .conv_stat_read_bytes(cache_reads),
+    .conv_stat_read_bytes(cache_reads),.conv_stat_hits(cache_hits),.conv_stat_misses(cache_misses),
     .ia_req(1'b0),.ia_start(1'b0),.ia_linear_read_mode(1'b0),.ia_base_addr(32'd0),
     .ia_row_stride(32'd0),.ia_rows_to_read(32'd0),.ia_burst_len_m1(8'd0),.ia_slot_id(2'd0),.ia_use_16bits(1'b0),.ia_lhs_zp(32'd0),
     .kernel_req(1'b0),.kernel_start(1'b0),.kernel_linear_read_mode(1'b0),.kernel_base_addr(32'd0),
@@ -73,6 +139,9 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
     .quant_row_stride(32'd0),.quant_rows_to_read(32'd0),.quant_burst_len_m1(8'd0),.quant_slot_id(1'b0),.quant_use_16bits(1'b0),.quant_lhs_zp(32'd0),
     .oa_req(1'b0),.oa_start(1'b0),.oa_base_addr(32'd0),.oa_row_stride(32'd0),
     .oa_rows_to_read(32'd0),.oa_burst_len_m1(8'd0),.oa_src_wdata(32'd0),.oa_src_wmask(4'd0),.oa_src_wvalid(1'b0),
+            .win_req_valid,.win_req_ready,.win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
+            .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
+            .win_rsp_last,.win_rsp_error,.win_busy,
     .dw_req(rd_req),.dw_start(rd_start),.dw_granted(rd_granted),.dw_im2col(rd_im2col),
     .dw_p0(rd_p0),.dw_q0(rd_q0),.dw_base_addr(rd_base_addr),.dw_row_stride(rd_row_stride),
     .dw_rows_to_read(rd_rows_to_read),.dw_valid_cols(rd_valid_cols),.dw_burst_len_m1(rd_burst_len_m1),

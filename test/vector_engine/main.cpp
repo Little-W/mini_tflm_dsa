@@ -15,8 +15,8 @@
 extern "C" int vector_engine_reference(const uint32_t*,const int8_t*,const int8_t*,const int32_t*,int32_t*,int32_t*,int8_t*);
 static void require(bool condition,const std::string &s){if(!condition)throw std::runtime_error(s);}
 struct Range{uint32_t base,size;};
-struct Transaction{uint32_t addr,left,size;};
-struct Result{uint64_t cycles,compute,wait,reads,writes,bursts;};
+struct Transaction{uint32_t addr,left,size;uint64_t ready_cycle=0;};
+struct Result{uint64_t cycles,compute,wait,reads,writes,bursts;std::array<uint64_t,21> monitor;};
 using Config=std::array<uint32_t,40>;
 class Sim {
 public:
@@ -29,7 +29,8 @@ public:
  bool random_wait=true,rhold=false,bhold=false,read_fault=false,write_fault=false,fault_used=false;
  int64_t fault_addr=-1;
  uint32_t output_base=0,output_size=0;
- uint64_t cycles=0,read_bytes=0,write_bytes=0,bursts=0;
+ uint64_t cycles=0,read_bytes=0,write_bytes=0,bursts=0,next_read_cycle=0;
+ bool common_memory_service=false;
  bool ar_stall=false,aw_stall=false,w_stall=false;
  std::tuple<uint32_t,uint32_t,uint32_t> old_ar,old_aw,old_w;
  bool chance(){return !random_wait || rng()%4!=0;}
@@ -38,7 +39,7 @@ public:
    top.clk=0;
    top.m_axi_arready=reads.size()<8 && chance();top.m_axi_awready=writes.size()<8 && chance();
    top.m_axi_wready=!writes.empty()&&chance();
-   if(!rhold&&!reads.empty()&&chance()){
+   if(!rhold&&!reads.empty()&&chance()&&(!common_memory_service || (cycles>=next_read_cycle && cycles>=reads.front().ready_cycle))){
      auto r=reads.front();uint32_t word=0;
      for(unsigned i=0;i<r.size;i++)word|=uint32_t(mem.at(r.addr+i))<<(((r.addr+i)&3)*8);
      top.m_axi_rdata=word;top.m_axi_rlast=r.left==1;top.m_axi_rresp=0;
@@ -65,7 +66,7 @@ public:
    bool awh=top.m_axi_awvalid&&top.m_axi_awready;
    bool wh=top.m_axi_wvalid&&top.m_axi_wready;
    bool bh=top.m_axi_bvalid&&top.m_axi_bready;
-   if(rh){auto &r=reads.front();r.addr+=r.size;if(--r.left==0)reads.pop_front();rhold=false;}
+   if(rh){auto &r=reads.front();r.addr+=r.size;bool last=--r.left==0;if(last)reads.pop_front();rhold=false;next_read_cycle=cycles+(last?3:2);}
    if(bh){responses.pop_front();bhold=false;}
    if(arh){
      uint32_t a=top.m_axi_araddr,n=top.m_axi_arlen+1,s=1u<<top.m_axi_arsize;
@@ -73,7 +74,7 @@ public:
      require((a&4095)+n*s<=4096,"read crossed 4 KiB");
      require(a%s==0,"unaligned read transfer");
      for(uint32_t i=0;i<n*s;i++)require(readable(a+i),"read outside allocations at "+std::to_string(a+i));
-     reads.push_back({a,n,s});read_bytes+=uint64_t(n)*s;bursts++;
+     reads.push_back({a,n,s,cycles+3});read_bytes+=uint64_t(n)*s;bursts++;
    }
    if(awh){
      uint32_t a=top.m_axi_awaddr,n=top.m_axi_awlen+1,s=1u<<top.m_axi_awsize;
@@ -101,8 +102,19 @@ public:
    uint64_t deadline=cycles+10000000;
    while(!top.done_valid&&cycles<deadline)tick();require(top.done_valid,"command timed out");
    require(top.error==expected_error,"unexpected error "+std::to_string(top.error)+" expected "+std::to_string(expected_error)+
-     " cache elements="+std::to_string(top.observed_cache_elements)+"/"+std::to_string(top.expected_cache_elements));
-   Result result{top.stat_cycles,top.stat_compute,top.stat_dma_wait,read_bytes-rb,write_bytes-wb,bursts-br};
+     " window elements="+std::to_string(top.observed_window_elements)+"/"+std::to_string(top.expected_window_elements));
+   Result result{top.stat_cycles,top.stat_compute,top.stat_dma_wait,read_bytes-rb,write_bytes-wb,bursts-br,
+     {top.cache_hits,top.cache_misses,top.cache_prefetch_lines,top.cache_prefetch_used,
+      top.cache_prefetch_wasted,top.cache_prefetch_unused,top.cache_prefetch_bytes,top.cache_prefetch_late,
+      top.quant_inputs,top.quant_consecutive,top.mac_quant_overlap,top.mac_write_overlap,top.all_overlap,
+      top.write_bursts16,top.write_beats16,top.window_requests,top.window_completions,
+      top.window_peak_outstanding,top.window_response_beats,top.window_consecutive_responses,
+      top.window_request_response_overlap}};
+   if((config[0]&15)>3)for(size_t i=0;i<8;i++)result.monitor[i]=0;
+   if((config[0]&15)==0 && expected_error==0)
+     require(top.quant_inputs==uint64_t(config[13])*config[16]*config[17],"depthwise quantization input count");
+   require(top.window_requests==top.window_completions,"window requests did not drain");
+   require(top.write_beats16==4*top.write_bursts16,"16-channel output burst count");
    for(int i=0;i<7;i++){tick();require(top.done_valid&&top.error==expected_error,"completion not retained");}
    require(reads.empty()&&writes.empty()&&responses.empty()&&!rhold&&!bhold,"DONE before AXI drain");
    top.done_ready=1;tick();top.done_ready=0;tick();return result;
@@ -110,10 +122,18 @@ public:
  template<class T>void put(uint32_t addr,const std::vector<T>&v){std::memcpy(mem.data()+addr,v.data(),v.size()*sizeof(T));}
 };
 static Config config(unsigned op){Config c{};c[0]=op;c[2]=0x1ffb;c[3]=0x10003;c[4]=0x60ffd;c[5]=0x20000;c[6]=0x30000;c[7]=0x40000;c[9]=uint32_t(-128);c[10]=127;c[18]=c[19]=c[20]=c[21]=1;return c;}
-static void report(const char *name,const Result&r){std::printf("CASE %s cycles=%llu compute=%llu dma_wait=%llu read_bytes=%llu write_bytes=%llu bursts=%llu\n",name,(unsigned long long)r.cycles,(unsigned long long)r.compute,(unsigned long long)r.wait,(unsigned long long)r.reads,(unsigned long long)r.writes,(unsigned long long)r.bursts);}
+static void report(const char *name,const Result&r){
+ std::printf("CASE %s cycles=%llu compute=%llu dma_wait=%llu read_bytes=%llu write_bytes=%llu bursts=%llu",name,(unsigned long long)r.cycles,(unsigned long long)r.compute,(unsigned long long)r.wait,(unsigned long long)r.reads,(unsigned long long)r.writes,(unsigned long long)r.bursts);
+ static const char* labels[]={"cache_hits","cache_misses","pf_lines","pf_used","pf_wasted","pf_unused","pf_bytes","pf_late",
+   "quant_inputs","quant_consecutive","mac_quant_overlap","mac_write_overlap","all_overlap","write_bursts16","write_beats16","window_requests","window_completions",
+   "window_peak_outstanding","window_response_beats","window_consecutive_responses","window_request_response_overlap"};
+ for(size_t i=0;i<r.monitor.size();i++)std::printf(" %s=%llu",labels[i],(unsigned long long)r.monitor[i]);
+ std::printf("\n");
+}
 static unsigned cases=0;static uint64_t outputs=0;
-static Result spatial(Sim&s,const std::string&name,unsigned op,int h,int w,int ch,int kh,int kw,int stride,int dilation,int pad,int offset,bool bias=true,int special=0,bool bypass=false,int output_h=0,int output_w=0){
+static Result spatial(Sim&s,const std::string&name,unsigned op,int h,int w,int ch,int kh,int kw,int stride,int dilation,int pad,int offset,bool bias=true,int special=0,bool bypass=false,int output_h=0,int output_w=0,bool aligned=false){
  auto c=config(op);c[11]=h;c[12]=w;c[13]=ch;c[14]=kh;c[15]=kw;c[18]=c[19]=stride;c[20]=c[21]=dilation;c[22]=c[23]=pad;
+ if(aligned){c[2]=0x2000;c[3]=0x11000;c[4]=0x61000;}
  c[16]=(h+2*pad-(kh-1)*dilation-1)/stride+1;c[17]=(w+2*pad-(kw-1)*dilation-1)/stride+1;
  if(output_h)c[16]=output_h;if(output_w)c[17]=output_w;
  require(int(c[16])>0&&int(c[17])>0,"empty test shape");c[24]=uint32_t(offset);c[8]=op==0?uint32_t(-3):0;c[25]=bypass;
@@ -226,17 +246,34 @@ static void cached_read_errors(Sim&s){
 }
 
 #include "add_tests.h"
+#include "softmax_tests.h"
+#ifndef TEST_TILE_SIZE
+#define TEST_TILE_SIZE 16
+#endif
 
 int main(int argc,char**argv){
  Verilated::commandArgs(argc,argv);
  try{
-   bool perf=false;std::string replay;
+   bool perf=false,window_study=false;std::string replay,softmax_replay_path;
    for(int i=1;i<argc;i++){
      if(std::string(argv[i])=="--perf")perf=true;
+     else if(std::string(argv[i])=="--window-study")window_study=true;
      else if(std::string(argv[i])=="--replay"&&i+1<argc)replay=argv[++i];
+     else if(std::string(argv[i])=="--softmax-replay"&&i+1<argc)softmax_replay_path=argv[++i];
      else throw std::runtime_error("unknown command argument");
    }
    Sim s;s.random_wait=!perf;
+   if(window_study){
+     s.random_wait=false;s.common_memory_service=true;
+     spatial(s,"study_dw_48_c8_s1",0,48,48,8,3,3,1,1,1,128,true,0,false,48,48,true);
+     spatial(s,"study_dw_48_c8_s2",0,48,48,8,3,3,2,1,0,128,true,0,false,24,24,true);
+     spatial(s,"study_dw_48_c16_s2",0,48,48,16,3,3,2,1,0,128,true,0,false,24,24,true);
+     spatial(s,"study_dw_24_c32_s2",0,24,24,32,3,3,2,1,0,128,true,0,false,12,12,true);
+     spatial(s,"study_dw_12_c64_s2",0,12,12,64,3,3,2,1,0,128,true,0,false,6,6,true);
+     spatial(s,"study_dw_6_c128_s2",0,6,6,128,3,3,2,1,0,128,true,0,false,3,3,true);
+     std::printf("VECTOR_ENGINE_DMA_PASS cases=%u outputs=%llu add_cases=0 add_outputs=0 softmax_cases=0 softmax_outputs=0\n",cases,(unsigned long long)outputs);
+     return 0;
+   }
    if(perf){
      spatial(s,"perf_dw_c16",0,8,8,16,3,3,1,1,1,7);
      spatial(s,"perf_dw_c32",0,8,8,32,3,3,1,1,1,-9);
@@ -281,8 +318,8 @@ int main(int argc,char**argv){
        spatial(s,"cache_dw_stride2_c"+std::to_string(ch),0,8,10,ch,3,3,2,1,0,-127,true,0,false,4,5);
        spatial(s,"cache_max_stride2_c"+std::to_string(ch),2,8,10,ch,2,2,2,1,0,0);
      }
-     spatial(s,"cache_width_limit",0,3,64,3,3,3,1,1,1,-9);
-     spatial(s,"cache_width_fallback",0,3,65,3,3,3,1,1,1,11);
+     spatial(s,"dw_width64",0,3,64,3,3,3,1,1,1,-9);
+     spatial(s,"dw_width65",0,3,65,3,3,3,1,1,1,11);
      for(unsigned op=4;op<=8;op++)for(bool wide:{false,true})for(unsigned n:{1u,3u,16u,17u,65u})
        vector_case(s,"v"+std::to_string(op)+(wide?"_s16_":"_s8_")+std::to_string(n),op,n,wide);
      vector_case(s,"dot_s16_wrap",7,65,true,1);vector_case(s,"max_negative_s16",5,33,true,2);
@@ -292,9 +329,22 @@ int main(int argc,char**argv){
        spatial(s,"random_"+std::to_string(i),op,h,w,ch,3,3,1+i%2,1,1,op==0?int(s.rng()%256)-127:0,i%3!=0);
      }
      cached_read_errors(s);add_functional(s);add_invalid(s);
+     softmax_functional(s,TEST_TILE_SIZE);softmax_invalid(s,TEST_TILE_SIZE);
    }
    if(!replay.empty())add_replay(s,replay);
-   std::printf("VECTOR_ENGINE_DMA_PASS cases=%u outputs=%llu add_cases=%u add_outputs=%llu\n",
-     cases,(unsigned long long)outputs,add_cases,(unsigned long long)add_outputs);return 0;
+   auto aligned=spatial(s,"pipeline_dw_c16",0,8,8,16,3,3,1,1,1,7,true,0,false,0,0,true);
+   auto pointwise=spatial(s,"pipeline_dw_k1_c16",0,4,8,16,1,1,1,1,0,-5,true,0,false,0,0,true);
+   spatial(s,"pipeline_dw_c64",0,8,8,64,3,3,1,1,1,128,true,0,false,0,0,true);
+   spatial(s,"pipeline_dw_c128_s2",0,8,8,128,3,3,2,1,1,-127,true,0,false,0,0,true);
+   if(TEST_TILE_SIZE==16){
+     require(aligned.monitor[10]>0 && aligned.monitor[11]>0,"MAC overlap with quantization and writeback");
+     require(aligned.monitor[13]==64 && aligned.monitor[14]==256,"aligned four-beat depthwise writes");
+     if(perf)require(aligned.monitor[12]>0 || pointwise.monitor[12]>0,"simultaneous MAC, quantization and writeback");
+     require(aligned.monitor[17]>=2,"multiple outstanding window requests");
+     if(s.top.pe_count>=8)require(aligned.monitor[20]>0,"overlapping window request and response");
+   }
+   if(!softmax_replay_path.empty())softmax_replay(s,softmax_replay_path);
+   std::printf("VECTOR_ENGINE_DMA_PASS cases=%u outputs=%llu add_cases=%u add_outputs=%llu softmax_cases=%u softmax_outputs=%llu\n",
+     cases,(unsigned long long)outputs,add_cases,(unsigned long long)add_outputs,softmax_cases,(unsigned long long)softmax_outputs);return 0;
  }catch(const std::exception&e){std::fprintf(stderr,"FAIL: %s\n",e.what());return 1;}
 }

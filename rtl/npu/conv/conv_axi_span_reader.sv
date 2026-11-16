@@ -34,16 +34,31 @@ module conv_axi_span_reader (
   logic [8:0] beats_left;
   logic [2:0] beat_bytes;
   logic [16:0] nwords, page_words, next_beats;
+  logic [31:0] prepare_addr;
+  logic [16:0] prepare_bytes;
+  logic finishing_span, forward_ar;
+  logic [31:0] araddr_q;
+  logic [7:0] arlen_q;
+  logic [2:0] arsize_q;
   always_comb begin
-    nwords = left_bytes >> 2;
-    page_words = (17'd4096 - {5'b0,cursor[11:0]}) >> 2;
+    prepare_addr = req_ready ? req_addr : cursor;
+    prepare_bytes = req_ready ? {1'b0,req_bytes} : left_bytes;
+    nwords = prepare_bytes >> 2;
+    page_words = (17'd4096 - {5'b0,prepare_addr[11:0]}) >> 2;
     next_beats = nwords;
     if (next_beats > 256) next_beats = 256;
     if (next_beats > page_words) next_beats = page_words;
   end
-  assign req_ready = state == IDLE;
+  assign finishing_span = rsp_valid && rsp_ready && rsp_last;
+  assign req_ready = state == IDLE || finishing_span;
   assign busy = state != IDLE;
-  assign arvalid = state == AR;
+  assign forward_ar = finishing_span && req_valid;
+  assign arvalid = state == AR || forward_ar;
+  assign araddr = forward_ar ? req_addr : araddr_q;
+  assign arlen = forward_ar ?
+    ((req_addr[1:0] != 0 || req_bytes < 4) ? 8'd0 : 8'(next_beats - 1'b1)) : arlen_q;
+  assign arsize = forward_ar ?
+    ((req_addr[1:0] != 0 || req_bytes < 4) ? 3'd0 : 3'd2) : arsize_q;
   assign arburst = 2'b01;
   assign rsp_valid = state == DATA && rvalid;
   assign rready = state == DATA && rsp_ready;
@@ -55,18 +70,25 @@ module conv_axi_span_reader (
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state <= IDLE; cursor <= 0; left_bytes <= 0; beats_left <= 0;
-      beat_bytes <= 0; araddr <= 0; arlen <= 0; arsize <= 0;
+      beat_bytes <= 0; araddr_q <= 0; arlen_q <= 0; arsize_q <= 0;
     end else begin
-      case (state)
-        IDLE: if (req_valid && req_ready) begin
-          cursor <= req_addr; left_bytes <= {1'b0,req_bytes}; state <= PREP;
-        end
-        PREP: begin
-          araddr <= cursor;
-          if (cursor[1:0] != 0 || left_bytes < 4) begin
-            arsize <= 0; arlen <= 0; beats_left <= 1; beat_bytes <= 1;
+      if (req_valid && req_ready) begin
+          cursor <= req_addr; left_bytes <= {1'b0,req_bytes}; araddr_q <= req_addr;
+          if (req_addr[1:0] != 0 || req_bytes < 4) begin
+            arsize_q <= 0; arlen_q <= 0; beats_left <= 1; beat_bytes <= 1;
           end else begin
-            arsize <= 2; arlen <= 8'(next_beats - 1'b1);
+            arsize_q <= 2; arlen_q <= 8'(next_beats - 1'b1);
+            beats_left <= 9'(next_beats); beat_bytes <= 4;
+          end
+          state <= forward_ar && arready ? DATA : AR;
+      end else case (state)
+        IDLE: ;
+        PREP: begin
+          araddr_q <= cursor;
+          if (cursor[1:0] != 0 || left_bytes < 4) begin
+            arsize_q <= 0; arlen_q <= 0; beats_left <= 1; beat_bytes <= 1;
+          end else begin
+            arsize_q <= 2; arlen_q <= 8'(next_beats - 1'b1);
             beats_left <= 9'(next_beats); beat_bytes <= 4;
           end
           state <= AR;

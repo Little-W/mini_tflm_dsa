@@ -4,7 +4,7 @@ package vector_engine_pkg;
     DW_S8 = 4'd0, AVGPOOL_S8 = 4'd1, MAXPOOL_S8 = 4'd2,
     MINPOOL_S8 = 4'd3, VEC_SUM = 4'd4, VEC_MAX = 4'd5,
     VEC_MIN = 4'd6, VEC_DOT = 4'd7, VEC_HADAMARD = 4'd8,
-    ADD_S8 = 4'd9
+    ADD_S8 = 4'd9, SOFTMAX_S8 = 4'd10
   } vector_engine_op_t;
 
   typedef struct packed {

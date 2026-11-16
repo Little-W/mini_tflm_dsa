@@ -31,6 +31,7 @@ module bias_loader_buffer #(
     input  logic [$clog2(GROUP_BLOCKS_MAX * SIZE)-1:0] group_read_idx,
     output logic                 bias_valid,
     output logic                 load_block_valid,
+    output logic                 load_block_bank,
     output logic signed [DATA_WIDTH-1:0] data_out [SIZE],
     output logic signed [DATA_WIDTH-1:0] group_data_scalar
 );
@@ -160,6 +161,8 @@ module bias_loader_buffer #(
   assign bias_valid = bank_loaded[active_bank] && (bank_block_idx[active_bank] == current_block_idx);
   assign load_block_valid = (bank_loaded[1'b0] && (bank_block_idx[1'b0] == load_block_idx)) ||
                             (bank_loaded[1'b1] && (bank_block_idx[1'b1] == load_block_idx));
+  assign load_block_bank = !(bank_loaded[1'b0] &&
+                             (bank_block_idx[1'b0] == load_block_idx));
 
   assign group_data_scalar = active_bank
                            ? $signed(bank1_words[group_read_idx])

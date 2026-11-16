@@ -9,6 +9,18 @@
 `ifndef TB_CONV_CACHE_POLICY
 `define TB_CONV_CACHE_POLICY 2
 `endif
+`ifndef TB_IA_CACHE_BLOCKS
+`define TB_IA_CACHE_BLOCKS 4
+`endif
+`ifndef TB_PS_STORAGE_ROWS
+`define TB_PS_STORAGE_ROWS 0
+`endif
+`ifndef TB_PS_FRAME_COUNT
+`define TB_PS_FRAME_COUNT 16
+`endif
+`ifndef TB_OA_S16_FIFO_BANKS_MAX
+`define TB_OA_S16_FIFO_BANKS_MAX 0
+`endif
 module tb_conv_npu;
     import conv_im2col_pkg::*;
     localparam int SIZE=`TB_SIZE;
@@ -82,17 +94,21 @@ module tb_conv_npu;
     wire injected;
     wire [31:0] tensor_bytes=saved_cfg[34]*saved_cfg[35]*saved_cfg[36]*(saved_cfg[51][0]?32'd2:32'd1);
     wire [31:0] other_lo[4],other_hi[4];
-    assign other_lo[0]=saved_cfg[15];assign other_hi[0]=saved_cfg[15]+saved_cfg[4]*saved_cfg[5];
+    assign other_lo[0]=saved_cfg[15];
+    assign other_hi[0]=saved_cfg[15]+(saved_cfg[29][1] ?
+        ((saved_cfg[4]+SIZE-1)/SIZE)*((saved_cfg[5]+SIZE-1)/SIZE)*SIZE*SIZE : saved_cfg[4]*saved_cfg[5]);
     assign other_lo[1]=saved_cfg[16];assign other_hi[1]=saved_cfg[16]+4*saved_cfg[5];
     assign other_lo[2]=saved_cfg[13][0]?saved_cfg[24]:0;assign other_hi[2]=saved_cfg[24]+4*saved_cfg[5];
     assign other_lo[3]=saved_cfg[13][0]?saved_cfg[25]:0;assign other_hi[3]=saved_cfg[25]+4*saved_cfg[5];
     longint unsigned read_bytes,input_read_bytes,read_requests,write_bytes;
 
-    npu_top #(.SIZE(SIZE),.DATA_WIDTH(16),.WEIGHT_WIDTH(16),.IA_CACHE_BLOCKS(4),.PS_FRAME_COUNT(16),.AXI_READ_OUTSTANDING(4),
+    npu_top #(.SIZE(SIZE),.DATA_WIDTH(16),.WEIGHT_WIDTH(16),.IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(`TB_PS_FRAME_COUNT),.AXI_READ_OUTSTANDING(4),
+        .PS_STORAGE_ROWS(`TB_PS_STORAGE_ROWS),.OA_S16_FIFO_BANKS_MAX(`TB_OA_S16_FIFO_BANKS_MAX),
         .CONV_CACHE_SETS(`TB_CONV_CACHE_SETS),.CONV_CACHE_WAYS(2),.CONV_LINE_BYTES(16),
         .CONV_CACHE_POLICY(`TB_CONV_CACHE_POLICY)) u_dut(
         .clk(clk),.rst_n(rst_n),.calc_start(calc_start),.sa_ready(sa_ready),.done_valid(done_valid),.done_ready(done_ready),.err_code(err_code),
         .cfg_operand_fetch64(1'b0),.cfg_16bits_ia(cfg[12][0]),.cfg_16x8(cfg[28][0]),.cfg_dataflow_mode(cfg[8][0]),
+        .cfg_lhs_tile_packed(cfg[29][0]),.cfg_rhs_tile_packed(cfg[29][1]),
         .cfg_ia_reuse_num(cfg[6]),.cfg_w_reuse_num(cfg[7]),
         .cfg_row_groups({16'b0,cfg[30][15:0]}),.cfg_col_groups({16'b0,cfg[30][31:16]}),
         .cfg_row_tail_tiles({16'b0,cfg[31][15:0]}),.cfg_col_tail_tiles({16'b0,cfg[31][31:16]}),

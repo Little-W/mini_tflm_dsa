@@ -9,7 +9,16 @@ module npu_axil_reg_if #(
     parameter bit VECTOR_ENGINE_CAPABLE = DW_POOL_CAPABLE,
     parameter int unsigned VECTOR_PE_COUNT = DW_PE_COUNT,
     parameter int unsigned DW_MAX_TAPS = 49,
-    parameter int unsigned POOL_MAX_TAPS = 256
+    parameter int unsigned POOL_MAX_TAPS = 256,
+    parameter int unsigned SOFTMAX_MAX_DEPTH = 16,
+    parameter int unsigned MATRIX_SIZE = 16,
+    parameter bit MATRIX_LAYOUT_CAPABLE = 1'b1,
+    parameter bit MATRIX_IS_CAPABLE = 1'b1,
+    parameter int unsigned MATRIX_IA_CACHE_BLOCKS = 4,
+    parameter int unsigned MATRIX_PS_FRAMES = 16,
+    parameter int unsigned MATRIX_PS_ROWS = 799,
+    parameter int unsigned MATRIX_S8_BANKS = 32,
+    parameter int unsigned MATRIX_S16_BANKS = 32
 ) (
     input  wire                         clk,
     input  wire                         rst_n,
@@ -56,6 +65,8 @@ module npu_axil_reg_if #(
     output logic                        cfg_16bits_ia,
     output logic                        cfg_16x8,
     output logic                        cfg_dataflow_mode,
+    output logic                        cfg_lhs_tile_packed,
+    output logic                        cfg_rhs_tile_packed,
     output logic                        use_per_channel,
     output logic [REG_WIDTH-1:0]        cfg_ia_reuse_num,
     output logic [REG_WIDTH-1:0]        cfg_w_reuse_num,
@@ -134,6 +145,10 @@ module npu_axil_reg_if #(
     localparam logic [11:0] REG_ADD_INPUT2_MULT = 12'h035; // 0x0d4
     localparam logic [11:0] REG_ADD_INPUT2_SHIFT = 12'h036; // 0x0d8
     localparam logic [11:0] REG_ADD_LEFT_SHIFT = 12'h037; // 0x0dc
+    localparam logic [11:0] REG_SOFTMAX_MAX_DEPTH = 12'h038; // 0x0e0, read-only
+    localparam logic [11:0] REG_MATRIX_CAPS = 12'h039; // 0x0e4, read-only
+    localparam logic [11:0] REG_MATRIX_PS_ROWS = 12'h03a; // 0x0e8, read-only
+    localparam logic [11:0] REG_MATRIX_OUTPUT_BANKS = 12'h03b; // 0x0ec, read-only
     localparam logic [11:0] REG_ID           = 12'h03f; // 0x0fc
     localparam logic [REG_WIDTH-1:0] NPU_ID  = 32'h4e50_5531;
 
@@ -204,17 +219,25 @@ module npu_axil_reg_if #(
         read_data_next = '0;
         case (rd_word_addr)
             REG_CTRL: begin
+                read_data_next[10:9] = {cfg_rhs_tile_packed, cfg_lhs_tile_packed};
                 read_data_next[8] = cfg_vector_enable;
                 read_data_next[7:1] = {cfg_conv.bypass_cache, cfg_conv_enable, cfg_16x8, irq_enable, cfg_dataflow_mode,
                                        use_per_channel, cfg_16bits_ia};
             end
             REG_VECTOR_OP: read_data_next = {23'b0, cfg_vector_s16, 4'b0, cfg_vector_op};
+            REG_MATRIX_CAPS: read_data_next = {8'(MATRIX_SIZE), 8'(MATRIX_PS_FRAMES),
+                                               8'(MATRIX_IA_CACHE_BLOCKS),
+                                               8'((MATRIX_LAYOUT_CAPABLE ? 3 : 0) |
+                                                  (MATRIX_IS_CAPABLE ? 4 : 0))};
+            REG_MATRIX_PS_ROWS: read_data_next = MATRIX_PS_ROWS;
+            REG_MATRIX_OUTPUT_BANKS: read_data_next = {16'(MATRIX_S16_BANKS), 16'(MATRIX_S8_BANKS)};
             REG_VECTOR_LENGTH: read_data_next = cfg_vector_length;
             REG_VECTOR_CAPS: read_data_next = VECTOR_ENGINE_CAPABLE ?
-                {8'd1, 8'(DW_MAX_TAPS), 8'(VECTOR_PE_COUNT), 8'h3f} : 32'd0;
+                {8'd1, 8'(DW_MAX_TAPS), 8'(VECTOR_PE_COUNT), 8'h7f} : 32'd0;
             REG_VECTOR_CYCLES: read_data_next = vector_stat_cycles;
             REG_VECTOR_COMPUTE: read_data_next = vector_stat_compute;
             REG_VECTOR_DMA_WAIT: read_data_next = vector_stat_dma_wait;
+            REG_SOFTMAX_MAX_DEPTH: read_data_next = VECTOR_ENGINE_CAPABLE ? 32'(SOFTMAX_MAX_DEPTH) : 32'd0;
             REG_POOL_MAX_TAPS: read_data_next = VECTOR_ENGINE_CAPABLE ? 32'(POOL_MAX_TAPS) : 32'd0;
             REG_ADD_INPUT1_MULT: read_data_next = cfg_add_input1_multiplier;
             REG_ADD_INPUT1_SHIFT: read_data_next = cfg_add_input1_shift;
@@ -310,9 +333,13 @@ module npu_axil_reg_if #(
             cfg_add_input2_shift <= '0;
             cfg_add_left_shift <= '0;
             cfg_conv            <= '0;
+            cfg_conv.windowed <= 1'b1;
+            cfg_conv.prefetch_enable <= 1'b1;
             last_err_code       <= '0;
             cfg_16x8            <= 1'b0;
             cfg_dataflow_mode   <= 1'b0;
+            cfg_lhs_tile_packed <= 1'b0;
+            cfg_rhs_tile_packed <= 1'b0;
             use_per_channel     <= 1'b0;
             irq_enable          <= 1'b0;
             cfg_ia_reuse_num    <= '0;
@@ -357,7 +384,11 @@ module npu_axil_reg_if #(
                     bresp_q <= 2'b10;
                 end else case (wr_word_addr)
                     REG_CTRL: begin
-                        if (wr_strb[1]) cfg_vector_enable <= wr_data[8];
+                        if (wr_strb[1]) begin
+                            cfg_vector_enable <= wr_data[8];
+                            cfg_lhs_tile_packed <= wr_data[9];
+                            cfg_rhs_tile_packed <= wr_data[10];
+                        end
                         if (wr_strb[0]) begin
                             cfg_16bits_ia     <= wr_data[1];
                             use_per_channel   <= wr_data[2];

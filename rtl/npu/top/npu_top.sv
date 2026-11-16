@@ -9,12 +9,12 @@ module npu_top #(
     parameter int unsigned BUS_WIDTH = 32,  // 总线宽度
     parameter int unsigned REG_WIDTH = 32,  // 寄存器宽度
     parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
-    parameter int unsigned IA_CACHE_BLOCKS = 4,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
+    parameter int unsigned IA_CACHE_BLOCKS = 8,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
     parameter int unsigned OPERAND_CACHE_ENABLE = 0,
-    parameter int unsigned CONV_CACHE_SETS = 32,
+    parameter int unsigned CONV_CACHE_SETS = 128,
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
-    parameter int unsigned CONV_CACHE_POLICY = 2,
+    parameter int unsigned CONV_CACHE_POLICY = 3,
     parameter int unsigned ENABLE_DW_POOL = 1,
     parameter int unsigned DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
     parameter int unsigned ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
@@ -22,6 +22,8 @@ module npu_top #(
     parameter int unsigned DW_MAX_TAPS = 49,
     parameter int unsigned POOL_MAX_TAPS = 256,
     parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
+    parameter int unsigned PS_STORAGE_ROWS = ((3*SIZE)-1)*(PS_FRAME_COUNT+1),
+    parameter int unsigned OA_S16_FIFO_BANKS_MAX = 4,
     parameter int unsigned OPERAND_STREAM_BYTES = (PS_FRAME_COUNT >= 16) ? 65536 : 262144,
     parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
     parameter int unsigned AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,  // AXI 写通道最多提前排队的 burst 数
@@ -37,6 +39,8 @@ module npu_top #(
 
     //==== 外部控制接口 ====
     input wire cfg_operand_fetch64, // 0: 16-byte sectors; 1: 64-byte read allocation
+    input wire cfg_lhs_tile_packed = 1'b0,
+    input wire cfg_rhs_tile_packed = 1'b0,
     input wire cfg_conv_enable = 1'b0,
     input conv_im2col_pkg::conv_cfg_t cfg_conv = '0,
     input wire cfg_vector_enable = 1'b0,
@@ -125,7 +129,7 @@ module npu_top #(
     logic unsupported_conv_done;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) unsupported_conv_done <= 1'b0;
-        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable)) unsupported_conv_done <= 1'b1;
+        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable || cfg_lhs_tile_packed || cfg_rhs_tile_packed)) unsupported_conv_done <= 1'b1;
         else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
     end
     assign sa_ready = alt_ready && !unsupported_conv_done;
@@ -139,7 +143,7 @@ module npu_top #(
     assign vector_stat_compute = '0;
     assign vector_stat_dma_wait = '0;
     gempact_panel_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(
-        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable), .sa_ready(alt_ready),
+        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable && !cfg_lhs_tile_packed && !cfg_rhs_tile_packed), .sa_ready(alt_ready),
         .done_valid(alt_done), .err_code(alt_error), .*);
 `elsif GEMPACT_RESIDENT_ENGINE
     wire alt_ready, alt_done;
@@ -147,7 +151,7 @@ module npu_top #(
     logic unsupported_conv_done;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) unsupported_conv_done <= 1'b0;
-        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable)) unsupported_conv_done <= 1'b1;
+        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable || cfg_lhs_tile_packed || cfg_rhs_tile_packed)) unsupported_conv_done <= 1'b1;
         else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
     end
     assign sa_ready = alt_ready && !unsupported_conv_done;
@@ -161,13 +165,21 @@ module npu_top #(
     assign vector_stat_compute = '0;
     assign vector_stat_dma_wait = '0;
     gempact_resident_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(
-        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable), .sa_ready(alt_ready),
+        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable && !cfg_lhs_tile_packed && !cfg_rhs_tile_packed), .sa_ready(alt_ready),
         .done_valid(alt_done), .err_code(alt_error), .*);
 `else
 
     // A Conv task is immutable after acceptance. The legacy software keeps
     // the other task fields stable; the AXI-Lite interface locks writes while busy.
     logic run_conv, run_vector, vector_rejected;
+    logic run_lhs_tile_packed, run_rhs_tile_packed;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin run_lhs_tile_packed <= 0; run_rhs_tile_packed <= 0; end
+        else if (calc_start && sa_ready) begin
+            run_lhs_tile_packed <= cfg_lhs_tile_packed;
+            run_rhs_tile_packed <= cfg_rhs_tile_packed;
+        end
+    end
     logic vector_engine_ready, vector_engine_done;
     logic [1:0] vector_engine_error;
     logic normal_done_valid;
@@ -223,7 +235,11 @@ module npu_top #(
     assign conv_range_base[1] = 32'(bias_base);
     assign conv_range_base[2] = use_per_channel ? 32'(q_mult_pt) : 32'd0;
     assign conv_range_base[3] = use_per_channel ? 32'(q_shift_pt) : 32'd0;
-    assign conv_range_end[0] = 33'(rhs_base) + 33'(64'(n)*64'(m));
+    wire [63:0] rhs_allocation_bytes = run_rhs_tile_packed ?
+        (((64'(n) + SIZE - 1) >> $clog2(SIZE)) *
+         ((64'(m) + SIZE - 1) >> $clog2(SIZE)) << (2*$clog2(SIZE))) :
+        (64'(n) * 64'(m));
+    assign conv_range_end[0] = 33'(rhs_base) + 33'(rhs_allocation_bytes);
     assign conv_range_end[1] = 33'(bias_base) + (33'(m)<<2);
     assign conv_range_end[2] = 33'($unsigned(q_mult_pt)) + (33'(m)<<2);
     assign conv_range_end[3] = 33'($unsigned(q_shift_pt)) + (33'(m)<<2);
@@ -242,7 +258,7 @@ module npu_top #(
     wire conv_config_invalid = run_conv &&
         (!CONV_CORE_SUPPORTED ||
          (cfg_dataflow_mode && (ENABLE_IS_MODE == 0 || KERNEL_DATA_WIDTH < 16)) ||
-         !cfg_16bits_ia || cfg_16x8 || conv_cfg_q.input_s16 ||
+         !cfg_16bits_ia || cfg_16x8 || conv_cfg_q.input_s16 || run_lhs_tile_packed ||
          (lhs_zp != 0) || (rhs_zp != 0) ||
          conv_cfg_q.input_h == 0 || conv_cfg_q.input_w == 0 || conv_cfg_q.input_c == 0 ||
          conv_cfg_q.kernel_h == 0 || conv_cfg_q.kernel_w == 0 || conv_cfg_q.group_c == 0 ||
@@ -252,7 +268,7 @@ module npu_top #(
          (32'(conv_cfg_q.group_offset)+32'(conv_cfg_q.group_c) > 32'(conv_cfg_q.input_c)) ||
          $signed(conv_cfg_q.input_offset) < -127 || $signed(conv_cfg_q.input_offset) > 128 ||
          (64'(conv_cfg_q.input_base) + conv_input_bytes >= 64'h1_0000_0000) ||
-         (64'(rhs_base) + 64'(n)*64'(m) >= 64'h1_0000_0000) ||
+         (64'(rhs_base) + rhs_allocation_bytes >= 64'h1_0000_0000) ||
          (64'(bias_base) + (64'(m)<<2) >= 64'h1_0000_0000) ||
          (use_per_channel && (64'($unsigned(q_mult_pt))+(64'(m)<<2) >= 64'h1_0000_0000 ||
                               64'($unsigned(q_shift_pt))+(64'(m)<<2) >= 64'h1_0000_0000)) ||
@@ -268,7 +284,8 @@ module npu_top #(
                 run_conv <= cfg_conv_enable && !cfg_vector_enable;
                 conv_cfg_q <= cfg_conv;
                 conv_stats_started <= 1'b0;
-                if (cfg_conv_enable && !cfg_vector_enable) begin
+                if ((cfg_conv_enable && !cfg_vector_enable) ||
+                    (cfg_vector_enable && cfg_vector.op<=4'd3)) begin
                     conv_stat_hits <= '0; conv_stat_misses <= '0;
                     conv_stat_read_bytes <= '0; conv_stat_cycles <= '0;
                     conv_count_active <= 1'b1;
@@ -282,7 +299,8 @@ module npu_top #(
                     conv_stat_read_bytes <= conv_read_bytes_raw;
                 end
             end
-            if (init_cfg_ia && run_conv) conv_stats_started <= 1'b1;
+            if ((init_cfg_ia && run_conv) || (run_vector && vector_dma_cfg_valid && conv_cfg_ready))
+                conv_stats_started <= 1'b1;
             if (done_valid) conv_count_active <= 1'b0;
             case (abort_state)
                 AB_IDLE: if (matrix_fault) abort_state <= AB_DRAIN;
@@ -309,7 +327,8 @@ module npu_top #(
     assign legacy_axi_rlast = m_axi_rlast;
 
     localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
-    wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
+    wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0 && !cfg_16x8)
+                              ? cfg_dataflow_mode : 1'b0;
     logic cfg_use16_s2, cfg_16x8_s2;
     logic [REG_WIDTH-1:0] cfg_stream_k_s2, cfg_stream_m_s2;
     logic [REG_WIDTH-1:0] cfg_ia_reuse_eff_s2, cfg_w_reuse_eff_s2;
@@ -349,9 +368,11 @@ module npu_top #(
         always_ff @(posedge clk) begin
             if (!core_rst_n) single_group_bypass <= 1'b0;
             else begin
-                if (accept_cache_task) single_group_bypass <= cfg_conv_enable || cfg_vector_enable;
+                if (accept_cache_task) single_group_bypass <= cfg_conv_enable || cfg_vector_enable ||
+                    cfg_lhs_tile_packed || cfg_rhs_tile_packed;
                 if (cfg_stage2_fire)
-                    single_group_bypass <= run_conv || (!fetch64_q && !cfg_use16_s2 && !cfg_16x8_s2 &&
+                    single_group_bypass <= run_conv || run_lhs_tile_packed || run_rhs_tile_packed ||
+                        (!fetch64_q && !cfg_use16_s2 && !cfg_16x8_s2 &&
                         cfg_stream_k_s2 != 0 && cfg_stream_m_s2 != 0 &&
                         cfg_stream_k_s2 <= (cfg_ia_reuse_eff_s2 << SIZE_SHIFT) &&
                         cfg_stream_m_s2 <= (cfg_w_reuse_eff_s2 << SIZE_SHIFT));
@@ -599,6 +620,12 @@ module npu_top #(
     logic [BUS_WIDTH/8-1:0] oa_dma_src_wmask;
     logic oa_dma_src_wvalid, oa_dma_src_wready, oa_dma_busy, oa_dma_done;
 
+    logic win_req_valid,win_req_ready,win_rsp_valid,win_rsp_ready;
+    logic [31:0] win_req_p0,win_req_q0,win_req_cols,win_rsp_col;
+    logic [1:0] win_req_tag,win_rsp_tag;
+    logic signed [15:0] win_rsp_data[4];
+    logic [3:0] win_rsp_mask;
+    logic win_rsp_last,win_rsp_error,win_busy;
     logic dw_rd_req, dw_rd_granted, dw_rd_start, dw_rd_im2col, dw_rd_use_16bits;
     logic [31:0] dw_rd_p0, dw_rd_q0, dw_rd_base_addr, dw_rd_row_stride;
     logic [31:0] dw_rd_rows_to_read, dw_rd_valid_cols;
@@ -632,6 +659,9 @@ module npu_top #(
             .dma_conv_enable(vector_dma_conv_enable), .dma_range_enable(vector_dma_range_enable),
             .dma_conv_cfg(vector_dma_conv_cfg), .dma_range_base(vector_dma_range_base),
             .dma_range_end(vector_dma_range_end),
+            .win_req_valid,.win_req_ready,.win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
+            .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
+            .win_rsp_last,.win_rsp_error,.win_busy,
             .rd_req(dw_rd_req), .rd_start(dw_rd_start), .rd_granted(dw_rd_granted),
             .rd_im2col(dw_rd_im2col), .rd_p0(dw_rd_p0), .rd_q0(dw_rd_q0),
             .rd_base_addr(dw_rd_base_addr), .rd_row_stride(dw_rd_row_stride),
@@ -657,6 +687,8 @@ module npu_top #(
         for (genvar r = 0; r < 4; r++) begin : g_ranges
             assign vector_dma_range_base[r] = '0; assign vector_dma_range_end[r] = '0;
         end
+        assign win_req_valid=1'b0;assign win_req_p0='0;assign win_req_q0='0;assign win_req_cols='0;
+        assign win_req_tag='0;assign win_rsp_ready=1'b1;
         assign dw_rd_req = 1'b0; assign dw_rd_start = 1'b0; assign dw_rd_im2col = 1'b0;
         assign dw_rd_use_16bits = 1'b0; assign dw_rd_p0 = '0; assign dw_rd_q0 = '0;
         assign dw_rd_base_addr = '0; assign dw_rd_row_stride = '0;
@@ -721,6 +753,9 @@ module npu_top #(
                 (ADDR_WIDTH - SIZE_SHIFT + 1));
         localparam int unsigned W_REUSE_NUM_MAX =
             (PS_FRAME_COUNT < 1) ? 1 : PS_FRAME_COUNT;
+        localparam int unsigned PS_ROW_COUNT_WIDTH = $clog2((IA_REUSE_NUM_MAX + 1) * SIZE);
+        localparam int unsigned PS_FRAME_COUNT_WIDTH = $clog2(W_REUSE_NUM_MAX + 2);
+        localparam int unsigned PS_REQUIRED_WIDTH = PS_ROW_COUNT_WIDTH + PS_FRAME_COUNT_WIDTH;
         localparam int unsigned IA_REUSE_W =
             (IA_REUSE_NUM_MAX <= 1) ? 1 : ($clog2(IA_REUSE_NUM_MAX) + 1);
         localparam int unsigned W_REUSE_W =
@@ -728,6 +763,9 @@ module npu_top #(
         localparam int unsigned OA_FIFO_BANKS_RAW = PS_FRAME_COUNT * IA_REUSE_NUM_MAX;
         localparam int unsigned OA_FIFO_BANKS =
             (OA_FIFO_BANKS_RAW <= OA_FIFO_BANKS_MAX) ? OA_FIFO_BANKS_RAW : OA_FIFO_BANKS_MAX;
+        localparam int unsigned OA_S16_FIFO_BANKS =
+            (OA_S16_FIFO_BANKS_MAX == 0 || OA_FIFO_BANKS <= OA_S16_FIFO_BANKS_MAX) ?
+            OA_FIFO_BANKS : OA_S16_FIFO_BANKS_MAX;
         localparam int unsigned BIAS_GROUP_BLOCKS_MAX =
             (ENABLE_IS_MODE != 0) ? IA_REUSE_NUM_MAX : 1;
         localparam int unsigned REQUANT_MAX_IA_REUSE =
@@ -771,6 +809,19 @@ module npu_top #(
         logic [REG_WIDTH-1:0] cfg_m_s2;
         logic [REG_WIDTH-1:0] cfg_n_s2;
         logic [IS_BIAS_VALID_W-1:0] cfg_bias_rows_target_s2;
+        logic [PS_ROW_COUNT_WIDTH-1:0] cfg_ps_rows_s1;
+        logic [PS_FRAME_COUNT_WIDTH-1:0] cfg_ps_frames_s1;
+        logic [PS_REQUIRED_WIDTH-1:0] cfg_ps_required_s2;
+        wire ps_configuration_invalid = PS_STORAGE_ROWS != 0 &&
+            cfg_n_s2 > REG_WIDTH'(SIZE) && cfg_ps_required_s2 > PS_STORAGE_ROWS;
+        wire [REG_WIDTH-1:0] cfg_ps_row_tiles_s0 = (cfg_stream_k_s0 >> SIZE_SHIFT) +
+            REG_WIDTH'((cfg_stream_k_s0 & REG_WIDTH'(SIZE-1)) != 0);
+        wire [REG_WIDTH-1:0] cfg_ps_col_tiles_s0 = (cfg_stream_m_s0 >> SIZE_SHIFT) +
+            REG_WIDTH'((cfg_stream_m_s0 & REG_WIDTH'(SIZE-1)) != 0);
+        wire [REG_WIDTH-1:0] cfg_ps_r_s0 = cfg_ia_req_s0 < cfg_ps_row_tiles_s0 ?
+            cfg_ia_req_s0 : cfg_ps_row_tiles_s0;
+        wire [REG_WIDTH-1:0] cfg_ps_w_s0 = cfg_w_req_s0 < cfg_ps_col_tiles_s0 ?
+            cfg_w_req_s0 : cfg_ps_col_tiles_s0;
 
         wire cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
         assign cfg_stage2_fire = cfg_stage2_valid && ctrl_sa_ready;
@@ -827,6 +878,9 @@ module npu_top #(
                     cfg_ia_reuse_eff_s2 <= REG_WIDTH'(1);
                     cfg_w_reuse_eff_s2 <= REG_WIDTH'(1);
                     cfg_bias_rows_target_s2 <= IS_BIAS_VALID_W'(SIZE);
+                    cfg_ps_rows_s1 <= '0;
+                    cfg_ps_frames_s1 <= '0;
+                    cfg_ps_required_s2 <= '0;
                 end else begin
                     if (cfg_stage2_fire) begin
                         cfg_stage2_valid <= 1'b0;
@@ -846,6 +900,8 @@ module npu_top #(
                         cfg_ia_reuse_eff_s2 <= ia_reuse_num_eff_s1;
                         cfg_w_reuse_eff_s2 <= w_reuse_num_eff_s1;
                         cfg_bias_rows_target_s2 <= IS_BIAS_VALID_W'(ia_reuse_num_eff_s1 << SIZE_SHIFT);
+                        cfg_ps_required_s2 <= PS_REQUIRED_WIDTH'(cfg_ps_rows_s1) *
+                                              PS_REQUIRED_WIDTH'(cfg_ps_frames_s1);
                     end
 
                     if (cfg_stage0_valid && !cfg_stage1_valid) begin
@@ -861,6 +917,8 @@ module npu_top #(
                         cfg_stream_m_s1 <= cfg_stream_m_s0;
                         cfg_ia_req_s1 <= cfg_ia_req_s0;
                         cfg_w_req_s1 <= cfg_w_req_s0;
+                        cfg_ps_rows_s1 <= PS_ROW_COUNT_WIDTH'(((cfg_ps_r_s0 + 1) << SIZE_SHIFT) - 1);
+                        cfg_ps_frames_s1 <= PS_FRAME_COUNT_WIDTH'(cfg_ps_w_s0 + 1);
                     end
 
                     if (cfg_start_event) begin
@@ -966,6 +1024,9 @@ module npu_top #(
             .conv_stat_hits          (conv_hits_raw),
             .conv_stat_misses        (conv_misses_raw),
             .conv_stat_read_bytes    (conv_read_bytes_raw),
+            .win_req_valid,.win_req_ready,.win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
+            .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
+            .win_rsp_last,.win_rsp_error,.win_busy,
             .dw_req(dw_rd_req), .dw_granted(dw_rd_granted), .dw_start(dw_rd_start),
             .dw_im2col(dw_rd_im2col), .dw_p0(dw_rd_p0), .dw_q0(dw_rd_q0),
             .dw_group(32'd0), .dw_linear_read_mode(1'b0), .dw_lhs_zp('0),
@@ -1066,9 +1127,11 @@ module npu_top #(
                 .oa_row_stride           (oa_dma_row_stride),
                 .oa_rows_to_read         (oa_dma_rows_to_read),
                 .oa_burst_len_m1         (oa_dma_burst_len_m1),
-                .oa_src_wdata            (oa_dma_src_wdata),
-            .oa_src_wmask            (oa_dma_src_wmask),
-            .oa_src_wvalid           (oa_dma_src_wvalid),
+                // Complete accepted write transactions while a matrix fault
+                // drains; disabled byte lanes preserve the remaining output.
+                .oa_src_wdata            (abort_pending ? '0 : oa_dma_src_wdata),
+            .oa_src_wmask            (abort_pending ? '0 : oa_dma_src_wmask),
+            .oa_src_wvalid           (abort_pending || oa_dma_src_wvalid),
             .oa_src_wready           (oa_dma_src_wready),
             .oa_busy                 (oa_dma_busy),
             .oa_done                 (oa_dma_done),
@@ -1124,7 +1187,9 @@ module npu_top #(
         .calc_start       (ctrl_calc_start),
         .cfg_16bits_ia    (cfg_16bits_ia_eff | cfg_16x8),
         .cfg_dataflow_mode(cfg_dataflow_mode_eff),
-        .cfg_tiling_error (conv_config_invalid || (!ext_r_legal) || (!ext_w_legal) || (cfg_row_groups == 0) || (cfg_col_groups == 0) ||
+        .cfg_tiling_error (conv_config_invalid || ps_configuration_invalid ||
+            (cfg_16x8_s2 && cfg_ia_reuse_eff_s2 > OA_S16_FIFO_BANKS) ||
+            (!ext_r_legal) || (!ext_w_legal) || (cfg_row_groups == 0) || (cfg_col_groups == 0) ||
             (cfg_row_tail_tiles == 0) || (cfg_col_tail_tiles == 0) ||
             (cfg_row_tail_tiles > cfg_ia_reuse_eff_s2) || (cfg_col_tail_tiles > cfg_w_reuse_eff_s2) ||
             ((cfg_row_groups >> DIM_COUNT_WIDTH) != 0) || ((cfg_col_groups >> DIM_COUNT_WIDTH) != 0)),
@@ -1189,6 +1254,7 @@ module npu_top #(
         .rst_n           (core_rst_n),
         .init_cfg        (init_cfg_ia),
         .cfg_im2col(run_conv && !is_mode),
+        .cfg_tile_packed(is_mode ? run_rhs_tile_packed : run_lhs_tile_packed),
         .load_ia_req     (load_ia_req),
         .load_ia_granted (load_ia_granted),
             .send_ia_trigger (send_ia_trigger),
@@ -1255,6 +1321,7 @@ module npu_top #(
         .rst_n              (core_rst_n),
         .init_cfg           (init_cfg_weight),
         .cfg_im2col          (run_conv && is_mode),
+        .cfg_tile_packed     (is_mode ? run_lhs_tile_packed : run_rhs_tile_packed),
         .load_weight_req    (load_weight_req),
         .load_weight_granted(load_weight_granted),
             .send_weight_trigger(send_weight_trigger),
@@ -1393,7 +1460,8 @@ module npu_top #(
         .DATA_WIDTH    (IA_DATA_WIDTH),
         .WEIGHT_WIDTH  (KERNEL_DATA_WIDTH),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
-        .MAX_IA_REUSE  (IA_REUSE_NUM_MAX)
+        .MAX_IA_REUSE  (IA_REUSE_NUM_MAX),
+        .PS_STORAGE_ROWS(PS_STORAGE_ROWS)
     ) u_compute_core (
         .ps_capacity_fault(ps_capacity_fault),
         .clk             (clk),
@@ -1604,37 +1672,56 @@ module npu_top #(
     assign fifo_output_data = run_16x8 ? fifo_s16_output_data : fifo_s8_output_data;
     assign fifo_full_flag = run_16x8 ? fifo_s16_full_flag : fifo_s8_full_flag;
 
-    // Reorder bounded column segments in the existing output FIFO. The segment
-    // holds at most 128 tiles; wider matrices drain several strided segments.
+    // Column segments fit the existing output banks. Row tails use only the
+    // populated tiles in each segment.
+    wire [REG_WIDTH-1:0] oa_ws_row_tiles_pre = (run_k >> 4) +
+        REG_WIDTH'(run_k[3:0] != 0);
+    wire [REG_WIDTH-1:0] oa_ws_reuse_rows_pre =
+        oa_ws_row_tiles_pre < ia_reuse_num_eff ? oa_ws_row_tiles_pre : ia_reuse_num_eff;
     logic [4:0] oa_chunk_cols_pre;
     always_comb begin
-        if (w_reuse_num_eff >= 16 && run_m >= 256 && dst_base[7:0] == 0 &&
-            (int'(ia_reuse_num_eff) * 16 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 16;
-        else if (w_reuse_num_eff >= 8 && run_m >= 128 && dst_base[6:0] == 0 &&
-            (int'(ia_reuse_num_eff) * 8 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 8;
-        else if (w_reuse_num_eff >= 4 && run_m >= 64 && dst_base[5:0] == 0 &&
-            (int'(ia_reuse_num_eff) * 4 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 4;
-        else if (w_reuse_num_eff >= 2 && run_m >= 32 && dst_base[4:0] == 0 &&
-            (int'(ia_reuse_num_eff) * 2 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 2;
+        // Short row groups use narrow segments while later columns compute.
+        if (run_k > 1 && run_k < 16 && w_reuse_num_eff >= 2 && run_m >= 32 &&
+            (int'(oa_ws_reuse_rows_pre) * 2 <= OA_FIFO_BANKS))
+            oa_chunk_cols_pre = 2;
+        else if (w_reuse_num_eff >= 16 && run_m >= 256 &&
+            (int'(oa_ws_reuse_rows_pre) * 16 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 16;
+        else if (w_reuse_num_eff >= 8 && run_m >= 128 &&
+            (int'(oa_ws_reuse_rows_pre) * 8 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 8;
+        else if (w_reuse_num_eff >= 4 && run_m >= 64 &&
+            (int'(oa_ws_reuse_rows_pre) * 4 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 4;
+        else if (w_reuse_num_eff >= 2 && run_m >= 32 &&
+            (int'(oa_ws_reuse_rows_pre) * 2 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 2;
         else oa_chunk_cols_pre = 1;
     end
-    wire oa_row_coalesce_pre = (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
+    wire oa_ws_coalesce_pre = (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
         !is_mode && !run_16x8 && run_k != 0 &&
         ia_reuse_num_eff <= 16 && oa_chunk_cols_pre >= 2 &&
-        (run_k & ((ia_reuse_num_eff << 4) - 1'b1)) == 0 &&
         (run_m & ((REG_WIDTH'(oa_chunk_cols_pre) << 4) - 1'b1)) == 0 &&
         dst_row_stride_b == run_m;
+    // Matching the row address and stride to the power-of-two group width
+    // keeps each merged write burst within one 4 KiB page.
+    wire oa_is_coalesce_pre = (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
+        is_mode && !run_16x8 && run_k != 0 && run_m != 0 &&
+        ia_reuse_num_eff >= 2 && ia_reuse_num_eff <= 16 &&
+        ia_reuse_num_eff <= OA_FIFO_BANKS &&
+        (ia_reuse_num_eff & (ia_reuse_num_eff - 1'b1)) == 0 &&
+        (run_m & ((ia_reuse_num_eff << 4) - 1'b1)) == 0 &&
+        (dst_base & ((ia_reuse_num_eff << 4) - 1'b1)) == 0 &&
+        (dst_row_stride_b & ((ia_reuse_num_eff << 4) - 1'b1)) == 0;
+    wire oa_row_coalesce_pre = oa_ws_coalesce_pre || oa_is_coalesce_pre;
+    wire [4:0] oa_coalesce_cols_pre = is_mode ? ia_reuse_num_eff[4:0] : oa_chunk_cols_pre;
+    wire oa_coalesce_group_start;
+    wire [4:0] oa_coalesce_rows;
     logic oa_row_coalesce;
-    logic [4:0] oa_coalesce_rows, oa_coalesce_cols;
+    logic [4:0] oa_coalesce_cols;
     always_ff @(posedge clk) begin
         if (!core_rst_n) begin
             oa_row_coalesce <= 0;
-            oa_coalesce_rows <= 0;
             oa_coalesce_cols <= 0;
         end else if (init_cfg_oa) begin
             oa_row_coalesce <= oa_row_coalesce_pre;
-            oa_coalesce_rows <= ia_reuse_num_eff[4:0];
-            oa_coalesce_cols <= oa_chunk_cols_pre;
+            oa_coalesce_cols <= oa_coalesce_cols_pre;
         end
     end
 
@@ -1652,6 +1739,7 @@ module npu_top #(
         .oa_fifo_req      (fifo_s8_output_req),
         .transpose_mode   (is_mode),
         .coalesce_enable  (oa_row_coalesce),
+        .coalesce_group_start(oa_coalesce_group_start),
         .coalesce_rows    (REG_WIDTH'(oa_coalesce_rows)),
         .coalesce_cols    (REG_WIDTH'(oa_coalesce_cols)),
         .reserve_banks    (ia_reuse_num_eff),
@@ -1675,7 +1763,7 @@ module npu_top #(
 `else
     vec_s16_to_fifo #(
         .VLEN (SIZE),
-        .BANKS(OA_FIFO_BANKS)
+        .BANKS(OA_S16_FIFO_BANKS)
     ) u_vec_s16_to_fifo (
         .clk              (clk),
         .rst_n            (core_rst_n),
@@ -1721,7 +1809,9 @@ module npu_top #(
         .is_mode          (is_mode),
         .output_16bits    (run_16x8),
         .coalesce_enable  (oa_row_coalesce_pre),
-        .coalesce_cols    (oa_chunk_cols_pre),
+        .coalesce_cols    (oa_coalesce_cols_pre),
+        .coalesce_group_start(oa_coalesce_group_start),
+        .coalesce_row_tiles(oa_coalesce_rows),
         .output_valid     (fifo_output_valid),
         .switch_row       (fifo_output_switch_row),
             .output_ready     (fifo_output_ready),

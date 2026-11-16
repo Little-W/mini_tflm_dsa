@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Integration building block for ia_loader's ctrl -> DMA -> cache_mgr boundary.
-// THIS FILE IS NOT AN APPLIED PATCH TO UPSTREAM ia_loader/npu_top.
+// Connect virtual matrix tile descriptors to the convolution frontend.
 //
 // Original IA controller runs on a VIRTUAL s16 matrix:
 //   logical rows = OH*OW, cols = KH*KW*group_c,
@@ -44,6 +43,7 @@ module conv_ia_tile_path #(
   input logic [1:0] rresp,
   input logic rlast
 );
+  logic [31:0] unused_prefetch[6];
   typedef enum logic [2:0] {IDLE,DIV_START,DIV_WAIT,ISSUE,WAIT_TILE,FAULT} st_t;
   st_t state;
   logic seen_cfg;
@@ -72,6 +72,8 @@ module conv_ia_tile_path #(
     .wr_row(fe_wr_row),.wr_col(fe_wr_col),.wr_data(fe_wr_data),.wr_mask(fe_wr_mask),
     .tile_done(fe_done),.tile_error(fe_tile_error),.error(fe_error),.busy(fe_busy),
     .stat_hits,.stat_misses,.stat_read_bytes,
+    .stat_prefetch_lines(unused_prefetch[0]),.stat_prefetch_used(unused_prefetch[1]),.stat_prefetch_wasted(unused_prefetch[2]),
+    .stat_prefetch_unused(unused_prefetch[3]),.stat_prefetch_bytes(unused_prefetch[4]),.stat_prefetch_late(unused_prefetch[5]),
     .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
   );
   conv_ia_write_adapter #(.SIZE(SIZE),.CACHE_BLOCKS(CACHE_BLOCKS)) u_write (

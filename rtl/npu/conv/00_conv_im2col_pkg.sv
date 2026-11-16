@@ -14,5 +14,7 @@ package conv_im2col_pkg;
     logic signed [15:0] input_offset; // ADD offset, not the zero point itself
     logic bypass_cache;             // word-demand mode for sparse/no-reuse access
     logic input_s16;                // s16 requires offset=0 and 2-byte alignment
+    logic windowed;                // Spatial window requests from the vector engine
+    logic prefetch_enable;         // Read future convolution data before demand
   } conv_cfg_t;
 endpackage

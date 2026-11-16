@@ -8,11 +8,11 @@ module npu_axil_top #(
     parameter REG_WIDTH       = 32,
     parameter AXI_ADDR_WIDTH  = 32,
     parameter NPU_ADDR_WIDTH  = AXI_ADDR_WIDTH,
-    parameter IA_CACHE_BLOCKS = 4,
-    parameter CONV_CACHE_SETS = 32,
+    parameter IA_CACHE_BLOCKS = 8,
+    parameter CONV_CACHE_SETS = 128,
     parameter CONV_CACHE_WAYS = 2,
     parameter CONV_LINE_BYTES = 16,
-    parameter CONV_CACHE_POLICY = 2,
+    parameter CONV_CACHE_POLICY = 3,
     parameter ENABLE_DW_POOL = 1,
     parameter DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
     parameter ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
@@ -20,6 +20,8 @@ module npu_axil_top #(
     parameter DW_MAX_TAPS = 49,
     parameter POOL_MAX_TAPS = 256,
     parameter PS_FRAME_COUNT  = SIZE,
+    parameter PS_STORAGE_ROWS = ((3*SIZE)-1)*(PS_FRAME_COUNT+1),
+    parameter OA_S16_FIFO_BANKS_MAX = 4,
     parameter AXI_READ_OUTSTANDING = 4,
     parameter AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,
     parameter ENABLE_IS_MODE = 1,
@@ -163,9 +165,23 @@ module npu_axil_top #(
     // external weight parameter is 8. Profiles without that promotion already
     // have CONV_CAPABLE=0 above; advertise the capability of the actual datapath.
     localparam bit CONV_IS_CAPABLE = CONV_CAPABLE && ENABLE_IS_MODE != 0;
+`ifdef GEMPACT_PANEL_ENGINE
+    localparam bit MATRIX_LAYOUT_CAPABLE = 1'b0;
+`elsif GEMPACT_RESIDENT_ENGINE
+    localparam bit MATRIX_LAYOUT_CAPABLE = 1'b0;
+`else
+    localparam bit MATRIX_LAYOUT_CAPABLE = 1'b1;
+`endif
+    localparam int MATRIX_R_MAX = IA_CACHE_BLOCKS < 2 ? 1 : IA_CACHE_BLOCKS/2;
+    localparam int MATRIX_OUTPUT_LIMIT = (ENABLE_IS_MODE == 0 && ENABLE_PER_CHANNEL == 0) ? 16 : 32;
+    localparam int MATRIX_S8_BANKS = PS_FRAME_COUNT*MATRIX_R_MAX < MATRIX_OUTPUT_LIMIT ?
+        PS_FRAME_COUNT*MATRIX_R_MAX : MATRIX_OUTPUT_LIMIT;
+    localparam int MATRIX_S16_BANKS = OA_S16_FIFO_BANKS_MAX == 0 || MATRIX_S8_BANKS <= OA_S16_FIFO_BANKS_MAX ?
+        MATRIX_S8_BANKS : OA_S16_FIFO_BANKS_MAX;
     wire cfg_16bits_ia_reg;
     wire cfg_16x8_reg;
     wire cfg_dataflow_mode_reg;
+    wire cfg_lhs_tile_packed_reg, cfg_rhs_tile_packed_reg;
     wire use_per_channel_reg;
     wire [REG_WIDTH-1:0] cfg_ia_reuse_num_reg;
     wire [REG_WIDTH-1:0] cfg_w_reuse_num_reg;
@@ -303,7 +319,13 @@ module npu_axil_top #(
         .AXIL_DATA_WIDTH(AXIL_DATA_WIDTH),
         .AXIL_ADDR_WIDTH(AXIL_ADDR_WIDTH),
         .REG_WIDTH(REG_WIDTH), .CONV_CAPABLE(CONV_CAPABLE), .CONV_IS_CAPABLE(CONV_IS_CAPABLE),
-        .VECTOR_ENGINE_CAPABLE(VECTOR_ENGINE_CAPABLE), .VECTOR_PE_COUNT(VECTOR_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS)
+        .VECTOR_ENGINE_CAPABLE(VECTOR_ENGINE_CAPABLE), .VECTOR_PE_COUNT(VECTOR_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS), .SOFTMAX_MAX_DEPTH(SIZE),
+        .MATRIX_SIZE(SIZE), .MATRIX_LAYOUT_CAPABLE(MATRIX_LAYOUT_CAPABLE),
+        .MATRIX_IS_CAPABLE(ENABLE_IS_MODE != 0), .MATRIX_IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
+        .MATRIX_PS_FRAMES(PS_FRAME_COUNT),
+        .MATRIX_PS_ROWS(PS_STORAGE_ROWS != 0 ? PS_STORAGE_ROWS :
+            ((((IA_CACHE_BLOCKS < 2 ? 1 : IA_CACHE_BLOCKS/2) + 1) * SIZE - 1) * (PS_FRAME_COUNT + 1))),
+        .MATRIX_S8_BANKS(MATRIX_S8_BANKS), .MATRIX_S16_BANKS(MATRIX_S16_BANKS)
     ) u_npu_axil_reg_if (
         .clk(clk),
         .rst_n(rst_n),
@@ -342,6 +364,7 @@ module npu_axil_top #(
         .conv_stat_read_bytes(conv_stat_read_bytes), .conv_stat_cycles(conv_stat_cycles),
         .cfg_16x8(cfg_16x8_reg),
         .cfg_dataflow_mode(cfg_dataflow_mode_reg),
+        .cfg_lhs_tile_packed(cfg_lhs_tile_packed_reg), .cfg_rhs_tile_packed(cfg_rhs_tile_packed_reg),
         .use_per_channel(use_per_channel_reg),
         .cfg_ia_reuse_num(cfg_ia_reuse_num_reg),
         .cfg_w_reuse_num(cfg_w_reuse_num_reg),
@@ -389,6 +412,8 @@ module npu_axil_top #(
         .CONV_CACHE_POLICY(CONV_CACHE_POLICY),
         .ENABLE_VECTOR_ENGINE(ENABLE_VECTOR_ENGINE), .VECTOR_PE_COUNT(VECTOR_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
+        .PS_STORAGE_ROWS(PS_STORAGE_ROWS),
+        .OA_S16_FIFO_BANKS_MAX(OA_S16_FIFO_BANKS_MAX),
         .AXI_READ_OUTSTANDING(AXI_READ_OUTSTANDING),
         .AXI_WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING),
         .ENABLE_IS_MODE(ENABLE_IS_MODE),
@@ -397,6 +422,7 @@ module npu_axil_top #(
         .clk(npu_core_clk),
         .rst_n(rst_n),
         .cfg_operand_fetch64(1'b0),
+        .cfg_lhs_tile_packed(cfg_lhs_tile_packed_reg), .cfg_rhs_tile_packed(cfg_rhs_tile_packed_reg),
         .calc_start(npu_core_calc_start),
         .cfg_vector_enable(cfg_vector_enable_reg), .cfg_vector(cfg_vector_reg),
         .vector_stat_cycles(vector_stat_cycles), .vector_stat_compute(vector_stat_compute),

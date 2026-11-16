@@ -19,6 +19,7 @@ CONFIGS = [
 def run(config):
     size,sets,ways,line,path = config
     name=f'rtl_s{size}_sets{sets}_ways{ways}_line{line}'+('_path' if path else '')
+    name+='_lanes2_policy3_pf0_win0'
     args=[sys.executable,'tools/run_rtl.py','--size',str(size),'--cache-sets',str(sets),
           '--cache-ways',str(ways),'--line-bytes',str(line)]+(['--tile-path'] if path else [])
     with (OUTPUT/f'{name}_driver.log').open('w') as stream:
