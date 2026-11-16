@@ -30,6 +30,8 @@ module conv_axi_read_guard #(
     input logic [1:0] m_rresp, input logic m_rlast,
     output logic idle
 );
+    localparam int BUS_BYTES=DATA_W/8;
+    localparam int BUS_SHIFT=$clog2(BUS_BYTES);
     typedef enum logic [2:0] {IDLE, FAST_AR, FAST_R, PREP, WORD_AR, WORD_R, OUT} state_t;
     state_t state;
     logic [31:0] base_q[4];
@@ -38,8 +40,8 @@ module conv_axi_read_guard #(
     // at 0xffff_fffc must never wrap into an unrelated low-address allocation.
     logic [32:0] addr_q;
     logic [7:0] len_q, beat_q;
-    logic [3:0] pending_mask, allowed_mask;
-    logic [1:0] lane;
+    logic [BUS_BYTES-1:0] pending_mask, allowed_mask;
+    logic [BUS_SHIFT-1:0] lane;
     logic whole_word, error_q;
     logic [DATA_W-1:0] word_q;
     logic fast_legal;
@@ -50,22 +52,22 @@ module conv_axi_read_guard #(
     wire direct_ar = direct_mode && fast_legal && s_arvalid && m_arready;
     wire direct_last = direct_mode && m_rvalid && s_rready && m_rlast;
     always_comb begin
-        request_end = 33'(s_araddr) + ((33'(s_arlen) + 33'd1) << 2);
+        request_end = 33'(s_araddr) + ((33'(s_arlen) + 33'd1) << BUS_SHIFT);
         fast_legal = !enable;
         for (int i=0; i<4; i++)
             if (base_q[i] != 0 && 33'(s_araddr) >= {1'b0,base_q[i]} && request_end <= end_q[i])
                 fast_legal = 1'b1;
-        fast_legal = fast_legal && s_arsize == 3'd2 && s_arburst == 2'b01 &&
-                     s_araddr[1:0] == 0 &&
-                     ({1'b0,s_araddr[11:0]} + ((13'(s_arlen)+13'd1)<<2) <= 13'd4096);
-        allowed_mask = !enable && !addr_q[32] ? 4'b1111 : 4'b0000;
-        for (int b=0; b<4; b++)
+        fast_legal = fast_legal && s_arsize == 3'(BUS_SHIFT) && s_arburst == 2'b01 &&
+                     s_araddr[BUS_SHIFT-1:0] == 0 &&
+                     ({1'b0,s_araddr[11:0]} + ((13'(s_arlen)+13'd1)<<BUS_SHIFT) <= 13'd4096);
+        allowed_mask = !enable && !addr_q[32] ? {BUS_BYTES{1'b1}} : {BUS_BYTES{1'b0}};
+        for (int b=0; b<BUS_BYTES; b++)
             for (int i=0; i<4; i++)
                 if (base_q[i] != 0 && (33'(addr_q)+33'(b)) >= {1'b0,base_q[i]} &&
                     (33'(addr_q)+33'(b)) < end_q[i]) allowed_mask[b] = 1'b1;
-        lane = pending_mask[0] ? 2'd0 : pending_mask[1] ? 2'd1 :
-               pending_mask[2] ? 2'd2 : 2'd3;
-        whole_word = pending_mask == 4'b1111;
+        lane = '0;
+        for (int b=BUS_BYTES-1; b>=0; b--) if(pending_mask[b]) lane=BUS_SHIFT'(b);
+        whole_word = &pending_mask;
     end
     assign idle = state == IDLE && direct_outstanding == 0;
     always_comb begin
@@ -82,7 +84,7 @@ module conv_axi_read_guard #(
             m_arvalid = state == FAST_AR || state == WORD_AR;
             m_araddr = ADDR_W'(addr_q) + (state == WORD_AR && !whole_word ? ADDR_W'(lane) : ADDR_W'(0));
             m_arlen = state == FAST_AR ? len_q : 8'd0;
-            m_arsize = (state == WORD_AR && !whole_word) ? 3'd0 : 3'd2;
+            m_arsize = (state == WORD_AR && !whole_word) ? 3'd0 : 3'(BUS_SHIFT);
             m_arburst = 2'b01;
             m_rready = state == FAST_R ? s_rready : state == WORD_R;
             if (direct_mode) begin
@@ -130,13 +132,13 @@ module conv_axi_read_guard #(
                         word_q <= m_rdata; pending_mask <= '0; state <= OUT;
                     end else begin
                         word_q[8*lane +: 8] <= m_rdata[8*lane +: 8];
-                        pending_mask <= pending_mask & ~(4'b1 << lane);
-                        state <= (pending_mask & ~(4'b1 << lane)) == 0 ? OUT : WORD_AR;
+                        pending_mask <= pending_mask & ~(BUS_BYTES'(1) << lane);
+                        state <= (pending_mask & ~(BUS_BYTES'(1) << lane)) == 0 ? OUT : WORD_AR;
                     end
                 end
                 OUT: if (s_rready) begin
                     if (beat_q == len_q) state <= IDLE;
-                    else begin addr_q <= addr_q + 33'd4; beat_q <= beat_q + 8'd1; state <= PREP; end
+                    else begin addr_q <= addr_q + 33'(BUS_BYTES); beat_q <= beat_q + 8'd1; state <= PREP; end
                 end
                 default: state <= IDLE;
             endcase
@@ -148,7 +150,7 @@ module conv_axi_read_guard #(
     assert property (@(posedge clk) disable iff (!rst_n)
         s_rvalid && !s_rready |=> s_rvalid && $stable({s_rdata,s_rresp,s_rlast}));
     always_ff @(posedge clk) if (rst_n && (enable || SPLIT_GEMM_4K) && s_arvalid && s_arready)
-        assert(s_arsize == 3'd2 && s_araddr[1:0] == 0 && s_arburst == 2'b01);
+        assert(s_arsize == 3'(BUS_SHIFT) && s_araddr[BUS_SHIFT-1:0] == 0 && s_arburst == 2'b01);
     always_ff @(posedge clk) if (rst_n && SPLIT_GEMM_4K) begin
         assert(direct_outstanding <= OUTS_W'(READ_OUTSTANDING));
         if (direct_last) assert(direct_outstanding != 0 || direct_ar);

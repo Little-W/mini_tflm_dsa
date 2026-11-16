@@ -1,8 +1,8 @@
-// Linear output FIFO for TFLM int16 activations.  A 32-bit AXI beat carries
-// two little-endian s16 elements.
+// Linear output FIFO for little-endian TFLM int16 activations.
 module vec_s16_to_fifo #(
     parameter int unsigned VLEN  = 16,
-    parameter int unsigned BANKS = 16
+    parameter int unsigned BANKS = 16,
+    parameter int unsigned BUS_WIDTH = 32
 ) (
     input  logic                         clk,
     input  logic                         rst_n,
@@ -15,14 +15,16 @@ module vec_s16_to_fifo #(
     output logic                         output_valid,
     input  logic                         output_ready,
     output logic                         output_row_switch,
-    output logic [3:0]                   output_mask,
-    output logic [31:0]                  output_data,
+    output logic [BUS_WIDTH/8-1:0]       output_mask,
+    output logic [BUS_WIDTH-1:0]         output_data,
     output logic                         fifo_full_flag
 );
 
     localparam int PTR_WIDTH = (VLEN <= 1) ? 1 : $clog2(VLEN);
     localparam int COUNT_WIDTH = $clog2(VLEN + 1);
-    localparam int ROW_BEATS = (VLEN + 1) >> 1;
+    localparam int ELEMENTS_PER_BEAT = BUS_WIDTH / 16;
+    localparam int ELEMENT_SHIFT = $clog2(ELEMENTS_PER_BEAT);
+    localparam int ROW_BEATS = (VLEN + ELEMENTS_PER_BEAT - 1) / ELEMENTS_PER_BEAT;
     localparam int BEAT_WIDTH = (ROW_BEATS <= 1) ? 1 : $clog2(ROW_BEATS);
     localparam int BANK_WIDTH = (BANKS <= 1) ? 1 : $clog2(BANKS);
     localparam int BANK_COUNT_WIDTH = (BANKS <= 1) ? 1 : $clog2(BANKS + 1);
@@ -72,7 +74,7 @@ module vec_s16_to_fifo #(
     wire [COUNT_WIDTH-1:0] output_col_count =
         COUNT_WIDTH'(vec_valid_num_col_q) + COUNT_WIDTH'(1);
     wire [COUNT_WIDTH-1:0] last_beat_idx_cur =
-        (output_col_count == '0) ? '0 : ((output_col_count - 1'b1) >> 1);
+        (output_col_count == '0) ? '0 : ((output_col_count - 1'b1) >> ELEMENT_SHIFT);
     wire output_fire = output_ready && output_valid;
     wire last_beat_in_row = output_fire &&
         (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur);
@@ -99,15 +101,13 @@ module vec_s16_to_fifo #(
         ram_wr_addr = MEM_ADDR_W'((int'(write_bank) * VLEN) + int'(write_ptr));
         ram_rd_addr = MEM_ADDR_W'((int'(read_bank) * VLEN) + int'(next_read_row));
 
-        output_data = 32'b0;
-        output_mask = 4'b0;
+        output_data = '0;
+        output_mask = '0;
         if (stream_active && data_valid) begin
-            output_data = ram_rd_data[int'(beat_idx)*32 +: 32];
-            if ((COUNT_WIDTH'(beat_idx) << 1) + COUNT_WIDTH'(2) <= output_col_count) begin
-                output_mask = 4'b1111;
-            end else begin
-                output_mask = 4'b0011;
-            end
+            output_data = ram_rd_data[int'(beat_idx)*BUS_WIDTH +: BUS_WIDTH];
+            for (int lane = 0; lane < ELEMENTS_PER_BEAT; ++lane)
+                output_mask[lane*2+:2] =
+                    (int'(beat_idx)*ELEMENTS_PER_BEAT + lane < int'(output_col_count)) ? 2'b11 : 2'b00;
         end
     end
 

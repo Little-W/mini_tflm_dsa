@@ -11,6 +11,8 @@
 module conv_ia_tile_path #(
   parameter int SIZE=16,
   parameter int CACHE_BLOCKS=4,
+  parameter int BUS_WIDTH=32,
+  parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_SETS=128, CACHE_WAYS=2, LINE_BYTES=16,
   parameter int SW=(CACHE_BLOCKS<=1 ? 1 : $clog2(CACHE_BLOCKS)),
   parameter int CW=$clog2(SIZE),
@@ -39,7 +41,7 @@ module conv_ia_tile_path #(
   output logic [1:0] arburst,
   input logic rvalid,
   output logic rready,
-  input logic [31:0] rdata,
+  input logic [BUS_WIDTH-1:0] rdata,
   input logic [1:0] rresp,
   input logic rlast
 );
@@ -64,7 +66,8 @@ module conv_ia_tile_path #(
     .dividend(delta),.divisor(vstride),.busy(div_busy),.done(div_done),
     .div_zero,.quotient,.remainder);
   conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(SW),
-    .CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES)) u_front (
+    .CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES),
+    .BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_front (
     .clk,.rst_n,.cfg_valid(init_cfg && cfg_ready),.cfg_ready(fe_cfg_ready),.cfg(conv_cfg),
     .tile_valid(state==ISSUE),.tile_ready(fe_tile_ready),.tile_p0(p0),.tile_q0(q0),
     .tile_rows(RW'(rows)),.tile_slot(slot),

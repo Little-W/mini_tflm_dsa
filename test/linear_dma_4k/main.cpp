@@ -10,6 +10,16 @@
 #include <string>
 #include <vector>
 
+#ifndef TEST_BUS_WIDTH
+#define TEST_BUS_WIDTH 32
+#endif
+constexpr unsigned BusBytes = TEST_BUS_WIDTH / 8;
+constexpr unsigned BusSize = TEST_BUS_WIDTH == 64 ? 3 : 2;
+
+#ifndef TEST_DMA_MAX_BYTES
+#define TEST_DMA_MAX_BYTES (256 * BusBytes)
+#endif
+
 struct Command {
     uint32_t address, stride, rows, words, valid_cols;
     int32_t zero_point;
@@ -17,7 +27,7 @@ struct Command {
     bool linear, use16, expect_error = false;
 };
 struct Burst { uint32_t address; unsigned words, beat = 0; };
-struct Output { uint32_t data; unsigned row, col, slot, valid_cols; int32_t zero_point; bool use16; };
+struct Output { uint64_t data; unsigned row, col, slot, valid_cols; int32_t zero_point; bool use16; };
 
 class Simulation {
     VerilatedContext context;
@@ -39,10 +49,10 @@ class Simulation {
     void require(bool condition, const char* message) const {
         if (!condition) throw std::runtime_error(std::string(message) + " at cycle " + std::to_string(cycles));
     }
-    uint32_t read(uint32_t address) const {
-        uint32_t value = 0;
-        for (unsigned i = 0; i < 4; ++i)
-            if (uint64_t(address) + i < memory.size()) value |= uint32_t(memory[address+i]) << (8*i);
+    uint64_t read(uint32_t address) const {
+        uint64_t value = 0;
+        for (unsigned i = 0; i < BusBytes; ++i)
+            if (uint64_t(address) + i < memory.size()) value |= uint64_t(memory[address+i]) << (8*i);
         return value;
     }
     void set_command(const Command& command) {
@@ -57,13 +67,13 @@ class Simulation {
         for (unsigned row = 0; row < command.rows; ++row) {
             uint32_t base = command.address + row * command.stride;
             unsigned words = command.linear ? 1 : command.words;
-            uint32_t aligned = base & ~3u;
-            unsigned physical_words = words + unsigned((base&3u) != 0);
+            uint32_t aligned = base & ~(BusBytes-1u);
+            unsigned physical_words = words + unsigned((base&(BusBytes-1u)) != 0);
             for (unsigned word = 0; word < physical_words; ++word)
-                expected_addresses.push_back(aligned + word*4);
+                expected_addresses.push_back(aligned + word*BusBytes);
             for (unsigned word = 0; word < words; ++word) {
-                unsigned col = ((command.linear ? row : word) * (command.use16 ? 2 : 4)) & 15u;
-                expected_outputs.push_back({read(base+word*4), command.linear ? 0u : row,
+                unsigned col = ((command.linear ? row : word) * (command.use16 ? BusBytes/2 : BusBytes)) & 15u;
+                expected_outputs.push_back({read(base+word*BusBytes), command.linear ? 0u : row,
                                             col, command.slot, command.valid_cols ? command.valid_cols : 16,
                                             command.zero_point, command.use16});
             }
@@ -71,20 +81,20 @@ class Simulation {
     }
     void check_output() {
         if (!top.rd_raw_valid) {
-            for (unsigned i=0; i<4; ++i) require(!top.wr_valid[i], "unpack valid without raw data");
+            for (unsigned i=0; i<BusBytes; ++i) require(!top.wr_valid[i], "unpack valid without raw data");
             return;
         }
         require(!expected_outputs.empty(), "unexpected read output");
         const auto e = expected_outputs.front();expected_outputs.pop_front();++outputs;
         if (top.rd_raw_data != e.data) {
-            std::fprintf(stderr, "raw actual=%08x expected=%08x row=%u col=%u\n",top.rd_raw_data,e.data,e.row,e.col);
+            std::fprintf(stderr, "raw actual=%016llx expected=%016llx row=%u col=%u\n",(unsigned long long)top.rd_raw_data,(unsigned long long)e.data,e.row,e.col);
             require(false, "raw read data mismatch");
         }
         require(top.rd_raw_row==e.row && top.rd_raw_col_base==e.col, "raw row/column mismatch");
         require(top.wr_row==e.row && top.wr_col_base==e.col && top.wr_slot==e.slot && top.wr_use_16bits==e.use16,
                 "unpack metadata mismatch");
-        for (unsigned i=0; i<4; ++i) {
-            const bool valid = i < (e.use16 ? 2u : 4u) && e.col+i < 16;
+        for (unsigned i=0; i<BusBytes; ++i) {
+            const bool valid = i < (e.use16 ? BusBytes/2 : BusBytes) && e.col+i < 16;
             require(bool(top.wr_valid[i])==valid, "unpack lane validity mismatch");
             if (!valid) continue;
             ++elements;
@@ -104,16 +114,16 @@ public:
         for (uint32_t i=0; i<memory.size(); ++i) memory[i]=uint8_t((i*73u+(i>>8)*31u)^0xa5u);
         top.clk=0;top.rst_n=0;top.rd_start=0;top.m_axi_arready=0;top.m_axi_rvalid=0;
         top.m_axi_rdata=0;top.m_axi_rresp=0;top.m_axi_rlast=0;
-        for (unsigned i=0; i<4; ++i) {top.clk=0;top.eval();top.clk=1;top.eval();}
+        for (unsigned i=0; i<BusBytes; ++i) {top.clk=0;top.eval();top.clk=1;top.eval();}
         top.clk=0;top.rst_n=1;top.eval();
     }
     bool tick(const Command* chain=nullptr) {
         top.clk=0;
         top.m_axi_arready=!random_delay || random()%4 != 0;
         if (!held && !requested.empty() && (!random_delay || random()%3 != 0)) {
-            auto& b=requested.front();const uint32_t address=b.address+b.beat*4;
+            auto& b=requested.front();const uint32_t address=b.address+b.beat*BusBytes;
             top.m_axi_rvalid=1;top.m_axi_rdata=read(address);
-            top.m_axi_rresp=uint64_t(address)+4 > memory.size() ? 2 : 0;
+            top.m_axi_rresp=uint64_t(address)+BusBytes > memory.size() ? 2 : 0;
             top.m_axi_rlast=b.beat+1==b.words;held=true;
         }
         top.eval();
@@ -121,17 +131,19 @@ public:
         if (chain && top.rd_finish_beat) {
             set_command(*chain);expect(*chain);chained=true;top.eval();
         }
+        if (top.rd_start) require(top.rd_start_ready, "descriptor was not accepted");
         const bool ar=top.m_axi_arvalid && top.m_axi_arready;
         const bool r=top.m_axi_rvalid && top.m_axi_rready;
         Burst accepted{top.m_axi_araddr,unsigned(top.m_axi_arlen)+1};
         if (ar) {
-            require(top.m_axi_arsize==2 && top.m_axi_arburst==1, "unexpected AXI request attributes");
-            require((accepted.address&3)==0, "unaligned physical AXI request");
-            require((accepted.address&4095u)+accepted.words*4u<=4096, "AXI burst crosses 4 KiB");
+            require(top.m_axi_arsize==BusSize && top.m_axi_arburst==1, "unexpected AXI request attributes");
+            require(accepted.words*BusBytes<=TEST_DMA_MAX_BYTES, "AXI read exceeds configured byte limit");
+            require((accepted.address&(BusBytes-1u))==0, "unaligned physical AXI request");
+            require((accepted.address&4095u)+accepted.words*BusBytes<=4096, "AXI burst crosses 4 KiB");
             for (unsigned word=0; word<accepted.words; ++word) {
                 require(!expected_addresses.empty(), "unexpected AXI request");
                 const auto address=expected_addresses.front();expected_addresses.pop_front();
-                require(accepted.address+word*4==address, "AXI read address mismatch");
+                require(accepted.address+word*BusBytes==address, "AXI read address mismatch");
             }
         }
         top.clk=1;context.timeInc(1);top.eval();++cycles;
@@ -197,24 +209,26 @@ int main(int argc, char** argv) {
         // The FC weights have 64 output channels and a 784-byte row stride.
         for (unsigned output=0; output<64; output+=16)
             for (unsigned k=0; k<784; k+=16)
-                sim.run({0x1007b4u+output*784u+k,784,16,4,16,-127,output/16,false,false});
-        for (unsigned offset=0; offset<4; ++offset)
+                sim.run({0x1007b4u+output*784u+k,784,16,16/BusBytes,16,-127,output/16,false,false});
+        for (unsigned offset=0; offset<BusBytes; ++offset)
             for (unsigned words : {1u,2u,4u,8u,256u})
                 for (bool use16 : {false,true})
-                    sim.run({0x20ffcu+offset,words*4u+3u,3,words,11, use16 ? -300 : 128,
-                             offset,false,use16});
-        for (unsigned offset=0; offset<4; ++offset)
+                    sim.run({0x20ffcu+offset,words*BusBytes+3u,3,words,11, use16 ? -300 : 128,
+                             offset%4,false,use16});
+        for (unsigned offset=0; offset<BusBytes; ++offset)
             for (unsigned stride : {4u,7u,784u})
                 for (bool use16 : {false,true})
                     sim.run({0x30ffcu+offset,stride,16,256,13, use16 ? 1234 : -91,
-                             offset,true,use16});
-        sim.run({0x1ffffcu,4,2,1,16,0,0,false,false,true},2);
+                             offset%4,true,use16});
+        sim.run({0x200000u-BusBytes,BusBytes,2,1,16,0,0,false,false,true},2);
         for (unsigned words : {1u,4u,8u,16u})
             for (bool linear : {false,true})
                 for (bool use16 : {false,true}) {
                     const unsigned row_words=linear ? 1u : words;
-                    sim.run({0x12340u,row_words*4,16,words,0,0,1,linear,use16},1);
-                    sim.run({0x12ffcu,row_words*4,16,words,11,37,2,linear,use16},2);
+                    sim.run({0x12340u,row_words*BusBytes,16,words,0,0,1,linear,use16},
+                        (row_words*BusBytes*16u+TEST_DMA_MAX_BYTES-1u)/TEST_DMA_MAX_BYTES);
+                    sim.run({0x13000u-BusBytes,row_words*BusBytes,16,words,11,37,2,linear,use16},
+                        1u+(row_words*BusBytes*16u-BusBytes+TEST_DMA_MAX_BYTES-1u)/TEST_DMA_MAX_BYTES);
                 }
         sim.run_chained({0x40fffu,8,1,4,7,-128,3,false,false},
                         {0x51ffdu,15,3,8,13,12345,1,false,true});

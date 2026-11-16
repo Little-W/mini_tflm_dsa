@@ -256,7 +256,7 @@ module oa_writer #(
                              ? (next_tile_row_is_last_cur ? m_last_valid : VLEN_COUNT)
                              : (next_tile_col_is_last_cur ? m_last_valid : VLEN_COUNT);
         if (cfg_output_16bits) begin
-            beats_per_row_calc = (cols_valid_calc + (VCOL_W + 1)'(1)) >> 1;
+            beats_per_row_calc = (cols_valid_calc + (VCOL_W + 1)'(BYTE_PER_BEAT/2 - 1)) >> (LOG2_BPB - 1);
         end else begin
             beats_per_row_calc = (cols_valid_calc + (VCOL_W + 1)'(BYTE_PER_BEAT - 1)) >> LOG2_BPB;
         end
@@ -305,23 +305,27 @@ module oa_writer #(
             if (cfg_is_mode) begin
                 co_dma_rows <= 0;
                 co_dma_stride <= 0;
-                co_dma_len <= 8'(cfg_coalesce_cols << 2) - 1'b1;
+                co_dma_len <= 8'(REG_WIDTH'(cfg_coalesce_cols) * 16 / BYTE_PER_BEAT) - 1'b1;
+            end else if (BUS_WIDTH == 64 && cfg_m == co_chunk_bytes && co_group_bytes[10:0] == 0) begin
+                co_dma_rows <= 9'(co_group_bytes >> 11);
+                co_dma_stride <= REG_WIDTH'(2048);
+                co_dma_len <= 8'd255;
             end else if (cfg_m == co_chunk_bytes && co_group_bytes[9:0] == 0) begin
                 co_dma_rows <= 9'(co_group_bytes >> 10);
-                co_dma_stride <= 11'd1024;
-                co_dma_len <= 8'd255;
+                co_dma_stride <= REG_WIDTH'(1024);
+                co_dma_len <= 8'(1024 / BYTE_PER_BEAT - 1);
             end else if (cfg_m == co_chunk_bytes && co_group_bytes[8:0] == 0) begin
                 co_dma_rows <= 9'(co_group_bytes >> 9);
-                co_dma_stride <= 11'd512;
-                co_dma_len <= 8'd127;
+                co_dma_stride <= REG_WIDTH'(512);
+                co_dma_len <= 8'(512 / BYTE_PER_BEAT - 1);
             end else if (cfg_m == co_chunk_bytes && co_group_bytes[7:0] == 0) begin
                 co_dma_rows <= 9'(co_group_bytes >> 8);
-                co_dma_stride <= 11'd256;
-                co_dma_len <= 8'd63;
+                co_dma_stride <= REG_WIDTH'(256);
+                co_dma_len <= 8'(256 / BYTE_PER_BEAT - 1);
             end else begin
                 co_dma_rows <= co_valid_rows;
                 co_dma_stride <= cfg_dst_row_stride_b;
-                co_dma_len <= 8'(cfg_coalesce_cols << 2) - 1'b1;
+                co_dma_len <= 8'(REG_WIDTH'(cfg_coalesce_cols) * 16 / BYTE_PER_BEAT) - 1'b1;
             end
         end
     end

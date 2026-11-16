@@ -24,7 +24,8 @@ def build(rtl, out, outstanding, args):
                 '--top-module', 'linear_dma_write_4k_top', '--Mdir', str(out/'obj'),
                 '--output-groups', '0', '--output-split', '12000',
                 f'-GWRITE_OUTSTANDING={outstanding}',
-                '-CFLAGS', '-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
+                f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
+                '-CFLAGS', f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
                 *map(str, sources[:3])]
     compile_command = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_write_4k_top.mk',
                        '-j', str(args.jobs), 'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
@@ -35,7 +36,7 @@ def build(rtl, out, outstanding, args):
         if result.returncode:
             raise RuntimeError((out/filename).read_text()[-6000:])
     binary = out/'obj/Vlinear_dma_write_4k_top'
-    manifest = dict(source_sha256=hashes, binary_sha256=sha(binary),
+    manifest = dict(bus_width=args.bus_width, dma_max_bytes=args.dma_max_bytes, source_sha256=hashes, binary_sha256=sha(binary),
                     sources_unchanged_during_build=hashes == {str(p): sha(p) for p in sources},
                     generate_command=generate, compile_command=compile_command)
     (out/'build.json').write_text(json.dumps(manifest, indent=2)+'\n')
@@ -71,7 +72,14 @@ def main():
     parser.add_argument('--outstanding', type=int, nargs='+', choices=[1, 4], default=[1, 4])
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--reference-rtl', type=Path)
+    parser.add_argument('--bus-width', type=int, choices=[32, 64], default=32)
+    parser.add_argument('--dma-max-bytes', type=int, help='Optional physical burst limit; default: 256 bus beats')
     args = parser.parse_args()
+    if args.dma_max_bytes is None:
+        args.dma_max_bytes = 256 * (args.bus_width // 8)
+    if (args.dma_max_bytes < args.bus_width // 8 or args.dma_max_bytes > 256 * (args.bus_width // 8)
+        or args.dma_max_bytes & (args.dma_max_bytes - 1)):
+        parser.error("DMA limit must be 1 through 256 complete bus beats with a power-of-two byte length")
     args.out = args.out.resolve();args.out.mkdir(parents=True, exist_ok=True)
     records = []
     rtl = ROOT/'rtl/npu/dma/axi_linear_block_dma.sv'
@@ -94,7 +102,7 @@ def main():
         if not all(r['passed'] for r in runs): break
     passed = all(all(run['passed'] for run in record['runs']) and
                  all(c['passed'] for c in record.get('single_segment_comparison', [])) for record in records)
-    summary = dict(passed=passed, rtl_sha256=sha(rtl), configurations=records)
+    summary = dict(passed=passed, bus_width=args.bus_width, dma_max_bytes=args.dma_max_bytes, rtl_sha256=sha(rtl), configurations=records)
     (args.out/'summary.json').write_text(json.dumps(summary, indent=2)+'\n')
     print(args.out/'summary.json', flush=True)
     return 0 if passed else 1

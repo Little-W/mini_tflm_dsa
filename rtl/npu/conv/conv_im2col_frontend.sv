@@ -9,6 +9,8 @@ module conv_im2col_frontend #(
   parameter int CACHE_SETS=128,
   parameter int CACHE_WAYS=2,
   parameter int LINE_BYTES=16,
+  parameter int BUS_WIDTH=32,
+  parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=3,
   parameter int CW=$clog2(SIZE),
   parameter int RW=$clog2(SIZE+1)
@@ -47,7 +49,7 @@ module conv_im2col_frontend #(
   output logic [1:0] arburst,
   input logic rvalid,
   output logic rready,
-  input logic [31:0] rdata,
+  input logic [BUS_WIDTH-1:0] rdata,
   input logic [1:0] rresp,
   input logic rlast
 );
@@ -271,7 +273,7 @@ module conv_im2col_frontend #(
   assign cache_req_addr=incoming_request ? incoming_addr : stream_next_request ? next_byte_addr : addr;
   assign cache_rsp_ready = state==WAIT_WORD && (wr_ready || cache_rsp_error);
   conv_read_cache #(.SETS(CACHE_SETS),.WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES),
-    .CACHE_POLICY(CACHE_POLICY)) u_cache (
+    .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_cache (
     .clk,.rst_n,
     .cfg_valid(cfg_valid && cfg_ready && cfg_ok),.cfg_ready(cache_cfg_ready),
     .cfg_base(cfg.input_base),.cfg_bytes(32'(cfg_input_bytes)),.cfg_bypass(cfg.bypass_cache),

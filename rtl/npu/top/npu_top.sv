@@ -25,6 +25,7 @@ module npu_top #(
     parameter int unsigned PS_STORAGE_ROWS = ((3*SIZE)-1)*(PS_FRAME_COUNT+1),
     parameter int unsigned OA_S16_FIFO_BANKS_MAX = 4,
     parameter int unsigned OPERAND_STREAM_BYTES = (PS_FRAME_COUNT >= 16) ? 65536 : 262144,
+    parameter int unsigned DMA_MAX_BYTES = 256*(BUS_WIDTH/8),
     parameter int unsigned AXI_READ_OUTSTANDING = 4,  // AXI 读通道最多提前排队的 burst 数
     parameter int unsigned AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,  // AXI 写通道最多提前排队的 burst 数
     parameter int unsigned ENABLE_IS_MODE = 1,  // 置 0 时综合裁剪 IS 转置/分组 bias 支持
@@ -142,7 +143,7 @@ module npu_top #(
     assign vector_stat_cycles = '0;
     assign vector_stat_compute = '0;
     assign vector_stat_dma_wait = '0;
-    gempact_panel_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(
+    gempact_panel_engine #(.DMA_MAX_BYTES(DMA_MAX_BYTES), .POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(
         .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable && !cfg_lhs_tile_packed && !cfg_rhs_tile_packed), .sa_ready(alt_ready),
         .done_valid(alt_done), .err_code(alt_error), .*);
 `elsif GEMPACT_RESIDENT_ENGINE
@@ -164,7 +165,7 @@ module npu_top #(
     assign vector_stat_cycles = '0;
     assign vector_stat_compute = '0;
     assign vector_stat_dma_wait = '0;
-    gempact_resident_engine #(.POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(
+    gempact_resident_engine #(.DMA_MAX_BYTES(DMA_MAX_BYTES), .POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(
         .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable && !cfg_lhs_tile_packed && !cfg_rhs_tile_packed), .sa_ready(alt_ready),
         .done_valid(alt_done), .err_code(alt_error), .*);
 `else
@@ -191,7 +192,7 @@ module npu_top #(
 `ifdef GEMMORA_INT8_PROFILE
     localparam bit VECTOR_ENGINE_CAPABLE = 1'b0;
 `else
-    localparam bit VECTOR_ENGINE_CAPABLE = ENABLE_VECTOR_ENGINE != 0 && BUS_WIDTH == 32 && REG_WIDTH == 32 &&
+    localparam bit VECTOR_ENGINE_CAPABLE = ENABLE_VECTOR_ENGINE != 0 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) && REG_WIDTH == 32 &&
         SIZE >= 2 && SIZE <= 64 && ((SIZE & (SIZE-1)) == 0) &&
         DW_MAX_TAPS >= 1 && DW_MAX_TAPS <= 255 &&
         POOL_MAX_TAPS >= 1 && POOL_MAX_TAPS <= 65535 && VECTOR_PE_COUNT >= 1 &&
@@ -252,7 +253,7 @@ module npu_top #(
 `ifdef GEMMORA_INT8_PROFILE
     localparam bit CONV_CORE_SUPPORTED = 1'b0;
 `else
-    localparam bit CONV_CORE_SUPPORTED = DATA_WIDTH >= 16 && BUS_WIDTH == 32 && REG_WIDTH == 32 && ENABLE_PER_CHANNEL != 0;
+    localparam bit CONV_CORE_SUPPORTED = DATA_WIDTH >= 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) && REG_WIDTH == 32 && ENABLE_PER_CHANNEL != 0;
 `endif
     wire [63:0] conv_input_bytes = 64'(conv_cfg_q.input_h) * 64'(conv_cfg_q.input_w) * 64'(conv_cfg_q.input_c);
     wire conv_config_invalid = run_conv &&
@@ -487,6 +488,7 @@ module npu_top #(
     wire ia_is_init_data;
     wire ia_calc_done;
     wire partial_sum_calc_over;
+    wire partial_sum_advance_ready;
     wire signed [IA_DATA_WIDTH-1:0] ia_out[SIZE];
     wire ia_data_valid;
     wire ia_l1_switch;
@@ -542,21 +544,21 @@ module npu_top #(
     wire fifo_output_valid;
     wire fifo_output_switch_row;
     wire fifo_output_ready;
-    wire [3:0] fifo_output_mask;
-    wire [31:0] fifo_output_data;
+    wire [BUS_WIDTH/8-1:0] fifo_output_mask;
+    wire [BUS_WIDTH-1:0] fifo_output_data;
     wire fifo_full_flag;
     wire ia_output_pending;
     wire fifo_s8_output_req;
     wire fifo_s8_output_valid;
     wire fifo_s8_output_switch_row;
-    wire [3:0] fifo_s8_output_mask;
-    wire [31:0] fifo_s8_output_data;
+    wire [BUS_WIDTH/8-1:0] fifo_s8_output_mask;
+    wire [BUS_WIDTH-1:0] fifo_s8_output_data;
     wire fifo_s8_full_flag;
     wire fifo_s16_output_req;
     wire fifo_s16_output_valid;
     wire fifo_s16_output_switch_row;
-    wire [3:0] fifo_s16_output_mask;
-    wire [31:0] fifo_s16_output_data;
+    wire [BUS_WIDTH/8-1:0] fifo_s16_output_mask;
+    wire [BUS_WIDTH-1:0] fifo_s16_output_data;
     wire fifo_s16_full_flag;
 
     // OA Writer 内部信号
@@ -590,6 +592,7 @@ module npu_top #(
     logic kernel_dma_slot_id, kernel_dma_use_16bits;
     logic signed [REG_WIDTH-1:0] kernel_dma_lhs_zp;
     logic kernel_dma_busy, kernel_dma_done;
+    logic kernel_dma_wr_slot;
     logic [$clog2(SIZE)-1:0] kernel_dma_wr_row, kernel_dma_wr_col_base;
     logic signed [KERNEL_DATA_WIDTH-1:0] kernel_dma_wr_data[BUS_WIDTH/8];
     logic kernel_dma_wr_valid[BUS_WIDTH/8];
@@ -632,7 +635,7 @@ module npu_top #(
     logic [7:0] dw_rd_burst_len_m1;
     logic dw_rd_busy, dw_rd_done, dw_rd_error;
     logic signed [IA_DATA_WIDTH-1:0] vector_dma_data [BUS_WIDTH/8];
-    logic signed [15:0] dw_rd_data [4];
+    logic signed [15:0] dw_rd_data [BUS_WIDTH/8];
     logic dw_rd_valid [BUS_WIDTH/8];
     logic [$clog2(SHARED_DMA_SIZE)-1:0] dw_rd_col_base;
     logic [BUS_WIDTH-1:0] dw_rd_raw_data;
@@ -644,10 +647,10 @@ module npu_top #(
     logic [BUS_WIDTH/8-1:0] dw_src_wmask;
     logic dw_src_wvalid, dw_src_wready, dw_wr_busy, dw_wr_done, dw_wr_error;
     generate if (VECTOR_ENGINE_CAPABLE) begin : g_vector_engine
-        for (genvar lane = 0; lane < 4; lane++) begin : g_data
+        for (genvar lane = 0; lane < BUS_WIDTH/8; lane++) begin : g_data
             assign dw_rd_data[lane] = 16'($signed(vector_dma_data[lane]));
         end
-        vector_engine #(.TILE(SIZE), .DMA_SIZE(SHARED_DMA_SIZE),
+        vector_engine #(.BUS_WIDTH(BUS_WIDTH),.TILE(SIZE), .DMA_SIZE(SHARED_DMA_SIZE),
             .PE_COUNT(VECTOR_PE_COUNT), .MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS)) u_engine (
             .clk, .rst_n(core_rst_n),
             .start(calc_start && sa_ready && cfg_vector_enable && !cfg_conv_enable),
@@ -989,6 +992,7 @@ module npu_top #(
         wire compute_bias_sleep = bias_sleep;
 
         axi_block_dma_arbiter #(
+            .DMA_MAX_BYTES(DMA_MAX_BYTES),
             .DATA_WIDTH  (IA_DATA_WIDTH),
             .KERNEL_WIDTH(KERNEL_DATA_WIDTH),
             .SIZE        (SIZE),
@@ -1082,6 +1086,7 @@ module npu_top #(
             .kernel_lhs_zp           (kernel_dma_lhs_zp),
             .kernel_busy             (kernel_dma_busy),
             .kernel_done             (kernel_dma_done),
+            .kernel_wr_slot          (kernel_dma_wr_slot),
             .kernel_wr_row           (kernel_dma_wr_row),
             .kernel_wr_col_base      (kernel_dma_wr_col_base),
             .kernel_wr_data          (kernel_dma_wr_data),
@@ -1196,6 +1201,7 @@ module npu_top #(
         .sa_ready         (ctrl_sa_ready),
 
         .partial_sum_calc_over(partial_sum_calc_over),
+        .partial_sum_advance_ready(partial_sum_advance_ready),
         .tile_calc_over       (tile_calc_over),
             .init_cfg_ia          (init_cfg_ia),
         .init_cfg_weight      (init_cfg_weight),
@@ -1354,6 +1360,7 @@ module npu_top #(
             .ext_dma_lhs_zp(kernel_dma_lhs_zp),
             .ext_dma_busy(kernel_dma_busy),
             .ext_dma_done(kernel_dma_done),
+            .ext_dma_wr_slot(kernel_dma_wr_slot),
             .ext_dma_wr_row(kernel_dma_wr_row),
             .ext_dma_wr_col_base(kernel_dma_wr_col_base),
             .ext_dma_wr_data(kernel_dma_wr_data),
@@ -1392,6 +1399,7 @@ module npu_top #(
             .bias_group_valid (bias_group_valid),
             .load_bias_done   (load_bias_done),
             .group_read_idx   (is_bias_row_idx),
+            .group_read_start (is_mode && send_ia_trigger && !bias_sleep),
             .data_out         (bias_data_out),
             .group_data_scalar(bias_group_scalar),
                 .ext_dma_start    (bias_dma_start),
@@ -1471,6 +1479,8 @@ module npu_top #(
         .weight_in       (weight_out),
         .ia_vec_in       (ia_out),
         .ia_row_valid    (ia_row_valid),
+        .final_output_overlap(!is_mode && !use_per_channel_eff),
+        .active_columns  (($clog2(SIZE)+1)'((stream_m > REG_WIDTH'(SIZE)) ? REG_WIDTH'(SIZE) : stream_m)),
         .ia_tile_start   (ia_tile_start),
         .ia_calc_done    (ia_calc_done),
         .ia_is_init_data (ia_is_init_data),
@@ -1482,6 +1492,7 @@ module npu_top #(
         .acc_data_out    (acc_data_out),
         .acc_data_valid  (acc_data_valid),
         .partial_sum_calc_over(partial_sum_calc_over),
+        .partial_sum_advance_ready(partial_sum_advance_ready),
         .tile_calc_over  (tile_calc_over)
     );
 
@@ -1581,7 +1592,7 @@ module npu_top #(
     assign load_quant_req = load_quant_req_s8;
     assign quant_params_valid = quant_params_valid_s8;
 
-        vec_requant #(
+        vec_requant #(.BUS_WIDTH(BUS_WIDTH),
             .VLEN        (SIZE),
             .REG_WIDTH   (REG_WIDTH),
             .MAX_IA_REUSE(REQUANT_MAX_IA_REUSE),
@@ -1726,7 +1737,7 @@ module npu_top #(
     end
 
     // FIFO
-    vec_s8_to_fifo #(
+    vec_s8_to_fifo #(.BUS_WIDTH(BUS_WIDTH),
         .VLEN (SIZE),
         .BANKS(OA_FIFO_BANKS),
         .ENABLE_TRANSPOSE(ENABLE_IS_MODE)
@@ -1761,7 +1772,7 @@ module npu_top #(
     assign fifo_s16_output_data='0;
     assign fifo_s16_full_flag=1'b0;
 `else
-    vec_s16_to_fifo #(
+    vec_s16_to_fifo #(.BUS_WIDTH(BUS_WIDTH),
         .VLEN (SIZE),
         .BANKS(OA_S16_FIFO_BANKS)
     ) u_vec_s16_to_fifo (

@@ -22,6 +22,7 @@ module npu_axil_top #(
     parameter PS_FRAME_COUNT  = SIZE,
     parameter PS_STORAGE_ROWS = ((3*SIZE)-1)*(PS_FRAME_COUNT+1),
     parameter OA_S16_FIFO_BANKS_MAX = 4,
+    parameter int unsigned DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8),
     parameter AXI_READ_OUTSTANDING = 4,
     parameter AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,
     parameter ENABLE_IS_MODE = 1,
@@ -154,12 +155,12 @@ module npu_axil_top #(
     localparam bit CONV_CAPABLE = 1'b0;
     localparam bit VECTOR_ENGINE_CAPABLE = 1'b0;
 `else
-    localparam bit VECTOR_ENGINE_CAPABLE = ENABLE_VECTOR_ENGINE != 0 && BUS_WIDTH == 32 && REG_WIDTH == 32 &&
+    localparam bit VECTOR_ENGINE_CAPABLE = ENABLE_VECTOR_ENGINE != 0 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) && REG_WIDTH == 32 &&
         SIZE >= 2 && SIZE <= 64 && ((SIZE & (SIZE-1)) == 0) &&
         DW_MAX_TAPS >= 1 && DW_MAX_TAPS <= 255 &&
         POOL_MAX_TAPS >= 1 && POOL_MAX_TAPS <= 65535 && VECTOR_PE_COUNT >= 1 &&
         VECTOR_PE_COUNT <= SIZE && ((VECTOR_PE_COUNT & (VECTOR_PE_COUNT-1)) == 0);
-    localparam bit CONV_CAPABLE = DATA_WIDTH >= 16 && BUS_WIDTH == 32 && REG_WIDTH == 32 && ENABLE_PER_CHANNEL != 0;
+    localparam bit CONV_CAPABLE = DATA_WIDTH >= 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) && REG_WIDTH == 32 && ENABLE_PER_CHANNEL != 0;
 `endif
     // The normal core promotes KERNEL_DATA_WIDTH to at least 16 even when the
     // external weight parameter is 8. Profiles without that promotion already
@@ -316,6 +317,8 @@ module npu_axil_top #(
     assign m_axi_awlock  = npu_busy ? 2'b01 : 2'b00;
 
     npu_axil_reg_if #(
+        .DMA_MAX_BYTES(DMA_MAX_BYTES),
+        .AXI_DATA_BITS(BUS_WIDTH),
         .AXIL_DATA_WIDTH(AXIL_DATA_WIDTH),
         .AXIL_ADDR_WIDTH(AXIL_ADDR_WIDTH),
         .REG_WIDTH(REG_WIDTH), .CONV_CAPABLE(CONV_CAPABLE), .CONV_IS_CAPABLE(CONV_IS_CAPABLE),
@@ -399,6 +402,7 @@ module npu_axil_top #(
     );
 
     npu_top #(
+        .DMA_MAX_BYTES(DMA_MAX_BYTES),
         .WEIGHT_WIDTH(WEIGHT_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
         .SIZE(SIZE),

@@ -1,6 +1,7 @@
 module vec_s8_to_fifo_full #(
     parameter integer VLEN  = 16,
     parameter integer BANKS = 16,
+    parameter integer BUS_WIDTH = 32,
     parameter integer ENABLE_TRANSPOSE = 1
 ) (
     input  wire                 clk,
@@ -21,18 +22,20 @@ module vec_s8_to_fifo_full #(
     output wire                 output_valid,
     input  wire                 output_ready,
     output wire                 output_row_switch,
-    output reg  [          3:0] output_mask,
-    output reg  [         31:0] output_data,
+    output reg  [BUS_WIDTH/8-1:0] output_mask,
+    output reg  [BUS_WIDTH-1:0] output_data,
     output wire                 fifo_full_flag
 );
 
   localparam integer PTR_WIDTH   = (VLEN <= 1) ? 1 : $clog2(VLEN);
   localparam integer COUNT_WIDTH = $clog2(VLEN + 1);
-  localparam integer ROW_BEATS   = (VLEN + 3) >> 2;
+  localparam integer BYTE_PER_BEAT = BUS_WIDTH / 8;
+  localparam integer BYTE_SHIFT = $clog2(BYTE_PER_BEAT);
+  localparam integer ROW_BEATS = (VLEN + BYTE_PER_BEAT - 1) / BYTE_PER_BEAT;
   localparam integer BEAT_WIDTH  = (ROW_BEATS <= 1) ? 1 : $clog2(ROW_BEATS);
   localparam integer BANK_WIDTH  = (BANKS <= 1) ? 1 : $clog2(BANKS);
   localparam integer BANK_COUNT_WIDTH = (BANKS <= 1) ? 1 : $clog2(BANKS + 1);
-  localparam integer ROW_BANKS   = 4;
+  localparam integer ROW_BANKS   = BYTE_PER_BEAT;
   localparam integer MEM_DEPTH   = BANKS * ROW_BEATS;
   localparam integer MEM_ADDR_W  = (MEM_DEPTH <= 1) ? 1 : $clog2(MEM_DEPTH);
 
@@ -64,10 +67,10 @@ module vec_s8_to_fifo_full #(
   logic co_active, co_data_valid;
   logic [8:0] co_row;
   logic [4:0] co_col;
-  logic [1:0] co_beat;
+  logic [BEAT_WIDTH-1:0] co_beat;
   logic [8:0] co_next_row;
   logic [4:0] co_next_col;
-  logic [1:0] co_next_beat;
+  logic [BEAT_WIDTH-1:0] co_next_beat;
   wire [BANK_COUNT_WIDTH-1:0] co_tiles = BANK_COUNT_WIDTH'(coalesce_rows[4:0] * coalesce_cols[4:0]);
   wire co_start = start_permitted && coalesce_enable && !co_active &&
       ready_bank_count_q != 0 && co_tiles != 0 &&
@@ -77,7 +80,7 @@ module vec_s8_to_fifo_full #(
   logic [BANK_WIDTH-1:0] co_current_bank;
   logic [4:0] co_last_col_q, co_last_tile_row_q;
   wire co_col_last = co_col == co_last_col_q;
-  wire co_row_last = co_col_last && co_beat == 3;
+  wire co_row_last = co_col_last && co_beat == BEAT_WIDTH'(ROW_BEATS - 1);
   wire co_group_last = co_row_last &&
       (transpose_mode_eff ? (co_row[3:0] == vec_valid_num_row)
                           : (co_row[8:4] == co_last_tile_row_q &&
@@ -93,7 +96,7 @@ module vec_s8_to_fifo_full #(
       co_next_row = 0; co_next_col = 0; co_next_beat = 0;
     end else if (co_fire) begin
       co_next_beat = co_beat + 1'b1;
-      if (co_beat == 3) begin
+      if (co_beat == BEAT_WIDTH'(ROW_BEATS - 1)) begin
         co_next_col = co_col + 1'b1;
         if (co_col_last) begin
           co_next_col = 0;
@@ -103,13 +106,13 @@ module vec_s8_to_fifo_full #(
     end
     co_issue_bank = co_current_bank;
     if (co_start) co_issue_bank = read_bank;
-    else if (co_fire && co_beat == 3) co_issue_bank = co_following_bank;
+    else if (co_fire && co_beat == BEAT_WIDTH'(ROW_BEATS - 1)) co_issue_bank = co_following_bank;
     co_ram_addr = MEM_ADDR_W'(int'(co_issue_bank) * ROW_BEATS +
-        (transpose_mode_eff ? int'(co_next_beat) : ((int'(co_next_row) & 15) >> 2)));
+        (transpose_mode_eff ? int'(co_next_beat) : ((int'(co_next_row) & 15) >> BYTE_SHIFT)));
   end
 
-  // Prepare the next column's bank during its first three beats. The
-  // fourth-beat RAM request then uses only registers and a bank-ready lookup.
+  // Prepare the next column's bank before the final beat. The final
+  // RAM request uses registered addresses and a bank-ready lookup.
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       co_following_bank <= 0; co_last_col_q <= 0; co_last_tile_row_q <= 0;
@@ -118,7 +121,7 @@ module vec_s8_to_fifo_full #(
         co_last_col_q <= coalesce_cols[4:0] - 5'd1;
         co_last_tile_row_q <= coalesce_rows[4:0] - 5'd1;
       end
-      if (co_active && co_beat != 3) begin
+      if (co_active && co_beat != BEAT_WIDTH'(ROW_BEATS - 1)) begin
         if (co_col_last)
           co_following_bank <= transpose_mode_eff ? read_bank :
               BANK_WIDTH'((int'(read_bank) + ((int'(co_row)+1)>>4)) % BANKS);
@@ -161,7 +164,7 @@ module vec_s8_to_fifo_full #(
                          : (COUNT_WIDTH'(vec_valid_num_col_tmp) + COUNT_WIDTH'(1));
   wire read_bank_ready = bank_ready[read_bank] && (bank_count[read_bank] != '0);
   wire [COUNT_WIDTH-1:0] last_beat_idx_cur =
-      (output_col_count == '0) ? '0 : ((output_col_count - COUNT_WIDTH'(1)) >> 2);
+      (output_col_count == '0) ? '0 : ((output_col_count - COUNT_WIDTH'(1)) >> BYTE_SHIFT);
   wire output_fire = output_ready && output_valid;
   wire last_beat_in_row = output_fire &&
                           (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur);
@@ -226,7 +229,7 @@ module vec_s8_to_fifo_full #(
     int wr_group;
     int wr_addr_i;
 
-    wr_group = int'(write_ptr) >> 2;
+    wr_group = int'(write_ptr) >> BYTE_SHIFT;
     wr_addr_i = (int'(write_bank) * ROW_BEATS) + wr_group;
     ram_wr_addr = MEM_ADDR_W'(wr_addr_i);
 
@@ -235,7 +238,7 @@ module vec_s8_to_fifo_full #(
       int rd_addr_i;
 
       rd_group = issue_transpose_mode ? int'(issue_beat_idx)
-                                      : (int'(issue_read_ptr) >> 2);
+                                      : (int'(issue_read_ptr) >> BYTE_SHIFT);
       rd_addr_i = (int'(read_bank) * ROW_BEATS) + rd_group;
       ram_rd_addr[rb] = coalesce_enable ? co_ram_addr : MEM_ADDR_W'(rd_addr_i);
     end
@@ -244,7 +247,7 @@ module vec_s8_to_fifo_full #(
   genvar ram_bank;
   generate
     for (ram_bank = 0; ram_bank < ROW_BANKS; ram_bank++) begin : gen_fifo_ram
-      wire row_wr_en = in_valid && !write_bank_blocked && (2'(write_ptr) == 2'(ram_bank));
+      wire row_wr_en = in_valid && !write_bank_blocked && (BYTE_SHIFT'(write_ptr) == BYTE_SHIFT'(ram_bank));
 
       vec_s8_fifo_row_ram #(
         .DATA_WIDTH(VLEN * 8),
@@ -386,25 +389,27 @@ module vec_s8_to_fifo_full #(
   integer read_bank_i;
 
   always @(*) begin
-    output_data = 32'b0;
-    output_mask = 4'b0;
+    src_row_i = 0;
+    read_bank_i = 0;
+    output_data = '0;
+    output_mask = '0;
     valid_cols_i = int'(output_col_count);
-    beat_col_start_i = beat_idx * 4;
+    beat_col_start_i = int'(beat_idx) * BYTE_PER_BEAT;
     valid_in_beat_i = valid_cols_i - beat_col_start_i;
-    if (valid_in_beat_i > 4) valid_in_beat_i = 4;
+    if (valid_in_beat_i > BYTE_PER_BEAT) valid_in_beat_i = BYTE_PER_BEAT;
     if (valid_in_beat_i < 0) valid_in_beat_i = 0;
 
     if (coalesce_enable && co_active) begin
       if (transpose_mode_eff) begin
-        for (out_byte_i = 0; out_byte_i < 4; out_byte_i = out_byte_i + 1)
+        for (out_byte_i = 0; out_byte_i < BYTE_PER_BEAT; out_byte_i = out_byte_i + 1)
           output_data[out_byte_i*8+:8] = ram_rd_data[out_byte_i][co_row[3:0]*8+:8];
       end else begin
-        output_data = ram_rd_data[co_row[1:0]][co_beat*32+:32];
+        output_data = ram_rd_data[BYTE_SHIFT'(co_row)][int'(co_beat)*BUS_WIDTH+:BUS_WIDTH];
       end
-      output_mask = 4'b1111;
+      output_mask = '1;
     end else if (stream_active) begin
       if (transpose_mode_tmp) begin
-        for (out_byte_i = 0; out_byte_i < 4; out_byte_i = out_byte_i + 1) begin
+        for (out_byte_i = 0; out_byte_i < BYTE_PER_BEAT; out_byte_i = out_byte_i + 1) begin
           src_row_i = beat_col_start_i + out_byte_i;
           if (src_row_i < active_read_count) begin
             output_data[out_byte_i*8+:8] =
@@ -412,17 +417,12 @@ module vec_s8_to_fifo_full #(
           end
         end
       end else begin
-        read_bank_i = int'(2'(read_ptr));
-        output_data = ram_rd_data[read_bank_i][beat_idx*32+:32];
+        read_bank_i = int'(BYTE_SHIFT'(read_ptr));
+        output_data = ram_rd_data[read_bank_i][int'(beat_idx)*BUS_WIDTH+:BUS_WIDTH];
       end
 
-      case (valid_in_beat_i)
-        1: output_mask = 4'b0001;
-        2: output_mask = 4'b0011;
-        3: output_mask = 4'b0111;
-        4: output_mask = 4'b1111;
-        default: output_mask = 4'b0000;
-      endcase
+      for (int byte_lane = 0; byte_lane < BYTE_PER_BEAT; ++byte_lane)
+        output_mask[byte_lane] = byte_lane < valid_in_beat_i;
     end
   end
 
@@ -438,7 +438,8 @@ endmodule
 
 module vec_s8_to_fifo_linear #(
     parameter integer VLEN  = 16,
-    parameter integer BANKS = 16
+    parameter integer BANKS = 16,
+    parameter integer BUS_WIDTH = 32
 ) (
     input  wire                 clk,
     input  wire                 rst_n,
@@ -452,14 +453,16 @@ module vec_s8_to_fifo_linear #(
     output wire                 output_valid,
     input  wire                 output_ready,
     output wire                 output_row_switch,
-    output logic [          3:0] output_mask,
-    output logic [         31:0] output_data,
+    output logic [BUS_WIDTH/8-1:0] output_mask,
+    output logic [BUS_WIDTH-1:0] output_data,
     output wire                 fifo_full_flag
 );
 
   localparam integer PTR_WIDTH   = (VLEN <= 1) ? 1 : $clog2(VLEN);
   localparam integer COUNT_WIDTH = $clog2(VLEN + 1);
-  localparam integer ROW_BEATS   = (VLEN + 3) >> 2;
+  localparam integer BYTE_PER_BEAT = BUS_WIDTH / 8;
+  localparam integer BYTE_SHIFT = $clog2(BYTE_PER_BEAT);
+  localparam integer ROW_BEATS = (VLEN + BYTE_PER_BEAT - 1) / BYTE_PER_BEAT;
   localparam integer BEAT_WIDTH  = (ROW_BEATS <= 1) ? 1 : $clog2(ROW_BEATS);
   localparam integer BANK_WIDTH  = (BANKS <= 1) ? 1 : $clog2(BANKS);
   localparam integer BANK_COUNT_WIDTH = (BANKS <= 1) ? 1 : $clog2(BANKS + 1);
@@ -508,7 +511,7 @@ module vec_s8_to_fifo_linear #(
   wire [COUNT_WIDTH-1:0] output_col_count =
       COUNT_WIDTH'(vec_valid_num_col_tmp) + COUNT_WIDTH'(1);
   wire [COUNT_WIDTH-1:0] last_beat_idx_cur =
-      (output_col_count == '0) ? '0 : ((output_col_count - COUNT_WIDTH'(1)) >> 2);
+      (output_col_count == '0) ? '0 : ((output_col_count - COUNT_WIDTH'(1)) >> BYTE_SHIFT);
   wire output_fire = output_ready && output_valid;
   wire last_beat_in_row = output_fire &&
                           (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur);
@@ -635,23 +638,18 @@ module vec_s8_to_fifo_linear #(
   integer valid_in_beat_i;
 
   always_comb begin
-    output_data = 32'b0;
-    output_mask = 4'b0;
+    output_data = '0;
+    output_mask = '0;
     valid_cols_i = int'(output_col_count);
-    beat_col_start_i = int'(beat_idx) * 4;
+    beat_col_start_i = int'(beat_idx) * BYTE_PER_BEAT;
     valid_in_beat_i = valid_cols_i - beat_col_start_i;
-    if (valid_in_beat_i > 4) valid_in_beat_i = 4;
+    if (valid_in_beat_i > BYTE_PER_BEAT) valid_in_beat_i = BYTE_PER_BEAT;
     if (valid_in_beat_i < 0) valid_in_beat_i = 0;
 
     if (stream_active && data_valid) begin
-      output_data = ram_rd_data[int'(beat_idx)*32+:32];
-      case (valid_in_beat_i)
-        1: output_mask = 4'b0001;
-        2: output_mask = 4'b0011;
-        3: output_mask = 4'b0111;
-        4: output_mask = 4'b1111;
-        default: output_mask = 4'b0000;
-      endcase
+      output_data = ram_rd_data[int'(beat_idx)*BUS_WIDTH+:BUS_WIDTH];
+      for (int byte_lane = 0; byte_lane < BYTE_PER_BEAT; ++byte_lane)
+        output_mask[byte_lane] = byte_lane < valid_in_beat_i;
     end
   end
 
@@ -662,6 +660,7 @@ endmodule
 module vec_s8_to_fifo #(
     parameter integer VLEN  = 16,
     parameter integer BANKS = 16,
+    parameter integer BUS_WIDTH = 32,
     parameter integer ENABLE_TRANSPOSE = 1
 ) (
     input  wire                 clk,
@@ -681,8 +680,8 @@ module vec_s8_to_fifo #(
     output wire                 output_valid,
     input  wire                 output_ready,
     output wire                 output_row_switch,
-    output wire [          3:0] output_mask,
-    output wire [         31:0] output_data,
+    output wire [BUS_WIDTH/8-1:0] output_mask,
+    output wire [BUS_WIDTH-1:0] output_data,
     output wire                 fifo_full_flag
 );
 
@@ -702,7 +701,8 @@ module vec_s8_to_fifo #(
       wire unused_transpose_mode = transpose_mode;
       vec_s8_to_fifo_linear #(
         .VLEN (VLEN),
-        .BANKS(BANKS)
+        .BANKS(BANKS),
+        .BUS_WIDTH(BUS_WIDTH)
       ) u_linear (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -733,12 +733,13 @@ module vec_s8_to_fifo #(
       // Two register entries isolate the RAM read controls from DMA READY.
       // Start a new tile only after the previous tile's entries drain, so
       // the writer has advanced the tail dimensions before they are sampled.
-      logic [36:0] skid[2];
+      localparam integer SKID_WIDTH = BUS_WIDTH + BUS_WIDTH/8 + 1;
+      logic [SKID_WIDTH-1:0] skid[2];
       logic skid_rd, skid_wr;
       logic [1:0] skid_count;
       wire inner_req, inner_valid, inner_switch;
-      wire [3:0] inner_mask;
-      wire [31:0] inner_data;
+      wire [BUS_WIDTH/8-1:0] inner_mask;
+      wire [BUS_WIDTH-1:0] inner_data;
       logic writer_ready_q;
       always_ff @(posedge clk) begin
         if(!rst_n) writer_ready_q<=0;
@@ -749,9 +750,9 @@ module vec_s8_to_fifo #(
       wire take=output_valid && output_ready;
       assign oa_fifo_req=inner_req || inner_valid || skid_count!=0;
       assign output_valid=skid_count!=0;
-      assign output_data=skid[skid_rd][31:0];
-      assign output_mask=skid[skid_rd][35:32];
-      assign output_row_switch=take && skid[skid_rd][36];
+      assign output_data=skid[skid_rd][BUS_WIDTH-1:0];
+      assign output_mask=skid[skid_rd][BUS_WIDTH+:BUS_WIDTH/8];
+      assign output_row_switch=take && skid[skid_rd][SKID_WIDTH-1];
       always_ff @(posedge clk) begin
         if(!rst_n) begin skid_rd<=0;skid_wr<=0;skid_count<=0;end
         else begin
@@ -767,6 +768,7 @@ module vec_s8_to_fifo #(
       vec_s8_to_fifo_full #(
         .VLEN (VLEN),
         .BANKS(BANKS),
+        .BUS_WIDTH(BUS_WIDTH),
         .ENABLE_TRANSPOSE(ENABLE_TRANSPOSE)
       ) u_full (
         .clk              (clk),

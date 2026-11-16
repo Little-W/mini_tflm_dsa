@@ -74,6 +74,7 @@ module npu_controller #(
 
     //==== Compute Core Interface ====
     input wire partial_sum_calc_over,  // legacy: 部分和计算结束
+    input wire partial_sum_advance_ready = 1'b0,
     input wire tile_calc_over,         // 新版 ps_buffer 最终 tile 输出结束
 
     //==== IA Loader Interface ====
@@ -287,10 +288,10 @@ module npu_controller #(
 	            if (current_state == INIT) begin
 	                compute_tail_pending <= 1'b0;
 	            end else begin
-		                if (send_ia_trigger) begin
+		                if (send_ia_trigger || (commit_now && ia_preissued)) begin
 		                    compute_tail_pending <= 1'b1;
 `ifndef SYNTHESIS
-		                    if (ctrl_trace_en) begin
+		                    if (ctrl_trace_en && send_ia_trigger) begin
 		                        $display("[%0t] CTRL send_ia", $time);
 		                    end
 `endif
@@ -420,9 +421,7 @@ module npu_controller #(
 	                if (send_weight_trigger) begin
 	                    util_weight_trigger_count <= util_weight_trigger_count + 1'b1;
 	                end
-	                if (((current_state == IA_START) ||
-	                     (current_state == WEIGHT_WAIT && weight_sending_done)) &&
-	                    issue_ia_now) begin
+	                if (send_ia_trigger) begin
 	                    util_ia_trigger_count <= util_ia_trigger_count + 1'b1;
 	                end
             end
@@ -503,6 +502,9 @@ module npu_controller #(
     // Load the NEXT weights into shadow registers while the current tall IA
     // stream computes. Commit only after the previous PS tail has drained.
     logic shadow_inflight, shadow_ready;
+    logic ia_preissued;
+    wire issue_ia_advance = current_state == WEIGHT_START && shadow_ready &&
+        compute_tail_pending && partial_sum_advance_ready && issue_ia_now;
     wire commit_now = current_state==WEIGHT_START && shadow_ready &&
                       weight_safe_to_send && !oa_calc_over;
     wire prefetch_now = (current_state==WEIGHT_START || current_state==IA_WAIT) &&
@@ -515,7 +517,7 @@ module npu_controller #(
             INIT: next_state=WEIGHT_START;
             WEIGHT_START: begin
                 if(oa_calc_over) next_state=done_ready?IDLE:WAIT_DONE;
-                else if(commit_now) next_state=IA_START;
+                else if(commit_now) next_state=(ia_preissued || issue_ia_now) ? IA_WAIT : IA_START;
             end
             IA_START: if(issue_ia_now) next_state=IA_WAIT;
             IA_WAIT: if(ia_sending_done) next_state=WEIGHT_START;
@@ -527,29 +529,33 @@ module npu_controller #(
         if(!rst_n) begin
             init_cfg_ia<=0; init_cfg_weight<=0; init_cfg_bias<=0;
             init_cfg_requant<=0; init_cfg_oa<=0; use_16bits<=0;
-            send_weight_trigger<=0; send_ia_trigger<=0; weight_commit<=0;
-            shadow_inflight<=0; shadow_ready<=0; err_code<=0;
+            send_weight_trigger<=0; weight_commit<=0;
+            shadow_inflight<=0; shadow_ready<=0; ia_preissued<=0; err_code<=0;
         end else begin
             init_cfg_ia<=0; init_cfg_weight<=0; init_cfg_bias<=0;
             init_cfg_requant<=0; init_cfg_oa<=0;
             send_weight_trigger<=prefetch_now;
-            send_ia_trigger<=current_state==IA_START && issue_ia_now;
             weight_commit<=commit_now;
             if(prefetch_now) shadow_inflight<=1;
             if(shadow_inflight && weight_sending_done) begin
                 shadow_inflight<=0; shadow_ready<=1;
             end
-            if(commit_now) shadow_ready<=0;
+            if(issue_ia_advance) ia_preissued<=1;
+            if(commit_now) begin shadow_ready<=0; ia_preissued<=0; end
             if(current_state==IDLE) err_code<=0;
             if(current_state==ERROR) err_code<=error_type;
             if(current_state==INIT) begin
                 init_cfg_ia<=1; init_cfg_weight<=1; init_cfg_bias<=1;
                 init_cfg_requant<=1; init_cfg_oa<=1;
                 use_16bits<=cfg_16bits_ia_reg;
-                shadow_inflight<=0; shadow_ready<=0;
+                shadow_inflight<=0; shadow_ready<=0; ia_preissued<=0;
             end
         end
     end
+    // The registered activation RAM can prepare its first read before commit
+    // when the preceding sum and replay dependencies have been satisfied.
+    assign send_ia_trigger = !ia_preissued && issue_ia_now &&
+        (current_state==IA_START || commit_now || issue_ia_advance);
     assign sa_ready=current_state==IDLE;
     always_ff @(posedge clk or negedge rst_n) begin
         if(!rst_n) done_valid<=0;

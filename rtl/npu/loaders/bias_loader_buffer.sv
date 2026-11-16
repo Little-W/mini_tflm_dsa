@@ -19,6 +19,8 @@ module bias_loader_buffer #(
     input  logic                 load_start,
     input  logic                 load_bank,
     input  logic [COUNT_WIDTH-1:0] load_block_idx,
+    input  logic [COUNT_WIDTH-1:0] load_blocks_count,
+    input  logic [COUNT_WIDTH-1:0] group_blocks_needed,
     input  logic                 load_word_valid [BUS_WIDTH/8],
     input  logic [REG_WIDTH-1:0] load_word_row,
     input  logic [$clog2(SIZE * (DATA_WIDTH / 8))-1:0] load_word_col_base,
@@ -28,6 +30,7 @@ module bias_loader_buffer #(
     input  logic                 active_bank,
     input  logic [COUNT_WIDTH-1:0] current_block_idx,
 
+    input  logic                 group_read_start,
     input  logic [$clog2(GROUP_BLOCKS_MAX * SIZE)-1:0] group_read_idx,
     output logic                 bias_valid,
     output logic                 load_block_valid,
@@ -43,9 +46,9 @@ module bias_loader_buffer #(
 
   (* ram_style = "distributed" *) logic [DATA_WIDTH-1:0] bank0_words [GROUP_ELEMS];
   (* ram_style = "distributed" *) logic [DATA_WIDTH-1:0] bank1_words [GROUP_ELEMS];
-  logic [DATA_WIDTH-1:0]        bank_lane_words [2][SIZE];
   logic                         bank_loaded [2];
   logic [CNT_W-1:0]             bank_block_idx [2];
+  logic [CNT_W-1:0]             bank_blocks_count [2];
   logic                         load_bank_q;
   logic                         load_word_valid_q [BUS_WIDTH/8];
   logic [REG_WIDTH-1:0]         load_word_row_q;
@@ -84,16 +87,19 @@ module bias_loader_buffer #(
       for (int b = 0; b < 2; b++) begin
         bank_loaded[b]    <= 1'b0;
         bank_block_idx[b] <= '0;
+        bank_blocks_count[b] <= '0;
       end
     end else if (init_cfg) begin
       for (int b = 0; b < 2; b++) begin
         bank_loaded[b]    <= 1'b0;
         bank_block_idx[b] <= '0;
+        bank_blocks_count[b] <= '0;
       end
     end else begin
       if (load_start) begin
         bank_loaded[load_bank]    <= 1'b0;
         bank_block_idx[load_bank] <= load_block_idx;
+        bank_blocks_count[load_bank] <= load_blocks_count;
       end else if (load_done_q) begin
         bank_loaded[load_bank_q] <= 1'b1;
       end
@@ -103,11 +109,6 @@ module bias_loader_buffer #(
   always_ff @(posedge clk) begin
 `ifndef SYNTHESIS
     if (!rst_n || init_cfg) begin
-      for (int b = 0; b < 2; b++) begin
-        for (int lane_i = 0; lane_i < SIZE; lane_i++) begin
-          bank_lane_words[b][lane_i] <= '0;
-        end
-      end
       for (int word_i = 0; word_i < GROUP_ELEMS; word_i++) begin
         bank0_words[word_i] <= '0;
         bank1_words[word_i] <= '0;
@@ -120,19 +121,17 @@ module bias_loader_buffer #(
           bank0_words[word_i] <= '0;
         end
       end
-      for (int lane_i = 0; lane_i < SIZE; lane_i++) begin
-        bank_lane_words[load_bank][lane_i] <= '0;
-      end
     end else begin
 `else
     if (!init_cfg && !load_start) begin
 `endif
-      if (load_word_valid_q[0]) begin
+      for(int beat_word=0;beat_word<BUS_WIDTH/DATA_WIDTH;beat_word++)
+      if (load_word_valid_q[beat_word*BYTES_PER_WORD]) begin
         automatic int byte_offset;
         automatic int word_idx;
         automatic logic [DATA_WIDTH-1:0] packed_word;
 
-        byte_offset = int'(load_word_col_base_q);
+        byte_offset = int'(load_word_col_base_q) + beat_word*BYTES_PER_WORD;
         if (GROUP_BLOCKS_MAX == 1) begin
           word_idx = byte_offset >> BYTE_SHIFT;
         end else begin
@@ -141,7 +140,7 @@ module bias_loader_buffer #(
 
         packed_word = '0;
         for (int byte_i = 0; byte_i < BYTES_PER_WORD; byte_i++) begin
-          packed_word[byte_i*8 +: 8] = load_word_data_q[byte_i][7:0];
+          packed_word[byte_i*8 +: 8] = load_word_data_q[beat_word*BYTES_PER_WORD+byte_i][7:0];
         end
 
         if (word_idx < GROUP_ELEMS) begin
@@ -150,27 +149,52 @@ module bias_loader_buffer #(
           end else begin
             bank0_words[word_idx] <= packed_word;
           end
-          if (word_idx < SIZE) begin
-            bank_lane_words[load_bank_q][word_idx] <= packed_word;
-          end
         end
       end
     end
   end
 
-  assign bias_valid = bank_loaded[active_bank] && (bank_block_idx[active_bank] == current_block_idx);
-  assign load_block_valid = (bank_loaded[1'b0] && (bank_block_idx[1'b0] == load_block_idx)) ||
-                            (bank_loaded[1'b1] && (bank_block_idx[1'b1] == load_block_idx));
-  assign load_block_bank = !(bank_loaded[1'b0] &&
-                             (bank_block_idx[1'b0] == load_block_idx));
-
-  assign group_data_scalar = active_bank
-                           ? $signed(bank1_words[group_read_idx])
-                           : $signed(bank0_words[group_read_idx]);
+  logic [1:0] load_window_hit;
+  logic [$clog2(GROUP_ELEMS)-1:0] current_word_base, scalar_word_idx;
+  logic [$clog2(GROUP_ELEMS)-1:0] scalar_word_base;
+  logic scalar_bank;
+  for (genvar b = 0; b < 2; b++) begin : gen_window_hit
+    assign load_window_hit[b] = bank_loaded[b] &&
+        load_block_idx >= bank_block_idx[b] &&
+        {1'b0, load_block_idx} + {1'b0, group_blocks_needed} <=
+        {1'b0, bank_block_idx[b]} + {1'b0, bank_blocks_count[b]};
+  end
+  assign bias_valid = bank_loaded[active_bank] &&
+      current_block_idx >= bank_block_idx[active_bank] &&
+      {1'b0, current_block_idx} + {1'b0, group_blocks_needed} <=
+      {1'b0, bank_block_idx[active_bank]} + {1'b0, bank_blocks_count[active_bank]};
+  assign load_block_valid = |load_window_hit;
+  assign load_block_bank = !load_window_hit[0];
+  assign current_word_base = $clog2(GROUP_ELEMS)'(
+      current_block_idx - bank_block_idx[active_bank]) << $clog2(SIZE);
+  // The scalar port follows the executing IS group while the command side
+  // selects and prepares subsequent groups in the same resident window.
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      scalar_word_base <= '0;
+      scalar_bank <= 1'b0;
+    end else if (init_cfg) begin
+      scalar_word_base <= '0;
+      scalar_bank <= 1'b0;
+    end else if (group_read_start) begin
+      scalar_word_base <= current_word_base;
+      scalar_bank <= active_bank;
+    end
+  end
+  assign scalar_word_idx = scalar_word_base + group_read_idx;
+  assign group_data_scalar = scalar_bank
+                           ? $signed(bank1_words[scalar_word_idx])
+                           : $signed(bank0_words[scalar_word_idx]);
 
   always_comb begin
     for (int i = 0; i < SIZE; i++) begin
-      data_out[i] = $signed(bank_lane_words[active_bank][i]);
+      data_out[i] = active_bank ? $signed(bank1_words[int'(current_word_base)+i]) :
+                                 $signed(bank0_words[int'(current_word_base)+i]);
     end
   end
 

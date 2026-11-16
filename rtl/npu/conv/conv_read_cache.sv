@@ -5,6 +5,8 @@ module conv_read_cache #(
   parameter int SETS=128,
   parameter int WAYS=2,
   parameter int LINE_BYTES=16,
+  parameter int BUS_WIDTH=32,
+  parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=3,
   parameter int DEMAND_DEPTH=4,
   parameter int SI=$clog2(SETS),
@@ -41,7 +43,7 @@ module conv_read_cache #(
   output logic [1:0] arburst,
   input logic rvalid,
   output logic rready,
-  input logic [31:0] rdata,
+  input logic [BUS_WIDTH-1:0] rdata,
   input logic [1:0] rresp,
   input logic rlast,
   input logic cfg_windowed = 1'b0,
@@ -66,10 +68,10 @@ module conv_read_cache #(
 );
   generate if (CACHE_POLICY==3) begin : g_window
     conv_windowed_cache #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
-      .DEMAND_DEPTH(DEMAND_DEPTH)) u_window (.*);
+      .DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_window (.*);
   end else begin : g_reference
     conv_read_cache_reference #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
-      .CACHE_POLICY(CACHE_POLICY)) u_reference (.*);
+      .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_reference (.*);
     assign prefetch_ready=1'b0;
     assign stat_prefetch_lines=0;
     assign stat_prefetch_used=0;
@@ -89,6 +91,8 @@ module conv_read_cache_reference #(
   parameter int SETS=32,
   parameter int WAYS=2,
   parameter int LINE_BYTES=16,
+  parameter int BUS_WIDTH=32,
+  parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=2,
   parameter int SI=$clog2(SETS),
   parameter int LB=$clog2(LINE_BYTES),
@@ -124,7 +128,7 @@ module conv_read_cache_reference #(
   output logic [1:0] arburst,
   input logic rvalid,
   output logic rready,
-  input logic [31:0] rdata,
+  input logic [BUS_WIDTH-1:0] rdata,
   input logic [1:0] rresp,
   input logic rlast,
   output logic [31:0] stat_hits, stat_misses, stat_read_bytes
@@ -161,8 +165,9 @@ module conv_read_cache_reference #(
   logic [31:0] ram_rdata;
   logic span_req_valid, span_req_ready;
   logic span_rsp_valid, span_rsp_ready, span_last, span_error;
-  logic [31:0] span_addr, span_data;
-  logic [3:0] span_strb;
+  logic [31:0] span_addr;
+  logic [BUS_WIDTH-1:0] span_data;
+  logic [BUS_WIDTH/8-1:0] span_strb;
   logic span_busy;
 
   function automatic logic [SI-1:0] address_set(input logic [31:0] address,
@@ -204,13 +209,13 @@ module conv_read_cache_reference #(
   assign ram_wen = state==FILL && span_rsp_valid && span_rsp_ready && allocation_q;
   assign ram_waddr = DA'((32'(way_q)*SETS+32'(set_q))*(LINE_BYTES/4)
                          +((span_addr>>2)&(LINE_BYTES/4-1)));
-  conv_sdp_ram #(.DEPTH(DEPTH),.AW(DA)) u_data (
+  conv_sdp_ram #(.DEPTH(DEPTH),.AW(DA),.WRITE_WIDTH(BUS_WIDTH)) u_data (
     .clk,.rd_en(ram_ren),.rd_addr(ram_raddr),.rd_data(ram_rdata),
     .wr_en(ram_wen),.wr_addr(ram_waddr),.wr_data(span_data),.wr_strb(span_strb)
   );
   assign span_req_valid = state==FILL_REQ;
   assign span_rsp_ready = state==FILL;
-  conv_axi_span_reader u_span (
+  conv_axi_span_reader #(.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_span (
     .clk,.rst_n,.req_valid(span_req_valid),.req_ready(span_req_ready),
     .req_addr(fill_first),.req_bytes(16'(fill_end-fill_first)),
     .rsp_valid(span_rsp_valid),.rsp_ready(span_rsp_ready),
@@ -305,8 +310,8 @@ module conv_read_cache_reference #(
           stat_read_bytes<=stat_read_bytes+32'($countones(span_strb));
           fill_error<=fill_error || span_error;
           if (request_geometry_q)
-            for (int b=0;b<4;b++)
-              if (span_strb[b]) transient_words[span_addr[3:2]][8*b+:8]<=span_data[8*b+:8];
+            for (int b=0;b<BUS_WIDTH/8;b++)
+              if (span_strb[b]) transient_words[(int'(span_addr[3:0])+b)/4][8*(b%4)+:8]<=span_data[8*b+:8];
           if (span_last) begin
             if (fill_error || span_error) begin
               rsp_error<=1;rsp_data<=0;transient_valid<=0;state<=RESP;
@@ -368,6 +373,8 @@ module conv_windowed_cache #(
   parameter int SETS=32,
   parameter int WAYS=2,
   parameter int LINE_BYTES=16,
+  parameter int BUS_WIDTH=32,
+  parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=3,
   parameter int DEMAND_DEPTH=4,
   parameter int SI=$clog2(SETS),
@@ -404,7 +411,7 @@ module conv_windowed_cache #(
   output logic [1:0] arburst,
   input logic rvalid,
   output logic rready,
-  input logic [31:0] rdata,
+  input logic [BUS_WIDTH-1:0] rdata,
   input logic [1:0] rresp,
   input logic rlast,
   input logic cfg_windowed = 1'b0,
@@ -485,8 +492,9 @@ module conv_windowed_cache #(
   logic [DA-1:0] ram_raddr, ram_waddr;
   logic [31:0] ram_rdata;
   logic span_req_ready, span_rsp_valid, span_rsp_ready, span_last, span_error, span_busy;
-  logic [31:0] span_addr, span_data;
-  logic [3:0] span_strb;
+  logic [31:0] span_addr;
+  logic [BUS_WIDTH-1:0] span_data;
+  logic [BUS_WIDTH/8-1:0] span_strb;
   logic fill_complete, fill_success, completing_demand;
   logic hint_pending_q;
   logic [31:LB] hint_tag;
@@ -675,11 +683,11 @@ module conv_windowed_cache #(
   assign ram_wen=fill_state==F_DATA && span_rsp_valid && span_rsp_ready;
   assign ram_waddr=DA'((32'(fill_way)*SETS+32'(fill_set))*(LINE_BYTES/4)+
                       ((span_addr>>2)&(LINE_BYTES/4-1)));
-  conv_sdp_ram #(.DEPTH(DEPTH),.AW(DA)) u_data(
+  conv_sdp_ram #(.DEPTH(DEPTH),.AW(DA),.WRITE_WIDTH(BUS_WIDTH)) u_data(
     .clk,.rd_en(ram_ren),.rd_addr(ram_raddr),.rd_data(ram_rdata),
     .wr_en(ram_wen),.wr_addr(ram_waddr),.wr_data(span_data),.wr_strb(span_strb));
   assign span_rsp_ready=fill_state==F_DATA;
-  conv_axi_span_reader u_span(
+  conv_axi_span_reader #(.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_span(
     .clk,.rst_n,.req_valid(fill_state==F_REQ || select_launch),.req_ready(span_req_ready),
     .req_addr(select_launch ? select_first : fill_first),
     .req_bytes(16'(select_launch ? select_end-select_first : fill_end-fill_first)),
@@ -895,7 +903,7 @@ module conv_windowed_cache #(
     assert(response_count<=DQ_CW'(DEMAND_DEPTH));
     if (consumed_response) assert(outstanding_count!=0);
     if (cfg_valid && cfg_ready) assert(outstanding_count==0);
-    if (ram_ren && ram_wen) assert(ram_raddr!=ram_waddr);
+    if (ram_ren && ram_wen) assert((ram_raddr/(BUS_WIDTH/32))!=(ram_waddr/(BUS_WIDTH/32)));
     assert(pf_count<=PF_CW'(PF_DEPTH));
     if (select_launch) begin
       assert(select_first<select_end && (fill_state==F_IDLE || fill_success));

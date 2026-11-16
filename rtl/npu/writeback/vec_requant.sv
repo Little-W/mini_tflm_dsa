@@ -1,4 +1,5 @@
 module vec_requant #(
+    parameter int BUS_WIDTH = 32,
     parameter int VLEN         = 16,
     parameter int REG_WIDTH    = 32,
     parameter int MAX_IA_REUSE = 2,
@@ -38,7 +39,7 @@ module vec_requant #(
     output logic                        dma_slot_id,
     output logic                        dma_use_16bits,
     output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    input  logic [REG_WIDTH-1:0]        dma_raw_data,
+    input  logic [BUS_WIDTH-1:0]        dma_raw_data,
     input  logic                        dma_raw_valid,
 
     // 数据口
@@ -55,6 +56,7 @@ module vec_requant #(
   generate
     if ((ENABLE_PER_CHANNEL == 0) && (ENABLE_IS_MODE == 0)) begin : g_tensor_ws
       vec_requant_tensor_ws #(
+          .BUS_WIDTH(BUS_WIDTH),
           .VLEN     (VLEN),
           .REG_WIDTH(REG_WIDTH)
       ) u_tensor_ws (
@@ -99,6 +101,7 @@ module vec_requant #(
       end
     end else begin : g_full
       vec_requant_full #(
+          .BUS_WIDTH(BUS_WIDTH),
           .VLEN              (VLEN),
           .REG_WIDTH         (REG_WIDTH),
           .MAX_IA_REUSE      (MAX_IA_REUSE),
@@ -148,6 +151,7 @@ module vec_requant #(
 endmodule
 
 module vec_requant_tensor_ws #(
+    parameter int BUS_WIDTH = 32,
     parameter int VLEN      = 16,
     parameter int REG_WIDTH = 32
 ) (
@@ -180,7 +184,7 @@ module vec_requant_tensor_ws #(
     output logic                        dma_slot_id,
     output logic                        dma_use_16bits,
     output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    input  logic [REG_WIDTH-1:0]        dma_raw_data,
+    input  logic [BUS_WIDTH-1:0]        dma_raw_data,
     input  logic                        dma_raw_valid,
 
     input  logic               in_valid,
@@ -607,6 +611,7 @@ module vec_requant_tensor_ws #(
 endmodule
 
 module vec_requant_full #(
+    parameter int BUS_WIDTH = 32,
     parameter int VLEN         = 16,
     parameter int REG_WIDTH    = 32,
     parameter int MAX_IA_REUSE = 2,
@@ -646,7 +651,7 @@ module vec_requant_full #(
     output logic                        dma_slot_id,
     output logic                        dma_use_16bits,
     output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    input  logic [REG_WIDTH-1:0]        dma_raw_data,
+    input  logic [BUS_WIDTH-1:0]        dma_raw_data,
     input  logic                        dma_raw_valid,
 
     // 数据口
@@ -934,7 +939,7 @@ module vec_requant_full #(
 
   // DMA len = 需要拍数-1（0 表示 1 拍）
   always_comb begin
-    burst_len_cur = 8'((chunk_need_cur > 0) ? (chunk_need_cur - 1) : 0);
+    burst_len_cur = 8'((chunk_need_cur > 0) ? ((chunk_need_cur+BUS_WIDTH/32-1)/(BUS_WIDTH/32) - 1) : 0);
   end
 
   // ----------------------------
@@ -975,41 +980,29 @@ module vec_requant_full #(
   (* ram_style = "distributed" *) logic signed [31:0] ch_shift_is_r[QBUF_DEPTH];
   (* ram_style = "distributed" *) logic [5:0]         ch_lshift_is_r    [QBUF_DEPTH];
   (* ram_style = "distributed" *) logic [5:0]         ch_rshift_is_r    [QBUF_DEPTH];
-  logic signed [31:0] quant_rsp_shift_signed;
-  logic signed [31:0] quant_rsp_shift_abs;
-  logic [5:0]         quant_rsp_lshift;
-  logic [5:0]         quant_rsp_rshift;
-  wire [VLEN_IDX_W-1:0] quant_rsp_lane_idx = VLEN_IDX_W'(quant_rsp_idx);
-
-  always_comb begin
-    quant_rsp_shift_signed = $signed(dma_raw_data);
-    quant_rsp_shift_abs = -quant_rsp_shift_signed;
-    quant_rsp_lshift = 6'd0;
-    quant_rsp_rshift = 6'd0;
-    if (quant_rsp_shift_signed > 32'sd0) begin
-      quant_rsp_lshift = quant_rsp_shift_signed[5:0];
-    end else if (quant_rsp_shift_signed < 32'sd0) begin
-      quant_rsp_rshift = (quant_rsp_shift_abs > 32'sd63) ? 6'd63 : quant_rsp_shift_abs[5:0];
-    end
-  end
-
-  always_ff @(posedge clk) begin
-    if (rsp_hskd) begin
-      if (is_mode_r) begin
-        if (load_phase == PH_MUL) begin
-          ch_multiplier_is_r[quant_rsp_idx] <= dma_raw_data;
+  for(genvar word=0;word<BUS_WIDTH/32;word++)begin:g_parameter_word
+    wire signed [31:0] shift_value=$signed(dma_raw_data[word*32+:32]);
+    wire signed [31:0] shift_abs=-shift_value;
+    wire [5:0] left_shift=shift_value>0 ? shift_value[5:0] : 6'd0;
+    wire [5:0] right_shift=shift_value<0 ? (shift_abs>63 ? 6'd63 : shift_abs[5:0]) : 6'd0;
+    wire [QBUF_IDX_W-1:0] index=quant_rsp_idx+QBUF_IDX_W'(word);
+    wire [VLEN_IDX_W-1:0] lane_index=VLEN_IDX_W'(index);
+    always_ff @(posedge clk) begin
+      if(rsp_hskd && (32'(rd_beats_cnt)+word)<32'(beats_expect)) begin
+        if(is_mode_r) begin
+          if(load_phase==PH_MUL) ch_multiplier_is_r[index]<=shift_value;
+          else begin
+            ch_shift_is_r[index]<=shift_value;
+            ch_lshift_is_r[index]<=left_shift;
+            ch_rshift_is_r[index]<=right_shift;
+          end
         end else begin
-          ch_shift_is_r[quant_rsp_idx] <= $signed(dma_raw_data);
-          ch_lshift_is_r[quant_rsp_idx] <= quant_rsp_lshift;
-          ch_rshift_is_r[quant_rsp_idx] <= quant_rsp_rshift;
-        end
-      end else begin
-        if (load_phase == PH_MUL) begin
-          ch_multiplier_lane_r[quant_rsp_lane_idx] <= dma_raw_data;
-        end else begin
-          ch_shift_lane_r[quant_rsp_lane_idx] <= $signed(dma_raw_data);
-          ch_lshift_lane_r[quant_rsp_lane_idx] <= quant_rsp_lshift;
-          ch_rshift_lane_r[quant_rsp_lane_idx] <= quant_rsp_rshift;
+          if(load_phase==PH_MUL) ch_multiplier_lane_r[lane_index]<=shift_value;
+          else begin
+            ch_shift_lane_r[lane_index]<=shift_value;
+            ch_lshift_lane_r[lane_index]<=left_shift;
+            ch_rshift_lane_r[lane_index]<=right_shift;
+          end
         end
       end
     end
@@ -1209,10 +1202,10 @@ module vec_requant_full #(
               end
 `endif
 
-              rd_beats_cnt <= rd_beats_cnt + VLEN_CNT_W'(1);
+              rd_beats_cnt <= rd_beats_cnt + VLEN_CNT_W'(BUS_WIDTH/32);
 
               // 3) 本次突发收满：决定是切 phase 还是完成 LOAD
-              if ((rd_beats_cnt + VLEN_CNT_W'(1)) == beats_expect) begin
+              if ((rd_beats_cnt + VLEN_CNT_W'(BUS_WIDTH/32)) >= beats_expect) begin
                 cmd_busy <= 1'b0;  // 本突发结束
                 if (requant_trace_en) begin
                   $display("[%0t] REQ rsp_done phase=%0d beats=%0d tile=(%0d,%0d) off=%0d",

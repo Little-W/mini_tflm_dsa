@@ -4,6 +4,10 @@
 // Inputs in 0x10000..0x1ffff are guarded by exact allocation bounds.
 module conv_test_axi_memory #(
     parameter int WORDS = 131072,
+    parameter int BUS_WIDTH = 32,
+    parameter int READ_BEAT_CYCLES = 1,
+    parameter int READ_FIRST_LATENCY = 8,
+    parameter bit PIPELINED_READ = 1'b1,
     parameter int QUEUE_DEPTH = 16
 ) (
     input logic clk, rst_n, new_job,
@@ -17,14 +21,16 @@ module conv_test_axi_memory #(
     input logic [31:0] araddr, input logic [7:0] arlen,
     input logic [2:0] arsize, input logic [1:0] arburst,
     output logic rvalid, input logic rready,
-    output logic [31:0] rdata, output logic [1:0] rresp, output logic rlast,
+    output logic [BUS_WIDTH-1:0] rdata, output logic [1:0] rresp, output logic rlast,
     input logic awvalid, output logic awready,
     input logic [31:0] awaddr, input logic [7:0] awlen,
     input logic [2:0] awsize, input logic [1:0] awburst,
     input logic wvalid, output logic wready,
-    input logic [31:0] wdata, input logic [3:0] wstrb, input logic wlast,
+    input logic [BUS_WIDTH-1:0] wdata, input logic [BUS_WIDTH/8-1:0] wstrb, input logic wlast,
     output logic bvalid, input logic bready, output logic [1:0] bresp
 );
+    localparam int BUS_BYTES=BUS_WIDTH/8;
+    localparam int BUS_SHIFT=$clog2(BUS_BYTES);
     logic [31:0] mem[WORDS];
     // Test-only accounting, indexed by byte address within the input arena.
     int unsigned input_hist[65536];
@@ -33,6 +39,8 @@ module conv_test_axi_memory #(
     logic [8:0] qn[QUEUE_DEPTH];
     logic [2:0] qs[QUEUE_DEPTH];
     logic [1:0] qe[QUEUE_DEPTH];
+    longint unsigned q_ready_cycle[QUEUE_DEPTH];
+    longint unsigned memory_cycle;
     int unsigned wp=0,rp=0,count=0;
     bit rd_active=0,wr_active=0;
     logic [31:0] rd_addr=0,wr_addr=0;
@@ -41,18 +49,30 @@ module conv_test_axi_memory #(
     logic [1:0] rd_error=0;
     logic [31:0] random_state=32'h12345678;
     bit random_wait;
-    wire pop = !rd_active && count!=0;
+    wire next_request_ready = count != 0 &&
+        memory_cycle + 64'd1 >= q_ready_cycle[rp];
+    wire pop = PIPELINED_READ ?
+        (next_request_ready && (!rd_active || (rvalid && rready && rd_left == 1)) &&
+         (!random_wait || random_state[5])) : (!rd_active && count != 0);
     wire push = arvalid && arready;
+    wire direct_request = PIPELINED_READ && READ_FIRST_LATENCY == 1 && push && count == 0 &&
+        (!rd_active || (rvalid && rready && rd_left == 1)) &&
+        (!random_wait || random_state[5]);
+    wire queue_push = push && !direct_request;
     initial random_wait = !$test$plusargs("NO_RANDOM_WAIT");
+    initial assert(READ_BEAT_CYCLES == 1 || READ_BEAT_CYCLES == 2)
+        else $fatal(1,"READ_BEAT_CYCLES must be one or two");
+    initial assert(!PIPELINED_READ || READ_FIRST_LATENCY >= 1)
+        else $fatal(1,"Pipelined synchronous reads require a positive first-response latency");
 
-    function automatic logic [31:0] beat(input logic [31:0] addr,input logic [2:0] size);
-        logic [31:0] result;
+    function automatic logic [BUS_WIDTH-1:0] beat(input logic [31:0] addr,input logic [2:0] size);
+        logic [BUS_WIDTH-1:0] result;
         int unsigned lane;
-        result=32'ha5a5a5a5;
-        for(int i=0;i<4;i++)begin
-            lane=(addr&32'd3);
+        result={BUS_BYTES{8'ha5}};
+        for(int i=0;i<BUS_BYTES;i++)begin
+            lane=(addr&32'(BUS_BYTES-1));
             if(i>=int'(lane) && i<int'(lane)+(1<<size))
-                result[i*8+:8]=mem[int'(addr>>2)][i*8+:8];
+                result[i*8+:8]=mem[int'(((addr&~32'(BUS_BYTES-1))+32'(i))>>2)][(i%4)*8+:8];
         end
         return result;
     endfunction
@@ -64,11 +84,12 @@ module conv_test_axi_memory #(
     always @(posedge clk) begin
         if(!rst_n)begin
             for(int i=0;i<65536;i++)input_hist[i]=0;
-            wp<=0;rp<=0;count<=0;rd_active<=0;wr_active<=0;
+            wp<=0;rp<=0;count<=0;rd_active<=0;wr_active<=0;memory_cycle<=0;
             rvalid<=0;rlast<=0;rdata<=0;rresp<=0;bvalid<=0;bresp<=0;
             read_bytes<=0;input_read_bytes<=0;read_requests<=0;write_bytes<=0;
             error_injected<=0;random_state<=32'h12345678;
         end else begin
+            memory_cycle<=memory_cycle+64'd1;
             random_state<={random_state[30:0],random_state[31]^random_state[21]^random_state[1]^random_state[0]};
             if(new_job)begin
                 for(int i=0;i<65536;i++)input_hist[i]=0;
@@ -77,7 +98,7 @@ module conv_test_axi_memory #(
                 read_bytes<=0;input_read_bytes<=0;read_requests<=0;write_bytes<=0;
                 error_injected<=0;random_state<=32'h12345678;
             end
-            case({push,pop})
+            case({queue_push,pop})
                 2'b10:count<=count+1;
                 2'b01:count<=count-1;
                 default:;
@@ -93,7 +114,7 @@ module conv_test_axi_memory #(
                     if(other_lo[region]!=0 && araddr>=other_lo[region] &&
                        64'(araddr)+bytes_last<=64'(other_hi[region]))range_allowed=1;
                 end
-                assert(arsize<=2 && arburst==2'b01) else $fatal(1,"unsupported AXI read");
+                assert(arsize<=3'(BUS_SHIFT) && arburst==2'b01) else $fatal(1,"unsupported AXI read");
                 assert(64'(araddr)+bytes_last<=64'(WORDS)*4) else $fatal(1,"memory read out of range");
                 assert((64'(araddr)&4095)+bytes_last<=4096) else $fatal(1,"AXI read crosses 4 KiB");
                 if(protect_input)assert(range_allowed)
@@ -107,18 +128,12 @@ module conv_test_axi_memory #(
                     end
                 end
                 qa[wp]<=araddr;qn[wp]<={1'b0,arlen}+9'd1;qs[wp]<=arsize;qe[wp]<=0;
+                q_ready_cycle[wp]<=memory_cycle+64'(READ_FIRST_LATENCY);
                 if((input_access || !protect_input) && inject_error && !error_injected)begin
                     qe[wp]<=2'b10;error_injected<=1;
                 end
-                wp<=wp==QUEUE_DEPTH-1?0:wp+1;
+                if(!direct_request)wp<=wp==QUEUE_DEPTH-1?0:wp+1;
                 read_bytes<=read_bytes+bytes_last;read_requests<=read_requests+1;
-            end
-            if(pop)begin
-                rd_active<=1;rd_addr<=qa[rp];rd_left<=qn[rp];rd_size<=qs[rp];rd_error<=qe[rp];
-                rp<=rp==QUEUE_DEPTH-1?0:rp+1;
-            end
-            if(rd_active && !rvalid && (!random_wait || random_state[5]))begin
-                rvalid<=1;rdata<=beat(rd_addr,rd_size);rresp<=rd_error;rlast<=rd_left==1;
             end
             if(rvalid && rready)begin
                 rvalid<=0;
@@ -128,15 +143,44 @@ module conv_test_axi_memory #(
                     rd_addr<=(rd_addr&~((32'd1<<rd_size)-1))+(32'd1<<rd_size);
                 end
             end
+            if(pop)begin
+                rd_active<=1;rd_addr<=qa[rp];rd_left<=qn[rp];rd_size<=qs[rp];rd_error<=qe[rp];
+                rp<=rp==QUEUE_DEPTH-1?0:rp+1;
+                if(PIPELINED_READ)begin
+                    // The memory array is sampled on this clock edge. The
+                    // registered response can be accepted on the next edge.
+                    rvalid<=1;rdata<=beat(qa[rp],qs[rp]);rresp<=qe[rp];rlast<=qn[rp]==1;
+                end
+            end
+            if(direct_request)begin
+                rd_active<=1;rd_addr<=araddr;rd_left<={1'b0,arlen}+9'd1;rd_size<=arsize;
+                rd_error<=((!protect_input || (araddr>=32'h10000 && araddr<32'h20000)) &&
+                    inject_error && !error_injected) ? 2'b10 : 2'b00;
+                rresp<=((!protect_input || (araddr>=32'h10000 && araddr<32'h20000)) &&
+                    inject_error && !error_injected) ? 2'b10 : 2'b00;
+                rvalid<=1;rdata<=beat(araddr,arsize);rlast<=arlen==0;
+            end
+            if(rd_active && (!rvalid ||
+               (READ_BEAT_CYCLES == 1 && rready && rd_left > 1)) &&
+               (!random_wait || random_state[5]))begin
+                rvalid<=1;rresp<=rd_error;
+                if(rvalid && rready)begin
+                    rdata<=beat((rd_addr&~((32'd1<<rd_size)-1))+(32'd1<<rd_size),rd_size);
+                    rlast<=rd_left==2;
+                end else begin
+                    rdata<=beat(rd_addr,rd_size);rlast<=rd_left==1;
+                end
+            end
             if(awvalid && awready)begin
-                assert(awsize<=2 && awburst==2'b01) else $fatal(1,"unsupported AXI write");
+                assert(awsize<=3'(BUS_SHIFT) && awburst==2'b01) else $fatal(1,"unsupported AXI write");
                 assert(64'(awaddr)+((64'(awlen)+1)<<awsize)<=64'(WORDS)*4) else $fatal(1,"write out of range");
                 assert((64'(awaddr)&4095)+((64'(awlen)+1)<<awsize)<=4096) else $fatal(1,"AXI write crosses 4 KiB");
                 wr_active<=1;wr_addr<=awaddr;wr_left<={1'b0,awlen}+9'd1;wr_size<=awsize;
             end
             if(wvalid && wready)begin
                 assert(wlast==(wr_left==1)) else $fatal(1,"bad WLAST");
-                for(int i=0;i<4;i++)if(wstrb[i])mem[int'(wr_addr>>2)][i*8+:8]<=wdata[i*8+:8];
+                for(int i=0;i<BUS_BYTES;i++)if(wstrb[i])
+                    mem[int'(((wr_addr&~32'(BUS_BYTES-1))+32'(i))>>2)][(i%4)*8+:8]<=wdata[i*8+:8];
                 write_bytes<=write_bytes+64'($countones(wstrb));
                 if(wr_left==1)begin
                     wr_active<=0;bvalid<=1;bresp<=0;
@@ -148,12 +192,15 @@ module conv_test_axi_memory #(
         end
     end
 
-    logic ar_stalled=0,aw_stalled=0,w_stalled=0;
+    logic ar_stalled=0,aw_stalled=0,w_stalled=0,r_stalled=0;
     logic [44:0] old_ar,old_aw;
-    logic [36:0] old_w;
+    logic [BUS_WIDTH+BUS_WIDTH/8:0] old_w;
+    logic [BUS_WIDTH+2:0] old_r;
     always @(posedge clk)begin
-        if(!rst_n)begin ar_stalled<=0;aw_stalled<=0;w_stalled<=0;end
+        if(!rst_n)begin ar_stalled<=0;aw_stalled<=0;w_stalled<=0;r_stalled<=0;end
         else begin
+            if(r_stalled)assert(rvalid && {rdata,rresp,rlast}===old_r)else $fatal(1,"unstable stalled R");
+            r_stalled<=rvalid&&!rready;old_r<={rdata,rresp,rlast};
             if(ar_stalled)assert(arvalid && {araddr,arlen,arsize,arburst}===old_ar)else $fatal(1,"unstable stalled AR");
             if(aw_stalled)assert(awvalid && {awaddr,awlen,awsize,awburst}===old_aw)else $fatal(1,"unstable stalled AW");
             if(w_stalled)assert(wvalid && {wdata,wstrb,wlast}===old_w)else $fatal(1,"unstable stalled W");

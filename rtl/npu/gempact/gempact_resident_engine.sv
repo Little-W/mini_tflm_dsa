@@ -5,6 +5,7 @@ module gempact_resident_engine #(
     parameter int unsigned DATA_WIDTH = 16,  // IA数据宽度
     parameter int unsigned SIZE = 16,  // 阵列大小
     parameter int unsigned BUS_WIDTH = 32,  // 总线宽度
+    parameter int unsigned DMA_MAX_BYTES = 1024,
     parameter int unsigned REG_WIDTH = 32,  // 寄存器宽度
     parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
@@ -133,7 +134,7 @@ module gempact_resident_engine #(
  (* ram_style="distributed" *)logic[31:0] a_tags[64];logic[31:0] b_tags[2];
  logic weights_valid;logic[31:0] weights_key;
  logic fetch_b;
- logic rd_start,rd_busy,rd_done,wr_start,wr_busy,wr_done,rd_error,wr_error;
+ logic rd_start,rd_start_ready,rd_busy,rd_done,wr_start,wr_busy,wr_done,rd_error,wr_error;
  logic[5:0] dma_slot;logic[3:0] dma_row,dma_col;
  logic signed[7:0] dma_data[4];logic dma_valid[4];
  logic signed[7:0] a_data[16],b_data[16],ia_debug[16],weight_debug[16];
@@ -217,9 +218,9 @@ module gempact_resident_engine #(
   .output_valid(fifo_valid),.output_ready(fifo_ready),.output_row_switch(fifo_row_switch),.output_mask(fifo_mask),.output_data(fifo_data),.fifo_full_flag(fifo_full));
  assign rd_start=state==LOAD_A || state==LOAD_B;
  assign wr_start=state==WRITE_START;
- axi_dual_block_dma #(.DATA_WIDTH(8),.SIZE(16),.CACHE_BLOCKS(64),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) u_dma(
+ axi_dual_block_dma #(.DMA_MAX_BYTES(DMA_MAX_BYTES),.DATA_WIDTH(8),.SIZE(16),.CACHE_BLOCKS(64),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) u_dma(
  .conv_cfg_ready(),.conv_error(),.conv_busy(),.conv_stat_hits(),.conv_stat_misses(),.conv_stat_read_bytes(),
- .clk(clk),.rst_n(rst_n),.rd_start(rd_start),.rd_linear_read_mode(1'b0),.rd_base_addr(fetch_b?b_addr:a_addr),
+ .clk(clk),.rst_n(rst_n),.rd_start(rd_start),.rd_tag(3'd0),.rd_start_ready(rd_start_ready),.rd_response_tag(),.rd_finish_tag(),.rd_linear_read_mode(1'b0),.rd_base_addr(fetch_b?b_addr:a_addr),
  .rd_row_stride(fetch_b?bstride:astride),.rd_rows_to_read(32'd16),.rd_valid_cols(32'd16),.rd_burst_len_m1(8'd3),
  .rd_slot_id(fetch_b?{5'b0,b_slot}:a_slot),.rd_use_16bits(1'b0),.rd_lhs_zp(32'b0),.rd_busy(rd_busy),.rd_done(rd_done),.rd_finish_beat(),
  .wr_start(wr_start),.wr_base_addr(c_addr),.wr_row_stride(cstride),.wr_rows_to_write(32'd16),.wr_burst_len_m1(8'd3),.wr_busy(wr_busy),.wr_done(wr_done),
@@ -303,14 +304,14 @@ module gempact_resident_engine #(
     ADDR1:begin a_addr<=abase+(a_product<<4)+{12'b0,cmd_k,4'b0};b_addr<=bbase+(b_product<<4)+{12'b0,cmd_k,4'b0};
      c_addr<=cbase+(c_product<<4)+(mode?{12'b0,cmd_gr,4'b0}:{12'b0,cmd_gc,4'b0});state<=CACHE_A;end
     CACHE_A:if(a_valid[a_slot] && a_tags[a_slot]==a_key)state<=CACHE_B;else begin fetch_b<=0;state<=LOAD_A;end
-    LOAD_A:state<=CACHE_B; // DMA launch pulse; CACHE_B waits for accepted A read.
+    LOAD_A:if(rd_start_ready)state<=CACHE_B;
     CACHE_B:begin
      if(!fetch_b && rd_busy)begin end
      else if(!fetch_b && rd_done)begin a_valid[a_slot]<=1;a_tags[a_slot]<=a_key;end
      else if(b_valid[b_slot] && b_tags[b_slot]==b_key)state<=CORE_START;
      else begin fetch_b<=1;state<=LOAD_B;end
     end
-    LOAD_B:state<=WAIT_ROWS;
+    LOAD_B:if(rd_start_ready)state<=WAIT_ROWS;
     WAIT_ROWS:begin
      if(fetch_b && rd_done)begin b_valid[b_slot]<=1;b_tags[b_slot]<=b_key;state<=CORE_START;end
      else if(sum_valid && sum_row==15)state<=COMMIT;

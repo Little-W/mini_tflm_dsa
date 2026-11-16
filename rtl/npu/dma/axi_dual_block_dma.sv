@@ -17,8 +17,11 @@ module axi_dual_block_dma #(
     parameter int unsigned BUS_WIDTH    = 32,
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned CACHE_BLOCKS = 4,
+    parameter int unsigned DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8),
     parameter int unsigned READ_OUTSTANDING = 4,
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
+    parameter int unsigned RD_CONTEXT_DEPTH = 4,
+    parameter int unsigned RD_TAG_WIDTH = 3,
     parameter int unsigned IM2COL_SIZE = SIZE,
     parameter int unsigned WINDOW_OUTSTANDING = 4,
     parameter int unsigned CONV_CACHE_SETS = 128,
@@ -65,6 +68,10 @@ module axi_dual_block_dma #(
     input  logic [31:0] rd_q0 = 32'd0,
     input  logic [31:0] rd_group = 32'd0,
     input  logic                                   rd_start,
+    input  logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0,
+    output logic                                   rd_start_ready,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag,
     input  logic                                   rd_linear_read_mode,
     input  logic        [           REG_WIDTH-1:0] rd_base_addr,
     input  logic        [           REG_WIDTH-1:0] rd_row_stride,
@@ -151,12 +158,14 @@ module axi_dual_block_dma #(
     localparam int COL_W = $clog2(SIZE);
     localparam int CONV_CW = $clog2(IM2COL_SIZE);
     localparam int CONV_RW = $clog2(IM2COL_SIZE+1);
-    localparam bit CONV_SUPPORTED = DATA_WIDTH >= 16 && BUS_WIDTH == 32 &&
+    localparam bit CONV_SUPPORTED = DATA_WIDTH >= 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
                                    REG_WIDTH == 32 && IM2COL_SIZE <= SIZE;
 
     logic job_conv, job_range;
     logic cfg_fire;
     logic linear_start, linear_busy, linear_done, linear_finish, linear_error;
+    logic linear_start_ready;
+    logic [RD_TAG_WIDTH-1:0] linear_response_tag, linear_finish_tag, conv_tag_q;
     logic [SLOT_W-1:0] linear_slot;
     logic [COL_W-1:0] linear_row, linear_col;
     logic signed [DATA_WIDTH-1:0] linear_data [LANES];
@@ -194,7 +203,8 @@ module axi_dual_block_dma #(
     logic signed [15:0] fe_data [4];
     logic [3:0] fe_mask;
     logic fe_arvalid, fe_arready, fe_rvalid, fe_rready, fe_rlast;
-    logic [31:0] fe_araddr, fe_rdata;
+    logic [31:0] fe_araddr;
+    logic [BUS_WIDTH-1:0] fe_rdata;
     logic [7:0] fe_arlen;
     logic [2:0] fe_arsize;
     logic [1:0] fe_arburst, fe_rresp;
@@ -234,15 +244,26 @@ module axi_dual_block_dma #(
         .stat_consecutive_responses(win_stat_consecutive_responses),
         .stat_request_response_overlap(win_stat_request_response_overlap)
     );
-    logic accept_read, direct_issue;
+    logic accept_read, accept_linear, accept_image, image_start_ready, direct_issue;
     assign rd_busy = linear_busy || conv_active || fe_busy || win_busy || !guard_idle || !mux_idle;
     assign rd_done = linear_done || conv_done_r;
     // Linear completion keeps the original final-R-edge launch window. The
     // frontend completion follows its final output and read-side drain.
     assign rd_finish_beat = linear_finish || conv_done_r;
-    assign accept_read = rd_start && (!rd_busy || rd_finish_beat) && !conv_cfg_valid;
-    assign linear_start = accept_read && !rd_im2col;
-    assign direct_issue=accept_read && rd_im2col && CONV_SUPPORTED && job_conv && !fe_error &&
+    assign image_start_ready = !conv_cfg_valid &&
+        ((!rd_busy || (job_conv && rd_finish_beat)) && !win_busy);
+    assign rd_start_ready =
+        ((!job_conv && !rd_im2col) ?
+            (!conv_cfg_valid && linear_start_ready && !conv_active &&
+             !conv_pending && !fe_busy && !win_busy) : image_start_ready);
+    assign accept_linear = rd_start && !rd_im2col && rd_start_ready;
+    assign accept_image = rd_start && rd_im2col && image_start_ready;
+    assign accept_read = accept_linear || accept_image;
+    assign rd_response_tag = ((fe_wr_valid && !win_frontend_active) || conv_done_r) ?
+                             conv_tag_q : linear_response_tag;
+    assign rd_finish_tag = linear_finish ? linear_finish_tag : conv_tag_q;
+    assign linear_start = accept_linear;
+    assign direct_issue=accept_image && CONV_SUPPORTED && job_conv && !fe_error &&
       rd_rows_to_read>0 && rd_rows_to_read<=REG_WIDTH'(IM2COL_SIZE) && fe_tile_ready;
     assign rd_error = linear_done ? linear_error :
                       conv_done_r ? conv_done_error :
@@ -258,6 +279,7 @@ module axi_dual_block_dma #(
             conv_finished <= 1'b0; conv_command_error <= 1'b0;
             conv_done_r <= 1'b0; conv_done_error <= 1'b0;
             descriptor_error <= 1'b0; command_im2col <= 1'b0;
+            conv_tag_q <= '0;
             p0_q <= '0; q0_q <= '0; group_q <= '0; rows_q <= '0; cols_q <= '0; slot_q <= '0;
         end else begin
             conv_done_r <= 1'b0;
@@ -270,6 +292,7 @@ module axi_dual_block_dma #(
             if (accept_read) begin
                 command_im2col <= rd_im2col;
                 if (rd_im2col) begin
+                    conv_tag_q <= rd_tag;
                     conv_active <= 1'b1;
                     p0_q <= rd_p0; q0_q <= rd_q0; group_q <= rd_group;
                     rows_q <= CONV_RW'(rd_rows_to_read); slot_q <= rd_slot_id;
@@ -303,6 +326,7 @@ module axi_dual_block_dma #(
     // so a linear->im2col switch cannot discard that final matrix beat.
     always_comb begin
         wr_slot = linear_slot; wr_row = linear_row; wr_col_base = linear_col;
+        if (conv_done_r) wr_slot = slot_q;
         wr_use_16bits = linear_use_16bits;
         for (int i=0; i<LANES; i++) begin
             wr_data[i] = linear_data[i]; wr_valid[i] = linear_valid[i];
@@ -321,11 +345,15 @@ module axi_dual_block_dma #(
     end
 
     axi_linear_block_dma #(
+        .DMA_MAX_BYTES(DMA_MAX_BYTES),
         .DATA_WIDTH(DATA_WIDTH), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH),
         .REG_WIDTH(REG_WIDTH), .CACHE_BLOCKS(CACHE_BLOCKS),
-        .READ_OUTSTANDING(READ_OUTSTANDING), .WRITE_OUTSTANDING(WRITE_OUTSTANDING)
+        .READ_OUTSTANDING(READ_OUTSTANDING), .WRITE_OUTSTANDING(WRITE_OUTSTANDING),
+        .RD_CONTEXT_DEPTH(RD_CONTEXT_DEPTH), .RD_TAG_WIDTH(RD_TAG_WIDTH)
     ) u_linear (
         .clk, .rst_n, .rd_start(linear_start), .rd_linear_read_mode,
+        .rd_tag, .rd_start_ready(linear_start_ready),
+        .rd_response_tag(linear_response_tag), .rd_finish_tag(linear_finish_tag),
         .rd_base_addr, .rd_row_stride, .rd_rows_to_read, .rd_valid_cols,
         .rd_burst_len_m1, .rd_slot_id, .rd_use_16bits, .rd_lhs_zp,
         .rd_busy(linear_busy), .rd_done(linear_done), .rd_finish_beat(linear_finish),
@@ -369,6 +397,7 @@ module axi_dual_block_dma #(
 
     generate if (CONV_SUPPORTED) begin : g_im2col
         conv_im2col_frontend #(
+            .BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
             .SIZE(IM2COL_SIZE), .SLOT_W(SLOT_W), .LANES(4),
             .CACHE_SETS(CONV_CACHE_SETS), .CACHE_WAYS(CONV_CACHE_WAYS),
             .LINE_BYTES(CONV_LINE_BYTES), .CACHE_POLICY(CONV_CACHE_POLICY)
@@ -452,8 +481,8 @@ module axi_dual_block_dma #(
     always_ff @(posedge clk) if (rst_n) begin
         if (cfg_fire) assert(!rd_start && !rd_busy && !win_busy)
             else $error("DMA job configuration requires all reads to complete");
-        if (rd_start) assert(!rd_busy || rd_finish_beat)
-            else $error("DMA read command without an available command slot");
+        if (accept_read && rd_im2col) assert(!linear_busy || linear_finish)
+            else $error("Image command requires ordinary reads to complete");
         if (fe_wr_valid) begin
             assert((conv_active && command_im2col) || win_frontend_active);
             assert(!(conv_active && win_frontend_active));

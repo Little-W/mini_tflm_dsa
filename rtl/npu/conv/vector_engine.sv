@@ -2,6 +2,7 @@
 // Descriptor-driven vector arithmetic, quantized Add, depthwise and pooling.
 module vector_engine #(
   parameter int TILE = 16,
+  parameter int BUS_WIDTH = 32,
   parameter int DMA_SIZE = 4*TILE,
   parameter int PE_COUNT = (TILE < 8) ? TILE : 8,
   parameter int MAX_TAPS = 49,
@@ -42,22 +43,24 @@ module vector_engine #(
   output logic [7:0] rd_burst_len_m1,
   output logic rd_use_16bits,
   input logic rd_busy, rd_done, rd_error,
-  input logic signed [15:0] rd_data [4],
-  input logic rd_valid [4],
+  input logic signed [15:0] rd_data [BUS_WIDTH/8],
+  input logic rd_valid [BUS_WIDTH/8],
   input logic [$clog2(DMA_SIZE)-1:0] rd_col_base,
-  input logic [31:0] rd_raw_data,
+  input logic [BUS_WIDTH-1:0] rd_raw_data,
   input logic rd_raw_valid,
 
   output logic wr_req, wr_start,
   input logic wr_granted,
   output logic [31:0] wr_base_addr, wr_row_stride, wr_rows_to_write,
   output logic [7:0] wr_burst_len_m1,
-  output logic [31:0] src_wdata,
-  output logic [3:0] src_wmask,
+  output logic [BUS_WIDTH-1:0] src_wdata,
+  output logic [BUS_WIDTH/8-1:0] src_wmask,
   output logic src_wvalid,
   input logic src_wready, wr_busy, wr_done, wr_error
 );
   import vector_engine_pkg::*;
+  localparam int BUS_BYTES=BUS_WIDTH/8;
+  localparam int BUS_SHIFT=$clog2(BUS_BYTES);
   typedef enum logic [5:0] {
     IDLE, CHECK, CONFIGURE, TILE_INIT, LOAD_REQ, LOAD_WAIT,
     OUTPUT_INIT, TAP_CHECK, WINDOW_WAIT, EXECUTE, TAP_NEXT,
@@ -110,16 +113,17 @@ module vector_engine #(
   typedef enum logic [1:0] {WB_IDLE, WB_REQ, WB_DATA, WB_WAIT} wb_state_t;
   wb_state_t wb_state;
   logic [31:0] write_origin, write_total, write_index;
-  logic [31:0] pack_addr, pack_count, pack_data;
-  logic [3:0] pack_mask;
+  logic [31:0] pack_addr, pack_count;
+  logic [BUS_WIDTH-1:0] pack_data;
+  logic [BUS_BYTES-1:0] pack_mask;
   logic div_start, div_busy, div_done, div_zero, avg_negative, avg_power_two;
   logic [5:0] avg_shift;
   logic [31:0] div_numerator, div_quotient, div_remainder, avg_magnitude;
   logic input_range_mode, cache_power_two;
   logic [5:0] cache_channel_shift;
-  logic [2:0] cache_received_count;
-  logic cache_lane_valid[4];
-  logic [2:0] cache_lane_prefix[4];
+  logic [BUS_SHIFT:0] cache_received_count;
+  logic cache_lane_valid[BUS_BYTES];
+  logic [BUS_SHIFT:0] cache_lane_prefix[BUS_BYTES];
   logic [1:0] read_bank,wf_bank,input_bank_mask;
   logic [3:0] input_ready,input_reserved;
   logic [31:0] input_position[4],input_tap[4];
@@ -211,7 +215,7 @@ module vector_engine #(
     pool_elements=cache_power_two ? pool_pixels<<cache_channel_shift : active;
     pool_input_index=cache_power_two ? pool_pixel<<cache_channel_shift : 32'd0;
     cache_received_count=0;
-    for (int l=0;l<4;l++) begin
+    for (int l=0;l<BUS_BYTES;l++) begin
       cache_lane_valid[l]=rd_valid[l] && 32'(rd_col_base)+32'(l)<rd_valid_cols;
       cache_lane_prefix[l]=cache_received_count;
       if (cache_lane_valid[l]) cache_received_count=cache_received_count+1'b1;
@@ -378,7 +382,7 @@ module vector_engine #(
       LD_B: rd_base_addr=c.rhs_base+(vector_offset<<c.vector_s16);
       default: ;
     endcase
-    rd_burst_len_m1 = 8'(((load_bytes+3)>>2)-1);
+    rd_burst_len_m1 = 8'(((load_bytes+BUS_BYTES-1)>>BUS_SHIFT)-1);
     if (state==SOFT_LUT_REQ || state==SOFT_LUT_WAIT) begin
       rd_base_addr=c.rhs_base+({24'd0,soft_lut_index}<<2);
       rd_use_16bits=0;rd_valid_cols=4;rd_burst_len_m1=0;
@@ -387,15 +391,19 @@ module vector_engine #(
       rd_base_addr=c.input_base+pool_offset*channels+channel_base;rd_use_16bits=0;
       if (channels==active) begin
         rd_rows_to_read=1;rd_valid_cols=pool_elements;rd_row_stride=0;
-        rd_burst_len_m1=8'(((pool_elements+3)>>2)-1);
+        rd_burst_len_m1=8'(((pool_elements+BUS_BYTES-1)>>BUS_SHIFT)-1);
       end else begin
         rd_rows_to_read=pool_pixels;rd_valid_cols=active;rd_row_stride=channels;
-        rd_burst_len_m1=8'(((active+3)>>2)-1);
+        rd_burst_len_m1=8'(((active+BUS_BYTES-1)>>BUS_SHIFT)-1);
       end
     end
-    param_bad = state==LOAD_WAIT && rd_raw_valid &&
-      ((load_kind==LD_SHIFT && ($signed(rd_raw_data)<-31 || $signed(rd_raw_data)>30)) ||
-       (load_kind==LD_MULT && $signed(rd_raw_data)<0));
+    param_bad = 1'b0;
+    for(int word=0;word<BUS_WIDTH/32;word++) begin
+      if(state==LOAD_WAIT && rd_raw_valid && ((32'(rd_col_base)>>2)+32'(word))<active)
+        param_bad |= (load_kind==LD_SHIFT && ($signed(rd_raw_data[word*32+:32])<-31 ||
+                     $signed(rd_raw_data[word*32+:32])>30)) ||
+                     (load_kind==LD_MULT && $signed(rd_raw_data[word*32+:32])<0);
+    end
   end
 
   always_comb begin
@@ -478,7 +486,7 @@ module vector_engine #(
     .clk,.rst_n,.start(state==SOFT_START),.depth(c.length),.ready(soft_ready),.done(soft_done),.error(soft_error),
     .input_index(soft_input_index),.input_data(8'(input_buf[32'(soft_input_index)])),
     .lut_req_valid(soft_lut_req_valid),.lut_req_ready(soft_lut_req_ready),.lut_index(soft_lut_index),
-    .lut_rsp_valid(soft_lut_rsp_valid),.lut_rsp_data(rd_raw_valid ? rd_raw_data : soft_lut_data),.lut_rsp_error(rd_error),
+    .lut_rsp_valid(soft_lut_rsp_valid),.lut_rsp_data(rd_raw_valid ? rd_raw_data[31:0] : soft_lut_data),.lut_rsp_error(rd_error),
     .exp_we(soft_exp_we),.exp_index(soft_exp_index),.exp_wdata(soft_exp_data),.exp_rdata(acc_buf[soft_exp_index]),
     .out_we(soft_out_we),.out_index(soft_out_index),.out_data(soft_out_data),
     .mul_a(soft_mul_a),.mul_b(soft_mul_b),.mul_product(multiplier_product)
@@ -488,20 +496,20 @@ module vector_engine #(
   assign wr_start = wr_req && wr_granted;
   always_comb begin
     pack_addr=bank_address[write_bank]+write_index;
-    pack_count=4-{30'd0,pack_addr[1:0]};
+    pack_count=BUS_BYTES-32'(pack_addr[BUS_SHIFT-1:0]);
     if (pack_count>bank_bytes[write_bank]-write_index) pack_count=bank_bytes[write_bank]-write_index;
     pack_data=0;pack_mask=0;
-    for (int b=0;b<4;b++) begin
-      if (32'(b)>=32'(pack_addr[1:0]) && 32'(b)<32'(pack_addr[1:0])+pack_count) begin
+    for (int b=0;b<BUS_BYTES;b++) begin
+      if (32'(b)>=32'(pack_addr[BUS_SHIFT-1:0]) && 32'(b)<32'(pack_addr[BUS_SHIFT-1:0])+pack_count) begin
         pack_mask[b]=1;
-        if (byte_output) pack_data[b*8+:8]=8'(result_bank_data(write_bank,write_index+32'(b)-32'(pack_addr[1:0])));
-        else pack_data[b*8+:8]=8'(result_bank_data(write_bank,(write_index+32'(b)-32'(pack_addr[1:0]))>>2) >>
-            (((write_index+32'(b)-32'(pack_addr[1:0]))&3)*8));
+        if (byte_output) pack_data[b*8+:8]=8'(result_bank_data(write_bank,write_index+32'(b)-32'(pack_addr[BUS_SHIFT-1:0])));
+        else pack_data[b*8+:8]=8'(result_bank_data(write_bank,(write_index+32'(b)-32'(pack_addr[BUS_SHIFT-1:0]))>>2) >>
+            (((write_index+32'(b)-32'(pack_addr[BUS_SHIFT-1:0]))&3)*8));
       end
     end
-    wr_base_addr={bank_address[write_bank][31:2],2'b00};
+    wr_base_addr={bank_address[write_bank][31:BUS_SHIFT],{BUS_SHIFT{1'b0}}};
     wr_row_stride=0;wr_rows_to_write=1;
-    wr_burst_len_m1=8'(((32'(bank_address[write_bank][1:0])+bank_bytes[write_bank]+3)>>2)-1);
+    wr_burst_len_m1=8'(((32'(bank_address[write_bank][BUS_SHIFT-1:0])+bank_bytes[write_bank]+BUS_BYTES-1)>>BUS_SHIFT)-1);
     src_wdata=pack_data;src_wmask=pack_mask;src_wvalid=wb_state==WB_DATA;
   end
 
@@ -544,7 +552,7 @@ module vector_engine #(
       if (softmax_s8) begin
         if (soft_exp_we) acc_buf[soft_exp_index]<=soft_exp_data;
         if (soft_out_we) result_buf[soft_out_index]<=32'($signed(soft_out_data));
-        if (state==SOFT_LUT_WAIT && rd_raw_valid) soft_lut_data<=rd_raw_data;
+        if (state==SOFT_LUT_WAIT && rd_raw_valid) soft_lut_data<=rd_raw_data[31:0];
       end
 
       // Two existing result banks decouple accumulation, quantization and AXI writes.
@@ -631,7 +639,7 @@ module vector_engine #(
       end
       if (param_bad) param_bad_seen<=1;
       if (state==LOAD_WAIT) begin
-        for (int l=0;l<4;l++) if (rd_valid[l] && 32'(rd_col_base)+32'(l)<active) begin
+        for (int l=0;l<BUS_BYTES;l++) if (rd_valid[l] && 32'(rd_col_base)+32'(l)<active) begin
           case (load_kind)
             LD_WEIGHT: weight_buf[load_tap*TILE+32'(rd_col_base)+32'(l)]<=8'(rd_data[l]);
             LD_A: input_buf[32'(rd_col_base)+32'(l)]<=rd_data[l];
@@ -639,18 +647,19 @@ module vector_engine #(
             default: ;
           endcase
         end
-        if (rd_raw_valid && (32'(rd_col_base)>>2)<active) begin
-          case (load_kind)
-            LD_BIAS: bias_buf[32'(rd_col_base)>>2]<=$signed(rd_raw_data);
-            LD_MULT: mult_buf[32'(rd_col_base)>>2]<=$signed(rd_raw_data);
-            LD_SHIFT: shift_buf[32'(rd_col_base)>>2]<=$signed(rd_raw_data);
-            default: ;
-          endcase
-        end
+        for(int word=0;word<BUS_WIDTH/32;word++)
+          if (rd_raw_valid && ((32'(rd_col_base)>>2)+32'(word))<active) begin
+            case (load_kind)
+              LD_BIAS: bias_buf[(32'(rd_col_base)>>2)+32'(word)]<=$signed(rd_raw_data[word*32+:32]);
+              LD_MULT: mult_buf[(32'(rd_col_base)>>2)+32'(word)]<=$signed(rd_raw_data[word*32+:32]);
+              LD_SHIFT: shift_buf[(32'(rd_col_base)>>2)+32'(word)]<=$signed(rd_raw_data[word*32+:32]);
+              default: ;
+            endcase
+          end
       end
       if (state==POOL_LOAD_WAIT) begin
         pool_received<=pool_received+32'(cache_received_count);
-        for (int l=0;l<4;l++) if (cache_lane_valid[l] && pool_received+32'(cache_lane_prefix[l])<pool_elements)
+        for (int l=0;l<BUS_BYTES;l++) if (cache_lane_valid[l] && pool_received+32'(cache_lane_prefix[l])<pool_elements)
           input_buf[pool_received+32'(cache_lane_prefix[l])]<=rd_data[l];
       end
       case (state)
@@ -921,7 +930,7 @@ module vector_engine #(
       assert(pool_offset+pool_pixels<=taps);
     end
     if (state==EXECUTE && global_pool) assert(pool_pixel<pool_pixels && pool_input_index+active<=pool_elements);
-    if (wb_state==WB_DATA) assert(pack_count>0 && pack_count<=4 && pack_mask!=0);
+    if (wb_state==WB_DATA) assert(pack_count>0 && pack_count<=BUS_BYTES && pack_mask!=0);
     if (state==EXECUTE && spatial && !global_pool) begin
       assert(input_ready[read_bank]);
       assert(input_position[read_bank]==position && input_tap[read_bank]==tap);

@@ -20,7 +20,8 @@ module ps_buffer #(
     output logic                         acc_data_valid,
     output logic                         tile_calc_over,
     output logic                         stream_calc_over,
-    output logic                         capacity_fault
+    output logic                         capacity_fault,
+    output logic                         replay_ready
 );
     localparam int unsigned MAX_FRAME_LEN = ((MAX_IA_REUSE + 1) * SIZE) - 1;
     // Frames occupy their actual stream length in a circular SRAM. The host
@@ -61,6 +62,7 @@ module ps_buffer #(
         .send_ia_trigger_i(send_ia_trigger),
         .replay_enable_i  (replay_enable),
         .capacity_fault   (capacity_fault),
+        .replay_ready     (replay_ready),
         .data_out         (fifo_data_out_vec)
     );
 
@@ -107,7 +109,8 @@ module ps_buffer_wide_fifo #(
     input  logic                  send_ia_trigger_i,
     input  logic                  replay_enable_i,
     output logic [DATA_WIDTH-1:0] data_out,
-    output logic capacity_fault
+    output logic capacity_fault,
+    output logic replay_ready
 );
     localparam int unsigned ADDR_W      = (DEPTH <= 1) ? 1 : $clog2(DEPTH);
     localparam int unsigned CNT_W       = (DEPTH <= 1) ? 1 : $clog2(DEPTH + 1);
@@ -139,7 +142,10 @@ module ps_buffer_wide_fifo #(
     logic [ADDR_W-1:0]      ram_read_addr;
     logic [CNT_W-1:0]       write_ptr_ext;
     logic [FRAME_LEN_W-1:0] frame_len_next;
+    logic [FRAME_LEN_W-1:0] replay_frame_len;
     logic [DATA_WIDTH-1:0]  ram_read_data;
+    logic                   read_forward_valid;
+    logic [DATA_WIDTH-1:0]  read_forward_data;
     logic                   ram_write_en_q;
     logic [ADDR_W-1:0]      ram_write_addr_q;
     logic [DATA_WIDTH-1:0]  ram_write_data_q;
@@ -164,6 +170,7 @@ module ps_buffer_wide_fifo #(
     localparam bit ps_trace_en = 1'b0;
 `endif
 
+    assign replay_ready = (frame_count != '0) && (replay_count == '0);
     assign ram_write_en   = input_valid_i;
     assign ram_read_en    = (replay_count != '0);
     assign ram_read_addr  = read_ptr;
@@ -172,10 +179,11 @@ module ps_buffer_wide_fifo #(
                           ? FRAME_LEN_W'(write_ptr_ext + CNT_W'(1))
                           : FRAME_LEN_W'(write_ptr_ext);
     assign frame_len      = (frame_count != '0) ? frame_len_fifo[frame_rd_ptr] : '0;
+    assign replay_frame_len = (frame_count != '0) ? frame_len : frame_len_next;
 
     assign ram_write_addr_ext = EXT_W'(write_base) + EXT_W'(write_ptr);
     assign write_base_next_ext = EXT_W'(write_base) + EXT_W'(frame_len_next);
-    assign read_base_next_ext = EXT_W'(read_base) + EXT_W'(frame_len);
+    assign read_base_next_ext = EXT_W'(read_base) + EXT_W'(replay_frame_len);
     assign ram_write_addr = (ram_write_addr_ext >= EXT_W'(DEPTH_COUNT)) ?
                             ADDR_W'(ram_write_addr_ext - EXT_W'(DEPTH_COUNT)) :
                             ADDR_W'(ram_write_addr_ext);
@@ -193,7 +201,20 @@ module ps_buffer_wide_fifo #(
                               ((frame_rd_ptr == FRAME_IDX_W'(FRAME_COUNT - 1)) ?
                                '0 : (frame_rd_ptr + 1'b1));
 
-    assign data_out = replay_data_valid ? ram_read_data : '0;
+    assign data_out = replay_data_valid ?
+        (read_forward_valid ? read_forward_data : ram_read_data) : '0;
+
+    // Forward a synchronous read/write collision from the registered write
+    // port, independently of the physical SRAM's collision behavior.
+    always_ff @(posedge clk) begin
+        if (!rst_n) read_forward_valid <= 1'b0;
+        else begin
+            read_forward_valid <= ram_read_en && ram_write_en_q &&
+                                  ram_read_addr == ram_write_addr_q;
+            if (ram_read_en && ram_write_en_q && ram_read_addr == ram_write_addr_q)
+                read_forward_data <= ram_write_data_q;
+        end
+    end
 
 `ifdef GEMMORA_PS_SECTOR_CODEC
     ps_sector_store #(
@@ -251,7 +272,7 @@ module ps_buffer_wide_fifo #(
 
             push_frame = ia_l1_switch_i && !ia_l1_switch_i_d && (frame_len_next != '0);
             pop_frame  = send_ia_trigger_i && !send_ia_trigger_i_d &&
-                         replay_enable_i && (frame_count != '0) &&
+                         replay_enable_i && ((frame_count != '0) || push_frame) &&
                          (replay_count == '0);
 
             ia_l1_switch_i_d    <= ia_l1_switch_i;
@@ -274,18 +295,17 @@ module ps_buffer_wide_fifo #(
                     end
                 end
                 write_ptr    <= '0;
-                replay_count <= '0;
             end
 
             if (send_ia_trigger_i && !send_ia_trigger_i_d) begin
                 if (pop_frame) begin
                     read_ptr     <= read_base;
                     read_base    <= read_base_next;
-                    replay_count <= frame_len;
+                    replay_count <= replay_frame_len;
                     frame_rd_ptr <= frame_rd_ptr_inc;
                     if (ps_trace_en) begin
                         $display("[PS_TRACE] time=%0t pop frame_len=%0d frame_count=%0d read_base=%0d",
-                                 $time, frame_len, frame_count, read_base);
+                                 $time, replay_frame_len, frame_count, read_base);
                     end
                 end else if (ps_trace_en && (replay_count != '0)) begin
                     $display("[PS_TRACE] time=%0t ignore trigger replay_count=%0d frame_count=%0d",
@@ -293,7 +313,7 @@ module ps_buffer_wide_fifo #(
                 end
             end
 
-            if (!push_frame && !pop_frame && (replay_count != '0)) begin
+            if (!pop_frame && (replay_count != '0)) begin
                 if (replay_count == 1) begin
                     replay_count <= '0;
                 end else begin

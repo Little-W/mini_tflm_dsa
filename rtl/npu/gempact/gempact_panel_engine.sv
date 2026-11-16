@@ -11,6 +11,7 @@ module gempact_panel_engine #(
     parameter int unsigned DATA_WIDTH = 16,  // IA数据宽度
     parameter int unsigned SIZE = 16,  // 阵列大小
     parameter int unsigned BUS_WIDTH = 32,  // 总线宽度
+    parameter int unsigned DMA_MAX_BYTES = 1024,
     parameter int unsigned REG_WIDTH = 32,  // 寄存器宽度
     parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
@@ -175,7 +176,7 @@ module gempact_panel_engine #(
   if(!rst_n || group_start)begin column_committed<=0;for(int c=0;c<32;c++)column_last_k[c]<=0;end
   else if(frame_committed)begin column_committed[committed_col]<=1;column_last_k[committed_col]<=committed_k;end
  end
- gempact_panel_cache u_cache(.clk(clk),.rst_n(rst_n),.group_start(group_start),.group_rows(group_rows),.group_cols(group_cols),
+ gempact_panel_cache #(.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_cache(.clk(clk),.rst_n(rst_n),.group_start(group_start),.group_rows(group_rows),.group_cols(group_cols),
   .a_base(a_group),.b_base(b_group),.a_stride(astride),.b_stride(bstride),.k_total(red_k),.load_request(load_request),.load_panel(load_panel),.load_ready(load_ready),.load_done(load_done),.valid_buffers(cache_valid),.panel_tags(cache_tags),
   .a_re(a_re),.a_addr(a_addr),.a_data(a_data),.b_re(b_re),.b_addr(b_addr),.b_data(b_data),
   .arvalid(m_axi_arvalid),.arready(m_axi_arready),.araddr(m_axi_araddr),.arlen(m_axi_arlen),.arsize(m_axi_arsize),.arburst(m_axi_arburst),.rvalid(m_axi_rvalid),.rready(m_axi_rready),.rdata(m_axi_rdata),.rresp(m_axi_rresp),.rlast(m_axi_rlast));
@@ -227,9 +228,9 @@ module gempact_panel_engine #(
    case({queue_push,queue_pop})2'b10:queue_count<=queue_count+1'b1;2'b01:queue_count<=queue_count-1'b1;default:;endcase
   end
  end
- axi_dual_block_dma #(.DATA_WIDTH(8),.SIZE(16),.CACHE_BLOCKS(64),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) u_writer(
+ axi_dual_block_dma #(.DMA_MAX_BYTES(DMA_MAX_BYTES),.DATA_WIDTH(8),.SIZE(16),.CACHE_BLOCKS(64),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) u_writer(
   .conv_cfg_ready(),.conv_error(),.conv_busy(),.conv_stat_hits(),.conv_stat_misses(),.conv_stat_read_bytes(),
-  .clk(clk),.rst_n(rst_n),.rd_start(1'b0),.rd_linear_read_mode(1'b0),.rd_base_addr(32'b0),.rd_row_stride(32'b0),.rd_rows_to_read(32'b0),.rd_valid_cols(32'b0),.rd_burst_len_m1(8'b0),.rd_slot_id(6'b0),.rd_use_16bits(1'b0),.rd_lhs_zp(32'b0),.rd_busy(),.rd_done(),.rd_finish_beat(),
+  .clk(clk),.rst_n(rst_n),.rd_start(1'b0),.rd_tag(3'd0),.rd_start_ready(),.rd_response_tag(),.rd_finish_tag(),.rd_linear_read_mode(1'b0),.rd_base_addr(32'b0),.rd_row_stride(32'b0),.rd_rows_to_read(32'b0),.rd_valid_cols(32'b0),.rd_burst_len_m1(8'b0),.rd_slot_id(6'b0),.rd_use_16bits(1'b0),.rd_lhs_zp(32'b0),.rd_busy(),.rd_done(),.rd_finish_beat(),
   .wr_start(state==FLUSH_START),.wr_base_addr(write_base_q),.wr_row_stride(write_stride_q),.wr_rows_to_write(write_rows_q),.wr_burst_len_m1(write_len_q),.wr_busy(wr_busy),.wr_done(wr_done),.src_wdata(fifo_data),.src_wmask(4'hf),.src_wvalid(fifo_valid),.src_wready(fifo_ready),
   .wr_slot(),.wr_row(),.wr_col_base(),.wr_data(),.wr_valid(),.wr_use_16bits(),.rd_raw_data(),.rd_raw_valid(),.rd_raw_row(),.rd_raw_col_base(),.rd_error(),.wr_error(wr_error),
   .m_axi_arvalid(),.m_axi_arready(1'b0),.m_axi_araddr(),.m_axi_arlen(),.m_axi_arsize(),.m_axi_arburst(),.m_axi_rvalid(1'b0),.m_axi_rready(),.m_axi_rdata(32'b0),.m_axi_rresp(2'b0),.m_axi_rlast(1'b0),

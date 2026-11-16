@@ -3,6 +3,21 @@
 `ifndef TB_SIZE
 `define TB_SIZE 4
 `endif
+`ifndef TB_BUS_WIDTH
+`define TB_BUS_WIDTH 32
+`endif
+`ifndef TB_READ_BEAT_CYCLES
+`define TB_READ_BEAT_CYCLES 1
+`endif
+`ifndef TB_READ_FIRST_LATENCY
+`define TB_READ_FIRST_LATENCY 8
+`endif
+`ifndef TB_PIPELINED_READ
+`define TB_PIPELINED_READ 1
+`endif
+`ifndef TB_DMA_MAX_BYTES
+`define TB_DMA_MAX_BYTES (256*(`TB_BUS_WIDTH/8))
+`endif
 `ifndef TB_CONV_CACHE_SETS
 `define TB_CONV_CACHE_SETS 32
 `endif
@@ -86,11 +101,12 @@ module tb_conv_npu;
         conv_cfg.bypass_cache=cfg[50][0];conv_cfg.input_s16=cfg[51][0];
     end
     wire arvalid,arready,rvalid,rready,rlast,awvalid,awready,wvalid,wready,wlast,bvalid,bready;
-    wire [31:0] araddr,rdata,awaddr,wdata;
+    wire [31:0] araddr,awaddr;
+    wire [`TB_BUS_WIDTH-1:0] rdata,wdata;
     wire [7:0] arlen,awlen;
     wire [2:0] arsize,awsize;
     wire [1:0] arburst,rresp,awburst,bresp;
-    wire [3:0] wstrb;
+    wire [`TB_BUS_WIDTH/8-1:0] wstrb;
     wire injected;
     wire [31:0] tensor_bytes=saved_cfg[34]*saved_cfg[35]*saved_cfg[36]*(saved_cfg[51][0]?32'd2:32'd1);
     wire [31:0] other_lo[4],other_hi[4];
@@ -102,7 +118,8 @@ module tb_conv_npu;
     assign other_lo[3]=saved_cfg[13][0]?saved_cfg[25]:0;assign other_hi[3]=saved_cfg[25]+4*saved_cfg[5];
     longint unsigned read_bytes,input_read_bytes,read_requests,write_bytes;
 
-    npu_top #(.SIZE(SIZE),.DATA_WIDTH(16),.WEIGHT_WIDTH(16),.IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(`TB_PS_FRAME_COUNT),.AXI_READ_OUTSTANDING(4),
+    npu_top #(.BUS_WIDTH(`TB_BUS_WIDTH),.SIZE(SIZE),.DATA_WIDTH(16),.WEIGHT_WIDTH(16),.IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(`TB_PS_FRAME_COUNT),.AXI_READ_OUTSTANDING(4),
+        .DMA_MAX_BYTES(`TB_DMA_MAX_BYTES),
         .PS_STORAGE_ROWS(`TB_PS_STORAGE_ROWS),.OA_S16_FIFO_BANKS_MAX(`TB_OA_S16_FIFO_BANKS_MAX),
         .CONV_CACHE_SETS(`TB_CONV_CACHE_SETS),.CONV_CACHE_WAYS(2),.CONV_LINE_BYTES(16),
         .CONV_CACHE_POLICY(`TB_CONV_CACHE_POLICY)) u_dut(
@@ -124,7 +141,9 @@ module tb_conv_npu;
         .m_axi_wvalid(wvalid),.m_axi_wready(wready),.m_axi_wdata(wdata),.m_axi_wstrb(wstrb),.m_axi_wlast(wlast),
         .m_axi_bvalid(bvalid),.m_axi_bready(bready),.m_axi_bresp(bresp)
     );
-    conv_test_axi_memory #(.WORDS(WORDS)) u_mem(
+    conv_test_axi_memory #(.WORDS(WORDS),.BUS_WIDTH(`TB_BUS_WIDTH),
+        .READ_BEAT_CYCLES(`TB_READ_BEAT_CYCLES),
+        .READ_FIRST_LATENCY(`TB_READ_FIRST_LATENCY),.PIPELINED_READ(`TB_PIPELINED_READ)) u_mem(
         .clk(clk),.rst_n(rst_n),.new_job(new_job),.protect_input(saved_cfg[32][0]),.inject_error(saved_cfg[53][0]),
         .inject_write_error(saved_cfg[53][1]),
         .input_lo(saved_cfg[33]),.input_hi(saved_cfg[33]+tensor_bytes),.error_injected(injected),

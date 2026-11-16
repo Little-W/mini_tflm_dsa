@@ -9,6 +9,17 @@
 #include <string>
 #include <vector>
 
+#ifndef TEST_BUS_WIDTH
+#define TEST_BUS_WIDTH 32
+#endif
+constexpr unsigned BusBytes = TEST_BUS_WIDTH / 8;
+constexpr unsigned BusSize = TEST_BUS_WIDTH == 64 ? 3 : 2;
+constexpr unsigned BusMask = (1u << BusBytes) - 1u;
+
+#ifndef TEST_DMA_MAX_BYTES
+#define TEST_DMA_MAX_BYTES (256 * BusBytes)
+#endif
+
 struct Command {
     std::string name;
     uint32_t address, stride;
@@ -16,8 +27,8 @@ struct Command {
     int error_burst = -1;
     unsigned error_response = 2;
 };
-struct Word { uint32_t data; uint8_t mask; };
-struct PhysicalWord { uint32_t address, data; uint8_t mask; };
+struct Word { uint64_t data; uint8_t mask; };
+struct PhysicalWord { uint32_t address; uint64_t data; uint8_t mask; };
 struct Burst { uint32_t address; unsigned words, index, beat = 0; };
 struct Response { uint64_t ready_cycle; unsigned response; };
 
@@ -32,7 +43,8 @@ class Simulation {
     uint32_t random_state = 0x8a0bf251u;
     bool random_delay, source_held = false, response_held = false;
     bool aw_held = false, w_held = false;
-    uint32_t held_aw_address = 0, held_w_data = 0;
+    uint32_t held_aw_address = 0;
+    uint64_t held_w_data = 0;
     unsigned held_aw_len = 0, held_w_mask = 0, held_w_last = 0;
     unsigned outstanding_limit, outstanding = 0, maximum_outstanding = 0;
     uint64_t cycles = 0, commands = 0, bursts = 0, beats = 0, source_words = 0;
@@ -53,34 +65,34 @@ class Simulation {
         if (!condition) throw std::runtime_error(current_case + ": " + message +
                                                  " at cycle " + std::to_string(cycles));
     }
-    static uint32_t pattern(unsigned command, unsigned row, unsigned word) {
+    static uint64_t pattern(unsigned command, unsigned row, unsigned word) {
         uint32_t x = 0x51f7a329u + command * 0x6d2b79f5u + row * 0x9e3779b9u + word;
         x ^= x >> 16;x *= 0x7feb352du;x ^= x >> 15;x *= 0x846ca68bu;x ^= x >> 16;
-        return x;
+        return uint64_t(x) | (uint64_t(x ^ 0xa53c27d1u) << 32);
     }
     void expect(const Command& command) {
         expected_memory = memory;
         expected_bursts = 0;
         for (unsigned row = 0; row < command.rows; ++row) {
             const uint32_t base = command.address + row * command.stride;
-            const unsigned offset = base & 3u;
+            const unsigned offset = base & (BusBytes-1u);
             std::vector<PhysicalWord> physical(command.words + unsigned(offset != 0));
             for (unsigned p = 0; p < physical.size(); ++p)
-                physical[p] = {(base & ~3u) + p * 4, 0, 0};
+                physical[p] = {(base & ~(BusBytes-1u)) + p * BusBytes, 0, 0};
             for (unsigned word = 0; word < command.words; ++word) {
-                const uint32_t value = pattern(unsigned(commands), row, word);
-                uint8_t mask = 15;
-                if (command.mask_mode == 1) mask = uint8_t((value >> 17) & 15u);
+                const uint64_t value = pattern(unsigned(commands), row, word);
+                uint8_t mask = BusMask;
+                if (command.mask_mode == 1) mask = uint8_t((value >> 17) & BusMask);
                 if (command.mask_mode == 2) mask = 0;
-                if (command.mask_mode == 3 && word + 1 == command.words) mask = uint8_t((1u << (row % 3u + 1)) - 1);
+                if (command.mask_mode == 3 && word + 1 == command.words) mask = uint8_t((1u << (row % (BusBytes-1u) + 1)) - 1);
                 source.push_back({value, mask});
-                for (unsigned byte = 0; byte < 4; ++byte) {
-                    const uint32_t address = base + word * 4 + byte;
+                for (unsigned byte = 0; byte < BusBytes; ++byte) {
+                    const uint32_t address = base + word * BusBytes + byte;
                     require(address < memory.size(), "logical output exceeds test memory");
-                    const unsigned p = (offset + word * 4 + byte) / 4;
-                    const unsigned lane = (offset + byte) & 3u;
+                    const unsigned p = (offset + word * BusBytes + byte) / BusBytes;
+                    const unsigned lane = (offset + byte) & (BusBytes-1u);
                     const uint8_t datum = uint8_t(value >> (byte * 8));
-                    physical[p].data |= uint32_t(datum) << (lane * 8);
+                    physical[p].data |= uint64_t(datum) << (lane * 8);
                     if ((mask >> byte) & 1u) {
                         physical[p].mask |= uint8_t(1u << lane);
                         expected_memory[address] = datum;
@@ -91,11 +103,11 @@ class Simulation {
                 expected_addresses.push_back(p);expected_data.push_back(p);
             }
             unsigned remaining = unsigned(physical.size());
-            uint32_t address = base & ~3u;
+            uint32_t address = base & ~(BusBytes-1u);
             while (remaining) {
-                const unsigned count = std::min({remaining, 256u, (4096u - (address & 4095u)) / 4});
+                const unsigned count = std::min({remaining, unsigned(TEST_DMA_MAX_BYTES/BusBytes), (4096u - (address & 4095u)) / BusBytes});
                 require(count > 0, "empty reference segment");
-                ++expected_bursts;remaining -= count;address += count * 4;
+                ++expected_bursts;remaining -= count;address += count * BusBytes;
             }
         }
         inject_error = command.error_burst == -2 ? int(expected_bursts) - 1 : command.error_burst;
@@ -151,13 +163,13 @@ public:
 
         if (aw) {
             const Burst burst{top.m_axi_awaddr, unsigned(top.m_axi_awlen) + 1, command_burst_index++};
-            require(top.m_axi_awsize == 2 && top.m_axi_awburst == 1, "incorrect AW attributes");
-            require((burst.address & 3u) == 0, "physical AW address is not a word boundary");
-            require(burst.words <= 256, "physical burst exceeds 256 beats");
-            require((burst.address & 4095u) + burst.words * 4 <= 4096, "physical burst crosses 4 KiB");
+            require(top.m_axi_awsize == BusSize && top.m_axi_awburst == 1, "incorrect AW attributes");
+            require((burst.address & (BusBytes-1u)) == 0, "physical AW address is not a word boundary");
+            require(burst.words*BusBytes <= TEST_DMA_MAX_BYTES, "AXI write exceeds configured byte limit");
+            require((burst.address & 4095u) + burst.words * BusBytes <= 4096, "physical burst crosses 4 KiB");
             for (unsigned word = 0; word < burst.words; ++word) {
                 require(!expected_addresses.empty(), "unexpected physical write address");
-                require(expected_addresses.front().address == burst.address + word * 4,
+                require(expected_addresses.front().address == burst.address + word * BusBytes,
                         "physical write address sequence mismatch");
                 expected_addresses.pop_front();
             }
@@ -168,11 +180,11 @@ public:
             auto& burst = writes.front();
             require(!expected_data.empty(), "unexpected W data");
             const auto expected = expected_data.front();expected_data.pop_front();
-            const uint32_t address = burst.address + burst.beat * 4;
+            const uint32_t address = burst.address + burst.beat * BusBytes;
             require(address == expected.address, "W address sequence mismatch");
             require(top.m_axi_wstrb == expected.mask, "W byte mask mismatch");
             require(bool(top.m_axi_wlast) == (burst.beat + 1 == burst.words), "WLAST does not match AWLEN");
-            for (unsigned lane = 0; lane < 4; ++lane) if ((top.m_axi_wstrb >> lane) & 1u) {
+            for (unsigned lane = 0; lane < BusBytes; ++lane) if ((top.m_axi_wstrb >> lane) & 1u) {
                 const uint8_t datum = uint8_t(top.m_axi_wdata >> (lane * 8));
                 require(datum == uint8_t(expected.data >> (lane * 8)), "W byte mismatch");
                 memory.at(address + lane) = datum;++bytes_written;
@@ -259,7 +271,7 @@ int main(int argc, char** argv) {
     }
     try {
         Simulation simulation(random, outstanding, argc, argv);
-        for (unsigned offset = 0; offset < 4; ++offset) {
+        for (unsigned offset = 0; offset < BusBytes; ++offset) {
             for (unsigned words : {1u, 2u, 4u, 16u, 255u}) {
                 for (unsigned mask : {0u, 1u, 3u}) {
                     const auto name = "single_o" + std::to_string(offset) + "_w" + std::to_string(words) + "_m" + std::to_string(mask);
@@ -272,7 +284,7 @@ int main(int argc, char** argv) {
         simulation.run({"error_single", 0x24000u, 32u, 8u, 4u, 1u, 0});
         simulation.run({"after_error_single", 0x28000u, 32u, 16u, 4u, 0u});
         if (!single_segment) {
-            for (unsigned offset = 0; offset < 4; ++offset) {
+            for (unsigned offset = 0; offset < BusBytes; ++offset) {
                 for (unsigned words : {1u, 2u, 4u, 16u, 64u, 255u, 256u}) {
                     for (unsigned stride : {4096u, 1037u}) {
                         const auto name = "page_o" + std::to_string(offset) + "_w" + std::to_string(words) + "_s" + std::to_string(stride);

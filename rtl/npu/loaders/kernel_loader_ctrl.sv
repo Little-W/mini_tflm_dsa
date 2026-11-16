@@ -90,6 +90,8 @@ module kernel_loader_ctrl #(
   total_count_t sent_count;
   logic                 load_complete;
   logic                 all_loads_done;
+  logic                 all_loads_issued;
+  total_count_t         issued_count;
   logic                 last_col_in_group;
   logic                 last_tile_row;
   logic                 last_l2_group;
@@ -200,8 +202,8 @@ module kernel_loader_ctrl #(
     last_tile_row     = (load_tile_row + count_t'(1) >= tile_rows_total);
     last_l2_group     = (load_l2 + count_t'(1) >= l2_groups_total);
     last_repeat       = (load_repeat + count_t'(1) >= repeat_total);
-    final_load_done   = load_done && last_col_in_group && last_tile_row && last_l2_group && last_repeat;
     loaded_count_after = loaded_count + (load_done ? total_count_t'(1) : total_count_t'(0));
+    final_load_done   = load_done && all_loads_issued && loaded_count_after >= issued_count;
 
     load_complete = all_loads_done;
     load_complete_after = all_loads_done || final_load_done;
@@ -210,7 +212,7 @@ module kernel_loader_ctrl #(
     tile_col_dbg = REG_WIDTH'(load_tile_col);
     repeat_dbg   = REG_WIDTH'(load_repeat);
 
-    load_weight_req = (state == S_RUN) && !load_complete && buf_load_ready;
+    load_weight_req = (state == S_RUN) && !all_loads_issued && buf_load_ready;
     dma_start       = load_weight_req && load_weight_granted;
     buf_load_start  = dma_start;
     buf_send_start  = (state == S_RUN) && send_weight_trigger && buf_weight_data_valid;
@@ -241,6 +243,8 @@ module kernel_loader_ctrl #(
       loaded_count        <= '0;
       sent_count          <= '0;
       all_loads_done      <= 1'b0;
+      all_loads_issued    <= 1'b0;
+      issued_count       <= '0;
       tile_rows_total     <= count_t'(1);
       tile_cols_total     <= count_t'(1);
       l2_groups_total     <= count_t'(1);
@@ -269,6 +273,8 @@ module kernel_loader_ctrl #(
             loaded_count        <= '0;
             sent_count          <= '0;
             all_loads_done      <= 1'b0;
+            all_loads_issued    <= 1'b0;
+            issued_count       <= '0;
             tile_rows_total     <= cfg_tile_rows_total;
             tile_cols_total     <= cfg_tile_cols_total;
             l2_groups_total <= cfg_l2_groups_total;
@@ -302,7 +308,11 @@ module kernel_loader_ctrl #(
             if (final_load_done) begin
               all_loads_done <= 1'b1;
             end
-
+          end
+          if (dma_start) begin
+            issued_count <= issued_count + 1'b1;
+            if (last_col_in_group && last_tile_row && last_l2_group && last_repeat)
+              all_loads_issued <= 1'b1;
             if (!last_col_in_group) begin
               load_col_in_group <= load_col_in_group + 1'b1;
               col_addr_offset   <= col_addr_offset + col_addr_step;

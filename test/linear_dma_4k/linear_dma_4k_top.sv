@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 module linear_dma_4k_top #(
-    parameter int READ_OUTSTANDING = 4
+    parameter int READ_OUTSTANDING = 4,
+    parameter int BUS_WIDTH = 32,
+    parameter int DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8)
 ) (
     input logic clk, rst_n,
     input logic rd_start, rd_linear_read_mode,
+    output logic rd_start_ready,
     input logic [31:0] rd_base_addr, rd_row_stride, rd_rows_to_read, rd_valid_cols,
     input logic [7:0] rd_burst_len_m1,
     input logic [1:0] rd_slot_id,
@@ -18,28 +21,30 @@ module linear_dma_4k_top #(
     output logic [1:0] m_axi_arburst,
     input logic m_axi_rvalid,
     output logic m_axi_rready,
-    input logic [31:0] m_axi_rdata,
+    input logic [BUS_WIDTH-1:0] m_axi_rdata,
     input logic [1:0] m_axi_rresp,
     input logic m_axi_rlast,
     output logic [1:0] wr_slot,
     output logic [3:0] wr_row, wr_col_base,
-    output logic signed [15:0] wr_data [4],
-    output logic wr_valid [4],
+    output logic signed [15:0] wr_data [BUS_WIDTH/8],
+    output logic wr_valid [BUS_WIDTH/8],
     output logic wr_use_16bits,
-    output logic [31:0] rd_raw_data,
+    output logic [BUS_WIDTH-1:0] rd_raw_data,
     output logic rd_raw_valid,
     output logic [3:0] rd_raw_row, rd_raw_col_base
 );
     axi_linear_block_dma #(
-        .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(32), .REG_WIDTH(32),
+        .DMA_MAX_BYTES(DMA_MAX_BYTES),
+        .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(32),
         .CACHE_BLOCKS(4), .READ_OUTSTANDING(READ_OUTSTANDING)
     ) dut (
-        .clk, .rst_n, .rd_start, .rd_linear_read_mode, .rd_base_addr, .rd_row_stride,
+        .clk, .rst_n, .rd_start, .rd_start_ready, .rd_tag(3'd0),
+        .rd_response_tag(), .rd_finish_tag(), .rd_linear_read_mode, .rd_base_addr, .rd_row_stride,
         .rd_rows_to_read, .rd_valid_cols, .rd_burst_len_m1, .rd_slot_id,
         .rd_use_16bits, .rd_lhs_zp, .rd_busy, .rd_done, .rd_finish_beat,
         .wr_start(1'b0), .wr_base_addr(32'd0), .wr_row_stride(32'd0),
         .wr_rows_to_write(32'd0), .wr_burst_len_m1(8'd0), .wr_busy(), .wr_done(),
-        .src_wdata(32'd0), .src_wmask(4'd0), .src_wvalid(1'b0), .src_wready(),
+        .src_wdata('0), .src_wmask('0), .src_wvalid(1'b0), .src_wready(),
         .m_axi_arvalid, .m_axi_arready, .m_axi_araddr, .m_axi_arlen,
         .m_axi_arsize, .m_axi_arburst, .m_axi_rvalid, .m_axi_rready,
         .m_axi_rdata, .m_axi_rresp, .m_axi_rlast,

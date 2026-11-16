@@ -2,6 +2,8 @@ module npu_axil_reg_if #(
     parameter int unsigned AXIL_DATA_WIDTH = 32,
     parameter int unsigned AXIL_ADDR_WIDTH = 16,
     parameter int unsigned REG_WIDTH       = 32,
+    parameter int unsigned AXI_DATA_BITS = 32,
+    parameter int unsigned DMA_MAX_BYTES = 256 * (AXI_DATA_BITS / 8),
     parameter bit CONV_CAPABLE = 1'b1,
     parameter bit CONV_IS_CAPABLE = 1'b0,
     parameter bit DW_POOL_CAPABLE = 1'b0,
@@ -149,6 +151,8 @@ module npu_axil_reg_if #(
     localparam logic [11:0] REG_MATRIX_CAPS = 12'h039; // 0x0e4, read-only
     localparam logic [11:0] REG_MATRIX_PS_ROWS = 12'h03a; // 0x0e8, read-only
     localparam logic [11:0] REG_MATRIX_OUTPUT_BANKS = 12'h03b; // 0x0ec, read-only
+    localparam logic [11:0] REG_DMA_MAX_BYTES = 12'h03c; // 0x0f0, read-only
+    localparam logic [11:0] REG_AXI_DATA_BITS = 12'h03d; // 0x0f4, read-only
     localparam logic [11:0] REG_ID           = 12'h03f; // 0x0fc
     localparam logic [REG_WIDTH-1:0] NPU_ID  = 32'h4e50_5531;
 
@@ -231,6 +235,8 @@ module npu_axil_reg_if #(
                                                   (MATRIX_IS_CAPABLE ? 4 : 0))};
             REG_MATRIX_PS_ROWS: read_data_next = MATRIX_PS_ROWS;
             REG_MATRIX_OUTPUT_BANKS: read_data_next = {16'(MATRIX_S16_BANKS), 16'(MATRIX_S8_BANKS)};
+            REG_DMA_MAX_BYTES: read_data_next = DMA_MAX_BYTES;
+            REG_AXI_DATA_BITS: read_data_next = AXI_DATA_BITS;
             REG_VECTOR_LENGTH: read_data_next = cfg_vector_length;
             REG_VECTOR_CAPS: read_data_next = VECTOR_ENGINE_CAPABLE ?
                 {8'd1, 8'(DW_MAX_TAPS), 8'(VECTOR_PE_COUNT), 8'h7f} : 32'd0;

@@ -31,6 +31,7 @@ module bias_loader #(
     output logic                         bias_valid,
     output logic                         bias_group_valid,
     output logic                         load_bias_done,
+    input  logic                         group_read_start = 1'b0,
     input  logic [$clog2(GROUP_BLOCKS_MAX * SIZE)-1:0] group_read_idx,
     output logic signed [DATA_WIDTH-1:0] data_out  [SIZE],
     output logic signed [DATA_WIDTH-1:0] group_data_scalar,
@@ -70,6 +71,7 @@ module bias_loader #(
     count_t                             ctrl_current_block_idx;
     count_t                             ctrl_load_block_idx;
     count_t                             ctrl_group_blocks_needed;
+    count_t                             ctrl_load_blocks_count;
     logic                               ctrl_active_bank;
     logic                               ctrl_switch_pending;
     logic                               ctrl_load_block_valid;
@@ -99,10 +101,11 @@ module bias_loader #(
 	    assign ext_dma_use_16bits       = 1'b0;
 	    assign ext_dma_lhs_zp           = '0;
 
-    bias_loader_ctrl #(
+    bias_loader_ctrl #(.BUS_WIDTH(BUS_WIDTH),
         .SIZE     (SIZE),
         .REG_WIDTH(REG_WIDTH),
-        .COUNT_WIDTH(COUNT_WIDTH)
+        .COUNT_WIDTH(COUNT_WIDTH),
+        .GROUP_BLOCKS_MAX(GROUP_BLOCKS_MAX)
     ) u_ctrl (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -128,6 +131,7 @@ module bias_loader #(
         .current_block_idx(ctrl_current_block_idx),
         .load_block_idx   (ctrl_load_block_idx),
         .group_blocks_needed(ctrl_group_blocks_needed),
+        .load_blocks_count(ctrl_load_blocks_count),
         .active_bank      (ctrl_active_bank),
         .switch_pending   (ctrl_switch_pending)
     );
@@ -146,7 +150,7 @@ module bias_loader #(
 	        end
 	    endgenerate
 
-    bias_loader_buffer #(
+    bias_loader_buffer #(.BUS_WIDTH(BUS_WIDTH),
         .SIZE           (SIZE),
         .DATA_WIDTH     (DATA_WIDTH),
         .DMA_DATA_WIDTH (8),
@@ -160,6 +164,8 @@ module bias_loader #(
         .load_start        (ctrl_dma_start && (ctrl_dma_row_offset == '0)),
         .load_bank         (ctrl_load_bank),
         .load_block_idx    (ctrl_load_block_idx),
+        .load_blocks_count (ctrl_load_blocks_count),
+        .group_blocks_needed(ctrl_group_blocks_needed),
         .load_word_valid   (dma_wr_valid),
         .load_word_row     (REG_WIDTH'(dma_wr_row) + REG_WIDTH'(ctrl_dma_row_offset)),
         .load_word_col_base(dma_wr_col_base),
@@ -167,6 +173,7 @@ module bias_loader #(
         .load_done         (ctrl_load_group_done),
         .active_bank       (ctrl_active_bank),
         .current_block_idx (ctrl_current_block_idx),
+        .group_read_start  (group_read_start),
         .group_read_idx    (group_read_idx),
         .bias_valid        (buffer_bias_valid),
         .load_block_valid  (ctrl_load_block_valid),

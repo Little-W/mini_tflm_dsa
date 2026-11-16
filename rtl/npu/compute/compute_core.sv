@@ -14,6 +14,8 @@ module compute_core #(
     input  logic signed [WEIGHT_WIDTH-1:0] weight_in [SIZE],
     input  logic signed [DATA_WIDTH-1:0] ia_vec_in   [SIZE],
     input  logic                         ia_row_valid,
+    input  logic                         final_output_overlap = 1'b0,
+    input  logic [$clog2(SIZE):0]         active_columns = ($clog2(SIZE)+1)'(SIZE),
     input  logic                         ia_tile_start,
     input  logic                         ia_calc_done,
     input  logic                         ia_is_init_data,
@@ -26,6 +28,7 @@ module compute_core #(
     output logic signed [31:0]           acc_data_out[SIZE],
     output logic                         acc_data_valid,
     output logic                         partial_sum_calc_over,
+    output logic                         partial_sum_advance_ready,
     output logic                         tile_calc_over,
     output logic                         ps_capacity_fault
 );
@@ -37,12 +40,14 @@ module compute_core #(
     logic               ps_acc_data_valid;
     logic               ps_tile_calc_over;
     logic               ps_stream_calc_over;
+    logic               ps_replay_ready;
 
     localparam int unsigned PS_BURST_CYCLES = (2 * SIZE) - 1;
     localparam int unsigned PS_CNT_W        = (PS_BURST_CYCLES < 2) ? 1 :
                                                $clog2(PS_BURST_CYCLES + 1);
 
     logic [PS_CNT_W-1:0] ps_tail_cnt;
+    logic [PS_CNT_W-1:0] ps_tail_length;
     logic                ps_burst_is_final;
     logic                ps_burst_is_init;
     logic                ps_burst_is_l1_last;
@@ -85,12 +90,19 @@ module compute_core #(
     assign ps_burst_start = ps_tile_start_aligned;
 
     // IA cache emits a whole L1 group as one tall diagonal stream.  Keep the
-    // partial-sum stream valid for all IA rows, then drain SIZE-1 tail cycles.
+    // partial-sum stream through the active columns. Final output keeps the
+    // complete de-diagonalizer tail so writeback timing remains independent
+    // of the number of active columns.
+    assign ps_tail_length = ia_calc_done || active_columns == 0 ||
+                            active_columns > ($clog2(SIZE)+1)'(SIZE) ?
+                            PS_CNT_W'(SIZE - 1) : PS_CNT_W'(active_columns - 1'b1);
     assign ps_stream_valid = ia_row_valid | (ps_tail_cnt != '0);
     assign ps_calc_done    = ps_stream_valid & (ia_row_valid ? ia_calc_done    : ps_burst_is_final);
     assign ps_is_init_data = ps_stream_valid & (ia_row_valid ? ia_is_init_data : ps_burst_is_init);
-    assign ps_tile_switch  = ps_stream_valid & ~ia_row_valid & (ps_tail_cnt == PS_CNT_W'(1));
-    assign ps_group_switch = ps_tile_switch & ps_burst_is_l1_last;
+    assign ps_tile_switch = (ia_row_valid && ia_sending_done && ps_tail_length == 0) ||
+                            (ps_stream_valid && !ia_row_valid && ps_tail_cnt == PS_CNT_W'(1));
+    assign ps_group_switch = ps_tile_switch &&
+                             (ia_row_valid ? ia_l1_switch : ps_burst_is_l1_last);
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -119,7 +131,7 @@ module compute_core #(
             ps_group_switch_d <= ps_group_switch;
 
             if (ia_row_valid) begin
-                ps_tail_cnt       <= PS_CNT_W'(SIZE - 1);
+                ps_tail_cnt       <= ps_tail_length;
                 ps_burst_is_final <= ia_calc_done;
                 ps_burst_is_init  <= ia_is_init_data;
                 ps_burst_is_l1_last <= ps_burst_start ? ia_l1_switch
@@ -138,8 +150,6 @@ module compute_core #(
             if (ps_group_switch_d) begin
                 if (ps_calc_done_d) begin
                     final_group_calc_pending <= 1'b1;
-                end else begin
-                    partial_sum_calc_over_r <= 1'b1;
                 end
             end
 
@@ -202,6 +212,7 @@ module compute_core #(
         .STORAGE_ROWS(PS_STORAGE_ROWS)
     ) u_ps_buffer (
         .capacity_fault(ps_capacity_fault),
+        .replay_ready(ps_replay_ready),
         .clk            (clk),
         .rst_n          (rst_n),
         .data_in        (systolic_sum),
@@ -220,7 +231,18 @@ module compute_core #(
     );
 
     assign acc_data_valid = ps_acc_data_valid;
-    assign partial_sum_calc_over = partial_sum_calc_over_r;
+    // The last useful sum leaves the PE array before de-diagonalization and
+    // quantization finish. A caller with captured output parameters can begin
+    // its next operand stream while those registered output stages complete.
+    assign partial_sum_calc_over =
+        (partial_sum_calc_over_r && !final_output_overlap) |
+        (ps_group_switch && (!ps_calc_done || final_output_overlap));
+    // The activation RAM needs two registered edges before its first value
+    // reaches a PE. With a retained replay frame, its read can begin one edge
+    // before the last old sum while weight commit keeps its existing timing.
+    assign partial_sum_advance_ready = !ia_row_valid &&
+        ps_tail_cnt == PS_CNT_W'(2) && ps_burst_is_l1_last &&
+        (!ps_burst_is_final || final_output_overlap) && ps_replay_ready;
     assign tile_calc_over = ps_tile_calc_over;
 
     always_comb begin

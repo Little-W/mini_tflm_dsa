@@ -44,6 +44,7 @@ module kernel_loader #(
 	    output logic signed [REG_WIDTH-1:0] ext_dma_lhs_zp,
 	    input  logic                        ext_dma_busy,
 	    input  logic                        ext_dma_done,
+        input  logic                        ext_dma_wr_slot,
 	    input  logic [$clog2(SIZE)-1:0]     ext_dma_wr_row,
 	    input  logic [$clog2(SIZE)-1:0]     ext_dma_wr_col_base,
 	    input  logic signed [DATA_WIDTH-1:0] ext_dma_wr_data [BUS_WIDTH/8],
@@ -80,6 +81,7 @@ module kernel_loader #(
   logic                        buf_load_start;
   logic                        buf_send_start;
   logic                        buf_load_ready;
+  logic                        buf_load_slot;
   logic                        buf_weight_sending_done;
   logic                        buf_store_weight_req;
   logic signed [DATA_WIDTH-1:0] buf_weight_out [SIZE];
@@ -122,7 +124,7 @@ module kernel_loader #(
 	  assign ext_dma_row_stride       = dma_row_stride_b;
 	  assign ext_dma_rows_to_read     = dma_rows_to_read;
 	  assign ext_dma_burst_len_m1     = dma_burst_len_m1;
-	  assign ext_dma_slot_id          = 1'b0;
+	  assign ext_dma_slot_id          = buf_load_slot;
 	  assign ext_dma_use_16bits       = cfg_use_16bits;
 	  assign ext_dma_lhs_zp           = dma_rhs_zp;
 
@@ -234,8 +236,8 @@ module kernel_loader #(
 	  logic signed [DATA_WIDTH-1:0] row_emit_n [SIZE];
 	  logic beat_valid;
 	  logic last_ext_beat;
-	  logic [REG_WIDTH-1:0] ext_dma_valid_cols_r;
-	  logic [REG_WIDTH-1:0] ext_dma_logical_cols_r;
+	  logic [REG_WIDTH-1:0] ext_dma_valid_cols_r[2];
+	  logic [REG_WIDTH-1:0] ext_dma_logical_cols_r[2];
 
       // The buffer registers each assembled row before writing its RAM.
       // Completion uses the same register stage as the final row.
@@ -257,26 +259,20 @@ module kernel_loader #(
 	          // early and discard the accumulated prefix on the next beat.
 	          if (ext_dma_wr_valid[i] &&
 	              (REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(i) + REG_WIDTH'(1)
-	               >= ext_dma_valid_cols_r)) last_ext_beat = 1'b1;
+	               >= ext_dma_valid_cols_r[ext_dma_wr_slot])) last_ext_beat = 1'b1;
 	        end
 	        for (int c = 0; c < SIZE; c++) begin
 	          row_acc_n[c] = row_acc[c];
 	          row_emit_n[c] = row_acc[c];
 	        end
-	        if (dma_start) begin
-	          for (int c = 0; c < SIZE; c++) begin
-	            row_acc_n[c] = '0;
-	            row_emit_n[c] = '0;
-	          end
-	        end
 	        if (beat_valid) begin
 	          for (int i = 0; i < BYTE_PER_BEAT; i++) begin
 	            automatic int col;
 	            col = int'(ext_dma_wr_col_base) + i;
-	            if (ext_dma_wr_valid[i] && col < SIZE && REG_WIDTH'(col) < ext_dma_valid_cols_r) begin
-	              row_emit_n[col] = REG_WIDTH'(col) < ext_dma_logical_cols_r ? ext_dma_wr_data[i] : '0;
+	            if (ext_dma_wr_valid[i] && col < SIZE && REG_WIDTH'(col) < ext_dma_valid_cols_r[ext_dma_wr_slot]) begin
+	              row_emit_n[col] = REG_WIDTH'(col) < ext_dma_logical_cols_r[ext_dma_wr_slot] ? ext_dma_wr_data[i] : '0;
 	              if (!last_ext_beat) row_acc_n[col] =
-                    REG_WIDTH'(col) < ext_dma_logical_cols_r ? ext_dma_wr_data[i] : '0;
+                    REG_WIDTH'(col) < ext_dma_logical_cols_r[ext_dma_wr_slot] ? ext_dma_wr_data[i] : '0;
 	            end
 	          end
 	          if (last_ext_beat) begin
@@ -290,8 +286,10 @@ module kernel_loader #(
 	  always_ff @(posedge clk or negedge rst_n) begin
 	        if (!rst_n) begin
 	          dma_busy <= 1'b0;
-	          ext_dma_valid_cols_r <= REG_WIDTH'(SIZE);
-	          ext_dma_logical_cols_r <= REG_WIDTH'(SIZE);
+              for(int bank=0;bank<2;bank++)begin
+                ext_dma_valid_cols_r[bank] <= REG_WIDTH'(SIZE);
+                ext_dma_logical_cols_r[bank] <= REG_WIDTH'(SIZE);
+              end
 	          for (int c = 0; c < SIZE; c++) begin
 	            row_acc[c] <= '0;
 	          end
@@ -301,8 +299,8 @@ module kernel_loader #(
                 // The image block is returned as a complete SIZE-column row,
                 // including explicit zero reduction-tail elements. Commit it
                 // once at SIZE, rather than re-emitting after each padded beat.
-	            ext_dma_valid_cols_r <= (im2col_q || tile_packed_q) ? REG_WIDTH'(SIZE) : dma_valid_cols;
-	            ext_dma_logical_cols_r <= im2col_q ? REG_WIDTH'(SIZE) : dma_valid_cols;
+	            ext_dma_valid_cols_r[buf_load_slot] <= (im2col_q || tile_packed_q) ? REG_WIDTH'(SIZE) : dma_valid_cols;
+	            ext_dma_logical_cols_r[buf_load_slot] <= im2col_q ? REG_WIDTH'(SIZE) : dma_valid_cols;
 	          end
 	          for (int c = 0; c < SIZE; c++) begin
 	            row_acc[c] <= row_acc_n[c];
@@ -317,6 +315,9 @@ module kernel_loader #(
     .clk                 (clk),
     .rst_n               (rst_n),
     .load_start          (buf_load_start),
+    .load_slot_id        (buf_load_slot),
+    .row_slot            (ext_dma_wr_slot),
+    .done_slot           (ext_dma_wr_slot),
     .row_valid           (dma_row_valid),
     .row_idx             (dma_row_idx),
     .row_data            (dma_row_data),

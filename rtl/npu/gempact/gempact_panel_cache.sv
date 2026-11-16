@@ -8,7 +8,8 @@
 `endif
 module gempact_panel_cache #(
  parameter integer MAX_R=`GEMPACT_PANEL_MAX_R,
- parameter integer MAX_W=`GEMPACT_PANEL_MAX_W
+ parameter integer MAX_W=`GEMPACT_PANEL_MAX_W,
+ parameter int unsigned DMA_MAX_BYTES=1024
 )(
  input logic clk,rst_n,group_start,
  input logic[5:0] group_rows,group_cols,
@@ -22,6 +23,10 @@ module gempact_panel_cache #(
  output logic[7:0] arlen,output logic[2:0] arsize,output logic[1:0] arburst,
  input logic rvalid,output logic rready,input logic[31:0] rdata,input logic[1:0] rresp,input logic rlast
 );
+ initial begin
+  if(DMA_MAX_BYTES<4 || DMA_MAX_BYTES>1024 || (DMA_MAX_BYTES&(DMA_MAX_BYTES-1))!=0)
+   $fatal(1,"DMA_MAX_BYTES must be a power of two from 4 to 1024");
+ end
  typedef enum logic[2:0]{IDLE,B_START,B_READ,A_START,A_READ,COMPLETE} st_t;
  st_t state;logic[31:0] ab,bb,as_,bs,kk;logic[5:0] rr,cc;
  logic[15:0] panel;logic buffer_sel;
@@ -37,7 +42,9 @@ module gempact_panel_cache #(
  wire issue_row_last=issue_bytes=={2'b0,row_remaining};
  function automatic[7:0] burst_for(input logic[31:0] address,input logic[6:0] bytes);
   logic[12:0] boundary;logic[12:0] amount;
-  boundary=13'd4096-{1'b0,address[11:0]};amount=boundary<{6'b0,bytes}?boundary:{6'b0,bytes};return 8'((amount>>2)-1'b1);
+  boundary=13'd4096-{1'b0,address[11:0]};amount=boundary<{6'b0,bytes}?boundary:{6'b0,bytes};
+  if(amount>DMA_MAX_BYTES)amount=13'(DMA_MAX_BYTES);
+  return 8'((amount>>2)-1'b1);
  endfunction
  wire ar_fire=arvalid&&arready,r_fire=rvalid&&rready;
  wire last_response=r_fire&&rlast;
@@ -144,7 +151,10 @@ module gempact_panel_cache #(
  always @(posedge clk)if(rst_n)begin
   if(group_start)assert(group_rows>0 && group_rows<=MAX_R && group_cols>0 && group_cols<=MAX_W)else $fatal(1,"group exceeds physical panel capacity");
   assert(outstanding<=4)else $fatal(1,"panel outstanding limit");
-  if(ar_fire)assert({1'b0,araddr[11:0]}+((13'(arlen)+1'b1)<<2)<=4096);
+  if(ar_fire)begin
+   assert({1'b0,araddr[11:0]}+((13'(arlen)+1'b1)<<2)<=4096);
+   assert(((13'(arlen)+1'b1)<<2)<=DMA_MAX_BYTES);
+  end
   if(r_fire)begin assert(rresp==0);assert(rlast==(physical_beat==descriptor_len[descriptor_head]));end
  end
 `endif

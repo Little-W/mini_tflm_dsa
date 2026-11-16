@@ -17,6 +17,7 @@ module axil_top_with_ram #(
     parameter PS_FRAME_COUNT  = SIZE,
     parameter PS_STORAGE_ROWS = ((3*SIZE)-1)*(PS_FRAME_COUNT+1),
     parameter OA_S16_FIFO_BANKS_MAX = 4,
+    parameter int unsigned DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8),
     parameter AXI_READ_OUTSTANDING = 4,
     parameter NPU_ENABLE_CLOCK_GATING = 1,
     parameter MEM_DP          = 512,
@@ -91,6 +92,7 @@ module axil_top_with_ram #(
     wire [1:0]                    m_axi_bresp;
 
     npu_axil_top #(
+        .DMA_MAX_BYTES(DMA_MAX_BYTES),
         .AXIL_DATA_WIDTH(AXIL_DATA_WIDTH),
         .AXIL_ADDR_WIDTH(AXIL_ADDR_WIDTH),
         .WEIGHT_WIDTH(WEIGHT_WIDTH),

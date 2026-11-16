@@ -10,13 +10,14 @@ module tb_axi_dual_block_dma;
   logic rst_n = 0;
   always #5 clk = ~clk;
 
-  logic rd_start;
+  logic rd_start, rd_start_ready;
+  logic [2:0] rd_response_tag;
   logic rd_linear_read_mode;
   logic [REG_WIDTH-1:0] rd_base_addr;
   logic [REG_WIDTH-1:0] rd_row_stride;
   logic [REG_WIDTH-1:0] rd_rows_to_read;
   logic [REG_WIDTH-1:0] rd_valid_cols;
-  logic [3:0] rd_burst_len_m1;
+  logic [7:0] rd_burst_len_m1;
   logic [$clog2(CACHE_BLOCKS)-1:0] rd_slot_id;
   logic rd_use_16bits;
   logic signed [REG_WIDTH-1:0] rd_lhs_zp;
@@ -27,7 +28,7 @@ module tb_axi_dual_block_dma;
   logic [REG_WIDTH-1:0] wr_base_addr;
   logic [REG_WIDTH-1:0] wr_row_stride;
   logic [REG_WIDTH-1:0] wr_rows_to_write;
-  logic [3:0] wr_burst_len_m1;
+  logic [7:0] wr_burst_len_m1;
   logic wr_busy;
   logic wr_done;
 
@@ -87,6 +88,8 @@ module tb_axi_dual_block_dma;
     .clk(clk),
     .rst_n(rst_n),
     .rd_start(rd_start),
+    .rd_tag(3'd0), .rd_start_ready(rd_start_ready),
+    .rd_response_tag(rd_response_tag), .rd_finish_tag(), .rd_finish_beat(),
     .rd_linear_read_mode(rd_linear_read_mode),
     .rd_base_addr(rd_base_addr),
     .rd_row_stride(rd_row_stride),
@@ -241,14 +244,21 @@ module tb_axi_dual_block_dma;
   end
 
   task automatic pulse_start();
-    begin
-      @(posedge clk);
-      rd_start <= 1'b1;
-      wr_start <= 1'b1;
-      @(posedge clk);
-      rd_start <= 1'b0;
-      wr_start <= 1'b0;
-    end
+    fork
+      begin
+        @(negedge clk);
+        rd_start = 1'b1;
+        do @(posedge clk); while (!rd_start_ready);
+        @(negedge clk);
+        rd_start = 1'b0;
+      end
+      begin
+        @(negedge clk);
+        wr_start = 1'b1;
+        @(negedge clk);
+        wr_start = 1'b0;
+      end
+    join
   endtask
 
   task automatic send_write_beat(input logic [31:0] data);
@@ -278,6 +288,7 @@ module tb_axi_dual_block_dma;
       rd_done_seen <= 1'b0;
       wr_done_seen <= 1'b0;
     end else begin
+      if (rd_done || rd_raw_valid) assert(rd_response_tag == 0);
       if (rd_done) rd_done_seen <= 1'b1;
       if (wr_done) wr_done_seen <= 1'b1;
     end
@@ -310,7 +321,7 @@ module tb_axi_dual_block_dma;
     rd_row_stride = 32'd4;
     rd_rows_to_read = 32'd2;
     rd_valid_cols = 32'd2;
-    rd_burst_len_m1 = 4'd0;
+    rd_burst_len_m1 = 8'd0;
     rd_slot_id = '0;
     rd_use_16bits = 1'b1;
     rd_lhs_zp = '0;
@@ -319,7 +330,7 @@ module tb_axi_dual_block_dma;
     wr_base_addr = 32'h40;
     wr_row_stride = 32'd8;
     wr_rows_to_write = 32'd2;
-    wr_burst_len_m1 = 4'd1;
+    wr_burst_len_m1 = 8'd1;
     src_wdata = '0;
     src_wmask = '0;
     src_wvalid = 1'b0;
@@ -370,13 +381,13 @@ module tb_axi_dual_block_dma;
     rd_row_stride = 32'd5;
     rd_rows_to_read = 32'd2;
     rd_valid_cols = 32'd4;
-    rd_burst_len_m1 = 4'd0;
+    rd_burst_len_m1 = 8'd0;
     rd_use_16bits = 1'b0;
 
     wr_base_addr = 32'h61;
     wr_row_stride = 32'd5;
     wr_rows_to_write = 32'd2;
-    wr_burst_len_m1 = 4'd0;
+    wr_burst_len_m1 = 8'd0;
 
     for (int i = 0; i < MEM_DEPTH; i++) mem[i] = '0;
     mem[0] = 32'h0403_0201;
