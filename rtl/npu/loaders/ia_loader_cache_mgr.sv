@@ -195,6 +195,31 @@ module ia_loader_cache_mgr #(
   //
   localparam int SLOT_W = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
   localparam int ROW_CNT_W = $clog2(SIZE + 1);
+  logic [ROW_CNT_W-1:0] slot_written_cols [SLOT_BLOCKS];
+  logic [ROW_CNT_W-1:0] write_extent, read_extent_q;
+  logic any_lane_write;
+  always_comb begin
+    write_extent='0;
+    any_lane_write=1'b0;
+    for(int lane=0;lane<BYTE_PER_BEAT;lane++) begin
+      if(wr_valid[lane] && int'(wr_col_base)+lane<SIZE) begin
+        any_lane_write=1'b1;
+        write_extent=ROW_CNT_W'(int'(wr_col_base)+lane+1);
+      end
+    end
+  end
+  always_ff @(posedge clk) begin
+    if(!rst_n) begin
+      read_extent_q<='0;
+      for(int slot=0;slot<SLOT_BLOCKS;slot++)slot_written_cols[slot]<='0;
+    end else begin
+      if(any_lane_write && wr_row=='0) begin
+        if(wr_col_base=='0 || write_extent>slot_written_cols[wr_slot])
+          slot_written_cols[wr_slot]<=write_extent;
+      end
+      if(ram_rd_en[0])read_extent_q<=slot_written_cols[ram_rd_addr[0]>>LOG2_SIZE];
+    end
+  end
   wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
   wire [SLOT_W-1:0] slot_mask =
       ((COMPACT_S8 != 0) && (DATA_WIDTH == 16) && compact_mode)
@@ -381,7 +406,7 @@ module ia_loader_cache_mgr #(
   // Inactive cycles present zero values to every PE input.
   always_comb begin
     for (int j = 0; j < SIZE; j++)
-      ia_out[j] = ram_rd_en_d1[j] ? ram_rd_data[j] : '0;
+      ia_out[j] = ram_rd_en_d1[j] && ROW_CNT_W'(j)<read_extent_q ? ram_rd_data[j] : '0;
   end
 
   assign ia_row_valid = ram_rd_en_d1[0];

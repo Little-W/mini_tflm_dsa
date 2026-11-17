@@ -1024,10 +1024,25 @@ module npu_top #(
             assign raw_bank_words[0] = '0;
             assign long_bank_words[0] = '0;
             assign admission_bank_words[0] = '0;
-            for (genvar count = 1; count < SHARED_PHYSICAL_BANKS; count++) begin : g_count
-                assign raw_bank_words[count] = ((ps_max_frame_rows << 2) + 64'(count - 1)) / 64'(count);
-                assign long_bank_words[count] = (ps_long_frame_words + 64'(count - 1)) / 64'(count);
-                assign admission_bank_words[count] = (ps_admission_words + 64'(count - 1)) / 64'(count);
+            localparam int RESERVATION_WORDS_MAX=4*IA_REUSE_NUM_MAX*SIZE;
+            localparam int RESERVATION_BITS=$clog2(RESERVATION_WORDS_MAX+SHARED_PHYSICAL_BANKS);
+            for (genvar count=1;count<SHARED_PHYSICAL_BANKS;count++) begin : g_count
+                if(count==SHARED_PHYSICAL_BANKS-1 || count==SHARED_PHYSICAL_BANKS-2 ||
+                   count==SHARED_PHYSICAL_BANKS-4) begin : g_legal
+                    wire [RESERVATION_BITS-1:0] raw_words=RESERVATION_BITS'(ps_max_frame_rows<<2);
+                    wire [RESERVATION_BITS-1:0] long_words=RESERVATION_BITS'(ps_long_frame_words);
+                    wire [RESERVATION_BITS-1:0] admission_words=RESERVATION_BITS'(ps_admission_words);
+                    assign raw_bank_words[count]=ps_max_frame_rows>64'(IA_REUSE_NUM_MAX*SIZE) ?
+                        {64{1'b1}} : 64'((raw_words+RESERVATION_BITS'(count-1))/RESERVATION_BITS'(count));
+                    assign long_bank_words[count]=ps_long_frame_words>64'(RESERVATION_WORDS_MAX) ?
+                        {64{1'b1}} : 64'((long_words+RESERVATION_BITS'(count-1))/RESERVATION_BITS'(count));
+                    assign admission_bank_words[count]=ps_admission_words>64'(RESERVATION_WORDS_MAX) ?
+                        {64{1'b1}} : 64'((admission_words+RESERVATION_BITS'(count-1))/RESERVATION_BITS'(count));
+                end else begin : g_unused
+                    assign raw_bank_words[count]={64{1'b1}};
+                    assign long_bank_words[count]={64{1'b1}};
+                    assign admission_bank_words[count]={64{1'b1}};
+                end
             end
             assign ps_raw_frame_bank_words = raw_bank_words[active_ps_bank_count];
             assign ps_long_frame_bank_words = long_bank_words[active_ps_bank_count];

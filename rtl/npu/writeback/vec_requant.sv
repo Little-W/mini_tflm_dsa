@@ -980,33 +980,39 @@ module vec_requant_full #(
   (* ram_style = "distributed" *) logic signed [31:0] ch_shift_is_r[QBUF_DEPTH];
   (* ram_style = "distributed" *) logic [5:0]         ch_lshift_is_r    [QBUF_DEPTH];
   (* ram_style = "distributed" *) logic [5:0]         ch_rshift_is_r    [QBUF_DEPTH];
+  wire signed [31:0] parameter_value [BUS_WIDTH/32];
+  wire [5:0] parameter_left_shift [BUS_WIDTH/32],parameter_right_shift [BUS_WIDTH/32];
+  wire [QBUF_IDX_W-1:0] parameter_index [BUS_WIDTH/32];
   for(genvar word=0;word<BUS_WIDTH/32;word++)begin:g_parameter_word
-    wire signed [31:0] shift_value=$signed(dma_raw_data[word*32+:32]);
-    wire signed [31:0] shift_abs=-shift_value;
-    wire [5:0] left_shift=shift_value>0 ? shift_value[5:0] : 6'd0;
-    wire [5:0] right_shift=shift_value<0 ? (shift_abs>63 ? 6'd63 : shift_abs[5:0]) : 6'd0;
-    wire [QBUF_IDX_W-1:0] index=quant_rsp_idx+QBUF_IDX_W'(word);
-    wire [VLEN_IDX_W-1:0] lane_index=VLEN_IDX_W'(index);
-    always @(posedge clk) begin
-      if(rsp_hskd && (32'(rd_beats_cnt)+word)<32'(beats_expect)) begin
-        if(is_mode_r) begin
-          if(load_phase==PH_MUL) ch_multiplier_is_r[index]<=shift_value;
+    wire signed [31:0] value=$signed(dma_raw_data[word*32+:32]);
+    wire signed [31:0] magnitude=-value;
+    assign parameter_value[word]=value;
+    assign parameter_left_shift[word]=value>0 ? value[5:0] : 6'd0;
+    assign parameter_right_shift[word]=value<0 ? (magnitude>63 ? 6'd63 : magnitude[5:0]) : 6'd0;
+    assign parameter_index[word]=quant_rsp_idx+QBUF_IDX_W'(word);
+  end
+  always @(posedge clk) begin
+    for(integer word=0;word<BUS_WIDTH/32;word++)begin
+      if(rsp_hskd && (32'(rd_beats_cnt)+word)<32'(beats_expect))begin
+        if(is_mode_r)begin
+          if(load_phase==PH_MUL)ch_multiplier_is_r[parameter_index[word]]<=parameter_value[word];
           else begin
-            ch_shift_is_r[index]<=shift_value;
-            ch_lshift_is_r[index]<=left_shift;
-            ch_rshift_is_r[index]<=right_shift;
+            ch_shift_is_r[parameter_index[word]]<=parameter_value[word];
+            ch_lshift_is_r[parameter_index[word]]<=parameter_left_shift[word];
+            ch_rshift_is_r[parameter_index[word]]<=parameter_right_shift[word];
           end
         end else begin
-          if(load_phase==PH_MUL) ch_multiplier_lane_r[lane_index]<=shift_value;
+          if(load_phase==PH_MUL)ch_multiplier_lane_r[VLEN_IDX_W'(parameter_index[word])]<=parameter_value[word];
           else begin
-            ch_shift_lane_r[lane_index]<=shift_value;
-            ch_lshift_lane_r[lane_index]<=left_shift;
-            ch_rshift_lane_r[lane_index]<=right_shift;
+            ch_shift_lane_r[VLEN_IDX_W'(parameter_index[word])]<=parameter_value[word];
+            ch_lshift_lane_r[VLEN_IDX_W'(parameter_index[word])]<=parameter_left_shift[word];
+            ch_rshift_lane_r[VLEN_IDX_W'(parameter_index[word])]<=parameter_right_shift[word];
           end
         end
       end
     end
   end
+
 
 
   // ----------------------------

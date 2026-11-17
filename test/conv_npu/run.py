@@ -335,7 +335,7 @@ def source_files():
 
 def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
           ps_compress=False,pool_bytes=16384,force_raw=False,lint_only=False,
-          bus_width=None,shared_bank_bytes=2048,shared_bank_count=0):
+          bus_width=None,shared_bank_bytes=2048,shared_bank_count=0,ps_frame_count=16):
     bus_width=axi_data_width(bus_width)
     if cache_sets is None:
         cache_sets=selected_config()['IM2COL_CACHE_BYTES']//32
@@ -354,7 +354,7 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
         '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
     defines=[f'-DTB_SIZE={size}',f'-DTB_CONV_CACHE_SETS={cache_sets}',f'-DTB_CONV_CACHE_POLICY={cache_policy}',
              f'-DTB_BUS_WIDTH={bus_width}',f'-DTB_SHARED_BANK_BYTES={shared_bank_bytes}',
-             f'-DTB_SHARED_BANK_COUNT={shared_bank_count}']
+             f'-DTB_SHARED_BANK_COUNT={shared_bank_count}',f'-DTB_PS_FRAME_COUNT={ps_frame_count}']
     if ps_compress:defines+=['-DGEMPACT_PS_COMPRESS=1',f'-DGEMMORA_PS_POOL_BYTES={pool_bytes}']
     if force_raw:defines+=['-DGEMMORA_PS_FORCE_RAW=1']
     cmd=[verilator,'--lint-only' if lint_only else '--binary','--timing','--assert','-sv',
@@ -372,6 +372,7 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
             'size':size,'bus_width':bus_width,'shared_bank_bytes':shared_bank_bytes,
             'shared_bank_count':shared_bank_count,'cache_sets':cache_sets,'cache_ways':2,'cache_line_bytes':16,'cache_data_bytes':cache_sets*32,'cache_policy':cache_policy,
             'ps_compress':ps_compress,'pool_bytes':pool_bytes,'force_raw':force_raw,'lint_only':lint_only,
+            'ps_frame_count':ps_frame_count,
             'source_sha256':before,'sources_unchanged_during_build':before==after}
     if rc==0 and not lint_only:
         result['binary_sha256']=hashlib.sha256((out/'obj/Vtb_conv_npu').read_bytes()).hexdigest()
