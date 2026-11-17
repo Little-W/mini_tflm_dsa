@@ -1,10 +1,10 @@
 # 共享 IA/PS 容量与软件分配
 
-硬件配置保存在 [`config/npu.mk`](../config/npu.mk)。默认使用 16×16 阵列、8 个 VCE PE、4 KiB 共享窗口缓存，以及 14 KiB 的 IA/PS bank RAM。`scripts/capacity` 计算所有已声明缓冲数组及元数据，并可通过 Verilator 展开统计完整顺序逻辑状态。
+通用及 ASIC 配置保存在 [`config/npu.mk`](../config/npu.mk)，FPGA 配置保存在 [`config/npu_fpga.mk`](../config/npu_fpga.mk)。两者默认使用 16×16 阵列、8 个 VCE PE 和 4 KiB 窗口缓存。ASIC 的共享 IA/PS 数据容量为 14 KiB，FPGA 为 56 KiB。`scripts/capacity` 计算缓冲数组及元数据，并通过 Verilator 展开统计完整顺序逻辑状态；物理 RAM 的组织与复现命令见 [共享 RAM 映射](shared_ram_mapping.md)。
 
 ## 物理容量与任务分配
 
-默认参数为：
+通用及 ASIC 的默认参数为：
 
 ```make
 PCR_ENGINE ?= 1
@@ -20,13 +20,15 @@ PS_FORCE_RAW ?= 0
 CAPACITY_REPRESENTATION ?= adaptive
 ```
 
-`PCR_ENGINE=1` 启用统一计算路径中的 PS frame 存储和调度。共享数据 RAM 的物理容量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`，默认值为 `2048 × 7 = 14336` 字节。两个参数在编译时确定；每层执行前的软件分配决定其中多少 bank 用于 IA 和 PS。
+`PCR_ENGINE=1` 启用统一计算路径中的 PS frame 存储和调度。共享数据容量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`。ASIC 默认值为 `2048 × 7 = 14336` 字节；FPGA 默认值为 `8192 × 7 = 57344` 字节，配置中的 `PS_POOL_BYTES=49152`。两个 bank 参数在编译时确定；每层执行前的软件分配决定其中多少 bank 用于 IA 和 PS。
 
 | `SHARED_BANK_BYTES` | 每 bank 的 128 位行数 | `SHARED_BANK_COUNT=6、7、8、9` 时的数据总容量 |
 |---:|---:|---|
-| 1024 | 64 | 6、7、8、9 KiB |
 | 2048 | 128 | 12、14、16、18 KiB |
 | 4096 | 256 | 24、28、32、36 KiB |
+| 8192 | 512 | 48、56、64、72 KiB |
+
+ASIC 支持表中的三种 bank 大小，均使用完整的 `RAMTP128X16` 数据容量。FPGA 工程入口要求 `SHARED_BANK_BYTES=8192`，每个 bank 使用两个 `RAMB36E1` 的全部数据位。每个 FPGA bank 另有 1024 字节 parity 容量，单独统计，不包含在共享数据总量中。
 
 `NPU_AXI_DATA_WIDTH` 可选 32、64 位，默认 64 位，控制 NPU AXI4、SoC 数据互连及主存数据接口。NPU 的 AXI-Lite 配置接口使用固定 32 位数据和 16 位地址。共享 SRAM 内部接口始终为 128 位；AXI4 数据宽度与 bank 大小分别配置。
 
@@ -45,8 +47,13 @@ CAPACITY_REPRESENTATION ?= adaptive
 | S16 的双缓冲容量要求 | `1024R ≤ IA_BANKS × SHARED_BANK_BYTES` |
 | RAW32 跨 K | PS 至少 4 个 bank，每有效矩阵行 64 字节 |
 | S24 跨 K | PS 至少 3 个 bank，并通过中间累加范围检查 |
+| S16 跨 K | PS 至少 2 个 bank，并通过中间累加范围检查 |
 
 例如，默认七个 2 KiB bank 中，IA=1、2、4 分别提供 2、4、8 KiB 输入容量和 12、10、6 KiB 部分和容量。IA=4 时余下三个 PS bank，可用于单个 K tile 的任务或使用 S24 存储上限的任务；RAW32 跨 K 的任务从 IA=1、2 中选择。八个或九个 bank 的构建在 IA=4 时仍保留至少四个 PS bank。
+
+FPGA 默认七个 8 KiB bank 中，IA=1、2、4 分别提供 8、16、32 KiB 输入容量和 48、40、24 KiB 部分和容量。紧凑 S8 的 IA 容量上限对应 R=16、32、64；S16 在 IA=2、4 时对应 R=16、32。具体任务还需要满足 PS 目录、frame 数和每个 PS bank 的容量限制。
+
+完整容量统计还包括为整个 IA 行组保留的输出空间。默认 16 个 PS frame 下，2、4 KiB bank 使用 32 个 S8 输出 tile bank，共 8 KiB；8 KiB bank 使用 64 个 S8 输出 tile bank，共 16 KiB。S16 输出默认保留四个 tile bank。`output_banks_s8`、`output_banks_s16` 和 `oa_s8_fifo` 分别报告数量和位数，展开检查将其与设备的 `MATRIX_OUTPUT_BANKS` 寄存器比较。
 
 `IA_CACHE_BLOCKS` 和 `PS_POOL_BYTES` 保留固定缓冲实现的配置作用。当前共享配置通过 `SHARED_BANK_BYTES` 和 `SHARED_BANK_COUNT` 确定数据 RAM 总量。配置检查在构建前拒绝范围之外的 bank 参数。
 
@@ -54,12 +61,18 @@ CAPACITY_REPRESENTATION ?= adaptive
 
 ```bash
 make capacity-show
+make capacity-show NPU_CONFIG=config/npu_fpga.mk
 make capacity-check
 make capacity-test
 
 python3 test/capacity/check_elaboration.py \
+  --config config/npu.mk \
   --verilator /path/to/verilator \
   --output-root build/capacity/elaboration
+
+NPU_CONFIG=config/npu_fpga.mk python3 test/capacity/check_elaboration.py \
+  --verilator /path/to/verilator \
+  --output-root build/capacity/fpga_elaboration
 ```
 
 展开测试统计一个 `npu_axil_top` 的全部顺序逻辑声明，检查缓冲数组与模型逐项相等，并核对单个计算阵列、VCE PE 数和共享 bank 数。JSON 包含源码摘要、有效参数、各模块位数、共享 SRAM 映射和寄存器能力。源码或参数改变后，应重新生成统计。
@@ -71,9 +84,9 @@ python3 test/capacity/check_elaboration.py \
 | `buffer-ram` | IA/PS 数据、目录、缓存标签、bias/量化缓存、输出缓冲、Conv/VCE 数据、请求和响应队列 |
 | `logical-state` | 当前 RTL 展开后全部顺序逻辑状态，包括上述数组、PE、流水线、控制寄存器和时钟门控状态 |
 
-`buffer-ram` 统计逻辑位数，不计算 FPGA BRAM 或 ASIC 宏的额外容量取整。`logical-state` 统计存储位数，未包含组合逻辑面积。SoC 主存、PicoRV32 和固件存储均在此 NPU 统计范围之外。完整状态预算要求运行匹配当前源码的 RTL 展开。
+`buffer-ram` 统计逻辑位数。报告的 `physical_shared_memory` 单独给出共享 RAM 的物理实例数、数据容量、未使用数据容量和 FPGA parity 容量。`logical-state` 统计存储位数，未包含组合逻辑面积。SoC 主存、PicoRV32 和固件存储均在此 NPU 统计范围之外。完整状态预算要求运行匹配当前源码的 RTL 展开。
 
-共享 RAM 的 ASIC 分支使用 `smic40_sram_1r1w`。默认每个 128 位 bank 由八个 `RAMTP128X16` 宏组成，七个 bank 共 56 个宏，映射后数据容量为 14336 字节。1 KiB bank 的 64 行会按宏的 128 行深度取整；4 KiB bank 使用两组 128 行宏。容量报告分别记录逻辑数据量与宏的物理容量，目录和其他存储单独列出。
+共享 RAM 的 ASIC 分支使用 `smic40_sram_1r1w`。2、4、8 KiB bank 分别使用 8、16、32 个 `RAMTP128X16` 宏，每个宏提供 128×16 位数据。七个 bank 分别需要 56、112、224 个宏，物理数据容量与逻辑容量相等。FPGA 的七个 8 KiB bank 使用 14 个 `RAMB36E1`，提供 56 KiB 数据和独立的 7 KiB parity。PS 目录和其他存储单独列出。
 
 ## 自动配置硬件
 
@@ -106,9 +119,11 @@ make capacity-solve MAX_RAM_KIB=64 REPRESENTATION=raw32
 
 软件读取运行时能力，以同一物理容量枚举合法 IA bank 分配、WS/IS、R/W 和 frame 高度。输入格式决定可用 R：紧凑 S8 每 tile 占 256 字节，真实 S16 占 512 字节；双缓冲分别需要 `512R` 和 `1024R` 字节。
 
-中间 PS 的存储上限按每个 bank 计算。对于一个 frame 的 L 个有效行，RAW32 需要 4L 个 128 位字；S24 需要至多 3L 个字。每个 live frame 的字数向 bank 数取上整，分别计入每个 bank 的使用量。还必须满足共享目录总行数和 frame 数限制。K 只有一个 tile 时无需保留中间 PS。
+中间 PS 的存储上限按每个 bank 计算。对于一个 frame 的 L 个有效行，RAW32 需要 4L 个 128 位字，严格 S24 界需要至多 3L 个字，严格 S16 界需要至多 2L 个字。每个有效 frame 的字数按 PS bank 数向上取整，分别计入各 bank 的使用量。还必须满足共享目录总行数和 frame 数限制。K 只有一个 tile 时无需保留中间 PS。
 
-S24 的可用性由输入类型、offset 和最大非最终 K 前缀计算。bias 在最终 K 后加入。无法保证 S24 范围时使用 RAW32 上限；动态差分压缩仍可节省实际空间，容量不足时由受保护 frame 的优先完成机制继续执行。
+Prepare 使用 [`dsa_ps_bound_s8`](../drivers/dsa_ps_bound.h) 读取固定权重，根据输入类型、offset 和最大的非最终 K 前缀，计算所有合法 S8 输入的中间累加范围。该计算不读取运行时激活。满足有符号 16 位或 24 位范围时，分别通过 `PS_CONTROL[5:4]` 保存 S16 或 S24 上限；硬件接收每个编码记录时检查其长度。这里的 S16/S24 指部分和值的范围。bias 在最终 K 后加入，不参与中间部分和上限。范围较宽时按 RAW32 长度保留空间。
+
+实际行编码还可选择重复行、差分 Rice 和独立的 Sparse128。Sparse128 使用一个 128 位字保存非零 lane 掩码、元素字宽和非零值；容量规划仍采用已经证明的最坏长度。遇到存储压力时，受保护 frame 的优先完成机制继续执行并释放部分和空间。
 
 `adaptive` 模式允许无损压缩和 RAW32，驱动选择使预计任务周期较小的参数。`raw32` 模式强制原始 INT32 存储，但仍使用相同的共享 RAM、IA 紧凑格式及硬件队列。两者比较时应使用同一个 RTL 二进制，在 Prepare 前切换运行时策略，并分别记录 Prepare、Invoke、Conv、Dense 与 VCE 周期。
 

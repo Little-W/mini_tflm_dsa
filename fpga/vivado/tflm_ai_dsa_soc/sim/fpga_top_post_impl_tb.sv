@@ -5,7 +5,7 @@ module fpga_top_post_impl_tb #(
     parameter int unsigned DATA_WIDTH = 16,
     parameter int unsigned SIZE = 16,
     parameter int unsigned BUS_WIDTH = 64,
-    parameter int unsigned SHARED_BANK_BYTES = 2048,
+    parameter int unsigned SHARED_BANK_BYTES = 8192,
     parameter int unsigned SHARED_BANK_COUNT = 7,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
     parameter int unsigned CPU_MEM_DP = 65536,

@@ -9,12 +9,21 @@
 #include <string>
 #include <vector>
 
+#ifndef TEST_BANK_BYTES
+#define TEST_BANK_BYTES 2048
+#endif
+#ifndef TEST_BANK_COUNT
+#define TEST_BANK_COUNT 7
+#endif
+
 namespace {
 constexpr int kSize = 16;
+constexpr int kBankBytes = TEST_BANK_BYTES, kBanks = TEST_BANK_COUNT;
+constexpr int kBankRows = kBankBytes/16, kMaxSlots = 4*kBankBytes/256;
 using Word = std::array<std::uint32_t, 4>;
 using Tile = std::array<std::array<std::int16_t, kSize>, kSize>;
-std::array<Tile, 32> expected{};
-std::array<Word, 768> ps_expected{};
+std::array<Tile, kMaxSlots> expected{};
+std::array<Word, (kBanks-1)*kBankRows> ps_expected{};
 std::uint64_t cycles = 0, value_checks = 0, cycle_value_checks = 0;
 std::uint64_t padding_checks = 0, s8_checks = 0, s16_checks = 0;
 std::uint64_t control_checks = 0, port_checks = 0, ps_word_checks = 0;
@@ -24,7 +33,7 @@ std::uint64_t simultaneous_ia_rw = 0, simultaneous_ia_ps = 0;
 std::uint64_t cross_word_writes = 0, mask_patterns = 0, wrapped_groups = 0;
 std::uint64_t compact_groups = 0, wide_groups = 0, tile_checks = 0;
 std::uint64_t initialization_groups = 0, final_groups = 0;
-int allocated_banks = 1, ps_banks = 6;
+int allocated_banks = 1, ps_banks = kBanks-1;
 bool ps_background = false;
 
 std::int16_t signed16(std::uint16_t value) {
@@ -62,15 +71,15 @@ void ps_drive_background(Via_shared_cache_tb& dut) {
     dut.ps_write_en = (1U << ports) - 1U;
     for (unsigned port = 0; port < ports; ++port) {
         const unsigned bank = (cycles + port) % unsigned(ps_banks);
-        const unsigned row = (cycles * 13U + port * 17U) % 128U;
-        dut.ps_read_addr[port] = bank * 128U + row;
+        const unsigned row = (cycles * 13U + port * 17U) % unsigned(kBankRows);
+        dut.ps_read_addr[port] = bank * unsigned(kBankRows) + row;
     }
     for (unsigned port = 0; port < ports; ++port) {
         const unsigned bank = (cycles * 3U + port) % unsigned(ps_banks);
-        unsigned row = (cycles * 7U + port * 23U + 64U) % 128U;
+        unsigned row = (cycles * 7U + port * 23U + 64U) % unsigned(kBankRows);
         for (unsigned reader = 0; reader < ports; ++reader)
-            if (dut.ps_read_addr[reader] == bank * 128U + row) row = (row + 1U) % 128U;
-        dut.ps_write_addr[port] = bank * 128U + row;
+            if (dut.ps_read_addr[reader] == bank * unsigned(kBankRows) + row) row = (row + 1U) % unsigned(kBankRows);
+        dut.ps_write_addr[port] = bank * unsigned(kBankRows) + row;
         for (unsigned part = 0; part < 4; ++part)
             dut.ps_write_data[port][part] = pattern(static_cast<std::uint32_t>(
                 cycles * 131U + port * 31U + part + 1U));
@@ -121,7 +130,7 @@ void tick(Via_shared_cache_tb& dut) {
     }
     if (dut.ia_read_en) {
         require(dut.ia_read_en == (dut.compact_mode ? 1U : 3U), "IA row read ports");
-        require(dut.ia_read_addr[0] < unsigned(allocated_banks * 128), "IA read allocation");
+        require(dut.ia_read_addr[0] < unsigned(allocated_banks * kBankRows), "IA read allocation");
         if (!dut.compact_mode) {
             require(allocated_banks >= 2, "Wide IA requires two independently read banks");
             require(dut.ia_read_addr[1] == dut.ia_read_addr[0] + 1U,
@@ -184,8 +193,8 @@ void configure(Via_shared_cache_tb& dut, int banks, bool legacy = false) {
     tick(dut);
     tick(dut);
     allocated_banks = banks;
-    ps_banks = 7 - banks;
-    dut.cfg_cache_blocks = legacy ? 0 : banks * 4;
+    ps_banks = kBanks - banks;
+    dut.cfg_cache_blocks = legacy ? 0 : banks * (kBankBytes/512);
     dut.cfg_ia_banks = banks;
     dut.rst_n = 1;
     dut.cfg_valid = 1;
@@ -195,10 +204,10 @@ void configure(Via_shared_cache_tb& dut, int banks, bool legacy = false) {
     for (unsigned first_bank = 0; first_bank < unsigned(ps_banks); first_bank += 4U) {
         const unsigned ports = unsigned(ps_banks) - first_bank < 4U ?
             unsigned(ps_banks) - first_bank : 4U;
-        for (unsigned row = 0; row < 128; ++row) {
+        for (unsigned row = 0; row < unsigned(kBankRows); ++row) {
             dut.ps_write_en = (1U << ports) - 1U;
             for (unsigned port = 0; port < ports; ++port) {
-                dut.ps_write_addr[port] = (first_bank + port) * 128U + row;
+                dut.ps_write_addr[port] = (first_bank + port) * unsigned(kBankRows) + row;
                 for (unsigned part = 0; part < 4; ++part)
                     dut.ps_write_data[port][part] = pattern(row * 71U + port * 13U + part);
             }
@@ -207,7 +216,7 @@ void configure(Via_shared_cache_tb& dut, int banks, bool legacy = false) {
     }
     dut.ps_write_en = 0;
     ps_background = true;
-    for (int slot = 0; slot < 32; ++slot) dut.slot_rows[slot] = 16;
+    for (int slot = 0; slot < kMaxSlots; ++slot) dut.slot_rows[slot] = 16;
 }
 void drive_write(Via_shared_cache_tb& dut, int slot, int row, int column,
                  unsigned mask, const std::array<std::int16_t, 4>& values) {
@@ -234,7 +243,7 @@ void fill_slots(Via_shared_cache_tb& dut, int slots,
 void read_group(Via_shared_cache_tb& dut, int first, int last, bool init = true,
                 bool final = true, const std::function<void(int)>& concurrent = {},
                 const std::function<void(std::int16_t)>& inspect = {}) {
-    const int slots = allocated_banks * (dut.compact_mode ? 8 : 4);
+    const int slots = allocated_banks * (kBankBytes/(dut.compact_mode ? 256 : 512));
     std::vector<std::pair<int, int>> order;
     std::vector<int> first_rows, last_rows;
     for (int slot = first;; slot = (slot + 1) % slots) {
@@ -299,7 +308,7 @@ void read_group(Via_shared_cache_tb& dut, int first, int last, bool init = true,
 void exhaustive(Via_shared_cache_tb& dut, int banks) {
     configure(dut, banks);
     dut.compact_mode = 1;
-    const int compact_slots = banks * 8;
+    const int compact_slots = banks * (kBankBytes/256);
     for (int offset = -127; offset <= 128; ++offset) {
         dut.compact_offset = static_cast<std::uint16_t>(offset);
         dut.wr_use_16bits = offset & 1;
@@ -317,7 +326,7 @@ void exhaustive(Via_shared_cache_tb& dut, int banks) {
     dut.compact_mode = 0;
     dut.compact_offset = 0;
     dut.wr_use_16bits = 1;
-    const int wide_slots = banks * 4;
+    const int wide_slots = banks * (kBankBytes/512);
     std::array<bool, 65536> seen{};
     for (int batch = 0; batch < 65536 / (wide_slots * 256); ++batch) {
         fill_slots(dut, wide_slots, [&](int slot, int row, int lane) {
@@ -335,7 +344,7 @@ void tails_masks_and_overlap(Via_shared_cache_tb& dut, int banks) {
         if (!compact && banks == 1) continue;
         dut.compact_mode = compact;
         dut.compact_offset = static_cast<std::uint16_t>(compact ? -127 : 0);
-        const int slots = banks * (compact ? 8 : 4);
+        const int slots = banks * (kBankBytes/(compact ? 256 : 512));
         for (int slot = 0; slot < slots; ++slot) dut.slot_rows[slot] = 1 + (slot * 5 % 16);
         fill_slots(dut, slots, [&](int slot, int row, int lane) {
             if (row >= dut.slot_rows[slot] || lane > (slot * 3 % 16)) return std::int16_t(0);
@@ -392,7 +401,7 @@ int main(int argc, char** argv) {
         for (int compact = 0; compact <= 1; ++compact) {
             dut.compact_mode = compact;
             dut.compact_offset = compact ? 128 : 0;
-            const int slots = compact ? 32 : 16;
+            const int slots = compact ? kMaxSlots : kMaxSlots/2;
             fill_slots(dut, slots, [&](int slot, int row, int lane) {
                 const unsigned raw = unsigned(slot * 127 + row * 31 + lane);
                 return compact ? static_cast<std::int16_t>(signed8(raw & 255U) + 128)
@@ -400,17 +409,25 @@ int main(int argc, char** argv) {
             });
             read_group(dut, slots - 2, 1);
         }
-        require(s8_checks == 3670016, "S8 exhaustive value count");
+        require(s8_checks == 256ULL * 7 * (kBankBytes/256) * 256, "S8 exhaustive value count");
         require(s16_checks == 2 * 65536, "S16 exhaustive value count");
         require(cross_word_writes > 0 && simultaneous_ia_rw > 0 && simultaneous_ia_ps > 0,
                 "Missing concurrent or cross-word coverage");
         require(ps_read_words == ps_word_checks, "PS read comparison coverage");
         dut.final();
-        std::cout << "{\"passed\":true,\"shared_data_ram_bytes\":14336,\"allocation_bank_bytes\":2048,"
-                  << "\"physical_banks\":7,\"bank_width_bits\":128,\"bank_depth\":128,"
-                  << "\"profiles\":[{\"ia_banks\":1,\"ia_bytes\":2048,\"ps_bytes\":12288,\"compact_slots\":8,\"wide_supported\":false},"
-                  << "{\"ia_banks\":2,\"ia_bytes\":4096,\"ps_bytes\":10240,\"compact_slots\":16,\"wide_slots\":8,\"wide_supported\":true},"
-                  << "{\"ia_banks\":4,\"ia_bytes\":8192,\"ps_bytes\":6144,\"compact_slots\":32,\"wide_slots\":16,\"wide_supported\":true}],"
+        std::cout << "{\"passed\":true,\"shared_data_ram_bytes\":" << kBankBytes*kBanks
+                  << ",\"allocation_bank_bytes\":" << kBankBytes << ",\"physical_banks\":" << kBanks
+                  << ",\"bank_width_bits\":128,\"bank_depth\":" << kBankRows << ",\"profiles\":[";
+        for (int banks : {1,2,4}) {
+            std::cout << (banks==1 ? "" : ",") << "{\"ia_banks\":" << banks
+                      << ",\"ia_bytes\":" << banks*kBankBytes << ",\"ps_bytes\":" << (kBanks-banks)*kBankBytes
+                      << ",\"compact_slots\":" << banks*kBankBytes/256
+                      << ",\"wide_slots\":" << banks*kBankBytes/512
+                      << ",\"compact_reuse\":" << banks*kBankBytes/512
+                      << ",\"wide_reuse\":" << banks*kBankBytes/1024
+                      << ",\"wide_supported\":" << (banks>=2 ? "true" : "false") << "}";
+        }
+        std::cout << "],"
                   << "\"s8_offsets_per_profile\":256,\"wide_profiles\":2,\"s16_bit_patterns_per_wide_profile\":65536,"
                   << "\"s8_value_checks\":" << s8_checks << ",\"s16_value_checks\":" << s16_checks
                   << ",\"value_checks\":" << value_checks << ",\"cycle_value_checks\":" << cycle_value_checks

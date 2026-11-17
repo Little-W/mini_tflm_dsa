@@ -21,7 +21,7 @@ def manifest(width=64, bank_bytes=2048, banks=7):
 class MeasurementProfileTests(unittest.TestCase):
     def test_supported_physical_geometries(self):
         for width in (32, 64):
-            for bank_bytes in (1024, 2048, 4096):
+            for bank_bytes in (2048, 4096, 8192):
                 for banks in range(6, 10):
                     p = normalize_profile(manifest(width, bank_bytes, banks), root=ROOT,
                                           literal_bound=True)
@@ -30,7 +30,9 @@ class MeasurementProfileTests(unittest.TestCase):
                     self.assertEqual(p["ps_pool_bytes"], bank_bytes*(banks-1))
                     self.assertEqual(p["ps_caps"], 0x01100037)
                     self.assertEqual(p["ps_directory_bits_per_row"],
-                                     {1024:30,2048:34,4096:38}[bank_bytes])
+                                     {2048:34,4096:38,8192:42}[bank_bytes])
+                    self.assertEqual(p["matrix_output_banks"],
+                                     max(32, bank_bytes // 128) | (4 << 16))
 
     def test_conv_memory_defaults_are_recorded(self):
         memory = ROOT / "test/conv_npu/axi_memory.sv"
@@ -54,7 +56,7 @@ class MeasurementProfileTests(unittest.TestCase):
 
     def test_invalid_physical_profiles(self):
         for name, value in (("bus_width", True), ("bus_width", 128),
-                ("shared_bank_bytes", 512), ("shared_bank_count", True),
+                ("shared_bank_bytes", 512), ("shared_bank_bytes", 1024), ("shared_bank_count", True),
                 ("shared_bank_count", 10), ("shared_total_bytes", 8192),
                 ("dma_max_bytes", 4096), ("dma_max_bytes", 12),
                 ("ram_continuous_read_beat_cycles", 0), ("ram_read_first_latency", 0),

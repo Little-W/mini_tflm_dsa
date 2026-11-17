@@ -21,7 +21,7 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--compiler", default="g++")
-    parser.add_argument("--bank-bytes", type=int, choices=(1024,2048,4096), default=2048)
+    parser.add_argument("--bank-bytes", type=int, choices=(2048,4096,8192), default=2048)
     parser.add_argument("--bank-count", type=int, choices=range(6,10), default=7)
     parser.add_argument("--force-raw", action="store_true")
     parser.add_argument("--reuse-build", action="store_true")

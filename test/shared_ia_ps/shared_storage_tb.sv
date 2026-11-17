@@ -1,21 +1,22 @@
 `timescale 1ns/1ps
 module shared_storage_tb #(
     parameter int BANK_BYTES = 2048,
-    parameter int BANK_COUNT = 7
+    parameter int BANK_COUNT = 7,
+    localparam int ADDR_BITS = $clog2(BANK_COUNT*BANK_BYTES/16)
 ) (
     input logic clk, rst_n, cfg_valid, direct_mode,
     input logic [$clog2(BANK_COUNT+1)-1:0] cfg_ia_banks,
     input logic [31:0] cfg_pool_bank_words, cfg_pool_bank_count, cfg_directory_stride,
     input logic [1:0] ia_read_en, ia_write_en,
-    input logic [11:0] ia_read_addr [0:1], ia_write_addr [0:1],
+    input logic [ADDR_BITS-1:0] ia_read_addr [0:1], ia_write_addr [0:1],
     input logic [127:0] ia_write_data [0:1],
     input logic [15:0] ia_write_mask [0:1],
     output logic [127:0] ia_read_data [0:1],
     input logic [3:0] direct_read_en, direct_write_en,
-    input logic [11:0] direct_read_addr [0:3], direct_write_addr [0:3],
+    input logic [ADDR_BITS-1:0] direct_read_addr [0:3], direct_write_addr [0:3],
     input logic [127:0] direct_write_data [0:3],
     output wire [3:0] memory_read_en, memory_write_en,
-    output wire [11:0] memory_read_addr [0:3], memory_write_addr [0:3],
+    output wire [ADDR_BITS-1:0] memory_read_addr [0:3], memory_write_addr [0:3],
     output wire [127:0] memory_read_data [0:3], memory_write_data [0:3],
     output logic memory_fault,
     input logic frame_request, frame_accept,
@@ -34,18 +35,18 @@ module shared_storage_tb #(
     output wire [31:0] selected_id, commit_row, read_row, directory_base,
     output wire [2:0] write_rotation, read_rotation,
     output wire [31:0] free_counts [0:BANK_COUNT-2],
-    output wire [255:0] free_bits [0:BANK_COUNT-2],
+    output wire [BANK_BYTES/16-1:0] free_bits [0:BANK_COUNT-2],
     output wire [15:0] frame_valid,
     output wire [31:0] frame_lengths [0:15], frame_bank_counts [0:BANK_COUNT-2][0:15],
     output wire [2:0] frame_max_words [0:15],
     output wire decoder_done, decoder_fault, decoded_write_en, decoded_read_en, replay_bypass,
     output wire command_present, command_accepted, replay_armed, configuration_ready,
     output wire [31:0] decoded_count, decoder_inflight,
-    input logic [11:0] inspect_address,
+    input logic [9:0] inspect_address,
     output wire [63:0] inspect_descriptor
 );
     wire [3:0] store_read_en, store_write_en;
-    wire [11:0] store_read_addr [0:3], store_write_addr [0:3];
+    wire [ADDR_BITS-1:0] store_read_addr [0:3], store_write_addr [0:3];
     wire [127:0] store_write_data [0:3];
     assign memory_read_en=direct_mode ? direct_read_en : store_read_en;
     assign memory_write_en=direct_mode ? direct_write_en : store_write_en;
@@ -56,13 +57,13 @@ module shared_storage_tb #(
     end
     for (genvar b=0;b<BANK_COUNT-1;b++) begin : g_bank_counts
         assign free_counts[b]=32'(dut.bank_free_count[b]);
-        assign free_bits[b]=256'(dut.free_bitmap[b]);
+        assign free_bits[b]=(BANK_BYTES/16)'(dut.free_bitmap[b]);
         for (genvar f=0;f<16;f++) begin : g_frame_counts
             assign frame_bank_counts[b][f]=32'(dut.frame_bank_words[b][f]);
         end
     end
     ia_ps_shared_ram #(.BANK_BYTES(BANK_BYTES),.TOTAL_BYTES(BANK_BYTES*BANK_COUNT),
-        .IA_ADDR_BITS(12),.PS_ADDR_BITS(12)) shared_ram (
+        .IA_ADDR_BITS(ADDR_BITS),.PS_ADDR_BITS(ADDR_BITS)) shared_ram (
         .clk(clk),.rst_n(rst_n),.cfg_valid(cfg_valid),.cfg_ia_banks(cfg_ia_banks),.capacity_fault(memory_fault),
         .ia_read_en(ia_read_en),.ia_read_addr(ia_read_addr),.ia_read_data(ia_read_data),
         .ia_write_en(ia_write_en),.ia_write_addr(ia_write_addr),.ia_write_data(ia_write_data),.ia_write_mask(ia_write_mask),
@@ -71,7 +72,7 @@ module shared_storage_tb #(
     );
     ps_frame_store #(.MAX_FRAME_ROWS(BANK_BYTES/8),.FRAME_COUNT(16),
         .POOL_BYTES(BANK_BYTES*(BANK_COUNT-1)),.BANK_BYTES(BANK_BYTES),
-        .EXTERNAL_RAM(1),.DIRECTORY_ROWS(1024),.RAM_ADDR_BITS(12)) dut (
+        .EXTERNAL_RAM(1),.DIRECTORY_ROWS(1024),.RAM_ADDR_BITS(ADDR_BITS)) dut (
         .clk(clk),.rst_n(rst_n),.cfg_valid(cfg_valid),.cfg_pool_bank_words(cfg_pool_bank_words),
         .cfg_directory_stride(cfg_directory_stride),.cfg_pool_bank_count(cfg_pool_bank_count),
         .ram_read_en(store_read_en),.ram_read_addr(store_read_addr),.ram_read_data(memory_read_data),

@@ -1,8 +1,8 @@
 # Read literal Make configuration and provide Vivado hardware parameters.
 namespace eval npu_config {
     variable defaults [dict create \
-        NPU_AXI_DATA_WIDTH 64 SHARED_BANK_BYTES 2048 SHARED_BANK_COUNT 7 \
-        PCR_ENGINE 1 PS_POOL_BYTES 12288 PS_FORCE_RAW 0]
+        NPU_AXI_DATA_WIDTH 64 SHARED_BANK_BYTES 8192 SHARED_BANK_COUNT 7 \
+        PCR_ENGINE 1 PS_POOL_BYTES 49152 PS_FORCE_RAW 0]
 }
 
 proc npu_config::repository_root {script_directory} {
@@ -29,7 +29,7 @@ proc npu_config::integer_literal {name text} {
 proc npu_config::validate {values} {
     foreach {name allowed} {
         NPU_AXI_DATA_WIDTH {32 64}
-        SHARED_BANK_BYTES {1024 2048 4096}
+        SHARED_BANK_BYTES {2048 4096 8192}
         SHARED_BANK_COUNT {6 7 8 9}
         PCR_ENGINE {0 1}
         PS_FORCE_RAW {0 1}
@@ -37,6 +37,9 @@ proc npu_config::validate {values} {
         if {[dict get $values $name] ni $allowed} {
             error "$name must be one of [join $allowed {, }]"
         }
+    }
+    if {[dict get $values SHARED_BANK_BYTES] != 8192} {
+        error "FPGA block RAM requires SHARED_BANK_BYTES=8192 (128-bit data by 512 rows per bank)"
     }
     set pool [dict get $values PS_POOL_BYTES]
     if {$pool < 64 || $pool % 64 != 0} {
@@ -51,7 +54,7 @@ proc npu_config::read {root {config_path ""}} {
         if {[info exists ::env(NPU_CONFIG)] && $::env(NPU_CONFIG) ne ""} {
             set config_path $::env(NPU_CONFIG)
         } else {
-            set config_path [file join $root config npu.mk]
+            set config_path [file join $root config npu_fpga.mk]
         }
     }
     set config_path [file normalize $config_path]
@@ -94,6 +97,30 @@ proc npu_config::generics {values} {
         BUS_WIDTH=[dict get $values NPU_AXI_DATA_WIDTH] \
         SHARED_BANK_BYTES=[dict get $values SHARED_BANK_BYTES] \
         SHARED_BANK_COUNT=[dict get $values SHARED_BANK_COUNT]]
+}
+
+proc npu_config::project_values {generic_items} {
+    variable defaults
+    set values $defaults
+    set names [dict create BUS_WIDTH NPU_AXI_DATA_WIDTH \
+        SHARED_BANK_BYTES SHARED_BANK_BYTES SHARED_BANK_COUNT SHARED_BANK_COUNT]
+    set found [dict create]
+    foreach item $generic_items {
+        set equal [string first = $item]
+        if {$equal <= 0} { continue }
+        set name [string range $item 0 [expr {$equal - 1}]]
+        if {![dict exists $names $name]} { continue }
+        set key [dict get $names $name]
+        set value [string trim [string range $item [expr {$equal + 1}] end] "\""]
+        dict set values $key [integer_literal $key $value]
+        dict set found $name 1
+    }
+    foreach name [dict keys $names] {
+        if {![dict exists $found $name]} {
+            error "Project source generics must explicitly specify $name"
+        }
+    }
+    return [validate $values]
 }
 
 proc npu_config::write_snapshot {path values} {

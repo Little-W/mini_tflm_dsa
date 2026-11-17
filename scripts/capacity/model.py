@@ -22,11 +22,11 @@ CACHE_CHOICES = (2, 4, 8, 16)
 FRAME_CHOICES = (4, 8, 16, 25)
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-bank-sparse128-v3"
+MODEL_VERSION = "dip-shared-bank-sparse128-v4"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
-SHARED_BANK_BYTE_CHOICES = (1024, 2048, 4096)
+SHARED_BANK_BYTE_CHOICES = (2048, 4096, 8192)
 SHARED_MIN_BANKS = 6
 SHARED_MAX_BANKS = 9
 SHARED_DIRECTORY_ROWS = 1024
@@ -34,6 +34,27 @@ SHARED_DIRECTORY_ROWS = 1024
 
 def ceil_div(x, y):
     return (x + y - 1) // y
+
+
+def physical_shared_memory(bank_bytes, bank_count):
+    """Report data capacity separately from Xilinx block-RAM parity bits."""
+    if bank_bytes not in SHARED_BANK_BYTE_CHOICES or bank_count not in range(6, 10):
+        raise ValueError("Unsupported shared-memory bank geometry")
+    logical = bank_bytes * bank_count
+    asic_macros = bank_count * (bank_bytes // 2048) * 8
+    fpga_blocks = bank_count * 2
+    fpga_data = fpga_blocks * 4096
+    return dict(
+        logical_data_bytes=logical,
+        asic=dict(macro="RAMTP128X16", macro_count=asic_macros,
+                  allocated_data_bytes=asic_macros * 256, unused_data_bytes=0,
+                  data_utilization=1.0),
+        fpga=dict(primitive="RAMB36E1", primitive_count=fpga_blocks,
+                  allocated_data_bytes=fpga_data,
+                  unused_data_bytes=fpga_data - logical,
+                  parity_bytes=fpga_blocks * 512,
+                  data_utilization=logical / fpga_data,
+                  compatible=bank_bytes == 8192))
 
 
 def _integer(value, name, minimum=1, maximum=None):
@@ -77,6 +98,7 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
     depth = bank_bytes // 16 if enabled else pool_bytes // POOL_ALIGNMENT
     address_bits = max(1, (depth - 1).bit_length()) if compressed else 0
     rotation_bits = max(1, (banks - 1).bit_length()) if compressed else 0
+    output_s8_banks = max(min(frames * max(1, cache // 2), 32), max_r if enabled else 1)
     return dict(shared_ia_ps_enabled=enabled,
                 configured_ia_cache_bytes=initial_ia_bytes,
                 configured_ps_pool_bytes=pool_bytes if compressed else 0,
@@ -92,6 +114,7 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
                 max_ia_cache_blocks=max_cache,
                 max_ia_bytes=4 * bank_bytes if enabled else initial_ia_bytes,
                 max_r_s8=max_r, max_r_s16=max(1, max_cache // 2),
+                output_banks_s8=output_s8_banks, output_banks_s16=min(output_s8_banks, 4),
                 max_frame_rows=max_frame, max_matrix_rows=max_r * size,
                 max_stream_rows=max_r * size,
                 logical_ps_rows=SHARED_DIRECTORY_ROWS if enabled else
@@ -126,9 +149,8 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
                              bank_bytes=bank_bytes, bank_count=bank_count)
     rmax, max_frame = layout["max_r_s8"], layout["max_frame_rows"]
     slots = 2 * layout["max_ia_cache_blocks"]
-    wide_rmax = max(1, cache // 2)
-    oa_banks = min(frames * wide_rmax, 32)
-    oa_s16_banks = min(oa_banks, 4)
+    oa_banks = layout["output_banks_s8"]
+    oa_s16_banks = layout["output_banks_s16"]
     logical_rows = layout["logical_ps_rows"]
     frame_length_bits = max(1, max_frame.bit_length())
     bits = {
@@ -214,6 +236,9 @@ def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                 register_arrays_bits=registers, register_array_bits=sum(registers.values()),
                 ps_buffer_bits=sum(v for k, v in arrays.items() if k.startswith("ps_")),
                 shared_data_ram_bits=arrays.get("ia_ps_shared_ram", 0),
+                physical_shared_memory=(physical_shared_memory(
+                    layout["shared_bank_bytes"], layout["shared_physical_bank_count"])
+                    if layout["shared_ia_ps_enabled"] else None),
                 logical_state_bits=measured_state_bits,
                 logical_state_bytes=None if measured_state_bits is None else measured_state_bits / 8,
                 other_state_bits=None if measured_state_bits is None else measured_state_bits - ram_bits,

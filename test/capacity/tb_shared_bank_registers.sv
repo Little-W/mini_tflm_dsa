@@ -1,18 +1,25 @@
 module tb_shared_bank_registers;
-    localparam int PROFILES = 19;
+    localparam int PROFILES = 23;
     localparam logic [31:0] CAPS [PROFILES] = '{
         32'h01100037,32'h01100037,32'h01100037,32'h0110003f,32'h01100027,
         32'h01100027,32'h01100027,32'h01100027,32'h01100027,32'h00000000,
         32'h01100037,32'h01100037,32'h01100037,32'h01100037,32'h01100037,
+        32'h01100037,32'h01100037,32'h01100037,32'h01100037,
         32'h01100037,32'h01100037,32'h01100037,32'h01100037};
     localparam int unsigned TOTAL [PROFILES] = '{12288,14336,16384,14336,0,0,0,0,0,0,
-        18432,6144,7168,8192,9216,24576,28672,32768,36864};
+        18432,6144,7168,8192,9216,24576,28672,32768,36864,
+        49152,57344,65536,73728};
     localparam int unsigned BANK_BYTES [PROFILES] = '{2048,2048,2048,2048,0,0,0,0,0,0,
-        2048,1024,1024,1024,1024,4096,4096,4096,4096};
+        2048,1024,1024,1024,1024,4096,4096,4096,4096,
+        8192,8192,8192,8192};
     localparam int unsigned POOL [PROFILES] = '{10240,12288,14336,12288,12288,2048,4096,6144,8192,0,
-        16384,5120,6144,7168,8192,20480,24576,28672,32768};
+        16384,5120,6144,7168,8192,20480,24576,28672,32768,
+        40960,49152,57344,65536};
     localparam logic [31:0] MASK [PROFILES] = '{32'h16,32'h16,32'h16,32'h16,0,0,0,0,0,0,
-        32'h16,32'h16,32'h16,32'h16,32'h16,32'h16,32'h16,32'h16,32'h16};
+        32'h16,32'h16,32'h16,32'h16,32'h16,32'h16,32'h16,32'h16,32'h16,
+        32'h16,32'h16,32'h16,32'h16};
+    localparam bit SHARED [PROFILES] = '{
+        1,1,1,1,0,0,0,0,0,0,1,0,0,0,0,1,1,1,1,1,1,1,1};
     localparam logic [31:0] ALL = (32'd1<<PROFILES)-1;
     logic clk=0,rst_n=0;
     always #5 clk=~clk;
@@ -54,16 +61,16 @@ module tb_shared_bank_registers;
     function automatic logic[31:0] expected_read(input int profile,input logic[15:0] address);
         case(address)
             16'h0124:return CAPS[profile];
-            16'h0134:return TOTAL[profile]!=0 ? TOTAL[profile]-expected_allocation[profile]*BANK_BYTES[profile] :
+            16'h0134:return SHARED[profile] ? TOTAL[profile]-expected_allocation[profile]*BANK_BYTES[profile] :
                 32'(POOL[profile]);
-            16'h0138:return TOTAL[profile]!=0 ? expected_allocation[profile]*BANK_BYTES[profile] : 32'd2048;
-            16'h0100:return TOTAL[profile];
-            16'h0104:return BANK_BYTES[profile];
+            16'h0138:return SHARED[profile] ? expected_allocation[profile]*BANK_BYTES[profile] : 32'd2048;
+            16'h0100:return SHARED[profile] ? TOTAL[profile] : 32'd0;
+            16'h0104:return SHARED[profile] ? BANK_BYTES[profile] : 32'd0;
             16'h00f4:return (profile%2)!=0 ? 32'd64 : 32'd32;
             16'h00f0:return (profile%2)!=0 ? 32'd2048 : 32'd1024;
             16'h0108:return expected_allocation[profile];
-            16'h010c:return MASK[profile];
-            16'h0110:return TOTAL[profile]!=0 ? 32'd1024 : 32'd0;
+            16'h010c:return SHARED[profile] ? MASK[profile] : 32'd0;
+            16'h0110:return SHARED[profile] ? 32'd1024 : 32'd0;
             default:return 32'd0;
         endcase
     endfunction
@@ -87,7 +94,7 @@ module tb_shared_bank_registers;
         read_register(16'h0134);read_register(16'h0138);read_register(16'h0108);
         for(int i=0;i<PROFILES;i++) begin
             check(allocation[i]==expected_allocation[i],"allocation output");
-            if(TOTAL[i]!=0)
+            if(SHARED[i])
                 check(expected_read(i,16'h0134)+expected_read(i,16'h0138)==TOTAL[i],"shared byte conservation");
         end
     endtask
@@ -102,7 +109,7 @@ module tb_shared_bank_registers;
             else if(address==16'h0108) begin
                 candidate=expected_allocation[i];
                 for(int b=0;b<4;b++)if(strobes[b])candidate[b*8+:8]=value[b*8+:8];
-                if(TOTAL[i]==0 || candidate>=32 || !MASK[i][candidate[4:0]]) responses[i]=2;
+                if(!SHARED[i] || candidate>=32 || !MASK[i][candidate[4:0]]) responses[i]=2;
                 else expected_allocation[i]=candidate;
             end
         end
@@ -137,7 +144,7 @@ module tb_shared_bank_registers;
     endtask
 
     initial begin
-        for(int i=0;i<PROFILES;i++)expected_allocation[i]=TOTAL[i]!=0 ? 1 : 0;
+        for(int i=0;i<PROFILES;i++)expected_allocation[i]=SHARED[i] ? 1 : 0;
         repeat(5)@(negedge clk);rst_n=1;
         read_register(16'h0124);read_register(16'h0100);read_register(16'h0104);
         read_register(16'h010c);read_register(16'h0110);
@@ -173,7 +180,7 @@ module tb_shared_bank_registers;
         check(busy=='0,"completion releases configuration");
         write_register(16'h0108,32'd2,4'hf);check_capacities();
         @(negedge clk);rst_n=0;repeat(3)@(negedge clk);rst_n=1;
-        for(int i=0;i<PROFILES;i++)expected_allocation[i]=TOTAL[i]!=0 ? 1 : 0;
+        for(int i=0;i<PROFILES;i++)expected_allocation[i]=SHARED[i] ? 1 : 0;
         check_capacities();read_register(16'h010c);read_register(16'h0110);
         $display("{\"passed\":true,\"profiles\":%0d,\"register_reads\":%0d,\"register_writes\":%0d,\"rejected_writes\":%0d,\"checks\":%0d}",PROFILES,reads,writes,rejected,checks);
         $finish;

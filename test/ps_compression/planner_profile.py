@@ -62,8 +62,8 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
     frames = integer(source.get("ps_frame_count", 16), "ps_frame_count", 1, 64)
     cache = integer(source.get("ia_cache_blocks", 4), "ia_cache_blocks", 2, 64)
     bank_bytes = integer(source["shared_bank_bytes"], "shared_bank_bytes")
-    if bank_bytes not in (1024, 2048, 4096):
-        raise ValueError("Shared banks must contain 1024, 2048 or 4096 bytes")
+    if bank_bytes not in (2048, 4096, 8192):
+        raise ValueError("Shared banks must contain 2048, 4096 or 8192 bytes")
     bank_count = integer(source.get("shared_bank_count", 0), "shared_bank_count")
     if not bank_count:
         total = source.get("shared_total_bytes")
@@ -85,7 +85,7 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
         raise ValueError("Invalid shared IA bank choices")
     directory = integer(source.get("ps_directory_rows", 1024), "ps_directory_rows", 1)
     raw_only = bool(source.get("force_raw", source.get("ps_force_raw", False)))
-    output_s8 = min(frames * max(1, cache // 2), 32)
+    output_s8 = max(min(frames * max(1, cache // 2), 32), bank_bytes // 128)
     output_limit = integer(source.get("output_banks_s16_max", 4), "output_banks_s16_max")
     output_s16 = min(output_s8, output_limit) if output_limit else output_s8
     caps = (1 << 24) | (frames << 16) | 0x17 | (int(raw_only) << 3) | (int(literal_bound) << 5)

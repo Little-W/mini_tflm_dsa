@@ -208,7 +208,7 @@ def gemm_task(out,size,*,name='mixed_gemm_is',dataflow=1):
 
 def precision_task(out, size, *, name, dataflow=0, lhs_s16=True, output_s16=False,
                    rows=None,reduction=None,columns=None,requested_r=2,requested_w=2,
-                   expected_error=0,inject_capacity=False):
+                   expected_error=0,inject_capacity=False,memory_bases=None):
     """Use full input ranges and compare every result before requantization."""
     d=out/name; d.mkdir(exist_ok=True)
     rows=size+1 if rows is None else rows
@@ -225,6 +225,15 @@ def precision_task(out, size, *, name, dataflow=0, lhs_s16=True, output_s16=Fals
     width=2 if lhs_s16 else 1
     lhs_base,rhs_base,bias_base,dst_base=0x1003,0x9003,0x11000,0x14003
     qmult_base,qshift_base=0x12000,0x13000
+    if memory_bases is not None:
+        lhs_base,rhs_base,bias_base,dst_base,qmult_base,qshift_base=memory_bases
+        spans=sorted((start,start+length) for start,length in (
+            (lhs_base,rows*red*width),(rhs_base,cols*red),(bias_base,cols*4),
+            (dst_base,rows*cols*(2 if output_s16 else 1)),
+            (qmult_base,cols*4),(qshift_base,cols*4)))
+        if spans[0][0] <= 0 or spans[-1][1] > WORDS*4 or any(
+                left[1] > right[0] for left,right in zip(spans,spans[1:])):
+            raise ValueError('Operand and result memory spans must fit without overlap')
     mult=0x40000000
     shift=-12 if output_s16 else (-21 if lhs_s16 else (-14 if red>64 else -10))
     multipliers=[mult if output_s16 else mult+0x00100000*(col%13) for col in range(cols)]
@@ -328,8 +337,8 @@ def build(out,size,verilator,jobs,cache_sets=32,cache_policy=2,
           ps_compress=False,pool_bytes=16384,force_raw=False,lint_only=False,
           bus_width=None,shared_bank_bytes=2048,shared_bank_count=0):
     bus_width=axi_data_width(bus_width)
-    if shared_bank_bytes not in (1024,2048,4096) or shared_bank_count not in (0,6,7,8,9):
-        raise ValueError('Shared RAM requires 1/2/4 KiB banks and 6..9 physical banks')
+    if shared_bank_bytes not in (2048,4096,8192) or shared_bank_count not in (0,6,7,8,9):
+        raise ValueError('Shared RAM requires 2/4/8 KiB banks and 6..9 physical banks')
     out=Path(out).resolve()
     sources,includes,tracked=source_files()
     out.mkdir(parents=True,exist_ok=True)
@@ -396,7 +405,7 @@ def main():
     a.add_argument('--lint-only',action='store_true')
     a.add_argument('--keep-objects',action='store_true')
     a.add_argument('--bus-width',type=int,choices=(32,64))
-    a.add_argument('--shared-bank-bytes',type=int,choices=(1024,2048,4096))
+    a.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192))
     a.add_argument('--shared-bank-count',type=int,choices=(6,7,8,9))
     x=a.parse_args()
     selected=selected_config()

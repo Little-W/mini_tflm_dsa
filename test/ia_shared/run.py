@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=1)
     parser.add_argument('--reuse-build', action='store_true')
+    parser.add_argument('--bank-bytes',type=int,choices=(2048,4096,8192),default=2048)
+    parser.add_argument('--bank-count',type=int,choices=range(6,10),default=7)
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
@@ -43,9 +45,9 @@ def main():
         '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
     top = 'ia_shared_cache_tb'
     command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', str(args.jobs),
-               '--top-module', top, '--Mdir', str(out / 'obj'), '-Wno-fatal',
+               '--top-module', top, f'-GBANK_BYTES={args.bank_bytes}', f'-GBANK_COUNT={args.bank_count}', '--Mdir', str(out / 'obj'), '-Wno-fatal',
                '--output-groups', '0', '--output-split', '10000',
-               '-CFLAGS', '-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
+               '-CFLAGS', f'-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BANK_BYTES={args.bank_bytes} -DTEST_BANK_COUNT={args.bank_count}',
                '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
                f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',
                *map(str, rtl), str(cpp)]
@@ -53,7 +55,7 @@ def main():
     start = time.monotonic()
     if args.reuse_build:
         previous = json.loads((out / 'summary.json').read_text())
-        if previous['source_sha256'] != hashes or previous['binary_sha256'] != digest(binary):
+        if previous['source_sha256'] != hashes or previous['binary_sha256'] != digest(binary) or previous['allocation_bank_bytes']!=args.bank_bytes or previous['physical_banks']!=args.bank_count:
             raise RuntimeError('Executable does not match the current sources')
         command = previous['compile_command']
     else:

@@ -38,9 +38,7 @@ module npu_top #(
     parameter int unsigned AXI_WRITE_OUTSTANDING = AXI_READ_OUTSTANDING,  // AXI 写通道最多提前排队的 burst 数
     parameter int unsigned ENABLE_IS_MODE = 1,  // 置 0 时综合裁剪 IS 转置/分组 bias 支持
     parameter int unsigned ENABLE_PER_CHANNEL = 1,  // 置 0 时综合裁剪 per-channel 量化装载路径
-    parameter int unsigned OA_FIFO_BANKS_MAX =
-        ((ENABLE_IS_MODE == 0) && (ENABLE_PER_CHANNEL == 0)) ? 16 :
-        32
+    parameter int unsigned OA_FIFO_BANKS_MAX = 0  // 0 selects capacity for the largest IA group.
 ) (
     //==== 时钟与复位 ====
     input wire clk,   // 系统时钟
@@ -463,7 +461,7 @@ module npu_top #(
 `ifdef GEMPACT_PS_COMPRESS
     localparam bit SHARED_RAM_ENABLED = SHARED_IA_PS_ENABLE != 0 &&
         SIZE == 16 && DATA_WIDTH == 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
-        (SHARED_BANK_BYTES == 1024 || SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096) &&
+        (SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096 || SHARED_BANK_BYTES == 8192) &&
         SHARED_TOTAL_BYTES >= 6 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES <= 9 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES % SHARED_BANK_BYTES == 0;
@@ -830,9 +828,18 @@ module npu_top #(
             (W_REUSE_NUM_MAX <= 1) ? 1 : ($clog2(W_REUSE_NUM_MAX) + 1);
         localparam int unsigned OA_INITIAL_IA_REUSE =
             (IA_CACHE_BLOCKS < 2) ? 1 : (IA_CACHE_BLOCKS / 2);
-        localparam int unsigned OA_FIFO_BANKS_RAW = PS_FRAME_COUNT * OA_INITIAL_IA_REUSE;
+        localparam int unsigned OA_LEGACY_BANKS_RAW = PS_FRAME_COUNT * OA_INITIAL_IA_REUSE;
+        localparam int unsigned OA_LEGACY_BANK_LIMIT =
+            (ENABLE_IS_MODE == 0 && ENABLE_PER_CHANNEL == 0) ? 16 : 32;
+        localparam int unsigned OA_REQUIRED_BANKS = SHARED_RAM_ENABLED ? IA_REUSE_NUM_MAX : 1;
+        localparam int unsigned OA_FIFO_BANKS_RAW =
+            (OA_LEGACY_BANKS_RAW < OA_REQUIRED_BANKS) ? OA_REQUIRED_BANKS : OA_LEGACY_BANKS_RAW;
+        localparam int unsigned OA_AUTO_BANK_LIMIT =
+            (OA_LEGACY_BANK_LIMIT < OA_REQUIRED_BANKS) ? OA_REQUIRED_BANKS : OA_LEGACY_BANK_LIMIT;
+        localparam int unsigned OA_BANK_LIMIT =
+            (OA_FIFO_BANKS_MAX == 0) ? OA_AUTO_BANK_LIMIT : OA_FIFO_BANKS_MAX;
         localparam int unsigned OA_FIFO_BANKS =
-            (OA_FIFO_BANKS_RAW <= OA_FIFO_BANKS_MAX) ? OA_FIFO_BANKS_RAW : OA_FIFO_BANKS_MAX;
+            (OA_FIFO_BANKS_RAW <= OA_BANK_LIMIT) ? OA_FIFO_BANKS_RAW : OA_BANK_LIMIT;
         localparam int unsigned OA_S16_FIFO_BANKS =
             (OA_S16_FIFO_BANKS_MAX == 0 || OA_FIFO_BANKS <= OA_S16_FIFO_BANKS_MAX) ?
             OA_FIFO_BANKS : OA_S16_FIFO_BANKS_MAX;
@@ -1257,6 +1264,8 @@ module npu_top #(
             (frame_command_active && (frame_compute_seen || partial_sum_calc_over) && (frame_store_seen || ps_frame_complete) &&
              (!frame_command_final || frame_output_seen || (frame_output_armed && oa_calc_over))) : oa_calc_over;
         wire tiling_invalid = conv_config_invalid || ps_capacity_config_invalid || !ext_r_legal || !ext_w_legal ||
+            ((OA_FIFO_BANKS < IA_REUSE_NUM_MAX) && !cfg_16x8_s2 &&
+             cfg_ia_reuse_eff_s2 > OA_FIFO_BANKS) ||
             (cfg_16x8_s2 && cfg_ia_reuse_eff_s2 > OA_S16_FIFO_BANKS) ||
             (ps_control_q[31:6] != 0) || (ps_control_q[5:4] == 2'd3) ||
             (!FRAME_EXEC_ENABLED && ps_control_q != 0) ||

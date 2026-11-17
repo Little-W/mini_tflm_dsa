@@ -14,14 +14,14 @@ from scripts.capacity import config, elaboration
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=ROOT / "config/npu.mk")
+    parser.add_argument("--config", type=Path)
     parser.add_argument("--set", action="append", default=[])
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--bus-width", type=int, choices=(32, 64))
     parser.add_argument("--output-root", type=Path, default=ROOT / "build/capacity/elaboration")
     parser.add_argument("--keep-tree", action="store_true")
     args = parser.parse_args()
-    values = {**config.DEFAULTS, **config.read_config(args.config)}
+    values = config.selected_config(args.config)
     values.update(config.parse_override(text) for text in args.set)
     values = config.validate_config(values, check_budget=False)
     if args.bus_width is not None:

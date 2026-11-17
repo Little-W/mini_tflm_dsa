@@ -307,10 +307,12 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         tree = json.loads(tree_path.read_text())
         state = inventory(tree)
         capabilities = {
-            "npu_axil_top": constant_parameters(tree, "npu_axil_top", ("PS_CAPS", "SHARED_CAPABLE")),
+            "npu_axil_top": constant_parameters(tree, "npu_axil_top", (
+                "PS_CAPS", "SHARED_CAPABLE", "MATRIX_S8_BANKS", "MATRIX_S16_BANKS")),
             "npu_axil_reg_if": constant_parameters(tree, "npu_axil_reg_if", (
                 "PS_CAPS", "PS_POOL_BYTES", "IA_CACHE_BYTES", "SHARED_TOTAL_BYTES",
-                "SHARED_BANK_BYTES", "SHARED_IA_BANK_MASK", "PS_DIRECTORY_ROWS")),
+                "SHARED_BANK_BYTES", "SHARED_IA_BANK_MASK", "PS_DIRECTORY_ROWS", "SHARED_CAPABLE",
+                "MATRIX_S8_BANKS", "MATRIX_S16_BANKS")),
             "npu_top": constant_parameters(tree, "npu_top", (
                 "SHARED_RAM_ENABLED", "IA_MAX_CACHE_BLOCKS", "IA_REUSE_NUM_MAX",
                 "OA_FIFO_BANKS", "OA_S16_FIFO_BANKS", "PS_REQUIRE_RAW_CAPACITY")),
@@ -347,7 +349,8 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                            logical_bytes=layout["shared_total_bytes"],
                            asic_macro="RAMTP128X16", asic_macro_count=macro_count,
                            mapped_sram_bytes=macro_count * 128 * 16 // 8,
-                           mapping_source="asic/rtl/smic40_sram_1r1w.sv")
+                           mapping_source="asic/rtl/smic40_sram_1r1w.sv",
+                           physical_capacity=model.physical_shared_memory(bank_bytes, banks))
     else:
         architecture = architecture and counts.get("ia_ps_shared_ram", 0) == 0
     registers = capabilities["npu_axil_reg_if"]
@@ -356,6 +359,13 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                     if values["PCR_ENGINE"] else 0
     capabilities_match = capabilities["npu_axil_top"]["PS_CAPS"] == expected_caps and \
         registers["PS_CAPS"] == expected_caps and \
+        capabilities["npu_top"]["OA_FIFO_BANKS"] == layout["output_banks_s8"] and \
+        capabilities["npu_top"]["OA_S16_FIFO_BANKS"] == layout["output_banks_s16"] and \
+        capabilities["npu_axil_top"]["MATRIX_S8_BANKS"] == layout["output_banks_s8"] and \
+        capabilities["npu_axil_top"]["MATRIX_S16_BANKS"] == layout["output_banks_s16"] and \
+        registers["MATRIX_S8_BANKS"] == layout["output_banks_s8"] and \
+        registers["MATRIX_S16_BANKS"] == layout["output_banks_s16"] and \
+        registers["SHARED_CAPABLE"] == int(layout["shared_ia_ps_enabled"]) and \
         registers["SHARED_TOTAL_BYTES"] == layout["shared_total_bytes"] and \
         registers["SHARED_BANK_BYTES"] == layout["shared_bank_bytes"] and \
         registers["SHARED_IA_BANK_MASK"] == layout["shared_ia_bank_mask"] and \

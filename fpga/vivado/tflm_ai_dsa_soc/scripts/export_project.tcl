@@ -396,7 +396,7 @@ if {$ps_compress eq "1"} {
     dict set exported_hardware_config PS_POOL_BYTES $pool_bytes
     dict set exported_hardware_config PS_FORCE_RAW $ps_force_raw
 }
-npu_config::write_snapshot [file join $export_root config npu.mk] $exported_hardware_config
+npu_config::write_snapshot [file join $export_root config npu_fpga.mk] $exported_hardware_config
 
 set_property verilog_define $rtl_defines [get_filesets sources_1]
 set_property top fpga_top [get_filesets sources_1]
@@ -473,7 +473,10 @@ set f [open $export_readme_path a]
 puts $f "NPU_ADDR_WIDTH=$npu_addr_width_value NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value"
 puts $f "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT]"
 puts $f "The scripts directory includes project creation, synthesis, implementation, simulation, and configuration parsing commands."
-puts $f "The config/npu.mk file records the hardware settings used for this export."
+puts $f "The config/npu_fpga.mk file records the hardware settings used for this export."
+set shared_bank_count [dict get $npu_hardware_config SHARED_BANK_COUNT]
+puts $f "Shared data capacity: [expr {8192 * $shared_bank_count}] bytes in [expr {2 * $shared_bank_count}] RAMB36E1 primitives."
+puts $f "The complete data capacity is addressable. The separate [expr {1024 * $shared_bank_count}] parity bytes are unused and excluded from software-visible capacity."
 close $f
 
 puts "Self-contained Vivado project exported."

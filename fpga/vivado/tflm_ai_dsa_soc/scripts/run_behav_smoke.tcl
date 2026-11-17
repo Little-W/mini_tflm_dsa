@@ -11,6 +11,7 @@ if {[llength $argv] < 1} {
 
 set script_dir [file dirname [file normalize [info script]]]
 source [file join $script_dir cpu_memory.tcl]
+source [file join $script_dir npu_config.tcl]
 set project_xpr [file normalize [lindex $argv 0]]
 set repo_tb_file [file normalize [file join $script_dir .. sim fpga_top_behav_smoke_tb.sv]]
 if {![file exists $repo_tb_file]} {
@@ -131,6 +132,7 @@ if {[llength $argv] >= 12} { set npu_enable_clock_gating_value [lindex $argv 11]
 open_project $project_xpr
 
 set source_generics [get_property generic [get_filesets sources_1]]
+set project_hardware_config [npu_config::project_values $source_generics]
 set sim_generics [get_property generic [get_filesets sim_1]]
 if {[llength $argv] < 3} { set size_value [get_generic_value $source_generics SIZE $size_value] }
 if {[llength $argv] < 4} { set ia_cache_blocks_value [get_generic_value $source_generics IA_CACHE_BLOCKS $ia_cache_blocks_value] }
@@ -146,9 +148,9 @@ set cpu_enable_icache_value [get_generic_value $source_generics CPU_ENABLE_ICACH
 set cpu_axi_write_timing_buffer_value [get_generic_value $source_generics CPU_AXI_WRITE_TIMING_BUFFER $cpu_axi_write_timing_buffer_value]
 set bypass_ram_pingpong_value [get_generic_value $source_generics BYPASS_RAM_PINGPONG $bypass_ram_pingpong_value]
 set ram_write_timing_buffer_value [get_generic_value $source_generics RAM_WRITE_TIMING_BUFFER $ram_write_timing_buffer_value]
-set npu_axi_data_width_value [get_generic_value $source_generics BUS_WIDTH 64]
-set shared_bank_bytes_value [get_generic_value $source_generics SHARED_BANK_BYTES 2048]
-set shared_bank_count_value [get_generic_value $source_generics SHARED_BANK_COUNT 7]
+set npu_axi_data_width_value [dict get $project_hardware_config NPU_AXI_DATA_WIDTH]
+set shared_bank_bytes_value [dict get $project_hardware_config SHARED_BANK_BYTES]
+set shared_bank_count_value [dict get $project_hardware_config SHARED_BANK_COUNT]
 set simulation_mem_dir [file join [file dirname $project_xpr] behavior_mem]
 set memory_images [cpu_memory::write_images $mem_path \
     [file join $simulation_mem_dir cpu32.mem] [file join $simulation_mem_dir cpu.mem] \

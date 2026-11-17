@@ -253,10 +253,10 @@ class MenuMakeTests(ConfigurationFixture):
     def test_explicit_values_and_budget_are_forwarded(self):
         run = self.make("-n", "menuconfig", f"NPU_CONFIG={self.path}", "IA_CACHE_BLOCKS=8",
                         "SIZE=16", "MAX_RAM_KIB=64", "REPRESENTATION=raw32",
-                        "NPU_AXI_DATA_WIDTH=32", "SHARED_BANK_BYTES=1024", "SHARED_BANK_COUNT=6")
+                        "NPU_AXI_DATA_WIDTH=32", "SHARED_BANK_BYTES=8192", "SHARED_BANK_COUNT=6")
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         for text in ("IA_CACHE_BLOCKS=8", "SIZE=16", "--max-ram-kib", "--representation", "raw32",
-                     "NPU_AXI_DATA_WIDTH=32", "SHARED_BANK_BYTES=1024", "SHARED_BANK_COUNT=6"):
+                     "NPU_AXI_DATA_WIDTH=32", "SHARED_BANK_BYTES=8192", "SHARED_BANK_COUNT=6"):
             self.assertIn(text, run.stdout)
 
     def test_missing_profile_can_be_opened_for_creation(self):

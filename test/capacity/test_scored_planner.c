@@ -134,7 +134,7 @@ int main(void){unsigned checks=0,fail=0;
   if(i%11u==0u)c.ps_caps|=DSA_PS_CAP_RAW_ONLY;
   if(i%4u==0u)c.ps_caps|=DSA_PS_CAP_LITERAL_BOUND;
   {uint32_t bounds[]={0u,32u,48u,64u};c.ps_literal_bytes=bounds[rnd()%4u];}
-  c.shared_bank_bytes=1024u<<(i%3u);c.shared_total_bytes=(6u+(i/3u)%4u)*c.shared_bank_bytes;c.shared_ia_bank_mask=0x16;c.ps_directory_rows=(rnd()&1)?1024:256;
+  c.shared_bank_bytes=2048u<<(i%3u);c.shared_total_bytes=(6u+(i/3u)%4u)*c.shared_bank_bytes;c.shared_ia_bank_mask=0x16;c.ps_directory_rows=(rnd()&1)?1024:256;
   c.flow=rnd()%3;c.allow_is=1;c.force_raw=rnd()&1;c.compact_mode_mask=rnd()%4;c.source_s8=rnd()&1;
   c.lhs_bytes=c.source_s8?1:2;c.output_bytes=(rnd()%4)?1:2;c.output_banks_s8=8;c.output_banks_s16=8;
   c.lhs_stride=c.depth*c.lhs_bytes+(rnd()%5);c.rhs_stride=c.depth+(rnd()%5);c.output_stride=c.cols*c.output_bytes+(rnd()%5);

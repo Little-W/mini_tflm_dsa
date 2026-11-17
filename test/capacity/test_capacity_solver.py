@@ -126,7 +126,7 @@ class ModelTests(unittest.TestCase):
         allocation = result["allocation"]
         self.assertTrue(allocation["shared_ia_ps_enabled"])
         self.assertEqual(allocation["shared_total_bytes"], 14336)
-        self.assertEqual(allocation["buffer_ram_bytes"], 38125)
+        self.assertEqual(allocation["buffer_ram_bytes"], 40173)
         self.assertEqual(result["metrics"]["exact_service_product_hex"], format(1521211424, "x"))
         self.assertLessEqual(result["search"]["feasible_geometries"],
                              result["search"]["enumerated_geometries"])
@@ -143,7 +143,7 @@ class ModelTests(unittest.TestCase):
         self.assertEqual((p["column_groups"]-1)*p["W"]+p["column_tail_tiles"], 2)
 
     def test_configurable_shared_bank_geometry_and_plans(self):
-        for bank_bytes in (1024, 2048, 4096):
+        for bank_bytes in (2048, 4096, 8192):
             for bank_count in range(6, 10):
                 parameters = dict(bank_bytes=bank_bytes, bank_count=bank_count)
                 layout = model.memory_geometry(4, 16, 4096, **parameters)
@@ -158,6 +158,8 @@ class ModelTests(unittest.TestCase):
                 self.assertEqual(layout["max_frame_rows"], bank_bytes//8)
                 self.assertEqual(arrays["ia_ps_shared_ram"], bank_count*bank_bytes*8)
                 self.assertEqual(arrays["ps_free_bitmap"], (bank_count-1)*(bank_bytes//16))
+                self.assertEqual(layout["output_banks_s8"], max(32, layout["max_r_s8"]))
+                self.assertEqual(arrays["oa_s8_fifo"], layout["output_banks_s8"]*16*16*8)
                 for representation in ("raw32", "adaptive"):
                     plan = model.plan_for_hardware(256, 144, 64, 4, 16, 4096,
                                                   representation, **parameters)
@@ -189,7 +191,7 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn("ia_ps_shared_ram", fixed)
         self.assertEqual(fixed["ia_cache"], 2048*8)
         self.assertEqual(fixed["ps_payload"], 4096*8)
-        for bank_bytes in (0, 512, 1536, 8192):
+        for bank_bytes in (0, 512, 1024, 1536, 16384):
             with self.assertRaises(ValueError):
                 model.memory_geometry(4, 16, 12288, bank_bytes=bank_bytes, bank_count=7)
         for bank_count in (0, 5, 10, True):
@@ -197,7 +199,7 @@ class ModelTests(unittest.TestCase):
                 model.memory_geometry(4, 16, 12288, bank_count=bank_count)
 
     def test_search_uses_selected_bank_size_and_shared_capacity(self):
-        for bank_bytes in (1024, 2048, 4096):
+        for bank_bytes in (2048, 4096, 8192):
             result = model.solve(WORKLOADS, 131072, bank_bytes=bank_bytes)
             a = result["allocation"]
             self.assertTrue(a["shared_ia_ps_enabled"])

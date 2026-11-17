@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--only', choices=['cache', 'loader'])
     parser.add_argument('--reuse-build', action='store_true')
+    parser.add_argument('--loader-cache-blocks',type=int,choices=(4,16,32,64),default=4)
     args = parser.parse_args()
     out = args.out.resolve()
     common = [ROOT / 'rtl/common/pseudo_dual_port_ram.v',
@@ -46,15 +47,18 @@ def main():
         command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', '1',
                    '--top-module', top, '--Mdir', str(target / 'obj'), '-Wno-fatal',
                    '--output-groups', '0', '--output-split', '10000',
-                   '-CFLAGS', '-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
+                   '-CFLAGS', f'-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_CACHE_BLOCKS={args.loader_cache_blocks}',
                    '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
                    f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',
                    *map(str, rtl), str(cpp)]
+        if name=='loader':command.insert(1,f'-GCACHE_BLOCKS={args.loader_cache_blocks}')
         binary = target / 'obj' / ('V' + top)
         if args.reuse_build:
             old = json.loads((target / 'summary.json').read_text())
             if old['source_sha256'] != hashes or old['binary_sha256'] != digest(binary):
                 raise RuntimeError(f'{name}: executable does not match current sources')
+            if name=='loader' and old.get('cache_blocks')!=args.loader_cache_blocks:
+                raise RuntimeError('loader: executable capacity differs')
             command = old['compile_command']
         else:
             with (target / 'compile.log').open('w') as log:
@@ -73,6 +77,7 @@ def main():
         if not units or any('-fsanitize=undefined' not in s for s in units):
             raise RuntimeError(f'{name}: missing undefined behavior sanitizer')
         report.update(source_sha256=hashes, binary_sha256=digest(binary),
+                      cache_blocks=args.loader_cache_blocks if name=='loader' else 4,
                       compile_command=command, run_command=[str(binary)],
                       undefined_behavior_sanitizer=True, sanitized_translation_units=len(units))
         (target / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

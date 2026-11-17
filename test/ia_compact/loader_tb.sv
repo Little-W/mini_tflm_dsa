@@ -1,8 +1,12 @@
-module ia_compact_loader_tb (
+module ia_compact_loader_tb #(
+    parameter int CACHE_BLOCKS=4,
+    localparam int SLOT_BITS=$clog2(2*CACHE_BLOCKS)
+) (
     input logic clk, rst_n, init_cfg,
     input logic cfg_im2col, cfg_tile_packed, cfg_compact, cfg_preserve_cache, cache_flush,
     input logic signed [31:0] cfg_compact_offset,
     input logic [31:0] cfg_p0_base, cfg_q0_base, cfg_cache_slot_base,
+    input logic [31:0] cfg_cache_blocks,
     input logic [31:0] k, n, m, lhs_base, lhs_row_stride_b,
     input logic signed [31:0] lhs_zp,
     input logic use_16bits, bias_by_row_mode,
@@ -14,11 +18,11 @@ module ia_compact_loader_tb (
     output logic [31:0] ext_dma_p0, ext_dma_q0, ext_dma_group,
     output logic [31:0] ext_dma_base_addr, ext_dma_row_stride, ext_dma_rows_to_read,
     output logic [7:0] ext_dma_burst_len_m1,
-    output logic [2:0] ext_dma_slot_id,
+    output logic [SLOT_BITS-1:0] ext_dma_slot_id,
     output logic ext_dma_use_16bits,
     output logic signed [31:0] ext_dma_lhs_zp,
     input logic ext_dma_busy, ext_dma_done,
-    input logic [2:0] ext_dma_wr_slot,
+    input logic [SLOT_BITS-1:0] ext_dma_wr_slot,
     input logic [3:0] ext_dma_wr_row, ext_dma_wr_col_base,
     input logic signed [15:0] ext_dma_wr_data [4],
     input logic ext_dma_wr_valid [4],
@@ -30,9 +34,9 @@ module ia_compact_loader_tb (
     output logic [31:0] ps_frame_rows, ps_frame_id,
     output logic ps_frame_init, ps_frame_final
 );
-    ia_loader #(.CACHE_BLOCKS(4), .COMPACT_S8(1), .PS_FRAME_COUNT(16)) u_loader (
+    ia_loader #(.CACHE_BLOCKS(CACHE_BLOCKS), .COMPACT_S8(1), .PS_FRAME_COUNT(16)) u_loader (
         .*, .ext_dma_is_write(), .ext_dma_linear_read_mode(),
-        .cfg_cache_blocks(32'd0), .bias_at_end(1'b0), .bias_load_sleep(),
+        .bias_at_end(1'b0), .bias_load_sleep(),
         .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(), .ram_port_wr_mask(),
         .ram_port_rd_en(), .ram_port_rd_addr(), .ram_port_rd_data('{default:'0}),
         .cfg_prefetch_enable(1'b0), .cfg_global_reduction(32'd0), .prefetch_idle(),

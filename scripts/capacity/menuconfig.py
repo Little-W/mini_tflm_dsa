@@ -56,7 +56,7 @@ FIELDS = (
           "is determined by bank size and bank count.", byte_size=True),
     Field("SHARED_BANK_BYTES", "Shared IA/PS RAM", "Bytes per bank",
           "Physical RAM bytes in each independent bank. Directory and decode buffers are separate.",
-          (1024, 2048, 4096), byte_size=True),
+          (2048, 4096, 8192), byte_size=True),
     Field("SHARED_BANK_COUNT", "Shared IA/PS RAM", "Physical bank count",
           "Total data RAM is bank count times bytes per bank. Prepare assigns 1, 2 or 4 banks to IA.",
           (6, 7, 8, 9)),

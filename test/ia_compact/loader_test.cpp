@@ -9,11 +9,16 @@
 #include <string>
 #include <vector>
 
+#ifndef TEST_CACHE_BLOCKS
+#define TEST_CACHE_BLOCKS 4
+#endif
+
 namespace {
 struct Case {
   std::string name;
   unsigned rows = 61, reduction = 13, columns = 16, r = 4, w = 1;
   unsigned base = 0x10000, stride = 37, p0 = 101, q0 = 32, epoch = 0, slot_base = 0;
+  unsigned cache_blocks = 4;
   int offset = -127, zp = -127;
   bool compact = true, preserve = true, flush = false, im2col = false;
   bool use16 = false, source16 = false, is_mode = false, packed = false;
@@ -25,6 +30,7 @@ struct Descriptor {
 struct Counts {
   std::uint64_t cases = 0, requests = 0, hits = 0, values = 0, cycles = 0;
   std::uint64_t compact_cases = 0, wide_cases = 0, wrap_requests = 0, frame_ids = 0;
+  unsigned max_compact_r = 0, max_wide_r = 0;
 } counts;
 std::int16_t signed16(std::uint16_t value) {
   return static_cast<std::int16_t>(value < 32768U ? static_cast<int>(value)
@@ -78,6 +84,7 @@ void execute(Via_compact_loader_tb& dut, const Case& c,
   dut.cfg_p0_base = c.p0;
   dut.cfg_q0_base = c.q0;
   dut.cfg_cache_slot_base = c.slot_base;
+  dut.cfg_cache_blocks = c.cache_blocks;
   dut.k = c.rows; dut.n = c.reduction; dut.m = c.columns;
   dut.lhs_base = c.base; dut.lhs_row_stride_b = c.stride;
   dut.lhs_zp = static_cast<std::uint32_t>(c.zp);
@@ -149,8 +156,9 @@ void execute(Via_compact_loader_tb& dut, const Case& c,
       next.p0 = dut.ext_dma_p0;
       next.q0 = dut.ext_dma_q0;
       next.delay = 2;
-      require(next.slot < (compact ? 8U : 4U), c.name + ": slot exceeds mode capacity");
-      require(next.slot == (requests + hits + c.slot_base) % (compact ? 8U : 4U),
+      const unsigned slots = c.cache_blocks * (compact ? 2U : 1U);
+      require(next.slot < slots, c.name + ": slot exceeds mode capacity");
+      require(next.slot == (requests + hits + c.slot_base) % slots,
               c.name + ": physical slot remapping mismatch");
       require(next.p0 >= c.p0 && next.q0 >= c.q0, c.name + ": global coordinates lost");
       const unsigned valid_columns = std::min(16U, c.reduction - (next.q0 - c.q0));
@@ -198,7 +206,11 @@ void execute(Via_compact_loader_tb& dut, const Case& c,
   if (expected_hits >= 0)
     require(hits == static_cast<unsigned>(expected_hits), c.name + ": cache hit count mismatch");
   counts.requests += requests; counts.hits += hits; ++counts.cases;
-  if (compact) ++counts.compact_cases; else ++counts.wide_cases;
+  if (compact) {
+    ++counts.compact_cases; counts.max_compact_r=std::max(counts.max_compact_r,c.r);
+  } else {
+    ++counts.wide_cases; counts.max_wide_r=std::max(counts.max_wide_r,c.r);
+  }
   dut.ext_dma_busy = 0; dut.ext_dma_done = 0;
   dut.load_ia_granted = 0; dut.send_ia_trigger = 0;
   for (unsigned i = 0; i < 4; ++i) dut.ext_dma_wr_valid[i] = 0;
@@ -291,6 +303,19 @@ int main(int argc, char** argv) {
       c.rows = 33U + seed * 7U; c.reduction = 17U + seed * 3U; c.columns = 49;
       execute(dut, c);
     }
+    if (TEST_CACHE_BLOCKS >= 64) {
+      for (bool compact : {true,false}) for (bool packed : {true,false}) {
+        c=Case{};
+        c.name=std::string(compact ? "compact_r64" : "wide_r32")+(packed ? "_packed" : "_rows");
+        c.cache_blocks=64;c.r=compact ? 64 : 32;c.w=2;
+        c.rows=c.r*16+13;c.reduction=33;c.columns=35;
+        c.compact=compact;c.source16=!compact;c.use16=!compact;c.packed=packed;
+        c.offset=compact ? 128 : 0;c.zp=c.offset;c.stride=80;
+        c.preserve=false;c.flush=true;c.slot_base=c.cache_blocks*(compact ? 2 : 1)-2;
+        execute(dut,c);
+      }
+      require(counts.max_compact_r==64 && counts.max_wide_r==32,"Expanded IA reuse coverage");
+    }
     dut.final();
     std::cout << "{\"passed\":true,\"cases\":" << counts.cases
               << ",\"compact_cases\":" << counts.compact_cases
@@ -300,6 +325,8 @@ int main(int argc, char** argv) {
               << ",\"value_checks\":" << counts.values
               << ",\"slot_wraps\":" << counts.wrap_requests
               << ",\"frame_id_checks\":" << counts.frame_ids
+              << ",\"max_compact_r\":" << counts.max_compact_r
+              << ",\"max_wide_r\":" << counts.max_wide_r
               << ",\"cycles\":" << counts.cycles << "}\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

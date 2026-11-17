@@ -61,8 +61,8 @@ def _field_value(key, value):
         raise ValueError("SIZE must be a power of two in 2..32")
     if key == "NPU_AXI_DATA_WIDTH" and value not in (32, 64):
         raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
-    if key == "SHARED_BANK_BYTES" and value not in (1024, 2048, 4096):
-        raise ValueError("SHARED_BANK_BYTES must be 1024, 2048 or 4096")
+    if key == "SHARED_BANK_BYTES" and value not in (2048, 4096, 8192):
+        raise ValueError("SHARED_BANK_BYTES must be 2048, 4096 or 8192")
     if key == "SHARED_BANK_COUNT" and value not in range(6, 10):
         raise ValueError("SHARED_BANK_COUNT must be in 6..9")
     if key == "IA_CACHE_BLOCKS" and (value < 2 or value > 64 or value & (value-1)):

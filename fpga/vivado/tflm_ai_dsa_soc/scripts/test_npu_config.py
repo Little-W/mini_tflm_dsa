@@ -138,8 +138,9 @@ class ConfigurationTests(unittest.TestCase):
                                expected_accept=success))
         return result
 
-    def read_values(self, *, success=True):
-        result = self.execute([self.helper, HERE/'npu_config.tcl', ROOT], success=success)
+    def read_values(self, *, success=True, environment=None):
+        result = self.execute([self.helper, HERE/'npu_config.tcl', ROOT], success=success,
+                              environment=environment)
         values = {}
         for line in result.stdout.splitlines():
             if line.startswith('VALUE\t'):
@@ -167,14 +168,22 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_default_values(self):
         values, result = self.read_values()
-        self.assertEqual(values, dict(NPU_AXI_DATA_WIDTH=64, SHARED_BANK_BYTES=2048,
-                                     SHARED_BANK_COUNT=7, PCR_ENGINE=1, PS_POOL_BYTES=12288, PS_FORCE_RAW=0))
+        self.assertEqual(values, dict(NPU_AXI_DATA_WIDTH=64, SHARED_BANK_BYTES=8192,
+                                     SHARED_BANK_COUNT=7, PCR_ENGINE=1, PS_POOL_BYTES=49152, PS_FORCE_RAW=0))
         self.assertIn(str(self.config), result.stdout)
+
+    def test_default_fpga_configuration_file(self):
+        environment = {key: value for key, value in self.environment.items() if key != 'NPU_CONFIG'}
+        values, result = self.read_values(environment=environment)
+        self.assertEqual(values['SHARED_BANK_BYTES'], 8192)
+        self.assertEqual(values['SHARED_BANK_COUNT'], 7)
+        self.assertEqual(values['PS_POOL_BYTES'], 49152)
+        self.assertIn(str(ROOT/'config/npu_fpga.mk'), result.stdout)
 
     def test_literal_syntax_and_unrelated_assignments(self):
         self.config.write_text('''# Hardware settings
 export NPU_AXI_DATA_WIDTH ?= +032 # decimal
-SHARED_BANK_BYTES := 0x1000
+SHARED_BANK_BYTES := 0x2000
 SHARED_BANK_COUNT = 09
 PCR_ENGINE = 1
 PS_POOL_BYTES := 0x6000
@@ -183,11 +192,11 @@ UNRELATED = $(shell echo unused)
 ''')
         values, _ = self.read_values()
         self.assertEqual((values['NPU_AXI_DATA_WIDTH'], values['SHARED_BANK_BYTES'],
-                          values['SHARED_BANK_COUNT'], values['PS_POOL_BYTES']), (32, 4096, 9, 24576))
+                          values['SHARED_BANK_COUNT'], values['PS_POOL_BYTES']), (32, 8192, 9, 24576))
 
     def test_all_supported_geometries(self):
         for bus in (32, 64):
-            for size in (1024, 2048, 4096):
+            for size in (8192,):
                 for count in (6, 7, 8, 9):
                     with self.subTest(bus=bus, size=size, count=count):
                         self.config.write_text(f'NPU_AXI_DATA_WIDTH={bus}\nSHARED_BANK_BYTES={size}\nSHARED_BANK_COUNT={count}\n')
@@ -196,15 +205,17 @@ UNRELATED = $(shell echo unused)
                                          [bus, size, count])
 
     def test_environment_overrides(self):
-        self.config.write_text('NPU_AXI_DATA_WIDTH=32\nSHARED_BANK_BYTES=1024\nSHARED_BANK_COUNT=6\n')
-        self.environment.update(NPU_AXI_DATA_WIDTH='64', SHARED_BANK_BYTES='4096', SHARED_BANK_COUNT='9')
+        self.config.write_text('NPU_AXI_DATA_WIDTH=32\nSHARED_BANK_BYTES=2048\nSHARED_BANK_COUNT=6\n')
+        self.environment.update(NPU_AXI_DATA_WIDTH='64', SHARED_BANK_BYTES='8192', SHARED_BANK_COUNT='9')
         values, _ = self.read_values()
-        self.assertEqual([values[key] for key in ('NPU_AXI_DATA_WIDTH', 'SHARED_BANK_BYTES', 'SHARED_BANK_COUNT')], [64, 4096, 9])
+        self.assertEqual([values[key] for key in ('NPU_AXI_DATA_WIDTH', 'SHARED_BANK_BYTES', 'SHARED_BANK_COUNT')], [64, 8192, 9])
 
     def test_invalid_values(self):
         for key, value in (('NPU_AXI_DATA_WIDTH', '16'), ('NPU_AXI_DATA_WIDTH', '128'),
                            ('SHARED_BANK_BYTES', '512'), ('SHARED_BANK_BYTES', '1536'),
-                           ('SHARED_BANK_BYTES', '8192'), ('SHARED_BANK_COUNT', '5'),
+                           ('SHARED_BANK_BYTES', '1024'), ('SHARED_BANK_BYTES', '2048'),
+                           ('SHARED_BANK_BYTES', '4096'), ('SHARED_BANK_BYTES', '16384'),
+                           ('SHARED_BANK_COUNT', '5'),
                            ('SHARED_BANK_COUNT', '10'), ('SHARED_BANK_COUNT', '-1'),
                            ('PCR_ENGINE', '2'), ('PS_FORCE_RAW', '2'), ('PS_POOL_BYTES', '65')):
             with self.subTest(key=key, value=value):
@@ -212,6 +223,11 @@ UNRELATED = $(shell echo unused)
                 _, result = self.read_values(success=False)
                 self.assertIn(key, result.stderr)
         self.config.write_text('')
+        for value in ('2048', '4096'):
+            self.environment['SHARED_BANK_BYTES'] = value
+            _, result = self.read_values(success=False)
+            self.assertIn('SHARED_BANK_BYTES=8192', result.stderr)
+        self.environment.pop('SHARED_BANK_BYTES')
         self.environment['NPU_AXI_DATA_WIDTH'] = ''
         self.read_values(success=False)
 
@@ -230,7 +246,7 @@ UNRELATED = $(shell echo unused)
         self.read_values(success=False)
 
     def test_four_build_entries(self):
-        for bus, size, count in ((64, 2048, 7), (32, 4096, 9)):
+        for bus, size, count in ((64, 8192, 7), (32, 8192, 9)):
             self.config.write_text(f'NPU_AXI_DATA_WIDTH={bus}\nSHARED_BANK_BYTES={size}\nSHARED_BANK_COUNT={count}\n')
             for name in ('create_project.tcl', 'run_batch_synth.tcl', 'run_batch_impl.tcl', 'export_project.tcl'):
                 with self.subTest(bus=bus, name=name):
@@ -248,6 +264,18 @@ UNRELATED = $(shell echo unused)
                     if name == 'export_project.tcl':
                         self.assertEqual({key: generics['sim_1'][key] for key in expected}, expected)
 
+    def test_build_entries_require_complete_bram_data_capacity(self):
+        for size in (2048, 4096):
+            self.config.write_text(f'SHARED_BANK_BYTES={size}\n')
+            for name in ('create_project.tcl', 'run_batch_synth.tcl', 'run_batch_impl.tcl', 'export_project.tcl'):
+                with self.subTest(size=size, name=name):
+                    output = self.work/(name+str(size))
+                    arguments = [output, 'xc7a200tfbg484-3', 16, 4, 16]
+                    arguments += [self.memory] if name == 'export_project.tcl' else [1, self.memory]
+                    result = self.execute([self.vivado, HERE/name, *arguments], success=False)
+                    self.assertIn('SHARED_BANK_BYTES=8192', result.stderr)
+                    self.assertFalse(output.exists())
+
     def test_legacy_environment_overrides(self):
         self.config.write_text('PCR_ENGINE=0\nPS_POOL_BYTES=12288\nPS_FORCE_RAW=0\n')
         self.environment.update(GEMPACT_PCR_ENGINE='1', GEMPACT_PS_POOL_BYTES='24576', GEMPACT_PS_FORCE_RAW='1')
@@ -260,14 +288,21 @@ UNRELATED = $(shell echo unused)
         self.assertNotIn('GEMPACT_PS_COMPRESS', defines['sources_1'])
 
     def test_exported_scripts_and_configuration(self):
-        self.config.write_text('NPU_AXI_DATA_WIDTH=32\nSHARED_BANK_BYTES=1024\nSHARED_BANK_COUNT=6\n')
-        self.environment.update(NPU_AXI_DATA_WIDTH='64', SHARED_BANK_BYTES='4096', SHARED_BANK_COUNT='9',
+        self.config.write_text('NPU_AXI_DATA_WIDTH=32\nSHARED_BANK_BYTES=2048\nSHARED_BANK_COUNT=6\n')
+        self.environment.update(NPU_AXI_DATA_WIDTH='64', SHARED_BANK_BYTES='8192', SHARED_BANK_COUNT='9',
                                 GEMPACT_PS_FORCE_RAW='1')
         original = self.work/'export'
         self.flow('export_project.tcl', original)
         self.assertTrue((original/'scripts/npu_config.tcl').is_file())
         self.assertTrue((original/'scripts/cpu_memory.tcl').is_file())
         self.assertTrue((original/'scripts/export_sources.tcl').is_file())
+        snapshot = (original/'config/npu_fpga.mk').read_text()
+        self.assertIn('SHARED_BANK_BYTES := 8192', snapshot)
+        self.assertIn('SHARED_BANK_COUNT := 9', snapshot)
+        self.assertIn('PS_POOL_BYTES := 49152', snapshot)
+        readme = (original/'README.md').read_text()
+        self.assertIn('73728 bytes in 18 RAMB36E1', readme)
+        self.assertIn('9216 parity bytes', readme)
         memory_words = (original/'mem/cpu32.mem').read_text().splitlines()
         self.assertEqual(memory_words[:4], self.memory.read_text().splitlines())
         self.assertEqual(memory_words[4:], ['00000000'] * 12)
@@ -280,17 +315,34 @@ UNRELATED = $(shell echo unused)
                                      script_dir=relocated/'scripts', environment=environment,
                                      memory=relocated/'mem/cpu32.mem')
         self.assertEqual(generics['sources_1']['BUS_WIDTH'], '64')
-        self.assertEqual(generics['sources_1']['SHARED_BANK_BYTES'], '4096')
+        self.assertEqual(generics['sources_1']['SHARED_BANK_BYTES'], '8192')
         self.assertEqual(generics['sources_1']['SHARED_BANK_COUNT'], '9')
         self.assertIn('GEMMORA_PS_FORCE_RAW', defines['sources_1'])
         for name in ('run_behav_smoke.tcl', 'run_post_impl_smoke.tcl'):
             environment.update(TEST_STOP_AT_SIM_GENERIC='1',
-                TEST_SOURCE_GENERICS='BUS_WIDTH=64 SHARED_BANK_BYTES=4096 SHARED_BANK_COUNT=9 CPU_MEM_DP=16')
+                TEST_SOURCE_GENERICS='BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=9 CPU_MEM_DP=16')
             result = self.execute([self.vivado, relocated/'scripts'/name,
                                    relocated/'project/tflm_ai_dsa_soc.xpr'], environment=environment)
             self.assertIn('GENERIC\tsim_1\tBUS_WIDTH\t64', result.stdout)
-            self.assertIn('GENERIC\tsim_1\tSHARED_BANK_BYTES\t4096', result.stdout)
+            self.assertIn('GENERIC\tsim_1\tSHARED_BANK_BYTES\t8192', result.stdout)
             self.assertIn('GENERIC\tsim_1\tSHARED_BANK_COUNT\t9', result.stdout)
+
+    def test_existing_project_geometry_is_validated(self):
+        exported = self.work/'export'
+        self.flow('export_project.tcl', exported)
+        for source_generics, error in (
+                ('BUS_WIDTH=64 SHARED_BANK_BYTES=2048 SHARED_BANK_COUNT=7', 'SHARED_BANK_BYTES=8192'),
+                ('BUS_WIDTH=32 SHARED_BANK_BYTES=4096 SHARED_BANK_COUNT=9', 'SHARED_BANK_BYTES=8192'),
+                ('BUS_WIDTH=64 SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=10', 'SHARED_BANK_COUNT'),
+                ('BUS_WIDTH=64 SHARED_BANK_COUNT=7', 'explicitly specify SHARED_BANK_BYTES')):
+            environment = dict(self.environment, TEST_SOURCE_GENERICS=source_generics,
+                               TEST_STOP_AT_SIM_GENERIC='1')
+            for name in ('run_behav_smoke.tcl', 'run_post_impl_smoke.tcl'):
+                with self.subTest(source_generics=source_generics, name=name):
+                    result = self.execute([self.vivado, exported/'scripts'/name,
+                                           exported/'project/tflm_ai_dsa_soc.xpr'],
+                                          environment=environment, success=False)
+                    self.assertIn(error, result.stderr)
 
     def test_cpu_memory_word_format(self):
         runner = self.work/'prepare_memory.tcl'
@@ -333,7 +385,9 @@ def main():
     ConfigurationTests.directory = out
     ConfigurationTests.tclsh = args.tclsh
     ConfigurationTests.picorv32 = args.picorv32.resolve() if args.picorv32 else None
-    sources = [*sorted(HERE.glob('*.tcl')), Path(__file__).resolve()]
+    sources = [*sorted(HERE.glob('*.tcl')), Path(__file__).resolve(), ROOT/'config/npu_fpga.mk',
+               HERE.parent/'rtl/fpga_top.sv', HERE.parent/'sim/fpga_top_behav_smoke_tb.sv',
+               HERE.parent/'sim/fpga_top_post_impl_tb.sv']
     before = {str(path.relative_to(ROOT)): digest(path) for path in sources}
     started = time.monotonic()
     with (out/'test.log').open('w') as log:
@@ -344,9 +398,10 @@ def main():
                   tests=result.testsRun, tcl_processes=len(ConfigurationTests.cases),
                   elapsed_seconds=time.monotonic()-started, source_sha256=before,
                   cases=ConfigurationTests.cases, checks=['Literal Make configuration and environment precedence',
+                    'FPGA preset selection and 8 KiB bank requirement before project creation',
                     'AXI width and shared bank propagation to all Vivado project entries',
-                    'Exported scripts, configuration snapshot, and relative source paths',
-                    'Behavioral and implementation testbench configuration'],
+                    'Exported scripts, configuration snapshot, full data capacity, and relative source paths',
+                    'Behavioral and implementation testbench configuration and existing project geometry'],
                   vivado_commands='Tcl command replacements record properties; synthesis and implementation are not executed')
     (out/'summary.json').write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps({key: report[key] for key in ('passed','tests','tcl_processes','elapsed_seconds')}))

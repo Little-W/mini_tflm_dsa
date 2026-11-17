@@ -271,8 +271,8 @@ int main(void)
     dsa_matrix_limits_t limits;
     for (uint32_t bits=32u;bits<=64u;bits*=2u) {
         hardware_axi_data_bits=bits;hardware_dma_max_bytes=256u*(bits/8u);
-        for (uint32_t bytes=1024u;bytes<=4096u;bytes*=2u) {
-            hardware_bank_bytes=bytes;hardware_bank_count=bytes==1024u?6u:bytes==2048u?7u:9u;
+        for (uint32_t bytes=2048u;bytes<=8192u;bytes*=2u) {
+            hardware_bank_bytes=bytes;hardware_bank_count=bytes==2048u?6u:bytes==4096u?7u:9u;
             dsa_matrix_query(&limits);
             assert(limits.shared_total_bytes==hardware_bank_count*bytes && limits.shared_bank_bytes==bytes && limits.shared_ia_bank_mask==0x16u);
             assert(limits.axi_data_bits==bits && limits.dma_max_bytes==hardware_dma_max_bytes);

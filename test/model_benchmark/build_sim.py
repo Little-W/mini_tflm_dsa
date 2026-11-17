@@ -76,8 +76,8 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     selected=selected_config()
     shared_bank_bytes=selected['SHARED_BANK_BYTES'] if shared_bank_bytes is None else shared_bank_bytes
     shared_bank_count=selected['SHARED_BANK_COUNT'] if shared_bank_count is None else shared_bank_count
-    if shared_bank_bytes not in (1024,2048,4096) or shared_bank_count not in range(6,10):
-        raise ValueError('Shared RAM requires 1024, 2048 or 4096 bytes per bank and 6..9 banks')
+    if shared_bank_bytes not in (2048,4096,8192) or shared_bank_count not in range(6,10):
+        raise ValueError('Shared RAM requires 2048, 4096 or 8192 bytes per bank and 6..9 banks')
     protocol_max_bytes=256*(bus_width//8)
     if dma_max_bytes is None:dma_max_bytes=protocol_max_bytes
     if (jobs<1 or pe_count not in (4,8) or icache not in (0,1) or ram_words<1 or
@@ -293,7 +293,7 @@ def main():
     parser.add_argument('--cpu-profile',choices=CPU_PROFILES,default='performance')
     parser.add_argument('--first-read-latency',type=int,default=8)
     parser.add_argument('--bus-width',type=int,choices=(32,64))
-    parser.add_argument('--shared-bank-bytes',type=int,choices=(1024,2048,4096))
+    parser.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192))
     parser.add_argument('--shared-bank-count',type=int,choices=range(6,10))
     parser.add_argument('--ram-words',type=int,default=524288)
     parser.add_argument('--pe-count',type=int,default=8)

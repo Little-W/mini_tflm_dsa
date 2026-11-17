@@ -9,6 +9,7 @@ if {[llength $argv] < 1} {
 }
 
 set script_dir [file dirname [file normalize [info script]]]
+source [file join $script_dir npu_config.tcl]
 set project_xpr [file normalize [lindex $argv 0]]
 set repo_tb_file [file normalize [file join $script_dir .. sim fpga_top_post_impl_tb.sv]]
 if {![file exists $repo_tb_file]} {
@@ -103,6 +104,7 @@ if {[file exists [file dirname $tb_file]]} {
 }
 
 open_project $project_xpr
+set project_hardware_config [npu_config::project_values [get_property generic [get_filesets sources_1]]]
 
 if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0} {
     add_files -norecurse -fileset sim_1 $tb_file
@@ -110,6 +112,12 @@ if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0}
 
 set_property top fpga_top_post_impl_tb [get_filesets sim_1]
 set tb_generics [get_property generic [get_filesets sim_1]]
+foreach item [npu_config::generics $project_hardware_config] {
+    set equal [string first = $item]
+    set tb_generics [upsert_generic_value $tb_generics \
+        [string range $item 0 [expr {$equal - 1}]] \
+        [string range $item [expr {$equal + 1}] end]]
+}
 if {[llength $argv] >= 2} {
     set tb_generics [upsert_generic_value $tb_generics MAX_SYS_CYCLES [lindex $argv 1]]
 }

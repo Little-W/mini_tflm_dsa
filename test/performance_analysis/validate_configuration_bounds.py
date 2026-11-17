@@ -14,7 +14,7 @@ import time
 
 
 BUS_WIDTHS = (32, 64)
-BANK_BYTES = (1024, 2048, 4096)
+BANK_BYTES = (2048, 4096, 8192)
 BANK_COUNTS = (6, 7, 8, 9)
 
 
@@ -41,12 +41,16 @@ def segment_checks(scope, bus_width, dma_bytes):
 def unified_testbench(bus_width):
     cases = [dict(bank_bytes=size, bank_count=count, shared=True)
              for size in BANK_BYTES for count in BANK_COUNTS]
+    cases += [dict(bank_bytes=size, bank_count=7, frames=1, shared=True)
+              for size in BANK_BYTES]
     cases += [dict(bank_bytes=size, bank_count=count, shared=False)
-              for size, count in ((512, 7), (1536, 7), (8192, 7), (2048, 5), (2048, 10))]
+              for size, count in ((512, 7), (1536, 7), (1024, 7), (2048, 5), (2048, 10))]
     cases += [dict(bank_bytes=2048, bank_count=7, total_bytes=14337, shared=False)]
     instances, checks = [], []
     for index, case in enumerate(cases):
         size, count, enabled = case['bank_bytes'], case['bank_count'], case['shared']
+        frames = case.get('frames', 16)
+        output_banks = max(min(frames*2, 32), size//128 if enabled else 1)
         total = case.get('total_bytes', size * count)
         scope = f'n{index}'
         core = scope + '.u_npu_top'
@@ -58,14 +62,18 @@ def unified_testbench(bus_width):
         total_override = f',.SHARED_TOTAL_BYTES({total})' if 'total_bytes' in case else ''
         instances.append(
             f"npu_axil_top #(.BUS_WIDTH({bus_width}),.DMA_MAX_BYTES(16),"
-            f".SHARED_BANK_BYTES({size}),.SHARED_BANK_COUNT({count}){total_override}) "
+            f".PS_FRAME_COUNT({frames}),.SHARED_BANK_BYTES({size}),.SHARED_BANK_COUNT({count}){total_override}) "
             f"{scope}(.clk(1'b0),.rst_n(1'b0));")
         checks += [f"assert({scope}.SHARED_CAPABLE==1'b{int(enabled)});",
+                   f"assert({register}.SHARED_CAPABLE==1'b{int(enabled)});",
                    f"assert({core}.SHARED_RAM_ENABLED==1'b{int(enabled)});",
                    f"assert({core}.BUS_WIDTH=={bus_width});",
                    f"assert({core}.SHARED_BANK_BYTES=={size});",
                    f"assert({core}.SHARED_TOTAL_BYTES=={total});",
                    f"assert({register}.AXI_DATA_BITS=={bus_width});",
+                   f"assert({core}.OA_FIFO_BANKS=={output_banks});",
+                   f"assert({scope}.MATRIX_S8_BANKS=={output_banks});",
+                   f"assert({register}.MATRIX_S8_BANKS=={output_banks});",
                    f"assert({register}.DMA_MAX_BYTES==16);"]
         for component in (arbiter, dma, frontend, frontend+'.u_cache',
                           frontend+'.u_cache.g_window.u_window',
@@ -145,7 +153,7 @@ def main():
                               SHARED_BANK_BYTES=size, SHARED_BANK_COUNT=count)
                 validate_config(values, check_budget=False)
                 accepted_python.append(dict(bus_width=bus_width, bank_bytes=size, bank_count=count))
-        for size, count in ((0, 7), (512, 7), (1536, 7), (8192, 7), (2048, 0), (2048, 5), (2048, 10)):
+        for size, count in ((0, 7), (512, 7), (1536, 7), (1024, 7), (2048, 0), (2048, 5), (2048, 10)):
             options = dict(bus_width=bus_width, shared_bank_bytes=size, shared_bank_count=count)
             try:
                 build_sim.build_sim(out/f'python_shared_w{bus_width}_b{size}_n{count}', **options)

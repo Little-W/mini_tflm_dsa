@@ -133,10 +133,10 @@ int main(void)
     cached(&c,0u);
     c.lhs_address+=0x100000u;c.rhs_address+=0x200000u;
     cached(&c,1u);
-    c.shared_bank_bytes=1024u;c.shared_total_bytes=7u*c.shared_bank_bytes;
+    c.shared_bank_bytes=4096u;c.shared_total_bytes=7u*c.shared_bank_bytes;
     dsa_schedule_t small_banks=cached(&c,0u);
     assert(small_banks.ia_cache_bytes+small_banks.ps_pool_bytes==c.shared_total_bytes);
-    c.shared_bank_bytes=4096u;c.shared_total_bytes=9u*c.shared_bank_bytes;
+    c.shared_bank_bytes=8192u;c.shared_total_bytes=9u*c.shared_bank_bytes;
     dsa_schedule_t large_banks=cached(&c,0u);
     assert(large_banks.ia_cache_bytes+large_banks.ps_pool_bytes==c.shared_total_bytes);
     c.shared_total_bytes=6u*c.shared_bank_bytes;

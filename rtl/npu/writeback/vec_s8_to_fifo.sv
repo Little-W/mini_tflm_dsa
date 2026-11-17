@@ -146,6 +146,14 @@ module vec_s8_to_fifo_full #(
 
   wire write_bank_blocked = bank_ready[write_bank];
   wire next_write_bank_blocked = bank_ready[next_bank(write_bank)];
+`ifndef SYNTHESIS
+  if (BANKS > 32) begin : g_check_write_capacity
+    always @(posedge clk) begin
+      if (rst_n && in_valid)
+        assert (!write_bank_blocked) else $fatal(1, "S8 output FIFO has no available write bank");
+    end
+  end
+`endif
   logic [BANK_COUNT_WIDTH-1:0] reserve_bank_count;
   logic [BANK_COUNT_WIDTH-1:0] used_bank_count;
   logic [BANK_COUNT_WIDTH-1:0] free_bank_count;
@@ -502,6 +510,14 @@ module vec_s8_to_fifo_linear #(
 
   wire write_bank_blocked = bank_ready[write_bank];
   wire next_write_bank_blocked = bank_ready[next_bank(write_bank)];
+`ifndef SYNTHESIS
+  if (BANKS > 32) begin : g_check_write_capacity
+    always @(posedge clk) begin
+      if (rst_n && in_valid)
+        assert (!write_bank_blocked) else $fatal(1, "S8 output FIFO has no available write bank");
+    end
+  end
+`endif
   wire finish_write_bank = in_valid && in_tile_done;
   wire [COUNT_WIDTH-1:0] write_rows_next =
       in_valid ? (COUNT_WIDTH'(write_ptr) + COUNT_WIDTH'(1)) : COUNT_WIDTH'(write_ptr);

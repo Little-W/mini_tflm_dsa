@@ -180,7 +180,7 @@ module npu_axil_reg_if #(
     localparam logic [11:0] REG_PS_DIRECTORY_ROWS = 12'h044;
     localparam logic [REG_WIDTH-1:0] NPU_ID  = 32'h4e50_5531;
     localparam bit SHARED_CAPABLE = PS_CAPS[4] &&
-        (SHARED_BANK_BYTES == 1024 || SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096) &&
+        (SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096 || SHARED_BANK_BYTES == 8192) &&
         SHARED_TOTAL_BYTES >= 6 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES <= 9 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES % SHARED_BANK_BYTES == 0 && SHARED_IA_BANK_MASK[1];

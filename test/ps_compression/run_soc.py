@@ -281,7 +281,7 @@ def main():
     p.add_argument("--gcc", default="riscv64-unknown-elf-gcc")
     p.add_argument("--jobs", type=int, default=1)
     p.add_argument("--bus-width", type=int, choices=(32,64))
-    p.add_argument("--shared-bank-bytes", type=int, choices=(1024,2048,4096))
+    p.add_argument("--shared-bank-bytes", type=int, choices=(2048,4096,8192))
     p.add_argument("--shared-bank-count", type=int, choices=(6,7,8,9))
     p.add_argument("--first-read-latency", type=int, default=8)
     p.add_argument("--run-jobs", type=int, choices=(1, 2, 3), default=2)

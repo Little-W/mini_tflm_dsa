@@ -44,7 +44,7 @@ class BusConfigurationTests(unittest.TestCase):
         self.directory = Path(temporary.name)
         self.path = self.directory / 'npu.mk'
         self.file_values = {**config.DEFAULTS, 'NPU_AXI_DATA_WIDTH': 32,
-                            'SHARED_BANK_BYTES': 1024, 'SHARED_BANK_COUNT': 6}
+                            'SHARED_BANK_BYTES': 2048, 'SHARED_BANK_COUNT': 6}
         self.path.write_text(''.join(f'{key} ?= {value}\n' for key, value in self.file_values.items()))
         environment = mock.patch.dict(os.environ, clean_environment(), clear=True)
         environment.start()
@@ -88,7 +88,7 @@ class BusConfigurationTests(unittest.TestCase):
 
     def test_all_supported_geometries_and_equal_raw_capacity(self):
         for width in (32, 64):
-            for bank_bytes in (1024, 2048, 4096):
+            for bank_bytes in (2048, 4096, 8192):
                 for bank_count in range(6, 10):
                     values = {**config.DEFAULTS, 'NPU_AXI_DATA_WIDTH': width,
                               'SHARED_BANK_BYTES': bank_bytes, 'SHARED_BANK_COUNT': bank_count}
@@ -108,7 +108,7 @@ class BusConfigurationTests(unittest.TestCase):
 
     def test_invalid_settings_are_rejected(self):
         for key, invalid in (('NPU_AXI_DATA_WIDTH', (0, 16, 128, True, 32.0)),
-                             ('SHARED_BANK_BYTES', (0, 512, 1536, 8192, True)),
+                             ('SHARED_BANK_BYTES', (0, 512, 1024, 1536, 16384, True)),
                              ('SHARED_BANK_COUNT', (0, 5, 10, True, 7.0))):
             for value in invalid:
                 with self.subTest(key=key, value=value), self.assertRaises(ValueError):
@@ -116,6 +116,22 @@ class BusConfigurationTests(unittest.TestCase):
         for key in ('NPU_AXI_DATA_WIDTH', 'SHARED_BANK_BYTES', 'SHARED_BANK_COUNT'):
             with mock.patch.dict(os.environ, {key: '$(echo 64)'}), self.assertRaises(ValueError):
                 config.selected_config(self.path)
+
+    def test_physical_data_capacity_and_fpga_parity(self):
+        expected_macros_per_bank = {2048: 8, 4096: 16, 8192: 32}
+        for bank_bytes, macros in expected_macros_per_bank.items():
+            for bank_count in range(6, 10):
+                report = model.physical_shared_memory(bank_bytes, bank_count)
+                self.assertEqual(report['asic']['macro_count'], macros * bank_count)
+                self.assertEqual(report['asic']['allocated_data_bytes'], bank_bytes * bank_count)
+                self.assertEqual(report['asic']['unused_data_bytes'], 0)
+                self.assertEqual(report['fpga']['primitive_count'], 2 * bank_count)
+                self.assertEqual(report['fpga']['allocated_data_bytes'], 8192 * bank_count)
+                self.assertEqual(report['fpga']['parity_bytes'], 1024 * bank_count)
+                self.assertEqual(report['fpga']['compatible'], bank_bytes == 8192)
+                if bank_bytes == 8192:
+                    self.assertEqual(report['fpga']['unused_data_bytes'], 0)
+                    self.assertEqual(report['fpga']['data_utilization'], 1.0)
 
     def test_generated_header_sets_the_schedule_default(self):
         compiler = shutil.which('gcc')
@@ -142,7 +158,7 @@ class BusConfigurationTests(unittest.TestCase):
             subprocess.run([str(binary)], check=True)
 
     def test_solver_and_menu_save_selected_bank_geometry(self):
-        for bank_bytes in (1024, 2048, 4096):
+        for bank_bytes in (2048, 4096, 8192):
             state = MenuConfigState(self.path, shapes=[dict(M=512, K=16, N=32)],
                     overrides={'NPU_AXI_DATA_WIDTH': 64, 'SHARED_BANK_BYTES': bank_bytes})
             result = state.solve()
@@ -156,9 +172,9 @@ class BusConfigurationTests(unittest.TestCase):
             actual = config.allocation_from_config(saved)
             self.assertEqual(actual['buffer_ram_bits'], allocation['buffer_ram_bits'])
         result = self.run_cli('--config', self.path, '--shape', '512,16,32',
-                              '--set', 'SHARED_BANK_BYTES=1024', '--apply')
+                              '--set', 'SHARED_BANK_BYTES=8192', '--apply')
         saved = config.read_config(self.path)
-        self.assertEqual(saved['SHARED_BANK_BYTES'], 1024)
+        self.assertEqual(saved['SHARED_BANK_BYTES'], 8192)
         self.assertEqual(saved['SHARED_BANK_COUNT'], result['allocation']['shared_physical_bank_count'])
         self.assertEqual(saved['NPU_AXI_DATA_WIDTH'], 64)
 

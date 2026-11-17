@@ -84,8 +84,8 @@ def validate_config(values, require_pcr=False, *, check_budget=True, state_repor
             raise ValueError(f"{key} must be 0 or 1")
     if normalized["NPU_AXI_DATA_WIDTH"] not in (32, 64):
         raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
-    if normalized["SHARED_BANK_BYTES"] not in (1024, 2048, 4096):
-        raise ValueError("SHARED_BANK_BYTES must be 1024, 2048 or 4096")
+    if normalized["SHARED_BANK_BYTES"] not in (2048, 4096, 8192):
+        raise ValueError("SHARED_BANK_BYTES must be 2048, 4096 or 8192")
     if normalized["SHARED_BANK_COUNT"] not in range(6, 10):
         raise ValueError("SHARED_BANK_COUNT must be in 6..9")
     if normalized["AXI_READ_OUTSTANDING"] not in range(1, 17):

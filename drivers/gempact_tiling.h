@@ -737,7 +737,8 @@ typedef struct {
 static inline void gempact_visit_score(const gempact_device_request_t *q,
     const gempact_score_t *p,gempact_candidate_visitor_t visitor,void *context);
 
-typedef struct {uint32_t long_seen[2][12],evaluated;} gempact_search_cache_t;
+enum { GEMPACT_SCORE_R_LEVELS = 7 };
+typedef struct {uint32_t long_seen[2][2*GEMPACT_SCORE_R_LEVELS],evaluated;} gempact_search_cache_t;
 
 GEMPACT_SCORE_INLINE uint32_t gempact_small_ceil(uint32_t a,uint32_t b)
 {
@@ -1148,7 +1149,7 @@ GEMPACT_SCORE_INLINE int gempact_plan_device_seeded(const gempact_device_request
        !q->frames||q->frames>64u||!q->pool_bytes||q->pool_bytes%64u||q->ps_bank_count>8u||
        (q->ps_bank_count&&q->pool_bytes%(16u*q->ps_bank_count))||
        (q->ia_bytes!=1024u&&q->ia_bytes!=2048u&&q->ia_bytes!=4096u&&
-        q->ia_bytes!=8192u&&q->ia_bytes!=16384u)||
+        q->ia_bytes!=8192u&&q->ia_bytes!=16384u&&q->ia_bytes!=32768u)||
        !q->lhs_element_bytes||q->lhs_element_bytes>2u||q->micro_setup_cycles>1024u||
        q->estimated_record_bytes<16u||q->estimated_record_bytes>64u||!gempact_im2col_valid(q)||
        q->im2col_stage_bytes_per_position>UINT32_MAX/1024u||q->im2col_cache_bytes>UINT32_MAX/256u||
@@ -1173,7 +1174,7 @@ GEMPACT_SCORE_INLINE int gempact_plan_device_seeded(const gempact_device_request
         g.image_sensitive=mode&&(gempact_image_window_sensitive(q,max_w)||
             (visitor&&q->im2col_source_bytes));
         uint32_t maximum_r=slots>>1;
-        uint32_t maximum_shift=maximum_r==32u?5u:maximum_r==16u?4u:
+        uint32_t maximum_shift=maximum_r==64u?6u:maximum_r==32u?5u:maximum_r==16u?4u:
             maximum_r==8u?3u:maximum_r==4u?2u:maximum_r==2u?1u:0u;
         for(uint32_t r=maximum_r,shift=maximum_shift;r;r>>=1,--shift) {
             uint32_t raw_max=max_w,capacity=slots/r;
@@ -1221,8 +1222,8 @@ GEMPACT_SCORE_INLINE int gempact_plan_device_seeded(const gempact_device_request
                     uint32_t rounds=gempact_small_ceil(g.tc,w);
                     if((!visitor&&rounds==previous_rounds)||rounds>65535u) continue;
                     previous_rounds=rounds;
-                    if(search_cache&&(search_cache->long_seen[1][mode*6u+shift]&w)) continue;
-                    if(search_cache) search_cache->long_seen[1][mode*6u+shift]|=w;
+                    if(search_cache&&(search_cache->long_seen[1][mode*GEMPACT_SCORE_R_LEVELS+shift]&w)) continue;
+                    if(search_cache) search_cache->long_seen[1][mode*GEMPACT_SCORE_R_LEVELS+shift]|=w;
                     if(!visitor&&raw_found&&minimum>raw_best.service) continue;
                     evaluated+=(uint32_t)gempact_score_candidate(q,&g,mode,w,0u,1u,0u,0u,&raw_best,&raw_found,visitor,context);
                     if(!g.image_sensitive&&!visitor) break;
@@ -1238,8 +1239,8 @@ GEMPACT_SCORE_INLINE int gempact_plan_device_seeded(const gempact_device_request
                 uint32_t minimum=g.array_total+g.weight_total+g.im2col_minimum;
                 for(uint32_t w=1u;w<=long_max;w*=2u) {
                     if(w<=raw_max||gempact_small_ceil(g.tc,w)>65535u) continue;
-                    if(search_cache&&(search_cache->long_seen[0][mode*6u+shift]&w)) continue;
-                    if(search_cache) search_cache->long_seen[0][mode*6u+shift]|=w;
+                    if(search_cache&&(search_cache->long_seen[0][mode*GEMPACT_SCORE_R_LEVELS+shift]&w)) continue;
+                    if(search_cache) search_cache->long_seen[0][mode*GEMPACT_SCORE_R_LEVELS+shift]|=w;
                     if(!visitor&&found&&minimum>best.service) continue;
                     evaluated+=(uint32_t)gempact_score_candidate(q,&g,mode,w,0u,0u,0u,0u,&best,&found,visitor,context);
                 }
@@ -1280,8 +1281,8 @@ GEMPACT_SCORE_INLINE int gempact_plan_device(const gempact_device_request_t *q,g
 
 static inline int gempact_shared_valid(const gempact_shared_memory_t *memory)
 {
-    if(!memory||(memory->bank_bytes!=1024u&&memory->bank_bytes!=2048u&&
-        memory->bank_bytes!=4096u)||!memory->ia_bank_mask||(memory->ia_bank_mask&~0x16u)||
+    if(!memory||(memory->bank_bytes!=2048u&&memory->bank_bytes!=4096u&&
+        memory->bank_bytes!=8192u)||!memory->ia_bank_mask||(memory->ia_bank_mask&~0x16u)||
         !memory->directory_rows||memory->total_bytes%memory->bank_bytes) return 0;
     uint32_t banks=memory->total_bytes/memory->bank_bytes;
     return banks>=6u&&banks<=9u;

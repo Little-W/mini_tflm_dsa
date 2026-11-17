@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "test/conv_npu"))
 import run as npu
 
 
-def configure(directory, *, banks, r, w, control=0):
+def configure(directory, *, banks, r, w, control=0, bank_bytes=2048, bank_count=7):
     path = directory / "config.mem"
     words = [int(value, 16) for value in path.read_text().split()]
     rows, cols = (words[5], words[3]) if words[8] else (words[3], words[5])
@@ -25,8 +25,8 @@ def configure(directory, *, banks, r, w, control=0):
     words[61], words[62] = control, banks
     path.write_text("".join(f"{value:08x}\n" for value in words))
     metadata = json.loads((directory / "case.json").read_text())
-    metadata["shared_memory"] = dict(total_bytes=14336, bank_bytes=2048,
-        ia_banks=banks, ps_banks=7-banks, r=r, w=w, ps_control=control)
+    metadata["shared_memory"] = dict(total_bytes=bank_bytes*bank_count, bank_bytes=bank_bytes,
+        ia_banks=banks, ps_banks=bank_count-banks, r=r, w=w, ps_control=control)
     (directory / "case.json").write_text(json.dumps(metadata, indent=2) + "\n")
     return directory
 

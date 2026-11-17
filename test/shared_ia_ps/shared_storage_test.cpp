@@ -9,7 +9,10 @@ using namespace ps_stream_test;
 using Word=std::array<std::uint32_t,4>;
 constexpr unsigned TotalBanks=TEST_BANK_COUNT,Banks=TotalBanks-1,MaxDepth=TEST_BANK_BYTES/16;
 constexpr unsigned Frames=16,DirectoryRows=1024,MaxFrameRows=TEST_BANK_BYTES/8;
-constexpr unsigned AddressBits=MaxDepth==64?6:MaxDepth==128?7:8;
+constexpr unsigned address_bits(unsigned value) {
+    return value <= 1 ? 0 : 1 + address_bits((value + 1) / 2);
+}
+constexpr unsigned AddressBits=address_bits(MaxDepth);
 
 template<class T> Word get_word(const T& value) {
     Word word{};for(unsigned i=0;i<4;++i) word[i]=value[i];return word;

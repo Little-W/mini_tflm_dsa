@@ -40,7 +40,7 @@ int main(void)
     uint32_t checks=0,raw_slices=0;
     for(uint32_t test=0;test<600u;++test) {
         gempact_device_request_t q={0};
-        uint32_t bank_bytes=1024u<<(test%3u);
+        uint32_t bank_bytes=2048u<<(test%3u);
         gempact_shared_memory_t memory={(6u+(test/3u)%4u)*bank_bytes,bank_bytes,0x16u,1024u};
         q.rows=1u+random_word()%1025u;q.reduction=1u+random_word()%513u;q.cols=1u+random_word()%257u;
         q.size=16u;q.frames=16u;q.is_supported=1u;q.mode=random_word()%3u;
@@ -155,7 +155,7 @@ int main(void)
         assert(gempact_device_candidate(&q,1u,1u,1u,0u,1u,&p));
     }
     uint32_t capability_checks=0u;
-    for(uint32_t bytes=1024u;bytes<=4096u;bytes*=2u)
+    for(uint32_t bytes=2048u;bytes<=8192u;bytes*=2u)
     for(uint32_t banks=0u;banks<=12u;++banks) {
         gempact_shared_memory_t memory={banks*bytes,bytes,0x16u,1024u};
         assert(gempact_shared_valid(&memory)==(banks>=6u&&banks<=9u));++capability_checks;
@@ -163,7 +163,7 @@ int main(void)
     {
         gempact_shared_memory_t memory={14336u,2048u,0x16u,1024u};
         memory.bank_bytes=512u;memory.total_bytes=7u*512u;assert(!gempact_shared_valid(&memory));++capability_checks;
-        memory.bank_bytes=8192u;memory.total_bytes=7u*8192u;assert(!gempact_shared_valid(&memory));++capability_checks;
+        memory.bank_bytes=1024u;memory.total_bytes=7u*1024u;assert(!gempact_shared_valid(&memory));++capability_checks;
         memory.total_bytes=14336u;
         memory.bank_bytes=2048u;memory.directory_rows=0u;
         assert(!gempact_shared_valid(&memory));++capability_checks;
@@ -184,7 +184,13 @@ int main(void)
         assert(!gempact_device_better(&fast,&full)&&!gempact_device_better(&full,&fast));
         assert(fast.tiling.ia_reuse==32u&&fast.ia_bank_count==4u&&fast.ia_slots==64u);
         ++capability_checks;
-        for(uint32_t bytes=1024u;bytes<=4096u;bytes*=2u) {
+        memory.total_bytes=7u*8192u;memory.bank_bytes=8192u;q.rows=1024u;
+        assert(gempact_plan_shared(&q,&memory,&fast));
+        assert(reference_shared(&q,&memory,&full));
+        assert(!gempact_device_better(&fast,&full)&&!gempact_device_better(&full,&fast));
+        assert(fast.tiling.ia_reuse==64u&&fast.ia_bank_count==4u&&fast.ia_slots==128u);
+        ++capability_checks;
+        for(uint32_t bytes=2048u;bytes<=8192u;bytes*=2u) {
             q.ia_bytes=bytes;q.ia_bank_count=1u;q.pool_bytes=6u*bytes;q.ps_bank_count=6u;
             q.compact_mode_mask=2u;q.directory_rows=1024u;
             assert(!gempact_device_candidate(&q,0u,1u,1u,0u,1u,&fast));

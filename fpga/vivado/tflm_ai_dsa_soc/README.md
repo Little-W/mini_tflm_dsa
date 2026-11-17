@@ -9,20 +9,22 @@ the Tcl flow and creates the internal SoC/NPU clock.
 
 ## Hardware Configuration
 
-The Tcl entries read literal assignments from `config/npu.mk`. Set `NPU_CONFIG`
-to select another file. The following environment variables override the file:
+The Tcl entries read literal assignments from `config/npu_fpga.mk`. Set
+`NPU_CONFIG` to select another file. The following environment variables
+override the file:
 
 | Setting | Supported values | Default | RTL generic |
 |---|---|---:|---|
 | `NPU_AXI_DATA_WIDTH` | 32, 64 bits | 64 | `BUS_WIDTH` |
-| `SHARED_BANK_BYTES` | 1024, 2048, 4096 bytes | 2048 | `SHARED_BANK_BYTES` |
+| `SHARED_BANK_BYTES` | 8192 bytes | 8192 | `SHARED_BANK_BYTES` |
 | `SHARED_BANK_COUNT` | 6, 7, 8, 9 | 7 | `SHARED_BANK_COUNT` |
 
-The shared data capacity is `SHARED_BANK_BYTES * SHARED_BANK_COUNT`, or 14 KiB
+The shared data capacity is `SHARED_BANK_BYTES * SHARED_BANK_COUNT`, or 56 KiB
 with the defaults. Software assigns one, two, or four banks to IA before a
 layer starts and uses the remaining banks for PS. S16 input requires at least
 two IA banks. Accumulation across K tiles requires at least four PS banks for
-RAW32 or three PS banks when the intermediate values satisfy the S24 bound.
+RAW32, three PS banks for the strict S24 bound, or two PS banks for the strict
+S16 bound.
 The allocation remains fixed throughout the task.
 
 `NPU_AXI_DATA_WIDTH` controls the tensor-data AXI4 interface, SoC data
@@ -46,15 +48,54 @@ environment settings can override those defaults. The total shared capacity
 is determined by the two shared-bank generics.
 
 ```sh
-NPU_CONFIG=config/npu.mk NPU_AXI_DATA_WIDTH=64 \
-SHARED_BANK_BYTES=2048 SHARED_BANK_COUNT=7 \
+NPU_CONFIG=config/npu_fpga.mk NPU_AXI_DATA_WIDTH=64 \
+SHARED_BANK_BYTES=8192 SHARED_BANK_COUNT=7 \
 vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/create_project.tcl
 ```
 
 The Tcl parser accepts integer literals and validates parameter ranges before
-creating a project. It does not evaluate Make expressions. Existing positional
+creating a project. FPGA entries require 8192 bytes per shared bank, including
+when a custom configuration or environment override is supplied. It does not
+evaluate Make expressions. Existing positional
 arguments for the part, array size, CPU memory, clock, and implementation
 strategy retain their meanings.
+
+## Shared RAM Physical Capacity
+
+Each shared bank has 512 rows of 128 data bits and independent synchronous read
+and write ports. Xilinx 7 series mapping uses two `RAMB36E1` primitives in simple
+dual-port mode per bank. Each primitive supplies 512 rows of 64 data bits and
+8 parity bits. Every data row and data bit is addressable. The parity inputs are
+zero; parity capacity is excluded from software-visible memory.
+The primitive interface is specified in
+[AMD UG953: RAMB36E1](https://docs.amd.com/r/2025.2-English/ug953-vivado-7series-libraries/RAMB36E1).
+The [shared RAM mapping description](../../../docs/shared_ram_mapping.md)
+also covers the ASIC configuration and capacity report fields.
+
+| Shared banks | `RAMB36E1` primitives | Addressable data | Separate parity capacity | Unused data capacity |
+|---:|---:|---:|---:|---:|
+| 6 | 12 | 48 KiB | 6 KiB | 0 |
+| 7 | 14 | 56 KiB | 7 KiB | 0 |
+| 8 | 16 | 64 KiB | 8 KiB | 0 |
+| 9 | 18 | 72 KiB | 9 KiB | 0 |
+
+The data capacity utilization is 100%; data occupies 8/9 of the primitive's
+total data-plus-parity bits. These counts describe `ia_ps_shared_ram` only.
+The CPU RAM, NPU weight buffers, PS directory, and other storage are accounted
+for separately.
+
+The production module can be checked with Yosys `read_slang` and
+`synth_xilinx -family xc7`:
+
+```sh
+python3 fpga/vivado/tflm_ai_dsa_soc/scripts/check_shared_ram.py \
+  --yosys /path/to/yosys --out build/fpga/shared_ram
+```
+
+The checker verifies the inferred 128-bit synchronous 1R1W banks, maps all four
+supported bank counts, and records block RAM, LUTRAM, logic LUT, flip-flop,
+data, and parity capacities. It requires two `RAMB36E1` cells per bank and no
+LUTRAM or `RAMB18E1` cells. Its reports identify Yosys as the mapping tool.
 
 ## Create Project
 
@@ -182,7 +223,7 @@ vivado -mode batch \
 
 The exported directory contains a `README.md`, copied source files,
 constraints, simulation testbenches, `mem/cpu32.mem`, `mem/cpu.mem`, all Tcl
-scripts including `npu_config.tcl` and `cpu_memory.tcl`, and a `config/npu.mk`
+scripts including `npu_config.tcl` and `cpu_memory.tcl`, and a `config/npu_fpga.mk`
 snapshot of the effective hardware
 settings. `scripts/export_sources.tcl` resolves source paths relative to the
 export directory. Routed reports are added when `RUN_IMPL=1`, followed by
@@ -219,12 +260,16 @@ vivado -mode batch \
 
 The test waits for `user_led_tri_o[1]` (`soc_finish`) and fails if
 `user_led_tri_o[2]` (`cpu_trap`) asserts.
+The behavioral and post-implementation scripts read the source fileset's
+explicit AXI width and shared-bank generics, validate the FPGA geometry, and
+apply those settings to the simulation fileset.
 
 ## Tcl Configuration Tests
 
 The configuration and project scripts can be checked with Python and Tcl 8.6.
 The test records Vivado property calls through Tcl command replacements and
-checks parameter propagation, copied scripts, and relocated export paths:
+checks parameter propagation, the 8 KiB bank requirement, copied scripts,
+configuration snapshots, and relocated export paths:
 
 ```sh
 python3 fpga/vivado/tflm_ai_dsa_soc/scripts/test_npu_config.py \

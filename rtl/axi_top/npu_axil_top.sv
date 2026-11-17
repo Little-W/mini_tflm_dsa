@@ -171,11 +171,6 @@ module npu_axil_top #(
     localparam bit CONV_IS_CAPABLE = CONV_CAPABLE && ENABLE_IS_MODE != 0;
     localparam bit MATRIX_LAYOUT_CAPABLE = 1'b1;
     localparam int MATRIX_R_MAX = IA_CACHE_BLOCKS < 2 ? 1 : IA_CACHE_BLOCKS/2;
-    localparam int MATRIX_OUTPUT_LIMIT = (ENABLE_IS_MODE == 0 && ENABLE_PER_CHANNEL == 0) ? 16 : 32;
-    localparam int MATRIX_S8_BANKS = PS_FRAME_COUNT*MATRIX_R_MAX < MATRIX_OUTPUT_LIMIT ?
-        PS_FRAME_COUNT*MATRIX_R_MAX : MATRIX_OUTPUT_LIMIT;
-    localparam int MATRIX_S16_BANKS = OA_S16_FIFO_BANKS_MAX == 0 || MATRIX_S8_BANKS <= OA_S16_FIFO_BANKS_MAX ?
-        MATRIX_S8_BANKS : OA_S16_FIFO_BANKS_MAX;
     wire cfg_16bits_ia_reg;
     wire cfg_16x8_reg;
     wire cfg_dataflow_mode_reg;
@@ -192,7 +187,7 @@ module npu_axil_top #(
     wire [31:0] ps_stat_commands, ps_stat_pressure_events, ps_stat_early_finish_frames;
 `ifdef GEMPACT_PS_COMPRESS
     localparam bit SHARED_CAPABLE = SHARED_IA_PS_ENABLE != 0 && SIZE == 16 && DATA_WIDTH == 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
-        (SHARED_BANK_BYTES == 1024 || SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096) &&
+        (SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096 || SHARED_BANK_BYTES == 8192) &&
         SHARED_TOTAL_BYTES >= 6 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES <= 9 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES % SHARED_BANK_BYTES == 0;
@@ -212,6 +207,19 @@ module npu_axil_top #(
     localparam logic [31:0] PS_CAPS = 32'd0;
     localparam int unsigned PS_POOL_BYTES = 0;
 `endif
+    localparam int MATRIX_SHARED_R_MAX = SHARED_CAPABLE ?
+        (4 * SHARED_BANK_BYTES / (SIZE * SIZE * DATA_WIDTH / 8)) /
+        (IA_COMPACT_ENABLE != 0 ? 1 : 2) : 1;
+    localparam int MATRIX_LEGACY_OUTPUT_LIMIT =
+        (ENABLE_IS_MODE == 0 && ENABLE_PER_CHANNEL == 0) ? 16 : 32;
+    localparam int MATRIX_OUTPUT_LIMIT = MATRIX_LEGACY_OUTPUT_LIMIT < MATRIX_SHARED_R_MAX ?
+        MATRIX_SHARED_R_MAX : MATRIX_LEGACY_OUTPUT_LIMIT;
+    localparam int MATRIX_OUTPUT_BANKS_RAW = PS_FRAME_COUNT*MATRIX_R_MAX < MATRIX_SHARED_R_MAX ?
+        MATRIX_SHARED_R_MAX : PS_FRAME_COUNT*MATRIX_R_MAX;
+    localparam int MATRIX_S8_BANKS = MATRIX_OUTPUT_BANKS_RAW < MATRIX_OUTPUT_LIMIT ?
+        MATRIX_OUTPUT_BANKS_RAW : MATRIX_OUTPUT_LIMIT;
+    localparam int MATRIX_S16_BANKS = OA_S16_FIFO_BANKS_MAX == 0 || MATRIX_S8_BANKS <= OA_S16_FIFO_BANKS_MAX ?
+        MATRIX_S8_BANKS : OA_S16_FIFO_BANKS_MAX;
     localparam logic [31:0] SHARED_IA_BANK_MASK = SHARED_CAPABLE ?
         (32'h0000_0002 |
          ((SHARED_TOTAL_BYTES / SHARED_BANK_BYTES > 2) ? 32'h0000_0004 : 32'd0) |

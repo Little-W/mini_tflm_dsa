@@ -20,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--yosys", default="yosys")
-    parser.add_argument("--bank-bytes", type=int, nargs="+", choices=(1024,2048,4096), default=[1024,2048,4096])
+    parser.add_argument("--bank-bytes", type=int, nargs="+", choices=(2048,4096,8192), default=[2048,4096,8192])
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     out = args.out.resolve()

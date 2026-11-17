@@ -7,19 +7,19 @@ make capacity-test
 python3 -m unittest discover -s test/capacity -p 'test_*.py' -v
 ```
 
-They compare the solver against the independently verified 2026-11-15 study,
-check budget and scheduling invariants, exercise failed and repeated config
-updates, and inspect real Make entry points. A recording compiler substitute
+They check budget and scheduling invariants, exercise failed and repeated
+configuration updates, and inspect real Make entry points. A recording compiler substitute
 checks whether the UVM Make entry point rebuilds when effective configuration
 changes and reuses the binary when it does not. This is a dependency test, not
 an RTL compile or simulation.
 
 The host tests compile the C planner and both driver implementations when a
 native C compiler is available. They compare C and Python decisions across
-four capacities, eight workloads, WS/IS, nominal/raw PS storage and explicit
+supported capacities, representative workloads, WS/IS, adaptive/RAW32 PS storage and explicit
 request limits. The generator checks reconstruct complete INT32 accumulators
-from generated input bytes and compare legacy output hashes with the original
-repository revision. All writable test configurations and binaries live in
+from generated input bytes and verify the expected outputs. The shared-memory
+checks include all supported bank sizes, exact per-bank PS reservations, and
+the R=64 capacity of four 8 KiB IA banks. All writable test configurations and binaries live in
 temporary directories; the checked-in `config/npu.mk` is not modified.
 
 Python uses only its standard library. Make tests skip if GNU Make is absent;
@@ -60,9 +60,13 @@ then use a Verilator with `--json-only` support (validated with version 5.48):
 
 ```sh
 python3 test/capacity/check_elaboration.py --config config/npu.mk
+
+NPU_CONFIG=config/npu_fpga.mk python3 test/capacity/check_elaboration.py \
+  --output-root build/capacity/fpga_elaboration
 ```
 
-`--verilator /absolute/path/to/verilator` selects another executable. If the
+`--config` selects an explicit file; otherwise `NPU_CONFIG` is used, with
+`config/npu.mk` as the default. `--verilator /absolute/path/to/verilator` selects another executable. If the
 installation requires `VERILATOR_ROOT`, set that variable as for an ordinary
 Verilator build. `--output-root` selects the result directory. The script checks
 the elaborated shared IA/PS banks, directory, fixed buffers, and sequential
@@ -71,11 +75,12 @@ data width, compiler command, and source hashes into `result.json`.
 It deletes the rebuildable AST by default; `--keep-tree` retains it.
 
 This checks the actual array sizes seen by the RTL compiler. The shared RAM
-uses `SHARED_BANK_BYTES` in {1024, 2048, 4096} and `SHARED_BANK_COUNT` in 6..9.
+uses `SHARED_BANK_BYTES` in {2048, 4096, 8192} and `SHARED_BANK_COUNT` in 6..9.
 `NPU_AXI_DATA_WIDTH` selects a 32-bit or 64-bit AXI4 data bus; AXI-Lite retains
 32-bit data and 16-bit addresses. SRAM macro allocation is reported separately
-from logical storage. Use the shared-array backend and complete reference
-outputs to verify matrix execution.
+from logical storage. The `physical_shared_memory` report separates logical
+data, allocated data, unused data, and FPGA parity capacity. Use the shared-array
+backend and complete reference outputs to verify matrix execution.
 
 The parameter regression checks all 24 combinations of bus width and legal
 shared bank geometry, capability reporting, DMA limits, and 4 KiB splitting:
@@ -85,3 +90,37 @@ python3 test/performance_analysis/validate_configuration_bounds.py \
   --verilator /absolute/path/to/verilator \
   --out build/capacity/configuration_bounds
 ```
+
+## Physical shared RAM mapping
+
+The ASIC preset is [`config/npu.mk`](../../config/npu.mk), with seven 2 KiB
+banks. It supports 2, 4, and 8 KiB banks, each assembled from complete
+`RAMTP128X16` data arrays. The FPGA preset is
+[`config/npu_fpga.mk`](../../config/npu_fpga.mk), with seven 8 KiB banks.
+FPGA project entries require the 8 KiB bank size. Both presets support six
+through nine banks.
+
+The physical checks use the production shared RAM and report the synthesis
+tool, source hashes, cell counts, and data capacities:
+
+```sh
+python3 test/shared_ia_ps/check_asic_mapping.py \
+  --yosys /absolute/path/to/yosys --out build/capacity/asic_shared_mapping
+
+python3 fpga/vivado/tflm_ai_dsa_soc/scripts/check_shared_ram.py \
+  --yosys /absolute/path/to/yosys --out build/capacity/fpga_shared_mapping
+
+python3 fpga/vivado/tflm_ai_dsa_soc/scripts/test_npu_config.py \
+  --out build/capacity/fpga_configuration --picorv32 /absolute/path/to/picorv32
+```
+
+The ASIC check expands `smic40_sram_1r1w` with macro interface declarations and
+verifies dimensions, counts, and connections for all 12 bank configurations.
+Foundry timing uses the actual library and ASIC synthesis flow. The FPGA check
+performs Yosys `synth_xilinx -family xc7` for all four bank counts. It checks
+two `RAMB36E1` cells per bank, synchronous 1R1W access, full data capacity, zero
+parity write inputs, and the absence of LUTRAM. The Tcl configuration check
+records project properties through command replacements.
+
+The detailed mapping tables and report fields are in
+[Shared RAM mapping](../../docs/shared_ram_mapping.md).

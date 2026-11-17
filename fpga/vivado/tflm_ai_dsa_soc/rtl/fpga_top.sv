@@ -11,7 +11,7 @@ module fpga_top #(
     parameter int unsigned AXI_ADDR_WIDTH = 32,
     parameter int unsigned NPU_ADDR_WIDTH = AXI_ADDR_WIDTH,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
-    parameter int unsigned SHARED_BANK_BYTES = 2048,
+    parameter int unsigned SHARED_BANK_BYTES = 8192,
     parameter int unsigned SHARED_BANK_COUNT = 7,
     parameter int unsigned ENABLE_DW_POOL = 1,
     parameter int unsigned DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
