@@ -328,12 +328,12 @@ def source_files():
         else:sources.append((filelist.parent/line).resolve())
     sources += [ROOT/'test/ps_compression/ps_stream_capture.sv',
                 HERE/'axi_memory.sv',HERE/'tb_conv_npu.sv']
-    tracked=list(dict.fromkeys(sources+[filelist,Path(__file__).resolve(),
+    tracked=list(dict.fromkeys(sources+[filelist,Path(__file__).resolve(),HERE/'simulator.vlt',
         ROOT/'veri/top_regression/host_tiling.py',ROOT/'veri/top_regression/gen_mem.py']))
     tracked += [p for directory in includes for p in sorted(directory.glob('*.svh'))]
     return sources,includes,list(dict.fromkeys(tracked))
 
-def build(out,size,verilator,jobs,cache_sets=32,cache_policy=2,
+def build(out,size,verilator,jobs,cache_sets=32,cache_policy=3,
           ps_compress=False,pool_bytes=16384,force_raw=False,lint_only=False,
           bus_width=None,shared_bank_bytes=2048,shared_bank_count=0):
     bus_width=axi_data_width(bus_width)
@@ -358,7 +358,7 @@ def build(out,size,verilator,jobs,cache_sets=32,cache_policy=2,
          '--output-split','10000','--output-split-cfuncs','1000',
          *[f'-I{path}' for path in includes],*defines,'--Mdir',out/'obj','-j',jobs,
          '-CFLAGS','-std=c++20 -O1 --param ggc-min-expand=1 --param ggc-min-heapsize=1024',
-         '-MAKEFLAGS',f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',*sources]
+         '-MAKEFLAGS',f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',HERE/'simulator.vlt',*sources]
     before={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
     rc=command(cmd,out/'compile.log',timeout=1200)
     text=(out/'compile.log').read_text()
@@ -395,7 +395,7 @@ def run_suite(binary,out,name,tasks,no_random=False,force_codec=False):
     return result
 
 def main():
-    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--sizes',type=int,nargs='+',default=[4,8,16]);a.add_argument('--out',type=Path,default=ROOT/'build/conv_npu');a.add_argument('--verilator',default='verilator');a.add_argument('--jobs',type=int,default=1);a.add_argument('--cache-policy',type=int,choices=[0,1,2],default=2);a.add_argument('--cache-sets',type=int,default=32);a.add_argument('--smoke',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--reuse-audit',action='store_true',help='Focused byte-level AXI reuse audit, including output-channel group replay')
+    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--sizes',type=int,nargs='+',default=[4,8,16]);a.add_argument('--out',type=Path,default=ROOT/'build/conv_npu');a.add_argument('--verilator',default='verilator');a.add_argument('--jobs',type=int,default=1);a.add_argument('--cache-policy',type=int,choices=[0,1,2,3],default=3);a.add_argument('--cache-sets',type=int,default=32);a.add_argument('--smoke',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--reuse-audit',action='store_true',help='Focused byte-level AXI reuse audit, including output-channel group replay')
     a.add_argument('--ps-compress',action='store_true')
     a.add_argument('--pool-bytes',type=int,default=16384)
     a.add_argument('--force-raw',action='store_true',help='Use RAW records in the shared compressed-store datapath')

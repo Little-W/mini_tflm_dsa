@@ -67,7 +67,7 @@ IA RAM 读取、阵列输入、PS 恢复和 PS 写入均使用完整矩阵行。
 \mathrm{epoch}=\left\lfloor\frac{(\mathrm{group\_offset}+\mathrm{channel})\,\mathrm{element\_bytes}}{16}\right\rfloor.
 \]
 
-对于 `P<16`，一条缓存行容纳多个像素，索引按每行可容纳的像素数进行右移，`epoch=0`。其余地址使用物理地址异或索引。几何映射只在 policy 3 中启用。实现见 [`conv_im2col_frontend.sv`](../rtl/npu/conv/conv_im2col_frontend.sv) 与 [`conv_read_cache.sv`](../rtl/npu/conv/conv_read_cache.sv)。
+对于 `P<16`，一条缓存行容纳多个像素，索引按每行可容纳的像素数进行右移，`epoch=0`。其余地址使用物理地址异或索引。几何映射只在 policy 3 中启用。实现见 [`conv_im2col_frontend.sv`](../rtl/npu/conv/conv_im2col_frontend.sv) 与 [`conv_read_cache.sv`](../rtl/npu/dma/cache/conv_read_cache.sv)。
 
 ### 2.2 epoch 与最后使用位置
 
@@ -159,7 +159,7 @@ VCE 使用 8 个 `vector_pe`，每个 PE 具有一个乘法器。默认 `TILE=16
 
 取数端维护独立的输出坐标、卷积核坐标和输入地址，通过加法推进步幅、扩张和换行位置。目标输入区域可用时，它提交包含输出空间位置 `p0`、归约起点 `q0`、有效通道数 `cols` 和 2 位 `tag` 的描述。`tag` 标识目标输入区域。每个区域保存对应的输出位置和卷积核位置，计算端按既定顺序消费已经准备好的区域。超出图像范围的位置由坐标检查跳过，不发出窗口读取请求。
 
-共享 DMA 内的 [`conv_window_queue.sv`](../rtl/npu/conv/conv_window_queue.sv) 保存有序描述，默认 `WINDOW_OUTSTANDING=4`，计数包含正在执行的描述。有效通道数不超过 8 时，VCE 可同时保留四个未完成的窗口请求；通道数为 9 至 16 时，输入区域限制该数量为两个。提交描述后立即设置目标区域的 `input_reserved`，在前一个请求完成之前也可提交其他空闲区域的请求。
+共享 DMA 内的 [`conv_window_queue.sv`](../rtl/npu/dma/conv_window_queue.sv) 保存有序描述，默认 `WINDOW_OUTSTANDING=4`，计数包含正在执行的描述。有效通道数不超过 8 时，VCE 可同时保留四个未完成的窗口请求；通道数为 9 至 16 时，输入区域限制该数量为两个。提交描述后立即设置目标区域的 `input_reserved`，在前一个请求完成之前也可提交其他空闲区域的请求。
 
 响应包含原始 `tag`、通道位置、最多四个 INT16 元素、有效掩码、`last` 和错误标志。最后一拍被接受时释放 `input_reserved`，成功接收的区域设置 `input_ready`；计算完成后释放 `input_ready`，该区域才可再次使用。16 个有效通道需要两个 PE 执行周期完成一个卷积核位置的乘加，尾通道按实际有效数量控制。
 

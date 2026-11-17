@@ -159,7 +159,7 @@ def main() -> int:
     repository, workloads, out = args.repo.resolve(), args.workloads.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     runner = load_runner(repository)
-    package_text = (repository / "rtl/npu/conv/00_conv_im2col_pkg.sv").read_text()
+    package_text = (repository / "rtl/npu/conv/conv_im2col_pkg.sv").read_text()
     register_text = (repository / "rtl/axi_top/npu_axil_reg_if.sv").read_text()
     if args.windowed is None:
         args.windowed = re.search(r"cfg_conv\.windowed\s*<=\s*1'b1", register_text) is not None

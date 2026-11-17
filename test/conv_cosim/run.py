@@ -41,14 +41,15 @@ def main():
         'riscv_nn_mat_mult_kernel_s8_s16','riscv_nn_mat_mult_kernel_row_offset_s8_s16']]
     csrc += [nn/'Source/NNSupportFunctions'/f'{n}.c' for n in ['riscv_nn_mat_mult_nt_t_s8','riscv_q7_to_q15_with_offset']]
     csrc += [HERE/'reference.c']
-    npu=ROOT/'rtl/npu';pkg=npu/'conv/00_conv_im2col_pkg.sv'
-    svsrc=[pkg]+[p for p in sorted(npu.rglob('*.sv')) if p!=pkg]+sorted(npu.rglob('*.v'))
+    npu=ROOT/'rtl/npu';packages=[npu/'conv/conv_im2col_pkg.sv',npu/'conv/vector_engine_pkg.sv']
+    svsrc=packages+[p for p in sorted(npu.rglob('*.sv')) if p not in packages]+sorted(npu.rglob('*.v'))
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
         ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'rtl/soc/soc_axi_ram.sv',HERE/'conv_cosim_top.sv']
     cflags=['-std=c11','-O2','-Wall','-Wextra','-Werror','-DDSA_MMIO_CUSTOM',f'-DDSA_TILE_SIZE={a.size}',
             '-DDSA_PS_FRAME_COUNT=16','-include',ROOT/'test/conv_driver/host_compat.h',
             '-I',nn/'Include','-I',ROOT/'drivers']
-    inputs=set(csrc+svsrc+[HERE/'main.cpp',Path(__file__)])
+    simulator_config=ROOT/'test/conv_npu/simulator.vlt'
+    inputs=set(csrc+svsrc+[HERE/'main.cpp',Path(__file__),simulator_config])
     inputs.update(npu.rglob('*.svh'))
     # Capture actual C headers before deciding whether --skip-build is safe.
     # The common planner and NMSIS headers are not standalone compile sources.
@@ -84,10 +85,10 @@ def main():
         if run(['ar','rcs',lib,*objects],out/'archive.log'):return 1
         cppflags=f'-std=c++17 -O1 -D__GNUC_PYTHON__ -DDSA_MMIO_CUSTOM -DDSA_TILE_SIZE={a.size} -DDSA_PS_FRAME_COUNT=16 -I{nn/"Include"} -I{ROOT/"drivers"}'
         cmd=[a.verilator,'--cc','--exe','--build','--assert','--top-module','conv_cosim_top','-Wno-fatal',
-            f'-I{npu/"gempact"}',f'-GSIZE={a.size}',f'-GENABLE_PER_CHANNEL={int(not a.disabled_per_channel)}',
+            f'-I{npu/"ps_compact"}',f'-GSIZE={a.size}',f'-GENABLE_PER_CHANNEL={int(not a.disabled_per_channel)}',
             f'-GENABLE_IS_MODE={int(not a.disabled_is)}',f'-GWEIGHT_WIDTH={8 if a.narrow_kernel else 16}',
             '--Mdir',build/'obj','-j',a.jobs,
-            '-CFLAGS',cppflags,'-LDFLAGS',str(lib),'-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0',*svsrc,HERE/'main.cpp']
+            '-CFLAGS',cppflags,'-LDFLAGS',str(lib),'-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0',simulator_config,*svsrc,HERE/'main.cpp']
         rc=run(cmd,out/'rtl_build.log',timeout=1200)
         log=(out/'rtl_build.log').read_text()
         source_after={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest()

@@ -1,4 +1,4 @@
-+incdir+../../rtl/npu/gempact
++incdir+../../rtl/npu/ps_compact
 test_params_pkg.sv
 tb_compute_core_if.sv
 compute_core_test.sv
@@ -9,5 +9,5 @@ tb_compute_core.sv
 ../../rtl/common/pseudo_dual_port_ram.v
 ../../rtl/npu/compute/ws_systolic_array.sv
 ../../rtl/npu/compute/ws_systolic_cell.sv
-../../rtl/npu/gempact/ps_adaptive_codec.sv
-../../rtl/npu/gempact/ps_frame_store.sv
+../../rtl/npu/ps_compact/ps_adaptive_codec.sv
+../../rtl/npu/ps_compact/ps_frame_store.sv

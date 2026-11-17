@@ -63,8 +63,8 @@ def main():
          'riscv_max_pool_s8', 'reference_max_pool_s8'),
     ]
     npu = ROOT / 'rtl/npu'
-    package = npu / 'conv/00_conv_im2col_pkg.sv'
-    dw_package = npu / 'conv/01_vector_engine_pkg.sv'
+    package = npu / 'conv/conv_im2col_pkg.sv'
+    dw_package = npu / 'conv/vector_engine_pkg.sv'
     svsrc = [package, dw_package]
     svsrc += [p for p in sorted(npu.rglob('*.sv')) if p not in svsrc]
     svsrc += sorted(npu.rglob('*.v'))
@@ -78,7 +78,8 @@ def main():
               '-I', nn / 'Include', '-I', ROOT / 'drivers']
     if args.pcr:
         cflags += ['-DDSA_PS_COMPRESS=1']
-    inputs = set(csrc + svsrc + [HERE / 'main.cpp', Path(__file__)])
+    simulator_config = ROOT / 'test/conv_npu/simulator.vlt'
+    inputs = set(csrc + svsrc + [HERE / 'main.cpp', Path(__file__), simulator_config])
     inputs.update(npu.rglob('*.svh'))
     for src in csrc:
         output = subprocess.check_output([str(x) for x in ['gcc', *cflags, '-MM', '-MT', 'deps', src]],
@@ -129,12 +130,12 @@ def main():
             cppflags += ' -DDSA_PS_COMPRESS=1'
         command = [args.verilator, '--cc', '--exe', '--assert',
                    '--output-groups', '0', '--output-split', '12000',
-                   '--top-module', 'vector_engine_cosim_top', '-Wno-fatal', f'-I{npu / "gempact"}',
+                   '--top-module', 'vector_engine_cosim_top', '-Wno-fatal', f'-I{npu / "ps_compact"}',
                    f'-GSIZE={args.size}', f'-GVECTOR_PE_COUNT={args.pe_count}',
                    f'-GENABLE_VECTOR_ENGINE={int(not args.disabled)}',
                    '--Mdir', build / 'obj', '-j', args.jobs, '-CFLAGS', cppflags,
                    '-MAKEFLAGS', 'OPT_FAST=-O1 OPT_SLOW=-O0',
-                   *svsrc, HERE / 'main.cpp', library]
+                   simulator_config, *svsrc, HERE / 'main.cpp', library]
         if args.pcr:
             command += ['-DGEMPACT_PS_COMPRESS=1', '-DGEMMORA_PS_POOL_BYTES=12288']
         rc = run(command, out / 'compile.log')

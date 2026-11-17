@@ -22,7 +22,7 @@ set PROJ_TEMP          [getenv_default PROJ_TEMP "./output/default"]
 
 set RTL_ROOT           [getenv_default RTL_ROOT "../../rtl"]
 set INC_ROOT           [getenv_default INC_ROOT [file join $PROJ_ROOT include]]
-set DESIGN_FILELIST    [getenv_default DESIGN_FILELIST "${ASIC_ROOT}/filelist/npu_top.f"]
+set DESIGN_FILELIST    [getenv_default DESIGN_FILELIST [file join $PROJ_PATH filelists npu_top.f]]
 
 set postCTS            [getenv_default postCTS 0]
 set enableDFT          [getenv_default enableDFT 0]
@@ -32,7 +32,7 @@ set DESIGN             [getenv_default DESIGN "npu_top"]
 set DESIGN_TOP         [getenv_default DESIGN_TOP $DESIGN]
 set DESIGN_PARAMETERS  [getenv_default DESIGN_PARAMETERS ""]
 
-set DESIGN_SYN_SDC     [getenv_default DESIGN_SYN_SDC "${ASIC_ROOT}/sdc/${DESIGN_TOP}_400m.sdc"]
+set DESIGN_SYN_SDC     [getenv_default DESIGN_SYN_SDC [file join $PROJ_PATH constraints npu_top.sdc]]
 
 set TARGET_FREQ_MHZ    [getenv_default DESIGN_TARGET_FREQ_MHZ 400.0]
 set CLK_PERIOD_NS      [expr 1000.0 / double($TARGET_FREQ_MHZ)]

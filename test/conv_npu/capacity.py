@@ -16,7 +16,7 @@ def main():
     p.add_argument('--verilator',default='verilator')
     p.add_argument('--jobs',type=int,default=2)
     p.add_argument('--sets',type=int,nargs='+',default=[8,16,32,64,128])
-    p.add_argument('--cache-policy',type=int,choices=[0,1,2],default=2)
+    p.add_argument('--cache-policy',type=int,choices=[0,1,2,3],default=3)
     x=p.parse_args();out=x.out.resolve();out.mkdir(parents=True,exist_ok=True)
     ref=npu.make_reference(out)
     result={'method':'actual NPU RTL simulations, not address-trace model',

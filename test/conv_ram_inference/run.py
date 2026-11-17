@@ -10,7 +10,7 @@ import subprocess
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-SOURCE = ROOT / "rtl/npu/conv/conv_sdp_ram.sv"
+SOURCE = ROOT / "rtl/npu/dma/cache/conv_sdp_ram.sv"
 
 
 def main():

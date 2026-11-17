@@ -35,8 +35,8 @@ def main():
     top = "shared_storage_tb"
     sources = [Path(__file__).resolve(), test / "shared_storage_tb.sv", test / "shared_storage_test.cpp",
                codec_test / "stream_test_vectors.hpp", codec_test / "cpp_adaptive_codec.hpp", codec_test / "cpp_row_codec.hpp",
-               root / "rtl/npu/buffers/ia_ps_shared_ram.sv", root / "rtl/npu/gempact/ps_frame_store.sv",
-               root / "rtl/npu/gempact/ps_adaptive_codec.sv"]
+               root / "rtl/npu/buffers/ia_ps_shared_ram.sv", root / "rtl/npu/ps_compact/ps_frame_store.sv",
+               root / "rtl/npu/ps_compact/ps_adaptive_codec.sv"]
     before = {str(path.relative_to(root)): digest(path) for path in sources}
     rules = out / "compile_rules.mk"
     rules.write_text("""%.o: %.cpp
@@ -56,7 +56,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
     command = [args.verilator, "--cc", "--exe", "--build", "-j", "1", "--assert", "-Wno-fatal",
                "--top-module", top, f"-GBANK_BYTES={args.bank_bytes}", f"-GBANK_COUNT={args.bank_count}", "--Mdir", str(obj), "--output-groups", "0", "--output-split", "10000",
                "--output-split-cfuncs", "1000", "-CFLAGS", cflags, "-LDFLAGS", "-fsanitize=undefined",
-               "-MAKEFLAGS", f"CXX={args.compiler} OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}"]
+               "-MAKEFLAGS", f"-B CXX={args.compiler} OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}"]
     if args.force_raw:
         command.append("+define+GEMMORA_PS_FORCE_RAW")
     command.extend(str(path) for path in sources if path.suffix in (".sv", ".cpp"))

@@ -13,8 +13,8 @@ import re
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-SOURCES = ["rtl/npu/conv/conv_read_cache.sv", "rtl/npu/conv/conv_next_use_predictor.sv",
-           "rtl/npu/conv/conv_im2col_frontend.sv", "rtl/npu/conv/conv_sdp_ram.sv",
+SOURCES = ["rtl/npu/dma/cache/conv_read_cache.sv", "rtl/npu/dma/cache/conv_next_use_predictor.sv",
+           "rtl/npu/conv/conv_im2col_frontend.sv", "rtl/npu/dma/cache/conv_sdp_ram.sv",
            "rtl/npu/conv/conv_axi_span_reader.sv", "rtl/npu/loaders/ia_loader_ctrl.sv"]
 
 

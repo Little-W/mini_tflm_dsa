@@ -25,9 +25,10 @@ def run_command(command, log, timeout=1200):
 
 
 def sources(tb, memory=False):
-    package=ROOT/'rtl/npu/conv/00_conv_im2col_pkg.sv'
-    result=[package]+[p for p in sorted((ROOT/'rtl/npu/conv').glob('*.sv')) if p!=package]
-    result+=sorted((ROOT/'rtl/npu/dma').glob('*.sv'))
+    package=ROOT/'rtl/npu/conv/conv_im2col_pkg.sv'
+    packages=[package,ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
+    result=packages+[p for p in sorted((ROOT/'rtl/npu/conv').rglob('*.sv')) if p not in packages]
+    result+=sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     if memory:result.append(ROOT/'test/conv_npu/axi_memory.sv')
     result.append(tb)
     return result

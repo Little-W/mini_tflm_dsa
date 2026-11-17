@@ -96,7 +96,7 @@ def build_sim(out: Path, verilator: str, jobs: int, *, skip=False, icache=0, reu
     filelist = ROOT / "veri/flist/dut_axi_soc.f"
     sources = filelist_sources(filelist, cwd) + [HERE / "tb_conv_soc_perf.sv"]
     # Include macros used by the production GEMPACT files in the source audit.
-    sources += list((ROOT / "rtl/npu/gempact").glob("*.svh"))
+    sources += list((ROOT / "rtl/npu/ps_compact").glob("*.svh"))
     before = source_hashes(sources)
     if skip or reuse is not None:
         previous_root = Path(reuse).resolve() if reuse is not None else out

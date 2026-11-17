@@ -63,6 +63,7 @@ test/*/__pycache__/
 /sub_proj/
 /veri/python_model/build/
 /dataflow_sim/
+/validation/
 
 # Local release packages
 /deliverables/

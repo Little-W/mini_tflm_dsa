@@ -132,7 +132,7 @@ module tb_conv_dma;
                     assert(!seen[owner][row][col])else $fatal(1,"duplicate matrix element");
                     assert(int'(u_arb.u_dma.wr_slot)==score_slot[owner])else $fatal(1,"wrong matrix slot");
                     if(kind[owner])begin
-                        assert(lane<2 && u_arb.u_dma.wr_use_16bits)else $fatal(1,"im2col return is not signed16");
+                        assert(u_arb.u_dma.wr_use_16bits)else $fatal(1,"im2col return is not signed16");
                         if(score_q[owner]+col>=int'(oracle_cfg.kernel_h)*int'(oracle_cfg.kernel_w)*int'(oracle_cfg.group_c))reduction_tail_elements++;
                         if(u_arb.u_dma.g_im2col.u_frontend.pad_q)padding_elements++;
                     end

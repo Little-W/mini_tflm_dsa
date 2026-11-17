@@ -22,8 +22,8 @@ def main():
     parser.add_argument('--out', type=Path, default=ROOT / 'build/cache_pipeline')
     parser.add_argument('--profiles', nargs='+', default=['4:2', '4:1', '1:2'])
     args = parser.parse_args()
-    sources = [ROOT / 'rtl/npu/conv' / name for name in
-               ['conv_read_cache.sv', 'conv_sdp_ram.sv', 'conv_axi_span_reader.sv']]
+    sources = [(ROOT / 'rtl/npu/dma' / name if name.startswith('cache/') else ROOT / 'rtl/npu/conv' / name) for name in
+               ['cache/conv_read_cache.sv', 'cache/conv_sdp_ram.sv', 'conv_axi_span_reader.sv']]
     sources += [ROOT / 'test/conv_reuse/axi_counted_memory.sv',
                 ROOT / 'test/cache_pipeline/tb_cache_pipeline.sv']
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources + [Path(__file__)]}

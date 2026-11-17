@@ -24,7 +24,7 @@ module tb_cache_policy;
     conv_read_cache #(.SETS(2),.WAYS(2),.LINE_BYTES(16),.CACHE_POLICY(2)) dut(.cfg_windowed(1'b0),.cfg_prefetch_enable(1'b0),
         .req_window_index_valid(1'b0),.req_window_index(0),.req_window_epoch(0),
         .req_window_retire(32'hffffffff),.req_window_progress(0),.prefetch_valid(1'b0),
-        .prefetch_addr(0),.prefetch_window_index_valid(1'b0),.prefetch_window_index(0),
+        .prefetch_addr(0),.prefetch_next_fragment(1'b0),.prefetch_window_index_valid(1'b0),.prefetch_window_index(0),
         .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),.*);
     axi_counted_memory #(.TRACK_BASE(32'h1000),.TRACK_BYTES(8192)) mem(
         .clk,.rst_n,.allocation_base(cfg_base),.allocation_bytes(cfg_bytes),.epoch,.block_ar,

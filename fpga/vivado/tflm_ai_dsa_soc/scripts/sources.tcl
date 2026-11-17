@@ -25,12 +25,12 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
 
     set include_dirs [list \
         [file join $dsa_root include] \
-        [file join $npu_root gempact] \
+        [file join $npu_root ps_compact] \
     ]
 
     set design_sources [list \
-        [file join $npu_root conv 00_conv_im2col_pkg.sv] \
-        [file join $npu_root conv 01_vector_engine_pkg.sv] \
+        [file join $npu_root conv conv_im2col_pkg.sv] \
+        [file join $npu_root conv vector_engine_pkg.sv] \
         [file join $npu_root conv vector_pe.sv] \
         [file join $npu_root conv vector_softmax.sv] \
         [file join $npu_root conv vector_engine.sv] \
@@ -39,11 +39,11 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root conv conv_axi_span_reader.sv] \
         [file join $npu_root conv conv_ia_tile_path.sv] \
         [file join $npu_root conv conv_ia_write_adapter.sv] \
-        [file join $npu_root conv conv_window_queue.sv] \
+        [file join $npu_root dma conv_window_queue.sv] \
         [file join $npu_root conv conv_im2col_frontend.sv] \
-        [file join $npu_root conv conv_next_use_predictor.sv] \
-        [file join $npu_root conv conv_read_cache.sv] \
-        [file join $npu_root conv conv_sdp_ram.sv] \
+        [file join $npu_root dma cache conv_next_use_predictor.sv] \
+        [file join $npu_root dma cache conv_read_cache.sv] \
+        [file join $npu_root dma cache conv_sdp_ram.sv] \
         [file join $npu_root conv conv_udiv32.sv] \
         [file join $project_export_dir rtl fpga_top.sv] \
         [file join $project_export_dir rtl clk_wiz_0_sim_stub.sv] \
@@ -74,8 +74,9 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_control_root ps_window_scheduler.sv] \
         [file join $npu_top_root npu_top.sv] \
         [file join $npu_writeback_root oa_writer.sv] \
-        [file join $npu_root gempact ps_adaptive_codec.sv] \
-        [file join $npu_root gempact ps_frame_store.sv] \
+        [file join $npu_root ps_compact ps_adaptive_codec.sv] \
+        [file join $npu_root ps_compact ps_frame_store.sv] \
+        [file join $npu_root dma operand_read_cache.sv] \
         [file join $npu_buffers_root ia_ps_shared_ram.sv] \
         [file join $npu_buffers_root ps_buffer.sv] \
         [file join $npu_buffers_root ps_buffer_fifo.sv] \

@@ -292,7 +292,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                f'-GSIZE={values["SIZE"]}', f'-GIA_CACHE_BLOCKS={values["IA_CACHE_BLOCKS"]}',
                f'-GPS_FRAME_COUNT={values["PS_FRAME_COUNT"]}',
                f'-GAXI_READ_OUTSTANDING={values["AXI_READ_OUTSTANDING"]}',
-               "-I" + str(ROOT / "rtl/npu/gempact")]
+               "-I" + str(ROOT / "rtl/npu/ps_compact")]
     if values["PCR_ENGINE"]:
         command += ["-DGEMPACT_PS_COMPRESS=1", f'-DGEMMORA_PS_POOL_BYTES={values["PS_POOL_BYTES"]}']
         if values["PS_FORCE_RAW"]:

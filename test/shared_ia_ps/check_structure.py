@@ -26,7 +26,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     sources = [Path(__file__).resolve(), root / "rtl/npu/buffers/ia_ps_shared_ram.sv",
-               root / "rtl/npu/gempact/ps_frame_store.sv", root / "rtl/npu/gempact/ps_adaptive_codec.sv",
+               root / "rtl/npu/ps_compact/ps_frame_store.sv", root / "rtl/npu/ps_compact/ps_adaptive_codec.sv",
                root / "rtl/npu/loaders/ia_loader_cache_mgr.sv", root / "rtl/common/pseudo_dual_port_ram.v"]
     before = {str(path.relative_to(root)): digest(path) for path in sources}
     profiles = []
@@ -43,7 +43,7 @@ def main():
                             f"-GPOOL_BYTES={(banks-1)*bank_bytes} -GBANK_BYTES={bank_bytes} "
                             f"-GMAX_FRAME_ROWS={bank_bytes//8} -GDIRECTORY_ROWS=1024 "
                             f"-GRAM_ADDR_BITS={(banks*(bank_bytes//16)-1).bit_length()} "
-                            "rtl/npu/gempact/ps_frame_store.sv rtl/npu/gempact/ps_adaptive_codec.sv")
+                            "rtl/npu/ps_compact/ps_frame_store.sv rtl/npu/ps_compact/ps_adaptive_codec.sv")
                 else:
                     read = ("read_slang --top ia_loader_cache_mgr -D SYNTHESIS -GEXTERNAL_RAM=1 "
                             f"-GDATA_WIDTH=16 -GSIZE=16 -GCACHE_BLOCKS={bank_bytes//128} "

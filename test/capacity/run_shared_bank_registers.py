@@ -24,13 +24,15 @@ def main():
     args=parser.parse_args()
     executable=shutil.which(args.verilator) or args.verilator
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    sources=[ROOT/'rtl/npu/conv/00_conv_im2col_pkg.sv',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
+    sources=[ROOT/'rtl/npu/conv/conv_im2col_pkg.sv',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
              ROOT/'test/capacity/tb_shared_bank_registers.sv']
     dependencies=sources+[Path(__file__).resolve()]
     before={str(p.relative_to(ROOT)):sha(p) for p in dependencies}
     command=[executable,'--binary','--timing','--assert','--top-module','tb_shared_bank_registers',
              '-Wall','-Wno-fatal','-Wno-PINMISSING','--Mdir',str(out/'obj'),'-j','1',
-             '-CFLAGS','-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
+             '--output-groups','0','--output-split','10000','--output-split-cfuncs','1000',
+             '-CFLAGS','-std=c++20 -O0 -fsanitize=undefined -fno-sanitize-recover=all',
+             '-MAKEFLAGS','OPT_FAST=-O0 OPT_SLOW=-O0',
              '-LDFLAGS','-fsanitize=undefined',*map(str,sources)]
     start=time.monotonic()
     with (out/'build.log').open('w') as log:

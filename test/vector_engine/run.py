@@ -25,9 +25,9 @@ def main():
     a=p.parse_args();a.pes=a.pes or [min(8,a.tile)];out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
     csrc=[HERE/'reference.c',HERE/'reference_add.c']
     conv=ROOT/'rtl/npu/conv'
-    svsrc=[conv/'00_conv_im2col_pkg.sv',conv/'01_vector_engine_pkg.sv']
-    svsrc += [x for x in sorted(conv.glob('*.sv')) if x not in svsrc]
-    svsrc += list(sorted((ROOT/'rtl/npu/dma').glob('*.sv')))
+    svsrc=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
+    svsrc += [x for x in sorted(conv.rglob('*.sv')) if x not in svsrc]
+    svsrc += list(sorted((ROOT/'rtl/npu/dma').rglob('*.sv')))
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'vector_engine_dma_top.sv']
     cflags=['-std=c11','-O2','-Wall','-Wextra','-Werror']
     result={'verification':'RTL engine + production DMA; independent signed-integer nearest-even reference','tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,

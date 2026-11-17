@@ -31,7 +31,7 @@ module tb_operand_drain;
   wire error_injected;
   logic [31:0] unused_ranges[4]='{default:'0};
 
-  npu_axil_top #(.SIZE(16),.PS_FRAME_COUNT(16),.ENABLE_CLOCK_GATING(1)) dut (
+  npu_axil_top #(.SIZE(16),.PS_FRAME_COUNT(16),.ENABLE_CLOCK_GATING(1),.OPERAND_CACHE_ENABLE(1)) dut (
     .clk,.rst_n,
     .s_axil_awaddr(awaddr),.s_axil_awprot(3'd0),.s_axil_awvalid(awvalid),.s_axil_awready(awready),
     .s_axil_wdata(wdata),.s_axil_wstrb(wstrb),.s_axil_wvalid(wvalid),.s_axil_wready(wready),
@@ -46,9 +46,7 @@ module tb_operand_drain;
     .m_axi_wvalid(mw),.m_axi_wready(mwr),.m_axi_wdata(mwd),.m_axi_wstrb(mws),.m_axi_wlast(mwl),
     .m_axi_bvalid(mb),.m_axi_bready(mbr),.m_axi_bresp(mbe),.irq,.npu_busy
   );
-  // These optional core controls are not exposed by the production AXI-Lite
-  // wrapper. Test-only elaboration/input overrides preserve its real gate.
-  defparam dut.u_npu_top.OPERAND_CACHE_ENABLE=1;
+  // Enable 64-byte operand fetches while exercising the production clock gate.
   initial force dut.u_npu_top.cfg_operand_fetch64=1'b1;
 
   // This tiny task's ordinary IA read is issued before its weight read. Hold

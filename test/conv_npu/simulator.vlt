@@ -1,0 +1,5 @@
+`verilator_config
+no_inline -module "compute_core"
+no_inline -module "ia_loader"
+no_inline -module "kernel_loader"
+no_inline -module "axi_block_dma_arbiter"

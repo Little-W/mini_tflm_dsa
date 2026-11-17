@@ -279,8 +279,9 @@ def command(argv: list, log: Path, timeout=1200) -> int:
 def build(directory: Path, ia: int, args) -> Path:
     enable_is_mode=int(not getattr(args, 'ws_only', False))
     npu=ROOT/'rtl/npu'
-    package=npu/'conv/00_conv_im2col_pkg.sv'
-    sources=[package]+[p for p in sorted(npu.rglob('*.sv')) if p!=package]+sorted(npu.rglob('*.v'))
+    package=npu/'conv/conv_im2col_pkg.sv'
+    packages=[package,npu/'conv/vector_engine_pkg.sv']
+    sources=packages+[p for p in sorted(npu.rglob('*.sv')) if p not in packages]+sorted(npu.rglob('*.v'))
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
                 ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/conv_npu/axi_memory.sv',HERE/'tb_matrix_layout.sv']
     sources += [Path(path) for path in getattr(args, 'extra_sources', [])]
@@ -295,7 +296,7 @@ def build(directory: Path, ia: int, args) -> Path:
             raise RuntimeError('compiled dataflow support differs')
         return binary
     argv=[args.verilator,'--binary','--timing','--assert','-sv','--top-module','tb_matrix_layout','-Wno-fatal',
-          f'-I{npu/"gempact"}',f'-DTB_IA_CACHE_BLOCKS={ia}','-DTB_PS_STORAGE_ROWS=799','-DTB_S16_BANKS=4',
+          f'-I{npu/"ps_compact"}',f'-DTB_IA_CACHE_BLOCKS={ia}','-DTB_PS_STORAGE_ROWS=799','-DTB_S16_BANKS=4',
           f'-DTB_ENABLE_IS_MODE={enable_is_mode}',
           '--Mdir',directory/'obj','-j',args.jobs,'-CFLAGS','-std=c++20 -O1',
           '-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0',*sources]

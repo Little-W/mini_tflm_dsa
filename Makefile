@@ -34,15 +34,17 @@ TFLM_APP ?= $(DEPLOY_TFLM_APP)
 
 UNIT_TESTS := axi_dual_block_dma axi_block_dma_arbiter ps_buffer compute_core npu_top
 UNIT_BUILD := $(ROOT)/build/vcs/unit
-NPU_RTL := $(sort $(shell find $(ROOT)/rtl/npu -type f \( -name '*.sv' -o -name '*.v' \)))
+NPU_PACKAGES := $(ROOT)/rtl/npu/conv/conv_im2col_pkg.sv $(ROOT)/rtl/npu/conv/vector_engine_pkg.sv
+NPU_RTL := $(NPU_PACKAGES) $(filter-out $(NPU_PACKAGES),$(sort $(shell find $(ROOT)/rtl/npu -type f \( -name '*.sv' -o -name '*.v' \))))
 NPU_RTL += $(if $(filter 1,$(ASIC_SRAM)),$(ROOT)/asic/rtl/smic40_sram_1r1w.sv $(SRAM_ROOT)/RAMTP128X16/verilog/RAMTP128X16.v $(SRAM_ROOT)/RAMTP1024X16/verilog/RAMTP1024X16.v,)
 RAM_RTL := $(ROOT)/rtl/common/pseudo_dual_port_ram.v
 COMPUTE_RTL := $(ROOT)/rtl/npu/compute
 BUFFER_RTL := $(ROOT)/rtl/npu/buffers
 DMA_RTL := $(ROOT)/rtl/npu/dma
-PS_CODEC_RTL := $(ROOT)/rtl/npu/gempact/ps_adaptive_codec.sv $(ROOT)/rtl/npu/gempact/ps_frame_store.sv
+PS_CODEC_RTL := $(ROOT)/rtl/npu/ps_compact/ps_adaptive_codec.sv $(ROOT)/rtl/npu/ps_compact/ps_frame_store.sv
 
-UNIT_DMA_RTL := rtl/npu/conv/00_conv_im2col_pkg.sv $(filter-out rtl/npu/conv/00_conv_im2col_pkg.sv,$(sort $(wildcard rtl/npu/conv/*.sv))) rtl/npu/dma/axi_linear_block_dma.sv rtl/npu/dma/axi_write_page_guard.sv rtl/npu/dma/axi_dual_block_dma.sv
+UNIT_DMA_PACKAGES := rtl/npu/conv/conv_im2col_pkg.sv rtl/npu/conv/vector_engine_pkg.sv
+UNIT_DMA_RTL := $(UNIT_DMA_PACKAGES) $(filter-out $(UNIT_DMA_PACKAGES),$(sort $(wildcard rtl/npu/conv/*.sv rtl/npu/dma/cache/*.sv))) rtl/npu/dma/conv_window_queue.sv rtl/npu/dma/axi_linear_block_dma.sv rtl/npu/dma/axi_write_page_guard.sv rtl/npu/dma/axi_dual_block_dma.sv
 SRCS_axi_dual_block_dma := $(UNIT_DMA_RTL) test/axi_dual_block_dma/tb_axi_dual_block_dma.sv
 SRCS_axi_block_dma_arbiter := $(UNIT_DMA_RTL) rtl/npu/dma/axi_block_dma_arbiter.sv test/axi_block_dma_arbiter/tb_axi_block_dma_arbiter.sv
 SRCS_ps_buffer := test/ps_buffer/tb_ps_buffer.sv $(BUFFER_RTL)/ps_buffer.sv $(BUFFER_RTL)/ps_buffer_fifo.sv $(COMPUTE_RTL)/de_diagonalizer.sv $(RAM_RTL) $(PS_CODEC_RTL)
@@ -50,7 +52,7 @@ SRCS_compute_core := $(COMPUTE_DATA_DIR)/test_params_pkg.sv test/compute_core/tb
 SRCS_npu_top := test/npu_top/tb_npu_top.sv test/npu_top/tb_sirv_stubs.v test/dep_modules/ddr_axi_mem_model.sv $(NPU_RTL) $(RAM_RTL)
 PASS_axi_dual_block_dma := [AXI_DUAL_DMA] ALL PASS
 PASS_axi_block_dma_arbiter := [AXI_ARB] ALL PASS
-PASS_ps_buffer := PASS: diagonal partial-sum
+PASS_ps_buffer := PASS: partial-sum replay
 PASS_compute_core := PASS: compute_core matched
 PASS_npu_top := [TB] PASS
 CONFIG_TAG := s$(SIZE)_c$(IA_CACHE_BLOCKS)_p$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_axi$(NPU_AXI_DATA_WIDTH)_bank$(SHARED_BANK_BYTES)x$(SHARED_BANK_COUNT)
@@ -113,7 +115,7 @@ vcs-unit-build: capacity-check $(NPU_CONFIG)
 	  cd '$(COMPUTE_DATA_DIR)' && $(PYTHON) '$(ROOT)/test/compute_core/gen_mats.py' --seed $(SEED); \
 	fi
 	$(VCS) -full64 -sverilog -timescale=1ns/1ps $(if $(filter 1,$(DEBUG)),-debug_access+all,) -top tb_$(UNIT) \
-	  $(UNIT_DEFINES) $(PCR_DEFINES) +incdir+$(ROOT)/rtl/npu/gempact +incdir+$(ROOT)/test/compute_core \
+	  $(UNIT_DEFINES) $(PCR_DEFINES) +incdir+$(ROOT)/rtl/npu/ps_compact +incdir+$(ROOT)/test/compute_core \
 	  -Mdir='$(UNIT_DIR)/csrc' -o '$(UNIT_DIR)/simv' \
 	  -l '$(UNIT_DIR)/compile.log' $(foreach src,$(SRCS_$(UNIT)),$(if $(filter /%,$(src)),$(src),$(ROOT)/$(src)))
 
@@ -222,7 +224,7 @@ CONV_RUNTIME_ROOT ?=
 CONV_FULL_RUN_JOBS ?= 2
 CONV_FULL_FLAGS ?=
 CONV_CACHE_SETS ?= 32
-CONV_CACHE_POLICY ?= 2
+CONV_CACHE_POLICY ?= 3
 CONV_BASELINE ?=
 CONV_BASELINE_REF ?=
 CONV_TOOL_ENV = PATH="$(dir $(abspath $(VERILATOR))):$$PATH"

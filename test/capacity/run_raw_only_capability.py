@@ -134,7 +134,7 @@ def hardware_checks(args, out):
                    f"-GBUS_WIDTH={args.bus_width}", "-GSHARED_BANK_BYTES=2048", "-GSHARED_BANK_COUNT=7",
                    "-GSIZE=16", "-GIA_CACHE_BLOCKS=4", "-GPS_FRAME_COUNT=16", "-GAXI_READ_OUTSTANDING=4",
                    "-GENABLE_VECTOR_ENGINE=1", "-GVECTOR_PE_COUNT=8", "-DGEMPACT_PS_COMPRESS=1",
-                   "-DGEMMORA_PS_POOL_BYTES=12288", "-I" + str(ROOT / "rtl/npu/gempact"),
+                   "-DGEMMORA_PS_POOL_BYTES=12288", "-I" + str(ROOT / "rtl/npu/ps_compact"),
                    *defines, *map(str, sources)]
         run_logged(command, directory / "elaboration.log")
         tree = json.loads(tree_path.read_text())
@@ -186,7 +186,7 @@ def hardware_checks(args, out):
                f'-GCAP_NORMAL={reports[0]["ps_caps"]}', f'-GCAP_GEMMORA_RAW={reports[1]["ps_caps"]}',
                f'-GCAP_LEGACY_RAW={reports[2]["ps_caps"]}',
                f'-GAXI_DATA_BITS={args.bus_width}',
-               str(ROOT / "rtl/npu/conv/00_conv_im2col_pkg.sv"),
+               str(ROOT / "rtl/npu/conv/conv_im2col_pkg.sv"),
                str(ROOT / "rtl/axi_top/npu_axil_reg_if.sv"),
                str(ROOT / "test/capacity/tb_raw_only_caps.sv")]
     run_logged(command, directory / "verilator.log")

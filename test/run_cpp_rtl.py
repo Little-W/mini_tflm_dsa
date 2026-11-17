@@ -44,7 +44,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
                "--output-groups", "0", "--output-split", "10000",
                "-CFLAGS", "-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all",
                "-LDFLAGS", "-fsanitize=undefined",
-               "-MAKEFLAGS", f"OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}",
+               "-MAKEFLAGS", f"-B OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}",
                str(ROOT / rtl), str(sources[-1])]
     binary = out / "obj" / ("V" + top)
     if args.reuse_build:

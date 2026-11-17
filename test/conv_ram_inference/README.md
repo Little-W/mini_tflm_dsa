@@ -5,7 +5,7 @@ python3 test/conv_ram_inference/run.py --yosys yosys
 ```
 
 也可选择已安装的 `yowasp-yosys`。脚本从当前生产
-`rtl/npu/conv/conv_sdp_ram.sv` 生成网表，默认将 `ram.json`、`status.json`
+`rtl/npu/dma/cache/conv_sdp_ram.sv` 生成网表，默认将 `ram.json`、`status.json`
 和 `yosys.log` 写入 `build/conv_ram_inference/`；`--out` 可覆盖目录。
 不读取已有网表或历史综合报告。
 

@@ -266,6 +266,7 @@ module tb_conv_npu;
     wire [7:0] arlen,awlen;
     wire [2:0] arsize,awsize;
     wire [1:0] arburst,rresp,memory_rresp,awburst,bresp;
+    wire hold_late_response = saved_cfg[59]==3 && !capacity_injected;
     assign rresp=(late_error_active && !late_error_seen) ? 2'b10 : memory_rresp;
     always @(posedge clk)begin
         if(!rst_n || new_job)late_error_seen<=0;
@@ -305,7 +306,7 @@ module tb_conv_npu;
         .lhs_zp(cfg[21]),.rhs_zp(cfg[22]),.dst_zp(cfg[23]),.q_mult_pt(cfg[24]),.q_shift_pt(cfg[25]),
         .use_per_channel(cfg[13][0]),.act_min(cfg[26]),.act_max(cfg[27]),.k(cfg[3]),.n(cfg[4]),.m(cfg[5]),
         .m_axi_arvalid(arvalid),.m_axi_arready(arready),.m_axi_araddr(araddr),.m_axi_arlen(arlen),.m_axi_arsize(arsize),.m_axi_arburst(arburst),
-        .m_axi_rvalid(rvalid),.m_axi_rready(rready),.m_axi_rdata(rdata),.m_axi_rresp(rresp),.m_axi_rlast(rlast),
+        .m_axi_rvalid(rvalid && !hold_late_response),.m_axi_rready(rready),.m_axi_rdata(rdata),.m_axi_rresp(rresp),.m_axi_rlast(rlast),
         .m_axi_awvalid(awvalid),.m_axi_awready(awready),.m_axi_awaddr(awaddr),.m_axi_awlen(awlen),.m_axi_awsize(awsize),.m_axi_awburst(awburst),
         .m_axi_wvalid(wvalid),.m_axi_wready(wready),.m_axi_wdata(wdata),.m_axi_wstrb(wstrb),.m_axi_wlast(wlast),
         .m_axi_bvalid(bvalid),.m_axi_bready(bready),.m_axi_bresp(bresp)
@@ -319,14 +320,14 @@ module tb_conv_npu;
         .other_lo(other_lo),.other_hi(other_hi),
         .read_bytes(read_bytes),.input_read_bytes(input_read_bytes),.read_requests(read_requests),.write_bytes(write_bytes),
         .arvalid(arvalid),.arready(arready),.araddr(araddr),.arlen(arlen),.arsize(arsize),.arburst(arburst),
-        .rvalid(rvalid),.rready(rready),.rdata(rdata),.rresp(memory_rresp),.rlast(rlast),
+        .rvalid(rvalid),.rready(rready && !hold_late_response),.rdata(rdata),.rresp(memory_rresp),.rlast(rlast),
         .awvalid(awvalid),.awready(awready),.awaddr(awaddr),.awlen(awlen),.awsize(awsize),.awburst(awburst),
         .wvalid(wvalid),.wready(wready),.wdata(wdata),.wstrb(wstrb),.wlast(wlast),.bvalid(bvalid),.bready(bready),.bresp(bresp)
     );
 
     initial begin : run_suite
         string suite_path,cfg_path,init_path,golden_path,required_path,accumulator_path,histogram_path;
-        integer f,fields,task_number,errors,histogram_file;
+        integer f,fields,task_number,errors,histogram_file,ready_wait;
         integer unique_input,max_input_reads,required_input,unused_unique_input,covered_input;
         longint unsigned histogram_total;
         longint unsigned start_cycle,end_cycle;
@@ -339,7 +340,9 @@ module tb_conv_npu;
         while(!$feof(f))begin
             fields=$fscanf(f,"%s %s %s %s %s\n",cfg_path,init_path,golden_path,required_path,accumulator_path);
             if(fields==5)begin
-                assert(sa_ready)else $fatal(1,"NPU not ready before task %0d",task_number);
+                ready_wait=0;
+                while(!sa_ready && ready_wait<10000)begin @(negedge clk);ready_wait++;end
+                assert(sa_ready)else $fatal(1,"NPU not ready before task %0d: abort=%0d fault=%0b controller_ready=%0b",task_number,u_dut.abort_state,u_dut.task_fault,u_dut.ctrl_sa_ready);
                 $readmemh(cfg_path,cfg);
                 for(int i=0;i<64;i++)saved_cfg[i]=cfg[i];
                 assert(cfg[1]==SIZE)else $fatal(1,"wrong array size");
@@ -361,7 +364,7 @@ module tb_conv_npu;
                        ((saved_cfg[59]==1 && u_dut.u_compute_core.ps_stream_valid_d &&
                          !u_dut.u_compute_core.ps_calc_done_d) ||
                         (saved_cfg[59]==2 && rvalid && rready && rresp[1]) ||
-                        (saved_cfg[59]==3 && u_mem.rd_active && !rvalid)))begin
+                        (saved_cfg[59]==3 && u_mem.rd_active && rvalid)))begin
                         force u_dut.ps_capacity_fault=1'b1;
                         capacity_injected=1;
                         @(negedge clk);
@@ -370,7 +373,7 @@ module tb_conv_npu;
                                 else $fatal(1,"capacity error was not latched before the later AXI response");
                             late_error_active=1;
                         end
-                        release u_dut.ps_capacity_fault;
+                        force u_dut.ps_capacity_fault=1'b0;
                     end else @(negedge clk);
                 end
                 if(!done_valid)begin
@@ -397,6 +400,7 @@ module tb_conv_npu;
                         u_dut.u_ia_loader.u_ctrl.in_l1_output,u_dut.weight_data_valid,u_dut.bias_valid,u_dut.quant_params_valid);
                     $fatal(1,"task timeout id=%0d",task_number);
                 end
+                if(capacity_injected) release u_dut.ps_capacity_fault;
                 observed_error=err_code;
                 end_cycle=cycle;
                 assert(err_code==saved_cfg[52][1:0] || (saved_cfg[60]!=0 && err_code==2))

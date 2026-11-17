@@ -9,14 +9,14 @@ def main():
     p.add_argument('--cache-policy',type=int,default=3);p.add_argument('--no-prefetch',action='store_true')
     a=p.parse_args();pf=not a.no_prefetch
     out=ROOT/f'build/windowed_cache/s{a.cache_sets}_p{a.cache_policy}_pf{int(pf)}';out.mkdir(parents=True,exist_ok=True)
-    files=[ROOT/'rtl/npu/conv'/n for n in ['00_conv_im2col_pkg.sv','conv_udiv32.sv','conv_sdp_ram.sv','conv_next_use_predictor.sv','conv_axi_span_reader.sv','conv_read_cache.sv','conv_im2col_frontend.sv']]
+    files=[(ROOT/'rtl/npu/dma'/n if n.startswith('cache/') else ROOT/'rtl/npu/conv'/n) for n in ['conv_im2col_pkg.sv','conv_udiv32.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv','conv_axi_span_reader.sv','cache/conv_read_cache.sv','conv_im2col_frontend.sv']]
     files += [ROOT/'test/conv_reuse/axi_counted_memory.sv',ROOT/'test/windowed_cache/tb_windowed_cache.sv']
     source_sha={str(path.relative_to(ROOT)):hashlib.sha256(path.read_bytes()).hexdigest() for path in files+[Path(__file__)]}
     cmd=[shutil.which('verilator') or 'verilator','--binary','--timing','--assert','-DCONV_ASSERT','-Wall','-Wno-fatal','--top-module','tb_windowed_cache',f'-GCACHE_SETS={a.cache_sets}',f'-GCACHE_POLICY={a.cache_policy}',f'-GPREFETCH={int(pf)}','--Mdir',str(out/'obj'),'-j','2',*map(str,files)]
     with (out/'build.log').open('w') as f:subprocess.run(cmd,cwd=ROOT,stdout=f,stderr=subprocess.STDOUT,check=True)
     warnings=[line for line in (out/'build.log').read_text().splitlines() if line.startswith('%Warning')]
     reviewed={'UNUSEDSIGNAL','UNUSEDPARAM','BLKSEQ','PROCASSINIT','SYNCASYNCNET'}
-    bad=[w for w in warnings if w.split(':',1)[0].removeprefix('%Warning-') not in reviewed and not (w.startswith('%Warning-DECLFILENAME') and '00_conv_im2col_pkg' in w)]
+    bad=[w for w in warnings if w.split(':',1)[0].removeprefix('%Warning-') not in reviewed]
     if bad:raise RuntimeError('lint diagnostics: '+repr(bad))
     with (out/'run.log').open('w') as f:subprocess.run([str(out/'obj/Vtb_windowed_cache')],cwd=ROOT,stdout=f,stderr=subprocess.STDOUT,check=True,timeout=180)
     text=(out/'run.log').read_text();assert 'WINDOW_CACHE_PASS' in text

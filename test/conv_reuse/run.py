@@ -17,9 +17,8 @@ if not sim: raise SystemExit('Verilator is required')
 report={'scope':'cache/frontend reuse measured on actual external AXI reads',
         'simulator':subprocess.check_output([sim,'--version'],text=True).strip(),'runs':[]}
 reviewed={'BLKSEQ','PROCASSINIT','UNUSEDSIGNAL','UNUSEDPARAM','SYNCASYNCNET'}
-package_warning="Filename '00_conv_im2col_pkg' does not match PACKAGE name: 'conv_im2col_pkg'"
-sources=[RTL/name for name in ['00_conv_im2col_pkg.sv','conv_udiv32.sv','conv_sdp_ram.sv','conv_next_use_predictor.sv',
-                              'conv_axi_span_reader.sv','conv_read_cache.sv','conv_im2col_frontend.sv']]
+sources=[(RTL.parent/'dma'/name if name.startswith('cache/') else RTL/name) for name in ['conv_im2col_pkg.sv','conv_udiv32.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv',
+                              'conv_axi_span_reader.sv','cache/conv_read_cache.sv','conv_im2col_frontend.sv']]
 with tempfile.TemporaryDirectory(prefix='conv_reuse_',dir=os.environ.get('TMPDIR','/tmp')) as temporary:
     for kind in ['cache','frontend']:
         top=f'tb_conv_{kind}_reuse';build=Path(temporary)/kind;build.mkdir()
@@ -33,8 +32,7 @@ with tempfile.TemporaryDirectory(prefix='conv_reuse_',dir=os.environ.get('TMPDIR
                 subprocess.run(command,cwd=ROOT,stdout=stream,stderr=subprocess.STDOUT,check=True)
                 subprocess.run([str(build/f'V{top}')],cwd=ROOT,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=60)
             output=log.read_text();warnings=[line for line in output.splitlines() if line.startswith('%Warning')]
-            unexpected=[line for line in warnings if line.split(':',1)[0].removeprefix('%Warning-') not in reviewed
-                        and not (line.startswith('%Warning-DECLFILENAME:') and package_warning in line)]
+            unexpected=[line for line in warnings if line.split(':',1)[0].removeprefix('%Warning-') not in reviewed]
             if unexpected: raise RuntimeError(f'unreviewed lint diagnostics: {unexpected}')
             status.update(status='PASS',warnings=warnings,
                           summary=next(line for line in output.splitlines() if f'{kind.upper()}_REUSE_PASS' in line),

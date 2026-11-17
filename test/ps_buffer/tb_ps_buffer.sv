@@ -138,7 +138,7 @@ module tb_ps_buffer;
         end
     endtask
 
-    task automatic check_de_diagonalized_vector_row(
+    task automatic check_output_vector_row(
         input string label,
         input int    tag,
         input int    row_idx,
@@ -159,7 +159,7 @@ module tb_ps_buffer;
 
             for (int lane = 0; lane < SIZE; lane++) begin
                 if (dut_acc_data_out[lane] !== make_value(tag, row_idx, lane)) begin
-                    $display("[TB] ERROR %s row %0d lane %0d de-diagonalized data mismatch: dut=%0d exp=%0d",
+                    $display("[TB] ERROR %s row %0d lane %0d output data mismatch: dut=%0d exp=%0d",
                              label, row_idx, lane, dut_acc_data_out[lane],
                              make_value(tag, row_idx, lane));
                     errors++;
@@ -287,49 +287,41 @@ module tb_ps_buffer;
         end
     endtask
 
-    task automatic run_calc_done_de_diagonalizer_test(input int tag);
-        int row_idx;
-        bit expect_tile_over;
+    task automatic run_calc_done_row_output_test(input int tag);
         begin
-            $display("[TB] calc_done de-diagonalization test start");
+            $display("[TB] calc_done row output test start");
             apply_reset();
 
-            // When ia_calc_done is high, the stair-stepped input bypasses FIFO
-            // and enters de_diagonalizer. The final output must be normal vector
-            // rows synchronized with acc_data_valid_o. tile_calc_over_o is high
-            // only for the last valid vector row.
-            for (int step = 0; step < STAIR_STEPS; step++) begin
+            // Completed array rows pass directly to the output. The final row
+            // also marks the end of the tile and of the stream.
+            for (int row = 0; row < SIZE; row++) begin
                 @(negedge clk);
                 for (int lane = 0; lane < SIZE; lane++) begin
-                    data_in[lane] = make_stair_value(tag, step, lane);
+                    data_in[lane] = make_value(tag, row, lane);
                 end
-                ia_row_valid    = 1'b1;  // high on purpose: calc_done must bypass FIFO
+                ia_row_valid    = 1'b1;
                 ia_calc_done    = 1'b1;
-                ia_l1_switch    = 1'b0;
+                ia_l1_switch    = (row == SIZE - 1);
                 send_ia_trigger = 1'b0;
                 ia_is_init_data = 1'b0;
-
+                #1;
+                check_output_vector_row("row output", tag, row, row == SIZE - 1);
+                if (dut_stream_calc_over_o !== (row == SIZE - 1)) begin
+                    $display("[TB] ERROR row %0d stream completion mismatch", row);
+                    errors++;
+                end
                 @(posedge clk);
                 #1;
-
-                if (step < SIZE - 1) begin
-                    check_control_idle($sformatf("de_diagonalizer fill step %0d", step));
-                end else begin
-                    row_idx = step - (SIZE - 1);
-                    expect_tile_over = (row_idx == SIZE - 1);
-                    check_de_diagonalized_vector_row("de_diagonalizer output", tag,
-                                                     row_idx, expect_tile_over);
-                end
             end
 
             @(negedge clk);
             clear_inputs();
             @(posedge clk);
             #1;
-            check_control_idle("de_diagonalizer after final row");
+            check_control_idle("after final row");
 
             // Prove that the calc_done burst was not stored into FIFO: after an
-            // l1 switch and replay trigger, no de_diagonalizer control pulse
+            // l1 switch and replay trigger, no output control pulse
             // should appear and data_out should stay zero.
             @(negedge clk);
             ia_l1_switch = 1'b1;
@@ -369,10 +361,10 @@ module tb_ps_buffer;
     initial begin
         run_diagonal_partial_sum_fifo_test(1);
         run_variable_length_fifo_test();
-        run_calc_done_de_diagonalizer_test(2);
+        run_calc_done_row_output_test(2);
 
         if (errors == 0) begin
-            $display("PASS: diagonal partial-sum replay and calc_done de-diagonalized output validated");
+            $display("PASS: partial-sum replay and calc_done row output validated");
         end else begin
             $display("FAIL: ps_buffer mismatches=%0d", errors);
         end

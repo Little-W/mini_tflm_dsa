@@ -13,7 +13,7 @@ COMMON = [
     'rtl/conv_axi_span_reader.sv', 'rtl/conv_read_cache.sv', 'rtl/conv_im2col_frontend.sv',
 ]
 RTL = ROOT.parents[1] / 'rtl/npu/conv'
-COMMON = [str(RTL / ('00_conv_im2col_pkg.sv' if Path(name).name == 'conv_im2col_pkg.sv' else Path(name).name)) for name in COMMON]
+COMMON = [str((RTL.parent / 'dma/cache' / Path(name).name if Path(name).name in {'conv_read_cache.sv', 'conv_sdp_ram.sv', 'conv_next_use_predictor.sv'} else RTL / Path(name).name)) for name in COMMON]
 REVIEWED = {'UNUSEDSIGNAL', 'UNUSEDPARAM', 'BLKSEQ', 'PROCASSINIT', 'SYNCASYNCNET'}
 
 
@@ -42,10 +42,9 @@ def run(test):
         output = log.read_text()
         warnings = [line for line in output.splitlines() if line.startswith('%Warning')]
         status['warnings'] = warnings
-        package_name_warning="Filename '00_conv_im2col_pkg' does not match PACKAGE name: 'conv_im2col_pkg'"
         unexpected = [line for line in warnings
                       if line.split(':', 1)[0].removeprefix('%Warning-') not in REVIEWED
-                      and not (line.startswith('%Warning-DECLFILENAME:') and package_name_warning in line)]
+]
         if unexpected:
             raise RuntimeError(f'unreviewed lint diagnostics: {unexpected}')
         marker = f'RTL_{test.upper()}_PASS'

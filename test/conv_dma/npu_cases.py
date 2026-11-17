@@ -74,7 +74,8 @@ def prepare(out, size, ref, lib, smoke=False):
                    mutate=True, expect_once=True)
     failed = conv('is_input_rresp_failure', dataflow=1, seed=1203, error=3, inject=True)
     recovered = conv('is_recovery_after_rresp', dataflow=1, seed=1204, expect_once=True)
-    invalid = conv('is_invalid_geometry', dataflow=1, seed=1205, error=1)
+    invalid = conv('is_invalid_geometry', dataflow=1, seed=1205, error=1,
+                   invalidate_geometry=True)
     final_ws = conv('ws_recovery_after_is', dataflow=0, seed=1206, expect_once=True)
     return [ws_case, is_case, gemm, changed, failed, recovered, invalid, final_ws]
 

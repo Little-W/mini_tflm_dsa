@@ -987,7 +987,7 @@ module vec_requant_full #(
     wire [5:0] right_shift=shift_value<0 ? (shift_abs>63 ? 6'd63 : shift_abs[5:0]) : 6'd0;
     wire [QBUF_IDX_W-1:0] index=quant_rsp_idx+QBUF_IDX_W'(word);
     wire [VLEN_IDX_W-1:0] lane_index=VLEN_IDX_W'(index);
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
       if(rsp_hskd && (32'(rd_beats_cnt)+word)<32'(beats_expect)) begin
         if(is_mode_r) begin
           if(load_phase==PH_MUL) ch_multiplier_is_r[index]<=shift_value;

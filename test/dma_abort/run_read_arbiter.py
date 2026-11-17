@@ -15,7 +15,8 @@ def main():
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--bus-width',type=int,choices=(32,64),default=64)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    rtl=sorted((ROOT/'rtl/npu/conv').glob('*.sv'))+sorted((ROOT/'rtl/npu/dma').glob('*.sv'))
+    packages=[ROOT/'rtl/npu/conv/conv_im2col_pkg.sv',ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
+    rtl=packages+[p for p in sorted((ROOT/'rtl/npu/conv').rglob('*.sv')) if p not in packages]+sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sources=[Path(__file__).resolve(),ROOT/'test/dma_abort/arbiter_read_tb.sv',*rtl]
     hashes={str(p.relative_to(ROOT)):sha(p) for p in sources}
     command=[args.verilator,'--binary','--timing','--assert','-Wno-fatal','-Wno-PINMISSING',

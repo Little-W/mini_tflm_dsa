@@ -49,7 +49,7 @@ def main():
                '--output-groups', '0', '--output-split', '10000',
                '-CFLAGS', f'-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BANK_BYTES={args.bank_bytes} -DTEST_BANK_COUNT={args.bank_count}',
                '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
-               f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',
+               f'-B OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',
                *map(str, rtl), str(cpp)]
     binary = out / 'obj' / ('V' + top)
     start = time.monotonic()

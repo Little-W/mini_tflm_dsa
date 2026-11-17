@@ -20,7 +20,7 @@ def digest(path):
 def child_cells(value,scope=()):
     if isinstance(value,dict):
         if value.get('type')=='CELL':
-            yield scope+(value['name'],),value['modName']
+            yield scope+(value['name'],),value.get('modName', value.get('modp'))
             return
         if value.get('type') in ('GENBLOCK','BEGIN') and value.get('name'):
             scope=scope+(value['name'],)
@@ -31,6 +31,7 @@ def child_cells(value,scope=()):
 
 def hierarchy(tree):
     modules={node['name']:node for node in tree['modulesp'] if node.get('type')=='MODULE'}
+    modules.update({node['addr']:node for node in tree['modulesp'] if node.get('type')=='MODULE'})
     result=[]
     def follow(name,path,kinds):
         module=modules[name];kind=module['origName']
@@ -56,9 +57,9 @@ def main():
     cmd=[args.verilator,'--json-only','--json-only-output',tree_path,
          '--json-only-meta-output',meta_path,'--Mdir',out/'obj',
          '--timing','--assert','-sv','--top-module','tb_conv_npu','-Wno-fatal',
-         '-I'+str(ROOT/'rtl/npu/gempact'),f'-DTB_SIZE={manifest["size"]}',
+         '-I'+str(ROOT/'rtl/npu/ps_compact'),f'-DTB_SIZE={manifest["size"]}',
          f'-DTB_CONV_CACHE_SETS={manifest["cache_sets"]}',f'-DTB_CONV_CACHE_POLICY={manifest["cache_policy"]}',
-         *[ROOT/name for name in current]]
+         *[ROOT/name for name in current if Path(name).suffix in ('.sv', '.v')]]
     with (out/'elaborate.log').open('w') as stream:
         stream.write('COMMAND: '+repr([str(p) for p in cmd])+'\n');stream.flush()
         rc=subprocess.run([str(p) for p in cmd],cwd=ROOT,stdout=stream,stderr=subprocess.STDOUT).returncode

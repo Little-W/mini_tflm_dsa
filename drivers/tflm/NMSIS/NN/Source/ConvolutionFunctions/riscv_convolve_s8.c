@@ -132,8 +132,6 @@ riscv_nmsis_nn_status riscv_convolve_s8(const nmsis_nn_context *ctx,
 
     for (int i_batch = 0; i_batch < input_batches; i_batch++)
     {
-        int processed_positions = 0;  // 跟踪已处理的输出位置数量
-
         /* Use as a ping-pong buffer for unordered elements */
         int8_t *im2col_buf = (int8_t *)buffer_a + aligned_rhs_cols * 2;
         int16_t *im2col_buf_start_s16 = buffer_a;
@@ -258,7 +256,6 @@ riscv_nmsis_nn_status riscv_convolve_s8(const nmsis_nn_context *ctx,
                         im2col_buf_start_s16 = buffer_a;
                         im2col_buf = (int8_t *)buffer_a + aligned_rhs_cols * 2;
                         lhs_rows = 0;
-                        processed_positions += 2;  // 更新已处理的输出位置
                     }
                 }
             }

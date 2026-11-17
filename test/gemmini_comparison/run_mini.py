@@ -39,8 +39,9 @@ def payload(directory: Path, tensor: dict) -> bytes:
 def build_comparison(runner, repository: Path, out: Path, args,
                      testbench: Path | None = None, top_module: str = "tb_conv_npu") -> Path:
     npu = repository / "rtl/npu"
-    package = npu / "conv/00_conv_im2col_pkg.sv"
-    sources = [package] + [path for path in sorted(npu.rglob("*.sv")) if path != package]
+    package = npu / "conv/conv_im2col_pkg.sv"
+    packages = [package, npu / "conv/vector_engine_pkg.sv"]
+    sources = packages + [path for path in sorted(npu.rglob("*.sv")) if path not in packages]
     sources += sorted(npu.rglob("*.v"))
     sources += [repository / "rtl/common/pseudo_dual_port_ram.v", repository / "test/conv_npu/axi_memory.sv"]
     if testbench is None:
@@ -53,7 +54,7 @@ def build_comparison(runner, repository: Path, out: Path, args,
     if getattr(args, "prefetch", False):
         comparison_defines.append("-DCOMMON_PREFETCH_INPUT")
     command = [args.verilator, "--binary", "--timing", "--assert", "-sv", "--top-module", top_module,
-               "-Wno-fatal", f"-I{npu / 'gempact'}", "-DTB_SIZE=16", f"-DCOMMON_MONITOR_TOP={top_module}",
+               "-Wno-fatal", f"-I{npu / 'ps_compact'}", "-DTB_SIZE=16", f"-DCOMMON_MONITOR_TOP={top_module}",
                f"-DTB_IA_CACHE_BLOCKS={getattr(args, 'ia_cache_blocks', 4)}",
                f"-DTB_PS_FRAME_COUNT={getattr(args, 'ps_frames', 16)}",
                f"-DTB_PS_STORAGE_ROWS={getattr(args, 'ps_storage_rows', 0)}",

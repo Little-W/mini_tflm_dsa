@@ -630,6 +630,9 @@ module conv_windowed_cache #(
         if (PF_CW'(i)<pf_count && pf_queue_addr[PF_AW'(pf_head+PF_AW'(i))][31:LB]==pf_offer_addr[31:LB]) pf_duplicate=1;
     end
 
+  end
+
+  always_comb begin
     select_prefetch=0;select_launch=0;
     select_addr=demand_addr;select_set=lookup_set;
     select_epoch=demand_epoch;select_retire=demand_retire;select_progress=demand_progress;
@@ -903,7 +906,7 @@ module conv_windowed_cache #(
     assert(response_count<=DQ_CW'(DEMAND_DEPTH));
     if (consumed_response) assert(outstanding_count!=0);
     if (cfg_valid && cfg_ready) assert(outstanding_count==0);
-    if (ram_ren && ram_wen) assert((ram_raddr/(BUS_WIDTH/32))!=(ram_waddr/(BUS_WIDTH/32)));
+    if (ram_ren && ram_wen) assert((int'(ram_raddr)/(BUS_WIDTH/32))!=(int'(ram_waddr)/(BUS_WIDTH/32)));
     assert(pf_count<=PF_CW'(PF_DEPTH));
     if (select_launch) begin
       assert(select_first<select_end && (fill_state==F_IDLE || fill_success));

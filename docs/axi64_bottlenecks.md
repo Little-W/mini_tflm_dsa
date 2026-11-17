@@ -116,7 +116,7 @@ T_{\mathrm{window,min}}=161,312/4=40,328\ \mathrm{cycles}.
 H=40,326/(40,326+2)=99.995041\%.
 \]
 
-该命中率在需求请求被接受时统计，预取已完成的缓存行会使后来的需求请求命中。统计定义见 [conv_read_cache.sv](../rtl/npu/conv/conv_read_cache.sv) 第 521、522 行和第 780 至 786 行。
+该命中率在需求请求被接受时统计，预取已完成的缓存行会使后来的需求请求命中。统计定义见 [conv_read_cache.sv](../rtl/npu/dma/cache/conv_read_cache.sv) 第 521、522 行和第 780 至 786 行。
 
 原图只从外部读取 18,432 B，恰好等于输入张量大小。加入 72 B 权重、32 B 偏置和两张各 32 B 的量化参数表，总读量为 18,600 B，即 2,325 个 R 拍。输出为 18,432 B，即 2,304 个 W 拍。相较于 Gemmini 的 31,456 B 读量，NPU 已减少 40.8698% 的外部读取。
 
@@ -208,7 +208,7 @@ W8 对应 4 个输出行，整个内部组及 halo 为 `(4+2)×32×16=3072 B=3 K
 
 选择 W 时可以同时使用整组容量和逐行活跃集合两个约束。上述 8,288 B 是实测流量差值，其各次重复读取的成因需结合实际请求次序、行地址和替换事件分析。W8 的容量计算是候选调度的理论分析，本文未将它列为已测性能结果。
 
-当前 windowed 缓存根据空间坐标、通道片段和输出行进度管理数据寿命，见 [conv_im2col_frontend.sv](../rtl/npu/conv/conv_im2col_frontend.sv) 第 320 至 351 行和 [conv_read_cache.sv](../rtl/npu/conv/conv_read_cache.sv) 第 647 至 659 行。独立 next-use 几何预测器的组循环参数在 IS 中设为 0，见 [npu_top.sv](../rtl/npu/top/npu_top.sv) 第 1020 至 1023 行。将实际空间组和 K 块回访顺序加入缓存寿命计算，是提高此类访问顺序下复用效率的方向。
+当前 windowed 缓存根据空间坐标、通道片段和输出行进度管理数据寿命，见 [conv_im2col_frontend.sv](../rtl/npu/conv/conv_im2col_frontend.sv) 第 320 至 351 行和 [conv_read_cache.sv](../rtl/npu/dma/cache/conv_read_cache.sv) 第 647 至 659 行。独立 next-use 几何预测器的组循环参数在 IS 中设为 0，见 [npu_top.sv](../rtl/npu/top/npu_top.sv) 第 1020 至 1023 行。将实际空间组和 K 块回访顺序加入缓存寿命计算，是提高此类访问顺序下复用效率的方向。
 
 ### 5.4 Gemmini 原生 Conv 如何供应阵列
 
@@ -222,7 +222,7 @@ Gemmini 的实际 tile 是输出高度 16、输出宽度 16、输出通道 16，
 - [LoopConv.scala](../../gemmini_dwconv_reference/src/main/scala/gemmini/LoopConv.scala) 第 268 至 282 行：原始输入的外部地址和 scratchpad 地址；第 634 至 661 行：滑窗输入地址与权重地址；第 761 至 786 行：先遍历空间位置，再更换 kernel 位置或输入通道块。
 - [ExecuteController.scala](../../gemmini_dwconv_reference/src/main/scala/gemmini/ExecuteController.scala) 第 270 至 277 行、第 481 至 493 行：片上输入地址步进和 SRAM 读请求。
 
-外部 AXI 也有差异：NPU 此例只观察到 1 个读请求在途，Gemmini 观察到 4 个。NPU 图像描述符的接受条件和完成处理仍包含前端及读通道排空，见 [axi_dual_block_dma.sv](../rtl/npu/dma/axi_dual_block_dma.sv) 第 248 至 260 行、第 312 至 318 行。缓存行填充由单个 `fill_state` 管理，见 [conv_read_cache.sv](../rtl/npu/conv/conv_read_cache.sv) 第 637 至 645 行、第 683 至 697 行。这些条件限制了空间通路用多个请求隐藏首拍延迟的能力。
+外部 AXI 也有差异：NPU 此例只观察到 1 个读请求在途，Gemmini 观察到 4 个。NPU 图像描述符的接受条件和完成处理仍包含前端及读通道排空，见 [axi_dual_block_dma.sv](../rtl/npu/dma/axi_dual_block_dma.sv) 第 248 至 260 行、第 312 至 318 行。缓存行填充由单个 `fill_state` 管理，见 [conv_read_cache.sv](../rtl/npu/dma/cache/conv_read_cache.sv) 第 637 至 645 行、第 683 至 697 行。这些条件限制了空间通路用多个请求隐藏首拍延迟的能力。
 
 ## 6. 架构改进方向与可计算下界
 

@@ -88,7 +88,8 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     dest.mkdir(parents=True, exist_ok=True)
     npu = ROOT / "rtl/npu"
-    sources = sorted(npu.rglob("*.sv")) + sorted(npu.rglob("*.v"))
+    packages = [npu / "conv/conv_im2col_pkg.sv", npu / "conv/vector_engine_pkg.sv"]
+    sources = packages + [p for p in sorted(npu.rglob("*.sv")) if p not in packages] + sorted(npu.rglob("*.v"))
     sources += [ROOT / "rtl/common/pseudo_dual_port_ram.v"]
     sources += [ROOT / "test/dep_modules/ddr_axi_mem_model.sv",
                 ROOT / "test/npu_top/tb_npu_top.sv", HERE / "cycle_probe.sv"]
@@ -96,7 +97,7 @@ def main():
     before = {str(p.relative_to(ROOT)): digest(p) for p in tracked}
     flags = [
         "--timing", "--assert", "-sv", "--top-module", "tb_npu_top", "-Wno-fatal",
-        f"-I{npu / 'gempact'}",
+        f"-I{npu / 'ps_compact'}",
         *[f"-Wno-{warning}" for warning in WARNINGS],
         f"-DTB_SIZE={args.size}", f"-DTB_IA_CACHE_BLOCKS={args.cache}",
         f"-DTB_BUS_WIDTH={args.bus_width}",f"-DTB_SHARED_BANK_BYTES={args.shared_bank_bytes}",

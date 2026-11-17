@@ -133,6 +133,24 @@ module npu_top #(
 );
 
 
+`ifdef GEMMORA_INT8_PROFILE
+    // This profile requires INT8 operands with zero offsets; validate at launch.
+    localparam int unsigned IA_DATA_WIDTH = DATA_WIDTH;
+    localparam int unsigned KERNEL_DATA_WIDTH = WEIGHT_WIDTH;
+`else
+    localparam int unsigned IA_DATA_WIDTH =
+        (DATA_WIDTH < 16) ? 16 : DATA_WIDTH;
+    localparam int unsigned KERNEL_DATA_WIDTH =
+        (WEIGHT_WIDTH < 16) ? 16 : WEIGHT_WIDTH;
+`endif
+    typedef enum logic [1:0] {AB_IDLE, AB_DRAIN, AB_RESET, AB_DONE} abort_t;
+    abort_t abort_state;
+    logic [1:0] abort_error_code;
+    logic [31:0] conv_range_base[4];
+    logic [32:0] conv_range_end[4];
+    wire task_fault, init_cfg_ia, cfg_stream_compact;
+    wire ps_raw_capacity_fits, ps_long_capacity_fits, load_ia_granted;
+
     // A Conv task is immutable after acceptance. The legacy software keeps
     // the other task fields stable; the AXI-Lite interface locks writes while busy.
     logic run_conv, run_vector, vector_rejected;
@@ -200,8 +218,6 @@ module npu_top #(
     logic [7:0] legacy_axi_arlen;
     logic [2:0] legacy_axi_arsize;
     logic [1:0] legacy_axi_arburst, legacy_axi_rresp;
-    logic [31:0] conv_range_base[4];
-    logic [32:0] conv_range_end[4];
     assign conv_range_base[0] = 32'(rhs_base);
     assign conv_range_base[1] = 32'(bias_base);
     assign conv_range_base[2] = use_per_channel ? 32'(q_mult_pt) : 32'd0;
@@ -214,9 +230,6 @@ module npu_top #(
     assign conv_range_end[1] = 33'(bias_base) + (33'(m)<<2);
     assign conv_range_end[2] = 33'($unsigned(q_mult_pt)) + (33'(m)<<2);
     assign conv_range_end[3] = 33'($unsigned(q_shift_pt)) + (33'(m)<<2);
-    typedef enum logic [1:0] {AB_IDLE, AB_DRAIN, AB_RESET, AB_DONE} abort_t;
-    abort_t abort_state;
-    logic [1:0] abort_error_code;
     wire abort_pending = abort_state != AB_IDLE;
     wire core_rst_n = rst_n && (abort_state != AB_RESET);
     logic conv_count_active, conv_stats_started;
@@ -447,16 +460,6 @@ module npu_top #(
     localparam int unsigned SHARED_DMA_SIZE =
         (BIAS_DMA_SIZE > SIZE) ? BIAS_DMA_SIZE : SIZE;
     // int8 activations plus zero-point need more than 8 signed bits.
-`ifdef GEMMORA_INT8_PROFILE
-    // This profile requires INT8 operands with zero offsets; validate at launch.
-    localparam int unsigned IA_DATA_WIDTH = DATA_WIDTH;
-    localparam int unsigned KERNEL_DATA_WIDTH = WEIGHT_WIDTH;
-`else
-    localparam int unsigned IA_DATA_WIDTH =
-        (DATA_WIDTH < 16) ? 16 : DATA_WIDTH;
-    localparam int unsigned KERNEL_DATA_WIDTH =
-        (WEIGHT_WIDTH < 16) ? 16 : WEIGHT_WIDTH;
-`endif
 
 `ifdef GEMPACT_PS_COMPRESS
     localparam bit SHARED_RAM_ENABLED = SHARED_IA_PS_ENABLE != 0 &&
@@ -506,7 +509,6 @@ module npu_top #(
 
     // IA Loader 内部信号
     wire load_ia_req;
-    wire load_ia_granted;
     wire send_ia_trigger;
     wire ia_sending_done;
     wire ia_row_valid;
@@ -764,7 +766,7 @@ module npu_top #(
     end endgenerate
 
     wire ps_capacity_fault;
-    wire task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
+    assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
                       (frame_mode_q && inner_done_valid && inner_err_code != 0) ||
                       ((run_conv || run_vector) && conv_error);
     wire controller_done_valid;
@@ -802,7 +804,6 @@ module npu_top #(
 
     // 添加缺少的内部信号
     // per-submodule init_cfg signals (由npu_controller产生的单拍脉冲)
-    wire init_cfg_ia;
     wire init_cfg_weight;
     wire init_cfg_bias;
     wire init_cfg_requant;
@@ -861,7 +862,7 @@ module npu_top #(
             (cfg_conv_enable ? !cfg_conv.input_s16 : !(cfg_16bits_ia_eff || cfg_16x8));
         wire signed [REG_WIDTH-1:0] cfg_stream_offset = cfg_stream_is_mode ? rhs_zp :
             (cfg_conv_enable ? REG_WIDTH'($signed(cfg_conv.input_offset)) : lhs_zp);
-        wire cfg_stream_compact = (IA_COMPACT_ENABLE != 0) && (IA_DATA_WIDTH == 16) &&
+        assign cfg_stream_compact = (IA_COMPACT_ENABLE != 0) && (IA_DATA_WIDTH == 16) &&
             cfg_stream_source_s8 && ($signed(cfg_stream_offset) >= -127) &&
             ($signed(cfg_stream_offset) <= 128);
 
@@ -960,7 +961,7 @@ module npu_top #(
             64'd64 * ps_max_frame_rows * ps_live_frames;
         wire ps_cross_k_required = 64'(cfg_n_s2) > 64'(SIZE);
         wire [63:0] ps_raw_frame_bank_words;
-        wire ps_raw_capacity_fits =
+        assign ps_raw_capacity_fits =
             !ps_cross_k_required ||
             (ps_capacity_required_bytes <= 64'(active_ps_pool_bytes) &&
              ps_raw_frame_bank_words * ps_live_frames <= 64'(active_ps_bank_depth));
@@ -998,7 +999,7 @@ module npu_top #(
             (ps_max_frame_rows << 1) : ps_config_word_cap == 3'd3 ?
             (ps_max_frame_rows << 1) + ps_max_frame_rows : (ps_max_frame_rows << 2);
         wire [63:0] ps_long_frame_bank_words;
-        wire ps_long_capacity_fits = !ps_cross_k_required ||
+        assign ps_long_capacity_fits = !ps_cross_k_required ||
             (32'(ps_config_word_cap) <= active_ps_bank_count &&
              ps_long_frame_bank_words * ps_live_frames <= 64'(active_ps_bank_depth) &&
              (!SHARED_RAM_ENABLED || ps_max_frame_rows * ps_live_frames <= 64'(SHARED_PS_DIRECTORY_ROWS)));
@@ -1038,8 +1039,8 @@ module npu_top #(
              (!use_frame_commands_s2 && !ps_long_capacity_fits));
 `else
         localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b1;
-        wire ps_raw_capacity_fits = 1'b1;
-        wire ps_long_capacity_fits = 1'b1;
+        assign ps_raw_capacity_fits = 1'b1;
+        assign ps_long_capacity_fits = 1'b1;
         wire ps_capacity_config_invalid = ps_configuration_invalid;
         wire ps_config_force_raw = 1'b1;
         wire [2:0] ps_config_word_cap = 3'd4;

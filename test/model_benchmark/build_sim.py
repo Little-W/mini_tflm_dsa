@@ -102,7 +102,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     sources += [HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp',Path(__file__)]
     capture=ROOT/'test/ps_compression/ps_stream_capture.sv'
     if ps_pool_bytes:sources.append(capture)
-    sources+=list((ROOT/'rtl/npu/gempact').glob('*.svh'))
+    sources+=list((ROOT/'rtl/npu/ps_compact').glob('*.svh'))
     def hashes():
         return ({str(p.relative_to(ROOT)):digest(p) for p in sorted(set(sources)) if p.is_relative_to(ROOT)},
                 {str(p):digest(p) for p in sorted(set(sources)) if not p.is_relative_to(ROOT)})

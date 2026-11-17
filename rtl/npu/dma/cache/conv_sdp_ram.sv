@@ -17,20 +17,25 @@ module conv_sdp_ram #(
 );
   localparam int WORDS = WRITE_WIDTH / 32;
   localparam int SELECT_W = WORDS<=1 ? 1 : $clog2(WORDS);
+  localparam int BANK_SHIFT = $clog2(WORDS);
   logic [SELECT_W-1:0] read_bank;
   logic [31:0] read_words[WORDS];
-  always_ff @(posedge clk) if (rd_en) read_bank <= SELECT_W'(rd_addr % WORDS);
+  always_ff @(posedge clk) if (rd_en) read_bank <= (WORDS == 1) ? '0 : SELECT_W'(rd_addr);
   assign rd_data = read_words[read_bank];
   for(genvar word=0;word<WORDS;word++)begin:g_bank
     (* ram_style = "block" *) logic [31:0] mem [0:DEPTH/WORDS-1];
     always_ff @(posedge clk) begin
-      if (rd_en) read_words[word] <= mem[int'(rd_addr)/WORDS];
+      if (rd_en) read_words[word] <= mem[rd_addr >> BANK_SHIFT];
       if (wr_en) for(int b=0;b<4;b++)
-        if (wr_strb[word*4+b]) mem[int'(wr_addr)/WORDS][b*8+:8] <= wr_data[word*32+b*8+:8];
+        if (wr_strb[word*4+b]) mem[wr_addr >> BANK_SHIFT][b*8+:8] <= wr_data[word*32+b*8+:8];
     end
   end
 `ifdef CONV_ASSERT
+  initial begin
+    assert (WRITE_WIDTH >= 32 && WRITE_WIDTH % 32 == 0 &&
+            (WORDS & (WORDS - 1)) == 0 && DEPTH % WORDS == 0);
+  end
   always_ff @(posedge clk)
-    assert (!(rd_en && wr_en && int'(rd_addr)/WORDS == int'(wr_addr)/WORDS));
+    assert (!(rd_en && wr_en && (rd_addr >> BANK_SHIFT) == (wr_addr >> BANK_SHIFT)));
 `endif
 endmodule

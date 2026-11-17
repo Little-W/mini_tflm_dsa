@@ -9,7 +9,7 @@ FILES=['rtl/conv_im2col_pkg.sv','rtl/conv_udiv32.sv','rtl/conv_sdp_ram.sv','rtl/
        'rtl/conv_ia_write_adapter.sv','rtl/conv_ia_tile_path.sv','tests/tb_conv_im2col_frontend.sv']
 
 RTL=ROOT.parents[1]/'rtl/npu/conv'
-FILES=[str(RTL/('00_conv_im2col_pkg.sv' if Path(name).name=='conv_im2col_pkg.sv' else Path(name).name)) if name.startswith('rtl/') else name for name in FILES]
+FILES=[str((RTL.parent/'dma/cache'/Path(name).name if Path(name).name in {'conv_read_cache.sv', 'conv_sdp_ram.sv', 'conv_next_use_predictor.sv'} else RTL/Path(name).name)) if name.startswith('rtl/') else name for name in FILES]
 
 def main():
     ap=argparse.ArgumentParser()
@@ -103,8 +103,6 @@ def main():
         # Keep every diagnostic in the log. Only reviewed structural/bench style
         # warnings are allowed; width, multi-driver, latch and loop warnings fail.
         reviewed={'UNUSEDSIGNAL','UNUSEDPARAM','BLKSEQ','PROCASSINIT','SYNCASYNCNET'}
-        # The 00_ prefix intentionally orders this package before its users.
-        package_name_warning="Filename '00_conv_im2col_pkg' does not match PACKAGE name: 'conv_im2col_pkg'"
         # The matrix tile adapter consumes tile_done; its streaming last
         # output is unused. Every other missing port remains an error.
         def unused_adapter_last(warning):
@@ -112,7 +110,6 @@ def main():
                     str(RTL/'conv_ia_tile_path.sv') in warning and
                     warning.endswith("Instance has missing pin: 'wr_last'"))
         unexpected=[w for w in warnings if w.split(':',1)[0].removeprefix('%Warning-') not in reviewed
-                    and not (w.startswith('%Warning-DECLFILENAME:') and package_name_warning in w)
                     and not unused_adapter_last(w)]
         if unexpected: raise RuntimeError('unreviewed lint warnings: '+repr(unexpected))
         status.update(status='PASS',simulator=verilator or vcs,log=str(log),

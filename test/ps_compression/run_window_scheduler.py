@@ -40,7 +40,7 @@ def main():
                    '--top-module', 'ps_window_scheduler', '--Mdir', str(target / 'obj'),
                    '-Wno-fatal', '--output-groups', '0',
                    '-CFLAGS', '-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
-                   '-LDFLAGS', '-fsanitize=undefined', str(rtl), str(test_dir / cpp)]
+                   '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS', '-B', str(rtl), str(test_dir / cpp)]
         started = time.monotonic()
         if args.reuse_build:
             previous = json.loads((target / 'summary.json').read_text())

@@ -71,15 +71,15 @@ def inspect(repository, out, executable, top, tile, pes):
     out.mkdir(parents=True, exist_ok=True)
     conv = repository / "rtl/npu/conv"
     if top == "vector_engine":
-        names = ["00_conv_im2col_pkg.sv", "01_vector_engine_pkg.sv", "conv_udiv32.sv",
+        names = ["conv_im2col_pkg.sv", "vector_engine_pkg.sv", "conv_udiv32.sv",
                  "vector_pe.sv", "vector_softmax.sv", "vector_engine.sv"]
         parameters = [f"-GTILE={tile}", f"-GPE_COUNT={pes}"]
     else:
-        names = ["00_conv_im2col_pkg.sv", "conv_udiv32.sv", "conv_sdp_ram.sv",
-                 "conv_next_use_predictor.sv", "conv_axi_span_reader.sv",
-                 "conv_read_cache.sv", "conv_im2col_frontend.sv"]
+        names = ["conv_im2col_pkg.sv", "conv_udiv32.sv", "cache/conv_sdp_ram.sv",
+                 "cache/conv_next_use_predictor.sv", "conv_axi_span_reader.sv",
+                 "cache/conv_read_cache.sv", "conv_im2col_frontend.sv"]
         parameters = [f"-GSIZE={tile}", "-GLANES=4", "-GCACHE_SETS=128", "-GCACHE_POLICY=3"]
-    sources = [conv / name for name in names]
+    sources = [(conv.parent / "dma" / name if name.startswith("cache/") else conv / name) for name in names]
     identity = {str(path.relative_to(repository)): hashlib.sha256(path.read_bytes()).hexdigest()
                 for path in sources}
     tree, metadata = out / "design.tree.json", out / "design.meta.json"

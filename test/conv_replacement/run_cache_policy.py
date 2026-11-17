@@ -27,8 +27,8 @@ def main():
     sim = shutil.which(args.verilator)
     if not sim:
         raise SystemExit('Verilator required')
-    sources = [ROOT / 'rtl/npu/conv' / name for name in (
-        'conv_sdp_ram.sv', 'conv_axi_span_reader.sv', 'conv_read_cache.sv')]
+    sources = [(ROOT / 'rtl/npu/dma' / name if name.startswith('cache/') else ROOT / 'rtl/npu/conv' / name) for name in (
+        'cache/conv_sdp_ram.sv', 'conv_axi_span_reader.sv', 'cache/conv_read_cache.sv')]
     sources += [ROOT / 'test/conv_reuse/axi_counted_memory.sv', HERE / 'tb_cache_policy.sv']
     hashes = {str(p.relative_to(ROOT)): sha(p) for p in sources}
     report = {'scope': 'actual cache RTL with deterministic procedural stimuli and manually supplied next-use hints',

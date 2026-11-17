@@ -41,8 +41,8 @@ def source_hashes():
                HERE / "cpp_adaptive_codec.hpp", HERE / "cpp_row_codec.hpp",
                HERE / "stream_soc_trace.py",
                HERE / "planner_profile.py",
-               ROOT / "rtl/npu/gempact/ps_adaptive_codec.sv",
-               ROOT / "rtl/npu/gempact/ps_frame_store.sv"]
+               ROOT / "rtl/npu/ps_compact/ps_adaptive_codec.sv",
+               ROOT / "rtl/npu/ps_compact/ps_frame_store.sv"]
     return {str(path.relative_to(ROOT)): digest(path) for path in sources}
 
 
@@ -56,7 +56,7 @@ def simulator_geometry(path):
             "The simulator requires a successful build with stable source hashes")
     require(isinstance(manifest.get("binary_sha256"), str) and
             len(manifest["binary_sha256"]) == 64, "Missing simulator executable hash")
-    for name in ("rtl/npu/gempact/ps_adaptive_codec.sv", "rtl/npu/gempact/ps_frame_store.sv"):
+    for name in ("rtl/npu/ps_compact/ps_adaptive_codec.sv", "rtl/npu/ps_compact/ps_frame_store.sv"):
         require(manifest.get("source_sha256", {}).get(name) == digest(ROOT / name),
                 f"Selected simulator uses a different codec source: {name}")
     profile = normalize_profile(manifest, root=ROOT)

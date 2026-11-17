@@ -37,8 +37,8 @@ def main():
                ROOT / 'rtl/common/pseudo_dual_port_ram.v',
                ROOT / 'rtl/npu/compute/ws_systolic_array.sv',
                ROOT / 'rtl/npu/compute/ws_systolic_cell.sv',
-               ROOT / 'rtl/npu/gempact/ps_adaptive_codec.sv',
-               ROOT / 'rtl/npu/gempact/ps_frame_store.sv']
+               ROOT / 'rtl/npu/ps_compact/ps_adaptive_codec.sv',
+               ROOT / 'rtl/npu/ps_compact/ps_frame_store.sv']
     recorded = [Path(__file__).resolve(), HERE / 'gen_mats.py', ROOT / 'Makefile', *sources]
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in recorded}
     results, builds = [], []
@@ -55,7 +55,7 @@ def main():
             command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal',
                        '--top-module', 'tb_compute_core', '--Mdir', str(directory / 'obj'),
                        '--output-split', '10000', '-j', str(args.jobs),
-                       '-CFLAGS', '-O0', '-I' + str(ROOT / 'rtl/npu/gempact')]
+                       '-CFLAGS', '-O0', '-I' + str(ROOT / 'rtl/npu/ps_compact')]
             if compressed:
                 command.append('-DGEMPACT_PS_COMPRESS')
             command += [str(data / 'test_params_pkg.sv'), *map(str, sources)]

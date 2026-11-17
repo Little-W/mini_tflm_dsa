@@ -27,7 +27,7 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + '\n')
 
 
-def verify_binary(build_root, capacity, destination, cache_policy=2):
+def verify_binary(build_root, capacity, destination, cache_policy=3):
     if capacity < 64 or capacity % 32 or (capacity // 32) & (capacity // 32 - 1):
         raise ValueError('capacity must be 32 times a power of two, with >=2 sets')
     profile = build_root / f'cache_{capacity}B'
@@ -100,7 +100,7 @@ def main():
     parser.add_argument('--capacities', type=int, nargs='+', default=[256, 512, 1024, 2048, 4096])
     parser.add_argument('--bypass', action='store_true', help='also execute every layer with raw-input cache bypass')
     parser.add_argument('--seed', type=int, default=20261115)
-    parser.add_argument('--cache-policy', type=int, choices=[0, 1, 2], default=2)
+    parser.add_argument('--cache-policy', type=int, choices=[0, 1, 2, 3], default=3)
     parser.add_argument('--tiling-policy', choices=['driver-auto', 'stress-w2'], default='driver-auto',
                         help='driver-auto calls the actual C planner with requested R/W=0/0')
     args = parser.parse_args()

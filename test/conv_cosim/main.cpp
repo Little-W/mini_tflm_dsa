@@ -159,8 +159,13 @@ static void runCase(const Case& c,uint8_t* arena,bool high=false) {
     int8_t* input=(int8_t*)arena+(c.aligned?0x2000:0x1ffd);int8_t* weight=(int8_t*)arena+0x20fff;int8_t* output=(int8_t*)arena+0x40003;
     int32_t* bias=(int32_t*)(arena+0x30000);int32_t* mult=(int32_t*)(arena+0x31000);int32_t* shift=(int32_t*)(arena+0x32000);
     require(input_bytes<0x10000 && weight_bytes<0x9000 && output_bytes<0x10000,"test allocation too small");
-    std::vector<int8_t> high_input,high_weight,high_output;
-    if(high){high_input.resize(input_bytes);high_weight.resize(weight_bytes);high_output.resize(output_bytes);input=high_input.data();weight=high_weight.data();output=high_output.data();}
+    void* high_storage=MAP_FAILED;
+    size_t high_bytes=input_bytes+weight_bytes+output_bytes;
+    if(high){
+        high_storage=mmap(nullptr,high_bytes,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0);
+        require(high_storage!=MAP_FAILED && uintptr_t(high_storage)>UINT32_MAX,"high-address allocation failed");
+        input=static_cast<int8_t*>(high_storage);weight=input+input_bytes;output=weight+weight_bytes;
+    }
     for(size_t i=0;i<input_bytes;i++)input[i]=int8_t(int(rng()%31)-15);
     if(input_bytes>3){input[0]=-128;input[1]=127;input[2]=-1;}
     for(size_t i=0;i<weight_bytes;i++)weight[i]=int8_t(int(rng()%15)-7);
@@ -179,6 +184,7 @@ static void runCase(const Case& c,uint8_t* arena,bool high=false) {
         require(sim->commands==start_commands,"fallback unexpectedly launched NPU");
         require(std::equal(expected.begin(),expected.end(),output),"software fallback output mismatch");
         std::cout<<"COSIM_FALLBACK_PASS name="<<c.name<<" outputs="<<output_bytes<<" commands=0\n";
+        munmap(high_storage,high_bytes);
     } else {
         memset(output-16,0xa5,output_bytes+32);
         sim->copyToRam(input,input_bytes);sim->copyToRam(weight,weight_bytes);
@@ -187,8 +193,7 @@ static void runCase(const Case& c,uint8_t* arena,bool high=false) {
         sim->useNpu();uint64_t before=sim->cycles,read_before=sim->dut->npu_read_bytes,write_before=sim->dut->npu_write_bytes;
         riscv_nmsis_nn_status status;
         if(c.is_mode) {
-            /* The production low-level API exposes IS; the ordinary NMSIS
-             * dispatcher retains its default WS policy. No CPU data access. */
+            /* Exercise explicit IS selection through the low-level API. */
             dsa_conv_s8_config_t job={};
             job.input_h=c.h;job.input_w=c.w;job.input_c=c.ci;job.group_c=f.c;
             job.kernel_h=c.kh;job.kernel_w=c.kw;job.output_h=oh;job.output_w=ow;
@@ -225,7 +230,8 @@ static void runCase(const Case& c,uint8_t* arena,bool high=false) {
             throw std::runtime_error("C driver reported failure");
         }
         uint32_t hits=dsa_reg_read(NPU_REG_CONV_HITS),misses=dsa_reg_read(NPU_REG_CONV_MISSES),input_read=dsa_reg_read(NPU_REG_CONV_READ_BYTES);
-        require(dsa_reg_read(NPU_REG_DATAFLOW)==uint32_t(c.is_mode),"executed dataflow mode mismatch");
+        uint32_t actual_dataflow=dsa_reg_read(NPU_REG_DATAFLOW);
+        require(actual_dataflow<=1 && (!c.is_mode || actual_dataflow==1),"executed dataflow mode mismatch");
         sim->useHost();protect(input,input_bytes,PROT_READ|PROT_WRITE);protect(weight,weight_bytes,PROT_READ|PROT_WRITE);protect(output-16,output_bytes+32,PROT_READ|PROT_WRITE);
         sim->copyFromRam(output-16,output_bytes+32);
         for(size_t i=0;i<output_bytes;i++)if(output[i]!=expected[i]){
@@ -238,7 +244,7 @@ static void runCase(const Case& c,uint8_t* arena,bool high=false) {
         std::cout<<"COSIM_CONV_PASS name="<<c.name<<" outputs="<<output_bytes<<" commands="<<sim->commands-start_commands
                  <<" cycles="<<duration<<" axi_read_bytes="<<reads<<" axi_write_bytes="<<writes
                  <<" last_job_hits="<<hits<<" last_job_misses="<<misses<<" last_job_input_bytes="<<input_read
-                 <<" dataflow="<<(c.is_mode?"IS":"WS")<<" bypass="<<c.bypass<<"\n";
+                 <<" dataflow="<<(actual_dataflow?"IS":"WS")<<" bypass="<<c.bypass<<"\n";
     }
     total_outputs+=unsigned(output_bytes);total_cases++;
 }

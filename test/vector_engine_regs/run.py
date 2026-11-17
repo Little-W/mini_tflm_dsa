@@ -20,7 +20,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    sources = [ROOT / 'rtl/npu/conv/00_conv_im2col_pkg.sv',
+    sources = [ROOT / 'rtl/npu/conv/conv_im2col_pkg.sv',
                ROOT / 'rtl/axi_top/npu_axil_reg_if.sv',
                ROOT / 'test/vector_engine_regs/tb_vector_engine_regs.sv']
     dependencies = sources + [Path(__file__).resolve()]

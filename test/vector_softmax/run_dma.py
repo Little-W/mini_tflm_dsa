@@ -24,9 +24,9 @@ def main():
     parser.add_argument('--jobs',type=int,default=2)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     conv=ROOT/'rtl/npu/conv';harness=ROOT/'test/vector_engine'
-    sv=[conv/'00_conv_im2col_pkg.sv',conv/'01_vector_engine_pkg.sv']
-    sv += [p for p in sorted(conv.glob('*.sv')) if p not in sv]
-    sv += sorted((ROOT/'rtl/npu/dma').glob('*.sv'))
+    sv=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
+    sv += [p for p in sorted(conv.rglob('*.sv')) if p not in sv]
+    sv += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sv += [ROOT/'rtl/common/pseudo_dual_port_ram.v',harness/'vector_engine_dma_top.sv']
     objects=[]
     for name in ('reference','reference_add'):

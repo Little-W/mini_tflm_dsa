@@ -89,8 +89,8 @@ def main():
     config_path, vectors_path = args.build / "config.txt", args.build / "vectors.txt"
     config_path.write_text("\n".join(configs) + "\n")
     vectors_path.write_text("\n".join(vectors) + "\n")
-    sources = [ROOT / "rtl/npu/conv/00_conv_im2col_pkg.sv",
-               ROOT / "rtl/npu/conv/conv_next_use_predictor.sv", HERE / "predictor_tb.sv"]
+    sources = [ROOT / "rtl/npu/conv/conv_im2col_pkg.sv",
+               ROOT / "rtl/npu/dma/cache/conv_next_use_predictor.sv", HERE / "predictor_tb.sv"]
     source_hashes = {relative(path): sha256(path) for path in sources + [Path(__file__), HERE / "geometry_oracle.py"]}
     obj_dir = args.build / "obj_dir"
     binary = obj_dir / "Vpredictor_tb"

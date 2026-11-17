@@ -23,9 +23,9 @@ def main():
     parser.add_argument('--jobs',type=int,default=2)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     conv=ROOT/'rtl/npu/conv'
-    sources=[conv/'00_conv_im2col_pkg.sv',conv/'01_vector_engine_pkg.sv']
-    sources += [p for p in sorted(conv.glob('*.sv')) if p not in sources]
-    sources += sorted((ROOT/'rtl/npu/dma').glob('*.sv'))
+    sources=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
+    sources += [p for p in sorted(conv.rglob('*.sv')) if p not in sources]
+    sources += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_dma_top.sv',HERE/'main.cpp']
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     command([args.verilator,'--cc','--exe','--assert','--top-module','window_dma_top',

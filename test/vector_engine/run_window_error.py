@@ -37,9 +37,9 @@ def main():
         parser.error('--jobs must be 1 or 2')
     out=args.out.resolve(); out.mkdir(parents=True,exist_ok=True)
     conv=ROOT/'rtl/npu/conv'
-    sources=[conv/'00_conv_im2col_pkg.sv',conv/'01_vector_engine_pkg.sv']
-    sources += [path for path in sorted(conv.glob('*.sv')) if path not in sources]
-    sources += sorted((ROOT/'rtl/npu/dma').glob('*.sv'))
+    sources=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
+    sources += [path for path in sorted(conv.rglob('*.sv')) if path not in sources]
+    sources += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_error_top.sv']
     dependencies=sources+[HERE/'window_error.cpp',Path(__file__)]
     source_sha={str(path.relative_to(ROOT)):digest(path) for path in dependencies}

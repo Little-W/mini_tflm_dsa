@@ -132,7 +132,7 @@ def main():
     all_sources.update(repo/name for name in (
         'test/model_benchmark/build_sim.py', 'scripts/capacity/config.py',
         'scripts/capacity/model.py', 'test/performance_analysis/validate_configuration_bounds.py'))
-    all_sources.update((repo/'rtl/npu/gempact').glob('*.svh'))
+    all_sources.update((repo/'rtl/npu/ps_compact').glob('*.svh'))
     before = {str(path.relative_to(repo)): digest(path) for path in sorted(all_sources)}
     rejected_python, accepted_python = [], []
     for bus_width in BUS_WIDTHS:
