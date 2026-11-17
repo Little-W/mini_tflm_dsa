@@ -95,7 +95,8 @@ def dependency_files(path):
 
 def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
                    jobs=1, object_cache=None, arena_bytes=512*1024,
-                   ps_pool_bytes=0, force_raw=False, adaptive_window=True, dataflow=2):
+                   ps_pool_bytes=0, force_raw=False, adaptive_window=True, dataflow=2,
+                   application_source=None, link_options=()):
     out = Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     cache = Path(object_cache or out.parent/'firmware_objects').resolve()
@@ -157,7 +158,10 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
             raise ValueError('missing runtime library: ' + str(path))
 
     source_files = sources()
-    app_sources = [SOC/'start.S', HERE/'runtime.cc', HERE/'firmware.cc']
+    application_source = Path(application_source or HERE/'firmware.cc').resolve()
+    if not application_source.is_relative_to(ROOT):
+        raise ValueError('application source must be inside the repository')
+    app_sources = [SOC/'start.S', HERE/'runtime.cc', application_source]
     all_sources = source_files + app_sources
     before = {str(p.relative_to(ROOT)): digest(p) for p in all_sources}
     before.update({str(p.relative_to(ROOT)): digest(p) for p in
@@ -179,7 +183,7 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
                 flags += ['-isystem', str(target/'include')]
         elif source.suffix == '.c':
             flags += ['-std=c11']
-        if source == HERE/'firmware.cc':
+        if source == application_source:
             flags += [f'-DFULL_NETWORK_TRACE_ENABLED={int(trace)}',
                       f'-DFULL_NETWORK_ARENA_BYTES={arena_bytes}']
         if trace and source in [TFLM/'tensorflow/lite/micro'/name for name in
@@ -223,7 +227,8 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
                 '-Wl,--defsym=full_network_heap_stack_top=0x101000',
                 '-Wl,--gc-sections', '-Wl,-u,__libc_init_array', '-Wl,-Map='+str(out/'cpu.map'),
                 *[r['object'] for r in records[len(source_files):]],
-                '-Wl,--start-group', library, *runtime_libs, '-Wl,--end-group', '-o', elf]
+                '-Wl,--start-group', library, *runtime_libs, '-Wl,--end-group',
+                *link_options, '-o', elf]
         run(link, out/'link.log')
         run([objcopy, '-O', 'binary', elf, out/'cpu.bin'], out/'objcopy.log')
         raw = (out/'cpu.bin').read_bytes()
@@ -275,6 +280,7 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
             'symbols':symbols, 'symbol_sizes':sizes,
             'config_fields':abi_fields('CONFIG'), 'result_fields':abi_fields('RESULT'), 'trace_fields':abi_fields('TRACE'),
             'source_sha256':local_deps, 'external_dependency_sha256':external_deps,
+            'application_source':str(application_source.relative_to(ROOT)),
             'compiler':gcc, 'compiler_sha256':digest(gcc),
             'compiler_version':subprocess.check_output([gcc,'--version'],text=True).splitlines()[0],
             'runtime_libraries':{str(p):digest(p) for p in runtime_libs},

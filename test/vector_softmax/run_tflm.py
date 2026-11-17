@@ -2,6 +2,7 @@
 """Test Softmax Prepare, dispatch, fallback, allocation and MMIO validation."""
 import argparse
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -49,7 +50,15 @@ def main():
              'coverage':['prepare_allocation','batched_hardware_dispatch','runtime_mask',
                          'software_compile','capacity_fallback','capability_fallback','in_place_fallback',
                          'hardware_error','driver_capabilities','driver_spans','driver_aliases',
-                         'driver_busy','driver_timeout','driver_registers']}
+                         'driver_busy','driver_timeout','driver_registers','arena_configuration_pointer',
+                         'prepare_allocation_failure','prepare_reuses_configuration_and_lut',
+                         'invoke_without_shape_or_tensor_lookup','invoke_without_allocation',
+                         'prepared_cross_row_overlap','prepared_second_row_failure',
+                         'prepared_configuration_immutable','dynamic_tensor_addresses']}
+    source_paths=[*sources,ROOT/'drivers/dsa_softmax.h',NN/'Include/riscv_nn_prepared.h',
+                  TF/'tensorflow/lite/micro/kernels/nmsis_nn/prepared.h',HERE/'run_tflm.py']
+    summary['sources']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()
+                        for p in source_paths}
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
 
 if __name__=='__main__':main()

@@ -33,6 +33,7 @@ limitations under the License.
 #if defined(NMSIS_NN)
 #include "riscv_vector_acc.h"
 #include "riscv_nn_prepared.h"
+#include "tensorflow/lite/micro/kernels/nmsis_nn/prepared.h"
 #include "tensorflow/lite/micro/micro_context.h"
 #endif
 
@@ -41,13 +42,19 @@ namespace tflite {
 #if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
 struct OpDataAddPrepared {
   OpDataAdd reference;
-  dsa_prepared_add_s8_t prepared;
+  dsa_prepared_add_s8_t* prepared;
+  const TfLiteEvalTensor* input1;
+  const TfLiteEvalTensor* input2;
+  TfLiteEvalTensor* output;
 };
 
 TfLiteStatus AddPreparePrepared(TfLiteContext* context, TfLiteNode* node) {
   auto* data = static_cast<OpDataAddPrepared*>(node->user_data);
-  data->prepared.valid = 0u;
+  if (data->prepared) *data->prepared = {};
   TF_LITE_ENSURE_STATUS(AddPrepare(context, node));
+  data->input1 = micro::GetEvalInput(context, node, kAddInputTensor1);
+  data->input2 = micro::GetEvalInput(context, node, kAddInputTensor2);
+  data->output = micro::GetEvalOutput(context, node, kAddOutputTensor);
   MicroContext* micro_context = GetMicroContext(context);
   TfLiteTensor* input1 =
       micro_context->AllocateTempInputTensor(node, kAddInputTensor1);
@@ -55,7 +62,13 @@ TfLiteStatus AddPreparePrepared(TfLiteContext* context, TfLiteNode* node) {
       micro_context->AllocateTempInputTensor(node, kAddInputTensor2);
   TfLiteTensor* output =
       micro_context->AllocateTempOutputTensor(node, kAddOutputTensor);
-  TF_LITE_ENSURE(context, input1 && input2 && output);
+  if (!input1 || !input2 || !output) {
+    if (output) micro_context->DeallocateTempTfLiteTensor(output);
+    if (input2) micro_context->DeallocateTempTfLiteTensor(input2);
+    if (input1) micro_context->DeallocateTempTfLiteTensor(input1);
+    return kTfLiteError;
+  }
+  TfLiteStatus preparation_status = kTfLiteOk;
   if (input1->type == kTfLiteInt8 && input2->type == kTfLiteInt8 &&
       output->type == kTfLiteInt8 && !data->reference.requires_broadcast) {
     const OpDataAdd& reference = data->reference;
@@ -67,16 +80,19 @@ TfLiteStatus AddPreparePrepared(TfLiteContext* context, TfLiteNode* node) {
     const int length = NumElements(output->dims);
     if (length > 0 && NumElements(input1->dims) == length &&
         NumElements(input2->dims) == length) {
-      (void)dsa_prepare_add_s8(&data->prepared, static_cast<uint32_t>(length),
-                             &quantization, reference.output_offset,
-                             reference.output_activation_min,
-                             reference.output_activation_max);
+      preparation_status = nmsis_nn::InitializeLayerConfig(
+          context, &data->prepared, [&](dsa_prepared_add_s8_t* configuration) {
+            return dsa_prepare_add_s8(configuration, static_cast<uint32_t>(length),
+                                     &quantization, reference.output_offset,
+                                     reference.output_activation_min,
+                                     reference.output_activation_max);
+          });
     }
   }
   micro_context->DeallocateTempTfLiteTensor(output);
   micro_context->DeallocateTempTfLiteTensor(input2);
   micro_context->DeallocateTempTfLiteTensor(input1);
-  return kTfLiteOk;
+  return preparation_status;
 }
 #endif
 
@@ -169,7 +185,7 @@ TfLiteStatus EvalAddQuantized(TfLiteContext* context, TfLiteNode* node,
             tflite::micro::GetTensorShape(output),
             tflite::micro::GetTensorData<int8_t>(output));
       } else {
-#if defined(NMSIS_NN) && DSA_NN_VECTOR_ENABLE
+#if defined(NMSIS_NN) && DSA_NN_VECTOR_ENABLE && !DSA_NN_PREPARED_ENABLE
         const dsa_vector_add_params_t quant = {
             data->input1_offset, data->input2_offset,
             data->input1_multiplier, data->input1_shift,
@@ -228,7 +244,10 @@ TfLiteStatus EvalAddQuantized(TfLiteContext* context, TfLiteNode* node,
 void* AddInit(TfLiteContext* context, const char* buffer, size_t length) {
   TFLITE_DCHECK(context->AllocatePersistentBuffer != nullptr);
 #if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
-  return context->AllocatePersistentBuffer(context, sizeof(OpDataAddPrepared));
+  auto* data = static_cast<OpDataAddPrepared*>(
+      context->AllocatePersistentBuffer(context, sizeof(OpDataAddPrepared)));
+  if (data) *data = {};
+  return data;
 #else
   return context->AllocatePersistentBuffer(context, sizeof(OpDataAdd));
 #endif
@@ -240,25 +259,29 @@ TfLiteStatus AddEval(TfLiteContext* context, TfLiteNode* node) {
   TFLITE_DCHECK(node->user_data != nullptr);
   const OpDataAdd* data = static_cast<const OpDataAdd*>(node->user_data);
 
+#if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  const auto* layer = static_cast<const OpDataAddPrepared*>(node->user_data);
+  const TfLiteEvalTensor* input1 = layer->input1;
+  const TfLiteEvalTensor* input2 = layer->input2;
+  TfLiteEvalTensor* output = layer->output;
+  const dsa_prepared_add_s8_t* prepared = layer->prepared;
+  if (prepared && prepared->valid == DSA_PREPARED_VALID &&
+      input1->type == kTfLiteInt8 && input2->type == kTfLiteInt8 && output->type == kTfLiteInt8 &&
+      dsa_nn_accelerator_enabled(DSA_NN_ACCEL_ADD) &&
+      input1->data.raw_const != output->data.raw &&
+      input2->data.raw_const != output->data.raw) {
+    const riscv_nmsis_nn_status status = riscv_nn_execute_prepared_add_s8(
+        prepared, input1->data.int8, input2->data.int8, output->data.int8);
+    TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
+    return kTfLiteOk;
+  }
+#else
   const TfLiteEvalTensor* input1 =
       tflite::micro::GetEvalInput(context, node, kAddInputTensor1);
   const TfLiteEvalTensor* input2 =
       tflite::micro::GetEvalInput(context, node, kAddInputTensor2);
   TfLiteEvalTensor* output =
       tflite::micro::GetEvalOutput(context, node, kAddOutputTensor);
-
-#if defined(NMSIS_NN) && DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
-  const auto& prepared =
-      static_cast<const OpDataAddPrepared*>(node->user_data)->prepared;
-  if (prepared.valid == DSA_PREPARED_VALID &&
-      dsa_nn_accelerator_enabled(DSA_NN_ACCEL_ADD) &&
-      input1->data.raw_const != output->data.raw &&
-      input2->data.raw_const != output->data.raw) {
-    const uint32_t status = dsa_prepared_add_s8_execute(
-        &prepared, input1->data.int8, input2->data.int8, output->data.int8);
-    TF_LITE_ENSURE_EQ(context, status, 0u);
-    return kTfLiteOk;
-  }
 #endif
 
   if (output->type == kTfLiteFloat32 || output->type == kTfLiteInt32) {

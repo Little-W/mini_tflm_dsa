@@ -156,6 +156,9 @@ int main() {
         context.GetScratchBuffer=tflite::MicroContextGetScratchBuffer;
         context.GetEvalTensor=tflite::MicroContextGetEvalTensor;
         tflite::OpData data; std::memset(&data,0x5a,sizeof(data)); node.user_data=&data;
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+        data.prepared = nullptr;
+#endif
         requested_bytes=buffer?9*channel:0;
         expected_scratch=buffer?micro.scratch:nullptr;
         expected_bias=has_bias?bias:nullptr;

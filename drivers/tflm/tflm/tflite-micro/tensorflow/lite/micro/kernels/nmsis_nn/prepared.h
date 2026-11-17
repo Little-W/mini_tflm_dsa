@@ -9,6 +9,31 @@
 namespace tflite {
 namespace nmsis_nn {
 
+template <typename Descriptor>
+inline TfLiteStatus AllocatePreparedLayer(TfLiteContext* context,
+                                         Descriptor** storage) {
+  TF_LITE_ENSURE(context, storage != nullptr);
+  if (*storage == nullptr) {
+    TF_LITE_ENSURE(context, context->AllocatePersistentBuffer != nullptr);
+    *storage = static_cast<Descriptor*>(
+        context->AllocatePersistentBuffer(context, sizeof(Descriptor)));
+    TF_LITE_ENSURE(context, *storage != nullptr);
+  }
+  return kTfLiteOk;
+}
+
+// Layer configurations live in the tensor arena. Prepare can rebuild an
+// existing allocation; Invoke consumes its saved parameters by pointer.
+template <typename Descriptor, typename Initializer>
+inline TfLiteStatus InitializeLayerConfig(TfLiteContext* context,
+                                         Descriptor** storage,
+                                         Initializer initialize) {
+  TF_LITE_ENSURE_STATUS(AllocatePreparedLayer(context, storage));
+  **storage = Descriptor{};
+  if (initialize(*storage) != 0) **storage = Descriptor{};
+  return kTfLiteOk;
+}
+
 inline bool PreparedConstant(const TfLiteTensor* tensor) {
   return tensor && !tensor->is_variable &&
          tensor->allocation_type == kTfLiteMmapRo && tensor->data.raw_const &&
@@ -47,15 +72,15 @@ inline bool PreparedPackWeights(TfLiteContext* context, const void* source,
 #endif
 }
 
-inline bool PreparedWeightsMatch(const dsa_prepared_t& prepared,
+inline bool PreparedWeightsMatch(const dsa_prepared_t* prepared,
                                 const TfLiteEvalTensor* filter,
                                 const TfLiteEvalTensor* bias) {
-  return prepared.valid == DSA_PREPARED_VALID && filter &&
+  return prepared && prepared->valid == DSA_PREPARED_VALID && filter &&
          reinterpret_cast<uintptr_t>(filter->data.raw_const) ==
-             (prepared.source_filter_base ? prepared.source_filter_base :
-              prepared.registers[0].value) &&
+             (prepared->source_filter_base ? prepared->source_filter_base :
+              prepared->registers[0].value) &&
          reinterpret_cast<uintptr_t>(bias ? bias->data.raw_const : nullptr) ==
-             prepared.registers[1].value;
+             prepared->registers[1].value;
 }
 
 // Eval-tensor objects remain allocated for the interpreter's lifetime. Their
@@ -79,14 +104,15 @@ template <typename Data, TfLiteStatus (*Fallback)(TfLiteContext*,TfLiteNode*),
           uint32_t Accelerator>
 TfLiteStatus InvokePrepared(TfLiteContext* context,TfLiteNode* node) {
   const auto& data=*static_cast<const Data*>(node->user_data);
-  if (data.prepared.valid==DSA_PREPARED_VALID &&
+  if (data.prepared && data.prepared->valid==DSA_PREPARED_VALID &&
       dsa_nn_accelerator_enabled(Accelerator)) {
     const auto& tensors=data.bindings;
     if (tensors.input->type==kTfLiteInt8 && tensors.output->type==kTfLiteInt8 &&
         (!tensors.filter || (tensors.filter->type==kTfLiteInt8 &&
           PreparedWeightsMatch(data.prepared,tensors.filter,tensors.bias)))) {
-      TF_LITE_ENSURE_EQ(context,dsa_prepared_execute(&data.prepared,
-          tensors.input->data.raw_const,tensors.output->data.raw),0u);
+      TF_LITE_ENSURE_EQ(context,riscv_nn_execute_prepared_s8(data.prepared,
+          reinterpret_cast<const int8_t*>(tensors.input->data.raw_const),
+          reinterpret_cast<int8_t*>(tensors.output->data.raw)),RISCV_NMSIS_NN_SUCCESS);
       return kTfLiteOk;
     }
   }

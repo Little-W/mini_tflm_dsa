@@ -71,7 +71,9 @@ int main()
     }
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
     tensors[0].type = tensors[1].type = kTfLiteInt8;
-    data.prepared.valid = DSA_PREPARED_VALID;
+    dsa_prepared_t prepared = {};
+    prepared.valid = DSA_PREPARED_VALID;
+    data.prepared = &prepared;
     for (int kind = 0; kind < 2; ++kind) for (int error = 0; error < 2; ++error) {
         prepared_result = error ? DSA_ERR_TIMEOUT : DSA_SUCCESS;
         prepared_calls = 0u;

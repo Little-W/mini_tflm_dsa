@@ -62,6 +62,13 @@ extern "C" {
 #define DSA_STATUS_ERR_SHIFT 3u
 #define DSA_STATUS_ERR_MASK  (3u << DSA_STATUS_ERR_SHIFT)
 
+/* Common bit names for prepared matrix and vector operations. */
+#define NPU_CTRL_START       DSA_CTRL_START
+#define NPU_CTRL_IRQ_ENABLE  DSA_CTRL_IRQ_ENABLE
+#define NPU_STATUS_DONE      DSA_STATUS_DONE
+#define NPU_STATUS_ERR_SHIFT DSA_STATUS_ERR_SHIFT
+#define NPU_STATUS_ERR_MASK  DSA_STATUS_ERR_MASK
+
 #ifndef DSA_TILE_SIZE
 #define DSA_TILE_SIZE 16u
 #endif

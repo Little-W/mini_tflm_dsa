@@ -148,6 +148,9 @@ int main() {
       inputs[3]=has_bias?2:kTfLiteOptionalTensor;
       tflite::OpData data;
       std::memset(&data,0x5a,sizeof(data));
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_FC_ENABLE
+      data.prepared = nullptr;
+#endif
       node.user_data=&data;
       reference_data.is_per_channel=per_channel;
       requested_bytes=buffer?sizeof(micro.scratch):0;

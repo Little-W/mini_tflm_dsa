@@ -48,8 +48,9 @@ dsa_nn_set_accelerators(DSA_NN_ACCEL_ALL);    /* 启用全部 s8 硬件路径 */
 | 2 | `DSA_NN_ACCEL_POOL` | 平均池化、最大池化 |
 | 3 | `DSA_NN_ACCEL_FC` | 全连接 |
 | 4 | `DSA_NN_ACCEL_ADD` | 无广播 INT8 Add |
+| 5 | `DSA_NN_ACCEL_SOFTMAX` | INT8 Softmax |
 
-`DSA_NN_ACCEL_ALL` 的值为 31，也是默认运行时选择值。在设备空闲时、算子调用前设置选择值；
+`DSA_NN_ACCEL_ALL` 的值为 63，也是默认运行时选择值。在设备空闲时、算子调用前设置选择值；
 选择软件运算的路径不访问 NPU MMIO。`DSA_NN_CONV_ENABLE`、
 `DSA_NN_VECTOR_ENABLE` 和 `DSA_NN_FC_ENABLE` 分别控制编译期支持，均默认为 1。
 运行时选择受编译期设置限制。三个编译开关同时作用于 C 和 C++。
@@ -121,11 +122,11 @@ im2col / scratch 检查之前尝试原图 Conv。受支持任务直接提交 NHW
 Conv 的 SoC 性能测试另外提供 CPU im2col 与 DSA GEMM 组合实现，
 分别统计两种执行方式的周期。
 
-编译 `NN/Source/ExtraAccFunctions/riscv_conv_acc.c` 时可用
-`-DDSA_NN_CONV_DATAFLOW_MODE=0` 选择 WS（默认），或设为 1 选择 IS。
-其他值会报编译错误。IS 需要 `CONV_CAPS` bit 2；缺少相应能力时在 START 前走
-合法软件回退，不会部分执行后再次计算。低层 `dsa_conv_s8_config_t.dataflow_mode`
-仍可按调用选择模式。公共输入 / 输出布局不随模式改变。
+`DSA_NN_CONV_DATAFLOW_MODE` 支持 0（WS）、1（IS）和 2（AUTO），默认值为 2。
+AUTO 根据设备能力、张量形状和共享存储容量选择 WS/IS、R/W 及 IA bank 数。
+强制 IS 需要 `CONV_CAPS` bit 2；缺少相应能力时在 START 前执行软件路径。
+低层 `dsa_conv_s8_config_t.dataflow_mode` 可按调用选择模式，公共输入和输出布局
+在各模式下保持相同。
 
 硬件路径不使用 scratch，可接受 NULL scratch；通用 buffer-size 查询仍为可能的
 软件回退保留空间，调用方不能仅凭几何就假定设备能力和数值范围必然适用。
@@ -142,6 +143,58 @@ make vcs-top PCR_ENGINE=1 SIZE=16 IA_CACHE_BLOCKS=4 PS_FRAME_COUNT=16 \
 ```
 
 软件通过能力寄存器查询可用容量，在 Prepare 阶段选择每层的 IA bank 数、R/W、WS/IS 和 PS 策略，并保存到任务描述符。Invoke 提交准备好的寄存器配置。比较运行时 RAW32 与压缩时，在 AllocateTensors/Prepare 前调用 `dsa_set_ps_force_raw(1)` 或 `dsa_set_ps_force_raw(0)`。
+
+### Prepare 中的 arena 配置
+
+`MicroInterpreter::AllocateTensors()` 调用各算子的 `Prepare()`。
+公共函数 `nmsis_nn::InitializeLayerConfig()` 通过 `AllocatePersistentBuffer()`
+为每层分配配置对象，再调用相应的驱动准备函数。算子的 `OpData` 保存该对象的
+指针；配置对象在 interpreter 的整个生命周期内使用 persistent arena 存储。
+同一算子再次执行 `Prepare()` 时，会复用配置对象的地址并重新初始化其内容。
+
+| 算子 | arena 中的配置类型 | NMSIS 执行入口 |
+|---|---|---|
+| Conv、Dense、Depthwise、Pool | `dsa_prepared_t` | `riscv_nn_execute_prepared_s8()` |
+| Add | `dsa_prepared_add_s8_t` | `riscv_nn_execute_prepared_add_s8()` |
+| Softmax | `nmsis_nn_prepared_softmax_s8_t` | `riscv_nn_execute_prepared_softmax_s8()` |
+
+矩阵配置的准备过程完成形状、数据格式和地址范围检查，读取设备能力，计算静态
+权重的部分和范围，选择 IA/PS 分配、R/W、WS/IS 和 PS 策略，并保存固定寄存器
+序列。需要排列的权重在这一阶段写入 persistent arena。`source_filter_base`
+保留原始模型权重地址，`readonly` 区间记录执行时使用的权重、偏置和量化数组。
+Softmax 的查找表也保存在 persistent arena 中。
+
+已经成功准备且运行时启用硬件的算子，在 `Invoke()` 中向 NMSIS 传入只读配置
+指针和当前输入、输出地址。该执行入口使用保存的参数提交任务，不重新选择分块、
+排列权重或分配配置空间。驱动检查本次输入、输出范围及它们与只读常量的关系，
+并把执行状态返回给 TFLM。配置对象中的 `ps_control` 和 `ia_bank_count` 保持
+Prepare 选定的容量策略。
+
+配置存储分配失败时，`Prepare()` 返回 `kTfLiteError`。合法配置不满足硬件能力
+时，准备函数保持描述符无效，由现有软件实现计算。硬件任务已经提交后发生的
+执行错误会返回给调用者。
+
+在 `AllocateTensors()` 或 `Prepare()` 之前设置 `dsa_set_ps_force_raw()`，使该层
+按选定策略准备配置。模型形状、权重、量化参数或设备容量发生变化时，应重新
+准备受影响的配置。重复执行时，配置及其常量保持只读，输入和输出地址由当前
+张量提供。
+
+### 配置复用的验证
+
+[连续 Invoke 测试](../../test/prepared_lifecycle/README.md) 对四个模型、两个输入和
+RAW32/adaptive 两种策略分别创建 interpreter，每个 interpreter 只调用一次
+`AllocateTensors()`，随后连续调用三次 `Invoke()`，共 16 个仿真进程和 48 次完整
+推理。测试比较每次输出的全部字节，并检查规划计时、Prepare 次数、arena 使用量、
+配置地址、配置内容和只读权重在执行期间保持不变。
+
+主机测试覆盖两套驱动、重复 Prepare、配置分配失败、运行时选择、软件回退和设备
+错误返回：
+
+```bash
+python3 test/prepared_dispatch/run.py --out build/prepared_dispatch
+python3 test/vector_engine_driver/run_tflm_add_prepared.py --out build/tflm_add_prepared
+python3 test/vector_softmax/run_tflm.py --out build/tflm_softmax_prepared
+```
 
 Python 周期接口使用统一 RTL 后端：
 

@@ -37,14 +37,19 @@ struct OpData {
   // Index to buffer for optimizations if applicable.
   int buffer_idx;
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
-  dsa_prepared_t prepared;
+  dsa_prepared_t* prepared;
   nmsis_nn::PreparedTensorBindings bindings;
 #endif
 };
 
 void* Init(TfLiteContext* context, const char* buffer, size_t length) {
   TFLITE_DCHECK(context->AllocatePersistentBuffer != nullptr);
-  return context->AllocatePersistentBuffer(context, sizeof(OpData));
+  auto* data = static_cast<OpData*>(
+      context->AllocatePersistentBuffer(context, sizeof(OpData)));
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
+  if (data) data->prepared = nullptr;
+#endif
+  return data;
 }
 
 TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
@@ -56,7 +61,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
       *(static_cast<const TfLiteConvParams*>(node->builtin_data));
   OpData* data = static_cast<OpData*>(node->user_data);
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
-  dsa_prepared_invalidate(&data->prepared);
+  dsa_prepared_invalidate(data->prepared);
 #endif
 
   MicroContext* micro_context = GetMicroContext(context);
@@ -211,13 +216,17 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
     config.rhs_tile_packed = nmsis_nn::PreparedPackWeights(
         context, filter->data.raw_const, config.output_channels,
         config.kernel_h * config.kernel_w * config.group_c, &config.filter_base);
-    if (dsa_prepare_conv_s8(&data->prepared, &config) == DSA_SUCCESS)
-      data->prepared.source_filter_base = source_filter_base;
+    TF_LITE_ENSURE_STATUS(nmsis_nn::InitializeLayerConfig(
+        context, &data->prepared, [&config](dsa_prepared_t* prepared) {
+          return dsa_prepare_conv_s8(prepared, &config);
+        }));
+    if (data->prepared->valid == DSA_PREPARED_VALID)
+      data->prepared->source_filter_base = source_filter_base;
   }
 #endif
 
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_CONV_ENABLE
-  if (data->prepared.valid==DSA_PREPARED_VALID)
+  if (data->prepared && data->prepared->valid==DSA_PREPARED_VALID)
     data->bindings.Prepare(context,node,true);
 #endif
 
@@ -305,9 +314,9 @@ TfLiteStatus EvalQuantizedPerChannel(TfLiteContext* context, TfLiteNode* node,
   if (type == kTfLiteInt8 &&
       nmsis_nn::PreparedWeightsMatch(data.prepared, filter, bias) &&
       dsa_nn_accelerator_enabled(DSA_NN_ACCEL_CONV)) {
-    const uint32_t status =
-        dsa_prepared_execute(&data.prepared, input->data.raw_const, output->data.raw);
-    TF_LITE_ENSURE_EQ(context, status, 0u);
+    const auto status = riscv_nn_execute_prepared_s8(
+        data.prepared, input->data.int8, output->data.int8);
+    TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
     return kTfLiteOk;
   }
 #endif

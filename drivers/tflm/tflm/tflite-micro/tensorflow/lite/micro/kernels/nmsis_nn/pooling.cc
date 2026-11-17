@@ -34,23 +34,23 @@ struct OpData {
   // Index to buffer for optimizations if applicable.
   int buffer_idx;
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
-  dsa_prepared_t prepared;
+  dsa_prepared_t* prepared;
   nmsis_nn::PreparedTensorBindings bindings;
 #endif
 };
 
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
-void PrepareSpatial(TfLiteContext* context, TfLiteNode* node,
+TfLiteStatus PrepareSpatial(TfLiteContext* context, TfLiteNode* node,
                     OpData* data, const TfLitePoolParams* params,
                     const TfLiteTensor* input, const TfLiteTensor* output,
                     uint32_t operation) {
-  dsa_prepared_invalidate(&data->prepared);
+  dsa_prepared_invalidate(data->prepared);
   if (input->type != kTfLiteInt8 || output->type != kTfLiteInt8 ||
       input->dims->size != 4 || output->dims->size != 4 ||
       input->dims->data[0] != 1 || output->dims->data[0] != 1 ||
       input->dims->data[3] != output->dims->data[3] ||
       input->params.zero_point != output->params.zero_point ||
-      input->params.scale != output->params.scale) return;
+      input->params.scale != output->params.scale) return kTfLiteOk;
   dsa_vector_config_t config = {};
   config.operation = operation;
   config.input_h = input->dims->data[1];
@@ -67,8 +67,13 @@ void PrepareSpatial(TfLiteContext* context, TfLiteNode* node,
   config.pad_left = data->reference_op_data.padding.width;
   config.activation_min = data->reference_op_data.activation_min;
   config.activation_max = data->reference_op_data.activation_max;
-  if (dsa_prepare_spatial_s8(&data->prepared, &config)==DSA_SUCCESS)
+  TF_LITE_ENSURE_STATUS(nmsis_nn::InitializeLayerConfig(
+      context, &data->prepared, [&config](dsa_prepared_t* prepared) {
+        return dsa_prepare_spatial_s8(prepared, &config);
+      }));
+  if (data->prepared->valid==DSA_PREPARED_VALID)
     data->bindings.Prepare(context,node,false);
+  return kTfLiteOk;
 }
 #endif
 
@@ -113,11 +118,11 @@ TfLiteStatus AverageEvalQuantized(TfLiteContext* context, const TfLiteNode* node
                           const TfLiteEvalTensor* input,
                           TfLiteEvalTensor* output) {
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
-  if (data.prepared.valid == DSA_PREPARED_VALID &&
+  if (data.prepared && data.prepared->valid == DSA_PREPARED_VALID &&
       dsa_nn_accelerator_enabled(DSA_NN_ACCEL_POOL)) {
-    const uint32_t status =
-        dsa_prepared_execute(&data.prepared, input->data.raw_const, output->data.raw);
-    TF_LITE_ENSURE_EQ(context, status, 0u);
+    const auto status = riscv_nn_execute_prepared_s8(
+        data.prepared, input->data.int8, output->data.int8);
+    TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
     return kTfLiteOk;
   }
 #endif
@@ -159,11 +164,11 @@ TfLiteStatus MaxEvalQuantized(TfLiteContext* context, const TfLiteNode* node,
                               const OpData& data, const TfLiteEvalTensor* input,
                               TfLiteEvalTensor* output) {
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
-  if (data.prepared.valid == DSA_PREPARED_VALID &&
+  if (data.prepared && data.prepared->valid == DSA_PREPARED_VALID &&
       dsa_nn_accelerator_enabled(DSA_NN_ACCEL_POOL)) {
-    const uint32_t status =
-        dsa_prepared_execute(&data.prepared, input->data.raw_const, output->data.raw);
-    TF_LITE_ENSURE_EQ(context, status, 0u);
+    const auto status = riscv_nn_execute_prepared_s8(
+        data.prepared, input->data.int8, output->data.int8);
+    TF_LITE_ENSURE_EQ(context, status, RISCV_NMSIS_NN_SUCCESS);
     return kTfLiteOk;
   }
 #endif
@@ -203,7 +208,12 @@ TfLiteStatus MaxEvalQuantized(TfLiteContext* context, const TfLiteNode* node,
 
 void* Init(TfLiteContext* context, const char* buffer, size_t length) {
   TFLITE_DCHECK(context->AllocatePersistentBuffer != nullptr);
-  return context->AllocatePersistentBuffer(context, sizeof(OpData));
+  auto* data = static_cast<OpData*>(
+      context->AllocatePersistentBuffer(context, sizeof(OpData)));
+#if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
+  if (data) data->prepared = nullptr;
+#endif
+  return data;
 }
 
 TfLiteStatus MaxPrepare(TfLiteContext* context, TfLiteNode* node) {
@@ -217,9 +227,9 @@ TfLiteStatus MaxPrepare(TfLiteContext* context, TfLiteNode* node) {
   TfLiteTensor* output =
       micro_context->AllocateTempOutputTensor(node, kPoolingOutputTensor);
   TF_LITE_ENSURE(context, input && output);
-  PrepareSpatial(context,node,static_cast<OpData*>(node->user_data),
+  TF_LITE_ENSURE_STATUS(PrepareSpatial(context,node,static_cast<OpData*>(node->user_data),
                  static_cast<const TfLitePoolParams*>(node->builtin_data),
-                 input, output, DSA_VECTOR_OP_MAXPOOL_S8);
+                 input, output, DSA_VECTOR_OP_MAXPOOL_S8));
   micro_context->DeallocateTempTfLiteTensor(output);
   micro_context->DeallocateTempTfLiteTensor(input);
 #endif
@@ -261,9 +271,9 @@ TfLiteStatus AveragePrepare(TfLiteContext* context, TfLiteNode* node) {
   }
 
 #if DSA_NN_PREPARED_ENABLE && DSA_NN_VECTOR_ENABLE
-  PrepareSpatial(context,node,static_cast<OpData*>(node->user_data),
+  TF_LITE_ENSURE_STATUS(PrepareSpatial(context,node,static_cast<OpData*>(node->user_data),
                  static_cast<const TfLitePoolParams*>(node->builtin_data),
-                 input, output, DSA_VECTOR_OP_AVGPOOL_S8);
+                 input, output, DSA_VECTOR_OP_AVGPOOL_S8));
 #endif
   micro_context->DeallocateTempTfLiteTensor(output);
   micro_context->DeallocateTempTfLiteTensor(input);
