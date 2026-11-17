@@ -4,6 +4,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import subprocess
@@ -52,7 +53,7 @@ def dtype_shape(identifier, types):
         bits = 0
         for member, shape in reversed(members):
             expected_lsb = bits if kind == "STRUCTDTYPE" else 0
-            if int(member.get("lsb", 0)) != expected_lsb:
+            if "lsb" in member and int(member["lsb"]) != expected_lsb:
                 raise ValueError("Packed member offset differs from its declared width")
             bits = bits + shape["element_bits"] if kind == "STRUCTDTYPE" else max(bits, shape["element_bits"])
         return {"dimensions": [], "element_bits": bits}
@@ -113,7 +114,8 @@ def inspect(repository, out, executable, top, tile, pes):
         category = "configuration_or_address"
         if source.endswith("vector_pe.sv"):
             category = "vector_pe"
-        elif any(name.endswith("multiplier_a") for name in variables):
+        elif (any(name.endswith("multiplier_a") for name in variables) or
+              ({"vector_engine.q_accumulator", "vector_engine.q_multiplier"} <= set(variables))):
             category = "shared_quantization_softmax"
         elif left["type"] == "CONST" or right["type"] == "CONST":
             category = "constant_factor"
@@ -132,7 +134,7 @@ def inspect(repository, out, executable, top, tile, pes):
     categories = dict(Counter(row["category"] for row in multipliers))
     if top == "vector_engine":
         if categories.get("vector_pe") != pes or categories.get("shared_quantization_softmax") != 1:
-            raise RuntimeError("Unexpected vector arithmetic resources")
+            raise RuntimeError("Unexpected vector arithmetic resources: "+str(categories))
         for row in multipliers:
             expected = 16 if row["category"] == "vector_pe" else 32
             if row["category"] in {"vector_pe", "shared_quantization_softmax"}:
@@ -168,10 +170,21 @@ def main():
     if args.reference:
         old = result["designs"]["reference"]["vector_engine"]
         new = result["designs"]["current"]["vector_engine"]
-        for name in ("input_buf", "rhs_buf", "weight_buf", "bias_buf", "mult_buf", "shift_buf", "acc_buf", "result_buf"):
+        for name in ("input_buf", "rhs_buf", "bias_buf", "mult_buf", "shift_buf", "acc_buf", "result_buf"):
             key = "vector_engine." + name
             if old["declared_arrays"][key] != new["declared_arrays"][key]:
                 raise RuntimeError("Vector data storage differs: " + key)
+        def weight_bits(record):
+            arrays=record["declared_arrays"]
+            selected=[shape for name,shape in arrays.items() if name=="vector_engine.weight_buf" or
+                      ("g_weight_channel[" in name and name.endswith(".u_bank.data"))]
+            if not selected:
+                raise RuntimeError("Vector weight storage was not found")
+            return sum(math.prod(shape["dimensions"])*shape["element_bits"] for shape in selected)
+        old_bits,new_bits=weight_bits(old),weight_bits(new)
+        if old_bits!=new_bits:
+            raise RuntimeError("Vector weight storage capacity differs")
+        result["weight_storage_bits"]=new_bits
     result["passed"] = True
     (out / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
 

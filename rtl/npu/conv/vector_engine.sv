@@ -78,7 +78,7 @@ module vector_engine #(
   logic [31:0] ox, oy, kx, ky, tap, load_tap, valid_taps;
   logic [31:0] vector_offset, compute_index, quant_index, reduce_index;
   logic signed [15:0] input_buf [DMA_SIZE], rhs_buf [TILE];
-  logic signed [7:0] weight_buf [MAX_TAPS*TILE];
+  wire signed [7:0] weight_tap_data [TILE];
   logic signed [31:0] bias_buf [TILE], mult_buf [TILE], shift_buf [TILE];
   logic signed [31:0] acc_buf [TILE], result_buf [TILE];
   logic [2:0] pe_op;
@@ -429,7 +429,7 @@ module vector_engine #(
         pe_a[l]=input_buf[(spatial && !global_pool ? input_read_base : 0)+compute_index+32'(l)];
         if (state==EXECUTE && global_pool)
           pe_a[l]=input_buf[pool_input_index+compute_index+32'(l)];
-        pe_b[l]=depthwise ? 16'($signed(weight_buf[tap*TILE+compute_index+32'(l)])) : rhs_buf[compute_index+32'(l)];
+        pe_b[l]=depthwise ? 16'($signed(weight_tap_data[compute_index+32'(l)])) : rhs_buf[compute_index+32'(l)];
         pe_acc[l]=acc_buf[compute_index+32'(l)];
         if (add_stage==0) add_operand[l]=32'($signed(input_buf[compute_index+32'(l)]))+c.add.input1_offset;
         else if (add_stage==1) add_operand[l]=32'($signed(rhs_buf[compute_index+32'(l)]))+c.add.input2_offset;
@@ -441,6 +441,28 @@ module vector_engine #(
       end
     end
   end
+  // Channel banks provide a complete tap without a flattened channel/tap mux.
+  for (genvar channel=0;channel<TILE;channel++) begin : g_weight_channel
+    logic write_enable;
+    logic signed [7:0] write_value;
+    always_comb begin
+      write_enable=1'b0;
+      write_value='0;
+      for (int lane=0;lane<BUS_BYTES;lane++) begin
+        if (rd_valid[lane] && 32'(rd_col_base)+32'(lane)==32'(channel) &&
+            32'(channel)<active) begin
+          write_enable=1'b1;
+          write_value=8'(rd_data[lane]);
+        end
+      end
+    end
+    vector_weight_bank #(.DEPTH(MAX_TAPS)) u_bank (
+      .clk, .write_enable(rst_n && state==LOAD_WAIT && load_kind==LD_WEIGHT && write_enable),
+      .write_address(load_tap), .write_data(write_value),
+      .read_address(tap), .read_data(weight_tap_data[channel])
+    );
+  end
+
   for (genvar l=0;l<PE_COUNT;l++) begin : g_pe
     vector_pe u_pe(.op(pe_op),.a(pe_a[l]),.b(pe_b[l]),.acc(pe_acc[l]),.result(pe_result[l]));
   end
@@ -631,7 +653,7 @@ module vector_engine #(
       if (state==LOAD_WAIT) begin
         for (int l=0;l<BUS_BYTES;l++) if (rd_valid[l] && 32'(rd_col_base)+32'(l)<active) begin
           case (load_kind)
-            LD_WEIGHT: weight_buf[load_tap*TILE+32'(rd_col_base)+32'(l)]<=8'(rd_data[l]);
+
             LD_A: input_buf[32'(rd_col_base)+32'(l)]<=rd_data[l];
             LD_B: rhs_buf[32'(rd_col_base)+32'(l)]<=rd_data[l];
             default: ;
@@ -927,4 +949,21 @@ module vector_engine #(
     end
   end
 `endif
+endmodule
+
+// Asynchronous tap reads preserve the vector issue schedule.
+module vector_weight_bank #(
+  parameter integer DEPTH=49,
+  parameter integer ADDRESS_BITS=$clog2(DEPTH)>0 ? $clog2(DEPTH) : 1
+) (
+  input wire clk, write_enable,
+  input wire [31:0] write_address, read_address,
+  input wire signed [7:0] write_data,
+  output wire signed [7:0] read_data
+);
+  reg signed [7:0] data [DEPTH];
+  always @(posedge clk)
+    if(write_enable && write_address<DEPTH)
+      data[ADDRESS_BITS'(write_address)]<=write_data;
+  assign read_data=read_address<DEPTH ? data[ADDRESS_BITS'(read_address)] : 8'sd0;
 endmodule
