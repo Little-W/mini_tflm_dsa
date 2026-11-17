@@ -117,7 +117,7 @@ make capacity-solve MAX_RAM_KIB=64 REPRESENTATION=raw32
 
 ## 每层选择 R、W 和数据流
 
-软件读取运行时能力，以同一物理容量枚举合法 IA bank 分配、WS/IS、R/W 和 frame 高度。输入格式决定可用 R：紧凑 S8 每 tile 占 256 字节，真实 S16 占 512 字节；双缓冲分别需要 `512R` 和 `1024R` 字节。
+软件读取运行时能力，以同一物理容量枚举合法 IA bank 分配、WS/IS、R/W 和 frame 高度。IA 流式操作数的格式决定可用 R：紧凑 S8 每 tile 占 256 字节，完整 S16 占 512 字节；双缓冲分别需要 `512R` 和 `1024R` 字节。WS 的流式操作数为激活，IS 为 S8 权重，两种方向分别计算 R 上限。
 
 中间 PS 的存储上限按每个 bank 计算。对于一个 frame 的 L 个有效行，RAW32 需要 4L 个 128 位字，严格 S24 界需要至多 3L 个字，严格 S16 界需要至多 2L 个字。每个有效 frame 的字数按 PS bank 数向上取整，分别计入各 bank 的使用量。还必须满足共享目录总行数和 frame 数限制。K 只有一个 tile 时无需保留中间 PS。
 

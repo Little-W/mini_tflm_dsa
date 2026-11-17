@@ -14,7 +14,7 @@ VCE 与矩阵路径共享 DMA 窗口缓存，支持 DW、池化、Add、Softmax 
 
 ASIC 使用完整的 `RAMTP128X16` 数据容量，2、4、8 KiB bank 分别由 8、16、32 个宏组成。FPGA 工程要求 8 KiB bank，每个 bank 映射为两个 `RAMB36E1`，全部数据位均可寻址。FPGA 的 parity 容量单独统计。映射关系、实测范围和复现命令见 [共享 RAM 映射](shared_ram_mapping.md)。
 
-软件在任务启动前选择 1、2 或 4 个 IA bank，其余 bank 用于 PS；任务执行期间分配保持不变。真实 S16 输入的一个完整行同时访问两个 IA bank，因此至少分配两个 bank。
+软件在任务启动前选择 1、2 或 4 个 IA bank，其余 bank 用于 PS；任务执行期间分配保持不变。IA RAM 存储完整 S16 流式行时，每行同时访问两个 bank，因此至少分配两个 IA bank。
 
 ```mermaid
 flowchart TD
@@ -34,7 +34,7 @@ IA 与 PS 各有独立的请求和返回信号，地址转换保证二者访问�
 
 下表给出默认七个 2 KiB bank 配置的分配：
 
-| IA bank 数 | IA 容量 | PS 容量 | 紧凑 S8 的 R 上限 | S16 的 R 上限 |
+| IA bank 数 | IA 容量 | PS 容量 | 紧凑 S8 IA 的 R 上限 | S16 IA 的 R 上限 |
 |---:|---:|---:|---:|---:|
 | 1 | 2 KiB | 12 KiB | 4 | 不支持 |
 | 2 | 4 KiB | 10 KiB | 8 | 4 |
@@ -42,7 +42,7 @@ IA 与 PS 各有独立的请求和返回信号，地址转换保证二者访问�
 
 FPGA 默认七个 8 KiB bank 的分配如下：
 
-| IA bank 数 | IA 容量 | PS 容量 | 紧凑 S8 的 R 上限 | S16 的 R 上限 |
+| IA bank 数 | IA 容量 | PS 容量 | 紧凑 S8 IA 的 R 上限 | S16 IA 的 R 上限 |
 |---:|---:|---:|---:|---:|
 | 1 | 8 KiB | 48 KiB | 16 | 不支持 |
 | 2 | 16 KiB | 40 KiB | 32 | 16 |
@@ -58,7 +58,7 @@ S8 输出 FIFO 为一次 IA 行组保留完整的输出空间。默认 `PS_FRAME
 
 ## IA 紧凑格式
 
-原始 S8 激活保存在 SRAM 中；读取时符号扩展并加上 input offset。Conv DMA 若已返回校正后的 S16 数据，写入 IA RAM 前先减去同一个 offset，恢复原始 S8 表示。该过程保持全部数值，包括 padding 的校正后零值。真实 S16 输入使用完整的 16 位存储。
+S8 流式操作数保存在 SRAM 中；读取时符号扩展并加上对应的 offset。Conv DMA 若已返回校正后的 S16 激活数据，写入 IA RAM 前先减去同一个 input offset，恢复原始 S8 表示。该过程保持全部数值，包括 padding 的校正后零值。S16 流式操作数使用完整的 16 位 IA 存储。
 
 WS 中 IA 保存激活；IS 中 IA 保存 S8 权重，另一加载器处理激活。软件据此分别计算两种数据流的 R 上限。普通矩阵布局与按 16×16 tile 排列的布局均保留；跨 K 的 frame 地址使用完整矩阵的归约长度计算 tile 行跨度。
 
