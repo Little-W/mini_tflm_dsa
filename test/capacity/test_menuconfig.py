@@ -158,7 +158,7 @@ class MenuStateTests(ConfigurationFixture):
         self.assertEqual(a["ps_pool_bytes"] % 64, 0)
         self.assertEqual(state.values["PCR_ENGINE"], 1)
         self.assertEqual(state.values["SIZE"], 16)
-        self.assertEqual(state.values["PS_POOL_BYTES"], a["ps_pool_bytes"])
+        self.assertEqual(state.values["PS_POOL_BYTES"], a["configured_ps_pool_bytes"])
         self.assertEqual(state.values["SHARED_BANK_BYTES"], a["shared_bank_bytes"])
         self.assertEqual(state.values["SHARED_BANK_COUNT"], a["shared_physical_bank_count"])
         self.assertEqual(self.stamp(), before)
@@ -383,7 +383,11 @@ class MenuTerminalTests(ConfigurationFixture):
         terminal.send("o")
         # Ncurses may retain the "Optimiz" prefix of "Optimizing..." and
         # emit only the changed suffix; match the newly drawn result text.
-        terminal.expect("draft: IA=")
+        terminal.expect("draft:")
+        terminal.send("p")
+        terminal.expect("Workload allocations")
+        terminal.expect("banks")
+        terminal.send("\n")
         self.assertEqual(self.stamp(), before)
         self.assertFalse(self.output.exists())
         terminal.send("q")

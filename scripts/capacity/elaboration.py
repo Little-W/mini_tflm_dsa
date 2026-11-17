@@ -260,7 +260,7 @@ def inventory(tree):
                                      register_array_category=register_category))
         module_bits[origin] = module_bits.get(origin, 0) + total
         instances[origin] = instances.get(origin, 0) + 1
-    top = next(node for node in tree["modulesp"] if node.get("level") == 1)
+    top = next(node for node in tree["modulesp"] if node.get("name") == "npu_axil_top")
     module(top, top["name"], ())
     return dict(total_bits=sum(module_bits.values()), module_bits=module_bits,
                 module_instances=instances, buffer_arrays_bits=arrays, declaration_counts=array_counts,

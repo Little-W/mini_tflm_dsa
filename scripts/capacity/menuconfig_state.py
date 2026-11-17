@@ -198,12 +198,11 @@ class MenuConfigState:
                              self.values["CAPACITY_REPRESENTATION"],
                              measure=measure if self.values["CAPACITY_BUDGET_SCOPE"]=="logical-state" else None,
                              im2col_cache_bytes=self.values["IM2COL_CACHE_BYTES"],
-                             bank_bytes=self.values["SHARED_BANK_BYTES"])
+                             bank_bytes=self.values["SHARED_BANK_BYTES"],
+                             cache_blocks=self.values["IA_CACHE_BLOCKS"], frame_count=self.values["PS_FRAME_COUNT"],
+                             ps_build_bytes=self.values["PS_POOL_BYTES"])
         allocation = result["allocation"]
         updated = {**self.values, "PCR_ENGINE": 1, "SIZE": model.TILE,
-                   "IA_CACHE_BLOCKS": allocation["ia_cache_blocks"],
-                   "PS_FRAME_COUNT": allocation["ps_frame_count"],
-                   "PS_POOL_BYTES": allocation["ps_pool_bytes"],
                    "SHARED_BANK_BYTES": allocation["shared_bank_bytes"],
                    "SHARED_BANK_COUNT": allocation["shared_physical_bank_count"],
                    "PS_FORCE_RAW": int(result["representation"] == "raw32")}

@@ -18,11 +18,9 @@ from . import device_planner, im2col_cache
 TILE = 16
 POOL_ALIGNMENT = 64
 MAX_POOL_BYTES = 1 << 24
-CACHE_CHOICES = (2, 4, 8, 16)
-FRAME_CHOICES = (4, 8, 16, 25)
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-bank-im2col-v5"
+MODEL_VERSION = "dip-shared-bank-im2col-v6"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -107,6 +105,10 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
                 shared_physical_bank_count=total // bank_bytes if enabled else 0,
                 shared_ia_bank_mask=0x16 if enabled else 0,
                 default_ia_banks=1 if enabled else 0,
+                runtime_bank_allocations=[dict(ia_banks=i, ps_banks=total // bank_bytes-i,
+                    ia_bytes=i*bank_bytes, ps_bytes=total-i*bank_bytes,
+                    supports_s16_stream=i>=2) for i in (1, 2, 4)
+                    if enabled and i < total // bank_bytes],
                 default_ia_bytes=bank_bytes if enabled else initial_ia_bytes,
                 default_ps_pool_bytes=total - bank_bytes if enabled else pool_bytes,
                 default_max_r_s8=bank_bytes // (size * size) // 2 if enabled else cache,
@@ -234,7 +236,9 @@ def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                                      bank_bytes=bank_bytes, bank_count=bank_count)
     used = measured_state_bits / 8 if scope == "logical-state" else ram_bytes
     return dict(ia_cache_blocks=cache, ps_frame_count=frames, size=size,
-                compressed_ps=bool(compressed), ps_pool_bytes=pool_bytes if compressed else 0,
+                compressed_ps=bool(compressed),
+                ps_pool_bytes=(layout["default_ps_pool_bytes"] if layout["shared_ia_ps_enabled"]
+                               else pool_bytes if compressed else 0),
                 max_r=rmax, max_w=frames, **layout,
                 im2col_cache_geometry=im2col_cache.geometry(im2col_cache_bytes),
                 decode_fifo_rows=DECODE_FIFO_ROWS if compressed else 0,
@@ -339,60 +343,25 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
         raise ValueError(f"budget scope must be one of {SCOPES}")
     if scope == "logical-state" and measure is None:
         raise ValueError("logical-state search requires a real elaboration callback")
-    if bank_count is not None:
-        pool = (bank_count - 1) * bank_bytes
-        layout = memory_geometry(cache, frames, pool, shared=True,
-                                 bank_bytes=bank_bytes, bank_count=bank_count)
-        if buffer_ram_bytes(cache, frames, pool, shared=True,
-                            bank_bytes=bank_bytes, bank_count=bank_count,
-                            im2col_cache_bytes=im2col_cache_bytes) > budget_bytes:
-            return 0, None
+    if fixed_only:
+        raise ValueError("capacity search requires shared IA/PS RAM")
+    counts = [bank_count] if bank_count is not None else range(SHARED_MAX_BANKS, SHARED_MIN_BANKS - 1, -1)
+    for banks in counts:
+        pool = (banks - 1) * bank_bytes
+        parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks)
+        if buffer_ram_bytes(cache, frames, pool, im2col_cache_bytes=im2col_cache_bytes,
+                            **parameters) > budget_bytes:
+            continue
         state = measure(cache, frames, pool, representation, bank_bytes=bank_bytes,
-                        bank_count=bank_count) if scope == "logical-state" else None
-        return (layout["default_ps_pool_bytes"], state) if state is None or state <= budget_bytes * 8 else (0, None)
-    def family_maximum(unit, first, upper, pool_from_unit, *, shared):
-        low, high = first - 1, upper
-        while low < high:
-            candidate = (low + high + 1) // 2
-            pool = pool_from_unit(candidate)
-            if buffer_ram_bytes(cache, frames, pool, shared=shared, bank_bytes=bank_bytes,
-                                im2col_cache_bytes=im2col_cache_bytes) <= unit:
-                low = candidate
-            else:
-                high = candidate - 1
-        return pool_from_unit(low) if low >= first else 0
-
-    def largest_ram_candidate(ram_budget):
-        fixed = family_maximum(ram_budget, 1, min(MAX_POOL_BYTES, ram_budget) // POOL_ALIGNMENT,
-                               lambda count: count * POOL_ALIGNMENT, shared=False)
-        while fixed and (buffer_ram_bytes(cache, frames, fixed, bank_bytes=bank_bytes,
-                                         im2col_cache_bytes=im2col_cache_bytes) > ram_budget or
-                         (fixed_only and memory_geometry(cache, frames, fixed, bank_bytes=bank_bytes)["shared_ia_ps_enabled"])):
-            fixed -= POOL_ALIGNMENT
-        if fixed_only:
-            return fixed
-        initial_ia = cache * TILE * TILE * 2
-        first_bank_count = max(SHARED_MIN_BANKS, ceil_div(initial_ia + POOL_ALIGNMENT, bank_bytes))
-        upper_bank_count = min(SHARED_MAX_BANKS, min(MAX_POOL_BYTES + initial_ia, ram_budget) // bank_bytes)
-        shared_pool = family_maximum(ram_budget, first_bank_count, upper_bank_count,
-                                     lambda count: count * bank_bytes - initial_ia, shared=True)
-        return max(fixed, shared_pool)
-
-    ram_budget = budget_bytes
-    while ram_budget > 0:
-        pool = largest_ram_candidate(ram_budget)
-        if pool < POOL_ALIGNMENT:
-            return 0, None
-        state = measure(cache, frames, pool, representation) if scope == "logical-state" else None
+                        bank_count=banks) if scope == "logical-state" else None
         if state is None or state <= budget_bytes * 8:
             return pool, state
-        ram_budget = buffer_ram_bytes(cache, frames, pool, bank_bytes=bank_bytes,
-                                      im2col_cache_bytes=im2col_cache_bytes) - ceil_div(state - budget_bytes * 8, 8)
     return 0, None
 
 
 def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="adaptive", *,
-          measure=None, bank_bytes=None, im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
+          measure=None, bank_bytes=SHARED_BANK_BYTES, im2col_cache_bytes=im2col_cache.DEFAULT_BYTES,
+          cache_blocks=4, frame_count=16, ps_build_bytes=12288):
     tasks = validate_workloads(workloads)
     im2col_cache.validate_bytes(im2col_cache_bytes)
     _integer(budget_bytes, "budget bytes")
@@ -402,42 +371,35 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ad
         raise ValueError("logical-state search requires a real elaboration callback")
     if bank_bytes is not None and (type(bank_bytes) is not int or bank_bytes not in SHARED_BANK_BYTE_CHOICES):
         raise ValueError(f"shared bank bytes must be one of {SHARED_BANK_BYTE_CHOICES}")
+    if bank_bytes is None:
+        bank_bytes = SHARED_BANK_BYTES
+    geometry(cache_blocks, frame_count, ps_build_bytes, shared=True,
+             bank_bytes=bank_bytes, bank_count=SHARED_MIN_BANKS)
     options = []
-    for cache in CACHE_CHOICES:
-        for frames in FRAME_CHOICES:
-            capacities = []
-            if bank_bytes is None:
-                pool, state = max_pool_bytes(cache, frames, budget_bytes, scope=budget_scope,
-                                             representation=representation, measure=measure, fixed_only=True,
-                                             im2col_cache_bytes=im2col_cache_bytes)
-                if pool:
-                    capacities.append((pool, state, {}))
-            initial_ia = cache * TILE * TILE * 2
-            for banks in range(SHARED_MIN_BANKS, SHARED_MAX_BANKS + 1):
-                shared_pool = banks * SHARED_BANK_BYTES - initial_ia if bank_bytes is None else (banks - 1) * bank_bytes
-                parameters = {} if bank_bytes is None else dict(shared=True, bank_bytes=bank_bytes, bank_count=banks)
-                if shared_pool < POOL_ALIGNMENT or buffer_ram_bytes(cache, frames, shared_pool,
-                        im2col_cache_bytes=im2col_cache_bytes, **parameters) > budget_bytes:
-                    continue
-                measured = None
-                if budget_scope == "logical-state":
-                    measured = measure(cache, frames, shared_pool, representation) if bank_bytes is None else \
-                        measure(cache, frames, shared_pool, representation, bank_bytes=bank_bytes, bank_count=banks)
-                if measured is None or measured <= budget_bytes * 8:
-                    capacities.append((shared_pool, measured, parameters))
-            for pool, state, parameters in capacities:
-                try:
-                    plans = [plan_for_hardware(**task, cache=cache, frames=frames, pool_bytes=pool,
-                                               representation=representation, **parameters) for task in tasks]
-                except ValueError:
-                    continue
-                alloc = allocation(cache, frames, pool, budget_bytes, budget_scope,
-                                   measured_state_bits=state, im2col_cache_bytes=im2col_cache_bytes,
-                                   **parameters)
-                key = (math.prod(p["service_estimate"] for p in plans),
-                       sum(p["column_frames"] for p in plans), sum(p["groups"] for p in plans),
-                       alloc["budget_used_bytes"], cache, frames)
-                options.append((key, alloc, plans))
+    for banks in range(SHARED_MIN_BANKS, SHARED_MAX_BANKS + 1):
+        parameters = dict(shared=True, bank_bytes=bank_bytes, bank_count=banks)
+        if buffer_ram_bytes(cache_blocks, frame_count, ps_build_bytes,
+                            im2col_cache_bytes=im2col_cache_bytes, **parameters) > budget_bytes:
+            continue
+        state = None
+        if budget_scope == "logical-state":
+            state = measure(cache_blocks, frame_count, ps_build_bytes, representation,
+                            bank_bytes=bank_bytes, bank_count=banks)
+            if state > budget_bytes * 8:
+                continue
+        try:
+            plans = [plan_for_hardware(**task, cache=cache_blocks, frames=frame_count,
+                                       pool_bytes=ps_build_bytes, representation=representation,
+                                       **parameters) for task in tasks]
+        except ValueError:
+            continue
+        alloc = allocation(cache_blocks, frame_count, ps_build_bytes, budget_bytes, budget_scope,
+                           measured_state_bits=state, im2col_cache_bytes=im2col_cache_bytes,
+                           **parameters)
+        key = (math.prod(p["service_estimate"] for p in plans),
+               sum(p["column_frames"] for p in plans), sum(p["groups"] for p in plans),
+               alloc["budget_used_bytes"], banks)
+        options.append((key, alloc, plans))
     if not options:
         raise ValueError(f"no shared-array configuration fits {budget_bytes} B ({budget_scope})")
     key, alloc, plans = min(options, key=lambda option: option[0])
@@ -449,21 +411,20 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ad
                              exact_operand_read_product_hex=format(math.prod(p["ideal_operand_read_bytes"] for p in plans), "x"),
                              exact_service_product_hex=format(key[0], "x"), task_count=len(plans),
                              sum_column_frames=key[1], sum_groups=key[2]),
-                search=dict(enumerated_geometries=len(CACHE_CHOICES) * len(FRAME_CHOICES),
-                            feasible_geometries=len({(item[1]["ia_cache_blocks"], item[1]["ps_frame_count"])
-                                                     for item in options}),
-                            feasible_configurations=len(options), ia_cache_choices=CACHE_CHOICES,
-                            ps_frame_choices=FRAME_CHOICES,
-                            shared_bank_byte_choices=(bank_bytes or SHARED_BANK_BYTES,),
+                search=dict(enumerated_geometries=SHARED_MAX_BANKS - SHARED_MIN_BANKS + 1,
+                            feasible_geometries=len(options),
+                            feasible_configurations=len(options),
+                            fixed_ia_cache_blocks=cache_blocks, fixed_ps_frame_count=frame_count,
+                            shared_bank_byte_choices=(bank_bytes,),
                             shared_total_bank_choices=tuple(range(SHARED_MIN_BANKS, SHARED_MAX_BANKS + 1))),
                 objective="Minimize the product of device planner service estimates; then matrix frames, groups and allocated bytes.",
                 assumptions=[
                     "One shared physical compute array supports INT8 and INT16 operands, WS/IS, bias, per-channel quantization and tails.",
-                    "Conv, the vector engine including its three-row image cache, and both output data widths are included in the RAM subtotal.",
+                    "Conv, the vector engine buffers, and both output data widths are included in the RAM subtotal.",
                     "Shared builds use configured 2, 4 or 8 KiB physical 128-bit SRAM banks. IA and PS receive disjoint banks per layer, and the data pool is counted once.",
                     "The im2col data cache keeps its configured capacity during optimization. Its full tags and lifetime state are included, with request and prefetch queues counted separately.",
                     "Shared storage has 1024 row directory entries. IA tags, slot metadata, IS bias and requantization buffers cover the largest supported logical IA allocation.",
-                    "An explicit shared bank count sets the total data pool independently of the initial IA and PS fields. Fixed builds retain four PS banks with 64-byte capacity increments.",
+                    "The search varies physical bank count; IA and PS allocations are selected separately for each workload by the device planner. IA cache blocks and PS frame count remain at their configured build values.",
                     "The decoder has eight 512-bit FIFO rows and seven prefetch credits; history and pipeline registers are included in elaborated state.",
                     "The host search calls drivers/gempact_tiling.h. RAW scheduling uses actual matrix rows and physical pool capacity; a single K tile uses no intermediate PS.",
                     "Expanded reuse uses saved K progress and capacity admission. Changing the active window preserves completed partial sums.",

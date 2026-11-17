@@ -46,14 +46,11 @@ FIELDS = (
     Field("CAPACITY_REPRESENTATION", "Budget", "PS representation",
           "adaptive enables the row codec. raw32 forces four payload words per row. "
           "Planning checks each format's bank bandwidth, protected-frame capacity and directory.", ("adaptive", "raw32")),
-    Field("IA_CACHE_BLOCKS", "Buffers and bus", "IA cache blocks",
-          "Tile-buffer configuration for output queues and ordinary FIFO operation. "
-          "Shared IA allocation and source format determine each layer's R limit."),
+    Field("IA_CACHE_BLOCKS", "Buffers and bus", "Output buffer parameter",
+          "Build parameter for output queues and ordinary FIFO operation. "
+          "Shared IA capacity is selected per layer using 1, 2 or 4 physical banks."),
     Field("PS_FRAME_COUNT", "Buffers and bus", "PS frame slots",
           "Frame metadata entries. Shared tasks are also limited by 1024 directory rows and PS capacity."),
-    Field("PS_POOL_BYTES", "Buffers and bus", "PS build parameter",
-          "Positive multiple of 64 bytes for standalone PS store tests. Shared hardware capacity "
-          "is determined by bank size and bank count.", byte_size=True),
     Field("SHARED_BANK_BYTES", "Shared IA/PS RAM", "Bytes per bank",
           "Physical RAM bytes in each independent bank. Directory and decode buffers are separate.",
           (2048, 4096, 8192), byte_size=True),
@@ -73,6 +70,7 @@ FIELDS = (
 )
 
 ACTIONS = (("optimize", "Optimize capacity for the selected workloads"),
+           ("plans", "Show workload allocations"),
            ("save", "Save configuration"),
            ("reload", "Reload configuration from disk"),
            ("quit", "Exit menuconfig"))
@@ -254,7 +252,7 @@ class TerminalMenu:
         if alloc is not None:
             if alloc["shared_ia_ps_enabled"]:
                 allocation_text = (f"Shared data: {byte_text(alloc['shared_total_bytes'])}  "
-                                   f"IA banks: 1/2/4  Frames: {alloc['ps_frame_count']}")
+                                   f"{alloc['shared_physical_bank_count']} x {byte_text(alloc['shared_bank_bytes'])}  IA banks: 1/2/4")
             else:
                 allocation_text = (f"IA blocks: {alloc['ia_cache_blocks']}  Frames: {alloc['ps_frame_count']}  "
                                    f"PS: {byte_text(alloc['ps_pool_bytes'])}  RAM: {byte_text(alloc['buffer_ram_bytes'])}")
@@ -278,7 +276,7 @@ class TerminalMenu:
         self._put(self.screen, height - 3, 1, self.status,
                   self.warning_style if self.status_error else self.good_style)
         self._put(self.screen, height - 2, 1, "Up/Down Move  Enter/Space Edit  O Optimize  S Save", self.c.A_BOLD)
-        self._put(self.screen, height - 1, 1, "L Reload  Q Quit  ? Help  PgUp/PgDn Scroll", self.c.A_BOLD)
+        self._put(self.screen, height - 1, 1, "P Plans  L Reload  Q Quit  ? Help  PgUp/PgDn Scroll", self.c.A_BOLD)
         self.screen.refresh()
         return True
 
@@ -449,8 +447,19 @@ class TerminalMenu:
                 self.message("Cannot optimize", error)
             else:
                 alloc = result["allocation"]
-                self.status = (f"Optimized draft: IA={alloc['ia_cache_blocks']} Frames={alloc['ps_frame_count']} "
-                               f"PS={byte_text(alloc['ps_pool_bytes'])}. Press S to save.")
+                self.status = (f"Optimized draft: {alloc['shared_physical_bank_count']} banks x "
+                               f"{byte_text(alloc['shared_bank_bytes'])}. Press S to save.")
+        elif name == "plans":
+            result = self.state.last_solution
+            if result is None:
+                self.message("Workload allocations", "Run optimization to calculate workload allocations.")
+            else:
+                lines = []
+                for plan in result["plans"]:
+                    lines.append(f"M={plan['M']} K={plan['K']} N={plan['N']}  {plan['mode_name']}  "
+                                 f"IA={plan['ia_bank_count']} banks ({byte_text(plan['ia_bytes'])})  "
+                                 f"PS={byte_text(plan['ps_pool_bytes'])}  R={plan['R']} W={plan['W']}")
+                self.message("Workload allocations", "\n".join(lines))
         elif name == "save":
             self.save()
         elif name == "reload":
@@ -523,8 +532,8 @@ class TerminalMenu:
             elif key == self.c.KEY_LEFT:
                 if self.selected < len(FIELDS) and FIELDS[self.selected].choices:
                     self.edit(-1)
-            elif isinstance(key, str) and key.lower() in ("o", "s", "l"):
-                self.action({"o": "optimize", "s": "save", "l": "reload"}[key.lower()])
+            elif isinstance(key, str) and key.lower() in ("o", "p", "s", "l"):
+                self.action({"o": "optimize", "p": "plans", "s": "save", "l": "reload"}[key.lower()])
             elif key in ("?", "h", "H", self.c.KEY_F1):
                 self.help()
             elif key == "\x0c":

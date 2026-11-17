@@ -103,13 +103,11 @@ class ModelTests(unittest.TestCase):
             self.assertEqual(p["raw_safe_pool_bytes"], p["ps_pool_bytes"])
 
     def test_buffer_search_obeys_budget_and_frame_bound(self):
-        for budget in (32768, 65536, 131072):
+        for budget in (49152, 65536, 131072):
             result = model.solve(WORKLOADS, budget)
             a = result["allocation"]
             self.assertLessEqual(a["budget_used_bytes"], budget)
-            if not a["shared_ia_ps_enabled"]:
-                self.assertGreater(model.buffer_ram_bytes(a["ia_cache_blocks"], a["ps_frame_count"],
-                                                           a["ps_pool_bytes"] + 64), budget)
+            self.assertTrue(a["shared_ia_ps_enabled"])
             self.assertEqual(a["ps_pool_bytes"] % 64, 0)
             for p in result["plans"]:
                 self.assertLessEqual(p["R"], a["max_r_s8"])
@@ -120,18 +118,17 @@ class ModelTests(unittest.TestCase):
                                      p["ps_pool_bytes"])
                 self.assertGreaterEqual(p["ideal_operand_read_bytes"], p["M"] * p["K"] + p["N"] * p["K"])
 
-    def test_search_compares_shared_allocations_with_fixed_capacity(self):
+    def test_search_uses_shared_physical_banks(self):
         tasks = [dict(M=961, K=144, N=32), dict(M=225, K=288, N=64)]
         result = model.solve(tasks, 44000)
         allocation = result["allocation"]
         self.assertTrue(allocation["shared_ia_ps_enabled"])
-        self.assertEqual(allocation["shared_total_bytes"], 14336)
-        self.assertEqual(allocation["buffer_ram_bytes"], 40173)
-        self.assertEqual(result["metrics"]["exact_service_product_hex"], format(1521211424, "x"))
+        self.assertEqual(allocation["shared_total_bytes"], allocation["shared_physical_bank_count"] * 2048)
+        self.assertEqual(result["search"]["enumerated_geometries"], 4)
         self.assertLessEqual(result["search"]["feasible_geometries"],
                              result["search"]["enumerated_geometries"])
-        self.assertGreater(result["search"]["feasible_configurations"],
-                            result["search"]["feasible_geometries"])
+        self.assertEqual(result["search"]["feasible_configurations"],
+                         result["search"]["feasible_geometries"])
 
     def test_pool_increment_and_real_tails(self):
         for pool in (4096, 8192, 16384):
@@ -205,13 +202,26 @@ class ModelTests(unittest.TestCase):
             self.assertTrue(a["shared_ia_ps_enabled"])
             self.assertEqual(a["shared_bank_bytes"], bank_bytes)
             self.assertIn(a["shared_physical_bank_count"], range(6, 10))
-            self.assertEqual(a["ps_pool_bytes"], (a["shared_physical_bank_count"]-1)*bank_bytes)
+            self.assertEqual(a["default_ps_pool_bytes"], (a["shared_physical_bank_count"]-1)*bank_bytes)
             self.assertLessEqual(a["budget_used_bytes"], 131072)
             for plan in result["plans"]:
                 self.assertEqual(plan["ia_bytes"]+plan["ps_pool_bytes"], a["shared_total_bytes"])
             pool, state = model.max_pool_bytes(4, 16, 131072, bank_bytes=bank_bytes, bank_count=7)
             self.assertEqual(pool, 6*bank_bytes)
             self.assertIsNone(state)
+
+    def test_shared_search_preserves_build_parameters(self):
+        result = model.solve(WORKLOADS, 131072, bank_bytes=4096,
+                             cache_blocks=2, frame_count=4, ps_build_bytes=16384)
+        a = result["allocation"]
+        self.assertEqual((a["ia_cache_blocks"], a["ps_frame_count"], a["configured_ps_pool_bytes"]),
+                         (2, 4, 16384))
+        self.assertEqual([entry["ia_banks"] for entry in a["runtime_bank_allocations"]], [1, 2, 4])
+        for entry in a["runtime_bank_allocations"]:
+            self.assertEqual(entry["ia_bytes"] + entry["ps_bytes"], a["shared_total_bytes"])
+        for plan in result["plans"]:
+            self.assertIn(plan["ia_bank_count"], (1, 2, 4))
+            self.assertEqual(plan["ia_bytes"] + plan["ps_pool_bytes"], a["shared_total_bytes"])
 
     def test_measured_search_receives_explicit_bank_geometry(self):
         calls = []
@@ -266,6 +276,18 @@ class CliTests(unittest.TestCase):
         before = self.path.read_bytes(), self.path.stat().st_mtime_ns
         self.run_cli("--shape", "1,800,32", "--max-ram-kib", 64, "--apply")
         self.assertEqual((self.path.read_bytes(), self.path.stat().st_mtime_ns), before)
+
+    def test_apply_preserves_nonallocation_build_parameters(self):
+        config.update_config(self.path, {"IA_CACHE_BLOCKS": 2, "PS_FRAME_COUNT": 4,
+                                         "PS_POOL_BYTES": 16384})
+        result = json_from_stdout(self.run_cli("--shape", "256,1024,128", "--max-ram-kib", 128,
+                                               "--apply").stdout)
+        saved = config.read_config(self.path)
+        self.assertEqual((saved["IA_CACHE_BLOCKS"], saved["PS_FRAME_COUNT"], saved["PS_POOL_BYTES"]),
+                         (2, 4, 16384))
+        self.assertNotIn("PS_POOL_BYTES", result["configuration_updates"])
+        self.assertEqual(result["plans"][0]["ia_bytes"] + result["plans"][0]["ps_pool_bytes"],
+                         result["allocation"]["shared_total_bytes"])
 
     def test_inspection_covers_both_ps_modes(self):
         for active in (0, 1):

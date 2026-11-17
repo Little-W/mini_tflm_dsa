@@ -135,11 +135,11 @@ def main(argv=None):
         result = model.solve(_workloads(args), budget, scope, representation,
                              measure=measure if args.measure_state else None,
                              im2col_cache_bytes=values["IM2COL_CACHE_BYTES"],
-                             bank_bytes=values["SHARED_BANK_BYTES"])
+                             bank_bytes=values["SHARED_BANK_BYTES"],
+                             cache_blocks=values["IA_CACHE_BLOCKS"], frame_count=values["PS_FRAME_COUNT"],
+                             ps_build_bytes=values["PS_POOL_BYTES"])
         alloc = result["allocation"]
         updates = {"PCR_ENGINE": 1, "SIZE": model.TILE,
-                   "IA_CACHE_BLOCKS": alloc["ia_cache_blocks"], "PS_FRAME_COUNT": alloc["ps_frame_count"],
-                   "PS_POOL_BYTES": alloc["ps_pool_bytes"],
                    "SHARED_BANK_BYTES": alloc["shared_bank_bytes"],
                    "SHARED_BANK_COUNT": alloc["shared_physical_bank_count"],
                    "PS_FORCE_RAW": int(representation == "raw32"),

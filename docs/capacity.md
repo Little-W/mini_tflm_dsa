@@ -1,6 +1,6 @@
 # 共享 IA/PS 容量与软件分配
 
-通用及 ASIC 配置保存在 [`config/npu.mk`](../config/npu.mk)，FPGA 配置保存在 [`config/npu_fpga.mk`](../config/npu_fpga.mk)。两者默认使用 16×16 阵列、8 个 VCE PE 和 4 KiB 窗口缓存。ASIC 的共享 IA/PS 数据容量为 14 KiB，FPGA 为 56 KiB。`scripts/capacity` 计算缓冲数组及元数据，并通过 Verilator 展开统计完整顺序逻辑状态；物理 RAM 的组织与复现命令见 [共享 RAM 映射](shared_ram_mapping.md)。
+通用及 ASIC 配置保存在 [`config/npu.mk`](../config/npu.mk)，FPGA 配置保存在 [`config/npu_fpga.mk`](../config/npu_fpga.mk)。两者默认使用 16×16 阵列、8 个 VCE PE 和 4 KiB 窗口缓存。通用配置的共享 IA/PS 数据容量为 18 KiB，FPGA 为 56 KiB。`scripts/capacity` 计算缓冲数组及元数据，并通过 Verilator 展开统计完整顺序逻辑状态；物理 RAM 的组织与复现命令见 [共享 RAM 映射](shared_ram_mapping.md)。
 
 ## 物理容量与任务分配
 
@@ -12,16 +12,16 @@ SIZE ?= 16
 NPU_AXI_DATA_WIDTH ?= 64
 IM2COL_CACHE_BYTES ?= 4096
 SHARED_BANK_BYTES ?= 2048
-SHARED_BANK_COUNT ?= 7
-IA_CACHE_BLOCKS ?= 4
-PS_FRAME_COUNT ?= 16
+SHARED_BANK_COUNT ?= 9
+IA_CACHE_BLOCKS ?= 2
+PS_FRAME_COUNT ?= 4
 AXI_READ_OUTSTANDING ?= 4
-PS_POOL_BYTES ?= 12288
+PS_POOL_BYTES ?= 16384
 PS_FORCE_RAW ?= 0
 CAPACITY_REPRESENTATION ?= adaptive
 ```
 
-`PCR_ENGINE=1` 启用统一计算路径中的 PS frame 存储和调度。共享数据容量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`。ASIC 默认值为 `2048 × 7 = 14336` 字节；FPGA 默认值为 `8192 × 7 = 57344` 字节，配置中的 `PS_POOL_BYTES=49152`。两个 bank 参数在编译时确定；每层执行前的软件分配决定其中多少 bank 用于 IA 和 PS。
+`PCR_ENGINE=1` 启用统一计算路径中的 PS frame 存储和调度。共享数据容量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`。通用配置值为 `2048 × 9 = 18432` 字节；FPGA 默认值为 `8192 × 7 = 57344` 字节，配置中的 `PS_POOL_BYTES=49152`。两个 bank 参数在编译时确定；每层执行前的软件分配决定其中多少 bank 用于 IA 和 PS。
 
 | `SHARED_BANK_BYTES` | 每 bank 的 128 位行数 | `SHARED_BANK_COUNT=6、7、8、9` 时的数据总容量 |
 |---:|---:|---|
@@ -58,7 +58,7 @@ FPGA 默认七个 8 KiB bank 中，IA=1、2、4 分别提供 8、16、32 KiB 输
 
 完整容量统计还包括为整个 IA 行组保留的输出空间。默认 16 个 PS frame 下，2、4 KiB bank 使用 32 个 S8 输出 tile bank，共 8 KiB；8 KiB bank 使用 64 个 S8 输出 tile bank，共 16 KiB。S16 输出默认保留四个 tile bank。`output_banks_s8`、`output_banks_s16` 和 `oa_s8_fifo` 分别报告数量和位数，展开检查将其与设备的 `MATRIX_OUTPUT_BANKS` 寄存器比较。
 
-`IA_CACHE_BLOCKS` 和 `PS_POOL_BYTES` 保留固定缓冲实现的配置作用。当前共享配置通过 `SHARED_BANK_BYTES` 和 `SHARED_BANK_COUNT` 确定数据 RAM 总量。配置检查在构建前拒绝范围之外的 bank 参数。
+`IA_CACHE_BLOCKS` 影响输出队列等构建参数，`PS_FRAME_COUNT` 决定 frame 数上限。`PS_POOL_BYTES` 用于独立部分和存储配置。共享数据 RAM 的容量由 `SHARED_BANK_BYTES` 和 `SHARED_BANK_COUNT` 决定，运行时按任务分配 IA 和 PS bank。
 
 ## 查询与校验
 
@@ -108,7 +108,7 @@ make capacity-solve MAX_RAM_KIB=64
 make capacity-check
 ```
 
-菜单使用 Python 标准库 `curses`：方向键选择，回车编辑，`O` 求解，`S` 保存，`Q` 退出。修改保存后再执行构建命令，使 Make 重新读取配置。
+菜单使用 Python 标准库 `curses`：方向键选择，回车编辑，`O` 求解，`P` 查看各工作负载的 bank 分配与调度结果，`S` 保存，`Q` 退出。修改保存后再执行构建命令，使 Make 重新读取配置。
 
 ```bash
 python3 scripts/capacity/solve.py --config config/npu.mk \
@@ -118,7 +118,7 @@ python3 scripts/capacity/solve.py --config config/npu.mk \
 
 命令未指定 `--apply` 时只导出结果。`--apply` 才会更新配置。可以用 `NPU_CONFIG` 选择另一份配置文件；修改前会校验预算和参数，外部修改过的文件不会被菜单直接覆盖。
 
-求解器在所选 bank 大小下枚举六至九个物理 bank，并搜索 IA cache 和 frame 数参数。在每个候选硬件下调用与驱动共用的 C 调度函数，评估外部操作数读取及命令开销。默认任务集合为 [`config/capacity_workloads.json`](../config/capacity_workloads.json)。自定义形状采用标准矩阵维度 `A[M,K] × B[K,N]`：
+求解器保持所选 bank 大小、输出缓冲参数和 frame 数不变，枚举六至九个物理 bank。在每个候选硬件下调用与驱动共用的 C 调度函数，评估外部操作数读取及命令开销，并为各任务选择 IA/PS bank 分配。JSON 的 `runtime_bank_allocations` 给出可选物理划分，`plans` 给出每个工作负载的调度结果。默认任务集合为 [`config/capacity_workloads.json`](../config/capacity_workloads.json)。自定义形状采用标准矩阵维度 `A[M,K] × B[K,N]`：
 
 ```bash
 make capacity-solve MAX_RAM_KIB=64 SHAPES='128,256,64 512,128,128'
