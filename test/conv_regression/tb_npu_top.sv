@@ -81,7 +81,7 @@ module tb_npu_top;
     end
     always @(posedge clk) if(rst_n && u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid) begin
         ps_rows++;
-        if(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_words<4)
+        if(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.tb_observer.encode_commit_words<4)
             ps_compressed_rows++;
     end
     final $display("[PS_STORAGE_METRICS] total_bytes=14336 bank_bytes=2048 rows=%0d compressed_rows=%0d",

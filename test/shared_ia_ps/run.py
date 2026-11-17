@@ -37,6 +37,9 @@ def main():
                codec_test / "stream_test_vectors.hpp", codec_test / "cpp_adaptive_codec.hpp", codec_test / "cpp_row_codec.hpp",
                root / "rtl/npu/buffers/ia_ps_shared_ram.sv", root / "rtl/npu/ps_compact/ps_frame_store.sv",
                root / "rtl/npu/ps_compact/ps_adaptive_codec.sv"]
+    import runpy
+    selector = root / "test/monitors/sources.py"
+    sources = runpy.run_path(str(selector))["with_observers"](sources) + [selector]
     before = {str(path.relative_to(root)): digest(path) for path in sources}
     rules = out / "compile_rules.mk"
     rules.write_text("""%.o: %.cpp

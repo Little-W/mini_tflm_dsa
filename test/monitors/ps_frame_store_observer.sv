@@ -6,6 +6,8 @@ module ps_frame_store_observer #(
   parameter int EXTERNAL_RAM=0
 );
   wire [31:0] bank_free_count[BANKS];
+  wire [2:0] encode_commit_opcode=3'd3;
+  wire [2:0] encode_commit_words=3'd4;
 
   reg [31:0] occupancy_free[BANKS];
   for(genvar bank=0;bank<BANKS;bank++)begin:g_bank

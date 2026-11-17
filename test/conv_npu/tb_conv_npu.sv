@@ -100,8 +100,8 @@ module tb_conv_npu;
                 u_dut.ps_s24_bound_s2,u_dut.ps_max_frame_rows,u_dut.ps_live_frames,
                 u_dut.ps_long_frame_bank_words,u_dut.ps_retained_k_s2,u_dut.ps_product_exp_s2);
         assign ps_encode_valid=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid;
-        assign ps_encode_opcode=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_opcode;
-        assign ps_encode_words=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_words;
+        assign ps_encode_opcode=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.tb_observer.encode_commit_opcode;
+        assign ps_encode_words=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.tb_observer.encode_commit_words;
         initial if($test$plusargs("FORCE_PS_CODEC"))force u_dut.ps_config_force_raw=1'b0;
         logic [31:0] occupied_payload_bytes;
         always_comb begin

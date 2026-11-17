@@ -34,6 +34,14 @@ def main():
     sources = [Path(__file__).resolve(), test / "frame_store_tb.sv", test / "frame_store_test.cpp",
                test / "stream_test_vectors.hpp", test / "cpp_adaptive_codec.hpp", test / "cpp_row_codec.hpp",
                repo / "rtl/npu/ps_compact/ps_adaptive_codec.sv", repo / "rtl/npu/ps_compact/ps_frame_store.sv"]
+    import runpy
+    selector = repo / "test/monitors/sources.py"
+    sources = runpy.run_path(str(selector))["with_observers"](sources) + [selector]
+    direct_store='ps_adaptive_encoder' not in (repo/'rtl/npu/ps_compact/ps_frame_store.sv').read_text()
+    if direct_store:
+        top='raw_frame_store_tb'
+        sources=[path for path in sources if path not in (test/'frame_store_tb.sv',test/'frame_store_test.cpp')]
+        sources += [test/'raw_frame_store_tb.sv',test/'raw_frame_store_test.cpp']
     before = {str(path.relative_to(repo)): digest(path) for path in sources}
     rules = out / "compile_rules.mk"
     rules.write_text("""%.o: %.cpp
@@ -88,8 +96,10 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
     payload.update(force_raw=args.force_raw, source_sha256=before, binary_sha256=digest(binary),
                    compile_command=command, run_command=[str(binary)], undefined_behavior_sanitizer=True,
                    sanitized_translation_units=len(translation_units),
-                   parameters=dict(MAX_FRAME_ROWS=47, FRAME_COUNT=16, POOL_BYTES=4096, DECODE_FIFO_ROWS=8),
-                   directory_bits_per_row=29,
+                   parameters=dict(MAX_FRAME_ROWS=64 if direct_store else 47, FRAME_COUNT=16,
+                                   POOL_BYTES=16384 if direct_store else 4096, DECODE_FIFO_ROWS=8),
+                   storage_implementation="raw32" if direct_store else "compressed",
+                   directory_bits_per_row=0 if direct_store else 29,
                    compiler_version=subprocess.check_output([args.compiler, "--version"], text=True).splitlines()[0],
                    verilator_version=subprocess.check_output([args.verilator, "--version"], text=True).strip(),
                    elapsed_seconds=time.monotonic()-started)

@@ -93,14 +93,22 @@ module ps_frame_store #(
         64'(initial_linear)+(reserve_rows<<2)<=64'(pool_bank_words_q)*64'(pool_bank_count_q);
     wire prepare_start=frame_request && configuration_ready && !command_present && request_valid && request_fits && !capacity_fault;
     assign frame_pressure=frame_request && configuration_ready && !command_present && request_valid && !request_fits && !capacity_fault;
+    wire [RAW_LINEAR_BITS-1:0] quotient_5,quotient_6,quotient_7;
+    wire [2:0] remainder_5,remainder_6,remainder_7;
+    ps_raw_address #(.WIDTH(RAW_LINEAR_BITS),.DIVISOR(5)) u_address_5
+        (.linear(initial_linear),.quotient(quotient_5),.remainder(remainder_5));
+    ps_raw_address #(.WIDTH(RAW_LINEAR_BITS),.DIVISOR(6)) u_address_6
+        (.linear(initial_linear),.quotient(quotient_6),.remainder(remainder_6));
+    ps_raw_address #(.WIDTH(RAW_LINEAR_BITS),.DIVISOR(7)) u_address_7
+        (.linear(initial_linear),.quotient(quotient_7),.remainder(remainder_7));
     reg [31:0] initial_row,initial_bank;
     always @* begin
         initial_row=0;initial_bank=0;
         case(pool_bank_count_q)
             4:begin initial_row=32'(initial_linear>>2);initial_bank=32'(initial_linear&3);end
-            5:begin initial_row=32'(initial_linear/RAW_LINEAR_BITS'(5));initial_bank=32'(initial_linear%RAW_LINEAR_BITS'(5));end
-            6:begin initial_row=32'(initial_linear/RAW_LINEAR_BITS'(6));initial_bank=32'(initial_linear%RAW_LINEAR_BITS'(6));end
-            7:begin initial_row=32'(initial_linear/RAW_LINEAR_BITS'(7));initial_bank=32'(initial_linear%RAW_LINEAR_BITS'(7));end
+            5:begin initial_row=32'(quotient_5);initial_bank=32'(remainder_5);end
+            6:begin initial_row=32'(quotient_6);initial_bank=32'(remainder_6);end
+            7:begin initial_row=32'(quotient_7);initial_bank=32'(remainder_7);end
             8:begin initial_row=32'(initial_linear>>3);initial_bank=32'(initial_linear&7);end
             default:;
         endcase
@@ -109,7 +117,6 @@ module ps_frame_store #(
     wire encoder_start=write_valid && command_accepted && !frame_final_q && !input_ended && !capacity_fault;
     reg [511:0] encode_commit_packet;
     wire encode_commit_valid=encoder_done && !capacity_fault;
-    wire [2:0] encode_commit_opcode=3'd3,encode_commit_words=3'd4;
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin encoder_done<=0;encode_commit_packet<=0;end
         else begin
@@ -263,4 +270,24 @@ module ps_frame_store #(
             end
         end
     end
+endmodule
+
+// Constant reciprocal address calculation with one bounded correction.
+module ps_raw_address #(
+    parameter integer WIDTH=13,
+    parameter integer DIVISOR=5
+) (
+    input wire [WIDTH-1:0] linear,
+    output wire [WIDTH-1:0] quotient,
+    output wire [2:0] remainder
+);
+    localparam [WIDTH:0] RECIPROCAL=((64'd1<<WIDTH)+DIVISOR-1)/DIVISOR;
+    wire [2*WIDTH:0] product=linear*RECIPROCAL;
+    wire [WIDTH:0] estimate=product[2*WIDTH:WIDTH];
+    wire [WIDTH+3:0] scaled_estimate=estimate*(WIDTH+4)'(DIVISOR);
+    wire overshot=scaled_estimate>(WIDTH+4)'(linear);
+    wire [WIDTH+3:0] residual=(WIDTH+4)'(linear)-scaled_estimate+
+        (overshot ? (WIDTH+4)'(DIVISOR) : (WIDTH+4)'(0));
+    assign quotient=WIDTH'(estimate-overshot);
+    assign remainder=3'(residual);
 endmodule

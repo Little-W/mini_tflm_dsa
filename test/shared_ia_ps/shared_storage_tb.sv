@@ -87,8 +87,8 @@ module shared_storage_tb #(
     assign prepare_start=dut.prepare_start;
     assign encoder_start=dut.encoder_start;
     assign commit_valid=dut.encode_commit_valid;
-    assign commit_opcode=dut.encode_commit_opcode;
-    assign commit_words=dut.encode_commit_words;
+    assign commit_opcode=dut.tb_observer.encode_commit_opcode;
+    assign commit_words=dut.tb_observer.encode_commit_words;
     assign commit_packet=dut.encode_commit_packet;
     assign prefetch_fire=dut.prefetch_fire;
     assign prefetch_opcode=dut.prefetch_opcode;

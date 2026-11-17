@@ -52,8 +52,8 @@ module frame_store_tb (
     assign replay_armed=dut.replay_armed;
     assign encoder_start=dut.encoder_start;
     assign commit_valid=dut.encode_commit_valid;
-    assign commit_opcode=dut.encode_commit_opcode;
-    assign commit_words=dut.encode_commit_words;
+    assign commit_opcode=dut.tb_observer.encode_commit_opcode;
+    assign commit_words=dut.tb_observer.encode_commit_words;
     assign commit_packet=dut.encode_commit_packet;
     assign selected_id=32'(dut.frame_id_q);
     assign commit_row=32'(dut.commit_count);
