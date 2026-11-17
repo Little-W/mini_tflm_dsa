@@ -38,6 +38,7 @@ def source_files():
 def sources_sha256():
     files = source_files() + sorted((ROOT / "rtl/npu").rglob("*.svh"))
     files += [ROOT / "veri/flist/dut_axil.f", ROOT / "scripts/capacity/model.py",
+              ROOT / "scripts/capacity/im2col_cache.py",
               ROOT / "scripts/capacity/elaboration.py", ROOT / "asic/rtl/smic40_sram_1r1w.sv"]
     return {str(p.relative_to(ROOT)): digest(p) for p in files}
 
@@ -48,6 +49,7 @@ def hardware_config(values):
     result["NPU_AXI_DATA_WIDTH"] = values.get("NPU_AXI_DATA_WIDTH", 64)
     result["SHARED_BANK_BYTES"] = values.get("SHARED_BANK_BYTES", 2048)
     result["SHARED_BANK_COUNT"] = values.get("SHARED_BANK_COUNT", 7)
+    result["IM2COL_CACHE_BYTES"] = values.get("IM2COL_CACHE_BYTES", 4096)
     return result
 
 
@@ -288,6 +290,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                f'-GBUS_WIDTH={hardware_config(values)["NPU_AXI_DATA_WIDTH"]}',
                f'-GSHARED_BANK_BYTES={hardware_config(values)["SHARED_BANK_BYTES"]}',
                f'-GSHARED_BANK_COUNT={hardware_config(values)["SHARED_BANK_COUNT"]}',
+               f'-GIM2COL_CACHE_BYTES={hardware_config(values)["IM2COL_CACHE_BYTES"]}',
                "-GENABLE_VECTOR_ENGINE=1", f'-GVECTOR_PE_COUNT={min(values["SIZE"], 8)}',
                f'-GSIZE={values["SIZE"]}', f'-GIA_CACHE_BLOCKS={values["IA_CACHE_BLOCKS"]}',
                f'-GPS_FRAME_COUNT={values["PS_FRAME_COUNT"]}',
@@ -308,14 +311,16 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         state = inventory(tree)
         capabilities = {
             "npu_axil_top": constant_parameters(tree, "npu_axil_top", (
-                "PS_CAPS", "SHARED_CAPABLE", "MATRIX_S8_BANKS", "MATRIX_S16_BANKS")),
+                "PS_CAPS", "SHARED_CAPABLE", "MATRIX_S8_BANKS", "MATRIX_S16_BANKS",
+                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES")),
             "npu_axil_reg_if": constant_parameters(tree, "npu_axil_reg_if", (
                 "PS_CAPS", "PS_POOL_BYTES", "IA_CACHE_BYTES", "SHARED_TOTAL_BYTES",
                 "SHARED_BANK_BYTES", "SHARED_IA_BANK_MASK", "PS_DIRECTORY_ROWS", "SHARED_CAPABLE",
-                "MATRIX_S8_BANKS", "MATRIX_S16_BANKS")),
+                "MATRIX_S8_BANKS", "MATRIX_S16_BANKS", "CONV_CACHE_BYTES")),
             "npu_top": constant_parameters(tree, "npu_top", (
                 "SHARED_RAM_ENABLED", "IA_MAX_CACHE_BLOCKS", "IA_REUSE_NUM_MAX",
-                "OA_FIFO_BANKS", "OA_S16_FIFO_BANKS", "PS_REQUIRE_RAW_CAPACITY")),
+                "OA_FIFO_BANKS", "OA_S16_FIFO_BANKS", "PS_REQUIRE_RAW_CAPACITY",
+                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES")),
         }
     finally:
         if not keep_tree:
@@ -324,6 +329,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                           bank_count=values.get("SHARED_BANK_COUNT",7) if values["PCR_ENGINE"] else None)
     expected = model.buffer_arrays_bits(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                          values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
+                                         im2col_cache_bytes=hardware_config(values)["IM2COL_CACHE_BYTES"],
                                          **geometry_options)
     expected_registers = model.register_arrays_bits(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                                      values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
@@ -365,11 +371,17 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         capabilities["npu_axil_top"]["MATRIX_S16_BANKS"] == layout["output_banks_s16"] and \
         registers["MATRIX_S8_BANKS"] == layout["output_banks_s8"] and \
         registers["MATRIX_S16_BANKS"] == layout["output_banks_s16"] and \
+        registers["CONV_CACHE_BYTES"] == hardware_config(values)["IM2COL_CACHE_BYTES"] and \
         registers["SHARED_CAPABLE"] == int(layout["shared_ia_ps_enabled"]) and \
         registers["SHARED_TOTAL_BYTES"] == layout["shared_total_bytes"] and \
         registers["SHARED_BANK_BYTES"] == layout["shared_bank_bytes"] and \
         registers["SHARED_IA_BANK_MASK"] == layout["shared_ia_bank_mask"] and \
         registers["PS_DIRECTORY_ROWS"] == (model.SHARED_DIRECTORY_ROWS if layout["shared_ia_ps_enabled"] else 0)
+    for module_name in ("npu_axil_top", "npu_top"):
+        cache=capabilities[module_name]
+        capabilities_match = capabilities_match and cache["IM2COL_CACHE_BYTES"] == \
+            cache["CONV_CACHE_SETS"]*cache["CONV_CACHE_WAYS"]*cache["CONV_LINE_BYTES"] == \
+            hardware_config(values)["IM2COL_CACHE_BYTES"]
     passed = (unchanged and expected == state["buffer_arrays_bits"] and
               expected_registers == state["register_arrays_bits"] and architecture and capabilities_match)
     report = dict(passed=passed, model_version=model.MODEL_VERSION,

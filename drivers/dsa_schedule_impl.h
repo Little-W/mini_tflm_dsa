@@ -80,6 +80,7 @@ static void dsa_matrix_default_limits(dsa_matrix_limits_t *limits)
     limits->dma_max_bytes=256u*(limits->axi_data_bits/8u);
     limits->ps_pool_bytes=DSA_PS_POOL_BYTES;
     limits->ia_cache_bytes=DSA_IA_CACHE_BLOCKS*DSA_TILE_SIZE*DSA_TILE_SIZE*2u;
+    limits->im2col_cache_bytes=DSA_IM2COL_CACHE_BYTES;
 #if DSA_PS_COMPRESS
     limits->ps_caps=(DSA_PS_CAP_VERSION<<24)|(DSA_PS_FRAME_COUNT<<16)|
         DSA_PS_CAP_STORE|DSA_PS_CAP_FRAME_SCHEDULE|DSA_PS_CAP_IA_COMPACT;
@@ -88,7 +89,7 @@ static void dsa_matrix_default_limits(dsa_matrix_limits_t *limits)
 
 void dsa_matrix_query(dsa_matrix_limits_t *limits)
 {
-    uint32_t caps,banks,dma,bus,ps_caps;
+    uint32_t caps,banks,dma,bus,ps_caps,im2col_cache;
     if (!limits) return;
     dsa_matrix_default_limits(limits);
     if (dsa_reg_read(NPU_REG_ID)!=0x4e505531u ||
@@ -109,6 +110,9 @@ void dsa_matrix_query(dsa_matrix_limits_t *limits)
     dma=dsa_reg_read(NPU_REG_DMA_MAX_BYTES);
     if (dma>=limits->axi_data_bits/8u && dma<=limits->dma_max_bytes &&
         !(dma&(dma-1u))) limits->dma_max_bytes=dma;
+    im2col_cache=dsa_reg_read(NPU_REG_IM2COL_CACHE_BYTES);
+    if (im2col_cache>=64u && im2col_cache<=65536u &&
+        !(im2col_cache&(im2col_cache-1u))) limits->im2col_cache_bytes=im2col_cache;
     ps_caps=dsa_reg_read(NPU_REG_PS_CAPS);
     if ((ps_caps>>24)!=DSA_PS_CAP_VERSION || !(ps_caps&DSA_PS_CAP_STORE)) {
         limits->ps_caps=0u;
@@ -229,7 +233,8 @@ static uint32_t dsa_conv_plan_with_ps_bound(const dsa_conv_s8_config_t *config,
     c.im2col.input_channels=config->input_c;c.im2col.group_channels=config->group_c;
     c.im2col.kernel_h=config->kernel_h;c.im2col.kernel_w=config->kernel_w;
     c.im2col.stride_w=config->stride_w;c.im2col.source_bytes=1u;
-    c.im2col.cache_bytes=config->bypass_cache?0u:DSA_IM2COL_CACHE_BYTES;
+    c.im2col.cache_bytes=config->bypass_cache?0u:
+        (hardware->im2col_cache_bytes?hardware->im2col_cache_bytes:DSA_IM2COL_CACHE_BYTES);
     c.im2col_input_width=config->input_w;c.im2col_output_width=config->output_w;
     c.im2col_stride_h=config->stride_h;
     return dsa_schedule_cached_plan(&c,schedule) ? DSA_SUCCESS:DSA_ERR_INVALID_DIM;

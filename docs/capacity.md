@@ -10,6 +10,7 @@
 PCR_ENGINE ?= 1
 SIZE ?= 16
 NPU_AXI_DATA_WIDTH ?= 64
+IM2COL_CACHE_BYTES ?= 4096
 SHARED_BANK_BYTES ?= 2048
 SHARED_BANK_COUNT ?= 7
 IA_CACHE_BLOCKS ?= 4
@@ -31,6 +32,8 @@ CAPACITY_REPRESENTATION ?= adaptive
 ASIC 支持表中的三种 bank 大小，均使用完整的 `RAMTP128X16` 数据容量。FPGA 工程入口要求 `SHARED_BANK_BYTES=8192`，每个 bank 使用两个 `RAMB36E1` 的全部数据位。每个 FPGA bank 另有 1024 字节 parity 容量，单独统计，不包含在共享数据总量中。
 
 `NPU_AXI_DATA_WIDTH` 可选 32、64 位，默认 64 位，控制 NPU AXI4、SoC 数据互连及主存数据接口。NPU 的 AXI-Lite 配置接口使用固定 32 位数据和 16 位地址。共享 SRAM 内部接口始终为 128 位；AXI4 数据宽度与 bank 大小分别配置。
+
+`IM2COL_CACHE_BYTES` 设置原始输入窗口缓存的数据容量，支持 512 B～64 KiB 的二次幂容量，默认 4 KiB。容量求解保留所选值，统计数据以及每条 16 B 缓存行的 75 位标签与使用状态。`capacity-show` 的 `im2col_cache_guidance` 和 `menuconfig` 帮助显示当前容量对应的卷积窗口尺寸。完整公式与常用配置见 [im2col 缓存容量配置](im2col_cache_configuration.md)。
 
 软件可分配 1、2 或 4 个 bank 给 IA。IA 与 PS 使用互不重叠的 bank 集合，且分配在任务执行期间保持不变。能力寄存器的 `IA_BANK_MASK` 指定允许的 IA bank 数；驱动进一步根据输入格式、PS 长度上限和任务形状筛选分配。
 

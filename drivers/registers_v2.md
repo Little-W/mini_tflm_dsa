@@ -237,6 +237,9 @@ Tile-packed 布局按输出行 tile 和归约 tile 排列，每个 tile 内保�
 | `0x130` | `NPU_REG_PS_EARLY_FINISH` | RO | 本次任务因容量调度而优先完成的 frame 数 |
 | `0x134` | `NPU_REG_PS_POOL_BYTES` | RO | 当前分配下的 PS 数据字节数 |
 | `0x138` | `NPU_REG_IA_CACHE_BYTES` | RO | 当前分配下的 IA 数据字节数 |
+| `0x13c` | `NPU_REG_IM2COL_CACHE_BYTES` | RO | im2col 输入窗口缓存的数据容量，单位为字节 |
+
+`NPU_REG_IM2COL_CACHE_BYTES` 由实际缓存集合数、路数和缓存行字节数计算。驱动在准备层配置时读取该值，用于卷积调度评分。该缓存与 IA/PS 共享数据 RAM 分别计容量；默认值为 4096 字节，可通过 `config` 中的 `IM2COL_CACHE_BYTES` 设置。返回零时，驱动使用编译配置 `DSA_IM2COL_CACHE_BYTES`。
 
 `PS_CAPS` 的 bits 31:24 为版本 1，bits 23:16 为 frame 数，低位定义如下：
 

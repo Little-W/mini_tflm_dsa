@@ -16,7 +16,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 if __package__ in (None, ""):
     sys.path.insert(0, str(ROOT))
-from scripts.capacity import config, model, elaboration
+from scripts.capacity import config, model, elaboration, im2col_cache
 
 
 def shape_argument(text):
@@ -106,6 +106,7 @@ def main(argv=None):
             result = {"configuration": values, "active_engine": "shared-compute-array",
                       "ps_storage": "ordinary" if not values["PCR_ENGINE"] else values["CAPACITY_REPRESENTATION"],
                       "capacity_model_applies": True,
+                      "im2col_cache_guidance": im2col_cache.guidance(values["IM2COL_CACHE_BYTES"]),
                       "allocation": config.allocation_from_config(values, state_report=state)}
             if args.emit_c_header:
                 if args.emit_c_header.resolve() == current_path:
@@ -133,6 +134,7 @@ def main(argv=None):
             return report["elaborated_state"]["total_bits"]
         result = model.solve(_workloads(args), budget, scope, representation,
                              measure=measure if args.measure_state else None,
+                             im2col_cache_bytes=values["IM2COL_CACHE_BYTES"],
                              bank_bytes=values["SHARED_BANK_BYTES"])
         alloc = result["allocation"]
         updates = {"PCR_ENGINE": 1, "SIZE": model.TILE,

@@ -38,6 +38,7 @@ module tb_shared_bank_registers;
     for(genvar i=0;i<PROFILES;i++) begin:g_profile
         npu_axil_reg_if #(
             .PS_CAPS(CAPS[i]),.PS_POOL_BYTES(POOL[i]),.IA_CACHE_BYTES(2048),
+            .CONV_CAPABLE(i!=PROFILES-1),.CONV_CACHE_BYTES(512 << (i%8)),
             .AXI_DATA_BITS((i%2)!=0 ? 64 : 32),
             .SHARED_TOTAL_BYTES(TOTAL[i]),.SHARED_BANK_BYTES(BANK_BYTES[i]),
             .SHARED_IA_BANK_MASK(MASK[i]),.PS_DIRECTORY_ROWS(TOTAL[i]!=0 ? 1024 : 0)
@@ -64,6 +65,7 @@ module tb_shared_bank_registers;
             16'h0134:return SHARED[profile] ? TOTAL[profile]-expected_allocation[profile]*BANK_BYTES[profile] :
                 32'(POOL[profile]);
             16'h0138:return SHARED[profile] ? expected_allocation[profile]*BANK_BYTES[profile] : 32'd2048;
+            16'h013c:return profile!=PROFILES-1 ? 32'd512 << (profile%8) : 32'd0;
             16'h0100:return SHARED[profile] ? TOTAL[profile] : 32'd0;
             16'h0104:return SHARED[profile] ? BANK_BYTES[profile] : 32'd0;
             16'h00f4:return (profile%2)!=0 ? 32'd64 : 32'd32;
@@ -91,7 +93,7 @@ module tb_shared_bank_registers;
     endtask
 
     task automatic check_capacities;
-        read_register(16'h0134);read_register(16'h0138);read_register(16'h0108);
+        read_register(16'h0134);read_register(16'h0138);read_register(16'h0108);read_register(16'h013c);
         for(int i=0;i<PROFILES;i++) begin
             check(allocation[i]==expected_allocation[i],"allocation output");
             if(SHARED[i])
@@ -167,6 +169,8 @@ module tb_shared_bank_registers;
         write_register(16'h0104,32'hffffffff,4'hf,1);
         write_register(16'h010c,32'hffffffff,4'hf);
         write_register(16'h0110,32'hffffffff,4'hf,1);
+        write_register(16'h013c,32'hffffffff,4'hf);
+        read_register(16'h013c);
         read_register(16'h0100);read_register(16'h0104);read_register(16'h010c);read_register(16'h0110);
         write_register(16'h0108,32'd1,4'hf);check_capacities();
         write_register(16'h0000,32'd1,4'h1);expected_busy=1;

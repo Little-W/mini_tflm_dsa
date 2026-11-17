@@ -70,12 +70,16 @@ def filelist_sources(path,cwd,picorv32):
 
 def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=524288,pe_count=8,picorv32=None,
               ia_cache_blocks=8,ps_storage_rows=799,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=None,first_read_latency=8,ps_pool_bytes=0,
-              shared_bank_bytes=None,shared_bank_count=None):
+              shared_bank_bytes=None,shared_bank_count=None,im2col_cache_bytes=None):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
     bus_width=axi_data_width(bus_width)
     selected=selected_config()
     shared_bank_bytes=selected['SHARED_BANK_BYTES'] if shared_bank_bytes is None else shared_bank_bytes
     shared_bank_count=selected['SHARED_BANK_COUNT'] if shared_bank_count is None else shared_bank_count
+    im2col_cache_bytes=selected['IM2COL_CACHE_BYTES'] if im2col_cache_bytes is None else im2col_cache_bytes
+    if (type(im2col_cache_bytes) is not int or not 512 <= im2col_cache_bytes <= 65536 or
+            im2col_cache_bytes & (im2col_cache_bytes-1)):
+        raise ValueError('IM2COL_CACHE_BYTES must be a power of two from 512 to 65536')
     if shared_bank_bytes not in (2048,4096,8192) or shared_bank_count not in range(6,10):
         raise ValueError('Shared RAM requires 2048, 4096 or 8192 bytes per bank and 6..9 banks')
     protocol_max_bytes=256*(bus_width//8)
@@ -117,7 +121,8 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
              'pool_max_taps':256,'ram_read_first_latency':first_read_latency,
              'ram_read_latency_origin':'accepted_AR','ram_continuous_read_beat_cycles':1,'bus_width':bus_width,'cpu_axi_data_bits':32,'rounding_mode':'nearest_even',
              'vector_engine':'VCE','add_s8':True,'softmax_s8':True,'capability_version':1,
-             'conv_cache_data_bytes':4096,'conv_cache_policy':'windowed',
+             'conv_cache_data_bytes':im2col_cache_bytes,'conv_cache_policy':'windowed',
+             'im2col_cache_bytes':im2col_cache_bytes,
              'conv_cache_prefetch':True,'vector_line_cache_bytes':0,
              'conv_cache_demand_outstanding':4,'vector_window_outstanding':4,
              'im2col_corrected_elements_per_cycle':4,
@@ -151,6 +156,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
           f'-DSOC_NETWORK_READ_FIRST_LATENCY={first_read_latency}',
           f'-DSOC_NETWORK_SHARED_BANK_BYTES={shared_bank_bytes}',
           f'-DSOC_NETWORK_SHARED_BANK_COUNT={shared_bank_count}',
+          f'-DSOC_NETWORK_IM2COL_CACHE_BYTES={im2col_cache_bytes}',
           *[f'-DSOC_NETWORK_{key.upper()}={value}' for key,value in CPU_PROFILES[cpu_profile].items()],
           f'-DSOC_NETWORK_IA_CACHE_BLOCKS={ia_cache_blocks}',
           f'-DSOC_NETWORK_PS_STORAGE_ROWS={ps_storage_rows}',
@@ -295,6 +301,8 @@ def main():
     parser.add_argument('--bus-width',type=int,choices=(32,64))
     parser.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192))
     parser.add_argument('--shared-bank-count',type=int,choices=range(6,10))
+    parser.add_argument('--im2col-cache-bytes',type=int,
+                        help='Input window cache bytes; default comes from NPU_CONFIG')
     parser.add_argument('--ram-words',type=int,default=524288)
     parser.add_argument('--pe-count',type=int,default=8)
     parser.add_argument('--ia-cache-blocks',type=int,default=8)
@@ -323,7 +331,7 @@ def main():
                      s16_output_banks=args.s16_output_banks,cpu_profile=args.cpu_profile,
                      bus_width=args.bus_width,first_read_latency=args.first_read_latency,
                      ps_pool_bytes=args.ps_pool_bytes,shared_bank_bytes=args.shared_bank_bytes,
-                     shared_bank_count=args.shared_bank_count)
+                     shared_bank_count=args.shared_bank_count,im2col_cache_bytes=args.im2col_cache_bytes)
     if args.build_only:print(binary);return 0
     if args.out is None or args.mem is None:parser.error('--out and --mem are required for execution')
     report=run_sim(binary,args.out,args.mem,data_mem=args.data_mem,result_addr=args.result_addr,

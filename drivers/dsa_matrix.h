@@ -31,6 +31,7 @@ typedef struct {
     uint32_t dma_max_bytes, axi_data_bits;
     uint32_t ps_caps, ps_pool_bytes, ia_cache_bytes;
     uint32_t shared_total_bytes, shared_bank_bytes, shared_ia_bank_mask, ps_directory_rows;
+    uint32_t im2col_cache_bytes;
 } dsa_matrix_limits_t;
 
 #ifdef __cplusplus

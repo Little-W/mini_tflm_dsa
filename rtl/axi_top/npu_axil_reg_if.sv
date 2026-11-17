@@ -24,6 +24,7 @@ module npu_axil_reg_if #(
     parameter logic [31:0] PS_CAPS = 0,
     parameter int unsigned PS_POOL_BYTES = 0,
     parameter int unsigned IA_CACHE_BYTES = 0,
+    parameter int unsigned CONV_CACHE_BYTES = 4096,
     parameter int unsigned SHARED_TOTAL_BYTES = 0,
     parameter int unsigned SHARED_BANK_BYTES = 0,
     parameter logic [31:0] SHARED_IA_BANK_MASK = 0,
@@ -172,6 +173,7 @@ module npu_axil_reg_if #(
     localparam logic [11:0] REG_PS_EARLY_FINISH = 12'h04c;
     localparam logic [11:0] REG_PS_POOL_BYTES = 12'h04d;
     localparam logic [11:0] REG_IA_CACHE_BYTES = 12'h04e;
+    localparam logic [11:0] REG_IM2COL_CACHE_BYTES = 12'h04f; // 0x13c, read-only
     localparam logic [11:0] REG_ID           = 12'h03f; // 0x0fc
     localparam logic [11:0] REG_SHARED_TOTAL_BYTES = 12'h040;
     localparam logic [11:0] REG_SHARED_BANK_BYTES = 12'h041;
@@ -318,6 +320,7 @@ module npu_axil_reg_if #(
                 32'(SHARED_TOTAL_BYTES) - cfg_shared_ia_banks * 32'(SHARED_BANK_BYTES) : 32'(PS_POOL_BYTES);
             REG_IA_CACHE_BYTES: read_data_next = SHARED_CAPABLE ?
                 cfg_shared_ia_banks * 32'(SHARED_BANK_BYTES) : 32'(IA_CACHE_BYTES);
+            REG_IM2COL_CACHE_BYTES: read_data_next = CONV_CAPABLE ? 32'(CONV_CACHE_BYTES) : 32'd0;
             REG_SHARED_TOTAL_BYTES: read_data_next = SHARED_CAPABLE ? 32'(SHARED_TOTAL_BYTES) : 32'd0;
             REG_SHARED_BANK_BYTES: read_data_next = SHARED_CAPABLE ? 32'(SHARED_BANK_BYTES) : 32'd0;
             REG_SHARED_IA_BANKS: read_data_next = cfg_shared_ia_banks;

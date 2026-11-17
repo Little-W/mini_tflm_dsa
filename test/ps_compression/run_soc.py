@@ -283,6 +283,8 @@ def main():
     p.add_argument("--bus-width", type=int, choices=(32,64))
     p.add_argument("--shared-bank-bytes", type=int, choices=(2048,4096,8192))
     p.add_argument("--shared-bank-count", type=int, choices=(6,7,8,9))
+    p.add_argument("--im2col-cache-bytes", type=int,
+                   help="Input window cache bytes; default comes from NPU_CONFIG")
     p.add_argument("--first-read-latency", type=int, default=8)
     p.add_argument("--run-jobs", type=int, choices=(1, 2, 3), default=2)
     p.add_argument("--latency", type=int, default=0)
@@ -319,7 +321,8 @@ def main():
     binary = simulator.build_sim(out / "sim", args.verilator, args.jobs,
         skip=args.resume and (out / "sim/build.json").exists(), ps_pool_bytes=args.pool_bytes,
         bus_width=args.bus_width,first_read_latency=args.first_read_latency,
-        shared_bank_bytes=args.shared_bank_bytes,shared_bank_count=args.shared_bank_count)
+        shared_bank_bytes=args.shared_bank_bytes,shared_bank_count=args.shared_bank_count,
+        im2col_cache_bytes=args.im2col_cache_bytes)
     settings["hardware_profile"] = json.loads((out / "sim/build.json").read_text())["profile"]
     bench.write_json(out / "settings.json", settings)
     if args.build_only:

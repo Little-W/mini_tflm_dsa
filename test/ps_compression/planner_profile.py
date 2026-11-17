@@ -57,6 +57,14 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
     if width not in (32, 64):
         raise ValueError("The NPU AXI data width must be 32 or 64")
     size = integer(source.get("size", 16), "size")
+    im2col_cache = source.get("im2col_cache_bytes", source.get("conv_cache_data_bytes"))
+    if im2col_cache is None:
+        im2col_cache = integer(source.get("cache_sets", 128), "cache_sets", 2) * \
+            integer(source.get("cache_ways", 2), "cache_ways", 1) * \
+            integer(source.get("cache_line_bytes", 16), "cache_line_bytes", 4)
+    im2col_cache = integer(im2col_cache, "im2col_cache_bytes", 64, 65536)
+    if im2col_cache & (im2col_cache-1):
+        raise ValueError("The im2col cache capacity must be a power of two")
     if size != 16 or not source.get("ps_compress", False):
         raise ValueError("The shared PS measurement requires a 16 by 16 compressed-capable array")
     frames = integer(source.get("ps_frame_count", 16), "ps_frame_count", 1, 64)
@@ -97,6 +105,7 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
                  quant_group_setup_cycles=integer(source.get("schedule_quant_group_setup_cycles", 2), "quantization group setup cost"))
     return dict(source_kind="soc" if soc else "conv", size=size, ia_cache_blocks=cache,
         ps_frame_count=frames, bus_width=width, dma_max_bytes=max_dma,
+        im2col_cache_bytes=im2col_cache,
         shared_bank_bytes=bank_bytes, shared_bank_count=bank_count,
         shared_total_bytes=total, shared_ia_bank_mask=sum(1 << value for value in set(choices)),
         ia_cache_bytes=bank_bytes, ps_pool_bytes=total-bank_bytes, ps_directory_rows=directory,
@@ -114,9 +123,11 @@ def profile_header(profile):
     values = {"DENSE_SWEEP_" + name.upper(): profile[name] for name in (
         "size", "ia_cache_blocks", "ps_frame_count", "bus_width", "dma_max_bytes", "ps_caps",
         "matrix_ps_rows", "matrix_output_banks", "ia_cache_bytes", "ps_pool_bytes",
-        "shared_bank_bytes", "shared_bank_count", "shared_total_bytes", "shared_ia_bank_mask", "ps_directory_rows")}
+        "shared_bank_bytes", "shared_bank_count", "shared_total_bytes", "shared_ia_bank_mask", "ps_directory_rows",
+        "im2col_cache_bytes")}
     values.update({"DSA_SCHEDULE_" + key.upper(): value for key, value in profile["planner_costs"].items()})
     values["DSA_SCHEDULE_AXI_DATA_BITS"] = profile["bus_width"]
+    values["DSA_IM2COL_CACHE_BYTES"] = profile["im2col_cache_bytes"]
     values["DENSE_SWEEP_RAM_READ_FIRST_LATENCY"] = profile["memory_timing"]["ram_read_first_latency"]
     values["DENSE_SWEEP_RAM_FIXED_LAT"] = profile["memory_timing"]["ram_fixed_lat"]
     return "/* Measurement settings from the selected simulator build. */\n" + "".join(
@@ -136,6 +147,6 @@ def capability_expectations(profile):
               0x100: profile["shared_total_bytes"], 0x104: profile["shared_bank_bytes"],
               0x10c: profile["shared_ia_bank_mask"], 0x110: profile["ps_directory_rows"],
               0x124: profile["ps_caps"], 0x134: profile["ps_pool_bytes"],
-              0x138: profile["ia_cache_bytes"]}
+              0x138: profile["ia_cache_bytes"], 0x13c: profile["im2col_cache_bytes"]}
     return [(address, value, 0xffffffff if address != 0x124 or profile["literal_bound_capability"]
              else 0xffffffdf) for address, value in values.items()]

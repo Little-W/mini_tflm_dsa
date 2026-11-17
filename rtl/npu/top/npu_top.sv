@@ -19,7 +19,8 @@ module npu_top #(
         IA_CACHE_BLOCKS * SIZE * SIZE * DATA_WIDTH / 8 + `GEMMORA_PS_POOL_BYTES,
     parameter bit FRAME_PREFETCH_ENABLE = 1'b1,
     parameter int unsigned OPERAND_CACHE_ENABLE = 0,
-    parameter int unsigned CONV_CACHE_SETS = 128,
+    parameter int unsigned IM2COL_CACHE_BYTES = 4096,
+    parameter int unsigned CONV_CACHE_SETS = IM2COL_CACHE_BYTES / 32,
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
     parameter int unsigned CONV_CACHE_POLICY = 3,
@@ -168,6 +169,12 @@ module npu_top #(
     logic normal_done_valid;
     logic [1:0] normal_err_code;
     logic vector_dma_cfg_valid, vector_dma_conv_enable, vector_dma_range_enable;
+    initial begin : check_im2col_capacity
+        if (IM2COL_CACHE_BYTES < 512 || IM2COL_CACHE_BYTES > 65536 ||
+            (IM2COL_CACHE_BYTES & (IM2COL_CACHE_BYTES - 1)) != 0)
+            $fatal(1, "IM2COL_CACHE_BYTES must be a power of two from 512 to 65536");
+    end
+
     conv_im2col_pkg::conv_cfg_t vector_dma_conv_cfg;
     logic [31:0] vector_dma_range_base [4], selected_range_base [4];
     logic [32:0] vector_dma_range_end [4], selected_range_end [4];

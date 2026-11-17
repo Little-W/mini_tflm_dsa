@@ -15,6 +15,7 @@
 #define NPU_REG_PS_EARLY_FINISH    0x130u
 #define NPU_REG_PS_POOL_BYTES      0x134u
 #define NPU_REG_IA_CACHE_BYTES     0x138u
+#define NPU_REG_IM2COL_CACHE_BYTES 0x13cu
 
 #define DSA_PS_CAP_VERSION        1u
 #define DSA_PS_CAP_STORE          (1u << 0)
@@ -51,7 +52,11 @@
 #define DSA_PLANNER_CACHE_ENTRIES 8u
 #endif
 #ifndef DSA_IM2COL_CACHE_BYTES
+#ifdef NPU_CONFIG_IM2COL_CACHE_BYTES
+#define DSA_IM2COL_CACHE_BYTES NPU_CONFIG_IM2COL_CACHE_BYTES
+#else
 #define DSA_IM2COL_CACHE_BYTES 4096u
+#endif
 #endif
 
 #ifdef __cplusplus

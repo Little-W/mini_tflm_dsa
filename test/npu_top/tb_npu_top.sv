@@ -32,6 +32,9 @@ module tb_npu_top;
 `ifndef TB_MEM_WORDS
 `define TB_MEM_WORDS 131072
 `endif
+`ifndef TB_IM2COL_CACHE_BYTES
+`define TB_IM2COL_CACHE_BYTES 4096
+`endif
 `ifndef TB_IA_CACHE_BLOCKS
 `define TB_IA_CACHE_BLOCKS 4
 `endif
@@ -153,6 +156,7 @@ module tb_npu_top;
         .BUS_WIDTH(BUS_WIDTH),
         .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES),
         .SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),
+        .IM2COL_CACHE_BYTES(`TB_IM2COL_CACHE_BYTES),
         .SIZE(SIZE),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),

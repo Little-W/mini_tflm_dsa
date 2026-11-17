@@ -12,6 +12,7 @@
 - [向量计算引擎](vector_engine.md)：共享 DW、池化、Add 数据通路，输入复用、最近偶数舍入和完整模型测试；Softmax 与共享窗口缓存的当前设计见 Gemmini 性能分析。
 - [VCE 完整模型测试结果](vce_model_performance.md)：32 位总线下的完整推理、逐算子周期、占比和正确性检查。
 - [容量求解器](capacity.md)：统计缓冲数组和完整顺序逻辑状态，选择 IA/PS 容量及每层分配。
+- [im2col 缓存容量配置](im2col_cache_configuration.md)：配置 512 B～64 KiB 输入缓存，查看对应卷积尺寸、状态开销与访存仿真结果。
 - [共享 IA/PS 测量方法](shared_ia_ps_performance.md)：同一硬件和固件上的 RAW32/压缩对照、逐层周期、完整网络周期与初始化成本。
 - [软件与模型](software.md)：寄存器、驱动、模型选择与 NMSIS。
 - [仿真与 FPGA](verification.md)：VCS、Python 接口和 Vivado 的使用。
@@ -21,6 +22,6 @@
 - [硬件 Conv 集成与验证](hardware_conv.md)：运行时卷积配置、窗口数据复用、实际 RTL / NMSIS 协同仿真和支持范围。
 - [卷积专用缓存替换](conv_replacement.md)：可配置的未来访问预测策略、真实 CNN 比较与存储成本；当前窗口策略使用 4 KiB 共享数据缓存。
 
-默认 `PCR_ENGINE=1` 在统一 NPU 路径中启用 PS 压缩，硬件 Conv 与 Dense 使用同一组加载器、计算阵列及写回资源。VCE 使用独立的向量 PE，并与矩阵路径共享 DMA 和窗口缓存。共享 RAM 使用六至九个 bank，bank 大小可选 1、2、4 KiB，默认七个 2 KiB bank。软件在每层开始前选择 IA 容量、PS 策略和 R/W。AXI4 数据宽度通过 `NPU_AXI_DATA_WIDTH` 选择 32 或 64 位；AXI-Lite 配置接口保持 32 位数据和 16 位地址。
+默认 `PCR_ENGINE=1` 在统一 NPU 路径中启用 PS 压缩，硬件 Conv 与 Dense 使用同一组加载器、计算阵列及写回资源。VCE 使用独立的向量 PE，并与矩阵路径共享 DMA 和窗口缓存。窗口缓存的数据容量由 `IM2COL_CACHE_BYTES` 设置，默认 4 KiB。共享 RAM 使用六至九个 bank，bank 大小可选 2、4、8 KiB，通用及 ASIC 配置默认七个 2 KiB bank，FPGA 配置默认七个 8 KiB bank。软件在模型初始化时选择每层的 IA 容量、PS 策略和 R/W，推理时提交准备好的配置。AXI4 数据宽度通过 `NPU_AXI_DATA_WIDTH` 选择 32 或 64 位；AXI-Lite 配置接口保持 32 位数据和 16 位地址。
 
 寄存器的完整定义见 [寄存器说明](../drivers/registers_v2.md)，FPGA 工程参数见 [Vivado 工程说明](../fpga/vivado/tflm_ai_dsa_soc/README.md)。

@@ -13,7 +13,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "veri/top_regression"))
 from host_tiling import plan_dispatch, payload_bound  # noqa: E402
-from . import device_planner
+from . import device_planner, im2col_cache
 
 TILE = 16
 POOL_ALIGNMENT = 64
@@ -22,7 +22,7 @@ CACHE_CHOICES = (2, 4, 8, 16)
 FRAME_CHOICES = (4, 8, 16, 25)
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-bank-sparse128-v4"
+MODEL_VERSION = "dip-shared-bank-im2col-v5"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -134,7 +134,8 @@ def memory_geometry(cache, frames, pool_bytes, size=16, compressed=True, *, shar
 
 
 def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
-                       bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+                       bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+                       im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
     """Addressable data arrays and their persistent metadata, in logical bits.
 
     The full interface has 16-bit activation and stationary operands, both S8
@@ -153,6 +154,7 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     oa_s16_banks = layout["output_banks_s16"]
     logical_rows = layout["logical_ps_rows"]
     frame_length_bits = max(1, max_frame.bit_length())
+    image_cache = im2col_cache.geometry(im2col_cache_bytes)
     bits = {
         "ia_cache_tags": slots * (8 * 32 + 16 + 12 + 1),
         "ia_slot_metadata": slots * (size.bit_length() + 2),
@@ -161,8 +163,8 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         "requant_is_cache": rmax * size * (32 + 32 + 6 + 6),
         "oa_s8_fifo": oa_banks * size * size * 8,
         "oa_s16_fifo": oa_s16_banks * size * size * 16,
-        "conv_data_cache": 128 * 2 * 16 * 8,
-        "conv_cache_metadata": 128 * 2 * (28 + 1 + 1 + 13 + 32),
+        "conv_data_cache": image_cache["data_bytes"] * 8,
+        "conv_cache_metadata": image_cache["metadata_bits"],
         "conv_prefetch_queue": 8 * (4 * 32 + 1),
         "conv_request_queue": 4 * (5 * 32 + 3),
         "conv_response_queue": 4 * (32 + 1),
@@ -201,20 +203,24 @@ def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *,
 
 
 def buffer_ram_bytes(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
-                     bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+                     bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+                     im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
     return ceil_div(sum(buffer_arrays_bits(cache, frames, pool_bytes, size, compressed,
                                           shared=shared, bank_bytes=bank_bytes,
-                                          bank_count=bank_count).values()), 8)
+                                          bank_count=bank_count,
+                                          im2col_cache_bytes=im2col_cache_bytes).values()), 8)
 
 
 def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                size=16, compressed=True, measured_state_bits=None, shared=None,
-               bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+               bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+               im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
     _integer(budget_bytes, "budget bytes")
     if scope not in SCOPES:
         raise ValueError(f"budget scope must be one of {SCOPES}")
     arrays = buffer_arrays_bits(cache, frames, pool_bytes, size, compressed, shared=shared,
-                                bank_bytes=bank_bytes, bank_count=bank_count)
+                                bank_bytes=bank_bytes, bank_count=bank_count,
+                                im2col_cache_bytes=im2col_cache_bytes)
     ram_bits = sum(arrays.values())
     ram_bytes = ceil_div(ram_bits, 8)
     if measured_state_bits is not None:
@@ -230,6 +236,7 @@ def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
     return dict(ia_cache_blocks=cache, ps_frame_count=frames, size=size,
                 compressed_ps=bool(compressed), ps_pool_bytes=pool_bytes if compressed else 0,
                 max_r=rmax, max_w=frames, **layout,
+                im2col_cache_geometry=im2col_cache.geometry(im2col_cache_bytes),
                 decode_fifo_rows=DECODE_FIFO_ROWS if compressed else 0,
                 decode_prefetch_credits=DECODE_PREFETCH_CREDITS if compressed else 0,
                 buffer_arrays_bits=arrays, buffer_ram_bits=ram_bits, buffer_ram_bytes=ram_bytes,
@@ -324,8 +331,10 @@ def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="adapti
 
 
 def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", representation="adaptive",
-                   measure=None, fixed_only=False, bank_bytes=SHARED_BANK_BYTES, bank_count=None):
+                   measure=None, fixed_only=False, bank_bytes=SHARED_BANK_BYTES, bank_count=None,
+                   im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
     _integer(budget_bytes, "budget bytes")
+    im2col_cache.validate_bytes(im2col_cache_bytes)
     if scope not in SCOPES:
         raise ValueError(f"budget scope must be one of {SCOPES}")
     if scope == "logical-state" and measure is None:
@@ -335,7 +344,8 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
         layout = memory_geometry(cache, frames, pool, shared=True,
                                  bank_bytes=bank_bytes, bank_count=bank_count)
         if buffer_ram_bytes(cache, frames, pool, shared=True,
-                            bank_bytes=bank_bytes, bank_count=bank_count) > budget_bytes:
+                            bank_bytes=bank_bytes, bank_count=bank_count,
+                            im2col_cache_bytes=im2col_cache_bytes) > budget_bytes:
             return 0, None
         state = measure(cache, frames, pool, representation, bank_bytes=bank_bytes,
                         bank_count=bank_count) if scope == "logical-state" else None
@@ -345,7 +355,8 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
         while low < high:
             candidate = (low + high + 1) // 2
             pool = pool_from_unit(candidate)
-            if buffer_ram_bytes(cache, frames, pool, shared=shared, bank_bytes=bank_bytes) <= unit:
+            if buffer_ram_bytes(cache, frames, pool, shared=shared, bank_bytes=bank_bytes,
+                                im2col_cache_bytes=im2col_cache_bytes) <= unit:
                 low = candidate
             else:
                 high = candidate - 1
@@ -354,7 +365,8 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
     def largest_ram_candidate(ram_budget):
         fixed = family_maximum(ram_budget, 1, min(MAX_POOL_BYTES, ram_budget) // POOL_ALIGNMENT,
                                lambda count: count * POOL_ALIGNMENT, shared=False)
-        while fixed and (buffer_ram_bytes(cache, frames, fixed, bank_bytes=bank_bytes) > ram_budget or
+        while fixed and (buffer_ram_bytes(cache, frames, fixed, bank_bytes=bank_bytes,
+                                         im2col_cache_bytes=im2col_cache_bytes) > ram_budget or
                          (fixed_only and memory_geometry(cache, frames, fixed, bank_bytes=bank_bytes)["shared_ia_ps_enabled"])):
             fixed -= POOL_ALIGNMENT
         if fixed_only:
@@ -374,13 +386,15 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
         state = measure(cache, frames, pool, representation) if scope == "logical-state" else None
         if state is None or state <= budget_bytes * 8:
             return pool, state
-        ram_budget = buffer_ram_bytes(cache, frames, pool, bank_bytes=bank_bytes) - ceil_div(state - budget_bytes * 8, 8)
+        ram_budget = buffer_ram_bytes(cache, frames, pool, bank_bytes=bank_bytes,
+                                      im2col_cache_bytes=im2col_cache_bytes) - ceil_div(state - budget_bytes * 8, 8)
     return 0, None
 
 
 def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="adaptive", *,
-          measure=None, bank_bytes=None):
+          measure=None, bank_bytes=None, im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
     tasks = validate_workloads(workloads)
+    im2col_cache.validate_bytes(im2col_cache_bytes)
     _integer(budget_bytes, "budget bytes")
     if budget_scope not in SCOPES or representation not in REPRESENTATIONS:
         raise ValueError("unsupported budget scope or PS representation")
@@ -394,14 +408,16 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ad
             capacities = []
             if bank_bytes is None:
                 pool, state = max_pool_bytes(cache, frames, budget_bytes, scope=budget_scope,
-                                             representation=representation, measure=measure, fixed_only=True)
+                                             representation=representation, measure=measure, fixed_only=True,
+                                             im2col_cache_bytes=im2col_cache_bytes)
                 if pool:
                     capacities.append((pool, state, {}))
             initial_ia = cache * TILE * TILE * 2
             for banks in range(SHARED_MIN_BANKS, SHARED_MAX_BANKS + 1):
                 shared_pool = banks * SHARED_BANK_BYTES - initial_ia if bank_bytes is None else (banks - 1) * bank_bytes
                 parameters = {} if bank_bytes is None else dict(shared=True, bank_bytes=bank_bytes, bank_count=banks)
-                if shared_pool < POOL_ALIGNMENT or buffer_ram_bytes(cache, frames, shared_pool, **parameters) > budget_bytes:
+                if shared_pool < POOL_ALIGNMENT or buffer_ram_bytes(cache, frames, shared_pool,
+                        im2col_cache_bytes=im2col_cache_bytes, **parameters) > budget_bytes:
                     continue
                 measured = None
                 if budget_scope == "logical-state":
@@ -416,7 +432,8 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ad
                 except ValueError:
                     continue
                 alloc = allocation(cache, frames, pool, budget_bytes, budget_scope,
-                                   measured_state_bits=state, **parameters)
+                                   measured_state_bits=state, im2col_cache_bytes=im2col_cache_bytes,
+                                   **parameters)
                 key = (math.prod(p["service_estimate"] for p in plans),
                        sum(p["column_frames"] for p in plans), sum(p["groups"] for p in plans),
                        alloc["budget_used_bytes"], cache, frames)
@@ -443,7 +460,8 @@ def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="ad
                 assumptions=[
                     "One shared physical compute array supports INT8 and INT16 operands, WS/IS, bias, per-channel quantization and tails.",
                     "Conv, the vector engine including its three-row image cache, and both output data widths are included in the RAM subtotal.",
-                    "Shared builds use configured 1, 2 or 4 KiB physical 128-bit SRAM banks. IA and PS receive disjoint banks per layer, and the data pool is counted once.",
+                    "Shared builds use configured 2, 4 or 8 KiB physical 128-bit SRAM banks. IA and PS receive disjoint banks per layer, and the data pool is counted once.",
+                    "The im2col data cache keeps its configured capacity during optimization. Its full tags and lifetime state are included, with request and prefetch queues counted separately.",
                     "Shared storage has 1024 row directory entries. IA tags, slot metadata, IS bias and requantization buffers cover the largest supported logical IA allocation.",
                     "An explicit shared bank count sets the total data pool independently of the initial IA and PS fields. Fixed builds retain four PS banks with 64-byte capacity increments.",
                     "The decoder has eight 512-bit FIFO rows and seven prefetch credits; history and pipeline registers are included in elaborated state.",

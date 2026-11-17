@@ -16,6 +16,7 @@ override the file:
 | Setting | Supported values | Default | RTL generic |
 |---|---|---:|---|
 | `NPU_AXI_DATA_WIDTH` | 32, 64 bits | 64 | `BUS_WIDTH` |
+| `IM2COL_CACHE_BYTES` | Powers of two from 512 to 65536 bytes | 4096 | `IM2COL_CACHE_BYTES` |
 | `SHARED_BANK_BYTES` | 8192 bytes | 8192 | `SHARED_BANK_BYTES` |
 | `SHARED_BANK_COUNT` | 6, 7, 8, 9 | 7 | `SHARED_BANK_COUNT` |
 

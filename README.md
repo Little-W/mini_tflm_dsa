@@ -19,7 +19,7 @@ NPU 通过 32 位数据、16 位地址的 AXI-Lite 接收任务配置，通过�
 
 ## 系统结构
 
-CPU 通过 AXI-Lite 提交配置。NPU 的 DMA 从主存读取输入和权重，IA/kernel loader 为阵列提供分块数据。中间部分和存入 IA/PS 共享 RAM，最终结果经过量化和 AXI 写回。独立的 VCE 复用 DMA 及 4 KiB 窗口缓存。
+CPU 通过 AXI-Lite 提交配置。NPU 的 DMA 从主存读取输入和权重，IA/kernel loader 为阵列提供分块数据。中间部分和存入 IA/PS 共享 RAM，最终结果经过量化和 AXI 写回。独立的 VCE 复用 DMA 及可配置容量的窗口缓存，窗口缓存默认使用 4 KiB 数据 RAM。
 
 NPU 顶层位于 [`rtl/npu/top/npu_top.sv`](rtl/npu/top/npu_top.sv)，SoC 顶层位于 [`rtl/soc_top.sv`](rtl/soc_top.sv)。数据通路和配置参数见[硬件架构](docs/architecture.md)，寄存器定义见[寄存器说明](drivers/registers_v2.md)。
 
@@ -71,7 +71,7 @@ make vector-engine-soc VERILATOR=/path/to/verilator \
 CNN、MobileNetV1、DS-CNN、ResNet-8 的测试方法见
 [完整模型测试说明](test/model_benchmark/README.md)。
 
-### 配置共享 IA/PS 存储
+### 配置共享 IA/PS 存储与 im2col 缓存
 
 可以在终端菜单中编辑硬件参数、查看容量占用并调用求解器：
 
@@ -92,6 +92,7 @@ make vcs-top
 | 参数 | 可选值 | 通用及 ASIC 默认值 | FPGA 默认值 |
 |---|---|---:|---:|
 | `NPU_AXI_DATA_WIDTH` | 32、64 位 | 64 | 64 |
+| `IM2COL_CACHE_BYTES` | 512～65536 字节，二次幂 | 4096 | 4096 |
 | `SHARED_BANK_BYTES` | 2048、4096、8192 字节 | 2048 | 8192 |
 | `SHARED_BANK_COUNT` | 6、7、8、9 | 7 | 7 |
 
@@ -105,6 +106,13 @@ make capacity-show NPU_CONFIG=config/npu_fpga.mk
 ```
 
 容量求解器统计数据数组、目录、缓存标签及队列；`MAX_STATE_KIB` 还要求通过 Verilator 展开统计完整顺序逻辑状态。求解与构建分两次 Make 调用。配置范围、任务集合和验证入口见[容量说明](docs/capacity.md)。
+
+`IM2COL_CACHE_BYTES` 设置 im2col 原始输入缓存的数据容量，标签和使用状态另计；它与 IA/PS 共享 RAM 分别配置。缓存固定使用两路、16 字节缓存行，组数为 `IM2COL_CACHE_BYTES / 32`。在 16 字节对齐、通道数为 16 的整数倍的 NHWC 输入下，4 KiB 可容纳一个 K16 通道片段的三行输入带，宽度上限为 S8 的 85 像素或 S16 的 42 像素。`menuconfig` 帮助和 `capacity-show` 显示对应容量的卷积尺寸提示。完整公式、常用尺寸和仿真结果见 [im2col 缓存容量配置](docs/im2col_cache_configuration.md)。
+
+```bash
+make capacity-show IM2COL_CACHE_BYTES=8192
+make capacity-check IM2COL_CACHE_BYTES=8192
+```
 
 ```bash
 make ps-stream-verify VERILATOR=/path/to/verilator
@@ -152,7 +160,7 @@ make vcs-tflm
 | `make -C asic sram-test` | 使用 SRAM 宏功能模型测试存储器封装 |
 | `make -C asic syn` | 使用 Design Compiler 综合 NPU |
 
-VCS、SoC、FPGA 和 ASIC 构建使用 `NPU_AXI_DATA_WIDTH`、`SHARED_BANK_BYTES` 与 `SHARED_BANK_COUNT`，并按目标选择配置文件。阵列及调度参数包括 `SIZE`、`IA_CACHE_BLOCKS` 和 `PS_FRAME_COUNT`。`PCR_ENGINE=1` 启用统一路径中的 PS 压缩及 frame 调度。软件在 Prepare 查询能力寄存器并选择合法参数，详细规则见[硬件架构](docs/architecture.md)。
+VCS、SoC、FPGA 和 ASIC 构建使用 `NPU_AXI_DATA_WIDTH`、`IM2COL_CACHE_BYTES`、`SHARED_BANK_BYTES` 与 `SHARED_BANK_COUNT`，并按目标选择配置文件。阵列及调度参数包括 `SIZE`、`IA_CACHE_BLOCKS` 和 `PS_FRAME_COUNT`。`PCR_ENGINE=1` 启用统一路径中的 PS 压缩及 frame 调度。软件在 Prepare 查询能力寄存器并选择合法参数，详细规则见[硬件架构](docs/architecture.md)。
 
 FPGA 工程使用 AMD Vivado，入口和参数见 [FPGA 工程说明](fpga/vivado/tflm_ai_dsa_soc/README.md)。ASIC 流程需要 Synopsys 工具和使用者提供的工艺库，配置方法见 [ASIC 综合环境](asic/README.md)。Python 周期仿真接口见 [Python 模型说明](veri/python_model/README.md)。
 
@@ -177,6 +185,7 @@ FPGA 工程使用 AMD Vivado，入口和参数见 [FPGA 工程说明](fpga/vivad
 - [快速开始](docs/getting-started.md)
 - [硬件架构](docs/architecture.md)
 - [容量求解器](docs/capacity.md)
+- [im2col 缓存容量配置](docs/im2col_cache_configuration.md)
 - [共享 IA/PS 测量方法](docs/shared_ia_ps_performance.md)
 - [软件与模型](docs/software.md)
 - [仿真与 FPGA](docs/verification.md)

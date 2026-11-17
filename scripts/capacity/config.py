@@ -7,11 +7,12 @@ import re
 import stat
 import tempfile
 
-from . import model
+from . import model, im2col_cache
 
 DEFAULTS = {
     "PCR_ENGINE": 1, "SIZE": 16, "IA_CACHE_BLOCKS": 4, "PS_FRAME_COUNT": 16,
     "NPU_AXI_DATA_WIDTH": 64,
+    "IM2COL_CACHE_BYTES": im2col_cache.DEFAULT_BYTES,
     "SHARED_BANK_BYTES": 2048, "SHARED_BANK_COUNT": 7,
     "AXI_READ_OUTSTANDING": 4, "PS_POOL_BYTES": 12288, "PS_FORCE_RAW": 0,
     "CAPACITY_BUDGET_BYTES": 131072,
@@ -84,6 +85,7 @@ def validate_config(values, require_pcr=False, *, check_budget=True, state_repor
             raise ValueError(f"{key} must be 0 or 1")
     if normalized["NPU_AXI_DATA_WIDTH"] not in (32, 64):
         raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
+    im2col_cache.validate_bytes(normalized["IM2COL_CACHE_BYTES"])
     if normalized["SHARED_BANK_BYTES"] not in (2048, 4096, 8192):
         raise ValueError("SHARED_BANK_BYTES must be 2048, 4096 or 8192")
     if normalized["SHARED_BANK_COUNT"] not in range(6, 10):
@@ -137,7 +139,7 @@ def selected_config(config_path=None):
 def environment_settings():
     """Literal hardware overrides applied before explicit command arguments."""
     return {key: literal_value(key, os.environ[key])
-            for key in ("NPU_AXI_DATA_WIDTH", "SHARED_BANK_BYTES", "SHARED_BANK_COUNT")
+            for key in ("NPU_AXI_DATA_WIDTH", "IM2COL_CACHE_BYTES", "SHARED_BANK_BYTES", "SHARED_BANK_COUNT")
             if key in os.environ}
 
 
@@ -157,6 +159,7 @@ def allocation_from_config(values, *, state_report=None):
                               values["PS_POOL_BYTES"], values["CAPACITY_BUDGET_BYTES"],
                               values["CAPACITY_BUDGET_SCOPE"], size=values["SIZE"],
                               compressed=bool(values["PCR_ENGINE"]), measured_state_bits=bits,
+                              im2col_cache_bytes=values["IM2COL_CACHE_BYTES"],
                               **shared_geometry(values))
     result["state_measurement"] = None if report is None else {
         "source_identity": report["cache_identity"], "verilator": report["verilator"]}

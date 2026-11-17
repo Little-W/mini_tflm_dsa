@@ -18,7 +18,7 @@ import unicodedata
 ROOT = Path(__file__).resolve().parents[2]
 if __package__ in (None, ""):
     sys.path.insert(0, str(ROOT))
-from scripts.capacity import model
+from scripts.capacity import model, im2col_cache
 
 
 @dataclass(frozen=True)
@@ -66,6 +66,10 @@ FIELDS = (
           "NPU DMA and memory data bits. CPU and AXI-Lite register data remain 32 bits.", (32, 64)),
     Field("AXI_READ_OUTSTANDING", "Buffers and bus", "AXI read outstanding",
           "Maximum queued read transactions, from 1 to 16."),
+    Field("IM2COL_CACHE_BYTES", "Convolution input cache", "im2col data cache",
+          "Original-image data bytes, separate from shared IA/PS RAM. Two ways and 16-byte lines; "
+          "512 B to 64 KiB in powers of two. Press ? for convolution sizes at the selected capacity.",
+          im2col_cache.BYTE_CHOICES, byte_size=True),
 )
 
 ACTIONS = (("optimize", "Optimize capacity for the selected workloads"),
@@ -476,7 +480,8 @@ class TerminalMenu:
         paths = "\n\nConfiguration: " + str(self.state.path) + "\nWorkloads: " + self.state.workload_label
         if self.selected < len(FIELDS):
             field = FIELDS[self.selected]
-            self.message(field.key, field.help + "\n\nChanges are kept in memory until Save. "
+            detail = im2col_cache.help_text(self.state.values[field.key]) if field.key == "IM2COL_CACHE_BYTES" else field.help
+            self.message(field.key, detail + "\n\nChanges are kept in memory until Save. "
                          "O runs the capacity solver for the selected workloads and updates the draft. "
                          "For full details, see docs/capacity.md." + paths)
         else:

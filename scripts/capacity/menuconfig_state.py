@@ -11,11 +11,11 @@ import json
 from pathlib import Path
 import re
 
-from . import config, model, elaboration
+from . import config, model, elaboration, im2col_cache
 
 
 ROOT = Path(__file__).resolve().parents[2]
-BYTE_KEYS = {"CAPACITY_BUDGET_BYTES", "PS_POOL_BYTES", "SHARED_BANK_BYTES"}
+BYTE_KEYS = {"CAPACITY_BUDGET_BYTES", "PS_POOL_BYTES", "SHARED_BANK_BYTES", "IM2COL_CACHE_BYTES"}
 BYTE_AMOUNT = re.compile(r"([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))\s*(B|KiB|MiB|K|M)\Z",
                          re.IGNORECASE)
 
@@ -61,6 +61,8 @@ def _field_value(key, value):
         raise ValueError("SIZE must be a power of two in 2..32")
     if key == "NPU_AXI_DATA_WIDTH" and value not in (32, 64):
         raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
+    if key == "IM2COL_CACHE_BYTES":
+        im2col_cache.validate_bytes(value)
     if key == "SHARED_BANK_BYTES" and value not in (2048, 4096, 8192):
         raise ValueError("SHARED_BANK_BYTES must be 2048, 4096 or 8192")
     if key == "SHARED_BANK_COUNT" and value not in range(6, 10):
@@ -195,6 +197,7 @@ class MenuConfigState:
                              self.values["CAPACITY_BUDGET_SCOPE"],
                              self.values["CAPACITY_REPRESENTATION"],
                              measure=measure if self.values["CAPACITY_BUDGET_SCOPE"]=="logical-state" else None,
+                             im2col_cache_bytes=self.values["IM2COL_CACHE_BYTES"],
                              bank_bytes=self.values["SHARED_BANK_BYTES"])
         allocation = result["allocation"]
         updated = {**self.values, "PCR_ENGINE": 1, "SIZE": model.TILE,

@@ -26,7 +26,9 @@ IA loader 与 IS 的 kernel loader 使用同一矩阵返回合同。本文保留
 方法及本次重新执行范围见 [源码交付说明](conv_source_only.md)。
 
 当前标准配置使用 **4 KiB 共享窗口缓存**，参数为 128 sets、2 ways、16 B line、
-`CONV_CACHE_POLICY=3`，同时服务 Conv 和 DW。统一 NPU 路径支持 PS 压缩和共享
+`CONV_CACHE_POLICY=3`，同时服务 Conv 和 DW。`IM2COL_CACHE_BYTES` 可在配置文件
+中选择 512 B～64 KiB，组数按数据容量自动计算。缓存容量、卷积尺寸提示和能力寄存器
+见 [im2col 缓存容量配置](im2col_cache_configuration.md)。统一 NPU 路径支持 PS 压缩和共享
 IA/PS bank，详见 [硬件架构](architecture.md) 与 [容量说明](capacity.md)。
 
 本文的容量实验采用固定实验版本：小层容量与十层六模式表来自

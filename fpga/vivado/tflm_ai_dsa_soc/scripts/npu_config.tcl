@@ -2,6 +2,7 @@
 namespace eval npu_config {
     variable defaults [dict create \
         NPU_AXI_DATA_WIDTH 64 SHARED_BANK_BYTES 8192 SHARED_BANK_COUNT 7 \
+        IM2COL_CACHE_BYTES 4096 \
         PCR_ENGINE 1 PS_POOL_BYTES 49152 PS_FORCE_RAW 0]
 }
 
@@ -40,6 +41,11 @@ proc npu_config::validate {values} {
     }
     if {[dict get $values SHARED_BANK_BYTES] != 8192} {
         error "FPGA block RAM requires SHARED_BANK_BYTES=8192 (128-bit data by 512 rows per bank)"
+    }
+    set im2col_bytes [dict get $values IM2COL_CACHE_BYTES]
+    if {$im2col_bytes < 512 || $im2col_bytes > 65536 ||
+        ($im2col_bytes & ($im2col_bytes - 1)) != 0} {
+        error "IM2COL_CACHE_BYTES must be a power of two from 512 to 65536"
     }
     set pool [dict get $values PS_POOL_BYTES]
     if {$pool < 64 || $pool % 64 != 0} {
@@ -82,7 +88,7 @@ proc npu_config::read {root {config_path ""}} {
             error "$config_path:$line_number: unsupported assignment syntax for $name"
         }
     }
-    foreach name {NPU_AXI_DATA_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT} {
+    foreach name {NPU_AXI_DATA_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT IM2COL_CACHE_BYTES} {
         if {[info exists ::env($name)]} {
             dict set values $name [integer_literal $name $::env($name)]
         }
@@ -96,14 +102,16 @@ proc npu_config::generics {values} {
     return [list \
         BUS_WIDTH=[dict get $values NPU_AXI_DATA_WIDTH] \
         SHARED_BANK_BYTES=[dict get $values SHARED_BANK_BYTES] \
-        SHARED_BANK_COUNT=[dict get $values SHARED_BANK_COUNT]]
+        SHARED_BANK_COUNT=[dict get $values SHARED_BANK_COUNT] \
+        IM2COL_CACHE_BYTES=[dict get $values IM2COL_CACHE_BYTES]]
 }
 
 proc npu_config::project_values {generic_items} {
     variable defaults
     set values $defaults
     set names [dict create BUS_WIDTH NPU_AXI_DATA_WIDTH \
-        SHARED_BANK_BYTES SHARED_BANK_BYTES SHARED_BANK_COUNT SHARED_BANK_COUNT]
+        SHARED_BANK_BYTES SHARED_BANK_BYTES SHARED_BANK_COUNT SHARED_BANK_COUNT \
+        IM2COL_CACHE_BYTES IM2COL_CACHE_BYTES]
     set found [dict create]
     foreach item $generic_items {
         set equal [string first = $item]
@@ -115,7 +123,7 @@ proc npu_config::project_values {generic_items} {
         dict set values $key [integer_literal $key $value]
         dict set found $name 1
     }
-    foreach name [dict keys $names] {
+    foreach name {BUS_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT} {
         if {![dict exists $found $name]} {
             error "Project source generics must explicitly specify $name"
         }

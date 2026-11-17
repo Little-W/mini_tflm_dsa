@@ -333,10 +333,14 @@ def source_files():
     tracked += [p for directory in includes for p in sorted(directory.glob('*.svh'))]
     return sources,includes,list(dict.fromkeys(tracked))
 
-def build(out,size,verilator,jobs,cache_sets=32,cache_policy=3,
+def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
           ps_compress=False,pool_bytes=16384,force_raw=False,lint_only=False,
           bus_width=None,shared_bank_bytes=2048,shared_bank_count=0):
     bus_width=axi_data_width(bus_width)
+    if cache_sets is None:
+        cache_sets=selected_config()['IM2COL_CACHE_BYTES']//32
+    if cache_sets<2 or cache_sets&(cache_sets-1):
+        raise ValueError('Cache sets must be a power of two >=2')
     if shared_bank_bytes not in (2048,4096,8192) or shared_bank_count not in (0,6,7,8,9):
         raise ValueError('Shared RAM requires 2/4/8 KiB banks and 6..9 physical banks')
     out=Path(out).resolve()
@@ -366,7 +370,7 @@ def build(out,size,verilator,jobs,cache_sets=32,cache_policy=3,
     after={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
     result={'returncode':rc,'warnings':warnings,'command':[str(v) for v in cmd],
             'size':size,'bus_width':bus_width,'shared_bank_bytes':shared_bank_bytes,
-            'shared_bank_count':shared_bank_count,'cache_sets':cache_sets,'cache_ways':2,'cache_line_bytes':16,'cache_policy':cache_policy,
+            'shared_bank_count':shared_bank_count,'cache_sets':cache_sets,'cache_ways':2,'cache_line_bytes':16,'cache_data_bytes':cache_sets*32,'cache_policy':cache_policy,
             'ps_compress':ps_compress,'pool_bytes':pool_bytes,'force_raw':force_raw,'lint_only':lint_only,
             'source_sha256':before,'sources_unchanged_during_build':before==after}
     if rc==0 and not lint_only:
@@ -395,7 +399,8 @@ def run_suite(binary,out,name,tasks,no_random=False,force_codec=False):
     return result
 
 def main():
-    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--sizes',type=int,nargs='+',default=[4,8,16]);a.add_argument('--out',type=Path,default=ROOT/'build/conv_npu');a.add_argument('--verilator',default='verilator');a.add_argument('--jobs',type=int,default=1);a.add_argument('--cache-policy',type=int,choices=[0,1,2,3],default=3);a.add_argument('--cache-sets',type=int,default=32);a.add_argument('--smoke',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--reuse-audit',action='store_true',help='Focused byte-level AXI reuse audit, including output-channel group replay')
+    a=argparse.ArgumentParser(description=__doc__);a.add_argument('--sizes',type=int,nargs='+',default=[4,8,16]);a.add_argument('--out',type=Path,default=ROOT/'build/conv_npu');a.add_argument('--verilator',default='verilator');a.add_argument('--jobs',type=int,default=1);a.add_argument('--cache-policy',type=int,choices=[0,1,2,3],default=3);a.add_argument('--cache-sets',type=int);a.add_argument('--smoke',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--reuse-audit',action='store_true',help='Focused byte-level AXI reuse audit, including output-channel group replay')
+    a.add_argument('--cache-bytes',type=int,help='Input cache capacity in bytes; defaults to IM2COL_CACHE_BYTES')
     a.add_argument('--ps-compress',action='store_true')
     a.add_argument('--pool-bytes',type=int,default=16384)
     a.add_argument('--force-raw',action='store_true',help='Use RAW records in the shared compressed-store datapath')
@@ -409,6 +414,12 @@ def main():
     a.add_argument('--shared-bank-count',type=int,choices=(6,7,8,9))
     x=a.parse_args()
     selected=selected_config()
+    if x.cache_sets is not None and x.cache_bytes is not None:
+        a.error('--cache-sets and --cache-bytes are mutually exclusive')
+    if x.cache_bytes is not None and (x.cache_bytes<512 or x.cache_bytes>65536 or x.cache_bytes&(x.cache_bytes-1)):
+        a.error('--cache-bytes must be a power of two in 512..65536')
+    if x.cache_sets is None:
+        x.cache_sets=(selected['IM2COL_CACHE_BYTES'] if x.cache_bytes is None else x.cache_bytes)//32
     x.bus_width=axi_data_width(x.bus_width)
     x.shared_bank_bytes=selected['SHARED_BANK_BYTES'] if x.shared_bank_bytes is None else x.shared_bank_bytes
     x.shared_bank_count=selected['SHARED_BANK_COUNT'] if x.shared_bank_count is None else x.shared_bank_count

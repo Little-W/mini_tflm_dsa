@@ -53,10 +53,13 @@ SRAM 功能仿真使用 Icarus Verilog 或 VCS。NPU 仿真禁用厂商模型中
 | 参数 | 范围 | 默认值 |
 |---|---|---:|
 | `NPU_AXI_DATA_WIDTH` | 32、64 位，传入 RTL 的 `BUS_WIDTH` | 64 |
+| `IM2COL_CACHE_BYTES` | 512～65536 字节，二次幂 | 4096 |
 | `SHARED_BANK_BYTES` | 2048、4096、8192 字节 | 2048 |
 | `SHARED_BANK_COUNT` | 6、7、8、9 | 7 |
 
 共享数据 RAM 总量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`，默认 14336 字节。每层执行前为 IA 分配 1、2 或 4 个 bank，其余用于 PS。S16 输入至少需要两个 IA bank；跨 K 的 RAW32 部分和至少需要四个 PS bank，经严格范围检查的 S24、S16 部分和上限分别要求至少三个、两个 PS bank。任务执行期间分配保持固定。
+
+`IM2COL_CACHE_BYTES` 配置独立的原始输入窗口缓存，固定使用两路和 16 字节缓存行。数据 RAM、标签及使用状态分别计入容量报告；对应卷积尺寸和计算方法见 [im2col 缓存容量配置](../docs/im2col_cache_configuration.md)。
 
 NPU 的控制寄存器在 SoC 中使用固定 32 位数据、16 位地址的 AXI-Lite 接口；`NPU_AXI_DATA_WIDTH` 控制张量数据的 AXI4 接口。综合顶层 `npu_top` 的任务配置端口由 SoC 的 AXI-Lite 寄存器模块连接。
 

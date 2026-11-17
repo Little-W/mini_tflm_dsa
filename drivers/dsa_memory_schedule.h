@@ -23,22 +23,31 @@ static inline uint64_t dsa_schedule_scale(uint64_t count, uint64_t work,
 static inline void dsa_schedule_window_footprints(const dsa_schedule_config_t *c,
     uint32_t *footprints)
 {
-    uint16_t occupancy[256]={0};
     uint32_t sets=c->im2col.cache_bytes/32u;
-    uint32_t x=0u,row_base=0u,peak=0u,points=dsa_schedule_min(c->rows,1024u);
+    uint32_t peak=0u,points=dsa_schedule_min(c->rows,1024u);
     for (uint32_t i=0u;i<=64u;++i) footprints[i]=0u;
     if (!c->im2col_input_width || !c->im2col_output_width || !c->im2col_stride_h ||
         c->im2col.group_channels<16u || c->im2col.input_channels%16u ||
-        sets<2u || sets>256u || (sets&(sets-1u))) return;
+        sets<2u || sets>2048u || (sets&(sets-1u))) return;
     uint32_t row_step=(c->im2col_stride_h*c->im2col_input_width)&(sets-1u);
-    uint32_t step=c->im2col.stride_w&(sets-1u),index=0u;
-    for (uint32_t point=1u;point<=points;++point) {
-        uint32_t count=++occupancy[index];
-        if (peak<count) peak=count;
-        footprints[(point+15u)>>4]=peak*sets*16u*c->im2col.source_bytes;
-        if (++x==c->im2col_output_width) {
-            x=0u;row_base=(row_base+row_step)&(sets-1u);index=row_base;
-        } else index=(index+step)&(sets-1u);
+    uint32_t step=c->im2col.stride_w&(sets-1u);
+    /* Process set ranges separately to bound initialization stack usage. */
+    for (uint32_t first=0u;first<sets;first+=256u) {
+        uint16_t occupancy[256]={0};
+        uint32_t x=0u,row_base=0u,index=0u,range_peak=0u;
+        for (uint32_t point=1u;point<=points;++point) {
+            if (index>=first && index-first<256u) {
+                uint32_t count=++occupancy[index-first];
+                if (range_peak<count) range_peak=count;
+            }
+            uint32_t footprint=range_peak*sets*16u*c->im2col.source_bytes;
+            uint32_t window=(point+15u)>>4;
+            if (footprints[window]<footprint) footprints[window]=footprint;
+            if (++x==c->im2col_output_width) {
+                x=0u;row_base=(row_base+row_step)&(sets-1u);index=row_base;
+            } else index=(index+step)&(sets-1u);
+        }
+        if (peak<range_peak) peak=range_peak;
     }
     for (uint32_t i=(points+15u)/16u+1u;i<=64u;++i)
         footprints[i]=peak*sets*16u*c->im2col.source_bytes;

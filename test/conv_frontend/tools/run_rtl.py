@@ -4,6 +4,8 @@ import argparse,hashlib,json,shutil,subprocess,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 OUTPUT=ROOT.parents[1]/'build/conv_frontend'
+sys.path.insert(0,str(ROOT.parents[1]))
+from scripts.capacity.config import selected_config
 FILES=['rtl/conv_im2col_pkg.sv','rtl/conv_udiv32.sv','rtl/conv_sdp_ram.sv','rtl/conv_next_use_predictor.sv',
        'rtl/conv_axi_span_reader.sv','rtl/conv_read_cache.sv','rtl/conv_im2col_frontend.sv',
        'rtl/conv_ia_write_adapter.sv','rtl/conv_ia_tile_path.sv','tests/tb_conv_im2col_frontend.sv']
@@ -18,7 +20,8 @@ def main():
     ap.add_argument('--cache-policy',type=int,default=3)
     ap.add_argument('--prefetch',action='store_true')
     ap.add_argument('--windowed',action='store_true')
-    ap.add_argument('--cache-sets',type=int,default=128)
+    ap.add_argument('--cache-sets',type=int)
+    ap.add_argument('--cache-bytes',type=int,help='Input cache capacity in bytes; defaults to IM2COL_CACHE_BYTES')
     ap.add_argument('--cache-ways',type=int,default=2)
     ap.add_argument('--line-bytes',type=int,default=16)
     ap.add_argument('--tile-path',action='store_true')
@@ -29,6 +32,19 @@ def main():
     ap.add_argument('--vectors',type=Path,help='Use an existing vector file')
     ap.add_argument('--out',type=Path,help='Directory for logs, status and compiled RTL')
     a=ap.parse_args()
+    if a.cache_sets is not None and a.cache_bytes is not None:
+        ap.error('--cache-sets and --cache-bytes are mutually exclusive')
+    if a.cache_bytes is not None and (a.cache_bytes<512 or a.cache_bytes>65536 or a.cache_bytes&(a.cache_bytes-1)):
+        ap.error('--cache-bytes must be a power of two in 512..65536')
+    if a.cache_ways not in (1,2) or a.line_bytes<8 or a.line_bytes>256 or a.line_bytes&(a.line_bytes-1):
+        ap.error('Cache geometry requires 1/2 ways and a power-of-two line size in 8..256')
+    if a.cache_sets is None:
+        capacity=selected_config()['IM2COL_CACHE_BYTES'] if a.cache_bytes is None else a.cache_bytes
+        if capacity%(a.cache_ways*a.line_bytes):
+            ap.error('Cache bytes must be divisible by ways times line bytes')
+        a.cache_sets=capacity//(a.cache_ways*a.line_bytes)
+    if a.cache_sets<2 or a.cache_sets&(a.cache_sets-1):
+        ap.error('--cache-sets must be a power of two >=2')
     if not 0<=a.native_sched_r<2**32 or not 0<=a.native_sched_groups<2**32:
         ap.error('Native scheduler parameters must be unsigned 32-bit integers')
     if a.expect_geometry_predictions < -1 or not 1<=a.max_cycles<2**32:
@@ -44,7 +60,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     status={'scope':'frontend and optional standalone tile adapter RTL; original npu_top not integrated',
             'size':a.size,'cache_sets':a.cache_sets,'cache_ways':a.cache_ways,
-            'line_bytes':a.line_bytes,'tile_path':a.tile_path,
+            'line_bytes':a.line_bytes,'cache_data_bytes':a.cache_sets*a.cache_ways*a.line_bytes,'tile_path':a.tile_path,
             'lanes':a.lanes,'policy':a.cache_policy,'prefetch':a.prefetch,'windowed':a.windowed,
             'native_sched_r':a.native_sched_r,'native_sched_groups':a.native_sched_groups,
             'expected_geometry_predictions':a.expect_geometry_predictions,'max_cycles':a.max_cycles}

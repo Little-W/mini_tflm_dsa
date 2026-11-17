@@ -55,9 +55,9 @@ PASS_axi_block_dma_arbiter := [AXI_ARB] ALL PASS
 PASS_ps_buffer := PASS: partial-sum replay
 PASS_compute_core := PASS: compute_core matched
 PASS_npu_top := [TB] PASS
-CONFIG_TAG := s$(SIZE)_c$(IA_CACHE_BLOCKS)_p$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_axi$(NPU_AXI_DATA_WIDTH)_bank$(SHARED_BANK_BYTES)x$(SHARED_BANK_COUNT)
+CONFIG_TAG := s$(SIZE)_c$(IA_CACHE_BLOCKS)_p$(PS_FRAME_COUNT)_ro$(AXI_READ_OUTSTANDING)_axi$(NPU_AXI_DATA_WIDTH)_bank$(SHARED_BANK_BYTES)x$(SHARED_BANK_COUNT)_im2col$(IM2COL_CACHE_BYTES)
 UNIT_DIR = $(UNIT_BUILD)/$(UNIT)$(if $(filter npu_top,$(UNIT)),/$(CONFIG_TAG),)$(if $(filter 1,$(PCR_ENGINE)),_pcr_b$(PS_POOL_BYTES)_f$(PS_FORCE_RAW),)$(if $(filter 1,$(ASIC_SRAM)),_asic_sram,)$(if $(filter 1,$(DEBUG)),_debug,)
-UNIT_DEFINES = $(if $(filter 1,$(PCR_ENGINE)),+define+TB_MEM_WORDS=131072,) $(if $(filter npu_top,$(UNIT)),+define+TB_SIZE=$(SIZE)+TB_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS)+TB_PS_FRAME_COUNT=$(PS_FRAME_COUNT)+TB_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING)+TB_BUS_WIDTH=$(NPU_AXI_DATA_WIDTH)+TB_SHARED_BANK_BYTES=$(SHARED_BANK_BYTES)+TB_SHARED_BANK_COUNT=$(SHARED_BANK_COUNT),)
+UNIT_DEFINES = $(if $(filter 1,$(PCR_ENGINE)),+define+TB_MEM_WORDS=131072,) $(if $(filter npu_top,$(UNIT)),+define+TB_SIZE=$(SIZE)+TB_IA_CACHE_BLOCKS=$(IA_CACHE_BLOCKS)+TB_PS_FRAME_COUNT=$(PS_FRAME_COUNT)+TB_AXI_READ_OUTSTANDING=$(AXI_READ_OUTSTANDING)+TB_BUS_WIDTH=$(NPU_AXI_DATA_WIDTH)+TB_SHARED_BANK_BYTES=$(SHARED_BANK_BYTES)+TB_SHARED_BANK_COUNT=$(SHARED_BANK_COUNT)+TB_IM2COL_CACHE_BYTES=$(IM2COL_CACHE_BYTES),)
 
 .PHONY: help vcs-unit vcs-unit-% vcs-unit-build vcs-uvm vcs-axil vcs-soc vcs-top vcs-tflm vcs-nmsis-abi clean-vcs prepare-vcs-python
 
@@ -99,7 +99,7 @@ help:
 	@echo 'make vcs-random-npu           Run randomized NPU top tests'
 	@echo 'make vcs-random-compute       Run randomized compute core tests'
 	@echo 'Config: NPU_CONFIG=$(NPU_CONFIG) (command-line parameters take priority)'
-	@echo 'Parameters: SIZE IA_CACHE_BLOCKS PS_FRAME_COUNT AXI_READ_OUTSTANDING SEED SIM_ARGS'
+	@echo 'Parameters: SIZE IA_CACHE_BLOCKS IM2COL_CACHE_BYTES PS_FRAME_COUNT AXI_READ_OUTSTANDING SEED SIM_ARGS'
 
 vcs-unit:
 	@set -e; for unit in $(UNIT_TESTS); do $(MAKE) --no-print-directory vcs-unit-$$unit; done
@@ -202,7 +202,7 @@ pcr-backend: capacity-check
 	@test '$(PCR_ENGINE)' = 1 || { echo 'pcr-backend requires PCR_ENGINE=1; run capacity-solve first or explicitly select a valid shared-array configuration.' >&2; exit 2; }
 	$(PYTHON) '$(ROOT)/veri/pcr_model/build_measured_backend.py' \
 	  --size '$(SIZE)' --cache '$(IA_CACHE_BLOCKS)' --ps '$(PS_FRAME_COUNT)' \
-	  --ps-pool-bytes '$(PS_POOL_BYTES)' \
+	  --ps-pool-bytes '$(PS_POOL_BYTES)' --im2col-cache-bytes '$(IM2COL_CACHE_BYTES)' \
 	  --bus-width '$(NPU_AXI_DATA_WIDTH)' --shared-bank-bytes '$(SHARED_BANK_BYTES)' --shared-bank-count '$(SHARED_BANK_COUNT)' \
 	  $(if $(filter 1,$(PS_FORCE_RAW)),--force-raw,) $(if $(filter 1,$(PCR_BACKEND_REFERENCE)),--reference,) \
 	  --mem-words '$(PCR_BACKEND_MEM_WORDS)' --jobs '$(PCR_BACKEND_JOBS)' --output-root '$(abspath $(PCR_BACKEND_OUTPUT))'
@@ -223,7 +223,7 @@ CONV_SOC_FLAGS ?=
 CONV_RUNTIME_ROOT ?=
 CONV_FULL_RUN_JOBS ?= 2
 CONV_FULL_FLAGS ?=
-CONV_CACHE_SETS ?= 32
+CONV_CACHE_SETS ?= $(shell expr $(IM2COL_CACHE_BYTES) / 32)
 CONV_CACHE_POLICY ?= 3
 CONV_BASELINE ?=
 CONV_BASELINE_REF ?=
