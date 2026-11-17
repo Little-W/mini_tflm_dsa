@@ -360,7 +360,7 @@ module operand_read_cache #(
             end
         end
     end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
     initial assert(DW==32 && OUTSTANDING==4);
     always @(posedge clk) if(rst_n && !flush)
         assert(count<=OUTSTANDING) else $fatal(1,"operand cache queue overflow");

@@ -18,3 +18,5 @@
 ../tb/npu_monitor_bind.sv
 
 ../tb/sram/axi_sim_ram.v
+
+-f ../flist/npu_observers.f

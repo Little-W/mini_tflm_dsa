@@ -131,12 +131,6 @@ module vec_s8_to_fifo_full #(
     end
   end
 
-`ifndef SYNTHESIS
-  bit                   oa_trace_en;
-`else
-  localparam bit        oa_trace_en = 1'b0;
-`endif
-
   function automatic [BANK_WIDTH-1:0] next_bank(input [BANK_WIDTH-1:0] bank);
     begin
       if (bank == BANK_WIDTH'(BANKS - 1)) next_bank = '0;
@@ -146,9 +140,9 @@ module vec_s8_to_fifo_full #(
 
   wire write_bank_blocked = bank_ready[write_bank];
   wire next_write_bank_blocked = bank_ready[next_bank(write_bank)];
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   if (BANKS > 32) begin : g_check_write_capacity
-    always @(posedge clk) begin
+    initial forever @(posedge clk) begin
       if (rst_n && in_valid)
         assert (!write_bank_blocked) else $fatal(1, "S8 output FIFO has no available write bank");
     end
@@ -180,15 +174,6 @@ module vec_s8_to_fifo_full #(
                           ((COUNT_WIDTH'(read_ptr) + COUNT_WIDTH'(1)) >= output_row_count);
   wire start_stream = start_permitted && !stream_active && read_bank_ready;
   wire stream_has_next = output_fire && !last_row_in_bank;
-
-  // Compatibility debug names used by existing testbenches.
-  wire write_sel = write_bank[0];
-  wire read_sel  = read_bank[0];
-  wire bank_ready0 = bank_ready[0];
-  wire bank_ready1 = (BANKS > 1) ? bank_ready[1] : 1'b0;
-  wire [COUNT_WIDTH-1:0] bank_count0 = bank_count[0];
-  wire [COUNT_WIDTH-1:0] bank_count1 = (BANKS > 1) ? bank_count[1] : '0;
-
   assign output_valid = coalesce_enable ? (co_active && co_data_valid) : (stream_active && data_valid);
   assign output_row_switch = coalesce_enable ? (co_fire && co_row_last) : last_beat_in_row;
   always_comb begin
@@ -273,13 +258,6 @@ module vec_s8_to_fifo_full #(
     end
   endgenerate
 
-`ifndef SYNTHESIS
-  initial begin
-    oa_trace_en = 1'b0;
-    if ($test$plusargs("NPU_OA_TRACE")) oa_trace_en = 1'b1;
-  end
-`endif
-
   always @(posedge clk) begin
     if (!rst_n) begin
       write_bank   <= '0;
@@ -307,11 +285,7 @@ module vec_s8_to_fifo_full #(
       if (finish_write_bank && !write_bank_blocked) begin
         bank_count[write_bank] <= write_rows_next;
         bank_ready[write_bank] <= 1'b1;
-        if (oa_trace_en) begin
-          $display("[OA_TRACE] time=%0t fifo_bank_ready bank=%0d rows=%0d transpose=%0d vcol=%0d vrow=%0d",
-                   $time, write_bank, write_rows_next, transpose_mode_eff,
-                   vec_valid_num_col, vec_valid_num_row);
-        end
+
         write_ptr <= '0;
         write_bank <= next_bank(write_bank);
         if (!coalesce_enable && !(output_fire && last_row_in_bank)) begin
@@ -357,11 +331,7 @@ module vec_s8_to_fifo_full #(
         vec_valid_num_col_tmp <= vec_valid_num_col;
         vec_valid_num_row_tmp <= vec_valid_num_row;
         transpose_mode_tmp <= transpose_mode_eff;
-        if (oa_trace_en) begin
-          $display("[OA_TRACE] time=%0t fifo_stream_start bank=%0d rows=%0d transpose=%0d vcol=%0d vrow=%0d",
-                   $time, read_bank, bank_count[read_bank], transpose_mode_eff,
-                   vec_valid_num_col, vec_valid_num_row);
-        end
+
       end else if (stream_active && (read_ptr == '0) && (beat_idx == '0) && !output_ready) begin
         vec_valid_num_col_tmp <= vec_valid_num_col;
         vec_valid_num_row_tmp <= vec_valid_num_row;
@@ -435,11 +405,7 @@ module vec_s8_to_fifo_full #(
   end
 
   always @(posedge clk) begin
-    if (rst_n && oa_trace_en && output_valid && output_ready) begin
-      $display("[OA_TRACE] time=%0t fifo_out bank=%0d row=%0d beat=%0d mask=%b data=%08x rows=%0d cols=%0d transpose=%0d",
-               $time, read_bank, read_ptr, beat_idx, output_mask, output_data,
-               output_row_count, output_col_count, transpose_mode_tmp);
-    end
+
   end
 
 endmodule
@@ -510,9 +476,9 @@ module vec_s8_to_fifo_linear #(
 
   wire write_bank_blocked = bank_ready[write_bank];
   wire next_write_bank_blocked = bank_ready[next_bank(write_bank)];
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   if (BANKS > 32) begin : g_check_write_capacity
-    always @(posedge clk) begin
+    initial forever @(posedge clk) begin
       if (rst_n && in_valid)
         assert (!write_bank_blocked) else $fatal(1, "S8 output FIFO has no available write bank");
     end
@@ -701,17 +667,6 @@ module vec_s8_to_fifo #(
     output wire                 fifo_full_flag
 );
 
-`ifndef SYNTHESIS
-  localparam integer COUNT_WIDTH = $clog2(VLEN + 1);
-  wire stream_active;
-  wire write_sel;
-  wire read_sel;
-  wire bank_ready0;
-  wire bank_ready1;
-  wire [COUNT_WIDTH-1:0] bank_count0;
-  wire [COUNT_WIDTH-1:0] bank_count1;
-`endif
-
   generate
     if (ENABLE_TRANSPOSE == 0) begin : g_linear
       wire unused_transpose_mode = transpose_mode;
@@ -736,15 +691,7 @@ module vec_s8_to_fifo #(
         .output_data      (output_data),
         .fifo_full_flag   (fifo_full_flag)
       );
-`ifndef SYNTHESIS
-      assign stream_active = u_linear.stream_active;
-      assign write_sel = u_linear.write_bank[0];
-      assign read_sel = u_linear.read_bank[0];
-      assign bank_ready0 = u_linear.bank_ready[0];
-      assign bank_ready1 = (BANKS > 1) ? u_linear.bank_ready[1] : 1'b0;
-      assign bank_count0 = u_linear.bank_count[0];
-      assign bank_count1 = (BANKS > 1) ? u_linear.bank_count[1] : '0;
-`endif
+
     end else begin : g_full
       // Two register entries isolate the RAM read controls from DMA READY.
       // Start a new tile only after the previous tile's entries drain, so
@@ -809,15 +756,7 @@ module vec_s8_to_fifo #(
         .output_data      (inner_data),
         .fifo_full_flag   (fifo_full_flag)
       );
-`ifndef SYNTHESIS
-      assign stream_active = u_full.stream_active;
-      assign write_sel = u_full.write_sel;
-      assign read_sel = u_full.read_sel;
-      assign bank_ready0 = u_full.bank_ready0;
-      assign bank_ready1 = u_full.bank_ready1;
-      assign bank_count0 = u_full.bank_count0;
-      assign bank_count1 = u_full.bank_count1;
-`endif
+
     end
   endgenerate
 

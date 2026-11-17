@@ -124,16 +124,6 @@ module oa_writer #(
     logic                 beat_fire;
     logic                 rsp_fire;
     logic                 oa_calc_over_r;
-`ifndef SYNTHESIS
-    bit                   oa_trace_en;
-
-    initial begin
-        oa_trace_en = 1'b0;
-        if ($test$plusargs("NPU_OA_TRACE")) oa_trace_en = 1'b1;
-    end
-`else
-    localparam bit oa_trace_en = 1'b0;
-`endif
 
     wire is_mode_eff = (ENABLE_IS_MODE != 0) ? is_mode : 1'b0;
 
@@ -500,35 +490,21 @@ module oa_writer #(
                             vec_valid_num_row_next_r <= vec_valid_num_row_next_w[VCOL_W-1:0];
                             row_in_tile <= '0;
                             beats_in_row <= '0;
-                            if (oa_trace_en) begin
-                                $display("[OA_TRACE] time=%0t writer_req tile=(%0d,%0d) rows=%0d cols=%0d beats=%0d base=%08x",
-                                         $time, tile_row_idx, tile_col_idx,
-                                         rows_valid_calc,
-                                         cols_valid_calc,
-                                         beats_per_row_calc,
-                                         tile_base_addr_cur);
-                            end
+
                             state <= S_START;
                         end
                     end
 
                     S_START: begin
                         if (dma_start) begin
-                            if (oa_trace_en) begin
-                                $display("[OA_TRACE] time=%0t writer_start rows=%0d beats=%0d",
-                                         $time, rows_valid_cur_tile, beats_per_row_cur_tile);
-                            end
+
                             state <= S_WRITE;
                         end
                     end
 
                     S_WRITE: begin
                         if (beat_fire) begin
-                            if (oa_trace_en) begin
-                                $display("[OA_TRACE] time=%0t writer_beat row=%0d beat=%0d data=%08x mask=%b",
-                                         $time, row_in_tile, beats_in_row,
-                                         output_data, output_mask);
-                            end
+
                             if ((beats_in_row + 1'b1) >= beats_per_row_cur_tile) begin
                                 beats_in_row <= '0;
                                 if (((VCOL_W + 1)'(row_in_tile) + (VCOL_W + 1)'(1)) < rows_valid_cur_tile) begin
@@ -570,10 +546,7 @@ module oa_writer #(
                                 row_offset_addr_cur <= '0;
                                 tile_row_is_last <= (row_tiles_last_idx == '0);
                                 tile_col_is_last <= (col_tiles_last_idx == '0);
-                                if (oa_trace_en) begin
-                                    $display("[OA_TRACE] time=%0t writer_done final tiles=%0d",
-                                             $time, tiles_done + count_t'(1));
-                                end
+
                             end else begin
                                 tile_row_idx <= next_tile_row_r;
                                 tile_col_idx <= next_tile_col_r;
@@ -602,10 +575,7 @@ module oa_writer #(
                                                           group_row_addr_step_cur;
                                 end
                                 state <= S_IDLE;
-                                if (oa_trace_en) begin
-                                    $display("[OA_TRACE] time=%0t writer_done next=(%0d,%0d) tiles=%0d",
-                                             $time, next_tile_row_r, next_tile_col_r, tiles_done + count_t'(1));
-                                end
+
                             end
                         end
                     end

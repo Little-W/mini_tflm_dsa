@@ -31,6 +31,8 @@ def sources(tb, memory=False):
     result+=sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     if memory:result.append(ROOT/'test/conv_npu/axi_memory.sv')
     result.append(tb)
+    import runpy
+    result = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](result)
     return result
 
 

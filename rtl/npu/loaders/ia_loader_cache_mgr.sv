@@ -159,7 +159,7 @@ module ia_loader_cache_mgr #(
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_row
       assign ram_rd_data[lane] = row_data[lane];
     end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
     initial begin
       assert (SIZE == 16 && DATA_WIDTH == 16)
         else $fatal(1, "External IA RAM requires sixteen 16-bit lanes");
@@ -224,7 +224,6 @@ module ia_loader_cache_mgr #(
   wire [SLOT_W-1:0] slot_mask =
       ((COMPACT_S8 != 0) && (DATA_WIDTH == 16) && compact_mode)
       ? SLOT_W'((active_cache_blocks << 1) - 1) : SLOT_W'(active_cache_blocks - 1);
-
 
   logic l1_issue_active;                  // 仍有行需要在 col0 发射
   logic [SLOT_W-1:0] issue_slot_r;       // 当前正在发射的 slot

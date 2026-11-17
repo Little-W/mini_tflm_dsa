@@ -43,7 +43,7 @@ module conv_sdp_ram #(
     end
 `endif
   end
-`ifdef CONV_ASSERT
+`ifdef NPU_SIM_ASSERT
   initial begin
     assert (WRITE_WIDTH >= 32 && WRITE_WIDTH % 32 == 0 &&
             (WORDS & (WORDS - 1)) == 0 && DEPTH % WORDS == 0);

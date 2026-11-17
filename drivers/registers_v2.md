@@ -127,10 +127,12 @@ bit 0 表示支持 s8 Conv，bit 1 表示支持精确范围的 AXI narrow read�
 | `0x094` | `CONV_PADDING_HW` | 低 16 位 pad_top，高 16 位 pad_left |
 | `0x098` | `CONV_INPUT_OFFSET` | 有符号输入校正值，范围 −127 至 128 |
 | `0x09c` | `CONV_CAPS` | 只读能力及扩展版本 |
-| `0x0a0` | `CONV_HITS` | 本次任务的缓存命中数 |
-| `0x0a4` | `CONV_MISSES` | 本次任务的缓存缺失数 |
-| `0x0a8` | `CONV_READ_BYTES` | 本次任务的原始输入读取字节数 |
-| `0x0ac` | `CONV_CYCLES` | 本次任务周期计数 |
+| `0x0a0` | `CONV_HITS` | 保留，读取零 |
+| `0x0a4` | `CONV_MISSES` | 保留，读取零 |
+| `0x0a8` | `CONV_READ_BYTES` | 保留，读取零 |
+| `0x0ac` | `CONV_CYCLES` | 保留，读取零 |
+
+性能统计由仿真监视模块通过层级引用采集，见 [仿真监视模块](../test/monitors/README.md)。硬件中各诊断保留地址读取零。
 
 CTRL bit 6 为硬件 Conv，bit 7 为输入缓存旁路。Conv 的 bit 3 选择 WS / IS；
 bit 1=1（逻辑激活矩阵为校正后的 s16）、bit 2=1（逐通道量化）、bit 5=0（s8 输出）。
@@ -181,9 +183,9 @@ NMSIS 公共入口在任何软件 im2col 或 scratch 检查之前分发，CPU �
 | `0x0b0` | `NPU_REG_VECTOR_OP` | RW | bits 3:0 操作，bit 8 表示 INT16 输入 |
 | `0x0b4` | `NPU_REG_VECTOR_LENGTH` | RW | 向量元素数 |
 | `0x0b8` | `NPU_REG_VECTOR_CAPS` | RO | 能力、PE 数、DW 核面积上限和版本 |
-| `0x0bc` | `NPU_REG_VECTOR_CYCLES` | RO | 本次引擎周期 |
-| `0x0c0` | `NPU_REG_VECTOR_COMPUTE` | RO | 运算状态周期 |
-| `0x0c4` | `NPU_REG_VECTOR_DMA_WAIT` | RO | DMA 及相关等待周期 |
+| `0x0bc` | `NPU_REG_VECTOR_CYCLES` | RO | 保留，读取零 |
+| `0x0c0` | `NPU_REG_VECTOR_COMPUTE` | RO | 保留，读取零 |
+| `0x0c4` | `NPU_REG_VECTOR_DMA_WAIT` | RO | 保留，读取零 |
 | `0x0c8` | `NPU_REG_POOL_MAX_TAPS` | RO | 池化窗口上限 256 |
 | `0x0cc` | `NPU_REG_VECTOR_ADD_INPUT1_MULT` | RW | 输入 1 的 Q31 系数 |
 | `0x0d0` | `NPU_REG_VECTOR_ADD_INPUT1_SHIFT` | RW | 输入 1 的指数 |
@@ -232,9 +234,9 @@ Tile-packed 布局按输出行 tile 和归约 tile 排列，每个 tile 内保�
 | `0x110` | `NPU_REG_PS_DIRECTORY_ROWS` | RO | PS 目录的有效行容量 |
 | `0x120` | `NPU_REG_PS_CONTROL` | RW | RAW32、frame 调度、frame 高度和严格部分和界 |
 | `0x124` | `NPU_REG_PS_CAPS` | RO | PS 存储、调度、紧凑 IA 和严格部分和界能力 |
-| `0x128` | `NPU_REG_PS_COMMANDS` | RO | 本次任务提交的 frame 命令数 |
-| `0x12c` | `NPU_REG_PS_PRESSURE` | RO | 本次任务遇到的容量不足事件数 |
-| `0x130` | `NPU_REG_PS_EARLY_FINISH` | RO | 本次任务因容量调度而优先完成的 frame 数 |
+| `0x128` | `NPU_REG_PS_COMMANDS` | RO | 保留，读取零 |
+| `0x12c` | `NPU_REG_PS_PRESSURE` | RO | 保留，读取零 |
+| `0x130` | `NPU_REG_PS_EARLY_FINISH` | RO | 保留，读取零 |
 | `0x134` | `NPU_REG_PS_POOL_BYTES` | RO | 当前分配下的 PS 数据字节数 |
 | `0x138` | `NPU_REG_IA_CACHE_BYTES` | RO | 当前分配下的 IA 数据字节数 |
 | `0x13c` | `NPU_REG_IM2COL_CACHE_BYTES` | RO | im2col 输入窗口缓存的数据容量，单位为字节 |

@@ -29,9 +29,9 @@ that fail range checks or encounter an AXI read error.
 - `stat_hits` and `stat_misses` inspect residency when the external request is
   accepted. An accepted cold request remains a miss even if a preceding fill
   makes it resident before its queued lookup starts.
-- Internal `stat_lookup_hits` and `stat_lookup_misses` inspect residency when a
+- Testbench `stat_lookup_hits` and `stat_lookup_misses` inspect residency when a
   request enters the lookup stage.
-- Internal `stat_peak_outstanding` records the maximum number of accepted,
+- Testbench `stat_peak_outstanding` records the maximum number of accepted,
   unconsumed requests in the current configuration.
 
 Requests outside the configured allocation produce errors and do not contribute

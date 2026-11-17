@@ -14,7 +14,6 @@ module vector_engine #(
   output logic ready, done_valid,
   input logic done_ready,
   output logic [1:0] error,
-  output logic [31:0] stat_cycles, stat_compute, stat_dma_wait,
 
   output logic dma_cfg_valid,
   input logic dma_cfg_ready,
@@ -537,18 +536,9 @@ module vector_engine #(
       end
       for(int b=0;b<4;b++) begin input_position[b]<=0;input_tap[b]<=0;end
       write_origin<=0;write_total<=0;write_index<=0;
-      stat_cycles<=0;stat_compute<=0;stat_dma_wait<=0;input_range_mode<=0;
+      input_range_mode<=0;
       pool_offset<=0;pool_pixels<=0;pool_received<=0;pool_pixel<=0;
     end else begin
-      if (state!=IDLE && state!=DONE) stat_cycles<=stat_cycles+1;
-      if (state==EXECUTE || state==ADD_MULT || state==ADD_ROUND ||
-          state==ADD_SUM || state==ADD_STORE ||
-          (state==SOFT_RUN && !soft_lut_req_valid && !soft_done)) stat_compute<=stat_compute+1;
-      if (state==LOAD_WAIT || win_busy || state==POOL_LOAD_WAIT ||
-          wb_state==WB_DATA || wb_state==WB_WAIT || state==SOFT_LUT_WAIT ||
-          (rd_req && !rd_granted) || (wr_req && !wr_granted) ||
-          (state==CONFIGURE && !dma_cfg_ready)) stat_dma_wait<=stat_dma_wait+1;
-
       if (softmax_s8) begin
         if (soft_exp_we) acc_buf[soft_exp_index]<=soft_exp_data;
         if (soft_out_we) result_buf[soft_out_index]<=32'($signed(soft_out_data));
@@ -668,7 +658,7 @@ module vector_engine #(
           input_range_mode<=0;bank_state[0]<=BANK_FREE;bank_state[1]<=BANK_FREE;
           q_active<=0;q_valid<=0;q_next_bank<=0;produce_bank<=0;write_bank<=0;
           input_ready<=0;input_reserved<=0;read_bank<=0;wf_bank<=0;wb_state<=WB_IDLE;window_received<=0;
-          stat_cycles<=0;stat_compute<=0;stat_dma_wait<=0;param_bad_seen<=0;
+          param_bad_seen<=0;
         end
         CHECK: if (!cfg_ok) begin error<=2'b01;state<=FAILED;end
           else begin
@@ -895,7 +885,7 @@ module vector_engine #(
     end
   end
 
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   initial begin
     assert(TILE>=2 && TILE<=64 && (TILE&(TILE-1))==0);
     assert(PE_COUNT>=1 && PE_COUNT<=TILE && TILE%PE_COUNT==0);

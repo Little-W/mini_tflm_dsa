@@ -29,7 +29,7 @@ def main():
                        '@1\naabbccdd\n@3\n0\n@1f\nfedcba98\n')
     expected.write_text('@0\n01020304 aabbccdd 33333333 0 44444444 '
                         '55555555 66666666 cafebabe\n@f\nffffffff\n@1f\nfedcba98\n')
-    source = ROOT / 'rtl/soc/soc_axi_ram.sv'
+    source = ROOT / 'test/models/soc_axi_ram.sv'
     helper = ROOT / 'fpga/vivado/tflm_ai_dsa_soc/scripts/cpu_memory.tcl'
     sources = [source, helper, HERE/'tb_soc_ram_image.sv', Path(__file__).resolve()]
     before = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}

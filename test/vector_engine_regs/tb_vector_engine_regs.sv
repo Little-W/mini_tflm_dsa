@@ -37,10 +37,13 @@ module tb_vector_engine_regs #(parameter bit CAPABLE=1, parameter int POOL_LIMIT
     .cfg_add_input1_multiplier, .cfg_add_input1_shift,
     .cfg_add_input2_multiplier, .cfg_add_input2_shift, .cfg_add_left_shift,
     .lhs_zp, .rhs_zp, .q_mult_pt, .q_shift_pt, .dst_zp, .act_min, .act_max,
-    .vector_stat_cycles(32'd321), .vector_stat_compute(32'd27), .vector_stat_dma_wait(32'd201),
     .npu_sa_ready(ready), .npu_done_valid(done), .npu_done_ready(done_ready),
     .npu_err_code(error), .irq, .npu_busy(busy), .status_bits(status)
   );
+
+
+
+
   always @(posedge clk) if (rst_n && calc_start) starts<=starts+1;
 
   task automatic check(input logic condition, input string message);
@@ -80,13 +83,13 @@ module tb_vector_engine_regs #(parameter bit CAPABLE=1, parameter int POOL_LIMIT
   logic [31:0] add_values [5] = '{32'h40000000,32'hffffffe1,32'h60000000,32'd0,32'd22};
   initial begin
     repeat(5) @(negedge clk); rst_n=1;
-    read_reg(16'h00b8,value); check(value==(CAPABLE ? 32'h0131043f : 32'd0),"capability fields");
+    read_reg(16'h00b8,value); check(value==(CAPABLE ? 32'h0131047f : 32'd0),"capability fields");
     read_reg(16'h00c8,value); check(value==(CAPABLE ? 32'(POOL_LIMIT) : 32'd0),"pool window capacity");
     write_reg(16'h00c8,32'hffffffff,4'b1111,0);
     read_reg(16'h00c8,value); check(value==(CAPABLE ? 32'(POOL_LIMIT) : 32'd0),"pool capacity read-only");
-    read_reg(16'h00bc,value); check(value==321,"cycle statistics");
-    read_reg(16'h00c0,value); check(value==27,"compute statistics");
-    read_reg(16'h00c4,value); check(value==201,"DMA wait statistics");
+    read_reg(16'h00bc,value); check(value==0,"reserved cycle register");
+    read_reg(16'h00c0,value); check(value==0,"reserved compute register");
+    read_reg(16'h00c4,value); check(value==0,"reserved DMA wait register");
     for (int i=0;i<5;i++) begin
       read_reg(16'h00cc+16'(4*i),value); check(value==0,"Add parameter reset");
       write_reg(16'h00cc+16'(4*i),32'ha1b2c3d4,4'b1100,0);

@@ -44,6 +44,16 @@ module tb_windowed_cache;
   end
   conv_im2col_frontend #(.SIZE(16),.SLOT_W(3),.LANES(4),.CACHE_SETS(CACHE_SETS),
     .CACHE_POLICY(CACHE_POLICY)) dut(.cfg_sched_r(0),.cfg_sched_groups(0),.tile_group(0),.wr_last(unused_wr_last),.*);
+    assign stat_hits=dut.tb_observer.stat_hits;
+    assign stat_misses=dut.tb_observer.stat_misses;
+    assign stat_read_bytes=dut.tb_observer.stat_read_bytes;
+    assign stat_prefetch_lines=dut.tb_observer.stat_prefetch_lines;
+    assign stat_prefetch_used=dut.tb_observer.stat_prefetch_used;
+    assign stat_prefetch_wasted=dut.tb_observer.stat_prefetch_wasted;
+    assign stat_prefetch_unused=dut.tb_observer.stat_prefetch_unused;
+    assign stat_prefetch_bytes=dut.tb_observer.stat_prefetch_bytes;
+    assign stat_prefetch_late=dut.tb_observer.stat_prefetch_late;
+
   axi_counted_memory #(.TRACK_BASE(32'h1000),.TRACK_BYTES(TRACK_BYTES)) mem(
     .clk,.rst_n,.allocation_base,.allocation_bytes,.epoch,.block_ar(1'b0),
     .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast,

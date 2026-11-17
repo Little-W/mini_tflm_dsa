@@ -51,11 +51,6 @@ module vec_s16_to_fifo #(
     logic [BANK_COUNT_WIDTH-1:0] reserve_bank_count;
     logic [BANK_COUNT_WIDTH-1:0] used_bank_count;
     logic [BANK_COUNT_WIDTH-1:0] free_bank_count;
-`ifndef SYNTHESIS
-    bit oa_trace_en;
-`else
-    localparam bit oa_trace_en = 1'b0;
-`endif
 
     function automatic logic [BANK_WIDTH-1:0] next_bank(
         input logic [BANK_WIDTH-1:0] bank
@@ -125,13 +120,6 @@ module vec_s16_to_fifo #(
         .rd_data(ram_rd_data)
     );
 
-`ifndef SYNTHESIS
-    initial begin
-        oa_trace_en = 1'b0;
-        if ($test$plusargs("NPU_OA_TRACE")) oa_trace_en = 1'b1;
-    end
-`endif
-
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             write_bank <= '0;
@@ -160,10 +148,7 @@ module vec_s16_to_fifo #(
                 write_ptr <= '0;
                 write_bank <= next_bank(write_bank);
                 if (!last_row_in_bank) ready_bank_count_q <= ready_bank_count_q + 1'b1;
-                if (oa_trace_en) begin
-                    $display("[OA16_TRACE] time=%0t fifo_bank_ready bank=%0d rows=%0d vcol=%0d",
-                             $time, write_bank, write_rows_next, vec_valid_num_col);
-                end
+
             end else if (in_valid && !write_bank_blocked) begin
                 write_ptr <= write_ptr + 1'b1;
             end
@@ -175,10 +160,7 @@ module vec_s16_to_fifo #(
                 beat_idx <= '0;
                 active_read_count_q <= bank_count[read_bank];
                 vec_valid_num_col_q <= vec_valid_num_col;
-                if (oa_trace_en) begin
-                    $display("[OA16_TRACE] time=%0t fifo_stream_start bank=%0d rows=%0d vcol=%0d",
-                             $time, read_bank, bank_count[read_bank], vec_valid_num_col);
-                end
+
             end else if (stream_active && !data_valid && ram_read_valid_q) begin
                 data_valid <= 1'b1;
             end else if (stream_active && (read_ptr == '0) &&
@@ -207,14 +189,6 @@ module vec_s16_to_fifo #(
                     beat_idx <= beat_idx + 1'b1;
                 end
             end
-        end
-    end
-
-    always_ff @(posedge clk) begin
-        if (rst_n && oa_trace_en && output_valid && output_ready) begin
-            $display("[OA16_TRACE] time=%0t fifo_out bank=%0d row=%0d beat=%0d mask=%b data=%08x rows=%0d cols=%0d",
-                     $time, read_bank, read_ptr, beat_idx, output_mask,
-                     output_data, active_read_count_q, output_col_count);
         end
     end
 

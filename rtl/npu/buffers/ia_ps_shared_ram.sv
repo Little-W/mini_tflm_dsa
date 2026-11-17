@@ -141,7 +141,7 @@ module ia_ps_shared_ram #(
         assign read_data[b]=read_data_q;
 `endif
     end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
     initial begin
         if(BANK_BYTES<32 || (BANK_BYTES&(BANK_BYTES-1))!=0 || TOTAL_BYTES%BANK_BYTES!=0 || BANKS<4)
             $fatal(1,"Invalid shared SRAM dimensions");

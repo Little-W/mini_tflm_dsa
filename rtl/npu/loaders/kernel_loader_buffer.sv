@@ -119,13 +119,7 @@ module kernel_loader_buffer #(
                 2'b01:valid_count<=valid_count-1'b1;
                 default:;
             endcase
-`ifndef SYNTHESIS
-            if(discard_fire)assert(!send_start)else $fatal(1,"kernel discard and send overlap");
-            if(load_start)assert(load_ready)else $fatal(1,"kernel load without a free slot");
-            if(row_valid_q)assert(slot_reserved[row_slot_q])else $fatal(1,"kernel response has no reserved slot");
-            if(load_done_q)assert(slot_reserved[done_slot_q] && !slot_loaded[done_slot_q])
-                else $fatal(1,"kernel completion slot state mismatch");
-`endif
+
         end
     end
 endmodule

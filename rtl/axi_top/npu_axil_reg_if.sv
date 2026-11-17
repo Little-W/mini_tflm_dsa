@@ -64,14 +64,7 @@ module npu_axil_reg_if #(
     output logic signed [31:0]          cfg_add_input2_multiplier,
     output logic signed [31:0]          cfg_add_input2_shift,
     output logic signed [31:0]          cfg_add_left_shift,
-    input logic [31:0] vector_stat_cycles = '0,
-    input logic [31:0] vector_stat_compute = '0,
-    input logic [31:0] vector_stat_dma_wait = '0,
     output conv_im2col_pkg::conv_cfg_t    cfg_conv,
-    input logic [31:0] conv_stat_hits = '0,
-    input logic [31:0] conv_stat_misses = '0,
-    input logic [31:0] conv_stat_read_bytes = '0,
-    input logic [31:0] conv_stat_cycles = '0,
     output logic                        cfg_16bits_ia,
     output logic                        cfg_16x8,
     output logic                        cfg_dataflow_mode,
@@ -86,9 +79,6 @@ module npu_axil_reg_if #(
     output logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
     output logic [31:0] cfg_ps_control,
     output logic [31:0] cfg_shared_ia_banks,
-    input logic [31:0] ps_stat_commands = 32'd0,
-    input logic [31:0] ps_stat_pressure_events = 32'd0,
-    input logic [31:0] ps_stat_early_finish_frames = 32'd0,
 
     output logic [REG_WIDTH-1:0]        lhs_base,
     output logic [REG_WIDTH-1:0]        rhs_base,
@@ -274,9 +264,9 @@ module npu_axil_reg_if #(
             REG_VECTOR_LENGTH: read_data_next = cfg_vector_length;
             REG_VECTOR_CAPS: read_data_next = VECTOR_ENGINE_CAPABLE ?
                 {8'd1, 8'(DW_MAX_TAPS), 8'(VECTOR_PE_COUNT), 8'h7f} : 32'd0;
-            REG_VECTOR_CYCLES: read_data_next = vector_stat_cycles;
-            REG_VECTOR_COMPUTE: read_data_next = vector_stat_compute;
-            REG_VECTOR_DMA_WAIT: read_data_next = vector_stat_dma_wait;
+            REG_VECTOR_CYCLES: read_data_next = 32'd0;
+            REG_VECTOR_COMPUTE: read_data_next = 32'd0;
+            REG_VECTOR_DMA_WAIT: read_data_next = 32'd0;
             REG_SOFTMAX_MAX_DEPTH: read_data_next = VECTOR_ENGINE_CAPABLE ? 32'(SOFTMAX_MAX_DEPTH) : 32'd0;
             REG_POOL_MAX_TAPS: read_data_next = VECTOR_ENGINE_CAPABLE ? 32'(POOL_MAX_TAPS) : 32'd0;
             REG_ADD_INPUT1_MULT: read_data_next = cfg_add_input1_multiplier;
@@ -313,9 +303,9 @@ module npu_axil_reg_if #(
             REG_CONFIG_ABI: read_data_next = 32'd2;
             REG_PS_CONTROL: read_data_next = cfg_ps_control;
             REG_PS_CAPS: read_data_next = PS_CAPS;
-            REG_PS_COMMANDS: read_data_next = ps_stat_commands;
-            REG_PS_PRESSURE: read_data_next = ps_stat_pressure_events;
-            REG_PS_EARLY_FINISH: read_data_next = ps_stat_early_finish_frames;
+            REG_PS_COMMANDS: read_data_next = 32'd0;
+            REG_PS_PRESSURE: read_data_next = 32'd0;
+            REG_PS_EARLY_FINISH: read_data_next = 32'd0;
             REG_PS_POOL_BYTES: read_data_next = SHARED_CAPABLE ?
                 32'(SHARED_TOTAL_BYTES) - cfg_shared_ia_banks * 32'(SHARED_BANK_BYTES) : 32'(PS_POOL_BYTES);
             REG_IA_CACHE_BYTES: read_data_next = SHARED_CAPABLE ?
@@ -338,10 +328,10 @@ module npu_axil_reg_if #(
             12'h026: read_data_next = {{16{cfg_conv.input_offset[15]}}, cfg_conv.input_offset};
             12'h027: read_data_next = CONV_CAPABLE ?
                 (32'h0001_0003 | (CONV_IS_CAPABLE ? 32'h0000_0004 : 32'b0)) : 32'b0;
-            12'h028: read_data_next = conv_stat_hits;
-            12'h029: read_data_next = conv_stat_misses;
-            12'h02a: read_data_next = conv_stat_read_bytes;
-            12'h02b: read_data_next = conv_stat_cycles;
+            12'h028: read_data_next = 32'd0;
+            12'h029: read_data_next = 32'd0;
+            12'h02a: read_data_next = 32'd0;
+            12'h02b: read_data_next = 32'd0;
             REG_ID:           read_data_next = NPU_ID;
             default: begin
             end

@@ -36,10 +36,6 @@ module soc_axil_ctrl #(
     logic [AXIL_DATA_WIDTH/8-1:0] wstrb_q;
     logic aw_seen_q;
     logic w_seen_q;
-`ifndef SYNTHESIS
-    logic progress_trace_en;
-    longint unsigned cycle_q;
-`endif
 
     wire aw_fire = s_axil_awvalid && s_axil_awready;
     wire w_fire  = s_axil_wvalid  && s_axil_wready;
@@ -56,12 +52,6 @@ module soc_axil_ctrl #(
     wire [31:0] soc_status_next = (soc_status & ~wr_mask32) | (wr_data_eff[31:0] & wr_mask32);
     wire [31:0] soc_progress_next = (soc_progress & ~wr_mask32) | (wr_data_eff[31:0] & wr_mask32);
 
-`ifndef SYNTHESIS
-    initial begin
-        progress_trace_en = 1'b0;
-        if ($test$plusargs("SOC_PROGRESS_TRACE")) progress_trace_en = 1'b1;
-    end
-`endif
 
     assign s_axil_awready = !aw_seen_q && !s_axil_bvalid;
     assign s_axil_wready  = !w_seen_q && !s_axil_bvalid;
@@ -82,13 +72,7 @@ module soc_axil_ctrl #(
             soc_finish    <= 1'b0;
             soc_status    <= 32'b0;
             soc_progress  <= 32'b0;
-`ifndef SYNTHESIS
-            cycle_q       <= '0;
-`endif
         end else begin
-`ifndef SYNTHESIS
-            cycle_q <= cycle_q + 1'b1;
-`endif
 
             if (aw_fire) begin
                 awaddr_q  <= s_axil_awaddr;
@@ -105,24 +89,9 @@ module soc_axil_ctrl #(
                     2'b00: begin
                         soc_finish <= 1'b1;
                         soc_status <= soc_status_next;
-`ifndef SYNTHESIS
-                        if (progress_trace_en) begin
-                            $display("[SOC_PROGRESS_TRACE] cycle=%0d finish status=%08x progress=%08x",
-                                     cycle_q,
-                                     soc_status_next,
-                                     soc_progress);
-                        end
-`endif
                     end
                     2'b11: begin
                         soc_progress <= soc_progress_next;
-`ifndef SYNTHESIS
-                        if (progress_trace_en) begin
-                            $display("[SOC_PROGRESS_TRACE] cycle=%0d progress=%08x",
-                                     cycle_q,
-                                     soc_progress_next);
-                        end
-`endif
                     end
                     default: begin
                     end

@@ -60,12 +60,7 @@ module conv_read_cache #(
   input logic [31:0] prefetch_window_index = 32'd0,
   input logic [31:0] prefetch_window_epoch = 32'd0,
   input logic [31:0] prefetch_window_retire = 32'hffff_ffff,
-  input logic prefetch_next_fragment = 1'b0,
-  output logic [31:0] stat_hits, stat_misses, stat_read_bytes,
-  output logic [31:0] stat_prefetch_lines, stat_prefetch_used,
-  output logic [31:0] stat_prefetch_wasted, stat_prefetch_unused, stat_prefetch_bytes,
-  output logic [31:0] stat_prefetch_late
-);
+  input logic prefetch_next_fragment = 1'b0);
   generate if (CACHE_POLICY==3) begin : g_window
     conv_windowed_cache #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
       .DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_window (.*);
@@ -73,12 +68,6 @@ module conv_read_cache #(
     conv_read_cache_reference #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
       .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_reference (.*);
     assign prefetch_ready=1'b0;
-    assign stat_prefetch_lines=0;
-    assign stat_prefetch_used=0;
-    assign stat_prefetch_wasted=0;
-    assign stat_prefetch_unused=0;
-    assign stat_prefetch_bytes=0;
-    assign stat_prefetch_late=0;
   end endgenerate
 endmodule
 
@@ -130,9 +119,7 @@ module conv_read_cache_reference #(
   output logic rready,
   input logic [BUS_WIDTH-1:0] rdata,
   input logic [1:0] rresp,
-  input logic rlast,
-  output logic [31:0] stat_hits, stat_misses, stat_read_bytes
-);
+  input logic rlast);
   localparam logic [31:0] INF = 32'hffff_ffff;
   typedef enum logic [3:0] {UNCONFIGURED, CLEAR, IDLE, TAG_READ, TAG_EVAL,
     HINT_WAIT, FILL_REQ, FILL, COMMIT, STREAM_READ, RAM_READ, RAM_WAIT, RESP} st_t;
@@ -232,7 +219,7 @@ module conv_read_cache_reference #(
       hint_seen<=0;hint_q<=INF;hint_pending<=0;pending_set<=0;pending_way<=0;
       transient_valid<=0;transient_tag<=0;
       for (int i=0;i<4;i++) transient_words[i]<=0;
-      rsp_data<=0;rsp_error<=0;stat_hits<=0;stat_misses<=0;stat_read_bytes<=0;
+      rsp_data<=0;rsp_error<=0;
     end else begin
       if (hint_pending && hint_valid) begin
         next_use[pending_way][pending_set]<=hint_next;
@@ -245,7 +232,7 @@ module conv_read_cache_reference #(
         base_q<=cfg_base;end_q<=cfg_base+cfg_bytes;bypass_q<=cfg_bypass;
         geometry_q<=cfg_geometry && !cfg_bypass && CACHE_POLICY!=0 && LINE_BYTES==16;
         clear_set<=0;state<=CLEAR;hint_pending<=0;transient_valid<=0;
-        stat_hits<=0;stat_misses<=0;stat_read_bytes<=0;rsp_error<=0;
+        rsp_error<=0;
       end else case (state)
         UNCONFIGURED: ;
         CLEAR: begin
@@ -265,10 +252,10 @@ module conv_read_cache_reference #(
             rsp_data<=0;rsp_error<=1;state<=RESP;
           end else if (bypass_q) begin
             way_q<=0;allocation_q<=1;fill_error<=0;
-            stat_misses<=stat_misses+1;state<=FILL_REQ;
+            state<=FILL_REQ;
           end else if (geometry_q && req_geometry && transient_valid && transient_tag==req_addr[31:4]) begin
             rsp_data<=transient_words[req_addr[3:2]];
-            stat_hits<=stat_hits+1;state<=RESP;
+            state<=RESP;
           end else state<=TAG_READ;
         end
         TAG_READ: begin
@@ -281,7 +268,7 @@ module conv_read_cache_reference #(
         TAG_EVAL, HINT_WAIT: begin
           way_q<=chosen_way;
           if (hit) begin
-            stat_hits<=stat_hits+1;
+
             if (WAYS==2) lru[set_q]<=!chosen_way[0];
             if (request_geometry_q && first_q) begin
               if (effective_hint_valid) next_use[chosen_way][set_q]<=effective_hint;
@@ -291,7 +278,7 @@ module conv_read_cache_reference #(
           end else if (request_geometry_q && !has_invalid && !effective_hint_valid) begin
             state<=HINT_WAIT;
           end else begin
-            stat_misses<=stat_misses+1;fill_error<=0;
+            fill_error<=0;
             transient_valid<=0;
             if (request_geometry_q) begin
               for (int i=0;i<4;i++) transient_words[i]<=0;
@@ -307,7 +294,7 @@ module conv_read_cache_reference #(
         end
         FILL_REQ: if (span_req_ready) state<=FILL;
         FILL: if (span_rsp_valid && span_rsp_ready) begin
-          stat_read_bytes<=stat_read_bytes+32'($countones(span_strb));
+
           fill_error<=fill_error || span_error;
           if (request_geometry_q)
             for (int b=0;b<BUS_WIDTH/8;b++)
@@ -345,7 +332,7 @@ module conv_read_cache_reference #(
       endcase
     end
   end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   initial begin
     if (SETS<2 || (SETS&(SETS-1))!=0) $fatal(1,"SETS must be a power of two >=2");
     if (WAYS!=1 && WAYS!=2) $fatal(1,"WAYS must be 1 or 2");
@@ -354,8 +341,8 @@ module conv_read_cache_reference #(
     if (CACHE_POLICY<0 || CACHE_POLICY>2) $fatal(1,"CACHE_POLICY must be 0, 1, or 2");
   end
 `endif
-`ifdef CONV_ASSERT
-  always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk) if (rst_n) begin
     if (cfg_valid && cfg_ready) begin
       assert (cfg_bytes!=0);
       assert ({1'b0,cfg_base}+{1'b0,cfg_bytes}<33'h1_0000_0000);
@@ -428,12 +415,7 @@ module conv_windowed_cache #(
   input logic [31:0] prefetch_window_index = 32'd0,
   input logic [31:0] prefetch_window_epoch = 32'd0,
   input logic [31:0] prefetch_window_retire = 32'hffff_ffff,
-  input logic prefetch_next_fragment = 1'b0,
-  output logic [31:0] stat_hits, stat_misses, stat_read_bytes,
-  output logic [31:0] stat_prefetch_lines, stat_prefetch_used,
-  output logic [31:0] stat_prefetch_wasted, stat_prefetch_unused, stat_prefetch_bytes,
-  output logic [31:0] stat_prefetch_late
-);
+  input logic prefetch_next_fragment = 1'b0);
   localparam logic [31:0] INF=32'hffff_ffff;
   localparam int EPOCH_W=17-LB;
   typedef enum logic [1:0] {FG_IDLE, FG_MISS, FG_RESP} fg_state_t;
@@ -445,7 +427,7 @@ module conv_windowed_cache #(
   logic [31:0] base_q, end_q;
   logic bypass_q, windowed_q, prefetch_q;
   logic [31:LB] tags [WAYS][SETS];
-  logic valid [WAYS][SETS], prefetched [WAYS][SETS];
+  logic valid [WAYS][SETS];
   logic [EPOCH_W-1:0] epochs [WAYS][SETS];
   logic [31:0] use_rank [WAYS][SETS];
   logic [31:0] demand_addr, demand_index, demand_epoch, demand_retire, demand_progress;
@@ -499,8 +481,6 @@ module conv_windowed_cache #(
   logic hint_pending_q;
   logic [31:LB] hint_tag;
   logic [SI-1:0] hint_set;
-  logic [31:0] evicted_prefetch;
-  logic [31:0] resident_prefetch;
   localparam int DQ_AW=DEMAND_DEPTH<=1 ? 1 : $clog2(DEMAND_DEPTH);
   localparam int DQ_CW=$clog2(DEMAND_DEPTH+1);
   typedef struct packed {
@@ -516,12 +496,6 @@ module conv_windowed_cache #(
   logic response_push, response_pop, work_valid, work_ready;
   logic core_rsp_valid, core_rsp_ready;
   logic [31:0] core_rsp_data;
-  logic [SI-1:0] accepted_set;
-  logic accepted_hit, accepted_range;
-  // Acceptance counts remain comparable when a queued miss later becomes a
-  // hit. Lookup counts separately describe the requests when they execute.
-  logic [31:0] stat_peak_outstanding, stat_lookup_hits, stat_lookup_misses;
-
   function automatic logic [SI-1:0] cache_set(input logic [31:0] address,
       input logic indexed, input logic [31:0] index);
     if (indexed) return SI'(index);
@@ -584,12 +558,7 @@ module conv_windowed_cache #(
   end
 
   always_comb begin
-    accepted_set=cache_set(req_addr,windowed_q && req_window_index_valid,req_window_index);
-    accepted_range=req_addr>=base_q && req_addr<end_q;
-    accepted_hit=0;
-    for (int w=0;w<WAYS;w++)
-      if (!bypass_q && valid[w][accepted_set] && tags[w][accepted_set]==req_addr[31:LB])
-        accepted_hit=1;
+
     lookup_addr=fg_state==FG_MISS ? demand_addr : work_request.address;
     lookup_index=fg_state==FG_MISS ? demand_index : work_request.index;
     lookup_index_valid=fg_state==FG_MISS ? demand_index_valid : work_request.index_valid;
@@ -676,13 +645,7 @@ module conv_windowed_cache #(
             (fg_state==FG_MISS && lookup_hit);
     ram_raddr=DA'((32'(lookup_way)*SETS+32'(lookup_set))*(LINE_BYTES/4)+
                   ((lookup_addr>>2)&(LINE_BYTES/4-1)));
-    resident_prefetch=0;
-    for (int w=0;w<WAYS;w++)
-      for (int s=0;s<SETS;s++)
-        if (valid[w][s] && prefetched[w][s]) resident_prefetch=resident_prefetch+1;
   end
-  assign stat_prefetch_wasted=evicted_prefetch;
-  assign stat_prefetch_unused=resident_prefetch;
   assign ram_wen=fill_state==F_DATA && span_rsp_valid && span_rsp_ready;
   assign ram_waddr=DA'((32'(fill_way)*SETS+32'(fill_set))*(LINE_BYTES/4)+
                       ((span_addr>>2)&(LINE_BYTES/4-1)));
@@ -703,17 +666,15 @@ module conv_windowed_cache #(
     if (!rst_n) begin
       request_head<=0;request_tail<=0;request_count<=0;
       response_head<=0;response_tail<=0;response_count<=0;outstanding_count<=0;
-      stat_peak_outstanding<=0;
+
     end else if (cfg_valid && cfg_ready) begin
       request_head<=0;request_tail<=0;request_count<=0;
       response_head<=0;response_tail<=0;response_count<=0;outstanding_count<=0;
-      stat_peak_outstanding<=0;
+
     end else begin
       case ({accepted_request,consumed_response})
         2'b10: begin
           outstanding_count<=outstanding_count+1'b1;
-          if (32'(outstanding_count)+1>stat_peak_outstanding)
-            stat_peak_outstanding<=32'(outstanding_count)+1;
         end
         2'b01: outstanding_count<=outstanding_count-1'b1;
         default: ;
@@ -742,6 +703,40 @@ module conv_windowed_cache #(
     end
   end
 
+  wire metadata_enable=!(cfg_valid && cfg_ready);
+  wire metadata_hit=req_fire && lookup_range && lookup_hit;
+  wire metadata_fill=fill_state==F_DATA && span_rsp_valid && span_rsp_ready && span_last;
+  wire metadata_fill_good=metadata_fill && !(fill_bad || span_error);
+  wire metadata_fill_bad=metadata_fill && (fill_bad || span_error);
+  wire [31:0] metadata_hit_rank=windowed_q ? work_request.retire : hint_next;
+  wire [31:0] metadata_fill_rank=windowed_q ? fill_retire : fill_rank;
+  for(genvar metadata_way=0;metadata_way<WAYS;metadata_way++) begin:g_metadata_way
+    for(genvar metadata_set=0;metadata_set<SETS;metadata_set++) begin:g_metadata_set
+      wire lookup_target=lookup_way==WI'(metadata_way) && lookup_set==SI'(metadata_set);
+      wire select_target=select_way==WI'(metadata_way) && select_set==SI'(metadata_set);
+      wire fill_target=fill_way==WI'(metadata_way) && fill_set==SI'(metadata_set);
+      wire hit_write=metadata_hit && lookup_target;
+      wire fill_write=metadata_fill_good && fill_target;
+      wire hint_write=hint_pending_q && hint_valid && !windowed_q &&
+        hint_set==SI'(metadata_set) && valid[metadata_way][metadata_set] &&
+        tags[metadata_way][metadata_set]==hint_tag;
+      wire rank_write=(hit_write && (windowed_q || hint_valid)) || hint_write || fill_write;
+      wire [31:0] rank_data=fill_write ? metadata_fill_rank : hint_write ? hint_next : metadata_hit_rank;
+      conv_cache_line_metadata #(.TAG_BITS(32-LB),.EPOCH_BITS(EPOCH_W)) u_line (
+        .clk(clk),.rst_n(rst_n),.enable(metadata_enable),
+        .invalidate((clearing && clear_set==SI'(metadata_set)) ||
+                    (select_launch && select_target) || (metadata_fill_bad && fill_target)),
+        .fill_valid(fill_write),.fill_bypass(bypass_q),
+        .tag_write(fill_write),.tag_in(fill_addr[31:LB]),
+        .epoch_write(hit_write || fill_write),
+        .epoch_in(fill_write ? EPOCH_W'(fill_epoch) : EPOCH_W'(work_request.epoch)),
+        .rank_write(rank_write),.rank_in(rank_data),
+        .line_valid(valid[metadata_way][metadata_set]),
+        .tag(tags[metadata_way][metadata_set]),.epoch(epochs[metadata_way][metadata_set]),
+        .rank(use_rank[metadata_way][metadata_set]));
+    end
+  end
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       fg_state<=FG_IDLE;fill_state<=F_IDLE;configured<=0;clearing<=0;clear_set<=0;
@@ -756,39 +751,20 @@ module conv_windowed_cache #(
       fill_addr<=0;fill_first<=0;fill_end<=0;fill_epoch<=0;fill_retire<=INF;fill_rank<=INF;
       fill_set<=0;fill_way<=0;fill_prefetch<=0;fill_bad<=0;fill_consumed<=0;
       hint_pending_q<=0;hint_tag<=0;hint_set<=0;
-      stat_hits<=0;stat_misses<=0;stat_read_bytes<=0;stat_lookup_hits<=0;stat_lookup_misses<=0;
-      stat_prefetch_lines<=0;stat_prefetch_used<=0;stat_prefetch_bytes<=0;stat_prefetch_late<=0;
-      evicted_prefetch<=0;
-      for (int w=0;w<WAYS;w++) for (int s=0;s<SETS;s++) begin
-        valid[w][s]<=0;prefetched[w][s]<=0;tags[w][s]<=0;
-        epochs[w][s]<=0;use_rank[w][s]<=INF;
-      end
+
     end else begin
       if (cfg_valid && cfg_ready) begin
         configured<=1;clearing<=1;clear_set<=0;fg_state<=FG_IDLE;
         base_q<=cfg_base;end_q<=cfg_base+cfg_bytes;bypass_q<=cfg_bypass;
         windowed_q<=cfg_windowed;prefetch_q<=cfg_prefetch_enable;
         pf_head<=0;pf_tail<=0;pf_count<=0;hint_pending_q<=0;demand_filled<=0;
-        stat_hits<=0;stat_misses<=0;stat_read_bytes<=0;stat_lookup_hits<=0;stat_lookup_misses<=0;
-        stat_prefetch_lines<=0;stat_prefetch_used<=0;stat_prefetch_bytes<=0;stat_prefetch_late<=0;
-        evicted_prefetch<=0;
+
       end else begin
         if (clearing) begin
-          for (int w=0;w<WAYS;w++) begin
-            valid[w][clear_set]<=0;prefetched[w][clear_set]<=0;
-          end
           if (clear_set==SI'(SETS-1)) clearing<=0;
           else clear_set<=clear_set+1'b1;
         end
         if (fg_state==FG_RESP && core_rsp_ready) fg_state<=FG_IDLE;
-        if (accepted_request && accepted_range) begin
-          if (accepted_hit) stat_hits<=stat_hits+1;
-          else begin
-            stat_misses<=stat_misses+1;
-            if (fill_state!=F_IDLE && fill_prefetch && fill_addr[31:LB]==req_addr[31:LB])
-              stat_prefetch_late<=stat_prefetch_late+1;
-          end
-        end
         if (req_fire) begin
           demand_addr<=work_request.address;demand_index<=work_request.index;
           demand_index_valid<=work_request.index_valid;
@@ -796,15 +772,9 @@ module conv_windowed_cache #(
           demand_progress<=work_request.progress;demand_filled<=0;response_error<=0;
           if (!lookup_range) begin response_error<=1;fg_state<=FG_RESP;end
           else if (lookup_hit) begin
-            stat_lookup_hits<=stat_lookup_hits+1;fg_state<=FG_RESP;
-            if (prefetched[lookup_way][lookup_set]) begin
-              prefetched[lookup_way][lookup_set]<=0;stat_prefetch_used<=stat_prefetch_used+1;
-            end
-            epochs[lookup_way][lookup_set]<=EPOCH_W'(work_request.epoch);
-            if (windowed_q) use_rank[lookup_way][lookup_set]<=work_request.retire;
-            else if (hint_valid) use_rank[lookup_way][lookup_set]<=hint_next;
+            fg_state<=FG_RESP;
           end else begin
-            stat_lookup_misses<=stat_lookup_misses+1;fg_state<=FG_MISS;
+            fg_state<=FG_MISS;
             if (fill_state!=F_IDLE && fill_prefetch && fill_addr[31:LB]==work_request.address[31:LB]) begin
               fill_consumed<=1;
             end
@@ -818,14 +788,9 @@ module conv_windowed_cache #(
         end
         if (fg_state==FG_MISS && lookup_hit) begin
           fg_state<=FG_RESP;response_error<=0;demand_filled<=0;
-          if (prefetched[lookup_way][lookup_set]) begin
-            prefetched[lookup_way][lookup_set]<=0;stat_prefetch_used<=stat_prefetch_used+1;
-          end
         end
         if (hint_pending_q && hint_valid) begin
           hint_pending_q<=0;
-          for (int w=0;w<WAYS;w++)
-            if (!windowed_q && valid[w][hint_set] && tags[w][hint_set]==hint_tag) use_rank[w][hint_set]<=hint_next;
           if (fill_state!=F_IDLE && fill_addr[31:LB]==hint_tag) fill_rank<=hint_next;
         end
         case ({pf_push,pf_pop})
@@ -853,28 +818,18 @@ module conv_windowed_cache #(
           fill_retire<=select_retire;fill_rank<=select_rank;
           fill_prefetch<=select_prefetch;fill_bad<=0;fill_consumed<=0;
           fill_state<=span_req_ready ? F_DATA : F_REQ;
-          if (prefetched[select_way][select_set] && valid[select_way][select_set])
-            evicted_prefetch<=evicted_prefetch+1;
-          valid[select_way][select_set]<=0;prefetched[select_way][select_set]<=0;
         end
         if (fill_state==F_REQ && span_req_ready) fill_state<=F_DATA;
         if (fill_state==F_DATA && span_rsp_valid && span_rsp_ready) begin
-          stat_read_bytes<=stat_read_bytes+32'($countones(span_strb));
-          if (fill_prefetch) stat_prefetch_bytes<=stat_prefetch_bytes+32'($countones(span_strb));
+
           fill_bad<=fill_bad || span_error;
           if (span_last) begin
             fill_state<=select_launch ? F_DATA : F_IDLE;
             if (fill_bad || span_error) begin
-              valid[fill_way][fill_set]<=0;
               if (!fill_prefetch || (fg_state==FG_MISS && demand_addr[31:LB]==fill_addr[31:LB])) begin
                 response_error<=1;fg_state<=FG_RESP;
               end
             end else begin
-              tags[fill_way][fill_set]<=fill_addr[31:LB];valid[fill_way][fill_set]<=!bypass_q;
-              epochs[fill_way][fill_set]<=EPOCH_W'(fill_epoch);
-              use_rank[fill_way][fill_set]<=windowed_q ? fill_retire : fill_rank;
-              prefetched[fill_way][fill_set]<=fill_prefetch;
-              if (fill_prefetch) stat_prefetch_lines<=stat_prefetch_lines+1;
               if (!fill_prefetch && bypass_q) begin
                 demand_filled<=1;demand_fill_set<=fill_set;demand_fill_way<=fill_way;
               end
@@ -884,7 +839,7 @@ module conv_windowed_cache #(
       end
     end
   end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   initial begin
     if (SETS<2 || (SETS&(SETS-1))!=0) $fatal(1,"SETS must be a power of two >=2");
     if (WAYS!=1 && WAYS!=2) $fatal(1,"WAYS must be 1 or 2");
@@ -894,8 +849,8 @@ module conv_windowed_cache #(
       $fatal(1,"DEMAND_DEPTH must be a positive power of two");
   end
 `endif
-`ifdef CONV_ASSERT
-  always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk) if (rst_n) begin
     if (cfg_valid && cfg_ready) begin
       assert(cfg_bytes!=0);
       assert({1'b0,cfg_base}+{1'b0,cfg_bytes}<33'h1_0000_0000);
@@ -913,6 +868,42 @@ module conv_windowed_cache #(
       if (fill_complete) assert(select_set!=fill_set || select_way!=fill_way);
     end
   end
+`endif
+endmodule
+
+module conv_cache_line_metadata #(
+  parameter int TAG_BITS=28,
+  parameter int EPOCH_BITS=13
+) (
+  input wire clk,rst_n,enable,
+  input wire invalidate,fill_valid,fill_bypass,
+  input wire tag_write,
+  input wire [TAG_BITS-1:0] tag_in,
+  input wire epoch_write,
+  input wire [EPOCH_BITS-1:0] epoch_in,
+  input wire rank_write,
+  input wire [31:0] rank_in,
+  output logic line_valid,
+  output logic [TAG_BITS-1:0] tag,
+  output logic [EPOCH_BITS-1:0] epoch,
+  output logic [31:0] rank
+);
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(!rst_n) line_valid<=0;
+    else if(enable) begin
+      if(invalidate)line_valid<=0;
+      if(fill_valid) line_valid<=!fill_bypass;
+    end
+  end
+  // Data fields are allocated before a cache line becomes valid.
+  always_ff @(posedge clk) if(rst_n && enable) begin
+    if(tag_write)tag<=tag_in;
+    if(epoch_write)epoch<=epoch_in;
+    if(rank_write)rank<=rank_in;
+  end
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk) if(rst_n && line_valid)
+    assert(!$isunknown({tag,epoch,rank}));
 `endif
 endmodule
 

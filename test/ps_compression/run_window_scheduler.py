@@ -34,13 +34,14 @@ def main():
         target = out / name
         target.mkdir(parents=True, exist_ok=True)
         sources = [rtl, test_dir / cpp, test_dir / 'window_scheduler_ref.hpp', Path(__file__).resolve()]
+        sources += [HERE / 'window_scheduler_tb.sv', ROOT / 'test/monitors/ps_window_scheduler_observer.sv']
         hashes = {str(path): digest(path) for path in sources}
         binary = target / 'obj/Vps_window_scheduler'
         command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', '1',
-                   '--top-module', 'ps_window_scheduler', '--Mdir', str(target / 'obj'),
+                   '--top-module', 'window_scheduler_tb', '--prefix', 'Vps_window_scheduler', '--Mdir', str(target / 'obj'),
                    '-Wno-fatal', '--output-groups', '0',
                    '-CFLAGS', '-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
-                   '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS', '-B', str(rtl), str(test_dir / cpp)]
+                   '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS', '-B', str(rtl), str(HERE / 'window_scheduler_tb.sv'), str(ROOT / 'test/monitors/ps_window_scheduler_observer.sv'), str(test_dir / cpp)]
         started = time.monotonic()
         if args.reuse_build:
             previous = json.loads((target / 'summary.json').read_text())

@@ -43,6 +43,8 @@ def main():
             args.sram_root.resolve()/'RAMTP128X16/verilog/RAMTP128X16.v',
             args.sram_root.resolve()/'RAMTP1024X16/verilog/RAMTP1024X16.v']
         tracked += sources[-3:]
+        observer=root/'test/monitors/smic40_sram_1r1w_observer.sv'
+        sources.append(observer);tracked.append(observer)
         original=root/'test/conv_npu/tb_conv_npu.sv'
         text=original.read_text()
         declaration='    wire arvalid,arready,rvalid,rready,rlast,awvalid,awready,wvalid,wready,wlast,bvalid,bready;'
@@ -54,7 +56,7 @@ def main():
         sources=[prepared if p==original else p for p in sources]
         hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
         executable=directory/'simv'
-        defines=['ASIC_SRAM','GEMPACT_PS_COMPRESS','GEMMORA_PS_POOL_BYTES=16384',
+        defines=['ASIC_SRAM','CONV_ASSERT','NPU_SIM_ASSERT','GEMPACT_PS_COMPRESS','GEMMORA_PS_POOL_BYTES=16384',
                  'TB_SIZE=16','TB_BUS_WIDTH=64','TB_SHARED_BANK_BYTES=2048',
                  'TB_SHARED_BANK_COUNT=9','TB_PS_FRAME_COUNT=4',
                  'TB_CONV_CACHE_SETS=128','TB_CONV_CACHE_POLICY=3']

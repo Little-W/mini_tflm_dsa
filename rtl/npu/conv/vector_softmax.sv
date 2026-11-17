@@ -161,7 +161,7 @@ module vector_softmax #(
       default: begin error<=2'b10;state<=FINISH;end
     endcase
   end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   initial if (MAX_DEPTH<1 || MAX_DEPTH>256) $fatal(1,"Softmax depth must be in [1,256]");
 `endif
 endmodule

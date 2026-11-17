@@ -28,15 +28,12 @@ module conv_window_queue #(
   input logic [COL_W-1:0] frontend_rsp_col,
   input logic signed [15:0] frontend_rsp_data[4],
   input logic [3:0] frontend_rsp_mask,
-  input logic frontend_rsp_last,frontend_error,
-  output logic [31:0] stat_requests,stat_completions,stat_peak_outstanding,
-  output logic [31:0] stat_response_beats,stat_consecutive_responses,stat_request_response_overlap
-);
+  input logic frontend_rsp_last,frontend_error);
   logic [31:0] p0[DEPTH],q0[DEPTH],cols[DEPTH];
   logic [TAG_W-1:0] tags[DEPTH];
   logic [PTR_W-1:0] head,tail,present;
   logic [COUNT_W-1:0] count,next_count;
-  logic active,failed,accept,retire,launch,response_fire,previous_response;
+  logic active,failed,accept,retire,launch,response_fire;
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
     return value==PTR_W'(DEPTH-1) ? '0 : value+1'b1;
   endfunction
@@ -73,32 +70,25 @@ module conv_window_queue #(
   end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      head<=0;tail<=0;count<=0;active<=0;failed<=0;previous_response<=0;
-      stat_requests<=0;stat_completions<=0;stat_peak_outstanding<=0;
-      stat_response_beats<=0;stat_consecutive_responses<=0;stat_request_response_overlap<=0;
+      head<=0;tail<=0;count<=0;active<=0;failed<=0;
+
     end else if (configure) begin
-      head<=0;tail<=0;count<=0;active<=0;failed<=0;previous_response<=0;
-      stat_requests<=0;stat_completions<=0;stat_peak_outstanding<=0;
-      stat_response_beats<=0;stat_consecutive_responses<=0;stat_request_response_overlap<=0;
+      head<=0;tail<=0;count<=0;active<=0;failed<=0;
+
     end else begin
       count<=next_count;
-      if (32'(next_count)>stat_peak_outstanding) stat_peak_outstanding<=32'(next_count);
-      previous_response<=response_fire && !rsp_error;
+
       if (accept) begin
         p0[tail]<=req_p0;q0[tail]<=req_q0;cols[tail]<=req_cols;tags[tail]<=req_tag;
-        tail<=increment(tail);stat_requests<=stat_requests+1;
+        tail<=increment(tail);
       end
-      if (retire) begin head<=increment(head);active<=0;stat_completions<=stat_completions+1;end
+      if (retire) begin head<=increment(head);active<=0;end
       if (launch) active<=1;
       if (frontend_error) failed<=1;
-      if (response_fire && !rsp_error) begin
-        stat_response_beats<=stat_response_beats+1;
-        if (previous_response) stat_consecutive_responses<=stat_consecutive_responses+1;
-      end
-      if (accept && response_fire) stat_request_response_overlap<=stat_request_response_overlap+1;
+
     end
   end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   initial assert(DEPTH>=2 && TAG_W>=1);
   always_ff @(posedge clk) if(rst_n) begin
     assert(count<=COUNT_W'(DEPTH));

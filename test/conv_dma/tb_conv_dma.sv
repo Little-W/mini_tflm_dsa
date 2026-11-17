@@ -53,7 +53,7 @@ module tb_conv_dma;
         .CACHE_BLOCKS(4),.CONV_CACHE_SETS(32),.CONV_CACHE_WAYS(2),.CONV_LINE_BYTES(16),.CONV_CACHE_POLICY(2)) u_arb(
         .clk,.rst_n,.conv_cfg_valid,.conv_cfg_ready,.conv_enable,.conv_cfg,
         .conv_sched_r(32'd0),.conv_sched_groups(32'd0),.conv_range_base(ranges_base),.conv_range_end(ranges_end),
-        .conv_error,.conv_busy,.conv_stat_hits(hits),.conv_stat_misses(misses),.conv_stat_read_bytes(conv_bytes),
+        .conv_error,.conv_busy,
         .ia_req,.ia_granted,.ia_start,.ia_im2col,.ia_p0,.ia_q0,.ia_group(32'd0),.ia_linear_read_mode(1'b0),
         .ia_base_addr,.ia_row_stride,.ia_rows_to_read,.ia_burst_len_m1,.ia_slot_id,.ia_use_16bits,.ia_lhs_zp,
         .ia_busy,.ia_done,.ia_wr_slot,.ia_wr_row,.ia_wr_col_base,.ia_wr_data,.ia_wr_valid,.ia_wr_use_16bits,
@@ -78,6 +78,10 @@ module tb_conv_dma;
         .m_axi_wvalid(wvalid),.m_axi_wready(wready),.m_axi_wdata(wdata),.m_axi_wstrb(wstrb),.m_axi_wlast(wlast),
         .m_axi_bvalid(bvalid),.m_axi_bready(bready),.m_axi_bresp(bresp),.idle,.bus_error
     );
+    assign hits=u_arb.tb_observer.conv_stat_hits;
+    assign misses=u_arb.tb_observer.conv_stat_misses;
+    assign conv_bytes=u_arb.tb_observer.conv_stat_read_bytes;
+
     conv_test_axi_memory #(.WORDS(WORDS)) u_mem(
         .clk,.rst_n,.new_job,.protect_input(conv_enable),.inject_error,
         .input_lo(oracle_cfg.input_base),.input_hi,.other_lo,.other_hi,.error_injected,

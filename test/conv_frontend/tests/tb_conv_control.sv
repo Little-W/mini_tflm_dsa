@@ -23,7 +23,17 @@ module tb_conv_control;
   logic [1:0] arburst,rresp=0;
   int checked=0,written=0,cycles=0;
   conv_im2col_frontend #(.SIZE(4),.SLOT_W(2),.CACHE_SETS(2)) dut (
-      .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.stat_prefetch_lines(unused_prefetch[0]),.stat_prefetch_used(unused_prefetch[1]),.stat_prefetch_wasted(unused_prefetch[2]),.stat_prefetch_unused(unused_prefetch[3]),.stat_prefetch_bytes(unused_prefetch[4]),.stat_prefetch_late(unused_prefetch[5]),.wr_last(unused_wr_last),.*);
+      .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.wr_last(unused_wr_last),.*);
+    assign unused_prefetch[0]=dut.tb_observer.stat_prefetch_lines;
+    assign unused_prefetch[1]=dut.tb_observer.stat_prefetch_used;
+    assign unused_prefetch[2]=dut.tb_observer.stat_prefetch_wasted;
+    assign unused_prefetch[3]=dut.tb_observer.stat_prefetch_unused;
+    assign unused_prefetch[4]=dut.tb_observer.stat_prefetch_bytes;
+    assign unused_prefetch[5]=dut.tb_observer.stat_prefetch_late;
+    assign stat_hits=dut.tb_observer.stat_hits;
+    assign stat_misses=dut.tb_observer.stat_misses;
+    assign stat_read_bytes=dut.tb_observer.stat_read_bytes;
+
 
   logic [31:0] unused_prefetch[6];
   always @(posedge clk) if(rst_n) begin

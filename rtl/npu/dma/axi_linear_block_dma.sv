@@ -117,12 +117,15 @@ module axi_linear_block_dma #(
 
     localparam int unsigned BYTE_PER_BEAT = BUS_WIDTH / 8;
     localparam int unsigned MAX_BURST_BEATS = DMA_MAX_BYTES / BYTE_PER_BEAT;
+`ifdef NPU_SIM_ASSERT
     initial begin
         if (DMA_MAX_BYTES < BYTE_PER_BEAT || DMA_MAX_BYTES > 256 * BYTE_PER_BEAT ||
             DMA_MAX_BYTES % BYTE_PER_BEAT != 0 ||
             (DMA_MAX_BYTES & (DMA_MAX_BYTES - 1)) != 0 || MAX_BURST_BEATS > 256)
             $fatal(1, "DMA_MAX_BYTES must contain a power-of-two count of 1 through 256 complete AXI beats");
     end
+`endif
+
     localparam int unsigned ELEM_PER_BEAT_S8 = BYTE_PER_BEAT;
     localparam int unsigned ELEM_PER_BEAT_S16 = BYTE_PER_BEAT >> 1;
     localparam int unsigned ADDR_LSB = $clog2(BYTE_PER_BEAT);
@@ -150,14 +153,6 @@ module axi_linear_block_dma #(
     wire wr_aw_hs = m_axi_awvalid && m_axi_awready;
     wire wr_w_hs  = m_axi_wvalid && m_axi_wready;
     wire wr_b_hs  = m_axi_bvalid && m_axi_bready;
-
-`ifndef SYNTHESIS
-    logic dma_trace_en;
-    initial begin
-        dma_trace_en = 1'b0;
-        if ($test$plusargs("NPU_DMA_TRACE")) dma_trace_en = 1'b1;
-    end
-`endif
 
     // ---------------------------------------------------------------------
     // Read command issue and ordered response contexts
@@ -481,26 +476,6 @@ module axi_linear_block_dma #(
         end
     end
 
-`ifndef SYNTHESIS
-    initial begin
-        assert(RD_CONTEXT_DEPTH > 0 && RD_TAG_WIDTH > 0)
-            else $fatal(1,"read context depth and tag width must be positive");
-    end
-    always_ff @(posedge clk) begin
-        if (rst_n) begin
-            if (rd_accept_start) assert(rd_rows_to_read > 0 && rd_rows_to_read <= SIZE)
-                else $fatal(1,"read descriptor rows exceed the configured block size");
-            if (rd_r_last_hs) assert(rd_outstanding_cnt != '0 || rd_ar_hs)
-                else $fatal(1,"read response has no outstanding AXI request");
-            assert(rd_context_count <= context_count_t'(RD_CTX_DEPTH));
-            assert(rd_outstanding_cnt <= RD_OUTS_W'(RD_OUTS_MAX));
-            if (rd_done && dma_trace_en)
-                $display("[AXI_DMA_TRACE] rd_done tag=%0d error=%0d contexts=%0d outstanding=%0d",
-                         rd_response_tag,rd_error,rd_context_count,rd_outstanding_cnt);
-        end
-    end
-`endif
-
     // ---------------------------------------------------------------------
     // Write engine configuration/state
     // ---------------------------------------------------------------------
@@ -549,12 +524,6 @@ module axi_linear_block_dma #(
             end
         end
     end
-`ifndef SYNTHESIS
-    longint unsigned wr_trace_aw_count;
-    longint unsigned wr_trace_cross_aw_count;
-    longint unsigned wr_trace_w_count;
-    logic [WR_OUTS_W-1:0] wr_trace_max_outs;
-`endif
 
     assign wr_busy  = wr_active;
     assign wr_done  = wr_done_r;
@@ -790,41 +759,5 @@ module axi_linear_block_dma #(
             wr_pending_cmd_cross <= 1'b0;
         end
     end
-
-`ifndef SYNTHESIS
-    always_ff @(posedge clk) begin
-        if (!rst_n) begin
-            wr_trace_aw_count       <= '0;
-            wr_trace_cross_aw_count <= '0;
-            wr_trace_w_count        <= '0;
-            wr_trace_max_outs       <= '0;
-        end else if (wr_start && !wr_active && !abort) begin
-            wr_trace_aw_count       <= '0;
-            wr_trace_cross_aw_count <= '0;
-            wr_trace_w_count        <= '0;
-            wr_trace_max_outs       <= '0;
-        end else if (wr_active) begin
-            if (wr_aw_hs) begin
-                wr_trace_aw_count <= wr_trace_aw_count + 1'b1;
-                if (wr_pending_cmd_cross) wr_trace_cross_aw_count <= wr_trace_cross_aw_count + 1'b1;
-                if (!wr_b_hs && ((wr_outstanding_cnt + 1'b1) > wr_trace_max_outs)) begin
-                    wr_trace_max_outs <= wr_outstanding_cnt + 1'b1;
-                end else if (wr_b_hs && (wr_outstanding_cnt > wr_trace_max_outs)) begin
-                    wr_trace_max_outs <= wr_outstanding_cnt;
-                end
-            end
-            if (wr_w_hs) begin
-                wr_trace_w_count <= wr_trace_w_count + 1'b1;
-            end
-            if (wr_done_r && dma_trace_en) begin
-                $display("[AXI_DMA_TRACE] wr_done base=%08x stride=%0d rows=%0d len_m1=%0d aw=%0d aw_cross=%0d w=%0d max_out=%0d",
-                         wr_cfg_base_addr, wr_cfg_row_stride, wr_cfg_rows,
-                         wr_cfg_burst_len_m1, wr_trace_aw_count,
-                         wr_trace_cross_aw_count, wr_trace_w_count,
-                         wr_trace_max_outs);
-            end
-        end
-    end
-`endif
 
 endmodule

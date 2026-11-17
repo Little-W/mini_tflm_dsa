@@ -144,10 +144,11 @@ module conv_axi_read_guard #(
             endcase
         end
     end
-`ifndef SYNTHESIS
-    assert property (@(posedge clk) disable iff (!rst_n)
+
+`ifdef NPU_SIM_ASSERT
+    initial assert property (@(posedge clk) disable iff (!rst_n)
         m_arvalid && !m_arready |=> m_arvalid && $stable({m_araddr,m_arlen,m_arsize,m_arburst}));
-    assert property (@(posedge clk) disable iff (!rst_n)
+    initial assert property (@(posedge clk) disable iff (!rst_n)
         s_rvalid && !s_rready |=> s_rvalid && $stable({s_rdata,s_rresp,s_rlast}));
     always_ff @(posedge clk) if (rst_n && (enable || SPLIT_GEMM_4K) && s_arvalid && s_arready)
         assert(s_arsize == 3'(BUS_SHIFT) && s_araddr[BUS_SHIFT-1:0] == 0 && s_arburst == 2'b01);

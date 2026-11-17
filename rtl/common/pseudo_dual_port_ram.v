@@ -20,15 +20,6 @@ module pseudo_dual_port_ram #(
     // Synchronous-read block RAM friendly storage.
     (* ram_style = "block" *) reg [DATA_WIDTH-1:0] ram [(1<<ADDR_WIDTH)-1:0];
 
-`ifndef SYNTHESIS
-    // 初始化RAM（用于仿真）
-    integer init_i;
-    initial begin
-        for (init_i = 0; init_i < (1<<ADDR_WIDTH); init_i = init_i + 1) begin
-            ram[init_i] = {DATA_WIDTH{1'b0}};
-        end
-    end
-`endif
 
     // 使用一个 always 块来处理两个端口的读写操作
     always @(posedge clk) begin

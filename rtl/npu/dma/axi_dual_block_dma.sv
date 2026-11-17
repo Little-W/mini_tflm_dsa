@@ -60,7 +60,6 @@ module axi_dual_block_dma #(
     input  logic [31:0] conv_range_base [4] = '{default:'0},
     input  logic [32:0] conv_range_end [4] = '{default:'0},
     output logic conv_error, conv_busy,
-    output logic [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes,
 
     // ---- Read block command ----
     // Im2col returns rows_to_read by IM2COL_SIZE signed-16 elements. Padding
@@ -198,8 +197,7 @@ module axi_dual_block_dma #(
 
     logic fe_cfg_ready, fe_tile_ready, fe_wr_valid, fe_done, fe_tile_error, fe_wr_last;
     logic fe_error, fe_busy;
-    logic [31:0] conv_stat_prefetch_lines, conv_stat_prefetch_used, conv_stat_prefetch_wasted;
-    logic [31:0] conv_stat_prefetch_unused, conv_stat_prefetch_bytes, conv_stat_prefetch_late;
+
     logic [SLOT_W-1:0] fe_slot;
     logic [CONV_CW-1:0] fe_row, fe_col;
     logic signed [15:0] fe_data [4];
@@ -223,8 +221,7 @@ module axi_dual_block_dma #(
     logic [31:0] win_frontend_p0,win_frontend_q0,win_frontend_cols;
     logic win_cols_valid;
     logic [CONV_CW-1:0] win_response_col;
-    logic [31:0] win_stat_requests,win_stat_completions,win_stat_peak_outstanding;
-    logic [31:0] win_stat_response_beats,win_stat_consecutive_responses,win_stat_request_response_overlap;
+
     assign win_rsp_col=32'(win_response_col);
     assign win_cols_valid=win_frontend_cols>0 && win_frontend_cols<=32'(IM2COL_SIZE);
     assign win_req_ready=win_queue_req_ready && !conv_cfg_valid && !rd_start;
@@ -240,12 +237,7 @@ module axi_dual_block_dma #(
         .frontend_p0(win_frontend_p0),.frontend_q0(win_frontend_q0),.frontend_cols(win_frontend_cols),
         .frontend_rsp_valid(fe_wr_valid),.frontend_rsp_ready(win_frontend_rsp_ready),
         .frontend_rsp_col(fe_col),.frontend_rsp_data(fe_data),.frontend_rsp_mask(fe_mask),
-        .frontend_rsp_last(fe_wr_last),.frontend_error(fe_error || fe_tile_error),
-        .stat_requests(win_stat_requests),.stat_completions(win_stat_completions),
-        .stat_peak_outstanding(win_stat_peak_outstanding),.stat_response_beats(win_stat_response_beats),
-        .stat_consecutive_responses(win_stat_consecutive_responses),
-        .stat_request_response_overlap(win_stat_request_response_overlap)
-    );
+        .frontend_rsp_last(fe_wr_last),.frontend_error(fe_error || fe_tile_error));
     logic accept_read, accept_linear, accept_image, image_start_ready, direct_issue;
     assign rd_busy = linear_busy || conv_active || fe_busy || win_busy || !guard_idle || !mux_idle;
     assign rd_done = linear_done || conv_done_r;
@@ -416,11 +408,6 @@ module axi_dual_block_dma #(
             .wr_valid(fe_wr_valid), .wr_ready(win_frontend_active ? win_frontend_rsp_ready : 1'b1), .wr_slot(fe_slot),
             .wr_row(fe_row), .wr_col(fe_col), .wr_data(fe_data), .wr_mask(fe_mask),
             .tile_done(fe_done), .tile_error(fe_tile_error), .error(fe_error), .busy(fe_busy), .wr_last(fe_wr_last),
-            .stat_hits(conv_stat_hits), .stat_misses(conv_stat_misses),
-            .stat_read_bytes(conv_stat_read_bytes),
-            .stat_prefetch_lines(conv_stat_prefetch_lines),.stat_prefetch_used(conv_stat_prefetch_used),
-            .stat_prefetch_wasted(conv_stat_prefetch_wasted),.stat_prefetch_bytes(conv_stat_prefetch_bytes),
-            .stat_prefetch_late(conv_stat_prefetch_late),.stat_prefetch_unused(conv_stat_prefetch_unused),
             .arvalid(fe_arvalid), .arready(fe_arready), .araddr(fe_araddr), .arlen(fe_arlen),
             .arsize(fe_arsize), .arburst(fe_arburst), .rvalid(fe_rvalid), .rready(fe_rready),
             .rdata(fe_rdata), .rresp(fe_rresp), .rlast(fe_rlast)
@@ -467,9 +454,6 @@ module axi_dual_block_dma #(
         assign fe_error=1'b0; assign fe_busy=1'b0;
         assign fe_slot='0; assign fe_row='0; assign fe_col='0;
         assign fe_mask='0; for (genvar i=0;i<4;i++) assign fe_data[i]='0;
-        assign conv_stat_hits='0; assign conv_stat_misses='0; assign conv_stat_read_bytes='0;
-        assign conv_stat_prefetch_lines=0;assign conv_stat_prefetch_used=0;assign conv_stat_prefetch_wasted=0;
-        assign conv_stat_prefetch_unused=0;assign conv_stat_prefetch_bytes=0;assign conv_stat_prefetch_late=0;
         assign guard_idle=1'b1; assign mux_idle=1'b1;
         assign guard_arvalid=linear_arvalid; assign linear_arready=guard_arready;
         assign guard_araddr=linear_araddr; assign guard_arlen=linear_arlen;
@@ -485,8 +469,8 @@ module axi_dual_block_dma #(
         assign guard_rlast=m_axi_rlast;
     end endgenerate
 
-`ifndef SYNTHESIS
-    always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+    initial forever @(posedge clk) if (rst_n) begin
         if (cfg_fire) assert(!rd_start && !rd_busy && !win_busy)
             else $error("DMA job configuration requires all reads to complete");
         if (accept_read && rd_im2col) assert(!linear_busy || linear_finish)

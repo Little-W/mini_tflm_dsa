@@ -185,9 +185,9 @@ TFLM 的通用软件 Add。
 | `0x0b0` | `NPU_REG_VECTOR_OP` | 操作和 INT16 标志 |
 | `0x0b4` | `NPU_REG_VECTOR_LENGTH` | 向量元素数 |
 | `0x0b8` | `NPU_REG_VECTOR_CAPS` | 能力、PE 数、DW 核面积上限、版本 |
-| `0x0bc` | `NPU_REG_VECTOR_CYCLES` | 引擎任务周期 |
-| `0x0c0` | `NPU_REG_VECTOR_COMPUTE` | 运算状态周期 |
-| `0x0c4` | `NPU_REG_VECTOR_DMA_WAIT` | DMA 及相关等待周期 |
+| `0x0bc` | `NPU_REG_VECTOR_CYCLES` | 保留，读取零 |
+| `0x0c0` | `NPU_REG_VECTOR_COMPUTE` | 保留，读取零 |
+| `0x0c4` | `NPU_REG_VECTOR_DMA_WAIT` | 保留，读取零 |
 | `0x0c8` | `NPU_REG_POOL_MAX_TAPS` | 只读池化窗口上限，默认 256 |
 | `0x0cc` | `NPU_REG_VECTOR_ADD_INPUT1_MULT` | 第一个输入的 Q31 系数 |
 | `0x0d0` | `NPU_REG_VECTOR_ADD_INPUT1_SHIFT` | 第一个输入的指数 |

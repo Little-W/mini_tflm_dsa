@@ -620,8 +620,8 @@ module ia_loader #(
     assign ext_dma_use_16bits       = dma_descriptor.use16;
     assign ext_dma_lhs_zp           = dma_descriptor.zp;
 
-`ifndef SYNTHESIS
-    always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+    initial forever @(posedge clk) if (rst_n) begin
         if (ext_dma_start)
             assert (!fill_pending && !ext_dma_busy)
                 else $fatal(1, "IA DMA descriptors overlap");

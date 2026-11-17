@@ -54,7 +54,6 @@ module axi_block_dma_arbiter #(
     input  logic [31:0] conv_range_base [4] = '{default:'0},
     input  logic [32:0] conv_range_end [4] = '{default:'0},
     output logic conv_error, conv_busy,
-    output logic [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes,
 
     input  logic ia_req,
     output logic ia_granted,
@@ -619,7 +618,7 @@ module axi_block_dma_arbiter #(
         .conv_cfg_valid(dma_conv_cfg_valid), .conv_cfg_ready(dma_conv_cfg_ready),
         .conv_enable, .dma_range_enable, .conv_cfg,
         .conv_sched_r, .conv_sched_groups, .conv_range_base, .conv_range_end,
-        .conv_error, .conv_busy, .conv_stat_hits, .conv_stat_misses, .conv_stat_read_bytes,
+        .conv_error, .conv_busy,
         .rd_start           (rd_dma_start_q),
         .rd_tag             (rd_dma_tag_q),
         .rd_start_ready     (rd_dma_start_ready),

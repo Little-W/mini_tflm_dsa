@@ -33,11 +33,14 @@ module conv_axi_span_reader #(
 );
   localparam int BUS_BYTES=BUS_WIDTH/8;
   localparam int BUS_SHIFT=$clog2(BUS_BYTES);
-  initial begin
+  `ifdef NPU_SIM_ASSERT
+initial begin
     if (DMA_MAX_BYTES < BUS_BYTES || DMA_MAX_BYTES > 256*BUS_BYTES ||
         (DMA_MAX_BYTES & (DMA_MAX_BYTES - 1)) != 0)
       $fatal(1, "DMA_MAX_BYTES must contain a power-of-two count of 1 through 256 complete AXI beats");
   end
+`endif
+
   typedef enum logic [1:0] {IDLE, PREP, AR, DATA} st_t;
   st_t state;
   logic [31:0] cursor;
@@ -116,8 +119,8 @@ module conv_axi_span_reader #(
       endcase
     end
   end
-`ifdef CONV_ASSERT
-  always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk) if (rst_n) begin
     if (req_valid && req_ready) assert (req_bytes != 0);
     if (rvalid && rready) assert (rlast == (beats_left == 1));
     if (arvalid) assert ({1'b0,araddr[11:0]} + (({5'b0,arlen}+1) << arsize) <= 4096);

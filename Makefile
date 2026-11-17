@@ -381,8 +381,8 @@ dip-array-test:
 
 ps-stream-verify:
 	$(PYTHON) test/ps_compression/run_stream_rtl.py --verilator '$(VERILATOR)' --target codec --out '$(PS_VERIFY_DIR)/codec'
-	$(PYTHON) test/ps_raw_store/run.py --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/store_raw'
-	$(PYTHON) test/ps_raw_store/run.py --verilator '$(VERILATOR)' --large --out '$(PS_VERIFY_DIR)/store_large'
+	$(PYTHON) test/ps_compression/run_frame_store.py --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/store'
+	$(PYTHON) test/ps_compression/run_frame_store.py --verilator '$(VERILATOR)' --force-raw --out '$(PS_VERIFY_DIR)/store_raw'
 	$(PYTHON) test/ps_compression/run_window_scheduler.py --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/scheduler'
 	$(PYTHON) test/run_cpp_rtl.py dma_abort --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/dma_abort'
 	$(PYTHON) test/run_cpp_rtl.py conv_divider --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/divider'
@@ -400,3 +400,7 @@ shared-memory-test:
 
 shared-memory-structure:
 	$(PYTHON) test/shared_ia_ps/check_structure.py --yosys '$(YOSYS)' --out '$(PS_VERIFY_DIR)/shared_structure'
+
+.PHONY: check-rtl-observers
+check-rtl-observers:
+	python3 test/monitors/check_rtl.py

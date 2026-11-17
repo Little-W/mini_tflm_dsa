@@ -748,16 +748,6 @@ module vec_requant_full #(
   tile_idx_t       last_row_tile;
   tile_idx_t       last_col_tile;
   logic            all_tiles_done;
-`ifndef SYNTHESIS
-  bit              requant_trace_en;
-
-  initial begin
-    requant_trace_en = 1'b0;
-    if ($test$plusargs("NPU_REQUANT_TRACE")) requant_trace_en = 1'b1;
-  end
-`else
-  localparam bit requant_trace_en = 1'b0;
-`endif
 
   wire cfg_per_channel_eff = (ENABLE_PER_CHANNEL != 0) ? cfg_per_channel : 1'b0;
   wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
@@ -936,7 +926,6 @@ module vec_requant_full #(
     end
   end
 
-
   // DMA len = 需要拍数-1（0 表示 1 拍）
   always_comb begin
     burst_len_cur = 8'((chunk_need_cur > 0) ? ((chunk_need_cur+BUS_WIDTH/32-1)/(BUS_WIDTH/32) - 1) : 0);
@@ -966,7 +955,6 @@ module vec_requant_full #(
   assign dma_slot_id = 1'b0;
   assign dma_use_16bits = 1'b0;
   assign dma_lhs_zp = '0;
-
 
   // ----------------------------
   // per-channel 参数缓冲
@@ -1013,8 +1001,6 @@ module vec_requant_full #(
     end
   end
 
-
-
   // ----------------------------
   // 主状态机（只保留 4 个状态名）
   // ----------------------------
@@ -1042,7 +1028,7 @@ module vec_requant_full #(
       all_tiles_done     <= 1'b0;
     end else begin
       // default per-cycle de-asserts (will be overridden in branches)
-      //load_quant_req      <= 1'b0;  
+      //load_quant_req      <= 1'b0;
       // note: do NOT clear quant_params_valid/lane_need_q here (they are cleared when tile completes)
 
       // handle init_cfg (single-cycle reset of per-tile counters)
@@ -1063,11 +1049,7 @@ module vec_requant_full #(
         tile_row           <= '0;
         load_offset        <= 32'd0;
         all_tiles_done     <= 1'b0;  // clear done on re-config
-        if (requant_trace_en) begin
-          $display("[%0t] REQ init per_ch=%0d is=%0d k=%0d m=%0d reuse=%0d mul=%08x sh=%08x",
-                   $time, cfg_per_channel_eff, cfg_dataflow_mode_eff, k, m,
-                   ia_reuse_num_in, multiplier_in, shift_in);
-        end
+
       end else begin
 
         case (state)
@@ -1091,11 +1073,7 @@ module vec_requant_full #(
                   load_offset    <= 32'd0;
                   load_meta_valid <= 1'b0;
                   state          <= LOAD;
-                  if (requant_trace_en) begin
-                    $display("[%0t] REQ idle->load tile=(%0d,%0d) lanes=%0d rows=%0d qneed=%0d",
-                             $time, tile_row, tile_col, lane_need_cur,
-                             rows_need_cur, quant_need_cur);
-                  end
+
                   // do not clear load_quant_req here; default loop will clear next cycle if needed
                 end
               end
@@ -1153,21 +1131,11 @@ module vec_requant_full #(
 	              quant_tile_idx_load_r <= quant_tile_idx_cur;
 	              load_offset          <= 32'd0;
 	              load_quant_req       <= 1'b1;
-`ifndef SYNTHESIS
-	              if (quant_need_cur == 32'd0) begin
-	                $display("[%0t] ERROR: zero-length quant LOAD metadata", $time);
-	                $fatal;
-	              end
-`endif
+
 	            end else if (!cmd_busy) begin
 	              // 2) 若当前没有在途命令，则按 phase 发一条 DMA 读命令。
 	              if (!cmd_valid_r) begin
-`ifndef SYNTHESIS
-	                if (chunk_need_cur == 32'd0) begin
-	                  $display("[%0t] ERROR: zero-length quant DMA command", $time);
-	                  $fatal;
-	                end
-`endif
+
 	                cmd_valid_r        <= 1'b1;
 	                cmd_base_addr_r    <= dma_base_addr_cur;
 	                cmd_burst_len_m1_r <= burst_len_cur;
@@ -1184,39 +1152,20 @@ module vec_requant_full #(
 	                load_quant_req <= 1'b0;
 	                rd_beats_cnt   <= '0;
 	                beats_expect   <= cmd_beats_expect_r;  // 需要收的拍数
-	                if (requant_trace_en) begin
-	                  $display("[%0t] REQ cmd phase=%0d addr=%08x len=%0d tile=(%0d,%0d) qidx=%0d off=%0d qneed=%0d",
-	                           $time, load_phase,
-	                           cmd_base_addr_r, cmd_burst_len_m1_r, tile_row, tile_col, quant_tile_idx_cur,
-	                           load_offset, quant_need_load_r);
-	                end
+
 	              end
             end
 
             // 3) 接收响应拍：mul/shift 缓冲写入
             if (rsp_hskd && cmd_busy) begin
               // 防护断言（仿真）
-`ifndef SYNTHESIS
-              if (int'(beats_expect) > VLEN) begin
-                $display("[%0t] ERROR: beats_expect (%0d) > VLEN", $time, beats_expect);
-                $fatal;
-              end
-              if ((load_offset + 32'(rd_beats_cnt)) >= QBUF_DEPTH) begin
-                $display("[%0t] ERROR: quant buffer index (%0d) >= QBUF_DEPTH (%0d)",
-                         $time, load_offset + 32'(rd_beats_cnt), QBUF_DEPTH);
-                $fatal;
-              end
-`endif
 
               rd_beats_cnt <= rd_beats_cnt + VLEN_CNT_W'(BUS_WIDTH/32);
 
               // 3) 本次突发收满：决定是切 phase 还是完成 LOAD
               if ((rd_beats_cnt + VLEN_CNT_W'(BUS_WIDTH/32)) >= beats_expect) begin
                 cmd_busy <= 1'b0;  // 本突发结束
-                if (requant_trace_en) begin
-                  $display("[%0t] REQ rsp_done phase=%0d beats=%0d tile=(%0d,%0d) off=%0d",
-                           $time, load_phase, beats_expect, tile_row, tile_col, load_offset);
-                end
+
                 if (load_phase == PH_MUL) begin
                   if ((load_offset + REG_WIDTH'(beats_expect)) < quant_need_load_r) begin
                     load_offset <= load_offset + REG_WIDTH'(beats_expect);
@@ -1234,11 +1183,6 @@ module vec_requant_full #(
                     load_offset        <= 32'd0;
                     load_meta_valid    <= 1'b0;
                     //lane_need_q        <= lane_need_cur;   // <-- 把 lane_need 在参数就绪时锁存
-                    if (requant_trace_en) begin
-                      $display("[%0t] REQ params_valid tile=(%0d,%0d) lanes=%0d rows=%0d qneed=%0d",
-                               $time, tile_row, tile_col, lane_need_cur, rows_need_cur,
-                               quant_need_load_r);
-                    end
 
                     if (in_valid) begin
                       state <= COMPUTE; // 允许在同一时钟周期观察到 in_valid 并直接进入 COMPUTE
@@ -1256,15 +1200,6 @@ module vec_requant_full #(
             load_phase <= PH_MUL;
 
             if (in_valid) begin
-              if (requant_trace_en) begin
-                $write("[%0t] REQ in tile=(%0d,%0d) row_cnt=%0d/%0d done=%0d acc=",
-                       $time, tile_row, tile_col, row_in_tile_cnt,
-                       rows_need_cur, in_tile_done);
-                for (int dbg_i = 0; dbg_i < VLEN; dbg_i++) begin
-                  $write("%0d%s", in_vec_s32[dbg_i], (dbg_i == VLEN - 1) ? "" : ",");
-                end
-                $write("\n");
-              end
 
               if (in_tile_done) begin
                 row_in_tile_cnt <= '0;
@@ -1311,7 +1246,6 @@ module vec_requant_full #(
       end  // !init_cfg
     end  // !rst_n
   end
-
 
   // ----------------------------
   // 数据通路（全吞吐流水：in_valid -> out_valid）

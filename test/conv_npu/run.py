@@ -328,6 +328,8 @@ def source_files():
         else:sources.append((filelist.parent/line).resolve())
     sources += [ROOT/'test/ps_compression/ps_stream_capture.sv',
                 HERE/'axi_memory.sv',HERE/'tb_conv_npu.sv']
+    import runpy
+    sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     tracked=list(dict.fromkeys(sources+[filelist,Path(__file__).resolve(),HERE/'simulator.vlt',
         ROOT/'veri/top_regression/host_tiling.py',ROOT/'veri/top_regression/gen_mem.py']))
     tracked += [p for directory in includes for p in sorted(directory.glob('*.svh'))]
@@ -352,7 +354,7 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
         '$(VK_OBJS_FAST): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'
         '$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_SLOW) -c -o $@ $<\n'
         '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
-    defines=[f'-DTB_SIZE={size}',f'-DTB_CONV_CACHE_SETS={cache_sets}',f'-DTB_CONV_CACHE_POLICY={cache_policy}',
+    defines=['-DNPU_SIM_ASSERT','-DCONV_ASSERT',f'-DTB_SIZE={size}',f'-DTB_CONV_CACHE_SETS={cache_sets}',f'-DTB_CONV_CACHE_POLICY={cache_policy}',
              f'-DTB_BUS_WIDTH={bus_width}',f'-DTB_SHARED_BANK_BYTES={shared_bank_bytes}',
              f'-DTB_SHARED_BANK_COUNT={shared_bank_count}',f'-DTB_PS_FRAME_COUNT={ps_frame_count}']
     if ps_compress:defines+=['-DGEMPACT_PS_COMPRESS=1',f'-DGEMMORA_PS_POOL_BYTES={pool_bytes}']

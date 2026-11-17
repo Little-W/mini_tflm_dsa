@@ -22,9 +22,7 @@ module ps_window_scheduler #(
     output logic frame_init, frame_final,
     output logic command_active,
     output logic lookahead_valid,
-    output logic [31:0] lookahead_q0, lookahead_column, lookahead_cols, lookahead_count_k,
-    output logic [31:0] stat_commands, stat_pressure_events, stat_early_finish_frames
-);
+    output logic [31:0] lookahead_q0, lookahead_column, lookahead_cols, lookahead_count_k);
     localparam int unsigned ID_W = (FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1;
     localparam int unsigned SHIFT = $clog2(SIZE);
     typedef enum logic [2:0] {IDLE, PREPARING, OPENING, SWEEPING, DRAINING, COMPLETE} phase_t;
@@ -176,7 +174,7 @@ module ps_window_scheduler #(
             active_init <= 1'b0; active_final <= 1'b0;
             active_q0 <= '0; active_column <= '0; active_row <= '0; active_rows <= '0;
             err_code <= '0;
-            stat_commands <= '0; stat_pressure_events <= '0; stat_early_finish_frames <= '0;
+
             for (int i = 0; i < FRAME_COUNT; i++) begin
                 frame_k[i] <= '0;
                 frame_column[i] <= '0;
@@ -198,7 +196,7 @@ module ps_window_scheduler #(
                 target <= minimum(window_frames, ((stationary_rows - 32'd1) >> SHIFT) + 32'd1);
                 live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
                 command_active <= 1'b0;
-                stat_commands <= '0; stat_pressure_events <= '0; stat_early_finish_frames <= '0;
+
                 if (config_error != 0 || stream_rows == 0 || stationary_rows == 0 || reduction == 0 ||
                     reuse_rows == 0 || (reuse_rows >> (32-SHIFT)) != 0 ||
                     window_frames == 0 || window_frames > 32'(FRAME_COUNT) ||
@@ -214,7 +212,7 @@ module ps_window_scheduler #(
             end else if (command_valid && command_pressure) begin
                 if (!frame_final && protected_valid && live[protected_id] && protected_id != candidate_id &&
                     (phase == OPENING || phase == SWEEPING)) begin
-                    stat_pressure_events <= stat_pressure_events + 32'd1;
+
                     if (phase == OPENING) begin
                         target <= opened;
                         resume_valid <= 1'b0;
@@ -240,7 +238,7 @@ module ps_window_scheduler #(
                 active_rows <= rows;
             end else if (command_active && command_complete) begin
                 command_active <= 1'b0;
-                stat_commands <= stat_commands + 32'd1;
+
                 if (active_init) begin
                     frame_column[active_id] <= active_column;
                     frame_row[active_id] <= active_row;
@@ -266,7 +264,7 @@ module ps_window_scheduler #(
                     phase <= SWEEPING;
                     cursor <= resume_valid ? 32'(resume_id) : 32'd0;
                     resume_valid <= 1'b0;
-                    stat_early_finish_frames <= stat_early_finish_frames + 32'd1;
+
                 end else if (phase == SWEEPING) begin
                     cursor <= (32'(active_id) + 32'd1 == opened) ? 32'd0 : 32'(active_id) + 32'd1;
                 end
@@ -292,8 +290,8 @@ module ps_window_scheduler #(
         end
     end
 
-`ifndef SYNTHESIS
-    always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+    initial forever @(posedge clk) if (rst_n) begin
         if (command_complete) assert(command_active);
         if (command_valid && command_ready) begin
             assert(rows != 0 && cols != 0 && count_k != 0);

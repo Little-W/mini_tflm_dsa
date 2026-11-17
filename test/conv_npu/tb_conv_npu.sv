@@ -110,7 +110,7 @@ module tb_conv_npu;
                 if (bank < u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.pool_bank_count_q)
                     occupied_payload_bytes += 16 *
                         (32'(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.pool_bank_words_q) -
-                         32'(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.bank_free_count[bank]));
+                         32'(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.tb_observer.bank_free_count[bank]));
             end
         end
     ps_stream_capture #(
@@ -242,7 +242,7 @@ module tb_conv_npu;
                 u_dut.u_ia_loader.u_ctrl.tl_rows_to_read,u_dut.u_ia_loader.u_ctrl.tl_slot_id,
                 u_dut.u_ia_loader.u_ctrl.load_tiles_done,u_dut.u_ia_loader.u_ctrl.load_ia_cursor,
                 u_dut.u_ia_loader.u_ctrl.prefetch_active,u_dut.u_ia_loader.u_ctrl.l2_idx,u_dut.u_ia_loader.u_ctrl.l1_idx,
-                u_dut.u_ia_loader.u_ctrl.rd_slot_base,u_dut.u_ia_loader.u_ctrl.wr_slot_ptr,u_dut.u_ia_loader.u_ctrl.cache_blk_valid);
+                u_dut.u_ia_loader.u_ctrl.rd_slot_base,u_dut.u_ia_loader.u_ctrl.wr_slot_ptr,u_dut.u_ia_loader.u_ctrl.tb_observer.cache_blk_valid);
             debug_events++;
         end
     end
@@ -297,10 +297,8 @@ module tb_conv_npu;
         .cfg_row_groups({16'b0,cfg[30][15:0]}),.cfg_col_groups({16'b0,cfg[30][31:16]}),
         .cfg_row_tail_tiles({16'b0,cfg[31][15:0]}),.cfg_col_tail_tiles({16'b0,cfg[31][31:16]}),
         .cfg_conv_enable(cfg[32][0]),.cfg_conv(conv_cfg),
-        .cfg_vector_enable(1'b0),.cfg_vector('0),.vector_stat_cycles(),.vector_stat_compute(),.vector_stat_dma_wait(),
+        .cfg_vector_enable(1'b0),.cfg_vector('0),
         .cfg_ps_control(cfg[61]), .cfg_shared_ia_banks(cfg[62]),
-        .ps_stat_commands(), .ps_stat_pressure_events(), .ps_stat_early_finish_frames(),
-        .conv_stat_hits(hits),.conv_stat_misses(misses),.conv_stat_read_bytes(conv_bytes),.conv_stat_cycles(conv_cycles),
         .lhs_base(cfg[14]),.rhs_base(cfg[15]),.bias_base(cfg[16]),.dst_base(cfg[17]),
         .lhs_row_stride_b(cfg[18]),.rhs_col_stride_b(cfg[19]),.dst_row_stride_b(cfg[20]),
         .lhs_zp(cfg[21]),.rhs_zp(cfg[22]),.dst_zp(cfg[23]),.q_mult_pt(cfg[24]),.q_shift_pt(cfg[25]),
@@ -311,6 +309,11 @@ module tb_conv_npu;
         .m_axi_wvalid(wvalid),.m_axi_wready(wready),.m_axi_wdata(wdata),.m_axi_wstrb(wstrb),.m_axi_wlast(wlast),
         .m_axi_bvalid(bvalid),.m_axi_bready(bready),.m_axi_bresp(bresp)
     );
+    assign hits=u_dut.tb_observer.conv_stat_hits;
+    assign misses=u_dut.tb_observer.conv_stat_misses;
+    assign conv_bytes=u_dut.tb_observer.conv_stat_read_bytes;
+    assign conv_cycles=u_dut.tb_observer.conv_stat_cycles;
+
     conv_test_axi_memory #(.WORDS(WORDS),.BUS_WIDTH(`TB_BUS_WIDTH),
         .READ_BEAT_CYCLES(`TB_READ_BEAT_CYCLES),
         .READ_FIRST_LATENCY(`TB_READ_FIRST_LATENCY),.PIPELINED_READ(`TB_PIPELINED_READ)) u_mem(
@@ -381,7 +384,7 @@ module tb_conv_npu;
                         u_dut.frame_command_valid,u_dut.frame_command_active,u_dut.ps_frame_ready,u_dut.ps_frame_pressure,
                         u_dut.frame_command_id,u_dut.frame_command_p0,u_dut.frame_command_q0,u_dut.frame_command_column,
                         u_dut.frame_command_init,u_dut.frame_command_final,u_dut.frame_compute_seen,
-                        u_dut.frame_store_seen,u_dut.frame_output_seen,u_dut.frame_stat_commands);
+                        u_dut.frame_store_seen,u_dut.frame_output_seen,u_dut.tb_observer.frame_stat_commands);
                     $display("TIMEOUT state=%0d ia_state=%0d fe_state=%0d conv_enable=%0d ready=%0d busy=%0d err=%0d abort=%0d",
                         u_dut.u_npu_controller.current_state,u_dut.u_ia_loader.u_ctrl.state,
                         u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.state,u_dut.run_conv,
@@ -395,7 +398,7 @@ module tb_conv_npu;
                         u_dut.u_ia_loader.u_ctrl.load_r_target,u_dut.u_ia_loader.u_ctrl.prefetch_active,
                         u_dut.u_ia_loader.u_ctrl.l2_idx,u_dut.u_ia_loader.u_ctrl.l1_idx,
                         u_dut.u_ia_loader.u_ctrl.rd_slot_base,u_dut.u_ia_loader.u_ctrl.wr_slot_ptr,
-                        u_dut.u_ia_loader.u_ctrl.cache_blk_valid,u_dut.u_ia_loader.u_ctrl.can_start_load,
+                        u_dut.u_ia_loader.u_ctrl.tb_observer.cache_blk_valid,u_dut.u_ia_loader.u_ctrl.can_start_load,
                         u_dut.load_ia_req,u_dut.load_ia_granted,u_dut.u_ia_loader.u_ctrl.send_group_ready_r,
                         u_dut.u_ia_loader.u_ctrl.in_l1_output,u_dut.weight_data_valid,u_dut.bias_valid,u_dut.quant_params_valid);
                     $fatal(1,"task timeout id=%0d",task_number);
@@ -484,7 +487,7 @@ module tb_conv_npu;
                 assert(padding_reads==0)else $fatal(1,"padding caused an external input read");
                 if(saved_cfg[32][0] && observed_error==0)
                     assert(covered_input==required_input)else $fatal(1,"required input bytes were not fetched");
-                $display("CONV_TASK_PASS task=%0d conv=%0d dataflow=%0d bypass=%0d error=%0d cycles=%0d hits=%0d misses=%0d input_bytes=%0d input_unique=%0d input_duplicate=%0d input_max_reads=%0d input_required=%0d input_prefetched_unused=%0d padding_reads=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d device_cycles=%0d ia_im2col_commands=%0d kernel_im2col_commands=%0d ar_stall_cycles=%0d r_wait_cycles=%0d int32_checks=%0d ps_blocked_cycles=%0d capacity_injected=%0d ps_committed_rows=%0d ps_raw_records=%0d ps_payload_words=%0d frame_commands=%0d pressure_events=%0d early_finish_frames=%0d ia_banks=%0d ia_bytes=%0d ps_bytes=%0d r=%0d w=%0d ps_control=%0d",task_number,saved_cfg[32],saved_cfg[8],saved_cfg[50],observed_error,end_cycle-start_cycle,hits,misses,input_read_bytes,unique_input,input_read_bytes-64'(unique_input),max_input_reads,required_input,unused_unique_input,padding_reads,read_bytes,read_requests,write_bytes,conv_cycles,ia_im2col_commands,kernel_im2col_commands,ar_stall_cycles,r_wait_cycles,accumulator_checks,ps_blocked_cycles,capacity_injected,ps_committed_rows,ps_raw_records,ps_payload_words,u_dut.ps_stat_commands,u_dut.ps_stat_pressure_events,u_dut.ps_stat_early_finish_frames,u_dut.SHARED_RAM_ENABLED ? u_dut.shared_ia_banks_q : 0,u_dut.active_ia_cache_blocks*512,u_dut.active_ps_pool_bytes,saved_cfg[6],saved_cfg[7],saved_cfg[61]);
+                $display("CONV_TASK_PASS task=%0d conv=%0d dataflow=%0d bypass=%0d error=%0d cycles=%0d hits=%0d misses=%0d input_bytes=%0d input_unique=%0d input_duplicate=%0d input_max_reads=%0d input_required=%0d input_prefetched_unused=%0d padding_reads=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d device_cycles=%0d ia_im2col_commands=%0d kernel_im2col_commands=%0d ar_stall_cycles=%0d r_wait_cycles=%0d int32_checks=%0d ps_blocked_cycles=%0d capacity_injected=%0d ps_committed_rows=%0d ps_raw_records=%0d ps_payload_words=%0d frame_commands=%0d pressure_events=%0d early_finish_frames=%0d ia_banks=%0d ia_bytes=%0d ps_bytes=%0d r=%0d w=%0d ps_control=%0d",task_number,saved_cfg[32],saved_cfg[8],saved_cfg[50],observed_error,end_cycle-start_cycle,hits,misses,input_read_bytes,unique_input,input_read_bytes-64'(unique_input),max_input_reads,required_input,unused_unique_input,padding_reads,read_bytes,read_requests,write_bytes,conv_cycles,ia_im2col_commands,kernel_im2col_commands,ar_stall_cycles,r_wait_cycles,accumulator_checks,ps_blocked_cycles,capacity_injected,ps_committed_rows,ps_raw_records,ps_payload_words,u_dut.tb_observer.ps_stat_commands,u_dut.tb_observer.ps_stat_pressure_events,u_dut.tb_observer.ps_stat_early_finish_frames,u_dut.SHARED_RAM_ENABLED ? u_dut.shared_ia_banks_q : 0,u_dut.active_ia_cache_blocks*512,u_dut.active_ps_pool_bytes,saved_cfg[6],saved_cfg[7],saved_cfg[61]);
                 done_ready=1;@(negedge clk);done_ready=0;
                 repeat(8)@(negedge clk);
                 task_number++;

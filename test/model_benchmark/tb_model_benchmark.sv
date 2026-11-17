@@ -520,8 +520,8 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                     job_stats.ar,job_stats.rbeats,job_stats.write_bytes,job_stats.ps_wait_cycles,
                     job_stats.array_rows,job_stats.ps_write_words,job_stats.ps_read_words,
                     job_stats.ps_rows,job_stats.ps_raw_rows,`PS_BENCH_AXIL.npu_err_code,
-                    `PS_BENCH_CORE.ps_stat_commands,`PS_BENCH_CORE.ps_stat_pressure_events,
-                    `PS_BENCH_CORE.ps_stat_early_finish_frames);
+                    `PS_BENCH_CORE.tb_observer.ps_stat_commands,`PS_BENCH_CORE.tb_observer.ps_stat_pressure_events,
+                    `PS_BENCH_CORE.tb_observer.ps_stat_early_finish_frames);
                 total.done_jobs++;job_inflight=0;
                 if(dut.u_npu_axil_top.npu_err_code!=0) total.npu_errors++;
                 // The controller counters are stable when the wrapper
@@ -537,31 +537,31 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                     total.array_wait_output+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_fifo_cycles;
                     total.array_wait_ia_done+=dut.u_npu_axil_top.u_npu_top.u_npu_controller.util_stall_ia_done_cycles;
                 end else begin
-                    total.vector_compute_cycles+=64'(dut.u_npu_axil_top.u_npu_top.vector_stat_compute);
-                    total.vector_dma_wait_cycles+=64'(dut.u_npu_axil_top.u_npu_top.vector_stat_dma_wait);
+                    total.vector_compute_cycles+=64'(dut.u_npu_axil_top.u_npu_top.tb_observer.vector_stat_compute);
+                    total.vector_dma_wait_cycles+=64'(dut.u_npu_axil_top.u_npu_top.tb_observer.vector_stat_dma_wait);
                 end
                 if(job_kind==JOB_CONV || job_kind==JOB_DW || job_kind==JOB_POOL) begin
-                    total.window_cache_hits+=64'(dut.u_npu_axil_top.u_npu_top.conv_stat_hits);
-                    total.window_cache_misses+=64'(dut.u_npu_axil_top.u_npu_top.conv_stat_misses);
-                    total.window_cache_read_bytes+=64'(dut.u_npu_axil_top.u_npu_top.conv_stat_read_bytes);
+                    total.window_cache_hits+=64'(dut.u_npu_axil_top.u_npu_top.tb_observer.conv_stat_hits);
+                    total.window_cache_misses+=64'(dut.u_npu_axil_top.u_npu_top.tb_observer.conv_stat_misses);
+                    total.window_cache_read_bytes+=64'(dut.u_npu_axil_top.u_npu_top.tb_observer.conv_stat_read_bytes);
                 end
                 if(job_kind==JOB_DW || job_kind==JOB_POOL) begin
                     assert(!dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_busy)
                         else $fatal(1,"window requests remain at job completion");
-                    assert(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_requests==
-                           dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_completions)
+                    assert(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_requests==
+                           dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_completions)
                         else $fatal(1,"window completion count differs from accepted requests");
                     if(dut.u_npu_axil_top.npu_err_code==0)
                         assert(window_requested_elements==window_response_elements)
                             else $fatal(1,"window response elements differ from requested elements");
                     $display("SOC_NETWORK_WINDOW_JOB job=%0d layer=%0d operation=%0d requests=%0d completions=%0d peak_outstanding=%0d response_beats=%0d consecutive_responses=%0d request_response_overlap=%0d requested_elements=%0d response_elements=%0d return_span_cycles=%0d",
                         total.jobs-1,layer_open ? int'(layer_index) : -1,int'(job_kind),
-                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_requests,
-                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_completions,
-                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_peak_outstanding,
-                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_response_beats,
-                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_consecutive_responses,
-                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_request_response_overlap,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_requests,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_completions,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_peak_outstanding,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_response_beats,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_consecutive_responses,
+                        dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.tb_observer.win_stat_request_response_overlap,
                         window_requested_elements,window_response_elements,
                         window_response_elements==0 ? 64'd0 : window_last_response_cycle-window_first_response_cycle+1);
                 end

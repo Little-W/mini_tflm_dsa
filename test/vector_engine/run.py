@@ -29,6 +29,8 @@ def main():
     svsrc += [x for x in sorted(conv.rglob('*.sv')) if x not in svsrc]
     svsrc += list(sorted((ROOT/'rtl/npu/dma').rglob('*.sv')))
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'vector_engine_dma_top.sv']
+    import runpy
+    svsrc = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](svsrc)
     cflags=['-std=c11','-O2','-Wall','-Wextra','-Werror']
     result={'verification':'RTL engine + production DMA; independent signed-integer nearest-even reference','tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,
             'verilator':subprocess.check_output([a.verilator,'--version'],text=True).strip(),'runs':[]}
@@ -56,7 +58,7 @@ def main():
                      '-Wno-PINMISSING',f'-GTILE={a.tile}',f'-GPE_COUNT={pe}',f'-GCACHE_SETS={a.cache_sets}',f'-GCACHE_POLICY={a.cache_policy}','--Mdir',folder/'obj',
                      '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
                      '-CFLAGS',f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_TILE_SIZE={a.tile}',
-                     '-LDFLAGS',lib,*svsrc,HERE/'main.cpp'],folder/'verilate.log')
+                     '-LDFLAGS',lib,ROOT/'test/conv_npu/simulator.vlt',*svsrc,HERE/'main.cpp'],folder/'verilate.log')
             command(['make','-C',folder/'obj','-f','Vvector_engine_dma_top.mk','-j',a.jobs,
                      'OPT_FAST=-O1','OPT_SLOW=-O0','OPT_GLOBAL=-O1','VK_PCH_I_FAST=',
                      'VK_PCH_I_SLOW=','CFG_CXXFLAGS_PCH=-E'],folder/'build.log')

@@ -139,7 +139,6 @@ module ia_loader_ctrl #(
       ((COMPACT_S8 != 0) && (DATA_WIDTH == 16) && cfg_compact)
       ? SLOT_W'((active_cache_blocks << 1) - 1) : SLOT_W'(active_cache_blocks - 1);
 
-
   // =====================================================================
   // 状态机
   // =====================================================================
@@ -205,9 +204,6 @@ module ia_loader_ctrl #(
   // busy:  正在被发送使用中（不可覆写）
   logic blk_valid [SLOT_BLOCKS];
   logic blk_busy  [SLOT_BLOCKS];
-`ifndef SYNTHESIS
-  logic [SLOT_BLOCKS-1:0] cache_blk_valid;
-`endif
 
   // =====================================================================
   // 循环计数器
@@ -940,9 +936,7 @@ module ia_loader_ctrl #(
   generate
     for (genvar gi = 0; gi < SLOT_BLOCKS; gi++) begin : g_cache_out
       assign cache_slot_rows[gi] = slot_rows_reg[gi];
-`ifndef SYNTHESIS
-      assign cache_blk_valid[gi] = blk_valid[gi];
-`endif
+
     end
   endgenerate
 
@@ -989,7 +983,7 @@ module ia_loader_ctrl #(
   // =====================================================================
   // 规则：load_ia_req 是电平握手，存在待加载工作时持续拉高。
   // 只有 req 与 granted 同时有效时，才允许触发 tile_loader。
-  
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       load_ia_req <= 1'b0;

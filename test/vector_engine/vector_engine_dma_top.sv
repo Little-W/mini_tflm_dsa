@@ -69,25 +69,29 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   logic [31:0] wr_base_addr,wr_row_stride,wr_rows_to_write,src_wdata;
   logic [7:0] wr_burst_len_m1;logic [3:0] src_wmask;
   vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT)) engine(.*);
-  assign window_requests=dma.u_dma.win_stat_requests;
-  assign window_completions=dma.u_dma.win_stat_completions;
-  assign window_peak_outstanding=dma.u_dma.win_stat_peak_outstanding;
-  assign window_response_beats=dma.u_dma.win_stat_response_beats;
-  assign window_consecutive_responses=dma.u_dma.win_stat_consecutive_responses;
-  assign window_request_response_overlap=dma.u_dma.win_stat_request_response_overlap;
+    assign stat_cycles=engine.tb_observer.stat_cycles;
+    assign stat_compute=engine.tb_observer.stat_compute;
+    assign stat_dma_wait=engine.tb_observer.stat_dma_wait;
+
+  assign window_requests=dma.u_dma.tb_observer.win_stat_requests;
+  assign window_completions=dma.u_dma.tb_observer.win_stat_completions;
+  assign window_peak_outstanding=dma.u_dma.tb_observer.win_stat_peak_outstanding;
+  assign window_response_beats=dma.u_dma.tb_observer.win_stat_response_beats;
+  assign window_consecutive_responses=dma.u_dma.tb_observer.win_stat_consecutive_responses;
+  assign window_request_response_overlap=dma.u_dma.tb_observer.win_stat_request_response_overlap;
   logic mac_active,quant_issue,quant_active,write_active;
   logic previous_quant_issue,previous_quant_more,previous_quant_bank,write16;
   logic [31:0] previous_quant_index,write16_beats;
-  assign mac_active=engine.depthwise && engine.state==engine.EXECUTE;
-  assign quant_active=engine.depthwise && engine.q_active && engine.state!=engine.FAILED;
+  assign mac_active=engine.depthwise && engine.tb_observer.is_EXECUTE;
+  assign quant_active=engine.depthwise && engine.q_active && !engine.tb_observer.is_FAILED;
   assign quant_issue=quant_active && engine.q_issue<engine.q_count;
-  assign write_active=engine.depthwise && engine.wb_state!=engine.WB_IDLE;
-  assign cache_prefetch_lines=dma.u_dma.conv_stat_prefetch_lines;
-  assign cache_prefetch_used=dma.u_dma.conv_stat_prefetch_used;
-  assign cache_prefetch_wasted=dma.u_dma.conv_stat_prefetch_wasted;
-  assign cache_prefetch_unused=dma.u_dma.conv_stat_prefetch_unused;
-  assign cache_prefetch_bytes=dma.u_dma.conv_stat_prefetch_bytes;
-  assign cache_prefetch_late=dma.u_dma.conv_stat_prefetch_late;
+  assign write_active=engine.depthwise && !engine.tb_observer.is_WB_IDLE;
+  assign cache_prefetch_lines=dma.u_dma.tb_observer.conv_stat_prefetch_lines;
+  assign cache_prefetch_used=dma.u_dma.tb_observer.conv_stat_prefetch_used;
+  assign cache_prefetch_wasted=dma.u_dma.tb_observer.conv_stat_prefetch_wasted;
+  assign cache_prefetch_unused=dma.u_dma.tb_observer.conv_stat_prefetch_unused;
+  assign cache_prefetch_bytes=dma.u_dma.tb_observer.conv_stat_prefetch_bytes;
+  assign cache_prefetch_late=dma.u_dma.tb_observer.conv_stat_prefetch_late;
   always_ff @(posedge clk) begin
     if (!rst_n || (start && ready)) begin
       quant_inputs<=0;quant_consecutive<=0;mac_quant_overlap<=0;mac_write_overlap<=0;all_overlap<=0;
@@ -99,7 +103,7 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
       previous_quant_bank<=engine.q_bank;previous_quant_index<=engine.q_issue;
       if (quant_issue) quant_inputs<=quant_inputs+1;
       if (quant_issue && previous_quant_issue) quant_consecutive<=quant_consecutive+1;
-      if (previous_quant_more && engine.state!=engine.FAILED) begin
+      if (previous_quant_more && !engine.tb_observer.is_FAILED) begin
         assert(quant_issue && engine.q_bank==previous_quant_bank);
         assert(engine.q_issue==previous_quant_index+1);
       end
@@ -128,7 +132,6 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
     .clk,.rst_n,.conv_cfg_valid(dma_cfg_valid),.conv_cfg_ready(dma_cfg_ready),
     .conv_enable(dma_conv_enable),.dma_range_enable,.conv_cfg(dma_conv_cfg),
     .conv_range_base(dma_range_base),.conv_range_end(dma_range_end),
-    .conv_stat_read_bytes(cache_reads),.conv_stat_hits(cache_hits),.conv_stat_misses(cache_misses),
     .ia_req(1'b0),.ia_start(1'b0),.ia_linear_read_mode(1'b0),.ia_base_addr(32'd0),
     .ia_row_stride(32'd0),.ia_rows_to_read(32'd0),.ia_burst_len_m1(8'd0),.ia_slot_id(2'd0),.ia_use_16bits(1'b0),.ia_lhs_zp(32'd0),
     .kernel_req(1'b0),.kernel_start(1'b0),.kernel_linear_read_mode(1'b0),.kernel_base_addr(32'd0),
@@ -157,4 +160,8 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
     .m_axi_wvalid,.m_axi_wready,.m_axi_wdata,.m_axi_wstrb,.m_axi_wlast,
     .m_axi_bvalid,.m_axi_bready,.m_axi_bresp
   );
+    assign cache_reads=dma.tb_observer.conv_stat_read_bytes;
+    assign cache_hits=dma.tb_observer.conv_stat_hits;
+    assign cache_misses=dma.tb_observer.conv_stat_misses;
+
 endmodule

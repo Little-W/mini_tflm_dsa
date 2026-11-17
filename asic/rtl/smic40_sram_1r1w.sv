@@ -49,10 +49,4 @@ module smic40_sram_1r1w #(
             end
         end
     end endgenerate
-`ifndef SYNTHESIS
-    always @(posedge clk) begin
-        if (read_enable && write_enable && read_address == write_address && |write_mask)
-            $fatal(1, "SRAM read/write collision at address %0d", read_address);
-    end
-`endif
 endmodule

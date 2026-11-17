@@ -40,6 +40,16 @@ module tb_cache_pipeline #(
         .cfg_geometry(1'b0),.prefetch_next_fragment(1'b0),
         .prefetch_window_index_valid(1'b0),.prefetch_window_index(0),
         .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),.*);
+    assign stat_hits=dut.tb_observer.stat_hits;
+    assign stat_misses=dut.tb_observer.stat_misses;
+    assign stat_read_bytes=dut.tb_observer.stat_read_bytes;
+    assign stat_prefetch_lines=dut.tb_observer.stat_prefetch_lines;
+    assign stat_prefetch_used=dut.tb_observer.stat_prefetch_used;
+    assign stat_prefetch_wasted=dut.tb_observer.stat_prefetch_wasted;
+    assign stat_prefetch_unused=dut.tb_observer.stat_prefetch_unused;
+    assign stat_prefetch_bytes=dut.tb_observer.stat_prefetch_bytes;
+    assign stat_prefetch_late=dut.tb_observer.stat_prefetch_late;
+
     assign rresp=fail_reads ? 2'b10 : mem_rresp;
     axi_counted_memory #(.TRACK_BASE(32'h1000),.TRACK_BYTES(4096)) mem(
         .clk,.rst_n,.allocation_base(cfg_base),.allocation_bytes(cfg_bytes),.epoch,.block_ar,
@@ -168,7 +178,7 @@ module tb_cache_pipeline #(
         tests=tests+1;
         $display("CACHE_PIPELINE_CASE name=%s accepted=%0d completed=%0d cancelled=%0d peak=%0d hits=%0d misses=%0d lookup_hits=%0d lookup_misses=%0d read_bytes=%0d ar_count=%0d",
                  name,accepted,completed-cancelled,cancelled,peak,stat_hits,stat_misses,
-                 dut.g_window.u_window.stat_lookup_hits,dut.g_window.u_window.stat_lookup_misses,
+                 dut.g_window.u_window.tb_observer.stat_lookup_hits,dut.g_window.u_window.tb_observer.stat_lookup_misses,
                  read_bytes,ar_count);
     endtask
 
@@ -184,10 +194,10 @@ module tb_cache_pipeline #(
             if(req_ready || cfg_ready || pending!=DEMAND_DEPTH) $fatal(1,"cold request credit handling");
         end
         if(stat_hits!=0 || stat_misses!=DEMAND_DEPTH) $fatal(1,"cold acceptance statistics");
-        if(dut.g_window.u_window.stat_peak_outstanding!=DEMAND_DEPTH) $fatal(1,"peak outstanding counter");
+        if(dut.g_window.u_window.tb_observer.stat_peak_outstanding!=DEMAND_DEPTH) $fatal(1,"peak outstanding counter");
         block_ar=0;drain();
-        if(dut.g_window.u_window.stat_lookup_misses!=1 ||
-           dut.g_window.u_window.stat_lookup_hits!=DEMAND_DEPTH-1)
+        if(dut.g_window.u_window.tb_observer.stat_lookup_misses!=1 ||
+           dut.g_window.u_window.tb_observer.stat_lookup_hits!=DEMAND_DEPTH-1)
             $fatal(1,"queued cold requests must retain their acceptance miss classification");
         report("cold_queue");
 
@@ -228,7 +238,7 @@ module tb_cache_pipeline #(
         repeat(3) @(negedge clk);
         stream(DEMAND_DEPTH,4,0,1);block_ar=0;drain();
         if(read_bytes-old_bytes!=64'(DEMAND_DEPTH*16) || stat_hits!=0 ||
-           dut.g_window.u_window.stat_lookup_misses!=DEMAND_DEPTH)
+           dut.g_window.u_window.tb_observer.stat_lookup_misses!=DEMAND_DEPTH)
             $fatal(1,"failed fills were admitted to cache");
         @(negedge clk);fail_reads=0;
         stream(1,4);drain();old_bytes=read_bytes;
@@ -285,7 +295,7 @@ module tb_cache_pipeline #(
         report("reset_pending_work");
 
         configure(10,1,0,1);stream(12,7,1);drain();
-        if(stat_hits!=0 || dut.g_window.u_window.stat_lookup_hits!=0)
+        if(stat_hits!=0 || dut.g_window.u_window.tb_observer.stat_lookup_hits!=0)
             $fatal(1,"bypass request counted as resident");
         report("bypass_clipped_words");
 

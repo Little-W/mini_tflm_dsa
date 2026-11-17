@@ -27,10 +27,12 @@ def main():
     sources += [p for p in sorted(conv.rglob('*.sv')) if p not in sources]
     sources += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_dma_top.sv',HERE/'main.cpp']
+    import runpy
+    sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     command([args.verilator,'--cc','--exe','--assert','--top-module','window_dma_top',
              '-Wno-fatal','-Wno-PINMISSING','--Mdir',out/'obj','--output-groups','0',
-             '--output-split','12000','-CFLAGS','-std=c++17',*sources],out/'elaborate.log')
+             '--output-split','12000','-CFLAGS','-std=c++17',ROOT/'test/conv_npu/simulator.vlt',*sources],out/'elaborate.log')
     command(['make','-C',out/'obj','-f','Vwindow_dma_top.mk','-j',args.jobs,
              'OPT_FAST=-O1','OPT_SLOW=-O0','OPT_GLOBAL=-O1','VK_PCH_I_FAST=',
              'VK_PCH_I_SLOW=','CFG_CXXFLAGS_PCH=-E'],out/'compile.log')

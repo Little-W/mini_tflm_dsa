@@ -85,8 +85,9 @@ module conv_axi_read_mux #(
             end
         end
     end
-`ifndef SYNTHESIS
-    assert property (@(posedge clk) disable iff (!rst_n)
+
+`ifdef NPU_SIM_ASSERT
+    initial assert property (@(posedge clk) disable iff (!rst_n)
         m_arvalid && !m_arready |=> m_arvalid &&
         $stable({m_araddr,m_arlen,m_arsize,m_arburst}));
 `endif

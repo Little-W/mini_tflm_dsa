@@ -30,6 +30,8 @@ def main():
     sources = [(ROOT / 'rtl/npu/dma' / name if name.startswith('cache/') else ROOT / 'rtl/npu/conv' / name) for name in (
         'cache/conv_sdp_ram.sv', 'conv_axi_span_reader.sv', 'cache/conv_read_cache.sv')]
     sources += [ROOT / 'test/conv_reuse/axi_counted_memory.sv', HERE / 'tb_cache_policy.sv']
+    import runpy
+    sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     hashes = {str(p.relative_to(ROOT)): sha(p) for p in sources}
     report = {'scope': 'actual cache RTL with deterministic procedural stimuli and manually supplied next-use hints',
               'status': 'FAIL', 'simulator': subprocess.check_output([sim, '--version'], text=True).strip(),

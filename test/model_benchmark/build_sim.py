@@ -103,6 +103,10 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
         raise RuntimeError('PicoRV32 revision differs from the repository submodule')
     cwd=ROOT/'veri/sim';filelist=ROOT/'veri/flist/dut_axi_soc.f'
     sources,source_args=filelist_sources(filelist,cwd,picorv32)
+    import runpy
+    expanded = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
+    source_args += [str(p) for p in expanded if p not in sources]
+    sources = expanded
     sources += [HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp',Path(__file__)]
     capture=ROOT/'test/ps_compression/ps_stream_capture.sv'
     if ps_pool_bytes:sources.append(capture)

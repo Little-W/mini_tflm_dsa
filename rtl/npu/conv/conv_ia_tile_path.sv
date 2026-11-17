@@ -32,7 +32,6 @@ module conv_ia_tile_path #(
   output logic signed [15:0] tl_wr_data[4],
   output logic tl_wr_valid[4],
   output logic tl_wr_use_16bits,
-  output logic [31:0] stat_hits,stat_misses,stat_read_bytes,
   output logic arvalid,
   input logic arready,
   output logic [31:0] araddr,
@@ -45,7 +44,7 @@ module conv_ia_tile_path #(
   input logic [1:0] rresp,
   input logic rlast
 );
-  logic [31:0] unused_prefetch[6];
+
   typedef enum logic [2:0] {IDLE,DIV_START,DIV_WAIT,ISSUE,WAIT_TILE,FAULT} st_t;
   st_t state;
   logic seen_cfg;
@@ -74,9 +73,6 @@ module conv_ia_tile_path #(
     .wr_valid(fe_wr_valid),.wr_ready(fe_wr_ready),.wr_slot(fe_wr_slot),
     .wr_row(fe_wr_row),.wr_col(fe_wr_col),.wr_data(fe_wr_data),.wr_mask(fe_wr_mask),
     .tile_done(fe_done),.tile_error(fe_tile_error),.error(fe_error),.busy(fe_busy),
-    .stat_hits,.stat_misses,.stat_read_bytes,
-    .stat_prefetch_lines(unused_prefetch[0]),.stat_prefetch_used(unused_prefetch[1]),.stat_prefetch_wasted(unused_prefetch[2]),
-    .stat_prefetch_unused(unused_prefetch[3]),.stat_prefetch_bytes(unused_prefetch[4]),.stat_prefetch_late(unused_prefetch[5]),
     .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
   );
   conv_ia_write_adapter #(.SIZE(SIZE),.CACHE_BLOCKS(CACHE_BLOCKS)) u_write (
@@ -112,8 +108,8 @@ module conv_ia_tile_path #(
       default:state<=FAULT;
     endcase
   end
-`ifdef CONV_ASSERT
-  always_ff @(posedge clk)if(rst_n)begin
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk)if(rst_n)begin
     if(init_cfg)assert(cfg_ready);
     if(tl_start)assert(!tl_busy);
   end

@@ -23,16 +23,16 @@ def main():
         raise SystemExit('Verilator is required; no model substitutes for this test')
     results = args.out.resolve()
     results.mkdir(parents=True, exist_ok=True)
-    report = {'scope': 'real SoC RAM RTL', 'simulator': subprocess.check_output([sim, '--version'], text=True).strip(), 'runs': []}
+    report = {'scope': 'SoC AXI memory protocol', 'simulator': subprocess.check_output([sim, '--version'], text=True).strip(), 'runs': []}
     stem = 'baseline' if args.baseline_commit else 'modified'
     configurations = [(1031, 4)] if args.baseline_commit else [(1031, 4), (1024, 1), (1031, 3)]
     all_pass = True
     with tempfile.TemporaryDirectory(prefix='conv_soc_ram_', dir=os.environ.get('TMPDIR', '/tmp')) as temporary:
         temporary = Path(temporary)
-        source = ROOT / 'rtl/soc/soc_axi_ram.sv'
+        source = ROOT / 'test/models/soc_axi_ram.sv'
         if args.baseline_commit:
             source = temporary / 'soc_axi_ram.sv'
-            source.write_bytes(subprocess.check_output(['git', 'show', f'{args.baseline_commit}:rtl/soc/soc_axi_ram.sv'], cwd=ROOT))
+            source.write_bytes(subprocess.check_output(['git', 'show', f'{args.baseline_commit}:test/models/soc_axi_ram.sv'], cwd=ROOT))
             report['baseline_commit'] = args.baseline_commit
         for dw, dp, outstanding, latency in [(dw, dp, outstanding, latency) for dw in (32,64) for dp,outstanding in configurations for latency in (args.first_read_latencies if (dp,outstanding)==(1031,4) else [8])]:
             build = temporary / f'dw{dw}_dp{dp}_o{outstanding}_l{latency}'

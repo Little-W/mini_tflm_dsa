@@ -13,6 +13,9 @@ FILES=['rtl/conv_im2col_pkg.sv','rtl/conv_udiv32.sv','rtl/conv_sdp_ram.sv','rtl/
 RTL=ROOT.parents[1]/'rtl/npu/conv'
 FILES=[str((RTL.parent/'dma/cache'/Path(name).name if Path(name).name in {'conv_read_cache.sv', 'conv_sdp_ram.sv', 'conv_next_use_predictor.sv'} else RTL/Path(name).name)) if name.startswith('rtl/') else name for name in FILES]
 
+import runpy
+FILES = [str(p) for p in runpy.run_path(str(ROOT.parents[1] / "test/monitors/sources.py"))["with_observers"](FILES)]
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--size',type=int,default=16)
@@ -81,7 +84,7 @@ def main():
         with log.open('w') as f:
             if verilator:
                 cmd=[verilator,'--binary','--timing','--assert','-Wall','-Wno-fatal',
-                     '-DCONV_ASSERT','--top-module','tb_conv_im2col_frontend',f'-GSIZE={a.size}',f'-GCACHE_SETS={a.cache_sets}',
+                     '-DCONV_ASSERT','-DNPU_SIM_ASSERT','--top-module','tb_conv_im2col_frontend',f'-GSIZE={a.size}',f'-GCACHE_SETS={a.cache_sets}',
                      f'-GCACHE_WAYS={a.cache_ways}',f'-GLINE_BYTES={a.line_bytes}',
                      f'-GUSE_TILE_PATH={int(a.tile_path)}',f'-GLANES={a.lanes}',
                      f'-GCACHE_POLICY={a.cache_policy}',f'-GPREFETCH={int(a.prefetch)}',f'-GWINDOWED={int(a.windowed)}',

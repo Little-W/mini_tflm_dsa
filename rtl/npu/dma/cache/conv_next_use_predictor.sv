@@ -124,8 +124,8 @@ module conv_next_use_predictor (
       end
     end
   end
-`ifdef CONV_ASSERT
-  always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk) if (rst_n) begin
     if (start) begin
       assert (!busy);
       if (enabled) begin

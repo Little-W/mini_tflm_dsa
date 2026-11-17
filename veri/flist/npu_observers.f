@@ -1,0 +1,19 @@
+// Testbench observers for the complete NPU.
+../../test/monitors/axi_block_dma_arbiter_observer.sv
+../../test/monitors/axi_dual_block_dma_observer.sv
+../../test/monitors/axi_linear_block_dma_observer.sv
+../../test/monitors/conv_ia_tile_path_observer.sv
+../../test/monitors/conv_im2col_frontend_observer.sv
+../../test/monitors/conv_read_cache_observer.sv
+../../test/monitors/conv_read_cache_reference_observer.sv
+../../test/monitors/conv_window_queue_observer.sv
+../../test/monitors/conv_windowed_cache_observer.sv
+../../test/monitors/ia_loader_ctrl_observer.sv
+../../test/monitors/kernel_loader_buffer_observer.sv
+../../test/monitors/npu_controller_observer.sv
+../../test/monitors/npu_top_observer.sv
+../../test/monitors/ps_window_scheduler_observer.sv
+../../test/monitors/vec_s8_to_fifo_observer.sv
+../../test/monitors/vector_engine_observer.sv
+../../test/monitors/ws_systolic_array_observer.sv
+../../test/monitors/ps_frame_store_observer.sv

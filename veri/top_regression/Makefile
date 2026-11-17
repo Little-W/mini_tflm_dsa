@@ -38,6 +38,8 @@ NPU_TOP_SRC ?= $(NPU_RTL_DIR)/top/npu_top.sv
 NPU_SV := $(shell find $(NPU_RTL_DIR) -mindepth 2 -type f \( -name "*.sv" -o -name "*.v" \) ! -name "npu_top.sv" | sort)
 SRCS := $(TB) $(PROJECT_ROOT)/test/dep_modules/ddr_axi_mem_model.sv $(NPU_TOP_SRC) $(NPU_SV) $(RTL_ROOT)/common/pseudo_dual_port_ram.v
 
+SRCS += $(filter-out $(PROJECT_ROOT)/test/monitors/pico_% $(PROJECT_ROOT)/test/monitors/soc_%,$(wildcard $(PROJECT_ROOT)/test/monitors/*_observer.sv))
+
 OUT_DIR := out
 MEM_INIT := $(OUT_DIR)/init.mem
 MEM_GOLDEN := $(OUT_DIR)/golden.mem

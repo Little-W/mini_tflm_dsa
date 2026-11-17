@@ -41,6 +41,8 @@ def main():
     sources += [path for path in sorted(conv.rglob('*.sv')) if path not in sources]
     sources += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_error_top.sv']
+    import runpy
+    sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     dependencies=sources+[HERE/'window_error.cpp',Path(__file__)]
     source_sha={str(path.relative_to(ROOT)):digest(path) for path in dependencies}
     binary=out/'obj/Vwindow_error_top'; manifest_path=out/'build.json'
@@ -48,7 +50,7 @@ def main():
                    '-Wno-fatal','-Wno-PINMISSING','--Mdir',out/'obj',
                    '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
                    '-CFLAGS','-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
-                   *sources,HERE/'window_error.cpp']
+                   ROOT/'test/conv_npu/simulator.vlt',*sources,HERE/'window_error.cpp']
     make_command=['make','-C',out/'obj','-f','Vwindow_error_top.mk','-j',args.jobs,
                   'OPT_FAST=-O1','OPT_SLOW=-O0','OPT_GLOBAL=-O1','VK_PCH_I_FAST=',
                   'VK_PCH_I_SLOW=','CFG_CXXFLAGS_PCH=-E']

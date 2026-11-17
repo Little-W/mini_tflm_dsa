@@ -543,8 +543,8 @@ module kernel_loader #(
     end
   end
 
-`ifndef SYNTHESIS
-  always_ff @(posedge clk) if (rst_n && !cache_flush) begin
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk) if (rst_n && !cache_flush) begin
     if (dma_start) begin
       assert ((!managed_mode || !transfer_active || buf_load_commit) && buf_load_ready &&
               (!response_slots_active[buf_load_slot] ||

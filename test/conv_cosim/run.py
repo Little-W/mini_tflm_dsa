@@ -44,7 +44,7 @@ def main():
     npu=ROOT/'rtl/npu';packages=[npu/'conv/conv_im2col_pkg.sv',npu/'conv/vector_engine_pkg.sv']
     svsrc=packages+[p for p in sorted(npu.rglob('*.sv')) if p not in packages]+sorted(npu.rglob('*.v'))
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
-        ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'rtl/soc/soc_axi_ram.sv',HERE/'conv_cosim_top.sv']
+        ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/models/soc_axi_ram.sv',HERE/'conv_cosim_top.sv']
     cflags=['-std=c11','-O2','-Wall','-Wextra','-Werror','-DDSA_MMIO_CUSTOM',f'-DDSA_TILE_SIZE={a.size}',
             '-DDSA_PS_FRAME_COUNT=16','-include',ROOT/'test/conv_driver/host_compat.h',
             '-I',nn/'Include','-I',ROOT/'drivers']

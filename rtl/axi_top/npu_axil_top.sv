@@ -127,7 +127,7 @@ module npu_axil_top #(
     wire signed [31:0] cfg_add_input1_multiplier_reg, cfg_add_input1_shift_reg;
     wire signed [31:0] cfg_add_input2_multiplier_reg, cfg_add_input2_shift_reg;
     wire signed [31:0] cfg_add_left_shift_reg;
-    wire [31:0] vector_stat_cycles, vector_stat_compute, vector_stat_dma_wait;
+
     vector_engine_pkg::vector_engine_cfg_t cfg_vector_reg;
     always_comb begin
         cfg_vector_reg = '0;
@@ -155,7 +155,7 @@ module npu_axil_top #(
         cfg_vector_reg.add.output_shift = q_shift_pt_reg;
     end
     conv_im2col_pkg::conv_cfg_t cfg_conv_reg;
-    wire [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes, conv_stat_cycles;
+
 `ifdef GEMMORA_INT8_PROFILE
     localparam bit CONV_CAPABLE = 1'b0;
     localparam bit VECTOR_ENGINE_CAPABLE = 1'b0;
@@ -186,7 +186,7 @@ module npu_axil_top #(
     wire [REG_WIDTH-1:0] cfg_col_tail_tiles_reg;
     wire [31:0] cfg_ps_control_reg;
     wire [31:0] cfg_shared_ia_banks_reg;
-    wire [31:0] ps_stat_commands, ps_stat_pressure_events, ps_stat_early_finish_frames;
+
 `ifdef GEMPACT_PS_COMPRESS
     localparam bit SHARED_CAPABLE = SHARED_IA_PS_ENABLE != 0 && SIZE == 16 && DATA_WIDTH == 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
         (SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096 || SHARED_BANK_BYTES == 8192) &&
@@ -402,12 +402,8 @@ module npu_axil_top #(
         .cfg_add_input2_multiplier(cfg_add_input2_multiplier_reg),
         .cfg_add_input2_shift(cfg_add_input2_shift_reg),
         .cfg_add_left_shift(cfg_add_left_shift_reg),
-        .vector_stat_cycles(vector_stat_cycles), .vector_stat_compute(vector_stat_compute),
-        .vector_stat_dma_wait(vector_stat_dma_wait),
         .cfg_16bits_ia(cfg_16bits_ia_reg),
         .cfg_conv_enable(cfg_conv_enable_reg), .cfg_conv(cfg_conv_reg),
-        .conv_stat_hits(conv_stat_hits), .conv_stat_misses(conv_stat_misses),
-        .conv_stat_read_bytes(conv_stat_read_bytes), .conv_stat_cycles(conv_stat_cycles),
         .cfg_16x8(cfg_16x8_reg),
         .cfg_dataflow_mode(cfg_dataflow_mode_reg),
         .cfg_lhs_tile_packed(cfg_lhs_tile_packed_reg), .cfg_rhs_tile_packed(cfg_rhs_tile_packed_reg),
@@ -420,8 +416,6 @@ module npu_axil_top #(
         .cfg_col_tail_tiles(cfg_col_tail_tiles_reg),
         .cfg_ps_control(cfg_ps_control_reg),
         .cfg_shared_ia_banks(cfg_shared_ia_banks_reg),
-        .ps_stat_commands(ps_stat_commands), .ps_stat_pressure_events(ps_stat_pressure_events),
-        .ps_stat_early_finish_frames(ps_stat_early_finish_frames),
         .lhs_base(lhs_base_reg),
         .rhs_base(rhs_base_reg),
         .dst_base(dst_base_reg),
@@ -483,12 +477,8 @@ module npu_axil_top #(
         .cfg_lhs_tile_packed(cfg_lhs_tile_packed_reg), .cfg_rhs_tile_packed(cfg_rhs_tile_packed_reg),
         .calc_start(npu_core_calc_start),
         .cfg_vector_enable(cfg_vector_enable_reg), .cfg_vector(cfg_vector_reg),
-        .vector_stat_cycles(vector_stat_cycles), .vector_stat_compute(vector_stat_compute),
-        .vector_stat_dma_wait(vector_stat_dma_wait),
         .cfg_16bits_ia(cfg_16bits_ia_reg),
         .cfg_conv_enable(cfg_conv_enable_reg), .cfg_conv(cfg_conv_reg),
-        .conv_stat_hits(conv_stat_hits), .conv_stat_misses(conv_stat_misses),
-        .conv_stat_read_bytes(conv_stat_read_bytes), .conv_stat_cycles(conv_stat_cycles),
         .cfg_16x8(cfg_16x8_reg),
         .cfg_dataflow_mode(cfg_dataflow_mode_reg),
         .cfg_ia_reuse_num(cfg_ia_reuse_num_reg),
@@ -499,8 +489,6 @@ module npu_axil_top #(
         .cfg_col_tail_tiles(cfg_col_tail_tiles_reg),
         .cfg_ps_control(cfg_ps_control_reg),
         .cfg_shared_ia_banks(cfg_shared_ia_banks_reg),
-        .ps_stat_commands(ps_stat_commands), .ps_stat_pressure_events(ps_stat_pressure_events),
-        .ps_stat_early_finish_frames(ps_stat_early_finish_frames),
         .sa_ready(npu_sa_ready),
         .done_valid(npu_done_valid),
         .done_ready(npu_done_ready),

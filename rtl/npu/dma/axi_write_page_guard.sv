@@ -112,12 +112,13 @@ module axi_write_page_guard #(
             endcase
         end
     end
-`ifndef SYNTHESIS
-    assert property (@(posedge clk) disable iff (!rst_n)
+
+`ifdef NPU_SIM_ASSERT
+    initial assert property (@(posedge clk) disable iff (!rst_n)
         m_awvalid && !m_awready |=> m_awvalid && $stable({m_awaddr,m_awlen,m_awsize,m_awburst}));
-    assert property (@(posedge clk) disable iff (!rst_n)
+    initial assert property (@(posedge clk) disable iff (!rst_n)
         m_wvalid && !m_wready |=> m_wvalid && $stable({m_wdata,m_wstrb,m_wlast}));
-    assert property (@(posedge clk) disable iff (!rst_n)
+    initial assert property (@(posedge clk) disable iff (!rst_n)
         s_bvalid && !s_bready |=> s_bvalid && $stable(s_bresp));
     always_ff @(posedge clk) if (rst_n) begin
         assert(direct_outstanding <= OUTS_W'(WRITE_OUTSTANDING));

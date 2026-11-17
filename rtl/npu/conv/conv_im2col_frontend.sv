@@ -38,9 +38,6 @@ module conv_im2col_frontend #(
   output logic [LANES-1:0] wr_mask,
   output logic tile_done, tile_error, error, busy,
   output logic wr_last,
-  output logic [31:0] stat_hits, stat_misses, stat_read_bytes,
-  output logic [31:0] stat_prefetch_lines, stat_prefetch_used, stat_prefetch_wasted,
-  output logic [31:0] stat_prefetch_unused, stat_prefetch_bytes, stat_prefetch_late,
   output logic arvalid,
   input logic arready,
   output logic [31:0] araddr,
@@ -290,9 +287,6 @@ module conv_im2col_frontend #(
     .prefetch_next_fragment(pf_next_fragment),
     .rsp_valid(cache_rsp_valid),.rsp_ready(cache_rsp_ready),
     .rsp_data(cache_rsp_data),.rsp_error(cache_rsp_error),
-    .stat_hits,.stat_misses,.stat_read_bytes,
-    .stat_prefetch_lines,.stat_prefetch_used,.stat_prefetch_wasted,
-    .stat_prefetch_unused,.stat_prefetch_bytes,.stat_prefetch_late,
     .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
   );
   always_comb begin
@@ -630,14 +624,14 @@ module conv_im2col_frontend #(
       endcase
     end
   end
-`ifndef SYNTHESIS
+`ifdef NPU_SIM_ASSERT
   initial begin
     if (SIZE<2 || (SIZE & (SIZE-1))!=0) $fatal(1,"SIZE must be a power of two >=2");
     if (LANES<1 || LANES>4) $fatal(1,"LANES must be in [1,4]");
   end
 `endif
-`ifdef CONV_ASSERT
-  always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+  initial forever @(posedge clk) if (rst_n) begin
     if (div_start) assert (!div_busy);
     if (div_done) assert (!div_zero);
     if (wr_valid) begin

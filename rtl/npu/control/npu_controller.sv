@@ -131,58 +131,6 @@ module npu_controller #(
 	    wire      compute_tail_done;
 	    wire      input_tail_ready;
 	    wire      issue_ia_now;
-`ifndef SYNTHESIS
-    bit       ctrl_trace_en;
-    bit       util_trace_en;
-    bit       util_summary_en;
-    logic     util_active;
-    longint unsigned util_op_id;
-    longint unsigned util_active_cycles;
-    longint unsigned util_weight_start_cycles;
-    longint unsigned util_weight_wait_cycles;
-    longint unsigned util_ia_start_cycles;
-    longint unsigned util_ia_wait_cycles;
-    longint unsigned util_wait_done_cycles;
-    longint unsigned util_stall_weight_tail_cycles;
-    longint unsigned util_stall_weight_data_cycles;
-    longint unsigned util_stall_weight_done_cycles;
-    longint unsigned util_stall_ia_data_cycles;
-    longint unsigned util_stall_bias_cycles;
-    longint unsigned util_stall_quant_cycles;
-    longint unsigned util_stall_fifo_cycles;
-    longint unsigned util_stall_ia_done_cycles;
-    longint unsigned util_tail_pending_cycles;
-    longint unsigned util_tail_done_count;
-    longint unsigned util_weight_trigger_count;
-    longint unsigned util_ia_trigger_count;
-    longint unsigned util_sum_active_cycles;
-    longint unsigned util_sum_weight_start_cycles;
-    longint unsigned util_sum_weight_wait_cycles;
-    longint unsigned util_sum_ia_start_cycles;
-    longint unsigned util_sum_ia_wait_cycles;
-    longint unsigned util_sum_wait_done_cycles;
-    longint unsigned util_sum_stall_weight_tail_cycles;
-    longint unsigned util_sum_stall_weight_data_cycles;
-    longint unsigned util_sum_stall_weight_done_cycles;
-    longint unsigned util_sum_stall_ia_data_cycles;
-    longint unsigned util_sum_stall_bias_cycles;
-    longint unsigned util_sum_stall_quant_cycles;
-    longint unsigned util_sum_stall_fifo_cycles;
-    longint unsigned util_sum_stall_ia_done_cycles;
-    longint unsigned util_sum_tail_pending_cycles;
-    longint unsigned util_sum_tail_done_count;
-    longint unsigned util_sum_weight_trigger_count;
-    longint unsigned util_sum_ia_trigger_count;
-
-    initial begin
-        ctrl_trace_en = 1'b0;
-        util_trace_en = 1'b0;
-        util_summary_en = 1'b0;
-        if ($test$plusargs("NPU_CTRL_TRACE")) ctrl_trace_en = 1'b1;
-        if ($test$plusargs("NPU_UTIL_TRACE")) util_trace_en = 1'b1;
-        if ($test$plusargs("NPU_UTIL_SUMMARY")) util_summary_en = 1'b1;
-    end
-`endif
 
     // A zero bias address is the architectural encoding for "no bias".
     // In that case there is no DMA payload to wait for.
@@ -199,11 +147,6 @@ module npu_controller #(
 	                          quant_params_valid &&
 	                          !fifo_full_flag &&
 	                          !ia_sending_done;
-
-`ifndef SYNTHESIS
-    wire util_start_event = (current_state == IDLE) && calc_start;
-    wire util_finish_event = util_active && (current_state != IDLE) && (next_state == IDLE);
-`endif
 
     // 参数校验函数
     function automatic logic check_config_valid();
@@ -260,31 +203,13 @@ module npu_controller #(
 	            compute_tail_count <= '0;
 	        end else begin
 	            current_state <= next_state;
-`ifndef SYNTHESIS
-            if (ctrl_trace_en && (current_state != next_state)) begin
-		                $display("[%0t] CTRL state %0d -> %0d wt_valid=%0d wt_done=%0d ia_valid=%0d ia_done=%0d bias_ok=%0d q_valid=%0d fifo_full=%0d tail=%0d tail_done=%0d oa_over=%0d",
-		                         $time, current_state, next_state,
-		                         weight_data_valid, weight_sending_done,
-		                         ia_data_valid, ia_sending_done,
-		                         bias_ready_for_compute, quant_params_valid,
-		                         fifo_full_flag, compute_tail_pending,
-		                         compute_tail_done, oa_calc_over);
-		            end
-`endif
+
 		            if (current_state == IDLE && calc_start) begin
 		                cfg_16bits_ia_reg <= cfg_16bits_ia;
 	                // 在收到 calc_start 时检查参数配置
 	                config_error      <= check_config_valid();
 	                error_type        <= get_error_type();
-`ifndef SYNTHESIS
-	                if (ctrl_trace_en) begin
-	                    $display("Simulation time: %t", $time);
-	                    $display("NPU Controller Start: lhs_base=%h, rhs_base=%h, dst_base=%h, bias_base=%h", lhs_base, rhs_base, dst_base, bias_base);
-	                    $display("Dimensions: k=%d, n=%d, m=%d", k, n, m);
-	                    $display("Strides: lhs_row_stride_b=%d, rhs_col_stride_b=%d, dst_row_stride_b=%d", lhs_row_stride_b, rhs_col_stride_b, dst_row_stride_b);
-	                    $display("Quantization: q_mult_pt=%d, q_shift_pt=%d, use_per_channel=%b, cfg_16bits_ia=%b, cfg_dataflow_mode=%b", q_mult_pt, q_shift_pt, use_per_channel, cfg_16bits_ia, cfg_dataflow_mode);
-	                end
-`endif
+
 		            end
 
 	            if (current_state == INIT) begin
@@ -295,210 +220,10 @@ module npu_controller #(
                         2'b01: compute_tail_count <= compute_tail_count - 1'b1;
                         default: ;
                     endcase
-`ifndef SYNTHESIS
-		                    if (ctrl_trace_en && send_ia_trigger) begin
-		                        $display("[%0t] CTRL send_ia", $time);
-		                    end
-		                    if (compute_tail_done && ctrl_trace_en) begin
-		                            $display("[%0t] CTRL tail_done", $time);
-		                        end
-                        if (send_ia_trigger && !compute_tail_done)
-                            assert (compute_tail_count < 3)
-                                else $fatal(1, "Outstanding array streams exceed the controller capacity");
-`endif
+
 	            end
 	        end
 	    end
-
-`ifndef SYNTHESIS
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            util_active                   <= 1'b0;
-            util_op_id                    <= '0;
-            util_active_cycles            <= '0;
-            util_weight_start_cycles      <= '0;
-            util_weight_wait_cycles       <= '0;
-            util_ia_start_cycles          <= '0;
-            util_ia_wait_cycles           <= '0;
-            util_wait_done_cycles           <= '0;
-            util_stall_weight_tail_cycles <= '0;
-            util_stall_weight_data_cycles <= '0;
-            util_stall_weight_done_cycles <= '0;
-            util_stall_ia_data_cycles     <= '0;
-            util_stall_bias_cycles        <= '0;
-            util_stall_quant_cycles       <= '0;
-            util_stall_fifo_cycles        <= '0;
-            util_stall_ia_done_cycles     <= '0;
-            util_tail_pending_cycles      <= '0;
-            util_tail_done_count          <= '0;
-            util_weight_trigger_count     <= '0;
-            util_ia_trigger_count         <= '0;
-            util_sum_active_cycles            <= '0;
-            util_sum_weight_start_cycles      <= '0;
-            util_sum_weight_wait_cycles       <= '0;
-            util_sum_ia_start_cycles          <= '0;
-            util_sum_ia_wait_cycles           <= '0;
-            util_sum_wait_done_cycles           <= '0;
-            util_sum_stall_weight_tail_cycles <= '0;
-            util_sum_stall_weight_data_cycles <= '0;
-            util_sum_stall_weight_done_cycles <= '0;
-            util_sum_stall_ia_data_cycles     <= '0;
-            util_sum_stall_bias_cycles        <= '0;
-            util_sum_stall_quant_cycles       <= '0;
-            util_sum_stall_fifo_cycles        <= '0;
-            util_sum_stall_ia_done_cycles     <= '0;
-            util_sum_tail_pending_cycles      <= '0;
-            util_sum_tail_done_count          <= '0;
-            util_sum_weight_trigger_count     <= '0;
-            util_sum_ia_trigger_count         <= '0;
-        end else begin
-            if (util_start_event) begin
-                util_active                   <= 1'b1;
-                util_op_id                    <= util_op_id + 1'b1;
-                util_active_cycles            <= '0;
-                util_weight_start_cycles      <= '0;
-                util_weight_wait_cycles       <= '0;
-                util_ia_start_cycles          <= '0;
-                util_ia_wait_cycles           <= '0;
-                util_wait_done_cycles           <= '0;
-                util_stall_weight_tail_cycles <= '0;
-                util_stall_weight_data_cycles <= '0;
-                util_stall_weight_done_cycles <= '0;
-                util_stall_ia_data_cycles     <= '0;
-                util_stall_bias_cycles        <= '0;
-                util_stall_quant_cycles       <= '0;
-                util_stall_fifo_cycles        <= '0;
-                util_stall_ia_done_cycles     <= '0;
-                util_tail_pending_cycles      <= '0;
-                util_tail_done_count          <= '0;
-                util_weight_trigger_count     <= '0;
-                util_ia_trigger_count         <= '0;
-            end else if (util_active) begin
-                util_active_cycles <= util_active_cycles + 1'b1;
-
-                unique case (current_state)
-                    WEIGHT_START: util_weight_start_cycles <= util_weight_start_cycles + 1'b1;
-                    WEIGHT_WAIT:  util_weight_wait_cycles  <= util_weight_wait_cycles + 1'b1;
-                    IA_START:     util_ia_start_cycles     <= util_ia_start_cycles + 1'b1;
-                    IA_WAIT:      util_ia_wait_cycles      <= util_ia_wait_cycles + 1'b1;
-                    WAIT_DONE:      util_wait_done_cycles      <= util_wait_done_cycles + 1'b1;
-                    default: begin
-                    end
-                endcase
-
-                if (current_state == IA_START && !oa_calc_over && !input_tail_ready) begin
-                    util_stall_weight_tail_cycles <= util_stall_weight_tail_cycles + 1'b1;
-                end
-                if (current_state == WEIGHT_START && !oa_calc_over &&
-                    !weight_data_valid) begin
-                    util_stall_weight_data_cycles <= util_stall_weight_data_cycles + 1'b1;
-                end
-                if (current_state == WEIGHT_WAIT && !weight_sending_done) begin
-                    util_stall_weight_done_cycles <= util_stall_weight_done_cycles + 1'b1;
-                end
-                if (current_state == IA_START && !ia_data_valid) begin
-                    util_stall_ia_data_cycles <= util_stall_ia_data_cycles + 1'b1;
-                end
-                if (current_state == IA_START && ia_data_valid && !bias_ready_for_compute) begin
-                    util_stall_bias_cycles <= util_stall_bias_cycles + 1'b1;
-                end
-                if (current_state == IA_START && ia_data_valid &&
-                    bias_ready_for_compute && !quant_params_valid) begin
-                    util_stall_quant_cycles <= util_stall_quant_cycles + 1'b1;
-                end
-                if (current_state == IA_START && ia_data_valid &&
-                    bias_ready_for_compute && quant_params_valid && fifo_full_flag) begin
-                    util_stall_fifo_cycles <= util_stall_fifo_cycles + 1'b1;
-                end
-                if (current_state == IA_WAIT && !ia_sending_done) begin
-                    util_stall_ia_done_cycles <= util_stall_ia_done_cycles + 1'b1;
-                end
-                if (compute_tail_pending) begin
-                    util_tail_pending_cycles <= util_tail_pending_cycles + 1'b1;
-                end
-                if (compute_tail_done) begin
-                    util_tail_done_count <= util_tail_done_count + 1'b1;
-                end
-	                if (send_weight_trigger) begin
-	                    util_weight_trigger_count <= util_weight_trigger_count + 1'b1;
-	                end
-	                if (send_ia_trigger) begin
-	                    util_ia_trigger_count <= util_ia_trigger_count + 1'b1;
-	                end
-            end
-
-            if (util_finish_event) begin
-                util_sum_active_cycles            <= util_sum_active_cycles + util_active_cycles;
-                util_sum_weight_start_cycles      <= util_sum_weight_start_cycles + util_weight_start_cycles;
-                util_sum_weight_wait_cycles       <= util_sum_weight_wait_cycles + util_weight_wait_cycles;
-                util_sum_ia_start_cycles          <= util_sum_ia_start_cycles + util_ia_start_cycles;
-                util_sum_ia_wait_cycles           <= util_sum_ia_wait_cycles + util_ia_wait_cycles;
-                util_sum_wait_done_cycles           <= util_sum_wait_done_cycles + util_wait_done_cycles;
-                util_sum_stall_weight_tail_cycles <= util_sum_stall_weight_tail_cycles + util_stall_weight_tail_cycles;
-                util_sum_stall_weight_data_cycles <= util_sum_stall_weight_data_cycles + util_stall_weight_data_cycles;
-                util_sum_stall_weight_done_cycles <= util_sum_stall_weight_done_cycles + util_stall_weight_done_cycles;
-                util_sum_stall_ia_data_cycles     <= util_sum_stall_ia_data_cycles + util_stall_ia_data_cycles;
-                util_sum_stall_bias_cycles        <= util_sum_stall_bias_cycles + util_stall_bias_cycles;
-                util_sum_stall_quant_cycles       <= util_sum_stall_quant_cycles + util_stall_quant_cycles;
-                util_sum_stall_fifo_cycles        <= util_sum_stall_fifo_cycles + util_stall_fifo_cycles;
-                util_sum_stall_ia_done_cycles     <= util_sum_stall_ia_done_cycles + util_stall_ia_done_cycles;
-                util_sum_tail_pending_cycles      <= util_sum_tail_pending_cycles + util_tail_pending_cycles;
-                util_sum_tail_done_count          <= util_sum_tail_done_count + util_tail_done_count;
-                util_sum_weight_trigger_count     <= util_sum_weight_trigger_count + util_weight_trigger_count;
-                util_sum_ia_trigger_count         <= util_sum_ia_trigger_count + util_ia_trigger_count;
-                if (util_trace_en) begin
-                    $display("[NPU_CTRL_UTIL] op=%0d active=%0d weight_start=%0d weight_wait=%0d ia_start=%0d ia_wait=%0d wait_done=%0d weight_tail_stall=%0d weight_data_stall=%0d weight_done_wait=%0d ia_data_stall=%0d bias_stall=%0d quant_stall=%0d fifo_stall=%0d ia_done_wait=%0d tail_pending=%0d tail_done=%0d weight_trig=%0d ia_trig=%0d",
-                             util_op_id,
-                             util_active_cycles,
-                             util_weight_start_cycles,
-                             util_weight_wait_cycles,
-                             util_ia_start_cycles,
-                             util_ia_wait_cycles,
-                             util_wait_done_cycles,
-                             util_stall_weight_tail_cycles,
-                             util_stall_weight_data_cycles,
-                             util_stall_weight_done_cycles,
-                             util_stall_ia_data_cycles,
-                             util_stall_bias_cycles,
-                             util_stall_quant_cycles,
-                             util_stall_fifo_cycles,
-                             util_stall_ia_done_cycles,
-                             util_tail_pending_cycles,
-                             util_tail_done_count,
-                             util_weight_trigger_count,
-                             util_ia_trigger_count);
-                end
-                util_active <= 1'b0;
-            end
-	        end
-	    end
-
-    final begin
-        if (util_summary_en) begin
-            $display("[NPU_CTRL_UTIL_SUMMARY] ops=%0d active=%0d weight_start=%0d weight_wait=%0d ia_start=%0d ia_wait=%0d wait_done=%0d weight_tail_stall=%0d weight_data_stall=%0d weight_done_wait=%0d ia_data_stall=%0d bias_stall=%0d quant_stall=%0d fifo_stall=%0d ia_done_wait=%0d tail_pending=%0d tail_done=%0d weight_trig=%0d ia_trig=%0d",
-                     util_op_id,
-                     util_sum_active_cycles,
-                     util_sum_weight_start_cycles,
-                     util_sum_weight_wait_cycles,
-                     util_sum_ia_start_cycles,
-                     util_sum_ia_wait_cycles,
-                     util_sum_wait_done_cycles,
-                     util_sum_stall_weight_tail_cycles,
-                     util_sum_stall_weight_data_cycles,
-                     util_sum_stall_weight_done_cycles,
-                     util_sum_stall_ia_data_cycles,
-                     util_sum_stall_bias_cycles,
-                     util_sum_stall_quant_cycles,
-                     util_sum_stall_fifo_cycles,
-                     util_sum_stall_ia_done_cycles,
-                     util_sum_tail_pending_cycles,
-                     util_sum_tail_done_count,
-                     util_sum_weight_trigger_count,
-                     util_sum_ia_trigger_count);
-        end
-    end
-`endif
-
 
     // Loading fills the inactive bank. Selection follows physical input rows,
     // while activation admission retains PS, parameter, and output capacity checks.

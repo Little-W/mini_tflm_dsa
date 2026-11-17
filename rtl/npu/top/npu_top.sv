@@ -53,8 +53,6 @@ module npu_top #(
     input conv_im2col_pkg::conv_cfg_t cfg_conv = '0,
     input wire cfg_vector_enable = 1'b0,
     input vector_engine_pkg::vector_engine_cfg_t cfg_vector = '0,
-    output logic [31:0] vector_stat_cycles, vector_stat_compute, vector_stat_dma_wait,
-    output logic [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes, conv_stat_cycles,
     input wire calc_start,  // 计算开始信号
     input wire cfg_16bits_ia,  // 使用16位IA数据
     input wire cfg_16x8,  // TFLM s16 activation x s8 weight, s32 bias, s16 output
@@ -67,7 +65,6 @@ module npu_top #(
     input logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
     input logic [31:0] cfg_ps_control = 32'd0,
     input logic [31:0] cfg_shared_ia_banks = 32'd0,
-    output wire [31:0] ps_stat_commands, ps_stat_pressure_events, ps_stat_early_finish_frames,
     output wire sa_ready,  // 系统就绪信号
 
     //==== 完成握手接口 ====
@@ -133,7 +130,6 @@ module npu_top #(
     input  logic [            1:0] m_axi_bresp
 );
 
-
 `ifdef GEMMORA_INT8_PROFILE
     // This profile requires INT8 operands with zero offsets; validate at launch.
     localparam int unsigned IA_DATA_WIDTH = DATA_WIDTH;
@@ -169,11 +165,13 @@ module npu_top #(
     logic normal_done_valid;
     logic [1:0] normal_err_code;
     logic vector_dma_cfg_valid, vector_dma_conv_enable, vector_dma_range_enable;
+`ifdef NPU_SIM_ASSERT
     initial begin : check_im2col_capacity
         if (IM2COL_CACHE_BYTES < 512 || IM2COL_CACHE_BYTES > 65536 ||
             (IM2COL_CACHE_BYTES & (IM2COL_CACHE_BYTES - 1)) != 0)
             $fatal(1, "IM2COL_CACHE_BYTES must be a power of two from 512 to 65536");
     end
+`endif
 
     conv_im2col_pkg::conv_cfg_t vector_dma_conv_cfg;
     logic [31:0] vector_dma_range_base [4], selected_range_base [4];
@@ -218,7 +216,7 @@ module npu_top #(
     wire kernel_prefetch_idle;
     wire frame_prefetch_idle = ia_prefetch_idle && kernel_prefetch_idle;
     logic arbiter_ia_granted;
-    logic [31:0] conv_hits_raw, conv_misses_raw, conv_read_bytes_raw;
+
     logic legacy_axi_arvalid, legacy_axi_arready, legacy_axi_rvalid, legacy_axi_rready, legacy_axi_rlast;
     logic [REG_WIDTH-1:0] legacy_axi_araddr;
     logic [BUS_WIDTH-1:0] legacy_axi_rdata;
@@ -239,7 +237,7 @@ module npu_top #(
     assign conv_range_end[3] = 33'($unsigned(q_shift_pt)) + (33'(m)<<2);
     wire abort_pending = abort_state != AB_IDLE;
     wire core_rst_n = rst_n && (abort_state != AB_RESET);
-    logic conv_count_active, conv_stats_started;
+
 `ifdef GEMMORA_INT8_PROFILE
     localparam bit CONV_CORE_SUPPORTED = 1'b0;
 `else
@@ -270,32 +268,14 @@ module npu_top #(
             run_conv <= 1'b0; conv_cfg_q <= '0; abort_state <= AB_IDLE;
             ps_control_q <= '0;
             abort_error_code <= 2'b11;
-            conv_stat_hits <= '0; conv_stat_misses <= '0; conv_stat_read_bytes <= '0;
-            conv_stat_cycles <= '0; conv_count_active <= 1'b0; conv_stats_started <= 1'b0;
+
         end else begin
             if (calc_start && sa_ready) begin
                 run_conv <= cfg_conv_enable && !cfg_vector_enable;
                 conv_cfg_q <= cfg_conv;
                 ps_control_q <= cfg_ps_control;
-                conv_stats_started <= 1'b0;
-                if ((cfg_conv_enable && !cfg_vector_enable) ||
-                    (cfg_vector_enable && cfg_vector.op<=4'd3)) begin
-                    conv_stat_hits <= '0; conv_stat_misses <= '0;
-                    conv_stat_read_bytes <= '0; conv_stat_cycles <= '0;
-                    conv_count_active <= 1'b1;
-                end
+
             end
-            if (conv_count_active) begin
-                conv_stat_cycles <= conv_stat_cycles + 32'd1;
-                if (conv_stats_started && abort_state != AB_RESET && abort_state != AB_DONE) begin
-                    conv_stat_hits <= conv_hits_raw;
-                    conv_stat_misses <= conv_misses_raw;
-                    conv_stat_read_bytes <= conv_read_bytes_raw;
-                end
-            end
-            if ((init_cfg_ia && run_conv) || (run_vector && vector_dma_cfg_valid && conv_cfg_ready))
-                conv_stats_started <= 1'b1;
-            if (done_valid) conv_count_active <= 1'b0;
             case (abort_state)
                 AB_IDLE: if (task_fault) begin
                     abort_state <= AB_DRAIN;
@@ -546,10 +526,7 @@ module npu_top #(
     logic frame_ps_accepted, frame_compute_seen, frame_store_seen, frame_output_seen, frame_output_armed;
     logic stationary_valid, frame_stationary_hit;
     logic [31:0] stationary_q0, stationary_column;
-    wire [31:0] frame_stat_commands, frame_stat_pressure_events, frame_stat_early_finish_frames;
-    assign ps_stat_commands = (frame_mode_q && !run_vector) ? frame_stat_commands : 32'd0;
-    assign ps_stat_pressure_events = (frame_mode_q && !run_vector) ? frame_stat_pressure_events : 32'd0;
-    assign ps_stat_early_finish_frames = (frame_mode_q && !run_vector) ? frame_stat_early_finish_frames : 32'd0;
+
     wire inner_done_valid;
     wire [1:0] inner_err_code;
     wire [31:0] loader_frame_id;
@@ -725,8 +702,6 @@ module npu_top #(
             .start(calc_start && sa_ready && cfg_vector_enable && !cfg_conv_enable),
             .cfg(cfg_vector), .ready(vector_engine_ready), .done_valid(vector_engine_done),
             .done_ready(done_ready && run_vector), .error(vector_engine_error),
-            .stat_cycles(vector_stat_cycles), .stat_compute(vector_stat_compute),
-            .stat_dma_wait(vector_stat_dma_wait),
             .dma_cfg_valid(vector_dma_cfg_valid), .dma_cfg_ready(conv_cfg_ready && run_vector),
             .dma_conv_enable(vector_dma_conv_enable), .dma_range_enable(vector_dma_range_enable),
             .dma_conv_cfg(vector_dma_conv_cfg), .dma_range_base(vector_dma_range_base),
@@ -753,7 +728,6 @@ module npu_top #(
         assign vector_engine_ready = 1'b1;
         assign vector_engine_done = 1'b0;
         assign vector_engine_error = 2'b01;
-        assign vector_stat_cycles = '0; assign vector_stat_compute = '0; assign vector_stat_dma_wait = '0;
         assign vector_dma_cfg_valid = 1'b0; assign vector_dma_conv_enable = 1'b0;
         assign vector_dma_range_enable = 1'b0; assign vector_dma_conv_cfg = '0;
         for (genvar r = 0; r < 4; r++) begin : g_ranges
@@ -1353,12 +1327,10 @@ module npu_top #(
                 .column0(frame_command_column), .rows(frame_command_rows), .cols(frame_command_cols),
                 .count_k(frame_command_k), .reserve_rows(frame_command_reserve),
                 .frame_init(frame_command_init), .frame_final(frame_command_final),
-                .command_active(frame_command_active), .stat_commands(frame_stat_commands),
+                .command_active(frame_command_active),
                 .lookahead_valid(frame_lookahead_valid), .lookahead_q0(frame_lookahead_q0),
                 .lookahead_column(frame_lookahead_column), .lookahead_cols(frame_lookahead_cols),
-                .lookahead_count_k(frame_lookahead_k),
-                .stat_pressure_events(frame_stat_pressure_events), .stat_early_finish_frames(frame_stat_early_finish_frames)
-            );
+                .lookahead_count_k(frame_lookahead_k));
         end else begin : g_no_frame_schedule
             assign frame_scheduler_ready = 1'b1;
             assign frame_scheduler_done = 1'b0; assign frame_scheduler_error = '0;
@@ -1370,8 +1342,6 @@ module npu_top #(
             assign frame_lookahead_valid = 1'b0;
             assign frame_lookahead_q0 = 0; assign frame_lookahead_column = 0;
             assign frame_lookahead_cols = 0; assign frame_lookahead_k = 0;
-            assign frame_stat_commands = '0; assign frame_stat_pressure_events = '0;
-            assign frame_stat_early_finish_frames = '0;
         end endgenerate
         assign controller_done_valid = frame_mode_q ? frame_scheduler_done : inner_done_valid;
         assign controller_err_code = frame_mode_q ? frame_scheduler_error : inner_err_code;
@@ -1409,9 +1379,6 @@ module npu_top #(
             .conv_range_end          (selected_range_end),
             .conv_error              (conv_error),
             .conv_busy               (conv_busy),
-            .conv_stat_hits          (conv_hits_raw),
-            .conv_stat_misses        (conv_misses_raw),
-            .conv_stat_read_bytes    (conv_read_bytes_raw),
             .win_req_valid,.win_req_ready,.win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
             .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
             .win_rsp_last,.win_rsp_error,.win_busy,
@@ -1552,8 +1519,8 @@ module npu_top #(
             .idle(dma_idle), .bus_error(dma_bus_error)
         );
 
-`ifndef SYNTHESIS
-        always_ff @(posedge clk) if (core_rst_n && exec_dma_job_init) begin
+`ifdef NPU_SIM_ASSERT
+        initial forever @(posedge clk) if (core_rst_n && exec_dma_job_init) begin
             assert(conv_cfg_ready);
             assert(!ia_dma_start && !kernel_dma_start);
         end
@@ -1704,7 +1671,6 @@ module npu_top #(
             .ram_port_rd_en(ia_ram_read_en), .ram_port_rd_addr(ia_ram_read_addr),
             .ram_port_rd_data(ia_ram_read_data),
 
-
         .ia_sending_done(ia_sending_done),
         .ia_row_valid   (ia_row_valid),
         .ia_tile_start  (ia_tile_start),
@@ -1789,7 +1755,6 @@ module npu_top #(
             .ext_dma_wr_col_base(kernel_dma_wr_col_base),
             .ext_dma_wr_data(kernel_dma_wr_data),
             .ext_dma_wr_valid(kernel_dma_wr_valid),
-
 
         .weight_sending_done(weight_sending_done),
         .load_weight_done   (load_weight_done),
@@ -2323,211 +2288,5 @@ module npu_top #(
             .write_done       (write_done),
             .oa_calc_over     (oa_calc_over)
         );
-
-`ifndef SYNTHESIS
-    function automatic longint unsigned util_bp(
-        input longint unsigned numerator,
-        input longint unsigned denominator
-    );
-        begin
-            util_bp = (denominator == 0) ? 0 : ((numerator * 10000) / denominator);
-        end
-    endfunction
-
-    bit top_util_trace_en;
-    logic top_util_active;
-    longint unsigned top_util_op_id;
-    longint unsigned top_util_active_cycles;
-    longint unsigned top_util_ia_row_cycles;
-    longint unsigned top_util_acc_valid_cycles;
-    longint unsigned top_util_requant_valid_cycles;
-    longint unsigned top_util_fifo_valid_cycles;
-    longint unsigned top_util_fifo_full_cycles;
-    longint unsigned top_util_store_weight_cycles;
-    longint unsigned top_util_send_weight_count;
-    longint unsigned top_util_send_ia_count;
-    longint unsigned top_util_tile_start_count;
-    longint unsigned top_util_tile_over_count;
-    longint unsigned top_util_partial_over_count;
-    longint unsigned top_util_ia_l1_switch_count;
-    longint unsigned top_util_ia_dma_busy_cycles;
-    longint unsigned top_util_kernel_dma_busy_cycles;
-    longint unsigned top_util_bias_dma_busy_cycles;
-    longint unsigned top_util_quant_dma_busy_cycles;
-    longint unsigned top_util_oa_dma_busy_cycles;
-    longint unsigned top_util_axi_ar_cycles;
-    longint unsigned top_util_axi_r_cycles;
-    longint unsigned top_util_axi_aw_cycles;
-    longint unsigned top_util_axi_w_cycles;
-    longint unsigned top_util_axi_b_cycles;
-
-    initial begin
-        top_util_trace_en = 1'b0;
-        if ($test$plusargs("NPU_UTIL_TRACE")) top_util_trace_en = 1'b1;
-    end
-
-    wire top_util_start_event = calc_start && sa_ready;
-    wire top_util_finish_event = top_util_active && done_valid && done_ready;
-
-    always_ff @(posedge clk or negedge core_rst_n) begin
-        if (!core_rst_n) begin
-            top_util_active                 <= 1'b0;
-            top_util_op_id                  <= '0;
-            top_util_active_cycles          <= '0;
-            top_util_ia_row_cycles          <= '0;
-            top_util_acc_valid_cycles       <= '0;
-            top_util_requant_valid_cycles   <= '0;
-            top_util_fifo_valid_cycles      <= '0;
-            top_util_fifo_full_cycles       <= '0;
-            top_util_store_weight_cycles    <= '0;
-            top_util_send_weight_count      <= '0;
-            top_util_send_ia_count          <= '0;
-            top_util_tile_start_count       <= '0;
-            top_util_tile_over_count        <= '0;
-            top_util_partial_over_count     <= '0;
-            top_util_ia_l1_switch_count     <= '0;
-            top_util_ia_dma_busy_cycles     <= '0;
-            top_util_kernel_dma_busy_cycles <= '0;
-            top_util_bias_dma_busy_cycles   <= '0;
-            top_util_quant_dma_busy_cycles  <= '0;
-            top_util_oa_dma_busy_cycles     <= '0;
-            top_util_axi_ar_cycles          <= '0;
-            top_util_axi_r_cycles           <= '0;
-            top_util_axi_aw_cycles          <= '0;
-            top_util_axi_w_cycles           <= '0;
-            top_util_axi_b_cycles           <= '0;
-        end else begin
-            if (top_util_start_event) begin
-                top_util_active                 <= 1'b1;
-                top_util_op_id                  <= top_util_op_id + 1'b1;
-                top_util_active_cycles          <= '0;
-                top_util_ia_row_cycles          <= '0;
-                top_util_acc_valid_cycles       <= '0;
-                top_util_requant_valid_cycles   <= '0;
-                top_util_fifo_valid_cycles      <= '0;
-                top_util_fifo_full_cycles       <= '0;
-                top_util_store_weight_cycles    <= '0;
-                top_util_send_weight_count      <= '0;
-                top_util_send_ia_count          <= '0;
-                top_util_tile_start_count       <= '0;
-                top_util_tile_over_count        <= '0;
-                top_util_partial_over_count     <= '0;
-                top_util_ia_l1_switch_count     <= '0;
-                top_util_ia_dma_busy_cycles     <= '0;
-                top_util_kernel_dma_busy_cycles <= '0;
-                top_util_bias_dma_busy_cycles   <= '0;
-                top_util_quant_dma_busy_cycles  <= '0;
-                top_util_oa_dma_busy_cycles     <= '0;
-                top_util_axi_ar_cycles          <= '0;
-                top_util_axi_r_cycles           <= '0;
-                top_util_axi_aw_cycles          <= '0;
-                top_util_axi_w_cycles           <= '0;
-                top_util_axi_b_cycles           <= '0;
-            end else if (top_util_active) begin
-                top_util_active_cycles <= top_util_active_cycles + 1'b1;
-
-                if (ia_row_valid) begin
-                    top_util_ia_row_cycles <= top_util_ia_row_cycles + 1'b1;
-                end
-                if (acc_data_valid) begin
-                    top_util_acc_valid_cycles <= top_util_acc_valid_cycles + 1'b1;
-                end
-                if (requant_out_valid) begin
-                    top_util_requant_valid_cycles <= top_util_requant_valid_cycles + 1'b1;
-                end
-                if (fifo_output_valid) begin
-                    top_util_fifo_valid_cycles <= top_util_fifo_valid_cycles + 1'b1;
-                end
-                if (fifo_full_flag) begin
-                    top_util_fifo_full_cycles <= top_util_fifo_full_cycles + 1'b1;
-                end
-                if (store_weight_req) begin
-                    top_util_store_weight_cycles <= top_util_store_weight_cycles + 1'b1;
-                end
-                if (send_weight_trigger) begin
-                    top_util_send_weight_count <= top_util_send_weight_count + 1'b1;
-                end
-                if (send_ia_trigger) begin
-                    top_util_send_ia_count <= top_util_send_ia_count + 1'b1;
-                end
-                if (ia_tile_start) begin
-                    top_util_tile_start_count <= top_util_tile_start_count + 1'b1;
-                end
-                if (tile_calc_over) begin
-                    top_util_tile_over_count <= top_util_tile_over_count + 1'b1;
-                end
-                if (partial_sum_calc_over) begin
-                    top_util_partial_over_count <= top_util_partial_over_count + 1'b1;
-                end
-                if (ia_l1_switch) begin
-                    top_util_ia_l1_switch_count <= top_util_ia_l1_switch_count + 1'b1;
-                end
-                if (ia_dma_busy) begin
-                    top_util_ia_dma_busy_cycles <= top_util_ia_dma_busy_cycles + 1'b1;
-                end
-                if (kernel_dma_busy) begin
-                    top_util_kernel_dma_busy_cycles <= top_util_kernel_dma_busy_cycles + 1'b1;
-                end
-                if (bias_dma_busy) begin
-                    top_util_bias_dma_busy_cycles <= top_util_bias_dma_busy_cycles + 1'b1;
-                end
-                if (quant_dma_busy) begin
-                    top_util_quant_dma_busy_cycles <= top_util_quant_dma_busy_cycles + 1'b1;
-                end
-                if (oa_dma_busy) begin
-                    top_util_oa_dma_busy_cycles <= top_util_oa_dma_busy_cycles + 1'b1;
-                end
-                if (m_axi_arvalid && m_axi_arready) begin
-                    top_util_axi_ar_cycles <= top_util_axi_ar_cycles + 1'b1;
-                end
-                if (m_axi_rvalid && m_axi_rready) begin
-                    top_util_axi_r_cycles <= top_util_axi_r_cycles + 1'b1;
-                end
-                if (m_axi_awvalid && m_axi_awready) begin
-                    top_util_axi_aw_cycles <= top_util_axi_aw_cycles + 1'b1;
-                end
-                if (m_axi_wvalid && m_axi_wready) begin
-                    top_util_axi_w_cycles <= top_util_axi_w_cycles + 1'b1;
-                end
-                if (m_axi_bvalid && m_axi_bready) begin
-                    top_util_axi_b_cycles <= top_util_axi_b_cycles + 1'b1;
-                end
-            end
-
-            if (top_util_finish_event) begin
-                if (top_util_trace_en) begin
-                    $display("[NPU_UTIL] op=%0d active=%0d ia_row=%0d ia_row_util_bp=%0d acc_valid=%0d acc_util_bp=%0d requant_valid=%0d fifo_valid=%0d fifo_full=%0d store_weight=%0d send_weight=%0d send_ia=%0d tile_start=%0d tile_over=%0d partial_over=%0d l1_switch=%0d dma_busy_ia=%0d dma_busy_kernel=%0d dma_busy_bias=%0d dma_busy_quant=%0d dma_busy_oa=%0d axi_ar=%0d axi_r=%0d axi_aw=%0d axi_w=%0d axi_b=%0d",
-                             top_util_op_id,
-                             top_util_active_cycles,
-                             top_util_ia_row_cycles,
-                             util_bp(top_util_ia_row_cycles, top_util_active_cycles),
-                             top_util_acc_valid_cycles,
-                             util_bp(top_util_acc_valid_cycles, top_util_active_cycles),
-                             top_util_requant_valid_cycles,
-                             top_util_fifo_valid_cycles,
-                             top_util_fifo_full_cycles,
-                             top_util_store_weight_cycles,
-                             top_util_send_weight_count,
-                             top_util_send_ia_count,
-                             top_util_tile_start_count,
-                             top_util_tile_over_count,
-                             top_util_partial_over_count,
-                             top_util_ia_l1_switch_count,
-                             top_util_ia_dma_busy_cycles,
-                             top_util_kernel_dma_busy_cycles,
-                             top_util_bias_dma_busy_cycles,
-                             top_util_quant_dma_busy_cycles,
-                             top_util_oa_dma_busy_cycles,
-                             top_util_axi_ar_cycles,
-                             top_util_axi_r_cycles,
-                             top_util_axi_aw_cycles,
-                             top_util_axi_w_cycles,
-                             top_util_axi_b_cycles);
-                end
-                top_util_active <= 1'b0;
-            end
-        end
-    end
-`endif
 
 endmodule

@@ -33,11 +33,14 @@ module tb_raw_only_caps #(
             .s_axil_arvalid(arvalid), .s_axil_arready(arready[i]),
             .s_axil_rdata(rdata[i]), .s_axil_rresp(rresp[i]),
             .s_axil_rvalid(rvalid[i]), .s_axil_rready(rready),
-            .npu_sa_ready(1'b1), .npu_done_valid(1'b0), .npu_err_code(2'b0),
-            .ps_stat_commands(32'b0), .ps_stat_pressure_events(32'b0),
-            .ps_stat_early_finish_frames(32'b0),
-            .vector_stat_cycles(32'b0), .vector_stat_compute(32'b0), .vector_stat_dma_wait(32'b0)
-        );
+            .npu_sa_ready(1'b1), .npu_done_valid(1'b0), .npu_err_code(2'b0));
+
+
+
+
+
+
+
     end
 
     task automatic check(input logic condition, input string message);

@@ -12,15 +12,6 @@ module single_port_ram #(
 
     reg [DATA_WIDTH-1:0] ram[(1<<ADDR_WIDTH)-1:0]; // RAM 存储器
 
-    // 初始化RAM（用于仿真）
-    integer init_i;
-    initial begin
-        for (init_i = 0; init_i < (1<<ADDR_WIDTH); init_i = init_i + 1) begin
-            ram[init_i] = {DATA_WIDTH{1'b0}};
-        end
-        dout = {DATA_WIDTH{1'b0}};
-    end
-
     always @(posedge clk) begin
         if (en) begin
             if (we) begin

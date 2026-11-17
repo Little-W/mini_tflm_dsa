@@ -26,13 +26,15 @@ def main():
                ['cache/conv_read_cache.sv', 'cache/conv_sdp_ram.sv', 'conv_axi_span_reader.sv']]
     sources += [ROOT / 'test/conv_reuse/axi_counted_memory.sv',
                 ROOT / 'test/cache_pipeline/tb_cache_pipeline.sv']
+    import runpy
+    sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in sources + [Path(__file__)]}
     profiles = []
     for profile in args.profiles:
         depth, ways = map(int, profile.split(':'))
         out = args.out / f'd{depth}_w{ways}'
         out.mkdir(parents=True, exist_ok=True)
-        command = [args.verilator, '--binary', '--timing', '--assert', '-DCONV_ASSERT',
+        command = [args.verilator, '--binary', '--timing', '--assert', '-DCONV_ASSERT','-DNPU_SIM_ASSERT',
                    '-Wall', '-Wno-fatal', '--top-module', 'tb_cache_pipeline',
                    f'-GDEMAND_DEPTH={depth}', f'-GCACHE_WAYS={ways}',
                    '--Mdir', str(out / 'obj'), '-j', str(args.jobs), *map(str, sources)]

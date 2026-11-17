@@ -167,8 +167,8 @@ module compute_core #(
     assign tile_calc_over = ps_tile_calc_over;
     assign acc_data_out = ps_acc_out;
 
-`ifndef SYNTHESIS
-    always_ff @(posedge clk) if (rst_n) begin
+`ifdef NPU_SIM_ASSERT
+    initial forever @(posedge clk) if (rst_n) begin
         assert (!ia_sending_done || ia_row_valid)
             else $fatal(1, "DiP stream completion requires a valid input row");
     end

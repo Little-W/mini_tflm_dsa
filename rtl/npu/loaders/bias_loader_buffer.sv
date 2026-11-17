@@ -107,24 +107,9 @@ module bias_loader_buffer #(
   end
 
   always_ff @(posedge clk) begin
-`ifndef SYNTHESIS
-    if (!rst_n || init_cfg) begin
-      for (int word_i = 0; word_i < GROUP_ELEMS; word_i++) begin
-        bank0_words[word_i] <= '0;
-        bank1_words[word_i] <= '0;
-      end
-    end else if (load_start) begin
-      for (int word_i = 0; word_i < GROUP_ELEMS; word_i++) begin
-        if (load_bank) begin
-          bank1_words[word_i] <= '0;
-        end else begin
-          bank0_words[word_i] <= '0;
-        end
-      end
-    end else begin
-`else
+
     if (!init_cfg && !load_start) begin
-`endif
+
       for(int beat_word=0;beat_word<BUS_WIDTH/DATA_WIDTH;beat_word++)
       if (load_word_valid_q[beat_word*BYTES_PER_WORD]) begin
         automatic int byte_offset;

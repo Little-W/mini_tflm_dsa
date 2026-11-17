@@ -14,6 +14,8 @@ COMMON = [
 ]
 RTL = ROOT.parents[1] / 'rtl/npu/conv'
 COMMON = [str((RTL.parent / 'dma/cache' / Path(name).name if Path(name).name in {'conv_read_cache.sv', 'conv_sdp_ram.sv', 'conv_next_use_predictor.sv'} else RTL / Path(name).name)) for name in COMMON]
+import runpy
+COMMON = [str(p) for p in runpy.run_path(str(ROOT.parents[1] / "test/monitors/sources.py"))["with_observers"](COMMON)]
 REVIEWED = {'UNUSEDSIGNAL', 'UNUSEDPARAM', 'BLKSEQ', 'PROCASSINIT', 'SYNCASYNCNET'}
 
 
@@ -31,7 +33,7 @@ def run(test):
     build.mkdir(exist_ok=True, parents=True)
     files = [str(RTL / 'conv_axi_span_reader.sv')] if test == 'span' else COMMON
     command = [simulator, '--binary', '--timing', '--assert', '-Wall', '-Wno-fatal',
-               '-DCONV_ASSERT', '--top-module', top, '--Mdir', str(build), '-j', '2']
+               '-DCONV_ASSERT','-DNPU_SIM_ASSERT', '--top-module', top, '--Mdir', str(build), '-j', '2']
     command += files + [f'tests/{top}.sv']
     status.update(command=command, simulator=simulator)
     try:

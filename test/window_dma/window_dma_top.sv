@@ -48,12 +48,12 @@ module window_dma_top (
     cfg.windowed=config_words[13][0];cfg.prefetch_enable=config_words[14][0];
     cfg.bypass_cache=config_words[15][0];
   end
-  assign requests=dma.u_dma.win_stat_requests;
-  assign completions=dma.u_dma.win_stat_completions;
-  assign peak_outstanding=dma.u_dma.win_stat_peak_outstanding;
-  assign response_beats=dma.u_dma.win_stat_response_beats;
-  assign consecutive_responses=dma.u_dma.win_stat_consecutive_responses;
-  assign request_response_overlap=dma.u_dma.win_stat_request_response_overlap;
+  assign requests=dma.u_dma.tb_observer.win_stat_requests;
+  assign completions=dma.u_dma.tb_observer.win_stat_completions;
+  assign peak_outstanding=dma.u_dma.tb_observer.win_stat_peak_outstanding;
+  assign response_beats=dma.u_dma.tb_observer.win_stat_response_beats;
+  assign consecutive_responses=dma.u_dma.tb_observer.win_stat_consecutive_responses;
+  assign request_response_overlap=dma.u_dma.tb_observer.win_stat_request_response_overlap;
   assign read_busy=dma.u_dma.rd_busy;
   axi_block_dma_arbiter #(.SIZE(16),.DMA_SIZE(64),.CONV_CACHE_SETS(128),.CONV_CACHE_POLICY(3)) dma (
     .clk,.rst_n,.conv_cfg_valid(cfg_valid),.conv_cfg_ready(cfg_ready),.conv_enable(1'b1),

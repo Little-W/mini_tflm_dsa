@@ -105,8 +105,6 @@ module tb_common_conv;
         .cfg_row_tail_tiles({16'b0, cfg[31][15:0]}), .cfg_col_tail_tiles({16'b0, cfg[31][31:16]}),
         .cfg_conv_enable(cfg[32][0]), .cfg_conv(conv_cfg),
         .cfg_vector_enable(cfg[59][0]), .cfg_vector(vector_cfg),
-        .conv_stat_hits(hits), .conv_stat_misses(misses), .conv_stat_read_bytes(conv_bytes), .conv_stat_cycles(conv_cycles),
-        .vector_stat_cycles(vector_cycles), .vector_stat_compute(vector_compute), .vector_stat_dma_wait(vector_dma_wait),
         .lhs_base(cfg[14]), .rhs_base(cfg[15]), .bias_base(cfg[16]), .dst_base(cfg[17]),
         .lhs_row_stride_b(cfg[18]), .rhs_col_stride_b(cfg[19]), .dst_row_stride_b(cfg[20]),
         .lhs_zp(32'd0), .rhs_zp(32'd0), .dst_zp(32'd0), .q_mult_pt(cfg[24]), .q_shift_pt(cfg[25]),
@@ -119,6 +117,14 @@ module tb_common_conv;
         .m_axi_wdata(wdata), .m_axi_wstrb(wstrb), .m_axi_wlast(wlast),
         .m_axi_bvalid(bvalid), .m_axi_bready(bready), .m_axi_bresp(bresp)
     );
+    assign hits=u_dut.tb_observer.conv_stat_hits;
+    assign misses=u_dut.tb_observer.conv_stat_misses;
+    assign conv_bytes=u_dut.tb_observer.conv_stat_read_bytes;
+    assign conv_cycles=u_dut.tb_observer.conv_stat_cycles;
+    assign vector_cycles=u_dut.tb_observer.vector_stat_cycles;
+    assign vector_compute=u_dut.tb_observer.vector_stat_compute;
+    assign vector_dma_wait=u_dut.tb_observer.vector_stat_dma_wait;
+
     conv_test_axi_memory #(.WORDS(WORDS),.BUS_WIDTH(`TB_BUS_WIDTH),
         .READ_BEAT_CYCLES(`TB_READ_BEAT_CYCLES),
         .READ_FIRST_LATENCY(`TB_READ_FIRST_LATENCY),.PIPELINED_READ(`TB_PIPELINED_READ)) u_mem (

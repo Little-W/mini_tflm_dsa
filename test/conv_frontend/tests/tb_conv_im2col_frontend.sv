@@ -58,10 +58,19 @@ module tb_conv_im2col_frontend;
       .cfg_sched_r(NATIVE_SCHED_R),.cfg_sched_groups(NATIVE_SCHED_GROUPS),
       .tile_valid,.tile_ready,.tile_p0,.tile_q0,.tile_rows,.tile_slot,
       .wr_valid,.wr_ready,.wr_slot,.wr_row,.wr_col,.wr_data,.wr_mask,.wr_last(unused_wr_last),
-      .tile_done,.tile_error,.error,.busy,.stat_hits,.stat_misses,.stat_read_bytes,
-      .stat_prefetch_lines,.stat_prefetch_used,.stat_prefetch_wasted,.stat_prefetch_unused,.stat_prefetch_bytes,.stat_prefetch_late,
+      .tile_done,.tile_error,.error,.busy,
       .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
     );
+    assign stat_hits=dut.tb_observer.stat_hits;
+    assign stat_misses=dut.tb_observer.stat_misses;
+    assign stat_read_bytes=dut.tb_observer.stat_read_bytes;
+    assign stat_prefetch_lines=dut.tb_observer.stat_prefetch_lines;
+    assign stat_prefetch_used=dut.tb_observer.stat_prefetch_used;
+    assign stat_prefetch_wasted=dut.tb_observer.stat_prefetch_wasted;
+    assign stat_prefetch_unused=dut.tb_observer.stat_prefetch_unused;
+    assign stat_prefetch_bytes=dut.tb_observer.stat_prefetch_bytes;
+    assign stat_prefetch_late=dut.tb_observer.stat_prefetch_late;
+
     assign geometry_prediction_start=dut.pred_start;
   end else begin : g_tile_path
     logic path_busy, use16;
@@ -77,9 +86,12 @@ module tb_conv_im2col_frontend;
       .tl_busy(path_busy),.tl_tile_done(tile_done),.error,
       .tl_wr_slot(wr_slot),.tl_wr_row(wr_row),.tl_wr_col_base(wr_col),
       .tl_wr_data(data4),.tl_wr_valid(valid4),.tl_wr_use_16bits(use16),
-      .stat_hits,.stat_misses,.stat_read_bytes,
       .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
     );
+    assign stat_hits=dut.tb_observer.stat_hits;
+    assign stat_misses=dut.tb_observer.stat_misses;
+    assign stat_read_bytes=dut.tb_observer.stat_read_bytes;
+
     assign busy=path_busy;
     assign geometry_prediction_start=1'b0;
     assign stat_prefetch_lines=0;

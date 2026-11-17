@@ -19,11 +19,13 @@ report={'scope':'cache/frontend reuse measured on actual external AXI reads',
 reviewed={'BLKSEQ','PROCASSINIT','UNUSEDSIGNAL','UNUSEDPARAM','SYNCASYNCNET'}
 sources=[(RTL.parent/'dma'/name if name.startswith('cache/') else RTL/name) for name in ['conv_im2col_pkg.sv','conv_udiv32.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv',
                               'conv_axi_span_reader.sv','cache/conv_read_cache.sv','conv_im2col_frontend.sv']]
+import runpy
+sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
 with tempfile.TemporaryDirectory(prefix='conv_reuse_',dir=os.environ.get('TMPDIR','/tmp')) as temporary:
     for kind in ['cache','frontend']:
         top=f'tb_conv_{kind}_reuse';build=Path(temporary)/kind;build.mkdir()
         log=RESULTS/f'{kind}.log'
-        command=[sim,'--binary','--timing','--assert','-DCONV_ASSERT','-Wall','-Wno-fatal',
+        command=[sim,'--binary','--timing','--assert','-DCONV_ASSERT','-DNPU_SIM_ASSERT','-Wall','-Wno-fatal',
                  '--top-module',top,'--Mdir',str(build),'-j','2']
         command+=list(map(str,sources))+[str(HERE/'axi_counted_memory.sv'),str(HERE/f'{top}.sv')]
         status={'kind':kind,'status':'FAIL','command':command,'log':log.name}

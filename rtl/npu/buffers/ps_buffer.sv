@@ -155,8 +155,8 @@ module ps_buffer #(
     assign acc_data_valid = ia_row_valid && ia_calc_done;
     assign tile_calc_over = row_tile_end && ia_calc_done;
     assign stream_calc_over = ia_l1_switch && ia_calc_done;
-`ifndef SYNTHESIS
-    always_ff @(posedge clk) if (rst_n && direct_final_stream) begin
+`ifdef NPU_SIM_ASSERT
+    initial forever @(posedge clk) if (rst_n && direct_final_stream) begin
         if (frame_accept) assert (frame_init && frame_final)
             else $fatal(1, "Direct output requires a single reduction tile");
         if (ia_row_valid) assert (ia_is_init_data && ia_calc_done)
@@ -228,17 +228,6 @@ module ps_buffer_wide_fifo #(
     logic [ADDR_W-1:0]      read_ptr_inc;
     logic [FRAME_IDX_W-1:0] frame_wr_ptr_inc;
     logic [FRAME_IDX_W-1:0] frame_rd_ptr_inc;
-
-`ifndef SYNTHESIS
-    bit ps_trace_en;
-
-    initial begin
-        ps_trace_en = 1'b0;
-        if ($test$plusargs("NPU_PS_TRACE")) ps_trace_en = 1'b1;
-    end
-`else
-    localparam bit ps_trace_en = 1'b0;
-`endif
 
     assign replay_ready = (frame_count != '0) && (replay_count == '0);
     assign ram_write_en   = input_valid_i;
@@ -347,10 +336,7 @@ module ps_buffer_wide_fifo #(
                     frame_len_fifo[frame_wr_ptr] <= frame_len_next;
                     frame_wr_ptr <= frame_wr_ptr_inc;
                     write_base   <= write_base_next;
-                    if (ps_trace_en) begin
-                        $display("[PS_TRACE] time=%0t push frame_len=%0d frame_count=%0d write_base=%0d",
-                                 $time, frame_len_next, frame_count, write_base);
-                    end
+
                 end
                 write_ptr    <= '0;
             end
@@ -361,13 +347,7 @@ module ps_buffer_wide_fifo #(
                     read_base    <= read_base_next;
                     replay_count <= replay_frame_len;
                     frame_rd_ptr <= frame_rd_ptr_inc;
-                    if (ps_trace_en) begin
-                        $display("[PS_TRACE] time=%0t pop frame_len=%0d frame_count=%0d read_base=%0d",
-                                 $time, replay_frame_len, frame_count, read_base);
-                    end
-                end else if (ps_trace_en && (replay_count != '0)) begin
-                    $display("[PS_TRACE] time=%0t ignore trigger replay_count=%0d frame_count=%0d",
-                             $time, replay_count, frame_count);
+
                 end
             end
 

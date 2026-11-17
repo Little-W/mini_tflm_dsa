@@ -162,17 +162,7 @@ module ps_frame_store #(
             assign payload_read_data[bank]=0;
         end
     end
-`ifndef SYNTHESIS
-    reg [31:0] bank_free_count [BANKS];
-    for(genvar bank=0;bank<BANKS;bank++)begin:g_occupancy
-        always @(posedge clk or negedge rst_n) begin
-            if(!rst_n)bank_free_count[bank]<=EXTERNAL_RAM==0 ? BANK_DEPTH : 0;
-            else if(configuration_pending)bank_free_count[bank]<=cfg_pool_bank_words;
-            else if(clear_metadata)bank_free_count[bank]<=0;
-            else bank_free_count[bank]<=bank_free_count[bank]+32'(payload_ram_read_en[bank])-32'(payload_ram_write_en[bank]);
-        end
-    end
-`endif
+
     reg ram_read_valid,ram_read_first,decoder_done,decoder_first;
     reg [511:0] decoded_row;
     wire decoder_fault=1'b0;
