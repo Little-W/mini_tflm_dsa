@@ -33,7 +33,7 @@ void Capture::initialize() {
 
 extern "C" void py_capture(
     unsigned int lane_count,
-    const unsigned int* scalar_values, const unsigned int* ia_values,
+    const unsigned long long* scalar_values, const unsigned int* ia_values,
     const unsigned int* weight_values, const unsigned int* acc_values,
     const unsigned int* requant_values
 ) {
@@ -51,7 +51,7 @@ extern "C" void py_capture(
         cap.ready_cycle = cap.cycles;
     if (cap.csv) {
         cap.csv << cap.cycles << ',' << cap.time_ps;
-        for (uint32_t value : cap.scalars) cap.csv << ',' << value;
+        for (uint64_t value : cap.scalars) cap.csv << ',' << value;
         for (const auto& vector : cap.lanes)
             for (uint32_t value : vector) cap.csv << ',' << value;
         cap.csv << '\n';

@@ -34,6 +34,15 @@
 `define ADDR_NPU_COL_TAIL_TILES     12'h01B
 `define ADDR_NPU_CONFIG_ABI     12'h01C
 
+// Shared IA/PS storage capability and task configuration registers.
+`define ADDR_NPU_SHARED_TOTAL_BYTES 12'h040
+`define ADDR_NPU_SHARED_BANK_BYTES  12'h041
+`define ADDR_NPU_IA_BANKS           12'h042
+`define ADDR_NPU_IA_BANK_MASK       12'h043
+`define ADDR_NPU_PS_DIRECTORY_ROWS  12'h044
+`define ADDR_NPU_PS_CONTROL         12'h048
+`define ADDR_NPU_PS_CAPS            12'h049
+
 // AXI-Lite Special Registers (npu_axil_top)
 `define ADDR_NPU_CTRL       12'h000
 `define ADDR_NPU_STATUS     12'h001

@@ -3,15 +3,19 @@
 # Usage:
 #   vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_behav_smoke.tcl \
 #       -tclargs vivado_export/<export_name>/project/tflm_ai_dsa_soc.xpr \
-#       vivado_export/<export_name>/mem/cpu.mem
+#       vivado_export/<export_name>/mem/cpu32.mem
 
 if {[llength $argv] < 1} {
-    error "Usage: run_behav_smoke.tcl <project.xpr> ?cpu.mem? ?SIZE? ?IA_CACHE_BLOCKS? ?CPU_MEM_DP? ?MAX_SYS_CYCLES? ?WEIGHT_WIDTH? ?DATA_WIDTH? ?NPU_ENABLE_IS_MODE? ?NPU_ENABLE_PER_CHANNEL? ?NPU_ADDR_WIDTH? ?NPU_ENABLE_CLOCK_GATING?"
+    error "Usage: run_behav_smoke.tcl <project.xpr> ?cpu32.mem? ?SIZE? ?IA_CACHE_BLOCKS? ?CPU_MEM_DP? ?MAX_SYS_CYCLES? ?WEIGHT_WIDTH? ?DATA_WIDTH? ?NPU_ENABLE_IS_MODE? ?NPU_ENABLE_PER_CHANNEL? ?NPU_ADDR_WIDTH? ?NPU_ENABLE_CLOCK_GATING?"
 }
 
 set script_dir [file dirname [file normalize [info script]]]
+source [file join $script_dir cpu_memory.tcl]
 set project_xpr [file normalize [lindex $argv 0]]
 set repo_tb_file [file normalize [file join $script_dir .. sim fpga_top_behav_smoke_tb.sv]]
+if {![file exists $repo_tb_file]} {
+    set repo_tb_file [file normalize [file join $script_dir .. src sim fpga_top_behav_smoke_tb.sv]]
+}
 
 if {![file exists $project_xpr]} {
     error "Vivado project not found: $project_xpr"
@@ -81,18 +85,20 @@ proc check_smoke_log {project_xpr pass_tag fail_prefix} {
 set project_root [file dirname [file dirname $project_xpr]]
 set tb_file [file normalize [file join $project_root src sim fpga_top_behav_smoke_tb.sv]]
 if {[file exists [file dirname $tb_file]]} {
-    file copy -force $repo_tb_file $tb_file
+    if {$repo_tb_file ne $tb_file} { file copy -force $repo_tb_file $tb_file }
 } else {
     set tb_file [file normalize [file join $project_root sim fpga_top_behav_smoke_tb.sv]]
     if {[file exists [file dirname $tb_file]]} {
-        file copy -force $repo_tb_file $tb_file
+        if {$repo_tb_file ne $tb_file} { file copy -force $repo_tb_file $tb_file }
     } else {
         set tb_file $repo_tb_file
     }
 }
-set mem_path [file normalize [file join $project_root mem cpu.mem]]
+set mem_path [file normalize [file join $project_root mem cpu32.mem]]
 if {[llength $argv] >= 2} {
     set mem_path [file normalize [lindex $argv 1]]
+} elseif {![file exists $mem_path]} {
+    set mem_path [file normalize [file join [file dirname $project_xpr] mem cpu32.mem]]
 }
 if {![file exists $mem_path]} {
     error "CPU memory image not found: $mem_path"
@@ -140,6 +146,14 @@ set cpu_enable_icache_value [get_generic_value $source_generics CPU_ENABLE_ICACH
 set cpu_axi_write_timing_buffer_value [get_generic_value $source_generics CPU_AXI_WRITE_TIMING_BUFFER $cpu_axi_write_timing_buffer_value]
 set bypass_ram_pingpong_value [get_generic_value $source_generics BYPASS_RAM_PINGPONG $bypass_ram_pingpong_value]
 set ram_write_timing_buffer_value [get_generic_value $source_generics RAM_WRITE_TIMING_BUFFER $ram_write_timing_buffer_value]
+set npu_axi_data_width_value [get_generic_value $source_generics BUS_WIDTH 64]
+set shared_bank_bytes_value [get_generic_value $source_generics SHARED_BANK_BYTES 2048]
+set shared_bank_count_value [get_generic_value $source_generics SHARED_BANK_COUNT 7]
+set simulation_mem_dir [file join [file dirname $project_xpr] behavior_mem]
+set memory_images [cpu_memory::write_images $mem_path \
+    [file join $simulation_mem_dir cpu32.mem] [file join $simulation_mem_dir cpu.mem] \
+    $cpu_mem_dp_value $npu_axi_data_width_value]
+set mem_path [dict get $memory_images native_path]
 
 if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0} {
     add_files -norecurse -fileset sim_1 $tb_file
@@ -147,6 +161,9 @@ if {[llength [get_files -quiet -of_objects [get_filesets sim_1] $tb_file]] == 0}
 
 set mem_path_escaped [string map [list "\\" "\\\\" "\"" "\\\""] $mem_path]
 set tb_generics [list \
+    BUS_WIDTH=$npu_axi_data_width_value \
+    SHARED_BANK_BYTES=$shared_bank_bytes_value \
+    SHARED_BANK_COUNT=$shared_bank_count_value \
     WEIGHT_WIDTH=$weight_width_value \
     DATA_WIDTH=$data_width_value \
     SIZE=$size_value \

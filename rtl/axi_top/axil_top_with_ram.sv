@@ -8,6 +8,8 @@ module axil_top_with_ram #(
     parameter REG_WIDTH       = 32,
     parameter AXI_ADDR_WIDTH  = 32,
     parameter IA_CACHE_BLOCKS = 8,
+    parameter SHARED_BANK_BYTES = 2048,
+    parameter SHARED_BANK_COUNT = 0,
     parameter ENABLE_DW_POOL = 1,
     parameter DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
     parameter ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
@@ -22,6 +24,7 @@ module axil_top_with_ram #(
     parameter NPU_ENABLE_CLOCK_GATING = 1,
     parameter MEM_DP          = 512,
     parameter MEM_PATH        = "",
+    parameter MEM_WORD_WIDTH  = 32,
     parameter MEM_INIT_EN     = 0
 ) (
     input  wire clk,
@@ -102,6 +105,8 @@ module axil_top_with_ram #(
         .REG_WIDTH(REG_WIDTH),
         .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
+        .SHARED_BANK_BYTES(SHARED_BANK_BYTES),
+        .SHARED_BANK_COUNT(SHARED_BANK_COUNT),
         .ENABLE_VECTOR_ENGINE(ENABLE_VECTOR_ENGINE), .VECTOR_PE_COUNT(VECTOR_PE_COUNT), .DW_MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .PS_STORAGE_ROWS(PS_STORAGE_ROWS),
@@ -173,10 +178,11 @@ module axil_top_with_ram #(
     );
 
     axi_sim_ram #(
-        .DP(MEM_DP),
+        .DP(MEM_DP * 32 / BUS_WIDTH),
         .DW(BUS_WIDTH),
         .AW(AXI_ADDR_WIDTH),
         .MEM_PATH(MEM_PATH),
+        .MEM_WORD_WIDTH(MEM_WORD_WIDTH),
         .INIT_EN(MEM_INIT_EN)
     ) u_axi_sim_ram (
         .clk(clk),

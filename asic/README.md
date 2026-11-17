@@ -29,7 +29,7 @@ export SRAM_ROOT="<SRAM_Lib_2025 目录>"
 
 ## SRAM 封装
 
-`rtl/smic40_sram_1r1w.sv` 使用 `RAMTP128X16` 或 `RAMTP1024X16` 拼接所需字宽和深度，支持独立同步读写及逐位写掩码。读取使能有效时输出在时钟沿更新，未读取时保持输出。当前 SoC/NPU 宏接入位置包括输入缓存、部分和存储、权重行缓存、输出 FIFO，以及 PCR 面板引擎的输入面板、部分和页池和空闲页栈。
+`rtl/smic40_sram_1r1w.sv` 使用 `RAMTP128X16` 或 `RAMTP1024X16` 拼接所需字宽和深度，支持独立同步读写及逐位写掩码。读取使能有效时输出在时钟沿更新，未读取时保持输出。当前 SoC/NPU 宏接入位置包括输入缓存、部分和存储、权重行缓存、输出 FIFO，以及统一计算路径的 IA/PS 共享 bank。
 
 宏的同地址同时读写结果未定义；仿真封装会报告这一冲突。小容量状态寄存器和采用其他访问方式的数组由综合器映射为标准单元。SRAM 容量向宏的物理尺寸取整，资源报告应以实际宏实例为准。
 
@@ -40,21 +40,36 @@ export SRAM_ROOT="<SRAM_Lib_2025 目录>"
 ```bash
 make -C asic sram-test       # 真实宏功能模型与封装测试
 make -C asic npu-test        # 标准 NPU 顶层仿真
-make -C asic pcr-test      # PCR 面板引擎顶层仿真
-make -C asic syn             # 标准 NPU 综合
+make -C asic pcr-test        # 统一路径 PS 压缩顶层仿真
+make -C asic syn             # 当前配置的 NPU 综合
 make -C asic summary         # 综合摘要
-make -C asic/synthesis elaborate PCR_ENGINE=1 NPU_SIZE=16  # 检查 PCR 面板引擎和宏引用
+make -C asic/synthesis elaborate PCR_ENGINE=1 NPU_SIZE=16  # 检查统一路径与 SRAM 宏引用
 ```
 
 SRAM 功能仿真使用 Icarus Verilog 或 VCS。NPU 仿真禁用厂商模型中的器件级时序检查，以便验证零延迟 RTL 与宏的功能连接；实际时序由工艺时序库和综合约束分析。
 
-综合默认使用 `SIZE=4`、`IA_CACHE_BLOCKS=32`、`PS_FRAME_COUNT=4` 和 400 MHz 目标。可直接设置参数，例如：
+综合读取仓库的 `config/npu.mk`，也可通过 `NPU_CONFIG` 选择另一份配置。默认使用 16×16 阵列、64 位 AXI4、七个 2 KiB 共享 bank 和 400 MHz 综合目标。频率是约束目标，实际时序结果记录在综合报告中。
+
+| 参数 | 范围 | 默认值 |
+|---|---|---:|
+| `NPU_AXI_DATA_WIDTH` | 32、64 位，传入 RTL 的 `BUS_WIDTH` | 64 |
+| `SHARED_BANK_BYTES` | 1024、2048、4096 字节 | 2048 |
+| `SHARED_BANK_COUNT` | 6、7、8、9 | 7 |
+
+共享数据 RAM 总量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`，默认 14336 字节。每层执行前为 IA 分配 1、2 或 4 个 bank，其余用于 PS。S16 输入至少需要两个 IA bank；跨 K 的 RAW32 部分和至少需要四个 PS bank，采用经范围检查保证的 S24 容量上限时至少需要三个 PS bank。任务执行期间分配保持固定。
+
+NPU 的控制寄存器在 SoC 中使用固定 32 位数据、16 位地址的 AXI-Lite 接口；`NPU_AXI_DATA_WIDTH` 控制张量数据的 AXI4 接口。综合顶层 `npu_top` 的任务配置端口由 SoC 的 AXI-Lite 寄存器模块连接。
 
 ```bash
-make -C asic/synthesis syn NPU_SIZE=4 NPU_IA_CACHE_BLOCKS=4 \
-  NPU_PS_FRAME_COUNT=4 TARGET_FREQ_MHZ=400 MAX_CORES=2
-make -C asic/synthesis syn PCR_ENGINE=1 NPU_SIZE=16 \
-  NPU_IA_CACHE_BLOCKS=64 NPU_PS_FRAME_COUNT=25
+make -C asic/synthesis syn NPU_AXI_DATA_WIDTH=64 \
+  SHARED_BANK_BYTES=2048 SHARED_BANK_COUNT=7 \
+  TARGET_FREQ_MHZ=400 MAX_CORES=2
+
+make -C asic/synthesis syn NPU_AXI_DATA_WIDTH=32 \
+  SHARED_BANK_BYTES=4096 SHARED_BANK_COUNT=8 \
+  TARGET_FREQ_MHZ=400 MAX_CORES=2
 ```
 
-综合输出默认位于 `build/asic/npu_top/`，包含网表、时序、面积、宏引用和检查报告。可使用 `PROJ_TEMP` 指定其他输出目录。`PCR_ENGINE=1` 启用 PCR 面板引擎，页池与面板上限由 `PS_POOL_BYTES`、`PANEL_MAX_R`、`PANEL_MAX_W` 指定。摘要分别列出建立时间与保持时间的最差余量；电容等设计规则检查结果见 `npu_top_constraints.rpt`。并行运行时应为每个任务指定独立的 `PROJ_TEMP`。
+`PCR_ENGINE=1` 启用统一路径中的 PS 编码和 frame 调度。ASIC 共享 RAM 使用同步 128 位 1R1W bank，逻辑行数为 `SHARED_BANK_BYTES / 16`。默认每个 bank 由八个 `RAMTP128X16` 宏组成，共 56 个宏。1 KiB bank 按宏的 128 行最小深度取整，4 KiB bank 使用两组 128 行宏。逻辑容量与宏的物理分配量分别统计。
+
+综合输出位于 `build/asic/`，目录名称包含 AXI4 数据宽度和 bank 参数。可使用 `PROJ_TEMP` 指定其他输出目录。报告包含网表、时序、面积、宏引用和设计规则检查；摘要分别列出建立时间与保持时间的最差余量，电容等约束见 `npu_top_constraints.rpt`。并行运行时应为每个任务指定独立的 `PROJ_TEMP`。

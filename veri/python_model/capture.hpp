@@ -12,7 +12,7 @@ struct Capture {
     uint64_t ready_cycle = std::numeric_limits<uint64_t>::max();
     bool saw_busy = false;
     bool initialized = false;
-    std::array<uint32_t, 32> scalars{};
+    std::array<uint64_t, 32> scalars{};
     std::array<std::vector<uint32_t>, 4> lanes;
     std::ofstream csv;
     void initialize();

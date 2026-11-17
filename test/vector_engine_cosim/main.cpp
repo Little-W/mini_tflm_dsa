@@ -16,6 +16,7 @@
 #include <vector>
 #include "riscv_nnfunctions.h"
 #include "dsa_vector.h"
+#include "dsa_memory.h"
 #include <limits>
 
 static void require(bool cond,const std::string& text) { if(!cond) throw std::runtime_error(text); }
@@ -471,8 +472,25 @@ int main(int argc,char** argv) {
         require(memory==(void*)0x10000,"32-bit CPU memory allocation failed");
         auto* arena=(uint8_t*)memory;memset(arena,0xa5,0x60000);
         uint32_t caps=dsa_vector_capabilities();
-        require(hardware_available?((caps&0xff)==63):(caps==0),"DW capability register mismatch");
+        const uint32_t vector_features=DSA_VECTOR_CAP_DW_S8|DSA_VECTOR_CAP_POOL_S8|
+            DSA_VECTOR_CAP_VECTOR_S8|DSA_VECTOR_CAP_VECTOR_S16|DSA_VECTOR_CAP_LARGE_POOL|
+            DSA_VECTOR_CAP_ADD_S8|DSA_VECTOR_CAP_SOFTMAX_S8;
+        require(hardware_available?((caps&0xff)==vector_features):(caps==0),
+                "Vector capability register mismatch");
         if(hardware_available)require(((caps>>8)&0xffu)==DW_TEST_PE_COUNT,"PE count capability mismatch");
+        for(int i=1;i<argc;i++)if(std::string(argv[i])=="+PS_COMPRESS") {
+            const uint32_t ps_caps=sim->axilRead(DSA_MMIO_BASE+NPU_REG_PS_CAPS);
+            const uint32_t required=DSA_PS_CAP_STORE|DSA_PS_CAP_FRAME_SCHEDULE|
+                DSA_PS_CAP_IA_COMPACT|DSA_PS_CAP_SHARED;
+            require((ps_caps&required)==required && (ps_caps>>24)==DSA_PS_CAP_VERSION,
+                    "Compressed PS capabilities differ");
+            require(sim->axilRead(DSA_MMIO_BASE+NPU_REG_SHARED_TOTAL_BYTES)==14336 &&
+                    sim->axilRead(DSA_MMIO_BASE+NPU_REG_SHARED_BANK_BYTES)==2048,
+                    "Shared IA/PS capacity differs");
+            require((dsa_conv_capabilities()&(DSA_CONV_CAP_S8|DSA_CONV_CAP_IS))==
+                    (DSA_CONV_CAP_S8|DSA_CONV_CAP_IS),"Conv capabilities differ");
+            std::cout<<"VECTOR_ENGINE_SHARED_PS_PASS total_bytes=14336 bank_bytes=2048 conv=1 vce=1\n";
+        }
         if(hardware_available)runConvSwitch("conv_ws_before_dw",arena,false);
         runDepthwise({"dw3x3_tail",1,5,7,5,3,3,1,1,1,1,1,1,17},arena);
         runPool({"avgpool_padding",DSA_VECTOR_OP_AVGPOOL_S8,1,5,7,5,3,3,1,1,1,1},arena);

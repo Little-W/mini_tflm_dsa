@@ -109,7 +109,8 @@ def expected_jobs(prepared, mode):
     return result
 
 
-def create_case(out, prepared_dir, prepared, sample, mode, firmware_dir, firmware):
+def create_case(out, prepared_dir, prepared, sample, mode, firmware_dir, firmware,
+                *, ps_force_raw=False):
     out.mkdir(parents=True, exist_ok=True)
     c = constants()
     config = dict(magic=c['MAGIC'], version=c['VERSION'], mode=mode,
@@ -120,7 +121,7 @@ def create_case(out, prepared_dir, prepared, sample, mode, firmware_dir, firmwar
                   expected_operators=len(prepared['graph']['nodes']),
                   expected_conv_nodes=sum(n['op'] == 'CONV_2D' for n in prepared['graph']['nodes']),
                   expected_fc_nodes=sum(n['op'] == 'FULLY_CONNECTED' for n in prepared['graph']['nodes']),
-                  flags=0, reserved=0)
+                  flags=c['FLAG_PS_RAW'] if ps_force_raw else 0, reserved=0)
     fields = abi_fields('CONFIG')
     words = [config[name] for name in fields]
     overlay(out/'data.mem', [
@@ -158,7 +159,7 @@ def fnv1a(raw):
     return result
 
 
-def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_limit):
+def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_limit, extra_plusargs=()):
     cfg = case['config']; fw = Path(case['firmware_dir']); prepared = Path(case['prepared_dir'])
     trace = case['kind'] == 'trace'
     fields = firmware['result_fields']
@@ -169,7 +170,7 @@ def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_l
         timeout_cycles=cycle_limit, timeout_seconds=seconds_limit, ram_fixed_lat=latency,
         extra_plusargs=[f'+MODEL_ADDR={cfg["model_address"]:x}', f'+MODEL_BYTES={cfg["model_bytes"]}',
                         f'+MODEL_FILE={out/"model_after.bin"}', f'+INPUT_ADDR={cfg["input_address"]:x}',
-                        f'+INPUT_BYTES={cfg["input_bytes"]}', f'+INPUT_FILE={out/"input_after.bin"}'])
+                        f'+INPUT_BYTES={cfg["input_bytes"]}', f'+INPUT_FILE={out/"input_after.bin"}', *extra_plusargs])
     value = {key: case[key] for key in ('model_id', 'sample_index', 'mode', 'mode_name', 'kind',
                                         'model', 'firmware_elf_sha256')}
     value['input_sha256'] = case['sample']['input']['sha256']
@@ -191,6 +192,7 @@ def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_l
         checks['trace_mode'] = result['trace_enabled'] == int(trace)
         checks['cycle_csr'] = (result['invoke_cycles'] > 0 and
             result['invoke_cycles'] == ((result['end_cycle'] - result['start_cycle']) & 0xffffffff))
+        checks['planning_interval'] = result['planning_cycles'] <= result['init_cycles']
         output = (out/'output.bin').read_bytes()
         golden = checked_payload(prepared, case['sample']['output'])
         value['output_comparison'] = compare(output, golden)

@@ -65,10 +65,23 @@ python3 test/capacity/check_elaboration.py --config config/npu.mk
 `--verilator /absolute/path/to/verilator` selects another executable. If the
 installation requires `VERILATOR_ROOT`, set that variable as for an ordinary
 Verilator build. `--output-root` selects the result directory. The script checks
-the elaborated A/B panel RAMs and PS pool against the configuration and writes
-the configuration, compiler command and source hashes into `result.json`.
+the elaborated shared IA/PS banks, directory, fixed buffers, and sequential
+state against the configuration. It writes the effective bank dimensions, AXI
+data width, compiler command, and source hashes into `result.json`.
 It deletes the rebuildable AST by default; `--keep-tree` retains it.
 
-This checks the actual array sizes seen by the RTL compiler. It does not model
-SRAM macro rounding or constitute a functional matrix computation. Use the PCR
-backend and a complete golden-output case for the latter.
+This checks the actual array sizes seen by the RTL compiler. The shared RAM
+uses `SHARED_BANK_BYTES` in {1024, 2048, 4096} and `SHARED_BANK_COUNT` in 6..9.
+`NPU_AXI_DATA_WIDTH` selects a 32-bit or 64-bit AXI4 data bus; AXI-Lite retains
+32-bit data and 16-bit addresses. SRAM macro allocation is reported separately
+from logical storage. Use the shared-array backend and complete reference
+outputs to verify matrix execution.
+
+The parameter regression checks all 24 combinations of bus width and legal
+shared bank geometry, capability reporting, DMA limits, and 4 KiB splitting:
+
+```sh
+python3 test/performance_analysis/validate_configuration_bounds.py \
+  --verilator /absolute/path/to/verilator \
+  --out build/capacity/configuration_bounds
+```

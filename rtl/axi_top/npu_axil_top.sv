@@ -1,3 +1,6 @@
+`ifndef GEMMORA_PS_POOL_BYTES
+`define GEMMORA_PS_POOL_BYTES 12288
+`endif
 module npu_axil_top #(
     parameter AXIL_DATA_WIDTH = 32,
     parameter AXIL_ADDR_WIDTH = 16,
@@ -8,7 +11,13 @@ module npu_axil_top #(
     parameter REG_WIDTH       = 32,
     parameter AXI_ADDR_WIDTH  = 32,
     parameter NPU_ADDR_WIDTH  = AXI_ADDR_WIDTH,
-    parameter IA_CACHE_BLOCKS = 8,
+    parameter IA_CACHE_BLOCKS = 4,
+    parameter IA_COMPACT_ENABLE = 1,
+    parameter SHARED_IA_PS_ENABLE = 1,
+    parameter SHARED_BANK_BYTES = 2048,
+    parameter SHARED_BANK_COUNT = 0,
+    parameter SHARED_TOTAL_BYTES = SHARED_BANK_COUNT != 0 ? SHARED_BANK_COUNT * SHARED_BANK_BYTES :
+        IA_CACHE_BLOCKS * SIZE * SIZE * DATA_WIDTH / 8 + `GEMMORA_PS_POOL_BYTES,
     parameter CONV_CACHE_SETS = 128,
     parameter CONV_CACHE_WAYS = 2,
     parameter CONV_LINE_BYTES = 16,
@@ -145,13 +154,7 @@ module npu_axil_top #(
     end
     conv_im2col_pkg::conv_cfg_t cfg_conv_reg;
     wire [31:0] conv_stat_hits, conv_stat_misses, conv_stat_read_bytes, conv_stat_cycles;
-`ifdef GEMPACT_PANEL_ENGINE
-    localparam bit CONV_CAPABLE = 1'b0;
-    localparam bit VECTOR_ENGINE_CAPABLE = 1'b0;
-`elsif GEMPACT_RESIDENT_ENGINE
-    localparam bit CONV_CAPABLE = 1'b0;
-    localparam bit VECTOR_ENGINE_CAPABLE = 1'b0;
-`elsif GEMMORA_INT8_PROFILE
+`ifdef GEMMORA_INT8_PROFILE
     localparam bit CONV_CAPABLE = 1'b0;
     localparam bit VECTOR_ENGINE_CAPABLE = 1'b0;
 `else
@@ -166,13 +169,7 @@ module npu_axil_top #(
     // external weight parameter is 8. Profiles without that promotion already
     // have CONV_CAPABLE=0 above; advertise the capability of the actual datapath.
     localparam bit CONV_IS_CAPABLE = CONV_CAPABLE && ENABLE_IS_MODE != 0;
-`ifdef GEMPACT_PANEL_ENGINE
-    localparam bit MATRIX_LAYOUT_CAPABLE = 1'b0;
-`elsif GEMPACT_RESIDENT_ENGINE
-    localparam bit MATRIX_LAYOUT_CAPABLE = 1'b0;
-`else
     localparam bit MATRIX_LAYOUT_CAPABLE = 1'b1;
-`endif
     localparam int MATRIX_R_MAX = IA_CACHE_BLOCKS < 2 ? 1 : IA_CACHE_BLOCKS/2;
     localparam int MATRIX_OUTPUT_LIMIT = (ENABLE_IS_MODE == 0 && ENABLE_PER_CHANNEL == 0) ? 16 : 32;
     localparam int MATRIX_S8_BANKS = PS_FRAME_COUNT*MATRIX_R_MAX < MATRIX_OUTPUT_LIMIT ?
@@ -190,6 +187,35 @@ module npu_axil_top #(
     wire [REG_WIDTH-1:0] cfg_row_tail_tiles_reg;
     wire [REG_WIDTH-1:0] cfg_col_groups_reg;
     wire [REG_WIDTH-1:0] cfg_col_tail_tiles_reg;
+    wire [31:0] cfg_ps_control_reg;
+    wire [31:0] cfg_shared_ia_banks_reg;
+    wire [31:0] ps_stat_commands, ps_stat_pressure_events, ps_stat_early_finish_frames;
+`ifdef GEMPACT_PS_COMPRESS
+    localparam bit SHARED_CAPABLE = SHARED_IA_PS_ENABLE != 0 && SIZE == 16 && DATA_WIDTH == 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
+        (SHARED_BANK_BYTES == 1024 || SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096) &&
+        SHARED_TOTAL_BYTES >= 6 * SHARED_BANK_BYTES &&
+        SHARED_TOTAL_BYTES <= 9 * SHARED_BANK_BYTES &&
+        SHARED_TOTAL_BYTES % SHARED_BANK_BYTES == 0;
+`ifdef GEMMORA_PS_FORCE_RAW
+    localparam bit PS_RAW_ONLY = 1'b1;
+`elsif PS_FORCE_RAW
+    localparam bit PS_RAW_ONLY = 1'b1;
+`else
+    localparam bit PS_RAW_ONLY = 1'b0;
+`endif
+    localparam logic [31:0] PS_CAPS = SIZE == 16 ?
+        {8'd1, 8'(PS_FRAME_COUNT), 11'd0, SHARED_CAPABLE, PS_RAW_ONLY,
+         1'(IA_COMPACT_ENABLE != 0 && DATA_WIDTH == 16), 2'b11} : 32'd0;
+    localparam int unsigned PS_POOL_BYTES = SIZE == 16 ? `GEMMORA_PS_POOL_BYTES : 0;
+`else
+    localparam bit SHARED_CAPABLE = 1'b0;
+    localparam logic [31:0] PS_CAPS = 32'd0;
+    localparam int unsigned PS_POOL_BYTES = 0;
+`endif
+    localparam logic [31:0] SHARED_IA_BANK_MASK = SHARED_CAPABLE ?
+        (32'h0000_0002 |
+         ((SHARED_TOTAL_BYTES / SHARED_BANK_BYTES > 2) ? 32'h0000_0004 : 32'd0) |
+         ((SHARED_TOTAL_BYTES / SHARED_BANK_BYTES > 4) ? 32'h0000_0010 : 32'd0)) : 32'd0;
     wire calc_start_pulse;
     wire npu_sa_ready;
     wire npu_done_valid;
@@ -328,7 +354,13 @@ module npu_axil_top #(
         .MATRIX_PS_FRAMES(PS_FRAME_COUNT),
         .MATRIX_PS_ROWS(PS_STORAGE_ROWS != 0 ? PS_STORAGE_ROWS :
             ((((IA_CACHE_BLOCKS < 2 ? 1 : IA_CACHE_BLOCKS/2) + 1) * SIZE - 1) * (PS_FRAME_COUNT + 1))),
-        .MATRIX_S8_BANKS(MATRIX_S8_BANKS), .MATRIX_S16_BANKS(MATRIX_S16_BANKS)
+        .MATRIX_S8_BANKS(MATRIX_S8_BANKS), .MATRIX_S16_BANKS(MATRIX_S16_BANKS),
+        .PS_CAPS(PS_CAPS), .PS_POOL_BYTES(PS_POOL_BYTES),
+        .IA_CACHE_BYTES(IA_CACHE_BLOCKS * SIZE * SIZE * DATA_WIDTH / 8),
+        .SHARED_TOTAL_BYTES(SHARED_CAPABLE ? SHARED_TOTAL_BYTES : 0),
+        .SHARED_BANK_BYTES(SHARED_CAPABLE ? SHARED_BANK_BYTES : 0),
+        .SHARED_IA_BANK_MASK(SHARED_IA_BANK_MASK),
+        .PS_DIRECTORY_ROWS(SHARED_CAPABLE ? 1024 : 0)
     ) u_npu_axil_reg_if (
         .clk(clk),
         .rst_n(rst_n),
@@ -375,6 +407,10 @@ module npu_axil_top #(
         .cfg_row_tail_tiles(cfg_row_tail_tiles_reg),
         .cfg_col_groups(cfg_col_groups_reg),
         .cfg_col_tail_tiles(cfg_col_tail_tiles_reg),
+        .cfg_ps_control(cfg_ps_control_reg),
+        .cfg_shared_ia_banks(cfg_shared_ia_banks_reg),
+        .ps_stat_commands(ps_stat_commands), .ps_stat_pressure_events(ps_stat_pressure_events),
+        .ps_stat_early_finish_frames(ps_stat_early_finish_frames),
         .lhs_base(lhs_base_reg),
         .rhs_base(rhs_base_reg),
         .dst_base(dst_base_reg),
@@ -403,6 +439,10 @@ module npu_axil_top #(
 
     npu_top #(
         .DMA_MAX_BYTES(DMA_MAX_BYTES),
+        .SHARED_IA_PS_ENABLE(SHARED_IA_PS_ENABLE),
+        .SHARED_BANK_BYTES(SHARED_BANK_BYTES),
+        .SHARED_BANK_COUNT(SHARED_BANK_COUNT),
+        .SHARED_TOTAL_BYTES(SHARED_TOTAL_BYTES),
         .WEIGHT_WIDTH(WEIGHT_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
         .SIZE(SIZE),
@@ -410,6 +450,7 @@ module npu_axil_top #(
         .REG_WIDTH(REG_WIDTH),
         .ADDR_WIDTH(NPU_ADDR_WIDTH),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
+        .IA_COMPACT_ENABLE(IA_COMPACT_ENABLE),
         .CONV_CACHE_SETS(CONV_CACHE_SETS),
         .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
         .CONV_LINE_BYTES(CONV_LINE_BYTES),
@@ -443,6 +484,10 @@ module npu_axil_top #(
         .cfg_row_tail_tiles(cfg_row_tail_tiles_reg),
         .cfg_col_groups(cfg_col_groups_reg),
         .cfg_col_tail_tiles(cfg_col_tail_tiles_reg),
+        .cfg_ps_control(cfg_ps_control_reg),
+        .cfg_shared_ia_banks(cfg_shared_ia_banks_reg),
+        .ps_stat_commands(ps_stat_commands), .ps_stat_pressure_events(ps_stat_pressure_events),
+        .ps_stat_early_finish_frames(ps_stat_early_finish_frames),
         .sa_ready(npu_sa_ready),
         .done_valid(npu_done_valid),
         .done_ready(npu_done_ready),

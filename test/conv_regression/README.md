@@ -1,43 +1,44 @@
-# 可现场生成的原 GEMM / PCR 回归
+# 统一 NPU 的 GEMM 回归
 
-`run.py` 使用仓库的真实 NPU testbench 和 `veri/top_regression/gen_mem.py`。
-每次按固定种子 `1000 + SIZE*10 + case_index` 生成 config/init/golden，
-没有历史向量或 summary 作为必需输入。默认输出为 `build/conv_regression/`。
+`run.py` 使用本目录的 `tb_npu_top.sv`、生产 `npu_top` 和
+`veri/top_regression/gen_mem.py`。每次按种子 `1000 + SIZE*10 + case_index`
+生成 config/init/golden 文件，默认输出目录为 `build/conv_regression/`。
 
-标准 core 的 SIZE4/8/16 各六例，覆盖 WS/IS、s8/s16、空间尾块、per-channel 和
-s16 输出。`--pcr` 再运行 SIZE16 的 PCR WS/IS，共 20 例。数值检查包含整片内存，
-统计 cycles、AR requests、AR bytes、R beats 和写字节。
+普通配置在 SIZE4、SIZE8、SIZE16 各运行六个场景，覆盖 WS/IS、S8/S16 输入、
+空间与 K 尾部、逐通道量化以及 S16 输出。`--pcr` 增加两个 SIZE16 场景，
+启用 `GEMPACT_PS_COMPRESS` 和默认 14 KiB 共享 IA/PS RAM，每个 bank 为 2 KiB。
+这两个场景采用 R=2、W=8，并要求实际写入压缩部分和。所有场景检查整个测试内存，
+同时检查 AXI 背压期间的请求稳定性、4 KiB 边界和输出地址范围。
 
-## 当前数值检查
+## 运行
 
 ```sh
 python3 test/conv_regression/run.py --root "$PWD" --out build/gemm_current \
-  --verilator verilator --pcr
+  --verilator /path/to/verilator --pcr --jobs 1
 ```
 
-## 固定上游与当前 RTL 的逐计数比较
+缩小普通配置的范围可使用 `--sizes 4`。只运行共享压缩配置可使用
+`--pcr --pcr-only`。完整运行包含 20 个场景。
+
+报告记录计算周期、AXI 读请求数、读字节数、读数据拍数和写字节数。
+共享压缩场景另外记录物理存储容量、部分和行数以及压缩行数。
+`build.json` 保存构建参数、源文件 SHA256 和可执行文件 SHA256。
+`--skip-build` 检查这些内容后复用构建，随后重新生成数据并执行测试。
+
+## 比较两个源码版本
+
+`--baseline-ref` 从本地 Git 对象导出指定参考提交依赖的 RTL、内存模型和
+数据生成器，使用相同测试程序及种子运行两个版本，再逐项比较输出检查结果和周期统计。
+参考提交需要支持所选择的配置及公共 NPU 接口。
 
 ```sh
-make conv-gemm-regression VERILATOR=/path/to/verilator
-
 python3 test/conv_regression/run.py --root "$PWD" --out build/gemm_compare \
-  --verilator verilator --pcr \
-  --baseline-ref 148964d180f52cb852c5a7e3d5c89773fa0a8ea5
+  --verilator /path/to/verilator --sizes 4 --jobs 1 \
+  --baseline-ref "$REFERENCE_COMMIT"
 ```
 
-`--baseline-ref` 从本地 Git 对象即时导出该提交必需的 RTL、testbench、Python
-生成器和 tiling header 到 `--out/baseline_source/`。先用同一 runner、seed、SIZE
-和 PCR profile 生成并运行基线，再运行当前代码，逐例比较完整输出及六项统计。
-基线源文件的提交和 SHA 写入本次目录；补丁不携带源码快照。固定基线就是本补丁
-的父提交，应用补丁的 Git 仓库应具有该对象；源码压缩包用户仍可运行普通数值检查。
+已有参考报告时，可以使用 `--compare /path/to/summary.json`。
+`--compare` 与 `--baseline-ref` 互斥；不指定这两个参数时，仅报告当前版本的运行结果。
 
-已有自己生成的基线时，可传 `--compare /path/to/summary.json`，与
-`--baseline-ref` 互斥；两个参数都不指定时只做当前数值检查，报告不声称基线一致。
-缩小验证范围可用 `--sizes 4`；只跑 PCR 可用 `--pcr --pcr-only`。
-
-`--skip-build` 要求已有本次 profile 的 `build.json`，并核对源文件/include SHA、
-编译 flags 和 executable SHA；缺少证明或发现差异会拒绝。复用时保持原 manifest，
-不会将当前源哈希回填旧记录来冒充新构建。即使复用 binary，也会重新生成并运行测试。
-
-`build_verilator.sh` 是可选的本地工具构建脚本，固定官方 Verilator 提交并核对
-依赖下载的 SHA。它不依赖旧工具链日志，所有下载/编译目录均由变量指定。
+`build_verilator.sh` 是可选的本地工具构建脚本，固定官方 Verilator 提交，
+并检查下载依赖的 SHA256。下载、构建和安装目录可通过脚本变量设置。

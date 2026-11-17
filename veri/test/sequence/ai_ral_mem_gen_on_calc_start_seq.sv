@@ -82,6 +82,35 @@ class ai_ral_mem_gen_on_calc_start_seq extends ai_mem_gen_smoke_seq;
         `uvm_info("RAL_MEM_GEN", $sformatf("FD write %-18s = 0x%08h", name, data), UVM_LOW)
     endtask
 
+`ifdef DUT_AXIL
+    task automatic ral_read(npu_reg rg, output bit [31:0] data, input string name);
+        uvm_status_e status;
+        uvm_reg_data_t value;
+        if (rg==null) `uvm_fatal("RAL_MEM_GEN",$sformatf("regmodel.%s is null",name))
+        rg.read(status,value,UVM_FRONTDOOR,regmodel.default_map,this);
+        if (status!=UVM_IS_OK)
+            `uvm_fatal("RAL_MEM_GEN",$sformatf("Frontdoor read failed on %s",name))
+        data=value[31:0];
+    endtask
+
+    virtual task read_memory_capabilities(output bit [31:0] caps,total_bytes,
+        bank_bytes,bank_mask,directory_rows);
+        ral_read(regmodel.axil_ps_caps,caps,"axil_ps_caps");
+        total_bytes=0;bank_bytes=0;bank_mask=0;directory_rows=0;
+        if (caps[31:24]==1 && caps[4]) begin
+            ral_read(regmodel.axil_shared_total_bytes,total_bytes,"axil_shared_total_bytes");
+            ral_read(regmodel.axil_shared_bank_bytes,bank_bytes,"axil_shared_bank_bytes");
+            ral_read(regmodel.axil_ia_bank_mask,bank_mask,"axil_ia_bank_mask");
+            ral_read(regmodel.axil_ps_directory_rows,directory_rows,"axil_ps_directory_rows");
+        end
+    endtask
+
+    virtual task write_memory_configuration(input int ia_banks,ps_control);
+        if (ia_banks!=0) ral_write(regmodel.axil_ia_banks,ia_banks,"axil_ia_banks");
+        ral_write(regmodel.axil_ps_control,ps_control,"axil_ps_control");
+    endtask
+`endif
+
     virtual task body();
         npu_seq_item tr;
         string utn_name;
@@ -215,7 +244,7 @@ class ai_ral_mem_gen_on_calc_start_seq extends ai_mem_gen_smoke_seq;
         ral_write(regmodel.npu_act_min,    act_min[31:0],           "npu_act_min");
         ral_write(regmodel.npu_act_max,    act_max[31:0],           "npu_act_max");
 `ifdef DUT_AXIL
-        prepare_host_tiling(cfg_k,cfg_m,gen_dataflow_mode,cfg_quant_mode,
+        prepare_memory_tiling(cfg_k,cfg_n,cfg_m,cfg_lhs_dtype,gen_dataflow_mode,cfg_quant_mode,
             gen_ia_reuse,gen_w_reuse,host_rg,host_rt,host_cg,host_ct);
         ral_write(regmodel.axil_row_groups,host_rg,"axil_row_groups");
         ral_write(regmodel.axil_row_tail_tiles,host_rt,"axil_row_tail_tiles");
@@ -223,6 +252,7 @@ class ai_ral_mem_gen_on_calc_start_seq extends ai_mem_gen_smoke_seq;
         ral_write(regmodel.axil_col_tail_tiles,host_ct,"axil_col_tail_tiles");
         ral_write(regmodel.axil_ia_reuse,   gen_ia_reuse[31:0],      "axil_ia_reuse");
         ral_write(regmodel.axil_w_reuse,    gen_w_reuse[31:0],       "axil_w_reuse");
+        ral_write(regmodel.axil_dataflow,   gen_dataflow_mode[31:0], "axil_dataflow");
 `endif
 
         `uvm_do_with(tr, {

@@ -3,6 +3,8 @@ module kernel_loader_buffer #(
     parameter int unsigned SIZE = 4
 ) (
     input logic clk, rst_n,
+    input logic cache_flush = 1'b0,
+    input logic discard_head = 1'b0,
     input logic load_start,
     output logic load_slot_id,
     input logic row_valid,
@@ -13,6 +15,9 @@ module kernel_loader_buffer #(
     input logic done_slot,
     input logic send_start,
     output logic load_ready,
+    output logic load_commit,
+    output logic load_commit_slot,
+    output logic discard_ready,
     output logic weight_data_valid,
     output logic weight_sending_done,
     output logic store_weight_req,
@@ -35,25 +40,27 @@ module kernel_loader_buffer #(
     logic [ROW_VEC_W-1:0] row_data_vec,row_data_vec_q;
     logic [ROW_VEC_W-1:0] row_rd_data[SIZE];
     assign load_slot_id=wr_slot;
-    assign load_ready=!slot_reserved[wr_slot];
-    assign weight_data_valid=slot_loaded[rd_slot] && !send_active && !send_pending && !send_prefetch;
+    assign load_ready=!cache_flush && !slot_reserved[wr_slot];
+    assign weight_data_valid=!cache_flush && slot_loaded[rd_slot] && !send_active && !send_pending && !send_prefetch;
+    assign discard_ready=weight_data_valid;
+    wire discard_fire=discard_head && discard_ready;
     always_comb begin
         row_data_vec='0;
         for(int c=0;c<SIZE;c++)row_data_vec[c*DATA_WIDTH+:DATA_WIDTH]=row_data[c];
     end
     for(genvar row_bank=0;row_bank<SIZE;row_bank++)begin:gen_row_ram
         kernel_loader_row_ram #(.DATA_WIDTH(ROW_VEC_W),.DEPTH(SLOT_COUNT),.ADDR_WIDTH(1)) u_row_ram(
-            .clk,.wr_en(row_wr_bank_q[row_bank] && slot_reserved[row_slot_q]),
+            .clk,.wr_en(row_wr_bank_q[row_bank] && slot_reserved[row_slot_q] && !cache_flush),
             .wr_addr(row_slot_q),.wr_data(row_data_vec_q),.rd_en(row_rd_en),
             .rd_addr(rd_slot),.rd_data(row_rd_data[row_bank]));
     end
     always_ff @(posedge clk)begin
-        if(!rst_n)begin
+        if(!rst_n || cache_flush)begin
             wr_slot<=0;rd_slot<=0;slot_reserved<=0;slot_loaded<=0;valid_count<=0;
             send_valid_cols<=0;emit_col_idx<=0;send_active<=0;send_pending<=0;send_prefetch<=0;
             row_valid_q<=0;row_slot_q<=0;load_done_q<=0;done_slot_q<=0;row_idx_q<=0;
             row_wr_bank_q<=0;row_data_vec_q<=0;row_rd_en<=0;
-            store_weight_req<=0;weight_sending_done<=0;
+            store_weight_req<=0;weight_sending_done<=0;load_commit<=0;load_commit_slot<=0;
             for(int s=0;s<SLOT_COUNT;s++)begin load_valid_cols[s]<=0;slot_valid_cols[s]<=0;end
             for(int c=0;c<SIZE;c++)weight_out[c]<=0;
         end else begin
@@ -67,7 +74,7 @@ module kernel_loader_buffer #(
             load_done_q<=load_done;done_slot_q<=done_slot;row_data_vec_q<=row_data_vec;
             row_wr_bank_q<='0;
             if(row_valid)row_wr_bank_q[row_idx]<=1'b1;
-            row_rd_en<=0;store_weight_req<=0;weight_sending_done<=0;
+            row_rd_en<=0;store_weight_req<=0;weight_sending_done<=0;load_commit<=0;
             if(load_start && load_ready)begin
                 slot_reserved[wr_slot]<=1;
                 slot_loaded[wr_slot]<=0;
@@ -76,11 +83,15 @@ module kernel_loader_buffer #(
             end
             if(row_valid_q)load_valid_cols[row_slot_q]<=row_count_next;
             if(load_done_q)begin
+                load_commit<=1;load_commit_slot<=done_slot_q;
                 slot_loaded[done_slot_q]<=1;
                 slot_valid_cols[done_slot_q]<=row_valid_q && row_slot_q==done_slot_q ?
                     row_count_next : load_valid_cols[done_slot_q];
             end
-            if(send_start && weight_data_valid)begin
+            if(discard_fire)begin
+                slot_reserved[rd_slot]<=0;slot_loaded[rd_slot]<=0;rd_slot<=~rd_slot;
+            end
+            if(send_start && weight_data_valid && !discard_fire)begin
                 send_pending<=1;row_rd_en<=1;send_valid_cols<=slot_valid_cols[rd_slot];
             end
             if(send_pending)begin
@@ -102,12 +113,13 @@ module kernel_loader_buffer #(
                 else emit_col_idx<=emit_col_idx-1'b1;
             end
             if(send_complete_event)rd_slot<=~rd_slot;
-            case({load_done_q,send_pending})
+            case({load_done_q,(send_pending || discard_fire)})
                 2'b10:valid_count<=valid_count+1'b1;
                 2'b01:valid_count<=valid_count-1'b1;
                 default:;
             endcase
 `ifndef SYNTHESIS
+            if(discard_fire)assert(!send_start)else $fatal(1,"kernel discard and send overlap");
             if(load_start)assert(load_ready)else $fatal(1,"kernel load without a free slot");
             if(row_valid_q)assert(slot_reserved[row_slot_q])else $fatal(1,"kernel response has no reserved slot");
             if(load_done_q)assert(slot_reserved[done_slot_q] && !slot_loaded[done_slot_q])

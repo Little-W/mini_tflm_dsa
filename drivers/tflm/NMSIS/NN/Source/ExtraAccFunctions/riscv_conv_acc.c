@@ -127,7 +127,7 @@ int riscv_convolve_s8_try_dsa(
         channel_bound = bound + (uint64_t)abs_bias;
         if (channel_bound > INT32_MAX) return 0;
     }
-#if DSA_NN_POINTWISE_DIRECT && !DSA_PCR_ENGINE
+#if DSA_NN_POINTWISE_DIRECT
     if (groups == 1u && f->h == 1 && f->w == 1 &&
         p->stride.h == 1 && p->stride.w == 1 &&
         p->dilation.h == 1 && p->dilation.w == 1 &&

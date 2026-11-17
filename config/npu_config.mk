@@ -18,9 +18,12 @@ else
 include $(NPU_CONFIG)
 endif
 
-# The legacy entry points have different historical array-size defaults. Only
-# the PCR mode shares SIZE across them; the panel engine requires SIZE=16.
-ifeq ($(PCR_ENGINE),1)
+# Shared array/cache/frame parameters apply to every PS storage mode.
+NPU_AXI_DATA_WIDTH ?= 64
+SHARED_BANK_BYTES ?= 2048
+SHARED_BANK_COUNT ?= 7
+export NPU_AXI_DATA_WIDTH SHARED_BANK_BYTES SHARED_BANK_COUNT
+NPU_BUS_WIDTH ?= $(NPU_AXI_DATA_WIDTH)
 MMA_SIZE ?= $(SIZE)
 MMA_IA_CACHE_BLOCKS ?= $(IA_CACHE_BLOCKS)
 MMA_PS_FRAME_COUNT ?= $(PS_FRAME_COUNT)
@@ -29,7 +32,6 @@ NPU_SIZE ?= $(SIZE)
 NPU_IA_CACHE_BLOCKS ?= $(IA_CACHE_BLOCKS)
 NPU_PS_FRAME_COUNT ?= $(PS_FRAME_COUNT)
 NPU_AXI_READ_OUTSTANDING ?= $(AXI_READ_OUTSTANDING)
-endif
 
 CAPACITY_SOLVER := $(NPU_CONFIG_ROOT)/scripts/capacity/solve.py
 NPU_MENUCONFIG := $(NPU_CONFIG_ROOT)/scripts/capacity/menuconfig.py
@@ -39,6 +41,10 @@ CAPACITY_SHAPES = $(strip $(SHAPE) $(SHAPES))
 CAPACITY_TASK_ARGS = $(if $(CAPACITY_SHAPES),$(foreach shape,$(CAPACITY_SHAPES),--shape '$(shape)'),--workloads '$(abspath $(WORKLOADS))')
 CAPACITY_LIMIT_ARGS = $(if $(MAX_RAM_KIB),--max-ram-kib '$(MAX_RAM_KIB)',$(if $(MAX_STATE_KIB),--max-state-kib '$(MAX_STATE_KIB)',))
 CAPACITY_REPR_ARGS = $(if $(REPRESENTATION),--representation '$(REPRESENTATION)',)
+CAPACITY_VERILATOR ?= $(if $(VERILATOR),$(VERILATOR),verilator)
+CAPACITY_SOLVE_SCOPE = $(if $(MAX_RAM_KIB),buffer-ram,$(if $(MAX_STATE_KIB),logical-state,$(CAPACITY_BUDGET_SCOPE)))
+CAPACITY_SOLVE_MEASURE_ARGS = $(if $(filter logical-state,$(CAPACITY_SOLVE_SCOPE)),--measure-state,)
+CAPACITY_INSPECT_MEASURE_ARGS = $(if $(filter logical-state,$(CAPACITY_BUDGET_SCOPE)),--measure-state,)
 
 # Each build entry point may map these four values to its actual top-level
 # parameter names before using capacity-check; all other keys are common.
@@ -46,10 +52,12 @@ NPU_CAPACITY_SIZE ?= $(SIZE)
 NPU_CAPACITY_CACHE ?= $(IA_CACHE_BLOCKS)
 NPU_CAPACITY_FRAMES ?= $(PS_FRAME_COUNT)
 NPU_CAPACITY_READ_OUTSTANDING ?= $(AXI_READ_OUTSTANDING)
+NPU_CAPACITY_AXI_DATA_WIDTH ?= $(NPU_AXI_DATA_WIDTH)
 NPU_EFFECTIVE_CONFIG_VALUES = PCR_ENGINE=$(PCR_ENGINE) SIZE=$(NPU_CAPACITY_SIZE) \
+  NPU_AXI_DATA_WIDTH=$(NPU_CAPACITY_AXI_DATA_WIDTH) \
+  SHARED_BANK_BYTES=$(SHARED_BANK_BYTES) SHARED_BANK_COUNT=$(SHARED_BANK_COUNT) \
   IA_CACHE_BLOCKS=$(NPU_CAPACITY_CACHE) PS_FRAME_COUNT=$(NPU_CAPACITY_FRAMES) \
   AXI_READ_OUTSTANDING=$(NPU_CAPACITY_READ_OUTSTANDING) \
-  PANEL_MAX_R=$(PANEL_MAX_R) PANEL_MAX_W=$(PANEL_MAX_W) \
   PS_POOL_BYTES=$(PS_POOL_BYTES) PS_FORCE_RAW=$(PS_FORCE_RAW) \
   CAPACITY_BUDGET_BYTES=$(CAPACITY_BUDGET_BYTES) \
   CAPACITY_BUDGET_SCOPE=$(CAPACITY_BUDGET_SCOPE) \
@@ -57,9 +65,10 @@ NPU_EFFECTIVE_CONFIG_VALUES = PCR_ENGINE=$(PCR_ENGINE) SIZE=$(NPU_CAPACITY_SIZE)
 NPU_CAPACITY_SET_ARGS = $(foreach setting,$(NPU_EFFECTIVE_CONFIG_VALUES),--set '$(setting)')
 
 # The editor starts from the persistent file. Import only explicit common-key
-# command-line overrides, not each legacy entry point's effective defaults.
-NPU_CONFIG_KEYS := PCR_ENGINE SIZE IA_CACHE_BLOCKS PS_FRAME_COUNT AXI_READ_OUTSTANDING \
-  PANEL_MAX_R PANEL_MAX_W PS_POOL_BYTES PS_FORCE_RAW CAPACITY_BUDGET_BYTES \
+# command-line overrides; the persistent file supplies all other values.
+NPU_CONFIG_KEYS := PCR_ENGINE SIZE NPU_AXI_DATA_WIDTH IA_CACHE_BLOCKS PS_FRAME_COUNT AXI_READ_OUTSTANDING \
+  SHARED_BANK_BYTES SHARED_BANK_COUNT \
+  PS_POOL_BYTES PS_FORCE_RAW CAPACITY_BUDGET_BYTES \
   CAPACITY_BUDGET_SCOPE CAPACITY_REPRESENTATION
 NPU_MENUCONFIG_SET_ARGS = $(foreach key,$(NPU_CONFIG_KEYS),$(if $(filter command line,$(origin $(key))),--set '$(key)=$($(key))',))
 MENUCONFIG_ARGS ?=
@@ -79,18 +88,21 @@ endif
 menuconfig:
 	@$(PYTHON) '$(NPU_MENUCONFIG)' --config '$(NPU_CONFIG)' $(NPU_MENUCONFIG_SET_ARGS) \
 	  $(CAPACITY_LIMIT_ARGS) $(CAPACITY_REPR_ARGS) $(CAPACITY_TASK_ARGS) \
-	  --output '$(abspath $(CAPACITY_OUTPUT))' $(MENUCONFIG_ARGS)
+	  --output '$(abspath $(CAPACITY_OUTPUT))' --verilator '$(CAPACITY_VERILATOR)' $(MENUCONFIG_ARGS)
 
 capacity-solve:
 	$(PYTHON) '$(CAPACITY_SOLVER)' --config '$(NPU_CONFIG)' $(NPU_CAPACITY_SET_ARGS) \
 	  $(CAPACITY_LIMIT_ARGS) $(CAPACITY_REPR_ARGS) $(CAPACITY_TASK_ARGS) \
-	  --apply --output '$(abspath $(CAPACITY_OUTPUT))' $(CAPACITY_ARGS)
+	  --apply --output '$(abspath $(CAPACITY_OUTPUT))' $(CAPACITY_SOLVE_MEASURE_ARGS) \
+	  --verilator '$(CAPACITY_VERILATOR)' $(CAPACITY_ARGS)
 
 capacity-show:
-	$(PYTHON) '$(CAPACITY_SOLVER)' --config '$(NPU_CONFIG)' $(NPU_CAPACITY_SET_ARGS) --show
+	$(PYTHON) '$(CAPACITY_SOLVER)' --config '$(NPU_CONFIG)' $(NPU_CAPACITY_SET_ARGS) --show \
+	  $(CAPACITY_INSPECT_MEASURE_ARGS) --verilator '$(CAPACITY_VERILATOR)'
 
 capacity-check:
-	$(PYTHON) '$(CAPACITY_SOLVER)' --config '$(NPU_CONFIG)' $(NPU_CAPACITY_SET_ARGS) --check
+	$(PYTHON) '$(CAPACITY_SOLVER)' --config '$(NPU_CONFIG)' $(NPU_CAPACITY_SET_ARGS) --check \
+	  $(CAPACITY_INSPECT_MEASURE_ARGS) --verilator '$(CAPACITY_VERILATOR)'
 
 capacity-test:
 	$(PYTHON) -m unittest discover -s '$(NPU_CONFIG_ROOT)/test/capacity' -p 'test_*.py' -v

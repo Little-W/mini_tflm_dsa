@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include "gempact_tiling.h"
+#include "dsa_memory.h"
 
 #define DSA_SCHEDULE_WS 0u
 #define DSA_SCHEDULE_IS 1u
@@ -13,7 +14,11 @@
 #define DSA_PS_STORAGE_ROWS 0u
 #endif
 #ifndef DSA_SCHEDULE_AXI_DATA_BITS
+#ifdef NPU_CONFIG_NPU_AXI_DATA_WIDTH
+#define DSA_SCHEDULE_AXI_DATA_BITS NPU_CONFIG_NPU_AXI_DATA_WIDTH
+#else
 #define DSA_SCHEDULE_AXI_DATA_BITS 32u
+#endif
 #endif
 #ifndef DSA_SCHEDULE_READ_BEAT_CYCLES
 #define DSA_SCHEDULE_READ_BEAT_CYCLES 2u
@@ -48,6 +53,12 @@ typedef struct {
     uint32_t merge_contiguous_rows;
     uint32_t lhs_tile_packed, rhs_tile_packed, output_banks_s8, output_banks_s16;
     uint32_t dma_max_bytes, axi_data_bits;
+    uint32_t ps_caps, ia_cache_bytes, shared_total_bytes, shared_bank_bytes;
+    uint32_t shared_ia_bank_mask, ps_directory_rows, compact_mode_mask, force_raw;
+    uint32_t source_s8;
+    int32_t lhs_offset, rhs_offset;
+    gempact_im2col_geometry_t im2col;
+    uint32_t im2col_input_width,im2col_output_width,im2col_stride_h;
 } dsa_schedule_config_t;
 
 typedef struct {
@@ -56,6 +67,8 @@ typedef struct {
     uint64_t estimated_cycles, read_words, read_requests, write_words;
     uint64_t write_requests, compute_cycles, ps_payload_bytes;
     uint64_t read_beats, write_beats;
+    uint32_t ps_control, ia_bank_count, ia_cache_bytes, ps_pool_bytes;
+    uint32_t memory_policy_valid, frame_rows, predicted_resident_frames;
 } dsa_schedule_t;
 
 static inline uint64_t dsa_schedule_add(uint64_t a, uint64_t b)
@@ -297,7 +310,7 @@ static inline int dsa_schedule_better(const dsa_schedule_t *a,
     return 0;
 }
 
-static inline int dsa_schedule_plan(const dsa_schedule_config_t *c,
+static inline int dsa_schedule_plan_legacy(const dsa_schedule_config_t *c,
                                      dsa_schedule_t *out)
 {
     uint32_t rcap,wcap,candidates=0;
@@ -402,6 +415,8 @@ static inline int dsa_schedule_plan(const dsa_schedule_config_t *c,
     return found;
 }
 
+#include "dsa_memory_schedule.h"
+
 /* Optional layout selection for tensors whose caller can prepare either
  * storage format. The mask uses bit0 for lhs and bit1 for rhs. Existing
  * packed flags stay required. A newly packed allocation is word aligned. */
@@ -410,6 +425,7 @@ static inline int dsa_schedule_plan_layout(const dsa_schedule_config_t *c,
 {
     uint32_t required,candidates=0;
     int found=0;
+    if (out) *out=(dsa_schedule_t){0};
     if (!c || !out || !layout || may_pack>3u) return 0;
     required=c->lhs_tile_packed | (c->rhs_tile_packed<<1);
     for (uint32_t flags=0;flags<4u;++flags) {

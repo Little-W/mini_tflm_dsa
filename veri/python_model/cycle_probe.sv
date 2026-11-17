@@ -6,13 +6,13 @@ module python_cycle_probe #(parameter int SIZE = 16) (
     timeprecision 1ps;
     import "DPI-C" function void py_capture(
         input int unsigned lane_count,
-        input int unsigned scalar_values[32],
+        input longint unsigned scalar_values[32],
         input int unsigned ia_values[SIZE],
         input int unsigned weight_values[SIZE],
         input int unsigned acc_values[SIZE],
         input int unsigned requant_values[SIZE]
     );
-    int unsigned scalars[32];
+    longint unsigned scalars[32];
     int unsigned ia[SIZE], weight_data[SIZE], acc[SIZE], requant[SIZE];
 
     // Observe settled state 1 ps after the edge; the observer never drives RTL.

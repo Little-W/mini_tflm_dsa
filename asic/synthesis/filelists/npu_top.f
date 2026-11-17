@@ -38,6 +38,9 @@
 ../../rtl/npu/compute/shift_accumulator.sv
 ../../rtl/npu/compute/accumulator_array.sv
 ../../rtl/npu/buffers/ps_buffer_fifo.sv
+../../rtl/npu/gempact/ps_adaptive_codec.sv
+../../rtl/npu/gempact/ps_frame_store.sv
+../../rtl/npu/buffers/ia_ps_shared_ram.sv
 ../../rtl/npu/buffers/ps_buffer.sv
 ../../rtl/npu/compute/compute_core.sv
 
@@ -64,20 +67,5 @@
 ../../rtl/npu/writeback/oa_writer.sv
 
 ../../rtl/npu/control/npu_controller.sv
+../../rtl/npu/control/ps_window_scheduler.sv
 ../../rtl/npu/top/npu_top.sv
-
-../../rtl/npu/gempact/gempact_c_pack.sv
-../../rtl/npu/gempact/gempact_frame_array.sv
-../../rtl/npu/gempact/gempact_paged_ps.sv
-../../rtl/npu/gempact/gempact_panel_cache.sv
-../../rtl/npu/gempact/gempact_panel_engine.sv
-../../rtl/npu/gempact/gempact_ps_bank.sv
-../../rtl/npu/gempact/gempact_resident_engine.sv
-../../rtl/npu/gempact/gempact_stream_ps.sv
-../../rtl/npu/gempact/gempact_stream_ps_pcr.sv
-../../rtl/npu/gempact/gempact_tagged_array.sv
-../../rtl/npu/gempact/gempact_tile_core.sv
-../../rtl/npu/gempact/operand_read_cache.sv
-../../rtl/npu/gempact/ps_capacity_schedule.sv
-../../rtl/npu/gempact/ps_codec_measure.sv
-../../rtl/npu/gempact/ps_sector_store.sv

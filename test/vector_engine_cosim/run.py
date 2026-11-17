@@ -30,7 +30,8 @@ def main():
     parser.add_argument('--pe-count', type=int, default=8)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--disabled', action='store_true')
-    mode.add_argument('--pcr', action='store_true')
+    mode.add_argument('--pcr', action='store_true',
+                      help='Enable unified compressed PS storage with 14 KiB shared IA/PS RAM')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=2)
@@ -75,6 +76,8 @@ def main():
               '-DDSA_MMIO_CUSTOM', f'-DDSA_TILE_SIZE={args.size}', '-DDSA_PS_FRAME_COUNT=16',
               '-include', ROOT / 'test/conv_driver/host_compat.h',
               '-I', nn / 'Include', '-I', ROOT / 'drivers']
+    if args.pcr:
+        cflags += ['-DDSA_PS_COMPRESS=1']
     inputs = set(csrc + svsrc + [HERE / 'main.cpp', Path(__file__)])
     inputs.update(npu.rglob('*.svh'))
     for src in csrc:
@@ -86,7 +89,8 @@ def main():
     status = {
         'scope': 'Production NMSIS C and MMIO driver, actual AXI-Lite NPU top, production AXI RAM.',
         'reference': 'Repository NMSIS scalar kernels compiled with accelerator dispatch disabled.',
-        'size': args.size, 'pe_count': args.pe_count, 'enabled': not (args.disabled or args.pcr), 'pcr': args.pcr,
+        'size': args.size, 'pe_count': args.pe_count, 'enabled': not args.disabled, 'pcr': args.pcr,
+        'shared_data_bytes': 14336 if args.pcr else 0,
         'verilator': subprocess.check_output([args.verilator, '--version'], text=True).strip(),
         'source_sha256': hashes, 'runs': [],
     }
@@ -118,9 +122,11 @@ def main():
         library = build / 'libdriver.a'
         if run(['ar', 'rcs', library, *objects], out / 'archive.log'):
             return 1
-        cppflags = (f'-std=c++17 -O1 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -D__GNUC_PYTHON__ -DDSA_MMIO_CUSTOM '
+        cppflags = (f'-std=c++17 -O1 -D__GNUC_PYTHON__ -DDSA_MMIO_CUSTOM '
                     f'-DDSA_TILE_SIZE={args.size} -DDSA_PS_FRAME_COUNT=16 -DDW_TEST_PE_COUNT={args.pe_count} '
                     f'-I{nn / "Include"} -I{ROOT / "drivers"}')
+        if args.pcr:
+            cppflags += ' -DDSA_PS_COMPRESS=1'
         command = [args.verilator, '--cc', '--exe', '--assert',
                    '--output-groups', '0', '--output-split', '12000',
                    '--top-module', 'vector_engine_cosim_top', '-Wno-fatal', f'-I{npu / "gempact"}',
@@ -130,9 +136,7 @@ def main():
                    '-MAKEFLAGS', 'OPT_FAST=-O1 OPT_SLOW=-O0',
                    *svsrc, HERE / 'main.cpp', library]
         if args.pcr:
-            command += ['-DGEMPACT_PANEL_ENGINE', '-DGEMPACT_PCR_PS',
-                        '-DGEMPACT_PANEL_MAX_R=8', '-DGEMPACT_PANEL_MAX_W=16',
-                        '-DGEMMORA_PS_POOL_BYTES=327680']
+            command += ['-DGEMPACT_PS_COMPRESS=1', '-DGEMMORA_PS_POOL_BYTES=12288']
         rc = run(command, out / 'compile.log')
         compile_command = ['make', '-C', build / 'obj', '-f', 'Vvector_engine_cosim_top.mk',
                            '-j', args.jobs, 'OPT_FAST=-O1', 'OPT_SLOW=-O0',
@@ -163,8 +167,10 @@ def main():
         ('fixed', ['+DDR_RAND_LAT=0']),
         ('random', ['+DDR_RAND_LAT=1', '+DDR_CMD_MAX_LAT=3', '+DDR_W_MAX_LAT=3', '+DDR_RSP_MAX_LAT=3']),
     ]:
-        if args.disabled or args.pcr:
+        if args.disabled:
             flags += ['+DW_DISABLED']
+        if args.pcr:
+            flags += ['+PS_COMPRESS']
         rc = run([binary, *flags], out / f'{name}.log', timeout=300)
         log = (out / f'{name}.log').read_text()
         passed = rc == 0 and 'VECTOR_ENGINE_C_RTL_COSIM_PASS' in log

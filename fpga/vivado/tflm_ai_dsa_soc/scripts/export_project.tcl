@@ -14,8 +14,11 @@
 #   <CPU_ENABLE_ICACHE> <SIM_MAX_SYS_CYCLES>
 
 set script_dir [file dirname [file normalize [info script]]]
+source [file join $script_dir npu_config.tcl]
+source [file join $script_dir cpu_memory.tcl]
 set flow_root [file normalize [file join $script_dir ..]]
-set dsa_root [file normalize [file join $flow_root .. .. ..]]
+set dsa_root [npu_config::repository_root $script_dir]
+set npu_hardware_config [npu_config::read $dsa_root]
 
 set project_name tflm_ai_dsa_soc
 set part_name xc7a200tfbg484-3
@@ -133,34 +136,6 @@ proc copy_one_file {src dst} {
     file copy -force $src $dst
 }
 
-proc copy_mem_file_to_depth {src dst depth} {
-    file mkdir [file dirname $dst]
-    set in_f [open $src r]
-    set text [read $in_f]
-    close $in_f
-
-    set text [string trimright $text "\r\n"]
-    if {$text eq ""} {
-        set lines [list]
-    } else {
-        set lines [split $text "\n"]
-    }
-
-    set word_count [llength $lines]
-    if {$word_count > $depth} {
-        error "CPU memory image has $word_count words, larger than CPU_MEM_DP=$depth: $src"
-    }
-
-    set out_f [open $dst w]
-    foreach line $lines {
-        puts $out_f [string trimright $line "\r"]
-    }
-    for {set i $word_count} {$i < $depth} {incr i} {
-        puts $out_f "00000000"
-    }
-    close $out_f
-}
-
 proc localize_path {src export_root dsa_root ai_root} {
     set abs_src [file normalize $src]
 
@@ -218,6 +193,22 @@ proc copy_dir_contents {src_dir dst_dir} {
     }
 }
 
+proc write_export_sources {path export_root design constraints includes} {
+    set output [open $path w]
+    puts $output {set flow_dir [file dirname [file normalize [info script]]]}
+    puts $output {set project_export_dir [file normalize [file join $flow_dir ..]]}
+    puts $output {set dsa_root $project_export_dir}
+    puts $output {set ai_root $dsa_root}
+    foreach {name paths} [list design_sources $design constraint_files $constraints include_dirs $includes] {
+        puts $output [list set $name [list]]
+        foreach path $paths {
+            set relative [rel_under_root $path $export_root]
+            puts $output [format {lappend %s [file join $dsa_root %s]} $name [list $relative]]
+        }
+    }
+    close $output
+}
+
 proc write_export_readme {path project_xpr bit_path mem_path source_mem_path size_value ia_cache_blocks_value core_clk_mhz_value cpu_enable_icache_value sim_max_sys_cycles_value synth_strategy_value synth_directive_value impl_strategy_value} {
     set f [open $path w]
     puts $f "# Self-contained TFLM AI DSA Vivado Project"
@@ -229,7 +220,8 @@ proc write_export_readme {path project_xpr bit_path mem_path source_mem_path siz
     puts $f "```"
     puts $f ""
     puts $f "The RTL, constraints, and CPU memory image were copied into this directory."
-    puts $f "The local CPU memory image is padded with zero words to CPU_MEM_DP."
+    puts $f "The mem/cpu32.mem image contains CPU_MEM_DP zero-padded 32-bit CPU words."
+    puts $f "The mem/cpu.mem image groups those words into the configured physical RAM width."
     puts $f "The top generic CPU_MEM_PATH uses this absolute mem path:"
     puts $f ""
     puts $f "```text"
@@ -318,11 +310,24 @@ foreach inc_dir $include_dirs {
     lappend local_include_dirs $dst_dir
 }
 
+set local_script_dir [file join $export_root scripts]
+file mkdir $local_script_dir
+foreach script [glob -directory $script_dir *.tcl] {
+    if {[file tail $script] ne "export_sources.tcl"} {
+        copy_one_file $script [file join $local_script_dir [file tail $script]]
+    }
+}
+write_export_sources [file join $local_script_dir export_sources.tcl] $export_root \
+    $local_design_sources $local_constraint_files $local_include_dirs
+
+set local_cpu32_path [file join $export_root mem cpu32.mem]
 set local_mem_path [file join $export_root mem cpu.mem]
-copy_mem_file_to_depth $cpu_mem_path_value $local_mem_path $cpu_mem_dp_value
-set local_mem_path [file normalize $local_mem_path]
+set memory_images [cpu_memory::write_images $cpu_mem_path_value $local_cpu32_path \
+    $local_mem_path $cpu_mem_dp_value [dict get $npu_hardware_config NPU_AXI_DATA_WIDTH]]
+set local_mem_path [dict get $memory_images native_path]
 
 set top_generics [list \
+    {*}[npu_config::generics $npu_hardware_config] \
     SIZE=$size_value \
     IA_CACHE_BLOCKS=$ia_cache_blocks_value \
     CPU_MEM_DP=$cpu_mem_dp_value \
@@ -360,23 +365,44 @@ add_files -norecurse -fileset sim_1 $local_sim_sources
 
 set_property include_dirs $local_include_dirs [get_filesets sources_1]
 set rtl_defines {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1 XILINX_FPGA=1}
-if {[info exists ::env(GEMPACT_PCR_ENGINE)] && $::env(GEMPACT_PCR_ENGINE) eq "1"} {
-    lappend rtl_defines GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS
-    set pool_bytes 179200
+set ps_compress [dict get $npu_hardware_config PCR_ENGINE]
+if {[info exists ::env(GEMPACT_PCR_ENGINE)] && $::env(GEMPACT_PCR_ENGINE) ne ""} {
+    set ps_compress $::env(GEMPACT_PCR_ENGINE)
+}
+if {[info exists ::env(GEMPACT_PS_COMPRESS)] && $::env(GEMPACT_PS_COMPRESS) ne ""} {
+    set ps_compress $::env(GEMPACT_PS_COMPRESS)
+}
+if {$ps_compress ni {0 1}} { error "GEMPACT_PS_COMPRESS must be 0 or 1" }
+if {$ps_compress eq "1"} {
+    if {$size_value != 16} { error "Shared PS compression requires SIZE=16" }
+    lappend rtl_defines GEMPACT_PS_COMPRESS
+    set pool_bytes [dict get $npu_hardware_config PS_POOL_BYTES]
     if {[info exists ::env(GEMPACT_PS_POOL_BYTES)] && $::env(GEMPACT_PS_POOL_BYTES) ne ""} {
         set pool_bytes $::env(GEMPACT_PS_POOL_BYTES)
     }
-    lappend rtl_defines GEMMORA_PS_POOL_BYTES=$pool_bytes
-    foreach {name default} {GEMPACT_PANEL_MAX_R 16 GEMPACT_PANEL_MAX_W 16} {
-        set value $default
-        if {[info exists ::env($name)] && $::env($name) ne ""} { set value $::env($name) }
-        lappend rtl_defines $name=$value
+    if {![string is integer -strict $pool_bytes] || $pool_bytes < 64 || $pool_bytes % 64 != 0} {
+        error "GEMPACT_PS_POOL_BYTES must be a positive multiple of 64"
     }
+    lappend rtl_defines GEMMORA_PS_POOL_BYTES=$pool_bytes
+    set ps_force_raw [dict get $npu_hardware_config PS_FORCE_RAW]
+    if {[info exists ::env(GEMPACT_PS_FORCE_RAW)] && $::env(GEMPACT_PS_FORCE_RAW) ne ""} {
+        set ps_force_raw $::env(GEMPACT_PS_FORCE_RAW)
+    }
+    if {$ps_force_raw ni {0 1}} { error "GEMPACT_PS_FORCE_RAW must be 0 or 1" }
+    if {$ps_force_raw eq "1"} { lappend rtl_defines GEMMORA_PS_FORCE_RAW }
 }
+set exported_hardware_config [dict replace $npu_hardware_config PCR_ENGINE $ps_compress]
+if {$ps_compress eq "1"} {
+    dict set exported_hardware_config PS_POOL_BYTES $pool_bytes
+    dict set exported_hardware_config PS_FORCE_RAW $ps_force_raw
+}
+npu_config::write_snapshot [file join $export_root config npu.mk] $exported_hardware_config
+
 set_property verilog_define $rtl_defines [get_filesets sources_1]
 set_property top fpga_top [get_filesets sources_1]
 set_property generic $top_generics [get_filesets sources_1]
 set tb_generics [list \
+    {*}[npu_config::generics $npu_hardware_config] \
     WEIGHT_WIDTH=$npu_weight_width_value \
     DATA_WIDTH=$npu_data_width_value \
     SIZE=$size_value \
@@ -445,6 +471,9 @@ write_export_readme $export_readme_path $project_xpr $bit_path \
     $synth_directive_value $impl_strategy_value
 set f [open $export_readme_path a]
 puts $f "NPU_ADDR_WIDTH=$npu_addr_width_value NPU_ENABLE_IS_MODE=$npu_enable_is_mode_value NPU_ENABLE_PER_CHANNEL=$npu_enable_per_channel_value NPU_ENABLE_CLOCK_GATING=$npu_enable_clock_gating_value"
+puts $f "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT]"
+puts $f "The scripts directory includes project creation, synthesis, implementation, simulation, and configuration parsing commands."
+puts $f "The config/npu.mk file records the hardware settings used for this export."
 close $f
 
 puts "Self-contained Vivado project exported."
@@ -462,3 +491,5 @@ puts "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_valu
 if {$bit_path ne ""} {
     puts "Bitstream: $bit_path"
 }
+
+puts "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT]"

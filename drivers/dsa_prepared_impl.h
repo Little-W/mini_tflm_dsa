@@ -25,6 +25,7 @@ static void dsa_prepared_begin(dsa_prepared_t *p, uint32_t input_bytes,
     p->register_count = 0u;
     p->readonly_count = 0u;
     p->source_filter_base = 0u;
+    p->memory_policy_valid = p->ps_control = p->ia_bank_count = 0u;
 }
 
 static void dsa_prepared_register(dsa_prepared_t *p, uint32_t offset,
@@ -117,7 +118,7 @@ uint32_t dsa_prepare_conv_s8(dsa_prepared_t *p, const dsa_conv_s8_config_t *c)
     if (status != DSA_SUCCESS) return status;
     n = c->kernel_h * c->kernel_w * c->group_c;
     rows = c->output_h * c->output_w;
-#if DSA_NN_POINTWISE_DIRECT && !DSA_PCR_ENGINE
+#if DSA_NN_POINTWISE_DIRECT
     /* A contiguous pointwise convolution already has GEMM input layout.
      * The ordinary INT8 loader applies the input zero point during loading. */
     if (c->kernel_h == 1u && c->kernel_w == 1u &&
@@ -168,6 +169,8 @@ uint32_t dsa_prepare_conv_s8(dsa_prepared_t *p, const dsa_conv_s8_config_t *c)
     status=dsa_conv_plan(c,&limits,(caps&DSA_CONV_CAP_IS)!=0u,&schedule);
     if (status!=DSA_SUCCESS) return status;
     tiling=schedule.tiling;
+    p->memory_policy_valid=schedule.memory_policy_valid;
+    p->ps_control=schedule.ps_control;p->ia_bank_count=schedule.ia_bank_count;
     dsa_prepared_register(p, NPU_REG_RHS_BASE, c->filter_base);
     dsa_prepared_register(p, NPU_REG_BIAS_BASE, c->bias_base);
     dsa_prepared_register(p, NPU_REG_K, rows);
@@ -279,9 +282,6 @@ uint32_t dsa_prepare_matmul_s8(dsa_prepared_t *p,
     gempact_tiling_t tiling;
     dsa_prepared_invalidate(p);
     if (!p || !c) return DSA_ERR_NULL_PTR;
-#if DSA_PCR_ENGINE
-    return DSA_ERR_UNSUPPORTED;
-#endif
     if (!dsa_conv_dim(c->rows) || !dsa_conv_dim(c->depth) || !dsa_conv_dim(c->channels) ||
         c->input_stride < c->depth || c->filter_stride < c->depth ||
         c->output_stride < c->channels || c->per_channel > 1u || c->dataflow_mode > DSA_SCHEDULE_AUTO ||
@@ -325,8 +325,12 @@ uint32_t dsa_prepare_matmul_s8(dsa_prepared_t *p,
     planning.output_stride=c->output_stride;planning.rhs_address=c->filter_base;
     planning.per_channel=c->per_channel;planning.has_bias=c->bias_base!=0u;
     planning.lhs_tile_packed=c->lhs_tile_packed;planning.rhs_tile_packed=c->rhs_tile_packed;
-    if (!dsa_schedule_plan(&planning,&schedule)) return DSA_ERR_INVALID_DIM;
+    planning.source_s8=1u;planning.lhs_offset=c->input_offset;planning.rhs_offset=c->filter_offset;
+    planning.compact_mode_mask=3u;
+    if (!dsa_schedule_cached_plan(&planning,&schedule)) return DSA_ERR_INVALID_DIM;
     tiling=schedule.tiling;
+    p->memory_policy_valid=schedule.memory_policy_valid;
+    p->ps_control=schedule.ps_control;p->ia_bank_count=schedule.ia_bank_count;
     dsa_prepared_register(p, NPU_REG_RHS_BASE, c->filter_base);
     dsa_prepared_register(p, NPU_REG_BIAS_BASE, c->bias_base);
     dsa_prepared_register(p, NPU_REG_K, c->rows);
@@ -441,6 +445,10 @@ uint32_t dsa_prepared_execute(const dsa_prepared_t *p, const void *input, void *
         if (out < p->readonly[i].end && end > p->readonly[i].begin)
             return DSA_ERR_INVALID_DIM;
     if (dsa_reg_read(NPU_REG_STATUS) & (1u << 1)) return DSA_ERR_BUSY;
+    if (p->memory_policy_valid && !(ctrl & NPU_CTRL_VECTOR_ENGINE)) {
+        if (p->ia_bank_count) dsa_reg_write(NPU_REG_IA_BANKS,p->ia_bank_count);
+        dsa_reg_write(NPU_REG_PS_CONTROL,p->ps_control);
+    }
     dsa_prepared_submit_registers(p, ctrl);
     dsa_reg_write(NPU_REG_LHS_BASE, (uint32_t)in);
     dsa_reg_write(NPU_REG_DST_BASE, (uint32_t)out);

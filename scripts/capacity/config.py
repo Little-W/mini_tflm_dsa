@@ -10,15 +10,14 @@ import tempfile
 from . import model
 
 DEFAULTS = {
-    "PCR_ENGINE": 0, "SIZE": 4, "IA_CACHE_BLOCKS": 4, "PS_FRAME_COUNT": 8,
-    "AXI_READ_OUTSTANDING": 4, "PANEL_MAX_R": 16, "PANEL_MAX_W": 16,
-    "PS_POOL_BYTES": 179200, "PS_FORCE_RAW": 0,
-    "CAPACITY_BUDGET_BYTES": 262144,
-    "CAPACITY_BUDGET_SCOPE": "logical-state", "CAPACITY_REPRESENTATION": "nominal3",
+    "PCR_ENGINE": 1, "SIZE": 16, "IA_CACHE_BLOCKS": 4, "PS_FRAME_COUNT": 16,
+    "NPU_AXI_DATA_WIDTH": 64,
+    "SHARED_BANK_BYTES": 2048, "SHARED_BANK_COUNT": 7,
+    "AXI_READ_OUTSTANDING": 4, "PS_POOL_BYTES": 12288, "PS_FORCE_RAW": 0,
+    "CAPACITY_BUDGET_BYTES": 131072,
+    "CAPACITY_BUDGET_SCOPE": "buffer-ram", "CAPACITY_REPRESENTATION": "adaptive",
 }
-MANAGED_KEYS = ("PCR_ENGINE", "SIZE", "PANEL_MAX_R", "PANEL_MAX_W", "PS_POOL_BYTES",
-                "PS_FORCE_RAW", "CAPACITY_BUDGET_BYTES", "CAPACITY_BUDGET_SCOPE",
-                "CAPACITY_REPRESENTATION")
+MANAGED_KEYS = tuple(DEFAULTS)
 INTEGER_KEYS = {key for key, value in DEFAULTS.items() if type(value) is int}
 ASSIGNMENT = re.compile(r"^\s*(?:(?:export|override)\s+)?([A-Z][A-Z0-9_]*)\s*(\?=|:=|=)\s*(.*?)\s*$")
 INTEGER = re.compile(r"[+-]?(?:[0-9]+|0[xX][0-9a-fA-F]+)\Z")
@@ -72,7 +71,7 @@ def parse_override(text):
     return key, literal_value(key, value)
 
 
-def validate_config(values, require_pcr=False):
+def validate_config(values, require_pcr=False, *, check_budget=True, state_report=None):
     missing = [key for key in MANAGED_KEYS if key not in values]
     if missing:
         raise ValueError("configuration is missing: " + ", ".join(missing))
@@ -83,29 +82,28 @@ def validate_config(values, require_pcr=False):
     for key in ("PCR_ENGINE", "PS_FORCE_RAW"):
         if normalized[key] not in (0, 1):
             raise ValueError(f"{key} must be 0 or 1")
-    size = normalized["SIZE"]
-    if not (1 <= size <= 32) or size & (size - 1):
-        raise ValueError("SIZE must be a power of two in 1..32")
-    for key in ("IA_CACHE_BLOCKS", "PS_FRAME_COUNT", "AXI_READ_OUTSTANDING", "CAPACITY_BUDGET_BYTES"):
-        if normalized[key] <= 0:
-            raise ValueError(f"{key} must be positive")
+    if normalized["NPU_AXI_DATA_WIDTH"] not in (32, 64):
+        raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
+    if normalized["SHARED_BANK_BYTES"] not in (1024, 2048, 4096):
+        raise ValueError("SHARED_BANK_BYTES must be 1024, 2048 or 4096")
+    if normalized["SHARED_BANK_COUNT"] not in range(6, 10):
+        raise ValueError("SHARED_BANK_COUNT must be in 6..9")
+    if normalized["AXI_READ_OUTSTANDING"] not in range(1, 17):
+        raise ValueError("AXI_READ_OUTSTANDING must be in 1..16")
+    if normalized["CAPACITY_BUDGET_BYTES"] <= 0:
+        raise ValueError("CAPACITY_BUDGET_BYTES must be positive")
     if normalized["CAPACITY_BUDGET_SCOPE"] not in model.SCOPES:
         raise ValueError("unsupported CAPACITY_BUDGET_SCOPE")
     if normalized["CAPACITY_REPRESENTATION"] not in model.REPRESENTATIONS:
         raise ValueError("unsupported CAPACITY_REPRESENTATION")
-    pool = normalized["PS_POOL_BYTES"]
-    if pool <= 0 or pool % model.PAGE_BYTES:
-        raise ValueError("PS_POOL_BYTES must be a positive multiple of 256")
-    model.state_bits(normalized["PANEL_MAX_R"], normalized["PANEL_MAX_W"], pool // model.PAGE_BYTES)
+    normalized["CAPACITY_REPRESENTATION"] = "raw32" if normalized["PS_FORCE_RAW"] else "adaptive"
+    model.geometry(normalized["IA_CACHE_BLOCKS"], normalized["PS_FRAME_COUNT"],
+                   normalized["PS_POOL_BYTES"], normalized["SIZE"], bool(normalized["PCR_ENGINE"]),
+                   **shared_geometry(normalized))
     if require_pcr and normalized["PCR_ENGINE"] != 1:
         raise ValueError("this operation requires PCR_ENGINE=1")
-    if normalized["PCR_ENGINE"]:
-        if size != model.TILE:
-            raise ValueError("the GEMPACT K64 capacity model requires SIZE=16")
-        expected_raw = int(normalized["CAPACITY_REPRESENTATION"] == "raw32")
-        if normalized["PS_FORCE_RAW"] != expected_raw:
-            raise ValueError("PS_FORCE_RAW disagrees with CAPACITY_REPRESENTATION")
-        alloc = allocation_from_config(normalized)
+    if check_budget:
+        alloc = allocation_from_config(normalized, state_report=state_report)
         if alloc["unused_budget_bytes"] < 0:
             raise ValueError(f"configured {normalized['CAPACITY_BUDGET_SCOPE']} uses "
                              f"{alloc['budget_used_bytes']:g} B, exceeding "
@@ -113,10 +111,56 @@ def validate_config(values, require_pcr=False):
     return normalized
 
 
-def allocation_from_config(values):
-    return model.allocation(values["PANEL_MAX_R"], values["PANEL_MAX_W"],
-                            values["PS_POOL_BYTES"] // model.PAGE_BYTES,
-                            values["CAPACITY_BUDGET_BYTES"], values["CAPACITY_BUDGET_SCOPE"])
+def axi_data_width(explicit=None, config_path=None):
+    """Resolve the NPU AXI4 data width from an override or the selected config."""
+    if explicit is None:
+        override = os.environ.get("NPU_AXI_DATA_WIDTH")
+        if override is not None:
+            explicit = literal_value("NPU_AXI_DATA_WIDTH", override)
+        else:
+            path = Path(config_path or os.environ.get("NPU_CONFIG") or
+                        Path(__file__).resolve().parents[2] / "config/npu.mk")
+            explicit = read_config(path).get("NPU_AXI_DATA_WIDTH", DEFAULTS["NPU_AXI_DATA_WIDTH"])
+    if type(explicit) is not int or explicit not in (32, 64):
+        raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
+    return explicit
+
+
+def selected_config(config_path=None):
+    """Read hardware settings without evaluating shell or Make expressions."""
+    path = Path(config_path or os.environ.get("NPU_CONFIG") or
+                Path(__file__).resolve().parents[2] / "config/npu.mk")
+    values = {**DEFAULTS, **read_config(path), **environment_settings()}
+    return validate_config(values, check_budget=False)
+
+
+def environment_settings():
+    """Literal hardware overrides applied before explicit command arguments."""
+    return {key: literal_value(key, os.environ[key])
+            for key in ("NPU_AXI_DATA_WIDTH", "SHARED_BANK_BYTES", "SHARED_BANK_COUNT")
+            if key in os.environ}
+
+
+def shared_geometry(values):
+    """Physical bank geometry used by the unified compressed or RAW32 store."""
+    return dict(bank_bytes=values["SHARED_BANK_BYTES"],
+                bank_count=values["SHARED_BANK_COUNT"] if values["PCR_ENGINE"] else None)
+
+
+def allocation_from_config(values, *, state_report=None):
+    from . import elaboration
+    report = state_report or elaboration.find_cached(values)
+    if report is not None and not elaboration.current_report(values, report):
+        raise ValueError("state report does not match the current configuration and sources")
+    bits = report["elaborated_state"]["total_bits"] if report is not None else None
+    result = model.allocation(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
+                              values["PS_POOL_BYTES"], values["CAPACITY_BUDGET_BYTES"],
+                              values["CAPACITY_BUDGET_SCOPE"], size=values["SIZE"],
+                              compressed=bool(values["PCR_ENGINE"]), measured_state_bits=bits,
+                              **shared_geometry(values))
+    result["state_measurement"] = None if report is None else {
+        "source_identity": report["cache_identity"], "verilator": report["verilator"]}
+    return result
 
 
 def atomic_write(path, text):
@@ -145,15 +189,13 @@ def atomic_write(path, text):
 def update_config(path, updates):
     """Update capacity fields only, preserving other settings and comments."""
     return _update_settings(path, updates, MANAGED_KEYS,
-                            "GEMPACT capacity parameters (updated by scripts/capacity/solve.py)")
+                            "Shared NPU capacity parameters")
 
 
 def update_settings(path, updates):
     """Update any supported hardware setting, preserving unrelated content.
 
-    The interactive editor can change the legacy interface parameters as well
-    as the solver-managed fields. The solver's narrower update_config contract
-    remains unchanged.
+    The interactive editor and solver use the same literal configuration keys.
     """
     return _update_settings(path, updates, tuple(DEFAULTS),
                             "NPU parameters (updated by menuconfig)")
@@ -200,11 +242,13 @@ def emit_c_header(values):
         literal = f'"{value}"' if isinstance(value, str) else str(value)
         lines.append(f"#define NPU_CONFIG_{key} {literal}")
     alloc = allocation_from_config(values)
-    lines += ["", "/* PCR quantities apply only when NPU_CONFIG_PCR_ENGINE is 1. */"]
-    for name, value in (("A_PANEL_BYTES", alloc["a_panel_bytes"]),
-                        ("B_PANEL_BYTES", alloc["b_panel_bytes"]),
-                        ("PS_POOL_PAGES", alloc["ps_pool_pages"]),
+    lines += ["", "/* Logical buffer sizes; physical memory macro rounding is separate. */"]
+    for name, value in (("BUFFER_RAM_BITS", alloc["buffer_ram_bits"]),
                         ("BUFFER_RAM_BYTES", alloc["buffer_ram_bytes"]),
-                        ("LOGICAL_STATE_BITS", alloc["logical_state_bits"])):
+                        ("PS_BUFFER_BITS", alloc["ps_buffer_bits"]),
+                        ("MAX_FRAME_ROWS", alloc["max_frame_rows"]),
+                        ("LOGICAL_STATE_MEASURED", int(alloc["logical_state_bits"] is not None))):
         lines.append(f"#define NPU_CONFIG_{name} {value}")
+    if alloc["logical_state_bits"] is not None:
+        lines.append(f"#define NPU_CONFIG_LOGICAL_STATE_BITS {alloc['logical_state_bits']}")
     return "\n".join(lines + ["", "#endif", ""])

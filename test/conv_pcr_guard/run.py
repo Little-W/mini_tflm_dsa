@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Targeted host-only check: PCR planning must not start hardware Conv."""
+"""Check hardware Conv capability selection in both public driver frontends."""
 from pathlib import Path
 import argparse, hashlib, json, shlex, subprocess
 
@@ -35,8 +35,7 @@ def main():
         flags=['-std=c11','-O2','-Wall','-Wextra','-Werror','-Wno-unused-function',
                '-DDSA_MMIO_CUSTOM','-DDSA_TILE_SIZE=16','-DDSA_IA_CACHE_BLOCKS=4',
                '-DDSA_PS_FRAME_COUNT=8',f'-DDSA_PCR_ENGINE={pcr}',
-               '-DDSA_PANEL_MAX_R=8','-DDSA_PANEL_MAX_W=16',
-               f'-DDSA_PS_POOL_BYTES={81920 if pcr else 0}','-DDSA_PS_FORCE_RAW=0',
+               '-DDSA_PS_COMPRESS=1','-DDSA_PS_POOL_BYTES=12288','-DDSA_PS_FORCE_RAW=0',
                '-I',str(includes),'-I',str(ROOT/'drivers')]
         if nmsis:flags+=['-DTEST_NMSIS','-include',str(ROOT/'test/conv_driver/host_compat.h')]
         objects=[];deps=set(files);commands=[];log=[]
@@ -56,17 +55,17 @@ def main():
         source_sha={str(path.relative_to(ROOT)):digest(path) for path in sorted(deps)}
         process=subprocess.run([str(binary)],cwd=ROOT,text=True,capture_output=True)
         (out/'run.log').write_text(process.stdout+process.stderr)
-        passed=process.returncode==0 and 'PCR_CONV_GUARD_PASS' in process.stdout
+        passed=process.returncode==0 and 'CONV_CAPABILITY_PASS' in process.stdout
         record=dict(name=name,passed=passed,returncode=process.returncode,compiled_pcr=pcr,
             verification_level='host C driver/NMSIS with MMIO observation; no RTL, SoC or timing test',
             commands=commands,source_sha256=source_sha,binary_sha256=digest(binary),
             log_sha256=digest(out/'run.log'),observations=process.stdout.splitlines())
         (out/'status.json').write_text(json.dumps(record,indent=2)+'\n');results.append(record)
         print(name,process.stdout,end='');assert passed
-    status=dict(passed=True,upstream_base='148964d180f52cb852c5a7e3d5c89773fa0a8ea5',
-                scope='Two PCR driver variants; one ordinary-compile missing-capability control. No hardware START or MMIO writes in any case.',
+    status=dict(passed=True,checkout_head=subprocess.check_output(
+                    ['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
+                scope='Three public driver builds exercise supported Conv submission and missing-capability software execution.',
                 checked_software_outputs=16,runner_sha256=digest(Path(__file__)),
-                unused_function_warning='The host build suppresses -Wunused-function because PCR selection leaves legacy static helpers unused; no production source is changed.',
                 profiles=results)
     (output_root/'status.json').write_text(json.dumps(status,indent=2)+'\n')
 

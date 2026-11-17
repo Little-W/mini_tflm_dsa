@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Solve the GEMPACT K64 panel/PS allocation and optionally update npu.mk.
+"""Size shared NPU buffers and optionally update the literal npu.mk settings.
 
-No third-party Python packages or paper archive are required. --max-ram-kib
-limits only A/B/PS payload; --max-state-kib includes all modeled logical state.
-The result minimizes normal-traversal input bytes, not measured RTL cycles.
+Buffer RAM includes operand caches, PS, output queues, Conv and vector engine storage.
+Complete logical state requires a matching actual RTL elaboration. Operand
+read estimates are reported separately from measured task performance.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 if __package__ in (None, ""):
     sys.path.insert(0, str(ROOT))
-from scripts.capacity import config, model
+from scripts.capacity import config, model, elaboration
 
 
 def shape_argument(text):
@@ -62,11 +63,11 @@ def _budget(args, values):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=ROOT / "config/npu.mk")
+    parser.add_argument("--config", type=Path, default=Path(os.environ.get("NPU_CONFIG", ROOT / "config/npu.mk")))
     parser.add_argument("--budget-kib", type=int)
     parser.add_argument("--budget-scope", choices=model.SCOPES)
-    parser.add_argument("--max-ram-kib", type=int, help="limit A+B+PS data RAM only")
-    parser.add_argument("--max-state-kib", type=int, help="limit complete modeled logical state")
+    parser.add_argument("--max-ram-kib", type=int, help="limit all declared shared NPU buffer arrays and metadata")
+    parser.add_argument("--max-state-kib", type=int, help="limit complete elaborated sequential state")
     parser.add_argument("--representation", choices=model.REPRESENTATIONS)
     tasks = parser.add_mutually_exclusive_group()
     tasks.add_argument("--shape", action="append", type=shape_argument, metavar="M,K,N")
@@ -78,6 +79,8 @@ def main(argv=None):
     parser.add_argument("--check", action="store_true", help="validate current settings without searching")
     parser.add_argument("--show", action="store_true", help="show current settings and active capacity")
     parser.add_argument("--emit-c-header", type=Path, help="export validated current settings as C macros")
+    parser.add_argument("--measure-state", action="store_true", help="obtain complete sequential bits from Verilator")
+    parser.add_argument("--verilator", default="verilator")
     args = parser.parse_args(argv)
     try:
         current_path = args.config.resolve()
@@ -89,18 +92,21 @@ def main(argv=None):
             raise ValueError("--check/--show/--emit-c-header inspect current settings; do not combine them with solve options")
         if inspect and not current_path.is_file():
             raise ValueError(f"configuration does not exist: {current_path}")
-        values = {**config.DEFAULTS, **(config.read_config(current_path) if current_path.exists() else {})}
+        values = {**config.DEFAULTS, **(config.read_config(current_path) if current_path.exists() else {}),
+                  **config.environment_settings()}
         for override in args.set:
             key, value = config.parse_override(override)
             values[key] = value
         if inspect:
-            values = config.validate_config(values)
-            result = {"configuration": values,
-                      "active_engine": "gempact-pcr" if values["PCR_ENGINE"] else "legacy",
-                      "capacity_model_applies": bool(values["PCR_ENGINE"]),
-                      "allocation": config.allocation_from_config(values) if values["PCR_ENGINE"] else None}
-            if not values["PCR_ENGINE"]:
-                result["note"] = "PCR capacity settings are inactive; this model does not account for legacy buffers."
+            values = config.validate_config(values, check_budget=False)
+            state = elaboration.measure(values, verilator=args.verilator) if args.measure_state else None
+            if state is not None and not state["passed"]:
+                raise ValueError("elaborated buffer sizes differ from the current model")
+            values = config.validate_config(values, state_report=state)
+            result = {"configuration": values, "active_engine": "shared-compute-array",
+                      "ps_storage": "ordinary" if not values["PCR_ENGINE"] else values["CAPACITY_REPRESENTATION"],
+                      "capacity_model_applies": True,
+                      "allocation": config.allocation_from_config(values, state_report=state)}
             if args.emit_c_header:
                 if args.emit_c_header.resolve() == current_path:
                     raise ValueError("C header output must differ from the input configuration")
@@ -113,11 +119,27 @@ def main(argv=None):
         representation = args.representation or values["CAPACITY_REPRESENTATION"]
         if args.output is not None and args.output.resolve() == current_path:
             raise ValueError("JSON output must differ from the hardware configuration")
-        result = model.solve(_workloads(args), budget, scope, representation)
+        if scope=="logical-state" and not args.measure_state:
+            raise ValueError("logical-state search requires --measure-state and a Verilator executable")
+        def measure(cache, frames, pool, repr_name, *, bank_bytes=2048, bank_count=None):
+            candidate = {**values, "PCR_ENGINE": 1, "SIZE": 16, "IA_CACHE_BLOCKS": cache,
+                         "PS_FRAME_COUNT": frames, "PS_POOL_BYTES": pool,
+                         "PS_FORCE_RAW": int(repr_name=="raw32")}
+            if bank_count is not None:
+                candidate.update(SHARED_BANK_BYTES=bank_bytes, SHARED_BANK_COUNT=bank_count)
+            report = elaboration.measure(candidate, verilator=args.verilator)
+            if not report["passed"]:
+                raise ValueError("elaborated buffer sizes differ from the current model")
+            return report["elaborated_state"]["total_bits"]
+        result = model.solve(_workloads(args), budget, scope, representation,
+                             measure=measure if args.measure_state else None,
+                             bank_bytes=values["SHARED_BANK_BYTES"])
         alloc = result["allocation"]
         updates = {"PCR_ENGINE": 1, "SIZE": model.TILE,
-                   "PANEL_MAX_R": alloc["panel_max_r"], "PANEL_MAX_W": alloc["panel_max_w"],
+                   "IA_CACHE_BLOCKS": alloc["ia_cache_blocks"], "PS_FRAME_COUNT": alloc["ps_frame_count"],
                    "PS_POOL_BYTES": alloc["ps_pool_bytes"],
+                   "SHARED_BANK_BYTES": alloc["shared_bank_bytes"],
+                   "SHARED_BANK_COUNT": alloc["shared_physical_bank_count"],
                    "PS_FORCE_RAW": int(representation == "raw32"),
                    "CAPACITY_BUDGET_BYTES": budget, "CAPACITY_BUDGET_SCOPE": scope,
                    "CAPACITY_REPRESENTATION": representation}

@@ -2,8 +2,73 @@
 #ifndef DSA_SCHEDULE_IMPL_H
 #define DSA_SCHEDULE_IMPL_H
 
+static uint32_t dsa_ps_runtime_force_raw=DSA_PS_FORCE_RAW!=0;
+static uint32_t dsa_planning_cycles, dsa_planning_cycles_total;
+
+void dsa_set_ps_force_raw(uint32_t enabled)
+{
+    dsa_ps_runtime_force_raw=DSA_PS_FORCE_RAW || enabled!=0u;
+}
+uint32_t dsa_get_ps_force_raw(void) { return dsa_ps_runtime_force_raw; }
+uint32_t dsa_last_planning_cycles(void) { return dsa_planning_cycles; }
+uint32_t dsa_total_planning_cycles(void) { return dsa_planning_cycles_total; }
+
+static uint32_t dsa_planner_clock(void)
+{
+#if defined(__riscv)
+    uint32_t value;
+    __asm__ volatile("rdcycle %0" : "=r"(value));
+    return value;
+#else
+    return 0u;
+#endif
+}
+
+typedef struct {
+    dsa_schedule_config_t configuration;
+    dsa_schedule_t schedule;
+    uint32_t valid;
+} dsa_schedule_cache_entry_t;
+static dsa_schedule_cache_entry_t dsa_schedule_cache[DSA_PLANNER_CACHE_ENTRIES];
+static uint32_t dsa_schedule_cache_next;
+
+static int dsa_schedule_cached_plan(const dsa_schedule_config_t *configuration,
+                                     dsa_schedule_t *schedule)
+{
+    uint32_t started=dsa_planner_clock();
+    dsa_schedule_config_t key=*configuration;
+    /* Operand transfer padding depends on the physical beat residue for both
+     * row-major and packed layouts. Output grouping also uses the page offset. */
+    key.lhs_address&=dsa_schedule_bus_bytes(&key)-1u;
+    key.rhs_address&=dsa_schedule_bus_bytes(&key)-1u;
+    key.output_address&=4095u;
+    for (uint32_t i=0u;i<DSA_PLANNER_CACHE_ENTRIES;++i) {
+        const dsa_schedule_cache_entry_t *entry=&dsa_schedule_cache[i];
+        const unsigned char *a=(const unsigned char *)&key;
+        const unsigned char *b=(const unsigned char *)&entry->configuration;
+        uint32_t equal=entry->valid;
+        for (uint32_t j=0u;equal && j<sizeof(*configuration);++j) equal=a[j]==b[j];
+        if (equal) {
+            *schedule=entry->schedule;
+            dsa_planning_cycles=dsa_planner_clock()-started;
+            dsa_planning_cycles_total+=dsa_planning_cycles;
+            return 1;
+        }
+    }
+    int result=dsa_schedule_plan(configuration,schedule);
+    if (result) {
+        dsa_schedule_cache_entry_t *entry=&dsa_schedule_cache[dsa_schedule_cache_next];
+        entry->configuration=key;entry->schedule=*schedule;entry->valid=1u;
+        if (++dsa_schedule_cache_next==DSA_PLANNER_CACHE_ENTRIES) dsa_schedule_cache_next=0u;
+    }
+    dsa_planning_cycles=dsa_planner_clock()-started;
+    dsa_planning_cycles_total+=dsa_planning_cycles;
+    return result;
+}
+
 static void dsa_matrix_default_limits(dsa_matrix_limits_t *limits)
 {
+    *limits=(dsa_matrix_limits_t){0};
     limits->flags=DSA_ENABLE_IS_MODE ? DSA_MATRIX_CAP_IS_SUPPORTED:0u;
     limits->ia_cache_blocks=DSA_IA_CACHE_BLOCKS;
     limits->ps_frame_count=DSA_PS_FRAME_COUNT;
@@ -13,11 +78,17 @@ static void dsa_matrix_default_limits(dsa_matrix_limits_t *limits)
     limits->output_banks_s16=0u;
     limits->axi_data_bits=DSA_SCHEDULE_AXI_DATA_BITS;
     limits->dma_max_bytes=256u*(limits->axi_data_bits/8u);
+    limits->ps_pool_bytes=DSA_PS_POOL_BYTES;
+    limits->ia_cache_bytes=DSA_IA_CACHE_BLOCKS*DSA_TILE_SIZE*DSA_TILE_SIZE*2u;
+#if DSA_PS_COMPRESS
+    limits->ps_caps=(DSA_PS_CAP_VERSION<<24)|(DSA_PS_FRAME_COUNT<<16)|
+        DSA_PS_CAP_STORE|DSA_PS_CAP_FRAME_SCHEDULE|DSA_PS_CAP_IA_COMPACT;
+#endif
 }
 
 void dsa_matrix_query(dsa_matrix_limits_t *limits)
 {
-    uint32_t caps,banks,dma,bus;
+    uint32_t caps,banks,dma,bus,ps_caps;
     if (!limits) return;
     dsa_matrix_default_limits(limits);
     if (dsa_reg_read(NPU_REG_ID)!=0x4e505531u ||
@@ -38,6 +109,21 @@ void dsa_matrix_query(dsa_matrix_limits_t *limits)
     dma=dsa_reg_read(NPU_REG_DMA_MAX_BYTES);
     if (dma>=limits->axi_data_bits/8u && dma<=limits->dma_max_bytes &&
         !(dma&(dma-1u))) limits->dma_max_bytes=dma;
+    ps_caps=dsa_reg_read(NPU_REG_PS_CAPS);
+    if ((ps_caps>>24)!=DSA_PS_CAP_VERSION || !(ps_caps&DSA_PS_CAP_STORE)) {
+        limits->ps_caps=0u;
+        return;
+    }
+    limits->ps_caps=ps_caps;
+    if ((ps_caps>>16)&255u) limits->ps_frame_count=(ps_caps>>16)&255u;
+    limits->ps_pool_bytes=dsa_reg_read(NPU_REG_PS_POOL_BYTES);
+    limits->ia_cache_bytes=dsa_reg_read(NPU_REG_IA_CACHE_BYTES);
+    limits->ps_directory_rows=dsa_reg_read(NPU_REG_PS_DIRECTORY_ROWS);
+    if (ps_caps&DSA_PS_CAP_SHARED) {
+        limits->shared_total_bytes=dsa_reg_read(NPU_REG_SHARED_TOTAL_BYTES);
+        limits->shared_bank_bytes=dsa_reg_read(NPU_REG_SHARED_BANK_BYTES);
+        limits->shared_ia_bank_mask=dsa_reg_read(NPU_REG_IA_BANK_MASK);
+    }
 }
 
 static void dsa_schedule_set_limits(dsa_schedule_config_t *c,
@@ -47,7 +133,11 @@ static void dsa_schedule_set_limits(dsa_schedule_config_t *c,
     c->ia_blocks=limits->ia_cache_blocks;
     c->ps_frames=limits->ps_frame_count;
     c->ps_storage_rows=limits->ps_storage_rows;
-    c->ps_pool_bytes=DSA_PS_POOL_BYTES;
+    c->ps_pool_bytes=limits->ps_pool_bytes;
+    c->ps_caps=limits->ps_caps;c->ia_cache_bytes=limits->ia_cache_bytes;
+    c->shared_total_bytes=limits->shared_total_bytes;c->shared_bank_bytes=limits->shared_bank_bytes;
+    c->shared_ia_bank_mask=limits->shared_ia_bank_mask;c->ps_directory_rows=limits->ps_directory_rows;
+    c->force_raw=dsa_ps_runtime_force_raw;
     c->output_banks_s8=limits->output_banks_s8;
     c->output_banks_s16=limits->output_banks_s16;
     c->axi_data_bits=limits->axi_data_bits ? limits->axi_data_bits:DSA_SCHEDULE_AXI_DATA_BITS;
@@ -90,37 +180,16 @@ uint32_t dsa_matmul_plan(const dsa_matmul_config_t *config,
     c.per_channel=config->quant_mode==DSA_QUANT_PER_CHANNEL;
     c.has_bias=config->bias_ptr!=0;
     c.lhs_tile_packed=config->lhs_tile_packed;c.rhs_tile_packed=config->rhs_tile_packed;
+    c.source_s8=config->lhs_dtype==DSA_DTYPE_S8;
+    c.lhs_offset=config->lhs_offset;c.rhs_offset=config->rhs_offset;
+    c.compact_mode_mask=(c.source_s8 && config->lhs_offset>=-127 && config->lhs_offset<=128 ? 1u:0u)|
+        (config->rhs_offset>=-127 && config->rhs_offset<=128 ? 2u:0u);
     if ((c.output_bytes==2u && !mode16x8) ||
         (c.lhs_tile_packed && ((c.lhs_address&3u) ||
          !dsa_matrix_packed_bytes(c.rows,c.depth,c.lhs_bytes))) ||
         (c.rhs_tile_packed && ((c.rhs_address&3u) ||
          !dsa_matrix_packed_bytes(c.cols,c.depth,c.rhs_bytes)))) return DSA_ERR_INVALID_DIM;
-#if DSA_PCR_ENGINE
-    /* The panel engine has independent group and partial-sum capacities. */
-    {
-        int found=0;
-        dsa_schedule_t best={0};
-        for (uint32_t flow=0;flow<2u;++flow) {
-            dsa_schedule_t p={0};
-            if ((c.flow!=DSA_SCHEDULE_AUTO && c.flow!=flow) || (flow && !c.allow_is)) continue;
-            if (!gempact_plan_panel(c.rows,c.cols,DSA_PANEL_MAX_R,DSA_PANEL_MAX_W,
-                DSA_PS_POOL_BYTES,c.requested_r,c.requested_w,flow,
-                DSA_PS_FORCE_RAW,&p.tiling,&p.ps_payload_bytes)) continue;
-            p.dataflow_mode=flow;
-            p.read_beats=((uint64_t)c.rows*c.depth*p.tiling.col_groups+
-                          (uint64_t)c.cols*c.depth*p.tiling.row_groups+dsa_schedule_bus_bytes(&c)-1u)/
-                          dsa_schedule_bus_bytes(&c);
-            p.read_words=p.read_beats*(dsa_schedule_bus_bytes(&c)/4u);
-            p.estimated_cycles=p.read_beats*c.read_beat_cycles;
-            if (!found || dsa_schedule_better(&p,&best)) {best=p;found=1;}
-        }
-        if (!found) return DSA_ERR_INVALID_DIM;
-        *schedule=best;
-        return DSA_SUCCESS;
-    }
-#else
-    return dsa_schedule_plan(&c,schedule) ? DSA_SUCCESS:DSA_ERR_INVALID_DIM;
-#endif
+    return dsa_schedule_cached_plan(&c,schedule) ? DSA_SUCCESS:DSA_ERR_INVALID_DIM;
 }
 
 static uint32_t dsa_conv_plan(const dsa_conv_s8_config_t *config,
@@ -145,7 +214,16 @@ static uint32_t dsa_conv_plan(const dsa_conv_s8_config_t *config,
     c.output_address=config->output_base;
     c.per_channel=1u;c.has_bias=config->bias_base!=0u;c.spatial=1u;
     c.rhs_tile_packed=config->rhs_tile_packed;
-    return dsa_schedule_plan(&c,schedule) ? DSA_SUCCESS:DSA_ERR_INVALID_DIM;
+    c.source_s8=1u;c.lhs_offset=config->input_offset;c.rhs_offset=0;
+    c.compact_mode_mask=(config->input_offset>=-127 && config->input_offset<=128 ? 1u:0u)|2u;
+    c.im2col.input_bytes=config->input_h*config->input_w*config->input_c;
+    c.im2col.input_channels=config->input_c;c.im2col.group_channels=config->group_c;
+    c.im2col.kernel_h=config->kernel_h;c.im2col.kernel_w=config->kernel_w;
+    c.im2col.stride_w=config->stride_w;c.im2col.source_bytes=1u;
+    c.im2col.cache_bytes=config->bypass_cache?0u:DSA_IM2COL_CACHE_BYTES;
+    c.im2col_input_width=config->input_w;c.im2col_output_width=config->output_w;
+    c.im2col_stride_h=config->stride_h;
+    return dsa_schedule_cached_plan(&c,schedule) ? DSA_SUCCESS:DSA_ERR_INVALID_DIM;
 }
 
 #endif

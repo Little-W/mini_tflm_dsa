@@ -1,13 +1,33 @@
+`ifndef GEMMORA_PS_POOL_BYTES
+`define GEMMORA_PS_POOL_BYTES 12288
+`endif
+
 module compute_core #(
     parameter int unsigned SIZE       = 16,
     parameter int unsigned DATA_WIDTH = 16,
     parameter int unsigned WEIGHT_WIDTH = 16,
     parameter int unsigned PS_FRAME_COUNT = SIZE,
     parameter int unsigned MAX_IA_REUSE = 2,
-    parameter int unsigned PS_STORAGE_ROWS = 0
+    parameter int unsigned PS_STORAGE_ROWS = 0,
+    parameter int unsigned PS_EXTERNAL_RAM = 0,
+    parameter int unsigned PS_POOL_BYTES = `GEMMORA_PS_POOL_BYTES,
+    parameter int unsigned PS_BANK_BYTES = 2048,
+    parameter int unsigned PS_DIRECTORY_ROWS = PS_FRAME_COUNT * MAX_IA_REUSE * SIZE,
+    parameter int unsigned PS_RAM_ADDR_BITS = PS_EXTERNAL_RAM!=0 ? $clog2(PS_POOL_BYTES/16) :
+        ($clog2(PS_POOL_BYTES/64)>0 ? $clog2(PS_POOL_BYTES/64) : 1)
 ) (
     input  logic                         clk,
     input  logic                         rst_n,
+    input  logic                         ps_store_cfg_valid = 1'b0,
+    input  logic [31:0]                  ps_pool_bank_words = PS_EXTERNAL_RAM!=0 ? PS_BANK_BYTES/16 : PS_POOL_BYTES/64,
+    input  logic [31:0]                  ps_pool_bank_count = PS_EXTERNAL_RAM!=0 ? PS_POOL_BYTES/PS_BANK_BYTES : 4,
+    input  logic [31:0]                  ps_directory_stride = MAX_IA_REUSE*SIZE,
+    output wire [3:0]                    ps_ram_read_en,
+    output wire [PS_RAM_ADDR_BITS-1:0]    ps_ram_read_addr [0:3],
+    input  wire [127:0]                  ps_ram_read_data [0:3] = '{default:'0},
+    output wire [3:0]                    ps_ram_write_en,
+    output wire [PS_RAM_ADDR_BITS-1:0]    ps_ram_write_addr [0:3],
+    output wire [127:0]                  ps_ram_write_data [0:3],
 
     input  logic                         weight_commit,
     input  logic                         store_weight_req,
@@ -22,6 +42,17 @@ module compute_core #(
     input  logic                         ia_l1_switch,
     input  logic                         ia_sending_done,
     input  logic                         send_ia_trigger,
+    input  logic                         ps_frame_request = 1'b0,
+    input  logic [((PS_FRAME_COUNT > 1) ? $clog2(PS_FRAME_COUNT) : 1)-1:0] ps_frame_id = '0,
+    input  logic [31:0]                  ps_frame_rows = 32'd0,
+    input  logic [31:0]                  ps_frame_reserve_rows = 32'd0,
+    input  logic [2:0]                   ps_frame_word_cap = 3'd4,
+    input  logic                         ps_frame_init = 1'b0,
+    input  logic                         ps_frame_final = 1'b0,
+    input  logic                         ps_force_raw = 1'b0,
+    output logic                         ps_frame_ready,
+    output logic                         ps_frame_pressure,
+    output logic                         ps_frame_complete,
     input  logic                         bias_sleep,
     input  logic signed [31:0]           bias_in     [SIZE],
 
@@ -41,6 +72,11 @@ module compute_core #(
     logic               ps_tile_calc_over;
     logic               ps_stream_calc_over;
     logic               ps_replay_ready;
+`ifdef GEMPACT_PS_COMPRESS
+    localparam bit PS_COMPRESS_ENABLED = SIZE == 16;
+`else
+    localparam bit PS_COMPRESS_ENABLED = 1'b0;
+`endif
 
     localparam int unsigned PS_BURST_CYCLES = (2 * SIZE) - 1;
     localparam int unsigned PS_CNT_W        = (PS_BURST_CYCLES < 2) ? 1 :
@@ -93,7 +129,7 @@ module compute_core #(
     // partial-sum stream through the active columns. Final output keeps the
     // complete de-diagonalizer tail so writeback timing remains independent
     // of the number of active columns.
-    assign ps_tail_length = ia_calc_done || active_columns == 0 ||
+    assign ps_tail_length = PS_COMPRESS_ENABLED || ia_calc_done || active_columns == 0 ||
                             active_columns > ($clog2(SIZE)+1)'(SIZE) ?
                             PS_CNT_W'(SIZE - 1) : PS_CNT_W'(active_columns - 1'b1);
     assign ps_stream_valid = ia_row_valid | (ps_tail_cnt != '0);
@@ -209,10 +245,32 @@ module compute_core #(
         .DATA_WIDTH(32),
         .FRAME_COUNT(PS_EFFECTIVE_FRAME_COUNT),
         .MAX_IA_REUSE(MAX_IA_REUSE),
-        .STORAGE_ROWS(PS_STORAGE_ROWS)
+        .STORAGE_ROWS(PS_STORAGE_ROWS),
+        .PS_EXTERNAL_RAM(PS_EXTERNAL_RAM),
+        .PS_POOL_BYTES(PS_POOL_BYTES),
+        .PS_BANK_BYTES(PS_BANK_BYTES),
+        .PS_DIRECTORY_ROWS(PS_DIRECTORY_ROWS),
+        .PS_RAM_ADDR_BITS(PS_RAM_ADDR_BITS)
     ) u_ps_buffer (
+        .ps_store_cfg_valid(ps_store_cfg_valid), .ps_pool_bank_words(ps_pool_bank_words),
+        .ps_pool_bank_count(ps_pool_bank_count),
+        .ps_directory_stride(ps_directory_stride),
+        .ps_ram_read_en(ps_ram_read_en), .ps_ram_read_addr(ps_ram_read_addr), .ps_ram_read_data(ps_ram_read_data),
+        .ps_ram_write_en(ps_ram_write_en), .ps_ram_write_addr(ps_ram_write_addr), .ps_ram_write_data(ps_ram_write_data),
         .capacity_fault(ps_capacity_fault),
         .replay_ready(ps_replay_ready),
+        .frame_request  (ps_frame_request),
+        .frame_id       (ps_frame_id),
+        .frame_accept   (send_ia_trigger),
+        .frame_rows     (ps_frame_rows),
+        .frame_reserve_rows(ps_frame_reserve_rows),
+        .frame_word_cap (ps_frame_word_cap),
+        .frame_init     (ps_frame_init),
+        .frame_final    (ps_frame_final),
+        .force_raw      (ps_force_raw),
+        .frame_ready    (ps_frame_ready),
+        .frame_pressure (ps_frame_pressure),
+        .frame_complete (ps_frame_complete),
         .clk            (clk),
         .rst_n          (rst_n),
         .data_in        (systolic_sum),

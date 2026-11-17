@@ -139,19 +139,7 @@ void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
                              dsa_dataflow_mode_t dataflow_mode,
                              uint32_t *ia_reuse_num,
                              uint32_t *w_reuse_num) {
-#if DSA_PCR_ENGINE
-    gempact_tiling_t tiling;
-    (void)ia_cache_blocks;
-    if (!ia_reuse_num || !w_reuse_num) return;
-    *ia_reuse_num=0u; *w_reuse_num=0u;
-    if (N && !(N&15u) && N<(1u<<20) &&
-        gempact_plan_panel(K,M,DSA_PANEL_MAX_R,DSA_PANEL_MAX_W,
-            DSA_PS_POOL_BYTES,0,0,dataflow_mode==DSA_DATAFLOW_IS,
-            DSA_PS_FORCE_RAW,&tiling,0)) {
-        *ia_reuse_num=tiling.ia_reuse;
-        *w_reuse_num=tiling.w_reuse;
-    }
-#else
+
     uint32_t stream_cols;
     uint32_t stream_rows;
     uint32_t output_row_tiles;
@@ -190,7 +178,7 @@ void dsa_matmul_select_reuse(uint32_t K, uint32_t N, uint32_t M,
     *w_reuse_num = w_limit;
     dsa_matmul_legalize_reuse(K, M, ia_cache_blocks, dataflow_mode,
                               ia_reuse_num, w_reuse_num);
-#endif
+
 }
 
 uint32_t dsa_build_cfg_word(const dsa_matmul_config_t *config) {
@@ -233,12 +221,7 @@ static uint32_t configure_mmio_registers(const dsa_matmul_config_t *config,
     dsa_matrix_limits_t limits;
     gempact_tiling_t tiling;
     uint32_t status;
-#if DSA_PCR_ENGINE
-    if (config->lhs_dtype!=DSA_DTYPE_S8 || config->rhs_dtype!=DSA_DTYPE_S8 ||
-        config->out_dtype!=DSA_DTYPE_S8 || config->bias_ptr ||
-        config->lhs_offset || config->rhs_offset || !config->N ||
-        (config->N&15u) || config->N>=(1u<<20)) return DSA_ERR_INVALID_DIM;
-#endif
+
     if (!config->lhs_ptr || !config->rhs_ptr || !config->dst_ptr)
         return DSA_ERR_NULL_PTR;
     if (config->quant_mode==DSA_QUANT_PER_CHANNEL &&
@@ -248,6 +231,10 @@ static uint32_t configure_mmio_registers(const dsa_matmul_config_t *config,
     if (status!=DSA_SUCCESS) return status;
     tiling=schedule.tiling;
     *dataflow_mode=schedule.dataflow_mode;
+    if (schedule.memory_policy_valid) {
+        if (schedule.ia_bank_count) dsa_reg_write(NPU_REG_IA_BANKS,schedule.ia_bank_count);
+        dsa_reg_write(NPU_REG_PS_CONTROL,schedule.ps_control);
+    }
 
     dsa_reg_write(NPU_REG_LHS_BASE, config->lhs_ptr);
     dsa_reg_write(NPU_REG_RHS_BASE, config->rhs_ptr);

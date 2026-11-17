@@ -27,6 +27,12 @@
 `ifndef TB_IA_CACHE_BLOCKS
 `define TB_IA_CACHE_BLOCKS 4
 `endif
+`ifndef TB_SHARED_BANK_BYTES
+`define TB_SHARED_BANK_BYTES 2048
+`endif
+`ifndef TB_SHARED_BANK_COUNT
+`define TB_SHARED_BANK_COUNT 0
+`endif
 `ifndef TB_PS_STORAGE_ROWS
 `define TB_PS_STORAGE_ROWS 0
 `endif
@@ -46,14 +52,168 @@ module tb_conv_npu;
     wire sa_ready,done_valid;
     wire [1:0] err_code;
     logic [31:0] cfg[64], saved_cfg[64],golden[WORDS];
+    logic [31:0] initial_reference[WORDS];
+    logic [31:0] accumulator_reference[WORDS];
     conv_cfg_t conv_cfg;
     wire [31:0] hits,misses,conv_bytes,conv_cycles;
     longint unsigned cycle=0;
+    longint unsigned ps_observer_job=0;
+    always @(posedge clk) if(rst_n && calc_start && sa_ready) ps_observer_job <= ps_observer_job + 1;
     always @(posedge clk)if(rst_n)cycle<=cycle+1;
     integer debug_events=0;
     integer padding_reads=0;
     integer ia_im2col_commands=0,kernel_im2col_commands=0;
     integer ar_stall_cycles=0,r_wait_cycles=0;
+    integer accumulator_checks=0;
+    integer accumulator_row_base=0,accumulator_col_base=0;
+    integer accumulator_row_offset=0,accumulator_col_tile=0;
+    integer ps_blocked_cycles=0;
+    integer ps_committed_rows=0,ps_raw_records=0,ps_payload_words=0;
+    wire ps_encode_valid;
+    wire [2:0] ps_encode_opcode,ps_encode_words;
+    bit capacity_injected=0;
+    bit late_error_active=0,late_error_seen=0;
+`ifdef GEMPACT_PS_COMPRESS
+    localparam int SHARED_TEST_BYTES = `TB_SHARED_BANK_COUNT != 0 ?
+        `TB_SHARED_BANK_COUNT * `TB_SHARED_BANK_BYTES :
+        `TB_IA_CACHE_BLOCKS * SIZE * SIZE * 2 + `GEMMORA_PS_POOL_BYTES;
+    localparam bit PS_MONITOR_SHARED = SIZE == 16 &&
+        (`TB_BUS_WIDTH == 32 || `TB_BUS_WIDTH == 64) &&
+        (`TB_SHARED_BANK_BYTES == 1024 || `TB_SHARED_BANK_BYTES == 2048 || `TB_SHARED_BANK_BYTES == 4096) &&
+        SHARED_TEST_BYTES >= 6 * `TB_SHARED_BANK_BYTES &&
+        SHARED_TEST_BYTES <= 9 * `TB_SHARED_BANK_BYTES &&
+        SHARED_TEST_BYTES % `TB_SHARED_BANK_BYTES == 0;
+    localparam int PS_MONITOR_BANKS = PS_MONITOR_SHARED ? SHARED_TEST_BYTES / `TB_SHARED_BANK_BYTES - 1 : 4;
+    localparam int PS_MONITOR_ROWS = (PS_MONITOR_SHARED ?
+        4 * `TB_SHARED_BANK_BYTES / (SIZE * SIZE * 2) : `TB_IA_CACHE_BLOCKS) * SIZE;
+    generate if(SIZE==16)begin : g_ps_monitor
+        initial begin
+            assert (PS_MONITOR_SHARED == u_dut.SHARED_RAM_ENABLED &&
+                    PS_MONITOR_ROWS == u_dut.IA_REUSE_NUM_MAX * SIZE &&
+                    PS_MONITOR_BANKS == u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.BANKS)
+                else $fatal(1,"PS monitor dimensions differ from the configured NPU");
+        end
+        always @(posedge clk) if(rst_n && u_dut.cfg_stage2_fire)
+            $display("PS_WINDOW_SELECT task=%0d micro=%0d cap=%0d force_raw=%0d raw_fits=%0d long_fits=%0d bound24=%0d rows=%0d frames=%0d bank_reserve=%0d retained_k=%0d product_exp=%0d",
+                ps_observer_job,u_dut.use_frame_commands_s2,u_dut.ps_config_word_cap,
+                u_dut.ps_config_force_raw,u_dut.ps_raw_capacity_fits,u_dut.ps_long_capacity_fits,
+                u_dut.ps_s24_bound_s2,u_dut.ps_max_frame_rows,u_dut.ps_live_frames,
+                u_dut.ps_long_frame_bank_words,u_dut.ps_retained_k_s2,u_dut.ps_product_exp_s2);
+        assign ps_encode_valid=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid;
+        assign ps_encode_opcode=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_opcode;
+        assign ps_encode_words=u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_words;
+        initial if($test$plusargs("FORCE_PS_CODEC"))force u_dut.ps_config_force_raw=1'b0;
+        logic [31:0] occupied_payload_bytes;
+        always_comb begin
+            occupied_payload_bytes = 0;
+            for (int bank = 0; bank < PS_MONITOR_BANKS; bank++) begin
+                if (bank < u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.pool_bank_count_q)
+                    occupied_payload_bytes += 16 *
+                        (32'(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.pool_bank_words_q) -
+                         32'(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.bank_free_count[bank]));
+            end
+        end
+    ps_stream_capture #(
+        .MAX_FRAME_ROWS(PS_MONITOR_ROWS),
+        .PAYLOAD_BANKS(PS_MONITOR_BANKS)
+    ) u_ps_capture (
+        .clk(clk), .rst_n(u_dut.core_rst_n),
+        .cycle(cycle), .job(ps_observer_job),
+        .write_valid(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.encoder_start), .write_data(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.write_data),
+        .frame_accept(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_accept), .frame_complete(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_complete),
+        .frame_id(32'(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_id)), .frame_rows(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_rows),
+        .frame_init(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_init), .frame_final(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.frame_final),
+        .replay_valid(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.replay_valid), .replay_data(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.replay_data),
+        .payload_write_en(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_write_en),
+        .payload_read_en(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_read_en),
+        .decoded_write_en(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.decoded_write_en),
+        .decoded_read_en(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.decoded_read_en), .replay_bypass(u_dut.u_compute_core.u_ps_buffer.g_compressed.u_store.replay_bypass),
+        .occupied_payload_bytes(occupied_payload_bytes)
+    );
+
+    end else begin : g_small_ps_monitor
+        assign ps_encode_valid=1'b0;
+        assign ps_encode_opcode='0;
+        assign ps_encode_words='0;
+    end endgenerate
+`else
+    assign ps_encode_valid=1'b0;
+    assign ps_encode_opcode='0;
+    assign ps_encode_words='0;
+`endif
+    always @(posedge clk) begin : check_accumulators
+        integer stream_rows,stream_cols,group_rows,group_cols;
+        integer logical_row,logical_col,index;
+        if(!rst_n || new_job)begin
+            accumulator_checks=0;
+            accumulator_row_base=0;accumulator_col_base=0;
+            accumulator_row_offset=0;accumulator_col_tile=0;
+            ps_blocked_cycles=0;
+            ps_committed_rows=0;ps_raw_records=0;ps_payload_words=0;
+        end else begin
+            if(u_dut.frame_command_start)accumulator_row_offset=0;
+            if(ps_encode_valid)begin
+                ps_committed_rows++;
+                ps_payload_words+=int'(ps_encode_words);
+                if(ps_encode_opcode==3)ps_raw_records++;
+            end
+            if(u_dut.u_npu_controller.current_state==3 && u_dut.ia_data_valid &&
+               u_dut.u_npu_controller.bias_ready_for_compute && u_dut.quant_params_valid &&
+               !(u_dut.fifo_full_flag && u_dut.ia_output_pending) && !u_dut.ia_sending_done &&
+               !u_dut.oa_calc_over && !u_dut.ps_frame_ready)ps_blocked_cycles++;
+            if(saved_cfg[52]==0 && u_dut.acc_data_valid)begin
+                stream_rows=int'(u_dut.is_mode?saved_cfg[5]:saved_cfg[3]);
+                stream_cols=int'(u_dut.is_mode?saved_cfg[3]:saved_cfg[5]);
+                group_rows=int'(saved_cfg[6])*SIZE;
+                if(group_rows>stream_rows-accumulator_row_base)group_rows=stream_rows-accumulator_row_base;
+                group_cols=(stream_cols-accumulator_col_base+SIZE-1)/SIZE;
+                if(group_cols>int'(saved_cfg[7]))group_cols=int'(saved_cfg[7]);
+                logical_row=accumulator_row_base+accumulator_row_offset;
+                if(u_dut.frame_mode_q)begin
+                    group_rows=int'(u_dut.frame_command_rows);
+                    group_cols=1;
+                    logical_row=int'(u_dut.frame_command_p0)+accumulator_row_offset;
+                end
+                assert(group_rows>0 && group_cols>0 && logical_row<stream_rows)
+                    else $fatal(1,"unexpected accumulator row");
+                for(int lane=0;lane<SIZE;lane++)begin
+                    logical_col=accumulator_col_base+accumulator_col_tile*SIZE+lane;
+                    if(u_dut.frame_mode_q)logical_col=int'(u_dut.frame_command_column)+lane;
+                    if(logical_col<stream_cols)begin
+                        index=u_dut.is_mode ? logical_col*int'(saved_cfg[5])+logical_row :
+                                                     logical_row*int'(saved_cfg[5])+logical_col;
+                        assert(u_dut.requant_in_vec[lane]===accumulator_reference[index])
+                            else $fatal(1,"INT32 accumulator differs row=%0d column=%0d index=%0d actual=%0d expected=%0d",
+                                logical_row,logical_col,index,$signed(u_dut.requant_in_vec[lane]),
+                                $signed(accumulator_reference[index]));
+                        accumulator_checks++;
+                    end
+                end
+                accumulator_row_offset++;
+                if(!u_dut.frame_mode_q && accumulator_row_offset==group_rows)begin
+                    accumulator_row_offset=0;
+                    accumulator_col_tile++;
+                    if(accumulator_col_tile==group_cols)begin
+                        accumulator_col_tile=0;
+                        accumulator_col_base+=int'(saved_cfg[7])*SIZE;
+                        if(accumulator_col_base>=stream_cols)begin
+                            accumulator_col_base=0;
+                            accumulator_row_base+=group_rows;
+                        end
+                    end
+                end
+            end
+        end
+    end
+    always @(posedge clk)if(rst_n && $test$plusargs("FRAME_TRACE"))begin
+        if(u_dut.frame_command_start)
+            $display("FRAME_START cycle=%0d id=%0d p0=%0d q0=%0d c0=%0d rows=%0d cols=%0d k=%0d init=%0d final=%0d",cycle,
+                u_dut.frame_command_id,u_dut.frame_command_p0,u_dut.frame_command_q0,u_dut.frame_command_column,
+                u_dut.frame_command_rows,u_dut.frame_command_cols,u_dut.frame_command_k,
+                u_dut.frame_command_init,u_dut.frame_command_final);
+        if(u_dut.frame_mode_q && u_dut.inner_done_valid)
+            $display("FRAME_DONE cycle=%0d error=%0d",cycle,u_dut.inner_err_code);
+    end
     always @(posedge clk)begin
         if(!rst_n || new_job)begin
             padding_reads=0;ia_im2col_commands=0;kernel_im2col_commands=0;
@@ -105,7 +265,12 @@ module tb_conv_npu;
     wire [`TB_BUS_WIDTH-1:0] rdata,wdata;
     wire [7:0] arlen,awlen;
     wire [2:0] arsize,awsize;
-    wire [1:0] arburst,rresp,awburst,bresp;
+    wire [1:0] arburst,rresp,memory_rresp,awburst,bresp;
+    assign rresp=(late_error_active && !late_error_seen) ? 2'b10 : memory_rresp;
+    always @(posedge clk)begin
+        if(!rst_n || new_job)late_error_seen<=0;
+        else if(late_error_active && !late_error_seen && rvalid && rready)late_error_seen<=1;
+    end
     wire [`TB_BUS_WIDTH/8-1:0] wstrb;
     wire injected;
     wire [31:0] tensor_bytes=saved_cfg[34]*saved_cfg[35]*saved_cfg[36]*(saved_cfg[51][0]?32'd2:32'd1);
@@ -119,6 +284,7 @@ module tb_conv_npu;
     longint unsigned read_bytes,input_read_bytes,read_requests,write_bytes;
 
     npu_top #(.BUS_WIDTH(`TB_BUS_WIDTH),.SIZE(SIZE),.DATA_WIDTH(16),.WEIGHT_WIDTH(16),.IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(`TB_PS_FRAME_COUNT),.AXI_READ_OUTSTANDING(4),
+        .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES),.SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),
         .DMA_MAX_BYTES(`TB_DMA_MAX_BYTES),
         .PS_STORAGE_ROWS(`TB_PS_STORAGE_ROWS),.OA_S16_FIFO_BANKS_MAX(`TB_OA_S16_FIFO_BANKS_MAX),
         .CONV_CACHE_SETS(`TB_CONV_CACHE_SETS),.CONV_CACHE_WAYS(2),.CONV_LINE_BYTES(16),
@@ -130,6 +296,9 @@ module tb_conv_npu;
         .cfg_row_groups({16'b0,cfg[30][15:0]}),.cfg_col_groups({16'b0,cfg[30][31:16]}),
         .cfg_row_tail_tiles({16'b0,cfg[31][15:0]}),.cfg_col_tail_tiles({16'b0,cfg[31][31:16]}),
         .cfg_conv_enable(cfg[32][0]),.cfg_conv(conv_cfg),
+        .cfg_vector_enable(1'b0),.cfg_vector('0),.vector_stat_cycles(),.vector_stat_compute(),.vector_stat_dma_wait(),
+        .cfg_ps_control(cfg[61]), .cfg_shared_ia_banks(cfg[62]),
+        .ps_stat_commands(), .ps_stat_pressure_events(), .ps_stat_early_finish_frames(),
         .conv_stat_hits(hits),.conv_stat_misses(misses),.conv_stat_read_bytes(conv_bytes),.conv_stat_cycles(conv_cycles),
         .lhs_base(cfg[14]),.rhs_base(cfg[15]),.bias_base(cfg[16]),.dst_base(cfg[17]),
         .lhs_row_stride_b(cfg[18]),.rhs_col_stride_b(cfg[19]),.dst_row_stride_b(cfg[20]),
@@ -150,13 +319,13 @@ module tb_conv_npu;
         .other_lo(other_lo),.other_hi(other_hi),
         .read_bytes(read_bytes),.input_read_bytes(input_read_bytes),.read_requests(read_requests),.write_bytes(write_bytes),
         .arvalid(arvalid),.arready(arready),.araddr(araddr),.arlen(arlen),.arsize(arsize),.arburst(arburst),
-        .rvalid(rvalid),.rready(rready),.rdata(rdata),.rresp(rresp),.rlast(rlast),
+        .rvalid(rvalid),.rready(rready),.rdata(rdata),.rresp(memory_rresp),.rlast(rlast),
         .awvalid(awvalid),.awready(awready),.awaddr(awaddr),.awlen(awlen),.awsize(awsize),.awburst(awburst),
         .wvalid(wvalid),.wready(wready),.wdata(wdata),.wstrb(wstrb),.wlast(wlast),.bvalid(bvalid),.bready(bready),.bresp(bresp)
     );
 
     initial begin : run_suite
-        string suite_path,cfg_path,init_path,golden_path,required_path,histogram_path;
+        string suite_path,cfg_path,init_path,golden_path,required_path,accumulator_path,histogram_path;
         integer f,fields,task_number,errors,histogram_file;
         integer unique_input,max_input_reads,required_input,unused_unique_input,covered_input;
         longint unsigned histogram_total;
@@ -168,24 +337,48 @@ module tb_conv_npu;
         f=$fopen(suite_path,"r");if(f==0)$fatal(1,"cannot open suite");
         repeat(5)@(negedge clk);rst_n=1;repeat(3)@(negedge clk);
         while(!$feof(f))begin
-            fields=$fscanf(f,"%s %s %s %s\n",cfg_path,init_path,golden_path,required_path);
-            if(fields==4)begin
+            fields=$fscanf(f,"%s %s %s %s %s\n",cfg_path,init_path,golden_path,required_path,accumulator_path);
+            if(fields==5)begin
                 assert(sa_ready)else $fatal(1,"NPU not ready before task %0d",task_number);
                 $readmemh(cfg_path,cfg);
                 for(int i=0;i<64;i++)saved_cfg[i]=cfg[i];
                 assert(cfg[1]==SIZE)else $fatal(1,"wrong array size");
                 for(int i=0;i<WORDS;i++)begin u_mem.mem[i]=32'h5aa53cc3;golden[i]=32'h5aa53cc3;end
                 $readmemh(init_path,u_mem.mem);$readmemh(golden_path,golden);
+                for(int i=0;i<WORDS;i++)initial_reference[i]=u_mem.mem[i];
+                $readmemh(accumulator_path,accumulator_reference);
                 for(int i=0;i<65536;i++)u_mem.input_required[i]=0;
                 $readmemh(required_path,u_mem.input_required);
+                capacity_injected=0;late_error_active=0;
                 new_job=1;@(negedge clk);new_job=0;
                 start_cycle=cycle;calc_start=1;@(negedge clk);calc_start=0;
                 if(saved_cfg[56]!=0)begin
                     repeat(3)@(negedge clk);
                     cfg[33]=32'h1f000;cfg[34]=1;cfg[35]=1;
                 end
-                while(!done_valid && cycle-start_cycle<2_000_000)@(negedge clk);
+                while(!done_valid && cycle-start_cycle<2_000_000)begin
+                    if(!capacity_injected &&
+                       ((saved_cfg[59]==1 && u_dut.u_compute_core.ps_stream_valid_d &&
+                         !u_dut.u_compute_core.ps_calc_done_d) ||
+                        (saved_cfg[59]==2 && rvalid && rready && rresp[1]) ||
+                        (saved_cfg[59]==3 && u_mem.rd_active && !rvalid)))begin
+                        force u_dut.ps_capacity_fault=1'b1;
+                        capacity_injected=1;
+                        @(negedge clk);
+                        if(saved_cfg[59]==3)begin
+                            assert(u_dut.abort_state==1 && u_dut.abort_error_code==2)
+                                else $fatal(1,"capacity error was not latched before the later AXI response");
+                            late_error_active=1;
+                        end
+                        release u_dut.ps_capacity_fault;
+                    end else @(negedge clk);
+                end
                 if(!done_valid)begin
+                    $display("TIMEOUT FRAME mode=%0d valid=%0d active=%0d ready=%0d pressure=%0d id=%0d p0=%0d q0=%0d column=%0d init=%0d final=%0d compute=%0d store=%0d output=%0d commands=%0d",u_dut.frame_mode_q,
+                        u_dut.frame_command_valid,u_dut.frame_command_active,u_dut.ps_frame_ready,u_dut.ps_frame_pressure,
+                        u_dut.frame_command_id,u_dut.frame_command_p0,u_dut.frame_command_q0,u_dut.frame_command_column,
+                        u_dut.frame_command_init,u_dut.frame_command_final,u_dut.frame_compute_seen,
+                        u_dut.frame_store_seen,u_dut.frame_output_seen,u_dut.frame_stat_commands);
                     $display("TIMEOUT state=%0d ia_state=%0d fe_state=%0d conv_enable=%0d ready=%0d busy=%0d err=%0d abort=%0d",
                         u_dut.u_npu_controller.current_state,u_dut.u_ia_loader.u_ctrl.state,
                         u_dut.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.state,u_dut.run_conv,
@@ -206,8 +399,20 @@ module tb_conv_npu;
                 end
                 observed_error=err_code;
                 end_cycle=cycle;
-                assert(err_code==saved_cfg[52][1:0])else $fatal(1,"task id=%0d expected error=%0d got=%0d",task_number,saved_cfg[52],err_code);
+                assert(err_code==saved_cfg[52][1:0] || (saved_cfg[60]!=0 && err_code==2))
+                    else $fatal(1,"task id=%0d expected error=%0d got=%0d",task_number,saved_cfg[52],err_code);
                 if(saved_cfg[53][1:0]!=0)assert(injected)else $fatal(1,"requested AXI error was never injected");
+                if(saved_cfg[59]!=0)assert(capacity_injected)else $fatal(1,"requested PS fault was never injected");
+                if(saved_cfg[59]==3)assert(late_error_seen)else $fatal(1,"requested later AXI error was never accepted");
+                if(observed_error==0)begin
+                    assert(accumulator_checks==int'(saved_cfg[3]*saved_cfg[5]))
+                        else $fatal(1,"incomplete INT32 accumulator comparison count=%0d",accumulator_checks);
+                    if(saved_cfg[4]<=SIZE)assert(ps_committed_rows==0)
+                        else $fatal(1,"single-K command wrote partial-sum storage");
+                end else begin
+                    assert(u_mem.count==0 && !u_mem.rd_active && !rvalid && !u_mem.wr_active && !bvalid)
+                        else $fatal(1,"error completion before AXI response drain");
+                end
                 repeat(3)begin
                     @(negedge clk);
                     assert(done_valid && err_code==observed_error)else $fatal(1,"unstable completion under backpressure");
@@ -215,8 +420,26 @@ module tb_conv_npu;
                 errors=0;
                 for(int i=0;i<WORDS;i++)begin
                     if(u_mem.mem[i]!==golden[i])begin
-                        if(errors<12)$display("MISMATCH task=%0d word=%h got=%h expected=%h",task_number,i,u_mem.mem[i],golden[i]);
-                        errors++;
+                        bit permitted_partial;
+                        bit output_address;
+                        integer byte_address,output_offset;
+                        permitted_partial=observed_error==2 && saved_cfg[60]!=0;
+                        for(int lane=0;lane<4;lane++)begin
+                            byte_address=4*i+lane;
+                            output_offset=byte_address-int'(saved_cfg[17]);
+                            output_address=0;
+                            if(output_offset>=0 && saved_cfg[20]!=0)begin
+                                output_address=(output_offset/int'(saved_cfg[20]))<int'(saved_cfg[3]) &&
+                                    (output_offset%int'(saved_cfg[20]))<int'(saved_cfg[5])*(saved_cfg[28][0]?2:1);
+                            end
+                            if(u_mem.mem[i][8*lane+:8]!==golden[i][8*lane+:8] &&
+                               (!output_address || u_mem.mem[i][8*lane+:8]!==initial_reference[i][8*lane+:8]))
+                                permitted_partial=0;
+                        end
+                        if(!permitted_partial)begin
+                            if(errors<12)$display("MISMATCH task=%0d word=%h got=%h expected=%h",task_number,i,u_mem.mem[i],golden[i]);
+                            errors++;
+                        end
                     end
                 end
                 assert(errors==0)else $fatal(1,"memory mismatch count=%0d",errors);
@@ -257,7 +480,7 @@ module tb_conv_npu;
                 assert(padding_reads==0)else $fatal(1,"padding caused an external input read");
                 if(saved_cfg[32][0] && observed_error==0)
                     assert(covered_input==required_input)else $fatal(1,"required input bytes were not fetched");
-                $display("CONV_TASK_PASS task=%0d conv=%0d dataflow=%0d bypass=%0d error=%0d cycles=%0d hits=%0d misses=%0d input_bytes=%0d input_unique=%0d input_duplicate=%0d input_max_reads=%0d input_required=%0d input_prefetched_unused=%0d padding_reads=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d device_cycles=%0d ia_im2col_commands=%0d kernel_im2col_commands=%0d ar_stall_cycles=%0d r_wait_cycles=%0d",task_number,saved_cfg[32],saved_cfg[8],saved_cfg[50],observed_error,end_cycle-start_cycle,hits,misses,input_read_bytes,unique_input,input_read_bytes-64'(unique_input),max_input_reads,required_input,unused_unique_input,padding_reads,read_bytes,read_requests,write_bytes,conv_cycles,ia_im2col_commands,kernel_im2col_commands,ar_stall_cycles,r_wait_cycles);
+                $display("CONV_TASK_PASS task=%0d conv=%0d dataflow=%0d bypass=%0d error=%0d cycles=%0d hits=%0d misses=%0d input_bytes=%0d input_unique=%0d input_duplicate=%0d input_max_reads=%0d input_required=%0d input_prefetched_unused=%0d padding_reads=%0d ar_bytes=%0d ar_requests=%0d write_bytes=%0d device_cycles=%0d ia_im2col_commands=%0d kernel_im2col_commands=%0d ar_stall_cycles=%0d r_wait_cycles=%0d int32_checks=%0d ps_blocked_cycles=%0d capacity_injected=%0d ps_committed_rows=%0d ps_raw_records=%0d ps_payload_words=%0d frame_commands=%0d pressure_events=%0d early_finish_frames=%0d ia_banks=%0d ia_bytes=%0d ps_bytes=%0d r=%0d w=%0d ps_control=%0d",task_number,saved_cfg[32],saved_cfg[8],saved_cfg[50],observed_error,end_cycle-start_cycle,hits,misses,input_read_bytes,unique_input,input_read_bytes-64'(unique_input),max_input_reads,required_input,unused_unique_input,padding_reads,read_bytes,read_requests,write_bytes,conv_cycles,ia_im2col_commands,kernel_im2col_commands,ar_stall_cycles,r_wait_cycles,accumulator_checks,ps_blocked_cycles,capacity_injected,ps_committed_rows,ps_raw_records,ps_payload_words,u_dut.ps_stat_commands,u_dut.ps_stat_pressure_events,u_dut.ps_stat_early_finish_frames,u_dut.SHARED_RAM_ENABLED ? u_dut.shared_ia_banks_q : 0,u_dut.active_ia_cache_blocks*512,u_dut.active_ps_pool_bytes,saved_cfg[6],saved_cfg[7],saved_cfg[61]);
                 done_ready=1;@(negedge clk);done_ready=0;
                 repeat(8)@(negedge clk);
                 task_number++;

@@ -8,23 +8,19 @@
 图像几何、原图 cache 或独立的原图 AXI 读口。
 
 WS Conv 由 `ia_loader` 请求 im2col；IS Conv 由 `kernel_loader` 请求 im2col。
-两种模式均在真实阵列上执行，保留原部分和、bias、逐通道双舍入量化和 NHWC 写回。
+两种模式均在真实阵列上执行，支持部分和、bias、逐通道最近偶数舍入量化和 NHWC 写回。
 受支持任务不由 CPU 展开 im2col，不在外部内存存放展开矩阵，也不由 CPU 完成 MAC。
 
-当前完整补丁固定以上游提交 `148964d180f52cb852c5a7e3d5c89773fa0a8ea5` 为基线，
-保留其容量求解器、共享配置和 menuconfig，再加入硬件 Conv、缓存替换、DMA 重构、
-驱动、测试与本说明。无需先应用旧阶段补丁。此前以 `e8a7337` 为基线的交付已经
-完成；本次基线更新和重新验证见 [`conv_rebase_148964d.md`](conv_rebase_148964d.md)。
-补丁仅交付源码、测试生成器和文档。测试向量、内存镜像、访问轨迹、编译产物、
-日志和运行摘要均在执行时生成到 `build/` 或指定输出目录，不放入 Git。
-生成与复现方法见 [源码交付说明](conv_source_only.md) 和
-[`test/conv_dma`](../test/conv_dma/README.md)。文中 `629a39a`、`cb45d0e` 仅标识
-早期 LRU、IA 内前端实验阶段，当前测试不需要这些本地历史提交或其归档文件。
+当前默认配置使用统一 NPU 计算路径、4 KiB 共享窗口缓存和 14 KiB IA/PS bank RAM。
+硬件参数与每层存储分配见 [硬件架构](architecture.md) 和 [容量说明](capacity.md)。
+本文第 12 节的固定参数实验对应 `148964d180f52cb852c5a7e3d5c89773fa0a8ea5`
+集成阶段，相关生成方法见 [源码交付说明](conv_source_only.md)。当前共享 PS 与完整
+模型比较由 [`test/ps_compression`](../test/ps_compression/README.md) 执行。
 
 | 模块 | 本版本职责 |
 |---|---|
 | `rtl/npu/dma/axi_dual_block_dma.sv` | 普通矩阵 / im2col 命令执行器；持有 im2col 前端、原图 cache、普通读范围保护与读通道复用 |
-| `rtl/npu/dma/axi_linear_block_dma.sv` | 从原 `axi_dual_block_dma` 机械拆出的普通读写引擎；除模块名和标题注释外保持原实现 |
+| `rtl/npu/dma/axi_linear_block_dma.sv` | 线性读写、在途事务管理、4 KiB 分段、写回重叠与取消后的事务完成处理 |
 | `rtl/npu/dma/axi_block_dma_arbiter.sv` | IA、kernel、bias、quant 客户端仲裁、分块描述符转发、返回 owner 与失败完成门控 |
 | `rtl/npu/loaders/ia_loader*.sv` | 产生分块坐标；接收矩阵元素并维护原 IA tile RAM / 预取 / 重发 |
 | `rtl/npu/loaders/kernel_loader*.sv` | 产生普通权重或 IS 输入分块坐标；按有效 lane 组装行，写入原 kernel buffer |
@@ -238,66 +234,51 @@ Conv → 同址新数据 GEMM，三次任务各只有一次完成，六个输出
 未完成读取为零；各任务间关钟再唤醒也通过。测试通过层级参数 / 输入覆写启用
 现有 NPU 可选 cache 和 fetch64；未扩大生产 AXI-Lite 的参数或寄存器接口。
 
-## 9. 缓存生命周期与几何替换
+## 9. 共享窗口缓存与请求队列
 
-共享 DMA 只有一套原始输入 cache。它在同一 job 内跨窗口、归约 tile、空间 tile
-和 loader 请求保留；只在新的 Conv job 配置时失效。普通矩阵请求不会按块清空它。
-16 B line 保存原始 s8 数据，返回矩阵时才做 s16 扩展和 offset 校正。
+共享 DMA 使用一套原始输入缓存，服务矩阵 Conv、DW 和空间池化的窗口读取。
+默认参数为 `128 sets × 2 ways × 16 B = 4 KiB`，`CONV_CACHE_POLICY=3`。
+缓存保存原始输入字节，窗口前端在返回矩阵元素时完成符号扩展和 offset 校正。
+图像边界外和归约尾部产生校正后的零值。
 
-默认主数据容量为 `32 sets × 2 ways × 16 B = 1 KiB`。还包括一个 32 位 word
-保持寄存器和一个 16 B 临时 line；它们的功能和成本不能隐去。cache bypass 是
-运行时选择，改变访存行为，不会消除已经综合的存储面积。
+策略 3 根据空间位置、通道片段和最后使用位置选择集合及替换对象。命中检查比较
+完整物理行标记；几何提示不改变地址相等的判断。八项预取队列提前请求后续空间
+位置和通道片段，需求缺失优先于新预取。具体公式与适用条件见
+[矩阵调度与共享窗口缓存](scheduling_and_window_cache.md)。策略 0、1、2
+可用于 LRU 和未来访问预测的固定参数实验。
 
-WS 的默认策略 2 根据实际滑窗与分块顺序反推未来访问：已无用途的 line 不长期
-存入；满 set 时比较新旧 line 的下一次使用，保留更早要用的数据；被拒绝长期
-存入的数据由临时 line 服务当前连续请求。XOR 索引用于减少规则图像步幅冲突。
-剩余复用次数不足以表达复用距离，因此硬件主要保存 `next_use`，没有每像素的
-全图计数表，也没有由 CPU 上传的未来访问表。公式、预测器流水和 oracle 见
-[`conv_replacement.md`](conv_replacement.md)。
+缓存需求接口默认允许四个已接受、尚未返回的字请求，并按接受顺序返回数据。
+已经驻留、没有排队等待且接收端持续就绪时，可每周期返回一个 32 位字。
+独立填充可以与其他已驻留行的读取重叠；同地址读写受到保护。DW 和空间池化
+使用另一个带目标区域 tag 的四项窗口描述队列，由 VCE 输入区域状态限制可用请求数。
 
-| 情形 | 当前实际替换行为 |
-|---|---|
-| WS，满足几何快路条件 | 未来使用替换、选择性存入；策略 2 还使用 XOR 索引 |
-| WS，不满足几何快路条件 | 同一硬件原图 cache 的低位索引 LRU |
-| IS | 当前设置 `conv_sched_groups=0`，使用低位索引 LRU |
-| `bypass_cache=1` | 不使用驻留 line 复用，word 保持仍有效 |
+缓存内容在同一任务的窗口、tile 和加载器请求之间保留。新任务配置等待需求、
+响应、填充和预取队列完成后清除有效状态。运行时输入保持稳定。填充地址限定在
+缓存行与合法张量范围的交集，首尾按有效字节读取，4 KiB 边界由范围读取器分段。
+旁路选择改变访问行为，物理缓存容量保持不变。
 
-IS 的循环次序不同，本版本没有把 WS 的 next-use 公式错误套用到 IS。IS 的
-正确性、矩阵接口和 cache 跨 tile 复用已经实现，但其替换优化仍是明确的后续工作。
-这不是 CPU fallback。
+## 10. IA/PS 数据与窗口缓存的容量
 
-几何快路要求 s8、`SIZE=LINE_BYTES=16`、输入地址 / Cin / Cg / group offset
-对齐 16、R 和 stride 为二次幂、tap 总数不超过 25、事件编号不溢出 32 位。
-这些条件只决定是否启用新替换策略，不限制合法 Conv 必须为小核。
+窗口缓存按原图地址保存数据。IA RAM 按计算 tile 保存流式操作数，支持同一组
+操作数在多个输出 frame 之间重复使用。默认共享 IA/PS RAM 为七个 2 KiB bank；
+软件为 IA 分配 1、2 或 4 个 bank，其余用于 INT32 部分和。两个接口分别访问已
+分配的 bank，可在同一周期工作。
 
-小容量 cache 不可能无条件保证所有输入只读一次。重复读取的下界还取决于遍历顺序
-和同时存活的数据量。本轮实测按每个原始输入地址统计读取次数，同时单独检查
-padding 和分配区外读取；不把“输出正确”或“命中率较高”当作零多余读取的证明。
+紧凑 S8 每个 16×16 tile 占 256 字节，双缓冲需要 `512R` 字节；真实 S16 每 tile
+占 512 字节，双缓冲需要 `1024R` 字节。对于已由 im2col 校正的 S16 流，IA 写入
+时恢复可表示的原始 S8，读取时恢复 offset；真实 S16 保留完整位宽。PS 编码保存
+有效矩阵行，并由每个 bank 的可用字数限制新命令。
 
-## 10. 与 IA 分块缓存及存储成本的关系
+| 数据区域 | 默认容量 | 用途 |
+|---|---:|---|
+| IA/PS 共享数据 | 14336 B | 每层选择 IA/PS 分配 |
+| 原始输入窗口数据 | 4096 B | Conv、DW 与池化窗口复用 |
+| PS 目录 | 1024 × 34 bit | 行地址、编码格式与顺序 |
+| PS 解码队列 | 8 × 512 bit | 解码与阵列读取重叠 |
 
-原 IA buffer 保存展开并校正后的 s16 tile，负责阵列的局部重发；raw cache 保存
-原图地址对应的 s8，负责避免不同窗口生成时重新访问外存。两者的键和生命周期
-不同，因此没有把 IA tile RAM 直接当作原图地址 cache，也没有增加第二份展开矩阵。
-
-| 阵列 SIZE | 一个 s16 A tile | 原 IA 四个 tile | 当前 raw cache 主数据 |
-|---:|---:|---:|---:|
-| 4 | 32 B | 128 B | 1024 B |
-| 8 | 128 B | 512 B | 1024 B |
-| 16 | 512 B | 2048 B | 1024 B |
-
-标准 1 KiB、两路、16 B line 配置的主数据、tag / valid / LRU、32 位 next-use 表、
-临时数据和临时 tag / valid 合计 11965 bit，向上取整为 **1496 B**。
-此前替换策略新增的共享状态为 819 bit；这是相对 LRU 的算法状态审计，不代表
-整个 DMA 的所有寄存器。此次搬移的前端、guard、mux、cache 原实例不重复计费。
-在 SIZE=16、四个 slot 时，DMA wrapper 新增 112 bit 状态，arbiter 新增 98 bit
-（包括其注册描述符），合计 **210 bit / 26.25 B**；SIZE=4 / 8 对应 208 / 209 bit。
-逐个 `always_ff` 非阻塞赋值目标的审计另列于本轮证据，组合描述符连线不计成 FF。
-
-这些是源码逻辑位数。预测算术、RAM 宏取整、布线、门级面积、功耗和 Fmax 需要
-目标工艺工具测量；本交付不把 4 KiB 降为 1 KiB 宣称为完整模块面积缩小四倍。
-原始数据 RAM 的推断检查可由 `make conv-ram-inference` 重新执行；预测器的
-声明存储统计由源码审计脚本生成，不能代替目标工艺综合结果。
+缓存标签、请求队列、预取队列、frame 描述和控制状态均单独计入容量。
+[`scripts/capacity`](../scripts/capacity) 使用当前源码展开核对全部缓冲数组与
+顺序逻辑位数。SRAM 宏取整、组合逻辑面积、布线和时钟频率属于目标工艺测量范围。
 
 ## 11. 运行时参数、软件 API 与能力位
 
@@ -316,26 +297,24 @@ padding 和分配区外读取；不把“输出正确”或“命中率较高”
 | `dataflow_mode` | 0 为 WS，1 为 IS；其他值在 START 前拒绝 |
 | batch / channel groups | 驱动逐 batch / 组提交硬件 job |
 
-`dsa_conv_s8_config_t` 末尾新增 `dataflow_mode`。零初始化仍默认 WS；NMSIS
-自动硬件入口默认 WS，也可在编译该驱动时设置 `DSA_NN_CONV_DATAFLOW_MODE=1`
-统一选择 IS；该宏只接受 0 / 1，未使用可变全局配置。直接 C 驱动可逐次显式选择 IS。
-两种模式分别调用现有
-`gempact_plan_capacity` 规划分块，不硬编码一套 WS 参数供 IS 使用。
-这是 C 结构体的源码扩展，调用端与驱动应使用同一版本头文件重新编译；不承诺
-旧大小结构体与新驱动库之间的二进制兼容。
+`dsa_conv_s8_config_t.dataflow_mode` 支持 0=WS、1=IS、2=AUTO。
+NMSIS 默认 `DSA_NN_CONV_DATAFLOW_MODE=2`；直接 C 调用可按任务指定。
+`dsa_conv_plan` 查询设备能力，在允许的数据流、IA bank 分配、R/W 和 PS 策略中
+选择预计周期较小的参数。TFLM Prepare 保存配置，Invoke 提交准备好的描述符。
+输入与权重地址、分组范围、量化参数及存储容量在 START 前检查。
 
 `CONV_CAPS` 的高 16 位仍为版本 1，低位 0 / 1 为 s8 Conv / 精确窄读，新增 bit 2
 表示 IS Conv。标准配置为 `0x00010007`，禁用 IS 时为 `0x00010003`，整体不支持
 Conv 的 profile 返回 0。普通 core 将 kernel 内部宽度提升到至少 16 位，因此外部
-`WEIGHT_WIDTH=8` 本身不关闭 IS；能力位反映实际数据通路。PCR / resident / panel
-等不支持 Conv 的分支不会因这个提升而错误报告支持。
+`WEIGHT_WIDTH=8` 本身不关闭 IS；能力位反映实际数据通路。统一 PS 压缩路径
+保留硬件 Conv 能力，`PCR_ENGINE=1` 可运行普通卷积和 Dense。
 
 选择 IS 时驱动在任何 MMIO 写入 / START 之前检查 bit 2。旧设备仅提供版本 1
 的 WS 能力时仍可执行 WS，IS 返回 unsupported。busy 时修改配置和重复 START
 由实际 AXI-Lite 接口拒绝。合法但硬件不支持的 NMSIS 调用在 START 前走原软件
 fallback；启动后错误不能冒险与仍在排空的 DMA 同时进行 CPU 重试。
 
-## 12. 功能验证与参考结果
+## 12. 固定版本的功能验证与参考结果
 
 本节记录硬件实现的验证范围和实测数值；本次纯源码交付的重新执行范围单独列于
 [源码交付说明](conv_source_only.md)。各测试入口见
@@ -388,9 +367,9 @@ config / init / golden 文件的 SHA 也相同。
 关闭 IS / 逐通道能力的两个 profile 分别通过 15 项拒绝检查。各范围独立计数，
 没有将开发失败、旧版本 PASS 或 source review 计作新增硬件执行。
 
-### 默认 1 KiB 原图 cache 的实测
+### 1 KiB 原图 cache 实验
 
-下表是当前 DMA 架构、SIZE16、策略 2、生产 C 自动 R/W、固定 RAM 延迟的
+下表使用该实验版本的 DMA、SIZE16、策略 2、自动 R/W 和固定 RAM 延迟，记录
 真实 RTL 结果。读取字节仅统计原始输入，不混入权重、量化参数或输出写入。
 “不同输入字节”按实际 AXI 地址直方图去重，“重复字节”是多于第一次的读取量。
 全部 13 条真实尺寸命令的完整输出匹配，padding 读取和未使用预取字节均为 0。
@@ -474,17 +453,13 @@ make conv-gemm-regression VERILATOR=/path/to/verilator
 [`conv_soc_performance.md`](conv_soc_performance.md)。该实验与前述 host C / RTL
 协同仿真分开，采用 CPU 指令执行产生的 cycle CSR，不能用主机运行时间替代。
 
-最新上游的 `config/npu.mk` 默认 `PCR_ENGINE=1`。PCR 核心不支持本硬件 Conv
-入口；使用常规 SoC 构建入口验证硬件 Conv 时应选择 `PCR_ENGINE=0`。上述
-`conv-*` 脚本使用各自显式固定的标准核心测试配置，不会随 menuconfig 改变测试
-profile。容量求解器和 menuconfig 的 PCR 参数功能保持上游实现。
+`config/npu.mk` 默认 `PCR_ENGINE=1`，在统一 NPU 路径中启用 PS 压缩和容量调度，支持硬件 Conv。`conv-*` 脚本通过显式参数指定测试配置；共享 bank、压缩和 RAW32 的组合由 `make shared-memory-test` 覆盖。详细的当前硬件参数见 [容量说明](capacity.md)。
 
 ## 14. 明确边界
 
-- IS 的 next-use 预测尚未按其真实调度重新设计，目前使用同一个原图 cache 的 LRU。
-- 1 KiB 默认缓存不能保证每个形状都零重复读取；结果按逐地址直方图报告。
-- 当前硬件 Conv 入口是普通 s8 Conv；专用 depthwise、转置卷积、完整 s16 Conv
-  数值合同以及不具备相应功能的裁剪 profile 不在支持范围内。
+- 默认共享窗口缓存为 4 KiB；实际重读受任务形状、集合冲突和调度顺序影响。
+- 矩阵 Conv 入口支持普通 s8 卷积；DW 和池化由 VCE 执行。
+- 转置卷积、完整 s16 Conv 和缺少相应能力的裁剪配置不属于该入口。
 - 命名端口的原普通 DMA 实例可使用新增输入的默认零值；使用位置端口的外部
   实例需要更新连接。生产 filelist 已加入新线性引擎和 Conv package / 模块依赖。
 - 本轮统一 Conv 集成的数值验证为 SIZE4 / 16，原 GEMM 回归另覆盖 SIZE8。

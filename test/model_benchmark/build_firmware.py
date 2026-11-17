@@ -94,7 +94,8 @@ def dependency_files(path):
 
 
 def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
-                   jobs=1, object_cache=None, arena_bytes=512*1024):
+                   jobs=1, object_cache=None, arena_bytes=512*1024,
+                   ps_pool_bytes=0, force_raw=False, adaptive_window=True, dataflow=2):
     out = Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     cache = Path(object_cache or out.parent/'firmware_objects').resolve()
@@ -107,7 +108,11 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
               '-fno-unwind-tables', '-DNDEBUG', '-DTF_LITE_STRIP_ERROR_STRINGS',
               '-DTF_LITE_DISABLE_X86_NEON', '-DDSA_TILE_SIZE=16',
               '-DDSA_IA_CACHE_BLOCKS=4', '-DDSA_PS_FRAME_COUNT=16',
-              '-DDSA_PCR_ENGINE=0', '-DDSA_PS_POOL_BYTES=0',
+              '-DDSA_PCR_ENGINE=0', f'-DDSA_PS_POOL_BYTES={ps_pool_bytes}',
+              f'-DDSA_PS_COMPRESS={int(ps_pool_bytes != 0)}',
+              f'-DDSA_PS_FORCE_RAW={int(force_raw)}',
+              f'-DDSA_PS_ADAPTIVE_W={int(adaptive_window)}',
+              f'-DDSA_DEFAULT_DATAFLOW={dataflow}',
               '-DDSA_SCHEDULE_READ_BEAT_CYCLES=1',
               '-Wall', '-Wextra', '-Wno-unused-parameter']
     common += ['-DNMSIS_NN', '-DDSA_NN_RUNTIME_CONTROL=1',
@@ -255,7 +260,13 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
                               'DSA_NN_CONV_ENABLE':int(hardware), 'DSA_NN_VECTOR_ENABLE':int(hardware),
                               'DSA_NN_FC_ENABLE':int(hardware),
                               'FULL_NETWORK_TRACE_ENABLED':int(trace),
-                              'NMSIS_NN':True, 'DSA_PCR_ENGINE':0, 'DSA_SCHEDULE_READ_BEAT_CYCLES':1},
+                              'NMSIS_NN':True, 'DSA_PCR_ENGINE':0,
+                              'DSA_PS_POOL_BYTES':ps_pool_bytes,
+                              'DSA_PS_COMPRESS':int(ps_pool_bytes != 0),
+                              'DSA_PS_FORCE_RAW':int(force_raw),
+                              'DSA_PS_ADAPTIVE_W':int(adaptive_window),
+                              'DSA_DEFAULT_DATAFLOW':dataflow,
+                              'DSA_SCHEDULE_READ_BEAT_CYCLES':1},
             'supported_modes':[abi_constant('MODE_HARDWARE')] if hardware else [0], 'preserve_all_tensors':False,
             'trace_mechanism':'separate verification ELF; existing MicroProfilerInterface EndEvent' if trace else 'none',
             'timing':'actual CPU rdcycle around complete MicroInterpreter::Invoke; excludes initialization and output checking',
@@ -290,11 +301,17 @@ def main():
     p.add_argument('--jobs',type=int,default=1)
     p.add_argument('--arena-bytes',type=int,default=512*1024)
     p.add_argument('--trace',action='store_true')
+    p.add_argument('--ps-pool-bytes',type=int,default=0)
+    p.add_argument('--force-raw',action='store_true')
+    p.add_argument('--fixed-window',action='store_true')
+    p.add_argument('--dataflow',type=int,choices=(0,1,2),default=2)
     p.add_argument('--hardware', action=argparse.BooleanOptionalAction, default=True)
     args=p.parse_args()
     if args.jobs < 1: p.error('--jobs must be positive')
     manifest=build_firmware(args.out,args.gcc,hardware=args.hardware,trace=args.trace,
-        runtime_root=args.runtime_root,jobs=args.jobs,object_cache=args.object_cache,arena_bytes=args.arena_bytes)
+        runtime_root=args.runtime_root,jobs=args.jobs,object_cache=args.object_cache,arena_bytes=args.arena_bytes,
+        ps_pool_bytes=args.ps_pool_bytes,force_raw=args.force_raw,adaptive_window=not args.fixed_window,
+        dataflow=args.dataflow)
     print(json.dumps({'passed':manifest['passed'],'out':str(args.out.resolve()),
                      'hardware':args.hardware,'trace':args.trace,'modes':manifest['supported_modes'],
                      'source_files':len(manifest['source_sha256']),

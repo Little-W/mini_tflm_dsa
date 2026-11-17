@@ -15,8 +15,9 @@ uint64_t npu_cycles(Model*);
 uint64_t npu_time_ps(Model*);
 uint64_t npu_start_cycle(Model*);
 uint64_t npu_ready_cycle(Model*);
-uint32_t npu_scalar(Model*, unsigned);
+uint64_t npu_scalar(Model*, unsigned);
 uint32_t npu_lane(Model*, unsigned, unsigned);
+unsigned npu_memory_words(Model*);
 void npu_read_words(Model*, unsigned, unsigned, uint32_t*);
 void npu_flush(Model*);
 }
@@ -31,7 +32,8 @@ static void status(FILE* out, Model* model, int advanced) {
                  (unsigned long long)npu_time_ps(model),
                  (unsigned long long)npu_start_cycle(model),
                  (unsigned long long)npu_ready_cycle(model));
-    for (unsigned i=0;i<32;++i) std::fprintf(out,"%s%u",i?",":"",npu_scalar(model,i));
+    for (unsigned i=0;i<32;++i)
+        std::fprintf(out,"%s%llu",i?",":"",(unsigned long long)npu_scalar(model,i));
     std::fputs("],\"lanes\":[",out);
     for (unsigned kind=0;kind<4;++kind) {
         std::fputs(kind?",[":"[",out);
@@ -66,7 +68,7 @@ int main(int argc, char** argv) {
             npu_flush(model); status(out,model,advanced);
         } else if (std::strncmp(command,"memory ",7)==0) {
             const unsigned count=std::strtoul(command+7,nullptr,10);
-            if (count>131072) { std::fputs("[]\n",out); std::fflush(out); continue; }
+            if (count>npu_memory_words(model)) { std::fputs("[]\n",out); std::fflush(out); continue; }
             std::vector<uint32_t> memory(count);
             npu_read_words(model,0,count,memory.data());
             std::fputc('[',out);

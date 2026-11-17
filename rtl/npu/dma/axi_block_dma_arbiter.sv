@@ -28,6 +28,7 @@ module axi_block_dma_arbiter #(
 ) (
     input logic clk,
     input logic rst_n,
+    input logic abort = 1'b0,
 
     // Independent ordered window requests use destination tags and credits.
     input logic win_req_valid = 1'b0,
@@ -294,7 +295,7 @@ module axi_block_dma_arbiter #(
         for (int i = 0; i < 5; i++)
             rd_pending_count += 4'(rd_client_inflight[i]);
         rd_next_client = C_NONE;
-        if (rd_command_space && !conv_cfg_valid && rd_pending_count < 4 &&
+        if (!abort && rd_command_space && !conv_cfg_valid && rd_pending_count < 4 &&
             (!conv_job_q || rd_pending_count == 0)) begin
             if (dw_req && rd_client_inflight[C_DW] == 0)
                 rd_next_client = C_DW;
@@ -318,7 +319,7 @@ module axi_block_dma_arbiter #(
         end else begin
             if (rd_dma_start) rd_grant_client <= C_NONE;
             else if (rd_grant_client == C_NONE) rd_grant_client <= rd_next_client;
-            else if ((rd_grant_client == C_IA && !ia_req) ||
+            else if (abort || (rd_grant_client == C_IA && !ia_req) ||
                      (rd_grant_client == C_KERNEL && !kernel_req) ||
                      (rd_grant_client == C_BIAS && !bias_req) ||
                      (rd_grant_client == C_QUANT && !quant_req_eff) ||
@@ -334,14 +335,14 @@ module axi_block_dma_arbiter #(
             end
         end
     end
-    assign dw_granted = rd_command_space && rd_command_client == C_DW;
+    assign dw_granted = !abort && rd_command_space && rd_command_client == C_DW;
     assign dw_busy = (rd_client_inflight[C_DW] != 0);
     assign dw_done = rd_response_client == C_DW && rd_dma_done;
     assign dw_error = dw_done && dma_rd_error;
-    assign ia_granted = rd_command_space && rd_command_client == C_IA;
-    assign kernel_granted = rd_command_space && rd_command_client == C_KERNEL;
-    assign bias_granted = rd_command_space && rd_command_client == C_BIAS;
-    assign quant_granted = (ENABLE_QUANT_CLIENT != 0) && rd_command_space &&
+    assign ia_granted = !abort && rd_command_space && rd_command_client == C_IA;
+    assign kernel_granted = !abort && rd_command_space && rd_command_client == C_KERNEL;
+    assign bias_granted = !abort && rd_command_space && rd_command_client == C_BIAS;
+    assign quant_granted = !abort && (ENABLE_QUANT_CLIENT != 0) && rd_command_space &&
                            rd_command_client == C_QUANT;
     assign ia_busy = (rd_client_inflight[C_IA] != 0);
     assign kernel_busy = (rd_client_inflight[C_KERNEL] != 0);
@@ -458,7 +459,7 @@ module axi_block_dma_arbiter #(
             wr_owner_dw <= 1'b0;
         end else begin
             if (!wr_active) begin
-                if (dw_wr_req || oa_req) begin
+                if (!abort && (dw_wr_req || oa_req)) begin
                     wr_owner_dw <= dw_wr_req;
                     wr_active  <= 1'b1;
                     wr_started <= 1'b0;
@@ -466,7 +467,7 @@ module axi_block_dma_arbiter #(
             end else if (!wr_started) begin
                 if (wr_dma_start) begin
                     wr_started <= 1'b1;
-                end else if (wr_owner_dw ? !dw_wr_req : !oa_req) begin
+                end else if (abort || (wr_owner_dw ? !dw_wr_req : !oa_req)) begin
                     wr_active  <= 1'b0;
                     wr_started <= 1'b0;
                 end
@@ -477,8 +478,8 @@ module axi_block_dma_arbiter #(
         end
     end
 
-    assign oa_granted = wr_active && !wr_owner_dw;
-    assign dw_wr_granted = wr_active && wr_owner_dw;
+    assign oa_granted = !abort && wr_active && !wr_owner_dw;
+    assign dw_wr_granted = !abort && wr_active && wr_owner_dw;
     assign wr_dma_start = !wr_started &&
         ((oa_start && oa_granted) || (dw_wr_start && dw_wr_granted));
     assign dw_wr_busy = dw_wr_granted && wr_dma_busy;
@@ -608,6 +609,7 @@ module axi_block_dma_arbiter #(
         .win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
         .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
         .win_rsp_last,.win_rsp_error,.win_busy,
+        .abort(abort),
         .conv_cfg_valid(dma_conv_cfg_valid), .conv_cfg_ready(dma_conv_cfg_ready),
         .conv_enable, .dma_range_enable, .conv_cfg,
         .conv_sched_r, .conv_sched_groups, .conv_range_base, .conv_range_end,

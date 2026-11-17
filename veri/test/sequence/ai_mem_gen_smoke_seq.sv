@@ -33,6 +33,33 @@ class ai_mem_gen_smoke_seq extends uvm_sequence#(npu_seq_item);
         })
     endtask
 
+    task automatic read_reg(input bit [31:0] addr, output bit [31:0] data);
+        npu_seq_item tr;
+        `uvm_do_with(tr, {
+            cmd_kind == NPU_RD_REG;
+            reg_addr == addr;
+            reg_check_en == 0;
+        })
+        data = tr.reg_data;
+    endtask
+
+    virtual task read_memory_capabilities(output bit [31:0] caps, total_bytes,
+        bank_bytes, bank_mask, directory_rows);
+        read_reg(`ADDR_NPU_PS_CAPS, caps);
+        total_bytes=0;bank_bytes=0;bank_mask=0;directory_rows=0;
+        if (caps[31:24]==1 && caps[4]) begin
+            read_reg(`ADDR_NPU_SHARED_TOTAL_BYTES, total_bytes);
+            read_reg(`ADDR_NPU_SHARED_BANK_BYTES, bank_bytes);
+            read_reg(`ADDR_NPU_IA_BANK_MASK, bank_mask);
+            read_reg(`ADDR_NPU_PS_DIRECTORY_ROWS, directory_rows);
+        end
+    endtask
+
+    virtual task write_memory_configuration(input int ia_banks, ps_control);
+        if (ia_banks!=0) write_reg(`ADDR_NPU_IA_BANKS, ia_banks);
+        write_reg(`ADDR_NPU_PS_CONTROL, ps_control);
+    endtask
+
     task automatic parse_config(
         input string cfg_path,
         output int cfg_k,
@@ -142,6 +169,68 @@ class ai_mem_gen_smoke_seq extends uvm_sequence#(npu_seq_item);
         rg=(tr+r-1)/r;rt=(tr%r==0)?r:tr%r;
         cg=(tc+w-1)/w;ct=(tc%w==0)?w:tc%w;
     endfunction
+
+    // Reserve every live partial sum at its RAW32 size. Compact S8 rows
+    // occupy 256 bytes; S16 rows use 512 bytes and two IA banks.
+    function automatic bit select_shared_tiling(
+        input int rows, depth, cols, lhs_dtype, mode,
+        input bit [31:0] caps, total_bytes, bank_bytes, bank_mask, directory_rows,
+        inout int r, w, output int ia_banks);
+        int stream_rows, banks, ps_banks, slots, active_rows, words, limit;
+        bit compact;
+        ia_banks=0;
+        if (bank_bytes!=2048 || total_bytes%bank_bytes!=0 ||
+            total_bytes<6*bank_bytes || total_bytes>9*bank_bytes ||
+            directory_rows==0 || r<1 || w<1) return 0;
+        banks=int'(total_bytes/bank_bytes);
+        stream_rows=mode!=0 ? cols : rows;
+        compact=caps[2] && (mode!=0 || lhs_dtype!=2);
+        if (r==25) r=16;
+        while (r>0) begin
+            for (int ia=1;ia<banks;ia++) begin
+                if (!bank_mask[ia] || (!compact && ia<2)) continue;
+                slots=ia*int'(bank_bytes)/(compact ? 256 : 512);
+                if (r>slots/2) continue;
+                active_rows=stream_rows<r*16 ? stream_rows : r*16;
+                ps_banks=banks-ia;
+                limit=int'(caps[23:16]);
+                if (depth>16) begin
+                    if (ps_banks<4) continue;
+                    words=(active_rows*4+ps_banks-1)/ps_banks;
+                    if (words>int'(bank_bytes/16)) continue;
+                    if (limit>int'(bank_bytes/16)/words) limit=int'(bank_bytes/16)/words;
+                    if (limit>int'(directory_rows)/active_rows) limit=int'(directory_rows)/active_rows;
+                end
+                if (limit<1) continue;
+                if (w>limit) w=host_floor_supported(limit);
+                ia_banks=ia;
+                return 1;
+            end
+            r=r/2;
+        end
+        return 0;
+    endfunction
+
+    task automatic prepare_memory_tiling(input int rows,depth,cols,lhs_dtype,mode,per_channel,
+        inout int r,w, output int rg,rt,cg,ct);
+        bit [31:0] caps,total_bytes,bank_bytes,bank_mask,directory_rows;
+        int ia_banks,tr,tc;
+        prepare_host_tiling(rows,cols,mode,per_channel,r,w,rg,rt,cg,ct);
+        read_memory_capabilities(caps,total_bytes,bank_bytes,bank_mask,directory_rows);
+        if (caps[31:24]==1 && caps[0]) begin
+            ia_banks=0;
+            if (caps[4]) begin
+                if (!select_shared_tiling(rows,depth,cols,lhs_dtype,mode,
+                    caps,total_bytes,bank_bytes,bank_mask,directory_rows,r,w,ia_banks))
+                    `uvm_fatal("HOST_TILING","No supported IA/PS shared-memory allocation")
+                tr=((mode!=0 ? cols : rows)+15)/16;
+                tc=((mode!=0 ? rows : cols)+15)/16;
+                rg=(tr+r-1)/r;rt=(tr%r==0)?r:tr%r;
+                cg=(tc+w-1)/w;ct=(tc%w==0)?w:tc%w;
+            end
+            write_memory_configuration(ia_banks,0);
+        end
+    endtask
 
     virtual task body();
         npu_seq_item tr;
@@ -288,7 +377,7 @@ class ai_mem_gen_smoke_seq extends uvm_sequence#(npu_seq_item);
         write_reg(`ADDR_NPU_Q_SHIFT,  dst_shift[31:0]);
         write_reg(`ADDR_NPU_ACT_MIN,    act_min[31:0]);
         write_reg(`ADDR_NPU_ACT_MAX,    act_max[31:0]);
-        prepare_host_tiling(cfg_k,cfg_m,gen_dataflow_mode,cfg_quant_mode,
+        prepare_memory_tiling(cfg_k,cfg_n,cfg_m,cfg_lhs_dtype,gen_dataflow_mode,cfg_quant_mode,
             gen_ia_reuse,gen_w_reuse,host_rg,host_rt,host_cg,host_ct);
         write_reg(`ADDR_NPU_ROW_GROUPS,host_rg);
         write_reg(`ADDR_NPU_ROW_TAIL_TILES,host_rt);

@@ -1,12 +1,14 @@
 # 按卷积未来访问替换输入缓存
 
-**架构更新：** 本算法的前端、预测器与原图 cache 已迁入共享 `block_dma`。
-当前 WS / IS 统一请求接口及本轮测量见 [DMA 设计说明](block_dma_im2col.md)。
-下面的 next-use 调度公式适用于 WS；IS 的遍历顺序不同，当前明确使用同一 cache
-的 LRU 回退。本文的最终 25 条 RTL 表属于 `cb45d0e` 的 IA 内前端检查点；当前
-DMA 架构执行了十层及三层 LRU 对照，周期见 DMA 说明，不能直接沿用历史周期。
-当前源码交付不包含这些历史输入文件；请求轨迹、数值向量与 golden 在运行时生成，
-详见 [源码交付说明](conv_source_only.md)。
+本文记录策略 1、2 的卷积未来访问预测算法及固定版本实验，25 条 RTL 结果使用
+`cb45d0e`。该算法的前端、预测器与原图 cache 位于共享 `block_dma`。
+以下 next-use 公式适用于 WS；对应实验的 IS 使用同一缓存的 LRU。
+
+当前标准配置使用策略 3 的 **4 KiB 共享窗口缓存**，参数为 128 sets、2 ways、
+16 B line。其 WS、IS 和 DW 的集合映射、预取及队列见
+[矩阵调度与共享窗口缓存](scheduling_and_window_cache.md)。请求接口见
+[DMA 设计说明](block_dma_im2col.md)。实验向量在运行时生成，方法见
+[源码交付说明](conv_source_only.md)。
 
 ## 目标与实现范围
 
@@ -19,9 +21,8 @@ DMA 架构执行了十层及三层 LRU 对照，周期见 DMA 说明，不能直
 实测记录保存在本地提交 `629a39a4e0497036ab66942ca8b58b13d5d2ceca`，所有比较
 采用相同 CNN 层尺寸、生产默认分块、数值、总线等待和原始参考输出。
 
-标准集成的默认主数据容量已经从 4 KiB 改为 **1 KiB**：32 sets、2 ways、16 B
-line，默认策略为 2。2 KiB / 4 KiB 仍可通过 sets 参数选择。这个选择依据本次真实
-层尺寸的容量 / 周期取舍，不能解释为 1 KiB 对所有模型均最优。
+本文的主要实验配置为 **1 KiB**：32 sets、2 ways、16 B line、策略 2；同时
+比较 512 B、2 KiB 和 4 KiB。容量与周期结果按各层分别记录。
 
 运行时不由 CPU 枚举 im2col、不生成完整访问计划表，不增加外部 im2col 矩阵。
 CPU 仍只提交原有命令。预测器在硬件中每周期检查一个 kernel tap，取得当前
@@ -164,7 +165,8 @@ tag 不增宽：命中时 tag 相同、XOR 后 set 相同，就意味着原 raw_
 |---:|---|
 | 0 | 原低位索引与 LRU，用于基线对照 |
 | 1 | 低位索引，几何预测、未来使用替换和选择性存入 |
-| 2 | 策略 1 加可逆 XOR 索引；当前新策略默认值 |
+| 2 | 策略 1 加可逆 XOR 索引；本文几何替换实验配置 |
+| 3 | 当前标准配置的共享窗口策略，见独立设计说明 |
 
 不满足快路条件的任务继续使用原低位索引和 LRU。XOR 只在当前任务确认启用几何
 预测后使用，配置切换同时清除缓存。
@@ -294,7 +296,7 @@ R 拍数及 W 字节均与最初基线一致。当前
 
 ```bash
 make conv-replacement VERILATOR=/absolute/path/to/verilator
-# 当前标准集成默认：1 KiB，策略 2。
+# 几何替换实验：1 KiB，策略 2。
 make conv-npu CONV_CACHE_SETS=32 CONV_CACHE_POLICY=2 VERILATOR=/absolute/path/to/verilator
 # 原 4 KiB LRU 参数对照。
 make conv-npu CONV_CACHE_SETS=128 CONV_CACHE_POLICY=0 VERILATOR=/absolute/path/to/verilator

@@ -3,6 +3,7 @@ module soc_axi_ram #(
     parameter int unsigned DW = 32,
     parameter int unsigned AW = 32,
     parameter string       MEM_PATH = "",
+    parameter int unsigned MEM_WORD_WIDTH = DW,
     parameter int unsigned INIT_EN = 0,
     parameter int unsigned READ_OUTSTANDING = 4,
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
@@ -635,19 +636,109 @@ module soc_axi_ram #(
     end
 
 `ifndef SYNTHESIS
+    function automatic logic [31:0] read_word32(input int unsigned word_addr);
+        return mem_r[word_addr / (DW / 32)][32 * (word_addr % (DW / 32)) +: 32];
+    endfunction
+
+    task automatic image_word32(
+        input string token, input string path, input bit check_only,
+        input int unsigned first_word, input int unsigned last_word,
+        inout longint unsigned cursor, inout integer mismatch_count);
+        logic [63:0] value;
+        string address;
+        if (token.getc(0) == 8'h40) begin
+            address = token.substr(1, token.len()-1);
+            if ($sscanf(address, "%h", cursor) != 1)
+                $fatal(1, "Invalid memory address in %s: %s", path, token);
+        end else begin
+            if ($sscanf(token, "%h", value) != 1 || value[63:32] !== 32'd0)
+                $fatal(1, "Invalid 32-bit memory word in %s: %s", path, token);
+            if (cursor >= 64'(DP) * 64'(DW / 32))
+                $fatal(1, "Memory image address exceeds RAM in %s: %h", path, cursor);
+            if (check_only) begin
+                if (cursor >= 64'(first_word) && cursor <= 64'(last_word) &&
+                    read_word32(32'(cursor)) !== value[31:0]) begin
+                    mismatch_count++;
+                    $display("Memory mismatch %s word=%h expected=%h actual=%h",
+                        path, cursor, value[31:0], read_word32(32'(cursor)));
+                end
+            end else begin
+                mem_r[32'(cursor) / (DW / 32)][32 * (32'(cursor) % (DW / 32)) +: 32] = value[31:0];
+            end
+            cursor++;
+        end
+    endtask
+
+    // Sparse image addresses and overlay offsets are measured in 32-bit words.
+    // Only words present in the file are written, preserving neighbouring lanes.
+    task automatic access_image32(
+        input string path, input int unsigned base_word, input bit check_only,
+        input int unsigned first_word, input int unsigned last_word,
+        output integer mismatch_count);
+        integer file_handle, character, next_character, previous_character;
+        longint unsigned cursor;
+        string token;
+        file_handle = $fopen(path, "r");
+        if (file_handle == 0) $fatal(1, "Cannot open memory image %s", path);
+        cursor = 64'(base_word);
+        token = "";
+        mismatch_count = 0;
+        while (1) begin
+            character = $fgetc(file_handle);
+            if (character == -1 || character == 32 || character == 9 ||
+                character == 10 || character == 13 || character == 47) begin
+                if (token.len() != 0) begin
+                    image_word32(token, path, check_only, first_word, last_word,
+                                 cursor, mismatch_count);
+                    token = "";
+                end
+                if (character == -1) break;
+                if (character == 47) begin
+                    next_character = $fgetc(file_handle);
+                    if (next_character == 47) begin
+                        do character = $fgetc(file_handle);
+                        while (character != -1 && character != 10);
+                    end else if (next_character == 42) begin
+                        previous_character = 0;
+                        do begin
+                            character = $fgetc(file_handle);
+                            if (character == -1) $fatal(1, "Unterminated comment in %s", path);
+                            if (previous_character == 42 && character == 47) break;
+                            previous_character = character;
+                        end while (1);
+                    end else $fatal(1, "Invalid memory image comment in %s", path);
+                end
+            end else token = {token, byte'(character)};
+        end
+        $fclose(file_handle);
+    endtask
+
+    task automatic check_mem_file(input string path,
+        input int unsigned first_word, input int unsigned last_word,
+        output integer mismatch_count);
+        access_image32(path, 0, 1'b1, first_word, last_word, mismatch_count);
+    endtask
+
     task automatic load_initial_mem();
+        integer unused_mismatch_count;
         if ((INIT_EN != 0) && mem_path_q != "") begin
             $display("soc_axi_ram: loading memory from %s", mem_path_q);
-            $readmemh(mem_path_q, mem_r);
+            if (MEM_WORD_WIDTH == 32 && DW != 32)
+                access_image32(mem_path_q, 0, 1'b0, 0, 0, unused_mismatch_count);
+            else $readmemh(mem_path_q, mem_r);
         end
         if (data_mem_path_q != "") begin
             $display("soc_axi_ram: overlay memory from %s at word %0d",
                      data_mem_path_q, data_mem_base_word_q);
-            $readmemh(data_mem_path_q, mem_r, data_mem_base_word_q);
+            if (MEM_WORD_WIDTH == 32 && DW != 32)
+                access_image32(data_mem_path_q, data_mem_base_word_q, 1'b0, 0, 0, unused_mismatch_count);
+            else $readmemh(data_mem_path_q, mem_r, data_mem_base_word_q);
         end
     endtask
 
     initial begin
+        assert((DW == 32 || DW == 64) && (MEM_WORD_WIDTH == 32 || MEM_WORD_WIDTH == DW))
+            else $fatal(1, "Memory images require 32-bit words or physical-width words");
         ddr_rand_lat_en = 0;
         ddr_cmd_max_lat = 0;
         ddr_w_max_lat = 0;
@@ -695,6 +786,8 @@ module soc_axi_ram #(
 `else
     initial begin
         if ((INIT_EN != 0) && (MEM_PATH != "")) begin
+            if (MEM_WORD_WIDTH != DW)
+                $fatal(1,"Synthesis memory image width must equal the physical RAM data width");
             $readmemh(MEM_PATH, mem_r);
         end
     end

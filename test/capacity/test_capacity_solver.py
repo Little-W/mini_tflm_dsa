@@ -1,395 +1,304 @@
 #!/usr/bin/env python3
-"""Independent regression and integration checks for the capacity configuration.
-
-The frozen numbers below come from the 2026-11-15 capacity study, whose selected
-schedules were checked against complete RTL results.  The remaining checks
-exercise budget invariants, failed-write behavior, and the actual Make entry
-points.  No commercial simulator, NumPy, or third-party Python package is needed.
-"""
+"""Check shared-array capacity, state-budget requirements and Make entry points."""
 from __future__ import annotations
 
 import json
-import math
 import os
 from pathlib import Path
-import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-from capacity import config as capacity_config  # noqa: E402
-from capacity import model  # noqa: E402
+from capacity import config, model
 
 SOLVER = ROOT / "scripts/capacity/solve.py"
-WORKLOADS = [
-    {"M":128,"K":1024,"N":128}, {"M":256,"K":1024,"N":256},
-    {"M":512,"K":1024,"N":512}, {"M":1024,"K":1024,"N":1024},
-    {"M":2048,"K":1024,"N":2048}, {"M":128,"K":4096,"N":4096},
-    {"M":4096,"K":4096,"N":128}, {"M":128,"K":16384,"N":128},
-]
-FROZEN = {
-    32: ((4,3,37), 32734.25,
-         [786432,3145728,11534336,46137344,180355072,95420416,95420416,12582912]),
-    64: ((8,5,113), 65377.375,
-         [393216,1572864,6291456,24117248,94371840,50331648,50331648,6291456]),
-    128: ((12,8,305), 130892.625,
-          [262144,1048576,3670016,14680064,56623104,28311552,28311552,4194304]),
-    256: ((24,13,653), 261935.75,
-          [262144,786432,2621440,9437184,37748736,22544384,22544384,4194304]),
-}
-
-# An intentionally unoptimized, legal starting configuration.  All CLI tests
-# operate on temporary copies, never on the user's checked-in configuration.
-CONFIG_TEXT = """# Keep this user comment when applying a new capacity.
-PCR_ENGINE ?= 1
-SIZE ?= 16
-IA_CACHE_BLOCKS ?= 64
-PS_FRAME_COUNT ?= 25
-AXI_READ_OUTSTANDING ?= 4
-PANEL_MAX_R ?= 10
-PANEL_MAX_W ?= 10
-PS_POOL_BYTES ?= 78080
-PS_FORCE_RAW ?= 0
-CAPACITY_BUDGET_BYTES ?= 131072
-CAPACITY_BUDGET_SCOPE ?= logical-state
-CAPACITY_REPRESENTATION ?= nominal3
-"""
+WORKLOADS = [dict(M=1, K=800, N=32), dict(M=800, K=32, N=64), dict(M=65, K=35, N=127)]
 
 
-def json_from_stdout(text: str):
-    """Make may echo the invoked command before the JSON document."""
+def json_from_stdout(text):
     decoder = json.JSONDecoder()
     for offset, char in enumerate(text):
         if char == "{":
             try:
-                value, _ = decoder.raw_decode(text[offset:])
+                return decoder.raw_decode(text[offset:])[0]
             except json.JSONDecodeError:
-                continue
-            return value
-    raise AssertionError("No JSON object in stdout: " + text)
+                pass
+    raise AssertionError("No JSON object in output: " + text)
 
 
 class ModelTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.results = {b:model.solve(WORKLOADS, b*1024, "logical-state", "nominal3")
-                       for b in FROZEN}
+    def test_buffer_inventory_includes_every_shared_subsystem(self):
+        a = model.allocation(4, 8, 16384, 131072, shared=False)
+        expected = dict(ia_cache=4*16*16*16, ia_cache_tags=8*285, ia_slot_metadata=8*7,
+                        kernel_cache=2*16*16*16,
+                        bias_cache=2*4*16*32, requant_is_cache=4*16*76,
+                        oa_s8_fifo=16*16*16*8, oa_s16_fifo=4*16*16*16,
+                        conv_data_cache=128*2*16*8, conv_cache_metadata=128*2*75,
+                        conv_prefetch_queue=8*129, conv_request_queue=4*163,
+                        conv_response_queue=4*33, vector_buffers=16*(80+49*8+160),
+                        ps_payload=16384*8, ps_frame_lengths=8*7, ps_directory=64*8*37,
+                        ps_decoded_fifo=8*512, ps_decoded_first=8, ps_frame_valid=8,
+                        ps_frame_max_record_words=8*3, ps_free_bitmap=4*256,
+                        ps_bank_free_count=4*9, ps_resident_words=4*8*7)
+        self.assertEqual(a["buffer_arrays_bits"], expected)
+        self.assertEqual(a["buffer_ram_bits"], sum(expected.values()))
+        self.assertIsNone(a["logical_state_bits"])
 
-    def assert_legal(self, result, budget_bytes, scope, representation="nominal3"):
+    def test_ordinary_ps_uses_complete_rows_and_same_compute_buffers(self):
+        a = model.buffer_arrays_bits(4, 16, 16384, compressed=True, shared=False)
+        b = model.buffer_arrays_bits(4, 16, 0, compressed=False)
+        for key in a:
+            if not key.startswith("ps_"):
+                self.assertEqual(a[key], b[key])
+        self.assertEqual(b["ps_payload"], 47*17*512)
+        self.assertNotIn("ps_directory", b)
+
+    def test_complete_state_cannot_use_an_unmeasured_formula(self):
+        with self.assertRaisesRegex(ValueError, "elaboration"):
+            model.allocation(4, 8, 16384, 131072, "logical-state")
+        with self.assertRaisesRegex(ValueError, "elaboration"):
+            model.solve(WORKLOADS, 65536, "logical-state")
+
+    def test_dense_bound_and_no_ps_single_reduction(self):
+        ws = model.plan_for_hardware(1, 800, 32, 4, 16, 4096, mode=0)
+        self.assertEqual((ws["R"], ws["W"], ws["frame_rows"], ws["required_pool_bytes"]), (1, 2, 1, 128))
+        one = model.plan_for_hardware(64, 9, 128, 4, 16, 4096, mode=0)
+        self.assertEqual((one["R"], one["W"], one["required_pool_bytes"]), (4, 8, 0))
+
+    def test_raw_and_adaptive_guaranteed_plans_match(self):
+        for task in WORKLOADS:
+            a = model.plan_for_hardware(**task, cache=4, frames=16, pool_bytes=4096, representation="adaptive", adaptive=False)
+            b = model.plan_for_hardware(**task, cache=4, frames=16, pool_bytes=4096, representation="raw32", adaptive=False)
+            self.assertEqual(a, b)
+
+    def test_shared_single_k_uses_available_ia_banks(self):
+        for width, expected_r in ((1, 16), (2, 8)):
+            p = model.plan_for_hardware(256, 9, 32, 4, 16, 12288, mode=0, lhs_bytes=width)
+            self.assertEqual((p["R"], p["ia_bank_count"], p["ia_bytes"], p["ps_pool_bytes"]),
+                             (expected_r, 4, 8192, 6144))
+            self.assertEqual(p["required_pool_bytes"], 0)
+            self.assertFalse(p["adaptive_active"])
+
+    def test_shared_s16_allocation_follows_streaming_operand(self):
+        ws = model.plan_for_hardware(256, 35, 32, 4, 16, 12288,
+                                     mode=0, lhs_bytes=2, adaptive=False)
+        is_plan = model.plan_for_hardware(32, 35, 256, 4, 16, 12288,
+                                          mode=1, lhs_bytes=2, adaptive=False)
+        self.assertEqual((ws["ia_bank_count"], ws["ia_bytes"], ws["ps_pool_bytes"]),
+                         (2, 4096, 10240))
+        self.assertEqual((is_plan["ia_bank_count"], is_plan["ia_bytes"], is_plan["ps_pool_bytes"]),
+                         (1, 2048, 12288))
+        for p in (ws, is_plan):
+            ps_banks = p["ps_pool_bytes"] // 2048
+            self.assertEqual(p["ia_bytes"] + p["ps_pool_bytes"], 14336)
+            self.assertGreaterEqual(ps_banks, 4)
+            self.assertLessEqual(p["W"] * model.ceil_div(4 * p["frame_rows"], ps_banks), 128)
+            self.assertEqual(p["raw_safe_is_mode"], p["mode"])
+            self.assertEqual(p["raw_safe_ia_bank_count"], p["ia_bank_count"])
+            self.assertEqual(p["raw_safe_pool_bytes"], p["ps_pool_bytes"])
+
+    def test_buffer_search_obeys_budget_and_frame_bound(self):
+        for budget in (32768, 65536, 131072):
+            result = model.solve(WORKLOADS, budget)
+            a = result["allocation"]
+            self.assertLessEqual(a["budget_used_bytes"], budget)
+            if not a["shared_ia_ps_enabled"]:
+                self.assertGreater(model.buffer_ram_bytes(a["ia_cache_blocks"], a["ps_frame_count"],
+                                                           a["ps_pool_bytes"] + 64), budget)
+            self.assertEqual(a["ps_pool_bytes"] % 64, 0)
+            for p in result["plans"]:
+                self.assertLessEqual(p["R"], a["max_r_s8"])
+                self.assertLessEqual(p["W"], a["ps_frame_count"])
+                if not p["adaptive_active"]:
+                    self.assertLessEqual(p["required_pool_bytes"], p["ps_pool_bytes"])
+                self.assertLessEqual(model.ceil_div(p["frame_rows"] * p["literal_record_bytes"], 64) * 64,
+                                     p["ps_pool_bytes"])
+                self.assertGreaterEqual(p["ideal_operand_read_bytes"], p["M"] * p["K"] + p["N"] * p["K"])
+
+    def test_search_compares_shared_allocations_with_fixed_capacity(self):
+        tasks = [dict(M=961, K=144, N=32), dict(M=225, K=288, N=64)]
+        result = model.solve(tasks, 44000)
+        allocation = result["allocation"]
+        self.assertTrue(allocation["shared_ia_ps_enabled"])
+        self.assertEqual(allocation["shared_total_bytes"], 14336)
+        self.assertEqual(allocation["buffer_ram_bytes"], 38125)
+        self.assertEqual(result["metrics"]["exact_service_product_hex"], format(1521211424, "x"))
+        self.assertLessEqual(result["search"]["feasible_geometries"],
+                             result["search"]["enumerated_geometries"])
+        self.assertGreater(result["search"]["feasible_configurations"],
+                            result["search"]["feasible_geometries"])
+
+    def test_pool_increment_and_real_tails(self):
+        for pool in (4096, 8192, 16384):
+            self.assertGreater(model.buffer_ram_bytes(4, 8, pool + 64, shared=False) -
+                               model.buffer_ram_bytes(4, 8, pool, shared=False), 64)
+        p = model.plan_for_hardware(17, 35, 49, 4, 16, 16384, mode=1)
+        self.assertGreaterEqual(p["ideal_operand_read_bytes"], 17 * 35 + 49 * 35)
+        self.assertEqual((p["row_groups"]-1)*p["R"]+p["row_tail_tiles"], 4)
+        self.assertEqual((p["column_groups"]-1)*p["W"]+p["column_tail_tiles"], 2)
+
+    def test_configurable_shared_bank_geometry_and_plans(self):
+        for bank_bytes in (1024, 2048, 4096):
+            for bank_count in range(6, 10):
+                parameters = dict(bank_bytes=bank_bytes, bank_count=bank_count)
+                layout = model.memory_geometry(4, 16, 4096, **parameters)
+                arrays = model.buffer_arrays_bits(4, 16, 4096, **parameters)
+                self.assertTrue(layout["shared_ia_ps_enabled"])
+                self.assertEqual(layout["shared_total_bytes"], bank_bytes*bank_count)
+                self.assertEqual(layout["payload_bank_depth"], bank_bytes//16)
+                self.assertEqual(layout["payload_metadata_bank_count"], bank_count-1)
+                self.assertEqual(layout["max_r_s8"], bank_bytes//128)
+                self.assertEqual(layout["max_r_s16"], bank_bytes//256)
+                self.assertEqual(layout["default_max_r_s8"], bank_bytes//512)
+                self.assertEqual(layout["max_frame_rows"], bank_bytes//8)
+                self.assertEqual(arrays["ia_ps_shared_ram"], bank_count*bank_bytes*8)
+                self.assertEqual(arrays["ps_free_bitmap"], (bank_count-1)*(bank_bytes//16))
+                for representation in ("raw32", "adaptive"):
+                    plan = model.plan_for_hardware(256, 144, 64, 4, 16, 4096,
+                                                  representation, **parameters)
+                    self.assertEqual(plan["ia_bytes"]+plan["ps_pool_bytes"], bank_count*bank_bytes)
+                    self.assertEqual(plan["ia_bytes"], plan["ia_bank_count"]*bank_bytes)
+                    ps_banks = bank_count-plan["ia_bank_count"]
+                    record_bytes = 64 if plan["ps_control"] & 1 else plan["literal_record_bytes"]
+                    reserved = model.ceil_div(plan["frame_rows"]*(record_bytes//16), ps_banks)
+                    self.assertLessEqual(reserved, bank_bytes//16)
+                    if not plan["ps_control"] & 2:
+                        stationary = 256 if plan["mode"] else 64
+                        self.assertLessEqual(reserved*min(plan["W"], model.ceil_div(stationary, 16)),
+                                             bank_bytes//16)
+                    if representation == "raw32":
+                        self.assertTrue(plan["ps_control"] & 1)
+        for width, reuse in ((1, 32), (2, 16)):
+            plan = model.plan_for_hardware(512, 9, 32, 4, 16, 12288, mode=0,
+                                          lhs_bytes=width, bank_bytes=4096, bank_count=7)
+            self.assertEqual((plan["R"], plan["ia_bank_count"], plan["ia_bytes"]), (reuse, 4, 16384))
+            self.assertEqual(plan["required_pool_bytes"], 0)
+
+    def test_explicit_banks_and_fixed_storage_are_independent(self):
+        parameters = dict(bank_bytes=4096, bank_count=6)
+        a = model.memory_geometry(4, 16, 4096, **parameters)
+        b = model.memory_geometry(4, 16, 8192, **parameters)
+        self.assertEqual(a["shared_total_bytes"], 24576)
+        self.assertEqual(a["shared_total_bytes"], b["shared_total_bytes"])
+        fixed = model.buffer_arrays_bits(4, 16, 4096, shared=False, **parameters)
+        self.assertNotIn("ia_ps_shared_ram", fixed)
+        self.assertEqual(fixed["ia_cache"], 2048*8)
+        self.assertEqual(fixed["ps_payload"], 4096*8)
+        for bank_bytes in (0, 512, 1536, 8192):
+            with self.assertRaises(ValueError):
+                model.memory_geometry(4, 16, 12288, bank_bytes=bank_bytes, bank_count=7)
+        for bank_count in (0, 5, 10, True):
+            with self.assertRaises(ValueError):
+                model.memory_geometry(4, 16, 12288, bank_count=bank_count)
+
+    def test_search_uses_selected_bank_size_and_shared_capacity(self):
+        for bank_bytes in (1024, 2048, 4096):
+            result = model.solve(WORKLOADS, 131072, bank_bytes=bank_bytes)
+            a = result["allocation"]
+            self.assertTrue(a["shared_ia_ps_enabled"])
+            self.assertEqual(a["shared_bank_bytes"], bank_bytes)
+            self.assertIn(a["shared_physical_bank_count"], range(6, 10))
+            self.assertEqual(a["ps_pool_bytes"], (a["shared_physical_bank_count"]-1)*bank_bytes)
+            self.assertLessEqual(a["budget_used_bytes"], 131072)
+            for plan in result["plans"]:
+                self.assertEqual(plan["ia_bytes"]+plan["ps_pool_bytes"], a["shared_total_bytes"])
+            pool, state = model.max_pool_bytes(4, 16, 131072, bank_bytes=bank_bytes, bank_count=7)
+            self.assertEqual(pool, 6*bank_bytes)
+            self.assertIsNone(state)
+
+    def test_measured_search_receives_explicit_bank_geometry(self):
+        calls = []
+        def measure(cache, frames, pool, representation, *, bank_bytes, bank_count):
+            calls.append((cache, frames, pool, representation, bank_bytes, bank_count))
+            return sum(model.buffer_arrays_bits(cache, frames, pool,
+                bank_bytes=bank_bytes, bank_count=bank_count).values())+4096
+        result = model.solve([dict(M=512, K=16, N=32)], 131072, "logical-state",
+                             measure=measure, bank_bytes=4096)
+        self.assertTrue(calls)
+        self.assertEqual({item[4] for item in calls}, {4096})
+        self.assertEqual({item[5] for item in calls}, {6, 7, 8, 9})
         a = result["allocation"]
-        rmax, wmax, pages = a["panel_max_r"], a["panel_max_w"], a["ps_pool_pages"]
-        self.assertTrue(1 <= rmax <= 32 and 1 <= wmax <= 32)
-        self.assertTrue(4 <= pages <= 4095)
-        self.assertEqual(a["ps_pool_bytes"], 256*pages)
-        # Count the actual 16 lane RAMs, independently of the model's function.
-        a_bytes = 16 * (128*rmax) * 1
-        b_bytes = 16 * (32*wmax) * 4
-        self.assertEqual(a["a_panel_bytes"], a_bytes)
-        self.assertEqual(a["b_panel_bytes"], b_bytes)
-        self.assertEqual(a["buffer_ram_bytes"], a_bytes+b_bytes+256*pages)
-        self.assertLessEqual(a["budget_used_bytes"], budget_bytes)
-        if scope == "logical-state":
-            self.assertLessEqual(a["logical_state_bits"], budget_bytes*8)
-        else:
-            self.assertEqual(a["budget_used_bytes"], a["buffer_ram_bytes"])
-            self.assertLessEqual(a["buffer_ram_bytes"], budget_bytes)
-        for p in result["plans"]:
-            r, w = p["R"], p["W"]
-            self.assertTrue(1 <= r <= rmax and 1 <= w <= wmax)
-            needed = 4*r*w if representation == "raw32" else max(r*w+3*r, 3*r*w+r)
-            self.assertLessEqual(needed, pages)
-            self.assertEqual(p["required_pool_pages"], needed)
-            m, k, n = [p["padded_"+d] for d in ("M","K","N")]
-            self.assertTrue(all(v % 16 == 0 for v in (m,k,n)))
-            tr, tc = (n//16,m//16) if p["mode"] else (m//16,n//16)
-            self.assertEqual((p["row_groups"]-1)*r+p["row_tail_tiles"], tr)
-            self.assertEqual((p["column_groups"]-1)*w+p["column_tail_tiles"], tc)
-            self.assertTrue(1 <= p["row_tail_tiles"] <= r)
-            self.assertTrue(1 <= p["column_tail_tiles"] <= w)
-            # Each logical operand is reloaded once for every opposite group.
-            ia_rounds = math.ceil((n//16)/(r if p["mode"] else w))
-            weight_rounds = math.ceil((m//16)/(w if p["mode"] else r))
-            self.assertEqual(p["A_external_bytes"], m*k*ia_rounds)
-            self.assertEqual(p["B_external_bytes"], k*n*weight_rounds)
-            self.assertEqual(p["ideal_operand_read_bytes"], m*k*ia_rounds+k*n*weight_rounds)
+        self.assertEqual(a["logical_state_bits"], a["buffer_ram_bits"]+4096)
+        self.assertEqual(a["shared_total_bytes"], a["shared_physical_bank_count"]*4096)
 
-    def test_frozen_rtl_study_solutions_and_reads(self):
-        for b, (geometry, state, reads) in FROZEN.items():
-            with self.subTest(budget_kib=b):
-                result = self.results[b]
-                a = result["allocation"]
-                self.assertEqual((a["panel_max_r"],a["panel_max_w"],a["ps_pool_pages"]), geometry)
-                self.assertEqual(a["logical_state_bytes"], state)
-                self.assertEqual([p["ideal_operand_read_bytes"] for p in result["plans"]], reads)
-                self.assert_legal(result,b*1024,"logical-state")
-
-    def test_state_formula_matches_preserved_inventory(self):
-        for (r,w,p), expected_bits in [((2,4,45),260998),((4,8,122),523258),
-                                      ((10,10,305),1048101),((16,16,700),2096684)]:
-            with self.subTest(r=r,w=w,p=p):
-                self.assertEqual(model.state_bits(r,w,p),expected_bits)
-
-    def test_page_boundaries_are_monotone_and_never_rounded_up(self):
-        for pages in (4,31,32,63,64,127,128,255,256,511,512,1023,1024):
-            with self.subTest(pages=pages):
-                self.assertGreater(model.state_bits(8,8,pages+1),model.state_bits(8,8,pages))
-                self.assertEqual(model.buffer_ram_bytes(8,8,pages+1)-model.buffer_ram_bytes(8,8,pages),256)
-        for b,result in self.results.items():
-            a=result["allocation"]
-            self.assertGreater(model.state_bits(a["panel_max_r"],a["panel_max_w"],a["ps_pool_pages"]+1),b*1024*8)
-
-    def test_ram_budget_counts_both_operand_panels(self):
-        result=model.solve(WORKLOADS,32*1024,"buffer-ram","nominal3")
-        self.assert_legal(result,32*1024,"buffer-ram")
-        a=result["allocation"]
-        self.assertLess(32*1024-a["buffer_ram_bytes"],256)
-        self.assertGreater(a["logical_state_bytes"],a["buffer_ram_bytes"])
-
-    def test_minimum_buffer_ram_budget_is_exact(self):
-        # Sixteen 128-byte A lanes + sixteen 128-byte B lanes + four PS pages.
-        minimum=16*128+16*128+4*256
-        with self.assertRaises(ValueError):
-            model.solve([{"M":16,"K":16,"N":16}],minimum-1,"buffer-ram")
-        result=model.solve([{"M":16,"K":16,"N":16}],minimum,"buffer-ram")
-        self.assert_legal(result,minimum,"buffer-ram")
-        a=result["allocation"]
-        self.assertEqual((a["panel_max_r"],a["panel_max_w"],a["ps_pool_pages"]),(1,1,4))
-
-    def test_more_budget_cannot_increase_minimum_reads(self):
-        # Use the measured multi-task objective rather than the size of R or W.
-        products=[math.prod(p["ideal_operand_read_bytes"] for p in self.results[b]["plans"])
-                  for b in sorted(self.results)]
-        self.assertEqual(products,sorted(products,reverse=True))
-
-    def test_padding_and_is_operand_identity(self):
-        result=model.solve([{"M":17,"K":31,"N":513}],32*1024,"logical-state","nominal3")
-        self.assert_legal(result,32*1024,"logical-state")
-        p=result["plans"][0]
-        self.assertEqual((p["padded_M"],p["padded_K"],p["padded_N"]),(32,32,528))
-        self.assertTrue(p["requires_padding"])
-
-    def test_raw32_is_separately_admitted(self):
-        result=model.solve(WORKLOADS,64*1024,"logical-state","raw32")
-        self.assert_legal(result,64*1024,"logical-state","raw32")
-
-    def test_invalid_problem_inputs_are_rejected(self):
-        cases=[([],32768,"logical-state","nominal3"),
-               ([{"M":0,"K":16,"N":16}],32768,"logical-state","nominal3"),
-               ([{"M":True,"K":16,"N":16}],32768,"logical-state","nominal3"),
-               ([{"M":1<<20,"K":16,"N":16}],32768,"logical-state","nominal3"),
-               (WORKLOADS,0,"logical-state","nominal3"),
-               (WORKLOADS,1024,"logical-state","nominal3"),
-               (WORKLOADS,1024,"buffer-ram","nominal3"),
-               (WORKLOADS,32768,"unknown","nominal3"),
-               (WORKLOADS,32768,"logical-state","unknown")]
-        for args in cases:
-            with self.subTest(args=args):
-                with self.assertRaises((ValueError,TypeError)):
-                    model.solve(*args)
+    def test_invalid_geometry_and_workloads(self):
+        for args in ((3, 8, 16384), (4, 0, 16384), (4, 8, 16385), (4, 8, 0)):
+            with self.assertRaises(ValueError):
+                model.buffer_ram_bytes(*args)
+        for tasks in ([], [dict(M=0, K=1, N=1)], [dict(M=True, K=1, N=1)], [dict(M=1<<20, K=1, N=1)]):
+            with self.assertRaises(ValueError):
+                model.solve(tasks, 65536)
 
 
-class _ConfigurationFixture(unittest.TestCase):
+class CliTests(unittest.TestCase):
     def setUp(self):
-        self.temporary=tempfile.TemporaryDirectory(prefix="gempact-capacity-test-")
+        inherited = set(config.DEFAULTS) | {
+            "NPU_CONFIG", "MAKEFLAGS", "MFLAGS", "MAKELEVEL", "GNUMAKEFLAGS", "NPU_CONFIG_INCLUDED"}
+        environment = mock.patch.dict(os.environ, {key: value for key, value in os.environ.items()
+                                                  if key not in inherited}, clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
+        self.temporary = tempfile.TemporaryDirectory(prefix="shared-capacity-")
         self.addCleanup(self.temporary.cleanup)
-        self.directory=Path(self.temporary.name)
-        self.config=self.directory/"npu.mk"
-        self.config.write_text(CONFIG_TEXT)
-        self.workloads=self.directory/"workloads.json"
-        self.workloads.write_text(json.dumps(WORKLOADS))
+        self.directory = Path(self.temporary.name)
+        self.path = self.directory / "npu.mk"
+        self.path.write_text("# User setting\n" + "".join(f"{k} ?= {v}\n" for k, v in config.DEFAULTS.items()))
 
-    def invoke(self,*args,success=True):
-        result=subprocess.run([sys.executable,str(SOLVER),"--config",str(self.config),*map(str,args)],
-                              cwd=self.directory,text=True,capture_output=True,timeout=90)
-        if success:
-            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        else:
-            self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
-        return result
+    def run_cli(self, *args, success=True):
+        run = subprocess.run([sys.executable, str(SOLVER), "--config", str(self.path), *map(str, args)],
+                             text=True, capture_output=True, timeout=30)
+        self.assertEqual(run.returncode == 0, success, run.stdout + run.stderr)
+        return run
 
-    def stamp(self):
-        return self.config.read_bytes(),self.config.stat().st_mtime_ns
+    def test_solve_readonly_and_atomic_apply(self):
+        original = self.path.read_bytes()
+        self.run_cli("--shape", "1,800,32", "--max-ram-kib", 64)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.run_cli("--shape", "1,800,32", "--max-ram-kib", 64, "--apply")
+        self.assertIn("# User setting", self.path.read_text())
+        before = self.path.read_bytes(), self.path.stat().st_mtime_ns
+        self.run_cli("--shape", "1,800,32", "--max-ram-kib", 64, "--apply")
+        self.assertEqual((self.path.read_bytes(), self.path.stat().st_mtime_ns), before)
 
+    def test_inspection_covers_both_ps_modes(self):
+        for active in (0, 1):
+            result = json_from_stdout(self.run_cli("--show", "--set", f"PCR_ENGINE={active}").stdout)
+            self.assertTrue(result["capacity_model_applies"])
+            self.assertEqual(result["allocation"]["compressed_ps"], bool(active))
+            self.assertIn("vector_buffers", result["allocation"]["buffer_arrays_bits"])
 
-class FileAndCliTests(_ConfigurationFixture):
-    def test_solve_is_read_only_without_apply(self):
-        before=self.stamp()
-        report=self.directory/"proposal.json"
-        self.invoke("--max-state-kib",32,"--workloads",self.workloads,"--output",report)
-        self.assertEqual(self.stamp(),before)
-        result=json.loads(report.read_text())
-        self.assertEqual(result["allocation"]["panel_max_r"],4)
-        self.assertEqual(result["allocation"]["panel_max_w"],3)
+    def test_raw_setting_and_generated_header(self):
+        result = json_from_stdout(self.run_cli("--show", "--set", "PS_FORCE_RAW=1").stdout)
+        self.assertEqual(result["configuration"]["CAPACITY_REPRESENTATION"], "raw32")
+        header = self.directory / "config.h"
+        self.run_cli("--emit-c-header", header)
+        self.assertIn("NPU_CONFIG_BUFFER_RAM_BITS", header.read_text())
+        self.assertNotIn("PANEL", header.read_text())
 
-    def test_apply_preserves_comments_and_repeat_does_not_touch(self):
-        args=("--max-state-kib",32,"--workloads",self.workloads,"--apply")
-        self.invoke(*args)
-        values=capacity_config.read_config(self.config)
-        self.assertEqual(values["PANEL_MAX_R"],4)
-        self.assertEqual(values["PANEL_MAX_W"],3)
-        self.assertEqual(values["PS_POOL_BYTES"],9472)
-        self.assertEqual(values["CAPACITY_BUDGET_BYTES"],32768)
-        self.assertIn("Keep this user comment",self.config.read_text())
-        before=self.stamp()
-        self.invoke(*args)
-        self.assertEqual(self.stamp(),before)
+    def test_invalid_commands_do_not_change_configuration(self):
+        before = self.path.read_bytes()
+        for args in (("--check", "--set", "SIZE=8"), ("--check", "--set", "PS_POOL_BYTES=4097"),
+                     ("--max-state-kib", 64), ("--max-ram-kib", 1, "--apply"),
+                     ("--set", "PS_POOL_BYTES=$(touch /tmp/unwanted)", "--check")):
+            self.run_cli(*args, success=False)
+            self.assertEqual(self.path.read_bytes(), before)
 
-    def test_invalid_inputs_never_modify_configuration(self):
-        broken=self.directory/"broken.json";broken.write_text('{"M":')
-        for args in [("--max-state-kib",1,"--apply"),
-                     ("--max-ram-kib",1,"--apply"),
-                     ("--budget-kib",-1,"--apply"),
-                     ("--shape","0,16,16","--apply"),
-                     ("--workloads",broken,"--apply"),
-                     ("--max-ram-kib",32,"--max-state-kib",32,"--apply")]:
-            with self.subTest(args=args):
-                before=self.stamp()
-                self.invoke(*args,success=False)
-                self.assertEqual(self.stamp(),before)
-
-    def test_effective_overrides_are_checked_without_rewriting(self):
-        before=self.stamp()
-        result=self.invoke("--show","--set","PANEL_MAX_R=12","--set","PANEL_MAX_W=8")
-        data=json_from_stdout(result.stdout)
-        self.assertEqual(data["configuration"]["PANEL_MAX_R"],12)
-        self.assertEqual(data["configuration"]["PANEL_MAX_W"],8)
-        self.invoke("--check","--set","PS_POOL_BYTES=262144",success=False)
-        self.assertEqual(self.stamp(),before)
-
-    def test_raw_representation_sets_hardware_mode(self):
-        self.invoke("--max-state-kib",64,"--workloads",self.workloads,"--representation","raw32","--apply")
-        values=capacity_config.read_config(self.config)
-        self.assertEqual(values["PS_FORCE_RAW"],1)
-        self.assertEqual(values["CAPACITY_REPRESENTATION"],"raw32")
-        self.invoke("--check")
-        self.invoke("--check","--set","PS_FORCE_RAW=0",success=False)
-
-    def test_unsupported_array_size_is_rejected_for_capacity(self):
-        self.invoke("--check","--set","SIZE=8",success=False)
-
-    def test_c_header_uses_checked_configuration(self):
-        header=self.directory/"npu_config.h"
-        self.invoke("--emit-c-header",header)
-        text=header.read_text()
-        self.assertIn("NPU_CONFIG_PANEL_MAX_R",text)
-        self.assertIn("NPU_CONFIG_PS_POOL_BYTES",text)
-        self.assertIn("78080",text)
-
-
-@unittest.skipUnless(shutil.which("make"),"GNU Make is required for build integration checks")
-class MakeTests(_ConfigurationFixture):
-
-    def make_environment(self):
-        # These are independent Make invocations, even when the test suite was
-        # launched through `make capacity-test`. Do not inherit its recursive
-        # variable overrides or exported configuration instead of the fixture.
-        excluded=set(capacity_config.DEFAULTS)|{"MAKEFLAGS","MFLAGS","MAKELEVEL",
-                    "MAKEOVERRIDES","CONFIG","REPRESENTATION","SHAPE","SHAPES","WORKLOADS"}
-        return {key:value for key,value in os.environ.items()
-                if key not in excluded and not key.startswith(("NPU_","MMA_","CAPACITY_"))}
-
-    def make(self,*args,subdirectory=None,success=True):
-        target=ROOT/subdirectory if subdirectory else ROOT
-        command=["make","--no-print-directory","-C",str(target),"NPU_CONFIG="+str(self.config),*map(str,args)]
-        result=subprocess.run(command,cwd=self.directory,env=self.make_environment(),
-                              text=True,capture_output=True,timeout=90)
-        if success:self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        else:self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
-        return result
-
-    def test_custom_config_and_make_overrides_from_another_directory(self):
-        result=self.make("capacity-show","PANEL_MAX_R=12","PANEL_MAX_W=8")
-        data=json_from_stdout(result.stdout)
-        self.assertEqual(data["configuration"]["PANEL_MAX_R"],12)
-        self.assertEqual(data["configuration"]["PANEL_MAX_W"],8)
-        self.assertEqual(data["configuration"]["PS_POOL_BYTES"],78080)
-        self.make("capacity-check","PS_POOL_BYTES=262144",success=False)
-
-    def test_parallel_solve_and_build_is_rejected_before_writing(self):
-        before=self.stamp()
-        self.make("-j2","capacity-solve","vcs-unit-build","UNIT=npu_top","MAX_STATE_KIB=32",success=False)
-        self.assertEqual(self.stamp(),before)
-
-    def test_unit_compiler_arguments_and_build_identity_follow_config(self):
-        first=self.make("-n","vcs-unit-build","UNIT=npu_top").stdout
-        second=self.make("-n","vcs-unit-build","UNIT=npu_top","PANEL_MAX_R=12","PANEL_MAX_W=8").stdout
-        self.assertIn("GEMPACT_PANEL_MAX_R=10",first)
-        self.assertIn("GEMPACT_PANEL_MAX_W=10",first)
-        self.assertIn("GEMMORA_PS_POOL_BYTES=78080",first)
-        self.assertIn("GEMPACT_PANEL_MAX_R=12",second)
-        self.assertIn("GEMPACT_PANEL_MAX_W=8",second)
-        # Existing unit Make directories include physical capacities, ensuring
-        # a changed configuration cannot pick the old geometry's executable.
-        self.assertIn("_r10_w10",first)
-        self.assertIn("_r12_w8",second)
-
-    def test_direct_uvm_submake_receives_same_config(self):
-        text=self.make("-n","com",subdirectory="veri/sim").stdout
-        self.assertIn("GEMPACT_PANEL_MAX_R=10",text)
-        self.assertIn("GEMPACT_PANEL_MAX_W=10",text)
-        self.assertIn("GEMMORA_PS_POOL_BYTES=78080",text)
-
-    def test_verilator_backend_receives_explicit_hardware_dimensions(self):
-        text=self.make("-n","pcr-backend").stdout
-        args=shlex.split(text)
-        for flag,value in (("--panel-rows","10"),("--panel-cols","10"),
-                           ("--ps-pool-bytes","78080")):
-            self.assertEqual(args[args.index(flag)+1],value)
-
-    def test_submake_effective_size_and_config_alias(self):
-        # Simulator/ASIC expose different historical names for SIZE. Their
-        # validation must check the value actually instantiated by that entry.
-        for subdirectory,override in (("veri/sim","MMA_SIZE=8"),
-                                      ("asic/synthesis","NPU_SIZE=8")):
-            with self.subTest(subdirectory=subdirectory):
-                self.make("capacity-check",override,subdirectory=subdirectory,success=False)
-        result=subprocess.run(["make","--no-print-directory","-C",str(ROOT),
-                               "CONFIG="+str(self.config),"capacity-show"],
-                              cwd=self.directory,env=self.make_environment(),
-                              text=True,capture_output=True,timeout=30)
-        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertEqual(json_from_stdout(result.stdout)["configuration"]["PANEL_MAX_R"],10)
-
-    def test_uvm_rebuilds_only_when_effective_build_configuration_changes(self):
-        # A tiny compiler substitute records the actual compile arguments and
-        # produces the requested output file. This checks Make's dependency
-        # behavior without pretending that an RTL simulation has occurred.
-        compiler=self.directory/"record-vcs"
-        log=self.directory/"compile-arguments.jsonl"
-        binary=self.directory/"simv"
-        filelist=self.directory/"files.f";filelist.write_text("")
-        compiler.write_text(f"#!{sys.executable}\n"+
-            "import json, pathlib, sys\n"+
-            f"with open({str(log)!r}, 'a') as f: f.write(json.dumps(sys.argv[1:])+'\\n')\n"+
-            "pathlib.Path(sys.argv[sys.argv.index('-o')+1]).write_text('compiler test output\\n')\n")
-        compiler.chmod(0o755)
-        args=("com","SIMV="+str(binary),"VCS="+str(compiler),
-              "FILELIST="+str(filelist),"OUT_DIR="+str(self.directory/"out"))
-        self.make(*args,subdirectory="veri/sim")
-        stamp=Path(str(binary)+".npu-config")
-        original=(stamp.read_bytes(),stamp.stat().st_mtime_ns,binary.stat().st_mtime_ns)
-        self.make(*args,subdirectory="veri/sim")
-        self.assertEqual(len(log.read_text().splitlines()),1)
-        self.assertEqual((stamp.read_bytes(),stamp.stat().st_mtime_ns,binary.stat().st_mtime_ns),original)
-        self.make(*args,"PANEL_MAX_R=12","PANEL_MAX_W=8",subdirectory="veri/sim")
-        calls=[json.loads(line) for line in log.read_text().splitlines()]
-        self.assertEqual(len(calls),2)
-        self.assertIn("+define+GEMPACT_PANEL_MAX_R=12",calls[-1])
-        self.assertIn("+define+GEMPACT_PANEL_MAX_W=8",calls[-1])
-        self.assertIn(b"PANEL_MAX_R=12",stamp.read_bytes())
-        self.make(*args,"PANEL_MAX_R=12","PANEL_MAX_W=8",subdirectory="veri/sim")
-        self.assertEqual(len(log.read_text().splitlines()),2)
-        # Restore the file's capacities with a raw PS representation. Even
-        # with a caller-specified SIMV name, a new mode must trigger rebuild.
-        self.make(*args,"PS_FORCE_RAW=1","CAPACITY_REPRESENTATION=raw32",subdirectory="veri/sim")
-        calls=[json.loads(line) for line in log.read_text().splitlines()]
-        self.assertEqual(len(calls),3)
-        self.assertTrue(any("GEMMORA_PS_FORCE_RAW" in arg for arg in calls[-1]))
+    @unittest.skipUnless(shutil.which("make"), "GNU Make is required")
+    def test_make_capacity_check_uses_shared_defaults(self):
+        run = subprocess.run(["make", "--no-print-directory", "capacity-check", f"NPU_CONFIG={self.path}"],
+                             cwd=ROOT, text=True, capture_output=True, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        result = json_from_stdout(run.stdout)
+        self.assertEqual(result["allocation"]["max_frame_rows"], 256)
+        self.assertEqual(result["allocation"]["shared_total_bytes"], 14336)
+        self.assertEqual(result["allocation"]["logical_ps_rows"], 1024)
+        self.assertNotIn("panel_max_r", result["allocation"])
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main()

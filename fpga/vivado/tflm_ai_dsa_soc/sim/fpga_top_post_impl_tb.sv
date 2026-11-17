@@ -4,6 +4,9 @@ module fpga_top_post_impl_tb #(
     parameter int unsigned WEIGHT_WIDTH = 16,
     parameter int unsigned DATA_WIDTH = 16,
     parameter int unsigned SIZE = 16,
+    parameter int unsigned BUS_WIDTH = 64,
+    parameter int unsigned SHARED_BANK_BYTES = 2048,
+    parameter int unsigned SHARED_BANK_COUNT = 7,
     parameter int unsigned IA_CACHE_BLOCKS = 4,
     parameter int unsigned CPU_MEM_DP = 65536,
     parameter string       CPU_MEM_PATH = "",
@@ -36,6 +39,8 @@ module fpga_top_post_impl_tb #(
     always #10ns sys_clk = ~sys_clk;
 
     initial begin
+        $display("[POST_IMPL_SMOKE] cfg BUS_WIDTH=%0d SHARED_BANK_BYTES=%0d SHARED_BANK_COUNT=%0d",
+                 BUS_WIDTH, SHARED_BANK_BYTES, SHARED_BANK_COUNT);
         $display("[POST_IMPL_SMOKE] cfg SIZE=%0d IA_CACHE_BLOCKS=%0d WEIGHT_WIDTH=%0d DATA_WIDTH=%0d CPU_MEM_DP=%0d",
                  SIZE, IA_CACHE_BLOCKS, WEIGHT_WIDTH, DATA_WIDTH, CPU_MEM_DP);
         $display("[POST_IMPL_SMOKE] cfg CPU_MEM_PATH=%s", CPU_MEM_PATH);

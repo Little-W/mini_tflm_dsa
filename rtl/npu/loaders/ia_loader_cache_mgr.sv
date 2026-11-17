@@ -2,7 +2,7 @@
  * ia_loader_cache_mgr — 缓存管理、对角化输出与控制信号生成
  * ============================================================
  * 功能：
- *   1. 管理 SIZE 组伪双端口 RAM bank（每组深度 CACHE_BLOCKS × SIZE）
+ *   1. 管理 SIZE 组同步读写 RAM，每组物理容量为 CACHE_BLOCKS × SIZE × DATA_WIDTH bit
  *   2. 将 AXI DMA 解包后的数据写入指定 slot/row/col
  *   3. 接收发送命令后，按对角化时序从 RAM 读出数据
  *   4. 生成延迟对齐的 ia_row_valid[j], ia_is_init_data[j], ia_calc_done[j]
@@ -19,13 +19,29 @@ module ia_loader_cache_mgr #(
     parameter int unsigned SIZE         = 16,
     parameter int unsigned BUS_WIDTH    = 32,
     parameter int unsigned REG_WIDTH    = 32,
-    parameter int unsigned CACHE_BLOCKS = 4
+    parameter int unsigned CACHE_BLOCKS = 4,
+    parameter int unsigned COMPACT_S8 = 1,
+    parameter bit EXTERNAL_RAM = 1'b0,
+    parameter int unsigned RAM_WORD_ADDR_WIDTH = 10,
+    localparam int unsigned SLOT_BLOCKS =
+        ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS
 ) (
     input  logic clk,
     input  logic rst_n,
+    input  logic compact_mode = 1'b0,
+    input  logic signed [DATA_WIDTH-1:0] compact_offset = '0,
+    input  logic [31:0] cfg_cache_blocks = 32'd0,
+
+    output logic [1:0] ram_port_wr_en,
+    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1],
+    output logic [127:0] ram_port_wr_data [0:1],
+    output logic [15:0] ram_port_wr_mask [0:1],
+    output logic [1:0] ram_port_rd_en,
+    output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1],
+    input  logic [127:0] ram_port_rd_data [0:1] = '{default:'0},
 
     // ---- 写入端 ----
-    input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]      wr_slot,
+    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]      wr_slot,
     input  logic [$clog2(SIZE)-1:0]              wr_row,
     input  logic [$clog2(SIZE)-1:0]              wr_col_base,
     input  logic signed [DATA_WIDTH-1:0]         wr_data  [BUS_WIDTH/8],  // 最多 BYTE_PER_BEAT 个
@@ -35,11 +51,11 @@ module ia_loader_cache_mgr #(
     // ---- L1组对角化发送控制 ----
     // ctrl 一次性指定 L1 组的起始/终止 slot，cache_mgr 自主完成整组输出
     input  logic                              l1_start,        // L1组发送启动脉冲
-    input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   l1_slot_start,   // 起始 slot
-    input  logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   l1_slot_end,     // 终止 slot（含，支持回绕）
+    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]   l1_slot_start,   // 起始 slot
+    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]   l1_slot_end,     // 终止 slot（含，支持回绕）
     input  logic                              l1_is_init,      // L1组 is_init 标记
     input  logic                              l1_calc_done,    // L1组 calc_done 标记
-    input  logic [$clog2(SIZE + 1)-1:0]       slot_rows [CACHE_BLOCKS], // 每 slot 有效行数
+    input  logic [$clog2(SIZE + 1)-1:0]       slot_rows [SLOT_BLOCKS], // 每 slot 有效行数
     output logic                              tile_done,       // 单 tile 输出完成
     output logic                              l1_done,         // L1组全部输出完成
     output logic                              ia_tile_start,   // 单 tile 首行到达输出端
@@ -56,11 +72,13 @@ module ia_loader_cache_mgr #(
   // =====================================================================
   localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
   localparam int LOG2_SIZE     = $clog2(SIZE);
-  localparam int RAM_DEPTH     = CACHE_BLOCKS * SIZE;
+  localparam int RAM_DEPTH     = SLOT_BLOCKS * SIZE;
   localparam int ADDR_W        = $clog2(RAM_DEPTH);
+  localparam int PHYSICAL_ADDR_W = $clog2(CACHE_BLOCKS * SIZE);
 
   // =====================================================================
-  // SIZE 组伪双端口 RAM
+  // Each 16-bit lane contains two 8-bit banks of CACHE_BLOCKS * SIZE entries.
+  // Compact S8 selects one bank with the high slot bit; wide S16 uses both.
   // =====================================================================
   // 写端口：LOAD 阶段从 AXI DMA 响应写入
   // 读端口：SEND 阶段对角化读出
@@ -69,26 +87,105 @@ module ia_loader_cache_mgr #(
   logic signed [DATA_WIDTH-1:0] ram_wr_data [SIZE];
 
   logic              ram_rd_en   [SIZE];
+  logic              ram_rd_en_d1 [SIZE];
   logic [ADDR_W-1:0] ram_rd_addr [SIZE];
   logic signed [DATA_WIDTH-1:0] ram_rd_data [SIZE];
 
-  generate
+  generate if (!EXTERNAL_RAM) begin : g_local_ram
+    assign ram_port_wr_en = '0;
+    assign ram_port_rd_en = '0;
+    assign ram_port_wr_addr = '{default:'0};
+    assign ram_port_wr_data = '{default:'0};
+    assign ram_port_wr_mask = '{default:'0};
+    assign ram_port_rd_addr = '{default:'0};
     for (genvar j = 0; j < SIZE; j++) begin : g_ram_bank
-      pseudo_dual_port_ram #(
-        .DATA_WIDTH (DATA_WIDTH),
-        .ADDR_WIDTH (ADDR_W)
-      ) u_ram (
-        .clk   (clk),
-        .ena   (ram_wr_en[j]),
-        .enb   (ram_rd_en[j]),
-        .wea   (1'b1),
-        .addra (ram_wr_addr[j]),
-        .dia   (ram_wr_data[j]),
-        .addrb (ram_rd_addr[j]),
-        .dob   (ram_rd_data[j])
-      );
+      if ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) begin : g_byte_banks
+        logic [7:0] bank_data [2];
+        logic read_bank_q;
+        wire [7:0] original_s8 = 8'(ram_wr_data[j] - compact_offset);
+        wire [7:0] selected_byte = read_bank_q ? bank_data[1] : bank_data[0];
+        always_ff @(posedge clk) begin
+          if (!rst_n) read_bank_q <= 1'b0;
+          else if (ram_rd_en[j]) read_bank_q <= ram_rd_addr[j][PHYSICAL_ADDR_W];
+        end
+        for (genvar b = 0; b < 2; b++) begin : g_bank
+          wire write_enable = ram_wr_en[j] &&
+              (!compact_mode || ram_wr_addr[j][PHYSICAL_ADDR_W] == 1'(b));
+          wire read_enable = ram_rd_en[j] &&
+              (!compact_mode || ram_rd_addr[j][PHYSICAL_ADDR_W] == 1'(b));
+          wire [7:0] write_byte = compact_mode ? original_s8 : ram_wr_data[j][b*8 +: 8];
+          pseudo_dual_port_ram #(.DATA_WIDTH(8), .ADDR_WIDTH(PHYSICAL_ADDR_W)) u_ram (
+              .clk(clk), .ena(write_enable), .enb(read_enable), .wea(1'b1),
+              .addra(ram_wr_addr[j][PHYSICAL_ADDR_W-1:0]), .dia(write_byte),
+              .addrb(ram_rd_addr[j][PHYSICAL_ADDR_W-1:0]), .dob(bank_data[b]));
+        end
+        assign ram_rd_data[j] = compact_mode
+            ? DATA_WIDTH'($signed(selected_byte) + $signed(compact_offset))
+            : {bank_data[1], bank_data[0]};
+      end else begin : g_word_bank
+        pseudo_dual_port_ram #(.DATA_WIDTH(DATA_WIDTH), .ADDR_WIDTH(ADDR_W)) u_ram (
+            .clk(clk), .ena(ram_wr_en[j]), .enb(ram_rd_en[j]), .wea(1'b1),
+            .addra(ram_wr_addr[j]), .dia(ram_wr_data[j]),
+            .addrb(ram_rd_addr[j]), .dob(ram_rd_data[j]));
+      end
     end
-  endgenerate
+  end else begin : g_external_ram
+    wire [RAM_WORD_ADDR_WIDTH-1:0] write_row_word =
+        RAM_WORD_ADDR_WIDTH'({wr_slot, wr_row}) << (compact_mode ? 0 : 1);
+    wire [RAM_WORD_ADDR_WIDTH-1:0] read_row_word =
+        RAM_WORD_ADDR_WIDTH'(ram_rd_addr[0]) << (compact_mode ? 0 : 1);
+    logic signed [DATA_WIDTH-1:0] row_data [SIZE];
+    always_comb begin
+      ram_port_wr_en = '0;
+      ram_port_wr_addr[0] = write_row_word;
+      ram_port_wr_addr[1] = write_row_word + RAM_WORD_ADDR_WIDTH'(1);
+      ram_port_wr_data = '{default:'0};
+      ram_port_wr_mask = '{default:'0};
+      for (int i = 0; i < BYTE_PER_BEAT; i++) begin
+        automatic int column = int'(wr_col_base) + i;
+        automatic int port_index = compact_mode ? 0 : (column >> 3);
+        automatic int byte_index = compact_mode ? column : ((column & 7) << 1);
+        if (wr_valid[i] && column < SIZE) begin
+          ram_port_wr_en[port_index] = 1'b1;
+          ram_port_wr_mask[port_index][byte_index] = 1'b1;
+          if (compact_mode)
+            ram_port_wr_data[port_index][byte_index*8 +: 8] =
+                8'(wr_data[i] - compact_offset);
+          else begin
+            ram_port_wr_mask[port_index][byte_index+1] = 1'b1;
+            ram_port_wr_data[port_index][byte_index*8 +: 16] = wr_data[i];
+          end
+        end
+      end
+      ram_port_rd_en = {ram_rd_en[0] && !compact_mode, ram_rd_en[0]};
+      ram_port_rd_addr[0] = read_row_word;
+      ram_port_rd_addr[1] = read_row_word + RAM_WORD_ADDR_WIDTH'(1);
+      for (int lane = 0; lane < SIZE; lane++) begin
+        row_data[lane] = compact_mode ?
+            DATA_WIDTH'($signed(ram_port_rd_data[0][lane*8 +: 8]) + $signed(compact_offset)) :
+            ram_port_rd_data[lane/8][(lane%8)*16 +: 16];
+      end
+    end
+    for (genvar lane = 0; lane < SIZE; lane++) begin : g_diagonal
+      if (lane == 0) begin : g_first
+        assign ram_rd_data[lane] = row_data[lane];
+      end else begin : g_delay
+        logic signed [DATA_WIDTH-1:0] values [0:lane-1];
+        always_ff @(posedge clk) begin
+          values[0] <= ram_rd_en_d1[0] ? row_data[lane] : '0;
+          for (int stage = 1; stage < lane; stage++)
+            values[stage] <= values[stage-1];
+        end
+        assign ram_rd_data[lane] = values[lane-1];
+      end
+    end
+`ifndef SYNTHESIS
+    initial begin
+      assert (SIZE == 16 && DATA_WIDTH == 16)
+        else $fatal(1, "External IA RAM requires sixteen 16-bit lanes");
+    end
+`endif
+  end endgenerate
 
   // =====================================================================
   // 写逻辑：将 wr_data/wr_valid 分派到对应的 RAM bank
@@ -121,8 +218,13 @@ module ia_loader_cache_mgr #(
   //   3) L1 组内 slot 连续发射。compute_core/ps_buffer 将整组看成一条
   //      tall stream，de-diagonalizer 在输出侧按 tile_start 标记切分。
   //
-  localparam int SLOT_W = (CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS);
+  localparam int SLOT_W = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
   localparam int ROW_CNT_W = $clog2(SIZE + 1);
+  wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
+  wire [SLOT_W-1:0] slot_mask =
+      ((COMPACT_S8 != 0) && (DATA_WIDTH == 16) && compact_mode)
+      ? SLOT_W'((active_cache_blocks << 1) - 1) : SLOT_W'(active_cache_blocks - 1);
+
 
   logic l1_issue_active;                  // 仍有行需要在 col0 发射
   logic [SLOT_W-1:0] issue_slot_r;       // 当前正在发射的 slot
@@ -161,7 +263,7 @@ module ia_loader_cache_mgr #(
     issue_row_idx_now = start_issue_now ? '0 : issue_row_idx_r;
     slot_rows_start_now = ROW_CNT_W'(slot_rows[l1_slot_start]);
     l1_slot_end_now   = start_issue_now ? l1_slot_end : l1_slot_end_r;
-    next_issue_slot_now = (CACHE_BLOCKS <= 1) ? '0 : (issue_slot_now + SLOT_W'(1));
+    next_issue_slot_now = (SLOT_BLOCKS <= 1) ? '0 : ((issue_slot_now + SLOT_W'(1)) & slot_mask);
     slot_rows_next_now = ROW_CNT_W'(slot_rows[next_issue_slot_now]);
     issue_rows_now    = start_issue_now ? slot_rows_start_now : issue_rows_r;
     issue_row_idx_inc_now = issue_row_idx_now + ROW_CNT_W'(1);
@@ -189,7 +291,7 @@ module ia_loader_cache_mgr #(
 
   // 下一 slot（自然回绕）
   logic [SLOT_W-1:0] next_issue_slot;
-  assign next_issue_slot = (CACHE_BLOCKS <= 1) ? '0 : (issue_slot_r + SLOT_W'(1));
+  assign next_issue_slot = (SLOT_BLOCKS <= 1) ? '0 : ((issue_slot_r + SLOT_W'(1)) & slot_mask);
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -296,7 +398,6 @@ module ia_loader_cache_mgr #(
   // =====================================================================
   // 输出数据：RAM 读出数据直接作为 ia_out（RAM 寄存器输出，延迟 1 拍）
   // =====================================================================
-  logic ram_rd_en_d1 [SIZE];
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       for (int j = 0; j < SIZE; j++)

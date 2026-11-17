@@ -26,6 +26,7 @@ module axi_linear_block_dma #(
 ) (
     input logic clk,
     input logic rst_n,
+    input logic abort = 1'b0,
 
     // ---- Read block command ----
     input  logic                                   rd_start,
@@ -212,7 +213,7 @@ module axi_linear_block_dma #(
     logic [REG_WIDTH-1:0] rd_rsp_valid_cols;
     logic rd_done_r, rd_response_error, rd_completed_error;
     wire rd_active = rd_context_count != '0;
-    wire rd_accept_start = rd_start && rd_start_ready;
+    wire rd_accept_start = rd_start && !abort && rd_start_ready;
     wire rd_unaligned_mode = rd_cfg_base_addr[ADDR_LSB-1:0] != '0 ||
                              rd_cfg_row_stride[ADDR_LSB-1:0] != '0;
     wire [ADDR_LSB-1:0] rd_rsp_offset = rd_rsp_row_addr_cur[ADDR_LSB-1:0];
@@ -523,6 +524,31 @@ module axi_linear_block_dma #(
     logic wr_done_r;
     logic wr_error_r;
     logic wr_pending_cmd_cross;
+    logic wr_abort;
+    logic wr_abort_hold_valid;
+    logic [BUS_WIDTH-1:0] wr_abort_hold_data;
+    logic [BUS_WIDTH/8-1:0] wr_abort_hold_mask;
+
+    // Preserve a stalled W beat across abort. Subsequent accepted AW bursts
+    // finish with zero byte enables, independent of the producer's progress.
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            wr_abort <= 1'b0;
+            wr_abort_hold_valid <= 1'b0;
+            wr_abort_hold_data <= '0;
+            wr_abort_hold_mask <= '0;
+        end else begin
+            if (abort) wr_abort <= 1'b1;
+            else if (!wr_active) wr_abort <= 1'b0;
+            if (abort && !wr_abort && m_axi_wvalid && !m_axi_wready) begin
+                wr_abort_hold_valid <= 1'b1;
+                wr_abort_hold_data <= m_axi_wdata;
+                wr_abort_hold_mask <= m_axi_wstrb;
+            end else if (wr_abort_hold_valid && wr_w_hs) begin
+                wr_abort_hold_valid <= 1'b0;
+            end
+        end
+    end
 `ifndef SYNTHESIS
     longint unsigned wr_trace_aw_count;
     longint unsigned wr_trace_cross_aw_count;
@@ -567,7 +593,7 @@ module axi_linear_block_dma #(
                             wr_aligned_last_beat + beat_count_t'(1) - wr_beat_cnt);
     wire wr_tail_beat = wr_row_cross && (wr_beat_cnt == wr_aligned_last_beat);
     wire wr_need_src_beat = !wr_tail_beat;
-    wire wr_can_issue_aw = wr_active &&
+    wire wr_can_issue_aw = wr_active && !abort && !wr_abort &&
                             (wr_cmd_row_cnt < wr_cfg_rows) &&
                             (wr_outstanding_cnt < WR_OUTS_W'(WR_OUTS_MAX));
     wire wr_can_start_data = wr_active && !wr_data_active &&
@@ -595,23 +621,27 @@ module axi_linear_block_dma #(
 
     assign m_axi_awsize  = 3'(AXI_SIZE_VALUE);
     assign m_axi_awburst = 2'b01; // INCR
-    assign m_axi_wdata   = wr_aligned_wdata;
-    assign m_axi_wstrb   = wr_aligned_wstrb;
+    assign m_axi_wdata   = wr_abort_hold_valid ? wr_abort_hold_data :
+                          wr_abort ? '0 : wr_aligned_wdata;
+    assign m_axi_wstrb   = wr_abort_hold_valid ? wr_abort_hold_mask :
+                          wr_abort ? '0 : wr_aligned_wstrb;
     assign m_axi_wvalid  = wr_active && wr_data_active &&
-                           (wr_need_src_beat ? src_wvalid : 1'b1);
+                           (wr_abort || (wr_need_src_beat ? src_wvalid : 1'b1));
     assign m_axi_wlast   = (wr_segment_beat_cnt == wr_segment_last_beat);
     assign m_axi_bready  = wr_active;
-    assign src_wready    = wr_active && wr_data_active &&
+    assign src_wready    = wr_active && wr_data_active && !wr_abort &&
                            wr_need_src_beat && m_axi_wready;
 
     wire last_wr_b = wr_b_hs && (wr_outstanding_cnt == WR_OUTS_W'(1)) &&
         (wr_cmd_row_cnt == wr_cfg_rows) && !m_axi_awvalid;
+    wire wr_abort_drained = wr_abort && !m_axi_awvalid &&
+        wr_outstanding_cnt == '0 && !wr_data_active && wr_pending_data_cnt == '0;
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             wr_done_r <= 1'b0;
         end else begin
-            wr_done_r <= wr_active && last_wr_b;
+            wr_done_r <= wr_active && (last_wr_b || wr_abort_drained);
         end
     end
 
@@ -623,7 +653,7 @@ module axi_linear_block_dma #(
             wr_cfg_rows         <= '0;
             wr_cfg_burst_len_m1 <= '0;
             wr_error_r          <= 1'b0;
-        end else if (wr_start && !wr_active) begin
+        end else if (wr_start && !wr_active && !abort) begin
             wr_active           <= 1'b1;
             wr_cfg_base_addr    <= wr_base_addr;
             wr_cfg_row_stride   <= wr_row_stride;
@@ -655,7 +685,7 @@ module axi_linear_block_dma #(
             wr_outstanding_cnt <= '0;
             wr_pending_data_cnt <= '0;
             wr_pending_cmd_cross <= 1'b0;
-        end else if (wr_start && !wr_active) begin
+        end else if (wr_start && !wr_active && !abort) begin
             m_axi_awvalid <= 1'b0;
             m_axi_awaddr  <= wr_base_addr;
             m_axi_awlen   <= wr_burst_len_m1;
@@ -768,7 +798,7 @@ module axi_linear_block_dma #(
             wr_trace_cross_aw_count <= '0;
             wr_trace_w_count        <= '0;
             wr_trace_max_outs       <= '0;
-        end else if (wr_start && !wr_active) begin
+        end else if (wr_start && !wr_active && !abort) begin
             wr_trace_aw_count       <= '0;
             wr_trace_cross_aw_count <= '0;
             wr_trace_w_count        <= '0;

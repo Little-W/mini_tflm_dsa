@@ -6,10 +6,10 @@
 
 int schedule_oracle(const uint32_t *words, size_t count, uint64_t *values)
 {
-    dsa_schedule_config_t c;
+    dsa_schedule_config_t c={0};
     dsa_schedule_t p;
-    if (count*sizeof(*words)!=sizeof(c)) return -1;
-    memcpy(&c,words,sizeof(c));
+    if (count*sizeof(*words)!=sizeof(c) && count*sizeof(*words)!=offsetof(dsa_schedule_config_t,ps_caps)) return -1;
+    memcpy(&c,words,count*sizeof(*words));
     if (!dsa_schedule_plan(&c,&p)) return 0;
     values[0]=p.dataflow_mode;
     values[1]=p.tiling.ia_reuse; values[2]=p.tiling.w_reuse;
@@ -27,27 +27,29 @@ void operand_oracle(const uint32_t *words, size_t count, uint32_t rows,
     uint32_t width, uint32_t stride, uint32_t address, uint32_t merge,
     uint32_t packed, uint64_t *values)
 {
-    dsa_schedule_config_t c;
-    if (count*sizeof(*words)!=sizeof(c)) {values[0]=values[1]=UINT64_MAX;return;}
-    memcpy(&c,words,sizeof(c));
+    dsa_schedule_config_t c={0};
+    if (count*sizeof(*words)!=sizeof(c) && count*sizeof(*words)!=offsetof(dsa_schedule_config_t,ps_caps)) {
+        values[0]=values[1]=UINT64_MAX;return;
+    }
+    memcpy(&c,words,count*sizeof(*words));
     dsa_schedule_operand(&c,rows,width,stride,address,merge,packed,&values[0],&values[1]);
 }
 
 int schedule_defaults(uint32_t *words, size_t count)
 {
-    dsa_schedule_config_t c;
+    dsa_schedule_config_t c={0};
     dsa_schedule_init(&c,17,31,65,16,8,16);
-    if (count*sizeof(*words)!=sizeof(c)) return 0;
-    memcpy(words,&c,sizeof(c));
+    if (count*sizeof(*words)!=sizeof(c) && count*sizeof(*words)!=offsetof(dsa_schedule_config_t,ps_caps)) return 0;
+    memcpy(words,&c,count*sizeof(*words));
     return 1;
 }
 
 uint64_t write_requests_oracle(const uint32_t *words, size_t count,
     uint32_t mode, uint32_t r, uint32_t w)
 {
-    dsa_schedule_config_t c;
-    if (count*sizeof(*words)!=sizeof(c)) return UINT64_MAX;
-    memcpy(&c,words,sizeof(c));
+    dsa_schedule_config_t c={0};
+    if (count*sizeof(*words)!=sizeof(c) && count*sizeof(*words)!=offsetof(dsa_schedule_config_t,ps_caps)) return UINT64_MAX;
+    memcpy(&c,words,count*sizeof(*words));
     return dsa_schedule_writes(&c,mode,r,w);
 }
 
@@ -64,11 +66,11 @@ int pack_oracle(void *dst,uint32_t bytes,const void *src,
 
 int layout_oracle(const uint32_t *words,size_t count,uint32_t may_pack,uint64_t *values)
 {
-    dsa_schedule_config_t c;
+    dsa_schedule_config_t c={0};
     dsa_schedule_t p;
     uint32_t layout;
-    if (count*sizeof(*words)!=sizeof(c)) return -1;
-    memcpy(&c,words,sizeof(c));
+    if (count*sizeof(*words)!=sizeof(c) && count*sizeof(*words)!=offsetof(dsa_schedule_config_t,ps_caps)) return -1;
+    memcpy(&c,words,count*sizeof(*words));
     if (!dsa_schedule_plan_layout(&c,may_pack,&p,&layout)) return 0;
     values[0]=layout;values[1]=p.dataflow_mode;
     values[2]=p.tiling.ia_reuse;values[3]=p.tiling.w_reuse;

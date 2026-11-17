@@ -25,11 +25,13 @@ IA loader 与 IS 的 kernel loader 使用同一矩阵返回合同。本文保留
 失败快照、向量和构建报告不再随补丁交付。所有当前测试从生成规则现场准备数据，
 方法及本次重新执行范围见 [源码交付说明](conv_source_only.md)。
 
-**后续优化已接入：标准输入缓存默认从 4 KiB 降为 1 KiB，并采用按卷积未来访问
-决定替换 / 准入的策略。** 该算法、IA 内部前端检查点的 25 条 NPU 对照、额外状态成本及适用条件见
-[卷积专用替换设计与实测](conv_replacement.md)。本页原有小层容量与十层六模式
-表来自 LRU checkpoint `629a39a4e0497036ab66942ca8b58b13d5d2ceca`，用于保留
-优化前证据；不能把这些历史数值当作新策略的当前测量。
+当前标准配置使用 **4 KiB 共享窗口缓存**，参数为 128 sets、2 ways、16 B line、
+`CONV_CACHE_POLICY=3`，同时服务 Conv 和 DW。统一 NPU 路径支持 PS 压缩和共享
+IA/PS bank，详见 [硬件架构](architecture.md) 与 [容量说明](capacity.md)。
+
+本文的容量实验采用固定实验版本：小层容量与十层六模式表来自
+`629a39a4e0497036ab66942ca8b58b13d5d2ceca`；1 KiB、策略 2 的实验及其适用条件见
+[卷积专用替换设计与实测](conv_replacement.md)。后文对应的缓存和 IA 结构说明均使用这些实验参数。
 
 ## 实际数据路径
 
@@ -75,7 +77,7 @@ ARSIZE / burst 描述符、正确 byte lane、INCR / FIXED 地址推进、RAM �
 | `input_offset` | s8 合同：−127～128 |
 | 地址 | 32 位总线地址；完整分配区间不允许溢出，当前合同要求 exclusive end 小于 2³² |
 | 输入 / 权重 / 输出 | s8 NHWC / s8 OHWI / s8 NHWC |
-| 累加 / bias / 量化 | s32，逐通道 multiplier / shift，匹配仓库的双舍入实现；NMSIS 入口做保守溢出筛选，直接调用低层驱动需自行满足数值合同 |
+| 累加 / bias / 量化 | s32，逐通道 multiplier / shift，使用最近偶数舍入；NMSIS 入口检查保守累加范围，直接调用低层驱动需满足相同的数值要求 |
 | 计算模式 | 标准 NPU 的 WS / IS；接收原图输入的 loader 获得已加 offset 的 s16 矩阵 |
 | batch / group | CPU 按 batch 和通道组提交多条硬件命令，每条任务执行完整空间卷积 |
 
@@ -92,9 +94,8 @@ dilation、padding 和输入地址。完整寄存器布局见
 标准 generic、wrapper、1×1、fast 1×1、1×N 入口及对应 `_acc` 调用统一在软件
 im2col / scratch 检查之前尝试硬件。合法但超出硬件支持范围的调用转入原软件路径；
 参数本身非法则返回参数错误。busy 在 START 前拒绝；启动后的硬件错误和 timeout
-不触发可能与仍活动 DMA 竞争的软件重试。PCR / resident engine、禁用逐通道量化的
-裁剪配置、完整 s16 Conv 数值合同、
-转置卷积和专用 depthwise / Cluster 阵列不在本次硬件入口范围内。
+不触发可能与仍活动 DMA 竞争的软件重试。统一 PS 压缩路径支持普通 s8 Conv。
+禁用逐通道量化的配置、完整 s16 Conv 和转置卷积不属于此入口；DW 由 VCE 执行。
 
 ## 卷积窗口重复数据的复用语义
 
@@ -102,7 +103,7 @@ im2col / scratch 检查之前尝试硬件。合法但超出硬件支持范围的
 
 1. **一个 32 位字保持寄存器。** 同一任务内再次使用当前字，直接取 lane，连缓存
    请求也不发送。该寄存器跨窗口、跨 tile 保留，cache bypass 模式下仍然有效。
-2. **默认 1 KiB 的原始输入地址缓存。** 32 sets、2 ways、16 字节 line；适用几何
+2. **实验配置的 1 KiB 原始输入地址缓存。** 32 sets、2 ways、16 字节 line；适用几何
    使用未来访问预测与选择性存入，不适用的任务使用原 LRU。数据存储为一块
    1R1W RAM。标签命中只从内部 RAM 返回数据，不进入
    AXI 填充状态。缓存为阻塞式，一次 miss 完成前不接收第二个请求；随后对同一
@@ -119,7 +120,7 @@ im2col / scratch 检查之前尝试硬件。合法但超出硬件支持范围的
 标准 IA Loader 具有 `SIZE` 个独立的 1R1W bank，每个 bank 的逻辑深度是
 `IA_CACHE_BLOCKS * SIZE`，宽度是 `DATA_WIDTH`。默认四个 slot、s16 物理数据位宽时：
 
-| SIZE | 单个 A tile | 原 IA 的四个 tile | 旧 4 KiB / IA | 当前 1 KiB 主数据 / IA |
+| SIZE | 单个 A tile | 实验 IA 的四个 tile | 4 KiB / IA | 1 KiB 主数据 / IA |
 |---:|---:|---:|---:|---:|
 | 4 | 32 B | 128 B | 32 倍 | 8 倍 |
 | 8 | 128 B | 512 B | 8 倍 | 2 倍 |
@@ -134,12 +135,12 @@ wrapper 的深度实际为 `2^ceil(log2(IA_CACHE_BLOCKS * SIZE))`，非二次幂
 重复发送；独立输入缓存保存原始地址的 s8 字节，消除不同窗口 / tile 形成过程的重复
 外读。默认 `R=2` 时，四个 IA slot 可同时容纳当前两个 tile 和预取的两个 tile。
 
-旧 4 KiB LRU 还需另加 tag、valid、LRU 数组共 720 B。当前 1 KiB 几何策略的
+4 KiB LRU 实验还需另加 tag、valid、LRU 数组共 720 B。1 KiB 几何策略实验的
 主数据、tag / valid / LRU、32 位 next-use 表、临时数据和临时 tag / valid 合计
 约 1496 B；替换策略新增共享状态另约 103 B，此次 DMA 命令状态另行审计，完整算术面积尚未测量。容量通过 `npu_top` 或
 `npu_axil_top` 的 `CONV_CACHE_SETS/WAYS/LINE_BYTES` 在 elaboration / 综合时设置。
 `CONV_CACHE_POLICY=0/1/2` 分别选择旧 LRU、未来访问替换、未来访问替换加 XOR
-索引，当前默认为 2。
+索引。本文几何替换实验使用策略 2；当前共享窗口实现使用策略 3。
 运行时 `bypass_cache` 改变读取策略，不会把已经综合的 RAM 面积消除。
 
 ### LRU 基线：真实 NPU 的容量对照
@@ -219,8 +220,8 @@ MobileNetV2 op52 的自动设置是 R=2、W=16、3 个输出通道组。每个�
 输出通道组，五档缓存之间读取和周期完全相同。
 
 因此，仅按 LRU 基线不能把 4 KiB 一概判为浪费，也不能用前两个小层的结果直接
-将默认值减到 512 B。这促成了后续的几何替换、选择性存入和索引优化；经新 RTL
-对照后，当前标准默认已改为 1 KiB。这里的完整六模式流量 / 周期、逐字节 CSV、来源及复用证明见
+将缓存设为 512 B。本文还比较了几何替换、选择性存入和索引优化下的 1 KiB 配置。
+完整六模式流量、周期及逐字节 CSV 见
 [复现入口](../test/conv_models/README.md)。
 
 ### 直接复用 IA 的设计评审
@@ -400,8 +401,9 @@ make conv-gemm-regression VERILATOR=/absolute/path/to/verilator
 make conv-ram-inference YOSYS=yowasp-yosys
 ```
 
-标准集成与普通 NPU 测试现在默认 `CONV_CACHE_SETS=32`、`CONV_CACHE_POLICY=2`。
-复现旧 4 KiB LRU 参数时显式设置 `CONV_CACHE_SETS=128 CONV_CACHE_POLICY=0`。
+标准集成使用 `CONV_CACHE_SETS=128`、`CONV_CACHE_POLICY=3`。测试脚本可显式选择
+实验参数：`CONV_CACHE_SETS=32 CONV_CACHE_POLICY=2` 为 1 KiB 几何替换；
+`CONV_CACHE_SETS=128 CONV_CACHE_POLICY=0` 为 4 KiB LRU。
 
 不同测试的统计范围分别标出：模型输出、独立前端任务、整 NPU 任务、硬件命令
 与软件回退输出不能相加当作同一类覆盖。测试执行时在 `build/` 或指定目录生成

@@ -2,7 +2,7 @@
  * ia_loader_ctrl — 缓存调度与发送控制
  * ============================================================
  * 功能：
- *   1. 管理 CACHE_BLOCKS 个 cache block 的状态表（valid/busy）
+ *   1. 管理 SLOT_BLOCKS 个 cache block 的状态表（valid/busy）
  *   2. 维护 L2/L1/W/IA 循环计数器
  *   3. 计算 tile 基地址，下发加载命令给 tile_loader
  *   4. 生成 ia_data_valid，协调 send_ia_trigger → cache_send_start
@@ -26,18 +26,25 @@ module ia_loader_ctrl #(
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned COUNT_WIDTH  = REG_WIDTH,
     parameter int unsigned CACHE_BLOCKS = 4,
+    parameter int unsigned COMPACT_S8 = 1,
+    localparam int unsigned SLOT_BLOCKS =
+        ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS,
     parameter int unsigned PS_FRAME_COUNT = SIZE
 ) (
     input  logic clk,
     input  logic rst_n,
 
     // ---- 来自 top：配置参数（已锁存）----
+    input  logic                        cfg_compact = 1'b0,
+    input  logic [31:0]                  cfg_cache_blocks = 32'd0,
     input  logic                        cfg_valid,       // 参数有效（INIT 状态）
     input  logic [REG_WIDTH-1:0]        cfg_k,
     input  logic [REG_WIDTH-1:0]        cfg_n,
     input  logic                        cfg_use_16bits,
     input  logic                        cfg_tile_packed = 1'b0,
+    input  logic [REG_WIDTH-1:0]        cfg_packed_reduction = '0,
     input  logic                        cfg_bias_by_row_mode,
+    input  logic                        cfg_bias_at_end = 1'b0,
     input  logic [REG_WIDTH-1:0]        cfg_lhs_base,
     input  logic [REG_WIDTH-1:0]        cfg_lhs_row_stride_b,
     input  logic signed [REG_WIDTH-1:0] cfg_lhs_zp,
@@ -63,9 +70,14 @@ module ia_loader_ctrl #(
     input  logic                        load_ia_granted,
     input  logic                        send_ia_trigger,
     output logic                        ia_data_valid,
+    output logic [31:0]                 ps_frame_rows,
+    output logic [31:0]                 ps_frame_id,
+    output logic                        ps_frame_init,
+    output logic                        ps_frame_final,
     output logic                        ia_sending_done,
     output logic                        ia_l1_switch,
     output logic                        bias_sleep,
+    output logic                        bias_load_sleep,
     output logic                        bias_switch,
     output logic                        bias_last_loop,
     output logic                        all_done,       // 全部完成，回 IDLE
@@ -82,19 +94,30 @@ module ia_loader_ctrl #(
     output logic [REG_WIDTH-1:0]        tl_rows_to_read,
     output logic [REG_WIDTH-1:0]        tl_valid_cols,
     output logic [7:0]                  tl_burst_len_m1,
-    output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] tl_slot_id,
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] tl_slot_id,
     output logic                        tl_use_16bits,
     output logic signed [REG_WIDTH-1:0] tl_lhs_zp,
     input  logic                        tl_busy,
     input  logic                        tl_tile_done,
 
+    // Combinational request metadata permits cache lookup before DMA grant.
+    output logic                        request_valid,
+    output logic [REG_WIDTH-1:0]        request_base_addr,
+    output logic [REG_WIDTH-1:0]        request_p0,
+    output logic [REG_WIDTH-1:0]        request_q0,
+    output logic [REG_WIDTH-1:0]        request_group,
+    output logic [REG_WIDTH-1:0]        request_rows,
+    output logic [REG_WIDTH-1:0]        request_cols,
+    output logic [7:0]                  request_burst_len_m1,
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] request_slot,
+
     // ---- cache_mgr 发送接口（L1组级别）----
     output logic                              cache_l1_start,       // L1组发送启动脉冲
-    output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   cache_l1_slot_start,  // 起始 slot
-    output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0]   cache_l1_slot_end,    // 终止 slot（含，支持回绕）
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]   cache_l1_slot_start,  // 起始 slot
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]   cache_l1_slot_end,    // 终止 slot（含，支持回绕）
     output logic                              cache_l1_is_init,     // L1 组 is_init 标记
     output logic                              cache_l1_calc_done,   // L1 组 calc_done 标记
-    output logic [$clog2(SIZE + 1)-1:0]       cache_slot_rows [CACHE_BLOCKS], // 每 slot 有效行数
+    output logic [$clog2(SIZE + 1)-1:0]       cache_slot_rows [SLOT_BLOCKS], // 每 slot 有效行数
     input  logic                              cache_tile_done,      // 单 tile 输出完成
     input  logic                              cache_l1_done         // L1 组全部输出完成
 );
@@ -105,12 +128,17 @@ module ia_loader_ctrl #(
   localparam int LOG2_SIZE     = $clog2(SIZE);
   localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
   localparam int LOG2_BPB      = $clog2(BYTE_PER_BEAT);
-  localparam int SLOT_W        = (CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS);
-  localparam int LOAD_CNT_W    = $clog2(CACHE_BLOCKS + 1);
+  localparam int SLOT_W        = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
+  localparam int LOAD_CNT_W    = $clog2(SLOT_BLOCKS + 1);
   localparam int W_CNT_W       = (PS_FRAME_COUNT <= 1) ? 1 : ($clog2(PS_FRAME_COUNT) + 1);
   localparam int ROW_CNT_W     = $clog2(SIZE + 1);
   localparam int CNT_W         = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
   typedef logic [CNT_W-1:0] count_t;
+  wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
+  wire [SLOT_W-1:0] slot_mask =
+      ((COMPACT_S8 != 0) && (DATA_WIDTH == 16) && cfg_compact)
+      ? SLOT_W'((active_cache_blocks << 1) - 1) : SLOT_W'(active_cache_blocks - 1);
+
 
   // =====================================================================
   // 状态机
@@ -139,8 +167,9 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] tile_row_step_b_comb;
   logic [REG_WIDTH-1:0] l2_group_row_step_b_comb;
 
-  wire [REG_WIDTH-1:0] packed_k_tiles = (cfg_n >> LOG2_SIZE) +
-      REG_WIDTH'((cfg_n & REG_WIDTH'(SIZE-1)) != 0);
+  wire [REG_WIDTH-1:0] packed_reduction = cfg_packed_reduction != 0 ? cfg_packed_reduction : cfg_n;
+  wire [REG_WIDTH-1:0] packed_k_tiles = (packed_reduction >> LOG2_SIZE) +
+      REG_WIDTH'((packed_reduction & REG_WIDTH'(SIZE-1)) != 0);
   assign tile_row_step_b_comb = cfg_tile_packed ?
       (packed_k_tiles << (2*LOG2_SIZE + (cfg_use_16bits ? 1 : 0))) :
       (cfg_lhs_row_stride_b << LOG2_SIZE);
@@ -174,10 +203,10 @@ module ia_loader_ctrl #(
   // =====================================================================
   // valid: 数据已加载完毕，可供读取
   // busy:  正在被发送使用中（不可覆写）
-  logic blk_valid [CACHE_BLOCKS];
-  logic blk_busy  [CACHE_BLOCKS];
+  logic blk_valid [SLOT_BLOCKS];
+  logic blk_busy  [SLOT_BLOCKS];
 `ifndef SYNTHESIS
-  logic [CACHE_BLOCKS-1:0] cache_blk_valid;
+  logic [SLOT_BLOCKS-1:0] cache_blk_valid;
 `endif
 
   // =====================================================================
@@ -392,13 +421,13 @@ module ia_loader_ctrl #(
 
   // 当前读 slot = rd_slot_base + ia_idx
   logic [SLOT_W-1:0] current_rd_slot;
-  assign current_rd_slot = (CACHE_BLOCKS <= 1) ? '0 : (rd_slot_base + ia_idx[SLOT_W-1:0]);
+  assign current_rd_slot = (SLOT_BLOCKS <= 1) ? '0 : ((rd_slot_base + ia_idx[SLOT_W-1:0]) & slot_mask);
 
   // 下一个要发送的 slot（用于 blk_busy 管理）
-  assign next_rd_slot = (CACHE_BLOCKS <= 1) ? '0 : (rd_slot_base + SLOT_W'(ia_idx + 1));
+  assign next_rd_slot = (SLOT_BLOCKS <= 1) ? '0 : ((rd_slot_base + SLOT_W'(ia_idx + 1)) & slot_mask);
 
   // slot_rows_reg: 存储每个 slot 的有效行数，在 tl_tile_done 时写入
-  logic [ROW_CNT_W-1:0] slot_rows_reg [CACHE_BLOCKS];
+  logic [ROW_CNT_W-1:0] slot_rows_reg [SLOT_BLOCKS];
 
   // =====================================================================
   // L2 行基地址
@@ -541,12 +570,12 @@ module ia_loader_ctrl #(
                                w_iter_last_narrow;
 
   // 缓冲区空余容量足以同时容纳当前组和下一组时，可从第一轮 W 复用起预取。
-  // 合法配置要求 cfg_ia_reuse_num <= CACHE_BLOCKS/2；该条件只需在 init 锁存一次。
+  // 合法配置要求 cfg_ia_reuse_num <= SLOT_BLOCKS/2；该条件只需在 init 锁存一次。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n)
       can_overlap_prefetch <= 1'b0;
     else if (state == S_IDLE && init_start)
-      can_overlap_prefetch <= (cfg_ia_reuse_num <= REG_WIDTH'(CACHE_BLOCKS / 2));
+      can_overlap_prefetch <= (cfg_ia_reuse_num <= (REG_WIDTH'(slot_mask) + REG_WIDTH'(1)) / 2);
   end
 
   // 可以进入预取的条件：
@@ -638,7 +667,8 @@ module ia_loader_ctrl #(
   logic bias_last_loop_comb;
   logic bias_switch_within_w_group;
   logic bias_switch_next_w_group;
-  assign bias_switch_within_w_group = (l1_idx == '0) && !w_iter_last;
+  assign bias_switch_within_w_group =
+      (cfg_bias_at_end ? is_last_l1_group : (l1_idx == '0)) && !w_iter_last;
   assign bias_switch_next_w_group   = cache_l1_calc_done && w_iter_last;
   assign bias_switch_by_col = cache_l1_done &&
                               ia_iter_last &&
@@ -652,6 +682,8 @@ module ia_loader_ctrl #(
                               !is_last_l2_group;
 
   assign bias_sleep  = (state == S_IDLE) ? 1'b1 : ~cache_l1_is_init;
+  assign bias_load_sleep = cfg_bias_at_end ?
+      ((state == S_IDLE) || !cache_l1_calc_done) : bias_sleep;
   assign bias_switch_comb = cfg_bias_by_row_mode ? bias_switch_by_row : bias_switch_by_col;
   assign bias_last_loop_comb = (state != S_IDLE) && is_last_l2_group;
 
@@ -682,6 +714,15 @@ module ia_loader_ctrl #(
   logic signed [REG_WIDTH-1:0] tl_lhs_zp_r;
   assign can_issue_load = can_start_load && load_ia_req && load_ia_granted;
   assign load_issue = can_issue_load && !tl_start_r;
+  assign request_valid = can_start_load && load_ia_req && !tl_start_r;
+  assign request_base_addr = computed_tile_base;
+  assign request_p0 = load_cursor_p0;
+  assign request_q0 = REG_WIDTH'(prefetch_active ? next_l1_idx : tile_col_idx) << LOG2_SIZE;
+  assign request_group = REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
+  assign request_rows = load_rows_cur;
+  assign request_cols = load_cols_cur;
+  assign request_burst_len_m1 = load_burst_len_m1;
+  assign request_slot = wr_slot_ptr;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -779,7 +820,7 @@ module ia_loader_ctrl #(
     end else begin
       // 写指针：每完成一个 tile 加载递增
       if (tl_tile_done)
-        wr_slot_ptr <= wr_slot_ptr + 1;
+        wr_slot_ptr <= (wr_slot_ptr + SLOT_W'(1)) & slot_mask;
 
       // 读基地址：L1 组退休时更新
       if (retirement_l1)
@@ -799,12 +840,12 @@ module ia_loader_ctrl #(
   // =====================================================================
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      for (int i = 0; i < CACHE_BLOCKS; i++) begin
+      for (int i = 0; i < SLOT_BLOCKS; i++) begin
         blk_valid[i] <= 1'b0;
         blk_busy[i]  <= 1'b0;
       end
     end else if (state == S_INIT) begin
-      for (int i = 0; i < CACHE_BLOCKS; i++) begin
+      for (int i = 0; i < SLOT_BLOCKS; i++) begin
         blk_valid[i] <= 1'b0;
         blk_busy[i]  <= 1'b0;
       end
@@ -883,13 +924,21 @@ module ia_loader_ctrl #(
   // cache_l1 信号生成
   // =====================================================================
   assign cache_l1_slot_start = rd_slot_base;
-  assign cache_l1_slot_end   = (CACHE_BLOCKS <= 1) ? '0 : (rd_slot_base + SLOT_W'(r_cur - 1));  // 自然回绕
+  assign cache_l1_slot_end   = (SLOT_BLOCKS <= 1) ? '0 : ((rd_slot_base + SLOT_W'(r_cur - 1)) & slot_mask);  // 自然回绕
   assign cache_l1_is_init    = is_first_tile;
   assign cache_l1_calc_done  = is_last_l1_group;
 
+  // A complete L1 group forms one partial-sum frame. The last spatial group
+  // replaces its final full tile by the actual number of remaining rows.
+  assign ps_frame_rows = (32'(r_cur) << LOG2_SIZE) + 32'(SIZE - 1) -
+                         (is_last_l2_group ? (32'(SIZE) - 32'(rsp_rows_last_tile)) : 32'd0);
+  assign ps_frame_id = 32'(w_cnt);
+  assign ps_frame_init = is_first_tile;
+  assign ps_frame_final = is_last_l1_group;
+
   // 将内部状态暴露给 cache_mgr
   generate
-    for (genvar gi = 0; gi < CACHE_BLOCKS; gi++) begin : g_cache_out
+    for (genvar gi = 0; gi < SLOT_BLOCKS; gi++) begin : g_cache_out
       assign cache_slot_rows[gi] = slot_rows_reg[gi];
 `ifndef SYNTHESIS
       assign cache_blk_valid[gi] = blk_valid[gi];

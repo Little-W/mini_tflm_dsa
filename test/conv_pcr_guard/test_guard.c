@@ -11,12 +11,13 @@
 #include "riscv_nnfunctions.h"
 #endif
 
-static unsigned reads, writes, starts;
+static unsigned reads, writes, starts, conv_available, active;
 
 void dsa_mmio_write(uint32_t address, uint32_t value)
 {
     ++writes;
-    if (address == DSA_MMIO_BASE + NPU_REG_CTRL && (value & 1u)) ++starts;
+    if (address == DSA_MMIO_BASE + NPU_REG_CTRL && (value & 1u)) {++starts;active=1u;}
+    if (address == DSA_MMIO_BASE + NPU_REG_STATUS) active=0u;
 }
 
 uint32_t dsa_mmio_read(uint32_t address)
@@ -24,10 +25,13 @@ uint32_t dsa_mmio_read(uint32_t address)
     ++reads;
     if (address == DSA_MMIO_BASE + NPU_REG_ID) return 0x4e505531u;
     if (address == DSA_MMIO_BASE + NPU_REG_CONFIG_ABI) return 2u;
-    /* A PCR target does not advertise hardware Conv. The ordinary compile
-     * control intentionally observes the same absent capability. */
-    if (address == DSA_MMIO_BASE + NPU_REG_CONV_CAPS) return 0u;
-    assert(!"unexpected register read");
+    if (address == DSA_MMIO_BASE + NPU_REG_CONV_CAPS)
+        return conv_available ? (DSA_CONV_CAP_VERSION<<16)|7u : 0u;
+    if (address == DSA_MMIO_BASE + NPU_REG_STATUS) return active?5u:1u;
+    if (address == DSA_MMIO_BASE + NPU_REG_MATRIX_CAPS) return (16u<<24)|(8u<<16)|(4u<<8)|7u;
+    if (address == DSA_MMIO_BASE + NPU_REG_PS_CAPS) return (1u<<24)|(8u<<16)|7u;
+    if (address == DSA_MMIO_BASE + NPU_REG_PS_POOL_BYTES) return 12288u;
+    if (address == DSA_MMIO_BASE + NPU_REG_IA_CACHE_BYTES) return 2048u;
     return 0u;
 }
 
@@ -42,33 +46,22 @@ static void low_level(void)
     c.kernel_h = c.kernel_w = c.stride_h = c.stride_w = 1;
     c.dilation_h = c.dilation_w = 1;
     c.input_offset = 17; c.activation_min = -128; c.activation_max = 127;
-    /* All dimensions also satisfy PCR alignment. This distinguishes the
-     * unsupported per-channel Conv contract from a shape alignment error. */
-    for (unsigned mode = 0; mode < 2; ++mode) {
-        uint32_t validated, executed;
-        c.dataflow_mode = mode;
-        reads = writes = starts = 0;
-#if DSA_PCR_ENGINE
-        assert(gempact_plan_capacity(16,16,16,4,8,0,0,mode,0,
+    for (unsigned available=0u;available<2u;++available)
+    for (unsigned mode=0u;mode<2u;++mode) {
+        uint32_t validated,executed;
+        conv_available=available;c.dataflow_mode=mode;
+        reads=writes=starts=active=0u;
+        assert(gempact_plan_capacity(16,16,16,4,8,0,0,mode,1,
                                     DSA_PS_POOL_BYTES,&tiling,0));
-        assert(!gempact_plan_capacity(16,16,16,4,8,0,0,mode,1,
-                                     DSA_PS_POOL_BYTES,&tiling,0));
-#else
-        assert(gempact_plan_capacity(16,16,16,4,8,0,0,mode,1,0,&tiling,0));
-#endif
-        validated = dsa_conv_s8_validate(&c);
-        executed = dsa_conv_s8_execute(&c);
-#if DSA_PCR_ENGINE
-        assert(validated == DSA_ERR_INVALID_DIM && executed == DSA_ERR_INVALID_DIM);
-        assert(reads == 0);
-#else
-        assert(validated == DSA_SUCCESS && executed == DSA_ERR_UNSUPPORTED);
-        assert(reads == 3);
-#endif
-        assert(writes == 0 && starts == 0);
-        printf("LOW_LEVEL_PASS mode=%u validate=%u execute=%u reads=%u writes=%u starts=%u\n",
-               mode,validated,executed,reads,writes,starts);
+        validated=dsa_conv_s8_validate(&c);
+        executed=dsa_conv_s8_execute(&c);
+        assert(validated==DSA_SUCCESS);
+        if (available) assert(executed==DSA_SUCCESS && starts==1u && writes>0u);
+        else assert(executed==DSA_ERR_UNSUPPORTED && reads==3u && writes==0u && starts==0u);
+        printf("CONV_CAPABILITY_CASE available=%u mode=%u validate=%u execute=%u reads=%u writes=%u starts=%u\n",
+               available,mode,validated,executed,reads,writes,starts);
     }
+    conv_available=0u;
 }
 
 #ifdef TEST_NMSIS
@@ -98,11 +91,7 @@ static void nmsis_fallback(void)
      * unsupported shape must return not-handled before inspecting them. */
     assert(riscv_convolve_s8_try_dsa(&p,&q,&in,input,&f,filter,bias,NULL,
                                     &out,output,&status) == 0);
-#if DSA_PCR_ENGINE
-    assert(reads == 0);
-#else
     assert(reads == 3);
-#endif
     assert(writes == 0 && starts == 0);
     printf("PROBE_FALLBACK_PASS guarded_tensors=6 reads=%u writes=%u starts=%u\n",reads,writes,starts);
 
@@ -124,11 +113,7 @@ static void nmsis_fallback(void)
     assert(status == RISCV_NMSIS_NN_SUCCESS);
     assert(memcmp(output,golden,sizeof golden) == 0);
     assert(writes == 0 && starts == 0);
-#if DSA_PCR_ENGINE
-    assert(reads == 0);
-#else
-    assert(reads == 6); /* wrapper and general kernel each run the same probe */
-#endif
+    assert(reads == 6);
     printf("NMSIS_SOFTWARE_FALLBACK_PASS outputs=8 status=%d reads=%u writes=%u starts=%u\n",
            status,reads,writes,starts);
     assert(munmap(page,4096) == 0);
@@ -141,6 +126,6 @@ int main(void)
 #ifdef TEST_NMSIS
     nmsis_fallback();
 #endif
-    printf("PCR_CONV_GUARD_PASS compiled_pcr=%u\n",(unsigned)DSA_PCR_ENGINE);
+    printf("CONV_CAPABILITY_PASS compiled_pcr=%u\n",(unsigned)DSA_PCR_ENGINE);
     return 0;
 }

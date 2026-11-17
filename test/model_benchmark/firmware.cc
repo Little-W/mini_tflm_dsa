@@ -4,6 +4,7 @@
 
 #include "full_network_abi.h"
 #include "riscv_nn_dsa.h"
+#include "dsa_accel.h"
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -125,6 +126,12 @@ int Run() {
   if (cfg->mode != FULL_NETWORK_MODE_CPU &&
       cfg->mode != FULL_NETWORK_MODE_CONV_FC &&
       cfg->mode != FULL_NETWORK_MODE_HARDWARE) return Fail(2);
+  if (cfg->flags & ~FULL_NETWORK_FLAG_PS_RAW) return Fail(2);
+#if DSA_PS_COMPRESS
+  dsa_set_ps_force_raw((cfg->flags & FULL_NETWORK_FLAG_PS_RAW) != 0);
+#else
+  if (cfg->flags) return Fail(2);
+#endif
   if (cfg->model_address != FULL_NETWORK_MODEL_ADDRESS || cfg->model_bytes < 8 ||
       cfg->model_bytes > FULL_NETWORK_INPUT_ADDRESS - FULL_NETWORK_MODEL_ADDRESS ||
       cfg->input_address != FULL_NETWORK_INPUT_ADDRESS || !cfg->input_bytes ||
@@ -169,6 +176,7 @@ int Run() {
   full_network_result.output_bytes = output->bytes;
   full_network_result.output_address = reinterpret_cast<uintptr_t>(output->data.raw);
   full_network_result.expected_label = cfg->label;
+  full_network_result.planning_cycles = dsa_total_planning_cycles();
   full_network_result.init_cycles = soc_get_cycle() - init_start;
 
   Marker(FULL_NETWORK_BEGIN);

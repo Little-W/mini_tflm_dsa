@@ -10,9 +10,12 @@ import re
 import shlex
 import struct
 import subprocess
+import sys
 
 HERE=Path(__file__).resolve().parent
 ROOT=HERE.parents[1]
+sys.path.insert(0,str(ROOT))
+from scripts.capacity.config import axi_data_width, selected_config
 CPU_PROFILES = {
     'standard': {'cpu_enable_mul':1, 'cpu_enable_fast_mul':0, 'cpu_enable_div':1,
                  'cpu_enable_regs_dualport':1, 'cpu_two_stage_shift':1,
@@ -66,14 +69,25 @@ def filelist_sources(path,cwd,picorv32):
 
 
 def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=524288,pe_count=8,picorv32=None,
-              ia_cache_blocks=8,ps_storage_rows=799,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=64,first_read_latency=8):
+              ia_cache_blocks=8,ps_storage_rows=799,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=None,first_read_latency=8,ps_pool_bytes=0,
+              shared_bank_bytes=None,shared_bank_count=None):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
+    bus_width=axi_data_width(bus_width)
+    selected=selected_config()
+    shared_bank_bytes=selected['SHARED_BANK_BYTES'] if shared_bank_bytes is None else shared_bank_bytes
+    shared_bank_count=selected['SHARED_BANK_COUNT'] if shared_bank_count is None else shared_bank_count
+    if shared_bank_bytes not in (1024,2048,4096) or shared_bank_count not in range(6,10):
+        raise ValueError('Shared RAM requires 1024, 2048 or 4096 bytes per bank and 6..9 banks')
     protocol_max_bytes=256*(bus_width//8)
     if dma_max_bytes is None:dma_max_bytes=protocol_max_bytes
     if (jobs<1 or pe_count not in (4,8) or icache not in (0,1) or ram_words<1 or
         ia_cache_blocks<1 or ps_storage_rows<0 or s16_output_banks<0 or cpu_profile not in CPU_PROFILES or
         bus_width not in (32,64) or ram_words*32%bus_width or dma_max_bytes!=protocol_max_bytes or first_read_latency<1):
         raise ValueError('Invalid simulator configuration')
+    if ps_pool_bytes and (ps_pool_bytes < 64 or ps_pool_bytes % 64):
+        raise ValueError('PS pool must contain complete 64-byte bank groups')
+    if ps_pool_bytes:
+        ia_cache_blocks=4
     if picorv32 is None:
         picorv32=os.environ.get('PICORV32_ROOT')
     if picorv32 is None:
@@ -86,6 +100,8 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     cwd=ROOT/'veri/sim';filelist=ROOT/'veri/flist/dut_axi_soc.f'
     sources,source_args=filelist_sources(filelist,cwd,picorv32)
     sources += [HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp',Path(__file__)]
+    capture=ROOT/'test/ps_compression/ps_stream_capture.sv'
+    if ps_pool_bytes:sources.append(capture)
     sources+=list((ROOT/'rtl/npu/gempact').glob('*.svh'))
     def hashes():
         return ({str(p.relative_to(ROOT)):digest(p) for p in sorted(set(sources)) if p.is_relative_to(ROOT)},
@@ -95,7 +111,8 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
              'ia_cache_blocks':ia_cache_blocks,'ps_frame_count':16,
              'ps_storage_rows':ps_storage_rows,'output_banks_s16_max':s16_output_banks,
              'matrix_tile_packed':True,'axi_read_outstanding':4,
-             'axi_write_outstanding':4,'dma_max_bytes':dma_max_bytes,'core':'standard','pcr_engine':0,
+             'axi_write_outstanding':4,'dma_max_bytes':dma_max_bytes,'core':'unified','pcr_engine':0,
+             'ps_compress':bool(ps_pool_bytes),'ps_pool_bytes':ps_pool_bytes,
              'data_width':16,'weight_width':16,'dw_max_taps':49,
              'pool_max_taps':256,'ram_read_first_latency':first_read_latency,
              'ram_read_latency_origin':'accepted_AR','ram_continuous_read_beat_cycles':1,'bus_width':bus_width,'cpu_axi_data_bits':32,'rounding_mode':'nearest_even',
@@ -110,6 +127,14 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
              'cpu_icache_data_bytes':1024 if icache else 0,
              'cpu_axi_read_timing_buffer':1,'cpu_axi_write_timing_buffer':1,
              'npu_axi_timing_buffer':1,'bypass_ram_pingpong':1,'ram_write_timing_buffer':1}
+    shared_total = shared_bank_bytes * shared_bank_count
+    shared_enabled = bool(ps_pool_bytes)
+    profile.update(shared_ia_ps=shared_enabled,
+        shared_total_bytes=shared_total if shared_enabled else 0,
+        shared_bank_bytes=shared_bank_bytes if shared_enabled else 0,
+        shared_bank_count=shared_bank_count if shared_enabled else 0,
+        shared_ia_bank_choices=[1, 2, 4] if shared_enabled else [],
+        ps_directory_rows=1024 if shared_enabled else 0)
     if skip:
         manifest=json.loads(manifest_path.read_text())
         if (manifest.get('returncode')!=0 or manifest.get('source_sha256')!=before or
@@ -124,11 +149,15 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
           f'-DSOC_NETWORK_RAM_WORDS={ram_words}',f'-DSOC_NETWORK_ICACHE={icache}',
           f'-DSOC_NETWORK_DMA_MAX_BYTES={dma_max_bytes}',f'-DSOC_NETWORK_BUS_WIDTH={bus_width}',
           f'-DSOC_NETWORK_READ_FIRST_LATENCY={first_read_latency}',
+          f'-DSOC_NETWORK_SHARED_BANK_BYTES={shared_bank_bytes}',
+          f'-DSOC_NETWORK_SHARED_BANK_COUNT={shared_bank_count}',
           *[f'-DSOC_NETWORK_{key.upper()}={value}' for key,value in CPU_PROFILES[cpu_profile].items()],
           f'-DSOC_NETWORK_IA_CACHE_BLOCKS={ia_cache_blocks}',
           f'-DSOC_NETWORK_PS_STORAGE_ROWS={ps_storage_rows}',
           f'-DSOC_NETWORK_S16_OUTPUT_BANKS={s16_output_banks}',
-          f'-DSOC_NETWORK_PE_COUNT={pe_count}',*source_args,
+          f'-DSOC_NETWORK_PE_COUNT={pe_count}',
+          *([f'-DGEMMORA_PS_POOL_BYTES={ps_pool_bytes}','-DGEMPACT_PS_COMPRESS',str(capture)] if ps_pool_bytes else []),
+          *source_args,
           HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp']
     rc=command(args,out/'elaborate.log',cwd=cwd)
     compile_args=['make','-C',out/'obj','-f','Vtb_model_benchmark.mk','-j',jobs,
@@ -263,12 +292,15 @@ def main():
     parser.add_argument('--icache',type=int,choices=[0,1],default=1)
     parser.add_argument('--cpu-profile',choices=CPU_PROFILES,default='performance')
     parser.add_argument('--first-read-latency',type=int,default=8)
-    parser.add_argument('--bus-width',type=int,choices=(32,64),default=64)
+    parser.add_argument('--bus-width',type=int,choices=(32,64))
+    parser.add_argument('--shared-bank-bytes',type=int,choices=(1024,2048,4096))
+    parser.add_argument('--shared-bank-count',type=int,choices=range(6,10))
     parser.add_argument('--ram-words',type=int,default=524288)
     parser.add_argument('--pe-count',type=int,default=8)
     parser.add_argument('--ia-cache-blocks',type=int,default=8)
     parser.add_argument('--ps-storage-rows',type=int,default=799)
     parser.add_argument('--s16-output-banks',type=int,default=4)
+    parser.add_argument('--ps-pool-bytes',type=int,default=0)
     parser.add_argument('--picorv32',type=Path)
     parser.add_argument('--out',type=Path)
     parser.add_argument('--mem',type=Path)
@@ -289,7 +321,9 @@ def main():
                      icache=args.icache,ram_words=args.ram_words,pe_count=args.pe_count,picorv32=args.picorv32,
                      ia_cache_blocks=args.ia_cache_blocks,ps_storage_rows=args.ps_storage_rows,
                      s16_output_banks=args.s16_output_banks,cpu_profile=args.cpu_profile,
-                     bus_width=args.bus_width,first_read_latency=args.first_read_latency)
+                     bus_width=args.bus_width,first_read_latency=args.first_read_latency,
+                     ps_pool_bytes=args.ps_pool_bytes,shared_bank_bytes=args.shared_bank_bytes,
+                     shared_bank_count=args.shared_bank_count)
     if args.build_only:print(binary);return 0
     if args.out is None or args.mem is None:parser.error('--out and --mem are required for execution')
     report=run_sim(binary,args.out,args.mem,data_mem=args.data_mem,result_addr=args.result_addr,

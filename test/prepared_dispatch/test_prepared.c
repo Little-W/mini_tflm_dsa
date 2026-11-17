@@ -8,7 +8,7 @@
 #include "dsa_accel.h"
 #include "dsa_prepared.h"
 
-static uint32_t registers[64], saved[64];
+static uint32_t registers[128], saved[128];
 static uint32_t starts, writes, reads, active, busy, error_mode, matrix_reads;
 static uint32_t conv_caps = 0x00010007u, vector_caps = 0x0131083fu;
 static uint8_t *constants;

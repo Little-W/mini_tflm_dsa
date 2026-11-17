@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the unchanged repository's real NPU testbenches; retain every diagnostic."""
+"""Verify the unified NPU with generated tensors and a complete memory comparison."""
 import argparse, hashlib, json, os, re, subprocess, sys, tarfile, time
 from pathlib import Path
 
@@ -16,7 +16,7 @@ if x.baseline_ref:
         raise RuntimeError('baseline output directory belongs to another commit; choose a fresh --out')
     # Extract sources at runtime; no source snapshot or generated vector is
     # shipped as an input. Limit extraction to dependencies of the real benches.
-    selected=['rtl/npu','rtl/common','test/npu_top','test/pcr','test/dep_modules',
+    selected=['rtl/npu','rtl/common','test/dep_modules',
               'veri/top_regression','drivers/gempact_tiling.h']
     proc=subprocess.Popen(['git','archive',commit,'--',*selected],cwd=r,stdout=subprocess.PIPE)
     extracted={}
@@ -78,15 +78,13 @@ def run(cmd,log,timeout=600):
 def build(size,pcr=False):
     tag='pcr16' if pcr else f's{size}'
     d=out/tag;d.mkdir(exist_ok=True);src=sorted((r/'rtl/npu').rglob('*.sv'))+sorted((r/'rtl/npu').rglob('*.v'))+[r/'rtl/common/pseudo_dual_port_ram.v']
-    if pcr: src += [r/'test/pcr/ddr_axi_mem_model.sv',r/'test/pcr/tb_npu_top.sv']
-    else: src += [r/'test/dep_modules/ddr_axi_mem_model.sv',r/'test/npu_top/tb_npu_top.sv']
+    src += [r/'test/dep_modules/ddr_axi_mem_model.sv',Path(__file__).resolve().parent/'tb_npu_top.sv']
     src += [metrics]
-    flags=['--binary','--timing','--assert','-sv','--top-module','tb_npu_top','-Wno-fatal',f'-I{r/"rtl/npu/gempact"}',f'-DTB_SIZE={size}','-DTB_IA_CACHE_BLOCKS=4','-DTB_PS_FRAME_COUNT=16','-DTB_AXI_READ_OUTSTANDING=4','--Mdir',str(d/'obj'),'-j',str(x.jobs),'-CFLAGS','-std=c++20 -O1','-MAKEFLAGS','CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0']
-    if pcr: flags += ['-DGEMPACT_PANEL_ENGINE','-DGEMPACT_PCR_PS','-DGEMPACT_PCR_ENABLE=1','-DGEMPACT_PCR_FAST_ENABLE=1','-DGEMMORA_INT8_PROFILE=1','-DTB_DATA_WIDTH=8','-DTB_WEIGHT_WIDTH=8','-DTB_MEM_WORDS=131072','-DGEMPACT_PANEL_MAX_R=32','-DGEMPACT_PANEL_MAX_W=32']
-    else:flags += ['-DTB_DATA_WIDTH=16','-DTB_WEIGHT_WIDTH=16']
+    flags=['--binary','--timing','--assert','-sv','--top-module','tb_npu_top','-Wno-fatal','--output-groups','0','--output-split','10000',f'-I{r/"rtl/npu/gempact"}',f'-DTB_SIZE={size}','-DTB_IA_CACHE_BLOCKS=4','-DTB_PS_FRAME_COUNT=16','-DTB_AXI_READ_OUTSTANDING=4','-DTB_DATA_WIDTH=16','-DTB_WEIGHT_WIDTH=16','-DTB_MEM_WORDS=131072','--Mdir',str(d/'obj'),'-j',str(x.jobs),'-CFLAGS','-std=c++20 -O1','-MAKEFLAGS','CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0']
+    if pcr: flags += ['-DGEMPACT_PS_COMPRESS=1','-DGEMMORA_PS_POOL_BYTES=12288']
     cmd=[x.verilator,*flags,*src]
     dependencies=src+sorted((r/'rtl/npu').rglob('*.svh'))
-    source_before={str(p.relative_to(r)) if p.is_relative_to(r) else '@metrics':hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
+    source_before={str(p.relative_to(r)) if p.is_relative_to(r) else '@test/'+p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
     manifest_path=d/'build.json'
     expected={'size':size,'pcr':pcr,'flags':[str(flag).replace(str(r),'@ROOT').replace(str(out),'@OUT') for flag in flags]}
     print('BUILD',tag,flush=True)
@@ -102,7 +100,7 @@ def build(size,pcr=False):
         code=run(cmd,d/'compile.log',1800)
     txt=(d/'compile.log').read_text() if (d/'compile.log').exists() else ''
     warnings={w:len(re.findall(r'%Warning-'+re.escape(w)+':',txt)) for w in sorted(set(re.findall(r'%Warning-([^:]+):',txt)))}
-    source_after={str(p.relative_to(r)) if p.is_relative_to(r) else '@metrics':hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
+    source_after={str(p.relative_to(r)) if p.is_relative_to(r) else '@test/'+p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
     if source_before!=source_after:code=125
     summary['builds'][tag]={'returncode':code,'warnings':warnings,'command':list(map(str,cmd)),'parameters':expected,'sources':source_before,'sources_unchanged_during_build':source_before==source_after}
     if x.skip_build:
@@ -117,20 +115,21 @@ def build(size,pcr=False):
     if pcr: specs=[('pcr_ws',0,1,False,True),('pcr_is',1,1,False,True)]
     for idx,(name,mode,dtype,pc,rand) in enumerate(specs):
         cd=d/name;cd.mkdir(exist_ok=True);case=cd/'case'
-        dims=[32,48,32] if pcr else [size+3,2*size+5,size+5]
-        cmd=[sys.executable,r/'veri/top_regression/gen_mem.py','--out_dir',case,'--size',size,'--ia_cache_blocks',4,'--ps_frame_count',16,'--mem_words',131072,'--K',dims[0],'--N',dims[1],'--M',dims[2],'--lhs_dtype',dtype,'--dataflow_mode',mode,'--ia_reuse_num',2,'--w_reuse_num',2,'--random','--random_quant','--seed',1000+size*10+idx,'--lhs_zp',0 if pcr or name=='ws_s16_output' else 3,'--rhs_zp',0]
+        dims=([129,53,35] if mode else [35,53,129]) if pcr else [size+3,2*size+5,size+5]
+        cmd=[sys.executable,r/'veri/top_regression/gen_mem.py','--out_dir',case,'--size',size,'--ia_cache_blocks',4,'--ps_frame_count',16,'--mem_words',131072,'--K',dims[0],'--N',dims[1],'--M',dims[2],'--lhs_dtype',dtype,'--dataflow_mode',mode,'--ia_reuse_num',2,'--w_reuse_num',8 if pcr else 2,'--random','--random_quant','--seed',1000+size*10+idx,'--lhs_zp',0 if pcr or name=='ws_s16_output' else 3,'--rhs_zp',0]
         if pc:cmd += ['--per_channel']
         if name=='ws_s16_output':cmd += ['--int16_output']
-        if not pcr:cmd += ['--tight_strides']
-        else:cmd += ['--tight_strides','--no_bias']
+        cmd += ['--tight_strides']
         gen=run(cmd,cd/'generate.log')
         sim=[d/'obj/Vtb_npu_top',f'+INIT_MEM={case}/init.mem',f'+GOLDEN_MEM={case}/golden.mem',f'+CASE_MEM={case}/config.mem','+DDR_RAND_LAT=1','+DDR_CMD_MAX_LAT=3','+DDR_W_MAX_LAT=2','+DDR_RSP_MAX_LAT=5','+DDR_SEED=55','+TB_TIMEOUT_CYCLES=2000000','+FULL_MEM_CHECK']
-        if pcr:sim += [f'+TASK_REPORT={cd}/task_report.json']
         rc=run(sim,cd/'run.log',300) if gen==0 else -1
         txt=(cd/'run.log').read_text() if (cd/'run.log').exists() else ''
         ok=rc==0 and '[TB] PASS' in txt and '[TB] FAIL' not in txt and '[TB] FATAL' not in txt
         line=next((l for l in txt.splitlines() if '[NPU_METRICS]' in l),'')
         measurement={k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',line)}
+        if pcr:
+            storage=next((l for l in txt.splitlines() if '[PS_STORAGE_METRICS]' in l),'')
+            measurement.update({'ps_'+k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',storage)})
         summary['cases'].append({'tag':tag,'name':name,'returncode':rc,'passed':ok,'metrics':measurement,'generate_command':list(map(str,cmd)),'run_command':list(map(str,sim)),'log':str(cd/'run.log')});save()
         print(tag,name,'PASS' if ok else 'FAIL',measurement,flush=True)
         if not ok:print(txt[-1800:],flush=True)

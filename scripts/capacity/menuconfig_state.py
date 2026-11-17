@@ -11,11 +11,11 @@ import json
 from pathlib import Path
 import re
 
-from . import config, model
+from . import config, model, elaboration
 
 
 ROOT = Path(__file__).resolve().parents[2]
-BYTE_KEYS = {"CAPACITY_BUDGET_BYTES", "PS_POOL_BYTES"}
+BYTE_KEYS = {"CAPACITY_BUDGET_BYTES", "PS_POOL_BYTES", "SHARED_BANK_BYTES"}
 BYTE_AMOUNT = re.compile(r"([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))\s*(B|KiB|MiB|K|M)\Z",
                          re.IGNORECASE)
 
@@ -57,15 +57,22 @@ def _field_value(key, value):
 
     if key in ("PCR_ENGINE", "PS_FORCE_RAW") and value not in (0, 1):
         raise ValueError(f"{key} must be 0 or 1")
-    if key == "SIZE" and value not in (1, 2, 4, 8, 16, 32):
-        raise ValueError("SIZE must be a power of two in 1..32")
-    if key in ("PANEL_MAX_R", "PANEL_MAX_W") and not 1 <= value <= model.MAX_PANEL_TILES:
-        raise ValueError(f"{key} must be in 1..{model.MAX_PANEL_TILES}")
+    if key == "SIZE" and value not in (2, 4, 8, 16, 32):
+        raise ValueError("SIZE must be a power of two in 2..32")
+    if key == "NPU_AXI_DATA_WIDTH" and value not in (32, 64):
+        raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
+    if key == "SHARED_BANK_BYTES" and value not in (1024, 2048, 4096):
+        raise ValueError("SHARED_BANK_BYTES must be 1024, 2048 or 4096")
+    if key == "SHARED_BANK_COUNT" and value not in range(6, 10):
+        raise ValueError("SHARED_BANK_COUNT must be in 6..9")
+    if key == "IA_CACHE_BLOCKS" and (value < 2 or value > 64 or value & (value-1)):
+        raise ValueError("IA_CACHE_BLOCKS must be a power of two in 2..64")
+    if key == "PS_FRAME_COUNT" and not 1 <= value <= 64:
+        raise ValueError("PS_FRAME_COUNT must be in 1..64")
     if key in ("IA_CACHE_BLOCKS", "PS_FRAME_COUNT", "AXI_READ_OUTSTANDING", "CAPACITY_BUDGET_BYTES") and value <= 0:
         raise ValueError(f"{key} must be positive")
-    if key == "PS_POOL_BYTES" and (value < 4 * model.PAGE_BYTES or
-            value > model.MAX_POOL_PAGES * model.PAGE_BYTES or value % model.PAGE_BYTES):
-        raise ValueError("PS_POOL_BYTES must contain 4..4095 whole pages of 256 bytes")
+    if key == "PS_POOL_BYTES" and (value < 64 or value > model.MAX_POOL_BYTES or value % 64):
+        raise ValueError("PS_POOL_BYTES must be a positive multiple of 64")
     return value
 
 
@@ -79,7 +86,7 @@ class MenuConfigState:
 
     def __init__(self, config_path, *, overrides=(), workloads_path=None,
                  shapes=None, output_path=None, budget_bytes=None,
-                 budget_scope=None, representation=None):
+                 budget_scope=None, representation=None, verilator="verilator"):
         self.path = Path(config_path).expanduser().resolve()
         self.workloads_path = Path(workloads_path or ROOT / "config/capacity_workloads.json").expanduser().resolve()
         self.output_path = Path(output_path).expanduser().resolve() if output_path is not None else None
@@ -92,7 +99,10 @@ class MenuConfigState:
                                else str(self.workloads_path))
         self.last_solution = None
         self._solution_values = None
+        self.verilator = verilator
         self.reload()
+        for key, value in config.environment_settings().items():
+            self.set_value(key, value)
         entries = overrides.items() if isinstance(overrides, dict) else self._override_items(overrides)
         for key, value in entries:
             self.set_value(key, value)
@@ -134,7 +144,7 @@ class MenuConfigState:
         if key == "PCR_ENGINE" and value:
             updated["SIZE"] = model.TILE
         elif key == "PS_FORCE_RAW":
-            updated["CAPACITY_REPRESENTATION"] = "raw32" if value else "nominal3"
+            updated["CAPACITY_REPRESENTATION"] = "raw32" if value else "adaptive"
         elif key == "CAPACITY_REPRESENTATION":
             updated["PS_FORCE_RAW"] = int(value == "raw32")
         if updated != self.values:
@@ -146,7 +156,7 @@ class MenuConfigState:
         return config.validate_config(self.values)
 
     def capacity_summary(self):
-        active = bool(self.values["PCR_ENGINE"])
+        active = True
         validation_error = None
         try:
             self.validate()
@@ -171,14 +181,28 @@ class MenuConfigState:
 
     def solve(self):
         """Optimize the draft; failure does not modify any value or file."""
+        def measure(cache, frames, pool, representation, *, bank_bytes=2048, bank_count=None):
+            values = {**self.values, "PCR_ENGINE": 1, "SIZE": 16, "IA_CACHE_BLOCKS": cache,
+                      "PS_FRAME_COUNT": frames, "PS_POOL_BYTES": pool,
+                      "PS_FORCE_RAW": int(representation=="raw32")}
+            if bank_count is not None:
+                values.update(SHARED_BANK_BYTES=bank_bytes, SHARED_BANK_COUNT=bank_count)
+            report = elaboration.measure(values, verilator=self.verilator)
+            if not report["passed"]:
+                raise ValueError("elaborated buffers differ from the current capacity model")
+            return report["elaborated_state"]["total_bits"]
         result = model.solve(self._workloads(), self.values["CAPACITY_BUDGET_BYTES"],
                              self.values["CAPACITY_BUDGET_SCOPE"],
-                             self.values["CAPACITY_REPRESENTATION"])
+                             self.values["CAPACITY_REPRESENTATION"],
+                             measure=measure if self.values["CAPACITY_BUDGET_SCOPE"]=="logical-state" else None,
+                             bank_bytes=self.values["SHARED_BANK_BYTES"])
         allocation = result["allocation"]
         updated = {**self.values, "PCR_ENGINE": 1, "SIZE": model.TILE,
-                   "PANEL_MAX_R": allocation["panel_max_r"],
-                   "PANEL_MAX_W": allocation["panel_max_w"],
+                   "IA_CACHE_BLOCKS": allocation["ia_cache_blocks"],
+                   "PS_FRAME_COUNT": allocation["ps_frame_count"],
                    "PS_POOL_BYTES": allocation["ps_pool_bytes"],
+                   "SHARED_BANK_BYTES": allocation["shared_bank_bytes"],
+                   "SHARED_BANK_COUNT": allocation["shared_physical_bank_count"],
                    "PS_FORCE_RAW": int(result["representation"] == "raw32")}
         self.values = config.validate_config(updated, require_pcr=True)
         result["configuration_updates"] = {key: self.values[key] for key in config.MANAGED_KEYS}

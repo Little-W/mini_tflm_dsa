@@ -35,8 +35,6 @@ uint32_t dsa_conv_capabilities(void)
 uint32_t dsa_conv_s8_validate(const dsa_conv_s8_config_t *c)
 {
     uint64_t n, rows, input_bytes, stride, filter_bytes;
-    dsa_schedule_t schedule;
-    dsa_matrix_limits_t limits;
     if (!c) return DSA_ERR_NULL_PTR;
     if (!dsa_conv_dim(c->input_h) || !dsa_conv_dim(c->input_w) ||
         !dsa_conv_dim(c->input_c) || !dsa_conv_dim(c->group_c) ||
@@ -73,9 +71,9 @@ uint32_t dsa_conv_s8_validate(const dsa_conv_s8_config_t *c)
         ((c->multiplier_base | c->shift_base | c->bias_base) & 3u) ||
         (c->bias_base && !dsa_conv_span(c->bias_base, (uint64_t)c->output_channels * 4u)))
         return DSA_ERR_INVALID_DIM;
-    dsa_matrix_default_limits(&limits);
-    limits.flags=DSA_MATRIX_CAP_RHS_TILE_PACKED | DSA_MATRIX_CAP_IS_SUPPORTED;
-    if (dsa_conv_plan(c,&limits,1u,&schedule)!=DSA_SUCCESS)
+    if (!gempact_plan_feasible((uint32_t)rows,(uint32_t)n,c->output_channels,
+        DSA_TILE_SIZE,DSA_IA_CACHE_BLOCKS,DSA_PS_FRAME_COUNT,
+        c->ia_reuse_num,c->w_reuse_num,c->dataflow_mode,1,1,DSA_PS_POOL_BYTES))
         return DSA_ERR_INVALID_DIM;
     return DSA_SUCCESS;
 }
@@ -101,6 +99,10 @@ uint32_t dsa_conv_s8_execute(const dsa_conv_s8_config_t *c)
     status=dsa_conv_plan(c,&limits,(caps&DSA_CONV_CAP_IS)!=0u,&schedule);
     if (status!=DSA_SUCCESS) return status;
     tiling=schedule.tiling;
+    if (schedule.memory_policy_valid) {
+        if (schedule.ia_bank_count) dsa_reg_write(NPU_REG_IA_BANKS,schedule.ia_bank_count);
+        dsa_reg_write(NPU_REG_PS_CONTROL,schedule.ps_control);
+    }
 
     dsa_reg_write(NPU_REG_LHS_BASE, c->input_base);
     dsa_reg_write(NPU_REG_RHS_BASE, c->filter_base);

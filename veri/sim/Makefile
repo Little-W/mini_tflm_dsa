@@ -22,11 +22,9 @@ case     ?= ai_mem_gen_smoke_test
 seed     ?= 1
 DUT_MODE ?= axil
 PCR_ENGINE ?= 0
-PS_POOL_BYTES ?= 179200
-PANEL_MAX_R ?= 16
-PANEL_MAX_W ?= 16
+PS_POOL_BYTES ?= 12288
 ifeq ($(PCR_ENGINE),1)
-MODE_DEFINES += GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES) GEMPACT_PANEL_MAX_R=$(PANEL_MAX_R) GEMPACT_PANEL_MAX_W=$(PANEL_MAX_W)
+MODE_DEFINES += GEMPACT_PS_COMPRESS GEMMORA_PS_POOL_BYTES=$(PS_POOL_BYTES)
 ifeq ($(PS_FORCE_RAW),1)
 MODE_DEFINES += GEMMORA_PS_FORCE_RAW
 endif
@@ -67,12 +65,12 @@ SOC_AXI_WRITE_OUTSTANDING ?= $(SOC_AXI_READ_OUTSTANDING)
 SOC_CPU_ENABLE_ICACHE ?= 0
 SOC_BYPASS_RAM_PINGPONG ?= 1
 SOC_RAM_WRITE_TIMING_BUFFER ?= 1
-SIMV     ?= simv_$(DUT_MODE)_E$(PCR_ENGINE)$(if $(filter 1,$(PCR_ENGINE)),_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W)_F$(PS_FORCE_RAW),)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)
+SIMV     ?= simv_$(DUT_MODE)_E$(PCR_ENGINE)$(if $(filter 1,$(PCR_ENGINE)),_B$(PS_POOL_BYTES)_F$(PS_FORCE_RAW),)_S$(MMA_SIZE)_C$(MMA_IA_CACHE_BLOCKS)_P$(MMA_PS_FRAME_COUNT)_D$(SOC_CPU_MEM_DP)_RO$(SOC_AXI_READ_OUTSTANDING)_WO$(SOC_AXI_WRITE_OUTSTANDING)_IC$(SOC_CPU_ENABLE_ICACHE)_BP$(SOC_BYPASS_RAM_PINGPONG)_WT$(SOC_RAM_WRITE_TIMING_BUFFER)_AXI$(NPU_AXI_DATA_WIDTH)_BANK$(SHARED_BANK_BYTES)x$(SHARED_BANK_COUNT)
 NPU_CAPACITY_SIZE = $(MMA_SIZE)
 NPU_CAPACITY_CACHE = $(MMA_IA_CACHE_BLOCKS)
 NPU_CAPACITY_FRAMES = $(MMA_PS_FRAME_COUNT)
 NPU_CAPACITY_READ_OUTSTANDING = $(SOC_AXI_READ_OUTSTANDING)
-PCR_CONFIG_TAG = $(if $(filter 1,$(PCR_ENGINE)),_E1_B$(PS_POOL_BYTES)_R$(PANEL_MAX_R)_W$(PANEL_MAX_W)_F$(PS_FORCE_RAW),)
+PCR_CONFIG_TAG = _AXI$(NPU_AXI_DATA_WIDTH)_BANK$(SHARED_BANK_BYTES)x$(SHARED_BANK_COUNT)$(if $(filter 1,$(PCR_ENGINE)),_E1_B$(PS_POOL_BYTES)_F$(PS_FORCE_RAW),)
 NPU_BUILD_STAMP := $(SIMV).npu-config
 SOC_TIMEOUT_CYCLES ?=
 SOC_C_SRC ?= ../soc_csrc/soc_main.c
@@ -193,8 +191,12 @@ TFLM_MNIST_CNN_TIMEOUT_CYCLES ?= 320000000
 TFLM_MICRO_SPEECH_TIMEOUT_CYCLES ?= 50000000
 TFLM_HELLO_WORLD_TIMEOUT_CYCLES ?= 5000000
 TFLM_PERSON_DETECTION_TIMEOUT_CYCLES ?= 320000000
+DSA_DEFAULT_DATAFLOW ?= 2
+DSA_PS_ADAPTIVE_W ?= 1
 SOC_HW_DEFINES := -DDSA_TILE_SIZE=$(MMA_SIZE) -DDSA_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS) -DDSA_PS_FRAME_COUNT=$(MMA_PS_FRAME_COUNT) \
-                 -DDSA_PCR_ENGINE=$(PCR_ENGINE) -DDSA_PANEL_MAX_R=$(PANEL_MAX_R) -DDSA_PANEL_MAX_W=$(PANEL_MAX_W) \
+                 -DNPU_CONFIG_NPU_AXI_DATA_WIDTH=$(NPU_AXI_DATA_WIDTH) \
+                 -DDSA_PCR_ENGINE=$(PCR_ENGINE) -DDSA_PS_COMPRESS=$(PCR_ENGINE) \
+                 -DDSA_DEFAULT_DATAFLOW=$(DSA_DEFAULT_DATAFLOW) -DDSA_PS_ADAPTIVE_W=$(DSA_PS_ADAPTIVE_W) \
                  -DDSA_PS_POOL_BYTES=$(if $(filter 1,$(PCR_ENGINE)),$(PS_POOL_BYTES),0) -DDSA_PS_FORCE_RAW=$(PS_FORCE_RAW)
 TFLM_EXTRA_DEFINES ?=
 TFLM_NMSIS_NN_SOURCE_DIR := ../../drivers/tflm/NMSIS/NN/Source
@@ -206,6 +208,7 @@ TFLM_RV32_REBUILD_DEPS := \
                 ../../drivers/gempact_tiling.h \
                 ../../drivers/dsa_conv.h \
                 ../../drivers/dsa_conv_impl.h \
+                ../../drivers/dsa_matmul_impl.h \
                 $(TFLM_NMSIS_NN_SOURCE_DIR)/../Include/dsa_accel.h \
                 $(TFLM_ROOT)/tensorflow/lite/micro/kernels/shape.cc \
                 $(TFLM_ROOT)/tensorflow/lite/micro/kernels/fill.cc \
@@ -456,6 +459,9 @@ VCS_OPTS = -cpp $(VCS_CXX) -cc $(VCS_CC) -LDFLAGS -Wl,--no-as-needed \
            $(UVM_VER) \
            $(FSDB_PLI)
 MMA_PARAM_OPTS = -pvalue+tb_top.DUT_SIZE=$(MMA_SIZE) \
+                 -pvalue+tb_top.DUT_BUS_WIDTH=$(NPU_AXI_DATA_WIDTH) \
+                 -pvalue+tb_top.DUT_SHARED_BANK_BYTES=$(SHARED_BANK_BYTES) \
+                 -pvalue+tb_top.DUT_SHARED_BANK_COUNT=$(SHARED_BANK_COUNT) \
                  -pvalue+tb_top.DUT_IA_CACHE_BLOCKS=$(MMA_IA_CACHE_BLOCKS) \
                  -pvalue+tb_top.DUT_PS_FRAME_COUNT=$(MMA_PS_FRAME_COUNT) \
 	                 -pvalue+tb_top.DUT_CPU_MEM_DP=$(SOC_CPU_MEM_DP) \
@@ -501,7 +507,7 @@ soc_c: soc_case
 > $(SOC_OBJCOPY) -O binary $(SOC_CASE_DIR)/cpu.elf $(SOC_CASE_DIR)/cpu.bin
 > python3 ../tb/elf_to_mem.py $(SOC_CASE_DIR)/cpu.bin $(SOC_CASE_DIR)/cpu.mem --depth $(SOC_CPU_MEM_DP)
 
-$(SOC_RUNTIME_CPU_MEM): $(SOC_RUNTIME_C_SRC) ../../drivers/dsa_accel.c ../../drivers/dsa_accel.h ../../drivers/dsa_conv.h ../../drivers/dsa_conv_impl.h ../../drivers/gempact_tiling.h ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../soc_csrc/picosoc_bsp.h ../soc_csrc/dsa_accel_mmio.c ../soc_csrc/dsa_accel_mmio.h ../soc_csrc/link.ld Makefile $(NPU_CONFIG) $(NPU_CONFIG_ROOT)/config/npu_config.mk $(NPU_BUILD_STAMP) | capacity-check
+$(SOC_RUNTIME_CPU_MEM): $(SOC_RUNTIME_C_SRC) ../../drivers/dsa_accel.c ../../drivers/dsa_accel.h ../../drivers/dsa_conv.h ../../drivers/dsa_conv_impl.h ../../drivers/dsa_matmul_impl.h ../../drivers/gempact_tiling.h ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../soc_csrc/picosoc_bsp.h ../soc_csrc/dsa_accel_mmio.c ../soc_csrc/dsa_accel_mmio.h ../soc_csrc/link.ld Makefile $(NPU_CONFIG) $(NPU_CONFIG_ROOT)/config/npu_config.mk $(NPU_BUILD_STAMP) | capacity-check
 > @mkdir -p $(@D)
 > @echo "[SOC_RUNTIME_C] $(SOC_RUNTIME_C_SRC) -> $@"
 > $(SOC_GCC) $(SOC_ARCH_FLAGS) $(SOC_OPT_LEVEL) $(SOC_HW_DEFINES) -DSOC_RUNTIME_CASE_BASE=$(SOC_RUNTIME_BASE_ADDR) -ffreestanding -nostdlib -nostartfiles -DPICOSOC_UART_CLKDIV=$(SOC_UART_CLKDIV) -I../soc_csrc $(SOC_LINK_FLAGS) ../soc_csrc/start.S ../soc_csrc/picosoc_bsp.c ../../drivers/dsa_accel.c ../soc_csrc/dsa_accel_mmio.c $(SOC_RUNTIME_C_SRC) $(SOC_BARE_LIBS) -o $(@D)/cpu.elf
@@ -611,7 +617,8 @@ $(NPU_BUILD_STAMP): npu-config-force
 > @mkdir -p '$(@D)'
 > @temporary=$$(mktemp '$@.XXXXXX'); \
 >   printf '%s\n' 'NPU_CONFIG=$(NPU_CONFIG)' '$(NPU_EFFECTIVE_CONFIG_VALUES)' \
->     'MMA_PARAM_OPTS=$(MMA_PARAM_OPTS)' 'MODE_DEFINES=$(MODE_DEFINES)' 'DEFINES=$(DEFINES)' > "$$temporary"; \
+>     'MMA_PARAM_OPTS=$(MMA_PARAM_OPTS)' 'MODE_DEFINES=$(MODE_DEFINES)' 'DEFINES=$(DEFINES)' \
+>     'SOC_HW_DEFINES=$(SOC_HW_DEFINES)' > "$$temporary"; \
 >   if cmp -s "$$temporary" '$@'; then rm -f "$$temporary"; else mv -f "$$temporary" '$@'; fi
 
 $(SIMV): $(VCS_FILELISTS) $(VCS_SRC_DEPS) Makefile $(NPU_CONFIG) $(NPU_CONFIG_ROOT)/config/npu_config.mk $(NPU_BUILD_STAMP) | capacity-check

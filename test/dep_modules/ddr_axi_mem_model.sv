@@ -50,7 +50,7 @@ module ddr_axi_mem_model #(
         W_B
     } w_state_t;
 
-    logic [WIDTH-1:0] mem_r [0:DP-1];
+    logic [31:0] mem_r [0:DP-1];
 
     int unsigned rand_enable;
     int unsigned cmd_max_lat;
@@ -70,11 +70,13 @@ module ddr_axi_mem_model #(
     int unsigned w_wait_cnt;
     logic [ADDR_W-1:0] r_addr;
     logic [ADDR_W-1:0] w_addr;
+    logic [2:0] r_size, w_size;
     logic [8:0] r_left;
     logic [8:0] w_left;
     logic [WIDTH-1:0] r_data_r;
     logic [ADDR_W-1:0] rdq_addr [0:RDQ_DEPTH_SAFE-1];
     logic [7:0] rdq_len [0:RDQ_DEPTH_SAFE-1];
+    logic [2:0] rdq_size [0:RDQ_DEPTH_SAFE-1];
     logic [RDQ_PTR_W-1:0] rdq_wptr;
     logic [RDQ_PTR_W-1:0] rdq_rptr;
     logic [RDQ_CNT_W-1:0] rdq_count;
@@ -89,8 +91,6 @@ module ddr_axi_mem_model #(
     wire unused_arburst = &m_axi_arburst;
     wire unused_awburst = &m_axi_awburst;
     wire unused_wlast = m_axi_wlast;
-    wire [2:0] unused_arsize = m_axi_arsize;
-    wire [2:0] unused_awsize = m_axi_awsize;
 
     function automatic int unsigned pick_wait(input int unsigned max_lat);
         if (fixed_lat >= 0) begin
@@ -103,7 +103,10 @@ module ddr_axi_mem_model #(
     endfunction
 
     function automatic logic [WIDTH-1:0] mem_word(input logic [ADDR_W-1:0] addr);
-        mem_word = mem_r[addr[ADDR_W-1:2]];
+        logic [ADDR_W-1:0] aligned_addr;
+        aligned_addr = addr & ~ADDR_W'(MW-1);
+        for (int word_index=0;word_index<WIDTH/32;word_index++)
+            mem_word[word_index*32+:32] = mem_r[(aligned_addr >> 2)+ADDR_W'(word_index)];
     endfunction
 
     initial begin
@@ -114,6 +117,8 @@ module ddr_axi_mem_model #(
         rsp_max_lat = 0;
         fixed_lat   = -1;
         seed        = 32'hdd12_cafe;
+        assert ((WIDTH==32 || WIDTH==64) && MW==WIDTH/8)
+            else $fatal(1,"DDR AXI model requires a 32-bit or 64-bit data bus");
         void'($value$plusargs("DDR_RAND_LAT=%d", rand_enable));
         void'($value$plusargs("DDR_CMD_MAX_LAT=%d", cmd_max_lat));
         void'($value$plusargs("DDR_W_MAX_LAT=%d", w_max_lat));
@@ -146,6 +151,7 @@ module ddr_axi_mem_model #(
             ar_wait_cnt <= 0;
             r_addr     <= '0;
             r_left     <= '0;
+            r_size     <= '0;
             r_data_r   <= '0;
             rdq_wptr   <= '0;
             rdq_rptr   <= '0;
@@ -158,6 +164,7 @@ module ddr_axi_mem_model #(
             if (ar_hs) begin
                 rdq_addr[rdq_wptr] <= m_axi_araddr;
                 rdq_len[rdq_wptr]  <= m_axi_arlen;
+                rdq_size[rdq_wptr] <= m_axi_arsize;
                 if (rdq_wptr == RDQ_PTR_W'(RDQ_DEPTH_SAFE - 1)) begin
                     rdq_wptr <= '0;
                 end else begin
@@ -185,6 +192,7 @@ module ddr_axi_mem_model #(
                     if (rdq_pop) begin
                         r_addr     <= rdq_addr[rdq_rptr];
                         r_left     <= {1'b0, rdq_len[rdq_rptr]} + 9'd1;
+                        r_size     <= rdq_size[rdq_rptr];
                         r_data_r   <= mem_word(rdq_addr[rdq_rptr]);
                         r_wait_cnt <= pick_wait(rsp_max_lat);
                         r_state    <= R_DATA_WAIT;
@@ -206,8 +214,8 @@ module ddr_axi_mem_model #(
                             r_state <= R_IDLE;
                         end else begin
                             r_left     <= r_left - 9'd1;
-                            r_addr     <= r_addr + ADDR_W'(MW);
-                            r_data_r   <= mem_word(r_addr + ADDR_W'(MW));
+                            r_addr     <= r_addr + (ADDR_W'(1) << r_size);
+                            r_data_r   <= mem_word(r_addr + (ADDR_W'(1) << r_size));
                             r_wait_cnt <= 0;
                             r_state    <= R_DATA;
                         end
@@ -230,6 +238,7 @@ module ddr_axi_mem_model #(
             w_wait_cnt <= 0;
             w_addr     <= '0;
             w_left     <= '0;
+            w_size     <= '0;
         end else begin
             case (w_state)
                 W_IDLE: begin
@@ -247,6 +256,7 @@ module ddr_axi_mem_model #(
                     end else if (aw_hs) begin
                         w_addr     <= m_axi_awaddr;
                         w_left     <= {1'b0, m_axi_awlen} + 9'd1;
+                        w_size     <= m_axi_awsize;
                         w_wait_cnt <= pick_wait(w_max_lat);
                         w_state    <= W_DATA_WAIT;
                     end
@@ -258,7 +268,8 @@ module ddr_axi_mem_model #(
                     end else if (w_hs) begin
                         for (int b = 0; b < MW; b++) begin
                             if (m_axi_wstrb[b]) begin
-                                mem_r[w_addr[ADDR_W-1:2]][b*8+:8] <= m_axi_wdata[b*8+:8];
+                                mem_r[((w_addr & ~ADDR_W'(MW-1)) >> 2)+ADDR_W'(b/4)][(b%4)*8+:8]
+                                    <= m_axi_wdata[b*8+:8];
                             end
                         end
 
@@ -268,7 +279,7 @@ module ddr_axi_mem_model #(
                             w_state    <= W_B_WAIT;
                         end else begin
                             w_left     <= w_left - 9'd1;
-                            w_addr     <= w_addr + ADDR_W'(MW);
+                            w_addr     <= w_addr + (ADDR_W'(1) << w_size);
                             w_wait_cnt <= 0;
                         end
                     end

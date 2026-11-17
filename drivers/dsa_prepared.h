@@ -25,6 +25,7 @@ typedef struct {
     uint32_t valid, input_bytes, output_bytes, ctrl;
     uint32_t spatial, register_count, readonly_count;
     uint32_t source_filter_base;
+    uint32_t memory_policy_valid, ps_control, ia_bank_count;
     struct { uint32_t begin, end; } readonly[4];
     struct { uint32_t offset, value; } registers[DSA_PREPARED_MAX_REGISTERS];
 } dsa_prepared_t;

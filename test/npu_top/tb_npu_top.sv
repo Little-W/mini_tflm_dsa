@@ -20,6 +20,18 @@ module tb_npu_top;
 `ifndef TB_DATA_WIDTH
 `define TB_DATA_WIDTH 16
 `endif
+`ifndef TB_BUS_WIDTH
+`define TB_BUS_WIDTH 32
+`endif
+`ifndef TB_SHARED_BANK_BYTES
+`define TB_SHARED_BANK_BYTES 2048
+`endif
+`ifndef TB_SHARED_BANK_COUNT
+`define TB_SHARED_BANK_COUNT 0
+`endif
+`ifndef TB_MEM_WORDS
+`define TB_MEM_WORDS 131072
+`endif
 `ifndef TB_IA_CACHE_BLOCKS
 `define TB_IA_CACHE_BLOCKS 4
 `endif
@@ -33,6 +45,7 @@ module tb_npu_top;
     localparam int unsigned SIZE = `TB_SIZE;
     localparam int unsigned WEIGHT_WIDTH = `TB_WEIGHT_WIDTH;
     localparam int unsigned DATA_WIDTH = `TB_DATA_WIDTH;
+    localparam int unsigned BUS_WIDTH = `TB_BUS_WIDTH;
     localparam int unsigned IA_CACHE_BLOCKS = `TB_IA_CACHE_BLOCKS;
     localparam int unsigned PS_FRAME_COUNT = `TB_PS_FRAME_COUNT;
     localparam int unsigned AXI_READ_OUTSTANDING = `TB_AXI_READ_OUTSTANDING;
@@ -115,7 +128,7 @@ module tb_npu_top;
     wire [ 1:0] m_axi_arburst;
     wire        m_axi_rvalid;
     wire        m_axi_rready;
-    wire [31:0] m_axi_rdata;
+    wire [BUS_WIDTH-1:0] m_axi_rdata;
     wire [ 1:0] m_axi_rresp;
     wire        m_axi_rlast;
     wire        m_axi_awvalid;
@@ -126,8 +139,8 @@ module tb_npu_top;
     wire [ 1:0] m_axi_awburst;
     wire        m_axi_wvalid;
     wire        m_axi_wready;
-    wire [31:0] m_axi_wdata;
-    wire [ 3:0] m_axi_wstrb;
+    wire [BUS_WIDTH-1:0] m_axi_wdata;
+    wire [BUS_WIDTH/8-1:0] m_axi_wstrb;
     wire        m_axi_wlast;
     wire        m_axi_bvalid;
     wire        m_axi_bready;
@@ -137,6 +150,9 @@ module tb_npu_top;
     npu_top #(
         .WEIGHT_WIDTH(WEIGHT_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
+        .BUS_WIDTH(BUS_WIDTH),
+        .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES),
+        .SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),
         .SIZE(SIZE),
         .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
@@ -213,10 +229,10 @@ module tb_npu_top;
 
     // 直接 AXI DDR 行为模型：读写通道独立，支持随机 cmd/write/response 延迟。
     ddr_axi_mem_model #(
-        .WIDTH (32),
+        .WIDTH (BUS_WIDTH),
         .ADDR_W(32),
-        .MW    (4),
-        .DP    (131072)
+        .MW    (BUS_WIDTH/8),
+        .DP    (`TB_MEM_WORDS)
     ) u_mem (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -304,7 +320,7 @@ module tb_npu_top;
     // 层级引用加载内存
     string init_mem_path, golden_mem_path, case_mem_path;
     localparam int MEMW = 32;
-    localparam int MEMDP = 131072;
+    localparam int MEMDP = `TB_MEM_WORDS;
     reg [MEMW-1:0] golden_mem[0:MEMDP-1];
     integer err;
     integer acc_valid_count;
@@ -428,16 +444,15 @@ module tb_npu_top;
                          u_dut.ia_out[0], u_dut.ia_out[1],
                          u_dut.ia_out[2], u_dut.ia_out[3]);
             end
-            if (debug_stream && (u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.replay_data_valid ||
-                                 u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.ram_write_en ||
-                                 u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.send_ia_trigger_i)) begin
-                $write("[DBG][PS]  t=%0t trig=%0b replay=%0b rcnt=%0d wren=%0b len=%0d ps=",
+            if (debug_stream && (u_dut.ia_row_valid || u_dut.send_ia_trigger ||
+                                 u_dut.partial_sum_calc_over)) begin
+                $write("[DBG][PS]  t=%0t trig=%0b ia_valid=%0b init=%0b final=%0b complete=%0b ps=",
                          $time,
-                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.send_ia_trigger_i,
-                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.replay_data_valid,
-                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.replay_count,
-                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.ram_write_en,
-                         u_dut.u_compute_core.u_ps_buffer.u_ps_buffer_fifo.frame_len);
+                         u_dut.send_ia_trigger,
+                         u_dut.ia_row_valid,
+                         u_dut.ia_is_init_data,
+                         u_dut.ia_calc_done,
+                         u_dut.partial_sum_calc_over);
                 for (int dbg_i = 0; dbg_i < SIZE; dbg_i++) begin
                     $write("%0d%s", u_dut.u_compute_core.ps_data_out[dbg_i],
                            (dbg_i == SIZE - 1) ? "" : ",");
@@ -687,21 +702,21 @@ module tb_npu_top;
                  u_dut.fifo_output_ready,
                  u_dut.u_vec_s8_to_fifo.bank_count0,
                  u_dut.u_vec_s8_to_fifo.bank_count1);
-        $display("[TB][DBG] dma_arb rd_active=%0b rd_client=%0d rd_started=%0b rd_busy=%0b rd_done=%0b wr_active=%0b wr_started=%0b wr_busy=%0b wr_done=%0b",
+        $display("[TB][DBG] dma_arb rd_active=%0b command_client=%0d pending=%0d rd_busy=%0b rd_done=%0b wr_active=%0b wr_started=%0b wr_busy=%0b wr_done=%0b",
                  u_dut.u_block_dma_arbiter.rd_active,
-                 u_dut.u_block_dma_arbiter.rd_client,
-                 u_dut.u_block_dma_arbiter.rd_started,
+                 u_dut.u_block_dma_arbiter.rd_command_client,
+                 u_dut.u_block_dma_arbiter.rd_pending_count,
                  u_dut.u_block_dma_arbiter.rd_dma_busy,
                  u_dut.u_block_dma_arbiter.rd_dma_done,
                  u_dut.u_block_dma_arbiter.wr_active,
                  u_dut.u_block_dma_arbiter.wr_started,
                  u_dut.u_block_dma_arbiter.wr_dma_busy,
                  u_dut.u_block_dma_arbiter.wr_dma_done);
-        $display("[TB][DBG] dma rd_cmd_row=%0d rd_rsp_row=%0d rd_rsp_beat=%0d rd_inflight=%0b rd_active=%0b rd_done=%0b wr_beat=%0d",
+        $display("[TB][DBG] dma rd_cmd_row=%0d rd_rsp_row=%0d rd_rsp_beat=%0d contexts=%0d rd_active=%0b rd_done=%0b wr_beat=%0d",
                  u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_cmd_row_cnt,
                  u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_rsp_row_cnt,
                  u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_rsp_beat_cnt,
-                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_cmd_inflight,
+                 u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_context_count,
                  u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_active,
                  u_dut.u_block_dma_arbiter.u_dma.u_linear.rd_done,
                  u_dut.u_block_dma_arbiter.u_dma.u_linear.wr_beat_cnt);

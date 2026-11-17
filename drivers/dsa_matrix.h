@@ -29,6 +29,8 @@ typedef struct {
     uint32_t flags, ia_cache_blocks, ps_frame_count, ps_storage_rows, tile_size;
     uint32_t output_banks_s8, output_banks_s16;
     uint32_t dma_max_bytes, axi_data_bits;
+    uint32_t ps_caps, ps_pool_bytes, ia_cache_bytes;
+    uint32_t shared_total_bytes, shared_bank_bytes, shared_ia_bank_mask, ps_directory_rows;
 } dsa_matrix_limits_t;
 
 #ifdef __cplusplus

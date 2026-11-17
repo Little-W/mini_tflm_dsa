@@ -1,0 +1,352 @@
+[
+  {
+    "model": "mnist_cnn",
+    "operator": 0,
+    "kind": "conv",
+    "shape": {
+      "M": 784,
+      "K": 9,
+      "N": 8
+    }
+  },
+  {
+    "model": "mnist_cnn",
+    "operator": 2,
+    "kind": "conv",
+    "shape": {
+      "M": 196,
+      "K": 72,
+      "N": 16
+    }
+  },
+  {
+    "model": "mnist_cnn",
+    "operator": 5,
+    "kind": "dense",
+    "shape": {
+      "M": 1,
+      "K": 784,
+      "N": 64
+    }
+  },
+  {
+    "model": "mnist_cnn",
+    "operator": 6,
+    "kind": "dense",
+    "shape": {
+      "M": 1,
+      "K": 64,
+      "N": 10
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 0,
+    "kind": "conv",
+    "shape": {
+      "M": 1024,
+      "K": 27,
+      "N": 16
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 1,
+    "kind": "conv",
+    "shape": {
+      "M": 1024,
+      "K": 144,
+      "N": 16
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 2,
+    "kind": "conv",
+    "shape": {
+      "M": 1024,
+      "K": 144,
+      "N": 16
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 4,
+    "kind": "conv",
+    "shape": {
+      "M": 256,
+      "K": 144,
+      "N": 32
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 5,
+    "kind": "conv",
+    "shape": {
+      "M": 256,
+      "K": 288,
+      "N": 32
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 6,
+    "kind": "conv",
+    "shape": {
+      "M": 256,
+      "K": 16,
+      "N": 32
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 8,
+    "kind": "conv",
+    "shape": {
+      "M": 64,
+      "K": 288,
+      "N": 64
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 9,
+    "kind": "conv",
+    "shape": {
+      "M": 64,
+      "K": 576,
+      "N": 64
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 10,
+    "kind": "conv",
+    "shape": {
+      "M": 64,
+      "K": 32,
+      "N": 64
+    }
+  },
+  {
+    "model": "resnet8_cifar10",
+    "operator": 14,
+    "kind": "dense",
+    "shape": {
+      "M": 1,
+      "K": 64,
+      "N": 10
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 0,
+    "kind": "conv",
+    "shape": {
+      "M": 2304,
+      "K": 27,
+      "N": 8
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 2,
+    "kind": "conv",
+    "shape": {
+      "M": 2304,
+      "K": 8,
+      "N": 16
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 4,
+    "kind": "conv",
+    "shape": {
+      "M": 576,
+      "K": 16,
+      "N": 32
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 6,
+    "kind": "conv",
+    "shape": {
+      "M": 576,
+      "K": 32,
+      "N": 32
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 8,
+    "kind": "conv",
+    "shape": {
+      "M": 144,
+      "K": 32,
+      "N": 64
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 10,
+    "kind": "conv",
+    "shape": {
+      "M": 144,
+      "K": 64,
+      "N": 64
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 12,
+    "kind": "conv",
+    "shape": {
+      "M": 36,
+      "K": 64,
+      "N": 128
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 14,
+    "kind": "conv",
+    "shape": {
+      "M": 36,
+      "K": 128,
+      "N": 128
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 16,
+    "kind": "conv",
+    "shape": {
+      "M": 36,
+      "K": 128,
+      "N": 128
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 18,
+    "kind": "conv",
+    "shape": {
+      "M": 36,
+      "K": 128,
+      "N": 128
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 20,
+    "kind": "conv",
+    "shape": {
+      "M": 36,
+      "K": 128,
+      "N": 128
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 22,
+    "kind": "conv",
+    "shape": {
+      "M": 36,
+      "K": 128,
+      "N": 128
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 24,
+    "kind": "conv",
+    "shape": {
+      "M": 9,
+      "K": 128,
+      "N": 256
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 26,
+    "kind": "conv",
+    "shape": {
+      "M": 9,
+      "K": 256,
+      "N": 256
+    }
+  },
+  {
+    "model": "mobilenet_v1_vww",
+    "operator": 29,
+    "kind": "dense",
+    "shape": {
+      "M": 1,
+      "K": 256,
+      "N": 2
+    }
+  },
+  {
+    "model": "ds_cnn_kws",
+    "operator": 0,
+    "kind": "conv",
+    "shape": {
+      "M": 125,
+      "K": 40,
+      "N": 64
+    }
+  },
+  {
+    "model": "ds_cnn_kws",
+    "operator": 2,
+    "kind": "conv",
+    "shape": {
+      "M": 125,
+      "K": 64,
+      "N": 64
+    }
+  },
+  {
+    "model": "ds_cnn_kws",
+    "operator": 4,
+    "kind": "conv",
+    "shape": {
+      "M": 125,
+      "K": 64,
+      "N": 64
+    }
+  },
+  {
+    "model": "ds_cnn_kws",
+    "operator": 6,
+    "kind": "conv",
+    "shape": {
+      "M": 125,
+      "K": 64,
+      "N": 64
+    }
+  },
+  {
+    "model": "ds_cnn_kws",
+    "operator": 8,
+    "kind": "conv",
+    "shape": {
+      "M": 125,
+      "K": 64,
+      "N": 64
+    }
+  },
+  {
+    "model": "ds_cnn_kws",
+    "operator": 11,
+    "kind": "dense",
+    "shape": {
+      "M": 1,
+      "K": 64,
+      "N": 12
+    }
+  }
+]

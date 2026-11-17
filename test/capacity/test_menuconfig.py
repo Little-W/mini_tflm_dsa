@@ -21,6 +21,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -39,13 +40,16 @@ def clean_environment():
     # The outer make capacity-test exports these; nested Make probes must have
     # their own isolated command-line and configuration context.
     for name in ("MAKEFLAGS", "MFLAGS", "MAKELEVEL", "GNUMAKEFLAGS", "NPU_CONFIG",
-                 "NPU_CONFIG_INCLUDED", "CONFIG"):
+                 "NPU_CONFIG_INCLUDED", "CONFIG", *config.DEFAULTS):
         env.pop(name, None)
     return env
 
 
 class ConfigurationFixture(unittest.TestCase):
     def setUp(self):
+        environment = mock.patch.dict(os.environ, clean_environment(), clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
         temporary = tempfile.TemporaryDirectory(prefix="gempact-menuconfig-")
         self.addCleanup(temporary.cleanup)
         self.directory = Path(temporary.name)
@@ -67,9 +71,9 @@ class MenuStateTests(ConfigurationFixture):
         self.assertFalse(state.dirty)
         self.assertEqual(state.values, config.DEFAULTS)
         summary = state.capacity_summary()
-        self.assertFalse(summary["active"])
-        self.assertIsNone(summary["allocation"])
-        state.set_value("PANEL_MAX_R", "7")
+        self.assertTrue(summary["active"])
+        self.assertIsNotNone(summary["allocation"])
+        state.set_value("IA_CACHE_BLOCKS", "8")
         self.assertTrue(state.dirty)
         self.assertEqual(self.stamp(), before)
 
@@ -87,14 +91,15 @@ class MenuStateTests(ConfigurationFixture):
         state.set_value("CAPACITY_REPRESENTATION", "raw32")
         self.assertEqual(state.values["PS_FORCE_RAW"], 1)
         state.set_value("PS_FORCE_RAW", "0")
-        self.assertEqual(state.values["CAPACITY_REPRESENTATION"], "nominal3")
+        self.assertEqual(state.values["CAPACITY_REPRESENTATION"], "adaptive")
 
     def test_full_configuration_save_preserves_custom_content(self):
         state = self.state()
-        edits = {"PCR_ENGINE": 1, "SIZE": 16, "PANEL_MAX_R": 4, "PANEL_MAX_W": 3,
-                 "PS_POOL_BYTES": "9.25 KiB", "CAPACITY_BUDGET_BYTES": "32 KiB",
-                 "CAPACITY_BUDGET_SCOPE": "logical-state", "CAPACITY_REPRESENTATION": "raw32",
-                 "IA_CACHE_BLOCKS": 64, "PS_FRAME_COUNT": 25, "AXI_READ_OUTSTANDING": 8}
+        edits = {"PCR_ENGINE": 1, "SIZE": 16, "PS_POOL_BYTES": "9.25 KiB",
+                 "CAPACITY_BUDGET_BYTES": "128 KiB", "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+                 "CAPACITY_REPRESENTATION": "raw32", "IA_CACHE_BLOCKS": 8,
+                 "PS_FRAME_COUNT": 25, "AXI_READ_OUTSTANDING": 8,
+                 "NPU_AXI_DATA_WIDTH": 32, "SHARED_BANK_BYTES": "4 KiB", "SHARED_BANK_COUNT": 9}
         for key, value in edits.items():
             state.set_value(key, value)
         self.assertTrue(state.save())
@@ -111,9 +116,12 @@ class MenuStateTests(ConfigurationFixture):
     def test_invalid_field_edits_leave_draft_and_file_unchanged(self):
         state = self.state()
         before = self.stamp()
-        invalid = (("PANEL_MAX_R", "33"), ("PANEL_MAX_W", "0"),
+        invalid = (("IA_CACHE_BLOCKS", "3"), ("PS_FRAME_COUNT", "0"),
                    ("PS_POOL_BYTES", "1025"), ("PS_POOL_BYTES", "1.1 B"),
                    ("PCR_ENGINE", "2"), ("SIZE", "3"),
+                   ("NPU_AXI_DATA_WIDTH", "128"), ("SHARED_BANK_BYTES", "3 KiB"),
+                   ("SHARED_BANK_COUNT", "5"), ("SHARED_BANK_COUNT", "10"),
+                   ("NPU_AXI_DATA_WIDTH", True), ("SHARED_BANK_COUNT", True),
                    ("CAPACITY_BUDGET_BYTES", "0"),
                    ("CAPACITY_BUDGET_BYTES", "$(shell echo 32768)"),
                    ("CAPACITY_BUDGET_SCOPE", "unknown"), ("UNKNOWN_KEY", "1"))
@@ -142,14 +150,17 @@ class MenuStateTests(ConfigurationFixture):
         self.assertFalse(self.output.exists())
 
     def test_optimizer_changes_only_draft_until_save(self):
-        state = self.state(budget_bytes=32768, budget_scope="logical-state")
+        state = self.state(budget_bytes=49152, budget_scope="buffer-ram")
         before = self.stamp()
         result = state.solve()
         a = result["allocation"]
-        self.assertEqual((a["panel_max_r"], a["panel_max_w"], a["ps_pool_pages"]), (4, 3, 37))
+        self.assertLessEqual(a["buffer_ram_bytes"], 49152)
+        self.assertEqual(a["ps_pool_bytes"] % 64, 0)
         self.assertEqual(state.values["PCR_ENGINE"], 1)
         self.assertEqual(state.values["SIZE"], 16)
-        self.assertEqual(state.values["PS_POOL_BYTES"], 9472)
+        self.assertEqual(state.values["PS_POOL_BYTES"], a["ps_pool_bytes"])
+        self.assertEqual(state.values["SHARED_BANK_BYTES"], a["shared_bank_bytes"])
+        self.assertEqual(state.values["SHARED_BANK_COUNT"], a["shared_physical_bank_count"])
         self.assertEqual(self.stamp(), before)
         self.assertFalse(self.output.exists())
         self.assertTrue(state.dirty)
@@ -170,7 +181,7 @@ class MenuStateTests(ConfigurationFixture):
 
     def test_external_edits_require_reload_before_saving(self):
         state = self.state()
-        state.set_value("PANEL_MAX_R", 7)
+        state.set_value("IA_CACHE_BLOCKS", 8)
         self.path.write_text(self.path.read_text().replace("AXI_READ_OUTSTANDING ?= 4",
                                                          "AXI_READ_OUTSTANDING ?= 6"))
         external = self.stamp()
@@ -180,7 +191,7 @@ class MenuStateTests(ConfigurationFixture):
         state.reload()
         self.assertFalse(state.dirty)
         self.assertEqual(state.values["AXI_READ_OUTSTANDING"], 6)
-        self.assertEqual(state.values["PANEL_MAX_R"], 16)
+        self.assertEqual(state.values["IA_CACHE_BLOCKS"], 4)
 
     def test_missing_file_is_created_only_when_saved(self):
         path = self.directory / "new" / "profile.mk"
@@ -192,12 +203,14 @@ class MenuStateTests(ConfigurationFixture):
 
     def test_partial_file_and_explicit_overrides_are_editable(self):
         self.path.write_text("# Partial configuration\nPCR_ENGINE ?= 0\n")
-        state = self.state(overrides=["PANEL_MAX_R=7", "IA_CACHE_BLOCKS=64"])
+        state = self.state(overrides=["PS_FRAME_COUNT=16", "IA_CACHE_BLOCKS=8",
+                                      "CAPACITY_BUDGET_BYTES=262144"])
         self.assertTrue(state.dirty)
-        self.assertEqual(state.values["PANEL_MAX_R"], 7)
+        self.assertEqual(state.values["PS_FRAME_COUNT"], 16)
         state.save()
         self.assertEqual(set(config.read_config(self.path)), set(config.DEFAULTS))
-        self.assertEqual(config.read_config(self.path)["IA_CACHE_BLOCKS"], 64)
+        self.assertEqual(config.read_config(self.path)["IA_CACHE_BLOCKS"], 8)
+        self.assertEqual(config.read_config(self.path)["CAPACITY_BUDGET_BYTES"], 262144)
 
 
 class MenuCliTests(ConfigurationFixture):
@@ -228,7 +241,7 @@ class MenuMakeTests(ConfigurationFixture):
         return subprocess.run([MAKE, "--no-print-directory", *map(str, args)], cwd=cwd,
                               env=clean_environment(), text=True, capture_output=True, timeout=15)
 
-    def test_all_entry_points_load_file_without_legacy_default_overrides(self):
+    def test_all_entry_points_load_the_selected_file(self):
         for cwd in (ROOT, ROOT / "veri/sim", ROOT / "asic", ROOT / "asic/synthesis"):
             with self.subTest(cwd=str(cwd)):
                 run = self.make("-n", "menuconfig", f"NPU_CONFIG={self.path}", cwd=cwd)
@@ -238,10 +251,12 @@ class MenuMakeTests(ConfigurationFixture):
                 self.assertNotRegex(run.stdout, r"--set\s+['\"]?SIZE=")
 
     def test_explicit_values_and_budget_are_forwarded(self):
-        run = self.make("-n", "menuconfig", f"NPU_CONFIG={self.path}", "PANEL_MAX_R=7",
-                        "SIZE=16", "MAX_RAM_KIB=64", "REPRESENTATION=raw32")
+        run = self.make("-n", "menuconfig", f"NPU_CONFIG={self.path}", "IA_CACHE_BLOCKS=8",
+                        "SIZE=16", "MAX_RAM_KIB=64", "REPRESENTATION=raw32",
+                        "NPU_AXI_DATA_WIDTH=32", "SHARED_BANK_BYTES=1024", "SHARED_BANK_COUNT=6")
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-        for text in ("PANEL_MAX_R=7", "SIZE=16", "--max-ram-kib", "--representation", "raw32"):
+        for text in ("IA_CACHE_BLOCKS=8", "SIZE=16", "--max-ram-kib", "--representation", "raw32",
+                     "NPU_AXI_DATA_WIDTH=32", "SHARED_BANK_BYTES=1024", "SHARED_BANK_COUNT=6"):
             self.assertIn(text, run.stdout)
 
     def test_missing_profile_can_be_opened_for_creation(self):
@@ -364,11 +379,11 @@ class MenuTerminalTests(ConfigurationFixture):
         terminal = self.terminal("edit_solve_save")
         terminal.send("jjj\n")
         terminal.expect("Edit CAPACITY_BUDGET_BYTES")
-        terminal.send("\x1532 KiB\n")
+        terminal.send("\x1548 KiB\n")
         terminal.send("o")
         # Ncurses may retain the "Optimiz" prefix of "Optimizing..." and
         # emit only the changed suffix; match the newly drawn result text.
-        terminal.expect("draft: R=4 W=3")
+        terminal.expect("draft: IA=")
         self.assertEqual(self.stamp(), before)
         self.assertFalse(self.output.exists())
         terminal.send("q")
@@ -380,20 +395,21 @@ class MenuTerminalTests(ConfigurationFixture):
         self.assertEqual(terminal.finish(), 0)
         values = config.read_config(self.path)
         self.assertEqual((values["PCR_ENGINE"], values["SIZE"], values["CAPACITY_BUDGET_BYTES"]),
-                         (1, 16, 32768))
-        self.assertEqual((values["PANEL_MAX_R"], values["PANEL_MAX_W"], values["PS_POOL_BYTES"]),
-                         (4, 3, 9472))
+                         (1, 16, 49152))
+        self.assertIn(values["IA_CACHE_BLOCKS"], (2, 4, 8, 16))
+        self.assertIn(values["PS_FRAME_COUNT"], (4, 8, 16, 25))
+        self.assertEqual(values["PS_POOL_BYTES"] % 64, 0)
         self.assertTrue(self.output.is_file())
 
     def test_real_terminal_invalid_save_and_discard(self):
-        state = self.state(budget_bytes=32768)
+        state = self.state(budget_bytes=49152)
         state.solve()
         state.save()
         before = self.stamp()
         terminal = self.terminal("invalid_save_discard")
-        terminal.send("jjjjj\n")
-        terminal.expect("Edit PANEL_MAX_R")
-        terminal.send("\x1532\n")
+        terminal.send("jjj\n")
+        terminal.expect("Edit CAPACITY_BUDGET_BYTES")
+        terminal.send("\x151 KiB\n")
         terminal.send("s")
         terminal.expect("Cannot save")
         self.assertEqual(self.stamp(), before)
@@ -409,7 +425,7 @@ class MenuTerminalTests(ConfigurationFixture):
         terminal.resize(8, 40)
         terminal.expect("Terminal too small")
         terminal.resize(24, 80)
-        terminal.expect("Legacy engine:")
+        terminal.expect("Shared data: 14 KiB")
         terminal.send("q")
         self.assertEqual(terminal.finish(), 0)
         self.assertEqual(self.stamp(), before)

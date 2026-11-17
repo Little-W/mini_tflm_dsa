@@ -127,9 +127,6 @@ static int fc_s8_hardware_supported(
                         (((uintptr_t)mult | (uintptr_t)shift) & 3u) ||
                         !fc_s8_separate(mult, parameter_bytes, output, output_bytes) ||
                         !fc_s8_separate(shift, parameter_bytes, output, output_bytes))) return 0;
-#if DSA_PCR_ENGINE
-    return 0;
-#endif
     input_lo = -128 + p->input_offset;
     input_hi = 127 + p->input_offset;
     weight_lo = -128 + p->filter_offset;

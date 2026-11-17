@@ -11,6 +11,9 @@ if {[llength $argv] < 1} {
 set script_dir [file dirname [file normalize [info script]]]
 set project_xpr [file normalize [lindex $argv 0]]
 set repo_tb_file [file normalize [file join $script_dir .. sim fpga_top_post_impl_tb.sv]]
+if {![file exists $repo_tb_file]} {
+    set repo_tb_file [file normalize [file join $script_dir .. src sim fpga_top_post_impl_tb.sv]]
+}
 
 if {![file exists $project_xpr]} {
     error "Vivado project not found: $project_xpr"
@@ -89,11 +92,11 @@ proc check_smoke_log {project_xpr pass_tag fail_prefix} {
 set project_root [file dirname [file dirname $project_xpr]]
 set tb_file [file normalize [file join $project_root src sim fpga_top_post_impl_tb.sv]]
 if {[file exists [file dirname $tb_file]]} {
-    file copy -force $repo_tb_file $tb_file
+    if {$repo_tb_file ne $tb_file} { file copy -force $repo_tb_file $tb_file }
 } else {
     set tb_file [file normalize [file join $project_root sim fpga_top_post_impl_tb.sv]]
     if {[file exists [file dirname $tb_file]]} {
-        file copy -force $repo_tb_file $tb_file
+        if {$repo_tb_file ne $tb_file} { file copy -force $repo_tb_file $tb_file }
     } else {
         set tb_file $repo_tb_file
     }

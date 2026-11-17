@@ -1,5 +1,5 @@
 `ifndef GEMMORA_PS_POOL_BYTES
-`define GEMMORA_PS_POOL_BYTES 179200
+`define GEMMORA_PS_POOL_BYTES 12288
 `endif
 // NPU 顶层模块：矩阵/卷积算子的分块计算、量化和写回数据通路
 module npu_top #(
@@ -9,7 +9,15 @@ module npu_top #(
     parameter int unsigned BUS_WIDTH = 32,  // 总线宽度
     parameter int unsigned REG_WIDTH = 32,  // 寄存器宽度
     parameter int unsigned ADDR_WIDTH = 19,  // AXI 地址宽度
-    parameter int unsigned IA_CACHE_BLOCKS = 8,  // IA loader cache slots；默认 IA reuse = IA_CACHE_BLOCKS/2
+    parameter int unsigned IA_CACHE_BLOCKS = 4,  // Physical 16-bit IA tile capacity.
+    parameter int unsigned IA_COMPACT_ENABLE = 1,
+    parameter int unsigned SHARED_IA_PS_ENABLE = 1,
+    parameter int unsigned SHARED_BANK_BYTES = 2048,
+    parameter int unsigned SHARED_BANK_COUNT = 0,
+    parameter int unsigned SHARED_TOTAL_BYTES = SHARED_BANK_COUNT != 0 ?
+        SHARED_BANK_COUNT * SHARED_BANK_BYTES :
+        IA_CACHE_BLOCKS * SIZE * SIZE * DATA_WIDTH / 8 + `GEMMORA_PS_POOL_BYTES,
+    parameter bit FRAME_PREFETCH_ENABLE = 1'b1,
     parameter int unsigned OPERAND_CACHE_ENABLE = 0,
     parameter int unsigned CONV_CACHE_SETS = 128,
     parameter int unsigned CONV_CACHE_WAYS = 2,
@@ -32,7 +40,7 @@ module npu_top #(
     parameter int unsigned ENABLE_PER_CHANNEL = 1,  // 置 0 时综合裁剪 per-channel 量化装载路径
     parameter int unsigned OA_FIFO_BANKS_MAX =
         ((ENABLE_IS_MODE == 0) && (ENABLE_PER_CHANNEL == 0)) ? 16 :
-        32  // common 8 KiB output FIFO in this experiment; 写回 FIFO 最大 tile bank 数；裁剪版用更浅线性 FIFO 压低面积
+        32
 ) (
     //==== 时钟与复位 ====
     input wire clk,   // 系统时钟
@@ -58,6 +66,9 @@ module npu_top #(
     input logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
     input logic [REG_WIDTH-1:0] cfg_col_groups,
     input logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
+    input logic [31:0] cfg_ps_control = 32'd0,
+    input logic [31:0] cfg_shared_ia_banks = 32'd0,
+    output wire [31:0] ps_stat_commands, ps_stat_pressure_events, ps_stat_early_finish_frames,
     output wire sa_ready,  // 系统就绪信号
 
     //==== 完成握手接口 ====
@@ -124,52 +135,6 @@ module npu_top #(
 );
 
 
-`ifdef GEMPACT_PANEL_ENGINE
-    wire alt_ready, alt_done;
-    wire [1:0] alt_error;
-    logic unsupported_conv_done;
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) unsupported_conv_done <= 1'b0;
-        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable || cfg_lhs_tile_packed || cfg_rhs_tile_packed)) unsupported_conv_done <= 1'b1;
-        else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
-    end
-    assign sa_ready = alt_ready && !unsupported_conv_done;
-    assign done_valid = alt_done || unsupported_conv_done;
-    assign err_code = unsupported_conv_done ? 2'b01 : alt_error;
-    assign conv_stat_hits = '0;
-    assign conv_stat_misses = '0;
-    assign conv_stat_read_bytes = '0;
-    assign conv_stat_cycles = '0;
-    assign vector_stat_cycles = '0;
-    assign vector_stat_compute = '0;
-    assign vector_stat_dma_wait = '0;
-    gempact_panel_engine #(.DMA_MAX_BYTES(DMA_MAX_BYTES), .POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_panel(
-        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable && !cfg_lhs_tile_packed && !cfg_rhs_tile_packed), .sa_ready(alt_ready),
-        .done_valid(alt_done), .err_code(alt_error), .*);
-`elsif GEMPACT_RESIDENT_ENGINE
-    wire alt_ready, alt_done;
-    wire [1:0] alt_error;
-    logic unsupported_conv_done;
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) unsupported_conv_done <= 1'b0;
-        else if (calc_start && sa_ready && (cfg_conv_enable || cfg_vector_enable || cfg_lhs_tile_packed || cfg_rhs_tile_packed)) unsupported_conv_done <= 1'b1;
-        else if (unsupported_conv_done && done_ready) unsupported_conv_done <= 1'b0;
-    end
-    assign sa_ready = alt_ready && !unsupported_conv_done;
-    assign done_valid = alt_done || unsupported_conv_done;
-    assign err_code = unsupported_conv_done ? 2'b01 : alt_error;
-    assign conv_stat_hits = '0;
-    assign conv_stat_misses = '0;
-    assign conv_stat_read_bytes = '0;
-    assign conv_stat_cycles = '0;
-    assign vector_stat_cycles = '0;
-    assign vector_stat_compute = '0;
-    assign vector_stat_dma_wait = '0;
-    gempact_resident_engine #(.DMA_MAX_BYTES(DMA_MAX_BYTES), .POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(REG_WIDTH), .ADDR_WIDTH(ADDR_WIDTH), .IA_CACHE_BLOCKS(IA_CACHE_BLOCKS), .PS_FRAME_COUNT(PS_FRAME_COUNT)) u_resident(
-        .calc_start(calc_start && !cfg_conv_enable && !cfg_vector_enable && !cfg_lhs_tile_packed && !cfg_rhs_tile_packed), .sa_ready(alt_ready),
-        .done_valid(alt_done), .err_code(alt_error), .*);
-`else
-
     // A Conv task is immutable after acceptance. The legacy software keeps
     // the other task fields stable; the AXI-Lite interface locks writes while busy.
     logic run_conv, run_vector, vector_rejected;
@@ -181,6 +146,7 @@ module npu_top #(
             run_rhs_tile_packed <= cfg_rhs_tile_packed;
         end
     end
+    logic [31:0] ps_control_q;
     logic vector_engine_ready, vector_engine_done;
     logic [1:0] vector_engine_error;
     logic normal_done_valid;
@@ -212,8 +178,11 @@ module npu_top #(
             end
         end
     end
-    assign done_valid = run_vector ? (vector_rejected || vector_engine_done) : normal_done_valid;
-    assign err_code = run_vector ? (vector_rejected ? 2'b01 : vector_engine_error) : normal_err_code;
+    assign done_valid = (abort_state == AB_DONE) ||
+                        ((abort_state == AB_IDLE) && !task_fault &&
+                         (run_vector ? (vector_rejected || vector_engine_done) : normal_done_valid));
+    assign err_code = (abort_state == AB_DONE) ? abort_error_code :
+                      run_vector ? (vector_rejected ? 2'b01 : vector_engine_error) : normal_err_code;
     for (genvar r = 0; r < 4; r++) begin : g_dma_ranges
         assign selected_range_base[r] = run_vector ? vector_dma_range_base[r] : conv_range_base[r];
         assign selected_range_end[r] = run_vector ? vector_dma_range_end[r] : conv_range_end[r];
@@ -222,6 +191,9 @@ module npu_top #(
     logic conv_error, conv_busy, dma_bus_error, dma_idle;
     logic conv_cfg_ready;
     wire operand_cache_idle;
+    wire ia_prefetch_idle;
+    wire kernel_prefetch_idle;
+    wire frame_prefetch_idle = ia_prefetch_idle && kernel_prefetch_idle;
     logic arbiter_ia_granted;
     logic [31:0] conv_hits_raw, conv_misses_raw, conv_read_bytes_raw;
     logic legacy_axi_arvalid, legacy_axi_arready, legacy_axi_rvalid, legacy_axi_rready, legacy_axi_rlast;
@@ -246,8 +218,8 @@ module npu_top #(
     assign conv_range_end[3] = 33'($unsigned(q_shift_pt)) + (33'(m)<<2);
     typedef enum logic [1:0] {AB_IDLE, AB_DRAIN, AB_RESET, AB_DONE} abort_t;
     abort_t abort_state;
+    logic [1:0] abort_error_code;
     wire abort_pending = abort_state != AB_IDLE;
-    wire matrix_fault = (run_conv && conv_error) || (!run_vector && dma_bus_error);
     wire core_rst_n = rst_n && (abort_state != AB_RESET);
     logic conv_count_active, conv_stats_started;
 `ifdef GEMMORA_INT8_PROFILE
@@ -278,12 +250,15 @@ module npu_top #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             run_conv <= 1'b0; conv_cfg_q <= '0; abort_state <= AB_IDLE;
+            ps_control_q <= '0;
+            abort_error_code <= 2'b11;
             conv_stat_hits <= '0; conv_stat_misses <= '0; conv_stat_read_bytes <= '0;
             conv_stat_cycles <= '0; conv_count_active <= 1'b0; conv_stats_started <= 1'b0;
         end else begin
             if (calc_start && sa_ready) begin
                 run_conv <= cfg_conv_enable && !cfg_vector_enable;
                 conv_cfg_q <= cfg_conv;
+                ps_control_q <= cfg_ps_control;
                 conv_stats_started <= 1'b0;
                 if ((cfg_conv_enable && !cfg_vector_enable) ||
                     (cfg_vector_enable && cfg_vector.op<=4'd3)) begin
@@ -304,8 +279,15 @@ module npu_top #(
                 conv_stats_started <= 1'b1;
             if (done_valid) conv_count_active <= 1'b0;
             case (abort_state)
-                AB_IDLE: if (matrix_fault) abort_state <= AB_DRAIN;
-                AB_DRAIN: if (dma_idle && !conv_busy && operand_cache_idle) abort_state <= AB_RESET;
+                AB_IDLE: if (task_fault) begin
+                    abort_state <= AB_DRAIN;
+                    abort_error_code <= (dma_bus_error || ((run_conv || run_vector) && conv_error))
+                                        ? 2'b11 : 2'b10;
+                end
+                AB_DRAIN: begin
+                    if (dma_bus_error) abort_error_code <= 2'b11;
+                    if (dma_idle && !conv_busy && operand_cache_idle) abort_state <= AB_RESET;
+                end
                 AB_RESET: abort_state <= AB_DONE;
                 AB_DONE: if (done_ready) begin abort_state <= AB_IDLE; run_conv <= 1'b0; end
                 default: abort_state <= AB_IDLE;
@@ -478,6 +460,52 @@ module npu_top #(
         (WEIGHT_WIDTH < 16) ? 16 : WEIGHT_WIDTH;
 `endif
 
+`ifdef GEMPACT_PS_COMPRESS
+    localparam bit SHARED_RAM_ENABLED = SHARED_IA_PS_ENABLE != 0 &&
+        SIZE == 16 && DATA_WIDTH == 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
+        (SHARED_BANK_BYTES == 1024 || SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096) &&
+        SHARED_TOTAL_BYTES >= 6 * SHARED_BANK_BYTES &&
+        SHARED_TOTAL_BYTES <= 9 * SHARED_BANK_BYTES &&
+        SHARED_TOTAL_BYTES % SHARED_BANK_BYTES == 0;
+`else
+    localparam bit SHARED_RAM_ENABLED = 1'b0;
+`endif
+    localparam int unsigned SHARED_PHYSICAL_BANKS = SHARED_TOTAL_BYTES / SHARED_BANK_BYTES;
+    localparam int unsigned SHARED_PHYSICAL_BANKS_WIDTH =
+        ($clog2(SHARED_PHYSICAL_BANKS+1) > 0) ? $clog2(SHARED_PHYSICAL_BANKS+1) : 1;
+    localparam int unsigned SHARED_MAX_IA_BANKS =
+        SHARED_PHYSICAL_BANKS > 4 ? 4 : SHARED_PHYSICAL_BANKS > 2 ? 2 : 1;
+    localparam int unsigned IA_MAX_CACHE_BLOCKS = SHARED_RAM_ENABLED ?
+        SHARED_MAX_IA_BANKS * SHARED_BANK_BYTES / (SIZE * SIZE * IA_DATA_WIDTH / 8) : IA_CACHE_BLOCKS;
+    localparam int unsigned SHARED_IA_ADDR_WIDTH =
+        ($clog2(SHARED_TOTAL_BYTES / 16) > 0) ? $clog2(SHARED_TOTAL_BYTES / 16) : 1;
+    localparam int unsigned SHARED_PS_ADDR_WIDTH =
+        SHARED_RAM_ENABLED ? SHARED_IA_ADDR_WIDTH :
+        (($clog2(`GEMMORA_PS_POOL_BYTES / 64) > 0) ? $clog2(`GEMMORA_PS_POOL_BYTES / 64) : 1);
+    localparam int unsigned SHARED_PS_DIRECTORY_ROWS = 1024;
+    logic [31:0] shared_ia_banks_q;
+    wire [31:0] requested_shared_ia_banks = cfg_shared_ia_banks == 0 ?
+        (SHARED_RAM_ENABLED && !cfg_stream_compact ? 32'd2 : 32'd1) : cfg_shared_ia_banks;
+    wire [31:0] active_ia_cache_blocks = SHARED_RAM_ENABLED ?
+        shared_ia_banks_q * (SHARED_BANK_BYTES / 512) : 32'(IA_CACHE_BLOCKS);
+    wire [31:0] active_ps_pool_bytes = SHARED_RAM_ENABLED ?
+        32'(SHARED_TOTAL_BYTES) - shared_ia_banks_q * 32'(SHARED_BANK_BYTES) : 32'(`GEMMORA_PS_POOL_BYTES);
+    wire [31:0] active_ps_bank_count = SHARED_RAM_ENABLED ?
+        (shared_ia_banks_q < SHARED_PHYSICAL_BANKS ? 32'(SHARED_PHYSICAL_BANKS) - shared_ia_banks_q : 32'd1) : 32'd4;
+    wire [31:0] active_ps_bank_depth = SHARED_RAM_ENABLED ?
+        32'(SHARED_BANK_BYTES / 16) : active_ps_pool_bytes >> 6;
+    wire shared_allocation_invalid = SHARED_RAM_ENABLED &&
+        (shared_ia_banks_q == 0 || shared_ia_banks_q >= SHARED_PHYSICAL_BANKS ||
+         (shared_ia_banks_q != 1 && shared_ia_banks_q != 2 && shared_ia_banks_q != 4));
+    wire shared_ram_capacity_fault;
+    logic [1:0] ia_ram_write_en, ia_ram_read_en;
+    logic [SHARED_IA_ADDR_WIDTH-1:0] ia_ram_write_addr [0:1], ia_ram_read_addr [0:1];
+    logic [127:0] ia_ram_write_data [0:1], ia_ram_read_data [0:1];
+    logic [15:0] ia_ram_write_mask [0:1];
+    logic [3:0] ps_ram_write_en, ps_ram_read_en;
+    logic [SHARED_PS_ADDR_WIDTH-1:0] ps_ram_write_addr [0:3], ps_ram_read_addr [0:3];
+    logic [127:0] ps_ram_write_data [0:3], ps_ram_read_data [0:3];
+
     // IA Loader 内部信号
     wire load_ia_req;
     wire load_ia_granted;
@@ -491,8 +519,39 @@ module npu_top #(
     wire partial_sum_advance_ready;
     wire signed [IA_DATA_WIDTH-1:0] ia_out[SIZE];
     wire ia_data_valid;
+`ifdef GEMPACT_PS_COMPRESS
+    localparam bit FRAME_EXEC_ENABLED = SIZE == 16;
+`else
+    localparam bit FRAME_EXEC_ENABLED = 1'b0;
+`endif
+    localparam int unsigned PS_FRAME_ID_W = (PS_FRAME_COUNT > 1) ? $clog2(PS_FRAME_COUNT) : 1;
+    logic frame_mode_q, frame_dma_init_q, frame_whole_rows_q;
+    wire frame_scheduler_ready, frame_scheduler_done, frame_command_valid, frame_command_active;
+    wire [1:0] frame_scheduler_error;
+    wire [PS_FRAME_ID_W-1:0] frame_command_id;
+    wire [31:0] frame_command_p0, frame_command_q0, frame_command_column;
+    wire [31:0] frame_command_rows, frame_command_cols, frame_command_k, frame_command_reserve;
+    wire frame_lookahead_valid;
+    wire [31:0] frame_lookahead_q0, frame_lookahead_column, frame_lookahead_cols, frame_lookahead_k;
+    wire frame_command_init, frame_command_final;
+    wire frame_command_ready, frame_command_start;
+    wire ps_frame_pressure, ps_frame_complete;
+    logic frame_ps_accepted, frame_compute_seen, frame_store_seen, frame_output_seen, frame_output_armed;
+    logic stationary_valid, frame_stationary_hit;
+    logic [31:0] stationary_q0, stationary_column;
+    wire [31:0] frame_stat_commands, frame_stat_pressure_events, frame_stat_early_finish_frames;
+    assign ps_stat_commands = (frame_mode_q && !run_vector) ? frame_stat_commands : 32'd0;
+    assign ps_stat_pressure_events = (frame_mode_q && !run_vector) ? frame_stat_pressure_events : 32'd0;
+    assign ps_stat_early_finish_frames = (frame_mode_q && !run_vector) ? frame_stat_early_finish_frames : 32'd0;
+    wire inner_done_valid;
+    wire [1:0] inner_err_code;
+    wire [31:0] loader_frame_id;
+    wire ps_frame_ready;
+    wire [31:0] ps_frame_rows;
+    wire ps_frame_init, ps_frame_final;
     wire ia_l1_switch;
     wire bias_sleep;
+    wire bias_load_sleep;
     wire bias_switch;
     wire bias_last_loop;
 
@@ -573,7 +632,10 @@ module npu_top #(
     logic [REG_WIDTH-1:0] ia_dma_p0, ia_dma_q0, ia_dma_group;
     logic [REG_WIDTH-1:0] ia_dma_base_addr, ia_dma_row_stride, ia_dma_rows_to_read;
     logic [7:0] ia_dma_burst_len_m1;
-    localparam int unsigned IA_CACHE_SLOT_W = (IA_CACHE_BLOCKS <= 1) ? 1 : $clog2(IA_CACHE_BLOCKS);
+    localparam int unsigned IA_SLOT_BLOCKS =
+        ((IA_COMPACT_ENABLE != 0) && (IA_DATA_WIDTH == 16))
+            ? 2 * IA_MAX_CACHE_BLOCKS : IA_MAX_CACHE_BLOCKS;
+    localparam int unsigned IA_CACHE_SLOT_W = (IA_SLOT_BLOCKS <= 1) ? 1 : $clog2(IA_SLOT_BLOCKS);
     logic [IA_CACHE_SLOT_W-1:0] ia_dma_slot_id;
     logic ia_dma_use_16bits;
     logic signed [REG_WIDTH-1:0] ia_dma_lhs_zp;
@@ -704,6 +766,9 @@ module npu_top #(
     end endgenerate
 
     wire ps_capacity_fault;
+    wire task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
+                      (frame_mode_q && inner_done_valid && inner_err_code != 0) ||
+                      ((run_conv || run_vector) && conv_error);
     wire controller_done_valid;
     wire [1:0] controller_err_code;
     wire operand_completion_seen;
@@ -733,11 +798,9 @@ module npu_top #(
     wire profile_input_invalid=1'b0;
     wire profile_error=1'b0;
 `endif
-    assign normal_done_valid=(abort_state == AB_DONE) ||
-        ((abort_state == AB_IDLE) && !matrix_fault &&
-         operand_cache_idle &&
-         ((controller_done_valid && !operand_completion_seen) || ps_capacity_fault || profile_error));
-    assign normal_err_code=(abort_state == AB_DONE) ? 2'b11 : ps_capacity_fault ? 2'b11 : profile_error ? 2'b01 : controller_err_code;
+    assign normal_done_valid = operand_cache_idle && frame_prefetch_idle &&
+        ((controller_done_valid && !operand_completion_seen) || profile_error);
+    assign normal_err_code = profile_error ? 2'b01 : controller_err_code;
 
     // 添加缺少的内部信号
     // per-submodule init_cfg signals (由npu_controller产生的单拍脉冲)
@@ -748,8 +811,10 @@ module npu_top #(
     wire init_cfg_oa;
     wire use_16bits;  // 16位数据指示信号
     wire [REG_WIDTH-1:0] tile_count;  // 分块计数信号
+        localparam int unsigned IA_WIDE_REUSE_NUM_MAX =
+            (IA_MAX_CACHE_BLOCKS < 2) ? 1 : (IA_MAX_CACHE_BLOCKS / 2);
         localparam int unsigned IA_REUSE_NUM_MAX =
-            (IA_CACHE_BLOCKS < 2) ? 1 : (IA_CACHE_BLOCKS / 2);
+            (IA_SLOT_BLOCKS < 2) ? 1 : (IA_SLOT_BLOCKS / 2);
         localparam int unsigned DIM_COUNT_WIDTH =
             (ADDR_WIDTH <= SIZE_SHIFT) ? 1 :
             (((ADDR_WIDTH - SIZE_SHIFT + 1) > REG_WIDTH) ? REG_WIDTH :
@@ -763,7 +828,9 @@ module npu_top #(
             (IA_REUSE_NUM_MAX <= 1) ? 1 : ($clog2(IA_REUSE_NUM_MAX) + 1);
         localparam int unsigned W_REUSE_W =
             (W_REUSE_NUM_MAX <= 1) ? 1 : ($clog2(W_REUSE_NUM_MAX) + 1);
-        localparam int unsigned OA_FIFO_BANKS_RAW = PS_FRAME_COUNT * IA_REUSE_NUM_MAX;
+        localparam int unsigned OA_INITIAL_IA_REUSE =
+            (IA_CACHE_BLOCKS < 2) ? 1 : (IA_CACHE_BLOCKS / 2);
+        localparam int unsigned OA_FIFO_BANKS_RAW = PS_FRAME_COUNT * OA_INITIAL_IA_REUSE;
         localparam int unsigned OA_FIFO_BANKS =
             (OA_FIFO_BANKS_RAW <= OA_FIFO_BANKS_MAX) ? OA_FIFO_BANKS_RAW : OA_FIFO_BANKS_MAX;
         localparam int unsigned OA_S16_FIFO_BANKS =
@@ -782,6 +849,14 @@ module npu_top #(
         wire use_per_channel_eff = (ENABLE_PER_CHANNEL != 0)
                                  ? use_per_channel : 1'b0;
         wire cfg_16bits_ia_eff = (IA_DATA_WIDTH > 8) ? cfg_16bits_ia : 1'b0;
+        wire cfg_stream_is_mode = cfg_16x8 ? 1'b0 : cfg_dataflow_mode_eff;
+        wire cfg_stream_source_s8 = cfg_stream_is_mode ||
+            (cfg_conv_enable ? !cfg_conv.input_s16 : !(cfg_16bits_ia_eff || cfg_16x8));
+        wire signed [REG_WIDTH-1:0] cfg_stream_offset = cfg_stream_is_mode ? rhs_zp :
+            (cfg_conv_enable ? REG_WIDTH'($signed(cfg_conv.input_offset)) : lhs_zp);
+        wire cfg_stream_compact = (IA_COMPACT_ENABLE != 0) && (IA_DATA_WIDTH == 16) &&
+            cfg_stream_source_s8 && ($signed(cfg_stream_offset) >= -127) &&
+            ($signed(cfg_stream_offset) <= 128);
 
         wire ctrl_sa_ready;
         logic cfg_stage0_valid;
@@ -790,6 +865,8 @@ module npu_top #(
         logic cfg_mode_s0;
         logic cfg_use16_s0;
         logic cfg_16x8_s0;
+        logic cfg_compact_s0;
+        logic signed [REG_WIDTH-1:0] cfg_compact_offset_s0;
         logic [REG_WIDTH-1:0] cfg_k_s0;
         logic [REG_WIDTH-1:0] cfg_m_s0;
         logic [REG_WIDTH-1:0] cfg_n_s0;
@@ -800,6 +877,8 @@ module npu_top #(
         logic cfg_mode_s1;
         logic cfg_use16_s1;
         logic cfg_16x8_s1;
+        logic cfg_compact_s1;
+        logic signed [REG_WIDTH-1:0] cfg_compact_offset_s1;
         logic [REG_WIDTH-1:0] cfg_k_s1;
         logic [REG_WIDTH-1:0] cfg_m_s1;
         logic [REG_WIDTH-1:0] cfg_n_s1;
@@ -808,6 +887,8 @@ module npu_top #(
         logic [REG_WIDTH-1:0] cfg_ia_req_s1;
         logic [REG_WIDTH-1:0] cfg_w_req_s1;
         logic cfg_mode_s2;
+        logic cfg_compact_s2;
+        logic signed [REG_WIDTH-1:0] cfg_compact_offset_s2;
         logic [REG_WIDTH-1:0] cfg_k_s2;
         logic [REG_WIDTH-1:0] cfg_m_s2;
         logic [REG_WIDTH-1:0] cfg_n_s2;
@@ -827,10 +908,23 @@ module npu_top #(
             cfg_w_req_s0 : cfg_ps_col_tiles_s0;
 
         wire cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
-        assign cfg_stage2_fire = cfg_stage2_valid && ctrl_sa_ready;
-        wire ctrl_calc_start = cfg_stage2_fire;
-        assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
-                          (abort_state == AB_IDLE) && operand_cache_idle;
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) shared_ia_banks_q <= 32'd1;
+            else if (cfg_start_event) shared_ia_banks_q <= requested_shared_ia_banks;
+        end
+        assign cfg_stage2_fire = cfg_stage2_valid && ctrl_sa_ready && frame_scheduler_ready;
+        wire legacy_window_shape_s2 =
+            (cfg_w_reuse_eff_s2 & (cfg_w_reuse_eff_s2 - 32'd1)) == 0;
+        wire use_frame_commands_s2 = FRAME_EXEC_ENABLED &&
+            (!ps_long_capacity_fits || !legacy_window_shape_s2 || ps_control_q[1]);
+        wire [31:0] frame_slice_tiles_s2 =
+            ps_control_q[3:2] == 2'd3 ? cfg_ia_reuse_eff_s2 :
+            ps_control_q[3:2] == 2'd2 ? ((cfg_ia_reuse_eff_s2 < 2) ? cfg_ia_reuse_eff_s2 : 32'd2) :
+            ps_control_q[3:2] == 2'd1 ? 32'd1 :
+            ps_raw_capacity_fits ? cfg_ia_reuse_eff_s2 : 32'd1;
+        wire ctrl_calc_start = (cfg_stage2_fire && !use_frame_commands_s2) || frame_command_start;
+        assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && frame_scheduler_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
+                          (abort_state == AB_IDLE) && operand_cache_idle && frame_prefetch_idle;
 
         // ABI 2: external software provides effective, legal R/W values.
         // There is no automatic rounding or resizing after the host computes groups.
@@ -839,11 +933,106 @@ module npu_top #(
         wire [IA_REUSE_W-1:0] ext_r_small = cfg_ia_reuse_eff_s2[IA_REUSE_W-1:0];
         wire [W_REUSE_W-1:0] ext_w_small = cfg_w_reuse_eff_s2[W_REUSE_W-1:0];
         wire ext_r_legal = (cfg_ia_reuse_eff_s2 >> IA_REUSE_W)==0 && ext_r_small!=0 &&
-            ext_r_small<=IA_REUSE_W'(IA_REUSE_NUM_MAX) &&
+            cfg_ia_reuse_eff_s2 <= (cfg_compact_s2 ? active_ia_cache_blocks : active_ia_cache_blocks >> 1) &&
             (((ext_r_small & (ext_r_small-IA_REUSE_W'(1)))==0) || ext_r_small==25);
         wire ext_w_legal = (cfg_w_reuse_eff_s2 >> W_REUSE_W)==0 && ext_w_small!=0 &&
             ext_w_small<=W_REUSE_W'(W_REUSE_NUM_MAX) &&
-            (((ext_w_small & (ext_w_small-W_REUSE_W'(1)))==0) || ext_w_small==25);
+            (FRAME_EXEC_ENABLED || ((ext_w_small & (ext_w_small-W_REUSE_W'(1)))==0) || ext_w_small==25);
+
+`ifdef GEMPACT_PS_COMPRESS
+        wire [63:0] ps_group_row_capacity = 64'(cfg_ia_reuse_eff_s2) * 64'(SIZE);
+        wire [63:0] ps_max_frame_rows =
+            ((64'(cfg_stream_k_s2) < ps_group_row_capacity)
+                ? 64'(cfg_stream_k_s2) : ps_group_row_capacity);
+        wire [63:0] ps_output_column_tiles =
+            (64'(cfg_stream_m_s2) + 64'(SIZE - 1)) >> SIZE_SHIFT;
+        wire [63:0] ps_live_frames =
+            (ps_output_column_tiles < 64'(cfg_w_reuse_eff_s2))
+                ? ps_output_column_tiles : 64'(cfg_w_reuse_eff_s2);
+        wire [63:0] ps_capacity_required_bytes =
+            64'd64 * ps_max_frame_rows * ps_live_frames;
+        wire ps_cross_k_required = 64'(cfg_n_s2) > 64'(SIZE);
+        wire [63:0] ps_raw_frame_bank_words;
+        wire ps_raw_capacity_fits =
+            !ps_cross_k_required ||
+            (ps_capacity_required_bytes <= 64'(active_ps_pool_bytes) &&
+             ps_raw_frame_bank_words * ps_live_frames <= 64'(active_ps_bank_depth));
+`ifdef GEMMORA_PS_FORCE_RAW
+        localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b1;
+`elsif PS_FORCE_RAW
+        localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b1;
+`else
+        localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b0;
+`endif
+        wire ps_config_force_raw = PS_REQUIRE_RAW_CAPACITY || ps_control_q[0] ||
+            (ps_raw_capacity_fits && (!ps_cross_k_required || active_ps_bank_count >= 4));
+        // Bias is applied after the final K block. Bound all retained sums from
+        // operand formats and the largest nonfinal K prefix, without sampling
+        // future activations. Powers of two keep this admission test multiplier-free.
+        wire ps_lhs_source_s16_s2 = run_conv ? conv_cfg_q.input_s16 : cfg_use16_s2;
+        wire signed [REG_WIDTH-1:0] ps_lhs_offset_s2 = run_conv ?
+            REG_WIDTH'($signed(conv_cfg_q.input_offset)) : lhs_zp;
+        wire [5:0] ps_lhs_exp_s2 = ps_lhs_source_s16_s2 ? 6'd15 :
+            ps_lhs_offset_s2 == 0 ? 6'd7 :
+            ($signed(ps_lhs_offset_s2) >= -32'sd128 && $signed(ps_lhs_offset_s2) <= 32'sd128) ? 6'd8 : 6'd15;
+        wire [5:0] ps_rhs_exp_s2 = rhs_zp == 0 ? 6'd7 :
+            ($signed(rhs_zp) >= -32'sd128 && $signed(rhs_zp) <= 32'sd128) ? 6'd8 : 6'd15;
+        wire [5:0] ps_product_exp_s2 = ps_lhs_exp_s2 + ps_rhs_exp_s2;
+        wire [31:0] ps_retained_k_s2 = (cfg_n_s2 - 32'd1) & ~32'(SIZE - 1);
+        wire ps_s24_bound_s2 = ps_product_exp_s2 < 6'd23 &&
+            ps_retained_k_s2 < (32'd1 << (6'd23 - ps_product_exp_s2));
+        wire [2:0] ps_config_word_cap = (!ps_config_force_raw && ps_s24_bound_s2) ? 3'd3 : 3'd4;
+        // Each frame rotates its words across the allocated physical banks.
+        // Reserve the per-bank maximum separately for every live frame.
+        wire [63:0] ps_long_frame_words = ps_config_word_cap == 3'd3 ?
+            (ps_max_frame_rows << 1) + ps_max_frame_rows : (ps_max_frame_rows << 2);
+        wire [63:0] ps_long_frame_bank_words;
+        wire ps_long_capacity_fits = !ps_cross_k_required ||
+            (32'(ps_config_word_cap) <= active_ps_bank_count &&
+             ps_long_frame_bank_words * ps_live_frames <= 64'(active_ps_bank_depth) &&
+             (!SHARED_RAM_ENABLED || ps_max_frame_rows * ps_live_frames <= 64'(SHARED_PS_DIRECTORY_ROWS)));
+        wire [63:0] ps_admission_rows = use_frame_commands_s2 ?
+            ((ps_max_frame_rows < (64'(frame_slice_tiles_s2) << SIZE_SHIFT)) ?
+                ps_max_frame_rows : (64'(frame_slice_tiles_s2) << SIZE_SHIFT)) : ps_max_frame_rows;
+        wire [63:0] ps_admission_words = ps_config_word_cap == 3'd3 ?
+            (ps_admission_rows << 1) + ps_admission_rows : (ps_admission_rows << 2);
+        wire [63:0] ps_admission_bank_words;
+        generate if (SHARED_RAM_ENABLED) begin : g_ps_bank_reservation
+            wire [63:0] raw_bank_words [0:SHARED_PHYSICAL_BANKS-1];
+            wire [63:0] long_bank_words [0:SHARED_PHYSICAL_BANKS-1];
+            wire [63:0] admission_bank_words [0:SHARED_PHYSICAL_BANKS-1];
+            assign raw_bank_words[0] = '0;
+            assign long_bank_words[0] = '0;
+            assign admission_bank_words[0] = '0;
+            for (genvar count = 1; count < SHARED_PHYSICAL_BANKS; count++) begin : g_count
+                assign raw_bank_words[count] = ((ps_max_frame_rows << 2) + 64'(count - 1)) / 64'(count);
+                assign long_bank_words[count] = (ps_long_frame_words + 64'(count - 1)) / 64'(count);
+                assign admission_bank_words[count] = (ps_admission_words + 64'(count - 1)) / 64'(count);
+            end
+            assign ps_raw_frame_bank_words = raw_bank_words[active_ps_bank_count];
+            assign ps_long_frame_bank_words = long_bank_words[active_ps_bank_count];
+            assign ps_admission_bank_words = admission_bank_words[active_ps_bank_count];
+        end else begin : g_ps_fixed_reservation
+            assign ps_raw_frame_bank_words = ps_max_frame_rows;
+            assign ps_long_frame_bank_words = (ps_long_frame_words + 64'd3) >> 2;
+            assign ps_admission_bank_words = (ps_admission_words + 64'd3) >> 2;
+        end endgenerate
+        wire ps_capacity_config_invalid = (SIZE == 16) &&
+            (shared_allocation_invalid || active_ps_pool_bytes < 64 ||
+             ((active_ps_pool_bytes % 64) != 0) ||
+             (SHARED_RAM_ENABLED && !cfg_compact_s2 && shared_ia_banks_q < 2) ||
+             (ps_cross_k_required && (ps_admission_bank_words > 64'(active_ps_bank_depth) ||
+                                      32'(ps_config_word_cap) > active_ps_bank_count)) ||
+             (!use_frame_commands_s2 && !ps_long_capacity_fits));
+`else
+        localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b1;
+        wire ps_raw_capacity_fits = 1'b1;
+        wire ps_long_capacity_fits = 1'b1;
+        wire ps_capacity_config_invalid = ps_configuration_invalid;
+        wire ps_config_force_raw = 1'b1;
+        wire [2:0] ps_config_word_cap = 3'd4;
+        wire [63:0] ps_admission_rows = 64'd0;
+`endif
 
         always_ff @(posedge clk or negedge core_rst_n) begin
             if (!core_rst_n) begin
@@ -853,6 +1042,8 @@ module npu_top #(
                     cfg_mode_s0 <= 1'b0;
                     cfg_use16_s0 <= 1'b0;
                     cfg_16x8_s0 <= 1'b0;
+                    cfg_compact_s0 <= 1'b0;
+                    cfg_compact_offset_s0 <= '0;
                     cfg_k_s0 <= '0;
                     cfg_m_s0 <= '0;
                     cfg_n_s0 <= '0;
@@ -863,6 +1054,8 @@ module npu_top #(
                     cfg_mode_s1 <= 1'b0;
                     cfg_use16_s1 <= 1'b0;
                     cfg_16x8_s1 <= 1'b0;
+                    cfg_compact_s1 <= 1'b0;
+                    cfg_compact_offset_s1 <= '0;
                     cfg_k_s1 <= '0;
                     cfg_m_s1 <= '0;
                     cfg_n_s1 <= '0;
@@ -871,6 +1064,8 @@ module npu_top #(
                     cfg_ia_req_s1 <= '0;
                     cfg_w_req_s1 <= '0;
                     cfg_mode_s2 <= 1'b0;
+                    cfg_compact_s2 <= 1'b0;
+                    cfg_compact_offset_s2 <= '0;
                     cfg_use16_s2 <= 1'b0;
                     cfg_16x8_s2 <= 1'b0;
                     cfg_k_s2 <= '0;
@@ -895,6 +1090,8 @@ module npu_top #(
                         cfg_mode_s2 <= cfg_mode_s1;
                         cfg_use16_s2 <= cfg_use16_s1;
                         cfg_16x8_s2 <= cfg_16x8_s1;
+                        cfg_compact_s2 <= cfg_compact_s1;
+                        cfg_compact_offset_s2 <= cfg_compact_offset_s1;
                         cfg_k_s2 <= cfg_k_s1;
                         cfg_m_s2 <= cfg_m_s1;
                         cfg_n_s2 <= cfg_n_s1;
@@ -913,6 +1110,8 @@ module npu_top #(
                     cfg_mode_s1 <= cfg_mode_s0;
                     cfg_use16_s1 <= cfg_use16_s0;
                     cfg_16x8_s1 <= cfg_16x8_s0;
+                    cfg_compact_s1 <= cfg_compact_s0;
+                    cfg_compact_offset_s1 <= cfg_compact_offset_s0;
                     cfg_k_s1 <= cfg_k_s0;
                     cfg_m_s1 <= cfg_m_s0;
                         cfg_n_s1 <= cfg_n_s0;
@@ -926,14 +1125,16 @@ module npu_top #(
 
                     if (cfg_start_event) begin
                         cfg_stage0_valid <= 1'b1;
-                        cfg_mode_s0 <= cfg_16x8 ? 1'b0 : cfg_dataflow_mode_eff;
+                        cfg_mode_s0 <= cfg_stream_is_mode;
                         cfg_use16_s0 <= cfg_16bits_ia_eff | cfg_16x8;
                         cfg_16x8_s0 <= cfg_16x8;
+                        cfg_compact_s0 <= cfg_stream_compact;
+                        cfg_compact_offset_s0 <= cfg_stream_offset;
                     cfg_k_s0 <= k;
                     cfg_m_s0 <= m;
                         cfg_n_s0 <= n;
-                        cfg_stream_k_s0 <= cfg_dataflow_mode_eff ? m : k;
-                        cfg_stream_m_s0 <= cfg_dataflow_mode_eff ? k : m;
+                        cfg_stream_k_s0 <= cfg_stream_is_mode ? m : k;
+                        cfg_stream_m_s0 <= cfg_stream_is_mode ? k : m;
                         cfg_ia_req_s0 <= cfg_ia_reuse_num;
                         cfg_w_req_s0 <= cfg_w_reuse_num;
                     end
@@ -943,6 +1144,10 @@ module npu_top #(
         logic run_is_mode;
         logic run_use_16bits;
         logic run_16x8;
+        logic run_compact;
+        logic signed [REG_WIDTH-1:0] run_compact_offset;
+        logic ps_force_raw_q;
+        logic [2:0] ps_word_cap_q;
         logic [REG_WIDTH-1:0] run_k;
         logic [REG_WIDTH-1:0] run_m;
         logic [REG_WIDTH-1:0] run_n;
@@ -957,6 +1162,10 @@ module npu_top #(
                 run_is_mode <= 1'b0;
                 run_use_16bits <= 1'b0;
                 run_16x8 <= 1'b0;
+                run_compact <= 1'b0;
+                run_compact_offset <= '0;
+                ps_force_raw_q <= 1'b1;
+                ps_word_cap_q <= 3'd4;
                 run_k <= '0;
                 run_m <= '0;
                 run_n <= '0;
@@ -969,6 +1178,10 @@ module npu_top #(
                 run_is_mode <= cfg_mode_s2;
                 run_use_16bits <= cfg_use16_s2;
                 run_16x8 <= cfg_16x8_s2;
+                run_compact <= cfg_compact_s2;
+                run_compact_offset <= cfg_compact_offset_s2;
+                ps_force_raw_q <= ps_config_force_raw;
+                ps_word_cap_q <= ps_config_word_cap;
                 run_k <= cfg_k_s2;
                 run_m <= cfg_m_s2;
                 run_n <= cfg_n_s2;
@@ -989,7 +1202,136 @@ module npu_top #(
         wire [REG_WIDTH-1:0] weight_stride_eff = is_mode ? lhs_row_stride_b : rhs_col_stride_b;
         wire signed [REG_WIDTH-1:0] weight_zp_eff = is_mode ? lhs_zp : rhs_zp;
         wire weight_use_16bits_eff = ((KERNEL_DATA_WIDTH > 8) && is_mode) ? run_use_16bits : 1'b0;
-        wire compute_bias_sleep = bias_sleep;
+        wire ws_final_bias = FRAME_EXEC_ENABLED && !is_mode;
+        wire compute_bias_sleep = frame_mode_q ? !frame_command_init : bias_sleep;
+        wire [31:0] exec_stream_k = frame_mode_q ? frame_command_rows : stream_k;
+        wire [31:0] exec_stream_m = frame_mode_q ? frame_command_cols : stream_m;
+        wire [31:0] exec_n = frame_mode_q ? frame_command_k : run_n;
+        wire [31:0] exec_k = frame_mode_q ? (is_mode ? frame_command_cols : frame_command_rows) : run_k;
+        wire [31:0] exec_m = frame_mode_q ? (is_mode ? frame_command_rows : frame_command_cols) : run_m;
+        wire [31:0] exec_w = frame_mode_q ? 32'd1 : w_reuse_num_eff;
+        wire [31:0] exec_row_groups = frame_mode_q ? 32'd1 : cfg_row_groups;
+        wire [31:0] exec_row_tail = frame_mode_q ? ((frame_command_rows + 32'(SIZE-1)) >> SIZE_SHIFT) : cfg_row_tail_tiles;
+        wire [31:0] exec_col_groups = frame_mode_q ? 32'd1 : cfg_col_groups;
+        wire [31:0] exec_col_tail = frame_mode_q ? 32'd1 : cfg_col_tail_tiles;
+        wire [31:0] exec_channel = is_mode ? frame_command_p0 : frame_command_column;
+        wire [31:0] exec_output_row = is_mode ? frame_command_column : frame_command_p0;
+        function automatic logic [REG_WIDTH-1:0] operand_frame_offset(
+            input logic [REG_WIDTH-1:0] row0, depth0, stride, total_depth,
+            input logic tile_packed, element_s16
+        );
+            logic [REG_WIDTH-1:0] depth_tiles, element_offset;
+            begin
+                depth_tiles = (total_depth + REG_WIDTH'(SIZE-1)) >> SIZE_SHIFT;
+                element_offset = ((row0 >> SIZE_SHIFT) * depth_tiles +
+                    (depth0 >> SIZE_SHIFT)) << (2 * SIZE_SHIFT);
+                element_offset = element_offset + ((row0 & REG_WIDTH'(SIZE-1)) << SIZE_SHIFT);
+                operand_frame_offset = tile_packed ? (element_offset << element_s16) :
+                    row0 * stride + (depth0 << element_s16);
+            end
+        endfunction
+        wire [31:0] exec_ia_base = ia_base_eff + (frame_mode_q ?
+            operand_frame_offset(frame_command_p0, frame_command_q0, ia_stride_eff, run_n,
+                is_mode ? run_rhs_tile_packed : run_lhs_tile_packed, ia_use_16bits_eff) : 32'd0);
+        wire [31:0] exec_weight_base = weight_base_eff + (frame_mode_q ?
+            operand_frame_offset(frame_command_column, frame_command_q0, weight_stride_eff, run_n,
+                is_mode ? run_lhs_tile_packed : run_rhs_tile_packed, weight_use_16bits_eff) : 32'd0);
+        wire [31:0] exec_bias_base = frame_mode_q ?
+            ((bias_base != 0 && ((is_mode || ws_final_bias) ? frame_command_final : frame_command_init)) ?
+                bias_base + (exec_channel << 2) : 32'd0) : bias_base;
+        wire [31:0] exec_dst_base = dst_base + (frame_mode_q ?
+            exec_output_row * dst_row_stride_b + (exec_channel << run_16x8) : 32'd0);
+        wire signed [31:0] exec_q_mult = q_mult_pt +
+            ((frame_mode_q && use_per_channel_eff) ? (exec_channel << 2) : 32'd0);
+        wire signed [31:0] exec_q_shift = q_shift_pt +
+            ((frame_mode_q && use_per_channel_eff) ? (exec_channel << 2) : 32'd0);
+        wire exec_init_requant = init_cfg_requant && (!frame_mode_q || frame_command_final);
+        wire exec_init_oa = init_cfg_oa && (!frame_mode_q || frame_command_final);
+        wire exec_dma_job_init = frame_dma_init_q || (init_cfg_ia && !frame_mode_q);
+        wire exec_oa_complete = frame_mode_q ?
+            (frame_command_active && (frame_compute_seen || partial_sum_calc_over) && (frame_store_seen || ps_frame_complete) &&
+             (!frame_command_final || frame_output_seen || (frame_output_armed && oa_calc_over))) : oa_calc_over;
+        wire tiling_invalid = conv_config_invalid || ps_capacity_config_invalid || !ext_r_legal || !ext_w_legal ||
+            (cfg_16x8_s2 && cfg_ia_reuse_eff_s2 > OA_S16_FIFO_BANKS) ||
+            (ps_control_q[31:4] != 0) || (!FRAME_EXEC_ENABLED && ps_control_q != 0) ||
+            cfg_row_groups == 0 || cfg_col_groups == 0 || cfg_row_tail_tiles == 0 || cfg_col_tail_tiles == 0 ||
+            cfg_row_tail_tiles > cfg_ia_reuse_eff_s2 || cfg_col_tail_tiles > cfg_w_reuse_eff_s2 ||
+            (cfg_row_groups >> DIM_COUNT_WIDTH) != 0 || (cfg_col_groups >> DIM_COUNT_WIDTH) != 0;
+        wire [1:0] frame_config_error = (lhs_base == 0 || rhs_base == 0 || dst_base == 0) ? 2'b10 :
+            ((tiling_invalid || lhs_row_stride_b == 0 || rhs_col_stride_b == 0 || dst_row_stride_b == 0 ||
+              (use_per_channel_eff && q_mult_pt == 0 && q_shift_pt == 0)) ? 2'b01 : 2'b00);
+        assign frame_command_ready = frame_mode_q && ps_frame_ready && ctrl_sa_ready && !inner_done_valid && !abort_pending && !task_fault;
+        assign frame_command_start = frame_command_valid && frame_command_ready;
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) begin
+                frame_mode_q <= 1'b0;
+                frame_whole_rows_q <= 1'b0;
+                frame_dma_init_q <= 1'b0;
+                stationary_valid <= 1'b0; stationary_q0 <= '0; stationary_column <= '0; frame_stationary_hit <= 1'b0;
+                frame_ps_accepted <= 1'b0; frame_compute_seen <= 1'b0; frame_store_seen <= 1'b0;
+                frame_output_seen <= 1'b0; frame_output_armed <= 1'b0;
+            end else begin
+                frame_dma_init_q <= cfg_stage2_fire && use_frame_commands_s2;
+                if (cfg_stage2_fire) begin
+                    frame_mode_q <= use_frame_commands_s2;
+                    frame_whole_rows_q <= frame_slice_tiles_s2 == cfg_ia_reuse_eff_s2;
+                    stationary_valid <= 1'b0;
+                end else if (frame_mode_q && weight_commit) begin
+                    stationary_valid <= 1'b1;
+                    stationary_q0 <= frame_command_q0;
+                    stationary_column <= frame_command_column;
+                end
+                if (frame_command_start) begin
+                    frame_stationary_hit <= stationary_valid && stationary_q0 == frame_command_q0 &&
+                                            stationary_column == frame_command_column;
+                    frame_ps_accepted <= 1'b0; frame_compute_seen <= 1'b0; frame_store_seen <= 1'b0;
+                    frame_output_seen <= 1'b0; frame_output_armed <= 1'b0;
+                end else if (frame_command_active) begin
+                    if (send_ia_trigger) frame_ps_accepted <= 1'b1;
+                    if (partial_sum_calc_over) frame_compute_seen <= 1'b1;
+                    if (ps_frame_complete) frame_store_seen <= 1'b1;
+                    if (exec_init_oa) frame_output_armed <= 1'b1;
+                    if (frame_output_armed && oa_calc_over) frame_output_seen <= 1'b1;
+                end
+            end
+        end
+        generate if (FRAME_EXEC_ENABLED) begin : g_frame_schedule
+            ps_window_scheduler #(.SIZE(SIZE), .FRAME_COUNT(PS_FRAME_COUNT)) u_scheduler (
+                .clk, .rst_n(core_rst_n), .start(cfg_stage2_fire && use_frame_commands_s2),
+                .stream_rows(cfg_stream_k_s2), .stationary_rows(cfg_stream_m_s2), .reduction(cfg_n_s2),
+                .reuse_rows(cfg_ia_reuse_eff_s2), .window_frames(cfg_w_reuse_eff_s2),
+                .slice_tiles(frame_slice_tiles_s2), .config_error(frame_config_error),
+                .ready(frame_scheduler_ready), .done_valid(frame_scheduler_done),
+                .done_ready(done_ready && operand_cache_idle && frame_prefetch_idle), .err_code(frame_scheduler_error),
+                .command_valid(frame_command_valid), .command_ready(frame_command_ready),
+                .command_pressure(frame_mode_q && ps_frame_pressure),
+                .command_complete(frame_mode_q && frame_command_active && inner_done_valid && inner_err_code == 0),
+                .frame_id(frame_command_id), .p0(frame_command_p0), .q0(frame_command_q0),
+                .column0(frame_command_column), .rows(frame_command_rows), .cols(frame_command_cols),
+                .count_k(frame_command_k), .reserve_rows(frame_command_reserve),
+                .frame_init(frame_command_init), .frame_final(frame_command_final),
+                .command_active(frame_command_active), .stat_commands(frame_stat_commands),
+                .lookahead_valid(frame_lookahead_valid), .lookahead_q0(frame_lookahead_q0),
+                .lookahead_column(frame_lookahead_column), .lookahead_cols(frame_lookahead_cols),
+                .lookahead_count_k(frame_lookahead_k),
+                .stat_pressure_events(frame_stat_pressure_events), .stat_early_finish_frames(frame_stat_early_finish_frames)
+            );
+        end else begin : g_no_frame_schedule
+            assign frame_scheduler_ready = 1'b1;
+            assign frame_scheduler_done = 1'b0; assign frame_scheduler_error = '0;
+            assign frame_command_valid = 1'b0; assign frame_command_active = 1'b0;
+            assign frame_command_id = '0; assign frame_command_p0 = '0; assign frame_command_q0 = '0;
+            assign frame_command_column = '0; assign frame_command_rows = '0; assign frame_command_cols = '0;
+            assign frame_command_k = '0; assign frame_command_reserve = '0;
+            assign frame_command_init = 1'b0; assign frame_command_final = 1'b0;
+            assign frame_lookahead_valid = 1'b0;
+            assign frame_lookahead_q0 = 0; assign frame_lookahead_column = 0;
+            assign frame_lookahead_cols = 0; assign frame_lookahead_k = 0;
+            assign frame_stat_commands = '0; assign frame_stat_pressure_events = '0;
+            assign frame_stat_early_finish_frames = '0;
+        end endgenerate
+        assign controller_done_valid = frame_mode_q ? frame_scheduler_done : inner_done_valid;
+        assign controller_err_code = frame_mode_q ? frame_scheduler_error : inner_err_code;
 
         axi_block_dma_arbiter #(
             .DMA_MAX_BYTES(DMA_MAX_BYTES),
@@ -999,7 +1341,7 @@ module npu_top #(
             .DMA_SIZE    (SHARED_DMA_SIZE),
             .BUS_WIDTH   (BUS_WIDTH),
             .REG_WIDTH   (REG_WIDTH),
-            .CACHE_BLOCKS(IA_CACHE_BLOCKS),
+            .CACHE_BLOCKS(IA_SLOT_BLOCKS),
             .ENABLE_QUANT_CLIENT(ENABLE_PER_CHANNEL),
             .READ_OUTSTANDING(AXI_READ_OUTSTANDING),
             .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING),
@@ -1010,17 +1352,16 @@ module npu_top #(
         ) u_block_dma_arbiter (
             .clk                     (clk),
             .rst_n                   (core_rst_n),
+            .abort                   (abort_pending || task_fault),
             // Reconfigure even for GEMM so a previous Conv task cannot leave
             // image bounds or cache policy active on ordinary matrix reads.
-            .conv_cfg_valid          (run_vector ? vector_dma_cfg_valid : init_cfg_ia),
+            .conv_cfg_valid          (run_vector ? vector_dma_cfg_valid : exec_dma_job_init),
             .conv_cfg_ready          (conv_cfg_ready),
             .conv_enable             (run_vector ? vector_dma_conv_enable : run_conv),
             .dma_range_enable       (run_vector && vector_dma_range_enable),
             .conv_cfg                (run_vector ? vector_dma_conv_cfg : conv_cfg_q),
             .conv_sched_r            (run_vector ? 32'd0 : 32'(ia_reuse_num_eff)),
-            // The geometry predictor's rank follows the WS loop order. IS
-            // retains raw-input caching but uses its generic fallback policy.
-            .conv_sched_groups       ((run_vector || is_mode) ? 32'd0 : 32'(cfg_col_groups)),
+            .conv_sched_groups       ((run_vector || is_mode || frame_mode_q) ? 32'd0 : 32'(cfg_col_groups)),
             .conv_range_base         (selected_range_base),
             .conv_range_end          (selected_range_end),
             .conv_error              (conv_error),
@@ -1031,7 +1372,7 @@ module npu_top #(
             .win_req_valid,.win_req_ready,.win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
             .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
             .win_rsp_last,.win_rsp_error,.win_busy,
-            .dw_req(dw_rd_req), .dw_granted(dw_rd_granted), .dw_start(dw_rd_start),
+            .dw_req(dw_rd_req && !abort_pending && !task_fault), .dw_granted(dw_rd_granted), .dw_start(dw_rd_start),
             .dw_im2col(dw_rd_im2col), .dw_p0(dw_rd_p0), .dw_q0(dw_rd_q0),
             .dw_group(32'd0), .dw_linear_read_mode(1'b0), .dw_lhs_zp('0),
             .dw_base_addr(dw_rd_base_addr), .dw_row_stride(dw_rd_row_stride),
@@ -1040,13 +1381,13 @@ module npu_top #(
             .dw_busy(dw_rd_busy), .dw_done(dw_rd_done), .dw_error(dw_rd_error),
             .dw_data(vector_dma_data), .dw_valid(dw_rd_valid), .dw_row(), .dw_col_base(dw_rd_col_base),
             .dw_raw_data(dw_rd_raw_data), .dw_raw_valid(dw_rd_raw_valid),
-            .dw_wr_req(dw_wr_req), .dw_wr_granted(dw_wr_granted), .dw_wr_start(dw_wr_start),
+            .dw_wr_req(dw_wr_req && !abort_pending && !task_fault), .dw_wr_granted(dw_wr_granted), .dw_wr_start(dw_wr_start),
             .dw_wr_base_addr(dw_wr_base_addr), .dw_wr_row_stride(dw_wr_row_stride),
             .dw_wr_rows_to_write(dw_wr_rows_to_write), .dw_wr_burst_len_m1(dw_wr_burst_len_m1),
             .dw_src_wdata(dw_src_wdata), .dw_src_wmask(dw_src_wmask),
             .dw_src_wvalid(dw_src_wvalid), .dw_src_wready(dw_src_wready),
             .dw_wr_busy(dw_wr_busy), .dw_wr_done(dw_wr_done), .dw_wr_error(dw_wr_error),
-            .ia_req                  (load_ia_req && !abort_pending),
+            .ia_req                  (load_ia_req && !abort_pending && !task_fault),
             .ia_granted              (arbiter_ia_granted),
             .ia_start                (ia_dma_start),
             .ia_linear_read_mode     (ia_dma_linear_read_mode),
@@ -1069,7 +1410,7 @@ module npu_top #(
             .ia_wr_data              (ia_dma_wr_data),
             .ia_wr_valid             (ia_dma_wr_valid),
             .ia_wr_use_16bits        (ia_dma_wr_use_16bits),
-                .kernel_req(load_weight_req && !abort_pending),
+                .kernel_req(load_weight_req && !abort_pending && !task_fault),
                 .kernel_granted          (load_weight_granted),
                 .kernel_start            (kernel_dma_start),
                 .kernel_linear_read_mode (kernel_dma_linear_read_mode),
@@ -1091,7 +1432,7 @@ module npu_top #(
             .kernel_wr_col_base      (kernel_dma_wr_col_base),
             .kernel_wr_data          (kernel_dma_wr_data),
             .kernel_wr_valid         (kernel_dma_wr_valid),
-                .bias_req(load_bias_req && !abort_pending),
+                .bias_req(load_bias_req && !abort_pending && !task_fault),
                 .bias_granted            (load_bias_granted),
                 .bias_start              (bias_dma_start),
                 .bias_linear_read_mode   (bias_dma_linear_read_mode),
@@ -1110,7 +1451,7 @@ module npu_top #(
             .bias_wr_data            (bias_dma_wr_data),
             .bias_wr_valid           (bias_dma_wr_valid),
             .bias_wr_use_16bits      (bias_dma_wr_use_16bits),
-                .quant_req(load_quant_req && !abort_pending),
+                .quant_req(load_quant_req && !abort_pending && !task_fault),
                 .quant_granted           (load_quant_granted),
                 .quant_start             (quant_dma_start),
                 .quant_linear_read_mode  (quant_dma_linear_read_mode),
@@ -1125,7 +1466,7 @@ module npu_top #(
             .quant_done              (quant_dma_done),
             .quant_raw_data          (quant_dma_raw_data),
             .quant_raw_valid         (quant_dma_raw_valid),
-                .oa_req(write_oa_req && !abort_pending),
+                .oa_req(write_oa_req && !abort_pending && !task_fault),
                 .oa_granted              (write_oa_granted),
                 .oa_start                (oa_dma_start),
                 .oa_base_addr            (oa_dma_base_addr),
@@ -1169,7 +1510,7 @@ module npu_top #(
         );
 
 `ifndef SYNTHESIS
-        always_ff @(posedge clk) if (core_rst_n && init_cfg_ia) begin
+        always_ff @(posedge clk) if (core_rst_n && exec_dma_job_init) begin
             assert(conv_cfg_ready);
             assert(!ia_dma_start && !kernel_dma_start);
         end
@@ -1192,12 +1533,7 @@ module npu_top #(
         .calc_start       (ctrl_calc_start),
         .cfg_16bits_ia    (cfg_16bits_ia_eff | cfg_16x8),
         .cfg_dataflow_mode(cfg_dataflow_mode_eff),
-        .cfg_tiling_error (conv_config_invalid || ps_configuration_invalid ||
-            (cfg_16x8_s2 && cfg_ia_reuse_eff_s2 > OA_S16_FIFO_BANKS) ||
-            (!ext_r_legal) || (!ext_w_legal) || (cfg_row_groups == 0) || (cfg_col_groups == 0) ||
-            (cfg_row_tail_tiles == 0) || (cfg_col_tail_tiles == 0) ||
-            (cfg_row_tail_tiles > cfg_ia_reuse_eff_s2) || (cfg_col_tail_tiles > cfg_w_reuse_eff_s2) ||
-            ((cfg_row_groups >> DIM_COUNT_WIDTH) != 0) || ((cfg_col_groups >> DIM_COUNT_WIDTH) != 0)),
+        .cfg_tiling_error (tiling_invalid),
         .sa_ready         (ctrl_sa_ready),
 
         .partial_sum_calc_over(partial_sum_calc_over),
@@ -1213,7 +1549,7 @@ module npu_top #(
         .lhs_base             (lhs_base),
         .rhs_base             (rhs_base),
         .dst_base             (dst_base),
-        .bias_base            (bias_base),
+        .bias_base            (exec_bias_base),
         .q_mult_pt            (q_mult_pt),
         .q_shift_pt           (q_shift_pt),
         .use_per_channel      (use_per_channel_eff),
@@ -1227,24 +1563,26 @@ module npu_top #(
             .send_ia_trigger      (send_ia_trigger),
             .ia_sending_done      (ia_sending_done),
             .ia_data_valid        (ia_data_valid),
+            .ps_frame_ready       (ps_frame_ready),
                 // Weight Loader Interface
             .send_weight_trigger  (send_weight_trigger),
             .weight_commit(weight_commit),
         .weight_sending_done  (weight_sending_done),
         .weight_data_valid    (weight_data_valid),
+        .weight_resident      (frame_mode_q && frame_stationary_hit),
             // Bias Loader Interface
             .bias_valid           (bias_group_valid),
-            .bias_sleep           (bias_sleep),
+            .bias_sleep           (bias_load_sleep),
             // Requantization Interface
-            .quant_params_valid   (quant_params_valid),
+            .quant_params_valid   (quant_params_valid || (frame_mode_q && !frame_command_final)),
         // FIFO Interface
         .fifo_full_flag       (fifo_full_flag && ia_output_pending),
             // OA Writer Interface
-            .oa_calc_over         (oa_calc_over),
+            .oa_calc_over         (exec_oa_complete),
         // Task Completion Handshake Interface
-        .done_valid             (controller_done_valid),
-        .done_ready             (done_ready && operand_cache_idle),
-        .err_code             (controller_err_code)
+        .done_valid             (inner_done_valid),
+        .done_ready             (frame_mode_q || (done_ready && operand_cache_idle)),
+        .err_code             (inner_err_code)
     );
         // IA Loader
             ia_loader #(
@@ -1253,7 +1591,10 @@ module npu_top #(
                 .BUS_WIDTH   (BUS_WIDTH),
                 .REG_WIDTH   (REG_WIDTH),
                 .COUNT_WIDTH (DIM_COUNT_WIDTH),
-                .CACHE_BLOCKS(IA_CACHE_BLOCKS),
+                .CACHE_BLOCKS(IA_MAX_CACHE_BLOCKS),
+                .COMPACT_S8(IA_COMPACT_ENABLE),
+                .EXTERNAL_RAM(SHARED_RAM_ENABLED),
+                .RAM_WORD_ADDR_WIDTH(SHARED_IA_ADDR_WIDTH),
                 .PS_FRAME_COUNT(PS_FRAME_COUNT)
             ) u_ia_loader (
         .clk             (clk),
@@ -1261,23 +1602,38 @@ module npu_top #(
         .init_cfg        (init_cfg_ia),
         .cfg_im2col(run_conv && !is_mode),
         .cfg_tile_packed(is_mode ? run_rhs_tile_packed : run_lhs_tile_packed),
+        .cfg_compact(run_compact),
+        .cfg_compact_offset(run_compact_offset),
+        .cfg_cache_blocks(active_ia_cache_blocks),
+        .cfg_preserve_cache(frame_mode_q),
+        .cfg_prefetch_enable(FRAME_PREFETCH_ENABLE && frame_mode_q && frame_whole_rows_q),
+        .cfg_global_reduction(run_n),
+        .prefetch_idle(ia_prefetch_idle),
+        .cache_flush(cfg_stage2_fire),
+        .cfg_p0_base(frame_mode_q ? frame_command_p0 : 32'd0),
+        .cfg_q0_base(frame_mode_q ? frame_command_q0 : 32'd0),
+        .cfg_cache_slot_base(frame_mode_q ?
+            (((frame_command_p0 >> SIZE_SHIFT) +
+              (frame_command_q0 >> SIZE_SHIFT) * ia_reuse_num_eff) &
+             ((run_compact ? active_ia_cache_blocks << 1 : active_ia_cache_blocks) - 32'd1)) : 32'd0),
         .load_ia_req     (load_ia_req),
         .load_ia_granted (load_ia_granted),
             .send_ia_trigger (send_ia_trigger),
-            .k               (stream_k),
-            .n               (run_n),
-            .m               (stream_m),
+            .k               (exec_stream_k),
+            .n               (exec_n),
+            .m               (exec_stream_m),
         .lhs_zp          (ia_zp_eff),
         .lhs_row_stride_b(ia_stride_eff),
-        .lhs_base        (ia_base_eff),
+        .lhs_base        (exec_ia_base),
         .use_16bits      (ia_use_16bits_eff),
         .bias_by_row_mode(is_mode),
+        .bias_at_end(ws_final_bias),
         .ia_reuse_num    (ia_reuse_num_eff),
-            .w_reuse_num     (w_reuse_num_eff),
-        .row_groups (cfg_row_groups),
-        .row_tail_tiles (cfg_row_tail_tiles),
-        .col_groups (cfg_col_groups),
-        .col_tail_tiles (cfg_col_tail_tiles),
+            .w_reuse_num     (exec_w),
+        .row_groups (exec_row_groups),
+        .row_tail_tiles (exec_row_tail),
+        .col_groups (exec_col_groups),
+        .col_tail_tiles (exec_col_tail),
             .ext_dma_start(ia_dma_start),
             .ext_dma_is_write(),
             .ext_dma_linear_read_mode(ia_dma_linear_read_mode),
@@ -1300,6 +1656,10 @@ module npu_top #(
             .ext_dma_wr_data(ia_dma_wr_data),
             .ext_dma_wr_valid(ia_dma_wr_valid),
             .ext_dma_wr_use_16bits(ia_dma_wr_use_16bits),
+            .ram_port_wr_en(ia_ram_write_en), .ram_port_wr_addr(ia_ram_write_addr),
+            .ram_port_wr_data(ia_ram_write_data), .ram_port_wr_mask(ia_ram_write_mask),
+            .ram_port_rd_en(ia_ram_read_en), .ram_port_rd_addr(ia_ram_read_addr),
+            .ram_port_rd_data(ia_ram_read_data),
 
 
         .ia_sending_done(ia_sending_done),
@@ -1309,8 +1669,13 @@ module npu_top #(
             .ia_calc_done   (ia_calc_done),
             .ia_out         (ia_out),
             .ia_data_valid  (ia_data_valid),
+            .ps_frame_id(loader_frame_id),
+            .ps_frame_rows  (ps_frame_rows),
+            .ps_frame_init  (ps_frame_init),
+            .ps_frame_final (ps_frame_final),
             .ia_output_pending(ia_output_pending),
             .bias_sleep     (bias_sleep),
+            .bias_load_sleep(bias_load_sleep),
         .bias_switch    (bias_switch),
         .bias_last_loop (bias_last_loop),
         .ia_l1_switch   (ia_l1_switch)
@@ -1325,24 +1690,40 @@ module npu_top #(
             ) u_kernel_loader (
         .clk                (clk),
         .rst_n              (core_rst_n),
-        .init_cfg           (init_cfg_weight),
+        .init_cfg           (init_cfg_weight && !(frame_mode_q && frame_stationary_hit)),
+        .cfg_command_mode   (FRAME_PREFETCH_ENABLE && frame_mode_q),
+        .cache_flush        (cfg_stage2_fire),
+        .prefetch_valid     (FRAME_PREFETCH_ENABLE && frame_mode_q && frame_command_active &&
+                             frame_lookahead_valid &&
+                             ((frame_lookahead_column != frame_command_column) ||
+                              (frame_lookahead_q0 != frame_command_q0))),
+        .prefetch_base_addr (weight_base_eff + operand_frame_offset(
+                             frame_lookahead_column, frame_lookahead_q0, weight_stride_eff, run_n,
+                             is_mode ? run_lhs_tile_packed : run_rhs_tile_packed, weight_use_16bits_eff)),
+        .prefetch_p0        (frame_lookahead_column),
+        .prefetch_q0        (frame_lookahead_q0),
+        .prefetch_rows      (frame_lookahead_cols),
+        .prefetch_valid_cols(frame_lookahead_k),
+        .prefetch_idle      (kernel_prefetch_idle),
         .cfg_im2col          (run_conv && is_mode),
         .cfg_tile_packed     (is_mode ? run_lhs_tile_packed : run_rhs_tile_packed),
+        .cfg_p0_base         (frame_mode_q ? frame_command_column : 32'd0),
+        .cfg_q0_base         (frame_mode_q ? frame_command_q0 : 32'd0),
         .load_weight_req    (load_weight_req),
         .load_weight_granted(load_weight_granted),
             .send_weight_trigger(send_weight_trigger),
-            .k                  (stream_k),
-            .n                  (run_n),
-            .m                  (stream_m),
+            .k                  (exec_stream_k),
+            .n                  (exec_n),
+            .m                  (exec_stream_m),
         .rhs_zp             (weight_zp_eff),
-        .rhs_base           (weight_base_eff),
+        .rhs_base           (exec_weight_base),
         .rhs_row_stride_b   (weight_stride_eff),
         .ia_reuse_num       (ia_reuse_num_eff),
-        .w_reuse_num        (w_reuse_num_eff),
-        .row_groups (cfg_row_groups),
-        .row_tail_tiles (cfg_row_tail_tiles),
-        .col_groups (cfg_col_groups),
-        .col_tail_tiles (cfg_col_tail_tiles),
+        .w_reuse_num        (exec_w),
+        .row_groups (exec_row_groups),
+        .row_tail_tiles (exec_row_tail),
+        .col_groups (exec_col_groups),
+        .col_tail_tiles (exec_col_tail),
             .use_16bits         (weight_use_16bits_eff),
             .ext_dma_start(kernel_dma_start),
             .ext_dma_is_write(),
@@ -1388,12 +1769,12 @@ module npu_top #(
         .init_cfg         (init_cfg_bias),
         .load_bias_req    (load_bias_req),
             .load_bias_granted(load_bias_granted),
-            .bias_base        (bias_base),
-            .k                (run_k),
-            .m                (run_m),
+            .bias_base        (exec_bias_base),
+            .k                (exec_k),
+            .m                (exec_m),
             .bias_step_blocks (is_mode ? ia_reuse_num_eff : REG_WIDTH'(1)),
         .bias_switch      (bias_switch),
-        .bias_sleep       (bias_sleep),
+        .bias_sleep       (bias_load_sleep),
         .bias_last_loop   (bias_last_loop),
             .bias_valid       (bias_valid),
             .bias_group_valid (bias_group_valid),
@@ -1427,7 +1808,7 @@ module npu_top #(
   logic signed [31:0] bias_data_hold[SIZE];
   logic signed [31:0] compute_bias_latched[SIZE];
   wire capture_compute_bias = !is_mode && (bias_base != '0) &&
-                              ia_tile_start && !bias_sleep;
+                              ia_tile_start && !(ws_final_bias ? bias_load_sleep : compute_bias_sleep);
 
   always_ff @(posedge clk or negedge core_rst_n) begin
     if (!core_rst_n) begin
@@ -1459,9 +1840,30 @@ module npu_top #(
   generate
     for (cb_i = 0; cb_i < SIZE; cb_i = cb_i + 1) begin : gen_compute_bias_in
       assign compute_bias_in[cb_i] =
-        (is_mode || (bias_base == '0)) ? 32'sd0 : compute_bias_latched[cb_i];
+        (is_mode || ws_final_bias || (bias_base == '0)) ? 32'sd0 : compute_bias_latched[cb_i];
     end
   endgenerate
+
+    generate if (SHARED_RAM_ENABLED) begin : g_shared_ia_ps
+        ia_ps_shared_ram #(
+            .BANK_BYTES(SHARED_BANK_BYTES), .TOTAL_BYTES(SHARED_TOTAL_BYTES),
+            .IA_ADDR_BITS(SHARED_IA_ADDR_WIDTH), .PS_ADDR_BITS(SHARED_PS_ADDR_WIDTH)
+        ) u_ram (
+            .clk(clk), .rst_n(core_rst_n),
+            .cfg_valid(cfg_stage2_fire && !shared_allocation_invalid),
+            .cfg_ia_banks(SHARED_PHYSICAL_BANKS_WIDTH'(shared_ia_banks_q)),
+            .capacity_fault(shared_ram_capacity_fault),
+            .ia_read_en(ia_ram_read_en), .ia_read_addr(ia_ram_read_addr), .ia_read_data(ia_ram_read_data),
+            .ia_write_en(ia_ram_write_en), .ia_write_addr(ia_ram_write_addr),
+            .ia_write_data(ia_ram_write_data), .ia_write_mask(ia_ram_write_mask),
+            .ps_read_en(ps_ram_read_en), .ps_read_addr(ps_ram_read_addr), .ps_read_data(ps_ram_read_data),
+            .ps_write_en(ps_ram_write_en), .ps_write_addr(ps_ram_write_addr), .ps_write_data(ps_ram_write_data)
+        );
+    end else begin : g_fixed_ia_ps
+        assign shared_ram_capacity_fault = 1'b0;
+        assign ia_ram_read_data = '{default:'0};
+        assign ps_ram_read_data = '{default:'0};
+    end endgenerate
 
     compute_core #(
         .SIZE          (SIZE),
@@ -1469,9 +1871,31 @@ module npu_top #(
         .WEIGHT_WIDTH  (KERNEL_DATA_WIDTH),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .MAX_IA_REUSE  (IA_REUSE_NUM_MAX),
-        .PS_STORAGE_ROWS(PS_STORAGE_ROWS)
+        .PS_STORAGE_ROWS(PS_STORAGE_ROWS),
+        .PS_EXTERNAL_RAM(int'(SHARED_RAM_ENABLED)),
+        .PS_POOL_BYTES(SHARED_RAM_ENABLED ? SHARED_TOTAL_BYTES - SHARED_BANK_BYTES : `GEMMORA_PS_POOL_BYTES),
+        .PS_BANK_BYTES(SHARED_BANK_BYTES),
+        .PS_DIRECTORY_ROWS(SHARED_RAM_ENABLED ? SHARED_PS_DIRECTORY_ROWS : PS_FRAME_COUNT * IA_REUSE_NUM_MAX * SIZE),
+        .PS_RAM_ADDR_BITS(SHARED_PS_ADDR_WIDTH)
     ) u_compute_core (
+        .ps_store_cfg_valid(SHARED_RAM_ENABLED && cfg_stage2_fire && !shared_allocation_invalid),
+        .ps_pool_bank_words(active_ps_bank_depth),
+        .ps_pool_bank_count(active_ps_bank_count),
+        .ps_directory_stride(32'(ps_admission_rows)),
+        .ps_ram_read_en(ps_ram_read_en), .ps_ram_read_addr(ps_ram_read_addr), .ps_ram_read_data(ps_ram_read_data),
+        .ps_ram_write_en(ps_ram_write_en), .ps_ram_write_addr(ps_ram_write_addr), .ps_ram_write_data(ps_ram_write_data),
         .ps_capacity_fault(ps_capacity_fault),
+        .ps_frame_request((frame_mode_q ? (frame_command_valid || (frame_command_active && !frame_ps_accepted)) : ia_data_valid) && !abort_pending && !task_fault),
+        .ps_frame_id(frame_mode_q ? frame_command_id : PS_FRAME_ID_W'(loader_frame_id)),
+        .ps_frame_reserve_rows(frame_mode_q ? frame_command_reserve : 32'd0),
+        .ps_frame_word_cap((frame_mode_q ? frame_command_final : ps_frame_final) ? 3'd4 : ps_word_cap_q),
+        .ps_frame_pressure(ps_frame_pressure),
+        .ps_frame_complete(ps_frame_complete),
+        .ps_force_raw(ps_force_raw_q),
+        .ps_frame_rows   (frame_mode_q ? frame_command_rows + 32'(SIZE-1) : ps_frame_rows),
+        .ps_frame_init   (frame_mode_q ? frame_command_init : ps_frame_init),
+        .ps_frame_final  (frame_mode_q ? frame_command_final : ps_frame_final),
+        .ps_frame_ready  (ps_frame_ready),
         .clk             (clk),
         .rst_n           (core_rst_n),
         .store_weight_req(store_weight_req),
@@ -1482,9 +1906,9 @@ module npu_top #(
         .final_output_overlap(!is_mode && !use_per_channel_eff),
         .active_columns  (($clog2(SIZE)+1)'((stream_m > REG_WIDTH'(SIZE)) ? REG_WIDTH'(SIZE) : stream_m)),
         .ia_tile_start   (ia_tile_start),
-        .ia_calc_done    (ia_calc_done),
-        .ia_is_init_data (ia_is_init_data),
-        .ia_l1_switch    (ia_l1_switch),
+        .ia_calc_done    (frame_mode_q ? frame_command_final : ia_calc_done),
+        .ia_is_init_data (frame_mode_q ? frame_command_init : ia_is_init_data),
+        .ia_l1_switch    (frame_mode_q ? ia_sending_done : ia_l1_switch),
         .ia_sending_done (ia_sending_done),
         .send_ia_trigger (send_ia_trigger),
         .bias_sleep      (compute_bias_sleep),
@@ -1507,7 +1931,7 @@ module npu_top #(
         wire [REG_WIDTH-1:0] is_bias_target_mask_ext =
           is_bias_group_rows_target_ext - REG_WIDTH'(1);
         wire [REG_WIDTH-1:0] is_bias_tail_rows_raw =
-          run_m & is_bias_target_mask_ext;
+          exec_m & is_bias_target_mask_ext;
         wire [IS_BIAS_VALID_W-1:0] is_bias_tail_rows_calc =
           (is_bias_tail_rows_raw == '0)
               ? is_bias_group_rows_target
@@ -1515,14 +1939,14 @@ module npu_top #(
         wire [REG_WIDTH-1:0] is_bias_tail_rows_ext =
           REG_WIDTH'(is_bias_tail_rows_calc);
         wire [REG_WIDTH-1:0] is_bias_last_group_base_calc =
-          (run_m <= is_bias_group_rows_target_ext)
+          (exec_m <= is_bias_group_rows_target_ext)
               ? REG_WIDTH'(0)
-              : (run_m - is_bias_tail_rows_ext);
+              : (exec_m - is_bias_tail_rows_ext);
         wire [IS_BIAS_VALID_W-1:0] is_bias_first_rows_valid =
-          (run_m == '0) ? IS_BIAS_VALID_W'(1) :
-          (run_m > is_bias_group_rows_target_ext)
+          (exec_m == '0) ? IS_BIAS_VALID_W'(1) :
+          (exec_m > is_bias_group_rows_target_ext)
               ? is_bias_group_rows_target
-              : run_m[IS_BIAS_VALID_W-1:0];
+              : exec_m[IS_BIAS_VALID_W-1:0];
         wire [REG_WIDTH-1:0] is_bias_group_base_plus =
           is_bias_group_base + REG_WIDTH'(is_bias_rows_valid);
         wire is_bias_group_wrap_step =
@@ -1583,9 +2007,10 @@ module npu_top #(
     generate
         for (rq_i = 0; rq_i < SIZE; rq_i = rq_i + 1) begin : gen_requant_in_vec
             assign requant_in_vec[rq_i] =
-          is_mode ? (acc_data_out[rq_i] + is_bias_scalar) : acc_data_out[rq_i];
+          is_mode ? (acc_data_out[rq_i] + is_bias_scalar) :
+          ws_final_bias ? (acc_data_out[rq_i] + compute_bias_latched[rq_i]) : acc_data_out[rq_i];
             assign requant_in_vec_s64[rq_i] =
-          {{32{acc_data_out[rq_i][31]}}, acc_data_out[rq_i]};
+          {{32{requant_in_vec[rq_i][31]}}, requant_in_vec[rq_i]};
         end
     endgenerate
 
@@ -1601,19 +2026,19 @@ module npu_top #(
     ) u_vec_requant (
         .clk               (clk),
         .rst_n             (core_rst_n),
-        .init_cfg          (init_cfg_requant),
+        .init_cfg          (exec_init_requant),
         .cfg_per_channel   (use_per_channel_eff),
         .cfg_dataflow_mode (cfg_dataflow_mode_eff),
         .activation_min_in (act_min),
         .activation_max_in (act_max),
         .dst_offset_in     (dst_zp),
-        .multiplier_in     (q_mult_pt),
-        .shift_in          (q_shift_pt),
+        .multiplier_in     (exec_q_mult),
+        .shift_in          (exec_q_shift),
         .load_quant_req    (load_quant_req_s8),
         .load_quant_granted(load_quant_granted),
         .quant_params_valid(quant_params_valid_s8),
-            .k                 (stream_k),
-            .m                 (stream_m),
+            .k                 (exec_stream_k),
+            .m                 (exec_stream_m),
             .ia_reuse_num_in   (ia_reuse_num_eff),
             .dma_start         (quant_dma_start),
             .dma_is_write      (),
@@ -1647,7 +2072,7 @@ module npu_top #(
     ) u_vec_requant_s64 (
         .clk               (clk),
         .rst_n             (core_rst_n),
-        .init_cfg          (init_cfg_requant),
+        .init_cfg          (exec_init_requant),
         .activation_min_in (act_min),
         .activation_max_in (act_max),
         .multiplier_in     (requant_multiplier_lane),
@@ -1705,14 +2130,14 @@ module npu_top #(
             (int'(oa_ws_reuse_rows_pre) * 2 <= OA_FIFO_BANKS)) oa_chunk_cols_pre = 2;
         else oa_chunk_cols_pre = 1;
     end
-    wire oa_ws_coalesce_pre = (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
+    wire oa_ws_coalesce_pre = !frame_mode_q && (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
         !is_mode && !run_16x8 && run_k != 0 &&
         ia_reuse_num_eff <= 16 && oa_chunk_cols_pre >= 2 &&
         (run_m & ((REG_WIDTH'(oa_chunk_cols_pre) << 4) - 1'b1)) == 0 &&
         dst_row_stride_b == run_m;
     // Matching the row address and stride to the power-of-two group width
     // keeps each merged write burst within one 4 KiB page.
-    wire oa_is_coalesce_pre = (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
+    wire oa_is_coalesce_pre = !frame_mode_q && (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
         is_mode && !run_16x8 && run_k != 0 && run_m != 0 &&
         ia_reuse_num_eff >= 2 && ia_reuse_num_eff <= 16 &&
         ia_reuse_num_eff <= OA_FIFO_BANKS &&
@@ -1744,8 +2169,8 @@ module npu_top #(
     ) u_vec_s8_to_fifo (
         .clk              (clk),
         .rst_n            (core_rst_n),
-        .in_valid         (requant_s8_valid),
-        .in_tile_done     (requant_s8_tile_done),
+        .in_valid         (requant_s8_valid && !run_16x8),
+        .in_tile_done     (requant_s8_tile_done && !run_16x8),
         .in_vec_s8        (in_vec_s8),
         .oa_fifo_req      (fifo_s8_output_req),
         .transpose_mode   (is_mode),
@@ -1758,7 +2183,7 @@ module npu_top #(
         .vec_valid_num_row(fifo_vec_valid_num_row),
         .output_valid     (fifo_s8_output_valid),
         .output_row_switch(fifo_s8_output_switch_row),
-        .output_ready     (fifo_output_ready),
+        .output_ready     (fifo_output_ready && !run_16x8),
         .output_mask      (fifo_s8_output_mask),
         .output_data      (fifo_s8_output_data),
         .fifo_full_flag   (fifo_s8_full_flag)
@@ -1778,14 +2203,14 @@ module npu_top #(
     ) u_vec_s16_to_fifo (
         .clk              (clk),
         .rst_n            (core_rst_n),
-        .in_valid         (requant_s16_valid),
-        .in_tile_done     (requant_s16_tile_done),
+        .in_valid         (requant_s16_valid && run_16x8),
+        .in_tile_done     (requant_s16_tile_done && run_16x8),
         .in_vec_s16       (in_vec_s16),
         .oa_fifo_req      (fifo_s16_output_req),
         .reserve_banks    (ia_reuse_num_eff),
         .vec_valid_num_col(fifo_vec_valid_num_col),
         .output_valid     (fifo_s16_output_valid),
-        .output_ready     (fifo_output_ready),
+        .output_ready     (fifo_output_ready && run_16x8),
         .output_row_switch(fifo_s16_output_switch_row),
         .output_mask      (fifo_s16_output_mask),
         .output_data      (fifo_s16_output_data),
@@ -1805,17 +2230,17 @@ module npu_top #(
         ) u_oa_writer (
         .clk              (clk),
         .rst_n            (core_rst_n),
-        .init_cfg         (init_cfg_oa),
+        .init_cfg         (exec_init_oa),
         .oa_fifo_req      (fifo_output_req),
         .vec_valid_num_col(fifo_vec_valid_num_col),
         .vec_valid_num_row(fifo_vec_valid_num_row),
         //.write_oa_trigger(),
         .write_oa_req     (write_oa_req),
         .write_oa_granted (write_oa_granted),
-            .dst_base         (dst_base),
+            .dst_base         (exec_dst_base),
             .dst_row_stride_b (dst_row_stride_b),
-            .k                (run_k),
-            .m                (run_m),
+            .k                (exec_k),
+            .m                (exec_m),
         .ia_reuse_num     (ia_reuse_num_eff),
         .is_mode          (is_mode),
         .output_16bits    (run_16x8),
@@ -2054,6 +2479,4 @@ module npu_top #(
     end
 `endif
 
-    //assign calc_done = oa_calc_over;
-`endif
 endmodule

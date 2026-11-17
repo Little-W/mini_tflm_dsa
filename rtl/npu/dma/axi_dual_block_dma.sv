@@ -8,7 +8,8 @@
  * AXI read mux live here; loaders neither fetch input bytes nor own geometry.
  * Job configuration is accepted once, so image cache contents survive tiles.
  * The original linear read/write engine remains independent of im2col and
- * preserves GEMM's command/response and full-duplex write timing.
+ * preserves GEMM's command/response and full-duplex write timing. The shared
+ * read splitter repairs page-crossing rows without delaying legal bursts.
  */
 
 module axi_dual_block_dma #(
@@ -31,6 +32,7 @@ module axi_dual_block_dma #(
 ) (
     input logic clk,
     input logic rst_n,
+    input logic abort = 1'b0,
 
     // ---- Immutable job context; accepted only with all reads drained ----
     // Assert for every job, including GEMM (conv_enable=0). No read command may
@@ -256,8 +258,8 @@ module axi_dual_block_dma #(
         ((!job_conv && !rd_im2col) ?
             (!conv_cfg_valid && linear_start_ready && !conv_active &&
              !conv_pending && !fe_busy && !win_busy) : image_start_ready);
-    assign accept_linear = rd_start && !rd_im2col && rd_start_ready;
-    assign accept_image = rd_start && rd_im2col && image_start_ready;
+    assign accept_linear = rd_start && !abort && !rd_im2col && rd_start_ready;
+    assign accept_image = rd_start && !abort && rd_im2col && image_start_ready;
     assign accept_read = accept_linear || accept_image;
     assign rd_response_tag = ((fe_wr_valid && !win_frontend_active) || conv_done_r) ?
                              conv_tag_q : linear_response_tag;
@@ -351,7 +353,7 @@ module axi_dual_block_dma #(
         .READ_OUTSTANDING(READ_OUTSTANDING), .WRITE_OUTSTANDING(WRITE_OUTSTANDING),
         .RD_CONTEXT_DEPTH(RD_CONTEXT_DEPTH), .RD_TAG_WIDTH(RD_TAG_WIDTH)
     ) u_linear (
-        .clk, .rst_n, .rd_start(linear_start), .rd_linear_read_mode,
+        .clk, .rst_n, .abort, .rd_start(linear_start), .rd_linear_read_mode,
         .rd_tag, .rd_start_ready(linear_start_ready),
         .rd_response_tag(linear_response_tag), .rd_finish_tag(linear_finish_tag),
         .rd_base_addr, .rd_row_stride, .rd_rows_to_read, .rd_valid_cols,
@@ -423,7 +425,7 @@ module axi_dual_block_dma #(
             .arsize(fe_arsize), .arburst(fe_arburst), .rvalid(fe_rvalid), .rready(fe_rready),
             .rdata(fe_rdata), .rresp(fe_rresp), .rlast(fe_rlast)
         );
-        // Only ordinary matrix reads need allocation padding/4-KiB repair.
+        // Conv's ordinary matrix reads also need allocation-tail clipping.
         // The im2col span reader already emits exact legal byte/word transfers.
         conv_axi_read_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH),
             .SPLIT_GEMM_4K(1'b1), .READ_OUTSTANDING(READ_OUTSTANDING)) u_read_guard (
@@ -469,12 +471,18 @@ module axi_dual_block_dma #(
         assign conv_stat_prefetch_lines=0;assign conv_stat_prefetch_used=0;assign conv_stat_prefetch_wasted=0;
         assign conv_stat_prefetch_unused=0;assign conv_stat_prefetch_bytes=0;assign conv_stat_prefetch_late=0;
         assign guard_idle=1'b1; assign mux_idle=1'b1;
-        assign m_axi_arvalid=linear_arvalid; assign linear_arready=m_axi_arready;
-        assign m_axi_araddr=linear_araddr; assign m_axi_arlen=linear_arlen;
-        assign m_axi_arsize=linear_arsize; assign m_axi_arburst=linear_arburst;
-        assign linear_rvalid=m_axi_rvalid; assign m_axi_rready=linear_rready;
-        assign linear_rdata=m_axi_rdata; assign linear_rresp=m_axi_rresp;
-        assign linear_rlast=m_axi_rlast;
+        assign guard_arvalid=linear_arvalid; assign linear_arready=guard_arready;
+        assign guard_araddr=linear_araddr; assign guard_arlen=linear_arlen;
+        assign guard_arsize=linear_arsize; assign guard_arburst=linear_arburst;
+        assign linear_rvalid=guard_rvalid; assign guard_rready=linear_rready;
+        assign linear_rdata=guard_rdata; assign linear_rresp=guard_rresp;
+        assign linear_rlast=guard_rlast;
+        assign m_axi_arvalid=guard_arvalid; assign guard_arready=m_axi_arready;
+        assign m_axi_araddr=guard_araddr; assign m_axi_arlen=guard_arlen;
+        assign m_axi_arsize=guard_arsize; assign m_axi_arburst=guard_arburst;
+        assign guard_rvalid=m_axi_rvalid; assign m_axi_rready=guard_rready;
+        assign guard_rdata=m_axi_rdata; assign guard_rresp=m_axi_rresp;
+        assign guard_rlast=m_axi_rlast;
     end endgenerate
 
 `ifndef SYNTHESIS

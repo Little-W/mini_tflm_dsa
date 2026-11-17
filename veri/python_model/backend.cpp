@@ -47,14 +47,17 @@ API uint64_t npu_cycles(Model* model) { return model->capture.cycles; }
 API uint64_t npu_time_ps(Model* model) { return model->capture.time_ps; }
 API uint64_t npu_start_cycle(Model* model) { return model->capture.start_cycle; }
 API uint64_t npu_ready_cycle(Model* model) { return model->capture.ready_cycle; }
-API uint32_t npu_scalar(Model* model, unsigned index) {
+API uint64_t npu_scalar(Model* model, unsigned index) {
     return model->capture.scalars.at(index);
 }
 API uint32_t npu_lane(Model* model, unsigned kind, unsigned index) {
     return model->capture.lanes.at(kind).at(index);
 }
+API unsigned npu_memory_words(Model* model) {
+    return model->top->rootp->tb_npu_top__DOT__u_mem__DOT__mem_r.size();
+}
 API uint32_t npu_read_word(Model* model, unsigned index) {
-    if (index >= 131072) return 0;
+    if (index >= npu_memory_words(model)) return 0;
     return model->top->rootp->tb_npu_top__DOT__u_mem__DOT__mem_r[index];
 }
 API void npu_read_words(Model* model, unsigned start, unsigned count, uint32_t* out) {

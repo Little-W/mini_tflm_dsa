@@ -32,50 +32,42 @@ class Field:
 
 
 FIELDS = (
-    Field("PCR_ENGINE", "Engine", "PCR panel engine",
-          "Enable the GEMPACT INT8 K64 panel engine. Enabling PCR also selects "
-          "SIZE=16. Legacy mode keeps PCR capacity settings inactive.", (0, 1)),
-    Field("SIZE", "Engine", "Array size",
-          "Square array size. The current PCR capacity model requires 16. "
-          "Other values apply to the legacy engine.", (1, 2, 4, 8, 16, 32)),
-    Field("CAPACITY_BUDGET_SCOPE", "Budget and solver", "Budget scope",
-          "buffer-ram counts A/B panel and PS/C payload arrays. logical-state "
-          "also counts the modeled directories, queues, pipelines and control. "
-          "Neither predicts FPGA BRAM or ASIC SRAM macro rounding.",
+    Field("PCR_ENGINE", "Compute and PS", "Compressed PS storage",
+          "Use the addressable PS frame store with the shared compute array. "
+          "INT8, INT16, WS/IS, Conv and the vector engine remain available.", (0, 1)),
+    Field("SIZE", "Compute and PS", "Array size",
+          "Square compute array dimension. Compressed PS requires SIZE=16.", (2, 4, 8, 16, 32)),
+    Field("CAPACITY_BUDGET_SCOPE", "Budget", "Budget scope",
+          "buffer-ram counts all operand, PS, output, Conv and vector buffer arrays plus metadata. "
+          "logical-state requires actual Verilator elaboration of every sequential declaration.",
           ("buffer-ram", "logical-state")),
-    Field("CAPACITY_BUDGET_BYTES", "Budget and solver", "Capacity limit",
-          "Maximum capacity in the selected scope. Enter bytes, or a value "
-          "such as 128 KiB or 0.5 MiB. Lowering the budget may make the draft "
-          "invalid until you optimize or reduce the physical allocation.", byte_size=True),
-    Field("CAPACITY_REPRESENTATION", "Budget and solver", "PS representation",
-          "nominal3 plans compact lossless PS records; data growth can cause "
-          "early completion. raw32 uses 4*R*W pages and forces RAW32 storage. "
-          "Changing this setting also updates PS_FORCE_RAW.", ("nominal3", "raw32")),
-    Field("PANEL_MAX_R", "Physical PCR allocation", "A / stream panel limit",
-          "Physical stream panel limit in 16-row tiles, from 1 to 32. Each "
-          "tile reserves 2048 bytes across the K64 ping-pong banks. This "
-          "panel holds IA in WS and weights in IS."),
-    Field("PANEL_MAX_W", "Physical PCR allocation", "B / stationary panel limit",
-          "Physical stationary panel limit in 16-column tiles, from 1 to 32. "
-          "Each tile reserves 2048 bytes. This panel holds weights in WS "
-          "and IA in IS."),
-    Field("PS_POOL_BYTES", "Physical PCR allocation", "PS pool capacity",
-          "PS/C payload pool. Must contain 4..4095 whole 256-byte pages. "
-          "Enter bytes or units such as 80 KiB. The live summary includes "
-          "both operand panels in addition to this pool.", byte_size=True),
-    Field("PS_FORCE_RAW", "Physical PCR allocation", "Force RAW32 storage",
-          "Force uncompressed INT32 partial-sum storage in RTL. Enabling "
-          "this selects raw32 planning; disabling it selects nominal3.", (0, 1)),
-    Field("IA_CACHE_BLOCKS", "Legacy and bus parameters", "Legacy IA cache blocks",
-          "Legacy input cache block count. It does not size the current "
-          "PCR panel RAMs; use PANEL_MAX_R and PANEL_MAX_W for those."),
-    Field("PS_FRAME_COUNT", "Legacy and bus parameters", "Legacy PS frame count",
-          "Legacy partial-sum frame count. The current PCR engine instead "
-          "uses PS_POOL_BYTES for its PS payload allocation."),
-    Field("AXI_READ_OUTSTANDING", "Legacy and bus parameters", "AXI read outstanding",
-          "Read-outstanding parameter passed by the Make build entry points. "
-          "The current PCR engine uses its own fixed transaction control."),
+    Field("CAPACITY_BUDGET_BYTES", "Budget", "Capacity limit",
+          "Enter bytes or binary units such as 128 KiB. Save requires the selected allocation to fit.", byte_size=True),
+    Field("CAPACITY_REPRESENTATION", "Budget", "PS representation",
+          "adaptive enables the row codec. raw32 forces four payload words per row. "
+          "Planning checks each format's bank bandwidth, protected-frame capacity and directory.", ("adaptive", "raw32")),
+    Field("IA_CACHE_BLOCKS", "Buffers and bus", "IA cache blocks",
+          "Tile-buffer configuration for output queues and ordinary FIFO operation. "
+          "Shared IA allocation and source format determine each layer's R limit."),
+    Field("PS_FRAME_COUNT", "Buffers and bus", "PS frame slots",
+          "Frame metadata entries. Shared tasks are also limited by 1024 directory rows and PS capacity."),
+    Field("PS_POOL_BYTES", "Buffers and bus", "PS build parameter",
+          "Positive multiple of 64 bytes for standalone PS store tests. Shared hardware capacity "
+          "is determined by bank size and bank count.", byte_size=True),
+    Field("SHARED_BANK_BYTES", "Shared IA/PS RAM", "Bytes per bank",
+          "Physical RAM bytes in each independent bank. Directory and decode buffers are separate.",
+          (1024, 2048, 4096), byte_size=True),
+    Field("SHARED_BANK_COUNT", "Shared IA/PS RAM", "Physical bank count",
+          "Total data RAM is bank count times bytes per bank. Prepare assigns 1, 2 or 4 banks to IA.",
+          (6, 7, 8, 9)),
+    Field("PS_FORCE_RAW", "Buffers and bus", "Force RAW32 records",
+          "Store every encoded PS row as four 128-bit words.", (0, 1)),
+    Field("NPU_AXI_DATA_WIDTH", "Buffers and bus", "NPU AXI4 data width",
+          "NPU DMA and memory data bits. CPU and AXI-Lite register data remain 32 bits.", (32, 64)),
+    Field("AXI_READ_OUTSTANDING", "Buffers and bus", "AXI read outstanding",
+          "Maximum queued read transactions, from 1 to 16."),
 )
+
 ACTIONS = (("optimize", "Optimize capacity for the selected workloads"),
            ("save", "Save configuration"),
            ("reload", "Reload configuration from disk"),
@@ -255,26 +247,24 @@ class TerminalMenu:
         summary = self.state.capacity_summary()
         self._put(self.screen, height - 9, 1, "-" * (width - 2), self.c.A_DIM)
         alloc = summary["allocation"]
-        if summary["active"] and alloc is not None:
-            self._put(self.screen, height - 8, 1,
-                      f"A: {byte_text(alloc['a_panel_bytes'])}  B: {byte_text(alloc['b_panel_bytes'])}  "
-                      f"PS: {byte_text(alloc['ps_pool_bytes'])}  RAM: {byte_text(alloc['buffer_ram_bytes'])}")
-            self._put(self.screen, height - 7, 1,
-                      f"Complete logical state: {byte_text(alloc['logical_state_bytes'])} "
-                      f"({exact_bytes(alloc['logical_state_bytes'])} B)")
+        if alloc is not None:
+            if alloc["shared_ia_ps_enabled"]:
+                allocation_text = (f"Shared data: {byte_text(alloc['shared_total_bytes'])}  "
+                                   f"IA banks: 1/2/4  Frames: {alloc['ps_frame_count']}")
+            else:
+                allocation_text = (f"IA blocks: {alloc['ia_cache_blocks']}  Frames: {alloc['ps_frame_count']}  "
+                                   f"PS: {byte_text(alloc['ps_pool_bytes'])}  RAM: {byte_text(alloc['buffer_ram_bytes'])}")
+            self._put(self.screen, height - 8, 1, allocation_text)
+            state = alloc['logical_state_bytes']
+            state_text = "Complete state: requires RTL elaboration" if state is None else f"Complete state: {byte_text(state)} ({exact_bytes(state)} B)"
+            self._put(self.screen, height - 7, 1, state_text)
             budget = self.state.values["CAPACITY_BUDGET_BYTES"]
             self._put(self.screen, height - 6, 1,
                       f"{self.state.values['CAPACITY_BUDGET_SCOPE']}: "
                       f"{byte_text(alloc['budget_used_bytes'])} / {byte_text(budget)}; "
                       f"free {byte_text(alloc['unused_budget_bytes'])}")
-        elif not summary["active"]:
-            self._put(self.screen, height - 8, 1, "Legacy engine: PCR capacity accounting is inactive.")
-            self._put(self.screen, height - 7, 1, "Enable PCR or press O to optimize and enable the 16x16 engine.")
-            self._put(self.screen, height - 6, 1,
-                      f"PCR target: {self.state.values['CAPACITY_BUDGET_SCOPE']} "
-                      f"limit {byte_text(self.state.values['CAPACITY_BUDGET_BYTES'])}")
         else:
-            self._put(self.screen, height - 8, 1, "Cannot calculate capacity for the current draft.")
+            self._put(self.screen, height - 8, 1, "Capacity requires a valid configuration and RTL state measurement.")
         error = summary["validation_error"]
         self._put(self.screen, height - 5, 1,
                   "Invalid: " + error if error else "Configuration is valid.",
@@ -455,7 +445,7 @@ class TerminalMenu:
                 self.message("Cannot optimize", error)
             else:
                 alloc = result["allocation"]
-                self.status = (f"Optimized draft: R={alloc['panel_max_r']} W={alloc['panel_max_w']} "
+                self.status = (f"Optimized draft: IA={alloc['ia_cache_blocks']} Frames={alloc['ps_frame_count']} "
                                f"PS={byte_text(alloc['ps_pool_bytes'])}. Press S to save.")
         elif name == "save":
             self.save()
@@ -495,7 +485,8 @@ class TerminalMenu:
                          "Left/Right cycle choices in either direction. O optimizes capacity using "
                          "the selected workloads. S validates and saves. L reloads the file. "
                          "Q exits, offering save/discard/cancel when the draft has changed. "
-                         "The capacity solver minimizes normal-traversal operand reads, not RTL cycles." + paths)
+                         "The capacity solver minimizes device planner service estimates. "
+                         "RTL measurements determine task cycles." + paths)
 
     def run(self):
         count = len(FIELDS) + len(ACTIONS)
@@ -551,7 +542,7 @@ def shape_argument(text):
 
 def argument_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=ROOT / "config/npu.mk")
+    parser.add_argument("--config", type=Path, default=Path(os.environ.get("NPU_CONFIG", ROOT / "config/npu.mk")))
     parser.add_argument("--output", type=Path, default=ROOT / "build/capacity/solution.json",
                         help="solution JSON destination when an optimized draft is saved")
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
@@ -560,11 +551,12 @@ def argument_parser():
     tasks.add_argument("--shape", action="append", type=shape_argument, metavar="M,K,N")
     tasks.add_argument("--workloads", type=Path)
     budgets = parser.add_mutually_exclusive_group()
-    budgets.add_argument("--max-ram-kib", type=int, help="initial A+B+PS data RAM limit")
+    budgets.add_argument("--max-ram-kib", type=int, help="initial complete buffer RAM limit")
     budgets.add_argument("--max-state-kib", type=int, help="initial complete logical-state limit")
     budgets.add_argument("--budget-kib", type=int, help="initial limit in the selected scope")
     parser.add_argument("--budget-scope", choices=model.SCOPES)
     parser.add_argument("--representation", choices=model.REPRESENTATIONS)
+    parser.add_argument("--verilator", default="verilator")
     return parser
 
 
@@ -596,7 +588,7 @@ def main(argv=None):
         state = MenuConfigState(args.config, overrides=args.set,
                                workloads_path=args.workloads, shapes=args.shape, output_path=args.output,
                                budget_bytes=None if amount is None else amount * 1024,
-                               budget_scope=scope, representation=args.representation)
+                               budget_scope=scope, representation=args.representation, verilator=args.verilator)
         try:
             locale.setlocale(locale.LC_ALL, "")
         except locale.Error:

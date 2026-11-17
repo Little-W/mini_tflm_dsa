@@ -1,36 +1,43 @@
-# SoC RAM 窄读回归
+# SoC RAM 验证
 
-本测试直接实例化生产文件 `rtl/soc/soc_axi_ram.sv`，并经其 AXI 写口初始化存储器。没有以软件模型代替 RAM RTL。
+测试直接实例化 `rtl/soc/soc_axi_ram.sv`，覆盖 AXI32/AXI64 的读写行为、固件镜像初始化和 FPGA RAM 综合。
 
-```bash
-python test/conv_soc_ram/run.py
-```
-
-要求 PATH 中有支持 `--binary --timing --assert` 的 Verilator。编译产物写入临时目录并自动清理；完整编译与仿真日志在 `build/conv_soc_ram/`。输入通过 testbench 的 AXI 写口即时生成，不需要已有向量。
-
-## 修改范围
-
-原 RAM 的 AR 队列只保存地址和长度，活动读地址按每拍一个完整 word 递增。因此 byte/halfword 连续读会读错下一拍，窄读请求跨多个 beat 时不能用于硬件 im2col。
-
-修复后，AR 队列还保存 size、burst 和命令检查结果；活动地址以字节为单位递推，并保留地址空间溢出的进位。支持总线位宽以内的 FIXED/INCR 读；32 位总线对应 ARSIZE=0/1/2。非对齐首拍只承诺 AXI 规定的有效 byte lane，后续 INCR 拍从 transfer size 对齐地址递增。其余 lane 可以包含同一物理字中的数据，主设备必须按有效 lane 使用。
-
-不支持的 size、WRAP/保留 burst、过长 FIXED burst，以及跨 4 KiB 的请求，均返回规定长度的 SLVERR 响应。超出 RAM 实际 DP 的读也返回 SLVERR 和零数据。范围检查适用于非 2 的幂的 DP；地址溢出不会读到低地址别名。写通路没有因窄读功能而改变。
-
-原有同步 RAM 读和连续响应流水仍保留。测试检查完整 word 的拍间连续性；outstanding=3/4、无等待时，连续 256 个响应占用 255 个拍间间隔，即每周期一拍。outstanding=1 保留原有跨命令气泡，命令内仍保持连续。
-
-## 固定回归配置
-
-默认检查 DP/outstanding 为 1031/4、1024/1、1031/3，每组分别使用固定和随机
-等待。测试包含混合 size 排队、随机 AR/R 延迟和 RREADY、停顿时 payload 保持、
-4 KiB 边界、非对齐首拍、FIXED、RAM 尾部、高地址、非法请求和错误后继续执行。
-每轮结果写入 `build/conv_soc_ram/modified_status.json` 及对应日志。
-
-可显式选择本地已有的原始 RAM 版本，验证它在窄读用例上的预期失败：
+## AXI 读写
 
 ```sh
-python3 test/conv_soc_ram/run.py --baseline-commit 148964d180f52cb852c5a7e3d5c89773fa0a8ea5
+python3 test/conv_soc_ram/run.py --out build/conv_soc_ram
 ```
 
-该可选命令需要本地存在指定 Git 对象；正常当前 RTL 回归不依赖历史源码包或
-历史结果。这些测试属于 RAM 模块功能和周期验证，不证明完整 SoC 功能，也不
-构成综合面积或物理时序结论。
+需要支持 `--binary --timing --assert` 的 Verilator。测试经 AXI 写口生成数据，检查窄读、完整总线宽度读取、混合传输尺寸排队、随机等待、响应暂停时的数据保持，以及 4 KiB 边界、RAM 尾部和非法请求后的继续执行。
+
+RAM 支持总线宽度以内的 FIXED/INCR 传输。非对齐首拍按 AXI 规定选用有效 byte lane，后续 INCR 拍从传输尺寸边界递增地址。超出 RAM 范围、不支持的传输尺寸、WRAP/保留 burst、过长 FIXED burst 和跨 4 KiB 的请求返回 SLVERR。
+
+默认配置包含 DP/outstanding 为 1031/4、1024/1、1031/3，AXI32/AXI64 均运行固定和随机等待测试。1031/4 配置还检查 1、2、3、8、17 个周期的首响应延迟。完整总线宽度的连续响应在命令内保持每周期一拍。
+
+## 固件镜像与重新加载
+
+```sh
+python3 test/conv_soc_ram/run_images.py \
+  --out build/conv_soc_ram_images --verilator verilator
+```
+
+普通 SoC 仿真接受 32 位 CPU 镜像。测试覆盖十六进制字、`@` 字地址、注释、下划线、稀疏覆盖和重新加载，并通过 RAM 内容和 AXI 读响应分别比较数值。
+
+FPGA Tcl 的 `cpu_memory.tcl` 将输入补零到 `CPU_MEM_DP` 个 CPU 字，生成 `cpu32.mem` 和与物理总线宽度相同的 `cpu.mem`。AXI64 的第 `i` 个物理字为 `(cpu_word[2*i+1] << 32) | cpu_word[2*i]`。综合配置将 `MEM_WORD_WIDTH` 设为 `DW`，直接对物理 RAM 调用 `$readmemh`。AXI32 和 AXI64 均使用这些实际生成的镜像运行初始化仿真。
+
+## RAM 综合与初始化位比较
+
+```sh
+python3 test/conv_soc_ram/check_synthesis.py \
+  --out build/conv_soc_ram_synthesis --yosys yosys
+```
+
+需要包含 `read_slang` 的 Yosys，以及 Tcl 8.6。脚本执行以下检查：
+
+- 通过生产 Tcl 转换完整和带地址指令的 CPU32 镜像。
+- 检查 1024×32、512×64 的同步数据 RAM、关闭初始化和未指定初始化文件的配置。
+- 逐字比较推导后的 RAM 初始化值，检查启用初始化时文件字宽与 RAM 数据宽度一致。
+- 将 512×64 数据 RAM 映射为 Xilinx 7 系列 RAM，核对一个 `RAMB36E1` 的 512 个初始化字。
+- 确认初始化过程不生成额外 RAM，记录命令、源文件摘要、存储器清单和检查结果。
+
+结果保存在指定目录的 `summary.json`、Yosys 日志和生成的镜像中。

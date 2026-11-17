@@ -18,7 +18,7 @@ DS-CNN Keyword Spotting 和 ResNet-8 CIFAR-10，每个模型使用两个已记�
 | CPU | PicoRV32，RV32IM，`performance` 配置，快速乘法、硬件除法和桶形移位器启用 |
 | CPU 寄存器与运算 | 双读端口；`TWO_CYCLE_ALU=0`，`TWO_CYCLE_COMPARE=0` |
 | CPU 指令缓存 | 默认开启，64 行，每行 4 个 32 位字，数据容量 1 KiB |
-| NPU 核心 | 标准核心，`PCR_ENGINE=0` |
+| NPU 核心 | 统一路径，普通 PS 存储，`PCR_ENGINE=0` |
 | 脉动阵列 | 16×16 |
 | VCE | 8 个 PE，`TILE=16` |
 | AXI 数据接口 | 64 位，`--bus-width 32` 可选择 32 位 |
@@ -158,6 +158,11 @@ Invoke 周期；两者的差额单独记录。
 硬件任务配置、DMA、状态轮询和解释器调度。模型初始化、静态权重打包、调度参数计算、张量分配、输入装载和结果检查
 分别位于计时区间之外，两种执行模式使用相同边界。
 
+`init_cycles` 单独记录初始化周期。`planning_cycles` 记录其中驱动查询参数缓存和
+计算调度参数的累计周期，由驱动使用 `rdcycle` 测量。
+共享 IA/PS 容量下的 RAW32 与压缩模式比较见
+[`test/ps_compression`](../ps_compression/README.md)，使用同一 RTL 可执行文件和固件 ELF。
+
 完整模型加速比按 `软件 Invoke 周期 / 硬件 Invoke 周期` 计算。
 多个输入的汇总值使用软件周期总和除以硬件周期总和，并同时保留最小单输入加速比。
 
@@ -236,3 +241,13 @@ python test/performance_analysis/collect_window_pipeline.py \
 python test/model_benchmark/report.py \
   --out build/model_benchmark --prepared /path/to/prepared
 ```
+
+
+## 同容量 RAW32 与压缩比较
+
+`test/ps_compression/run_soc.py` 复用本目录的模型、固件和 SoC 测试程序，
+使用同一 RTL 可执行文件和同一 ELF，在 Prepare 前切换 RAW32 或无损压缩策略。
+共享 IA/PS 数据 RAM 为 14 KiB，按七个 2 KiB bank 分配；Conv、点卷积、Dense、
+DW、池化、Add 和 Softmax 均使用实际硬件实现。
+
+详细命令、周期定义和输出文件见 [PS 压缩测试说明](../ps_compression/README.md)。

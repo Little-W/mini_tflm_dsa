@@ -20,7 +20,14 @@ module npu_axil_reg_if #(
     parameter int unsigned MATRIX_PS_FRAMES = 16,
     parameter int unsigned MATRIX_PS_ROWS = 799,
     parameter int unsigned MATRIX_S8_BANKS = 32,
-    parameter int unsigned MATRIX_S16_BANKS = 32
+    parameter int unsigned MATRIX_S16_BANKS = 32,
+    parameter logic [31:0] PS_CAPS = 0,
+    parameter int unsigned PS_POOL_BYTES = 0,
+    parameter int unsigned IA_CACHE_BYTES = 0,
+    parameter int unsigned SHARED_TOTAL_BYTES = 0,
+    parameter int unsigned SHARED_BANK_BYTES = 0,
+    parameter logic [31:0] SHARED_IA_BANK_MASK = 0,
+    parameter int unsigned PS_DIRECTORY_ROWS = 0
 ) (
     input  wire                         clk,
     input  wire                         rst_n,
@@ -76,6 +83,11 @@ module npu_axil_reg_if #(
     output logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
     output logic [REG_WIDTH-1:0] cfg_col_groups,
     output logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
+    output logic [31:0] cfg_ps_control,
+    output logic [31:0] cfg_shared_ia_banks,
+    input logic [31:0] ps_stat_commands = 32'd0,
+    input logic [31:0] ps_stat_pressure_events = 32'd0,
+    input logic [31:0] ps_stat_early_finish_frames = 32'd0,
 
     output logic [REG_WIDTH-1:0]        lhs_base,
     output logic [REG_WIDTH-1:0]        rhs_base,
@@ -153,8 +165,25 @@ module npu_axil_reg_if #(
     localparam logic [11:0] REG_MATRIX_OUTPUT_BANKS = 12'h03b; // 0x0ec, read-only
     localparam logic [11:0] REG_DMA_MAX_BYTES = 12'h03c; // 0x0f0, read-only
     localparam logic [11:0] REG_AXI_DATA_BITS = 12'h03d; // 0x0f4, read-only
+    localparam logic [11:0] REG_PS_CONTROL = 12'h048;
+    localparam logic [11:0] REG_PS_CAPS = 12'h049;
+    localparam logic [11:0] REG_PS_COMMANDS = 12'h04a;
+    localparam logic [11:0] REG_PS_PRESSURE = 12'h04b;
+    localparam logic [11:0] REG_PS_EARLY_FINISH = 12'h04c;
+    localparam logic [11:0] REG_PS_POOL_BYTES = 12'h04d;
+    localparam logic [11:0] REG_IA_CACHE_BYTES = 12'h04e;
     localparam logic [11:0] REG_ID           = 12'h03f; // 0x0fc
+    localparam logic [11:0] REG_SHARED_TOTAL_BYTES = 12'h040;
+    localparam logic [11:0] REG_SHARED_BANK_BYTES = 12'h041;
+    localparam logic [11:0] REG_SHARED_IA_BANKS = 12'h042;
+    localparam logic [11:0] REG_SHARED_IA_BANK_MASK = 12'h043;
+    localparam logic [11:0] REG_PS_DIRECTORY_ROWS = 12'h044;
     localparam logic [REG_WIDTH-1:0] NPU_ID  = 32'h4e50_5531;
+    localparam bit SHARED_CAPABLE = PS_CAPS[4] &&
+        (SHARED_BANK_BYTES == 1024 || SHARED_BANK_BYTES == 2048 || SHARED_BANK_BYTES == 4096) &&
+        SHARED_TOTAL_BYTES >= 6 * SHARED_BANK_BYTES &&
+        SHARED_TOTAL_BYTES <= 9 * SHARED_BANK_BYTES &&
+        SHARED_TOTAL_BYTES % SHARED_BANK_BYTES == 0 && SHARED_IA_BANK_MASK[1];
 
     logic [AXIL_ADDR_WIDTH-1:0] awaddr_q;
     logic                       awvalid_q;
@@ -186,6 +215,9 @@ module npu_axil_reg_if #(
     wire ctrl_start_commit = write_commit && !npu_busy_q && npu_sa_ready && (wr_word_addr == REG_CTRL) && wr_strb[0] && wr_data[0];
 
     logic [AXIL_DATA_WIDTH-1:0] read_data_next;
+    wire [31:0] shared_ia_banks_next = apply_wstrb(cfg_shared_ia_banks, wr_data, wr_strb);
+    wire shared_allocation_valid = SHARED_CAPABLE && shared_ia_banks_next < 32 &&
+        SHARED_IA_BANK_MASK[shared_ia_banks_next[4:0]];
 
     assign s_axil_awready = !awvalid_q && !bvalid_q;
     assign s_axil_wready  = !wvalid_q && !bvalid_q;
@@ -277,6 +309,20 @@ module npu_axil_reg_if #(
             REG_COL_GROUPS: read_data_next = cfg_col_groups;
             REG_COL_TAIL_TILES: read_data_next = cfg_col_tail_tiles;
             REG_CONFIG_ABI: read_data_next = 32'd2;
+            REG_PS_CONTROL: read_data_next = cfg_ps_control;
+            REG_PS_CAPS: read_data_next = PS_CAPS;
+            REG_PS_COMMANDS: read_data_next = ps_stat_commands;
+            REG_PS_PRESSURE: read_data_next = ps_stat_pressure_events;
+            REG_PS_EARLY_FINISH: read_data_next = ps_stat_early_finish_frames;
+            REG_PS_POOL_BYTES: read_data_next = SHARED_CAPABLE ?
+                32'(SHARED_TOTAL_BYTES) - cfg_shared_ia_banks * 32'(SHARED_BANK_BYTES) : 32'(PS_POOL_BYTES);
+            REG_IA_CACHE_BYTES: read_data_next = SHARED_CAPABLE ?
+                cfg_shared_ia_banks * 32'(SHARED_BANK_BYTES) : 32'(IA_CACHE_BYTES);
+            REG_SHARED_TOTAL_BYTES: read_data_next = SHARED_CAPABLE ? 32'(SHARED_TOTAL_BYTES) : 32'd0;
+            REG_SHARED_BANK_BYTES: read_data_next = SHARED_CAPABLE ? 32'(SHARED_BANK_BYTES) : 32'd0;
+            REG_SHARED_IA_BANKS: read_data_next = cfg_shared_ia_banks;
+            REG_SHARED_IA_BANK_MASK: read_data_next = SHARED_CAPABLE ? SHARED_IA_BANK_MASK : 32'd0;
+            REG_PS_DIRECTORY_ROWS: read_data_next = SHARED_CAPABLE ? 32'(PS_DIRECTORY_ROWS) : 32'd0;
             12'h01d: read_data_next = cfg_conv.input_base;
             12'h01e: read_data_next = {cfg_conv.input_w, cfg_conv.input_h};
             12'h01f: read_data_next = {cfg_conv.group_c, cfg_conv.input_c};
@@ -354,6 +400,8 @@ module npu_axil_reg_if #(
             cfg_row_tail_tiles <= '0;
             cfg_col_groups <= '0;
             cfg_col_tail_tiles <= '0;
+            cfg_ps_control <= '0;
+            cfg_shared_ia_banks <= SHARED_CAPABLE ? 32'd1 : 32'd0;
             calc_start          <= 1'b0;
             npu_busy_q          <= 1'b0;
             done_sticky         <= 1'b0;
@@ -451,6 +499,11 @@ module npu_axil_reg_if #(
                     REG_ROW_TAIL_TILES: cfg_row_tail_tiles <= apply_wstrb(cfg_row_tail_tiles, wr_data, wr_strb);
                     REG_COL_GROUPS: cfg_col_groups <= apply_wstrb(cfg_col_groups, wr_data, wr_strb);
                     REG_COL_TAIL_TILES: cfg_col_tail_tiles <= apply_wstrb(cfg_col_tail_tiles, wr_data, wr_strb);
+                    REG_PS_CONTROL: cfg_ps_control <= apply_wstrb(cfg_ps_control, wr_data, wr_strb);
+                    REG_SHARED_IA_BANKS: begin
+                        if (shared_allocation_valid) cfg_shared_ia_banks <= shared_ia_banks_next;
+                        else bresp_q <= 2'b10;
+                    end
                     12'h01d: cfg_conv.input_base <= apply_wstrb(cfg_conv.input_base, wr_data, wr_strb);
                     12'h01e: {cfg_conv.input_w,cfg_conv.input_h} <= apply_wstrb({cfg_conv.input_w,cfg_conv.input_h}, wr_data, wr_strb);
                     12'h01f: {cfg_conv.group_c,cfg_conv.input_c} <= apply_wstrb({cfg_conv.group_c,cfg_conv.input_c}, wr_data, wr_strb);

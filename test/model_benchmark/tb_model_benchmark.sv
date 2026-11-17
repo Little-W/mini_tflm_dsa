@@ -39,6 +39,12 @@
 `ifndef SOC_NETWORK_BUS_WIDTH
 `define SOC_NETWORK_BUS_WIDTH 64
 `endif
+`ifndef SOC_NETWORK_SHARED_BANK_BYTES
+`define SOC_NETWORK_SHARED_BANK_BYTES 2048
+`endif
+`ifndef SOC_NETWORK_SHARED_BANK_COUNT
+`define SOC_NETWORK_SHARED_BANK_COUNT 7
+`endif
 `ifndef SOC_NETWORK_DMA_MAX_BYTES
 `define SOC_NETWORK_DMA_MAX_BYTES (256 * (`SOC_NETWORK_BUS_WIDTH / 8))
 `endif
@@ -51,6 +57,8 @@
 `ifndef SOC_NETWORK_S16_OUTPUT_BANKS
 `define SOC_NETWORK_S16_OUTPUT_BANKS 4
 `endif
+`define PS_BENCH_AXIL dut.u_npu_axil_top
+`define PS_BENCH_CORE dut.u_npu_axil_top.u_npu_top
 module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                       output logic [31:0] progress, pc);
     localparam int RAM_WORDS = `SOC_NETWORK_RAM_WORDS;
@@ -60,6 +68,9 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
     wire [31:0] soc_status;
     soc_top #(
         .SIZE(16), .DATA_WIDTH(16), .WEIGHT_WIDTH(16), .BUS_WIDTH(`SOC_NETWORK_BUS_WIDTH),
+        .SHARED_BANK_BYTES(`SOC_NETWORK_SHARED_BANK_BYTES),
+        .SHARED_BANK_COUNT(`SOC_NETWORK_SHARED_BANK_COUNT),
+        .CPU_MEM_WORD_WIDTH(`SOC_NETWORK_BUS_WIDTH),
         .IA_CACHE_BLOCKS(`SOC_NETWORK_IA_CACHE_BLOCKS), .PS_FRAME_COUNT(16),
         .PS_STORAGE_ROWS(`SOC_NETWORK_PS_STORAGE_ROWS),
         .OA_S16_FIFO_BANKS_MAX(`SOC_NETWORK_S16_OUTPUT_BANKS),
@@ -114,8 +125,18 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         logic [63:0] array_wait_output, array_wait_ia_done, window_cache_hits;
         logic [63:0] window_cache_misses, window_cache_read_bytes, vector_compute_cycles;
         logic [63:0] vector_dma_wait_cycles, softmax_jobs, softmax_done;
+        logic [63:0] capacity_retries, conv_retries, gemm_retries;
     } counters_t;
     counters_t total, network_start, layer_start;
+    typedef struct packed {
+        logic [63:0] core_cycles, read_bytes, ia_read_bytes, weight_read_bytes;
+        logic [63:0] ar, rbeats, write_bytes, ps_wait_cycles, array_rows;
+        logic [63:0] ps_write_words, ps_read_words, ps_rows, ps_raw_rows;
+    } job_counters_t;
+    job_counters_t job_stats;
+    logic [63:0] job_start_cycle;
+    logic job_is_mode, job_vector;
+    longint unsigned job_input_begin, job_input_end, job_weight_begin, job_weight_end;
     logic [31:0] progress_seen, network_begin_marker, network_end_marker, tensor_marker;
     bit network_open, network_complete, layer_open, job_inflight;
     int unsigned layer_index, layer_count;
@@ -191,6 +212,9 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         c.vector_dma_wait_cycles=a.vector_dma_wait_cycles-b.vector_dma_wait_cycles;
         c.softmax_jobs=a.softmax_jobs-b.softmax_jobs;
         c.softmax_done=a.softmax_done-b.softmax_done;
+        c.capacity_retries=a.capacity_retries-b.capacity_retries;
+        c.conv_retries=a.conv_retries-b.conv_retries;
+        c.gemm_retries=a.gemm_retries-b.gemm_retries;
         return c;
     endfunction
 
@@ -218,7 +242,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         $fclose(handle);
     endtask
     task automatic report(input string scope, input int unsigned index, input counters_t c);
-        $display("SOC_NETWORK_COUNTER scope=%s index=%0d cycles=%0d npu_busy_cycles=%0d cpu_instruction_reads=%0d cpu_data_reads=%0d cpu_data_write_bytes=%0d cpu_mmio_reads=%0d cpu_mmio_write_bytes=%0d npu_read_bytes=%0d npu_write_bytes=%0d npu_read_bursts=%0d npu_write_bursts=%0d jobs=%0d conv_jobs=%0d dw_jobs=%0d pool_jobs=%0d vector_jobs=%0d gemm_jobs=%0d add_jobs=%0d conv_done=%0d dw_done=%0d pool_done=%0d vector_done=%0d gemm_done=%0d add_done=%0d npu_errors=%0d done_jobs=%0d axi_errors=%0d ia_windows=%0d kernel_windows=%0d dw_windows=%0d array_jobs_busy_cycles=%0d array_ia_valid_cycles=%0d array_weight_commits=%0d array_controller_cycles=%0d array_wait_weight_tail=%0d array_wait_weight_data=%0d array_wait_ia_data=%0d array_wait_bias=%0d array_wait_quant=%0d array_wait_output=%0d array_wait_ia_done=%0d window_cache_hits=%0d window_cache_misses=%0d window_cache_read_bytes=%0d vector_compute_cycles=%0d vector_dma_wait_cycles=%0d softmax_jobs=%0d softmax_done=%0d",
+        $display("SOC_NETWORK_COUNTER scope=%s index=%0d cycles=%0d npu_busy_cycles=%0d cpu_instruction_reads=%0d cpu_data_reads=%0d cpu_data_write_bytes=%0d cpu_mmio_reads=%0d cpu_mmio_write_bytes=%0d npu_read_bytes=%0d npu_write_bytes=%0d npu_read_bursts=%0d npu_write_bursts=%0d jobs=%0d conv_jobs=%0d dw_jobs=%0d pool_jobs=%0d vector_jobs=%0d gemm_jobs=%0d add_jobs=%0d conv_done=%0d dw_done=%0d pool_done=%0d vector_done=%0d gemm_done=%0d add_done=%0d npu_errors=%0d done_jobs=%0d axi_errors=%0d ia_windows=%0d kernel_windows=%0d dw_windows=%0d array_jobs_busy_cycles=%0d array_ia_valid_cycles=%0d array_weight_commits=%0d array_controller_cycles=%0d array_wait_weight_tail=%0d array_wait_weight_data=%0d array_wait_ia_data=%0d array_wait_bias=%0d array_wait_quant=%0d array_wait_output=%0d array_wait_ia_done=%0d window_cache_hits=%0d window_cache_misses=%0d window_cache_read_bytes=%0d vector_compute_cycles=%0d vector_dma_wait_cycles=%0d softmax_jobs=%0d softmax_done=%0d capacity_retries=%0d conv_retries=%0d gemm_retries=%0d",
             scope,index,c.cycles,c.npu_busy_cycles,c.cpu_instruction_reads,c.cpu_data_reads,
             c.cpu_data_write_bytes,c.cpu_mmio_reads,c.cpu_mmio_write_bytes,c.npu_read_bytes,
             c.npu_write_bytes,c.npu_read_bursts,c.npu_write_bursts,c.jobs,c.conv_jobs,c.dw_jobs,
@@ -230,7 +254,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
             c.array_wait_ia_data,c.array_wait_bias,c.array_wait_quant,
             c.array_wait_output,c.array_wait_ia_done,c.window_cache_hits,
             c.window_cache_misses,c.window_cache_read_bytes,c.vector_compute_cycles,
-            c.vector_dma_wait_cycles,c.softmax_jobs,c.softmax_done);
+            c.vector_dma_wait_cycles,c.softmax_jobs,c.softmax_done,c.capacity_retries,c.conv_retries,c.gemm_retries);
     endtask
 
     initial begin
@@ -278,6 +302,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         int unsigned tensor_addr,tensor_bytes;
         if(!rst_n) begin
             total='0;network_start='0;layer_start='0;
+            job_stats='0;job_start_cycle=0;job_is_mode=0;job_vector=0;
             progress_seen=0;network_open=0;network_complete=0;layer_open=0;
             layer_index=0;layer_count=0;job_inflight=0;job_kind=JOB_GEMM;
             outstanding_reads=0;outstanding_writes=0;
@@ -398,9 +423,70 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                     window_response_elements+=64'($countones(dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.win_rsp_mask));
                 end
             end
+            if (job_inflight) begin
+                if (`PS_BENCH_AXIL.npu_clk_gate_en) begin
+                    job_stats.core_cycles++;
+                    if (!job_vector) begin
+                        job_stats.ps_wait_cycles += `PS_BENCH_CORE.u_npu_controller.current_state == 3 &&
+                            `PS_BENCH_CORE.ia_data_valid && `PS_BENCH_CORE.u_npu_controller.bias_ready_for_compute &&
+                            `PS_BENCH_CORE.quant_params_valid &&
+                            !(`PS_BENCH_CORE.fifo_full_flag && `PS_BENCH_CORE.ia_output_pending) &&
+                            !`PS_BENCH_CORE.ia_sending_done && !`PS_BENCH_CORE.oa_calc_over && !`PS_BENCH_CORE.ps_frame_ready;
+                        job_stats.array_rows += `PS_BENCH_CORE.u_compute_core.ia_row_valid;
+`ifdef GEMPACT_PS_COMPRESS
+                        job_stats.ps_write_words += $countones(`PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_write_en);
+                        job_stats.ps_read_words += $countones(`PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.payload_ram_read_en);
+                        job_stats.ps_rows += `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid;
+                        job_stats.ps_raw_rows += `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_valid &&
+                            `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store.encode_commit_opcode == 3;
+`endif
+                    end
+                end
+                if (dut.npu_axi_arvalid && dut.npu_axi_arready) begin
+                    job_stats.ar++;
+                    job_stats.read_bytes += read_bytes(dut.npu_axi_araddr,dut.npu_axi_arlen,dut.npu_axi_arsize,dut.npu_axi_arburst);
+                    if (!job_vector) begin
+                        if (64'(dut.npu_axi_araddr) >= job_input_begin &&
+                            64'(dut.npu_axi_araddr) < job_input_end)
+                            job_stats.ia_read_bytes += read_bytes(dut.npu_axi_araddr,dut.npu_axi_arlen,dut.npu_axi_arsize,dut.npu_axi_arburst);
+                        if (64'(dut.npu_axi_araddr) >= job_weight_begin &&
+                            64'(dut.npu_axi_araddr) < job_weight_end)
+                            job_stats.weight_read_bytes += read_bytes(dut.npu_axi_araddr,dut.npu_axi_arlen,dut.npu_axi_arsize,dut.npu_axi_arburst);
+                    end
+                end
+                if (dut.npu_axi_rvalid && dut.npu_axi_rready) job_stats.rbeats++;
+                if (dut.npu_axi_wvalid && dut.npu_axi_wready) job_stats.write_bytes += $countones(dut.npu_axi_wstrb);
+            end
             if(dut.u_npu_axil_top.npu_core_calc_start && dut.u_npu_axil_top.npu_sa_ready) begin
                 assert(!job_inflight) else $fatal(1,"NPU command already active");
                 job_inflight=1;total.jobs++;
+                job_stats='0;job_start_cycle=total.cycles;
+                job_is_mode=`PS_BENCH_AXIL.cfg_dataflow_mode_reg;
+                job_vector=`PS_BENCH_AXIL.cfg_vector_enable_reg;
+                // Identify operands at the physical AR handshake, after the
+                // registered AXI timing path and descriptor queue.
+                job_input_begin = 64'(`PS_BENCH_AXIL.lhs_base_reg) & ~64'(BUS_BYTES-1);
+                job_input_end = 64'(`PS_BENCH_AXIL.lhs_base_reg) +
+                    (`PS_BENCH_AXIL.cfg_lhs_tile_packed_reg ?
+                     ((64'(`PS_BENCH_AXIL.k_reg)+15)/16)*16 *
+                     ((64'(`PS_BENCH_AXIL.n_reg)+15)/16)*16 *
+                     (`PS_BENCH_AXIL.cfg_16bits_ia_reg ? 2 : 1) :
+                     (64'(`PS_BENCH_AXIL.k_reg)-1)*64'(`PS_BENCH_AXIL.lhs_row_stride_b_reg) +
+                     64'(`PS_BENCH_AXIL.n_reg)*(`PS_BENCH_AXIL.cfg_16bits_ia_reg ? 2 : 1));
+                if (`PS_BENCH_AXIL.cfg_conv_enable_reg) begin
+                    job_input_begin = 64'(`PS_BENCH_AXIL.cfg_conv_reg.input_base) & ~64'(BUS_BYTES-1);
+                    job_input_end = 64'(`PS_BENCH_AXIL.cfg_conv_reg.input_base) +
+                        64'(`PS_BENCH_AXIL.cfg_conv_reg.input_h) *
+                        64'(`PS_BENCH_AXIL.cfg_conv_reg.input_w) *
+                        64'(`PS_BENCH_AXIL.cfg_conv_reg.input_c);
+                end
+                job_weight_begin = 64'(`PS_BENCH_AXIL.rhs_base_reg) & ~64'(BUS_BYTES-1);
+                job_weight_end = 64'(`PS_BENCH_AXIL.rhs_base_reg) +
+                    (`PS_BENCH_AXIL.cfg_rhs_tile_packed_reg ?
+                     ((64'(`PS_BENCH_AXIL.m_reg)+15)/16)*16 *
+                     ((64'(`PS_BENCH_AXIL.n_reg)+15)/16)*16 :
+                     (64'(`PS_BENCH_AXIL.m_reg)-1)*64'(`PS_BENCH_AXIL.rhs_col_stride_b_reg) +
+                     64'(`PS_BENCH_AXIL.n_reg));
                 if(dut.u_npu_axil_top.cfg_vector_enable_reg) begin
                     case(dut.u_npu_axil_top.cfg_vector_op_reg)
                         4'd0:begin total.dw_jobs++;job_kind=JOB_DW;end
@@ -411,9 +497,27 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                     endcase
                 end else if(dut.u_npu_axil_top.cfg_conv_enable_reg) begin total.conv_jobs++;job_kind=JOB_CONV;end
                 else begin total.gemm_jobs++;job_kind=JOB_GEMM;end
+                $display("PS_JOB cycle=%0d job=%0d kind=%0d vector=%0d r=%0d w=%0d conv=%0d is=%0d k=%0d n=%0d m=%0d ps_control=%0d ia_banks=%0d ia_bytes=%0d ps_bytes=%0d",
+                    total.cycles,total.jobs,job_kind,job_vector,
+                    `PS_BENCH_AXIL.cfg_ia_reuse_num_reg,`PS_BENCH_AXIL.cfg_w_reuse_num_reg,
+                    `PS_BENCH_AXIL.cfg_conv_enable_reg,`PS_BENCH_AXIL.cfg_dataflow_mode_reg,
+                    `PS_BENCH_AXIL.k_reg,`PS_BENCH_AXIL.n_reg,`PS_BENCH_AXIL.m_reg,`PS_BENCH_AXIL.cfg_ps_control_reg,
+                    `PS_BENCH_AXIL.cfg_shared_ia_banks_reg,
+                    `PS_BENCH_AXIL.SHARED_CAPABLE ? `PS_BENCH_AXIL.cfg_shared_ia_banks_reg * `PS_BENCH_AXIL.SHARED_BANK_BYTES :
+                        `PS_BENCH_AXIL.IA_CACHE_BLOCKS * 16 * 16 * 2,
+                    `PS_BENCH_AXIL.SHARED_CAPABLE ? `PS_BENCH_AXIL.SHARED_TOTAL_BYTES -
+                        `PS_BENCH_AXIL.cfg_shared_ia_banks_reg * `PS_BENCH_AXIL.SHARED_BANK_BYTES : `PS_BENCH_AXIL.PS_POOL_BYTES);
             end
             if(dut.u_npu_axil_top.npu_done_fire) begin
                 assert(job_inflight) else $fatal(1,"NPU completion without command");
+                $display("PS_JOB_END job=%0d end_cycle=%0d task_cycles=%0d core_cycles=%0d read_bytes=%0d ia_read_bytes=%0d weight_read_bytes=%0d ar=%0d rbeats=%0d write_bytes=%0d ps_wait_cycles=%0d array_rows=%0d ps_write_words=%0d ps_read_words=%0d ps_rows=%0d ps_raw_rows=%0d error=%0d frame_commands=%0d frame_pressure_events=%0d early_finish_frames=%0d",
+                    total.jobs,total.cycles,total.cycles-job_start_cycle,job_stats.core_cycles,
+                    job_stats.read_bytes,job_stats.ia_read_bytes,job_stats.weight_read_bytes,
+                    job_stats.ar,job_stats.rbeats,job_stats.write_bytes,job_stats.ps_wait_cycles,
+                    job_stats.array_rows,job_stats.ps_write_words,job_stats.ps_read_words,
+                    job_stats.ps_rows,job_stats.ps_raw_rows,`PS_BENCH_AXIL.npu_err_code,
+                    `PS_BENCH_CORE.ps_stat_commands,`PS_BENCH_CORE.ps_stat_pressure_events,
+                    `PS_BENCH_CORE.ps_stat_early_finish_frames);
                 total.done_jobs++;job_inflight=0;
                 if(dut.u_npu_axil_top.npu_err_code!=0) total.npu_errors++;
                 // The controller counters are stable when the wrapper
@@ -456,6 +560,13 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
                         dut.u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.win_stat_request_response_overlap,
                         window_requested_elements,window_response_elements,
                         window_response_elements==0 ? 64'd0 : window_last_response_cycle-window_first_response_cycle+1);
+                end
+                if(dut.u_npu_axil_top.npu_err_code==2) begin
+                    assert(job_kind==JOB_CONV || job_kind==JOB_GEMM)
+                        else $fatal(1,"Capacity retry reported by a non-GEMM operation");
+                    total.capacity_retries++;
+                    if(job_kind==JOB_CONV)total.conv_retries++;
+                    else total.gemm_retries++;
                 end
                 case(job_kind)
                     JOB_GEMM:total.gemm_done++;
@@ -534,4 +645,45 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
             end
         end
     end
+`ifdef GEMPACT_PS_COMPRESS
+`define PS_BENCH_STORE `PS_BENCH_CORE.u_compute_core.u_ps_buffer.g_compressed.u_store
+    localparam int PS_MONITOR_BANKS = `SOC_NETWORK_SHARED_BANK_COUNT - 1;
+    localparam int PS_MONITOR_ROWS = 16 * (4 * `SOC_NETWORK_SHARED_BANK_BYTES / 512);
+    initial begin
+        assert(`PS_BENCH_CORE.SHARED_RAM_ENABLED &&
+               `PS_BENCH_STORE.BANKS == PS_MONITOR_BANKS &&
+               `PS_BENCH_CORE.IA_REUSE_NUM_MAX * 16 == PS_MONITOR_ROWS)
+            else $fatal(1, "PS capture geometry differs from the shared RAM configuration");
+    end
+    logic [31:0] occupied_payload_bytes;
+    always_comb begin
+        occupied_payload_bytes = 0;
+        for (int bank = 0; bank < PS_MONITOR_BANKS; bank++) begin
+            if (bank < `PS_BENCH_STORE.pool_bank_count_q)
+                occupied_payload_bytes += 16 * (32'(`PS_BENCH_STORE.pool_bank_words_q) -
+                    32'(`PS_BENCH_STORE.bank_free_count[bank]));
+        end
+    end
+    ps_stream_capture #(
+        .MAX_FRAME_ROWS(PS_MONITOR_ROWS),
+        .PAYLOAD_BANKS(PS_MONITOR_BANKS)
+    ) u_ps_capture (
+        .clk(`PS_BENCH_AXIL.npu_core_clk), .rst_n(`PS_BENCH_CORE.core_rst_n),
+        .cycle(total.cycles), .job(total.jobs),
+        .write_valid(`PS_BENCH_STORE.encoder_start), .write_data(`PS_BENCH_STORE.write_data),
+        .frame_accept(`PS_BENCH_STORE.frame_accept), .frame_complete(`PS_BENCH_STORE.frame_complete),
+        .frame_id(32'(`PS_BENCH_STORE.frame_id)), .frame_rows(`PS_BENCH_STORE.frame_rows),
+        .frame_init(`PS_BENCH_STORE.frame_init), .frame_final(`PS_BENCH_STORE.frame_final),
+        .replay_valid(`PS_BENCH_STORE.replay_valid), .replay_data(`PS_BENCH_STORE.replay_data),
+        .payload_write_en(`PS_BENCH_STORE.payload_ram_write_en),
+        .payload_read_en(`PS_BENCH_STORE.payload_ram_read_en),
+        .decoded_write_en(`PS_BENCH_STORE.decoded_write_en),
+        .decoded_read_en(`PS_BENCH_STORE.decoded_read_en), .replay_bypass(`PS_BENCH_STORE.replay_bypass),
+        .occupied_payload_bytes(occupied_payload_bytes)
+    );
+`undef PS_BENCH_STORE
+`endif
+
 endmodule
+`undef PS_BENCH_CORE
+`undef PS_BENCH_AXIL

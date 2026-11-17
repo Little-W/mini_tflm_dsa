@@ -30,26 +30,32 @@ def sat_s16(value):
     return max(-32768, min(32767, value))
 
 
+def sat_s32(value):
+    return max(-(1 << 31), min((1 << 31) - 1, value))
+
+
 def round_divide_by_power_of_two(value, rshift):
-    """Round an integer quotient to nearest, resolving exact halves to even."""
+    """Round a signed integer to nearest, choosing the even result at a tie."""
+    value, rshift = int(value), int(rshift)
     if rshift <= 0:
         return value
+    if rshift > 63:
+        return 0
     quotient, remainder = divmod(abs(value), 1 << rshift)
     half = 1 << (rshift - 1)
-    rounded = quotient + (remainder > half or (remainder == half and quotient & 1))
-    return -rounded if value < 0 else rounded
+    result = quotient + int(remainder > half or (remainder == half and quotient & 1))
+    return -result if value < 0 else result
 
 
 def cmsis_nn_requantize(acc, multiplier, shift):
-    """Apply the repository's full-product Q31 requantization."""
-    result = round_divide_by_power_of_two(acc * multiplier, 31 - shift)
-    return max(-(1 << 31), min((1 << 31) - 1, result))
+    """Apply the NMSIS Q31 product, one nearest-even rounding, and INT32 saturation."""
+    return sat_s32(round_divide_by_power_of_two(int(acc) * int(multiplier), 31 - int(shift)))
 
 
 def nmsis_nn_requantize_s64(acc, multiplier, shift):
+    """Reduce the Q31 multiplier to Q15 and apply the NMSIS INT64 interface."""
     reduced_multiplier = min(0x7FFF, round_divide_by_power_of_two(multiplier, 16))
-    result = round_divide_by_power_of_two(acc * reduced_multiplier, 15 - shift)
-    return max(-(1 << 31), min((1 << 31) - 1, result))
+    return sat_s32(round_divide_by_power_of_two(int(acc) * reduced_multiplier, 15 - int(shift)))
 
 
 def pack_words_le(bytearr):
@@ -100,9 +106,8 @@ def choose_case(args):
     if args.random_dataflow:
         dataflow_mode = rng.choice([0, 1])
 
-    max_stream_cols = args.ps_frame_count * SIZE
-    max_k = min(args.max_dim, max_stream_cols) if dataflow_mode and not args.pcr_engine else args.max_dim
-    max_m = min(args.max_dim, max_stream_cols) if not dataflow_mode and not args.pcr_engine else args.max_dim
+    max_k = args.max_dim
+    max_m = args.max_dim
 
     if args.random:
         k = args.K if args.K is not None else pick_dim(rng, args.min_dim, max_k, args.dim_multiple)
@@ -110,21 +115,12 @@ def choose_case(args):
         m = args.M if args.M is not None else pick_dim(rng, args.min_dim, max_m, args.dim_multiple)
         lhs_dtype = args.lhs_dtype if args.lhs_dtype else rng.choice([1, 2])
     else:
-        k = args.K if args.K is not None else (16 if args.pcr_engine else 4)
+        k = args.K if args.K is not None else 4
         n = args.N if args.N is not None else 16
         m = args.M if args.M is not None else 16
-        lhs_dtype = args.lhs_dtype if args.lhs_dtype else (1 if args.pcr_engine else 2)
+        lhs_dtype = args.lhs_dtype if args.lhs_dtype else 2
 
-    if args.pcr_engine:
-        lhs_dtype = args.lhs_dtype or 1
-        if any(x<=0 or x%16 or x>=(1<<20) for x in (k,n,m)):
-            raise ValueError("PCR cases require positive 16-aligned dimensions below 2^20; pad operands explicitly")
-
-    stream_cols = k if dataflow_mode else m
-    if not args.pcr_engine and stream_cols > args.ps_frame_count * SIZE:
-        raise ValueError(f"stream_cols={stream_cols} needs {math.ceil(stream_cols / SIZE)} PS frames, "
-                         f"but --ps_frame_count={args.ps_frame_count}")
-
+    stream_cols = k if dataflow_mode == 1 else m
     output_col_tiles = max(1, math.ceil(stream_cols / SIZE))
     ia_reuse_max = max(1, args.ia_cache_blocks // 2)
     ia_options = [x for x in [1, 2, 4, 8, 16] if x <= ia_reuse_max]
@@ -136,8 +132,6 @@ def choose_case(args):
 
     if args.ia_reuse_num is not None:
         ia_reuse_num = args.ia_reuse_num
-    elif args.pcr_engine:
-        ia_reuse_num = 0  # Select against the actual panel and page limits below.
     elif args.random:
         ia_reuse_num = rng.choice(ia_options)
     else:
@@ -145,8 +139,6 @@ def choose_case(args):
 
     if args.w_reuse_num is not None:
         w_reuse_num = args.w_reuse_num
-    elif args.pcr_engine:
-        w_reuse_num = 0
     elif args.random:
         w_reuse_num = rng.choice(w_options)
     else:
@@ -160,7 +152,7 @@ def choose_case(args):
     if int16_output:
         if lhs_dtype != 2:
             raise ValueError("--int16_output requires --lhs_dtype 2")
-        if use_per_channel or dataflow_mode != 0:
+        if use_per_channel or dataflow_mode == 1:
             raise ValueError("int16 output regression currently supports per-tensor WS only")
 
     if args.random_quant:
@@ -210,12 +202,11 @@ def choose_case(args):
         "ps_frame_count": args.ps_frame_count,
         "ps_pool_bytes": getattr(args,"ps_pool_bytes",0),
         "pcr_engine": args.pcr_engine,
-        "panel_max_r": args.panel_max_r,
-        "panel_max_w": args.panel_max_w,
         "ps_force_raw": args.ps_force_raw,
         "ia_cache_blocks": args.ia_cache_blocks,
         "random": args.random,
         "random_quant": args.random_quant,
+        "full_range_input": args.full_range_input,
     }
 
 
@@ -226,7 +217,18 @@ def build_matrices(case, args):
     m = case["m"]
     lhs_dtype = case["lhs_dtype"]
 
-    if args.fix_mode or not args.random:
+    if args.full_range_input:
+        lo, hi = (-128, 127) if lhs_dtype == 1 else (-32768, 32767)
+        lhs = [[rng.randint(lo, hi) for _ in range(n)] for _ in range(k)]
+        rhs = [[rng.randint(-128, 127) for _ in range(m)] for _ in range(n)]
+        lhs[0][0] = lo
+        if n > 1:
+            lhs[0][1] = hi
+        rhs[0][0] = -128
+        if n > 1:
+            rhs[1][0] = 127
+        bias = [rng.randint(-512, 511) for _ in range(m)]
+    elif args.fix_mode or not args.random:
         lhs = [[((row * 5 + col * 3 + 1) % 31) - 15 for col in range(n)] for row in range(k)]
         rhs = [[((col * 7 - row * 3 + 2) % 17) - 8 for col in range(m)] for row in range(n)]
         bias = [((col * 11 + 13) % 257) - 128 for col in range(m)]
@@ -447,22 +449,9 @@ def write_config_mem(path, case, layout):
     put(27, case["act_max"])
     put(28, 1 if case["int16_output"] else 0)
 
-    if case.get("pcr_engine"):
-        # The generator's K/N/M names mean output rows/reduction/output cols.
-        # Capacity tooling uses the conventional M/K/N order instead.
-        sys.path.insert(0,str(Path(__file__).resolve().parents[2]/"scripts"))
-        from capacity.model import plan_for_hardware
-        p=plan_for_hardware(case["k"],case["n"],case["m"],
-            case["panel_max_r"],case["panel_max_w"],case["ps_pool_bytes"]//256,
-            "raw32" if case["ps_force_raw"] else "nominal3",
-            mode=case["dataflow_mode"], requested_r=words[6],requested_w=words[7])
-        words[6]=p["R"]; words[7]=p["W"]
-        words[30]=p["row_groups"] | (p["column_groups"]<<16)
-        words[31]=p["row_tail_tiles"] | (p["column_tail_tiles"]<<16)
-        host_tiling={"ia_reuse":p["R"],"w_reuse":p["W"]}
-        case["pcr_tiling"]=p
-    else:
-        words, host_tiling = apply_words(words,case.get("ps_pool_bytes",0))
+    words, host_tiling = apply_words(words, case.get("ps_pool_bytes", 0))
+    case["host_tiling"] = host_tiling
+    case["dataflow_mode"] = words[8]
     case["ia_reuse_num"]=host_tiling["ia_reuse"]
     case["w_reuse_num"]=host_tiling["w_reuse"]
     with open(path, "w", encoding="utf-8") as f:
@@ -478,6 +467,8 @@ def main():
     parser.add_argument("--size", type=int, default=4)
     parser.add_argument("--ia_cache_blocks", type=int, default=4)
     parser.add_argument("--random", action="store_true")
+    parser.add_argument("--full-range-input", action="store_true",
+                        help="exercise the complete signed INT8/INT16 operand ranges")
     parser.add_argument("--random_quant", action="store_true")
     parser.add_argument("--per_channel", action="store_true")
     parser.add_argument("--random_per_channel", action="store_true")
@@ -500,14 +491,14 @@ def main():
     parser.add_argument("--rhs_zp", type=int, default=0)
     parser.add_argument("--ia_reuse_num", type=int)
     parser.add_argument("--w_reuse_num", type=int)
-    parser.add_argument("--dataflow_mode", type=int, choices=[0, 1], default=0,
-                        help="0=WS, 1=IS internal role swap with transposed writeback")
+    parser.add_argument("--dataflow_mode", type=int, choices=[0, 1, 2], default=0,
+                        help="0=WS, 1=IS, 2=automatic host dataflow selection")
     parser.add_argument("--random_dataflow", action="store_true")
     parser.add_argument("--ps_frame_count", type=int, default=8)
-    parser.add_argument("--ps_pool_bytes", type=int, default=0, help="sector payload pool; nonzero enables guaranteed capacity planning")
-    parser.add_argument("--pcr-engine", action="store_true", help="use the configured INT8 K64 panel engine")
-    parser.add_argument("--panel-max-r", type=int, default=16)
-    parser.add_argument("--panel-max-w", type=int, default=16)
+    parser.add_argument("--ps_pool_bytes", type=int, default=0, help="payload bytes; nonzero enables worst-case INT32 capacity planning")
+    parser.add_argument("--pcr-engine", action="store_true", help="enable the shared 16-lane compressed PS storage profile")
+    parser.add_argument("--panel-max-r", type=int, default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--panel-max-w", type=int, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--ps-force-raw", action="store_true")
     args = parser.parse_args()
 
@@ -517,21 +508,8 @@ def main():
         raise ValueError("--size must be a positive power of two")
     if args.ia_cache_blocks < 2 or (args.ia_cache_blocks & (args.ia_cache_blocks - 1)) != 0:
         raise ValueError("--ia_cache_blocks must be a power of two and >= 2")
-    if args.pcr_engine:
-        if SIZE!=16 or args.lhs_dtype==2 or args.int16_output or args.per_channel or args.random_per_channel:
-            raise ValueError("PCR requires SIZE=16, INT8 operands/output and per-tensor quantization")
-        if args.lhs_zp or args.rhs_zp or args.random_unaligned_strides:
-            raise ValueError("PCR requires zero input offsets and 16-byte aligned buffers/strides")
-        if not (1<=args.panel_max_r<=32 and 1<=args.panel_max_w<=32):
-            raise ValueError("PCR panel limits must be in 1..32")
-        if args.ps_pool_bytes<1024 or args.ps_pool_bytes%256 or args.ps_pool_bytes//256>4095:
-            raise ValueError("PCR pool must contain 4..4095 pages of 256 bytes")
-        args.no_bias=True
-        if args.dim_multiple==1:
-            args.dim_multiple=16
-        args.min_dim=max(16,args.min_dim)
-        if args.random and (args.max_dim<args.min_dim or args.dim_multiple%16):
-            raise ValueError("PCR random dimensions require a valid interval and 16-aligned multiples")
+    if args.pcr_engine and (SIZE != 16 or args.ps_pool_bytes <= 0 or args.ps_pool_bytes % 64):
+        raise ValueError("shared compressed PS requires SIZE=16 and a positive 64-byte-aligned pool")
 
     os.makedirs(args.out_dir, exist_ok=True)
 
@@ -539,7 +517,7 @@ def main():
     rng = random.Random(args.seed ^ 0xC0FFEE)
     layout = compute_layout(case, args, rng)
     lhs, rhs, bias = build_matrices(case, args)
-    acc_values=[] if args.pcr_engine else None
+    acc_values=[]
     img_init, img_golden = fill_images(case, layout, lhs, rhs, bias,acc_values)
 
     init_words = pack_words_le(bytes(img_init))
@@ -547,8 +525,7 @@ def main():
     write_mem_hex(os.path.join(args.out_dir, "init.mem"), init_words, layout["mem_words"])
     write_mem_hex(os.path.join(args.out_dir, "golden.mem"), golden_words, layout["mem_words"])
     write_config_mem(os.path.join(args.out_dir, "config.mem"), case, layout)
-    if acc_values is not None:
-        write_mem_hex(os.path.join(args.out_dir,"acc.mem"),acc_values,len(acc_values))
+    write_mem_hex(os.path.join(args.out_dir,"acc.mem"),acc_values,len(acc_values))
     write_params_svh(os.path.join(args.out_dir, "test_params.svh"), case, layout)
 
     config = {"size": SIZE, **case, **layout}

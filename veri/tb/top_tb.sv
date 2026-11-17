@@ -8,6 +8,9 @@ import uvm_pkg::*;
 
 module tb_top #(
     parameter int unsigned DUT_SIZE            = 16,
+    parameter int unsigned DUT_BUS_WIDTH       = 64,
+    parameter int unsigned DUT_SHARED_BANK_BYTES = 2048,
+    parameter int unsigned DUT_SHARED_BANK_COUNT = 7,
     parameter int unsigned DUT_IA_CACHE_BLOCKS = 4,
     parameter int unsigned DUT_PS_FRAME_COUNT  = DUT_SIZE,
     parameter int unsigned DUT_CPU_MEM_DP      = 65536,
@@ -57,6 +60,9 @@ module tb_top #(
 
     soc_top #(
         .SIZE(DUT_SIZE),
+        .BUS_WIDTH(DUT_BUS_WIDTH),
+        .SHARED_BANK_BYTES(DUT_SHARED_BANK_BYTES),
+        .SHARED_BANK_COUNT(DUT_SHARED_BANK_COUNT),
         .IA_CACHE_BLOCKS(DUT_IA_CACHE_BLOCKS),
         .PS_FRAME_COUNT(DUT_PS_FRAME_COUNT),
         .AXI_READ_OUTSTANDING(DUT_AXI_READ_OUTSTANDING),
@@ -81,6 +87,9 @@ module tb_top #(
 
 `elsif DUT_AXIL
     axil_top_with_ram #(
+        .BUS_WIDTH(DUT_BUS_WIDTH),
+        .SHARED_BANK_BYTES(DUT_SHARED_BANK_BYTES),
+        .SHARED_BANK_COUNT(DUT_SHARED_BANK_COUNT),
         .AXIL_DATA_WIDTH(32),
         .AXIL_ADDR_WIDTH(16),
         .SIZE(DUT_SIZE),

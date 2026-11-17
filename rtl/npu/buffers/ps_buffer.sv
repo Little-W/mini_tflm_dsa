@@ -1,12 +1,32 @@
+`ifndef GEMMORA_PS_POOL_BYTES
+`define GEMMORA_PS_POOL_BYTES 12288
+`endif
+
 module ps_buffer #(
     parameter int unsigned SIZE       = 16,
     parameter int unsigned DATA_WIDTH = 32,
     parameter int unsigned FRAME_COUNT = SIZE,
     parameter int unsigned MAX_IA_REUSE = 2,
-    parameter int unsigned STORAGE_ROWS = 0
+    parameter int unsigned STORAGE_ROWS = 0,
+    parameter int unsigned PS_EXTERNAL_RAM = 0,
+    parameter int unsigned PS_POOL_BYTES = `GEMMORA_PS_POOL_BYTES,
+    parameter int unsigned PS_BANK_BYTES = 2048,
+    parameter int unsigned PS_DIRECTORY_ROWS = FRAME_COUNT * MAX_IA_REUSE * SIZE,
+    parameter int unsigned PS_RAM_ADDR_BITS = PS_EXTERNAL_RAM!=0 ? $clog2(PS_POOL_BYTES/16) :
+        ($clog2(PS_POOL_BYTES/64)>0 ? $clog2(PS_POOL_BYTES/64) : 1)
 ) (
     input  logic                         clk,
     input  logic                         rst_n,
+    input  logic                         ps_store_cfg_valid = 1'b0,
+    input  logic [31:0]                  ps_pool_bank_words = PS_EXTERNAL_RAM!=0 ? PS_BANK_BYTES/16 : PS_POOL_BYTES/64,
+    input  logic [31:0]                  ps_pool_bank_count = PS_EXTERNAL_RAM!=0 ? PS_POOL_BYTES/PS_BANK_BYTES : 4,
+    input  logic [31:0]                  ps_directory_stride = MAX_IA_REUSE*SIZE,
+    output wire [3:0]                    ps_ram_read_en,
+    output wire [PS_RAM_ADDR_BITS-1:0]    ps_ram_read_addr [0:3],
+    input  wire [127:0]                  ps_ram_read_data [0:3] = '{default:'0},
+    output wire [3:0]                    ps_ram_write_en,
+    output wire [PS_RAM_ADDR_BITS-1:0]    ps_ram_write_addr [0:3],
+    output wire [127:0]                  ps_ram_write_data [0:3],
     input  logic signed [DATA_WIDTH-1:0] data_in       [0:SIZE-1],
     input  logic                         ia_row_valid,
     input  logic                         ia_calc_done,
@@ -15,6 +35,18 @@ module ps_buffer #(
     input  logic                         send_ia_trigger,
     input  logic                         ia_is_init_data,
     input  logic                         replay_enable,
+    input  logic                         frame_request = 1'b0,
+    input  logic [((FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1)-1:0] frame_id = '0,
+    input  logic                         frame_accept = 1'b0,
+    input  logic [31:0]                  frame_rows = 32'd0,
+    input  logic [31:0]                  frame_reserve_rows = 32'd0,
+    input  logic [2:0]                   frame_word_cap = 3'd4,
+    input  logic                         frame_init = 1'b0,
+    input  logic                         frame_final = 1'b0,
+    input  logic                         force_raw = 1'b0,
+    output logic                         frame_ready,
+    output logic                         frame_pressure,
+    output logic                         frame_complete,
     output logic signed [DATA_WIDTH-1:0] data_out      [0:SIZE-1],
     output logic signed [DATA_WIDTH-1:0] acc_data_out  [0:SIZE-1],
     output logic                         acc_data_valid,
@@ -37,6 +69,19 @@ module ps_buffer #(
     logic [FIFO_VEC_WIDTH-1:0]    fifo_data_out_vec;
 
     logic                         de_diag_data_valid;
+    logic                         replay_row_valid;
+    logic                         frame_final_q;
+    logic [FIFO_VEC_WIDTH-1:0]     matrix_data_vec;
+    logic signed [DATA_WIDTH-1:0]  replay_skew [0:SIZE-1];
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) frame_final_q <= 1'b0;
+        else if (frame_accept) frame_final_q <= frame_final;
+    end
+    always_comb begin
+        for (int lane_idx = 0; lane_idx < SIZE; lane_idx++)
+            matrix_data_vec[lane_idx*DATA_WIDTH +: DATA_WIDTH] = de_diag_data_out[lane_idx];
+    end
     logic                         de_diag_tile_calc_over;
     logic                         de_diag_stream_calc_over;
 
@@ -48,6 +93,63 @@ module ps_buffer #(
         end
     end
 
+`ifdef GEMPACT_PS_COMPRESS
+    localparam bit COMPRESS_ENABLED = (SIZE == 16) && (DATA_WIDTH == 32);
+`else
+    localparam bit COMPRESS_ENABLED = 1'b0;
+`endif
+
+    generate if (COMPRESS_ENABLED) begin : g_compressed
+        assign replay_ready = frame_ready && !frame_init;
+        ps_frame_store #(
+            .MAX_FRAME_ROWS(MAX_IA_REUSE * SIZE),
+            .FRAME_COUNT(FRAME_COUNT),
+            .POOL_BYTES(PS_POOL_BYTES),
+            .BANK_BYTES(PS_BANK_BYTES),
+            .EXTERNAL_RAM(PS_EXTERNAL_RAM),
+            .DIRECTORY_ROWS(PS_DIRECTORY_ROWS),
+            .RAM_ADDR_BITS(PS_RAM_ADDR_BITS)
+        ) u_store (
+            .clk(clk), .rst_n(rst_n),
+            .cfg_valid(ps_store_cfg_valid), .cfg_pool_bank_words(ps_pool_bank_words),
+            .cfg_pool_bank_count(ps_pool_bank_count),
+            .cfg_directory_stride(ps_directory_stride),
+            .ram_read_en(ps_ram_read_en), .ram_read_addr(ps_ram_read_addr), .ram_read_data(ps_ram_read_data),
+            .ram_write_en(ps_ram_write_en), .ram_write_addr(ps_ram_write_addr), .ram_write_data(ps_ram_write_data),
+            .frame_request(frame_request), .frame_accept(frame_accept),
+            .frame_id(frame_id), .frame_reserve_rows(frame_reserve_rows),
+            .frame_word_cap(frame_word_cap),
+            .frame_rows(frame_rows - 32'(SIZE - 1)), .frame_init(frame_init), .frame_final(frame_final),
+            .force_raw_i(force_raw),
+            .frame_ready(frame_ready), .capacity_fault(capacity_fault),
+            .frame_pressure(frame_pressure), .frame_complete(frame_complete),
+            .write_valid(de_diag_data_valid && !frame_final_q), .write_data(matrix_data_vec),
+            .write_frame_end(de_diag_stream_calc_over), .replay_trigger(send_ia_trigger),
+            .replay_data(fifo_data_out_vec), .replay_valid(replay_row_valid)
+        );
+        for (genvar lane = 0; lane < SIZE; lane++) begin : g_replay_skew
+            if (lane == 0) begin : g_first
+                assign replay_skew[lane] = replay_row_valid ? fifo_data_out[lane] : '0;
+            end else begin : g_delay
+                logic signed [DATA_WIDTH-1:0] values [0:lane-1];
+                always_ff @(posedge clk) begin
+                    values[0] <= replay_row_valid ? fifo_data_out[lane] : '0;
+                    for (int stage = 1; stage < lane; stage++) values[stage] <= values[stage-1];
+                end
+                assign replay_skew[lane] = values[lane-1];
+            end
+        end
+    end else begin : g_raw
+    assign ps_ram_read_en = '0;
+    assign ps_ram_write_en = '0;
+    assign ps_ram_read_addr = '{default:'0};
+    assign ps_ram_write_addr = '{default:'0};
+    assign ps_ram_write_data = '{default:'0};
+    assign replay_row_valid = 1'b0;
+    assign replay_skew = '{default:'0};
+    assign frame_ready = 1'b1;
+    assign frame_pressure = 1'b0;
+    assign frame_complete = 1'b0;
     ps_buffer_wide_fifo #(
         .DEPTH      (DEPTH),
         .DATA_WIDTH (FIFO_VEC_WIDTH),
@@ -65,6 +167,7 @@ module ps_buffer #(
         .replay_ready     (replay_ready),
         .data_out         (fifo_data_out_vec)
     );
+    end endgenerate
 
     de_diagonalizer #(
         .SIZE      (SIZE),
@@ -73,7 +176,7 @@ module ps_buffer #(
         .clk             (clk),
         .rst_n           (rst_n),
         .data_in         (data_in),
-        .input_valid_i   (ia_calc_done),
+        .input_valid_i   (COMPRESS_ENABLED ? ia_row_valid : ia_calc_done),
         .burst_start_i   (ia_tile_start),
         .burst_last_i    (ia_l1_switch),
         .data_out        (de_diag_data_out),
@@ -84,15 +187,15 @@ module ps_buffer #(
 
     always_comb begin
         for (int lane_idx = 0; lane_idx < SIZE; lane_idx++) begin
-            data_out[lane_idx]     = fifo_data_out[lane_idx];
+            data_out[lane_idx]     = COMPRESS_ENABLED ? replay_skew[lane_idx] : fifo_data_out[lane_idx];
             acc_data_out[lane_idx] = de_diag_data_out[lane_idx];
         end
     end
 
     // acc_data_valid and tile_calc_over are owned only by de_diagonalizer.
-    assign acc_data_valid = de_diag_data_valid;
-    assign tile_calc_over = de_diag_tile_calc_over;
-    assign stream_calc_over = de_diag_stream_calc_over;
+    assign acc_data_valid = de_diag_data_valid && (!COMPRESS_ENABLED || frame_final_q);
+    assign tile_calc_over = de_diag_tile_calc_over && (!COMPRESS_ENABLED || frame_final_q);
+    assign stream_calc_over = de_diag_stream_calc_over && (!COMPRESS_ENABLED || frame_final_q);
 endmodule
 
 module ps_buffer_wide_fifo #(
@@ -216,17 +319,6 @@ module ps_buffer_wide_fifo #(
         end
     end
 
-`ifdef GEMMORA_PS_SECTOR_CODEC
-    ps_sector_store #(
-        .LOGICAL_ROWS(DEPTH), .POOL_BYTES(`GEMMORA_PS_POOL_BYTES), .ADDR_WIDTH(ADDR_W), .FAIL_STOP(0)
-    ) u_ps_fifo_ram (
-        .clk(clk), .rst_n(rst_n),
-        .write_en(ram_write_en_q), .read_en(ram_read_en),
-        .write_addr(ram_write_addr_q), .read_addr(ram_read_addr),
-        .write_data(ram_write_data_q), .read_data(ram_read_data),
-        .capacity_fault(capacity_fault)
-    );
-`else
     assign capacity_fault=1'b0;
     ps_buffer_exact_ram #(
         .DEPTH(DEPTH),
@@ -242,7 +334,6 @@ module ps_buffer_wide_fifo #(
         .addrb (ram_read_addr),
         .dob   (ram_read_data)
     );
-`endif
 
     always_ff @(posedge clk) begin
         ram_write_addr_q <= ram_write_addr;

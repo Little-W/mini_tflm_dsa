@@ -5,6 +5,7 @@ import json
 import platform
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -50,8 +51,8 @@ def config_words(case):
         raise ValueError("Expected a 32-word NPU1 config.mem from top_regression/gen_mem.py")
     if min(cfg[3:6]) < 1:
         raise ValueError("This interface requires positive K/N/M")
-    if not (0 < cfg[10] <= cfg[11] <= 131072):
-        raise ValueError("Memory bounds exceed the original RTL testbench")
+    if not (0 < cfg[10] <= cfg[11] <= 0x40000000):
+        raise ValueError("Memory bounds exceed the 32-bit address space")
     if not (cfg[30] & 65535) or not (cfg[30] >> 16) or not (cfg[31] & 65535) or not (cfg[31] >> 16):
         raise ValueError("External tiling is required: generate with the current gen_mem.py or run top_regression/host_tiling.py SOURCE DESTINATION")
     return cfg
@@ -119,10 +120,47 @@ class _ServerLib:
         for i,value in enumerate(words[start:]): out[i] = value
 
 def available_backends():
-    return sorted(
-        p.parent for p in (HERE/"backends").glob("*/manifest.json")
+    roots = [HERE/"backends", ROOT/"build/pcr_model/backends", ROOT/"veri/pcr_model/backends"]
+    return sorted({
+        p.parent for root in roots for p in root.glob("*/manifest.json")
         if (p.parent/"rtl_server").is_file() or (p.parent/"libnpu_model.so").is_file()
-    )
+    })
+
+def select_backend(cfg):
+    """Select a built model with the current bus and physical RAM geometry."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0,str(ROOT))
+    from scripts.capacity.config import selected_config
+    hardware = selected_config()
+    candidates = []
+    for path in available_backends():
+        manifest = json.loads((path/"manifest.json").read_text())
+        if any(cfg[index] != manifest[key] for index,key in
+               ((1,"size"),(2,"ia_cache_blocks"),(9,"ps_frame_count"))):
+            continue
+        if manifest.get("bus_width",32) != hardware["NPU_AXI_DATA_WIDTH"]:
+            continue
+        if bool(manifest.get("ps_compress",False)) != bool(hardware["PCR_ENGINE"]):
+            continue
+        if bool(manifest.get("force_raw",False)) != bool(hardware["PS_FORCE_RAW"]):
+            continue
+        if hardware["PCR_ENGINE"]:
+            bank_bytes = manifest.get("shared_bank_bytes",2048)
+            bank_count = manifest.get("shared_physical_banks",
+                manifest.get("shared_total_bytes",0)//bank_bytes)
+            if bank_bytes != hardware["SHARED_BANK_BYTES"] or bank_count != hardware["SHARED_BANK_COUNT"]:
+                continue
+        words = manifest.get("mem_words",131072)
+        if words >= cfg[11]:
+            candidates.append((words,path))
+    if not candidates:
+        choices = ", ".join(p.name for p in available_backends()) or "none"
+        raise FileNotFoundError(
+            f"No backend for SIZE={cfg[1]}, cache={cfg[2]}, frames={cfg[9]}, "
+            f"AXI={hardware['NPU_AXI_DATA_WIDTH']}, "
+            f"banks={hardware['SHARED_BANK_BYTES']}x{hardware['SHARED_BANK_COUNT']}; "
+            f"available: {choices}")
+    return sorted(candidates)[0][1]
 
 class NpuModel:
     """One original testbench instance. step() advances one rising-edge sample.
@@ -142,16 +180,16 @@ class NpuModel:
         self.cfg = config_words(self.case)
         if platform.system() != "Linux" or platform.machine() not in ("x86_64", "AMD64"):
             raise RuntimeError("The packaged backend requires Linux x86_64; see README for rebuild")
-        tag = f"s{self.cfg[1]}_c{self.cfg[2]}_p{self.cfg[9]}"
-        self.backend = Path(backend).resolve() if backend else HERE/"backends"/tag
+        self.backend = Path(backend).resolve() if backend else select_backend(self.cfg)
         manifest_file = self.backend/"manifest.json"
         if not manifest_file.exists():
-            choices = ", ".join(p.name for p in available_backends())
-            raise FileNotFoundError(f"No prebuilt backend {tag}; available: {choices}")
+            raise FileNotFoundError(f"No compiled backend manifest: {manifest_file}")
         self.manifest = json.loads(manifest_file.read_text())
         for idx, key in [(1,"size"),(2,"ia_cache_blocks"),(9,"ps_frame_count")]:
             if self.cfg[idx] != self.manifest[key]:
                 raise ValueError(f"Case {key} differs from the frozen backend")
+        if self.cfg[11] > self.manifest.get("mem_words",131072):
+            raise ValueError("Case memory size exceeds the compiled backend")
         if verify_sources:
             for name, expected in self.manifest["sources"].items():
                 path = ROOT/name
@@ -187,7 +225,8 @@ class NpuModel:
             "npu_time_ps": ([ct.c_void_p], ct.c_uint64),
             "npu_start_cycle": ([ct.c_void_p], ct.c_uint64),
             "npu_ready_cycle": ([ct.c_void_p], ct.c_uint64),
-            "npu_scalar": ([ct.c_void_p,ct.c_uint], ct.c_uint32),
+            "npu_scalar": ([ct.c_void_p,ct.c_uint],
+                           ct.c_uint64 if self.manifest.get("scalar_width",32) == 64 else ct.c_uint32),
             "npu_lane": ([ct.c_void_p,ct.c_uint,ct.c_uint], ct.c_uint32),
             "npu_read_words": ([ct.c_void_p,ct.c_uint,ct.c_uint,ct.POINTER(ct.c_uint32)], None),
             "npu_flush": ([ct.c_void_p], None),
@@ -273,6 +312,9 @@ class NpuModel:
         err_code = int(self.lib.npu_scalar(self.handle,4))
         return {
             "engine":"original RTL driven by Python", "backend":self.backend.name,
+            "bus_width":self.manifest.get("bus_width",32),
+            "shared_bank_bytes":self.manifest.get("shared_bank_bytes",0),
+            "shared_bank_count":self.manifest.get("shared_physical_banks",0),
             "finished":self.finished, "passed":bool(self.finished and complete and not differences and not err_code),
             "sampled_rising_edges":self.cycles,
             "start_sample_cycle":start if start != UINT64_MAX else None,

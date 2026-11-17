@@ -6,8 +6,11 @@
 #       -tclargs build/vivado/tflm_ai_dsa_soc_batch xc7a200tfbg484-3 16 4
 
 set script_dir [file dirname [file normalize [info script]]]
+source [file join $script_dir npu_config.tcl]
+source [file join $script_dir cpu_memory.tcl]
 set export_dir [file normalize [file join $script_dir ..]]
-set dsa_root [file normalize [file join $export_dir .. .. ..]]
+set dsa_root [npu_config::repository_root $script_dir]
+set npu_hardware_config [npu_config::read $dsa_root]
 
 set part_name xc7a200tfbg484-3
 set size_value 16
@@ -48,7 +51,15 @@ if {[info exists ::env(VIVADO_SYNTH_DIRECTIVE)] && $::env(VIVADO_SYNTH_DIRECTIVE
 source [file join $script_dir sources.tcl]
 source [file join $script_dir clk_wiz_ip.tcl]
 
+if {$cpu_mem_path_value ne ""} {
+    set memory_images [cpu_memory::write_images $cpu_mem_path_value \
+        [file join $out_dir mem cpu32.mem] [file join $out_dir mem cpu.mem] \
+        $cpu_mem_dp_value [dict get $npu_hardware_config NPU_AXI_DATA_WIDTH]]
+    set cpu_mem_path_value [dict get $memory_images native_path]
+}
+
 set top_generics [list \
+    {*}[npu_config::generics $npu_hardware_config] \
     SIZE=$size_value \
     IA_CACHE_BLOCKS=$ia_cache_blocks_value \
     CPU_MEM_DP=$cpu_mem_dp_value \
@@ -82,18 +93,31 @@ add_files -norecurse -fileset constrs_1 $constraint_files
 
 set_property include_dirs $include_dirs [get_filesets sources_1]
 set rtl_defines {SYNTHESIS=1 XILINX_CLK_WIZ_IP=1 XILINX_FPGA=1}
-if {[info exists ::env(GEMPACT_PCR_ENGINE)] && $::env(GEMPACT_PCR_ENGINE) eq "1"} {
-    lappend rtl_defines GEMPACT_PANEL_ENGINE GEMPACT_PCR_PS
-    set pool_bytes 179200
+set ps_compress [dict get $npu_hardware_config PCR_ENGINE]
+if {[info exists ::env(GEMPACT_PCR_ENGINE)] && $::env(GEMPACT_PCR_ENGINE) ne ""} {
+    set ps_compress $::env(GEMPACT_PCR_ENGINE)
+}
+if {[info exists ::env(GEMPACT_PS_COMPRESS)] && $::env(GEMPACT_PS_COMPRESS) ne ""} {
+    set ps_compress $::env(GEMPACT_PS_COMPRESS)
+}
+if {$ps_compress ni {0 1}} { error "GEMPACT_PS_COMPRESS must be 0 or 1" }
+if {$ps_compress eq "1"} {
+    if {$size_value != 16} { error "Shared PS compression requires SIZE=16" }
+    lappend rtl_defines GEMPACT_PS_COMPRESS
+    set pool_bytes [dict get $npu_hardware_config PS_POOL_BYTES]
     if {[info exists ::env(GEMPACT_PS_POOL_BYTES)] && $::env(GEMPACT_PS_POOL_BYTES) ne ""} {
         set pool_bytes $::env(GEMPACT_PS_POOL_BYTES)
     }
-    lappend rtl_defines GEMMORA_PS_POOL_BYTES=$pool_bytes
-    foreach {name default} {GEMPACT_PANEL_MAX_R 16 GEMPACT_PANEL_MAX_W 16} {
-        set value $default
-        if {[info exists ::env($name)] && $::env($name) ne ""} { set value $::env($name) }
-        lappend rtl_defines $name=$value
+    if {![string is integer -strict $pool_bytes] || $pool_bytes < 64 || $pool_bytes % 64 != 0} {
+        error "GEMPACT_PS_POOL_BYTES must be a positive multiple of 64"
     }
+    lappend rtl_defines GEMMORA_PS_POOL_BYTES=$pool_bytes
+    set ps_force_raw [dict get $npu_hardware_config PS_FORCE_RAW]
+    if {[info exists ::env(GEMPACT_PS_FORCE_RAW)] && $::env(GEMPACT_PS_FORCE_RAW) ne ""} {
+        set ps_force_raw $::env(GEMPACT_PS_FORCE_RAW)
+    }
+    if {$ps_force_raw ni {0 1}} { error "GEMPACT_PS_FORCE_RAW must be 0 or 1" }
+    if {$ps_force_raw eq "1"} { lappend rtl_defines GEMMORA_PS_FORCE_RAW }
 }
 set_property verilog_define $rtl_defines [get_filesets sources_1]
 set_property top fpga_top [get_filesets sources_1]
@@ -130,3 +154,5 @@ puts "Board clock: 50.000 MHz"
 puts "Core clock: $core_clk_mhz_value MHz"
 puts "SIZE=$size_value IA_CACHE_BLOCKS=$ia_cache_blocks_value CPU_MEM_DP=$cpu_mem_dp_value CPU_AXI_WRITE_TIMING_BUFFER=$cpu_axi_write_timing_buffer_value BYPASS_RAM_PINGPONG=$bypass_ram_pingpong_value RAM_WRITE_TIMING_BUFFER=$ram_write_timing_buffer_value"
 puts "SYNTH_STRATEGY=$synth_strategy_value SYNTH_DIRECTIVE=$synth_directive_value"
+
+puts "NPU_AXI_DATA_WIDTH=[dict get $npu_hardware_config NPU_AXI_DATA_WIDTH] SHARED_BANK_BYTES=[dict get $npu_hardware_config SHARED_BANK_BYTES] SHARED_BANK_COUNT=[dict get $npu_hardware_config SHARED_BANK_COUNT]"

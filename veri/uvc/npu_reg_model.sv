@@ -47,6 +47,13 @@ class npu_reg_block extends uvm_reg_block;
     rand npu_reg axil_row_tail_tiles;
     rand npu_reg axil_col_groups;
     rand npu_reg axil_col_tail_tiles;
+    rand npu_reg axil_shared_total_bytes;
+    rand npu_reg axil_shared_bank_bytes;
+    rand npu_reg axil_ia_banks;
+    rand npu_reg axil_ia_bank_mask;
+    rand npu_reg axil_ps_directory_rows;
+    rand npu_reg axil_ps_control;
+    rand npu_reg axil_ps_caps;
 `endif
 
     function new(string name = "npu_reg_block");
@@ -205,6 +212,41 @@ class npu_reg_block extends uvm_reg_block;
         axil_dataflow.build();
         axil_dataflow.configure(this, null, "");
         default_map.add_reg(axil_dataflow, `ADDR_NPU_DATAFLOW, "RW");
+
+        axil_shared_total_bytes = npu_reg::type_id::create("axil_shared_total_bytes",,get_full_name());
+        axil_shared_total_bytes.build("RO");
+        axil_shared_total_bytes.configure(this, null, "");
+        default_map.add_reg(axil_shared_total_bytes, `ADDR_NPU_SHARED_TOTAL_BYTES, "RO");
+
+        axil_shared_bank_bytes = npu_reg::type_id::create("axil_shared_bank_bytes",,get_full_name());
+        axil_shared_bank_bytes.build("RO");
+        axil_shared_bank_bytes.configure(this, null, "");
+        default_map.add_reg(axil_shared_bank_bytes, `ADDR_NPU_SHARED_BANK_BYTES, "RO");
+
+        axil_ia_banks = npu_reg::type_id::create("axil_ia_banks",,get_full_name());
+        axil_ia_banks.build();
+        axil_ia_banks.configure(this, null, "");
+        default_map.add_reg(axil_ia_banks, `ADDR_NPU_IA_BANKS, "RW");
+
+        axil_ia_bank_mask = npu_reg::type_id::create("axil_ia_bank_mask",,get_full_name());
+        axil_ia_bank_mask.build("RO");
+        axil_ia_bank_mask.configure(this, null, "");
+        default_map.add_reg(axil_ia_bank_mask, `ADDR_NPU_IA_BANK_MASK, "RO");
+
+        axil_ps_directory_rows = npu_reg::type_id::create("axil_ps_directory_rows",,get_full_name());
+        axil_ps_directory_rows.build("RO");
+        axil_ps_directory_rows.configure(this, null, "");
+        default_map.add_reg(axil_ps_directory_rows, `ADDR_NPU_PS_DIRECTORY_ROWS, "RO");
+
+        axil_ps_control = npu_reg::type_id::create("axil_ps_control",,get_full_name());
+        axil_ps_control.build();
+        axil_ps_control.configure(this, null, "");
+        default_map.add_reg(axil_ps_control, `ADDR_NPU_PS_CONTROL, "RW");
+
+        axil_ps_caps = npu_reg::type_id::create("axil_ps_caps",,get_full_name());
+        axil_ps_caps.build("RO");
+        axil_ps_caps.configure(this, null, "");
+        default_map.add_reg(axil_ps_caps, `ADDR_NPU_PS_CAPS, "RO");
 
 `endif
         lock_model();

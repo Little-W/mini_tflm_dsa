@@ -18,6 +18,10 @@ python test/vector_engine_cosim/run.py --out build/vector_engine_cosim \
 
 Use `--disabled` to check software dispatch when VCE is unavailable. Build input
 hashes and executable hashes are verified when `--skip-build` is selected.
+Use `--pcr --size 16` to enable unified compressed PS storage and the default
+14 KiB shared IA/PS RAM with 2 KiB banks. This configuration runs the Conv and
+VCE hardware cases and checks their capability registers together with the
+shared memory capacity.
 All co-simulation timing includes the C driver's AXI-Lite accesses, but the host
 CPU instruction execution is untimed. Complete RISC-V inference measurements
 are provided by `test/model_benchmark`.
