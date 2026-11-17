@@ -16,9 +16,18 @@ S16×S8, and S16×S16 operands. Each configuration checks continuous rows,
 input gaps, short and long streams, signed extremes, INT32 wraparound,
 partial sums from previous K blocks, and loading shadow weights during
 active computation. Every column must produce the same input row after
-exactly `SIZE` processing-element cycles. Output cycles before and after
-the valid interval must contain zeros.
+exactly `SIZE` processing-element cycles.
+
+Adjacent streams use different heights, zero or one boundary bubble, and
+independent valid gaps. The first input row may coincide with a weight
+selection change and the first load of the following weight tile. The test
+checks the selector and selected weight at every valid physical row, including
+cycles when different rows use different weight versions. It also checks
+delayed loading, loading gaps, consecutive selector changes, and reloading
+after reset. Existing weight registers hold both tiles; their total data
+capacity is unchanged.
 
 Each configuration records its source and executable hashes, command,
-value counts, timing checks, and undefined-behavior sanitizer status.
+value counts, timing checks, mixed-version valid cycles, protected load cycles,
+and undefined-behavior sanitizer status.
 The aggregate result is written to `summary.json`.

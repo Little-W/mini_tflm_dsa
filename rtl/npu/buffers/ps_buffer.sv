@@ -35,6 +35,7 @@ module ps_buffer #(
     input  logic                         send_ia_trigger,
     input  logic                         ia_is_init_data,
     input  logic                         replay_enable,
+    input  logic                         direct_final_stream = 1'b0,
     input  logic                         frame_request = 1'b0,
     input  logic [((FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1)-1:0] frame_id = '0,
     input  logic                         frame_accept = 1'b0,
@@ -94,7 +95,12 @@ module ps_buffer #(
 `endif
 
     generate if (COMPRESS_ENABLED) begin : g_compressed
-        assign replay_ready = frame_ready && !frame_init;
+        wire store_ready, store_complete;
+        wire [FIFO_VEC_WIDTH-1:0] store_replay_data;
+        assign frame_ready = direct_final_stream || store_ready;
+        assign frame_complete = direct_final_stream ? stream_calc_over : store_complete;
+        assign replay_ready = !direct_final_stream && store_ready && !frame_init;
+        assign replay_data_vec = direct_final_stream ? '0 : store_replay_data;
         ps_frame_store #(
             .MAX_FRAME_ROWS(MAX_IA_REUSE * SIZE),
             .FRAME_COUNT(FRAME_COUNT),
@@ -111,15 +117,17 @@ module ps_buffer #(
             .ram_read_en(ps_ram_read_en), .ram_read_addr(ps_ram_read_addr),
             .ram_read_data(ps_ram_read_data), .ram_write_en(ps_ram_write_en),
             .ram_write_addr(ps_ram_write_addr), .ram_write_data(ps_ram_write_data),
-            .frame_request(frame_request), .frame_accept(frame_accept),
+            .frame_request(frame_request && !direct_final_stream),
+            .frame_accept(frame_accept && !direct_final_stream),
             .frame_id(frame_id), .frame_reserve_rows(frame_reserve_rows),
             .frame_word_cap(frame_word_cap), .frame_rows(frame_rows),
             .frame_init(frame_init), .frame_final(frame_final), .force_raw_i(force_raw),
-            .frame_ready(frame_ready), .capacity_fault(capacity_fault),
-            .frame_pressure(frame_pressure), .frame_complete(frame_complete),
-            .write_valid(ia_row_valid && !frame_final_q), .write_data(matrix_data_vec),
-            .write_frame_end(ia_l1_switch), .replay_trigger(send_ia_trigger),
-            .replay_data(replay_data_vec), .replay_valid(replay_row_valid)
+            .frame_ready(store_ready), .capacity_fault(capacity_fault),
+            .frame_pressure(frame_pressure), .frame_complete(store_complete),
+            .write_valid(ia_row_valid && !frame_final_q && !direct_final_stream), .write_data(matrix_data_vec),
+            .write_frame_end(ia_l1_switch && !direct_final_stream),
+            .replay_trigger(send_ia_trigger && !direct_final_stream),
+            .replay_data(store_replay_data), .replay_valid(replay_row_valid)
         );
     end else begin : g_raw
         assign ps_ram_read_en = '0;
@@ -130,14 +138,15 @@ module ps_buffer #(
         assign replay_row_valid = 1'b0;
         assign frame_ready = 1'b1;
         assign frame_pressure = 1'b0;
-        assign frame_complete = 1'b0;
+        assign frame_complete = direct_final_stream && stream_calc_over;
         ps_buffer_wide_fifo #(
             .DEPTH(DEPTH), .DATA_WIDTH(FIFO_VEC_WIDTH),
             .FRAME_COUNT(FRAME_COUNT), .MAX_FRAME_LEN(MAX_FRAME_LEN)
         ) u_ps_buffer_fifo (
             .clk(clk), .rst_n(rst_n), .data_in(matrix_data_vec),
             .input_valid_i(ia_row_valid && !ia_calc_done),
-            .ia_l1_switch_i(ia_l1_switch), .send_ia_trigger_i(send_ia_trigger),
+            .ia_l1_switch_i(ia_l1_switch && !direct_final_stream),
+            .send_ia_trigger_i(send_ia_trigger && !direct_final_stream),
             .replay_enable_i(replay_enable), .capacity_fault(capacity_fault),
             .replay_ready(replay_ready), .data_out(replay_data_vec)
         );
@@ -146,6 +155,14 @@ module ps_buffer #(
     assign acc_data_valid = ia_row_valid && ia_calc_done;
     assign tile_calc_over = row_tile_end && ia_calc_done;
     assign stream_calc_over = ia_l1_switch && ia_calc_done;
+`ifndef SYNTHESIS
+    always_ff @(posedge clk) if (rst_n && direct_final_stream) begin
+        if (frame_accept) assert (frame_init && frame_final)
+            else $fatal(1, "Direct output requires a single reduction tile");
+        if (ia_row_valid) assert (ia_is_init_data && ia_calc_done)
+            else $fatal(1, "Direct output rows must have no partial-sum dependency");
+    end
+`endif
 endmodule
 
 module ps_buffer_wide_fifo #(

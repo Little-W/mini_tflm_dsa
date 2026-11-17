@@ -20,7 +20,8 @@ def run_one(out, verilator, size, data_bits, weight_bits):
     directory = out / f"size{size}_s{data_bits}_w{weight_bits}"
     directory.mkdir(parents=True, exist_ok=True)
     sources = [ROOT / "rtl/npu/compute/ws_systolic_array.sv",
-               ROOT / "rtl/npu/compute/ws_systolic_cell.sv", HERE / "array_test.cpp", Path(__file__).resolve()]
+               ROOT / "rtl/npu/compute/ws_systolic_cell.sv", HERE / "tb.sv",
+               HERE / "array_test.cpp", Path(__file__).resolve()]
     before = {str(path.relative_to(ROOT)): digest(path) for path in sources}
     rules = directory / "compile_rules.mk"
     rules.write_text("%.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n"
@@ -28,19 +29,19 @@ def run_one(out, verilator, size, data_bits, weight_bits):
                      "$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_SLOW) -c -o $@ $<\n"
                      "$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n")
     command = [verilator, "--cc", "--exe", "--build", "--assert", "-j", "1", "-Wno-fatal",
-               "--top-module", "ws_systolic_array", "--Mdir", str(directory / "obj"),
+               "--top-module", "dip_array_tb", "--Mdir", str(directory / "obj"),
                f"-GSIZE={size}", f"-GDATA_IN_WIDTH={data_bits}", f"-GWEIGHT_WIDTH={weight_bits}",
                "--output-groups", "0", "--output-split", "10000", "-CFLAGS",
                f"-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE={size} "
                f"-DTEST_DATA_BITS={data_bits} -DTEST_WEIGHT_BITS={weight_bits}",
                "-LDFLAGS", "-fsanitize=undefined", "-MAKEFLAGS",
                f"OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}",
-               *map(str, sources[:3])]
+               *map(str, sources[:4])]
     with (directory / "compile.log").open("w") as log:
         result = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
     if result.returncode:
         raise RuntimeError(f"Compilation failed: {directory / 'compile.log'}")
-    binary = directory / "obj/Vws_systolic_array"
+    binary = directory / "obj/Vdip_array_tb"
     result = subprocess.run([str(binary)], cwd=ROOT, text=True, capture_output=True)
     (directory / "run.log").write_text(result.stdout + result.stderr)
     if result.returncode:

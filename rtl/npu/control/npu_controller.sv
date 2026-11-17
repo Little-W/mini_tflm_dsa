@@ -126,10 +126,10 @@ module npu_controller #(
 	    reg       config_error;  // 参数配置错误标志
 	    reg [1:0] error_type;  // 错误类型: 01=配置错误, 10=资源缺失
 	    wire      bias_ready_for_compute;
-	    logic     compute_tail_pending;
+	    logic [1:0] compute_tail_count;
+	    wire      compute_tail_pending = compute_tail_count != 0;
 	    wire      compute_tail_done;
-	    wire      weight_safe_to_send;
-	    wire      issue_weight_now;
+	    wire      input_tail_ready;
 	    wire      issue_ia_now;
 `ifndef SYNTHESIS
     bit       ctrl_trace_en;
@@ -188,12 +188,11 @@ module npu_controller #(
     // In that case there is no DMA payload to wait for.
     assign bias_ready_for_compute = (bias_base == '0) || bias_sleep || bias_valid;
 	    assign compute_tail_done = compute_tail_pending && partial_sum_calc_over;
-	    assign weight_safe_to_send = !compute_tail_pending || compute_tail_done;
-	    assign issue_weight_now = !oa_calc_over &&
-	                              weight_safe_to_send &&
-	                              weight_data_valid &&
-	                              !weight_sending_done;
+	    assign input_tail_ready = !compute_tail_pending ||
+                                  (compute_tail_count == 1 && compute_tail_done) ||
+                                  partial_sum_advance_ready;
 	    assign issue_ia_now = !oa_calc_over &&
+	                          input_tail_ready &&
 	                          ia_data_valid &&
 	                          ps_frame_ready &&
 	                          bias_ready_for_compute &&
@@ -258,7 +257,7 @@ module npu_controller #(
 	            cfg_16bits_ia_reg <= 1'b0;
 	            config_error      <= 1'b0;
 	            error_type        <= 2'b00;
-	            compute_tail_pending <= 1'b0;
+	            compute_tail_count <= '0;
 	        end else begin
 	            current_state <= next_state;
 `ifndef SYNTHESIS
@@ -289,25 +288,24 @@ module npu_controller #(
 		            end
 
 	            if (current_state == INIT) begin
-	                compute_tail_pending <= 1'b0;
+	                compute_tail_count <= '0;
 	            end else begin
-		                if (send_ia_trigger || (commit_now && ia_preissued)) begin
-		                    compute_tail_pending <= 1'b1;
+		                case ({send_ia_trigger, compute_tail_done})
+                        2'b10: compute_tail_count <= compute_tail_count + 1'b1;
+                        2'b01: compute_tail_count <= compute_tail_count - 1'b1;
+                        default: ;
+                    endcase
 `ifndef SYNTHESIS
 		                    if (ctrl_trace_en && send_ia_trigger) begin
 		                        $display("[%0t] CTRL send_ia", $time);
 		                    end
-`endif
-		                end else begin
-		                    if (compute_tail_done) begin
-		                        compute_tail_pending <= 1'b0;
-`ifndef SYNTHESIS
-		                        if (ctrl_trace_en) begin
+		                    if (compute_tail_done && ctrl_trace_en) begin
 		                            $display("[%0t] CTRL tail_done", $time);
 		                        end
+                        if (send_ia_trigger && !compute_tail_done)
+                            assert (compute_tail_count < 3)
+                                else $fatal(1, "Outstanding array streams exceed the controller capacity");
 `endif
-		                    end
-		                end
 	            end
 	        end
 	    end
@@ -388,11 +386,11 @@ module npu_controller #(
                     end
                 endcase
 
-                if (current_state == WEIGHT_START && !oa_calc_over && !weight_safe_to_send) begin
+                if (current_state == IA_START && !oa_calc_over && !input_tail_ready) begin
                     util_stall_weight_tail_cycles <= util_stall_weight_tail_cycles + 1'b1;
                 end
                 if (current_state == WEIGHT_START && !oa_calc_over &&
-                    weight_safe_to_send && !weight_data_valid) begin
+                    !weight_data_valid) begin
                     util_stall_weight_data_cycles <= util_stall_weight_data_cycles + 1'b1;
                 end
                 if (current_state == WEIGHT_WAIT && !weight_sending_done) begin
@@ -502,16 +500,13 @@ module npu_controller #(
 `endif
 
 
-    // Load the NEXT weights into shadow registers while the current tall IA
-    // stream computes. Commit only after the previous PS tail has drained.
+    // Loading fills the inactive bank. Selection follows physical input rows,
+    // while activation admission retains PS, parameter, and output capacity checks.
     logic shadow_inflight, shadow_ready, resident_used;
-    logic ia_preissued;
-    wire issue_ia_advance = current_state == WEIGHT_START && shadow_ready &&
-        compute_tail_pending && partial_sum_advance_ready && issue_ia_now;
     wire reuse_stationary_now = current_state==WEIGHT_START && weight_resident && !resident_used &&
-                                 weight_safe_to_send && !oa_calc_over;
+                                 !oa_calc_over;
     wire commit_now = current_state==WEIGHT_START && shadow_ready &&
-                      weight_safe_to_send && !oa_calc_over;
+                      !oa_calc_over;
     wire prefetch_now = !weight_resident && (current_state==WEIGHT_START || current_state==IA_WAIT) &&
                         !shadow_inflight && !shadow_ready &&
                         weight_data_valid && !weight_sending_done && !oa_calc_over;
@@ -523,7 +518,7 @@ module npu_controller #(
             WEIGHT_START: begin
                 if(oa_calc_over) next_state=done_ready?IDLE:WAIT_DONE;
                 else if(commit_now || reuse_stationary_now)
-                    next_state=(ia_preissued || issue_ia_now) ? IA_WAIT : IA_START;
+                    next_state=issue_ia_now ? IA_WAIT : IA_START;
             end
             IA_START: if(issue_ia_now) next_state=IA_WAIT;
             IA_WAIT: if(ia_sending_done) next_state=WEIGHT_START;
@@ -536,7 +531,7 @@ module npu_controller #(
             init_cfg_ia<=0; init_cfg_weight<=0; init_cfg_bias<=0;
             init_cfg_requant<=0; init_cfg_oa<=0; use_16bits<=0;
             send_weight_trigger<=0; weight_commit<=0;
-            shadow_inflight<=0; shadow_ready<=0; ia_preissued<=0; resident_used<=0; err_code<=0;
+            shadow_inflight<=0; shadow_ready<=0; resident_used<=0; err_code<=0;
         end else begin
             init_cfg_ia<=0; init_cfg_weight<=0; init_cfg_bias<=0;
             init_cfg_requant<=0; init_cfg_oa<=0;
@@ -546,8 +541,7 @@ module npu_controller #(
             if(shadow_inflight && weight_sending_done) begin
                 shadow_inflight<=0; shadow_ready<=1;
             end
-            if(issue_ia_advance) ia_preissued<=1;
-            if(commit_now) begin shadow_ready<=0; ia_preissued<=0; end
+            if(commit_now) shadow_ready<=0;
             if(reuse_stationary_now) resident_used<=1;
             if(current_state==IDLE) err_code<=0;
             if(current_state==ERROR) err_code<=error_type;
@@ -555,14 +549,12 @@ module npu_controller #(
                 init_cfg_ia<=1; init_cfg_weight<=1; init_cfg_bias<=1;
                 init_cfg_requant<=1; init_cfg_oa<=1;
                 use_16bits<=cfg_16bits_ia_reg;
-                shadow_inflight<=0; shadow_ready<=0; ia_preissued<=0; resident_used<=0;
+                shadow_inflight<=0; shadow_ready<=0; resident_used<=0;
             end
         end
     end
-    // The registered activation RAM can prepare its first read before commit
-    // when the preceding sum and replay dependencies have been satisfied.
-    assign send_ia_trigger = !ia_preissued && issue_ia_now &&
-        (current_state==IA_START || commit_now || reuse_stationary_now || issue_ia_advance);
+    assign send_ia_trigger = issue_ia_now &&
+        (current_state==IA_START || commit_now || reuse_stationary_now);
     assign sa_ready=current_state==IDLE;
     always_ff @(posedge clk or negedge rst_n) begin
         if(!rst_n) done_valid<=0;

@@ -86,6 +86,15 @@ NPU_CONFIG=config/npu_fpga.mk python3 test/capacity/check_elaboration.py \
 
 `buffer-ram` 统计逻辑位数。报告的 `physical_shared_memory` 单独给出共享 RAM 的物理实例数、数据容量、未使用数据容量和 FPGA parity 容量。`logical-state` 统计存储位数，未包含组合逻辑面积。SoC 主存、PicoRV32 和固件存储均在此 NPU 统计范围之外。完整状态预算要求运行匹配当前源码的 RTL 展开。
 
+当前逐行权重选择实现的默认配置展开结果如下。每种配置分别检查 RAW32 与 adaptive，缓冲数组逐项相等，总顺序逻辑状态也相等。
+
+| 配置 | 共享数据 RAM | RAW32 总状态 | adaptive 总状态 |
+|---|---:|---:|---:|
+| AXI64，2 KiB × 7 | 14 KiB | 442,019 位 | 442,019 位 |
+| AXI64，8 KiB × 7 | 56 KiB | 998,206 位 | 998,206 位 |
+
+SIZE=16 的阵列使用 16 位 `row_weight_select`，每个物理行保存一个权重选择位。PE 的两组权重寄存器、IA/PS RAM、目录和输出 FIFO 按各自的实际存储容量统计。单 K tile 直接输出调度在已有 FIFO 内额外预留两个输出 tile bank；可用空间不足时采用按完成状态启动下一组的调度。
+
 共享 RAM 的 ASIC 分支使用 `smic40_sram_1r1w`。2、4、8 KiB bank 分别使用 8、16、32 个 `RAMTP128X16` 宏，每个宏提供 128×16 位数据。七个 bank 分别需要 56、112、224 个宏，物理数据容量与逻辑容量相等。FPGA 的七个 8 KiB bank 使用 14 个 `RAMB36E1`，提供 56 KiB 数据和独立的 7 KiB parity。PS 目录和其他存储单独列出。
 
 ## 自动配置硬件

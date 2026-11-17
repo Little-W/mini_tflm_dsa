@@ -1216,6 +1216,11 @@ module npu_top #(
         wire weight_use_16bits_eff = ((KERNEL_DATA_WIDTH > 8) && is_mode) ? run_use_16bits : 1'b0;
         wire ws_final_bias = FRAME_EXEC_ENABLED && !is_mode;
         wire compute_bias_sleep = frame_mode_q ? !frame_command_init : bias_sleep;
+        // Preserve room for the array tail and twelve requantization stages.
+        localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS = (SIZE - 1 + 12 + SIZE - 1) / SIZE;
+        wire direct_final_stream;
+        wire [31:0] output_reserve_banks = ia_reuse_num_eff +
+            (direct_final_stream ? 32'(DIRECT_OUTPUT_EXTRA_BANKS) : 32'd0);
         wire [31:0] exec_stream_k = frame_mode_q ? frame_command_rows : stream_k;
         wire [31:0] exec_stream_m = frame_mode_q ? frame_command_cols : stream_m;
         wire [31:0] exec_n = frame_mode_q ? frame_command_k : run_n;
@@ -1919,6 +1924,7 @@ module npu_top #(
         .ia_vec_in       (ia_out),
         .ia_row_valid    (ia_row_valid),
         .final_output_overlap(!is_mode && !use_per_channel_eff),
+        .direct_final_stream(direct_final_stream),
         .active_columns  (($clog2(SIZE)+1)'((stream_m > REG_WIDTH'(SIZE)) ? REG_WIDTH'(SIZE) : stream_m)),
         .ia_tile_start   (ia_tile_start),
         .ia_calc_done    (frame_mode_q ? frame_command_final : ia_calc_done),
@@ -2150,6 +2156,13 @@ module npu_top #(
         ia_reuse_num_eff <= 16 && oa_chunk_cols_pre >= 2 &&
         (run_m & ((REG_WIDTH'(oa_chunk_cols_pre) << 4) - 1'b1)) == 0 &&
         dst_row_stride_b == run_m;
+    // A merged output group releases its banks together. Its full footprint
+    // must also fit beside the rows that have not reached the FIFO yet.
+    assign direct_final_stream = !frame_mode_q && !is_mode && !run_16x8 &&
+        !use_per_channel_eff && bias_base == '0 && run_n <= REG_WIDTH'(SIZE) && run_n != 0 &&
+        ia_reuse_num_eff + DIRECT_OUTPUT_EXTRA_BANKS <= OA_FIFO_BANKS &&
+        (!oa_ws_coalesce_pre ||
+         oa_ws_reuse_rows_pre * REG_WIDTH'(oa_chunk_cols_pre) + DIRECT_OUTPUT_EXTRA_BANKS <= OA_FIFO_BANKS);
     // Matching the row address and stride to the power-of-two group width
     // keeps each merged write burst within one 4 KiB page.
     wire oa_is_coalesce_pre = !frame_mode_q && (SIZE == 16) && (ENABLE_IS_MODE != 0) &&
@@ -2193,7 +2206,7 @@ module npu_top #(
         .coalesce_group_start(oa_coalesce_group_start),
         .coalesce_rows    (REG_WIDTH'(oa_coalesce_rows)),
         .coalesce_cols    (REG_WIDTH'(oa_coalesce_cols)),
-        .reserve_banks    (ia_reuse_num_eff),
+        .reserve_banks    (output_reserve_banks),
         .vec_valid_num_col(fifo_vec_valid_num_col),
         .vec_valid_num_row(fifo_vec_valid_num_row),
         .output_valid     (fifo_s8_output_valid),

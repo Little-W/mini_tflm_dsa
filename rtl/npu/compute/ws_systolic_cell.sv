@@ -1,11 +1,11 @@
-// filepath: /home/etc/FPGA/tflm_ai_dsa/rtl/npu/compute/ws_systolic_cell.sv
 module ws_systolic_cell #(
     parameter int unsigned DATA_IN_WIDTH = 16,  // s16 输入数据
     parameter int unsigned WEIGHT_WIDTH  = 8,   // s8  权重
     parameter int unsigned ACC_WIDTH     = 32   // 累加/输出位宽，默认32位
 ) (
     input  wire                            clk,
-    input  wire                            weight_commit,
+    input  wire                            weight_select,
+    input  wire                            weight_load_select,
     input  wire                            store_weight_req,  // 置位时加载新权重
     input  wire signed [ WEIGHT_WIDTH-1:0] weight_in,
     input  wire signed [DATA_IN_WIDTH-1:0] data_in,
@@ -24,7 +24,9 @@ module ws_systolic_cell #(
     (* use_dsp = "yes" *) wire signed [ACC_WIDTH-1:0] mult_result;
     wire signed [      ACC_WIDTH:0] sum_ext;
 
-    assign mult_result = data_reg * weight_reg;
+    wire signed [WEIGHT_WIDTH-1:0] selected_weight =
+        weight_select ? weight_shadow : weight_reg;
+    assign mult_result = data_reg * selected_weight;
     // 显式符号扩展后相加，避免表达式宽度截断
     assign sum_ext = $signed(
         {sum_reg[ACC_WIDTH-1], sum_reg}
@@ -33,20 +35,17 @@ module ws_systolic_cell #(
     );
 
     always_ff @(posedge clk) begin
-        if (store_weight_req) weight_shadow <= weight_in;
-        if (weight_commit) begin
-            weight_reg <= weight_shadow;
-            sum_reg    <= '0;
-            data_reg   <= '0;
-        end else begin
-            data_reg <= data_in;
-            sum_reg  <= sum_in;
+        if (store_weight_req) begin
+            if (weight_load_select) weight_shadow <= weight_in;
+            else weight_reg <= weight_in;
         end
+        data_reg <= data_in;
+        sum_reg  <= sum_in;
     end
 
     // 输出透传到相邻单元
     assign data_out = data_reg;
-    assign weight_out = weight_shadow;
+    assign weight_out = weight_load_select ? weight_shadow : weight_reg;
 
     // NMSIS-NN 的 int32 accumulator 语义不是逐 PE 饱和；去掉比较器也能缩短 DSP->LUT 临界路径。
     assign sum_out = sum_ext[ACC_WIDTH-1:0];

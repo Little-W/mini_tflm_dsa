@@ -17,6 +17,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--random-shape", action="store_true")
+    parser.add_argument("--size", type=int, default=SIZE)
+    parser.add_argument("--k", type=int)
     args = parser.parse_args()
 
     np.random.seed(args.seed)
@@ -26,10 +28,12 @@ def main():
         size = int(np.random.choice(size_choices))
         tile_count = int(np.random.randint(1, 5))
     else:
-        size = SIZE
+        size = args.size
         tile_count = 4
 
-    k_dim = size * tile_count
+    k_dim = args.k if args.k is not None else size * tile_count
+    if size < 1 or k_dim < 1:
+        parser.error("--size and --k must be positive")
 
     # A: SIZE x K int16 (IA), B: K x SIZE int16 (Weights)
     A = np.random.randint(-8, 8, size=(size, k_dim), dtype=np.int16)
@@ -77,7 +81,7 @@ def main():
     np.savetxt("bias_1x4.txt", bias, fmt="%d")
 
     # New: per 4x4 tile inputs and partial sums, plus per-tile mem inits and accumulated results
-    tiles = k_dim // size
+    tiles = (k_dim + size - 1) // size
     os.makedirs("tiles", exist_ok=True)
 
     for t in range(tiles):
@@ -94,12 +98,12 @@ def main():
         # Per-tile IA mem init (hex): row-major flatten by r (0..3), then kk (0..3) -> A[r, k0+kk]
         with open(f"tiles/tile_{t}_ia_mem.hex", "w") as f:
             for r in range(size):
-                for kk in range(size):
+                for kk in range(min(size, k_dim - k0)):
                     f.write(to_hex(int(A[r, k0 + kk]), 16) + "\n")
         # Per-tile Weights mem init: flatten by col c (0..3), then kk (0..3) -> B[k0+kk, c]
         with open(f"tiles/tile_{t}_weight_mem.hex", "w") as f:
             for c in range(size):
-                for kk in range(size):
+                for kk in range(min(size, k_dim - k0)):
                     f.write(to_hex(int(B[k0 + kk, c]), 16) + "\n")
 
     # Accumulated results after each tile (reference for partial_sum_calc_over)

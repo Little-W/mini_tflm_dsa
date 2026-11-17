@@ -12,6 +12,9 @@ python3 test/dip_weights/run.py \
 ```
 
 The four configurations cover sizes 3, 4 and 16 with S8 and S16 weights.
-The tests check weight-load values, active-weight stability, shadow commit,
-and every final matrix output. C++ checks use UndefinedBehaviorSanitizer.
+The tests check weight-load values, the selected weight in every valid
+physical row, and every final matrix output. A new input stream can start
+while the preceding stream remains in lower array rows. The report records
+those mixed-version valid cycles and verifies the row selector's timing.
+C++ checks use UndefinedBehaviorSanitizer.
 `summary.json` records source hashes, executable hashes and test counts.

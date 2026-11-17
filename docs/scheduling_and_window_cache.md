@@ -46,7 +46,9 @@ S_{\mathrm{PE}}[r,c]=S[(r+c)\bmod\mathrm{SIZE},c].
 
 `kernel_loader_buffer` 按递减归约索引 `k` 发送权重时，第 `c` 个输出取缓存向量的第 `(k+c) mod SIZE` 个元素。旋转在加载器中完成，外存的普通布局和 packed 布局均保持各自的定义。WS 与 IS 共用该规则，驻留操作数由数据流选择。
 
-IA RAM 读取、阵列输入、PS 恢复和 PS 写入均使用完整矩阵行。归约尾部按逻辑有效元素补零，PS frame 高度使用有效矩阵行数。控制信息随行通过阵列传播管线。两个权重缓冲槽分别保存描述符，shadow 权重预加载与当前计算并行；有效数据离开阵列后，所有 PE 同时接收广播提交信号。实现见 [`ws_systolic_array.sv`](../rtl/npu/compute/ws_systolic_array.sv)、[`kernel_loader_buffer.sv`](../rtl/npu/loaders/kernel_loader_buffer.sv) 和 [`compute_core.sv`](../rtl/npu/compute/compute_core.sv)。
+IA RAM 读取、阵列输入、PS 恢复和 PS 写入均使用完整矩阵行。归约尾部按逻辑有效元素补零，PS frame 高度使用有效矩阵行数。控制信息随行通过阵列传播管线。权重加载器的两个缓冲槽分别保存描述符；每个 PE 的两组权重寄存器通过本行 `row_weight_select` 选择。`weight_commit` 在第零行翻转选择位，随后每周期向下一行传递，与数据和部分和保持相同的传播级数。
+
+加载目标为第零行下一状态未选择的寄存器组，所有行从同一个目标组输出移位权重。各行在选择位已经切换到另一组时才允许写入该目标组。权重加载和选择可以与前一行组的计算重叠；IA 启动继续检查 PS、偏置、量化和输出容量。满足单 K tile、WS、逐张量量化、零偏置地址与输出空间条件的 S8 输出任务可使用直接输出调度，具体条件见[硬件架构](architecture.md)。实现见 [`ws_systolic_array.sv`](../rtl/npu/compute/ws_systolic_array.sv)、[`kernel_loader_buffer.sv`](../rtl/npu/loaders/kernel_loader_buffer.sv) 和 [`compute_core.sv`](../rtl/npu/compute/compute_core.sv)。
 
 ## 2. 窗口缓存的几何映射与替换
 
@@ -298,7 +300,7 @@ C_{\mathrm{shift}}=16N_{\mathrm{stationary\_loads}},
 C_{\mathrm{compute}}=C_{\mathrm{array}}+C_{\mathrm{shift}}+3F.
 \]
 
-其中传播项描述 DiP 阵列中的有效结果传播。权重旋转由加载器按发送索引完成，外存 packed 布局保持不变。
+其中传播项描述 DiP 阵列中的有效结果传播，按每个行组估计。单 K tile 直接输出调度可以重叠相邻组的部分传播时间；该条件由硬件检查，规划器仍使用上式比较候选。跨 K 的 PS 更新和恢复保留各自的完成依赖。权重旋转由加载器按发送索引完成，外存 packed 布局保持不变。
 
 流式填充与驻留矩阵安装具有先后依赖，额外计算：
 
@@ -617,6 +619,9 @@ python3 test/capacity/check_elaboration.py \
 
 | 测试入口 | 主要检查内容 |
 | --- | --- |
+| [`test/dip_array/run.py`](../test/dip_array/run.py) | 整行 DiP 运算、逐行权重选择、重叠加载、输入空隙、连续选择与复位 |
+| [`test/dip_weights/run.py`](../test/dip_weights/run.py) | 生产权重加载器、旋转索引、双缓冲、尾部补零与逐行权重值 |
+| [`test/compute_core/run.py`](../test/compute_core/run.py) | 生产计算核心、多 K tile 中间和、PS 恢复、最终输出与完成时序 |
 | [`test/cache_pipeline/run.py`](../test/cache_pipeline/run.py) | 四项在途、连续命中吞吐、顺序与背压、接受时统计、错误、复位和配置排空 |
 | [`test/window_dma/run.py`](../test/window_dma/run.py) | 带 tag 的有序窗口请求、描述队列容量、连续返回、背压、错误与配置切换 |
 | [`test/conv_span_handoff/run.py`](../test/conv_span_handoff/run.py) | 最后读数据与下一地址的同周期握手、双客户端切换、地址反压和错误响应 |

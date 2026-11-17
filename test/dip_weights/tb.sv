@@ -14,7 +14,9 @@ module dip_weight_tb #(
     input logic signed [31:0] initial_sum [SIZE],
     output logic output_valid,
     output wire signed [31:0] output_row [SIZE],
-    output wire signed [WEIGHT_WIDTH-1:0] resident_weight [SIZE*SIZE]
+    output wire signed [WEIGHT_WIDTH-1:0] resident_weight [SIZE*SIZE],
+    output wire [SIZE-1:0] row_select,
+    output logic [SIZE-1:0] valid_pipe
 );
     logic load_slot_id, response_slot;
     always_ff @(posedge clk) begin
@@ -30,28 +32,19 @@ module dip_weight_tb #(
         .weight_data_valid(weight_data_valid), .weight_sending_done(weight_sending_done),
         .store_weight_req(store_weight_req), .weight_out(weight_out)
     );
-    wire signed [15:0] data_pipe [SIZE][SIZE];
-    wire signed [WEIGHT_WIDTH-1:0] weight_pipe [SIZE][SIZE];
-    wire signed [31:0] sum_pipe [SIZE][SIZE];
-    logic [SIZE-1:0] valid_pipe;
     always_ff @(posedge clk) begin
-        if (!rst_n || weight_commit) valid_pipe <= '0;
+        if (!rst_n) valid_pipe <= '0;
         else valid_pipe <= (valid_pipe << 1) | SIZE'(input_valid);
     end
     assign output_valid = valid_pipe[SIZE-1];
+    ws_systolic_array #(.SIZE(SIZE), .DATA_IN_WIDTH(16), .WEIGHT_WIDTH(WEIGHT_WIDTH)) u_array (
+        .clk, .rst_n, .weight_commit, .store_weight_req,
+        .weight_in(weight_out), .data_in(input_row), .sum_in(initial_sum), .sum_out(output_row)
+    );
+    assign row_select = u_array.row_weight_select;
     for (genvar r=0; r<SIZE; ++r) begin : g_row
         for (genvar c=0; c<SIZE; ++c) begin : g_col
-            ws_systolic_cell #(.DATA_IN_WIDTH(16), .WEIGHT_WIDTH(WEIGHT_WIDTH), .ACC_WIDTH(32)) pe (
-                .clk(clk), .weight_commit(weight_commit), .store_weight_req(store_weight_req),
-                .weight_in(r==0 ? weight_out[c] : weight_pipe[r-1][c]),
-                .data_in(r==0 ? input_row[c] : data_pipe[r-1][(c+1)%SIZE]),
-                .sum_in(r==0 ? initial_sum[c] : sum_pipe[r-1][c]),
-                .data_out(data_pipe[r][c]), .weight_out(weight_pipe[r][c]), .sum_out(sum_pipe[r][c])
-            );
-            assign resident_weight[r*SIZE+c] = pe.weight_reg;
+            assign resident_weight[r*SIZE+c] = u_array.gen_row[r].gen_col[c].ws_cell.selected_weight;
         end
-    end
-    for (genvar c=0; c<SIZE; ++c) begin : g_output
-        assign output_row[c] = sum_pipe[SIZE-1][c];
     end
 endmodule

@@ -1,197 +1,40 @@
+`timescale 1ns / 1ps
 module compute_core_test #(
-    parameter int unsigned SIZE       = 16,
+    parameter int unsigned SIZE = 16,
     parameter int unsigned DATA_WIDTH = 16,
     parameter int unsigned WEIGHT_WIDTH = 16,
     parameter int unsigned PS_FRAME_COUNT = SIZE,
     parameter int unsigned MAX_IA_REUSE = 2
 ) (
-    input  logic                         clk,
-    input  logic                         rst_n,
-
-    input  logic                         store_weight_req,
-    input  logic signed [WEIGHT_WIDTH-1:0] weight_in [SIZE],
-    input  logic signed [DATA_WIDTH-1:0] ia_vec_in   [SIZE],
-    input  logic                         ia_row_valid,
-    input  logic                         ia_tile_start,
-    input  logic                         ia_calc_done,
-    input  logic                         ia_is_init_data,
-    input  logic                         ia_l1_switch,
-    input  logic                         send_ia_trigger,
-    input  logic                         bias_sleep,
-    input  logic signed [31:0]           bias_in     [SIZE],
-
-    output logic signed [31:0]           acc_data_out[SIZE],
-    output logic                         acc_data_valid,
-    output logic                         partial_sum_calc_over,
-    output logic                         tile_calc_over
+    input logic clk, rst_n,
+    input logic weight_commit, store_weight_req,
+    input logic signed [WEIGHT_WIDTH-1:0] weight_in [SIZE],
+    input logic signed [DATA_WIDTH-1:0] ia_vec_in [SIZE],
+    input logic ia_row_valid, ia_tile_start, ia_calc_done, ia_is_init_data,
+    input logic ia_l1_switch, ia_sending_done, send_ia_trigger,
+    input logic ps_store_cfg_valid, ps_frame_request, ps_frame_init,
+    input logic ps_frame_final, ps_force_raw,
+    input logic bias_sleep,
+    input logic signed [31:0] bias_in [SIZE],
+    output wire signed [31:0] acc_data_out [SIZE],
+    output wire acc_data_valid, partial_sum_calc_over, tile_calc_over,
+    output wire ps_frame_ready, ps_frame_complete, ps_capacity_fault
 );
-
-    logic signed [31:0] bias_or_ps_sum [0:SIZE-1];
-    logic signed [31:0] systolic_sum   [0:SIZE-1];
-    logic signed [31:0] ps_data_out    [0:SIZE-1];
-    logic signed [31:0] ps_acc_out     [0:SIZE-1];
-    logic               ps_acc_data_valid;
-    logic               ps_tile_calc_over;
-    logic               ps_stream_calc_over;
-
-    localparam int unsigned PS_BURST_CYCLES = (2 * SIZE) - 1;
-    localparam int unsigned PS_CNT_W        = (PS_BURST_CYCLES < 2) ? 1 :
-                                               $clog2(PS_BURST_CYCLES + 1);
-
-    logic [PS_CNT_W-1:0] ps_tail_cnt;
-    logic                ia_row_valid_d;
-    logic                ps_burst_is_final;
-    logic                ps_burst_is_init;
-    logic                ps_burst_is_l1_last;
-
-    logic                ps_burst_start;
-    logic                ps_stream_valid;
-    logic                ps_calc_done;
-    logic                ps_is_init_data;
-    logic                ps_tile_switch;
-    logic                ps_group_switch;
-    logic                ps_stream_valid_d;
-    logic                ps_burst_start_d;
-    logic                ps_calc_done_d;
-    logic                ps_is_init_data_d;
-    logic                ps_tile_switch_d;
-    logic                ps_group_switch_d;
-    logic                final_group_calc_pending;
-    logic                partial_sum_calc_over_r;
-
-    localparam int unsigned PS_EFFECTIVE_FRAME_COUNT =
-        (PS_FRAME_COUNT < 1) ? MAX_IA_REUSE : (PS_FRAME_COUNT * MAX_IA_REUSE);
-
-    assign ps_burst_start = ia_row_valid & ~ia_row_valid_d;
-
-    // IA cache emits a whole L1 group as one tall diagonal stream.  Keep the
-    // partial-sum stream valid for all IA rows, then drain SIZE-1 tail cycles.
-    assign ps_stream_valid = ia_row_valid | (ps_tail_cnt != '0);
-    assign ps_calc_done    = ps_stream_valid & (ia_row_valid ? ia_calc_done    : ps_burst_is_final);
-    assign ps_is_init_data = ps_stream_valid & (ia_row_valid ? ia_is_init_data : ps_burst_is_init);
-    assign ps_tile_switch  = ps_stream_valid & ~ia_row_valid & (ps_tail_cnt == PS_CNT_W'(1));
-    assign ps_group_switch = ps_tile_switch & ps_burst_is_l1_last;
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            ia_row_valid_d    <= 1'b0;
-            ps_tail_cnt       <= '0;
-            ps_burst_is_final <= 1'b0;
-            ps_burst_is_init  <= 1'b0;
-            ps_burst_is_l1_last <= 1'b0;
-            ps_stream_valid_d <= 1'b0;
-            ps_burst_start_d  <= 1'b0;
-            ps_calc_done_d    <= 1'b0;
-            ps_is_init_data_d <= 1'b0;
-            ps_tile_switch_d  <= 1'b0;
-            ps_group_switch_d <= 1'b0;
-            final_group_calc_pending <= 1'b0;
-            partial_sum_calc_over_r  <= 1'b0;
-        end else begin
-            partial_sum_calc_over_r <= 1'b0;
-            ia_row_valid_d <= ia_row_valid;
-            ps_stream_valid_d <= ps_stream_valid;
-            ps_burst_start_d  <= ps_burst_start;
-            ps_calc_done_d    <= ps_calc_done;
-            ps_is_init_data_d <= ps_is_init_data;
-            ps_tile_switch_d  <= ps_tile_switch;
-            ps_group_switch_d <= ps_group_switch;
-
-            if (ia_row_valid) begin
-                ps_tail_cnt       <= PS_CNT_W'(SIZE - 1);
-                ps_burst_is_final <= ia_calc_done;
-                ps_burst_is_init  <= ia_is_init_data;
-                ps_burst_is_l1_last <= ps_burst_start ? ia_l1_switch
-                                                       : (ps_burst_is_l1_last | ia_l1_switch);
-            end else if (ps_tail_cnt != '0) begin
-                ps_tail_cnt <= ps_tail_cnt - 1'b1;
-                if (ia_l1_switch) begin
-                    ps_burst_is_l1_last <= 1'b1;
-                end
-            end else begin
-                ps_burst_is_final <= 1'b0;
-                ps_burst_is_init  <= 1'b0;
-                ps_burst_is_l1_last <= 1'b0;
-            end
-
-            if (ps_group_switch_d) begin
-                if (ps_calc_done_d) begin
-                    final_group_calc_pending <= 1'b1;
-                end else begin
-                    partial_sum_calc_over_r <= 1'b1;
-                end
-            end
-
-            if ((final_group_calc_pending || (ps_group_switch_d && ps_calc_done_d)) && ps_tile_calc_over) begin
-                partial_sum_calc_over_r  <= 1'b1;
-                final_group_calc_pending <= 1'b0;
-            end
-        end
-    end
-
-    bias_mux #(
-        .SIZE      (SIZE),
-        .DATA_WIDTH(32)
-    ) u_bias_mux (
-        .bias_sleep(bias_sleep),
-        .bias_in   (bias_in),
-        .ps_in     (ps_data_out),
-        .sum_in    (bias_or_ps_sum)
+    compute_core #(
+        .SIZE(SIZE), .DATA_WIDTH(DATA_WIDTH), .WEIGHT_WIDTH(WEIGHT_WIDTH),
+        .PS_FRAME_COUNT(PS_FRAME_COUNT), .MAX_IA_REUSE(MAX_IA_REUSE)
+    ) u_core (
+        .clk, .rst_n, .weight_commit, .store_weight_req, .weight_in,
+        .ia_vec_in, .ia_row_valid, .ia_tile_start, .ia_calc_done,
+        .ia_is_init_data, .ia_l1_switch, .ia_sending_done, .send_ia_trigger,
+        .ps_store_cfg_valid, .ps_frame_request, .ps_frame_id('0),
+        .ps_frame_rows(32'(SIZE)), .ps_frame_reserve_rows(32'(SIZE)),
+        .ps_frame_word_cap(3'd4), .ps_frame_init, .ps_frame_final, .ps_force_raw,
+        .ps_frame_ready, .ps_frame_complete, .ps_capacity_fault,
+        .ps_frame_pressure(), .partial_sum_advance_ready(),
+        .ps_ram_read_en(), .ps_ram_read_addr(),
+        .ps_ram_write_en(), .ps_ram_write_addr(), .ps_ram_write_data(),
+        .bias_sleep, .bias_in, .acc_data_out, .acc_data_valid,
+        .partial_sum_calc_over, .tile_calc_over
     );
-
-    logic store_weight_req_q;
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) store_weight_req_q <= 1'b0;
-        else store_weight_req_q <= store_weight_req;
-    end
-    wire weight_commit = store_weight_req_q && !store_weight_req;
-
-    ws_systolic_array #(
-        .SIZE         (SIZE),
-        .DATA_IN_WIDTH(DATA_WIDTH),
-        .WEIGHT_WIDTH (WEIGHT_WIDTH),
-        .ACC_WIDTH    (32)
-    ) u_systolic_array (
-        .clk             (clk),
-        .store_weight_req(store_weight_req),
-        .weight_commit(weight_commit),
-        .weight_in       (weight_in),
-        .data_in         (ia_vec_in),
-        .sum_in          (bias_or_ps_sum),
-        .sum_out         (systolic_sum)
-    );
-
-    ps_buffer #(
-        .SIZE      (SIZE),
-        .DATA_WIDTH(32),
-        .FRAME_COUNT(PS_EFFECTIVE_FRAME_COUNT),
-        .MAX_IA_REUSE(MAX_IA_REUSE)
-    ) u_ps_buffer (
-        .clk            (clk),
-        .rst_n          (rst_n),
-        .data_in        (systolic_sum),
-        .ia_row_valid   (ps_stream_valid_d),
-        .ia_calc_done   (ps_calc_done_d),
-        .ia_tile_start  (ps_burst_start_d),
-        .ia_l1_switch   (ps_tile_switch_d),
-        .send_ia_trigger(ia_tile_start),
-        .ia_is_init_data(ps_is_init_data_d),
-        .replay_enable  (bias_sleep),
-        .data_out       (ps_data_out),
-        .acc_data_out   (ps_acc_out),
-        .acc_data_valid (ps_acc_data_valid),
-        .tile_calc_over (ps_tile_calc_over),
-        .stream_calc_over(ps_stream_calc_over)
-    );
-
-    assign acc_data_valid = ps_acc_data_valid;
-    assign partial_sum_calc_over = partial_sum_calc_over_r;
-    assign tile_calc_over = ps_tile_calc_over;
-
-    always_comb begin
-        for (int i = 0; i < SIZE; i++) begin
-            acc_data_out[i] = ps_acc_out[i];
-        end
-    end
-
 endmodule

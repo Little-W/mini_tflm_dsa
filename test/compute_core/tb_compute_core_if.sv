@@ -3,28 +3,15 @@ interface tb_compute_core_if(input logic clk);
     localparam int unsigned DATA_WIDTH = 16;
     localparam int unsigned WEIGHT_WIDTH = 16;
 
-    // DUT inputs
-    logic                         store_weight_req;
-    logic signed [WEIGHT_WIDTH-1:0] weight_in           [     SIZE];
-    logic signed [DATA_WIDTH-1:0] ia_vec_in             [     SIZE];
-    logic                         ia_row_valid;
-    logic                         ia_calc_done;
-    logic                         ia_is_init_data;
-    logic                         ia_l1_switch;
-    logic                         send_ia_trigger;
-    logic                         bias_sleep;
-    logic signed [          31:0] bias_in               [     SIZE];
-
-    // DUT outputs
-    wire signed  [          31:0] acc_data_out          [     SIZE];
-    wire                          acc_data_valid;
-    wire                          tile_calc_over;
-
-    // Clocking block for optional race-free access.
-    clocking cb @(posedge clk);
-        output store_weight_req, weight_in, ia_vec_in;
-        output ia_row_valid, ia_calc_done, ia_is_init_data;
-        output ia_l1_switch, send_ia_trigger, bias_sleep, bias_in;
-        input  acc_data_out, acc_data_valid, tile_calc_over;
-    endclocking
+    logic weight_commit, store_weight_req;
+    logic signed [WEIGHT_WIDTH-1:0] weight_in [SIZE];
+    logic signed [DATA_WIDTH-1:0] ia_vec_in [SIZE];
+    logic ia_row_valid, ia_tile_start, ia_calc_done, ia_is_init_data;
+    logic ia_l1_switch, ia_sending_done, send_ia_trigger;
+    logic ps_store_cfg_valid, ps_frame_request, ps_frame_init;
+    logic ps_frame_final, ps_force_raw, bias_sleep;
+    logic signed [31:0] bias_in [SIZE];
+    wire signed [31:0] acc_data_out [SIZE];
+    wire acc_data_valid, tile_calc_over, partial_sum_calc_over;
+    wire ps_frame_ready, ps_frame_complete, ps_capacity_fault;
 endinterface

@@ -35,6 +35,7 @@ module compute_core #(
     input  logic signed [DATA_WIDTH-1:0] ia_vec_in   [SIZE],
     input  logic                         ia_row_valid,
     input  logic                         final_output_overlap = 1'b0,
+    input  logic                         direct_final_stream = 1'b0,
     input  logic [$clog2(SIZE):0]         active_columns = ($clog2(SIZE)+1)'(SIZE),
     input  logic                         ia_tile_start,
     input  logic                         ia_calc_done,
@@ -115,7 +116,8 @@ module compute_core #(
         .SIZE(SIZE), .DATA_IN_WIDTH(DATA_WIDTH), .WEIGHT_WIDTH(WEIGHT_WIDTH),
         .ACC_WIDTH(32)
     ) u_systolic_array (
-        .clk(clk), .store_weight_req(store_weight_req), .weight_commit(weight_commit),
+        .clk(clk), .rst_n(rst_n),
+        .store_weight_req(store_weight_req), .weight_commit(weight_commit),
         .weight_in(weight_in), .data_in(ia_vec_in), .sum_in(bias_or_ps_sum),
         .sum_out(systolic_sum)
     );
@@ -139,6 +141,7 @@ module compute_core #(
         .ps_ram_read_data(ps_ram_read_data), .ps_ram_write_en(ps_ram_write_en),
         .ps_ram_write_addr(ps_ram_write_addr), .ps_ram_write_data(ps_ram_write_data),
         .capacity_fault(ps_capacity_fault), .replay_ready(ps_replay_ready),
+        .direct_final_stream(direct_final_stream),
         .frame_request(ps_frame_request),
         .frame_id(ps_frame_id), .frame_accept(send_ia_trigger),
         .frame_rows(ps_frame_rows), .frame_reserve_rows(ps_frame_reserve_rows),
@@ -160,9 +163,7 @@ module compute_core #(
     // The following cycle observes their updated bias and quantization readiness.
     assign partial_sum_calc_over = final_group_complete_q ||
         (ps_group_switch_d && (!ps_calc_done_d || final_output_overlap));
-    // Complete-row IA reads start with the registered weight commit, so
-    // the first input reaches the PEs after their new weights are active.
-    assign partial_sum_advance_ready = 1'b0;
+    assign partial_sum_advance_ready = direct_final_stream;
     assign tile_calc_over = ps_tile_calc_over;
     assign acc_data_out = ps_acc_out;
 
@@ -170,8 +171,6 @@ module compute_core #(
     always_ff @(posedge clk) if (rst_n) begin
         assert (!ia_sending_done || ia_row_valid)
             else $fatal(1, "DiP stream completion requires a valid input row");
-        assert (!weight_commit || !(|row_valid_pipe))
-            else $fatal(1, "DiP weight commit overlaps active computation");
     end
 `endif
 endmodule

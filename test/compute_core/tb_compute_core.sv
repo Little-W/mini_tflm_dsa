@@ -2,446 +2,252 @@
 
 module tb_compute_core;
     import test_params_pkg::*;
-
-    localparam int unsigned DATA_WIDTH       = 16;
-    localparam int unsigned WEIGHT_WIDTH     = 16;
-    localparam int unsigned NUM_SEG          = NUM_K / SIZE;
-    localparam int unsigned STAIR_STEPS      = (2 * SIZE) - 1;
-    localparam int unsigned VALID_START_STEP = SIZE - 1;
-    localparam int unsigned VALID_CYCLES     = SIZE;
-    localparam int unsigned POST_TILE_DRAIN  = (2 * SIZE) + 4;
-
-    localparam string C_GREEN = "\033[0;32m";
-    localparam string C_RED   = "\033[0;31m";
-    localparam string C_RESET = "\033[0m";
-
-    logic rst_n = 1'b1;
-    logic clk;
-
-    initial clk = 1'b0;
-    always #5 clk <= ~clk;
-
+    localparam int unsigned NUM_SEG = (NUM_K + SIZE - 1) / SIZE;
+`ifdef GEMPACT_PS_COMPRESS
+    localparam bit COMPRESSED_STORE = SIZE == 16;
+`else
+    localparam bit COMPRESSED_STORE = 1'b0;
+`endif
+    logic clk = 1'b0;
+    logic rst_n = 1'b0;
+    always #5 clk = ~clk;
     tb_compute_core_if tb_if(clk);
 
-    logic signed [WEIGHT_WIDTH-1:0] weight_mem_raw [SIZE * NUM_K];
-    logic signed [15:0]  ia_mem_raw     [SIZE * NUM_K];
-    logic signed [31:0]  bias_mem       [SIZE];
-    logic signed [31:0]  exp_mem        [SIZE * SIZE];
-
+    logic signed [15:0] weight_mem_raw [SIZE * NUM_K];
+    logic signed [15:0] ia_mem_raw [SIZE * NUM_K];
+    logic signed [31:0] bias_mem [SIZE];
+    logic signed [31:0] exp_mem [SIZE * SIZE];
     logic signed [31:0] expected_tile [NUM_SEG][SIZE][SIZE];
-    logic signed [31:0] captured_final_rows [SIZE][SIZE];
+    int input_rows [NUM_SEG], partial_rows [NUM_SEG];
+    int completions [NUM_SEG], frame_completions [NUM_SEG];
+    int active_seg = -1, final_rows = 0;
+    longint unsigned partial_checks = 0, replay_checks = 0, output_checks = 0;
+    string data_dir;
+    bit finished = 1'b0;
+    integer force_raw_arg;
 
-    integer errors;
-    int     final_rows_count;
-    bit     final_tile_over_seen;
-    logic   dut_partial_sum_calc_over;
-    string  data_dir;
-
-    compute_core_test #(
-        .SIZE        (SIZE),
-        .DATA_WIDTH  (DATA_WIDTH),
-        .WEIGHT_WIDTH(WEIGHT_WIDTH)
-    ) dut (
-        .clk             (clk),
-        .rst_n           (rst_n),
-        .store_weight_req(tb_if.store_weight_req),
-        .weight_in       (tb_if.weight_in),
-        .ia_vec_in       (tb_if.ia_vec_in),
-        .ia_row_valid    (tb_if.ia_row_valid),
-        .ia_tile_start   (tb_if.send_ia_trigger),
-        .ia_calc_done    (tb_if.ia_calc_done),
-        .ia_is_init_data (tb_if.ia_is_init_data),
-        .ia_l1_switch    (tb_if.ia_l1_switch),
-        .send_ia_trigger (tb_if.send_ia_trigger),
-        .bias_sleep      (tb_if.bias_sleep),
-        .bias_in         (tb_if.bias_in),
-        .acc_data_out    (tb_if.acc_data_out),
-        .acc_data_valid  (tb_if.acc_data_valid),
-        .partial_sum_calc_over(dut_partial_sum_calc_over),
-        .tile_calc_over  (tb_if.tile_calc_over)
+    compute_core_test #(.SIZE(SIZE)) dut (
+        .clk, .rst_n,
+        .weight_commit(tb_if.weight_commit), .store_weight_req(tb_if.store_weight_req),
+        .weight_in(tb_if.weight_in), .ia_vec_in(tb_if.ia_vec_in),
+        .ia_row_valid(tb_if.ia_row_valid), .ia_tile_start(tb_if.ia_tile_start),
+        .ia_calc_done(tb_if.ia_calc_done), .ia_is_init_data(tb_if.ia_is_init_data),
+        .ia_l1_switch(tb_if.ia_l1_switch), .ia_sending_done(tb_if.ia_sending_done),
+        .send_ia_trigger(tb_if.send_ia_trigger),
+        .ps_store_cfg_valid(tb_if.ps_store_cfg_valid), .ps_frame_request(tb_if.ps_frame_request),
+        .ps_frame_init(tb_if.ps_frame_init), .ps_frame_final(tb_if.ps_frame_final),
+        .ps_force_raw(tb_if.ps_force_raw), .bias_sleep(tb_if.bias_sleep), .bias_in(tb_if.bias_in),
+        .acc_data_out(tb_if.acc_data_out), .acc_data_valid(tb_if.acc_data_valid),
+        .partial_sum_calc_over(tb_if.partial_sum_calc_over), .tile_calc_over(tb_if.tile_calc_over),
+        .ps_frame_ready(tb_if.ps_frame_ready), .ps_frame_complete(tb_if.ps_frame_complete),
+        .ps_capacity_fault(tb_if.ps_capacity_fault)
     );
 
-    function automatic logic signed [31:0] get_ia_value(
-        input int row_idx,
-        input int k_idx
-    );
-        return $signed(ia_mem_raw[row_idx * NUM_K + k_idx]);
+    function automatic logic signed [15:0] activation(input int row, input int k);
+        return k < NUM_K ? ia_mem_raw[row * NUM_K + k] : 16'sd0;
     endfunction
 
-    function automatic logic signed [31:0] get_weight_value(
-        input int k_idx,
-        input int col_idx
-    );
-        return $signed(weight_mem_raw[col_idx * NUM_K + k_idx]);
+    function automatic logic signed [15:0] coefficient(input int k, input int column);
+        return k < NUM_K ? weight_mem_raw[column * NUM_K + k] : 16'sd0;
     endfunction
 
-    function automatic logic signed [DATA_WIDTH-1:0] make_stair_tile_value(
-        input int seg,
-        input int step_idx,
-        input int lane_idx
-    );
-        int row_idx;
-        begin
-            row_idx = step_idx - lane_idx;
-            if (row_idx < 0 || row_idx >= SIZE) begin
-                return '0;
-            end
-
-            return $signed(ia_mem_raw[row_idx * NUM_K + seg * SIZE + lane_idx]);
-        end
-    endfunction
-
-    function automatic logic signed [31:0] expected_diag_value(
-        input int seg,
-        input int diag_step,
-        input int lane_idx
-    );
-        int row_idx;
-        begin
-            row_idx = diag_step - lane_idx;
-            if (row_idx < 0 || row_idx >= SIZE) begin
-                return 32'sd0;
-            end
-
-            return expected_tile[seg][row_idx][lane_idx];
-        end
-    endfunction
-
-    task automatic compute_expected_tiles();
-        logic signed [31:0] running_acc [SIZE][SIZE];
-        begin
-            for (int r = 0; r < SIZE; r++) begin
-                for (int c = 0; c < SIZE; c++) begin
-                    running_acc[r][c] = '0;
+    task automatic reference_values();
+        logic signed [31:0] accumulator;
+        for (int row = 0; row < SIZE; row++) begin
+            for (int column = 0; column < SIZE; column++) begin
+                accumulator = bias_mem[column];
+                for (int segment = 0; segment < NUM_SEG; segment++) begin
+                    for (int k = 0; k < SIZE; k++)
+                        accumulator += 32'(activation(row, segment * SIZE + k)) *
+                                       32'(coefficient(segment * SIZE + k, column));
+                    expected_tile[segment][row][column] = accumulator;
                 end
-            end
-
-            for (int seg = 0; seg < NUM_SEG; seg++) begin
-                for (int r = 0; r < SIZE; r++) begin
-                    for (int c = 0; c < SIZE; c++) begin
-                        logic signed [31:0] partial;
-                        partial = '0;
-
-                        for (int k = 0; k < SIZE; k++) begin
-                            partial += get_ia_value(r, seg * SIZE + k) *
-                                       get_weight_value(seg * SIZE + k, c);
-                        end
-
-                        if (seg == 0) begin
-                            running_acc[r][c] = bias_mem[c] + partial;
-                        end else begin
-                            running_acc[r][c] += partial;
-                        end
-
-                        expected_tile[seg][r][c] = running_acc[r][c];
-                    end
-                end
+                if (accumulator !== exp_mem[row * SIZE + column])
+                    $fatal(1, "Reference file differs at row %0d column %0d", row, column);
             end
         end
     endtask
 
-    task automatic drive_idle();
-        begin
-            tb_if.store_weight_req = 1'b0;
-            tb_if.ia_row_valid     = 1'b0;
-            tb_if.ia_calc_done     = 1'b0;
-            tb_if.ia_is_init_data  = 1'b0;
-            tb_if.ia_l1_switch     = 1'b0;
-            tb_if.send_ia_trigger  = 1'b0;
-            tb_if.bias_sleep       = 1'b1;
-
-            for (int i = 0; i < SIZE; i++) begin
-                tb_if.bias_in[i]   = '0;
-                tb_if.weight_in[i] = '0;
-                tb_if.ia_vec_in[i] = '0;
-            end
+    task automatic idle_inputs();
+        tb_if.weight_commit = 0;
+        tb_if.store_weight_req = 0;
+        tb_if.ia_row_valid = 0;
+        tb_if.ia_tile_start = 0;
+        tb_if.ia_calc_done = 0;
+        tb_if.ia_is_init_data = 0;
+        tb_if.ia_l1_switch = 0;
+        tb_if.ia_sending_done = 0;
+        tb_if.send_ia_trigger = 0;
+        tb_if.ps_store_cfg_valid = 0;
+        tb_if.ps_frame_request = 0;
+        tb_if.ps_frame_init = 0;
+        tb_if.ps_frame_final = 0;
+        tb_if.ps_force_raw = 0;
+        tb_if.bias_sleep = 0;
+        foreach (tb_if.weight_in[lane]) begin
+            tb_if.weight_in[lane] = 0;
+            tb_if.ia_vec_in[lane] = 0;
+            tb_if.bias_in[lane] = 0;
         end
     endtask
 
-    task automatic load_weight_tile(input int seg);
-        begin
+    task automatic load_weights(input int segment);
+        // The physical row stores B[(row + column) % SIZE][column].
+        // Loading starts with the last physical row and shifts downward.
+        @(negedge clk);
+        tb_if.store_weight_req = 1;
+        for (int row = SIZE - 1; row >= 0; row--) begin
+            for (int column = 0; column < SIZE; column++)
+                tb_if.weight_in[column] = coefficient(segment * SIZE + (row + column) % SIZE, column);
             @(negedge clk);
-            tb_if.store_weight_req = 1'b1;
-
-            // Keep the original top-down load order used by the systolic array.
-            for (int k = SIZE - 1; k >= 0; k--) begin
-                for (int j = 0; j < SIZE; j++) begin
-                    tb_if.weight_in[j] = $signed(weight_mem_raw[(seg * SIZE + k) + j * NUM_K]);
-                end
-                @(posedge clk);
-                @(negedge clk);
-            end
-
-            tb_if.store_weight_req = 1'b0;
-            for (int j = 0; j < SIZE; j++) begin
-                tb_if.weight_in[j] = '0;
-            end
         end
+        tb_if.store_weight_req = 0;
+        tb_if.weight_commit = 1;
+        @(negedge clk);
+        tb_if.weight_commit = 0;
+        foreach (tb_if.weight_in[lane]) tb_if.weight_in[lane] = 0;
     endtask
 
-    task automatic load_bias(input int seg);
-        begin
-            for (int c = 0; c < SIZE; c++) begin
-                tb_if.bias_in[c] = (seg == 0) ? bias_mem[c] : 32'sd0;
-            end
-        end
-    endtask
-
-    task automatic pulse_send_ia_trigger(input int seg);
-        begin
+    task automatic stream_rows(input int segment);
+        int waits;
+        @(negedge clk);
+        tb_if.bias_sleep = segment != 0;
+        foreach (tb_if.bias_in[lane]) tb_if.bias_in[lane] = segment == 0 ? bias_mem[lane] : 0;
+        tb_if.ps_frame_init = segment == 0;
+        tb_if.ps_frame_final = segment == NUM_SEG - 1;
+        tb_if.ps_frame_request = 1;
+        waits = 0;
+        while (!tb_if.ps_frame_ready) begin
             @(negedge clk);
-            tb_if.send_ia_trigger = 1'b1;
-            @(posedge clk);
-            #1;
-            $display("[TB] seg=%0d send_ia_trigger pulse", seg);
-            @(negedge clk);
-            tb_if.send_ia_trigger = 1'b0;
+            if (waits++ >= 10000) $fatal(1, "PS frame preparation timed out");
         end
+        tb_if.send_ia_trigger = 1;
+        tb_if.ia_tile_start = 1;
+        @(negedge clk);
+        tb_if.send_ia_trigger = 0;
+        tb_if.ia_tile_start = 0;
+        tb_if.ps_frame_request = 0;
+        // Synchronous PS RAM and replay registers supply the first row two
+        // rising edges after ia_tile_start, matching the production IA reader.
+        @(negedge clk);
+        for (int row = 0; row < SIZE; row++) begin
+            tb_if.ia_row_valid = 1;
+            tb_if.ia_is_init_data = segment == 0;
+            tb_if.ia_calc_done = segment == NUM_SEG - 1;
+            tb_if.ia_l1_switch = row == SIZE - 1;
+            tb_if.ia_sending_done = row == SIZE - 1;
+            for (int lane = 0; lane < SIZE; lane++)
+                tb_if.ia_vec_in[lane] = activation(row, segment * SIZE + lane);
+            @(negedge clk);
+        end
+        tb_if.ia_row_valid = 0;
+        tb_if.ia_is_init_data = 0;
+        tb_if.ia_calc_done = 0;
+        tb_if.ia_l1_switch = 0;
+        tb_if.ia_sending_done = 0;
+        foreach (tb_if.ia_vec_in[lane]) tb_if.ia_vec_in[lane] = 0;
+        waits = 0;
+        while (completions[segment] == 0 || (COMPRESSED_STORE && frame_completions[segment] == 0)) begin
+            @(negedge clk);
+            if (waits++ >= 10000) $fatal(1, "PS frame completion timed out");
+        end
+        repeat (2) @(negedge clk);
+        if (input_rows[segment] != SIZE || partial_rows[segment] != SIZE || completions[segment] != 1)
+            $fatal(1, "Unexpected row or completion count in segment %0d", segment);
+        if (COMPRESSED_STORE && frame_completions[segment] != 1)
+            $fatal(1, "Unexpected PS frame completion count in segment %0d", segment);
     endtask
 
-    task automatic pulse_l1_switch(input int seg);
-        begin
-            @(negedge clk);
-            tb_if.ia_l1_switch = 1'b1;
-            @(posedge clk);
-            #1;
-            $display("[TB] seg=%0d ia_l1_switch pulse", seg);
-            @(negedge clk);
-            tb_if.ia_l1_switch = 1'b0;
-        end
-    endtask
-
-    task automatic check_no_early_output(
-        input int seg,
-        input int step_idx
-    );
-        begin
-            if (seg == NUM_SEG - 1) begin
-                return;
-            end
-
-            if (tb_if.acc_data_valid !== 1'b0) begin
-                $display("[TB] EARLY OUTPUT ERROR seg=%0d step=%0d acc_data_valid asserted before final segment",
-                         seg, step_idx);
-                errors++;
-            end
-
-            if (tb_if.tile_calc_over !== 1'b0) begin
-                $display("[TB] EARLY OUTPUT ERROR seg=%0d step=%0d tile_calc_over asserted before final segment",
-                         seg, step_idx);
-                errors++;
-            end
-        end
-    endtask
-
-    task automatic capture_final_if_valid(input int seg, input string phase, input int cycle_idx);
-        begin
-            if (tb_if.tile_calc_over && !tb_if.acc_data_valid) begin
-                $display("[TB] FINAL ERROR seg=%0d %s cycle=%0d tile_calc_over without acc_data_valid",
-                         seg, phase, cycle_idx);
-                errors++;
-            end
-
-            if (tb_if.acc_data_valid === 1'b1) begin
-                if (seg != NUM_SEG - 1) begin
-                    $display("[TB] FINAL ERROR seg=%0d %s cycle=%0d acc_data_valid asserted before final segment",
-                             seg, phase, cycle_idx);
-                    errors++;
-                    return;
-                end
-
-                if (final_rows_count >= SIZE) begin
-                    $display("[TB] FINAL ERROR observed extra valid row at %s cycle=%0d", phase, cycle_idx);
-                    errors++;
-                    return;
-                end
-
+    always @(posedge clk) begin
+        if (rst_n && !finished && active_seg >= 0 && tb_if.ia_row_valid) begin
+            if (input_rows[active_seg] >= SIZE) $fatal(1, "Extra input row");
+            if (active_seg > 0) begin
                 for (int lane = 0; lane < SIZE; lane++) begin
-                    captured_final_rows[final_rows_count][lane] = tb_if.acc_data_out[lane];
-
-                    if (tb_if.acc_data_out[lane] !== expected_tile[NUM_SEG-1][final_rows_count][lane]) begin
-                        $display("[TB] FINAL DATA ERROR row=%0d lane=%0d got=%0d exp=%0d",
-                                 final_rows_count, lane,
-                                 tb_if.acc_data_out[lane],
-                                 expected_tile[NUM_SEG-1][final_rows_count][lane]);
-                        errors++;
-                    end
+                    if (dut.u_core.ps_data_out[lane] !== expected_tile[active_seg-1][input_rows[active_seg]][lane])
+                        $fatal(1, "PS replay differs at segment %0d row %0d lane %0d: got %0d expected %0d",
+                            active_seg, input_rows[active_seg], lane, dut.u_core.ps_data_out[lane],
+                            expected_tile[active_seg-1][input_rows[active_seg]][lane]);
+                    replay_checks++;
                 end
-
-                if (final_rows_count == SIZE - 1) begin
-                    if (tb_if.tile_calc_over !== 1'b1) begin
-                        $display("[TB] FINAL ERROR last row should assert tile_calc_over");
-                        errors++;
-                    end else begin
-                        final_tile_over_seen = 1'b1;
-                    end
-                end else begin
-                    if (tb_if.tile_calc_over !== 1'b0) begin
-                        $display("[TB] FINAL ERROR early tile_calc_over at row=%0d", final_rows_count);
-                        errors++;
-                    end
-                end
-
-                $display("[TB] FINAL CAPTURE row=%0d data=[%0d,%0d,%0d,%0d] over=%0b",
-                         final_rows_count,
-                         tb_if.acc_data_out[0], tb_if.acc_data_out[1],
-                         tb_if.acc_data_out[2], tb_if.acc_data_out[3],
-                         tb_if.tile_calc_over);
-
-                final_rows_count++;
             end
+            input_rows[active_seg]++;
         end
-    endtask
-
-    task automatic stream_tile(input int seg);
-        bit row_valid_window;
-        begin
-            load_bias(seg);
-
-            // First tile uses bias as initial sum; later tiles use ps_buffer replay.
-            tb_if.bias_sleep = (seg == 0) ? 1'b0 : 1'b1;
-
-            // ps_buffer replay starts one cycle after send_ia_trigger. The
-            // stair-stepped IA input also starts in that next cycle.
-            pulse_send_ia_trigger(seg);
-
-            for (int step = 0; step < STAIR_STEPS; step++) begin
-                row_valid_window = (step >= VALID_START_STEP) &&
-                                   (step <  VALID_START_STEP + VALID_CYCLES);
-
-                @(negedge clk);
+        #1;
+        if (rst_n && !finished) begin
+            if (tb_if.ps_capacity_fault) $fatal(1, "Unexpected PS capacity fault");
+            if (dut.u_core.ps_stream_valid_d) begin
+                if (active_seg < 0 || partial_rows[active_seg] >= SIZE)
+                    $fatal(1, "Unexpected complete matrix row");
                 for (int lane = 0; lane < SIZE; lane++) begin
-                    tb_if.ia_vec_in[lane] = make_stair_tile_value(seg, step, lane);
+                    if (dut.u_core.systolic_sum[lane] !== expected_tile[active_seg][partial_rows[active_seg]][lane])
+                        $fatal(1, "Partial sum differs at segment %0d row %0d lane %0d: got %0d expected %0d",
+                            active_seg, partial_rows[active_seg], lane, dut.u_core.systolic_sum[lane],
+                            expected_tile[active_seg][partial_rows[active_seg]][lane]);
+                    partial_checks++;
                 end
-
-                tb_if.ia_row_valid    = row_valid_window;
-                tb_if.ia_is_init_data = row_valid_window && (seg == 0);
-                tb_if.ia_calc_done    = row_valid_window && (seg == NUM_SEG - 1);
-
-                @(posedge clk);
-                #1;
-
-                $display("[TB] seg=%0d step=%0d row_valid=%0b init=%0b calc_done=%0b bias_sleep=%0b acc_valid=%0b over=%0b out0=%0d out1=%0d out2=%0d out3=%0d",
-                         seg, step,
-                         tb_if.ia_row_valid,
-                         tb_if.ia_is_init_data,
-                         tb_if.ia_calc_done,
-                         tb_if.bias_sleep,
-                         tb_if.acc_data_valid,
-                         tb_if.tile_calc_over,
-                         tb_if.acc_data_out[0], tb_if.acc_data_out[1],
-                         tb_if.acc_data_out[2], tb_if.acc_data_out[3]);
-
-                check_no_early_output(seg, step);
-                capture_final_if_valid(seg, "stream", step);
+                partial_rows[active_seg]++;
             end
-
-            @(negedge clk);
-            tb_if.ia_row_valid    = 1'b0;
-            tb_if.ia_calc_done    = 1'b0;
-            tb_if.ia_is_init_data = 1'b0;
-            for (int lane = 0; lane < SIZE; lane++) begin
-                tb_if.ia_vec_in[lane] = '0;
-            end
-
-            // Allow possible output drain and verify that tile_calc_over is a
-            // one-cycle pulse aligned with the last valid final row.
-            for (int d = 0; d < POST_TILE_DRAIN; d++) begin
-                bit over_seen_before_cycle;
-                over_seen_before_cycle = final_tile_over_seen;
-
-                @(posedge clk);
-                #1;
-                capture_final_if_valid(seg, "drain", d);
-
-                if ((seg == NUM_SEG - 1) && over_seen_before_cycle &&
-                    (tb_if.tile_calc_over === 1'b1)) begin
-                    $display("[TB] FINAL ERROR tile_calc_over stayed high after final-row pulse, drain=%0d", d);
-                    errors++;
+            if (tb_if.acc_data_valid) begin
+                if (active_seg != NUM_SEG - 1 || final_rows >= SIZE)
+                    $fatal(1, "Final output appeared outside its reduction segment");
+                for (int lane = 0; lane < SIZE; lane++) begin
+                    if (tb_if.acc_data_out[lane] !== exp_mem[final_rows * SIZE + lane])
+                        $fatal(1, "Final output differs at row %0d lane %0d", final_rows, lane);
+                    output_checks++;
                 end
+                if (tb_if.tile_calc_over !== (final_rows == SIZE - 1))
+                    $fatal(1, "Final tile completion has an incorrect row position");
+                final_rows++;
+            end else if (tb_if.tile_calc_over) $fatal(1, "Tile completion requires a valid output row");
+            if (tb_if.partial_sum_calc_over) begin
+                if (active_seg < 0 || partial_rows[active_seg] != SIZE)
+                    $fatal(1, "Stream completion preceded the complete output rows");
+                completions[active_seg]++;
             end
+            if (tb_if.ps_frame_complete && active_seg >= 0) frame_completions[active_seg]++;
         end
-    endtask
+    end
 
     initial begin
-        rst_n = 1'b0;
-        errors = 0;
-        final_rows_count = 0;
-        final_tile_over_seen = 1'b0;
+        idle_inputs();
         data_dir = ".";
-
-        for (int r = 0; r < SIZE; r++) begin
-            for (int c = 0; c < SIZE; c++) begin
-                captured_final_rows[r][c] = '0;
-            end
-        end
-
-        if (!$value$plusargs("DATA_DIR=%s", data_dir)) begin
-            data_dir = ".";
-        end
-
-        drive_idle();
-
-        $display("[TB] Loading data from DATA_DIR=%s", data_dir);
-        $readmemh({data_dir, "/weight_mem.hex"},   weight_mem_raw);
-        $readmemh({data_dir, "/ia_mem.hex"},       ia_mem_raw);
+        if (!$value$plusargs("DATA_DIR=%s", data_dir)) data_dir = ".";
+        force_raw_arg = 0;
+        if (!$value$plusargs("PS_FORCE_RAW=%d", force_raw_arg)) force_raw_arg = 0;
+        tb_if.ps_force_raw = force_raw_arg != 0;
+        $readmemh({data_dir, "/weight_mem.hex"}, weight_mem_raw);
+        $readmemh({data_dir, "/ia_mem.hex"}, ia_mem_raw);
+        $readmemh({data_dir, "/bias_mem.hex"}, bias_mem);
         $readmemh({data_dir, "/expected_out.hex"}, exp_mem);
-        $readmemh({data_dir, "/bias_mem.hex"},     bias_mem);
-
-        compute_expected_tiles();
-
-        repeat (3) @(posedge clk);
-        rst_n = 1'b1;
-        repeat (2) @(posedge clk);
-
-        for (int seg = 0; seg < NUM_SEG; seg++) begin
-            $display("[TB] Loading weight tile seg=%0d", seg);
-            load_weight_tile(seg);
-            repeat (2) @(posedge clk);
-
-            $display("[TB] Streaming IA tile seg=%0d", seg);
-            stream_tile(seg);
-            repeat (1) @(posedge clk);
+        reference_values();
+        repeat (3) @(negedge clk);
+        rst_n = 1;
+        tb_if.ps_store_cfg_valid = 1;
+        @(negedge clk);
+        tb_if.ps_store_cfg_valid = 0;
+        for (int segment = 0; segment < NUM_SEG; segment++) begin
+            active_seg = segment;
+            load_weights(segment);
+            stream_rows(segment);
         end
-
-        if (final_rows_count != SIZE) begin
-            $display("[TB] FINAL ERROR captured %0d final rows, expected %0d",
-                     final_rows_count, SIZE);
-            errors++;
-        end
-
-        if (!final_tile_over_seen) begin
-            $display("[TB] FINAL ERROR tile_calc_over was not observed on the final valid row");
-            errors++;
-        end
-
-        for (int r = 0; r < SIZE; r++) begin
-            for (int c = 0; c < SIZE; c++) begin
-                if (captured_final_rows[r][c] !== exp_mem[r * SIZE + c]) begin
-                    $display("[TB] FINAL MEM ERROR r=%0d c=%0d got=%0d exp=%0d",
-                             r, c, captured_final_rows[r][c], exp_mem[r * SIZE + c]);
-                    errors++;
-                end
-            end
-        end
-
-        if (errors == 0) begin
-            $display("%sPASS: compute_core matched expected final output and control timing%s", C_GREEN, C_RESET);
-        end else begin
-            $display("%sFAIL: %0d mismatches%s", C_RED, errors, C_RESET);
-        end
-
-        #20;
+        repeat (SIZE + 2) @(negedge clk);
+        if (final_rows != SIZE || output_checks != 64'(SIZE) * SIZE ||
+            replay_checks != 64'(NUM_SEG - 1) * SIZE * SIZE ||
+            partial_checks != 64'(NUM_SEG) * SIZE * SIZE)
+            $fatal(1, "Incomplete matrix or replay comparison");
+        finished = 1;
+        $display("PASS: compute_core matched expected final output and control timing");
+        $display("COMPUTE_CORE_RESULT {\"size\":%0d,\"k\":%0d,\"segments\":%0d,\"compressed_store\":%0d,\"force_raw\":%0d,\"partial_values\":%0d,\"replay_values\":%0d,\"output_values\":%0d}",
+            SIZE, NUM_K, NUM_SEG, COMPRESSED_STORE, tb_if.ps_force_raw, partial_checks, replay_checks, output_checks);
         $finish;
     end
 
     initial begin
         #5000000;
-        $display("[TB] FATAL: timeout");
-        $finish;
+        $fatal(1, "Compute core test timed out");
     end
 
-    initial begin
+    initial if ($test$plusargs("DUMP")) begin
         $dumpfile("tb_compute_core.vcd");
         $dumpvars(0, tb_compute_core);
     end

@@ -35,9 +35,13 @@ public:
     std::deque<Send> sends;
     std::deque<Vector> sums;
     std::optional<Tile> active;
+    std::array<std::optional<Tile>,N> row_tiles;
+    std::array<bool,N> row_select{};
+    bool input_select=false;
     unsigned stream_remaining=0,input_index=0;
     std::uint64_t cycles=0,weight_vectors=0,weight_checks=0,result_rows=0,result_checks=0;
     std::uint64_t shadow_checks=0,commits=0,ws_tiles=0,is_tiles=0,tail_tiles=0;
+    std::uint64_t mixed_valid_cycles=0,select_checks=0;
 
     Check() {
         dut.rst_n=0;
@@ -48,7 +52,7 @@ public:
     void tick() {
         dut.input_valid=stream_remaining && random()%5U!=0U;
         if(dut.input_valid) {
-            require(active.has_value() && !dut.weight_commit,"A stream needs committed weights");
+            require(active.has_value(),"A stream needs committed weights");
             Vector golden{};
             std::array<std::int32_t,N> x{};
             for(unsigned k=0;k<N;++k) {
@@ -83,6 +87,16 @@ public:
             else sends.pop_front();
             ++weight_vectors;
         } else require(!dut.weight_sending_done,"Weight completion requires a final vector");
+        if (!dut.rst_n) {
+            row_tiles={}; row_select={}; input_select=false;
+        } else {
+            if (dut.weight_commit) input_select=!input_select;
+            for (unsigned row=N-1;row>0;--row) {
+                row_tiles[row]=row_tiles[row-1]; row_select[row]=row_select[row-1];
+            }
+            row_tiles[0]=dut.input_valid ? active : std::nullopt;
+            row_select[0]=input_select;
+        }
         dut.clk=1;dut.eval();++cycles;
         if(dut.output_valid) {
             require(!sums.empty(),"An unexpected output row reached writeback");
@@ -93,13 +107,21 @@ public:
             }
             sums.pop_front();++result_rows;
         }
-        if(active && !dut.weight_commit) {
-            for(unsigned r=0;r<N;++r) for(unsigned c=0;c<N;++c) {
-                require(signed_bits(dut.resident_weight[r*N+c],WIDTH)==coefficient(*active,c,(r+c)%N),
-                        "Shadow preloading changed an active weight");
-                ++shadow_checks;
+        bool select_zero=false,select_one=false;
+        for(unsigned r=0;r<N;++r) {
+            require(bool(dut.row_select&(1U<<r))==row_select[r],"Row selector timing differs");
+            require(bool(dut.valid_pipe&(1U<<r))==row_tiles[r].has_value(),"Row valid timing differs");
+            ++select_checks;
+            if(row_tiles[r]) {
+                select_zero|=!row_select[r];select_one|=row_select[r];
+                for(unsigned c=0;c<N;++c) {
+                    require(signed_bits(dut.resident_weight[r*N+c],WIDTH)==coefficient(*row_tiles[r],c,(r+c)%N),
+                            "Preloading changed a weight used by a valid physical row");
+                    ++shadow_checks;
+                }
             }
         }
+        mixed_valid_cycles+=select_zero&&select_one;
     }
     template<class Predicate> void wait(Predicate predicate,const std::string &reason) {
         for(unsigned i=0;!predicate();++i) {require(i<10000,reason+" timed out");tick();}
@@ -128,12 +150,12 @@ public:
         wait([&]{return sends.empty();},"Weight vector emission");
     }
     void drain() {wait([&]{return !stream_remaining && sums.empty();},"Array drain");}
+    void finish_input() {wait([&]{return !stream_remaining;},"Input completion");}
     void commit(const Tile &tile) {
-        drain();require(sends.empty(),"Commit requires a complete shadow tile");
-        dut.weight_commit=1;tick();dut.weight_commit=0;active=tile;++commits;
+        finish_input();require(sends.empty(),"Commit requires a complete shadow tile");
+        active=tile;dut.weight_commit=1;tick();dut.weight_commit=0;++commits;
         ws_tiles+=!tile.is_mode;is_tiles+=tile.is_mode;
         tail_tiles+=tile.lanes<N || tile.reduction<N;
-        tick();
     }
     void stream(unsigned count) {require(!stream_remaining,"A stream is already active");stream_remaining=count;}
     void flush() {dut.cache_flush=1;tick();dut.cache_flush=0;idle(2);}
@@ -147,11 +169,11 @@ int main(int argc,char **argv) {
         check.load(a);check.load(b);
         require(!check.dut.load_ready,"Two queued tiles must fill both slots");
         check.send(a);check.commit(a);check.stream(3*N+7);
-        check.send(b);check.drain();check.commit(b);check.stream(2*N+1);check.drain();
+        check.send(b);check.commit(b);check.stream(2*N+1);check.drain();
         for(unsigned trial=0;trial<64;++trial) {
             Tile next{trial+3,1U+unsigned(check.random()%N),1U+unsigned(check.random()%N),bool(trial&1U)};
             check.stream(5*N+11);
-            check.load(next);check.send(next);check.drain();
+            check.load(next);check.send(next);
             check.commit(next);check.stream(N+3);check.drain();
         }
         Tile discarded{101,N,N,false},kept{102,1,N/2+1,true};
@@ -162,14 +184,16 @@ int main(int argc,char **argv) {
         check.start_load();check.load_row(discarded,0,false);check.flush();
         require(!check.dut.weight_data_valid && check.dut.load_ready,"Flush must empty the load queue");
         check.load(a);check.send(a);check.commit(a);check.stream(N+1);check.drain();
-        require(check.ws_tiles && check.is_tiles && check.tail_tiles && check.shadow_checks,
+        require(check.ws_tiles && check.is_tiles && check.tail_tiles && check.shadow_checks && check.mixed_valid_cycles,
                 "Required DiP weight scenarios did not execute");
         std::cout<<"{\"passed\":true,\"size\":"<<N<<",\"weight_width\":"<<WIDTH
                  <<",\"weight_vectors\":"<<check.weight_vectors<<",\"weight_checks\":"<<check.weight_checks
                  <<",\"result_rows\":"<<check.result_rows<<",\"result_checks\":"<<check.result_checks
                  <<",\"shadow_checks\":"<<check.shadow_checks<<",\"commits\":"<<check.commits
                  <<",\"ws_tiles\":"<<check.ws_tiles<<",\"is_tiles\":"<<check.is_tiles
-                 <<",\"tail_tiles\":"<<check.tail_tiles<<"}\n";
+                 <<",\"tail_tiles\":"<<check.tail_tiles
+                 <<",\"mixed_valid_cycles\":"<<check.mixed_valid_cycles
+                 <<",\"select_checks\":"<<check.select_checks<<"}\n";
     } catch(const std::exception &error) {
         std::cerr<<error.what()<<'\n';return 1;
     }
