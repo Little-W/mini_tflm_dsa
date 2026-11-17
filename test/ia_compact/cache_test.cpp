@@ -65,13 +65,13 @@ void read_group(Via_loader_cache_mgr& dut, int first, int last,
   dut.l1_slot_end = last;
   dut.l1_is_init = 1;
   dut.l1_calc_done = 1;
-  int valid_last = 0, completed = 0;
-  for (int step = 0; step < static_cast<int>(order.size()) + kSize + 2; ++step) {
+  int valid_rows = 0, completed = 0;
+  for (int step = 0; step < static_cast<int>(order.size()) + 3; ++step) {
     dut.l1_start = step == 0;
     if (concurrent) concurrent(step);
     tick(dut);
     for (int lane = 0; lane < kSize; ++lane) {
-      const int index = step - 1 - lane;
+      const int index = step - 1;
       const bool valid = index >= 0 && index < static_cast<int>(order.size());
       const auto value = valid ? expected[order[index].first][order[index].second][lane] : 0;
       if (signed16(dut.ia_out[lane]) != value)
@@ -84,17 +84,21 @@ void read_group(Via_loader_cache_mgr& dut, int first, int last,
         if (value == 0) ++padding_checks;
       }
       if (lane == kSize - 1) {
-        require(bool(dut.ia_row_valid) == valid, "Last-lane valid timing mismatch");
+        require(bool(dut.ia_row_valid) == valid, "Complete-row valid timing mismatch");
         require(bool(dut.ia_is_init_data) == valid, "Init timing mismatch");
         require(bool(dut.ia_calc_done) == valid, "Final timing mismatch");
-        valid_last += valid;
+        require(bool(dut.l1_done) == (valid && index + 1 == static_cast<int>(order.size())),
+                "Group completion must accompany its final row");
+        require(bool(dut.tile_done) == (valid && order[index].second + 1 == dut.slot_rows[order[index].first]),
+                "Tile completion must accompany its final row");
+        valid_rows += valid;
       }
     }
     completed += dut.l1_done;
   }
   dut.l1_start = 0;
   clear_write(dut);
-  require(valid_last == static_cast<int>(order.size()), "Missing diagonal rows");
+  require(valid_rows == static_cast<int>(order.size()), "Missing complete rows");
   require(completed == 1, "L1 completion count mismatch");
   if (dut.compact_mode) ++compact_groups;
   else ++wide_groups;

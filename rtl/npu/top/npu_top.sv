@@ -1892,7 +1892,7 @@ module npu_top #(
         .ps_frame_pressure(ps_frame_pressure),
         .ps_frame_complete(ps_frame_complete),
         .ps_force_raw(ps_force_raw_q),
-        .ps_frame_rows   (frame_mode_q ? frame_command_rows + 32'(SIZE-1) : ps_frame_rows),
+        .ps_frame_rows   (frame_mode_q ? frame_command_rows : ps_frame_rows),
         .ps_frame_init   (frame_mode_q ? frame_command_init : ps_frame_init),
         .ps_frame_final  (frame_mode_q ? frame_command_final : ps_frame_final),
         .ps_frame_ready  (ps_frame_ready),

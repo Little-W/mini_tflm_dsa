@@ -1,17 +1,7 @@
-/*
- * ia_loader_cache_mgr — 缓存管理、对角化输出与控制信号生成
- * ============================================================
- * 功能：
- *   1. 管理 SIZE 组同步读写 RAM，每组物理容量为 CACHE_BLOCKS × SIZE × DATA_WIDTH bit
- *   2. 将 AXI DMA 解包后的数据写入指定 slot/row/col
- *   3. 接收发送命令后，按对角化时序从 RAM 读出数据
- *   4. 生成延迟对齐的 ia_row_valid[j], ia_is_init_data[j], ia_calc_done[j]
- *   5. 在所有列输出完毕后产生 send_done 脉冲
- *
- * 对角化读取原理：
- *   发送计数器 diag_step 从 0 递增到 valid_rows + SIZE - 2
- *   第 j 列 RAM bank 在 diag_step ∈ [j, j + valid_rows - 1] 时读出
- *   rd_addr[j] = slot * SIZE + (diag_step - j)
+/* IA cache with synchronous, complete-row reads for the DiP array.
+ * All lanes use the same slot and row address. A group streams its active
+ * rows consecutively, including a partial final tile. The early tile marker
+ * starts PS replay two cycles before the corresponding array input row.
  */
 
 module ia_loader_cache_mgr #(
@@ -48,7 +38,7 @@ module ia_loader_cache_mgr #(
     input  logic                                 wr_valid [BUS_WIDTH/8],
     input  logic                                 wr_use_16bits,
 
-    // ---- L1组对角化发送控制 ----
+    // ---- L1 group row-stream control ----
     // ctrl 一次性指定 L1 组的起始/终止 slot，cache_mgr 自主完成整组输出
     input  logic                              l1_start,        // L1组发送启动脉冲
     input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]   l1_slot_start,   // 起始 slot
@@ -60,11 +50,11 @@ module ia_loader_cache_mgr #(
     output logic                              l1_done,         // L1组全部输出完成
     output logic                              ia_tile_start,   // 单 tile 首行到达输出端
 
-    // ---- 输出到脉动阵列（SIZE 维数据 + 最后一列指示信号）----
+    // ---- Complete row and associated metadata ----
     output logic signed [DATA_WIDTH-1:0]         ia_out          [SIZE],
-    output logic                                 ia_row_valid,     // 最大延迟（第 SIZE-1 列）
-    output logic                                 ia_is_init_data,  // 同上
-    output logic                                 ia_calc_done      // 同上
+    output logic                                 ia_row_valid,
+    output logic                                 ia_is_init_data,
+    output logic                                 ia_calc_done
 );
 
   // =====================================================================
@@ -81,7 +71,7 @@ module ia_loader_cache_mgr #(
   // Compact S8 selects one bank with the high slot bit; wide S16 uses both.
   // =====================================================================
   // 写端口：LOAD 阶段从 AXI DMA 响应写入
-  // 读端口：SEND 阶段对角化读出
+  // Read every lane of the selected row in the same cycle.
   logic              ram_wr_en   [SIZE];
   logic [ADDR_W-1:0] ram_wr_addr [SIZE];
   logic signed [DATA_WIDTH-1:0] ram_wr_data [SIZE];
@@ -166,18 +156,8 @@ module ia_loader_cache_mgr #(
             ram_port_rd_data[lane/8][(lane%8)*16 +: 16];
       end
     end
-    for (genvar lane = 0; lane < SIZE; lane++) begin : g_diagonal
-      if (lane == 0) begin : g_first
-        assign ram_rd_data[lane] = row_data[lane];
-      end else begin : g_delay
-        logic signed [DATA_WIDTH-1:0] values [0:lane-1];
-        always_ff @(posedge clk) begin
-          values[0] <= ram_rd_en_d1[0] ? row_data[lane] : '0;
-          for (int stage = 1; stage < lane; stage++)
-            values[stage] <= values[stage-1];
-        end
-        assign ram_rd_data[lane] = values[lane-1];
-      end
+    for (genvar lane = 0; lane < SIZE; lane++) begin : g_row
+      assign ram_rd_data[lane] = row_data[lane];
     end
 `ifndef SYNTHESIS
     initial begin
@@ -208,15 +188,10 @@ module ia_loader_cache_mgr #(
   end
 
   // =====================================================================
-  // L1 组对角化输出控制（col0 发射 + 多列移位管线）
+  // Consecutive complete rows across all slots of one L1 group.
   // =====================================================================
   //
-  // 思路：
-  //   1) 只在“初始列(col0)”做发射调度：决定本拍是否发射一行(row)
-  //   2) 将 col0 的 rd_en/rd_addr 通过移位寄存器送往各列
-  //      第 j 列天然获得 j 拍延迟，实现对角化
-  //   3) L1 组内 slot 连续发射。compute_core/ps_buffer 将整组看成一条
-  //      tall stream，de-diagonalizer 在输出侧按 tile_start 标记切分。
+  // The common read address is registered once before the synchronous RAM.
   //
   localparam int SLOT_W = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
   localparam int ROW_CNT_W = $clog2(SIZE + 1);
@@ -283,7 +258,7 @@ module ia_loader_cache_mgr #(
     end
   end
 
-  // 各列移位管线
+  // Registered read controls are identical for every lane.
   logic              rd_en_pipe      [SIZE];
   logic [ADDR_W-1:0] rd_addr_pipe    [SIZE];
   logic              tile_last_pipe  [SIZE];
@@ -365,22 +340,17 @@ module ia_loader_cache_mgr #(
         end
       end
 
-      // 移位管线更新
-      rd_en_pipe[0]     <= src_rd_en;
-      rd_addr_pipe[0]   <= src_rd_addr;
-      tile_last_pipe[0] <= src_tile_last;
-      l1_last_pipe[0]   <= src_l1_last;
-      for (int j = 1; j < SIZE; j++) begin
-        rd_en_pipe[j]     <= rd_en_pipe[j-1];
-        rd_addr_pipe[j]   <= rd_addr_pipe[j-1];
-        tile_last_pipe[j] <= tile_last_pipe[j-1];
-        l1_last_pipe[j]   <= l1_last_pipe[j-1];
+      for (int j = 0; j < SIZE; j++) begin
+        rd_en_pipe[j]     <= src_rd_en;
+        rd_addr_pipe[j]   <= src_rd_addr;
+        tile_last_pipe[j] <= src_tile_last;
+        l1_last_pipe[j]   <= src_l1_last;
       end
 
-      // tile/l1 完成脉冲：最后一行 token 到达最后一列时拉高
-      if (rd_en_pipe[SIZE-1] && tile_last_pipe[SIZE-1])
+      // Completion accompanies the last synchronous RAM output row.
+      if (rd_en_pipe[0] && tile_last_pipe[0])
         tile_done <= 1'b1;
-      if (rd_en_pipe[SIZE-1] && l1_last_pipe[SIZE-1])
+      if (rd_en_pipe[0] && l1_last_pipe[0])
         l1_done <= 1'b1;
     end
   end
@@ -408,25 +378,20 @@ module ia_loader_cache_mgr #(
 	    end
 	  end
 
-  // ia_out: 对角化时序保持不变；无效期间 gate 为 0
+  // Inactive cycles present zero values to every PE input.
   always_comb begin
     for (int j = 0; j < SIZE; j++)
       ia_out[j] = ram_rd_en_d1[j] ? ram_rd_data[j] : '0;
   end
 
-  // ia_row_valid: 最大延迟列（SIZE-1）的 rd_en
-	  assign ia_row_valid = ram_rd_en_d1[SIZE-1];
-	  // Early burst start: col0 issue begins here for every tile in the L1
-	  // stream.  This is intentionally ahead of ia_row_valid so ps_buffer replay
-	  // can absorb the cache/systolic delay even when adjacent slots are
-	  // emitted without a valid bubble.
-	  assign ia_tile_start = src_rd_en & src_tile_first;
+  assign ia_row_valid = ram_rd_en_d1[0];
+  assign ia_tile_start = src_rd_en & src_tile_first;
 
   // =====================================================================
   // ia_is_init_data / ia_calc_done
   // =====================================================================
   // send_is_init_r / send_calc_done_r 在整个 L1 组期间不变，无需额外延迟链
-  assign ia_is_init_data = ram_rd_en_d1[SIZE-1] & send_is_init_r;
-  assign ia_calc_done    = ram_rd_en_d1[SIZE-1] & send_calc_done_r;
+  assign ia_is_init_data = ram_rd_en_d1[0] & send_is_init_r;
+  assign ia_calc_done    = ram_rd_en_d1[0] & send_calc_done_r;
 
 endmodule

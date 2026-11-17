@@ -372,7 +372,11 @@ vector-engine-soc:
 PS_VERIFY_DIR ?= $(ROOT)/build/ps_frame_verify
 PS_SOC_DIR ?= $(ROOT)/build/ps_compression/soc
 PS_SOC_FLAGS ?=
-.PHONY: ps-stream-verify ps-compression-soc shared-memory-test shared-memory-structure
+.PHONY: ps-stream-verify ps-compression-soc shared-memory-test shared-memory-structure dip-array-test
+dip-array-test:
+	$(PYTHON) test/dip_array/run.py --verilator '$(VERILATOR)' --jobs '$(CONV_JOBS)' --out '$(PS_VERIFY_DIR)/dip_array'
+	$(PYTHON) test/dip_weights/run.py --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/dip_weights'
+
 ps-stream-verify:
 	$(PYTHON) test/ps_compression/run_stream_rtl.py --verilator '$(VERILATOR)' --target codec --out '$(PS_VERIFY_DIR)/codec'
 	$(PYTHON) test/ps_compression/run_frame_store.py --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/store'

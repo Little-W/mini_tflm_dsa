@@ -930,7 +930,7 @@ module ia_loader_ctrl #(
 
   // A complete L1 group forms one partial-sum frame. The last spatial group
   // replaces its final full tile by the actual number of remaining rows.
-  assign ps_frame_rows = (32'(r_cur) << LOG2_SIZE) + 32'(SIZE - 1) -
+  assign ps_frame_rows = (32'(r_cur) << LOG2_SIZE) -
                          (is_last_l2_group ? (32'(SIZE) - 32'(rsp_rows_last_tile)) : 32'd0);
   assign ps_frame_id = 32'(w_cnt);
   assign ps_frame_init = is_first_tile;
@@ -969,7 +969,7 @@ module ia_loader_ctrl #(
   end
 
   // cache_l1_start: 仅在外部 trigger 触发时发出（L1 组整体启动脉冲）
-  // cache_mgr 收到后自主完成整组 r_cur 个 tile 的连续对角化输出
+  // The cache emits complete rows for all r_cur tiles in this group.
   assign cache_l1_start = (state == S_SEND || state == S_LOAD)
                         && send_ia_trigger && ia_data_valid;
 

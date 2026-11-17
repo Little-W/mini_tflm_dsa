@@ -1,0 +1,17 @@
+# DiP weight loading
+
+This test drives the production `kernel_loader_buffer` through complete and
+partial tiles, two-slot prefetch, and overlapping shadow loads. It checks
+every physical weight against `B[(r+c) mod SIZE,c]`, then compares the matrix
+outputs with an ordinary signed integer product. Tail rotation always uses
+the physical array size.
+
+```bash
+python3 test/dip_weights/run.py \
+  --verilator /path/to/verilator --out build/dip_validation/weights
+```
+
+The four configurations cover sizes 3, 4 and 16 with S8 and S16 weights.
+The tests check weight-load values, active-weight stability, shadow commit,
+and every final matrix output. C++ checks use UndefinedBehaviorSanitizer.
+`summary.json` records source hashes, executable hashes and test counts.

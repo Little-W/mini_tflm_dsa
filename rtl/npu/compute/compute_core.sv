@@ -65,179 +65,59 @@ module compute_core #(
 );
 
     logic signed [31:0] bias_or_ps_sum [0:SIZE-1];
-    logic signed [31:0] systolic_sum   [0:SIZE-1];
-    logic signed [31:0] ps_data_out    [0:SIZE-1];
-    logic signed [31:0] ps_acc_out     [0:SIZE-1];
-    logic               ps_acc_data_valid;
-    logic               ps_tile_calc_over;
-    logic               ps_stream_calc_over;
-    logic               ps_replay_ready;
-`ifdef GEMPACT_PS_COMPRESS
-    localparam bit PS_COMPRESS_ENABLED = SIZE == 16;
-`else
-    localparam bit PS_COMPRESS_ENABLED = 1'b0;
-`endif
+    logic signed [31:0] systolic_sum [0:SIZE-1];
+    logic signed [31:0] ps_data_out [0:SIZE-1];
+    logic signed [31:0] ps_acc_out [0:SIZE-1];
+    logic ps_acc_data_valid, ps_tile_calc_over, ps_stream_calc_over;
+    logic ps_replay_ready;
+    logic [SIZE-1:0] row_valid_pipe, row_final_pipe, row_init_pipe, row_last_pipe;
+    logic final_group_complete_q;
 
-    localparam int unsigned PS_BURST_CYCLES = (2 * SIZE) - 1;
-    localparam int unsigned PS_CNT_W        = (PS_BURST_CYCLES < 2) ? 1 :
-                                               $clog2(PS_BURST_CYCLES + 1);
-
-    logic [PS_CNT_W-1:0] ps_tail_cnt;
-    logic [PS_CNT_W-1:0] ps_tail_length;
-    logic                ps_burst_is_final;
-    logic                ps_burst_is_init;
-    logic                ps_burst_is_l1_last;
-
-    logic                ps_burst_start;
-    logic                ps_stream_valid;
-    logic                ps_calc_done;
-    logic                ps_is_init_data;
-    logic                ps_tile_switch;
-    logic                ps_group_switch;
-    logic                ps_stream_valid_d;
-    logic                ps_burst_start_d;
-    logic                ps_calc_done_d;
-    logic                ps_is_init_data_d;
-    logic                ps_tile_switch_d;
-    logic                ps_group_switch_d;
-    logic                final_group_calc_pending;
-    logic                partial_sum_calc_over_r;
-    logic [SIZE:0]       ia_tile_start_pipe;
-    logic                ps_tile_start_aligned;
-    logic                final_l1_calc_done_seen;
-`ifndef SYNTHESIS
-    bit                  compute_trace_en;
-
-    initial begin
-        compute_trace_en = 1'b0;
-        if ($test$plusargs("NPU_COMPUTE_TRACE")) compute_trace_en = 1'b1;
-    end
-`else
-    localparam bit compute_trace_en = 1'b0;
-`endif
-
-    // PS_FRAME_COUNT is the architectural number of output-column frames that
-    // may be replayed. IA reuse is emitted as one tall L1 stream, so multiplying
-    // the frame count by the maximum reuse depth only over-provisions BRAM.
-    localparam int unsigned PS_EFFECTIVE_FRAME_COUNT =
-        (PS_FRAME_COUNT < 1) ? MAX_IA_REUSE : PS_FRAME_COUNT;
-
-    assign ps_tile_start_aligned = ia_tile_start_pipe[SIZE];
-    assign ps_burst_start = ps_tile_start_aligned;
-
-    // IA cache emits a whole L1 group as one tall diagonal stream.  Keep the
-    // partial-sum stream through the active columns. Final output keeps the
-    // complete de-diagonalizer tail so writeback timing remains independent
-    // of the number of active columns.
-    assign ps_tail_length = PS_COMPRESS_ENABLED || ia_calc_done || active_columns == 0 ||
-                            active_columns > ($clog2(SIZE)+1)'(SIZE) ?
-                            PS_CNT_W'(SIZE - 1) : PS_CNT_W'(active_columns - 1'b1);
-    assign ps_stream_valid = ia_row_valid | (ps_tail_cnt != '0);
-    assign ps_calc_done    = ps_stream_valid & (ia_row_valid ? ia_calc_done    : ps_burst_is_final);
-    assign ps_is_init_data = ps_stream_valid & (ia_row_valid ? ia_is_init_data : ps_burst_is_init);
-    assign ps_tile_switch = (ia_row_valid && ia_sending_done && ps_tail_length == 0) ||
-                            (ps_stream_valid && !ia_row_valid && ps_tail_cnt == PS_CNT_W'(1));
-    assign ps_group_switch = ps_tile_switch &&
-                             (ia_row_valid ? ia_l1_switch : ps_burst_is_l1_last);
-
+    // A PE registers the input and the incoming sum in the same cycle.
+    // After SIZE such stages, all output columns belong to one matrix row.
+    // Metadata follows the same stages and never creates padding rows.
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            ps_tail_cnt       <= '0;
-            ps_burst_is_final <= 1'b0;
-            ps_burst_is_init  <= 1'b0;
-            ps_burst_is_l1_last <= 1'b0;
-            ps_stream_valid_d <= 1'b0;
-            ps_burst_start_d  <= 1'b0;
-            ps_calc_done_d    <= 1'b0;
-            ps_is_init_data_d <= 1'b0;
-            ps_tile_switch_d  <= 1'b0;
-            ps_group_switch_d <= 1'b0;
-            final_group_calc_pending <= 1'b0;
-            partial_sum_calc_over_r  <= 1'b0;
-            ia_tile_start_pipe       <= '0;
-            final_l1_calc_done_seen  <= 1'b0;
+            row_valid_pipe <= '0;
+            row_final_pipe <= '0;
+            row_init_pipe <= '0;
+            row_last_pipe <= '0;
+            final_group_complete_q <= 1'b0;
         end else begin
-            partial_sum_calc_over_r <= 1'b0;
-            ia_tile_start_pipe <= {ia_tile_start_pipe[SIZE-1:0], ia_tile_start};
-            ps_stream_valid_d <= ps_stream_valid;
-            ps_burst_start_d  <= ps_burst_start;
-            ps_calc_done_d    <= ps_calc_done;
-            ps_is_init_data_d <= ps_is_init_data;
-            ps_tile_switch_d  <= ps_tile_switch;
-            ps_group_switch_d <= ps_group_switch;
-
-            if (ia_row_valid) begin
-                ps_tail_cnt       <= ps_tail_length;
-                ps_burst_is_final <= ia_calc_done;
-                ps_burst_is_init  <= ia_is_init_data;
-                ps_burst_is_l1_last <= ps_burst_start ? ia_l1_switch
-                                                       : (ps_burst_is_l1_last | ia_l1_switch);
-            end else if (ps_tail_cnt != '0) begin
-                ps_tail_cnt <= ps_tail_cnt - 1'b1;
-                if (ia_l1_switch) begin
-                    ps_burst_is_l1_last <= 1'b1;
-                end
-            end else begin
-                ps_burst_is_final <= 1'b0;
-                ps_burst_is_init  <= 1'b0;
-                ps_burst_is_l1_last <= 1'b0;
-            end
-
-            if (ps_group_switch_d) begin
-                if (ps_calc_done_d) begin
-                    final_group_calc_pending <= 1'b1;
-                end
-            end
-
-            if (ia_sending_done && ps_burst_is_final) begin
-                final_l1_calc_done_seen <= 1'b1;
-            end
-
-            if ((final_group_calc_pending ||
-                 final_l1_calc_done_seen ||
-                 (ia_sending_done && ps_burst_is_final) ||
-                 (ps_group_switch_d && ps_calc_done_d)) && ps_stream_calc_over) begin
-                partial_sum_calc_over_r  <= 1'b1;
-                final_group_calc_pending <= 1'b0;
-                final_l1_calc_done_seen  <= 1'b0;
-            end
-
-            if (compute_trace_en &&
-                (ia_tile_start || ps_burst_start_d || ps_calc_done_d ||
-                 ps_acc_data_valid || ps_tile_calc_over || ps_stream_calc_over ||
-                 partial_sum_calc_over_r)) begin
-                $display("[COMPUTE_TRACE] time=%0t ia_start=%0d ia_valid=%0d ia_calc=%0d ps_start=%0d ps_calc_d=%0d acc_valid=%0d tile_over=%0d stream_over=%0d partial_over=%0d",
-                         $time, ia_tile_start, ia_row_valid, ia_calc_done,
-                         ps_burst_start_d, ps_calc_done_d, ps_acc_data_valid,
-                         ps_tile_calc_over, ps_stream_calc_over,
-                         partial_sum_calc_over_r);
+            final_group_complete_q <= row_last_pipe[SIZE-1] &&
+                row_final_pipe[SIZE-1] && !final_output_overlap;
+            row_valid_pipe[0] <= ia_row_valid;
+            row_final_pipe[0] <= ia_row_valid && ia_calc_done;
+            row_init_pipe[0] <= ia_row_valid && ia_is_init_data;
+            row_last_pipe[0] <= ia_row_valid && ia_sending_done;
+            for (int stage=1; stage<SIZE; stage++) begin
+                row_valid_pipe[stage] <= row_valid_pipe[stage-1];
+                row_final_pipe[stage] <= row_final_pipe[stage-1];
+                row_init_pipe[stage] <= row_init_pipe[stage-1];
+                row_last_pipe[stage] <= row_last_pipe[stage-1];
             end
         end
     end
 
-    bias_mux #(
-        .SIZE      (SIZE),
-        .DATA_WIDTH(32)
-    ) u_bias_mux (
-        .bias_sleep(bias_sleep),
-        .bias_in   (bias_in),
-        .ps_in     (ps_data_out),
-        .sum_in    (bias_or_ps_sum)
+    wire ps_stream_valid_d = row_valid_pipe[SIZE-1];
+    wire ps_calc_done_d = row_final_pipe[SIZE-1];
+    wire ps_is_init_data_d = row_init_pipe[SIZE-1];
+    wire ps_group_switch_d = row_last_pipe[SIZE-1];
+    localparam int unsigned PS_EFFECTIVE_FRAME_COUNT =
+        (PS_FRAME_COUNT < 1) ? MAX_IA_REUSE : PS_FRAME_COUNT;
+
+    bias_mux #(.SIZE(SIZE), .DATA_WIDTH(32)) u_bias_mux (
+        .bias_sleep(bias_sleep), .bias_in(bias_in), .ps_in(ps_data_out),
+        .sum_in(bias_or_ps_sum)
     );
 
     ws_systolic_array #(
-        .SIZE         (SIZE),
-        .DATA_IN_WIDTH(DATA_WIDTH),
-        .WEIGHT_WIDTH (WEIGHT_WIDTH),
-        .ACC_WIDTH    (32)
+        .SIZE(SIZE), .DATA_IN_WIDTH(DATA_WIDTH), .WEIGHT_WIDTH(WEIGHT_WIDTH),
+        .ACC_WIDTH(32)
     ) u_systolic_array (
-        .clk             (clk),
-        .store_weight_req(store_weight_req),
-        .weight_commit(weight_commit),
-        .weight_in       (weight_in),
-        .data_in         (ia_vec_in),
-        .sum_in          (bias_or_ps_sum),
-        .sum_out         (systolic_sum)
+        .clk(clk), .store_weight_req(store_weight_req), .weight_commit(weight_commit),
+        .weight_in(weight_in), .data_in(ia_vec_in), .sum_in(bias_or_ps_sum),
+        .sum_out(systolic_sum)
     );
 
     ps_buffer #(
@@ -252,61 +132,46 @@ module compute_core #(
         .PS_DIRECTORY_ROWS(PS_DIRECTORY_ROWS),
         .PS_RAM_ADDR_BITS(PS_RAM_ADDR_BITS)
     ) u_ps_buffer (
+        .clk(clk), .rst_n(rst_n),
         .ps_store_cfg_valid(ps_store_cfg_valid), .ps_pool_bank_words(ps_pool_bank_words),
-        .ps_pool_bank_count(ps_pool_bank_count),
-        .ps_directory_stride(ps_directory_stride),
-        .ps_ram_read_en(ps_ram_read_en), .ps_ram_read_addr(ps_ram_read_addr), .ps_ram_read_data(ps_ram_read_data),
-        .ps_ram_write_en(ps_ram_write_en), .ps_ram_write_addr(ps_ram_write_addr), .ps_ram_write_data(ps_ram_write_data),
-        .capacity_fault(ps_capacity_fault),
-        .replay_ready(ps_replay_ready),
-        .frame_request  (ps_frame_request),
-        .frame_id       (ps_frame_id),
-        .frame_accept   (send_ia_trigger),
-        .frame_rows     (ps_frame_rows),
-        .frame_reserve_rows(ps_frame_reserve_rows),
-        .frame_word_cap (ps_frame_word_cap),
-        .frame_init     (ps_frame_init),
-        .frame_final    (ps_frame_final),
-        .force_raw      (ps_force_raw),
-        .frame_ready    (ps_frame_ready),
-        .frame_pressure (ps_frame_pressure),
-        .frame_complete (ps_frame_complete),
-        .clk            (clk),
-        .rst_n          (rst_n),
-        .data_in        (systolic_sum),
-        .ia_row_valid   (ps_stream_valid_d),
-        .ia_calc_done   (ps_calc_done_d),
-        .ia_tile_start  (ps_burst_start_d),
-        .ia_l1_switch   (ps_tile_switch_d),
-        .send_ia_trigger(ia_tile_start),
-        .ia_is_init_data(ps_is_init_data_d),
-        .replay_enable  (bias_sleep),
-        .data_out       (ps_data_out),
-        .acc_data_out   (ps_acc_out),
-        .acc_data_valid (ps_acc_data_valid),
-        .tile_calc_over (ps_tile_calc_over),
+        .ps_pool_bank_count(ps_pool_bank_count), .ps_directory_stride(ps_directory_stride),
+        .ps_ram_read_en(ps_ram_read_en), .ps_ram_read_addr(ps_ram_read_addr),
+        .ps_ram_read_data(ps_ram_read_data), .ps_ram_write_en(ps_ram_write_en),
+        .ps_ram_write_addr(ps_ram_write_addr), .ps_ram_write_data(ps_ram_write_data),
+        .capacity_fault(ps_capacity_fault), .replay_ready(ps_replay_ready),
+        .frame_request(ps_frame_request),
+        .frame_id(ps_frame_id), .frame_accept(send_ia_trigger),
+        .frame_rows(ps_frame_rows), .frame_reserve_rows(ps_frame_reserve_rows),
+        .frame_word_cap(ps_frame_word_cap), .frame_init(ps_frame_init),
+        .frame_final(ps_frame_final), .force_raw(ps_force_raw),
+        .frame_ready(ps_frame_ready), .frame_pressure(ps_frame_pressure),
+        .frame_complete(ps_frame_complete),
+        .data_in(systolic_sum), .ia_row_valid(ps_stream_valid_d),
+        .ia_calc_done(ps_calc_done_d), .ia_tile_start(1'b0),
+        .ia_l1_switch(ps_group_switch_d), .send_ia_trigger(ia_tile_start),
+        .ia_is_init_data(ps_is_init_data_d), .replay_enable(bias_sleep),
+        .data_out(ps_data_out), .acc_data_out(ps_acc_out),
+        .acc_data_valid(ps_acc_data_valid), .tile_calc_over(ps_tile_calc_over),
         .stream_calc_over(ps_stream_calc_over)
     );
 
     assign acc_data_valid = ps_acc_data_valid;
-    // The last useful sum leaves the PE array before de-diagonalization and
-    // quantization finish. A caller with captured output parameters can begin
-    // its next operand stream while those registered output stages complete.
-    assign partial_sum_calc_over =
-        (partial_sum_calc_over_r && !final_output_overlap) |
-        (ps_group_switch && (!ps_calc_done || final_output_overlap));
-    // The activation RAM needs two registered edges before its first value
-    // reaches a PE. With a retained replay frame, its read can begin one edge
-    // before the last old sum while weight commit keeps its existing timing.
-    assign partial_sum_advance_ready = !ia_row_valid &&
-        ps_tail_cnt == PS_CNT_W'(2) && ps_burst_is_l1_last &&
-        (!ps_burst_is_final || final_output_overlap) && ps_replay_ready;
+    // Parameter groups advance when their final output row is accepted.
+    // The following cycle observes their updated bias and quantization readiness.
+    assign partial_sum_calc_over = final_group_complete_q ||
+        (ps_group_switch_d && (!ps_calc_done_d || final_output_overlap));
+    // Complete-row IA reads start with the registered weight commit, so
+    // the first input reaches the PEs after their new weights are active.
+    assign partial_sum_advance_ready = 1'b0;
     assign tile_calc_over = ps_tile_calc_over;
+    assign acc_data_out = ps_acc_out;
 
-    always_comb begin
-        for (int i = 0; i < SIZE; i++) begin
-            acc_data_out[i] = ps_acc_out[i];
-        end
+`ifndef SYNTHESIS
+    always_ff @(posedge clk) if (rst_n) begin
+        assert (!ia_sending_done || ia_row_valid)
+            else $fatal(1, "DiP stream completion requires a valid input row");
+        assert (!weight_commit || !(|row_valid_pipe))
+            else $fatal(1, "DiP weight commit overlaps active computation");
     end
-
+`endif
 endmodule

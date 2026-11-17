@@ -1,5 +1,5 @@
 /*
- * IA tile loading, grouped reuse and diagonal array input.
+ * IA tile loading, grouped reuse and complete-row array input.
  * CACHE_BLOCKS specifies physical DATA_WIDTH-bit tile storage. For 16-bit
  * storage, compact S8 uses two independent byte banks and twice as many slots.
  * Active slots must hold two groups of ia_reuse_num tiles. A preserved slot is
@@ -97,7 +97,7 @@ module ia_loader #(
 
     // ---- 输出到脉动阵列（SIZE 维数据 + 最后一列指示信号）----
     output logic signed [DATA_WIDTH-1:0] ia_out         [SIZE],
-    output logic                         ia_row_valid,           // 最大延迟列有效标志
+    output logic                         ia_row_valid,           // Complete input row is valid.
     output logic                         ia_is_init_data,        // 同上
     output logic                         ia_calc_done,           // 同上
     output logic                         ia_tile_start,          // 单 tile 首行到达输出端

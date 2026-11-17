@@ -102,7 +102,7 @@ void execute(Via_compact_loader_tb& dut, const Case& c,
     for (unsigned wg = 0; wg < column_tiles; wg += c.w)
       for (unsigned red = 0; red < c.reduction; red += 16)
         for (unsigned wi = 0; wi < std::min(c.w, column_tiles - wg); ++wi)
-          expected_frames.push_back({wi, std::min(c.rows - row_base, c.r * 16) + 15,
+          expected_frames.push_back({wi, std::min(c.rows - row_base, c.r * 16),
                                      unsigned(red == 0), unsigned(red + 16 >= c.reduction)});
   std::size_t frame_index = 0;
   std::array<std::size_t, 16> output_index{};
@@ -172,6 +172,8 @@ void execute(Via_compact_loader_tb& dut, const Case& c,
     if (launch) { descriptor = next; active = true; ++requests; }
     if (hit) ++hits;
     for (unsigned lane = 0; lane < 16; ++lane) {
+      require(bool(dut.lane_valid[lane]) == bool(dut.ia_row_valid),
+              c.name + ": every input lane must share the complete-row valid cycle");
       if (dut.lane_valid[lane]) {
         const auto index = output_index[lane]++;
         require(index < expected[lane].size(), c.name + ": unexpected output row");

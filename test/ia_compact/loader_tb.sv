@@ -26,7 +26,7 @@ module ia_compact_loader_tb (
     output logic signed [15:0] ia_out [16],
     output logic lane_valid [16],
     output logic idle, complete, compact_active, cache_hit,
-    output logic ia_data_valid, ia_sending_done,
+    output logic ia_data_valid, ia_sending_done, ia_row_valid,
     output logic [31:0] ps_frame_rows, ps_frame_id,
     output logic ps_frame_init, ps_frame_final
 );
@@ -36,7 +36,7 @@ module ia_compact_loader_tb (
         .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(), .ram_port_wr_mask(),
         .ram_port_rd_en(), .ram_port_rd_addr(), .ram_port_rd_data('{default:'0}),
         .cfg_prefetch_enable(1'b0), .cfg_global_reduction(32'd0), .prefetch_idle(),
-        .ia_row_valid(), .ia_is_init_data(), .ia_calc_done(), .ia_tile_start(),
+        .ia_is_init_data(), .ia_calc_done(), .ia_tile_start(),
         .ia_output_pending(), .bias_sleep(), .bias_switch(), .bias_last_loop(), .ia_l1_switch()
     );
     assign idle = (u_loader.state == 2'b00);

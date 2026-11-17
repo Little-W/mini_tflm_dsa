@@ -1,3 +1,7 @@
+// Diagonal-input, permuted-stationary array. A complete input vector enters
+// row zero in one cycle. Each subsequent row receives the previous row's
+// next column, including the wrap from column zero to column SIZE-1.
+// The stationary tile is B[(row+column)%SIZE][column]; sums move vertically.
 module ws_systolic_array #(
     parameter int unsigned SIZE          = 16,
     parameter int unsigned DATA_IN_WIDTH = 16,
@@ -6,140 +10,60 @@ module ws_systolic_array #(
 ) (
     input  wire                              clk,
     input  wire                              weight_commit,
-    input  wire                              store_weight_req,    // 权重加载请求，单个信号控制所有行
-    input  wire signed [WEIGHT_WIDTH-1:0]    weight_in          [SIZE],
-    input  wire signed [DATA_IN_WIDTH-1:0]   data_in            [SIZE],
-    input  wire signed [ACC_WIDTH-1:0]       sum_in             [SIZE],  // 累加器反馈输入
-    output wire signed [ACC_WIDTH-1:0]       sum_out            [SIZE]
+    input  wire                              store_weight_req,
+    input  wire signed [WEIGHT_WIDTH-1:0]    weight_in [SIZE],
+    input  wire signed [DATA_IN_WIDTH-1:0]   data_in [SIZE],
+    input  wire signed [ACC_WIDTH-1:0]       sum_in [SIZE],
+    output wire signed [ACC_WIDTH-1:0]       sum_out [SIZE]
 );
+    wire signed [DATA_IN_WIDTH-1:0] data_pipe [SIZE][SIZE];
+    wire signed [WEIGHT_WIDTH-1:0] weight_pipe [SIZE][SIZE];
+    wire signed [ACC_WIDTH-1:0] sum_pipe [SIZE][SIZE];
+    wire store_weight_req_col [SIZE];
 
-    // // 中间信号
-    // wire signed [15:0] data_pipe   [SIZE][SIZE];
-    // wire signed [7:0]  weight_pipe [SIZE][SIZE];
-    // wire signed [31:0] sum_pipe    [SIZE][SIZE];
-
-    // genvar row, col;
-    // generate
-    //     for (row = 0; row < SIZE; row++) begin : gen_row
-    //         for (col = 0; col < SIZE; col++) begin : gen_col
-    //             ws_systolic_cell ws_cell (
-    //                 .clk(clk),
-    //                 .store_weight_req(store_weight_req),
-    //                 .weight_in(row == 0 ? weight_in[col] : weight_pipe[row-1][col]),
-    //                 .data_in(col == 0 ? data_in[row] : data_pipe[row][col-1]),
-    //                 .sum_in(row == 0 ? sum_in[col] : sum_pipe[row-1][col]),
-    //                 .data_out(data_pipe[row][col]),
-    //                 .weight_out(weight_pipe[row][col]),
-    //                 .sum_out(sum_pipe[row][col])
-    //             );
-    //         end
-    //     end
-
-    //     // 修复 VARHIDDEN 警告，避免 genvar col 重复声明
-    //     for (genvar sum_col = 0; sum_col < SIZE; sum_col++) begin : gen_sum_out
-    //         assign sum_out[sum_col] = sum_pipe[SIZE-1][sum_col];
-    //     end
-    // endgenerate
-
-// 中间信号
-wire signed [DATA_IN_WIDTH-1:0] data_pipe   [SIZE][SIZE];
-wire signed [WEIGHT_WIDTH-1:0]  weight_pipe [SIZE][SIZE];
-wire signed [ACC_WIDTH-1:0]     sum_pipe    [SIZE][SIZE];
-wire                              store_weight_req_col [SIZE];
-
-generate
-    for (genvar sw_col = 0; sw_col < SIZE; sw_col++) begin : gen_store_weight_buf
+    generate
+        for (genvar column=0; column<SIZE; column++) begin : gen_store_weight_buf
 `ifdef SYNTHESIS
 `ifndef ASIC_SYNTHESIS
-        (* DONT_TOUCH = "TRUE" *)
-        LUT1 #(.INIT(2'b10)) u_store_weight_buf (
-            .I0(store_weight_req),
-            .O (store_weight_req_col[sw_col])
-        );
+            (* DONT_TOUCH = "TRUE" *)
+            LUT1 #(.INIT(2'b10)) u_store_weight_buf (
+                .I0(store_weight_req), .O(store_weight_req_col[column])
+            );
 `else
-        assign store_weight_req_col[sw_col] = store_weight_req;
+            assign store_weight_req_col[column] = store_weight_req;
 `endif
 `else
-        assign store_weight_req_col[sw_col] = store_weight_req;
+            assign store_weight_req_col[column] = store_weight_req;
 `endif
-    end
-endgenerate
-
-genvar row, col;
-generate
-    for (row = 0; row < SIZE; row++) begin : gen_row
-        for (col = 0; col < SIZE; col++) begin : gen_col
-            if (row == 0 && col == 0) begin : cell_corner
+        end
+        for (genvar row=0; row<SIZE; row++) begin : gen_row
+            for (genvar column=0; column<SIZE; column++) begin : gen_col
+                wire signed [DATA_IN_WIDTH-1:0] input_value;
+                wire signed [WEIGHT_WIDTH-1:0] stationary_value;
+                wire signed [ACC_WIDTH-1:0] partial_sum;
+                if (row == 0) begin : g_input
+                    assign input_value = data_in[column];
+                    assign stationary_value = weight_in[column];
+                    assign partial_sum = sum_in[column];
+                end else begin : g_diagonal
+                    assign input_value = data_pipe[row-1][(column+1)%SIZE];
+                    assign stationary_value = weight_pipe[row-1][column];
+                    assign partial_sum = sum_pipe[row-1][column];
+                end
                 ws_systolic_cell #(
-                    .DATA_IN_WIDTH(DATA_IN_WIDTH),
-                    .WEIGHT_WIDTH (WEIGHT_WIDTH),
-                    .ACC_WIDTH    (ACC_WIDTH)
+                    .DATA_IN_WIDTH(DATA_IN_WIDTH), .WEIGHT_WIDTH(WEIGHT_WIDTH),
+                    .ACC_WIDTH(ACC_WIDTH)
                 ) ws_cell (
-                    .clk(clk),
-                    .store_weight_req(store_weight_req_col[col]),
-                    .weight_commit(weight_commit),
-                    .weight_in(weight_in[col]),
-                    .data_in(data_in[row]),
-                    .sum_in(sum_in[col]),
-                    .data_out(data_pipe[row][col]),
-                    .weight_out(weight_pipe[row][col]),
-                    .sum_out(sum_pipe[row][col])
-                );
-            end else if (row == 0) begin : cell_top_row
-                ws_systolic_cell #(
-                    .DATA_IN_WIDTH(DATA_IN_WIDTH),
-                    .WEIGHT_WIDTH (WEIGHT_WIDTH),
-                    .ACC_WIDTH    (ACC_WIDTH)
-                ) ws_cell (
-                    .clk(clk),
-                    .store_weight_req(store_weight_req_col[col]),
-                    .weight_commit(weight_commit),
-                    .weight_in(weight_in[col]),
-                    .data_in(data_pipe[row][col-1]),
-                    .sum_in(sum_in[col]),
-                    .data_out(data_pipe[row][col]),
-                    .weight_out(weight_pipe[row][col]),
-                    .sum_out(sum_pipe[row][col])
-                );
-            end else if (col == 0) begin : cell_left_col
-                ws_systolic_cell #(
-                    .DATA_IN_WIDTH(DATA_IN_WIDTH),
-                    .WEIGHT_WIDTH (WEIGHT_WIDTH),
-                    .ACC_WIDTH    (ACC_WIDTH)
-                ) ws_cell (
-                    .clk(clk),
-                    .store_weight_req(store_weight_req_col[col]),
-                    .weight_commit(weight_commit),
-                    .weight_in(weight_pipe[row-1][col]),
-                    .data_in(data_in[row]),
-                    .sum_in(sum_pipe[row-1][col]),
-                    .data_out(data_pipe[row][col]),
-                    .weight_out(weight_pipe[row][col]),
-                    .sum_out(sum_pipe[row][col])
-                );
-            end else begin : cell_inner
-                ws_systolic_cell #(
-                    .DATA_IN_WIDTH(DATA_IN_WIDTH),
-                    .WEIGHT_WIDTH (WEIGHT_WIDTH),
-                    .ACC_WIDTH    (ACC_WIDTH)
-                ) ws_cell (
-                    .clk(clk),
-                    .store_weight_req(store_weight_req_col[col]),
-                    .weight_commit(weight_commit),
-                    .weight_in(weight_pipe[row-1][col]),
-                    .data_in(data_pipe[row][col-1]),
-                    .sum_in(sum_pipe[row-1][col]),
-                    .data_out(data_pipe[row][col]),
-                    .weight_out(weight_pipe[row][col]),
-                    .sum_out(sum_pipe[row][col])
+                    .clk(clk), .weight_commit(weight_commit),
+                    .store_weight_req(store_weight_req_col[column]),
+                    .weight_in(stationary_value), .data_in(input_value),
+                    .sum_in(partial_sum), .data_out(data_pipe[row][column]),
+                    .weight_out(weight_pipe[row][column]), .sum_out(sum_pipe[row][column])
                 );
             end
         end
-    end
-
-    for (genvar sum_col = 0; sum_col < SIZE; sum_col++) begin : gen_sum_out
-        assign sum_out[sum_col] = sum_pipe[SIZE-1][sum_col];
-    end
-endgenerate
-
+        for (genvar column=0; column<SIZE; column++) begin : gen_sum_out
+            assign sum_out[column] = sum_pipe[SIZE-1][column];
+        end
+    endgenerate
 endmodule

@@ -184,6 +184,10 @@ def array_category(origin, name, ancestors):
 
 
 def register_array_category(origin, name):
+    if origin == "compute_core" and name in (
+            "row_valid_pipe", "row_final_pipe", "row_init_pipe", "row_last_pipe",
+            "final_group_complete_q"):
+        return "core_row_metadata"
     if origin == "ps_buffer" and ".g_replay_skew[" in "." + name and name.endswith(".values"):
         return "ps_replay_skew"
     if (origin == "ia_loader_cache_mgr" and ".g_external_ram.g_diagonal[" in "." + name
@@ -323,6 +327,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     unchanged = hashes == sources_sha256()
     counts = state["module_instances"]
     architecture = (counts.get("compute_core", 0) == 1 and counts.get("ws_systolic_array", 0) == 1
+                    and counts.get("de_diagonalizer", 0) == 0
                     and counts.get("vector_engine", 0) == 1
                     and counts.get("vector_pe", 0) == min(values["SIZE"], 8))
     layout = model.memory_geometry(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],

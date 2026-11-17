@@ -100,15 +100,16 @@ module kernel_loader_buffer #(
                 // register. Reuse its storage while these registers feed PEs.
                 slot_reserved[rd_slot]<=0;slot_loaded[rd_slot]<=0;
             end else if(send_prefetch && !send_active)begin
+                // Emit physical rows in reverse; column c uses reduction (row+c)%SIZE.
                 send_active<=1;send_prefetch<=0;store_weight_req<=1;
                 for(int c=0;c<SIZE;c++)weight_out[c]<=VALID_W'(c)<send_valid_cols ?
-                    $signed(row_rd_data[c][(SIZE-1)*DATA_WIDTH+:DATA_WIDTH]) : '0;
+                    $signed(row_rd_data[c][((SIZE-1+c)%SIZE)*DATA_WIDTH+:DATA_WIDTH]) : '0;
                 if(SIZE==1)begin send_active<=0;weight_sending_done<=1;send_complete_event=1;end
                 else emit_col_idx<=IDX_W'(SIZE-2);
             end else if(send_active)begin
                 store_weight_req<=1;
                 for(int c=0;c<SIZE;c++)weight_out[c]<=VALID_W'(c)<send_valid_cols ?
-                    $signed(row_rd_data[c][int'(emit_col_idx)*DATA_WIDTH+:DATA_WIDTH]) : '0;
+                    $signed(row_rd_data[c][((int'(emit_col_idx)+c)%SIZE)*DATA_WIDTH+:DATA_WIDTH]) : '0;
                 if(emit_col_idx==0)begin send_active<=0;weight_sending_done<=1;send_complete_event=1;end
                 else emit_col_idx<=emit_col_idx-1'b1;
             end

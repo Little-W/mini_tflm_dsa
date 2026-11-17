@@ -55,41 +55,35 @@ module ps_buffer #(
     output logic                         capacity_fault,
     output logic                         replay_ready
 );
-    localparam int unsigned MAX_FRAME_LEN = ((MAX_IA_REUSE + 1) * SIZE) - 1;
-    // Frames occupy their actual stream length in a circular SRAM. The host
-    // admits a group only when its retained frames and one replacement frame
-    // fit; the physical capacity is independent of the maximum IA reuse.
+    localparam int unsigned MAX_FRAME_LEN = MAX_IA_REUSE * SIZE;
     localparam int unsigned DEPTH = STORAGE_ROWS != 0 ? STORAGE_ROWS :
                                    MAX_FRAME_LEN * (FRAME_COUNT + 1);
     localparam int unsigned FIFO_VEC_WIDTH = DATA_WIDTH * SIZE;
+    localparam int unsigned ROW_COUNT_WIDTH = SIZE > 1 ? $clog2(SIZE) : 1;
 
-    logic signed [DATA_WIDTH-1:0] fifo_data_out    [0:SIZE-1];
-    logic signed [DATA_WIDTH-1:0] de_diag_data_out [0:SIZE-1];
-    logic [FIFO_VEC_WIDTH-1:0]    fifo_data_in_vec;
-    logic [FIFO_VEC_WIDTH-1:0]    fifo_data_out_vec;
+    logic [FIFO_VEC_WIDTH-1:0] matrix_data_vec, replay_data_vec;
+    logic replay_row_valid, frame_final_q;
+    logic [ROW_COUNT_WIDTH-1:0] output_row;
+    wire row_tile_end = ia_row_valid &&
+        (output_row == ROW_COUNT_WIDTH'(SIZE-1) || ia_l1_switch);
 
-    logic                         de_diag_data_valid;
-    logic                         replay_row_valid;
-    logic                         frame_final_q;
-    logic [FIFO_VEC_WIDTH-1:0]     matrix_data_vec;
-    logic signed [DATA_WIDTH-1:0]  replay_skew [0:SIZE-1];
-
+    // DiP outputs one complete matrix row per valid cycle. PS RAM stores
+    // that same row representation and supplies it directly to the array.
+    always_comb begin
+        for (int lane=0; lane<SIZE; lane++) begin
+            matrix_data_vec[lane*DATA_WIDTH +: DATA_WIDTH] = data_in[lane];
+            acc_data_out[lane] = data_in[lane];
+            data_out[lane] = replay_data_vec[lane*DATA_WIDTH +: DATA_WIDTH];
+        end
+    end
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) frame_final_q <= 1'b0;
-        else if (frame_accept) frame_final_q <= frame_final;
-    end
-    always_comb begin
-        for (int lane_idx = 0; lane_idx < SIZE; lane_idx++)
-            matrix_data_vec[lane_idx*DATA_WIDTH +: DATA_WIDTH] = de_diag_data_out[lane_idx];
-    end
-    logic                         de_diag_tile_calc_over;
-    logic                         de_diag_stream_calc_over;
-
-    always_comb begin
-        fifo_data_in_vec = '0;
-        for (int lane_idx = 0; lane_idx < SIZE; lane_idx++) begin
-            fifo_data_in_vec[lane_idx*DATA_WIDTH +: DATA_WIDTH] = data_in[lane_idx];
-            fifo_data_out[lane_idx] = fifo_data_out_vec[lane_idx*DATA_WIDTH +: DATA_WIDTH];
+        if (!rst_n) begin
+            frame_final_q <= 1'b0;
+            output_row <= '0;
+        end else begin
+            if (frame_accept) frame_final_q <= frame_final;
+            if (ia_row_valid)
+                output_row <= row_tile_end ? '0 : output_row + ROW_COUNT_WIDTH'(1);
         end
     end
 
@@ -114,88 +108,44 @@ module ps_buffer #(
             .cfg_valid(ps_store_cfg_valid), .cfg_pool_bank_words(ps_pool_bank_words),
             .cfg_pool_bank_count(ps_pool_bank_count),
             .cfg_directory_stride(ps_directory_stride),
-            .ram_read_en(ps_ram_read_en), .ram_read_addr(ps_ram_read_addr), .ram_read_data(ps_ram_read_data),
-            .ram_write_en(ps_ram_write_en), .ram_write_addr(ps_ram_write_addr), .ram_write_data(ps_ram_write_data),
+            .ram_read_en(ps_ram_read_en), .ram_read_addr(ps_ram_read_addr),
+            .ram_read_data(ps_ram_read_data), .ram_write_en(ps_ram_write_en),
+            .ram_write_addr(ps_ram_write_addr), .ram_write_data(ps_ram_write_data),
             .frame_request(frame_request), .frame_accept(frame_accept),
             .frame_id(frame_id), .frame_reserve_rows(frame_reserve_rows),
-            .frame_word_cap(frame_word_cap),
-            .frame_rows(frame_rows - 32'(SIZE - 1)), .frame_init(frame_init), .frame_final(frame_final),
-            .force_raw_i(force_raw),
+            .frame_word_cap(frame_word_cap), .frame_rows(frame_rows),
+            .frame_init(frame_init), .frame_final(frame_final), .force_raw_i(force_raw),
             .frame_ready(frame_ready), .capacity_fault(capacity_fault),
             .frame_pressure(frame_pressure), .frame_complete(frame_complete),
-            .write_valid(de_diag_data_valid && !frame_final_q), .write_data(matrix_data_vec),
-            .write_frame_end(de_diag_stream_calc_over), .replay_trigger(send_ia_trigger),
-            .replay_data(fifo_data_out_vec), .replay_valid(replay_row_valid)
+            .write_valid(ia_row_valid && !frame_final_q), .write_data(matrix_data_vec),
+            .write_frame_end(ia_l1_switch), .replay_trigger(send_ia_trigger),
+            .replay_data(replay_data_vec), .replay_valid(replay_row_valid)
         );
-        for (genvar lane = 0; lane < SIZE; lane++) begin : g_replay_skew
-            if (lane == 0) begin : g_first
-                assign replay_skew[lane] = replay_row_valid ? fifo_data_out[lane] : '0;
-            end else begin : g_delay
-                logic signed [DATA_WIDTH-1:0] values [0:lane-1];
-                always_ff @(posedge clk) begin
-                    values[0] <= replay_row_valid ? fifo_data_out[lane] : '0;
-                    for (int stage = 1; stage < lane; stage++) values[stage] <= values[stage-1];
-                end
-                assign replay_skew[lane] = values[lane-1];
-            end
-        end
     end else begin : g_raw
-    assign ps_ram_read_en = '0;
-    assign ps_ram_write_en = '0;
-    assign ps_ram_read_addr = '{default:'0};
-    assign ps_ram_write_addr = '{default:'0};
-    assign ps_ram_write_data = '{default:'0};
-    assign replay_row_valid = 1'b0;
-    assign replay_skew = '{default:'0};
-    assign frame_ready = 1'b1;
-    assign frame_pressure = 1'b0;
-    assign frame_complete = 1'b0;
-    ps_buffer_wide_fifo #(
-        .DEPTH      (DEPTH),
-        .DATA_WIDTH (FIFO_VEC_WIDTH),
-        .FRAME_COUNT(FRAME_COUNT),
-        .MAX_FRAME_LEN(MAX_FRAME_LEN)
-    ) u_ps_buffer_fifo (
-        .clk              (clk),
-        .rst_n            (rst_n),
-        .data_in          (fifo_data_in_vec),
-        .input_valid_i    (ia_row_valid & ~ia_calc_done),
-        .ia_l1_switch_i   (ia_l1_switch),
-        .send_ia_trigger_i(send_ia_trigger),
-        .replay_enable_i  (replay_enable),
-        .capacity_fault   (capacity_fault),
-        .replay_ready     (replay_ready),
-        .data_out         (fifo_data_out_vec)
-    );
+        assign ps_ram_read_en = '0;
+        assign ps_ram_write_en = '0;
+        assign ps_ram_read_addr = '{default:'0};
+        assign ps_ram_write_addr = '{default:'0};
+        assign ps_ram_write_data = '{default:'0};
+        assign replay_row_valid = 1'b0;
+        assign frame_ready = 1'b1;
+        assign frame_pressure = 1'b0;
+        assign frame_complete = 1'b0;
+        ps_buffer_wide_fifo #(
+            .DEPTH(DEPTH), .DATA_WIDTH(FIFO_VEC_WIDTH),
+            .FRAME_COUNT(FRAME_COUNT), .MAX_FRAME_LEN(MAX_FRAME_LEN)
+        ) u_ps_buffer_fifo (
+            .clk(clk), .rst_n(rst_n), .data_in(matrix_data_vec),
+            .input_valid_i(ia_row_valid && !ia_calc_done),
+            .ia_l1_switch_i(ia_l1_switch), .send_ia_trigger_i(send_ia_trigger),
+            .replay_enable_i(replay_enable), .capacity_fault(capacity_fault),
+            .replay_ready(replay_ready), .data_out(replay_data_vec)
+        );
     end endgenerate
 
-    de_diagonalizer #(
-        .SIZE      (SIZE),
-        .DATA_WIDTH(DATA_WIDTH)
-    ) u_de_diagonalizer (
-        .clk             (clk),
-        .rst_n           (rst_n),
-        .data_in         (data_in),
-        .input_valid_i   (COMPRESS_ENABLED ? ia_row_valid : ia_calc_done),
-        .burst_start_i   (ia_tile_start),
-        .burst_last_i    (ia_l1_switch),
-        .data_out        (de_diag_data_out),
-        .data_valid_o    (de_diag_data_valid),
-        .tile_calc_over_o(de_diag_tile_calc_over),
-        .stream_calc_over_o(de_diag_stream_calc_over)
-    );
-
-    always_comb begin
-        for (int lane_idx = 0; lane_idx < SIZE; lane_idx++) begin
-            data_out[lane_idx]     = COMPRESS_ENABLED ? replay_skew[lane_idx] : fifo_data_out[lane_idx];
-            acc_data_out[lane_idx] = de_diag_data_out[lane_idx];
-        end
-    end
-
-    // acc_data_valid and tile_calc_over are owned only by de_diagonalizer.
-    assign acc_data_valid = de_diag_data_valid && (!COMPRESS_ENABLED || frame_final_q);
-    assign tile_calc_over = de_diag_tile_calc_over && (!COMPRESS_ENABLED || frame_final_q);
-    assign stream_calc_over = de_diag_stream_calc_over && (!COMPRESS_ENABLED || frame_final_q);
+    assign acc_data_valid = ia_row_valid && ia_calc_done;
+    assign tile_calc_over = row_tile_end && ia_calc_done;
+    assign stream_calc_over = ia_l1_switch && ia_calc_done;
 endmodule
 
 module ps_buffer_wide_fifo #(

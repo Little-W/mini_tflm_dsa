@@ -22,7 +22,7 @@ CACHE_CHOICES = (2, 4, 8, 16)
 FRAME_CHOICES = (4, 8, 16, 25)
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "unified-windowed-shared-bank-v2"
+MODEL_VERSION = "dip-shared-bank-v3"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -72,7 +72,7 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
                    total % bank_bytes == 0)
     max_cache = 4 * bank_bytes // (size * size * 2) if enabled else cache
     max_r = max_cache
-    max_frame = max_r * size if compressed else (max_r + 1) * size - 1
+    max_frame = max_r * size
     banks = total // bank_bytes - 1 if enabled else 4
     depth = bank_bytes // 16 if enabled else pool_bytes // POOL_ALIGNMENT
     address_bits = max(1, (depth - 1).bit_length()) if compressed else 0
@@ -93,7 +93,7 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
                 max_ia_bytes=4 * bank_bytes if enabled else initial_ia_bytes,
                 max_r_s8=max_r, max_r_s16=max(1, max_cache // 2),
                 max_frame_rows=max_frame, max_matrix_rows=max_r * size,
-                max_stream_rows=(max_r + 1) * size - 1,
+                max_stream_rows=max_r * size,
                 logical_ps_rows=SHARED_DIRECTORY_ROWS if enabled else
                     max_frame * frames if compressed else (3 * size - 1) * (frames + 1),
                 directory_bits_per_row=3 + rotation_bits + 4 * address_bits if compressed else 0,
@@ -118,9 +118,9 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     and S16 output queues, and eight vector processing elements at SIZE>=8.
     Shared IA storage reads one 128-bit word for compact S8 and two words from
     separate banks for S16. IA and PS use disjoint allocations of the same
-    physical data memory. Diagonal delay arrays are reported separately from
-    addressable memory. Pipeline work registers, DMA descriptor queues and
-    compute registers are counted by the complete-state elaboration.
+    physical data memory. IA, the DiP array and PS transfer complete rows.
+    Pipeline work registers, DMA descriptor queues and compute registers are
+    counted by the complete-state elaboration.
     """
     layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
                              bank_bytes=bank_bytes, bank_count=bank_count)
@@ -169,12 +169,10 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
 
 def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
                          bank_bytes=SHARED_BANK_BYTES, bank_count=None):
-    """Explicit delay arrays that are included in complete sequential state."""
-    layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
-                             bank_bytes=bank_bytes, bank_count=bank_count)
-    bits = {"ps_replay_skew": size * (size - 1) // 2 * 32} if compressed else {}
-    if layout["shared_ia_ps_enabled"]:
-        bits["ia_diagonal_skew"] = size * (size - 1) // 2 * 16
+    """Register groups checked separately within complete sequential state."""
+    memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
+                    bank_bytes=bank_bytes, bank_count=bank_count)
+    bits = {"core_row_metadata": 4 * size + 1}
     return bits
 
 

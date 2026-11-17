@@ -179,6 +179,9 @@ class Simulation {
     const bool done = dut.ext_dma_done;
     const bool granted = dut.load_ia_req && dut.load_ia_granted;
     const bool hit = dut.cache_hit;
+    if (dut.ia_data_valid && dut.send_ia_trigger)
+      require(dut.ps_frame_rows == expected_rows,
+              current_name + ": PS frame length must equal the valid input rows");
     if (dut.prefetch_issue) {
       require(!dut.demand_request, current_name + ": prefetch displaced a demand");
       ++totals.priority_checks;
@@ -242,6 +245,8 @@ class Simulation {
     else if (!dut.load_ia_req) grant_owner = false;
     bool any_value = false;
     for (unsigned lane = 0; lane < 16; ++lane) {
+      require(bool(dut.lane_valid[lane]) == bool(dut.ia_row_valid),
+              current_name + ": every input lane must share the complete-row valid cycle");
       if (dut.lane_valid[lane]) {
         require(checking && output_counts[lane] < expected_rows, current_name + ": unexpected output row");
         const unsigned row = current_p0 + output_counts[lane]++;

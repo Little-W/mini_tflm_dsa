@@ -149,11 +149,12 @@ public:
             auto &expected=sends_expected.front();
             for(unsigned lane=0;lane<16;++lane) {
                 const auto actual=sign16(dut.weight_out[lane]);
-                require(actual==output_value(expected.tag,lane,expected.column),
+                const auto reduction=(expected.column+lane)%16;
+                require(actual==output_value(expected.tag,lane,reduction),
                         "Kernel RAM output differs at lane "+std::to_string(lane)+
                         " column "+std::to_string(expected.column)+" cycle "+std::to_string(cycles)+
                         " actual "+std::to_string(actual)+" expected "+
-                        std::to_string(output_value(expected.tag,lane,expected.column)));
+                        std::to_string(output_value(expected.tag,lane,reduction)));
                 ++checked_values;
             }
             require(bool(dut.weight_sending_done)==(expected.column==0),"Weight done phase differs");

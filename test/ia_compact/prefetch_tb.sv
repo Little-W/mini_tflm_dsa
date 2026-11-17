@@ -31,7 +31,7 @@ module ia_prefetch_tb (
     output logic prefetch_idle, prefetch_enabled, prefetch_launch, prefetch_inflight, prefetch_issue,
     output logic prefetch_pending, demand_complete, demand_request, group_start,
     output logic [31:0] active_valid_cols,
-    output logic ia_data_valid, ia_sending_done,
+    output logic ia_data_valid, ia_sending_done, ia_row_valid,
     output logic [31:0] ps_frame_rows, ps_frame_id,
     output logic ps_frame_init, ps_frame_final
 );
@@ -40,7 +40,7 @@ module ia_prefetch_tb (
         .cfg_cache_blocks(32'd0), .bias_at_end(1'b0), .bias_load_sleep(),
         .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(), .ram_port_wr_mask(),
         .ram_port_rd_en(), .ram_port_rd_addr(), .ram_port_rd_data('{default:'0}),
-        .ia_row_valid(), .ia_is_init_data(), .ia_calc_done(), .ia_tile_start(),
+        .ia_is_init_data(), .ia_calc_done(), .ia_tile_start(),
         .ia_output_pending(), .bias_sleep(), .bias_switch(), .bias_last_loop(), .ia_l1_switch()
     );
     assign idle = (u_loader.state == 2'b00);

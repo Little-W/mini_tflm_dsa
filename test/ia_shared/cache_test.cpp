@@ -150,7 +150,7 @@ void tick(Via_shared_cache_tb& dut) {
     dut.clk = 1;
     dut.eval();
     require(!dut.capacity_fault, "Shared RAM capacity fault");
-    require(dut.shared_valid == dut.local_valid, "Local/shared last-lane valid");
+    require(dut.shared_valid == dut.local_valid, "Local/shared row valid");
     require(dut.shared_init == dut.local_init, "Local/shared init");
     require(dut.shared_final == dut.local_final, "Local/shared final");
     require(dut.shared_tile_done == dut.local_tile_done, "Local/shared tile completion");
@@ -159,7 +159,7 @@ void tick(Via_shared_cache_tb& dut) {
     control_checks += 6;
     for (unsigned lane = 0; lane < 16; ++lane) {
         require(dut.shared_out[lane] == dut.local_out[lane],
-                "Local/shared diagonal value at lane " + std::to_string(lane));
+                "Local/shared row value at lane " + std::to_string(lane));
         ++cycle_value_checks;
     }
     for (unsigned bank = 0; bank < 4; ++bank)
@@ -248,7 +248,7 @@ void read_group(Via_shared_cache_tb& dut, int first, int last, bool init = true,
     dut.l1_is_init = init;
     dut.l1_calc_done = final;
     int completed = 0, tile_completed = 0, first_count = 0;
-    for (int step = 0; step < static_cast<int>(order.size()) + 18; ++step) {
+    for (int step = 0; step < static_cast<int>(order.size()) + 3; ++step) {
         dut.l1_start = step == 0;
         if (concurrent) concurrent(step);
         dut.eval();
@@ -258,11 +258,11 @@ void read_group(Via_shared_cache_tb& dut, int first, int last, bool init = true,
         first_count += dut.shared_tile_start;
         tick(dut);
         for (int lane = 0; lane < 16; ++lane) {
-            const int index = step - 1 - lane;
+            const int index = step - 1;
             const bool valid = index >= 0 && index < static_cast<int>(order.size());
             const auto value = valid ? expected[order[index].first][order[index].second][lane] : 0;
             require(signed16(dut.shared_out[lane]) == value,
-                    "Independent diagonal value, step " + std::to_string(step) +
+                    "Independent row value, step " + std::to_string(step) +
                     ", lane " + std::to_string(lane));
             if (valid) {
                 ++value_checks;
@@ -270,7 +270,7 @@ void read_group(Via_shared_cache_tb& dut, int first, int last, bool init = true,
                 if (inspect) inspect(static_cast<std::int16_t>(value));
             }
             if (lane == 15) {
-                require(bool(dut.shared_valid) == valid, "Last-lane row cycle");
+                require(bool(dut.shared_valid) == valid, "Complete-row valid cycle");
                 require(bool(dut.shared_init) == (valid && init), "Init flag cycle");
                 require(bool(dut.shared_final) == (valid && final), "Final flag cycle");
                 bool expected_tile_done = false;

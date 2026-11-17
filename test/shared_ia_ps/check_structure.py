@@ -4,7 +4,6 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import re
 import subprocess
 
 
@@ -90,26 +89,17 @@ def main():
                     if any(m["width"] == 128 or "payload_ram" in m["name"] for m in memories):
                         raise RuntimeError(f"External store contains a payload memory: {name}")
                 else:
-                    diagonal_bits = 0
                     expected_control = {"l1_last_pipe": (1, 16), "ram_rd_en_d1": (1, 16),
                                         "rd_addr_pipe": ((bank_bytes//4-1).bit_length(), 16), "rd_en_pipe": (1, 16),
                                         "tile_last_pipe": (1, 16)}
                     found_control = set()
                     for memory in memories:
-                        match = re.fullmatch(r"ia_loader_cache_mgr\.g_external_ram\.g_diagonal\[(\d+)\]\.g_delay\.values",
-                                             memory["name"])
-                        if match:
-                            lane = int(match.group(1))
-                            if not 1 <= lane < 16 or (memory["width"], memory["size"]) != (16, lane):
-                                raise RuntimeError(f"IA diagonal delay dimensions differ: {memory}")
-                            diagonal_bits += memory["width"] * memory["size"]
-                        else:
-                            control_name = memory["name"].removeprefix("ia_loader_cache_mgr.")
-                            if control_name not in expected_control or (memory["width"], memory["size"]) != expected_control[control_name]:
-                                raise RuntimeError(f"External IA contains an unexpected memory: {memory}")
-                            found_control.add(control_name)
-                    if diagonal_bits != 1920 or found_control != set(expected_control):
-                        raise RuntimeError("External IA delay or control registers differ")
+                        control_name = memory["name"].removeprefix("ia_loader_cache_mgr.")
+                        if control_name not in expected_control or (memory["width"], memory["size"]) != expected_control[control_name]:
+                            raise RuntimeError(f"External IA contains an unexpected memory: {memory}")
+                        found_control.add(control_name)
+                    if found_control != set(expected_control):
+                        raise RuntimeError("External IA control registers differ")
                 profiles.append(dict(name=name, total_data_bytes=banks*bank_bytes, bank_bytes=bank_bytes, passed=True,
                                      memories=memories, latches=0, command=command,
                                      cell_count=len(cells), script_sha256=digest(script),
