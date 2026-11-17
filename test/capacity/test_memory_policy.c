@@ -8,7 +8,7 @@
 #include "dsa_accel.h"
 #include "dsa_prepared.h"
 
-static uint32_t registers[128], starts, active, hardware_raw_only;
+static uint32_t registers[128], starts, active, hardware_raw_only, hardware_literal_bound;
 static uint32_t hardware_axi_data_bits=32u,hardware_dma_max_bytes=1024u;
 static uint32_t hardware_ps_available=1u;
 static uint32_t hardware_bank_bytes=2048u,hardware_bank_count=7u;
@@ -37,7 +37,8 @@ uint32_t dsa_mmio_read(uint32_t address)
     case NPU_REG_DMA_MAX_BYTES: return hardware_dma_max_bytes;
     case NPU_REG_CONV_CAPS: return (DSA_CONV_CAP_VERSION<<16)|7u;
     case NPU_REG_PS_CAPS: return hardware_ps_available ?
-        (1u<<24)|(16u<<16)|23u|(hardware_raw_only?DSA_PS_CAP_RAW_ONLY:0u):0u;
+        (1u<<24)|(16u<<16)|23u|(hardware_raw_only?DSA_PS_CAP_RAW_ONLY:0u)|
+        (hardware_literal_bound?DSA_PS_CAP_LITERAL_BOUND:0u):0u;
     case NPU_REG_PS_POOL_BYTES: return (hardware_bank_count-1u)*hardware_bank_bytes;
     case NPU_REG_IA_CACHE_BYTES: return hardware_bank_bytes;
     case NPU_REG_SHARED_TOTAL_BYTES: return hardware_bank_count*hardware_bank_bytes;
@@ -55,6 +56,8 @@ static void safe(const dsa_schedule_config_t *c,const dsa_schedule_t *p)
     uint32_t slots=ia*c->shared_bank_bytes/(compact?256u:512u);
     uint32_t literal=(p->ps_control&DSA_PS_CTRL_RAW)?64u:
         gempact_literal_record_bytes(c->depth,c->source_s8,c->lhs_offset,c->rhs_offset);
+    if ((p->ps_control&DSA_PS_CTRL_BOUND_MASK)==DSA_PS_CTRL_BOUND_S16) literal=32u;
+    if ((p->ps_control&DSA_PS_CTRL_BOUND_MASK)==DSA_PS_CTRL_BOUND_S24) literal=48u;
     uint32_t rows=p->frame_rows;
     assert(p->memory_policy_valid && (ia==1u || ia==2u || ia==4u));
     assert(p->ia_cache_bytes+p->ps_pool_bytes==c->shared_total_bytes);
@@ -72,7 +75,12 @@ static void safe(const dsa_schedule_config_t *c,const dsa_schedule_t *p)
         }
         assert(rows<=1024u);
     }
-    if (c->force_raw) assert(p->ps_control&DSA_PS_CTRL_RAW);
+    if (c->force_raw || (c->ps_caps&DSA_PS_CAP_RAW_ONLY)) {
+        assert(p->ps_control&DSA_PS_CTRL_RAW);
+        assert(!(p->ps_control&DSA_PS_CTRL_BOUND_MASK));
+    }
+    else if ((c->ps_caps&DSA_PS_CAP_FRAME_SCHEDULE) && c->depth>c->size)
+        assert(!(p->ps_control&DSA_PS_CTRL_RAW));
     ++checks;
 }
 
@@ -101,6 +109,47 @@ static void planner_checks(void)
                 }
 }
 
+static void literal_bound_checks(void)
+{
+    dsa_schedule_config_t c;
+    dsa_schedule_t p;
+    dsa_schedule_init(&c,1u,784u,64u,16u,4u,16u);
+    c.ps_caps=(1u<<24)|(16u<<16)|23u;c.ps_pool_bytes=12288u;
+    c.ia_cache_bytes=2048u;c.shared_total_bytes=14336u;c.shared_bank_bytes=2048u;
+    c.shared_ia_bank_mask=0x16u;c.ps_directory_rows=1024u;
+    c.source_s8=1u;c.compact_mode_mask=3u;c.lhs_offset=128;c.rhs_tile_packed=1u;
+    const uint32_t sizes[]={0u,32u,48u,64u};
+    for (uint32_t capability=0u;capability<2u;++capability)
+        for (uint32_t i=0u;i<4u;++i)
+            for (uint32_t raw=0u;raw<2u;++raw)
+                for (uint32_t raw_only=0u;raw_only<2u;++raw_only) {
+                    c.ps_caps=((1u<<24)|(16u<<16)|23u)|
+                        (capability?DSA_PS_CAP_LITERAL_BOUND:0u)|
+                        (raw_only?DSA_PS_CAP_RAW_ONLY:0u);
+                    c.ps_literal_bytes=sizes[i];c.force_raw=raw;
+                    assert(dsa_schedule_plan(&c,&p));safe(&c,&p);
+                    uint32_t expected=0u;
+                    if (capability && !raw && !raw_only) {
+                        if(sizes[i]==32u)expected=DSA_PS_CTRL_BOUND_S16;
+                        if(sizes[i]==48u)expected=DSA_PS_CTRL_BOUND_S24;
+                    }
+                    assert((p.ps_control&DSA_PS_CTRL_BOUND_MASK)==expected);
+                }
+    c.shared_ia_bank_mask=1u<<4;c.force_raw=0u;
+    c.ps_caps=(1u<<24)|(16u<<16)|23u|DSA_PS_CAP_LITERAL_BOUND;
+    c.ps_literal_bytes=48u;
+    assert(dsa_schedule_plan(&c,&p));safe(&c,&p);assert(p.ia_bank_count==4u);
+    c.ps_caps&=~DSA_PS_CAP_LITERAL_BOUND;
+    assert(!dsa_schedule_plan(&c,&p));
+    c.ps_caps|=DSA_PS_CAP_LITERAL_BOUND;c.force_raw=1u;
+    assert(!dsa_schedule_plan(&c,&p));
+    c.force_raw=0u;c.ps_caps|=DSA_PS_CAP_RAW_ONLY;
+    assert(!dsa_schedule_plan(&c,&p));
+    c.ps_caps&=~DSA_PS_CAP_RAW_ONLY;c.shared_ia_bank_mask=0x16u;c.ps_literal_bytes=16u;
+    assert(!dsa_schedule_plan(&c,&p));
+    checks+=4u;
+}
+
 static void prepared_checks(void)
 {
     uint32_t initial_starts=starts;
@@ -119,6 +168,7 @@ static void prepared_checks(void)
     dsa_set_ps_force_raw(0u);
     assert(dsa_prepare_matmul_s8(&compressed,&c)==DSA_SUCCESS);
     assert(compressed.memory_policy_valid && compressed.ia_bank_count);
+    assert(!(compressed.ps_control&DSA_PS_CTRL_RAW));
     assert(compressed.ctrl&NPU_CTRL_RHS_TILE_PACKED);
     dsa_set_ps_force_raw(1u);
     assert(dsa_prepare_matmul_s8(&raw,&c)==DSA_SUCCESS);
@@ -155,8 +205,66 @@ static void prepared_checks(void)
     conv.input_base=base;conv.output_base=base+0x40000;
     assert(dsa_conv_s8_execute(&conv)==DSA_SUCCESS);
     assert(starts==initial_starts+4u);
+    c.rows=1u;c.depth=c.input_stride=c.filter_stride=64u;
+    c.channels=c.output_stride=10u;
+    dsa_set_ps_force_raw(0u);
+    assert(dsa_prepare_matmul_s8(&compressed,&c)==DSA_SUCCESS);
+    assert(!(compressed.ps_control&DSA_PS_CTRL_RAW));
+    dsa_set_ps_force_raw(1u);
+    assert(dsa_prepare_matmul_s8(&raw,&c)==DSA_SUCCESS);
+    assert(raw.ps_control&DSA_PS_CTRL_RAW);
+    assert(dsa_prepared_execute(&compressed,memory,memory+0x40000)==DSA_SUCCESS);
+    assert(!(registers[NPU_REG_PS_CONTROL/4u]&DSA_PS_CTRL_RAW));
+    assert(dsa_prepared_execute(&raw,memory,memory+0x40000)==DSA_SUCCESS);
+    assert(registers[NPU_REG_PS_CONTROL/4u]&DSA_PS_CTRL_RAW);
+    hardware_raw_only=1u;dsa_set_ps_force_raw(0u);
+    assert(dsa_prepare_matmul_s8(&repeated,&c)==DSA_SUCCESS);
+    assert(repeated.ps_control&DSA_PS_CTRL_RAW);
+    assert(dsa_prepared_execute(&repeated,memory,memory+0x40000)==DSA_SUCCESS);
+    assert(registers[NPU_REG_PS_CONTROL/4u]&DSA_PS_CTRL_RAW);
+    hardware_raw_only=0u;
+    assert(starts==initial_starts+7u);
+    c.depth=c.input_stride=c.filter_stride=784u;c.channels=c.output_stride=64u;
+    c.input_offset=128;
+    hardware_literal_bound=1u;dsa_set_ps_force_raw(0u);
+    memset(memory+0x10000,0,0x10000);
+    assert(dsa_prepare_matmul_s8(&compressed,&c)==DSA_SUCCESS);
+    assert((compressed.ps_control&DSA_PS_CTRL_BOUND_MASK)==DSA_PS_CTRL_BOUND_S16);
+    assert(mprotect(memory+0x10000,0x10000,PROT_NONE)==0);
+    dsa_set_ps_force_raw(1u);
+    assert(dsa_prepared_execute(&compressed,memory,memory+0x40000)==DSA_SUCCESS);
+    assert(registers[NPU_REG_PS_CONTROL/4u]==compressed.ps_control);
+    assert(dsa_prepare_matmul_s8(&raw,&c)==DSA_SUCCESS);
+    assert((raw.ps_control&(DSA_PS_CTRL_RAW|DSA_PS_CTRL_BOUND_MASK))==DSA_PS_CTRL_RAW);
+    dsa_set_ps_force_raw(0u);hardware_raw_only=1u;
+    assert(dsa_prepare_matmul_s8(&raw,&c)==DSA_SUCCESS);
+    assert((raw.ps_control&(DSA_PS_CTRL_RAW|DSA_PS_CTRL_BOUND_MASK))==DSA_PS_CTRL_RAW);
+    hardware_raw_only=0u;hardware_literal_bound=0u;
+    assert(dsa_prepare_matmul_s8(&repeated,&c)==DSA_SUCCESS);
+    assert(!(repeated.ps_control&DSA_PS_CTRL_BOUND_MASK));
+    assert(mprotect(memory+0x10000,0x10000,PROT_READ|PROT_WRITE)==0);
+    hardware_literal_bound=1u;
+    memset(memory+0x10000,1,0x10000);
+    assert(dsa_prepare_matmul_s8(&repeated,&c)==DSA_SUCCESS);
+    assert((repeated.ps_control&DSA_PS_CTRL_BOUND_MASK)==DSA_PS_CTRL_BOUND_S24);
+    memset(memory+0x10000,127,0x10000);
+    assert(dsa_prepare_matmul_s8(&repeated,&c)==DSA_SUCCESS);
+    assert(!(repeated.ps_control&(DSA_PS_CTRL_RAW|DSA_PS_CTRL_BOUND_MASK)));
+    memset(memory+0x10000,0,0x10000);
+    assert(dsa_prepare_matmul_s8(&repeated,&c)==DSA_SUCCESS);
+    assert(repeated.ps_control==compressed.ps_control && repeated.ia_bank_count==compressed.ia_bank_count);
+    assert(starts==initial_starts+8u);
+    assert(dsa_prepare_conv_s8(&repeated,&conv)==DSA_SUCCESS);
+    assert(repeated.ctrl&NPU_CTRL_HW_CONV);
+    assert((repeated.ps_control&DSA_PS_CTRL_BOUND_MASK)==DSA_PS_CTRL_BOUND_S16);
+    assert(mprotect(memory+0x10000,0x10000,PROT_NONE)==0);
+    assert(dsa_prepared_execute(&repeated,memory,memory+0x40000)==DSA_SUCCESS);
+    assert(registers[NPU_REG_PS_CONTROL/4u]==repeated.ps_control);
+    assert(mprotect(memory+0x10000,0x10000,PROT_READ|PROT_WRITE)==0);
+    assert(starts==initial_starts+9u);
+    hardware_literal_bound=0u;
     assert(munmap(memory,1u<<20)==0);
-    checks+=19u;
+    checks+=57u;
 }
 int main(void)
 {
@@ -171,6 +279,7 @@ int main(void)
             planner_checks();prepared_checks();
         }
     }
+    literal_bound_checks();
     hardware_ps_available=0u;hardware_dma_max_bytes=64u;
     dsa_matrix_query(&limits);
     assert(limits.ps_caps==0u && limits.axi_data_bits==64u && limits.dma_max_bytes==64u);

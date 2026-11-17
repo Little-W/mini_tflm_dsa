@@ -239,6 +239,25 @@ def main():
                     packing_cases += 1
     for dimensions in ((0, 1, 1), (1, 0, 1), (1, 1, 3), (0xffffffff, 0xffffffff, 1), (65536, 65536, 1)):
         assert dll.packed_bytes_oracle(*dimensions) == 0
+    dll.memory_policy_oracle.argtypes = [ctypes.c_uint32] * 6 + [ctypes.POINTER(ctypes.c_uint32)]
+    dll.memory_policy_oracle.restype = ctypes.c_int
+    memory_policy_cases = 0
+    for rows, depth, cols in ((1, 16, 10), (1, 64, 10), (1, 784, 64), (64, 128, 128)):
+        for mode in (0, 1, 2):
+            for force_raw in (0, 1):
+                for raw_only in (0, 1):
+                    values = (ctypes.c_uint32 * 7)()
+                    assert dll.memory_policy_oracle(rows, depth, cols, mode, force_raw, raw_only, values) == 1
+                    ps_control, selected_mode, ia_banks, ia_bytes, ps_bytes, r, w = values
+                    assert mode == 2 or selected_mode == mode
+                    assert ia_banks in (1, 2, 4) and ia_bytes == ia_banks * 2048
+                    assert ia_bytes + ps_bytes == 14336 and r <= ia_banks * 4
+                    assert 1 <= w <= 16
+                    if force_raw or raw_only:
+                        assert ps_control & 1
+                    elif depth > 16:
+                        assert not ps_control & 1
+                    memory_policy_cases += 1
     capability_binary=a.out/"bus_capabilities"
     capability_command=["gcc","-std=c11","-O2","-Wall","-Wextra","-Werror",
         "-DDSA_MMIO_CUSTOM","-ffunction-sections","-fdata-sections",
@@ -252,9 +271,13 @@ def main():
                   output_burst_cases=output_burst_cases,
                   packing_cases=packing_cases, layout_cases=layout_cases,
                   output_merge_configurations=len(output_merge_configs),
-                  tail_read_cases=tail_read_cases,
+                  tail_read_cases=tail_read_cases, memory_policy_cases=memory_policy_cases,
                   source_sha256={str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                    for p in (ROOT / "drivers/dsa_schedule.h", ROOT / "drivers/dsa_matrix.h", ROOT / "drivers/dsa_schedule_impl.h", ROOT / "veri/top_regression/host_schedule.py")})
+                    for p in (ROOT / "drivers/dsa_schedule.h", ROOT / "drivers/dsa_memory_schedule.h",
+                              ROOT / "drivers/dsa_memory.h", ROOT / "drivers/gempact_tiling.h",
+                              ROOT / "drivers/dsa_matrix.h", ROOT / "drivers/dsa_schedule_impl.h",
+                              ROOT / "veri/top_regression/host_schedule.py",
+                              Path(__file__).with_name("schedule_oracle.c"), Path(__file__).resolve())})
     (a.out / "result.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
 

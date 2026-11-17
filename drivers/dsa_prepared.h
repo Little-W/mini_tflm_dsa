@@ -20,7 +20,9 @@ extern "C" {
  * invalidation. Preparing does not require activation addresses. Execution
  * binds fresh activation addresses and checks their full DMA spans. Device
  * replacement or a change to shapes, weights, bias or quantization requires
- * invalidation and preparation before another execution. */
+ * invalidation and preparation before another execution. Supported adaptive
+ * devices derive a PS record bound from the constant weights and the full
+ * legal input interval during preparation; execution uses the saved bound. */
 typedef struct {
     uint32_t valid, input_bytes, output_bytes, ctrl;
     uint32_t spatial, register_count, readonly_count;

@@ -26,6 +26,14 @@ int main(void)
     if (config[0] != 0x504c414eu || config[4] > 64u) return 1;
     npu[0] = 0;
     npu[1] = 4u;
+    const volatile uint32_t *expected = config + 5u + 2u * config[4];
+    if (expected[0] > 16u) return 3;
+    for (uint32_t i = 0u; i < expected[0]; ++i) {
+        const uint32_t address = expected[1u + 3u*i];
+        const uint32_t value = expected[2u + 3u*i];
+        const uint32_t mask = expected[3u + 3u*i];
+        if ((address & 3u) || address > 0x138u || (npu[address/4u] & mask) != value) return 4;
+    }
     for (uint32_t i = 0; i < config[4]; ++i)
         npu[config[5u + 2u * i] / 4u] = config[6u + 2u * i];
     marker(0xc0f10001u);

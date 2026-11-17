@@ -11,7 +11,9 @@ int main(int argc,char **argv) {
     try {
         Vstream_codec_tb dut;
         std::uint64_t cycle=0,checked=0,encoded=0,malformed=0,raw_rows=0,raw_transitions=0;
-        std::array<std::uint64_t,7> opcodes{};
+        std::array<std::uint64_t,8> opcodes{};
+        std::array<std::uint64_t,4> sparse_widths{};
+        std::uint64_t sparse_first_rows=0,sparse_zero_rows=0,sparse_noncontiguous_rows=0;
         auto tick=[&] { dut.clk=0;dut.eval();dut.clk=1;dut.eval();++cycle; };
         dut.rst_n=0;dut.encode_start=0;dut.read_start=0;dut.inject_start=0;
         tick();tick();dut.rst_n=1;
@@ -33,6 +35,15 @@ int main(int argc,char **argv) {
                     raw_transitions+=next_raw!=force_raw;force_raw=next_raw;
                 }
                 auto record=encode(encoder,row,first,force_raw);
+                if (record.opcode==7) {
+                    const unsigned mask=record.bytes[0]|(unsigned(record.bytes[1])<<8);
+                    ++sparse_widths[record.bytes[2]&3U];
+                    sparse_first_rows+=first;sparse_zero_rows+=mask==0;
+                    if (mask) {
+                        const unsigned normalized=mask>>__builtin_ctz(mask);
+                        sparse_noncontiguous_rows+=(normalized&(normalized+1U))!=0;
+                    }
+                }
                 raw_rows+=force_raw;
                 require(decoder.decode(record.opcode,record.bytes,first)==row,"C++ round trip differs");
                 dut.encode_first=first;dut.encode_force_raw=force_raw;
@@ -64,9 +75,10 @@ int main(int argc,char **argv) {
         require(encoded==values.size() && checked==values.size(),"Codec record count differs");
 #ifndef FORCE_RAW
         for (auto count:opcodes) require(count!=0,"An adaptive opcode was not exercised");
+        for (auto count:sparse_widths) require(count!=0,"A sparse signed width was not exercised");
+        require(sparse_first_rows && sparse_zero_rows && sparse_noncontiguous_rows,"Sparse row coverage is incomplete");
 #endif
         std::vector<std::tuple<unsigned,bool,std::vector<std::uint8_t>>> invalid;
-        invalid.emplace_back(7,false,std::vector<std::uint8_t>{});
         invalid.emplace_back(0,true,std::vector<std::uint8_t>{});
         invalid.emplace_back(4,true,std::vector<std::uint8_t>(16));
         auto bad=std::vector<std::uint8_t>(16);bad[0]=31;invalid.emplace_back(4,false,bad);
@@ -75,6 +87,18 @@ int main(int argc,char **argv) {
         bad.assign(16,0);bad[0]=0x40;invalid.emplace_back(4,false,bad);
         bad.assign(16,0);bad[0]=0x40;bad[2]=0x40;bad[15]=0x80;invalid.emplace_back(4,false,bad);
         bad.assign(16,0);bad[0]=0xde;bad[1]=0xff;bad[2]=0xff;invalid.emplace_back(4,false,bad);
+        auto sparse_packet=[](unsigned mask,unsigned width,const std::vector<std::uint32_t> &values) {
+            ps_codec::BitWriter writer;writer.write(mask,16);writer.write(width/8-1,2);
+            for (auto value:values) writer.write(value,width);
+            writer.bytes.resize(16,0);return writer.bytes;
+        };
+        bad.assign(16,0);bad[0]=0xff;bad[1]=0xff;invalid.emplace_back(7,true,bad);
+        bad=sparse_packet(0x8001,8,{1,127});bad[15]=0x80;invalid.emplace_back(7,false,bad);
+        bad=sparse_packet(0x0081,16,{1,127});invalid.emplace_back(7,true,bad);
+        bad=sparse_packet(0x0401,8,{0,1});invalid.emplace_back(7,false,bad);
+        bad=sparse_packet(0,16,{});invalid.emplace_back(7,true,bad);
+        bad=sparse_packet(0x8888,24,{0x7fffff,0x800000,0x7fffff,0x800000});
+        bad[2]|=3;invalid.emplace_back(7,false,bad);
         for (const auto &[opcode,first,packet]:invalid) {
             bool rejected=false;
             try { ps_adaptive::Decoder reference;reference.decode(opcode,packet,first); }
@@ -100,8 +124,12 @@ int main(int argc,char **argv) {
         std::cout<<"{\"passed\":true,\"rows\":"<<checked<<",\"int32_values\":"<<checked*16
                  <<",\"packet_bytes_checked\":"<<encoded*64<<",\"malformed_records\":"<<malformed
                  <<",\"runtime_raw_rows\":"<<raw_rows<<",\"runtime_raw_transitions\":"<<raw_transitions
+                 <<",\"sparse_first_rows\":"<<sparse_first_rows<<",\"sparse_zero_rows\":"<<sparse_zero_rows
+                 <<",\"sparse_noncontiguous_rows\":"<<sparse_noncontiguous_rows<<",\"sparse_widths\":[";
+        for (unsigned i=0;i<4;++i) std::cout<<(i ? "," : "")<<sparse_widths[i];
+        std::cout<<"]"
                  <<",\"encoder_latency\":3,\"decoder_latency\":4,\"initiation_interval\":1,\"opcodes\":[";
-        for (unsigned i=0;i<7;++i) std::cout<<(i ? "," : "")<<opcodes[i];
+        for (unsigned i=0;i<8;++i) std::cout<<(i ? "," : "")<<opcodes[i];
         std::cout<<"]}\n";
     } catch (const std::exception &error) { std::cerr<<error.what()<<"\n";return 1; }
 }

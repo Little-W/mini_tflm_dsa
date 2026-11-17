@@ -394,6 +394,7 @@ shared-memory-test:
 	$(PYTHON) test/shared_ia_ps/run.py --verilator '$(VERILATOR)' --force-raw --out '$(PS_VERIFY_DIR)/shared_store_raw'
 	$(PYTHON) test/capacity/run_shared_bank_registers.py --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/shared_registers'
 	$(PYTHON) test/ps_compression/run_shared_npu.py --verilator '$(VERILATOR)' --jobs '$(CONV_JOBS)' --out '$(PS_VERIFY_DIR)/shared_npu'
+	$(PYTHON) test/ps_compression/run_literal_bound_npu.py --sim '$(PS_VERIFY_DIR)/shared_npu/sim' --out '$(PS_VERIFY_DIR)/literal_bound_npu'
 
 shared-memory-structure:
 	$(PYTHON) test/shared_ia_ps/check_structure.py --yosys '$(YOSYS)' --out '$(PS_VERIFY_DIR)/shared_structure'

@@ -34,7 +34,7 @@ int main(void)
                 "Format bound differs from the integer product reference");
         ++format_checks;
     }
-    for(uint32_t cap=3;cap<=4u;++cap)
+    for(uint32_t cap=2;cap<=4u;++cap)
     for(uint32_t rows=1;rows<=128u;++rows)
     for(uint32_t start=0;start<4u;++start)
     for(uint32_t pattern=0;pattern<8u;++pattern) {
@@ -53,7 +53,7 @@ int main(void)
     for(uint32_t literal=32u;literal<=64u;literal+=16u)
     for(uint32_t rows=1u;rows<=128u;++rows)
     for(uint32_t w=1u;w<=64u;++w) {
-        uint32_t cap=literal==64u?4u:3u,frame=(cap*rows+3u)/4u;
+        uint32_t cap=literal/16u,frame=(cap*rows+3u)/4u;
         uint32_t depth_cases[]={1u,frame,frame*w-1u,frame*w,rows*w};
         for(uint32_t t=0;t<sizeof(depth_cases)/sizeof(depth_cases[0]);++t) {
             uint32_t depth=depth_cases[t];
@@ -65,7 +65,7 @@ int main(void)
             q.estimated_record_bytes=32u;q.literal_record_bytes=literal;
             int expected=(w&(w-1u))==0u&&frame*w<=depth;
             require(gempact_device_candidate(&q,mode,8u,w,0u,0u,&p)==expected,
-                    "S24 long eligibility differs from the per-frame bank bound");
+                    "Literal long eligibility differs from the per-frame bank bound");
             expected=(w&(w-1u))==0u&&rows*w<=depth;
             require(gempact_device_candidate(&q,mode,8u,w,0u,1u,&p)==expected,
                     "RAW long eligibility differs from the four-word row bound");
@@ -77,7 +77,7 @@ int main(void)
     for(uint32_t literal=32u;literal<=64u;literal+=16u)
     for(uint32_t estimate=16u;estimate<=64u;estimate+=16u)
     for(uint32_t rows=1u;rows<=64u;++rows) {
-        uint32_t cap=literal==64u?64u:48u;
+        uint32_t cap=literal;
         uint32_t reserved=(cap/16u*rows+3u)/4u;
         uint32_t record=estimate<cap?estimate:cap;
         uint32_t occupied=(cap+(rows-1u)*record+63u)/64u;

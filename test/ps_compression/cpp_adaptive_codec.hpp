@@ -30,6 +30,7 @@ inline unsigned length(unsigned opcode) {
     if (!opcode) return 0;
     if (opcode<=3) return 16*(opcode+1);
     if (opcode<=6) return 16*(opcode-3);
+    if (opcode==7) return 16;
     throw std::runtime_error("Invalid adaptive PS opcode");
 }
 
@@ -103,6 +104,19 @@ inline Variable variable(const Input &input,bool rice,bool span,bool actual_valu
     return variable(input,span);
 }
 
+inline Variable sparse(const Row &row) {
+    unsigned mask=0,width=0;
+    for (unsigned lane=0;lane<16;++lane) if (row[lane]) {
+        mask|=1U<<lane;
+        width=std::max(width,ps_codec::signed_width(row[lane]));
+    }
+    width=std::max(8U,((width+7U)/8U)*8U);
+    ps_codec::BitWriter writer;
+    writer.write(mask,16);writer.write(width/8U-1U,2);
+    for (auto value:row) if (value) writer.write(static_cast<std::uint32_t>(value),width);
+    return {std::move(writer.bytes),static_cast<unsigned>(writer.bits)};
+}
+
 class Encoder {
     Row previous{};
 public:
@@ -130,6 +144,12 @@ public:
                 }
             }
         }
+        auto independent=sparse(row);
+        if (independent.bits<=128 && !selected.bytes.empty()) {
+            const unsigned useful=independent.bytes.size();
+            independent.bytes.resize(16,0);
+            selected={7,std::move(independent.bytes),useful};
+        }
         previous=row;
         return selected;
     }
@@ -148,6 +168,18 @@ public:
             row=previous;
         } else if (opcode<=3) {
             row=ps_codec::fixed_decode({std::uint8_t(opcode==1 ? ps_codec::S16 : opcode==2 ? ps_codec::S24 : ps_codec::RAW),bytes});
+        } else if (opcode==7) {
+            ps_codec::BitReader reader(bytes);
+            const unsigned mask=reader.read(16),width=(reader.read(2)+1U)*8U;
+            require(18U+__builtin_popcount(mask)*width<=128U,"Sparse row exceeds one word");
+            unsigned actual_width=0;
+            for (unsigned lane=0;lane<16;++lane) if (mask&(1U<<lane)) {
+                row[lane]=ps_codec::sign_extend(reader.read(width),width);
+                require(row[lane]!=0,"Sparse mask selects a zero value");
+                actual_width=std::max(actual_width,ps_codec::signed_width(row[lane]));
+            }
+            require(width==std::max(8U,((actual_width+7U)/8U)*8U),"Sparse width is not minimal");
+            while (reader.bits<128) require(!reader.read(1),"Sparse row has nonzero padding");
         } else {
             require(!first_in_frame,"Adaptive frame begins with a dependent record");
             ps_codec::BitReader reader(bytes);

@@ -128,6 +128,7 @@ module ps_frame_store #(
                 4: opcode_words=1;
                 5: opcode_words=2;
                 6: opcode_words=3;
+                7: opcode_words=1;
                 default: opcode_words=0;
             endcase
         end
@@ -492,7 +493,8 @@ module ps_frame_store #(
                     capacity_fault<=1;
                 input_ended<=1;
             end
-            if (encoder_done && (!encode_commit_valid || encode_commit_words>4 || encode_commit_opcode==7))
+            if (encoder_done && (!encode_commit_valid || encode_commit_words>4 ||
+                                 encode_commit_words!=opcode_words(encode_commit_opcode)))
                 capacity_fault<=1;
             if (encode_commit_valid) begin
                 commit_count<=commit_count+1'b1;
@@ -506,7 +508,7 @@ module ps_frame_store #(
                 ram_read_opcode<=prefetch_opcode;
                 ram_read_words<=prefetch_words;
                 ram_read_rotation<=read_rotation;
-                if (prefetch_opcode==7 || (read_index==0 && (prefetch_opcode==0 || prefetch_opcode>=4)))
+                if (read_index==0 && (prefetch_opcode==0 || (prefetch_opcode>=4 && prefetch_opcode<=6)))
                     capacity_fault<=1;
             end
             if (decoded_write_en) begin

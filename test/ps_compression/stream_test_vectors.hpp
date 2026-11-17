@@ -74,6 +74,29 @@ inline std::vector<Row> frame(unsigned count,unsigned pattern,std::mt19937 &rand
 inline std::vector<std::pair<Row,bool>> codec_rows() {
     std::mt19937 random(0x629fe17U);
     std::vector<std::pair<Row,bool>> rows;
+    for (unsigned byte_width=1;byte_width<=4;++byte_width) {
+        const unsigned bits=byte_width*8;
+        const auto positive=ps_codec::sign_extend(bits==32 ? 0x7fffffffU : (1U<<(bits-1))-1U,bits);
+        const auto negative=ps_codec::sign_extend(1U<<(bits-1),bits);
+        for (unsigned count=0;count<=16;++count) {
+            Row row{};
+            for (unsigned lane=0;lane<count;++lane)
+                row[(lane*5)%16]=lane%2 ? negative : positive;
+            rows.emplace_back(row,true);
+            rows.emplace_back(row,false);
+            Row next=row;
+            next[15]=next[15] ? 0 : negative;
+            rows.emplace_back(next,false);
+            rows.emplace_back(Row{},false);
+        }
+    }
+    for (unsigned sample=0;sample<2048;++sample) {
+        Row row{};
+        const unsigned count=random()%17,bits=(1+random()%4)*8;
+        for (unsigned lane=0;lane<count;++lane)
+            row[(lane*5+sample)%16]=ps_codec::sign_extend(random(),bits);
+        rows.emplace_back(row,sample%19==0);
+    }
     for (unsigned pattern=0;pattern<7;++pattern)
         for (unsigned count:{1U,2U,3U,16U,17U,31U,40U,47U,128U}) {
             const auto values=frame(count,pattern,random);

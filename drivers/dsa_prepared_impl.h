@@ -2,6 +2,7 @@
 #ifndef DSA_PREPARED_IMPL_H
 #define DSA_PREPARED_IMPL_H
 #include "dsa_prepared.h"
+#include "dsa_ps_bound.h"
 
 #define DSA_PREPARED_START (1u << 0)
 #define DSA_PREPARED_S16_INPUT (1u << 1)
@@ -57,6 +58,18 @@ static uint64_t dsa_prepared_operand_bound(int32_t offset)
     return lo > hi ? lo : hi;
 }
 
+static uint32_t dsa_prepared_ps_bound(const dsa_matrix_limits_t *limits,
+    uint32_t weights, uint32_t channels, uint32_t depth, uint32_t stride,
+    uint32_t packed, int32_t input_offset, int32_t weight_offset)
+{
+    const uint32_t required=DSA_PS_CAP_STORE|DSA_PS_CAP_FRAME_SCHEDULE|DSA_PS_CAP_LITERAL_BOUND;
+    if ((limits->ps_caps>>24)!=DSA_PS_CAP_VERSION ||
+        (limits->ps_caps&required)!=required ||
+        (limits->ps_caps&DSA_PS_CAP_RAW_ONLY) || dsa_get_ps_force_raw()) return 0u;
+    return dsa_ps_bound_s8((const void *)(uintptr_t)weights,channels,depth,stride,
+                           packed,input_offset,weight_offset);
+}
+
 static int dsa_prepared_quantization(uint32_t channels, uint64_t bound,
                                      uint32_t bias_base, uint32_t mult_base,
                                      uint32_t shift_base, int per_channel,
@@ -108,7 +121,7 @@ uint32_t dsa_prepare_conv_s8(dsa_prepared_t *p, const dsa_conv_s8_config_t *c)
     dsa_schedule_t schedule;
     dsa_matrix_limits_t limits;
     gempact_tiling_t tiling;
-    uint32_t status, n, rows, caps;
+    uint32_t status, n, rows, caps, ps_literal_bytes;
     uint64_t input_bytes, output_bytes, filter_bytes;
     dsa_prepared_invalidate(p);
     if (!p || !c) return DSA_ERR_NULL_PTR;
@@ -166,7 +179,10 @@ uint32_t dsa_prepare_conv_s8(dsa_prepared_t *p, const dsa_conv_s8_config_t *c)
         (DSA_CONV_CAP_S8 | DSA_CONV_CAP_NARROW_READ) ||
         (c->dataflow_mode==DSA_SCHEDULE_IS && !(caps & DSA_CONV_CAP_IS))) return DSA_ERR_UNSUPPORTED;
     dsa_matrix_query(&limits);
-    status=dsa_conv_plan(c,&limits,(caps&DSA_CONV_CAP_IS)!=0u,&schedule);
+    ps_literal_bytes=dsa_prepared_ps_bound(&limits,c->filter_base,c->output_channels,n,n,
+        c->rhs_tile_packed,c->input_offset,0);
+    status=dsa_conv_plan_with_ps_bound(c,&limits,(caps&DSA_CONV_CAP_IS)!=0u,
+        ps_literal_bytes,&schedule);
     if (status!=DSA_SUCCESS) return status;
     tiling=schedule.tiling;
     p->memory_policy_valid=schedule.memory_policy_valid;
@@ -327,6 +343,8 @@ uint32_t dsa_prepare_matmul_s8(dsa_prepared_t *p,
     planning.lhs_tile_packed=c->lhs_tile_packed;planning.rhs_tile_packed=c->rhs_tile_packed;
     planning.source_s8=1u;planning.lhs_offset=c->input_offset;planning.rhs_offset=c->filter_offset;
     planning.compact_mode_mask=3u;
+    planning.ps_literal_bytes=dsa_prepared_ps_bound(&limits,c->filter_base,c->channels,c->depth,
+        c->filter_stride,c->rhs_tile_packed,c->input_offset,c->filter_offset);
     if (!dsa_schedule_cached_plan(&planning,&schedule)) return DSA_ERR_INVALID_DIM;
     tiling=schedule.tiling;
     p->memory_policy_valid=schedule.memory_policy_valid;

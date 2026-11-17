@@ -1,8 +1,30 @@
 #!/usr/bin/env python3
 """Verify all addressable INT32 frame events emitted by the SoC observer."""
+import gzip
 import hashlib
 from pathlib import Path
 import re
+
+
+def event_lines(path: Path, content_hash):
+    if not path.exists():
+        path = path.with_name(path.name + ".gz")
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rb") as stream:
+        for raw in stream:
+            content_hash.update(raw)
+            yield raw.decode("utf-8").rstrip("\r\n")
+
+
+def event_digest(path: Path):
+    if not path.exists():
+        path = path.with_name(path.name + ".gz")
+    opener = gzip.open if path.suffix == ".gz" else open
+    result = hashlib.sha256()
+    with opener(path, "rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            result.update(chunk)
+    return result.hexdigest()
 
 
 def verify(path: Path, log: str) -> dict:
@@ -11,8 +33,9 @@ def verify(path: Path, log: str) -> dict:
     writes = reads = discarded = frames = 0
     write_hash = hashlib.sha256()
     read_hash = hashlib.sha256()
+    content_hash = hashlib.sha256()
     header = None
-    for ordinal, line in enumerate(path.read_text().splitlines()):
+    for ordinal, line in enumerate(event_lines(path, content_hash)):
         fields = dict(re.findall(r"(\w+)=([^ ]+)", line))
         kind = line.split()[0]
         if ordinal == 0:
@@ -77,4 +100,4 @@ def verify(path: Path, log: str) -> dict:
         raise ValueError("PS frame recovery is incomplete")
     return {"passed": True, "summary": summary,
             "write_data_sha256": write_hash.hexdigest(), "read_data_sha256": read_hash.hexdigest(),
-            "event_file_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            "event_file_sha256": content_hash.hexdigest()}

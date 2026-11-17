@@ -44,6 +44,26 @@ int schedule_defaults(uint32_t *words, size_t count)
     return 1;
 }
 
+int memory_policy_oracle(uint32_t rows,uint32_t depth,uint32_t cols,
+    uint32_t mode,uint32_t force_raw,uint32_t raw_only,uint32_t *values)
+{
+    dsa_schedule_config_t c;
+    dsa_schedule_t p;
+    dsa_schedule_init(&c,rows,depth,cols,16u,4u,16u);
+    c.ps_caps=(1u<<24)|(16u<<16)|23u|(raw_only?DSA_PS_CAP_RAW_ONLY:0u);
+    c.ps_pool_bytes=12288u;c.ia_cache_bytes=2048u;
+    c.shared_total_bytes=14336u;c.shared_bank_bytes=2048u;
+    c.shared_ia_bank_mask=0x16u;c.ps_directory_rows=1024u;
+    c.source_s8=1u;c.lhs_offset=128;c.compact_mode_mask=3u;
+    c.rhs_tile_packed=1u;c.has_bias=c.per_channel=1u;
+    c.flow=mode;c.force_raw=force_raw;
+    if(!dsa_schedule_plan(&c,&p))return 0;
+    values[0]=p.ps_control;values[1]=p.dataflow_mode;
+    values[2]=p.ia_bank_count;values[3]=p.ia_cache_bytes;values[4]=p.ps_pool_bytes;
+    values[5]=p.tiling.ia_reuse;values[6]=p.tiling.w_reuse;
+    return 1;
+}
+
 uint64_t write_requests_oracle(const uint32_t *words, size_t count,
     uint32_t mode, uint32_t r, uint32_t w)
 {

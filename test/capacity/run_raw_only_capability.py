@@ -16,6 +16,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from scripts.capacity import elaboration
+from scripts.capacity.config import axi_data_width
 
 
 def digest(path):
@@ -119,6 +120,7 @@ def hardware_checks(args, out):
     dependencies = set(sources)
     dependencies.update((ROOT / "rtl/npu").rglob("*.svh"))
     dependencies.update((Path(__file__).resolve(), ROOT / "scripts/capacity/elaboration.py",
+                         ROOT / "scripts/capacity/model.py", ROOT / "scripts/capacity/config.py",
                          ROOT / "veri/flist/dut_axil.f", ROOT / "test/capacity/tb_raw_only_caps.sv"))
     before = {str(p.relative_to(ROOT)): digest(p) for p in sorted(dependencies)}
     reports = []
@@ -129,6 +131,7 @@ def hardware_checks(args, out):
         command = [args.verilator, "--json-only", "--assert", "-DSYNTHESIS", "-DASIC_SYNTHESIS",
                    "-Wno-fatal", "--top-module", "npu_axil_top", "--json-only-output", str(tree_path),
                    "--Mdir", str(directory / "obj"), "-GDATA_WIDTH=16", "-GWEIGHT_WIDTH=16",
+                   f"-GBUS_WIDTH={args.bus_width}", "-GSHARED_BANK_BYTES=2048", "-GSHARED_BANK_COUNT=7",
                    "-GSIZE=16", "-GIA_CACHE_BLOCKS=4", "-GPS_FRAME_COUNT=16", "-GAXI_READ_OUTSTANDING=4",
                    "-GENABLE_VECTOR_ENGINE=1", "-GVECTOR_PE_COUNT=8", "-DGEMPACT_PS_COMPRESS=1",
                    "-DGEMMORA_PS_POOL_BYTES=12288", "-I" + str(ROOT / "rtl/npu/gempact"),
@@ -147,8 +150,12 @@ def hardware_checks(args, out):
         shared_mask = parameter(registers, "SHARED_IA_BANK_MASK")
         directory_rows = parameter(registers, "PS_DIRECTORY_ROWS")
         required_raw = parameter(core, "PS_REQUIRE_RAW_CAPACITY")
-        if (caps != 0x01100017 | (raw << 3) or register_caps != caps or
+        if (caps != (0x01100037 | (raw << 3)) or register_caps != caps or
                 parameter(top, "PS_RAW_ONLY") != raw or required_raw != raw or
+                parameter(top, "BUS_WIDTH") != args.bus_width or
+                parameter(core, "BUS_WIDTH") != args.bus_width or
+                parameter(registers, "AXI_DATA_BITS") != args.bus_width or
+                parameter(registers, "DMA_MAX_BYTES") != 256 * (args.bus_width // 8) or
                 pool != 12288 or ia != 2048 or shared_total != 14336 or
                 shared_bank != 2048 or shared_mask != 0x16 or directory_rows != 1024):
             raise ValueError(f"Hardware capability mismatch: {name}")
@@ -156,7 +163,8 @@ def hardware_checks(args, out):
         counts = inventory["module_instances"]
         if counts.get("compute_core") != 1 or counts.get("ws_systolic_array") != 1:
             raise ValueError("Expected one shared compute array")
-        report = dict(passed=True, profile=name, ps_caps=caps, ps_caps_hex=f"0x{caps:08x}",
+        report = dict(passed=True, profile=name, bus_width=args.bus_width,
+                      ps_caps=caps, ps_caps_hex=f"0x{caps:08x}",
                       register_ps_caps=register_caps, ps_require_raw_capacity=required_raw,
                       pool_bytes=pool, ia_bytes=ia, command=command,
                       shared_total_bytes=shared_total, shared_bank_bytes=shared_bank,
@@ -177,6 +185,7 @@ def hardware_checks(args, out):
                "-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096",
                f'-GCAP_NORMAL={reports[0]["ps_caps"]}', f'-GCAP_GEMMORA_RAW={reports[1]["ps_caps"]}',
                f'-GCAP_LEGACY_RAW={reports[2]["ps_caps"]}',
+               f'-GAXI_DATA_BITS={args.bus_width}',
                str(ROOT / "rtl/npu/conv/00_conv_im2col_pkg.sv"),
                str(ROOT / "rtl/axi_top/npu_axil_reg_if.sv"),
                str(ROOT / "test/capacity/tb_raw_only_caps.sv")]
@@ -206,16 +215,19 @@ def main():
     parser.add_argument("--out", type=Path, default=ROOT / "build/capacity/raw_only_capability")
     parser.add_argument("--cc", default="cc")
     parser.add_argument("--verilator", default="verilator")
+    parser.add_argument("--bus-width", type=int, choices=(32, 64))
+    parser.add_argument("--config", type=Path)
     parser.add_argument("--keep-tree", action="store_true")
     args = parser.parse_args()
     args.cc = shutil.which(args.cc) or args.cc
     args.verilator = shutil.which(args.verilator) or args.verilator
+    args.bus_width = axi_data_width(args.bus_width, args.config)
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     start = time.monotonic()
     software = software_checks(args, out)
     hardware = hardware_checks(args, out)
-    report = dict(passed=True, software=software, hardware=hardware,
+    report = dict(passed=True, bus_width=args.bus_width, software=software, hardware=hardware,
                   configurations=sum(row["configurations"] for row in software),
                   submissions=sum(row["submissions"] for row in software),
                   plan_comparisons=sum(row["plan_comparisons"] for row in software),

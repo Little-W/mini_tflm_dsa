@@ -53,7 +53,7 @@ public:
     std::uint64_t simultaneous=0,same_address=0,bypasses=0,physical_fifo_writes=0,physical_fifo_reads=0;
     std::uint64_t consecutive_commits=0,consecutive_replays=0,last_commit=UINT64_MAX,last_replay=UINT64_MAX;
     std::uint64_t directory_pressure=0,reconfigurations=0,invalid_cases=0,reset_cases=0;
-    std::array<std::uint64_t,7> opcode_counts{};
+    std::array<std::uint64_t,8> opcode_counts{};
     std::uint64_t expected_replay_start=UINT64_MAX;
     unsigned expected_replay_length=0;
 
@@ -481,6 +481,6 @@ int main() {
             <<",\"pressure_checks\":"<<check.pressure_checks<<",\"directory_pressure_checks\":"<<check.directory_pressure
             <<",\"task_reconfigurations\":"<<check.reconfigurations<<",\"invalid_cases\":"<<check.invalid_cases
             <<",\"pipeline_reset_cases\":"<<check.reset_cases<<",\"opcodes\":[";
-        for(unsigned i=0;i<7;++i)std::cout<<(i?",":"")<<check.opcode_counts[i];std::cout<<"]}\n";
+        for(unsigned i=0;i<8;++i)std::cout<<(i?",":"")<<check.opcode_counts[i];std::cout<<"]}\n";
     } catch(const std::exception& error) {std::cerr<<error.what()<<'\n';return 1;}
 }

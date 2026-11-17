@@ -19,6 +19,8 @@ module ps_adaptive_encoder (
     reg [2:0] valid;
     reg [511:0] s1_row, s1_folded;
     reg [15:0] s1_mask;
+    reg [15:0] s1_nonzero_mask;
+    reg [1:0] s1_sparse_width;
     reg [4:0] s1_k;
     reg [2:0] s1_literal;
     reg s1_first, s1_force_raw;
@@ -34,14 +36,18 @@ module ps_adaptive_encoder (
 
     reg [511:0] input_folded;
     reg [15:0] input_mask;
+    reg [15:0] input_nonzero_mask;
+    reg [1:0] input_sparse_width;
     reg [4:0] input_k;
     reg [2:0] input_literal;
-    reg input_s16, input_s24;
+    reg input_s8, input_s16, input_s24;
     reg [31:0] difference, folded;
     integer max_width, width, i, bit_index;
     always @* begin
         input_folded = 0;
         input_mask = 0;
+        input_nonzero_mask = 0;
+        input_s8 = 1;
         input_s16 = 1;
         input_s24 = 1;
         max_width = 0;
@@ -53,10 +59,13 @@ module ps_adaptive_encoder (
             folded = (difference << 1) ^ (32'b0 - {31'b0,difference[31]});
             input_folded[i*32 +: 32] = folded;
             input_mask[i] = (difference != 0);
+            input_nonzero_mask[i] = (row_data[i*32 +: 32] != 0);
             width = 0;
             for (bit_index = 0; bit_index < 32; bit_index = bit_index + 1)
                 if (folded[bit_index]) width = bit_index + 1;
             if (width > max_width) max_width = width;
+            if (row_data[i*32+8 +: 24] != {24{row_data[i*32+7]}})
+                input_s8 = 0;
             if (row_data[i*32+16 +: 16] != {16{row_data[i*32+15]}})
                 input_s16 = 0;
             if (row_data[i*32+24 +: 8] != {8{row_data[i*32+23]}})
@@ -64,6 +73,7 @@ module ps_adaptive_encoder (
         end
         input_k = max_width > 2 ? 5'(max_width - 2) : 5'd0;
         input_literal = input_s16 ? 3'd1 : input_s24 ? 3'd2 : 3'd3;
+        input_sparse_width = input_s8 ? 2'd0 : input_s16 ? 2'd1 : input_s24 ? 2'd2 : 2'd3;
     end
 
     reg [511:0] choose_prefix;
@@ -73,6 +83,9 @@ module ps_adaptive_encoder (
     integer first_lane, last_lane, mask_bits, span_bits, mask_words;
     integer span_words, position, q, lane;
     reg choose_span;
+    reg [511:0] sparse_prefix;
+    reg [31:0] sparse_value_mask;
+    integer sparse_width, sparse_bits;
     always @* begin
         choose_prefix = 0;
         choose_positions = 0;
@@ -81,12 +94,24 @@ module ps_adaptive_encoder (
         choose_opcode = s1_literal;
         choose_words = s1_literal + 3'd1;
         choose_span = 0;
+        sparse_prefix = 0;
+        sparse_prefix[15:0] = s1_nonzero_mask;
+        sparse_prefix[17:16] = s1_sparse_width;
+        sparse_width = (int'(s1_sparse_width) + 1) * 8;
+        sparse_bits = 18;
+        sparse_value_mask = 32'hffffffff >> (32 - sparse_width);
         first_lane = 16;
         last_lane = 0;
         mask_bits = 22;
         span_bits = 14;
         q = 0;
         for (lane = 0; lane < 16; lane = lane + 1) begin
+            if (s1_nonzero_mask[lane]) begin
+                if (sparse_bits + sparse_width <= 128)
+                    sparse_prefix = sparse_prefix |
+                        ({480'b0,(s1_row[lane*32 +: 32] & sparse_value_mask)} << sparse_bits);
+                sparse_bits = sparse_bits + sparse_width;
+            end
             if (s1_mask[lane]) begin
                 if (first_lane == 16) first_lane = lane;
                 last_lane = lane;
@@ -136,6 +161,14 @@ module ps_adaptive_encoder (
                     end else choose_prefix[21:6] = s1_mask;
                 end
             end
+        end
+        // Opcode 7 is one independent word: a lane mask, byte width and values.
+        // Prefer it to an equally sized dependent record; COPY remains smaller.
+        if (sparse_bits <= 128 && choose_words != 0) begin
+            choose_opcode = 3'd7;
+            choose_words = 3'd1;
+            choose_mask = 0;
+            choose_prefix = sparse_prefix;
         end
 `ifdef PS_FORCE_RAW
         choose_opcode = 3;
@@ -198,6 +231,7 @@ module ps_adaptive_encoder (
             words <= 0;
             packet <= 0;
             s1_row <= 0; s1_folded <= 0; s1_mask <= 0;
+            s1_nonzero_mask <= 0; s1_sparse_width <= 0;
             s1_k <= 0; s1_literal <= 0; s1_first <= 0; s1_force_raw <= 0;
             s2_folded <= 0; s2_prefix <= 0; s2_positions <= 0;
             s2_mask <= 0; s2_k <= 0; s2_opcode <= 0; s2_words <= 0;
@@ -212,6 +246,8 @@ module ps_adaptive_encoder (
                 s1_row <= row_data;
                 s1_folded <= input_folded;
                 s1_mask <= input_mask;
+                s1_nonzero_mask <= input_nonzero_mask;
+                s1_sparse_width <= input_sparse_width;
                 s1_k <= input_k;
                 s1_literal <= input_literal;
                 s1_first <= row_first;
@@ -317,15 +353,46 @@ module ps_adaptive_decoder (
     reg [511:0] input_values;
     reg input_fault;
     integer input_position, span_first, span_count, input_lane;
+    integer sparse_width;
+    reg [31:0] sparse_value;
+    reg sparse_width_required;
     always @* begin
         input_mask = 0;
         input_limit = 0;
         input_values = 0;
-        input_fault = (opcode == 7) || (row_first && (opcode == 0 || opcode >= 4));
+        input_fault = row_first && (opcode == 0 || (opcode >= 4 && opcode <= 6));
         input_position = 0;
+        sparse_width = (int'(packet[17:16]) + 1) * 8;
+        sparse_value = 0;
+        sparse_width_required = packet[17:16] == 0;
         span_first = int'(packet[9:6]);
         span_count = int'(packet[13:10])+1;
-        if (opcode >= 4 && opcode <= 6) begin
+        if (opcode == 7) begin
+            input_limit = 10'd128;
+            input_position = 18;
+            for (input_lane = 0; input_lane < 16; input_lane = input_lane + 1) begin
+                if (packet[input_lane]) begin
+                    if (input_position + sparse_width > 128) input_fault = 1;
+                    else begin
+                        sparse_value = 32'(packet >> input_position);
+                        case (packet[17:16])
+                            2'd0: sparse_value = {{24{sparse_value[7]}},sparse_value[7:0]};
+                            2'd1: sparse_value = {{16{sparse_value[15]}},sparse_value[15:0]};
+                            2'd2: sparse_value = {{8{sparse_value[23]}},sparse_value[23:0]};
+                            default: sparse_value = sparse_value;
+                        endcase
+                        if (sparse_value == 0) input_fault = 1;
+                        if ((packet[17:16] == 1 && sparse_value != {{24{sparse_value[7]}},sparse_value[7:0]}) ||
+                            (packet[17:16] == 2 && sparse_value != {{16{sparse_value[15]}},sparse_value[15:0]}) ||
+                            (packet[17:16] == 3 && sparse_value != {{8{sparse_value[23]}},sparse_value[23:0]}))
+                            sparse_width_required = 1;
+                        input_values[input_lane*32 +: 32] = sparse_value;
+                    end
+                    input_position = input_position + sparse_width;
+                end
+            end
+            if (!sparse_width_required) input_fault = 1;
+        end else if (opcode >= 4 && opcode <= 6) begin
             input_limit = 10'((int'(opcode)-3)*128);
             if (packet[4:0] > 30) input_fault = 1;
             if (packet[5]) begin
@@ -367,6 +434,7 @@ module ps_adaptive_decoder (
                 reconstructed[output_lane*32 +: 32] = previous[output_lane*32 +: 32] + parsed[3][output_lane*32 +: 32];
             if (|padding_remaining) output_fault = 1;
         end
+        else if (opcodes[3] == 7 && |padding_remaining) output_fault = 1;
     end
     assign busy = (|valid) | done;
     integer stage;

@@ -102,6 +102,7 @@ static submitted_plan_t execute(uint32_t operation, uint32_t mode,
     plan.col_tail = registers[NPU_REG_COL_TAIL_TILES / 4u];
     plan.ctrl = registers[NPU_REG_CTRL / 4u];
     assert(mode == DSA_DATAFLOW_AUTO || plan.mode == mode);
+    assert(!(plan.ps_control & DSA_PS_CTRL_BOUND_MASK));
     if (raw_only || runtime_raw || DSA_PS_FORCE_RAW) {
         uint32_t stream_rows = plan.mode ? cols : rows;
         uint32_t column_tiles = ((plan.mode ? rows : cols) + 15u) / 16u;
@@ -114,6 +115,8 @@ static submitted_plan_t execute(uint32_t operation, uint32_t mode,
             if (slice==2u && frame_rows>32u) frame_rows=32u;
             assert(reduction<=16u || (uint64_t)frame_rows*64u<=hardware_pool);
         } else assert(reduction<=16u || (uint64_t)frame_rows*live*64u<=hardware_pool);
+    } else if (reduction>16u && (hardware_caps&DSA_PS_CAP_FRAME_SCHEDULE)) {
+        assert(!(plan.ps_control & DSA_PS_CTRL_RAW));
     }
     return plan;
 }
@@ -144,7 +147,8 @@ int main(void)
         hardware_pool = pools[pool];
         hardware_caps = (DSA_PS_CAP_VERSION << 24) | (frames << 16) |
                         DSA_PS_CAP_STORE | DSA_PS_CAP_FRAME_SCHEDULE |
-                        (compact ? DSA_PS_CAP_IA_COMPACT : 0u);
+                        (compact ? DSA_PS_CAP_IA_COMPACT : 0u) |
+                        (frames==16u ? DSA_PS_CAP_LITERAL_BOUND : 0u);
         adaptive = execute(operation, mode, rows, reduction, cols, 0u, 0u);
         raw = execute(operation, mode, rows, reduction, cols, 0u, 1u);
         observed = execute(operation, mode, rows, reduction, cols, 1u, 0u);

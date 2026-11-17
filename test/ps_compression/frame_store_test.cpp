@@ -57,7 +57,7 @@ public:
     std::uint64_t rejected_records=0,fault_recoveries=0;
     std::uint64_t reset_cases=0,s16_values=0,peak_words=0;
     std::array<unsigned,2> prepare_min{UINT32_MAX,UINT32_MAX},prepare_max{};
-    std::array<std::uint64_t,7> opcodes{};
+    std::array<std::uint64_t,8> opcodes{};
     std::uint64_t replay_start=UINT64_MAX,last_write=UINT64_MAX,last_replay=UINT64_MAX,last_commit=UINT64_MAX;
     unsigned replay_length=0;
     bool last_complete=false,allow_fault=false;
@@ -392,6 +392,20 @@ int main() {
         for(unsigned length:{1U,16U,32U,47U})
             require(check.run(3,length,true,true,{}),"Single-K command must fit without PS allocation");
 
+        for (unsigned width:{8U,16U,24U,32U}) for (unsigned length:{1U,47U}) {
+            std::vector<Row> sparse_rows(length);
+            for (unsigned row=0;row<length;++row) {
+                const unsigned count=row%4;
+                for (unsigned lane=0;lane<count;++lane)
+                    sparse_rows[row][(row+lane*5)%16]=ps_codec::sign_extend(
+                        (1U<<(width-1))-(lane&1U),width);
+            }
+            require(check.run(5,length,true,false,sparse_rows),"Sparse frame initialization failed");
+            require(check.run(5,length,false,false,sparse_rows,true),"Sparse frame RAW replacement failed");
+            require(check.run(5,length,false,false,sparse_rows),"RAW frame sparse replacement failed");
+            check.finish(5);
+        }
+
         check.reset();
         const auto worst=frame(47,0,check.random);
         require(check.run(0,47,true,false,worst,true),"RAW frame did not fit");
@@ -620,7 +634,7 @@ int main() {
                 check.tight_prefix_commits>0 && check.old_cap_fault_cases==3 && check.new_cap_fault_cases==2,
                 "Narrow-cap replacement coverage is incomplete");
 #else
-        for(unsigned code=0;code<7;++code) if(code!=3) require(check.opcodes[code]==0,"Forced RAW emitted another opcode");
+        for(unsigned code=0;code<8;++code) if(code!=3) require(check.opcodes[code]==0,"Forced RAW emitted another opcode");
 #endif
         std::cout<<"{\"passed\":true,\"commands\":"<<check.commands<<",\"write_rows\":"<<check.written_rows
                  <<",\"read_rows\":"<<check.read_rows<<",\"checked_read_int32\":"<<check.read_rows*16
@@ -653,7 +667,7 @@ int main() {
                  <<",\"initial_prepare_edges\":["<<check.prepare_min[0]<<','<<check.prepare_max[0]<<']'
                  <<",\"update_prepare_edges\":["<<check.prepare_min[1]<<','<<check.prepare_max[1]<<']'
                  <<",\"peak_words\":"<<check.peak_words<<",\"cycles\":"<<check.cycle<<",\"opcodes\":[";
-        for(unsigned i=0;i<7;++i) std::cout<<(i?",":"")<<check.opcodes[i];
+        for(unsigned i=0;i<8;++i) std::cout<<(i?",":"")<<check.opcodes[i];
         std::cout<<"]}\n";
     } catch(const std::exception& error) {std::cerr<<error.what()<<'\n';return 1;}
 }

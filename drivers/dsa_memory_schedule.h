@@ -71,6 +71,43 @@ static inline uint64_t dsa_schedule_image_cost(const gempact_device_request_t *q
     return cost+(unreused>>9)*overflow+(((unreused&511u)*overflow)>>9);
 }
 
+/* IA tile descriptors and cache admission add control work around each
+ * stream-side load. Per-channel groups require serial parameter service
+ * before IA can advance; the first group also follows the stationary
+ * block in DMA priority. WS reloads parameters for each output-channel
+ * tile and row group. IS retains an R-channel group across spatial tiles.
+ * Frame schedules include this work in their command setup estimate. */
+static inline uint64_t dsa_schedule_loader_cost(const dsa_schedule_config_t *c,
+    const gempact_dispatch_t *p)
+{
+    uint32_t mode=p->is_mode;
+    uint32_t sr=mode?c->cols:c->rows,sc=mode?c->rows:c->cols;
+    uint64_t tiles,cost;
+    if (p->ps_control&DSA_PS_CTRL_FRAME) return 0u;
+    tiles=dsa_schedule_mul(gempact_ceil_div(sr,16u),gempact_ceil_div(c->depth,16u));
+    tiles=dsa_schedule_mul(tiles,p->tiling.col_groups);
+    cost=dsa_schedule_mul(tiles,DSA_SCHEDULE_IA_TILE_SETUP_CYCLES);
+    if (c->per_channel) {
+        uint32_t bytes=mode?c->lhs_bytes:c->rhs_bytes;
+        uint32_t packed=mode?c->lhs_tile_packed:c->rhs_tile_packed;
+        uint32_t depth=packed?16u:dsa_schedule_min(c->depth,16u);
+        uint32_t lanes=dsa_schedule_min(sc,16u);
+        uint32_t channels=c->cols;
+        uint32_t passes=mode?1u:p->tiling.row_groups;
+        uint32_t beat_bytes=dsa_schedule_bus_bytes(c);
+        uint64_t groups=mode?p->tiling.row_groups:
+            (uint64_t)p->tiling.row_groups*gempact_ceil_div(c->cols,16u);
+        uint64_t first_beats=(uint64_t)lanes*gempact_ceil_div(depth*bytes,beat_bytes);
+        uint64_t parameter_beats=2u*((uint64_t)(channels/16u)*(64u/beat_bytes)+
+            gempact_ceil_div((channels%16u)*4u,beat_bytes))*passes;
+        cost=dsa_schedule_add(cost,dsa_schedule_mul(
+            dsa_schedule_add(first_beats,parameter_beats),c->read_beat_cycles));
+        cost=dsa_schedule_add(cost,dsa_schedule_mul(groups,
+            DSA_SCHEDULE_QUANT_GROUP_SETUP_CYCLES));
+    }
+    return cost;
+}
+
 /* Reuse decisions retain the current DMA request and output coalescing
  * estimates. Frame schedules also account for K-history residency and
  * partial row groups through the constant-size geometry model. */
@@ -143,10 +180,17 @@ static inline void dsa_schedule_memory_score_work(const dsa_schedule_config_t *c
         dsa_schedule_mul(mode?b_beats:a_beats,c->read_beat_cycles),
         dsa_schedule_add(dsa_schedule_mul(mode?b_reads:a_reads,c->read_request_cycles),
                          p->weight_shift_rows));
-    out->estimated_cycles=dsa_schedule_max(dsa_schedule_max(read_cycles,write_cycles),
+    out->estimated_cycles=dsa_schedule_max(read_cycles,
         dsa_schedule_max(out->compute_cycles,stream_cycles));
+    if (path) {
+        /* A final-K frame completes its output writes before the following
+         * command starts. Length-dependent service is separate from setup. */
+        out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,write_cycles);
+    } else out->estimated_cycles=dsa_schedule_max(out->estimated_cycles,write_cycles);
     out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,
         p->micro_commands*q->micro_setup_cycles);
+    out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,
+        dsa_schedule_loader_cost(c,p));
     out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,
         dsa_schedule_image_cost(q,p,footprints,stream,stationary));
     out->tiling=p->tiling;out->dataflow_mode=mode;
@@ -202,6 +246,8 @@ static inline int dsa_schedule_memory_plan(const dsa_schedule_config_t *c,
         c->output_bytes<1u || c->output_bytes>2u ||
         c->per_channel>1u || c->has_bias>1u || c->lhs_tile_packed>1u ||
         c->rhs_tile_packed>1u || (c->spatial && c->lhs_tile_packed) ||
+        (c->ps_literal_bytes && c->ps_literal_bytes!=32u &&
+         c->ps_literal_bytes!=48u && c->ps_literal_bytes!=64u) ||
         !c->read_beat_cycles || !c->write_beat_cycles ||
         (c->axi_data_bits && c->axi_data_bits!=32u && c->axi_data_bits!=64u) ||
         (c->dma_max_bytes && (c->dma_max_bytes<dsa_schedule_bus_bytes(c) ||
@@ -218,7 +264,10 @@ static inline int dsa_schedule_memory_plan(const dsa_schedule_config_t *c,
     request.frame_capable=(c->ps_caps&DSA_PS_CAP_FRAME_SCHEDULE)!=0u;
     request.adaptive=request.frame_capable && !c->force_raw && !(c->ps_caps&DSA_PS_CAP_RAW_ONLY);
     request.estimated_record_bytes=c->source_s8?DSA_PLANNER_RECORD_BYTES:64u;
-    request.literal_record_bytes=gempact_literal_record_bytes(c->depth,c->source_s8,c->lhs_offset,c->rhs_offset);
+    request.literal_record_bytes=request.adaptive?
+        gempact_literal_record_bytes(c->depth,c->source_s8,c->lhs_offset,c->rhs_offset):64u;
+    if (request.adaptive && (c->ps_caps&DSA_PS_CAP_LITERAL_BOUND) && c->ps_literal_bytes)
+        request.literal_record_bytes=c->ps_literal_bytes;
     request.micro_setup_cycles=DSA_PLANNER_MICRO_CYCLES;
     request.directory_rows=c->ps_directory_rows;
     if (c->im2col.input_bytes && !gempact_set_im2col_geometry(&request,&c->im2col)) return 0;
@@ -247,7 +296,18 @@ static inline int dsa_schedule_memory_plan(const dsa_schedule_config_t *c,
         if (gempact_plan_device_visit(&q,&plan,dsa_schedule_visit_candidate,&search))
             candidates+=plan.candidates_evaluated;
     }
-    if (search.found) out->candidates=candidates;
+    if (search.found) {
+        out->candidates=candidates;
+        /* Lossless row coding also applies when the selected window fits
+         * RAW32 capacity. Both encodings have the same stream throughput. */
+        if (request.adaptive && c->depth>c->size) {
+            out->ps_control&=~DSA_PS_CTRL_RAW;
+            if (c->ps_caps&DSA_PS_CAP_LITERAL_BOUND) {
+                if (c->ps_literal_bytes==32u) out->ps_control|=DSA_PS_CTRL_BOUND_S16;
+                if (c->ps_literal_bytes==48u) out->ps_control|=DSA_PS_CTRL_BOUND_S24;
+            }
+        }
+    }
     return search.found;
 }
 

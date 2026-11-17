@@ -425,16 +425,17 @@ static inline uint32_t gempact_literal_record_bytes(uint32_t reduction,
     return reduction&&product_exp<23u&&retained<(1u<<(23u-product_exp))?48u:64u;
 }
 
-/* The hardware uses S24 or RAW reservation. A caller with an S16 proof also
- * satisfies S24; the physical record bound remains three words. */
+/* The caller supplies a proven upper bound for every retained row. */
 static inline uint32_t gempact_literal_cap(const gempact_device_request_t *q)
 {
-    return q->literal_record_bytes==32u||q->literal_record_bytes==48u?48u:64u;
+    return q->literal_record_bytes==32u||q->literal_record_bytes==48u?
+        q->literal_record_bytes:64u;
 }
 
 static inline uint32_t gempact_bank_reservation(uint32_t rows,uint32_t literal_bytes)
 {
-    return literal_bytes==48u?rows-(rows>>2):rows;
+    return literal_bytes==32u?(rows>>1)+(rows&1u):
+        literal_bytes==48u?rows-(rows>>2):rows;
 }
 
 /* A long-controller tail may configure the next power of two above the

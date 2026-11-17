@@ -235,6 +235,7 @@ module axi_block_dma_arbiter #(
     logic rd_command_space;
     logic rd_dma_start;
     logic rd_dma_start_q, rd_dma_start_ready;
+    wire rd_dma_cancel = abort && rd_dma_start_q;
     logic [2:0] rd_dma_tag_q, rd_dma_response_tag, rd_dma_finish_tag;
     logic rd_dma_busy;
     logic rd_dma_done;
@@ -327,9 +328,12 @@ module axi_block_dma_arbiter #(
                 rd_grant_client <= C_NONE;
             for (int i = 0; i < 5; i++) begin
                 case ({rd_dma_start && rd_command_client == client_e'(i),
-                       rd_dma_done && rd_response_client == client_e'(i)})
-                    2'b10: rd_client_inflight[i] <= rd_client_inflight[i] + 1'b1;
-                    2'b01: rd_client_inflight[i] <= rd_client_inflight[i] - 1'b1;
+                       rd_dma_done && rd_response_client == client_e'(i),
+                       rd_dma_cancel && rd_dma_tag_q == 3'(i)})
+                    3'b100: rd_client_inflight[i] <= rd_client_inflight[i] + 1'b1;
+                    3'b001, 3'b010, 3'b111:
+                        rd_client_inflight[i] <= rd_client_inflight[i] - 1'b1;
+                    3'b011: rd_client_inflight[i] <= rd_client_inflight[i] - 2'd2;
                     default: ;
                 endcase
             end
@@ -566,7 +570,9 @@ module axi_block_dma_arbiter #(
             rd_dma_use_16bits_q <= '0;
             rd_dma_lhs_zp_q <= '0;
         end else begin
-            if (rd_dma_start_ready) rd_dma_start_q <= 1'b0;
+            // Abort releases the registered descriptor before DMA acceptance.
+            // Already accepted contexts keep their ordinary completion path.
+            if (abort || rd_dma_start_ready) rd_dma_start_q <= 1'b0;
             if (rd_dma_start) begin
                 rd_dma_start_q <= 1'b1;
                 rd_dma_tag_q <= rd_command_client;

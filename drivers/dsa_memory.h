@@ -22,11 +22,15 @@
 #define DSA_PS_CAP_IA_COMPACT     (1u << 2)
 #define DSA_PS_CAP_RAW_ONLY       (1u << 3)
 #define DSA_PS_CAP_SHARED         (1u << 4)
+#define DSA_PS_CAP_LITERAL_BOUND  (1u << 5)
 #define DSA_PS_CTRL_RAW           (1u << 0)
 #define DSA_PS_CTRL_FRAME         (1u << 1)
 #define DSA_PS_CTRL_SLICE_16      (1u << 2)
 #define DSA_PS_CTRL_SLICE_32      (2u << 2)
 #define DSA_PS_CTRL_WHOLE_R       (3u << 2)
+#define DSA_PS_CTRL_BOUND_MASK    (3u << 4)
+#define DSA_PS_CTRL_BOUND_S16     (1u << 4)
+#define DSA_PS_CTRL_BOUND_S24     (2u << 4)
 
 #ifndef DSA_PCR_ENGINE
 #define DSA_PCR_ENGINE 0

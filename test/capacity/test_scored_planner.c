@@ -14,7 +14,9 @@ static void req(const dsa_schedule_config_t *c,gempact_device_request_t *q) {
  q->frame_capable=(c->ps_caps&DSA_PS_CAP_FRAME_SCHEDULE)!=0;
  q->adaptive=q->frame_capable&&!c->force_raw&&!(c->ps_caps&DSA_PS_CAP_RAW_ONLY);
  q->estimated_record_bytes=c->source_s8?DSA_PLANNER_RECORD_BYTES:64;
- q->literal_record_bytes=gempact_literal_record_bytes(c->depth,c->source_s8,c->lhs_offset,c->rhs_offset);
+ q->literal_record_bytes=q->adaptive?gempact_literal_record_bytes(c->depth,c->source_s8,c->lhs_offset,c->rhs_offset):64u;
+ if(q->adaptive&&(c->ps_caps&DSA_PS_CAP_LITERAL_BOUND)&&c->ps_literal_bytes)
+  q->literal_record_bytes=c->ps_literal_bytes;
  q->micro_setup_cycles=DSA_PLANNER_MICRO_CYCLES;q->directory_rows=c->ps_directory_rows;
  if(c->im2col.input_bytes) assert(gempact_set_im2col_geometry(q,&c->im2col));
  if(c->output_bytes==2&&c->output_banks_s16&&(!q->req_r||q->req_r>c->output_banks_s16))q->req_r=c->output_banks_s16;
@@ -44,6 +46,14 @@ static int enumerate(const dsa_schedule_config_t *c,dsa_schedule_t *best) {
    }
   }
  }
+ if(found && !c->force_raw && !(c->ps_caps&DSA_PS_CAP_RAW_ONLY) &&
+    (c->ps_caps&DSA_PS_CAP_FRAME_SCHEDULE) && c->depth>c->size) {
+  best->ps_control&=~DSA_PS_CTRL_RAW;
+  if(c->ps_caps&DSA_PS_CAP_LITERAL_BOUND) {
+   if(c->ps_literal_bytes==32u)best->ps_control|=DSA_PS_CTRL_BOUND_S16;
+   if(c->ps_literal_bytes==48u)best->ps_control|=DSA_PS_CTRL_BOUND_S24;
+  }
+ }
  return found;
 }
 static void show(const char *tag,const dsa_schedule_t *s){printf(" %s score=%llu read=%llu/%llu compute=%llu write=%llu ia=%u mode=%u R=%u W=%u ctrl=%u slice=%u\n",tag,(unsigned long long)s->estimated_cycles,(unsigned long long)s->read_words,(unsigned long long)s->read_requests,(unsigned long long)s->compute_cycles,(unsigned long long)s->write_requests,s->ia_bank_count,s->dataflow_mode,s->tiling.ia_reuse,s->tiling.w_reuse,s->ps_control,s->frame_rows);}
@@ -67,13 +77,63 @@ static void geometry_checks(void)
  for(uint32_t i=0u;i<=64u;++i)assert(footprints[i]==0u);
 }
 
+static void auto_checks(void)
+{
+ const uint32_t cases[][7]={
+  {1u,784u,64u,1u,DSA_SCHEDULE_WS,1u,4u},
+  {1u,64u,10u,1u,DSA_SCHEDULE_IS,1u,1u},
+  {1u,256u,2u,0u,DSA_SCHEDULE_WS,1u,1u},
+  {1u,64u,12u,0u,DSA_SCHEDULE_WS,1u,1u},
+  {1u,64u,10u,0u,DSA_SCHEDULE_WS,1u,1u},
+  {576u,32u,32u,1u,DSA_SCHEDULE_IS,2u,4u}
+ };
+ for(uint32_t i=0u;i<sizeof(cases)/sizeof(cases[0]);++i) {
+  dsa_schedule_config_t c;dsa_schedule_t raw,adaptive;
+  dsa_schedule_init(&c,cases[i][0],cases[i][1],cases[i][2],16u,4u,16u);
+  c.ps_caps=(1u<<24)|(16u<<16)|23u;c.ps_pool_bytes=12288u;c.ia_cache_bytes=2048u;
+  c.shared_total_bytes=14336u;c.shared_bank_bytes=2048u;c.shared_ia_bank_mask=0x16u;c.ps_directory_rows=1024u;
+  c.source_s8=1u;c.compact_mode_mask=3u;c.lhs_offset=128;c.has_bias=1u;
+  c.rhs_tile_packed=1u;c.per_channel=cases[i][3];c.force_raw=1u;c.output_banks_s8=32u;
+  assert(dsa_schedule_plan(&c,&raw));
+  assert(raw.dataflow_mode==cases[i][4]&&raw.tiling.ia_reuse==cases[i][5]&&raw.tiling.w_reuse==cases[i][6]);
+  assert(!(raw.ps_control&DSA_PS_CTRL_FRAME));
+  c.force_raw=0u;assert(dsa_schedule_plan(&c,&adaptive));
+  assert(!dsa_schedule_better(&raw,&adaptive));
+  if(c.rows==1u) {
+   assert(adaptive.dataflow_mode==raw.dataflow_mode);
+   assert(adaptive.tiling.ia_reuse==raw.tiling.ia_reuse&&adaptive.tiling.w_reuse==raw.tiling.w_reuse);
+  }
+ }
+ /* AXI64 candidates with immutable S24 weight bounds exercise parameter
+  * retention across output tiles in both storage policies. */
+ const uint32_t grouped[][3]={{64u,784u,64u},{125u,64u,64u}};
+ for(uint32_t i=0u;i<sizeof(grouped)/sizeof(grouped[0]);++i) {
+  dsa_schedule_config_t c;dsa_schedule_t p;
+  dsa_schedule_init(&c,grouped[i][0],grouped[i][1],grouped[i][2],16u,4u,16u);
+  c.axi_data_bits=64u;c.dma_max_bytes=2048u;c.read_beat_cycles=1u;
+  c.ps_caps=(1u<<24)|(16u<<16)|55u;c.ps_pool_bytes=12288u;c.ia_cache_bytes=2048u;
+  c.shared_total_bytes=14336u;c.shared_bank_bytes=2048u;c.shared_ia_bank_mask=0x16u;c.ps_directory_rows=1024u;
+  c.source_s8=1u;c.compact_mode_mask=3u;c.lhs_offset=128;c.has_bias=c.per_channel=1u;
+  c.rhs_tile_packed=1u;c.output_banks_s8=32u;c.ps_literal_bytes=48u;
+  for(uint32_t raw=0u;raw<2u;++raw) {
+   c.force_raw=raw;assert(dsa_schedule_plan(&c,&p));
+   assert(p.dataflow_mode==DSA_SCHEDULE_IS&&p.ia_bank_count==1u);
+   assert(p.tiling.ia_reuse==4u&&p.tiling.w_reuse==(raw?2u:4u));
+   assert(p.ps_control==(raw?DSA_PS_CTRL_RAW:DSA_PS_CTRL_BOUND_S24));
+  }
+ }
+}
+
 int main(void){unsigned checks=0,fail=0;
- geometry_checks();
+ geometry_checks();auto_checks();
  for(uint32_t i=0;i<800;i++){
   dsa_schedule_config_t c;dsa_schedule_t fast={0},all={0},rawp={0};
   uint32_t dims[]={1,7,16,17,31,32,36,47,64,80,96,128,144,192,256,257,384};
   dsa_schedule_init(&c,dims[rnd()%17],dims[rnd()%17],dims[rnd()%17],16,4,16);
   c.ps_caps=(1u<<24)|(16u<<16)|23u;c.ps_pool_bytes=12288;c.ia_cache_bytes=2048;
+  if(i%11u==0u)c.ps_caps|=DSA_PS_CAP_RAW_ONLY;
+  if(i%4u==0u)c.ps_caps|=DSA_PS_CAP_LITERAL_BOUND;
+  {uint32_t bounds[]={0u,32u,48u,64u};c.ps_literal_bytes=bounds[rnd()%4u];}
   c.shared_bank_bytes=1024u<<(i%3u);c.shared_total_bytes=(6u+(i/3u)%4u)*c.shared_bank_bytes;c.shared_ia_bank_mask=0x16;c.ps_directory_rows=(rnd()&1)?1024:256;
   c.flow=rnd()%3;c.allow_is=1;c.force_raw=rnd()&1;c.compact_mode_mask=rnd()%4;c.source_s8=rnd()&1;
   c.lhs_bytes=c.source_s8?1:2;c.output_bytes=(rnd()%4)?1:2;c.output_banks_s8=8;c.output_banks_s16=8;
@@ -88,6 +148,14 @@ int main(void){unsigned checks=0,fail=0;
   if(rnd()%5==0)c.requested_w=1+rnd()%16;
   int a=dsa_schedule_plan(&c,&fast),b=enumerate(&c,&all);
   if(a!=b||(a&&dsa_schedule_better(&all,&fast))){printf("MISMATCH i=%u shape=%u,%u,%u raw=%u flow=%u compact=%u total=%u geom=%u\n",i,c.rows,c.depth,c.cols,c.force_raw,c.flow,c.compact_mode_mask,c.shared_total_bytes,c.spatial);show("fast",&fast);show("all",&all);if(++fail>=8)return 1;}
+  if(a){
+   assert(fast.ps_control==all.ps_control);
+   if(c.force_raw || (c.ps_caps&DSA_PS_CAP_RAW_ONLY)) {
+    assert(fast.ps_control&DSA_PS_CTRL_RAW);
+    assert(!(fast.ps_control&DSA_PS_CTRL_BOUND_MASK));
+   }
+   else if(c.depth>c.size) assert(!(fast.ps_control&DSA_PS_CTRL_RAW));
+  }
   if(a){assert(fast.read_words==fast.read_beats*(c.axi_data_bits/32u));assert(fast.write_words==fast.write_beats*(c.axi_data_bits/32u));assert(fast.ia_cache_bytes+fast.ps_pool_bytes==c.shared_total_bytes);uint32_t slots=fast.ia_cache_bytes/512*((c.compact_mode_mask>>fast.dataflow_mode&1)?2:1);assert(fast.tiling.ia_reuse<=slots/2);if(c.force_raw)assert(fast.ps_control&1);if(!c.force_raw){c.force_raw=1;int ok=dsa_schedule_plan(&c,&rawp);if(ok&&dsa_schedule_better(&rawp,&fast)){printf("RAW_FAIRNESS i=%u\n",i);show("adaptive",&fast);show("raw",&rawp);if(++fail>=8)return 1;}}}
   ++checks;
  }

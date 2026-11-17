@@ -22,7 +22,7 @@ CACHE_CHOICES = (2, 4, 8, 16)
 FRAME_CHOICES = (4, 8, 16, 25)
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-bank-v3"
+MODEL_VERSION = "dip-shared-bank-sparse128-v3"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -173,6 +173,8 @@ def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *,
     memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
                     bank_bytes=bank_bytes, bank_count=bank_count)
     bits = {"core_row_metadata": 4 * size + 1}
+    if compressed:
+        bits["ps_sparse_metadata"] = 16 + 2
     return bits
 
 

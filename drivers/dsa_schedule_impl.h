@@ -145,8 +145,9 @@ static void dsa_schedule_set_limits(dsa_schedule_config_t *c,
     c->allow_is=(limits->flags&DSA_MATRIX_CAP_IS_SUPPORTED)!=0u;
 }
 
-uint32_t dsa_matmul_plan(const dsa_matmul_config_t *config,
-    const dsa_matrix_limits_t *hardware, dsa_schedule_t *schedule)
+static uint32_t dsa_matmul_plan_with_ps_bound(const dsa_matmul_config_t *config,
+    const dsa_matrix_limits_t *hardware, uint32_t ps_literal_bytes,
+    dsa_schedule_t *schedule)
 {
     dsa_schedule_config_t c;
     dsa_matrix_limits_t defaults;
@@ -181,6 +182,7 @@ uint32_t dsa_matmul_plan(const dsa_matmul_config_t *config,
     c.has_bias=config->bias_ptr!=0;
     c.lhs_tile_packed=config->lhs_tile_packed;c.rhs_tile_packed=config->rhs_tile_packed;
     c.source_s8=config->lhs_dtype==DSA_DTYPE_S8;
+    c.ps_literal_bytes=ps_literal_bytes;
     c.lhs_offset=config->lhs_offset;c.rhs_offset=config->rhs_offset;
     c.compact_mode_mask=(c.source_s8 && config->lhs_offset>=-127 && config->lhs_offset<=128 ? 1u:0u)|
         (config->rhs_offset>=-127 && config->rhs_offset<=128 ? 2u:0u);
@@ -192,9 +194,15 @@ uint32_t dsa_matmul_plan(const dsa_matmul_config_t *config,
     return dsa_schedule_cached_plan(&c,schedule) ? DSA_SUCCESS:DSA_ERR_INVALID_DIM;
 }
 
-static uint32_t dsa_conv_plan(const dsa_conv_s8_config_t *config,
+uint32_t dsa_matmul_plan(const dsa_matmul_config_t *config,
+    const dsa_matrix_limits_t *hardware, dsa_schedule_t *schedule)
+{
+    return dsa_matmul_plan_with_ps_bound(config,hardware,0u,schedule);
+}
+
+static uint32_t dsa_conv_plan_with_ps_bound(const dsa_conv_s8_config_t *config,
     const dsa_matrix_limits_t *hardware, uint32_t allow_is,
-    dsa_schedule_t *schedule)
+    uint32_t ps_literal_bytes,dsa_schedule_t *schedule)
 {
     dsa_schedule_config_t c;
     dsa_matrix_limits_t defaults;
@@ -215,6 +223,7 @@ static uint32_t dsa_conv_plan(const dsa_conv_s8_config_t *config,
     c.per_channel=1u;c.has_bias=config->bias_base!=0u;c.spatial=1u;
     c.rhs_tile_packed=config->rhs_tile_packed;
     c.source_s8=1u;c.lhs_offset=config->input_offset;c.rhs_offset=0;
+    c.ps_literal_bytes=ps_literal_bytes;
     c.compact_mode_mask=(config->input_offset>=-127 && config->input_offset<=128 ? 1u:0u)|2u;
     c.im2col.input_bytes=config->input_h*config->input_w*config->input_c;
     c.im2col.input_channels=config->input_c;c.im2col.group_channels=config->group_c;
@@ -224,6 +233,12 @@ static uint32_t dsa_conv_plan(const dsa_conv_s8_config_t *config,
     c.im2col_input_width=config->input_w;c.im2col_output_width=config->output_w;
     c.im2col_stride_h=config->stride_h;
     return dsa_schedule_cached_plan(&c,schedule) ? DSA_SUCCESS:DSA_ERR_INVALID_DIM;
+}
+
+static uint32_t dsa_conv_plan(const dsa_conv_s8_config_t *config,
+    const dsa_matrix_limits_t *hardware,uint32_t allow_is,dsa_schedule_t *schedule)
+{
+    return dsa_conv_plan_with_ps_bound(config,hardware,allow_is,0u,schedule);
 }
 
 #endif

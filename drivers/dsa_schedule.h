@@ -32,6 +32,12 @@
 #ifndef DSA_SCHEDULE_WRITE_REQUEST_CYCLES
 #define DSA_SCHEDULE_WRITE_REQUEST_CYCLES 3u
 #endif
+#ifndef DSA_SCHEDULE_IA_TILE_SETUP_CYCLES
+#define DSA_SCHEDULE_IA_TILE_SETUP_CYCLES 2u
+#endif
+#ifndef DSA_SCHEDULE_QUANT_GROUP_SETUP_CYCLES
+#define DSA_SCHEDULE_QUANT_GROUP_SETUP_CYCLES 2u
+#endif
 #ifndef DSA_SCHEDULE_MERGE_CONTIGUOUS_ROWS
 #define DSA_SCHEDULE_MERGE_CONTIGUOUS_ROWS 1u
 #endif
@@ -55,7 +61,7 @@ typedef struct {
     uint32_t dma_max_bytes, axi_data_bits;
     uint32_t ps_caps, ia_cache_bytes, shared_total_bytes, shared_bank_bytes;
     uint32_t shared_ia_bank_mask, ps_directory_rows, compact_mode_mask, force_raw;
-    uint32_t source_s8;
+    uint32_t source_s8, ps_literal_bytes;
     int32_t lhs_offset, rhs_offset;
     gempact_im2col_geometry_t im2col;
     uint32_t im2col_input_width,im2col_output_width,im2col_stride_h;

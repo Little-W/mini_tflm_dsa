@@ -1,4 +1,5 @@
 module tb_raw_only_caps #(
+    parameter int unsigned AXI_DATA_BITS = 32,
     parameter logic [31:0] CAP_NORMAL = 0,
     parameter logic [31:0] CAP_GEMMORA_RAW = 0,
     parameter logic [31:0] CAP_LEGACY_RAW = 0
@@ -17,6 +18,7 @@ module tb_raw_only_caps #(
 
     for (genvar i = 0; i < 3; ++i) begin : g_registers
         npu_axil_reg_if #(
+            .AXI_DATA_BITS(AXI_DATA_BITS),
             .PS_CAPS(CAPS[i]), .PS_POOL_BYTES(12288), .IA_CACHE_BYTES(2048),
             .SHARED_TOTAL_BYTES(14336), .SHARED_BANK_BYTES(2048),
             .SHARED_IA_BANK_MASK(32'h16), .PS_DIRECTORY_ROWS(1024)
@@ -74,8 +76,8 @@ module tb_raw_only_caps #(
     endtask
 
     initial begin
-        check(CAP_NORMAL == 32'h01100017, "adaptive capabilities");
-        check(CAP_GEMMORA_RAW == 32'h0110001f, "GEMMORA RAW capabilities");
+        check(CAP_NORMAL == 32'h01100037, "adaptive capabilities");
+        check(CAP_GEMMORA_RAW == 32'h0110003f, "GEMMORA RAW capabilities");
         check(CAP_LEGACY_RAW == CAP_GEMMORA_RAW, "RAW macro capability agreement");
         repeat (5) @(negedge clk);
         rst_n = 1;
@@ -91,6 +93,8 @@ module tb_raw_only_caps #(
         read_register(16'h0108, '{32'd1, 32'd1, 32'd1});
         read_register(16'h010c, '{32'h16, 32'h16, 32'h16});
         read_register(16'h0110, '{32'd1024, 32'd1024, 32'd1024});
+        read_register(16'h00f4, '{AXI_DATA_BITS, AXI_DATA_BITS, AXI_DATA_BITS});
+        read_register(16'h00f0, '{3{32'(256 * (AXI_DATA_BITS / 8))}});
         $display("{\"passed\":true,\"profiles\":3,\"register_reads\":%0d,\"checks\":%0d}",
                  register_reads, checks);
         $finish;

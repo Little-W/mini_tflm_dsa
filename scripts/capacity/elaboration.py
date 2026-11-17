@@ -188,6 +188,8 @@ def register_array_category(origin, name):
             "row_valid_pipe", "row_final_pipe", "row_init_pipe", "row_last_pipe",
             "final_group_complete_q"):
         return "core_row_metadata"
+    if origin == "ps_adaptive_encoder" and name in ("s1_nonzero_mask", "s1_sparse_width"):
+        return "ps_sparse_metadata"
     if origin == "ps_buffer" and ".g_replay_skew[" in "." + name and name.endswith(".values"):
         return "ps_replay_skew"
     if (origin == "ia_loader_cache_mgr" and ".g_external_ram.g_diagonal[" in "." + name
@@ -349,7 +351,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     else:
         architecture = architecture and counts.get("ia_ps_shared_ram", 0) == 0
     registers = capabilities["npu_axil_reg_if"]
-    expected_caps = (0x01000007 | (values["PS_FRAME_COUNT"] << 16) |
+    expected_caps = (0x01000027 | (values["PS_FRAME_COUNT"] << 16) |
                      (int(layout["shared_ia_ps_enabled"]) << 4) | (values["PS_FORCE_RAW"] << 3)) \
                     if values["PCR_ENGINE"] else 0
     capabilities_match = capabilities["npu_axil_top"]["PS_CAPS"] == expected_caps and \

@@ -964,8 +964,7 @@ module npu_top #(
 `else
         localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b0;
 `endif
-        wire ps_config_force_raw = PS_REQUIRE_RAW_CAPACITY || ps_control_q[0] ||
-            (ps_raw_capacity_fits && (!ps_cross_k_required || active_ps_bank_count >= 4));
+        wire ps_config_force_raw = PS_REQUIRE_RAW_CAPACITY || ps_control_q[0];
         // Bias is applied after the final K block. Bound all retained sums from
         // operand formats and the largest nonfinal K prefix, without sampling
         // future activations. Powers of two keep this admission test multiplier-free.
@@ -981,10 +980,15 @@ module npu_top #(
         wire [31:0] ps_retained_k_s2 = (cfg_n_s2 - 32'd1) & ~32'(SIZE - 1);
         wire ps_s24_bound_s2 = ps_product_exp_s2 < 6'd23 &&
             ps_retained_k_s2 < (32'd1 << (6'd23 - ps_product_exp_s2));
-        wire [2:0] ps_config_word_cap = (!ps_config_force_raw && ps_s24_bound_s2) ? 3'd3 : 3'd4;
+        // Software may prove a tighter bound from immutable layer weights.
+        // The store checks every encoded record against this reservation.
+        wire [2:0] ps_config_word_cap = ps_config_force_raw ? 3'd4 :
+            ps_control_q[5:4] == 2'd1 ? 3'd2 :
+            (ps_control_q[5:4] == 2'd2 || ps_s24_bound_s2) ? 3'd3 : 3'd4;
         // Each frame rotates its words across the allocated physical banks.
         // Reserve the per-bank maximum separately for every live frame.
-        wire [63:0] ps_long_frame_words = ps_config_word_cap == 3'd3 ?
+        wire [63:0] ps_long_frame_words = ps_config_word_cap == 3'd2 ?
+            (ps_max_frame_rows << 1) : ps_config_word_cap == 3'd3 ?
             (ps_max_frame_rows << 1) + ps_max_frame_rows : (ps_max_frame_rows << 2);
         wire [63:0] ps_long_frame_bank_words;
         wire ps_long_capacity_fits = !ps_cross_k_required ||
@@ -994,7 +998,8 @@ module npu_top #(
         wire [63:0] ps_admission_rows = use_frame_commands_s2 ?
             ((ps_max_frame_rows < (64'(frame_slice_tiles_s2) << SIZE_SHIFT)) ?
                 ps_max_frame_rows : (64'(frame_slice_tiles_s2) << SIZE_SHIFT)) : ps_max_frame_rows;
-        wire [63:0] ps_admission_words = ps_config_word_cap == 3'd3 ?
+        wire [63:0] ps_admission_words = ps_config_word_cap == 3'd2 ?
+            (ps_admission_rows << 1) : ps_config_word_cap == 3'd3 ?
             (ps_admission_rows << 1) + ps_admission_rows : (ps_admission_rows << 2);
         wire [63:0] ps_admission_bank_words;
         generate if (SHARED_RAM_ENABLED) begin : g_ps_bank_reservation
@@ -1253,7 +1258,8 @@ module npu_top #(
              (!frame_command_final || frame_output_seen || (frame_output_armed && oa_calc_over))) : oa_calc_over;
         wire tiling_invalid = conv_config_invalid || ps_capacity_config_invalid || !ext_r_legal || !ext_w_legal ||
             (cfg_16x8_s2 && cfg_ia_reuse_eff_s2 > OA_S16_FIFO_BANKS) ||
-            (ps_control_q[31:4] != 0) || (!FRAME_EXEC_ENABLED && ps_control_q != 0) ||
+            (ps_control_q[31:6] != 0) || (ps_control_q[5:4] == 2'd3) ||
+            (!FRAME_EXEC_ENABLED && ps_control_q != 0) ||
             cfg_row_groups == 0 || cfg_col_groups == 0 || cfg_row_tail_tiles == 0 || cfg_col_tail_tiles == 0 ||
             cfg_row_tail_tiles > cfg_ia_reuse_eff_s2 || cfg_col_tail_tiles > cfg_w_reuse_eff_s2 ||
             (cfg_row_groups >> DIM_COUNT_WIDTH) != 0 || (cfg_col_groups >> DIM_COUNT_WIDTH) != 0;

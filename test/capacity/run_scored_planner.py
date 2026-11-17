@@ -31,6 +31,9 @@ def main():
         raise RuntimeError(result.stderr or result.stdout)
     headers = ('dsa_schedule.h', 'dsa_memory_schedule.h', 'dsa_memory.h', 'gempact_tiling.h')
     report = {'passed': True, 'configurations': 800, 'geometry_checks': 71,
+              'auto_selection_cases': 8,
+              'test_sha256': {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+                              for path in (Path(__file__).resolve(), ROOT / 'test/capacity/test_scored_planner.c')},
               'driver_sha256': {name: hashlib.sha256((ROOT / 'drivers' / name).read_bytes()).hexdigest()
                                 for name in headers}}
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

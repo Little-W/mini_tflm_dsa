@@ -204,7 +204,7 @@ module npu_axil_top #(
     localparam bit PS_RAW_ONLY = 1'b0;
 `endif
     localparam logic [31:0] PS_CAPS = SIZE == 16 ?
-        {8'd1, 8'(PS_FRAME_COUNT), 11'd0, SHARED_CAPABLE, PS_RAW_ONLY,
+        {8'd1, 8'(PS_FRAME_COUNT), 10'd0, 1'b1, SHARED_CAPABLE, PS_RAW_ONLY,
          1'(IA_COMPACT_ENABLE != 0 && DATA_WIDTH == 16), 2'b11} : 32'd0;
     localparam int unsigned PS_POOL_BYTES = SIZE == 16 ? `GEMMORA_PS_POOL_BYTES : 0;
 `else
