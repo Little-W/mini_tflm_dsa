@@ -20,6 +20,7 @@
 - [仿真与 FPGA](verification.md)：VCS、Python 接口和 Vivado 的使用。
 - [FPGA 资源与时序规划](fpga_resource_budget.md)：150 MHz、完整 SoC 的 LUT 分配，以及模块级优化与验证方法。
 - [开源 FPGA 综合](open_fpga_synthesis.md)：使用 Yosys 比较模块资源和组合逻辑级数。
+- [FPGA 优化交接](fpga_optimization_handoff.md)：当前资源、验证方法和后续优化方向。
 - [block_dma 统一矩阵与 im2col 接口](block_dma_im2col.md)：当前主设计，包含 WS / IS 的分块请求、返回接口、DMA 内部缓存、事务完成处理、驱动与验证程序。
 - [NMSIS 与 SoC 卷积性能对照](conv_soc_performance.md)：真实 PicoRV32 上比较原 CPU im2col 加 DSA GEMM 与 DMA 硬件 im2col，列明周期、流量、参考程序和适用范围。
 - [Conv 源码交付与即时生成测试](conv_source_only.md)：使用固定提交 `148964d1`，测试向量、访问轨迹与编译产物在运行时生成，版本库保存源码。
