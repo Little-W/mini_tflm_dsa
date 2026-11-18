@@ -1,4 +1,4 @@
-set ports_clock_root [get_ports [all_fanout -flat -clock_tree -level 0]]
+set ports_clock_root [get_ports clk]
 group_path -name REGOUT -to [all_outputs]
 group_path -name REGIN -from [remove_from_collection [all_inputs] $ports_clock_root]
 group_path -name FEEDTHROUGH \

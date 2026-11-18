@@ -9,6 +9,19 @@ puts "Read RTL:"
 puts "  $DESIGN_FILELIST"
 puts "#------------------------------------------"
 
+set checkpoint [getenv_default DESIGN_CHECKPOINT ""]
+if {$checkpoint ne ""} {
+    read_ddc $checkpoint
+    set top_designs [filter_collection [get_designs *] {is_hierarchical == true}]
+    set found_top ""
+    foreach_in_collection candidate $top_designs {
+        set name [get_object_name $candidate]
+        if {$name eq $DESIGN_TOP || [string match "*${DESIGN_TOP}_h_*" $name]} {set found_top $name; break}
+    }
+    if {$found_top eq ""} {error "Checkpoint does not contain the requested top design"}
+    current_design $found_top
+    if {[sizeof_collection [all_clocks]] > 0} {remove_clock [all_clocks]}
+} else {
 set generated_f [file join $PROJ_TEMP sources.f]
 set out [open $generated_f w]
 set in [open $DESIGN_FILELIST r]
@@ -34,13 +47,17 @@ if {$DESIGN_PARAMETERS ne ""} {
     if {![elaborate ${DESIGN_TOP}]} { error "RTL elaboration failed" }
 }
 
+}
+
 set ELAB_DESIGN [get_object_name [current_design]]
 puts "Elaborated design: $ELAB_DESIGN"
 
 write -f ddc -hierarchy -o ${PROJ_TEMP}/${DESIGN_TOP}_elab.ddc
 
 set uniquify_naming_style "${DESIGN_TOP}_%s_%d"
-uniquify -force
+if {[getenv_default DESIGN_FORCE_UNIQUIFY 0]} {
+    uniquify -force
+}
 
 if {![link]} { error "Design contains unresolved references" }
 check_design > ${PROJ_TEMP}/${DESIGN_TOP}_check_design_elab.rpt

@@ -9,8 +9,10 @@ report_timing -nets -input -transition_time -capacitance -nworst 10 \
     > ${PROJ_TEMP}/${DESIGN_TOP}_timing.rpt
 report_timing -delay_type min -nets -input -transition_time -capacitance -nworst 10 \
     > ${PROJ_TEMP}/${DESIGN_TOP}_hold_timing.rpt
-report_power -hierarchy -verbose > ${PROJ_TEMP}/${DESIGN_TOP}_power.rpt
-report_power >> ${PROJ_TEMP}/${DESIGN_TOP}_power.rpt
+if {[getenv_default DESIGN_POWER_REPORT 0]} {
+    report_power -hierarchy -verbose > ${PROJ_TEMP}/${DESIGN_TOP}_power.rpt
+    report_power >> ${PROJ_TEMP}/${DESIGN_TOP}_power.rpt
+}
 report_threshold_voltage_group > ${PROJ_TEMP}/${DESIGN_TOP}_cell_usage.rpt
 sizeof_collection [get_cells -hierarchical] > ${PROJ_TEMP}/${DESIGN_TOP}_instances.rpt
 report_clock_gating -verbose -ungated > ${PROJ_TEMP}/${DESIGN_TOP}_clock_gating.rpt

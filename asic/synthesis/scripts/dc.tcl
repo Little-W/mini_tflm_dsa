@@ -40,6 +40,8 @@ source -e -v ${PROJ_PATH}/scripts/5_compile_design.tcl
 #--------------------------------------------
 source -e -v ${PROJ_PATH}/scripts/6_timing_report.tcl
 
+source -e -v ${PROJ_PATH}/scripts/7_top_paths.tcl
+
 if {$INTERRUPT != 1} {
     exit
 }
