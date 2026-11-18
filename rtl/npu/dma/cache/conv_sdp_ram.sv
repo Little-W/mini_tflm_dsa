@@ -19,7 +19,7 @@ module conv_sdp_ram #(
   localparam int SELECT_W = WORDS<=1 ? 1 : $clog2(WORDS);
   localparam int BANK_SHIFT = $clog2(WORDS);
   logic [SELECT_W-1:0] read_bank;
-  logic [31:0] read_words[WORDS];
+  logic [WORDS-1:0][31:0] read_words;
   always_ff @(posedge clk) if (rd_en) read_bank <= (WORDS == 1) ? '0 : SELECT_W'(rd_addr);
   assign rd_data = read_words[read_bank];
   for(genvar word=0;word<WORDS;word++)begin:g_bank

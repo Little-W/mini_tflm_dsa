@@ -437,7 +437,7 @@ module conv_windowed_cache #(
   logic [SI-1:0] clear_set;
   logic [31:0] base_q, end_q;
   logic bypass_q, windowed_q, prefetch_q;
-  logic [31:LB] lookup_tag [WAYS], pf_tag [WAYS], incoming_tag [WAYS], next_tag [WAYS], hint_lookup_tag [WAYS];
+  logic [WAYS-1:0][31:LB] lookup_tag, pf_tag, incoming_tag, next_tag, hint_lookup_tag;
   logic valid [WAYS][SETS];
   logic [EPOCH_W-1:0] select_epochs [WAYS];
   logic [31:0] select_ranks [WAYS];

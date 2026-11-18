@@ -79,6 +79,7 @@ help:
 	@echo 'make ps-compression-soc       Compare RAW and adaptive reuse on complete CNN inference'
 	@echo 'make shared-memory-test       Check shared IA/PS storage and unified NPU results'
 	@echo 'make shared-memory-structure  Check shared SRAM inference with Yosys and slang'
+	@echo 'make open-fpga-synth         Measure FPGA module resources with open-source Yosys'
 	@echo 'make conv-page-split          Check shared DMA reads at 4-KiB and address-space boundaries'
 	@echo 'make conv-vectors             Generate deterministic CNN vectors under build/'
 	@echo 'make conv-real-cnn             Compare five caches on real CNN layer dimensions'
@@ -403,3 +404,9 @@ shared-memory-structure:
 .PHONY: check-rtl-observers
 check-rtl-observers:
 	python3 test/monitors/check_rtl.py
+
+OPEN_FPGA_SYNTH_DIR ?= $(ROOT)/build/open_fpga_synth
+OPEN_FPGA_SYNTH_CASES ?= array shared_ram vector_writeback conv_cache_ram vector_engine
+.PHONY: open-fpga-synth
+open-fpga-synth:
+	$(PYTHON) scripts/fpga/open_fpga_synth.py --out $(OPEN_FPGA_SYNTH_DIR) --cases $(OPEN_FPGA_SYNTH_CASES)

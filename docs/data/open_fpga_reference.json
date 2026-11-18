@@ -1,0 +1,567 @@
+{
+  "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+  "family": "xc7",
+  "cases": {
+    "array": {
+      "top": "ws_systolic_array",
+      "configuration": "16 x 16, signed 16-bit inputs and weights; identity weight-enable buffers",
+      "sources_sha256": {
+        "rtl/npu/compute/ws_systolic_cell.sv": "f757fce4dc39cc5d76f399b0ef730b4831fe1c219961af087ddde9e4b11c7967",
+        "rtl/npu/compute/ws_systolic_array.sv": "5926e43bee3522ebe4ebf24e42fe1dea21534cd8d1d9fc764fcf03645fa025d9"
+      },
+      "lut_cells": 4130,
+      "flip_flops": 11807,
+      "ramb36": 0,
+      "ramb18": 0,
+      "dsp": 256,
+      "carry4": 0,
+      "longest_combinational_path_cells": 2,
+      "cell_counts": {
+        "DSP48E1": 256,
+        "FDCE": 15,
+        "FDRE": 11792,
+        "INV": 1,
+        "LUT2": 2,
+        "LUT3": 271,
+        "LUT4": 257,
+        "LUT5": 2,
+        "LUT6": 3598
+      },
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$341241$lut$aiger341240$60470",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$345353",
+          "type": "LUT6"
+        }
+      ]
+    },
+    "shared_ram": {
+      "top": "ia_ps_shared_ram",
+      "configuration": "7 banks, 8192 bytes per bank",
+      "sources_sha256": {
+        "rtl/npu/buffers/ia_ps_shared_ram.sv": "2831f003bbf77accb0b18390792bcb4fc14f514bb1fed3c3ffe5b349a723439a"
+      },
+      "lut_cells": 5486,
+      "flip_flops": 41,
+      "ramb36": 14,
+      "ramb18": 0,
+      "dsp": 0,
+      "carry4": 0,
+      "longest_combinational_path_cells": 9,
+      "cell_counts": {
+        "FDCE": 34,
+        "FDPE": 7,
+        "INV": 1,
+        "LUT2": 217,
+        "LUT3": 166,
+        "LUT4": 2427,
+        "LUT5": 2114,
+        "LUT6": 562,
+        "RAMB36E1": 14
+      },
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$134930$lut$aiger134929$15009",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$134930$lut$aiger134929$15013",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$134930$lut$aiger134929$15017",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$134930$lut$aiger134929$15021",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$134930$lut$aiger134929$15031",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$134930$lut$aiger134929$15068",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$134930$lut$aiger134929$15106",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$134930$lut$aiger134929$15111",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$auto$xilinx_dffopt.cc:341:execute$142290",
+          "type": "LUT6"
+        }
+      ]
+    },
+    "vector_writeback": {
+      "top": "vector_writeback",
+      "configuration": "16 result lanes, 64-bit bus",
+      "sources_sha256": {
+        "rtl/npu/conv/vector_writeback.sv": "e6aac27c0b141b9d3dd06544df95fb54de15eeea12bfe7cba2f000786dcea3f3"
+      },
+      "lut_cells": 674,
+      "flip_flops": 55,
+      "ramb36": 0,
+      "ramb18": 0,
+      "dsp": 0,
+      "carry4": 21,
+      "longest_combinational_path_cells": 10,
+      "cell_counts": {
+        "CARRY4": 21,
+        "FDCE": 2,
+        "FDRE": 53,
+        "INV": 13,
+        "LUT2": 40,
+        "LUT3": 176,
+        "LUT4": 44,
+        "LUT5": 148,
+        "LUT6": 266
+      },
+      "longest_combinational_path": [
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$43090",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$1634.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$1634.genblk1.slice[1].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$43061$lut$aiger$o126",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$4.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$43061$lut$aiger43060$842",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$43086",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$1607.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$43061$lut$aiger43060$4334",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$43061$lut$aiger$o465",
+          "type": "LUT6"
+        }
+      ]
+    },
+    "vector_engine": {
+      "top": "vector_engine",
+      "configuration": "16 result lanes, 8 vector processing elements, 64-bit bus",
+      "sources_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+        "rtl/npu/conv/vector_config_check.sv": "b1edd1481734a1305842f76e3d990a3fc7e8f89cb405cea1999cde8be8a3d106",
+        "rtl/npu/conv/vector_writeback.sv": "e6aac27c0b141b9d3dd06544df95fb54de15eeea12bfe7cba2f000786dcea3f3",
+        "rtl/npu/conv/vector_round_shift.sv": "f0b931f1625a1333393536b3e0e1571707087205badc227ec315735fd5f84a7f",
+        "rtl/npu/conv/vector_scalar_multiplier.sv": "449fa7fb1ba98e69b157cb188d28c2536f0841bcc12c55f5d7bbdcffef2beece",
+        "rtl/npu/conv/vector_pe.sv": "05ef19c1a7ca067e4dbe6ecf58a19ec7b1edeb0a0c0c9267fc7a737698c498e9",
+        "rtl/npu/conv/vector_softmax.sv": "9a685b3441faa171dafc93facca9ca172a87d53785d1e20460640366ce56212b",
+        "rtl/npu/conv/vector_engine.sv": "2e5fea429bf60192b8a420a51199072afeb445188a7169258d5e22876ebcc230"
+      },
+      "lut_cells": 15392,
+      "flip_flops": 6867,
+      "ramb36": 0,
+      "ramb18": 0,
+      "dsp": 14,
+      "carry4": 907,
+      "longest_combinational_path_cells": 23,
+      "cell_counts": {
+        "CARRY4": 907,
+        "DSP48E1": 14,
+        "FDCE": 2695,
+        "FDPE": 4,
+        "FDRE": 4168,
+        "INV": 211,
+        "LUT2": 2512,
+        "LUT3": 2713,
+        "LUT4": 2301,
+        "LUT5": 4175,
+        "LUT6": 3691,
+        "MUXF7": 106,
+        "MUXF8": 52,
+        "RAM64M": 48
+      },
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$667218$lut$aiger667217$29690",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$667218$lut$aiger667217$29696",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$667218$lut$aiger667217$29765",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$667218$lut$aiger667217$29769",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$667218$lut$aiger667217$29774",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$667218$lut$aiger667217$29981",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$667218$lut$aiger$o35102",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[1].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[2].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[3].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[4].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[5].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[6].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[7].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[8].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[9].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[10].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[11].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[12].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[13].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[14].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$32069.genblk1.slice[15].genblk1.carry4",
+          "type": "CARRY4"
+        }
+      ]
+    },
+    "conv_cache_ram": {
+      "top": "conv_sdp_ram",
+      "configuration": "256 32-bit words, 64-bit byte-enabled writes",
+      "sources_sha256": {
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "8569c13b535049e946e66742fbd530a25da907fde47611f4207e0bbc3758ee34"
+      },
+      "lut_cells": 40,
+      "flip_flops": 1,
+      "ramb36": 0,
+      "ramb18": 2,
+      "dsp": 0,
+      "carry4": 0,
+      "longest_combinational_path_cells": 1,
+      "cell_counts": {
+        "FDRE": 1,
+        "LUT2": 8,
+        "LUT3": 32,
+        "RAMB18E1": 2
+      },
+      "longest_combinational_path": [
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$21416",
+          "type": "LUT3"
+        }
+      ]
+    },
+    "npu_top": {
+      "top": "npu_top",
+      "configuration": "16 x 16 NPU, 64-bit bus, 7 shared banks of 8 KiB",
+      "sources_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+        "rtl/npu/buffers/ia_ps_shared_ram.sv": "2831f003bbf77accb0b18390792bcb4fc14f514bb1fed3c3ffe5b349a723439a",
+        "rtl/npu/buffers/ps_buffer.sv": "57424c1ecffc2d599f0bbb00b163bbfd7c3641bf2423ef19cee382b04e902069",
+        "rtl/npu/buffers/ps_buffer_fifo.sv": "810571feb5306f847a19b5402e75aecb487a9ba8ff5185f37f6d0a07eced9085",
+        "rtl/npu/compute/accumulator_array.sv": "3b175589e1e8f05bd6da71ee7c3abe377f3e1184542bfca69abc9f2eb5e78bf0",
+        "rtl/npu/compute/bias_mux.sv": "7f5ed78ff21592c73b301aa695c2664d9eafb77194e60f578c53d23a3583b94f",
+        "rtl/npu/compute/compute_core.sv": "5a2f95b4f605e3aa670f83f7f944b1e7e6e3430d5f72ef964d3e062991751723",
+        "rtl/npu/compute/data_setup.sv": "7a24e1ce5b84aa8d9c47aeb8cb6fa85ad70facad1075ba4493a0c557cec92786",
+        "rtl/npu/compute/de_diagonalizer.sv": "cd2790f96260ee6f9c8923975b5a1579ecd812d515ab94f9711b1f2a24257272",
+        "rtl/npu/compute/shift_accumulator.sv": "104d5f624db4d79d880e7c2e0bc9699e560d22129d1301e85f1d6ec1e3d768df",
+        "rtl/npu/compute/ws_systolic_array.sv": "5926e43bee3522ebe4ebf24e42fe1dea21534cd8d1d9fc764fcf03645fa025d9",
+        "rtl/npu/compute/ws_systolic_cell.sv": "f757fce4dc39cc5d76f399b0ef730b4831fe1c219961af087ddde9e4b11c7967",
+        "rtl/npu/control/npu_controller.sv": "04ec05981bb49145fe5ef52cf4176a02b5877ed847323b2ef8845bf3fb8c7597",
+        "rtl/npu/control/ps_window_scheduler.sv": "2e1211218af2cdfc9187207c0b7038acd9b817a30b4619b5d22c61692052f6d2",
+        "rtl/npu/conv/conv_axi_read_guard.sv": "85f8419b05ad173481b1bcf319e55d21a7cc2986b39219133adc99cad250c32e",
+        "rtl/npu/conv/conv_axi_read_mux.sv": "57b5006e7d796dab77612f4565bc1a8297c84ac0e161d13d630a0e31c7ae9234",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "e1ddeddf32c36a2b0d0faa215c165bc9d036c2508fb0f45362c24574f26ba52b",
+        "rtl/npu/conv/vector_config_check.sv": "b1edd1481734a1305842f76e3d990a3fc7e8f89cb405cea1999cde8be8a3d106",
+        "rtl/npu/conv/vector_engine.sv": "2e5fea429bf60192b8a420a51199072afeb445188a7169258d5e22876ebcc230",
+        "rtl/npu/conv/vector_pe.sv": "05ef19c1a7ca067e4dbe6ecf58a19ec7b1edeb0a0c0c9267fc7a737698c498e9",
+        "rtl/npu/conv/vector_round_shift.sv": "f0b931f1625a1333393536b3e0e1571707087205badc227ec315735fd5f84a7f",
+        "rtl/npu/conv/vector_scalar_multiplier.sv": "449fa7fb1ba98e69b157cb188d28c2536f0841bcc12c55f5d7bbdcffef2beece",
+        "rtl/npu/conv/vector_softmax.sv": "9a685b3441faa171dafc93facca9ca172a87d53785d1e20460640366ce56212b",
+        "rtl/npu/conv/vector_writeback.sv": "e6aac27c0b141b9d3dd06544df95fb54de15eeea12bfe7cba2f000786dcea3f3",
+        "rtl/npu/dma/axi_block_dma_arbiter.sv": "05046daab398977c9bf50639958ca8ff87cccad1581c14446286607494da464e",
+        "rtl/npu/dma/axi_dual_block_dma.sv": "d3736b7e3853d1cc1c94140aa58dadc5975126d9f8eb5d47fc7e3a67454796a5",
+        "rtl/npu/dma/axi_linear_block_dma.sv": "39a850a321327e78da5456554fdd1750be61af0ef35b7c74a9cd9c4194349ca6",
+        "rtl/npu/dma/axi_write_page_guard.sv": "acb3e356b4c84dba27b36c4b6fefe9c485592401ec900fb561c6b70d50102ceb",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "14be8e7f2ff5030743f1624fa8cf1995237e8b88b5ea9419e9f45c9d539bae02",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "eb8e2d2abc165a6c66ff687807139ed99a069648ca61b162d6bdcbf096ef91a8",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "8569c13b535049e946e66742fbd530a25da907fde47611f4207e0bbc3758ee34",
+        "rtl/npu/dma/conv_window_queue.sv": "e001fd2a4109b6ffb1c92182b716583f41d7fbb04b99f85af1140d23bf8c6677",
+        "rtl/npu/dma/operand_read_cache.sv": "e12f48ba65c8303df5a251d60e37f91db72b320bcecbaa606320b72fc9ebc152",
+        "rtl/npu/loaders/bias_loader.sv": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+        "rtl/npu/loaders/bias_loader_buffer.sv": "fbad597605352c60f92050eaf90c02dcf499ae98fbad6ebc5a3b7138ae1ac166",
+        "rtl/npu/loaders/bias_loader_ctrl.sv": "81422e9fc42761c061375dd788f5787c0a3cf22097184800bd82f1da62d44acb",
+        "rtl/npu/loaders/ia_buffer_wrapper.sv": "e10329c885e1995d31498634432c6d238f13e1f3f4c68c0188362f62a240cd6a",
+        "rtl/npu/loaders/ia_loader.sv": "90d731ff2c0fa42d7fc0eb532b804569ca24db69c90c6e087914e274ebb957c0",
+        "rtl/npu/loaders/ia_loader_cache_mgr.sv": "b3346fc2424960647416da006fc7291938415c88a5b16d66093e14f48fee0bdb",
+        "rtl/npu/loaders/ia_loader_ctrl.sv": "12b6e27630f9fda577f93fdd1a797bb3b7142ec1f3ebfc12ef11ecf4f388ee4d",
+        "rtl/npu/loaders/kernel_loader.sv": "7af3979e7d68a9d7e27e551af361584f15854c117f111760bdbc8d8710015209",
+        "rtl/npu/loaders/kernel_loader_buffer.sv": "fc57cf42e4ab122b4115f354b29025c2c427a7d641343f6046e9da5a0576f7f2",
+        "rtl/npu/loaders/kernel_loader_ctrl.sv": "d5dc13b9aeef199097fe51f02857611deaf209b3ea186822280f2689574782e9",
+        "rtl/npu/ps_compact/ps_adaptive_codec.sv": "649ae5c94a31f81fae20919b922ffb6ae4b213acd1ba9823d022c0a4b96976d9",
+        "rtl/npu/ps_compact/ps_frame_store.sv": "58053730818efd45e097a9322d20deb9787f3fe58d9e9a6d980c5be9a9d3535e",
+        "rtl/npu/top/npu_top.sv": "6dc764d719887358fef81041505e433f2f568b67d4483a299e90000b32584e89",
+        "rtl/npu/writeback/oa_writer.sv": "88c52fc0f91356c3f5d3d25363f027c8174ce515715427a5ea314b63297b10fc",
+        "rtl/npu/writeback/vec_requant.sv": "4076e28b7c3ac6792ea5aec5e526157246d6c20dbe40fb51bb4ab553566e300d",
+        "rtl/npu/writeback/vec_requant_s64.sv": "beb897a79952c8c7b2995a64a8dece25eb6409ae4d20063fa3676d2a1d162b9f",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv": "98038d211689b0c01aae6728fbed6c761a64d79b01f858062c285254bf3c41f4",
+        "rtl/npu/writeback/vec_s8_to_fifo.sv": "f60ae4e4e08af81b9e1d5c5ee964f9075e795f1ce2932e89f9a05a7ad4cf22da",
+        "rtl/common/pseudo_dual_port_ram.v": "31fdecc25dffdba7885fbfe95e25f6607a6849232c160b8e9ad86dc0e09f4c15",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+      },
+      "lut_cells": 69871,
+      "flip_flops": 45171,
+      "ramb36": 85,
+      "ramb18": 89,
+      "dsp": 390,
+      "carry4": 4057,
+      "longest_combinational_path_cells": 35,
+      "cell_counts": {
+        "CARRY4": 4057,
+        "DSP48E1": 390,
+        "FDCE": 11755,
+        "FDPE": 176,
+        "FDRE": 33156,
+        "FDSE": 84,
+        "INV": 1073,
+        "LUT1": 1,
+        "LUT2": 11977,
+        "LUT3": 8327,
+        "LUT4": 9502,
+        "LUT5": 26188,
+        "LUT6": 13876,
+        "MUXF7": 48,
+        "MUXF8": 15,
+        "RAM32M": 70,
+        "RAM64M": 48,
+        "RAMB18E1": 89,
+        "RAMB36E1": 85,
+        "SRL16E": 192
+      },
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$3177332$lut$not$aiger3177331$67943",
+          "type": "INV"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134749.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger$o1064",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[1].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[2].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[3].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[4].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[5].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[6].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$134746.genblk1.slice[7].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger$o1619",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$28676.genblk1.slice[2].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263677",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263745",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263750",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263754",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263759",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$3197608",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263769",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263774",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263778",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263783",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263785",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263791",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263793",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger$o224342",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263885",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$263888",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$451110",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger3177331$478336",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger$o343058",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger$o342866",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$3177332$lut$aiger$o342994",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$auto$xilinx_dffopt.cc:341:execute$3303318",
+          "type": "LUT6"
+        }
+      ]
+    }
+  },
+  "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+  "timing": "Combinational cell depth is an indicator, not a delay or clock-frequency result; block RAM and DSP terminate paths.",
+  "source_commit": "c3712e54"
+}

@@ -840,6 +840,7 @@ module npu_top #(
         localparam int unsigned IS_BIAS_VALID_W =
             (IS_BIAS_ROWS <= 1) ? 1 : ($clog2(IS_BIAS_ROWS) + 1);
         logic [IS_BIAS_ROW_W-1:0] is_bias_row_idx;
+        logic [IS_BIAS_ROW_W-1:0] is_bias_read_idx;
         wire signed [31:0] bias_group_scalar;
         wire use_per_channel_eff = (ENABLE_PER_CHANNEL != 0)
                                  ? use_per_channel : 1'b0;
@@ -2169,7 +2170,6 @@ module npu_top #(
     wire signed [31:0] requant_in_vec[SIZE];
     wire signed [63:0] requant_in_vec_s64[SIZE];
 
-        logic [IS_BIAS_ROW_W-1:0] is_bias_read_idx;
         always_comb begin
             is_bias_read_idx = is_bias_row_idx;
             if (is_mode && acc_data_valid) begin

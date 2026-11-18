@@ -26,6 +26,7 @@ module conv_next_use_predictor (
   logic [2:0] cfg_phase;
   logic cfg_basic_q;
   logic [31:0] cfg_points_q, cfg_taps_q, cfg_blocks_q;
+  logic [31:0] block_rows_q;
   logic [16:0] cfg_qtiles_q;
   logic [3:0] cfg_multiply_phase;
   logic cfg_product_done;
@@ -45,7 +46,7 @@ module conv_next_use_predictor (
 
   logic [15:0] kh_q, kw_q, oh_q, ow_q, cg_q, dh_q, dw_q, ph_q, pw_q;
   logic [5:0] block_shift_q, h_shift_q, w_shift_q;
-  logic [31:0] groups_q, block_rows_q, group_span_q, block_span_q;
+  logic [31:0] groups_q, group_span_q, block_span_q;
   logic [31:0] y_limit_q, x_limit_q;
   logic [15:0] h_mask_q, w_mask_q;
   logic [31:0] y_q, x_q, channel_q, current_pb_q, current_local_q, current_group_q;
