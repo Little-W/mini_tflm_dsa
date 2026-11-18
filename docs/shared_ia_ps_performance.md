@@ -19,9 +19,9 @@
 
 NPU AXI-Lite 配置接口保持 32 位数据和 16 位地址。`NPU_AXI_DATA_WIDTH` 控制张量传输的 AXI4 数据宽度。每个共享 bank 使用独立的同步 128 位 1R1W 存储端口。
 
-软件为每层选择 1、2 或 4 个 IA bank，PS 使用其余 bank。以完整 S16 行存入 IA RAM 时至少需要两个 IA bank；IS 的流式 IA 保存 S8 权重，可使用紧凑存储。跨 K 保存 RAW32 部分和至少需要四个 PS bank，采用 S24、S16 容量上限时分别至少需要三个、两个 PS bank。S16/S24 容量上限由输入类型、offset、权重和全部保留的 K tile 前缀计算，检查包含中间累加值。运行中的分配保持固定。
+软件为每层选择 1 或 2 个 IA bank；总数达到 8 个时也可选择 4 个，PS 使用其余 bank。以完整 S16 行存入 IA RAM 时至少需要两个 IA bank；IS 的流式 IA 保存 S8 权重，可使用紧凑存储。保存 RAW32 部分和需要至少四个 PS bank。运行中的分配保持固定。
 
-FPGA 使用 [`config/npu_fpga.mk`](../config/npu_fpga.mk)，默认七个 8 KiB bank，共 56 KiB。两种配置的完整 RTL 状态量分别为 442,019 位与 998,206 位，同一配置中的 RAW32 和 adaptive 状态量完全相同。状态量包括逻辑数组和顺序状态；共享 RAM 的物理映射单独核对。默认 S8 输出 FIFO 在 2 KiB bank 配置下为 8 KiB，在 8 KiB bank 配置下为 16 KiB，均包含在完整容量统计内。FPGA 和 ASIC 的物理容量见[共享 RAM 映射](shared_ram_mapping.md)。
+FPGA 使用 [`config/npu_fpga.mk`](../config/npu_fpga.mk)，默认七个 8 KiB bank，共 56 KiB。状态量包括逻辑数组和顺序状态；共享 RAM 的物理映射单独核对。默认七个 bank 的配置中，S8 输出 FIFO 为 8 KiB，并计入完整容量统计。FPGA 和 ASIC 的物理容量见[共享 RAM 映射](shared_ram_mapping.md)。
 
 ## 比较条件
 

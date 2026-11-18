@@ -250,29 +250,27 @@ Tile-packed 布局按输出行 tile 和归约 tile 排列，每个 tile 内保�
 | 0 | 可寻址 PS frame 存储 |
 | 1 | 独立 K 进度及容量调度 |
 | 2 | IA 紧凑 S8 存储 |
-| 3 | 本构建强制 RAW32 |
+| 3 | 部分和采用 RAW32 存储 |
 | 4 | IA/PS 共享 bank RAM |
-| 5 | 接受软件证明的 S16/S24 部分和长度上限 |
+| 5 | 保留，读取为零 |
 
 `PS_CONTROL` 的字段如下：
 
 | 位 | 含义 |
 |---|---|
-| 0 | 1 强制 RAW32；0 允许自适应行编码。本构建强制 RAW32 时始终使用原始存储 |
+| 0 | 软件写入 1；部分和按 RAW32 存储 |
 | 1 | 1 请求逐 frame 调度；0 由窗口形状和容量决定采用连续调度或逐 frame 调度 |
 | 3:2 | frame 行高：0 由硬件选择，1 为一个 tile，2 为两个 tile，3 为整个 R 组 |
-| 5:4 | 0 使用硬件通用范围检查；1 为严格 S16 上限，每行至多 2 个 128 位字；2 为严格 S24 上限，每行至多 3 个字；3 为非法配置 |
+| 5:4 | 软件写入 0；值 3 为非法配置 |
 | 31:6 | 保留，写入零 |
 
-frame 行高以有效矩阵行为单位，最后一个 frame 按剩余行数截短。编码策略与调度方式分别配置，连续调度也支持压缩。自适应编码可选择重复行、Sparse128、差分 Rice、S16、S24 或 RAW32。强制 RAW32 时，每个中间行使用 4 个 128 位字，容量计算同样使用四个字的上限。
+frame 行高以有效矩阵行为单位，最后一个 frame 按剩余行数截短。每个中间部分和行使用四个 128 位字，容量检查按该大小执行。
 
-软件在 `PS_CAPS[5]=1` 时可提交严格部分和界。Prepare 调用 [`dsa_ps_bound_s8`](dsa_ps_bound.h)，读取固定权重并计算所有合法输入下需要保存的 K16 前缀范围。该计算不读取运行时激活，bias 在最终 K 后加入。S16/S24 字段指中间部分和值的取值范围。任务执行期间权重和相关 offset 保持不变。`ps_frame_store` 核对每个编码记录的实际字数，超出声明上限会报告容量错误。`PS_CONTROL[5:4]=0` 时，RTL 根据输入格式、offset 和归约长度选择通用 S24 上限或 RAW32 上限。
+共享分配在 START 前写入。六或七个 bank 的构建使用 `IA_BANK_MASK=0x6`，支持 IA=1、2；八或九个 bank 的构建使用 `IA_BANK_MASK=0x16`，支持 IA=1、2、4；非法 bank 数的写入返回 AXI-Lite `SLVERR`，保持原配置。运行期间配置写入被拒绝，STATUS 的 DONE 写清除仍可用。共享能力关闭时，`SHARED_TOTAL_BYTES`、`SHARED_BANK_BYTES`、`IA_BANK_MASK` 和 `PS_DIRECTORY_ROWS` 返回零。
 
-共享分配在 START 前写入。默认七 bank 构建的 `IA_BANK_MASK=0x16`，支持 IA=1、2、4；非法 bank 数的写入返回 AXI-Lite `SLVERR`，保持原配置。运行期间配置写入被拒绝，STATUS 的 DONE 写清除仍可用。共享能力关闭时，`SHARED_TOTAL_BYTES`、`SHARED_BANK_BYTES`、`IA_BANK_MASK` 和 `PS_DIRECTORY_ROWS` 返回零。
+`SHARED_BANK_BYTES` 支持 2048、4096、8192，`SHARED_BANK_COUNT` 支持 6 至 9。通用及 ASIC 配置默认 2048 B × 9；FPGA 工程使用 8192 B bank，默认七个 bank。驱动用总字节数除以单个 bank 字节数得到物理 bank 数。每个 PS bank 可保存 `SHARED_BANK_BYTES / 16` 个 128 位字，允许的部分和行数通过 `PS_DIRECTORY_ROWS` 单独查询。寄存器报告完整的共享数据容量，FPGA parity 容量不计入该值，详见 [共享 RAM 映射](../docs/shared_ram_mapping.md)。
 
-`SHARED_BANK_BYTES` 支持 2048、4096、8192，`SHARED_BANK_COUNT` 支持 6 至 9。通用及 ASIC 配置默认 2048 B × 7；FPGA 工程使用 8192 B bank，默认七个 bank。驱动用总字节数除以单个 bank 字节数得到物理 bank 数。每个 PS bank 可保存 `SHARED_BANK_BYTES / 16` 个 128 位字，目录容量通过 `PS_DIRECTORY_ROWS` 单独查询。寄存器报告完整的共享数据容量，FPGA parity 容量不计入该值，详见 [共享 RAM 映射](../docs/shared_ram_mapping.md)。
-
-IA=1 只支持紧凑输入；S16 行需要两个独立 bank。紧凑和宽格式的 16×16 IA 分块分别占用 256 B、512 B，R 上限按当前 IA 字节数除以两个分块的字节数计算。8 KiB bank 分配 IA=4 时，紧凑格式的 IA 容量允许 R=64，宽格式允许 R=32。非最终 RAW32 PS 行需要至少四个 PS bank，严格 S24、S16 上限分别需要至少三个、两个 PS bank。软件先查询能力和容量，再计算 bank 分配、R/W 及四个工作组参数。层间更改分配会重新初始化相关存储状态。
+IA=1 只支持紧凑输入；S16 行需要两个独立 bank。紧凑和宽格式的 16×16 IA 分块分别占用 256 B、512 B，R 上限按当前 IA 字节数除以两个分块的字节数计算。8 KiB bank 分配 IA=4 时，紧凑格式的 IA 容量允许 R=64，宽格式允许 R=32。RAW32 PS 行需要至少四个 PS bank。软件先查询能力和容量，再计算 bank 分配、R/W 及四个工作组参数。层间更改分配会重新初始化相关存储状态。
 
 S8 输出 FIFO 可容纳整个 IA 行组。默认 16 个 PS frame 下，2、4 KiB bank 构建的 `MATRIX_OUTPUT_BANKS[15:0]` 为 32，8 KiB bank 构建为 64；默认 `MATRIX_OUTPUT_BANKS[31:16]` 为 4。S16 输出任务还需满足该输出 bank 数对应的 R 限制。
 

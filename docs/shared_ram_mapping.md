@@ -1,12 +1,20 @@
 # 共享 IA/PS RAM 的物理映射
 
-共享数据 RAM 由 [`ia_ps_shared_ram`](../rtl/npu/buffers/ia_ps_shared_ram.sv) 实现。每个 bank 为 128 位宽，提供独立的同步读端口和写端口。软件在任务开始前把 1、2 或 4 个 bank 分配给 IA，其余 bank 用于 PS。每个 bank 的数据地址空间全部可用，任务执行期间分配保持固定。
+共享数据 RAM 由 [`ia_ps_shared_ram`](../rtl/npu/buffers/ia_ps_shared_ram.sv) 实现。每个 bank 为 128 位宽，提供独立的同步读端口和写端口。软件在任务开始前为 IA 分配 1 或 2 个 bank；总数达到 8 个时也可分配 4 个，其余 bank 用于 PS。每个 bank 的数据地址空间全部可用，任务执行期间分配保持固定。
+
+## 端口译码与访问时序
+
+共享 RAM 接收两个 IA 端口和四个 PS 端口。各物理 bank 使用固定地址译码和独立的读、写授权逻辑。同一 bank 的同类端口发生冲突时，按照 IA 端口 0、IA 端口 1、PS 端口 0 至 3 的顺序选择第一个请求，并记录容量错误。同一行发生读写冲突且写掩码非零时，保留读取并禁止该次写入。越界访问与未配置状态下的访问同样记录错误，重新配置能够清除错误状态。
+
+IA 地址按分配数量使用固定比特选取 bank 和行。PS 地址按物理 bank 的固定偏移译码。读取在时钟边沿接收地址，并同时保存返回数据的 bank 选择；数据在该边沿后有效。
+
+`ia_loader_cache_mgr` 将 IA 写命令的地址、数据、字节掩码和使能一起寄存，下一时钟边沿写入物理 RAM。此级寄存每周期能够接收一条写命令。已有的分组启动和读取地址阶段保证最后一条填充命令先于对应行读取完成写入，连续行输出的周期保持不变。
 
 ## 目标配置与数据容量
 
 | 目标 | 配置文件 | 默认 bank 大小 | 默认 bank 数量 | 默认共享数据容量 | 支持的 bank 大小 |
 |---|---|---:|---:|---:|---|
-| 通用及 ASIC | [`config/npu.mk`](../config/npu.mk) | 2 KiB | 7 | 14 KiB | 2、4、8 KiB |
+| 通用及 ASIC | [`config/npu.mk`](../config/npu.mk) | 2 KiB | 9 | 18 KiB | 2、4、8 KiB |
 | Xilinx 7 series FPGA | [`config/npu_fpga.mk`](../config/npu_fpga.mk) | 8 KiB | 7 | 56 KiB | 8 KiB |
 
 两种目标均支持 6 至 9 个 bank。配置字段 `SHARED_BANK_BYTES` 使用字节，公开取值为 2048、4096、8192；FPGA 工程入口进一步要求 8192。`NPU_CONFIG` 可选择配置文件，FPGA 入口同时检查显式文件和环境变量覆盖后的参数。

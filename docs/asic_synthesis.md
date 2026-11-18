@@ -1,0 +1,78 @@
+# ASIC 综合与路径优化
+
+综合使用 SMIC40 RVT 标准单元和双端口 SRAM 时序库。RTL 中的同步存储通过 `asic/rtl/smic40_sram_1r1w.sv` 映射到 `RAMTP128X16` 或 `RAMTP1024X16`，宏的面积和时序均参与综合统计。
+
+## 环境与初始综合
+
+设置 `STD_ROOT` 与 `SRAM_ROOT`，分别指向标准单元库和 SRAM 库。默认采用 TT、1.1 V、25 ℃。
+
+```sh
+make -C asic/synthesis syn \
+  STD_ROOT="$STD_ROOT" SRAM_ROOT="$SRAM_ROOT" \
+  TARGET_FREQ_MHZ=50 COMPILE_MODE=quick MAX_CORES=1
+```
+
+初始综合采用 50 MHz、单进程和较低优化强度。Design Compiler 的 `compile` 执行标准映射，`quick` 使用较低的面积优化强度；`standard` 使用较高的映射优化强度；`ultra` 调用 `compile_ultra`。
+
+`prepare-rtl` 在构建目录生成综合输入，将带默认值的输入端口转换为显式连接。RTL 源码、生成文件和综合结果分别保存在源码目录、构建目录的 `sources/` 以及构建目录根部。
+
+## 前 100 条最大延时路径
+
+每轮综合生成以下文件：
+
+| 文件 | 内容 |
+|---|---|
+| `npu_top_top100_delay.csv` | 按单元和网络传播延时之和排序的 100 条路径 |
+| `npu_top_top100_delay.rpt` | 对应路径的逐引脚到达时间、增量延时及单元型号 |
+| `npu_top_top100_slack.rpt` | 按时序裕量排序的路径及完整约束信息 |
+| `npu_top_summary.rpt` | 时钟周期、建立时间裕量和保持时间裕量 |
+| `npu_top_area.rpt` | 总单元面积与各层次面积 |
+
+延时排序包含满足约束的路径。每个受约束终点取最大延时路径，然后进行全局排序。优化对象为其中重复出现的组合逻辑结构，包括地址运算、选择网络、编解码和反馈控制。
+
+```sh
+python3 scripts/asic/analyze_top_paths.py --run "$SYN_OUTPUT"
+```
+
+分析程序生成 `top_paths.json` 和 `top_paths.md`，统计各逻辑区域在 100 条路径中的出现次数和延时贡献。
+
+## 分阶段提高频率
+
+完成路径分析和 RTL 修改后，先在相同的 50 MHz 条件下重新综合并运行功能仿真。比较修改前后的路径延时、逻辑级数、面积及周期数。随后依次采用 150 MHz、400 MHz 及更高目标频率。
+
+设计未改变时，可使用已映射 DDC 进行增量优化：
+
+```sh
+make -C asic/synthesis syn \
+  STD_ROOT="$STD_ROOT" SRAM_ROOT="$SRAM_ROOT" \
+  TARGET_FREQ_MHZ=150 COMPILE_MODE=standard MAX_CORES=1 \
+  DESIGN_CHECKPOINT="$MAPPED_DDC" DESIGN_INCREMENTAL=1
+```
+
+各阶段使用独立的 `PROJ_TEMP` 保存结果。RTL 改变后，重新执行分析和展开；已展开的 DDC 用于同一份 RTL 的约束或优化参数调整。
+
+SDC 为时钟周期预留 10% 建立时间不确定度和不超过 0.125 ns 的保持时间不确定度，输入与输出的最大接口延时各为时钟周期的 20%。综合报告分别给出建立与保持检查结果。布局布线阶段继续使用真实时钟树、布线寄生和工艺角完成时序分析。
+
+## 部分和存储比较
+
+`scripts/asic/run_ps_synthesis.py` 提供固定 16×16 阵列、64 位 AXI 和共享数据 RAM 的完整 NPU 综合入口。通过 `--source-root` 指定实现所在的工作目录，直接 INT32 分支同时设置 `--force-raw`。通过 `--frequency` 与 `--compile-mode` 选择阶段参数。`--checkpoint` 复用 DDC，`--incremental` 对已映射结果进行增量优化。
+
+比较时，两种实现采用相同频率、单元库、SRAM 库、接口约束和综合强度。目录 SRAM、编解码器、分配器和反馈控制均计入实现成本。性能测量另行记录共享数据 RAM 与目录 RAM 的物理字节数。
+
+
+## 分模块综合
+
+对于完整 NPU，先生成展开后的 DDC，再按依赖顺序综合各模块：
+
+```sh
+python3 scripts/asic/run_ps_synthesis.py --elaborate-only \
+  --std-db "$PS_STD_DB" --libs "$MEM_DB_PATH" --out build/ps_cost/elaborated
+python3 scripts/asic/partition_synthesis.py \
+  --elab-ddc build/ps_cost/elaborated/npu_top_elab.ddc \
+  --std-db "$PS_STD_DB" --libs "$MEM_DB_PATH" \
+  --cache build/ps_cost/module_cache --out build/ps_cost/mapped
+```
+
+综合结果按源文件、模块参数、子模块结果、频率和时序库的摘要保存。相同模块可在不同的部分和实现中复用；相关源文件或子模块改变时，重新综合受影响的模块。默认每个模块最多运行 300 秒，常驻与交换内存合计限制为 8 GiB，可通过 `--timeout` 和 `--max-memory-gib` 调整。
+
+每个模块保留接口功能并独立映射。完整设计的路径分析在组合后的 NPU 上执行，覆盖跨模块路径。逻辑缓存容量和 SRAM 宏物理容量分别统计，宏的深度与位宽填充计入物理容量和面积。

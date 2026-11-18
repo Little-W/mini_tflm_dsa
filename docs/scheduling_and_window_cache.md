@@ -1,8 +1,8 @@
 # 矩阵调度与共享窗口缓存
 
-本文说明矩阵乘法、卷积和向量计算共用的存储与调度机制。默认启用 `PCR_ENGINE=1`，阵列为 `SIZE=16`，`NPU_AXI_DATA_WIDTH=64`，`PS_FRAME_COUNT=16`，`OA_S16_FIFO_BANKS_MAX=4`。IA/PS 共享数据容量由 bank 大小与数量的乘积确定。通用及 ASIC 的 [`config/npu.mk`](../config/npu.mk) 默认使用七个 2 KiB bank，共 14 KiB；FPGA 的 [`config/npu_fpga.mk`](../config/npu_fpga.mk) 默认使用七个 8 KiB bank，共 56 KiB。
+本文说明矩阵乘法、卷积和向量计算共用的存储与调度机制。默认启用 `PCR_ENGINE=1`，阵列为 `SIZE=16`，`NPU_AXI_DATA_WIDTH=64`，`OA_S16_FIFO_BANKS_MAX=4`。通用配置的 `PS_FRAME_COUNT=4`，FPGA 配置为 16。IA/PS 共享数据容量由 bank 大小与数量的乘积确定。通用及 ASIC 的 [`config/npu.mk`](../config/npu.mk) 默认使用九个 2 KiB bank，共 18 KiB；FPGA 的 [`config/npu_fpga.mk`](../config/npu_fpga.mk) 默认使用七个 8 KiB bank，共 56 KiB。
 
-bank 大小支持 2、4、8 KiB，数量支持六至九个；FPGA 工程要求每 bank 为 8 KiB。Prepare 为每层选择 1、2 或 4 个 IA bank，其余用于 PS，并把结果保存在 arena 配置中。窗口缓存采用 `CACHE_POLICY=3`，包含 128 个集合、每集合 2 路、每行 16 字节，共 4 KiB。容量和物理 RAM 映射分别见[容量说明](capacity.md)与[共享 RAM 映射](shared_ram_mapping.md)。
+bank 大小支持 2、4、8 KiB，数量支持六至九个；FPGA 工程要求每 bank 为 8 KiB。Prepare 为每层选择 1 或 2 个 IA bank；总数达到 8 个时也可选择 4 个，其余用于 PS，并把结果保存在 arena 配置中。窗口缓存采用 `CACHE_POLICY=3`，包含 128 个集合、每集合 2 路、每行 16 字节，共 4 KiB。容量和物理 RAM 映射分别见[容量说明](capacity.md)与[共享 RAM 映射](shared_ram_mapping.md)。
 
 ## 1. 数据流与模块职责
 
@@ -163,15 +163,17 @@ VCE 使用 8 个 `vector_pe`，每个 PE 具有一个乘法器。默认 `TILE=16
 
 共享 DMA 内的 [`conv_window_queue.sv`](../rtl/npu/dma/conv_window_queue.sv) 保存有序描述，默认 `WINDOW_OUTSTANDING=4`，计数包含正在执行的描述。有效通道数不超过 8 时，VCE 可同时保留四个未完成的窗口请求；通道数为 9 至 16 时，输入区域限制该数量为两个。提交描述后立即设置目标区域的 `input_reserved`，在前一个请求完成之前也可提交其他空闲区域的请求。
 
-响应包含原始 `tag`、通道位置、最多四个 INT16 元素、有效掩码、`last` 和错误标志。最后一拍被接受时释放 `input_reserved`，成功接收的区域设置 `input_ready`；计算完成后释放 `input_ready`，该区域才可再次使用。16 个有效通道需要两个 PE 执行周期完成一个卷积核位置的乘加，尾通道按实际有效数量控制。
+响应包含原始 `tag`、通道位置、最多四个 INT16 元素、有效掩码、`last` 和错误标志。最后一拍被接受时释放 `input_reserved`，成功接收的区域设置 `input_ready`；计算完成后释放 `input_ready`，该区域才可再次使用。16 个有效通道分为两个 PE 组，每组依次完成操作数寄存和结果写入，尾通道按实际有效数量控制。
 
 前端可以在当前描述最后一拍输出被接受的同一周期接受下一个描述，并根据新描述提交缓存字请求。在连续字已经驻留且消费者持续接收的条件下，缓存的每周期一个 32 位字返回能力可供前端持续使用。对于 DW 使用的 S8 输入，一个字提供四个元素，经扩展和零点修正后返回 INT16 数据。窗口描述队列与缓存需求字队列分别计数，二者均通过各自的接受和完成事件测量在途数量。
 
 窗口响应严格遵循描述接受顺序。消费者施加背压时，`tag`、位置、掩码、数据和终止标志保持稳定。前端报告错误后停止接受新窗口请求，并为错误出现时尚未完成的已接受描述依次返回带原始 `tag` 的终止错误响应，其数据掩码为零。VCE 的失败处理继续消费这些响应，并等待已有写回完成。新配置等待窗口队列、前端和共享缓存排空；复位清除描述及区域占用状态。
 
-### 4.2 双结果区域与 II=1 重新量化
+### 4.2 结果区域与流水重新量化
 
-VCE 具有两个可轮换的结果区域。第一个区域使用 `result_buf`，第二个区域复用 `input_buf` 的后半部分。每个区域依次经历空闲、原始累加值、重新量化、可写回和写回状态。区域独立的状态使下一位置的 MAC、上一位置的重新量化和更早位置的写回能够并行。
+VCE 使用单个结果区域保存当前输出。写回控制器接收描述后，该区域保持稳定，直到写响应完成。
+输入暂存按标签分配给后续窗口，下一位置的累计运算可以与此前结果的写回重叠。
+重新量化由主状态机发起，并等待结果区域可以使用后连续提交通道。
 
 重新量化流水线每周期接收一个累加值和相应乘数，即启动间隔 `II=1`。有符号乘法、舍入和输出截断分为流水阶段。对于 S8 输出：
 
@@ -181,7 +183,7 @@ y=\operatorname{clamp}\left(\operatorname{RNE}\left(\frac{a\,m}{2^{31-s}}\right)
 
 其中 `RNE` 表示舍入到最近整数，恰好位于中点时选择偶数；负数也遵守同一规则。16 个通道需要连续输入 16 个累加值，再等待流水线尾部完成。驱动检查乘数、移位和累加范围，保持硬件与软件参考的量化语义一致。
 
-VCE 的算术乘法资源为 8 个 PE 乘法器，以及重新量化与 Softmax 共用的一个 32×32 乘法器。地址和配置表达式中的乘法单独统计。相关实现见 [`vector_engine.sv`](../rtl/npu/conv/vector_engine.sv)、[`vector_pe.sv`](../rtl/npu/conv/vector_pe.sv) 和 [`vector_softmax.sv`](../rtl/npu/conv/vector_softmax.sv)。
+VCE 的算术乘法资源包括 8 个 PE 乘法器，以及重新量化、Add、平均池化与 Softmax 共用的流水标量乘法器。标量乘法器使用四个固定分积生成精确 32×32 位乘积。地址和配置表达式中的乘法单独统计。相关实现见 [`vector_engine.sv`](../rtl/npu/conv/vector_engine.sv)、[`vector_pe.sv`](../rtl/npu/conv/vector_pe.sv) 和 [`vector_softmax.sv`](../rtl/npu/conv/vector_softmax.sv)。
 
 ### 4.3 写回带宽与 Softmax
 
@@ -209,7 +211,7 @@ B_{\mathrm{IA}}=B_{\mathrm{bank}}n_{\mathrm{IA}},\qquad
 B_{\mathrm{PS}}=B_{\mathrm{bank}}(n_{\mathrm{bank}}-n_{\mathrm{IA}}).
 \]
 
-`B_bank` 支持 2,048、4,096 或 8,192 字节，`n_bank` 支持 6 至 9；当前 IA 分配集合为 `n_IA∈{1,2,4}`。通用及 ASIC 默认 `2,048×7`，FPGA 默认 `8,192×7`。每个 PS bank 包含 `D_bank=B_bank/16` 个 128 位字，分别为 128、256、512 个字。容量计算使用读取到的 bank 参数。
+`B_bank` 支持 2,048、4,096 或 8,192 字节，`n_bank` 支持 6 至 9；当 `n_bank` 为 6 或 7 时，IA 分配集合为 `n_IA∈{1,2}`；当 `n_bank` 为 8 或 9 时，集合为 `n_IA∈{1,2,4}`。通用及 ASIC 默认 `2,048×9`，FPGA 默认 `8,192×7`。每个 PS bank 包含 `D_bank=B_bank/16` 个 128 位字，分别为 128、256、512 个字。容量计算使用读取到的 bank 参数。
 
 紧凑 S8 的 IA 双缓冲需要 `512R` 字节，完整 S16 需要 `1024R` 字节。完整 S16 行访问要求至少两个 IA bank。四个 8 KiB IA bank 可容纳紧凑 S8 的 `R=64` 或 S16 的 `R=32`；PS、输出 FIFO 及任务形状继续限制最终候选。WS 中 IA 保存输入，IS 中 IA 保存 S8 权重，因此两种数据流分别确定紧凑格式和可用 R。紧凑存储还要求支持该功能的能力位及合法零点修正范围。S16 输出受到独立输出 FIFO 的限制，默认要求 `R≤4`。
 

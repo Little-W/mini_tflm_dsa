@@ -78,7 +78,7 @@ python3 test/weight_switch/run.py --out build/weight_switch/fpga \
 
 每个比较使用同一个 RTL 可执行文件、同一个固件 ELF、相同物理 RAM、相同模型和输入；在初始化前设置 RAW32 或 adaptive，并分别执行生产驱动 AUTO。记录配置、源码 SHA-256、模拟器与 ELF 摘要、硬件周期、CPU Invoke 周期和 PS 保存/恢复内容。
 
-C7 测量包括默认 2 KiB × 7 bank 的 32 次完整网络运行、FPGA 8 KiB × 7 bank 的 8 次完整网络 trace、三种物理配置下的批量 64 Dense，以及五个原始 Dense 的两个输入。结果及复现命令见[性能测量](shared_ia_ps_performance.md)和[当前结构化结果](measurements/row_weight_selection_20261116.json)。perf 与 trace 分别汇总，初始化成本与 Invoke 成本分别报告。每份性能结果使用其记录的实现源码、二进制和固件摘要识别测量版本。
+C7 测量包括2 KiB × 7 bank 的 32 次完整网络运行、FPGA 8 KiB × 7 bank 的 8 次完整网络 trace、三种物理配置下的批量 64 Dense，以及五个原始 Dense 的两个输入。结果及复现命令见[性能测量](shared_ia_ps_performance.md)和[当前结构化结果](measurements/row_weight_selection_20261116.json)。perf 与 trace 分别汇总，初始化成本与 Invoke 成本分别报告。每份性能结果使用其记录的实现源码、二进制和固件摘要识别测量版本。
 
 2026-11-16 归档的 [C5 结果](measurements/shared_ia_ps_20261116.json)保留实现提交 `8b4c9d9b9711b52877d2a8959f548979ffd9dfee` 的测量。C7 的 40 次网络运行与对应 C5 运行具有相同的初始化、规划和 Invoke 周期，模型、输入、固件及 PS 保存内容也逐项相同。默认硬件的四组完整 NPU 检查另包含 150 个用例和 972,264 次 INT32 比较。
 
