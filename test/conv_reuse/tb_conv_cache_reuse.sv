@@ -13,6 +13,8 @@ module tb_conv_cache_reuse;
     logic [31:0] epoch=1;
     logic block_ar=0,mem_active;
     longint unsigned read_bytes,ar_count;
+    longint unsigned cycle_count=0;
+    always @(posedge clk) cycle_count<=cycle_count+1'b1;
     int requests=0;
     logic hint_pending,prefetch_ready;
     logic [31:0] stat_prefetch_lines,stat_prefetch_used,stat_prefetch_wasted,stat_prefetch_unused,stat_prefetch_bytes,stat_prefetch_late;
@@ -22,7 +24,7 @@ module tb_conv_cache_reuse;
         .req_window_index_valid(1'b0),.req_window_index(0),.req_window_epoch(0),
         .req_window_retire(32'hffffffff),.req_window_progress(0),.prefetch_valid(1'b0),
         .prefetch_addr(0),.prefetch_window_index_valid(1'b0),.prefetch_window_index(0),
-        .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),.prefetch_next_fragment(1'b0),.*);
+        .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),.prefetch_next_fragment(1'b0),.prefetch_ref_valid(1'b0),.prefetch_ref_addr(0),.prefetch_ref_index_valid(1'b0),.prefetch_ref_index(0),.prefetch_ref_epoch(0),.*);
     assign stat_hits=dut.tb_observer.stat_hits;
     assign stat_misses=dut.tb_observer.stat_misses;
     assign stat_read_bytes=dut.tb_observer.stat_read_bytes;
@@ -46,9 +48,9 @@ module tb_conv_cache_reuse;
 
     task automatic read_word(input logic[31:0] address,input int expected_bytes,input int expected_ars,
                              input string name,input bit force_stall=0);
-        longint unsigned before_bytes,before_ars,held_bytes,held_ars;
+        longint unsigned before_bytes,before_ars,held_bytes,held_ars,before_cycles;
         logic[31:0] held_data,word_base;
-        @(negedge clk);before_bytes=read_bytes;before_ars=ar_count;
+        @(negedge clk);before_bytes=read_bytes;before_ars=ar_count;before_cycles=cycle_count;
         block_ar=force_stall;rsp_ready=0;req_addr=address;req_valid=1;
         do @(posedge clk);while(!req_ready);
         @(negedge clk);req_valid=0;
@@ -74,7 +76,7 @@ module tb_conv_cache_reuse;
         @(negedge clk);rsp_ready=0;
         if(read_bytes-before_bytes!=64'(expected_bytes) || ar_count-before_ars!=64'(expected_ars))
             $fatal(1,"unexpected traffic for %s bytes=%0d ars=%0d",name,read_bytes-before_bytes,ar_count-before_ars);
-        $display("CACHE_REUSE_CASE name=%s bytes=%0d ars=%0d",name,read_bytes-before_bytes,ar_count-before_ars);
+        $display("CACHE_REUSE_CASE name=%s bytes=%0d ars=%0d cycles=%0d",name,read_bytes-before_bytes,ar_count-before_ars,cycle_count-before_cycles);
         requests=requests+1;
     endtask
 
@@ -107,7 +109,7 @@ module tb_conv_cache_reuse;
             if(expected!=0) $display("CACHE_EXTERNAL_BYTE address=%h reads=%0d",a,mem.byte_reads[i]);
         end
         if(mem_active || rvalid || read_bytes!=87 || ar_count!=9) $fatal(1,"final byte accounting/drain");
-        $display("CACHE_REUSE_PASS requests=%0d actual_read_bytes=%0d actual_ar_handshakes=%0d",requests,read_bytes,ar_count);
+        $display("CACHE_REUSE_PASS requests=%0d actual_read_bytes=%0d actual_ar_handshakes=%0d cycles=%0d",requests,read_bytes,ar_count,cycle_count);
         $finish;
     end
     initial begin #1000000;$fatal(1,"cache reuse timeout");end

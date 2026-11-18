@@ -512,6 +512,8 @@ int main(int argc,char** argv) {
         runPool({"dscnn_avgpool_25x5",DSA_VECTOR_OP_AVGPOOL_S8,1,25,5,64,25,5,1,1,0,0},arena);
         runPool({"resnet_avgpool_8x8",DSA_VECTOR_OP_AVGPOOL_S8,1,8,8,64,8,8,1,1,0,0},arena);
         runPool({"avgpool_256_taps",DSA_VECTOR_OP_AVGPOOL_S8,1,16,16,17,16,16,1,1,0,0},arena);
+        runPool({"avgpool_four_channels",DSA_VECTOR_OP_AVGPOOL_S8,1,5,5,4,5,5,1,1,0,0},arena);
+        runPool({"maxpool_four_channel_tail",DSA_VECTOR_OP_MAXPOOL_S8,1,4,4,20,4,4,1,1,0,0},arena);
         const dsa_vector_add_params_t residuals[]={
             {128,-4,1623821475,-2,1073741824,0,20,1098017566,-17},
             {17,-4,1699529983,-2,1073741824,0,20,1140768826,-17},

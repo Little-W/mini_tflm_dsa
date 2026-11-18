@@ -114,7 +114,7 @@ def software_checks(args, out):
 
 
 def hardware_checks(args, out):
-    profiles = (("adaptive", [], 0), ("gemmora_raw", ["-DGEMMORA_PS_FORCE_RAW=1"], 1),
+    profiles = (("default", [], 1), ("gemmora_raw", ["-DGEMMORA_PS_FORCE_RAW=1"], 1),
                 ("legacy_raw", ["-DPS_FORCE_RAW=1"], 1))
     sources = elaboration.source_files()
     dependencies = set(sources)
@@ -150,14 +150,14 @@ def hardware_checks(args, out):
         shared_mask = parameter(registers, "SHARED_IA_BANK_MASK")
         directory_rows = parameter(registers, "PS_DIRECTORY_ROWS")
         required_raw = parameter(core, "PS_REQUIRE_RAW_CAPACITY")
-        if (caps != (0x01100037 | (raw << 3)) or register_caps != caps or
+        if (caps != (0x01100017 | (raw << 3)) or register_caps != caps or
                 parameter(top, "PS_RAW_ONLY") != raw or required_raw != raw or
                 parameter(top, "BUS_WIDTH") != args.bus_width or
                 parameter(core, "BUS_WIDTH") != args.bus_width or
                 parameter(registers, "AXI_DATA_BITS") != args.bus_width or
                 parameter(registers, "DMA_MAX_BYTES") != 256 * (args.bus_width // 8) or
                 pool != 12288 or ia != 2048 or shared_total != 14336 or
-                shared_bank != 2048 or shared_mask != 0x16 or directory_rows != 1024):
+                shared_bank != 2048 or shared_mask != 0x6 or directory_rows != 1024):
             raise ValueError(f"Hardware capability mismatch: {name}")
         inventory = elaboration.inventory(tree)
         counts = inventory["module_instances"]

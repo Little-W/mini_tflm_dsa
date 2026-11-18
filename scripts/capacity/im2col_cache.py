@@ -8,7 +8,7 @@ DEFAULT_BYTES = 4096
 BYTE_CHOICES = tuple(512 << index for index in range(8))
 WAYS = 2
 LINE_BYTES = 16
-METADATA_BITS_PER_LINE = 28 + 1 + 1 + 13 + 32
+METADATA_BITS_PER_LINE = 7 * 28 + 2 * 13 + 3 * 32 + 1 + 2 + 1
 
 
 def validate_bytes(value):

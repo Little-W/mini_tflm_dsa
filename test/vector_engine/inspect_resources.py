@@ -72,11 +72,11 @@ def inspect(repository, out, executable, top, tile, pes):
     out.mkdir(parents=True, exist_ok=True)
     conv = repository / "rtl/npu/conv"
     if top == "vector_engine":
-        names = ["conv_im2col_pkg.sv", "vector_engine_pkg.sv", "conv_udiv32.sv",
-                 "vector_pe.sv", "vector_softmax.sv", "vector_engine.sv"]
+        names = ["conv_im2col_pkg.sv", "vector_engine_pkg.sv",
+                 "vector_pe.sv", "vector_softmax.sv", "vector_config_check.sv", "vector_writeback.sv", "vector_round_shift.sv", "vector_scalar_multiplier.sv", "vector_engine.sv"]
         parameters = [f"-GTILE={tile}", f"-GPE_COUNT={pes}"]
     else:
-        names = ["conv_im2col_pkg.sv", "conv_udiv32.sv", "cache/conv_sdp_ram.sv",
+        names = ["conv_im2col_pkg.sv", "cache/conv_sdp_ram.sv",
                  "cache/conv_next_use_predictor.sv", "conv_axi_span_reader.sv",
                  "cache/conv_read_cache.sv", "conv_im2col_frontend.sv"]
         parameters = [f"-GSIZE={tile}", "-GLANES=4", "-GCACHE_SETS=128", "-GCACHE_POLICY=3"]
@@ -112,7 +112,9 @@ def inspect(repository, out, executable, top, tile, pes):
         left, right = operand(node["lhsp"][0]), operand(node["rhsp"][0])
         variables = left["variables"] + right["variables"]
         category = "configuration_or_address"
-        if source.endswith("vector_pe.sv"):
+        if source.endswith("vector_scalar_multiplier.sv"):
+            category = "shared_scalar_partial"
+        elif source.endswith("vector_pe.sv"):
             category = "vector_pe"
         elif (any(name.endswith("multiplier_a") for name in variables) or
               ({"vector_engine.q_accumulator", "vector_engine.q_multiplier"} <= set(variables))):
@@ -133,9 +135,12 @@ def inspect(repository, out, executable, top, tile, pes):
             storage[node["name"]] = dtype_shape(identifier, by_id)
     categories = dict(Counter(row["category"] for row in multipliers))
     if top == "vector_engine":
-        if categories.get("vector_pe") != pes or categories.get("shared_quantization_softmax") != 1:
+        if categories.get("vector_pe") != pes or categories.get("shared_scalar_partial") != 4:
             raise RuntimeError("Unexpected vector arithmetic resources: "+str(categories))
         for row in multipliers:
+            if row["category"] == "shared_scalar_partial":
+                if not (16 <= row["left"]["bits"] <= 17 and 16 <= row["right"]["bits"] <= 17):
+                    raise RuntimeError("Unexpected shared multiplier partial-product width")
             expected = 16 if row["category"] == "vector_pe" else 32
             if row["category"] in {"vector_pe", "shared_quantization_softmax"}:
                 if row["left"]["bits"] != expected or row["right"]["bits"] != expected:

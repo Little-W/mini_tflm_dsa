@@ -294,6 +294,9 @@ module axi_block_dma_arbiter #(
         rd_pending_count = '0;
         for (int i = 0; i < 5; i++)
             rd_pending_count += 4'(rd_client_inflight[i]);
+    end
+
+    always_comb begin
         rd_next_client = C_NONE;
         if (!abort && rd_command_space && !conv_cfg_valid && rd_pending_count < 4 &&
             (!conv_job_q || rd_pending_count == 0)) begin

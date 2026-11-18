@@ -6,8 +6,7 @@
 //   lhs_base = virtual_base, lhs_row_stride_b = virtual_stride_b.
 // This wrapper decodes each original tl_base_addr, then reads the REAL NHWC
 // tensor through conv_cfg.input_base. No virtual matrix is allocated or read.
-// Direct p0/q0 outputs from the controller are preferable for performance; they
-// can connect directly to conv_im2col_frontend and bypass this 32-cycle decoder.
+// A row address counter decodes virtual tile addresses.
 module conv_ia_tile_path #(
   parameter int SIZE=16,
   parameter int CACHE_BLOCKS=4,
@@ -50,8 +49,9 @@ module conv_ia_tile_path #(
   logic seen_cfg;
   logic [31:0] vbase,vstride,delta,p0,q0,rows;
   logic [SW-1:0] slot;
-  logic div_done,div_busy,div_zero;
-  logic [31:0] quotient,remainder;
+  logic [31:0] row_address, row_number;
+  logic [32:0] next_row_address;
+  assign next_row_address = {1'b0,row_address} + {1'b0,vstride};
   logic fe_cfg_ready,fe_tile_ready,fe_done,fe_error,fe_tile_error,fe_busy;
   logic fe_wr_valid,fe_wr_ready;
   logic [SW-1:0] fe_wr_slot;
@@ -61,9 +61,6 @@ module conv_ia_tile_path #(
   assign cfg_ready=(state==IDLE || state==FAULT) && fe_cfg_ready;
   assign tl_busy=state!=IDLE || !seen_cfg || error;
   assign tl_tile_done=state==WAIT_TILE && fe_done;
-  conv_udiv32 u_decode (.clk,.rst_n,.start(state==DIV_START),
-    .dividend(delta),.divisor(vstride),.busy(div_busy),.done(div_done),
-    .div_zero,.quotient,.remainder);
   conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(SW),
     .CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES),
     .BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_front (
@@ -97,10 +94,12 @@ module conv_ia_tile_path #(
           delta<=tl_base_addr-vbase;rows<=tl_rows_to_read;slot<=tl_slot_id;state<=DIV_START;
         end
       end
-      DIV_START:state<=DIV_WAIT;
-      DIV_WAIT:if(div_done) begin
-        if(div_zero || remainder[0])begin error<=1;state<=FAULT;end
-        else begin p0<=quotient;q0<=remainder>>1;state<=ISSUE;end
+      DIV_START:begin row_address<=0;row_number<=0;state<=DIV_WAIT;end
+      DIV_WAIT:begin
+        if (next_row_address <= {1'b0,delta}) begin
+          row_address<=next_row_address[31:0];row_number<=row_number+1;
+        end else if (delta[0]) begin error<=1;state<=FAULT;end
+        else begin p0<=row_number;q0<=(delta-row_address)>>1;state<=ISSUE;end
       end
       ISSUE:if(fe_tile_ready)state<=WAIT_TILE;
       WAIT_TILE:if(fe_done)state<=IDLE;

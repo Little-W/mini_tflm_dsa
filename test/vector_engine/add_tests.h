@@ -34,7 +34,7 @@ static Result add_case(Sim&s,const std::string&name,const vector_add_reference_p
  if(s.mem!=expected)for(size_t i=0;i<s.mem.size();i++)if(s.mem[i]!=expected[i])
    throw std::runtime_error(name+" mismatch at "+std::to_string(i)+" got "+std::to_string(int8_t(s.mem[i]))+" expected "+std::to_string(int8_t(expected[i])));
  require(r.writes==a.size()&&r.reads>=2*a.size(),"Add DMA byte count");
- require(s.top.pe_count>0&&r.compute==17*((a.size()+s.top.pe_count-1)/s.top.pe_count),"Add compute-cycle count");
+ require(s.top.pe_count>0&&r.compute==17*a.size(),"Add compute-cycle count");
  report(name.c_str(),r);cases++;outputs+=a.size();add_cases++;add_outputs+=a.size();return r;
 }
 

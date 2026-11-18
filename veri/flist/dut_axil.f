@@ -2,6 +2,10 @@
 ../../rtl/npu/conv/vector_engine_pkg.sv
 ../../rtl/npu/conv/vector_pe.sv
 ../../rtl/npu/conv/vector_softmax.sv
+../../rtl/npu/conv/vector_config_check.sv
+../../rtl/npu/conv/vector_writeback.sv
+../../rtl/npu/conv/vector_round_shift.sv
+../../rtl/npu/conv/vector_scalar_multiplier.sv
 ../../rtl/npu/conv/vector_engine.sv
 ../../rtl/npu/conv/conv_axi_read_guard.sv
 ../../rtl/npu/conv/conv_axi_read_mux.sv
@@ -13,7 +17,6 @@
 ../../rtl/npu/dma/cache/conv_next_use_predictor.sv
 ../../rtl/npu/dma/cache/conv_read_cache.sv
 ../../rtl/npu/dma/cache/conv_sdp_ram.sv
-../../rtl/npu/conv/conv_udiv32.sv
 +incdir+../../rtl/npu/ps_compact
 ../../rtl/axi_top/npu_axil_reg_if.sv
 ../../rtl/axi_top/npu_axil_top.sv

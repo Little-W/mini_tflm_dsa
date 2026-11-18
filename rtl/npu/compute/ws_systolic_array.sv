@@ -22,8 +22,19 @@ module ws_systolic_array #(
     wire signed [ACC_WIDTH-1:0] sum_pipe [SIZE][SIZE];
     wire store_weight_req_col [SIZE];
     logic [SIZE-1:0] row_weight_select;
+    logic [SIZE-1:0] row_buffer_phase;
     wire input_weight_select = row_weight_select[0] ^ weight_commit;
     wire weight_load_select = !input_weight_select;
+    wire [SIZE-1:0] incoming_buffer_phase;
+    assign incoming_buffer_phase[0] = input_weight_select;
+    for(genvar phase_row=1;phase_row<SIZE;phase_row++)begin:g_buffer_phase
+        assign incoming_buffer_phase[phase_row] = row_weight_select[phase_row-1];
+    end
+    // Preserve the physical bank order across reset before the next tile load.
+    always_ff @(posedge clk) begin
+        if (!rst_n) row_buffer_phase <= '0;
+        else row_buffer_phase <= incoming_buffer_phase;
+    end
 
     // The selector follows the same registers as data and partial sums.
     // A commit selects the completed tile for the next row entering row zero.
@@ -62,6 +73,8 @@ module ws_systolic_array #(
             // Bottom-first loading needs only the final SIZE-row shifts here;
             // earlier shifts may wait for the preceding input stream to leave.
             wire row_load_enable = rst_n && (incoming_weight_select != weight_load_select);
+            wire row_commit_weight = rst_n ?
+                incoming_weight_select != row_buffer_phase[row] : row_buffer_phase[row];
             for (genvar column=0; column<SIZE; column++) begin : gen_col
                 wire signed [DATA_IN_WIDTH-1:0] input_value;
                 wire signed [WEIGHT_WIDTH-1:0] stationary_value;
@@ -79,8 +92,7 @@ module ws_systolic_array #(
                     .DATA_IN_WIDTH(DATA_IN_WIDTH), .WEIGHT_WIDTH(WEIGHT_WIDTH),
                     .ACC_WIDTH(ACC_WIDTH)
                 ) ws_cell (
-                    .clk(clk), .weight_select(row_weight_select[row]),
-                    .weight_load_select(weight_load_select),
+                    .clk(clk), .commit_weight(row_commit_weight),
                     .store_weight_req(store_weight_req_col[column] && row_load_enable),
                     .weight_in(stationary_value), .data_in(input_value),
                     .sum_in(partial_sum), .data_out(data_pipe[row][column]),

@@ -32,7 +32,7 @@ int main(void)
         const uint32_t address = expected[1u + 3u*i];
         const uint32_t value = expected[2u + 3u*i];
         const uint32_t mask = expected[3u + 3u*i];
-        if ((address & 3u) || address > 0x138u || (npu[address/4u] & mask) != value) return 4;
+        if ((address & 3u) || address > 0x13cu || (npu[address/4u] & mask) != value) return 4;
     }
     for (uint32_t i = 0; i < config[4]; ++i)
         npu[config[5u + 2u * i] / 4u] = config[6u + 2u * i];

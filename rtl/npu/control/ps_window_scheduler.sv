@@ -1,7 +1,8 @@
 // Schedule physical output frames while retaining each frame's K progress.
 module ps_window_scheduler #(
     parameter int unsigned SIZE = 16,
-    parameter int unsigned FRAME_COUNT = 16
+    parameter int unsigned FRAME_COUNT = 16,
+    parameter int unsigned MAX_REUSE_TILES = 0
 ) (
     input logic clk, rst_n,
     input logic start,
@@ -25,138 +26,298 @@ module ps_window_scheduler #(
     output logic [31:0] lookahead_q0, lookahead_column, lookahead_cols, lookahead_count_k);
     localparam int unsigned ID_W = (FRAME_COUNT > 1) ? $clog2(FRAME_COUNT) : 1;
     localparam int unsigned SHIFT = $clog2(SIZE);
-    typedef enum logic [2:0] {IDLE, PREPARING, OPENING, SWEEPING, DRAINING, COMPLETE} phase_t;
+    localparam int unsigned TILE_W = 32 - SHIFT;
+    localparam int unsigned ROW_PART_W = MAX_REUSE_TILES > 1 ? $clog2(MAX_REUSE_TILES) :
+        MAX_REUSE_TILES == 1 ? 1 : TILE_W;
+    localparam int unsigned ROW_COUNT_W = MAX_REUSE_TILES != 0 ? $clog2(MAX_REUSE_TILES * SIZE + 1) : 32;
+    typedef enum logic [3:0] {IDLE, PREPARING, PREPARE_PARTS, PREPARE_CAPS,
+                              PREPARE_PRODUCTS, PREPARE_TARGET, OPENING, SWEEPING, DRAINING, COMPLETE} phase_t;
     phase_t phase;
-    logic [31:0] cfg_stream, cfg_stationary, cfg_reduction, cfg_rows, cfg_window, cfg_slice_rows;
-    logic [5:0] slice_shift;
+    logic [31:0] cfg_stream, cfg_stationary, cfg_reduction;
+    logic [ROW_COUNT_W-1:0] cfg_rows, cfg_slice_rows;
+    logic [ID_W:0] cfg_window;
+    logic [31:0] final_q0, final_column0;
+    logic [SHIFT:0] final_k_count, final_column_count;
+    localparam int unsigned SLICE_SHIFT_W = ROW_COUNT_W > 2 ? $clog2(ROW_COUNT_W) : 1;
+    logic [SLICE_SHIFT_W-1:0] slice_shift;
     logic sliced;
-    logic [31:0] row_base, next_column_tile, next_row_part, opened, target, cursor;
+    logic next_part_is_last;
+    logic [31:0] row_base;
+    logic [TILE_W:0] next_column_tile;
+    logic [ROW_PART_W:0] next_row_part;
+    logic [ID_W:0] opened, target, cursor;
     logic [FRAME_COUNT-1:0] live;
-    logic [31:0] frame_k [FRAME_COUNT];
-    logic [31:0] frame_column [FRAME_COUNT];
-    logic [31:0] frame_row [FRAME_COUNT];
-    logic [31:0] frame_rows [FRAME_COUNT];
+    logic [TILE_W-1:0] frame_k [FRAME_COUNT];
+    logic [TILE_W-1:0] frame_column [FRAME_COUNT];
+    logic [ROW_PART_W-1:0] frame_row_part [FRAME_COUNT];
+    logic [ROW_COUNT_W-1:0] frame_rows [FRAME_COUNT];
     logic protected_valid, resume_valid;
     logic [ID_W-1:0] protected_id, resume_id, active_id;
     logic active_init, active_final;
     logic [31:0] active_q0, active_column, active_row, active_rows;
     logic candidate_found;
-    logic [ID_W-1:0] candidate_id;
+    logic [ID_W-1:0] candidate_id, scanned_id, selected_id_q;
+    logic selected_id_valid, selected_init_q;
     logic candidate_init;
-    logic [31:0] column_tiles, current_rows, remaining_columns, group_parts;
+    logic command_buffer_valid;
+    logic [ID_W-1:0] command_buffer_id;
+    logic command_buffer_init, command_buffer_final;
+    logic [31:0] command_buffer_row, command_buffer_q, command_buffer_column;
+    logic [ROW_COUNT_W-1:0] command_buffer_rows;
+    logic [SHIFT:0] command_buffer_cols, command_buffer_k;
+    logic [31:0] candidate_q, candidate_column;
+    logic [SHIFT:0] candidate_cols, candidate_k;
+    logic candidate_final;
+    wire candidate_ready = candidate_found && selected_id_valid;
+    logic [FRAME_COUNT-1:0] candidate_eligible, candidate_after_cursor, candidate_select;
+    logic [TILE_W:0] column_tiles, remaining_columns;
+    logic [ROW_COUNT_W-1:0] current_rows;
+    logic [ROW_PART_W:0] group_parts;
     logic [31:0] candidate_row, candidate_rows, initial_slice_rows;
-    logic [5:0] initial_slice_shift;
+    logic [SLICE_SHIFT_W-1:0] initial_slice_shift;
+    wire [ROW_COUNT_W-1:0] next_slice_offset = ROW_COUNT_W'(next_row_part) << slice_shift;
+    wire [ROW_COUNT_W-1:0] next_slice_remaining = current_rows - next_slice_offset;
 
     function automatic logic [31:0] minimum(input logic [31:0] a, b);
         return (a < b) ? a : b;
     endfunction
 
+    localparam int unsigned CAP_W = ID_W + 1;
+    localparam int unsigned PRODUCT_W = 2 * CAP_W + 1;
+    logic [ROW_COUNT_W-1:0] prepare_rows;
+    logic [TILE_W:0] prepare_remaining_columns;
+    logic [ROW_PART_W:0] prepare_parts;
+    logic [CAP_W-1:0] parts_cap, window_cap, remaining_cap, tail_cap;
+    logic [PRODUCT_W-1:0] window_product, available_product;
+    logic [CAP_W-1:0] next_target;
+    wire [ROW_PART_W:0] remaining_tail = prepare_parts - next_row_part;
+    always_ff @(posedge clk) begin
+        if (phase == PREPARING) begin
+            prepare_rows <= ROW_COUNT_W'(minimum(32'(cfg_rows), cfg_stream - row_base));
+            prepare_remaining_columns <= remaining_columns;
+            if (!sliced) prepare_parts <= (ROW_PART_W+1)'(1);
+        end
+        if (phase == PREPARE_PARTS)
+            prepare_parts <= sliced ? (ROW_PART_W+1)'(((prepare_rows - ROW_COUNT_W'(1)) >> slice_shift) + ROW_COUNT_W'(1)) : (ROW_PART_W+1)'(1);
+        if (phase == PREPARE_CAPS) begin
+            parts_cap <= prepare_parts >= 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(prepare_parts);
+            window_cap <= cfg_window >= 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(cfg_window);
+            remaining_cap <= prepare_remaining_columns > 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) :
+                             CAP_W'(prepare_remaining_columns - 32'd1);
+            tail_cap <= remaining_tail >= 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(remaining_tail);
+        end
+        if (phase == PREPARE_PRODUCTS) begin
+            window_product <= PRODUCT_W'(window_cap) * PRODUCT_W'(parts_cap);
+            available_product <= PRODUCT_W'(remaining_cap) * PRODUCT_W'(parts_cap) + PRODUCT_W'(tail_cap);
+        end
+    end
+    always_comb begin
+        next_target = CAP_W'(FRAME_COUNT);
+        if (window_product < PRODUCT_W'(next_target)) next_target = CAP_W'(window_product);
+        if (available_product < PRODUCT_W'(next_target)) next_target = CAP_W'(available_product);
+    end
+
     assign column_tiles = ((cfg_stationary - 32'd1) >> SHIFT) + 32'd1;
-    assign current_rows = minimum(cfg_rows, cfg_stream - row_base);
+    assign current_rows = prepare_rows;
     assign remaining_columns = column_tiles - next_column_tile;
-    assign group_parts = sliced ? (((current_rows - 32'd1) >> slice_shift) + 32'd1) : 32'd1;
+    assign group_parts = prepare_parts;
     assign reserve_rows = minimum(cfg_slice_rows, current_rows);
     assign ready = phase == IDLE;
     assign done_valid = phase == COMPLETE;
 
     always_comb begin
-        initial_slice_shift = 6'(SHIFT);
-        for (int unsigned bit_index=0; bit_index<32-SHIFT; bit_index++)
-            if (slice_tiles[bit_index]) initial_slice_shift = 6'(SHIFT+bit_index);
+        initial_slice_shift = '0;
+        for (int unsigned bit_index=0; bit_index<ROW_COUNT_W-SHIFT; bit_index++)
+            if (slice_tiles[bit_index]) initial_slice_shift |= SLICE_SHIFT_W'(SHIFT+bit_index);
+        if (slice_tiles == 0) initial_slice_shift = SLICE_SHIFT_W'(SHIFT);
         initial_slice_rows = (slice_tiles == 0) ? (reuse_rows << SHIFT) : (slice_tiles << SHIFT);
         candidate_found = 1'b0;
-        candidate_id = '0;
-        candidate_init = 1'b0;
-        if (phase == OPENING && opened < target) begin
-            candidate_found = 1'b1;
-            candidate_id = ID_W'(opened);
-            candidate_init = 1'b1;
+        candidate_eligible = '0;
+        candidate_after_cursor = '0;
+        candidate_select = '0;
+        candidate_id = selected_id_q;
+        scanned_id = '0;
+        candidate_init = selected_init_q;
+        if (phase == OPENING) begin
+            candidate_found = opened < target;
+            scanned_id = ID_W'(opened);
         end else if (phase == DRAINING && protected_valid) begin
             candidate_found = 1'b1;
-            candidate_id = protected_id;
+            scanned_id = protected_id;
         end else if (phase == SWEEPING) begin
-            for (int unsigned offset = 0; offset < FRAME_COUNT; offset++) begin
-                if (offset < opened) begin
-                    if (cursor + offset < opened) begin
-                        if (!candidate_found && live[ID_W'(cursor + offset)]) begin
-                            candidate_found = 1'b1;
-                            candidate_id = ID_W'(cursor + offset);
-                        end
-                    end else begin
-                        if (!candidate_found && live[ID_W'(cursor + offset - opened)]) begin
-                            candidate_found = 1'b1;
-                            candidate_id = ID_W'(cursor + offset - opened);
-                        end
-                    end
-                end
+            for (int unsigned i = 0; i < FRAME_COUNT; i++) begin
+                candidate_eligible[i] = live[i] && (i < opened);
+                candidate_after_cursor[i] = candidate_eligible[i] && (i >= cursor);
+            end
+            candidate_select = (|candidate_after_cursor) ? candidate_after_cursor : candidate_eligible;
+            candidate_found = |candidate_eligible;
+            for (int i = FRAME_COUNT - 1; i >= 0; i--) begin
+                if (candidate_select[i]) scanned_id = ID_W'(i);
             end
         end
-        command_valid = candidate_found && !command_active;
-        frame_id = command_active ? active_id : candidate_id;
-        frame_init = command_active ? active_init : candidate_init;
-        candidate_row = candidate_init ? row_base + (next_row_part << slice_shift) : frame_row[candidate_id];
-        candidate_rows = candidate_init ? minimum(cfg_slice_rows, current_rows - (next_row_part << slice_shift)) : frame_rows[candidate_id];
-        p0 = command_active ? active_row : candidate_row;
-        rows = command_active ? active_rows : candidate_rows;
-        q0 = command_active ? active_q0 :
-             candidate_init ? 32'd0 : (frame_k[candidate_id] << SHIFT);
-        column0 = command_active ? active_column :
-                  candidate_init ? (next_column_tile << SHIFT) : frame_column[candidate_id];
-        cols = minimum(32'(SIZE), cfg_stationary - column0);
-        count_k = minimum(32'(SIZE), cfg_reduction - q0);
-        frame_final = command_active ? active_final : (cfg_reduction - q0 <= 32'(SIZE));
+        candidate_row = candidate_init ? row_base + 32'(next_slice_offset) :
+            row_base + (32'(frame_row_part[candidate_id]) << SHIFT);
+        candidate_rows = candidate_init ? minimum(32'(cfg_slice_rows),
+            32'(next_slice_remaining)) : 32'(frame_rows[candidate_id]);
+        candidate_q = candidate_init ? 32'd0 : (32'(frame_k[candidate_id]) << SHIFT);
+        candidate_column = candidate_init ? (32'(next_column_tile) << SHIFT) :
+            (32'(frame_column[candidate_id]) << SHIFT);
+        candidate_final = candidate_q == final_q0;
+        candidate_cols = candidate_column == final_column0 ? final_column_count : (SHIFT+1)'(SIZE);
+        candidate_k = candidate_final ? final_k_count : (SHIFT+1)'(SIZE);
+        command_valid = command_buffer_valid && !command_active;
+        frame_id = command_active ? active_id : command_buffer_id;
+        frame_init = command_active ? active_init : command_buffer_init;
+        p0 = command_active ? active_row : command_buffer_row;
+        rows = command_active ? active_rows : 32'(command_buffer_rows);
+        q0 = command_active ? active_q0 : command_buffer_q;
+        column0 = command_active ? active_column : command_buffer_column;
+        cols = 32'(command_buffer_cols);
+        count_k = 32'(command_buffer_k);
+        frame_final = command_active ? active_final : command_buffer_final;
     end
 
-    // Predict the next stationary tile without advancing a frame's K position.
-    // The loader verifies the complete descriptor before consuming a prediction.
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) command_buffer_valid <= 1'b0;
+        else if (command_valid && (command_ready || command_pressure)) command_buffer_valid <= 1'b0;
+        else if (!command_active && !command_buffer_valid && candidate_ready) command_buffer_valid <= 1'b1;
+    end
+    always_ff @(posedge clk) begin
+        if (!command_active && !command_buffer_valid && candidate_ready) begin
+            command_buffer_id <= candidate_id;
+            command_buffer_init <= candidate_init;
+            command_buffer_final <= candidate_final;
+            command_buffer_row <= candidate_row;
+            command_buffer_rows <= ROW_COUNT_W'(candidate_rows);
+            command_buffer_q <= candidate_q;
+            command_buffer_column <= candidate_column;
+            command_buffer_cols <= candidate_cols;
+            command_buffer_k <= candidate_k;
+        end
+    end
+
+    // The prediction is prepared while the accepted command executes.
+    // Select a frame, read its metadata, and calculate the tail sizes in separate cycles.
+    logic [3:0] prediction_valid;
+    logic prediction_request, prediction_reads_frame;
+    logic [ID_W-1:0] prediction_frame;
+    logic [FRAME_COUNT-1:0] prediction_selection, prediction_selection_q;
+    logic prediction_reads_frame_s0;
+    logic [31:0] prediction_direct_q, prediction_direct_column;
+    logic prediction_reads_frame_q, prediction_is_active_q;
+    logic [ID_W-1:0] prediction_frame_q;
+    logic [31:0] prediction_q_s0, prediction_column_s0, prediction_q_direct_s1, prediction_column_direct_s1;
+    logic [31:0] prediction_q_s1, prediction_column_s1;
     always_comb begin : select_lookahead
         logic [FRAME_COUNT-1:0] future_live;
-        logic [31:0] search_start, search_count, future_index;
-        logic search_frames;
+        logic [ID_W:0] search_start, search_count;
+        logic [FRAME_COUNT-1:0] future_eligible, future_after_start, future_select;
         future_live = live;
         future_live[active_id] = !active_final;
-        search_start = 0;
+        search_start = '0;
         search_count = opened;
-        future_index = 0;
-        search_frames = 1'b0;
-        lookahead_valid = 1'b0;
-        lookahead_q0 = 0;
-        lookahead_column = 0;
-        lookahead_cols = 0;
-        lookahead_count_k = 0;
+        future_eligible = '0;
+        future_after_start = '0;
+        future_select = '0;
+        prediction_request = 1'b0;
+        prediction_reads_frame = 1'b0;
+        prediction_selection = '0;
+        prediction_direct_q = '0;
+        prediction_direct_column = '0;
         if (command_active) begin
-            if (phase == OPENING && opened + 1 < target) begin
-                lookahead_valid = 1'b1;
-                lookahead_q0 = 0;
-                lookahead_column = (next_column_tile +
-                    ((next_row_part + 1 == group_parts) ? 32'd1 : 32'd0)) << SHIFT;
+            if (phase == OPENING && opened + (ID_W+1)'(1) < target) begin
+                prediction_request = 1'b1;
+                prediction_direct_column = (32'(next_column_tile) +
+                    (next_part_is_last ? 32'd1 : 32'd0)) << SHIFT;
             end else if (phase == DRAINING && !active_final) begin
-                lookahead_valid = 1'b1;
-                lookahead_q0 = active_q0 + 32'(SIZE);
-                lookahead_column = active_column;
+                prediction_request = 1'b1;
+                prediction_direct_q = active_q0 + 32'(SIZE);
+                prediction_direct_column = active_column;
             end else begin
-                search_frames = 1'b1;
-                if (phase == OPENING) search_count = opened + 1;
-                else if (phase == DRAINING) search_start = resume_valid ? 32'(resume_id) : 0;
-                else search_start = (32'(active_id) + 1 == opened) ? 0 : 32'(active_id) + 1;
-            end
-            if (search_frames) begin
-                for (int unsigned offset = 0; offset < FRAME_COUNT; offset++) begin
-                    future_index = search_start + offset;
-                    if (future_index >= search_count) future_index = future_index - search_count;
-                    if (offset < search_count && !lookahead_valid && future_live[ID_W'(future_index)]) begin
-                        lookahead_valid = 1'b1;
-                        lookahead_q0 = (ID_W'(future_index) == active_id) ?
-                            active_q0 + 32'(SIZE) : frame_k[ID_W'(future_index)] << SHIFT;
-                        lookahead_column = (ID_W'(future_index) == active_id) ?
-                            active_column : frame_column[ID_W'(future_index)];
-                    end
+                prediction_reads_frame = 1'b1;
+                if (phase == OPENING) search_count = opened + (ID_W+1)'(1);
+                else if (phase == DRAINING) search_start = resume_valid ? (ID_W+1)'(resume_id) : '0;
+                else search_start = ((ID_W+1)'(active_id) + (ID_W+1)'(1) == opened) ?
+                    '0 : (ID_W+1)'(active_id) + (ID_W+1)'(1);
+                for (int unsigned i = 0; i < FRAME_COUNT; i++) begin
+                    future_eligible[i] = future_live[i] && (i < search_count);
+                    future_after_start[i] = future_eligible[i] && (i >= search_start);
                 end
+                future_select = (|future_after_start) ? future_after_start : future_eligible;
+                prediction_request = |future_eligible;
+                prediction_selection = future_select;
             end
-            if (lookahead_valid) begin
-                lookahead_cols = minimum(32'(SIZE), cfg_stationary - lookahead_column);
-                lookahead_count_k = minimum(32'(SIZE), cfg_reduction - lookahead_q0);
-            end
+        end
+    end
+    always_comb begin
+        prediction_frame = '0;
+        for (int i = FRAME_COUNT - 1; i >= 0; i--)
+            if (prediction_selection_q[i]) prediction_frame = ID_W'(i);
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) prediction_valid <= '0;
+        else if (!command_active || command_complete) prediction_valid <= '0;
+        else prediction_valid <= {prediction_valid[2:0], prediction_request};
+    end
+    assign lookahead_valid = prediction_valid[3] && command_active;
+    always_ff @(posedge clk) begin
+        if (prediction_request) begin
+            prediction_selection_q <= prediction_selection;
+            prediction_reads_frame_s0 <= prediction_reads_frame;
+            prediction_q_s0 <= prediction_direct_q;
+            prediction_column_s0 <= prediction_direct_column;
+        end
+        if (prediction_valid[0]) begin
+            prediction_frame_q <= prediction_frame;
+            prediction_reads_frame_q <= prediction_reads_frame_s0;
+            prediction_is_active_q <= prediction_frame == active_id;
+            prediction_q_direct_s1 <= prediction_q_s0;
+            prediction_column_direct_s1 <= prediction_column_s0;
+        end
+        if (prediction_valid[1]) begin
+            prediction_q_s1 <= prediction_reads_frame_q ?
+                (prediction_is_active_q ? active_q0 + 32'(SIZE) :
+                    32'(frame_k[prediction_frame_q]) << SHIFT) : prediction_q_direct_s1;
+            prediction_column_s1 <= prediction_reads_frame_q ?
+                (prediction_is_active_q ? active_column :
+                    32'(frame_column[prediction_frame_q]) << SHIFT) : prediction_column_direct_s1;
+        end
+        if (prediction_valid[2]) begin
+            lookahead_q0 <= prediction_q_s1;
+            lookahead_column <= prediction_column_s1;
+            lookahead_cols <= prediction_column_s1 == final_column0 ? 32'(final_column_count) : 32'(SIZE);
+            lookahead_count_k <= prediction_q_s1 == final_q0 ? 32'(final_k_count) : 32'(SIZE);
+        end
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            selected_id_valid <= 1'b0;
+        end else if (!candidate_found || command_active ||
+                     (command_valid && (command_ready || command_pressure))) begin
+            selected_id_valid <= 1'b0;
+        end else if (!selected_id_valid && candidate_found) begin
+            selected_id_valid <= 1'b1;
+        end
+    end
+    always_ff @(posedge clk) begin
+        if (!command_active && !selected_id_valid && candidate_found) begin
+            selected_id_q <= scanned_id;
+            selected_init_q <= phase == OPENING;
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        next_part_is_last <= next_row_part + (ROW_PART_W+1)'(1) == group_parts;
+    end
+
+    always_ff @(posedge clk) begin
+        if (phase == IDLE && start) begin
+            final_q0 <= ((reduction - 32'd1) >> SHIFT) << SHIFT;
+            final_column0 <= ((stationary_rows - 32'd1) >> SHIFT) << SHIFT;
+            final_k_count <= (reduction & 32'(SIZE-1)) == '0 ? (SHIFT+1)'(SIZE) : (SHIFT+1)'(reduction & 32'(SIZE-1));
+            final_column_count <= (stationary_rows & 32'(SIZE-1)) == '0 ? (SHIFT+1)'(SIZE) :
+                (SHIFT+1)'(stationary_rows & 32'(SIZE-1));
         end
     end
 
@@ -165,7 +326,7 @@ module ps_window_scheduler #(
             phase <= IDLE;
             cfg_stream <= '0; cfg_stationary <= '0; cfg_reduction <= '0;
             cfg_rows <= '0; cfg_window <= '0; cfg_slice_rows <= '0;
-            slice_shift <= 6'(SHIFT); sliced <= 1'b0;
+            slice_shift <= SLICE_SHIFT_W'(SHIFT); sliced <= 1'b0;
             row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
             opened <= '0; target <= '0; cursor <= '0;
             live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
@@ -175,20 +336,14 @@ module ps_window_scheduler #(
             active_q0 <= '0; active_column <= '0; active_row <= '0; active_rows <= '0;
             err_code <= '0;
 
-            for (int i = 0; i < FRAME_COUNT; i++) begin
-                frame_k[i] <= '0;
-                frame_column[i] <= '0;
-                frame_row[i] <= '0;
-                frame_rows[i] <= '0;
-            end
         end else begin
             if (phase == IDLE && start) begin
                 cfg_stream <= stream_rows;
                 cfg_stationary <= stationary_rows;
                 cfg_reduction <= reduction;
-                cfg_rows <= reuse_rows << SHIFT;
-                cfg_window <= window_frames;
-                cfg_slice_rows <= initial_slice_rows;
+                cfg_rows <= ROW_COUNT_W'(reuse_rows << SHIFT);
+                cfg_window <= (ID_W+1)'(window_frames);
+                cfg_slice_rows <= ROW_COUNT_W'(initial_slice_rows);
                 slice_shift <= initial_slice_shift;
                 sliced <= slice_tiles != 0;
                 row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
@@ -199,6 +354,7 @@ module ps_window_scheduler #(
 
                 if (config_error != 0 || stream_rows == 0 || stationary_rows == 0 || reduction == 0 ||
                     reuse_rows == 0 || (reuse_rows >> (32-SHIFT)) != 0 ||
+                    (MAX_REUSE_TILES != 0 && reuse_rows > MAX_REUSE_TILES) ||
                     window_frames == 0 || window_frames > 32'(FRAME_COUNT) ||
                     slice_tiles > reuse_rows || (slice_tiles & (slice_tiles - 32'd1)) != 0) begin
                     err_code <= (config_error != 0) ? config_error : 2'b01;
@@ -210,7 +366,7 @@ module ps_window_scheduler #(
             end else if (phase == COMPLETE && done_ready) begin
                 phase <= IDLE;
             end else if (command_valid && command_pressure) begin
-                if (!frame_final && protected_valid && live[protected_id] && protected_id != candidate_id &&
+                if (!frame_final && protected_valid && live[protected_id] && protected_id != command_buffer_id &&
                     (phase == OPENING || phase == SWEEPING)) begin
 
                     if (phase == OPENING) begin
@@ -219,7 +375,7 @@ module ps_window_scheduler #(
                         cursor <= '0;
                         phase <= SWEEPING;
                     end else begin
-                        resume_id <= candidate_id;
+                        resume_id <= command_buffer_id;
                         resume_valid <= 1'b1;
                         phase <= DRAINING;
                     end
@@ -229,8 +385,8 @@ module ps_window_scheduler #(
                 end
             end else if (command_valid && command_ready) begin
                 command_active <= 1'b1;
-                active_id <= candidate_id;
-                active_init <= candidate_init;
+                active_id <= command_buffer_id;
+                active_init <= command_buffer_init;
                 active_final <= frame_final;
                 active_q0 <= q0;
                 active_column <= column0;
@@ -240,16 +396,12 @@ module ps_window_scheduler #(
                 command_active <= 1'b0;
 
                 if (active_init) begin
-                    frame_column[active_id] <= active_column;
-                    frame_row[active_id] <= active_row;
-                    frame_rows[active_id] <= active_rows;
-                    frame_k[active_id] <= 32'd1;
-                    opened <= opened + 32'd1;
-                    if (next_row_part + 32'd1 == group_parts) begin
-                        next_column_tile <= next_column_tile + 32'd1;
+                    opened <= opened + 1'b1;
+                    if (next_row_part + (ROW_PART_W+1)'(1) == group_parts) begin
+                        next_column_tile <= next_column_tile + (TILE_W+1)'(1);
                         next_row_part <= '0;
-                    end else next_row_part <= next_row_part + 32'd1;
-                end else frame_k[active_id] <= frame_k[active_id] + 32'd1;
+                    end else next_row_part <= next_row_part + (ROW_PART_W+1)'(1);
+                end
                 live[active_id] <= !active_final;
                 if (active_final) begin
                     if (protected_valid && protected_id == active_id) protected_valid <= 1'b0;
@@ -257,20 +409,27 @@ module ps_window_scheduler #(
                     protected_id <= active_id;
                     protected_valid <= 1'b1;
                 end
-                if (phase == OPENING && opened + 32'd1 == target) begin
+                if (phase == OPENING && opened + (ID_W+1)'(1) == target) begin
                     phase <= SWEEPING;
                     cursor <= '0;
                 end else if (phase == DRAINING && active_final) begin
                     phase <= SWEEPING;
-                    cursor <= resume_valid ? 32'(resume_id) : 32'd0;
+                    cursor <= resume_valid ? (ID_W+1)'(resume_id) : '0;
                     resume_valid <= 1'b0;
 
                 end else if (phase == SWEEPING) begin
-                    cursor <= (32'(active_id) + 32'd1 == opened) ? 32'd0 : 32'(active_id) + 32'd1;
+                    cursor <= ((ID_W+1)'(active_id) + (ID_W+1)'(1) == opened) ? '0 : (ID_W+1)'(active_id) + (ID_W+1)'(1);
                 end
             end else if (phase == PREPARING) begin
-                target <= minimum(32'(FRAME_COUNT), minimum(cfg_window * group_parts,
-                                                           remaining_columns * group_parts - next_row_part));
+                phase <= sliced ? PREPARE_PARTS : PREPARE_CAPS;
+            end else if (phase == PREPARE_PARTS) begin
+                phase <= PREPARE_CAPS;
+            end else if (phase == PREPARE_CAPS) begin
+                phase <= PREPARE_PRODUCTS;
+            end else if (phase == PREPARE_PRODUCTS) begin
+                phase <= PREPARE_TARGET;
+            end else if (phase == PREPARE_TARGET) begin
+                target <= next_target;
                 phase <= OPENING;
             end else if (phase == SWEEPING && !command_active && !candidate_found) begin
                 opened <= '0; cursor <= '0;
@@ -286,6 +445,17 @@ module ps_window_scheduler #(
                     target <= minimum(cfg_window, remaining_columns);
                     phase <= PREPARING;
                 end
+            end
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (command_active && command_complete) begin
+            frame_k[active_id] <= active_init ? TILE_W'(1) : frame_k[active_id] + 1'b1;
+            if (active_init) begin
+                frame_column[active_id] <= TILE_W'(active_column >> SHIFT);
+                frame_row_part[active_id] <= ROW_PART_W'((active_row - row_base) >> SHIFT);
+                frame_rows[active_id] <= ROW_COUNT_W'(active_rows);
             end
         end
     end

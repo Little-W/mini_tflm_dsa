@@ -58,6 +58,7 @@ module tb_conv_npu;
     wire [31:0] hits,misses,conv_bytes,conv_cycles;
     longint unsigned cycle=0;
     longint unsigned ps_observer_job=0;
+    wire arvalid,arready,rvalid,rready,rlast,awvalid,awready,wvalid,wready,wlast,bvalid,bready;
     always @(posedge clk) if(rst_n && calc_start && sa_ready) ps_observer_job <= ps_observer_job + 1;
     always @(posedge clk)if(rst_n)cycle<=cycle+1;
     integer debug_events=0;
@@ -84,8 +85,9 @@ module tb_conv_npu;
         SHARED_TEST_BYTES <= 9 * `TB_SHARED_BANK_BYTES &&
         SHARED_TEST_BYTES % `TB_SHARED_BANK_BYTES == 0;
     localparam int PS_MONITOR_BANKS = PS_MONITOR_SHARED ? SHARED_TEST_BYTES / `TB_SHARED_BANK_BYTES - 1 : 4;
+    localparam int PS_MONITOR_IA_BANKS = SHARED_TEST_BYTES / `TB_SHARED_BANK_BYTES >= 8 ? 4 : 2;
     localparam int PS_MONITOR_ROWS = (PS_MONITOR_SHARED ?
-        4 * `TB_SHARED_BANK_BYTES / (SIZE * SIZE * 2) : `TB_IA_CACHE_BLOCKS) * SIZE;
+        PS_MONITOR_IA_BANKS * `TB_SHARED_BANK_BYTES / (SIZE * SIZE * 2) : `TB_IA_CACHE_BLOCKS) * SIZE;
     generate if(SIZE==16)begin : g_ps_monitor
         initial begin
             assert (PS_MONITOR_SHARED == u_dut.SHARED_RAM_ENABLED &&
@@ -260,7 +262,6 @@ module tb_conv_npu;
         conv_cfg.input_offset=$signed(cfg[49][15:0]);
         conv_cfg.bypass_cache=cfg[50][0];conv_cfg.input_s16=cfg[51][0];
     end
-    wire arvalid,arready,rvalid,rready,rlast,awvalid,awready,wvalid,wready,wlast,bvalid,bready;
     wire [31:0] araddr,awaddr;
     wire [`TB_BUS_WIDTH-1:0] rdata,wdata;
     wire [7:0] arlen,awlen;

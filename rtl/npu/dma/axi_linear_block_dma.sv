@@ -262,10 +262,8 @@ module axi_linear_block_dma #(
             rd_context_head <= '0;
             rd_context_tail <= '0;
             rd_context_count <= '0;
-            for (int i=0; i<RD_CTX_DEPTH; i++) rd_context[i] <= '0;
         end else begin
             if (rd_accept_start) begin
-                rd_context[rd_context_tail] <= rd_incoming;
                 rd_context_tail <= next_context(rd_context_tail);
             end
             if (rd_finish_beat) rd_context_head <= next_context(rd_context_head);
@@ -274,6 +272,15 @@ module axi_linear_block_dma #(
                 2'b01: rd_context_count <= rd_context_count - context_count_t'(1);
                 default: ;
             endcase
+        end
+    end
+
+    // Payload fields are written before their entry becomes valid.
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            for (int i=0; i<RD_CTX_DEPTH; i++) rd_context[i].tag <= '0;
+        end else if (rd_accept_start) begin
+            rd_context[rd_context_tail] <= rd_incoming;
         end
     end
 
@@ -323,12 +330,7 @@ module axi_linear_block_dma #(
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             rd_issue_active <= 1'b0;
-            rd_cfg_base_addr <= '0; rd_cfg_row_stride <= '0;
-            rd_cfg_rows <= '0; rd_cfg_burst_len_m1 <= '0; rd_cfg_linear_read <= 1'b0;
             rd_arvalid_r <= 1'b0; rd_araddr_r <= '0; rd_arlen_r <= '0;
-            rd_follow_addr <= '0; rd_follow_beats <= '0;
-            rd_cmd_row_cnt <= '0; rd_cmd_row_addr <= '0;
-            rd_pending_cmd_cross <= 1'b0;
         end else if (rd_accept_start) begin
             rd_issue_active <= 1'b1;
             rd_cfg_base_addr <= rd_base_addr;

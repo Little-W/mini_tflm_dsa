@@ -28,7 +28,7 @@ python3 test/capacity/run_shared_bank_registers.py \
 
 `run_cache_profiles.py` 在全部八种容量下运行生产 im2col 前端，并逐项比较独立数学参考。测试覆盖 S8/S16、分组卷积、步长、dilation、尾部、等待和错误处理，同时检查实际数据 RAM 位数。512 B、4 KiB、64 KiB 另外运行窗口访问测试，统计外部读取字节与前端周期。
 
-`run_elaboration.py` 展开完整 `npu_axil_top`，检查数据数组、每缓存行 75 位元数据、两级顶层参数及能力寄存器参数。覆盖八种缓存容量和两项 FPGA 共享 RAM 配置。硬件容量检查与软件预算检查分别执行；使用较大缓存时通过 `make capacity-check` 检查所选总容量预算。
+`run_elaboration.py` 展开完整 `npu_axil_top`，检查数据数组、每缓存行 322 位元数据、两级顶层参数及能力寄存器参数。覆盖八种缓存容量和两项 FPGA 共享 RAM 配置。硬件容量检查与软件预算检查分别执行；使用较大缓存时通过 `make capacity-check` 检查所选总容量预算。
 
 寄存器测试在 23 种配置下执行真实 AXI-Lite 读写，检查 `0x13c` 的容量返回值、只读属性、关闭 Conv 时的返回值，以及 IA/PS 分配、busy、返回等待和复位期间的行为。
 

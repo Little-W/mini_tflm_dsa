@@ -51,6 +51,31 @@ module conv_axi_read_guard #(
     wire direct_mode = SPLIT_GEMM_4K && !enable && state == IDLE;
     wire direct_ar = direct_mode && fast_legal && s_arvalid && m_arready;
     wire direct_last = direct_mode && m_rvalid && s_rready && m_rlast;
+    logic [BUS_BYTES-1:0] allocation_mask [4];
+    // Accepted AXI words and the internal word cursor are bus aligned.
+    // Share the word-address comparisons across every byte in each range.
+    for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation_mask
+        wire base_present = base_q[allocation] != 0;
+        wire after_base_word = addr_q[32:BUS_SHIFT] > {1'b0,base_q[allocation][31:BUS_SHIFT]};
+        wire at_base_word = addr_q[32:BUS_SHIFT] == {1'b0,base_q[allocation][31:BUS_SHIFT]};
+        wire before_end_word = addr_q[32:BUS_SHIFT] < end_q[allocation][32:BUS_SHIFT];
+        wire at_end_word = addr_q[32:BUS_SHIFT] == end_q[allocation][32:BUS_SHIFT];
+        for (genvar byte_lane=0; byte_lane<BUS_BYTES; byte_lane++) begin : g_byte_lane
+            wire after_base_byte, before_end_byte;
+            if (byte_lane==BUS_BYTES-1) begin : g_last_byte
+                assign after_base_byte = 1'b1;
+                assign before_end_byte = 1'b0;
+            end else begin : g_offset_compare
+                assign after_base_byte = BUS_SHIFT'(byte_lane) >= base_q[allocation][BUS_SHIFT-1:0];
+                assign before_end_byte = BUS_SHIFT'(byte_lane) < end_q[allocation][BUS_SHIFT-1:0];
+            end
+            assign allocation_mask[allocation][byte_lane] = base_present &&
+                (after_base_word || (at_base_word && after_base_byte)) &&
+                (before_end_word || (at_end_word && before_end_byte));
+        end
+    end
+    assign allowed_mask = (!enable && !addr_q[32] ? {BUS_BYTES{1'b1}} : {BUS_BYTES{1'b0}}) |
+        allocation_mask[0] | allocation_mask[1] | allocation_mask[2] | allocation_mask[3];
     always_comb begin
         request_end = 33'(s_araddr) + ((33'(s_arlen) + 33'd1) << BUS_SHIFT);
         fast_legal = !enable;
@@ -60,11 +85,6 @@ module conv_axi_read_guard #(
         fast_legal = fast_legal && s_arsize == 3'(BUS_SHIFT) && s_arburst == 2'b01 &&
                      s_araddr[BUS_SHIFT-1:0] == 0 &&
                      ({1'b0,s_araddr[11:0]} + ((13'(s_arlen)+13'd1)<<BUS_SHIFT) <= 13'd4096);
-        allowed_mask = !enable && !addr_q[32] ? {BUS_BYTES{1'b1}} : {BUS_BYTES{1'b0}};
-        for (int b=0; b<BUS_BYTES; b++)
-            for (int i=0; i<4; i++)
-                if (base_q[i] != 0 && (33'(addr_q)+33'(b)) >= {1'b0,base_q[i]} &&
-                    (33'(addr_q)+33'(b)) < end_q[i]) allowed_mask[b] = 1'b1;
         lane = '0;
         for (int b=BUS_BYTES-1; b>=0; b--) if(pending_mask[b]) lane=BUS_SHIFT'(b);
         whole_word = &pending_mask;
@@ -146,13 +166,37 @@ module conv_axi_read_guard #(
     end
 
 `ifdef NPU_SIM_ASSERT
-    initial assert property (@(posedge clk) disable iff (!rst_n)
-        m_arvalid && !m_arready |=> m_arvalid && $stable({m_araddr,m_arlen,m_arsize,m_arburst}));
-    initial assert property (@(posedge clk) disable iff (!rst_n)
-        s_rvalid && !s_rready |=> s_rvalid && $stable({s_rdata,s_rresp,s_rlast}));
-    always_ff @(posedge clk) if (rst_n && (enable || SPLIT_GEMM_4K) && s_arvalid && s_arready)
+    initial begin : check_m_arvalid_stability
+        logic stalled;
+        logic [$bits({m_araddr,m_arlen,m_arsize,m_arburst})-1:0] held_payload;
+        stalled=1'b0;
+        forever begin
+            @(posedge clk);
+            if (!rst_n) stalled=1'b0;
+            else begin
+                if (stalled) assert(m_arvalid && {m_araddr,m_arlen,m_arsize,m_arburst}==held_payload);
+                stalled=m_arvalid && !m_arready;
+                held_payload={m_araddr,m_arlen,m_arsize,m_arburst};
+            end
+        end
+    end
+    initial begin : check_s_rvalid_stability
+        logic stalled;
+        logic [$bits({s_rdata,s_rresp,s_rlast})-1:0] held_payload;
+        stalled=1'b0;
+        forever begin
+            @(posedge clk);
+            if (!rst_n) stalled=1'b0;
+            else begin
+                if (stalled) assert(s_rvalid && {s_rdata,s_rresp,s_rlast}==held_payload);
+                stalled=s_rvalid && !s_rready;
+                held_payload={s_rdata,s_rresp,s_rlast};
+            end
+        end
+    end
+    initial forever @(posedge clk) if (rst_n && (enable || SPLIT_GEMM_4K) && s_arvalid && s_arready)
         assert(s_arsize == 3'(BUS_SHIFT) && s_araddr[BUS_SHIFT-1:0] == 0 && s_arburst == 2'b01);
-    always_ff @(posedge clk) if (rst_n && SPLIT_GEMM_4K) begin
+    initial forever @(posedge clk) if (rst_n && SPLIT_GEMM_4K) begin
         assert(direct_outstanding <= OUTS_W'(READ_OUTSTANDING));
         if (direct_last) assert(direct_outstanding != 0 || direct_ar);
         if (enable || state != IDLE) assert(direct_outstanding == 0);

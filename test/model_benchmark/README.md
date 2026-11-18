@@ -113,6 +113,20 @@ python test/model_benchmark/run_suite.py \
 CPU、外部 RAM、阵列、VCE 和 DMA 均采用上表配置。驱动在每次模型初始化时读取
 实际 PS 容量，并据此重新计算复用参数。不同容量的测量应分别保存到独立目录。
 
+共享 IA 和 INT32 部分和存储可使用以下参数运行。存储体数量和每组容量须与待测 RTL 配置一致：
+
+```bash
+python test/model_benchmark/run_suite.py \
+  --out build/model_benchmark_shared --prepared /path/to/prepared \
+  --gcc /path/to/riscv-none-elf-gcc --picorv32 /path/to/picorv32 \
+  --ps-pool-bytes 49152 --ps-frame-count 16 --force-raw \
+  --shared-bank-bytes 8192 --shared-bank-count 7 \
+  --ia-cache-blocks 4 --modes hw --kinds perf
+```
+
+`--ps-pool-bytes` 指定部分和存储编译容量，`--ps-frame-count` 指定部分和帧数量，`--force-raw` 选择直接 INT32 存储，
+`--shared-bank-bytes` 和 `--shared-bank-count` 指定共享 RAM 的物理组织。
+
 默认构建一个 SoC 仿真器和四份固件，完成 32 次独立仿真：
 
 - 纯软件完整推理计时。

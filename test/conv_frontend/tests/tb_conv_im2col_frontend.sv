@@ -186,7 +186,9 @@ module tb_conv_im2col_frontend;
       cfg.dilation_h=16'(v[12]);cfg.dilation_w=16'(v[13]);cfg.pad_top=16'(v[14]);cfg.pad_left=16'(v[15]);
       cfg.input_offset=16'(v[16]);cfg.input_s16=1'(v[17]);cfg.bypass_cache=1'(v[18]);
       expect_fault=v[19];inject_error=expect_fault!=0;error_injected=0;ntiles=v[20];
-      @(negedge clk);cfg_valid=1;
+      @(negedge clk);
+      if (USE_TILE_PATH) while (!cfg_ready) @(negedge clk);
+      cfg_valid=1;
       do @(posedge clk); while(!cfg_ready);
       @(negedge clk);cfg_valid=0;
       // Drive unrelated values after handshake: active configuration must be latched.

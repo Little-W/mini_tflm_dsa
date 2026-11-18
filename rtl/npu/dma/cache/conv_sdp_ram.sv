@@ -48,7 +48,7 @@ module conv_sdp_ram #(
     assert (WRITE_WIDTH >= 32 && WRITE_WIDTH % 32 == 0 &&
             (WORDS & (WORDS - 1)) == 0 && DEPTH % WORDS == 0);
   end
-  always_ff @(posedge clk)
+  initial forever @(posedge clk)
     assert (!(rd_en && wr_en && (rd_addr >> BANK_SHIFT) == (wr_addr >> BANK_SHIFT)));
 `endif
 endmodule

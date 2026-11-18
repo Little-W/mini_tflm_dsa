@@ -3,7 +3,8 @@
 // sign-extended before this pipeline so the NMSIS s64 requantization arithmetic
 // is preserved without widening the systolic array.
 module vec_requant_s64 #(
-    parameter int unsigned VLEN = 16
+    parameter int unsigned VLEN = 16,
+    parameter int unsigned ACC_WIDTH = 64
 ) (
     input  logic                         clk,
     input  logic                         rst_n,
@@ -76,43 +77,42 @@ module vec_requant_s64 #(
     end
 
     for (genvar lane = 0; lane < VLEN; lane++) begin : gen_lane
-        logic signed [63:0] acc_s0;
-        logic signed [31:0] multiplier_s0;
-        logic signed [31:0] shift_s0;
+        logic signed [ACC_WIDTH-1:0] acc_s0;
+        logic signed [15:0] multiplier_s0;
+        wire signed [31:0] reduced_multiplier = reduce_multiplier(multiplier_in[lane]);
+        logic [5:0] right_shift_s0;
         (* use_dsp = "yes" *) logic signed [63:0] product_s1;
-        logic signed [31:0] shift_s1;
+        logic [5:0] right_shift_s1;
         logic signed [63:0] rounded_s2;
         logic signed [63:0] rounded_s3;
-        integer right_shift_i;
-
+        logic signed [31:0] right_shift_raw;
+        logic [5:0] right_shift_in;
         always_comb begin
-            right_shift_i = 15 - shift_s1;
-            if (right_shift_i < 0) begin
-                right_shift_i = 0;
-            end else if (right_shift_i > 63) begin
-                right_shift_i = 63;
-            end
+            right_shift_raw = 32'sd15 - shift_in[lane];
+            if (right_shift_raw < 0) right_shift_in = 0;
+            else if (right_shift_raw > 63) right_shift_in = 63;
+            else right_shift_in = right_shift_raw[5:0];
         end
 
         always_ff @(posedge clk) begin
             if (!rst_n || init_cfg) begin
                 acc_s0 <= '0;
                 multiplier_s0 <= '0;
-                shift_s0 <= '0;
+                right_shift_s0 <= '0;
                 product_s1 <= '0;
-                shift_s1 <= '0;
+                right_shift_s1 <= '0;
                 rounded_s2 <= '0;
                 rounded_s3 <= '0;
                 out_vec_s16[lane] <= '0;
             end else begin
                 if (in_valid) begin
-                    acc_s0 <= in_vec_s64[lane];
-                    multiplier_s0 <= reduce_multiplier(multiplier_in[lane]);
-                    shift_s0 <= shift_in[lane];
+                    acc_s0 <= ACC_WIDTH'(in_vec_s64[lane]);
+                    multiplier_s0 <= reduced_multiplier[15:0];
+                    right_shift_s0 <= right_shift_in;
                 end
                 product_s1 <= acc_s0 * multiplier_s0;
-                shift_s1 <= shift_s0;
-                rounded_s2 <= round_shift_even(product_s1, right_shift_i);
+                right_shift_s1 <= right_shift_s0;
+                rounded_s2 <= round_shift_even(product_s1, integer'(right_shift_s1));
                 rounded_s3 <= rounded_s2;
 
                 if (valid_pipe[3]) begin
@@ -132,4 +132,7 @@ module vec_requant_s64 #(
         end
     end
 
+`ifdef NPU_SIM_ASSERT
+    initial assert (ACC_WIDTH >= 1 && ACC_WIDTH <= 64);
+`endif
 endmodule

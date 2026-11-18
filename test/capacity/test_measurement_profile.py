@@ -13,7 +13,7 @@ def manifest(width=64, bank_bytes=2048, banks=7):
     return {"profile": dict(size=16, ia_cache_blocks=4, ps_frame_count=16,
         bus_width=width, dma_max_bytes=256*(width//8), ps_compress=True,
         shared_bank_bytes=bank_bytes, shared_bank_count=banks,
-        shared_total_bytes=bank_bytes*banks, shared_ia_bank_choices=[1,2,4],
+        shared_total_bytes=bank_bytes*banks, shared_ia_bank_choices=[1,2,4] if banks >= 8 else [1,2],
         ps_directory_rows=1024, output_banks_s16_max=4, ps_storage_rows=799,
         ram_continuous_read_beat_cycles=1, ram_read_first_latency=8)}
 
@@ -32,7 +32,15 @@ class MeasurementProfileTests(unittest.TestCase):
                     self.assertEqual(p["ps_directory_bits_per_row"],
                                      {2048:34,4096:38,8192:42}[bank_bytes])
                     self.assertEqual(p["matrix_output_banks"],
-                                     max(32, bank_bytes // 128) | (4 << 16))
+                                     max(32, (4 if banks >= 8 else 2) * bank_bytes // 512) | (4 << 16))
+
+    def test_raw_profile_reports_fixed_int32_storage(self):
+        data = manifest(banks=7)
+        data["profile"]["force_raw"] = True
+        profile = normalize_profile(data, root=ROOT, literal_bound=True)
+        self.assertEqual(profile["shared_ia_bank_mask"], 0x6)
+        self.assertEqual(profile["ps_caps"], 0x0110001f)
+        self.assertEqual(profile["ps_directory_bits_per_row"], 0)
 
     def test_conv_memory_defaults_are_recorded(self):
         memory = ROOT / "test/conv_npu/axi_memory.sv"

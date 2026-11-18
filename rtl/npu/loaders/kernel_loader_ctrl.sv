@@ -5,6 +5,7 @@ module kernel_loader_ctrl #(
 ) (
     input  logic                        clk,
     input  logic                        rst_n,
+    input  logic                        clear = 1'b0,
     input  logic                        cfg_valid,
     input  logic [REG_WIDTH-1:0]        cfg_k,
     input  logic [REG_WIDTH-1:0]        cfg_n,
@@ -212,11 +213,11 @@ module kernel_loader_ctrl #(
     tile_col_dbg = REG_WIDTH'(load_tile_col);
     repeat_dbg   = REG_WIDTH'(load_repeat);
 
-    load_weight_req = (state == S_RUN) && !all_loads_issued && buf_load_ready;
+    load_weight_req = !clear && (state == S_RUN) && !all_loads_issued && buf_load_ready;
     dma_start       = load_weight_req && load_weight_granted;
     buf_load_start  = dma_start;
-    buf_send_start  = (state == S_RUN) && send_weight_trigger && buf_weight_data_valid;
-    ctrl_all_done   = (state == S_DONE);
+    buf_send_start  = !clear && (state == S_RUN) && send_weight_trigger && buf_weight_data_valid;
+    ctrl_all_done   = !clear && (state == S_DONE);
 
     // W is column-flattened: each DMA "row" is one output column,
     // and each burst reads contiguous N/K elements from that column.
@@ -262,6 +263,12 @@ module kernel_loader_ctrl #(
       group_base_addr     <= '0;
       row_addr_offset     <= '0;
       col_addr_offset     <= '0;
+    end else if (clear) begin
+      // Configuration invalidates the current traversal. Address registers
+      // remain unused until S_IDLE captures the next descriptor.
+      state<=S_IDLE;
+      all_loads_done<=1'b0;
+      all_loads_issued<=1'b0;
     end else begin
       case (state)
         S_IDLE: begin

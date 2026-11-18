@@ -33,6 +33,10 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root conv vector_engine_pkg.sv] \
         [file join $npu_root conv vector_pe.sv] \
         [file join $npu_root conv vector_softmax.sv] \
+        [file join $npu_root conv vector_config_check.sv] \
+        [file join $npu_root conv vector_writeback.sv] \
+        [file join $npu_root conv vector_round_shift.sv] \
+        [file join $npu_root conv vector_scalar_multiplier.sv] \
         [file join $npu_root conv vector_engine.sv] \
         [file join $npu_root conv conv_axi_read_guard.sv] \
         [file join $npu_root conv conv_axi_read_mux.sv] \
@@ -44,7 +48,6 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root dma cache conv_next_use_predictor.sv] \
         [file join $npu_root dma cache conv_read_cache.sv] \
         [file join $npu_root dma cache conv_sdp_ram.sv] \
-        [file join $npu_root conv conv_udiv32.sv] \
         [file join $project_export_dir rtl fpga_top.sv] \
         [file join $project_export_dir rtl clk_wiz_0_sim_stub.sv] \
         [file join $pico_root picorv32.v] \

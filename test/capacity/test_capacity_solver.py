@@ -34,17 +34,15 @@ def json_from_stdout(text):
 class ModelTests(unittest.TestCase):
     def test_buffer_inventory_includes_every_shared_subsystem(self):
         a = model.allocation(4, 8, 16384, 131072, shared=False)
-        expected = dict(ia_cache=4*16*16*16, ia_cache_tags=8*285, ia_slot_metadata=8*7,
+        expected = dict(ia_cache=4*16*16*16, ia_cache_tags=8*62, ia_slot_metadata=8*12,
                         kernel_cache=2*16*16*16,
                         bias_cache=2*4*16*32, requant_is_cache=4*16*76,
                         oa_s8_fifo=16*16*16*8, oa_s16_fifo=4*16*16*16,
-                        conv_data_cache=128*2*16*8, conv_cache_metadata=128*2*75,
-                        conv_prefetch_queue=8*129, conv_request_queue=4*163,
+                        conv_data_cache=128*2*16*8, conv_cache_metadata=128*2*322,
+                        conv_prefetch_queue=8*129, conv_request_queue=4*137,
                         conv_response_queue=4*33, vector_buffers=16*(80+49*8+160),
-                        ps_payload=16384*8, ps_frame_lengths=8*7, ps_directory=64*8*37,
-                        ps_decoded_fifo=8*512, ps_decoded_first=8, ps_frame_valid=8,
-                        ps_frame_max_record_words=8*3, ps_free_bitmap=4*256,
-                        ps_bank_free_count=4*9, ps_resident_words=4*8*7)
+                        ps_payload=16384*8, ps_frame_lengths=8*7,
+                        ps_decoded_fifo=8*512, ps_decoded_first=8, ps_frame_valid=8)
         self.assertEqual(a["buffer_arrays_bits"], expected)
         self.assertEqual(a["buffer_ram_bits"], sum(expected.values()))
         self.assertIsNone(a["logical_state_bits"])
@@ -77,10 +75,10 @@ class ModelTests(unittest.TestCase):
             self.assertEqual(a, b)
 
     def test_shared_single_k_uses_available_ia_banks(self):
-        for width, expected_r in ((1, 16), (2, 8)):
+        for width, expected_r in ((1, 8), (2, 4)):
             p = model.plan_for_hardware(256, 9, 32, 4, 16, 12288, mode=0, lhs_bytes=width)
             self.assertEqual((p["R"], p["ia_bank_count"], p["ia_bytes"], p["ps_pool_bytes"]),
-                             (expected_r, 4, 8192, 6144))
+                             (expected_r, 2, 4096, 10240))
             self.assertEqual(p["required_pool_bytes"], 0)
             self.assertFalse(p["adaptive_active"])
 
@@ -132,7 +130,7 @@ class ModelTests(unittest.TestCase):
 
     def test_pool_increment_and_real_tails(self):
         for pool in (4096, 8192, 16384):
-            self.assertGreater(model.buffer_ram_bytes(4, 8, pool + 64, shared=False) -
+            self.assertEqual(model.buffer_ram_bytes(4, 8, pool + 64, shared=False) -
                                model.buffer_ram_bytes(4, 8, pool, shared=False), 64)
         p = model.plan_for_hardware(17, 35, 49, 4, 16, 16384, mode=1)
         self.assertGreaterEqual(p["ideal_operand_read_bytes"], 17 * 35 + 49 * 35)
@@ -149,12 +147,13 @@ class ModelTests(unittest.TestCase):
                 self.assertEqual(layout["shared_total_bytes"], bank_bytes*bank_count)
                 self.assertEqual(layout["payload_bank_depth"], bank_bytes//16)
                 self.assertEqual(layout["payload_metadata_bank_count"], bank_count-1)
-                self.assertEqual(layout["max_r_s8"], bank_bytes//128)
-                self.assertEqual(layout["max_r_s16"], bank_bytes//256)
+                self.assertEqual(layout["max_r_s8"], (4 if bank_count >= 8 else 2)*bank_bytes//512)
+                self.assertEqual(layout["max_r_s16"], (4 if bank_count >= 8 else 2)*bank_bytes//1024)
                 self.assertEqual(layout["default_max_r_s8"], bank_bytes//512)
-                self.assertEqual(layout["max_frame_rows"], bank_bytes//8)
+                self.assertEqual(layout["max_frame_rows"], (4 if bank_count >= 8 else 2)*bank_bytes//32)
                 self.assertEqual(arrays["ia_ps_shared_ram"], bank_count*bank_bytes*8)
-                self.assertEqual(arrays["ps_free_bitmap"], (bank_count-1)*(bank_bytes//16))
+                self.assertNotIn("ps_free_bitmap", arrays)
+                self.assertNotIn("ps_directory", arrays)
                 self.assertEqual(layout["output_banks_s8"], max(32, layout["max_r_s8"]))
                 self.assertEqual(arrays["oa_s8_fifo"], layout["output_banks_s8"]*16*16*8)
                 for representation in ("raw32", "adaptive"):
@@ -172,10 +171,10 @@ class ModelTests(unittest.TestCase):
                                              bank_bytes//16)
                     if representation == "raw32":
                         self.assertTrue(plan["ps_control"] & 1)
-        for width, reuse in ((1, 32), (2, 16)):
+        for width, reuse in ((1, 16), (2, 8)):
             plan = model.plan_for_hardware(512, 9, 32, 4, 16, 12288, mode=0,
                                           lhs_bytes=width, bank_bytes=4096, bank_count=7)
-            self.assertEqual((plan["R"], plan["ia_bank_count"], plan["ia_bytes"]), (reuse, 4, 16384))
+            self.assertEqual((plan["R"], plan["ia_bank_count"], plan["ia_bytes"]), (reuse, 2, 8192))
             self.assertEqual(plan["required_pool_bytes"], 0)
 
     def test_explicit_banks_and_fixed_storage_are_independent(self):
@@ -216,11 +215,12 @@ class ModelTests(unittest.TestCase):
         a = result["allocation"]
         self.assertEqual((a["ia_cache_blocks"], a["ps_frame_count"], a["configured_ps_pool_bytes"]),
                          (2, 4, 16384))
-        self.assertEqual([entry["ia_banks"] for entry in a["runtime_bank_allocations"]], [1, 2, 4])
+        legal_ia_banks = [1, 2, 4] if a["shared_physical_bank_count"] >= 8 else [1, 2]
+        self.assertEqual([entry["ia_banks"] for entry in a["runtime_bank_allocations"]], legal_ia_banks)
         for entry in a["runtime_bank_allocations"]:
             self.assertEqual(entry["ia_bytes"] + entry["ps_bytes"], a["shared_total_bytes"])
         for plan in result["plans"]:
-            self.assertIn(plan["ia_bank_count"], (1, 2, 4))
+            self.assertIn(plan["ia_bank_count"], legal_ia_banks)
             self.assertEqual(plan["ia_bytes"] + plan["ps_pool_bytes"], a["shared_total_bytes"])
 
     def test_measured_search_receives_explicit_bank_geometry(self):
@@ -293,7 +293,8 @@ class CliTests(unittest.TestCase):
         for active in (0, 1):
             result = json_from_stdout(self.run_cli("--show", "--set", f"PCR_ENGINE={active}").stdout)
             self.assertTrue(result["capacity_model_applies"])
-            self.assertEqual(result["allocation"]["compressed_ps"], bool(active))
+            self.assertFalse(result["allocation"]["compressed_ps"])
+            self.assertEqual(result["allocation"]["ps_frame_store_enabled"], bool(active))
             self.assertIn("vector_buffers", result["allocation"]["buffer_arrays_bits"])
 
     def test_raw_setting_and_generated_header(self):
@@ -318,7 +319,7 @@ class CliTests(unittest.TestCase):
                              cwd=ROOT, text=True, capture_output=True, timeout=30)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         result = json_from_stdout(run.stdout)
-        self.assertEqual(result["allocation"]["max_frame_rows"], 256)
+        self.assertEqual(result["allocation"]["max_frame_rows"], 128)
         self.assertEqual(result["allocation"]["shared_total_bytes"], 14336)
         self.assertEqual(result["allocation"]["logical_ps_rows"], 1024)
         self.assertNotIn("panel_max_r", result["allocation"])

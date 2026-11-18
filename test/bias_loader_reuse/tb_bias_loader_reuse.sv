@@ -1,4 +1,4 @@
-module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH = 32)(output logic finished);
+module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH = 32, parameter bit IS_MODE = 0)(output logic finished);
   localparam int SIZE = 16;
   localparam int LANES = BUS_WIDTH/8;
   localparam int WORDS = BUS_WIDTH/32;
@@ -30,7 +30,7 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
     .clk, .rst_n, .init_cfg, .bias_base, .k(32'd128), .m(channels),
     .bias_step_blocks(step_blocks), .bias_switch, .bias_sleep(1'b0), .bias_last_loop,
     .load_bias_req(req), .load_bias_granted(grant), .bias_valid(valid),
-    .bias_group_valid(group_valid), .load_bias_done(), .group_read_start, .group_read_idx(read_idx),
+    .bias_group_valid(group_valid), .load_bias_done(), .is_mode(IS_MODE), .group_read_start, .group_read_idx(read_idx),
     .data_out(data), .group_data_scalar(scalar), .ext_dma_start(dma_start),
     .ext_dma_is_write(), .ext_dma_linear_read_mode(), .ext_dma_base_addr(dma_base),
     .ext_dma_row_stride(), .ext_dma_rows_to_read(dma_rows), .ext_dma_burst_len_m1(dma_len),
@@ -126,19 +126,25 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
         if (elements > step * SIZE) elements = step * SIZE;
         await_group();
         read_idx = 0;
+        @(negedge clk);
         #1;
-        if (previous_group_base >= 0)
+        if (IS_MODE && previous_group_base >= 0)
           assert(scalar === $signed(memory_word(bias_base + 32'(previous_group_base*4))))
             else $fatal(1,"Executing bias group changed during preparation");
+        @(negedge clk);
         group_read_start = 1;
         @(negedge clk); group_read_start = 0;
         previous_group_base = group*step*SIZE;
         for (int i=0;i<elements;i++) begin
           read_idx = $clog2(GROUP_BLOCKS*SIZE)'(i);
+          @(posedge clk);
           #1;
-          assert(scalar === $signed(memory_word(bias_base + 32'((group*step*SIZE+i)*4))))
-            else $fatal(1,"Bias scalar mismatch: capacity=%0d channels=%0d group=%0d element=%0d",GROUP_BLOCKS,count,group,i);
-          if (i<SIZE) assert(data[i] === scalar) else $fatal(1,"Bias lane mismatch");
+          if (IS_MODE)
+            assert(scalar === $signed(memory_word(bias_base + 32'((group*step*SIZE+i)*4))))
+              else $fatal(1,"Bias scalar mismatch: capacity=%0d channels=%0d group=%0d element=%0d got=%h expected=%h",GROUP_BLOCKS,count,group,i,scalar,memory_word(bias_base+32'((group*step*SIZE+i)*4)));
+          else if (i<SIZE)
+            assert(data[i] === $signed(memory_word(bias_base + 32'((group*step*SIZE+i)*4))))
+              else $fatal(1,"Bias lane mismatch: capacity=%0d channels=%0d group=%0d lane=%0d got=%h",GROUP_BLOCKS,count,group,i,data[i]);
           @(negedge clk);
         end
         bias_last_loop = rep == repeats-1 && group == groups-1;
@@ -150,7 +156,7 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
     repeat(4) @(negedge clk);
     assert(commands-before_commands == expected_commands)
       else $fatal(1,"DMA count: capacity=%0d channels=%0d got=%0d expected=%0d",GROUP_BLOCKS,count,commands-before_commands,expected_commands);
-    $display("BIAS_REUSE_PASS bus=%0d capacity=%0d channels=%0d step=%0d repeats=%0d dma_commands=%0d cycles=%0d",BUS_WIDTH,GROUP_BLOCKS,count,step,repeats,commands-before_commands,cycle-first_cycle);
+    $display("BIAS_REUSE_PASS is_mode=%0d bus=%0d capacity=%0d channels=%0d step=%0d repeats=%0d dma_commands=%0d cycles=%0d",IS_MODE,BUS_WIDTH,GROUP_BLOCKS,count,step,repeats,commands-before_commands,cycle-first_cycle);
   endtask
 
   initial begin
@@ -184,6 +190,8 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
     if (GROUP_BLOCKS >= 8) begin
       run_case(127,8,3);
       run_case(255,8,3);
+      run_case((GROUP_BLOCKS*2+3)*SIZE-5,1,2);
+      run_case((GROUP_BLOCKS*2+3)*SIZE-5,GROUP_BLOCKS,2);
     end
     @(negedge clk); bias_base = 0; init_cfg = 1;
     @(negedge clk); init_cfg = 0;
@@ -196,10 +204,12 @@ module bias_reuse_case #(parameter int GROUP_BLOCKS = 1, parameter int BUS_WIDTH
 endmodule
 
 module tb_bias_loader_reuse;
-  wire [7:0] done;
-  for(genvar b=0;b<2;b++) begin : gen_bus
-    for(genvar c=0;c<4;c++) begin : gen_capacity
-      bias_reuse_case #(.GROUP_BLOCKS(1<<c),.BUS_WIDTH(32*(b+1))) dut(done[b*4+c]);
+  wire [23:0] done;
+  for(genvar m=0;m<2;m++) begin : gen_mode
+    for(genvar b=0;b<2;b++) begin : gen_bus
+      for(genvar c=0;c<6;c++) begin : gen_capacity
+        bias_reuse_case #(.GROUP_BLOCKS(1<<c),.BUS_WIDTH(32*(b+1)),.IS_MODE(m)) dut(done[m*12+b*6+c]);
+      end
     end
   end
   initial begin
@@ -208,7 +218,7 @@ module tb_bias_loader_reuse;
     $finish;
   end
   initial begin
-    #2000000;
+    #10000000;
     $fatal(1,"Test timeout");
   end
 endmodule

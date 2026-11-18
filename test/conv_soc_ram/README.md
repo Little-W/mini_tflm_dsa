@@ -1,11 +1,11 @@
 # SoC RAM 验证
 
-测试直接实例化 `rtl/soc/soc_axi_ram.sv`，覆盖 AXI32/AXI64 的读写行为、固件镜像初始化和 FPGA RAM 综合。
+测试覆盖 AXI32/AXI64 的读写行为、固件镜像初始化和 FPGA RAM 综合。AXI 读写测试默认使用 `test/models/soc_axi_ram.sv`，也可指定生产 RTL。
 
 ## AXI 读写
 
 ```sh
-python3 test/conv_soc_ram/run.py --out build/conv_soc_ram
+python3 test/conv_soc_ram/run.py --rtl-source rtl/soc/soc_axi_ram.sv --out build/conv_soc_ram
 ```
 
 需要支持 `--binary --timing --assert` 的 Verilator。测试经 AXI 写口生成数据，检查窄读、完整总线宽度读取、混合传输尺寸排队、随机等待、响应暂停时的数据保持，以及 4 KiB 边界、RAM 尾部和非法请求后的继续执行。

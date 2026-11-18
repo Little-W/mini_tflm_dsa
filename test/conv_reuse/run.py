@@ -17,7 +17,7 @@ if not sim: raise SystemExit('Verilator is required')
 report={'scope':'cache/frontend reuse measured on actual external AXI reads',
         'simulator':subprocess.check_output([sim,'--version'],text=True).strip(),'runs':[]}
 reviewed={'BLKSEQ','PROCASSINIT','UNUSEDSIGNAL','UNUSEDPARAM','SYNCASYNCNET'}
-sources=[(RTL.parent/'dma'/name if name.startswith('cache/') else RTL/name) for name in ['conv_im2col_pkg.sv','conv_udiv32.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv',
+sources=[(RTL.parent/'dma'/name if name.startswith('cache/') else RTL/name) for name in ['conv_im2col_pkg.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv',
                               'conv_axi_span_reader.sv','cache/conv_read_cache.sv','conv_im2col_frontend.sv']]
 import runpy
 sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)

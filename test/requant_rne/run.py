@@ -23,6 +23,6 @@ with (out/'build.log').open('w') as stream:
 r = subprocess.run([str(out/'obj/Vtb_requant_rne')], text=True, capture_output=True)
 (out/'run.log').write_text(r.stdout+r.stderr)
 (out/'summary.json').write_text(json.dumps({'passed': r.returncode == 0,
-    'outputs': 21600, 'variants': 3, 'command': cmd, 'log': r.stdout+r.stderr}, indent=2)+'\n')
+    'outputs': 320000, 'variants': 4, 'command': cmd, 'log': r.stdout+r.stderr}, indent=2)+'\n')
 print(r.stdout+r.stderr, end='')
 raise SystemExit(r.returncode)

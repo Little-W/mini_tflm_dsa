@@ -337,9 +337,11 @@ int main(int argc,char**argv){
    spatial(s,"pipeline_dw_c64",0,8,8,64,3,3,1,1,1,128,true,0,false,0,0,true);
    spatial(s,"pipeline_dw_c128_s2",0,8,8,128,3,3,2,1,1,-127,true,0,false,0,0,true);
    if(TEST_TILE_SIZE==16){
-     require(aligned.monitor[10]>0 && aligned.monitor[11]>0,"MAC overlap with quantization and writeback");
+     require(aligned.monitor[8]==1024 && aligned.monitor[9]==64*15,"continuous scalar quantization inputs");
+     require(aligned.monitor[10]==0 && aligned.monitor[12]==0,"scalar quantization phase separation");
+     require(aligned.monitor[11]>0,"MAC overlap with writeback");
      require(aligned.monitor[13]==64 && aligned.monitor[14]==256,"aligned four-beat depthwise writes");
-     if(perf)require(aligned.monitor[12]>0 || pointwise.monitor[12]>0,"simultaneous MAC, quantization and writeback");
+     if(perf)require(pointwise.monitor[10]==0 && pointwise.monitor[12]==0,"pointwise scalar quantization phase separation");
      require(aligned.monitor[17]>=2,"multiple outstanding window requests");
      if(s.top.pe_count>=8)require(aligned.monitor[20]>0,"overlapping window request and response");
    }

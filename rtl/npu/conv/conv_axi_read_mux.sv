@@ -87,8 +87,19 @@ module conv_axi_read_mux #(
     end
 
 `ifdef NPU_SIM_ASSERT
-    initial assert property (@(posedge clk) disable iff (!rst_n)
-        m_arvalid && !m_arready |=> m_arvalid &&
-        $stable({m_araddr,m_arlen,m_arsize,m_arburst}));
+    initial begin : check_m_arvalid_stability
+        logic stalled;
+        logic [$bits({m_araddr,m_arlen,m_arsize,m_arburst})-1:0] held_payload;
+        stalled=1'b0;
+        forever begin
+            @(posedge clk);
+            if (!rst_n) stalled=1'b0;
+            else begin
+                if (stalled) assert(m_arvalid && {m_araddr,m_arlen,m_arsize,m_arburst}==held_payload);
+                stalled=m_arvalid && !m_arready;
+                held_payload={m_araddr,m_arlen,m_arsize,m_arburst};
+            end
+        end
+    end
 `endif
 endmodule

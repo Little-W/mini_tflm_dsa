@@ -270,8 +270,12 @@ def main():
     p.add_argument("--prepared", type=Path, default=ROOT / "build/model_benchmark/prepared")
     p.add_argument("--firmware-root", type=Path)
     p.add_argument("--object-cache", type=Path)
-    p.add_argument("--pool-bytes", type=int, default=12288,
-                   help="Initial PS allocation; shared hardware also includes the initial 2048-byte IA allocation")
+    p.add_argument("--pool-bytes", type=int,
+                   help="Initial PS allocation; defaults to PS_POOL_BYTES in NPU_CONFIG")
+    p.add_argument("--ia-cache-blocks", type=int,
+                   help="Initial IA tile capacity; defaults to IA_CACHE_BLOCKS in NPU_CONFIG")
+    p.add_argument("--ps-frame-count", type=int,
+                   help="Maximum resident frames; defaults to PS_FRAME_COUNT in NPU_CONFIG")
     p.add_argument("--configs", nargs="+", choices=("raw", "adaptive"), default=["raw", "adaptive"])
     p.add_argument("--models", nargs="+", choices=model_data.MODELS, default=list(model_data.MODELS))
     p.add_argument("--dataflow", type=int, choices=(0, 1, 2), default=2)
@@ -292,9 +296,14 @@ def main():
     p.add_argument("--host-timeout", type=int, default=1800)
     p.add_argument("--resume", action="store_true")
     p.add_argument("--build-only", action="store_true")
+    p.add_argument("--hardware-raw", action="store_true", help="Build the direct INT32 storage implementation")
     args = p.parse_args()
+    if args.pool_bytes is None:
+        args.pool_bytes = simulator.selected_config()['PS_POOL_BYTES']
     if args.pool_bytes < 128 or args.pool_bytes % 64 or args.jobs < 1:
         p.error("pool must be a multiple of 64 bytes of at least 128 bytes; jobs must be positive")
+    if args.hardware_raw and args.configs != ["raw"]:
+        p.error("The direct INT32 implementation requires --configs raw")
     out, prepared_dir = args.out.resolve(), args.prepared.resolve()
     out.mkdir(parents=True, exist_ok=True)
     configs, names = list(dict.fromkeys(args.configs)), list(dict.fromkeys(args.models))
@@ -316,14 +325,16 @@ def main():
                 "hardware_operator_timing": "NPU accepted START through matching completion in performance runs",
                 "cpu_operator_timing": "Trace operator begin/end markers include CPU dispatch and MMIO; tensor snapshots occur after the end marker",
                 "operator_classification": "Model graph; pointwise Conv remains Conv when executed by GEMM",
-                "comparison": "Same RTL and firmware executables, tensor addresses, physical memories, clock, WS/IS planner and SRAM bandwidth; config.flags selects runtime RAW"}
+                "comparison": "Each run records RTL, executable, firmware, memory timing and tensor hashes; config.flags selects the partial-sum storage policy"}
     bench.write_json(out / "settings.json", settings)
     binary = simulator.build_sim(out / "sim", args.verilator, args.jobs,
         skip=args.resume and (out / "sim/build.json").exists(), ps_pool_bytes=args.pool_bytes,
         bus_width=args.bus_width,first_read_latency=args.first_read_latency,
+        ia_cache_blocks=args.ia_cache_blocks,ps_frame_count=args.ps_frame_count,
         shared_bank_bytes=args.shared_bank_bytes,shared_bank_count=args.shared_bank_count,
-        im2col_cache_bytes=args.im2col_cache_bytes)
+        im2col_cache_bytes=args.im2col_cache_bytes,hardware_raw=args.hardware_raw)
     settings["hardware_profile"] = json.loads((out / "sim/build.json").read_text())["profile"]
+    hardware_profile = settings["hardware_profile"]
     bench.write_json(out / "settings.json", settings)
     if args.build_only:
         print(json.dumps({"passed": True, "binary": str(binary)}), flush=True)
@@ -333,9 +344,12 @@ def main():
     firmwares = {}
     for config in configs:
         for kind in kinds:
-            directory = firmware_root / f"runtime_{args.pool_bytes}_{kind}_df{args.dataflow}"
+            directory = firmware_root / (f"runtime_{args.pool_bytes}_{kind}_df{args.dataflow}"
+                f"_ia{hardware_profile['ia_cache_blocks']}_ps{hardware_profile['ps_frame_count']}")
             expected = {"DSA_PS_POOL_BYTES": args.pool_bytes, "DSA_PS_FORCE_RAW": 0,
-                        "DSA_PS_COMPRESS": 1, "DSA_DEFAULT_DATAFLOW": args.dataflow, "DSA_PS_ADAPTIVE_W": 1}
+                        "DSA_PS_COMPRESS": 1, "DSA_DEFAULT_DATAFLOW": args.dataflow, "DSA_PS_ADAPTIVE_W": 1,
+                        "DSA_IA_CACHE_BLOCKS": hardware_profile["ia_cache_blocks"],
+                        "DSA_PS_FRAME_COUNT": hardware_profile["ps_frame_count"]}
             try:
                 fw = json.loads((directory / "firmware.json").read_text())
                 bench.verify_sources(fw)
@@ -346,7 +360,9 @@ def main():
             except (OSError, ValueError, KeyError, RuntimeError):
                 fw = builder.build_firmware(directory, args.gcc, hardware=True, trace=kind == "trace",
                     jobs=args.jobs, object_cache=object_cache, ps_pool_bytes=args.pool_bytes,
-                    force_raw=False, adaptive_window=True, dataflow=args.dataflow)
+                    force_raw=False, adaptive_window=True, dataflow=args.dataflow,
+                    ia_cache_blocks=hardware_profile["ia_cache_blocks"],
+                    ps_frame_count=hardware_profile["ps_frame_count"])
             firmwares[config, kind] = directory, fw
     results, work = [], []
     for config in configs:

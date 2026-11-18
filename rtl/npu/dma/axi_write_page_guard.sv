@@ -114,13 +114,49 @@ module axi_write_page_guard #(
     end
 
 `ifdef NPU_SIM_ASSERT
-    initial assert property (@(posedge clk) disable iff (!rst_n)
-        m_awvalid && !m_awready |=> m_awvalid && $stable({m_awaddr,m_awlen,m_awsize,m_awburst}));
-    initial assert property (@(posedge clk) disable iff (!rst_n)
-        m_wvalid && !m_wready |=> m_wvalid && $stable({m_wdata,m_wstrb,m_wlast}));
-    initial assert property (@(posedge clk) disable iff (!rst_n)
-        s_bvalid && !s_bready |=> s_bvalid && $stable(s_bresp));
-    always_ff @(posedge clk) if (rst_n) begin
+    initial begin : check_m_awvalid_stability
+        logic stalled;
+        logic [$bits({m_awaddr,m_awlen,m_awsize,m_awburst})-1:0] held_payload;
+        stalled=1'b0;
+        forever begin
+            @(posedge clk);
+            if (!rst_n) stalled=1'b0;
+            else begin
+                if (stalled) assert(m_awvalid && {m_awaddr,m_awlen,m_awsize,m_awburst}==held_payload);
+                stalled=m_awvalid && !m_awready;
+                held_payload={m_awaddr,m_awlen,m_awsize,m_awburst};
+            end
+        end
+    end
+    initial begin : check_m_wvalid_stability
+        logic stalled;
+        logic [$bits({m_wdata,m_wstrb,m_wlast})-1:0] held_payload;
+        stalled=1'b0;
+        forever begin
+            @(posedge clk);
+            if (!rst_n) stalled=1'b0;
+            else begin
+                if (stalled) assert(m_wvalid && {m_wdata,m_wstrb,m_wlast}==held_payload);
+                stalled=m_wvalid && !m_wready;
+                held_payload={m_wdata,m_wstrb,m_wlast};
+            end
+        end
+    end
+    initial begin : check_s_bvalid_stability
+        logic stalled;
+        logic [$bits(s_bresp)-1:0] held_payload;
+        stalled=1'b0;
+        forever begin
+            @(posedge clk);
+            if (!rst_n) stalled=1'b0;
+            else begin
+                if (stalled) assert(s_bvalid && s_bresp==held_payload);
+                stalled=s_bvalid && !s_bready;
+                held_payload=s_bresp;
+            end
+        end
+    end
+    initial forever @(posedge clk) if (rst_n) begin
         assert(direct_outstanding <= OUTS_W'(WRITE_OUTSTANDING));
         assert(direct_data_outstanding <= direct_outstanding);
         if (direct_b) assert(direct_outstanding != 0 || direct_aw);

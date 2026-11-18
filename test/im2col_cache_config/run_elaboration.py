@@ -18,7 +18,7 @@ CAPACITIES = (512, 1024, 2048, 4096, 8192, 16384, 32768, 65536)
 
 def configurations():
     common = dict(PCR_ENGINE=1, SIZE=16, IA_CACHE_BLOCKS=4, PS_FRAME_COUNT=16,
-                  AXI_READ_OUTSTANDING=4, PS_FORCE_RAW=0, SHARED_BANK_COUNT=7)
+                  AXI_READ_OUTSTANDING=4, PS_FORCE_RAW=1, SHARED_BANK_COUNT=7)
     standard = {**config.DEFAULTS, **config.read_config(ROOT / "config/npu.mk"), **common}
     fpga = {**config.DEFAULTS, **config.read_config(ROOT / "config/npu_fpga.mk"), **common}
     cases = []
@@ -47,7 +47,7 @@ def run_case(name, values, output, verilator):
     checks = {
         "complete_npu_storage": report["passed"],
         "data_array_bits": arrays["conv_data_cache"] == capacity * 8,
-        "metadata_array_bits": arrays["conv_cache_metadata"] == (capacity // 16) * 75,
+        "metadata_array_bits": arrays["conv_cache_metadata"] == (capacity // 16) * 322,
         "capability_bytes": capabilities["npu_axil_reg_if"]["CONV_CACHE_BYTES"] == capacity,
         "derived_cache_parameters": all(
             params == dict(IM2COL_CACHE_BYTES=capacity, CONV_CACHE_SETS=capacity // 32,

@@ -32,11 +32,11 @@ class Field:
 
 
 FIELDS = (
-    Field("PCR_ENGINE", "Compute and PS", "Compressed PS storage",
+    Field("PCR_ENGINE", "Compute and PS", "Shared PS storage",
           "Use the addressable PS frame store with the shared compute array. "
           "INT8, INT16, WS/IS, Conv and the vector engine remain available.", (0, 1)),
     Field("SIZE", "Compute and PS", "Array size",
-          "Square compute array dimension. Compressed PS requires SIZE=16.", (2, 4, 8, 16, 32)),
+          "Square compute array dimension. Shared PS storage requires SIZE=16.", (2, 4, 8, 16, 32)),
     Field("CAPACITY_BUDGET_SCOPE", "Budget", "Budget scope",
           "buffer-ram counts all operand, PS, output, Conv and vector buffer arrays plus metadata. "
           "logical-state requires actual Verilator elaboration of every sequential declaration.",
@@ -44,21 +44,20 @@ FIELDS = (
     Field("CAPACITY_BUDGET_BYTES", "Budget", "Capacity limit",
           "Enter bytes or binary units such as 128 KiB. Save requires the selected allocation to fit.", byte_size=True),
     Field("CAPACITY_REPRESENTATION", "Budget", "PS representation",
-          "adaptive enables the row codec. raw32 forces four payload words per row. "
-          "Planning checks each format's bank bandwidth, protected-frame capacity and directory.", ("adaptive", "raw32")),
+          "INT32 partial sums use four 128-bit words per stored row.", ("raw32",)),
     Field("IA_CACHE_BLOCKS", "Buffers and bus", "Output buffer parameter",
           "Build parameter for output queues and ordinary FIFO operation. "
-          "Shared IA capacity is selected per layer using 1, 2 or 4 physical banks."),
+          "Shared IA capacity is selected per layer according to the number of physical banks."),
     Field("PS_FRAME_COUNT", "Buffers and bus", "PS frame slots",
-          "Frame metadata entries. Shared tasks are also limited by 1024 directory rows and PS capacity."),
+          "Frame metadata entries. Shared tasks are also limited by 1024 rows and PS capacity."),
     Field("SHARED_BANK_BYTES", "Shared IA/PS RAM", "Bytes per bank",
-          "Physical RAM bytes in each independent bank. Directory and decode buffers are separate.",
+          "Physical RAM bytes in each independent bank. Replay buffers are separate.",
           (2048, 4096, 8192), byte_size=True),
     Field("SHARED_BANK_COUNT", "Shared IA/PS RAM", "Physical bank count",
-          "Total data RAM is bank count times bytes per bank. Prepare assigns 1, 2 or 4 banks to IA.",
+          "Total data RAM is bank count times bytes per bank. IA uses up to 2 banks for 6 or 7 banks, and up to 4 for 8 or 9 banks.",
           (6, 7, 8, 9)),
     Field("PS_FORCE_RAW", "Buffers and bus", "Force RAW32 records",
-          "Store every encoded PS row as four 128-bit words.", (0, 1)),
+          "Store each INT32 PS row as four 128-bit words.", (1,)),
     Field("NPU_AXI_DATA_WIDTH", "Buffers and bus", "NPU AXI4 data width",
           "NPU DMA and memory data bits. CPU and AXI-Lite register data remain 32 bits.", (32, 64)),
     Field("AXI_READ_OUTSTANDING", "Buffers and bus", "AXI read outstanding",

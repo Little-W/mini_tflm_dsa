@@ -49,7 +49,7 @@ q  = (ky*kernel_w+kx)*group_c + channel_fragment
 
 先检查 ny/nx 非负、能被 stride 整除、oy/ox 在输出范围内。幂二 stride 的除法和余数分别用移位和 mask；p-block 和 q-tile 的分解也用移位。候选 p-block 早于当前块则丢弃；晚于当前块时取 output-group=0；同块中，若候选 `(qtile,p_local)` 晚于当前事件则使用当前 group，否则使用下一 group，超过 group 数则无效。取所有有效候选的最小 rank，没有未来使用时返回 `0xffffffff`。
 
-这是针对 eligibility 条件的精确下一次 line 事件，而不是估计最近程度。候选扫描为 kernel taps 个周期，当前上限 25 周期。配置乘积逐级检查 32 位空间，保留 INF；运行时采用 64 位中间表达式防止截断混淆候选有效性。共享算术电路成本必须单列，不能把每周期一个 tap 等同于无成本预测。
+这是针对 eligibility 条件的精确下一次 line 事件，而不是估计最近程度。预测器每周期接收一个 kernel tap，结果经过七级流水线，当前最多处理 25 个 tap。配置乘积逐级检查 32 位空间，保留 INF；运行时采用 64 位中间表达式防止截断混淆候选有效性。共享算术电路成本必须单列，不能把每周期一个 tap 等同于无成本预测。
 
 ## 与实际数据传输重叠
 
@@ -61,7 +61,7 @@ q  = (ky*kernel_w+kx)*group_c + channel_fragment
 - 同 line 后三个 word 不重新扫描、不改 next-use。next_use=INF 也不会立即失效该 line，以免当前 line 的剩余 word 重读。
 - 下一事件启动必须等共享 predictor 空闲、缓存 pending hint 完成，防止旧 hint 被新事件覆盖。当前 line 的正常 word 命中不受 pending 阻塞。
 
-`cfg_sched_r` 和 `cfg_sched_groups` 从配置握手当拍的原始安全值传入，而非同拍才更新的旧寄存器。predictor 的组合 `cfg_eligible` 给缓存选择当前 job 索引；锁存的 `enabled` 用于之后的请求，避免使用上一个 job 的启用状态。
+`cfg_sched_r` 和 `cfg_sched_groups` 在配置握手时采样。预测器通过五个时钟阶段计算配置参数及其有效性，完成后将 `enabled` 传递给缓存；前端在配置完成前保持忙碌。
 
 ## 替换、准入和 transient 生命周期
 

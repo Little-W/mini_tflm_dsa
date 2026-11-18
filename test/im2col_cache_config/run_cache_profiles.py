@@ -15,7 +15,7 @@ sys.path.insert(0,str(ROOT))
 from scripts.capacity.config import selected_config
 
 CAPACITIES=(512,1024,2048,4096,8192,16384,32768,65536)
-RTL_NAMES=('conv_im2col_pkg.sv','conv_udiv32.sv','conv_sdp_ram.sv',
+RTL_NAMES=('conv_im2col_pkg.sv','conv_sdp_ram.sv',
            'conv_next_use_predictor.sv','conv_axi_span_reader.sv',
            'conv_read_cache.sv','conv_im2col_frontend.sv',
            'conv_ia_write_adapter.sv','conv_ia_tile_path.sv')

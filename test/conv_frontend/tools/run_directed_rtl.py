@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT=ROOT.parents[1]/'build/conv_frontend'
 COMMON = [
-    'rtl/conv_im2col_pkg.sv', 'rtl/conv_udiv32.sv', 'rtl/conv_sdp_ram.sv', 'rtl/conv_next_use_predictor.sv',
+    'rtl/conv_im2col_pkg.sv',  'rtl/conv_sdp_ram.sv', 'rtl/conv_next_use_predictor.sv',
     'rtl/conv_axi_span_reader.sv', 'rtl/conv_read_cache.sv', 'rtl/conv_im2col_frontend.sv',
 ]
 RTL = ROOT.parents[1] / 'rtl/npu/conv'

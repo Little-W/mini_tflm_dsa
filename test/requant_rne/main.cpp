@@ -24,11 +24,14 @@ int main(int argc,char** argv) {
     uint32_t rng=0x3257ae19;unsigned checked=0;
     auto random=[&](){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;};
     try {
-        for(unsigned test=0;test<1800;++test) {
+        for(unsigned test=0;test<20000;++test) {
             const std::array<int32_t,10> coeff={0,1,32768,98304,163840,0x40000000,0x60000000,0x7ffe8000,0x7fff0000,INT32_MAX};
             int32_t m=test<1000?coeff[test%coeff.size()]:int32_t(random()&INT32_MAX);
             int32_t shift=-31+int32_t(test%62);
             int32_t offset=int32_t(test%256)-128;
+            if (test%37==0) offset=INT32_MAX;
+            else if (test%37==1) offset=INT32_MIN;
+            if (test%7==0) m=int32_t(random());
             dut.multiplier=m;dut.shift=shift;dut.offset=offset;dut.init_cfg=1;tick();dut.init_cfg=0;
             for(int i=0;i<4;i++)tick();
             std::array<int8_t,4> expected_s8;std::array<int16_t,4> expected_s16;
@@ -57,12 +60,19 @@ int main(int argc,char** argv) {
                     }
                     found|=2;
                 }
+                if(dut.valid_shared_s16) {
+                    for(unsigned i=0;i<4;++i)if(int16_t(dut.output_shared_s16[i])!=expected_s16[i]) {
+                        std::cerr<<"shared s16 test="<<test<<" lane="<<i<<" multiplier="<<m<<" shift="<<shift<<" got="<<int16_t(dut.output_shared_s16[i])<<" expected="<<expected_s16[i]<<'\n';
+                        throw std::runtime_error("shared s16 mismatch");
+                    }
+                    found|=4;
+                }
                 tick();
             }
-            if(found!=3)throw std::runtime_error("missing output");
-            checked+=12;
+            if(found!=7)throw std::runtime_error("missing output");
+            checked+=16;
         }
-        std::cout<<"REQUANT_RNE_PASS outputs="<<checked<<" variants=3\n";
+        std::cout<<"REQUANT_RNE_PASS outputs="<<checked<<" variants=4\n";
     }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
     dut.final();return 0;
 }

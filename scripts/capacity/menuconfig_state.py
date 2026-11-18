@@ -57,6 +57,10 @@ def _field_value(key, value):
 
     if key in ("PCR_ENGINE", "PS_FORCE_RAW") and value not in (0, 1):
         raise ValueError(f"{key} must be 0 or 1")
+    if key == "PS_FORCE_RAW" and value != 1:
+        raise ValueError("PS_FORCE_RAW must be 1 for the INT32 partial-sum store")
+    if key == "CAPACITY_REPRESENTATION" and value != "raw32":
+        raise ValueError("CAPACITY_REPRESENTATION must be raw32")
     if key == "SIZE" and value not in (2, 4, 8, 16, 32):
         raise ValueError("SIZE must be a power of two in 2..32")
     if key == "NPU_AXI_DATA_WIDTH" and value not in (32, 64):

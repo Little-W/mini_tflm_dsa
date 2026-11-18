@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -28,6 +29,7 @@ def main():
     sv += [p for p in sorted(conv.rglob('*.sv')) if p not in sv]
     sv += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
     sv += [ROOT/'rtl/common/pseudo_dual_port_ram.v',harness/'vector_engine_dma_top.sv']
+    sv = runpy.run_path(str(ROOT/'test/monitors/sources.py'))['with_observers'](sv)
     objects=[]
     for name in ('reference','reference_add'):
         obj=out/(name+'.o');objects.append(obj)

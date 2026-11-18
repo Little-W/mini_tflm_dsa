@@ -24,10 +24,8 @@ module ia_ps_shared_ram #(
     localparam int BANKS=TOTAL_BYTES/BANK_BYTES;
     localparam int ROWS=BANK_BYTES/16;
     localparam int ROW_BITS=$clog2(ROWS);
-    localparam int BANK_BITS=$clog2(BANKS)>0 ? $clog2(BANKS) : 1;
     logic configured;
     logic [BANK_COUNT_BITS-1:0] ia_banks_q;
-    logic [1:0] ia_shift_q;
     wire valid_configuration=(cfg_ia_banks==1 || cfg_ia_banks==2 || cfg_ia_banks==4) &&
         int'(cfg_ia_banks)<BANKS;
     logic [BANKS-1:0] read_en,write_en;
@@ -35,91 +33,175 @@ module ia_ps_shared_ram #(
     logic [127:0] write_data [0:BANKS-1];
     logic [15:0] write_mask [0:BANKS-1];
     wire [127:0] read_data [0:BANKS-1];
-    logic [BANK_BITS-1:0] ia_read_bank_q [0:1],ps_read_bank_q [0:3];
     logic access_fault;
-    integer bank_index,port_index,selected_bank,selected_row;
+    wire access_enabled=configured && !capacity_fault && !cfg_valid;
+    logic [ROW_BITS-1:0] ia_read_row [0:1],ia_write_row [0:1];
+    logic [1:0] ia_read_bank [0:1],ia_write_bank [0:1];
+    logic [1:0] ia_read_range,ia_write_range;
+    wire [BANKS-1:0] bank_fault;
+    wire [BANKS-1:0] ia_read_selected [0:1],ps_read_selected [0:3];
+    logic [BANKS-1:0] ia_read_selected_hold [0:1],ps_read_selected_hold [0:3];
+
+    // The three legal IA allocations use fixed bit slices for bank and row.
+    for(genvar p=0;p<2;p++) begin : g_ia_address
+        logic [IA_ADDR_BITS-1:0] read_row_full,write_row_full;
+        always_comb begin
+            ia_read_bank[p]=0;ia_write_bank[p]=0;
+            read_row_full=ia_read_addr[p];write_row_full=ia_write_addr[p];
+            case(ia_banks_q)
+                BANK_COUNT_BITS'(2): begin
+                    ia_read_bank[p]={1'b0,ia_read_addr[p][0]};
+                    ia_write_bank[p]={1'b0,ia_write_addr[p][0]};
+                    read_row_full=ia_read_addr[p]>>1;write_row_full=ia_write_addr[p]>>1;
+                end
+                BANK_COUNT_BITS'(4): begin
+                    ia_read_bank[p]=ia_read_addr[p][1:0];ia_write_bank[p]=ia_write_addr[p][1:0];
+                    read_row_full=ia_read_addr[p]>>2;write_row_full=ia_write_addr[p]>>2;
+                end
+                default: ;
+            endcase
+            ia_read_row[p]=ROW_BITS'(read_row_full);ia_write_row[p]=ROW_BITS'(write_row_full);
+            ia_read_range[p]=int'(read_row_full)<ROWS;
+            ia_write_range[p]=int'(write_row_full)<ROWS;
+        end
+    end
+
+    wire [3:0] ps_read_range,ps_write_range;
+    for(genvar p=0;p<4;p++) begin : g_ps_range
+        assign ps_read_range[p]=(ia_banks_q==BANK_COUNT_BITS'(1) && (int'(ps_read_addr[p])>>ROW_BITS)<BANKS-1) ||
+            (ia_banks_q==BANK_COUNT_BITS'(2) && (int'(ps_read_addr[p])>>ROW_BITS)<BANKS-2) ||
+            (ia_banks_q==BANK_COUNT_BITS'(4) && (int'(ps_read_addr[p])>>ROW_BITS)<BANKS-4);
+        assign ps_write_range[p]=(ia_banks_q==BANK_COUNT_BITS'(1) && (int'(ps_write_addr[p])>>ROW_BITS)<BANKS-1) ||
+            (ia_banks_q==BANK_COUNT_BITS'(2) && (int'(ps_write_addr[p])>>ROW_BITS)<BANKS-2) ||
+            (ia_banks_q==BANK_COUNT_BITS'(4) && (int'(ps_write_addr[p])>>ROW_BITS)<BANKS-4);
+    end
+
+    wire ia_address_collision [0:1][0:1];
+    wire ps_address_collision [0:3][0:3];
+    for(genvar r=0;r<2;r++) begin : g_ia_collision
+        for(genvar w=0;w<2;w++) begin : g_write
+            assign ia_address_collision[r][w]=ia_read_addr[r]==ia_write_addr[w];
+        end
+    end
+    for(genvar r=0;r<4;r++) begin : g_ps_collision
+        for(genvar w=0;w<4;w++) begin : g_write
+            assign ps_address_collision[r][w]=ps_read_addr[r]==ps_write_addr[w];
+        end
+    end
+
+    // Each physical bank has fixed input ports and explicit first-port priority.
+    for(genvar b=0;b<BANKS;b++) begin : g_port_route
+        wire [5:0] read_request,write_request;
+        wire [5:0] read_grant,write_grant;
+        wire [5:0] read_hit,write_hit;
+        logic [15:0] selected_mask;
+        logic [127:0] selected_data;
+        logic [ROW_BITS-1:0] selected_read_row,selected_write_row;
+        wire [19:0] collision_terms;
+        wire collision=|collision_terms;
+        // IA and PS occupy disjoint banks. Logical-address comparisons can
+        // therefore precede bank arbitration and are shared by every bank.
+        for(genvar r=0;r<2;r++) begin : g_ia_collision
+            for(genvar w=0;w<2;w++) begin : g_write
+                assign collision_terms[2*r+w]=read_grant[r] && write_grant[w] &&
+                    (|ia_write_mask[w]) && ia_address_collision[r][w];
+            end
+        end
+        for(genvar r=0;r<4;r++) begin : g_ps_collision
+            for(genvar w=0;w<4;w++) begin : g_write
+                assign collision_terms[4+4*r+w]=read_grant[r+2] && write_grant[w+2] &&
+                    ps_address_collision[r][w];
+            end
+        end
+        for(genvar p=0;p<2;p++) begin : g_ia_port
+            assign read_hit[p]=(b<4) && ia_read_bank[p]==2'(b);
+            assign write_hit[p]=(b<4) && ia_write_bank[p]==2'(b);
+            assign ia_read_selected[p][b]=read_hit[p];
+            assign read_request[p]=access_enabled && ia_read_en[p] && ia_read_range[p] && read_hit[p];
+            assign write_request[p]=access_enabled && ia_write_en[p] && ia_write_range[p] && write_hit[p];
+        end
+        for(genvar p=0;p<4;p++) begin : g_ps_port
+            // Constant physical-bank offsets avoid a variable bank adder.
+            assign read_hit[p+2]=(ia_banks_q==BANK_COUNT_BITS'(1) && b>=1 && (int'(ps_read_addr[p])>>ROW_BITS)==b-1) ||
+                (ia_banks_q==BANK_COUNT_BITS'(2) && b>=2 && (int'(ps_read_addr[p])>>ROW_BITS)==b-2) ||
+                (ia_banks_q==BANK_COUNT_BITS'(4) && b>=4 && (int'(ps_read_addr[p])>>ROW_BITS)==b-4);
+            assign write_hit[p+2]=(ia_banks_q==BANK_COUNT_BITS'(1) && b>=1 && (int'(ps_write_addr[p])>>ROW_BITS)==b-1) ||
+                (ia_banks_q==BANK_COUNT_BITS'(2) && b>=2 && (int'(ps_write_addr[p])>>ROW_BITS)==b-2) ||
+                (ia_banks_q==BANK_COUNT_BITS'(4) && b>=4 && (int'(ps_write_addr[p])>>ROW_BITS)==b-4);
+            assign ps_read_selected[p][b]=read_hit[p+2];
+            assign read_request[p+2]=access_enabled && ps_read_en[p] && read_hit[p+2];
+            assign write_request[p+2]=access_enabled && ps_write_en[p] && write_hit[p+2];
+        end
+        assign read_grant[0]=read_request[0];
+        assign write_grant[0]=write_request[0];
+        for(genvar p=1;p<6;p++) begin : g_priority
+            assign read_grant[p]=read_request[p] && !(|read_request[p-1:0]);
+            assign write_grant[p]=write_request[p] && !(|write_request[p-1:0]);
+        end
+        always_comb begin
+            selected_read_row='0;selected_write_row='0;selected_mask='0;selected_data='0;
+            for(int p=0;p<2;p++) begin
+                selected_read_row |= ia_read_row[p] & {ROW_BITS{read_grant[p]}};
+                selected_write_row |= ia_write_row[p] & {ROW_BITS{write_grant[p]}};
+                selected_mask |= ia_write_mask[p] & {16{write_grant[p]}};
+                selected_data |= ia_write_data[p] & {128{write_grant[p]}};
+            end
+            for(int p=0;p<4;p++) begin
+                selected_read_row |= ps_read_addr[p][ROW_BITS-1:0] & {ROW_BITS{read_grant[p+2]}};
+                selected_write_row |= ps_write_addr[p][ROW_BITS-1:0] & {ROW_BITS{write_grant[p+2]}};
+                selected_mask |= {16{write_grant[p+2]}};
+                selected_data |= ps_write_data[p] & {128{write_grant[p+2]}};
+            end
+        end
+        assign read_en[b]=|read_request;
+        assign write_en[b]=(|write_request) && !collision;
+        assign read_addr[b]=selected_read_row;assign write_addr[b]=selected_write_row;
+        assign write_mask[b]=collision ? 16'd0 : selected_mask;
+        assign write_data[b]=selected_data;
+        assign bank_fault[b]=collision || (|(read_request & ~read_grant)) || (|(write_request & ~write_grant));
+    end
     always_comb begin
-        access_fault=0;selected_bank=0;selected_row=0;read_en='0;write_en='0;
-        for(bank_index=0;bank_index<BANKS;bank_index++) begin
-            read_addr[bank_index]=0;write_addr[bank_index]=0;
-            write_data[bank_index]=0;write_mask[bank_index]=0;
-        end
-        if(configured && !capacity_fault && !cfg_valid) begin
-            for(port_index=0;port_index<2;port_index++) begin
-                if(ia_read_en[port_index]) begin
-                    selected_bank=int'(ia_read_addr[port_index])&(int'(ia_banks_q)-1);
-                    selected_row=int'(ia_read_addr[port_index])>>ia_shift_q;
-                    if(selected_row>=ROWS) access_fault=1;
-                    else if(read_en[selected_bank]) access_fault=1;
-                    else begin
-                        read_en[selected_bank]=1;read_addr[selected_bank]=ROW_BITS'(selected_row);
-                    end
-                end
-                if(ia_write_en[port_index]) begin
-                    selected_bank=int'(ia_write_addr[port_index])&(int'(ia_banks_q)-1);
-                    selected_row=int'(ia_write_addr[port_index])>>ia_shift_q;
-                    if(selected_row>=ROWS) access_fault=1;
-                    else if(write_en[selected_bank]) access_fault=1;
-                    else begin
-                        write_en[selected_bank]=1;write_addr[selected_bank]=ROW_BITS'(selected_row);
-                        write_data[selected_bank]=ia_write_data[port_index];write_mask[selected_bank]=ia_write_mask[port_index];
-                    end
-                end
-            end
-            for(port_index=0;port_index<4;port_index++) begin
-                if(ps_read_en[port_index]) begin
-                    selected_bank=int'(ia_banks_q)+(int'(ps_read_addr[port_index])>>ROW_BITS);
-                    if(selected_bank>=BANKS) access_fault=1;
-                    else if(read_en[selected_bank]) access_fault=1;
-                    else begin
-                        read_en[selected_bank]=1;read_addr[selected_bank]=ROW_BITS'(ps_read_addr[port_index]);
-                    end
-                end
-                if(ps_write_en[port_index]) begin
-                    selected_bank=int'(ia_banks_q)+(int'(ps_write_addr[port_index])>>ROW_BITS);
-                    if(selected_bank>=BANKS) access_fault=1;
-                    else if(write_en[selected_bank]) access_fault=1;
-                    else begin
-                        write_en[selected_bank]=1;write_addr[selected_bank]=ROW_BITS'(ps_write_addr[port_index]);
-                        write_data[selected_bank]=ps_write_data[port_index];write_mask[selected_bank]=16'hffff;
-                    end
-                end
-            end
+        access_fault=|bank_fault;
+        if(access_enabled) begin
+            access_fault |= |(ia_read_en & ~ia_read_range) || |(ia_write_en & ~ia_write_range) ||
+                |(ps_read_en & ~ps_read_range) || |(ps_write_en & ~ps_write_range);
         end else if(|ia_read_en || |ia_write_en || |ps_read_en || |ps_write_en) access_fault=1;
-        for(bank_index=0;bank_index<BANKS;bank_index++) begin
-            if(read_en[bank_index] && write_en[bank_index] && |write_mask[bank_index] &&
-                read_addr[bank_index]==write_addr[bank_index]) begin
-                access_fault=1;
-                write_en[bank_index]=0;
-                write_mask[bank_index]=0;
-            end
-        end
     end
     always_ff @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
-            configured<=0;ia_banks_q<=1;ia_shift_q<=0;capacity_fault<=0;
-            for(int p=0;p<2;p++)ia_read_bank_q[p]<=0;
-            for(int p=0;p<4;p++)ps_read_bank_q[p]<=0;
+            configured<=0;ia_banks_q<=1;capacity_fault<=0;
+            for(int p=0;p<2;p++) ia_read_selected_hold[p]<=BANKS'(1);
+            for(int p=0;p<4;p++) ps_read_selected_hold[p]<=BANKS'(1);
         end else begin
             if(cfg_valid) begin
                 configured<=valid_configuration;
                 if(valid_configuration) begin
                     ia_banks_q<=cfg_ia_banks;
-                    ia_shift_q<=cfg_ia_banks==4 ? 2 : cfg_ia_banks==2 ? 1 : 0;
                 end
                 capacity_fault<=!valid_configuration || access_fault;
             end else if(access_fault) capacity_fault<=1;
-            if(configured && !capacity_fault && !cfg_valid) begin
-                for(int p=0;p<2;p++)if(ia_read_en[p])
-                    ia_read_bank_q[p]<=BANK_BITS'(int'(ia_read_addr[p])&(int'(ia_banks_q)-1));
-                for(int p=0;p<4;p++)if(ps_read_en[p] &&
-                    int'(ia_banks_q)+(int'(ps_read_addr[p])>>ROW_BITS)<BANKS)
-                    ps_read_bank_q[p]<=BANK_BITS'(int'(ia_banks_q)+(int'(ps_read_addr[p])>>ROW_BITS));
+            if(access_enabled) begin
+                for(int p=0;p<2;p++) if(ia_read_en[p]) ia_read_selected_hold[p]<=ia_read_selected[p];
+                for(int p=0;p<4;p++) if(ps_read_en[p] && ps_read_range[p]) ps_read_selected_hold[p]<=ps_read_selected[p];
             end
         end
     end
-    for(genvar p=0;p<2;p++) assign ia_read_data[p]=read_data[ia_read_bank_q[p]];
-    for(genvar p=0;p<4;p++) assign ps_read_data[p]=read_data[ps_read_bank_q[p]];
+    for(genvar p=0;p<2;p++) begin : g_ia_return
+        logic [127:0] data;
+        always_comb begin
+            data='0;
+            for(int b=0;b<BANKS;b++) data |= read_data[b] & {128{ia_read_selected_hold[p][b]}};
+        end
+        assign ia_read_data[p]=data;
+    end
+    for(genvar p=0;p<4;p++) begin : g_ps_return
+        logic [127:0] data;
+        always_comb begin
+            data='0;
+            for(int b=0;b<BANKS;b++) data |= read_data[b] & {128{ps_read_selected_hold[p][b]}};
+        end
+        assign ps_read_data[p]=data;
+    end
     for(genvar b=0;b<BANKS;b++) begin : g_bank
 `ifdef ASIC_SRAM
         wire [127:0] bit_write_mask;

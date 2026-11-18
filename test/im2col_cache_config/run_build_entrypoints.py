@@ -121,7 +121,7 @@ def inspect_command(name, folder, arguments, captured, extra_files, capacity):
             dict(CACHE_SETS=capacity // 32, CACHE_WAYS=2, LINE_BYTES=16, BUS_WIDTH=64),
         "ram_parameters": parameters["conv_sdp_ram"] == dict(DEPTH=capacity // 4, WRITE_WIDTH=64),
         "data_array_bits": state["buffer_arrays_bits"].get("conv_data_cache") == capacity * 8,
-        "metadata_array_bits": state["buffer_arrays_bits"].get("conv_cache_metadata") == (capacity // 16) * 75,
+        "metadata_array_bits": state["buffer_arrays_bits"].get("conv_cache_metadata") == (capacity // 16) * 322,
         "single_input_cache": state["module_instances"].get("conv_sdp_ram") == 1,
     }
     if name == "soc":

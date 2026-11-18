@@ -1,6 +1,6 @@
 # Shared compute array and addressable PS frame storage defaults.
 # Shared data capacity is SHARED_BANK_BYTES * SHARED_BANK_COUNT.
-# Model initialization assigns 1, 2 or 4 banks to IA and the remainder to PS.
+# Model initialization assigns 1 or 2 banks to IA, or 4 when at least 8 banks are present.
 # ASIC banks use complete RAMTP128X16 macros; FPGA uses config/npu_fpga.mk.
 # Literal assignments allow command-line Make variables to override values.
 PCR_ENGINE ?= 1

@@ -219,7 +219,7 @@ class Simulation {
       require(next.slot == ((next.p0 / 16U) + (next.q0 / 16U) * job.r) % (job.compact ? 8U : 4U),
               current_name + ": incorrect physical slot mapping");
       require(dut.ext_dma_base_addr == source_address(job, next.p0, next.q0),
-              current_name + ": incorrect DMA address");
+              current_name + ": incorrect DMA address got=" + std::to_string(dut.ext_dma_base_addr) + " expected=" + std::to_string(source_address(job, next.p0, next.q0)) + " p=" + std::to_string(next.p0) + " q=" + std::to_string(next.q0));
       require(dut.ext_dma_row_stride == (job.packed ? 16U * (job.use16 ? 2U : 1U) : job.stride) &&
               dut.ext_dma_lhs_zp == static_cast<std::uint32_t>(job.offset) &&
               bool(dut.ext_dma_use_16bits) == job.use16 && bool(dut.ext_dma_im2col) == job.im2col,
@@ -322,10 +322,22 @@ int main(int argc, char** argv) {
     // command with a new source address must miss even with identical shape.
     sim.start_job(j);
     sim.command("source_initial", 0, 64, 0, true);
+#ifdef ORDERED_JOB_TEST
+    sim.drain();
+#endif
     sim.job.base += 0x1000;
+#ifdef ORDERED_JOB_TEST
+    sim.start_job(sim.job);
+#endif
     sim.command("source_base_change", 0, 64, 0, true);
     sim.drain();
+#ifdef ORDERED_JOB_TEST
+    sim.drain();
+#endif
     sim.job.stride += 17;
+#ifdef ORDERED_JOB_TEST
+    sim.start_job(sim.job);
+#endif
     sim.command("source_stride_change", 0, 64, 0, true);
     sim.drain();
 

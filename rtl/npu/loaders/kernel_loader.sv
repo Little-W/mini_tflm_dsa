@@ -370,7 +370,8 @@ module kernel_loader #(
     .COUNT_WIDTH(COUNT_WIDTH)
   ) u_ctrl (
     .clk                   (clk),
-    .rst_n                 (rst_n && !cache_flush),
+    .rst_n                 (rst_n),
+    .clear                 (cache_flush),
     .cfg_valid             (cfg_valid),
     .cfg_k                 (cfg_k),
     .cfg_n                 (cfg_n),

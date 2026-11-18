@@ -80,7 +80,7 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   assign window_consecutive_responses=dma.u_dma.tb_observer.win_stat_consecutive_responses;
   assign window_request_response_overlap=dma.u_dma.tb_observer.win_stat_request_response_overlap;
   logic mac_active,quant_issue,quant_active,write_active;
-  logic previous_quant_issue,previous_quant_more,previous_quant_bank,write16;
+  logic previous_quant_issue,previous_quant_more,write16;
   logic [31:0] previous_quant_index,write16_beats;
   assign mac_active=engine.depthwise && engine.tb_observer.is_EXECUTE;
   assign quant_active=engine.depthwise && engine.q_active && !engine.tb_observer.is_FAILED;
@@ -96,26 +96,26 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
     if (!rst_n || (start && ready)) begin
       quant_inputs<=0;quant_consecutive<=0;mac_quant_overlap<=0;mac_write_overlap<=0;all_overlap<=0;
       write_bursts16<=0;write_beats16<=0;write16<=0;write16_beats<=0;
-      previous_quant_issue<=0;previous_quant_more<=0;previous_quant_bank<=0;previous_quant_index<=0;
+      previous_quant_issue<=0;previous_quant_more<=0;previous_quant_index<=0;
     end else begin
       previous_quant_issue<=quant_issue;
       previous_quant_more<=quant_issue && engine.q_issue+1<engine.q_count;
-      previous_quant_bank<=engine.q_bank;previous_quant_index<=engine.q_issue;
+      previous_quant_index<=engine.q_issue;
       if (quant_issue) quant_inputs<=quant_inputs+1;
       if (quant_issue && previous_quant_issue) quant_consecutive<=quant_consecutive+1;
       if (previous_quant_more && !engine.tb_observer.is_FAILED) begin
-        assert(quant_issue && engine.q_bank==previous_quant_bank);
+        assert(quant_issue);
         assert(engine.q_issue==previous_quant_index+1);
       end
       if (mac_active && quant_active) mac_quant_overlap<=mac_quant_overlap+1;
       if (mac_active && write_active) mac_write_overlap<=mac_write_overlap+1;
       if (mac_active && quant_active && write_active) all_overlap<=all_overlap+1;
       if (wr_start) begin
-        write16<=engine.depthwise && engine.bank_bytes[engine.write_bank]==16 &&
-                 engine.bank_address[engine.write_bank][1:0]==0;
+        write16<=engine.depthwise && engine.u_writeback.total_bytes==16 &&
+                 engine.u_writeback.lane_offset[1:0]==0;
         write16_beats<=0;
-        if (engine.depthwise && engine.bank_bytes[engine.write_bank]==16 &&
-            engine.bank_address[engine.write_bank][1:0]==0) begin
+        if (engine.depthwise && engine.u_writeback.total_bytes==16 &&
+            engine.u_writeback.lane_offset[1:0]==0) begin
           assert(wr_burst_len_m1==3);
           write_bursts16<=write_bursts16+1;
         end

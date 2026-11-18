@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 OUTPUT=ROOT.parents[1]/'build/conv_frontend'
 sys.path.insert(0,str(ROOT.parents[1]))
 from scripts.capacity.config import selected_config
-FILES=['rtl/conv_im2col_pkg.sv','rtl/conv_udiv32.sv','rtl/conv_sdp_ram.sv','rtl/conv_next_use_predictor.sv',
+FILES=['rtl/conv_im2col_pkg.sv','rtl/conv_sdp_ram.sv','rtl/conv_next_use_predictor.sv',
        'rtl/conv_axi_span_reader.sv','rtl/conv_read_cache.sv','rtl/conv_im2col_frontend.sv',
        'rtl/conv_ia_write_adapter.sv','rtl/conv_ia_tile_path.sv','tests/tb_conv_im2col_frontend.sv']
 

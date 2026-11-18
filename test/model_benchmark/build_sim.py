@@ -69,11 +69,17 @@ def filelist_sources(path,cwd,picorv32):
 
 
 def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=524288,pe_count=8,picorv32=None,
-              ia_cache_blocks=8,ps_storage_rows=799,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=None,first_read_latency=8,ps_pool_bytes=0,
-              shared_bank_bytes=None,shared_bank_count=None,im2col_cache_bytes=None):
+              ia_cache_blocks=None,ps_storage_rows=None,s16_output_banks=4,cpu_profile='performance',dma_max_bytes=None,bus_width=None,first_read_latency=8,ps_pool_bytes=0,
+              shared_bank_bytes=None,shared_bank_count=None,im2col_cache_bytes=None,ps_frame_count=None,hardware_raw=False):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=True)
     bus_width=axi_data_width(bus_width)
     selected=selected_config()
+    if ia_cache_blocks is None:
+        ia_cache_blocks=selected['IA_CACHE_BLOCKS'] if ps_pool_bytes else 8
+    if ps_frame_count is None:
+        ps_frame_count=selected['PS_FRAME_COUNT'] if ps_pool_bytes else 16
+    if ps_storage_rows is None:
+        ps_storage_rows=((3*16)-1)*(ps_frame_count+1)
     shared_bank_bytes=selected['SHARED_BANK_BYTES'] if shared_bank_bytes is None else shared_bank_bytes
     shared_bank_count=selected['SHARED_BANK_COUNT'] if shared_bank_count is None else shared_bank_count
     im2col_cache_bytes=selected['IM2COL_CACHE_BYTES'] if im2col_cache_bytes is None else im2col_cache_bytes
@@ -85,13 +91,14 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     protocol_max_bytes=256*(bus_width//8)
     if dma_max_bytes is None:dma_max_bytes=protocol_max_bytes
     if (jobs<1 or pe_count not in (4,8) or icache not in (0,1) or ram_words<1 or
-        ia_cache_blocks<1 or ps_storage_rows<0 or s16_output_banks<0 or cpu_profile not in CPU_PROFILES or
+        ia_cache_blocks<1 or ps_frame_count<1 or ps_frame_count>64 or ps_storage_rows<0 or s16_output_banks<0 or cpu_profile not in CPU_PROFILES or
         bus_width not in (32,64) or ram_words*32%bus_width or dma_max_bytes!=protocol_max_bytes or first_read_latency<1):
         raise ValueError('Invalid simulator configuration')
     if ps_pool_bytes and (ps_pool_bytes < 64 or ps_pool_bytes % 64):
         raise ValueError('PS pool must contain complete 64-byte bank groups')
-    if ps_pool_bytes:
-        ia_cache_blocks=4
+    direct_store='ps_adaptive_encoder' not in (ROOT/'rtl/npu/ps_compact/ps_frame_store.sv').read_text()
+    if ps_pool_bytes and direct_store != hardware_raw:
+        raise ValueError('Partial-sum implementation selection differs from the RTL source')
     if picorv32 is None:
         picorv32=os.environ.get('PICORV32_ROOT')
     if picorv32 is None:
@@ -107,7 +114,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     expanded = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     source_args += [str(p) for p in expanded if p not in sources]
     sources = expanded
-    sources += [HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp',Path(__file__)]
+    sources += [HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp',Path(__file__),ROOT/'test/conv_npu/simulator.vlt']
     capture=ROOT/'test/ps_compression/ps_stream_capture.sv'
     if ps_pool_bytes:sources.append(capture)
     sources+=list((ROOT/'rtl/npu/ps_compact').glob('*.svh'))
@@ -116,7 +123,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
                 {str(p):digest(p) for p in sorted(set(sources)) if not p.is_relative_to(ROOT)})
     before,external_before=hashes();binary=out/'obj/Vtb_model_benchmark';manifest_path=out/'build.json'
     profile={'size':16,'pe_count':pe_count,'ram_words':ram_words,'cpu_icache':icache,
-             'ia_cache_blocks':ia_cache_blocks,'ps_frame_count':16,
+             'ia_cache_blocks':ia_cache_blocks,'ps_frame_count':ps_frame_count,
              'ps_storage_rows':ps_storage_rows,'output_banks_s16_max':s16_output_banks,
              'matrix_tile_packed':True,'axi_read_outstanding':4,
              'axi_write_outstanding':4,'dma_max_bytes':dma_max_bytes,'core':'unified','pcr_engine':0,
@@ -142,8 +149,10 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
         shared_total_bytes=shared_total if shared_enabled else 0,
         shared_bank_bytes=shared_bank_bytes if shared_enabled else 0,
         shared_bank_count=shared_bank_count if shared_enabled else 0,
-        shared_ia_bank_choices=[1, 2, 4] if shared_enabled else [],
-        ps_directory_rows=1024 if shared_enabled else 0)
+        shared_ia_bank_choices=([1, 2, 4] if shared_bank_count >= 8 else [1, 2]) if shared_enabled else [],
+        ps_directory_rows=1024 if shared_enabled else 0,
+        ps_directory_storage_rows=1024 if shared_enabled and not hardware_raw else 0,
+        ps_storage_implementation='raw32' if hardware_raw else 'compressed',force_raw=hardware_raw)
     if skip:
         manifest=json.loads(manifest_path.read_text())
         if (manifest.get('returncode')!=0 or manifest.get('source_sha256')!=before or
@@ -151,7 +160,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
             manifest.get('profile')!=profile or digest(binary)!=manifest.get('binary_sha256')):
             raise RuntimeError('Simulator sources, parameters or executable differ from saved build')
         return binary
-    args=[verilator,'--cc','--exe','--assert','-sv',
+    args=[verilator,'--cc','--exe','--assert','-sv',ROOT/'test/conv_npu/simulator.vlt',
           '--top-module','tb_model_benchmark','-Wno-fatal','--Mdir',out/'obj','-j',jobs,
           '--output-groups','0','--output-split','12000',
           '-CFLAGS','-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
@@ -161,8 +170,10 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
           f'-DSOC_NETWORK_SHARED_BANK_BYTES={shared_bank_bytes}',
           f'-DSOC_NETWORK_SHARED_BANK_COUNT={shared_bank_count}',
           f'-DSOC_NETWORK_IM2COL_CACHE_BYTES={im2col_cache_bytes}',
+          *(['-DGEMMORA_PS_FORCE_RAW'] if hardware_raw else []),
           *[f'-DSOC_NETWORK_{key.upper()}={value}' for key,value in CPU_PROFILES[cpu_profile].items()],
           f'-DSOC_NETWORK_IA_CACHE_BLOCKS={ia_cache_blocks}',
+          f'-DSOC_NETWORK_PS_FRAME_COUNT={ps_frame_count}',
           f'-DSOC_NETWORK_PS_STORAGE_ROWS={ps_storage_rows}',
           f'-DSOC_NETWORK_S16_OUTPUT_BANKS={s16_output_banks}',
           f'-DSOC_NETWORK_PE_COUNT={pe_count}',
@@ -309,10 +320,12 @@ def main():
                         help='Input window cache bytes; default comes from NPU_CONFIG')
     parser.add_argument('--ram-words',type=int,default=524288)
     parser.add_argument('--pe-count',type=int,default=8)
-    parser.add_argument('--ia-cache-blocks',type=int,default=8)
-    parser.add_argument('--ps-storage-rows',type=int,default=799)
+    parser.add_argument('--ia-cache-blocks',type=int)
+    parser.add_argument('--ps-frame-count',type=int)
+    parser.add_argument('--ps-storage-rows',type=int)
     parser.add_argument('--s16-output-banks',type=int,default=4)
     parser.add_argument('--ps-pool-bytes',type=int,default=0)
+    parser.add_argument('--force-raw',action='store_true')
     parser.add_argument('--picorv32',type=Path)
     parser.add_argument('--out',type=Path)
     parser.add_argument('--mem',type=Path)
@@ -332,10 +345,12 @@ def main():
     binary=build_sim(args.build_dir,args.verilator,args.jobs,skip=args.skip_build,
                      icache=args.icache,ram_words=args.ram_words,pe_count=args.pe_count,picorv32=args.picorv32,
                      ia_cache_blocks=args.ia_cache_blocks,ps_storage_rows=args.ps_storage_rows,
+                     ps_frame_count=args.ps_frame_count,
                      s16_output_banks=args.s16_output_banks,cpu_profile=args.cpu_profile,
                      bus_width=args.bus_width,first_read_latency=args.first_read_latency,
                      ps_pool_bytes=args.ps_pool_bytes,shared_bank_bytes=args.shared_bank_bytes,
-                     shared_bank_count=args.shared_bank_count,im2col_cache_bytes=args.im2col_cache_bytes)
+                     shared_bank_count=args.shared_bank_count,im2col_cache_bytes=args.im2col_cache_bytes,
+                     hardware_raw=args.force_raw)
     if args.build_only:print(binary);return 0
     if args.out is None or args.mem is None:parser.error('--out and --mem are required for execution')
     report=run_sim(binary,args.out,args.mem,data_mem=args.data_mem,result_addr=args.result_addr,

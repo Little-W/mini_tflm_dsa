@@ -210,15 +210,16 @@ module ia_loader_ctrl #(
   // =====================================================================
   count_t l2_idx;
   count_t l1_idx;
+  count_t l1_idx_next;
   count_t w_group_idx;
-  count_t w_cnt;
-  count_t ia_idx;
+  logic [W_CNT_W-1:0] w_cnt;
+  logic [LOAD_CNT_W-1:0] ia_idx;
 
   // =====================================================================
   // 加载跟踪
   // =====================================================================
-  count_t load_ia_cursor;    // 当前 L1 组中正在加载第几个 tile（0..r_cur-1）
-  count_t load_tiles_done;   // 当前 L1 组中已加载完成的 tile 数
+  logic [LOAD_CNT_W-1:0] load_ia_cursor;    // 当前 L1 组中正在加载第几个 tile（0..r_cur-1）
+  logic [LOAD_CNT_W-1:0] load_tiles_done;   // 当前 L1 组中已加载完成的 tile 数
 
   // slot 分配
   logic [SLOT_W-1:0] wr_slot_ptr;          // 下一个写入slot
@@ -248,10 +249,10 @@ module ia_loader_ctrl #(
   logic prefetch_entering;                  // 预取进入脉冲
   logic can_overlap_prefetch;                // 当前配置下 cache 可同时容纳当前组和下一组
   logic [SLOT_W-1:0] pf_rd_slot_base;       // 下一组的读基地址
-  count_t pf_r_target;         // 预取组的 R 上界，进入预取时锁存
+  logic [LOAD_CNT_W-1:0] pf_r_target;         // 预取组的 R 上界，进入预取时锁存
   logic retirement_l1;                      // L1 组退休条件
-  count_t load_r_target;      // 当前加载的 R 目标
-  count_t w_cur_r;
+  logic [LOAD_CNT_W-1:0] load_r_target;      // 当前加载的 R 目标
+  logic [W_CNT_W-1:0] w_cur_r;
   count_t first_w_group_width;
   count_t next_w_group_width;
   logic                 load_l2_is_last;     // 当前加载批次是否为最后一个 L2 行组
@@ -274,7 +275,7 @@ module ia_loader_ctrl #(
 
   // W 上界（最后一个输出列组可能不足 cfg_w_reuse_num）
   count_t w_cur;
-  assign w_cur = w_cur_r;
+  assign w_cur = count_t'(w_cur_r);
 
   logic ia_iter_last;
   logic w_iter_last;
@@ -316,12 +317,12 @@ module ia_loader_ctrl #(
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      w_cur_r <= count_t'(1);
+      w_cur_r <= W_CNT_W'(1);
     end else if (state == S_IDLE && init_start) begin
-      w_cur_r <= first_w_group_width;
+      w_cur_r <= W_CNT_W'(first_w_group_width);
     end else if ((state == S_SEND || state == S_LOAD) && cache_tile_done &&
                  ia_iter_last && w_iter_last && is_last_l1_group) begin
-      w_cur_r <= next_w_group_width;
+      w_cur_r <= W_CNT_W'(next_w_group_width);
     end
   end
 
@@ -354,7 +355,7 @@ module ia_loader_ctrl #(
     end else if ((state == S_SEND || state == S_LOAD) && cache_tile_done &&
                  ia_iter_last && w_iter_last) begin
       if (!is_last_l1_group) begin
-          is_last_l1_group <= ((l1_idx + count_t'(1)) == l1_last_idx);
+          is_last_l1_group <= (l1_idx_next == l1_last_idx);
       end else begin
         is_last_l1_group <= (l1_last_idx == '0);
         if (!is_last_w_group) begin
@@ -374,7 +375,7 @@ module ia_loader_ctrl #(
   count_t tile_col_idx;
   count_t l2_tile_row_base;
   always_comb begin
-    tile_row_idx = l2_tile_row_base + ia_idx;
+    tile_row_idx = l2_tile_row_base + count_t'(ia_idx);
     tile_col_idx = l1_idx;
   end
 
@@ -422,7 +423,6 @@ module ia_loader_ctrl #(
   // 下一个要发送的 slot（用于 blk_busy 管理）
   assign next_rd_slot = (SLOT_BLOCKS <= 1) ? '0 : ((rd_slot_base + SLOT_W'(ia_idx + 1)) & slot_mask);
 
-  // slot_rows_reg: 存储每个 slot 的有效行数，在 tl_tile_done 时写入
   logic [ROW_CNT_W-1:0] slot_rows_reg [SLOT_BLOCKS];
 
   // =====================================================================
@@ -478,7 +478,7 @@ module ia_loader_ctrl #(
   // 加载触发逻辑
   // =====================================================================
   // load_r_target: 当前加载目标 R（prefetch 时为下一组的 R）
-  assign load_r_target = prefetch_active ? pf_r_target : r_cur;
+  assign load_r_target = prefetch_active ? pf_r_target : LOAD_CNT_W'(r_cur);
 
   // 当前加载批次的所有 tile 都已加载完
   logic l1_load_complete;
@@ -540,7 +540,7 @@ module ia_loader_ctrl #(
   // 下一 L1 组的列/L2 索引
   always_comb begin
     if (!is_last_l1_group) begin
-      next_l1_idx = l1_idx + count_t'(1);
+      next_l1_idx = l1_idx_next;
       next_w_group_idx = w_group_idx;
     end else if (!is_last_w_group) begin
       next_l1_idx = '0;
@@ -605,11 +605,11 @@ module ia_loader_ctrl #(
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n)
-      pf_r_target <= count_t'(1);
+      pf_r_target <= LOAD_CNT_W'(1);
     else if (state == S_IDLE || state == S_INIT)
-      pf_r_target <= count_t'(1);
+      pf_r_target <= LOAD_CNT_W'(1);
     else if (prefetch_entering)
-      pf_r_target <= next_r_cur;
+      pf_r_target <= LOAD_CNT_W'(next_r_cur);
   end
 
   // =====================================================================
@@ -736,20 +736,18 @@ module ia_loader_ctrl #(
       tl_lhs_zp_r       <= '0;
     end else begin
       tl_start_r <= load_issue;
-      if (load_issue) begin
-        tl_base_addr_r    <= computed_tile_base;
-        tl_p0            <= load_cursor_p0;
-        tl_q0            <= REG_WIDTH'(prefetch_active ? next_l1_idx : tile_col_idx) << LOG2_SIZE;
-        tl_group         <= REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
-        tl_row_stride_r   <= cfg_tile_packed ?
-            (REG_WIDTH'(SIZE) << (cfg_use_16bits ? 1 : 0)) : cfg_lhs_row_stride_b;
-        tl_rows_to_read_r <= load_rows_cur;
-        tl_valid_cols_r   <= load_cols_cur;
-        tl_burst_len_m1_r <= load_burst_len_m1;
-        tl_slot_id_r      <= wr_slot_ptr;
-        tl_use_16bits_r   <= cfg_use_16bits;
-        tl_lhs_zp_r       <= cfg_lhs_zp;
-      end
+      tl_base_addr_r    <= computed_tile_base;
+      tl_p0            <= load_cursor_p0;
+      tl_q0            <= REG_WIDTH'(prefetch_active ? next_l1_idx : tile_col_idx) << LOG2_SIZE;
+      tl_group         <= REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
+      tl_row_stride_r   <= cfg_tile_packed ?
+          (REG_WIDTH'(SIZE) << (cfg_use_16bits ? 1 : 0)) : cfg_lhs_row_stride_b;
+      tl_rows_to_read_r <= load_rows_cur;
+      tl_valid_cols_r   <= load_cols_cur;
+      tl_burst_len_m1_r <= load_burst_len_m1;
+      tl_slot_id_r      <= wr_slot_ptr;
+      tl_use_16bits_r   <= cfg_use_16bits;
+      tl_lhs_zp_r       <= cfg_lhs_zp;
     end
   end
 
@@ -824,7 +822,6 @@ module ia_loader_ctrl #(
     end
   end
 
-  // slot_rows_reg: 每个 slot 的有效行数，在 tile 加载完成时写入
   always_ff @(posedge clk) begin
     if (tl_tile_done) begin
       slot_rows_reg[wr_slot_ptr] <= ROW_CNT_W'(tl_rows_to_read_r);
@@ -834,41 +831,25 @@ module ia_loader_ctrl #(
   // =====================================================================
   // Cache Block 状态表管理
   // =====================================================================
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      for (int i = 0; i < SLOT_BLOCKS; i++) begin
-        blk_valid[i] <= 1'b0;
-        blk_busy[i]  <= 1'b0;
-      end
-    end else if (state == S_INIT) begin
-      for (int i = 0; i < SLOT_BLOCKS; i++) begin
-        blk_valid[i] <= 1'b0;
-        blk_busy[i]  <= 1'b0;
-      end
-    end else begin
-      // tile_loader 完成加载 → 标记 valid
-      if (tl_tile_done) begin
-        blk_valid[tl_slot_id] <= 1'b1;
-      end
-
-      // L1组发送启动 → 标记第一个 tile 的 slot 为 busy
-      if (cache_l1_start) begin
-        blk_busy[cache_l1_slot_start] <= 1'b1;
-      end
-
-      // 单 tile 输出完成 → 取消当前 slot busy
-      if (cache_tile_done) begin
-        blk_busy[current_rd_slot] <= 1'b0;
-
-        // 早期释放：如果这是该 slot 的最后一次 reuse，标记 invalid
-        if (w_iter_last) begin
-          blk_valid[current_rd_slot] <= 1'b0;
-        end
-
-        // 标记下一 tile 的 slot 为 busy（cache_mgr 将继续处理它）
-        if (!ia_iter_last) begin
-          blk_busy[next_rd_slot] <= 1'b1;
-        end
+  for (genvar slot_index = 0; slot_index < SLOT_BLOCKS; slot_index++) begin : g_slot_state
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) begin
+        blk_valid[slot_index] <= 1'b0;
+        blk_busy[slot_index] <= 1'b0;
+      end else if (state == S_INIT) begin
+        blk_valid[slot_index] <= 1'b0;
+        blk_busy[slot_index] <= 1'b0;
+      end else begin
+        if (tl_tile_done && tl_slot_id == SLOT_W'(slot_index))
+          blk_valid[slot_index] <= 1'b1;
+        if (cache_tile_done && w_iter_last && current_rd_slot == SLOT_W'(slot_index))
+          blk_valid[slot_index] <= 1'b0;
+        if (cache_l1_start && cache_l1_slot_start == SLOT_W'(slot_index))
+          blk_busy[slot_index] <= 1'b1;
+        if (cache_tile_done && current_rd_slot == SLOT_W'(slot_index))
+          blk_busy[slot_index] <= 1'b0;
+        if (cache_tile_done && !ia_iter_last && next_rd_slot == SLOT_W'(slot_index))
+          blk_busy[slot_index] <= 1'b1;
       end
     end
   end
@@ -880,12 +861,14 @@ module ia_loader_ctrl #(
     if (!rst_n) begin
       l2_idx <= '0;
       l1_idx <= '0;
+      l1_idx_next <= count_t'(1);
       w_group_idx <= '0;
       w_cnt  <= '0;
       ia_idx <= '0;
     end else if (state == S_INIT) begin
       l2_idx <= '0;
       l1_idx <= '0;
+      l1_idx_next <= count_t'(1);
       w_group_idx <= '0;
       w_cnt  <= '0;
       ia_idx <= '0;
@@ -901,8 +884,10 @@ module ia_loader_ctrl #(
           w_cnt <= '0;
           if (!is_last_l1_group) begin
             l1_idx <= l1_idx + 1;
+            l1_idx_next <= l1_idx_next + 1;
           end else begin
             l1_idx <= '0;
+            l1_idx_next <= count_t'(1);
             if (!is_last_w_group) begin
               w_group_idx <= w_group_idx + 1;
             end else begin

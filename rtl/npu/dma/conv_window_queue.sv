@@ -90,7 +90,7 @@ module conv_window_queue #(
   end
 `ifdef NPU_SIM_ASSERT
   initial assert(DEPTH>=2 && TAG_W>=1);
-  always_ff @(posedge clk) if(rst_n) begin
+  initial forever @(posedge clk) if(rst_n) begin
     assert(count<=COUNT_W'(DEPTH));
     if(configure) assert(count==0 && !active);
     if(frontend_rsp_valid && active && !rsp_error) assert(rsp_mask!=0);

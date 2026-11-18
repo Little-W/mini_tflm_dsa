@@ -21,7 +21,7 @@ module tb_raw_only_caps #(
             .AXI_DATA_BITS(AXI_DATA_BITS),
             .PS_CAPS(CAPS[i]), .PS_POOL_BYTES(12288), .IA_CACHE_BYTES(2048),
             .SHARED_TOTAL_BYTES(14336), .SHARED_BANK_BYTES(2048),
-            .SHARED_IA_BANK_MASK(32'h16), .PS_DIRECTORY_ROWS(1024)
+            .SHARED_IA_BANK_MASK(32'h6), .PS_DIRECTORY_ROWS(1024)
         ) dut (
             .clk, .rst_n,
             .s_axil_awaddr(awaddr), .s_axil_awprot(3'b0),
@@ -79,8 +79,8 @@ module tb_raw_only_caps #(
     endtask
 
     initial begin
-        check(CAP_NORMAL == 32'h01100037, "adaptive capabilities");
-        check(CAP_GEMMORA_RAW == 32'h0110003f, "GEMMORA RAW capabilities");
+        check(CAP_NORMAL == 32'h0110001f, "INT32 capabilities");
+        check(CAP_GEMMORA_RAW == 32'h0110001f, "GEMMORA RAW capabilities");
         check(CAP_LEGACY_RAW == CAP_GEMMORA_RAW, "RAW macro capability agreement");
         repeat (5) @(negedge clk);
         rst_n = 1;
@@ -94,7 +94,7 @@ module tb_raw_only_caps #(
         read_register(16'h0100, '{32'd14336, 32'd14336, 32'd14336});
         read_register(16'h0104, '{32'd2048, 32'd2048, 32'd2048});
         read_register(16'h0108, '{32'd1, 32'd1, 32'd1});
-        read_register(16'h010c, '{32'h16, 32'h16, 32'h16});
+        read_register(16'h010c, '{32'h6, 32'h6, 32'h6});
         read_register(16'h0110, '{32'd1024, 32'd1024, 32'd1024});
         read_register(16'h00f4, '{AXI_DATA_BITS, AXI_DATA_BITS, AXI_DATA_BITS});
         read_register(16'h00f0, '{3{32'(256 * (AXI_DATA_BITS / 8))}});

@@ -66,9 +66,10 @@ module soc_axi_ram #(
 
     (* ram_style = "block" *) logic [DW-1:0] mem_r [0:DP-1];
 
-    logic [63:0] memory_cycle_q;
-    logic [63:0] rd_ready_cycle_q [0:RD_DEPTH-1];
-    logic [63:0] rd_ready_active_q;
+    // Independent saturating delays preserve the age of queued requests.
+    localparam int RD_DELAY_W = (READ_FIRST_LATENCY <= 2) ? 1 : $clog2(READ_FIRST_LATENCY);
+    logic [RD_DELAY_W-1:0] rd_delay_q [0:RD_DEPTH-1];
+    logic [RD_DELAY_W-1:0] rd_delay_active_q;
     logic [AW-1:0] rd_addr_q [0:RD_DEPTH-1];
     logic [7:0]    rd_len_q  [0:RD_DEPTH-1];
     logic [2:0]    rd_size_q [0:RD_DEPTH-1];
@@ -123,16 +124,11 @@ module soc_axi_ram #(
     wire aw_fire = s_axi_awvalid && s_axi_awready;
     wire w_fire  = s_axi_wvalid  && s_axi_wready;
     wire b_fire  = s_axi_bvalid  && s_axi_bready;
-    wire [63:0] ar_ready_cycle = memory_cycle_q + 64'(ram_read_first_latency-1);
-    wire rd_active_mature = memory_cycle_q >= rd_ready_active_q;
-    wire rd_queue_mature = memory_cycle_q >= rd_ready_cycle_q[rd_rd_ptr_q];
+    wire rd_active_mature = rd_delay_active_q == '0;
+    wire rd_queue_mature = rd_delay_q[rd_rd_ptr_q] == '0;
+    localparam logic [RD_DELAY_W-1:0] RD_INITIAL_DELAY =
+        RD_DELAY_W'((READ_FIRST_LATENCY <= 2) ? 0 : READ_FIRST_LATENCY - 2);
 
-    // Each accepted address waits independently. The synchronous RAM read
-    // registers data one edge before its earliest permitted R handshake.
-    always_ff @(posedge clk) begin
-        if (!rst_n) memory_cycle_q <= 64'd0;
-        else memory_cycle_q <= memory_cycle_q + 64'd1;
-    end
 `ifdef NPU_SIM_ASSERT
     initial begin
         assert(READ_FIRST_LATENCY >= 1)
@@ -289,7 +285,8 @@ module soc_axi_ram #(
             rd_count_q        <= '0;
             rd_cmd_valid_q    <= 1'b0;
             rd_byte_addr_q    <= '0;
-            rd_ready_active_q <= '0;
+            rd_delay_active_q <= '0;
+            for (int i = 0; i < RD_DEPTH; i++) rd_delay_q[i] <= '0;
             rd_size_active_q  <= 3'(ADDR_LSB);
             rd_burst_active_q <= 2'b01;
             rd_cmd_error_q    <= 1'b0;
@@ -315,9 +312,14 @@ module soc_axi_ram #(
             rd_enqueue = ar_fire && !rd_cmd_load_from_ar;
             rd_dequeue = rd_cmd_load_from_queue;
 
+            for (int i = 0; i < RD_DEPTH; i++) begin
+                if (rd_delay_q[i] != '0) rd_delay_q[i] <= rd_delay_q[i] - 1'b1;
+            end
+            if (rd_delay_active_q != '0) rd_delay_active_q <= rd_delay_active_q - 1'b1;
+
             if (ar_fire && !rd_cmd_load_from_ar) begin
                 rd_addr_q[rd_wr_ptr_q] <= s_axi_araddr;
-                    rd_ready_cycle_q[rd_wr_ptr_q] <= ar_ready_cycle;
+                rd_delay_q[rd_wr_ptr_q] <= RD_INITIAL_DELAY;
                 rd_len_q[rd_wr_ptr_q]  <= s_axi_arlen;
                 rd_size_q[rd_wr_ptr_q] <= s_axi_arsize;
                 rd_burst_q[rd_wr_ptr_q] <= s_axi_arburst;
@@ -357,7 +359,8 @@ module soc_axi_ram #(
             if (rd_cmd_load_from_queue) begin
                 rd_cmd_valid_q  <= 1'b1;
                 rd_byte_addr_q  <= {1'b0,rd_addr_q[rd_rd_ptr_q]};
-                rd_ready_active_q <= rd_ready_cycle_q[rd_rd_ptr_q];
+                rd_delay_active_q <= rd_delay_q[rd_rd_ptr_q] == '0 ? '0 :
+                    rd_delay_q[rd_rd_ptr_q] - 1'b1;
                 rd_size_active_q <= rd_size_q[rd_rd_ptr_q];
                 rd_burst_active_q <= rd_burst_q[rd_rd_ptr_q];
                 rd_cmd_error_q <= rd_bad_q[rd_rd_ptr_q];
@@ -368,7 +371,7 @@ module soc_axi_ram #(
             end else if (rd_cmd_load_from_ar) begin
                 rd_cmd_valid_q  <= 1'b1;
                 rd_byte_addr_q  <= {1'b0,s_axi_araddr};
-                rd_ready_active_q <= ar_ready_cycle;
+                rd_delay_active_q <= RD_INITIAL_DELAY;
                 rd_size_active_q <= s_axi_arsize;
                 rd_burst_active_q <= s_axi_arburst;
                 rd_cmd_error_q <= axi_command_bad(s_axi_araddr,s_axi_arlen,s_axi_arsize,s_axi_arburst);

@@ -50,7 +50,8 @@ def unified_testbench(bus_width):
     for index, case in enumerate(cases):
         size, count, enabled = case['bank_bytes'], case['bank_count'], case['shared']
         frames = case.get('frames', 16)
-        output_banks = max(min(frames*2, 32), size//128 if enabled else 1)
+        max_ia_banks = 4 if count >= 8 else 2
+        output_banks = max(min(frames*2, 32), max_ia_banks*size//512 if enabled else 1)
         total = case.get('total_bytes', size * count)
         scope = f'n{index}'
         core = scope + '.u_npu_top'
@@ -85,13 +86,13 @@ def unified_testbench(bus_width):
             ram = core + '.g_shared_ia_ps.u_ram'
             checks += [f"assert({register}.SHARED_TOTAL_BYTES=={total});",
                        f"assert({register}.SHARED_BANK_BYTES=={size});",
-                       f"assert({register}.SHARED_IA_BANK_MASK==32'h16);",
+                       f"assert({register}.SHARED_IA_BANK_MASK==32'h{0x16 if count >= 8 else 0x6:x});",
                        f"assert({register}.PS_DIRECTORY_ROWS==1024);",
                        f"assert({ram}.BANK_BYTES=={size});",
                        f"assert({ram}.TOTAL_BYTES=={total});",
                        f"assert({ram}.BANKS=={count});",
                        f"assert({ram}.ROWS=={size//16});",
-                       f"assert({core}.IA_MAX_CACHE_BLOCKS=={4*size//512});",
+                       f"assert({core}.IA_MAX_CACHE_BLOCKS=={max_ia_banks*size//512});",
                        f"assert({pool}.EXTERNAL_RAM==1);",
                        f"assert({pool}.POOL_BYTES=={total-size});",
                        f"assert({pool}.BANK_BYTES=={size});",

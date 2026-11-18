@@ -88,15 +88,16 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
     max_dma = integer(source.get("dma_max_bytes", 256 * (width // 8)), "dma_max_bytes", width // 8)
     if max_dma > 256 * (width // 8) or max_dma & (max_dma - 1):
         raise ValueError("DMA maximum must be a power of two within 256 physical beats")
-    choices = source.get("shared_ia_bank_choices", [1, 2, 4])
-    if not choices or any(type(value) is not int or value not in (1, 2, 4) for value in choices):
+    supported_choices = (1, 2, 4) if bank_count >= 8 else (1, 2)
+    choices = source.get("shared_ia_bank_choices", list(supported_choices))
+    if not choices or any(type(value) is not int or value not in supported_choices for value in choices):
         raise ValueError("Invalid shared IA bank choices")
     directory = integer(source.get("ps_directory_rows", 1024), "ps_directory_rows", 1)
     raw_only = bool(source.get("force_raw", source.get("ps_force_raw", False)))
-    output_s8 = max(min(frames * max(1, cache // 2), 32), bank_bytes // 128)
+    output_s8 = max(min(frames * max(1, cache // 2), 32), max(supported_choices) * bank_bytes // 512)
     output_limit = integer(source.get("output_banks_s16_max", 4), "output_banks_s16_max")
     output_s16 = min(output_s8, output_limit) if output_limit else output_s8
-    caps = (1 << 24) | (frames << 16) | 0x17 | (int(raw_only) << 3) | (int(literal_bound) << 5)
+    caps = (1 << 24) | (frames << 16) | 0x17 | (int(raw_only) << 3) | (int(literal_bound and not raw_only) << 5)
     costs = dict(read_beat_cycles=integer(read_beat, "continuous read beat spacing", 1),
                  write_beat_cycles=integer(source.get("schedule_write_beat_cycles", 1), "write beat cost", 1),
                  read_request_cycles=integer(source.get("schedule_read_request_cycles", 1), "read request cost"),
@@ -112,7 +113,7 @@ def normalize_profile(manifest, *, root, literal_bound=False, ram_fixed_lat=0):
         ps_caps=caps, literal_bound_capability=bool(literal_bound), raw_only=raw_only,
         matrix_ps_rows=integer(source.get("ps_storage_rows", 799), "matrix_ps_rows"),
         matrix_output_banks=output_s8 | (output_s16 << 16),
-        ps_directory_bits_per_row=3 + (bank_count-2).bit_length() + 4 * (bank_bytes//16-1).bit_length(),
+        ps_directory_bits_per_row=0 if raw_only else 3 + (bank_count-2).bit_length() + 4 * (bank_bytes//16-1).bit_length(),
         memory_timing=dict(ram_read_first_latency=integer(first_latency, "first response latency", 1),
             ram_continuous_read_beat_cycles=read_beat,
             ram_fixed_lat=integer(ram_fixed_lat, "RAM fixed delay", 0, 255), sources=timing_sources),

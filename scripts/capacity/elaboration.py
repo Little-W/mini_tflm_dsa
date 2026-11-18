@@ -143,6 +143,8 @@ def array_category(origin, name, ancestors):
         return "ia_cache_tags"
     if origin == "ia_loader_ctrl" and name in ("slot_rows_reg", "blk_valid", "blk_busy"):
         return "ia_slot_metadata"
+    if origin == "ia_loader_cache_mgr" and name == "slot_written_cols":
+        return "ia_slot_metadata"
     if origin == "pseudo_dual_port_ram" and name == "ram" and "ia_loader_cache_mgr" in ancestors:
         return "ia_cache"
     if origin == "ia_buffer_wrapper" and name == "mem":
@@ -152,14 +154,18 @@ def array_category(origin, name, ancestors):
     if origin == "bias_loader_buffer" and name in ("bank0_words", "bank1_words"):
         return "bias_cache"
     if origin == "vec_requant_full" and name in ("ch_multiplier_is_r", "ch_shift_is_r",
-                                                 "ch_lshift_is_r", "ch_rshift_is_r"):
+                                                 "ch_lshift_is_r", "ch_rshift_is_r", "multiplier_mem",
+                                                 "shift_mem", "left_mem", "right_mem"):
         return "requant_is_cache"
     if origin == "vec_s8_fifo_row_ram" and name == "mem":
         return "oa_s16_fifo" if "vec_s16_to_fifo" in ancestors else "oa_s8_fifo"
     if origin == "conv_sdp_ram" and name == "mem":
         return "conv_data_cache"
     if origin == "conv_windowed_cache":
-        if name in ("tags", "valid", "prefetched", "epochs", "use_rank"):
+        if name in ("valid", "lookup_tag_ram", "pf_tag_ram", "incoming_tag_ram",
+                    "next_tag_ram", "hint_tag_ram", "incoming_hold_ram", "next_hold_ram",
+                    "fill_epoch_ram", "hit_epoch_ram", "fill_rank_ram", "hit_rank_ram",
+                    "hint_rank_ram", "epoch_is_hit", "rank_source"):
             return "conv_cache_metadata"
         if name.startswith("pf_queue_"):
             return "conv_prefetch_queue"
@@ -171,13 +177,15 @@ def array_category(origin, name, ancestors):
         if name in ("input_buf", "rhs_buf", "weight_buf", "bias_buf",
                     "mult_buf", "shift_buf", "acc_buf", "result_buf"):
             return "vector_buffers"
+    if origin == "vector_weight_bank" and name == "data":
+        return "vector_buffers"
     if origin == "ps_frame_store":
         return {"payload_ram": "ps_payload", "directory": "ps_directory",
                 "frame_lengths": "ps_frame_lengths", "frame_valid": "ps_frame_valid",
                 "frame_max_record_words": "ps_frame_max_record_words",
                 "free_bitmap": "ps_free_bitmap", "bank_free_count": "ps_bank_free_count",
                 "resident_words": "ps_resident_words",
-                "decoded_ram": "ps_decoded_fifo", "decoded_first": "ps_decoded_first"}.get(name)
+                "decoded_ram": "ps_decoded_fifo", "decoded_first_mem": "ps_decoded_first"}.get(name)
     if origin == "ps_buffer_exact_ram" and name == "ram":
         return "ps_payload"
     if origin == "ps_buffer_wide_fifo" and name == "frame_len_fifo":
@@ -360,7 +368,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     else:
         architecture = architecture and counts.get("ia_ps_shared_ram", 0) == 0
     registers = capabilities["npu_axil_reg_if"]
-    expected_caps = (0x01000027 | (values["PS_FRAME_COUNT"] << 16) |
+    expected_caps = (0x01000007 | (values["PS_FRAME_COUNT"] << 16) |
                      (int(layout["shared_ia_ps_enabled"]) << 4) | (values["PS_FORCE_RAW"] << 3)) \
                     if values["PCR_ENGINE"] else 0
     capabilities_match = capabilities["npu_axil_top"]["PS_CAPS"] == expected_caps and \

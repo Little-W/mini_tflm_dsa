@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and execute the divider or AXI abort RTL unit with UBSan."""
+"""Build and execute the AXI abort RTL unit with UBSan."""
 import argparse
 import hashlib
 import json
@@ -8,7 +8,6 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = {
-    "conv_divider": ("conv_udiv32", "rtl/npu/conv/conv_udiv32.sv"),
     "dma_abort": ("axi_linear_block_dma", "rtl/npu/dma/axi_linear_block_dma.sv"),
 }
 

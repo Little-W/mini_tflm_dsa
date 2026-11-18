@@ -9,7 +9,7 @@ def main():
     p.add_argument('--cache-policy',type=int,default=3);p.add_argument('--no-prefetch',action='store_true')
     a=p.parse_args();pf=not a.no_prefetch
     out=ROOT/f'build/windowed_cache/s{a.cache_sets}_p{a.cache_policy}_pf{int(pf)}';out.mkdir(parents=True,exist_ok=True)
-    files=[(ROOT/'rtl/npu/dma'/n if n.startswith('cache/') else ROOT/'rtl/npu/conv'/n) for n in ['conv_im2col_pkg.sv','conv_udiv32.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv','conv_axi_span_reader.sv','cache/conv_read_cache.sv','conv_im2col_frontend.sv']]
+    files=[(ROOT/'rtl/npu/dma'/n if n.startswith('cache/') else ROOT/'rtl/npu/conv'/n) for n in ['conv_im2col_pkg.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv','conv_axi_span_reader.sv','cache/conv_read_cache.sv','conv_im2col_frontend.sv']]
     files += [ROOT/'test/conv_reuse/axi_counted_memory.sv',ROOT/'test/windowed_cache/tb_windowed_cache.sv']
     import runpy
     files = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](files)

@@ -5,7 +5,7 @@ module predictor_tb;
   always #5 clk=~clk;
   conv_cfg_t cfg;
   logic [31:0] cfg_r, cfg_groups;
-  logic cfg_eligible, enabled, busy, done;
+  logic cfg_eligible, cfg_busy, enabled, busy, done;
   logic [31:0] input_y, input_x, channel, current_p, current_q, current_group, next_rank;
   conv_next_use_predictor dut (.*);
 
@@ -46,14 +46,13 @@ module predictor_tb;
       cfg_r=fields[16];cfg_groups=fields[17];
       cfg.input_s16=fields[18][0];cfg.bypass_cache=fields[19][0];
       cfg_valid=1;
-      #1;
-      if (cfg_eligible!==fields[20][0])
-        $fatal(1,"configuration eligibility case=%0d expected=%0d actual=%0d",ci,fields[20],cfg_eligible);
       @(posedge clk); #1;
-      if (enabled!==fields[20][0] || busy || done)
-        $fatal(1,"configuration latch case=%0d enabled=%0d busy=%0d done=%0d",ci,enabled,busy,done);
-      if (enabled) enabled_cases++; else disabled_cases++;
+      if (!cfg_busy) $fatal(1,"configuration did not start");
       @(negedge clk); cfg_valid=0;
+      while (cfg_busy) @(negedge clk);
+      if (cfg_eligible!==fields[20][0] || enabled!==fields[20][0] || busy || done)
+        $fatal(1,"configuration case=%0d expected=%0d actual=%0d",ci,fields[20],enabled);
+      if (enabled) enabled_cases++; else disabled_cases++;
       for (integer vi=0;vi<fields[21];vi++) begin
         @(negedge clk);
         scan_result=$fscanf(vectors_fd,"%h %h %h %h %h %h %h\n",
@@ -67,13 +66,13 @@ module predictor_tb;
           @(negedge clk); start=0;
           @(posedge clk); #1;
           latency++;
-          if (latency>32) $fatal(1,"predictor timeout case=%0d vector=%0d",ci,vi);
+          if (latency>39) $fatal(1,"predictor timeout case=%0d vector=%0d",ci,vi);
         end
         if (busy || next_rank!==expected_rank)
           $fatal(1,"prediction case=%0d vector=%0d p=%0d q=%0d group=%0d expected=%08x actual=%08x busy=%0d",
             ci,vi,current_p,current_q,current_group,expected_rank,next_rank,busy);
-        if (fields[20][0] && latency!=fields[6]*fields[7])
-          $fatal(1,"tap latency case=%0d expected=%0d actual=%0d",ci,fields[6]*fields[7],latency);
+        if (fields[20][0] && latency!=fields[6]*fields[7]+7)
+          $fatal(1,"tap latency case=%0d expected=%0d actual=%0d",ci,fields[6]*fields[7]+7,latency);
         if (latency>maximum_latency) maximum_latency=latency;
         total_vectors++;
         @(negedge clk); start=0;

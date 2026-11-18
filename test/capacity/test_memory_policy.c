@@ -43,7 +43,7 @@ uint32_t dsa_mmio_read(uint32_t address)
     case NPU_REG_IA_CACHE_BYTES: return hardware_bank_bytes;
     case NPU_REG_SHARED_TOTAL_BYTES: return hardware_bank_count*hardware_bank_bytes;
     case NPU_REG_SHARED_BANK_BYTES: return hardware_bank_bytes;
-    case NPU_REG_IA_BANK_MASK: return 0x16u;
+    case NPU_REG_IA_BANK_MASK: return hardware_bank_count>=8u?0x16u:0x6u;
     case NPU_REG_PS_DIRECTORY_ROWS: return 1024u;
     default: return registers[offset/4u];
     }
@@ -97,7 +97,7 @@ static void planner_checks(void)
                     dsa_schedule_init(&c,shapes[i][0],shapes[i][1],shapes[i][2],16u,4u,16u);
                     c.ps_caps=(1u<<24)|(16u<<16)|23u;c.ps_pool_bytes=(hardware_bank_count-1u)*hardware_bank_bytes;
                     c.ia_cache_bytes=hardware_bank_bytes;c.shared_total_bytes=hardware_bank_count*hardware_bank_bytes;c.shared_bank_bytes=hardware_bank_bytes;
-                    c.shared_ia_bank_mask=0x16u;c.ps_directory_rows=1024u;
+                    c.shared_ia_bank_mask=hardware_bank_count>=8u?0x16u:0x6u;c.ps_directory_rows=1024u;
                     c.flow=mode;c.force_raw=raw;c.compact_mode_mask=compact;c.source_s8=1u;
                     c.axi_data_bits=hardware_axi_data_bits;c.dma_max_bytes=hardware_dma_max_bytes;
                     assert(dsa_schedule_plan(&c,&p));safe(&c,&p);
@@ -274,7 +274,7 @@ int main(void)
         for (uint32_t bytes=2048u;bytes<=8192u;bytes*=2u) {
             hardware_bank_bytes=bytes;hardware_bank_count=bytes==2048u?6u:bytes==4096u?7u:9u;
             dsa_matrix_query(&limits);
-            assert(limits.shared_total_bytes==hardware_bank_count*bytes && limits.shared_bank_bytes==bytes && limits.shared_ia_bank_mask==0x16u);
+            assert(limits.shared_total_bytes==hardware_bank_count*bytes && limits.shared_bank_bytes==bytes && limits.shared_ia_bank_mask==(hardware_bank_count>=8u?0x16u:0x6u));
             assert(limits.axi_data_bits==bits && limits.dma_max_bytes==hardware_dma_max_bytes);
             planner_checks();prepared_checks();
         }

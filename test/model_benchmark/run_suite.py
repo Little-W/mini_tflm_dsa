@@ -28,6 +28,11 @@ def main():
     p.add_argument('--ia-cache-blocks', type=int, default=8)
     p.add_argument('--ps-storage-rows', type=int, default=799)
     p.add_argument('--s16-output-banks', type=int, default=4)
+    p.add_argument('--ps-pool-bytes', type=int, default=0)
+    p.add_argument('--ps-frame-count', type=int)
+    p.add_argument('--force-raw', action='store_true')
+    p.add_argument('--shared-bank-bytes', type=int, choices=(2048,4096,8192))
+    p.add_argument('--shared-bank-count', type=int, choices=range(6,10))
     p.add_argument('--jobs', type=int, default=1)
     p.add_argument('--run-jobs', type=int, default=4)
     p.add_argument('--models', nargs='+', choices=MODELS, default=list(MODELS))
@@ -43,6 +48,10 @@ def main():
     a = p.parse_args()
     if a.jobs < 1 or a.run_jobs < 1:
         p.error('Job counts must be positive')
+    if a.ps_frame_count is not None and not 1 <= a.ps_frame_count <= 64:
+        p.error('--ps-frame-count must be in 1..64')
+    if a.force_raw and not a.ps_pool_bytes:
+        p.error('--force-raw requires --ps-pool-bytes')
     out = a.out.resolve(); prepared_root = a.prepared.resolve()
     out.mkdir(parents=True, exist_ok=True)
     prepared = {}
@@ -53,7 +62,9 @@ def main():
                        icache=a.icache, ram_words=524288, pe_count=8, picorv32=a.picorv32,
                        ia_cache_blocks=a.ia_cache_blocks,ps_storage_rows=a.ps_storage_rows,
                        s16_output_banks=a.s16_output_banks,cpu_profile=a.cpu_profile,
-                       bus_width=a.bus_width,first_read_latency=a.first_read_latency)
+                       bus_width=a.bus_width,first_read_latency=a.first_read_latency,
+                       ps_pool_bytes=a.ps_pool_bytes,ps_frame_count=a.ps_frame_count,hardware_raw=a.force_raw,
+                       shared_bank_bytes=a.shared_bank_bytes,shared_bank_count=a.shared_bank_count)
     firmwares = {}
     for mode in a.modes:
         for kind in a.kinds:
@@ -65,10 +76,16 @@ def main():
                     raise RuntimeError('Firmware payload differs from its manifest')
             else:
                 manifest = build_firmware(directory, a.gcc, hardware=mode=='hw',
-                    trace=kind=='trace', jobs=a.jobs, object_cache=out/'firmware_objects')
+                    trace=kind=='trace', jobs=a.jobs, object_cache=out/'firmware_objects',
+                    ps_pool_bytes=a.ps_pool_bytes,force_raw=a.force_raw,
+                    ia_cache_blocks=a.ia_cache_blocks if a.ps_pool_bytes else None,
+                    ps_frame_count=a.ps_frame_count)
             if (not manifest['passed'] or manifest['supported_modes'] != ([HARDWARE_MODE] if mode=='hw' else [0]) or
                 manifest['trace_enabled'] != (kind=='trace') or manifest['hardware'] != (mode=='hw') or
-                manifest.get('rounding_mode') != 'nearest_even'):
+                manifest.get('rounding_mode') != 'nearest_even' or
+                (a.ps_frame_count is not None and manifest['compile_defines']['DSA_PS_FRAME_COUNT'] != a.ps_frame_count) or
+                manifest['compile_defines']['DSA_PS_POOL_BYTES'] != a.ps_pool_bytes or
+                manifest['compile_defines']['DSA_PS_FORCE_RAW'] != int(a.force_raw)):
                 raise RuntimeError('Firmware mode does not match the selected build')
             firmwares[mode,kind] = directory,manifest
     if a.build_only:
@@ -95,7 +112,7 @@ def main():
                             continue
                         raise RuntimeError('Existing run does not match this execution: '+str(directory))
                     case = create_case(directory,prepared_root/name,model,sample,
-                                       HARDWARE_MODE if mode=='hw' else 0,fw_directory,fw)
+                                       HARDWARE_MODE if mode=='hw' else 0,fw_directory,fw,ps_force_raw=a.force_raw)
                     work.append((directory,case,fw))
     def execute(item):
         directory,case,fw = item

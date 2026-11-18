@@ -1,7 +1,7 @@
 # Xilinx 7 series FPGA configuration.
 # Each 128-bit by 512-row shared bank uses the complete data capacity of two
 # RAMB36E1 primitives. Parity bits are separate from software-visible storage.
-# Model initialization assigns 1, 2 or 4 banks to IA and the remainder to PS.
+# Model initialization assigns 1 or 2 banks to IA, or 4 when at least 8 banks are present.
 PCR_ENGINE ?= 1
 SIZE ?= 16
 NPU_AXI_DATA_WIDTH ?= 64

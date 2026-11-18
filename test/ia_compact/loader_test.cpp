@@ -303,6 +303,29 @@ int main(int argc, char** argv) {
       c.rows = 33U + seed * 7U; c.reduction = 17U + seed * 3U; c.columns = 49;
       execute(dut, c);
     }
+    if (TEST_CACHE_BLOCKS >= 32 && TEST_CACHE_BLOCKS < 64) {
+      for (bool compact : {true,false}) for (bool packed : {true,false}) {
+        c=Case{};
+        c.name=std::string(compact ? "compact_r32" : "wide_r16")+(packed ? "_packed" : "_rows");
+        c.cache_blocks=32;c.r=compact ? 32 : 16;c.w=2;
+        c.rows=c.r*16+13;c.reduction=33;c.columns=35;
+        c.compact=compact;c.source16=!compact;c.use16=!compact;c.packed=packed;
+        c.offset=compact ? 128 : 0;c.zp=c.offset;c.stride=80;
+        c.preserve=false;c.flush=true;c.slot_base=c.cache_blocks*(compact ? 2 : 1)-2;
+        execute(dut,c);
+      }
+      require(counts.max_compact_r==32 && counts.max_wide_r==16,"Expanded IA reuse coverage");
+      for (bool compact : {true,false}) {
+        c=Case{};
+        c.name=compact ? "compact_w16" : "wide_w16";
+        c.cache_blocks=32;c.r=compact ? 4 : 2;c.w=16;
+        c.rows=65;c.reduction=33;c.columns=257;
+        c.compact=compact;c.source16=!compact;c.use16=!compact;
+        c.offset=compact ? 128 : 0;c.zp=c.offset;c.stride=80;
+        c.preserve=false;c.flush=true;
+        execute(dut,c);
+      }
+    }
     if (TEST_CACHE_BLOCKS >= 64) {
       for (bool compact : {true,false}) for (bool packed : {true,false}) {
         c=Case{};

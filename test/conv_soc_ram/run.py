@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--first-read-latencies',type=int,nargs='+',default=[1,2,3,8,17])
     parser.add_argument('--baseline-commit', help='Run the unmodified RAM from this commit and retain its expected failure')
+    parser.add_argument('--rtl-source', type=Path, default=ROOT/'test/models/soc_axi_ram.sv')
     parser.add_argument('--out',type=Path,default=ROOT/'build/conv_soc_ram')
     args = parser.parse_args()
     sim = shutil.which('verilator')
@@ -29,7 +30,7 @@ def main():
     all_pass = True
     with tempfile.TemporaryDirectory(prefix='conv_soc_ram_', dir=os.environ.get('TMPDIR', '/tmp')) as temporary:
         temporary = Path(temporary)
-        source = ROOT / 'test/models/soc_axi_ram.sv'
+        source = args.rtl_source.resolve()
         if args.baseline_commit:
             source = temporary / 'soc_axi_ram.sv'
             source.write_bytes(subprocess.check_output(['git', 'show', f'{args.baseline_commit}:test/models/soc_axi_ram.sv'], cwd=ROOT))

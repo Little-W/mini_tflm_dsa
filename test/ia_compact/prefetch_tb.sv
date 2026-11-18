@@ -1,4 +1,4 @@
-module ia_prefetch_tb (
+module ia_prefetch_tb #(parameter bit ORDERED_JOB = 0) (
     input logic clk, rst_n, init_cfg,
     input logic cfg_im2col, cfg_tile_packed, cfg_compact, cfg_preserve_cache, cache_flush,
     input logic cfg_prefetch_enable,
@@ -35,7 +35,7 @@ module ia_prefetch_tb (
     output logic [31:0] ps_frame_rows, ps_frame_id,
     output logic ps_frame_init, ps_frame_final
 );
-    ia_loader #(.CACHE_BLOCKS(4), .COMPACT_S8(1), .PS_FRAME_COUNT(16)) u_loader (
+    ia_loader #(.CACHE_BLOCKS(4), .COMPACT_S8(1), .PS_FRAME_COUNT(16), .ORDERED_JOB(ORDERED_JOB)) u_loader (
         .*, .ext_dma_is_write(), .ext_dma_linear_read_mode(),
         .cfg_cache_blocks(32'd0), .bias_at_end(1'b0), .bias_load_sleep(),
         .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(), .ram_port_wr_mask(),

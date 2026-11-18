@@ -22,6 +22,8 @@ module tb_conv_frontend_reuse;
     logic[31:0] allocation_base=32'h1003,allocation_bytes=9,epoch=1;
     logic block_ar=0,mem_active;
     longint unsigned read_bytes,ar_count;
+    longint unsigned cycle_count=0;
+    always @(posedge clk) cycle_count<=cycle_count+1'b1;
     logic[31:0] writer_rng;
     int written=0,tiles=0;
     bit seen[4][4];
@@ -99,9 +101,9 @@ module tb_conv_frontend_reuse;
 
     task automatic tile(input int p,input int q,input int rows,input int expected_bytes,
                         input int expected_ars,input string name);
-        longint unsigned before_bytes,before_ars;
+        longint unsigned before_bytes,before_ars,before_cycles;
         @(negedge clk);tile_p0=32'(p);tile_q0=32'(q);tile_rows=3'(rows);tile_slot=2'(tiles);
-        before_bytes=read_bytes;before_ars=ar_count;written=0;
+        before_bytes=read_bytes;before_ars=ar_count;before_cycles=cycle_count;written=0;
         for(int r=0;r<4;r++) for(int c=0;c<4;c++) seen[r][c]=0;
         tile_valid=1;
         do @(posedge clk);while(!tile_ready);
@@ -111,7 +113,7 @@ module tb_conv_frontend_reuse;
         if(error || tile_error || written!=rows*4 || mem_active || rvalid) $fatal(1,"tile failure or incomplete drain");
         if(read_bytes-before_bytes!=64'(expected_bytes) || ar_count-before_ars!=64'(expected_ars))
             $fatal(1,"unexpected external reads in %s: bytes=%0d ars=%0d",name,read_bytes-before_bytes,ar_count-before_ars);
-        $display("FRONTEND_REUSE_CASE name=%s bytes=%0d ars=%0d writes=%0d",name,read_bytes-before_bytes,ar_count-before_ars,written);
+        $display("FRONTEND_REUSE_CASE name=%s bytes=%0d ars=%0d writes=%0d cycles=%0d",name,read_bytes-before_bytes,ar_count-before_ars,written,cycle_count-before_cycles);
         tiles=tiles+1;
     endtask
 
@@ -140,7 +142,7 @@ module tb_conv_frontend_reuse;
             $display("FRONTEND_EXTERNAL_BYTE address=%h reads=%0d",allocation_base+32'(i),mem.byte_reads[i]);
         end
         if(read_bytes!=25 || ar_count!=11) $fatal(1,"incorrect final traffic total");
-        $display("FRONTEND_REUSE_PASS tiles=%0d actual_read_bytes=%0d actual_ar_handshakes=%0d",tiles,read_bytes,ar_count);
+        $display("FRONTEND_REUSE_PASS tiles=%0d actual_read_bytes=%0d actual_ar_handshakes=%0d cycles=%0d",tiles,read_bytes,ar_count,cycle_count);
         $finish;
     end
     initial begin #1000000;$fatal(1,"frontend reuse timeout");end

@@ -21,6 +21,7 @@ module ia_loader_cache_mgr #(
     input  logic compact_mode = 1'b0,
     input  logic signed [DATA_WIDTH-1:0] compact_offset = '0,
     input  logic [31:0] cfg_cache_blocks = 32'd0,
+    input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] slot_base = '0,
 
     output logic [1:0] ram_port_wr_en,
     output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1],
@@ -120,41 +121,49 @@ module ia_loader_cache_mgr #(
       end
     end
   end else begin : g_external_ram
+    logic [1:0] write_en;
+    logic [RAM_WORD_ADDR_WIDTH-1:0] write_addr [0:1];
+    logic [127:0] write_data [0:1];
+    logic [15:0] write_mask [0:1];
+    // A registered write command separates DMA lane routing from bank routing.
+    // Row issue starts after the completed fill and its existing address stage.
+    always_ff @(posedge clk) begin
+      if(!rst_n) ram_port_wr_en<='0;
+      else ram_port_wr_en<=write_en;
+      for(int port_index=0;port_index<2;port_index++) begin
+        if(write_en[port_index]) begin
+          ram_port_wr_addr[port_index]<=write_addr[port_index];
+          ram_port_wr_data[port_index]<=write_data[port_index];
+          ram_port_wr_mask[port_index]<=write_mask[port_index];
+        end
+      end
+    end
+
     wire [RAM_WORD_ADDR_WIDTH-1:0] write_row_word =
         RAM_WORD_ADDR_WIDTH'({wr_slot, wr_row}) << (compact_mode ? 0 : 1);
     wire [RAM_WORD_ADDR_WIDTH-1:0] read_row_word =
         RAM_WORD_ADDR_WIDTH'(ram_rd_addr[0]) << (compact_mode ? 0 : 1);
     logic signed [DATA_WIDTH-1:0] row_data [SIZE];
-    always_comb begin
-      ram_port_wr_en = '0;
-      ram_port_wr_addr[0] = write_row_word;
-      ram_port_wr_addr[1] = write_row_word + RAM_WORD_ADDR_WIDTH'(1);
-      ram_port_wr_data = '{default:'0};
-      ram_port_wr_mask = '{default:'0};
-      for (int i = 0; i < BYTE_PER_BEAT; i++) begin
-        automatic int column = int'(wr_col_base) + i;
-        automatic int port_index = compact_mode ? 0 : (column >> 3);
-        automatic int byte_index = compact_mode ? column : ((column & 7) << 1);
-        if (wr_valid[i] && column < SIZE) begin
-          ram_port_wr_en[port_index] = 1'b1;
-          ram_port_wr_mask[port_index][byte_index] = 1'b1;
-          if (compact_mode)
-            ram_port_wr_data[port_index][byte_index*8 +: 8] =
-                8'(wr_data[i] - compact_offset);
-          else begin
-            ram_port_wr_mask[port_index][byte_index+1] = 1'b1;
-            ram_port_wr_data[port_index][byte_index*8 +: 16] = wr_data[i];
-          end
-        end
+    assign write_addr[0] = write_row_word;
+    assign write_addr[1] = write_row_word + RAM_WORD_ADDR_WIDTH'(1);
+    assign ram_port_rd_en = {ram_rd_en[0] && !compact_mode, ram_rd_en[0]};
+    assign ram_port_rd_addr[0] = read_row_word;
+    assign ram_port_rd_addr[1] = read_row_word + RAM_WORD_ADDR_WIDTH'(1);
+    assign write_en[0] = |write_mask[0];
+    assign write_en[1] = |write_mask[1];
+    for (genvar lane = 0; lane < SIZE; lane++) begin : g_write_lane
+      if (lane < 8) begin : g_first_half
+        assign write_data[0][lane*16 +: 16] = compact_mode ?
+            {8'(ram_wr_data[lane*2+1] - compact_offset), 8'(ram_wr_data[lane*2] - compact_offset)} : ram_wr_data[lane];
+        assign write_mask[0][lane*2 +: 2] = compact_mode ?
+            {ram_wr_en[lane*2+1], ram_wr_en[lane*2]} : {2{ram_wr_en[lane]}};
+      end else begin : g_second_half
+        assign write_data[1][(lane-8)*16 +: 16] = ram_wr_data[lane];
+        assign write_mask[1][(lane-8)*2 +: 2] = {2{ram_wr_en[lane] && !compact_mode}};
       end
-      ram_port_rd_en = {ram_rd_en[0] && !compact_mode, ram_rd_en[0]};
-      ram_port_rd_addr[0] = read_row_word;
-      ram_port_rd_addr[1] = read_row_word + RAM_WORD_ADDR_WIDTH'(1);
-      for (int lane = 0; lane < SIZE; lane++) begin
-        row_data[lane] = compact_mode ?
-            DATA_WIDTH'($signed(ram_port_rd_data[0][lane*8 +: 8]) + $signed(compact_offset)) :
-            ram_port_rd_data[lane/8][(lane%8)*16 +: 16];
-      end
+      assign row_data[lane] = compact_mode ?
+          DATA_WIDTH'($signed(ram_port_rd_data[0][lane*8 +: 8]) + $signed(compact_offset)) :
+          ram_port_rd_data[lane/8][(lane%8)*16 +: 16];
     end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_row
       assign ram_rd_data[lane] = row_data[lane];
@@ -170,19 +179,16 @@ module ia_loader_cache_mgr #(
   // =====================================================================
   // 写逻辑：将 wr_data/wr_valid 分派到对应的 RAM bank
   // =====================================================================
-  always_comb begin
-    for (int j = 0; j < SIZE; j++) begin
-      ram_wr_en[j]   = 1'b0;
-      ram_wr_addr[j] = '0;
-      ram_wr_data[j] = '0;
-    end
-
-    for (int i = 0; i < BYTE_PER_BEAT; i++) begin
-      automatic int col = int'(wr_col_base) + i;
-      if (wr_valid[i] && col < SIZE) begin
-        ram_wr_en[col]   = 1'b1;
-        ram_wr_addr[col] = ADDR_W'({wr_slot, wr_row});
-        ram_wr_data[col] = wr_data[i];
+  for (genvar col = 0; col < SIZE; col++) begin : g_write_select
+    always_comb begin
+      ram_wr_en[col] = 1'b0;
+      ram_wr_addr[col] = ADDR_W'({wr_slot, wr_row});
+      ram_wr_data[col] = '0;
+      for (int lane = 0; lane < BYTE_PER_BEAT; lane++) begin
+        if (col >= lane && wr_col_base == LOG2_SIZE'(col - lane) && wr_valid[lane]) begin
+          ram_wr_en[col] = 1'b1;
+          ram_wr_data[col] = wr_data[lane];
+        end
       end
     end
   end
@@ -209,16 +215,11 @@ module ia_loader_cache_mgr #(
     end
   end
   always_ff @(posedge clk) begin
-    if(!rst_n) begin
-      read_extent_q<='0;
-      for(int slot=0;slot<SLOT_BLOCKS;slot++)slot_written_cols[slot]<='0;
-    end else begin
-      if(any_lane_write && wr_row=='0) begin
-        if(wr_col_base=='0 || write_extent>slot_written_cols[wr_slot])
-          slot_written_cols[wr_slot]<=write_extent;
-      end
-      if(ram_rd_en[0])read_extent_q<=slot_written_cols[ram_rd_addr[0]>>LOG2_SIZE];
-    end
+    if (rst_n && any_lane_write && wr_row=='0)
+      slot_written_cols[wr_slot]<=write_extent;
+    if (!rst_n) read_extent_q<='0;
+    else if (ram_rd_en[0])
+      read_extent_q<=slot_written_cols[SLOT_W'(ram_rd_addr[0] >> LOG2_SIZE)];
   end
   wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
   wire [SLOT_W-1:0] slot_mask =
@@ -260,10 +261,10 @@ module ia_loader_cache_mgr #(
     start_issue_now   = l1_start && !l1_issue_active;
     issue_slot_now    = start_issue_now ? l1_slot_start : issue_slot_r;
     issue_row_idx_now = start_issue_now ? '0 : issue_row_idx_r;
-    slot_rows_start_now = ROW_CNT_W'(slot_rows[l1_slot_start]);
+    slot_rows_start_now = ROW_CNT_W'(slot_rows[(l1_slot_start - slot_base) & slot_mask]);
     l1_slot_end_now   = start_issue_now ? l1_slot_end : l1_slot_end_r;
     next_issue_slot_now = (SLOT_BLOCKS <= 1) ? '0 : ((issue_slot_now + SLOT_W'(1)) & slot_mask);
-    slot_rows_next_now = ROW_CNT_W'(slot_rows[next_issue_slot_now]);
+    slot_rows_next_now = ROW_CNT_W'(slot_rows[(next_issue_slot_now - slot_base) & slot_mask]);
     issue_rows_now    = start_issue_now ? slot_rows_start_now : issue_rows_r;
     issue_row_idx_inc_now = issue_row_idx_now + ROW_CNT_W'(1);
 
@@ -356,7 +357,7 @@ module ia_loader_cache_mgr #(
             // 切到下一个 tile（下一拍若 valid 则立刻发射）
             issue_slot_r    <= next_issue_slot;
             issue_row_idx_r <= '0;
-            issue_rows_r    <= ROW_CNT_W'(slot_rows[next_issue_slot]);
+            issue_rows_r    <= ROW_CNT_W'(slot_rows[(next_issue_slot - slot_base) & slot_mask]);
             issue_gap_cnt   <= GAP_CNT_W'(ISSUE_GAP_CYCLES);
           end
         end else begin

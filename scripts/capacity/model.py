@@ -71,7 +71,7 @@ def geometry(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None
         raise ValueError("array size and IA cache blocks must be powers of two")
     _integer(pool_bytes, "PS pool bytes", 0, MAX_POOL_BYTES)
     if compressed and (size != TILE or pool_bytes < POOL_ALIGNMENT or pool_bytes % POOL_ALIGNMENT):
-        raise ValueError("compressed PS requires SIZE=16 and a positive multiple-of-64 pool")
+        raise ValueError("shared PS storage requires SIZE=16 and a positive multiple-of-64 pool")
     _integer(bank_bytes, "shared bank bytes")
     if bank_bytes not in SHARED_BANK_BYTE_CHOICES:
         raise ValueError(f"shared bank bytes must be one of {SHARED_BANK_BYTE_CHOICES}")
@@ -89,13 +89,12 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
     enabled = bool(shared is not False and compressed and size == TILE and
                    SHARED_MIN_BANKS * bank_bytes <= total <= SHARED_MAX_BANKS * bank_bytes and
                    total % bank_bytes == 0)
-    max_cache = 4 * bank_bytes // (size * size * 2) if enabled else cache
+    max_ia_banks = (4 if total // bank_bytes >= 8 else 2) if enabled else 0
+    max_cache = max_ia_banks * bank_bytes // (size * size * 2) if enabled else cache
     max_r = max_cache
     max_frame = max_r * size
     banks = total // bank_bytes - 1 if enabled else 4
     depth = bank_bytes // 16 if enabled else pool_bytes // POOL_ALIGNMENT
-    address_bits = max(1, (depth - 1).bit_length()) if compressed else 0
-    rotation_bits = max(1, (banks - 1).bit_length()) if compressed else 0
     output_s8_banks = max(min(frames * max(1, cache // 2), 32), max_r if enabled else 1)
     return dict(shared_ia_ps_enabled=enabled,
                 configured_ia_cache_bytes=initial_ia_bytes,
@@ -103,25 +102,25 @@ def _storage_geometry(cache, frames, pool_bytes, size, compressed, shared,
                 shared_total_bytes=total if enabled else 0,
                 shared_bank_bytes=bank_bytes if enabled else 0,
                 shared_physical_bank_count=total // bank_bytes if enabled else 0,
-                shared_ia_bank_mask=0x16 if enabled else 0,
+                shared_ia_bank_mask=((1 << 1) | (1 << 2) | ((1 << 4) if max_ia_banks == 4 else 0)) if enabled else 0,
                 default_ia_banks=1 if enabled else 0,
                 runtime_bank_allocations=[dict(ia_banks=i, ps_banks=total // bank_bytes-i,
                     ia_bytes=i*bank_bytes, ps_bytes=total-i*bank_bytes,
                     supports_s16_stream=i>=2) for i in (1, 2, 4)
-                    if enabled and i < total // bank_bytes],
+                    if enabled and i <= max_ia_banks],
                 default_ia_bytes=bank_bytes if enabled else initial_ia_bytes,
                 default_ps_pool_bytes=total - bank_bytes if enabled else pool_bytes,
                 default_max_r_s8=bank_bytes // (size * size) // 2 if enabled else cache,
                 default_max_r_s16=0 if enabled else max(1, cache // 2),
                 max_ia_cache_blocks=max_cache,
-                max_ia_bytes=4 * bank_bytes if enabled else initial_ia_bytes,
+                max_ia_bytes=max_ia_banks * bank_bytes if enabled else initial_ia_bytes,
                 max_r_s8=max_r, max_r_s16=max(1, max_cache // 2),
                 output_banks_s8=output_s8_banks, output_banks_s16=min(output_s8_banks, 4),
                 max_frame_rows=max_frame, max_matrix_rows=max_r * size,
                 max_stream_rows=max_r * size,
                 logical_ps_rows=SHARED_DIRECTORY_ROWS if enabled else
                     max_frame * frames if compressed else (3 * size - 1) * (frames + 1),
-                directory_bits_per_row=3 + rotation_bits + 4 * address_bits if compressed else 0,
+                directory_bits_per_row=0,
                 payload_bank_depth=depth if compressed else 0,
                 payload_metadata_bank_count=banks if compressed else 0)
 
@@ -158,8 +157,8 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     frame_length_bits = max(1, max_frame.bit_length())
     image_cache = im2col_cache.geometry(im2col_cache_bytes)
     bits = {
-        "ia_cache_tags": slots * (8 * 32 + 16 + 12 + 1),
-        "ia_slot_metadata": slots * (size.bit_length() + 2),
+        "ia_cache_tags": slots * (2 * (32 - (size.bit_length() - 1)) + size.bit_length() + 1),
+        "ia_slot_metadata": slots * (2 * size.bit_length() + 2),
         "kernel_cache": 2 * size * size * 16,
         "bias_cache": 2 * rmax * size * 32,
         "requant_is_cache": rmax * size * (32 + 32 + 6 + 6),
@@ -168,7 +167,7 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         "conv_data_cache": image_cache["data_bytes"] * 8,
         "conv_cache_metadata": image_cache["metadata_bits"],
         "conv_prefetch_queue": 8 * (4 * 32 + 1),
-        "conv_request_queue": 4 * (5 * 32 + 3),
+        "conv_request_queue": 4 * (4 * 32 + (image_cache["sets"] - 1).bit_length() + 2),
         "conv_response_queue": 4 * (32 + 1),
         "vector_buffers": size * (5 * 16 + 49 * 8 + 5 * 32),
         "ps_frame_lengths": frames * frame_length_bits,
@@ -179,17 +178,9 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         bits["ia_cache"] = cache * size * size * 16
         bits["ps_payload"] = pool_bytes * 8 if compressed else logical_rows * size * 32
     if compressed:
-        bank_depth = layout["payload_bank_depth"]
-        banks = layout["payload_metadata_bank_count"]
-        bank_count_bits = bank_depth.bit_length()
-        bits.update(ps_directory=logical_rows * layout["directory_bits_per_row"],
-                    ps_decoded_fifo=DECODE_FIFO_ROWS * size * 32,
+        bits.update(ps_decoded_fifo=DECODE_FIFO_ROWS * size * 32,
                     ps_decoded_first=DECODE_FIFO_ROWS,
-                    ps_frame_valid=frames,
-                    ps_frame_max_record_words=frames * 3,
-                    ps_free_bitmap=banks * bank_depth,
-                    ps_bank_free_count=banks * bank_count_bits,
-                    ps_resident_words=banks * frames * frame_length_bits)
+                    ps_frame_valid=frames)
     return bits
 
 
@@ -199,8 +190,6 @@ def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *,
     memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
                     bank_bytes=bank_bytes, bank_count=bank_count)
     bits = {"core_row_metadata": 4 * size + 1}
-    if compressed:
-        bits["ps_sparse_metadata"] = 16 + 2
     return bits
 
 
@@ -236,7 +225,8 @@ def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                                      bank_bytes=bank_bytes, bank_count=bank_count)
     used = measured_state_bits / 8 if scope == "logical-state" else ram_bytes
     return dict(ia_cache_blocks=cache, ps_frame_count=frames, size=size,
-                compressed_ps=bool(compressed),
+                compressed_ps=False,
+                ps_frame_store_enabled=bool(compressed),
                 ps_pool_bytes=(layout["default_ps_pool_bytes"] if layout["shared_ia_ps_enabled"]
                                else pool_bytes if compressed else 0),
                 max_r=rmax, max_w=frames, **layout,
@@ -271,7 +261,7 @@ def required_pool_bytes(rows, cols, r, w, mode=0, size=16):
     return payload_bound(size, r, w, cols if mode else rows)
 
 
-def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="adaptive", *,
+def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="raw32", *,
                       mode=None, requested_r=0, requested_w=0, lhs_bytes=1,
                       per_channel=False, adaptive=None, size=16, compressed=True,
                       lhs_offset=0, rhs_offset=0, shared=None,
@@ -334,7 +324,7 @@ def plan_for_hardware(M, K, N, cache, frames, pool_bytes, representation="adapti
                 raw_safe_pool_bytes=dispatch.get("raw_safe_pool_bytes", pool_bytes))
 
 
-def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", representation="adaptive",
+def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", representation="raw32",
                    measure=None, fixed_only=False, bank_bytes=SHARED_BANK_BYTES, bank_count=None,
                    im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
     _integer(budget_bytes, "budget bytes")
@@ -359,7 +349,7 @@ def max_pool_bytes(cache, frames, budget_bytes, *, scope="buffer-ram", represent
     return 0, None
 
 
-def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="adaptive", *,
+def solve(workloads, budget_bytes, budget_scope="buffer-ram", representation="raw32", *,
           measure=None, bank_bytes=SHARED_BANK_BYTES, im2col_cache_bytes=im2col_cache.DEFAULT_BYTES,
           cache_blocks=4, frame_count=16, ps_build_bytes=12288):
     tasks = validate_workloads(workloads)

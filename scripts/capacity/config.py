@@ -14,9 +14,9 @@ DEFAULTS = {
     "NPU_AXI_DATA_WIDTH": 64,
     "IM2COL_CACHE_BYTES": im2col_cache.DEFAULT_BYTES,
     "SHARED_BANK_BYTES": 2048, "SHARED_BANK_COUNT": 7,
-    "AXI_READ_OUTSTANDING": 4, "PS_POOL_BYTES": 12288, "PS_FORCE_RAW": 0,
+    "AXI_READ_OUTSTANDING": 4, "PS_POOL_BYTES": 12288, "PS_FORCE_RAW": 1,
     "CAPACITY_BUDGET_BYTES": 131072,
-    "CAPACITY_BUDGET_SCOPE": "buffer-ram", "CAPACITY_REPRESENTATION": "adaptive",
+    "CAPACITY_BUDGET_SCOPE": "buffer-ram", "CAPACITY_REPRESENTATION": "raw32",
 }
 MANAGED_KEYS = tuple(DEFAULTS)
 INTEGER_KEYS = {key for key, value in DEFAULTS.items() if type(value) is int}
@@ -83,6 +83,8 @@ def validate_config(values, require_pcr=False, *, check_budget=True, state_repor
     for key in ("PCR_ENGINE", "PS_FORCE_RAW"):
         if normalized[key] not in (0, 1):
             raise ValueError(f"{key} must be 0 or 1")
+    if normalized["PS_FORCE_RAW"] != 1:
+        raise ValueError("PS_FORCE_RAW must be 1 for the INT32 partial-sum store")
     if normalized["NPU_AXI_DATA_WIDTH"] not in (32, 64):
         raise ValueError("NPU_AXI_DATA_WIDTH must be 32 or 64")
     im2col_cache.validate_bytes(normalized["IM2COL_CACHE_BYTES"])

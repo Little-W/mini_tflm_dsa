@@ -385,7 +385,6 @@ ps-stream-verify:
 	$(PYTHON) test/ps_compression/run_frame_store.py --verilator '$(VERILATOR)' --force-raw --out '$(PS_VERIFY_DIR)/store_raw'
 	$(PYTHON) test/ps_compression/run_window_scheduler.py --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/scheduler'
 	$(PYTHON) test/run_cpp_rtl.py dma_abort --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/dma_abort'
-	$(PYTHON) test/run_cpp_rtl.py conv_divider --verilator '$(VERILATOR)' --out '$(PS_VERIFY_DIR)/divider'
 
 ps-compression-soc:
 	$(PYTHON) test/ps_compression/run_soc.py --verilator '$(VERILATOR)' --gcc '$(MODEL_BENCHMARK_GCC)' --prepared '$(MODEL_BENCHMARK_PREPARED)' --out '$(PS_SOC_DIR)' --pool-bytes '$(PS_POOL_BYTES)' --jobs '$(CONV_JOBS)' $(PS_SOC_FLAGS)

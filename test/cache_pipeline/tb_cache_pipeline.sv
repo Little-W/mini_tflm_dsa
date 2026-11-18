@@ -39,7 +39,9 @@ module tb_cache_pipeline #(
         .CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH)) dut(
         .cfg_geometry(1'b0),.prefetch_next_fragment(1'b0),
         .prefetch_window_index_valid(1'b0),.prefetch_window_index(0),
-        .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),.*);
+        .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),
+        .prefetch_ref_valid(1'b0),.prefetch_ref_addr(0),.prefetch_ref_index_valid(1'b0),
+        .prefetch_ref_index(0),.prefetch_ref_epoch(0),.*);
     assign stat_hits=dut.tb_observer.stat_hits;
     assign stat_misses=dut.tb_observer.stat_misses;
     assign stat_read_bytes=dut.tb_observer.stat_read_bytes;

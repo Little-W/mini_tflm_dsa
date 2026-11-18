@@ -16,9 +16,12 @@ import shlex
 import shutil
 import struct
 import subprocess
+import sys
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.capacity.config import selected_config
 TFLM = ROOT / 'drivers/tflm/tflm/tflite-micro'
 NN = ROOT / 'drivers/tflm/NMSIS/NN'
 SOC = ROOT / 'veri/soc_csrc'
@@ -96,7 +99,15 @@ def dependency_files(path):
 def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
                    jobs=1, object_cache=None, arena_bytes=512*1024,
                    ps_pool_bytes=0, force_raw=False, adaptive_window=True, dataflow=2,
-                   application_source=None, link_options=()):
+                   application_source=None, link_options=(),
+                   ia_cache_blocks=None, ps_frame_count=None):
+    selected = selected_config()
+    if ia_cache_blocks is None:
+        ia_cache_blocks = selected['IA_CACHE_BLOCKS'] if ps_pool_bytes else 4
+    if ps_frame_count is None:
+        ps_frame_count = selected['PS_FRAME_COUNT'] if ps_pool_bytes else 16
+    if ia_cache_blocks < 1 or not 1 <= ps_frame_count <= 64:
+        raise ValueError('Invalid IA cache or partial-sum frame count')
     out = Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     cache = Path(object_cache or out.parent/'firmware_objects').resolve()
@@ -108,7 +119,7 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
               '-ffreestanding', '-fno-builtin', '-ffunction-sections', '-fdata-sections',
               '-fno-unwind-tables', '-DNDEBUG', '-DTF_LITE_STRIP_ERROR_STRINGS',
               '-DTF_LITE_DISABLE_X86_NEON', '-DDSA_TILE_SIZE=16',
-              '-DDSA_IA_CACHE_BLOCKS=4', '-DDSA_PS_FRAME_COUNT=16',
+              f'-DDSA_IA_CACHE_BLOCKS={ia_cache_blocks}', f'-DDSA_PS_FRAME_COUNT={ps_frame_count}',
               '-DDSA_PCR_ENGINE=0', f'-DDSA_PS_POOL_BYTES={ps_pool_bytes}',
               f'-DDSA_PS_COMPRESS={int(ps_pool_bytes != 0)}',
               f'-DDSA_PS_FORCE_RAW={int(force_raw)}',
@@ -225,7 +236,7 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
         link = [gxx, '-march=rv32im_zicsr', '-mabi=ilp32', '-nostdlib', '-nostartfiles',
                 '-T', SOC/'link.ld', '-Wl,--defsym=__ram_length='+str(RAM_BYTES),
                 '-Wl,--defsym=full_network_heap_stack_top=0x101000',
-                '-Wl,--gc-sections', '-Wl,-u,__libc_init_array', '-Wl,-Map='+str(out/'cpu.map'),
+                '-Wl,--gc-sections', '-Wl,--build-id=none', '-Wl,-u,__libc_init_array', '-Wl,-Map='+str(out/'cpu.map'),
                 *[r['object'] for r in records[len(source_files):]],
                 '-Wl,--start-group', library, *runtime_libs, '-Wl,--end-group',
                 *link_options, '-o', elf]
@@ -266,6 +277,8 @@ def build_firmware(out, gcc, *, hardware=True, trace=False, runtime_root=None,
                               'DSA_NN_FC_ENABLE':int(hardware),
                               'FULL_NETWORK_TRACE_ENABLED':int(trace),
                               'NMSIS_NN':True, 'DSA_PCR_ENGINE':0,
+                              'DSA_IA_CACHE_BLOCKS':ia_cache_blocks,
+                              'DSA_PS_FRAME_COUNT':ps_frame_count,
                               'DSA_PS_POOL_BYTES':ps_pool_bytes,
                               'DSA_PS_COMPRESS':int(ps_pool_bytes != 0),
                               'DSA_PS_FORCE_RAW':int(force_raw),
@@ -308,6 +321,8 @@ def main():
     p.add_argument('--arena-bytes',type=int,default=512*1024)
     p.add_argument('--trace',action='store_true')
     p.add_argument('--ps-pool-bytes',type=int,default=0)
+    p.add_argument('--ia-cache-blocks',type=int)
+    p.add_argument('--ps-frame-count',type=int)
     p.add_argument('--force-raw',action='store_true')
     p.add_argument('--fixed-window',action='store_true')
     p.add_argument('--dataflow',type=int,choices=(0,1,2),default=2)
@@ -317,7 +332,7 @@ def main():
     manifest=build_firmware(args.out,args.gcc,hardware=args.hardware,trace=args.trace,
         runtime_root=args.runtime_root,jobs=args.jobs,object_cache=args.object_cache,arena_bytes=args.arena_bytes,
         ps_pool_bytes=args.ps_pool_bytes,force_raw=args.force_raw,adaptive_window=not args.fixed_window,
-        dataflow=args.dataflow)
+        dataflow=args.dataflow,ia_cache_blocks=args.ia_cache_blocks,ps_frame_count=args.ps_frame_count)
     print(json.dumps({'passed':manifest['passed'],'out':str(args.out.resolve()),
                      'hardware':args.hardware,'trace':args.trace,'modes':manifest['supported_modes'],
                      'source_files':len(manifest['source_sha256']),

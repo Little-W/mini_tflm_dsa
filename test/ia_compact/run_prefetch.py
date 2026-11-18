@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--out', type=Path, default=ROOT / 'build/ia_prefetch/concurrent')
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--reuse-build', action='store_true')
+    parser.add_argument('--ordered-job', action='store_true')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -42,6 +43,9 @@ def main():
                '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
                f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',
                *map(str, rtl), str(cpp)]
+    if args.ordered_job:
+        command.insert(1, '-GORDERED_JOB=1')
+        command[command.index('-CFLAGS') + 1] += ' -DORDERED_JOB_TEST'
     binary = out / 'obj/Via_prefetch_tb'
     started = time.monotonic()
     if args.reuse_build:

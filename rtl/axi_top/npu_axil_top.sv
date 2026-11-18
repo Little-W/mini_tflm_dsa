@@ -129,6 +129,7 @@ module npu_axil_top #(
     wire signed [31:0] cfg_add_left_shift_reg;
 
     vector_engine_pkg::vector_engine_cfg_t cfg_vector_reg;
+    conv_im2col_pkg::conv_cfg_t cfg_conv_reg;
     always_comb begin
         cfg_vector_reg = '0;
         cfg_vector_reg.op = cfg_vector_op_reg;
@@ -154,7 +155,6 @@ module npu_axil_top #(
         cfg_vector_reg.add.output_multiplier = q_mult_pt_reg;
         cfg_vector_reg.add.output_shift = q_shift_pt_reg;
     end
-    conv_im2col_pkg::conv_cfg_t cfg_conv_reg;
 
 `ifdef GEMMORA_INT8_PROFILE
     localparam bit CONV_CAPABLE = 1'b0;
@@ -193,15 +193,9 @@ module npu_axil_top #(
         SHARED_TOTAL_BYTES >= 6 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES <= 9 * SHARED_BANK_BYTES &&
         SHARED_TOTAL_BYTES % SHARED_BANK_BYTES == 0;
-`ifdef GEMMORA_PS_FORCE_RAW
     localparam bit PS_RAW_ONLY = 1'b1;
-`elsif PS_FORCE_RAW
-    localparam bit PS_RAW_ONLY = 1'b1;
-`else
-    localparam bit PS_RAW_ONLY = 1'b0;
-`endif
     localparam logic [31:0] PS_CAPS = SIZE == 16 ?
-        {8'd1, 8'(PS_FRAME_COUNT), 10'd0, 1'b1, SHARED_CAPABLE, PS_RAW_ONLY,
+        {8'd1, 8'(PS_FRAME_COUNT), 10'd0, 1'b0, SHARED_CAPABLE, PS_RAW_ONLY,
          1'(IA_COMPACT_ENABLE != 0 && DATA_WIDTH == 16), 2'b11} : 32'd0;
     localparam int unsigned PS_POOL_BYTES = SIZE == 16 ? `GEMMORA_PS_POOL_BYTES : 0;
 `else
@@ -209,8 +203,10 @@ module npu_axil_top #(
     localparam logic [31:0] PS_CAPS = 32'd0;
     localparam int unsigned PS_POOL_BYTES = 0;
 `endif
+    localparam int SHARED_MAX_IA_BANKS =
+        SHARED_TOTAL_BYTES / SHARED_BANK_BYTES >= 8 ? 4 : 2;
     localparam int MATRIX_SHARED_R_MAX = SHARED_CAPABLE ?
-        (4 * SHARED_BANK_BYTES / (SIZE * SIZE * DATA_WIDTH / 8)) /
+        (SHARED_MAX_IA_BANKS * SHARED_BANK_BYTES / (SIZE * SIZE * DATA_WIDTH / 8)) /
         (IA_COMPACT_ENABLE != 0 ? 1 : 2) : 1;
     localparam int MATRIX_LEGACY_OUTPUT_LIMIT =
         (ENABLE_IS_MODE == 0 && ENABLE_PER_CHANNEL == 0) ? 16 : 32;
@@ -225,7 +221,7 @@ module npu_axil_top #(
     localparam logic [31:0] SHARED_IA_BANK_MASK = SHARED_CAPABLE ?
         (32'h0000_0002 |
          ((SHARED_TOTAL_BYTES / SHARED_BANK_BYTES > 2) ? 32'h0000_0004 : 32'd0) |
-         ((SHARED_TOTAL_BYTES / SHARED_BANK_BYTES > 4) ? 32'h0000_0010 : 32'd0)) : 32'd0;
+         ((SHARED_TOTAL_BYTES / SHARED_BANK_BYTES >= 8) ? 32'h0000_0010 : 32'd0)) : 32'd0;
     wire calc_start_pulse;
     wire npu_sa_ready;
     wire npu_done_valid;

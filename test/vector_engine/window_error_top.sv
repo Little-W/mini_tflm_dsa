@@ -71,9 +71,12 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
   logic [31:0] wr_base_addr,wr_row_stride,wr_rows_to_write,src_wdata;
   logic [7:0] wr_burst_len_m1;logic [3:0] src_wmask;
   logic engine_response_valid,engine_response_ready,engine_response_error;
-  logic response_allow,fault_target;
+  logic response_allow,fault_target,dma_write_request;
   assign fault_target=inject_fault && injected_errors==0 &&
     win_rsp_valid && win_rsp_last && window_completions==1;
+  // Keep write arbitration pending until the terminal response is available.
+  // This schedules the injected error immediately before the write grant.
+  assign dma_write_request=wr_req && (!inject_fault || injected_errors!=0 || fault_target);
   assign response_allow=!fault_target ||
     (engine.tb_observer.is_WB_REQ && !wr_granted);
   assign win_rsp_ready=engine_response_ready && response_allow;
@@ -117,7 +120,7 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
   assign window_consecutive_responses=dma.u_dma.tb_observer.win_stat_consecutive_responses;
   assign window_request_response_overlap=dma.u_dma.tb_observer.win_stat_request_response_overlap;
   logic mac_active,quant_issue,quant_active,write_active;
-  logic previous_quant_issue,previous_quant_more,previous_quant_bank,write16;
+  logic previous_quant_issue,previous_quant_more,write16;
   logic [31:0] previous_quant_index,write16_beats;
   assign mac_active=engine.depthwise && engine.tb_observer.is_EXECUTE;
   assign quant_active=engine.depthwise && engine.q_active && !engine.tb_observer.is_FAILED;
@@ -133,26 +136,26 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
     if (!rst_n || (start && ready)) begin
       quant_inputs<=0;quant_consecutive<=0;mac_quant_overlap<=0;mac_write_overlap<=0;all_overlap<=0;
       write_bursts16<=0;write_beats16<=0;write16<=0;write16_beats<=0;
-      previous_quant_issue<=0;previous_quant_more<=0;previous_quant_bank<=0;previous_quant_index<=0;
+      previous_quant_issue<=0;previous_quant_more<=0;previous_quant_index<=0;
     end else begin
       previous_quant_issue<=quant_issue;
       previous_quant_more<=quant_issue && engine.q_issue+1<engine.q_count;
-      previous_quant_bank<=engine.q_bank;previous_quant_index<=engine.q_issue;
+      previous_quant_index<=engine.q_issue;
       if (quant_issue) quant_inputs<=quant_inputs+1;
       if (quant_issue && previous_quant_issue) quant_consecutive<=quant_consecutive+1;
       if (previous_quant_more && !engine.tb_observer.is_FAILED) begin
-        assert(quant_issue && engine.q_bank==previous_quant_bank);
+        assert(quant_issue);
         assert(engine.q_issue==previous_quant_index+1);
       end
       if (mac_active && quant_active) mac_quant_overlap<=mac_quant_overlap+1;
       if (mac_active && write_active) mac_write_overlap<=mac_write_overlap+1;
       if (mac_active && quant_active && write_active) all_overlap<=all_overlap+1;
       if (wr_start) begin
-        write16<=engine.depthwise && engine.bank_bytes[engine.write_bank]==16 &&
-                 engine.bank_address[engine.write_bank][1:0]==0;
+        write16<=engine.depthwise && engine.u_writeback.total_bytes==16 &&
+                 engine.u_writeback.lane_offset[1:0]==0;
         write16_beats<=0;
-        if (engine.depthwise && engine.bank_bytes[engine.write_bank]==16 &&
-            engine.bank_address[engine.write_bank][1:0]==0) begin
+        if (engine.depthwise && engine.u_writeback.total_bytes==16 &&
+            engine.u_writeback.lane_offset[1:0]==0) begin
           assert(wr_burst_len_m1==3);
           write_bursts16<=write_bursts16+1;
         end
@@ -187,7 +190,7 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
     .dw_rows_to_read(rd_rows_to_read),.dw_valid_cols(rd_valid_cols),.dw_burst_len_m1(rd_burst_len_m1),
     .dw_use_16bits(rd_use_16bits),.dw_busy(rd_busy),.dw_done(rd_done),.dw_error(rd_error),
     .dw_data(rd_data),.dw_valid(rd_valid),.dw_col_base(rd_col_base),.dw_raw_data(rd_raw_data),.dw_raw_valid(rd_raw_valid),
-    .dw_wr_req(wr_req),.dw_wr_start(wr_start),.dw_wr_granted(wr_granted),.dw_wr_base_addr(wr_base_addr),
+    .dw_wr_req(dma_write_request),.dw_wr_start(wr_start),.dw_wr_granted(wr_granted),.dw_wr_base_addr(wr_base_addr),
     .dw_wr_row_stride(wr_row_stride),.dw_wr_rows_to_write(wr_rows_to_write),.dw_wr_burst_len_m1(wr_burst_len_m1),
     .dw_src_wdata(src_wdata),.dw_src_wmask(src_wmask),.dw_src_wvalid(src_wvalid),.dw_src_wready(src_wready),
     .dw_wr_busy(wr_busy),.dw_wr_done(wr_done),.dw_wr_error(wr_error),

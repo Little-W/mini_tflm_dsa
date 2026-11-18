@@ -90,8 +90,9 @@ class MenuStateTests(ConfigurationFixture):
         self.assertEqual(state.values["SIZE"], 16)
         state.set_value("CAPACITY_REPRESENTATION", "raw32")
         self.assertEqual(state.values["PS_FORCE_RAW"], 1)
-        state.set_value("PS_FORCE_RAW", "0")
-        self.assertEqual(state.values["CAPACITY_REPRESENTATION"], "adaptive")
+        with self.assertRaises(ValueError):
+            state.set_value("PS_FORCE_RAW", "0")
+        self.assertEqual(state.values["CAPACITY_REPRESENTATION"], "raw32")
 
     def test_full_configuration_save_preserves_custom_content(self):
         state = self.state()

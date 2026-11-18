@@ -13,6 +13,7 @@ module conv_windowed_cache_observer #(
 
 
 logic prefetched[TB_WAYS][TB_SETS];
+logic [31:TB_LB] observed_tags[TB_WAYS][TB_SETS];
 for(genvar way=0;way<TB_WAYS;way++)begin:g_way
  for(genvar set_id=0;set_id<TB_SETS;set_id++)begin:g_set
   wire lookup_target=32'(conv_windowed_cache.lookup_way)==way && 32'(conv_windowed_cache.lookup_set)==set_id;
@@ -20,6 +21,10 @@ for(genvar way=0;way<TB_WAYS;way++)begin:g_way
   wire fill_target=32'(conv_windowed_cache.fill_way)==way && 32'(conv_windowed_cache.fill_set)==set_id;
   wire consumed=(conv_windowed_cache.req_fire && conv_windowed_cache.lookup_range && conv_windowed_cache.lookup_hit) ||
                 (32'(conv_windowed_cache.fg_state)==TB_FG_MISS && conv_windowed_cache.lookup_hit);
+  always @(posedge conv_windowed_cache.clk) begin
+    if (conv_windowed_cache.metadata_enable && conv_windowed_cache.metadata_fill_good && fill_target)
+      observed_tags[way][set_id] <= conv_windowed_cache.fill_addr[31:TB_LB];
+  end
   always @(posedge conv_windowed_cache.clk or negedge conv_windowed_cache.rst_n)begin
    if(!conv_windowed_cache.rst_n)prefetched[way][set_id]<=0;
    else if(conv_windowed_cache.metadata_enable)begin
@@ -42,7 +47,7 @@ always_comb begin
   accepted_range=conv_windowed_cache.req_addr>=conv_windowed_cache.base_q && conv_windowed_cache.req_addr<conv_windowed_cache.end_q;
   accepted_hit=0;
   for(int w=0;w<TB_WAYS;w++)
-    if(!conv_windowed_cache.bypass_q && conv_windowed_cache.valid[w][accepted_set] && conv_windowed_cache.tags[w][accepted_set]==conv_windowed_cache.req_addr[31:TB_LB])accepted_hit=1;
+    if(!conv_windowed_cache.bypass_q && conv_windowed_cache.valid[w][accepted_set] && observed_tags[w][accepted_set]==conv_windowed_cache.req_addr[31:TB_LB])accepted_hit=1;
   stat_prefetch_unused=0;
   for(int w=0;w<TB_WAYS;w++)for(int s=0;s<TB_SETS;s++)
     if(conv_windowed_cache.valid[w][s] && prefetched[w][s])stat_prefetch_unused++;

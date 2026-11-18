@@ -15,6 +15,8 @@ module ia_loader #(
     parameter int unsigned CACHE_BLOCKS = 4,
     parameter int unsigned COMPACT_S8 = 1,
     parameter bit EXTERNAL_RAM = 1'b0,
+    // Job configuration is fixed until cache_flush; tile origins are SIZE aligned.
+    parameter bit ORDERED_JOB = 1'b0,
     parameter int unsigned RAM_WORD_ADDR_WIDTH = 10,
     localparam int unsigned SLOT_BLOCKS =
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS,
@@ -353,7 +355,6 @@ module ia_loader #(
     logic                                   cache_l1_is_init;
     logic                                   cache_l1_calc_done;
     logic        [           ROW_CNT_W-1:0] cache_slot_rows     [ SLOT_BLOCKS];
-    wire         [           ROW_CNT_W-1:0] physical_slot_rows [ SLOT_BLOCKS];
     logic                                   cache_tile_done;
     logic                                   cache_l1_done;
     logic                                   cache_l1_start_q;
@@ -382,7 +383,9 @@ module ia_loader #(
 
     // Tags describe every stored value, including K-tail zeroes. Image
     // geometry is held for the job and invalidated by cache_flush.
-    localparam int unsigned CACHE_TAG_W = 8 * REG_WIDTH + DATA_WIDTH + 12;
+    localparam int unsigned ORDERED_TAG_W = 2 * (REG_WIDTH - LOG2_SIZE) + $clog2(SIZE + 1);
+    localparam int unsigned CACHE_TAG_W = ORDERED_JOB ? ORDERED_TAG_W :
+        8 * REG_WIDTH + DATA_WIDTH + 12;
     typedef struct packed {
         logic [REG_WIDTH-1:0] base_addr, row_stride, rows, cols, zp;
         logic [REG_WIDTH-1:0] p0, q0, group;
@@ -393,8 +396,11 @@ module ia_loader #(
     } dma_descriptor_t;
 
     function automatic logic [CACHE_TAG_W-1:0] descriptor_tag(input dma_descriptor_t d);
-        return {d.base_addr, d.row_stride, d.rows, d.cols, d.zp,
-                d.p0, d.q0, d.group, d.offset, d.burst, d.use16, d.im2col, d.compact, d.tile_packed};
+        if (ORDERED_JOB)
+            return CACHE_TAG_W'({d.p0[REG_WIDTH-1:LOG2_SIZE], d.q0[REG_WIDTH-1:LOG2_SIZE],
+                                 d.rows[$clog2(SIZE + 1)-1:0]});
+        return CACHE_TAG_W'({d.base_addr, d.row_stride, d.rows, d.cols, d.zp,
+                d.p0, d.q0, d.group, d.offset, d.burst, d.use16, d.im2col, d.compact, d.tile_packed});
     endfunction
 
     logic ctrl_load_req, ctrl_load_granted, ctrl_request_valid;
@@ -409,6 +415,29 @@ module ia_loader #(
     logic [CACHE_TAG_W-1:0] fill_tag;
     logic [CACHE_SLOT_W-1:0] fill_slot;
     logic fill_pending, fill_is_prefetch, cache_hit_done;
+    logic [CACHE_TAG_W-1:0] request_tag_q, prefetch_tag_q;
+    logic [CACHE_TAG_W-1:0] request_lookup_q, prefetch_lookup_q;
+    logic [CACHE_SLOT_W-1:0] request_lookup_slot_q, prefetch_lookup_slot_q;
+    logic request_lookup_valid, prefetch_lookup_valid;
+
+    always_ff @(posedge clk) begin
+        request_tag_q <= cache_tags[request_descriptor.slot];
+        prefetch_tag_q <= cache_tags[prefetch_descriptor.slot];
+        request_lookup_q <= descriptor_tag(request_descriptor);
+        prefetch_lookup_q <= descriptor_tag(prefetch_descriptor);
+        request_lookup_slot_q <= request_descriptor.slot;
+        prefetch_lookup_slot_q <= prefetch_descriptor.slot;
+        if (rst_n && !cache_flush && !(init_cfg &&
+            (!cfg_preserve_cache || (compact_config_valid != cfg_compact_q)))) begin
+            request_lookup_valid <= !(ext_dma_done && fill_pending &&
+                                      fill_slot == request_descriptor.slot);
+            prefetch_lookup_valid <= !(ext_dma_done && fill_pending &&
+                                       fill_slot == prefetch_descriptor.slot);
+        end else begin
+            request_lookup_valid <= 1'b0;
+            prefetch_lookup_valid <= 1'b0;
+        end
+    end
     logic prefetch_pending, prefetch_start;
     logic [REG_WIDTH-1:0] prefetch_rows_left;
     logic [REG_WIDTH-1:0] prefetch_group_p0, prefetch_group_rows;
@@ -447,20 +476,27 @@ module ia_loader #(
         dma_descriptor = prefetch_start ? prefetch_dma_descriptor : demand_descriptor;
     end
 
-    wire request_cached = preserve_cache_q && cache_tags_valid[request_descriptor.slot] &&
-        (cache_tags[request_descriptor.slot] == descriptor_tag(request_descriptor));
-    wire cache_hit_event = tl_start && preserve_cache_q &&
-        cache_tags_valid[demand_descriptor.slot] &&
-        (cache_tags[demand_descriptor.slot] == descriptor_tag(demand_descriptor)) &&
-        !cache_flush && !init_cfg;
-    wire prefetch_cached = cache_tags_valid[prefetch_descriptor.slot] &&
-        (cache_tags[prefetch_descriptor.slot] == descriptor_tag(prefetch_descriptor));
+    wire request_lookup_ready = request_lookup_valid &&
+        (request_lookup_slot_q == request_descriptor.slot) &&
+        (request_lookup_q == descriptor_tag(request_descriptor));
+    wire prefetch_lookup_ready = prefetch_lookup_valid &&
+        (prefetch_lookup_slot_q == prefetch_descriptor.slot) &&
+        (prefetch_lookup_q == descriptor_tag(prefetch_descriptor));
+    wire request_cached = preserve_cache_q && request_lookup_ready &&
+        cache_tags_valid[request_descriptor.slot] &&
+        (request_tag_q == descriptor_tag(request_descriptor));
+    wire cache_hit_event = tl_start && preserve_cache_q && request_lookup_valid &&
+        (request_lookup_slot_q == demand_descriptor.slot) &&
+        (request_lookup_q == descriptor_tag(demand_descriptor)) && cache_tags_valid[demand_descriptor.slot] &&
+        (request_tag_q == descriptor_tag(demand_descriptor)) && !cache_flush && !init_cfg;
+    wire prefetch_cached = prefetch_lookup_ready && cache_tags_valid[prefetch_descriptor.slot] &&
+        (prefetch_tag_q == descriptor_tag(prefetch_descriptor));
     wire prefetch_inflight = (fill_pending && fill_is_prefetch) || prefetch_start;
     wire prefetch_done = ext_dma_done && fill_pending && fill_is_prefetch;
     wire dma_available = !fill_pending && !ext_dma_busy && !tl_start && !prefetch_start;
-    wire demand_request = ctrl_request_valid && !request_cached && dma_available &&
+    wire demand_request = ctrl_request_valid && request_lookup_ready && !request_cached && dma_available &&
         !init_cfg && !cache_flush;
-    wire prefetch_request = prefetch_pending && !prefetch_cached && dma_available &&
+    wire prefetch_request = prefetch_pending && prefetch_lookup_ready && !prefetch_cached && dma_available &&
         !ctrl_load_req && !cache_hit_done && !init_cfg && !cache_flush;
     wire prefetch_issue = prefetch_request && load_ia_granted;
     wire prefetch_advance = prefetch_pending &&
@@ -470,11 +506,12 @@ module ia_loader #(
     // A granted miss holds ia_req through the registered DMA start cycle.
     assign ctrl_load_granted = prefetch_enable_q ?
         (ctrl_load_req && !tl_busy && !init_cfg && !cache_flush &&
-         (!ctrl_request_valid || request_cached || (dma_available && load_ia_granted))) :
-        load_ia_granted;
+         (!ctrl_request_valid || (request_lookup_ready &&
+          (request_cached || (dma_available && load_ia_granted))))) :
+        (load_ia_granted && (!ctrl_request_valid || request_lookup_ready));
     assign load_ia_req = prefetch_enable_q ?
         (demand_request || prefetch_request || ext_dma_start) :
-        (ctrl_load_req || prefetch_start);
+        ((ctrl_load_req && (!ctrl_request_valid || request_lookup_ready)) || prefetch_start);
     assign prefetch_idle = !prefetch_pending && !prefetch_inflight;
 
     // A following command may consume the prefetched K group or reuse its
@@ -487,6 +524,7 @@ module ia_loader #(
         (ia_reuse_num == prefetch_group_r) &&
         ((cfg_q0_base == prefetch_descriptor.q0) ||
          (cfg_q0_base + REG_WIDTH'(SIZE) == prefetch_descriptor.q0)) &&
+        (ORDERED_JOB || (
         (lhs_base + ((prefetch_descriptor.q0 - cfg_q0_base) <<
           ((cfg_tile_packed ? LOG2_SIZE : 0) + (use_16bits ? 1 : 0))) == prefetch_group_base) &&
         ((cfg_tile_packed ? (REG_WIDTH'(SIZE) << use_16bits) : lhs_row_stride_b) ==
@@ -498,7 +536,7 @@ module ia_loader #(
         (compact_config_valid == prefetch_descriptor.compact) &&
         (DATA_WIDTH'(cfg_compact_offset) == prefetch_descriptor.offset) &&
         (incoming_cache_blocks == cache_blocks_q) &&
-        (cfg_global_reduction == global_reduction_q) &&
+        (cfg_global_reduction == global_reduction_q))) &&
         (((CACHE_SLOT_W'(cfg_cache_slot_base) +
            ((cfg_q0_base == prefetch_descriptor.q0) ? CACHE_SLOT_W'(0) :
              CACHE_SLOT_W'(ia_reuse_num))) & incoming_slot_mask) == prefetch_group_slot);
@@ -575,7 +613,6 @@ module ia_loader #(
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            cache_tags_valid <= '0;
             fill_tag <= '0;
             fill_slot <= '0;
             fill_pending <= 1'b0;
@@ -585,17 +622,13 @@ module ia_loader #(
             cache_hit_done <= cache_hit_event;
             if (cache_flush || (init_cfg &&
                 (!cfg_preserve_cache || (compact_config_valid != cfg_compact_q)))) begin
-                cache_tags_valid <= '0;
                 fill_pending <= 1'b0;
                 cache_hit_done <= 1'b0;
             end else begin
                 if (ext_dma_done && fill_pending) begin
-                    cache_tags[fill_slot] <= fill_tag;
-                    cache_tags_valid[fill_slot] <= 1'b1;
                     fill_pending <= 1'b0;
                 end
                 if (ext_dma_start) begin
-                    cache_tags_valid[dma_descriptor.slot] <= 1'b0;
                     fill_tag <= descriptor_tag(dma_descriptor);
                     fill_slot <= dma_descriptor.slot;
                     fill_pending <= 1'b1;
@@ -603,6 +636,29 @@ module ia_loader #(
                 end
             end
         end
+    end
+
+    for (genvar slot_index = 0; slot_index < SLOT_BLOCKS; slot_index++) begin : g_cache_valid
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n)
+                cache_tags_valid[slot_index] <= 1'b0;
+            else if (cache_flush || (init_cfg &&
+                     (!cfg_preserve_cache || (compact_config_valid != cfg_compact_q))))
+                cache_tags_valid[slot_index] <= 1'b0;
+            else begin
+                if (ext_dma_done && fill_pending && fill_slot == CACHE_SLOT_W'(slot_index))
+                    cache_tags_valid[slot_index] <= 1'b1;
+                if (ext_dma_start && dma_descriptor.slot == CACHE_SLOT_W'(slot_index))
+                    cache_tags_valid[slot_index] <= 1'b0;
+            end
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (rst_n && !cache_flush &&
+            !(init_cfg && (!cfg_preserve_cache || (compact_config_valid != cfg_compact_q))) &&
+            ext_dma_done && fill_pending)
+            cache_tags[fill_slot] <= fill_tag;
     end
 
     assign ext_dma_start            = (tl_start && !cache_hit_event) || prefetch_start;
@@ -784,14 +840,6 @@ module ia_loader #(
         end
     endgenerate
 
-    // The controller numbers slots relative to the command. DMA and RAM use
-    // physical slots so independent row/K fragments can remain resident.
-    for (genvar physical_slot = 0; physical_slot < SLOT_BLOCKS; physical_slot++) begin : g_slot_rows
-        wire [CACHE_SLOT_W-1:0] logical_slot =
-            (CACHE_SLOT_W'(physical_slot) - cache_slot_base_q) & cache_slot_mask;
-        assign physical_slot_rows[physical_slot] = cache_slot_rows[logical_slot];
-    end
-
     // =======================================================================
     // 缓存管理子模块例化
     // =======================================================================
@@ -811,6 +859,7 @@ module ia_loader #(
         .compact_mode (cfg_compact_q),
         .compact_offset(compact_offset_q),
         .cfg_cache_blocks(cache_blocks_q),
+        .slot_base(cache_slot_base_q),
         .ram_port_wr_en, .ram_port_wr_addr, .ram_port_wr_data, .ram_port_wr_mask,
         .ram_port_rd_en, .ram_port_rd_addr, .ram_port_rd_data,
 
@@ -828,7 +877,7 @@ module ia_loader #(
         .l1_slot_end  (cache_l1_slot_end_q),
         .l1_is_init   (cache_l1_is_init_q),
         .l1_calc_done (cache_l1_calc_done_q),
-        .slot_rows    (physical_slot_rows),
+        .slot_rows    (cache_slot_rows),
         .tile_done    (cache_tile_done),
         .l1_done      (cache_l1_done),
         .ia_tile_start(ia_tile_start),

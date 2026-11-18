@@ -33,6 +33,7 @@ std::uint64_t simultaneous_ia_rw = 0, simultaneous_ia_ps = 0;
 std::uint64_t cross_word_writes = 0, mask_patterns = 0, wrapped_groups = 0;
 std::uint64_t compact_groups = 0, wide_groups = 0, tile_checks = 0;
 std::uint64_t initialization_groups = 0, final_groups = 0;
+unsigned expected_columns[kMaxSlots]{};
 int allocated_banks = 1, ps_banks = kBanks-1;
 bool ps_background = false;
 
@@ -86,6 +87,11 @@ void ps_drive_background(Via_shared_cache_tb& dut) {
     }
 }
 void tick(Via_shared_cache_tb& dut) {
+    static Word pending_write[2]{};
+    static unsigned pending_masks[2]{};
+    static unsigned pending_address[2]{};
+    static unsigned pending_en = 0;
+
     ps_drive_background(dut);
     dut.clk = 0;
     dut.eval();
@@ -109,16 +115,21 @@ void tick(Via_shared_cache_tb& dut) {
             set_byte(expected_write[port], byte + 1U, raw >> 8);
         }
         expected[dut.wr_slot][dut.wr_row][column] = static_cast<std::int16_t>(value);
+        if(dut.wr_row==0) expected_columns[dut.wr_slot]=column+1U;
     }
     const unsigned expected_en = (masks[0] ? 1U : 0U) | (masks[1] ? 2U : 0U);
-    require(dut.ia_write_en == expected_en, "IA write enables");
+    require(dut.ia_write_en == pending_en, "Registered IA write enables");
     for (unsigned port = 0; port < 2; ++port) {
-        require(dut.ia_write_addr[port] == row_word + port, "IA write word address");
-        require(dut.ia_write_mask[port] == masks[port], "IA byte write mask");
-        for (unsigned part = 0; part < 4; ++part)
-            require(dut.ia_write_data[port][part] == expected_write[port][part],
-                    "IA write bytes");
-        port_checks += 6;
+        if ((pending_en >> port) & 1U) {
+            require(dut.ia_write_addr[port] == pending_address[port], "Registered IA write word address");
+            require(dut.ia_write_mask[port] == pending_masks[port], "Registered IA byte write mask");
+            for (unsigned byte=0;byte<16;++byte) if((pending_masks[port]>>byte)&1U) {
+                const unsigned shift=(byte%4U)*8U;
+                require(((dut.ia_write_data[port][byte/4U]>>shift)&255U)==
+                        ((pending_write[port][byte/4U]>>shift)&255U), "Registered IA enabled byte");
+            }
+            port_checks += 6;
+        }
     }
     if (dut.rst_n && !dut.cfg_valid) {
         require(dut.physical_read_count == bits(dut.ia_read_en) + bits(dut.ps_read_en),
@@ -178,6 +189,10 @@ void tick(Via_shared_cache_tb& dut) {
                         "PS read value during IA traffic");
             ++ps_word_checks;
         }
+    pending_en=dut.rst_n ? expected_en : 0U;
+    for (unsigned port=0;port<2;++port) {
+        pending_write[port]=expected_write[port];pending_masks[port]=masks[port];pending_address[port]=row_word+port;
+    }
     dut.clk = 0;
     dut.eval();
     ++cycles;
@@ -269,7 +284,8 @@ void read_group(Via_shared_cache_tb& dut, int first, int last, bool init = true,
         for (int lane = 0; lane < 16; ++lane) {
             const int index = step - 1;
             const bool valid = index >= 0 && index < static_cast<int>(order.size());
-            const auto value = valid ? expected[order[index].first][order[index].second][lane] : 0;
+            const auto value = valid && unsigned(lane)<expected_columns[order[index].first] ?
+                expected[order[index].first][order[index].second][lane] : 0;
             require(signed16(dut.shared_out[lane]) == value,
                     "Independent row value, step " + std::to_string(step) +
                     ", lane " + std::to_string(lane));

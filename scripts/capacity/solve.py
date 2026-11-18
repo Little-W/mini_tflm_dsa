@@ -68,7 +68,7 @@ def main(argv=None):
     parser.add_argument("--budget-scope", choices=model.SCOPES)
     parser.add_argument("--max-ram-kib", type=int, help="limit all declared shared NPU buffer arrays and metadata")
     parser.add_argument("--max-state-kib", type=int, help="limit complete elaborated sequential state")
-    parser.add_argument("--representation", choices=model.REPRESENTATIONS)
+    parser.add_argument("--representation", choices=("raw32",))
     tasks = parser.add_mutually_exclusive_group()
     tasks.add_argument("--shape", action="append", type=shape_argument, metavar="M,K,N")
     tasks.add_argument("--workloads", type=Path)
