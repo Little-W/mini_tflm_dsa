@@ -8,6 +8,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/dma/cache/conv_read_cache.sv'
 
@@ -49,8 +52,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'],
-                                        cwd=ROOT, text=True)
+    reference = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     normalized = current.replace(selection_block(current), selection_block(reference))
     normalized = normalized.replace(selection_declarations(current), selection_declarations(reference))
     if normalized != reference:

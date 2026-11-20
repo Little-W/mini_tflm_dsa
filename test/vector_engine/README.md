@@ -39,7 +39,7 @@ python3 test/vector_engine/run_result_write.py --out build/vector_result_write
 相同测量条件下的参照实现使用 1,319 个逻辑 LUT、444 个寄存器和 7 个单元。
 两种实现的写入时钟边沿和来源优先顺序一致。
 
-量化参数的 REGFILE 状态证明、不同总线写入检查和资源测量见
+量化参数的 regfile 状态证明、不同总线写入检查和资源测量见
 [`test/vector_params`](../vector_params/README.md)。完整向量回归同时检查这些
 存储修改对算术结果、DMA 地址范围和任务执行周期的影响。
 

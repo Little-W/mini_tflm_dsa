@@ -1048,7 +1048,7 @@ module vec_s8_fifo_row_ram #(
 `else
     logic storage_i_wr_mask;
     assign storage_i_wr_mask = 1'b1;
-    REGFILE #(.p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH), .p_write_unit(DATA_WIDTH)) u_storage (
+    regfile #(.p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH), .p_write_unit(DATA_WIDTH)) u_storage (
         .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),
         .i_wr_data(storage_i_wr_data), .i_wr_mask(storage_i_wr_mask),
         .i_rd_en(storage_i_rd_en), .i_rd_addr(storage_i_rd_addr), .o_rd_data(storage_o_rd_data)

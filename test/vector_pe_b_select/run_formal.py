@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -181,8 +184,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     engine = ROOT / 'rtl/npu/conv/vector_engine.sv'
     current = engine.read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + str(engine.relative_to(ROOT))],
-                                        cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + str(engine.relative_to(ROOT)), cwd=ROOT, text=True)
     assert sections(current)[2] == sections(reference)[2]
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'

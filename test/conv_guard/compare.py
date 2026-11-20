@@ -7,6 +7,10 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -23,7 +27,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = out / 'reference.sv'
-    content = subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT, text=True)
+    content = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     reference.write_text(content.replace('module conv_axi_read_guard', 'module reference_conv_axi_read_guard'))
     sources = [ROOT / SOURCE, reference, HERE / 'tb_guard_compare.sv']
     options = []

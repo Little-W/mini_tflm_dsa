@@ -7,6 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/dma/axi_linear_block_dma.sv')
@@ -21,7 +25,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     cases, hashes = {}, {}
     for label in ('reference', 'current'):
-        content = subprocess.check_output(['git', 'show', args.reference + ':' + str(SOURCE)], cwd=ROOT) \
+        content = read_rtl_source(args.reference + ':' + str(SOURCE), cwd=ROOT) \
             if label == 'reference' else (ROOT / SOURCE).read_bytes()
         source = out / (label + '.sv')
         source.write_bytes(content)

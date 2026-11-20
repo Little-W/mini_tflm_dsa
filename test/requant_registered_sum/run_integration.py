@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 PORTS='''(
     input logic clk,init_cfg,s16_mode,round_increment_s9,
@@ -37,7 +40,7 @@ def main():
         libyosys.run_pass('script '+shlex.quote(str(args.worker)));return
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     source=(ROOT/'rtl/npu/writeback/vec_requant.sv').read_text()
-    old=subprocess.check_output(['git','show',args.reference_rev+':rtl/npu/writeback/vec_requant.sv'],cwd=ROOT,text=True)
+    old=read_rtl_source(args.reference_rev+':rtl/npu/writeback/vec_requant.sv', cwd=ROOT, text=True)
     reference_full=old.split('module vec_requant_full #(',1)[1].split('\nendmodule',1)[0]
     includes_product='    logic product_sum_i_en;' in source
     registers=('product_high_s2','rounded_s10') if includes_product else ('rounded_s10',)

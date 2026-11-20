@@ -55,7 +55,7 @@ module conv_sdp_ram #(
       .read_enable(storage_i_rd_en), .read_address(storage_i_rd_addr), .read_data(storage_o_rd_data)
     );
 `else
-    REGFILE #(
+    regfile #(
       .p_data_width(32), .p_depth(p_bank_depth), .p_addr_width(p_bank_addr_width),
       .p_write_unit(8), .p_read_ports(1), .p_sync_read(1'b1)
     ) u_storage (

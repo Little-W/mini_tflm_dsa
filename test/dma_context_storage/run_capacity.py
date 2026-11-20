@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from scripts.capacity import config, elaboration
@@ -23,7 +26,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = out / 'reference_dma.sv'
-    reference.write_bytes(subprocess.check_output(['git', 'show', args.reference_ref + ':' + SOURCE], cwd=ROOT))
+    reference.write_bytes(read_rtl_source(args.reference_ref + ':' + SOURCE, cwd=ROOT))
     values = config.selected_config(ROOT / 'config/npu_fpga.mk')
     original_sources = elaboration.source_files
     records = {}
@@ -43,7 +46,7 @@ def main():
                 'passed': report['passed'], 'total_bits': state['total_bits'],
                 'buffer_arrays_bits': state['buffer_arrays_bits'],
                 'register_arrays_bits': state['register_arrays_bits'],
-                'regfile_instances': state['module_instances']['REGFILE'],
+                'regfile_instances': state['module_instances']['regfile'],
                 'descriptor_bits': sum(item['bits'] for item in storage),
                 'descriptor_storage': storage,
             }

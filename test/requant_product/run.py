@@ -6,14 +6,17 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 
 
 def make_reference(revision):
-    old = subprocess.check_output(
-        ['git', 'show', revision + ':rtl/npu/writeback/vec_requant.sv'], cwd=ROOT, text=True)
+    old = read_rtl_source(revision + ':rtl/npu/writeback/vec_requant.sv', cwd=ROOT, text=True)
     full = old.split('module vec_requant_full #(', 1)[1].split('\nendmodule', 1)[0]
     updates = [re.search(r'\b' + name + r'\s*<=.*?;', full, re.S)[0]
                for name in ('product_low_s1', 'product_high_s1', 'product_low_s2')]

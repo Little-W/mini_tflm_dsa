@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 CASES = {
     "predictor": ("conv_next_use_predictor", "rtl/npu/dma/cache/conv_next_use_predictor.sv", []),
@@ -47,7 +50,7 @@ def main():
         folder.mkdir(exist_ok=True)
         commands = []
         for variant in ("reference", "current"):
-            source = (subprocess.check_output(["git", "show", args.reference_ref + ":" + name], cwd=ROOT)
+            source = (read_rtl_source(args.reference_ref + ":" + name, cwd=ROOT)
                       if variant == "reference" else (ROOT / name).read_bytes())
             path = folder / (variant + ".sv")
             path.write_bytes(source)

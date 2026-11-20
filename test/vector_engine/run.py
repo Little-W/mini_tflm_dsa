@@ -30,7 +30,7 @@ def main():
     svsrc=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
     svsrc += [x for x in sorted(conv.rglob('*.sv')) if x not in svsrc]
     svsrc += list(sorted((ROOT/'rtl/npu/dma').rglob('*.sv')))
-    svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/common/REGFILE.v',HERE/'vector_engine_dma_top.sv']
+    svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/common/regfile.v',HERE/'vector_engine_dma_top.sv']
     import runpy
     svsrc = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](svsrc)
     primitive_options=[]

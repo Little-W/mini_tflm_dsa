@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 TEST=ROOT/'test/weight_prefetch'
 
@@ -46,7 +49,7 @@ def main():
     loader=ROOT/'rtl/npu/loaders/kernel_loader.sv'
     loader_control=ROOT/'rtl/npu/loaders/kernel_loader_ctrl.sv'
     loader_buffer=ROOT/'rtl/npu/loaders/kernel_loader_buffer.sv'
-    helpers=[ROOT/'rtl/common'/p for p in ['add3_equal.sv','add_equal.sv','REGFILE.v']]
+    helpers=[ROOT/'rtl/common'/p for p in ['add3_equal.sv','add_equal.sv','regfile.v']]
     models=[TEST/(p+'.sv') for p in ['array_proof','producer_proof','ctrl_gating_proof','bridge_proof']]
     sources=[cell,array,controller,loader,loader_control,loader_buffer,*helpers,*models]
     hashes={str(p.relative_to(ROOT)):digest(p) for p in sources}
@@ -67,7 +70,7 @@ def main():
         'proc','flatten','cutpoint w:u_loader.buf_store_weight_req w:u_loader.buf_weight_sending_done',
         'opt -full','async2sync','chformal -lower','opt -full',
         'sat -seq 2 -tempinduct -maxsteps 4 -set-at 1 rst_n 0 -prove-asserts -verify'])
-    original=subprocess.check_output(['git','show',args.reference+':rtl/npu/compute/ws_systolic_cell.sv'],cwd=ROOT)
+    original=read_rtl_source(args.reference+':rtl/npu/compute/ws_systolic_cell.sv', cwd=ROOT)
     reference=out/'reference.sv';reference.write_bytes(original)
     default=[]
     for data_width,weight_width,sum_width in [(1,1,2),(8,8,32),(16,8,32),(16,16,32),(17,17,40)]:

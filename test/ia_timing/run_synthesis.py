@@ -6,6 +6,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -23,8 +26,8 @@ def main():
     reference.mkdir(exist_ok=True)
     modules = ("ia_loader", "ia_loader_ctrl", "ia_loader_cache_mgr")
     for module in modules:
-        source = subprocess.check_output(["git", "show", args.reference_rev +
-                                          ":rtl/npu/loaders/" + module + ".sv"], cwd=ROOT, text=True)
+        source = read_rtl_source(args.reference_rev +
+                                          ":rtl/npu/loaders/" + module + ".sv", cwd=ROOT, text=True)
         (reference / (module + ".sv")).write_text(source)
     cases = {}
     for label in ("reference", "candidate"):

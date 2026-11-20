@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -72,7 +75,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/writeback/vec_requant.sv'
     candidate = (ROOT / relative).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
     summary = {'reference_rev': args.reference_rev,
                'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
                'source_sha256': hashlib.sha256(candidate.encode()).hexdigest(),
@@ -91,7 +94,7 @@ def main():
             content = re.sub(r'\bparameter_index\b', name + '_parameter_index', content)
             path.write_text(content)
             commands += ['read_slang --top parameter_write ' + shlex.quote(str(path)) + ' ' +
-                         shlex.quote(str(ROOT / 'rtl/common/REGFILE.v')),
+                         shlex.quote(str(ROOT / 'rtl/common/regfile.v')),
                          'prep -top parameter_write -flatten', 'memory_map', 'opt -full',
                          'rename -top ' + name, 'design -stash ' + name]
         commands += ['design -copy-from reference -as reference reference',

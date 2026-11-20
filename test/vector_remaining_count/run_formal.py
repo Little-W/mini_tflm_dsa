@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -28,8 +31,7 @@ def main():
     relative = Path('rtl/npu/conv/vector_engine.sv')
     source = ROOT / relative
     current = source.read_text()
-    reference = subprocess.check_output(
-        ['git', 'show', args.reference_rev + ':' + str(relative)], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + str(relative), cwd=ROOT, text=True)
     declarations = re.search(
         r'  logic \[ACTIVE_COUNT_W:0\] vector_low_sum;.*?logic vector_has_more;',
         current, re.S)[0]

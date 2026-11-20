@@ -9,12 +9,15 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/loaders/kernel_loader.sv')
 DEPENDENCIES = tuple(Path(path) for path in (
     'rtl/npu/loaders/kernel_loader_ctrl.sv',
     'rtl/npu/loaders/kernel_loader_buffer.sv',
-    'rtl/common/REGFILE.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv'))
+    'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv'))
 PROOF = '''module kernel_request_idle_proof #(parameter bit p_use_lut=1'b0) (
     input logic request, granted, quiescent,
     output logic equivalent
@@ -48,13 +51,13 @@ def main():
     reuse_sources = args.resume
     for label in ('reference', 'current'):
         path = out/(label+'.sv')
-        data = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT) \
+        data = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT) \
             if label == 'reference' else (ROOT/SOURCE).read_bytes()
         reuse_sources &= path.exists() and path.read_bytes() == data
         path.write_bytes(data)
         source_files[label] = path
     for dependency in DEPENDENCIES:
-        original = subprocess.check_output(['git', 'show', f'{args.reference}:{dependency}'], cwd=ROOT)
+        original = read_rtl_source(f'{args.reference}:{dependency}', cwd=ROOT)
         assert original == (ROOT/dependency).read_bytes()
     proof = out/'selection_proof.sv'
     proof.write_text(PROOF)

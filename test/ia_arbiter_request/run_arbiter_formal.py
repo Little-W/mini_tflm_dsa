@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 TOP = 'axi_block_dma_arbiter'
 RTL = 'rtl/npu/dma/axi_block_dma_arbiter.sv'
@@ -90,7 +93,7 @@ def main():
         folder.mkdir(exist_ok=True)
         snapshots[label] = []
         for relative in sources:
-            data = (subprocess.check_output(['git', 'show', f'{args.reference_rev}:{relative}'], cwd=ROOT)
+            data = (read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT)
                     if label == 'reference' else (ROOT / relative).read_bytes())
             if relative.endswith('/axi_dual_block_dma.sv'):
                 text = data.decode()

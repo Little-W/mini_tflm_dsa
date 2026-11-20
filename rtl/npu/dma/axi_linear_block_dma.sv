@@ -322,7 +322,7 @@ module axi_linear_block_dma #(
     assign rd_head = {context_storage_o_rd_data[0], rd_context_tag_q[rd_context_head]};
     assign {rd_next_context_base, unused_next_context_data} = context_storage_o_rd_data[1];
 
-    REGFILE #(
+    regfile #(
         .p_data_width(p_context_data_width), .p_depth(RD_CTX_DEPTH),
         .p_addr_width(RD_CTX_PTR_W), .p_write_unit(p_context_data_width),
         .p_read_ports(2), .p_sync_read(1'b0)

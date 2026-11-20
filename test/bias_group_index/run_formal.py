@@ -9,14 +9,17 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 TOP = Path('rtl/npu/top/npu_top.sv')
 BUFFER = Path('rtl/npu/loaders/bias_loader_buffer.sv')
-MEMORY = Path('rtl/common/REGFILE.v')
+MEMORY = Path('rtl/common/regfile.v')
 
 # 两侧接收同一任意存储返回值；同时证明所有读写端口逐周期相同。
 # 相同初始存储和相同端口操作可逐拍保持每一个存储位相同。
-MEMORY_MODEL = '''module REGFILE #(
+MEMORY_MODEL = '''module regfile #(
     parameter int p_data_width=64, p_depth=512, p_addr_width=9, p_write_unit=8
 ) (
     input logic clk, i_wr_en, i_rd_en,
@@ -86,8 +89,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current_top = (ROOT / TOP).read_text()
-    reference_top = subprocess.check_output(
-        ['git', 'show', f'{args.reference_rev}:{TOP}'], cwd=ROOT, text=True)
+    reference_top = read_rtl_source(f'{args.reference_rev}:{TOP}', cwd=ROOT, text=True)
     blocks = {'reference': index_block(reference_top), 'current': index_block(current_top)}
     expected = blocks['reference'].replace(
         'if (init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep))',

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 SOURCE = 'rtl/npu/conv/conv_im2col_frontend.sv'
 
 
@@ -192,7 +195,7 @@ def main():
     parser.add_argument('--reference',default='7ef39f0101ebf39184d11dbdc80a4042faee75c2')
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args(); repo=args.repo.resolve(); out=args.out.resolve(); out.mkdir(parents=True,exist_ok=True)
-    reference=subprocess.check_output(['git','show',args.reference+':'+SOURCE],cwd=repo,text=True)
+    reference=read_rtl_source(args.reference+':'+SOURCE, cwd=repo, text=True)
     current=args.candidate.read_text()
     old_raw,_=process(reference); new_raw,_=process(current)
     old_clean=re.sub(r'ch_q\s*<=\s*[^;]+;', '', old_raw)

@@ -8,6 +8,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -22,7 +26,7 @@ def main() -> None:
     source = ROOT / 'rtl/npu/top/frame_address_prepare.sv'
     candidate = out / source.name
     candidate.write_bytes(source.read_bytes())
-    original = subprocess.check_output(['git', 'show', args.reference_rev + ':rtl/npu/top/npu_top.sv'], cwd=ROOT, text=True)
+    original = read_rtl_source(args.reference_rev + ':rtl/npu/top/npu_top.sv', cwd=ROOT, text=True)
     function = re.search(r'function automatic logic \[REG_WIDTH-1:0\] operand_frame_offset\(.*?endfunction', original, re.S)[0]
     ports = re.search(r'\) \(\n(.*?)\n\);', source.read_text(), re.S)[1]
     reference = out / 'frame_address_reference.sv'

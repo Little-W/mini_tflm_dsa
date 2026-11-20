@@ -169,7 +169,7 @@ def prepare_vector(out):
     files = [ROOT / "rtl/npu/conv" / name for name in ("conv_im2col_pkg.sv", "vector_engine_pkg.sv")]
     files += [p for p in sorted((ROOT / "rtl/npu/conv").glob("*.sv"))
               if p not in files and p != VECTOR]
-    files += [ROOT / "rtl/common" / name for name in ("REGFILE.v", "pseudo_dual_port_ram.v", "add_equal.sv")]
+    files += [ROOT / "rtl/common" / name for name in ("regfile.v", "pseudo_dual_port_ram.v", "add_equal.sv")]
     files.append(design)
     commands = ["read_slang -D SYNTHESIS=1 -D ASIC_SYNTHESIS=1 --top vector_offer_properties "
                 "-GTILE=16 -GPE_COUNT=8 -GBUS_WIDTH=64 " + " ".join(shlex.quote(str(p)) for p in files),

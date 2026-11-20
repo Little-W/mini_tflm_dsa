@@ -51,7 +51,21 @@ module requant_group_buffer #(
         assign o_row_data[lane] = $signed(storage_o_rd_data[32*lane +: 32]);
     end
 
-    REGFILE #(
+`ifdef ASIC_SRAM
+    // 每行数据和完成标志共用地址，128 行宏按宽度与深度扩展。
+    // 读取使能控制宏输出保持，最后一批发射时可同步读取下一行。
+    smic40_sram_1r1w #(
+        .DATA_WIDTH(p_row_width), .DEPTH(p_rows), .ADDR_WIDTH(p_addr_width),
+        .MACRO_DEPTH(128)
+    ) u_rows (
+        .clk(clk),
+        .write_enable(storage_i_wr_en), .write_address(storage_i_wr_addr),
+        .write_data(storage_i_wr_data), .write_mask({p_row_width{storage_i_wr_mask}}),
+        .read_enable(storage_i_rd_en), .read_address(storage_i_rd_addr),
+        .read_data(storage_o_rd_data)
+    );
+`else
+    regfile #(
         .p_data_width(p_row_width), .p_depth(p_rows), .p_addr_width(p_addr_width),
         .p_write_unit(p_row_width), .p_sync_read(1'b1)
     ) u_rows (
@@ -61,6 +75,7 @@ module requant_group_buffer #(
         .i_rd_en(storage_i_rd_en), .i_rd_addr(storage_i_rd_addr),
         .o_rd_data(storage_o_rd_data)
     );
+`endif
 
     // 读端保持整行供各批次运算共用，最后一批发射边沿可同步读取下一行。
     always_ff @(posedge clk or negedge rst_n) begin

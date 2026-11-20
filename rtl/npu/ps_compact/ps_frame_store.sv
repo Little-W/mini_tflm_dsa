@@ -250,7 +250,7 @@ module ps_frame_store #(
     assign decoded_i_wr_mask = 1'b1;
     assign decoded_i_rd_en = 1'b1;
     assign decoded_i_rd_addr = decoded_output_pointer;
-    REGFILE #(
+    regfile #(
         .p_data_width(512), .p_depth(DECODE_FIFO_ROWS), .p_addr_width(FIFO_PTR_BITS),
         .p_write_unit(512), .p_sync_read(1'b0)
     ) u_decoded (

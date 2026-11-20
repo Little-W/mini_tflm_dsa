@@ -229,7 +229,7 @@ module bias_loader_buffer #(
   assign storage_i_rd_en = read_enable;
   assign storage_i_rd_addr = read_address;
   assign read_data = storage_o_rd_data;
-  REGFILE #(
+  regfile #(
       .p_data_width(RAM_WIDTH), .p_depth(2*(1<<BANK_ADDR_W)),
       .p_addr_width(RAM_ADDR_W), .p_write_unit(8)
   ) u_storage (

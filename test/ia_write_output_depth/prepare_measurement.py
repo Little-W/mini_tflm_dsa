@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/loaders/ia_loader_cache_mgr.sv'
@@ -22,7 +26,7 @@ def main():
                       EXTERNAL_RAM=1, RAM_WORD_ADDR_WIDTH=12, p_compact_offset_width=9)
     cases, hashes = {}, {}
     for label in ('reference', 'current'):
-        data = (subprocess.check_output(['git', 'show', args.reference + ':' + SOURCE], cwd=ROOT)
+        data = (read_rtl_source(args.reference + ':' + SOURCE, cwd=ROOT)
                 if label == 'reference' else (ROOT / SOURCE).read_bytes())
         snapshot = out / (label + '.sv')
         snapshot.write_bytes(data)

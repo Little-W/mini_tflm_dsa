@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE=Path('rtl/npu/conv/conv_im2col_frontend.sv')
 DECL='''  logic [7:0] offset_high_plus_one, offset_high_minus_one;
@@ -67,7 +70,7 @@ def main():
     p.add_argument('--reference',default='3c8cafeb');p.add_argument('--out',type=Path,required=True)
     args=p.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     current=(ROOT/SOURCE).read_text()
-    reference=subprocess.check_output(['git','show',str(args.reference)+':'+str(SOURCE)],cwd=ROOT,text=True)
+    reference=read_rtl_source(str(args.reference)+':'+str(SOURCE), cwd=ROOT, text=True)
     enum=re.search(r'  typedef enum logic \[4:0\] \{.*?\} st_t;',reference,re.S)[0]
     end='  always_comb begin\n    cfg_pixel_bytes'
     start_ref=reference.index('  assign stream_word =')

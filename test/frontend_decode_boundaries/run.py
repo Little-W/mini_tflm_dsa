@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/conv/conv_im2col_frontend.sv")
@@ -44,7 +47,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     pattern = r"      p_fast_wrap = c\.output_w != 16'd0 &&\n.*?;"
     current_expression = re.findall(pattern, current, re.S)
     reference_expression = re.findall(pattern, reference, re.S)

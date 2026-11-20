@@ -7,6 +7,10 @@ from pathlib import Path
 import subprocess
 
 from extract_fault import ROOT, TOP, INPUT_BITS, measurement_source
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def main():
@@ -19,7 +23,7 @@ def main():
     cases, hashes = {}, {}
     for label in ('reference', 'current'):
         source = ((ROOT / TOP).read_text() if label == 'current' else
-                  subprocess.check_output(['git', 'show', f'{args.reference}:{TOP}'], cwd=ROOT, text=True))
+                  read_rtl_source(f'{args.reference}:{TOP}', cwd=ROOT, text=True))
         path = out / (label + '.sv')
         path.write_text(measurement_source(source))
         hashes[label] = {'source_sha256': hashlib.sha256(source.encode()).hexdigest(),

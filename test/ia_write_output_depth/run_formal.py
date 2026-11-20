@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/loaders/ia_loader_cache_mgr.sv')
 from primitives import prepare_models
@@ -50,12 +53,12 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT)
+    original = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT)
     reference = out / 'reference.sv'
     reference.write_bytes(original)
     current = ROOT / SOURCE
     model, model_info = prepare_models(out)
-    memories = [ROOT / 'rtl/common/REGFILE.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v',
+    memories = [ROOT / 'rtl/common/regfile.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v',
                 ROOT / 'rtl/npu/compute/select_add.sv']
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in [current, *memories]}
     report = dict(passed=False, reference_commit=subprocess.check_output(

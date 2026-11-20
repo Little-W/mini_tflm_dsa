@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -17,7 +21,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/writeback/vec_requant.sv'
-    old = subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT)
+    old = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT)
     reference = out / 'reference.sv'
     reference.write_bytes(old)
     shared = ROOT / 'rtl/npu/conv/vector_scalar_multiplier.sv'

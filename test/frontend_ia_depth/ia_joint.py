@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/fpga"))
 import open_fpga_synth
@@ -45,7 +48,7 @@ def main():
             case = open_fpga_synth.CASES["npu_top"]
             for name in case["sources"]:
                 data = ((ROOT / name).read_bytes() if label == "current" and name == SOURCE else
-                        subprocess.check_output(["git", "show", args.reference + ":" + name], cwd=ROOT))
+                        read_rtl_source(args.reference + ":" + name, cwd=ROOT))
                 path = snapshot / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)

@@ -11,6 +11,9 @@ import sys
 
 from tag_port_equivalence import normalize_source as normalize_tag_source
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/dma/cache/conv_read_cache.sv'
 NOTE = '      // 同一来源标记共用更新使能，填充和提示分别覆盖较早的命中更新。\n'
@@ -54,7 +57,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT, text=True)
+    reference = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     shared_tag_ports = '    // 预取接收时读取新描述地址' in current
     normalized = normalize_tag_source(current, reference) if shared_tag_ports else current
     normalized = normalized.replace(state_block(current), state_block(reference))

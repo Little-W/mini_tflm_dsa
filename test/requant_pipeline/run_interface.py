@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -60,11 +64,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     source = ROOT / "rtl/npu/writeback/vec_requant.sv"
     current = source.read_text()
-    old = subprocess.check_output(["git", "show", args.reference_rev + ":rtl/npu/writeback/vec_requant.sv"], cwd=ROOT, text=True)
+    old = read_rtl_source(args.reference_rev + ":rtl/npu/writeback/vec_requant.sv", cwd=ROOT, text=True)
     shared_source = ROOT / "rtl/npu/conv/vector_scalar_multiplier.sv"
     if re.search(r"\bregistered_multiplier_s32\b", old):
-        old += "\n" + subprocess.check_output(
-            ["git", "show", args.reference_rev + ":rtl/npu/conv/vector_scalar_multiplier.sv"], cwd=ROOT, text=True)
+        old += "\n" + read_rtl_source(args.reference_rev + ":rtl/npu/conv/vector_scalar_multiplier.sv", cwd=ROOT, text=True)
     reference = out / "reference.sv"
     reference_modules = re.findall(r"^module\s+(\w+)", old, re.MULTILINE)
     reference.write_text(re.sub(r"\b(" + "|".join(map(re.escape, reference_modules)) + r")\b",
@@ -91,7 +94,7 @@ def main():
                    "--top-module", "requant_interface_top", "--Mdir", str(folder / "obj"),
                    f"-GBUS_WIDTH={bus}", "-GVLEN=16", "-GMAX_IA_REUSE=32", "-GENABLE_S16=1",
                    "-CFLAGS", f"-std=c++17 -DTEST_BUS_WIDTH={bus}",
-                   str(source), str(ROOT / "rtl/common/REGFILE.v"),
+                   str(source), str(ROOT / "rtl/common/regfile.v"),
                    str(ROOT / "rtl/npu/conv/vector_scalar_multiplier.sv"), str(reference), str(wrapper),
                    *primitive_options, str(HERE / "interface_main.cpp")]
         with (folder / "build.log").open("w") as stream:

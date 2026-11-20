@@ -22,7 +22,7 @@ def main():
     if args.jobs < 1: parser.error('--jobs must be positive')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     sources=[ROOT/'test/weight_prefetch/array_tb.sv',ROOT/'test/weight_prefetch/array_main.cpp',
-             ROOT/'rtl/npu/loaders/kernel_loader_buffer.sv',ROOT/'rtl/common/REGFILE.v',ROOT/'rtl/npu/compute/ws_systolic_cell.sv',
+             ROOT/'rtl/npu/loaders/kernel_loader_buffer.sv',ROOT/'rtl/common/regfile.v',ROOT/'rtl/npu/compute/ws_systolic_cell.sv',
              ROOT/'rtl/npu/compute/ws_systolic_array.sv']
     recorded_sources=[Path(__file__).resolve(),*sources]
     hashes={str(path.relative_to(ROOT)):digest(path) for path in recorded_sources}

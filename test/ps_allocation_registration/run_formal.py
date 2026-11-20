@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 TOP = Path('rtl/npu/top/npu_top.sv')
 LIMITS = Path('rtl/npu/control/ps_capacity_limits.sv')
@@ -100,8 +103,7 @@ def main():
     hashes = {str(path): digest(ROOT / path) for path in (TOP, LIMITS)}
     snapshots = {}
     for label in ('reference', 'current'):
-        source = (subprocess.check_output(['git', 'show', f'{args.reference_rev}:{TOP}'],
-                                         cwd=ROOT, text=True)
+        source = (read_rtl_source(f'{args.reference_rev}:{TOP}', cwd=ROOT, text=True)
                   if label == 'reference' else (ROOT / TOP).read_text())
         snapshots[label] = out / (label + '.sv')
         snapshots[label].write_text(allocation_module(source))

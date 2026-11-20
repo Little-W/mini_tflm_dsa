@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/conv/vector_round_shift.sv'
 
@@ -25,7 +28,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     revision = subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()
-    original = subprocess.check_output(['git', 'show', revision + ':' + SOURCE], cwd=ROOT, text=True)
+    original = read_rtl_source(revision + ':' + SOURCE, cwd=ROOT, text=True)
     candidate = (ROOT / SOURCE).read_text()
     ref_fixed = original[original.index('  input logic clk,'):original.index('  // 八个八位部分')]
     cur_fixed = candidate[candidate.index('  input logic clk,'):candidate.index('  // 高字节产生进位时')]

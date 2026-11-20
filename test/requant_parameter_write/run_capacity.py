@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from scripts.capacity import config, elaboration
@@ -22,7 +25,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/writeback/vec_requant.sv'
     reference = out / 'reference_vec_requant.sv'
-    reference.write_bytes(subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT))
+    reference.write_bytes(read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT))
     values = config.selected_config(ROOT / 'config/npu_fpga.mk')
     source_files = elaboration.source_files
     runs = {}
@@ -40,7 +43,7 @@ def main():
                            'ws_parameter_bits': state['register_arrays_bits']['requant_ws_parameters'],
                            'buffer_arrays_bits': state['buffer_arrays_bits'],
                            'register_arrays_bits': state['register_arrays_bits'],
-                           'regfile_instances': state['module_instances']['REGFILE']}
+                           'regfile_instances': state['module_instances']['regfile']}
             assert report['passed']
     finally:
         elaboration.source_files = source_files

@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -149,7 +153,7 @@ def main():
         source = {}
         manifest['source_sha256'][label] = {}
         for name in SOURCES:
-            data = subprocess.check_output(['git', 'show', f'{args.reference}:{name}'], cwd=ROOT) \
+            data = read_rtl_source(f'{args.reference}:{name}', cwd=ROOT) \
                 if label == 'reference' else (ROOT / name).read_bytes()
             source[name] = data.decode()
             manifest['source_sha256'][label][name] = digest(data)

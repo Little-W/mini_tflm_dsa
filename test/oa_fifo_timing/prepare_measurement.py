@@ -7,6 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -24,7 +28,7 @@ def main():
         sources = [HERE / 'oa_fifo_timing_top.sv']
         for relative in ('rtl/npu/writeback/oa_writer.sv', 'rtl/npu/writeback/vec_s8_to_fifo.sv'):
             path = out / (label + '_' + Path(relative).name)
-            content = subprocess.check_output(['git', 'show', args.reference + ':' + relative], cwd=ROOT) \
+            content = read_rtl_source(args.reference + ':' + relative, cwd=ROOT) \
                 if label == 'reference' else (ROOT / relative).read_bytes()
             path.write_bytes(content)
             sources.append(path)

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/loaders/kernel_loader.sv')
 DEPENDENCIES = [Path('rtl/npu/loaders/kernel_loader_ctrl.sv'),
@@ -70,7 +73,7 @@ def main():
     current = out/'current.sv'
     reference = out/'reference.sv'
     current.write_bytes((ROOT/SOURCE).read_bytes())
-    reference.write_bytes(subprocess.check_output(['git', 'show', f'{args.reference_rev}:{SOURCE}'], cwd=ROOT))
+    reference.write_bytes(read_rtl_source(f'{args.reference_rev}:{SOURCE}', cwd=ROOT))
     equal_proof = out/'equal_proof.sv'
     burst_proof = out/'burst_proof.sv'
     equal_proof.write_text(EQUAL_PROOF)

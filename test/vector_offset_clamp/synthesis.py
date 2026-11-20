@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/conv/vector_engine.sv"
 sys.path.insert(0, str(ROOT / "scripts/fpga"))
@@ -35,7 +38,7 @@ def main():
     for label in ("reference", "current"):
         folder = out / label
         folder.mkdir(exist_ok=True)
-        source = (subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+        source = (read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
                   if label == "reference" else (ROOT / SOURCE).read_text())
         declarations, arithmetic, result = extract(source)
         design = folder / "offset_clamp.sv"

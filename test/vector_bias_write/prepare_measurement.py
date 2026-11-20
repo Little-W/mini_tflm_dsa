@@ -7,6 +7,10 @@ from pathlib import Path
 import subprocess
 
 from run_formal import fragment
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -19,7 +23,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/conv/vector_engine.sv'
-    reference = subprocess.check_output(['git','show',args.reference_rev + ':' + relative],cwd=ROOT,text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
     candidate = (ROOT / relative).read_text()
     dependencies = ['conv_im2col_pkg.sv','vector_engine_pkg.sv','vector_config_check.sv',
                     'vector_writeback.sv','vector_round_shift.sv','vector_scalar_multiplier.sv',
@@ -43,7 +47,7 @@ def main():
                 'reference_sha256':hashlib.sha256(reference.encode()).hexdigest(),
                 'source_sha256':hashlib.sha256(candidate.encode()).hexdigest(),
                 'dependencies_sha256':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()
-                                       for p in dependencies + [ROOT/'rtl/common/REGFILE.v']}}
+                                       for p in dependencies + [ROOT/'rtl/common/regfile.v']}}
     (out / 'input_manifest.json').write_text(json.dumps(manifest,indent=2) + '\n')
     print(json.dumps(manifest))
 

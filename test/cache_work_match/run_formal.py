@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE=Path('rtl/npu/dma/cache/conv_read_cache.sv')
 DECLARATION='  logic work_word_matches_q, demand_word_matches_q;\n'
@@ -26,7 +29,7 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     current=(ROOT/SOURCE).read_text()
-    original=subprocess.check_output(['git','show',args.reference+':'+str(SOURCE)],cwd=ROOT,text=True)
+    original=read_rtl_source(args.reference+':'+str(SOURCE), cwd=ROOT, text=True)
     normalized=current.replace(DECLARATION,'',1).replace(UPDATE,'',1).replace(
         '      work_word_matches_q;','      lookup_snapshot_word == work_request.address[31:2];',1).replace(
         '      demand_word_matches_q;', '      lookup_snapshot_word == demand_addr[31:2];', 1)

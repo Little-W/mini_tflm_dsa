@@ -62,11 +62,11 @@ python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
 
 ## 原语与公共存储模块
 
-各测量项自动包含 `rtl/common/` 下的 `.v` 和 `.sv` 文件，供 REGFILE 等公共模块使用。
+各测量项自动包含 `rtl/common/` 下的 `.v` 和 `.sv` 文件，供 regfile 等公共模块使用。
 
 显式实例化的 `LUT1`、`LUT6_2`、`DSP48E1` 等原语，从所安装 Yosys 的 `cells_sim.v` 和 `cells_xtra.v` 读取完整参数与功能定义。展开阶段保留原语实例及参数，后续由 Xilinx 综合流程处理。生成的 `xilinx_primitives.sv`、所选原语名称和工具库的 SHA-256 随测量结果保存。功能仿真可直接使用相同版本的原始 Xilinx 功能模型。
 
-存储器使用 RTL 描述的容量、读写端口和读取周期进行自动推断。综合脚本不增加强制 BRAM 属性。小型存储器使用公共 REGFILE 封装时，最终采用寄存器、分布式 RAM 或块 RAM 由综合工具决定。
+存储器使用 RTL 描述的容量、读写端口和读取周期进行自动推断。综合脚本不增加强制 BRAM 属性。小型存储器使用公共 regfile 封装时，最终采用寄存器、分布式 RAM 或块 RAM 由综合工具决定。
 
 ## 阶段文件与继续执行
 

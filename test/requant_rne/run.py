@@ -29,7 +29,7 @@ cmd = [a.verilator, '--cc', '--exe', '--build', '-j', '1', '-Wno-fatal',
        '--top-module', 'tb_requant_rne', '--Mdir', str(out/'obj'),
        str(root/'rtl/npu/writeback/vec_requant.sv'),
        str(root/'rtl/npu/conv/vector_scalar_multiplier.sv'),
-       str(root/'rtl/common/REGFILE.v'),
+       str(root/'rtl/common/regfile.v'),
        str(root/'rtl/npu/writeback/vec_requant_s64.sv'),
        str(here/'tb_requant_rne.sv'), *primitive_options, str(here/'main.cpp')]
 with (out/'build.log').open('w') as stream:

@@ -12,6 +12,9 @@ import sys
 
 from extract_fault import ROOT, TOP, INPUTS, INPUT_BITS, region, abort_expression, module_source
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 VENDOR_MODEL = Path(__file__).resolve().parent / 'vendor/LUT6_2.v'
 VENDOR_URL = 'https://raw.githubusercontent.com/Xilinx/XilinxUnisimLibrary/master/verilog/src/unisims/LUT6_2.v'
 VENDOR_SHA256 = '07befa8fba9a87fe7f06d317e652dd34fbfa723fa7d68907001dcc71435f8f39'
@@ -34,7 +37,7 @@ def main():
     if digest(VENDOR_MODEL) != VENDOR_SHA256:
         raise RuntimeError('The saved Xilinx LUT6_2 model differs from its recorded SHA256')
     sources = {
-        'reference': subprocess.check_output(['git', 'show', f'{args.reference}:{TOP}'], cwd=ROOT, text=True),
+        'reference': read_rtl_source(f'{args.reference}:{TOP}', cwd=ROOT, text=True),
         'current': (ROOT / TOP).read_text(),
     }
     source_hash = digest(ROOT / TOP)

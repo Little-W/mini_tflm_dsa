@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 import runpy
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -53,8 +57,7 @@ def main():
     source = (ROOT / SOURCE).read_text()
     source_sha256 = digest(ROOT / SOURCE)
     formal = load(build / 'formal/summary.json')
-    reference = subprocess.check_output(
-        ['git', 'show', formal['reference_commit'] + ':' + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(formal['reference_commit'] + ':' + SOURCE, cwd=ROOT, text=True)
     helpers = runpy.run_path(str(Path(__file__).with_name('run_formal.py')))
     assert source.replace(helpers['section'](source), helpers['section'](reference), 1) == reference
     assert formal['passed'] and formal['source_sha256'] == source_sha256

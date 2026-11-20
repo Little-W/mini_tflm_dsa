@@ -13,7 +13,7 @@ SOURCE_PATHS = (
     'rtl/npu/loaders/kernel_loader.sv',
     'rtl/npu/loaders/kernel_loader_ctrl.sv',
     'rtl/npu/loaders/kernel_loader_buffer.sv',
-    'rtl/common/REGFILE.v',
+    'rtl/common/regfile.v',
     'rtl/common/add_equal.sv',
     'rtl/common/add3_equal.sv',
 )

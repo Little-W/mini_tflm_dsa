@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 PREDICATES = {
@@ -27,7 +30,7 @@ def main():
     import pyosys
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    old = subprocess.check_output(["git", "show", args.reference_ref + ":" + SOURCE], cwd=ROOT, text=True)
+    old = read_rtl_source(args.reference_ref + ":" + SOURCE, cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
     old_start = old.index("  function automatic logic is_power_two(")
     end_marker = "  function automatic logic [4:0] power_shift("

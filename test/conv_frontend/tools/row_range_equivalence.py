@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / 'rtl/npu/conv/conv_im2col_frontend.sv'
 
@@ -84,8 +87,8 @@ endmodule
               'inputs_constrained': False, 'scope': 'all tile_p0, tile_rows and position_count encodings',
               'configurations': cases}
     if args.measure:
-        original = subprocess.check_output(['git', 'show', args.reference_ref +
-            ':rtl/npu/conv/conv_im2col_frontend.sv'], cwd=ROOT, text=True)
+        original = read_rtl_source(args.reference_ref +
+            ':rtl/npu/conv/conv_im2col_frontend.sv', cwd=ROOT, text=True)
         condition = re.search(r"\(\{1'b0,tile_p0\}\+33'\(tile_rows\)\s*>\s*\{1'b0,position_count\}\)", original)
         if condition is None:
             raise ValueError('reference range comparison missing')

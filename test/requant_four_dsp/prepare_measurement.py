@@ -7,6 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -22,7 +26,7 @@ def main() -> None:
     multiplier_sources = {}
     for name in ('reference', 'candidate'):
         source = out / (name + '_multiplier.sv')
-        content = (subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT)
+        content = (read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT)
                    if name == 'reference' else (ROOT / relative).read_bytes())
         source.write_bytes(content)
         multiplier_sources[name] = source
@@ -43,7 +47,7 @@ def main() -> None:
             'configuration': 'Complete production quantization with every public output retained',
         }
     (out / 'cases.json').write_text(json.dumps(cases, indent=2) + '\n')
-    paths = [*multiplier_sources.values(), quant, ROOT / 'rtl/common/REGFILE.v']
+    paths = [*multiplier_sources.values(), quant, ROOT / 'rtl/common/regfile.v']
     manifest = {'reference_revision': args.reference_rev,
                 'source_sha256': {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}}
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

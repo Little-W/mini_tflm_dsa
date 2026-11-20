@@ -7,6 +7,10 @@ from pathlib import Path
 import re
 import runpy
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/dma/axi_dual_block_dma.sv'
@@ -79,7 +83,7 @@ def main():
         record[label]={'source_sha256':hashlib.sha256(text.encode()).hexdigest(),
                        'model_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
     for name in SUPPORT:
-        expected=subprocess.check_output(['git','show',a.reference+':'+name],cwd=ROOT)
+        expected=read_rtl_source(a.reference+':'+name, cwd=ROOT)
         assert expected==(ROOT/name).read_bytes(), name
     (out/'cases.json').write_text(json.dumps(cases,indent=2)+'\n')
     (out/'source.json').write_text(json.dumps({'reference_commit':a.reference,'cases':record,

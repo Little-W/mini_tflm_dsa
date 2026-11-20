@@ -94,7 +94,7 @@ def main() -> int:
 
     buffer_dir = out / 'kernel_buffer'
     buffer_rtl = repo / 'rtl/npu/loaders/kernel_loader_buffer.sv'
-    regfile_rtl = repo / 'rtl/common/REGFILE.v'
+    regfile_rtl = repo / 'rtl/common/regfile.v'
     buffer_tb = Path(__file__).resolve().with_name('tb_kernel_prefetch.sv')
     buffer_command = [args.verilator, '--binary', '--timing', '--assert', '-sv',
         '--top-module', 'tb_kernel_prefetch', '-Wno-fatal', '--Mdir', buffer_dir/'obj',

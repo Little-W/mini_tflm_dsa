@@ -11,6 +11,9 @@ import sys
 
 from stream_boundary_equivalence import normalize_stream_source, START as STREAM_START
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = 'rtl/npu/conv/conv_im2col_frontend.sv'
 
@@ -27,8 +30,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'],
-                                        cwd=ROOT, text=True)
+    reference = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     updates = re.findall(r'next_group_q\s*<=\s*([^;]+);', current)
     if len(updates) != 3:
         raise ValueError('The reset, configuration and descriptor assignments are required')

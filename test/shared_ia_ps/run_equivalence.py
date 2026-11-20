@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/buffers/ia_ps_shared_ram.sv')
@@ -22,9 +26,9 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = out/'ia_ps_shared_ram_ref.sv'
-    original = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT, text=True)
+    original = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT, text=True)
     reference.write_text(original.replace('module ia_ps_shared_ram #(', 'module ia_ps_shared_ram_ref #(', 1))
-    sources = [ROOT/SOURCE, ROOT/'rtl/common/REGFILE.v', Path(__file__).with_name('tb_equivalence.sv')]
+    sources = [ROOT/SOURCE, ROOT/'rtl/common/regfile.v', Path(__file__).with_name('tb_equivalence.sv')]
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     primitive_hash = None
     primitive_sources = []

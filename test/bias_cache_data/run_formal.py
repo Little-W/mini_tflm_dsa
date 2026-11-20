@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/loaders/bias_loader_buffer.sv')
 
@@ -97,7 +100,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT, text=True)
+    reference = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT, text=True)
     c_start, c_end, _ = cache_update(current)
     r_start, r_end, _ = cache_update(reference)
     current_control = current[:c_start] + current[c_end:]
@@ -111,7 +114,7 @@ def main():
     observer.write_text(controller_observer(current))
     next_state = out / 'next_state.sv'
     next_state.write_text(next_state_module(reference, current))
-    memory = ROOT / 'rtl/common/REGFILE.v'
+    memory = ROOT / 'rtl/common/regfile.v'
     report = {'passed': False, 'reference_ref': args.reference,
               'source_sha256': digest(ROOT / SOURCE), 'memory_sha256': digest(memory),
               'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),

@@ -6,6 +6,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/dma/axi_linear_block_dma.sv'
@@ -20,8 +24,7 @@ parser.add_argument('--out', type=Path, default=ROOT / 'test/dma_first_address/m
 args = parser.parse_args()
 REFERENCE = args.reference
 CURRENT_HASH = hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest()
-REFERENCE_HASH = hashlib.sha256(subprocess.check_output(
-    ['git', 'show', REFERENCE + ':' + SOURCE], cwd=ROOT)).hexdigest()
+REFERENCE_HASH = hashlib.sha256(read_rtl_source(REFERENCE + ':' + SOURCE, cwd=ROOT)).hexdigest()
 FINAL = args.results.resolve()
 CURRENT_MAP = (args.current_map or FINAL).resolve()
 REFERENCE_MAP = (args.reference_map or FINAL).resolve()
@@ -38,8 +41,7 @@ def sha(path):
 
 
 assert sha(ROOT / SOURCE) == CURRENT_HASH
-assert hashlib.sha256(subprocess.check_output(
-    ['git', 'show', REFERENCE + ':' + SOURCE], cwd=ROOT)).hexdigest() == REFERENCE_HASH
+assert hashlib.sha256(read_rtl_source(REFERENCE + ':' + SOURCE, cwd=ROOT)).hexdigest() == REFERENCE_HASH
 
 formal = []
 for name in ['formal_fpga', 'formal_generic']:

@@ -10,7 +10,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [ROOT / 'rtl/npu/ps_compact/ps_frame_store.sv',
-           ROOT / 'rtl/common/REGFILE.v', ROOT / 'test/ps_raw_store/capacity.sv']
+           ROOT / 'rtl/common/regfile.v', ROOT / 'test/ps_raw_store/capacity.sv']
 PROFILES = [(1, 1, 1), (1, 2, 2), (4, 4, 3), (10, 8, 3), (14, 10, 4),
             (12, 10, 4), (16, 12, 4), (8, 12, 5), (31, 10, 4),
             (32, 10, 4), (14, 30, 4), (34, 12, 4)]

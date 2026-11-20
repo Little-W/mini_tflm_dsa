@@ -8,6 +8,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -33,9 +37,7 @@ def main() -> None:
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = args.source.resolve()
-    old = subprocess.check_output(
-        ['git', 'show', args.reference_rev + ':rtl/npu/conv/vector_scalar_multiplier.sv'],
-        cwd=ROOT, text=True)
+    old = read_rtl_source(args.reference_rev + ':rtl/npu/conv/vector_scalar_multiplier.sv', cwd=ROOT, text=True)
     module_names = re.findall(r'^module\s+(\w+)', old, re.MULTILINE)
     reference = out / 'reference.sv'
     reference.write_text(re.sub(r'\b(' + '|'.join(map(re.escape, module_names)) + r')\b',

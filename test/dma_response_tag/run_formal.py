@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/dma/axi_dual_block_dma.sv'
 
@@ -40,7 +43,7 @@ def unit(source, label):
 
 def read_sources(reference):
     current = (ROOT / SOURCE).read_text()
-    original = subprocess.check_output(['git', 'show', reference+':'+SOURCE], cwd=ROOT, text=True)
+    original = read_rtl_source(reference+':'+SOURCE, cwd=ROOT, text=True)
     restored = current.replace(parameter(current), '', 1).replace(tag_body(current), tag_body(original), 1)
     assert restored == original, '返回标签选择之外的内容有变化'
     return original, current

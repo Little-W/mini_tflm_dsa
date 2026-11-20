@@ -10,6 +10,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 TEST_ROOT = HERE.parent
@@ -106,7 +109,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    content = subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT, text=True)
+    content = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     reference = out / 'reference_frontend.sv'
     reference.write_text(content.replace('module conv_im2col_frontend', 'module reference_conv_im2col_frontend', 1))
     common = runpy.run_path(str(HERE / 'run_rtl.py'))['FILES']

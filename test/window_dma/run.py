@@ -6,8 +6,11 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "test"))
+from rtl_reference import read_rtl_source
 HERE=Path(__file__).resolve().parent
 
 def command(args,log):
@@ -96,13 +99,14 @@ def main():
             relative=source.relative_to(ROOT)
             if relative.parts[0]=='rtl':
                 revision_file=f'{args.reference_ref}:{relative}'
-                content=subprocess.run(['git','show',revision_file],cwd=ROOT,capture_output=True)
-                if content.returncode:
-                    if source.name=='REGFILE.v':
+                try:
+                    content=read_rtl_source(revision_file,cwd=ROOT)
+                except subprocess.CalledProcessError:
+                    if source.name=='regfile.v':
                         continue
-                    raise RuntimeError(content.stderr.decode())
+                    raise
                 target=reference/'sources'/relative;target.parent.mkdir(parents=True,exist_ok=True)
-                target.write_bytes(content.stdout);reference_sources.append(target)
+                target.write_bytes(content);reference_sources.append(target)
             else:
                 reference_sources.append(source)
         previous,previous_trace=verify(args.reference_ref,reference_sources,reference)

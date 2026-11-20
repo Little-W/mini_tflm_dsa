@@ -9,6 +9,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 PARAMETERS = ("DATA_WIDTH", "SIZE", "BUS_WIDTH", "REG_WIDTH", "COUNT_WIDTH",
               "CACHE_BLOCKS", "COMPACT_S8", "EXTERNAL_RAM", "ORDERED_JOB",
@@ -81,8 +84,8 @@ def main():
     checked_path.write_text(current.replace("\nendmodule", "\n".join(suffix) + "\nendmodule", 1))
     reference_paths = []
     for module in ("ia_loader_cache_mgr", "ia_loader_ctrl", "ia_loader"):
-        original = subprocess.check_output(["git", "show", args.reference_rev +
-                                            ":rtl/npu/loaders/" + module + ".sv"], cwd=ROOT, text=True)
+        original = read_rtl_source(args.reference_rev +
+                                            ":rtl/npu/loaders/" + module + ".sv", cwd=ROOT, text=True)
         original = re.sub(r"\bia_loader_ctrl\b", "ia_loader_ctrl_reference", original)
         original = re.sub(r"\bia_loader_cache_mgr\b", "ia_loader_cache_mgr_reference", original)
         original = re.sub(r"\bia_loader\b", "ia_loader_reference", original)

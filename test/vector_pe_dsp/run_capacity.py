@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from scripts.capacity import config, elaboration
@@ -22,7 +25,7 @@ def main():
     out.mkdir(parents=True,exist_ok=True)
     relative = 'rtl/npu/conv/vector_engine.sv'
     reference = out/'reference_vector_engine.sv'
-    reference.write_bytes(subprocess.check_output(['git','show',args.reference_rev+':'+relative],cwd=ROOT))
+    reference.write_bytes(read_rtl_source(args.reference_rev+':'+relative, cwd=ROOT))
     values = config.selected_config(ROOT/'config/npu_fpga.mk')
     original_files = elaboration.source_files
     runs = {}

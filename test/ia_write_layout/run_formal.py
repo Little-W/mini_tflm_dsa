@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/loaders/ia_loader_cache_mgr.sv'
 
@@ -19,10 +22,10 @@ def main():
     parser.add_argument('--reference-ref',default='05be5b8')
     args=parser.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    original=subprocess.check_output(['git','show',args.reference_ref+':'+SOURCE],cwd=ROOT,text=True)
+    original=read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT, text=True)
     reference=out/'reference.sv';reference.write_text(original)
     current=ROOT/SOURCE
-    memories=[ROOT/'rtl/common/REGFILE.v',ROOT/'rtl/common/pseudo_dual_port_ram.v']
+    memories=[ROOT/'rtl/common/regfile.v',ROOT/'rtl/common/pseudo_dual_port_ram.v']
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in [current,*memories]}
     summary={'passed':False,'reference_ref':args.reference_ref,'source_sha256':hashes,
              'inputs_constrained':False,

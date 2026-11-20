@@ -7,6 +7,10 @@ from pathlib import Path
 import subprocess
 
 from run_formal import ROOT, TOP, BUFFER, index_block, group_start, prepare_buffer
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def main():
@@ -17,8 +21,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     buffer = (ROOT / BUFFER).read_text()
-    reference = subprocess.check_output(['git', 'show', f'{args.reference_rev}:{TOP}'],
-                                        cwd=ROOT, text=True)
+    reference = read_rtl_source(f'{args.reference_rev}:{TOP}', cwd=ROOT, text=True)
     current = (ROOT / TOP).read_text()
     cases = {}
     manifest = {'source_sha256': {str(p): hashlib.sha256((ROOT / p).read_bytes()).hexdigest()

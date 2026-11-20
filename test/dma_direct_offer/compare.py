@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/dma/axi_dual_block_dma.sv")
@@ -79,7 +83,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original = subprocess.check_output(["git", "show", f"{args.reference_ref}:{SOURCE}"], cwd=ROOT, text=True)
+    original = read_rtl_source(f"{args.reference_ref}:{SOURCE}", cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
     reference = out / "reference_dual.sv"
     reference.write_text(original.replace("module axi_dual_block_dma", "module reference_axi_dual_block_dma", 1))

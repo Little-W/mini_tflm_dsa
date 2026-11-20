@@ -8,6 +8,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/dma/conv_window_queue.sv')
 OLD = '  assign frontend_valid=enable && !configure && !failed && !frontend_error &&\n'
@@ -23,7 +26,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve(); out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    original = subprocess.check_output(['git', 'show', args.reference + ':' + str(SOURCE)], cwd=ROOT, text=True)
+    original = read_rtl_source(args.reference + ':' + str(SOURCE), cwd=ROOT, text=True)
     assert current.count(NEW) == 1 and current.replace(NEW, OLD, 1) == original
     observation = '''
   logic observed_reset = 1'b0;

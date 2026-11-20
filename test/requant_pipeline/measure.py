@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -31,8 +34,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = out / "reference.sv"
-    reference.write_bytes(subprocess.check_output(
-        ["git", "show", args.reference_rev + ":rtl/npu/writeback/vec_requant.sv"], cwd=ROOT))
+    reference.write_bytes(read_rtl_source(args.reference_rev + ":rtl/npu/writeback/vec_requant.sv", cwd=ROOT))
     snapshot = out / "current.sv"
     snapshot.write_bytes((ROOT / "rtl/npu/writeback/vec_requant.sv").read_bytes())
     sources = {"reference": reference, "current": snapshot}
@@ -58,7 +60,7 @@ def main():
         mapped = folder / "mapped.json"
         script = folder / "run.ys"
         primitive_options = ""
-        design_sources = [source, ROOT / 'rtl/common/REGFILE.v',
+        design_sources = [source, ROOT / 'rtl/common/regfile.v',
                           ROOT / 'rtl/npu/conv/vector_scalar_multiplier.sv']
         if "primitive_models" in tools:
             primitive_options, primitive_manifest = tools["primitive_models"](

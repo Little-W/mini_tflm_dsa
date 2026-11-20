@@ -224,7 +224,7 @@ module kernel_loader_buffer #(
     assign discard_ready = weight_data_valid;
 
     for (genvar column = 0; column < SIZE; column++) begin : g_column_ram
-        REGFILE #(
+        regfile #(
             .p_data_width(DATA_WIDTH),
             .p_depth(p_depth),
             .p_addr_width(p_addr_width),

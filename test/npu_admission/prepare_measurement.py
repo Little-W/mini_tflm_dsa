@@ -6,6 +6,10 @@ from pathlib import Path
 import subprocess
 
 from run_formal import ROOT, TOP, FLAGS, admission, digest
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def main():
@@ -18,7 +22,7 @@ def main():
     cases = {}
     for label in ('reference', 'current'):
         source = ((ROOT/TOP).read_text() if label == 'current' else
-                  subprocess.check_output(['git','show',f'{args.reference_rev}:{TOP}'],cwd=ROOT,text=True))
+                  read_rtl_source(f'{args.reference_rev}:{TOP}', cwd=ROOT, text=True))
         path = out / (label + '.sv')
         connections = ','.join('.'+name+f'(flags_q[{i}])' for i,name in enumerate(FLAGS))
         wrapper = '''module admission_measure(input logic clk,

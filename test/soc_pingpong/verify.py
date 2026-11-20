@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/soc/soc_axi_pingpong_buffer.sv")
 WIDTHS = (1, 2, 34, 35, 36, 54, 64, 67, 73)
@@ -25,7 +28,7 @@ def main():
 
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    reference = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT)
     current = (ROOT / SOURCE).read_bytes()
     suffix = "module soc_axil_pingpong_buffer"
     # 通道外的 AXI 数据打包、字段宽度及实例连接全部保持一致。

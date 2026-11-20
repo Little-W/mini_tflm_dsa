@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = 'rtl/npu/conv/conv_im2col_frontend.sv'
 POSITION_NOTE = '  // 位置解码使用已接受的描述符，快速请求的资格条件保证输入位置与保存位置相同。\n'
@@ -96,8 +99,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference_ref + ':' + SOURCE],
-                                        cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_ref + ':' + SOURCE, cwd=ROOT, text=True)
     if expression(current, 'p_decode') != 'p0' or block(normalize_position_source(current)) != block(reference):
         raise ValueError('Additional changes in position decoding require verification')
     for name in ('incoming_fast', 'incoming_context', 'request_output_y'):

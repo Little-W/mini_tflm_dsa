@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/dma/axi_linear_block_dma.sv'
 
@@ -45,7 +48,7 @@ def main():
     if args.fpga and args.asic:
         parser.error('--fpga and --asic select separate hardware implementations')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    original=subprocess.check_output(['git','show',args.reference_ref+':'+SOURCE],cwd=ROOT,text=True)
+    original=read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT, text=True)
     current=ROOT/SOURCE
     reference=out/'reference.sv'
     candidate=out/'current.sv'
@@ -54,8 +57,8 @@ def main():
                          if args.observe_context_storage else current.read_text())
     structure_compare = args.observe_context_storage and (
         ('u_context_storage (' in original) != ('u_context_storage (' in current.read_text()))
-    common=ROOT/'rtl/common/REGFILE.v'
-    common_snapshot=out/'REGFILE.v';common_snapshot.write_bytes(common.read_bytes())
+    common=ROOT/'rtl/common/regfile.v'
+    common_snapshot=out/'regfile.v';common_snapshot.write_bytes(common.read_bytes())
     comparator=ROOT/'rtl/common/add_equal.sv'
     comparator_snapshot=out/'add_equal.sv';comparator_snapshot.write_bytes(comparator.read_bytes())
     dependencies=(current,common,comparator)

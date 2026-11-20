@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/ps_compact/ps_frame_store.sv')
 
@@ -21,7 +24,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_bytes()
-    reference = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT)
+    reference = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT)
     reference_source = out / 'reference.sv'
     reference_source.write_bytes(reference)
     cases = {}

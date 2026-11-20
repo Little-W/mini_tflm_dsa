@@ -16,7 +16,7 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    sources=[ROOT/'rtl/npu/buffers/ia_ps_shared_ram.sv',ROOT/'rtl/common/REGFILE.v']
+    sources=[ROOT/'rtl/npu/buffers/ia_ps_shared_ram.sv',ROOT/'rtl/common/regfile.v']
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     summary={'passed':False,'source_sha256':hashes,'profiles':[]}
     for size in (2048,4096,8192):

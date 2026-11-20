@@ -52,7 +52,7 @@
 ../../rtl/npu/buffers/ps_buffer.sv
 ../../rtl/npu/buffers/ps_buffer_fifo.sv
 ../../rtl/common/pseudo_dual_port_ram.v
-../../rtl/common/REGFILE.v
+../../rtl/common/regfile.v
 ../../rtl/common/add_equal.sv
 ../../rtl/common/add3_equal.sv
 ../../rtl/common/onehot_check.sv

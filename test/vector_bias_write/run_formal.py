@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""使用实际偏置存储和 REGFILE 源码证明所有状态转移相同。"""
+"""使用实际偏置存储和 regfile 源码证明所有状态转移相同。"""
 import argparse
 import hashlib
 import json
@@ -8,6 +8,9 @@ import re
 import shlex
 import subprocess
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -63,10 +66,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/conv/vector_engine.sv'
     candidate = (ROOT / relative).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
     unchanged = unchanged_logic(candidate) == unchanged_logic(reference)
     assert unchanged, 'Source differs outside the proved bias storage.'
-    regfile = ROOT / 'rtl/common/REGFILE.v'
+    regfile = ROOT / 'rtl/common/regfile.v'
     summary = {'reference_rev': args.reference_rev,
                'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
                'source_sha256': hashlib.sha256(candidate.encode()).hexdigest(),

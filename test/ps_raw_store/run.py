@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def digest(path):
@@ -23,12 +27,11 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     sources = [root/'test/ps_raw_store/tb.sv', root/'test/ps_raw_store/main.cpp',
-               root/'rtl/npu/ps_compact/ps_frame_store.sv', root/'rtl/common/REGFILE.v']
+               root/'rtl/npu/ps_compact/ps_frame_store.sv', root/'rtl/common/regfile.v']
     hashes = {str(p.relative_to(root)): digest(p) for p in sources}
     reference_hash = None
     if args.reference:
-        original = subprocess.check_output(['git', 'show',
-            f'{args.reference}:rtl/npu/ps_compact/ps_frame_store.sv'], cwd=root, text=True)
+        original = read_rtl_source(f'{args.reference}:rtl/npu/ps_compact/ps_frame_store.sv', cwd=root, text=True)
         reference = out/'ps_frame_store_ref.sv'
         reference.write_text(original.replace('ps_frame_store', 'ps_frame_store_ref').replace(
             'ps_raw_address', 'ps_raw_address_ref'))

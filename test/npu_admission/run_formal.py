@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 TOP = Path('rtl/npu/top/npu_top.sv')
 ADDRESS = Path('rtl/npu/top/frame_address_prepare.sv')
@@ -49,8 +52,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     sources = (TOP, ADDRESS, SCHEDULER, HELPER)
     hashes = {str(p): digest(ROOT / p) for p in sources}
-    old = {p: subprocess.check_output(['git', 'show', f'{args.reference_rev}:{p}'],
-                                    cwd=ROOT, text=True) for p in (TOP, ADDRESS)}
+    old = {p: read_rtl_source(f'{args.reference_rev}:{p}', cwd=ROOT, text=True) for p in (TOP, ADDRESS)}
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
     model = out / 'models.sv'

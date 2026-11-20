@@ -7,6 +7,9 @@ from pathlib import Path
 import shlex
 import subprocess
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 ROOT=Path(__file__).resolve().parents[2]
 
 
@@ -16,9 +19,9 @@ def main():
     parser.add_argument('--reference-ref')
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     name='rtl/npu/loaders/ia_loader_cache_mgr.sv'
-    data=subprocess.check_output(['git','show',args.reference_ref+':'+name],cwd=ROOT) if args.reference_ref else (ROOT/name).read_bytes()
+    data=read_rtl_source(args.reference_ref+':'+name, cwd=ROOT) if args.reference_ref else (ROOT/name).read_bytes()
     source=out/'source.sv';source.write_bytes(data)
-    sources=[source,ROOT/"rtl/common/REGFILE.v",ROOT/"rtl/common/pseudo_dual_port_ram.v"]
+    sources=[source,ROOT/"rtl/common/regfile.v",ROOT/"rtl/common/pseudo_dual_port_ram.v"]
     top='ia_loader_cache_mgr';pre=out/'pre_lut.il';mapped=out/'mapped.json';script=out/'run.ys'
     script.write_text(f'read_slang --top {top} -GSIZE=16 -GBUS_WIDTH=64 -GDATA_WIDTH=16 -GCACHE_BLOCKS=32 -GEXTERNAL_RAM=1 -GRAM_WORD_ADDR_WIDTH=12 '+
                      ' '.join(shlex.quote(str(p)) for p in sources)+'\n'+

@@ -31,7 +31,7 @@ module vector_quant_params #(
     logic [37:0] bank_read_data [0:p_banks-1];
     logic [37:0] read_data;
 
-    // 每拍各数据字具有连续的逻辑地址，取余分组保证每个 REGFILE 至多写入一次。
+    // 每拍各数据字具有连续的逻辑地址，取余分组保证每个 regfile 至多写入一次。
     for (genvar word_index = 0; word_index < p_banks; word_index++) begin : g_write_word
         logic [5:0] right_shift;
         assign write_index[word_index] = (p_word_index_width'(i_wr_byte_index) >> 2) +
@@ -69,7 +69,7 @@ module vector_quant_params #(
         assign regfile_i_wr_mask = {{6{i_wr_shift}}, {32{i_wr_multiplier}}};
         assign regfile_i_rd_en = 1'b1;
         assign regfile_i_rd_addr[0] = p_row_width'(i_rd_index / p_banks);
-        REGFILE #(
+        regfile #(
             .p_data_width(38),
             .p_depth(p_rows),
             .p_addr_width(p_row_width),

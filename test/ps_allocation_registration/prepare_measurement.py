@@ -7,6 +7,10 @@ from pathlib import Path
 import subprocess
 
 from run_formal import ROOT, TOP, LIMITS, allocation_module
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def main():
@@ -20,8 +24,7 @@ def main():
     manifest = {'source_sha256': {str(path): hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
                                   for path in (TOP, LIMITS)}, 'snapshots': {}}
     for label in ('reference', 'current'):
-        source = (subprocess.check_output(['git', 'show', f'{args.reference_rev}:{TOP}'],
-                                         cwd=ROOT, text=True)
+        source = (read_rtl_source(f'{args.reference_rev}:{TOP}', cwd=ROOT, text=True)
                   if label == 'reference' else (ROOT / TOP).read_text())
         path = out / (label + '.sv')
         path.write_text(allocation_module(source))

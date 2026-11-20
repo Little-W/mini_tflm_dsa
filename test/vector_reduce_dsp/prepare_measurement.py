@@ -6,6 +6,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -22,8 +25,7 @@ def main():
     reference = out / 'reference'
     reference.mkdir(exist_ok=True)
     for name in ('vector_engine.sv', 'vector_pe.sv'):
-        (reference / name).write_bytes(subprocess.check_output(
-            ['git', 'show', f'{args.reference}:rtl/npu/conv/{name}'], cwd=ROOT))
+        (reference / name).write_bytes(read_rtl_source(f'{args.reference}:rtl/npu/conv/{name}', cwd=ROOT))
     names = ['conv_im2col_pkg.sv', 'vector_engine_pkg.sv', 'vector_config_check.sv',
              'vector_writeback.sv', 'vector_round_shift.sv', 'vector_scalar_multiplier.sv',
              'vector_pe.sv', 'vector_softmax.sv', 'vector_quant_params.sv', 'vector_engine.sv']

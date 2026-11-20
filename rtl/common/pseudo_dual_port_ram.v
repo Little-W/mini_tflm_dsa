@@ -38,7 +38,7 @@ module pseudo_dual_port_ram #(
 `else
     logic [0:0] storage_i_wr_mask;
     assign storage_i_wr_mask = 1'b1;
-    REGFILE #(
+    regfile #(
         .p_data_width(DATA_WIDTH), .p_depth(1 << ADDR_WIDTH), .p_addr_width(ADDR_WIDTH),
         .p_write_unit(DATA_WIDTH), .p_read_ports(1), .p_sync_read(1'b1)
     ) u_storage (

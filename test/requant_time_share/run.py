@@ -17,7 +17,7 @@ def main():
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
     sources=[ROOT/s for s in ['test/requant_time_share/tb.sv','test/requant_time_share/main.cpp',
         'rtl/npu/writeback/vec_requant.sv','rtl/npu/writeback/requant_compute_lane.sv',
-        'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/vector_scalar_multiplier.sv','rtl/common/REGFILE.v']]
+        'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/vector_scalar_multiplier.sv','rtl/common/regfile.v']]
     hashes={str(s.relative_to(ROOT)):sha(s) for s in sources};options=[]
     if a.xilinx:
         import pyosys

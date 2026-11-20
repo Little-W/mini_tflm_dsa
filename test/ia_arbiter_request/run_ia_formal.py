@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'test/ia_request_lut'))
 from models import prepare_models
@@ -67,7 +70,7 @@ def main():
         folder.mkdir(exist_ok=True)
         snapshots[label] = []
         for relative in SOURCES:
-            data = (subprocess.check_output(['git', 'show', f'{args.reference_rev}:{relative}'], cwd=ROOT)
+            data = (read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT)
                     if label == 'reference' else (ROOT / relative).read_bytes())
             path = folder / relative.name
             path.write_bytes(data)

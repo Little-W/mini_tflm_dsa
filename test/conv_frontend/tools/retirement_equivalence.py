@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 BEGIN = "  // 请求先选择输入行，再共用计算；预取的两个阶段各自保留独立结果。\n"
@@ -24,7 +27,7 @@ def main():
     out=args.out.resolve()
     out.mkdir(parents=True,exist_ok=True)
     current=(ROOT/SOURCE).read_text()
-    reference=subprocess.check_output(["git","show",args.reference_ref+":"+SOURCE],cwd=ROOT,text=True)
+    reference=read_rtl_source(args.reference_ref+":"+SOURCE, cwd=ROOT, text=True)
     function=re.search(r"  function automatic logic \[31:0\] window_retirement\(.*?  endfunction\n",reference,re.S).group(0)
     body=current[current.index(BEGIN):current.index(END)]
     normalized=current.replace(body,function)

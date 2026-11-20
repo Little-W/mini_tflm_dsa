@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 REGIONS = {
@@ -69,7 +72,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", args.reference + ":" + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference + ":" + SOURCE, cwd=ROOT, text=True)
     bodies = {label: {kind: extract(text, *bounds) for kind, bounds in REGIONS.items()}
               for label, text in (("reference", reference), ("current", current))}
     restored = current

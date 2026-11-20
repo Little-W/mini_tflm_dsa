@@ -65,7 +65,7 @@ module ia_buffer_wrapper #(
 `else
     logic [DATA_WIDTH/8-1:0] storage_i_wr_mask;
     assign storage_i_wr_mask = wr_mask;
-    REGFILE #(
+    regfile #(
         .p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH), .p_write_unit(8)
     ) u_storage (
         .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/common/add_equal.sv")
 
@@ -24,7 +27,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    reference = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT)
     reference_file = out / "reference_add_equal.sv"
     reference_file.write_text(reference.decode().replace("module add_equal #(", "module reference_add_equal #(", 1))
     import pyosys

@@ -7,6 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -26,7 +30,7 @@ def main() -> None:
         sources = []
         hashes[label] = {}
         for relative in relatives:
-            data = (subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT)
+            data = (read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT)
                     if label == 'reference' else (ROOT / relative).read_bytes())
             path = out / (label + '_' + Path(relative).name)
             path.write_bytes(data)
@@ -40,8 +44,8 @@ def main() -> None:
         }
     (out / 'cases.json').write_text(json.dumps(cases, indent=2) + '\n')
     manifest = {'reference_revision': args.reference_rev, 'sources_sha256': hashes,
-                'dependencies_sha256': {'rtl/common/REGFILE.v': hashlib.sha256(
-                    (ROOT / 'rtl/common/REGFILE.v').read_bytes()).hexdigest()}}
+                'dependencies_sha256': {'rtl/common/regfile.v': hashlib.sha256(
+                    (ROOT / 'rtl/common/regfile.v').read_bytes()).hexdigest()}}
     (out / 'input_manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps(manifest, indent=2))
 

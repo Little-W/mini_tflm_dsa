@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/conv/conv_im2col_frontend.sv")
@@ -30,7 +33,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     start = current.index("  // 各种通道来源并行计算组内范围，接收边沿只选择相应标志。")
     end = current.index("  // 每条通道直接检查字内偏移", start)
     body = current[start:end]

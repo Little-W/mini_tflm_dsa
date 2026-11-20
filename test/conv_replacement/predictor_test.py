@@ -15,6 +15,9 @@ import sys
 
 from geometry_oracle import Current, Geometry, INF, ROOT, predict, relative, sha256
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 
 HERE = Path(__file__).resolve().parent
 CONFIG_FIELDS = ["input_base", "input_h", "input_w", "input_c", "group_c", "group_offset",
@@ -119,8 +122,8 @@ def main():
                ROOT / "rtl/npu/dma/cache/conv_next_use_predictor.sv", HERE / "predictor_tb.sv"]
     if args.reference_ref:
         reference = args.build / "reference_predictor.sv"
-        original = subprocess.check_output(["git", "show", args.reference_ref +
-            ":rtl/npu/dma/cache/conv_next_use_predictor.sv"], cwd=ROOT, text=True)
+        original = read_rtl_source(args.reference_ref +
+            ":rtl/npu/dma/cache/conv_next_use_predictor.sv", cwd=ROOT, text=True)
         reference.write_text(original.replace("module conv_next_use_predictor", "module reference_conv_next_use_predictor"))
         comparison = args.build / "predictor_tb.sv"
         tb = (HERE / "predictor_tb.sv").read_text()

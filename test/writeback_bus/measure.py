@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/writeback/vec_s8_to_fifo.sv")
@@ -25,15 +28,14 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_bytes()
-    reference = subprocess.check_output(
-        ["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT)
     cases = {}
     for name, content in (("reference", reference), ("current", current)):
         source = out / f"{name}.sv"
         source.write_bytes(content)
         cases[name] = {
             "top": "vec_s8_to_fifo_full",
-            "sources": [str(source), "rtl/common/REGFILE.v"],
+            "sources": [str(source), "rtl/common/regfile.v"],
             "options": [f"-GVLEN={args.size}", f"-GBANKS={args.banks}",
                         f"-GBUS_WIDTH={args.bus_width}", "-GENABLE_TRANSPOSE=1"],
             "configuration": f"SIZE={args.size}, BUS_WIDTH={args.bus_width}, BANKS={args.banks}",

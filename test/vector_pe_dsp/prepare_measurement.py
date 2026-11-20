@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -49,7 +53,7 @@ def main():
         selected = []
         for name in ['vector_pe.sv','vector_engine.sv']:
             relative = 'rtl/npu/conv/' + name
-            data = (subprocess.check_output(['git','show',args.reference_rev+':'+relative],cwd=ROOT)
+            data = (read_rtl_source(args.reference_rev+':'+relative, cwd=ROOT)
                     if label == 'reference' else (ROOT/relative).read_bytes())
             path = out/(label+'_'+name)
             path.write_bytes(data)
@@ -63,7 +67,7 @@ def main():
     manifest = {'reference_rev':args.reference_rev,
                 'source_sha256':source_hashes,
                 'dependencies_sha256':{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()
-                                       for p in dependencies+[ROOT/'rtl/common/REGFILE.v']}}
+                                       for p in dependencies+[ROOT/'rtl/common/regfile.v']}}
     (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     print(json.dumps(manifest))
 

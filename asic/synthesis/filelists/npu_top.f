@@ -32,7 +32,7 @@
 +incdir+../../rtl/npu/ps_compact
 
 ../../rtl/common/pseudo_dual_port_ram.v
-../../rtl/common/REGFILE.v
+../../rtl/common/regfile.v
 ../../rtl/common/add_equal.sv
 ../../rtl/common/add3_equal.sv
 ../../rtl/common/onehot_check.sv

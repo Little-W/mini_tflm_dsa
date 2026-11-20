@@ -8,6 +8,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,7 +27,7 @@ def main() -> None:
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     sources = [ROOT/'rtl/npu/writeback/vec_s8_to_fifo.sv',
-               ROOT/'rtl/common/REGFILE.v',
+               ROOT/'rtl/common/regfile.v',
                ROOT/'rtl/npu/writeback/vec_s16_to_fifo.sv',
                Path(__file__).with_name('tb_writeback_bus.sv')]
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -32,8 +36,7 @@ def main() -> None:
     reference_sources = []
     if args.reference:
         for filename in ('vec_s8_to_fifo.sv', 'vec_s16_to_fifo.sv'):
-            original = subprocess.check_output(['git', 'show',
-                f'{args.reference}:rtl/npu/writeback/{filename}'], cwd=ROOT, text=True)
+            original = read_rtl_source(f'{args.reference}:rtl/npu/writeback/{filename}', cwd=ROOT, text=True)
             renamed = original.replace('vec_s8_to_fifo', 'vec_s8_to_fifo_ref').replace(
                 'vec_s16_to_fifo', 'vec_s16_to_fifo_ref').replace('vec_s8_fifo_row_ram', 'vec_s8_fifo_row_ram_ref')
             reference = args.out/(filename.removesuffix('.sv')+'_ref.sv')

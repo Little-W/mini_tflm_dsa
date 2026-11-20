@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/loaders/bias_loader_buffer.sv'
 
@@ -19,7 +22,7 @@ def main():
     parser.add_argument('--reference-ref',default='975ce61')
     args=parser.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    original=subprocess.check_output(['git','show',args.reference_ref+':'+SOURCE],cwd=ROOT,text=True)
+    original=read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT, text=True)
     marker='  logic [CNT_W-1:0]             bank_blocks_count [2];'
     assert marker in original
     observer=marker+'''\n  (* keep *) wire [CNT_W:0] bank_end_q [2];
@@ -28,7 +31,7 @@ def main():
   end
 '''
     reference=out/'reference.sv';reference.write_text(original.replace(marker,observer))
-    current=ROOT/SOURCE;memory=ROOT/'rtl/common/REGFILE.v'
+    current=ROOT/SOURCE;memory=ROOT/'rtl/common/regfile.v'
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,memory)}
     summary={'passed':False,'reference_ref':args.reference_ref,'source_sha256':hashes,
              'inputs_constrained':False,'reference_observer':'combinational sum of the original stored base and count',

@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 import runpy
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "rtl/npu/dma/axi_dual_block_dma.sv"
@@ -24,8 +28,7 @@ def main():
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
     current = SOURCE.read_text()
-    original = subprocess.check_output(["git", "show", f"{args.reference_ref}:{SOURCE.relative_to(ROOT)}"],
-                                       cwd=ROOT, text=True)
+    original = read_rtl_source(f"{args.reference_ref}:{SOURCE.relative_to(ROOT)}", cwd=ROOT, text=True)
     reference = out / "reference_dual.sv"
     reference.write_text(original.replace("module axi_dual_block_dma", "module reference_axi_dual_block_dma", 1))
     instrumented, output_count = helper.comparison_source(current)

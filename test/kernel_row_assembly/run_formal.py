@@ -10,12 +10,15 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/loaders/kernel_loader.sv")
 COMMON = tuple(Path(name) for name in (
     "rtl/npu/loaders/kernel_loader_ctrl.sv",
     "rtl/npu/loaders/kernel_loader_buffer.sv",
-    "rtl/common/REGFILE.v", "rtl/common/add_equal.sv", "rtl/common/add3_equal.sv"))
+    "rtl/common/regfile.v", "rtl/common/add_equal.sv", "rtl/common/add3_equal.sv"))
 ARITHMETIC = ((4, 8, 8), (4, 8, 24), (4, 8, 32), (6, 16, 64),
               (16, 16, 32), (16, 16, 64), (16, 16, 128))
 COMPLETE = ((4, 8, 32, 8), (16, 16, 64, 29))
@@ -56,7 +59,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+    original = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
     reference_parts, current_parts = section(original, False), section(current, True)
     if reference_parts[0] != current_parts[0] or reference_parts[2] != current_parts[2]:

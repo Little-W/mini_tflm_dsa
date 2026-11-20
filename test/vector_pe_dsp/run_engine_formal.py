@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -95,11 +98,11 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True,exist_ok=True)
     relative = 'rtl/npu/conv/vector_engine.sv'
-    reference = subprocess.check_output(['git','show',args.reference_rev+':'+relative],cwd=ROOT,text=True)
+    reference = read_rtl_source(args.reference_rev+':'+relative, cwd=ROOT, text=True)
     candidate = (ROOT/relative).read_text()
     assert sections(reference)[2] == sections(candidate)[2], 'Changes outside the PE register and connection blocks.'
     pe_source = ROOT/'rtl/npu/conv/vector_pe.sv'
-    previous_pe = subprocess.check_output(['git','show',args.reference_rev+':rtl/npu/conv/vector_pe.sv'],cwd=ROOT,text=True)
+    previous_pe = read_rtl_source(args.reference_rev+':rtl/npu/conv/vector_pe.sv', cwd=ROOT, text=True)
     assert normalized(previous_pe) == normalized(pe_source.read_text().split('endmodule',1)[0]+'endmodule')
     dependencies = [ROOT/'rtl/npu/conv/conv_im2col_pkg.sv',ROOT/'rtl/npu/conv/vector_engine_pkg.sv',pe_source]
     summary = {'reference_rev':args.reference_rev,'reference_sha256':hashlib.sha256(reference.encode()).hexdigest(),

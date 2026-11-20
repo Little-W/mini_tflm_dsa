@@ -7,6 +7,10 @@ from pathlib import Path
 import subprocess
 
 from extract_control import ROOT, TOP, module_source
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def main():
@@ -16,8 +20,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    reference = subprocess.check_output(
-        ['git', 'show', args.reference + ':' + str(TOP)], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference + ':' + str(TOP), cwd=ROOT, text=True)
     current = (ROOT / TOP).read_text()
     cases, hashes = {}, {}
     for label, content in [('reference', reference), ('current', current)]:

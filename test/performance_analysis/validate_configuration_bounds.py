@@ -255,7 +255,7 @@ int main(int argc, char** argv) {
             if path.suffix in ('.o', '.d', '.gch'):
                 path.unlink()
 
-    dma_sources = [str(repo/name) for name in ('rtl/common/REGFILE.v',
+    dma_sources = [str(repo/name) for name in ('rtl/common/regfile.v',
                                               'rtl/common/add_equal.sv',
                                               'rtl/npu/dma/axi_linear_block_dma.sv',
                                               'rtl/npu/conv/conv_axi_span_reader.sv')]

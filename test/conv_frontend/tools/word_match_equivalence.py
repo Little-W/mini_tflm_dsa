@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 MARKER = "  // 数据字匹配只需要高三十位的加法等式，低两位单独提供进位。\n"
@@ -22,7 +25,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", args.reference_ref + ":" + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_ref + ":" + SOURCE, cwd=ROOT, text=True)
     start = current.index(MARKER)
     end = current.index("  if (CHUNK_COUNT_W + 1 < 32)", start)
     body = current[start:end]

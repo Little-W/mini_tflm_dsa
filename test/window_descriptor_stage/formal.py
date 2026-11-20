@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/dma/conv_window_queue.sv")
@@ -117,7 +120,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = out / "reference.sv"
-    original = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT)
+    original = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT)
     reference.write_text(original.decode().replace("module conv_window_queue", "module reference_window_queue", 1))
     current = out / "current.sv"
     current.write_bytes((ROOT / SOURCE).read_bytes())

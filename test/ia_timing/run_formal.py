@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 CASES = {
     "ctrl3": {"top": "ia_loader_ctrl", "options": ["-GSIZE=3", "-GBUS_WIDTH=32", "-GCACHE_BLOCKS=4"]},
@@ -45,8 +48,7 @@ def main():
         snapshots[label] = []
         for name in paths:
             path = folder / Path(name).name
-            source = subprocess.check_output(["git", "show", args.reference_rev + ":" + name],
-                                             cwd=ROOT, text=True) if label == "reference" else (ROOT / name).read_text()
+            source = read_rtl_source(args.reference_rev + ":" + name, cwd=ROOT, text=True) if label == "reference" else (ROOT / name).read_text()
             if (label == "reference" and name.endswith("/ia_loader_ctrl.sv") and
                     re.search(r"\bcfg_packed_k_tiles\b", current_ctrl) and
                     not re.search(r"\bcfg_packed_k_tiles\b", source)):

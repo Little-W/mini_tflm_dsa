@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -84,7 +87,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/writeback/vec_requant.sv'
     candidate = (ROOT / relative).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
     helper = re.search(r'^module requant_shift_mux\b.*?^endmodule', candidate, re.M | re.S)[0]
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'

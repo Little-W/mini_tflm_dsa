@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/fpga"))
 import open_fpga_synth as flow
@@ -49,7 +52,7 @@ def main():
         raise RuntimeError("综合源码与形式证明不一致")
     dma_path, helper_path = ROOT / "rtl/npu/dma/axi_dual_block_dma.sv", ROOT / "rtl/common/add_equal.sv"
     for path in (dma_path, helper_path):
-        fixed = subprocess.check_output(["git", "show", proof["reference_commit"] + ":" + str(path.relative_to(ROOT))], cwd=ROOT)
+        fixed = read_rtl_source(proof["reference_commit"] + ":" + str(path.relative_to(ROOT)), cwd=ROOT)
         if fixed != path.read_bytes():
             raise RuntimeError("公共数据选择或比较模块与参考版本不一致")
     dma, model = dma_path.read_text(), proof_path.parent / "official_lut6.v"

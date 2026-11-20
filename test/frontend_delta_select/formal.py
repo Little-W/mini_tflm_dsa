@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 REFERENCE = "9846295cbfb14945f0b55a54f4abf99ee7c854c0"
@@ -31,7 +34,7 @@ def region(text, start=START, end=END):
 
 def sources(reference):
     current = (ROOT / SOURCE).read_text()
-    previous = subprocess.check_output(["git", "show", reference + ":" + SOURCE], cwd=ROOT, text=True)
+    previous = read_rtl_source(reference + ":" + SOURCE, cwd=ROOT, text=True)
     old_delta = re.search(r"  assign incoming_delta\s*=.*?;\n", previous, re.S)[0]
     old_carry = re.search(r"  assign incoming_word_i_carry_in\s*=.*?;\n", previous, re.S)[0]
     restored = current.replace(region(current), region(previous), 1)

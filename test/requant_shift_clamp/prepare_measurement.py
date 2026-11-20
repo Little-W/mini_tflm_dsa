@@ -7,6 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -19,7 +23,7 @@ def main() -> None:
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     path = 'rtl/npu/writeback/vec_requant.sv'
-    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + path], cwd=ROOT)
+    reference = read_rtl_source(args.reference_rev + ':' + path, cwd=ROOT)
     candidate = (ROOT / path).read_bytes()
     cases = {}
     for name, content in [('reference', reference), ('paired', candidate)]:
@@ -44,7 +48,7 @@ def main() -> None:
         'source_sha256': hashlib.sha256(candidate).hexdigest(),
         'dependencies_sha256': {
             name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-            for name in ('rtl/npu/conv/vector_scalar_multiplier.sv', 'rtl/common/REGFILE.v')
+            for name in ('rtl/npu/conv/vector_scalar_multiplier.sv', 'rtl/common/regfile.v')
         },
     }
     (out / 'input_manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

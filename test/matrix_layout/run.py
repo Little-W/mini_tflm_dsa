@@ -282,7 +282,7 @@ def build(directory: Path, ia: int, args) -> Path:
     package=npu/'conv/conv_im2col_pkg.sv'
     packages=[package,npu/'conv/vector_engine_pkg.sv']
     sources=packages+[p for p in sorted(npu.rglob('*.sv')) if p not in packages]+sorted(npu.rglob('*.v'))
-    sources += sorted((ROOT/'rtl/common').glob('REGFILE.v'))
+    sources += sorted((ROOT/'rtl/common').glob('regfile.v'))
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
                 ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/conv_npu/axi_memory.sv',HERE/'tb_matrix_layout.sv']
     sources += [Path(path) for path in getattr(args, 'extra_sources', [])]

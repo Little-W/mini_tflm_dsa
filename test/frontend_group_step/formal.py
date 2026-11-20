@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 START = "      if (source == 5) begin : g_advancing_channel\n"
@@ -73,7 +76,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", args.reference + ":" + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference + ":" + SOURCE, cwd=ROOT, text=True)
     bodies = {"reference": extract(reference), "current": extract(current)}
     range_bodies = {"reference": extract_range(reference), "current": extract_range(current)}
     normalized = current.replace(bodies["current"], bodies["reference"], 1)
@@ -87,7 +90,7 @@ def main():
         raise RuntimeError("The chunk encoder must select the final valid lane")
     helper = ROOT / "rtl/common/add_equal.sv"
     helper_data = helper.read_bytes()
-    if helper_data != subprocess.check_output(["git", "show", args.reference + ":rtl/common/add_equal.sv"], cwd=ROOT):
+    if helper_data != read_rtl_source(args.reference + ":rtl/common/add_equal.sv", cwd=ROOT):
         raise RuntimeError("The comparison helper must match the reference")
     (out / "add_equal.sv").write_bytes(helper_data)
     units = {}

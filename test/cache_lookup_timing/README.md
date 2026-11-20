@@ -47,4 +47,4 @@ python3 test/cache_lookup_timing/paths.py --reference "$REFERENCE_CACHE_SYNTH" -
 ```
 
 `REFERENCE_CACHE_SYNTH` 指向相同四份参考源码和相同参数的独立综合目录。
-可将参考版本中的 `conv_read_cache.sv`、`conv_sdp_ram.sv`、`conv_axi_span_reader.sv`、`REGFILE.v` 保存到一个目录，再通过 `test/cache_storage/synthesis.py --reference` 生成该结果。
+可将参考版本中的 `conv_read_cache.sv`、`conv_sdp_ram.sv`、`conv_axi_span_reader.sv`、`regfile.v` 保存到一个目录，再通过 `test/cache_storage/synthesis.py --reference` 生成该结果。

@@ -8,6 +8,10 @@ import re
 import runpy
 import shutil
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS = {"cfg_ready": 1, "req_ready": 1, "hint_pending": 1, "rsp_valid": 1,
@@ -28,8 +32,8 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    old_text = subprocess.check_output(["git", "show", args.reference_commit +
-        ":rtl/npu/dma/cache/conv_read_cache.sv"], cwd=ROOT, text=True)
+    old_text = read_rtl_source(args.reference_commit +
+        ":rtl/npu/dma/cache/conv_read_cache.sv", cwd=ROOT, text=True)
     for name in ("conv_cache_rank_table", "conv_read_cache_reference", "conv_windowed_cache", "conv_read_cache"):
         old_text = re.sub(r"\b" + name + r"\b", "reference_" + name, old_text)
     old_file = out / "reference_cache.sv"

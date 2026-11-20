@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/control/ps_window_scheduler.sv')
 HELPER = Path('rtl/common/onehot_check.sv')
@@ -43,7 +46,7 @@ def main():
     current = out/'current.sv'
     reference = out/'reference.sv'
     current.write_bytes((ROOT/SOURCE).read_bytes())
-    reference.write_bytes(subprocess.check_output(['git', 'show', f'{args.reference_rev}:{SOURCE}'], cwd=ROOT))
+    reference.write_bytes(read_rtl_source(f'{args.reference_rev}:{SOURCE}', cwd=ROOT))
     proof = out/'any_proof.sv'
     proof.write_text(PROOF)
     import pyosys

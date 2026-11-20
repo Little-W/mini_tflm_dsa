@@ -7,6 +7,9 @@ from pathlib import Path
 import shlex
 import subprocess
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 ROOT=Path(__file__).resolve().parents[2]
 
 
@@ -16,9 +19,9 @@ def main():
     parser.add_argument('--reference-ref')
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     name='rtl/npu/dma/axi_linear_block_dma.sv'
-    data=subprocess.check_output(['git','show',args.reference_ref+':'+name],cwd=ROOT) if args.reference_ref else (ROOT/name).read_bytes()
+    data=read_rtl_source(args.reference_ref+':'+name, cwd=ROOT) if args.reference_ref else (ROOT/name).read_bytes()
     source=out/'source.sv';source.write_bytes(data)
-    common=ROOT/'rtl/common/REGFILE.v'
+    common=ROOT/'rtl/common/regfile.v'
     comparator=ROOT/'rtl/common/add_equal.sv'
     sources=[source,common,comparator]
     top='axi_linear_block_dma';pre=out/'pre_lut.il';mapped=out/'mapped.json';script=out/'run.ys'
@@ -37,7 +40,7 @@ def main():
         if name_ in design['cells']:design['cells'][name_].setdefault('attributes',{})['fpga_register_origin']=origin
     report=netlist_metrics.analyze(design)
     report.update(reference_ref=args.reference_ref,source_sha256={name:hashlib.sha256(data).hexdigest(),
-                  'rtl/common/REGFILE.v':hashlib.sha256(common.read_bytes()).hexdigest(),
+                  'rtl/common/regfile.v':hashlib.sha256(common.read_bytes()).hexdigest(),
                   'rtl/common/add_equal.sv':hashlib.sha256(comparator.read_bytes()).hexdigest()},
                   configuration={'SIZE':16,'BUS_WIDTH':64,'DATA_WIDTH':16,'RD_CONTEXT_DEPTH':4})
     (out/'summary.json').write_text(json.dumps(report,indent=2)+'\n')

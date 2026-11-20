@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -26,7 +30,7 @@ def main():
     reports = {name: json.loads((base / name / "summary.json").read_text()) for name in names}
     source_sha = digest(ROOT / SOURCE)
     reference = reports["formal"]["reference_commit"]
-    reference_sha = hashlib.sha256(subprocess.check_output(["git", "show", reference + ":" + SOURCE], cwd=ROOT)).hexdigest()
+    reference_sha = hashlib.sha256(read_rtl_source(reference + ":" + SOURCE, cwd=ROOT)).hexdigest()
     for name, row in reports.items():
         if not row["passed"]:
             raise RuntimeError("Incomplete validation: " + name)
@@ -44,8 +48,7 @@ def main():
             not reports["channel_formal"]["other_main_process_unchanged_after_removing_channel_assignments"]:
         raise RuntimeError("The source composition checks are incomplete")
     for name, expected in reports["formal"]["common_source_sha256"].items():
-        if digest(ROOT / name) != expected or hashlib.sha256(subprocess.check_output(
-                ["git", "show", reference + ":" + name], cwd=ROOT)).hexdigest() != expected:
+        if digest(ROOT / name) != expected or hashlib.sha256(read_rtl_source(reference + ":" + name, cwd=ROOT)).hexdigest() != expected:
             raise RuntimeError("A common arithmetic source changed")
     numeric = next(line for line in window["tests"] if line.startswith("WINDOW_DMA_PASS "))
     resident = next(line for line in window["tests"] if line.startswith("CASE consecutive_hits "))

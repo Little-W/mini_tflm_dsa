@@ -33,7 +33,7 @@ def main():
         root / "rtl/npu/loaders/kernel_loader.sv",
         root / "rtl/npu/loaders/kernel_loader_buffer.sv",
         root / "rtl/npu/loaders/kernel_loader_ctrl.sv",
-        root / "rtl/common/REGFILE.v",
+        root / "rtl/common/regfile.v",
         root / "rtl/common/add_equal.sv",
         root / "rtl/common/add3_equal.sv",
     ]

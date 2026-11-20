@@ -11,6 +11,9 @@ import sys
 
 from position_decode_equivalence import normalize_position_source, POSITION_NOTE
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = 'rtl/npu/conv/conv_im2col_frontend.sv'
 START = '  // 递增比较并行处理符号、宽位溢出及低十六位边界。\n'
@@ -76,8 +79,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference_ref + ':' + SOURCE],
-                                        cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_ref + ':' + SOURCE, cwd=ROOT, text=True)
     if normalize_stream_source(current) != reference:
         raise ValueError('Uncovered changes remain in the frontend source')
     terminal = {}

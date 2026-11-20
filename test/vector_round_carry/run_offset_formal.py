@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/conv/vector_engine.sv'
 
@@ -21,7 +24,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original = subprocess.check_output(['git', 'show', args.reference_ref+':'+SOURCE], cwd=ROOT, text=True)
+    original = read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT, text=True)
     current = args.source.read_text()
     reference_body = 'logic signed [63:0] q_with_offset;\n'
     reference_body += re.search(r'assign q_with_offset\s*=.*?;', original, re.S).group(0)+'\n'

@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    sources = [ROOT/'rtl/npu/buffers/ia_ps_shared_ram.sv', ROOT/'rtl/common/REGFILE.v',
+    sources = [ROOT/'rtl/npu/buffers/ia_ps_shared_ram.sv', ROOT/'rtl/common/regfile.v',
                ROOT/'rtl/npu/ps_compact/ps_frame_store.sv', ROOT/'test/ps_channels/tb_store.sv']
     hashes = {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     summary = {'passed':False, 'source_sha256':hashes, 'profiles':[]}

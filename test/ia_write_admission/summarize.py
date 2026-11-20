@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = tuple("rtl/npu/loaders/" + name + ".sv" for name in
@@ -25,7 +29,7 @@ def main():
     hashes = {name: digest(ROOT / name) for name in SOURCES}
     rtl_commit = subprocess.check_output(["git", "rev-parse", args.rtl_rev], cwd=ROOT, text=True).strip()
     for name, expected in hashes.items():
-        data = subprocess.check_output(["git", "show", rtl_commit + ":" + name], cwd=ROOT)
+        data = read_rtl_source(rtl_commit + ":" + name, cwd=ROOT)
         if hashlib.sha256(data).hexdigest() != expected:
             raise RuntimeError("Saved RTL commit differs from checked source")
     reports = {name: json.loads((build / folder / "summary.json").read_text())
@@ -50,7 +54,7 @@ def main():
         raise RuntimeError("Synthesis input source differs")
     reference = reports["columns"]["reference_commit"]
     for name, expected in inputs["reference"].items():
-        data = subprocess.check_output(["git", "show", reference + ":" + name], cwd=ROOT)
+        data = read_rtl_source(reference + ":" + name, cwd=ROOT)
         if hashlib.sha256(data).hexdigest() != expected:
             raise RuntimeError("Synthesis reference source differs")
 

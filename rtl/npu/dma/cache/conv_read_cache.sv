@@ -727,7 +727,7 @@ module conv_windowed_cache #(
   assign prefetch_keys_i_wr_mask = 1'b1;
   assign prefetch_keys_i_rd_en = '1;
   assign pf_selected_keys = prefetch_keys_o_rd_data[pf_read_slot];
-  REGFILE #(
+  regfile #(
     .p_data_width(64), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
     .p_write_unit(64), .p_read_ports(PF_DEPTH), .p_sync_read(1'b0)
   ) u_prefetch_keys (
@@ -741,7 +741,7 @@ module conv_windowed_cache #(
   assign prefetch_payload_i_wr_mask = 1'b1;
   assign prefetch_payload_i_rd_en = 1'b1;
   assign prefetch_payload_i_rd_addr = pf_read_slot;
-  REGFILE #(
+  regfile #(
     .p_data_width(65), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
     .p_write_unit(65), .p_read_ports(1), .p_sync_read(1'b0)
   ) u_prefetch_payload (
@@ -1084,7 +1084,7 @@ module conv_windowed_cache #(
     assign valid_next[metadata_way] = valid_active[3];
     assign valid_select[metadata_way] = valid_active[4];
     assign valid_hint[metadata_way] = valid_active[5];
-    REGFILE #(
+    regfile #(
       .p_data_width(1), .p_depth(SETS), .p_addr_width(SI),
       .p_write_unit(1), .p_read_ports(6), .p_sync_read(1'b0)
     ) u_valid (
@@ -1161,7 +1161,7 @@ module conv_windowed_cache #(
     assign metadata_i_wr_mask = 1'b1;
 
     // 预取接收时读取新描述地址，其余周期读取已保存地址，标签保持原有同步周期。
-    REGFILE #(
+    regfile #(
       .p_data_width(p_tag_width), .p_depth(SETS), .p_addr_width(SI),
       .p_write_unit(p_tag_width), .p_read_ports(5), .p_sync_read(1'b1)
     ) u_tags (
@@ -1178,7 +1178,7 @@ module conv_windowed_cache #(
     assign fill_epoch_i_wr_addr = fill_set;
     assign fill_epoch_i_wr_data = EPOCH_W'(fill_epoch);
     assign fill_epoch_q = fill_epoch_o_rd_data;
-    REGFILE #(
+    regfile #(
       .p_data_width(EPOCH_W), .p_depth(SETS), .p_addr_width(SI),
       .p_write_unit(EPOCH_W), .p_read_ports(1), .p_sync_read(1'b1)
     ) u_fill_epoch (
@@ -1193,7 +1193,7 @@ module conv_windowed_cache #(
     assign hit_epoch_i_wr_addr = lookup_set;
     assign hit_epoch_i_wr_data = EPOCH_W'(work_request.epoch);
     assign hit_epoch_q = hit_epoch_o_rd_data;
-    REGFILE #(
+    regfile #(
       .p_data_width(EPOCH_W), .p_depth(SETS), .p_addr_width(SI),
       .p_write_unit(EPOCH_W), .p_read_ports(1), .p_sync_read(1'b1)
     ) u_hit_epoch (
@@ -1208,7 +1208,7 @@ module conv_windowed_cache #(
     assign fill_rank_i_wr_addr = fill_set;
     assign fill_rank_i_wr_data = metadata_fill_rank;
     assign fill_rank_q = fill_rank_o_rd_data;
-    REGFILE #(
+    regfile #(
       .p_data_width(32), .p_depth(SETS), .p_addr_width(SI),
       .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b1)
     ) u_fill_rank (
@@ -1223,7 +1223,7 @@ module conv_windowed_cache #(
     assign hit_rank_i_wr_addr = lookup_set;
     assign hit_rank_i_wr_data = metadata_hit_rank;
     assign hit_rank_q = hit_rank_o_rd_data;
-    REGFILE #(
+    regfile #(
       .p_data_width(32), .p_depth(SETS), .p_addr_width(SI),
       .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b1)
     ) u_hit_rank (
@@ -1238,7 +1238,7 @@ module conv_windowed_cache #(
     assign hint_rank_i_wr_addr = hint_set;
     assign hint_rank_i_wr_data = hint_effective_value;
     assign hint_rank_q = hint_rank_o_rd_data;
-    REGFILE #(
+    regfile #(
       .p_data_width(32), .p_depth(SETS), .p_addr_width(SI),
       .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b1)
     ) u_hint_rank (
@@ -1580,7 +1580,7 @@ module conv_cache_rank_table #(
   assign bank_i_wr_data[1] = i_clear_en ? 2'd0 : 2'd1 ^ bank_o_rd_data[0][1] ^ bank_o_rd_data[2][2];
   assign bank_i_wr_data[2] = i_clear_en ? 2'd0 : 2'd2 ^ bank_o_rd_data[0][2] ^ bank_o_rd_data[1][2];
   for (genvar bank=0; bank<3; bank++) begin : g_bank
-    REGFILE #(
+    regfile #(
       .p_data_width(2), .p_depth(p_depth), .p_addr_width(p_addr_width),
       .p_write_unit(2), .p_read_ports(3), .p_sync_read(1'b0)
     ) u_storage (

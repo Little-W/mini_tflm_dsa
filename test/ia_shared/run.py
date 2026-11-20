@@ -30,7 +30,7 @@ def main():
         parser.error('--jobs must be positive')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    rtl = [ROOT / 'rtl/common/pseudo_dual_port_ram.v', ROOT / 'rtl/common/REGFILE.v',
+    rtl = [ROOT / 'rtl/common/pseudo_dual_port_ram.v', ROOT / 'rtl/common/regfile.v',
            ROOT / 'rtl/npu/loaders/ia_loader_cache_mgr.sv',
            ROOT / 'rtl/npu/buffers/ia_ps_shared_ram.sv', HERE / 'cache_tb.sv']
     cpp = HERE / 'cache_test.cpp'

@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -99,13 +102,13 @@ def main():
     for label in ('reference', 'candidate'):
         paths = []
         for stem, path in [('requant', relative), ('scalar', scalar_relative)]:
-            data = (subprocess.check_output(['git', 'show', args.reference_rev + ':' + path], cwd=ROOT)
+            data = (read_rtl_source(args.reference_rev + ':' + path, cwd=ROOT)
                     if label == 'reference' else (ROOT / path).read_bytes())
             target = out / (label + '_' + stem + '.sv')
             target.write_bytes(data)
             paths.append(target)
             source_hashes[label + '_' + stem] = hashlib.sha256(data).hexdigest()
-        paths.append(ROOT / 'rtl/common/REGFILE.v')
+        paths.append(ROOT / 'rtl/common/regfile.v')
         raw = out / (label + '_raw.json')
         run(out, label + '_elaborate',
             f'read_slang --top vec_requant -D SYNTHESIS -D ASIC_SYNTHESIS -GBUS_WIDTH={args.bus} '

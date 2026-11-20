@@ -10,6 +10,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/conv/vector_engine.sv'
 
@@ -36,7 +39,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     revision = subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()
-    reference = subprocess.check_output(['git', 'show', revision + ':' + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(revision + ':' + SOURCE, cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
     helper = re.search(r'^module vector_read_address_add\b.*?^endmodule', current, re.M | re.S).group()
     reference_remainder = re.sub(

@@ -8,6 +8,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 PHASE = '''
@@ -42,7 +45,7 @@ def source_list(design):
     files = [ROOT/'rtl/npu/conv/conv_im2col_pkg.sv', ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
     files += [path for path in sorted((ROOT/'rtl/npu/conv').glob('*.sv'))
               if path not in files and path.name != 'vector_engine.sv']
-    return files + [ROOT/'rtl/common/pseudo_dual_port_ram.v', ROOT/'rtl/common/REGFILE.v',
+    return files + [ROOT/'rtl/common/pseudo_dual_port_ram.v', ROOT/'rtl/common/regfile.v',
                     ROOT/'rtl/common/add_equal.sv', design]
 
 
@@ -70,7 +73,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     source_path = ROOT/'rtl/npu/conv/vector_engine.sv'
     candidate = source_path.read_text()
-    reference = subprocess.check_output(['git','show',args.reference_rev+':rtl/npu/conv/vector_engine.sv'], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev+':rtl/npu/conv/vector_engine.sv', cwd=ROOT, text=True)
     options = f'-DASIC_SYNTHESIS -GTILE={args.tile} -GPE_COUNT={args.pes} -GBUS_WIDTH={args.bus_width}'
     identities = {'reference_rev':args.reference_rev, 'reference_sha256':hashlib.sha256(reference.encode()).hexdigest(),
                   'candidate_sha256':hashlib.sha256(candidate.encode()).hexdigest(),

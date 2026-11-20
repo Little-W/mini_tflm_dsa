@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "rtl/npu/dma/cache/conv_read_cache.sv"
 
@@ -105,13 +108,13 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = SOURCE.read_text()
-    reference = subprocess.check_output(["git", "show", args.reference_ref + ":" +
-        str(SOURCE.relative_to(ROOT))], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_ref + ":" +
+        str(SOURCE.relative_to(ROOT)), cwd=ROOT, text=True)
     integration = audit_integration(current, reference)
     connection_comparison = None
     if args.connection_reference_ref:
-        connection_reference = subprocess.check_output(["git", "show", args.connection_reference_ref + ":" +
-            str(SOURCE.relative_to(ROOT))], cwd=ROOT, text=True)
+        connection_reference = read_rtl_source(args.connection_reference_ref + ":" +
+            str(SOURCE.relative_to(ROOT)), cwd=ROOT, text=True)
         connection_comparison = audit_named_connections(current, connection_reference)
         connection_comparison["reference_ref"] = args.connection_reference_ref
     table = current[current.index("module conv_cache_rank_table #("):]
@@ -175,7 +178,7 @@ endmodule
     binary = out / "four_state"
     bench = ROOT / "test/cache_storage/tb_rank_banks.sv"
     command = [args.iverilog, "-g2012", "-s", "tb_rank_banks", "-o", str(binary),
-               str(bench), str(SOURCE), str(ROOT / "rtl/common/REGFILE.v")]
+               str(bench), str(SOURCE), str(ROOT / "rtl/common/regfile.v")]
     with (out / "compile.log").open("w") as log:
         subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True)
     run = subprocess.run([args.vvp, str(binary)], cwd=ROOT, capture_output=True, text=True)

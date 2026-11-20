@@ -56,7 +56,7 @@ def main():
 endmodule''')
     bench.write_text(text)
     sources=[bench,ROOT/'test/weight_prefetch/array_main.cpp',ROOT/'rtl/npu/loaders/kernel_loader_buffer.sv',
-             ROOT/'rtl/common/REGFILE.v',ROOT/'rtl/npu/compute/ws_systolic_cell.sv',
+             ROOT/'rtl/common/regfile.v',ROOT/'rtl/npu/compute/ws_systolic_cell.sv',
              ROOT/'rtl/npu/compute/ws_systolic_array.sv',netlist,primitives]
     hashes={str(p.relative_to(ROOT)):digest(p) for p in sources}
     flags='-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE=16 -DTEST_WEIGHT_WIDTH=16 --param=ggc-min-expand=10 --param=ggc-min-heapsize=32768'

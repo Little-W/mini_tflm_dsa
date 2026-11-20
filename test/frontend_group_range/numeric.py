@@ -8,6 +8,10 @@ from pathlib import Path
 import runpy
 import shlex
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -59,7 +63,7 @@ def main():
         if relative.parts[0] == "rtl":
             target = reference / "sources" / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            data = subprocess.check_output(["git", "show", f"{proof['reference_commit']}:{relative}"], cwd=ROOT)
+            data = read_rtl_source(f"{proof['reference_commit']}:{relative}", cwd=ROOT)
             target.write_bytes(data)
             source_map[name] = str(target)
             reference_hashes[str(target)] = digest(target)

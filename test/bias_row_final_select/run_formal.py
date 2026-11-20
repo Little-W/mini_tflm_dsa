@@ -11,6 +11,9 @@ import sys
 
 from extract_control import ROOT, TOP, control_region, module_source
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 PROFILES = ((1, 1, 32), (4, 1, 32), (16, 4, 32), (16, 32, 32),
             (16, 64, 32), (32, 1, 32), (32, 32, 16), (32, 64, 64))
 
@@ -27,8 +30,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / TOP).read_text()
-    reference = subprocess.check_output(
-        ['git', 'show', args.reference + ':' + str(TOP)], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference + ':' + str(TOP), cwd=ROOT, text=True)
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
     model_text = re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S)[0]

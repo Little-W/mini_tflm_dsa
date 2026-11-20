@@ -289,7 +289,7 @@ module ia_ps_shared_ram #(
             .read_enable(ram_i_rd_en), .read_address(ram_i_rd_addr), .read_data(ram_o_rd_data)
         );
 `else
-        REGFILE #(.p_data_width(128), .p_depth(p_rows), .p_addr_width(p_row_bits), .p_write_unit(8)) u_ram (
+        regfile #(.p_data_width(128), .p_depth(p_rows), .p_addr_width(p_row_bits), .p_write_unit(8)) u_ram (
             .clk(clk), .i_wr_en(ram_i_wr_en), .i_wr_addr(ram_i_wr_addr),
             .i_wr_data(ram_i_wr_data), .i_wr_mask(ram_i_wr_mask),
             .i_rd_en(ram_i_rd_en), .i_rd_addr(ram_i_rd_addr), .o_rd_data(ram_o_rd_data)
@@ -621,7 +621,7 @@ module ia_ps_channel_ram #(
     assign ia_ram_i_wr_data = ia_bank_write_data[0];
     assign ia_ram_i_wr_mask = ia_bank_write_mask[0];
     assign ia_bank_read_data[0] = ia_ram_o_rd_data;
-    REGFILE #(.p_data_width(128), .p_depth(p_rows), .p_addr_width(p_row_bits), .p_write_unit(8)) u_ia_ram (
+    regfile #(.p_data_width(128), .p_depth(p_rows), .p_addr_width(p_row_bits), .p_write_unit(8)) u_ia_ram (
         .clk(clk), .i_wr_en(ia_ram_i_wr_en), .i_wr_addr(ia_ram_i_wr_addr),
         .i_wr_data(ia_ram_i_wr_data), .i_wr_mask(ia_ram_i_wr_mask),
         .i_rd_en(ia_ram_i_rd_en), .i_rd_addr(ia_ram_i_rd_addr), .o_rd_data(ia_ram_o_rd_data)
@@ -660,7 +660,7 @@ module ia_ps_channel_ram #(
             assign ram_i_wr_mask = ia_selected ? ia_bank_write_mask[bank] : 16'hffff;
             assign chunk_read_data[channel] = ram_o_rd_data;
             assign ps_segment_read_data[channel][bank] = ram_o_rd_data;
-            REGFILE #(.p_data_width(128), .p_depth(p_chunk_rows), .p_addr_width(p_chunk_bits), .p_write_unit(8)) u_ram (
+            regfile #(.p_data_width(128), .p_depth(p_chunk_rows), .p_addr_width(p_chunk_bits), .p_write_unit(8)) u_ram (
                 .clk(clk), .i_wr_en(ram_i_wr_en), .i_wr_addr(ram_i_wr_addr),
                 .i_wr_data(ram_i_wr_data), .i_wr_mask(ram_i_wr_mask),
                 .i_rd_en(ram_i_rd_en), .i_rd_addr(ram_i_rd_addr), .o_rd_data(ram_o_rd_data)
@@ -679,7 +679,7 @@ module ia_ps_channel_ram #(
         assign ram_i_wr_data = i_ps_write_data[channel];
         assign ram_i_wr_mask = 1'b1;
         assign ps_segment_read_data[channel][0] = ram_o_rd_data;
-        REGFILE #(.p_data_width(128), .p_depth(p_fixed_rows), .p_addr_width(p_fixed_bits), .p_write_unit(128)) u_ram (
+        regfile #(.p_data_width(128), .p_depth(p_fixed_rows), .p_addr_width(p_fixed_bits), .p_write_unit(128)) u_ram (
             .clk(clk), .i_wr_en(ram_i_wr_en), .i_wr_addr(ram_i_wr_addr),
             .i_wr_data(ram_i_wr_data), .i_wr_mask(ram_i_wr_mask),
             .i_rd_en(ram_i_rd_en), .i_rd_addr(ram_i_rd_addr), .o_rd_data(ram_o_rd_data)

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/dma/cache/conv_read_cache.sv')
 DECLARATION = '  logic pf_offer_matches_work, pf_offer_matches_demand;\n'
@@ -31,7 +34,7 @@ def main():
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference + ':' + str(SOURCE)], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference + ':' + str(SOURCE), cwd=ROOT, text=True)
     original_compare = '    assign pf_epoch_matches[slot] = prefetch_keys_o_rd_data[slot][31:0] == demand_epoch;\n'
     normalized = current.replace(DECLARATION, '', 1).replace(GLOBAL, '', 1).replace(UPDATE, '', 1)
     normalized = normalized.replace("        pf_epoch_matches[slot] <= 1'b0;\n", '')

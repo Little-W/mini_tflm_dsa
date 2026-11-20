@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/ps_compact/ps_frame_store.sv'
 
@@ -19,9 +22,9 @@ def main():
     parser.add_argument('--reference-ref',default='975ce61')
     args=parser.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    original=subprocess.check_output(['git','show',args.reference_ref+':'+SOURCE],cwd=ROOT)
+    original=read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT)
     reference=out/'reference.sv';reference.write_bytes(original)
-    current=ROOT/SOURCE;regfile=ROOT/'rtl/common/REGFILE.v'
+    current=ROOT/SOURCE;regfile=ROOT/'rtl/common/regfile.v'
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,regfile)}
     summary={'passed':False,'reference_ref':args.reference_ref,'source_sha256':hashes,
              'reference_sha256':hashlib.sha256(original).hexdigest(),'inputs_constrained':False,

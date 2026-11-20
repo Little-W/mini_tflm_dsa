@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -28,7 +32,7 @@ def main():
         sources = []
         for name in names:
             relative = 'rtl/npu/conv/' + name
-            data = (subprocess.check_output(['git', 'show', args.reference + ':' + relative], cwd=ROOT)
+            data = (read_rtl_source(args.reference + ':' + relative, cwd=ROOT)
                     if label == 'reference' else (ROOT / relative).read_bytes())
             path = folder / name
             path.write_bytes(data)
@@ -38,8 +42,8 @@ def main():
             'options': ['-D', 'SYNTHESIS=1', '-GTILE=16', '-GBUS_WIDTH=64', '-GPE_COUNT=8'],
             'sources': sources, 'configuration': 'TILE16, BUS64, DMA_SIZE64, eight vector PEs'}
     if args.reduction_revision:
-        reduced = subprocess.check_output(['git', 'show', args.reduction_revision +
-            ':rtl/npu/conv/vector_engine.sv'], cwd=ROOT, text=True)
+        reduced = read_rtl_source(args.reduction_revision +
+            ':rtl/npu/conv/vector_engine.sv', cwd=ROOT, text=True)
         current = (out / 'current/vector_engine.sv').read_text()
         first = current.index('  logic [31:0] reduce_sum;')
         last = current.index('  localparam int POOL_SUM_WIDTH=', first)
@@ -49,8 +53,7 @@ def main():
         folder.mkdir(exist_ok=True)
         (folder / 'vector_engine.sv').write_text(current[:first] +
             reduced[reduced_first:reduced_last] + current[last:])
-        (folder / 'vector_pe.sv').write_bytes(subprocess.check_output(['git', 'show',
-            args.reduction_revision + ':rtl/npu/conv/vector_pe.sv'], cwd=ROOT))
+        (folder / 'vector_pe.sv').write_bytes(read_rtl_source(args.reduction_revision + ':rtl/npu/conv/vector_pe.sv', cwd=ROOT))
         combined = dict(cases['vector_current'])
         combined['sources'] = [str(folder / Path(p).name) if Path(p).name in
             ('vector_engine.sv', 'vector_pe.sv') else p for p in combined['sources']]

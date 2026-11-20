@@ -8,6 +8,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 REFERENCE = '7ef39f0101ebf39184d11dbdc80a4042faee75c2'
 TOP = Path('rtl/npu/top/npu_top.sv')
@@ -40,7 +43,7 @@ def digest(path):
 
 
 def source_at(path, reference=None):
-    return subprocess.check_output(['git','show',f'{reference}:{path}'], cwd=ROOT, text=True) \
+    return read_rtl_source(f'{reference}:{path}', cwd=ROOT, text=True) \
         if reference else (ROOT/path).read_text()
 
 

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/conv/vector_engine.sv'
 
@@ -67,7 +70,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True)
     p.add_argument('--reference-rev',default='2f06471c');args=p.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    ref=subprocess.check_output(['git','show',args.reference_rev+':'+SOURCE],cwd=ROOT,text=True)
+    ref=read_rtl_source(args.reference_rev+':'+SOURCE, cwd=ROOT, text=True)
     cand=(ROOT/SOURCE).read_text()
     packages=[ROOT/'rtl/npu/conv/conv_im2col_pkg.sv',ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
     report={'reference_rev':args.reference_rev,'source_sha256':hashlib.sha256(cand.encode()).hexdigest(),

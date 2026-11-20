@@ -29,7 +29,7 @@ def main():
         parser.error("DMA limit must be 1 through 256 complete bus beats with a power-of-two byte length")
     out = args.out.resolve();out.mkdir(parents=True, exist_ok=True)
     sources = [ROOT/'rtl/npu/dma/axi_linear_block_dma.sv',
-               ROOT/'rtl/common/REGFILE.v',
+               ROOT/'rtl/common/regfile.v',
                ROOT/'rtl/common/add_equal.sv',
                ROOT/'test/linear_dma_4k/linear_dma_4k_top.sv',
                ROOT/'test/linear_dma_4k/main.cpp', Path(__file__).resolve()]

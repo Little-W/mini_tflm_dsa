@@ -60,6 +60,6 @@ python3 test/cache_pipeline/measure_prefetch_select.py \
   --out build/cache_prefetch_select/paths.json
 ```
 
-比较版本的独立综合使用 `test/cache_storage/synthesis.py --reference <目录>`。该目录应包含提交 `c64772b` 中的 `conv_read_cache.sv`、`conv_sdp_ram.sv`、`conv_axi_span_reader.sv` 和 `REGFILE.v`。综合脚本对输入文件生成快照，验证过程中同时检查源文件散列。
+比较版本的独立综合使用 `test/cache_storage/synthesis.py --reference <目录>`。该目录应包含提交 `c64772b` 中的 `conv_read_cache.sv`、`conv_sdp_ram.sv`、`conv_axi_span_reader.sv` 和 `regfile.v`。综合脚本对输入文件生成快照，验证过程中同时检查源文件散列。
 
 资源、组合路径、形式证明及功能测试摘要保存在 `docs/data/cache_prefetch_selection_validation.json`。

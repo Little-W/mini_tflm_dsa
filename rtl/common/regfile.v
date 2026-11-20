@@ -2,7 +2,7 @@
 `default_nettype none
 
 // 单写端口存储器；读端口和写入分段由参数决定，存储资源由综合工具选择。
-module REGFILE #(
+module regfile #(
     parameter int p_data_width = 32,
     parameter int p_depth = 64,
     parameter int p_addr_width = (p_depth <= 1) ? 1 : $clog2(p_depth),

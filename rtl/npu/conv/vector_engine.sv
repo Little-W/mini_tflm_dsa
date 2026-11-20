@@ -1041,7 +1041,7 @@ module vector_engine #(
     assign bias_storage_i_rd_en = '1;
     assign bias_storage_i_rd_addr = '0;
     assign bias_buf[entry] = $signed(bias_storage_o_rd_data[0]);
-    REGFILE #(
+    regfile #(
         .p_data_width(32),
         .p_depth(1),
         .p_addr_width(1),

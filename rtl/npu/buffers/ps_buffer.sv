@@ -400,7 +400,7 @@ module ps_buffer_exact_ram #(
 `else
   logic storage_i_wr_mask;
   assign storage_i_wr_mask = 1'b1;
-  REGFILE #(
+  regfile #(
     .p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH),
     .p_write_unit(DATA_WIDTH)
   ) u_storage (

@@ -26,7 +26,7 @@ def main():
     out = (args.out or ROOT / "build" / args.target).resolve()
     out.mkdir(parents=True, exist_ok=True)
     top, rtl = TARGETS[args.target]
-    sources = [Path(__file__).resolve(), ROOT / rtl, ROOT / "rtl/common/REGFILE.v",
+    sources = [Path(__file__).resolve(), ROOT / rtl, ROOT / "rtl/common/regfile.v",
                ROOT / "rtl/common/add_equal.sv",
                ROOT / "test" / args.target / "main.cpp"]
     hashes = {str(p.relative_to(ROOT)): digest(p) for p in sources}
@@ -46,7 +46,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
                "-CFLAGS", "-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all",
                "-LDFLAGS", "-fsanitize=undefined",
                "-MAKEFLAGS", f"-B OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}",
-               str(ROOT / rtl), str(ROOT / "rtl/common/REGFILE.v"),
+               str(ROOT / rtl), str(ROOT / "rtl/common/regfile.v"),
                str(ROOT / "rtl/common/add_equal.sv"), str(sources[-1])]
     binary = out / "obj" / ("V" + top)
     if args.reuse_build:

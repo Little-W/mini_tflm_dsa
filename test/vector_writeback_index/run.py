@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/conv/vector_writeback.sv')
 
@@ -34,7 +37,7 @@ def main():
     model = out / 'xilinx_models.sv'
     primitive = re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S).group(0)
     model.write_text(re.sub(r'\bspecify\b.*?\bendspecify\b', '', primitive, flags=re.S) + '\n')
-    old = subprocess.check_output(['git', 'show', f'{args.reference}:{SOURCE}'], cwd=ROOT, text=True)
+    old = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
     registers = ['state', 'base_address', 'total_bytes', 'written_bytes',
                  'lane_offset', 'byte_output', 'burst_length']

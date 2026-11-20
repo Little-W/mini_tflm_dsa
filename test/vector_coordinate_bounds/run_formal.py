@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/conv/vector_engine.sv'
 
@@ -25,7 +28,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + SOURCE, cwd=ROOT, text=True)
     candidate = (ROOT / SOURCE).read_text()
     packages = [ROOT/'rtl/npu/conv/conv_im2col_pkg.sv', ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
     header = '''module coordinate_bounds (

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查公共 REGFILE 的写入掩码、读使能和同地址读写行为。"""
+"""检查公共 regfile 的写入掩码、读使能和同地址读写行为。"""
 import argparse
 import hashlib
 import json
@@ -17,7 +17,7 @@ def main():
     parser.add_argument("--verilator", default=shutil.which("verilator") or "verilator")
     parser.add_argument("--out", type=Path, default=ROOT / "build/regfile")
     args = parser.parse_args()
-    sources = [ROOT / "rtl/common/REGFILE.v", ROOT / "rtl/common/pseudo_dual_port_ram.v",
+    sources = [ROOT / "rtl/common/regfile.v", ROOT / "rtl/common/pseudo_dual_port_ram.v",
                ROOT / "test/regfile/tb_regfile.sv"]
     hashes = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     results = []

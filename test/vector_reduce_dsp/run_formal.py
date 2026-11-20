@@ -8,6 +8,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -23,8 +26,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     revision = subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()
-    reference = subprocess.check_output(
-        ['git', 'show', revision + ':rtl/npu/conv/vector_engine.sv'], cwd=ROOT, text=True)
+    reference = read_rtl_source(revision + ':rtl/npu/conv/vector_engine.sv', cwd=ROOT, text=True)
     current = (ROOT / 'rtl/npu/conv/vector_engine.sv').read_text()
     ref_first = reference.index('  logic [31:0] reduce_sum;')
     ref_last = reference.index('  localparam int POOL_SUM_WIDTH=', ref_first)
@@ -32,8 +34,7 @@ def main():
     cur_last = current.index('  localparam int POOL_SUM_WIDTH=', cur_first)
     assert normalized(reference[:ref_first] + reference[ref_last:]) == normalized(
         current[:cur_first] + current[cur_last:])
-    old_pe = subprocess.check_output(
-        ['git', 'show', revision + ':rtl/npu/conv/vector_pe.sv'], cwd=ROOT, text=True)
+    old_pe = read_rtl_source(revision + ':rtl/npu/conv/vector_pe.sv', cwd=ROOT, text=True)
     current_pe = (ROOT / 'rtl/npu/conv/vector_pe.sv').read_text()
     retained_pe = current_pe[:current_pe.index('module vector_reduce_alu')] + '\n`default_nettype wire\n'
     assert normalized(old_pe) == normalized(retained_pe)

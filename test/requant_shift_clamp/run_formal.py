@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -34,8 +37,7 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     source = ROOT / 'rtl/npu/writeback/vec_requant.sv'
     reference = out / 'reference.sv'
-    reference.write_bytes(subprocess.check_output(
-        ['git', 'show', args.reference_rev + ':rtl/npu/writeback/vec_requant.sv'], cwd=ROOT))
+    reference.write_bytes(read_rtl_source(args.reference_rev + ':rtl/npu/writeback/vec_requant.sv', cwd=ROOT))
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
     model = out / 'xilinx_lut6_2.sv'
     model.write_text(re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S).group(0) + '\n')

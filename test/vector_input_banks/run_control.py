@@ -54,7 +54,7 @@ def main():
     files = [ROOT / 'rtl/npu/conv' / name for name in ('conv_im2col_pkg.sv', 'vector_engine_pkg.sv')]
     files += [p for p in sorted((ROOT / 'rtl/npu/conv').glob('*.sv'))
               if p not in files and p.name != 'vector_engine.sv']
-    files += [ROOT / 'rtl/common' / name for name in ('pseudo_dual_port_ram.v', 'REGFILE.v', 'add_equal.sv')]
+    files += [ROOT / 'rtl/common' / name for name in ('pseudo_dual_port_ram.v', 'regfile.v', 'add_equal.sv')]
     files += [ROOT / 'rtl/npu/dma/conv_window_queue.sv', design]
     checked_files = files[:-1] + [ROOT / 'rtl/npu/conv/vector_engine.sv',
                                   Path(__file__).resolve(), HERE / 'control_worker.py',

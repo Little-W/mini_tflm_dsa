@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -28,7 +31,7 @@ def main():
              'rtl/npu/dma/cache/conv_read_cache.sv', 'rtl/npu/dma/cache/conv_next_use_predictor.sv')
     sources, hashes = [], {}
     for name in names:
-        content = (subprocess.check_output(['git', 'show', f'{args.reference_ref}:{name}'], cwd=ROOT)
+        content = (read_rtl_source(f'{args.reference_ref}:{name}', cwd=ROOT)
                    if args.reference_ref else
                    (args.current_source if args.current_source and name == names[1] else ROOT / name).read_bytes())
         hashes[name] = hashlib.sha256(content).hexdigest()
@@ -39,7 +42,7 @@ def main():
             path = snapshot / (Path(name).stem + '_interface.sv')
             path.write_text(header)
         sources.append(path)
-    helpers = [ROOT / name for name in ('rtl/common/onehot_check.sv', 'rtl/common/add_equal.sv', 'rtl/common/REGFILE.v')]
+    helpers = [ROOT / name for name in ('rtl/common/onehot_check.sv', 'rtl/common/add_equal.sv', 'rtl/common/regfile.v')]
     sources.extend(helpers)
     for helper in helpers:
         hashes[str(helper.relative_to(ROOT))] = hashlib.sha256(helper.read_bytes()).hexdigest()

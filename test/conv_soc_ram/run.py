@@ -7,6 +7,10 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -33,7 +37,7 @@ def main():
         source = args.rtl_source.resolve()
         if args.baseline_commit:
             source = temporary / 'soc_axi_ram.sv'
-            source.write_bytes(subprocess.check_output(['git', 'show', f'{args.baseline_commit}:test/models/soc_axi_ram.sv'], cwd=ROOT))
+            source.write_bytes(read_rtl_source(f'{args.baseline_commit}:test/models/soc_axi_ram.sv', cwd=ROOT))
             report['baseline_commit'] = args.baseline_commit
         for dw, dp, outstanding, latency in [(dw, dp, outstanding, latency) for dw in (32,64) for dp,outstanding in configurations for latency in (args.first_read_latencies if (dp,outstanding)==(1031,4) else [8])]:
             build = temporary / f'dw{dw}_dp{dp}_o{outstanding}_l{latency}'

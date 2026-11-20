@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 
@@ -63,7 +66,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    old = subprocess.check_output(["git", "show", args.reference_ref + ":" + SOURCE], cwd=ROOT, text=True)
+    old = read_rtl_source(args.reference_ref + ":" + SOURCE, cwd=ROOT, text=True)
     current = args.current_source.read_text()
     harness = out / "arithmetic_miter.sv"
     harness.write_text(module(old, True, "arithmetic_reference") +

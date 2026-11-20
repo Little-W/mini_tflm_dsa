@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 FRONTEND = "rtl/npu/conv/conv_im2col_frontend.sv"
 PREDICTOR = "rtl/npu/dma/cache/conv_next_use_predictor.sv"
@@ -78,8 +81,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    originals = {name: subprocess.check_output(["git", "show", args.reference + ":" + name],
-                                              cwd=ROOT, text=True) for name in (FRONTEND, PREDICTOR)}
+    originals = {name: read_rtl_source(args.reference + ":" + name, cwd=ROOT, text=True) for name in (FRONTEND, PREDICTOR)}
     current = (ROOT / FRONTEND).read_text()
     block, reference_block = group_block(current), group_block(originals[FRONTEND])
     group_end = current[current.index("  logic [16:0] group_end_i_a"):

@@ -19,7 +19,7 @@ def main():
     source_root=ROOT
     npu=source_root/'rtl/npu';packages=[npu/'conv/conv_im2col_pkg.sv',npu/'conv/vector_engine_pkg.sv']
     sources=packages+[s for s in sorted(npu.rglob('*.sv')) if s not in packages]+sorted(npu.rglob('*.v'))
-    sources += sorted((source_root/'rtl/common').glob('REGFILE.v')) + sorted((source_root/'rtl/common').glob('onehot_check.sv')) + sorted((source_root/'rtl/common').glob('add_equal.sv'))
+    sources += sorted((source_root/'rtl/common').glob('regfile.v')) + sorted((source_root/'rtl/common').glob('onehot_check.sv')) + sorted((source_root/'rtl/common').glob('add_equal.sv'))
     sources+=[source_root/'rtl/common/pseudo_dual_port_ram.v',source_root/'rtl/axi_top/npu_axil_top.sv',source_root/'rtl/axi_top/npu_axil_reg_if.sv',source_root/'test/conv_npu/axi_memory.sv',source_root/'test/conv_dma/operand_drain/tb_operand_drain.sv']
     config=source_root/'test/conv_npu/simulator.vlt'
     dependencies=sources+sorted(npu.rglob('*.svh'))+[config]

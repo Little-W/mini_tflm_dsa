@@ -43,7 +43,7 @@ def build_comparison(runner, repository: Path, out: Path, args,
     packages = [package, npu / "conv/vector_engine_pkg.sv"]
     sources = packages + [path for path in sorted(npu.rglob("*.sv")) if path not in packages]
     sources += sorted(npu.rglob("*.v"))
-    sources += sorted((repository / "rtl/common").glob("REGFILE.v"))
+    sources += sorted((repository / "rtl/common").glob("regfile.v"))
     sources += [repository / "rtl/common/pseudo_dual_port_ram.v", repository / "test/conv_npu/axi_memory.sv"]
     if testbench is None:
         sources.append(repository / "test/conv_npu/tb_conv_npu.sv")

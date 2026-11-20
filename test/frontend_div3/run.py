@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/conv/conv_im2col_frontend.sv")
 
@@ -29,7 +32,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     start = current.index("  // 五位位置同时查出除三的商和余数，组内通道直接保留高位位置。")
     end = current.index("  always_comb begin", start)
     table = current[start:end]

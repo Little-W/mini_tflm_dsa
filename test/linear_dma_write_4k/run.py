@@ -17,7 +17,7 @@ def sha(path):
 
 def build(rtl, out, outstanding, args):
     out.mkdir(parents=True, exist_ok=True)
-    sources = [rtl, ROOT/'rtl/common/REGFILE.v', ROOT/'rtl/common/add_equal.sv',
+    sources = [rtl, ROOT/'rtl/common/regfile.v', ROOT/'rtl/common/add_equal.sv',
                Path(__file__).with_name('linear_dma_write_4k_top.sv'),
                Path(__file__).with_name('main.cpp'), Path(__file__).resolve()]
     hashes = {str(p): sha(p) for p in sources}

@@ -8,6 +8,9 @@ import re
 import shlex
 import subprocess
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE=Path('rtl/npu/dma/cache/conv_read_cache.sv')
 
@@ -17,7 +20,7 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     current=(ROOT/SOURCE).read_text()
-    reference=subprocess.check_output(['git','show',args.reference+':'+str(SOURCE)],cwd=ROOT,text=True)
+    reference=read_rtl_source(args.reference+':'+str(SOURCE), cwd=ROOT, text=True)
     original=re.search(r'  assign cfg_ready=fill_state==F_IDLE.*?;',reference,re.S).group(0)
     start=current.index('  localparam int p_cfg_idle_width =')
     end=current.index('`endif',start)+len('`endif')

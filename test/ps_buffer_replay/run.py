@@ -20,7 +20,7 @@ def main():
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     sources = [args.rtl.resolve(), here/'top.sv', here/'main.cpp', here/'run.py',
-               here.parents[1]/'rtl/common/REGFILE.v']
+               here.parents[1]/'rtl/common/regfile.v']
     hashes = {str(path): digest(path) for path in sources}
     records = []
     for depth, frames, length in [(7, 1, 3), (17, 3, 7), (16, 2, 7)]:

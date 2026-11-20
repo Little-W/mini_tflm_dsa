@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/dma/axi_dual_block_dma.sv")
 PORTS = ("tile_valid", "tile_p0", "tile_q0", "tile_rows", "tile_cols", "tile_slot", "tile_group")
@@ -42,7 +45,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", f"{args.reference_ref}:{SOURCE}"], cwd=ROOT, text=True)
+    reference = read_rtl_source(f"{args.reference_ref}:{SOURCE}", cwd=ROOT, text=True)
     queue = (ROOT / "rtl/npu/dma/conv_window_queue.sv").read_text()
     expected = reference.replace(
         "    logic accept_read, accept_linear, accept_image, image_start_ready, direct_issue;\n",

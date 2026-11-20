@@ -8,6 +8,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/writeback/vec_s8_to_fifo.sv")
 PARAMETERS = """parameter int VLEN=16, BUS_WIDTH=64,
@@ -45,7 +48,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+    original = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     current = (ROOT / SOURCE).read_text()
     source_hash = hashlib.sha256(current.encode()).hexdigest()
     generated = out / "selection.sv"

@@ -7,6 +7,10 @@ import re
 from pathlib import Path
 import runpy
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/conv/vector_engine.sv'
@@ -49,7 +53,7 @@ def main():
     script = Path(__file__).with_name('run_formal.py')
     helpers = runpy.run_path(str(script))
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference+':'+SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference+':'+SOURCE, cwd=ROOT, text=True)
     assert current.replace(helpers['section'](current), helpers['section'](reference), 1) == reference
     cases = {}
     sources = {}

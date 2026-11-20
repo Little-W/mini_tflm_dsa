@@ -19,7 +19,7 @@
 
 部分积高位按 48 位模加保存，舍入结果按 36 位模加保存。`s16_mode` 为 1 时输出偏移为零，其余情况对 `dst_offset_r` 进行符号扩展。`CARRYIN` 直接接收单比特舍入增量。ASIC 和通用仿真分支使用相同位宽和使能条件的 `always_ff`，FPGA 分支使用 DSP 的输出寄存器。
 
-所有新增 RTL 位于现有 `rtl/npu/writeback/vec_requant.sv`，工程源文件列表保持兼容。存储容量和 REGFILE 接口保持不变。
+所有新增 RTL 位于现有 `rtl/npu/writeback/vec_requant.sv`，工程源文件列表保持兼容。存储容量和 regfile 接口保持不变。
 
 ## 验证结果
 

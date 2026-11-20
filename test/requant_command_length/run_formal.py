@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -61,7 +64,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     relative = 'rtl/npu/writeback/vec_requant.sv'
     candidate = (ROOT / relative).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + relative], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
     unchanged_outside_length = unchanged_logic(candidate) == unchanged_logic(reference)
     assert unchanged_outside_length, 'Source differs outside the proved length logic.'
     summary = {'reference_rev': args.reference_rev,

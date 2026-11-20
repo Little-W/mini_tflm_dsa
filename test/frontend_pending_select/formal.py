@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 DMA = "rtl/npu/dma/axi_dual_block_dma.sv"
 QUEUE = "rtl/npu/dma/conv_window_queue.sv"
@@ -39,12 +42,12 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / DMA).read_bytes()
-    previous = subprocess.check_output(["git", "show", args.reference + ":" + DMA], cwd=ROOT)
+    previous = read_rtl_source(args.reference + ":" + DMA, cwd=ROOT)
     restored = current.decode().replace("assign win_payload_select=win_busy;",
                                        "assign win_payload_select=win_busy && !conv_pending;", 1)
     if code(restored) != code(previous.decode()):
         raise RuntimeError("DMA changes outside the verified selector expression")
-    if subprocess.check_output(["git", "show", args.reference + ":" + QUEUE], cwd=ROOT) != (ROOT / QUEUE).read_bytes():
+    if read_rtl_source(args.reference + ":" + QUEUE, cwd=ROOT) != (ROOT / QUEUE).read_bytes():
         raise RuntimeError("Queue source differs from the reference")
     body = current.decode().replace("    output logic wr_error\n", "    output logic wr_error,\n    output logic equivalent\n", 1)
     if "output logic equivalent" not in body:
@@ -79,8 +82,7 @@ def main():
         sources.append(path)
         boundary_hashes[name] = digest((ROOT / name).read_bytes())
     report = dict(reference_ref=args.reference, source_sha256=hashes,
-                  reference_sha256={name: digest(subprocess.check_output(
-                      ["git", "show", args.reference + ":" + name], cwd=ROOT)) for name in hashes},
+                  reference_sha256={name: digest(read_rtl_source(args.reference + ":" + name, cwd=ROOT)) for name in hashes},
                   source_change="window payload selector",
                   initial_reset=True, inputs_constrained_after_reset=False,
                   interface_boundaries=boundary_hashes, cases=[])

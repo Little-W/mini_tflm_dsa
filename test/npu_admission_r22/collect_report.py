@@ -7,6 +7,10 @@ from pathlib import Path
 import subprocess
 
 from extract import ROOT, TOP, CTRL, ARB, ADD, REFERENCE, digest
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def validate_sources(values):
@@ -38,7 +42,7 @@ def main():
         if label=='current':validate_sources(values)
         else:
             for name,expected in values.items():
-                source=subprocess.check_output(['git','show',f'{REFERENCE}:{name}'],cwd=ROOT)
+                source=read_rtl_source(f'{REFERENCE}:{name}', cwd=ROOT)
                 if hashlib.sha256(source).hexdigest()!=expected:
                     raise RuntimeError('Reference source differs: '+name)
     for label,values in data['mapping_inputs']['extracted_sha256'].items():

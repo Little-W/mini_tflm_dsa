@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -76,8 +79,7 @@ def main():
     revision = subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()
     source = ROOT / 'rtl/npu/conv/vector_engine.sv'
     current = source.read_text()
-    reference = subprocess.check_output(['git', 'show', revision + ':rtl/npu/conv/vector_engine.sv'],
-                                        cwd=ROOT, text=True)
+    reference = read_rtl_source(revision + ':rtl/npu/conv/vector_engine.sv', cwd=ROOT, text=True)
     assert normalized(current) == normalized(reference)
     report = {'reference_revision': revision, 'source_sha256': hashlib.sha256(current.encode()).hexdigest(),
               'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),

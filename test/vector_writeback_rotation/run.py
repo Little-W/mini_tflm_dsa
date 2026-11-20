@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/conv/vector_writeback.sv")
 
@@ -31,7 +34,7 @@ def main():
     model_text = re.search(r"^module LUT6_2\b.*?^endmodule", library.read_text(), re.M | re.S).group(0)
     model.write_text(re.sub(r"\bspecify\b.*?\bendspecify\b", "", model_text, flags=re.S) + "\n")
     reference = out / "reference.sv"
-    reference.write_bytes(subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT))
+    reference.write_bytes(read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT))
     current = out / "current.sv"
     current.write_bytes((ROOT / SOURCE).read_bytes())
     report = dict(reference_ref=args.reference, source_sha256=digest(current),

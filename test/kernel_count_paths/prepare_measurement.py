@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -26,7 +30,7 @@ def main():
     for label in ('reference', 'current'):
         paths = []
         for source in SOURCES:
-            data = (subprocess.check_output(['git', 'show', f'{args.reference}:{source}'], cwd=ROOT)
+            data = (read_rtl_source(f'{args.reference}:{source}', cwd=ROOT)
                     if label == 'reference' else (ROOT / source).read_bytes())
             path = out / label / Path(source).name
             path.parent.mkdir(parents=True, exist_ok=True)

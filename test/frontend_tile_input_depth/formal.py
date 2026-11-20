@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/conv/conv_im2col_frontend.sv"
 RANGE_START = "  if (RW < 32) begin : g_tile_row_range\n"
@@ -68,7 +71,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", args.reference + ":" + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference + ":" + SOURCE, cwd=ROOT, text=True)
     bodies = {
         "range": {"reference": extract(reference, RANGE_START, RANGE_END),
                   "current": extract(current, RANGE_START, RANGE_END)},

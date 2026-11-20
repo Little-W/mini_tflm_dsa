@@ -197,7 +197,7 @@ def main():
         command=[args.verilator,'--binary','--timing','--assert','-Wno-fatal','--top-module','tb_fifo_storage',
             f'-DTB_BUS_WIDTH={bus}','--Mdir',str(folder/'obj'),'-j','2',
             *(['-DXILINX_FPGA'] if args.fpga else ['-DASIC_SYNTHESIS']),
-            str(ROOT/'rtl/common/REGFILE.v'),str(path),str(extracted),str(model),str(HERE/'tb_fifo_storage.sv')]
+            str(ROOT/'rtl/common/regfile.v'),str(path),str(extracted),str(model),str(HERE/'tb_fifo_storage.sv')]
         with (folder/'build.log').open('w') as log:
             subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True)
         result=subprocess.run([str(folder/'obj/Vtb_fifo_storage')],capture_output=True,text=True,timeout=120)

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 PARAMETERS = """parameter int TILE=16, parameter int PE_COUNT=8,
     localparam int ACTIVE_COUNT_W=$clog2(TILE+1),
@@ -75,8 +78,7 @@ def main():
     source_path = ROOT / "rtl/npu/conv/vector_engine.sv"
     sources = [ROOT / "rtl/npu/conv/conv_im2col_pkg.sv", ROOT / "rtl/npu/conv/vector_engine_pkg.sv"]
     for label in ("reference", "candidate"):
-        source = subprocess.check_output(["git", "show", args.reference_rev + ":rtl/npu/conv/vector_engine.sv"],
-                                         cwd=ROOT, text=True) if label == "reference" else source_path.read_text()
+        source = read_rtl_source(args.reference_rev + ":rtl/npu/conv/vector_engine.sv", cwd=ROOT, text=True) if label == "reference" else source_path.read_text()
         path = out / (label + ".sv")
         path.write_text(extract(source, label))
         sources.append(path)

@@ -20,11 +20,11 @@ module tb_regfile #(
     integer checks = 0;
     integer collisions = 0;
     integer held_reads = 0;
-    REGFILE #(.p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_write_unit(WRITE_UNIT),
+    regfile #(.p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_write_unit(WRITE_UNIT),
         .p_read_ports(READ_PORTS), .p_sync_read(1'b1)) u_sync (
         .clk(clk), .i_wr_en(wr_en), .i_wr_addr(wr_addr), .i_wr_data(wr_data),
         .i_wr_mask(wr_mask), .i_rd_en(rd_en), .i_rd_addr(rd_addr), .o_rd_data(sync_data));
-    REGFILE #(.p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_write_unit(WRITE_UNIT),
+    regfile #(.p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_write_unit(WRITE_UNIT),
         .p_read_ports(READ_PORTS), .p_sync_read(1'b0)) u_async (
         .clk(clk), .i_wr_en(wr_en), .i_wr_addr(wr_addr), .i_wr_data(wr_data),
         .i_wr_mask(wr_mask), .i_rd_en(rd_en), .i_rd_addr(rd_addr), .o_rd_data(async_data));

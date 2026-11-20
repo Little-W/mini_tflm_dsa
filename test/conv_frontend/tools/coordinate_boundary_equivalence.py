@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = 'rtl/npu/conv/conv_im2col_frontend.sv'
 OUTPUTS = ('row_wrap', 'tap_wrap', 'next_row_ix', 'next_row_iy',
@@ -61,7 +64,7 @@ def main():
     parser.add_argument('--reference-ref',default='b8b34d5')
     args=parser.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    old=subprocess.check_output(['git','show',f'{args.reference_ref}:{SOURCE}'],cwd=ROOT,text=True)
+    old=read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     current=(ROOT/SOURCE).read_text()
     (out/'reference_frontend.sv').write_text(old)
     (out/'current_frontend.sv').write_text(current)

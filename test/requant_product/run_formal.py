@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -104,8 +107,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = ROOT / 'rtl/npu/conv/vector_scalar_multiplier.sv'
-    old = subprocess.check_output(
-        ['git', 'show', 'b8b34d5:rtl/npu/conv/vector_scalar_multiplier.sv'], cwd=ROOT, text=True)
+    old = read_rtl_source('b8b34d5:rtl/npu/conv/vector_scalar_multiplier.sv', cwd=ROOT, text=True)
     reference = old.replace('module vector_scalar_multiplier (', 'module enabled_reference (')
     reference = reference.replace('  input  wire logic clk,', '  input  wire logic clk,\n  input logic i_en,')
     for old_name, new_name in [('a', 'i_a'), ('b', 'i_b'), ('product', 'o_product')]:

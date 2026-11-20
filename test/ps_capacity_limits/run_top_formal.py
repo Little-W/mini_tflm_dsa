@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 PORTS = """
     input logic [31:0] cfg_w_reuse_eff_s2, cfg_ia_reuse_eff_s2,
@@ -118,8 +121,7 @@ def main():
     top_path = ROOT / "rtl/npu/top/npu_top.sv"
     sources = []
     for label in ("reference", "candidate"):
-        source = subprocess.check_output(["git", "show", args.reference_rev + ":rtl/npu/top/npu_top.sv"],
-                                         cwd=ROOT, text=True) if label == "reference" else top_path.read_text()
+        source = read_rtl_source(args.reference_rev + ":rtl/npu/top/npu_top.sv", cwd=ROOT, text=True) if label == "reference" else top_path.read_text()
         path = out / (label + ".sv")
         path.write_text(capacity_module(source, "capacity_" + label))
         sources.append(path)

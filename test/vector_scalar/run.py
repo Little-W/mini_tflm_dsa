@@ -9,6 +9,9 @@ import re
 import shlex
 import subprocess
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 ROOT=Path(__file__).resolve().parents[2]
 HERE=Path(__file__).resolve().parent
 
@@ -34,7 +37,7 @@ def main():
     model=re.sub(r'\bspecify\b.*?\bendspecify\b','', '\n'.join(models), flags=re.S)
     model_file=out/'xilinx_dsp48e1.sv';model_file.write_text(model+'\n')
     source=ROOT/'rtl/npu/conv/vector_scalar_multiplier.sv'
-    old=subprocess.check_output(['git','show','b8b34d5:rtl/npu/conv/vector_scalar_multiplier.sv'],cwd=ROOT,text=True)
+    old=read_rtl_source('b8b34d5:rtl/npu/conv/vector_scalar_multiplier.sv', cwd=ROOT, text=True)
     reference=out/'reference.sv'
     reference.write_text(old.replace('module vector_scalar_multiplier (','module vector_scalar_multiplier_reference ('))
     source_hash=hashlib.sha256(source.read_bytes()).hexdigest()

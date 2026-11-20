@@ -58,10 +58,10 @@ def main():
     sources = [ROOT / "rtl/npu/dma/cache/conv_read_cache.sv",
                ROOT / "rtl/npu/dma/cache/conv_sdp_ram.sv",
                ROOT / "rtl/npu/conv/conv_axi_span_reader.sv",
-               ROOT / "rtl/common/REGFILE.v"]
+               ROOT / "rtl/common/regfile.v"]
     if args.reference:
         sources = [args.reference.resolve() / path.name for path in sources[:3]]
-        storage = args.reference.resolve() / 'REGFILE.v'
+        storage = args.reference.resolve() / 'regfile.v'
         if storage.is_file():
             sources.append(storage)
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}

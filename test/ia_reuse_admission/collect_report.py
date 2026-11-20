@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -81,7 +85,7 @@ def main():
             for name, expected in data['source_sha256'].items():
                 if digest(folder / 'current' / Path(name).name) != expected:
                     raise RuntimeError('Formal current snapshot differs')
-                original = subprocess.check_output(['git', 'show', report['reference_revision'] + ':' + name], cwd=ROOT)
+                original = read_rtl_source(report['reference_revision'] + ':' + name, cwd=ROOT)
                 if (folder / 'reference' / Path(name).name).read_bytes() != original:
                     raise RuntimeError('Formal reference snapshot differs')
             data['equivalent_bits'] = sum(row['equivalent_bits'] for row in data['runs'])

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [Path('rtl/npu/loaders')/(name+'.sv')
            for name in ('ia_loader_ctrl', 'ia_loader', 'ia_loader_cache_mgr')]
@@ -51,8 +54,7 @@ def main():
         folder.mkdir(exist_ok=True)
         snapshots[label] = []
         for relative in SOURCES:
-            text = (subprocess.check_output(['git', 'show', f'{args.reference_rev}:{relative}'],
-                                            cwd=ROOT, text=True)
+            text = (read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT, text=True)
                     if label == 'reference' else (ROOT/relative).read_text())
             if relative.name == 'ia_loader_ctrl.sv':
                 # 完整保留派生复用数的各位，逐位检查其组合对应关系。

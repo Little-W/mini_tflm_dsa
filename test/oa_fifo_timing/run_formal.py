@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 OA = Path('rtl/npu/writeback/oa_writer.sv')
 FIFO = Path('rtl/npu/writeback/vec_s8_to_fifo.sv')
@@ -39,7 +42,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    old = subprocess.check_output(['git', 'show', f'{args.reference}:{OA}'], cwd=ROOT, text=True)
+    old = read_rtl_source(f'{args.reference}:{OA}', cwd=ROOT, text=True)
     current = (ROOT / OA).read_text()
     registers = sorted(set(re.findall(r'\b(\w+)\s*<=', old)))
     relation = '''assign formal_invariant =

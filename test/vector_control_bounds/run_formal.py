@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT=Path(__file__).resolve().parents[2]
 
 
@@ -65,7 +68,7 @@ def main():
         result=run(compare(paths,'vector_group_compare','',packages),folder)
         result['tile']=tile;report['group_comparison'].append(result)
     relative='rtl/npu/conv/vector_config_check.sv'
-    original=subprocess.check_output(['git','show',args.reference_rev+':'+relative],cwd=ROOT,text=True)
+    original=read_rtl_source(args.reference_rev+':'+relative, cwd=ROOT, text=True)
     reference=out/'config_reference.sv';reference.write_text(original)
     result=run(compare([('reference',reference),('candidate',ROOT/relative)],'vector_config_check','',packages),out/'config')
     report['configuration']=result

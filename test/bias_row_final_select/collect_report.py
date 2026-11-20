@@ -9,6 +9,10 @@ from pathlib import Path
 import subprocess
 
 from extract_control import ROOT, TOP, module_source
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 
 def digest(path):
@@ -56,8 +60,7 @@ def main():
     current_snapshot = hashlib.sha256(module_source(current_text).encode()).hexdigest()
     assert current_snapshot == formal['formal']['snapshot_sha256']['current']
     reference = formal['formal']['reference']
-    reference_text = subprocess.check_output(
-        ['git', 'show', reference + ':' + str(TOP)], cwd=ROOT, text=True)
+    reference_text = read_rtl_source(reference + ':' + str(TOP), cwd=ROOT, text=True)
     assert hashlib.sha256(module_source(reference_text).encode()).hexdigest() == \
         formal['formal']['snapshot_sha256']['reference']
 

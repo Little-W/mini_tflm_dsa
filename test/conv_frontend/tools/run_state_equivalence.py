@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[3]
 FRONTEND = "rtl/npu/conv/conv_im2col_frontend.sv"
 COMMON = (
@@ -19,7 +22,7 @@ COMMON = (
     "rtl/npu/conv/conv_axi_span_reader.sv",
     "rtl/common/onehot_check.sv",
     "rtl/common/add_equal.sv",
-    "rtl/common/REGFILE.v",
+    "rtl/common/regfile.v",
 )
 CASES = {
     "size4_policy0": {"SIZE": 4, "LANES": 1, "BUS_WIDTH": 32, "CACHE_SETS": 8, "CACHE_POLICY": 0},
@@ -60,8 +63,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     snapshots = {}
-    original_reference = subprocess.check_output(
-        ["git", "show", args.reference_ref + ":" + FRONTEND], cwd=ROOT)
+    original_reference = read_rtl_source(args.reference_ref + ":" + FRONTEND, cwd=ROOT)
     current_source = args.current_source.resolve() if args.current_source else ROOT / FRONTEND
     current = current_source.read_bytes()
     group_proof = None

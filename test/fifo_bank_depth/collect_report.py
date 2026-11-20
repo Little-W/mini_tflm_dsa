@@ -9,6 +9,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/writeback/vec_s8_to_fifo.sv'
@@ -37,8 +41,7 @@ def main():
     args = parser.parse_args()
     results = args.results.resolve()
     current_hash = digest(ROOT / SOURCE)
-    reference_hash = hashlib.sha256(subprocess.check_output(
-        ['git', 'show', args.reference + ':' + SOURCE], cwd=ROOT)).hexdigest()
+    reference_hash = hashlib.sha256(read_rtl_source(args.reference + ':' + SOURCE, cwd=ROOT)).hexdigest()
     artifacts = {}
 
     formal_file = results / 'formal/summary.json'

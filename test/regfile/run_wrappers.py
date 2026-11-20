@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -21,7 +25,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    sources = [ROOT / "rtl/common/REGFILE.v", ROOT / "rtl/npu/loaders/ia_buffer_wrapper.sv",
+    sources = [ROOT / "rtl/common/regfile.v", ROOT / "rtl/npu/loaders/ia_buffer_wrapper.sv",
                ROOT / "rtl/npu/buffers/ps_buffer.sv", Path(__file__).with_name("tb_wrapper_equivalence.sv")]
     reference_files = []
     current_ps = out / "ps_buffer_exact_ram_current.sv"
@@ -29,8 +33,7 @@ def main():
                                    sources[2].read_text(), re.DOTALL).group(0) + "\n")
     compile_sources = [sources[0], sources[1], current_ps, sources[3]]
     for module, source in (("ia_buffer_wrapper", sources[1]), ("ps_buffer_exact_ram", sources[2])):
-        text = subprocess.check_output(["git", "show", f"{args.reference}:{source.relative_to(ROOT)}"],
-                                       cwd=ROOT, text=True)
+        text = read_rtl_source(f"{args.reference}:{source.relative_to(ROOT)}", cwd=ROOT, text=True)
         body = re.search(r"\bmodule\s+" + module + r"\b.*?\bendmodule", text, re.DOTALL).group(0)
         reference = out / f"{module}_ref.sv"
         reference.write_text(re.sub(r"\b" + module + r"\b", module + "_ref", body) + "\n")

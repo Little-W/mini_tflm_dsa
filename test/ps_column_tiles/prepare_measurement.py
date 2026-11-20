@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -19,7 +23,7 @@ def main():
     source = 'rtl/npu/control/ps_window_scheduler.sv'
     cases, hashes = {}, {}
     for label in ('reference', 'current'):
-        data = (subprocess.check_output(['git', 'show', f'{args.reference}:{source}'], cwd=ROOT)
+        data = (read_rtl_source(f'{args.reference}:{source}', cwd=ROOT)
                 if label == 'reference' else (ROOT / source).read_bytes())
         path = out / (label + '.sv')
         path.write_bytes(data)

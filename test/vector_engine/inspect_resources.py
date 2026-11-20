@@ -82,8 +82,8 @@ def inspect(repository, out, executable, top, tile, pes):
         parameters = [f"-GSIZE={tile}", "-GLANES=4", "-GCACHE_SETS=128", "-GCACHE_POLICY=3"]
     sources = [(conv.parent / "dma" / name if name.startswith("cache/") else conv / name) for name in names
                if name != "vector_quant_params.sv" or (conv / name).exists()]
-    if (repository / "rtl/common/REGFILE.v").exists():
-        sources.append(repository / "rtl/common/REGFILE.v")
+    if (repository / "rtl/common/regfile.v").exists():
+        sources.append(repository / "rtl/common/regfile.v")
     identity = {str(path.relative_to(repository)): hashlib.sha256(path.read_bytes()).hexdigest()
                 for path in sources}
     tree, metadata = out / "design.tree.json", out / "design.meta.json"

@@ -8,6 +8,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/loaders/ia_loader.sv"
 
@@ -58,7 +61,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     current_state, current_writes = extract(current)
     reference_state, reference_writes = extract(reference)
     if current.replace(current_state, reference_state, 1).replace(current_writes, reference_writes, 1) != reference:

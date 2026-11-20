@@ -137,7 +137,7 @@ def elaboration_types(tree):
 
 def array_category(origin, name, ancestors, instance_path=""):
     name = name.rsplit(".", 1)[-1]
-    if origin == "REGFILE" and name == "mem":
+    if origin == "regfile" and name == "mem":
         if "requant_group_buffer" in ancestors:
             return "requant_input_rows"
         if "vec_requant_full" in ancestors and ".g_ws_bank_write." in instance_path:
@@ -221,7 +221,7 @@ def array_category(origin, name, ancestors, instance_path=""):
 
 
 def register_array_category(origin, name, ancestors=(), instance_path=""):
-    if origin == "REGFILE" and name.rsplit(".", 1)[-1] == "mem" and \
+    if origin == "regfile" and name.rsplit(".", 1)[-1] == "mem" and \
             "vec_requant_full" in ancestors and ".g_ws_bank_write." in instance_path:
         return "requant_ws_parameters"
     if origin == "vec_requant_full" and name in (

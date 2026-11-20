@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts/fpga"))
 import open_fpga_synth as flow
@@ -43,14 +46,14 @@ def main():
         raise RuntimeError("The measured source differs from the channel proof")
     dma_path = ROOT / "rtl/npu/dma/axi_dual_block_dma.sv"
     dma = dma_path.read_text()
-    if dma != subprocess.check_output(["git", "show", proof["reference_commit"] + ":rtl/npu/dma/axi_dual_block_dma.sv"], cwd=ROOT, text=True):
+    if dma != read_rtl_source(proof["reference_commit"] + ":rtl/npu/dma/axi_dual_block_dma.sv", cwd=ROOT, text=True):
         raise RuntimeError("The configuration connection differs from the fixed source")
     ready = re.search(r"    assign conv_cfg_ready\s*=.*?;", dma, re.S)[0]
     fire = re.search(r"    assign cfg_fire\s*=.*?;", dma, re.S)[0]
     if ".cfg_valid(cfg_fire && conv_enable)" not in dma:
         raise RuntimeError("Unexpected frontend configuration connection")
     tool = runpy.run_path(str(ROOT / "test/frontend_incoming_depth/channel_formal.py"))
-    reference = subprocess.check_output(["git", "show", proof["reference_commit"] + ":rtl/npu/conv/conv_im2col_frontend.sv"], cwd=ROOT, text=True)
+    reference = read_rtl_source(proof["reference_commit"] + ":rtl/npu/conv/conv_im2col_frontend.sv", cwd=ROOT, text=True)
     cases = {}
     with args.lock_file.open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)

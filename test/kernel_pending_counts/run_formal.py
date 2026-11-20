@@ -9,6 +9,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 GROUPS = ('buffer', 'kernel', 'control', 'comparisons', 'linear', 'image')
@@ -67,13 +70,12 @@ def main():
         ('kernel_loader_ctrl.sv', 'kernel_loader.sv', 'kernel_loader_buffer.sv')]
     tracked += [ROOT / path for path in (
         'rtl/npu/dma/axi_linear_block_dma.sv', 'rtl/npu/dma/axi_dual_block_dma.sv',
-        'rtl/common/REGFILE.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv',
+        'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv',
         'test/monitors/kernel_loader_observer.sv', 'scripts/fpga/open_fpga_synth.py')]
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in tracked if path.is_file()}
     revision = subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()
     for name in ('kernel_loader_ctrl.sv', 'kernel_loader.sv', 'kernel_loader_buffer.sv'):
-        (reference / name).write_bytes(subprocess.check_output(
-            ['git', 'show', f'{revision}:rtl/npu/loaders/{name}'], cwd=ROOT))
+        (reference / name).write_bytes(read_rtl_source(f'{revision}:rtl/npu/loaders/{name}', cwd=ROOT))
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
     model = out / 'xilinx_models.sv'
@@ -108,13 +110,13 @@ def main():
 
     formal_tail = 'memory_map\nasync2sync\nopt -full\n'
     if 'buffer' in args.groups:
-        run('buffer', f'''read_slang --top buffer_pending -GSIZE=16 rtl/npu/loaders/kernel_loader_buffer.sv rtl/common/REGFILE.v {HERE / 'buffer_pending.sv'}
+        run('buffer', f'''read_slang --top buffer_pending -GSIZE=16 rtl/npu/loaders/kernel_loader_buffer.sv rtl/common/regfile.v {HERE / 'buffer_pending.sv'}
 prep -top buffer_pending -flatten
 {formal_tail}sat -verify -tempinduct -seq 4 -maxsteps 12 -timeout 45 -set-init-zero -set rst_n 1 -set-at 1 rst_n 0 -prove bounds 1 -prove relation 1
 ''', True)
     if 'kernel' in args.groups:
         complete = out / 'kernel_complete.json'
-        run('kernel_elaborate', f'''read_slang -D VERIFIC=1 -D YOSYS=1 -D SYNTHESIS=1 --top kernel_pending -GCOUNT_WIDTH=29 {HERE / 'kernel_pending.sv'} {reference / 'kernel_loader.sv'} {reference / 'kernel_loader_ctrl.sv'} {reference / 'kernel_loader_buffer.sv'} rtl/common/REGFILE.v rtl/common/add_equal.sv rtl/common/add3_equal.sv {model}
+        run('kernel_elaborate', f'''read_slang -D VERIFIC=1 -D YOSYS=1 -D SYNTHESIS=1 --top kernel_pending -GCOUNT_WIDTH=29 {HERE / 'kernel_pending.sv'} {reference / 'kernel_loader.sv'} {reference / 'kernel_loader_ctrl.sv'} {reference / 'kernel_loader_buffer.sv'} rtl/common/regfile.v rtl/common/add_equal.sv rtl/common/add3_equal.sv {model}
 prep -top kernel_pending -flatten
 write_json {complete}
 ''')
@@ -158,7 +160,7 @@ sat -verify -prove equivalent 1 -show-inputs -show-outputs
         wrapper.write_text(header.rstrip() + ',\n output logic relation\n);\n' +
                            (HERE / 'linear_owner_body.sv.inc').read_text())
         complete = out / 'linear_complete.json'
-        run('linear_elaborate', f'''read_slang -D SYNTHESIS=1 -D YOSYS=1 -D VERIFIC=1 --top linear_ownership -GBUS_WIDTH=64 -GSIZE=64 -GCACHE_BLOCKS=64 {wrapper} rtl/npu/dma/axi_linear_block_dma.sv rtl/common/REGFILE.v rtl/common/add_equal.sv {model}
+        run('linear_elaborate', f'''read_slang -D SYNTHESIS=1 -D YOSYS=1 -D VERIFIC=1 --top linear_ownership -GBUS_WIDTH=64 -GSIZE=64 -GCACHE_BLOCKS=64 {wrapper} rtl/npu/dma/axi_linear_block_dma.sv rtl/common/regfile.v rtl/common/add_equal.sv {model}
 prep -top linear_ownership -flatten
 write_json {complete}
 ''')

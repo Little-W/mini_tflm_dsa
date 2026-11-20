@@ -5,6 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [Path('rtl/npu/loaders/kernel_loader_ctrl.sv'), Path('rtl/npu/loaders/kernel_loader.sv')]
@@ -26,7 +30,7 @@ def main():
         paths = []
         source_hashes[label] = {}
         for source in SOURCES:
-            data = (subprocess.check_output(['git', 'show', f'{args.reference_rev}:{source}'], cwd=ROOT)
+            data = (read_rtl_source(f'{args.reference_rev}:{source}', cwd=ROOT)
                     if label == 'reference' else (ROOT / source).read_bytes())
             path = folder / source.name
             path.write_bytes(data)
@@ -50,7 +54,7 @@ def main():
         'reference_rev': args.reference_rev,
         'source_sha256': source_hashes,
         'dependency_sha256': {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
-                              for path in dependencies + [ROOT / 'rtl/common/REGFILE.v',
+                              for path in dependencies + [ROOT / 'rtl/common/regfile.v',
                                                           ROOT / 'rtl/common/add_equal.sv',
                                                           ROOT / 'rtl/common/add3_equal.sv']},
     }

@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [Path('rtl/npu/loaders/kernel_loader.sv'), Path('rtl/npu/loaders/kernel_loader_ctrl.sv')]
 PROFILES = [(4, 8, 32), (16, 16, 32), (16, 29, 64)]
@@ -43,7 +46,7 @@ def main():
         snapshots[label] = []
         for source in SOURCES:
             path = folder / source.name
-            text = (subprocess.check_output(['git', 'show', f'{args.reference_rev}:{source}'], cwd=ROOT, text=True)
+            text = (read_rtl_source(f'{args.reference_rev}:{source}', cwd=ROOT, text=True)
                     if label == 'reference' else (ROOT / source).read_text())
             if source.name == 'kernel_loader_ctrl.sv':
                 # 运行阶段实际使用的步长作为组合观察点，配置阶段不消费该值。

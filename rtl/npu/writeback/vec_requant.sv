@@ -1142,7 +1142,7 @@ module vec_requant_full #(
     assign product_amount_i_rd_addr = product_multiplier_i_rd_addr;
     assign ch_product_amount_is_read[bank] = product_amount_o_rd_data;
 
-    REGFILE #(
+    regfile #(
         .p_data_width(32), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
         .p_write_unit(32), .p_sync_read(1'b0)
     ) u_multiplier (
@@ -1150,7 +1150,7 @@ module vec_requant_full #(
         .i_wr_data(multiplier_i_wr_data), .i_wr_mask(multiplier_i_wr_mask),
         .i_rd_en(multiplier_i_rd_en), .i_rd_addr(multiplier_i_rd_addr), .o_rd_data(multiplier_o_rd_data)
     );
-    REGFILE #(
+    regfile #(
         .p_data_width(32), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
         .p_write_unit(32), .p_sync_read(1'b0)
     ) u_shift (
@@ -1158,7 +1158,7 @@ module vec_requant_full #(
         .i_wr_data(shift_i_wr_data), .i_wr_mask(shift_i_wr_mask),
         .i_rd_en(shift_i_rd_en), .i_rd_addr(shift_i_rd_addr), .o_rd_data(shift_o_rd_data)
     );
-    REGFILE #(
+    regfile #(
         .p_data_width(32), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
         .p_write_unit(32), .p_sync_read(1'b1)
     ) u_product_multiplier (
@@ -1167,7 +1167,7 @@ module vec_requant_full #(
         .i_rd_en(product_multiplier_i_rd_en), .i_rd_addr(product_multiplier_i_rd_addr),
         .o_rd_data(product_multiplier_o_rd_data)
     );
-    REGFILE #(
+    regfile #(
         .p_data_width(7), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
         .p_write_unit(7), .p_sync_read(1'b1)
     ) u_product_amount (
@@ -1245,7 +1245,7 @@ module vec_requant_full #(
         assign ch_product_amount_lane_r[p_lane] = shift_o_rd_data[row][38:32];
       end
 
-      REGFILE #(
+      regfile #(
           .p_data_width(64), .p_depth(p_bank_depth), .p_addr_width(p_bank_addr_width),
           .p_write_unit(64), .p_read_ports(p_bank_depth), .p_sync_read(1'b0)
       ) u_multiplier (
@@ -1253,7 +1253,7 @@ module vec_requant_full #(
           .i_wr_data(multiplier_i_wr_data), .i_wr_mask(multiplier_i_wr_mask),
           .i_rd_en(multiplier_i_rd_en), .i_rd_addr(multiplier_i_rd_addr), .o_rd_data(multiplier_o_rd_data)
       );
-      REGFILE #(
+      regfile #(
           .p_data_width(39), .p_depth(p_bank_depth), .p_addr_width(p_bank_addr_width),
           .p_write_unit(39), .p_read_ports(p_bank_depth), .p_sync_read(1'b0)
       ) u_shift (

@@ -59,7 +59,7 @@ def attribute_resources(module, origins, source_origins=None):
         instance = origins.get(name, name).split(' ')[0]
         while '.' in instance:
             instance = instance.rsplit('.', 1)[0]
-            # 公共 REGFILE 等单元的资源归入最近的功能模块。
+            # 公共 regfile 等单元的资源归入最近的功能模块。
             possible = {item for item in instance_sources.get(instance, set())
                         if not item.startswith('rtl/common/')}
             if len(possible) == 1:

@@ -8,11 +8,15 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/dma/axi_linear_block_dma.sv'
 DEPENDENCIES = (
-    'rtl/common/REGFILE.v',
+    'rtl/common/regfile.v',
     'rtl/common/add_equal.sv',
     'test/linear_dma_context/linear_dma_4k_top.sv',
     'test/linear_dma_context/main.cpp',
@@ -26,8 +30,7 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
     out = args.out.resolve()
-    content = subprocess.check_output(
-        ['git', 'show', args.reference + ':' + SOURCE], cwd=ROOT)
+    content = read_rtl_source(args.reference + ':' + SOURCE, cwd=ROOT)
     source = out / SOURCE
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_bytes(content)

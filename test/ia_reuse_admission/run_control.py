@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'test/ia_write_output_depth'))
 from primitives import prepare_models
@@ -41,8 +44,8 @@ def main():
     ia_path = args.current_root / 'rtl/npu/loaders/ia_loader.sv'
     ctrl_path = args.current_root / 'rtl/npu/loaders/ia_loader_ctrl.sv'
     ia, ctrl = ia_path.read_text(), ctrl_path.read_text()
-    reference_ia = subprocess.check_output(['git', 'show', args.reference + ':rtl/npu/loaders/ia_loader.sv'], cwd=ROOT, text=True)
-    reference_ctrl = subprocess.check_output(['git', 'show', args.reference + ':rtl/npu/loaders/ia_loader_ctrl.sv'], cwd=ROOT, text=True)
+    reference_ia = read_rtl_source(args.reference + ':rtl/npu/loaders/ia_loader.sv', cwd=ROOT, text=True)
+    reference_ctrl = read_rtl_source(args.reference + ':rtl/npu/loaders/ia_loader_ctrl.sv', cwd=ROOT, text=True)
     model, model_info = prepare_models(out, ('LUT3', 'LUT6', 'LUT6_2'))
     summary = {'reference_revision': args.reference, 'input_constraints': False,
                'source_sha256': {'rtl/npu/loaders/ia_loader.sv': digest(ia_path),

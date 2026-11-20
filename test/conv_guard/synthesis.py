@@ -11,6 +11,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/conv/conv_axi_read_guard.sv'
 
@@ -24,7 +27,7 @@ def main():
     out = args.out.resolve()
     snapshot = out / 'sources'
     snapshot.mkdir(parents=True, exist_ok=True)
-    content = (subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT)
+    content = (read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT)
                if args.reference_ref else (ROOT / SOURCE).read_bytes())
     source = snapshot / Path(SOURCE).name
     source.write_bytes(content)

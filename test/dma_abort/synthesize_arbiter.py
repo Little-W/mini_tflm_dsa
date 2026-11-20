@@ -12,6 +12,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts/fpga'))
 
@@ -61,7 +64,7 @@ def main():
     sources = []
     hashes = {}
     for name in names:
-        content = (subprocess.check_output(['git', 'show', f'{args.reference_ref}:{name}'], cwd=ROOT)
+        content = (read_rtl_source(f'{args.reference_ref}:{name}', cwd=ROOT)
                    if args.reference_ref else (ROOT / name).read_bytes())
         hashes[name] = hashlib.sha256(content).hexdigest()
         path = snapshot / Path(name).name

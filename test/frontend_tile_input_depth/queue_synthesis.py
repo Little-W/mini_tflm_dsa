@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = "rtl/npu/dma/conv_window_queue.sv"
 
@@ -23,7 +26,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    reference = subprocess.check_output(["git", "show", args.reference + ":" + SOURCE], cwd=ROOT)
+    reference = read_rtl_source(args.reference + ":" + SOURCE, cwd=ROOT)
     current = (ROOT / SOURCE).read_bytes()
     snapshot = out / "reference_queue.sv"
     snapshot.write_bytes(reference)

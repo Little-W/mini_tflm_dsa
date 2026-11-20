@@ -11,7 +11,7 @@ import subprocess
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 SOURCE = ROOT / "rtl/npu/dma/cache/conv_sdp_ram.sv"
-STORAGE = ROOT / "rtl/common/REGFILE.v"
+STORAGE = ROOT / "rtl/common/regfile.v"
 
 
 def main():

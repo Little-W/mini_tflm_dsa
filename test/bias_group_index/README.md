@@ -23,7 +23,7 @@
 
 ## 综合与路径
 
-测量包含实际索引计算、完整偏置缓冲区和实际 `REGFILE`，参数为 `SIZE=16`、`BUS_WIDTH=64`、`COUNT_WIDTH=29`、`GROUP_BLOCKS_MAX=32`。宽算术映射使用最小位宽 8 和 DSP 预算 740。
+测量包含实际索引计算、完整偏置缓冲区和实际 `regfile`，参数为 `SIZE=16`、`BUS_WIDTH=64`、`COUNT_WIDTH=29`、`GROUP_BLOCKS_MAX=32`。宽算术映射使用最小位宽 8 和 DSP 预算 740。
 
 | 映射方式 | 参考逻辑 LUT | 当前逻辑 LUT | 参考组首触发至 RAM 地址 | 当前组首触发至 RAM 地址 |
 |---|---:|---:|---:|---:|

@@ -26,7 +26,7 @@ def main():
     import netlist_metrics
     import pyosys
     size=args.bank_bytes;banks=args.banks
-    sources=[ROOT/'rtl/common/REGFILE.v']
+    sources=[ROOT/'rtl/common/regfile.v']
     if args.kind=='memory':
         sources.append(ROOT/'rtl/npu/buffers/ia_ps_shared_ram.sv')
         top='ia_ps_channel_ram' if args.layout=='fixed' else 'ia_ps_shared_ram'

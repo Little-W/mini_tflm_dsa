@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/conv/conv_im2col_frontend.sv")
 
@@ -39,7 +42,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(["git", "show", f"{args.reference}:{SOURCE}"], cwd=ROOT, text=True)
+    reference = read_rtl_source(f"{args.reference}:{SOURCE}", cwd=ROOT, text=True)
     current_arithmetic, current_condition, declarations = extract(current)
     reference_arithmetic, reference_condition, reference_declarations = extract(reference)
     normalized = current.replace(current_arithmetic, reference_arithmetic, 1).replace(current_condition, reference_condition, 1)
@@ -104,7 +107,7 @@ endmodule
         unchanged_outside_row_end_expressions=True, actual_source_expressions=True,
         input_bits=112, result_bits=3, inputs_constrained=False,
         helper_sha256=digest(helper.read_bytes()),
-        reference_helper_sha256=digest(subprocess.check_output(["git", "show", f"{args.reference}:rtl/common/add_equal.sv"], cwd=ROOT)),
+        reference_helper_sha256=digest(read_rtl_source(f"{args.reference}:rtl/common/add_equal.sv", cwd=ROOT)),
         primitive_library_sha256=digest(library.read_bytes()), primitive_model_sha256=digest(primitive_file.read_bytes()),
         proof_sha256=digest(proof.read_bytes()), cases=cases)
     (out / "summary.json").write_text(json.dumps(report, indent=2) + "\n")

@@ -9,9 +9,12 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/dma/cache/conv_read_cache.sv'
-STORAGE = 'rtl/common/REGFILE.v'
+STORAGE = 'rtl/common/regfile.v'
 TAGS = ('lookup_tag', 'pf_tag', 'incoming_tag', 'next_tag', 'hint_lookup_tag')
 
 
@@ -27,7 +30,7 @@ def read_declarations(source):
 
 
 def tag_instance(source):
-    start = source.index('    REGFILE #(', source.index('    // 预取接收时读取新描述地址')
+    start = source.index('    regfile #(', source.index('    // 预取接收时读取新描述地址')
                          if '    // 预取接收时读取新描述地址' in source
                          else source.index('    // 标签共用写入地址'))
     end = source.index('    );', start) + len('    );')
@@ -128,7 +131,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT, text=True)
+    reference = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
     storage = (ROOT / STORAGE).read_text()
     if normalize_source(current, reference) != reference:
         raise ValueError('Additional cache changes require verification')
@@ -136,7 +139,7 @@ def main():
         raise ValueError('Offer qualification timing changed')
     for source in (reference, current):
         audit_consumers(source)
-    # 写入连接及 REGFILE 的写入行为相同，任意公共存储内容可作为同步读取的输入。
+    # 写入连接及 regfile 的写入行为相同，任意公共存储内容可作为同步读取的输入。
     old_instance = tag_instance(reference).replace('.p_read_ports(7)', '.p_read_ports(5)')
     if old_instance != tag_instance(current):
         raise ValueError('Storage write or read timing connections changed')
@@ -185,7 +188,7 @@ endmodule
               'initial_reset': True, 'memory_contents_constrained': False, 'addresses_constrained': False,
               'events_constrained_after_reset': False,
               'observation_qualification': 'configured; every tag consumer requires a valid entry qualified by configured',
-              'method': 'Source-derived synchronous REGFILE read and offer selector; temporal induction for every tag output.',
+              'method': 'Source-derived synchronous regfile read and offer selector; temporal induction for every tag output.',
               'cases': cases}
     (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
     print('TAG_PORT_EQUIVALENCE_PASS', out / 'summary.json')

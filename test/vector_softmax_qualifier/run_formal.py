@@ -9,6 +9,9 @@ import shlex
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = 'rtl/npu/conv/vector_engine.sv'
 
@@ -110,7 +113,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     current = (ROOT / SOURCE).read_text()
-    reference = subprocess.check_output(['git', 'show', args.reference + ':' + SOURCE], cwd=ROOT, text=True)
+    reference = read_rtl_source(args.reference + ':' + SOURCE, cwd=ROOT, text=True)
     assert current.replace(section(current), section(reference), 1) == reference
     softmax = ROOT / 'rtl/npu/conv/vector_softmax.sv'
     assert 'assign exp_wdata = $signed(lut_rsp_data);' in softmax.read_text()

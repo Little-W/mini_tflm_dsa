@@ -6,6 +6,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rtl_reference import read_rtl_source
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -28,8 +31,7 @@ def main():
             source = folder/name
             if label == 'reference':
                 destination = out/('reference_'+name)
-                destination.write_bytes(subprocess.check_output(
-                    ['git', 'show', args.reference_ref+':'+str(source.relative_to(ROOT))], cwd=ROOT))
+                destination.write_bytes(read_rtl_source(args.reference_ref+':'+str(source.relative_to(ROOT)), cwd=ROOT))
                 source = destination
             sources.append(source)
         cases[label] = {'top': 'vector_engine', 'sources': list(map(str, sources)),
