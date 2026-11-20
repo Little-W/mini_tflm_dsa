@@ -1,0 +1,363 @@
+{
+  "passed": true,
+  "git_commit": "458100db01b19eac8d86ec96b99c2ae3f843eb95",
+  "git_tree": "9ae09dd72ee2b8a93675a37ac9b1cb0cb3f757c4",
+  "measurement_directory": "/workspace/scratch/76fc8a977a8f/worktrees/round21_measurement",
+  "tracked_worktree_clean": true,
+  "sources_unchanged": true,
+  "capacity_unit_tests": {
+    "passed": true,
+    "tests": 83,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "elapsed_seconds": 6.85971797601087
+  },
+  "structure": {
+    "generic_passed": true,
+    "fpga_passed": true,
+    "elaboration_only": true,
+    "elapsed_seconds": 8.540821688002325
+  },
+  "configuration": {
+    "PCR_ENGINE": 1,
+    "SIZE": 16,
+    "IA_CACHE_BLOCKS": 4,
+    "PS_FRAME_COUNT": 16,
+    "NPU_AXI_DATA_WIDTH": 64,
+    "IM2COL_CACHE_BYTES": 4096,
+    "SHARED_BANK_BYTES": 8192,
+    "SHARED_BANK_COUNT": 7,
+    "AXI_READ_OUTSTANDING": 4,
+    "PS_POOL_BYTES": 49152,
+    "PS_FORCE_RAW": 1,
+    "CAPACITY_BUDGET_BYTES": 131072,
+    "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+    "CAPACITY_REPRESENTATION": "raw32"
+  },
+  "buffer_arrays_bits": {
+    "vector_buffers": 9696,
+    "conv_prefetch_queue": 1032,
+    "conv_data_cache": 32768,
+    "conv_cache_metadata": 40192,
+    "conv_request_queue": 552,
+    "conv_response_queue": 132,
+    "ia_slot_metadata": 768,
+    "ia_cache_tags": 3968,
+    "kernel_cache": 12288,
+    "bias_cache": 32768,
+    "ia_ps_shared_ram": 458752,
+    "ps_decoded_fifo": 4096,
+    "ps_decoded_first": 8,
+    "ps_frame_valid": 16,
+    "ps_frame_lengths": 160,
+    "requant_is_cache": 52736,
+    "requant_input_rows": 262656,
+    "oa_s8_fifo": 65536,
+    "oa_s16_fifo": 16384
+  },
+  "buffer_arrays_bytes": {
+    "vector_buffers": 1212.0,
+    "conv_prefetch_queue": 129.0,
+    "conv_data_cache": 4096.0,
+    "conv_cache_metadata": 5024.0,
+    "conv_request_queue": 69.0,
+    "conv_response_queue": 16.5,
+    "ia_slot_metadata": 96.0,
+    "ia_cache_tags": 496.0,
+    "kernel_cache": 1536.0,
+    "bias_cache": 4096.0,
+    "ia_ps_shared_ram": 57344.0,
+    "ps_decoded_fifo": 512.0,
+    "ps_decoded_first": 1.0,
+    "ps_frame_valid": 2.0,
+    "ps_frame_lengths": 20.0,
+    "requant_is_cache": 6592.0,
+    "requant_input_rows": 32832.0,
+    "oa_s8_fifo": 8192.0,
+    "oa_s16_fifo": 2048.0
+  },
+  "buffer_arrays_total_bits": 994508,
+  "buffer_arrays_total_bytes": 124313.5,
+  "register_arrays_bits": {
+    "core_row_metadata": 65,
+    "requant_ws_parameters": 1648
+  },
+  "compute": {
+    "systolic_rows": 16,
+    "systolic_columns": 16,
+    "systolic_cells": 256,
+    "vector_processing_elements": 8,
+    "requant_compute_lanes": 2
+  },
+  "requant_input_queue": {
+    "rows": 512,
+    "int32_values_per_row": 16,
+    "row_bits": 513,
+    "total_bits": 262656,
+    "total_bytes": 32832.0,
+    "int32_payload_bytes": 32768,
+    "tile_done_flags_bits": 512
+  },
+  "shared_storage": {
+    "logical_bank_count": 7,
+    "logical_bank_bytes": 8192,
+    "total_bytes": 57344.0,
+    "elaborated_memories": 9,
+    "memory_declaration_bits": [
+      16384,
+      16384,
+      16384,
+      16384,
+      65536,
+      81920,
+      81920,
+      81920,
+      81920
+    ],
+    "default_raw_ps_bytes": 49152,
+    "ps_frames": 16,
+    "runtime_bank_allocations": [
+      {
+        "ia_banks": 1,
+        "ps_banks": 6,
+        "ia_bytes": 8192,
+        "ps_bytes": 49152,
+        "supports_s16_stream": false
+      },
+      {
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "ia_bytes": 16384,
+        "ps_bytes": 40960,
+        "supports_s16_stream": true
+      }
+    ]
+  },
+  "im2col_data_cache": {
+    "bytes": 4096,
+    "sets": 128,
+    "ways": 2,
+    "line_bytes": 16
+  },
+  "datapath": {
+    "operand_bits": [
+      8,
+      16
+    ],
+    "bias_bits": 32,
+    "accumulator_bits": 32,
+    "partial_sum_bits": 32,
+    "output_bits": [
+      8,
+      16
+    ],
+    "axi_data_bits": 64,
+    "scope": "生产参数、端口及模块连接检查。"
+  },
+  "cpu_configuration": {
+    "multiply_enabled": true,
+    "divide_enabled": true,
+    "memory_depth_32bit_words": 65536,
+    "memory_bytes": 262144,
+    "ram_word_bits": 64,
+    "ram_word_count": 32768,
+    "scope": "生产 SoC 参数及 PicoRV32、soc_axi_ram 实例连接的只读检查。"
+  },
+  "structural_parameters": {
+    "p_fixed_ps_channels": 1,
+    "SHARED_RAM_ENABLED": 1,
+    "SHARED_MAX_IA_BANKS": 2,
+    "IA_MAX_CACHE_BLOCKS": 32,
+    "IA_REUSE_NUM_MAX": 32
+  },
+  "vector_pe_parameters": {
+    "p_use_dsp": 1
+  },
+  "source_manifest": "build/round21/capacity_structure_source_manifest.json",
+  "source_manifest_sha256": "685ffddb0ecbf08658ed578e5d40d1d829e38bc7d08761c6e1ed53b273bf27d0",
+  "structural_source_count": 70,
+  "verified_tracked_file_count": 1649,
+  "fixed_rtl_and_configuration": {
+    "count": 87,
+    "before_matches_fixed": true,
+    "after_matches_fixed": true
+  },
+  "fixed_source_record": "build/round21/source.json",
+  "fixed_source_record_sha256": "e35f380ab7e08bd12204f167fe3705d01e5467e7a083571d68f162a83f51ab75",
+  "execution_records": {
+    "capacity_unit_tests": "build/round21/capacity_unit_tests_run.json",
+    "structure": "build/round21/structure_run.json"
+  },
+  "structure_reports": {
+    "generic": "build/round21/structure/generic/result.json",
+    "fpga": "build/round21/structure/summary.json"
+  },
+  "runtime_adaptation": {
+    "wrapper": "build/round21/run_capacity_checks.py",
+    "official_primitive_extensions": [
+      "LUT3"
+    ],
+    "output_root": "build/round21",
+    "controlled_source_files_unchanged": true,
+    "description": "运行包装程序提供官方 LUT3 模型，并指定独立的结构缓存和终端记录目录。"
+  },
+  "elaboration_tools": {
+    "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "clock_primitive_declaration_library_sha256": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5",
+    "generated_primitive_models_sha256": "f28ec6fc331796c5f1428a6134dc44de86a3733803d81142bfab3877c1220dac"
+  },
+  "output_sha256": {
+    "build/round21/capacity_unit_tests_run.json": "274c3cf3a3e1c7e42e017c74b2f5992d6018437a92a2757b300a31a60ef7baa6",
+    "build/round21/structure_run.json": "1328dc979006ac10ba9bfe6276694979bf0fefecb30798968d8d316451bda7cb",
+    "build/round21/capacity_unit_tests.log": "70032b6af462582532990bb301338e1469ddea0532f32b3744b60c656080f9b7",
+    "build/round21/structure.log": "c582e69ea8376b96e8a525b8faee2a97f7c4d549fb99f0aa49a2d93118d9d941",
+    "build/round21/structure/generic/result.json": "414ddccd90125417ef119038ec7c9ed01db234fee441903d42db5b808f35e63a",
+    "build/round21/structure/summary.json": "b4563d7fcabf7824eb87a105f5d922c4cbd152e32752fca653a84f4ab9a59ba3",
+    "build/round21/structure/generic/elaboration.log": "3519c84204b35108676b294342e3f8e0c743804076724b6a0fe65f09843fbd76",
+    "build/round21/structure/elaboration.log": "2b34e882006d6bc31d15931e9baa43a9dd22a1d9bb4f3c1b4c2a9b9460cdc7c1",
+    "build/round21/structure/xilinx_primitives.sv": "f28ec6fc331796c5f1428a6134dc44de86a3733803d81142bfab3877c1220dac",
+    "build/round21/run_capacity_checks.py": "756b46468fb4a582ff9f5e75debd6e3232289c98164131b2bf3e5f6208184721",
+    "build/round21/structure_source.py": "1ad4ff3fecc6a90d72d9896d1ef74c2504182939bd4eadd1830f9ea466c68eaf",
+    "build/round21/collect_capacity_checks.py": "ab6bce2d5f15c85aaca6ea535289e6953e683575baf5b8e71fdcc6e103209e3d",
+    "build/round21/menuconfig/edit_solve_save.pty.log": "8c982f5fdfc488a9f3e49759b5cd0b0e8ed5772f9b37c949530ff4f573ed4b46",
+    "build/round21/menuconfig/invalid_save_discard.pty.log": "87cf10c99bd86dcfb2bd6760c866dceae973d8c0fbbbf5ccf02e4ba7095ffd79",
+    "build/round21/menuconfig/resize_no_changes.pty.log": "7474707a0d4576336c79e1ebf411306d8911f0dc34832b196a3bfd561bbd03c0"
+  },
+  "verification_tool_commit": "28d4bf4ff399bcff67e345845d843073e95e24a4",
+  "verification_test_support_sha256": {
+    "test/fpga_integration/run.py": "3c1227dddc7d40de581cfa604e1797191b3dbc8b0b11d69e5e5234934e2e97b6",
+    "test/ps_channels/run_npu_structure.py": "f52da425c889f96908f22be6b4e5957cda20c633be14705e89a6108fce2a52e4"
+  },
+  "standard_entry_verification": {
+    "passed": true,
+    "generic_passed": true,
+    "fpga_passed": true,
+    "verification_tool_commit": "28d4bf4ff399bcff67e345845d843073e95e24a4",
+    "rtl_source_commit": "458100db01b19eac8d86ec96b99c2ae3f843eb95",
+    "verification_directory": "/workspace/scratch/76fc8a977a8f/worktrees/round21_verification",
+    "entry_script": "test/ps_channels/run_npu_structure.py",
+    "entry_script_sha256": "f52da425c889f96908f22be6b4e5957cda20c633be14705e89a6108fce2a52e4",
+    "entry_execution": "runpy.run_path 执行受控脚本，结构缓存与输出保存至独立 build 目录。",
+    "requested_script_command": [
+      "python3",
+      "test/ps_channels/run_npu_structure.py",
+      "--out",
+      "build/round21_structure_standard",
+      "--verilator",
+      "verilator-modern"
+    ],
+    "elapsed_seconds": 9.989360912994016,
+    "fixed_rtl_and_configuration_count": 87,
+    "all_rtl_and_configuration_files_match": true,
+    "verified_tracked_file_count": 1649,
+    "structural_source_count": 70,
+    "sources_unchanged": true,
+    "tracked_worktree_clean": true,
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+      "rtl/npu/conv/vector_pe.sv": "e5e6127062680e1309380f6d4f5391932a1c046497edd20642271fabf909e195",
+      "rtl/npu/conv/vector_softmax.sv": "ed184fce3d3e6538ff24fe4e446f1aa06c409c05ad2cd707e441faf6d487efd6",
+      "rtl/npu/conv/vector_config_check.sv": "8c33ec372e211f722fc1a612cd96041dcb713c54d55167d0a0ccbad726f248bd",
+      "rtl/npu/conv/vector_writeback.sv": "635d917460b8800abf3facfd3df3cf2126d7cddc3f8e9c10aef7092eddb0916f",
+      "rtl/npu/conv/vector_round_shift.sv": "5d54d7d5028e99bb25174320ae33a6958662a046480cc0695bb574d2225a29a6",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+      "rtl/npu/conv/vector_quant_params.sv": "7c5995a46e1d181e719d62a2d5b6d36088d4d1b4b4d2e2cea8700a4d9aefebbb",
+      "rtl/npu/conv/vector_engine.sv": "7f407f1b36a5d4570d69b1565c51090cc4b3a4013d4fd7a6fb2b69ba690dca0e",
+      "rtl/npu/conv/conv_axi_read_guard.sv": "6e56096520176c9d6dabf2bc7f3659d063d674ec7fb4a2ffada37b3f91ff5570",
+      "rtl/npu/conv/conv_axi_read_mux.sv": "bcb6e2be2e8d83843d50730dee37a94939781558017e66923e7db73d8591ae17",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+      "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+      "rtl/npu/dma/conv_window_queue.sv": "cbdfa461058301b5ae808accfe62d5373243eff9822a1a83a08f2335a05dbf0e",
+      "rtl/npu/conv/conv_im2col_frontend.sv": "257f573697653f2ef5e87b06c39ef4a2c14cefb052b15eea687158bd072e802b",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+      "rtl/npu/dma/cache/conv_read_cache.sv": "d25158ecee603cc691ec46901816a5d5d8e78df80dace5ee118ca3508022b629",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+      "rtl/axi_top/npu_axil_reg_if.sv": "b43feb0bcb3f99896882f147999cca69efa99ac78efe45f07902f476cb6557b4",
+      "rtl/axi_top/npu_axil_top.sv": "0f34a1881f53137d23d030298ca79c6db88ca63507e97bbabefd4d1c3bd22c11",
+      "rtl/axi_top/axil_top_with_ram.sv": "f3677172c207241019030ca19ce29c8cb1df6e108447983b4261076b21e3eb1e",
+      "rtl/npu/loaders/bias_loader.sv": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "e52d4cdbfa3d15c0e1a5048ed75b53bb8ee8d38aed24f19094ce0cfd80444388",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+      "rtl/npu/compute/bias_mux.sv": "7f5ed78ff21592c73b301aa695c2664d9eafb77194e60f578c53d23a3583b94f",
+      "rtl/npu/compute/select_add.sv": "6374faf0c144a7eff895c9485a8646dcb2baa3650804754d08a3c6c34477da79",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv": "ddbc92180f419ea2b7499dd4b5b51da9d935cde84a8973f6b890a9885f677d7f",
+      "rtl/npu/dma/axi_linear_block_dma.sv": "945a747b9b9ec5f1feae4ceedab23dbb223fefdc505b0e1612f0410e98701d50",
+      "rtl/npu/dma/axi_write_page_guard.sv": "acb3e356b4c84dba27b36c4b6fefe9c485592401ec900fb561c6b70d50102ceb",
+      "rtl/npu/dma/axi_dual_block_dma.sv": "30aba691e30cba0398a0fda5e02d63aae43876881cb938c3016f6efe5a03626a",
+      "rtl/npu/compute/compute_core.sv": "4d045014c0fea68e6c9858b8411b17cb180a8dd11ebae8f477cf6511886940a1",
+      "rtl/npu/compute/de_diagonalizer.sv": "cd2790f96260ee6f9c8923975b5a1579ecd812d515ab94f9711b1f2a24257272",
+      "rtl/npu/loaders/ia_loader.sv": "a4466307194eac33465803c79992503cc3c3db6dc5af2cb8f554e5a32f4657ed",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "cf632e6a81ddc1e93ae330b0d18b75b2877472200c8f98c700f86ff6c8f28646",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "9c749070b2362549f096a02a004291d6df874634812722726bb6ef3a7645c25f",
+      "rtl/npu/loaders/kernel_loader.sv": "fd8c64b9b264b426b324bb7eee1ac9fb28c3e81eb38ae10d9dbb68cc34008374",
+      "rtl/npu/loaders/kernel_loader_buffer.sv": "5a665c80e24ecd1d1b86b955f837dade1c115f5ce57b678673ff3f60516f3093",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "0925a61ffae7ac8d4305fe4fbeaaef6dea02975c4a9522d707e844a4135dbb6c",
+      "rtl/npu/control/npu_controller.sv": "04ec05981bb49145fe5ef52cf4176a02b5877ed847323b2ef8845bf3fb8c7597",
+      "rtl/npu/control/ps_window_scheduler.sv": "1c4163d8c94ec44ad2441c375a0120ebf651ba4a6874c889a10e28fe748b5885",
+      "rtl/npu/control/ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+      "rtl/npu/top/frame_address_prepare.sv": "d8ce4bbda94872e4d2a19d73b2137e981e58b2be1a5523a711d0ed6f819fdc65",
+      "rtl/npu/top/npu_top.sv": "09cda10d8a9acc148bbef34ad14d5349c179c82ea6ce81ad3bc0d006373714c4",
+      "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+      "rtl/npu/ps_compact/ps_adaptive_codec.sv": "649ae5c94a31f81fae20919b922ffb6ae4b213acd1ba9823d022c0a4b96976d9",
+      "rtl/npu/ps_compact/ps_frame_store.sv": "f4db602319e683c61d5bc7d96c5d9f0d3aaa8afdbfac70e521df08914640d3cf",
+      "rtl/npu/dma/operand_read_cache.sv": "863026e928bd4c236c3a42b0e46aeb78d147119122e21aeb3ea2856f805bc981",
+      "rtl/npu/buffers/ia_ps_shared_ram.sv": "63aef7420801d87beed21b1ea5ffdc211bcf8ca382ca86fd0bea92b890c31d8a",
+      "rtl/npu/buffers/ps_buffer.sv": "494a85f2cb59549203d7bd08df1b2f5bc6ef01bf47c8bef7d6539850eac3ab72",
+      "rtl/npu/buffers/ps_buffer_fifo.sv": "810571feb5306f847a19b5402e75aecb487a9ba8ff5185f37f6d0a07eced9085",
+      "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+      "rtl/common/add_equal.sv": "ae8419319b2f63d1928c3e0c7ed4ea0f3e473076a9eaa2eaa00fee00e3d71d65",
+      "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/npu/writeback/vec_requant.sv": "1b8c946676abcd2cc235b8e87df84a9d3cc00a108505974b1133ff6b770d81e4",
+      "rtl/npu/writeback/requant_compute_lane.sv": "6a80704946cbaf4abaf891d44c470f2a9f963c69287e22e16122c14089be79e3",
+      "rtl/npu/writeback/requant_group_buffer.sv": "88a15f4643d07ded4fe302a2b4600482a67d1c46ae5a2e045bde305242093875",
+      "rtl/npu/writeback/vec_requant_s64.sv": "beb897a79952c8c7b2995a64a8dece25eb6409ae4d20063fa3676d2a1d162b9f",
+      "rtl/npu/writeback/vec_s8_to_fifo.sv": "7e195e9c28acd849d2ad16eed704af06480ac06da16e57d0484dee7c920dd6d7",
+      "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e",
+      "rtl/npu/compute/ws_systolic_array.sv": "742d8e29b678e1e56518ddf2e386f7478686097a3b47e428e0ef4defc6954613",
+      "rtl/npu/compute/ws_systolic_cell.sv": "d12c29669d98a524618bd15638e6b4b2ba698e4b0e8240cbf4eabec91d511a38",
+      "veri/flist/dut_axil.f": "93360767d93324c9926af066e0f7a16c7bb96752c975b01db83ccc5c392dd4ac",
+      "scripts/capacity/model.py": "3f4e1562f0907187197bae52a511faa4538e8e7194dfc0c0a1325902f847807b",
+      "scripts/capacity/im2col_cache.py": "d77b0540b492f43dc7a3a140942c09f72939af41fd230a6155861ba97926c4fb",
+      "scripts/capacity/elaboration.py": "67ca974620c1d2992b6276f1b011106c3cc5841b70d441a478f4ba20d850c758",
+      "asic/rtl/smic40_sram_1r1w.sv": "841b5894b63e0a67eb8484034a1aed92ae9dfdc5f96095012900521440694b0b"
+    },
+    "verification_source_record": "/workspace/scratch/76fc8a977a8f/worktrees/round21_measurement/build/round21/npu_verification_source.json",
+    "verification_source_record_sha256": "aafdc23ff83e343cd3d405318bd2e45f488b8e3ae52d9588d58e1972aa5c4115",
+    "source_manifest": "build/round21_structure_standard/source_manifest.json",
+    "source_manifest_sha256": "c28d9606257ebe44bcb517024f907209c428a80f1f2f4f21b16a87c40ab836ae",
+    "buffer_arrays_total_bits": 994508,
+    "buffer_arrays_total_bytes": 124313.5,
+    "structural_parameters": {
+      "p_fixed_ps_channels": 1,
+      "SHARED_RAM_ENABLED": 1,
+      "SHARED_MAX_IA_BANKS": 2,
+      "IA_MAX_CACHE_BLOCKS": 32,
+      "IA_REUSE_NUM_MAX": 32
+    },
+    "vector_pe_parameters": {
+      "p_use_dsp": 1
+    },
+    "generic_report": "build/round21_structure_standard/generic/result.json",
+    "fpga_report": "build/round21_structure_standard/summary.json",
+    "execution_record": "build/round21_structure_standard/run.json",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "clock_primitive_declaration_library_sha256": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5",
+    "generated_primitive_models_sha256": "b601442989d25ad0cc65f59661c4cb900072a5f8cfa4da25ba1361cd0f4f2f52",
+    "output_sha256": {
+      "build/round21_structure_standard/run.json": "4da77f777ef1b6e53d50641cc5b083aeaf5c040d8e7bc647869748fc7df7c5db",
+      "build/round21_structure_standard/run.log": "8944f43b253d536127518c6f2120bf4a57e68b87a6f407953a9f1ffc234d116b",
+      "build/round21_structure_standard/source_manifest.json": "c28d9606257ebe44bcb517024f907209c428a80f1f2f4f21b16a87c40ab836ae",
+      "build/round21_structure_standard/generic/result.json": "cc07739abf8f474b8d2bbb46cbac7b9586d842570e29a107e43a8d22ae8d720f",
+      "build/round21_structure_standard/generic/elaboration.log": "51a6fa36f9b2b98bee5b0c158d6cbc90b073fade1be9f075035c37f35f7d093d",
+      "build/round21_structure_standard/summary.json": "3e04ab973c6a59edf061544068b42239da6125963b5e9befb8aa56599d07628f",
+      "build/round21_structure_standard/elaboration.log": "c23116a46b37b6188fddf1b354678dc53923fc2d38283c84e14555e72179055e",
+      "build/round21_structure_standard/xilinx_primitives.sv": "b601442989d25ad0cc65f59661c4cb900072a5f8cfa4da25ba1361cd0f4f2f52"
+    }
+  }
+}

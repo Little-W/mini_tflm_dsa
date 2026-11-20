@@ -1,0 +1,712 @@
+{
+  "schema_version": 1,
+  "rtl_commit": "dab4a8d9b6e2808d7506899d66d25b6ad232fbce",
+  "part": "xc7a200tfbg484-3",
+  "top": "soc_top",
+  "pre_lut_sha256": "7d88896ee4f1ab6ce70c0e12c476f5d0ae02147f26b929be1b356996b0ad36b1",
+  "source_manifest_sha256": "704e3392ca3777c543703019a1abc164b41f72ac159e80aa72e0d4db97489241",
+  "configuration": {
+    "path": "config/npu_fpga.mk",
+    "sha256": "4242c877f2480055909b5339e213d751deb3bb7c9b17631a303256d62656aec3",
+    "values": {
+      "PCR_ENGINE": "1",
+      "SIZE": "16",
+      "NPU_AXI_DATA_WIDTH": "64",
+      "IM2COL_CACHE_BYTES": "4096",
+      "SHARED_BANK_BYTES": "8192",
+      "SHARED_BANK_COUNT": "7",
+      "IA_CACHE_BLOCKS": "4",
+      "PS_FRAME_COUNT": "16",
+      "AXI_READ_OUTSTANDING": "4",
+      "PS_POOL_BYTES": "49152",
+      "PS_FORCE_RAW": "1",
+      "CAPACITY_BUDGET_BYTES": "131072",
+      "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+      "CAPACITY_REPRESENTATION": "raw32"
+    },
+    "defines": [
+      "SYNTHESIS=1",
+      "XILINX_FPGA=1",
+      "XILINX_CLK_WIZ_IP=1",
+      "GEMPACT_PS_COMPRESS=1",
+      "GEMMORA_PS_POOL_BYTES=49152",
+      "GEMMORA_PS_FORCE_RAW=1"
+    ]
+  },
+  "default_small_lut_area_cost": 1,
+  "wire_delay_ps": 300,
+  "delay_target_ps": 6667,
+  "pin_delays_ps": {
+    "1": [
+      "127"
+    ],
+    "2": [
+      "127",
+      "238"
+    ],
+    "3": [
+      "127",
+      "238",
+      "407"
+    ],
+    "4": [
+      "127",
+      "238",
+      "407",
+      "472"
+    ],
+    "5": [
+      "127",
+      "238",
+      "407",
+      "472",
+      "631"
+    ],
+    "6": [
+      "127",
+      "238",
+      "407",
+      "472",
+      "631",
+      "642"
+    ],
+    "7": [
+      "470",
+      "524",
+      "635",
+      "804",
+      "869",
+      "1028",
+      "1039"
+    ],
+    "8": [
+      "465",
+      "592",
+      "646",
+      "757",
+      "926",
+      "991",
+      "1150",
+      "1161"
+    ]
+  },
+  "variants": [
+    {
+      "small_lut_area_cost": 1,
+      "synthesis_directory": "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost/soc_top",
+      "summary_sha256": "53a57d31e6f89c612549f11e80575870a24443a6df9ce505b2ffe3ff5c296af3",
+      "mapped_json_sha256": "d929c6f14d328af419d4cc3f3c638cc9f951a055de7d1654b00caf10d670a11e",
+      "mapped_verilog_sha256": "442557971e48e73a6d9e0f891c83f83a28e46c9d4d1363bbd901ea152076209f",
+      "lut_library": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 2,
+        "8": 4
+      },
+      "resources": {
+        "logic_lut_cells": 61644,
+        "distributed_ram_lut_sites_nominal": 2636,
+        "shift_register_lut_sites_nominal": 192,
+        "lut_sites_nominal_before_packing": 64472,
+        "physical_lut_sites_after_placement": 61514,
+        "flip_flops": 51041,
+        "dsp48e1": 740,
+        "ramb36e1": 91,
+        "ramb18e1": 28,
+        "carry4": 2495
+      },
+      "lut_and_mux_cells": {
+        "LUT1": 66,
+        "LUT2": 6630,
+        "LUT3": 10780,
+        "LUT4": 8959,
+        "LUT5": 11769,
+        "LUT6": 19753,
+        "LUT6_2": 3687,
+        "MUXF7": 2572,
+        "MUXF8": 14
+      },
+      "longest_register_path_cells": 26,
+      "abc_mapping_delay_ps": 12593.0,
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "172cac2245f14e18f252d1dc9e7b08ab1ed57fda40ab473f09757cef14f83376"
+      },
+      "mapping_stage": {
+        "elapsed_seconds": 273.39,
+        "peak_process_tree_rss_bytes": 2626711552,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "03_map_lut.ys",
+        "log": "03_map_lut.log",
+        "script_sha256": "d8eebaf9bad75d13129dac5dc0f2168138f5982d1a8c88fcc98f844c8fcd803c",
+        "mapped_json_sha256": "d929c6f14d328af419d4cc3f3c638cc9f951a055de7d1654b00caf10d670a11e",
+        "mapped_verilog_sha256": "442557971e48e73a6d9e0f891c83f83a28e46c9d4d1363bbd901ea152076209f",
+        "input_library_sha256": "d1214772e5cc4ebfa935ca7e13d0a61625595a6eb95e5f1e2457ed2d3ecb4dce",
+        "log_sha256": "172cac2245f14e18f252d1dc9e7b08ab1ed57fda40ab473f09757cef14f83376"
+      },
+      "paired_directory": "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical",
+      "constrained_pairs": {
+        "ordinary": 3499,
+        "registered": 1825,
+        "mixed": 94,
+        "carry": 198
+      },
+      "pairing_cell_contents_preserved": true,
+      "final_packed_sha256": "3669d485eece3d958dab7b4d8378837a2b0743c88e405d5b704c5dadeaea653e",
+      "physical_lut_positions": 61514,
+      "timing_150mhz_confirmed": null,
+      "placement": {
+        "directory": "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical",
+        "manifest_sha256": "91f560e26ea835357832be325dc1944c2ce4351f9eb1194de5c67e47827c309f",
+        "placed_resources_sha256": "9aaba93c484b2723883a5688a2ae49670e7b00670a9c79bbf8c695bee699b12e",
+        "complete": true,
+        "physical_lut_positions": 61514,
+        "physical_lut_positions_by_use": {
+          "logic": 58686,
+          "distributed_ram": 2636,
+          "shift_register": 192
+        },
+        "placed_lut_bel_instances": 73451,
+        "shared_lut_positions": 11937,
+        "occupied_slice_sites": 19893,
+        "resource_errors": [],
+        "unplaced_cells": [],
+        "nextpnr_binary_sha256": "5131ad71186084f1a7bf52d67a347ea516e165e8eabb66c39c12f57af0e49ab9",
+        "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+        "frequency_mhz": 150,
+        "clock_period_ns": 6.666666666666667,
+        "implementation_environment": {
+          "NEXTPNR_REFINE_MAX_ITERS": "10",
+          "XC7_CARRY_DIRECT_DI": "1",
+          "XC7_CARRY_TRIM_TAIL": "1",
+          "XC7_FRACTURE_LUTS": "1"
+        },
+        "seed": 1,
+        "refinement_iterations": 10,
+        "pairing_order": [
+          "ordinary",
+          "registered",
+          "mixed",
+          "carry"
+        ],
+        "pair_counts": {
+          "ordinary": 3499,
+          "registered": 1825,
+          "mixed": 94,
+          "carry": 198
+        },
+        "functional_cells_sha256": "ba38398ad4c205024f29d237d857bf738f2147ce07175483ac2cfd495eb6ca34",
+        "final_packed_sha256": "3669d485eece3d958dab7b4d8378837a2b0743c88e405d5b704c5dadeaea653e",
+        "tools_manifest_sha256": "927aa76e6b354ba61d4cf17aa50c4b1059f6d42a0ab9b82d9c7115b326406b5e",
+        "stages": {
+          "00_prepare_pack": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/tools/open_fpga_implementation.py",
+              "--mapped",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost/soc_top/mapped.json",
+              "--nextpnr",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.5131ad71186084f1",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--soc-package-pins",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/pack",
+              "--through",
+              "pack",
+              "--seed",
+              "1",
+              "--freq",
+              "150",
+              "--refinement-iterations",
+              "10",
+              "--allow-timing-failure"
+            ],
+            "log": "00_prepare_pack.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 85.29,
+            "peak_process_tree_rss_bytes": 656048128,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 8607735808,
+            "minimum_observed_system_available_memory_bytes": 6967316480,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "d1f065ecf4f6292a7983334cac85d51e0938737405ba096daab147fe83679227",
+            "log_sha256": "cf72b2bc3dfe8703c96370a3e9386760504ee8b32f982d730563b174b936b524"
+          },
+          "01_pair_ordinary": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/tools/pair_packed_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/pack/packed.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired_ordinary.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/pairing_ordinary.json"
+            ],
+            "log": "01_pair_ordinary.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 14.85,
+            "peak_process_tree_rss_bytes": 1268539392,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 8579301376,
+            "minimum_observed_system_available_memory_bytes": 7548190720,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "4a6369ac1ee136e7af942c6717fdfeb30d02852fdff041771a75435e7997cdf5",
+            "log_sha256": "7d9f0a9b8c7fd3196525bbcb5b7740d8bb717c51d5266a5a0094f65e4369942b"
+          },
+          "02_pair_registered": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/tools/pair_registered_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired_ordinary.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired_registered.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/pairing_registered.json"
+            ],
+            "log": "02_pair_registered.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 16.0,
+            "peak_process_tree_rss_bytes": 1084309504,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 8627838976,
+            "minimum_observed_system_available_memory_bytes": 7728521216,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "86f2392397da3d876306a788a47517db322ef9b4a6ed498f1f3c4ea268fdfb44",
+            "log_sha256": "9d045699c68d42d04ddcf5fc1f2fecbcec6047dd6cc2c76647b525dec39a5cdf"
+          },
+          "03_pair_mixed": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/tools/pair_mixed_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired_registered.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired_mixed.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/pairing_mixed.json"
+            ],
+            "log": "03_pair_mixed.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 15.93,
+            "peak_process_tree_rss_bytes": 1143853056,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 8554434560,
+            "minimum_observed_system_available_memory_bytes": 7668834304,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "67a566cd2e21381ef19f9ccfc60feabda45db48a1dd2645b214641120086ae05",
+            "log_sha256": "9b3d315660626bdb60ed9f437d560bea17767bd4bc966268fb08b35b21611133"
+          },
+          "04_pair_carry": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/tools/pair_carry_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired_mixed.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/pairing_carry.json"
+            ],
+            "log": "04_pair_carry.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 19.08,
+            "peak_process_tree_rss_bytes": 1224536064,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 7797465088,
+            "minimum_observed_system_available_memory_bytes": 7098171392,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "3669d485eece3d958dab7b4d8378837a2b0743c88e405d5b704c5dadeaea653e",
+            "log_sha256": "42d85ade8e0f83b53588ae2503254c8f8c98e259202473e2703e5d270346dbe4"
+          },
+          "05_place": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.5131ad71186084f1",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/paired.json",
+              "--no-pack",
+              "--no-route",
+              "--write",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/placed.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_cost_paired_physical/placement_timing.json"
+            ],
+            "log": "05_place.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 2030.17,
+            "peak_process_tree_rss_bytes": 2193670144,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 8248590336,
+            "minimum_observed_system_available_memory_bytes": 2272911360,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "99b73522c16546ef0828728ea45bc2d2f538875721c48aa763821a367adec512",
+            "log_sha256": "bc731eab1a845faee3f3241e47bb974d1b1f0b3c8f34a421f9129b4006713d60"
+          }
+        },
+        "placed_json_sha256": "99b73522c16546ef0828728ea45bc2d2f538875721c48aa763821a367adec512",
+        "estimated_fmax_mhz": {
+          "u_axi_interconnect.clk": {
+            "achieved": 37.88,
+            "constraint": 150.0
+          },
+          "u_npu_axil_top.npu_core_clk": {
+            "achieved": 22.69,
+            "constraint": 150.0
+          }
+        },
+        "estimated_fmax_model_complete": false,
+        "placement_timing_sha256": "69508240137c428d95b50b7aec6f9aa52091bc2c638758f0515cf4758bfec74d"
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 15,
+        "observed_combinational_cells": 26,
+        "graph_complete": true,
+        "met": false,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    },
+    {
+      "small_lut_area_cost": 0.75,
+      "synthesis_directory": "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075/soc_top",
+      "summary_sha256": "60f8fdf75d4edf9565235fef9336357780aebef063131293986212c279de723d",
+      "mapped_json_sha256": "d02b564a4237ef8eb9ad77f003740591cbae9793c4fed7c584d5b3c2b6fca470",
+      "mapped_verilog_sha256": "cca90f7001b00cfc9de4eb649111fb707b13c90e417f62747cc0e6662e9af1ab",
+      "lut_library": {
+        "1": 0.75,
+        "2": 0.75,
+        "3": 0.75,
+        "4": 0.75,
+        "5": 0.75,
+        "6": 1,
+        "7": 2,
+        "8": 4
+      },
+      "resources": {
+        "logic_lut_cells": 63598,
+        "distributed_ram_lut_sites_nominal": 2636,
+        "shift_register_lut_sites_nominal": 192,
+        "lut_sites_nominal_before_packing": 66426,
+        "physical_lut_sites_after_placement": 61271,
+        "flip_flops": 51041,
+        "dsp48e1": 740,
+        "ramb36e1": 91,
+        "ramb18e1": 28,
+        "carry4": 2503
+      },
+      "lut_and_mux_cells": {
+        "LUT1": 19,
+        "LUT2": 6838,
+        "LUT3": 12171,
+        "LUT4": 10293,
+        "LUT5": 17812,
+        "LUT6": 12778,
+        "LUT6_2": 3687,
+        "MUXF7": 80,
+        "MUXF8": 31
+      },
+      "longest_register_path_cells": 27,
+      "abc_mapping_delay_ps": 12620.0,
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "97673c4b9d9580052d85207f07fc389f7228cc60dcb4336df201f06f0f8aad8b"
+      },
+      "mapping_stage": {
+        "elapsed_seconds": 248.16,
+        "peak_process_tree_rss_bytes": 2677985280,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "03_map_lut.ys",
+        "log": "03_map_lut.log",
+        "script_sha256": "4892c22aa503f61587267f7bfda525b9cfd47544b4d920dd5ff240aeef54be63",
+        "mapped_json_sha256": "d02b564a4237ef8eb9ad77f003740591cbae9793c4fed7c584d5b3c2b6fca470",
+        "mapped_verilog_sha256": "cca90f7001b00cfc9de4eb649111fb707b13c90e417f62747cc0e6662e9af1ab",
+        "input_library_sha256": "f59619c61e2d31417818ed91099d74d609fc7f4e85100282e2a92c41a52cdfab",
+        "log_sha256": "97673c4b9d9580052d85207f07fc389f7228cc60dcb4336df201f06f0f8aad8b"
+      },
+      "paired_directory": "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs",
+      "constrained_pairs": {
+        "ordinary": 5182,
+        "registered": 1912,
+        "mixed": 124,
+        "carry": 282
+      },
+      "pairing_cell_contents_preserved": true,
+      "final_packed_sha256": "64463ae8da1f2f436f22f94b8b67845060e3362fc8be4a30efe7704c96048dce",
+      "physical_lut_positions": 61271,
+      "timing_150mhz_confirmed": null,
+      "placement": {
+        "directory": "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs",
+        "manifest_sha256": "80175af0bcd5d0f04321ee55346c6793b1de0d1adc32c93c2b7b40a25f3a3d2a",
+        "placed_resources_sha256": "78d525687d86e80fa181ac27a77385f8c1a69615a115a8b71743e6c38390588b",
+        "complete": true,
+        "physical_lut_positions": 61271,
+        "physical_lut_positions_by_use": {
+          "logic": 58443,
+          "distributed_ram": 2636,
+          "shift_register": 192
+        },
+        "placed_lut_bel_instances": 74921,
+        "shared_lut_positions": 13650,
+        "occupied_slice_sites": 20958,
+        "resource_errors": [],
+        "unplaced_cells": [],
+        "nextpnr_binary_sha256": "5131ad71186084f1a7bf52d67a347ea516e165e8eabb66c39c12f57af0e49ab9",
+        "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+        "frequency_mhz": 150,
+        "clock_period_ns": 6.666666666666667,
+        "implementation_environment": {
+          "NEXTPNR_REFINE_MAX_ITERS": "10",
+          "XC7_CARRY_DIRECT_DI": "1",
+          "XC7_CARRY_TRIM_TAIL": "1",
+          "XC7_FRACTURE_LUTS": "1"
+        },
+        "seed": 1,
+        "refinement_iterations": 10,
+        "pairing_order": [
+          "ordinary",
+          "registered",
+          "mixed",
+          "carry"
+        ],
+        "pair_counts": {
+          "ordinary": 5182,
+          "registered": 1912,
+          "mixed": 124,
+          "carry": 282
+        },
+        "functional_cells_sha256": "190a28d565bcbe27eb330a4b95d2d2e1148880ddfb99ee5d42be07766583c7b7",
+        "final_packed_sha256": "64463ae8da1f2f436f22f94b8b67845060e3362fc8be4a30efe7704c96048dce",
+        "tools_manifest_sha256": "927aa76e6b354ba61d4cf17aa50c4b1059f6d42a0ab9b82d9c7115b326406b5e",
+        "stages": {
+          "00_prepare_pack": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/tools/open_fpga_implementation.py",
+              "--mapped",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075/soc_top/mapped.json",
+              "--nextpnr",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.5131ad71186084f1",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--soc-package-pins",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/pack",
+              "--through",
+              "pack",
+              "--seed",
+              "1",
+              "--freq",
+              "150",
+              "--refinement-iterations",
+              "10",
+              "--allow-timing-failure"
+            ],
+            "log": "00_prepare_pack.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 88.23,
+            "peak_process_tree_rss_bytes": 650321920,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 5558169600,
+            "minimum_observed_system_available_memory_bytes": 3390701568,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "c404b31fed8e2664fda4db727e0470c675de760c18764d01a9cb0daf2d47e8ab",
+            "log_sha256": "0170c9ac064f2313c27d45370c7dbf7273e213fae59c0887a6c4988c15fde00c"
+          },
+          "01_pair_ordinary": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/tools/pair_packed_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/pack/packed.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired_ordinary.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/pairing_ordinary.json"
+            ],
+            "log": "01_pair_ordinary.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 15.66,
+            "peak_process_tree_rss_bytes": 1261137920,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 5518172160,
+            "minimum_observed_system_available_memory_bytes": 4503056384,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "bff788e3c845f54a81eb074ce8aa8c12916e127ba62704d5beda7d33abc917c5",
+            "log_sha256": "551d6a8e3cdd5dfddbacbc56598a015bfd8f4ba8d08d8e6e0570c998c0faa231"
+          },
+          "02_pair_registered": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/tools/pair_registered_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired_ordinary.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired_registered.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/pairing_registered.json"
+            ],
+            "log": "02_pair_registered.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 15.21,
+            "peak_process_tree_rss_bytes": 1130893312,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 3689689088,
+            "minimum_observed_system_available_memory_bytes": 3257266176,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "9fc036d2085493995c19fa9fef07984f92f76f7c89592acfa8e3c94e6b1525ac",
+            "log_sha256": "50a3c94ce3d7425e061a23efabfda4d88a1c34424937390ec346aa55e8893b6e"
+          },
+          "03_pair_mixed": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/tools/pair_mixed_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired_registered.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired_mixed.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/pairing_mixed.json"
+            ],
+            "log": "03_pair_mixed.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 20.98,
+            "peak_process_tree_rss_bytes": 1120239616,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 5549645824,
+            "minimum_observed_system_available_memory_bytes": 3313860608,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "b3f78097c94ea5c4d36149f5f4e806fcb63e09aab0ff45ff78c96a48a04f96b6",
+            "log_sha256": "1fb16df178c0cbcd03bee3234da18dc7fa04e8c7ea9cd57db80a039d284a6fc6"
+          },
+          "04_pair_carry": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/tools/pair_carry_luts.py",
+              "--packed",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired_mixed.json",
+              "--out",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/pairing_carry.json"
+            ],
+            "log": "04_pair_carry.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 16.93,
+            "peak_process_tree_rss_bytes": 1226555392,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 5373419520,
+            "minimum_observed_system_available_memory_bytes": 4516401152,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "64463ae8da1f2f436f22f94b8b67845060e3362fc8be4a30efe7704c96048dce",
+            "log_sha256": "f13c354c1bdf1bbe185aea3e9ee5535752f36d9687bb602913a297cce52b95d5"
+          },
+          "05_place": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.5131ad71186084f1",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/paired.json",
+              "--no-pack",
+              "--no-route",
+              "--write",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/placed.json",
+              "--report",
+              "/workspace/scratch/92f7be750f11/worktrees/round7_measurement/build/soc_round7_dsp740_small075_pairs/placement_timing.json"
+            ],
+            "log": "05_place.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 1752.01,
+            "peak_process_tree_rss_bytes": 2179518464,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 5581578240,
+            "minimum_observed_system_available_memory_bytes": 3106222080,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2,
+            "output_sha256": "c4caa046c91382534d731eefd3d6715dbbc9f54d4cc5b898603f74c5ee02d9cb",
+            "log_sha256": "d89c4485f81cd1202d09cba8cdf272e2ffe63013cb18e467bd357213c27f5123"
+          }
+        },
+        "placed_json_sha256": "c4caa046c91382534d731eefd3d6715dbbc9f54d4cc5b898603f74c5ee02d9cb",
+        "estimated_fmax_mhz": {
+          "u_axi_interconnect.clk": {
+            "achieved": 33.5,
+            "constraint": 150.0
+          },
+          "u_npu_axil_top.npu_core_clk": {
+            "achieved": 24.68,
+            "constraint": 150.0
+          }
+        },
+        "estimated_fmax_model_complete": false,
+        "placement_timing_sha256": "82bc7d9ad9455695f5a287f763140636e1a287c7721cd240c107bf748c335c3b"
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 15,
+        "observed_combinational_cells": 27,
+        "graph_complete": true,
+        "met": false,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    }
+  ],
+  "placement_comparison": {
+    "same_source_pre_lut_device_seed_and_refinement_iterations": true,
+    "standard_physical_lut_positions": 61514,
+    "small_cost_physical_lut_positions": 61271,
+    "physical_lut_position_change": -243,
+    "standard_occupied_slice_sites": 19893,
+    "small_cost_occupied_slice_sites": 20958,
+    "timing_150mhz_confirmed": null,
+    "routing_completed": false
+  },
+  "maximum_register_path_cells": 15
+}

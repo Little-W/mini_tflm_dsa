@@ -1,0 +1,245 @@
+{
+  "passed": true,
+  "round": 22,
+  "git_commit": "b20921b3b1fc3351b1f6447dd688af12ac60ef19",
+  "git_tree": "dbf53c7cb0ed1ff9f2e729f0f6ced653797136e3",
+  "measurement_directory": "/workspace/scratch/76fc8a977a8f/worktrees/round22_measurement",
+  "tracked_worktree_clean": true,
+  "sources_unchanged": true,
+  "capacity_unit_tests": {
+    "passed": true,
+    "tests": 83,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "elapsed_seconds": 6.962799214001279
+  },
+  "structure": {
+    "generic_passed": true,
+    "fpga_passed": true,
+    "elaboration_only": true,
+    "elapsed_seconds": 9.675545910999062
+  },
+  "configuration": {
+    "PCR_ENGINE": 1,
+    "SIZE": 16,
+    "IA_CACHE_BLOCKS": 4,
+    "PS_FRAME_COUNT": 16,
+    "NPU_AXI_DATA_WIDTH": 64,
+    "IM2COL_CACHE_BYTES": 4096,
+    "SHARED_BANK_BYTES": 8192,
+    "SHARED_BANK_COUNT": 7,
+    "AXI_READ_OUTSTANDING": 4,
+    "PS_POOL_BYTES": 49152,
+    "PS_FORCE_RAW": 1,
+    "CAPACITY_BUDGET_BYTES": 131072,
+    "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+    "CAPACITY_REPRESENTATION": "raw32"
+  },
+  "buffer_arrays_bits": {
+    "vector_buffers": 9696,
+    "conv_prefetch_queue": 1032,
+    "conv_data_cache": 32768,
+    "conv_cache_metadata": 40192,
+    "conv_request_queue": 552,
+    "conv_response_queue": 132,
+    "ia_slot_metadata": 768,
+    "ia_cache_tags": 3968,
+    "kernel_cache": 12288,
+    "bias_cache": 32768,
+    "ia_ps_shared_ram": 458752,
+    "ps_decoded_fifo": 4096,
+    "ps_decoded_first": 8,
+    "ps_frame_valid": 16,
+    "ps_frame_lengths": 160,
+    "requant_is_cache": 52736,
+    "requant_input_rows": 262656,
+    "oa_s8_fifo": 65536,
+    "oa_s16_fifo": 16384
+  },
+  "buffer_arrays_bytes": {
+    "vector_buffers": 1212.0,
+    "conv_prefetch_queue": 129.0,
+    "conv_data_cache": 4096.0,
+    "conv_cache_metadata": 5024.0,
+    "conv_request_queue": 69.0,
+    "conv_response_queue": 16.5,
+    "ia_slot_metadata": 96.0,
+    "ia_cache_tags": 496.0,
+    "kernel_cache": 1536.0,
+    "bias_cache": 4096.0,
+    "ia_ps_shared_ram": 57344.0,
+    "ps_decoded_fifo": 512.0,
+    "ps_decoded_first": 1.0,
+    "ps_frame_valid": 2.0,
+    "ps_frame_lengths": 20.0,
+    "requant_is_cache": 6592.0,
+    "requant_input_rows": 32832.0,
+    "oa_s8_fifo": 8192.0,
+    "oa_s16_fifo": 2048.0
+  },
+  "buffer_arrays_total_bits": 994508,
+  "buffer_arrays_total_bytes": 124313.5,
+  "register_arrays_bits": {
+    "core_row_metadata": 65,
+    "requant_ws_parameters": 1648
+  },
+  "compute": {
+    "systolic_rows": 16,
+    "systolic_columns": 16,
+    "systolic_cells": 256,
+    "vector_processing_elements": 8,
+    "requant_compute_lanes": 2
+  },
+  "requant_input_queue": {
+    "rows": 512,
+    "int32_values_per_row": 16,
+    "row_bits": 513,
+    "total_bits": 262656,
+    "total_bytes": 32832,
+    "int32_payload_bytes": 32768,
+    "tile_done_flags_bits": 512
+  },
+  "shared_storage": {
+    "logical_bank_count": 7,
+    "logical_bank_bytes": 8192,
+    "total_bytes": 57344,
+    "elaborated_memories": 9,
+    "memory_declaration_bits": [
+      16384,
+      16384,
+      16384,
+      16384,
+      65536,
+      81920,
+      81920,
+      81920,
+      81920
+    ],
+    "default_raw_ps_bytes": 49152,
+    "ps_frames": 16,
+    "runtime_bank_allocations": [
+      {
+        "ia_banks": 1,
+        "ps_banks": 6,
+        "ia_bytes": 8192,
+        "ps_bytes": 49152,
+        "supports_s16_stream": false
+      },
+      {
+        "ia_banks": 2,
+        "ps_banks": 5,
+        "ia_bytes": 16384,
+        "ps_bytes": 40960,
+        "supports_s16_stream": true
+      }
+    ]
+  },
+  "im2col_data_cache": {
+    "bytes": 4096,
+    "sets": 128,
+    "ways": 2,
+    "line_bytes": 16
+  },
+  "datapath": {
+    "operand_bits": [
+      8,
+      16
+    ],
+    "bias_bits": 32,
+    "accumulator_bits": 32,
+    "partial_sum_bits": 32,
+    "output_bits": [
+      8,
+      16
+    ],
+    "axi_data_bits": 64,
+    "scope": "生产展开参数及INT32累加、部分和实例连接核对。"
+  },
+  "cpu_configuration": {
+    "multiply_enabled": true,
+    "divide_enabled": true,
+    "memory_depth_32bit_words": 65536,
+    "memory_bytes": 262144,
+    "ram_word_bits": 64,
+    "ram_word_count": 32768,
+    "picorv32_commit": "ef203c2b0a3fb793280f5114941416c425c5b461",
+    "picorv32_sha256": "0836050971b3c6cdd28ac3b1e5719a67fb645161912bef1e472e63995ceb0622",
+    "scope": "生产SoC参数、实际实例连接及存储声明的只读检查。"
+  },
+  "structural_parameters": {
+    "p_fixed_ps_channels": 1,
+    "SHARED_RAM_ENABLED": 1,
+    "SHARED_MAX_IA_BANKS": 2,
+    "IA_MAX_CACHE_BLOCKS": 32,
+    "IA_REUSE_NUM_MAX": 32
+  },
+  "vector_pe_parameters": {
+    "p_use_dsp": 1
+  },
+  "source_manifest": "build/round22/capacity/source_manifest.json",
+  "source_manifest_sha256": "c2cc068c049874629abbbe5e2bf9d274675d0ea3840c44754efdfa611f30e9ba",
+  "structural_source_count": 70,
+  "verified_controlled_file_count": 10031,
+  "verified_present_tracked_file_count": 1929,
+  "fixed_rtl_and_configuration": {
+    "count": 87,
+    "before_matches_fixed": true,
+    "after_matches_fixed": true
+  },
+  "fixed_source_record": "build/round22/source.json",
+  "fixed_source_record_sha256": "047ae369f879f6c8cd79e4f6d5646a782e8099900c1614adf764cd51d3154fc3",
+  "execution_records": {
+    "capacity_unit_tests": "build/round22/capacity/capacity_unit_tests_run.json",
+    "structure": "build/round22/capacity/structure_run.json"
+  },
+  "structure_reports": {
+    "generic": "build/round22/capacity/structure/generic/result.json",
+    "fpga": "build/round22/capacity/structure/summary.json"
+  },
+  "verification_tool_commit": "b20921b3b1fc3351b1f6447dd688af12ac60ef19",
+  "verification_test_support_sha256": {
+    "test/ps_channels/run_npu_structure.py": "f52da425c889f96908f22be6b4e5957cda20c633be14705e89a6108fce2a52e4",
+    "test/fpga_integration/run.py": "3c1227dddc7d40de581cfa604e1797191b3dbc8b0b11d69e5e5234934e2e97b6"
+  },
+  "standard_entry_verification": {
+    "passed": true,
+    "entry_script": "test/ps_channels/run_npu_structure.py",
+    "entry_script_sha256": "f52da425c889f96908f22be6b4e5957cda20c633be14705e89a6108fce2a52e4",
+    "entry_executed_unchanged": true,
+    "configuration_path": "config/npu_fpga.mk",
+    "generic_passed": true,
+    "fpga_passed": true,
+    "cache_directory": "/workspace/scratch/76fc8a977a8f/worktrees/round22_measurement/build/round22/capacity/structure/state_cache",
+    "requested_script_command": [
+      "python3",
+      "/workspace/scratch/76fc8a977a8f/worktrees/round22_measurement/test/ps_channels/run_npu_structure.py",
+      "--out",
+      "/workspace/scratch/76fc8a977a8f/worktrees/round22_measurement/build/round22/capacity/structure",
+      "--verilator",
+      "verilator-modern"
+    ]
+  },
+  "elaboration_tools": {
+    "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "clock_primitive_declaration_library_sha256": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5",
+    "generated_primitive_models_sha256": "b601442989d25ad0cc65f59661c4cb900072a5f8cfa4da25ba1361cd0f4f2f52"
+  },
+  "output_sha256": {
+    "build/round22/capacity/capacity_unit_tests.log": "5254c8e9de9136f252c3e90e0a326b0222539a60b35a78be8c20e958e99ef3ed",
+    "build/round22/capacity/capacity_unit_tests_run.json": "9a0c366b0a5964db8abb702b6664c429f27ded492ec98db23299bec81c4005bb",
+    "build/round22/capacity/menuconfig/edit_solve_save.pty.log": "11a4f5e354634603a72f8f96e1ac33f5288912695198d187d0dbd8414506a7de",
+    "build/round22/capacity/menuconfig/invalid_save_discard.pty.log": "b8be3ddd92e59d062e285d1e3f12206e78b0fe6dabf163fa2beeaea9d9b86a0b",
+    "build/round22/capacity/menuconfig/resize_no_changes.pty.log": "254d7cda64538c685b205e38a5496c79293f5097730884a0c77036ee10fa5560",
+    "build/round22/capacity/source_manifest.json": "c2cc068c049874629abbbe5e2bf9d274675d0ea3840c44754efdfa611f30e9ba",
+    "build/round22/capacity/structure/elaboration.log": "50d503632219d1aa00f098e6fef32c9fb62147f056513ea5694a0bfcf6c60077",
+    "build/round22/capacity/structure/generic/elaboration.log": "29ccc578c55780c39a0c11e0b3e39e573b51d0f4e7db1920524feb438356e4ed",
+    "build/round22/capacity/structure/generic/result.json": "d4e99640b2d490d455bc27bad32edbed64375addd4c5e4fc263d68cab4ebf2f7",
+    "build/round22/capacity/structure/summary.json": "1f94169ec9610c5eb16806c628d46c1654b65d68edae1591728d0778c8ebc658",
+    "build/round22/capacity/structure/xilinx_primitives.sv": "b601442989d25ad0cc65f59661c4cb900072a5f8cfa4da25ba1361cd0f4f2f52",
+    "build/round22/capacity/structure.log": "7f5636aef0efb3e388b02736ec73b603d063a4547d217cab271e6b4737c01055",
+    "build/round22/capacity/structure_run.json": "8ad40a3213b3b6f01a3319325447668bcaf5cc002853a3c5b4ba0faef4d23055",
+    "build/round22/capacity/verification_runner.py": "fd24e77922706103c3c5810fed902fbdebabd33ffcf0295c538f4d991ed6f4a4"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "scope": "Tcl syntax, modeled Vivado commands, report arithmetic, production source coverage",
+  "base_commit": "4e2c7aca9e23349ad86c48811adb33a53287bfcc",
+  "passed": true,
+  "test_sets": {
+    "timing": {
+      "passed": true,
+      "tests": 23,
+      "tcl_processes": 78,
+      "actual_vivado_executed": false,
+      "synthesis_executed": false,
+      "implementation_executed": false,
+      "report": "build/vivado_timing_checks/timing/summary.json",
+      "report_sha256": "b60945816a4513a6f10a881f2e0288af4114846101729d9199bb55c50e592214"
+    },
+    "config": {
+      "passed": true,
+      "tests": 17,
+      "tcl_processes": 95,
+      "actual_vivado_executed": false,
+      "synthesis_executed": false,
+      "implementation_executed": false,
+      "report": "build/vivado_timing_checks/config/summary.json",
+      "report_sha256": "2aa95a38d5888b26d0700cadd882875d2e55f8c4d73a327b86871f6d6da794aa"
+    }
+  },
+  "total_tests": 40,
+  "total_tcl_processes": 173,
+  "source_coverage": {
+    "vivado_sources": 79,
+    "required_production_sources": 64,
+    "reference_filelist": "veri/flist/dut_axil.f",
+    "excluded_simulation_wrappers": [
+      "rtl/axi_top/axil_top_with_ram.sv"
+    ],
+    "report": "build/vivado_timing_checks/timing/cases/test_production_source_list_covers_dut_axil/source_list/source_coverage.json",
+    "report_sha256": "7e5d94b67219921a23d15bee246489049e504fc694d5dc604a70a36d97232e3f",
+    "all_source_hashes_verified": true
+  },
+  "runtime": {
+    "tcl_patchlevel": "8.6.16",
+    "tclsh_sha256": "7ef5786ef770c0f28248dbd4b022feb580db67fa81bf7999158897f97c3644b1",
+    "vivado_callable": false
+  },
+  "actual_vivado_executed": false,
+  "synthesis_executed": false,
+  "implementation_executed": false,
+  "timing_150mhz_confirmed": null,
+  "timing_data": "Synthetic command-model inputs; no device timing measurements",
+  "protected_rtl_and_config_unchanged": true,
+  "source_sha256": {
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/clk_wiz_ip.tcl": "01de266943dedb3d94bb7479dfa56c6da91ac06d976393c6d69167bd5fa6577d",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/cpu_memory.tcl": "00264e1309af7d55bb40d44377cb8207d22fe54e17c4155b2d5b46a89f277cda",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/create_project.tcl": "c938ec83bbbe84c430c73191fa8acfbc7a6f39248c361ff4a26321f41e757db7",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/export_project.tcl": "ac9390a5f5cf02bd81129bb28c4a55ce56aaf4c8ac7e8f5414ad7d5c139e27a8",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/npu_config.tcl": "d0d8af13cd87b8da1aef4302bd39dc96436c67e0e20c69b830b9dd36dd9fa3c3",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/run_batch_impl.tcl": "76fe5caeb588b8e438d8b3e53a05ed9971324b722f64b34455e393829629a33d",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/run_batch_synth.tcl": "b7e72c491fd4cb44d719a923097d904782b7de33cab6115600f8b18e406c094c",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/run_behav_smoke.tcl": "1af0728340482771f7fd1674ba1aadb973e5b18656cebd024673b97672a5ab66",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/run_post_impl_smoke.tcl": "cecec37e44b1622347b65b79d4450e6b554b1602d0fb419f77a863de0958652f",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/run_synth.tcl": "9d7f77cf23001953754009a5824d143c3653da406ae59fc28871bcb99a92a2df",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/sources.tcl": "882c81d8c0393e9835edf1212343bd92eb67e794f426fe1b5b632c48a7a517da",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/timing_checks.tcl": "f5261d4016b53a3d8f82cbf6ac0b2e8af8abc127263beb43076cbfd5a6486c71",
+    "scripts/fpga/vivado_implement_mapped_soc.tcl": "724b52af74affd222f434991001a820f5818be6d9418c9ae4c8ea25d0aec3e4d",
+    "scripts/fpga/tests/vivado_timing_mock.tcl": "302c9d1f283ded12d1482e3aef9416f997ac9426a5a4cb07a43d7a31be2344f4",
+    "scripts/fpga/tests/test_vivado_timing.py": "7b07354852a222df7e523d9d01dbf05053db6c48e34fd65debe03e1ae4d039c7",
+    "veri/flist/dut_axil.f": "93360767d93324c9926af066e0f7a16c7bb96752c975b01db83ccc5c392dd4ac",
+    "fpga/vivado/tflm_ai_dsa_soc/scripts/test_npu_config.py": "fe985fd017e53b7f08a4886bd702f3feaab2319d8a8a28640a47714e1e89fa73",
+    "config/npu_fpga.mk": "4242c877f2480055909b5339e213d751deb3bb7c9b17631a303256d62656aec3",
+    "fpga/vivado/tflm_ai_dsa_soc/rtl/fpga_top.sv": "b51b324c035996930890b0aff50f11e5a07343ad4e927479878628f4f8b31a4e",
+    "fpga/vivado/tflm_ai_dsa_soc/sim/fpga_top_behav_smoke_tb.sv": "b56580e5e8d3ec2a48764ae8cd9798e3c8d394c6790907d29558199b732bb0bc",
+    "fpga/vivado/tflm_ai_dsa_soc/sim/fpga_top_post_impl_tb.sv": "d02aafcaed7e3d5e3313f4c32541005716411203f8506b673eb7753eb41492f3"
+  },
+  "commands": [
+    "python3 scripts/fpga/tests/test_vivado_timing.py --out build/vivado_timing_checks/timing --picorv32 \"$PICORV32_ROOT\"",
+    "python3 fpga/vivado/tflm_ai_dsa_soc/scripts/test_npu_config.py --out build/vivado_timing_checks/config --picorv32 \"$PICORV32_ROOT\""
+  ]
+}

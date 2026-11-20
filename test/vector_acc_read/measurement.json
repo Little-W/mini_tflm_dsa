@@ -1,0 +1,180 @@
+{
+  "rtl_source": "rtl/npu/conv/vector_engine.sv",
+  "rtl_sha256": "f6a7e559d81e64355b1a15b278e62d058c3f027875871f8eee201b786445d849",
+  "reference_rev": "b8b34d5",
+  "formal": [
+    {
+      "reference_rev": "b8b34d5",
+      "reference_sha256": "4541305aa8442d0ec4e3ebb6cc9ca5d8dd75c8296e0dd91bc8373000dd7ceb4b",
+      "candidate_sha256": "f6a7e559d81e64355b1a15b278e62d058c3f027875871f8eee201b786445d849",
+      "tile": 16,
+      "pe_count": 8,
+      "bus_width": 32,
+      "control": {
+        "passed": true,
+        "method": "Induction on actual control after replacing other register state and independent data predicates by unconstrained values",
+        "preserved_register_cells": 5,
+        "abstracted_register_cells": 133,
+        "abstracted_data_predicates": 18,
+        "peak_rss_bytes": 732254208
+      },
+      "transition": {
+        "passed": true,
+        "scalar_operand_equivalence": true,
+        "all_state_and_output_equivalence": true,
+        "peak_rss_bytes": 662724608,
+        "abstracted_miter_sha256": "a40a248fe9b55340d2caaa99f0baf400d745692ed14ed68fb11dc3b49866040b",
+        "registered_state_bits": 13369,
+        "register_cells_each": 1117,
+        "primary_outputs_compared": 35,
+        "current_state_correspondence": "Every registered bit paired through an identical public RTL net name and bit index",
+        "condition": "Three phase invariants proven on actual control logic with overapproximated data",
+        "preparation_peak_rss_bytes": 662724608,
+        "miter_sha256": "e3180f1131308fd9d05aae0c10705c9eb9de48f2a1413af76920e6da9e8b8ec1"
+      },
+      "passed": true
+    },
+    {
+      "reference_rev": "b8b34d5",
+      "reference_sha256": "4541305aa8442d0ec4e3ebb6cc9ca5d8dd75c8296e0dd91bc8373000dd7ceb4b",
+      "candidate_sha256": "f6a7e559d81e64355b1a15b278e62d058c3f027875871f8eee201b786445d849",
+      "tile": 16,
+      "pe_count": 8,
+      "bus_width": 64,
+      "control": {
+        "passed": true,
+        "method": "Induction on actual control after replacing other register state and independent data predicates by unconstrained values",
+        "preserved_register_cells": 5,
+        "abstracted_register_cells": 133,
+        "abstracted_data_predicates": 21,
+        "peak_rss_bytes": 727101440
+      },
+      "transition": {
+        "passed": true,
+        "scalar_operand_equivalence": true,
+        "all_state_and_output_equivalence": true,
+        "peak_rss_bytes": 691003392,
+        "abstracted_miter_sha256": "445134107781da86a50ce36c14c0c1e719b7d1a63c5283fd3ca14c97592fe325",
+        "registered_state_bits": 13446,
+        "register_cells_each": 1129,
+        "primary_outputs_compared": 35,
+        "current_state_correspondence": "Every registered bit paired through an identical public RTL net name and bit index",
+        "condition": "Three phase invariants proven on actual control logic with overapproximated data",
+        "preparation_peak_rss_bytes": 691003392,
+        "miter_sha256": "42bbd88c9b7e0d08c2815c9ea7dbb9355244dbddee0b8b23fd7246ade0a89c6d"
+      },
+      "passed": true
+    }
+  ],
+  "vector_regressions": [
+    {
+      "bus_width": 32,
+      "passed": true,
+      "all_case_statistics_equal": true,
+      "cases": 592,
+      "outputs": 168751,
+      "add_cases": 143,
+      "add_outputs": 135836,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188,
+      "sum_task_cycles": 2959670,
+      "implementation": "official DSP48E1 functional model",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "executable_sha256": "e7a7e0347caa8b64e56ee4ae9711a956ae96c871b376b3d5e85e6ed1ec68f34e",
+      "summary_sha256": "0c6dfac908b038704678c1d8521fac8ce852db89894538a3bb259178047f4d23"
+    },
+    {
+      "bus_width": 64,
+      "passed": true,
+      "all_case_statistics_equal": true,
+      "cases": 592,
+      "outputs": 168636,
+      "add_cases": 143,
+      "add_outputs": 135262,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188,
+      "sum_task_cycles": 2933721,
+      "implementation": "official DSP48E1 functional model",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "executable_sha256": "c9e33bba07f112e1865e290882810c4d61aad069838fb1115c2237cbb23a80d5",
+      "summary_sha256": "399fc22b700dd9a2f0ecea3982a1fa1f2b27f60482ef164ace03ccd49dfc3e19"
+    }
+  ],
+  "synthesis": {
+    "vector_reference": {
+      "resources": {
+        "logic_lut_cells": 13892,
+        "distributed_ram_lut_sites_nominal": 248,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 14140,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 6104,
+        "dsp48e1": 16,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 885,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 885,
+          "DSP48E1": 16,
+          "FDCE": 2618,
+          "FDPE": 4,
+          "FDRE": 3482,
+          "INV": 210,
+          "LUT2": 2327,
+          "LUT3": 2012,
+          "LUT4": 1803,
+          "LUT5": 4511,
+          "LUT6": 3239,
+          "MUXF7": 9,
+          "MUXF8": 2,
+          "RAM32M": 14,
+          "RAM64M": 48
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 23,
+      "graph_complete": true,
+      "metrics_sha256": "21482dca19e0b4690ce18aab6a4c8b7007e4d3b18532cf2a2fa905c9b265e7db"
+    },
+    "vector_shared": {
+      "resources": {
+        "logic_lut_cells": 13092,
+        "distributed_ram_lut_sites_nominal": 248,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 13340,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 6104,
+        "dsp48e1": 16,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 885,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 885,
+          "DSP48E1": 16,
+          "FDCE": 2618,
+          "FDPE": 4,
+          "FDRE": 3482,
+          "INV": 211,
+          "LUT2": 2223,
+          "LUT3": 1835,
+          "LUT4": 1877,
+          "LUT5": 4412,
+          "LUT6": 2745,
+          "MUXF7": 7,
+          "MUXF8": 2,
+          "RAM32M": 14,
+          "RAM64M": 48
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 24,
+      "graph_complete": true,
+      "metrics_sha256": "e2b9cd8bd6d8e81798c51a6ffe25c327c186e6cfe03b1efb086685fa44ad7857"
+    }
+  },
+  "logic_lut_reduction": 800,
+  "physical_lut_positions": null,
+  "timing_150mhz_confirmed": null
+}

@@ -1,0 +1,1123 @@
+{
+  "reference_ref": "151b87d5",
+  "source_sha256": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+  "formal": {
+    "reference_ref": "151b87d5",
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_frontend.sv": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+    },
+    "reference_frontend_sha256": "a44ee95bb666c027aef0a332bce61befaccda50525993a3419569df4a5288816",
+    "inputs_constrained": false,
+    "method": "Complete-state equivalence with simple SAT and temporal induction",
+    "runs": [
+      {
+        "case": "size4_policy0",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 4,
+          "LANES": 1,
+          "BUS_WIDTH": 32,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 0
+        },
+        "passed": true,
+        "equivalent_bits": 7033,
+        "log_sha256": "690e8e0f3269c3a5b58416c4185a0665cd60a0c7b24789232c946de243611596"
+      },
+      {
+        "case": "size4_policy1",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 4,
+          "LANES": 2,
+          "BUS_WIDTH": 32,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 1
+        },
+        "passed": true,
+        "equivalent_bits": 7085,
+        "log_sha256": "24c5da87aedf1911327d84798e3f993af3bcc649f91e07808379fa132923f4d8"
+      },
+      {
+        "case": "size8_policy2",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 8,
+          "LANES": 4,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 2
+        },
+        "passed": true,
+        "equivalent_bits": 7180,
+        "log_sha256": "619efa41415a84b1392ee5d1dcb319a0f598958ec071e45a671ffa31459737be"
+      },
+      {
+        "case": "size16_policy3",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 16,
+          "LANES": 2,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 128,
+          "CACHE_POLICY": 3
+        },
+        "passed": true,
+        "equivalent_bits": 87373,
+        "log_sha256": "07dbb895fdd1b96e3e6ca89c84593af9889dc44d3cfc60872fc7d36377cb3781"
+      },
+      {
+        "case": "size16_lanes4_policy3",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 16,
+          "LANES": 4,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 128,
+          "CACHE_POLICY": 3
+        },
+        "passed": true,
+        "equivalent_bits": 87430,
+        "log_sha256": "d4fc9cdf4fc3ae07b98afb2803dbc2cdd14447238f84d48b6d2f049e53e12295"
+      }
+    ],
+    "passed": true,
+    "equivalent_bits": 196101
+  },
+  "interface": {
+    "passed": true,
+    "public_outputs_compared": 19,
+    "numeric_jobs": 296,
+    "numeric_cycles": 3422534,
+    "control_checks": 23,
+    "control_cycles": 134,
+    "configurations": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=804123 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=804123"
+        ],
+        "LANES": 2
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=396030 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=396030"
+        ],
+        "LANES": 2
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=278078 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=278078"
+        ],
+        "LANES": 2
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 1,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=269013 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=269013"
+        ],
+        "LANES": 2
+      },
+      {
+        "control": true,
+        "passed": true,
+        "summary": [
+          "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=134",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_control cycles=134"
+        ]
+      },
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=789700 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=789700"
+        ]
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=378180 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=378180"
+        ]
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=257472 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=257472"
+        ]
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 1,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=249938 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=249938"
+        ]
+      }
+    ]
+  },
+  "synthesis": {
+    "reference": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": "151b87d5",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "a44ee95bb666c027aef0a332bce61befaccda50525993a3419569df4a5288816",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "source_snapshot": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_lanes4/retirement/sources",
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [
+          "LUT6",
+          "LUT6_2"
+        ],
+        "model_sha256": "5225885750b16ed2b781ac5ff2d89ed503355d37c8602926ef1b9fa62c1f8aa3"
+      },
+      "pre_lut_netlist": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_lanes4/retirement/pre_lut.il",
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 6586,
+      "flip_flops": 3236,
+      "dsp": 30,
+      "carry4": 730,
+      "longest_combinational_path_cells": 21,
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$328700$lut$aiger328699$25195",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$25201",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$25204",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$25254",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger$o10257",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[1].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[2].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[3].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[4].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[5].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[6].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[7].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36644",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36671",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36760",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36765",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36781",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36788",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36800",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$329150",
+          "type": "LUT6"
+        }
+      ],
+      "maximum_resident_kib": 412536,
+      "cell_counts": {
+        "$scopeinfo": 4,
+        "CARRY4": 730,
+        "DSP48E1": 30,
+        "FDCE": 2021,
+        "FDPE": 92,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 266,
+        "LUT2": 1416,
+        "LUT3": 1343,
+        "LUT4": 1157,
+        "LUT5": 1631,
+        "LUT6": 1020,
+        "LUT6_2": 19,
+        "MUXF7": 3,
+        "MUXF8": 1,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      }
+    },
+    "current": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": null,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "source_snapshot": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_chunk_terminal/current/sources",
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [
+          "LUT6",
+          "LUT6_2"
+        ],
+        "model_sha256": "5225885750b16ed2b781ac5ff2d89ed503355d37c8602926ef1b9fa62c1f8aa3"
+      },
+      "pre_lut_netlist": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_chunk_terminal/current/pre_lut.il",
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 6503,
+      "flip_flops": 3236,
+      "dsp": 30,
+      "carry4": 726,
+      "longest_combinational_path_cells": 20,
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$328078$lut$aiger328077$21175",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$21195",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$21207",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger$o3995",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[1].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[2].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[3].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[4].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[5].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[6].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21103.genblk1.slice[7].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$33729",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$36610",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$36617",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$36664",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$36671",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$36674",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$328078$lut$aiger328077$36683",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$328528",
+          "type": "LUT4"
+        }
+      ],
+      "maximum_resident_kib": 419576,
+      "cell_counts": {
+        "$scopeinfo": 4,
+        "CARRY4": 726,
+        "DSP48E1": 30,
+        "FDCE": 2021,
+        "FDPE": 92,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 264,
+        "LUT2": 1423,
+        "LUT3": 1142,
+        "LUT4": 1127,
+        "LUT5": 1640,
+        "LUT6": 1152,
+        "LUT6_2": 19,
+        "MUXF7": 8,
+        "MUXF8": 4,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      }
+    }
+  },
+  "paths": {
+    "reference": {
+      "mapped_sha256": "5f400950f537453be9377bf8cb0565d4691395a4008a779ad9b6a369b9ff32ad",
+      "pre_lut_sha256": "fcccfd7b4c3f75717af39ccc55953682cf39c4a5ecf2866c362a6e2c9498f2a5",
+      "longest_internal_path_cells": 21,
+      "inputs": {
+        "tile_p0": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 13
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 11
+          }
+        },
+        "tile_q0": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 14
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 12
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 12
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 12
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 12
+          }
+        },
+        "tile_valid": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 5
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 5
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 4
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 4
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 5
+          }
+        },
+        "tile_rows": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 13
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 5
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 5
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 5
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 11
+          }
+        },
+        "tile_cols": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 7
+          }
+        },
+        "wr_ready": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 7
+          }
+        },
+        "u_cache.rsp_valid": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 8
+          }
+        },
+        "u_cache.rsp_error": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 8
+          }
+        },
+        "u_cache.req_ready": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 1
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 1
+          },
+          "row_base_ix": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_iy": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "addr": {
+            "connected": false,
+            "longest_path_cells": 0
+          }
+        }
+      }
+    },
+    "current": {
+      "mapped_sha256": "d4b63a00e7786dd054a2d1e198b2ee7a792d3befc99d9be73277690f5f77a178",
+      "pre_lut_sha256": "8955e46db3200cc8851acad73805b2ddea971f0176c400bf57a18fc3f3c04c29",
+      "longest_internal_path_cells": 20,
+      "inputs": {
+        "tile_p0": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 12
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 10
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 10
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 11
+          }
+        },
+        "tile_q0": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 14
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 13
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 11
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 12
+          }
+        },
+        "tile_valid": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 4
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 4
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 5
+          }
+        },
+        "tile_rows": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 12
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 12
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 10
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 10
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 11
+          }
+        },
+        "tile_cols": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 7
+          }
+        },
+        "wr_ready": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 8
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 7
+          }
+        },
+        "u_cache.rsp_valid": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 8
+          }
+        },
+        "u_cache.rsp_error": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 9
+          },
+          "request_index_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_epoch_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_progress_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "request_addr_q": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_ix": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "row_base_iy": {
+            "connected": true,
+            "longest_path_cells": 7
+          },
+          "addr": {
+            "connected": true,
+            "longest_path_cells": 8
+          }
+        },
+        "u_cache.req_ready": {
+          "state": {
+            "connected": true,
+            "longest_path_cells": 6
+          },
+          "request_index_q": {
+            "connected": true,
+            "longest_path_cells": 1
+          },
+          "request_epoch_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_progress_q": {
+            "connected": true,
+            "longest_path_cells": 2
+          },
+          "request_addr_q": {
+            "connected": true,
+            "longest_path_cells": 1
+          },
+          "row_base_ix": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "row_base_iy": {
+            "connected": false,
+            "longest_path_cells": 0
+          },
+          "addr": {
+            "connected": false,
+            "longest_path_cells": 0
+          }
+        }
+      }
+    }
+  }
+}

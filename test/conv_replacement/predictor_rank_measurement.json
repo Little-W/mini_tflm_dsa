@@ -1,0 +1,79 @@
+{
+  "reference": "2f06471c",
+  "formal": {
+    "passed": true,
+    "reference": "2f06471c",
+    "proven_bits": 1811,
+    "all_public_outputs_compared": true,
+    "formal_inputs_constrained": false,
+    "source_sha256": "897e3ef847a18b7c005b214b97a59db051674a0c3bd7030ea7ce72d124d7f395",
+    "reference_sha256": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+    "proof_log_sha256": "23643b304c9deb48afcd8fbf06afcb118d6b56deb206d6c653803111a79d5370"
+  },
+  "interface": {
+    "passed": true,
+    "total_cases": 33,
+    "enabled_cases": 14,
+    "disabled_cases": 19,
+    "total_vectors": 13226,
+    "reference_ref": "2f06471c",
+    "cycle_comparison": "PREDICTOR_CYCLE_COMPARE_PASS cycles=206076",
+    "public_outputs_cycle_equivalent": true,
+    "oracle_validation_sha256": "09e9c54b8bac65ed6d359f8e937d824f1b214c93bb7a0b608274d6943dd4a5b9",
+    "vector_json_sha256": "bfe2e9e8167c9a22102a8f31ed6124ac9b7f2fcd9f0c1a2a1ab5fa99dc05ea24",
+    "build_log_sha256": "9acec7b6c95c63659735a329076aa0358bbd10e2cb274d19c44d5d3718df3e7b",
+    "run_log_sha256": "2c8f5289c9b21cc2277fd24d3aef200180b4b141a544d577d1cdefbb0bda728c"
+  },
+  "synthesis": {
+    "reference": {
+      "scope": "conv_next_use_predictor",
+      "family": "xc7",
+      "lut_cells": 1761,
+      "flip_flops": 1128,
+      "dsp": 13,
+      "carry4": 139,
+      "longest_combinational_path_cells": 15,
+      "cell_counts": {
+        "CARRY4": 139,
+        "DSP48E1": 13,
+        "FDCE": 618,
+        "FDPE": 64,
+        "FDRE": 446,
+        "INV": 130,
+        "LUT2": 277,
+        "LUT3": 351,
+        "LUT4": 325,
+        "LUT5": 554,
+        "LUT6": 239,
+        "LUT6_2": 15
+      },
+      "source_sha256": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+      "mapped_sha256": "8bcd4af55ae63aefa5a2abfa5c46fe1e04c688ba395fa4b1847158170c7c702c"
+    },
+    "current": {
+      "scope": "conv_next_use_predictor",
+      "family": "xc7",
+      "lut_cells": 1732,
+      "flip_flops": 1128,
+      "dsp": 13,
+      "carry4": 139,
+      "longest_combinational_path_cells": 15,
+      "cell_counts": {
+        "CARRY4": 139,
+        "DSP48E1": 13,
+        "FDCE": 618,
+        "FDPE": 64,
+        "FDRE": 446,
+        "INV": 130,
+        "LUT2": 275,
+        "LUT3": 346,
+        "LUT4": 314,
+        "LUT5": 534,
+        "LUT6": 248,
+        "LUT6_2": 15
+      },
+      "source_sha256": "897e3ef847a18b7c005b214b97a59db051674a0c3bd7030ea7ce72d124d7f395",
+      "mapped_sha256": "b23b6420862ed670deb4fbbf4c28d48056aa89775dd216daafcb7ee7b056160d"
+    }
+  }
+}

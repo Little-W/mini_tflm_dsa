@@ -1,0 +1,144 @@
+{
+  "source_commit": "9a63db080d02db9777fcd1afa6595e21ffd974f8",
+  "manifest": {
+    "rtl_commit": "9a63db08",
+    "synthesis_directory": "/workspace/scratch/76fc8a977a8f/worktrees/round13_measurement/build/soc_round13_dsp740_cost/soc_top",
+    "original_mapped_sha256": "345ce49676eeba187be92c86d4c4adb0ec3d355a371f17da3514b2aa8427a0ea",
+    "mapping_manifest_sha256": "6a9926d2e90bf98f77e7489d0d1b4ea8fad530919f44dce47b83d6ab846064e7",
+    "nextpnr_binary_sha256": "c802ac2fc1d20ae4750d2a9cca63b77fde931baf05a423de1c86f3d8027546dc",
+    "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+    "tools_manifest_sha256": "808d3c87e43dc78cb8d22a0edf9c6260e6fbf5db5e44219176c4d50fe86101e7",
+    "part": "xc7a200tfbg484-3",
+    "frequency_mhz": 150,
+    "clock_period_ns": 6.666666666666667,
+    "seed": 1,
+    "refinement_iterations": 10,
+    "timing_model_complete": false,
+    "implementation_environment": {
+      "NEXTPNR_REFINE_MAX_ITERS": "10",
+      "XC7_CARRY_DIRECT_DI": "1",
+      "XC7_CARRY_TRIM_TAIL": "1",
+      "XC7_FRACTURE_LUTS": "1",
+      "XC7_LUT_COFACTOR": "1"
+    },
+    "pairing_order": [
+      "cofactor",
+      "ordinary",
+      "registered",
+      "mixed",
+      "carry"
+    ],
+    "mapped_json_sha256": "51debc0406650d9f6a27de23b14c8e49eb7188e659f224ad2c81d7ccba18912a",
+    "cofactor_pairs": 30,
+    "cofactor_report_sha256": "1816f6dfc91140ae85717d9e5044a1a5bd9c55e425051de5721d5c7174d17ab9",
+    "final_packed_sha256": "2c2e719525a4d100fd8539744d8db376b8f7e4deb1d567ff123034e65e00b4bc",
+    "functional_cells_sha256": "b09083679db1e68e8004d844faeb9bf94ed24976dd514e527322210c2f2f3966",
+    "pair_counts": {
+      "cofactor": 30,
+      "ordinary": 3225,
+      "registered": 1703,
+      "mixed": 98,
+      "carry": 189
+    },
+    "mapped_verilog_sha256": "f2a207b069d60e0f818afbf0390e9e94256b128e41810644fb30794f9968b0d2"
+  },
+  "tools": {
+    "open_fpga_implementation.py": {
+      "sha256": "57798086d20cf2fb7b59b4643e0d168f6251ed857721afe32c6be4236b5c5965"
+    },
+    "open_fpga_synth.py": {
+      "sha256": "22a8b9bac086604875a6962a31031af84bbd57dd732f423934b4b4b594ff96f7"
+    },
+    "netlist_metrics.py": {
+      "sha256": "bb415561348627bc7faf60d4cbd7d6f96a6756aff5fe7fd0f6ea335b898a0b22"
+    },
+    "placed_resources.py": {
+      "sha256": "2f013d5710c7f5288cdb2cd4dc79c2fb92015339abd07807c9a44be8c1820b17"
+    },
+    "pair_packed_luts.py": {
+      "sha256": "4292628837e295a8580333c442bf43e3474d60421621e9d1217cfe56179491a2"
+    },
+    "pair_registered_luts.py": {
+      "sha256": "3a9a1ad4f55d51e6e5e856d85548e2735de3a032ec9c54cdadd23d670e6f176f"
+    },
+    "pair_mixed_luts.py": {
+      "sha256": "7d2284feb856d46b3dcbcfa6b5fd2883d256e4d162a5ad8079075fbe7c7bc412"
+    },
+    "pair_carry_luts.py": {
+      "sha256": "72526bbed55970cd13f8b305fbc26b3d0e513e9bdc26f049e0a7e2e048abaef7"
+    },
+    "fuse_lut_cofactors.py": {
+      "sha256": "882411ad65446143c58ba6e94a050c41036d87ff3899defda8279477a7281e7b"
+    }
+  },
+  "placement": {
+    "implementation_step": "place",
+    "placement_complete": true,
+    "physical_lut_positions": 58305,
+    "physical_lut_positions_by_use": {
+      "logic": 55701,
+      "distributed_ram": 2444,
+      "shift_register": 160
+    },
+    "placed_lut_bel_instances": 71380,
+    "shared_lut_positions": 13075,
+    "storage_positions_with_logic_output": 0,
+    "occupied_slice_sites": 19123,
+    "placed_cell_counts": {
+      "BUFGCTRL": 2,
+      "CARRY4": 2541,
+      "DSP48E1_DSP48E1": 727,
+      "IOB33_INBUF_EN": 4,
+      "IOB33_OUTBUF": 37,
+      "PAD": 41,
+      "PSEUDO_GND": 1,
+      "PSEUDO_VCC": 1,
+      "RAMB18E1_RAMB18E1": 30,
+      "RAMB36E1_RAMB36E1": 91,
+      "SELMUX2_1": 2183,
+      "SLICE_FFX": 50596,
+      "SLICE_LUTX": 71380
+    },
+    "unplaced_cells": [],
+    "resource_errors": [],
+    "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint.",
+    "routing_completed": false,
+    "frequency_mhz_target": 150,
+    "timing_150mhz_confirmed": null,
+    "timing_validation_status": "Requires complete target-device timing coverage"
+  },
+  "stages": {
+    "09_place": {
+      "command": [
+        "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.c802ac2fc1d20ae4",
+        "--chipdb",
+        "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+        "--freq",
+        "150",
+        "--seed",
+        "1",
+        "--strict-timing-graph",
+        "--timing-allow-fail",
+        "--json",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round13_measurement/build/soc_round13_physical/paired.json",
+        "--no-pack",
+        "--no-route",
+        "--write",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round13_measurement/build/soc_round13_physical/placed.json",
+        "--report",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round13_measurement/build/soc_round13_physical/placement_timing.json"
+      ],
+      "log": "09_place.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 2092.01,
+      "peak_process_tree_rss_bytes": 2150371328,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8360038400,
+      "minimum_observed_system_available_memory_bytes": 2209898496,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "21e2b91d3e177b33dc322f6c376bfb897dd052724af1986679a1ad798aea472b"
+    }
+  }
+}

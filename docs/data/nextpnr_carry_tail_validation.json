@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "option": "XC7_CARRY_TRIM_TAIL=1",
+  "rule": "仅解除所有可观察 O/CO 位以上的 CARRY4 S/DI 输入，保留 CI、CYINIT、低位输入及共享信号的其他连接。",
+  "patch_sha256": "6567b82a6b9028287e9bae6b972a8f2d7f3df791bab18d4c83b56380b7486de9",
+  "patch_reproduction": {
+    "base_commit": "bc9b234634cf80756b04ad4ea5f8e7a83293c425",
+    "patches": {
+      "scripts/fpga/patches/nextpnr_xilinx_carry_direct_di.patch": "3c6785dda79d991f0021a6a53823bd30884c18e1238c26924bb9cd98c97c441b",
+      "scripts/fpga/patches/nextpnr_xilinx_dsp_dram_timing.patch": "ae6c0dd05e903dad227404a73168e2644dc9c9944886c71767431f0c85bb149c",
+      "scripts/fpga/patches/nextpnr_xilinx_lut_packing.patch": "778ddf027c05c8580fbb7e21f5c17de35e5f4c980a9f5c9bdaba6549bb76a36c",
+      "scripts/fpga/patches/nextpnr_xilinx_carry_tail.patch": "6567b82a6b9028287e9bae6b972a8f2d7f3df791bab18d4c83b56380b7486de9"
+    },
+    "source_files": {
+      "common/command.cc": "07728b4289b9e2f6313a1c8eb9b6edc71eb684c453a4d33e68bf39756118f75d",
+      "common/placer1.cc": "3d0457f6f4f33835ded8a84a1c903f33906b25524738194af6ce76c8b24bd537",
+      "xilinx/arch_place.cc": "f611ad8e1c7cf757c813f7458a7391214f7d4d1dd81045b3da09c0b70323d31e",
+      "xilinx/pack.cc": "a506063dc8920e33cf5d276b8050300e83e067a17c18f2e877a8428bec147279",
+      "xilinx/pack_carry_xc7.cc": "4984265e82df8f808422e6bb993f2c967a342c573b48b814be4692d3da4a0205",
+      "xilinx/pack_dram.cc": "ba5de03fdd30bb67de31a9e1d5e8825ae2d83eda7782d2c6026b8f5dbd79b9de",
+      "xilinx/pack_dsp_xc7.cc": "0b0a767eec8fe823228f3a589e6ef98f9187462629e31345893a1145b07a14b8"
+    },
+    "all_source_files_match": true
+  },
+  "algorithm_and_vendor_formal": {
+    "passed": true,
+    "nextpnr_source_sha256": "4984265e82df8f808422e6bb993f2c967a342c573b48b814be4692d3da4a0205",
+    "disconnect_source_sha256": "340a7fa92ee6a605bb262afc2405d14a7790d9905d6005719cb826db4b951bef",
+    "extracted_cpp_sha256": "1122a400b800ce493a1f148dbbbc38e966db7b409e6136f6ebd6f35c36605bad",
+    "algorithm_cases": {
+      "connection_shapes": 65536,
+      "skip_cases": 513,
+      "carry_bridges": 4096,
+      "shared_signals": 6,
+      "passed": true
+    },
+    "vendor_model_sha256": "f2f62f5b5736dfa889da76f24cf7fdc9b456282420ef6a203e06d34408d4d75d",
+    "formal_cases": [
+      {
+        "top": "carry_tail_boundary",
+        "passed": true,
+        "alternative_tail_values_may_be_undefined": true
+      },
+      {
+        "top": "carry_tail_bridge",
+        "passed": true,
+        "alternative_tail_values_may_be_undefined": true
+      }
+    ]
+  },
+  "vendor_model": {
+    "url": "https://raw.githubusercontent.com/Xilinx/XilinxUnisimLibrary/master/verilog/src/unisims/CARRY4.v",
+    "sha256": "f2f62f5b5736dfa889da76f24cf7fdc9b456282420ef6a203e06d34408d4d75d"
+  },
+  "yosys_model_formal": {
+    "yosys_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "model_sha256": "a2ffad06f4d2826165d4c659219d8b19cb57cec7657f05f75ee6086e92c3c406",
+    "miter_sha256": "d6ebdd58305d8859975c00740734c8b1f6225f64ff9bd81b4f9515ca4fa25169",
+    "all_lower_o_and_co_bits_checked": true,
+    "alternate_tail_inputs_may_be_undefined": true,
+    "cases": [
+      {
+        "observed_low_bits": 1,
+        "removed_high_bits": 3,
+        "script_sha256": "e74e48b8b2b714238a47e7a30507e50a57a3c42eb06258bbe6b72a23dc2b65c5",
+        "passed": true
+      },
+      {
+        "observed_low_bits": 2,
+        "removed_high_bits": 2,
+        "script_sha256": "e377eb364bd4406a9916fc177b61904320c7865ef4a61770465c9492abffe0fd",
+        "passed": true
+      },
+      {
+        "observed_low_bits": 3,
+        "removed_high_bits": 1,
+        "script_sha256": "7cb0a45b75c57d97e5fe95b186931db211ef2a56ea82de122a19af2e1b85a4ce",
+        "passed": true
+      }
+    ]
+  },
+  "physical_implementation": {
+    "nextpnr_sha256": "1f9412eefcb7b66a967d1b83a5ec799d4900e7bbb7c66c52f0b29c6edbe31a73",
+    "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+    "source_sha256": "4984265e82df8f808422e6bb993f2c967a342c573b48b814be4692d3da4a0205",
+    "design_sha256": "844c2884f66b15dd76eaac3bcb02c684f0ea31696a6003024fdc052e39997dc9",
+    "mapped_sha256": "726774ed8ad90a9c0874dda1954b732916319a4bc327e3b25a5c1e9977e51246",
+    "cases": {
+      "reference": {
+        "placement_complete": true,
+        "routing_complete": true,
+        "physical_lut_positions": 37,
+        "route_elapsed_seconds": 8.49,
+        "peak_process_tree_rss_bytes": 2325291008,
+        "routed_sha256": "d4a41f801c2d7cb824cab3a134ad73414d60afae024295b9623653c28e070f6e",
+        "fasm_sha256": "a9a8185da8699a8020c4e4308bfb7434b6289e9adf17304ca1757792f692378b",
+        "functional_checks": {
+          "passed": true,
+          "input_vectors": 256,
+          "register_input_bits": 14,
+          "bit_comparisons": 3584,
+          "fasm_init_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d"
+        },
+        "emitted_fasm_checks": {
+          "passed": true,
+          "lut_positions": 37,
+          "carry_muxes": 9,
+          "ff_input_muxes": 14
+        },
+        "frequency_mhz_target": 150,
+        "timing_150mhz_confirmed": null
+      },
+      "trimmed": {
+        "placement_complete": true,
+        "routing_complete": true,
+        "physical_lut_positions": 26,
+        "route_elapsed_seconds": 9.82,
+        "peak_process_tree_rss_bytes": 2396241920,
+        "routed_sha256": "6bf5a9ec5d3b3384e4efdec837756154dded511a37c1261c456ec48305235521",
+        "fasm_sha256": "7b8c750103bbc271c72433de6e7b7c898ded0a41f9328b0c3cfea68482b0deb8",
+        "functional_checks": {
+          "passed": true,
+          "input_vectors": 256,
+          "register_input_bits": 14,
+          "bit_comparisons": 3584,
+          "fasm_init_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d"
+        },
+        "emitted_fasm_checks": {
+          "passed": true,
+          "lut_positions": 26,
+          "carry_muxes": 9,
+          "ff_input_muxes": 14
+        },
+        "frequency_mhz_target": 150,
+        "timing_150mhz_confirmed": null
+      }
+    }
+  },
+  "reproduction_entries": [
+    "scripts/fpga/test_carry_tail.py",
+    "scripts/fpga/tests/review_carry_tail.py",
+    "scripts/fpga/tests/run_carry_tail_implementation.py"
+  ]
+}

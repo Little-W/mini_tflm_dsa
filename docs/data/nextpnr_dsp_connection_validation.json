@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "nextpnr_sha256": "dd978d0ec42669b5696b1ede813e6483aa5a1032e583b48ba273a10d85337cd0",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "patch_sha256": "6fbe6b7a9d3a6882b57faa6579e007c0f4cabbe311d901fb6e95f2c1201b4299",
+  "scripts_sha256": {
+    "report_saved_timing.py": "fd6e8ca5984d83e974a2c3dbe652283f6acc90520ff48c1bf25cb7a51811169e",
+    "tests/check_dsp_connection_report.py": "82fc3c47e6c88a69afe3e4375dd2efeba8fb6c01857172081652e455affcb7bd"
+  },
+  "cases": {
+    "register_only": {
+      "passed": true,
+      "design_sha256": "1d379f64cf9418c8d6e027ddaf76afc16371e9346761c8df3c5cd0e0d9ad8d97",
+      "report_sha256": "7e3bfd411bf963cd8dab5dcaf6a2ff3a3887eebee2e259cb1789ed265ab0c925",
+      "tilegrid_sha256": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0",
+      "data_path_combinational_dsp_cells": 0,
+      "data_path_combinational_dsp_with_registered_controls": [],
+      "incident_connections": 0,
+      "same_tile_connections": 0,
+      "checked_report_entries": 0,
+      "all_reported_connections_match_netlist": true,
+      "longest_cross_tile_delays_match_device_coordinates": true,
+      "top_connection_and_distinct_dsp_order_verified": true,
+      "net_delay_source": "Placement distance estimates"
+    },
+    "soc_round7": {
+      "passed": true,
+      "design_sha256": "99b73522c16546ef0828728ea45bc2d2f538875721c48aa763821a367adec512",
+      "report_sha256": "26b650a2e49cc7bf1aa2a4f001bd403735434826ffa2ec14cabb43f6869498ca",
+      "tilegrid_sha256": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0",
+      "data_path_combinational_dsp_cells": 334,
+      "data_path_combinational_dsp_with_registered_controls": [],
+      "incident_connections": 32650,
+      "same_tile_connections": 800,
+      "checked_report_entries": 30,
+      "all_reported_connections_match_netlist": true,
+      "longest_cross_tile_delays_match_device_coordinates": true,
+      "top_connection_and_distinct_dsp_order_verified": true,
+      "net_delay_source": "Placement distance estimates"
+    }
+  },
+  "register_only_path_count": 1,
+  "soc_clock_relationship_path_count": 4,
+  "patch_replay": {
+    "passed": true,
+    "patches": 7,
+    "source_files": 8,
+    "byte_identical": true,
+    "sources_sha256": {
+      "common/command.cc": "07728b4289b9e2f6313a1c8eb9b6edc71eb684c453a4d33e68bf39756118f75d",
+      "common/placer1.cc": "4dbb9287e186df1e691d018cc4470329e12326ef4fac751f677aa162a1f26e67",
+      "common/timing.cc": "6ae0970d9d4cdf61e4b4045d1781ea4fe7934c1df87bd3c6b12da33d887caab8",
+      "xilinx/arch_place.cc": "f611ad8e1c7cf757c813f7458a7391214f7d4d1dd81045b3da09c0b70323d31e",
+      "xilinx/pack.cc": "a506063dc8920e33cf5d276b8050300e83e067a17c18f2e877a8428bec147279",
+      "xilinx/pack_carry_xc7.cc": "4984265e82df8f808422e6bb993f2c967a342c573b48b814be4692d3da4a0205",
+      "xilinx/pack_dram.cc": "ba5de03fdd30bb67de31a9e1d5e8825ae2d83eda7782d2c6026b8f5dbd79b9de",
+      "xilinx/pack_dsp_xc7.cc": "0b0a767eec8fe823228f3a589e6ef98f9187462629e31345893a1145b07a14b8"
+    }
+  },
+  "timing_model_complete": false,
+  "timing_150mhz_confirmed": null
+}

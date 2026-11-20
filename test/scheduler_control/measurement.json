@@ -1,0 +1,1026 @@
+{
+  "reference_revision": "e6fd2b1f",
+  "rtl_sha256": "1c4163d8c94ec44ad2441c375a0120ebf651ba4a6874c889a10e28fe748b5885",
+  "configuration": {
+    "SIZE": 16,
+    "FRAME_COUNT": 16,
+    "MAX_REUSE_TILES": 32
+  },
+  "registered_latency_changed": false,
+  "register_state_changed": false,
+  "formal": {
+    "summary": "build/scheduler_control/parallel_formal/summary.json",
+    "sha256": "5a2670d181d5791b7d9e8ce343c81ca6410327d94a993689bebc3598b50331ff",
+    "passed": true,
+    "source_input_constraints": false,
+    "any_profiles": [
+      {
+        "width": 1,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "a8712ba466bafe71dd7ae8df623292383c02b6e0326a9a6b0445df8e4e3d46aa"
+      },
+      {
+        "width": 1,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "7c24ae68cbb514c1c9c5b00fb58d5ebe2bd61124dcdcbf54a8c13e03f1643ddf"
+      },
+      {
+        "width": 2,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "a9d3ea03316e3d8bd28b73ac005260415d722767e66f2c6a419117bc54e94050"
+      },
+      {
+        "width": 2,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "807f7406d234326629a1d105c62da1528fc2fe6f5f1badf57fd3b6b8af57c3a1"
+      },
+      {
+        "width": 3,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "9cab5719fca25ee6fee1a43a50f5ebceccd65d3e6a21fa034becc3826a36ee07"
+      },
+      {
+        "width": 3,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "95f72f74fa474cadbce25840ce3feac9bf7d9afb17c2ec673f0e32f6c84ade06"
+      },
+      {
+        "width": 6,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "6b74fda7aa7026749e778df0de0833c2f37cb59d426438887564e25e71d7cc7c"
+      },
+      {
+        "width": 6,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "d87896c75fea4e062871cb719f876526ba507c0acecfc4940c2ba625309bd942"
+      },
+      {
+        "width": 7,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "2b76cefb09dc826e6673973ec79151f6af362dbdd3d8efd86bf739ad8248e7fc"
+      },
+      {
+        "width": 7,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "d9cdfe93571123e3abcddb30fd8bb0d7147cac7475a9040547ca8b8dccbecf59"
+      },
+      {
+        "width": 16,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "d7937d06458b02b0c1aa6795c4ebd73cc71eb8a35e45151f73c350141a928ea2"
+      },
+      {
+        "width": 16,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "99ac3b4ee8fdd4f291fbe24573f21d0268bb574fd707e08acee7a09e9f95c864"
+      },
+      {
+        "width": 31,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "cae405935629839650c7f2610de07b46c4ba6be7c47ae8c065485d461208c9fd"
+      },
+      {
+        "width": 31,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "21c663e00e601504db88edc82f18432d55b781e57bf1b2c18e66e9240eabe916"
+      },
+      {
+        "width": 36,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "83c1b46ccfd5b84354d22350e9a1dc9a68f146ef02e69c18c354012585bb834e"
+      },
+      {
+        "width": 36,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "dfae26445f061ed251e36d20ffabf0cab382bc95cbeb5cc490f9f2506c1d0d68"
+      },
+      {
+        "width": 37,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "d4fe126d2dd29fbfd5f58fffd4d2be198b71d742ac295a4be4362f95f85599af"
+      },
+      {
+        "width": 37,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "24b7bcf055c2351fec8874a36879b77eb0dc0682ff37ab73e6dcf153d529fce5"
+      },
+      {
+        "width": 64,
+        "lut": 0,
+        "passed": true,
+        "log_sha256": "e7d65a2d8bb979b2ab7e4a524977837ecdb5988a4ac7895eb781ae6d3dd7b077"
+      },
+      {
+        "width": 64,
+        "lut": 1,
+        "passed": true,
+        "log_sha256": "416e7e0af30fedd8d4dc77f5fd01d2426d40d53f8c9203505ec1445e05ac035c"
+      }
+    ],
+    "scheduler_profiles": [
+      {
+        "size": 1,
+        "frames": 1,
+        "max_reuse_tiles": 1,
+        "fpga": false,
+        "passed": true,
+        "equivalent_bits": 1362,
+        "log_sha256": "0e5c638251f7e1c8ee1c6e788bba120038bc6ef02c29f448c9773f317498ba4d"
+      },
+      {
+        "size": 1,
+        "frames": 1,
+        "max_reuse_tiles": 1,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 1718,
+        "log_sha256": "e922e1e35e6466aacd3bcc4ce5ad9f711b70ba35bdb7b4d1d0a43ffc2868267f"
+      },
+      {
+        "size": 4,
+        "frames": 3,
+        "max_reuse_tiles": 4,
+        "fpga": false,
+        "passed": true,
+        "equivalent_bits": 1608,
+        "log_sha256": "a340048050901e0cecd141b6dffb4c4083a4f543f03ef76d50c4f88cd28b9e76"
+      },
+      {
+        "size": 4,
+        "frames": 3,
+        "max_reuse_tiles": 4,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 1964,
+        "log_sha256": "4058873354e1753c396c8d13d8a935cc50146425337638d90cf98f83a537925e"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "max_reuse_tiles": 32,
+        "fpga": false,
+        "passed": true,
+        "equivalent_bits": 2690,
+        "log_sha256": "5410524419afe00be569a5598204c1b4855b898c21c755ec7f0bb71c7126fc80"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "max_reuse_tiles": 32,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 3046,
+        "log_sha256": "cb5ccc3b3508ee06883e84427161ce3262b4d73158c9bfbe33afe4614a52387c"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "max_reuse_tiles": 0,
+        "fpga": false,
+        "passed": true,
+        "equivalent_bits": 3657,
+        "log_sha256": "cef17763befa5e6925cd8a864da501b2886b56f6fffae418c9188f35116646f9"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "max_reuse_tiles": 0,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 4013,
+        "log_sha256": "9c90b3566057be63a74702b7ca94a34023ff4919e07b276b9298afeb1e4d392c"
+      },
+      {
+        "size": 16,
+        "frames": 17,
+        "max_reuse_tiles": 64,
+        "fpga": false,
+        "passed": true,
+        "equivalent_bits": 2832,
+        "log_sha256": "ccc6e60fbb3d21d49c866265428b42be0342adad294ac6f9ccfdcfbc307dce4e"
+      },
+      {
+        "size": 16,
+        "frames": 17,
+        "max_reuse_tiles": 64,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 3188,
+        "log_sha256": "39f47637b7c1b947fc3fb6681310a311df85212c637c9715ab751cb2f31b839d"
+      }
+    ],
+    "equivalent_bits": 26078
+  },
+  "synthesis": {
+    "native": {
+      "reference": {
+        "directory": "build/scheduler_control/native/scheduler_reference",
+        "source_sha256": "b15135c6b9f101378e29a5ebf58d6342e3886af2ab96e22e46002c3e33af0064",
+        "resources": {
+          "logic_lut_cells": 1296,
+          "distributed_ram_lut_sites_nominal": 108,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1404,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 892,
+          "dsp48e1": 2,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 134,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 134,
+            "DSP48E1": 2,
+            "FDCE": 341,
+            "FDPE": 3,
+            "FDRE": 539,
+            "FDSE": 9,
+            "INV": 84,
+            "LUT2": 396,
+            "LUT3": 259,
+            "LUT4": 192,
+            "LUT5": 240,
+            "LUT6": 202,
+            "LUT6_2": 7,
+            "MUXF7": 2,
+            "MUXF8": 1,
+            "RAM32M": 27
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 13,
+        "candidate_sources_longest_register_path_cells": 11,
+        "graph_complete": true,
+        "metrics_sha256": "73a99b095b7835fee3d8cd54e53799144150546dce77be98fbfe76527ffb258c",
+        "paths_sha256": "92297966313b2a694a4046b41e701b794c9823f80f14780906cc9268fe0eb742",
+        "mapped_sha256": "ae6c0146deb9a38b5ed0449e1eed059eefc53d7b380ea9b3783c40864f9c7fd6",
+        "candidate_paths": [
+          {
+            "cells": 11,
+            "start": "opened [0]",
+            "end": "prediction_valid [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [2]",
+            "end": "selected_id_q [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [2]",
+            "end": "$\\frame_column$rdreg[1]$q [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "row_base [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "next_column_tile [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "next_row_part [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "cursor [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "resume_valid"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "command_buffer_cols [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "command_buffer_k [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "command_buffer_valid"
+          },
+          {
+            "cells": 9,
+            "start": "opened [2]",
+            "end": "selected_id_valid"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "phase [9]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "opened [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "target [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "protected_valid"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "command_buffer_id [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "command_buffer_init"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "command_buffer_final"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "command_buffer_row [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "command_buffer_rows [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "selected_init_q"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "command_buffer_column [4]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [2]",
+            "end": "command_buffer_q [4]"
+          },
+          {
+            "cells": 7,
+            "start": "opened [2]",
+            "end": "live [0]"
+          },
+          {
+            "cells": 5,
+            "start": "live [15]",
+            "end": "resume_id [0]"
+          },
+          {
+            "cells": 4,
+            "start": "live [15]",
+            "end": "err_code [0]"
+          },
+          {
+            "cells": 2,
+            "start": "live [0]",
+            "end": "live [0]"
+          }
+        ]
+      },
+      "current": {
+        "directory": "build/scheduler_control/parallel_native/scheduler_current",
+        "source_sha256": "1c4163d8c94ec44ad2441c375a0120ebf651ba4a6874c889a10e28fe748b5885",
+        "resources": {
+          "logic_lut_cells": 1312,
+          "distributed_ram_lut_sites_nominal": 108,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1420,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 892,
+          "dsp48e1": 2,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 134,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 134,
+            "DSP48E1": 2,
+            "FDCE": 341,
+            "FDPE": 3,
+            "FDRE": 539,
+            "FDSE": 9,
+            "INV": 84,
+            "LUT2": 391,
+            "LUT3": 248,
+            "LUT4": 195,
+            "LUT5": 270,
+            "LUT6": 201,
+            "LUT6_2": 7,
+            "RAM32M": 27
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 13,
+        "candidate_sources_longest_register_path_cells": 11,
+        "graph_complete": true,
+        "metrics_sha256": "4a7ae8c65f02bf57f7ff7fd8963de9c6a828a4054821ae32cf7c5faff61540d8",
+        "paths_sha256": "8afacb0aac3f6ec94a061f94aab39008c898e6a2ac24db31d4d92a756ab3ea8c",
+        "mapped_sha256": "ff84e7b16f67d98bfd47eb82d0ecaf371aff3ffc923fb7b3f5a701ec0a887e24",
+        "candidate_paths": [
+          {
+            "cells": 11,
+            "start": "opened [0]",
+            "end": "prediction_valid [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "selected_id_q [2]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "next_column_tile [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "$\\frame_column$rdreg[1]$q [2]"
+          },
+          {
+            "cells": 10,
+            "start": "opened [4]",
+            "end": "next_row_part [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "phase [5]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "command_buffer_valid"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "selected_id_valid"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "opened [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "target [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "cursor [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "protected_valid"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "resume_valid"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "command_buffer_cols [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [4]",
+            "end": "command_buffer_k [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "selected_init_q"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "row_base [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "live [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "command_buffer_id [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "command_buffer_init"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "command_buffer_final"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "command_buffer_row [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "command_buffer_rows [0]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "command_buffer_column [4]"
+          },
+          {
+            "cells": 8,
+            "start": "opened [4]",
+            "end": "command_buffer_q [4]"
+          },
+          {
+            "cells": 5,
+            "start": "live [12]",
+            "end": "resume_id [0]"
+          },
+          {
+            "cells": 4,
+            "start": "live [12]",
+            "end": "err_code [0]"
+          },
+          {
+            "cells": 2,
+            "start": "live [0]",
+            "end": "live [0]"
+          }
+        ]
+      }
+    },
+    "physical_cost": {
+      "reference": {
+        "directory": "build/scheduler_control/physical/scheduler_reference",
+        "source_sha256": "b15135c6b9f101378e29a5ebf58d6342e3886af2ab96e22e46002c3e33af0064",
+        "resources": {
+          "logic_lut_cells": 1214,
+          "distributed_ram_lut_sites_nominal": 108,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1322,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 892,
+          "dsp48e1": 2,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 134,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 134,
+            "DSP48E1": 2,
+            "FDCE": 341,
+            "FDPE": 3,
+            "FDRE": 539,
+            "FDSE": 9,
+            "INV": 89,
+            "LUT2": 347,
+            "LUT3": 262,
+            "LUT4": 155,
+            "LUT5": 173,
+            "LUT6": 270,
+            "LUT6_2": 7,
+            "MUXF7": 21,
+            "RAM32M": 27
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 14,
+        "candidate_sources_longest_register_path_cells": 12,
+        "graph_complete": true,
+        "metrics_sha256": "43a83e87e845d074d5fd79201e6bf40a830d1579827b4a6df25532e210733ee8",
+        "paths_sha256": "c838ca7f8e8c7db1d31a773121e4663d81b7d35f455c79e1b02635c1a9faf011",
+        "mapped_sha256": "19fac4748392039cf461fc30f2e441dc8c690c404ef7c0b44e8576811ec0abc5",
+        "candidate_paths": [
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "phase [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "next_column_tile [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "next_row_part [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "opened [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "cursor [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "protected_valid"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "resume_valid"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "command_buffer_cols [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "command_buffer_k [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "command_buffer_valid"
+          },
+          {
+            "cells": 12,
+            "start": "opened [0]",
+            "end": "prediction_selection_q [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "selected_id_q [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "selected_id_valid"
+          },
+          {
+            "cells": 12,
+            "start": "opened [4]",
+            "end": "$\\frame_column$rdreg[1]$q [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "row_base [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "target [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "live [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "command_buffer_id [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "command_buffer_init"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "command_buffer_final"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "command_buffer_row [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "command_buffer_rows [0]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "selected_init_q"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "command_buffer_column [4]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [4]",
+            "end": "command_buffer_q [4]"
+          },
+          {
+            "cells": 5,
+            "start": "live [1]",
+            "end": "resume_id [0]"
+          },
+          {
+            "cells": 4,
+            "start": "live [1]",
+            "end": "err_code [0]"
+          },
+          {
+            "cells": 2,
+            "start": "live [0]",
+            "end": "live [0]"
+          }
+        ]
+      },
+      "current": {
+        "directory": "build/scheduler_control/parallel_physical/scheduler_current",
+        "source_sha256": "1c4163d8c94ec44ad2441c375a0120ebf651ba4a6874c889a10e28fe748b5885",
+        "resources": {
+          "logic_lut_cells": 1221,
+          "distributed_ram_lut_sites_nominal": 108,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1329,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 892,
+          "dsp48e1": 2,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 134,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 134,
+            "DSP48E1": 2,
+            "FDCE": 341,
+            "FDPE": 3,
+            "FDRE": 539,
+            "FDSE": 9,
+            "INV": 89,
+            "LUT2": 323,
+            "LUT3": 263,
+            "LUT4": 161,
+            "LUT5": 199,
+            "LUT6": 268,
+            "LUT6_2": 7,
+            "MUXF7": 20,
+            "RAM32M": 27
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 14,
+        "candidate_sources_longest_register_path_cells": 12,
+        "graph_complete": true,
+        "metrics_sha256": "c03cec3030eadc9a9d85473abd97427cf8143822be359237718e348597a2dc6e",
+        "paths_sha256": "c236236567c15e66a027f13aef36506b0ee8bd91634b40ed07697d24e6b0215d",
+        "mapped_sha256": "1cdbd477abaa1ec5813dbcfc6ab18a34f40879ce0d7b951ae877e7c5a9237b54",
+        "candidate_paths": [
+          {
+            "cells": 12,
+            "start": "opened [0]",
+            "end": "prediction_selection_q [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [3]",
+            "end": "next_column_tile [0]"
+          },
+          {
+            "cells": 12,
+            "start": "opened [3]",
+            "end": "$\\frame_column$rdreg[1]$q [1]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [3]",
+            "end": "phase [6]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [3]",
+            "end": "selected_id_q [1]"
+          },
+          {
+            "cells": 11,
+            "start": "opened [3]",
+            "end": "next_row_part [0]"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "command_buffer_valid"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "selected_id_valid"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "row_base [0]"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "opened [0]"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "cursor [0]"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "protected_valid"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "resume_valid"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "command_buffer_cols [0]"
+          },
+          {
+            "cells": 10,
+            "start": "opened [3]",
+            "end": "command_buffer_k [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "selected_init_q"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "target [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "live [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "command_buffer_id [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "command_buffer_init"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "command_buffer_final"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "command_buffer_row [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "command_buffer_rows [0]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "command_buffer_column [4]"
+          },
+          {
+            "cells": 9,
+            "start": "opened [3]",
+            "end": "command_buffer_q [4]"
+          },
+          {
+            "cells": 5,
+            "start": "live [0]",
+            "end": "resume_id [0]"
+          },
+          {
+            "cells": 4,
+            "start": "live [0]",
+            "end": "err_code [0]"
+          },
+          {
+            "cells": 2,
+            "start": "live [0]",
+            "end": "live [0]"
+          }
+        ]
+      }
+    }
+  },
+  "timing_method": "完整映射图逐位统计 LUT、CARRY、MUX、异步 RAM 读取与 DSP 寄存器边界之间的组合单元；目标时钟周期为 6.667 ns。",
+  "numeric": {
+    "summary": "build/scheduler_control/final_numeric/summary.json",
+    "sha256": "c3e296e3725bf321c680a450a8e341e044b3752fe083f516d7edcf2565fb7f64",
+    "passed": true,
+    "cases": 975,
+    "commands": 182426,
+    "tests": {
+      "unsliced": {
+        "passed": true,
+        "cases": 321,
+        "commands": 52104,
+        "pressure_events": 3961,
+        "early_finish_frames": 582,
+        "invalid_configurations": 4,
+        "binary_sha256": "97b298a5b241dc0131f63258a9529100821bf6159c6c25215000e01911335d4a",
+        "undefined_behavior_sanitizer": true,
+        "sanitized_translation_units": 4,
+        "elapsed_seconds": 17.204875575000187,
+        "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+        "input_format": "One matrix row contains zero to four 128-bit words; per-bank reservation uses reserve_rows."
+      },
+      "sliced": {
+        "passed": true,
+        "cases": 654,
+        "slice_1_cases": 321,
+        "slice_2_cases": 321,
+        "directed_cases": 12,
+        "commands": 130322,
+        "mnk_tile_checks": 167577,
+        "pressure_events": 10799,
+        "opening_pressures": 9563,
+        "update_pressures": 1236,
+        "early_finish_frames": 1236,
+        "frame_id_reuses": 25212,
+        "tail_frames": 1346,
+        "reserve_checks": 141121,
+        "bank_checks": 1085772,
+        "raw_cases": 218,
+        "word_rotation_cases": 218,
+        "bounded_bank_cases": 218,
+        "peak_bank_words": [
+          130,
+          130,
+          129,
+          128
+        ],
+        "binary_sha256": "f2a51de05fa4ff751d926b1839c42c8d8eea89eff3e4232a973abeaa520b9e6a",
+        "undefined_behavior_sanitizer": true,
+        "sanitized_translation_units": 4,
+        "elapsed_seconds": 17.9187031199981,
+        "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+        "input_format": "One matrix row contains zero to four 128-bit words; per-bank reservation uses reserve_rows."
+      }
+    }
+  }
+}

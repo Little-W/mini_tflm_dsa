@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "nextpnr_sha256": "59bc986330a197a51aec75695193f8e0a7765025979432fe500f82fce2a69897",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "design_sha256": "131b44880b98b7fe284f8daf2b448205d13e59569afccda1407e4c764873f8ac",
+  "cases": {
+    "placed": {
+      "passed": true,
+      "input_design_preserved": true,
+      "path_count": 1,
+      "paths_sha256": "529163c2102df5455ec3fd099da0fe16d8ddeb8f062ebdd739f05a07d5365d79",
+      "design_sha256": "1d379f64cf9418c8d6e027ddaf76afc16371e9346761c8df3c5cd0e0d9ad8d97",
+      "net_delay_source": "Placement distance estimates",
+      "analysis_mode": "saved_placement"
+    },
+    "routed": {
+      "passed": true,
+      "path_count": 1,
+      "paths_sha256": "30e111c702676d1475a4b3ca1cf97397b46e4641ca7d709ed9f318a02aa820fa",
+      "design_sha256": "a7e9c33e541cc4b8be223fae5cba69b4a207c7da99dc68b7a331b0d26257b35b",
+      "net_delay_source": "Current routed interconnect",
+      "analysis_mode": "implementation_log"
+    }
+  },
+  "patch_sha256": "a7d9f709c2ff221230654335a0083d9387623ec1ede3032e0bb8455a5a28e486",
+  "scripts_sha256": {
+    "report_saved_timing.py": "ed5ce7cb8060bd2430590b5e4499607e62dd388898bae17411f812668b9d5249",
+    "tests/run_saved_timing_implementation.py": "2189c122f92fb2559a47c0d169705f6bb1a5f8e37fac05e66760e5bfd91d0570"
+  },
+  "path_display_decimal_places": 1,
+  "patch_replay": {
+    "patches": 6,
+    "source_files": 8,
+    "byte_identical": true
+  }
+}

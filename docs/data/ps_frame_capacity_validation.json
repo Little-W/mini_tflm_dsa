@@ -1,0 +1,262 @@
+{
+  "reference_commit": "b8b34d52d7b9ae838b15dd132b7dbc1c342df1a5",
+  "source_sha256": "89c591180898033addb5178709f47e5065641b7b799bc2c5552b83ef85fc8764",
+  "latency_change_cycles": 0,
+  "capacity_change_bits": 0,
+  "formal": {
+    "method": "all-input combinational SAT",
+    "source_sha256": {
+      "rtl/npu/ps_compact/ps_frame_store.sv": "89c591180898033addb5178709f47e5065641b7b799bc2c5552b83ef85fc8764",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+      "test/ps_raw_store/capacity.sv": "bb96c5edd5f1c8446b8b6576a8ee69097c3c6816ffdda606721e2daa88ee81b3"
+    },
+    "profiles": [
+      {
+        "initial_row_width": 1,
+        "bank_words_width": 1,
+        "bank_count_width": 1,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 1,
+        "bank_words_width": 2,
+        "bank_count_width": 2,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 4,
+        "bank_words_width": 4,
+        "bank_count_width": 3,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 10,
+        "bank_words_width": 8,
+        "bank_count_width": 3,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 14,
+        "bank_words_width": 10,
+        "bank_count_width": 4,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 12,
+        "bank_words_width": 10,
+        "bank_count_width": 4,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 16,
+        "bank_words_width": 12,
+        "bank_count_width": 4,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 8,
+        "bank_words_width": 12,
+        "bank_count_width": 5,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 31,
+        "bank_words_width": 10,
+        "bank_count_width": 4,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 32,
+        "bank_words_width": 10,
+        "bank_count_width": 4,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 14,
+        "bank_words_width": 30,
+        "bank_count_width": 4,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      },
+      {
+        "initial_row_width": 34,
+        "bank_words_width": 12,
+        "bank_count_width": 4,
+        "frame_rows_width": 32,
+        "reserve_rows_width": 32,
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "interface_tests": {
+    "regular": {
+      "passed": true,
+      "result": "RAW_STORE_PASS commands=818 int32_values=89648 cycles=18501",
+      "binary_sha256": "1d65de3d9811488025a2369f6578e39fbe467130925a97b7253ae917760cead0",
+      "report_sha256": "5dcd488852a2612dca6ab3e687dee32ef182dec5a5fa774f6722b0e0590b6011"
+    },
+    "large": {
+      "passed": true,
+      "result": "RAW_STORE_PASS commands=15 int32_values=30720 cycles=3990",
+      "binary_sha256": "c911431a07f092116ba18350752fc008509abe6aaf5cb5ab3673987a11cd5d05",
+      "report_sha256": "8fbf8f273fe262a858902c4d409636fd91be5ef7828ada48c45ec1ea2975562c"
+    }
+  },
+  "synthesis": {
+    "capacity": {
+      "report_sha256": "0b2aad4970ea6a94e777ce44b5c1476ebf4838e247b1120835a70e6f620c8122",
+      "cases": {
+        "reference": {
+          "resources": {
+            "logic_lut_cells": 67,
+            "distributed_ram_lut_sites_nominal": 0,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 67,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 79,
+            "dsp48e1": 1,
+            "ramb36e1": 0,
+            "ramb18e1": 0,
+            "carry4": 13,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 13,
+              "DSP48E1": 1,
+              "FDRE": 79,
+              "INV": 1,
+              "LUT2": 1,
+              "LUT3": 18,
+              "LUT4": 17,
+              "LUT5": 15,
+              "LUT6": 16
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 15
+        },
+        "current": {
+          "resources": {
+            "logic_lut_cells": 43,
+            "distributed_ram_lut_sites_nominal": 0,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 43,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 79,
+            "dsp48e1": 1,
+            "ramb36e1": 0,
+            "ramb18e1": 0,
+            "carry4": 8,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 8,
+              "DSP48E1": 1,
+              "FDRE": 79,
+              "INV": 2,
+              "LUT2": 12,
+              "LUT3": 3,
+              "LUT4": 7,
+              "LUT5": 12,
+              "LUT6": 9
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 8
+        }
+      }
+    },
+    "store": {
+      "report_sha256": "d546c7e890a36e7081e0738311d31ecbea083800b44d7dba100d1b4954cf2726",
+      "cases": {
+        "store_reference": {
+          "resources": {
+            "logic_lut_cells": 1135,
+            "distributed_ram_lut_sites_nominal": 344,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 1479,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 827,
+            "dsp48e1": 8,
+            "ramb36e1": 0,
+            "ramb18e1": 0,
+            "carry4": 114,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 114,
+              "DSP48E1": 8,
+              "FDCE": 820,
+              "FDPE": 1,
+              "FDRE": 6,
+              "INV": 54,
+              "LUT1": 1,
+              "LUT2": 687,
+              "LUT3": 73,
+              "LUT4": 90,
+              "LUT5": 99,
+              "LUT6": 185,
+              "MUXF7": 4,
+              "MUXF8": 1,
+              "RAM32M": 86
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 18
+        },
+        "store_current": {
+          "resources": {
+            "logic_lut_cells": 1122,
+            "distributed_ram_lut_sites_nominal": 344,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 1466,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 827,
+            "dsp48e1": 8,
+            "ramb36e1": 0,
+            "ramb18e1": 0,
+            "carry4": 107,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 107,
+              "DSP48E1": 8,
+              "FDCE": 820,
+              "FDPE": 1,
+              "FDRE": 6,
+              "INV": 55,
+              "LUT2": 698,
+              "LUT3": 64,
+              "LUT4": 80,
+              "LUT5": 113,
+              "LUT6": 167,
+              "MUXF7": 2,
+              "MUXF8": 1,
+              "RAM32M": 86
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "longest_register_path_cells": 15
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,4308 @@
+{
+  "nextpnr_sha256": "10357cc430a78c45842554a01c0c6d0ec62d9cba3e656815aae0523560a035b3",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "packer_source_sha256": "2b66750d173e6754a5b8b0dddd189f5e1c2bb8f0896f126ea68faca742405477",
+  "placer_source_sha256": "2c13137cd058f1ad624d9e8c1dfeef612f079519082c85eff645f973847745af",
+  "placement_fixup_source_sha256": "39f5c5d7db9257c22d57aab2917981e0504d5557acbb1cdae1fabe559c601fdd",
+  "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+  "primitive_models_sha256": {
+    "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+  },
+  "checker_sha256": {
+    "run_lut_output_implementation.py": "a9408ac9f4e04bb8b103c11877f7f78da6334deeb9dae66794d51ae4aa011d24",
+    "check_json_init.py": "eb91485e897a639a0bf66078a81a91eec0f4ff8cabfc1e44461dfbbdb55f651b",
+    "check_emitted_fasm.py": "7108c778cf4bb50123530d8197716ddd22ac1853bb5bad520dbf6180d6447951"
+  },
+  "runner_sha256": "5abb0f9250e4d1da178de1be154fd4c06294e9162ba9cbeebf8634b52ec4bc45",
+  "cases_requested": [
+    "only_grandchild_connected",
+    "unused_o6_nested_ff",
+    "unused_o6_logic",
+    "unused_o5_logic",
+    "unused_o6_zero",
+    "unused_o6_one"
+  ],
+  "cases": {
+    "only_grandchild_connected": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "init_hex": "00000000ffffffff",
+      "live_output": null,
+      "nested_ff": true,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [],
+            "input_connections_checked": 0
+          },
+          "O6": {
+            "connected_inputs": [],
+            "input_connections_checked": 0
+          }
+        }
+      },
+      "output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "lower"
+            ],
+            "implementation_aliases": [
+              "lower"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "routed_output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "lower"
+            ],
+            "implementation_aliases": [
+              "lower"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "connectivity": {
+        "u_admission$LUT6": {
+          "direct_connectivity": false,
+          "logical_inputs": [],
+          "children": [
+            "u_admission$LUT5"
+          ],
+          "parent": null,
+          "output_users": {
+            "O6": 0
+          }
+        },
+        "u_admission$LUT5": {
+          "direct_connectivity": false,
+          "logical_inputs": [],
+          "children": [
+            "u_result"
+          ],
+          "parent": "u_admission$LUT6",
+          "output_users": {
+            "O5": 0
+          }
+        },
+        "u_result": {
+          "direct_connectivity": true,
+          "logical_inputs": [],
+          "children": [],
+          "parent": "u_admission$LUT5",
+          "output_users": {
+            "Q": 1
+          }
+        }
+      },
+      "constraints": {
+        "passed": true,
+        "functions_and_connections_preserved": true,
+        "hierarchy": [
+          "u_admission$LUT6",
+          "u_admission$LUT5",
+          "u_result"
+        ],
+        "relative_z": [
+          0,
+          1,
+          2
+        ],
+        "changed_attributes": {
+          "u_admission$LUT5": [
+            "CONSTR_CHILDREN"
+          ],
+          "u_result": [
+            "CONSTR_ABS_Z",
+            "CONSTR_PARENT",
+            "CONSTR_X",
+            "CONSTR_Y",
+            "CONSTR_Z"
+          ]
+        },
+        "original_sha256": "b6eec04cfda7d38e9fa9ab35fc346b8d69b49a611ea0b862676f7edf1de672a8",
+        "constrained_sha256": "8d6294d40d5f39083e022db1e4a4288296fe4c342439d15dc03c1e7c96786fc3"
+      },
+      "placed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y134/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y134/A5LUT",
+          "u_result": "SLICE_X162Y134/AFF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "routed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y134/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y134/A5LUT",
+          "u_result": "SLICE_X162Y134/AFF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/constrained.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/routed.json",
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 0,
+        "output_comparisons": 2,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 1,
+        "carry_muxes": 0,
+        "ff_input_muxes": 6,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X162Y128",
+            "mux": "A5FFMUX",
+            "source": "AX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "u_result",
+            "site": "SLICE_X162Y134",
+            "mux": "AFFMUX",
+            "source": "AX",
+            "selection": "AX"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X158Y113",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X163Y133",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X162Y131",
+            "mux": "B5FFMUX",
+            "source": "BX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X162Y129",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/routed.json": "01afa9c4827dcf18973e5a0c6773b22d4c153121da8e4de2265ca4b0c928ac92",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/design.fasm": "9896503c8835afb946cd3d559d3413709982fa8cc4a448c5973335d37dc4769c",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/truth/physical_lut_init.json": "31e78850b646dfba19336746f6483b1da17a48f4e040cb8396b4203075c4e892",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.0,
+          "peak_process_tree_rss_bytes": 141496320,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5636820992,
+          "minimum_observed_system_available_memory_bytes": 5636820992,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.82,
+          "peak_process_tree_rss_bytes": 363565056,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5571268608,
+          "minimum_observed_system_available_memory_bytes": 5300744192,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/constrained.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 204763136,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5511991296,
+          "minimum_observed_system_available_memory_bytes": 5511991296,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 7.09,
+          "peak_process_tree_rss_bytes": 2267795456,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5385666560,
+          "minimum_observed_system_available_memory_bytes": 4162846720,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/constrained.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.38,
+          "peak_process_tree_rss_bytes": 12845056,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5291896832,
+          "minimum_observed_system_available_memory_bytes": 5187031040,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/only_grandchild_connected/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.28,
+          "peak_process_tree_rss_bytes": 121307136,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5214482432,
+          "minimum_observed_system_available_memory_bytes": 5214482432,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "a30dda4ce9af4453e0385dc9e24f653945c413c744c26bfac231da43327dea89",
+      "packed_sha256": "8d6294d40d5f39083e022db1e4a4288296fe4c342439d15dc03c1e7c96786fc3",
+      "routed_sha256": "01afa9c4827dcf18973e5a0c6773b22d4c153121da8e4de2265ca4b0c928ac92",
+      "fasm_sha256": "9896503c8835afb946cd3d559d3413709982fa8cc4a448c5973335d37dc4769c"
+    },
+    "unused_o6_nested_ff": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "init_hex": "0000000069969669",
+      "live_output": "O5",
+      "nested_ff": true,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          },
+          "O6": {
+            "connected_inputs": [],
+            "input_connections_checked": 0
+          }
+        }
+      },
+      "output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower"
+            ],
+            "implementation_aliases": [
+              "lower"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "routed_output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower"
+            ],
+            "implementation_aliases": [
+              "lower"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "connectivity": {
+        "u_admission$LUT6": {
+          "direct_connectivity": false,
+          "logical_inputs": [],
+          "children": [
+            "u_admission$LUT5"
+          ],
+          "parent": null,
+          "output_users": {
+            "O6": 0
+          }
+        },
+        "u_admission$LUT5": {
+          "direct_connectivity": true,
+          "logical_inputs": [
+            "I0",
+            "I1",
+            "I2",
+            "I3",
+            "I4"
+          ],
+          "children": [
+            "u_result"
+          ],
+          "parent": "u_admission$LUT6",
+          "output_users": {
+            "O5": 1
+          }
+        },
+        "u_result": {
+          "direct_connectivity": true,
+          "logical_inputs": [],
+          "children": [],
+          "parent": "u_admission$LUT5",
+          "output_users": {
+            "Q": 1
+          }
+        }
+      },
+      "constraints": {
+        "passed": true,
+        "functions_and_connections_preserved": true,
+        "hierarchy": [
+          "u_admission$LUT6",
+          "u_admission$LUT5",
+          "u_result"
+        ],
+        "relative_z": [
+          0,
+          1,
+          3
+        ],
+        "changed_attributes": {
+          "u_admission$LUT5": [
+            "CONSTR_CHILDREN"
+          ],
+          "u_result": [
+            "CONSTR_ABS_Z",
+            "CONSTR_PARENT",
+            "CONSTR_X",
+            "CONSTR_Y",
+            "CONSTR_Z"
+          ]
+        },
+        "original_sha256": "4865ecf49fb3570e6131386e725e712414803e9cb8eb683163a4d58c4a688a32",
+        "constrained_sha256": "b13857dcc80a7491011e7fbd680757431b0066e872116dfe143ac4c487208fd5"
+      },
+      "placed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y126/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y126/A5LUT",
+          "u_result": "SLICE_X162Y126/A5FF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "routed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y126/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y126/A5LUT",
+          "u_result": "SLICE_X162Y126/A5FF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/constrained.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/routed.json",
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 5,
+        "output_comparisons": 64,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 1,
+        "carry_muxes": 0,
+        "ff_input_muxes": 6,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_result",
+            "site": "SLICE_X162Y126",
+            "mux": "A5FFMUX",
+            "source": "A5LUT_O5",
+            "selection": "IN_A"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X162Y138",
+            "mux": "A5FFMUX",
+            "source": "AX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X162Y126",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X163Y125",
+            "mux": "D5FFMUX",
+            "source": "DX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X163Y127",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X162Y136",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/routed.json": "fa0f4f93ad62e7d81f66ebfa95799f5e20a711faad8d997545e4ea9ad3e492cd",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/design.fasm": "8632e14183768644d1607e1b2a69c6dddff36afbfaf8f656f62d3b48e4bfb333",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/truth/physical_lut_init.json": "9bb5531122fea9a8f469840a708b66dbfe03fa2f1e6fe1a6ce94421fe44693d0",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.02,
+          "peak_process_tree_rss_bytes": 139853824,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5220950016,
+          "minimum_observed_system_available_memory_bytes": 5213704192,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.62,
+          "peak_process_tree_rss_bytes": 363552768,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 4938035200,
+          "minimum_observed_system_available_memory_bytes": 4838359040,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/constrained.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.02,
+          "peak_process_tree_rss_bytes": 204836864,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5094862848,
+          "minimum_observed_system_available_memory_bytes": 4888846336,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 8.47,
+          "peak_process_tree_rss_bytes": 2380521472,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5320843264,
+          "minimum_observed_system_available_memory_bytes": 4133916672,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/constrained.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.44,
+          "peak_process_tree_rss_bytes": 12857344,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5129117696,
+          "minimum_observed_system_available_memory_bytes": 5112209408,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_nested_ff/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.23,
+          "peak_process_tree_rss_bytes": 121315328,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5274902528,
+          "minimum_observed_system_available_memory_bytes": 5129117696,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "c015c35433af9adf7241bbb05f9bb2d1ddbb062580b9d32f4da9c369e6903884",
+      "packed_sha256": "b13857dcc80a7491011e7fbd680757431b0066e872116dfe143ac4c487208fd5",
+      "routed_sha256": "fa0f4f93ad62e7d81f66ebfa95799f5e20a711faad8d997545e4ea9ad3e492cd",
+      "fasm_sha256": "8632e14183768644d1607e1b2a69c6dddff36afbfaf8f656f62d3b48e4bfb333"
+    },
+    "unused_o6_logic": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "init_hex": "f0f0cc0069969669",
+      "live_output": "O5",
+      "nested_ff": false,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          },
+          "O6": {
+            "connected_inputs": [
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 4
+          }
+        }
+      },
+      "output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower",
+              "o_data[0]"
+            ],
+            "implementation_aliases": [
+              "lower$auto$IOBUF_I$"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "routed_output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower",
+              "o_data[0]"
+            ],
+            "implementation_aliases": [
+              "lower$auto$IOBUF_I$"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "connectivity": {
+        "u_admission$LUT6": {
+          "direct_connectivity": true,
+          "logical_inputs": [
+            "I1",
+            "I2",
+            "I3",
+            "I4"
+          ],
+          "children": [
+            "u_admission$LUT5"
+          ],
+          "parent": null,
+          "output_users": {
+            "O6": 0
+          }
+        },
+        "u_admission$LUT5": {
+          "direct_connectivity": true,
+          "logical_inputs": [
+            "I0",
+            "I1",
+            "I2",
+            "I3",
+            "I4"
+          ],
+          "children": [],
+          "parent": "u_admission$LUT6",
+          "output_users": {
+            "O5": 2
+          }
+        },
+        "u_result": {
+          "direct_connectivity": true,
+          "logical_inputs": [],
+          "children": [],
+          "parent": null,
+          "output_users": {
+            "Q": 1
+          }
+        }
+      },
+      "constraints": null,
+      "placed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y133/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y133/A5LUT",
+          "u_result": "SLICE_X163Y133/C5FF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "routed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y133/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y133/A5LUT",
+          "u_result": "SLICE_X163Y133/C5FF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/routed.json",
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 9,
+        "output_comparisons": 64,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 1,
+        "carry_muxes": 0,
+        "ff_input_muxes": 6,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_result",
+            "site": "SLICE_X163Y133",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X162Y132",
+            "mux": "AFFMUX",
+            "source": "AX",
+            "selection": "AX"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X163Y129",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X162Y133",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X162Y134",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X163Y132",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/routed.json": "92ae2650fb2753644b05c939901c266052f90ca43d5c57cf2b60cd1fe44c52a9",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/design.fasm": "057887c444533fbb15647f85e681b8ba7e10749517d9ed3a3774c5fa7f307a0c",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/truth/physical_lut_init.json": "04675c3ccda2c25e855e4bcd3b7913af05cdfd9e4857adfaf7c7729be0d474a6",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.21,
+          "peak_process_tree_rss_bytes": 141049856,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5290745856,
+          "minimum_observed_system_available_memory_bytes": 5274902528,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.63,
+          "peak_process_tree_rss_bytes": 362360832,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5409542144,
+          "minimum_observed_system_available_memory_bytes": 5056708608,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.01,
+          "peak_process_tree_rss_bytes": 199098368,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5347057664,
+          "minimum_observed_system_available_memory_bytes": 5347057664,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 7.28,
+          "peak_process_tree_rss_bytes": 1999581184,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5538566144,
+          "minimum_observed_system_available_memory_bytes": 3966550016,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.69,
+          "peak_process_tree_rss_bytes": 12845056,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5277356032,
+          "minimum_observed_system_available_memory_bytes": 5249175552,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_logic/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.49,
+          "peak_process_tree_rss_bytes": 121319424,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5492862976,
+          "minimum_observed_system_available_memory_bytes": 5277356032,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "66cee834e8e94d2855816fa34658fdd058f01b8ff32dbff5c24a9011e5de14ab",
+      "packed_sha256": "3f03f9b704b53f781b25c4dcd47877cb8b60d31e628067cbd5fbe8877afbbb9b",
+      "routed_sha256": "92ae2650fb2753644b05c939901c266052f90ca43d5c57cf2b60cd1fe44c52a9",
+      "fasm_sha256": "057887c444533fbb15647f85e681b8ba7e10749517d9ed3a3774c5fa7f307a0c"
+    },
+    "unused_o5_logic": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "init_hex": "966969960ff0f00f",
+      "live_output": "O6",
+      "nested_ff": false,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 3
+          },
+          "O6": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          }
+        }
+      },
+      "output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "lower"
+            ],
+            "implementation_aliases": [
+              "lower"
+            ]
+          },
+          "O6": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "o_data[0]",
+              "upper"
+            ],
+            "implementation_aliases": [
+              "o_data[0]$auto$IOBUF_I$"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "routed_output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "lower"
+            ],
+            "implementation_aliases": [
+              "lower"
+            ]
+          },
+          "O6": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "o_data[0]",
+              "upper"
+            ],
+            "implementation_aliases": [
+              "o_data[0]$auto$IOBUF_I$"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "connectivity": {
+        "u_admission$LUT6": {
+          "direct_connectivity": true,
+          "logical_inputs": [
+            "I0",
+            "I1",
+            "I2",
+            "I3",
+            "I4"
+          ],
+          "children": [
+            "u_admission$LUT5"
+          ],
+          "parent": null,
+          "output_users": {
+            "O6": 2
+          }
+        },
+        "u_admission$LUT5": {
+          "direct_connectivity": true,
+          "logical_inputs": [
+            "I2",
+            "I3",
+            "I4"
+          ],
+          "children": [],
+          "parent": "u_admission$LUT6",
+          "output_users": {
+            "O5": 0
+          }
+        },
+        "u_result": {
+          "direct_connectivity": true,
+          "logical_inputs": [],
+          "children": [],
+          "parent": null,
+          "output_users": {
+            "Q": 1
+          }
+        }
+      },
+      "constraints": null,
+      "placed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X160Y134/A6LUT",
+          "u_admission$LUT5": "SLICE_X160Y134/A5LUT",
+          "u_result": "SLICE_X161Y134/C5FF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "routed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X160Y134/A6LUT",
+          "u_admission$LUT5": "SLICE_X160Y134/A5LUT",
+          "u_result": "SLICE_X161Y134/C5FF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/routed.json",
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 8,
+        "output_comparisons": 64,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 1,
+        "carry_muxes": 0,
+        "ff_input_muxes": 6,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_result",
+            "site": "SLICE_X161Y134",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X161Y130",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X161Y133",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X161Y135",
+            "mux": "CFFMUX",
+            "source": "CX",
+            "selection": "CX"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X160Y134",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X161Y133",
+            "mux": "A5FFMUX",
+            "source": "AX",
+            "selection": "IN_B"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/routed.json": "0000237b10587dc8d64b9e19c94649801032bf2fcd3ffe18e0a1b91ecc5f186a",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/design.fasm": "dcf00719cf9ce63d4c7356f1f83538bb21957036c7a9a11d6d67a50c4db25ac6",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/truth/physical_lut_init.json": "8c62dc795ae2b85f7f07181464d00e1917c53463653327d8da6fb468f0e04739",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 140247040,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5368393728,
+          "minimum_observed_system_available_memory_bytes": 5368393728,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.55,
+          "peak_process_tree_rss_bytes": 361672704,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5245517824,
+          "minimum_observed_system_available_memory_bytes": 5138173952,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.21,
+          "peak_process_tree_rss_bytes": 192880640,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5162573824,
+          "minimum_observed_system_available_memory_bytes": 5162573824,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 8.04,
+          "peak_process_tree_rss_bytes": 2405888000,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6011662336,
+          "minimum_observed_system_available_memory_bytes": 4262563840,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.73,
+          "peak_process_tree_rss_bytes": 12849152,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6028222464,
+          "minimum_observed_system_available_memory_bytes": 5965152256,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o5_logic/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.49,
+          "peak_process_tree_rss_bytes": 121315328,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6367784960,
+          "minimum_observed_system_available_memory_bytes": 6028222464,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "a81ff5bf382de5070f7186202210e68d25b7e109e2cbf3344ce12fad85f4fb86",
+      "packed_sha256": "d23ddbc427f4d3d3a6304377cb3b4ed1b5c81330686288f971f2db95b5d2428c",
+      "routed_sha256": "0000237b10587dc8d64b9e19c94649801032bf2fcd3ffe18e0a1b91ecc5f186a",
+      "fasm_sha256": "dcf00719cf9ce63d4c7356f1f83538bb21957036c7a9a11d6d67a50c4db25ac6"
+    },
+    "unused_o6_zero": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "init_hex": "0000000069969669",
+      "live_output": "O5",
+      "nested_ff": false,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          },
+          "O6": {
+            "connected_inputs": [],
+            "input_connections_checked": 0
+          }
+        }
+      },
+      "output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower",
+              "o_data[0]"
+            ],
+            "implementation_aliases": [
+              "lower$auto$IOBUF_I$"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "routed_output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower",
+              "o_data[0]"
+            ],
+            "implementation_aliases": [
+              "lower$auto$IOBUF_I$"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "connectivity": {
+        "u_admission$LUT6": {
+          "direct_connectivity": false,
+          "logical_inputs": [],
+          "children": [
+            "u_admission$LUT5"
+          ],
+          "parent": null,
+          "output_users": {
+            "O6": 0
+          }
+        },
+        "u_admission$LUT5": {
+          "direct_connectivity": true,
+          "logical_inputs": [
+            "I0",
+            "I1",
+            "I2",
+            "I3",
+            "I4"
+          ],
+          "children": [],
+          "parent": "u_admission$LUT6",
+          "output_users": {
+            "O5": 2
+          }
+        },
+        "u_result": {
+          "direct_connectivity": true,
+          "logical_inputs": [],
+          "children": [],
+          "parent": null,
+          "output_users": {
+            "Q": 1
+          }
+        }
+      },
+      "constraints": null,
+      "placed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y133/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y133/A5LUT",
+          "u_result": "SLICE_X161Y134/DFF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "routed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y133/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y133/A5LUT",
+          "u_result": "SLICE_X161Y134/DFF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/routed.json",
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 5,
+        "output_comparisons": 64,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 1,
+        "carry_muxes": 0,
+        "ff_input_muxes": 6,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_result",
+            "site": "SLICE_X161Y134",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X160Y134",
+            "mux": "AFFMUX",
+            "source": "AX",
+            "selection": "AX"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X163Y133",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X158Y133",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X159Y132",
+            "mux": "AFFMUX",
+            "source": "AX",
+            "selection": "AX"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X163Y131",
+            "mux": "B5FFMUX",
+            "source": "BX",
+            "selection": "IN_B"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/routed.json": "ee43ce9a9b0acc0e311b0ccc79b1acccd1585f0477bf655e50ccf82dde9090a0",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/design.fasm": "6b2fce247a5b7eaa454195a12b1767712acf95403b7602ca3df993d5ec95d411",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/truth/physical_lut_init.json": "8bc259194b419e6be404ed51eae43a94136d8e19d69770d3dbaa64fa3c68f1ee",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.01,
+          "peak_process_tree_rss_bytes": 141041664,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6249091072,
+          "minimum_observed_system_available_memory_bytes": 6249091072,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.27,
+          "peak_process_tree_rss_bytes": 361668608,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6279708672,
+          "minimum_observed_system_available_memory_bytes": 6044663808,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.05,
+          "peak_process_tree_rss_bytes": 205209600,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6192087040,
+          "minimum_observed_system_available_memory_bytes": 6192087040,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 8.76,
+          "peak_process_tree_rss_bytes": 2360832000,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6217957376,
+          "minimum_observed_system_available_memory_bytes": 4674060288,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.83,
+          "peak_process_tree_rss_bytes": 12849152,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6142427136,
+          "minimum_observed_system_available_memory_bytes": 6102953984,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_zero/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 122056704,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6031065088,
+          "minimum_observed_system_available_memory_bytes": 6031065088,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "2d57cb4e850af76e94319e8940c4c0c0e0b4669fc5e7db16e07ec8ead42a82b7",
+      "packed_sha256": "5d69af9265192806500727f3b9f785e77164c640947712d6518eca2f7a22bd0e",
+      "routed_sha256": "ee43ce9a9b0acc0e311b0ccc79b1acccd1585f0477bf655e50ccf82dde9090a0",
+      "fasm_sha256": "6b2fce247a5b7eaa454195a12b1767712acf95403b7602ca3df993d5ec95d411"
+    },
+    "unused_o6_one": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "init_hex": "ffffffff69969669",
+      "live_output": "O5",
+      "nested_ff": false,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          },
+          "O6": {
+            "connected_inputs": [],
+            "input_connections_checked": 0
+          }
+        }
+      },
+      "output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower",
+              "o_data[0]"
+            ],
+            "implementation_aliases": [
+              "lower$auto$IOBUF_I$"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "routed_output_connections": {
+        "passed": true,
+        "fixed_i5": 1,
+        "outputs": {
+          "O5": {
+            "used": true,
+            "users": [
+              [
+                "o_data[0]$obuf$$intcell$OBUF",
+                "IN"
+              ],
+              [
+                "u_result",
+                "D"
+              ]
+            ],
+            "source_aliases": [
+              "lower",
+              "o_data[0]"
+            ],
+            "implementation_aliases": [
+              "lower$auto$IOBUF_I$"
+            ]
+          },
+          "O6": {
+            "used": false,
+            "users": [],
+            "source_aliases": [
+              "upper"
+            ],
+            "implementation_aliases": [
+              "upper"
+            ]
+          }
+        },
+        "input_register_connections_checked": 5,
+        "output_register_connection_checked": true
+      },
+      "connectivity": {
+        "u_admission$LUT6": {
+          "direct_connectivity": false,
+          "logical_inputs": [],
+          "children": [
+            "u_admission$LUT5"
+          ],
+          "parent": null,
+          "output_users": {
+            "O6": 0
+          }
+        },
+        "u_admission$LUT5": {
+          "direct_connectivity": true,
+          "logical_inputs": [
+            "I0",
+            "I1",
+            "I2",
+            "I3",
+            "I4"
+          ],
+          "children": [],
+          "parent": "u_admission$LUT6",
+          "output_users": {
+            "O5": 2
+          }
+        },
+        "u_result": {
+          "direct_connectivity": true,
+          "logical_inputs": [],
+          "children": [],
+          "parent": null,
+          "output_users": {
+            "Q": 1
+          }
+        }
+      },
+      "constraints": null,
+      "placed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y133/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y133/A5LUT",
+          "u_result": "SLICE_X161Y134/DFF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "routed_checks": {
+        "passed": true,
+        "all_cells_have_unique_bels": true,
+        "cell_count": 27,
+        "cluster_bels": {
+          "u_admission$LUT6": "SLICE_X162Y133/A6LUT",
+          "u_admission$LUT5": "SLICE_X162Y133/A5LUT",
+          "u_result": "SLICE_X161Y134/DFF"
+        },
+        "resources": {
+          "implementation_step": "place",
+          "placement_complete": true,
+          "physical_lut_positions": 1,
+          "physical_lut_positions_by_use": {
+            "logic": 1,
+            "distributed_ram": 0,
+            "shift_register": 0
+          },
+          "placed_lut_bel_instances": 2,
+          "shared_lut_positions": 1,
+          "storage_positions_with_logic_output": 0,
+          "occupied_slice_sites": 1,
+          "placed_cell_counts": {
+            "BUFGCTRL": 1,
+            "IOB33_INBUF_EN": 6,
+            "IOB33_OUTBUF": 2,
+            "PAD": 8,
+            "PSEUDO_GND": 1,
+            "PSEUDO_VCC": 1,
+            "SLICE_FFX": 6,
+            "SLICE_LUTX": 2
+          },
+          "unplaced_cells": [],
+          "resource_errors": [],
+          "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/routed.json",
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 5,
+        "output_comparisons": 64,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 1,
+        "carry_muxes": 0,
+        "ff_input_muxes": 6,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_result",
+            "site": "SLICE_X161Y134",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X160Y134",
+            "mux": "AFFMUX",
+            "source": "AX",
+            "selection": "AX"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X163Y133",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X158Y133",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X159Y132",
+            "mux": "AFFMUX",
+            "source": "AX",
+            "selection": "AX"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X163Y131",
+            "mux": "B5FFMUX",
+            "source": "BX",
+            "selection": "IN_B"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/routed.json": "6de12ccddd9af748560db8dc995e2410a70d5289d69aa50dc48ed802c9101be4",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/design.fasm": "0daf3c4d5934fe913b012c3c103b6f6ce0842e81b58d838d4f2e208235c6c42d",
+          "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/truth/physical_lut_init.json": "47504a4e9c2b7b69c0481aa238cd4b9aa613e63f0cf3684eb8ec7b8bbef9b8ba",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.7,
+          "peak_process_tree_rss_bytes": 141475840,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 5940944896,
+          "minimum_observed_system_available_memory_bytes": 5940944896,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.3,
+          "peak_process_tree_rss_bytes": 362528768,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6209134592,
+          "minimum_observed_system_available_memory_bytes": 5940944896,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 187486208,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6377947136,
+          "minimum_observed_system_available_memory_bytes": 6161272832,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 10.01,
+          "peak_process_tree_rss_bytes": 2406756352,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6549352448,
+          "minimum_observed_system_available_memory_bytes": 5198311424,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.52,
+          "peak_process_tree_rss_bytes": 12849152,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6536978432,
+          "minimum_observed_system_available_memory_bytes": 6400917504,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/unused_o6_one/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 122060800,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6478553088,
+          "minimum_observed_system_available_memory_bytes": 6478553088,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "314c9ebbd60607f3b825f8758c7e08de2c9004c3dd5f2c07bc7a03bfc9fdca57",
+      "packed_sha256": "84d4f9bd1d233db024b2614cc9aabaf250b47aaf2980aace83e52a2619146fe0",
+      "routed_sha256": "6de12ccddd9af748560db8dc995e2410a70d5289d69aa50dc48ed802c9101be4",
+      "fasm_sha256": "0daf3c4d5934fe913b012c3c103b6f6ce0842e81b58d838d4f2e208235c6c42d"
+    }
+  },
+  "independent_outputs": {
+    "nextpnr_sha256": "10357cc430a78c45842554a01c0c6d0ec62d9cba3e656815aae0523560a035b3",
+    "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+    "packer_source_sha256": "2b66750d173e6754a5b8b0dddd189f5e1c2bb8f0896f126ea68faca742405477",
+    "runner_sha256": "a9408ac9f4e04bb8b103c11877f7f78da6334deeb9dae66794d51ae4aa011d24",
+    "cases": {
+      "lower_output_feedback": {
+        "passed": true,
+        "placement_complete": true,
+        "routing_complete": true,
+        "physical_lut_positions": 3,
+        "split_checks": {
+          "passed": true,
+          "output_comparisons": 128,
+          "halves": {
+            "O5": {
+              "connected_inputs": [
+                "I0",
+                "I1",
+                "I2",
+                "I3"
+              ],
+              "input_connections_checked": 4
+            },
+            "O6": {
+              "connected_inputs": [
+                "I0",
+                "I1",
+                "I2",
+                "I3",
+                "I4"
+              ],
+              "input_connections_checked": 5
+            }
+          }
+        },
+        "truth_checks": {
+          "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/implementation/packed.json",
+          "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/routed.json",
+          "logical_luts": 4,
+          "physical_lut_sites": 3,
+          "paired_sites": 1,
+          "logical_input_connections_checked": 13,
+          "output_comparisons": 72,
+          "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+          "passed": true
+        },
+        "fasm_checks": {
+          "passed": true,
+          "lut_positions": 3,
+          "carry_muxes": 0,
+          "ff_input_muxes": 7,
+          "carry_selections": [],
+          "ff_selections": [
+            {
+              "cell": "u_event",
+              "site": "SLICE_X159Y132",
+              "mux": "BFFMUX",
+              "source": "BX",
+              "selection": "BX"
+            },
+            {
+              "cell": "g_state[5].u_state",
+              "site": "SLICE_X160Y124",
+              "mux": "A5FFMUX",
+              "source": "AX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[3].u_state",
+              "site": "SLICE_X160Y132",
+              "mux": "DFFMUX",
+              "source": "DX",
+              "selection": "DX"
+            },
+            {
+              "cell": "g_state[1].u_state",
+              "site": "SLICE_X158Y133",
+              "mux": "BFFMUX",
+              "source": "BX",
+              "selection": "BX"
+            },
+            {
+              "cell": "g_state[0].u_state",
+              "site": "SLICE_X161Y140",
+              "mux": "B5FFMUX",
+              "source": "BX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[4].u_state",
+              "site": "SLICE_X161Y133",
+              "mux": "AFFMUX",
+              "source": "AX",
+              "selection": "AX"
+            },
+            {
+              "cell": "g_state[2].u_state",
+              "site": "SLICE_X159Y132",
+              "mux": "DFFMUX",
+              "source": "DX",
+              "selection": "DX"
+            }
+          ],
+          "sha256": {
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/routed.json": "b5e5bee5533fe8cb0b7074516f3a7406983ebba25e87a67aec8e5d414eb6c4d9",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/design.fasm": "8b59d1bb73acaf421867d34408026503c453280e151ab7c43933f725129c8934",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/truth/physical_lut_init.json": "93fff7dc6f346ab62118f665f6555e06961068834d77dd3dbde1c8f91de688a2",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+          },
+          "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+        },
+        "stages": {
+          "prepare": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+              "--worker",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/prepare.ys"
+            ],
+            "log": "01_prepare.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 2.17,
+            "peak_process_tree_rss_bytes": 140587008,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6399971328,
+            "minimum_observed_system_available_memory_bytes": 6399971328,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "pack": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+              "--mapped",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/mapped.json",
+              "--nextpnr",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/implementation",
+              "--through",
+              "pack",
+              "--soc-package-pins",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+              "--allow-timing-failure"
+            ],
+            "log": "02_pack.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 3.33,
+            "peak_process_tree_rss_bytes": 361660416,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6372634624,
+            "minimum_observed_system_available_memory_bytes": 6298730496,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "place": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/implementation/packed.json",
+              "--no-pack",
+              "--no-route",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/placed.json"
+            ],
+            "log": "03_place.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 0.8,
+            "peak_process_tree_rss_bytes": 205205504,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6349168640,
+            "minimum_observed_system_available_memory_bytes": 6323625984,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "route": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/placed.json",
+              "--no-pack",
+              "--no-place",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/design.fasm"
+            ],
+            "log": "04_route.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 10.04,
+            "peak_process_tree_rss_bytes": 2377068544,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6392844288,
+            "minimum_observed_system_available_memory_bytes": 4670717952,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "truth": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+              "--packed",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/implementation/packed.json",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/routed.json",
+              "--source",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/truth"
+            ],
+            "log": "05_truth.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 2.87,
+            "peak_process_tree_rss_bytes": 12939264,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6394494976,
+            "minimum_observed_system_available_memory_bytes": 6335008768,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "fasm": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/design.fasm",
+              "--lut-init",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/truth/physical_lut_init.json",
+              "--tilegrid",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/lower_output_feedback/fasm_checks.json"
+            ],
+            "log": "06_fasm.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 1.47,
+            "peak_process_tree_rss_bytes": 121335808,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6361051136,
+            "minimum_observed_system_available_memory_bytes": 6361051136,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          }
+        },
+        "source_sha256": "a2c9023c9cb2ea0b8e9ab2ce039d51c47d8737c836f910e71b05b0d4ea309a0a",
+        "packed_sha256": "09b5a49f7887bedd037e4becd70348ed9a9146bedae33c088955d6472d09a775",
+        "routed_sha256": "b5e5bee5533fe8cb0b7074516f3a7406983ebba25e87a67aec8e5d414eb6c4d9",
+        "fasm_sha256": "8b59d1bb73acaf421867d34408026503c453280e151ab7c43933f725129c8934"
+      },
+      "upper_output_feedback": {
+        "passed": true,
+        "placement_complete": true,
+        "routing_complete": true,
+        "physical_lut_positions": 3,
+        "split_checks": {
+          "passed": true,
+          "output_comparisons": 128,
+          "halves": {
+            "O5": {
+              "connected_inputs": [
+                "I0",
+                "I1",
+                "I2",
+                "I3",
+                "I4"
+              ],
+              "input_connections_checked": 5
+            },
+            "O6": {
+              "connected_inputs": [
+                "I0",
+                "I1",
+                "I2",
+                "I3"
+              ],
+              "input_connections_checked": 4
+            }
+          }
+        },
+        "truth_checks": {
+          "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/implementation/packed.json",
+          "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/routed.json",
+          "logical_luts": 4,
+          "physical_lut_sites": 3,
+          "paired_sites": 1,
+          "logical_input_connections_checked": 13,
+          "output_comparisons": 72,
+          "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+          "passed": true
+        },
+        "fasm_checks": {
+          "passed": true,
+          "lut_positions": 3,
+          "carry_muxes": 0,
+          "ff_input_muxes": 7,
+          "carry_selections": [],
+          "ff_selections": [
+            {
+              "cell": "u_event",
+              "site": "SLICE_X163Y139",
+              "mux": "DFFMUX",
+              "source": "DX",
+              "selection": "DX"
+            },
+            {
+              "cell": "g_state[5].u_state",
+              "site": "SLICE_X163Y127",
+              "mux": "B5FFMUX",
+              "source": "BX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[3].u_state",
+              "site": "SLICE_X163Y132",
+              "mux": "BFFMUX",
+              "source": "BX",
+              "selection": "BX"
+            },
+            {
+              "cell": "g_state[1].u_state",
+              "site": "SLICE_X163Y140",
+              "mux": "CFFMUX",
+              "source": "CX",
+              "selection": "CX"
+            },
+            {
+              "cell": "g_state[0].u_state",
+              "site": "SLICE_X163Y138",
+              "mux": "C5FFMUX",
+              "source": "CX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[4].u_state",
+              "site": "SLICE_X162Y128",
+              "mux": "A5FFMUX",
+              "source": "AX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[2].u_state",
+              "site": "SLICE_X163Y129",
+              "mux": "CFFMUX",
+              "source": "CX",
+              "selection": "CX"
+            }
+          ],
+          "sha256": {
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/routed.json": "d2bec43a442e35f08fc3ff34574d9ca92c5602a8575c050fc1f2770bbdd26f6b",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/design.fasm": "38314c83de7f4bef0161485950cb7214632bc2677e438907d49b3f30e9f842bb",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/truth/physical_lut_init.json": "2b8fd2ca167da488226ab3086c12a59d7975092cd2f54c46c30e3cae13d5aa0c",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+          },
+          "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+        },
+        "stages": {
+          "prepare": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+              "--worker",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/prepare.ys"
+            ],
+            "log": "01_prepare.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 1.25,
+            "peak_process_tree_rss_bytes": 140120064,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6310944768,
+            "minimum_observed_system_available_memory_bytes": 6310944768,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "pack": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+              "--mapped",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/mapped.json",
+              "--nextpnr",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/implementation",
+              "--through",
+              "pack",
+              "--soc-package-pins",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+              "--allow-timing-failure"
+            ],
+            "log": "02_pack.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 3.5,
+            "peak_process_tree_rss_bytes": 359563264,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6329704448,
+            "minimum_observed_system_available_memory_bytes": 6159335424,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "place": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/implementation/packed.json",
+              "--no-pack",
+              "--no-route",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/placed.json"
+            ],
+            "log": "03_place.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 1.21,
+            "peak_process_tree_rss_bytes": 204873728,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6342004736,
+            "minimum_observed_system_available_memory_bytes": 6284877824,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "route": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/placed.json",
+              "--no-pack",
+              "--no-place",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/design.fasm"
+            ],
+            "log": "04_route.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 8.43,
+            "peak_process_tree_rss_bytes": 2356510720,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6456225792,
+            "minimum_observed_system_available_memory_bytes": 4871847936,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "truth": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+              "--packed",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/implementation/packed.json",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/routed.json",
+              "--source",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/truth"
+            ],
+            "log": "05_truth.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 2.28,
+            "peak_process_tree_rss_bytes": 12943360,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6400479232,
+            "minimum_observed_system_available_memory_bytes": 6330155008,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "fasm": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/design.fasm",
+              "--lut-init",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/truth/physical_lut_init.json",
+              "--tilegrid",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/upper_output_feedback/fasm_checks.json"
+            ],
+            "log": "06_fasm.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 0.8,
+            "peak_process_tree_rss_bytes": 121327616,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6424662016,
+            "minimum_observed_system_available_memory_bytes": 6400245760,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          }
+        },
+        "source_sha256": "9e34228860933b528296d9eb7b6c9ad1ba35bca69a74726af816da885a7141ca",
+        "packed_sha256": "760d0be75de4234d77edb0de31e70975998096cc25ad4d5852cc584994ee77de",
+        "routed_sha256": "d2bec43a442e35f08fc3ff34574d9ca92c5602a8575c050fc1f2770bbdd26f6b",
+        "fasm_sha256": "38314c83de7f4bef0161485950cb7214632bc2677e438907d49b3f30e9f842bb"
+      },
+      "fixed_zero_select": {
+        "passed": true,
+        "placement_complete": true,
+        "routing_complete": true,
+        "physical_lut_positions": 3,
+        "split_checks": {
+          "passed": true,
+          "output_comparisons": 128,
+          "halves": {
+            "O5": {
+              "connected_inputs": [
+                "I0",
+                "I1"
+              ],
+              "input_connections_checked": 2
+            },
+            "O6": {
+              "connected_inputs": [
+                "I0",
+                "I1"
+              ],
+              "input_connections_checked": 2
+            }
+          }
+        },
+        "truth_checks": {
+          "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/implementation/packed.json",
+          "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/routed.json",
+          "logical_luts": 4,
+          "physical_lut_sites": 3,
+          "paired_sites": 1,
+          "logical_input_connections_checked": 8,
+          "output_comparisons": 16,
+          "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+          "passed": true
+        },
+        "fasm_checks": {
+          "passed": true,
+          "lut_positions": 3,
+          "carry_muxes": 0,
+          "ff_input_muxes": 7,
+          "carry_selections": [],
+          "ff_selections": [
+            {
+              "cell": "u_event",
+              "site": "SLICE_X162Y134",
+              "mux": "C5FFMUX",
+              "source": "CX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[5].u_state",
+              "site": "SLICE_X159Y109",
+              "mux": "A5FFMUX",
+              "source": "AX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[3].u_state",
+              "site": "SLICE_X163Y129",
+              "mux": "C5FFMUX",
+              "source": "CX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[1].u_state",
+              "site": "SLICE_X162Y134",
+              "mux": "DFFMUX",
+              "source": "DX",
+              "selection": "DX"
+            },
+            {
+              "cell": "g_state[0].u_state",
+              "site": "SLICE_X163Y134",
+              "mux": "C5FFMUX",
+              "source": "CX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[4].u_state",
+              "site": "SLICE_X163Y108",
+              "mux": "BFFMUX",
+              "source": "BX",
+              "selection": "BX"
+            },
+            {
+              "cell": "g_state[2].u_state",
+              "site": "SLICE_X163Y127",
+              "mux": "CFFMUX",
+              "source": "CX",
+              "selection": "CX"
+            }
+          ],
+          "sha256": {
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/routed.json": "533a831169b495c1b9680c44f90dcd655e519d62325533a259e35e4a1f2c20a1",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/design.fasm": "2a1cc435061669b3aef4c5f76895a3a1f84f2627c66c7a0cf977240d6566a7b4",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/truth/physical_lut_init.json": "422f315324793e0753b159dbd4c33def667706941178702712a0dc5d0786accd",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+          },
+          "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+        },
+        "stages": {
+          "prepare": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+              "--worker",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/prepare.ys"
+            ],
+            "log": "01_prepare.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 1.64,
+            "peak_process_tree_rss_bytes": 141619200,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6393630720,
+            "minimum_observed_system_available_memory_bytes": 6393630720,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "pack": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+              "--mapped",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/mapped.json",
+              "--nextpnr",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/implementation",
+              "--through",
+              "pack",
+              "--soc-package-pins",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+              "--allow-timing-failure"
+            ],
+            "log": "02_pack.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 3.66,
+            "peak_process_tree_rss_bytes": 361676800,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6673031168,
+            "minimum_observed_system_available_memory_bytes": 6393630720,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "place": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/implementation/packed.json",
+              "--no-pack",
+              "--no-route",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/placed.json"
+            ],
+            "log": "03_place.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 0.8,
+            "peak_process_tree_rss_bytes": 193900544,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6606462976,
+            "minimum_observed_system_available_memory_bytes": 6606462976,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "route": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/placed.json",
+              "--no-pack",
+              "--no-place",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/design.fasm"
+            ],
+            "log": "04_route.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 9.16,
+            "peak_process_tree_rss_bytes": 2354499584,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6664835072,
+            "minimum_observed_system_available_memory_bytes": 5329858560,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "truth": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+              "--packed",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/implementation/packed.json",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/routed.json",
+              "--source",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/truth"
+            ],
+            "log": "05_truth.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 2.27,
+            "peak_process_tree_rss_bytes": 12939264,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6569828352,
+            "minimum_observed_system_available_memory_bytes": 6408933376,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "fasm": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/design.fasm",
+              "--lut-init",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/truth/physical_lut_init.json",
+              "--tilegrid",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/fixed_zero_select/fasm_checks.json"
+            ],
+            "log": "06_fasm.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 0.8,
+            "peak_process_tree_rss_bytes": 121319424,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6542880768,
+            "minimum_observed_system_available_memory_bytes": 6542880768,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          }
+        },
+        "source_sha256": "e766d462a0af8742d6dc42f14a615215d84c38a6dda96e7ab77f040cb49faa4c",
+        "packed_sha256": "0814e694fcdf24202279555b71391e9d14222423bb37e427e9b283b616cd501f",
+        "routed_sha256": "533a831169b495c1b9680c44f90dcd655e519d62325533a259e35e4a1f2c20a1",
+        "fasm_sha256": "2a1cc435061669b3aef4c5f76895a3a1f84f2627c66c7a0cf977240d6566a7b4"
+      },
+      "variable_cofactor": {
+        "passed": true,
+        "placement_complete": true,
+        "routing_complete": true,
+        "physical_lut_positions": 1,
+        "split_checks": {
+          "passed": true,
+          "output_comparisons": 128,
+          "halves": {
+            "O5": {
+              "connected_inputs": [
+                "I0",
+                "I1",
+                "I2",
+                "I3",
+                "I4"
+              ],
+              "input_connections_checked": 5
+            },
+            "O6": {
+              "connected_inputs": [
+                "I0",
+                "I1",
+                "I2",
+                "I3",
+                "I4",
+                "I5"
+              ],
+              "input_connections_checked": 6
+            }
+          }
+        },
+        "truth_checks": {
+          "packed_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/implementation/packed.json",
+          "physical_json": "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/routed.json",
+          "logical_luts": 2,
+          "physical_lut_sites": 1,
+          "paired_sites": 1,
+          "logical_input_connections_checked": 11,
+          "output_comparisons": 128,
+          "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+          "passed": true
+        },
+        "fasm_checks": {
+          "passed": true,
+          "lut_positions": 1,
+          "carry_muxes": 0,
+          "ff_input_muxes": 7,
+          "carry_selections": [],
+          "ff_selections": [
+            {
+              "cell": "g_state[5].u_state",
+              "site": "SLICE_X162Y138",
+              "mux": "CFFMUX",
+              "source": "CX",
+              "selection": "CX"
+            },
+            {
+              "cell": "g_state[3].u_state",
+              "site": "SLICE_X163Y136",
+              "mux": "C5FFMUX",
+              "source": "CX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "g_state[1].u_state",
+              "site": "SLICE_X163Y142",
+              "mux": "B5FFMUX",
+              "source": "BX",
+              "selection": "IN_B"
+            },
+            {
+              "cell": "u_event",
+              "site": "SLICE_X162Y143",
+              "mux": "DFFMUX",
+              "source": "DX",
+              "selection": "DX"
+            },
+            {
+              "cell": "g_state[0].u_state",
+              "site": "SLICE_X162Y137",
+              "mux": "DFFMUX",
+              "source": "DX",
+              "selection": "DX"
+            },
+            {
+              "cell": "g_state[4].u_state",
+              "site": "SLICE_X163Y142",
+              "mux": "CFFMUX",
+              "source": "CX",
+              "selection": "CX"
+            },
+            {
+              "cell": "g_state[2].u_state",
+              "site": "SLICE_X162Y144",
+              "mux": "C5FFMUX",
+              "source": "CX",
+              "selection": "IN_B"
+            }
+          ],
+          "sha256": {
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/routed.json": "fca027595a36df3fb264e30534cbab675d4a531bd673591aececd6d32373920e",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/design.fasm": "ee101af6fadbddb257e39e74ce110f7b168dc33f581feff3fb98af52f1d19797",
+            "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/truth/physical_lut_init.json": "3c9bfa25554a11679847eb1b50d88922c5a35411c3fb691bb905061ac7a407a2",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+          },
+          "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+        },
+        "stages": {
+          "prepare": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_synth.py",
+              "--worker",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/prepare.ys"
+            ],
+            "log": "01_prepare.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 1.24,
+            "peak_process_tree_rss_bytes": 141103104,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6491017216,
+            "minimum_observed_system_available_memory_bytes": 6491017216,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "pack": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/open_fpga_implementation.py",
+              "--mapped",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/mapped.json",
+              "--nextpnr",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/implementation",
+              "--through",
+              "pack",
+              "--soc-package-pins",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+              "--allow-timing-failure"
+            ],
+            "log": "02_pack.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 3.23,
+            "peak_process_tree_rss_bytes": 361693184,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6385729536,
+            "minimum_observed_system_available_memory_bytes": 6342176768,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "place": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/implementation/packed.json",
+              "--no-pack",
+              "--no-route",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/placed.json"
+            ],
+            "log": "03_place.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 0.8,
+            "peak_process_tree_rss_bytes": 187543552,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6375116800,
+            "minimum_observed_system_available_memory_bytes": 6345654272,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "route": {
+            "command": [
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+              "--chipdb",
+              "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+              "--freq",
+              "150",
+              "--seed",
+              "1",
+              "--strict-timing-graph",
+              "--timing-allow-fail",
+              "--json",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/placed.json",
+              "--no-pack",
+              "--no-place",
+              "--write",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/design.fasm"
+            ],
+            "log": "04_route.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 8.72,
+            "peak_process_tree_rss_bytes": 2342883328,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6749171712,
+            "minimum_observed_system_available_memory_bytes": 5211643904,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "truth": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_json_init.py",
+              "--packed",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/implementation/packed.json",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/routed.json",
+              "--source",
+              "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/truth"
+            ],
+            "log": "05_truth.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 2.88,
+            "peak_process_tree_rss_bytes": 12914688,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6724444160,
+            "minimum_observed_system_available_memory_bytes": 6655561728,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          },
+          "fasm": {
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/scripts/fpga/tests/check_emitted_fasm.py",
+              "--physical",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/routed.json",
+              "--fasm",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/design.fasm",
+              "--lut-init",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/truth/physical_lut_init.json",
+              "--tilegrid",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+              "--out",
+              "/workspace/scratch/76fc8a977a8f/worktrees/ia_write_admission/build/lut_cluster_connectivity_validated/independent_outputs/variable_cofactor/fasm_checks.json"
+            ],
+            "log": "06_fasm.log",
+            "state": "complete",
+            "return_code": 0,
+            "elapsed_seconds": 1.68,
+            "peak_process_tree_rss_bytes": 121319424,
+            "current_process_tree_rss_bytes": 0,
+            "system_available_memory_bytes": 6766931968,
+            "minimum_observed_system_available_memory_bytes": 6724444160,
+            "memory_sample_interval_seconds": 0.2,
+            "progress_save_interval_seconds": 2
+          }
+        },
+        "source_sha256": "8477a9d1a4865202b380adbc5856c75e7698718494db3d3fc50623c977b7c67f",
+        "packed_sha256": "a5c521f43b566705986601cc9c1d2f6251b54d5bc508923de462db21161f5904",
+        "routed_sha256": "fca027595a36df3fb264e30534cbab675d4a531bd673591aececd6d32373920e",
+        "fasm_sha256": "ee101af6fadbddb257e39e74ce110f7b168dc33f581feff3fb98af52f1d19797"
+      },
+      "dependent_feedback": {
+        "passed": true,
+        "genuine_combinational_cycle_rejected": true,
+        "source_sha256": "70b6d9d1a69d04e2ed298b6611e9501a4eb69dae01b019128acc7a719d35aec5"
+      }
+    },
+    "passed": true
+  },
+  "passed": true,
+  "logical_pin_mapping_checks": {
+    "unused_o6_zero": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 2,
+      "physical_logic_luts": 2,
+      "logic_luts_checked": 2,
+      "logical_input_connections_checked": 5,
+      "logical_output_connections_checked": 2,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 6,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1,
+        "physical_lut_positions_by_use": {
+          "logic": 1,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 2,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 6,
+          "IOB33_OUTBUF": 2,
+          "PAD": 8,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 6,
+          "SLICE_LUTX": 2
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "5d69af9265192806500727f3b9f785e77164c640947712d6518eca2f7a22bd0e",
+      "physical_sha256": "ee43ce9a9b0acc0e311b0ccc79b1acccd1585f0477bf655e50ccf82dde9090a0",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "unused_o6_one": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 2,
+      "physical_logic_luts": 2,
+      "logic_luts_checked": 2,
+      "logical_input_connections_checked": 5,
+      "logical_output_connections_checked": 2,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 6,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1,
+        "physical_lut_positions_by_use": {
+          "logic": 1,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 2,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 6,
+          "IOB33_OUTBUF": 2,
+          "PAD": 8,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 6,
+          "SLICE_LUTX": 2
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "84d4f9bd1d233db024b2614cc9aabaf250b47aaf2980aace83e52a2619146fe0",
+      "physical_sha256": "6de12ccddd9af748560db8dc995e2410a70d5289d69aa50dc48ed802c9101be4",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "unused_o6_logic": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 2,
+      "physical_logic_luts": 2,
+      "logic_luts_checked": 2,
+      "logical_input_connections_checked": 9,
+      "logical_output_connections_checked": 2,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 6,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1,
+        "physical_lut_positions_by_use": {
+          "logic": 1,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 2,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 6,
+          "IOB33_OUTBUF": 2,
+          "PAD": 8,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 6,
+          "SLICE_LUTX": 2
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "3f03f9b704b53f781b25c4dcd47877cb8b60d31e628067cbd5fbe8877afbbb9b",
+      "physical_sha256": "92ae2650fb2753644b05c939901c266052f90ca43d5c57cf2b60cd1fe44c52a9",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "unused_o5_logic": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 2,
+      "physical_logic_luts": 2,
+      "logic_luts_checked": 2,
+      "logical_input_connections_checked": 8,
+      "logical_output_connections_checked": 2,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 6,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1,
+        "physical_lut_positions_by_use": {
+          "logic": 1,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 2,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 6,
+          "IOB33_OUTBUF": 2,
+          "PAD": 8,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 6,
+          "SLICE_LUTX": 2
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "d23ddbc427f4d3d3a6304377cb3b4ed1b5c81330686288f971f2db95b5d2428c",
+      "physical_sha256": "0000237b10587dc8d64b9e19c94649801032bf2fcd3ffe18e0a1b91ecc5f186a",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "unused_o6_nested_ff": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 2,
+      "physical_logic_luts": 2,
+      "logic_luts_checked": 2,
+      "logical_input_connections_checked": 5,
+      "logical_output_connections_checked": 2,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 6,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1,
+        "physical_lut_positions_by_use": {
+          "logic": 1,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 2,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 6,
+          "IOB33_OUTBUF": 2,
+          "PAD": 8,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 6,
+          "SLICE_LUTX": 2
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "b13857dcc80a7491011e7fbd680757431b0066e872116dfe143ac4c487208fd5",
+      "physical_sha256": "fa0f4f93ad62e7d81f66ebfa95799f5e20a711faad8d997545e4ea9ad3e492cd",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "only_grandchild_connected": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 2,
+      "physical_logic_luts": 2,
+      "logic_luts_checked": 2,
+      "logical_input_connections_checked": 0,
+      "logical_output_connections_checked": 2,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 1,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1,
+        "physical_lut_positions_by_use": {
+          "logic": 1,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 2,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 6,
+          "IOB33_OUTBUF": 2,
+          "PAD": 8,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 6,
+          "SLICE_LUTX": 2
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "8d6294d40d5f39083e022db1e4a4288296fe4c342439d15dc03c1e7c96786fc3",
+      "physical_sha256": "01afa9c4827dcf18973e5a0c6773b22d4c153121da8e4de2265ca4b0c928ac92",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "lower_output_feedback": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 4,
+      "physical_logic_luts": 4,
+      "logic_luts_checked": 4,
+      "logical_input_connections_checked": 13,
+      "logical_output_connections_checked": 4,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 6,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 3,
+        "physical_lut_positions_by_use": {
+          "logic": 3,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 4,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 3,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 7,
+          "IOB33_OUTBUF": 2,
+          "PAD": 9,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 7,
+          "SLICE_LUTX": 4
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "09b5a49f7887bedd037e4becd70348ed9a9146bedae33c088955d6472d09a775",
+      "physical_sha256": "b5e5bee5533fe8cb0b7074516f3a7406983ebba25e87a67aec8e5d414eb6c4d9",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "upper_output_feedback": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 4,
+      "physical_logic_luts": 4,
+      "logic_luts_checked": 4,
+      "logical_input_connections_checked": 13,
+      "logical_output_connections_checked": 4,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 6,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 3,
+        "physical_lut_positions_by_use": {
+          "logic": 3,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 4,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 2,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 7,
+          "IOB33_OUTBUF": 2,
+          "PAD": 9,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 7,
+          "SLICE_LUTX": 4
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "760d0be75de4234d77edb0de31e70975998096cc25ad4d5852cc584994ee77de",
+      "physical_sha256": "d2bec43a442e35f08fc3ff34574d9ca92c5602a8575c050fc1f2770bbdd26f6b",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "fixed_zero_select": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 4,
+      "physical_logic_luts": 4,
+      "logic_luts_checked": 4,
+      "logical_input_connections_checked": 8,
+      "logical_output_connections_checked": 4,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 3,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 3,
+        "physical_lut_positions_by_use": {
+          "logic": 3,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 4,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 2,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 7,
+          "IOB33_OUTBUF": 2,
+          "PAD": 9,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 7,
+          "SLICE_LUTX": 4
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "0814e694fcdf24202279555b71391e9d14222423bb37e427e9b283b616cd501f",
+      "physical_sha256": "533a831169b495c1b9680c44f90dcd655e519d62325533a259e35e4a1f2c20a1",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    },
+    "variable_cofactor": {
+      "passed": true,
+      "source_top": "top",
+      "physical_top": "top",
+      "reference_logic_luts": 2,
+      "physical_logic_luts": 2,
+      "logic_luts_checked": 2,
+      "logical_input_connections_checked": 11,
+      "logical_output_connections_checked": 2,
+      "shared_logic_lut_positions": 1,
+      "shared_physical_input_connections_checked": 5,
+      "all_cells_have_unique_bels": true,
+      "resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1,
+        "physical_lut_positions_by_use": {
+          "logic": 1,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 2,
+        "shared_lut_positions": 1,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "IOB33_INBUF_EN": 7,
+          "IOB33_OUTBUF": 2,
+          "PAD": 9,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SLICE_FFX": 7,
+          "SLICE_LUTX": 2
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+      },
+      "error_count": 0,
+      "errors": [],
+      "source_sha256": "a5c521f43b566705986601cc9c1d2f6251b54d5bc508923de462db21161f5904",
+      "physical_sha256": "fca027595a36df3fb264e30534cbab675d4a531bd673591aececd6d32373920e",
+      "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+      "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+    }
+  },
+  "implementation_cases_passed": 10,
+  "combinational_cycle_rejection_passed": true,
+  "summary_sha256": "b4a7efb537b6489ca947b5eccea7e252e92ac0e16c37c56f86ca031cc0495e6f",
+  "logical_pin_mapping_checks_sha256": "71151730ce1d6634338ff0be6084ed2f633c10ac226172def15fd9739304e298"
+}

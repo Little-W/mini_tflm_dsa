@@ -1,0 +1,644 @@
+{
+  "passed": true,
+  "reference_revision": "4df62f2",
+  "source_sha256": {
+    "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+    "rtl/npu/control/ps_window_scheduler.sv": "a94129e9886670f1ca3bd9dc9377aa5693c2f52fe9fb4ef33b14d54214ab89fd",
+    "rtl/npu/conv/conv_im2col_frontend.sv": "1e9ef9f3cf7673ae821fc1544f27b47922e06f67029b59cf544f2de29788bb05",
+    "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+    "rtl/npu/top/npu_top.sv": "b85c90b94866460c31cdd071556b6d43272c2e03dc2e57d0f7ff5d17bab84963"
+  },
+  "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+  "latency_change_cycles": 0,
+  "helper": {
+    "passed": true,
+    "source_sha256": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "method": "SAT over every input encoding; arithmetic reference and official LUT functional models",
+    "inputs_constrained": false,
+    "runs": [
+      {
+        "width": 1,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 1,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 1,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 1,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 2,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 2,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 2,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 2,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 5,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 5,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 5,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 5,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 6,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 6,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 6,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 6,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 8,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 8,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 8,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 8,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 16,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 16,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 16,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 16,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 17,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 17,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 17,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 17,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 31,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 31,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 31,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 31,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 32,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 32,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 32,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 32,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 33,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 33,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 33,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 33,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 64,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 64,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 64,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 64,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 65,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 65,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 65,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 65,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 128,
+        "allow_zero": false,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 128,
+        "allow_zero": false,
+        "implementation": "official LUT primitives",
+        "passed": true
+      },
+      {
+        "width": 128,
+        "allow_zero": true,
+        "implementation": "generic logic",
+        "passed": true
+      },
+      {
+        "width": 128,
+        "allow_zero": true,
+        "implementation": "official LUT primitives",
+        "passed": true
+      }
+    ],
+    "synthesis": [
+      {
+        "label": "reference",
+        "width": 32,
+        "logic_lut_cells": 16,
+        "carry4": 8,
+        "combinational_cells": 11,
+        "cell_counts": {
+          "CARRY4": 8,
+          "INV": 31,
+          "LUT3": 2,
+          "LUT4": 6,
+          "LUT5": 3,
+          "LUT6": 5
+        }
+      },
+      {
+        "label": "generic",
+        "width": 32,
+        "logic_lut_cells": 37,
+        "carry4": 0,
+        "combinational_cells": 5,
+        "cell_counts": {
+          "LUT2": 10,
+          "LUT3": 8,
+          "LUT4": 2,
+          "LUT5": 8,
+          "LUT6": 9
+        }
+      },
+      {
+        "label": "lut",
+        "width": 32,
+        "logic_lut_cells": 12,
+        "carry4": 0,
+        "combinational_cells": 3,
+        "cell_counts": {
+          "LUT3": 2,
+          "LUT6": 3,
+          "LUT6_2": 7
+        }
+      }
+    ]
+  },
+  "control_equivalence": {
+    "reference_ref": "4df62f2",
+    "method": "complete-state SAT and temporal induction with official LUT primitives",
+    "inputs_constrained": false,
+    "runs": [
+      {
+        "case": "predictor",
+        "top": "conv_next_use_predictor",
+        "options": [],
+        "passed": true,
+        "equivalent_bits": 1804,
+        "log_sha256": "79e2d8e33b3644823fb3762c0f84521b4683aac58edf2ce89431662b38306deb"
+      },
+      {
+        "case": "scheduler_single",
+        "top": "ps_window_scheduler",
+        "options": [
+          "-GSIZE=4",
+          "-GFRAME_COUNT=1",
+          "-GMAX_REUSE_TILES=0"
+        ],
+        "passed": true,
+        "equivalent_bits": 1777,
+        "log_sha256": "4c4bbfccc41e3c2742aa88f303b0fc26780b78a1ef78659977a120359622abdd"
+      },
+      {
+        "case": "scheduler_bounded",
+        "top": "ps_window_scheduler",
+        "options": [
+          "-GSIZE=16",
+          "-GFRAME_COUNT=16",
+          "-GMAX_REUSE_TILES=32"
+        ],
+        "passed": true,
+        "equivalent_bits": 2674,
+        "log_sha256": "6360cd3b037fd764f138c03dec1bfef3ec2ee9207fbfa94c1f37d89a82152904"
+      },
+      {
+        "case": "scheduler_unbounded",
+        "top": "ps_window_scheduler",
+        "options": [
+          "-GSIZE=16",
+          "-GFRAME_COUNT=4",
+          "-GMAX_REUSE_TILES=0"
+        ],
+        "passed": true,
+        "equivalent_bits": 2157,
+        "log_sha256": "e5b5869dfd765f256e0005d9f3e0510f764848d9b0507a65a58582d45bad4d47"
+      }
+    ],
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+      "rtl/npu/control/ps_window_scheduler.sv": "a94129e9886670f1ca3bd9dc9377aa5693c2f52fe9fb4ef33b14d54214ab89fd"
+    },
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "passed": true
+  },
+  "frontend_predicates": {
+    "passed": true,
+    "reference_ref": "4df62f2",
+    "source_sha256": "1e9ef9f3cf7673ae821fc1544f27b47922e06f67029b59cf544f2de29788bb05",
+    "reference_sha256": "9f0625e722db06c255e4d7951b431e244c2f3049f8f2f6bbfb18277a2ba7d524",
+    "helper_sha256": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+    "predicate_count": 4,
+    "inputs_constrained": false,
+    "remaining_module_body_identical_after_predicate_substitution": true,
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "log_sha256": "68ab19cfb9d3acf8d7b5245e7a5ee88d565a66546843b96ad76c5da8735b2ea5"
+  },
+  "capacity_equivalence": {
+    "reference_rev": "4df62f2",
+    "method": "SAT of expressions extracted from both npu_top revisions with arbitrary shared register state",
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "b85c90b94866460c31cdd071556b6d43272c2e03dc2e57d0f7ff5d17bab84963"
+    },
+    "generated_sha256": {
+      "reference.sv": "bfea94812192d9b4ac3e92ee1fd75c25ac3c5d7095f319e7ee4ce8f0916bd83b",
+      "candidate.sv": "b6e1928aa55480c9ab0811d5fd7a6e694646c056bbf2123f2dbef684d0e37d35",
+      "formal.sv": "c190faee89bc4fc35a93abcdb27dc579b76db11b4c1639df72c2781b60f43805",
+      "ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+      "onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529"
+    },
+    "max_rows": 512,
+    "frames_width": 5,
+    "allocation_input_bits": 32,
+    "properties_per_case": 4,
+    "runs": [
+      {
+        "total_banks": 6,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 6,
+        "bank_bytes": 8192,
+        "passed": true
+      },
+      {
+        "total_banks": 7,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 7,
+        "bank_bytes": 8192,
+        "passed": true
+      },
+      {
+        "total_banks": 8,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 8,
+        "bank_bytes": 8192,
+        "passed": true
+      },
+      {
+        "total_banks": 9,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 9,
+        "bank_bytes": 8192,
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "frontend_cycle_comparison": {
+    "passed": true,
+    "configurations": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "windowed_prefetch": 0,
+        "control": false,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=779154 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=779154"
+        ]
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 0,
+        "control": false,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=374717 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=374717"
+        ]
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 0,
+        "control": false,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=259661 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=259661"
+        ]
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 1,
+        "control": false,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=251702 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=251702"
+        ]
+      },
+      {
+        "SIZE": null,
+        "BUS_WIDTH": null,
+        "windowed_prefetch": null,
+        "control": true,
+        "summary": [
+          "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=134",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_control cycles=134"
+        ]
+      }
+    ],
+    "jobs": 148,
+    "data_path_cycles": 1665234,
+    "control_cycles": 134
+  },
+  "predictor_cycle_comparison": {
+    "passed": true,
+    "total_cases": 33,
+    "total_vectors": 13226,
+    "cycle_comparison": "PREDICTOR_CYCLE_COMPARE_PASS cycles=206076",
+    "public_outputs_cycle_equivalent": true
+  },
+  "scheduler": {
+    "passed": true,
+    "cases": 975,
+    "commands": 182426,
+    "undefined_behavior_sanitizer": true
+  },
+  "module_synthesis": [
+    {
+      "label": "onehot_frontend_reference",
+      "reference_ref": "4df62f2",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "9f0625e722db06c255e4d7951b431e244c2f3049f8f2f6bbfb18277a2ba7d524",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "780d5352caf2b105af8af73ce056beb55f2a7c6c8cb1acc7f276475d89f0d908",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "114c691b7fb567332ff2b342267bfbc384621c07b1ce232719de66f8eaf2bb4e",
+        "rtl/common/onehot_check.sv": "79d164e921875202387cef985c33a220b51f88dd29abd0cd4ec3bd5f60836a6b"
+      },
+      "lut_cells": 6583,
+      "flip_flops": 3164,
+      "dsp": 30,
+      "carry4": 719,
+      "longest_combinational_path_cells": 24
+    },
+    {
+      "label": "onehot_frontend_synth",
+      "reference_ref": null,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "1e9ef9f3cf7673ae821fc1544f27b47922e06f67029b59cf544f2de29788bb05",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "780d5352caf2b105af8af73ce056beb55f2a7c6c8cb1acc7f276475d89f0d908",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529"
+      },
+      "lut_cells": 6600,
+      "flip_flops": 3164,
+      "dsp": 30,
+      "carry4": 710,
+      "longest_combinational_path_cells": 25
+    },
+    {
+      "label": "onehot_predictor_reference",
+      "reference_ref": "4df62f2",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "114c691b7fb567332ff2b342267bfbc384621c07b1ce232719de66f8eaf2bb4e",
+        "rtl/common/onehot_check.sv": "79d164e921875202387cef985c33a220b51f88dd29abd0cd4ec3bd5f60836a6b"
+      },
+      "lut_cells": 1764,
+      "flip_flops": 1128,
+      "dsp": 13,
+      "carry4": 146,
+      "longest_combinational_path_cells": 15
+    },
+    {
+      "label": "onehot_predictor_synth",
+      "reference_ref": null,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529"
+      },
+      "lut_cells": 1761,
+      "flip_flops": 1128,
+      "dsp": 13,
+      "carry4": 139,
+      "longest_combinational_path_cells": 15
+    }
+  ],
+  "physical_implementation_measured": false,
+  "timing_150mhz_confirmed": false
+}

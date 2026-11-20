@@ -1,0 +1,152 @@
+{
+  "nextpnr_upstream_commit": "bc9b234634cf80756b04ad4ea5f8e7a83293c425",
+  "patch_sha256": "778ddf027c05c8580fbb7e21f5c17de35e5f4c980a9f5c9bdaba6549bb76a36c",
+  "lut_functions": {
+    "input_order_pairs": 105625,
+    "init_configurations": 662422,
+    "output_comparisons": 42395008,
+    "random_repeated_input_layouts": 4096,
+    "physical_permutations": 4096,
+    "distinct_six_input_union_rejected": true,
+    "duplicate_six_input_union_rejected": true,
+    "six_logical_ports_rejected": true,
+    "ram_srl_logic_mixing_rejected": true,
+    "new_shared_input_check_passed": true,
+    "outmux_checks": 9,
+    "candidate_checks": 10,
+    "muxf_ff_checks": 4,
+    "lut6_2_output_comparisons": 20480,
+    "valid_truth_tables_passed": true,
+    "source_sha256": {
+      "arch_place.cc": "f611ad8e1c7cf757c813f7458a7391214f7d4d1dd81045b3da09c0b70323d31e",
+      "fasm.cc": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+      "pack.cc": "a506063dc8920e33cf5d276b8050300e83e067a17c18f2e877a8428bec147279"
+    }
+  },
+  "outmux_boundaries": {
+    "outmux_edge_cases": 18,
+    "failed_cases": 0,
+    "passed": true,
+    "source_sha256": "f611ad8e1c7cf757c813f7458a7391214f7d4d1dd81045b3da09c0b70323d31e"
+  },
+  "placement_moves": {
+    "move_cases": 6,
+    "empty_destination_rollback": true,
+    "exchange_rollback": true,
+    "sharing_accounting_restored": true,
+    "legal_move_accepted": true,
+    "passed": true,
+    "placer_source_sha256": "3d0457f6f4f33835ded8a84a1c903f33906b25524738194af6ce76c8b24bd537",
+    "arch_source_sha256": "f611ad8e1c7cf757c813f7458a7391214f7d4d1dd81045b3da09c0b70323d31e"
+  },
+  "binary_sha256": "884967d950735424bda1e12e17d68417334a3f422a3a0fef09f822eea7a32d87",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "implementation_cases": {
+    "shared_five": {
+      "expected_same_position_legal": true,
+      "physical_json_sha256": "c719dfd2c7b4138c5f49c95199c9e640ef14f7430d12440f75b47f49547300e0",
+      "passed": true,
+      "stages": {
+        "pack": {
+          "return_code": 0,
+          "elapsed_seconds": 1.228
+        },
+        "place": {
+          "return_code": 0,
+          "elapsed_seconds": 1.399
+        },
+        "route": {
+          "return_code": 0,
+          "elapsed_seconds": 8.109
+        }
+      },
+      "logical_function": {
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 6,
+        "output_comparisons": 64,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      }
+    },
+    "distinct_six": {
+      "expected_same_position_legal": false,
+      "passed": true,
+      "stages": {
+        "pack": {
+          "return_code": 0,
+          "elapsed_seconds": 0.567
+        },
+        "place": {
+          "return_code": 255,
+          "elapsed_seconds": 1.136
+        }
+      }
+    },
+    "repeated_six": {
+      "expected_same_position_legal": false,
+      "passed": true,
+      "stages": {
+        "pack": {
+          "return_code": 0,
+          "elapsed_seconds": 0.571
+        },
+        "place": {
+          "return_code": 255,
+          "elapsed_seconds": 0.567
+        }
+      }
+    },
+    "repeated_three": {
+      "expected_same_position_legal": true,
+      "physical_json_sha256": "6a9634ec04869650c6c75360c15ef31fc48561ed8d89646b7a5dde9583345ddc",
+      "passed": true,
+      "stages": {
+        "pack": {
+          "return_code": 0,
+          "elapsed_seconds": 0.467
+        },
+        "place": {
+          "return_code": 0,
+          "elapsed_seconds": 1.314
+        },
+        "route": {
+          "return_code": 0,
+          "elapsed_seconds": 7.423
+        }
+      },
+      "logical_function": {
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 6,
+        "output_comparisons": 16,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      }
+    }
+  },
+  "carry_interaction": {
+    "logical_luts": 16,
+    "physical_lut_sites": 14,
+    "paired_sites": 2,
+    "logical_input_connections_checked": 34,
+    "output_comparisons": 111,
+    "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+    "passed": true,
+    "input_connections": {
+      "passed": true,
+      "checked_carry_inputs": 30,
+      "direct_di_inputs": 12
+    }
+  },
+  "test_scripts_sha256": {
+    "scripts/fpga/tests/check_json_init.py": "cf6c1276db373f8a6b4760ebe08cae04fe82dad92f67f576b3e295f8dc7f3f9d",
+    "scripts/fpga/tests/prepare_cases.py": "aba3b9ea998fdd622a87e0ba4771b674bfcf8113815fc4946d24286b19f8cf3e",
+    "scripts/fpga/tests/review_lut_packing.py": "6f79ebba6c8c76e34ae05152de4cad1e1b16b8f82777878f698d2b46525195c6",
+    "scripts/fpga/tests/review_outmux_edges.py": "4d6df506daa3af3b385716dac26ec8fb61f5fa1bc22e68ae1cab30690787366b",
+    "scripts/fpga/tests/review_placer_moves.py": "009c5f96a0c0b7290ffe59eb130718532f1d13410250969ffa12f99602ce5bf5",
+    "scripts/fpga/tests/run_lut_packing_implementation.py": "444b483845f192dbec51af32dbcfddde8442a8058be7925bae67be3792995e45"
+  }
+}

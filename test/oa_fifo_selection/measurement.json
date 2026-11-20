@@ -1,0 +1,774 @@
+{
+  "reference_commit": "2407d9d674cc314b0347df7b510c33cabcac9cb4",
+  "production_source_sha256": {
+    "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+    "rtl/npu/writeback/vec_s8_to_fifo.sv": "10f142c7d53a55d1794d8e55386c2968559c37ff0bcae10007b5a88a07514624"
+  },
+  "reference_source_sha256": {
+    "rtl/npu/writeback/oa_writer.sv": "64eac1c8ad95e07cfbde2335bd965b6f14269faf2e781f87d4062fbec896119d",
+    "rtl/npu/writeback/vec_s8_to_fifo.sv": "214ce2aa560daa588707cfac1ef26b55e0abba66cf4ed4f9ef605da48bdd740e"
+  },
+  "configuration": {
+    "vlen": 16,
+    "banks": 32,
+    "bus_width": 64,
+    "count_width": 28,
+    "cyclic_storage": true,
+    "all_public_outputs_retained": true
+  },
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 2955,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 2955,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 1051,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 8,
+        "carry4": 257,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 257,
+          "FDRE": 1042,
+          "FDSE": 9,
+          "INV": 98,
+          "LUT2": 491,
+          "LUT3": 333,
+          "LUT4": 686,
+          "LUT5": 650,
+          "LUT6": 500,
+          "LUT6_2": 295,
+          "RAMB18E1": 8
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 18,
+      "graph_complete": true,
+      "directed_paths": {
+        "cfg_is_mode_to_vec_valid_num_col_next_r": {
+          "combinational_cells": 18,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$20919",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_writer.cfg_is_mode",
+            "detail": "register output",
+            "source": "build/writer_candidates/inputs/reference_oa_writer.sv:412.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.cfg_is_mode"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$21576",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$143554",
+            "category": "data",
+            "source": "build/writer_candidates/inputs/reference_oa_writer.sv:458.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.vec_valid_num_col_next_r [3]"
+          },
+          "graph_complete": true
+        },
+        "cfg_is_mode_to_vec_valid_num_row_next_r": {
+          "combinational_cells": 18,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$20919",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_writer.cfg_is_mode",
+            "detail": "register output",
+            "source": "build/writer_candidates/inputs/reference_oa_writer.sv:412.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.cfg_is_mode"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$21580",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$143368",
+            "category": "data",
+            "source": "build/writer_candidates/inputs/reference_oa_writer.sv:458.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.vec_valid_num_row_next_r [3]"
+          },
+          "graph_complete": true
+        },
+        "next_group_to_row_tiles": {
+          "combinational_cells": 16,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$21182",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_writer.reuse_group_next_base_cur[3]",
+            "detail": "register output",
+            "source": "build/writer_candidates/inputs/reference_oa_writer.sv:458.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.row_group_next_base_idx [3]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$20704",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$139915$aiger$o4759",
+            "category": "data",
+            "source": "build/writer_candidates/inputs/reference_oa_writer.sv:321.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.co_next_row_tiles_q [4]"
+          },
+          "graph_complete": true
+        },
+        "write_oa_granted_to_co_data_valid": {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "analysis_write_oa_granted",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "write_oa_granted",
+            "detail": "register output",
+            "source": "",
+            "register_origin": "analysis.write_oa_granted"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$20633",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$143876",
+            "category": "data",
+            "source": "build/writer_candidates/inputs/reference_vec_s8_to_fifo.sv:437.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_fifo.co_data_valid"
+          },
+          "graph_complete": true
+        },
+        "start_permitted_to_co_data_valid": {
+          "combinational_cells": 7,
+          "startpoint": {
+            "cell": "analysis_start_permitted",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "start_permitted",
+            "detail": "register output",
+            "source": "",
+            "register_origin": "analysis.start_permitted"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$20633",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$143876",
+            "category": "data",
+            "source": "build/writer_candidates/inputs/reference_vec_s8_to_fifo.sv:437.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_fifo.co_data_valid"
+          },
+          "graph_complete": true
+        }
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 2944,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 2944,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 1051,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 8,
+        "carry4": 258,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 258,
+          "FDRE": 1042,
+          "FDSE": 9,
+          "INV": 104,
+          "LUT2": 537,
+          "LUT3": 362,
+          "LUT4": 521,
+          "LUT5": 567,
+          "LUT6": 662,
+          "LUT6_2": 295,
+          "RAMB18E1": 8
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 14,
+      "graph_complete": true,
+      "directed_paths": {
+        "cfg_is_mode_to_vec_valid_num_col_next_r": {
+          "combinational_cells": 14,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$20977",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_writer.cfg_is_mode",
+            "detail": "register output",
+            "source": "build/writer_timing/inputs/current_oa_writer.sv:420.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.cfg_is_mode"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$21631",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$139713$aiger$o7104",
+            "category": "data",
+            "source": "build/writer_timing/inputs/current_oa_writer.sv:466.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.vec_valid_num_col_next_r [0]"
+          },
+          "graph_complete": true
+        },
+        "cfg_is_mode_to_vec_valid_num_row_next_r": {
+          "combinational_cells": 14,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$20977",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_writer.cfg_is_mode",
+            "detail": "register output",
+            "source": "build/writer_timing/inputs/current_oa_writer.sv:420.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.cfg_is_mode"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$21635",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$139713$aiger$o7116",
+            "category": "data",
+            "source": "build/writer_timing/inputs/current_oa_writer.sv:466.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.vec_valid_num_row_next_r [0]"
+          },
+          "graph_complete": true
+        },
+        "next_group_to_row_tiles": {
+          "combinational_cells": 14,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$21230",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_writer.reuse_group_next_base_cur[3]",
+            "detail": "register output",
+            "source": "build/writer_timing/inputs/current_oa_writer.sv:466.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.row_group_next_base_idx [3]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$20764",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$143865",
+            "category": "data",
+            "source": "build/writer_timing/inputs/current_oa_writer.sv:329.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_writer.co_next_row_tiles_q [0]"
+          },
+          "graph_complete": true
+        },
+        "write_oa_granted_to_co_data_valid": {
+          "combinational_cells": 5,
+          "startpoint": {
+            "cell": "analysis_write_oa_granted",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "write_oa_granted",
+            "detail": "register output",
+            "source": "",
+            "register_origin": "analysis.write_oa_granted"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$20607",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$143923",
+            "category": "data",
+            "source": "build/writer_timing/inputs/current_vec_s8_to_fifo.sv:441.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_fifo.co_data_valid"
+          },
+          "graph_complete": true
+        },
+        "start_permitted_to_co_data_valid": {
+          "combinational_cells": 3,
+          "startpoint": {
+            "cell": "analysis_start_permitted",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "start_permitted",
+            "detail": "register output",
+            "source": "",
+            "register_origin": "analysis.start_permitted"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$20607",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$143923",
+            "category": "data",
+            "source": "build/writer_timing/inputs/current_vec_s8_to_fifo.sv:441.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_fifo.co_data_valid"
+          },
+          "graph_complete": true
+        }
+      }
+    }
+  },
+  "formal_writer": {
+    "passed": true,
+    "reference": "2407d9d6",
+    "source_sha256": {
+      "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+      "rtl/npu/writeback/vec_s8_to_fifo.sv": "10f142c7d53a55d1794d8e55386c2968559c37ff0bcae10007b5a88a07514624"
+    },
+    "writer_reference_sha256": "64eac1c8ad95e07cfbde2335bd965b6f14269faf2e781f87d4062fbec896119d",
+    "writer": [
+      {
+        "vlen": 4,
+        "bus_width": 32,
+        "count_width": 8,
+        "compared_state_signals": 64,
+        "all_public_outputs_compared": true,
+        "input_constraint": "Reset is active at the first edge; all later inputs are unconstrained",
+        "passed": true,
+        "log_sha256": "b1b32565e967d0c96bbfee91d7cf11af058cdd20fda6db1a596ef22a32cf9e43"
+      },
+      {
+        "vlen": 8,
+        "bus_width": 64,
+        "count_width": 8,
+        "compared_state_signals": 64,
+        "all_public_outputs_compared": true,
+        "input_constraint": "Reset is active at the first edge; all later inputs are unconstrained",
+        "passed": true,
+        "log_sha256": "5b0ec26a0d03378a70a1f7b6f39be61d30b8b46adea3b277c7e240005ce6bdcd"
+      },
+      {
+        "vlen": 16,
+        "bus_width": 32,
+        "count_width": 16,
+        "compared_state_signals": 64,
+        "all_public_outputs_compared": true,
+        "input_constraint": "Reset is active at the first edge; all later inputs are unconstrained",
+        "passed": true,
+        "log_sha256": "ba6b491db8c143cd29a7d5233e169be458d08ed2ce014de87465255e00ca07a6"
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 16,
+        "compared_state_signals": 64,
+        "all_public_outputs_compared": true,
+        "input_constraint": "Reset is active at the first edge; all later inputs are unconstrained",
+        "passed": true,
+        "log_sha256": "767b35fe203518c9af3929d32c05571c27f85e8bf4e2fd76de8b0df513fce725"
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 28,
+        "compared_state_signals": 64,
+        "all_public_outputs_compared": true,
+        "input_constraint": "Reset is active at the first edge; all later inputs are unconstrained",
+        "passed": true,
+        "log_sha256": "c35e24f3855f769225d863017aea7726b18cdcda2fa16661954a8dc4e28c354c"
+      },
+      {
+        "vlen": 16,
+        "bus_width": 64,
+        "count_width": 32,
+        "compared_state_signals": 64,
+        "all_public_outputs_compared": true,
+        "input_constraint": "Reset is active at the first edge; all later inputs are unconstrained",
+        "passed": true,
+        "log_sha256": "577780543eadf90c0e2e51931068a002dc704e40ed15e999fb7a60f87fe9ab02"
+      },
+      {
+        "vlen": 32,
+        "bus_width": 64,
+        "count_width": 32,
+        "compared_state_signals": 64,
+        "all_public_outputs_compared": true,
+        "input_constraint": "Reset is active at the first edge; all later inputs are unconstrained",
+        "passed": true,
+        "log_sha256": "0b3d88ff10a76e7c4baadc90cf989d8f3fc154a888cda8a1cb1d1a13df398ae7"
+      }
+    ],
+    "truncated_product": [
+      {
+        "retained_product_bits": 1,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "7e1c257dee0ecc0a99b9735c5915db1cf026788bd80b271ded38617668b6e054"
+      },
+      {
+        "retained_product_bits": 2,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "669eeb1ef431d9b0c8df3888703494e54151eda17a3e45fe8d8ab11f6a9b4eac"
+      },
+      {
+        "retained_product_bits": 3,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "b87bf582ce06c1bb84b08edef499f19463ba9903eda7dd587c8294c4002680ee"
+      },
+      {
+        "retained_product_bits": 4,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "7a946cd1c737b8849ac3ec5b1bd0e74f895972b47319cfedaf0e7af2b3b868a4"
+      },
+      {
+        "retained_product_bits": 5,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "890309abbde63d187222d4b57bd298e62c775539e2cdbb40de089e05ddd0069e"
+      },
+      {
+        "retained_product_bits": 6,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "d8b8ca7a4538ef4e3938be0cbc740a57b395070af5cfc1265aa20bb06b7e2026"
+      },
+      {
+        "retained_product_bits": 7,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "382e2f2b4c8220e708805b5d062b5111543f2cdee7e8e5400681500548be46c8"
+      },
+      {
+        "retained_product_bits": 8,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "bbd6262ff731d00efe2c57ee1134598e0a7b5e98ec4149767857f8d19cdffed7"
+      },
+      {
+        "retained_product_bits": 9,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "6f001cac4a6bc9ca829d88f7ddf8f135d34450463a9c9e7965aab59eeeb2eb39"
+      },
+      {
+        "retained_product_bits": 10,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "fbe10275c857379753967b377e57816f3c1e1f7655f05091da4ae1cad83c107a"
+      },
+      {
+        "retained_product_bits": 11,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "2025e0b63a696cb9fad90a5c43f3f0b173da484fbc668aabe5bfb902e13f3ff5"
+      },
+      {
+        "retained_product_bits": 12,
+        "arbitrary_input_bits": 64,
+        "passed": true,
+        "log_sha256": "12c32ee1bcadbf5655e6b16f6db4ae2eaba59f6d869d48c15d89527d9f54de34"
+      }
+    ]
+  },
+  "formal_fifo": {
+    "reference_ref": "2407d9d6",
+    "source_sha256": "10f142c7d53a55d1794d8e55386c2968559c37ff0bcae10007b5a88a07514624",
+    "reference_sha256": "214ce2aa560daa588707cfac1ef26b55e0abba66cf4ed4f9ef605da48bdd740e",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "primitive_model_sha256": "6bfd4f0d806e4b84dbfedefaef6c12cef6eef9c6bebb920c36c25baf5baf800b",
+    "inputs_constrained": false,
+    "ram_read_data_constrained": false,
+    "row_limit_relation_compared": true,
+    "storage_implementation_identical": true,
+    "formal": [
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 32,
+        "cyclic_storage": 1,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 1534,
+        "log_sha256": "a913d7e946d8244920e2e42d436289a58b228a48c78af35b40a9ac44430bd782"
+      },
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic_storage": 1,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 2398,
+        "log_sha256": "dc313b1ae94d34a86167ec0156567d076d090ff97b812055c6da0e7539c8b309"
+      },
+      {
+        "vlen": 16,
+        "banks": 3,
+        "bus_width": 64,
+        "cyclic_storage": 1,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 2122,
+        "log_sha256": "e4b7ff2998e9ced8f31012665a8e1f23996c1d050f17f5ef18e01e3b51a926f4"
+      },
+      {
+        "vlen": 16,
+        "banks": 16,
+        "bus_width": 64,
+        "cyclic_storage": 1,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 2259,
+        "log_sha256": "54f92d3b4dc643a7d91934d933be6392d8027e2f7fa246b716bb0b093edcf26f"
+      },
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic_storage": 1,
+        "fpga": false,
+        "passed": true,
+        "equivalent_bits": 1172,
+        "log_sha256": "e4cd8112b89d1d4c39499bf9317d3ce4600ab1da533f2558157b7b0cd35b798f"
+      },
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic_storage": 0,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 668,
+        "log_sha256": "b15c1d7170070764c8195a822047fc3a562fb7e4d32a14d1497e848ebba7dec1"
+      },
+      {
+        "vlen": 8,
+        "banks": 8,
+        "bus_width": 32,
+        "cyclic_storage": 0,
+        "fpga": true,
+        "passed": true,
+        "equivalent_bits": 333,
+        "log_sha256": "40737f8cd69562e9baaa3e2fc2388e10949159410e26b204f4f47ea249bfa56a"
+      }
+    ],
+    "passed": true,
+    "equivalent_bits": 10486
+  },
+  "numeric_writer": {
+    "passed": true,
+    "runs": [
+      {
+        "passed": true,
+        "reference": "2407d9d6",
+        "source_sha256": {
+          "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+          "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34"
+        },
+        "reference_sha256": "64eac1c8ad95e07cfbde2335bd965b6f14269faf2e781f87d4062fbec896119d",
+        "profiles": [
+          {
+            "vlen": 4,
+            "bus_width": 32,
+            "count_width": 8,
+            "passed": true,
+            "binary_sha256": "68ab932dee3ab1c925cb3362914c2051de912778e83f3f777706a463a9a766a8",
+            "scenarios": 256,
+            "cycles": 145754,
+            "outputs": 21,
+            "commands": 4579,
+            "groups": 899,
+            "completions": 114,
+            "interrupted": 107
+          }
+        ]
+      },
+      {
+        "passed": true,
+        "reference": "2407d9d6",
+        "source_sha256": {
+          "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+          "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34"
+        },
+        "reference_sha256": "64eac1c8ad95e07cfbde2335bd965b6f14269faf2e781f87d4062fbec896119d",
+        "profiles": [
+          {
+            "vlen": 16,
+            "bus_width": 32,
+            "count_width": 28,
+            "passed": true,
+            "binary_sha256": "f8a7a4ec13c7d7b55a19094043da1757d3f95b9b669fec815e984d7532b895c3",
+            "scenarios": 256,
+            "cycles": 148850,
+            "outputs": 21,
+            "commands": 4663,
+            "groups": 915,
+            "completions": 114,
+            "interrupted": 109
+          }
+        ]
+      },
+      {
+        "passed": true,
+        "reference": "2407d9d6",
+        "source_sha256": {
+          "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+          "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34"
+        },
+        "reference_sha256": "64eac1c8ad95e07cfbde2335bd965b6f14269faf2e781f87d4062fbec896119d",
+        "profiles": [
+          {
+            "vlen": 16,
+            "bus_width": 64,
+            "count_width": 28,
+            "passed": true,
+            "binary_sha256": "579e5d714d37af7481d0a77f77c29854e0be78c3ebfe370b336306d1c65d6755",
+            "scenarios": 256,
+            "cycles": 147833,
+            "outputs": 21,
+            "commands": 4636,
+            "groups": 927,
+            "completions": 119,
+            "interrupted": 101
+          }
+        ]
+      },
+      {
+        "passed": true,
+        "reference": "2407d9d6",
+        "source_sha256": {
+          "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+          "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34"
+        },
+        "reference_sha256": "64eac1c8ad95e07cfbde2335bd965b6f14269faf2e781f87d4062fbec896119d",
+        "profiles": [
+          {
+            "vlen": 32,
+            "bus_width": 64,
+            "count_width": 32,
+            "passed": true,
+            "binary_sha256": "d0a2029f54704a76b16db4a6e6c680354e23355dbfb7ab330b1cec4efa0b2a4b",
+            "scenarios": 256,
+            "cycles": 126352,
+            "outputs": 21,
+            "commands": 3789,
+            "groups": 698,
+            "completions": 154,
+            "interrupted": 73
+          }
+        ]
+      }
+    ]
+  },
+  "numeric_fifo": {
+    "passed": true,
+    "runs": [
+      {
+        "passed": true,
+        "bus_width": 32,
+        "cyclic_storage": 1,
+        "reference_rev": "2407d9d6",
+        "banks": 16,
+        "fpga": true,
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "sources_sha256": {
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/npu/writeback/vec_s8_to_fifo.sv": "10f142c7d53a55d1794d8e55386c2968559c37ff0bcae10007b5a88a07514624",
+          "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "reference_sha256": {
+          "vec_s8_to_fifo.sv": "214ce2aa560daa588707cfac1ef26b55e0abba66cf4ed4f9ef605da48bdd740e",
+          "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "cases": 81,
+        "checked_bytes": 12392,
+        "sources_unchanged": true
+      },
+      {
+        "passed": true,
+        "bus_width": 64,
+        "cyclic_storage": 1,
+        "reference_rev": "2407d9d6",
+        "banks": 16,
+        "fpga": true,
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "sources_sha256": {
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/npu/writeback/vec_s8_to_fifo.sv": "10f142c7d53a55d1794d8e55386c2968559c37ff0bcae10007b5a88a07514624",
+          "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "reference_sha256": {
+          "vec_s8_to_fifo.sv": "214ce2aa560daa588707cfac1ef26b55e0abba66cf4ed4f9ef605da48bdd740e",
+          "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "cases": 81,
+        "checked_bytes": 12392,
+        "sources_unchanged": true
+      },
+      {
+        "passed": true,
+        "bus_width": 32,
+        "cyclic_storage": 1,
+        "reference_rev": "2407d9d6",
+        "banks": 32,
+        "fpga": true,
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "sources_sha256": {
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/npu/writeback/vec_s8_to_fifo.sv": "10f142c7d53a55d1794d8e55386c2968559c37ff0bcae10007b5a88a07514624",
+          "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "reference_sha256": {
+          "vec_s8_to_fifo.sv": "214ce2aa560daa588707cfac1ef26b55e0abba66cf4ed4f9ef605da48bdd740e",
+          "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "cases": 81,
+        "checked_bytes": 12392,
+        "sources_unchanged": true
+      },
+      {
+        "passed": true,
+        "bus_width": 64,
+        "cyclic_storage": 1,
+        "reference_rev": "2407d9d6",
+        "banks": 32,
+        "fpga": true,
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "sources_sha256": {
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/npu/writeback/vec_s8_to_fifo.sv": "10f142c7d53a55d1794d8e55386c2968559c37ff0bcae10007b5a88a07514624",
+          "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "reference_sha256": {
+          "vec_s8_to_fifo.sv": "214ce2aa560daa588707cfac1ef26b55e0abba66cf4ed4f9ef605da48bdd740e",
+          "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+        },
+        "cases": 81,
+        "checked_bytes": 12392,
+        "sources_unchanged": true
+      }
+    ]
+  },
+  "artifact_sha256": {
+    "build/writer_candidates/synthesis/reference/mapped.json": "32e59bf736b01bf6480418e58e6d18eb4004a7f5725159777f1b974100e42a72",
+    "build/writer_candidates/synthesis/reference/pre_lut.il": "ed9989bcef1e01cb6bf62e0c9002b540ab14a2fb9ff1260233d392b415ece7e9",
+    "build/writer_candidates/synthesis/reference/metrics.json": "3b6340bfc6e0c94f3a8dc82942d30ad1341b7a80b3e8a6af164ac84d678e9c1e",
+    "build/writer_candidates/synthesis/reference/manifest.json": "493c0ffa197dfd37e2f31e5cee3caf029f9a2c63d80a17afbe77f1d78d12c572",
+    "build/writer_timing/synthesis/current/mapped.json": "b594587bddaf5ebf75dc6f31462689e63e5d9c844b907614bdce20c8ce929399",
+    "build/writer_timing/synthesis/current/pre_lut.il": "15f3c21cc352a9e6c9e7a07df3bd29294f52a3399fbb1316d2663f0300788ddf",
+    "build/writer_timing/synthesis/current/metrics.json": "6eb6252c87e1092452d29fa1f1e5273ea59f1cf6e3295241512efd992cad3897",
+    "build/writer_timing/synthesis/current/manifest.json": "cbf5e112fce2701abe0c3afd79865e9ff0b8d7b145967a2451b94747e4cc4061",
+    "build/writer_timing/inputs/manifest.json": "ea1756fa1762de2114849599d18013e138af507fdf19718c8b05eefa251e36b0",
+    "build/writer_timing/target_paths.json": "ed16d2f3c603315cf2bfff93a4fde54dc9ee23fea4d7d07e4802fb2687a0d289",
+    "build/writer_timing/formal_writer/summary.json": "3284d70617d09d4be14c0c4d07cde74a252ffb9d72a679ff3001a8c231f19f61",
+    "build/writer_timing/formal_fifo/summary.json": "33c4ab89f00eab4e0471b2528c58a6cf21e1eef46933e9fbb15c490a8071f1b7",
+    "build/writer_timing/numeric_writer/summary.json": "41b7c9fcc4e7a6d13a6cdf8447d9db63eac65df0cd81e5859d11107f00db81a9",
+    "build/writer_timing/numeric_fifo/summary.json": "f29a7a8b6531a48350f5349aa280f2569032b8245c1c6a5a0dbc3a3468b30c1e",
+    "build/writer_timing/numeric_fifo/n16_b32/obj/Vtb_writeback_bus": "d6df5a3cc421a4fe74ce4219df97a9075027bfb80345b0d8222e8d069ec7b61c",
+    "build/writer_timing/numeric_fifo/n16_b64/obj/Vtb_writeback_bus": "e17afa7f7e165f7b1d8f2305de3ade9e840a4508ee9aa0e94360d739c1af92e4",
+    "build/writer_timing/numeric_fifo/n32_b32/obj/Vtb_writeback_bus": "4e8ea20de3d5ea80f5865b82ce5dd931c08661ce81a3f9617f8ace6a7b4b35f2",
+    "build/writer_timing/numeric_fifo/n32_b64/obj/Vtb_writeback_bus": "3e2040015303739bdf50b5fa99ac4d1abbf455009fd349ef39a8c704fe48faa8",
+    "build/writer_timing/numeric_writer/16_32_28/n16_b32_c28/obj/Vtb_oa_writer_equivalence": "f8a7a4ec13c7d7b55a19094043da1757d3f95b9b669fec815e984d7532b895c3",
+    "build/writer_timing/numeric_writer/16_64_28/n16_b64_c28/obj/Vtb_oa_writer_equivalence": "579e5d714d37af7481d0a77f77c29854e0be78c3ebfe370b336306d1c65d6755",
+    "build/writer_timing/numeric_writer/32_64_32/n32_b64_c32/obj/Vtb_oa_writer_equivalence": "d0a2029f54704a76b16db4a6e6c680354e23355dbfb7ab330b1cec4efa0b2a4b",
+    "build/writer_timing/numeric_writer/4_32_8/n4_b32_c8/obj/Vtb_oa_writer_equivalence": "68ab932dee3ab1c925cb3362914c2051de912778e83f3f777706a463a9a766a8",
+    "test/oa_fifo_timing/run_formal.py": "b8d8a4a636314fa57bb4384c53b1474aa4975d46e536ffc688ce843d82d9c22c",
+    "test/fifo_byte_rotation/run_formal.py": "c38de1ccb10fe4dd2051df36ebc45c85958676a4861c58adef2ce9a6a8c98189",
+    "test/oa_writer/run_equivalence.py": "edef61d0a168458b8d1bdbfc0eae6c4fd5ade7bc4ec40b2a8a102972f90a00a0",
+    "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34",
+    "test/writeback_cyclic/run.py": "4af280fadabbb5e38789135961ae167e288741b2586264ef101777ca73f17a27",
+    "test/writeback_bus/tb_writeback_bus.sv": "ce0ba669a948508845b54511c921a959bb5ac2e292e8a8e928e8b48929ba5b47",
+    "test/oa_fifo_timing/oa_fifo_timing_top.sv": "1f9f501ceed7ec94c139e13b08b3850fd93d2ff12c9e637d060de8639c5d5040",
+    "test/oa_fifo_timing/prepare_measurement.py": "aecd0f572e601d5720c4d7b22f55321cacc42354941fb8b2d74610223eda9de1",
+    "test/oa_fifo_selection/measure_paths.py": "dc88125a1e691ffd8c98b21285f375ecce8c8310d65fdeaf19f1efe0a390b44e"
+  }
+}

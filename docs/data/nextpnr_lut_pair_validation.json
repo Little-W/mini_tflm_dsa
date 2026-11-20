@@ -1,0 +1,81 @@
+{
+  "nextpnr_sha256": "1f9412eefcb7b66a967d1b83a5ec799d4900e7bbb7c66c52f0b29c6edbe31a73",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "placer_source_sha256": "f611ad8e1c7cf757c813f7458a7391214f7d4d1dd81045b3da09c0b70323d31e",
+  "pairing_script_sha256": "4292628837e295a8580333c442bf43e3474d60421621e9d1217cfe56179491a2",
+  "schema_version": 1,
+  "root_absolute_z_constraint": false,
+  "child_relative_z": 1,
+  "implementation_environment": {
+    "XC7_FRACTURE_LUTS": "1",
+    "XC7_CARRY_DIRECT_DI": "1",
+    "XC7_CARRY_TRIM_TAIL": "1"
+  },
+  "cases": {
+    "shared_five": {
+      "passed": true,
+      "pair_count": 1,
+      "physical_lut_positions": 1,
+      "placement_complete": true,
+      "routing_complete": true,
+      "functional_cells_sha256": "4a270f090a49889da193d95ed988b840ec5a2944392c527ddac94ae83cc54f9e",
+      "logical_input_connections_checked": 6,
+      "output_comparisons": 64,
+      "routed_sha256": "38011457e468b7e8b39f3f4ec93e4f2180e38f846384cbb69f4764ef8fdbb7e8",
+      "fasm_sha256": "a359800d2dc9c90094a2601aace2ced35b0dd914d51d8fa820a22a1155aacb05",
+      "emitted_fasm_checks_passed": true
+    },
+    "distinct_six": {
+      "passed": true,
+      "pair_count": 0,
+      "physical_lut_positions": 2,
+      "placement_complete": true,
+      "routing_complete": false,
+      "functional_cells_sha256": "9bb1a59ddcb0128eacfc8f3d0948e006231f779b2aa43a05781b7d5feb4aa17d"
+    },
+    "repeated_six": {
+      "passed": true,
+      "pair_count": 0,
+      "physical_lut_positions": 2,
+      "placement_complete": true,
+      "routing_complete": false,
+      "functional_cells_sha256": "a8634631f22008553e8a5b1def8295c4fcb7e2c3c6d28649416f55495ae8bb2d"
+    },
+    "repeated_three": {
+      "passed": true,
+      "pair_count": 1,
+      "physical_lut_positions": 1,
+      "placement_complete": true,
+      "routing_complete": true,
+      "functional_cells_sha256": "5bdfb05ebbc31459043e800cc8ef9abb94c2be4b5716585058b5b1d02b691c4d",
+      "logical_input_connections_checked": 6,
+      "output_comparisons": 16,
+      "routed_sha256": "02ed5c7a8b4c4ff9a8ccede8d0a333e4547ec860917e9045600887016a0aa398",
+      "fasm_sha256": "b2fd256e055b8d9b9d57c07575757e4747cf00ee1a5cd125bfd172c0b5e0ea21",
+      "emitted_fasm_checks_passed": true
+    }
+  },
+  "full_soc_candidate_inventory": {
+    "candidate_luts": 13343,
+    "pair_count": 3524,
+    "excluded": {
+      "storage": 3696,
+      "relative_constraint": 31928,
+      "dedicated_or_register_sink": 5998,
+      "dedicated_lut": 19016,
+      "fixed_or_protected": 16
+    },
+    "functional_cells_sha256": "20e984dd84bef60305c2e884f4b02f9a402a97815a4a4181265f5deefd36f33c",
+    "cell_contents_preserved": true,
+    "physical_lut_positions": null,
+    "placement_complete": false,
+    "method": "仅约束无专用或寄存器使用者的独立普通逻辑；每对至少共享一个非常量输入，输入并集至多五个。逻辑、连接、INIT 与原有约束保持，实际占用由后续合法布局统计。",
+    "source_packed_sha256": "e5ace4c0c38993cda3c3ec63d18ae81dd144849dff75894c15e6319d86f24fd4",
+    "output_packed_sha256": "a31254a31cab4f337f6f8a0199ef8610581fccbade85e563241431cb6005e908",
+    "rtl_commit": "1c081bca06076727fab1ed2e194195f4563bd5ee"
+  },
+  "reproduction_entries": [
+    "scripts/fpga/tests/test_pair_packed_luts.py",
+    "scripts/fpga/tests/run_lut_pair_implementation.py"
+  ]
+}

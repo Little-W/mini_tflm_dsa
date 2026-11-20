@@ -1,0 +1,308 @@
+{
+  "configuration": {
+    "VLEN": 16,
+    "BANKS": 32,
+    "BUS_WIDTH": 64,
+    "logical_storage_bits": 65536
+  },
+  "rtl_sha256": "66c865d79eec4e26fa2a037cc310f21943bb1776ab021a1fe25e453a2b4555b0",
+  "nextpnr_sha256": "884967d950735424bda1e12e17d68417334a3f422a3a0fef09f822eea7a32d87",
+  "device": "xc7a200tfbg484-3",
+  "environment": {
+    "XC7_FRACTURE_LUTS": 1,
+    "XC7_CARRY_DIRECT_DI": 1
+  },
+  "place_seed": 1,
+  "routing_completed": false,
+  "timing_150mhz_confirmed": null,
+  "configurations": {
+    "reference": {
+      "mapped_resources": {
+        "logic_lut_cells": 2167,
+        "distributed_ram_lut_sites_nominal": 1376,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3543,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 1304,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 108,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 108,
+          "FDRE": 1304,
+          "INV": 27,
+          "LUT2": 182,
+          "LUT3": 188,
+          "LUT4": 246,
+          "LUT5": 983,
+          "LUT6": 568,
+          "MUXF7": 2,
+          "MUXF8": 1,
+          "RAM64M": 344
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 12,
+      "physical_resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 3732,
+        "physical_lut_positions_by_use": {
+          "logic": 2356,
+          "distributed_ram": 1376,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 3903,
+        "shared_lut_positions": 171,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 1090,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "CARRY4": 113,
+          "IOB33_INBUF_EN": 187,
+          "IOB33_OUTBUF": 76,
+          "PAD": 263,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "SELMUX2_1": 3,
+          "SLICE_FFX": 1304,
+          "SLICE_LUTX": 3903
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint.",
+        "routing_completed": false,
+        "frequency_mhz_target": 150.0,
+        "timing_150mhz_confirmed": null,
+        "timing_validation_status": "Requires complete target-device timing coverage"
+      }
+    },
+    "cyclic": {
+      "mapped_resources": {
+        "logic_lut_cells": 1615,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1615,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 280,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 8,
+        "carry4": 114,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 114,
+          "FDRE": 280,
+          "INV": 28,
+          "LUT2": 272,
+          "LUT3": 327,
+          "LUT4": 210,
+          "LUT5": 516,
+          "LUT6": 290,
+          "MUXF7": 2,
+          "MUXF8": 1,
+          "RAMB18E1": 8
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 12,
+      "physical_resources": {
+        "implementation_step": "place",
+        "placement_complete": true,
+        "physical_lut_positions": 1723,
+        "physical_lut_positions_by_use": {
+          "logic": 1723,
+          "distributed_ram": 0,
+          "shift_register": 0
+        },
+        "placed_lut_bel_instances": 1993,
+        "shared_lut_positions": 270,
+        "storage_positions_with_logic_output": 0,
+        "occupied_slice_sites": 612,
+        "placed_cell_counts": {
+          "BUFGCTRL": 1,
+          "CARRY4": 119,
+          "IOB33_INBUF_EN": 187,
+          "IOB33_OUTBUF": 76,
+          "PAD": 263,
+          "PSEUDO_GND": 1,
+          "PSEUDO_VCC": 1,
+          "RAMB18E1_RAMB18E1": 8,
+          "SELMUX2_1": 3,
+          "SLICE_FFX": 280,
+          "SLICE_LUTX": 1993
+        },
+        "unplaced_cells": [],
+        "resource_errors": [],
+        "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint.",
+        "routing_completed": false,
+        "frequency_mhz_target": 150.0,
+        "timing_150mhz_confirmed": null,
+        "timing_validation_status": "Requires complete target-device timing coverage"
+      }
+    }
+  },
+  "storage_checks": {
+    "source_sha256": "66c865d79eec4e26fa2a037cc310f21943bb1776ab021a1fe25e453a2b4555b0",
+    "runs": [
+      {
+        "bus_width": 32,
+        "formal_passed": true,
+        "simulation_passed": true,
+        "cycles": 32800,
+        "checked_bytes": 129152,
+        "collisions": 4130,
+        "holds": 2528,
+        "logical_capacity_bits": 65536
+      },
+      {
+        "bus_width": 64,
+        "formal_passed": true,
+        "simulation_passed": true,
+        "cycles": 26656,
+        "checked_bytes": 209152,
+        "collisions": 2120,
+        "holds": 2529,
+        "logical_capacity_bits": 65536
+      }
+    ],
+    "source_unchanged": true,
+    "passed": true
+  },
+  "mode_checks": {
+    "source_sha256": "66c865d79eec4e26fa2a037cc310f21943bb1776ab021a1fe25e453a2b4555b0",
+    "reference_rev": "b8b34d5",
+    "runs": [
+      {
+        "bus_width": 32,
+        "cycles": 200000,
+        "mode_changes": 99345,
+        "first_wait_changes": 2160,
+        "passed": true
+      },
+      {
+        "bus_width": 64,
+        "cycles": 200000,
+        "mode_changes": 99345,
+        "first_wait_changes": 2671,
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "control_checks": {
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "9f02717ebbbc80af998467e001a5ca788aae6e3846bbbfe730c20d614110ccb7",
+      "rtl/npu/control/npu_controller.sv": "04ec05981bb49145fe5ef52cf4176a02b5877ed847323b2ef8845bf3fb8c7597",
+      "rtl/npu/control/ps_window_scheduler.sv": "2e1211218af2cdfc9187207c0b7038acd9b817a30b4619b5d22c61692052f6d2",
+      "rtl/npu/writeback/oa_writer.sv": "9f94d6efebe87e9aa8170b35eaab681fe556897b102b867f0fbfa159a6dceb59"
+    },
+    "properties": [
+      "mode holds while task controller is busy",
+      "mode changes only on configuration commit",
+      "configuration commit requires both controllers ready",
+      "normal execution exits only after output completion",
+      "frame execution disables coalescing",
+      "final frame waits for output completion",
+      "output completion follows a DMA completion event"
+    ],
+    "runs": [
+      {
+        "case": "mode",
+        "passed": true
+      },
+      {
+        "case": "mode_disabled",
+        "passed": true
+      },
+      {
+        "case": "writer",
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "interface_checks": [
+    {
+      "passed": true,
+      "bus_width": 32,
+      "cyclic_storage": 1,
+      "reference_rev": "b8b34d5",
+      "sources_sha256": {
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+        "rtl/npu/writeback/vec_s8_to_fifo.sv": "66c865d79eec4e26fa2a037cc310f21943bb1776ab021a1fe25e453a2b4555b0",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "reference_sha256": {
+        "vec_s8_to_fifo.sv": "ff9710ed8020e61cf709fc87a6e3be26c458571ec68460d83e5d88c51d2c5957",
+        "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "cases": 81,
+      "checked_bytes": 12392,
+      "sources_unchanged": true
+    },
+    {
+      "passed": true,
+      "bus_width": 64,
+      "cyclic_storage": 1,
+      "reference_rev": "b8b34d5",
+      "sources_sha256": {
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+        "rtl/npu/writeback/vec_s8_to_fifo.sv": "66c865d79eec4e26fa2a037cc310f21943bb1776ab021a1fe25e453a2b4555b0",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "reference_sha256": {
+        "vec_s8_to_fifo.sv": "ff9710ed8020e61cf709fc87a6e3be26c458571ec68460d83e5d88c51d2c5957",
+        "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "cases": 81,
+      "checked_bytes": 12392,
+      "sources_unchanged": true
+    },
+    {
+      "passed": true,
+      "bus_width": 32,
+      "cyclic_storage": 0,
+      "reference_rev": "b8b34d5",
+      "sources_sha256": {
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+        "rtl/npu/writeback/vec_s8_to_fifo.sv": "66c865d79eec4e26fa2a037cc310f21943bb1776ab021a1fe25e453a2b4555b0",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "reference_sha256": {
+        "vec_s8_to_fifo.sv": "ff9710ed8020e61cf709fc87a6e3be26c458571ec68460d83e5d88c51d2c5957",
+        "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "cases": 81,
+      "checked_bytes": 12392,
+      "sources_unchanged": true
+    },
+    {
+      "passed": true,
+      "bus_width": 64,
+      "cyclic_storage": 0,
+      "reference_rev": "b8b34d5",
+      "sources_sha256": {
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+        "rtl/npu/writeback/vec_s8_to_fifo.sv": "66c865d79eec4e26fa2a037cc310f21943bb1776ab021a1fe25e453a2b4555b0",
+        "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "reference_sha256": {
+        "vec_s8_to_fifo.sv": "ff9710ed8020e61cf709fc87a6e3be26c458571ec68460d83e5d88c51d2c5957",
+        "vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e"
+      },
+      "cases": 81,
+      "checked_bytes": 12392,
+      "sources_unchanged": true
+    }
+  ],
+  "physical_lut_positions_saved": 2009,
+  "production_capacity": {
+    "passed": true,
+    "oa_s8_fifo_bits": 65536,
+    "REGFILE_instances": 60,
+    "total_declared_state_bits": 797559
+  }
+}

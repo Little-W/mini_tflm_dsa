@@ -1,0 +1,66 @@
+{
+  "source_sha256": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+  "miter_sha256": "5ee54c42224aadf447b1db06427d5fca81e13f162b38b866589779bc60ae362e",
+  "method": "Combinational SAT comparison against native unsigned addition",
+  "inputs_constrained": false,
+  "runs": [
+    {
+      "width": 1,
+      "unconstrained_input_bits": 4,
+      "passed": true,
+      "log_sha256": "166bc0adeacc613a24cffaa91fad40363627794e3baf62a708f0975f0e6fa158"
+    },
+    {
+      "width": 2,
+      "unconstrained_input_bits": 7,
+      "passed": true,
+      "log_sha256": "cc52d35effb1a6627acd027c299a39dcb5a39d5002c5771b90bc9c05b30d0880"
+    },
+    {
+      "width": 4,
+      "unconstrained_input_bits": 13,
+      "passed": true,
+      "log_sha256": "820f1f77635aecb5447fe1d37ac0be2afe9a1db84aeed0edc68383e529358aea"
+    },
+    {
+      "width": 8,
+      "unconstrained_input_bits": 25,
+      "passed": true,
+      "log_sha256": "0de015b4baf53650810c897081ea5586245fcff220231899aabd77631c62b816"
+    },
+    {
+      "width": 16,
+      "unconstrained_input_bits": 49,
+      "passed": true,
+      "log_sha256": "58dd9300784eff9d3f32dade2767f5b96c8fb835194ed733c2173fa14b9d6c85"
+    },
+    {
+      "width": 28,
+      "unconstrained_input_bits": 85,
+      "passed": true,
+      "log_sha256": "2723d7d1d45d44bc886c68c283c567ab89494b62a91c4c9ea6db1116dcaef346"
+    },
+    {
+      "width": 32,
+      "unconstrained_input_bits": 97,
+      "passed": true,
+      "log_sha256": "57687af15a210b57a7db83a8cf38f025877298c25fd473cc7b3f07e13f8269b2"
+    },
+    {
+      "width": 33,
+      "unconstrained_input_bits": 100,
+      "passed": true,
+      "log_sha256": "11a36123268c2e36427ad516c7d09ca75fa799d6e1dfbdeddd05b0eb601add5a"
+    },
+    {
+      "width": 64,
+      "unconstrained_input_bits": 193,
+      "passed": true,
+      "log_sha256": "85135190e4d0b468b6d1516eba112233674504449f358a4f6b374578d264fc16"
+    }
+  ],
+  "passed": true,
+  "report_sha256": "3aa269b46d43c95beba027fe16d9da944355e99c5446cfcbc07986ac4cc1d31b",
+  "rtl_path": "rtl/common/add_equal.sv",
+  "expression": "((i_a + i_b + i_carry_in) mod 2^p_width) == i_target"
+}

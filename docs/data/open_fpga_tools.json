@@ -1,0 +1,122 @@
+{
+  "yosys": {
+    "python_package": "pyosys==0.71.post40",
+    "commit": "83320dc12"
+  },
+  "nextpnr": {
+    "repository": "https://github.com/openXC7/nextpnr-xilinx",
+    "commit": "bc9b234634cf80756b04ad4ea5f8e7a83293c425",
+    "architecture": "xilinx",
+    "patches": [
+      {
+        "path": "scripts/fpga/patches/nextpnr_xilinx_carry_direct_di.patch",
+        "sha256": "3c6785dda79d991f0021a6a53823bd30884c18e1238c26924bb9cd98c97c441b",
+        "option": "XC7_CARRY_DIRECT_DI=1"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_xilinx_dsp_dram_timing.patch",
+        "sha256": "ae6c0dd05e903dad227404a73168e2644dc9c9944886c71767431f0c85bb149c",
+        "option": "--strict-timing-graph"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_xilinx_lut_packing.patch",
+        "sha256": "778ddf027c05c8580fbb7e21f5c17de35e5f4c980a9f5c9bdaba6549bb76a36c",
+        "option": "XC7_FRACTURE_LUTS=1"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_xilinx_carry_tail.patch",
+        "sha256": "6567b82a6b9028287e9bae6b972a8f2d7f3df791bab18d4c83b56380b7486de9",
+        "option": "XC7_CARRY_TRIM_TAIL=1"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_refinement_limit.patch",
+        "sha256": "10effc78f01ff21101f2f49470361f77e03e97070bec513812c1f01ade586973",
+        "option": "NEXTPNR_REFINE_MAX_ITERS=<positive integer>"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_saved_path_report.patch",
+        "sha256": "a7d9f709c2ff221230654335a0083d9387623ec1ede3032e0bb8455a5a28e486",
+        "option": "NEXTPNR_REPORT_PATHS=1"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_dsp_connection_report.patch",
+        "sha256": "6fbe6b7a9d3a6882b57faa6579e007c0f4cabbe311d901fb6e95f2c1201b4299",
+        "option": "NEXTPNR_REPORT_DSP_NETS=1"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_xilinx_lut_cofactor.patch",
+        "sha256": "96ca42f5d4c8de58855f28f2ff4e07e47fd2bf71eda690d1d57970273ab0d1f4",
+        "option": "XC7_LUT_COFACTOR=1"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_heap_iteration_limit.patch",
+        "sha256": "97b9e1f084ce027e6a213ace6673e609c3e280355462b0a7f0022e7fe0b4cb7e",
+        "option": "NEXTPNR_HEAP_MAX_ITERS=<positive integer>"
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_lut_output_inputs.patch",
+        "sha256": "b9e5466392eb96151c2f7a503894ff7bc36eb11528afd155243778ab79f5d468",
+        "description": "根据各输出的真值表保留有效输入",
+        "enabled_by_default": true
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_heap_cluster_connectivity.patch",
+        "sha256": "1f088a53f472ae42fae276eec52de4e4a624428504dce015a964456ee39b0e95",
+        "description": "递归检查相对位置组全部成员的有效连接",
+        "enabled_by_default": true
+      },
+      {
+        "path": "scripts/fpga/patches/nextpnr_lut_logical_pin_mapping.patch",
+        "sha256": "5905260657c195c8bec59844691ee5c0d391a474a2e34bc206376a3c3ba2a011",
+        "description": "保留物理输入对应的原逻辑引脚编号",
+        "enabled_by_default": true
+      }
+    ],
+    "implementation_binary": {
+      "name": "nextpnr-xilinx.10357cc430a78c45",
+      "sha256": "10357cc430a78c45842554a01c0c6d0ec62d9cba3e656815aae0523560a035b3",
+      "source_sha256": {
+        "common/placer_heap.cc": "2c13137cd058f1ad624d9e8c1dfeef612f079519082c85eff645f973847745af",
+        "xilinx/arch_place.cc": "39f5c5d7db9257c22d57aab2917981e0504d5557acbb1cdae1fabe559c601fdd",
+        "xilinx/pack.cc": "2b66750d173e6754a5b8b0dddd189f5e1c2bb8f0896f126ea68faca742405477",
+        "xilinx/fasm.cc": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d"
+      },
+      "validation_report": {
+        "path": "docs/data/nextpnr_lut_cluster_validation.json",
+        "sha256": "35ab8bc187b3e0e9f3e29552cfcf84115020fd980d3ed9388bd478912158da2e"
+      }
+    }
+  },
+  "timing_model": {
+    "target_speed_grade_verified": false,
+    "slice_ff_setup_ns": 0.1,
+    "slice_ff_hold_ns": 0.1,
+    "slice_ff_clock_to_q_ns": 0.1,
+    "bufgctrl_delay_ns": 0.2,
+    "fully_combinational_dsp": "Fixed conservative delay by input class",
+    "registered_dsp": "Incomplete timing coverage",
+    "block_ram": "Incomplete timing coverage",
+    "timing_150mhz_confirmed": null
+  },
+  "device_database": {
+    "repository": "https://github.com/openXC7/prjxray-db",
+    "commit": "0c3504f26f5cf77b6a7605c7bc83ebe1ac67b26f",
+    "family": "artix7",
+    "part": "xc7a200tfbg484-3",
+    "generator": "nextpnr-xilinx/xilinx/python/bbaexport.py",
+    "assembler": "nextpnr-xilinx/build/bbasm --le",
+    "timing_table_count": 1
+  },
+  "site_metadata": {
+    "repository": "https://github.com/openXC7/nextpnr-xilinx-meta",
+    "commit": "8a3f5a09d87e382a5dc98f2d14caa54d7c35a367"
+  },
+  "verification_tools": {
+    "verilator": "5.032",
+    "iverilog": "12.0",
+    "production_verilator": {
+      "command": "verilator-modern",
+      "reported_version": "rev vUNKNOWN-built20260516-4e853d8"
+    }
+  }
+}

@@ -1,0 +1,432 @@
+{
+  "passed": true,
+  "selection_tests": 18,
+  "synthetic_synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667,
+    "cases": {
+      "bounded_dsp_chain": {
+        "top": "bounded_dsp_chain",
+        "configuration": "Two complete 32-bit arithmetic stages separated by XOR",
+        "sources_sha256": {
+          "scripts/fpga/tests/bounded_dsp_chain.sv": "cd82f44020d80bb8f3651d3381632132e9ac7d11f375dc5e337658398ac13689",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "parameters": {},
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 1.2,
+            "peak_process_tree_rss_bytes": 146124800,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "a1e15c67d5fa6c28ceb8335c5f14018870b0451cf680e990d6374523622b078c",
+            "output_sha256": "7d353d42ce5f505498e0ab2ab61a65faa1fbe2040a1c40f13a4d5e7e79a1e66b"
+          },
+          "02a_pre_alu": {
+            "elapsed_seconds": 4.32,
+            "peak_process_tree_rss_bytes": 143671296,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02a_pre_alu.ys",
+            "log": "02a_pre_alu.log",
+            "script_sha256": "382084d8ec3e14dc17d91d1efe4c23b6c8efc29bfbc2cf4551af94c32f3a2bd1",
+            "output_sha256": "3cc0bd9ab863b2a99ec5ba86ee8c3c8c5fcbb18956160e4abcdb375f6fe72982"
+          },
+          "02b_map_alu": {
+            "elapsed_seconds": 0.2,
+            "peak_process_tree_rss_bytes": 28672,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02b_map_alu.command.json",
+            "log": "02b_map_alu.log",
+            "script_sha256": "6ff5922569f3d34ae84ec939f5a591e0f53be26a8720f612b5cd855e567de8b3",
+            "output_sha256": "d1f18e11fc936de4fc7711bd588e7dce424add96446f77fc86e5525b804019e1",
+            "automatic_name_counter_sha256": "f48a62e2da246db066d6e4e476c9ee0ef7bacfa7fbf82c83692b24d00314f287"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 1.4,
+            "peak_process_tree_rss_bytes": 143372288,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "172f1ddafa299eb1c3d58ca170a780d57e589f97d6348c209743a9f4732c7b17",
+            "output_sha256": "3b6a3efbf834ab53daebbf87acf6df41581b4f2227b649a86c7ff3be8262a7a1"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 2.81,
+            "peak_process_tree_rss_bytes": 174022656,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "1f05af7398dd1ad21a7c384f3cb1419fc5ee298ea909048ae2462b6e7da72ec4",
+            "output_sha256": "8e57b6374f73461290096bf95195c9aea65dddc20ca932535712071934b4a1e9",
+            "mapped_verilog_sha256": "2390585a40ceb6afa856378d1554212ab71045e7e4522dc4eae0b35fb81e306a"
+          }
+        },
+        "options": [],
+        "build_configuration": null,
+        "elapsed_seconds": 10.21,
+        "lut_cells": 32,
+        "flip_flops": 160,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 2,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$25689$lut$aiger$o344",
+            "type": "LUT2"
+          }
+        ],
+        "cell_counts": {
+          "DSP48E1": 2,
+          "FDRE": 160,
+          "LUT2": 32
+        },
+        "resources": {
+          "logic_lut_cells": 32,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 32,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 160,
+          "dsp48e1": 2,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 0,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "DSP48E1": 2,
+            "FDRE": 160,
+            "LUT2": 32
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 3,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 3,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/synthesis/bounded_dsp_chain/mapped.v",
+          "sha256": "2390585a40ceb6afa856378d1554212ab71045e7e4522dc4eae0b35fb81e306a",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        },
+        "wide_alu_mapping": {
+          "dsp_budget": 2,
+          "dsp_reserve": 0,
+          "existing_dsp_cells": 0,
+          "additional_dsp_cells": 2,
+          "resulting_dsp_cells": 2,
+          "minimum_width": 24,
+          "maximum_width": 48,
+          "candidate_cells": 2,
+          "blocked_by_existing_combinational_dsp": [],
+          "selected": [
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$2193",
+              "width": 32,
+              "variable_operand_bits": 64,
+              "score": 96
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$2196",
+              "width": 32,
+              "variable_operand_bits": 64,
+              "score": 96
+            }
+          ],
+          "selection_rule": "Select wide arithmetic first within the DSP budget; at most two selected DSP cells on any combinational path; preserve separation from existing unregistered DSP cells",
+          "maximum_selected_combinational_dsps": 2,
+          "selected_combinational_dsp_upper_bound": 2,
+          "automatic_name_counter": 2199,
+          "automatic_name_counter_sha256": "f48a62e2da246db066d6e4e476c9ee0ef7bacfa7fbf82c83692b24d00314f287",
+          "input_sha256": "3cc0bd9ab863b2a99ec5ba86ee8c3c8c5fcbb18956160e4abcdb375f6fe72982",
+          "output_sha256": "d1f18e11fc936de4fc7711bd588e7dce424add96446f77fc86e5525b804019e1"
+        }
+      }
+    },
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
+  },
+  "numeric": {
+    "passed": true,
+    "compared_cycles": 40004,
+    "source_sha256": {
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/synthesis/bounded_dsp_chain/mapped.v": "2390585a40ceb6afa856378d1554212ab71045e7e4522dc4eae0b35fb81e306a",
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/numeric/reference.sv": "3eddd615ec133c0e8ce81b8c4e70e2e0d5c7a33351cda4f3b860ccc66a4ee7ab",
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/scripts/fpga/tests/tb_bounded_dsp_chain.sv": "52628bbc570cba61ad72acc0c0637bb45f5fa6edc902a7baf8bd902d8d4a1bb5",
+      "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b"
+    },
+    "binary_sha256": "c7c41f69471948d165d20f07164557205a7cddf2ee662d36bbbd84e51361e2a6",
+    "compile_command": [
+      "iverilog",
+      "-g2012",
+      "-s",
+      "tb_bounded_dsp_chain",
+      "-o",
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/numeric/simulation.vvp",
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/synthesis/bounded_dsp_chain/mapped.v",
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/numeric/reference.sv",
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/scripts/fpga/tests/tb_bounded_dsp_chain.sv",
+      "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v"
+    ],
+    "log_sha256": "82bb695c39d728ef0bc5ac74d3b49029335f87499eea314af3b6cd144715bc31"
+  },
+  "formal": {
+    "method": "Combinational SAT over every defined input; official Yosys $alu and DSP48E1 models",
+    "properties": [
+      "X equality",
+      "Y equality",
+      "all CO bits equality"
+    ],
+    "source_sha256": {
+      "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/scripts/fpga/techmap/wide_alu_dsp.sv": "5f3550f7b3b1250d8c7fdcc9888051bbf3fcc52715bc637f41f33a6afdc4e0ed",
+      "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/simlib.v": "a7df1f7cbf09c98d96f791c7b11ab55e64dd197663f67aa6a9d4ada13a61cd82"
+    },
+    "runs": [
+      {
+        "case": "a32_b32_y32_s00",
+        "a_width": 32,
+        "b_width": 32,
+        "y_width": 32,
+        "a_signed": 0,
+        "b_signed": 0,
+        "defined_input_bits": 66,
+        "passed": true
+      }
+    ],
+    "selected_inputs": {
+      "selected_netlist_sha256": "3cc0bd9ab863b2a99ec5ba86ee8c3c8c5fcbb18956160e4abcdb375f6fe72982",
+      "selection_sha256": "3ac33ec846d91abf00b62273e5f30f2f3f4c6c06fd8996daf03a59199a404fc9",
+      "selected_cell_count": 2
+    },
+    "passed": true
+  },
+  "tool_sha256": {
+    "scripts/fpga/map_wide_alu.py": "8a9a23c552ad1a98791d963ef67d4f876d21905dc2689c4d52539059f9106c22",
+    "scripts/fpga/open_fpga_synth.py": "22a8b9bac086604875a6962a31031af84bbd57dd732f423934b4b4b594ff96f7",
+    "scripts/fpga/test_map_wide_alu.py": "1d122ede6d5c907c00d75b0b6831b2cc447928669dd53c1468fe310f0d39fe1b",
+    "scripts/fpga/test_import_elaboration.py": "e98e103a8c0c7e4b8b797f089fbd17b46613089c46004de42d2c75587e0ab3f2"
+  },
+  "checkpoint_import_tests": 7,
+  "checkpoint_reuse_synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667,
+    "cases": {
+      "bounded_dsp_chain": {
+        "top": "bounded_dsp_chain",
+        "configuration": "Two complete 32-bit arithmetic stages separated by XOR",
+        "sources_sha256": {
+          "scripts/fpga/tests/bounded_dsp_chain.sv": "cd82f44020d80bb8f3651d3381632132e9ac7d11f375dc5e337658398ac13689",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "parameters": {},
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 0.0,
+            "peak_process_tree_rss_bytes": 0,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "imported_from": "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/synthesis/bounded_dsp_chain",
+            "source_manifest_sha256": "6a8222c795b2c1eb297c23e4c42ccca3c53ecf76de5fa9e176e0f7b2b5b0541b",
+            "source_stage": {
+              "elapsed_seconds": 1.2,
+              "peak_process_tree_rss_bytes": 146124800,
+              "memory_sample_interval_seconds": 0.2,
+              "script": "01_elaborate.ys",
+              "log": "01_elaborate.log",
+              "script_sha256": "a1e15c67d5fa6c28ceb8335c5f14018870b0451cf680e990d6374523622b078c",
+              "output_sha256": "7d353d42ce5f505498e0ab2ab61a65faa1fbe2040a1c40f13a4d5e7e79a1e66b"
+            },
+            "script_sha256": "52b0abfcd6916ea0cfa699d016b32a3321ae74d195100b6258027e06e299fc30",
+            "output_sha256": "7d353d42ce5f505498e0ab2ab61a65faa1fbe2040a1c40f13a4d5e7e79a1e66b"
+          },
+          "02a_pre_alu": {
+            "elapsed_seconds": 0.0,
+            "peak_process_tree_rss_bytes": 0,
+            "script": "02a_pre_alu.ys",
+            "log": "02a_pre_alu.log",
+            "imported_from": "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/synthesis/bounded_dsp_chain",
+            "source_manifest_sha256": "6a8222c795b2c1eb297c23e4c42ccca3c53ecf76de5fa9e176e0f7b2b5b0541b",
+            "source_stage": {
+              "elapsed_seconds": 4.32,
+              "peak_process_tree_rss_bytes": 143671296,
+              "memory_sample_interval_seconds": 0.2,
+              "script": "02a_pre_alu.ys",
+              "log": "02a_pre_alu.log",
+              "script_sha256": "382084d8ec3e14dc17d91d1efe4c23b6c8efc29bfbc2cf4551af94c32f3a2bd1",
+              "output_sha256": "3cc0bd9ab863b2a99ec5ba86ee8c3c8c5fcbb18956160e4abcdb375f6fe72982"
+            },
+            "script_sha256": "abcbd2bf7cff30493be7260a7e56f203aec43f5a77cff82d3efff338e10bde1e",
+            "output_sha256": "3cc0bd9ab863b2a99ec5ba86ee8c3c8c5fcbb18956160e4abcdb375f6fe72982"
+          },
+          "02b_map_alu": {
+            "elapsed_seconds": 0.2,
+            "peak_process_tree_rss_bytes": 49152,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02b_map_alu.command.json",
+            "log": "02b_map_alu.log",
+            "script_sha256": "01050e7739f88a2ead5b223c540dc8bb2278024961cc969a3b5a3adb83c808a1",
+            "output_sha256": "ac93948cd8c697a6363224f77e8e3a8aa921a536cde9d552556a72b9bef24124",
+            "automatic_name_counter_sha256": "f48a62e2da246db066d6e4e476c9ee0ef7bacfa7fbf82c83692b24d00314f287"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 1.41,
+            "peak_process_tree_rss_bytes": 149905408,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "a037674bc0531ecf19aac8f8f5656a632fd9e4655ba64ee8bda31dee092c2946",
+            "output_sha256": "f5b8600840cee77aad995e104b67de10dcc047d8901a3434d32b73c058c67464"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 2.61,
+            "peak_process_tree_rss_bytes": 174116864,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "3c82bd7a097da56fe5f7cb39ddd5fca9d6a8e2013b8794d001b8eb72eb894031",
+            "output_sha256": "df317b3b2ac09f7364d2e91554480bdb48e102ec4dac9a4f06b669188668bab1",
+            "mapped_verilog_sha256": "0992e5509154ce501bf9f0e024723fd454bb3a630515a95a6d94ffdd392212a4"
+          }
+        },
+        "options": [],
+        "build_configuration": null,
+        "elapsed_seconds": 4.47,
+        "lut_cells": 32,
+        "flip_flops": 160,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 1,
+        "carry4": 8,
+        "longest_combinational_path_cells": 9,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$26254$lut$aiger$o269",
+            "type": "LUT3"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[3].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[4].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[5].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[6].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$2196.genblk1.slice[7].genblk1.carry4",
+            "type": "CARRY4"
+          }
+        ],
+        "cell_counts": {
+          "CARRY4": 8,
+          "DSP48E1": 1,
+          "FDRE": 160,
+          "LUT3": 32
+        },
+        "resources": {
+          "logic_lut_cells": 32,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 32,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 160,
+          "dsp48e1": 1,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 8,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 8,
+            "DSP48E1": 1,
+            "FDRE": 160,
+            "LUT3": 32
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 10,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 10,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/workspace/scratch/76fc8a977a8f/worktrees/dsp_mapping/build/bounded_dsp_chain/reused/bounded_dsp_chain/mapped.v",
+          "sha256": "0992e5509154ce501bf9f0e024723fd454bb3a630515a95a6d94ffdd392212a4",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        },
+        "wide_alu_mapping": {
+          "dsp_budget": 2,
+          "dsp_reserve": 0,
+          "existing_dsp_cells": 0,
+          "additional_dsp_cells": 1,
+          "resulting_dsp_cells": 1,
+          "minimum_width": 24,
+          "maximum_width": 48,
+          "candidate_cells": 2,
+          "blocked_by_existing_combinational_dsp": [],
+          "selected": [
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$2193",
+              "width": 32,
+              "variable_operand_bits": 64,
+              "score": 96
+            }
+          ],
+          "selection_rule": "Select 24 to 48 bit arithmetic first, then narrower independent cells; highest estimated area within each group; no combinational path between selected DSP cells or an existing unregistered DSP",
+          "automatic_name_counter": 2199,
+          "automatic_name_counter_sha256": "f48a62e2da246db066d6e4e476c9ee0ef7bacfa7fbf82c83692b24d00314f287",
+          "input_sha256": "3cc0bd9ab863b2a99ec5ba86ee8c3c8c5fcbb18956160e4abcdb375f6fe72982",
+          "output_sha256": "ac93948cd8c697a6363224f77e8e3a8aa921a536cde9d552556a72b9bef24124"
+        }
+      }
+    },
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
+  }
+}

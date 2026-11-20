@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "input_sha256": "4040a84287df2f59d234ca2afa909c304b41e30cfae3815b036172a5661405f2",
+  "mapped_sha256": "1208e66ed5626950980e9794df0b49928917f9c27c96658f9ce539a56c6f8b14",
+  "selection_sha256": "25292665ef43809a16ae1088f22983f040e9db0be3adb1dc24fd6f7dbed28ab8",
+  "source_sha256": {
+    "scripts/fpga/lut_dependencies.py": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88",
+    "scripts/fpga/map_wide_alu.py": "f028b28a68c7bac1e0e8937199b8a6a57df73819081b405177eb6622e1dbd5be",
+    "scripts/fpga/netlist_metrics.py": "10e6d60b3680d45bd5079443412e4af00277390237ba6a66597da5755b68e976",
+    "scripts/fpga/open_fpga_synth.py": "b1cb1fe197555401127944724db24aa06eb6f6c2562d9710a361cd1042303a6f",
+    "scripts/fpga/test_lut_dependencies.py": "e6112f33010717d0469d26b096f449c392d3bddf31dc03d5ba06eef7672e937c",
+    "test/lut_dependencies/check_checkpoint.py": "b983217007c94823faf262fb231716b02c659e207b6aa73281827b0b384e3e2b",
+    "test/vector_address_dsp/inspect_paths.py": "e7855db4796b9c42c3aef96d2f773c642de123b67ba2aeee325829d584234379"
+  },
+  "unit_tests_passed": 76,
+  "unit_test_log_sha256": "6ea5391bbeb04d6ca676203251a4b36d7a4e6056e3e93f78af2b4df8d5ab1a4d",
+  "existing_dsp_cells": 362,
+  "selected_dsp_cells": 378,
+  "maximum_selected_combinational_dsps": 1,
+  "resulting_dsp_cells": 740,
+  "checked_existing_combinational_dsps": 112,
+  "selected_dsp_combinational_predecessors": 0,
+  "selected_to_existing_combinational_dsp_paths": 0,
+  "netlist_change": "Only the selected $alu cell types become $__FPGA_DSP_ALU.",
+  "dependency_check": "Independent original-pin truth-table enumeration and backward traversal across combinational cells."
+}

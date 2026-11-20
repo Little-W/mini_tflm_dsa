@@ -1,0 +1,349 @@
+{
+  "reference": "2f06471c1b4647d406026a4caadb6ba60b140859",
+  "verification": {
+    "passed": true,
+    "reference": "2f06471c",
+    "profiles": [
+      {
+        "width": 1,
+        "proven_bits": 11,
+        "passed": true,
+        "formal_log_sha256": "4847ea2f08a18b3c1c7b683a3502e9a5ba7cf15c32b923662902f4406819503e"
+      },
+      {
+        "width": 2,
+        "proven_bits": 14,
+        "passed": true,
+        "formal_log_sha256": "f5629d3449ea455bb7891ca4c02bb328f54c0b7b730aace5c53f07865c67d8b0"
+      },
+      {
+        "width": 34,
+        "proven_bits": 110,
+        "passed": true,
+        "formal_log_sha256": "61464e594b514ace151b2cd9b6d83832dd6411a283e009e8313fbe46b3d73f5c"
+      },
+      {
+        "width": 35,
+        "proven_bits": 113,
+        "passed": true,
+        "formal_log_sha256": "1f2256f2414264b7cf11c04b6748e6849e45aae7f6b6e52f94a22c6489ec5258"
+      },
+      {
+        "width": 36,
+        "proven_bits": 116,
+        "passed": true,
+        "formal_log_sha256": "0e95b4eeb07c145211cae38054c1a26b161a2fd4104d10c4d89e0f37d0baee57"
+      },
+      {
+        "width": 54,
+        "proven_bits": 170,
+        "passed": true,
+        "formal_log_sha256": "177b33fc4c26738a1977ab06346c096023bc8b1ba8d443fdda6b5a26e3d24565"
+      },
+      {
+        "width": 64,
+        "proven_bits": 200,
+        "passed": true,
+        "formal_log_sha256": "a306f7c434cc7ec9e51c2611425f046e943545ec5408b2de362b771b4648cfc0"
+      },
+      {
+        "width": 67,
+        "proven_bits": 209,
+        "passed": true,
+        "formal_log_sha256": "e5311e84dadb85282d0d5cba8902505f62132b9f3b3a5db46e81fc51d3505cb9"
+      },
+      {
+        "width": 73,
+        "proven_bits": 227,
+        "passed": true,
+        "formal_log_sha256": "470366f8998cd51a2d60534e133ebbbab61f20c42d3e0f338200654cc5f51fb3"
+      }
+    ],
+    "all_public_outputs_compared": true,
+    "all_register_states_compared": true,
+    "invalid_data_compared": true,
+    "axi_wrappers_identical": true,
+    "formal_inputs_constrained": false,
+    "four_state_cycles": 100000,
+    "four_state_output_checks": 1800009,
+    "source_sha256": "eea1fa16633eb2411a742e3e60ed685bbfb41e7dfa1cf10baf7f472b52afab3f",
+    "reference_sha256": "803d1b3119bde96571c7acb60c5207e52ec2dd1396537faff6319cadcef9291a",
+    "official_lut_model_sha256": "6bfd4f0d806e4b84dbfedefaef6c12cef6eef9c6bebb920c36c25baf5baf800b",
+    "testbench_sha256": "ed242c7971c921c5d91cbbba60b09168e747391a87868a046dda847eee898422"
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "cases": {
+      "reference2": {
+        "configuration": {
+          "WIDTH": 2
+        },
+        "lut_cells": 10,
+        "flip_flops": 8,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 8,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT3": 2,
+          "LUT4": 2,
+          "LUT5": 4
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "20f70f1a10022fe6079eb01460391675358ffb64f72e72f8691947d5901b2354",
+        "mapped_json_sha256": "bcaf078191b9a66b7d427a2e4119175c419bd6d3efa6f0e35ad320e851dd139a",
+        "pre_lut_sha256": "5c111ac0a6fc1685eadffb6313a2c208e4f6d08d6b886b77c236e3289f9c6db6",
+        "peak_process_tree_rss_bytes": 168185856
+      },
+      "current2": {
+        "configuration": {
+          "WIDTH": 2
+        },
+        "lut_cells": 9,
+        "flip_flops": 8,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 8,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT4": 2,
+          "LUT5": 4,
+          "LUT6_2": 1
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "9f82b6e5f9bf296467342227d7f5de3195346d6b7c7b7388f425aa8639c05ce1",
+        "mapped_json_sha256": "894b944ab4afcbd0fa149beb6bccb77764934910b426c2ba1b6958a74eca6f16",
+        "pre_lut_sha256": "6cbc539b623e2344415c35644c05789a62fc55dabc9752b3b6dc836ad2af3501",
+        "peak_process_tree_rss_bytes": 169111552
+      },
+      "reference35": {
+        "configuration": {
+          "WIDTH": 35
+        },
+        "lut_cells": 43,
+        "flip_flops": 74,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 74,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT3": 35,
+          "LUT4": 2,
+          "LUT5": 4
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "a5ef50cf0b8caf7a201a801f4cf8dd379210d3ad3726ee7164cab83711a7fa0c",
+        "mapped_json_sha256": "7ad17df3d3c322cc669d508a2f95f8a8798eb6bcf2c47f57fc56dc1d42c63567",
+        "pre_lut_sha256": "590998fca683539b480f886f13dcc6005d5e997835e03a7c010fab46596646cd",
+        "peak_process_tree_rss_bytes": 168648704
+      },
+      "current35": {
+        "configuration": {
+          "WIDTH": 35
+        },
+        "lut_cells": 26,
+        "flip_flops": 74,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 74,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT3": 1,
+          "LUT4": 2,
+          "LUT5": 4,
+          "LUT6_2": 17
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "232c3a1bb7f838adaffc07b243762dc98395762a715c1b104ed4f4b26a6988eb",
+        "mapped_json_sha256": "0cedc3cdec20a9043c27c7a749f6b0c52b283e629878fb9e2aedfea3c23b49b7",
+        "pre_lut_sha256": "b56c4c530b6aa32a907358940631ade3f145cce79090486ab2835c3a5f443d1a",
+        "peak_process_tree_rss_bytes": 168628224
+      },
+      "reference64": {
+        "configuration": {
+          "WIDTH": 64
+        },
+        "lut_cells": 72,
+        "flip_flops": 132,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 132,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT3": 64,
+          "LUT4": 2,
+          "LUT5": 4
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "0c605e5051dcffd0f3c04231d9410e835b7533f045675a733b5501708b29fe8f",
+        "mapped_json_sha256": "03c1e9f1a0cfa1ed981bd203e4365d6813567f347889d342f82428e7d9204168",
+        "pre_lut_sha256": "b2b95e981e2c5647c5fe2da5c4dbc64285ecac00366e2772499559be497771fd",
+        "peak_process_tree_rss_bytes": 169377792
+      },
+      "current64": {
+        "configuration": {
+          "WIDTH": 64
+        },
+        "lut_cells": 40,
+        "flip_flops": 132,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 132,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT4": 2,
+          "LUT5": 4,
+          "LUT6_2": 32
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "2f605ca96cbd109400b807bcdfc4548007c44cd33963bd03c49e032d692aca3a",
+        "mapped_json_sha256": "f1fd21ff7f1432fd81f51e01520a809def290aeb7e50b321aa8c820e3c7550f2",
+        "pre_lut_sha256": "8eaf74040de93444d0d084a40d2a4ce33e2aa03e4f132185e975861c75a7538d",
+        "peak_process_tree_rss_bytes": 170606592
+      },
+      "reference73": {
+        "configuration": {
+          "WIDTH": 73
+        },
+        "lut_cells": 81,
+        "flip_flops": 150,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 150,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT3": 73,
+          "LUT4": 2,
+          "LUT5": 4
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "c218414f256468d8e01b9c276f1eab2dd578f07c90db54366ac33e7552b677a7",
+        "mapped_json_sha256": "bb6aea24b83b14150ce40007f1d4847a0059b5ce3784329b9f3e7d01577c5cbf",
+        "pre_lut_sha256": "fe4f023691934724bde663f75b28e67509bbe35135e111133fbf2f784b6ee364",
+        "peak_process_tree_rss_bytes": 170393600
+      },
+      "current73": {
+        "configuration": {
+          "WIDTH": 73
+        },
+        "lut_cells": 45,
+        "flip_flops": 150,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "longest_combinational_path_cells": 1,
+        "longest_register_path_cells": 1,
+        "cell_counts": {
+          "FDRE": 150,
+          "INV": 1,
+          "LUT2": 2,
+          "LUT3": 1,
+          "LUT4": 2,
+          "LUT5": 4,
+          "LUT6_2": 36
+        },
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 1,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog_sha256": "1c8e0b0e8f33ac94109c4ae326ec212f9c1c5b64e129a680651bf08ebe925234",
+        "mapped_json_sha256": "67fea2a3fb1c9d2c75682576bf9e6f196f7dfcae8e021386da86d524a9113244",
+        "pre_lut_sha256": "62d3fbbcc3d2d2f37c47bc00c095d455a708790e44586840339ef99a0cfb949c",
+        "peak_process_tree_rss_bytes": 169783296
+      }
+    }
+  },
+  "scope": "Standalone mapped channel; full SoC physical LUT sites require placement."
+}

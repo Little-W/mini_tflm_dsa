@@ -1,0 +1,438 @@
+{
+  "reference_revision": "a0e01073",
+  "source_sha256": {
+    "rtl/npu/loaders/ia_loader_ctrl.sv": "9c749070b2362549f096a02a004291d6df874634812722726bb6ef3a7645c25f",
+    "rtl/npu/loaders/ia_loader.sv": "3072b3687fd9852f9b8262232e63bd798b6d195c652a732ade562599207be3c0",
+    "rtl/npu/loaders/ia_loader_cache_mgr.sv": "766cd780703bdae5f8b6070d6457f303a3d158cacb207383a313dcbd916fc94b"
+  },
+  "registered_latency_changed": false,
+  "configuration_capture_condition": "state == IDLE && init_cfg",
+  "formal": {
+    "reference_rev": "a0e01073",
+    "source_input_constraints": false,
+    "source_sha256": {
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "9c749070b2362549f096a02a004291d6df874634812722726bb6ef3a7645c25f",
+      "rtl/npu/loaders/ia_loader.sv": "3072b3687fd9852f9b8262232e63bd798b6d195c652a732ade562599207be3c0",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "766cd780703bdae5f8b6070d6457f303a3d158cacb207383a313dcbd916fc94b"
+    },
+    "common_sha256": {
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+      "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+      "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+    },
+    "reference_observation": "frame_last_rows_q",
+    "runs": [
+      {
+        "name": "loader_production",
+        "top": "ia_loader",
+        "options": [
+          "-GSIZE=16",
+          "-GBUS_WIDTH=64",
+          "-GCACHE_BLOCKS=32",
+          "-GCOUNT_WIDTH=29",
+          "-GEXTERNAL_RAM=1",
+          "-GORDERED_JOB=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 11528,
+        "log_sha256": "1bb84d052669003f379cbf75182da0df3e03f799f2354249c7999a5041cb5f55"
+      },
+      {
+        "name": "loader_full_count",
+        "top": "ia_loader",
+        "options": [
+          "-GSIZE=16",
+          "-GBUS_WIDTH=64",
+          "-GCACHE_BLOCKS=32",
+          "-GEXTERNAL_RAM=1",
+          "-GORDERED_JOB=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 11573,
+        "log_sha256": "6ed337f5fdf2d62aab9c707cc803a036376908ce30cd66c3e80191be27f91ddc"
+      },
+      {
+        "name": "loader_generic",
+        "top": "ia_loader",
+        "options": [
+          "-GSIZE=16",
+          "-GBUS_WIDTH=32",
+          "-GCACHE_BLOCKS=4",
+          "-GCOUNT_WIDTH=8",
+          "-GEXTERNAL_RAM=1",
+          "-GORDERED_JOB=0"
+        ],
+        "passed": true,
+        "equivalent_bits": 9484,
+        "log_sha256": "38853a897723b44697b9f20275113cff6de2c3dfd80ae1b3a11696f15ac352ac"
+      },
+      {
+        "name": "loader_local3",
+        "top": "ia_loader",
+        "options": [
+          "-GSIZE=3",
+          "-GBUS_WIDTH=32",
+          "-GCACHE_BLOCKS=4",
+          "-GCOUNT_WIDTH=8",
+          "-GEXTERNAL_RAM=0",
+          "-GORDERED_JOB=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 6259,
+        "log_sha256": "de9f4919fa748f44ea754fd8167d801c40f5a48a64d6064ef1b51bdb63bc962e"
+      },
+      {
+        "name": "loader_small",
+        "top": "ia_loader",
+        "options": [
+          "-GSIZE=4",
+          "-GBUS_WIDTH=32",
+          "-GCACHE_BLOCKS=4",
+          "-GCOUNT_WIDTH=4",
+          "-GEXTERNAL_RAM=0",
+          "-GORDERED_JOB=1"
+        ],
+        "passed": true,
+        "equivalent_bits": 6536,
+        "log_sha256": "99278b8b73efd127cffb64ce28e540805a56751b9e81803a35582376a6f27d7f"
+      },
+      {
+        "name": "ctrl3",
+        "top": "ia_loader_ctrl",
+        "options": [
+          "-GSIZE=3",
+          "-GBUS_WIDTH=32",
+          "-GCACHE_BLOCKS=4"
+        ],
+        "passed": true,
+        "equivalent_bits": 1750,
+        "log_sha256": "07cfbdd30df7a7d0814a0c16a74bc8efdb7b568361864bbcf54b21e529490481"
+      },
+      {
+        "name": "ctrl16",
+        "top": "ia_loader_ctrl",
+        "options": [
+          "-GSIZE=16",
+          "-GBUS_WIDTH=64",
+          "-GCACHE_BLOCKS=32",
+          "-GCOUNT_WIDTH=29"
+        ],
+        "passed": true,
+        "equivalent_bits": 2527,
+        "log_sha256": "ad790f9f89b53cdd2c6de6586cd25f3c67045f7322e08a244034436c55bbfaba"
+      },
+      {
+        "name": "ctrl32",
+        "top": "ia_loader_ctrl",
+        "options": [
+          "-GSIZE=32",
+          "-GBUS_WIDTH=64",
+          "-GCACHE_BLOCKS=4"
+        ],
+        "passed": true,
+        "equivalent_bits": 1869,
+        "log_sha256": "61dd659b63a9b3461fb3e10d21c1ee4ef1bab0253bc4882edfce5e219f5f894d"
+      }
+    ],
+    "passed": true,
+    "summary": "build/ia_frame_rows/formal_final/summary.json",
+    "summary_sha256": "6e9df2bd650de720fd8f50e800f3a64e5c2bb41ad597aee255877434bb89929b",
+    "equivalent_bits": 51526
+  },
+  "numeric": {
+    "reference_rev": "a0e01073",
+    "compared_outputs": [
+      "prefetch_idle",
+      "load_ia_req",
+      "ext_dma_start",
+      "ext_dma_is_write",
+      "ext_dma_linear_read_mode",
+      "ext_dma_im2col",
+      "ext_dma_p0",
+      "ext_dma_q0",
+      "ext_dma_group",
+      "ext_dma_base_addr",
+      "ext_dma_row_stride",
+      "ext_dma_rows_to_read",
+      "ext_dma_burst_len_m1",
+      "ext_dma_slot_id",
+      "ext_dma_use_16bits",
+      "ext_dma_lhs_zp",
+      "ram_port_wr_en",
+      "ram_port_wr_addr",
+      "ram_port_wr_data",
+      "ram_port_wr_mask",
+      "ram_port_rd_en",
+      "ram_port_rd_addr",
+      "ia_out",
+      "ia_row_valid",
+      "ia_is_init_data",
+      "ia_calc_done",
+      "ia_tile_start",
+      "ia_sending_done",
+      "ia_data_valid",
+      "ps_frame_rows",
+      "ps_frame_id",
+      "ps_frame_init",
+      "ps_frame_final",
+      "ia_output_pending",
+      "bias_sleep",
+      "bias_load_sleep",
+      "bias_switch",
+      "bias_last_loop",
+      "ia_l1_switch"
+    ],
+    "source_sha256": {
+      "rtl/npu/loaders/ia_loader.sv": "3072b3687fd9852f9b8262232e63bd798b6d195c652a732ade562599207be3c0",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "9c749070b2362549f096a02a004291d6df874634812722726bb6ef3a7645c25f",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "766cd780703bdae5f8b6070d6457f303a3d158cacb207383a313dcbd916fc94b"
+    },
+    "generated_sha256": {
+      "ia_loader_checked.sv": "4bc7b3e4c7cb344459a433d00018fc33565afd4e8eb2678719aecf36c95e6a6c",
+      "ia_loader_cache_mgr_reference.sv": "cf4262faa56f5140caeb3e201e7a1a08cd82fadaa1a17f30f21907f14754baa9",
+      "ia_loader_ctrl_reference.sv": "5ad02b4d8854934616d319e15a9e5dbf65c46c27b98a5327f5e22a7374a3af77",
+      "ia_loader_reference.sv": "f84203abba9c64c4469439eff6aeee244afc04eae438c8361db6fdc4570f149e",
+      "verilator_compare": "410ca8258d55efa798964f4e1ff8272baf3283404696a2b6d4423a2afa5c468e"
+    },
+    "runs": [
+      {
+        "case": "prefetch_generic",
+        "passed": true,
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/test/ia_compact/run_prefetch.py",
+          "--out",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/prefetch_generic",
+          "--verilator",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/verilator_compare"
+        ],
+        "cycles": 57160,
+        "cases": null,
+        "commands": 251,
+        "value_checks": 179920,
+        "summary": "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/prefetch_generic/summary.json"
+      },
+      {
+        "case": "prefetch_ordered",
+        "passed": true,
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/test/ia_compact/run_prefetch.py",
+          "--out",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/prefetch_ordered",
+          "--verilator",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/verilator_compare",
+          "--ordered-job"
+        ],
+        "cycles": 57835,
+        "cases": null,
+        "commands": 251,
+        "value_checks": 179920,
+        "summary": "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/prefetch_ordered/summary.json"
+      },
+      {
+        "case": "grouped32",
+        "passed": true,
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/test/ia_compact/run.py",
+          "--out",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/grouped32",
+          "--verilator",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/verilator_compare",
+          "--only",
+          "loader",
+          "--loader-cache-blocks",
+          "32"
+        ],
+        "cycles": 122287,
+        "cases": 81,
+        "commands": null,
+        "value_checks": 724032,
+        "summary": "/workspace/scratch/76fc8a977a8f/worktrees/compute_ia_rows/build/ia_frame_rows/interface/grouped32/summary.json"
+      }
+    ],
+    "passed": true,
+    "summary": "build/ia_frame_rows/interface/summary.json",
+    "summary_sha256": "922653d4eb395e8e325afbf59db40a66585fc8a16c3b59638f409f1b066458cc",
+    "total_cycles": 237282,
+    "total_value_checks": 1083872
+  },
+  "synthesis": {
+    "native": {
+      "reference": {
+        "directory": "build/ia_frame_rows/native/loader_reference",
+        "resources": {
+          "logic_lut_cells": 5676,
+          "distributed_ram_lut_sites_nominal": 176,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 5852,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 3073,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 418,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 418,
+            "FDCE": 2103,
+            "FDPE": 41,
+            "FDRE": 929,
+            "INV": 157,
+            "LUT2": 1366,
+            "LUT3": 1078,
+            "LUT4": 1032,
+            "LUT5": 1188,
+            "LUT6": 1012,
+            "MUXF7": 10,
+            "MUXF8": 4,
+            "RAM64M": 44
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 12,
+        "graph_complete": true,
+        "frame_rows_output_path_cells": 9,
+        "configuration_input_path_cells": {
+          "row_tail_tiles": 0,
+          "k": 0
+        },
+        "metrics_sha256": "be0b63f5de25216312d7566c49d095d1910e42431469343c4d1766eff20a1898",
+        "paths_sha256": "a12e2c17e336a31e108cc80c4e696a742e726ab70212987ace6bf2fc6902942f",
+        "mapped_sha256": "a15ad8041c8a956a7424f1b703763a204fcb79712714b315e3739d750d6a1854"
+      },
+      "current": {
+        "directory": "build/ia_frame_rows/native/loader_current",
+        "resources": {
+          "logic_lut_cells": 5728,
+          "distributed_ram_lut_sites_nominal": 176,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 5904,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 3080,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 418,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 418,
+            "FDCE": 2082,
+            "FDPE": 69,
+            "FDRE": 929,
+            "INV": 183,
+            "LUT2": 1357,
+            "LUT3": 1181,
+            "LUT4": 951,
+            "LUT5": 1177,
+            "LUT6": 1062,
+            "MUXF7": 13,
+            "MUXF8": 4,
+            "RAM64M": 44
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 12,
+        "graph_complete": true,
+        "frame_rows_output_path_cells": 1,
+        "configuration_input_path_cells": {
+          "row_tail_tiles": 8,
+          "k": 10
+        },
+        "metrics_sha256": "a9697bf315c90adbd42ea59dc7056b4c856d82389d91668a0d60f6a5b2aa2bd6",
+        "paths_sha256": "dd58a175e1df503f88b462d92c9f070e21c6744e983b1144325261e40dcc6411",
+        "mapped_sha256": "ea0d15b84402a2b0e8273e3f353103f0e5832d18d728a52d497876e6a6f69854"
+      }
+    },
+    "physical": {
+      "reference": {
+        "directory": "build/ia_frame_rows/physical/loader_reference",
+        "resources": {
+          "logic_lut_cells": 5080,
+          "distributed_ram_lut_sites_nominal": 176,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 5256,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 3073,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 412,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 412,
+            "FDCE": 2103,
+            "FDPE": 41,
+            "FDRE": 929,
+            "INV": 163,
+            "LUT1": 4,
+            "LUT2": 974,
+            "LUT3": 1059,
+            "LUT4": 702,
+            "LUT5": 958,
+            "LUT6": 1383,
+            "MUXF7": 85,
+            "RAM64M": 44
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 13,
+        "graph_complete": true,
+        "frame_rows_output_path_cells": 9,
+        "configuration_input_path_cells": {
+          "row_tail_tiles": 0,
+          "k": 0
+        },
+        "metrics_sha256": "d9bc753f7e310e5a6740d2f08e9138c4536ad7f0c25f8d8d88fdeb770895522f",
+        "paths_sha256": "82a23c9c6dfddeb7117f084aae048488c270de13623e65dc78076a70e9102f01",
+        "mapped_sha256": "d745a77fd90399a065aabb432c953a0c7ae031765c78dcb1573fd94544842f93"
+      },
+      "current": {
+        "directory": "build/ia_frame_rows/physical/loader_current",
+        "resources": {
+          "logic_lut_cells": 5005,
+          "distributed_ram_lut_sites_nominal": 176,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 5181,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 3080,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 408,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 408,
+            "FDCE": 2082,
+            "FDPE": 69,
+            "FDRE": 929,
+            "INV": 189,
+            "LUT1": 4,
+            "LUT2": 915,
+            "LUT3": 1099,
+            "LUT4": 727,
+            "LUT5": 868,
+            "LUT6": 1392,
+            "MUXF7": 88,
+            "RAM64M": 44
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 13,
+        "graph_complete": true,
+        "frame_rows_output_path_cells": 1,
+        "configuration_input_path_cells": {
+          "row_tail_tiles": 9,
+          "k": 11
+        },
+        "metrics_sha256": "6f45c9a27351ee9e568d097047d7c9de92484afe8fd2015d302bcbfe016dad4e",
+        "paths_sha256": "cda392c702b661dd198f4c6f4e249cc218cc082fc56951fb4394e6f92bd9c164",
+        "mapped_sha256": "8d753b489e99160059d1046555fb45c49e0008f9ffc489f52933dfb8a3693480"
+      }
+    }
+  }
+}

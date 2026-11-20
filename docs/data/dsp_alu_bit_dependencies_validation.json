@@ -1,0 +1,987 @@
+{
+  "arithmetic": {
+    "passed": true,
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "primitive_model_sha256": "06c0afa55249f4a5c8ca1bd8fae0e7d870ae423928f1fd32ba53833cacbf1b1e",
+    "test_sha256": "4cf0b3215190af1b278dd90d5494a92c2e3b028e7237529169eed27c38e4c9bc",
+    "analyzer_sha256": "1ef2e28acc2d882eef197e26e63f2d15118598b9c80bcd02ef3762587b0bc86e",
+    "mode": {
+      "USE_MULT": "NONE",
+      "USE_SIMD": "ONE48",
+      "OPMODE": "0110011",
+      "CARRYINSEL": "000",
+      "INMODE": "00000"
+    },
+    "arbitrary_input_bits": 197,
+    "ALUMODE_constrained": false,
+    "high_operand_bits_independent": true,
+    "runs": [
+      {
+        "low_bits": 1,
+        "passed": true,
+        "log_sha256": "a65fc5a5ad196871095e44abc91cfec3c439d3a9892010bbb90b02bf0fb0abd7"
+      },
+      {
+        "low_bits": 2,
+        "passed": true,
+        "log_sha256": "0b98e0cdf45cfeae7a865829a24f68d01125defc43387a4264895af2bf8b35c5"
+      },
+      {
+        "low_bits": 3,
+        "passed": true,
+        "log_sha256": "1f2162bcebfe629cf4db9fbfdd6f1ac1147985e09e14492c7546c7bb57781871"
+      },
+      {
+        "low_bits": 4,
+        "passed": true,
+        "log_sha256": "d0596c5de57aca31767488fb9cecf4e91c7a4f37bc4684f7ef522764f68e5c76"
+      },
+      {
+        "low_bits": 5,
+        "passed": true,
+        "log_sha256": "73610ac7cec649fa7bfc31b3dde0f59e80bf2858588a520aeb251b1ff539b6df"
+      },
+      {
+        "low_bits": 6,
+        "passed": true,
+        "log_sha256": "4620eeeb1ab337a04a6039815ff8368541ca7d012112c2ed09f168a667693b3f"
+      },
+      {
+        "low_bits": 7,
+        "passed": true,
+        "log_sha256": "66341905a22a5998afcf0b1620a3cc308ec87c56d67886da8c1bca3c4d87fc2d"
+      },
+      {
+        "low_bits": 8,
+        "passed": true,
+        "log_sha256": "9f1b2cda005bc3496592c0fcc0868ebdcdf51662383f0d5800fec4760746fa41"
+      },
+      {
+        "low_bits": 9,
+        "passed": true,
+        "log_sha256": "f0392aca430adaed08fdbc787b121f9545f8e246d9c3fcace1ef1f73eeb168a9"
+      },
+      {
+        "low_bits": 10,
+        "passed": true,
+        "log_sha256": "3377fdd78ad1c1984192091373622a77e82767557a6f9e38da553944ea92a8f4"
+      },
+      {
+        "low_bits": 11,
+        "passed": true,
+        "log_sha256": "5fc6632c17310304d3a7590f08721f5ccc72550312d1070ae5eb6fa9d878ae7f"
+      },
+      {
+        "low_bits": 12,
+        "passed": true,
+        "log_sha256": "0573914b39506f5fb04afc3d7f02c1a13baa7f50087138c9ff0eb329fa2d85b9"
+      },
+      {
+        "low_bits": 13,
+        "passed": true,
+        "log_sha256": "b10f747c1d4ffa1f8ae383e54a9dee3b807e656a589c89ea4c0569caf70f56a0"
+      },
+      {
+        "low_bits": 14,
+        "passed": true,
+        "log_sha256": "3dfd714dd7219c65cfd4e0f410c05694a690468e6726a5fd45802d3ce24df082"
+      },
+      {
+        "low_bits": 15,
+        "passed": true,
+        "log_sha256": "60c71def0d7958ece7e9c683c8643592dbdb53466c7af6b5393612a75d2de48a"
+      },
+      {
+        "low_bits": 16,
+        "passed": true,
+        "log_sha256": "7546c98cf5c2f5b2011df7451c666c90b1bf5f8dfe658f78d00980e5de2604e4"
+      },
+      {
+        "low_bits": 17,
+        "passed": true,
+        "log_sha256": "46ab80b8cae249e17248aa034937fcb8cdf4f85335390293608aa87824a9cd3f"
+      },
+      {
+        "low_bits": 18,
+        "passed": true,
+        "log_sha256": "99d655a5dd6f10ac29ae0a122ce68035217cb6292c0a93c170e54f8246739df3"
+      },
+      {
+        "low_bits": 19,
+        "passed": true,
+        "log_sha256": "46dd5a4ec1734b73aa2fbd96e92776df3af5f378ce28c26aaf14c4d20980a08b"
+      },
+      {
+        "low_bits": 20,
+        "passed": true,
+        "log_sha256": "b36aac9987f8855c7e050f0298ef17275274bc6a7a349eb2c89610a7bf969f4b"
+      },
+      {
+        "low_bits": 21,
+        "passed": true,
+        "log_sha256": "acac6887b29bf3179dee0c57a00ab33c0676efb7033695fa4ab067f0956bcf44"
+      },
+      {
+        "low_bits": 22,
+        "passed": true,
+        "log_sha256": "518da1ce03affd76a60e2a9d30f29f150364ddc6b0654063aafe3a10d1250e7d"
+      },
+      {
+        "low_bits": 23,
+        "passed": true,
+        "log_sha256": "4f433a5f71d87e600b875179627e8941c3ca0f63a1b0520cef57f5ed81e81e85"
+      },
+      {
+        "low_bits": 24,
+        "passed": true,
+        "log_sha256": "853b1873e8879457cc5d4142e51c60f12b88ef796cb5ca87d1cc8cf498776a0b"
+      },
+      {
+        "low_bits": 25,
+        "passed": true,
+        "log_sha256": "73e5a5819f34cdee448eb049c24afd7f94e62472f49c4f32808c572627d783ac"
+      },
+      {
+        "low_bits": 26,
+        "passed": true,
+        "log_sha256": "e6eef5b5318ce86462d5a47b38894340f8fae36963ea4256054c2e40064eeaa1"
+      },
+      {
+        "low_bits": 27,
+        "passed": true,
+        "log_sha256": "c1046bd3d67ecdad68f03f3a8724dac09f62b75d2f1cde16bce5594de408ef50"
+      },
+      {
+        "low_bits": 28,
+        "passed": true,
+        "log_sha256": "bf72ce02f4d4893e03fbf717744d582ea26aaaf3421bb9fdc2efb8bd2431ffa8"
+      },
+      {
+        "low_bits": 29,
+        "passed": true,
+        "log_sha256": "cce11db0ccf9c469362496023992b177d116491fd12d37887b1afe19881b4583"
+      },
+      {
+        "low_bits": 30,
+        "passed": true,
+        "log_sha256": "fdb3e0d7ec15c3eca24f9ca6a1eb1643e8e3a8e54b7cfadcd912ab52f02db56a"
+      },
+      {
+        "low_bits": 31,
+        "passed": true,
+        "log_sha256": "f8e349a9066e1277a41d674918b9fd70095ca5331d9cf0f7ab263c012c5a1b0d"
+      },
+      {
+        "low_bits": 32,
+        "passed": true,
+        "log_sha256": "5ea0d10460bfea7c72f0a3d5db841aeeb84e70e169342672fd94c6e3fdc33763"
+      },
+      {
+        "low_bits": 33,
+        "passed": true,
+        "log_sha256": "7f92e489cbdfbeb8bb26af2a9432bcd6714f00fb896a0304bea8648aabeb901e"
+      },
+      {
+        "low_bits": 34,
+        "passed": true,
+        "log_sha256": "3d7a0172fce2ae8cdcc9373ea11b99756f01dd891cf0d96d5e18073210b1a686"
+      },
+      {
+        "low_bits": 35,
+        "passed": true,
+        "log_sha256": "8ecb216d189116c875fd85c8e7d4c0444f3adac2cffcd8c7f31c078ed0d18c9d"
+      },
+      {
+        "low_bits": 36,
+        "passed": true,
+        "log_sha256": "ebc0e7ab15149ccab2098777fe44995861c305227269448fd3a5efec2acff438"
+      },
+      {
+        "low_bits": 37,
+        "passed": true,
+        "log_sha256": "a26d9e8ed8123fecc75c8cef7c5f58a7da1bc695fc73f4fa3b3456d1821d2080"
+      },
+      {
+        "low_bits": 38,
+        "passed": true,
+        "log_sha256": "4140ae49e3cb68fe179d13d4486548e82dcfbea3b2e4b98c5a1b38aded5003a0"
+      },
+      {
+        "low_bits": 39,
+        "passed": true,
+        "log_sha256": "0a03f932b89eca5ca2b4be72a702f4ffe2009b857eff3aff424138cf91ccd01c"
+      },
+      {
+        "low_bits": 40,
+        "passed": true,
+        "log_sha256": "aa682b31d41faf5ef9b88649e3bdf8705ac867e38cb5d4cf9f309846647d26b9"
+      },
+      {
+        "low_bits": 41,
+        "passed": true,
+        "log_sha256": "f341a679e735e16067bf554aa1e1e50b25ef59bb9cf4ba6b35df67bdd3b34555"
+      },
+      {
+        "low_bits": 42,
+        "passed": true,
+        "log_sha256": "81ee19ef25006a3e8494662072e7677f528c2d9da24e2daa39ea0d55148f5de3"
+      },
+      {
+        "low_bits": 43,
+        "passed": true,
+        "log_sha256": "077634e1be05caacd778997ccd94310f5862def7cf1b7240f791e13d51407bf4"
+      },
+      {
+        "low_bits": 44,
+        "passed": true,
+        "log_sha256": "41c89cb4b0542da686ce2c61fb56199459b42b46a5ecc8a0258ce9285b364ab4"
+      },
+      {
+        "low_bits": 45,
+        "passed": true,
+        "log_sha256": "aefca7788df9dffb262eb6a5dba3bfb4fad7daac658ac2231979b17ff388ad81"
+      },
+      {
+        "low_bits": 46,
+        "passed": true,
+        "log_sha256": "c7531992ae4a4bcacc407213d0f44d769d304a72420bccf08509133eaae8d3e6"
+      },
+      {
+        "low_bits": 47,
+        "passed": true,
+        "log_sha256": "edbc7694670cd441e1e45a93c82481145b08c2c9a61df160c740af8f9d1b5875"
+      },
+      {
+        "low_bits": 48,
+        "passed": true,
+        "log_sha256": "7c4aa3e81e76361062642db3acc4a4dfdbe6034e08f792559e5d2c258afa71f4"
+      }
+    ]
+  },
+  "register_boundaries": {
+    "passed": true,
+    "case_count": 9,
+    "model_kind": "Yosys DSP48E1 functional model",
+    "model_file": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v",
+    "model_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "analyzer_sha256": "1ef2e28acc2d882eef197e26e63f2d15118598b9c80bcd02ef3762587b0bc86e",
+    "test_sha256": "ec2e8fde4b0f14bbb97e473e0dc1b342d01a87cc3c679da205b6a8acd1f0698c",
+    "cases": [
+      {
+        "name": "input_registers",
+        "parameters": {
+          "AREG": 1,
+          "BREG": 1,
+          "ACASCREG": 1,
+          "BCASCREG": 1
+        },
+        "observed_output": "P",
+        "model_register": "Ar2",
+        "model_combination_nodes": 3,
+        "analysis_scope": "All register boundaries",
+        "reported_register_path_cells": 1,
+        "model_connection_verified": true,
+        "model_output_sha256": "e9316bdb5ce74b7af2f27489899c05be5693c14fdaa7d71df0cf076d4e6ab33f",
+        "primitive_netlist_sha256": "6437f3920f317a332f61ae25e2512414561fefd5a7755942fa3ddf5a9ff669bf",
+        "paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_OUTPUT",
+              "net": null,
+              "detail": "DSP internal register followed by unregistered arithmetic",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_registers/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_output",
+              "internal_register_parameters": [
+                "AREG",
+                "BREG"
+              ],
+              "external_output_port": "P"
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "w_P[0]",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_registers/design.v:23.6-23.72",
+              "register_origin": null
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "INTERNAL_REGISTER_OUTPUT",
+                "output_port": "P[0]",
+                "input_net": null,
+                "output_net": "w_P[0]",
+                "input_internal_registers": [
+                  "AREG",
+                  "BREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/input_registers/design.v:12.252-21.93"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_source",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "q_a",
+              "detail": "register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_registers/design.v:6.6-6.64",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "A",
+              "net": "q_a",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_registers/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "path": []
+          }
+        ]
+      },
+      {
+        "name": "multiplier_register",
+        "parameters": {
+          "MREG": 1
+        },
+        "observed_output": "P",
+        "model_register": "Mr",
+        "model_combination_nodes": 4,
+        "analysis_scope": "All register boundaries",
+        "reported_register_path_cells": 1,
+        "model_connection_verified": true,
+        "model_output_sha256": "ef5d15ebc724b536c2b0f849ccef26ae76a282434ad6ee0ca5f250b6edcaf6b2",
+        "primitive_netlist_sha256": "61bfb0221812d8def614c02485c4d7b642bf3c075fa1308de9230930b7cb26c0",
+        "paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_OUTPUT",
+              "net": null,
+              "detail": "DSP internal register followed by unregistered arithmetic",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/multiplier_register/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_output",
+              "internal_register_parameters": [
+                "MREG"
+              ],
+              "external_output_port": "P"
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "w_P[0]",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/multiplier_register/design.v:23.6-23.72",
+              "register_origin": null
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "INTERNAL_REGISTER_OUTPUT",
+                "output_port": "P[0]",
+                "input_net": null,
+                "output_net": "w_P[0]",
+                "input_internal_registers": [
+                  "MREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/multiplier_register/design.v:12.252-21.93"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_source",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "q_a",
+              "detail": "register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/multiplier_register/design.v:6.6-6.64",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_INPUT",
+              "net": null,
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/multiplier_register/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_input",
+              "internal_register_parameters": [
+                "MREG"
+              ],
+              "external_input_port": "A"
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "A[0]",
+                "output_port": "INTERNAL_REGISTER_INPUT",
+                "input_net": "q_a",
+                "output_net": null,
+                "output_internal_registers": [
+                  "MREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/multiplier_register/design.v:12.252-21.93"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "preadder_register",
+        "parameters": {
+          "ADREG": 1,
+          "USE_DPORT": "TRUE"
+        },
+        "observed_output": "P",
+        "model_register": "ADr",
+        "model_combination_nodes": 3,
+        "analysis_scope": "All register boundaries",
+        "reported_register_path_cells": 1,
+        "model_connection_verified": true,
+        "model_output_sha256": "8a1b07c8d9cf55e209b19ba0cddbf34a1686fee0720ee61ca27fc51a9416675f",
+        "primitive_netlist_sha256": "947edaf2d834229bb2399fcaf46401b44f54712ad66ddfc1f9950eaf5ed919cd",
+        "paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_OUTPUT",
+              "net": null,
+              "detail": "DSP internal register followed by unregistered arithmetic",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/preadder_register/design.v:12.251-21.93",
+              "register_origin": "u_dsp.internal_register_output",
+              "internal_register_parameters": [
+                "ADREG"
+              ],
+              "external_output_port": "P"
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "w_P[0]",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/preadder_register/design.v:23.6-23.72",
+              "register_origin": null
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "INTERNAL_REGISTER_OUTPUT",
+                "output_port": "P[0]",
+                "input_net": null,
+                "output_net": "w_P[0]",
+                "input_internal_registers": [
+                  "ADREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/preadder_register/design.v:12.251-21.93"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_source",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "q_a",
+              "detail": "register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/preadder_register/design.v:6.6-6.64",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_INPUT",
+              "net": null,
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/preadder_register/design.v:12.251-21.93",
+              "register_origin": "u_dsp.internal_register_input",
+              "internal_register_parameters": [
+                "ADREG"
+              ],
+              "external_input_port": "A"
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "A[0]",
+                "output_port": "INTERNAL_REGISTER_INPUT",
+                "input_net": "q_a",
+                "output_net": null,
+                "output_internal_registers": [
+                  "ADREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/preadder_register/design.v:12.251-21.93"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "output_register",
+        "parameters": {
+          "PREG": 1
+        },
+        "observed_output": "P",
+        "model_register": "P",
+        "model_combination_nodes": 4,
+        "analysis_scope": "All register boundaries",
+        "reported_register_path_cells": 1,
+        "model_connection_verified": true,
+        "model_output_sha256": "b968446870f99983477e37cf2343aa1a8f1928d29ab2fd7a1483f697359bb8f0",
+        "primitive_netlist_sha256": "dd867351dbabb3c63c2cfbee381348406801b43de40161a2cd53e30e1cadc7a3",
+        "paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_source",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "q_a",
+              "detail": "register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/output_register/design.v:6.6-6.64",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_INPUT",
+              "net": null,
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/output_register/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_input",
+              "internal_register_parameters": [
+                "PREG"
+              ],
+              "external_input_port": "A"
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "A[0]",
+                "output_port": "INTERNAL_REGISTER_INPUT",
+                "input_net": "q_a",
+                "output_net": null,
+                "output_internal_registers": [
+                  "PREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/output_register/design.v:12.252-21.93"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "P",
+              "net": "w_P[0]",
+              "detail": "DSP output register",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/output_register/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "w_P[0]",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/output_register/design.v:23.6-23.72",
+              "register_origin": null
+            },
+            "path": []
+          }
+        ]
+      },
+      {
+        "name": "internal_registers",
+        "parameters": {
+          "AREG": 1,
+          "BREG": 1,
+          "PREG": 1
+        },
+        "observed_output": "P",
+        "model_register": "Ar2",
+        "model_combination_nodes": 3,
+        "analysis_scope": "All register boundaries",
+        "reported_register_path_cells": 1,
+        "model_connection_verified": true,
+        "model_output_sha256": "469faa97cfc0f001cbb78efe517c03c41fd87d0714ffd5af1a49d17f9857189b",
+        "primitive_netlist_sha256": "85e3f22bfa14d33cfd9b77ae98d3fee0b2b2b28f83ea22aa8630a712629403a0",
+        "paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_OUTPUT",
+              "net": null,
+              "detail": "DSP internal register output",
+              "internal_register_parameters": [
+                "AREG",
+                "BREG"
+              ],
+              "source": "build/dsp_alu_bit_dependencies/boundaries/internal_registers/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_output"
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_INPUT",
+              "net": null,
+              "category": "data",
+              "internal_register_parameters": [
+                "PREG"
+              ],
+              "source": "build/dsp_alu_bit_dependencies/boundaries/internal_registers/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_input"
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "INTERNAL_REGISTER_OUTPUT",
+                "output_port": "INTERNAL_REGISTER_INPUT",
+                "input_net": null,
+                "output_net": null,
+                "input_internal_registers": [
+                  "AREG",
+                  "BREG"
+                ],
+                "output_internal_registers": [
+                  "PREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/internal_registers/design.v:12.252-21.93"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "P",
+              "net": "w_P[0]",
+              "detail": "DSP output register",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/internal_registers/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "w_P[0]",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/internal_registers/design.v:23.6-23.72",
+              "register_origin": null
+            },
+            "path": []
+          },
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_source",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "q_a",
+              "detail": "register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/internal_registers/design.v:6.6-6.64",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "A",
+              "net": "q_a",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/internal_registers/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "path": []
+          }
+        ]
+      },
+      {
+        "name": "cascade_input",
+        "parameters": {
+          "AREG": 1,
+          "A_INPUT": "CASCADE"
+        },
+        "observed_output": "P",
+        "model_register": "Ar2",
+        "model_combination_nodes": 3,
+        "analysis_scope": "All register boundaries",
+        "reported_register_path_cells": 1,
+        "model_connection_verified": true,
+        "model_output_sha256": "920a277c2717054f1b697a14c0305212cd2d917a66ff260de21c8b9cd2b100e7",
+        "primitive_netlist_sha256": "9676a1c8b118a1da6e305b12e2c76cfe0bf8933a2f6b0d051612fa319de5d334",
+        "paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_OUTPUT",
+              "net": null,
+              "detail": "DSP internal register followed by unregistered arithmetic",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/cascade_input/design.v:12.253-21.93",
+              "register_origin": "u_dsp.internal_register_output",
+              "internal_register_parameters": [
+                "AREG"
+              ],
+              "external_output_port": "P"
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "w_P[0]",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/cascade_input/design.v:23.6-23.72",
+              "register_origin": null
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "INTERNAL_REGISTER_OUTPUT",
+                "output_port": "P[0]",
+                "input_net": null,
+                "output_net": "w_P[0]",
+                "input_internal_registers": [
+                  "AREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/cascade_input/design.v:12.253-21.93"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_source",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "q_a",
+              "detail": "register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/cascade_input/design.v:6.6-6.64",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "ACIN",
+              "net": "q_a",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/cascade_input/design.v:12.253-21.93",
+              "register_origin": null
+            },
+            "path": []
+          }
+        ]
+      },
+      {
+        "name": "direct_a_cascade",
+        "parameters": {
+          "AREG": 1
+        },
+        "observed_output": "ACOUT",
+        "model_register": "Ar2",
+        "model_combination_nodes": 0,
+        "analysis_scope": "DSP output to capture FF",
+        "reported_register_path_cells": 0,
+        "model_connection_verified": true,
+        "model_output_sha256": "dda5d5651d5f9b51b8a023030183ca817a20a3eeb2eb93a9fbdd5c1f6aeefa1d",
+        "primitive_netlist_sha256": "9801e3fec59d1df74bab24bfbb6f4d1b58db33d19d73ac4e5f14bdb71c068d5b",
+        "paths": [
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "ACOUT",
+              "net": "w_ACOUT[0]",
+              "detail": "DSP cascade register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/direct_a_cascade/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "w_ACOUT[0]",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/direct_a_cascade/design.v:23.6-23.76",
+              "register_origin": null
+            },
+            "path": []
+          }
+        ]
+      },
+      {
+        "name": "direct_multiplier_sign",
+        "parameters": {
+          "MREG": 1
+        },
+        "observed_output": "MULTSIGNOUT",
+        "model_register": "Mr",
+        "model_combination_nodes": 0,
+        "analysis_scope": "DSP output to capture FF",
+        "reported_register_path_cells": 0,
+        "model_connection_verified": true,
+        "model_output_sha256": "d299979bc53f33717a9365bce064ea8dc90039e1a9a98d678db4df7aca7d1625",
+        "primitive_netlist_sha256": "a0bcb84636254297e35e80b852d86ca377114d19f403a54066d92450507358fc",
+        "paths": [
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "MULTSIGNOUT",
+              "net": "observed",
+              "detail": "DSP multiplier register sign output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/direct_multiplier_sign/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "observed",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/direct_multiplier_sign/design.v:23.6-23.82",
+              "register_origin": null
+            },
+            "path": []
+          }
+        ]
+      },
+      {
+        "name": "input_to_multiplier",
+        "parameters": {
+          "AREG": 1,
+          "MREG": 1
+        },
+        "observed_output": "MULTSIGNOUT",
+        "model_register": "Ar2",
+        "model_combination_nodes": 1,
+        "analysis_scope": "All register boundaries",
+        "reported_register_path_cells": 1,
+        "model_connection_verified": true,
+        "model_output_sha256": "4626f26b8b2118f626668e77bceb7d4132bd1db0b136cc2f6e40ccace4564dd5",
+        "primitive_netlist_sha256": "410a144f2b12b9a76f3e4d2ec0a35abbeb76000999458689952d992f81a00197",
+        "paths": [
+          {
+            "combinational_cells": 1,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_OUTPUT",
+              "net": null,
+              "detail": "DSP internal register output",
+              "internal_register_parameters": [
+                "AREG"
+              ],
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_to_multiplier/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_output"
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "INTERNAL_REGISTER_INPUT",
+              "net": null,
+              "category": "data",
+              "internal_register_parameters": [
+                "MREG"
+              ],
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_to_multiplier/design.v:12.252-21.93",
+              "register_origin": "u_dsp.internal_register_input"
+            },
+            "path": [
+              {
+                "cell": "u_dsp",
+                "type": "DSP48E1",
+                "input_port": "INTERNAL_REGISTER_OUTPUT",
+                "output_port": "INTERNAL_REGISTER_INPUT",
+                "input_net": null,
+                "output_net": null,
+                "input_internal_registers": [
+                  "AREG"
+                ],
+                "output_internal_registers": [
+                  "MREG"
+                ],
+                "source": "build/dsp_alu_bit_dependencies/boundaries/input_to_multiplier/design.v:12.252-21.93"
+              }
+            ]
+          },
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "MULTSIGNOUT",
+              "net": "observed",
+              "detail": "DSP multiplier register sign output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_to_multiplier/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_capture",
+              "type": "FDRE",
+              "port": "D",
+              "net": "observed",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_to_multiplier/design.v:23.6-23.82",
+              "register_origin": null
+            },
+            "path": []
+          },
+          {
+            "combinational_cells": 0,
+            "startpoint": {
+              "cell": "u_source",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "q_a",
+              "detail": "register output",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_to_multiplier/design.v:6.6-6.64",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "u_dsp",
+              "type": "DSP48E1",
+              "port": "A",
+              "net": "q_a",
+              "category": "data",
+              "source": "build/dsp_alu_bit_dependencies/boundaries/input_to_multiplier/design.v:12.252-21.93",
+              "register_origin": null
+            },
+            "path": []
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,734 @@
+{
+  "reference_rev": "d9abf98cf2b32b0ef87446d41a100c4ceda9bc23",
+  "source_sha256": {
+    "rtl/npu/conv/vector_pe.sv": "6981bf4ae061c4e46a85d77687b723baccb9ec650820cbb73e97c90f0795b896",
+    "rtl/npu/conv/vector_engine.sv": "41ba694155e4e2540fabd15fbf15c7d11b336bd7766ce891fdbe66ed85644eaa"
+  },
+  "configuration": {
+    "TILE": 16,
+    "PE_COUNT": 8,
+    "BUS_WIDTH": 64,
+    "part": "xc7a200tfbg484-3"
+  },
+  "formal": {
+    "source_sha256": "6981bf4ae061c4e46a85d77687b723baccb9ec650820cbb73e97c90f0795b896",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "input_constraints": null,
+    "compared_semantic_state_bits": 96,
+    "compared_result_bits": 32,
+    "method": "Prove actual capture state, then compare its combinational consumers for every operation encoding.",
+    "runs": [
+      {
+        "stage": "state",
+        "passed": true
+      },
+      {
+        "stage": "operation_0",
+        "passed": true
+      },
+      {
+        "stage": "operation_1",
+        "passed": true
+      },
+      {
+        "stage": "operation_2",
+        "passed": true
+      },
+      {
+        "stage": "operation_3",
+        "passed": true
+      },
+      {
+        "stage": "operation_4",
+        "passed": true
+      },
+      {
+        "stage": "operation_5",
+        "passed": true
+      },
+      {
+        "stage": "operation_6",
+        "passed": true
+      },
+      {
+        "stage": "operation_7",
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "engine_state": {
+    "reference_rev": "d9abf98",
+    "reference_sha256": "c422fbe68af64289650915812083d8ad76547d21d5378ad3ce270f929aa67f88",
+    "source_sha256": "41ba694155e4e2540fabd15fbf15c7d11b336bd7766ce891fdbe66ed85644eaa",
+    "pe_sha256": "6981bf4ae061c4e46a85d77687b723baccb9ec650820cbb73e97c90f0795b896",
+    "unchanged_legacy_pe": true,
+    "unchanged_outside_register_connection": true,
+    "input_constraints": null,
+    "runs": [
+      {
+        "tile": 1,
+        "pe_count": 1,
+        "compared_operand_state_bits": 67,
+        "equivalent_bits": 99,
+        "passed": true
+      },
+      {
+        "tile": 3,
+        "pe_count": 2,
+        "compared_operand_state_bits": 131,
+        "equivalent_bits": 195,
+        "passed": true
+      },
+      {
+        "tile": 16,
+        "pe_count": 8,
+        "compared_operand_state_bits": 515,
+        "equivalent_bits": 771,
+        "passed": true
+      },
+      {
+        "tile": 32,
+        "pe_count": 16,
+        "compared_operand_state_bits": 1027,
+        "equivalent_bits": 1539,
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "cycle_interface": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/conv/vector_pe.sv": "6981bf4ae061c4e46a85d77687b723baccb9ec650820cbb73e97c90f0795b896",
+      "test/vector_pe_dsp/pe_test_top.sv": "c050ca73be15a38d77dc328b4d88361eedb64f0c0c9382001da4a82fde09bbca",
+      "test/vector_pe_dsp/main.cpp": "d63e7d376261d9c3b58c30527390d7c9106e095367f2b3b5197dce77a5f78b0e"
+    },
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "executable_sha256": "1f5b312a12762208f37c460083b9e9f2bbc5af3e7ab5ceea2e6627cc300a0fa2",
+    "cycles": 261583,
+    "comparisons": 523165,
+    "enabled_cycles": 188581,
+    "stalled_cycles": 73002,
+    "operations": {
+      "0": 33800,
+      "1": 32572,
+      "2": 32578,
+      "3": 32595,
+      "4": 32662,
+      "5": 32557,
+      "6": 32258,
+      "7": 32561
+    }
+  },
+  "capacity": {
+    "passed": true,
+    "reference_rev": "d9abf98",
+    "reference_sha256": "c422fbe68af64289650915812083d8ad76547d21d5378ad3ce270f929aa67f88",
+    "source_sha256": "41ba694155e4e2540fabd15fbf15c7d11b336bd7766ce891fdbe66ed85644eaa",
+    "pe_sha256": "6981bf4ae061c4e46a85d77687b723baccb9ec650820cbb73e97c90f0795b896",
+    "configuration": {
+      "PCR_ENGINE": 1,
+      "SIZE": 16,
+      "IA_CACHE_BLOCKS": 4,
+      "PS_FRAME_COUNT": 16,
+      "NPU_AXI_DATA_WIDTH": 64,
+      "IM2COL_CACHE_BYTES": 4096,
+      "SHARED_BANK_BYTES": 8192,
+      "SHARED_BANK_COUNT": 7,
+      "AXI_READ_OUTSTANDING": 4,
+      "PS_POOL_BYTES": 49152,
+      "PS_FORCE_RAW": 1,
+      "CAPACITY_BUDGET_BYTES": 131072,
+      "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+      "CAPACITY_REPRESENTATION": "raw32"
+    },
+    "runs": {
+      "reference": {
+        "passed": true,
+        "total_state_bits": 798185,
+        "buffer_arrays_bits": {
+          "vector_buffers": 9696,
+          "conv_prefetch_queue": 1032,
+          "conv_data_cache": 32768,
+          "conv_cache_metadata": 39168,
+          "conv_response_queue": 132,
+          "conv_request_queue": 552,
+          "ia_slot_metadata": 768,
+          "ia_cache_tags": 3968,
+          "kernel_cache": 12288,
+          "bias_cache": 32768,
+          "ia_ps_shared_ram": 458752,
+          "ps_decoded_fifo": 4096,
+          "ps_decoded_first": 8,
+          "ps_frame_valid": 16,
+          "ps_frame_lengths": 160,
+          "requant_is_cache": 52736,
+          "oa_s8_fifo": 65536,
+          "oa_s16_fifo": 16384
+        },
+        "register_arrays_bits": {
+          "core_row_metadata": 65,
+          "requant_ws_parameters": 1648
+        },
+        "vector_pe_instances": 8,
+        "registered_vector_pe_instances": 0,
+        "systolic_cell_instances": 256
+      },
+      "registered": {
+        "passed": true,
+        "total_state_bits": 798185,
+        "buffer_arrays_bits": {
+          "vector_buffers": 9696,
+          "conv_prefetch_queue": 1032,
+          "conv_data_cache": 32768,
+          "conv_cache_metadata": 39168,
+          "conv_response_queue": 132,
+          "conv_request_queue": 552,
+          "ia_slot_metadata": 768,
+          "ia_cache_tags": 3968,
+          "kernel_cache": 12288,
+          "bias_cache": 32768,
+          "ia_ps_shared_ram": 458752,
+          "ps_decoded_fifo": 4096,
+          "ps_frame_valid": 16,
+          "ps_frame_lengths": 160,
+          "ps_decoded_first": 8,
+          "requant_is_cache": 52736,
+          "oa_s8_fifo": 65536,
+          "oa_s16_fifo": 16384
+        },
+        "register_arrays_bits": {
+          "core_row_metadata": 65,
+          "requant_ws_parameters": 1648
+        },
+        "vector_pe_instances": 8,
+        "registered_vector_pe_instances": 8,
+        "systolic_cell_instances": 256
+      }
+    }
+  },
+  "vector_interface": {
+    "BUS32": {
+      "passed": true,
+      "cases": 592,
+      "outputs": 168491,
+      "add_cases": 143,
+      "add_outputs": 135652,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188,
+      "cycles": 2998186,
+      "all_case_cycles_and_statistics_match_saved_results": true,
+      "saved_results_origin": "test/vector_bias_write same configuration, reference PE and engine source hashes match d9abf98",
+      "source_differences_from_saved_results": [
+        "rtl/npu/conv/conv_axi_read_guard.sv",
+        "rtl/npu/conv/vector_engine.sv",
+        "rtl/npu/conv/vector_pe.sv",
+        "rtl/npu/dma/axi_linear_block_dma.sv"
+      ],
+      "case_records_sha256": "c098de34dd867cd385faec4521ab6a4dba916b539a599d3a468036a4b24ab09c",
+      "executable_sha256": "9be1b53f61ed14a0af60c1d3d3a80f841ca7ab1bfb83ad4a3fa4d9ef155b9a83",
+      "saved_executable_sha256": "81e2405f3a0c9285bed1ad45c33aa352db84ff7b5ed085cc387793d1c00c5adf",
+      "build_manifest_sha256": "b89e7b2888d8939c018f7b2451805c0c3fa72c670c21ccbd67c53e372b3beda3",
+      "saved_build_manifest_sha256": "57d7f9b504d3c5c86fb9a2788ff541412c61e6edd110efbb97f4e62d21d5e70d",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b"
+    },
+    "BUS64": {
+      "passed": true,
+      "cases": 592,
+      "outputs": 169361,
+      "add_cases": 143,
+      "add_outputs": 135420,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188,
+      "cycles": 2995967,
+      "all_case_cycles_and_statistics_match_saved_results": true,
+      "saved_results_origin": "test/vector_bias_write same configuration, reference PE and engine source hashes match d9abf98",
+      "source_differences_from_saved_results": [
+        "rtl/npu/conv/conv_axi_read_guard.sv",
+        "rtl/npu/conv/vector_engine.sv",
+        "rtl/npu/conv/vector_pe.sv",
+        "rtl/npu/dma/axi_linear_block_dma.sv"
+      ],
+      "case_records_sha256": "4c24e38ff280f87ba6b63743f46ccc9712db57871a8935d12a50131ee2744704",
+      "executable_sha256": "d80d80eb1b35144108672bef717368218e8a554c834078be6e97552452d4f527",
+      "saved_executable_sha256": "e316720608f9f99435f352aef3dbfa953c6e9133fe34fce070addfc4b09ed0f2",
+      "build_manifest_sha256": "4dc60b50bfbaef8e1387618fbd18666620a1baeaa58af3802b2ebf396be598f0",
+      "saved_build_manifest_sha256": "8448fe8218ec43a29553a49190b421891a64fc3cf774270b5def79ba0b3f0e7f",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b"
+    }
+  },
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1419,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1419,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 384,
+        "dsp48e1": 8,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 88
+      },
+      "longest_register_path_cells": 0,
+      "mapped_sha256": "a0a6831cd8de2e3abe81646754e1cff16295bfb7b0a9555c5274e467d9648f2d",
+      "manifest_sha256": "56c4337fa0d6e7141fce846279617c1d69a874cf9ff854174e8952b7bac0bb1d",
+      "peak_process_tree_rss_bytes": 193130496
+    },
+    "registered": {
+      "resources": {
+        "logic_lut_cells": 515,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 515,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 384,
+        "dsp48e1": 8,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0
+      },
+      "longest_register_path_cells": 0,
+      "mapped_sha256": "b43593c8ed1f54428f09710096d58516672b592cfca4f46077a65de34538bd0b",
+      "manifest_sha256": "9006ece1cb9ee1ac78d10a293090f48301b55fd55c379b1bc0cbb62860fd230d",
+      "peak_process_tree_rss_bytes": 180666368
+    },
+    "vector_reference": {
+      "resources": {
+        "logic_lut_cells": 12785,
+        "distributed_ram_lut_sites_nominal": 248,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 13033,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 6104,
+        "dsp48e1": 16,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 872
+      },
+      "longest_register_path_cells": 18,
+      "mapped_sha256": "0c13af0f78116b9b507c1c2987856a17a928ba01fb9aef8f3676a8cba0cdf916",
+      "manifest_sha256": "cf090e9ad1716ae079de685f1d2681f4d592e59ddb853e32661f3a272a46b019",
+      "peak_process_tree_rss_bytes": 540360704
+    },
+    "vector_registered": {
+      "resources": {
+        "logic_lut_cells": 11743,
+        "distributed_ram_lut_sites_nominal": 248,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 11991,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 5976,
+        "dsp48e1": 16,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 760
+      },
+      "longest_register_path_cells": 18,
+      "mapped_sha256": "a1f8eca7a9ccc74125ed8265aef3c536f04234f38d2a9aaf91aa910cbfd32ecf",
+      "manifest_sha256": "34c20c37f773299a7086f48c9cee800f0e3cdf97c3b36cb6a2a17fbdfbb1fd35",
+      "peak_process_tree_rss_bytes": 520028160
+    }
+  },
+  "path_method": "Connected register-to-register cell paths. Internal DSP arithmetic and route delay require device timing analysis.",
+  "paths": {
+    "reference": {
+      "longest_register_path_cells": 18,
+      "meets_15_cell_limit": false,
+      "pe_dsp_registers": {
+        "$auto$maccmap.cc:308:maccmap$21280": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "$auto$maccmap.cc:308:maccmap$21284": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "$auto$maccmap.cc:308:maccmap$21288": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "$auto$maccmap.cc:308:maccmap$21292": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "$auto$maccmap.cc:308:maccmap$21296": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "$auto$maccmap.cc:308:maccmap$21300": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "$auto$maccmap.cc:308:maccmap$21304": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "$auto$maccmap.cc:308:maccmap$21308": {
+          "AREG": 0,
+          "BREG": 0,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        }
+      },
+      "pe_paths": {
+        "pe_input_capture": {
+          "longest_register_path_cells": 0,
+          "startpoint": null,
+          "endpoint": null
+        },
+        "pe_registered_arithmetic_output": {
+          "longest_register_path_cells": 0,
+          "startpoint": null,
+          "endpoint": null
+        },
+        "pe_operand_registers": {
+          "longest_register_path_cells": 14,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$92468",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "pe_acc_q[0][67]",
+            "detail": "register output",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "pe_acc_q[0] [67]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$92176",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$600987$aiger$o28410",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "acc_buf[2] [31]"
+          }
+        }
+      },
+      "longest_path_groups": [
+        {
+          "combinational_cells": 18,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$70282",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "dma_conv_cfg[68]",
+            "detail": "register output",
+            "source": "build/vector_pe_dsp/final_inputs/reference_vector_engine.sv:935.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "c [68]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$119171",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap607652$auto$ff.cc:337:slice$119171.D",
+            "category": "data",
+            "source": "build/vector_pe_dsp/final_inputs/reference_vector_engine.sv:935.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "state [0]"
+          }
+        },
+        {
+          "combinational_cells": 17,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$69754",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "$techmap607785$abc$600987$lut$aiger$o5694.A[1]",
+            "detail": "register output",
+            "source": "build/vector_pe_dsp/final_inputs/reference_vector_engine.sv:935.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "c [644]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$93715",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$600987$aiger$o21842",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "result_buf[0] [0]"
+          }
+        },
+        {
+          "combinational_cells": 16,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$52040",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_rounding.g_middle_register.remaining_amount[0]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_round_shift.sv:39.7|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_rounding.g_middle_register.remaining_amount [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$71140",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap606597$auto$ff.cc:337:slice$71140.D",
+            "category": "data",
+            "source": "build/vector_pe_dsp/final_inputs/reference_vector_engine.sv:935.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "add_rounded [60]"
+          }
+        },
+        {
+          "combinational_cells": 16,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$119171",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "$techmap612328$abc$600987$lut$aiger$o37896.A[0]",
+            "detail": "register output",
+            "source": "build/vector_pe_dsp/final_inputs/reference_vector_engine.sv:935.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "state [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$71178",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$621257",
+            "category": "data",
+            "source": "build/vector_pe_dsp/final_inputs/reference_vector_engine.sv:935.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "reduce_acc [31]"
+          }
+        }
+      ]
+    },
+    "registered": {
+      "longest_register_path_cells": 18,
+      "meets_15_cell_limit": false,
+      "pe_dsp_registers": {
+        "g_pe[0].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "g_pe[1].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "g_pe[2].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "g_pe[3].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "g_pe[4].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "g_pe[5].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "g_pe[6].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        },
+        "g_pe[7].u_pe.g_dsp.u_dsp": {
+          "AREG": 1,
+          "BREG": 1,
+          "CREG": 0,
+          "MREG": 0,
+          "PREG": 0
+        }
+      },
+      "pe_paths": {
+        "pe_input_capture": {
+          "longest_register_path_cells": 11,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$69119",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "win_req_cols[3]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_engine.sv:947.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "active [3]"
+          },
+          "endpoint": {
+            "cell": "g_pe[0].u_pe.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "B",
+            "net": "$abc$568482$aiger$o17578",
+            "category": "data",
+            "source": "rtl/npu/conv/vector_pe.sv:133.7",
+            "register_origin": null
+          }
+        },
+        "pe_registered_arithmetic_output": {
+          "longest_register_path_cells": 5,
+          "startpoint": {
+            "cell": "g_pe[5].u_pe.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "g_pe[5].u_pe.g_dsp.dsp_o_p[47]",
+            "detail": "DSP internal register followed by unregistered arithmetic",
+            "source": "rtl/npu/conv/vector_pe.sv:133.7",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$89028",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$568482$aiger$o20820",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "acc_buf[5] [1]"
+          }
+        },
+        "pe_operand_registers": {
+          "longest_register_path_cells": 6,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$70501",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_pe[5].u_pe.g_dsp.dsp_i_c[4]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_pe.sv:69.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_pe[5].u_pe.operand_acc_q [4]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$89028",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$568482$aiger$o20820",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "acc_buf[5] [1]"
+          }
+        }
+      },
+      "longest_path_groups": [
+        {
+          "combinational_cells": 18,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$68947",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "dma_conv_cfg[68]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_engine.sv:947.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "c [68]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$112459",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap574513$auto$ff.cc:337:slice$112459.D",
+            "category": "data",
+            "source": "rtl/npu/conv/vector_engine.sv:947.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "state [0]"
+          }
+        },
+        {
+          "combinational_cells": 18,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$68419",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "$techmap576085$abc$568482$lut$aiger$o7215.A[1]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_engine.sv:947.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "c [644]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$90085",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$568482$aiger$o19271",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "result_buf[0] [0]"
+          }
+        },
+        {
+          "combinational_cells": 17,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$67906",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "$techmap578636$abc$568482$lut$aiger$o40103.A[0]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_engine.sv:947.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "state [3]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$70077",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$587472",
+            "category": "data",
+            "source": "rtl/npu/conv/vector_engine.sv:947.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "reduce_acc [31]"
+          }
+        },
+        {
+          "combinational_cells": 16,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$50679",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_rounding.g_middle_register.remaining_amount[0]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_round_shift.sv:39.7|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_rounding.g_middle_register.remaining_amount [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$69991",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap573458$auto$ff.cc:337:slice$69991.D",
+            "category": "data",
+            "source": "rtl/npu/conv/vector_engine.sv:947.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "add_rounded [60]"
+          }
+        }
+      ]
+    }
+  },
+  "whole_soc_physical_lut_sites": null,
+  "routed_fmax_mhz": null
+}

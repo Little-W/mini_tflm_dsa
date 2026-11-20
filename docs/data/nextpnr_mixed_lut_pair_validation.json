@@ -1,0 +1,319 @@
+{
+  "nextpnr_sha256": "1f9412eefcb7b66a967d1b83a5ec799d4900e7bbb7c66c52f0b29c6edbe31a73",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "pairing_script_sha256": "7d2284feb856d46b3dcbcfa6b5fd2883d256e4d162a5ad8079075fbe7c7bc412",
+  "cases": {
+    "shared_inputs": {
+      "passed": true,
+      "pairing": {
+        "candidate_registered_groups": 1,
+        "candidate_ordinary_luts": 1,
+        "pair_count": 1,
+        "registered_excluded": {
+          "not_single_register_group": 1
+        },
+        "ordinary_excluded": {
+          "relative_constraint": 1
+        },
+        "functional_cells_sha256": "bd1fbfc3ac4f5d673aaf3698d72b9d9bffc2ca30e6c1bb7c550a3c2ca15aea84",
+        "cell_contents_preserved": true,
+        "pairs": [
+          {
+            "upper": "u_upper",
+            "lower": "u_lower",
+            "register": "u_upper_ff",
+            "unique_inputs": 5,
+            "shared_variable_inputs": 1
+          }
+        ],
+        "physical_lut_positions": null,
+        "placement_complete": false,
+        "method": "输入并集至多五个且至少共享一个非常量输入；寄存器组使用O6/FF，独立组合LUT使用O5/OUTMUX。原有触发器位置关系和全部逻辑保持，实际面积由合法布局统计。",
+        "source_packed_sha256": "ab4c97b8df883f398d64d8dd67f7fada8b171f7f25afd2eee84399c3c9c59f2e",
+        "output_packed_sha256": "db16a6aa96cbdfc15c14b15f69b2b32b23cd655c83fe1429cc4d4698164ad24f"
+      },
+      "results": {
+        "reference": {
+          "passed": true,
+          "placement_complete": true,
+          "routing_complete": true,
+          "physical_lut_positions": 2,
+          "lut_truth_checks": {
+            "packed_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/pack/packed.json",
+            "physical_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/reference/routed.json",
+            "logical_luts": 2,
+            "physical_lut_sites": 2,
+            "paired_sites": 0,
+            "logical_input_connections_checked": 6,
+            "output_comparisons": 16,
+            "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+            "passed": true
+          },
+          "register_checks": {
+            "passed": true,
+            "registers": [
+              {
+                "cell": "u_upper_ff",
+                "bel": "SLICE_X162Y131/A5FF",
+                "initial": 0,
+                "reset_value": 0,
+                "synchronous_reset": true
+              }
+            ],
+            "state_transition_comparisons": 32,
+            "paired_register_outputs_checked": 0
+          },
+          "fasm_checks": {
+            "passed": true,
+            "lut_positions": 2,
+            "carry_muxes": 0,
+            "ff_input_muxes": 1,
+            "carry_selections": [],
+            "ff_selections": [
+              {
+                "cell": "u_upper_ff",
+                "site": "SLICE_X162Y131",
+                "mux": "A5FFMUX",
+                "source": "A5LUT_O5",
+                "selection": "IN_A"
+              }
+            ],
+            "sha256": {
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/reference/routed.json": "0a761e02faf592f6b48d9f8289ed380bbf08eebce59bdfa5127011ad7b433781",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/reference/design.fasm": "01b841e3eeb14736ecbd0a9332a03dfc4d2b8ee55a90ba17ad2950be79d8aadd",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/reference/checks/physical_lut_init.json": "634f3c3c54ef7fcd97864e80447a0515dd89980d07155b8e308bf439c5f8e75d",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+            },
+            "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+          },
+          "routed_sha256": "0a761e02faf592f6b48d9f8289ed380bbf08eebce59bdfa5127011ad7b433781",
+          "fasm_sha256": "01b841e3eeb14736ecbd0a9332a03dfc4d2b8ee55a90ba17ad2950be79d8aadd"
+        },
+        "paired": {
+          "passed": true,
+          "placement_complete": true,
+          "routing_complete": true,
+          "physical_lut_positions": 1,
+          "lut_truth_checks": {
+            "packed_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/pack/packed.json",
+            "physical_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/paired/routed.json",
+            "logical_luts": 2,
+            "physical_lut_sites": 1,
+            "paired_sites": 1,
+            "logical_input_connections_checked": 6,
+            "output_comparisons": 64,
+            "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+            "passed": true
+          },
+          "register_checks": {
+            "passed": true,
+            "registers": [
+              {
+                "cell": "u_upper_ff",
+                "bel": "SLICE_X162Y130/AFF",
+                "initial": 0,
+                "reset_value": 0,
+                "synchronous_reset": true
+              }
+            ],
+            "state_transition_comparisons": 32,
+            "paired_register_outputs_checked": 0
+          },
+          "fasm_checks": {
+            "passed": true,
+            "lut_positions": 1,
+            "carry_muxes": 0,
+            "ff_input_muxes": 1,
+            "carry_selections": [],
+            "ff_selections": [
+              {
+                "cell": "u_upper_ff",
+                "site": "SLICE_X162Y130",
+                "mux": "AFFMUX",
+                "source": "A6LUT_O6",
+                "selection": "O6"
+              }
+            ],
+            "sha256": {
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/paired/routed.json": "8d9f12372be24af6efe8a18c094df83d712104e2bae71987878f75c3bf8c5bbb",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/paired/design.fasm": "47b4dfd61fbc97926b4fa7dcb4ba2e34a23dfd4a8db9476022b1b0b7e4366004",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/shared_inputs/paired/checks/physical_lut_init.json": "a2c0a6d83946ad1d5262d036b49a4b34caf43040d27234681af9675b8b428271",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+            },
+            "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+          },
+          "routed_sha256": "8d9f12372be24af6efe8a18c094df83d712104e2bae71987878f75c3bf8c5bbb",
+          "fasm_sha256": "47b4dfd61fbc97926b4fa7dcb4ba2e34a23dfd4a8db9476022b1b0b7e4366004"
+        }
+      }
+    },
+    "six_inputs": {
+      "passed": true,
+      "pairing": {
+        "candidate_registered_groups": 1,
+        "candidate_ordinary_luts": 1,
+        "pair_count": 0,
+        "registered_excluded": {
+          "not_single_register_group": 1
+        },
+        "ordinary_excluded": {
+          "relative_constraint": 1
+        },
+        "functional_cells_sha256": "eb59b918091e48082e78f6b2b08d207b89b127ac8bc3a1d38bedf5963b523681",
+        "cell_contents_preserved": true,
+        "pairs": [],
+        "physical_lut_positions": null,
+        "placement_complete": false,
+        "method": "输入并集至多五个且至少共享一个非常量输入；寄存器组使用O6/FF，独立组合LUT使用O5/OUTMUX。原有触发器位置关系和全部逻辑保持，实际面积由合法布局统计。",
+        "source_packed_sha256": "c9e43c9925220a2053fd09b140152dd614cb4c37090c6fbfdb5c11b596a593ab",
+        "output_packed_sha256": "62cc5a123eeea84e571d6a907181fb4379805e271e43b67fe195c5da9a247823"
+      },
+      "results": {
+        "reference": {
+          "passed": true,
+          "placement_complete": true,
+          "routing_complete": true,
+          "physical_lut_positions": 2,
+          "lut_truth_checks": {
+            "packed_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/pack/packed.json",
+            "physical_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/reference/routed.json",
+            "logical_luts": 2,
+            "physical_lut_sites": 2,
+            "paired_sites": 0,
+            "logical_input_connections_checked": 6,
+            "output_comparisons": 16,
+            "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+            "passed": true
+          },
+          "register_checks": {
+            "passed": true,
+            "registers": [
+              {
+                "cell": "u_upper_ff",
+                "bel": "SLICE_X162Y131/A5FF",
+                "initial": 0,
+                "reset_value": 0,
+                "synchronous_reset": true
+              }
+            ],
+            "state_transition_comparisons": 32,
+            "paired_register_outputs_checked": 0
+          },
+          "fasm_checks": {
+            "passed": true,
+            "lut_positions": 2,
+            "carry_muxes": 0,
+            "ff_input_muxes": 1,
+            "carry_selections": [],
+            "ff_selections": [
+              {
+                "cell": "u_upper_ff",
+                "site": "SLICE_X162Y131",
+                "mux": "A5FFMUX",
+                "source": "A5LUT_O5",
+                "selection": "IN_A"
+              }
+            ],
+            "sha256": {
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/reference/routed.json": "d9d84167061acd5406f1a304a49c9fb7daf7b003d0854a6f3af6c03ee852da97",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/reference/design.fasm": "9f7c9aafb5022a69f894642b88bd45452abddbb471fe70070cc007851fcbccd3",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/reference/checks/physical_lut_init.json": "975be18941fb43a0f86557baf52df1abf1dd1769b4245eb1b5886594a4273f48",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+            },
+            "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+          },
+          "routed_sha256": "d9d84167061acd5406f1a304a49c9fb7daf7b003d0854a6f3af6c03ee852da97",
+          "fasm_sha256": "9f7c9aafb5022a69f894642b88bd45452abddbb471fe70070cc007851fcbccd3"
+        },
+        "paired": {
+          "passed": true,
+          "placement_complete": true,
+          "routing_complete": true,
+          "physical_lut_positions": 2,
+          "lut_truth_checks": {
+            "packed_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/pack/packed.json",
+            "physical_json": "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/paired/routed.json",
+            "logical_luts": 2,
+            "physical_lut_sites": 2,
+            "paired_sites": 0,
+            "logical_input_connections_checked": 6,
+            "output_comparisons": 16,
+            "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+            "passed": true
+          },
+          "register_checks": {
+            "passed": true,
+            "registers": [
+              {
+                "cell": "u_upper_ff",
+                "bel": "SLICE_X162Y131/A5FF",
+                "initial": 0,
+                "reset_value": 0,
+                "synchronous_reset": true
+              }
+            ],
+            "state_transition_comparisons": 32,
+            "paired_register_outputs_checked": 0
+          },
+          "fasm_checks": {
+            "passed": true,
+            "lut_positions": 2,
+            "carry_muxes": 0,
+            "ff_input_muxes": 1,
+            "carry_selections": [],
+            "ff_selections": [
+              {
+                "cell": "u_upper_ff",
+                "site": "SLICE_X162Y131",
+                "mux": "A5FFMUX",
+                "source": "A5LUT_O5",
+                "selection": "IN_A"
+              }
+            ],
+            "sha256": {
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/paired/routed.json": "d9d84167061acd5406f1a304a49c9fb7daf7b003d0854a6f3af6c03ee852da97",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/paired/design.fasm": "9f7c9aafb5022a69f894642b88bd45452abddbb471fe70070cc007851fcbccd3",
+              "/workspace/scratch/92f7be750f11/worktrees/registered_lut_pairs/build/mixed_lut_validation/six_inputs/paired/checks/physical_lut_init.json": "975be18941fb43a0f86557baf52df1abf1dd1769b4245eb1b5886594a4273f48",
+              "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+            },
+            "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+          },
+          "routed_sha256": "d9d84167061acd5406f1a304a49c9fb7daf7b003d0854a6f3af6c03ee852da97",
+          "fasm_sha256": "9f7c9aafb5022a69f894642b88bd45452abddbb471fe70070cc007851fcbccd3"
+        }
+      }
+    }
+  },
+  "schema_version": 1,
+  "source_rtl_commit_for_full_soc_candidates": "1c081bca06076727fab1ed2e194195f4563bd5ee",
+  "full_soc_candidate_analysis": {
+    "candidate_registered_groups": 6850,
+    "candidate_ordinary_luts": 6295,
+    "pair_count": 95,
+    "registered_excluded": {
+      "storage": 3696,
+      "not_single_register_group": 14476,
+      "other_relative_constraint": 18947,
+      "lut_has_other_consumers": 3785,
+      "child_is_not_register": 7211,
+      "dedicated_lut": 19016,
+      "fixed_or_protected": 16
+    },
+    "ordinary_excluded": {
+      "storage": 3696,
+      "relative_constraint": 38976,
+      "dedicated_or_register_sink": 5998,
+      "dedicated_lut": 19016,
+      "fixed_or_protected": 16
+    },
+    "functional_cells_sha256": "20e984dd84bef60305c2e884f4b02f9a402a97815a4a4181265f5deefd36f33c",
+    "cell_contents_preserved": true,
+    "physical_lut_positions": null,
+    "placement_complete": false,
+    "method": "输入并集至多五个且至少共享一个非常量输入；寄存器组使用O6/FF，独立组合LUT使用O5/OUTMUX。原有触发器位置关系和全部逻辑保持，实际面积由合法布局统计。",
+    "source_packed_sha256": "9287bae5c8e85f125d6c9329bcfe5e8aab618be4202067bc7e88baa59daa4b31",
+    "output_packed_sha256": "38c24b69846ba5b961936207b41d01b3be00101f60ae1e9e1190e849084de7ac",
+    "ordinary_pairs_already_present": 3524,
+    "registered_pairs_already_present": 2183
+  }
+}

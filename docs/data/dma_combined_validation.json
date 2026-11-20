@@ -1,0 +1,566 @@
+{
+  "passed": true,
+  "rtl_sha256": "7aef99309887b4d8c8b1f2978d5b841756b3593b020a5a158e3d797428c7e0e0",
+  "reference_ref": "2f06471c",
+  "full_state_comparison_bits": 52123,
+  "validation": {
+    "formal": {
+      "passed": true,
+      "reference_ref": "2f06471c",
+      "source_sha256": {
+        "rtl/npu/dma/axi_linear_block_dma.sv": "7aef99309887b4d8c8b1f2978d5b841756b3593b020a5a158e3d797428c7e0e0",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+        "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83"
+      },
+      "inputs_constrained": false,
+      "original_reference_sha256": "d045e2c2068398eeb58cf409be3a4f1fae9f0ee2b7b3374aa393da04a010a144",
+      "runs": [
+        {
+          "SIZE": 4,
+          "BUS_WIDTH": 32,
+          "DATA_WIDTH": 8,
+          "RD_CONTEXT_DEPTH": 1,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 1024,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 1380,
+          "log_sha256": "3fc4832eb6ea6a24e36f669c570ba364936f93ab348847434f77a65f8552efb1"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 4,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 1024,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 2166,
+          "log_sha256": "4763a961861f0d5ea2377f6dc86ec8173825124153b42e0b291f70025bcff80d"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 4,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 2048,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 2670,
+          "log_sha256": "eadd83981bd640740b2c6ea6e2eb14dbf65b8007c34f2505ac4a21df36b8476f"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 128,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 4,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 4096,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 3686,
+          "log_sha256": "1af4eefb4ec88b2e12d2bca2ca0e0f5857aa8c41479fda2b6725f66fa9bd8867"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 32,
+          "RD_CONTEXT_DEPTH": 2,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 2048,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 2503,
+          "log_sha256": "7def9a0cb8b5df9dcd99152f2543a9c0f499565a383294c3031427d03ab02a2b"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 1024,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 1,
+          "REG_WIDTH": 16,
+          "DMA_MAX_BYTES": 32768,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 14356,
+          "log_sha256": "a012789d69ba4eab24b7d1ef3919ec037a447a9ead8e9e54e3590e65f356b9ef"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 1024,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 4,
+          "REG_WIDTH": 17,
+          "DMA_MAX_BYTES": 32768,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 14773,
+          "log_sha256": "a93b8977224a2b7693627fb6b44ee54e1e805b9426aebf23aeefdca5af9dcbf0"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 4,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 8,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 2670,
+          "log_sha256": "34031c24735bbcd2682d1fbd48625d9898f837dcbb0242698b0b2c0f5c579174"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 4,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 256,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 2670,
+          "log_sha256": "fa3bf6f676030e09c12a4bb978e8a045b5937c33682ae56b3af6c8f848cf5164"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 3,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 2048,
+          "CACHE_BLOCKS": 4,
+          "passed": true,
+          "equivalent_bits": 2521,
+          "log_sha256": "393e430bab07baa969c3de9b45f02dc5cefad80c236035ea91370b46617738aa"
+        },
+        {
+          "SIZE": 64,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 16,
+          "RD_CONTEXT_DEPTH": 4,
+          "REG_WIDTH": 32,
+          "DMA_MAX_BYTES": 2048,
+          "CACHE_BLOCKS": 64,
+          "passed": true,
+          "equivalent_bits": 2728,
+          "log_sha256": "54f1aa14cb1fe5497e1f675b1f551e3c7c81fc836f7e63afbbcf3ddc0c111faf"
+        }
+      ],
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "fpga": true,
+      "state_observation": {
+        "scope": "Every complete descriptor word, reconstructed from actual payload and tag storage",
+        "state_updates_modified": false,
+        "input_assumptions_added": false,
+        "forward_structure_comparison": false,
+        "reference_prepared_sha256": "4373088043dac6218cfc64036ba1ce39b818811669cbb0ddd3151b6074dbeedd",
+        "current_prepared_sha256": "e1a44649ff898958cdfa90bf263260816d87d929289c28b2293fa325474f361d"
+      }
+    },
+    "sim32": {
+      "passed": true,
+      "outstanding": 4,
+      "contexts": 4,
+      "dma_max_bytes": 1024,
+      "bus_width": 32,
+      "source_sha256": {
+        "rtl/npu/dma/axi_linear_block_dma.sv": "7aef99309887b4d8c8b1f2978d5b841756b3593b020a5a158e3d797428c7e0e0",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+        "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+        "test/linear_dma_context/linear_dma_4k_top.sv": "c630d407351490b88e2e9ee6d8f948ba051c060aa367d396ef05b8e9867573e4",
+        "test/linear_dma_context/main.cpp": "5f58d72dc76cd09ab05b772a3ceb345756f58e352fce27afa8b392a1dcee80f0",
+        "test/linear_dma_context/run.py": "390aaf1581b2fcc92898f647db5419b8e4beea3fdef38c1de9d1c51aaabbbdbb"
+      },
+      "sources_unchanged_during_build": true,
+      "binary_sha256": "d70a17357e4000c400edef0da39e870e51d14e5514c81b5036b8051e0d4d8a6f",
+      "generate_command": [
+        "verilator-modern",
+        "--cc",
+        "--exe",
+        "--assert",
+        "-Wno-fatal",
+        "--top-module",
+        "linear_dma_4k_top",
+        "--Mdir",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/sim32/obj",
+        "--output-groups",
+        "0",
+        "--output-split",
+        "12000",
+        "-GREAD_OUTSTANDING=4",
+        "-GRD_CONTEXT_DEPTH=4",
+        "-GBUS_WIDTH=32",
+        "-GDMA_MAX_BYTES=1024",
+        "-CFLAGS",
+        "-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES=1024 -DTEST_BUS_WIDTH=32",
+        "-DSYNTHESIS",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/sim32/lut6_2.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/npu/dma/axi_linear_block_dma.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/common/REGFILE.v",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/common/add_equal.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/test/linear_dma_context/linear_dma_4k_top.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/test/linear_dma_context/main.cpp"
+      ],
+      "compile_command": [
+        "make",
+        "-C",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/sim32/obj",
+        "-f",
+        "Vlinear_dma_4k_top.mk",
+        "-j",
+        "1",
+        "OPT_FAST=-O1",
+        "OPT_SLOW=-O0",
+        "OPT_GLOBAL=-O1",
+        "VK_PCH_I_FAST=",
+        "VK_PCH_I_SLOW=",
+        "CFG_CXXFLAGS_PCH=-E"
+      ],
+      "fpga": true,
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "runs": [
+        {
+          "random": false,
+          "passed": true,
+          "returncode": 0,
+          "counters": {
+            "commands": 172,
+            "bursts": 287,
+            "beats": 12234,
+            "raw_words": 12157,
+            "outputs": 42070,
+            "max_outstanding": 4,
+            "max_contexts": 4,
+            "early_accepts": 171,
+            "early_ar": 174,
+            "accept_with_finish": 132,
+            "ar_with_last_r": 25,
+            "error_completions": 2,
+            "ar_stalls": 0,
+            "random": 0,
+            "cycles": 13256
+          }
+        },
+        {
+          "random": true,
+          "passed": true,
+          "returncode": 0,
+          "counters": {
+            "commands": 172,
+            "bursts": 287,
+            "beats": 12234,
+            "raw_words": 12157,
+            "outputs": 42070,
+            "max_outstanding": 4,
+            "max_contexts": 4,
+            "early_accepts": 171,
+            "early_ar": 174,
+            "accept_with_finish": 128,
+            "ar_with_last_r": 15,
+            "error_completions": 2,
+            "ar_stalls": 104,
+            "random": 1,
+            "cycles": 19463
+          }
+        }
+      ]
+    },
+    "sim64": {
+      "passed": true,
+      "outstanding": 4,
+      "contexts": 4,
+      "dma_max_bytes": 2048,
+      "bus_width": 64,
+      "source_sha256": {
+        "rtl/npu/dma/axi_linear_block_dma.sv": "7aef99309887b4d8c8b1f2978d5b841756b3593b020a5a158e3d797428c7e0e0",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+        "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+        "test/linear_dma_context/linear_dma_4k_top.sv": "c630d407351490b88e2e9ee6d8f948ba051c060aa367d396ef05b8e9867573e4",
+        "test/linear_dma_context/main.cpp": "5f58d72dc76cd09ab05b772a3ceb345756f58e352fce27afa8b392a1dcee80f0",
+        "test/linear_dma_context/run.py": "390aaf1581b2fcc92898f647db5419b8e4beea3fdef38c1de9d1c51aaabbbdbb"
+      },
+      "sources_unchanged_during_build": true,
+      "binary_sha256": "0f243b26682b6bb9d691e4330fdc51d99408bc3d12ebe2edee6a197e88739039",
+      "generate_command": [
+        "verilator-modern",
+        "--cc",
+        "--exe",
+        "--assert",
+        "-Wno-fatal",
+        "--top-module",
+        "linear_dma_4k_top",
+        "--Mdir",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/sim64/obj",
+        "--output-groups",
+        "0",
+        "--output-split",
+        "12000",
+        "-GREAD_OUTSTANDING=4",
+        "-GRD_CONTEXT_DEPTH=4",
+        "-GBUS_WIDTH=64",
+        "-GDMA_MAX_BYTES=2048",
+        "-CFLAGS",
+        "-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES=2048 -DTEST_BUS_WIDTH=64",
+        "-DSYNTHESIS",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/sim64/lut6_2.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/npu/dma/axi_linear_block_dma.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/common/REGFILE.v",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/common/add_equal.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/test/linear_dma_context/linear_dma_4k_top.sv",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/test/linear_dma_context/main.cpp"
+      ],
+      "compile_command": [
+        "make",
+        "-C",
+        "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/sim64/obj",
+        "-f",
+        "Vlinear_dma_4k_top.mk",
+        "-j",
+        "1",
+        "OPT_FAST=-O1",
+        "OPT_SLOW=-O0",
+        "OPT_GLOBAL=-O1",
+        "VK_PCH_I_FAST=",
+        "VK_PCH_I_SLOW=",
+        "CFG_CXXFLAGS_PCH=-E"
+      ],
+      "fpga": true,
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "runs": [
+        {
+          "random": false,
+          "passed": true,
+          "returncode": 0,
+          "counters": {
+            "commands": 204,
+            "bursts": 405,
+            "beats": 15795,
+            "raw_words": 15621,
+            "outputs": 99228,
+            "max_outstanding": 4,
+            "max_contexts": 4,
+            "early_accepts": 203,
+            "early_ar": 204,
+            "accept_with_finish": 132,
+            "ar_with_last_r": 25,
+            "error_completions": 2,
+            "ar_stalls": 0,
+            "random": 0,
+            "cycles": 17607
+          }
+        },
+        {
+          "random": true,
+          "passed": true,
+          "returncode": 0,
+          "counters": {
+            "commands": 204,
+            "bursts": 405,
+            "beats": 15795,
+            "raw_words": 15621,
+            "outputs": 99228,
+            "max_outstanding": 4,
+            "max_contexts": 4,
+            "early_accepts": 203,
+            "early_ar": 204,
+            "accept_with_finish": 126,
+            "ar_with_last_r": 11,
+            "error_completions": 2,
+            "ar_stalls": 147,
+            "random": 1,
+            "cycles": 25510
+          }
+        }
+      ]
+    }
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667,
+    "cases": {
+      "current": {
+        "top": "axi_linear_block_dma",
+        "configuration": "SoC linear DMA, SIZE64 CACHE_BLOCKS64 BUS64 DATA16 and four contexts",
+        "sources_sha256": {
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/measure/current.sv": "7aef99309887b4d8c8b1f2978d5b841756b3593b020a5a158e3d797428c7e0e0",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "parameters": {},
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 3.8,
+            "peak_process_tree_rss_bytes": 154480640,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "8edc4739244235d2efb0310e842a737df050311ee44afbf95b658a0667e7eed1",
+            "output_sha256": "338e84f749f3fce975f221ee161afaa7eb3512ad8294be8ac8df3f8958c6122f"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 23.21,
+            "peak_process_tree_rss_bytes": 179179520,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "26539136bbee20acac3bb408ee70d83cfdb886c28e05ca0ebcf3304ee83f16bd",
+            "output_sha256": "74b2630cdf47fc1a7dd35249b37e7d4d0f4720b12e3b6715e6d12244a37821e5"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 15.98,
+            "peak_process_tree_rss_bytes": 193351680,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "3ed1214eb806882243a82c7797437b5b709e5ca91dfbbd3b19ffa8cb5ea6333d",
+            "output_sha256": "a636a12dd05072fac7b59f8f7e8ef6f98a4aa531390da5e87e1fa764507652b6",
+            "mapped_verilog_sha256": "58c5287ac0c64dc0b97d04f0c3c1a772cee078d936a24b21f4647cb58b6896c1"
+          }
+        },
+        "options": [
+          "-GSIZE=64",
+          "-GCACHE_BLOCKS=64",
+          "-GBUS_WIDTH=64",
+          "-GDATA_WIDTH=16",
+          "-GRD_CONTEXT_DEPTH=4"
+        ],
+        "build_configuration": null,
+        "elapsed_seconds": 44.9,
+        "lut_cells": 1648,
+        "flip_flops": 736,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 1,
+        "carry4": 170,
+        "longest_combinational_path_cells": 15,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$84298$lut$aiger$o686",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$6599.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$6599.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$6599.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$84657",
+            "type": "LUT3"
+          },
+          {
+            "cell": "$abc$84298$lut$aiger84297$3711",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$abc$84298$lut$aiger$o712",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$abc$84298$lut$aiger$o836",
+            "type": "LUT6"
+          },
+          {
+            "cell": "$257.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$84298$lut$aiger84297$4127",
+            "type": "LUT3"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$84609",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$6632.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$6632.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$6632.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$84298$lut$aiger$o3599",
+            "type": "LUT3"
+          }
+        ],
+        "cell_counts": {
+          "CARRY4": 170,
+          "DSP48E1": 1,
+          "FDRE": 736,
+          "INV": 29,
+          "LUT2": 488,
+          "LUT3": 201,
+          "LUT4": 294,
+          "LUT5": 329,
+          "LUT6": 335,
+          "LUT6_2": 1,
+          "RAM32M": 16
+        },
+        "resources": {
+          "logic_lut_cells": 1648,
+          "distributed_ram_lut_sites_nominal": 64,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1712,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 736,
+          "dsp48e1": 1,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 170,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 170,
+            "DSP48E1": 1,
+            "FDRE": 736,
+            "INV": 29,
+            "LUT2": 488,
+            "LUT3": 201,
+            "LUT4": 294,
+            "LUT5": 329,
+            "LUT6": 335,
+            "LUT6_2": 1,
+            "RAM32M": 16
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 15,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 15,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/dma_combined/synthesis/current/mapped.v",
+          "sha256": "58c5287ac0c64dc0b97d04f0c3c1a772cee078d936a24b21f4647cb58b6896c1",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        }
+      }
+    },
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
+  }
+}

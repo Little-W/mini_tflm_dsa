@@ -1,0 +1,945 @@
+{
+  "passed": true,
+  "reference_ref": "8c669a70",
+  "reference_source_sha256": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+  "source_sha256": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+  "interface_cycles_changed": false,
+  "configuration": {
+    "SIZE": 16,
+    "BUS_WIDTH": 64,
+    "LANES": 4,
+    "CACHE_SETS": 128,
+    "CACHE_WAYS": 2,
+    "LINE_BYTES": 16
+  },
+  "algorithm_source": {
+    "attachment": "fpga_after_59966.tar.gz",
+    "base_commit": "8011bdd98d9d186c1ad5e644c49ef4cb61cf948a",
+    "analysis_commit": "7bf8f83",
+    "coordinate_source_sha256": "de30cf4094670e03cde169b826437a9f58d98963b06d6610cad00f85b38c5e9f",
+    "applied_design": "Registered coordinate boundary conditions, parallel coordinate sums and bounds, carry-select short steps; combined with the current three-row retirement and lane end conditions."
+  },
+  "full_state_proof": {
+    "method": "Complete-state equivalence of general channel expressions plus unconstrained proof of both specialized expressions and exact equality of all remaining source text.",
+    "general_expressions": {
+      "reference_ref": "8c669a70",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_frontend.sv": "c00bfa51c394461e675fa7f4ffad87e530636406bf937777d9c61cf01d990705",
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+        "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "reference_frontend_sha256": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+      "proof_reference_sha256": "4ce8851d2ebe17f9e90bf1847a46d0024e7dce4b72f1c1a923e8e9d944b8c827",
+      "derived_state_observations": {
+        "row_wrap_q": "row_wrap",
+        "tap_wrap_q": "tap_wrap",
+        "incoming_tap_wrap_q": "incoming_tap_wrap",
+        "row_last_q": "row_idx + 1 == rows_q",
+        "p_fast_wrap": "c.output_w != 16'd0 && p_fast_x[15:0] == last_output_col_q"
+      },
+      "inputs_constrained": false,
+      "method": "Complete-state equivalence with simple SAT and temporal induction",
+      "runs": [
+        {
+          "case": "size4_policy0",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 16,
+            "SIZE": 4,
+            "LANES": 1,
+            "BUS_WIDTH": 32,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 0
+          },
+          "passed": true,
+          "equivalent_bits": 7038,
+          "log_sha256": "dbbcb2e4381d3dbc0c1dec5de8bf16a241f74317c7a5cebf255594830d1bf94f"
+        },
+        {
+          "case": "size4_policy1",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 16,
+            "SIZE": 4,
+            "LANES": 2,
+            "BUS_WIDTH": 32,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 1
+          },
+          "passed": true,
+          "equivalent_bits": 7093,
+          "log_sha256": "a63c606abe7011beae5f505ea4deb6dd6765a02a22952a1e7a1d01fb6a0fe306"
+        },
+        {
+          "case": "size8_policy2",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 16,
+            "SIZE": 8,
+            "LANES": 4,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 2
+          },
+          "passed": true,
+          "equivalent_bits": 7193,
+          "log_sha256": "a224d523b49d4bf5344616a35e3511a1b6739eaed8be32f2ed8365319a642451"
+        },
+        {
+          "case": "size16_policy3",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 16,
+            "SIZE": 16,
+            "LANES": 2,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 128,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 87381,
+          "log_sha256": "26d72c7444f13116b12a7edfb7c3a83ffc38669b93be8285e4e785cd567b5eeb"
+        },
+        {
+          "case": "size16_lanes4_policy3",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 16,
+            "SIZE": 16,
+            "LANES": 4,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 128,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 87443,
+          "log_sha256": "6cff71818ae82a4ceedbaf54e35d2d949de5621af88a5c13b7605185a1139b63"
+        },
+        {
+          "case": "size4_line8",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 8,
+            "SIZE": 4,
+            "LANES": 4,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 15476,
+          "log_sha256": "a63198b7766c0613062dabe762d9e5a31f99ae584e6559a4e16283cda26f67ab"
+        },
+        {
+          "case": "size4_line32",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 32,
+            "SIZE": 4,
+            "LANES": 4,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 18433,
+          "log_sha256": "b4cb728f65299cba15d65f7a2e3e2d1163928ac7a11fa548c11679cac338e7c6"
+        },
+        {
+          "case": "size4_line64",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 64,
+            "SIZE": 4,
+            "LANES": 4,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 22471,
+          "log_sha256": "17ea3bf5f8a7227a3afef60a5588335ae088c663f86cd6ab968bcfbc27225e66"
+        },
+        {
+          "case": "size4_line128",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 128,
+            "SIZE": 4,
+            "LANES": 4,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 30605,
+          "log_sha256": "8b36fbbb9567f3b0f0a37be1ce4588cb246c6ee468da01713f1fece0a328c531"
+        },
+        {
+          "case": "size4_line256",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 256,
+            "SIZE": 4,
+            "LANES": 4,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 46931,
+          "log_sha256": "e1549bb9216464a65410c41bd18172e53bebcbdfbca16481c3db077077d7f844"
+        },
+        {
+          "case": "size4_lanes3",
+          "parameters": {
+            "CACHE_WAYS": 2,
+            "LINE_BYTES": 16,
+            "SIZE": 4,
+            "LANES": 3,
+            "BUS_WIDTH": 64,
+            "CACHE_SETS": 8,
+            "CACHE_POLICY": 3
+          },
+          "passed": true,
+          "equivalent_bits": 16417,
+          "log_sha256": "92db6ac411e2b6c01844b1dabf51ec6ad67f6078572ffbf142ec5be9dcc2327e"
+        }
+      ],
+      "passed": true,
+      "equivalent_bits": 346481
+    },
+    "specialized_expressions": {
+      "passed": true,
+      "inputs_constrained": false,
+      "input_bits": 32,
+      "compared_bits": 13,
+      "specialized_lanes": [
+        3,
+        4
+      ],
+      "source_sha256": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+      "general_source_sha256": "c00bfa51c394461e675fa7f4ffad87e530636406bf937777d9c61cf01d990705",
+      "unchanged_outside_two_expression_blocks": true,
+      "complete_state_summary_sha256": "cdf567429e1a3e14a799f8b54fec91480c3c6787569f118de10bda03b3f2b90a",
+      "model_sha256": "8873d6f0fe0cc6932045aa54e95ffd9067765b7255e0f23cabba7d59a04fb836",
+      "log_sha256": "b3477586c6cf7bfef63846bc9e64fbf638931029c17c8698c686a5b3e9431644"
+    }
+  },
+  "direct_complete_state_configurations": {
+    "reference_ref": "8c669a70",
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+    },
+    "reference_frontend_sha256": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+    "proof_reference_sha256": "4ce8851d2ebe17f9e90bf1847a46d0024e7dce4b72f1c1a923e8e9d944b8c827",
+    "derived_state_observations": {
+      "row_wrap_q": "row_wrap",
+      "tap_wrap_q": "tap_wrap",
+      "incoming_tap_wrap_q": "incoming_tap_wrap",
+      "row_last_q": "row_idx + 1 == rows_q",
+      "p_fast_wrap": "c.output_w != 16'd0 && p_fast_x[15:0] == last_output_col_q"
+    },
+    "inputs_constrained": false,
+    "method": "Complete-state equivalence with simple SAT and temporal induction",
+    "runs": [
+      {
+        "case": "size4_policy0",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 4,
+          "LANES": 1,
+          "BUS_WIDTH": 32,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 0
+        },
+        "passed": true,
+        "equivalent_bits": 7038,
+        "log_sha256": "0a4ea1437f2e71d5084b7dd5f7b31064fb23fed3602d8f24f427d293457f5f54"
+      },
+      {
+        "case": "size4_policy1",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 4,
+          "LANES": 2,
+          "BUS_WIDTH": 32,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 1
+        },
+        "passed": true,
+        "equivalent_bits": 7093,
+        "log_sha256": "162190f68d8d1540add12b227a457e7c59838df6d791d79475599f832b14f422"
+      },
+      {
+        "case": "size8_policy2",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 8,
+          "LANES": 4,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 2
+        },
+        "passed": true,
+        "equivalent_bits": 7193,
+        "log_sha256": "6db31a9880e085a6b63f1b418c6206409066380f561a11e14f5bb1f4fddd546c"
+      },
+      {
+        "case": "size16_policy3",
+        "parameters": {
+          "CACHE_WAYS": 2,
+          "LINE_BYTES": 16,
+          "SIZE": 16,
+          "LANES": 2,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 128,
+          "CACHE_POLICY": 3
+        },
+        "passed": true,
+        "equivalent_bits": 87381,
+        "log_sha256": "7742df8485943acc8327e72b5ccfcd5395a8c59dacf3bf9337aced95562aa68c"
+      }
+    ],
+    "passed": true,
+    "equivalent_bits": 108705
+  },
+  "coordinate_arithmetic": {
+    "passed": true,
+    "compared_bits": 252,
+    "coordinate_width": 35,
+    "limit_width": 16,
+    "positive_step_axes": [
+      1,
+      3,
+      4,
+      6
+    ],
+    "signed_step_axes": [
+      0,
+      2,
+      5
+    ],
+    "source_sha256": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+    "model_sha256": "c9c78b10efce9bcd0465f987fa8e2887fcb14f06234ac937e1541e194953e242",
+    "log_sha256": "bde7c0684865d8a8621a83d9a5f1b439104fa7f146ed60906346d8f195d9c6c6"
+  },
+  "word_match_arithmetic": {
+    "passed": true,
+    "reference_ref": "8c669a70",
+    "input_bits": 261,
+    "compared_bits": 2,
+    "inputs_constrained": false,
+    "source_sha256": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+    "reference_sha256": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+    "model_sha256": "1c263878d780af71df1144cd6c31fe60f3e55f30b146a8b28d41587d6ee5aad4",
+    "log_sha256": "b390fa318c88fceebf47fb9547a3e2c0ce60c0888a3da5ecb01af73a5f6c6933"
+  },
+  "public_interface_comparison": {
+    "passed": true,
+    "reference_ref": "8c669a70",
+    "configurations": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "source_sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_im2col_frontend_observer.sv": "4f7a74da514b3f5f41b7063f024e28c8d7f64d530d984db588c7bfe50981bfad",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/reference_frontend.sv": "fe6fd1233ce7a021b535cd185ba628aab38f65201a49c48d74681fe059074a7f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/tb_conv_im2col_frontend.sv": "29f55bf0ef9fefaa9604edb7dc9c582aab1ccf5e499b098b406c0dc3d8079654"
+        },
+        "warnings": [
+          "%Warning-PINMISSING: /workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=789700 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=789700"
+        ]
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "source_sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_im2col_frontend_observer.sv": "4f7a74da514b3f5f41b7063f024e28c8d7f64d530d984db588c7bfe50981bfad",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/reference_frontend.sv": "fe6fd1233ce7a021b535cd185ba628aab38f65201a49c48d74681fe059074a7f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/tb_conv_im2col_frontend.sv": "29f55bf0ef9fefaa9604edb7dc9c582aab1ccf5e499b098b406c0dc3d8079654"
+        },
+        "warnings": [
+          "%Warning-PINMISSING: /workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=378180 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=378180"
+        ]
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "source_sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_im2col_frontend_observer.sv": "4f7a74da514b3f5f41b7063f024e28c8d7f64d530d984db588c7bfe50981bfad",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/reference_frontend.sv": "fe6fd1233ce7a021b535cd185ba628aab38f65201a49c48d74681fe059074a7f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/tb_conv_im2col_frontend.sv": "29f55bf0ef9fefaa9604edb7dc9c582aab1ccf5e499b098b406c0dc3d8079654"
+        },
+        "warnings": [
+          "%Warning-PINMISSING: /workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=257472 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=257472"
+        ]
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 1,
+        "passed": true,
+        "source_sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_im2col_frontend_observer.sv": "4f7a74da514b3f5f41b7063f024e28c8d7f64d530d984db588c7bfe50981bfad",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/reference_frontend.sv": "fe6fd1233ce7a021b535cd185ba628aab38f65201a49c48d74681fe059074a7f",
+          "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_coordinate_final/interface/tb_conv_im2col_frontend.sv": "29f55bf0ef9fefaa9604edb7dc9c582aab1ccf5e499b098b406c0dc3d8079654"
+        },
+        "warnings": [
+          "%Warning-PINMISSING: /workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=249938 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=249938"
+        ]
+      },
+      {
+        "control": true,
+        "passed": true,
+        "warnings": [
+          "%Warning-PINMISSING: /workspace/scratch/76fc8a977a8f/worktrees/frontend/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=134",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_control cycles=134"
+        ]
+      }
+    ]
+  },
+  "window_dma_comparison": {
+    "passed": true,
+    "public_outputs": 49,
+    "reference_ref": "151b87d5",
+    "source_sha256": "6730afb4940ed73d1b054f0cf3abe8185f4c4032ee4f076b34d960cb3faaef58",
+    "input_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+      "rtl/npu/conv/conv_axi_read_guard.sv": "b977899975e1b23ccf840a0cdd73d00ea531d21709ceaa8fe9caa5367442969e",
+      "rtl/npu/conv/conv_axi_read_mux.sv": "57b5006e7d796dab77612f4565bc1a8297c84ac0e161d13d630a0e31c7ae9234",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+      "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+      "rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+      "rtl/npu/conv/vector_config_check.sv": "b1edd1481734a1305842f76e3d990a3fc7e8f89cb405cea1999cde8be8a3d106",
+      "rtl/npu/conv/vector_engine.sv": "41ba694155e4e2540fabd15fbf15c7d11b336bd7766ce891fdbe66ed85644eaa",
+      "rtl/npu/conv/vector_pe.sv": "6981bf4ae061c4e46a85d77687b723baccb9ec650820cbb73e97c90f0795b896",
+      "rtl/npu/conv/vector_quant_params.sv": "7c5995a46e1d181e719d62a2d5b6d36088d4d1b4b4d2e2cea8700a4d9aefebbb",
+      "rtl/npu/conv/vector_round_shift.sv": "a4311d4dce404aab09f889e2b473d33c3bc06a3468c00fdb86e57d15b15dd33c",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16",
+      "rtl/npu/conv/vector_softmax.sv": "ed184fce3d3e6538ff24fe4e446f1aa06c409c05ad2cd707e441faf6d487efd6",
+      "rtl/npu/conv/vector_writeback.sv": "e6aac27c0b141b9d3dd06544df95fb54de15eeea12bfe7cba2f000786dcea3f3",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv": "b9d031ed151a0414c0a1255da19443f7e562f5e8ee5acfe1f3fce855df8239c6",
+      "build/frontend_coordinate_final/window_dma/compared_dual.sv": "33c15f6cf5bd539a8fdbe5c340ce4889346a58bcfa896b842d9ea66d6b0a276a",
+      "rtl/npu/dma/axi_linear_block_dma.sv": "d045e2c2068398eeb58cf409be3a4f1fae9f0ee2b7b3374aa393da04a010a144",
+      "rtl/npu/dma/axi_write_page_guard.sv": "acb3e356b4c84dba27b36c4b6fefe9c485592401ec900fb561c6b70d50102ceb",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+      "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+      "rtl/npu/dma/conv_window_queue.sv": "e001fd2a4109b6ffb1c92182b716583f41d7fbb04b99f85af1140d23bf8c6677",
+      "rtl/npu/dma/operand_read_cache.sv": "863026e928bd4c236c3a42b0e46aeb78d147119122e21aeb3ea2856f805bc981",
+      "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+      "test/window_dma/window_dma_top.sv": "1c8d72fabfd525e9b191c769d985e38108ebed090d0e35931ba34b02933448c0",
+      "build/frontend_coordinate_final/window_dma/main.cpp": "65481f0ab11e36c5cd8072eb36b6e7d866ac1855fcf3cfd1841e7adba80f2d03",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+      "test/monitors/axi_block_dma_arbiter_observer.sv": "489657046c2f0ff8b6592d970b0fe5201a34da4fc5a1871df8303bf3f0ac49ca",
+      "test/monitors/axi_dual_block_dma_observer.sv": "38da2c7fdc0613aefe12aa2964e3a526f14771a062879752b579a27062013ddb",
+      "test/monitors/axi_linear_block_dma_observer.sv": "a487ebfbfa1c35034c8d6ef5b6c757d7ebb0ffc7661c191653b493808153b741",
+      "test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+      "test/monitors/conv_im2col_frontend_observer.sv": "4f7a74da514b3f5f41b7063f024e28c8d7f64d530d984db588c7bfe50981bfad",
+      "test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+      "test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+      "test/monitors/conv_window_queue_observer.sv": "2b075e1d00d968c5c32766c73060fed8e03654110d6699af50b949ffb8f6e5b1",
+      "test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+      "test/monitors/vector_engine_observer.sv": "82ad4b658aba5f8c6abe280373bba11b5119dc9fa6d905089a3a7ae723533eb8",
+      "build/frontend_coordinate_final/window_dma/reference_dual.sv": "98cf7aaec294a85cb342f883ee68ed424ba5f6b7c21dfc86bd6d8b8e9294e2b4"
+    },
+    "reference_sha256": "d3736b7e3853d1cc1c94140aa58dadc5975126d9f8eb5d47fc7e3a67454796a5",
+    "cycle_requirement": "All public outputs and complete queue state equal to reference every cycle",
+    "trace_sha256": "6065ce15a5a5bdb653e13fd1b5d2905858b2f96004916048fd2428867c5e5289",
+    "trace_cycles": 24913,
+    "binary_sha256": "e547e8b127fbb75f5cfc2004760e9c7dfd81d29760d154cc8a1d0f52802ca41a",
+    "log_sha256": "a04c41f7ce5689aae7ecbe9b70c7a8dfcd243e0aeaca4a3396f1853b776a2135",
+    "summary": [
+      "CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=3 cycles=1534",
+      "CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2",
+      "CASE random_coordinates_backpressure requests=240 peak=4",
+      "CASE read_error_drain requests=4 completions=4",
+      "CASE error_reconfigure_recovery requests=3",
+      "CASE invalid_descriptor_order requests=4 completions=4",
+      "CASE invalid_cols cols=0 requests=4 completions=4",
+      "CASE invalid_cols cols=17 requests=4 completions=4",
+      "CASE invalid_cols cols=32 requests=4 completions=4",
+      "CASE invalid_cols cols=33 requests=4 completions=4",
+      "CASE pending_configuration drained=4 recovery_requests=3",
+      "CASE configuration_before_first_ar stalled_cycles=24 old_requests=1 recovery_requests=1",
+      "CASE configuration_at_burst_boundary pending_windows_at_last_r=1 old_requests=4 recovery_requests=1",
+      "CASE reset_with_four_requests cancelled=4 recovery_requests=3",
+      "WINDOW_DMA_PASS accepted=421 completed=417 cancelled=4 payload_elements=4441 errors=19",
+      "DMA_DIRECT_COMPARE_PASS outputs=49 cycles=24913 stalled_offers=0",
+      "WINDOW_DESCRIPTOR_COMPARE_PASS early_window_cycles=22108"
+    ]
+  },
+  "frontend_backpressure": {
+    "passed": true,
+    "public_outputs": 19,
+    "functional_states": 16,
+    "runs": [
+      {
+        "case": "window",
+        "passed": true,
+        "source_sha256": {
+          "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+          "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+          "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+          "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+          "rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+          "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+          "test/monitors/conv_im2col_frontend_observer.sv": "4f7a74da514b3f5f41b7063f024e28c8d7f64d530d984db588c7bfe50981bfad",
+          "test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+          "build/frontend_coordinate_final/backpressure/reference_frontend.sv": "3f8f31385a28f672166d71c1aea1e4c672afa5352e774189a90b45d68334a9f8",
+          "build/frontend_coordinate_final/backpressure/window/tb_conv_im2col_frontend.sv": "b0c6b07295d9fb25a934542ddd773d18e49426939ce7e9a3979e78bdb3d10661"
+        },
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=38 cycles=251026 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_BACKPRESSURE_PASS blocked_offers=249319 blocked_fast_contexts=81",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=251026"
+        ],
+        "log_sha256": "1d95e596441b7c6cbbffcad0c8fbe8d48959d5aed43956682027d95afd9b1770",
+        "vectors_sha256": "055765faccfa442c3486d6798e99b1169908da871ba3e25b08811b2b71d8ab04"
+      },
+      {
+        "case": "control",
+        "passed": true,
+        "source_sha256": {
+          "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+          "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+          "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+          "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+          "rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+          "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+          "test/monitors/conv_im2col_frontend_observer.sv": "4f7a74da514b3f5f41b7063f024e28c8d7f64d530d984db588c7bfe50981bfad",
+          "test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+          "build/frontend_coordinate_final/backpressure/reference_frontend.sv": "3f8f31385a28f672166d71c1aea1e4c672afa5352e774189a90b45d68334a9f8",
+          "build/frontend_coordinate_final/backpressure/control/tb_conv_control.sv": "800c362e8ffa65fdc56974ed7367ded203b03c7a65ed5676593e9df9eee3205a"
+        },
+        "summary": [
+          "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=134",
+          "FRONTEND_BACKPRESSURE_PASS blocked_offers=108 blocked_fast_contexts=0",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_control cycles=134"
+        ],
+        "log_sha256": "5e4072761faf85301d04be3d1cf55418fd323abd5951f6f7f535e79747b565ec"
+      }
+    ]
+  },
+  "window_trace": {
+    "path": "test/dma_direct_offer/window_cycles.csv.gz",
+    "sha256_decompressed": "6065ce15a5a5bdb653e13fd1b5d2905858b2f96004916048fd2428867c5e5289",
+    "cycles": 24913,
+    "maximum_resident_stream_interval": 3
+  },
+  "native_synthesis": {
+    "reference": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "f2878906967681fbfffb2aebf7e3311d7efa6c7f921d44aa62c1cb5a2b0cf8f8",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [
+          "LUT6",
+          "LUT6_2"
+        ],
+        "model_sha256": "5225885750b16ed2b781ac5ff2d89ed503355d37c8602926ef1b9fa62c1f8aa3"
+      },
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 6503,
+      "flip_flops": 3236,
+      "dsp": 30,
+      "carry4": 726,
+      "cell_counts": {
+        "$scopeinfo": 4,
+        "CARRY4": 726,
+        "DSP48E1": 30,
+        "FDCE": 2021,
+        "FDPE": 92,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 264,
+        "LUT2": 1423,
+        "LUT3": 1142,
+        "LUT4": 1127,
+        "LUT5": 1640,
+        "LUT6": 1152,
+        "LUT6_2": 19,
+        "MUXF7": 8,
+        "MUXF8": 4,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      },
+      "reference_ref": "8c669a70",
+      "longest_register_path_cells": 20,
+      "mapped_sha256": "d4b63a00e7786dd054a2d1e198b2ee7a792d3befc99d9be73277690f5f77a178"
+    },
+    "current": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "6d8e25052e266e7a7ed55bd3b696daa74d9f8d7cbb1f997406a09ebd67c0e102",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+        "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [
+          "LUT6",
+          "LUT6_2"
+        ],
+        "model_sha256": "5225885750b16ed2b781ac5ff2d89ed503355d37c8602926ef1b9fa62c1f8aa3"
+      },
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 7179,
+      "flip_flops": 3240,
+      "dsp": 30,
+      "carry4": 840,
+      "cell_counts": {
+        "$scopeinfo": 15,
+        "CARRY4": 840,
+        "DSP48E1": 30,
+        "FDCE": 2025,
+        "FDPE": 92,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 277,
+        "LUT2": 1575,
+        "LUT3": 1305,
+        "LUT4": 1256,
+        "LUT5": 1755,
+        "LUT6": 1269,
+        "LUT6_2": 19,
+        "MUXF7": 6,
+        "MUXF8": 3,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      },
+      "longest_register_path_cells": 15,
+      "maximum_resident_kib": 416680,
+      "mapped_sha256": "2c793ec0f87b478c01223aadbc998542241ddc9c653bafae29f5ef4d1ea7cd33",
+      "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. LUT6_2 O5 excludes I5, CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Unregistered DSP paths retain conservative input dependencies, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis.",
+      "longest_path": {
+        "combinational_cells": 15,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$32087",
+          "type": "FDCE",
+          "port": "Q",
+          "net": "$techmap359731$abc$353939$lut$aiger$o9577.A[0]",
+          "detail": "register output",
+          "source": "build/frontend_group_compare/mapped/sources/conv_im2col_frontend.sv:1123.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+          "register_origin": "row_base_ix [0]"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$31898",
+          "type": "FDCE",
+          "port": "D",
+          "net": "$techmap355526$auto$ff.cc:337:slice$31898.D",
+          "category": "data",
+          "source": "build/frontend_group_compare/mapped/sources/conv_im2col_frontend.sv:1123.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+          "register_origin": "state [0]"
+        },
+        "path": [
+          {
+            "cell": "$abc$353939$lut$aiger$o10069",
+            "type": "LUT2",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap359731$abc$353939$lut$aiger$o9577.A[0]",
+            "output_net": "$techmap360354$abc$353939$lut$aiger$o10139.A[2]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22086.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "S[0]",
+            "output_port": "CO[3]",
+            "input_net": "$techmap360354$abc$353939$lut$aiger$o10139.A[2]",
+            "output_net": "$abc$353939$aiger$i12095",
+            "source": "build/frontend_group_compare/mapped/sources/conv_im2col_frontend.sv:340.27-340.82|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22086.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "O[0]",
+            "input_net": "$abc$353939$aiger$i12095",
+            "output_net": "$techmap360328$abc$353939$lut$aiger$o10140.A[5]",
+            "source": "build/frontend_group_compare/mapped/sources/conv_im2col_frontend.sv:340.27-340.82|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger$o10140",
+            "type": "LUT6",
+            "input_port": "I5[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap360328$abc$353939$lut$aiger$o10140.A[5]",
+            "output_net": "$abc$353939$aiger$o10140",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$297.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "S[1]",
+            "output_port": "O[3]",
+            "input_net": "$abc$353939$aiger$o10140",
+            "output_net": "$techmap358062$abc$353939$lut$aiger353938$37520.A[3]",
+            "source": "build/frontend_group_compare/mapped/sources/conv_im2col_frontend.sv:349.30-349.72|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:29.114-29.153|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:70.11-77.5"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$37536",
+            "type": "LUT3",
+            "input_port": "I2[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap358062$abc$353939$lut$aiger353938$37520.A[3]",
+            "output_net": "$techmap358116$abc$353939$lut$aiger353938$37635.A[4]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$37635",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap358116$abc$353939$lut$aiger353938$37635.A[4]",
+            "output_net": "$techmap358117$abc$353939$lut$aiger353938$37641.A[5]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$37641",
+            "type": "LUT6",
+            "input_port": "I5[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap358117$abc$353939$lut$aiger353938$37641.A[5]",
+            "output_net": "$techmap358142$abc$353939$lut$aiger353938$37686.A[4]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$37686",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap358142$abc$353939$lut$aiger353938$37686.A[4]",
+            "output_net": "$techmap358144$abc$353939$lut$aiger353938$39623.A[3]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$39097",
+            "type": "LUT2",
+            "input_port": "I1[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap358144$abc$353939$lut$aiger353938$39623.A[3]",
+            "output_net": "$techmap361938$abc$353939$lut$aiger353938$39103.A[5]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$39103",
+            "type": "LUT6",
+            "input_port": "I5[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap361938$abc$353939$lut$aiger353938$39103.A[5]",
+            "output_net": "$abc$353939$lut$aiger353938$39151.A[5]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$39151.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+            "type": "LUT6",
+            "input_port": "I5[0]",
+            "output_port": "O[0]",
+            "input_net": "$abc$353939$lut$aiger353938$39151.A[5]",
+            "output_net": "$abc$353939$lut$aiger353938$39151.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$39151.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+            "type": "MUXF7",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "$abc$353939$lut$aiger353938$39151.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+            "output_net": "$abc$353939$lut$aiger353938$39151.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+          },
+          {
+            "cell": "$abc$353939$lut$aiger353938$39151.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+            "type": "MUXF8",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "$abc$353939$lut$aiger353938$39151.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+            "output_net": "$techmap364134$auto$abc_ops_reintegrate.cc:722:reintegrate$354393.A[4]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$354393",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap364134$auto$abc_ops_reintegrate.cc:722:reintegrate$354393.A[4]",
+            "output_net": "$techmap355526$auto$ff.cc:337:slice$31898.D",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          }
+        ]
+      }
+    },
+    "graph_complete": true
+  },
+  "reproduction_tool_sha256": {
+    "test/conv_frontend/tools/run_state_equivalence.py": "2441bcb0b5d2e251e485869f6bc8a6a40d477dc969a6f53ac6c18bbbded3fc3c",
+    "test/conv_frontend/tools/group_boundary_equivalence.py": "649d7b833fae2621b263f57dbb38781e86d8443cb67aa4a2c64b25b3b57f1090",
+    "test/conv_frontend/tools/coordinate_bound_equivalence.py": "bc7028c686e6c5cf655e309df1e8cfb773417c46c1fccf1304861170e397ee5d",
+    "test/conv_frontend/tools/word_match_equivalence.py": "76c14b6284b721fefdf57ee5a0dba7d2c8e720e62c38fe927885a83da8f6720e",
+    "test/conv_frontend/tools/synthesis.py": "b29ec7f48f7263943b6f72d0bf754ec46b9c7745334aaaae22d47aded576758f",
+    "test/conv_frontend/tools/measure_descriptor_paths.py": "f9ef8839b86bc26dd911e65fbfe2fc354f390a98e31ab43bed8393f405dfea55",
+    "test/conv_frontend/tools/compare_frontend.py": "ac2d619e1c48f287724124ec71bf5726624679b39b6eb26ffa17559d6b6afe2b"
+  }
+}

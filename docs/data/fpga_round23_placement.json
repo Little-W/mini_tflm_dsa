@@ -1,0 +1,950 @@
+{
+  "passed": true,
+  "source_commit": "7ef39f0101ebf39184d11dbdc80a4042faee75c2",
+  "part": "xc7a200tfbg484-3",
+  "resources": {
+    "implementation_step": "place",
+    "placement_complete": true,
+    "physical_lut_positions": 49828,
+    "physical_lut_positions_by_use": {
+      "logic": 47360,
+      "distributed_ram": 2444,
+      "shift_register": 24
+    },
+    "placed_lut_bel_instances": 58636,
+    "shared_lut_positions": 8808,
+    "storage_positions_with_logic_output": 0,
+    "occupied_slice_sites": 15959,
+    "placed_cell_counts": {
+      "BUFGCTRL": 2,
+      "CARRY4": 1897,
+      "DSP48E1_DSP48E1": 740,
+      "IOB33_INBUF_EN": 4,
+      "IOB33_OUTBUF": 37,
+      "PAD": 41,
+      "PSEUDO_GND": 1,
+      "PSEUDO_VCC": 1,
+      "RAMB18E1_RAMB18E1": 45,
+      "RAMB36E1_RAMB36E1": 91,
+      "SELMUX2_1": 1956,
+      "SLICE_FFX": 42862,
+      "SLICE_LUTX": 58636
+    },
+    "unplaced_cells": [],
+    "resource_errors": [],
+    "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint.",
+    "routing_completed": false,
+    "frequency_mhz_target": 150,
+    "timing_150mhz_confirmed": null,
+    "timing_validation_status": "Requires complete target-device timing coverage"
+  },
+  "independent_resource_check": {
+    "passed": true,
+    "method": "Independent grouping of placed BEL names after removing the 5LUT or 6LUT suffix",
+    "all_cells_have_unique_bel": true,
+    "cell_count": 106313,
+    "physical_lut_positions": 49828,
+    "physical_lut_positions_by_use": {
+      "logic": 47360,
+      "distributed_ram": 2444,
+      "shift_register": 24
+    },
+    "lut_bel_instances": 58636,
+    "shared_lut_positions": 8808
+  },
+  "manifest": {
+    "rtl_commit": "7ef39f0101ebf39184d11dbdc80a4042faee75c2",
+    "synthesis_directory": "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_dsp740_cost/soc_top",
+    "original_mapped_sha256": "84dc77e6758c71ce3dfb61779208b1f3b8341fd44248f291f570e66e8808dbee",
+    "mapping_manifest_sha256": "029df9534a9dccb647d263e50bba1f6094e041b0afae034cc8fef54fa55daf0a",
+    "nextpnr_binary_sha256": "10357cc430a78c45842554a01c0c6d0ec62d9cba3e656815aae0523560a035b3",
+    "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+    "tools_manifest_sha256": "ea79ded981ed32d032aa338ca7044c0d27accf73b2b012bfc907734df5ebdb74",
+    "part": "xc7a200tfbg484-3",
+    "frequency_mhz": 150,
+    "clock_period_ns": 6.666666666666667,
+    "seed": 1,
+    "refinement_iterations": 1,
+    "analytical_iterations": 2,
+    "timing_model_complete": false,
+    "implementation_environment": {
+      "NEXTPNR_HEAP_MAX_ITERS": "2",
+      "NEXTPNR_REFINE_MAX_ITERS": "1",
+      "XC7_CARRY_DIRECT_DI": "1",
+      "XC7_CARRY_TRIM_TAIL": "1",
+      "XC7_FRACTURE_LUTS": "1",
+      "XC7_LUT_COFACTOR": "1"
+    },
+    "pairing_order": [
+      "cofactor",
+      "ordinary",
+      "registered",
+      "mixed",
+      "carry"
+    ],
+    "mapped_json_sha256": "95ed1e2bc78ff9ae326f17533a788acab38ffd2d66e3d08b2260e11847b072b0",
+    "cofactor_pairs": 28,
+    "cofactor_report_sha256": "6de57e07ccc58fbbf95bfcd450180b823922897e1c977238bafb76efb25d444d",
+    "final_packed_sha256": "da004138c20547e201fd5fc1bbe4984897d47e8fd650e7b0854043f310549861",
+    "functional_cells_sha256": "3c3929b025d6a596c7af94c1573b063fd8c19ded4fcc10b07330df9811dbe24f",
+    "pair_counts": {
+      "cofactor": 28,
+      "ordinary": 2752,
+      "registered": 1420,
+      "mixed": 95,
+      "carry": 192
+    },
+    "mapped_verilog_sha256": "134b4e9657676931ac0a55fcab101ce86223cbb1653fd00504d9aead8a663e0e"
+  },
+  "packing_stages": {
+    "01_fuse_cofactors": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/fuse_lut_cofactors.py",
+        "--mapped",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_dsp740_cost/soc_top/mapped.json",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/mapped.json",
+        "--report",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/fusion.json"
+      ],
+      "log": "01_fuse_cofactors.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 10.9,
+      "peak_process_tree_rss_bytes": 599957504,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8756219904,
+      "minimum_observed_system_available_memory_bytes": 7289614336,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "95ed1e2bc78ff9ae326f17533a788acab38ffd2d66e3d08b2260e11847b072b0"
+    },
+    "02_metrics": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/netlist_metrics.py",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/mapped.json",
+        "--top",
+        "soc_top",
+        "--register-origins",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_dsp740_pre/soc_top/pre_lut.il",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/metrics.json"
+      ],
+      "log": "02_metrics.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 10.24,
+      "peak_process_tree_rss_bytes": 1088458752,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8834207744,
+      "minimum_observed_system_available_memory_bytes": 7783976960,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "5764caccc85586e6fe3782e0dc5116af4730f911680036237f8543e2fba5af26"
+    },
+    "03_export": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/open_fpga_synth.py",
+        "--worker",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/03_export.ys"
+      ],
+      "log": "03_export.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 9.07,
+      "peak_process_tree_rss_bytes": 1656811520,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8765677568,
+      "minimum_observed_system_available_memory_bytes": 7204605952,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "134b4e9657676931ac0a55fcab101ce86223cbb1653fd00504d9aead8a663e0e"
+    },
+    "04_prepare_pack": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/open_fpga_implementation.py",
+        "--mapped",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/mapped.json",
+        "--nextpnr",
+        "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+        "--chipdb",
+        "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+        "--soc-package-pins",
+        "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/pack",
+        "--through",
+        "pack",
+        "--seed",
+        "1",
+        "--freq",
+        "150",
+        "--refinement-iterations",
+        "1",
+        "--allow-timing-failure"
+      ],
+      "log": "04_prepare_pack.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 59.41,
+      "peak_process_tree_rss_bytes": 508891136,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8670699520,
+      "minimum_observed_system_available_memory_bytes": 7096397824,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "9d7eb06dd89de5af52ca504d260bea637ccb630884ad9294a593558c0f3894e9"
+    },
+    "05_pair_ordinary": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/pair_packed_luts.py",
+        "--packed",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/pack/packed.json",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired_ordinary.json",
+        "--report",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/pairing_ordinary.json"
+      ],
+      "log": "05_pair_ordinary.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 8.75,
+      "peak_process_tree_rss_bytes": 1078390784,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8759484416,
+      "minimum_observed_system_available_memory_bytes": 7897100288,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "1b98806853ebaee55b18a471f0c00d07802bdff74a4df57ea566aab6020edfa1"
+    },
+    "06_pair_registered": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/pair_registered_luts.py",
+        "--packed",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired_ordinary.json",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired_registered.json",
+        "--report",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/pairing_registered.json"
+      ],
+      "log": "06_pair_registered.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 10.54,
+      "peak_process_tree_rss_bytes": 931504128,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8787677184,
+      "minimum_observed_system_available_memory_bytes": 8097558528,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "a0ef33b555afc685361dea5bcd3004bef3201191bcd38f4dfbcb2c8554c7494a"
+    },
+    "07_pair_mixed": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/pair_mixed_luts.py",
+        "--packed",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired_registered.json",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired_mixed.json",
+        "--report",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/pairing_mixed.json"
+      ],
+      "log": "07_pair_mixed.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 11.04,
+      "peak_process_tree_rss_bytes": 918499328,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8825696256,
+      "minimum_observed_system_available_memory_bytes": 8051564544,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "f20da8dbdf3a264455c22d8bdd0f3ad76b71d4dc958f96054017b9a219803ca8"
+    },
+    "08_pair_carry": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/pair_carry_luts.py",
+        "--packed",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired_mixed.json",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired.json",
+        "--report",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/pairing_carry.json"
+      ],
+      "log": "08_pair_carry.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 11.53,
+      "peak_process_tree_rss_bytes": 1041424384,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8799076352,
+      "minimum_observed_system_available_memory_bytes": 8160202752,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "da004138c20547e201fd5fc1bbe4984897d47e8fd650e7b0854043f310549861"
+    }
+  },
+  "placement_stages": {
+    "09_place": {
+      "command": [
+        "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.10357cc430a78c45",
+        "--chipdb",
+        "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+        "--freq",
+        "150",
+        "--seed",
+        "1",
+        "--strict-timing-graph",
+        "--timing-allow-fail",
+        "--json",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired.json",
+        "--no-pack",
+        "--no-route",
+        "--write",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/placed.json",
+        "--report",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/placement_timing.json"
+      ],
+      "log": "09_place.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 400.8,
+      "peak_process_tree_rss_bytes": 1938747392,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8923549696,
+      "minimum_observed_system_available_memory_bytes": 6620602368,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "ebc8f21fee67ca6faf9d4e1ab77f4a9662745a222a0024dcffaab04f0c748417"
+    },
+    "10_lut_mapping": {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/tools/tests/check_lut_logical_pin_mapping.py",
+        "--packed",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/paired.json",
+        "--physical",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/placed.json",
+        "--out",
+        "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_physical/logical_lut_mapping.json"
+      ],
+      "log": "10_lut_mapping.log",
+      "state": "complete",
+      "return_code": 0,
+      "elapsed_seconds": 10.13,
+      "peak_process_tree_rss_bytes": 988626944,
+      "current_process_tree_rss_bytes": 0,
+      "system_available_memory_bytes": 8720465920,
+      "minimum_observed_system_available_memory_bytes": 7949156352,
+      "memory_sample_interval_seconds": 0.2,
+      "progress_save_interval_seconds": 2,
+      "output_sha256": "df22d8f0a34c4a0ded21d64fa99010d54fa3bc358e8756794322b3b7d5a9d6ce"
+    }
+  },
+  "placed_sha256": "ebc8f21fee67ca6faf9d4e1ab77f4a9662745a222a0024dcffaab04f0c748417",
+  "placement_report_sha256": "127f2314bbdfdabdf39e7e04b3742282f808688325f9fb688c1d6668e207610d",
+  "packing_tools_manifest": {
+    "build_vitis_sensor_platform.py": {
+      "sha256": "fd99025ef595406097f1262b062ebcaddb1e499276a2ba86ef6aab27d5c7fd75"
+    },
+    "check_carry_connections.py": {
+      "sha256": "e55ed48e0bbbce8f4d7c63c8c920e02c03398c154554ca70c1b352e24c816955"
+    },
+    "check_vu3p_bram_locations.tcl": {
+      "sha256": "5a9e79e85aa6a565ddde8a4abc081f12a658820cfcca94a3b7d39644b1700cd5"
+    },
+    "check_vu3p_parts.tcl": {
+      "sha256": "9bb9257348645ec9778e23766665b62ece1ed301d56a890683c97e74182f1c57"
+    },
+    "deploy_pre_release_sensor_models.py": {
+      "sha256": "fd35fa9c9cb0f4a84c7ebdef6394d30020053770707564b5b7788ed640b328f4"
+    },
+    "diag_vivado_ip_status.tcl": {
+      "sha256": "a0a006ce489f8568acf431847cc73eb4c9eb7571c4422d6aff3947f131e953dd"
+    },
+    "diagnose_vu3p_sensor_bmg.tcl": {
+      "sha256": "d21d48debbde5cdb6ebcaa7894ac1a18066d590f041777d77cdfab6ac1d86115"
+    },
+    "dump_vu3p_bmm_properties.tcl": {
+      "sha256": "71be1ec33390dce017f52d359efc81da8d3d5d485ad3273b6d76639471685990"
+    },
+    "export_checkpoint.py": {
+      "sha256": "ee001b89f3099080cf356720d2aee040812d9050de84d9929ad6c8420c021f91"
+    },
+    "export_sensor_hw_platform.tcl": {
+      "sha256": "5c756e470230118f6a5a9e98279b6a2353747df9a7b1816cf83ddcede291eec0"
+    },
+    "fuse_lut_cofactors.py": {
+      "sha256": "882411ad65446143c58ba6e94a050c41036d87ff3899defda8279477a7281e7b"
+    },
+    "implement_export_vu3p_sensor_latest.tcl": {
+      "sha256": "7fcd42d1437482d7e21fe4372be87aeec6fa84f8f0f3e8860131a7f083a6133f"
+    },
+    "implement_sensor_bram_latency.tcl": {
+      "sha256": "8d269418335ce1cf173ba4d7c4f86ebaba337feacdb9754ee36045e33c459627"
+    },
+    "implement_sensor_key_fix.tcl": {
+      "sha256": "9759918d564066de0fe98be5a9734cd8d7115517afbb56e1c6834c1c07b41ef9"
+    },
+    "lut_dependencies.py": {
+      "sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88"
+    },
+    "manage_intermediate_archives.py": {
+      "sha256": "779fb9a5997eb319dad654452be21f6e4c9c4066e3a31471c8b490b3cf46e248"
+    },
+    "map_wide_alu.py": {
+      "sha256": "f028b28a68c7bac1e0e8937199b8a6a57df73819081b405177eb6622e1dbd5be"
+    },
+    "merge_vu3p_sensor_elf.py": {
+      "sha256": "89df4dab3c53b9bcf700b423ba65ecf348c23244e69ab754ba71b8f0f8c156b5"
+    },
+    "module_resources.py": {
+      "sha256": "7935e63e53907c56a411e5eb5b099bdf02c32f2bac481e9e354ef4523b9b1d47"
+    },
+    "netlist_fanout.py": {
+      "sha256": "45887ab4f1027ee38a4b7e1ddbdc2a8a189378adc68f791273b9a8c590fcdd21"
+    },
+    "netlist_metrics.py": {
+      "sha256": "10e6d60b3680d45bd5079443412e4af00277390237ba6a66597da5755b68e976"
+    },
+    "open_fpga_implementation.py": {
+      "sha256": "57798086d20cf2fb7b59b4643e0d168f6251ed857721afe32c6be4236b5c5965"
+    },
+    "open_fpga_synth.py": {
+      "sha256": "b1cb1fe197555401127944724db24aa06eb6f6c2562d9710a361cd1042303a6f"
+    },
+    "pair_carry_luts.py": {
+      "sha256": "72526bbed55970cd13f8b305fbc26b3d0e513e9bdc26f049e0a7e2e048abaef7"
+    },
+    "pair_mixed_luts.py": {
+      "sha256": "7d2284feb856d46b3dcbcfa6b5fd2883d256e4d162a5ad8079075fbe7c7bc412"
+    },
+    "pair_packed_luts.py": {
+      "sha256": "4292628837e295a8580333c442bf43e3474d60421621e9d1217cfe56179491a2"
+    },
+    "pair_registered_luts.py": {
+      "sha256": "3a9a1ad4f55d51e6e5e856d85548e2735de3a032ec9c54cdadd23d670e6f176f"
+    },
+    "patches/nextpnr_dsp_connection_report.patch": {
+      "sha256": "6fbe6b7a9d3a6882b57faa6579e007c0f4cabbe311d901fb6e95f2c1201b4299"
+    },
+    "patches/nextpnr_heap_cluster_connectivity.patch": {
+      "sha256": "1f088a53f472ae42fae276eec52de4e4a624428504dce015a964456ee39b0e95"
+    },
+    "patches/nextpnr_heap_iteration_limit.patch": {
+      "sha256": "97b9e1f084ce027e6a213ace6673e609c3e280355462b0a7f0022e7fe0b4cb7e"
+    },
+    "patches/nextpnr_lut_logical_pin_mapping.patch": {
+      "sha256": "5905260657c195c8bec59844691ee5c0d391a474a2e34bc206376a3c3ba2a011"
+    },
+    "patches/nextpnr_lut_output_inputs.patch": {
+      "sha256": "b9e5466392eb96151c2f7a503894ff7bc36eb11528afd155243778ab79f5d468"
+    },
+    "patches/nextpnr_refinement_limit.patch": {
+      "sha256": "10effc78f01ff21101f2f49470361f77e03e97070bec513812c1f01ade586973"
+    },
+    "patches/nextpnr_saved_path_report.patch": {
+      "sha256": "a7d9f709c2ff221230654335a0083d9387623ec1ede3032e0bb8455a5a28e486"
+    },
+    "patches/nextpnr_xilinx_carry_direct_di.patch": {
+      "sha256": "3c6785dda79d991f0021a6a53823bd30884c18e1238c26924bb9cd98c97c441b"
+    },
+    "patches/nextpnr_xilinx_carry_tail.patch": {
+      "sha256": "6567b82a6b9028287e9bae6b972a8f2d7f3df791bab18d4c83b56380b7486de9"
+    },
+    "patches/nextpnr_xilinx_dsp_dram_timing.patch": {
+      "sha256": "ae6c0dd05e903dad227404a73168e2644dc9c9944886c71767431f0c85bb149c"
+    },
+    "patches/nextpnr_xilinx_lut_cofactor.patch": {
+      "sha256": "96ca42f5d4c8de58855f28f2ff4e07e47fd2bf71eda690d1d57970273ab0d1f4"
+    },
+    "patches/nextpnr_xilinx_lut_packing.patch": {
+      "sha256": "778ddf027c05c8580fbb7e21f5c17de35e5f4c980a9f5c9bdaba6549bb76a36c"
+    },
+    "patches/verilator_5_48_gcc.patch": {
+      "sha256": "b7d65efe3c0fff36cda58e4b2c67a2abb5aa22ac61500fe9de1feebc78e499d4"
+    },
+    "placed_resources.py": {
+      "sha256": "2f013d5710c7f5288cdb2cd4dc79c2fb92015339abd07807c9a44be8c1820b17"
+    },
+    "probe_vu3p_bmg_cells.tcl": {
+      "sha256": "727ec71fedea36b45521649cc3a9116db389428b8d5eb9983af46b675a23afae"
+    },
+    "remap_fpga_luts.py": {
+      "sha256": "f51cc115fe543dc35a34020d9bbbd4235cd7ea2280680ca0cd5f57ea295af7d0"
+    },
+    "repair_vu3p_sensor_bmg_run.tcl": {
+      "sha256": "a3ca0dc9a953e45dafb11cc64bf2ac80b2de11b0964f785b44a7d31f5191cef3"
+    },
+    "report_saved_timing.py": {
+      "sha256": "fd6e8ca5984d83e974a2c3dbe652283f6acc90520ff48c1bf25cb7a51811169e"
+    },
+    "report_vu3p_cross_clock_paths.tcl": {
+      "sha256": "2190dc1c5232d8990310fb8fc9dfe1eade37c84e08edf1d2645a71f781528dce"
+    },
+    "restore_checkpoint.py": {
+      "sha256": "0766c4d482ee513f8466cced02436848413d0dc19ae2d85be848e1ccd2f2712f"
+    },
+    "run_shared_ram_standalone.tcl": {
+      "sha256": "5a95b3268e99bfb41601d44d91e9d8c936b4829f4fb29ac965e1bac486f64d43"
+    },
+    "set_sensor_model_bram_latency.tcl": {
+      "sha256": "1eab48020f346c6c69dfc331a17f40dc9a2da3b001abb8e7480fad8c4fa5e7e8"
+    },
+    "synth_inferred_shared_ram.tcl": {
+      "sha256": "84d962c13bda324b2028cb1bd1603b81026c98aa22949894e50dfc3eaf702aa4"
+    },
+    "synthesize_vu3p_sensor_bmg_ip.tcl": {
+      "sha256": "3792cfbd045425fd0366ff28d86fe0d64d94a1999b8a0b64d14229c91ac05f07"
+    },
+    "techmap/wide_alu_dsp.sv": {
+      "sha256": "5f3550f7b3b1250d8c7fdcc9888051bbf3fcc52715bc637f41f33a6afdc4e0ed"
+    },
+    "test_carry_tail.py": {
+      "sha256": "7395e2ada0e589b57fa0fd4aa8e134b392858b47dfe55005899f32a0cd4400fb"
+    },
+    "test_dsp_alu_bit_dependencies.py": {
+      "sha256": "4cf0b3215190af1b278dd90d5494a92c2e3b028e7237529169eed27c38e4c9bc"
+    },
+    "test_dsp_path_boundaries.py": {
+      "sha256": "ec2e8fde4b0f14bbb97e473e0dc1b342d01a87cc3c679da205b6a8acd1f0698c"
+    },
+    "test_import_elaboration.py": {
+      "sha256": "e98e103a8c0c7e4b8b797f089fbd17b46613089c46004de42d2c75587e0ab3f2"
+    },
+    "test_lut_dependencies.py": {
+      "sha256": "e6112f33010717d0469d26b096f449c392d3bddf31dc03d5ba06eef7672e937c"
+    },
+    "test_map_wide_alu.py": {
+      "sha256": "1d122ede6d5c907c00d75b0b6831b2cc447928669dd53c1468fe310f0d39fe1b"
+    },
+    "test_module_resources.py": {
+      "sha256": "eb9badb4c1f941ba9b7a067066526665e55f15e61e74fcfb86904a1806d73246"
+    },
+    "test_netlist_metrics.py": {
+      "sha256": "8e4bb2f433a1fb207fe78a8ca7800f71175a02525e62762fcbb776bfac9375da"
+    },
+    "test_placed_resources.py": {
+      "sha256": "02783f491d2d3330dd367bfa4ea968410127d5472a8938b8528840a77c5dce8b"
+    },
+    "test_unused_dram_read_ports.py": {
+      "sha256": "20e24eeab01ac2212d6600db39581cc68bdc0d965125045d1098c9ef074230ae"
+    },
+    "test_wide_alu_dsp.py": {
+      "sha256": "3566e534ebf4898b11d28edf1d0df5cecffe488906a4911b3d741d782f173cb3"
+    },
+    "tests/bounded_dsp_chain.sv": {
+      "sha256": "cd82f44020d80bb8f3651d3381632132e9ac7d11f375dc5e337658398ac13689"
+    },
+    "tests/check_dsp_connection_report.py": {
+      "sha256": "82fc3c47e6c88a69afe3e4375dd2efeba8fb6c01857172081652e455affcb7bd"
+    },
+    "tests/check_emitted_fasm.py": {
+      "sha256": "7108c778cf4bb50123530d8197716ddd22ac1853bb5bad520dbf6180d6447951"
+    },
+    "tests/check_json_init.py": {
+      "sha256": "eb91485e897a639a0bf66078a81a91eec0f4ff8cabfc1e44461dfbbdb55f651b"
+    },
+    "tests/check_lut_logical_pin_mapping.py": {
+      "sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808"
+    },
+    "tests/check_physical_behavior.py": {
+      "sha256": "c84bd03212b61416e877af95e1783704d19d3674e50d51952b5112f3bae72ae2"
+    },
+    "tests/prepare_cases.py": {
+      "sha256": "aba3b9ea998fdd622a87e0ba4771b674bfcf8113815fc4946d24286b19f8cf3e"
+    },
+    "tests/review_carry_tail.py": {
+      "sha256": "3261e366a54a1ff9da745a86da7d56093f3611ff0fe13d797ec6368a31c053f4"
+    },
+    "tests/review_lut_cofactor.py": {
+      "sha256": "07c37074c930c49b20d149c355acd293d77ce50ba529499970ea8968555e68e1"
+    },
+    "tests/review_lut_packing.py": {
+      "sha256": "6f271ffb7b1d8d1855024ea2b60583f48273433d93d0b9c29323c91f284e78a6"
+    },
+    "tests/review_outmux_edges.py": {
+      "sha256": "4d6df506daa3af3b385716dac26ec8fb61f5fa1bc22e68ae1cab30690787366b"
+    },
+    "tests/review_placer_moves.py": {
+      "sha256": "009c5f96a0c0b7290ffe59eb130718532f1d13410250969ffa12f99602ce5bf5"
+    },
+    "tests/run_bounded_dsp_chain.py": {
+      "sha256": "a94859a0ce2fe6e9e6acb6e3b3952769c3a19e483482306462dfefa29073e81b"
+    },
+    "tests/run_carry_lut_pair_implementation.py": {
+      "sha256": "63afa0b447e76dcba89fb7ef85d2d6ef19cdec05c341d31d33d9cd53fa824669"
+    },
+    "tests/run_carry_tail_implementation.py": {
+      "sha256": "0667882ed455ca954a40e3143fba3729d681a8ffec935eb516d019965fddd196"
+    },
+    "tests/run_lut_cluster_connectivity.py": {
+      "sha256": "5abb0f9250e4d1da178de1be154fd4c06294e9162ba9cbeebf8634b52ec4bc45"
+    },
+    "tests/run_lut_cofactor_implementation.py": {
+      "sha256": "3339dc1bf558d9e9c78b6ac709639a0f4fd27cf64ff5d0fcea753c1472f42c4f"
+    },
+    "tests/run_lut_output_implementation.py": {
+      "sha256": "a9408ac9f4e04bb8b103c11877f7f78da6334deeb9dae66794d51ae4aa011d24"
+    },
+    "tests/run_lut_packing_implementation.py": {
+      "sha256": "444b483845f192dbec51af32dbcfddde8442a8058be7925bae67be3792995e45"
+    },
+    "tests/run_lut_pair_implementation.py": {
+      "sha256": "0c24a2baf188213a50c83cc0aa5f6f3544746aa5b864c10b428b29be9fce376b"
+    },
+    "tests/run_mixed_lut_pair_implementation.py": {
+      "sha256": "bd3921313df1f7119bc52c1080f333e14d77895140677e3bb0d3108cc3e571fe"
+    },
+    "tests/run_registered_lut_pair_implementation.py": {
+      "sha256": "16fb00e60a8192c5961b386909e8b8bad1c034a55544f04dfded99253e4f47f8"
+    },
+    "tests/run_saved_timing_implementation.py": {
+      "sha256": "2189c122f92fb2559a47c0d169705f6bb1a5f8e37fac05e66760e5bfd91d0570"
+    },
+    "tests/tb_bounded_dsp_chain.sv": {
+      "sha256": "52628bbc570cba61ad72acc0c0637bb45f5fa6edc902a7baf8bd902d8d4a1bb5"
+    },
+    "tests/test_fuse_lut_cofactors.py": {
+      "sha256": "acef23e1b69c368ff8c32c0127ab7e0aafc3a7e06e1cbb8793fc6a18dad6bdf8"
+    },
+    "tests/test_implementation_progress.py": {
+      "sha256": "5e7e52e10259a196986e2e62b979a0fd69bb95c053d1620c023950f9451d7a39"
+    },
+    "tests/test_intermediate_archives.py": {
+      "sha256": "f4cacda5be070ceff99ba165609cc4f0188ec4522d2e013411ab5c875e72f2a8"
+    },
+    "tests/test_lut_cost_library.py": {
+      "sha256": "671698aa84a761ae2df132664454b3bbe0a05b2df4bd47f412017a37e4b0eb45"
+    },
+    "tests/test_lut_remapping.py": {
+      "sha256": "6b71d8de454b305e94e7fed08501539e687c6e85599b80ec3ac7d405eaddba1f"
+    },
+    "tests/test_netlist_fanout.py": {
+      "sha256": "b3bf87cf3ea35ea272966e2305ffe0eae50883bb4cd18e5f25528c794ebd783c"
+    },
+    "tests/test_pair_carry_luts.py": {
+      "sha256": "6a124f6925784cb27fc720d43f1a8880b45541558cb1df0f9dd1ca701c9f271a"
+    },
+    "tests/test_pair_mixed_luts.py": {
+      "sha256": "3d0b1b110215efa7a30e8fe447d578d9e01e1be572f41453c60f7f0429416cc1"
+    },
+    "tests/test_pair_packed_luts.py": {
+      "sha256": "c2601923af7507b867fb817f66f08de7e5adf832c3238702deb6f3769923f40e"
+    },
+    "tests/test_pair_registered_luts.py": {
+      "sha256": "3a7e639599a882fd5e509453e1e4f3c11de9f2c14587bba00c292b38904c1f34"
+    },
+    "tests/test_vivado_timing.py": {
+      "sha256": "7b07354852a222df7e523d9d01dbf05053db6c48e34fd65debe03e1ae4d039c7"
+    },
+    "tests/vivado_timing_mock.tcl": {
+      "sha256": "302c9d1f283ded12d1482e3aef9416f997ac9426a5a4cb07a43d7a31be2344f4"
+    },
+    "update_vitis_sensor_platform.py": {
+      "sha256": "5dad0ee7630ab00bc26fddb0d6484d2f6150f95ef2e18ae68e7511e647cfaaa7"
+    },
+    "update_vu3p_sensor_model_bram.tcl": {
+      "sha256": "c7841d4e17d4fe8effe9f15a184f173b83859515b507a0f70c9d189557655868"
+    },
+    "vivado_implement_mapped_soc.tcl": {
+      "sha256": "724b52af74affd222f434991001a820f5818be6d9418c9ae4c8ea25d0aec3e4d"
+    },
+    "vivado_synth_soc.tcl": {
+      "sha256": "3ba44d7820e1bc09fbbbd26660f7fdf968fe25b1407d46e620f010aaaf15dee0"
+    },
+    "vu3p_shared_ram_upgrade.tcl": {
+      "sha256": "075931d9db94bc1294ab1451cfb61992e778ba9c40447004c4ef0e0d8eab61be"
+    },
+    "write_vu3p_mmi_without_shared_bmm.tcl": {
+      "sha256": "1a0c02cbbf9d829a81b53bee4800e8a5344340b23582bb2633607a6005ead46d"
+    }
+  },
+  "source_manifest": {
+    "top": "soc_top",
+    "configuration": "16 x 16 NPU, 64-bit bus, 7 shared banks of 8 KiB; PicoRV32 and 256 KiB CPU RAM",
+    "parameters": {
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "IA_CACHE_BLOCKS": 4,
+      "IM2COL_CACHE_BYTES": 4096,
+      "SHARED_BANK_BYTES": 8192,
+      "SHARED_BANK_COUNT": 7,
+      "PS_FRAME_COUNT": 16,
+      "AXI_READ_OUTSTANDING": 4,
+      "AXI_WRITE_OUTSTANDING": 4,
+      "ENABLE_VECTOR_ENGINE": 1,
+      "VECTOR_PE_COUNT": 8,
+      "CPU_MEM_DP": 65536,
+      "CPU_MEM_WORD_WIDTH": 64,
+      "CPU_MEM_INIT_EN": 0,
+      "CPU_ENABLE_ICACHE": 0,
+      "CPU_ENABLE_MUL": 1,
+      "CPU_ENABLE_DIV": 1,
+      "NPU_ENABLE_IS_MODE": 1,
+      "NPU_ENABLE_PER_CHANNEL": 1,
+      "NPU_ENABLE_CLOCK_GATING": 1,
+      "NPU_AXI_TIMING_BUFFER": 1,
+      "CPU_AXI_WRITE_TIMING_BUFFER": 1,
+      "BYPASS_RAM_PINGPONG": 0,
+      "RAM_WRITE_TIMING_BUFFER": 1
+    },
+    "sources_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+      "rtl/npu/buffers/ia_ps_shared_ram.sv": "63aef7420801d87beed21b1ea5ffdc211bcf8ca382ca86fd0bea92b890c31d8a",
+      "rtl/npu/buffers/ps_buffer.sv": "494a85f2cb59549203d7bd08df1b2f5bc6ef01bf47c8bef7d6539850eac3ab72",
+      "rtl/npu/buffers/ps_buffer_fifo.sv": "810571feb5306f847a19b5402e75aecb487a9ba8ff5185f37f6d0a07eced9085",
+      "rtl/npu/compute/accumulator_array.sv": "3b175589e1e8f05bd6da71ee7c3abe377f3e1184542bfca69abc9f2eb5e78bf0",
+      "rtl/npu/compute/bias_mux.sv": "7f5ed78ff21592c73b301aa695c2664d9eafb77194e60f578c53d23a3583b94f",
+      "rtl/npu/compute/compute_core.sv": "4d045014c0fea68e6c9858b8411b17cb180a8dd11ebae8f477cf6511886940a1",
+      "rtl/npu/compute/data_setup.sv": "7a24e1ce5b84aa8d9c47aeb8cb6fa85ad70facad1075ba4493a0c557cec92786",
+      "rtl/npu/compute/de_diagonalizer.sv": "cd2790f96260ee6f9c8923975b5a1579ecd812d515ab94f9711b1f2a24257272",
+      "rtl/npu/compute/select_add.sv": "6374faf0c144a7eff895c9485a8646dcb2baa3650804754d08a3c6c34477da79",
+      "rtl/npu/compute/shift_accumulator.sv": "104d5f624db4d79d880e7c2e0bc9699e560d22129d1301e85f1d6ec1e3d768df",
+      "rtl/npu/compute/ws_systolic_array.sv": "742d8e29b678e1e56518ddf2e386f7478686097a3b47e428e0ef4defc6954613",
+      "rtl/npu/compute/ws_systolic_cell.sv": "d12c29669d98a524618bd15638e6b4b2ba698e4b0e8240cbf4eabec91d511a38",
+      "rtl/npu/control/npu_controller.sv": "04ec05981bb49145fe5ef52cf4176a02b5877ed847323b2ef8845bf3fb8c7597",
+      "rtl/npu/control/ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+      "rtl/npu/control/ps_window_scheduler.sv": "1c4163d8c94ec44ad2441c375a0120ebf651ba4a6874c889a10e28fe748b5885",
+      "rtl/npu/conv/conv_axi_read_guard.sv": "6e56096520176c9d6dabf2bc7f3659d063d674ec7fb4a2ffada37b3f91ff5570",
+      "rtl/npu/conv/conv_axi_read_mux.sv": "bcb6e2be2e8d83843d50730dee37a94939781558017e66923e7db73d8591ae17",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+      "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+      "rtl/npu/conv/conv_im2col_frontend.sv": "d791e28f29f86d63b4d7d6eae6a2f049851302d68d4ca7b6aa1270f3ee2ec7c9",
+      "rtl/npu/conv/vector_config_check.sv": "8c33ec372e211f722fc1a612cd96041dcb713c54d55167d0a0ccbad726f248bd",
+      "rtl/npu/conv/vector_engine.sv": "05db06ede48b737f15a7993c8ed55a94d04324ff9a01dda645f6509c00ed06a7",
+      "rtl/npu/conv/vector_pe.sv": "e5e6127062680e1309380f6d4f5391932a1c046497edd20642271fabf909e195",
+      "rtl/npu/conv/vector_quant_params.sv": "7c5995a46e1d181e719d62a2d5b6d36088d4d1b4b4d2e2cea8700a4d9aefebbb",
+      "rtl/npu/conv/vector_round_shift.sv": "5d54d7d5028e99bb25174320ae33a6958662a046480cc0695bb574d2225a29a6",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+      "rtl/npu/conv/vector_softmax.sv": "ed184fce3d3e6538ff24fe4e446f1aa06c409c05ad2cd707e441faf6d487efd6",
+      "rtl/npu/conv/vector_writeback.sv": "635d917460b8800abf3facfd3df3cf2126d7cddc3f8e9c10aef7092eddb0916f",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv": "38843e60274f6feaefd155a706f3f56d66671555825cca5103bc47548d7afae2",
+      "rtl/npu/dma/axi_dual_block_dma.sv": "30aba691e30cba0398a0fda5e02d63aae43876881cb938c3016f6efe5a03626a",
+      "rtl/npu/dma/axi_linear_block_dma.sv": "945a747b9b9ec5f1feae4ceedab23dbb223fefdc505b0e1612f0410e98701d50",
+      "rtl/npu/dma/axi_write_page_guard.sv": "acb3e356b4c84dba27b36c4b6fefe9c485592401ec900fb561c6b70d50102ceb",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+      "rtl/npu/dma/cache/conv_read_cache.sv": "d25158ecee603cc691ec46901816a5d5d8e78df80dace5ee118ca3508022b629",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+      "rtl/npu/dma/conv_window_queue.sv": "916fdaa150b6acfde4785d02a7dfabc55ae6abe5f43ef7acb8da489071b8e44a",
+      "rtl/npu/dma/operand_read_cache.sv": "863026e928bd4c236c3a42b0e46aeb78d147119122e21aeb3ea2856f805bc981",
+      "rtl/npu/loaders/bias_loader.sv": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "e52d4cdbfa3d15c0e1a5048ed75b53bb8ee8d38aed24f19094ce0cfd80444388",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+      "rtl/npu/loaders/ia_buffer_wrapper.sv": "bb44dda2fec69103f6cdfa4c8ce578711af500cb25fdf3ac2ce1ef3550e98254",
+      "rtl/npu/loaders/ia_loader.sv": "7939196fc4228fe044b1774e8511c722afda21399c518637466db7f043e927f8",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "cf632e6a81ddc1e93ae330b0d18b75b2877472200c8f98c700f86ff6c8f28646",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "82e8db36db81a1d7812c40c6d760f6ac1969e40e5868103781e9173633059cf2",
+      "rtl/npu/loaders/kernel_loader.sv": "fd8c64b9b264b426b324bb7eee1ac9fb28c3e81eb38ae10d9dbb68cc34008374",
+      "rtl/npu/loaders/kernel_loader_buffer.sv": "5a665c80e24ecd1d1b86b955f837dade1c115f5ce57b678673ff3f60516f3093",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "0925a61ffae7ac8d4305fe4fbeaaef6dea02975c4a9522d707e844a4135dbb6c",
+      "rtl/npu/ps_compact/ps_adaptive_codec.sv": "649ae5c94a31f81fae20919b922ffb6ae4b213acd1ba9823d022c0a4b96976d9",
+      "rtl/npu/ps_compact/ps_frame_store.sv": "f4db602319e683c61d5bc7d96c5d9f0d3aaa8afdbfac70e521df08914640d3cf",
+      "rtl/npu/top/frame_address_prepare.sv": "d8ce4bbda94872e4d2a19d73b2137e981e58b2be1a5523a711d0ed6f819fdc65",
+      "rtl/npu/top/npu_top.sv": "4a1e0df456aa7cb424aaa9e7ceaf824817c9e476cd50b9921941ae1618ca8e2c",
+      "rtl/npu/writeback/oa_writer.sv": "33f3b5a923797ef96a17bf83737c8cac2ff689e3e86dd9d66af81d0eb6586260",
+      "rtl/npu/writeback/requant_compute_lane.sv": "6a80704946cbaf4abaf891d44c470f2a9f963c69287e22e16122c14089be79e3",
+      "rtl/npu/writeback/requant_group_buffer.sv": "88a15f4643d07ded4fe302a2b4600482a67d1c46ae5a2e045bde305242093875",
+      "rtl/npu/writeback/vec_requant.sv": "1b8c946676abcd2cc235b8e87df84a9d3cc00a108505974b1133ff6b770d81e4",
+      "rtl/npu/writeback/vec_requant_s64.sv": "beb897a79952c8c7b2995a64a8dece25eb6409ae4d20063fa3676d2a1d162b9f",
+      "rtl/npu/writeback/vec_s16_to_fifo.sv": "e67580b90f4c6ffcb800d085826148b44ac5b5ff6d289b02a7270a527092608e",
+      "rtl/npu/writeback/vec_s8_to_fifo.sv": "7e195e9c28acd849d2ad16eed704af06480ac06da16e57d0484dee7c920dd6d7",
+      "rtl/axi_top/axil_top_with_ram.sv": "f3677172c207241019030ca19ce29c8cb1df6e108447983b4261076b21e3eb1e",
+      "rtl/axi_top/npu_axil_reg_if.sv": "b43feb0bcb3f99896882f147999cca69efa99ac78efe45f07902f476cb6557b4",
+      "rtl/axi_top/npu_axil_top.sv": "0f34a1881f53137d23d030298ca79c6db88ca63507e97bbabefd4d1c3bd22c11",
+      "rtl/soc/axi_inferred_shared_ram.sv": "608cba862009973b82aedb2a9ff70338233bcb321eac05b45f1f3b6baaa644eb",
+      "rtl/soc/pico_native_to_axi.sv": "53f0e851f72b640d47aa92027e1ce4692535628fa34de3ef3e451df104d07c1b",
+      "rtl/soc/soc_axi_interconnect.sv": "f9bf5af7b6ccdc94506edbaa1f1bb268b917d16b7b9067059d09b567f46cedb5",
+      "rtl/soc/soc_axi_pingpong_buffer.sv": "eea1fa16633eb2411a742e3e60ed685bbfb41e7dfa1cf10baf7f472b52afab3f",
+      "rtl/soc/soc_axi_ram.sv": "9f5f0e28c5e8f090efadfa41eff3d3169f6ee419d5e389eeebd881d230c7c7ed",
+      "rtl/soc/soc_axil_ctrl.sv": "ab924f6cbf7f74cfce4e394a40cab78c5e9813a6bf7b5dfd22d75179d634fcf4",
+      "rtl/soc/soc_axil_simpleuart.sv": "6b9f67e8f7bfe5f691b461517bfb3bd60cce5d936518d52f618d2dcaa332defb",
+      "rtl/soc_top.sv": "1c918a2e54ed437709a94c4a3ba1ff62fc0e67e8a92c0b5e935a37a18174a77f",
+      "picorv32/picorv32.v": "0836050971b3c6cdd28ac3b1e5719a67fb645161912bef1e472e63995ceb0622",
+      "picorv32/picosoc/simpleuart.v": "6b970be4255ef5f951f80a3b0cb27f73844df94349f4e4460bc4dbc4bb49ca1b",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+      "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+      "rtl/common/add_equal.sv": "ae8419319b2f63d1928c3e0c7ed4ea0f3e473076a9eaa2eaa00fee00e3d71d65",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+    },
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-D",
+      "XILINX_CLK_WIZ_IP=1",
+      "-D",
+      "GEMPACT_PS_COMPRESS=1",
+      "-D",
+      "GEMMORA_PS_POOL_BYTES=49152",
+      "-D",
+      "GEMMORA_PS_FORCE_RAW=1",
+      "-GSIZE=16",
+      "-GBUS_WIDTH=64",
+      "-GIA_CACHE_BLOCKS=4",
+      "-GIM2COL_CACHE_BYTES=4096",
+      "-GSHARED_BANK_BYTES=8192",
+      "-GSHARED_BANK_COUNT=7",
+      "-GPS_FRAME_COUNT=16",
+      "-GAXI_READ_OUTSTANDING=4",
+      "-GAXI_WRITE_OUTSTANDING=4",
+      "-GENABLE_VECTOR_ENGINE=1",
+      "-GVECTOR_PE_COUNT=8",
+      "-GCPU_MEM_DP=65536",
+      "-GCPU_MEM_WORD_WIDTH=64",
+      "-GCPU_MEM_INIT_EN=0",
+      "-GCPU_ENABLE_ICACHE=0",
+      "-GCPU_ENABLE_MUL=1",
+      "-GCPU_ENABLE_DIV=1",
+      "-GNPU_ENABLE_IS_MODE=1",
+      "-GNPU_ENABLE_PER_CHANNEL=1",
+      "-GNPU_ENABLE_CLOCK_GATING=1",
+      "-GNPU_AXI_TIMING_BUFFER=1",
+      "-GCPU_AXI_WRITE_TIMING_BUFFER=1",
+      "-GBYPASS_RAM_PINGPONG=0",
+      "-GRAM_WRITE_TIMING_BUFFER=1"
+    ],
+    "build_configuration": {
+      "path": "config/npu_fpga.mk",
+      "sha256": "4242c877f2480055909b5339e213d751deb3bb7c9b17631a303256d62656aec3",
+      "values": {
+        "PCR_ENGINE": "1",
+        "SIZE": "16",
+        "NPU_AXI_DATA_WIDTH": "64",
+        "IM2COL_CACHE_BYTES": "4096",
+        "SHARED_BANK_BYTES": "8192",
+        "SHARED_BANK_COUNT": "7",
+        "IA_CACHE_BLOCKS": "4",
+        "PS_FRAME_COUNT": "16",
+        "AXI_READ_OUTSTANDING": "4",
+        "PS_POOL_BYTES": "49152",
+        "PS_FORCE_RAW": "1",
+        "CAPACITY_BUDGET_BYTES": "131072",
+        "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+        "CAPACITY_REPRESENTATION": "raw32"
+      },
+      "defines": [
+        "SYNTHESIS=1",
+        "XILINX_FPGA=1",
+        "XILINX_CLK_WIZ_IP=1",
+        "GEMPACT_PS_COMPRESS=1",
+        "GEMMORA_PS_POOL_BYTES=49152",
+        "GEMMORA_PS_FORCE_RAW=1"
+      ]
+    },
+    "primitive_models": {
+      "library_sha256": {
+        "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+      },
+      "primitives": [
+        "LUT1",
+        "LUT3",
+        "LUT6",
+        "LUT6_2",
+        "MUXF7",
+        "MUXF8",
+        "CARRY4",
+        "FDRE",
+        "DSP48E1",
+        "BUFGCE"
+      ],
+      "model_sha256": "c47d6359c6711d248a76eed115b8c8dc541f784332661257951206ef7e7040d5"
+    },
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667,
+    "wide_alu_mapping": {
+      "total_dsp_budget": 740,
+      "reserved_dsp_cells": 0,
+      "minimum_width": 8,
+      "maximum_width": 48,
+      "mapper_sha256": "f028b28a68c7bac1e0e8937199b8a6a57df73819081b405177eb6622e1dbd5be",
+      "techmap_sha256": "5f3550f7b3b1250d8c7fdcc9888051bbf3fcc52715bc637f41f33a6afdc4e0ed",
+      "lut_dependencies_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88"
+    },
+    "lut_mapping": {
+      "mode": "physical-cost",
+      "wire_delay_ps": 300,
+      "delay_target_ps": 6667,
+      "max_lut_inputs": 8,
+      "functional_verification_required": true
+    },
+    "pre_lut_origin": {
+      "directory": "/workspace/scratch/76fc8a977a8f/worktrees/round23_measurement/build/soc_round23_dsp740_pre/soc_top",
+      "sha256": "f27c5487fb6d92c341c41e606745a14b530171849d440fc7af32445f1074fe26",
+      "manifest_sha256": "4d41893ee0a92ef2e56c9a73a402ffdc9201dbf4b15bfd1312121c73268726b3"
+    },
+    "mapping_tools_sha256": {
+      "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+      "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+    }
+  },
+  "raw_mapped_register_path_cells": 18,
+  "routing_completed": false,
+  "timing_150mhz_confirmed": null,
+  "logical_lut_mapping": {
+    "passed": true,
+    "source_top": "top",
+    "physical_top": "top",
+    "reference_logic_luts": 55204,
+    "physical_logic_luts": 55204,
+    "logic_luts_checked": 55204,
+    "logical_input_connections_checked": 230937,
+    "logical_output_connections_checked": 55204,
+    "shared_logic_lut_positions": 7844,
+    "shared_physical_input_connections_checked": 13483,
+    "all_cells_have_unique_bels": true,
+    "resources": {
+      "implementation_step": "place",
+      "placement_complete": true,
+      "physical_lut_positions": 49828,
+      "physical_lut_positions_by_use": {
+        "logic": 47360,
+        "distributed_ram": 2444,
+        "shift_register": 24
+      },
+      "placed_lut_bel_instances": 58636,
+      "shared_lut_positions": 8808,
+      "storage_positions_with_logic_output": 0,
+      "occupied_slice_sites": 15959,
+      "placed_cell_counts": {
+        "BUFGCTRL": 2,
+        "CARRY4": 1897,
+        "DSP48E1_DSP48E1": 740,
+        "IOB33_INBUF_EN": 4,
+        "IOB33_OUTBUF": 37,
+        "PAD": 41,
+        "PSEUDO_GND": 1,
+        "PSEUDO_VCC": 1,
+        "RAMB18E1_RAMB18E1": 45,
+        "RAMB36E1_RAMB36E1": 91,
+        "SELMUX2_1": 1956,
+        "SLICE_FFX": 42862,
+        "SLICE_LUTX": 58636
+      },
+      "unplaced_cells": [],
+      "resource_errors": [],
+      "counting_method": "One physical LUT position is the common site and letter of its 5LUT and 6LUT BELs. Positions containing RAM or SRL are assigned to that storage category; all other positions are logic. The three categories are disjoint."
+    },
+    "error_count": 0,
+    "errors": [],
+    "source_sha256": "da004138c20547e201fd5fc1bbe4984897d47e8fd650e7b0854043f310549861",
+    "physical_sha256": "ebc8f21fee67ca6faf9d4e1ab77f4a9662745a222a0024dcffaab04f0c748417",
+    "checker_sha256": "d2871ce9b53d13711bbc5dc00c7ab79806be43c780090f6ba11a734c76f16808",
+    "method": "Compare each ordinary LUT INIT and original logical input set, match all logical input and output nets by network aliases, allow physical input permutations and O6/O5 output renaming, check common inputs of shared logic LUT positions and unique BEL assignment for every implementation cell."
+  },
+  "logical_lut_mapping_tool_commit": "7ef39f0101ebf39184d11dbdc80a4042faee75c2"
+}

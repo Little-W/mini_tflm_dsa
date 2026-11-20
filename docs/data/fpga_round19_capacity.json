@@ -1,0 +1,103 @@
+{
+  "passed": true,
+  "git_commit": "524be9c3ca2029543e00c27a2d9b4eb667ee4b3c",
+  "tracked_worktree_clean": true,
+  "sources_unchanged": true,
+  "capacity_unit_tests": {
+    "passed": true,
+    "tests": 83,
+    "skipped": 0,
+    "elapsed_seconds": 7.37687090599502
+  },
+  "structure": {
+    "generic_passed": true,
+    "fpga_passed": true,
+    "elaboration_only": true,
+    "elapsed_seconds": 10.753131277000648
+  },
+  "buffer_arrays_bits": {
+    "vector_buffers": 9696,
+    "conv_prefetch_queue": 1032,
+    "conv_data_cache": 32768,
+    "conv_cache_metadata": 40192,
+    "conv_response_queue": 132,
+    "conv_request_queue": 552,
+    "ia_slot_metadata": 768,
+    "ia_cache_tags": 3968,
+    "kernel_cache": 12288,
+    "bias_cache": 32768,
+    "ia_ps_shared_ram": 458752,
+    "ps_decoded_fifo": 4096,
+    "ps_decoded_first": 8,
+    "ps_frame_valid": 16,
+    "ps_frame_lengths": 160,
+    "requant_is_cache": 52736,
+    "requant_input_rows": 262656,
+    "oa_s8_fifo": 65536,
+    "oa_s16_fifo": 16384
+  },
+  "buffer_arrays_bytes": {
+    "vector_buffers": 1212.0,
+    "conv_prefetch_queue": 129.0,
+    "conv_data_cache": 4096.0,
+    "conv_cache_metadata": 5024.0,
+    "conv_response_queue": 16.5,
+    "conv_request_queue": 69.0,
+    "ia_slot_metadata": 96.0,
+    "ia_cache_tags": 496.0,
+    "kernel_cache": 1536.0,
+    "bias_cache": 4096.0,
+    "ia_ps_shared_ram": 57344.0,
+    "ps_decoded_fifo": 512.0,
+    "ps_decoded_first": 1.0,
+    "ps_frame_valid": 2.0,
+    "ps_frame_lengths": 20.0,
+    "requant_is_cache": 6592.0,
+    "requant_input_rows": 32832.0,
+    "oa_s8_fifo": 8192.0,
+    "oa_s16_fifo": 2048.0
+  },
+  "buffer_arrays_total_bits": 994508,
+  "buffer_arrays_total_bytes": 124313.5,
+  "register_arrays_bits": {
+    "core_row_metadata": 65,
+    "requant_ws_parameters": 1648
+  },
+  "compute": {
+    "systolic_rows": 16,
+    "systolic_columns": 16,
+    "systolic_cells": 256,
+    "vector_processing_elements": 8,
+    "requant_compute_lanes": 2
+  },
+  "requant_input_queue": {
+    "rows": 512,
+    "int32_values_per_row": 16,
+    "row_bits": 513,
+    "total_bits": 262656,
+    "total_bytes": 32832.0,
+    "int32_payload_bytes": 32768,
+    "tile_done_flags_bits": 512
+  },
+  "shared_storage": {
+    "logical_bank_count": 7,
+    "logical_bank_bytes": 8192,
+    "total_bytes": 57344.0,
+    "elaborated_memories": 9,
+    "memory_declaration_bits": [
+      16384,
+      16384,
+      16384,
+      16384,
+      65536,
+      81920,
+      81920,
+      81920,
+      81920
+    ],
+    "default_raw_ps_bytes": 49152,
+    "ps_frames": 16
+  },
+  "source_manifest": "build/round19/capacity_structure_source_manifest.json",
+  "structural_source_count": 70
+}

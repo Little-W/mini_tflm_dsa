@@ -1,0 +1,1173 @@
+{
+  "reference_revision": "b58ac8bf",
+  "source_sha256": "0d7aadbd0020b2f08e1140fbb8c17e4ddd7aa17b64f8f06d3288278ad71798c6",
+  "formal": {
+    "source_sha256": "0d7aadbd0020b2f08e1140fbb8c17e4ddd7aa17b64f8f06d3288278ad71798c6",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "input_bits": 100,
+    "inputs_constrained": false,
+    "runs": [
+      {
+        "implementation": "fpga",
+        "passed": true,
+        "log_sha256": "78cb35cc4946b1d7b7ecdb314dc3263c70016199d49d42034bf293ceee29af6d"
+      },
+      {
+        "implementation": "generic",
+        "passed": true,
+        "log_sha256": "00207fc95f18a2ed696914bfe57389d8cff8591d02be2543ff61b4538b58751c"
+      }
+    ],
+    "passed": true
+  },
+  "interface": {
+    "implementation": "official Xilinx functional models",
+    "reference_rev": "b58ac8bf",
+    "ports": [
+      "load_quant_req",
+      "quant_params_valid",
+      "dma_start",
+      "dma_is_write",
+      "dma_linear_read_mode",
+      "dma_base_addr",
+      "dma_row_stride",
+      "dma_rows_to_read",
+      "dma_burst_len_m1",
+      "dma_slot_id",
+      "dma_use_16bits",
+      "dma_lhs_zp",
+      "out_valid",
+      "out_tile_done",
+      "out_vec_s8",
+      "out_vec_s16",
+      "quant_multiplier_lane",
+      "quant_shift_lane"
+    ],
+    "source_sha256": "0d7aadbd0020b2f08e1140fbb8c17e4ddd7aa17b64f8f06d3288278ad71798c6",
+    "runs": [
+      {
+        "passed": true,
+        "bus_width": 64,
+        "scenarios": 256,
+        "cycles": 528662,
+        "vectors": 209001,
+        "dma_commands": 958,
+        "dma_beats": 6496
+      }
+    ],
+    "shared_multiplier_sha256": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59"
+  },
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 7596,
+        "distributed_ram_lut_sites_nominal": 800,
+        "shift_register_lut_sites_nominal": 160,
+        "lut_sites_nominal_before_packing": 8556,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 7501,
+        "dsp48e1": 80,
+        "ramb36e1": 0,
+        "ramb18e1": 2,
+        "carry4": 390,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 390,
+          "DSP48E1": 80,
+          "FDRE": 7495,
+          "FDSE": 6,
+          "INV": 108,
+          "LUT2": 448,
+          "LUT3": 495,
+          "LUT4": 616,
+          "LUT5": 1986,
+          "LUT6": 1635,
+          "LUT6_2": 2416,
+          "RAM64M": 200,
+          "RAMB18E1": 2,
+          "SRL16E": 160
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 15,
+        "observed_combinational_cells": 15,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "longest_register_paths": [
+        {
+          "combinational_cells": 15,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$39398",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.quant_need_load_r[0]",
+            "detail": "register output",
+            "source": "build/requant_activation_compare/reference.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.quant_need_load_r [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$37640",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$365182$aiger$o43184",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.state [0]"
+          },
+          "path": [
+            {
+              "cell": "$abc$365182$lut$aiger$o15691",
+              "type": "LUT2",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.quant_need_load_r[0]",
+              "output_net": "$techmap368015$abc$365182$lut$aiger$o43460.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap368015$abc$365182$lut$aiger$o43460.A[0]",
+              "output_net": "$abc$365182$aiger$i38127",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38127",
+              "output_net": "$abc$365182$aiger$i38135",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38135",
+              "output_net": "$abc$365182$aiger$i38151",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38151",
+              "output_net": "$abc$365182$aiger$i38159",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38159",
+              "output_net": "$abc$365182$aiger$i38167",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38167",
+              "output_net": "$abc$365182$aiger$i38175",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38175",
+              "output_net": "$abc$365182$aiger$i38183",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$365182$aiger$i38183",
+              "output_net": "$techmap368270$abc$365182$lut$aiger$o15792.A[2]",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger$o15792",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap368270$abc$365182$lut$aiger$o15792.A[2]",
+              "output_net": "$abc$365182$aiger$o15792",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$185.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[3]",
+              "input_net": "$abc$365182$aiger$o15792",
+              "output_net": "$techmap368025$abc$365182$lut$aiger365181$53276.A[2]",
+              "source": "build/requant_activation_compare/reference.sv:987.35-987.88|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53276",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap368025$abc$365182$lut$aiger365181$53276.A[2]",
+              "output_net": "$techmap369517$abc$365182$lut$aiger$o62104.A[2]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53473",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap369517$abc$365182$lut$aiger$o62104.A[2]",
+              "output_net": "$techmap369421$abc$365182$lut$aiger365181$53532.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53532",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap369421$abc$365182$lut$aiger365181$53532.A[4]",
+              "output_net": "$techmap372665$auto$abc_ops_reintegrate.cc:722:reintegrate$366690.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$366690",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap372665$auto$abc_ops_reintegrate.cc:722:reintegrate$366690.A[4]",
+              "output_net": "$abc$365182$aiger$o43184",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 15,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$39398",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.quant_need_load_r[0]",
+            "detail": "register output",
+            "source": "build/requant_activation_compare/reference.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.quant_need_load_r [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$37641",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$365182$aiger$o43176",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.state [1]"
+          },
+          "path": [
+            {
+              "cell": "$abc$365182$lut$aiger$o15691",
+              "type": "LUT2",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.quant_need_load_r[0]",
+              "output_net": "$techmap368015$abc$365182$lut$aiger$o43460.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap368015$abc$365182$lut$aiger$o43460.A[0]",
+              "output_net": "$abc$365182$aiger$i38127",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38127",
+              "output_net": "$abc$365182$aiger$i38135",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38135",
+              "output_net": "$abc$365182$aiger$i38151",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38151",
+              "output_net": "$abc$365182$aiger$i38159",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38159",
+              "output_net": "$abc$365182$aiger$i38167",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38167",
+              "output_net": "$abc$365182$aiger$i38175",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38175",
+              "output_net": "$abc$365182$aiger$i38183",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$365182$aiger$i38183",
+              "output_net": "$techmap368270$abc$365182$lut$aiger$o15792.A[2]",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger$o15792",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap368270$abc$365182$lut$aiger$o15792.A[2]",
+              "output_net": "$abc$365182$aiger$o15792",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$185.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[3]",
+              "input_net": "$abc$365182$aiger$o15792",
+              "output_net": "$techmap368025$abc$365182$lut$aiger365181$53276.A[2]",
+              "source": "build/requant_activation_compare/reference.sv:987.35-987.88|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53276",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap368025$abc$365182$lut$aiger365181$53276.A[2]",
+              "output_net": "$techmap369517$abc$365182$lut$aiger$o62104.A[2]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53473",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap369517$abc$365182$lut$aiger$o62104.A[2]",
+              "output_net": "$techmap369421$abc$365182$lut$aiger365181$53532.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53477",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap369421$abc$365182$lut$aiger365181$53532.A[4]",
+              "output_net": "$techmap372668$auto$abc_ops_reintegrate.cc:722:reintegrate$366693.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$366693",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap372668$auto$abc_ops_reintegrate.cc:722:reintegrate$366693.A[3]",
+              "output_net": "$abc$365182$aiger$o43176",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 15,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$39398",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.quant_need_load_r[0]",
+            "detail": "register output",
+            "source": "build/requant_activation_compare/reference.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.quant_need_load_r [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$37642",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$365182$aiger$o65937",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.state [2]"
+          },
+          "path": [
+            {
+              "cell": "$abc$365182$lut$aiger$o15691",
+              "type": "LUT2",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.quant_need_load_r[0]",
+              "output_net": "$techmap368015$abc$365182$lut$aiger$o43460.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap368015$abc$365182$lut$aiger$o43460.A[0]",
+              "output_net": "$abc$365182$aiger$i38127",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38127",
+              "output_net": "$abc$365182$aiger$i38135",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38135",
+              "output_net": "$abc$365182$aiger$i38151",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38151",
+              "output_net": "$abc$365182$aiger$i38159",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38159",
+              "output_net": "$abc$365182$aiger$i38167",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38167",
+              "output_net": "$abc$365182$aiger$i38175",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$365182$aiger$i38175",
+              "output_net": "$abc$365182$aiger$i38183",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22645.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$365182$aiger$i38183",
+              "output_net": "$techmap368270$abc$365182$lut$aiger$o15792.A[2]",
+              "source": "build/requant_activation_compare/reference.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger$o15792",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap368270$abc$365182$lut$aiger$o15792.A[2]",
+              "output_net": "$abc$365182$aiger$o15792",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$185.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[3]",
+              "input_net": "$abc$365182$aiger$o15792",
+              "output_net": "$techmap368025$abc$365182$lut$aiger365181$53276.A[2]",
+              "source": "build/requant_activation_compare/reference.sv:987.35-987.88|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53276",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap368025$abc$365182$lut$aiger365181$53276.A[2]",
+              "output_net": "$techmap369517$abc$365182$lut$aiger$o62104.A[2]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$53473",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap369517$abc$365182$lut$aiger$o62104.A[2]",
+              "output_net": "$techmap369421$abc$365182$lut$aiger365181$53532.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$365182$lut$aiger365181$54119",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap369421$abc$365182$lut$aiger365181$53532.A[4]",
+              "output_net": "$techmap371238$auto$abc_ops_reintegrate.cc:722:reintegrate$365263.A[5]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$365263",
+              "type": "LUT6",
+              "input_port": "I5[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap371238$auto$abc_ops_reintegrate.cc:722:reintegrate$365263.A[5]",
+              "output_net": "$abc$365182$aiger$o65937",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        }
+      ],
+      "manifest": {
+        "top": "vec_requant",
+        "configuration": "Complete production quantization, BUS64 VLEN16 reuse32 S16 and every output",
+        "parameters": {},
+        "sources_sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute/build/requant_activation_compare/reference.sv": "784f2d466a82a2877327d6acff327d0f8cb65d222c9392648bd1436a6f6b939d",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute/build/requant_activation_compare/multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "options": [
+          "-GBUS_WIDTH=64",
+          "-GVLEN=16",
+          "-GMAX_IA_REUSE=32",
+          "-GENABLE_S16=1"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [
+            "LUT6",
+            "LUT6_2",
+            "FDRE",
+            "DSP48E1"
+          ],
+          "model_sha256": "eaf1222ef67f7ef11344f0871a6d3c3fea6b1073c7710150d70f632926677d8b"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.667
+      },
+      "mapped_sha256": "dd2d5cf65bb886d0a5df322709170c668edac1ab3ceaee5f3177a9dd9b685d3f",
+      "metrics_sha256": "a5e1d5b428675f7c94cf4500ae8792e7a010577400be7b76bc7410c1c860fb7a"
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 7400,
+        "distributed_ram_lut_sites_nominal": 800,
+        "shift_register_lut_sites_nominal": 160,
+        "lut_sites_nominal_before_packing": 8360,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 7501,
+        "dsp48e1": 80,
+        "ramb36e1": 0,
+        "ramb18e1": 2,
+        "carry4": 454,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 454,
+          "DSP48E1": 80,
+          "FDRE": 7495,
+          "FDSE": 6,
+          "INV": 110,
+          "LUT2": 447,
+          "LUT3": 493,
+          "LUT4": 571,
+          "LUT5": 1897,
+          "LUT6": 1000,
+          "LUT6_2": 2992,
+          "RAM64M": 200,
+          "RAMB18E1": 2,
+          "SRL16E": 160
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 15,
+        "observed_combinational_cells": 15,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "longest_register_paths": [
+        {
+          "combinational_cells": 15,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$37087",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.load_offset[0]",
+            "detail": "register output",
+            "source": "build/requant_activation_compare/candidate.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.load_offset [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$35877",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$332521$aiger$o67570",
+            "category": "data",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.state [2]"
+          },
+          "path": [
+            {
+              "cell": "$abc$332521$lut$aiger$o13663",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.load_offset[0]",
+              "output_net": "$techmap336216$abc$332521$lut$aiger$o47394.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap336216$abc$332521$lut$aiger$o47394.A[0]",
+              "output_net": "$abc$332521$aiger$i37583",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37583",
+              "output_net": "$abc$332521$aiger$i37591",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37591",
+              "output_net": "$abc$332521$aiger$i37599",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37599",
+              "output_net": "$abc$332521$aiger$i37607",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37607",
+              "output_net": "$abc$332521$aiger$i37615",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37615",
+              "output_net": "$abc$332521$aiger$i37623",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37623",
+              "output_net": "$abc$332521$aiger$i37631",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$332521$aiger$i37631",
+              "output_net": "$techmap337530$abc$332521$lut$aiger$o13755.A[2]",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger$o13755",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap337530$abc$332521$lut$aiger$o13755.A[2]",
+              "output_net": "$abc$332521$aiger$o13755",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$185.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[3]",
+              "input_net": "$abc$332521$aiger$o13755",
+              "output_net": "$techmap336085$abc$332521$lut$aiger332520$46509.A[2]",
+              "source": "build/requant_activation_compare/candidate.sv:987.35-987.88|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$46509",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336085$abc$332521$lut$aiger332520$46509.A[2]",
+              "output_net": "$techmap336382$abc$332521$lut$aiger$o47242.A[2]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$46510",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336382$abc$332521$lut$aiger$o47242.A[2]",
+              "output_net": "$techmap336092$abc$332521$lut$aiger332520$59903.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$59903",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336092$abc$332521$lut$aiger332520$59903.A[3]",
+              "output_net": "$techmap337878$auto$abc_ops_reintegrate.cc:722:reintegrate$332674.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$332674",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap337878$auto$abc_ops_reintegrate.cc:722:reintegrate$332674.A[4]",
+              "output_net": "$abc$332521$aiger$o67570",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 15,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$37087",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.load_offset[0]",
+            "detail": "register output",
+            "source": "build/requant_activation_compare/candidate.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.load_offset [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$37087",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$332521$aiger$o47262",
+            "category": "data",
+            "source": "build/requant_activation_compare/candidate.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.load_offset [0]"
+          },
+          "path": [
+            {
+              "cell": "$abc$332521$lut$aiger$o13663",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.load_offset[0]",
+              "output_net": "$techmap336216$abc$332521$lut$aiger$o47394.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap336216$abc$332521$lut$aiger$o47394.A[0]",
+              "output_net": "$abc$332521$aiger$i37583",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37583",
+              "output_net": "$abc$332521$aiger$i37591",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37591",
+              "output_net": "$abc$332521$aiger$i37599",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37599",
+              "output_net": "$abc$332521$aiger$i37607",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37607",
+              "output_net": "$abc$332521$aiger$i37615",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37615",
+              "output_net": "$abc$332521$aiger$i37623",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37623",
+              "output_net": "$abc$332521$aiger$i37631",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$332521$aiger$i37631",
+              "output_net": "$techmap337530$abc$332521$lut$aiger$o13755.A[2]",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger$o13755",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap337530$abc$332521$lut$aiger$o13755.A[2]",
+              "output_net": "$abc$332521$aiger$o13755",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$185.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[3]",
+              "input_net": "$abc$332521$aiger$o13755",
+              "output_net": "$techmap336085$abc$332521$lut$aiger332520$46509.A[2]",
+              "source": "build/requant_activation_compare/candidate.sv:987.35-987.88|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$46509",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336085$abc$332521$lut$aiger332520$46509.A[2]",
+              "output_net": "$techmap336382$abc$332521$lut$aiger$o47242.A[2]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$47464",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336382$abc$332521$lut$aiger$o47242.A[2]",
+              "output_net": "$techmap336190$abc$332521$lut$aiger332520$47944.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$47720",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336190$abc$332521$lut$aiger332520$47944.A[4]",
+              "output_net": "$techmap339199$auto$abc_ops_reintegrate.cc:722:reintegrate$333995.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$333995",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap339199$auto$abc_ops_reintegrate.cc:722:reintegrate$333995.A[3]",
+              "output_net": "$abc$332521$aiger$o47262",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 15,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$37087",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.load_offset[0]",
+            "detail": "register output",
+            "source": "build/requant_activation_compare/candidate.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.load_offset [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$37088",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$332521$aiger$o47266",
+            "category": "data",
+            "source": "build/requant_activation_compare/candidate.sv:1257.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.load_offset [1]"
+          },
+          "path": [
+            {
+              "cell": "$abc$332521$lut$aiger$o13663",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.load_offset[0]",
+              "output_net": "$techmap336216$abc$332521$lut$aiger$o47394.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap336216$abc$332521$lut$aiger$o47394.A[0]",
+              "output_net": "$abc$332521$aiger$i37583",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37583",
+              "output_net": "$abc$332521$aiger$i37591",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37591",
+              "output_net": "$abc$332521$aiger$i37599",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37599",
+              "output_net": "$abc$332521$aiger$i37607",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37607",
+              "output_net": "$abc$332521$aiger$i37615",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37615",
+              "output_net": "$abc$332521$aiger$i37623",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$332521$aiger$i37623",
+              "output_net": "$abc$332521$aiger$i37631",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$20882.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$332521$aiger$i37631",
+              "output_net": "$techmap337530$abc$332521$lut$aiger$o13755.A[2]",
+              "source": "build/requant_activation_compare/candidate.sv:967.28-967.75|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger$o13755",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap337530$abc$332521$lut$aiger$o13755.A[2]",
+              "output_net": "$abc$332521$aiger$o13755",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$185.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[3]",
+              "input_net": "$abc$332521$aiger$o13755",
+              "output_net": "$techmap336085$abc$332521$lut$aiger332520$46509.A[2]",
+              "source": "build/requant_activation_compare/candidate.sv:987.35-987.88|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$46509",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336085$abc$332521$lut$aiger332520$46509.A[2]",
+              "output_net": "$techmap336382$abc$332521$lut$aiger$o47242.A[2]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$47464",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336382$abc$332521$lut$aiger$o47242.A[2]",
+              "output_net": "$techmap336190$abc$332521$lut$aiger332520$47944.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$332521$lut$aiger332520$47727",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap336190$abc$332521$lut$aiger332520$47944.A[4]",
+              "output_net": "$techmap339198$auto$abc_ops_reintegrate.cc:722:reintegrate$333994.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$333994",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap339198$auto$abc_ops_reintegrate.cc:722:reintegrate$333994.A[3]",
+              "output_net": "$abc$332521$aiger$o47266",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            }
+          ]
+        }
+      ],
+      "manifest": {
+        "top": "vec_requant",
+        "configuration": "Complete production quantization, BUS64 VLEN16 reuse32 S16 and every output",
+        "parameters": {},
+        "sources_sha256": {
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute/build/requant_activation_compare/candidate.sv": "0d7aadbd0020b2f08e1140fbb8c17e4ddd7aa17b64f8f06d3288278ad71798c6",
+          "/workspace/scratch/76fc8a977a8f/worktrees/compute/build/requant_activation_compare/multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "options": [
+          "-GBUS_WIDTH=64",
+          "-GVLEN=16",
+          "-GMAX_IA_REUSE=32",
+          "-GENABLE_S16=1"
+        ],
+        "build_configuration": null,
+        "primitive_models": {
+          "library_sha256": {
+            "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+          },
+          "primitives": [
+            "LUT6",
+            "LUT6_2",
+            "CARRY4",
+            "FDRE",
+            "DSP48E1"
+          ],
+          "model_sha256": "610302b6522f4e90e46acd91713adb59b1fdf798f1c6e05f0c2e861b62e5c659"
+        },
+        "part": "xc7a200tfbg484-3",
+        "clock_period_ns": 6.667
+      },
+      "mapped_sha256": "6160a9da746fef2a13e4620143db99edcfef961a9c61adc1493367f3a90357d8",
+      "metrics_sha256": "38029c9c408b190efde725b2524c98684bef81232edd8d7f10581dcc9090a0f2"
+    }
+  }
+}

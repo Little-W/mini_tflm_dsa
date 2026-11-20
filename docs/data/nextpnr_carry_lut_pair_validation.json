@@ -1,0 +1,152 @@
+{
+  "nextpnr_sha256": "1f9412eefcb7b66a967d1b83a5ec799d4900e7bbb7c66c52f0b29c6edbe31a73",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "design_sha256": "f9aff6fd48e338a0733b9491f568577b7b17bd289266589a99881cbee1f2b441",
+  "mapped_sha256": "ef021b2040e894afbfe93e35569848fad7b67858c2d76e1710ef0d2737407688",
+  "pairing_script_sha256": "72526bbed55970cd13f8b305fbc26b3d0e513e9bdc26f049e0a7e2e048abaef7",
+  "schema_version": 1,
+  "unit_test_cases": 9,
+  "existing_constraints_preserved": true,
+  "child_relative_z": 1,
+  "implementation_environment": {
+    "XC7_FRACTURE_LUTS": "1",
+    "XC7_CARRY_DIRECT_DI": "1",
+    "XC7_CARRY_TRIM_TAIL": "1"
+  },
+  "cases": {
+    "reference": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "physical_lut_positions": 16,
+      "pair_count": 0,
+      "pairs": [],
+      "functional_cells_sha256": "00d9ae7ea04ac94a28c7189cb0a3633ee18a3243af6eb35f40e5ef974a060391",
+      "routed_sha256": "1b1d98a17310628b4a93b37ef5ff323037abfd7d758b1b9b3a23789b7b8eaf03",
+      "fasm_sha256": "1a626546940c9ba6eba1143000d3ca604c3cb9e94b7c987718d3036536f5fbb0",
+      "input_vectors": 256,
+      "register_input_bits": 14,
+      "bit_comparisons": 3584,
+      "fasm_lut_positions": 16,
+      "fasm_carry_muxes": 2,
+      "fasm_ff_input_muxes": 14,
+      "shared_connections_checked": false
+    },
+    "paired": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "physical_lut_positions": 11,
+      "pair_count": 4,
+      "pairs": [
+        {
+          "upper": "g_logic[0].u_select",
+          "lower": "g_logic[0].u_independent",
+          "carry": "u_first",
+          "bit": 0,
+          "unique_inputs": 3,
+          "shared_variable_inputs": 2,
+          "guide_site_distance": null
+        },
+        {
+          "upper": "g_logic[1].u_select",
+          "lower": "g_logic[1].u_independent",
+          "carry": "u_first",
+          "bit": 1,
+          "unique_inputs": 3,
+          "shared_variable_inputs": 2,
+          "guide_site_distance": null
+        },
+        {
+          "upper": "g_logic[2].u_select",
+          "lower": "g_logic[2].u_independent",
+          "carry": "u_first",
+          "bit": 2,
+          "unique_inputs": 3,
+          "shared_variable_inputs": 2,
+          "guide_site_distance": null
+        },
+        {
+          "upper": "g_logic[3].u_select",
+          "lower": "g_logic[3].u_independent",
+          "carry": "u_first",
+          "bit": 3,
+          "unique_inputs": 3,
+          "shared_variable_inputs": 2,
+          "guide_site_distance": null
+        }
+      ],
+      "functional_cells_sha256": "00d9ae7ea04ac94a28c7189cb0a3633ee18a3243af6eb35f40e5ef974a060391",
+      "routed_sha256": "83ff24bda9ae6e01bc0c4625b53b681701eb93a8dd91fa02f7f683dc6e8d1321",
+      "fasm_sha256": "f9597a2b693136322c35488ee4b50d9b370e4b9c6659488fecd635a6d887cef4",
+      "input_vectors": 256,
+      "register_input_bits": 14,
+      "bit_comparisons": 3584,
+      "fasm_lut_positions": 11,
+      "fasm_carry_muxes": 2,
+      "fasm_ff_input_muxes": 14,
+      "shared_connections_checked": true
+    },
+    "guided": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "physical_lut_positions": 11,
+      "pair_count": 4,
+      "pairs": [
+        {
+          "upper": "g_logic[0].u_select",
+          "lower": "g_logic[2].u_independent",
+          "carry": "u_first",
+          "bit": 0,
+          "unique_inputs": 5,
+          "shared_variable_inputs": 0,
+          "guide_site_distance": 2
+        },
+        {
+          "upper": "g_logic[1].u_select",
+          "lower": "g_logic[1].u_independent",
+          "carry": "u_first",
+          "bit": 1,
+          "unique_inputs": 3,
+          "shared_variable_inputs": 2,
+          "guide_site_distance": 5
+        },
+        {
+          "upper": "g_logic[2].u_select",
+          "lower": "g_logic[0].u_independent",
+          "carry": "u_first",
+          "bit": 2,
+          "unique_inputs": 5,
+          "shared_variable_inputs": 0,
+          "guide_site_distance": 6
+        },
+        {
+          "upper": "g_logic[3].u_select",
+          "lower": "g_logic[3].u_independent",
+          "carry": "u_first",
+          "bit": 3,
+          "unique_inputs": 3,
+          "shared_variable_inputs": 2,
+          "guide_site_distance": 8
+        }
+      ],
+      "functional_cells_sha256": "00d9ae7ea04ac94a28c7189cb0a3633ee18a3243af6eb35f40e5ef974a060391",
+      "routed_sha256": "43be364e194095067a5d42729dc803a3de8dd890db8bc06900f5556736d15c19",
+      "fasm_sha256": "72dd0615d0d0d0a6f2d4284f5bc9bf355321eb165616a84c519333cc5c96f900",
+      "input_vectors": 256,
+      "register_input_bits": 14,
+      "bit_comparisons": 3584,
+      "fasm_lut_positions": 11,
+      "fasm_carry_muxes": 2,
+      "fasm_ff_input_muxes": 14,
+      "shared_connections_checked": true,
+      "maximum_guide_site_distance": 8
+    }
+  },
+  "reproduction_entries": [
+    "scripts/fpga/tests/test_pair_carry_luts.py",
+    "scripts/fpga/tests/run_carry_lut_pair_implementation.py"
+  ],
+  "reproduction_script_sha256": "8a8083cb10aac6389927e8c66d29d0b3579956eb66f6924b60baa994b1af194d"
+}

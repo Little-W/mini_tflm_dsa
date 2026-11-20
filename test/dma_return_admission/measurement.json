@@ -1,0 +1,3106 @@
+{
+  "reference_revision": "47e51eff",
+  "scope": "Actual guard, mux, R/B buffers, extracted arbiter grant/error and top fault expressions, and actual kernel_request_idle; unmodified context/grant state and completion flags are analysis inputs.",
+  "source_sha256": {
+    "reference": {
+      "rtl/npu/dma/axi_dual_block_dma.sv": "1973e551032e8ded4b5190f9c914796b579934a6d1b0d007fc31f88b10e7b45c",
+      "rtl/npu/conv/conv_axi_read_guard.sv": "6e56096520176c9d6dabf2bc7f3659d063d674ec7fb4a2ffada37b3f91ff5570",
+      "rtl/npu/conv/conv_axi_read_mux.sv": "57b5006e7d796dab77612f4565bc1a8297c84ac0e161d13d630a0e31c7ae9234",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv": "db037ab0a1d8dd3b30308631ab76ecfa8ded7c2a29b19a0626b9852ed24925fd",
+      "rtl/npu/dma/axi_linear_block_dma.sv": "945a747b9b9ec5f1feae4ceedab23dbb223fefdc505b0e1612f0410e98701d50",
+      "rtl/soc/soc_axi_pingpong_buffer.sv": "eea1fa16633eb2411a742e3e60ed685bbfb41e7dfa1cf10baf7f472b52afab3f",
+      "rtl/npu/loaders/kernel_loader.sv": "fd8c64b9b264b426b324bb7eee1ac9fb28c3e81eb38ae10d9dbb68cc34008374",
+      "rtl/npu/top/npu_top.sv": "b601d9af8d09aafecca582a7366dc3b852781ba1a1610ed369d6fb4257a2ef1a"
+    },
+    "current": {
+      "rtl/npu/dma/axi_dual_block_dma.sv": "1973e551032e8ded4b5190f9c914796b579934a6d1b0d007fc31f88b10e7b45c",
+      "rtl/npu/conv/conv_axi_read_guard.sv": "6e56096520176c9d6dabf2bc7f3659d063d674ec7fb4a2ffada37b3f91ff5570",
+      "rtl/npu/conv/conv_axi_read_mux.sv": "bcb6e2be2e8d83843d50730dee37a94939781558017e66923e7db73d8591ae17",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv": "997dec68a19ac15c0c4f90208cd7ad6c59cc814978a3e344613c0f7f9cc128ca",
+      "rtl/npu/dma/axi_linear_block_dma.sv": "945a747b9b9ec5f1feae4ceedab23dbb223fefdc505b0e1612f0410e98701d50",
+      "rtl/soc/soc_axi_pingpong_buffer.sv": "eea1fa16633eb2411a742e3e60ed685bbfb41e7dfa1cf10baf7f472b52afab3f",
+      "rtl/npu/loaders/kernel_loader.sv": "fd8c64b9b264b426b324bb7eee1ac9fb28c3e81eb38ae10d9dbb68cc34008374",
+      "rtl/npu/top/npu_top.sv": "b601d9af8d09aafecca582a7366dc3b852781ba1a1610ed369d6fb4257a2ef1a"
+    }
+  },
+  "excerpt_sha256": {
+    "reference": {
+      "return_admission.sv": "1bc469cfe8d4669326dbc546b03865f6e2799a9aa5c769d8f257aedaec457a74",
+      "return_buffer.sv": "6aaba5c9d632db18d7dc70fcd73f857eed9222942a15449d1ebca8f00c62da70",
+      "kernel_idle.sv": "ecee80613e69464b8c336078c05e24d88ab1be189f50f74b7377c0330ea5fdb8"
+    },
+    "current": {
+      "return_admission.sv": "7071efaf578d8168479beb5434ecdc356dea99a20afd46f1756ed1720ce53ecc",
+      "return_buffer.sv": "6aaba5c9d632db18d7dc70fcd73f857eed9222942a15449d1ebca8f00c62da70",
+      "kernel_idle.sv": "ecee80613e69464b8c336078c05e24d88ab1be189f50f74b7377c0330ea5fdb8"
+    }
+  },
+  "input_manifest_sha256": "19cecc82eeb0f6f6280d09e52d5bd9ce0d14e6613946bea26c105d8b358efe5a",
+  "formal": {
+    "arbiter": {
+      "reference_revision": "47e51eff",
+      "source_sha256": {
+        "rtl/npu/dma/axi_block_dma_arbiter.sv": "997dec68a19ac15c0c4f90208cd7ad6c59cc814978a3e344613c0f7f9cc128ca",
+        "rtl/npu/dma/axi_dual_block_dma.sv": "1973e551032e8ded4b5190f9c914796b579934a6d1b0d007fc31f88b10e7b45c",
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac"
+      },
+      "source_input_constraints": false,
+      "dma_outputs_constrained": false,
+      "scope": "Complete arbiter state and every port of its unchanged DMA instance",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "primitive_model_sha256": "5225885750b16ed2b781ac5ff2d89ed503355d37c8602926ef1b9fa62c1f8aa3",
+      "passed": true,
+      "summary_sha256": "134c55369696300ac67547e28b30de8ed8f3e470070051c0cc8a456672c12eeb",
+      "equivalent_bits": 15147,
+      "runs": [
+        {
+          "name": "fpga_bus32_quant0",
+          "bus_width": 32,
+          "quant_client": 0,
+          "xilinx": true,
+          "passed": true,
+          "equivalent_bits": 1886,
+          "log_sha256": "1a603f522263c218a08038bf8ac76e57fa290689bb5b120edac624569b1ea9ff"
+        },
+        {
+          "name": "fpga_bus32_quant1",
+          "bus_width": 32,
+          "quant_client": 1,
+          "xilinx": true,
+          "passed": true,
+          "equivalent_bits": 1886,
+          "log_sha256": "91075555f9a6876a62ea5f06fa57da6e5fb0114fe9e18db32bfa54bedfd8d5a2"
+        },
+        {
+          "name": "fpga_bus64_quant0",
+          "bus_width": 64,
+          "quant_client": 0,
+          "xilinx": true,
+          "passed": true,
+          "equivalent_bits": 2102,
+          "log_sha256": "3fe2cf52f11d99db5efc43a083fe72a260766068e1b039103fcf9ff5b1a0fbe2"
+        },
+        {
+          "name": "fpga_bus64_quant1",
+          "bus_width": 64,
+          "quant_client": 1,
+          "xilinx": true,
+          "passed": true,
+          "equivalent_bits": 2102,
+          "log_sha256": "94228d44d18ea51385e6163485f913fe6028e8263f0dc8a180f172165b384ddf"
+        },
+        {
+          "name": "fpga_bus128_quant0",
+          "bus_width": 128,
+          "quant_client": 0,
+          "xilinx": true,
+          "passed": true,
+          "equivalent_bits": 2534,
+          "log_sha256": "2b1b2e6958ad609881bf4fa491f589649c5c43b1010490508a1675480237c037"
+        },
+        {
+          "name": "fpga_bus128_quant1",
+          "bus_width": 128,
+          "quant_client": 1,
+          "xilinx": true,
+          "passed": true,
+          "equivalent_bits": 2534,
+          "log_sha256": "d1d3d52e43aff15f9e05dccec249b1ee822fda7918faa5e450c45e7ae2645ee9"
+        },
+        {
+          "name": "asic_bus64",
+          "bus_width": 64,
+          "quant_client": 1,
+          "xilinx": false,
+          "passed": true,
+          "equivalent_bits": 2103,
+          "log_sha256": "3125f9187d39fda73d900e2fbf4bd3379aa88838960b0f318e2f593133293411"
+        }
+      ]
+    },
+    "read_pair": {
+      "passed": true,
+      "reference": "47e51eff",
+      "source_sha256": {
+        "rtl/npu/dma/axi_dual_block_dma.sv": "1973e551032e8ded4b5190f9c914796b579934a6d1b0d007fc31f88b10e7b45c",
+        "rtl/npu/conv/conv_axi_read_guard.sv": "6e56096520176c9d6dabf2bc7f3659d063d674ec7fb4a2ffada37b3f91ff5570",
+        "rtl/npu/conv/conv_axi_read_mux.sv": "bcb6e2be2e8d83843d50730dee37a94939781558017e66923e7db73d8591ae17"
+      },
+      "inputs_constrained": false,
+      "outside_read_connection_unchanged": true,
+      "mode_qualified_internal_signals": [
+        "u_read_mux.a_arvalid",
+        "u_read_mux.m_arvalid",
+        "u_read_mux.select_b"
+      ],
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "summary_sha256": "d9461e147c4101ce48fb0ad569503c2f28eeef9dc6dc2c2e2adf584931c09c8f",
+      "equivalent_bits": 3229,
+      "runs": [
+        {
+          "name": "generic_bus32",
+          "bus_width": 32,
+          "fpga": false,
+          "passed": true,
+          "equivalent_bits": 690,
+          "log_sha256": "a6c1aa596c834d356d335fa21c92a416997e2d894c67b6a228d9517a18f4103a"
+        },
+        {
+          "name": "fpga_bus32",
+          "bus_width": 32,
+          "fpga": true,
+          "passed": true,
+          "equivalent_bits": 773,
+          "log_sha256": "24be637dab383ed33a41d01d36a39bda9a42f3f680023a82a3fbb6634938879a"
+        },
+        {
+          "name": "generic_bus64",
+          "bus_width": 64,
+          "fpga": false,
+          "passed": true,
+          "equivalent_bits": 842,
+          "log_sha256": "a4811bfd0772e07aec25b4b5c541052e6c4aab7c8cd0572e5a054772b3dbecdc"
+        },
+        {
+          "name": "fpga_bus64",
+          "bus_width": 64,
+          "fpga": true,
+          "passed": true,
+          "equivalent_bits": 924,
+          "log_sha256": "ab6c5c91556ad0e6b214e72150c90a4b5cffec33a79878929b3b139130024d96"
+        }
+      ]
+    }
+  },
+  "test_source_sha256": {
+    "test/dma_return_admission/collect_report.py": "b43a7502ca317723a7ed4090e2c145937c52736066bb28a520dd486dfc966bbc",
+    "test/dma_return_admission/measure_paths.py": "07ab7dc605e948c17621983c30cee3001423705bc88398293f2e5359f7dd1fdc",
+    "test/dma_return_admission/prepare_measurement.py": "4c39f02b637d8f15f7035048d8ddb8db8a5e84b25972c609792a2238a8b2a1aa",
+    "test/dma_return_admission/run_arbiter_formal.py": "8c3aee059a2ba6b80bed255d01774b5dbf380aa9cdb60b5dcfbe726698bef61a",
+    "test/dma_read_permission/run_formal.py": "b51894a78efe1632000f58158e3aa3d51d39a6c00d5999799e6c26883ea02888",
+    "test/dma_read_permission/run_numeric.py": "43bd939e19cf9175f4182df63cbb9aa06ae0f63967ebf3d00316f5591f901678",
+    "test/window_dma/run.py": "87090a4e2322f02dc8dddc21f0738fbc897efc19f5e51adbcadbb3c2403ec926",
+    "test/dma_read_permission/prepare_measurement.py": "87ff3fe6fd24ce403f996c64894dc44ab8ed569df459ca0efb948b9cd49e2666",
+    "test/dma_read_ready/read_pair.sv.inc": "f8cd5a2d2c15319ae5059bd9ab236928cbb29e838e4e3dbc5bae13f25d55ee3d"
+  },
+  "dma_numeric": {
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "primitive_models_sha256": "0203f8da24e7205e054fdec42df71459d963d5a032379d785ef89bf43612e9c3",
+    "summary_sha256": "e620cab35c566ec4cf4fb07379dfd267bac0d81aa7c7c2f70feb0ea0e5eee05d",
+    "runs": [
+      {
+        "passed": true,
+        "bus_width": 32,
+        "cases": 21,
+        "checks": 905,
+        "cancelled_descriptors": 15,
+        "simultaneous_releases": 5,
+        "kernel_overlap_cycles": 19,
+        "minimum_command_interval": 2,
+        "grant_withdrawals": 5,
+        "full_context_checks": 8,
+        "binary_sha256": "8d380d76ed29c978be28074123b943848960d02c6cc46c66ffc315d5a8f160fc",
+        "undefined_behavior_sanitizer": true,
+        "summary_sha256": "b8bf3e2e6450f69d413147928cadf99e300bfd67af6e82b47fe14e32b9f4878b"
+      },
+      {
+        "passed": true,
+        "bus_width": 64,
+        "cases": 21,
+        "checks": 905,
+        "cancelled_descriptors": 15,
+        "simultaneous_releases": 5,
+        "kernel_overlap_cycles": 19,
+        "minimum_command_interval": 2,
+        "grant_withdrawals": 5,
+        "full_context_checks": 8,
+        "binary_sha256": "7733b1feaaf4c7dc93cb15d97533c901e0aebf4f7f1cb48fc3cfdc0c6e31ed00",
+        "undefined_behavior_sanitizer": true,
+        "summary_sha256": "b8499d5e72923e96330de847b795f8153c16e0430b2d9449b5d84ce62d7a346e"
+      }
+    ]
+  },
+  "window_numeric": {
+    "passed": true,
+    "name": "current",
+    "fpga": true,
+    "executable_sha256": "b550964540bc0207cd2a314a9636ba22c4e84b96b6db64ed9f9d29e629d0ae6c",
+    "resident_stream_sha256": "31d166cd0a9af03a1ba18b8b69775b5b2ac6112e444d658a5162056567a93fb2",
+    "resident_stream_cycles": 1545,
+    "tests": [
+      "CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=3 cycles=1534",
+      "CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2",
+      "CASE registered_window_grant withdrawal=1 abort=1 configuration=1 ordinary_after_grant=1",
+      "CASE random_coordinates_backpressure requests=240 peak=4",
+      "CASE read_error_drain requests=4 completions=4",
+      "CASE error_reconfigure_recovery requests=3",
+      "CASE invalid_descriptor_order requests=4 completions=4",
+      "CASE invalid_cols cols=0 requests=4 completions=4",
+      "CASE invalid_cols cols=17 requests=4 completions=4",
+      "CASE invalid_cols cols=32 requests=4 completions=4",
+      "CASE invalid_cols cols=33 requests=4 completions=4",
+      "CASE pending_configuration drained=4 recovery_requests=3",
+      "CASE configuration_before_first_ar stalled_cycles=24 old_requests=1 recovery_requests=1",
+      "CASE configuration_at_burst_boundary pending_windows_at_last_r=1 old_requests=4 recovery_requests=1",
+      "CASE reset_with_four_requests cancelled=4 recovery_requests=3",
+      "WINDOW_DMA_PASS accepted=422 completed=418 cancelled=4 payload_elements=4457 errors=19"
+    ],
+    "reference_ref": "47e51eff",
+    "resident_stream_cycle_equivalent": true,
+    "summary_sha256": "92e3b43c77d497d409fdd74a72ded52ca47d44c211e407c7a54e3d471cd672fb",
+    "reference_executable_sha256": "72339d182741221286e28dca814ed6e60e5c43b5247cd59d0e37ed89cf5daacf"
+  },
+  "mapping": {
+    "native": {
+      "reference": {
+        "manifest_sha256": "2fdfb5b5c2f7a9057f6f2d88edf54dd5d4be4a5602797f716b17934de8c68706",
+        "mapped_sha256": "4fdad44bcd182e354d81cee86011c23afa95e17f339f879bf0b15b212d28a1f6",
+        "pre_lut_sha256": "c7dac35ca927e81673431bc845859181d891e4f37260d03678f96ceda2b0eb80",
+        "path_report_sha256": "fa7c92cec73fe4f87376f5e7c6623a9156e1746a75696e829823ee21c6671a88",
+        "resources": {
+          "logic_lut_cells": 988,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 988,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 545,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 73,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 73,
+            "FDCE": 398,
+            "FDPE": 1,
+            "FDRE": 146,
+            "INV": 3,
+            "LUT2": 95,
+            "LUT3": 191,
+            "LUT4": 118,
+            "LUT5": 292,
+            "LUT6": 251,
+            "LUT6_2": 41,
+            "MUXF7": 2
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "internal_register_maximum": 10,
+        "port_paths": {
+          "rd_context_count": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 10
+            }
+          },
+          "fe_rready": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 8
+            }
+          },
+          "m_axi_bready": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "rd_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "dma_rd_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "wr_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "dma_wr_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "rd_command_client": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 2
+            }
+          },
+          "rd_dma_start_q": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 3
+            }
+          },
+          "abort_pending": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 4
+            }
+          },
+          "kernel_request": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 1
+            }
+          },
+          "kernel_quiescent": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": false,
+              "combinational_cells": 0
+            }
+          },
+          "all_registers": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 9
+            }
+          }
+        },
+        "segments": {
+          "guard_rready": {
+            "m_axi_rready": 1
+          },
+          "m_axi_rready": {
+            "bus_error": 3
+          },
+          "bus_error": {
+            "abort": 1
+          },
+          "abort": {
+            "ia_granted": 3,
+            "kernel_granted": 2,
+            "bias_granted": 3,
+            "quant_granted": 2,
+            "dw_granted": 3
+          }
+        },
+        "context_to_idle_path": {
+          "combinational_cells": 10,
+          "startpoint": {
+            "cell": "analysis_input_rd_context_count_0",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "rd_context_count[0]",
+            "detail": "register output",
+            "source": "",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "analysis_output_kernel_idle_0",
+            "type": "FDRE",
+            "port": "D",
+            "net": "kernel_idle",
+            "category": "data",
+            "source": "",
+            "register_origin": null
+          },
+          "path": [
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$82602",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "rd_context_count[0]",
+              "output_net": "$techmap83305$abc$82457$lut$aiger82456$4318.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "u_read_guard.g_fpga_response_ready.u_response_ready",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O5[0]",
+              "input_net": "$techmap83305$abc$82457$lut$aiger82456$4318.A[0]",
+              "output_net": "guard_rready",
+              "source": "build/dma_return_admission/joint_inputs/reference/conv_axi_read_guard.sv:218.40"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$82606",
+              "type": "LUT5",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "guard_rready",
+              "output_net": "m_axi_rready",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$abc$82457$lut$aiger$o2238",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "m_axi_rready",
+              "output_net": "$techmap83515$abc$82457$lut$aiger$o4098.A[1]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$82457$lut$aiger$o4098",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap83515$abc$82457$lut$aiger$o4098.A[1]",
+              "output_net": "read_error",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$82605",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "read_error",
+              "output_net": "bus_error",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$82604",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "bus_error",
+              "output_net": "abort",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$abc$82457$lut$aiger82456$2093",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "abort",
+              "output_net": "$techmap83519$abc$82457$lut$aiger82456$6479.A[1]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$82457$lut$aiger$o1699",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap83519$abc$82457$lut$aiger82456$6479.A[1]",
+              "output_net": "kernel_granted",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "u_request_idle.g_fpga.u_select",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O6[0]",
+              "input_net": "kernel_granted",
+              "output_net": "kernel_idle",
+              "source": "build/dma_return_admission/joint_inputs/reference/kernel_idle.sv:20.50"
+            }
+          ]
+        },
+        "port_method": "Analysis-only register boundaries; resources are from the original mapped design."
+      },
+      "current": {
+        "manifest_sha256": "2147bf30cc3bfd0894057f2d01e2c873ae19632eb0a1d16dd852added60b3595",
+        "mapped_sha256": "cd5884a194fd6f0db5c0cc339d5bf5f658f93dc235d4c09cca029aee5c0ba6b7",
+        "pre_lut_sha256": "f68bbf288e54adfc608728782474d051270bcbb58d5eabe6b5eda6d9268079ae",
+        "path_report_sha256": "750258efa4402e80fd237142218f18d2edc0d1ebf1dee4100644930f703a9fa5",
+        "resources": {
+          "logic_lut_cells": 970,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 970,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 545,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 73,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 73,
+            "FDCE": 398,
+            "FDPE": 1,
+            "FDRE": 146,
+            "INV": 3,
+            "LUT2": 77,
+            "LUT3": 182,
+            "LUT4": 122,
+            "LUT5": 289,
+            "LUT6": 254,
+            "LUT6_2": 46,
+            "MUXF7": 1
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "internal_register_maximum": 10,
+        "port_paths": {
+          "rd_context_count": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 8
+            }
+          },
+          "fe_rready": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "m_axi_bready": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "rd_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "dma_rd_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "wr_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "dma_wr_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "rd_command_client": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 2
+            }
+          },
+          "rd_dma_start_q": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 2
+            }
+          },
+          "abort_pending": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 4
+            }
+          },
+          "kernel_request": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 1
+            }
+          },
+          "kernel_quiescent": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": false,
+              "combinational_cells": 0
+            }
+          },
+          "all_registers": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          }
+        },
+        "segments": {
+          "guard_rready": {
+            "m_axi_rready": 1
+          },
+          "m_axi_rready": {
+            "bus_error": 1
+          },
+          "bus_error": {
+            "abort": 2
+          },
+          "abort": {
+            "ia_granted": 1,
+            "kernel_granted": 1,
+            "bias_granted": 1,
+            "quant_granted": 1,
+            "dw_granted": 1
+          }
+        },
+        "context_to_idle_path": {
+          "combinational_cells": 8,
+          "startpoint": {
+            "cell": "analysis_input_rd_context_count_0",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "rd_context_count[0]",
+            "detail": "register output",
+            "source": "",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "analysis_output_kernel_idle_0",
+            "type": "FDRE",
+            "port": "D",
+            "net": "kernel_idle",
+            "category": "data",
+            "source": "",
+            "register_origin": null
+          },
+          "path": [
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$82462",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "rd_context_count[0]",
+              "output_net": "$techmap83251$abc$82317$lut$aiger82316$4296.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "u_read_guard.g_fpga_response_ready.u_response_ready",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O5[0]",
+              "input_net": "$techmap83251$abc$82317$lut$aiger82316$4296.A[0]",
+              "output_net": "guard_rready",
+              "source": "build/dma_return_admission/joint_inputs/current/conv_axi_read_guard.sv:218.40"
+            },
+            {
+              "cell": "u_read_mux.g_fpga_response_ready.u_response_ready",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "guard_rready",
+              "output_net": "m_axi_rready",
+              "source": "build/dma_return_admission/joint_inputs/current/conv_axi_read_mux.sv:62.50"
+            },
+            {
+              "cell": "g_fpga_bus_error.u_bus_error",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "m_axi_rready",
+              "output_net": "bus_error",
+              "source": "build/dma_return_admission/joint_inputs/current/return_admission.sv:122.50"
+            },
+            {
+              "cell": "$abc$82317$lut$aiger82316$2092",
+              "type": "LUT5",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "bus_error",
+              "output_net": "$techmap83794$auto$abc_ops_reintegrate.cc:722:reintegrate$82461.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$82461",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap83794$auto$abc_ops_reintegrate.cc:722:reintegrate$82461.A[3]",
+              "output_net": "abort",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "g_fpga_read_grant.u_operand_grant",
+              "type": "LUT6_2",
+              "input_port": "I4[0]",
+              "output_port": "O6[0]",
+              "input_net": "abort",
+              "output_net": "kernel_granted",
+              "source": "build/dma_return_admission/joint_inputs/current/return_admission.sv:89.50"
+            },
+            {
+              "cell": "u_request_idle.g_fpga.u_select",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O6[0]",
+              "input_net": "kernel_granted",
+              "output_net": "kernel_idle",
+              "source": "build/dma_return_admission/joint_inputs/current/kernel_idle.sv:20.50"
+            }
+          ]
+        },
+        "port_method": "Analysis-only register boundaries; resources are from the original mapped design."
+      }
+    },
+    "physical_cost": {
+      "reference": {
+        "manifest_sha256": "ba4c1da5f7dee4d992cc4d05627b2f96d56944387a0207c8c31a3fd839a96050",
+        "mapped_sha256": "ac09584466d72de9313e36aafe0e2c3aa46d6599f1be2f2c8fa05ec1ac7f746f",
+        "pre_lut_sha256": "c7dac35ca927e81673431bc845859181d891e4f37260d03678f96ceda2b0eb80",
+        "path_report_sha256": "409422908eec2fa4e7fcc542de736b791f5490607d21f207004ced08e0522cc8",
+        "resources": {
+          "logic_lut_cells": 922,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 922,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 545,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 73,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 73,
+            "FDCE": 398,
+            "FDPE": 1,
+            "FDRE": 146,
+            "INV": 3,
+            "LUT1": 1,
+            "LUT2": 71,
+            "LUT3": 193,
+            "LUT4": 79,
+            "LUT5": 284,
+            "LUT6": 253,
+            "LUT6_2": 41,
+            "MUXF7": 45
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "internal_register_maximum": 11,
+        "port_paths": {
+          "rd_context_count": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 11
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 11
+            }
+          },
+          "fe_rready": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 9
+            }
+          },
+          "m_axi_bready": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 8
+            }
+          },
+          "rd_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "dma_rd_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "wr_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "dma_wr_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "rd_command_client": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 3
+            }
+          },
+          "rd_dma_start_q": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 4
+            }
+          },
+          "abort_pending": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 6
+            }
+          },
+          "kernel_request": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 1
+            }
+          },
+          "kernel_quiescent": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": false,
+              "combinational_cells": 0
+            }
+          },
+          "all_registers": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 10
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 10
+            }
+          }
+        },
+        "segments": {
+          "guard_rready": {
+            "m_axi_rready": 1
+          },
+          "m_axi_rready": {
+            "bus_error": 3
+          },
+          "bus_error": {
+            "abort": 1
+          },
+          "abort": {
+            "ia_granted": 3,
+            "kernel_granted": 3,
+            "bias_granted": 3,
+            "quant_granted": 3,
+            "dw_granted": 3
+          }
+        },
+        "context_to_idle_path": {
+          "combinational_cells": 11,
+          "startpoint": {
+            "cell": "analysis_input_rd_context_count_0",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "rd_context_count[0]",
+            "detail": "register output",
+            "source": "",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "analysis_output_kernel_idle_0",
+            "type": "FDRE",
+            "port": "D",
+            "net": "kernel_idle",
+            "category": "data",
+            "source": "",
+            "register_origin": null
+          },
+          "path": [
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$53846",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "rd_context_count[0]",
+              "output_net": "rd_active",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "u_read_guard.g_fpga_response_ready.u_response_ready",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O5[0]",
+              "input_net": "rd_active",
+              "output_net": "guard_rready",
+              "source": "build/dma_return_admission/joint_inputs/reference/conv_axi_read_guard.sv:218.40"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$53850",
+              "type": "LUT5",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "guard_rready",
+              "output_net": "m_axi_rready",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$abc$53705$lut$aiger$o1662",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "m_axi_rready",
+              "output_net": "u_return_buffer.pop",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$53705$lut$aiger$o2641",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "u_return_buffer.pop",
+              "output_net": "read_error",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$53848.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "S[0]",
+              "output_port": "O[0]",
+              "input_net": "read_error",
+              "output_net": "bus_error",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$53847",
+              "type": "LUT6",
+              "input_port": "I5[0]",
+              "output_port": "O[0]",
+              "input_net": "bus_error",
+              "output_net": "abort",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$53705$lut$aiger53704$2093",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "abort",
+              "output_net": "$techmap54912$abc$53705$lut$aiger53704$2094.A[1]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$53705$lut$aiger53704$2094",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap54912$abc$53705$lut$aiger53704$2094.A[1]",
+              "output_net": "$techmap54913$abc$53705$lut$aiger$o2632.A[2]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$53705$lut$aiger$o1670",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap54913$abc$53705$lut$aiger$o2632.A[2]",
+              "output_net": "kernel_granted",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "u_request_idle.g_fpga.u_select",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O6[0]",
+              "input_net": "kernel_granted",
+              "output_net": "kernel_idle",
+              "source": "build/dma_return_admission/joint_inputs/reference/kernel_idle.sv:20.50"
+            }
+          ]
+        },
+        "port_method": "Analysis-only register boundaries; resources are from the original mapped design."
+      },
+      "current": {
+        "manifest_sha256": "a010446e832796fcb5ef30ba608248c1aa482f573a2ba6d4d6b9eb4d73d01bc7",
+        "mapped_sha256": "ead0b61bc7741318c51ffc43d5dfca043b1c2a1e189ce9525521edd6f255160b",
+        "pre_lut_sha256": "f68bbf288e54adfc608728782474d051270bcbb58d5eabe6b5eda6d9268079ae",
+        "path_report_sha256": "28ea3b96d37a82d88cf5dd69e0ecfc1a8ba30f489480f7c52ad2bedcbdb39c27",
+        "resources": {
+          "logic_lut_cells": 923,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 923,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 545,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 73,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 73,
+            "FDCE": 398,
+            "FDPE": 1,
+            "FDRE": 146,
+            "INV": 3,
+            "LUT1": 1,
+            "LUT2": 70,
+            "LUT3": 190,
+            "LUT4": 78,
+            "LUT5": 287,
+            "LUT6": 251,
+            "LUT6_2": 46,
+            "MUXF7": 40
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "internal_register_maximum": 12,
+        "port_paths": {
+          "rd_context_count": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 9
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 9
+            }
+          },
+          "fe_rready": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "m_axi_bready": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 8
+            }
+          },
+          "rd_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "dma_rd_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "wr_dma_done": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "dma_wr_error": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 7
+            }
+          },
+          "rd_command_client": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 2
+            }
+          },
+          "rd_dma_start_q": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 2
+            }
+          },
+          "abort_pending": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 4
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 5
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 5
+            }
+          },
+          "kernel_request": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 1
+            }
+          },
+          "kernel_quiescent": {
+            "m_axi_rready": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bus_error": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "abort": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "ia_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "bias_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "quant_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "dw_granted": {
+              "connected": false,
+              "combinational_cells": 0
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 1
+            },
+            "kernel_start": {
+              "connected": false,
+              "combinational_cells": 0
+            }
+          },
+          "all_registers": {
+            "m_axi_rready": {
+              "connected": true,
+              "combinational_cells": 2
+            },
+            "bus_error": {
+              "connected": true,
+              "combinational_cells": 3
+            },
+            "abort": {
+              "connected": true,
+              "combinational_cells": 6
+            },
+            "ia_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "bias_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "quant_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "dw_granted": {
+              "connected": true,
+              "combinational_cells": 7
+            },
+            "kernel_idle": {
+              "connected": true,
+              "combinational_cells": 8
+            },
+            "kernel_start": {
+              "connected": true,
+              "combinational_cells": 8
+            }
+          }
+        },
+        "segments": {
+          "guard_rready": {
+            "m_axi_rready": 1
+          },
+          "m_axi_rready": {
+            "bus_error": 1
+          },
+          "bus_error": {
+            "abort": 3
+          },
+          "abort": {
+            "ia_granted": 1,
+            "kernel_granted": 1,
+            "bias_granted": 1,
+            "quant_granted": 1,
+            "dw_granted": 1
+          }
+        },
+        "context_to_idle_path": {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "analysis_input_rd_context_count_0",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "rd_context_count[0]",
+            "detail": "register output",
+            "source": "",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "analysis_output_kernel_idle_0",
+            "type": "FDRE",
+            "port": "D",
+            "net": "kernel_idle",
+            "category": "data",
+            "source": "",
+            "register_origin": null
+          },
+          "path": [
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$53673",
+              "type": "LUT3",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "rd_context_count[0]",
+              "output_net": "rd_active",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "u_read_guard.g_fpga_response_ready.u_response_ready",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O5[0]",
+              "input_net": "rd_active",
+              "output_net": "guard_rready",
+              "source": "build/dma_return_admission/joint_inputs/current/conv_axi_read_guard.sv:218.40"
+            },
+            {
+              "cell": "u_read_mux.g_fpga_response_ready.u_response_ready",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "guard_rready",
+              "output_net": "m_axi_rready",
+              "source": "build/dma_return_admission/joint_inputs/current/conv_axi_read_mux.sv:62.50"
+            },
+            {
+              "cell": "g_fpga_bus_error.u_bus_error",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "m_axi_rready",
+              "output_net": "bus_error",
+              "source": "build/dma_return_admission/joint_inputs/current/return_admission.sv:122.50"
+            },
+            {
+              "cell": "$abc$53530$lut$aiger53529$6975",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "bus_error",
+              "output_net": "$techmap54740$abc$53530$lut$aiger53529$6979.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "$abc$53530$lut$aiger53529$6979",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap54740$abc$53530$lut$aiger53529$6979.A[4]",
+              "output_net": "$techmap54773$auto$abc_ops_reintegrate.cc:722:reintegrate$53532.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$53532",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap54773$auto$abc_ops_reintegrate.cc:722:reintegrate$53532.A[3]",
+              "output_net": "abort",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "g_fpga_read_grant.u_operand_grant",
+              "type": "LUT6_2",
+              "input_port": "I4[0]",
+              "output_port": "O6[0]",
+              "input_net": "abort",
+              "output_net": "kernel_granted",
+              "source": "build/dma_return_admission/joint_inputs/current/return_admission.sv:89.50"
+            },
+            {
+              "cell": "u_request_idle.g_fpga.u_select",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O6[0]",
+              "input_net": "kernel_granted",
+              "output_net": "kernel_idle",
+              "source": "build/dma_return_admission/joint_inputs/current/kernel_idle.sv:20.50"
+            }
+          ]
+        },
+        "port_method": "Analysis-only register boundaries; resources are from the original mapped design."
+      }
+    }
+  },
+  "passed": true,
+  "physical_lut_positions": null,
+  "timing_150mhz_confirmed": false
+}

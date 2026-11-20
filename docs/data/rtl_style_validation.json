@@ -1,0 +1,351 @@
+{
+  "reference_commit": "0bd6c3ad6e05ac7750b41a4edf481b5712124a36",
+  "rules": [
+    "p_ prefix for new constants",
+    "_q suffix for new shift pipeline registers",
+    "explicit continuous assignments",
+    "explicit discarded carry bits",
+    "named instance boundary signals"
+  ],
+  "source_sha256": {
+    "rtl/npu/control/ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+    "rtl/npu/conv/vector_quant_params.sv": "7c5995a46e1d181e719d62a2d5b6d36088d4d1b4b4d2e2cea8700a4d9aefebbb",
+    "rtl/npu/loaders/ia_loader_ctrl.sv": "602f239e5e6cb225ca89a0cce0aa96526bbb2360dffc982dbda8e1d503a900fa",
+    "rtl/npu/ps_compact/ps_frame_store.sv": "53d48ad96bd84e895a7d474a5000407dc82029f7609c53168bca0325c0df4ba0",
+    "rtl/npu/writeback/vec_requant.sv": "257490eb184ab7261cd8319aa799cd62a65430010c057284fb552fc9a40002b7"
+  },
+  "reports": {
+    "ia_complete_state": {
+      "sha256": "1772a81b8f35df33f1229ab331f18909688c4e3eef367bb9762dde49fc95a08a",
+      "result": {
+        "reference_rev": "0bd6c3a",
+        "method": "Yosys complete-state equivalence with simple SAT and temporal induction",
+        "source_sha256": {
+          "rtl/npu/loaders/ia_loader_ctrl.sv": "602f239e5e6cb225ca89a0cce0aa96526bbb2360dffc982dbda8e1d503a900fa",
+          "rtl/npu/loaders/ia_loader.sv": "0b1afe88e15ef3f060688ad48999fdfd3efc7b0023bfeb9eb9ff6cce21f1aae9"
+        },
+        "runs": [
+          {
+            "case": "ctrl3",
+            "top": "ia_loader_ctrl",
+            "options": [
+              "-GSIZE=3",
+              "-GBUS_WIDTH=32",
+              "-GCACHE_BLOCKS=4"
+            ],
+            "passed": true,
+            "equivalent_bits": 1622
+          },
+          {
+            "case": "ctrl16",
+            "top": "ia_loader_ctrl",
+            "options": [
+              "-GSIZE=16",
+              "-GBUS_WIDTH=64",
+              "-GCACHE_BLOCKS=32"
+            ],
+            "passed": true,
+            "equivalent_bits": 2444
+          },
+          {
+            "case": "ctrl32",
+            "top": "ia_loader_ctrl",
+            "options": [
+              "-GSIZE=32",
+              "-GBUS_WIDTH=64",
+              "-GCACHE_BLOCKS=32"
+            ],
+            "passed": true,
+            "equivalent_bits": 2570
+          },
+          {
+            "case": "loader_ordered",
+            "top": "ia_loader",
+            "options": [
+              "-GSIZE=16",
+              "-GBUS_WIDTH=64",
+              "-GCACHE_BLOCKS=32",
+              "-GEXTERNAL_RAM=1",
+              "-GORDERED_JOB=1"
+            ],
+            "passed": true,
+            "equivalent_bits": 11065
+          },
+          {
+            "case": "loader_generic",
+            "top": "ia_loader",
+            "options": [
+              "-GSIZE=16",
+              "-GBUS_WIDTH=32",
+              "-GCACHE_BLOCKS=4",
+              "-GEXTERNAL_RAM=1",
+              "-GORDERED_JOB=0"
+            ],
+            "passed": true,
+            "equivalent_bits": 9578
+          }
+        ],
+        "passed": true
+      }
+    },
+    "ps_frame_capacity": {
+      "sha256": "5aec2f408c027d42808816b3ba757069237d713c21179130e4c6d6c07b0d49c0",
+      "result": {
+        "method": "all-input combinational SAT",
+        "source_sha256": {
+          "rtl/npu/ps_compact/ps_frame_store.sv": "53d48ad96bd84e895a7d474a5000407dc82029f7609c53168bca0325c0df4ba0",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+          "test/ps_raw_store/capacity.sv": "bb96c5edd5f1c8446b8b6576a8ee69097c3c6816ffdda606721e2daa88ee81b3"
+        },
+        "profiles": [
+          {
+            "initial_row_width": 1,
+            "bank_words_width": 1,
+            "bank_count_width": 1,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 1,
+            "bank_words_width": 2,
+            "bank_count_width": 2,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 4,
+            "bank_words_width": 4,
+            "bank_count_width": 3,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 10,
+            "bank_words_width": 8,
+            "bank_count_width": 3,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 14,
+            "bank_words_width": 10,
+            "bank_count_width": 4,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 12,
+            "bank_words_width": 10,
+            "bank_count_width": 4,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 16,
+            "bank_words_width": 12,
+            "bank_count_width": 4,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 8,
+            "bank_words_width": 12,
+            "bank_count_width": 5,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 31,
+            "bank_words_width": 10,
+            "bank_count_width": 4,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 32,
+            "bank_words_width": 10,
+            "bank_count_width": 4,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 14,
+            "bank_words_width": 30,
+            "bank_count_width": 4,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          },
+          {
+            "initial_row_width": 34,
+            "bank_words_width": 12,
+            "bank_count_width": 4,
+            "frame_rows_width": 32,
+            "reserve_rows_width": 32,
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    "ps_capacity_table": {
+      "sha256": "be73129c9bf8b0b4a44b22493d66905f768fc8ea8e59af265043bc76a3832d49",
+      "result": {
+        "method": "Yosys combinational SAT against original capacity arithmetic",
+        "source_sha256": {
+          "rtl/npu/control/ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+          "test/ps_capacity_limits/reference.sv": "08cfcf2c451d8fa34f56401345258240efacf5b2edffa8ee494f24451dc07880"
+        },
+        "max_rows": 1024,
+        "frames_width": 5,
+        "frame_codes": 32,
+        "row_codes": 2048,
+        "bank_index_domain": "Every index in the original physical array, including zero and reserved entries",
+        "slice_tile_codes": 4294967296,
+        "runs": [
+          {
+            "total_banks": 6,
+            "bank_bytes": 2048,
+            "passed": true
+          },
+          {
+            "total_banks": 6,
+            "bank_bytes": 4096,
+            "passed": true
+          },
+          {
+            "total_banks": 6,
+            "bank_bytes": 8192,
+            "passed": true
+          },
+          {
+            "total_banks": 7,
+            "bank_bytes": 2048,
+            "passed": true
+          },
+          {
+            "total_banks": 7,
+            "bank_bytes": 4096,
+            "passed": true
+          },
+          {
+            "total_banks": 7,
+            "bank_bytes": 8192,
+            "passed": true
+          },
+          {
+            "total_banks": 8,
+            "bank_bytes": 2048,
+            "passed": true
+          },
+          {
+            "total_banks": 8,
+            "bank_bytes": 4096,
+            "passed": true
+          },
+          {
+            "total_banks": 8,
+            "bank_bytes": 8192,
+            "passed": true
+          },
+          {
+            "total_banks": 9,
+            "bank_bytes": 2048,
+            "passed": true
+          },
+          {
+            "total_banks": 9,
+            "bank_bytes": 4096,
+            "passed": true
+          },
+          {
+            "total_banks": 9,
+            "bank_bytes": 8192,
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    "vector_parameters": {
+      "sha256": "38c92e756bd82386d9889e6228e0c0cd6b622f8be4888666275022eee35d18ad",
+      "result": {
+        "reference_rev": "3f2e612",
+        "sources_sha256": {
+          "rtl/npu/conv/vector_engine.sv": "4541305aa8442d0ec4e3ebb6cc9ca5d8dd75c8296e0dd91bc8373000dd7ceb4b",
+          "rtl/npu/conv/vector_quant_params.sv": "7c5995a46e1d181e719d62a2d5b6d36088d4d1b4b4d2e2cea8700a4d9aefebbb",
+          "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+        },
+        "method": "Complete-state equivalence of actual parameter write and read RTL; all encoded inputs",
+        "runs": [
+          {
+            "tile": 8,
+            "bus_width": 32,
+            "formal_passed": true,
+            "equivalent_storage_bits": 304
+          },
+          {
+            "tile": 16,
+            "bus_width": 32,
+            "formal_passed": true,
+            "equivalent_storage_bits": 608
+          },
+          {
+            "tile": 16,
+            "bus_width": 64,
+            "formal_passed": true,
+            "equivalent_storage_bits": 608
+          },
+          {
+            "tile": 17,
+            "bus_width": 64,
+            "formal_passed": true,
+            "equivalent_storage_bits": 646
+          },
+          {
+            "tile": 32,
+            "bus_width": 64,
+            "formal_passed": true,
+            "equivalent_storage_bits": 1216
+          },
+          {
+            "tile": 16,
+            "bus_width": 128,
+            "formal_passed": true,
+            "equivalent_storage_bits": 608
+          }
+        ],
+        "passed": true
+      }
+    },
+    "requant_shift": {
+      "sha256": "a0aaeb9ef663b1ca2a0bf34349334e603509c80416af417d87a1320a85096e6d",
+      "result": {
+        "passed": true,
+        "method": "Yosys SAT temporal induction",
+        "properties": 2,
+        "implementation": "official LUT6_2 functional model",
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "input_product_bits": 64,
+        "input_amount_bits": 7,
+        "clock_enable": "enabled edges; stalls checked by interface regression",
+        "latency_enabled_edges": 7,
+        "source_sha256": {
+          "rtl/npu/writeback/vec_requant.sv": "257490eb184ab7261cd8319aa799cd62a65430010c057284fb552fc9a40002b7",
+          "test/requant_pipeline/shift_formal.sv": "1bbfb6098c545a26211be90365a8e45fcdf21878bb96ebca7aa96cb906e964d7"
+        }
+      }
+    }
+  },
+  "passed": true
+}

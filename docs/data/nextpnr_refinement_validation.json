@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "description": "限定退火细化搜索次数后执行完整位置检查、布线与物理配置功能检查。",
+  "part": "xc7a200tfbg484-3",
+  "seed": 1,
+  "frequency_mhz": 150,
+  "refinement_iteration_limit": 1,
+  "nextpnr_binary_sha256": "5131ad71186084f1a7bf52d67a347ea516e165e8eabb66c39c12f57af0e49ab9",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "patch_sha256": "10effc78f01ff21101f2f49470361f77e03e97070bec513812c1f01ade586973",
+  "placer_source_sha256": "4dbb9287e186df1e691d018cc4470329e12326ef4fac751f677aa162a1f26e67",
+  "script_sha256": "63afa0b447e76dcba89fb7ef85d2d6ef19cdec05c341d31d33d9cd53fa824669",
+  "implementation_environment": {
+    "NEXTPNR_REFINE_MAX_ITERS": "1",
+    "XC7_CARRY_DIRECT_DI": "1",
+    "XC7_CARRY_TRIM_TAIL": "1",
+    "XC7_FRACTURE_LUTS": "1"
+  },
+  "cases": {
+    "reference": {
+      "passed": true,
+      "physical_lut_positions": 16,
+      "input_vectors": 256,
+      "register_input_bits": 14,
+      "bit_comparisons": 3584,
+      "routed_sha256": "2ae0b2729889019c386f2ae8a250b0d6f5fca9fb7d2d9c557414337d4c545834",
+      "fasm_sha256": "a7035d0031cbbcc3d0da2cabf3e902c8a06b6c86abcd123db2c34d6df3e90b25",
+      "emitted_fasm_checks": {
+        "passed": true,
+        "lut_positions": 16,
+        "carry_muxes": 2,
+        "ff_input_muxes": 14
+      },
+      "placement_log_sha256": "d98f6d8866a2f53ef0277b5a454046581b71fcaeb60107c1aef6629dc4b95cf9"
+    },
+    "paired": {
+      "passed": true,
+      "physical_lut_positions": 11,
+      "input_vectors": 256,
+      "register_input_bits": 14,
+      "bit_comparisons": 3584,
+      "routed_sha256": "d194b4dd88e6df712c81cbec1c738ed6858bc2a8b3cb5414aa8317760f64c926",
+      "fasm_sha256": "92f5ded64cd86249fd569a3f208816a770e8375f7bf1aa08a9feac9bf4424fa6",
+      "emitted_fasm_checks": {
+        "passed": true,
+        "lut_positions": 11,
+        "carry_muxes": 2,
+        "ff_input_muxes": 14
+      },
+      "placement_log_sha256": "b5f84004c7391f3f92bbdf85e72c08229b644faf529926406e7b8eb2d50628d2",
+      "constrained_pairs": 4,
+      "shared_connections_verified": true
+    },
+    "guided": {
+      "passed": true,
+      "physical_lut_positions": 12,
+      "input_vectors": 256,
+      "register_input_bits": 14,
+      "bit_comparisons": 3584,
+      "routed_sha256": "3ca9250c857652e730275c4533f2e5d4dd31356489bd4f0c3b67330b3d150ddc",
+      "fasm_sha256": "68c879d47001826b20ce30b4c2e09b3694e46c0a3f06d017e0dc2dfc84e402d8",
+      "emitted_fasm_checks": {
+        "passed": true,
+        "lut_positions": 12,
+        "carry_muxes": 2,
+        "ff_input_muxes": 14
+      },
+      "placement_log_sha256": "69f5863acda4926c225886f0499664e91e74f52e87b163699421335cd86946f9",
+      "constrained_pairs": 3,
+      "shared_connections_verified": true
+    }
+  },
+  "patch_replay": {
+    "patches": 5,
+    "source_files": 7,
+    "byte_identical": true
+  },
+  "default_behavior": {
+    "passed": true,
+    "unchanged_cell_count": 81,
+    "physical_lut_positions": 16,
+    "reference_placed_sha256": "8bf0536a5f3643064929baf74b5a290ce78671ce364904d6957e6639b21facd5",
+    "current_placed_sha256": "8bf0536a5f3643064929baf74b5a290ce78671ce364904d6957e6639b21facd5"
+  },
+  "cli_argument_checks": {
+    "passed": true,
+    "cases": [
+      {
+        "value": "0",
+        "rejected": true
+      },
+      {
+        "value": "-1",
+        "rejected": true
+      }
+    ]
+  },
+  "full_placement_checks_preserved": [
+    "All BEL locations",
+    "All relative constraints",
+    "Timing analysis"
+  ]
+}

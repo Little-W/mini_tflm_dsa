@@ -1,0 +1,1455 @@
+{
+  "shared_storage": {
+    "passed": true,
+    "source_sha256": {
+      "test/shared_ia_ps/check_structure.py": "3e4f9b23474d184c1edb24c51566d9e025953138fb8fc438eb2bd24745331892",
+      "rtl/npu/buffers/ia_ps_shared_ram.sv": "5a2157f68a9106d59f76b70837ec5fd9c57e2391f84e8d4706981138c238c333",
+      "rtl/npu/ps_compact/ps_frame_store.sv": "89c591180898033addb5178709f47e5065641b7b799bc2c5552b83ef85fc8764",
+      "rtl/npu/ps_compact/ps_adaptive_codec.sv": "649ae5c94a31f81fae20919b922ffb6ae4b213acd1ba9823d022c0a4b96976d9",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "b3346fc2424960647416da006fc7291938415c88a5b16d66093e14f48fee0bdb",
+      "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+    },
+    "primitive_models": {
+      "library_sha256": {
+        "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+      },
+      "primitives": [
+        "LUT6",
+        "MUXF7",
+        "MUXF8"
+      ],
+      "model_sha256": "04aae59d547ad17f993f9e574fb08c7bd4f98d3ea2b0319c3f8074f572711c4f"
+    },
+    "checked_read_prefix_cases": 9446400,
+    "profiles": [
+      {
+        "name": "shared_2048_bytes_6_banks",
+        "total_data_bytes": 12288,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 2889,
+        "script_sha256": "16c5e43e2086edd774d314ce5ec80ebe0d8e8ede555c560f902b06f401e706bd",
+        "netlist_sha256": "09bdbb1a2f9493763a3dc7a5328d97d8253382351b2ac351f84ec5ef5071e06c"
+      },
+      {
+        "name": "store_2048_bytes_6_banks",
+        "total_data_bytes": 12288,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "39327be66b939382418271c14deb44385742b641cc83a9b42898a245b8e9728a",
+        "netlist_sha256": "07a0dc5322e0e0498db4d0c17ca47fb403cc6bc75f81f35a907832a10661b8f2"
+      },
+      {
+        "name": "shared_2048_bytes_7_banks",
+        "total_data_bytes": 14336,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 3084,
+        "script_sha256": "6ddd52903873ebc00fbc309cbd2390c8547fca5ce67c38dba911043d6ee90756",
+        "netlist_sha256": "2be720c8aa70cfeb8648469b214b624d6b9eaee8d01facaf18f85c7c309358ef"
+      },
+      {
+        "name": "store_2048_bytes_7_banks",
+        "total_data_bytes": 14336,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "603b89845ef7aca67bd17e58ddc3f85190b90d29d997d7f0819a400618ce5798",
+        "netlist_sha256": "e24826e71efc79525faa756818118d1eb7e61a8ffb2dda637b0925230d757b56"
+      },
+      {
+        "name": "ia_2048_bytes_7_banks",
+        "total_data_bytes": 14336,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_loader_cache_mgr.l1_last_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.ram_rd_en_d1",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 16,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.rd_addr_pipe",
+            "width": 9,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.rd_en_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 16,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.slot_written_cols",
+            "width": 5,
+            "size": 32,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_loader_cache_mgr.tile_last_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          }
+        ],
+        "latches": 0,
+        "cell_count": 469,
+        "script_sha256": "82e919ecb33408b94514f9e75b4d3fd27fb649c2568eb26dcd9d069015c13ad6",
+        "netlist_sha256": "9c9b7b409aaff7b32d3ae09e088cd23edf12313245ec64adba74a01031ff943d"
+      },
+      {
+        "name": "shared_2048_bytes_8_banks",
+        "total_data_bytes": 16384,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[7].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 3279,
+        "script_sha256": "cd2cbdf8dad3df579088999560748836f6b465470f1584c3eb6c1b1f1c446eab",
+        "netlist_sha256": "9ec942562cbeeb5a0eb4be9820b177be9b0862fa38e911b480890d0db08faed6"
+      },
+      {
+        "name": "store_2048_bytes_8_banks",
+        "total_data_bytes": 16384,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "80f550a10efc43479354f2b038fd1cb309daba9266c321abd2b4f68dcd2c11d8",
+        "netlist_sha256": "355406e22d83d05f298fb33d561f478a98e8ef46b4611a422b672b5eab37418d"
+      },
+      {
+        "name": "shared_2048_bytes_9_banks",
+        "total_data_bytes": 18432,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[7].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[8].u_ram.mem",
+            "width": 128,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 5522,
+        "script_sha256": "7aa8c83b782e96c0a6aef6f6d1e0dcc215971dddeaa1e5ce20cecb54d29296f5",
+        "netlist_sha256": "479d60bd6d3038b1f5c85b04d255cce57dc0eba3632d03b9f978604c8674c05f"
+      },
+      {
+        "name": "store_2048_bytes_9_banks",
+        "total_data_bytes": 18432,
+        "bank_bytes": 2048,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "d0b6fe463f598e2446b133802b904fa5e4898c9d2c0ba54f08857bbd9c700d88",
+        "netlist_sha256": "b6f4799ecbf7751505c33b1e879080e667ee584e3b8b8248909e79906ee0d657"
+      },
+      {
+        "name": "shared_4096_bytes_6_banks",
+        "total_data_bytes": 24576,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 2889,
+        "script_sha256": "b216b5d24d5ebf94ecaaca9319dc7d8f860cc53e7abd147f97625bdafbb4a56e",
+        "netlist_sha256": "f9fbd0bbbc0e71bc66d33f41351ceaa335aa33eaa0f2d09b65b568b25dee5202"
+      },
+      {
+        "name": "store_4096_bytes_6_banks",
+        "total_data_bytes": 24576,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "6295a52a87c43504fc99321e7c70e8ad10bedeb8f90fc86398458fec9d95aaa9",
+        "netlist_sha256": "ea6ab4d7f4e7de11cc65f0f801ccc493eddb1e17253ed4af8c04848b2e47a778"
+      },
+      {
+        "name": "shared_4096_bytes_7_banks",
+        "total_data_bytes": 28672,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 3084,
+        "script_sha256": "8e6c2d2a914511398c1231866a1f7feaed45bf23a82d97b2f1ce08e6a4117361",
+        "netlist_sha256": "773a5938a921158cfc68f30239251e58a11d58555af5587605c265804e2faeff"
+      },
+      {
+        "name": "store_4096_bytes_7_banks",
+        "total_data_bytes": 28672,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "bb1fdcdd2dee994e9bded8b481a3d0ff3a6645954a5a5105486c7523d1fa3a55",
+        "netlist_sha256": "66129aa66a54ff2b179cc3b1f5c00396ffeb72daed835e718ad47d8ead2eabd6"
+      },
+      {
+        "name": "ia_4096_bytes_7_banks",
+        "total_data_bytes": 28672,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_loader_cache_mgr.l1_last_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.ram_rd_en_d1",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 16,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.rd_addr_pipe",
+            "width": 10,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.rd_en_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 16,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.slot_written_cols",
+            "width": 5,
+            "size": 64,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_loader_cache_mgr.tile_last_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          }
+        ],
+        "latches": 0,
+        "cell_count": 469,
+        "script_sha256": "1fe2a473c41da283861ffae9317a4d3250ec969c869f6a2efcc667ddd043bd68",
+        "netlist_sha256": "ed0eb2459d3cad977bb39fe3c57176b0ba5bd604c033c44e348f1448df20bf71"
+      },
+      {
+        "name": "shared_4096_bytes_8_banks",
+        "total_data_bytes": 32768,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[7].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 3279,
+        "script_sha256": "359065f466da99da16ee4eac2cccf47ddbe4f836bb1d200b6bc69a6b07286436",
+        "netlist_sha256": "1aca29f35dc94391c172ab1611fb1c590b3d33844d6c956a9997a61fe235961f"
+      },
+      {
+        "name": "store_4096_bytes_8_banks",
+        "total_data_bytes": 32768,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "0f31567ff985a1108c44feec9f1efd535a2c85bb6ee61cc70ccfcc975a8c8db0",
+        "netlist_sha256": "7cbc4f4cad679fc86b3257231de1786e15d809418de817eda93b35e3d37b76d9"
+      },
+      {
+        "name": "shared_4096_bytes_9_banks",
+        "total_data_bytes": 36864,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[7].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[8].u_ram.mem",
+            "width": 128,
+            "size": 256,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 5522,
+        "script_sha256": "dc16767fc083c2f14ca82915e2da5e647dd59ef41ea72ed126db3d1c85d88fa7",
+        "netlist_sha256": "bc90e3c5731001075ec6ad1fa2eeffc438876425e580267f7cb7158b8c736f43"
+      },
+      {
+        "name": "store_4096_bytes_9_banks",
+        "total_data_bytes": 36864,
+        "bank_bytes": 4096,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "81e9c935a098edb13ff20600618a55338ba80102912a672063a32f8791d6311c",
+        "netlist_sha256": "2f279157eb7f71eb9cfedfc1afdcefdba6efbc95e92b4b86af56fd598f31ee1a"
+      },
+      {
+        "name": "shared_8192_bytes_6_banks",
+        "total_data_bytes": 49152,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 2889,
+        "script_sha256": "8899f7976732349685ccc8e44e8e10618a6e42417494e1282f8d42aece18f024",
+        "netlist_sha256": "b1b5513c995e312f27b3187a06308afedc71a1d51ef40e50f9c8d510a09ee6d1"
+      },
+      {
+        "name": "store_8192_bytes_6_banks",
+        "total_data_bytes": 49152,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "f0188aa33923d99b4178a5a680249a18caaa9a50e438634df36b9c5dc216d2b6",
+        "netlist_sha256": "bfa69fb3aa5275b8b871a783f9e7e434a715bb99e68fa01c4e1947cd3ad7a0ec"
+      },
+      {
+        "name": "shared_8192_bytes_7_banks",
+        "total_data_bytes": 57344,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 3084,
+        "script_sha256": "0be86c3d641a416c9a49baccda7e29cf6913dd92d98431f80714ba75d4ed3a05",
+        "netlist_sha256": "e24b54c68f74e14f29dcc76348f37204411f640aa1bd003ded10ee83f312a6c2"
+      },
+      {
+        "name": "store_8192_bytes_7_banks",
+        "total_data_bytes": 57344,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "1d7438c52b5b0310d7564855322caa7bc0ba732690fad4b4a7816ff1f6bf8b43",
+        "netlist_sha256": "afaa3b94d64b576e82693ba24beb9ba006578e44c2fc697908f5514bc49f3501"
+      },
+      {
+        "name": "ia_8192_bytes_7_banks",
+        "total_data_bytes": 57344,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_loader_cache_mgr.l1_last_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.ram_rd_en_d1",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 16,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.rd_addr_pipe",
+            "width": 11,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.rd_en_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 16,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          },
+          {
+            "name": "ia_loader_cache_mgr.slot_written_cols",
+            "width": 5,
+            "size": 128,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_loader_cache_mgr.tile_last_pipe",
+            "width": 1,
+            "size": 16,
+            "rd_ports": 1,
+            "wr_ports": 32,
+            "rd_clk_enable": 0,
+            "wr_clk_enable": 4294967295
+          }
+        ],
+        "latches": 0,
+        "cell_count": 469,
+        "script_sha256": "92976434622e4af589c11ca626128579fc8fbac9ce6b42e9f19759fb44c2cf69",
+        "netlist_sha256": "5c22813ff7338d90798bfda81928a97d9007ae75c7ac930cd4ea438c7e1b936c"
+      },
+      {
+        "name": "shared_8192_bytes_8_banks",
+        "total_data_bytes": 65536,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[7].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 3279,
+        "script_sha256": "2f59740f909d0946ed3d8576c5bf3930c7bbf3fc95e29ac97aba49126ca8a29f",
+        "netlist_sha256": "4239d11078152031870a6955e4c71de4f166f603adca30e17708960fd51f937a"
+      },
+      {
+        "name": "store_8192_bytes_8_banks",
+        "total_data_bytes": 65536,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "f87950bedac37c6cdf203873641309a34c7cfe2cb182840a2b8eee26dee79828",
+        "netlist_sha256": "085b1ec280e8cdc836914bfe47f1a32fe0597683b4b5246bea952aaccdd752e4"
+      },
+      {
+        "name": "shared_8192_bytes_9_banks",
+        "total_data_bytes": 73728,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ia_ps_shared_ram.g_bank[0].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[1].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[2].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[3].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[4].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[5].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[6].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[7].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          },
+          {
+            "name": "ia_ps_shared_ram.g_bank[8].u_ram.mem",
+            "width": 128,
+            "size": 512,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 5522,
+        "script_sha256": "ab89c6187a47e8e522d21407aae23a99130cdc28082989138a8f369755f23144",
+        "netlist_sha256": "abfb846b07183170071e7a515ad80e9241cd2ebdc9ed52cb0bc5f1973a93feea"
+      },
+      {
+        "name": "store_8192_bytes_9_banks",
+        "total_data_bytes": 73728,
+        "bank_bytes": 8192,
+        "passed": true,
+        "memories": [
+          {
+            "name": "ps_frame_store.u_decoded.mem",
+            "width": 512,
+            "size": 8,
+            "rd_ports": 1,
+            "wr_ports": 1,
+            "rd_clk_enable": 1,
+            "wr_clk_enable": 1
+          }
+        ],
+        "latches": 0,
+        "cell_count": 374,
+        "script_sha256": "ad3f61dfd2fd8dfd1a62cc99dc162f44e9c64870fbc02ac238424cd55a6f8097",
+        "netlist_sha256": "d4d4172ac3c6314f9ea6505826e7047a66a8e8f82f05cf90e59ce44e66f8088d"
+      }
+    ],
+    "report_sha256": "f9e4aaf0320f4bf48673624f3a1e84a3f1cb4b15b1d82446a97953abe63d115b"
+  },
+  "conv_ram": {
+    "status": "PASS",
+    "source_sha256": {
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "5b0611ebada969706d3ab69216ae7bee7ce14b5e962000fa3223d507e304a699",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+    },
+    "version": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "memory": {
+      "SIZE": 1024,
+      "WIDTH": 32,
+      "ABITS": 10,
+      "RD_PORTS": 1,
+      "WR_PORTS": 1,
+      "RD_CLK_ENABLE": 1,
+      "WR_CLK_ENABLE": 1,
+      "RD_CLK_POLARITY": 1,
+      "WR_CLK_POLARITY": 1
+    },
+    "independent_write_byte_enables": 4,
+    "report_sha256": "58a9aa7aacb522a64130a79c2e1feab64d9c6a32a094e793f6ba760ed236c423"
+  }
+}

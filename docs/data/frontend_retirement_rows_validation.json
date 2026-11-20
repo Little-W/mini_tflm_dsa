@@ -1,0 +1,463 @@
+{
+  "reference_ref": "781deda2",
+  "formal": {
+    "reference_ref": "781deda2",
+    "passed": true,
+    "inputs_constrained": false,
+    "remaining_module_body_identical": true,
+    "observed_bits": 96,
+    "source_sha256": "a44ee95bb666c027aef0a332bce61befaccda50525993a3419569df4a5288816",
+    "reference_sha256": "be4a8284376754c29e1d75f42c1033f140720309fa856a2d7e3fac66dfff0367",
+    "miter_sha256": "df6a62ed3541f89c621d4c198a1796a6958322f76bdad706bc653809b5b99df6",
+    "log_sha256": "42b219ffde29d2fe8ee8dafd2cf72808cf3faf3725b1bceadce6ba23a1e013bd"
+  },
+  "interface": {
+    "passed": true,
+    "public_outputs_compared": 19,
+    "numeric_jobs": 148,
+    "numeric_cycles": 1747244,
+    "control_checks": 23,
+    "control_cycles": 134,
+    "configurations": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=804123 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=804123"
+        ],
+        "LANES": 2
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=396030 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=396030"
+        ],
+        "LANES": 2
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=278078 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=278078"
+        ],
+        "LANES": 2
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "windowed_prefetch": 1,
+        "passed": true,
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=37 cycles=269013 cache_sets=16 cache_ways=2 line_bytes=16 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=269013"
+        ],
+        "LANES": 2
+      },
+      {
+        "control": true,
+        "passed": true,
+        "summary": [
+          "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=134",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_control cycles=134"
+        ]
+      }
+    ]
+  },
+  "synthesis": {
+    "reference": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": null,
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 2
+      },
+      "lut_cells": 6531,
+      "flip_flops": 3238,
+      "dsp": 30,
+      "carry4": 724,
+      "cell_counts": {
+        "$scopeinfo": 4,
+        "CARRY4": 724,
+        "DSP48E1": 30,
+        "FDCE": 2021,
+        "FDPE": 94,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 268,
+        "LUT2": 1370,
+        "LUT3": 1245,
+        "LUT4": 1219,
+        "LUT5": 1624,
+        "LUT6": 1054,
+        "LUT6_2": 19,
+        "MUXF7": 4,
+        "MUXF8": 1,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      },
+      "source_sha256": "be4a8284376754c29e1d75f42c1033f140720309fa856a2d7e3fac66dfff0367",
+      "longest_register_path_cells": 21,
+      "mapped_sha256": "42025edd47a5e6c22c01bce65e57874a1b37e6705d97da3673da59c517a4f65c",
+      "pre_lut_sha256": "6c164856bfb60e0a3a374b1edcc35ccc225eb6c27bbb9938e90eda89956a9c67",
+      "retirement_calculation": {
+        "lut_cells": 363,
+        "flip_flops": 0,
+        "carry4": 39,
+        "dsp": 0,
+        "longest_combinational_path_cells": 19,
+        "mapped_verilog_sha256": "d88cd2d2e0659d150a9ed0f7b0eef21fc39957dc80ed47225b17bff9c678f4c6"
+      }
+    },
+    "current": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": null,
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 2
+      },
+      "lut_cells": 6398,
+      "flip_flops": 3238,
+      "dsp": 30,
+      "carry4": 718,
+      "cell_counts": {
+        "$scopeinfo": 4,
+        "CARRY4": 718,
+        "DSP48E1": 30,
+        "FDCE": 2021,
+        "FDPE": 94,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 268,
+        "LUT2": 1319,
+        "LUT3": 1355,
+        "LUT4": 1058,
+        "LUT5": 1639,
+        "LUT6": 1008,
+        "LUT6_2": 19,
+        "MUXF7": 2,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      },
+      "source_sha256": "a44ee95bb666c027aef0a332bce61befaccda50525993a3419569df4a5288816",
+      "longest_register_path_cells": 21,
+      "mapped_sha256": "cb54fbbde2e83ff5f8894ebfcf0b3d4b2ea4e5500f41563825f108a169ecb9a0",
+      "pre_lut_sha256": "595c1f29bec3c675e28845690179ac5b83428bc2506ff3c7464e5568c1f99761",
+      "retirement_calculation": {
+        "lut_cells": 283,
+        "flip_flops": 0,
+        "carry4": 33,
+        "dsp": 0,
+        "longest_combinational_path_cells": 15,
+        "mapped_verilog_sha256": "de614b44df7a0c53f9841882c31d201db27a39dd0b3617e8d7b84cee381b997b"
+      }
+    }
+  },
+  "synthesis_lanes4": {
+    "reference": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": "781deda2",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "be4a8284376754c29e1d75f42c1033f140720309fa856a2d7e3fac66dfff0367",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "source_snapshot": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_lanes4/counts/sources",
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [
+          "LUT6",
+          "LUT6_2"
+        ],
+        "model_sha256": "5225885750b16ed2b781ac5ff2d89ed503355d37c8602926ef1b9fa62c1f8aa3"
+      },
+      "pre_lut_netlist": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_lanes4/counts/pre_lut.il",
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 6642,
+      "flip_flops": 3236,
+      "dsp": 30,
+      "carry4": 736,
+      "longest_combinational_path_cells": 21,
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$331121$lut$aiger331120$25440",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$25449",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$25464",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$25508",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger$o9439",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[1].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[2].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[3].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[4].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[5].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[6].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[7].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21652.genblk1.slice[8].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$36438",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$36449",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$36467",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$37126",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$37137",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$37169",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$331121$lut$aiger331120$37193",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$331570",
+          "type": "LUT6"
+        }
+      ],
+      "maximum_resident_kib": 423432,
+      "cell_counts": {
+        "$scopeinfo": 4,
+        "CARRY4": 736,
+        "DSP48E1": 30,
+        "FDCE": 2021,
+        "FDPE": 92,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 266,
+        "LUT2": 1438,
+        "LUT3": 1312,
+        "LUT4": 1179,
+        "LUT5": 1628,
+        "LUT6": 1066,
+        "LUT6_2": 19,
+        "MUXF7": 5,
+        "MUXF8": 1,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      }
+    },
+    "implementation_151b87d5": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": "151b87d5",
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "a44ee95bb666c027aef0a332bce61befaccda50525993a3419569df4a5288816",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "c7f91b293989e07d5a2fc669c5a68adb3d7189c40e26f5ab26919e67e56c4558",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "8d5c32a8d53b0c7bdd9db765501875235d18cbb55f139782bc48060212ac1714",
+        "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "source_snapshot": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_lanes4/retirement/sources",
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [
+          "LUT6",
+          "LUT6_2"
+        ],
+        "model_sha256": "5225885750b16ed2b781ac5ff2d89ed503355d37c8602926ef1b9fa62c1f8aa3"
+      },
+      "pre_lut_netlist": "/workspace/scratch/76fc8a977a8f/worktrees/frontend/build/frontend_lanes4/retirement/pre_lut.il",
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 6586,
+      "flip_flops": 3236,
+      "dsp": 30,
+      "carry4": 730,
+      "longest_combinational_path_cells": 21,
+      "longest_combinational_path": [
+        {
+          "cell": "$abc$328700$lut$aiger328699$25195",
+          "type": "LUT2"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$25201",
+          "type": "LUT5"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$25204",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$25254",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger$o10257",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[0].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[1].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[2].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[3].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[4].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[5].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[6].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$auto$alumacc.cc:578:replace_alu$21531.genblk1.slice[7].genblk1.carry4",
+          "type": "CARRY4"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36644",
+          "type": "LUT4"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36671",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36760",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36765",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36781",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36788",
+          "type": "LUT3"
+        },
+        {
+          "cell": "$abc$328700$lut$aiger328699$36800",
+          "type": "LUT6"
+        },
+        {
+          "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$329150",
+          "type": "LUT6"
+        }
+      ],
+      "maximum_resident_kib": 412536,
+      "cell_counts": {
+        "$scopeinfo": 4,
+        "CARRY4": 730,
+        "DSP48E1": 30,
+        "FDCE": 2021,
+        "FDPE": 92,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 266,
+        "LUT2": 1416,
+        "LUT3": 1343,
+        "LUT4": 1157,
+        "LUT5": 1631,
+        "LUT6": 1020,
+        "LUT6_2": 19,
+        "MUXF7": 3,
+        "MUXF8": 1,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      }
+    }
+  }
+}

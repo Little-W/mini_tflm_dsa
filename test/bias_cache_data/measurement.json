@@ -1,0 +1,8098 @@
+{
+  "source_sha256": "b3409d8ae2eb30bd656664cdaca77860e6b214c803729aa22c9f8665ce72201e",
+  "reference_ref": "d8fb9581",
+  "formal": {
+    "passed": true,
+    "reference_ref": "d8fb9581",
+    "source_sha256": "b3409d8ae2eb30bd656664cdaca77860e6b214c803729aa22c9f8665ce72201e",
+    "memory_sha256": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+    "reference_sha256": "317ca4ac8dea967fd59e2cb5f7bf21c46b72efe07dfe1d2f383ed443927dfcab",
+    "control_and_storage_identical": true,
+    "external_inputs_constrained": false,
+    "initial_reset_applied": true,
+    "runs": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 1,
+        "GROUP_BLOCKS_MAX": 1,
+        "control_mutual_exclusion": {
+          "passed": true,
+          "log_sha256": "3e4dee13e4e36b22feb8762ffdd46efeb87626bc651f0d84b58e4f267c7bd2de"
+        },
+        "cache_next_state": {
+          "passed": true,
+          "log_sha256": "dfc2c7895a4f366279e1e4679a7a7e3e65f3ad4d23a7379bd198639b20ba0b03"
+        },
+        "cache_bits": 128,
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 12,
+        "GROUP_BLOCKS_MAX": 4,
+        "control_mutual_exclusion": {
+          "passed": true,
+          "log_sha256": "0959d3da6bce4a9eb7ce59f777e928cf7e51db0bfff53a6a111daa583ce034c5"
+        },
+        "cache_next_state": {
+          "passed": true,
+          "log_sha256": "0bb5b41065030d3d47f6e15c23562dd88385086875715de302e924b42dc54f41"
+        },
+        "cache_bits": 512,
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 28,
+        "GROUP_BLOCKS_MAX": 32,
+        "control_mutual_exclusion": {
+          "passed": true,
+          "log_sha256": "eea2f862d579e2a34c696f67f58503d64630c9e391f261186f6ae3023d3db2f1"
+        },
+        "cache_next_state": {
+          "passed": true,
+          "log_sha256": "2c2b34f1877862d95c4a346b5d825666e6d969dc25e1e7de38cf3ff2965f0298"
+        },
+        "cache_bits": 512,
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 1,
+        "control_mutual_exclusion": {
+          "passed": true,
+          "log_sha256": "7d6b7b9f1015a48056347605dcd2ad22db8aa7364c98b559784572f815380d4c"
+        },
+        "cache_next_state": {
+          "passed": true,
+          "log_sha256": "94a0f67523bbe0df7f82433396cfa0b8172bce10491761716515a611e5289d53"
+        },
+        "cache_bits": 512,
+        "passed": true
+      }
+    ]
+  },
+  "numeric_current": {
+    "passed": true,
+    "case_count": 392,
+    "cases": [
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 235
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 254
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 289
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 308
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 133
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 142
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 168
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 181
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 270
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 299
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 386
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 328
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 359
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 385
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 473
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 86
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 476
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 74
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 384
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 428
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 438
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 257
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 480
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 289
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 192
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 291
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 214
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 323
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 326
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 421
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 162
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 162
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 162
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 382
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 382
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 382
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 387
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 161
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 354
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 354
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 354
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 359
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 421
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 546
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 157
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 163
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 418
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 418
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 418
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 423
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 160
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 276
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 175
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 157
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 548
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 175
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 179
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 177
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 177
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 177
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 276
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 318
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 318
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 318
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 317
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 537
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 537
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 537
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 543
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 316
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 316
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 316
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 317
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 572
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 572
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 572
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 576
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 621
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 621
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 621
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 624
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 443
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 443
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 443
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 440
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 655
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 655
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 655
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 660
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 417
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 417
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 417
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 486
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 486
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 486
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 435
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 483
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 589
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 589
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 589
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 454
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 454
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 454
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 588
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 471
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 479
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 479
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 479
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 505
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 565
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 565
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 593
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 868
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 515
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 515
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 515
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 542
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 512
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 512
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 623
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 623
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 511
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 653
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 652
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 652
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 701
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 871
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 511
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 511
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 512
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 709
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 709
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 1186
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 759
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 596
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 596
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 595
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1003
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1003
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1011
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 1185
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 595
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 595
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 596
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1038
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1038
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1049
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1174
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1174
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1182
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1364
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1211
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1211
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1220
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1585
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2470
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1106
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1758
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1106
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1976
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2917
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3211
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1498
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1957
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 4690
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1496
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3656
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1959
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 5583
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2696
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 6115
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2696
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3665
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 7004
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3661
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 5084
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 5084
+      }
+    ],
+    "source_sha256": {
+      "test/bias_loader_reuse/tb_bias_loader_reuse.sv": "32d8cec52cfaef13f180d1859b6699da9bb8ebbbb760dfffb1ca6dcfb8217893",
+      "rtl/npu/loaders/bias_loader.sv": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "81422e9fc42761c061375dd788f5787c0a3cf22097184800bd82f1da62d44acb",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "b3409d8ae2eb30bd656664cdaca77860e6b214c803729aa22c9f8665ce72201e",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+    },
+    "sources_unchanged": true,
+    "build_command": [
+      "verilator",
+      "--binary",
+      "--timing",
+      "--assert",
+      "-Wno-fatal",
+      "--top-module",
+      "tb_bias_loader_reuse",
+      "-j",
+      "2",
+      "--Mdir",
+      "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/build/bias_cache_data/reuse/obj",
+      "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/test/bias_loader_reuse/tb_bias_loader_reuse.sv",
+      "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/rtl/npu/loaders/bias_loader.sv",
+      "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/rtl/npu/loaders/bias_loader_ctrl.sv",
+      "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/rtl/npu/loaders/bias_loader_buffer.sv",
+      "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/rtl/common/REGFILE.v"
+    ],
+    "build_returncode": 0,
+    "run_returncode": 0,
+    "simulator": "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/build/bias_cache_data/reuse/obj/Vtb_bias_loader_reuse",
+    "simulator_sha256": "89bea6ee3f0e406ac4cc6851bb6595a9e7c8f6fa9200dbbc2c2e32b522300c88",
+    "runner_sha256": "775d2887b0231002c746ffda1e6a3b5be4d6a09ca9e5aeade8de2ba6171014ad"
+  },
+  "numeric_reference": {
+    "passed": true,
+    "case_count": 392,
+    "cases": [
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 97
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 7,
+        "step": 1,
+        "repeats": 5,
+        "dma_commands": 1,
+        "cycles": 101
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 229
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 235
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 254
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 278
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 289
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 298
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 32,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 308
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 132
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 133
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 141
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 142
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 169
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 168
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 17,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 181
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 262
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 270
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 293
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 299
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 386
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 328
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 1,
+        "cycles": 351
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 359
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 385
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 473
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 75
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 72
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 86
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 48,
+        "step": 1,
+        "repeats": 3,
+        "dma_commands": 9,
+        "cycles": 476
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 74
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 1,
+        "channels": 16,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 84
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 378
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 384
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 420
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 428
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 425
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 438
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 251
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 257
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 469
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 64,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 480
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 281
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 289
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 190
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 192
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 285
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 291
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 212
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 315
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 214
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 49,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 323
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 228
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 319
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 326
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 421
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 248
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 33,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 249
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 162
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 162
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 162
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 382
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 382
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 382
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 387
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 161
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 354
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 354
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 354
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 359
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 421
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 546
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 157
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 159
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 163
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 418
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 418
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 1,
+        "cycles": 418
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 2,
+        "cycles": 423
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 160
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 276
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 175
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 157
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 96,
+        "step": 2,
+        "repeats": 2,
+        "dma_commands": 6,
+        "cycles": 548
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 158
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 174
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 175
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 179
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 23,
+        "step": 2,
+        "repeats": 4,
+        "dma_commands": 2,
+        "cycles": 176
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 279
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 177
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 177
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 177
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 276
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 318
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 318
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 318
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 317
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 2,
+        "channels": 31,
+        "step": 2,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 178
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 537
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 537
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 537
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 543
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 316
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 316
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 316
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 63,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 317
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 572
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 572
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 572
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 576
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 621
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 621
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 621
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 624
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 443
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 443
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 443
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 440
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 655
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 655
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 655
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 127,
+        "step": 4,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 660
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 417
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 417
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 417
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 545
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 486
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 486
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 486
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 435
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 483
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 589
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 589
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 589
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 454
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 454
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 454
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 64,
+        "step": 1,
+        "repeats": 4,
+        "dma_commands": 1,
+        "cycles": 588
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 471
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 479
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 479
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 479
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 505
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 565
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 565
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 593
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 868
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 515
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 515
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 515
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 95,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 542
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 512
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 512
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 623
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 623
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 511
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 653
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 652
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 652
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 701
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 871
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 511
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 511
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 512
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 709
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 709
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 1186
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 759
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 596
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 596
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 595
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1003
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1003
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1011
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 4,
+        "channels": 129,
+        "step": 3,
+        "repeats": 3,
+        "dma_commands": 12,
+        "cycles": 1185
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 595
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 595
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 127,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 596
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1038
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1038
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1049
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1174
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1174
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1182
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1364
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1211
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 2,
+        "cycles": 1211
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 255,
+        "step": 8,
+        "repeats": 3,
+        "dma_commands": 3,
+        "cycles": 1220
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1585
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2470
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1106
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1758
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1106
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1976
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2917
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3211
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1498
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1957
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 4690
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 8,
+        "channels": 299,
+        "step": 8,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1496
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3656
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 1959
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 5583
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2696
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 6115
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 16,
+        "channels": 555,
+        "step": 16,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 2696
+      },
+      {
+        "is_mode": 1,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3665
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 1,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 7004
+      },
+      {
+        "is_mode": 0,
+        "bus": 64,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 3661
+      },
+      {
+        "is_mode": 1,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 5084
+      },
+      {
+        "is_mode": 0,
+        "bus": 32,
+        "capacity": 32,
+        "channels": 1067,
+        "step": 32,
+        "repeats": 2,
+        "dma_commands": 8,
+        "cycles": 5084
+      }
+    ],
+    "source_sha256": {
+      "test/bias_loader_reuse/tb_bias_loader_reuse.sv": "32d8cec52cfaef13f180d1859b6699da9bb8ebbbb760dfffb1ca6dcfb8217893",
+      "rtl/npu/loaders/bias_loader.sv": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "81422e9fc42761c061375dd788f5787c0a3cf22097184800bd82f1da62d44acb",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "317ca4ac8dea967fd59e2cb5f7bf21c46b72efe07dfe1d2f383ed443927dfcab",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+    },
+    "sources_unchanged": true,
+    "build_command": [
+      "verilator",
+      "--binary",
+      "--timing",
+      "--assert",
+      "-Wno-fatal",
+      "--top-module",
+      "tb_bias_loader_reuse",
+      "-j",
+      "2",
+      "--Mdir",
+      "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/build/bias_cache_data/reuse_reference/obj",
+      "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/test/bias_loader_reuse/tb_bias_loader_reuse.sv",
+      "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/npu/loaders/bias_loader.sv",
+      "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/npu/loaders/bias_loader_ctrl.sv",
+      "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/npu/loaders/bias_loader_buffer.sv",
+      "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/rtl/common/REGFILE.v"
+    ],
+    "build_returncode": 0,
+    "run_returncode": 0,
+    "simulator": "/workspace/scratch/76fc8a977a8f/worktrees/bias_cache_data/build/bias_cache_data/reuse_reference/obj/Vtb_bias_loader_reuse",
+    "simulator_sha256": "70e30e634ca4df27ecfc67e34ad158be9b449963fb56cb16f589aacc6d018e57",
+    "runner_sha256": "775d2887b0231002c746ffda1e6a3b5be4d6a09ca9e5aeade8de2ba6171014ad"
+  },
+  "task_statistics_identical": true,
+  "task_count": 392,
+  "task_cycles": 193571,
+  "measurements": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1133,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1133,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 769,
+        "dsp48e1": 0,
+        "ramb36e1": 1,
+        "ramb18e1": 0,
+        "carry4": 51,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 51,
+          "FDCE": 256,
+          "FDRE": 513,
+          "INV": 2,
+          "LUT2": 201,
+          "LUT3": 653,
+          "LUT4": 112,
+          "LUT5": 113,
+          "LUT6": 54,
+          "RAMB36E1": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 15,
+        "observed_combinational_cells": 11,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 28,
+        "GROUP_BLOCKS_MAX": 32
+      },
+      "source_sha256": {
+        "rtl/npu/loaders/bias_loader_buffer.sv": "317ca4ac8dea967fd59e2cb5f7bf21c46b72efe07dfe1d2f383ed443927dfcab",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "mapped_sha256": "79058f43bbd1096deebfc86ad48e3867cbc8a5c2b2aff457e9f793612d39890d",
+      "longest_register_path_cells": 11,
+      "graph_complete": true
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 621,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 621,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 769,
+        "dsp48e1": 0,
+        "ramb36e1": 1,
+        "ramb18e1": 0,
+        "carry4": 51,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 51,
+          "FDCE": 256,
+          "FDRE": 513,
+          "INV": 2,
+          "LUT2": 200,
+          "LUT3": 141,
+          "LUT4": 123,
+          "LUT5": 100,
+          "LUT6": 57,
+          "RAMB36E1": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 15,
+        "observed_combinational_cells": 11,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 28,
+        "GROUP_BLOCKS_MAX": 32
+      },
+      "source_sha256": {
+        "rtl/npu/loaders/bias_loader_buffer.sv": "b3409d8ae2eb30bd656664cdaca77860e6b214c803729aa22c9f8665ce72201e",
+        "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6"
+      },
+      "mapped_sha256": "5fd9a5f7c1f0a4338cb4821b03b658c9be505bbab48c545a23c9b5c3dfc040c8",
+      "longest_register_path_cells": 11,
+      "graph_complete": true
+    }
+  },
+  "passed": true
+}

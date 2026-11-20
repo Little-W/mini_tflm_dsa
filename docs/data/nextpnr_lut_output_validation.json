@@ -1,0 +1,1098 @@
+{
+  "nextpnr_sha256": "2837deefa50ea794858ac8bb3788916e29283bb2490ec6e1d3b0a10a8eca992c",
+  "chipdb_sha256": "db8b637fee7794602e86cead4615e253e79c1c69993396617f9e48cfef0935e7",
+  "packer_source_sha256": "2b66750d173e6754a5b8b0dddd189f5e1c2bb8f0896f126ea68faca742405477",
+  "runner_sha256": "a9408ac9f4e04bb8b103c11877f7f78da6334deeb9dae66794d51ae4aa011d24",
+  "cases": {
+    "lower_output_feedback": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "physical_lut_positions": 3,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3"
+            ],
+            "input_connections_checked": 4
+          },
+          "O6": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          }
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/routed.json",
+        "logical_luts": 4,
+        "physical_lut_sites": 3,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 13,
+        "output_comparisons": 72,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 3,
+        "carry_muxes": 0,
+        "ff_input_muxes": 7,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_event",
+            "site": "SLICE_X159Y132",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[5].u_state",
+            "site": "SLICE_X160Y124",
+            "mux": "A5FFMUX",
+            "source": "AX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X160Y132",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X158Y133",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X161Y140",
+            "mux": "B5FFMUX",
+            "source": "BX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X161Y133",
+            "mux": "AFFMUX",
+            "source": "AX",
+            "selection": "AX"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X159Y132",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/routed.json": "18a48024719978ab3b0fc3e5a4e83e3eeb55cd74a10fdc98e3dad9be68795ca6",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/design.fasm": "8b59d1bb73acaf421867d34408026503c453280e151ab7c43933f725129c8934",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/truth/physical_lut_init.json": "93fff7dc6f346ab62118f665f6555e06961068834d77dd3dbde1c8f91de688a2",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.01,
+          "peak_process_tree_rss_bytes": 140869632,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 7412125696,
+          "minimum_observed_system_available_memory_bytes": 7412125696,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.01,
+          "peak_process_tree_rss_bytes": 362233856,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 7092584448,
+          "minimum_observed_system_available_memory_bytes": 7092584448,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.01,
+          "peak_process_tree_rss_bytes": 205340672,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 7221075968,
+          "minimum_observed_system_available_memory_bytes": 7092740096,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 8.62,
+          "peak_process_tree_rss_bytes": 2404917248,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 7014178816,
+          "minimum_observed_system_available_memory_bytes": 5452754944,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.45,
+          "peak_process_tree_rss_bytes": 12939264,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 7025139712,
+          "minimum_observed_system_available_memory_bytes": 6909943808,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/lower_output_feedback/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 121339904,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6986207232,
+          "minimum_observed_system_available_memory_bytes": 6986207232,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "a2c9023c9cb2ea0b8e9ab2ce039d51c47d8737c836f910e71b05b0d4ea309a0a",
+      "packed_sha256": "6f4b017cc5c4a807ae3996f87bac76d48953472719d8a0f88cf681144d93a554",
+      "routed_sha256": "18a48024719978ab3b0fc3e5a4e83e3eeb55cd74a10fdc98e3dad9be68795ca6",
+      "fasm_sha256": "8b59d1bb73acaf421867d34408026503c453280e151ab7c43933f725129c8934"
+    },
+    "upper_output_feedback": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "physical_lut_positions": 3,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          },
+          "O6": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3"
+            ],
+            "input_connections_checked": 4
+          }
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/routed.json",
+        "logical_luts": 4,
+        "physical_lut_sites": 3,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 13,
+        "output_comparisons": 72,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 3,
+        "carry_muxes": 0,
+        "ff_input_muxes": 7,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_event",
+            "site": "SLICE_X163Y139",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[5].u_state",
+            "site": "SLICE_X163Y127",
+            "mux": "B5FFMUX",
+            "source": "BX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X163Y132",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X163Y140",
+            "mux": "CFFMUX",
+            "source": "CX",
+            "selection": "CX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X163Y138",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X162Y128",
+            "mux": "A5FFMUX",
+            "source": "AX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X163Y129",
+            "mux": "CFFMUX",
+            "source": "CX",
+            "selection": "CX"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/routed.json": "6df756372288a93ca69053e7bb3e9f38e54af52d070f2106c069479047f82109",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/design.fasm": "38314c83de7f4bef0161485950cb7214632bc2677e438907d49b3f30e9f842bb",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/truth/physical_lut_init.json": "2b8fd2ca167da488226ab3086c12a59d7975092cd2f54c46c30e3cae13d5aa0c",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.02,
+          "peak_process_tree_rss_bytes": 140521472,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6939770880,
+          "minimum_observed_system_available_memory_bytes": 6939770880,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.05,
+          "peak_process_tree_rss_bytes": 361672704,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6842347520,
+          "minimum_observed_system_available_memory_bytes": 6786314240,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.02,
+          "peak_process_tree_rss_bytes": 205017088,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6803140608,
+          "minimum_observed_system_available_memory_bytes": 6793318400,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 7.54,
+          "peak_process_tree_rss_bytes": 2318368768,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6975881216,
+          "minimum_observed_system_available_memory_bytes": 5059702784,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.02,
+          "peak_process_tree_rss_bytes": 12939264,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6955454464,
+          "minimum_observed_system_available_memory_bytes": 6955454464,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/upper_output_feedback/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 121335808,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6869504000,
+          "minimum_observed_system_available_memory_bytes": 6869504000,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "9e34228860933b528296d9eb7b6c9ad1ba35bca69a74726af816da885a7141ca",
+      "packed_sha256": "423e077a55087aa5f1099e8c56b5a9e7c72db2cd6a0cc5cf749ebc58d00a7f80",
+      "routed_sha256": "6df756372288a93ca69053e7bb3e9f38e54af52d070f2106c069479047f82109",
+      "fasm_sha256": "38314c83de7f4bef0161485950cb7214632bc2677e438907d49b3f30e9f842bb"
+    },
+    "fixed_zero_select": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "physical_lut_positions": 3,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1"
+            ],
+            "input_connections_checked": 2
+          },
+          "O6": {
+            "connected_inputs": [
+              "I0",
+              "I1"
+            ],
+            "input_connections_checked": 2
+          }
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/routed.json",
+        "logical_luts": 4,
+        "physical_lut_sites": 3,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 8,
+        "output_comparisons": 16,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 3,
+        "carry_muxes": 0,
+        "ff_input_muxes": 7,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "u_event",
+            "site": "SLICE_X162Y134",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[5].u_state",
+            "site": "SLICE_X159Y109",
+            "mux": "A5FFMUX",
+            "source": "AX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X163Y129",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X162Y134",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X163Y134",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X163Y108",
+            "mux": "BFFMUX",
+            "source": "BX",
+            "selection": "BX"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X163Y127",
+            "mux": "CFFMUX",
+            "source": "CX",
+            "selection": "CX"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/routed.json": "f7a23837f0e56bdd9c63255195aacb13618afdb1d607da3ea08d3d2bb9378c7f",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/design.fasm": "2a1cc435061669b3aef4c5f76895a3a1f84f2627c66c7a0cf977240d6566a7b4",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/truth/physical_lut_init.json": "422f315324793e0753b159dbd4c33def667706941178702712a0dc5d0786accd",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.44,
+          "peak_process_tree_rss_bytes": 141627392,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6843412480,
+          "minimum_observed_system_available_memory_bytes": 6843412480,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.61,
+          "peak_process_tree_rss_bytes": 361701376,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6838964224,
+          "minimum_observed_system_available_memory_bytes": 6811832320,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 200015872,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6805921792,
+          "minimum_observed_system_available_memory_bytes": 6797643776,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 8.13,
+          "peak_process_tree_rss_bytes": 2321420288,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6937444352,
+          "minimum_observed_system_available_memory_bytes": 5257859072,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.41,
+          "peak_process_tree_rss_bytes": 12926976,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6988394496,
+          "minimum_observed_system_available_memory_bytes": 6836240384,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/fixed_zero_select/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 121335808,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6952390656,
+          "minimum_observed_system_available_memory_bytes": 6952390656,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "e766d462a0af8742d6dc42f14a615215d84c38a6dda96e7ab77f040cb49faa4c",
+      "packed_sha256": "5f15126378c5360c486787f5976927b13c179f56a8b2ca35dff2faf009dc18a5",
+      "routed_sha256": "f7a23837f0e56bdd9c63255195aacb13618afdb1d607da3ea08d3d2bb9378c7f",
+      "fasm_sha256": "2a1cc435061669b3aef4c5f76895a3a1f84f2627c66c7a0cf977240d6566a7b4"
+    },
+    "variable_cofactor": {
+      "passed": true,
+      "placement_complete": true,
+      "routing_complete": true,
+      "physical_lut_positions": 1,
+      "split_checks": {
+        "passed": true,
+        "output_comparisons": 128,
+        "halves": {
+          "O5": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4"
+            ],
+            "input_connections_checked": 5
+          },
+          "O6": {
+            "connected_inputs": [
+              "I0",
+              "I1",
+              "I2",
+              "I3",
+              "I4",
+              "I5"
+            ],
+            "input_connections_checked": 6
+          }
+        }
+      },
+      "truth_checks": {
+        "packed_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/implementation/packed.json",
+        "physical_json": "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/routed.json",
+        "logical_luts": 2,
+        "physical_lut_sites": 1,
+        "paired_sites": 1,
+        "logical_input_connections_checked": 11,
+        "output_comparisons": 128,
+        "fasm_source_sha256": "0e125a0dd8e757df543e12b5c920a4b84882828286ec66241b2de3a14652a34d",
+        "passed": true
+      },
+      "fasm_checks": {
+        "passed": true,
+        "lut_positions": 1,
+        "carry_muxes": 0,
+        "ff_input_muxes": 7,
+        "carry_selections": [],
+        "ff_selections": [
+          {
+            "cell": "g_state[5].u_state",
+            "site": "SLICE_X162Y138",
+            "mux": "CFFMUX",
+            "source": "CX",
+            "selection": "CX"
+          },
+          {
+            "cell": "g_state[3].u_state",
+            "site": "SLICE_X163Y136",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "g_state[1].u_state",
+            "site": "SLICE_X163Y142",
+            "mux": "B5FFMUX",
+            "source": "BX",
+            "selection": "IN_B"
+          },
+          {
+            "cell": "u_event",
+            "site": "SLICE_X162Y143",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[0].u_state",
+            "site": "SLICE_X162Y137",
+            "mux": "DFFMUX",
+            "source": "DX",
+            "selection": "DX"
+          },
+          {
+            "cell": "g_state[4].u_state",
+            "site": "SLICE_X163Y142",
+            "mux": "CFFMUX",
+            "source": "CX",
+            "selection": "CX"
+          },
+          {
+            "cell": "g_state[2].u_state",
+            "site": "SLICE_X162Y144",
+            "mux": "C5FFMUX",
+            "source": "CX",
+            "selection": "IN_B"
+          }
+        ],
+        "sha256": {
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/routed.json": "d28f93dffd1a4ca0608251f3844342eef0741f51af03153b143cbd052203ed29",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/design.fasm": "ee101af6fadbddb257e39e74ce110f7b168dc33f581feff3fb98af52f1d19797",
+          "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/truth/physical_lut_init.json": "3c9bfa25554a11679847eb1b50d88922c5a35411c3fb691bb905061ac7a407a2",
+          "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json": "9908f8b3411195a24249a79e4e060f5d34f45f22111cf2139a3ec06d683511a0"
+        },
+        "method": "Compare emitted FASM LUT INIT, PRECYINIT and FFMUX selections against physical netlist parameters, site map and per-net routed site pips."
+      },
+      "stages": {
+        "prepare": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_synth.py",
+            "--worker",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/prepare.ys"
+          ],
+          "log": "01_prepare.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 0.8,
+          "peak_process_tree_rss_bytes": 140001280,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6962593792,
+          "minimum_observed_system_available_memory_bytes": 6954258432,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "pack": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/open_fpga_implementation.py",
+            "--mapped",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/mapped.json",
+            "--nextpnr",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/implementation",
+            "--through",
+            "pack",
+            "--soc-package-pins",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv",
+            "--allow-timing-failure"
+          ],
+          "log": "02_pack.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 3.95,
+          "peak_process_tree_rss_bytes": 361684992,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6788530176,
+          "minimum_observed_system_available_memory_bytes": 6755299328,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "place": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/implementation/packed.json",
+            "--no-pack",
+            "--no-route",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/placed.json"
+          ],
+          "log": "03_place.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.05,
+          "peak_process_tree_rss_bytes": 205099008,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6847352832,
+          "minimum_observed_system_available_memory_bytes": 6781480960,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "route": {
+          "command": [
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/build/nextpnr-xilinx.2837deefa50ea794",
+            "--chipdb",
+            "/workspace/scratch/92f7be750f11/toolchain/chipdb/chipdb-xc7a200tfbg484-3.bin",
+            "--freq",
+            "150",
+            "--seed",
+            "1",
+            "--strict-timing-graph",
+            "--timing-allow-fail",
+            "--json",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/placed.json",
+            "--no-pack",
+            "--no-place",
+            "--write",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/design.fasm"
+          ],
+          "log": "04_route.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 9.35,
+          "peak_process_tree_rss_bytes": 2397036544,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 7066877952,
+          "minimum_observed_system_available_memory_bytes": 5669240832,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "truth": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_json_init.py",
+            "--packed",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/implementation/packed.json",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/routed.json",
+            "--source",
+            "/workspace/scratch/92f7be750f11/toolchain/nextpnr-xilinx/xilinx",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/truth"
+          ],
+          "log": "05_truth.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 2.28,
+          "peak_process_tree_rss_bytes": 12906496,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 7066886144,
+          "minimum_observed_system_available_memory_bytes": 7061217280,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        },
+        "fasm": {
+          "command": [
+            "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/scripts/fpga/tests/check_emitted_fasm.py",
+            "--physical",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/routed.json",
+            "--fasm",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/design.fasm",
+            "--lut-init",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/truth/physical_lut_init.json",
+            "--tilegrid",
+            "/workspace/scratch/92f7be750f11/toolchain/prjxray-db/artix7/xc7a200t/tilegrid.json",
+            "--out",
+            "/workspace/scratch/76fc8a977a8f/mini_tflm_dsa_opt/build/lut_output_implementation/variable_cofactor/fasm_checks.json"
+          ],
+          "log": "06_fasm.log",
+          "state": "complete",
+          "return_code": 0,
+          "elapsed_seconds": 1.0,
+          "peak_process_tree_rss_bytes": 121335808,
+          "current_process_tree_rss_bytes": 0,
+          "system_available_memory_bytes": 6994690048,
+          "minimum_observed_system_available_memory_bytes": 6994690048,
+          "memory_sample_interval_seconds": 0.2,
+          "progress_save_interval_seconds": 2
+        }
+      },
+      "source_sha256": "8477a9d1a4865202b380adbc5856c75e7698718494db3d3fc50623c977b7c67f",
+      "packed_sha256": "8c4310062ba18928570285e6c9a919fb03858d2f1df32582c76a2d750c5370d9",
+      "routed_sha256": "d28f93dffd1a4ca0608251f3844342eef0741f51af03153b143cbd052203ed29",
+      "fasm_sha256": "ee101af6fadbddb257e39e74ce110f7b168dc33f581feff3fb98af52f1d19797"
+    },
+    "dependent_feedback": {
+      "passed": true,
+      "genuine_combinational_cycle_rejected": true,
+      "source_sha256": "70b6d9d1a69d04e2ed298b6611e9501a4eb69dae01b019128acc7a719d35aec5"
+    }
+  },
+  "passed": true,
+  "patch_sha256": "b9e5466392eb96151c2f7a503894ff7bc36eb11528afd155243778ab79f5d468",
+  "patch_application_verified": true,
+  "source_change": {
+    "reference_pack_sha256": "608708b096f7e776b15a6bde7644f0114329d0fa3165458e5bb2e5743a3004fb",
+    "pack_sha256": "2b66750d173e6754a5b8b0dddd189f5e1c2bb8f0896f126ea68faca742405477",
+    "patch_sha256": "b9e5466392eb96151c2f7a503894ff7bc36eb11528afd155243778ab79f5d468"
+  }
+}

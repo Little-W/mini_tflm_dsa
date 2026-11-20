@@ -1,0 +1,2805 @@
+{
+  "numeric": {
+    "passed": true,
+    "latency_enabled_edges": 12,
+    "source_sha256": {
+      "rtl/npu/writeback/requant_compute_lane.sv": "6a80704946cbaf4abaf891d44c470f2a9f963c69287e22e16122c14089be79e3",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+      "rtl/npu/writeback/vec_requant.sv": "0d7aadbd0020b2f08e1140fbb8c17e4ddd7aa17b64f8f06d3288278ad71798c6"
+    },
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "cases": {
+      "generic": {
+        "passed": true,
+        "checks": {
+          "cycles": 1057997,
+          "outputs": 838131,
+          "directed": 524288,
+          "random": 524288,
+          "holds": 73578,
+          "clears": 3129,
+          "resets": 468,
+          "disabled_lanes": 42431,
+          "clear_during_hold": 787,
+          "latency": 12
+        },
+        "executable_sha256": "c076e3839dedb2ed4e38f0764b8dc8818c68883c81b414244dade3ce52ca166e",
+        "log_sha256": "a8a248bfaa410120853da1cc3ed643297b46105d706b424e0f5c3e8a2dc0d2ac"
+      },
+      "fpga": {
+        "passed": true,
+        "checks": {
+          "cycles": 1057997,
+          "outputs": 838131,
+          "directed": 524288,
+          "random": 524288,
+          "holds": 73578,
+          "clears": 3129,
+          "resets": 468,
+          "disabled_lanes": 42431,
+          "clear_during_hold": 787,
+          "latency": 12
+        },
+        "executable_sha256": "7d2fd0785c68b8788f7a8294d02e0d89c1e7c892acfba378dccf36a1709f95b9",
+        "log_sha256": "a8a248bfaa410120853da1cc3ed643297b46105d706b424e0f5c3e8a2dc0d2ac"
+      }
+    }
+  },
+  "mapped_numeric": {
+    "passed": true,
+    "latency_enabled_edges": 12,
+    "source_sha256": {
+      "rtl/npu/writeback/requant_compute_lane.sv": "6a80704946cbaf4abaf891d44c470f2a9f963c69287e22e16122c14089be79e3",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+      "rtl/npu/writeback/vec_requant.sv": "0d7aadbd0020b2f08e1140fbb8c17e4ddd7aa17b64f8f06d3288278ad71798c6"
+    },
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "cases": {
+      "mapped": {
+        "passed": true,
+        "checks": {
+          "cycles": 1057997,
+          "outputs": 838131,
+          "directed": 524288,
+          "random": 524288,
+          "holds": 73578,
+          "clears": 3129,
+          "resets": 468,
+          "disabled_lanes": 42431,
+          "clear_during_hold": 787,
+          "latency": 12
+        },
+        "executable_sha256": "03f639044c58df86b44a0768910055ee7a837b4b811a57cf441376da11fcfdd0",
+        "log_sha256": "a8a248bfaa410120853da1cc3ed643297b46105d706b424e0f5c3e8a2dc0d2ac",
+        "mapped_sha256": "d1e7f09cc114ec9e13fb0fd5c8fc26645ad390d8044e415de664d2b63d21902b"
+      }
+    }
+  },
+  "synthesis": {
+    "resources": {
+      "logic_lut_cells": 405,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 12,
+      "lut_sites_nominal_before_packing": 417,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 297,
+      "dsp48e1": 5,
+      "ramb36e1": 0,
+      "ramb18e1": 0,
+      "carry4": 18,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 18,
+        "DSP48E1": 5,
+        "FDCE": 47,
+        "FDRE": 250,
+        "INV": 2,
+        "LUT2": 36,
+        "LUT3": 36,
+        "LUT4": 38,
+        "LUT5": 95,
+        "LUT6": 64,
+        "LUT6_2": 136,
+        "MUXF7": 28,
+        "MUXF8": 14,
+        "SRL16E": 12
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "paths": {
+      "register_to_register_paths": [
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3960",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37424$auto$ff.cc:337:slice$3960.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [0]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37424$auto$ff.cc:337:slice$3960.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3961",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37425$auto$ff.cc:337:slice$3961.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [1]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3069.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3069.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3069.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3069.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3069.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3069.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3069.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37425$auto$ff.cc:337:slice$3961.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3962",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37426$auto$ff.cc:337:slice$3962.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [2]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3073.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3073.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3073.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3073.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3073.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3073.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3073.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37426$auto$ff.cc:337:slice$3962.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3963",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37427$auto$ff.cc:337:slice$3963.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [3]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3077.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3077.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3077.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3077.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3077.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3077.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3077.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37427$auto$ff.cc:337:slice$3963.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3964",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37428$auto$ff.cc:337:slice$3964.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [4]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3081.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3081.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3081.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3081.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3081.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3081.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3081.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37428$auto$ff.cc:337:slice$3964.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3965",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37429$auto$ff.cc:337:slice$3965.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [5]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3085.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3085.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3085.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3085.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3085.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3085.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3085.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37429$auto$ff.cc:337:slice$3965.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3966",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37430$auto$ff.cc:337:slice$3966.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [6]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3089.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3089.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3089.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3089.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3089.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3089.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3089.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37430$auto$ff.cc:337:slice$3966.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3968",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37432$auto$ff.cc:337:slice$3968.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [0]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3097.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3097.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3097.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3097.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3097.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3097.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3097.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37432$auto$ff.cc:337:slice$3968.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3969",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37433$auto$ff.cc:337:slice$3969.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [1]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3101.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3101.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3101.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3101.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3101.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3101.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3101.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37433$auto$ff.cc:337:slice$3969.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3970",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37434$auto$ff.cc:337:slice$3970.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [2]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3105.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3105.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3105.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3105.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3105.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3105.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3105.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37434$auto$ff.cc:337:slice$3970.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3971",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37435$auto$ff.cc:337:slice$3971.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [3]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3109.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3109.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3109.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3109.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3109.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3109.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3109.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37435$auto$ff.cc:337:slice$3971.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3972",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37436$auto$ff.cc:337:slice$3972.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [4]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3113.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3113.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3113.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3113.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3113.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3113.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3113.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37436$auto$ff.cc:337:slice$3972.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3973",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37437$auto$ff.cc:337:slice$3973.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [5]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3117.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3117.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3117.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3117.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3117.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3117.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3117.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37437$auto$ff.cc:337:slice$3973.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3974",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37438$auto$ff.cc:337:slice$3974.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [6]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3121.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3121.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3121.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3121.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3121.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3121.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3121.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37438$auto$ff.cc:337:slice$3974.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 8,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3967",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37431$auto$ff.cc:337:slice$3967.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [7]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$3012",
+              "type": "LUT3",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$techmap37535$abc$37385$lut$aiger$o3093.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3093",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37535$abc$37385$lut$aiger$o3093.A[4]",
+              "output_net": "$techmap37431$auto$ff.cc:337:slice$3967.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 8,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3975",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37439$auto$ff.cc:337:slice$3975.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [7]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$3012",
+              "type": "LUT3",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$techmap37535$abc$37385$lut$aiger$o3093.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3125",
+              "type": "LUT6",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37535$abc$37385$lut$aiger$o3093.A[4]",
+              "output_net": "$techmap37439$auto$ff.cc:337:slice$3975.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 8,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3976",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37440$auto$ff.cc:337:slice$3976.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [8]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$3109",
+              "type": "LUT3",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$techmap37490$abc$37385$lut$aiger$o3129.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3129",
+              "type": "LUT6",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37490$abc$37385$lut$aiger$o3129.A[3]",
+              "output_net": "$techmap37440$auto$ff.cc:337:slice$3976.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 8,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3977",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37441$auto$ff.cc:337:slice$3977.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [9]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$3118",
+              "type": "LUT3",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$techmap37504$abc$37385$lut$aiger$o3133.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3133",
+              "type": "LUT6",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37504$abc$37385$lut$aiger$o3133.A[3]",
+              "output_net": "$techmap37441$auto$ff.cc:337:slice$3977.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 8,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3978",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37442$auto$ff.cc:337:slice$3978.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [10]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$3127",
+              "type": "LUT3",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$techmap37516$abc$37385$lut$aiger$o3137.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3137",
+              "type": "LUT6",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37516$abc$37385$lut$aiger$o3137.A[3]",
+              "output_net": "$techmap37442$auto$ff.cc:337:slice$3978.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 8,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3979",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37443$auto$ff.cc:337:slice$3979.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s16 [11]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$3136",
+              "type": "LUT3",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$techmap37529$abc$37385$lut$aiger$o3141.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3141",
+              "type": "LUT6",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37529$abc$37385$lut$aiger$o3141.A[3]",
+              "output_net": "$techmap37443$auto$ff.cc:337:slice$3979.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        }
+      ],
+      "distinct_register_path_groups": [
+        {
+          "combinational_cells": 9,
+          "startpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "P",
+            "net": "compare_i_value[0]",
+            "detail": "DSP output register",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3960",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$techmap37424$auto$ff.cc:337:slice$3960.D",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "o_s8 [0]"
+          },
+          "path": [
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "compare_i_value[0]",
+              "output_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2228.47"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[0].u_carry",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "u_compare.g_fpga.g_bound[0].equal_group[0]",
+              "output_net": "$abc$37385$aiger$i2143",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[1].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2143",
+              "output_net": "$abc$37385$aiger$i2151",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[2].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2151",
+              "output_net": "$abc$37385$aiger$i2159",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[3].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$37385$aiger$i2159",
+              "output_net": "$abc$37385$aiger$i2167",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "u_compare.g_fpga.g_bound[0].g_carry[4].u_carry",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[2]",
+              "input_net": "$abc$37385$aiger$i2167",
+              "output_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2253.24"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0",
+              "type": "LUT6",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.A[4]",
+              "output_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:79.45-79.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux7",
+              "type": "MUXF7",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.lut0.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:85.46-85.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:81.13-81.52"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.mux8",
+              "type": "MUXF8",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$37385$lut$aiger$o3065.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.f0",
+              "output_net": "$techmap37424$auto$ff.cc:337:slice$3960.D",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:87.13-87.52"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 5,
+          "startpoint": {
+            "cell": "u_product.g_dsp.g_result[10].u_middle",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "product_o_value[27]",
+            "detail": "register output",
+            "source": "rtl/npu/conv/vector_scalar_multiplier.sv:140.37",
+            "register_origin": null
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3900",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$37385$aiger$o2789",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[0].stored_value_q [0]"
+          },
+          "path": [
+            {
+              "cell": "$abc$37385$lut$aiger37384$2389",
+              "type": "LUT4",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "product_o_value[27]",
+              "output_net": "$techmap37636$abc$37385$lut$aiger37384$2393.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$2393",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37636$abc$37385$lut$aiger37384$2393.A[4]",
+              "output_net": "$techmap37637$abc$37385$lut$aiger37384$2396.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$2396",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37637$abc$37385$lut$aiger37384$2396.A[3]",
+              "output_net": "$techmap37638$abc$37385$lut$aiger37384$2419.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$2419",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37638$abc$37385$lut$aiger37384$2419.A[3]",
+              "output_net": "$techmap37683$auto$abc_ops_reintegrate.cc:722:reintegrate$37390.A[5]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$37390",
+              "type": "LUT6",
+              "input_port": "I5[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37683$auto$abc_ops_reintegrate.cc:722:reintegrate$37390.A[5]",
+              "output_net": "$abc$37385$aiger$o2789",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 3,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$3905",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_shift.g_shift[0].stored_value_q[5]",
+            "detail": "register output",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[0].stored_value_q [5]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3802",
+            "type": "FDRE",
+            "port": "D",
+            "net": "u_shift.g_shift[1].g_paired_selection.mux_o_value[0]",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[1].stored_value_q [0]"
+          },
+          "path": [
+            {
+              "cell": "$abc$37385$lut$aiger37384$2336",
+              "type": "LUT6",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "u_shift.g_shift[0].stored_value_q[5]",
+              "output_net": "$techmap37687$auto$abc_ops_reintegrate.cc:722:reintegrate$37394.A[3]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$37394",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37687$auto$abc_ops_reintegrate.cc:722:reintegrate$37394.A[3]",
+              "output_net": "$abc$37385$aiger$o1364",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+            },
+            {
+              "cell": "u_shift.g_shift[1].g_paired_selection.u_mux.g_fpga.g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O5[0]",
+              "input_net": "$abc$37385$aiger$o1364",
+              "output_net": "u_shift.g_shift[1].g_paired_selection.mux_o_value[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2151.51"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 3,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$3950",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_shift.g_shift[0].stored_value_q[50]",
+            "detail": "register output",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[0].stored_value_q [50]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3852",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$37385$aiger$o2660",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[1].stored_overflow_q"
+          },
+          "path": [
+            {
+              "cell": "u_shift.g_shift[1].g_paired_selection.u_mux.g_fpga.g_pair[22].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I1[0]",
+              "output_port": "O5[0]",
+              "input_net": "u_shift.g_shift[0].stored_value_q[50]",
+              "output_net": "u_shift.g_shift[1].g_paired_selection.mux_o_value[44]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2151.51"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$2367",
+              "type": "LUT6",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "u_shift.g_shift[1].g_paired_selection.mux_o_value[44]",
+              "output_net": "$techmap37685$auto$abc_ops_reintegrate.cc:722:reintegrate$37392.A[5]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$37392",
+              "type": "LUT6",
+              "input_port": "I5[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37685$auto$abc_ops_reintegrate.cc:722:reintegrate$37392.A[5]",
+              "output_net": "$abc$37385$aiger$o2660",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 3,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$4197",
+            "type": "SRL16E",
+            "port": "Q",
+            "net": "amount_q[0][19]",
+            "detail": "stored data with asynchronous address selection",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_map.v:65.61-65.155",
+            "register_origin": "amount_q[0] [5]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3958",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$37385$aiger$o2954",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[0].stored_overflow_q"
+          },
+          "path": [
+            {
+              "cell": "$abc$37385$lut$aiger37384$2820",
+              "type": "LUT6",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "amount_q[0][19]",
+              "output_net": "$techmap37566$abc$37385$lut$aiger37384$2835.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger37384$2835",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37566$abc$37385$lut$aiger37384$2835.A[4]",
+              "output_net": "$techmap37567$abc$37385$lut$aiger$o2954.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o2954",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37567$abc$37385$lut$aiger$o2954.A[4]",
+              "output_net": "$abc$37385$aiger$o2954",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 3,
+          "startpoint": {
+            "cell": "u_product.g_dsp.g_partial[1].u_multiply.u_dsp",
+            "type": "DSP48E1",
+            "port": "INTERNAL_REGISTER_OUTPUT",
+            "net": null,
+            "detail": "DSP internal register followed by unregistered arithmetic",
+            "source": "rtl/npu/conv/vector_scalar_multiplier.sv:257.7",
+            "register_origin": "u_product.g_dsp.g_partial[1].u_multiply.u_dsp.internal_register_output",
+            "internal_register_parameters": [
+              "AREG",
+              "BREG",
+              "MREG"
+            ],
+            "external_output_port": "PCOUT"
+          },
+          "endpoint": {
+            "cell": "u_product.g_dsp.g_partial[3].u_multiply.u_dsp",
+            "type": "DSP48E1",
+            "port": "INTERNAL_REGISTER_INPUT",
+            "net": null,
+            "category": "data",
+            "source": "rtl/npu/conv/vector_scalar_multiplier.sv:257.7",
+            "register_origin": "u_product.g_dsp.g_partial[3].u_multiply.u_dsp.internal_register_input",
+            "internal_register_parameters": [
+              "PREG"
+            ],
+            "external_input_port": "PCIN"
+          },
+          "path": [
+            {
+              "cell": "u_product.g_dsp.g_partial[1].u_multiply.u_dsp",
+              "type": "DSP48E1",
+              "input_port": "INTERNAL_REGISTER_OUTPUT",
+              "output_port": "PCOUT[0]",
+              "input_net": null,
+              "output_net": "u_product.g_dsp.g_partial[1].u_multiply.o_pcout[0]",
+              "input_internal_registers": [
+                "AREG",
+                "BREG",
+                "MREG"
+              ],
+              "source": "rtl/npu/conv/vector_scalar_multiplier.sv:257.7"
+            },
+            {
+              "cell": "u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+              "type": "DSP48E1",
+              "input_port": "PCIN[0]",
+              "output_port": "PCOUT[0]",
+              "input_net": "u_product.g_dsp.g_partial[1].u_multiply.o_pcout[0]",
+              "output_net": "u_product.g_dsp.g_partial[2].u_multiply.o_pcout[0]",
+              "source": "rtl/npu/conv/vector_scalar_multiplier.sv:257.7"
+            },
+            {
+              "cell": "u_product.g_dsp.g_partial[3].u_multiply.u_dsp",
+              "type": "DSP48E1",
+              "input_port": "PCIN[0]",
+              "output_port": "INTERNAL_REGISTER_INPUT",
+              "input_net": "u_product.g_dsp.g_partial[2].u_multiply.o_pcout[0]",
+              "output_net": null,
+              "output_internal_registers": [
+                "PREG"
+              ],
+              "source": "rtl/npu/conv/vector_scalar_multiplier.sv:257.7"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 2,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$3955",
+            "type": "SRL16E",
+            "port": "Q",
+            "net": "u_shift.amount_stage[4]",
+            "detail": "stored data with asynchronous address selection",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_map.v:65.61-65.155",
+            "register_origin": "u_shift.g_shift[0].stored_amount_q [4]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3743",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$37385$aiger$o2246",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:2100.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.increment_stage_q"
+          },
+          "path": [
+            {
+              "cell": "$abc$37385$lut$aiger37384$2358",
+              "type": "LUT6",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "u_shift.amount_stage[4]",
+              "output_net": "$techmap37642$abc$37385$lut$aiger$o2246.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o2246",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37642$abc$37385$lut$aiger$o2246.A[4]",
+              "output_net": "$abc$37385$aiger$o2246",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 2,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$4197",
+            "type": "SRL16E",
+            "port": "Q",
+            "net": "amount_q[0][19]",
+            "detail": "stored data with asynchronous address selection",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_map.v:65.61-65.155",
+            "register_origin": "amount_q[0] [5]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3902",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$37385$aiger$o2795",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[0].stored_value_q [2]"
+          },
+          "path": [
+            {
+              "cell": "$abc$37385$lut$aiger37384$2437",
+              "type": "LUT3",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "amount_q[0][19]",
+              "output_net": "$techmap37624$abc$37385$lut$aiger$o2795.A[4]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+            },
+            {
+              "cell": "$abc$37385$lut$aiger$o2795",
+              "type": "LUT5",
+              "input_port": "I4[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37624$abc$37385$lut$aiger$o2795.A[4]",
+              "output_net": "$abc$37385$aiger$o2795",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 1,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$3789",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "$techmap37543$abc$37385$lut$aiger$o3025.A[1]",
+            "detail": "register output",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "lane_enable_q [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3789",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$37796",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "lane_enable_q [0]"
+          },
+          "path": [
+            {
+              "cell": "$auto$xilinx_dffopt.cc:338:execute$37795",
+              "type": "LUT5",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37543$abc$37385$lut$aiger$o3025.A[1]",
+              "output_net": "$auto$xilinx_dffopt.cc:347:execute$37796",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 1,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$3984",
+            "type": "FDCE",
+            "port": "Q",
+            "net": "$techmap37577$abc$37385$lut$aiger$o3165.A[1]",
+            "detail": "register output",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "valid_q [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$3985",
+            "type": "FDCE",
+            "port": "D",
+            "net": "$auto$xilinx_dffopt.cc:347:execute$37774",
+            "category": "data",
+            "source": "rtl/npu/writeback/requant_compute_lane.sv:104.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+            "register_origin": "valid_q [1]"
+          },
+          "path": [
+            {
+              "cell": "$auto$xilinx_dffopt.cc:335:execute$37773",
+              "type": "LUT4",
+              "input_port": "I3[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap37577$abc$37385$lut$aiger$o3165.A[1]",
+              "output_net": "$auto$xilinx_dffopt.cc:347:execute$37774",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 1,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$4198",
+            "type": "SRL16E",
+            "port": "Q",
+            "net": "u_shift.amount_stage[6]",
+            "detail": "stored data with asynchronous address selection",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_map.v:65.61-65.155",
+            "register_origin": "amount_q[0] [6]"
+          },
+          "endpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "A",
+            "net": "u_shift.bounded_quotient[20]",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "path": [
+            {
+              "cell": "u_shift.g_quotient_clamp.g_pair[10].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I4[0]",
+              "output_port": "O5[0]",
+              "input_net": "u_shift.amount_stage[6]",
+              "output_net": "u_shift.bounded_quotient[20]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2079.43"
+            }
+          ]
+        },
+        {
+          "combinational_cells": 1,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$3746",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "u_shift.g_shift[4].stored_value_q[2]",
+            "detail": "register output",
+            "source": "rtl/npu/writeback/vec_requant.sv:2047.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "u_shift.g_shift[4].stored_value_q [2]"
+          },
+          "endpoint": {
+            "cell": "u_sum.g_dsp.u_dsp",
+            "type": "DSP48E1",
+            "port": "B",
+            "net": "u_shift.bounded_quotient[0]",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:1925.15",
+            "register_origin": null
+          },
+          "path": [
+            {
+              "cell": "u_shift.g_quotient_clamp.g_pair[0].u_lut",
+              "type": "LUT6_2",
+              "input_port": "I0[0]",
+              "output_port": "O5[0]",
+              "input_net": "u_shift.g_shift[4].stored_value_q[2]",
+              "output_net": "u_shift.bounded_quotient[0]",
+              "source": "rtl/npu/writeback/vec_requant.sv:2079.43"
+            }
+          ]
+        }
+      ],
+      "longest_register_path_cells": 9,
+      "graph_nodes": 1981,
+      "visited_graph_nodes": 1981,
+      "combinational_cycle_nodes": [],
+      "unclassified_cell_types": {},
+      "graph_complete": true,
+      "dsp_without_output_register": [
+        "u_product.g_dsp.g_partial[1].u_multiply.u_dsp",
+        "u_product.g_dsp.g_partial[2].u_multiply.u_dsp"
+      ],
+      "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. LUT6_2 O5 excludes I5, CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
+    },
+    "register_path_requirement": {
+      "maximum_combinational_cells": 15,
+      "observed_combinational_cells": 9,
+      "graph_complete": true,
+      "met": true,
+      "scope": "Clocked storage outputs to synchronous data and control inputs",
+      "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+    }
+  },
+  "synthesis_manifest": {
+    "top": "requant_compute_lane",
+    "configuration": "Complete signed32 lane, both input operands registered, S8 and S16 outputs",
+    "parameters": {},
+    "sources_sha256": {
+      "rtl/npu/writeback/requant_compute_lane.sv": "6a80704946cbaf4abaf891d44c470f2a9f963c69287e22e16122c14089be79e3",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+      "rtl/npu/writeback/vec_requant.sv": "0d7aadbd0020b2f08e1140fbb8c17e4ddd7aa17b64f8f06d3288278ad71798c6",
+      "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+      "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+      "rtl/common/add_equal.sv": "42eb2dfabfc3cb9d4038530e7fa69149c138c6790688375be84eb05e05764c83",
+      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+      "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+    },
+    "options": [],
+    "build_configuration": null,
+    "primitive_models": {
+      "library_sha256": {
+        "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+      },
+      "primitives": [
+        "LUT6",
+        "LUT6_2",
+        "CARRY4",
+        "FDRE",
+        "DSP48E1"
+      ],
+      "model_sha256": "610302b6522f4e90e46acd91713adb59b1fdf798f1c6e05f0c2e861b62e5c659"
+    },
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667
+  },
+  "synthesis_hashes": {
+    "mapped.json": "4e31685084ed3012fc1c03c3d3d3b41e9b075f518e38a12f32c51c69230ffa61",
+    "mapped.v": "d1e7f09cc114ec9e13fb0fd5c8fc26645ad390d8044e415de664d2b63d21902b",
+    "pre_lut.il": "23f67790adddc93821eb38bacf0830e080b518ffcbba5f328607c35ac8de87b3",
+    "03_map_lut.log": "92d49375fe90c0536d63b9c40ee84cb26f73521fd746fb16cdb019153ba33945"
+  },
+  "test_sources_sha256": {
+    "test/requant_compute_lane/main.cpp": "e15650ca5034c5bd593c63b2031942c62b1ce8dca65bc12845091a5e0f86dfd5",
+    "test/requant_compute_lane/run.py": "40355afdbe7324e957e5da6bb73b4e155f1a807d559baa63b46cc4c645e78a8a"
+  }
+}

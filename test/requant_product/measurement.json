@@ -1,0 +1,1358 @@
+{
+  "rtl_commit": "75a7542d739dc0ba4d7bb20f68c2b022f6ffa3e5",
+  "reference_rev": "038a0958645bede843e9179f16d564836949944b",
+  "input_manifest": {
+    "reference_rev": "038a095",
+    "reference_sha256": "ef2c8bd6b354fd779188ba1740cd6d610c83f48b39eab59d13f17cb1304ad162",
+    "sources_sha256": {
+      "rtl/npu/writeback/vec_requant.sv": "10de651b7bbd583ef39ec8f1d7903e6ec9631c626745b39ef7a32202b9796dc0",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16"
+    }
+  },
+  "configuration": {
+    "top": "vec_requant",
+    "BUS_WIDTH": 64,
+    "VLEN": 16,
+    "MAX_IA_REUSE": 32,
+    "ENABLE_S16": 1,
+    "all_public_outputs": true
+  },
+  "pipeline": {
+    "quantization_stages": 12,
+    "quantization_multiply_enabled_edges": 3,
+    "scalar_multiply_enabled_edges": 2,
+    "initiation_interval": 1,
+    "quantization_enable": "!init_cfg"
+  },
+  "verification": {
+    "shared_multiplier_formal": {
+      "source_sha256": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16",
+      "reference_rev": "b8b34d5",
+      "reference_sha256": "449fa7fb1ba98e69b157cb188d28c2536f0841bcc12c55f5d7bbdcffef2beece",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "enabled_edges": "2 + p_input_register",
+      "clock_enable": "unconstrained each cycle",
+      "method": "Input storage is proved before its corresponding signals become common arithmetic inputs.",
+      "runs": [
+        {
+          "p_input_register": 0,
+          "p_use_dsp": 0,
+          "stage": "arithmetic",
+          "passed": true,
+          "equivalent_bits": 338,
+          "stage_mapping": {}
+        },
+        {
+          "p_input_register": 0,
+          "p_use_dsp": 1,
+          "stage": "arithmetic",
+          "passed": true,
+          "equivalent_bits": 338,
+          "stage_mapping": {}
+        },
+        {
+          "p_input_register": 1,
+          "p_use_dsp": 0,
+          "stage": "input",
+          "passed": true,
+          "equivalent_bits": 64,
+          "stage_mapping": {
+            "reference": {
+              "capture_bits_compared": 64
+            },
+            "candidate": {
+              "capture_bits_compared": 64
+            }
+          }
+        },
+        {
+          "p_input_register": 1,
+          "p_use_dsp": 0,
+          "stage": "arithmetic",
+          "passed": true,
+          "equivalent_bits": 338,
+          "stage_mapping": {
+            "reference": {
+              "proven_input_register_bits_abstracted": 64
+            },
+            "candidate": {
+              "proven_input_register_bits_abstracted": 64
+            }
+          }
+        },
+        {
+          "p_input_register": 1,
+          "p_use_dsp": 1,
+          "stage": "input",
+          "passed": true,
+          "equivalent_bits": 192,
+          "stage_mapping": {
+            "reference": {
+              "capture_bits_compared": 192
+            },
+            "candidate": {
+              "capture_bits_compared": 192
+            }
+          }
+        },
+        {
+          "p_input_register": 1,
+          "p_use_dsp": 1,
+          "stage": "arithmetic",
+          "passed": true,
+          "equivalent_bits": 338,
+          "stage_mapping": {
+            "reference": {
+              "proven_input_register_bits_abstracted": 64
+            },
+            "candidate": {
+              "proven_input_register_bits_abstracted": 80
+            }
+          }
+        }
+      ],
+      "passed": true
+    },
+    "complete_product_numeric": {
+      "checks": 1200072,
+      "registered_checks": 1200070,
+      "enabled_edges": 863954,
+      "held_edges": 336131,
+      "latency_enabled_edges": 2,
+      "registered_latency_enabled_edges": 3,
+      "passed": true,
+      "source_sha256": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16",
+      "reference_source_sha256": "ef2c8bd6b354fd779188ba1740cd6d610c83f48b39eab59d13f17cb1304ad162",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "executed_reference_revision": "ff9b03b",
+      "reproduction_reference_rev": "038a095"
+    },
+    "public_scalar_formal": {
+      "source_sha256": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16",
+      "reference_rev": "b8b34d5",
+      "reference_sha256": "449fa7fb1ba98e69b157cb188d28c2536f0841bcc12c55f5d7bbdcffef2beece",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "latency_edges": 2,
+      "initiation_interval": 1,
+      "formal": [
+        {
+          "p_use_dsp": 0,
+          "passed": true,
+          "equivalent_bits": 242
+        },
+        {
+          "p_use_dsp": 1,
+          "passed": true,
+          "equivalent_bits": 242
+        }
+      ],
+      "passed": true
+    },
+    "rounding_binding_formal": {
+      "passed": true,
+      "reference_rev": "1c081bc",
+      "source_sha256": "10de651b7bbd583ef39ec8f1d7903e6ec9631c626745b39ef7a32202b9796dc0",
+      "registers": [
+        "rounded_s10"
+      ],
+      "reference_source_sha256": "257490eb184ab7261cd8319aa799cd62a65430010c057284fb552fc9a40002b7",
+      "equivalent_bits": 36,
+      "clock_enable": "arbitrary init_cfg values and stalls",
+      "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b"
+    },
+    "quantization_interface": {
+      "implementation": "official LUT6_2 and DSP48E1 functional models",
+      "ports": [
+        "load_quant_req",
+        "quant_params_valid",
+        "dma_start",
+        "dma_is_write",
+        "dma_linear_read_mode",
+        "dma_base_addr",
+        "dma_row_stride",
+        "dma_rows_to_read",
+        "dma_burst_len_m1",
+        "dma_slot_id",
+        "dma_use_16bits",
+        "dma_lhs_zp",
+        "out_valid",
+        "out_tile_done",
+        "out_vec_s8",
+        "out_vec_s16",
+        "quant_multiplier_lane",
+        "quant_shift_lane"
+      ],
+      "source_sha256": "10de651b7bbd583ef39ec8f1d7903e6ec9631c626745b39ef7a32202b9796dc0",
+      "runs": [
+        {
+          "passed": true,
+          "bus_width": 32,
+          "scenarios": 256,
+          "cycles": 528662,
+          "vectors": 206800,
+          "dma_commands": 922,
+          "dma_beats": 12322
+        },
+        {
+          "passed": true,
+          "bus_width": 64,
+          "scenarios": 256,
+          "cycles": 528662,
+          "vectors": 209001,
+          "dma_commands": 958,
+          "dma_beats": 6496
+        }
+      ],
+      "shared_multiplier_sha256": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16",
+      "executed_reference_revision": "ff9b03b",
+      "reproduction_reference_rev": "038a095"
+    },
+    "round_to_nearest_even": {
+      "passed": true,
+      "outputs": 320000,
+      "variants": 4
+    }
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667,
+    "wide_alu_dsp_mapping": false,
+    "cases": {
+      "reference": {
+        "source_manifest": {
+          "top": "vec_requant",
+          "configuration": "Production quantization BUS64 VLEN16 reuse32 S16 and all public outputs",
+          "parameters": {},
+          "sources_sha256": {
+            "/workspace/scratch/92f7be750f11/worktrees/requant_product/build/requant_product_study/full_synthesis/reference.sv": "ef2c8bd6b354fd779188ba1740cd6d610c83f48b39eab59d13f17cb1304ad162",
+            "/workspace/scratch/92f7be750f11/worktrees/requant_product/rtl/npu/conv/vector_scalar_multiplier.sv": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16",
+            "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+            "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+            "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+            "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+          },
+          "options": [
+            "-GBUS_WIDTH=64",
+            "-GVLEN=16",
+            "-GMAX_IA_REUSE=32",
+            "-GENABLE_S16=1"
+          ],
+          "build_configuration": null,
+          "primitive_models": {
+            "library_sha256": {
+              "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+              "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+            },
+            "primitives": [
+              "LUT6",
+              "LUT6_2",
+              "DSP48E1"
+            ],
+            "model_sha256": "fdcd1fd3dd4c5090a78bdb5287c6e1c8448caf2800ce45d7509e7ea1e116f45b"
+          },
+          "part": "xc7a200tfbg484-3",
+          "clock_period_ns": 6.667
+        },
+        "resources": {
+          "logic_lut_cells": 10373,
+          "distributed_ram_lut_sites_nominal": 1120,
+          "shift_register_lut_sites_nominal": 192,
+          "lut_sites_nominal_before_packing": 11685,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 7588,
+          "dsp48e1": 96,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 423,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 423,
+            "DSP48E1": 96,
+            "FDRE": 7582,
+            "FDSE": 6,
+            "INV": 121,
+            "LUT2": 531,
+            "LUT3": 348,
+            "LUT4": 729,
+            "LUT5": 3499,
+            "LUT6": 3938,
+            "LUT6_2": 1328,
+            "MUXF7": 6,
+            "RAM64M": 280,
+            "SRL16E": 192
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 2.81,
+            "peak_process_tree_rss_bytes": 197111808,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "29b96986152e0554e7b431d26b2279c2f4ce5965a1dc6a0a6c7141e7ea54df7f",
+            "output_sha256": "7028f3ce201c47871adab56a6f1aacd558564cd022c5ee7a256dc40c16de67cf"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 35.64,
+            "peak_process_tree_rss_bytes": 489926656,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "cb4628fce6b4a2be01bb84129a126c01f095ed1d3bed31d924fbd7ecf65a7793",
+            "output_sha256": "5d2166d7a31139b4623920f4622180825795e626304d324fbec005c51f8edf0a"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 18.89,
+            "peak_process_tree_rss_bytes": 520577024,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "01cc3eaa1b106f691c0e0ab4da41e6b12f2926717ff8cbf638a6bd523d6e400c",
+            "output_sha256": "235fbd9050f76ec67d94ef335e57f1c8f7c1d255d2f14d003c23a3275600ead7",
+            "mapped_verilog_sha256": "9170d003478d339950ede8dc1cfd92a4e07b5a8a28424e876098b6f29907c121"
+          }
+        },
+        "peak_process_tree_rss_bytes": 520577024,
+        "longest_register_path_cells": 17,
+        "longest_register_path": {
+          "combinational_cells": 17,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$44457",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.quant_need_load_r[0]",
+            "detail": "register output",
+            "source": "build/requant_product_study/full_synthesis/reference.sv:1082.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.quant_need_load_r [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$44444",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$467418$aiger$o41916",
+            "category": "data",
+            "source": "build/requant_product_study/full_synthesis/reference.sv:1082.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.cmd_burst_len_m1_r [1]"
+          },
+          "path": [
+            {
+              "cell": "$abc$467418$lut$aiger$o12455",
+              "type": "LUT2",
+              "input_port": "I0[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.quant_need_load_r[0]",
+              "output_net": "$techmap475838$abc$467418$lut$aiger$o41784.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap475838$abc$467418$lut$aiger$o41784.A[0]",
+              "output_net": "$abc$467418$aiger$i30174",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$467418$aiger$i30174",
+              "output_net": "$abc$467418$aiger$i30182",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$467418$aiger$i30182",
+              "output_net": "$abc$467418$aiger$i30190",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$467418$aiger$i30190",
+              "output_net": "$abc$467418$aiger$i30198",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$467418$aiger$i30198",
+              "output_net": "$abc$467418$aiger$i30206",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$467418$aiger$i30206",
+              "output_net": "$abc$467418$aiger$i30214",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$467418$aiger$i30214",
+              "output_net": "$abc$467418$aiger$i30222",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23553.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$467418$aiger$i30222",
+              "output_net": "$techmap475844$abc$467418$lut$aiger$o12546.A[2]",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$467418$lut$aiger$o12546",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap475844$abc$467418$lut$aiger$o12546.A[2]",
+              "output_net": "$abc$467418$aiger$o12546",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$126.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[1]",
+              "output_port": "O[2]",
+              "input_net": "$abc$467418$aiger$o12546",
+              "output_net": "$techmap475835$abc$467418$lut$aiger$o34907.A[2]",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:893.30-893.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$467418$lut$aiger467417$47410",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap475835$abc$467418$lut$aiger$o34907.A[2]",
+              "output_net": "$techmap475841$abc$467418$lut$aiger$o63871.A[1]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$467418$lut$aiger$o63875",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap475841$abc$467418$lut$aiger$o63871.A[1]",
+              "output_net": "$abc$467418$aiger$o63875",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$maccmap.cc:240:synth$59710.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[2]",
+              "input_net": "$abc$467418$aiger$o63875",
+              "output_net": "$techmap477549$abc$467418$lut$not$aiger467417$30249.A",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$abc$467418$lut$not$aiger467417$30249",
+              "type": "INV",
+              "input_port": "I[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap477549$abc$467418$lut$not$aiger467417$30249.A",
+              "output_net": "$abc$467418$aiger$o12576",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:36.13-36.48"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$23568.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[1]",
+              "output_port": "O[1]",
+              "input_net": "$abc$467418$aiger$o12576",
+              "output_net": "$techmap474262$abc$467418$lut$aiger$o41916.A[1]",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:945.48-945.98|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$abc$467418$lut$aiger$o41916",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap474262$abc$467418$lut$aiger$o41916.A[1]",
+              "output_net": "$abc$467418$aiger$o41916",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            }
+          ]
+        },
+        "dsp_registers": [
+          {
+            "AREG": 0,
+            "BREG": 0,
+            "PREG": 1,
+            "count": 16
+          },
+          {
+            "AREG": 1,
+            "BREG": 1,
+            "PREG": 0,
+            "count": 32
+          },
+          {
+            "AREG": 1,
+            "BREG": 1,
+            "PREG": 1,
+            "count": 48
+          }
+        ],
+        "dsp_without_preg": 32,
+        "mapped_sha256": "235fbd9050f76ec67d94ef335e57f1c8f7c1d255d2f14d003c23a3275600ead7",
+        "external_stage_paths": {
+          "multiply_input": {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$43811",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "g_full.u_full.ia_reuse_mask_tile_r[1]",
+              "detail": "register output",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:799.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "g_full.u_full.ia_reuse_mask_tile_r [1]"
+            },
+            "endpoint": {
+              "cell": "$10269.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.genblk1.sliceA.last",
+              "type": "DSP48E1",
+              "port": "B",
+              "net": "$abc$467418$aiger$o16980",
+              "category": "data",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:1615.27-1615.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/mul2dsp.v:170.6-174.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/mul2dsp.v:255.6-259.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/xc7_dsp_map.v:30.4-48.3",
+              "register_origin": null
+            },
+            "path": [
+              {
+                "cell": "$abc$467418$lut$aiger$o6",
+                "type": "LUT2",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "g_full.u_full.ia_reuse_mask_tile_r[1]",
+                "output_net": "$abc$467418$aiger$o6",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$alumacc.cc:578:replace_alu$23649.genblk1.slice[0].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "S[1]",
+                "output_port": "O[1]",
+                "input_net": "$abc$467418$aiger$o6",
+                "output_net": "$abc$467418$aiger$o67206",
+                "source": "build/requant_product_study/full_synthesis/reference.sv:1442.44-1443.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+              },
+              {
+                "cell": "g_full.u_full.gen_is_parameter_bank[0].u_multiplier.mem.0.10",
+                "type": "RAM64M",
+                "input_port": "ADDRA[4]",
+                "output_port": "DOA[0]",
+                "input_net": "$abc$467418$aiger$o67206",
+                "output_net": "$techmap475566$abc$467418$lut$aiger467417$47962.A[5]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lutrams_xc5v_map.v:753.2-767.3"
+              },
+              {
+                "cell": "$abc$467418$lut$aiger467417$47962",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap475566$abc$467418$lut$aiger467417$47962.A[5]",
+                "output_net": "$techmap475568$abc$467418$lut$aiger467417$47966.A[2]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$467418$lut$aiger467417$47966",
+                "type": "LUT4",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap475568$abc$467418$lut$aiger467417$47966.A[2]",
+                "output_net": "$techmap482397$auto$abc_ops_reintegrate.cc:722:reintegrate$472356.A[4]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$472356",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap482397$auto$abc_ops_reintegrate.cc:722:reintegrate$472356.A[4]",
+                "output_net": "$abc$467418$aiger$o16980",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          },
+          "product_output": {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "g_full.u_full.LANE[5].u_product_sum.g_dsp.u_dsp",
+              "type": "DSP48E1",
+              "port": "P",
+              "net": "g_full.u_full.LANE[5].prod_s2[46]",
+              "detail": "DSP output register",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:1691.15",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$44630",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$auto$xilinx_dffopt.cc:347:execute$488695",
+              "category": "data",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:1803.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "g_full.u_full.LANE[5].u_shift.g_shift[0].stored_value_q [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$467418$lut$aiger467417$71865",
+                "type": "LUT3",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "g_full.u_full.LANE[5].prod_s2[46]",
+                "output_net": "$techmap476440$abc$467418$lut$aiger467417$72039.A[3]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              },
+              {
+                "cell": "$abc$467418$lut$aiger467417$72039",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap476440$abc$467418$lut$aiger467417$72039.A[3]",
+                "output_net": "$techmap476449$abc$467418$lut$aiger467417$72043.A[4]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$467418$lut$aiger467417$72043",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap476449$abc$467418$lut$aiger467417$72043.A[4]",
+                "output_net": "$techmap476456$abc$467418$lut$aiger467417$72059.A[4]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$467418$lut$aiger467417$72059",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap476456$abc$467418$lut$aiger467417$72059.A[4]",
+                "output_net": "$techmap478885$auto$abc_ops_reintegrate.cc:722:reintegrate$468757.A[3]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$xilinx_dffopt.cc:341:execute$488694",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap478885$auto$abc_ops_reintegrate.cc:722:reintegrate$468757.A[3]",
+                "output_net": "$auto$xilinx_dffopt.cc:347:execute$488695",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              }
+            ]
+          },
+          "rounding_output": {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "g_full.u_full.LANE[13].u_rounding_sum.g_dsp.u_dsp",
+              "type": "DSP48E1",
+              "port": "P",
+              "net": "g_full.u_full.LANE[13].rounded_s10[5]",
+              "detail": "DSP output register",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:1691.15",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$44545",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$auto$xilinx_dffopt.cc:347:execute$487963",
+              "category": "data",
+              "source": "build/requant_product_study/full_synthesis/reference.sv:1545.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "g_full.u_full.out_vec_s8 [16]"
+            },
+            "path": [
+              {
+                "cell": "$abc$467418$lut$aiger$o12212",
+                "type": "LUT6",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "g_full.u_full.LANE[13].rounded_s10[5]",
+                "output_net": "$abc$467418$aiger$o12212",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$11813.genblk1.slice[0].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "DI[1]",
+                "output_port": "CO[3]",
+                "input_net": "$abc$467418$aiger$o12212",
+                "output_net": "$abc$467418$aiger$i29982",
+                "source": "build/requant_product_study/full_synthesis/reference.sv:1598.22-1598.89|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:70.11-77.5"
+              },
+              {
+                "cell": "$11813.genblk1.slice[1].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "CI[0]",
+                "output_port": "CO[3]",
+                "input_net": "$abc$467418$aiger$i29982",
+                "output_net": "$abc$467418$aiger$i29990",
+                "source": "build/requant_product_study/full_synthesis/reference.sv:1598.22-1598.89|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+              },
+              {
+                "cell": "$11813.genblk1.slice[2].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "CI[0]",
+                "output_port": "CO[3]",
+                "input_net": "$abc$467418$aiger$i29990",
+                "output_net": "$techmap474978$abc$467418$lut$aiger467417$52810.A[2]",
+                "source": "build/requant_product_study/full_synthesis/reference.sv:1598.22-1598.89|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+              },
+              {
+                "cell": "$abc$467418$lut$aiger467417$53980",
+                "type": "LUT5",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap474978$abc$467418$lut$aiger467417$52810.A[2]",
+                "output_net": "$techmap482078$auto$abc_ops_reintegrate.cc:722:reintegrate$472034.A[2]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$xilinx_dffopt.cc:338:execute$487962",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap482078$auto$abc_ops_reintegrate.cc:722:reintegrate$472034.A[2]",
+                "output_net": "$auto$xilinx_dffopt.cc:347:execute$487963",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          }
+        }
+      },
+      "shared_product": {
+        "source_manifest": {
+          "top": "vec_requant",
+          "configuration": "Production quantization BUS64 VLEN16 reuse32 S16 and all public outputs",
+          "parameters": {},
+          "sources_sha256": {
+            "/workspace/scratch/92f7be750f11/worktrees/requant_product/rtl/npu/writeback/vec_requant.sv": "10de651b7bbd583ef39ec8f1d7903e6ec9631c626745b39ef7a32202b9796dc0",
+            "/workspace/scratch/92f7be750f11/worktrees/requant_product/rtl/npu/conv/vector_scalar_multiplier.sv": "60a943adea8fb765623de182301a514fa9f55a68213e296d44277da3e4d26e16",
+            "rtl/common/REGFILE.v": "dd7d341217041c98de6458f0e1577f3ec7b490a03da8ae1af1b6b2c7bd3735a6",
+            "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+            "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+            "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+          },
+          "options": [
+            "-GBUS_WIDTH=64",
+            "-GVLEN=16",
+            "-GMAX_IA_REUSE=32",
+            "-GENABLE_S16=1"
+          ],
+          "build_configuration": null,
+          "primitive_models": {
+            "library_sha256": {
+              "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+              "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+            },
+            "primitives": [
+              "LUT6",
+              "LUT6_2",
+              "DSP48E1"
+            ],
+            "model_sha256": "fdcd1fd3dd4c5090a78bdb5287c6e1c8448caf2800ce45d7509e7ea1e116f45b"
+          },
+          "part": "xc7a200tfbg484-3",
+          "clock_period_ns": 6.667
+        },
+        "resources": {
+          "logic_lut_cells": 10377,
+          "distributed_ram_lut_sites_nominal": 1120,
+          "shift_register_lut_sites_nominal": 192,
+          "lut_sites_nominal_before_packing": 11689,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 7044,
+          "dsp48e1": 96,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 423,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 423,
+            "DSP48E1": 96,
+            "FDRE": 7038,
+            "FDSE": 6,
+            "INV": 119,
+            "LUT2": 521,
+            "LUT3": 358,
+            "LUT4": 729,
+            "LUT5": 3519,
+            "LUT6": 3922,
+            "LUT6_2": 1328,
+            "MUXF7": 12,
+            "MUXF8": 6,
+            "RAM64M": 280,
+            "SRL16E": 192
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 2.41,
+            "peak_process_tree_rss_bytes": 211185664,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "5ecb84dc7231e76bfba47c1333112148fd754f2b81f48aa14c7b2b745c762db3",
+            "output_sha256": "9eb8dbb3e7cd7289a5892728b44122d1a4166c511867c2cd33af7bff4d4ed78c"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 35.79,
+            "peak_process_tree_rss_bytes": 465928192,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "d23c26e71fff6792378d478a636d2c9aae4c984bc3af7624ec6acb196f75e76a",
+            "output_sha256": "cb945a8281d2300efa0aad8199e57ee821a763619455c455c10d81062756c46a"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 19.71,
+            "peak_process_tree_rss_bytes": 519467008,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "6518c1c36f825a59159632de4b55604f33f1f356e8b87b4e5cef03c5a9d115cf",
+            "output_sha256": "2276750aaf362d6b1acfc8902489dc10e0a0f292e1ff819238363da82085416b",
+            "mapped_verilog_sha256": "e92515820afd922e66ff554fb573b2e9d034884b3f10eeb5167327b535690978"
+          }
+        },
+        "peak_process_tree_rss_bytes": 519467008,
+        "longest_register_path_cells": 17,
+        "longest_register_path": {
+          "combinational_cells": 17,
+          "startpoint": {
+            "cell": "$auto$ff.cc:337:slice$43484",
+            "type": "FDRE",
+            "port": "Q",
+            "net": "g_full.u_full.load_offset[0]",
+            "detail": "register output",
+            "source": "rtl/npu/writeback/vec_requant.sv:1082.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.load_offset [0]"
+          },
+          "endpoint": {
+            "cell": "$auto$ff.cc:337:slice$43655",
+            "type": "FDRE",
+            "port": "D",
+            "net": "$abc$474498$aiger$o48088",
+            "category": "data",
+            "source": "rtl/npu/writeback/vec_requant.sv:1082.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+            "register_origin": "g_full.u_full.cmd_burst_len_m1_r [1]"
+          },
+          "path": [
+            {
+              "cell": "$abc$474498$lut$aiger$o23851",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "g_full.u_full.load_offset[0]",
+              "output_net": "$techmap482170$abc$474498$lut$aiger$o47956.A[0]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[0]",
+              "output_port": "CO[3]",
+              "input_net": "$techmap482170$abc$474498$lut$aiger$o47956.A[0]",
+              "output_net": "$abc$474498$aiger$i44366",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$474498$aiger$i44366",
+              "output_net": "$abc$474498$aiger$i44374",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[2].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$474498$aiger$i44374",
+              "output_net": "$abc$474498$aiger$i44382",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[3].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$474498$aiger$i44382",
+              "output_net": "$abc$474498$aiger$i44390",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[4].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$474498$aiger$i44390",
+              "output_net": "$abc$474498$aiger$i44398",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[5].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$474498$aiger$i44398",
+              "output_net": "$abc$474498$aiger$i44406",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[6].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "CO[3]",
+              "input_net": "$abc$474498$aiger$i44406",
+              "output_net": "$abc$474498$aiger$i44414",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22809.genblk1.slice[7].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "CI[0]",
+              "output_port": "O[0]",
+              "input_net": "$abc$474498$aiger$i44414",
+              "output_net": "$techmap482177$abc$474498$lut$aiger$o23942.A[2]",
+              "source": "rtl/npu/writeback/vec_requant.sv:895.34-895.65|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+            },
+            {
+              "cell": "$abc$474498$lut$aiger$o23942",
+              "type": "LUT6",
+              "input_port": "I2[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap482177$abc$474498$lut$aiger$o23942.A[2]",
+              "output_net": "$abc$474498$aiger$o23942",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+            },
+            {
+              "cell": "$126.genblk1.slice[1].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[1]",
+              "output_port": "O[2]",
+              "input_net": "$abc$474498$aiger$o23942",
+              "output_net": "$techmap482168$abc$474498$lut$aiger$o47460.A[2]",
+              "source": "rtl/npu/writeback/vec_requant.sv:893.30-893.70|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+            },
+            {
+              "cell": "$abc$474498$lut$aiger474497$58435",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap482168$abc$474498$lut$aiger$o47460.A[2]",
+              "output_net": "$techmap482173$abc$474498$lut$aiger$o68521.A[1]",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$abc$474498$lut$aiger$o68525",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap482173$abc$474498$lut$aiger$o68521.A[1]",
+              "output_net": "$abc$474498$aiger$o68525",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            },
+            {
+              "cell": "$auto$maccmap.cc:240:synth$58911.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[2]",
+              "output_port": "O[2]",
+              "input_net": "$abc$474498$aiger$o68525",
+              "output_net": "$techmap484619$abc$474498$lut$not$aiger474497$44441.A",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$abc$474498$lut$not$aiger474497$44441",
+              "type": "INV",
+              "input_port": "I[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap484619$abc$474498$lut$not$aiger474497$44441.A",
+              "output_net": "$abc$474498$aiger$o23972",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:36.13-36.48"
+            },
+            {
+              "cell": "$auto$alumacc.cc:578:replace_alu$22824.genblk1.slice[0].genblk1.carry4",
+              "type": "CARRY4",
+              "input_port": "S[1]",
+              "output_port": "O[1]",
+              "input_net": "$abc$474498$aiger$o23972",
+              "output_net": "$techmap482636$abc$474498$lut$aiger$o48088.A[1]",
+              "source": "rtl/npu/writeback/vec_requant.sv:945.48-945.98|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+            },
+            {
+              "cell": "$abc$474498$lut$aiger$o48088",
+              "type": "LUT2",
+              "input_port": "I1[0]",
+              "output_port": "O[0]",
+              "input_net": "$techmap482636$abc$474498$lut$aiger$o48088.A[1]",
+              "output_net": "$abc$474498$aiger$o48088",
+              "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+            }
+          ]
+        },
+        "dsp_registers": [
+          {
+            "AREG": 0,
+            "BREG": 0,
+            "PREG": 1,
+            "count": 16
+          },
+          {
+            "AREG": 1,
+            "BREG": 1,
+            "PREG": 1,
+            "count": 80
+          }
+        ],
+        "dsp_without_preg": 0,
+        "mapped_sha256": "2276750aaf362d6b1acfc8902489dc10e0a0f292e1ff819238363da82085416b",
+        "external_stage_paths": {
+          "multiply_input": {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "$auto$ff.cc:337:slice$43024",
+              "type": "FDRE",
+              "port": "Q",
+              "net": "g_full.u_full.ia_reuse_mask_tile_r[1]",
+              "detail": "register output",
+              "source": "rtl/npu/writeback/vec_requant.sv:799.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "g_full.u_full.ia_reuse_mask_tile_r [1]"
+            },
+            "endpoint": {
+              "cell": "g_full.u_full.LANE[0].u_product.g_dsp.g_partial[0].u_multiply.u_dsp",
+              "type": "DSP48E1",
+              "port": "B",
+              "net": "$abc$474498$aiger$o20909",
+              "category": "data",
+              "source": "rtl/npu/conv/vector_scalar_multiplier.sv:256.7",
+              "register_origin": null
+            },
+            "path": [
+              {
+                "cell": "$abc$474498$lut$aiger$o6",
+                "type": "LUT2",
+                "input_port": "I0[0]",
+                "output_port": "O[0]",
+                "input_net": "g_full.u_full.ia_reuse_mask_tile_r[1]",
+                "output_net": "$abc$474498$aiger$o6",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+              },
+              {
+                "cell": "$auto$alumacc.cc:578:replace_alu$22905.genblk1.slice[0].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "S[1]",
+                "output_port": "O[1]",
+                "input_net": "$abc$474498$aiger$o6",
+                "output_net": "$abc$474498$aiger$o71750",
+                "source": "rtl/npu/writeback/vec_requant.sv:1442.44-1443.71|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+              },
+              {
+                "cell": "g_full.u_full.gen_is_parameter_bank[0].u_multiplier.mem.0.15",
+                "type": "RAM64M",
+                "input_port": "ADDRA[4]",
+                "output_port": "DOA[0]",
+                "input_net": "$abc$474498$aiger$o71750",
+                "output_net": "$techmap484390$abc$474498$lut$aiger474497$46694.A[5]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lutrams_xc5v_map.v:753.2-767.3"
+              },
+              {
+                "cell": "$abc$474498$lut$aiger474497$46694",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap484390$abc$474498$lut$aiger474497$46694.A[5]",
+                "output_net": "$techmap484392$abc$474498$lut$aiger474497$46698.A[2]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$abc$474498$lut$aiger474497$46698",
+                "type": "LUT4",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap484392$abc$474498$lut$aiger474497$46698.A[2]",
+                "output_net": "$techmap489438$auto$abc_ops_reintegrate.cc:722:reintegrate$479407.A[4]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$479407",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap489438$auto$abc_ops_reintegrate.cc:722:reintegrate$479407.A[4]",
+                "output_net": "$abc$474498$aiger$o20909",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              }
+            ]
+          },
+          "product_output": {
+            "combinational_cells": 5,
+            "startpoint": {
+              "cell": "g_full.u_full.LANE[12].u_product.g_dsp.u_add.u_dsp",
+              "type": "DSP48E1",
+              "port": "P",
+              "net": "g_full.u_full.LANE[12].prod_s2[46]",
+              "detail": "DSP output register",
+              "source": "rtl/npu/conv/vector_scalar_multiplier.sv:256.7",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$43849",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$auto$xilinx_dffopt.cc:347:execute$490377",
+              "category": "data",
+              "source": "rtl/npu/writeback/vec_requant.sv:1792.9|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "g_full.u_full.LANE[12].u_shift.g_shift[0].stored_value_q [0]"
+            },
+            "path": [
+              {
+                "cell": "$abc$474498$lut$aiger474497$79467",
+                "type": "LUT3",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "g_full.u_full.LANE[12].prod_s2[46]",
+                "output_net": "$techmap482446$abc$474498$lut$aiger474497$79641.A[3]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              },
+              {
+                "cell": "$abc$474498$lut$aiger474497$79641",
+                "type": "LUT4",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap482446$abc$474498$lut$aiger474497$79641.A[3]",
+                "output_net": "$techmap482450$abc$474498$lut$aiger474497$79645.A[4]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              },
+              {
+                "cell": "$abc$474498$lut$aiger474497$79645",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap482450$abc$474498$lut$aiger474497$79645.A[4]",
+                "output_net": "$techmap482464$abc$474498$lut$aiger474497$79661.A[4]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$abc$474498$lut$aiger474497$79661",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap482464$abc$474498$lut$aiger474497$79661.A[4]",
+                "output_net": "$techmap485960$auto$abc_ops_reintegrate.cc:722:reintegrate$475831.A[3]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$xilinx_dffopt.cc:341:execute$490376",
+                "type": "LUT6",
+                "input_port": "I5[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap485960$auto$abc_ops_reintegrate.cc:722:reintegrate$475831.A[3]",
+                "output_net": "$auto$xilinx_dffopt.cc:347:execute$490377",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+              }
+            ]
+          },
+          "rounding_output": {
+            "combinational_cells": 6,
+            "startpoint": {
+              "cell": "g_full.u_full.LANE[6].u_rounding_sum.g_dsp.u_dsp",
+              "type": "DSP48E1",
+              "port": "P",
+              "net": "g_full.u_full.LANE[6].rounded_s10[5]",
+              "detail": "DSP output register",
+              "source": "rtl/npu/writeback/vec_requant.sv:1680.15",
+              "register_origin": null
+            },
+            "endpoint": {
+              "cell": "$auto$ff.cc:337:slice$44183",
+              "type": "FDRE",
+              "port": "D",
+              "net": "$auto$xilinx_dffopt.cc:347:execute$495543",
+              "category": "data",
+              "source": "rtl/npu/writeback/vec_requant.sv:1539.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+              "register_origin": "g_full.u_full.out_vec_s8 [72]"
+            },
+            "path": [
+              {
+                "cell": "$abc$474498$lut$aiger$o23608",
+                "type": "LUT6",
+                "input_port": "I3[0]",
+                "output_port": "O[0]",
+                "input_net": "g_full.u_full.LANE[6].rounded_s10[5]",
+                "output_net": "$abc$474498$aiger$o23608",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+              },
+              {
+                "cell": "$7186.genblk1.slice[0].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "DI[1]",
+                "output_port": "CO[3]",
+                "input_net": "$abc$474498$aiger$o23608",
+                "output_net": "$abc$474498$aiger$i44174",
+                "source": "rtl/npu/writeback/vec_requant.sv:1592.22-1592.89|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:70.11-77.5"
+              },
+              {
+                "cell": "$7186.genblk1.slice[1].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "CI[0]",
+                "output_port": "CO[3]",
+                "input_net": "$abc$474498$aiger$i44174",
+                "output_net": "$abc$474498$aiger$i44182",
+                "source": "rtl/npu/writeback/vec_requant.sv:1592.22-1592.89|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+              },
+              {
+                "cell": "$7186.genblk1.slice[2].genblk1.carry4",
+                "type": "CARRY4",
+                "input_port": "CI[0]",
+                "output_port": "CO[3]",
+                "input_net": "$abc$474498$aiger$i44182",
+                "output_net": "$techmap482343$abc$474498$lut$aiger474497$61887.A[2]",
+                "source": "rtl/npu/writeback/vec_requant.sv:1592.22-1592.89|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+              },
+              {
+                "cell": "$abc$474498$lut$aiger474497$61729",
+                "type": "LUT5",
+                "input_port": "I2[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap482343$abc$474498$lut$aiger474497$61887.A[2]",
+                "output_net": "$techmap489150$auto$abc_ops_reintegrate.cc:722:reintegrate$479117.A[2]",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+              },
+              {
+                "cell": "$auto$xilinx_dffopt.cc:338:execute$495542",
+                "type": "LUT5",
+                "input_port": "I4[0]",
+                "output_port": "O[0]",
+                "input_net": "$techmap489150$auto$abc_ops_reintegrate.cc:722:reintegrate$479117.A[2]",
+                "output_net": "$auto$xilinx_dffopt.cc:347:execute$495543",
+                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+              }
+            ]
+          }
+        },
+        "registered_cascades": [
+          {
+            "source": "g_full.u_full.LANE[0].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[0].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[10].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[10].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[11].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[11].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[12].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[12].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[13].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[13].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[14].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[14].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[15].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[15].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[1].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[1].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[2].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[2].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[3].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[3].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[4].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[4].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[5].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[5].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[6].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[6].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[7].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[7].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[8].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[8].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          },
+          {
+            "source": "g_full.u_full.LANE[9].u_product.g_dsp.g_partial[2].u_multiply.u_dsp",
+            "destination": "g_full.u_full.LANE[9].u_product.g_dsp.u_add.u_dsp",
+            "direct_pcout_pcin": true
+          }
+        ]
+      }
+    }
+  },
+  "measurement_scope": {
+    "placement_performed": false,
+    "route_performed": false,
+    "physical_lut_count": null,
+    "fmax_mhz": null,
+    "external_path_method": "External connected register paths; DSP internal arithmetic and device routing require timing analysis.",
+    "dsp_internal_arithmetic_timing_included": false
+  },
+  "reference_blob": "7ff1f873ab227583c03b584976211094146755f3",
+  "reference_content_check": {
+    "passed": true,
+    "main_history_revision": "038a0958645bede843e9179f16d564836949944b",
+    "git_blob": "7ff1f873ab227583c03b584976211094146755f3",
+    "sha256": "ef2c8bd6b354fd779188ba1740cd6d610c83f48b39eab59d13f17cb1304ad162",
+    "generated_numeric_reference_identical": true
+  }
+}
