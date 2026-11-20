@@ -70,3 +70,6 @@ foreach_in_collection cell $macro_cells {
 }
 close $macro_report
 if {$macro_count == 0} { error "No SRAM macro instances were linked" }
+
+source [file join $PROJ_PATH scripts check_requant_storage.tcl]
+check_requant_storage ${PROJ_TEMP}/${DESIGN_TOP}_requant_storage.rpt

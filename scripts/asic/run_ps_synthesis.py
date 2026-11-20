@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 import time
 from prepare_dc_sources import prepare
-from partition_synthesis import execute
+from partition_synthesis import execute, rtl_sources
 
 
 def main():
@@ -71,8 +71,8 @@ def main():
         MEM_DB_LIST='RAMTP128X16_tt_1p10v_1p10v_25c.db RAMTP1024X16_tt_1p10v_1p10v_25c.db',
         SYN_STD_LIB_NAME=std_db.stem,SYN_OPER_CONDITION=args.operating_condition)
     env.update(DESIGN_PARTITION_TIMEOUT=str(args.timeout),DESIGN_PARTITION_MEMORY_GIB=str(args.max_memory_gib))
-    inputs=list((root/'rtl/npu').rglob('*.sv'))+list((root/'asic/synthesis').rglob('*.tcl'))
-    inputs += list((root/'include').rglob('*.vh')) + list((root/'asic/rtl').glob('*.sv'))
+    inputs=rtl_sources(root)+list((root/'asic/synthesis').rglob('*.tcl'))
+    inputs += list((root/'include').rglob('*.vh'))
     inputs += [root/'asic/synthesis/constraints/npu_top.sdc',root/'asic/synthesis/filelists/npu_top.f']
     inputs = sorted(set(inputs))
     hashes={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}

@@ -16,6 +16,13 @@ import time
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def rtl_sources(root):
+    """统一收集计算模块、公共 RTL 和 SRAM 宏封装的源文件。"""
+    return sorted(path for folder in ('rtl/npu', 'rtl/common', 'asic/rtl')
+                  for path in (root / folder).rglob('*')
+                  if path.suffix in ('.sv', '.v'))
+
+
 def execute(script,directory,env):
     directory.mkdir(parents=True,exist_ok=True)
     path=directory/'run.tcl';path.write_text(script)
@@ -137,11 +144,11 @@ def main():
         MEM_DB_PATH=str(libs),MEM_DB_LIST='RAMTP128X16_tt_1p10v_1p10v_25c.db RAMTP1024X16_tt_1p10v_1p10v_25c.db',
         SYN_STD_LIB_NAME=std.stem,SYN_OPER_CONDITION='tt_v1p1_25c',
         DESIGN_PARTITION_TIMEOUT=str(args.timeout),DESIGN_PARTITION_MEMORY_GIB=str(args.max_memory_gib))
-    sources=list((root/'rtl/npu').rglob('*.sv'))+list((root/'asic/rtl').glob('*.sv'))
+    sources=rtl_sources(root)
     source_hashes={str(p.relative_to(root)):digest(p) for p in sources}
     prior=json.loads((args.elab_ddc.parent/'run.json').read_text())
     for name,value in prior['source_sha256'].items():
-        if name.startswith(('rtl/npu/','asic/rtl/')) and source_hashes.get(name)!=value:
+        if name.startswith(('rtl/npu/','rtl/common/','asic/rtl/')) and source_hashes.get(name)!=value:
             parser.error('Elaborated RTL differs from current source: '+name)
     if prior['force_raw']!=args.force_raw:parser.error('Elaborated storage mode differs')
     generic,top,graph=export(root,out,args.elab_ddc.resolve(),env)
