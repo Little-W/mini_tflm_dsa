@@ -121,9 +121,9 @@ module npu_kernel_pending_environment_observer;
                 assert (!npu_top.u_kernel_loader.ext_dma_busy);
                 assert (npu_top.u_kernel_loader.tb_pending_observer.dma_slots == 0);
             end
-            // 卷积任务一次只保留一个 DMA 描述符，图像任务与线性返回互斥。
+            // 普通卷积可保存两条 DMA 描述符，图像任务与线性返回互斥。
             if (npu_top.u_block_dma_arbiter.conv_job_q)
-                assert (npu_top.u_block_dma_arbiter.rd_pending_count <= 1);
+                assert (npu_top.u_block_dma_arbiter.rd_pending_count <= 2);
             if (npu_top.u_block_dma_arbiter.u_dma.conv_active)
                 assert (!npu_top.u_block_dma_arbiter.u_dma.linear_finish);
         end

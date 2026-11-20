@@ -38,7 +38,7 @@ def main():
             run=subprocess.run([str(binary)],capture_output=True,text=True,timeout=120)
             (out/f'{name}.log').write_text(run.stdout+run.stderr)
             if run.returncode:raise RuntimeError(run.stdout+run.stderr)
-            counts={key:int(value) for key,value in re.findall(r'(fallback|query_checks|plans|footprints)=(\d+)',run.stdout)}
+            counts={key:int(value) for key,value in re.findall(r'(fallback|query_checks|plans|footprints|address_plans|image_costs)=(\d+)',run.stdout)}
             assert counts and counts['fallback']==fallback
             results.append(dict(profile=name,passed=True,command=command,counts=counts,
                                 executable_sha256=digest(binary),run_log_sha256=digest(out/f'{name}.log')))

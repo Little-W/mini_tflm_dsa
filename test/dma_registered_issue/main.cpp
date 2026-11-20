@@ -46,6 +46,7 @@ public:
     bool offer_on_linear_finish = false;
     bool has_offer = false, inject_error = false, injected = false;
     bool hold_ar = false, hold_r = false;
+    bool configured_prefetch = false;
     uint64_t cycles = 0, accepted = 0, completed = 0, frontend_starts = 0;
     uint64_t checked_values = 0, rejected = 0, reset_cancelled = 0;
     uint64_t abort_pending = 0, ar_waits = 0, r_waits = 0, immediate_errors = 0;
@@ -54,6 +55,7 @@ public:
     uint64_t maximum_start_delay = 0;
     uint64_t linear_finish_accept_overlap = 0;
     uint64_t image_accept_during_prefetch = 0, image_complete_during_prefetch = 0;
+    uint64_t configuration_error_pending = 0, configuration_error_recoveries = 0;
     unsigned response_delay = 0;
     unsigned scenario = 0;
 
@@ -156,7 +158,8 @@ public:
                     require(c.values == c.rows * cols, "incomplete matrix output");
                 }
                 if (c.error) ++error_completions;
-                if (c.image && dut.observe_frontend_busy) ++image_complete_during_prefetch;
+                if (c.image && configured_prefetch && dut.observe_frontend_busy)
+                    ++image_complete_during_prefetch;
                 if (c.immediate_error) { require(c.values == 0, "immediate error produced data"); ++immediate_errors; }
                 ++completed; commands.pop_front();
                 if (dut.observe_accept || dut.observe_linear_accept) ++completion_accept_overlap;
@@ -168,7 +171,8 @@ public:
                 require(!offered.image || !dut.observe_frontend_fire, "image accepted without register separation");
                 has_offer = false;
                 if (dut.observe_accept && dut.observe_linear_finish) ++linear_finish_accept_overlap;
-                if (dut.observe_accept && dut.observe_frontend_busy) ++image_accept_during_prefetch;
+                if (dut.observe_accept && configured_prefetch && dut.observe_frontend_busy)
+                    ++image_accept_during_prefetch;
                 require(!dut.observe_linear_accept || !dut.observe_frontend_busy,
                         "linear command accepted before image reads drained");
             }
@@ -187,6 +191,7 @@ public:
         reset_cancelled += commands.size(); commands.clear(); bus.clear(); has_offer = false;
         dut.rst_n = 0; dut.rd_start = 0; dut.i_abort = 0; dut.win_req_valid = 0;
         dut.conv_cfg_valid = 0; hold_ar = false; hold_r = false;
+        configured_prefetch = false;
         for (unsigned i = 0; i < 4; ++i) step();
         dut.rst_n = 1; step();
     }
@@ -202,6 +207,7 @@ public:
 
     void configure(bool windowed = false, bool prefetch = false) {
         wait_idle(); dut.i_abort = 0; dut.conv_enable = 1; inject_error = false; injected = false;
+        configured_prefetch = prefetch;
         const uint32_t words[16] = {input_base, 5, 7, 5, 3, 3, 5, 7, 1, 1, 1, 1,
                                     uint32_t(-7), unsigned(windowed), unsigned(prefetch), 0};
         for (unsigned i = 0; i < 16; ++i) dut.config_words[i] = words[i];
@@ -235,7 +241,61 @@ public:
         dut.rd_tag = 7; evaluate();
     }
 
+    void configuration_error(bool abort_after_accept) {
+        wait_idle();
+        dut.i_abort = 0; dut.conv_enable = 1; inject_error = false; injected = false;
+        configured_prefetch = false;
+        const uint32_t words[16] = {abort_after_accept ? 0xffffff80U : 0xfffffff0U,
+            5, 7, 5, 3, 3, 5, 7, 1, 1, 1, 1, uint32_t(-7), 0, 0, 0};
+        for (unsigned i = 0; i < 16; ++i) dut.config_words[i] = words[i];
+        evaluate();
+        for (unsigned i = 0; i < 50000 && !dut.conv_cfg_ready; ++i) step();
+        require(dut.conv_cfg_ready, "configuration error case could not configure");
+        const auto accepted_before = accepted, completed_before = completed;
+        const auto errors_before = error_completions, starts_before = frontend_starts;
+        const auto requests_before = ar_requests, config_cycle = cycles;
+        dut.conv_cfg_valid = 1; step(); dut.conv_cfg_valid = 0; evaluate();
+        require(dut.observe_frontend_busy && !dut.observe_frontend_ready && !dut.conv_error,
+                "configuration preparation interval was not exercised");
+
+        // 配置准备期间立即接收描述符，范围溢出随后通过一次错误完成释放它。
+        Command c; c.rows = 1; c.tag = abort_after_accept ? 6U : 4U;
+        c.error = true; c.immediate_error = true;
+        start(c);
+        require(accepted == accepted_before + 1U && !commands.empty() &&
+                commands.back().accepted_cycle == config_cycle + 1U,
+                "descriptor was not accepted immediately after configuration");
+        require(dut.observe_pending && dut.observe_active && !dut.conv_error,
+                "configuration error did not cover an already pending descriptor");
+        ++configuration_error_pending;
+        if (abort_after_accept) dut.i_abort = 1;
+        wait_idle();
+        require(completed == completed_before + 1U && error_completions == errors_before + 1U,
+                "configuration failure completion count mismatch");
+        require(dut.conv_error && !dut.observe_pending && !dut.observe_active &&
+                !dut.observe_frontend_busy && !dut.conv_busy && !dut.rd_busy &&
+                !dut.rd_done && !dut.m_axi_arvalid && bus.empty() && dut.conv_cfg_ready,
+                "configuration failure did not release all accepted state");
+        require(ar_requests == requests_before && frontend_starts == starts_before,
+                "invalid configuration started an input transaction");
+        for (unsigned i = 0; i < 20; ++i) step();
+        require(completed == completed_before + 1U,
+                "configuration failure generated a second completion");
+        ++scenario;
+
+        // 错误状态排空后重新配置，并逐元素检查合法任务的数据和标签。
+        configure();
+        Command recovery; recovery.rows = 3; recovery.p = 6; recovery.tag = 2;
+        const auto values_before = checked_values;
+        start(recovery); wait_idle();
+        require(!dut.conv_error && checked_values == values_before + recovery.rows * recovery.cols,
+                "valid image task did not recover after configuration failure");
+        ++configuration_error_recoveries; ++scenario;
+    }
+
     void run() {
+        configuration_error(false);
+        configuration_error(true);
         configure();
         for (unsigned mode = 0; mode < 6; ++mode) {
             Command c; c.slot = mode + 1U; c.tag = mode; c.rows = 1U + mode; c.q = mode * 7U;
@@ -348,6 +408,8 @@ public:
                   << ",\"linear_finish_accept_overlap\":" << linear_finish_accept_overlap
                   << ",\"image_accept_during_prefetch\":" << image_accept_during_prefetch
                   << ",\"image_complete_during_prefetch\":" << image_complete_during_prefetch
+                  << ",\"configuration_error_pending\":" << configuration_error_pending
+                  << ",\"configuration_error_recoveries\":" << configuration_error_recoveries
                   << ",\"maximum_start_delay\":" << maximum_start_delay << "}\n";
     }
 };
