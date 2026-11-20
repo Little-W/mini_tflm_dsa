@@ -24,7 +24,8 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    rtl = [ROOT / 'rtl/common/pseudo_dual_port_ram.v',
+    rtl = [ROOT / 'rtl/common/REGFILE.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v',
+           ROOT / 'rtl/common/add_equal.sv',
            ROOT / 'rtl/npu/loaders/ia_loader_cache_mgr.sv',
            ROOT / 'rtl/npu/loaders/ia_loader_ctrl.sv',
            ROOT / 'rtl/npu/loaders/ia_loader.sv', HERE / 'prefetch_tb.sv']

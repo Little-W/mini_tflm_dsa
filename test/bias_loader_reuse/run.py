@@ -25,7 +25,7 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     names = ['test/bias_loader_reuse/tb_bias_loader_reuse.sv',
              'rtl/npu/loaders/bias_loader.sv', 'rtl/npu/loaders/bias_loader_ctrl.sv',
-             'rtl/npu/loaders/bias_loader_buffer.sv']
+             'rtl/npu/loaders/bias_loader_buffer.sv', 'rtl/common/REGFILE.v']
     sources = {name: digest(root / name) for name in names}
     command = ['verilator', '--binary', '--timing', '--assert', '-Wno-fatal',
                '--top-module', 'tb_bias_loader_reuse', '-j', str(args.jobs),

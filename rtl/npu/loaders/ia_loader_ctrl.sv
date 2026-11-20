@@ -29,7 +29,9 @@ module ia_loader_ctrl #(
     parameter int unsigned COMPACT_S8 = 1,
     localparam int unsigned SLOT_BLOCKS =
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS,
-    parameter int unsigned PS_FRAME_COUNT = SIZE
+    parameter int unsigned PS_FRAME_COUNT = SIZE,
+    parameter bit p_precomputed_packed_tiles = 1'b0,
+    parameter bit p_precomputed_frame_rows = 1'b0
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -43,6 +45,7 @@ module ia_loader_ctrl #(
     input  logic                        cfg_use_16bits,
     input  logic                        cfg_tile_packed = 1'b0,
     input  logic [REG_WIDTH-1:0]        cfg_packed_reduction = '0,
+    input  logic [REG_WIDTH-1:0]        cfg_packed_k_tiles = '0,
     input  logic                        cfg_bias_by_row_mode,
     input  logic                        cfg_bias_at_end = 1'b0,
     input  logic [REG_WIDTH-1:0]        cfg_lhs_base,
@@ -63,6 +66,7 @@ module ia_loader_ctrl #(
     input  logic [REG_WIDTH-1:0]        rsp_beats_per_row_normal,
     input  logic [REG_WIDTH-1:0]        rsp_beats_per_row_last,
     input  logic [REG_WIDTH-1:0]        rsp_rows_last_tile,
+    input  logic [31:0]                 cfg_frame_rows_last = '0,
 
     // ---- 顶层握手 ----
     input  logic                        init_start,     // 从 IDLE→INIT 的触发
@@ -133,6 +137,16 @@ module ia_loader_ctrl #(
   localparam int W_CNT_W       = (PS_FRAME_COUNT <= 1) ? 1 : ($clog2(PS_FRAME_COUNT) + 1);
   localparam int ROW_CNT_W     = $clog2(SIZE + 1);
   localparam int CNT_W         = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
+  localparam bit p_control_use_lut =
+`ifdef ASIC_SYNTHESIS
+      1'b0;
+`elsif XILINX_FPGA
+      1'b1;
+`elsif SYNTHESIS
+      1'b1;
+`else
+      1'b0;
+`endif
   typedef logic [CNT_W-1:0] count_t;
   wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
   wire [SLOT_W-1:0] slot_mask =
@@ -166,9 +180,21 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] tile_row_step_b_comb;
   logic [REG_WIDTH-1:0] l2_group_row_step_b_comb;
 
-  wire [REG_WIDTH-1:0] packed_reduction = cfg_packed_reduction != 0 ? cfg_packed_reduction : cfg_n;
-  wire [REG_WIDTH-1:0] packed_k_tiles = (packed_reduction >> LOG2_SIZE) +
-      REG_WIDTH'((packed_reduction & REG_WIDTH'(SIZE-1)) != 0);
+  logic [REG_WIDTH-1:0] packed_k_tiles;
+
+  // 上层可在配置接收边沿提前保存分块数；独立控制器保留本周期输入计算。
+  if (p_precomputed_packed_tiles) begin : g_precomputed_packed_tiles
+    assign packed_k_tiles = cfg_packed_k_tiles;
+  end else begin : g_local_packed_tiles
+    logic [REG_WIDTH-1:0] packed_reduction;
+    logic unused_packed_tiles_carry;
+
+    assign packed_reduction = (cfg_packed_reduction != '0) ? cfg_packed_reduction : cfg_n;
+    assign {unused_packed_tiles_carry, packed_k_tiles} =
+        {1'b0, (packed_reduction >> LOG2_SIZE)} +
+        {1'b0, REG_WIDTH'((packed_reduction & REG_WIDTH'(SIZE - 1)) != '0)};
+  end
+
   assign tile_row_step_b_comb = cfg_tile_packed ?
       (packed_k_tiles << (2*LOG2_SIZE + (cfg_use_16bits ? 1 : 0))) :
       (cfg_lhs_row_stride_b << LOG2_SIZE);
@@ -295,6 +321,43 @@ module ia_loader_ctrl #(
   assign ia_iter_last = ia_iter_last_narrow;
   assign w_iter_last  = w_iter_last_narrow;
 
+  count_t l2_next_equal_i_a;
+  count_t l2_next_equal_i_b;
+  count_t l2_next_equal_i_target;
+  logic l2_next_equal_i_carry_in;
+  logic l2_next_equal_o_equal;
+
+  count_t w_group_next_equal_i_a;
+  count_t w_group_next_equal_i_b;
+  count_t w_group_next_equal_i_target;
+  logic w_group_next_equal_i_carry_in;
+  logic w_group_next_equal_o_equal;
+
+  // 并行检查递增后的组索引，供循环边界和预取边界共用。
+  assign l2_next_equal_i_a = l2_idx;
+  assign l2_next_equal_i_b = '0;
+  assign l2_next_equal_i_target = l2_group_last_idx;
+  assign l2_next_equal_i_carry_in = 1'b1;
+  add_equal #(.p_width(CNT_W)) u_l2_next_equal (
+      .i_a(l2_next_equal_i_a),
+      .i_b(l2_next_equal_i_b),
+      .i_target(l2_next_equal_i_target),
+      .i_carry_in(l2_next_equal_i_carry_in),
+      .o_equal(l2_next_equal_o_equal)
+  );
+
+  assign w_group_next_equal_i_a = w_group_idx;
+  assign w_group_next_equal_i_b = '0;
+  assign w_group_next_equal_i_target = w_group_last_idx;
+  assign w_group_next_equal_i_carry_in = 1'b1;
+  add_equal #(.p_width(CNT_W)) u_w_group_next_equal (
+      .i_a(w_group_next_equal_i_a),
+      .i_b(w_group_next_equal_i_b),
+      .i_target(w_group_next_equal_i_target),
+      .i_carry_in(w_group_next_equal_i_carry_in),
+      .o_equal(w_group_next_equal_o_equal)
+  );
+
   always_comb begin
     first_w_group_width = (w_groups_total <= REG_WIDTH'(1))
                         ? count_t'(w_group_last_width)
@@ -306,7 +369,7 @@ module ia_loader_ctrl #(
       next_w_group_width = (w_group_last_idx == '0)
                          ? count_t'(w_group_last_width)
                          : count_t'(cfg_w_reuse_num);
-    end else if ((w_group_idx + count_t'(1)) == w_group_last_idx) begin
+    end else if (w_group_next_equal_o_equal) begin
       next_w_group_width = count_t'(w_group_last_width);
     end else begin
       next_w_group_width = count_t'(cfg_w_reuse_num);
@@ -359,11 +422,11 @@ module ia_loader_ctrl #(
       end else begin
         is_last_l1_group <= (l1_last_idx == '0);
         if (!is_last_w_group) begin
-          is_last_w_group <= ((w_group_idx + count_t'(1)) == w_group_last_idx);
+          is_last_w_group <= w_group_next_equal_o_equal;
         end else begin
           is_last_w_group <= (w_group_last_idx == '0);
           if (!is_last_l2_group) begin
-            is_last_l2_group <= ((l2_idx + count_t'(1)) == l2_group_last_idx);
+            is_last_l2_group <= l2_next_equal_o_equal;
           end
         end
       end
@@ -391,8 +454,91 @@ module ia_loader_ctrl #(
   assign load_ia_cursor_cnt = load_ia_cursor[LOAD_CNT_W-1:0];
   assign load_tiles_done_cnt = load_tiles_done[LOAD_CNT_W-1:0];
   assign load_r_target_cnt = load_r_target[LOAD_CNT_W-1:0];
-  assign load_is_last_row_tile = load_l2_is_last &&
-                                 ((load_ia_cursor_cnt + LOAD_CNT_W'(1)) == load_r_target_cnt);
+  // 三种加载上界独立比较，预取和尾组选择在比较结果之后合并。
+  logic [LOAD_CNT_W-1:0] load_last_equal_i_zero;
+  logic [LOAD_CNT_W-1:0] load_last_equal_i_regular;
+  logic [LOAD_CNT_W-1:0] load_last_equal_i_tail;
+  logic [LOAD_CNT_W-1:0] load_last_equal_i_prefetch;
+  logic load_last_equal_i_one;
+  logic load_last_equal_o_regular, load_last_equal_o_tail, load_last_equal_o_prefetch;
+  assign load_last_equal_i_zero = '0;
+  assign load_last_equal_i_regular = LOAD_CNT_W'(count_t'(cfg_ia_reuse_num));
+  assign load_last_equal_i_tail = LOAD_CNT_W'(count_t'(ia_reuse_num_act));
+  assign load_last_equal_i_prefetch = pf_r_target;
+  assign load_last_equal_i_one = 1'b1;
+  if (p_control_use_lut) begin : g_fpga_load_equal
+      localparam int p_groups = (LOAD_CNT_W < 2) ? 1 : LOAD_CNT_W / 2;
+      logic [LOAD_CNT_W-1:0] target [3];
+      logic [2:0] equal;
+      assign target[0] = load_last_equal_i_regular;
+      assign target[1] = load_last_equal_i_tail;
+      assign target[2] = load_last_equal_i_prefetch;
+      assign load_last_equal_o_regular = equal[0];
+      assign load_last_equal_o_tail = equal[1];
+      assign load_last_equal_o_prefetch = equal[2];
+      // 首组比较最低三位；后续各组检查相邻低位确定的进位与两个结果位。
+      for (genvar target_index = 0; target_index < 3; target_index++) begin : g_target
+          logic [p_groups-1:0] group_equal;
+          for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
+              localparam int p_first_bit = (group_index == 0) ? 0 : 2 * group_index;
+              localparam int p_remaining = LOAD_CNT_W - p_first_bit;
+              localparam logic [63:0] p_init = (group_index == 0) ?
+                  ((p_remaining == 1) ? 64'h6666_6666_6666_6666 :
+                   (p_remaining == 2) ? 64'h4224_4224_4224_4224 : 64'h4204_0020_0020_4204) :
+                  ((p_remaining == 2) ? 64'hd22d_d22d_d22d_d22d : 64'hd20d_0020_0020_d20d);
+              logic [5:0] equal_i_value;
+              logic equal_o_value;
+              for (genvar pair_index = 0; pair_index < 3; pair_index++) begin : g_pair
+                  if (p_first_bit + pair_index < LOAD_CNT_W) begin : g_present
+                      assign equal_i_value[2*pair_index] = load_ia_cursor_cnt[p_first_bit+pair_index];
+                      assign equal_i_value[2*pair_index+1] = target[target_index][p_first_bit+pair_index];
+                  end else begin : g_padding
+                      assign equal_i_value[2*pair_index +: 2] = 2'b00;
+                  end
+              end
+              LUT6 #(.INIT(p_init)) u_equal (
+                  .I0(equal_i_value[0]), .I1(equal_i_value[1]), .I2(equal_i_value[2]),
+                  .I3(equal_i_value[3]), .I4(equal_i_value[4]), .I5(equal_i_value[5]),
+                  .O(equal_o_value)
+              );
+              assign group_equal[group_index] = equal_o_value;
+          end
+          assign equal[target_index] = &group_equal;
+      end
+  end else begin : g_generic_load_equal
+      add_equal #(.p_width(LOAD_CNT_W)) u_regular (
+          .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
+          .i_target(load_last_equal_i_regular), .i_carry_in(load_last_equal_i_one),
+          .o_equal(load_last_equal_o_regular)
+      );
+      add_equal #(.p_width(LOAD_CNT_W)) u_tail (
+          .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
+          .i_target(load_last_equal_i_tail), .i_carry_in(load_last_equal_i_one),
+          .o_equal(load_last_equal_o_tail)
+      );
+      add_equal #(.p_width(LOAD_CNT_W)) u_prefetch (
+          .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
+          .i_target(load_last_equal_i_prefetch), .i_carry_in(load_last_equal_i_one),
+          .o_equal(load_last_equal_o_prefetch)
+      );
+  end
+  if (p_control_use_lut) begin : g_fpga_load_last
+      logic [5:0] last_i_value;
+      logic last_o_value;
+      assign last_i_value = {load_l2_is_last, prefetch_active, is_last_l2_group,
+                            load_last_equal_o_prefetch, load_last_equal_o_tail,
+                            load_last_equal_o_regular};
+      LUT6 #(.INIT(64'hf0f0_ccaa_0000_0000)) u_last (
+          .I0(last_i_value[0]), .I1(last_i_value[1]), .I2(last_i_value[2]),
+          .I3(last_i_value[3]), .I4(last_i_value[4]), .I5(last_i_value[5]),
+          .O(last_o_value)
+      );
+      assign load_is_last_row_tile = last_o_value;
+  end else begin : g_generic_load_last
+      assign load_is_last_row_tile = load_l2_is_last &&
+          (prefetch_active ? load_last_equal_o_prefetch :
+           (is_last_l2_group ? load_last_equal_o_tail : load_last_equal_o_regular));
+  end
   logic load_is_last_col_tile;
   assign load_is_last_col_tile = prefetch_active ?
     (next_l1_idx == last_col_tile_idx) :
@@ -496,13 +642,51 @@ module ia_loader_ctrl #(
   //   4. 在 S_LOAD 状态，或在 S_SEND 且 prefetch 已激活
   //   5. 还没加载完所有 tile
 
+  logic load_regular_pending, load_tail_pending, load_prefetch_pending;
+  logic load_target_pending;
+  // 各加载上界分别检查剩余请求，最后选择当前组，避免目标选择进入比较器。
+  assign load_regular_pending = (load_ia_cursor_cnt < load_last_equal_i_regular) &&
+                                (load_tiles_done_cnt != load_last_equal_i_regular);
+  assign load_tail_pending = (load_ia_cursor_cnt < load_last_equal_i_tail) &&
+                             (load_tiles_done_cnt != load_last_equal_i_tail);
+  assign load_prefetch_pending = (load_ia_cursor_cnt < load_last_equal_i_prefetch) &&
+                                 (load_tiles_done_cnt != load_last_equal_i_prefetch);
+  if (p_control_use_lut) begin : g_fpga_load_pending
+      logic [5:0] pending_i_value;
+      logic pending_o_value;
+      assign pending_i_value = {1'b0, prefetch_active, is_last_l2_group,
+                                load_prefetch_pending, load_tail_pending, load_regular_pending};
+      LUT6 #(.INIT(64'hf0f0_ccaa_f0f0_ccaa)) u_pending (
+          .I0(pending_i_value[0]), .I1(pending_i_value[1]), .I2(pending_i_value[2]),
+          .I3(pending_i_value[3]), .I4(pending_i_value[4]), .I5(pending_i_value[5]),
+          .O(pending_o_value)
+      );
+      assign load_target_pending = pending_o_value;
+  end else begin : g_generic_load_pending
+      assign load_target_pending = prefetch_active ? load_prefetch_pending :
+          (is_last_l2_group ? load_tail_pending : load_regular_pending);
+  end
   logic can_start_load;
-  assign can_start_load = ((state == S_LOAD) || (state == S_SEND && prefetch_active))
-                        && !tl_busy
-                        && (load_ia_cursor_cnt < load_r_target_cnt)
-                        && !blk_busy[wr_slot_ptr]
-                        && !blk_valid[wr_slot_ptr]
-                        && !l1_load_complete;
+  logic load_state_active, load_slot_busy, load_slot_valid;
+  assign load_state_active = (state == S_LOAD) || (state == S_SEND && prefetch_active);
+  assign load_slot_busy = blk_busy[wr_slot_ptr];
+  assign load_slot_valid = blk_valid[wr_slot_ptr];
+  // 槽号选择独立完成后再合并加载条件，保留当周期请求许可。
+  if (p_control_use_lut) begin : g_fpga_load_start
+      logic [5:0] start_i_value;
+      logic start_o_allowed;
+      assign start_i_value = {1'b0, load_slot_valid, load_slot_busy, tl_busy,
+                              load_state_active, load_target_pending};
+      LUT6 #(.INIT(64'h0000_0008_0000_0008)) u_start (
+          .I0(start_i_value[0]), .I1(start_i_value[1]), .I2(start_i_value[2]),
+          .I3(start_i_value[3]), .I4(start_i_value[4]), .I5(start_i_value[5]),
+          .O(start_o_allowed)
+      );
+      assign can_start_load = start_o_allowed;
+  end else begin : g_generic_load_start
+      assign can_start_load = load_state_active && !tl_busy && load_target_pending &&
+                              !load_slot_busy && !load_slot_valid;
+  end
 
   // 当前是否存在待加载工作（用于维持 req 握手）
   logic load_need_active;
@@ -554,7 +738,7 @@ module ia_loader_ctrl #(
   assign next_group_advances_l2 = is_last_l1_group && is_last_w_group;
   assign next_group_is_last_l2 = is_last_l2_group ? 1'b1 :
                                  (next_group_advances_l2 ?
-                                  ((l2_idx + count_t'(1)) == l2_group_last_idx) :
+                                  l2_next_equal_o_equal :
                                   1'b0);
   assign next_r_cur = next_group_is_last_l2 ? count_t'(ia_reuse_num_act) : count_t'(cfg_ia_reuse_num);
 
@@ -909,10 +1093,33 @@ module ia_loader_ctrl #(
   assign cache_l1_is_init    = is_first_tile;
   assign cache_l1_calc_done  = is_last_l1_group;
 
-  // A complete L1 group forms one partial-sum frame. The last spatial group
-  // replaces its final full tile by the actual number of remaining rows.
-  assign ps_frame_rows = (32'(r_cur) << LOG2_SIZE) -
-                         (is_last_l2_group ? (32'(SIZE) - 32'(rsp_rows_last_tile)) : 32'd0);
+  // 一个完整 L1 组对应一个部分和帧，末组按实际尾部行数计算。
+  if (p_precomputed_frame_rows) begin : g_ps_frame_rows_saved
+    // 配置接收时已保存尾组行数；运行期间只选择本组对应的已保存结果。
+    assign ps_frame_rows = is_last_l2_group ? cfg_frame_rows_last :
+        (32'(count_t'(cfg_ia_reuse_num)) << LOG2_SIZE);
+  end else if ((SIZE > 1) && ((SIZE & (SIZE-1)) == 0) && (LOG2_SIZE < 32)) begin : g_ps_frame_rows
+    localparam int p_tile_count_width = 32-LOG2_SIZE;
+    logic [p_tile_count_width-1:0] tiles_before_tail;
+    logic [p_tile_count_width-1:0] tail_high;
+    logic [p_tile_count_width-1:0] total_high;
+    logic [31:0] tail_rows;
+    logic [31:0] last_group_rows;
+    logic unused_tile_borrow;
+    logic unused_row_carry;
+
+    // 完整分块的低位为零，尾部低位可直接连接，避免先减再加传播进位。
+    assign {unused_tile_borrow, tiles_before_tail} =
+        {1'b0, p_tile_count_width'(r_cur)} - (p_tile_count_width+1)'(1);
+    assign tail_rows = 32'(rsp_rows_last_tile);
+    assign tail_high = tail_rows[31:LOG2_SIZE];
+    assign {unused_row_carry, total_high} = {1'b0, tiles_before_tail} + {1'b0, tail_high};
+    assign last_group_rows = {total_high, tail_rows[LOG2_SIZE-1:0]};
+    assign ps_frame_rows = is_last_l2_group ? last_group_rows : (32'(r_cur) << LOG2_SIZE);
+  end else begin : g_ps_frame_rows_general
+    assign ps_frame_rows = (32'(r_cur) << LOG2_SIZE) -
+        (is_last_l2_group ? (32'(SIZE) - 32'(rsp_rows_last_tile)) : 32'd0);
+  end
   assign ps_frame_id = 32'(w_cnt);
   assign ps_frame_init = is_first_tile;
   assign ps_frame_final = is_last_l1_group;

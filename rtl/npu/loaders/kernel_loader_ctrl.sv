@@ -1,3 +1,5 @@
+`default_nettype none
+
 module kernel_loader_ctrl #(
     parameter int unsigned SIZE      = 4,
     parameter int unsigned REG_WIDTH = 32,
@@ -33,6 +35,12 @@ module kernel_loader_ctrl #(
     output logic [REG_WIDTH-1:0]        dma_q0,
     output logic [REG_WIDTH-1:0]        dma_group,
     output logic [REG_WIDTH-1:0]        dma_tile_base_addr,
+    output logic [REG_WIDTH-1:0]        o_column_group_base,
+    output logic [REG_WIDTH-1:0]        o_column_group_offset,
+    output logic [REG_WIDTH-1:0]        o_address_group_base,
+    output logic [REG_WIDTH-1:0]        o_address_row_offset,
+    output logic [REG_WIDTH-1:0]        o_address_column_offset,
+    output logic                       o_descriptor_update,
     output logic [REG_WIDTH-1:0]        dma_rows_to_read,
     output logic [REG_WIDTH-1:0]        dma_row_stride_b,
     output logic signed [REG_WIDTH-1:0] dma_rhs_zp,
@@ -48,9 +56,7 @@ module kernel_loader_ctrl #(
   localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
   localparam int unsigned CNT_W = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
   typedef logic [CNT_W-1:0] count_t;
-  // A task contains K tiles * output-column tiles * row groups. These totals
-  // need a product width, unlike a single dimension. A 16-bit total wrapped
-  // at 65,536 loads and could retire the task with its final tile still queued.
+  // 任务总数覆盖三个遍历维度的乘积，计数宽度保留每个维度的完整范围。
   localparam int unsigned TOTAL_CNT_W = 3 * CNT_W;
   typedef logic [TOTAL_CNT_W-1:0] total_count_t;
 
@@ -89,6 +95,8 @@ module kernel_loader_ctrl #(
   count_t load_tile_col;
   total_count_t loaded_count;
   total_count_t sent_count;
+  logic [1:0] pending_loads;
+  logic [1:0] pending_sends;
   logic                 load_complete;
   logic                 all_loads_done;
   logic                 all_loads_issued;
@@ -99,20 +107,29 @@ module kernel_loader_ctrl #(
   logic                 last_repeat;
   logic                 final_load_done;
   logic                 load_complete_after;
-  total_count_t loaded_count_after;
+  total_count_t issued_count_next;
+  logic [1:0] remaining_loads, remaining_sends;
+  logic issued_zero, issued_one, loads_wrap, sends_wrap;
+  logic load_count_reached, sent_count_covers_loads;
   count_t w_reuse_total;
   logic [REG_WIDTH-1:0] base_addr_reg;
   logic [REG_WIDTH-1:0] col_addr_step;
   logic [REG_WIDTH-1:0] row_addr_step;
-  logic [REG_WIDTH-1:0] group_addr_step;
+  logic [REG_WIDTH-1:0] group_addr_step_q;
   logic [REG_WIDTH-1:0] group_base_addr;
   logic [REG_WIDTH-1:0] row_addr_offset;
   logic [REG_WIDTH-1:0] col_addr_offset;
   logic [REG_WIDTH-1:0] cfg_col_addr_step;
   logic [REG_WIDTH-1:0] cfg_row_addr_step;
-  logic [REG_WIDTH-1:0] cfg_group_addr_step;
+  logic [REG_WIDTH-1:0] group_addr_step_next;
   count_t last_group_width;
   count_t following_group_width;
+  count_t row_last_equal_i_a, row_last_equal_i_b, row_last_equal_i_target;
+  logic row_last_equal_i_carry_in;
+  logic row_last_equal_o_equal;
+  count_t column_last_equal_i_a, column_last_equal_i_b, column_last_equal_i_c;
+  count_t column_last_equal_i_target;
+  logic column_last_equal_o_equal;
 
   function automatic count_t ceil_div_pow2(input logic [REG_WIDTH-1:0] a,
                                            input count_t pow2);
@@ -172,8 +189,8 @@ module kernel_loader_ctrl #(
     end
 
     load_tile_col = group_base_col + load_col_in_group;
-    valid_n_rows = (load_tile_row == tile_rows_total - count_t'(1)) ? last_n_rows : count_t'(SIZE);
-    valid_m_cols = (load_tile_col == tile_cols_total - count_t'(1)) ? last_m_cols : count_t'(SIZE);
+    valid_n_rows = row_last_equal_o_equal ? last_n_rows : count_t'(SIZE);
+    valid_m_cols = column_last_equal_o_equal ? last_m_cols : count_t'(SIZE);
     if (valid_n_rows == 0) valid_n_rows = count_t'(1);
     if (valid_m_cols == 0) valid_m_cols = count_t'(1);
     elem_bytes = cfg_use_16bits ? REG_WIDTH'(2) : REG_WIDTH'(1);
@@ -183,28 +200,27 @@ module kernel_loader_ctrl #(
         (cfg_rhs_row_stride_b << SIZE_SHIFT);
     cfg_row_addr_step = REG_WIDTH'(1) <<
         ((cfg_tile_packed ? 2*SIZE_SHIFT : SIZE_SHIFT) + (cfg_use_16bits ? 1 : 0));
-    unique case (w_reuse_norm)
-      count_t'(1):    cfg_group_addr_step = cfg_col_addr_step;
-      count_t'(2):    cfg_group_addr_step = cfg_col_addr_step << 1;
-      count_t'(4):    cfg_group_addr_step = cfg_col_addr_step << 2;
-      count_t'(8):    cfg_group_addr_step = cfg_col_addr_step << 3;
-      count_t'(16):   cfg_group_addr_step = cfg_col_addr_step << 4;
-      count_t'(25):   cfg_group_addr_step = (cfg_col_addr_step << 4) + (cfg_col_addr_step << 3) + cfg_col_addr_step;
-      count_t'(32):   cfg_group_addr_step = cfg_col_addr_step << 5;
-      count_t'(64):   cfg_group_addr_step = cfg_col_addr_step << 6;
-      count_t'(128):  cfg_group_addr_step = cfg_col_addr_step << 7;
-      count_t'(256):  cfg_group_addr_step = cfg_col_addr_step << 8;
-      count_t'(512):  cfg_group_addr_step = cfg_col_addr_step << 9;
-      count_t'(1024): cfg_group_addr_step = cfg_col_addr_step << 10;
-      default:          cfg_group_addr_step = cfg_col_addr_step;
+    case (w_reuse_total)
+      count_t'(1):    group_addr_step_next = col_addr_step;
+      count_t'(2):    group_addr_step_next = col_addr_step << 1;
+      count_t'(4):    group_addr_step_next = col_addr_step << 2;
+      count_t'(8):    group_addr_step_next = col_addr_step << 3;
+      count_t'(16):   group_addr_step_next = col_addr_step << 4;
+      count_t'(25):   group_addr_step_next = (col_addr_step << 4) + (col_addr_step << 3) + col_addr_step;
+      count_t'(32):   group_addr_step_next = col_addr_step << 5;
+      count_t'(64):   group_addr_step_next = col_addr_step << 6;
+      count_t'(128):  group_addr_step_next = col_addr_step << 7;
+      count_t'(256):  group_addr_step_next = col_addr_step << 8;
+      count_t'(512):  group_addr_step_next = col_addr_step << 9;
+      count_t'(1024): group_addr_step_next = col_addr_step << 10;
+      default:          group_addr_step_next = col_addr_step;
     endcase
 
     last_col_in_group = (load_col_in_group + count_t'(1) >= current_group_width);
     last_tile_row     = (load_tile_row + count_t'(1) >= tile_rows_total);
     last_l2_group     = (load_l2 + count_t'(1) >= l2_groups_total);
     last_repeat       = (load_repeat + count_t'(1) >= repeat_total);
-    loaded_count_after = loaded_count + (load_done ? total_count_t'(1) : total_count_t'(0));
-    final_load_done   = load_done && all_loads_issued && loaded_count_after >= issued_count;
+    final_load_done = load_done && all_loads_issued && load_count_reached;
 
     load_complete = all_loads_done;
     load_complete_after = all_loads_done || final_load_done;
@@ -234,6 +250,37 @@ module kernel_loader_ctrl #(
     dma_valid_cols     = REG_WIDTH'(valid_n_rows);
   end
 
+  // 描述符比较使用独立寄存操作数，地址输出继续保留完整和值。
+  assign o_column_group_base = REG_WIDTH'(group_base_col) << SIZE_SHIFT;
+  assign o_column_group_offset = REG_WIDTH'(load_col_in_group) << SIZE_SHIFT;
+  assign o_address_group_base = group_base_addr;
+  assign o_address_row_offset = row_addr_offset;
+  assign o_address_column_offset = col_addr_offset;
+  // 描述符仅在配置接收、初始化和请求接受边沿更新。
+  assign o_descriptor_update = clear || (state == S_IDLE && cfg_valid) ||
+      (state == S_INIT) || dma_start;
+
+  // 尾部分块由模加法等式确定，各位进位并行比较。
+  assign row_last_equal_i_a = load_tile_row;
+  assign row_last_equal_i_b = '0;
+  assign row_last_equal_i_target = tile_rows_total;
+  assign row_last_equal_i_carry_in = 1'b1;
+  assign column_last_equal_i_a = group_base_col;
+  assign column_last_equal_i_b = load_col_in_group;
+  assign column_last_equal_i_c = count_t'(1);
+  assign column_last_equal_i_target = tile_cols_total;
+
+  add_equal #(.p_width(CNT_W)) u_row_last_equal (
+      .i_a(row_last_equal_i_a), .i_b(row_last_equal_i_b),
+      .i_target(row_last_equal_i_target), .i_carry_in(row_last_equal_i_carry_in),
+      .o_equal(row_last_equal_o_equal)
+  );
+  add3_equal #(.p_width(CNT_W)) u_column_last_equal (
+      .i_a(column_last_equal_i_a), .i_b(column_last_equal_i_b),
+      .i_c(column_last_equal_i_c), .i_target(column_last_equal_i_target),
+      .o_equal(column_last_equal_o_equal)
+  );
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state               <= S_IDLE;
@@ -241,8 +288,8 @@ module kernel_loader_ctrl #(
       load_repeat         <= '0;
       load_l2             <= '0;
       load_col_in_group   <= '0;
-      loaded_count        <= '0;
-      sent_count          <= '0;
+      pending_loads       <= '0;
+      pending_sends       <= '0;
       all_loads_done      <= 1'b0;
       all_loads_issued    <= 1'b0;
       issued_count       <= '0;
@@ -258,7 +305,7 @@ module kernel_loader_ctrl #(
       base_addr_reg       <= '0;
       col_addr_step       <= '0;
       row_addr_step       <= REG_WIDTH'(SIZE);
-      group_addr_step     <= '0;
+      group_addr_step_q     <= '0;
       group_base_col      <= '0;
       group_base_addr     <= '0;
       row_addr_offset     <= '0;
@@ -277,8 +324,8 @@ module kernel_loader_ctrl #(
             load_repeat         <= '0;
             load_l2             <= '0;
             load_col_in_group   <= '0;
-            loaded_count        <= '0;
-            sent_count          <= '0;
+            pending_loads       <= '0;
+            pending_sends       <= '0;
             all_loads_done      <= 1'b0;
             all_loads_issued    <= 1'b0;
             issued_count       <= '0;
@@ -294,7 +341,6 @@ module kernel_loader_ctrl #(
             base_addr_reg       <= cfg_rhs_base;
             col_addr_step       <= cfg_col_addr_step;
             row_addr_step       <= cfg_row_addr_step;
-            group_addr_step     <= cfg_group_addr_step;
             group_base_col      <= '0;
             group_base_addr     <= cfg_rhs_base;
             row_addr_offset     <= '0;
@@ -304,20 +350,32 @@ module kernel_loader_ctrl #(
         end
 
         S_INIT: begin
+          // 列步长和复用次数已在配置接受边沿保存，此周期计算分组步长。
+          group_addr_step_q   <= group_addr_step_next;
           current_group_width <= first_group_width;
           group_base_addr     <= base_addr_reg;
           state               <= S_RUN;
         end
 
         S_RUN: begin
+          // 两个逻辑槽位保存加载请求，发送使用第三个物理槽位。
+          case ({dma_start, load_done})
+            2'b10: pending_loads <= pending_loads + 2'd1;
+            2'b01: pending_loads <= pending_loads - 2'd1;
+            default: ;
+          endcase
+          case ({dma_start, buf_weight_sending_done})
+            2'b10: pending_sends <= pending_sends + 2'd1;
+            2'b01: pending_sends <= pending_sends - 2'd1;
+            default: ;
+          endcase
           if (load_done) begin
-            loaded_count <= loaded_count + 1'b1;
             if (final_load_done) begin
               all_loads_done <= 1'b1;
             end
           end
           if (dma_start) begin
-            issued_count <= issued_count + 1'b1;
+            issued_count <= issued_count_next;
             if (last_col_in_group && last_tile_row && last_l2_group && last_repeat)
               all_loads_issued <= 1'b1;
             if (!last_col_in_group) begin
@@ -336,7 +394,7 @@ module kernel_loader_ctrl #(
                   load_l2             <= load_l2 + 1'b1;
                   group_base_col      <= group_base_col + current_group_width;
                   current_group_width <= following_group_width;
-                  group_base_addr     <= group_base_addr + group_addr_step;
+                  group_base_addr     <= group_base_addr + group_addr_step_q;
                 end else begin
                   load_l2             <= '0;
                   group_base_col      <= '0;
@@ -351,8 +409,7 @@ module kernel_loader_ctrl #(
           end
 
           if (buf_weight_sending_done) begin
-            sent_count <= sent_count + 1'b1;
-            if (load_complete_after && (sent_count + total_count_t'(1) >= loaded_count_after)) begin
+            if (load_complete_after && sent_count_covers_loads) begin
               state <= S_DONE;
             end
           end
@@ -369,4 +426,234 @@ module kernel_loader_ctrl #(
     end
   end
 
+  // 已发出总数保留完整模宽；加载与发送数量由有界差值表示。
+  assign loaded_count = issued_count - total_count_t'(pending_loads);
+  assign sent_count = issued_count - total_count_t'(pending_sends);
+  kernel_count_increment #(.p_width(TOTAL_CNT_W)) u_issued_increment (
+      .i_value(issued_count), .o_next(issued_count_next)
+  );
+
+  // 比较完整无符号计数时，同时处理低端回绕后的大小关系。
+  assign issued_zero = issued_count == '0;
+  assign issued_one = issued_count == total_count_t'(1);
+  assign remaining_loads = pending_loads - 2'(load_done);
+  assign remaining_sends = pending_sends - 2'd1;
+  assign loads_wrap = (remaining_loads != 0 && issued_zero) ||
+      (remaining_loads == 2 && issued_one);
+  assign sends_wrap = (remaining_sends != 0 && issued_zero) ||
+      (remaining_sends == 2 && issued_one);
+  assign load_count_reached = pending_loads == 1 || (pending_loads == 2 && issued_zero);
+  assign sent_count_covers_loads = (sends_wrap != loads_wrap) ? sends_wrap :
+      (remaining_sends <= remaining_loads);
+
 endmodule
+
+// 六位一组形成进位条件，各组同时计算常量递增。
+module kernel_count_increment #(
+    parameter int p_width = 48
+) (
+    input  logic [p_width-1:0] i_value,
+    output logic [p_width-1:0] o_next
+);
+    localparam int p_parts = (p_width + 5) / 6;
+    localparam int p_groups = (p_parts + 5) / 6;
+`ifdef SYNTHESIS
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_fpga_increment = 1'b0;
+`else
+    localparam bit p_fpga_increment = 1'b1;
+`endif
+`else
+    localparam bit p_fpga_increment = 1'b0;
+`endif
+
+    if (p_fpga_increment) begin : g_fpga_increment
+        logic [p_parts-1:0] part_all;
+        logic [p_groups-1:0] group_all;
+        for (genvar part = 0; part < p_parts; part++) begin : g_part_all
+            logic [5:0] lut_i_bits;
+            logic lut_o_all;
+            for (genvar bit_index = 0; bit_index < 6; bit_index++) begin : g_input
+                if ((part*6 + bit_index) < p_width) begin : g_value
+                    assign lut_i_bits[bit_index] = i_value[part*6 + bit_index];
+                end else begin : g_padding
+                    assign lut_i_bits[bit_index] = 1'b1;
+                end
+            end
+            assign part_all[part] = lut_o_all;
+            LUT6 #(.INIT(64'h8000000000000000)) u_all (
+                .I0(lut_i_bits[0]), .I1(lut_i_bits[1]), .I2(lut_i_bits[2]),
+                .I3(lut_i_bits[3]), .I4(lut_i_bits[4]), .I5(lut_i_bits[5]), .O(lut_o_all)
+            );
+        end
+        for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group_all
+            logic [5:0] lut_i_bits;
+            logic lut_o_all;
+            for (genvar bit_index = 0; bit_index < 6; bit_index++) begin : g_input
+                if ((group_index*6 + bit_index) < p_parts) begin : g_value
+                    assign lut_i_bits[bit_index] = part_all[group_index*6 + bit_index];
+                end else begin : g_padding
+                    assign lut_i_bits[bit_index] = 1'b1;
+                end
+            end
+            assign group_all[group_index] = lut_o_all;
+            LUT6 #(.INIT(64'h8000000000000000)) u_all (
+                .I0(lut_i_bits[0]), .I1(lut_i_bits[1]), .I2(lut_i_bits[2]),
+                .I3(lut_i_bits[3]), .I4(lut_i_bits[4]), .I5(lut_i_bits[5]), .O(lut_o_all)
+            );
+        end
+        for (genvar part = 0; part < p_parts; part++) begin : g_increment
+            localparam int p_low = part*6;
+            localparam int p_part_width = ((p_width-p_low) < 6) ? p_width-p_low : 6;
+            logic carry_in, unused_carry;
+            if (part == 0) begin : g_first
+                assign carry_in = 1'b1;
+            end else begin : g_upper
+                localparam int p_full_groups = part/6;
+                localparam int p_tail_parts = part%6;
+                localparam int p_factors = p_full_groups+p_tail_parts;
+                logic [p_factors-1:0] carry_factors;
+                for (genvar index = 0; index < p_full_groups; index++) begin : g_complete
+                    assign carry_factors[index] = group_all[index];
+                end
+                for (genvar index = 0; index < p_tail_parts; index++) begin : g_tail
+                    assign carry_factors[p_full_groups+index] = part_all[p_full_groups*6+index];
+                end
+                if (p_factors == 1) begin : g_single
+                    assign carry_in = carry_factors[0];
+                end else if (p_factors <= 6) begin : g_lut
+                    logic [5:0] lut_i_bits;
+                    logic lut_o_all;
+                    for (genvar index = 0; index < 6; index++) begin : g_input
+                        if (index < p_factors) begin : g_value
+                            assign lut_i_bits[index] = carry_factors[index];
+                        end else begin : g_padding
+                            assign lut_i_bits[index] = 1'b1;
+                        end
+                    end
+                    assign carry_in = lut_o_all;
+                    LUT6 #(.INIT(64'h8000000000000000)) u_all (
+                        .I0(lut_i_bits[0]), .I1(lut_i_bits[1]), .I2(lut_i_bits[2]),
+                        .I3(lut_i_bits[3]), .I4(lut_i_bits[4]), .I5(lut_i_bits[5]), .O(lut_o_all)
+                    );
+                end else begin : g_large_width
+                    assign carry_in = &carry_factors;
+                end
+            end
+            assign {unused_carry, o_next[p_low +: p_part_width]} =
+                {1'b0, i_value[p_low +: p_part_width]} + (p_part_width+1)'(carry_in);
+        end
+    end else begin : g_generic_increment
+        assign o_next = i_value + p_width'(1);
+    end
+endmodule
+
+// FPGA 比较器并行计算四十七位差值，符号和零值由同一 DSP 提供。
+module kernel_count_compare #(
+    parameter int p_width = 48,
+    parameter int p_chunk_width = 8
+) (
+    input  logic [p_width-1:0] i_lhs,
+    input  logic [p_width-1:0] i_rhs,
+    output logic o_ge
+);
+`ifdef SYNTHESIS
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_fpga_compare = 1'b0;
+`else
+    localparam bit p_fpga_compare = 1'b1;
+`endif
+`else
+    localparam bit p_fpga_compare = 1'b0;
+`endif
+    localparam int p_compare_width = p_fpga_compare ? 47 : p_chunk_width;
+    localparam int p_chunks = (p_width + p_compare_width - 1) / p_compare_width;
+    localparam int p_leaves = 1 << $clog2(p_chunks);
+    logic [2*p_leaves-1:1] equal_tree;
+    logic [2*p_leaves-1:1] greater_tree;
+
+    for (genvar part = 0; part < p_leaves; part++) begin : g_compare
+        if (part < p_chunks) begin : g_value
+            localparam int p_low = part * p_compare_width;
+            localparam int p_part_width = ((p_width - p_low) < p_compare_width) ?
+                p_width - p_low : p_compare_width;
+            if (p_fpga_compare) begin : g_dsp
+                logic [47:0] rhs_extended;
+                logic [29:0] dsp_i_a, dsp_i_acin;
+                logic [17:0] dsp_i_b, dsp_i_bcin;
+                logic [47:0] dsp_i_c, dsp_i_pcin, dsp_o_p;
+                logic [24:0] dsp_i_d;
+                logic [6:0] dsp_i_opmode;
+                logic [4:0] dsp_i_inmode;
+                logic [3:0] dsp_i_alumode;
+                logic [2:0] dsp_i_carryinsel;
+                logic dsp_i_zero, dsp_o_equal;
+                logic [29:0] unused_acout;
+                logic [17:0] unused_bcout;
+                logic [47:0] unused_pcout;
+                logic [3:0] unused_carryout;
+                logic unused_carrycascout, unused_multsignout;
+                logic unused_overflow, unused_underflow, unused_patternbdetect;
+
+                assign rhs_extended = 48'(i_rhs[p_low +: p_part_width]);
+                assign dsp_i_a = rhs_extended[47:18];
+                assign dsp_i_b = rhs_extended[17:0];
+                assign dsp_i_c = 48'(i_lhs[p_low +: p_part_width]);
+                assign dsp_i_acin = 30'd0;
+                assign dsp_i_bcin = 18'd0;
+                assign dsp_i_pcin = 48'd0;
+                assign dsp_i_d = 25'd0;
+                assign dsp_i_opmode = 7'b0110011;
+                assign dsp_i_inmode = 5'd0;
+                assign dsp_i_alumode = 4'b0011;
+                assign dsp_i_carryinsel = 3'd0;
+                assign dsp_i_zero = 1'b0;
+                assign equal_tree[p_leaves + part] = dsp_o_equal;
+                assign greater_tree[p_leaves + part] = !dsp_o_p[47] && !dsp_o_equal;
+
+                DSP48E1 #(
+                    .A_INPUT("DIRECT"), .B_INPUT("DIRECT"), .USE_DPORT("FALSE"),
+                    .USE_MULT("NONE"), .USE_SIMD("ONE48"),
+                    .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .CREG(0), .DREG(0),
+                    .ADREG(0), .MREG(0), .PREG(0), .INMODEREG(0), .OPMODEREG(0),
+                    .ALUMODEREG(0), .CARRYINREG(0), .CARRYINSELREG(0),
+                    .USE_PATTERN_DETECT("PATDET"), .MASK(48'd0), .PATTERN(48'd0)
+                ) u_dsp (
+                    .A(dsp_i_a), .B(dsp_i_b), .C(dsp_i_c), .D(dsp_i_d),
+                    .ACIN(dsp_i_acin), .BCIN(dsp_i_bcin), .PCIN(dsp_i_pcin),
+                    .ALUMODE(dsp_i_alumode), .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode),
+                    .CARRYIN(dsp_i_zero), .CARRYINSEL(dsp_i_carryinsel),
+                    .CARRYCASCIN(dsp_i_zero), .MULTSIGNIN(dsp_i_zero), .CLK(dsp_i_zero),
+                    .CEA1(dsp_i_zero), .CEA2(dsp_i_zero), .CEB1(dsp_i_zero), .CEB2(dsp_i_zero),
+                    .CEC(dsp_i_zero), .CED(dsp_i_zero), .CEAD(dsp_i_zero), .CEM(dsp_i_zero),
+                    .CEP(dsp_i_zero), .CEINMODE(dsp_i_zero), .CECTRL(dsp_i_zero),
+                    .CEALUMODE(dsp_i_zero), .CECARRYIN(dsp_i_zero),
+                    .RSTA(dsp_i_zero), .RSTB(dsp_i_zero), .RSTC(dsp_i_zero), .RSTD(dsp_i_zero),
+                    .RSTM(dsp_i_zero), .RSTP(dsp_i_zero), .RSTINMODE(dsp_i_zero),
+                    .RSTCTRL(dsp_i_zero), .RSTALUMODE(dsp_i_zero), .RSTALLCARRYIN(dsp_i_zero),
+                    .P(dsp_o_p), .CARRYOUT(unused_carryout),
+                    .ACOUT(unused_acout), .BCOUT(unused_bcout), .PCOUT(unused_pcout),
+                    .CARRYCASCOUT(unused_carrycascout), .MULTSIGNOUT(unused_multsignout),
+                    .OVERFLOW(unused_overflow), .UNDERFLOW(unused_underflow),
+                    .PATTERNDETECT(dsp_o_equal), .PATTERNBDETECT(unused_patternbdetect)
+                );
+            end else begin : g_logic
+                assign equal_tree[p_leaves + part] =
+                    i_lhs[p_low +: p_part_width] == i_rhs[p_low +: p_part_width];
+                assign greater_tree[p_leaves + part] =
+                    i_lhs[p_low +: p_part_width] > i_rhs[p_low +: p_part_width];
+            end
+        end else begin : g_padding
+            assign equal_tree[p_leaves + part] = 1'b1;
+            assign greater_tree[p_leaves + part] = 1'b0;
+        end
+    end
+    for (genvar node = 1; node < p_leaves; node++) begin : g_merge
+        assign equal_tree[node] = equal_tree[2*node+1] && equal_tree[2*node];
+        assign greater_tree[node] = greater_tree[2*node+1] ||
+            (equal_tree[2*node+1] && greater_tree[2*node]);
+    end
+    assign o_ge = greater_tree[1] || equal_tree[1];
+endmodule
+
+`default_nettype wire

@@ -1,9 +1,11 @@
+`default_nettype none
+
 /*
  * ia_buffer_wrapper - 输入激活缓冲区包装器
- * 模拟 32位宽 × 128位深 的 Memory Compiler 生成的 SRAM 时序
+ * 默认提供 32 位宽、128 项的同步存储
  * 
  * 特性：
- * - 单端口读写（不支持同时读写）
+ * - 独立的写端口和同步读端口
  * - 写使能控制的同步写入
  * - 读取有1周期延迟（寄存器输出）
  * - 字节写使能支持
@@ -14,65 +16,64 @@ module ia_buffer_wrapper #(
     parameter int unsigned DEPTH = 128,       // 深度
     parameter int unsigned ADDR_WIDTH = $clog2(DEPTH)
 ) (
-    input  wire                      clk,
-    input  wire                      rst_n,
+    input  logic                      clk,
+    input  logic                      rst_n,
     
     // 写接口
-    input  wire                      wr_en,
-    input  wire [ADDR_WIDTH-1:0]     wr_addr,
-    input  wire [DATA_WIDTH-1:0]     wr_data,
-    input  wire [DATA_WIDTH/8-1:0]   wr_mask,  // 字节写使能
+    input  logic                      wr_en,
+    input  logic [ADDR_WIDTH-1:0]     wr_addr,
+    input  logic [DATA_WIDTH-1:0]     wr_data,
+    input  logic [DATA_WIDTH/8-1:0]   wr_mask,  // 字节写使能
     
     // 读接口
-    input  wire                      rd_en,
-    input  wire [ADDR_WIDTH-1:0]     rd_addr,
-    output reg  [DATA_WIDTH-1:0]     rd_data
+    input  logic                      rd_en,
+    input  logic [ADDR_WIDTH-1:0]     rd_addr,
+    output logic [DATA_WIDTH-1:0]     rd_data
 );
 
-`ifdef ASIC_SRAM
-    wire [DATA_WIDTH-1:0] macro_data;
-    wire [DATA_WIDTH-1:0] bit_mask;
-    reg read_valid;
-    for (genvar byte_index=0; byte_index<DATA_WIDTH/8; byte_index=byte_index+1) begin : g_write_mask
-        assign bit_mask[byte_index*8 +: 8] = {8{wr_mask[byte_index]}};
-    end
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) read_valid <= 1'b0;
-        else if (rd_en) read_valid <= 1'b1;
-    end
-    assign rd_data = read_valid ? macro_data : {DATA_WIDTH{1'b0}};
-    smic40_sram_1r1w #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH), .ADDR_WIDTH(ADDR_WIDTH)) u_sram (
-        .clk(clk), .write_enable(wr_en), .write_address(wr_addr), .write_data(wr_data),
-        .write_mask(bit_mask), .read_enable(rd_en && rst_n), .read_address(rd_addr), .read_data(macro_data));
-`else
-    // 内部存储阵列：不做复位清零，便于 FPGA 推断同步读 BRAM。
-    (* ram_style = "block" *) reg [DATA_WIDTH-1:0] mem [DEPTH];
-    
-    // 读数据寄存器（模拟1周期延迟）
-    reg [DATA_WIDTH-1:0] rd_data_reg;
-    
-    // 写操作（同步）
-    always_ff @(posedge clk) begin
-        if (wr_en) begin
-            for (int i = 0; i < DATA_WIDTH/8; i++) begin
-                if (wr_mask[i]) begin
-                    mem[wr_addr][i*8 +: 8] <= wr_data[i*8 +: 8];
-                end
-            end
-        end
-    end
-    
-    // 读操作（1周期延迟，模拟SRAM时序）
+    // 复位清除读出有效状态；存储内容保留，首个同步读取后更新输出。
+    logic read_valid;
+    logic storage_i_wr_en, storage_i_rd_en;
+    logic [ADDR_WIDTH-1:0] storage_i_wr_addr, storage_i_rd_addr;
+    logic [DATA_WIDTH-1:0] storage_i_wr_data, storage_o_rd_data;
+    assign storage_i_wr_en = wr_en;
+    assign storage_i_wr_addr = wr_addr;
+    assign storage_i_wr_data = wr_data;
+    assign storage_i_rd_en = rd_en && rst_n;
+    assign storage_i_rd_addr = rd_addr;
+    assign rd_data = read_valid ? storage_o_rd_data : '0;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            rd_data_reg <= '0;
+            read_valid <= 1'b0;
         end else if (rd_en) begin
-            rd_data_reg <= mem[rd_addr];
+            read_valid <= 1'b1;
         end
     end
-    
-    assign rd_data = rd_data_reg;
 
+`ifdef ASIC_SRAM
+    logic [DATA_WIDTH-1:0] storage_i_wr_mask;
+    for (genvar byte_index = 0; byte_index < DATA_WIDTH/8; byte_index++) begin : g_write_mask
+        assign storage_i_wr_mask[byte_index*8 +: 8] = {8{wr_mask[byte_index]}};
+    end
+    smic40_sram_1r1w #(
+        .DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH), .ADDR_WIDTH(ADDR_WIDTH)
+    ) u_storage (
+        .clk(clk), .write_enable(storage_i_wr_en), .write_address(storage_i_wr_addr),
+        .write_data(storage_i_wr_data), .write_mask(storage_i_wr_mask),
+        .read_enable(storage_i_rd_en), .read_address(storage_i_rd_addr), .read_data(storage_o_rd_data)
+    );
+`else
+    logic [DATA_WIDTH/8-1:0] storage_i_wr_mask;
+    assign storage_i_wr_mask = wr_mask;
+    REGFILE #(
+        .p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH), .p_write_unit(8)
+    ) u_storage (
+        .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),
+        .i_wr_data(storage_i_wr_data), .i_wr_mask(storage_i_wr_mask),
+        .i_rd_en(storage_i_rd_en), .i_rd_addr(storage_i_rd_addr), .o_rd_data(storage_o_rd_data)
+    );
 `endif
 
 endmodule
+
+`default_nettype wire

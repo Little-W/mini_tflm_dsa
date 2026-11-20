@@ -1,3 +1,5 @@
+`default_nettype none
+
 /*
  * bias_loader_buffer — 双 bank 数据存储
  * ============================================================
@@ -47,7 +49,8 @@ module bias_loader_buffer #(
 
   logic                         bank_loaded [2];
   logic [CNT_W-1:0]             bank_block_idx [2];
-  logic [CNT_W-1:0]             bank_blocks_count [2];
+  // 接收装载命令时保存扩展一位的末端位置，读取驻留判断直接使用该位置。
+  logic [CNT_W:0] bank_end_q [2];
   logic                         load_bank_q;
   logic                         load_word_valid_q [BUS_WIDTH/8];
   logic [REG_WIDTH-1:0]         load_word_row_q;
@@ -86,19 +89,19 @@ module bias_loader_buffer #(
       for (int b = 0; b < 2; b++) begin
         bank_loaded[b]    <= 1'b0;
         bank_block_idx[b] <= '0;
-        bank_blocks_count[b] <= '0;
+        bank_end_q[b] <= '0;
       end
     end else if (init_cfg) begin
       for (int b = 0; b < 2; b++) begin
         bank_loaded[b]    <= 1'b0;
         bank_block_idx[b] <= '0;
-        bank_blocks_count[b] <= '0;
+        bank_end_q[b] <= '0;
       end
     end else begin
       if (load_start) begin
         bank_loaded[load_bank]    <= 1'b0;
         bank_block_idx[load_bank] <= load_block_idx;
-        bank_blocks_count[load_bank] <= load_blocks_count;
+        bank_end_q[load_bank] <= {1'b0, load_block_idx} + {1'b0, load_blocks_count};
       end else if (load_done_q) begin
         bank_loaded[load_bank_q] <= 1'b1;
       end
@@ -122,6 +125,7 @@ module bias_loader_buffer #(
   localparam int BLOCK_ADDR_W = (GROUP_BLOCKS_MAX > 1) ? $clog2(GROUP_BLOCKS_MAX) : 1;
 
   logic [1:0] load_window_hit;
+  logic [1:0] current_window_hit;
   logic resident_current;
   logic [BLOCK_ADDR_W-1:0] current_block_offset;
   logic [GROUP_ADDR_W-1:0] current_word_base;
@@ -151,17 +155,20 @@ module bias_loader_buffer #(
   logic [READ_INDEX_W-1:0] ws_issue_index;
   logic [BANK_ADDR_W-1:0] ws_read_base;
   logic [RAM_WIDTH-1:0] ws_cache_pair [READS_PER_BLOCK];
+  logic [RAM_WIDTH-1:0] ws_cache_update_data;
 
   for (genvar b = 0; b < 2; b++) begin : gen_window_hit
     assign load_window_hit[b] = bank_loaded[b] &&
         load_block_idx >= bank_block_idx[b] &&
         {1'b0, load_block_idx} + {1'b0, group_blocks_needed} <=
-        {1'b0, bank_block_idx[b]} + {1'b0, bank_blocks_count[b]};
+        bank_end_q[b];
+    // 两个银行并行判断驻留范围，银行选择仅作用于最终的一位结果。
+    assign current_window_hit[b] = bank_loaded[b] &&
+        current_block_idx >= bank_block_idx[b] &&
+        {1'b0, current_block_idx} + {1'b0, group_blocks_needed} <=
+        bank_end_q[b];
   end
-  assign resident_current = bank_loaded[active_bank] &&
-      current_block_idx >= bank_block_idx[active_bank] &&
-      {1'b0, current_block_idx} + {1'b0, group_blocks_needed} <=
-      {1'b0, bank_block_idx[active_bank]} + {1'b0, bank_blocks_count[active_bank]};
+  assign resident_current = current_window_hit[active_bank];
   assign load_block_valid = |load_window_hit;
   assign load_block_bank = !load_window_hit[0];
   assign current_block_offset = BLOCK_ADDR_W'(
@@ -210,15 +217,26 @@ module bias_loader_buffer #(
     end
   end
 
-  (* ram_style = "block" *) logic [RAM_WIDTH-1:0] bias_words [2*(1<<BANK_ADDR_W)];
-  always_ff @(posedge clk) begin
-    for (int byte_i = 0; byte_i < RAM_BYTES; byte_i++) begin
-      if (write_enable[byte_i])
-        bias_words[write_address][byte_i*8 +: 8] <= write_data[byte_i*8 +: 8];
-    end
-    if (read_enable)
-      read_data <= bias_words[read_address];
-  end
+  // 偏置存储按字节写入并同步读取，具体存储资源由综合工具选择。
+  logic storage_i_wr_en, storage_i_rd_en;
+  logic [RAM_ADDR_W-1:0] storage_i_wr_addr, storage_i_rd_addr;
+  logic [RAM_WIDTH-1:0] storage_i_wr_data, storage_o_rd_data;
+  logic [RAM_BYTES-1:0] storage_i_wr_mask;
+  assign storage_i_wr_en = |write_enable;
+  assign storage_i_wr_addr = write_address;
+  assign storage_i_wr_data = write_data;
+  assign storage_i_wr_mask = write_enable;
+  assign storage_i_rd_en = read_enable;
+  assign storage_i_rd_addr = read_address;
+  assign read_data = storage_o_rd_data;
+  REGFILE #(
+      .p_data_width(RAM_WIDTH), .p_depth(2*(1<<BANK_ADDR_W)),
+      .p_addr_width(RAM_ADDR_W), .p_write_unit(8)
+  ) u_storage (
+      .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),
+      .i_wr_data(storage_i_wr_data), .i_wr_mask(storage_i_wr_mask),
+      .i_rd_en(storage_i_rd_en), .i_rd_addr(storage_i_rd_addr), .o_rd_data(storage_o_rd_data)
+  );
 
   assign ws_read_start = !is_mode && resident_current && !ws_cache_hit &&
       !ws_busy && !ws_loading;
@@ -292,6 +310,8 @@ module bias_loader_buffer #(
     end
   end
 
+  // DMA 装载与存储返回分别占用准备阶段，所有偏置数据对共用数据源选择。
+  assign ws_cache_update_data = ws_loading ? write_data : read_data;
   for (genvar pair_i = 0; pair_i < READS_PER_BLOCK; pair_i++) begin : gen_ws_pair
     for (genvar byte_i = 0; byte_i < RAM_BYTES; byte_i++) begin : gen_ws_byte
       always_ff @(posedge clk) begin
@@ -299,9 +319,9 @@ module bias_loader_buffer #(
           if (ws_loading && load_word_row_q == '0 &&
               write_address[BANK_ADDR_W-1:0] == BANK_ADDR_W'(pair_i) &&
               write_enable[byte_i])
-            ws_cache_pair[pair_i][byte_i*8 +: 8] <= write_data[byte_i*8 +: 8];
+            ws_cache_pair[pair_i][byte_i*8 +: 8] <= ws_cache_update_data[byte_i*8 +: 8];
           else if (ws_response_valid && ws_response_index == READ_INDEX_W'(pair_i))
-            ws_cache_pair[pair_i][byte_i*8 +: 8] <= read_data[byte_i*8 +: 8];
+            ws_cache_pair[pair_i][byte_i*8 +: 8] <= ws_cache_update_data[byte_i*8 +: 8];
         end
       end
     end
@@ -313,3 +333,5 @@ module bias_loader_buffer #(
   assign group_data_scalar = $signed(read_data[scalar_half_q*DATA_WIDTH +: DATA_WIDTH]);
 
 endmodule
+
+`default_nettype wire

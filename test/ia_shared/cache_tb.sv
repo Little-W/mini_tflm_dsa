@@ -1,6 +1,7 @@
 module ia_shared_cache_tb #(
     parameter int BANK_BYTES=2048,
     parameter int BANK_COUNT=7,
+    parameter int COMPACT_OFFSET_WIDTH=16,
     localparam int CACHE_BLOCKS=4*BANK_BYTES/512,
     localparam int SLOT_BLOCKS=2*CACHE_BLOCKS,
     localparam int SLOT_BITS=$clog2(SLOT_BLOCKS),
@@ -43,7 +44,8 @@ module ia_shared_cache_tb #(
 
     ia_loader_cache_mgr #(
         .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(32), .CACHE_BLOCKS(CACHE_BLOCKS),
-        .COMPACT_S8(1), .EXTERNAL_RAM(1), .RAM_WORD_ADDR_WIDTH(WORD_BITS)
+        .COMPACT_S8(1), .EXTERNAL_RAM(1), .RAM_WORD_ADDR_WIDTH(WORD_BITS),
+        .p_compact_offset_width(COMPACT_OFFSET_WIDTH)
     ) u_shared_manager (
         .clk, .rst_n, .compact_mode, .compact_offset, .cfg_cache_blocks,
         .ram_port_wr_en(ia_write_en), .ram_port_wr_addr(ia_write_addr),

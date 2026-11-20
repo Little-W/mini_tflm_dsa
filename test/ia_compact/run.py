@@ -23,11 +23,12 @@ def main():
     parser.add_argument('--loader-cache-blocks',type=int,choices=(4,16,32,64),default=4)
     args = parser.parse_args()
     out = args.out.resolve()
-    common = [ROOT / 'rtl/common/pseudo_dual_port_ram.v',
+    common = [ROOT / 'rtl/common/REGFILE.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v',
               ROOT / 'rtl/npu/loaders/ia_loader_cache_mgr.sv']
     targets = {
         'cache': ('ia_loader_cache_mgr', common, HERE / 'cache_test.cpp'),
         'loader': ('ia_compact_loader_tb', common + [
+            ROOT / 'rtl/common/add_equal.sv',
             ROOT / 'rtl/npu/loaders/ia_loader.sv', ROOT / 'rtl/npu/loaders/ia_loader_ctrl.sv',
             HERE / 'loader_tb.sv'], HERE / 'loader_test.cpp'),
     }

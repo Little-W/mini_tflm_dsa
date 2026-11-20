@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 module kernel_prefetch_tb #(
-    parameter int BUS_WIDTH = 64
+    parameter int BUS_WIDTH = 64,
+    parameter int COUNT_WIDTH = 29
 ) (
     input logic clk,rst_n,init_cfg,cfg_command_mode,cache_flush,
     input logic prefetch_valid,
@@ -33,7 +34,8 @@ module kernel_prefetch_tb #(
     output wire [47:0] dbg_loaded_count,dbg_sent_count,
     output wire [15:0] dbg_ram_write_en,dbg_ram_read_en
 );
-    kernel_loader #(.DATA_WIDTH(16),.SIZE(16),.BUS_WIDTH(BUS_WIDTH),.REG_WIDTH(32),.COUNT_WIDTH(16)) dut (.*);
+    logic o_prefetch_quiescent;
+    kernel_loader #(.DATA_WIDTH(16),.SIZE(16),.BUS_WIDTH(BUS_WIDTH),.REG_WIDTH(32),.COUNT_WIDTH(COUNT_WIDTH)) dut (.*);
     assign dbg_top_state=dut.top_state;
     assign dbg_ctrl_state=dut.u_ctrl.state;
     assign dbg_prefetch_state=dut.prefetch_state;
@@ -57,7 +59,7 @@ module kernel_prefetch_tb #(
     assign dbg_loaded_count=dut.u_ctrl.loaded_count;
     assign dbg_sent_count=dut.u_ctrl.sent_count;
     for(genvar bank=0;bank<16;bank=bank+1) begin : g_monitor
-        assign dbg_ram_write_en[bank]=dut.u_buf.gen_row_ram[bank].u_row_ram.wr_en;
-        assign dbg_ram_read_en[bank]=dut.u_buf.row_rd_en && !cache_flush;
+        assign dbg_ram_write_en[bank]=dut.u_buf.g_column_ram[bank].u_column.i_wr_en;
+        assign dbg_ram_read_en[bank]=dut.u_buf.emit_fire && !cache_flush;
     end
 endmodule

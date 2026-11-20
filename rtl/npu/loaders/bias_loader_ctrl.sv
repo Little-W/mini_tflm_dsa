@@ -82,6 +82,11 @@ module bias_loader_ctrl #(
   wire split_tail_group = load_window_last &&
                           (load_blocks_count > count_t'(1)) &&
                           (last_block_elems != count_t'(SIZE));
+  logic [REG_WIDTH-1:0] load_rows_full;
+  logic [REG_WIDTH-1:0] load_rows_without_tail;
+  // 完整行数和扣除尾块后的行数并行计算，范围判断只选择最终结果。
+  assign load_rows_full = REG_WIDTH'(load_blocks_count);
+  assign load_rows_without_tail = load_rows_full - REG_WIDTH'(1);
   assign load_group_done = dma_done && !tail_pending;
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -186,7 +191,7 @@ module bias_loader_ctrl #(
 
           S_CMD: begin
             dma_base_addr    <= cfg_bias_base + (REG_WIDTH'(load_block_idx) << BLOCK_ADDR_SHIFT);
-            dma_rows_to_read <= REG_WIDTH'(load_blocks_count) - (split_tail_group ? REG_WIDTH'(1) : '0);
+            dma_rows_to_read <= split_tail_group ? load_rows_without_tail : load_rows_full;
             dma_row_offset  <= '0;
             tail_pending    <= split_tail_group;
             if (group_blocks_needed == '0) begin

@@ -13,6 +13,7 @@ module ia_loader_cache_mgr #(
     parameter int unsigned COMPACT_S8 = 1,
     parameter bit EXTERNAL_RAM = 1'b0,
     parameter int unsigned RAM_WORD_ADDR_WIDTH = 10,
+    parameter int unsigned p_compact_offset_width = DATA_WIDTH,
     localparam int unsigned SLOT_BLOCKS =
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS
 ) (
@@ -81,6 +82,25 @@ module ia_loader_cache_mgr #(
   logic              ram_rd_en_d1 [SIZE];
   logic [ADDR_W-1:0] ram_rd_addr [SIZE];
   logic signed [DATA_WIDTH-1:0] ram_rd_data [SIZE];
+  logic [7:0] compact_read_byte [SIZE];
+  logic signed [DATA_WIDTH-1:0] compact_read_data [SIZE];
+
+  // 偏移有效位宽由调用者给出，默认保留完整输入位宽。
+  // 有符号字节与偏移先在足够的结果位宽中相加，再扩展为阵列数据位宽。
+  for (genvar lane = 0; lane < SIZE; lane++) begin : g_compact_read
+    localparam int unsigned p_sum_width =
+        ((p_compact_offset_width > 8) ? p_compact_offset_width : 8) + 1;
+    logic signed [p_sum_width:0] byte_extended;
+    logic signed [p_sum_width:0] offset_extended;
+    logic signed [p_sum_width-1:0] restored_sum;
+    logic unused_restore_carry;
+
+    assign byte_extended = (p_sum_width + 1)'($signed(compact_read_byte[lane]));
+    assign offset_extended =
+        (p_sum_width + 1)'($signed(compact_offset[p_compact_offset_width-1:0]));
+    assign {unused_restore_carry, restored_sum} = byte_extended + offset_extended;
+    assign compact_read_data[lane] = DATA_WIDTH'($signed(restored_sum));
+  end
 
   generate if (!EXTERNAL_RAM) begin : g_local_ram
     assign ram_port_wr_en = '0;
@@ -95,6 +115,7 @@ module ia_loader_cache_mgr #(
         logic read_bank_q;
         wire [7:0] original_s8 = 8'(ram_wr_data[j] - compact_offset);
         wire [7:0] selected_byte = read_bank_q ? bank_data[1] : bank_data[0];
+        assign compact_read_byte[j] = selected_byte;
         always_ff @(posedge clk) begin
           if (!rst_n) read_bank_q <= 1'b0;
           else if (ram_rd_en[j]) read_bank_q <= ram_rd_addr[j][PHYSICAL_ADDR_W];
@@ -111,9 +132,10 @@ module ia_loader_cache_mgr #(
               .addrb(ram_rd_addr[j][PHYSICAL_ADDR_W-1:0]), .dob(bank_data[b]));
         end
         assign ram_rd_data[j] = compact_mode
-            ? DATA_WIDTH'($signed(selected_byte) + $signed(compact_offset))
+            ? compact_read_data[j]
             : {bank_data[1], bank_data[0]};
       end else begin : g_word_bank
+        assign compact_read_byte[j] = '0;
         pseudo_dual_port_ram #(.DATA_WIDTH(DATA_WIDTH), .ADDR_WIDTH(ADDR_W)) u_ram (
             .clk(clk), .ena(ram_wr_en[j]), .enb(ram_rd_en[j]), .wea(1'b1),
             .addra(ram_wr_addr[j]), .dia(ram_wr_data[j]),
@@ -125,8 +147,38 @@ module ia_loader_cache_mgr #(
     logic [RAM_WORD_ADDR_WIDTH-1:0] write_addr [0:1];
     logic [127:0] write_data [0:1];
     logic [15:0] write_mask [0:1];
-    // A registered write command separates DMA lane routing from bank routing.
-    // Row issue starts after the completed fill and its existing address stage.
+    logic [7:0] compact_empty_byte;
+    logic [SIZE*8-1:0] compact_source_data, compact_shifted_data;
+    logic [7:0] compact_write_byte [SIZE];
+    logic compact_add_i_zero, compact_add_i_one;
+
+    // 紧凑字节先完成偏移运算，再由有效位和列位置选择。
+    // 异或编码使移位补入的零恢复为零数据对应的紧凑字节。
+    assign compact_empty_byte = 8'(0 - compact_offset);
+    assign compact_add_i_zero = 1'b0;
+    assign compact_add_i_one = 1'b1;
+    for (genvar lane = 0; lane < SIZE; lane++) begin : g_compact_write
+      if (lane < BYTE_PER_BEAT) begin : g_source
+        logic signed [7:0] compact_add_i_lhs;
+        logic [7:0] original_byte;
+
+        // 偏移的模 256 相反数提前生成，组合加法保持完整输入的低八位差值。
+        assign compact_add_i_lhs = 8'(wr_data[lane]);
+        select_add #(.p_width(8)) u_compact_add (
+          .i_lhs(compact_add_i_lhs),
+          .i_rhs0(compact_empty_byte), .i_rhs1(compact_empty_byte),
+          .i_rhs_select(compact_add_i_zero), .i_add_enable(compact_add_i_one),
+          .o_sum(original_byte)
+        );
+        assign compact_source_data[lane*8 +: 8] = wr_valid[lane] ?
+            original_byte ^ compact_empty_byte : 8'd0;
+      end else begin : g_unused_source
+        assign compact_source_data[lane*8 +: 8] = 8'd0;
+      end
+      assign compact_write_byte[lane] = compact_shifted_data[lane*8 +: 8] ^ compact_empty_byte;
+    end
+    assign compact_shifted_data = compact_source_data << (int'(wr_col_base) * 8);
+    // 写命令在同一时钟沿保存地址、数据与掩码，未写入的端口保持原命令。
     always_ff @(posedge clk) begin
       if(!rst_n) ram_port_wr_en<='0;
       else ram_port_wr_en<=write_en;
@@ -149,20 +201,45 @@ module ia_loader_cache_mgr #(
     assign ram_port_rd_en = {ram_rd_en[0] && !compact_mode, ram_rd_en[0]};
     assign ram_port_rd_addr[0] = read_row_word;
     assign ram_port_rd_addr[1] = read_row_word + RAM_WORD_ADDR_WIDTH'(1);
-    assign write_en[0] = |write_mask[0];
-    assign write_en[1] = |write_mask[1];
+    // 常量列区间提前判断输入通道属于哪个端口，写使能不等待完整掩码排列。
+    if (SIZE == 16 && DATA_WIDTH == 16) begin : g_write_port_range
+      logic [SIZE-1:0] write_first_half, write_second_half, write_compact_row;
+
+      for (genvar lane = 0; lane < SIZE; lane++) begin : g_lane
+        if (lane < BYTE_PER_BEAT) begin : g_input
+          assign write_compact_row[lane] = wr_valid[lane] && wr_col_base <= LOG2_SIZE'(SIZE-1-lane);
+          if (lane < 8) begin : g_first_source
+            assign write_first_half[lane] = wr_valid[lane] && wr_col_base <= LOG2_SIZE'(7-lane);
+            assign write_second_half[lane] = wr_valid[lane] &&
+                wr_col_base >= LOG2_SIZE'(8-lane) && wr_col_base <= LOG2_SIZE'(15-lane);
+          end else begin : g_second_source
+            assign write_first_half[lane] = 1'b0;
+            assign write_second_half[lane] = wr_valid[lane] && wr_col_base <= LOG2_SIZE'(15-lane);
+          end
+        end else begin : g_unused_source
+          assign write_first_half[lane] = 1'b0;
+          assign write_second_half[lane] = 1'b0;
+          assign write_compact_row[lane] = 1'b0;
+        end
+      end
+      assign write_en[0] = compact_mode ? (|write_compact_row) : (|write_first_half);
+      assign write_en[1] = !compact_mode && (|write_second_half);
+    end else begin : g_write_port_mask
+      assign write_en[0] = |write_mask[0];
+      assign write_en[1] = |write_mask[1];
+    end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_write_lane
       if (lane < 8) begin : g_first_half
         assign write_data[0][lane*16 +: 16] = compact_mode ?
-            {8'(ram_wr_data[lane*2+1] - compact_offset), 8'(ram_wr_data[lane*2] - compact_offset)} : ram_wr_data[lane];
+            {compact_write_byte[lane*2+1], compact_write_byte[lane*2]} : ram_wr_data[lane];
         assign write_mask[0][lane*2 +: 2] = compact_mode ?
             {ram_wr_en[lane*2+1], ram_wr_en[lane*2]} : {2{ram_wr_en[lane]}};
       end else begin : g_second_half
         assign write_data[1][(lane-8)*16 +: 16] = ram_wr_data[lane];
         assign write_mask[1][(lane-8)*2 +: 2] = {2{ram_wr_en[lane] && !compact_mode}};
       end
-      assign row_data[lane] = compact_mode ?
-          DATA_WIDTH'($signed(ram_port_rd_data[0][lane*8 +: 8]) + $signed(compact_offset)) :
+      assign compact_read_byte[lane] = ram_port_rd_data[0][lane*8 +: 8];
+      assign row_data[lane] = compact_mode ? compact_read_data[lane] :
           ram_port_rd_data[lane/8][(lane%8)*16 +: 16];
     end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_row
@@ -179,18 +256,28 @@ module ia_loader_cache_mgr #(
   // =====================================================================
   // 写逻辑：将 wr_data/wr_valid 分派到对应的 RAM bank
   // =====================================================================
-  for (genvar col = 0; col < SIZE; col++) begin : g_write_select
-    always_comb begin
-      ram_wr_en[col] = 1'b0;
-      ram_wr_addr[col] = ADDR_W'({wr_slot, wr_row});
-      ram_wr_data[col] = '0;
-      for (int lane = 0; lane < BYTE_PER_BEAT; lane++) begin
-        if (col >= lane && wr_col_base == LOG2_SIZE'(col - lane) && wr_valid[lane]) begin
-          ram_wr_en[col] = 1'b1;
-          ram_wr_data[col] = wr_data[lane];
-        end
-      end
+  localparam int p_row_data_width = SIZE * DATA_WIDTH;
+  logic [p_row_data_width-1:0] write_source_data;
+  logic [p_row_data_width-1:0] write_shifted_data;
+  logic [SIZE-1:0] write_source_mask;
+  logic [SIZE-1:0] write_shifted_mask;
+
+  // 一次列偏移同时排列整组数据与有效位，超出当前行的数据自然移出。
+  for (genvar lane = 0; lane < SIZE; lane++) begin : g_write_source
+    if (lane < BYTE_PER_BEAT) begin : g_input
+      assign write_source_data[lane*DATA_WIDTH+:DATA_WIDTH] = wr_valid[lane] ? wr_data[lane] : '0;
+      assign write_source_mask[lane] = wr_valid[lane];
+    end else begin : g_padding
+      assign write_source_data[lane*DATA_WIDTH+:DATA_WIDTH] = '0;
+      assign write_source_mask[lane] = 1'b0;
     end
+  end
+  assign write_shifted_data = write_source_data << (int'(wr_col_base) * DATA_WIDTH);
+  assign write_shifted_mask = write_source_mask << wr_col_base;
+  for (genvar col = 0; col < SIZE; col++) begin : g_write_select
+    assign ram_wr_en[col] = write_shifted_mask[col];
+    assign ram_wr_addr[col] = ADDR_W'({wr_slot, wr_row});
+    assign ram_wr_data[col] = write_shifted_data[col*DATA_WIDTH+:DATA_WIDTH];
   end
 
   // =====================================================================
@@ -204,15 +291,23 @@ module ia_loader_cache_mgr #(
   logic [ROW_CNT_W-1:0] slot_written_cols [SLOT_BLOCKS];
   logic [ROW_CNT_W-1:0] write_extent, read_extent_q;
   logic any_lane_write;
-  always_comb begin
-    write_extent='0;
-    any_lane_write=1'b0;
-    for(int lane=0;lane<BYTE_PER_BEAT;lane++) begin
-      if(wr_valid[lane] && int'(wr_col_base)+lane<SIZE) begin
-        any_lane_write=1'b1;
-        write_extent=ROW_CNT_W'(int'(wr_col_base)+lane+1);
-      end
+  logic [SIZE-1:0] write_last_column;
+  assign any_lane_write = |write_shifted_mask;
+  // 有效位已经排列到物理列，最高有效列直接编码本次写入范围。
+  for (genvar col = 0; col < SIZE; col++) begin : g_write_extent_last
+    if (col + 1 < SIZE) begin : g_has_later_column
+      assign write_last_column[col] = write_shifted_mask[col] && !(|write_shifted_mask[SIZE-1:col+1]);
+    end else begin : g_final_column
+      assign write_last_column[col] = write_shifted_mask[col];
     end
+  end
+  for (genvar bit_index = 0; bit_index < ROW_CNT_W; bit_index++) begin : g_write_extent_bit
+    logic [SIZE-1:0] column_matches;
+
+    for (genvar col = 0; col < SIZE; col++) begin : g_column
+      assign column_matches[col] = write_last_column[col] && (((col + 1) >> bit_index) & 1) != 0;
+    end
+    assign write_extent[bit_index] = |column_matches;
   end
   always_ff @(posedge clk) begin
     if (rst_n && any_lane_write && wr_row=='0)

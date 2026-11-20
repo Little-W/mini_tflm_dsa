@@ -56,10 +56,11 @@ public:
     bool grant_enabled=true,random_waits=true;
     std::uint64_t cycles=0,dma_starts=0,dma_completions=0,prefetch_starts=0;
     std::uint64_t captures=0,hits=0,discards=0,logical_loads=0,tiles_sent=0,checked_values=0;
-    std::uint64_t ram_write_rows=0,ram_read_rows=0,overlap_cycles=0,max_valid_slots=0;
+    std::uint64_t ram_write_words=0,ram_read_words=0,overlap_cycles=0,max_valid_slots=0;
     std::uint64_t max_dma_contexts=0,overlapping_dma_starts=0;
     std::uint64_t default_tiles=0,cached_hit_cases=0,inflight_hit_cases=0,pending_cases=0;
     std::uint64_t mismatch_cases=0,delayed_prediction_cases=0,flush_cases=0,random_cases=0;
+    std::uint64_t comparison_change_cases=0,comparison_cancel_cases=0;
     std::uint64_t s8_tiles=0,s16_tiles=0,im2col_tiles=0,tail_tiles=0,flush_drain_cycles=0;
 
     Check() {reset();}
@@ -138,8 +139,8 @@ public:
             require(!dut.load_weight_done,"A speculative completion advanced demand progress");
         if(dut.cache_flush || dut.dbg_transfer_discard)
             require(!dut.dbg_ram_write_en,"Flushed DMA data wrote the kernel RAM");
-        ram_write_rows+=unsigned(__builtin_popcount(dut.dbg_ram_write_en));
-        ram_read_rows+=unsigned(__builtin_popcount(dut.dbg_ram_read_en));
+        ram_write_words+=unsigned(__builtin_popcount(dut.dbg_ram_write_en));
+        ram_read_words+=unsigned(__builtin_popcount(dut.dbg_ram_read_en));
         require(dut.dbg_valid_count<=2,"Kernel buffer exceeded two physical slots");
         max_valid_slots=std::max(max_valid_slots,std::uint64_t(dut.dbg_valid_count));
         overlap_cycles+=bool(transfer)&&bool(dut.store_weight_req);
@@ -388,6 +389,49 @@ int main(int argc,char **argv) {
             if(miss) check.dma_expected.push_back({next,false,unsigned(check.random()%6)});
             check.run(next);check.finish_case();++check.random_cases;
         }
+        for(bool use16:{false,true}) for(bool im2col:{false,true}) {
+            const auto a=make_tag(600+2*use16+im2col,use16,im2col);
+            auto b=next_tag(a,6,10);
+            check.prediction(a);check.dma_expected.push_back({a,false,0});check.run(a);check.idle(3);
+            const auto captures=check.captures;
+            for(unsigned field=0;field<5;++field) {
+                if(field==0) b.base+=64;
+                if(field==1) b.p0+=1;
+                if(field==2) b.q0+=1;
+                if(field==3) b.rows+=1;
+                if(field==4) b.cols+=1;
+                check.prediction(b);check.dut.eval();
+                require(!check.dut.prefetch_idle && !check.dut.dbg_prefetch_capture,
+                        "A changed candidate did not wait for its comparison");
+                check.tick();
+                require(check.captures==captures,"A changing candidate was captured before comparison");
+            }
+            check.dma_expected.push_back({b,true,0});check.wait_cached();
+            check.prediction(std::nullopt);check.run(b);check.finish_case();++check.comparison_change_cases;
+        }
+        for(unsigned phase=0;phase<4;++phase) {
+            const auto a=make_tag(620+phase,phase%2,phase>=2);
+            const auto b=next_tag(a,7,9),c=make_tag(640+phase,!a.use16,!a.im2col,5,11);
+            check.prediction(a);check.dma_expected.push_back({a,false,0});check.run(a);check.idle(3);
+            const auto captures=check.captures;
+            check.prediction(b);check.dut.eval();
+            require(!check.dut.prefetch_idle && !check.dut.dbg_prefetch_capture,
+                    "A comparison cancellation case lacked a waiting candidate");
+            check.tick();
+            if(phase==0) {
+                check.prediction(std::nullopt);check.idle(3);
+            } else if(phase==1) {
+                check.prediction(std::nullopt);check.flush();
+                check.dma_expected.push_back({c,false,0});check.run(c);
+            } else if(phase==2) {
+                check.dma_expected.push_back({c,false,0});check.configure(c);
+                check.prediction(std::nullopt);check.send();check.finish_command();
+            } else {
+                check.reset();check.dma_expected.push_back({c,false,0});check.run(c);
+            }
+            require(check.captures==captures,"A cancelled comparison created a prefetch");
+            check.finish_case();++check.comparison_cancel_cases;
+        }
         require(check.checked_values==check.tiles_sent*256 && check.logical_loads==check.tiles_sent,
                 "Demand completion totals differ from consumed tiles");
         require(check.max_valid_slots==2 && check.hits>0 && check.discards>0 && check.overlap_cycles>0,
@@ -400,14 +444,16 @@ int main(int argc,char **argv) {
             <<",\"dma_completions\":"<<check.dma_completions<<",\"prefetch_starts\":"<<check.prefetch_starts
             <<",\"prefetch_captures\":"<<check.captures<<",\"cache_hits\":"<<check.hits<<",\"cache_discards\":"<<check.discards
             <<",\"logical_loads\":"<<check.logical_loads<<",\"tiles_sent\":"<<check.tiles_sent
-            <<",\"checked_values\":"<<check.checked_values<<",\"kernel_ram_write_rows\":"<<check.ram_write_rows
-            <<",\"kernel_ram_read_rows\":"<<check.ram_read_rows<<",\"dma_send_overlap_cycles\":"<<check.overlap_cycles
+            <<",\"checked_values\":"<<check.checked_values<<",\"kernel_ram_write_words\":"<<check.ram_write_words
+            <<",\"kernel_ram_read_words\":"<<check.ram_read_words<<",\"dma_send_overlap_cycles\":"<<check.overlap_cycles
             <<",\"max_valid_slots\":"<<check.max_valid_slots<<",\"default_disabled_tiles\":"<<check.default_tiles
             <<",\"max_dma_contexts\":"<<check.max_dma_contexts<<",\"overlapping_dma_starts\":"<<check.overlapping_dma_starts
             <<",\"cached_hit_cases\":"<<check.cached_hit_cases<<",\"inflight_hit_cases\":"<<check.inflight_hit_cases
             <<",\"pending_cases\":"<<check.pending_cases<<",\"mismatch_cases\":"<<check.mismatch_cases
             <<",\"delayed_prediction_cases\":"<<check.delayed_prediction_cases<<",\"flush_cases\":"<<check.flush_cases
-            <<",\"random_cases\":"<<check.random_cases<<",\"s8_tiles\":"<<check.s8_tiles
+            <<",\"random_cases\":"<<check.random_cases
+            <<",\"comparison_change_cases\":"<<check.comparison_change_cases
+            <<",\"comparison_cancel_cases\":"<<check.comparison_cancel_cases<<",\"s8_tiles\":"<<check.s8_tiles
             <<",\"s16_tiles\":"<<check.s16_tiles<<",\"im2col_tiles\":"<<check.im2col_tiles
             <<",\"tail_tiles\":"<<check.tail_tiles<<",\"flush_drain_cycles\":"<<check.flush_drain_cycles<<"}\n";
     } catch(const std::exception &error) {std::cerr<<error.what()<<'\n';return 1;}

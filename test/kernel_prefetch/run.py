@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import time
 
@@ -18,7 +19,9 @@ def main():
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--compiler", default="g++")
     parser.add_argument("--bus-width", type=int, choices=(32,64,128), default=64)
+    parser.add_argument("--count-width", type=int, default=29)
     parser.add_argument("--reuse-build", action="store_true")
+    parser.add_argument("--fpga", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     test = root / "test/kernel_prefetch"
@@ -30,8 +33,22 @@ def main():
         root / "rtl/npu/loaders/kernel_loader.sv",
         root / "rtl/npu/loaders/kernel_loader_buffer.sv",
         root / "rtl/npu/loaders/kernel_loader_ctrl.sv",
+        root / "rtl/common/REGFILE.v",
+        root / "rtl/common/add_equal.sv",
+        root / "rtl/common/add3_equal.sv",
     ]
     before = {str(path.relative_to(root)): digest(path) for path in sources}
+    primitive_sources = []
+    primitive_library_sha256 = None
+    if args.fpga:
+        import pyosys
+        library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
+        model = out / 'xilinx_models.sv'
+        model.write_text('\n\n'.join(re.search(r'^module ' + name + r'\b.*?^endmodule',
+                         library.read_text(), re.M | re.S).group(0)
+                         for name in ('LUT1', 'LUT6', 'LUT6_2', 'MUXF7', 'MUXF8', 'DSP48E1')) + '\n')
+        primitive_sources = ['-DSYNTHESIS', str(model)]
+        primitive_library_sha256 = digest(library)
     rules = out / "compile_rules.mk"
     rules.write_text("""%.o: %.cpp
 	$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<
@@ -45,17 +62,21 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
     flags = f"-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BUS_WIDTH={args.bus_width}"
     command = [
         args.verilator, "--cc", "--exe", "--build", "-j", "1", "--assert", "-Wno-fatal",
-        "--top-module", "kernel_prefetch_tb", f"-GBUS_WIDTH={args.bus_width}", "--Mdir", str(obj),
+        "--top-module", "kernel_prefetch_tb", f"-GBUS_WIDTH={args.bus_width}",
+        f"-GCOUNT_WIDTH={args.count_width}", "--Mdir", str(obj),
         "--output-groups", "0", "--output-split", "10000", "--output-split-cfuncs", "1000",
         "-CFLAGS", flags, "-LDFLAGS", "-fsanitize=undefined",
         "-MAKEFLAGS", f"CXX={args.compiler} OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}",
-    ] + [str(path) for path in sources if path.suffix in (".sv", ".cpp")]
+    ] + primitive_sources + [str(path) for path in sources if path.suffix in (".v", ".sv", ".cpp")]
     binary = obj / "Vkernel_prefetch_tb"
     start = time.monotonic()
     if args.reuse_build:
         previous = json.loads((out / "summary.json").read_text())
         if (not previous.get("passed") or previous["source_sha256"] != before or
-                previous["parameters"]["BUS_WIDTH"] != args.bus_width):
+                previous["parameters"]["BUS_WIDTH"] != args.bus_width or
+                previous["parameters"].get("COUNT_WIDTH") != args.count_width or
+                previous.get('fpga', False) != args.fpga or
+                previous.get('primitive_library_sha256') != primitive_library_sha256):
             raise RuntimeError("Stored build differs from the current sources")
         if digest(binary) != previous["binary_sha256"]:
             raise RuntimeError("Stored executable differs")
@@ -80,7 +101,9 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
     report.update(
         source_sha256=before, binary_sha256=digest(binary), compile_command=command,
         run_command=[str(binary)], undefined_behavior_sanitizer=True,
-        sanitized_translation_units=len(units), parameters=dict(SIZE=16, DATA_WIDTH=16, BUS_WIDTH=args.bus_width),
+        sanitized_translation_units=len(units),
+        fpga=args.fpga, primitive_library_sha256=primitive_library_sha256,
+        parameters=dict(SIZE=16, DATA_WIDTH=16, BUS_WIDTH=args.bus_width, COUNT_WIDTH=args.count_width),
         compiler_version=subprocess.check_output([args.compiler, "--version"], text=True).splitlines()[0],
         verilator_version=subprocess.check_output([args.verilator, "--version"], text=True).strip(),
         elapsed_seconds=time.monotonic() - start,

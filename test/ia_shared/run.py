@@ -24,12 +24,13 @@ def main():
     parser.add_argument('--reuse-build', action='store_true')
     parser.add_argument('--bank-bytes',type=int,choices=(2048,4096,8192),default=2048)
     parser.add_argument('--bank-count',type=int,choices=range(6,10),default=7)
+    parser.add_argument('--compact-offset-width', type=int, choices=(9, 16), default=16)
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    rtl = [ROOT / 'rtl/common/pseudo_dual_port_ram.v',
+    rtl = [ROOT / 'rtl/common/pseudo_dual_port_ram.v', ROOT / 'rtl/common/REGFILE.v',
            ROOT / 'rtl/npu/loaders/ia_loader_cache_mgr.sv',
            ROOT / 'rtl/npu/buffers/ia_ps_shared_ram.sv', HERE / 'cache_tb.sv']
     cpp = HERE / 'cache_test.cpp'
@@ -45,7 +46,8 @@ def main():
         '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
     top = 'ia_shared_cache_tb'
     command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', str(args.jobs),
-               '--top-module', top, f'-GBANK_BYTES={args.bank_bytes}', f'-GBANK_COUNT={args.bank_count}', '--Mdir', str(out / 'obj'), '-Wno-fatal',
+               '--top-module', top, f'-GBANK_BYTES={args.bank_bytes}', f'-GBANK_COUNT={args.bank_count}',
+               f'-GCOMPACT_OFFSET_WIDTH={args.compact_offset_width}', '--Mdir', str(out / 'obj'), '-Wno-fatal',
                '--output-groups', '0', '--output-split', '10000',
                '-CFLAGS', f'-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BANK_BYTES={args.bank_bytes} -DTEST_BANK_COUNT={args.bank_count}',
                '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
@@ -57,6 +59,8 @@ def main():
         previous = json.loads((out / 'summary.json').read_text())
         if previous['source_sha256'] != hashes or previous['binary_sha256'] != digest(binary) or previous['allocation_bank_bytes']!=args.bank_bytes or previous['physical_banks']!=args.bank_count:
             raise RuntimeError('Executable does not match the current sources')
+        if previous.get('compact_offset_width', 16) != args.compact_offset_width:
+            raise RuntimeError('Executable compact offset width differs')
         command = previous['compile_command']
     else:
         with (out / 'compile.log').open('w') as log:
@@ -84,6 +88,7 @@ def main():
                   compiled_rtl=[str(path.relative_to(ROOT)) for path in rtl],
                   binary_sha256=digest(binary), compile_command=command,
                   run_command=[str(binary)], undefined_behavior_sanitizer=True,
+                  compact_offset_width=args.compact_offset_width,
                   sanitized_translation_units=len(units), compile_seconds=compile_seconds,
                   run_seconds=time.monotonic() - run_start, source_hashes_unchanged=True)
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
