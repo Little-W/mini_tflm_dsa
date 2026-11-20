@@ -1,0 +1,43 @@
+--- a/common/placer1.cc
++++ b/common/placer1.cc
+@@ -25,6 +25,7 @@
+ #include <algorithm>
+ #include <boost/lexical_cast.hpp>
+ #include <boost/range/adaptor/reversed.hpp>
++#include <cerrno>
+ #include <chrono>
+ #include <cmath>
+ #include <iostream>
+@@ -337,6 +338,19 @@
+ 
+         int n_no_progress = 0;
+         temp = refine ? 1e-7 : cfg.startTemp;
++        int refinement_limit = 0;
++        if (refine) {
++            if (const char *value = getenv("NEXTPNR_REFINE_MAX_ITERS")) {
++                char *end = nullptr;
++                errno = 0;
++                long parsed = strtol(value, &end, 10);
++                if (errno != 0 || end == value || *end != '\0' || parsed <= 0 ||
++                    parsed > std::numeric_limits<int>::max())
++                    log_error("NEXTPNR_REFINE_MAX_ITERS requires a positive integer.\n");
++                refinement_limit = int(parsed);
++                log_info("Refinement iteration limit: %d; full placement checks remain enabled.\n", refinement_limit);
++            }
++        }
+ 
+         // Main simulated annealing loop
+         for (int iter = 1;; iter++) {
+@@ -400,6 +414,12 @@
+                 log_info("  at iteration #%d: temp = %f, timing cost = "
+                          "%.0f, wirelen = %.0f \n",
+                          iter, temp, double(curr_timing_cost), double(curr_wirelen_cost));
++                break;
++            }
++
++            // 细化次数只限制搜索工作量；循环后的全部位置与相对约束检查照常执行。
++            if (refinement_limit > 0 && iter >= refinement_limit) {
++                log_info("Refinement completed %d iterations; continuing with full placement checks.\n", iter);
+                 break;
+             }
+ 

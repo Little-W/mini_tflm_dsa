@@ -1,0 +1,41 @@
+--- a/xilinx/pack_carry_xc7.cc
++++ b/xilinx/pack_carry_xc7.cc
+@@ -122,6 +122,38 @@
+     log_info("Packing carries (atomic CARRY4)..\n");
+     const char *direct_di = getenv("XC7_CARRY_DIRECT_DI");
+     const bool direct_di_enabled = direct_di != nullptr && direct_di[0] == '1';
++    const char *trim_tail = getenv("XC7_CARRY_TRIM_TAIL");
++    if (trim_tail != nullptr && trim_tail[0] == '1') {
++        int removed_inputs = 0, affected_cells = 0;
++        for (auto cell : sorted(ctx->cells)) {
++            CellInfo *carry = cell.second;
++            if (carry->type != ctx->id("CARRY4") || carry->attrs.count(ctx->id("BEL")))
++                continue;
++            int highest_used = -1;
++            for (int bit = 0; bit < 4; bit++) {
++                for (const char *prefix : {"O", "CO"}) {
++                    NetInfo *net = get_net_or_empty(carry, ctx->id(std::string(prefix) + "[" + std::to_string(bit) + "]"));
++                    if (net != nullptr && !net->users.empty())
++                        highest_used = bit;
++                }
++            }
++            if (highest_used == 3)
++                continue;
++            affected_cells++;
++            // 进位只向高位传播；最高有效 O/CO 以上的输入不影响任何使用者。
++            // 仅解除本单元的尾部输入连接，原信号的其他使用者保持不变。
++            for (int bit = highest_used + 1; bit < 4; bit++) {
++                for (const char *prefix : {"S", "DI"}) {
++                    IdString port = ctx->id(std::string(prefix) + "[" + std::to_string(bit) + "]");
++                    if (get_net_or_empty(carry, port) != nullptr) {
++                        disconnect_port(ctx, carry, port);
++                        removed_inputs++;
++                    }
++                }
++            }
++        }
++        log_info("   Removed %d unobserved CARRY4 tail inputs from %d cells.\n", removed_inputs, affected_cells);
++    }
+ 
+     static const std::unordered_set<IdString> lut_types{
+         ctx->id("LUT1"), ctx->id("LUT2"), ctx->id("LUT3"),

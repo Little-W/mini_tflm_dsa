@@ -1,0 +1,110 @@
+--- a/common/timing.cc
++++ b/common/timing.cc
+@@ -813,6 +813,90 @@
+     }
+     return r;
+ }
++#ifdef ARCH_XILINX
++struct DspConnection
++{
++    const NetInfo *net = nullptr;
++    PortRef sink;
++    delay_t delay = 0;
++};
++
++std::string report_dsp_connections(Context *ctx)
++{
++    std::set<const CellInfo *> combinational;
++    for (auto &item : ctx->cells) {
++        auto cell = item.second.get();
++        if (cell->type == ctx->id("DSP48E1_DSP48E1") && ctx->dsp48e1IsCombinational(cell))
++            combinational.insert(cell);
++    }
++    std::vector<DspConnection> connections;
++    std::map<const CellInfo *, DspConnection> longest;
++    auto compare = [ctx](const DspConnection &a, const DspConnection &b) {
++        if (a.delay != b.delay)
++            return a.delay > b.delay;
++        return std::make_tuple(a.net->name.str(ctx), a.sink.cell->name.str(ctx), a.sink.port.str(ctx)) <
++               std::make_tuple(b.net->name.str(ctx), b.sink.cell->name.str(ctx), b.sink.port.str(ctx));
++    };
++    for (auto &item : ctx->nets) {
++        auto net = item.second.get();
++        auto driver = net->driver.cell;
++        if (driver == nullptr || driver->bel == BelId() || driver->type == ctx->id("PSEUDO_GND") ||
++            driver->type == ctx->id("PSEUDO_VCC"))
++            continue;
++        int count = 0;
++        bool driver_dsp = combinational.count(driver) &&
++                          ctx->getPortTimingClass(driver, net->driver.port, count) == TMG_COMB_OUTPUT;
++        for (const auto &sink : net->users) {
++            if (sink.cell == nullptr || sink.cell->bel == BelId())
++                continue;
++            bool sink_dsp = combinational.count(sink.cell) &&
++                            ctx->getPortTimingClass(sink.cell, sink.port, count) == TMG_COMB_INPUT;
++            if (!driver_dsp && !sink_dsp)
++                continue;
++            DspConnection connection{net, sink, ctx->getNetinfoRouteDelay(net, sink)};
++            connections.push_back(connection);
++            for (const CellInfo *dsp : {driver_dsp ? driver : nullptr, sink_dsp ? sink.cell : nullptr}) {
++                if (dsp != nullptr && (!longest.count(dsp) || compare(connection, longest.at(dsp))))
++                    longest[dsp] = connection;
++            }
++        }
++    }
++    std::sort(connections.begin(), connections.end(), compare);
++    auto encode = [ctx](const DspConnection &connection) {
++        const auto &driver = connection.net->driver;
++        const auto &sink = connection.sink;
++        char value[80];
++        snprintf(value, sizeof(value), "{\"delay_ns\": %.6f", ctx->getDelayNS(connection.delay));
++        std::string out = value;
++        out += ", \"net\": \"" + json_escape(connection.net->name.str(ctx)) + "\"";
++        out += ", \"driver_cell\": \"" + json_escape(driver.cell->name.str(ctx)) + "\"";
++        out += ", \"driver_port\": \"" + json_escape(driver.port.str(ctx)) + "\"";
++        out += ", \"sink_cell\": \"" + json_escape(sink.cell->name.str(ctx)) + "\"";
++        out += ", \"sink_port\": \"" + json_escape(sink.port.str(ctx)) + "\"";
++        out += ", \"driver_bel\": \"" + json_escape(ctx->getBelName(driver.cell->bel).str(ctx)) + "\"";
++        out += ", \"sink_bel\": \"" + json_escape(ctx->getBelName(sink.cell->bel).str(ctx)) + "\"}";
++        return out;
++    };
++    std::string out = "{\"data_path_combinational_dsp_cells\": " + std::to_string(combinational.size()) +
++                      ", \"incident_connections\": " + std::to_string(connections.size()) + ", \"longest_connections\": [";
++    for (size_t i = 0; i < std::min(size_t(20), connections.size()); ++i)
++        out += (i == 0 ? "" : ", ") + encode(connections[i]);
++    out += "], \"longest_per_dsp\": [";
++    std::vector<std::pair<const CellInfo *, DspConnection>> per_dsp(longest.begin(), longest.end());
++    std::sort(per_dsp.begin(), per_dsp.end(), [compare, ctx](const auto &a, const auto &b) {
++        if (a.second.delay != b.second.delay)
++            return compare(a.second, b.second);
++        return a.first->name.str(ctx) < b.first->name.str(ctx);
++    });
++    for (size_t i = 0; i < std::min(size_t(10), per_dsp.size()); ++i) {
++        auto encoded = encode(per_dsp[i].second);
++        encoded.pop_back();
++        out += (i == 0 ? "" : ", ") + encoded + ", \"dsp_cell\": \"" +
++               json_escape(per_dsp[i].first->name.str(ctx)) + "\"}";
++    }
++    return out + "]}";
++}
++#endif
+ } // namespace
+ 
+ std::string Context::reportClockFmaxJson()
+@@ -870,7 +954,15 @@
+         json += (first ? "\"" : ", \"") + json_escape(kv.first) + buf;
+         first = false;
+     }
+-    json += "}\n}\n";
++    json += "}";
++#ifdef ARCH_XILINX
++    // 逐连接读取同一延迟函数，并分别保存不同 DSP 的最长连接。
++    if (const char *value = getenv("NEXTPNR_REPORT_DSP_NETS")) {
++        if (std::string(value) == "1")
++            json += ",\n    \"combinational_dsp_connections\": " + report_dsp_connections(this);
++    }
++#endif
++    json += "\n}\n";
+     return json;
+ }
+ 

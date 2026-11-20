@@ -1,0 +1,70 @@
+diff --git a/common/command.cc b/common/command.cc
+index fb0e45f..66378e1 100644
+--- a/common/command.cc
++++ b/common/command.cc
+@@ -154,4 +154,5 @@ po::options_description CommandHandler::getGeneralOptions()
+ 
+     general.add_options()("ignore-loops", "ignore combinational loops in timing analysis");
++    general.add_options()("strict-timing-graph", "require every combinational timing dependency to resolve");
+ 
+     general.add_options()("version,V", "show version");
+@@ -219,4 +220,9 @@ void CommandHandler::setupContext(Context *ctx)
+     }
+ 
++    if (vm.count("strict-timing-graph")) {
++        conflicting_options(vm, "strict-timing-graph", "ignore-loops");
++        ctx->settings[ctx->id("timing/ignoreLoops")] = false;
++    }
++
+     if (vm.count("timing-allow-fail")) {
+         ctx->settings[ctx->id("timing/allowFail")] = true;
+@@ -316,4 +322,7 @@ int CommandHandler::executeMain(std::unique_ptr<Context> ctx)
+ 
+         customAfterLoad(ctx.get());
++        // 命令行要求的严格时序图检查适用于重新载入的阶段文件。
++        if (vm.count("strict-timing-graph"))
++            ctx->settings[ctx->id("timing/ignoreLoops")] = false;
+     }
+ 
+diff --git a/xilinx/pack_dram.cc b/xilinx/pack_dram.cc
+index 8eb1ace..92ee1c8 100644
+--- a/xilinx/pack_dram.cc
++++ b/xilinx/pack_dram.cc
+@@ -584,7 +584,19 @@ void XilinxPacker::pack_dram()
+             bool pinned = !dram_site.empty();
+             for (int i = 0; i < 4; i++) {
++                bool read_output_used = false;
++                for (int j = 0; j < dbits; j++) {
++                    IdString output_port = ctx->id(is_64 ? stringf("DO%c", 'A' + i)
++                                                      : stringf("DO%c[%d]", 'A' + i, j));
++                    NetInfo *output_net = get_net_or_empty(ci, output_port);
++                    read_output_used |= output_net != nullptr && !output_net->users.empty();
++                }
+                 std::vector<NetInfo *> address;
+                 for (int j = 0; j < abits; j++) {
+-                    address.push_back(get_net_or_empty(ci, ctx->id(stringf("ADDR%c[%d]", 'A' + i, j))));
++                    NetInfo *read_address = get_net_or_empty(ci, ctx->id(stringf("ADDR%c[%d]", 'A' + i, j)));
++                    // A/B/C 的闲置读口使用确定地址；D 口地址同时控制写入，保持原连接。
++                    if (i < 3 && !read_output_used &&
++                        (read_address == nullptr || read_address->driver.cell == nullptr))
++                        read_address = ctx->nets.at(ctx->id("$PACKER_GND_NET")).get();
++                    address.push_back(read_address);
+                 }
+                 if (is_64) {
+diff --git a/xilinx/pack_dsp_xc7.cc b/xilinx/pack_dsp_xc7.cc
+index c78250a..17b4ba6 100644
+--- a/xilinx/pack_dsp_xc7.cc
++++ b/xilinx/pack_dsp_xc7.cc
+@@ -160,7 +160,10 @@ void XC7Packer::pack_dsps()
+ 
+     for (auto root : dsp_roots) {
+-        root->constr_abs_z = true;
+-        root->constr_z = BEL_LOWER_DSP;
+         walk_dsp(root, root, BEL_UPPER_DSP);
++        // 级联组从下半位置开始；独立 DSP 可使用上下两个合法位置。
++        if (!root->constr_children.empty()) {
++            root->constr_abs_z = true;
++            root->constr_z = BEL_LOWER_DSP;
++        }
+     }
+ }

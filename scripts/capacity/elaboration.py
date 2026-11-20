@@ -135,8 +135,34 @@ def elaboration_types(tree):
     return refs, width
 
 
-def array_category(origin, name, ancestors):
+def array_category(origin, name, ancestors, instance_path=""):
     name = name.rsplit(".", 1)[-1]
+    if origin == "REGFILE" and name == "mem":
+        if "requant_group_buffer" in ancestors:
+            return "requant_input_rows"
+        if "vec_requant_full" in ancestors and ".g_ws_bank_write." in instance_path:
+            return None
+        if "vector_engine" in ancestors and instance_path.rsplit(".", 1)[-1] == "u_bias_storage":
+            return "vector_buffers"
+        if instance_path.rsplit(".", 1)[-1] in ("u_prefetch_keys", "u_prefetch_payload"):
+            return "conv_prefetch_queue"
+        if "vec_s8_fifo_row_ram" in ancestors:
+            return "oa_s16_fifo" if "vec_s16_to_fifo" in ancestors else "oa_s8_fifo"
+        for owner, category in (
+                ("ia_ps_shared_ram", "ia_ps_shared_ram"),
+                ("ia_ps_channel_ram", "ia_ps_shared_ram"),
+                ("conv_sdp_ram", "conv_data_cache"),
+                ("conv_windowed_cache", "conv_cache_metadata"),
+                ("ia_loader_cache_mgr", "ia_cache"),
+                ("ia_buffer_wrapper", "ia_cache"),
+                ("kernel_loader_buffer", "kernel_cache"),
+                ("bias_loader_buffer", "bias_cache"),
+                ("vector_quant_params", "vector_buffers"),
+                ("vec_requant_full", "requant_is_cache"),
+                ("ps_frame_store", "ps_decoded_fifo"),
+                ("ps_buffer_exact_ram", "ps_payload")):
+            if owner in ancestors:
+                return category
     if origin == "ia_ps_shared_ram" and name == "ram":
         return "ia_ps_shared_ram"
     if origin == "ia_loader" and name in ("cache_tags", "cache_tags_valid"):
@@ -151,11 +177,12 @@ def array_category(origin, name, ancestors):
         return "ia_cache"
     if origin in ("kernel_loader_row_ram", "kernel_loader_column_ram") and name == "mem":
         return "kernel_cache"
-    if origin == "bias_loader_buffer" and name in ("bank0_words", "bank1_words"):
+    if origin == "bias_loader_buffer" and name in ("bank0_words", "bank1_words", "bias_words"):
         return "bias_cache"
     if origin == "vec_requant_full" and name in ("ch_multiplier_is_r", "ch_shift_is_r",
                                                  "ch_lshift_is_r", "ch_rshift_is_r", "multiplier_mem",
-                                                 "shift_mem", "left_mem", "right_mem"):
+                                                 "shift_mem", "left_mem", "right_mem",
+                                                 "product_multiplier_mem", "product_amount_mem"):
         return "requant_is_cache"
     if origin == "vec_s8_fifo_row_ram" and name == "mem":
         return "oa_s16_fifo" if "vec_s16_to_fifo" in ancestors else "oa_s8_fifo"
@@ -175,7 +202,7 @@ def array_category(origin, name, ancestors):
             return "conv_response_queue"
     if origin == "vector_engine":
         if name in ("input_buf", "rhs_buf", "weight_buf", "bias_buf",
-                    "mult_buf", "shift_buf", "acc_buf", "result_buf"):
+                    "mult_buf", "shift_buf", "right_shift_buf", "acc_buf", "result_buf"):
             return "vector_buffers"
     if origin == "vector_weight_bank" and name == "data":
         return "vector_buffers"
@@ -193,7 +220,14 @@ def array_category(origin, name, ancestors):
     return None
 
 
-def register_array_category(origin, name):
+def register_array_category(origin, name, ancestors=(), instance_path=""):
+    if origin == "REGFILE" and name.rsplit(".", 1)[-1] == "mem" and \
+            "vec_requant_full" in ancestors and ".g_ws_bank_write." in instance_path:
+        return "requant_ws_parameters"
+    if origin == "vec_requant_full" and name in (
+            "ch_multiplier_lane_r", "ch_shift_lane_r", "ch_product_multiplier_lane_r",
+            "ch_product_amount_lane_r"):
+        return "requant_ws_parameters"
     if origin == "compute_core" and name in (
             "row_valid_pipe", "row_final_pipe", "row_init_pipe", "row_last_pipe",
             "final_group_complete_q"):
@@ -252,16 +286,17 @@ def inventory(tree):
             name = variable_names.get(ref, var["name"])
             bits = width(var["dtypep"])
             total += bits
-            category = array_category(origin, name, ancestors)
+            category = array_category(origin, name, ancestors, path)
             if category:
                 arrays[category] = arrays.get(category, 0) + bits
                 array_counts[category] = array_counts.get(category, 0) + 1
-            register_category = register_array_category(origin, name)
+            register_category = register_array_category(origin, name, ancestors, path)
             if register_category:
                 register_arrays[register_category] = register_arrays.get(register_category, 0) + bits
             if origin == "ps_buffer" or "ps_buffer" in ancestors:
                 ps_storage_bits += bits
-            if origin == "ia_ps_shared_ram" or "ia_ps_shared_ram" in ancestors:
+            if origin in ("ia_ps_shared_ram", "ia_ps_channel_ram") or any(
+                    owner in ancestors for owner in ("ia_ps_shared_ram", "ia_ps_channel_ram")):
                 shared_ram_bits += bits
             declarations.append(dict(path=path + "." + name, module=origin,
                                      name=name, bits=bits, buffer_category=category,
@@ -354,19 +389,39 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     shared_data = None
     if layout["shared_ia_ps_enabled"]:
         banks = layout["shared_physical_bank_count"]
-        architecture = architecture and counts.get("ia_ps_shared_ram") == 1 and \
-            state["declaration_counts"].get("ia_ps_shared_ram") == banks and \
-            "ia_cache" not in state["buffer_arrays_bits"] and "ps_payload" not in state["buffer_arrays_bits"]
-        bank_bytes=layout["shared_bank_bytes"]
-        macro_count=banks * 8 * ((bank_bytes+2047)//2048)
-        shared_data = dict(bank_count=banks, bank_width_bits=128, bank_depth=bank_bytes//16,
-                           logical_bytes=layout["shared_total_bytes"],
-                           asic_macro="RAMTP128X16", asic_macro_count=macro_count,
-                           mapped_sram_bytes=macro_count * 128 * 16 // 8,
-                           mapping_source="asic/rtl/smic40_sram_1r1w.sv",
-                           physical_capacity=model.physical_shared_memory(bank_bytes, banks))
+        bank_bytes = layout["shared_bank_bytes"]
+        fixed_channels = counts.get("ia_ps_channel_ram", 0) == 1
+        memory_declarations = [item for item in state["sequential_declarations"]
+                               if item["buffer_category"] == "ia_ps_shared_ram"]
+        if fixed_channels:
+            maximum_ia = 4 if banks >= 8 else 2
+            rows = bank_bytes // 16
+            chunk_rows = rows // 4
+            expected_memory_bits = ([128 * rows] + [128 * chunk_rows] * (4 * (maximum_ia - 1)) +
+                                    [128 * (banks - maximum_ia) * chunk_rows] * 4)
+            architecture = architecture and counts.get("ia_ps_shared_ram", 0) == 0 and \
+                sorted(item["bits"] for item in memory_declarations) == sorted(expected_memory_bits)
+            shared_data = dict(layout="fixed_ps_channels", bank_count=banks,
+                               logical_bytes=layout["shared_total_bytes"],
+                               memory_declaration_bits=sorted(expected_memory_bits),
+                               physical_capacity=None)
+        else:
+            architecture = architecture and counts.get("ia_ps_shared_ram") == 1 and \
+                state["declaration_counts"].get("ia_ps_shared_ram") == banks and \
+                all(item["bits"] == bank_bytes * 8 for item in memory_declarations)
+            macro_count = banks * 8 * ((bank_bytes + 2047) // 2048)
+            shared_data = dict(layout="rotating_ps_banks", bank_count=banks,
+                               bank_width_bits=128, bank_depth=bank_bytes//16,
+                               logical_bytes=layout["shared_total_bytes"],
+                               asic_macro="RAMTP128X16", asic_macro_count=macro_count,
+                               mapped_sram_bytes=macro_count * 128 * 16 // 8,
+                               mapping_source="asic/rtl/smic40_sram_1r1w.sv",
+                               physical_capacity=model.physical_shared_memory(bank_bytes, banks))
+        architecture = architecture and "ia_cache" not in state["buffer_arrays_bits"] and \
+            "ps_payload" not in state["buffer_arrays_bits"]
     else:
-        architecture = architecture and counts.get("ia_ps_shared_ram", 0) == 0
+        architecture = architecture and counts.get("ia_ps_shared_ram", 0) == 0 and \
+            counts.get("ia_ps_channel_ram", 0) == 0
     registers = capabilities["npu_axil_reg_if"]
     expected_caps = (0x01000007 | (values["PS_FRAME_COUNT"] << 16) |
                      (int(layout["shared_ia_ps_enabled"]) << 4) | (values["PS_FORCE_RAW"] << 3)) \

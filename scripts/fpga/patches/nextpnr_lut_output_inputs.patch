@@ -1,0 +1,44 @@
+--- a/xilinx/pack.cc
++++ b/xilinx/pack.cc
+@@ -228,6 +228,8 @@
+ 
+         // Build one LUT<n_in> cell driving `out`, whose INIT is the
+         // 2^n_in-bit slice of the LUT6_2 INIT starting at bit `lo`.
++        const bool fixed_select = i5 == nullptr || i5->name == ctx->id("$PACKER_GND_NET") ||
++                                  i5->name == ctx->id("$PACKER_VCC_NET");
+         auto make_half = [&](const char *suffix, NetInfo *out, int n_in, int lo) {
+             if (out == nullptr)
+                 return;
+@@ -237,16 +239,30 @@
+                 log_error("splitting LUT6_2 cell '%s' would create cell '%s', which already exists\n",
+                            ci->name.c_str(ctx), half_name.c_str(ctx));
+             std::unique_ptr<CellInfo> half = create_cell(ctx, ctx->id("LUT" + std::to_string(n_in)), half_name);
++            const Property half_init = init.extract(lo, 1 << n_in);
+             for (int i = 0; i < n_in; i++) {
+                 IdString p = ctx->id("I" + std::to_string(i));
+                 half->addInput(p);
+                 NetInfo *in = get_net_or_empty(ci, p);
+-                if (in != nullptr)
++                // 固定选择输入时，两路函数独立保留实际影响输出的引脚。
++                // 动态余因子配对继续保存两路共同的引脚位置。
++                bool input_used = true;
++                if (fixed_select && half_init.is_fully_def()) {
++                    input_used = false;
++                    for (int address = 0; address < (1 << n_in); address++) {
++                        if ((address & (1 << i)) == 0 &&
++                            half_init.str[address] != half_init.str[address | (1 << i)]) {
++                            input_used = true;
++                            break;
++                        }
++                    }
++                }
++                if (in != nullptr && input_used)
+                     connect_port(ctx, in, half.get(), p);
+             }
+             half->addOutput(ctx->id("O"));
+             connect_port(ctx, out, half.get(), ctx->id("O"));
+-            half->params[ctx->id("INIT")] = init.extract(lo, 1 << n_in);
++            half->params[ctx->id("INIT")] = half_init;
+             // Preserve any region (area) constraint carried by the original
+             // instance -- unlike a BEL pin, a region is just a bbox and
+             // applies equally well to both halves.

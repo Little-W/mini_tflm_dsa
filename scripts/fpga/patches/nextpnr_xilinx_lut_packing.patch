@@ -1,0 +1,215 @@
+diff --git a/common/placer1.cc b/common/placer1.cc
+--- a/common/placer1.cc
++++ b/common/placer1.cc
+@@ -641,7 +641,8 @@
+             add_move_cell(moveChange, other_cell, newBel);
+         }
+ 
+-        if (!ctx->isBelLocationValid(newBel) || ((other_cell != nullptr && !ctx->isBelLocationValid(oldBel)))) {
++        // 移动改变原位置的本地使用者关系，原位置与目标位置都必须保持合法。
++        if (!ctx->isBelLocationValid(newBel) || !ctx->isBelLocationValid(oldBel)) {
+             ctx->unbindBel(newBel);
+             if (other_cell != nullptr)
+                 ctx->unbindBel(oldBel);
+diff --git a/xilinx/arch_place.cc b/xilinx/arch_place.cc
+--- a/xilinx/arch_place.cc
++++ b/xilinx/arch_place.cc
+@@ -324,6 +324,42 @@
+ 
+ bool Arch::xc7_logic_tile_valid(IdString tileType, LogicTileStatus &lts) const
+ {
++    bool logical_pair_checked[8] = {};
++    // 自动共享的普通逻辑 LUT 最多使用五个不同输入；重复端口只计算一次。
++    // 此项也检查从阶段文件重新载入的位置关系。
++    for (int i = 0; i < 8; i++) {
++        CellInfo *l6 = lts.cells[(i << 4) | BEL_6LUT];
++        CellInfo *l5 = lts.cells[(i << 4) | BEL_5LUT];
++        if (l6 == nullptr || l5 == nullptr)
++            continue;
++        bool automatic_logic = bool_or_default(l6->attrs, id("X_LUT_LOGICAL_OUTPUT"), false) ||
++                               bool_or_default(l5->attrs, id("X_LUT_LOGICAL_OUTPUT"), false);
++        if (!automatic_logic)
++            continue;
++        if (l6->lutInfo.is_memory || l6->lutInfo.is_srl || l5->lutInfo.is_memory || l5->lutInfo.is_srl)
++            return false;
++        if (l6->lutInfo.output_count > 1 || l5->lutInfo.output_count > 1)
++            return false;
++        std::unordered_set<NetInfo *> input_nets;
++        for (CellInfo *lut : {l6, l5}) {
++            for (IdString pin : {id_A1, id_A2, id_A3, id_A4, id_A5, id_A6}) {
++                NetInfo *net = get_net_or_empty(lut, pin);
++                if (net == nullptr)
++                    continue;
++                // 没有逻辑端口来源的 A6 常量不参与逻辑函数。
++                bool upper_half_select = pin == id_A6 &&
++                                         net->name == id("$PACKER_VCC_NET") &&
++                                         !lut->attrs.count(id("X_ORIG_PORT_A6"));
++                if (pin == id_A6 && !upper_half_select)
++                    return false;
++                if (!upper_half_select)
++                    input_nets.insert(net);
++            }
++        }
++        if (input_nets.size() > 5)
++            return false;
++        logical_pair_checked[i] = true;
++    }
+     // Fully-frozen tile fast-path: if every occupied BEL holds a cell that is
+     // still BEL-pinned (imported from a proven Vivado placement), the tile is
+     // legal by construction -- Vivado already validated it on silicon.  The
+@@ -357,7 +393,8 @@
+             // whose logical inputs need more distinct physical pins than
+             // the slice has) survived to the router, which then failed with
+             // one overused SITEWIRE contended by two nets.
+-            if (c->belStrength < STRENGTH_USER) {
++            if (c->belStrength < STRENGTH_USER ||
++                bool_or_default(c->attrs, id("X_LUT_LOGICAL_OUTPUT"), false)) {
+                 all_frozen = false;
+                 break;
+             }
+@@ -397,7 +434,7 @@
+         // Memory/SRL LUTs legitimately draw many ports (address + DI + WE) and
+         // are packed to specific 5LUT bels -- the SLICEM guard above already
+         // constrains them, so the plain-LUT input-count rule must not apply.
+-        if (l5->lutInfo.is_memory || l5->lutInfo.is_srl)
++        if (l5->lutInfo.is_memory || l5->lutInfo.is_srl || logical_pair_checked[i])
+             continue;
+         int in_used = 0;
+         for (auto &port : l5->ports) {
+@@ -435,20 +472,22 @@
+         CellInfo *cy = lts.cells[(h << 6) | BEL_CARRY4];
+         for (int k = 0; k < 4; k++) {
+             int eighth = h * 4 + k;
+-            CellInfo *l6 = lts.cells[(eighth << 4) | BEL_6LUT];
+             CellInfo *l5 = lts.cells[(eighth << 4) | BEL_5LUT];
+             CellInfo *ff1 = lts.cells[(eighth << 4) | BEL_FF];
+             CellInfo *ff2 = lts.cells[(eighth << 4) | BEL_FF2];
+             // in-position sinks that do NOT need the OUTMUX
+             auto is_local_sink = [&](const PortRef &usr, NetInfo *net) {
+-                if (usr.cell == ff1 && ff1 != nullptr && ff1->ffInfo.d == net)
+-                    return true; // main FF via xFFMUX
+-                if (usr.cell == ff2 && ff2 != nullptr && ff2->ffInfo.d == net)
+-                    return true; // 5FF via xFF5MUX
+-                if (usr.cell == cy)
+-                    return true; // carry S/DI/CIN feed
+-                if (usr.cell == l6 || usr.cell == l5)
+-                    return true; // intra-position feed (routethru cases)
++                if (usr.cell == ff1 && ff1 != nullptr && usr.port == id_D && ff1->ffInfo.d == net)
++                    return true;
++                if (usr.cell == ff2 && ff2 != nullptr && usr.port == id_D && ff2->ffInfo.d == net &&
++                    l5 != nullptr && l5->lutInfo.output_sigs[0] == net)
++                    return true;
++                // O5 只直接连接同位置的 DI；其他进位输入需要经过输出选择器。
++                const IdString di_ports[] = {id_DI0, id_DI1, id_DI2, id_DI3};
++                if (cy != nullptr && usr.cell == cy && usr.port == di_ports[k] &&
++                    l5 != nullptr && l5->lutInfo.output_sigs[0] == net &&
++                    !bool_or_default(cy->attrs, id("X_CARRY_DI" + std::to_string(k) + "_VIA_X"), false))
++                    return true;
+                 return false;
+             };
+             auto has_external_user = [&](NetInfo *net) {
+@@ -462,8 +501,7 @@
+             int claims = 0;
+             // O5 of a used 5LUT (O6 has its own pin; DI feed-throughs and
+             // in-position FF feeds are local)
+-            const bool o5_needs_outmux = l5 != nullptr && !l5->lutInfo.only_drives_carry &&
+-                                         !l5->lutInfo.is_memory && !l5->lutInfo.is_srl &&
++            const bool o5_needs_outmux = l5 != nullptr && !l5->lutInfo.is_memory && !l5->lutInfo.is_srl &&
+                                          has_external_user(l5->lutInfo.output_sigs[0]);
+             if (o5_needs_outmux)
+                 claims++;
+@@ -477,10 +515,19 @@
+                 NetInfo *co = cy->carryInfo.cout_sigs[k];
+                 const bool co_is_used = co != nullptr; // an unused CO claims nothing
+                 if (co_is_used) {
++                    if (k == 3) {
++                        int chain_inputs = 0;
++                        for (auto &usr : co->users)
++                            if (usr.cell != nullptr && usr.cell->type == id_CARRY4 && usr.port == id_CIN)
++                                chain_inputs++;
++                        // 专用 COUT 只连接相邻进位单元的一个 CIN。
++                        if (chain_inputs > 1)
++                            return false;
++                    }
+                     for (auto &usr : co->users) {
+                         // the chain continuation (k==3) uses the dedicated COUT
+                         const bool is_chain_continuation =
+-                                usr.cell != nullptr && usr.cell->type == id_CARRY4 && usr.port == id_CIN;
++                                k == 3 && usr.cell != nullptr && usr.cell->type == id_CARRY4 && usr.port == id_CIN;
+                         if (is_chain_continuation)
+                             continue;
+                         if (is_local_sink(usr, co))
+@@ -571,7 +618,7 @@
+                     // present.  SRL16E pairs are exempt: their address pins are
+                     // constant-tied and shared by construction (Vivado packs
+                     // two SRL16Es per slot routinely).
+-                    if (!srl_pair && !imported_carry_feedthrough && !imported_slot &&
++                    if (!logical_pair_checked[i] && !srl_pair && !imported_carry_feedthrough && !imported_slot &&
+                         (lut6->lutInfo.input_count == 6 || lut6->lutInfo.output_count == 2)) {
+                         if (dbg_validity_runtime)
+                             log_info("  invalid-arm-387: lut6=%s(BEL=%d) in=%d out=%d lut5=%s(BEL=%d) imported_slot=%d\n",
+@@ -582,7 +629,8 @@
+                         return false;
+                     }
+                     // If more than 5 total inputs are used, need to check number of shared input
+-                    if (!srl_pair && (lut6->lutInfo.input_count + lut5->lutInfo.input_count) > 5) {
++                    if (!logical_pair_checked[i] && !srl_pair &&
++                        (lut6->lutInfo.input_count + lut5->lutInfo.input_count) > 5) {
+                         int shared = 0, need_shared = (lut6->lutInfo.input_count + lut5->lutInfo.input_count - 5);
+                         for (int j = 0; j < lut6->lutInfo.input_count; j++) {
+                             for (int k = 0; k < lut5->lutInfo.input_count; k++) {
+@@ -637,7 +685,8 @@
+                     }
+                 }
+                 // 5LUT can use at most 5 inputs and 1 output
+-                if (lut5->lutInfo.input_count > 5 || lut5->lutInfo.output_count == 2) {
++                if (!logical_pair_checked[i] &&
++                    (lut5->lutInfo.input_count > 5 || lut5->lutInfo.output_count == 2)) {
+                     DBG();
+                     return false; // Memory and SRLs only valid in SLICEMs
+                 }
+@@ -649,7 +698,7 @@
+                 // fixupPlacement() renames O6->O5 after placement).  What the
+                 // bel physically cannot provide -- a second output -- is
+                 // already rejected by the output_count check above.
+-                if (get_net_or_empty(lut5, id_A6) != nullptr) {
++                if (!logical_pair_checked[i] && get_net_or_empty(lut5, id_A6) != nullptr) {
+                     DBG();
+                     return false;
+                 }
+@@ -1175,8 +1224,12 @@
+                 log_info("   port %s type=%d net=%d\n", p.first.c_str(this), int(p.second.type),
+                          int(p.second.net != nullptr));
+         }
+-        if (in_used == 6 || cell->lutInfo.output_count == 2 || drives_o6 ||
+-            get_net_or_empty(cell, id_A6) != nullptr)
++        // 普通五输入以内的逻辑 LUT 可在布局后转换为 O5；实际共享与输出选择仍由位置检查确定。
++        bool logical_o6_can_map_to_o5 = bool_or_default(cell->attrs, id("X_LUT_LOGICAL_OUTPUT"), false) &&
++                                       !cell->lutInfo.is_memory && !cell->lutInfo.is_srl &&
++                                       in_used <= 5 && cell->lutInfo.output_count == 1;
++        if (in_used == 6 || cell->lutInfo.output_count == 2 ||
++            (drives_o6 && !logical_o6_can_map_to_o5) || get_net_or_empty(cell, id_A6) != nullptr)
+             return false;
+     }
+     // NEXTPNR_EXCLUDE_STAMPED_BBOX: keep unstamped cells out of the bounding
+diff --git a/xilinx/pack.cc b/xilinx/pack.cc
+--- a/xilinx/pack.cc
++++ b/xilinx/pack.cc
+@@ -357,6 +357,17 @@
+         lut_rules[lut].port_xform[ctx->id("O")] = ctx->id("O6");
+     }
+     generic_xform(lut_rules, true);
++    if (getenv("XC7_FRACTURE_LUTS")) {
++        for (auto &entry : ctx->cells) {
++            CellInfo *cell = entry.second.get();
++            std::string original_type = str_or_default(cell->attrs, ctx->id("X_ORIG_TYPE"), "");
++            // 自动放置的单输出逻辑 LUT 保留可转换端口标记，阶段文件同样保存该标记。
++            if (cell->type == id_SLICE_LUTX && !cell->attrs.count(ctx->id("BEL")) &&
++                original_type.size() == 4 && original_type.substr(0, 3) == "LUT" &&
++                original_type[3] >= '1' && original_type[3] <= '5')
++                cell->attrs[ctx->id("X_LUT_LOGICAL_OUTPUT")] = 1;
++        }
++    }
+     constrain_lut6_2_pairs(lut6_2_pairs);
+ }
+ 

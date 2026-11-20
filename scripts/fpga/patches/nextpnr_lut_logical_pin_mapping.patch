@@ -1,0 +1,48 @@
+--- a/xilinx/arch_place.cc
++++ b/xilinx/arch_place.cc
+@@ -1512,14 +1512,22 @@
+                 }
+             }
+-            std::unordered_map<IdString, std::vector<int>> lut5Inputs, lut6Inputs;
+-            for (int i = 0; i < lut5->lutInfo.input_count; i++)
+-                if (lut5->lutInfo.input_sigs[i])
+-                    lut5Inputs[lut5->lutInfo.input_sigs[i]->name].push_back(i);
++            using LogicalInputs = std::unordered_map<IdString, std::vector<std::string>>;
++            LogicalInputs lut5Inputs, lut6Inputs;
++            // 物理引脚重新合并时保留原逻辑编号及重复输入，INIT 继续使用原有位序。
++            auto collect_logical_inputs = [&](CellInfo *cell, LogicalInputs &inputs) {
++                if (cell == nullptr)
++                    return;
++                for (IdString port : {id_A1, id_A2, id_A3, id_A4, id_A5, id_A6}) {
++                    NetInfo *net = get_net_or_empty(cell, port);
++                    if (net == nullptr)
++                        continue;
++                    std::string original = str_or_default(cell->attrs, id("X_ORIG_PORT_" + port.str(this)));
++                    if (!original.empty())
++                        inputs[net->name].push_back(original);
++                }
++            };
++            collect_logical_inputs(lut5, lut5Inputs);
+             CellInfo *lut6 = lt.cells[z << 4 | BEL_6LUT];
+-            if (lut6) {
+-                for (int i = 0; i < lut6->lutInfo.input_count; i++)
+-                    if (lut6->lutInfo.input_sigs[i])
+-                        lut6Inputs[lut6->lutInfo.input_sigs[i]->name].push_back(i);
+-            }
++            collect_logical_inputs(lut6, lut6Inputs);
+             if (lut5->lutInfo.is_memory || lut5->lutInfo.is_srl) {
+                 if (lut6) {
+@@ -1574,5 +1582,5 @@
+                     for (auto inp : lut5Inputs[i]) {
+                         lut5->attrs[id("X_ORIG_PORT_" + ports[index].str(this))].str +=
+-                                (first ? "I" : " I") + std::to_string(inp);
++                                (first ? "" : " ") + inp;
+                         first = false;
+                     }
+@@ -1589,5 +1597,5 @@
+                     for (auto inp : lut6Inputs[i]) {
+                         lut6->attrs[id("X_ORIG_PORT_" + ports[index].str(this))].str +=
+-                                (first ? "I" : " I") + std::to_string(inp);
++                                (first ? "" : " ") + inp;
+                         first = false;
+                     }

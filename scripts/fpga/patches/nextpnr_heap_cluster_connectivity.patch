@@ -1,0 +1,12 @@
+--- a/common/placer_heap.cc
++++ b/common/placer_heap.cc
+@@ -584,4 +584,9 @@
+             if (port.second.net != nullptr && port.second.net->driver.cell != nullptr &&
+                 !port.second.net->users.empty())
++                return true;
++        }
++        // 相对位置组合的有效连接可以位于子单元；整个组合共同参与合法布局。
++        for (CellInfo *child : cell->constr_children) {
++            if (has_connectivity(child))
+                 return true;
+         }

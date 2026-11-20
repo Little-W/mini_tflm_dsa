@@ -1,0 +1,116 @@
+diff --git a/xilinx/pack.cc b/xilinx/pack.cc
+index 329d5b0..bfaf737 100644
+--- a/xilinx/pack.cc
++++ b/xilinx/pack.cc
+@@ -1602,7 +1602,13 @@ void Arch::assignCellInfo(CellInfo *cell)
+             cell->carryInfo.out_sigs[i] = get_net_or_empty(cell, id("O" + std::to_string(i)));
+             cell->carryInfo.cout_sigs[i] = get_net_or_empty(cell, id("CO" + std::to_string(i)));
+-            cell->carryInfo.x_sigs[i] = nullptr;
++            // X 输入由布局合法性检查与 FF、SRL、分布式存储共同检查占用。
++            const bool di_uses_x = bool_or_default(cell->attrs, id("X_CARRY_DI" + std::to_string(i) + "_VIA_X"), false);
++            cell->carryInfo.x_sigs[i] = di_uses_x ? get_net_or_empty(cell, id("DI" + std::to_string(i))) : nullptr;
++        }
++        NetInfo *cyinit = get_net_or_empty(cell, id("CYINIT"));
++        if (cyinit != nullptr) {
++            NPNR_ASSERT(cell->carryInfo.x_sigs[0] == nullptr || cell->carryInfo.x_sigs[0] == cyinit);
++            cell->carryInfo.x_sigs[0] = cyinit;
+         }
+-        cell->carryInfo.x_sigs[0] = get_net_or_empty(cell, id("CYINIT"));
+     }
+ }
+diff --git a/xilinx/pack_carry_xc7.cc b/xilinx/pack_carry_xc7.cc
+index 9b80809..5c5272c 100644
+--- a/xilinx/pack_carry_xc7.cc
++++ b/xilinx/pack_carry_xc7.cc
+@@ -121,4 +121,6 @@ void XC7Packer::pack_carries_atomic()
+ {
+     log_info("Packing carries (atomic CARRY4)..\n");
++    const char *direct_di = getenv("XC7_CARRY_DIRECT_DI");
++    const bool direct_di_enabled = direct_di != nullptr && direct_di[0] == '1';
+ 
+     static const std::unordered_set<IdString> lut_types{
+@@ -281,4 +283,8 @@ void XC7Packer::pack_carries_atomic()
+                 int s_inputs = 0;
+                 CellInfo *s_lut = nullptr, *di_lut = nullptr;
++                NetInfo *cyi = get_net_or_empty(prev, ctx->id("CYINIT"));
++                bool dyn_cyinit = cyi != nullptr && !is_const(cyi);
++                const bool direct_di_allowed = direct_di_enabled && !prev->attrs.count(ctx->id("BEL")) &&
++                                               !(z == 0 && dyn_cyinit && c4_di != cyi);
+ 
+                 // A BEL-pinned LUT driver (imported placement) is adopted
+@@ -291,7 +297,11 @@ void XC7Packer::pack_carries_atomic()
+                      // pinned import: any LUT1-6 Vivado placed at this slot
+                      ((lut_types.count(c4_s->driver.cell->type) || c4_s->driver.cell->type == ctx->id("LUT6")) &&
+-                      c4_s->driver.cell->attrs.count(ctx->id("BEL"))))) {
++                      c4_s->driver.cell->attrs.count(ctx->id("BEL"))) ||
++                     (direct_di_allowed &&
++                      (lut_types.count(c4_s->driver.cell->type) || c4_s->driver.cell->type == ctx->id("LUT6")) &&
++                      c4_s->driver.cell->constr_parent == nullptr &&
++                      !c4_s->driver.cell->attrs.count(ctx->id("BEL"))))) {
+                     s_lut = c4_s->driver.cell;
+-                    for (int j = 0; j < 5; j++) {
++                    for (int j = 0; j < 6; j++) {
+                         NetInfo *ix = get_net_or_empty(s_lut, ctx->id("I" + std::to_string(j)));
+                         if (ix) { unique_lut_inputs.insert(ix->name); s_inputs++; }
+@@ -316,5 +326,5 @@ void XC7Packer::pack_carries_atomic()
+                     if (!(di_lut && di_lut->attrs.count(ctx->id("BEL"))))
+                         di_lut = nullptr;
+-                    if (s_inputs > 4 && !(s_lut && s_lut->attrs.count(ctx->id("BEL"))))
++                    if (s_inputs > 4 && !direct_di_allowed && !(s_lut && s_lut->attrs.count(ctx->id("BEL"))))
+                         s_lut = nullptr;
+                 }
+@@ -345,6 +355,4 @@ void XC7Packer::pack_carries_atomic()
+                 // (Symptom: "Failed to route ... AQ -> PRECYINIT_OUT" -- the
+                 // dynamic CYINIT could not reach AX because DI[0] had taken it.)
+-                NetInfo *cyi = get_net_or_empty(prev, ctx->id("CYINIT"));
+-                bool dyn_cyinit = cyi != nullptr && !is_const(cyi);
+                 bool di_via_ax = false;
+                 // A DI driven by a cell OTHER than this slot's own S-LUT is a
+@@ -417,4 +425,9 @@ void XC7Packer::pack_carries_atomic()
+                     di_via_ax = true;
+                 }
++                // 普通布局允许 DI 使用本位置的 X 输入；动态 CYINIT 同时占用 AX。
++                if (direct_di_allowed && !di_lut && c4_di) {
++                    di_via_ax = true;
++                    prev->attrs[ctx->id("X_CARRY_DI" + zs + "_VIA_X")] = 1;
++                }
+                 if (!di_lut && c4_di && !di_via_ax) {
+                     PortRef pr; pr.cell = prev;
+@@ -1212,4 +1225,8 @@ void XC7Packer::relocate_carry_o_fabric()
+                     connect_port(ctx, net, nb.get(), port);
+             }
++            // 分段后保留真实 DI 的 X 输入占用。
++            IdString direct_attr = ctx->id("X_CARRY_DI" + std::to_string(b) + "_VIA_X");
++            if (bool_or_default(c4->attrs, direct_attr, false))
++                nb->attrs[direct_attr] = 1;
+         }
+         // Dedicated COUT->CIN spine link: the model has no fabric pips into
+@@ -1238,4 +1255,6 @@ void XC7Packer::relocate_carry_o_fabric()
+             new_cells.push_back(std::move(s_feed));
+             connect_port(ctx, gnd, c4, pname("DI", b));
++            // 补齐位置的常量 DI 仍通过 X 输入连接。
++            c4->attrs[ctx->id("X_CARRY_DI" + std::to_string(b) + "_VIA_X")] = 1;
+         }
+         for (int b = 0; b < i; b++) {
+@@ -1252,13 +1271,20 @@ void XC7Packer::relocate_carry_o_fabric()
+             new_cells.push_back(std::move(s_feed));
+             connect_port(ctx, gnd, nb.get(), pname("DI", b));
++            nb->attrs[ctx->id("X_CARRY_DI" + std::to_string(b) + "_VIA_X")] = 1;
+         }
+         // re-anchor the moved LUT/FF constraints onto the new CARRY4
+         for (int b = i; b < 4; b++) {
+             for (const char *p : {"S", "DI"}) {
++                // 直接 DI 的驱动可以属于其他进位组，保持其原有位置关系。
++                if (std::string(p) == "DI" &&
++                    bool_or_default(nb->attrs, ctx->id("X_CARRY_DI" + std::to_string(b) + "_VIA_X"), false))
++                    continue;
+                 NetInfo *net = get_net_or_empty(nb.get(), pname(p, b));
+                 if (net == nullptr || net->driver.cell == nullptr)
+                     continue;
+                 CellInfo *drv = net->driver.cell;
+-                if (drv->constr_parent == nullptr)
++                if (drv->constr_parent != root)
++                    continue;
++                if (drv->type.str(ctx).substr(0, 3) != "LUT")
+                     continue;
+                 drv->constr_z = (b << 4) | (drv->constr_z & 0xF);

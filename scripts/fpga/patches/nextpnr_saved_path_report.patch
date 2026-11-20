@@ -1,0 +1,14 @@
+--- a/common/timing.cc
++++ b/common/timing.cc
+@@ -832,6 +832,11 @@
+ 
+ std::string Context::reportJson()
+ {
++    // 读取已保存的设计即可输出路径分段；网表和位置保持不变。
++    if (const char *value = getenv("NEXTPNR_REPORT_PATHS")) {
++        if (std::string(value) == "1")
++            timing_analysis(this, false, false, true, false);
++    }
+     // The document mirrors mainline nextpnr's --report schema
+     // (critical_paths / fmax / utilization), with the clock-name aliasing
+     // apio's report formatter expects: '$iopadmap$<port>' (the net yosys

@@ -1,0 +1,44 @@
+diff --git a/common/placer_heap.cc b/common/placer_heap.cc
+index b6a6e31..8f33623 100644
+--- a/common/placer_heap.cc
++++ b/common/placer_heap.cc
+@@ -38,7 +38,9 @@
+ #include <Eigen/IterativeLinearSolvers>
+ #include <boost/optional.hpp>
+ #include <boost/thread.hpp>
++#include <cerrno>
+ #include <chrono>
++#include <cstdlib>
+ #include <deque>
+ #include <fstream>
+ #include <numeric>
+@@ -171,6 +173,17 @@ class HeAPPlacer
+ 
+         wirelen_t solved_hpwl = 0, spread_hpwl = 0, legal_hpwl = 0, best_hpwl = std::numeric_limits<wirelen_t>::max();
+         int iter = 0, stalled = 0;
++        int analytical_limit = 0;
++        if (const char *value = getenv("NEXTPNR_HEAP_MAX_ITERS")) {
++            char *end = nullptr;
++            errno = 0;
++            long parsed = strtol(value, &end, 10);
++            if (errno != 0 || end == value || *end != '\0' || parsed <= 0 ||
++                parsed > std::numeric_limits<int>::max())
++                log_error("NEXTPNR_HEAP_MAX_ITERS requires a positive integer.\n");
++            analytical_limit = int(parsed);
++            log_info("Analytical placement iteration limit: %d.\n", analytical_limit);
++        }
+ 
+         std::vector<std::tuple<CellInfo *, BelId, PlaceStrength>> solution;
+ 
+@@ -270,6 +283,11 @@ class HeAPPlacer
+             }
+             ctx->yield();
+             ++iter;
++            // 保存合法位置后结束搜索；随后恢复最佳位置并执行全部细化与合法性检查。
++            if (analytical_limit > 0 && iter >= analytical_limit) {
++                log_info("Analytical placement completed %d iterations.\n", iter);
++                break;
++            }
+         }
+ 
+         // Apply saved solution

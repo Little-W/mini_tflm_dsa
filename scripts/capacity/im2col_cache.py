@@ -8,7 +8,8 @@ DEFAULT_BYTES = 4096
 BYTE_CHOICES = tuple(512 << index for index in range(8))
 WAYS = 2
 LINE_BYTES = 16
-METADATA_BITS_PER_LINE = 7 * 28 + 2 * 13 + 3 * 32 + 1 + 2 + 1
+# 每行包含标签、两组时间戳、三组替换次序、有效位和三个两位来源存储体。
+METADATA_BITS_PER_LINE = 28 + 2 * 13 + 3 * 32 + 1 + 3 * 2
 
 
 def validate_bytes(value):

@@ -1,0 +1,26 @@
+--- a/include/verilated.mk
++++ b/include/verilated.mk
+@@ -33,19 +33,19 @@
+ # Compiler flags to enable profiling
+ CFG_CXXFLAGS_PROFILE = 
+ # Select language required to compile (often empty)
+-CFG_CXXFLAGS_STD = 
++CFG_CXXFLAGS_STD = -std=c++20
+ # Select newest language (unused by this Makefile, for some test's Makefiles)
+-CFG_CXXFLAGS_STD_NEWEST = 
++CFG_CXXFLAGS_STD_NEWEST = -std=c++20
+ # Compiler flags to use to turn off unused and generated code warnings, such as -Wno-div-by-zero
+ CFG_CXXFLAGS_NO_UNUSED = 
+ # Compiler flags that turn on extra warnings
+ CFG_CXXFLAGS_WEXTRA = 
+ # Compiler flags that enable coroutine support
+-CFG_CXXFLAGS_COROUTINES = 
++CFG_CXXFLAGS_COROUTINES = -fcoroutines
+ # Compiler flags when creating a precompiled header
+ CFG_CXXFLAGS_PCH = -x c++-header
+ # Compiler option to put in front of filename to read precompiled header
+-CFG_CXXFLAGS_PCH_I = 
++CFG_CXXFLAGS_PCH_I = -include
+ # Compiler's filename prefix for precompiled headers, .gch if clang, empty if GCC
+ CFG_GCH_IF_CLANG = 
+ # Linker flags

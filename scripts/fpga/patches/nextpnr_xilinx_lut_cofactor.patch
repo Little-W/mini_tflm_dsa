@@ -1,0 +1,136 @@
+--- a/xilinx/pack.cc
++++ b/xilinx/pack.cc
+@@ -282,10 +282,8 @@
+         else
+             make_half("$LUT6", o6, 6, 0);
+ 
+-        // Only a five-input O6 can share a site with the O5 half: a genuine
+-        // six-input O6 needs A6, which a 5LUT bel does not have, and the two
+-        // halves would then no longer agree on the shared A1..A5 sitewires.
+-        if (o5 != nullptr && o6 != nullptr && i5_const)
++        // I5 动态变化时，O5 等于 O6 在 I5=0 时的余因子；第六输入固定使用 A6。
++        if (o5 != nullptr && o6 != nullptr && (i5_const || getenv("XC7_LUT_COFACTOR")))
+             pairs.emplace_back(ctx->id(ci->name.str(ctx) + "$LUT6"), ctx->id(ci->name.str(ctx) + "$LUT5"));
+ 
+         packed_cells.insert(ci->name);
+@@ -341,6 +339,11 @@
+         lut5->constr_y = 0;
+         lut5->constr_abs_z = false;
+         lut5->constr_z = BEL_5LUT - BEL_6LUT;
++        if (get_net_or_empty(lut6, id_A6) != nullptr) {
++            const std::string group = lut6->name.str(ctx);
++            lut6->attrs[ctx->id("X_LUT_COFACTOR_PAIR")] = group;
++            lut5->attrs[ctx->id("X_LUT_COFACTOR_PAIR")] = group;
++        }
+     }
+ }
+ 
+--- a/xilinx/arch_place.cc
++++ b/xilinx/arch_place.cc
+@@ -322,6 +322,39 @@
+     return true;
+ }
+ 
++// 余因子配对保持共同的 A1..A5 引脚，完整函数的选择变量单独使用 A6。
++static bool cofactor_lut_pair_valid(const Context *ctx, const CellInfo *lut6, const CellInfo *lut5)
++{
++    if (lut6 == nullptr || lut5 == nullptr)
++        return false;
++    IdString marker = ctx->id("X_LUT_COFACTOR_PAIR");
++    if (!lut6->attrs.count(marker) || !lut5->attrs.count(marker) ||
++        lut6->attrs.at(marker).as_string().empty() ||
++        lut6->attrs.at(marker).as_string() != lut5->attrs.at(marker).as_string())
++        return false;
++    if (lut6->lutInfo.is_memory || lut6->lutInfo.is_srl || lut5->lutInfo.is_memory || lut5->lutInfo.is_srl ||
++        lut6->lutInfo.output_count != 1 || lut5->lutInfo.output_count != 1)
++        return false;
++    if (get_net_or_empty(lut6, ctx->id("O6")) == nullptr || get_net_or_empty(lut5, ctx->id("O5")) == nullptr ||
++        get_net_or_empty(lut6, ctx->id("A6")) == nullptr || get_net_or_empty(lut5, ctx->id("A6")) != nullptr)
++        return false;
++    if (str_or_default(lut6->attrs, ctx->id("X_ORIG_TYPE")) != "LUT6" ||
++        str_or_default(lut5->attrs, ctx->id("X_ORIG_TYPE")) != "LUT5" ||
++        str_or_default(lut6->attrs, ctx->id("X_ORIG_PORT_A6")) != "I5")
++        return false;
++    for (int input = 1; input <= 5; input++) {
++        IdString pin = ctx->id("A" + std::to_string(input));
++        IdString origin = ctx->id("X_ORIG_PORT_A" + std::to_string(input));
++        if (get_net_or_empty(lut6, pin) != get_net_or_empty(lut5, pin) ||
++            str_or_default(lut6->attrs, origin) != str_or_default(lut5->attrs, origin))
++            return false;
++    }
++    IdString init = ctx->id("INIT");
++    if (!lut6->params.count(init) || !lut5->params.count(init))
++        return false;
++    return lut6->params.at(init).extract(0, 32).str == lut5->params.at(init).extract(0, 32).str;
++}
++
+ bool Arch::xc7_logic_tile_valid(IdString tileType, LogicTileStatus &lts) const
+ {
+     bool logical_pair_checked[8] = {};
+@@ -332,6 +365,12 @@
+         CellInfo *l5 = lts.cells[(i << 4) | BEL_5LUT];
+         if (l6 == nullptr || l5 == nullptr)
+             continue;
++        if (l6->attrs.count(id("X_LUT_COFACTOR_PAIR")) || l5->attrs.count(id("X_LUT_COFACTOR_PAIR"))) {
++            if (!cofactor_lut_pair_valid(getCtx(), l6, l5))
++                return false;
++            logical_pair_checked[i] = true;
++            continue;
++        }
+         bool automatic_logic = bool_or_default(l6->attrs, id("X_LUT_LOGICAL_OUTPUT"), false) ||
+                                bool_or_default(l5->attrs, id("X_LUT_LOGICAL_OUTPUT"), false);
+         if (!automatic_logic)
+@@ -394,7 +433,8 @@
+             // the slice has) survived to the router, which then failed with
+             // one overused SITEWIRE contended by two nets.
+             if (c->belStrength < STRENGTH_USER ||
+-                bool_or_default(c->attrs, id("X_LUT_LOGICAL_OUTPUT"), false)) {
++                bool_or_default(c->attrs, id("X_LUT_LOGICAL_OUTPUT"), false) ||
++                c->attrs.count(id("X_LUT_COFACTOR_PAIR"))) {
+                 all_frozen = false;
+                 break;
+             }
+@@ -1428,6 +1468,14 @@
+             CellInfo *lut5 = lt.cells[z << 4 | BEL_5LUT];
+             if (lut5 == nullptr)
+                 continue;
++            CellInfo *cofactor_upper = lt.cells[z << 4 | BEL_6LUT];
++            if (lut5->attrs.count(id("X_LUT_COFACTOR_PAIR")) ||
++                (cofactor_upper && cofactor_upper->attrs.count(id("X_LUT_COFACTOR_PAIR")))) {
++                if (!cofactor_lut_pair_valid(getCtx(), cofactor_upper, lut5))
++                    log_error("Invalid cofactor LUT placement at %s\n", getBelName(lut5->bel).c_str(this));
++                // 打包阶段已经保存共同输入排列，继续保持真实选择变量位于 A6。
++                continue;
++            }
+             // Skip imported (BEL-pinned) LUT slots: this fixup re-merges the
+             // 5LUT/6LUT inputs into <=6 shared physical pins assuming nextpnr's
+             // own packing.  Vivado-frozen LUTs route distinct nets to shared
+@@ -1970,6 +2018,9 @@
+             CellInfo *lut6 = lt.cells[z << 4 | BEL_6LUT];
+             if (lut5 == nullptr && lut6 == nullptr)
+                 continue;
++            bool cofactor_pair = lut6 != nullptr && lut5 != nullptr &&
++                                 lut6->attrs.count(id("X_LUT_COFACTOR_PAIR")) &&
++                                 lut5->attrs.count(id("X_LUT_COFACTOR_PAIR"));
+             auto &pp = used_perm_pips.at(ti);
+             // from -> to
+             std::unordered_map<IdString, std::vector<IdString>> new_connections;
+@@ -2032,7 +2083,8 @@
+                     if (orig_attr.empty())
+                         lut6->attrs.erase(id("X_ORIG_PORT_" + p.str(this)));
+                 }
+-                if (lut5) {
++                // A6 的恒等置换仅连接六输入函数；O5 没有第六输入引脚。
++                if (lut5 && !(cofactor_pair && p == id_A6)) {
+                     if (!lut5->ports.count(p)) {
+                         lut5->ports[p].name = p;
+                         lut5->ports[p].type = PORT_IN;
+@@ -2053,6 +2105,8 @@
+                         lut5->attrs.erase(id("X_ORIG_PORT_" + p.str(this)));
+                 }
+             }
++            if (cofactor_pair && !cofactor_lut_pair_valid(getCtx(), lut6, lut5))
++                log_error("Invalid cofactor LUT routing at %s\n", getBelName(lut6->bel).c_str(this));
+         }
+     }
+     /*

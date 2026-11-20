@@ -20,7 +20,7 @@ POOL_ALIGNMENT = 64
 MAX_POOL_BYTES = 1 << 24
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-bank-im2col-v6"
+MODEL_VERSION = "dip-shared-bank-regfile-v10"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -159,21 +159,23 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     bits = {
         "ia_cache_tags": slots * (2 * (32 - (size.bit_length() - 1)) + size.bit_length() + 1),
         "ia_slot_metadata": slots * (2 * size.bit_length() + 2),
-        "kernel_cache": 2 * size * size * 16,
+        "kernel_cache": 3 * size * size * 16,
         "bias_cache": 2 * rmax * size * 32,
-        "requant_is_cache": rmax * size * (32 + 32 + 6 + 6),
+        "requant_is_cache": rmax * size * (32 + 32 + 32 + 7),
         "oa_s8_fifo": oa_banks * size * size * 8,
         "oa_s16_fifo": oa_s16_banks * size * size * 16,
         "conv_data_cache": image_cache["data_bytes"] * 8,
         "conv_cache_metadata": image_cache["metadata_bits"],
         "conv_prefetch_queue": 8 * (4 * 32 + 1),
-        "conv_request_queue": 4 * (4 * 32 + (image_cache["sets"] - 1).bit_length() + 2),
+        "conv_request_queue": 4 * (4 * 32 + (image_cache["sets"] - 1).bit_length() + 3),
         "conv_response_queue": 4 * (32 + 1),
-        "vector_buffers": size * (5 * 16 + 49 * 8 + 5 * 32),
+        "vector_buffers": size * (5 * 16 + 49 * 8 + 4 * 32 + 6),
         "ps_frame_lengths": frames * frame_length_bits,
     }
     if layout["shared_ia_ps_enabled"]:
         bits["ia_ps_shared_ram"] = layout["shared_total_bytes"] * 8
+        if layout["shared_physical_bank_count"] < 8 and size > 2 and size % 2 == 0:
+            bits["requant_input_rows"] = rmax * size * (32 * size + 1)
     else:
         bits["ia_cache"] = cache * size * size * 16
         bits["ps_payload"] = pool_bytes * 8 if compressed else logical_rows * size * 32
@@ -189,7 +191,8 @@ def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *,
     """Register groups checked separately within complete sequential state."""
     memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
                     bank_bytes=bank_bytes, bank_count=bank_count)
-    bits = {"core_row_metadata": 4 * size + 1}
+    bits = {"core_row_metadata": 4 * size + 1,
+            "requant_ws_parameters": size * (32 + 32 + 32 + 7)}
     return bits
 
 
