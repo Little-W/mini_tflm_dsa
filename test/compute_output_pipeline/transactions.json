@@ -1,0 +1,2066 @@
+{
+  "passed": true,
+  "tasks": 86,
+  "reference_report": "/tmp/npu45000_soc/r6/npu/summary.json",
+  "current_report": "/tmp/npu45000_compute/output_pipeline/npu/suite/summary.json",
+  "reports_sha256": {
+    "reference": "d42faa9a0a43569dd7b02adf401a9a4c09fc0627ef8ed131d78cd10c7f38337c",
+    "current": "67a2fee4a104e6aa54261b9fef764aa04249306727be5cae76a6e5c6fa19d6c4"
+  },
+  "reference_binary_sha256": "7e322c6ac35505b632b15b6a034d6ad1740200c297c12a3152067dd0ce917908",
+  "current_binary_sha256": "7bec13a6d3ff463157a05e42f739e82992d77d10d3f9e701717f23f26dc0b39f",
+  "build_parameters": {
+    "size": 16,
+    "bus_width": 64,
+    "shared_bank_bytes": 8192,
+    "shared_bank_count": 7,
+    "cache_sets": 128,
+    "cache_ways": 2,
+    "cache_line_bytes": 16,
+    "cache_data_bytes": 4096,
+    "cache_policy": 3,
+    "ps_compress": true,
+    "pool_bytes": 49152,
+    "force_raw": true,
+    "lint_only": false,
+    "ps_frame_count": 16
+  },
+  "reference_cycles": 961873,
+  "current_cycles": 963179,
+  "cycle_difference": 1306,
+  "minimum_task_cycle_difference": 0,
+  "maximum_task_cycle_difference": 583,
+  "int32_checks": 216348,
+  "functional_fields_compared": [
+    "task",
+    "conv",
+    "dataflow",
+    "bypass",
+    "error",
+    "capacity_injected",
+    "ia_banks",
+    "ia_bytes",
+    "ps_bytes",
+    "r",
+    "w",
+    "ps_control"
+  ],
+  "scope": "每项事务均检查目的内存和 INT32 行序列；成功事务的输出数量相同，记录周期变化",
+  "cases": [
+    {
+      "suite": "functional/smoke",
+      "task": "conv3x3_cache",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "82f407bc99e14bd0b07e95bf2fa26615a455ce44f1401f87292bc0ab9c7f978a",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "1bb461770579e2966067e1f98cf36e4cc5c8619da4c81551576177d7cd35dfe7",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/cache_fixed",
+      "task": "conv3x3_cache",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2526,
+      "current_cycles": 2528,
+      "cycle_difference": 2,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 2526,
+          "current": 2528
+        },
+        "device_cycles": {
+          "reference": 2526,
+          "current": 2528
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "82f407bc99e14bd0b07e95bf2fa26615a455ce44f1401f87292bc0ab9c7f978a",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "1bb461770579e2966067e1f98cf36e4cc5c8619da4c81551576177d7cd35dfe7",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/bypass_fixed",
+      "task": "conv3x3_bypass",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 10449,
+      "current_cycles": 10451,
+      "cycle_difference": 2,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 10449,
+          "current": 10451
+        },
+        "device_cycles": {
+          "reference": 10449,
+          "current": 10451
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "b4a7b0bbba47ebc95d99aa4cff9d5c06af21b07b5166a15f2545f14e8bf08a95",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "1bb461770579e2966067e1f98cf36e4cc5c8619da4c81551576177d7cd35dfe7",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/geometry",
+      "task": "rect_stride_dilation",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 950,
+      "write_bytes": 950,
+      "reference_cycles": 4957,
+      "current_cycles": 4957,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 132,
+          "current": 131
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "af728467b47d0a3eab3764abe3603d277808a0b3d621adef60d83eea66f30aab",
+        "config.mem": "77ff8948f1e58750fa2e4924fe0b2c302d90e0e111acfd2a480d1038534ba057",
+        "acc.mem": "4a1a999290a69fa26d8c9eaa91c7cdf4ba7378f1f0676c2fe23bc0a83ceab591",
+        "golden.mem": "db741ff6c39d7e3ba969d58a4a1139281d7e1adc63c05954bb3b11f2dc106a4c",
+        "init.mem": "10cb38b76884be62df2b934d3e5ef99b96a535a51663bb051bd33e98144abf5f"
+      }
+    },
+    {
+      "suite": "functional/geometry",
+      "task": "group_channel_offset",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 180,
+      "write_bytes": 180,
+      "reference_cycles": 3455,
+      "current_cycles": 3455,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 139,
+          "current": 138
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bd428e3b5d5c27adc14bb6d0936f974a2972beba884341a4622f3efe524ab4e7",
+        "config.mem": "1281a84764d3cb03b9af225d2d249ea15e0eb146b4f71ada07fe78e552c859f8",
+        "acc.mem": "0f839d4cf97cdd531b77a472ed9f5b49c0a3922db4d4306380ed3e44e59c9711",
+        "golden.mem": "da2e3aae1ac50e51bd0df4f126ab85561912f6b7fc1676699846a1a897211897",
+        "init.mem": "7fa50b1963bf1d8819f345e2c5f4051818dc7baa7caa6a35cf097876179fee2d"
+      }
+    },
+    {
+      "suite": "functional/geometry",
+      "task": "signed_rounding_positive_shift",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 105,
+      "write_bytes": 105,
+      "reference_cycles": 1849,
+      "current_cycles": 1849,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "42d87e0a0483e2915a7d547f6ddb6850a0fe00fb11d4e5779a677994531b6e2b",
+        "config.mem": "9b6b6ff8ee5badc4f71bb438cc45733510f143d03055b900277a98550249402d",
+        "acc.mem": "62d08d4aa0d080851860e620adcc4c27adff139c5160022bef6c77b6a6666bcb",
+        "golden.mem": "654de4ba3290670a7be8067a6f011a28adbc620757b60e54c2b042a8ec1441c4",
+        "init.mem": "7d3979059ac688b0b56d0109b099d98d6c4cdbf9c3066ba9e4c3d1b30c153df3"
+      }
+    },
+    {
+      "suite": "functional/geometry",
+      "task": "latched_config",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "9cba84d0c0977fc96360fafe372028b4c53bc775dbe291eabb02e5f90bb619b5",
+        "acc.mem": "d9870cc186f9b8246512aeae6b126b648c377d8b5cd7284edb02c8df248e0c0c",
+        "golden.mem": "69fbeb3a92d750fca8b2e67bfbf9e16d345698185b5e8ccce977cf3184a1c046",
+        "init.mem": "efeb4864db3a0c515894ef531e89d7bf42b7cfb8634300b42058a62562c54231"
+      }
+    },
+    {
+      "suite": "functional/geometry",
+      "task": "conv3x3_is",
+      "index": 4,
+      "error": 0,
+      "int32_checks": 475,
+      "write_bytes": 475,
+      "reference_cycles": 2979,
+      "current_cycles": 2979,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "3adc55867b7bc2fd834005d7daea1b196c3078384b9c3076624e77bb0affde6c",
+        "acc.mem": "13fa39fac4aa86738182e0278a153aaadd14a046f91e487c494e88295db4cdbe",
+        "golden.mem": "99e7225cb619dd9a9caa7afbc4bf756fc602da9251d23a5533b0399f3b51ebb9",
+        "init.mem": "bef903c6183a6cf51c31765ac88c6524189c273a27d88f20d96fcbdbdee392d7"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "injected_rresp",
+      "index": 0,
+      "error": 3,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 1038,
+      "current_cycles": 1038,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "2eab295451d39cc18426d3b377b3f9452c42585595545863d5d21a60b2a47ff8",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "recovery_changed_input",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "79b8e5917eeddb39221299a23a6b52f1ea820941fa6ab3a36b0fba464c2497fe",
+        "acc.mem": "6cb651eb5a09e50d99ece7fca95b7f301c4156c0204a167504f062ad20a2a2d2",
+        "golden.mem": "56cd5cddb795c259ef65ec26c8a0092cd49c2b176ef0629a98ab277bb9810dc3",
+        "init.mem": "d86a208b741333b057b9da69230b77aa46abdb617de00361e3d56010bbcdfb34"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "invalid_geometry",
+      "index": 2,
+      "error": 1,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 10,
+      "current_cycles": 10,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "98ceadc45fc0c09c817983599ce13ed5a21c844c90c4e5f4bbd4420e2397d7a6",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "recovery_changed_input",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "79b8e5917eeddb39221299a23a6b52f1ea820941fa6ab3a36b0fba464c2497fe",
+        "acc.mem": "6cb651eb5a09e50d99ece7fca95b7f301c4156c0204a167504f062ad20a2a2d2",
+        "golden.mem": "56cd5cddb795c259ef65ec26c8a0092cd49c2b176ef0629a98ab277bb9810dc3",
+        "init.mem": "d86a208b741333b057b9da69230b77aa46abdb617de00361e3d56010bbcdfb34"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "capacity_error",
+      "index": 4,
+      "error": 2,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 1935,
+      "current_cycles": 1935,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "237a222b2430eb52e4366f020a4d1e68b4759722cd9ed301d830fdb3da0efd46",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "recovery_changed_input",
+      "index": 5,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "79b8e5917eeddb39221299a23a6b52f1ea820941fa6ab3a36b0fba464c2497fe",
+        "acc.mem": "6cb651eb5a09e50d99ece7fca95b7f301c4156c0204a167504f062ad20a2a2d2",
+        "golden.mem": "56cd5cddb795c259ef65ec26c8a0092cd49c2b176ef0629a98ab277bb9810dc3",
+        "init.mem": "d86a208b741333b057b9da69230b77aa46abdb617de00361e3d56010bbcdfb34"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "bus_capacity_priority",
+      "index": 6,
+      "error": 3,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 1038,
+      "current_cycles": 1038,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "370c6e6e67c5f957656d0cb236151b7fe200893ff9c372239d6a70eea1d5365b",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/error_recovery",
+      "task": "recovery_changed_input",
+      "index": 7,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "79b8e5917eeddb39221299a23a6b52f1ea820941fa6ab3a36b0fba464c2497fe",
+        "acc.mem": "6cb651eb5a09e50d99ece7fca95b7f301c4156c0204a167504f062ad20a2a2d2",
+        "golden.mem": "56cd5cddb795c259ef65ec26c8a0092cd49c2b176ef0629a98ab277bb9810dc3",
+        "init.mem": "d86a208b741333b057b9da69230b77aa46abdb617de00361e3d56010bbcdfb34"
+      }
+    },
+    {
+      "suite": "functional/mixed_conv_gemm",
+      "task": "conv3x3_cache",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "82f407bc99e14bd0b07e95bf2fa26615a455ce44f1401f87292bc0ab9c7f978a",
+        "acc.mem": "971729b3f5a5b56b7b6998318b0efd53d104edb63a06f0de97458b64695667e7",
+        "golden.mem": "1bb461770579e2966067e1f98cf36e4cc5c8619da4c81551576177d7cd35dfe7",
+        "init.mem": "5be86e9bdf458ba61ba9f0e5d82d6f2429540199c93e0f85c89cc9c259f61477"
+      }
+    },
+    {
+      "suite": "functional/mixed_conv_gemm",
+      "task": "mixed_gemm_is",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 1892,
+      "current_cycles": 1892,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "acc.mem": "6e6762022a97fb701e747e55c3ba1b978acd24719e65e1044d480cc5f5e00df1",
+        "config.mem": "0f34851db77af008e6f676d15cc50b278a6881e10ad415ca343eeae93dd45f90",
+        "golden.mem": "5ca3d6b82234b3dfdd17b1496f8e1d4b6b456067e59699fb8118b4e85ef01092",
+        "init.mem": "060ed5582b59fb25ce609a6716db3ee1667cfcc56ff12d49b0a25882f3d174f2"
+      }
+    },
+    {
+      "suite": "functional/mixed_conv_gemm",
+      "task": "recovery_changed_input",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 425,
+      "write_bytes": 425,
+      "reference_cycles": 2805,
+      "current_cycles": 2805,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 65,
+          "current": 64
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "062dfe73dc123355d068d00acd0242b69a28a27571556ce08c544775dbad2dec",
+        "config.mem": "79b8e5917eeddb39221299a23a6b52f1ea820941fa6ab3a36b0fba464c2497fe",
+        "acc.mem": "6cb651eb5a09e50d99ece7fca95b7f301c4156c0204a167504f062ad20a2a2d2",
+        "golden.mem": "56cd5cddb795c259ef65ec26c8a0092cd49c2b176ef0629a98ab277bb9810dc3",
+        "init.mem": "d86a208b741333b057b9da69230b77aa46abdb617de00361e3d56010bbcdfb34"
+      }
+    },
+    {
+      "suite": "functional/batch_group_commands",
+      "task": "batch0_group0",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 60,
+      "write_bytes": 60,
+      "reference_cycles": 2059,
+      "current_cycles": 2059,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "621892da8bbf608d7b97489d84ff8b844f47ea367982cf662b7fd6e17237f98e",
+        "config.mem": "122aa2924bf295aa3a19b32d444606f6fb0584f06bd7b2014bffb8aca2c80aba",
+        "acc.mem": "6d432e9f67cfbc61e83c3d70aa21ec55a6c59b4438f7cea6618e68e4b57beb78",
+        "golden.mem": "7af616e9544a1beb39e9221f919fa5b06985d3de1bfa26dc67036406b4e54f58",
+        "init.mem": "6b9ccdd270324cdc346baafa7acb6abbe0054f7843d4087f4167a4c71705f6af"
+      }
+    },
+    {
+      "suite": "functional/batch_group_commands",
+      "task": "batch0_group1",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 60,
+      "write_bytes": 60,
+      "reference_cycles": 2056,
+      "current_cycles": 2056,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "8ab9daf0654d2349a40b05ae360abb99b70b4d70479591e33e2b668791e5dd0d",
+        "config.mem": "c1a3cc5c0485b8fd551850e37aa652bb9afe2a364d196e878fb1ce79173eaffc",
+        "acc.mem": "38e83f5efee1e9a4ee6fdd445a99807b7a4da9fc73d035b1089a35a097b95911",
+        "golden.mem": "7b9e08c17f16ab226eabab99f1762a0d9690c2ca633cd6e697563fc87adee4ce",
+        "init.mem": "7af616e9544a1beb39e9221f919fa5b06985d3de1bfa26dc67036406b4e54f58"
+      }
+    },
+    {
+      "suite": "functional/batch_group_commands",
+      "task": "batch1_group0",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 60,
+      "write_bytes": 60,
+      "reference_cycles": 2021,
+      "current_cycles": 2021,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "761514d2c05e7fb8b8a184af9957819bf6d666107f03d1ef15b8860a9fe29c7b",
+        "config.mem": "1c1d205e4e8bcf5052757211039f9785e0d356887c83439be1c70995ac399feb",
+        "acc.mem": "6d432e9f67cfbc61e83c3d70aa21ec55a6c59b4438f7cea6618e68e4b57beb78",
+        "golden.mem": "8982d18b8e30d4ae098762745059760eb9449b50cc15721f7b97764fe4d08218",
+        "init.mem": "7b9e08c17f16ab226eabab99f1762a0d9690c2ca633cd6e697563fc87adee4ce"
+      }
+    },
+    {
+      "suite": "functional/batch_group_commands",
+      "task": "batch1_group1",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 60,
+      "write_bytes": 60,
+      "reference_cycles": 2056,
+      "current_cycles": 2056,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "69361055009df3cc6be784a89b669b4a81ca2e79012dc21d2f3b7dbd4b99855e",
+        "config.mem": "904f042ea62402250f119846a60870ee3c89c1e7219c8bdb959e2c2b69eac4da",
+        "acc.mem": "38e83f5efee1e9a4ee6fdd445a99807b7a4da9fc73d035b1089a35a097b95911",
+        "golden.mem": "2d3e9ca11a3e4bb212891442505326e1eafaceaa9223500d9c618d0f0b59a91b",
+        "init.mem": "8982d18b8e30d4ae098762745059760eb9449b50cc15721f7b97764fe4d08218"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s8_full_ws",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 2144,
+      "current_cycles": 2144,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 115,
+          "current": 119
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "d4a9e804992544c2173d20ab5e9aeb36a7b0200cfd8d55dbd9749cb5155382a1",
+        "acc.mem": "5210e74e2bf2d5323bdbe1edbd37173dc11e872017efd2a55a4e6c116280625d",
+        "golden.mem": "c915adcd059380f65ef3cbb411d7b4bc52a3bac1669be2a1ffcf4f1a4edd3bfb",
+        "init.mem": "1c1a95b3f9fca51657a46acebc51b0a3a8b4aa96aa3f30fb74f7a96b0fcc4153"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s8_full_is",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 2150,
+      "current_cycles": 2150,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "e9610aefe1604f543dcf162ee3f7b0650c208cbf9f2026f56bf22f80fd2c31d8",
+        "acc.mem": "5210e74e2bf2d5323bdbe1edbd37173dc11e872017efd2a55a4e6c116280625d",
+        "golden.mem": "c915adcd059380f65ef3cbb411d7b4bc52a3bac1669be2a1ffcf4f1a4edd3bfb",
+        "init.mem": "1c1a95b3f9fca51657a46acebc51b0a3a8b4aa96aa3f30fb74f7a96b0fcc4153"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s16_full_ws",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 2265,
+      "current_cycles": 2265,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 119,
+          "current": 118
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "005040ee458a36fb2719acaf7844111e46af19a6642866b2375405baf903046f",
+        "acc.mem": "0aa1bef715df76c038ea8d964667238fcc3bcd0437f4ac41aaab03cf50c79f39",
+        "golden.mem": "6ddda2bf8c8d811197a00e8a64a6ff8960a51c53ca0f668659aa36c637989471",
+        "init.mem": "f78317771c5dba2d350b7b5ed34e0afeff361d8efac8ae76753f0dbf275a58fc"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s16_full_is",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 2296,
+      "current_cycles": 2296,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "989692019272ac4211c855621766ccdb2badbb12dbd508f320f1a4eb34f0f760",
+        "acc.mem": "0aa1bef715df76c038ea8d964667238fcc3bcd0437f4ac41aaab03cf50c79f39",
+        "golden.mem": "6ddda2bf8c8d811197a00e8a64a6ff8960a51c53ca0f668659aa36c637989471",
+        "init.mem": "f78317771c5dba2d350b7b5ed34e0afeff361d8efac8ae76753f0dbf275a58fc"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s16_output",
+      "index": 4,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 612,
+      "reference_cycles": 2278,
+      "current_cycles": 2278,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "de1cb3cec4863090fc67d22f5855720dc0c4a2931ed5111d608ecdb1d9916d43",
+        "acc.mem": "d46e6e264182210da06a394d9dab4cf72840e0ce22329aa1c2d4053aafef0988",
+        "golden.mem": "ae30dd1e14b7dea704c8fb9fa718590c9e850dff0fb77d3d8e63822812b5e055",
+        "init.mem": "99eff3d2ed77686d6e8fe07d0bf1e43ec3fd369eba0bf437ada6ad76ab79f16e"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s16_full_ws",
+      "index": 5,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 2265,
+      "current_cycles": 2265,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 119,
+          "current": 118
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "005040ee458a36fb2719acaf7844111e46af19a6642866b2375405baf903046f",
+        "acc.mem": "0aa1bef715df76c038ea8d964667238fcc3bcd0437f4ac41aaab03cf50c79f39",
+        "golden.mem": "6ddda2bf8c8d811197a00e8a64a6ff8960a51c53ca0f668659aa36c637989471",
+        "init.mem": "f78317771c5dba2d350b7b5ed34e0afeff361d8efac8ae76753f0dbf275a58fc"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s16_full_is",
+      "index": 6,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 2296,
+      "current_cycles": 2296,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "989692019272ac4211c855621766ccdb2badbb12dbd508f320f1a4eb34f0f760",
+        "acc.mem": "0aa1bef715df76c038ea8d964667238fcc3bcd0437f4ac41aaab03cf50c79f39",
+        "golden.mem": "6ddda2bf8c8d811197a00e8a64a6ff8960a51c53ca0f668659aa36c637989471",
+        "init.mem": "f78317771c5dba2d350b7b5ed34e0afeff361d8efac8ae76753f0dbf275a58fc"
+      }
+    },
+    {
+      "suite": "functional/input_precision",
+      "task": "gemm_s8_full_ws",
+      "index": 7,
+      "error": 0,
+      "int32_checks": 306,
+      "write_bytes": 306,
+      "reference_cycles": 2144,
+      "current_cycles": 2144,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 115,
+          "current": 119
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "d4a9e804992544c2173d20ab5e9aeb36a7b0200cfd8d55dbd9749cb5155382a1",
+        "acc.mem": "5210e74e2bf2d5323bdbe1edbd37173dc11e872017efd2a55a4e6c116280625d",
+        "golden.mem": "c915adcd059380f65ef3cbb411d7b4bc52a3bac1669be2a1ffcf4f1a4edd3bfb",
+        "init.mem": "1c1a95b3f9fca51657a46acebc51b0a3a8b4aa96aa3f30fb74f7a96b0fcc4153"
+      }
+    },
+    {
+      "suite": "functional/dense_dataflows",
+      "task": "dense_800_32_ws",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 32,
+      "write_bytes": 32,
+      "reference_cycles": 18658,
+      "current_cycles": 18659,
+      "cycle_difference": 1,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 18658,
+          "current": 18659
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "4a9425daa3897fb350da3139f8f4d435217895b02e88b5fd8888579f8777b0e1",
+        "acc.mem": "8d3cd90a14a65ac2c8c25bdd76945a98e56bbb402b83879a933a283544b77d59",
+        "golden.mem": "fbeb01e63246e380b3b7fc984ce66a80607e5505471c149b594dec4e1fe5f32a",
+        "init.mem": "7f63f4eb4379a0c957a05744bca35307a2c997739cba304de217df0e9f4d6277"
+      }
+    },
+    {
+      "suite": "functional/dense_dataflows",
+      "task": "dense_800_32_is_r1",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 32,
+      "write_bytes": 32,
+      "reference_cycles": 20203,
+      "current_cycles": 20204,
+      "cycle_difference": 1,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 20203,
+          "current": 20204
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "4b3f7abc907051f35419ff10ca25e060d4682348094f8440c5029810728dfea1",
+        "acc.mem": "8d3cd90a14a65ac2c8c25bdd76945a98e56bbb402b83879a933a283544b77d59",
+        "golden.mem": "fbeb01e63246e380b3b7fc984ce66a80607e5505471c149b594dec4e1fe5f32a",
+        "init.mem": "7f63f4eb4379a0c957a05744bca35307a2c997739cba304de217df0e9f4d6277"
+      }
+    },
+    {
+      "suite": "functional/dense_dataflows",
+      "task": "dense_800_32_is_r2",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 32,
+      "write_bytes": 32,
+      "reference_cycles": 20205,
+      "current_cycles": 20206,
+      "cycle_difference": 1,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 20205,
+          "current": 20206
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "7af6b909ee88c996378480058d7ab2a6a18d7a569a4a71b5351733eb844d0884",
+        "acc.mem": "8d3cd90a14a65ac2c8c25bdd76945a98e56bbb402b83879a933a283544b77d59",
+        "golden.mem": "fbeb01e63246e380b3b7fc984ce66a80607e5505471c149b594dec4e1fe5f32a",
+        "init.mem": "7f63f4eb4379a0c957a05744bca35307a2c997739cba304de217df0e9f4d6277"
+      }
+    },
+    {
+      "suite": "functional/dense_dataflows",
+      "task": "dense_32_10_ws",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 10,
+      "write_bytes": 10,
+      "reference_cycles": 352,
+      "current_cycles": 353,
+      "cycle_difference": 1,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 352,
+          "current": 353
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "9be41a577666cbe90c5c6bdd63515e6c89b61191b3fad6b371c669f34d008cc9",
+        "acc.mem": "cd14489f39319e5f89f08858fbcb240913a9931ac4417e2fcca7e321757e7069",
+        "golden.mem": "d97a5e6ce86b2aed0bdca5d3badf7d2a56d1c29842e1a52b46bd51a4f338d9a4",
+        "init.mem": "44113f342e9c21e78362b3f07460bfd27349ec28653bdf30767dd385f77cfc14"
+      }
+    },
+    {
+      "suite": "functional/dense_dataflows",
+      "task": "dense_32_10_is",
+      "index": 4,
+      "error": 0,
+      "int32_checks": 10,
+      "write_bytes": 10,
+      "reference_cycles": 418,
+      "current_cycles": 419,
+      "cycle_difference": 1,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 418,
+          "current": 419
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "7cd547af1d508ff919a20bcaf91a6bf9b0f0c65f4f2eb705e4541a27e7d26404",
+        "acc.mem": "cd14489f39319e5f89f08858fbcb240913a9931ac4417e2fcca7e321757e7069",
+        "golden.mem": "d97a5e6ce86b2aed0bdca5d3badf7d2a56d1c29842e1a52b46bd51a4f338d9a4",
+        "init.mem": "44113f342e9c21e78362b3f07460bfd27349ec28653bdf30767dd385f77cfc14"
+      }
+    },
+    {
+      "suite": "functional/dense_dataflows",
+      "task": "late_axi_error",
+      "index": 5,
+      "error": 3,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 220,
+      "current_cycles": 220,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "4d970a9905525fe983867df8e023f70db9e4d240136fccceb9d2efbf0c5124ad",
+        "acc.mem": "7586b504cce918a3e35a000a89015c0f57d0e82684e654c624625547790310d4",
+        "golden.mem": "f29d912cfc5ef2cd4850fd7081d469886a5abfb73dcb5199a75da5718b52eb08",
+        "init.mem": "f29d912cfc5ef2cd4850fd7081d469886a5abfb73dcb5199a75da5718b52eb08"
+      }
+    },
+    {
+      "suite": "functional/dense_dataflows",
+      "task": "single_k_no_ps",
+      "index": 6,
+      "error": 0,
+      "int32_checks": 2048,
+      "write_bytes": 2048,
+      "reference_cycles": 2383,
+      "current_cycles": 2387,
+      "cycle_difference": 4,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 2383,
+          "current": 2387
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "cbce7caea347939d46c81aed99370ea4fa6a3c97c59d6aa4e7a450cc9e36c7cc",
+        "acc.mem": "7586b504cce918a3e35a000a89015c0f57d0e82684e654c624625547790310d4",
+        "golden.mem": "3c324f85073eb838b97772c9cd96d238e503c2ca87cf216a747373253fedd2af",
+        "init.mem": "f29d912cfc5ef2cd4850fd7081d469886a5abfb73dcb5199a75da5718b52eb08"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "ws_capacity_0",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 735,
+      "write_bytes": 735,
+      "reference_cycles": 3915,
+      "current_cycles": 3921,
+      "cycle_difference": 6,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 3915,
+          "current": 3921
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "1719928dc48703d645d267f187f5912502f3a581c9e0a04c0ec8ff3aef7396b3",
+        "acc.mem": "296a1b7e6c1be11da2930de78c44d7fd09d50ce28bcc45e56b72870b05cb8b8f",
+        "golden.mem": "b32d40d6a7eac9e400fbcc202cee02d971ed3e45a1edfb8d3e7c4834de6567ff",
+        "init.mem": "323a5a1aebf75232f85cf93a068c3c9add8ab0e1a2c9a52fb0b0e96e28316978"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "ws_capacity_1",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 42745,
+      "write_bytes": 42745,
+      "reference_cycles": 210098,
+      "current_cycles": 210681,
+      "cycle_difference": 583,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 7922,
+          "current": 8008
+        },
+        "cycles": {
+          "reference": 210098,
+          "current": 210681
+        },
+        "r_wait_cycles": {
+          "reference": 7033,
+          "current": 6940
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "40c6bbd264d808c5f679089485c851d40a3be8668e14e9d88d3461b3f52d673e",
+        "acc.mem": "68ecd19685381dd001e4a65cb053eea44d27173fefc2979c774c9ce1e24c944e",
+        "golden.mem": "fbf91dd74e01c2f82ef5a09b59dee3a48be0fcd8a0d6e4b41d133af878ac6170",
+        "init.mem": "a1c8758f828fe74ee590001096f6b67074bdfb28819af9914b0b98f787564bbe"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "ws_capacity_2",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 9583,
+      "write_bytes": 9583,
+      "reference_cycles": 25035,
+      "current_cycles": 25056,
+      "cycle_difference": 21,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 970,
+          "current": 992
+        },
+        "cycles": {
+          "reference": 25035,
+          "current": 25056
+        },
+        "r_wait_cycles": {
+          "reference": 907,
+          "current": 897
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "29557d84704dc1d463f5a67a171b2cc0e67e8b76d606308a44f88604a20a5e9f",
+        "acc.mem": "1b3f46ea0faf12d859fd3f1251e0d042094d6682862926a0b4eedfe6734890b5",
+        "golden.mem": "c23fcee7c1871e445e6c05330f6339d75f018e43a4b91d0854def5d93dc19d23",
+        "init.mem": "cf3c3cbd9643a9672f2f079071ded902bcee6083548c6f469c45dadee018940b"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "ws_capacity_3",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 6783,
+      "write_bytes": 6783,
+      "reference_cycles": 22547,
+      "current_cycles": 22547,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 746,
+          "current": 736
+        },
+        "r_wait_cycles": {
+          "reference": 654,
+          "current": 628
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "2d9c68a436c7f2a2b7bf86ada23baa8725b1fa488c2f71cc0d87b2348b9b9816",
+        "acc.mem": "9b45c696f76469eb0ffd8f121ec9fe4c390f8fc1573179205015dce15d8e18ff",
+        "golden.mem": "f1ad6728123708a9ad2c88c5d3253f6186c2ec0bbb3ecf28c14f3a443003e5c2",
+        "init.mem": "ec6f703c4b3c8033ee1fc2c69dcc22ac58e8c7576263d7be031ab8f1d32f3aba"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "ws_capacity_4",
+      "index": 4,
+      "error": 0,
+      "int32_checks": 2451,
+      "write_bytes": 2451,
+      "reference_cycles": 15774,
+      "current_cycles": 15774,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 566,
+          "current": 572
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "3679af689cf9ba833783d7527f5590335a4daf06993b6b42eafd9cf824ed43e1",
+        "acc.mem": "adb9ed523157a761f3282960e00b1ca6ce1ed95cbcf10de870f4f14f69b29709",
+        "golden.mem": "775291d46b64aca20ed4f6fec245fdbbd323b92c778da5fdc8ef993cad9396bd",
+        "init.mem": "dd3a8930fe3ffef0aaa1296b5119394dd2c599b7d35711ccfa2dcf8d3b9ac6af"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "ws_capacity_5",
+      "index": 5,
+      "error": 0,
+      "int32_checks": 18095,
+      "write_bytes": 18095,
+      "reference_cycles": 24286,
+      "current_cycles": 24286,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 1056,
+          "current": 1057
+        },
+        "r_wait_cycles": {
+          "reference": 1095,
+          "current": 1094
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "dcd1ae6b2e4b7fa09423f8c13c371e03b626db03da8246fdbb42aeb3f923f90d",
+        "acc.mem": "06f996be354cc37fdee4a08ba94ff530670ea5ac245b55fcff2d7d7733014adf",
+        "golden.mem": "3878943b8d1597ccaacf51c57355ffea999d9cbf4ad1508e025d36cd39c8fba5",
+        "init.mem": "8d1cf3f04c4c1cf828f7b0cda80cc356dcacb8ce0a25dc34a4962431a0709616"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "is_capacity_0",
+      "index": 6,
+      "error": 0,
+      "int32_checks": 735,
+      "write_bytes": 735,
+      "reference_cycles": 3709,
+      "current_cycles": 3709,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "a5debb79d91119ff567c15b26135aa6b0e3eb72b9466f6b5a4eb813570e9f0c3",
+        "acc.mem": "675ceaba02fd34e7aaba8f9af639fd50ddf23bdc5dfcab311290277d1fccc425",
+        "golden.mem": "76d74664d69e9216d2807d58af71c33ace56a8889eda7690033aefb1972a92d9",
+        "init.mem": "dde39288f846f05a929b60c1f45723545c719856eb466bbfeaf05bf6cedca84c"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "is_capacity_1",
+      "index": 7,
+      "error": 0,
+      "int32_checks": 42745,
+      "write_bytes": 42745,
+      "reference_cycles": 208699,
+      "current_cycles": 209118,
+      "cycle_difference": 419,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 8027,
+          "current": 7957
+        },
+        "cycles": {
+          "reference": 208699,
+          "current": 209118
+        },
+        "r_wait_cycles": {
+          "reference": 7294,
+          "current": 7283
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "c655e201172fa368dfb43c5f02f3d4845644a6a4c4ef4ee6db39c8cf3388ce9f",
+        "acc.mem": "8b46a131be41d03de819a20eab016d2f8582088ec5d298839968d382b1ec0a0f",
+        "golden.mem": "f46747eb67ad29b57de96a28d375c1f6e730ef9c645fe313ca94d5ad77543b5f",
+        "init.mem": "9e1b114c4de663ecea1c86b41723da58947781768d837db1a1f39f955f01b8c3"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "is_capacity_2",
+      "index": 8,
+      "error": 0,
+      "int32_checks": 9583,
+      "write_bytes": 9583,
+      "reference_cycles": 27976,
+      "current_cycles": 28157,
+      "cycle_difference": 181,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 1063,
+          "current": 1089
+        },
+        "cycles": {
+          "reference": 27976,
+          "current": 28157
+        },
+        "r_wait_cycles": {
+          "reference": 1170,
+          "current": 1109
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "d12a8316cf4bc5cd3926d1978c2978f81233ba7bb05c06c72eeb532205eb1b1e",
+        "acc.mem": "947faad87e08c3cb2fc4aeedafdfc952d9a85b5c831180e91cf430b42ce80692",
+        "golden.mem": "6837fa7e283ebf4e0599de59b945e7e0415244974c5532ff597a583349cd8d47",
+        "init.mem": "f748c86842bb30f6acbe07377e69af760f24c89f2b0c3c7ed83a9cf254dbca7f"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "is_capacity_3",
+      "index": 9,
+      "error": 0,
+      "int32_checks": 6783,
+      "write_bytes": 6783,
+      "reference_cycles": 23416,
+      "current_cycles": 23416,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 771,
+          "current": 770
+        },
+        "r_wait_cycles": {
+          "reference": 859,
+          "current": 868
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "edbad7dca6e6e4145e5b7b8538410536ea91568ec882dab0d54186856e96a336",
+        "acc.mem": "693510830a32ca378720b2bb5639a897b0b1fad4a5bfafb07562edf905d3535e",
+        "golden.mem": "9892c63d60050000c646aa9339b0b200d16b137033821f0f993004c88261e2c9",
+        "init.mem": "8ebd0b74d19d498e125eb5555c24a5714fd8463bbb63dc104592510a41673831"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "is_capacity_4",
+      "index": 10,
+      "error": 0,
+      "int32_checks": 2451,
+      "write_bytes": 2451,
+      "reference_cycles": 15317,
+      "current_cycles": 15348,
+      "cycle_difference": 31,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 573,
+          "current": 596
+        },
+        "cycles": {
+          "reference": 15317,
+          "current": 15348
+        },
+        "r_wait_cycles": {
+          "reference": 517,
+          "current": 497
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "68c5a2fdebb986302da73bd4d630835e2fd9ceac064dd853864ef7123cc92da5",
+        "acc.mem": "bc8af3f8d9cbf7d4b675ff4506be142cad129ac78c1e03ae47ef897a4161cd88",
+        "golden.mem": "5af6134c6e34714c53d04d55597521870e2b6da9c8affd8655955329a23c1bf5",
+        "init.mem": "120c3a95ab0aff3e419066ea21809bc284c56636eab6bca45e603b110e3cf31d"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "is_capacity_5",
+      "index": 11,
+      "error": 0,
+      "int32_checks": 18095,
+      "write_bytes": 18095,
+      "reference_cycles": 32345,
+      "current_cycles": 32345,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 1104,
+          "current": 1103
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "d4b2305e9f90072b67a2888cd0ce1d930a889d26fb7722c430d83615b4ec63f9",
+        "acc.mem": "b45673e190ca5fddadfd5897c747d03b0a5d50ef16255644b40aeb5aad57771f",
+        "golden.mem": "68954beff7c8cc0c3645b08ba09ade7f68c223cfef5e8e7c1cff03b629aff912",
+        "init.mem": "d69877585d31425de82df995d8e6f3121aef85905abf6dcf1548e75e539c316f"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "ws_s16_capacity",
+      "index": 12,
+      "error": 0,
+      "int32_checks": 9135,
+      "write_bytes": 9135,
+      "reference_cycles": 32715,
+      "current_cycles": 32715,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 1769,
+          "current": 1767
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "7581a4c98c2421fbe9e6374063dd02b43122819986317c30ac3fde059461cd1e",
+        "acc.mem": "eb9b84ae642f31849bd021ea0f6adfcabdfe390288b08bc244f78b7055a0d835",
+        "golden.mem": "fa2d0ff2527e910523fd5eda09dc1e0c0ae8ad19d27edd140376ea8b5be17650",
+        "init.mem": "f640606a8099d2f68f829e993299033a6bf6930977122075d6ab14347a67126c"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "is_s16_capacity",
+      "index": 13,
+      "error": 0,
+      "int32_checks": 3723,
+      "write_bytes": 3723,
+      "reference_cycles": 17617,
+      "current_cycles": 17617,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 563,
+          "current": 554
+        },
+        "r_wait_cycles": {
+          "reference": 717,
+          "current": 720
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "6f66f9cfabe5d2f1f98eca8e19cba647f1828d33b7a60fe0b4d17122f313b425",
+        "acc.mem": "1f226ea77139fcdcc2b403349ab16fff69633945be911a73c394c36801ceae72",
+        "golden.mem": "428459c1d138164634b435c28df9218209f815908b1b5c0bab1e6f6a67048776",
+        "init.mem": "f7b66b47869f864ce4a72cc67eeed0baae3df6309d8f08028091bce926935070"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "invalid_ia_three",
+      "index": 14,
+      "error": 1,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 9,
+      "current_cycles": 9,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "085a11d30f51ad5e2e8955a31208af010d74155f59c6c28e252f4d8820488ff7",
+        "acc.mem": "b2820f805a5245cae1d2f3cf5489a157dd5b088a3c22fdca2365297b579e9222",
+        "golden.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3",
+        "init.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "invalid_ia_four",
+      "index": 15,
+      "error": 1,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 9,
+      "current_cycles": 9,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "e7e15ec2064595fe7ee06225ce14ef7ed75bc08de0b5611e0302b1c2f9d87460",
+        "acc.mem": "b2820f805a5245cae1d2f3cf5489a157dd5b088a3c22fdca2365297b579e9222",
+        "golden.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3",
+        "init.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "invalid_ia_range",
+      "index": 16,
+      "error": 1,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 9,
+      "current_cycles": 9,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "2b20f252a467b5d40b7add8adfd24af3cba30e557d0049de9a7fab2e6bb7d4da",
+        "acc.mem": "b2820f805a5245cae1d2f3cf5489a157dd5b088a3c22fdca2365297b579e9222",
+        "golden.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3",
+        "init.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "invalid_r_three",
+      "index": 17,
+      "error": 2,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 13,
+      "current_cycles": 13,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "e328fb86b24a11a5ba2e4c65968e921e97e515dc16f6c63ce68ddf133599fb92",
+        "acc.mem": "b2820f805a5245cae1d2f3cf5489a157dd5b088a3c22fdca2365297b579e9222",
+        "golden.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3",
+        "init.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "invalid_r_range",
+      "index": 18,
+      "error": 2,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 13,
+      "current_cycles": 13,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "896d9346a49067ca34ed2fe4f8eb1e25f5ac9e01abacb70acc2d6b2f13966eb0",
+        "acc.mem": "b2820f805a5245cae1d2f3cf5489a157dd5b088a3c22fdca2365297b579e9222",
+        "golden.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3",
+        "init.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "invalid_w_range",
+      "index": 19,
+      "error": 1,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 9,
+      "current_cycles": 9,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "619d0c8295275b21bb688c1c9cdebe0f412775178fdebc460535052d7e300021",
+        "acc.mem": "756d0e52d7a2f421811456da142ec5ba822d97dae5ace481fd8c0654d0c61405",
+        "golden.mem": "6ee3b4e36c76ff454358af92f4951d2b719f29906effed0e868cdf6a6c6ce90c",
+        "init.mem": "6ee3b4e36c76ff454358af92f4951d2b719f29906effed0e868cdf6a6c6ce90c"
+      }
+    },
+    {
+      "suite": "capacity",
+      "task": "invalid_control_range",
+      "index": 20,
+      "error": 1,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 10,
+      "current_cycles": 10,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "33094bce493335c5c33d9e99fe780901afcdcdd4c3eb2e60a591dab5ab76cedd",
+        "acc.mem": "b2820f805a5245cae1d2f3cf5489a157dd5b088a3c22fdca2365297b579e9222",
+        "golden.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3",
+        "init.mem": "b90ea83764cea7fa5760d066bd30367f7fb8cc0f0c0fc619ad0572ca278437f3"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_short",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 160,
+      "write_bytes": 160,
+      "reference_cycles": 919,
+      "current_cycles": 919,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 58,
+          "current": 57
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "47e6008fdbe2a4878072fcbd63e20b63c01fbd1bba4bcae0bfb596361505eec7",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "is_short",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 160,
+      "write_bytes": 160,
+      "reference_cycles": 1041,
+      "current_cycles": 1047,
+      "cycle_difference": 6,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 1041,
+          "current": 1047
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "3ee7ce07f1d02d208bb29a2c492013f2981efe24a6162e3b19b51a06715c6987",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_group_tail",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 2112,
+      "write_bytes": 2112,
+      "reference_cycles": 7696,
+      "current_cycles": 7697,
+      "cycle_difference": 1,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 488,
+          "current": 480
+        },
+        "cycles": {
+          "reference": 7696,
+          "current": 7697
+        },
+        "r_wait_cycles": {
+          "reference": 455,
+          "current": 449
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "95e7deaa2b929d32a5b83222e7bace9f34e9a8fa76f9fafbe2c8278c4d06a6cc",
+        "acc.mem": "4c22d31cb04274ce5052dc909d2d53bf30137d5de7a74ab1182c8efdd65f7d5d",
+        "golden.mem": "174fc0690a67089a17b9db153f5381e94ae6d82b260d1e8bac332e6d57c7d169",
+        "init.mem": "fb2f7dc2078562b22b32a82b6319e8c890e290a344095a1b69305f62103dba49"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "is_group_tail",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 1216,
+      "write_bytes": 1216,
+      "reference_cycles": 5001,
+      "current_cycles": 5001,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "d471d97f5e8626614b8c4892f357c4da7cefb96b3f3cd9635692c02081091da4",
+        "acc.mem": "3132b18e7d763634eaf0b1f20fbadf41a4dcb467dd34d3d1eaa51c1a1894e315",
+        "golden.mem": "dbf5ae446ed23e95fb16783639f66f67c59232fe22e8c8037658ee468cef090a",
+        "init.mem": "a888a7258fc642793200d29ed30481493f523afd47520fc438eed113fdacf5c5"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_write_abort",
+      "index": 4,
+      "error": 3,
+      "int32_checks": 0,
+      "write_bytes": 2048,
+      "reference_cycles": 3046,
+      "current_cycles": 3047,
+      "cycle_difference": 1,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 208,
+          "current": 204
+        },
+        "cycles": {
+          "reference": 3046,
+          "current": 3047
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "ad662c278be52a925e4eb136b307b752aeb50085a6a2b2d75a1e61721c5e05af",
+        "acc.mem": "c11297c6be3b764c44a37c6c87b59dd35a67b70ba75a5e24f61d8c3796c04971",
+        "golden.mem": "d2d0368238ea7ccbb9fa0ff937b767fcdbe7dd7577ba3dff135348cfdc0b87e2",
+        "init.mem": "d2d0368238ea7ccbb9fa0ff937b767fcdbe7dd7577ba3dff135348cfdc0b87e2"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "is_recovery",
+      "index": 5,
+      "error": 0,
+      "int32_checks": 1216,
+      "write_bytes": 1216,
+      "reference_cycles": 2647,
+      "current_cycles": 2649,
+      "cycle_difference": 2,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 2647,
+          "current": 2649
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "fac6480fa825c44fb2270ac616721c543af2e9ac3b95663d9a76c1c055a70f83",
+        "acc.mem": "66734947b101956c318c2e0c20d9aa11d80432d2d217953af39921b0eaf94a7e",
+        "golden.mem": "ff7c7ddefebad08af98f73d3bb90954d09bb1a78f653965aa7e43524f7fa26c5",
+        "init.mem": "e4b9d4a448738611202fc429e2de78252eedf0bc0aebecab321db438975a9193"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_frame",
+      "index": 6,
+      "error": 0,
+      "int32_checks": 2112,
+      "write_bytes": 2112,
+      "reference_cycles": 9968,
+      "current_cycles": 9978,
+      "cycle_difference": 10,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 541,
+          "current": 544
+        },
+        "cycles": {
+          "reference": 9968,
+          "current": 9978
+        },
+        "r_wait_cycles": {
+          "reference": 471,
+          "current": 469
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "5e3e28a200cd280c06cefcb68653b8689199f906ea3344472ee5806f1bc86b12",
+        "acc.mem": "4c22d31cb04274ce5052dc909d2d53bf30137d5de7a74ab1182c8efdd65f7d5d",
+        "golden.mem": "174fc0690a67089a17b9db153f5381e94ae6d82b260d1e8bac332e6d57c7d169",
+        "init.mem": "fb2f7dc2078562b22b32a82b6319e8c890e290a344095a1b69305f62103dba49"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "is_frame",
+      "index": 7,
+      "error": 0,
+      "int32_checks": 1216,
+      "write_bytes": 1216,
+      "reference_cycles": 5737,
+      "current_cycles": 5737,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "4d24515f1273eb96c001483bb63675f5020b2ed385fed1a4890af0cb354f37f8",
+        "acc.mem": "3132b18e7d763634eaf0b1f20fbadf41a4dcb467dd34d3d1eaa51c1a1894e315",
+        "golden.mem": "dbf5ae446ed23e95fb16783639f66f67c59232fe22e8c8037658ee468cef090a",
+        "init.mem": "a888a7258fc642793200d29ed30481493f523afd47520fc438eed113fdacf5c5"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_s16_output",
+      "index": 8,
+      "error": 0,
+      "int32_checks": 608,
+      "write_bytes": 1216,
+      "reference_cycles": 3084,
+      "current_cycles": 3084,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "25cbb8a9fc63be43fb07fcdd72a808f91f84cd472cd59e858ea00014b8bc7e68",
+        "acc.mem": "7a770e650e23b19b67c93f26d79bc2a3cedc81e22ab843b9c251ffb2ee3a3e1f",
+        "golden.mem": "577c5df47a86555e5bcaf3d97609d3ac2ede5a2f78ea56e02d7618196fce654f",
+        "init.mem": "553bfbc317f4ccbafb2d4ff83e3120e74258252c3059e8dc241031737b064099"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_refresh",
+      "index": 9,
+      "error": 0,
+      "int32_checks": 160,
+      "write_bytes": 160,
+      "reference_cycles": 919,
+      "current_cycles": 919,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 58,
+          "current": 57
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "47e6008fdbe2a4878072fcbd63e20b63c01fbd1bba4bcae0bfb596361505eec7",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "is_read_abort",
+      "index": 10,
+      "error": 3,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 125,
+      "current_cycles": 125,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "efaa94dde7ce4429accc8f85af8fceb90d27cb2c30feaf89695e3a4876cf2750",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "golden.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_after_read_abort",
+      "index": 11,
+      "error": 0,
+      "int32_checks": 2112,
+      "write_bytes": 2112,
+      "reference_cycles": 3290,
+      "current_cycles": 3292,
+      "cycle_difference": 2,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 216,
+          "current": 210
+        },
+        "cycles": {
+          "reference": 3290,
+          "current": 3292
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "603c3624df0a2a82ce6b65a788a1428a514630210af204e4adc308047d0c2006",
+        "acc.mem": "c11297c6be3b764c44a37c6c87b59dd35a67b70ba75a5e24f61d8c3796c04971",
+        "golden.mem": "d2d0368238ea7ccbb9fa0ff937b767fcdbe7dd7577ba3dff135348cfdc0b87e2",
+        "init.mem": "d7029871d5417ae307c9d2f4d01da4fddcbf714874ae16a1e45bad6ace3ff86b"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "is_invalid_reuse",
+      "index": 12,
+      "error": 2,
+      "int32_checks": 0,
+      "write_bytes": 0,
+      "reference_cycles": 13,
+      "current_cycles": 13,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "486b7db85fbc039223873705e7645d17e43571b6ab5c167f0e53b4e8ed732be5",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "golden.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18",
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "ws_after_invalid",
+      "index": 13,
+      "error": 0,
+      "int32_checks": 160,
+      "write_bytes": 160,
+      "reference_cycles": 919,
+      "current_cycles": 919,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 58,
+          "current": 57
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "47e6008fdbe2a4878072fcbd63e20b63c01fbd1bba4bcae0bfb596361505eec7",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18"
+      }
+    },
+    {
+      "suite": "output",
+      "task": "is_after_invalid",
+      "index": 14,
+      "error": 0,
+      "int32_checks": 160,
+      "write_bytes": 160,
+      "reference_cycles": 1041,
+      "current_cycles": 1047,
+      "cycle_difference": 6,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 1041,
+          "current": 1047
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "3ee7ce07f1d02d208bb29a2c492013f2981efe24a6162e3b19b51a06715c6987",
+        "acc.mem": "c89528e24c0c669b13e5c6f491e7c0af6abb3108d07382b056f36e238bf2a620",
+        "golden.mem": "0da98d5561abb3a8297b59fc5a0a0978954ab26302b18c3c50a7247fd4a39616",
+        "init.mem": "c864ec3a72d64a78640aedff80b39e3fdd13a889677fe07ef7359f9efda07b18"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_1_mode0_s160",
+      "index": 0,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9002,
+      "current_cycles": 9004,
+      "cycle_difference": 2,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 9002,
+          "current": 9004
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "7175803c0a31e9242c8bcd93e567f842f5e91d9b158c04b8f49bdde1d7b73f5b",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "golden.mem": "51110d545c38f289c5b3d6400e1e6ed6a9d02777d638a69bb60035208f2862b9",
+        "init.mem": "c1f4f0405370364418cb478d9962973c13203db1807928ee9c1b07d9818414df"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_2_mode0_s160",
+      "index": 1,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9272,
+      "current_cycles": 9272,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "96adf67c85a8f4c645c02b9a25f2e1b29387b9bb78994fb90a51d75659b8ee13",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "golden.mem": "74857a8780cd45f1150160a34dd4a1059c516050031baab7ea70974f74bec96f",
+        "init.mem": "7d5ad6cb5321d063b745b67df3d5fdec39191f97b36816520c036579d198a8da"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_3_mode0_s160",
+      "index": 2,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9272,
+      "current_cycles": 9272,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 434,
+          "current": 427
+        },
+        "r_wait_cycles": {
+          "reference": 457,
+          "current": 448
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "57e43bf4abd02894152879d1b7ba855cd4bbc479448471ddddb31a494c5bbd66",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "golden.mem": "df63b5246528f9ccc69b207206c8a767daa0074c7925d85b152686246231cd8e",
+        "init.mem": "8269b124aa9bc0957a0a92705274d7fddc518b3172b595c75d150ff98e02c909"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_1_mode0_s161",
+      "index": 3,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9373,
+      "current_cycles": 9377,
+      "cycle_difference": 4,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 405,
+          "current": 391
+        },
+        "cycles": {
+          "reference": 9373,
+          "current": 9377
+        },
+        "r_wait_cycles": {
+          "reference": 500,
+          "current": 494
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "06601de65825dffe496a32003479e161ca4b6c60a811e760eb8a5b77dce42abc",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "golden.mem": "cec66680a5a4aa16fa5b7597e713c05d2fdfd8f80c48581c912fcb10f2b07f9f",
+        "init.mem": "8e7a569d4ff2e352f09a10ad709f25ceee8463d40827c84317d5fd28b83a79a3"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_2_mode0_s161",
+      "index": 4,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9529,
+      "current_cycles": 9529,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 408,
+          "current": 409
+        },
+        "r_wait_cycles": {
+          "reference": 534,
+          "current": 533
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "489f3059297b095e10104d8d71a4c2a22b874bcbd117b15d35bef38c23b64edc",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "golden.mem": "217e1514427cf6bac5e6d9dccbe0edc646124f559aa65b8b7499d5abf89242ba",
+        "init.mem": "2b7796da4d3dcddfbaf2a6d36f8711102d4ca2035f0e0d4d395a0bc768892623"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_3_mode0_s161",
+      "index": 5,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9686,
+      "current_cycles": 9686,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "04ade54c9dd0f40db9ca7f5be38e396b29db7bac881ac914167ece660b5f0341",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "golden.mem": "f2936ecc0b6978f5fe38c39009b29bbe6509ff7db69bf0ffd8b1143b55e05ae8",
+        "init.mem": "f0a6bb90b14032f75dc4b2a6c8214bf23318b48d25be38f16a5eb86a0fb24fc0"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_1_mode1_s160",
+      "index": 6,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 8579,
+      "current_cycles": 8579,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "e24c6df7eaaed343dbf28fe3b3482af38d8d95aa3375b0a4db807c9c03d40ba6",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "golden.mem": "51110d545c38f289c5b3d6400e1e6ed6a9d02777d638a69bb60035208f2862b9",
+        "init.mem": "c1f4f0405370364418cb478d9962973c13203db1807928ee9c1b07d9818414df"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_2_mode1_s160",
+      "index": 7,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 8447,
+      "current_cycles": 8449,
+      "cycle_difference": 2,
+      "measurements_changed": {
+        "cycles": {
+          "reference": 8447,
+          "current": 8449
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "d11f8be980d06eb1a49d8266df9cc3fbcf90ad1da0d55c29c0e0a25ecab48938",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "golden.mem": "74857a8780cd45f1150160a34dd4a1059c516050031baab7ea70974f74bec96f",
+        "init.mem": "7d5ad6cb5321d063b745b67df3d5fdec39191f97b36816520c036579d198a8da"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_3_mode1_s160",
+      "index": 8,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 8661,
+      "current_cycles": 8661,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 409,
+          "current": 419
+        },
+        "r_wait_cycles": {
+          "reference": 423,
+          "current": 410
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "2a7ee32a8ced80c9c587b2441669abccbb0386027c8b2293ab257bd1a13653db",
+        "acc.mem": "131f7aed0fa7a2993004123ce3b3857df69dc81c14d8c875470c47f94f12da9c",
+        "golden.mem": "df63b5246528f9ccc69b207206c8a767daa0074c7925d85b152686246231cd8e",
+        "init.mem": "8269b124aa9bc0957a0a92705274d7fddc518b3172b595c75d150ff98e02c909"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_1_mode1_s161",
+      "index": 9,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9340,
+      "current_cycles": 9340,
+      "cycle_difference": 0,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 354,
+          "current": 352
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "8dbd1a4698ba746eff4ccffe08c6c21dc608b6e30580a394e3ba5b8f041df152",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "golden.mem": "cec66680a5a4aa16fa5b7597e713c05d2fdfd8f80c48581c912fcb10f2b07f9f",
+        "init.mem": "8e7a569d4ff2e352f09a10ad709f25ceee8463d40827c84317d5fd28b83a79a3"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_2_mode1_s161",
+      "index": 10,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9177,
+      "current_cycles": 9193,
+      "cycle_difference": 16,
+      "measurements_changed": {
+        "ar_stall_cycles": {
+          "reference": 433,
+          "current": 432
+        },
+        "cycles": {
+          "reference": 9177,
+          "current": 9193
+        },
+        "r_wait_cycles": {
+          "reference": 573,
+          "current": 564
+        }
+      },
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "ca89ba780a7c75ec84b02145b337f64e03805d97c3de070dc9dc321d63867fa1",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "golden.mem": "217e1514427cf6bac5e6d9dccbe0edc646124f559aa65b8b7499d5abf89242ba",
+        "init.mem": "2b7796da4d3dcddfbaf2a6d36f8711102d4ca2035f0e0d4d395a0bc768892623"
+      }
+    },
+    {
+      "suite": "packed",
+      "task": "packed_3_mode1_s161",
+      "index": 11,
+      "error": 0,
+      "int32_checks": 1683,
+      "write_bytes": 1683,
+      "reference_cycles": 9531,
+      "current_cycles": 9531,
+      "cycle_difference": 0,
+      "measurements_changed": {},
+      "task_memory_sha256": {
+        "required.mem": "bf23ac139b652bb1ff062120753e3820d6f01f538fe3822ff3e433d130542e48",
+        "config.mem": "b0545826eb637ac9a0da426efb9a83156f64320e6fec22ea41f54bcaf436a909",
+        "acc.mem": "073c10b87a332009dc693c7c5752682239e065d2c105d8bd3ca2d0a1e1236836",
+        "golden.mem": "f2936ecc0b6978f5fe38c39009b29bbe6509ff7db69bf0ffd8b1143b55e05ae8",
+        "init.mem": "f0a6bb90b14032f75dc4b2a6c8214bf23318b48d25be38f16a5eb86a0fb24fc0"
+      }
+    }
+  ]
+}

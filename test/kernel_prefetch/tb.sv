@@ -35,6 +35,7 @@ module kernel_prefetch_tb #(
     output wire [15:0] dbg_ram_write_en,dbg_ram_read_en
 );
     logic o_prefetch_quiescent;
+    logic o_admission_request;
     kernel_loader #(.DATA_WIDTH(16),.SIZE(16),.BUS_WIDTH(BUS_WIDTH),.REG_WIDTH(32),.COUNT_WIDTH(COUNT_WIDTH)) dut (.*);
     assign dbg_top_state=dut.top_state;
     assign dbg_ctrl_state=dut.u_ctrl.state;

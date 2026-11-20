@@ -1,0 +1,1067 @@
+{
+  "inputs": {
+    "reference_commit": "1ff5aaee",
+    "sources": [
+      {
+        "source": "rtl/soc/soc_axi_ram.sv",
+        "reference_sha256": "9f5f0e28c5e8f090efadfa41eff3d3169f6ee419d5e389eeebd881d230c7c7ed",
+        "current_sha256": "945e9ecdb310f923c07dba1065732b8cf5b0d66085dc2508426040c52562c20d",
+        "only_command_function_changed": true
+      },
+      {
+        "source": "test/models/soc_axi_ram.sv",
+        "reference_sha256": "a85805aea72ec0a6daa9990467ac258a1db246a6dbb5091c9ed4e669ce526807",
+        "current_sha256": "25bc8f8cabe39671726d6c2363f4e896419e21e61db116dfc72386406db00a40",
+        "only_command_function_changed": true
+      }
+    ],
+    "production_and_model_functions_identical": true
+  },
+  "parameters": {
+    "DP": 32768,
+    "DW": 64,
+    "AW": 32,
+    "MEM_WORD_WIDTH": 64,
+    "INIT_EN": 0,
+    "READ_OUTSTANDING": 4,
+    "WRITE_OUTSTANDING": 4,
+    "READ_FIRST_LATENCY": 2
+  },
+  "formal": {
+    "passed": true,
+    "inputs": {
+      "reference_commit": "1ff5aaee",
+      "sources": [
+        {
+          "source": "rtl/soc/soc_axi_ram.sv",
+          "reference_sha256": "9f5f0e28c5e8f090efadfa41eff3d3169f6ee419d5e389eeebd881d230c7c7ed",
+          "current_sha256": "945e9ecdb310f923c07dba1065732b8cf5b0d66085dc2508426040c52562c20d",
+          "only_command_function_changed": true
+        },
+        {
+          "source": "test/models/soc_axi_ram.sv",
+          "reference_sha256": "a85805aea72ec0a6daa9990467ac258a1db246a6dbb5091c9ed4e669ce526807",
+          "current_sha256": "25bc8f8cabe39671726d6c2363f4e896419e21e61db116dfc72386406db00a40",
+          "only_command_function_changed": true
+        }
+      ],
+      "production_and_model_functions_identical": true
+    },
+    "domain": "all two-state inputs",
+    "input_assumptions": [],
+    "miter_sha256": "bc0f0fb555906daff79d17c4fb37bd2ab21918e8f20464c63422d9638b203f5b",
+    "profiles": [
+      {
+        "address_width": 8,
+        "address_lsb": 0,
+        "passed": true,
+        "log_sha256": "821a66d6c526367f8bdda0176abe840b396aa3232849f574bed696c4765ef3dc"
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 1,
+        "passed": true,
+        "log_sha256": "eeb0ee5fe05936eb401f0277d357c42dc6240f3871aeb2546af543062896f6b5"
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 2,
+        "passed": true,
+        "log_sha256": "4bc05cb3180ef6fda1f824c9492047ba0f51a069636ee69d2d8468d5ea00c510"
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 3,
+        "passed": true,
+        "log_sha256": "d62a2aa7679ac2d6fe76e6667f3213ba78b631a42ac02ecc68f9fdb73998c8fe"
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 4,
+        "passed": true,
+        "log_sha256": "71876961956e9102e2a58ff18c146d022ffc4a118d48f0040bf1be1351cb72dd"
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 5,
+        "passed": true,
+        "log_sha256": "0fcc66321da3830712c662fb6e46009c6abb10b175127577fe69cd40d0d0c214"
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 0,
+        "passed": true,
+        "log_sha256": "d665df43d0d0c89b8d12b57f4ec24ded240bc1c7ae043c6001c5b7bb4d54cea0"
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 1,
+        "passed": true,
+        "log_sha256": "9b3ea8a2ec0e6e30ad18c0952677ec8cc0dfc8900b86f696f364a2d560b20c96"
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 2,
+        "passed": true,
+        "log_sha256": "f9cf061de4a879544e3247c942ea299b2a6d122aaaab422dce0155871889b456"
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 3,
+        "passed": true,
+        "log_sha256": "1958aef2ff9ea5378e1e2eb0c65fdbdf2622d722d8fcd2ff4e42c0e4ec98327c"
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 4,
+        "passed": true,
+        "log_sha256": "5fc9dec689502f4beff3a3a6a2d43db5a652abe72756d391272b9f521f460b60"
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 5,
+        "passed": true,
+        "log_sha256": "af9300ee4bfc7bd0f88a06869956dd63560192033203771e8958af56c45a6bf5"
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 0,
+        "passed": true,
+        "log_sha256": "3c944718610d7cc1d3da98de378acc5485adc2e33cacb233aaebb629cbea5a81"
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 1,
+        "passed": true,
+        "log_sha256": "f4cac5e435c00c2746c7f16a6ce7dbe73c581515746a1d900dcfcc7a50f00790"
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 2,
+        "passed": true,
+        "log_sha256": "fa5d0951952ab68f61dc1d85ab5ef1d91732a7c5849730a68515512c8a90690e"
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 3,
+        "passed": true,
+        "log_sha256": "76ae02fbd8ab35c7e394e33d99314de0a7f8c57322a40e194be6beb89414f8c3"
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 4,
+        "passed": true,
+        "log_sha256": "38f657f92fa37761f7bf242cee83980320079e224c7c2d0626b1f6fb2885d673"
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 5,
+        "passed": true,
+        "log_sha256": "e4552471a6dec40a7942516b15118410adcecdff51e87ebfd7674ff59514b4cf"
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 0,
+        "passed": true,
+        "log_sha256": "11fb883a067c18aba0317a891f9e0d0fc53486748311118c63dcdbb2fcbdf1dc"
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 1,
+        "passed": true,
+        "log_sha256": "bd46d4f030a3abda5312ad9406276990ecb0856ccf26a1e9b85ed7e04fb35c24"
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 2,
+        "passed": true,
+        "log_sha256": "28ccd25e24f64e7825480fca57b00d68cbce23518df86c7339e766b09185dcb1"
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 3,
+        "passed": true,
+        "log_sha256": "39b526cc5e4ff1fa7846be70ffb826dcc6a4b585e4872c5ce989f04893492264"
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 4,
+        "passed": true,
+        "log_sha256": "e93f2a8b2960d5bbf44fa60044e5761326fd02e95807284dd93cba3e7f961b01"
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 5,
+        "passed": true,
+        "log_sha256": "1d4244ca984f9fdba2f248b3e3455254dd58b63f319ee0c6fcec1fa497c8bde6"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "inputs": {
+      "reference_commit": "1ff5aaee",
+      "sources": [
+        {
+          "source": "rtl/soc/soc_axi_ram.sv",
+          "reference_sha256": "9f5f0e28c5e8f090efadfa41eff3d3169f6ee419d5e389eeebd881d230c7c7ed",
+          "current_sha256": "945e9ecdb310f923c07dba1065732b8cf5b0d66085dc2508426040c52562c20d",
+          "only_command_function_changed": true
+        },
+        {
+          "source": "test/models/soc_axi_ram.sv",
+          "reference_sha256": "a85805aea72ec0a6daa9990467ac258a1db246a6dbb5091c9ed4e669ce526807",
+          "current_sha256": "25bc8f8cabe39671726d6c2363f4e896419e21e61db116dfc72386406db00a40",
+          "only_command_function_changed": true
+        }
+      ],
+      "production_and_model_functions_identical": true
+    },
+    "profiles": [
+      {
+        "address_width": 8,
+        "address_lsb": 0,
+        "samples": 65536,
+        "equal_results": 63807,
+        "unknown_to_zero": 1729,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 1,
+        "samples": 65536,
+        "equal_results": 62138,
+        "unknown_to_zero": 3398,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 2,
+        "samples": 65536,
+        "equal_results": 60568,
+        "unknown_to_zero": 4968,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 3,
+        "samples": 65536,
+        "equal_results": 59020,
+        "unknown_to_zero": 6516,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 4,
+        "samples": 65536,
+        "equal_results": 58892,
+        "unknown_to_zero": 6635,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 9
+      },
+      {
+        "address_width": 8,
+        "address_lsb": 5,
+        "samples": 65536,
+        "equal_results": 65536,
+        "unknown_to_zero": 0,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 0,
+        "samples": 65536,
+        "equal_results": 63624,
+        "unknown_to_zero": 1889,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 23
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 1,
+        "samples": 65536,
+        "equal_results": 61880,
+        "unknown_to_zero": 3604,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 52
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 2,
+        "samples": 65536,
+        "equal_results": 60363,
+        "unknown_to_zero": 5050,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 123
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 3,
+        "samples": 65536,
+        "equal_results": 59194,
+        "unknown_to_zero": 6071,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 271
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 4,
+        "samples": 65536,
+        "equal_results": 58651,
+        "unknown_to_zero": 6316,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 569
+      },
+      {
+        "address_width": 16,
+        "address_lsb": 5,
+        "samples": 65536,
+        "equal_results": 65536,
+        "unknown_to_zero": 0,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 0,
+        "samples": 65536,
+        "equal_results": 63624,
+        "unknown_to_zero": 1889,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 23
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 1,
+        "samples": 65536,
+        "equal_results": 61880,
+        "unknown_to_zero": 3604,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 52
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 2,
+        "samples": 65536,
+        "equal_results": 60363,
+        "unknown_to_zero": 5050,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 123
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 3,
+        "samples": 65536,
+        "equal_results": 59194,
+        "unknown_to_zero": 6071,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 271
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 4,
+        "samples": 65536,
+        "equal_results": 58651,
+        "unknown_to_zero": 6316,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 569
+      },
+      {
+        "address_width": 32,
+        "address_lsb": 5,
+        "samples": 65536,
+        "equal_results": 65536,
+        "unknown_to_zero": 0,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 0,
+        "samples": 65536,
+        "equal_results": 63624,
+        "unknown_to_zero": 1889,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 23
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 1,
+        "samples": 65536,
+        "equal_results": 61880,
+        "unknown_to_zero": 3604,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 52
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 2,
+        "samples": 65536,
+        "equal_results": 60363,
+        "unknown_to_zero": 5050,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 123
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 3,
+        "samples": 65536,
+        "equal_results": 59194,
+        "unknown_to_zero": 6071,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 271
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 4,
+        "samples": 65536,
+        "equal_results": 58651,
+        "unknown_to_zero": 6316,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 569
+      },
+      {
+        "address_width": 40,
+        "address_lsb": 5,
+        "samples": 65536,
+        "equal_results": 65536,
+        "unknown_to_zero": 0,
+        "unknown_to_one": 0,
+        "zero_to_unknown": 0,
+        "one_to_unknown": 0
+      }
+    ],
+    "four_state_equivalent": false,
+    "defined_binary_input_behavior": "proven equal separately by complete-input SAT",
+    "total_samples": 1572864,
+    "total_unknown_to_zero": 92036,
+    "known_zero_to_one_or_one_to_zero": 0,
+    "total_unknown_to_one": 0,
+    "total_zero_to_unknown": 0,
+    "total_one_to_unknown": 3123,
+    "miter_sha256": "bc0f0fb555906daff79d17c4fb37bd2ab21918e8f20464c63422d9638b203f5b",
+    "testbench_sha256": "f0727e4dce0cec405540ee83422f8645d15ddf14c98776d7f30d8666119db3c6",
+    "log_sha256": "830ffe4677cccc25e71647e56a5da6e181ecef9819ffc65763536ea9c12fb8ac"
+  },
+  "protocol": [
+    {
+      "implementation": "production",
+      "passed": true,
+      "runs": 28,
+      "source_sha256": "945e9ecdb310f923c07dba1065732b8cf5b0d66085dc2508426040c52562c20d",
+      "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
+      "simulator": "rev vUNKNOWN-built20260516-4e853d8",
+      "compile_jobs": 1,
+      "report_sha256": "f8f37028ff8afa641964116d9f3f0a73211696e08798456487d983b87b4dcdf8",
+      "profiles": [
+        {
+          "first_read_latency": 1,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6628 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 1,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7319 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6632 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7324 perf_beats=256 perf_intervals=292 no_random=0"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6636 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7327 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6683 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=879 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7364 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6816 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7496 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=8805 perf_beats=256 perf_intervals=375 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=9496 perf_beats=256 perf_intervals=412 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6736 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7411 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 1,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7788 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 1,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8544 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7792 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8550 perf_beats=256 perf_intervals=292 no_random=0"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7796 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8554 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7843 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=880 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8591 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7976 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8722 perf_beats=256 perf_intervals=291 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=10445 perf_beats=256 perf_intervals=375 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=11203 perf_beats=256 perf_intervals=412 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7936 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8660 perf_beats=256 perf_intervals=291 no_random=0"
+        }
+      ]
+    },
+    {
+      "implementation": "model",
+      "passed": true,
+      "runs": 28,
+      "source_sha256": "25bc8f8cabe39671726d6c2363f4e896419e21e61db116dfc72386406db00a40",
+      "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
+      "simulator": "rev vUNKNOWN-built20260516-4e853d8",
+      "compile_jobs": 1,
+      "report_sha256": "9a7cf90e2f1d1c41c40823bce99db9d5c6c05184efb01a914b08e1e2ac8020e8",
+      "profiles": [
+        {
+          "first_read_latency": 1,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6628 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 1,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=912 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=9038 perf_beats=256 perf_intervals=363 no_random=0"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6632 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=3 max_latency=912 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=9054 perf_beats=256 perf_intervals=362 no_random=0"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6636 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=912 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=9054 perf_beats=256 perf_intervals=362 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6683 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=912 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=9070 perf_beats=256 perf_intervals=361 no_random=0"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6816 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=911 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=9108 perf_beats=256 perf_intervals=363 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=8805 perf_beats=256 perf_intervals=375 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=12 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=9930 perf_beats=256 perf_intervals=421 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6736 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 32,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=602 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=9132 perf_beats=256 perf_intervals=370 no_random=0"
+        },
+        {
+          "first_read_latency": 1,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7788 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 1,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=896 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=11012 perf_beats=256 perf_intervals=363 no_random=0"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7792 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 2,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=3 max_latency=896 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=11028 perf_beats=256 perf_intervals=362 no_random=0"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7796 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 3,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=896 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=11028 perf_beats=256 perf_intervals=362 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7843 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=896 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=11044 perf_beats=256 perf_intervals=361 no_random=0"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7976 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 17,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 4,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=897 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=11082 perf_beats=256 perf_intervals=363 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=10445 perf_beats=256 perf_intervals=375 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1024,
+          "outstanding": 1,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=12 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=12118 perf_beats=256 perf_intervals=421 no_random=0"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": false,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7936 perf_beats=256 perf_intervals=255 no_random=1"
+        },
+        {
+          "first_read_latency": 8,
+          "data_bits": 64,
+          "dp": 1031,
+          "outstanding": 3,
+          "random": true,
+          "status": "PASS",
+          "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=604 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=11125 perf_beats=256 perf_intervals=370 no_random=0"
+        }
+      ]
+    }
+  ],
+  "mapping": [
+    {
+      "version": "reference",
+      "logic_lut_cells": 567,
+      "flip_flops": 198,
+      "carry4": 58,
+      "dsp48e1": 0,
+      "ramb36e1": 64,
+      "ramb18e1": 0,
+      "distributed_ram_lut_sites_nominal": 68,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 15,
+      "graph_complete": true,
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "09616e7de40a4b4f5539fbdd1dba314b3582ae783af15e1e9d973ed5b199ab12"
+      },
+      "manifest_sha256": "2c6d578f34885d7fd4f63633eb70ff3c65aefc31f1b300b8350a95c1a448e13b",
+      "summary_sha256": "a6f18e2ce3484146cdc4ffefd883b744741fc30b365a4af501fb32c9684c8b80",
+      "metrics_sha256": "1b78f0206b21a99a922576d607e95c8bf627885b5e6a21074ec00cecc9390657",
+      "peak_process_tree_rss_bytes": 202547200
+    },
+    {
+      "version": "current",
+      "logic_lut_cells": 485,
+      "flip_flops": 198,
+      "carry4": 41,
+      "dsp48e1": 0,
+      "ramb36e1": 64,
+      "ramb18e1": 0,
+      "distributed_ram_lut_sites_nominal": 68,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 15,
+      "graph_complete": true,
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "d9922a117010bac7783ef4a684b788088db7ee2ca170b84c0002842272201b7c"
+      },
+      "manifest_sha256": "7a1d76478ef888d342d9b26b4adfa5149c1940638e36ff4a058d21717e941311",
+      "summary_sha256": "80de2daca74f03e893c6164e09923e889b5d80341150359ae8f458e46cfb93b2",
+      "metrics_sha256": "8f36520133aeeefacfc22b8645c03f377960919f38363d50c7eb92d261518ae1",
+      "peak_process_tree_rss_bytes": 201220096
+    }
+  ],
+  "mapping_options": {
+    "mode": "physical-cost",
+    "small_lut_area_cost": 1.0,
+    "max_lut_inputs": 6,
+    "wire_delay_ps": 500,
+    "delay_target_ps": 6667
+  },
+  "physical_lut_positions": null,
+  "timing_150mhz_confirmed": null,
+  "scripts_sha256": {
+    "test/soc_ram_command/check_four_state.py": "4565a6ac871d9a8b5b9fe2d5a7a75c59caa5ae075cde687de4ee6553fc8e819c",
+    "test/soc_ram_command/collect_report.py": "a53cd5886212acd92ce0952398660606c9b56b9b08a66020f9fb327d3b943f3e",
+    "test/soc_ram_command/common.py": "afae5245a604382e77d60340384d7f93f36f0d1adee1771da3dea400bf141473",
+    "test/soc_ram_command/prepare_measurement.py": "81acd8730bfc1ad74a72ea4af143e120c66ea7d157eb5639923fb55f5c51d23e",
+    "test/soc_ram_command/prove.py": "aa54acecafa7db954df5878fc3f2dc5d0c93f2370a0cc0182cbf228ad21ab8de"
+  },
+  "protocol_runner_sha256": "2964719613685ed2df468e3fe085da6f111c5a0201cfa977b9999bcd9472addc"
+}

@@ -1,0 +1,186 @@
+{
+  "passed": true,
+  "reference_ref": "8720e2c7",
+  "source_sha256": "1fb33f8361bbe20c7e0292f0e7cf350d9ec9f2000672f5de28f279b5074ce275",
+  "logical_storage": {
+    "entries": 8,
+    "bits_per_entry": 65,
+    "total_bits": 520,
+    "retire_bits": 32,
+    "index_and_valid_bits": 33
+  },
+  "behavior": {
+    "passed": true,
+    "reference_ref": "8720e2c7",
+    "source_sha256": "1fb33f8361bbe20c7e0292f0e7cf350d9ec9f2000672f5de28f279b5074ce275",
+    "reference_sha256": "a99f6e92e202612d9e4e81c8d98a6fdb1cc7fbba29e27a4953c8307b63bfa0df",
+    "regfile_sha256": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+    "unchanged_outside_payload_storage_and_boundaries": true,
+    "named_instance_boundary_signals": true,
+    "memory_bits": 520,
+    "output_state_bits": 65,
+    "formal": {
+      "method": "arbitrary equal memory/output state; one-step induction",
+      "inputs_constrained": false,
+      "passed": true,
+      "log_sha256": "5b195dc7e0192b6f954b198835da127398e9930f4030ac54bb3b0e41e7a65893"
+    },
+    "four_state": {
+      "cycles": 263249,
+      "control_vectors": 262144,
+      "read_address_vectors": 64,
+      "checks_before_and_after_clock_edge": true,
+      "passed": true,
+      "log_sha256": "3d6c6fd4345eb7fe47ea8ce8998d07d1efe918d3b87c8007891d69f1fbaf5e83",
+      "regfile_type_normalization": "string parameter type omitted for Icarus parser"
+    },
+    "proof_sha256": "66cc2c88f3c42eb4a6a882883a3172652d5c1316792bf6699963b593745463a2",
+    "testbench_sha256": "c71da0555672968bc08632ac7c4a3060020f39b14f94c33386217eddcadf9299",
+    "maximum_child_rss_kib": 130432
+  },
+  "mapping_parameters": {
+    "SETS": 128,
+    "WAYS": 2,
+    "BUS_WIDTH": 64,
+    "LINE_BYTES": 16,
+    "DEMAND_DEPTH": 4
+  },
+  "mapping_options": {
+    "mode": "physical-cost",
+    "small_lut_area_cost": 1,
+    "max_lut_inputs": 6,
+    "wire_delay_ps": 500,
+    "delay_target_ps": 6667
+  },
+  "synthesis_sources_sha256": {
+    "reference": {
+      "rtl/npu/dma/cache/conv_read_cache.sv": "a99f6e92e202612d9e4e81c8d98a6fdb1cc7fbba29e27a4953c8307b63bfa0df",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+    },
+    "current": {
+      "rtl/npu/dma/cache/conv_read_cache.sv": "1fb33f8361bbe20c7e0292f0e7cf350d9ec9f2000672f5de28f279b5074ce275",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+    }
+  },
+  "results": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 3210,
+        "distributed_ram_lut_sites_nominal": 276,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3486,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 1832,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 24,
+        "carry4": 105,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 105,
+          "FDCE": 389,
+          "FDPE": 45,
+          "FDRE": 1365,
+          "FDSE": 33,
+          "INV": 10,
+          "LUT2": 209,
+          "LUT3": 508,
+          "LUT4": 473,
+          "LUT5": 765,
+          "LUT6": 1255,
+          "RAM32M": 37,
+          "RAM64M": 32,
+          "RAMB18E1": 24
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 12,
+      "peak_process_tree_rss_bytes": 242278400,
+      "payload_cell_types": {
+        "RAM32M": 8
+      },
+      "abc_functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "3cf593c1b40323f74257f66845eac495b8998d688c0948ea33dc9be90f2814ef"
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 3176,
+        "distributed_ram_lut_sites_nominal": 256,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3432,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 1800,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 25,
+        "carry4": 106,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 106,
+          "FDCE": 389,
+          "FDPE": 45,
+          "FDRE": 1333,
+          "FDSE": 33,
+          "INV": 11,
+          "LUT2": 212,
+          "LUT3": 565,
+          "LUT4": 436,
+          "LUT5": 696,
+          "LUT6": 1267,
+          "RAM32M": 32,
+          "RAM64M": 32,
+          "RAMB18E1": 25
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 13,
+      "peak_process_tree_rss_bytes": 244383744,
+      "payload_cell_types": {
+        "RAM32M": 3,
+        "RAMB18E1": 1
+      },
+      "abc_functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "6172856f220bc5d50c8481093b071c07d1bfaa231fc3ed95f1e56fffc9071a06"
+      }
+    }
+  },
+  "retire_bram_port_check": {
+    "passed": true,
+    "cell": "u_prefetch_retire.mem.0.0",
+    "type": "RAMB18E1",
+    "logical_bits": 256,
+    "logical_rows": 8,
+    "logical_width": 32,
+    "read_mode": "READ_FIRST",
+    "read_clock_equals_write_clock": true,
+    "read_enable_matches_retained_index_capture": true,
+    "retained_capture_bits_checked": 8,
+    "extra_output_registers": 0,
+    "output_hold_when_read_disabled": true,
+    "mapped_retire_bits": 32
+  },
+  "net_change": {
+    "logic_lut_cells": -34,
+    "ram_lut_sites": -20,
+    "lut_sites_before_packing": -54,
+    "flip_flops": -32,
+    "ramb18e1": 1,
+    "ramb36e1": 0,
+    "dsp48e1": 0
+  },
+  "physical_placement_performed": false,
+  "test_script_sha256": {
+    "measure.py": "22dc3594ae9e21ecd25edb03ff0c127dd91cc7a4e5f0aa10d9879f6bcbe3056d",
+    "run.py": "27bb3b14eafb4c91263fa36dbc9d71864c398560eee702616a6adde2dd6c2b96",
+    "collect_report.py": "9a71dae98b8738388f3bcb0e75366c1e384dbcaa8097a6558dd45444522066ad"
+  }
+}

@@ -1,0 +1,893 @@
+{
+  "rtl_commit": "f0f83e1d2665026c299de43dea99a329faf88e2f",
+  "reference_commit": "653477ede3c51bbe7f27c5bd7fc4f7131689df05",
+  "passed": true,
+  "checks": {
+    "cell_formal": {
+      "summary_sha256": "485c283db1b37749e257ff09afb937ca4b3e45f0df94def8ef64f678a5ab3868",
+      "result": {
+        "reference": "653477ed",
+        "source_sha256": "18a1f02fa580ac7cb317a25c8269fca8c12973c8e6e47747457d850cfd8cc4d3",
+        "reference_sha256": "d12c29669d98a524618bd15638e6b4b2ba698e4b0e8240cbf4eabec91d511a38",
+        "runs": [
+          {
+            "data_width": 1,
+            "weight_width": 1,
+            "sum_width": 2,
+            "exchange_weights": false,
+            "proven_bits": 9,
+            "passed": true
+          },
+          {
+            "data_width": 1,
+            "weight_width": 1,
+            "sum_width": 2,
+            "exchange_weights": true,
+            "proven_bits": 11,
+            "passed": true
+          },
+          {
+            "data_width": 8,
+            "weight_width": 8,
+            "sum_width": 32,
+            "exchange_weights": false,
+            "proven_bits": 104,
+            "passed": true
+          },
+          {
+            "data_width": 8,
+            "weight_width": 8,
+            "sum_width": 32,
+            "exchange_weights": true,
+            "proven_bits": 113,
+            "passed": true
+          },
+          {
+            "data_width": 16,
+            "weight_width": 8,
+            "sum_width": 32,
+            "exchange_weights": false,
+            "proven_bits": 120,
+            "passed": true
+          },
+          {
+            "data_width": 16,
+            "weight_width": 8,
+            "sum_width": 32,
+            "exchange_weights": true,
+            "proven_bits": 129,
+            "passed": true
+          },
+          {
+            "data_width": 16,
+            "weight_width": 16,
+            "sum_width": 32,
+            "exchange_weights": false,
+            "proven_bits": 144,
+            "passed": true
+          },
+          {
+            "data_width": 16,
+            "weight_width": 16,
+            "sum_width": 32,
+            "exchange_weights": true,
+            "proven_bits": 161,
+            "passed": true
+          },
+          {
+            "data_width": 17,
+            "weight_width": 17,
+            "sum_width": 40,
+            "exchange_weights": false,
+            "proven_bits": 165,
+            "passed": true
+          },
+          {
+            "data_width": 17,
+            "weight_width": 17,
+            "sum_width": 40,
+            "exchange_weights": true,
+            "proven_bits": 183,
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    "select_add_formal": {
+      "summary_sha256": "3d88e5440242be417f183240bab6774f1b4fa81b2ff111ed835808f41125ecae",
+      "result": {
+        "method": "Yosys combinational SAT with official LUT6_2 and DSP48E1 functional models",
+        "latency_cycles": 0,
+        "properties_per_width": 3,
+        "source_sha256": {
+          "rtl/npu/compute/select_add.sv": "2833d092126d6ee02d429d0d7eaf3e9a70662f1badac636e97b83f4b7b15a466",
+          "test/select_add/select_add_formal.sv": "1792fe4ada03c1e339d17318d9da450d6b7122984b2a7d220930af585db8d862"
+        },
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "runs": [
+          {
+            "width": 1,
+            "passed": true,
+            "input_bits": 5
+          },
+          {
+            "width": 8,
+            "passed": true,
+            "input_bits": 26
+          },
+          {
+            "width": 17,
+            "passed": true,
+            "input_bits": 53
+          },
+          {
+            "width": 32,
+            "passed": true,
+            "input_bits": 98
+          },
+          {
+            "width": 48,
+            "passed": true,
+            "input_bits": 146
+          }
+        ],
+        "passed": true
+      }
+    },
+    "shared_mux_formal": {
+      "summary_sha256": "3fc3f5a3f0bb229772358b79555661d5ba398bc457b35b1e7b637d02d546c1a6",
+      "result": {
+        "reference": "653477ed",
+        "source_sha256": "e95326f966ca07c2b4df327f79bf03cfbe006265d47bbae14aea8d1f149ef1a8",
+        "reference_sha256": "63aef7420801d87beed21b1ea5ffdc211bcf8ca382ca86fd0bea92b890c31d8a",
+        "runs": [
+          {
+            "inputs": 5,
+            "select_bits": 3,
+            "data_bits": 5,
+            "passed": true
+          },
+          {
+            "inputs": 7,
+            "select_bits": 3,
+            "data_bits": 5,
+            "passed": true
+          },
+          {
+            "inputs": 8,
+            "select_bits": 3,
+            "data_bits": 5,
+            "passed": true
+          },
+          {
+            "inputs": 9,
+            "select_bits": 4,
+            "data_bits": 5,
+            "passed": true
+          },
+          {
+            "inputs": 16,
+            "select_bits": 4,
+            "data_bits": 5,
+            "passed": true
+          },
+          {
+            "inputs": 7,
+            "select_bits": 5,
+            "data_bits": 5,
+            "passed": true
+          }
+        ],
+        "passed": true
+      }
+    },
+    "array_numeric": {
+      "summary_sha256": "def03350fe2ec44e805276ec08c6e23e7b2a2297ca20b4a69442e4736a305dcd",
+      "result": {
+        "passed": true,
+        "expected_configurations": 6,
+        "completed_configurations": 6,
+        "cases": 456,
+        "checked_values": 486788,
+        "results": [
+          {
+            "passed": true,
+            "size": 3,
+            "data_bits": 8,
+            "weight_bits": 8,
+            "first_output_cycles": 3,
+            "cases": 76,
+            "checked_values": 6933,
+            "output_rows": 1295,
+            "partial_sum_injections": 2025,
+            "overlapped_weight_cycles": 222,
+            "overflow_reference_values": 114,
+            "wave_commits": 32,
+            "mixed_valid_cycles": 34,
+            "protected_load_cycles": 24,
+            "simultaneous_load_commits": 12,
+            "row_select_checks": 798,
+            "selected_weight_checks": 1800,
+            "reset_checks": 9,
+            "cycles": 2945,
+            "source_sha256": {
+              "rtl/npu/compute/ws_systolic_array.sv": "4b195baecea27702f4972e068f2714661cbf8237caaacfe725cfa16cd2525bb0",
+              "rtl/npu/compute/ws_systolic_cell.sv": "18a1f02fa580ac7cb317a25c8269fca8c12973c8e6e47747457d850cfd8cc4d3",
+              "test/dip_array/tb.sv": "aef3433f553ae5c72faa1f7595933c501d050210fed23d1c7b1c993f70bb119c",
+              "test/dip_array/array_test.cpp": "95abb96ab1e1a7fba1e0627656062de6009aecc8cbe8ea88f046f8800ab145c7",
+              "test/dip_array/run.py": "a3bf9a8a60e33b225b2c748e85851b0d403e08213e22bc48c52dce05ab678888"
+            },
+            "binary_sha256": "25a9b08825f156f405aa687a205804571ba9be8c39f516a126b01de58d5bf2ed",
+            "compile_command": [
+              "verilator-modern",
+              "--cc",
+              "--exe",
+              "--build",
+              "--assert",
+              "-j",
+              "1",
+              "-Wno-fatal",
+              "--top-module",
+              "dip_array_tb",
+              "--Mdir",
+              "/tmp/npu45000_compute/array/size3_s8_w8/obj",
+              "-GSIZE=3",
+              "-GDATA_IN_WIDTH=8",
+              "-GWEIGHT_WIDTH=8",
+              "--output-groups",
+              "0",
+              "--output-split",
+              "10000",
+              "-CFLAGS",
+              "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE=3 -DTEST_DATA_BITS=8 -DTEST_WEIGHT_BITS=8",
+              "-LDFLAGS",
+              "-fsanitize=undefined",
+              "-MAKEFLAGS",
+              "OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /tmp/npu45000_compute/array/size3_s8_w8/compile_rules.mk",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_array.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_cell.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/tb.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/array_test.cpp"
+            ],
+            "run_command": [
+              "/tmp/npu45000_compute/array/size3_s8_w8/obj/Vdip_array_tb"
+            ],
+            "undefined_behavior_sanitizer": true
+          },
+          {
+            "passed": true,
+            "size": 3,
+            "data_bits": 16,
+            "weight_bits": 8,
+            "first_output_cycles": 3,
+            "cases": 76,
+            "checked_values": 6822,
+            "output_rows": 1294,
+            "partial_sum_injections": 2022,
+            "overlapped_weight_cycles": 222,
+            "overflow_reference_values": 115,
+            "wave_commits": 32,
+            "mixed_valid_cycles": 34,
+            "protected_load_cycles": 24,
+            "simultaneous_load_commits": 12,
+            "row_select_checks": 798,
+            "selected_weight_checks": 1800,
+            "reset_checks": 9,
+            "cycles": 2872,
+            "source_sha256": {
+              "rtl/npu/compute/ws_systolic_array.sv": "4b195baecea27702f4972e068f2714661cbf8237caaacfe725cfa16cd2525bb0",
+              "rtl/npu/compute/ws_systolic_cell.sv": "18a1f02fa580ac7cb317a25c8269fca8c12973c8e6e47747457d850cfd8cc4d3",
+              "test/dip_array/tb.sv": "aef3433f553ae5c72faa1f7595933c501d050210fed23d1c7b1c993f70bb119c",
+              "test/dip_array/array_test.cpp": "95abb96ab1e1a7fba1e0627656062de6009aecc8cbe8ea88f046f8800ab145c7",
+              "test/dip_array/run.py": "a3bf9a8a60e33b225b2c748e85851b0d403e08213e22bc48c52dce05ab678888"
+            },
+            "binary_sha256": "1ef7aec2fd121c3fb27771ead55d3c073622c4064c67e88d9025e37fac700b13",
+            "compile_command": [
+              "verilator-modern",
+              "--cc",
+              "--exe",
+              "--build",
+              "--assert",
+              "-j",
+              "1",
+              "-Wno-fatal",
+              "--top-module",
+              "dip_array_tb",
+              "--Mdir",
+              "/tmp/npu45000_compute/array/size3_s16_w8/obj",
+              "-GSIZE=3",
+              "-GDATA_IN_WIDTH=16",
+              "-GWEIGHT_WIDTH=8",
+              "--output-groups",
+              "0",
+              "--output-split",
+              "10000",
+              "-CFLAGS",
+              "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE=3 -DTEST_DATA_BITS=16 -DTEST_WEIGHT_BITS=8",
+              "-LDFLAGS",
+              "-fsanitize=undefined",
+              "-MAKEFLAGS",
+              "OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /tmp/npu45000_compute/array/size3_s16_w8/compile_rules.mk",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_array.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_cell.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/tb.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/array_test.cpp"
+            ],
+            "run_command": [
+              "/tmp/npu45000_compute/array/size3_s16_w8/obj/Vdip_array_tb"
+            ],
+            "undefined_behavior_sanitizer": true
+          },
+          {
+            "passed": true,
+            "size": 3,
+            "data_bits": 16,
+            "weight_bits": 16,
+            "first_output_cycles": 3,
+            "cases": 76,
+            "checked_values": 7449,
+            "output_rows": 1466,
+            "partial_sum_injections": 2313,
+            "overlapped_weight_cycles": 231,
+            "overflow_reference_values": 799,
+            "wave_commits": 32,
+            "mixed_valid_cycles": 34,
+            "protected_load_cycles": 24,
+            "simultaneous_load_commits": 12,
+            "row_select_checks": 798,
+            "selected_weight_checks": 1800,
+            "reset_checks": 9,
+            "cycles": 3088,
+            "source_sha256": {
+              "rtl/npu/compute/ws_systolic_array.sv": "4b195baecea27702f4972e068f2714661cbf8237caaacfe725cfa16cd2525bb0",
+              "rtl/npu/compute/ws_systolic_cell.sv": "18a1f02fa580ac7cb317a25c8269fca8c12973c8e6e47747457d850cfd8cc4d3",
+              "test/dip_array/tb.sv": "aef3433f553ae5c72faa1f7595933c501d050210fed23d1c7b1c993f70bb119c",
+              "test/dip_array/array_test.cpp": "95abb96ab1e1a7fba1e0627656062de6009aecc8cbe8ea88f046f8800ab145c7",
+              "test/dip_array/run.py": "a3bf9a8a60e33b225b2c748e85851b0d403e08213e22bc48c52dce05ab678888"
+            },
+            "binary_sha256": "34f97b406c53d68a07a22d703974e6d11ada5da39c3d2dba40299246b08f329f",
+            "compile_command": [
+              "verilator-modern",
+              "--cc",
+              "--exe",
+              "--build",
+              "--assert",
+              "-j",
+              "1",
+              "-Wno-fatal",
+              "--top-module",
+              "dip_array_tb",
+              "--Mdir",
+              "/tmp/npu45000_compute/array/size3_s16_w16/obj",
+              "-GSIZE=3",
+              "-GDATA_IN_WIDTH=16",
+              "-GWEIGHT_WIDTH=16",
+              "--output-groups",
+              "0",
+              "--output-split",
+              "10000",
+              "-CFLAGS",
+              "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE=3 -DTEST_DATA_BITS=16 -DTEST_WEIGHT_BITS=16",
+              "-LDFLAGS",
+              "-fsanitize=undefined",
+              "-MAKEFLAGS",
+              "OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /tmp/npu45000_compute/array/size3_s16_w16/compile_rules.mk",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_array.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_cell.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/tb.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/array_test.cpp"
+            ],
+            "run_command": [
+              "/tmp/npu45000_compute/array/size3_s16_w16/obj/Vdip_array_tb"
+            ],
+            "undefined_behavior_sanitizer": true
+          },
+          {
+            "passed": true,
+            "size": 16,
+            "data_bits": 8,
+            "weight_bits": 8,
+            "first_output_cycles": 16,
+            "cases": 76,
+            "checked_values": 165408,
+            "output_rows": 6434,
+            "partial_sum_injections": 61168,
+            "overlapped_weight_cycles": 1392,
+            "overflow_reference_values": 2688,
+            "wave_commits": 32,
+            "mixed_valid_cycles": 322,
+            "protected_load_cycles": 288,
+            "simultaneous_load_commits": 12,
+            "row_select_checks": 12256,
+            "selected_weight_checks": 131072,
+            "reset_checks": 9,
+            "cycles": 12627,
+            "source_sha256": {
+              "rtl/npu/compute/ws_systolic_array.sv": "4b195baecea27702f4972e068f2714661cbf8237caaacfe725cfa16cd2525bb0",
+              "rtl/npu/compute/ws_systolic_cell.sv": "18a1f02fa580ac7cb317a25c8269fca8c12973c8e6e47747457d850cfd8cc4d3",
+              "test/dip_array/tb.sv": "aef3433f553ae5c72faa1f7595933c501d050210fed23d1c7b1c993f70bb119c",
+              "test/dip_array/array_test.cpp": "95abb96ab1e1a7fba1e0627656062de6009aecc8cbe8ea88f046f8800ab145c7",
+              "test/dip_array/run.py": "a3bf9a8a60e33b225b2c748e85851b0d403e08213e22bc48c52dce05ab678888"
+            },
+            "binary_sha256": "bd9fc351d3ff1ea9893415ce0e9a212e4836c90b8381dac107c78db3619b15fb",
+            "compile_command": [
+              "verilator-modern",
+              "--cc",
+              "--exe",
+              "--build",
+              "--assert",
+              "-j",
+              "1",
+              "-Wno-fatal",
+              "--top-module",
+              "dip_array_tb",
+              "--Mdir",
+              "/tmp/npu45000_compute/array/size16_s8_w8/obj",
+              "-GSIZE=16",
+              "-GDATA_IN_WIDTH=8",
+              "-GWEIGHT_WIDTH=8",
+              "--output-groups",
+              "0",
+              "--output-split",
+              "10000",
+              "-CFLAGS",
+              "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE=16 -DTEST_DATA_BITS=8 -DTEST_WEIGHT_BITS=8",
+              "-LDFLAGS",
+              "-fsanitize=undefined",
+              "-MAKEFLAGS",
+              "OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /tmp/npu45000_compute/array/size16_s8_w8/compile_rules.mk",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_array.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_cell.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/tb.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/array_test.cpp"
+            ],
+            "run_command": [
+              "/tmp/npu45000_compute/array/size16_s8_w8/obj/Vdip_array_tb"
+            ],
+            "undefined_behavior_sanitizer": true
+          },
+          {
+            "passed": true,
+            "size": 16,
+            "data_bits": 16,
+            "weight_bits": 8,
+            "first_output_cycles": 16,
+            "cases": 76,
+            "checked_values": 140176,
+            "output_rows": 5175,
+            "partial_sum_injections": 44976,
+            "overlapped_weight_cycles": 1200,
+            "overflow_reference_values": 2739,
+            "wave_commits": 32,
+            "mixed_valid_cycles": 322,
+            "protected_load_cycles": 288,
+            "simultaneous_load_commits": 12,
+            "row_select_checks": 12256,
+            "selected_weight_checks": 131072,
+            "reset_checks": 9,
+            "cycles": 10953,
+            "source_sha256": {
+              "rtl/npu/compute/ws_systolic_array.sv": "4b195baecea27702f4972e068f2714661cbf8237caaacfe725cfa16cd2525bb0",
+              "rtl/npu/compute/ws_systolic_cell.sv": "18a1f02fa580ac7cb317a25c8269fca8c12973c8e6e47747457d850cfd8cc4d3",
+              "test/dip_array/tb.sv": "aef3433f553ae5c72faa1f7595933c501d050210fed23d1c7b1c993f70bb119c",
+              "test/dip_array/array_test.cpp": "95abb96ab1e1a7fba1e0627656062de6009aecc8cbe8ea88f046f8800ab145c7",
+              "test/dip_array/run.py": "a3bf9a8a60e33b225b2c748e85851b0d403e08213e22bc48c52dce05ab678888"
+            },
+            "binary_sha256": "1a1296997bc2ac14caa929a0cc155a330996ddd04429bf0cbada4f29b1866acf",
+            "compile_command": [
+              "verilator-modern",
+              "--cc",
+              "--exe",
+              "--build",
+              "--assert",
+              "-j",
+              "1",
+              "-Wno-fatal",
+              "--top-module",
+              "dip_array_tb",
+              "--Mdir",
+              "/tmp/npu45000_compute/array/size16_s16_w8/obj",
+              "-GSIZE=16",
+              "-GDATA_IN_WIDTH=16",
+              "-GWEIGHT_WIDTH=8",
+              "--output-groups",
+              "0",
+              "--output-split",
+              "10000",
+              "-CFLAGS",
+              "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE=16 -DTEST_DATA_BITS=16 -DTEST_WEIGHT_BITS=8",
+              "-LDFLAGS",
+              "-fsanitize=undefined",
+              "-MAKEFLAGS",
+              "OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /tmp/npu45000_compute/array/size16_s16_w8/compile_rules.mk",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_array.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_cell.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/tb.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/array_test.cpp"
+            ],
+            "run_command": [
+              "/tmp/npu45000_compute/array/size16_s16_w8/obj/Vdip_array_tb"
+            ],
+            "undefined_behavior_sanitizer": true
+          },
+          {
+            "passed": true,
+            "size": 16,
+            "data_bits": 16,
+            "weight_bits": 16,
+            "first_output_cycles": 16,
+            "cases": 76,
+            "checked_values": 160000,
+            "output_rows": 6154,
+            "partial_sum_injections": 55824,
+            "overlapped_weight_cycles": 1200,
+            "overflow_reference_values": 27771,
+            "wave_commits": 32,
+            "mixed_valid_cycles": 322,
+            "protected_load_cycles": 288,
+            "simultaneous_load_commits": 12,
+            "row_select_checks": 12256,
+            "selected_weight_checks": 131072,
+            "reset_checks": 9,
+            "cycles": 12260,
+            "source_sha256": {
+              "rtl/npu/compute/ws_systolic_array.sv": "4b195baecea27702f4972e068f2714661cbf8237caaacfe725cfa16cd2525bb0",
+              "rtl/npu/compute/ws_systolic_cell.sv": "18a1f02fa580ac7cb317a25c8269fca8c12973c8e6e47747457d850cfd8cc4d3",
+              "test/dip_array/tb.sv": "aef3433f553ae5c72faa1f7595933c501d050210fed23d1c7b1c993f70bb119c",
+              "test/dip_array/array_test.cpp": "95abb96ab1e1a7fba1e0627656062de6009aecc8cbe8ea88f046f8800ab145c7",
+              "test/dip_array/run.py": "a3bf9a8a60e33b225b2c748e85851b0d403e08213e22bc48c52dce05ab678888"
+            },
+            "binary_sha256": "a349562151804fdd061e8f74ad8b37ee2ae38891e13e1e4f7208864d4f0f77ce",
+            "compile_command": [
+              "verilator-modern",
+              "--cc",
+              "--exe",
+              "--build",
+              "--assert",
+              "-j",
+              "1",
+              "-Wno-fatal",
+              "--top-module",
+              "dip_array_tb",
+              "--Mdir",
+              "/tmp/npu45000_compute/array/size16_s16_w16/obj",
+              "-GSIZE=16",
+              "-GDATA_IN_WIDTH=16",
+              "-GWEIGHT_WIDTH=16",
+              "--output-groups",
+              "0",
+              "--output-split",
+              "10000",
+              "-CFLAGS",
+              "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_SIZE=16 -DTEST_DATA_BITS=16 -DTEST_WEIGHT_BITS=16",
+              "-LDFLAGS",
+              "-fsanitize=undefined",
+              "-MAKEFLAGS",
+              "OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /tmp/npu45000_compute/array/size16_s16_w16/compile_rules.mk",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_array.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/compute/ws_systolic_cell.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/tb.sv",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/dip_array/array_test.cpp"
+            ],
+            "run_command": [
+              "/tmp/npu45000_compute/array/size16_s16_w16/obj/Vdip_array_tb"
+            ],
+            "undefined_behavior_sanitizer": true
+          }
+        ]
+      }
+    },
+    "ia_state_formal": {
+      "summary_sha256": "34b4301987f1aa51a91b45430fa480a93eeb331133a8a860855f9e396fd9ab42",
+      "result": {
+        "reference_rev": "653477ed",
+        "source_input_constraints": false,
+        "source_sha256": {
+          "rtl/npu/loaders/ia_loader.sv": "719cecba6076cf2f574a44ec2effc1e23423594d2279e7d2c06a8626a711baae",
+          "rtl/npu/loaders/ia_loader_ctrl.sv": "9e782b7c4be3b35651f976e6eb3b0618a46203f2d857ff84ad62080000e9bdc9",
+          "rtl/npu/loaders/ia_loader_cache_mgr.sv": "cf632e6a81ddc1e93ae330b0d18b75b2877472200c8f98c700f86ff6c8f28646",
+          "rtl/npu/compute/select_add.sv": "2833d092126d6ee02d429d0d7eaf3e9a70662f1badac636e97b83f4b7b15a466"
+        },
+        "common_sha256": {
+          "rtl/common/REGFILE.v": "c6be0f1eb230461e6fb93d336576bdb6bb909c74bed105177ad3983cda692501",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "ae8419319b2f63d1928c3e0c7ed4ea0f3e473076a9eaa2eaa00fee00e3d71d65",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "primitive_models": {
+          "library": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v",
+          "library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "models": [
+            "LUT3",
+            "LUT6",
+            "LUT6_2",
+            "DSP48E1"
+          ],
+          "models_sha256": "0ddfa62b23a334c0bbf34184f5288115d4a29bb070eb351c9aecbcacd96e9b93",
+          "scope": "Functional models with specify timing annotations removed"
+        },
+        "equality_runs": [
+          {
+            "width": 8,
+            "low_width": 4,
+            "use_lut": true,
+            "unconstrained_input_bits": 20,
+            "passed": true,
+            "log_sha256": "2f9d716a313336a99868fbe65c3f8038776814c3b4ab887f8f1c483240e619c2"
+          },
+          {
+            "width": 32,
+            "low_width": 4,
+            "use_lut": true,
+            "unconstrained_input_bits": 92,
+            "passed": true,
+            "log_sha256": "2a33f05e511b50f352609ddea13a6720f1604fd452004dbf8310028941c653d0"
+          },
+          {
+            "width": 35,
+            "low_width": 4,
+            "use_lut": true,
+            "unconstrained_input_bits": 101,
+            "passed": true,
+            "log_sha256": "1fb5483b430962e5ca2f9724fd02aab9c2113bcf1b14cabd39d7df2d86618ca0"
+          },
+          {
+            "width": 40,
+            "low_width": 4,
+            "use_lut": true,
+            "unconstrained_input_bits": 116,
+            "passed": true,
+            "log_sha256": "4988d0298801b94b97a5e393ab5365de73e4a0263b58f0cdbf010bde6ee7aa7d"
+          },
+          {
+            "width": 32,
+            "low_width": 0,
+            "use_lut": true,
+            "unconstrained_input_bits": 96,
+            "passed": true,
+            "log_sha256": "a68fa7656ceb28708fb43791c0fc372fda2a133ca5103b2f1d9e67822f7b06b6"
+          },
+          {
+            "width": 32,
+            "low_width": 3,
+            "use_lut": true,
+            "unconstrained_input_bits": 93,
+            "passed": true,
+            "log_sha256": "860fe8f6cd695e5591fe8bcabd2b8e589b22068c2fe5720131945f02203e9878"
+          },
+          {
+            "width": 32,
+            "low_width": 5,
+            "use_lut": true,
+            "unconstrained_input_bits": 91,
+            "passed": true,
+            "log_sha256": "821ec20da1a280c205d19e681564ebef2bd4743bdc9386f632231eda1a687bcb"
+          },
+          {
+            "width": 32,
+            "low_width": 4,
+            "use_lut": false,
+            "unconstrained_input_bits": 92,
+            "passed": true,
+            "log_sha256": "73c2556fa926c9e33584a85e0ff3db67b1e79209467910f3e305b53520019215"
+          }
+        ],
+        "runs": [
+          {
+            "name": "soc",
+            "parameters": [
+              "-DXILINX_FPGA=1",
+              "-GSIZE=16",
+              "-GBUS_WIDTH=64",
+              "-GCOUNT_WIDTH=29",
+              "-GCACHE_BLOCKS=32",
+              "-GEXTERNAL_RAM=1",
+              "-GORDERED_JOB=1",
+              "-GRAM_WORD_ADDR_WIDTH=12",
+              "-GPS_FRAME_COUNT=16"
+            ],
+            "passed": true,
+            "equivalent_bits": 11927,
+            "log_sha256": "9144659a6710bdbf41bfa197c2bd3682acaf974d19196f86be9c95a405af58ee"
+          },
+          {
+            "name": "production",
+            "parameters": [
+              "-DXILINX_FPGA=1",
+              "-GSIZE=16",
+              "-GBUS_WIDTH=64",
+              "-GCOUNT_WIDTH=29",
+              "-GCACHE_BLOCKS=32",
+              "-GEXTERNAL_RAM=1",
+              "-GORDERED_JOB=1"
+            ],
+            "passed": true,
+            "equivalent_bits": 11915,
+            "log_sha256": "7b33bb38bbf22a15a39f859defb5ca4281348b962a3ad59061a82bba561313ef"
+          },
+          {
+            "name": "full_count",
+            "parameters": [
+              "-DXILINX_FPGA=1",
+              "-GSIZE=16",
+              "-GBUS_WIDTH=64",
+              "-GCOUNT_WIDTH=32",
+              "-GCACHE_BLOCKS=32",
+              "-GEXTERNAL_RAM=1",
+              "-GORDERED_JOB=1"
+            ],
+            "passed": true,
+            "equivalent_bits": 11960,
+            "log_sha256": "6001e44b8593d1051a36db860b863a6537bd390c16b2ca5dcfe36a0b6f6cccbf"
+          },
+          {
+            "name": "large_cache",
+            "parameters": [
+              "-DXILINX_FPGA=1",
+              "-GSIZE=16",
+              "-GBUS_WIDTH=64",
+              "-GCOUNT_WIDTH=29",
+              "-GCACHE_BLOCKS=64",
+              "-GEXTERNAL_RAM=1",
+              "-GORDERED_JOB=1"
+            ],
+            "passed": true,
+            "equivalent_bits": 17025,
+            "log_sha256": "d50562c5b06fd3690df1806cc03346fdf4464fe918c3d7e759bd03f4ae87bc48"
+          },
+          {
+            "name": "local_size3",
+            "parameters": [
+              "-DXILINX_FPGA=1",
+              "-GSIZE=3",
+              "-GBUS_WIDTH=32",
+              "-GCOUNT_WIDTH=8",
+              "-GCACHE_BLOCKS=4",
+              "-GEXTERNAL_RAM=0",
+              "-GORDERED_JOB=1"
+            ],
+            "passed": true,
+            "equivalent_bits": 6147,
+            "log_sha256": "c8fb7f2ea581a38514408891fa7053bceb64689c2d2856f4b69530aa638f63d6"
+          },
+          {
+            "name": "asic",
+            "parameters": [
+              "-DASIC_SYNTHESIS=1",
+              "-GSIZE=16",
+              "-GBUS_WIDTH=64",
+              "-GCOUNT_WIDTH=29",
+              "-GCACHE_BLOCKS=32",
+              "-GEXTERNAL_RAM=1",
+              "-GORDERED_JOB=1"
+            ],
+            "passed": true,
+            "equivalent_bits": 11819,
+            "log_sha256": "3ff847cbf96aad93addf7e73797e26316c0fec54aff695474d9c4dbb5ff799ad"
+          }
+        ],
+        "passed": true
+      }
+    },
+    "ia_interface": {
+      "summary_sha256": "0f1c38084396526f397528bbecffea0e41d12958a3355a841faf3dbe7b0fba21",
+      "result": {
+        "reference_rev": "653477ed",
+        "compared_outputs": [
+          "prefetch_idle",
+          "load_ia_req",
+          "ext_dma_start",
+          "ext_dma_is_write",
+          "ext_dma_linear_read_mode",
+          "ext_dma_im2col",
+          "ext_dma_p0",
+          "ext_dma_q0",
+          "ext_dma_group",
+          "ext_dma_base_addr",
+          "ext_dma_row_stride",
+          "ext_dma_rows_to_read",
+          "ext_dma_burst_len_m1",
+          "ext_dma_slot_id",
+          "ext_dma_use_16bits",
+          "ext_dma_lhs_zp",
+          "ram_port_wr_en",
+          "ram_port_wr_addr",
+          "ram_port_wr_data",
+          "ram_port_wr_mask",
+          "ram_port_rd_en",
+          "ram_port_rd_addr",
+          "ia_out",
+          "ia_row_valid",
+          "ia_is_init_data",
+          "ia_calc_done",
+          "ia_tile_start",
+          "ia_sending_done",
+          "ia_data_valid",
+          "ps_frame_rows",
+          "ps_frame_id",
+          "ps_frame_init",
+          "ps_frame_final",
+          "ia_output_pending",
+          "bias_sleep",
+          "bias_load_sleep",
+          "bias_switch",
+          "bias_last_loop",
+          "ia_l1_switch"
+        ],
+        "source_sha256": {
+          "rtl/npu/loaders/ia_loader.sv": "719cecba6076cf2f574a44ec2effc1e23423594d2279e7d2c06a8626a711baae",
+          "rtl/npu/loaders/ia_loader_ctrl.sv": "9e782b7c4be3b35651f976e6eb3b0618a46203f2d857ff84ad62080000e9bdc9",
+          "rtl/npu/loaders/ia_loader_cache_mgr.sv": "cf632e6a81ddc1e93ae330b0d18b75b2877472200c8f98c700f86ff6c8f28646"
+        },
+        "generated_sha256": {
+          "ia_loader_checked.sv": "6b22ec88b59ea07ee629f0d7e73160798892c3681a8fc55519cfca7fe956609f",
+          "ia_loader_cache_mgr_reference.sv": "5130e6bf7771ce4110a3168a5a0a1679ba7ee93f9c2aeefb08d75b26c2f9b110",
+          "ia_loader_ctrl_reference.sv": "22030602d5e8a1676dc5b6f291fd31dd4e91a5706fa95e729d0d529cb81537b5",
+          "ia_loader_reference.sv": "46247c05d48d7ce338e232e685fac8853b7d377e7734a0ffb106a902bf173866",
+          "verilator_compare": "76d768a611d20827da77153f1edfa1b03dc900bc18e20ad62e9038c82d25cb19"
+        },
+        "runs": [
+          {
+            "case": "prefetch_ordered",
+            "passed": true,
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/ia_compact/run_prefetch.py",
+              "--out",
+              "/tmp/npu45000_compute/ia_interface/prefetch_ordered",
+              "--verilator",
+              "/tmp/npu45000_compute/ia_interface/verilator_compare",
+              "--ordered-job"
+            ],
+            "cycles": 57835,
+            "cases": null,
+            "commands": 251,
+            "value_checks": 179920,
+            "summary": "/tmp/npu45000_compute/ia_interface/prefetch_ordered/summary.json"
+          },
+          {
+            "case": "grouped32",
+            "passed": true,
+            "command": [
+              "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+              "/workspace/scratch/d8ec29656755/compute_opt/test/ia_compact/run.py",
+              "--out",
+              "/tmp/npu45000_compute/ia_interface/grouped32",
+              "--verilator",
+              "/tmp/npu45000_compute/ia_interface/verilator_compare",
+              "--only",
+              "loader",
+              "--loader-cache-blocks",
+              "32"
+            ],
+            "cycles": 122287,
+            "cases": 81,
+            "commands": null,
+            "value_checks": 724032,
+            "summary": "/tmp/npu45000_compute/ia_interface/grouped32/summary.json"
+          }
+        ],
+        "passed": true,
+        "primitive_models": {
+          "vendor_source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v",
+          "vendor_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "models_sha256": "aacef2aaedb47106403bfaf61c2d1d32f6d85f923e19eba403aa564e34ce5e26",
+          "removed_sections": "specify timing annotations"
+        },
+        "fpga_primitives_enabled": true,
+        "generated_cpp_flags": [
+          "-Wno-bool-operation"
+        ]
+      }
+    },
+    "four_state": {
+      "passed": true,
+      "cycles": 100000,
+      "output_checks": 200001,
+      "run_log_sha256": "af13113c5f51316648b2696423ecfdb0e1258ebae0a193059ff33da61f8cbe88"
+    }
+  }
+}

@@ -1,0 +1,765 @@
+{
+  "reference_ref": "cd312b48",
+  "synthesis_dependencies_parameters_models_equal": true,
+  "formal": {
+    "reference": "cd312b4847770a0946acaf899aafd504fb531dc9",
+    "fpga": true,
+    "inputs_constrained": false,
+    "official_model_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "cases": [
+      {
+        "name": "frontend_l1",
+        "top": "conv_im2col_frontend",
+        "parameters": {
+          "SIZE": 16,
+          "LANES": 1,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 3
+        },
+        "passed": true,
+        "equivalent_bits": 20071,
+        "source_sha256": {
+          "reference": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "264d08aebf8b7b8c38b575a0d2a02b2bfdda98c3e46e02b9f814936f2bda9163",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          },
+          "current": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "ee424b4982473170b2740349c16b5f9c688fd9b8e3d32880371851edbf23f5e6",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          }
+        },
+        "log_sha256": "936a21793ad38ab59f7e16e2d51b6961810aed8cc36a5e4fefd3096b41e3dcec",
+        "unmatched_internal_ports": []
+      },
+      {
+        "name": "frontend_l2",
+        "top": "conv_im2col_frontend",
+        "parameters": {
+          "SIZE": 16,
+          "LANES": 2,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 3
+        },
+        "passed": true,
+        "equivalent_bits": 20190,
+        "source_sha256": {
+          "reference": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "264d08aebf8b7b8c38b575a0d2a02b2bfdda98c3e46e02b9f814936f2bda9163",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          },
+          "current": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "ee424b4982473170b2740349c16b5f9c688fd9b8e3d32880371851edbf23f5e6",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          }
+        },
+        "log_sha256": "4c2f69f3cf7e306d10537d599adbd8a1960639deead1c0d52a0136d81ae33aed",
+        "unmatched_internal_ports": []
+      },
+      {
+        "name": "frontend_l3",
+        "top": "conv_im2col_frontend",
+        "parameters": {
+          "SIZE": 16,
+          "LANES": 3,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 3
+        },
+        "passed": true,
+        "equivalent_bits": 20294,
+        "source_sha256": {
+          "reference": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "264d08aebf8b7b8c38b575a0d2a02b2bfdda98c3e46e02b9f814936f2bda9163",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          },
+          "current": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "ee424b4982473170b2740349c16b5f9c688fd9b8e3d32880371851edbf23f5e6",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          }
+        },
+        "log_sha256": "39898f4611672069810606abcd74452355f16220f0bf01dbb57ef0d77de8d1c3",
+        "unmatched_internal_ports": []
+      },
+      {
+        "name": "frontend_l4",
+        "top": "conv_im2col_frontend",
+        "parameters": {
+          "SIZE": 16,
+          "LANES": 4,
+          "BUS_WIDTH": 64,
+          "CACHE_SETS": 8,
+          "CACHE_POLICY": 3
+        },
+        "passed": true,
+        "equivalent_bits": 20396,
+        "source_sha256": {
+          "reference": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "264d08aebf8b7b8c38b575a0d2a02b2bfdda98c3e46e02b9f814936f2bda9163",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          },
+          "current": {
+            "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+            "rtl/npu/conv/conv_im2col_frontend.sv": "ee424b4982473170b2740349c16b5f9c688fd9b8e3d32880371851edbf23f5e6",
+            "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+            "rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+            "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+            "rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+            "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+            "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+            "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+            "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+          }
+        },
+        "log_sha256": "b95eeaa9d875457c7820d426e8827e8de148e5466ee8f0ebc1c5a99266b89c91",
+        "unmatched_internal_ports": []
+      }
+    ],
+    "passed": true
+  },
+  "numeric": {
+    "passed": true,
+    "name": "current",
+    "source_sha256": {
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/conv_axi_read_guard.sv": "b6609cffd29ae69b1fcae97eab0eb50c99d88f1af69333c07f32a76d96e8b5ad",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/conv_axi_read_mux.sv": "1a22339597320f0327c28452d47053f2cb3eb40d0f37ed0a62f6ffdefc2f5de8",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/conv_im2col_frontend.sv": "ee424b4982473170b2740349c16b5f9c688fd9b8e3d32880371851edbf23f5e6",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_config_check.sv": "8c33ec372e211f722fc1a612cd96041dcb713c54d55167d0a0ccbad726f248bd",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_engine.sv": "e75609d5ad69fcd201dfa93f9fded8f30d1a96aafa2a069af19cecb8c5d3d54d",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_pe.sv": "e5e6127062680e1309380f6d4f5391932a1c046497edd20642271fabf909e195",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_quant_params.sv": "30566958ec9d57d4bdc16d988a4aa748671076e33bcec0e37479e026229e9506",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_round_shift.sv": "9aeacf0b7fde5ca3b22aeeaab2a7be55922b666c139460b954bd3e3adc5e99df",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_softmax.sv": "ed184fce3d3e6538ff24fe4e446f1aa06c409c05ad2cd707e441faf6d487efd6",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/conv/vector_writeback.sv": "e7a5a55d414747a7e1a9ef0292334dd5103a73dac697175a6eab441d82efc8df",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/axi_block_dma_arbiter.sv": "1ef2ce47abaf42ad26bfaa000a800483e8d27e87915bb59aab0ecfa99cc0d7e2",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/axi_dual_block_dma.sv": "568ded98b06ef978f077faf3cade52d96c5b9108fa43b9fccea81616c80eb242",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/axi_linear_block_dma.sv": "3e7a5aecf901a6783f1ba2942eddbe05aeeeb681379bb624faa7561bb8f4593d",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/axi_write_page_guard.sv": "acb3e356b4c84dba27b36c4b6fefe9c485592401ec900fb561c6b70d50102ceb",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/conv_window_queue.sv": "9165375a6c36eb48a7706b4f8f6a6b12e36c81e03bfe7fd4217299b2166ea0d8",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/npu/dma/operand_read_cache.sv": "863026e928bd4c236c3a42b0e46aeb78d147119122e21aeb3ea2856f805bc981",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/common/pseudo_dual_port_ram.v": "ddf9081bf36b76e7ce986948a94d3b4b0774b09c735da114af5af042332d354d",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/test/window_dma/window_dma_top.sv": "66236391f76b2bd42b0e9187be930210a244b687b0fe93593bcfb8da669bcd42",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/test/window_dma/main.cpp": "b413c9ec89dc64c23362fc715cba3fad2c64ab0eff8f5a8e0e66fe0fc6f1fb09",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+      "/workspace/scratch/d8ec29656755/frontend_dma_opt/rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/axi_block_dma_arbiter_observer.sv": "823f3882cf39d08c6e35ea43ce5f0e5dcf0671d2e8a142f9c39576b15b1275bb",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/axi_dual_block_dma_observer.sv": "2fa33fe487c6ee4c65f007f8c07c2f9c65650e9b658f0915c04ec6b69aaee9fc",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/axi_linear_block_dma_observer.sv": "9844adc737aeec6e66292b708ec569f0f5909795723c47ba979af45dc803d0e9",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_ia_tile_path_observer.sv": "d2da5900eba2b4cfdfa8126432476f25ff9a6b36daab8aeb51f913e54298b406",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_im2col_frontend_observer.sv": "2aa5ca855fb307d282f674c0031f0314ccc400efa9426bf472c54dc4ca3aa79b",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_read_cache_observer.sv": "5994b7a977ee25e05b1bb4dc5cb6e1b5b70b6e4dd71f52544d4c950d5351d4a4",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_read_cache_reference_observer.sv": "501101e5cf7962f69a8ed54265c152eac12bfc7a8f390b51ef80b7f25c33cf4d",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_window_queue_observer.sv": "1d2c350906530314b4ea47af303321a838f6205b44bf44810b5e6c0687ed364d",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_windowed_cache_observer.sv": "3399fe5ac3466c37378a3f6dee3a0c95c1372dbe7a77855a11d348df52f6d91d",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/vector_engine_observer.sv": "d6d270e03ce94111dac21f7447dfa82d8280a3d29a1b6146c2f2e41950e0f0d7",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/vector_weight_store_observer.sv": "abd7eb426a068ff25cd26ca7b2ad916df73ee51de4e5b39f3e99d453c35cd2c1",
+      "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/xilinx_primitives.sv": "68130367b7dba40818cf1c5fb715874afdbb045d3cbfd3bff2cbda26821f0186"
+    },
+    "fpga": true,
+    "executable_sha256": "d3ad4e80a99e56a2a7070dc2c0283ff7f8436869bd493ab5d958cdcbe0189b38",
+    "resident_stream_sha256": "31d166cd0a9af03a1ba18b8b69775b5b2ac6112e444d658a5162056567a93fb2",
+    "resident_stream_cycles": 1545,
+    "log": "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/run.log",
+    "tests": [
+      "CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=3 cycles=1534",
+      "CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2",
+      "CASE registered_window_grant withdrawal=1 abort=1 configuration=1 ordinary_after_grant=1",
+      "CASE random_coordinates_backpressure requests=240 peak=4",
+      "CASE read_error_drain requests=4 completions=4",
+      "CASE error_reconfigure_recovery requests=3",
+      "CASE invalid_descriptor_order requests=4 completions=4",
+      "CASE invalid_cols cols=0 requests=4 completions=4",
+      "CASE invalid_cols cols=17 requests=4 completions=4",
+      "CASE invalid_cols cols=32 requests=4 completions=4",
+      "CASE invalid_cols cols=33 requests=4 completions=4",
+      "CASE pending_configuration drained=4 recovery_requests=3",
+      "CASE configuration_before_first_ar stalled_cycles=24 old_requests=1 recovery_requests=1",
+      "CASE configuration_at_burst_boundary pending_windows_at_last_r=1 old_requests=4 recovery_requests=1",
+      "CASE reset_with_four_requests cancelled=4 recovery_requests=3",
+      "WINDOW_DMA_PASS accepted=422 completed=418 cancelled=4 payload_elements=4457 errors=19"
+    ],
+    "reference": {
+      "passed": true,
+      "name": "cd312b48",
+      "source_sha256": {
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/conv_axi_read_guard.sv": "b6609cffd29ae69b1fcae97eab0eb50c99d88f1af69333c07f32a76d96e8b5ad",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/conv_axi_read_mux.sv": "1a22339597320f0327c28452d47053f2cb3eb40d0f37ed0a62f6ffdefc2f5de8",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/conv_axi_span_reader.sv": "42c3ca448309c8377e43a8090d8c458c950aa56b2f10a98f28fb7c412a5280aa",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/conv_im2col_frontend.sv": "264d08aebf8b7b8c38b575a0d2a02b2bfdda98c3e46e02b9f814936f2bda9163",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_config_check.sv": "8c33ec372e211f722fc1a612cd96041dcb713c54d55167d0a0ccbad726f248bd",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_engine.sv": "e75609d5ad69fcd201dfa93f9fded8f30d1a96aafa2a069af19cecb8c5d3d54d",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_pe.sv": "e5e6127062680e1309380f6d4f5391932a1c046497edd20642271fabf909e195",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_quant_params.sv": "30566958ec9d57d4bdc16d988a4aa748671076e33bcec0e37479e026229e9506",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_round_shift.sv": "9aeacf0b7fde5ca3b22aeeaab2a7be55922b666c139460b954bd3e3adc5e99df",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_softmax.sv": "ed184fce3d3e6538ff24fe4e446f1aa06c409c05ad2cd707e441faf6d487efd6",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/conv/vector_writeback.sv": "e7a5a55d414747a7e1a9ef0292334dd5103a73dac697175a6eab441d82efc8df",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/axi_block_dma_arbiter.sv": "1ef2ce47abaf42ad26bfaa000a800483e8d27e87915bb59aab0ecfa99cc0d7e2",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/axi_dual_block_dma.sv": "568ded98b06ef978f077faf3cade52d96c5b9108fa43b9fccea81616c80eb242",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/axi_linear_block_dma.sv": "3e7a5aecf901a6783f1ba2942eddbe05aeeeb681379bb624faa7561bb8f4593d",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/axi_write_page_guard.sv": "acb3e356b4c84dba27b36c4b6fefe9c485592401ec900fb561c6b70d50102ceb",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/cache/conv_sdp_ram.sv": "838aaede8f7f89ccfd3a0cdd3e242569582a2641984e0900d4883553bb3b25b3",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/conv_window_queue.sv": "9165375a6c36eb48a7706b4f8f6a6b12e36c81e03bfe7fd4217299b2166ea0d8",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/npu/dma/operand_read_cache.sv": "863026e928bd4c236c3a42b0e46aeb78d147119122e21aeb3ea2856f805bc981",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/common/pseudo_dual_port_ram.v": "ddf9081bf36b76e7ce986948a94d3b4b0774b09c735da114af5af042332d354d",
+        "/workspace/scratch/d8ec29656755/frontend_dma_opt/test/window_dma/window_dma_top.sv": "66236391f76b2bd42b0e9187be930210a244b687b0fe93593bcfb8da669bcd42",
+        "/workspace/scratch/d8ec29656755/frontend_dma_opt/test/window_dma/main.cpp": "b413c9ec89dc64c23362fc715cba3fad2c64ab0eff8f5a8e0e66fe0fc6f1fb09",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/sources/rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/axi_block_dma_arbiter_observer.sv": "823f3882cf39d08c6e35ea43ce5f0e5dcf0671d2e8a142f9c39576b15b1275bb",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/axi_dual_block_dma_observer.sv": "2fa33fe487c6ee4c65f007f8c07c2f9c65650e9b658f0915c04ec6b69aaee9fc",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/axi_linear_block_dma_observer.sv": "9844adc737aeec6e66292b708ec569f0f5909795723c47ba979af45dc803d0e9",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_ia_tile_path_observer.sv": "d2da5900eba2b4cfdfa8126432476f25ff9a6b36daab8aeb51f913e54298b406",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_im2col_frontend_observer.sv": "2aa5ca855fb307d282f674c0031f0314ccc400efa9426bf472c54dc4ca3aa79b",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_read_cache_observer.sv": "5994b7a977ee25e05b1bb4dc5cb6e1b5b70b6e4dd71f52544d4c950d5351d4a4",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_read_cache_reference_observer.sv": "501101e5cf7962f69a8ed54265c152eac12bfc7a8f390b51ef80b7f25c33cf4d",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_window_queue_observer.sv": "1d2c350906530314b4ea47af303321a838f6205b44bf44810b5e6c0687ed364d",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/conv_windowed_cache_observer.sv": "3399fe5ac3466c37378a3f6dee3a0c95c1372dbe7a77855a11d348df52f6d91d",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/vector_engine_observer.sv": "d6d270e03ce94111dac21f7447dfa82d8280a3d29a1b6146c2f2e41950e0f0d7",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/observers/vector_weight_store_observer.sv": "abd7eb426a068ff25cd26ca7b2ad916df73ee51de4e5b39f3e99d453c35cd2c1",
+        "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/xilinx_primitives.sv": "68130367b7dba40818cf1c5fb715874afdbb045d3cbfd3bff2cbda26821f0186"
+      },
+      "fpga": true,
+      "executable_sha256": "2e810a1a78162261904581ebdc9338ab08bd17cf43e51ea284afc11d7982664d",
+      "resident_stream_sha256": "31d166cd0a9af03a1ba18b8b69775b5b2ac6112e444d658a5162056567a93fb2",
+      "resident_stream_cycles": 1545,
+      "log": "/tmp/npu45000_frontend/frontend_shared_arithmetic_numeric/reference/run.log",
+      "tests": [
+        "CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=3 cycles=1534",
+        "CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2",
+        "CASE registered_window_grant withdrawal=1 abort=1 configuration=1 ordinary_after_grant=1",
+        "CASE random_coordinates_backpressure requests=240 peak=4",
+        "CASE read_error_drain requests=4 completions=4",
+        "CASE error_reconfigure_recovery requests=3",
+        "CASE invalid_descriptor_order requests=4 completions=4",
+        "CASE invalid_cols cols=0 requests=4 completions=4",
+        "CASE invalid_cols cols=17 requests=4 completions=4",
+        "CASE invalid_cols cols=32 requests=4 completions=4",
+        "CASE invalid_cols cols=33 requests=4 completions=4",
+        "CASE pending_configuration drained=4 recovery_requests=3",
+        "CASE configuration_before_first_ar stalled_cycles=24 old_requests=1 recovery_requests=1",
+        "CASE configuration_at_burst_boundary pending_windows_at_last_r=1 old_requests=4 recovery_requests=1",
+        "CASE reset_with_four_requests cancelled=4 recovery_requests=3",
+        "WINDOW_DMA_PASS accepted=422 completed=418 cancelled=4 payload_elements=4457 errors=19"
+      ]
+    },
+    "reference_ref": "cd312b48",
+    "resident_stream_cycle_equivalent": true
+  },
+  "synthesis": {
+    "reference": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": null,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "264d08aebf8b7b8c38b575a0d2a02b2bfdda98c3e46e02b9f814936f2bda9163",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+        "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+        "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+        "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+      },
+      "source_snapshot": "/tmp/npu45000_frontend/frontend_high_complement/sources",
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [],
+        "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      },
+      "pre_lut_netlist": "/tmp/npu45000_frontend/frontend_high_complement/pre_lut.il",
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 7566,
+      "flip_flops": 3279,
+      "dsp": 30,
+      "carry4": 839,
+      "longest_combinational_path_cells": 15,
+      "longest_combinational_path": {
+        "combinational_cells": 15,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$46786",
+          "type": "FDSE",
+          "port": "Q",
+          "net": "pf_distance[0]",
+          "detail": "register output",
+          "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1337.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:79.41-79.95",
+          "register_origin": "pf_distance_q [0]"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$46975",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$372850$aiger$o21755",
+          "category": "data",
+          "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1337.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "pf0_x [0]"
+        },
+        "path": [
+          {
+            "cell": "$abc$372850$lut$aiger$o3236",
+            "type": "LUT2",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "pf_distance[0]",
+            "output_net": "$techmap381933$abc$372850$lut$aiger$o3336.A[0]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "S[0]",
+            "output_port": "CO[3]",
+            "input_net": "$techmap381933$abc$372850$lut$aiger$o3336.A[0]",
+            "output_net": "$abc$372850$aiger$i6924",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$372850$aiger$i6924",
+            "output_net": "$abc$372850$aiger$i6932",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$372850$aiger$i6932",
+            "output_net": "$abc$372850$aiger$i6940",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[3].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$372850$aiger$i6940",
+            "output_net": "$abc$372850$aiger$i6956",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[4].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$372850$aiger$i6956",
+            "output_net": "$abc$372850$aiger$i6964",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[5].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$372850$aiger$i6964",
+            "output_net": "$abc$372850$aiger$i6972",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[6].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$372850$aiger$i6972",
+            "output_net": "$abc$372850$aiger$i6980",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22277.genblk1.slice[7].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "O[0]",
+            "input_net": "$abc$372850$aiger$i6980",
+            "output_net": "$techmap382012$abc$372850$lut$aiger$o3329.A[2]",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$abc$372850$lut$aiger$o3329",
+            "type": "LUT6",
+            "input_port": "I2[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap382012$abc$372850$lut$aiger$o3329.A[2]",
+            "output_net": "$abc$372850$aiger$o3329",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$2159.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "S[1]",
+            "output_port": "O[2]",
+            "input_net": "$abc$372850$aiger$o3329",
+            "output_net": "$techmap377232$abc$372850$lut$aiger372849$22117.A[3]",
+            "source": "../../../../tmp/npu45000_frontend/frontend_high_complement/sources/conv_im2col_frontend.sv:1308.9-1308.51|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:29.114-29.153|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+          },
+          {
+            "cell": "$abc$372850$lut$aiger372849$22117",
+            "type": "LUT5",
+            "input_port": "I3[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap377232$abc$372850$lut$aiger372849$22117.A[3]",
+            "output_net": "$techmap377241$abc$372850$lut$aiger372849$22120.A[3]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$abc$372850$lut$aiger372849$22120",
+            "type": "LUT4",
+            "input_port": "I3[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap377241$abc$372850$lut$aiger372849$22120.A[3]",
+            "output_net": "$techmap377242$abc$372850$lut$aiger372849$36199.A[2]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+          },
+          {
+            "cell": "$abc$372850$lut$aiger372849$36152",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap377242$abc$372850$lut$aiger372849$36199.A[2]",
+            "output_net": "$techmap383582$auto$abc_ops_reintegrate.cc:722:reintegrate$373405.A[2]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$373405",
+            "type": "LUT3",
+            "input_port": "I2[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap383582$auto$abc_ops_reintegrate.cc:722:reintegrate$373405.A[2]",
+            "output_net": "$abc$372850$aiger$o21755",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+          }
+        ]
+      },
+      "connected_path_metrics": "/tmp/npu45000_frontend/frontend_high_complement/paths.json",
+      "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis.",
+      "coarse_cell_graph_depth": 15,
+      "maximum_resident_kib": 503124,
+      "cell_counts": {
+        "$scopeinfo": 47,
+        "CARRY4": 839,
+        "DSP48E1": 30,
+        "FDCE": 2032,
+        "FDPE": 124,
+        "FDRE": 1088,
+        "FDSE": 35,
+        "INV": 318,
+        "LUT2": 1598,
+        "LUT3": 1226,
+        "LUT4": 1366,
+        "LUT5": 2055,
+        "LUT6": 1321,
+        "MUXF7": 2,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      }
+    },
+    "current": {
+      "scope": "conv_im2col_frontend; cache and predictor are black boxes",
+      "family": "xc7",
+      "reference_ref": null,
+      "source_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "ee424b4982473170b2740349c16b5f9c688fd9b8e3d32880371851edbf23f5e6",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "04bbf6e81556828a9076f20812a874d544bbd1eb847af11895a28ab9addfbadc",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "3cab6c862f553cd227043864d34cbcf3ea651fd62faee54dab4aa4cfd32de59a",
+        "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+        "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+        "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f"
+      },
+      "source_snapshot": "/tmp/npu45000_frontend/frontend_coordinate_sum/sources",
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [],
+        "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      },
+      "pre_lut_netlist": "/tmp/npu45000_frontend/frontend_coordinate_sum/pre_lut.il",
+      "configuration": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "CACHE_SETS": 128,
+        "CACHE_WAYS": 2,
+        "LINE_BYTES": 16
+      },
+      "lut_cells": 7443,
+      "flip_flops": 3279,
+      "dsp": 30,
+      "carry4": 784,
+      "longest_combinational_path_cells": 15,
+      "longest_combinational_path": {
+        "combinational_cells": 15,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$46259",
+          "type": "FDSE",
+          "port": "Q",
+          "net": "pf_distance[0]",
+          "detail": "register output",
+          "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1330.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:79.41-79.95",
+          "register_origin": "pf_distance_q [0]"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$46448",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$auto$xilinx_dffopt.cc:347:execute$378699",
+          "category": "data",
+          "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1330.3|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "pf0_x [0]"
+        },
+        "path": [
+          {
+            "cell": "$abc$367208$lut$aiger$o2907",
+            "type": "LUT2",
+            "input_port": "I0[0]",
+            "output_port": "O[0]",
+            "input_net": "pf_distance[0]",
+            "output_net": "$techmap376670$abc$367208$lut$aiger$o3007.A[0]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "S[0]",
+            "output_port": "CO[3]",
+            "input_net": "$techmap376670$abc$367208$lut$aiger$o3007.A[0]",
+            "output_net": "$abc$367208$aiger$i6710",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:176.11-184.5"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$367208$aiger$i6710",
+            "output_net": "$abc$367208$aiger$i6718",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$367208$aiger$i6718",
+            "output_net": "$abc$367208$aiger$i6726",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[3].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$367208$aiger$i6726",
+            "output_net": "$abc$367208$aiger$i6742",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[4].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$367208$aiger$i6742",
+            "output_net": "$abc$367208$aiger$i6750",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[5].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$367208$aiger$i6750",
+            "output_net": "$abc$367208$aiger$i6758",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[6].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "CO[3]",
+            "input_net": "$abc$367208$aiger$i6758",
+            "output_net": "$abc$367208$aiger$i6766",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$22224.genblk1.slice[7].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "CI[0]",
+            "output_port": "O[0]",
+            "input_net": "$abc$367208$aiger$i6766",
+            "output_net": "$techmap376681$abc$367208$lut$aiger$o3000.A[2]",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.33|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:186.14-194.8"
+          },
+          {
+            "cell": "$abc$367208$lut$aiger$o3000",
+            "type": "LUT6",
+            "input_port": "I2[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap376681$abc$367208$lut$aiger$o3000.A[2]",
+            "output_net": "$abc$367208$aiger$o3000",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
+          },
+          {
+            "cell": "$2045.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4",
+            "input_port": "S[1]",
+            "output_port": "O[2]",
+            "input_net": "$abc$367208$aiger$o3000",
+            "output_net": "$techmap371587$abc$367208$lut$aiger367207$20907.A[3]",
+            "source": "../../../../tmp/npu45000_frontend/frontend_coordinate_sum/sources/conv_im2col_frontend.sv:1301.9-1301.51|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:29.114-29.153|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:46.13-46.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:90.17-90.86|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:125.21-125.104|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:122.21-122.74|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/cmp2lcu.v:77.35-77.85|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/arith_map.v:79.11-86.5"
+          },
+          {
+            "cell": "$abc$367208$lut$aiger367207$20907",
+            "type": "LUT5",
+            "input_port": "I3[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap371587$abc$367208$lut$aiger367207$20907.A[3]",
+            "output_net": "$techmap371596$abc$367208$lut$aiger367207$20910.A[3]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$abc$367208$lut$aiger367207$20910",
+            "type": "LUT4",
+            "input_port": "I3[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap371596$abc$367208$lut$aiger367207$20910.A[3]",
+            "output_net": "$techmap371597$abc$367208$lut$aiger367207$35461.A[2]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:51.26-53.19"
+          },
+          {
+            "cell": "$abc$367208$lut$aiger367207$35379",
+            "type": "LUT5",
+            "input_port": "I4[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap371597$abc$367208$lut$aiger367207$35461.A[2]",
+            "output_net": "$techmap377860$auto$abc_ops_reintegrate.cc:722:reintegrate$367783.A[2]",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
+          },
+          {
+            "cell": "$auto$xilinx_dffopt.cc:341:execute$378698",
+            "type": "LUT6",
+            "input_port": "I5[0]",
+            "output_port": "O[0]",
+            "input_net": "$techmap377860$auto$abc_ops_reintegrate.cc:722:reintegrate$367783.A[2]",
+            "output_net": "$auto$xilinx_dffopt.cc:347:execute$378699",
+            "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:47.26-48.41"
+          }
+        ]
+      },
+      "connected_path_metrics": "/tmp/npu45000_frontend/frontend_coordinate_sum/paths.json",
+      "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis.",
+      "coarse_cell_graph_depth": 15,
+      "maximum_resident_kib": 478276,
+      "cell_counts": {
+        "$scopeinfo": 47,
+        "CARRY4": 784,
+        "DSP48E1": 30,
+        "FDCE": 2032,
+        "FDPE": 124,
+        "FDRE": 1122,
+        "FDSE": 1,
+        "INV": 318,
+        "LUT2": 1532,
+        "LUT3": 1322,
+        "LUT4": 1356,
+        "LUT5": 1978,
+        "LUT6": 1255,
+        "conv_next_use_predictor$conv_im2col_frontend.g_next_use.u_predictor": 1,
+        "conv_read_cache$conv_im2col_frontend.u_cache": 1
+      }
+    }
+  },
+  "delta": {
+    "lut_cells": -123,
+    "flip_flops": 0,
+    "dsp": 0,
+    "carry4": -55,
+    "longest_combinational_path_cells": 0
+  }
+}

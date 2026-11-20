@@ -30,7 +30,20 @@ def main():
     reference = out / "kernel_loader_ctrl_ref.sv"
     current = (ROOT / SOURCE).read_text()
     observed = {}
+    carry_match = re.search(r'localparam int p_issued_part_bits\s*=\s*(\d+);', current)
+    carry_part_bits = int(carry_match[1]) if carry_match and 'issued_chunk_carry_q' in current else None
     for label, text in (("reference", original), ("current", current)):
+        if carry_part_bits is not None and 'issued_chunk_carry_q' not in text:
+            # 派生进位状态与参考计数的精确低位全一条件逐位比较。
+            carry_observation = f"""
+  localparam int p_proof_parts = (TOTAL_CNT_W + {carry_part_bits-1}) / {carry_part_bits};
+  (* keep *) wire [p_proof_parts-1:0] issued_chunk_carry_q;
+  for (genvar part = 0; part < p_proof_parts; part++) begin : g_carry_observation
+    if (part == 0) assign issued_chunk_carry_q[part] = 1'b1;
+    else assign issued_chunk_carry_q[part] = &issued_count[part*{carry_part_bits}-1:0];
+  end
+"""
+            text = text.replace('\nendmodule', carry_observation + '\nendmodule', 1)
         if 'o_column_group_base' not in text:
             # 新接口仅导出原有寄存操作数，参考模块按同一表达式提供这些观察端口。
             ports = ('o_column_group_base', 'o_column_group_offset', 'o_address_group_base',
@@ -104,7 +117,8 @@ def main():
         raise RuntimeError("Source changed during verification")
     report = dict(passed=True, reference=args.reference, source_sha256=source_hash,
                   reference_sha256=hashlib.sha256(original.encode()).hexdigest(), profiles=profiles,
-                  fpga=args.fpga, primitive_library_sha256=primitive_library_sha256)
+                  fpga=args.fpga, primitive_library_sha256=primitive_library_sha256,
+                  derived_carry_part_bits=carry_part_bits, inputs_constrained=False)
     assert source_hash == hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest()
     (out / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
 

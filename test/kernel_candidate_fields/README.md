@@ -1,79 +1,42 @@
-# 权重候选字段比较与突发长度选择
+# 权重预取候选字段比较
 
-`kernel_loader` 使用平衡组合比较检查预取候选字段是否保持稳定，并在选择传输描述符之前编码突发长度。所有寄存器、请求接受边沿、权重装载条件、缓存命中、丢弃和输出周期均保持相同。
+`kernel_candidate_equal` 每三位并行比较当前字段和已保存字段，再用六路组合树合并。FPGA 综合保留各级中间结果，维持比较树的分组结构。该属性由既有 `p_use_lut` 参数控制，公开接口、完整字段位宽和采样周期保持一致。
 
-## 组合结构
+有效预取候选已经包含 `PF_EMPTY` 条件。候选等待检查直接合并已保存的比较有效位、候选来源位、字段稳定结果和匹配结果，避免经过通用描述符选择条件。
 
-`kernel_candidate_equal` 每三个对应位组成一个相等比较叶节点，再通过六路组合树归并。生产 160 位候选字段包含 54 个叶节点，归并节点数依次为 9、2、1，共四级 LUT。FPGA 分支使用显式 `LUT6`，通用 RTL 分支使用相同分组关系。
+完整加载器在相同公共源码、综合选项及参数下比较。参数为 `SIZE=16`、`DATA_WIDTH=16`、`BUS_WIDTH=64`、`REG_WIDTH=32`、`COUNT_WIDTH=29`，参考提交 `33bb1f22`。
 
-`kernel_burst_encode` 分别为控制器描述符、预取描述符和活动描述符生成八位突发长度。传输状态随后只选择编码结果。列数、精度和打包标志的运算与描述符选择并行执行。
-
-在每拍元素数为二的幂且寄存器宽度足够时，非零列数使用以下关系编码低八位：
-
-`burst_len_m1 = ((columns - 1) >> log2(elements_per_beat)) mod 256`
-
-零列数和打包传输分别按各自定义编码。较窄寄存器和其他总线宽度使用完整定宽取整表达式，保持溢出和截断行为。
-
-## 资源与组合路径
-
-完整加载器参数为 `SIZE=16`、`DATA_WIDTH=16`、`BUS_WIDTH=64`、`REG_WIDTH=32`、`COUNT_WIDTH=29`。参考源码为 `7254ced6`。
-
-| 完整模块指标 | 参考实现 | 分组比较与提前编码 |
+| 项目 | 参考实现 | 当前实现 |
 | --- | ---: | ---: |
-| 逻辑 LUT | 4,662 | 4,492 |
-| RAM LUT | 384 | 384 |
-| FF | 2,779 | 2,779 |
+| 逻辑 LUT | 4,673 | 4,602 |
+| 触发器 | 2,557 | 2,557 |
+| RAMB18E1 | 16 | 16 |
 | DSP48E1 | 0 | 0 |
-| 最长寄存器组合路径 | 15 | 14 |
+| 候选输入至 `o_prefetch_quiescent` 的组合单元数 | 8 | 5 |
+| 候选输入至 `prefetch_idle` 的组合单元数 | 9 | 6 |
+| 模块内最长寄存器间组合单元数 | 13 | 14 |
 
-此表使用原生模块综合。全 SoC 的宽运算 DSP 映射和物理 LUT 合并另由生产整机测量确定。
+该独立比较减少 71 个逻辑 LUT，候选输入与候选保存字段至后台空闲输出均减少 3 级组合单元。完整 SoC 的全局算术映射、后续调度逻辑和物理布局由整机报告统计。
 
-从 `candidate_fields_q` 到公开输出的实际组合路径如下。分析在公开输出处增加仅用于统计的寄存器终点，不修改生产网表。
+## 验证
 
-| 输出 | 参考级数 | 当前级数 |
-| --- | ---: | ---: |
-| `ext_dma_burst_len_m1` | 14 | 10 |
-| `ext_dma_base_addr` | 9 | 8 |
-| `ext_dma_start` | 7 | 7 |
-| `prefetch_idle` | 8 | 8 |
+实际 FPGA 分支的两个完整模块配置 `COUNT_WIDTH=29/32` 在两个连续修改阶段分别通过 37,306 bit 形式等价比较。所有公开输出、对应寄存状态和存储内容均参加证明，外部输入不添加约束。
 
-全部映射单元均已分类。器件时序分析继续使用完整器件和布线延迟模型。
+权重预取数值回归通过 285 个块、72,960 个权重值及 29,443 个周期，覆盖 S8/S16、尾块、预取命中、未完成传输命中、候选变化、取消、刷新、随机请求和读取发送重叠。运行启用未定义行为检查。
 
-## 验证结果
-
-完整加载器在任意输入下完成全部匹配状态和信号的等价证明，参数组合如下。
-
-| SIZE | COUNT_WIDTH | BUS_WIDTH | 已证明位数 |
-| ---: | ---: | ---: | ---: |
-| 4 | 8 | 32 | 4,394 |
-| 16 | 16 | 32 | 17,867 |
-| 16 | 29 | 64 | 18,416 |
-| 16 | 29 | 128 | 18,591 |
-
-相等比较另外完成 18 组证明，覆盖 1、2、3、4、5、31、32、160、320 位输入，每种宽度均检查通用 RTL 和 Yosys Xilinx `LUT6` 功能模型。突发长度完成 14 组任意输入证明，覆盖窄寄存器、32/64 位寄存器、32/64/128 位总线及其他每拍元素数量。
-
-BUS64 的完整加载器事务测试使用 Xilinx 原语功能模型并开启 UBSan，通过 29,443 个周期、312 次 DMA、285 个 tile 和 72,960 个权重数值检查。其中包括 S8/S16、im2col、尾部 tile、两项 DMA 上下文重叠、命中、丢弃、候选字段变化及清空恢复。
-
-`measurement.json` 保存源码摘要、数值检查、形式结果、综合资源和具体路径。
-
-## 运行命令
+源文件散列、映射路径和运行统计见 [measurement.json](measurement.json)。
 
 ```sh
-python3 test/kernel_candidate_fields/run_formal.py \
-  --reference-rev 7254ced6 --out build/kernel_candidate_fields/formal
-
-python3 test/kernel_prefetch/run.py \
-  --out build/kernel_candidate_fields/prefetch64 \
-  --verilator verilator-modern --bus-width 64 --fpga
-
-python3 test/kernel_candidate_fields/prepare_measurement.py \
-  --reference-rev 7254ced6 --out build/kernel_candidate_fields/inputs
+python3 test/frontend_rtl_structure/formal.py \
+  --reference 33bb1f22 --cases kernel64 kernel64_c29 \
+  --out /tmp/kernel_candidate_formal
+python3 test/kernel_count_paths/prepare_measurement.py \
+  --reference 33bb1f22 --out /tmp/kernel_candidate_inputs
 python3 scripts/fpga/open_fpga_synth.py \
-  --case-config build/kernel_candidate_fields/inputs/cases.json \
-  --cases loader_reference loader_current \
-  --out build/kernel_candidate_fields/synthesis \
-  --lock-file /tmp/mini_tflm_dsa_synthesis.lock
+  --case-config /tmp/kernel_candidate_inputs/cases.json \
+  --cases loader_reference loader_current --out /tmp/kernel_candidate_synth
 python3 test/kernel_candidate_fields/measure_paths.py \
-  --synthesis build/kernel_candidate_fields/synthesis \
-  --out build/kernel_candidate_fields/paths.json
+  --synthesis /tmp/kernel_candidate_synth --out /tmp/kernel_candidate_paths.json
+python3 test/kernel_prefetch/run.py --fpga --bus-width 64 \
+  --verilator verilator-modern --out /tmp/kernel_candidate_numeric
 ```

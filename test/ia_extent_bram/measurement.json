@@ -1,0 +1,166 @@
+{
+  "passed": true,
+  "reference_ref": "c96e9378",
+  "source_sha256": {
+    "reference": "0f0f44d8b0cfe48d7d31992c9326d958f2b5ee4e375156dc7f8a6b4ab8412852",
+    "current": "7607b14506e6cc6b5cde16d02f9c9e307cbefe330f1a3e620b2bc1ba007619c7"
+  },
+  "parameters": {
+    "DATA_WIDTH": 16,
+    "SIZE": 16,
+    "BUS_WIDTH": 64,
+    "REG_WIDTH": 32,
+    "CACHE_BLOCKS": 32,
+    "COMPACT_S8": 1,
+    "EXTERNAL_RAM": 1,
+    "RAM_WORD_ADDR_WIDTH": 12,
+    "p_compact_offset_width": 9,
+    "p_dma_source_layout": 1,
+    "p_shared_write_stage": 1
+  },
+  "rtl_identical_after_removing_ram_attribute": true,
+  "mapping": {
+    "mode": "physical-cost",
+    "small_lut_area_cost": 1,
+    "max_lut_inputs": 6,
+    "wire_delay_ps": 500,
+    "delay_target_ps": 6667
+  },
+  "results": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1496,
+        "distributed_ram_lut_sites_nominal": 8,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1504,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 482,
+        "dsp48e1": 6,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 20,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 20,
+          "DSP48E1": 6,
+          "FDRE": 482,
+          "INV": 19,
+          "LUT2": 138,
+          "LUT3": 339,
+          "LUT4": 452,
+          "LUT5": 187,
+          "LUT6": 380,
+          "RAM64M": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 11,
+      "abc_functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "0852042c0e461064119ba441b0a7270bca5325af4b6ef70b26a628a2c37c77cd"
+      },
+      "peak_process_tree_rss_bytes": 188428288,
+      "compressed_files": [
+        {
+          "path": "/tmp/npu45000_compute/ia_extent_bram/native/reference/elaborated.il",
+          "sha256": "b3ae7bb8c2d2d95ba4555affc340f9ff98fcdd2e29110d9d0edaf9cd1a7ba900",
+          "original_bytes": 6738185,
+          "compressed_bytes": 605052
+        },
+        {
+          "path": "/tmp/npu45000_compute/ia_extent_bram/native/reference/pre_lut.il",
+          "sha256": "86c5c4d96fc04df701406beb6f37351e8ca138a1f63ab40a71edbde487e4cefc",
+          "original_bytes": 9167474,
+          "compressed_bytes": 750576
+        },
+        {
+          "path": "/tmp/npu45000_compute/ia_extent_bram/mapped/reference/mapped.json",
+          "sha256": "8481a7af32f202d3b076ef5484d495f9287b9db3d4408abf7766dea16b0ddced",
+          "original_bytes": 12074061,
+          "compressed_bytes": 1237086
+        }
+      ]
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 1477,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1477,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 477,
+        "dsp48e1": 6,
+        "ramb36e1": 0,
+        "ramb18e1": 1,
+        "carry4": 20,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 20,
+          "DSP48E1": 6,
+          "FDRE": 477,
+          "INV": 19,
+          "LUT2": 126,
+          "LUT3": 189,
+          "LUT4": 352,
+          "LUT5": 233,
+          "LUT6": 577,
+          "RAMB18E1": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 11,
+      "abc_functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "6cc81896b447dac18a7715d381275e35f7c7ed4876773491c9ee94a48d6e4ee5"
+      },
+      "peak_process_tree_rss_bytes": 186802176,
+      "compressed_files": [
+        {
+          "path": "/tmp/npu45000_compute/ia_extent_bram/native/current/elaborated.il",
+          "sha256": "223b371cbb0e77d1ec8498716bfb29e688ea0b0ed9a2dfefeb7628033bd7d1bb",
+          "original_bytes": 6734960,
+          "compressed_bytes": 605057
+        },
+        {
+          "path": "/tmp/npu45000_compute/ia_extent_bram/native/current/pre_lut.il",
+          "sha256": "79c5dcd15d4446088f7d8afed8b1bc7241184d0b0619ff01608604c53eb5cdc9",
+          "original_bytes": 9149268,
+          "compressed_bytes": 750451
+        },
+        {
+          "path": "/tmp/npu45000_compute/ia_extent_bram/mapped/current/mapped.json",
+          "sha256": "65953565028c043a5f28105cc03dcd790d868c1970ae726a5f229b0742ddbff9",
+          "original_bytes": 12205098,
+          "compressed_bytes": 1241428
+        }
+      ]
+    }
+  },
+  "physical_placement_performed": false,
+  "bram_port_check": {
+    "passed": true,
+    "cell": "slot_written_cols.0.0",
+    "type": "RAMB18E1",
+    "logical_rows": 64,
+    "logical_width": 5,
+    "logical_bits": 320,
+    "read_mode": "READ_FIRST",
+    "clock_shared": true,
+    "read_address_bits_preserved": 6,
+    "write_address_bits_preserved": 6,
+    "extra_output_registers": 0,
+    "read_enable_and_reset_combinations_checked": 4,
+    "reset_clears_output_only": true,
+    "output_hold_when_read_disabled": true
+  },
+  "net_change": {
+    "logic_lut_cells": -19,
+    "distributed_ram_lut_sites_nominal": -8,
+    "lut_sites_nominal_before_packing": -27,
+    "flip_flops": -5,
+    "ramb18e1": 1
+  },
+  "test_script_sha256": "93b40d4aab1fa58bc749ec582d1eeb56cf85bc5530a8ddbd393ed9bc4dbbc9ec"
+}

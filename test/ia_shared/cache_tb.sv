@@ -50,6 +50,7 @@ module ia_shared_cache_tb #(
         .clk, .rst_n, .compact_mode, .compact_offset, .cfg_cache_blocks,
         .ram_port_wr_en(ia_write_en), .ram_port_wr_addr(ia_write_addr),
         .ram_port_wr_data(ia_write_data), .ram_port_wr_mask(ia_write_mask),
+        .ram_shared_wr_data(),
         .ram_port_rd_en(ia_read_en), .ram_port_rd_addr(ia_read_addr),
         .ram_port_rd_data(ia_read_data),
         .wr_slot, .wr_row, .wr_col_base, .wr_data, .wr_valid, .wr_use_16bits,
@@ -66,6 +67,7 @@ module ia_shared_cache_tb #(
     ) u_local_manager (
         .clk, .rst_n, .compact_mode, .compact_offset, .cfg_cache_blocks,
         .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(),
+        .ram_shared_wr_data(),
         .ram_port_wr_mask(), .ram_port_rd_en(), .ram_port_rd_addr(),
         .ram_port_rd_data('{default:'0}),
         .wr_slot, .wr_row, .wr_col_base, .wr_data, .wr_valid, .wr_use_16bits,

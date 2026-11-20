@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT/'scripts/fpga'))
 from netlist_metrics import connected_paths, register_origins
 
-OUTPUTS = ('prefetch_idle', 'load_weight_req', 'ext_dma_start',
+OUTPUTS = ('prefetch_idle', 'o_prefetch_quiescent', 'load_weight_req', 'ext_dma_start',
            'ext_dma_burst_len_m1', 'ext_dma_base_addr')
 
 
@@ -31,6 +31,14 @@ def measure(folder):
         }
         next_bit += 1
 
+    # 公开列位置输入只在分析中增加起点，资源仍取原始综合网表。
+    for index, bit in enumerate(module['ports']['prefetch_p0']['bits']):
+        module['cells'][f'analysis_p0_{index}'] = {
+            'type': 'FDRE', 'attributes': {}, 'parameters': {},
+            'port_directions': {'D': 'input', 'Q': 'output'},
+            'connections': {'D': ['0'], 'Q': [bit]},
+        }
+
     def source_selected(name, cell, port):
         origin = cell.get('attributes', {}).get('fpga_register_origin', '')
         return origin.rsplit(' [', 1)[0] == 'candidate_fields_q'
@@ -46,11 +54,14 @@ def measure(folder):
 
     result = {'mapped_sha256': hashlib.sha256(mapped.read_bytes()).hexdigest(),
               'pre_lut_sha256': hashlib.sha256(pre_lut.read_bytes()).hexdigest(),
-              'candidate_to_outputs': {}, 'all_registers_to_outputs': {}}
+              'candidate_to_outputs': {}, 'all_registers_to_outputs': {}, 'p0_input_to_outputs': {}}
     for output in OUTPUTS:
         sink = lambda name, cell, port: name == 'analysis_output_'+output
         result['candidate_to_outputs'][output] = paths(source_selected, sink)
-        result['all_registers_to_outputs'][output] = paths(None, sink)
+        result['all_registers_to_outputs'][output] = paths(
+            lambda name, cell, port: not name.startswith('analysis_'), sink)
+        result['p0_input_to_outputs'][output] = paths(
+            lambda name, cell, port: name.startswith('analysis_p0_'), sink)
     result['candidate_to_registers'] = paths(
         source_selected, lambda name, cell, port: not name.startswith('analysis_output_'))
     return result
@@ -65,7 +76,7 @@ def main():
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps({n: {group: {port: path['longest_path_cells'] for port, path in d[group].items()}
-                         for group in ('candidate_to_outputs', 'all_registers_to_outputs')}
+                         for group in ('candidate_to_outputs', 'p0_input_to_outputs', 'all_registers_to_outputs')}
                       for n, d in report.items()}))
 
 

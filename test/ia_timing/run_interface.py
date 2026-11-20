@@ -67,15 +67,24 @@ def main():
     current_path = ROOT / "rtl/npu/loaders/ia_loader.sv"
     current = current_path.read_text()
     ports = port_declarations(current)
+    reference_source = read_rtl_source(args.reference_rev +
+        ":rtl/npu/loaders/ia_loader.sv", cwd=ROOT, text=True)
+    reference_ports = {name for _, _, name, _ in port_declarations(reference_source)}
+    added_outputs = {name for direction, _, name, _ in ports
+                     if direction == "output" and name not in reference_ports}
+    if added_outputs - {"ram_shared_wr_data"}:
+        raise ValueError("Reference does not provide: " + ", ".join(sorted(added_outputs)))
     outputs = [name for direction, _, name, _ in ports if direction == "output"]
     suffix = ["", "    // 与同一输入驱动的原始模块逐周期比较，包括未使能时的输出值。"]
     suffix += [f"    {data_type} reference_{name} {unpacked};"
                for direction, data_type, name, unpacked in ports if direction == "output"]
+    # 关闭共享写数据预选时，新增输出的公开定义为零。
+    suffix += [f"    assign reference_{name} = '0;" for name in sorted(added_outputs)]
     suffix += ["    ia_loader_reference #(",
                ",\n".join(f"        .{name}({name})" for name in PARAMETERS),
                "    ) u_reference (",
                ",\n".join(f"        .{name}({'reference_' if direction == 'output' else ''}{name})"
-                           for direction, _, name, _ in ports),
+                           for direction, _, name, _ in ports if name in reference_ports),
                "    );", "    always_ff @(posedge clk) begin", "        if (rst_n) begin"]
     suffix += [f"            assert ({name} == reference_{name}) else $fatal(1, \"IA output differs: {name}\");"
                for name in outputs]

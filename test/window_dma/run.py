@@ -56,7 +56,10 @@ def main():
                 text = source.read_text()
                 opening = '`ifndef SYNTHESIS\n'
                 start, end = text.find(opening), text.rfind('`endif')
-                if start < 0 or end < start or text[end + len('`endif'):].strip():
+                if start < 0:
+                    simulation_sources.append(source)
+                    continue
+                if end < start or text[end + len('`endif'):].strip():
                     raise RuntimeError('Unexpected observer guard: ' + str(source))
                 destination = out / 'observers' / source.name
                 destination.parent.mkdir(exist_ok=True)
@@ -96,8 +99,8 @@ def main():
         reference_sources=[]
         reference=out/'reference'
         for source in sources:
-            relative=source.relative_to(ROOT)
-            if relative.parts[0]=='rtl':
+            relative = source.relative_to(ROOT) if source.is_relative_to(ROOT) else None
+            if relative is not None and relative.parts[0] == 'rtl':
                 revision_file=f'{args.reference_ref}:{relative}'
                 try:
                     content=read_rtl_source(revision_file,cwd=ROOT)

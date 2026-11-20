@@ -31,7 +31,7 @@ def main():
     snapshot = out / "reference_queue.sv"
     snapshot.write_bytes(reference)
     cases = {}
-    for label, source in (("reference", snapshot.relative_to(ROOT)), ("current", SOURCE)):
+    for label, source in (("reference", snapshot), ("current", SOURCE)):
         cases[label] = dict(top="conv_window_queue",
             options=["-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1", "-GDEPTH=4", "-GTAG_W=2", "-GCOL_W=4"],
             sources=[str(source)], configuration="4 entries, 2-bit tags, 16 output columns")

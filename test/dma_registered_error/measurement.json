@@ -1,0 +1,225 @@
+{
+  "passed": true,
+  "reference_ref": "9a6437f48722b3f53d4084b48c72cfb1d4b1fa5a",
+  "rtl_source_sha256": "3766728463b962716d4040ab48514f9002ca7b69432afde6a01c7f6180a9cfa3",
+  "parameter": {
+    "name": "p_register_bus_error",
+    "default": 0,
+    "tested_values": [
+      0,
+      1
+    ]
+  },
+  "behavior": {
+    "direct_mode_preserved": true,
+    "registered_report_delay_cycles": 1,
+    "immediate_local_abort": true,
+    "accepted_dma_transactions_drain": true
+  },
+  "formal": {
+    "passed": true,
+    "cases": 14,
+    "equivalent_bits": 30622,
+    "input_constraints": false,
+    "dma_output_constraints": false,
+    "report_sha256": "8ab538b9a7d9fbded1dfe74c546dfcb991b7d81c2bf220b845a1c78f9610bf29",
+    "runs": [
+      {
+        "case": "bus32_quant0_fpga_direct",
+        "bus_width": 32,
+        "quant_client": 0,
+        "xilinx": true,
+        "register_bus_error": false,
+        "passed": true,
+        "equivalent_bits": 1909,
+        "log_sha256": "7d200b48260e6f57b28e0b203a194e14213be02314a0b1194bff0cbbbda4f352"
+      },
+      {
+        "case": "bus32_quant0_fpga_registered",
+        "bus_width": 32,
+        "quant_client": 0,
+        "xilinx": true,
+        "register_bus_error": true,
+        "passed": true,
+        "equivalent_bits": 1909,
+        "log_sha256": "f008f31fc4301d866e42f017e2424ded3e0d10a97bf58f7961173f810207df27"
+      },
+      {
+        "case": "bus32_quant1_fpga_direct",
+        "bus_width": 32,
+        "quant_client": 1,
+        "xilinx": true,
+        "register_bus_error": false,
+        "passed": true,
+        "equivalent_bits": 1910,
+        "log_sha256": "3332c75b603973ed482376c2feb2d848e7c4c32b5d7889e7db078a73679d9a3c"
+      },
+      {
+        "case": "bus32_quant1_fpga_registered",
+        "bus_width": 32,
+        "quant_client": 1,
+        "xilinx": true,
+        "register_bus_error": true,
+        "passed": true,
+        "equivalent_bits": 1910,
+        "log_sha256": "43115ac087e71c0538b88b097087d54c05348bae4338568120af2b1ed6c1f6ad"
+      },
+      {
+        "case": "bus64_quant0_fpga_direct",
+        "bus_width": 64,
+        "quant_client": 0,
+        "xilinx": true,
+        "register_bus_error": false,
+        "passed": true,
+        "equivalent_bits": 2125,
+        "log_sha256": "1bd67f174e565adad1d93cfffdf2d66a2f8557b10e2abc5fdd5aa29c2c269595"
+      },
+      {
+        "case": "bus64_quant0_fpga_registered",
+        "bus_width": 64,
+        "quant_client": 0,
+        "xilinx": true,
+        "register_bus_error": true,
+        "passed": true,
+        "equivalent_bits": 2125,
+        "log_sha256": "83f998b08ba2add52b0ad9016b5db51b92d5195fa07a211c12c8ca0c18845ce1"
+      },
+      {
+        "case": "bus64_quant1_fpga_direct",
+        "bus_width": 64,
+        "quant_client": 1,
+        "xilinx": true,
+        "register_bus_error": false,
+        "passed": true,
+        "equivalent_bits": 2126,
+        "log_sha256": "8d48b836617f41d7390cb42161bd304042e7399a92b8dc28f131e02a3ffe197e"
+      },
+      {
+        "case": "bus64_quant1_fpga_registered",
+        "bus_width": 64,
+        "quant_client": 1,
+        "xilinx": true,
+        "register_bus_error": true,
+        "passed": true,
+        "equivalent_bits": 2126,
+        "log_sha256": "4db0d334bf2aa2a90377076f0e750935d7bc228418de93046b5c9d72715c9288"
+      },
+      {
+        "case": "bus128_quant0_fpga_direct",
+        "bus_width": 128,
+        "quant_client": 0,
+        "xilinx": true,
+        "register_bus_error": false,
+        "passed": true,
+        "equivalent_bits": 2557,
+        "log_sha256": "c658b66b1c874133271c1247d85320abb022de106d358f20166af9f3950ca08b"
+      },
+      {
+        "case": "bus128_quant0_fpga_registered",
+        "bus_width": 128,
+        "quant_client": 0,
+        "xilinx": true,
+        "register_bus_error": true,
+        "passed": true,
+        "equivalent_bits": 2557,
+        "log_sha256": "97e89bb4dae50b2bab99d4a35d4479cc3cb591382a01ee6cd6cefae7ff962dd9"
+      },
+      {
+        "case": "bus128_quant1_fpga_direct",
+        "bus_width": 128,
+        "quant_client": 1,
+        "xilinx": true,
+        "register_bus_error": false,
+        "passed": true,
+        "equivalent_bits": 2558,
+        "log_sha256": "e9049d18d1b74490fe44218dd84527bdfd353b724edad1506c7bcbc9b2f84336"
+      },
+      {
+        "case": "bus128_quant1_fpga_registered",
+        "bus_width": 128,
+        "quant_client": 1,
+        "xilinx": true,
+        "register_bus_error": true,
+        "passed": true,
+        "equivalent_bits": 2558,
+        "log_sha256": "e6b6e2d0f85f062bb77f23f53d0fd25864840d07c816c9fda056bd7cd78dc304"
+      },
+      {
+        "case": "bus64_quant1_asic_direct",
+        "bus_width": 64,
+        "quant_client": 1,
+        "xilinx": false,
+        "register_bus_error": false,
+        "passed": true,
+        "equivalent_bits": 2126,
+        "log_sha256": "2142e0ecf36e9896f50f884f8aaae9b2d1d6f1d83fbce64f1feedd5092915a89"
+      },
+      {
+        "case": "bus64_quant1_asic_registered",
+        "bus_width": 64,
+        "quant_client": 1,
+        "xilinx": false,
+        "register_bus_error": true,
+        "passed": true,
+        "equivalent_bits": 2126,
+        "log_sha256": "2a4a01cce3117c47891145688b02ca2e3fde0d9fbe584a4eed4faa825975ad16"
+      }
+    ]
+  },
+  "simulation": {
+    "passed": true,
+    "public_outputs": 81,
+    "compared_cycles": 1170,
+    "behavior_checks": 3184,
+    "runs": [
+      {
+        "passed": true,
+        "bus_width": 32,
+        "ordinary_cases": 21,
+        "error_cases": 10,
+        "recovery_cases": 10,
+        "checks": 1592,
+        "read_error_beats": 9,
+        "write_error_beats": 5,
+        "consecutive_error_cycles": 13,
+        "normal_completion_with_error": 1,
+        "error_descriptor_cancellations": 1,
+        "public_outputs": 81,
+        "compared_cycles": 585,
+        "binary_sha256": "f1fd760482e1c72d60888557e04d7dda4558082a298b30971fc07a59d9f17f50",
+        "log_sha256": "55ce8fb8f6cf37aff2a78ad1e39bccfed3cd1ef0219f318bdf590921350151b6",
+        "undefined_behavior_sanitizer": true
+      },
+      {
+        "passed": true,
+        "bus_width": 64,
+        "ordinary_cases": 21,
+        "error_cases": 10,
+        "recovery_cases": 10,
+        "checks": 1592,
+        "read_error_beats": 9,
+        "write_error_beats": 5,
+        "consecutive_error_cycles": 13,
+        "normal_completion_with_error": 1,
+        "error_descriptor_cancellations": 1,
+        "public_outputs": 81,
+        "compared_cycles": 585,
+        "binary_sha256": "e7ec503f04c567ca535772baea86c4d53257d192a6dd8770d6332ee1f8b5f064",
+        "log_sha256": "23ce36224abaed1501a147cc2c6131f3bf9d516ba95c621a3ab2e9961c1c48c1",
+        "undefined_behavior_sanitizer": true
+      }
+    ],
+    "report_sha256": {
+      "simulation": "d341a59e8eb6a2696836217a9e4ad2059b2293aa36bdf15fdfdcd668fb945ed9",
+      "simulation64": "f22ce5eec2b70b9c4c4ff2e40012f051f3fa332dbbb514a2c4a3c7a2eddcf203"
+    }
+  },
+  "source_sha256": {
+    "rtl/npu/dma/axi_block_dma_arbiter.sv": "3766728463b962716d4040ab48514f9002ca7b69432afde6a01c7f6180a9cfa3",
+    "test/dma_registered_error/run.py": "cf2835ae07a2a082f4af0be0a87143b65dc7121b3a4e2595424bde1f9b8408d1",
+    "test/dma_registered_error/run_formal.py": "63c89cea9155a42f3e5d6c9827fc428737a8339414ca7e6a9b7302ece2ec5db7",
+    "test/dma_registered_error/registered_error_tb.sv": "d2e5b96675047d2fc1411c4a32b5b8ad4ecffe61dea2844b08573d11ca3e49eb"
+  },
+  "verification_scope": "Complete arbiter state and all unchanged DMA boundary ports; cycle comparison with actual DMA and AXI response models",
+  "full_soc_timing_measured": false
+}

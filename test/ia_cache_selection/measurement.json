@@ -1,0 +1,842 @@
+{
+  "passed": true,
+  "reference_commit": "f0f83e1d2665026c299de43dea99a329faf88e2f",
+  "input_manifest": {
+    "reference_commit": "f0f83e1d2665026c299de43dea99a329faf88e2f",
+    "parameters": {
+      "DATA_WIDTH": 16,
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "CACHE_BLOCKS": 32,
+      "EXTERNAL_RAM": 1,
+      "RAM_WORD_ADDR_WIDTH": 12,
+      "p_compact_offset_width": 9
+    },
+    "source_sha256": {
+      "reference": "cf632e6a81ddc1e93ae330b0d18b75b2877472200c8f98c700f86ff6c8f28646",
+      "current": "fbfd1205bb334d46806e81adb53cd3b37bd25e54a875840d42f5d78098d07645"
+    },
+    "common_dependency_sha256": {
+      "rtl/npu/compute/select_add.sv": "2833d092126d6ee02d429d0d7eaf3e9a70662f1badac636e97b83f4b7b15a466"
+    }
+  },
+  "formal": {
+    "passed": true,
+    "reference_commit": "f0f83e1d2665026c299de43dea99a329faf88e2f",
+    "source_sha256": {
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "fbfd1205bb334d46806e81adb53cd3b37bd25e54a875840d42f5d78098d07645",
+      "rtl/common/REGFILE.v": "c6be0f1eb230461e6fb93d336576bdb6bb909c74bed105177ad3983cda692501",
+      "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+      "rtl/npu/compute/select_add.sv": "2833d092126d6ee02d429d0d7eaf3e9a70662f1badac636e97b83f4b7b15a466"
+    },
+    "reference_source_sha256": "cf632e6a81ddc1e93ae330b0d18b75b2877472200c8f98c700f86ff6c8f28646",
+    "primitive_models": {
+      "library": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v",
+      "library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+      "models": [
+        "LUT6",
+        "LUT6_2",
+        "DSP48E1"
+      ],
+      "models_sha256": "fdcd1fd3dd4c5090a78bdb5287c6e1c8448caf2800ce45d7509e7ea1e116f45b",
+      "scope": "Functional models with specify timing annotations removed"
+    },
+    "inputs_constrained": false,
+    "runs": [
+      {
+        "name": "production",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 16,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "COMPACT_S8": 1,
+          "REG_WIDTH": 32,
+          "p_compact_offset_width": 9,
+          "defines": [
+            "SYNTHESIS",
+            "XILINX_FPGA"
+          ]
+        },
+        "passed": true,
+        "equivalent_bits": 2647,
+        "script_sha256": "0edbf886213402aee221e1781effcdc67793e9d7c1dd48eb0ea89b188ddafe23",
+        "log_sha256": "a1227750267301da6585c387748f5e23a021356fb98f845ee645d50f980a3e1f"
+      },
+      {
+        "name": "generic_s4_b32_d8_c2_e0",
+        "parameters": {
+          "SIZE": 4,
+          "BUS_WIDTH": 32,
+          "DATA_WIDTH": 8,
+          "CACHE_BLOCKS": 2,
+          "EXTERNAL_RAM": 0,
+          "defines": []
+        },
+        "passed": true,
+        "equivalent_bits": 834,
+        "script_sha256": "79ba1cdcdb3ed5c7b34196bf855f4c6fbb109f421b866845bed81aaab98b4343",
+        "log_sha256": "631dd7b98df9d8ed7fae535f65b3d6c0e39ab95c717e8998724209b3b4b342be"
+      },
+      {
+        "name": "generic_s8_b64_d16_c4_e0",
+        "parameters": {
+          "SIZE": 8,
+          "BUS_WIDTH": 64,
+          "DATA_WIDTH": 16,
+          "CACHE_BLOCKS": 4,
+          "EXTERNAL_RAM": 0,
+          "defines": []
+        },
+        "passed": true,
+        "equivalent_bits": 5764,
+        "script_sha256": "2919cd1d1fabe5c24fff601d051f1899c7cf52e7dbb7622d8b5ac0be5fc6cd85",
+        "log_sha256": "b154b9cc1f10d46f406e63d512db66397ba5842d6dd782c30b30805c4e46e49d"
+      },
+      {
+        "name": "generic_s16_b8_d16_c32_e1",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 8,
+          "DATA_WIDTH": 16,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "defines": []
+        },
+        "passed": true,
+        "equivalent_bits": 2434,
+        "script_sha256": "d1b57432d237ec813b26208bbbcc62f2a18936ddc4acc037148a1c115692116d",
+        "log_sha256": "1e9bb29d25a6fd33c6ed55bde7d3afe8bb0dae5514b8af00fed9b99c7ad997cb"
+      },
+      {
+        "name": "generic_s16_b32_d16_c32_e1",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "DATA_WIDTH": 16,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "defines": []
+        },
+        "passed": true,
+        "equivalent_bits": 2515,
+        "script_sha256": "088d01a4d47d7e34d6842c1cba8ffc0b3fccf5583cfcbcc89dda059bcc365a24",
+        "log_sha256": "55123041d97f27a874eda3074a1973a4c789b184cc7d1f2ea7289f5a59458da0"
+      },
+      {
+        "name": "generic_s16_b128_d16_c32_e1",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 128,
+          "DATA_WIDTH": 16,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "defines": []
+        },
+        "passed": true,
+        "equivalent_bits": 2823,
+        "script_sha256": "215cfe2946d3b08a41be9cd037bd95f966154dda338d4962a406f93c7559e4c1",
+        "log_sha256": "65c912b7d387c80f7709dce0be790053ee2f0ecd6d7492676cf5692621364aa2"
+      },
+      {
+        "name": "generic_s16_b256_d16_c32_e1",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 256,
+          "DATA_WIDTH": 16,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "defines": []
+        },
+        "passed": true,
+        "equivalent_bits": 2823,
+        "script_sha256": "80de0f523c61288e5062e6189fca8de37177c651dad70f7f9f909abd159a9394",
+        "log_sha256": "92cbfc90860ed31c6809a16e2ca50b52ac412a9e8626bed2a36fab397d783090"
+      }
+    ]
+  },
+  "numeric": {
+    "passed": true,
+    "reference_commit": "f0f83e1d2665026c299de43dea99a329faf88e2f",
+    "source_sha256": {
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "fbfd1205bb334d46806e81adb53cd3b37bd25e54a875840d42f5d78098d07645",
+      "rtl/npu/compute/select_add.sv": "2833d092126d6ee02d429d0d7eaf3e9a70662f1badac636e97b83f4b7b15a466",
+      "rtl/npu/loaders/ia_loader.sv": "f7a0ee319ea01aad826d2c7f58be048517d04dedf53f60c1cdc9a91271f2a43c",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "9e782b7c4be3b35651f976e6eb3b0618a46203f2d857ff84ad62080000e9bdc9",
+      "rtl/npu/buffers/ia_ps_shared_ram.sv": "45b9dfeb7f3259015c4f64bdb1b73a9b49d218477de0f9ec10647cefec342312"
+    },
+    "fpga_primitives_enabled": true,
+    "runs": [
+      {
+        "name": "interface",
+        "passed": true,
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "/workspace/scratch/d8ec29656755/compute_opt/test/ia_write_admission/run_interface.py",
+          "--reference-rev",
+          "f0f83e1d",
+          "--out",
+          "/tmp/npu45000_compute/cache_numeric/interface/run",
+          "--verilator",
+          "/tmp/npu45000_compute/cache_numeric/interface/verilator_models"
+        ],
+        "primitive_models": {
+          "library": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v",
+          "library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "models": [
+            "DSP48E1"
+          ],
+          "models_sha256": "06c0afa55249f4a5c8ca1bd8fae0e7d870ae423928f1fd32ba53833cacbf1b1e",
+          "scope": "Functional models with specify timing annotations removed"
+        },
+        "result": {
+          "reference_rev": "f0f83e1d",
+          "compared_outputs": [
+            "prefetch_idle",
+            "load_ia_req",
+            "ext_dma_start",
+            "ext_dma_is_write",
+            "ext_dma_linear_read_mode",
+            "ext_dma_im2col",
+            "ext_dma_p0",
+            "ext_dma_q0",
+            "ext_dma_group",
+            "ext_dma_base_addr",
+            "ext_dma_row_stride",
+            "ext_dma_rows_to_read",
+            "ext_dma_burst_len_m1",
+            "ext_dma_slot_id",
+            "ext_dma_use_16bits",
+            "ext_dma_lhs_zp",
+            "ram_port_wr_en",
+            "ram_port_wr_addr",
+            "ram_port_wr_data",
+            "ram_port_wr_mask",
+            "ram_port_rd_en",
+            "ram_port_rd_addr",
+            "ia_out",
+            "ia_row_valid",
+            "ia_is_init_data",
+            "ia_calc_done",
+            "ia_tile_start",
+            "ia_sending_done",
+            "ia_data_valid",
+            "ps_frame_rows",
+            "ps_frame_id",
+            "ps_frame_init",
+            "ps_frame_final",
+            "ia_output_pending",
+            "bias_sleep",
+            "bias_load_sleep",
+            "bias_switch",
+            "bias_last_loop",
+            "ia_l1_switch"
+          ],
+          "source_sha256": {
+            "rtl/npu/loaders/ia_loader.sv": "f7a0ee319ea01aad826d2c7f58be048517d04dedf53f60c1cdc9a91271f2a43c",
+            "rtl/npu/loaders/ia_loader_ctrl.sv": "9e782b7c4be3b35651f976e6eb3b0618a46203f2d857ff84ad62080000e9bdc9",
+            "rtl/npu/loaders/ia_loader_cache_mgr.sv": "fbfd1205bb334d46806e81adb53cd3b37bd25e54a875840d42f5d78098d07645"
+          },
+          "generated_sha256": {
+            "ia_loader_checked.sv": "e3c6bacbcbb1e050940741e9ff026b3879ac07ef8074d8c4224d8029c53b61ef",
+            "ia_loader_cache_mgr_reference.sv": "5130e6bf7771ce4110a3168a5a0a1679ba7ee93f9c2aeefb08d75b26c2f9b110",
+            "ia_loader_ctrl_reference.sv": "d78ca5738cd9235e222b4b6c7f88465571ca148ab20ab858a82120f63093dcc3",
+            "ia_loader_reference.sv": "b4201acb8f22e41925b88ab9ec04e92d36144639344ee621f9e01a46ed9dfc09",
+            "verilator_compare": "6fc78e9c4996ae0bf63a76f92b48e3af00626c549a8acf749820ff4461bc0218"
+          },
+          "runs": [
+            {
+              "case": "prefetch_ordered",
+              "passed": true,
+              "command": [
+                "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+                "/workspace/scratch/d8ec29656755/compute_opt/test/ia_compact/run_prefetch.py",
+                "--out",
+                "/tmp/npu45000_compute/cache_numeric/interface/run/prefetch_ordered",
+                "--verilator",
+                "/tmp/npu45000_compute/cache_numeric/interface/run/verilator_compare",
+                "--ordered-job"
+              ],
+              "cycles": 57835,
+              "cases": null,
+              "commands": 251,
+              "value_checks": 179920,
+              "summary": "/tmp/npu45000_compute/cache_numeric/interface/run/prefetch_ordered/summary.json"
+            },
+            {
+              "case": "grouped32",
+              "passed": true,
+              "command": [
+                "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+                "/workspace/scratch/d8ec29656755/compute_opt/test/ia_compact/run.py",
+                "--out",
+                "/tmp/npu45000_compute/cache_numeric/interface/run/grouped32",
+                "--verilator",
+                "/tmp/npu45000_compute/cache_numeric/interface/run/verilator_compare",
+                "--only",
+                "loader",
+                "--loader-cache-blocks",
+                "32"
+              ],
+              "cycles": 122287,
+              "cases": 81,
+              "commands": null,
+              "value_checks": 724032,
+              "summary": "/tmp/npu45000_compute/cache_numeric/interface/run/grouped32/summary.json"
+            }
+          ],
+          "passed": true,
+          "primitive_models": {
+            "vendor_source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v",
+            "vendor_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+            "models_sha256": "aacef2aaedb47106403bfaf61c2d1d32f6d85f923e19eba403aa564e34ce5e26",
+            "removed_sections": "specify timing annotations"
+          },
+          "fpga_primitives_enabled": true,
+          "generated_cpp_flags": [
+            "-Wno-bool-operation"
+          ]
+        },
+        "log_sha256": "37b5a579ff905cef73cdcc2d6ac23abe0b825e748be6115e6f9ac2ef2f51727a",
+        "wrapper_sha256": "3430946ea7a06a13a6fc7525adfcbe82ced20e93870717150b11fcaa311536aa",
+        "primitive_lint_file_sha256": "ddb6bc5c0f68a78d3b8479484ef446d621f6e4a5a6cb54e23ff5b0c2a9ce0fee",
+        "primitive_lint_scope": {
+          "file": "/tmp/npu45000_compute/cache_numeric/interface/xilinx_dsp48e1.sv",
+          "rules": [
+            "WIDTHEXPAND",
+            "WIDTHTRUNC"
+          ]
+        }
+      },
+      {
+        "name": "shared",
+        "passed": true,
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "/workspace/scratch/d8ec29656755/compute_opt/test/ia_shared/run.py",
+          "--bank-bytes",
+          "8192",
+          "--bank-count",
+          "7",
+          "--compact-offset-width",
+          "9",
+          "--jobs",
+          "1",
+          "--out",
+          "/tmp/npu45000_compute/cache_numeric/shared/run",
+          "--verilator",
+          "/tmp/npu45000_compute/cache_numeric/shared/verilator_models"
+        ],
+        "primitive_models": {
+          "library": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/cells_sim.v",
+          "library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "models": [
+            "LUT6",
+            "LUT6_2",
+            "DSP48E1"
+          ],
+          "models_sha256": "fdcd1fd3dd4c5090a78bdb5287c6e1c8448caf2800ce45d7509e7ea1e116f45b",
+          "scope": "Functional models with specify timing annotations removed"
+        },
+        "result": {
+          "passed": true,
+          "shared_data_ram_bytes": 57344,
+          "allocation_bank_bytes": 8192,
+          "physical_banks": 7,
+          "bank_width_bits": 128,
+          "bank_depth": 512,
+          "profiles": [
+            {
+              "ia_banks": 1,
+              "ia_bytes": 8192,
+              "ps_bytes": 49152,
+              "compact_slots": 32,
+              "wide_slots": 16,
+              "compact_reuse": 16,
+              "wide_reuse": 8,
+              "wide_supported": false
+            },
+            {
+              "ia_banks": 2,
+              "ia_bytes": 16384,
+              "ps_bytes": 40960,
+              "compact_slots": 64,
+              "wide_slots": 32,
+              "compact_reuse": 32,
+              "wide_reuse": 16,
+              "wide_supported": true
+            },
+            {
+              "ia_banks": 4,
+              "ia_bytes": 32768,
+              "ps_bytes": 24576,
+              "compact_slots": 128,
+              "wide_slots": 64,
+              "compact_reuse": 64,
+              "wide_reuse": 32,
+              "wide_supported": true
+            }
+          ],
+          "s8_offsets_per_profile": 256,
+          "wide_profiles": 2,
+          "s16_bit_patterns_per_wide_profile": 65536,
+          "s8_value_checks": 14680064,
+          "s16_value_checks": 131072,
+          "value_checks": 15022624,
+          "cycle_value_checks": 74900080,
+          "zero_checks": 185387,
+          "control_checks": 46837934,
+          "port_checks": 22435818,
+          "ps_word_checks": 16036888,
+          "ia_read_words": 951110,
+          "ia_write_words": 3739303,
+          "ia_write_bytes": 15130800,
+          "ps_read_words": 16036888,
+          "ps_write_words": 16045592,
+          "simultaneous_ia_rw_cycles": 2560,
+          "simultaneous_ia_ps_cycles": 4675611,
+          "wide_col7_cross_word_writes": 14,
+          "mask_patterns": 1280,
+          "wrapped_groups": 7,
+          "compact_groups": 784,
+          "wide_groups": 23,
+          "tile_checks": 58844,
+          "initialization_groups": 407,
+          "final_groups": 407,
+          "legacy_default_groups": 2,
+          "cycles": 4681255,
+          "source_sha256": {
+            "test/ia_shared/run.py": "8475994c8ed8a12ade4140322783c804cf9ad507a9daa01ca60393f911f31f06",
+            "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+            "rtl/common/REGFILE.v": "c6be0f1eb230461e6fb93d336576bdb6bb909c74bed105177ad3983cda692501",
+            "rtl/npu/loaders/ia_loader_cache_mgr.sv": "fbfd1205bb334d46806e81adb53cd3b37bd25e54a875840d42f5d78098d07645",
+            "rtl/npu/buffers/ia_ps_shared_ram.sv": "45b9dfeb7f3259015c4f64bdb1b73a9b49d218477de0f9ec10647cefec342312",
+            "test/ia_shared/cache_tb.sv": "8252c4e7c174adc1fd9f15fef31fba7c8acc99e2fef729aa78e319e15c9abdd0",
+            "test/ia_shared/cache_test.cpp": "5cd938364d3b3a5a6412626b8c895eb1ac974a89d4515d8bedb4c0e003761778"
+          },
+          "related_source_sha256": {
+            "rtl/npu/loaders/ia_loader.sv": "f7a0ee319ea01aad826d2c7f58be048517d04dedf53f60c1cdc9a91271f2a43c",
+            "rtl/npu/loaders/ia_loader_ctrl.sv": "9e782b7c4be3b35651f976e6eb3b0618a46203f2d857ff84ad62080000e9bdc9"
+          },
+          "compiled_rtl": [
+            "rtl/common/pseudo_dual_port_ram.v",
+            "rtl/common/REGFILE.v",
+            "rtl/npu/loaders/ia_loader_cache_mgr.sv",
+            "rtl/npu/buffers/ia_ps_shared_ram.sv",
+            "test/ia_shared/cache_tb.sv"
+          ],
+          "binary_sha256": "7cf5287b6491a6d7593ab84020464eaf94faadd873f2c1e16bd0ea4a52bc5554",
+          "compile_command": [
+            "/tmp/npu45000_compute/cache_numeric/shared/verilator_models",
+            "--cc",
+            "--exe",
+            "--build",
+            "--assert",
+            "-j",
+            "1",
+            "--top-module",
+            "ia_shared_cache_tb",
+            "-GBANK_BYTES=8192",
+            "-GBANK_COUNT=7",
+            "-GCOMPACT_OFFSET_WIDTH=9",
+            "--Mdir",
+            "/tmp/npu45000_compute/cache_numeric/shared/run/obj",
+            "-Wno-fatal",
+            "--output-groups",
+            "0",
+            "--output-split",
+            "10000",
+            "-CFLAGS",
+            "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BANK_BYTES=8192 -DTEST_BANK_COUNT=7",
+            "-LDFLAGS",
+            "-fsanitize=undefined",
+            "-MAKEFLAGS",
+            "-B OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /tmp/npu45000_compute/cache_numeric/shared/run/compile_rules.mk",
+            "/workspace/scratch/d8ec29656755/compute_opt/rtl/common/pseudo_dual_port_ram.v",
+            "/workspace/scratch/d8ec29656755/compute_opt/rtl/common/REGFILE.v",
+            "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/loaders/ia_loader_cache_mgr.sv",
+            "/workspace/scratch/d8ec29656755/compute_opt/rtl/npu/buffers/ia_ps_shared_ram.sv",
+            "/workspace/scratch/d8ec29656755/compute_opt/test/ia_shared/cache_tb.sv",
+            "/workspace/scratch/d8ec29656755/compute_opt/test/ia_shared/cache_test.cpp"
+          ],
+          "run_command": [
+            "/tmp/npu45000_compute/cache_numeric/shared/run/obj/Via_shared_cache_tb"
+          ],
+          "undefined_behavior_sanitizer": true,
+          "compact_offset_width": 9,
+          "sanitized_translation_units": 12,
+          "compile_seconds": 33.13486248499248,
+          "run_seconds": 40.24302344099851,
+          "source_hashes_unchanged": true
+        },
+        "log_sha256": "a446c30d36fff5f073f8faea21ad8bb817dd01a4d425f1dcb1c951fe0e5ca629",
+        "wrapper_sha256": "45c7bbeb58adeca47fef576f7b1d89fd3e739a3799e5e487e896ca5501dc2f20",
+        "primitive_lint_file_sha256": "6aaaff10b1748bbb56899f54e17d05f33b284d00601f646bd812fad08e2e265f",
+        "primitive_lint_scope": {
+          "file": "/tmp/npu45000_compute/cache_numeric/shared/xilinx_lut6_lut6_2_dsp48e1.sv",
+          "rules": [
+            "WIDTHEXPAND",
+            "WIDTHTRUNC"
+          ]
+        }
+      }
+    ]
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667,
+    "cases": {
+      "reference": {
+        "top": "ia_loader_cache_mgr",
+        "configuration": "生产 IA 缓存，完整外部 RAM 接口",
+        "sources_sha256": {
+          "/tmp/npu45000_compute/cache_final/reference.sv": "cf632e6a81ddc1e93ae330b0d18b75b2877472200c8f98c700f86ff6c8f28646",
+          "rtl/npu/compute/select_add.sv": "2833d092126d6ee02d429d0d7eaf3e9a70662f1badac636e97b83f4b7b15a466",
+          "rtl/common/REGFILE.v": "c6be0f1eb230461e6fb93d336576bdb6bb909c74bed105177ad3983cda692501",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "ae8419319b2f63d1928c3e0c7ed4ea0f3e473076a9eaa2eaa00fee00e3d71d65",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "parameters": {
+          "DATA_WIDTH": 16,
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "RAM_WORD_ADDR_WIDTH": 12,
+          "p_compact_offset_width": 9
+        },
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 1.01,
+            "peak_process_tree_rss_bytes": 150294528,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "b9fe810cd98145b9f01f6a365ae5b526d943ebbc02c2aef7172f514a697c02f2",
+            "output_sha256": "e0f82565380e5ff027030772029c163834784612b4ed766c8330421d085ca389"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 3.83,
+            "peak_process_tree_rss_bytes": 155619328,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "db91f2e15611378c339f647e2d59cff1d6add1812b8928e4fcf010a93dac934d",
+            "output_sha256": "81ed868a42226bf6e1bcfb565f50c213cf8d8f727c85ac3dfcd2f258b8339b38"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 5.64,
+            "peak_process_tree_rss_bytes": 188788736,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "be7919bcab2cc06852599b1294c75d3b283c1ab46c67e0f8e1832d5fbef01ab4",
+            "output_sha256": "7d1fe9905c50543ae63353116ff2ebb90b6df4e8520fa1e0a4b2e0c269c16a20",
+            "mapped_verilog_sha256": "b7addcec70dfd6e2fd073cc66aeab832ca52d44e82909adfb1ecd0fdd22acc43"
+          }
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GDATA_WIDTH=16",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=64",
+          "-GCACHE_BLOCKS=32",
+          "-GEXTERNAL_RAM=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-Gp_compact_offset_width=9"
+        ],
+        "build_configuration": null,
+        "elapsed_seconds": 10.98,
+        "lut_cells": 1917,
+        "flip_flops": 354,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 8,
+        "carry4": 72,
+        "longest_combinational_path_cells": 11,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$92314$lut$not$aiger92313$2",
+            "type": "INV"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$3784.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$3539",
+            "type": "LUT3"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$7923",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$8085",
+            "type": "LUT6"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$8097",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$8123",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$8136",
+            "type": "LUT6"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$9109",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$abc$92314$lut$aiger92313$10125",
+            "type": "LUT4"
+          },
+          {
+            "cell": "$auto$xilinx_dffopt.cc:341:execute$94603",
+            "type": "LUT6"
+          }
+        ],
+        "cell_counts": {
+          "CARRY4": 72,
+          "DSP48E1": 8,
+          "FDRE": 354,
+          "INV": 16,
+          "LUT2": 250,
+          "LUT3": 311,
+          "LUT4": 506,
+          "LUT5": 451,
+          "LUT6": 399,
+          "MUXF7": 1,
+          "RAM64M": 2
+        },
+        "resources": {
+          "logic_lut_cells": 1917,
+          "distributed_ram_lut_sites_nominal": 8,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1925,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 354,
+          "dsp48e1": 8,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 72,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 72,
+            "DSP48E1": 8,
+            "FDRE": 354,
+            "INV": 16,
+            "LUT2": 250,
+            "LUT3": 311,
+            "LUT4": 506,
+            "LUT5": 451,
+            "LUT6": 399,
+            "MUXF7": 1,
+            "RAM64M": 2
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 11,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 11,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/tmp/npu45000_compute/cache_final/native/reference/mapped.v",
+          "sha256": "b7addcec70dfd6e2fd073cc66aeab832ca52d44e82909adfb1ecd0fdd22acc43",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        }
+      },
+      "current": {
+        "top": "ia_loader_cache_mgr",
+        "configuration": "生产 IA 缓存，完整外部 RAM 接口",
+        "sources_sha256": {
+          "/tmp/npu45000_compute/cache_final/current.sv": "fbfd1205bb334d46806e81adb53cd3b37bd25e54a875840d42f5d78098d07645",
+          "rtl/npu/compute/select_add.sv": "2833d092126d6ee02d429d0d7eaf3e9a70662f1badac636e97b83f4b7b15a466",
+          "rtl/common/REGFILE.v": "c6be0f1eb230461e6fb93d336576bdb6bb909c74bed105177ad3983cda692501",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "ae8419319b2f63d1928c3e0c7ed4ea0f3e473076a9eaa2eaa00fee00e3d71d65",
+          "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529",
+          "rtl/common/pseudo_dual_port_ram.v": "af95ea548fdaa4c207e9d767890f6236edc86592b51cd51824d54b2f0e3ea4a2",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "parameters": {
+          "DATA_WIDTH": 16,
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "RAM_WORD_ADDR_WIDTH": 12,
+          "p_compact_offset_width": 9
+        },
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 1.22,
+            "peak_process_tree_rss_bytes": 152076288,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "05e61745f8009fd2031eb6950b250854bd57b66b6eff6ddc303f31a0b7e48599",
+            "output_sha256": "82bdddab19b6df9a25656dd42b7a31c4232248969c3c7dd2a5e258271c33810f"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 4.22,
+            "peak_process_tree_rss_bytes": 151527424,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "ad8407b83b079231dd323bae645ae3b7a212f93c9a358f517f3c6bf2df11d1c5",
+            "output_sha256": "37939c97a604a2f2bd107c4b3f750d686f33ec7d7d8232fad3a559875aaa1df7"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 5.25,
+            "peak_process_tree_rss_bytes": 187408384,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "22b84d56864dbd609300115002c7e89d0e491d911f7940f2557ac86a9054c869",
+            "output_sha256": "cb44bafa87b553437a952f93d16e30c2df23d3d6dfab61e2dabaf7dd5be53099",
+            "mapped_verilog_sha256": "ea26cf53af177b3c733d171b042fb87f0cea11a92b79ca0ebc5ed197b600160a"
+          }
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GDATA_WIDTH=16",
+          "-GSIZE=16",
+          "-GBUS_WIDTH=64",
+          "-GCACHE_BLOCKS=32",
+          "-GEXTERNAL_RAM=1",
+          "-GRAM_WORD_ADDR_WIDTH=12",
+          "-Gp_compact_offset_width=9"
+        ],
+        "build_configuration": null,
+        "elapsed_seconds": 11.09,
+        "lut_cells": 1748,
+        "flip_flops": 354,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 8,
+        "carry4": 70,
+        "longest_combinational_path_cells": 11,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$85484$lut$aiger$o3802",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$85784",
+            "type": "LUT3"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$3777.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$85484$lut$aiger$o2748",
+            "type": "LUT3"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$3780.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$85484$lut$aiger85483$7737",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$abc$85484$lut$aiger85483$9511",
+            "type": "LUT6"
+          },
+          {
+            "cell": "$abc$85484$lut$aiger85483$9517",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$abc$85484$lut$aiger85483$9541",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$abc$85484$lut$aiger85483$9545",
+            "type": "LUT4"
+          },
+          {
+            "cell": "$auto$xilinx_dffopt.cc:341:execute$87589",
+            "type": "LUT6"
+          }
+        ],
+        "cell_counts": {
+          "CARRY4": 70,
+          "DSP48E1": 8,
+          "FDRE": 354,
+          "INV": 16,
+          "LUT2": 244,
+          "LUT3": 271,
+          "LUT4": 482,
+          "LUT5": 375,
+          "LUT6": 376,
+          "RAM64M": 2
+        },
+        "resources": {
+          "logic_lut_cells": 1748,
+          "distributed_ram_lut_sites_nominal": 8,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1756,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 354,
+          "dsp48e1": 8,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 70,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 70,
+            "DSP48E1": 8,
+            "FDRE": 354,
+            "INV": 16,
+            "LUT2": 244,
+            "LUT3": 271,
+            "LUT4": 482,
+            "LUT5": 375,
+            "LUT6": 376,
+            "RAM64M": 2
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 11,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 11,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/tmp/npu45000_compute/cache_final/native/current/mapped.v",
+          "sha256": "ea26cf53af177b3c733d171b042fb87f0cea11a92b79ca0ebc5ed197b600160a",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        }
+      }
+    },
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
+  }
+}

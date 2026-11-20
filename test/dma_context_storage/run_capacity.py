@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""展开生产配置，比较 DMA 描述符封装前后的完整状态容量。"""
+"""展开生产配置，比较 DMA 描述符容量与同步读取状态。"""
 import argparse
 import hashlib
 import json
@@ -20,7 +20,7 @@ SOURCE = 'rtl/npu/dma/axi_linear_block_dma.sv'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-ref', default='4448177')
+    parser.add_argument('--reference-ref', default='df8a9b2d')
     parser.add_argument('--verilator', default='verilator-modern')
     args = parser.parse_args()
     out = args.out.resolve()
@@ -29,19 +29,33 @@ def main():
     reference.write_bytes(read_rtl_source(args.reference_ref + ':' + SOURCE, cwd=ROOT))
     values = config.selected_config(ROOT / 'config/npu_fpga.mk')
     original_sources = elaboration.source_files
+    original_hashes = elaboration.sources_sha256
     records = {}
     try:
         for label in ('reference', 'regfile'):
             elaboration.source_files = (
                 lambda: [reference if path == ROOT / SOURCE else path for path in original_sources()]
             ) if label == 'reference' else original_sources
+            def source_hashes():
+                selected_sources = elaboration.source_files
+                try:
+                    elaboration.source_files = original_sources
+                    hashes = original_hashes()
+                finally:
+                    elaboration.source_files = selected_sources
+                if label == 'reference':
+                    hashes[SOURCE] = hashlib.sha256(reference.read_bytes()).hexdigest()
+                return hashes
+            elaboration.sources_sha256 = source_hashes
             report = elaboration.measure(values, verilator=args.verilator, output_dir=out / label)
             assert report['passed']
             state = report['elaborated_state']
             storage = [item for item in state['sequential_declarations']
                        if (item['module'] == 'axi_linear_block_dma' and
                            item['name'] in ('rd_context', 'rd_context_tag_q')) or
-                          '.u_linear.u_context_storage.' in item['path']]
+                          (item['name'] == 'mem' and
+                           any(part in item['path'] for part in
+                               ('.u_linear.u_context_storage.', '.u_linear.u_context_base.')))]
             records[label] = {
                 'passed': report['passed'], 'total_bits': state['total_bits'],
                 'buffer_arrays_bits': state['buffer_arrays_bits'],
@@ -52,9 +66,11 @@ def main():
             }
     finally:
         elaboration.source_files = original_sources
-    for field in ('total_bits', 'buffer_arrays_bits', 'register_arrays_bits', 'descriptor_bits'):
-        assert records['reference'][field] == records['regfile'][field], field
-    assert records['reference']['descriptor_bits'] == 616
+        elaboration.sources_sha256 = original_hashes
+    assert records['reference']['descriptor_bits'] == records['regfile']['descriptor_bits'] == 616
+    assert records['reference']['buffer_arrays_bits'] == records['regfile']['buffer_arrays_bits']
+    # 三十二位同步读取结果和一个地址来源标志构成新增状态。
+    assert records['regfile']['total_bits'] - records['reference']['total_bits'] == 33
     assert records['regfile']['regfile_instances'] == records['reference']['regfile_instances'] + 1
     summary = {
         'passed': True, 'reference_ref': args.reference_ref,

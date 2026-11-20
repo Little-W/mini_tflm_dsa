@@ -1,0 +1,336 @@
+{
+  "design": "npu_axil_reg_if static read word table and bounded shared bank count",
+  "reference_commit": "c70888842048247451c17bd8241d47f43c06d070",
+  "source_file": "rtl/axi_top/npu_axil_reg_if.sv",
+  "source_sha256": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf",
+  "inputs": {
+    "reference": "c7088884",
+    "parameters": {
+      "AXI_DATA_BITS": 64,
+      "CONV_IS_CAPABLE": 1,
+      "VECTOR_ENGINE_CAPABLE": 1,
+      "MATRIX_S16_BANKS": 4,
+      "PS_CAPS": 17825823,
+      "PS_POOL_BYTES": 49152,
+      "IA_CACHE_BYTES": 2048,
+      "SHARED_TOTAL_BYTES": 57344,
+      "SHARED_BANK_BYTES": 8192,
+      "SHARED_IA_BANK_MASK": 6,
+      "PS_DIRECTORY_ROWS": 1024
+    },
+    "source_sha256": {
+      "reference": "b43feb0bcb3f99896882f147999cca69efa99ac78efe45f07902f476cb6557b4",
+      "current": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf"
+    },
+    "package_sha256": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac"
+  },
+  "measurements": [
+    {
+      "mapping": "native",
+      "version": "reference",
+      "logic_lut_cells": 985,
+      "flip_flops": 1387,
+      "carry4": 6,
+      "dsp48e1": 0,
+      "ramb18e1": 0,
+      "ramb36e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 8,
+      "graph_complete": true,
+      "manifest_sha256": "27da6ac735000072e0d39b0953fa10afeee0da352eebda459f8a830ff4f83cc2",
+      "metrics_sha256": "85c83c311a57af29955c139a8514c416e9d156a92bebc6286dabae448baf5166",
+      "peak_process_tree_rss_bytes": 209444864
+    },
+    {
+      "mapping": "native",
+      "version": "current",
+      "logic_lut_cells": 895,
+      "flip_flops": 1357,
+      "carry4": 2,
+      "dsp48e1": 0,
+      "ramb18e1": 0,
+      "ramb36e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 5,
+      "graph_complete": true,
+      "manifest_sha256": "cdb67d1b966d23ae8f074deff0a65e82b63c4beffa7d114c1774a5e558a89233",
+      "metrics_sha256": "f06ae23f6f921f2a921d7ae3c14998348381735d42685ad778023dfc6a6bac89",
+      "peak_process_tree_rss_bytes": 207855616
+    },
+    {
+      "mapping": "cost1",
+      "version": "reference",
+      "logic_lut_cells": 905,
+      "flip_flops": 1387,
+      "carry4": 6,
+      "dsp48e1": 0,
+      "ramb18e1": 0,
+      "ramb36e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 8,
+      "graph_complete": true,
+      "manifest_sha256": "26fbaa8b1d435f1d52276626c9dd946549c021d9e2bad718762d275aacf1cafc",
+      "metrics_sha256": "05d5b0d3175a875ce08599b3dc31fb0d47b90ce34db07873f4e2057651f46b41",
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "a667deea8c1ab2a99e523e93585279d5d7828b3bab658490213f752d07f20c34"
+      },
+      "peak_process_tree_rss_bytes": 209657856
+    },
+    {
+      "mapping": "cost1",
+      "version": "current",
+      "logic_lut_cells": 820,
+      "flip_flops": 1357,
+      "carry4": 2,
+      "dsp48e1": 0,
+      "ramb18e1": 0,
+      "ramb36e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 7,
+      "graph_complete": true,
+      "manifest_sha256": "41d0d43db65c632aae100646988bb74c97521d38c7e2f64a24205627ffd17f0d",
+      "metrics_sha256": "02f934034839c7793640d930a4d9d5f1128951d53d08d25e6581b7ad51faf88b",
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "8f66e47869a61582c457bc4b2d69230eb20cde3427972726c9d92e51b46f2429"
+      },
+      "peak_process_tree_rss_bytes": 207667200
+    }
+  ],
+  "physical_lut_positions": null,
+  "timing_150mhz_confirmed": null,
+  "formal": {
+    "passed": true,
+    "reference": "c7088884",
+    "profiles": [
+      {
+        "name": "default",
+        "parameters": {},
+        "passed": true,
+        "equivalent_bits": 1615,
+        "log_sha256": "2be8da412618b29c345195d6ca76270777b00db4c36f5bd6ca2666408964891a"
+      },
+      {
+        "name": "production",
+        "parameters": {
+          "AXI_DATA_BITS": 64,
+          "CONV_IS_CAPABLE": 1,
+          "VECTOR_ENGINE_CAPABLE": 1,
+          "PS_CAPS": 17825823,
+          "SHARED_BANK_BYTES": 8192,
+          "SHARED_TOTAL_BYTES": 57344,
+          "SHARED_IA_BANK_MASK": 6
+        },
+        "passed": true,
+        "equivalent_bits": 1647,
+        "log_sha256": "e0ed64739d2aff2293d5905af016f6b1e78320495d476a3fc7dd87863dfe0892"
+      },
+      {
+        "name": "count_width1",
+        "parameters": {
+          "PS_CAPS": 16,
+          "SHARED_BANK_BYTES": 2048,
+          "SHARED_TOTAL_BYTES": 18432,
+          "SHARED_IA_BANK_MASK": 2
+        },
+        "passed": true,
+        "equivalent_bits": 1647,
+        "log_sha256": "9ca26b851a30303b9479ec64609a06247c51befd92f26c51c0c99fedc8791117"
+      },
+      {
+        "name": "count_width3",
+        "parameters": {
+          "PS_CAPS": 16,
+          "SHARED_BANK_BYTES": 4096,
+          "SHARED_TOTAL_BYTES": 36864,
+          "SHARED_IA_BANK_MASK": 130
+        },
+        "passed": true,
+        "equivalent_bits": 1647,
+        "log_sha256": "c2847c26d2bfd4246379fb58c40305e02021cf1391722cddfe1329e17da9d963"
+      },
+      {
+        "name": "count_width4",
+        "parameters": {
+          "PS_CAPS": 16,
+          "SHARED_BANK_BYTES": 8192,
+          "SHARED_TOTAL_BYTES": 65536,
+          "SHARED_IA_BANK_MASK": 32770
+        },
+        "passed": true,
+        "equivalent_bits": 1647,
+        "log_sha256": "d9fa2b60b2ace352e37d435c25f5cd8c3c1020873beb42339a194bf88b136e1a"
+      },
+      {
+        "name": "count_width5",
+        "parameters": {
+          "PS_CAPS": 16,
+          "SHARED_BANK_BYTES": 2048,
+          "SHARED_TOTAL_BYTES": 16384,
+          "SHARED_IA_BANK_MASK": 2147483650
+        },
+        "passed": true,
+        "equivalent_bits": 1647,
+        "log_sha256": "950286e02caea7160ff90ceea8a2560de42f02fd6140ca11006307fd5e4d66da"
+      },
+      {
+        "name": "wide_data",
+        "parameters": {
+          "AXIL_DATA_WIDTH": 64,
+          "AXIL_ADDR_WIDTH": 20,
+          "PS_CAPS": 16,
+          "SHARED_BANK_BYTES": 8192,
+          "SHARED_TOTAL_BYTES": 57344,
+          "SHARED_IA_BANK_MASK": 4294967295
+        },
+        "passed": true,
+        "equivalent_bits": 1823,
+        "log_sha256": "1ab4cc38ec6f2ede790c83daa55f097cef478d138a81a83559e551e726547fed"
+      },
+      {
+        "name": "small_address",
+        "parameters": {
+          "AXIL_ADDR_WIDTH": 14,
+          "CONV_CAPABLE": 0,
+          "VECTOR_ENGINE_CAPABLE": 0,
+          "MATRIX_SIZE": 4
+        },
+        "passed": true,
+        "equivalent_bits": 1611,
+        "log_sha256": "e148769ab6eb73cbacc9de8dab6c44f0f26547fe2504f754bc696746cf4a8759"
+      }
+    ],
+    "inputs_constrained": false,
+    "all_public_outputs_compared": true,
+    "common_internal_state_and_signals_compared": true,
+    "source_sha256": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf",
+    "reference_sha256": "b43feb0bcb3f99896882f147999cca69efa99ac78efe45f07902f476cb6557b4",
+    "package_sha256": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac"
+  },
+  "bank_width": {
+    "passed": true,
+    "arbitrary_mask_bits": 32,
+    "arbitrary_value_bits": 32,
+    "input_assumptions": [],
+    "source_sha256": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf",
+    "proof_sha256": "3576b4fe26169d101d301dfb4279b3db9367cc232884b9241155924e85da2567",
+    "log_sha256": "f5f5f5ca399cfb38edab97ba7c049e8103531d7df99e38fba34f5535c8c4e323"
+  },
+  "numeric": {
+    "passed": true,
+    "profiles": [
+      {
+        "name": "production",
+        "passed": true,
+        "parameters": {
+          "AXI_DATA_BITS": 64,
+          "CONV_IS_CAPABLE": 1,
+          "VECTOR_ENGINE_CAPABLE": 1,
+          "MATRIX_S16_BANKS": 4,
+          "PS_CAPS": 17825823,
+          "PS_POOL_BYTES": 49152,
+          "IA_CACHE_BYTES": 2048,
+          "SHARED_TOTAL_BYTES": 57344,
+          "SHARED_BANK_BYTES": 8192,
+          "SHARED_IA_BANK_MASK": 6,
+          "PS_DIRECTORY_ROWS": 1024
+        },
+        "cycles": 101683,
+        "outputs": 55,
+        "writes": 18023,
+        "reads": 25448,
+        "binary_sha256": "26d39044b215db5a573990b19a6a10b9e1f616a18ba169206af798f0c8bd0977"
+      },
+      {
+        "name": "wide_data",
+        "passed": true,
+        "parameters": {
+          "AXI_DATA_BITS": 64,
+          "CONV_IS_CAPABLE": 1,
+          "VECTOR_ENGINE_CAPABLE": 1,
+          "MATRIX_S16_BANKS": 4,
+          "PS_CAPS": 17825823,
+          "PS_POOL_BYTES": 49152,
+          "IA_CACHE_BYTES": 2048,
+          "SHARED_TOTAL_BYTES": 57344,
+          "SHARED_BANK_BYTES": 8192,
+          "SHARED_IA_BANK_MASK": 4294967295,
+          "PS_DIRECTORY_ROWS": 1024,
+          "AXIL_DATA_WIDTH": 64,
+          "AXIL_ADDR_WIDTH": 20
+        },
+        "cycles": 101683,
+        "outputs": 55,
+        "writes": 18023,
+        "reads": 25448,
+        "binary_sha256": "03660e35cb824f6ad0ca69a71fe96364441e1d84e2b6ade13af0a63b0cbfff24"
+      }
+    ],
+    "reference": "c7088884",
+    "all_public_outputs_including_invalid_cycles": true,
+    "source_sha256": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf",
+    "reference_sha256": "b43feb0bcb3f99896882f147999cca69efa99ac78efe45f07902f476cb6557b4"
+  },
+  "four_state": {
+    "passed": true,
+    "profiles": [
+      {
+        "data_width": 32,
+        "samples": 11264,
+        "passed": true
+      },
+      {
+        "data_width": 64,
+        "samples": 11264,
+        "passed": true
+      }
+    ],
+    "address_states": [
+      "0",
+      "1",
+      "x",
+      "z"
+    ],
+    "data_states": [
+      "0",
+      "1",
+      "x",
+      "z"
+    ],
+    "decoded_addresses": 75,
+    "unchanged_word_assignments": 77,
+    "bank_masks": [
+      2,
+      6,
+      18,
+      130,
+      32770,
+      2147483650,
+      4294967295
+    ],
+    "bank_samples": 100004,
+    "source_sha256": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf",
+    "reference_sha256": "b43feb0bcb3f99896882f147999cca69efa99ac78efe45f07902f476cb6557b4"
+  },
+  "mapping_options": {
+    "mode": "physical-cost",
+    "small_lut_area_cost": 1.0,
+    "max_lut_inputs": 6,
+    "wire_delay_ps": 500,
+    "delay_target_ps": 6667
+  },
+  "scripts_sha256": {
+    "test/axil_read_mux/prepare_measurement.py": "975928be42a66e321e713a33412be92ce939dcd1023bc8161067564017a0f550",
+    "test/axil_read_mux/prove_bank_width.py": "0e45ad0156188c0626b6d4bb2bad42240915cdd9fb0e9c5a7ea03ed265033af6",
+    "test/axil_read_mux/run.py": "7cf5ccb0a99fba76265fb125d9444ade9a2074b5e5b70cb1470d1777dfc14438",
+    "test/axil_read_mux/run_formal.py": "82240609803331d7b43f4d89612fa8e6c5995ee765c911312d07b7675218e463",
+    "test/axil_read_mux/run_four_state.py": "78413afe2f0af2576555caa833773c717fd1a73ad74868f3ecc6b607e9f242a7"
+  }
+}

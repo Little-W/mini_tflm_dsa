@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""使用官方 LUT6_2 和 DSP48E1 功能模型证明选择加法的完整输入空间。"""
+"""使用 DSP48E1 功能模型证明普通 RTL 选择加法的完整输入空间。"""
 import argparse
 import hashlib
 import json
@@ -28,7 +28,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     library = Path(pyosys.__file__).parent / "share/xilinx/cells_sim.v"
     models = []
-    for name in ("LUT6_2", "DSP48E1"):
+    for name in ("DSP48E1",):
         model = re.search(r"^module " + name + r"\b.*?^endmodule", library.read_text(),
                           re.MULTILINE | re.DOTALL).group(0)
         models.append(re.sub(r"\bspecify\b.*?\bendspecify\b", "", model, flags=re.DOTALL))
@@ -36,7 +36,7 @@ def main():
     model_file.write_text("\n\n".join(models) + "\n")
     sources = [ROOT / "rtl/npu/compute/select_add.sv", HERE / "select_add_formal.sv"]
     summary = {
-        "method": "Yosys combinational SAT with official LUT6_2 and DSP48E1 functional models",
+        "method": "Yosys combinational SAT with the DSP48E1 functional model",
         "latency_cycles": 0,
         "properties_per_width": 3,
         "source_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()

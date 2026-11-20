@@ -13,10 +13,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rtl_reference import read_rtl_source
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / 'test/ia_request_lut'))
-from models import prepare_models
+sys.path.insert(0, str(ROOT / 'test/ia_write_output_depth'))
+from primitives import prepare_models
 SOURCES = [Path('rtl/npu/loaders') / (name + '.sv')
            for name in ('ia_loader', 'ia_loader_ctrl', 'ia_loader_cache_mgr')]
+SOURCES.append(Path('rtl/npu/compute/select_add.sv'))
 CASES = {
     'soc': ['-DXILINX_FPGA=1', '-GSIZE=16', '-GBUS_WIDTH=64', '-GCOUNT_WIDTH=29',
             '-GCACHE_BLOCKS=32', '-GEXTERNAL_RAM=1', '-GORDERED_JOB=1',
@@ -57,7 +58,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    model, model_info = prepare_models(out)
+    model, model_info = prepare_models(out, names=('LUT3', 'LUT6', 'LUT6_2', 'DSP48E1'))
     common = sorted(path for path in (ROOT / 'rtl/common').glob('*')
                     if path.suffix in ('.sv', '.v'))
     summary = {'reference_rev': args.reference_rev, 'source_input_constraints': False,
@@ -120,7 +121,7 @@ def main():
     for name in args.cases:
         commands = []
         for label in ('reference', 'current'):
-            commands += ['read_slang --top ia_loader ' + ' '.join(CASES[name]) + ' ' +
+            commands += ['read_slang --top ia_loader -D YOSYS=1 -D VERIFIC=1 ' + ' '.join(CASES[name]) + ' ' +
                          ' '.join(shlex.quote(str(path)) for path in snapshots[label] + common + [model]),
                          'prep -top ia_loader -flatten', 'memory_map', 'async2sync', 'opt_clean',
                          'rename ia_loader ' + label, 'design -stash ' + label]

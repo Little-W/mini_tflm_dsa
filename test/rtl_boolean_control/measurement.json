@@ -1,0 +1,66 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "add_equal",
+      "passed": true,
+      "result_sha256": "df4bbeda5163fad4e89a551c5ca9f292250f3023c024eb2a8fc68da115c59d3b",
+      "runs": 9
+    },
+    {
+      "name": "onehot",
+      "passed": true,
+      "result_sha256": "b3c4c5991f05f28faae404628a7b6b23b2fd54f6a86d59f04b716ce04b22998e",
+      "runs": 52
+    },
+    {
+      "name": "activation",
+      "passed": true,
+      "result_sha256": "76fb3bda9f1b13bc893e10aabeeac51746b3108d569352667c70990720b4df83",
+      "runs": 2
+    },
+    {
+      "name": "fifo",
+      "passed": true,
+      "result_sha256": "8ed87987dc662941cd3770d962fefba0ceff5271f5d69c885f9ca9dafb306a70",
+      "runs": 7
+    },
+    {
+      "name": "pingpong",
+      "passed": true,
+      "result_sha256": "606c974b7e364aa2f61881154f2c867b233ab68ec83ac995bc7f41894e075481",
+      "runs": 9
+    },
+    {
+      "name": "requant_shift",
+      "passed": true,
+      "result_sha256": "80eff1a12dac89e131c3054294f5537372f0c7f50284cab9c44818bd00728369",
+      "runs": 0
+    },
+    {
+      "name": "bias",
+      "passed": true,
+      "result_sha256": "b8b0fb2788d5f32aea01d311ee9a154c91f787268a579b03921b94d259b6f347",
+      "runs": 16
+    },
+    {
+      "name": "control",
+      "passed": true,
+      "result_sha256": "7446a27dfdd5c4f4cae9367787f5cdb6408afcda25c6e1761c228434b0b4b4f3",
+      "runs": 18
+    }
+  ],
+  "sources": {
+    "rtl/common/REGFILE.v": "c6be0f1eb230461e6fb93d336576bdb6bb909c74bed105177ad3983cda692501",
+    "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+    "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+    "rtl/npu/control/ps_window_scheduler.sv": "3375383e978e0c162f0423e4917c2538e2f6840a72d717625169fbebba5fc2ca",
+    "rtl/npu/top/npu_top.sv": "1d28d795009f282fa96bb63200ef75af7a8662c405008d77d0c497ac14413d56",
+    "rtl/npu/writeback/vec_requant.sv": "a3ac71bb4fae953f91b25c4ae87640dcf7ce2bc131c5c0fa3985719e05e6b9a1",
+    "rtl/npu/writeback/vec_s8_to_fifo.sv": "ee3f6705293f1ab333ed48a52f1b9c8610c9537fc7ee0853d4e75b9f6ae61c34",
+    "rtl/soc/soc_axi_pingpong_buffer.sv": "8ee2db2d040dfcd0493226957e9829dd99233b5ebef3eae6f03d146fefacc83d"
+  },
+  "four_state_output_checks": 1800009,
+  "inputs_constrained": false,
+  "reference_commit": "653477ede3c51bbe7f27c5bd7fc4f7131689df05"
+}

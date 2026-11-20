@@ -38,6 +38,7 @@ module ia_compact_loader_tb #(
         .*, .ext_dma_is_write(), .ext_dma_linear_read_mode(),
         .bias_at_end(1'b0), .bias_load_sleep(),
         .ram_port_wr_en(), .ram_port_wr_addr(), .ram_port_wr_data(), .ram_port_wr_mask(),
+        .ram_shared_wr_data(),
         .ram_port_rd_en(), .ram_port_rd_addr(), .ram_port_rd_data('{default:'0}),
         .cfg_prefetch_enable(1'b0), .cfg_global_reduction(32'd0), .prefetch_idle(),
         .ia_is_init_data(), .ia_calc_done(), .ia_tile_start(),
