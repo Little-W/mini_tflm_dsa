@@ -31,7 +31,8 @@ def main():
         "tflite_bridge/flatbuffer_conversions_bridge.cc",
     )]
     sources += [TFLM / "tensorflow/lite/core/api/flatbuffer_conversions.cc",
-                TFLM / "tensorflow/lite/core/c/common.cc"]
+                TFLM / "tensorflow/lite/core/c/common.cc",
+                TFLM / "tensorflow/compiler/mlir/lite/schema/schema_utils.cc"]
     downloads = MICRO / "tools/make/downloads"
     command = ["g++", "-std=c++17", "-O1", "-g", "-fno-exceptions", "-Wall", "-Wextra",
                "-Wno-unused-parameter", "-ffunction-sections", "-fdata-sections",

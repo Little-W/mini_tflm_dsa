@@ -23,6 +23,7 @@ limitations under the License.
 #include "tensorflow/lite/micro/memory_helpers.h"
 #include "tensorflow/lite/micro/memory_planner/greedy_memory_planner.h"
 #include "tensorflow/lite/micro/micro_log.h"
+#include "tensorflow/lite/schema/schema_utils.h"
 
 namespace tflite {
 
@@ -240,7 +241,7 @@ void AllocationInfoBuilder::CoalesceReshapeAllocations() {
 
   for (uint32_t i = 0; i < operator_count; ++i) {
     const Operator* op = subgraph->operators()->Get(i);
-    if (model_->operator_codes()->Get(op->opcode_index())->builtin_code() !=
+    if (GetBuiltinCode(model_->operator_codes()->Get(op->opcode_index())) !=
             BuiltinOperator_RESHAPE ||
         op->inputs() == nullptr || op->inputs()->size() == 0 ||
         op->outputs() == nullptr || op->outputs()->size() != 1) {

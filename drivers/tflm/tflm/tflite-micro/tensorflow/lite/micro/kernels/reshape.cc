@@ -29,28 +29,41 @@ limitations under the License.
 namespace tflite {
 namespace {
 
-TfLiteStatus EvalReshapeReference(TfLiteContext* context, TfLiteNode* node) {
-  const TfLiteEvalTensor* input =
-      tflite::micro::GetEvalInput(context, node, kReshapeInputTensor);
-  TfLiteEvalTensor* output =
-      tflite::micro::GetEvalOutput(context, node, kReshapeOutputTensor);
-
-  if (input->data.raw == output->data.raw) return kTfLiteOk;
-
-  // TODO(b/162522304): storing input bytes in OpData increases some models
-  // significantly, possibly due to alignment issues.
+struct ReshapeOpData {
+  const TfLiteEvalTensor* input;
+  TfLiteEvalTensor* output;
   size_t input_bytes;
-  TF_LITE_ENSURE_STATUS(TfLiteTypeSizeOf(input->type, &input_bytes));
-  input_bytes *= ElementCount(*input->dims);
+};
 
-  memcpy(output->data.raw, input->data.raw, input_bytes);
+void* InitReshape(TfLiteContext* context, const char*, size_t) {
+  return context->AllocatePersistentBuffer(context, sizeof(ReshapeOpData));
+}
+
+TfLiteStatus PrepareReshape(TfLiteContext* context, TfLiteNode* node) {
+  TF_LITE_ENSURE_STATUS(PrepareReshapeReference(context, node));
+  auto* data = static_cast<ReshapeOpData*>(node->user_data);
+  TF_LITE_ENSURE(context, data != nullptr);
+  data->input = tflite::micro::GetEvalInput(context, node, kReshapeInputTensor);
+  data->output = tflite::micro::GetEvalOutput(context, node, kReshapeOutputTensor);
+  TF_LITE_ENSURE(context, data->input != nullptr && data->output != nullptr);
+  TF_LITE_ENSURE_STATUS(TfLiteTypeSizeOf(data->input->type, &data->input_bytes));
+  data->input_bytes *= ElementCount(*data->input->dims);
+  return kTfLiteOk;
+}
+
+TfLiteStatus EvalReshapeReference(TfLiteContext*, TfLiteNode* node) {
+  const auto* data = static_cast<const ReshapeOpData*>(node->user_data);
+  // 张量描述符在准备阶段固定，数据地址在分配完成后从描述符读取。
+  const char* input = data->input->data.raw;
+  char* output = data->output->data.raw;
+  if (input != output) memcpy(output, input, data->input_bytes);
   return kTfLiteOk;
 }
 
 }  // namespace
 
 TFLMRegistration Register_RESHAPE() {
-  return tflite::micro::RegisterOp(nullptr, PrepareReshapeReference,
+  return tflite::micro::RegisterOp(InitReshape, PrepareReshape,
                                    EvalReshapeReference);
 }
 

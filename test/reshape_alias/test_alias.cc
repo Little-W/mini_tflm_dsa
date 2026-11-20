@@ -27,7 +27,8 @@ struct OpSpec {
 std::vector<uint8_t> BuildModel(const std::vector<TensorSpec>& tensor_specs,
                               const std::vector<OpSpec>& ops,
                               const std::vector<int32_t>& graph_outputs,
-                              bool offline = false, bool second_graph = false) {
+                              bool offline = false, bool second_graph = false,
+                              bool legacy_codes = false) {
   tflite::ModelT model;
   model.version = 3;
   model.buffers.emplace_back(new tflite::BufferT);
@@ -36,7 +37,8 @@ std::vector<uint8_t> BuildModel(const std::vector<TensorSpec>& tensor_specs,
   for (auto builtin : {tflite::BuiltinOperator_ADD,
                        tflite::BuiltinOperator_RESHAPE}) {
     auto code = std::make_unique<tflite::OperatorCodeT>();
-    code->builtin_code = builtin;
+    // 旧格式算子通过兼容字段保存操作类型。
+    code->builtin_code = legacy_codes ? tflite::BuiltinOperator_ADD : builtin;
     code->deprecated_builtin_code = static_cast<int8_t>(builtin);
     model.operator_codes.push_back(std::move(code));
   }
@@ -112,11 +114,11 @@ struct Allocation {
 };
 
 void CheckLifetimeAndValues(bool linear = false, bool offline = false,
-                            bool second_graph = false) {
+                            bool second_graph = false, bool legacy_codes = false) {
   std::vector<TensorSpec> specs(5);
   std::vector<OpSpec> ops = {{false, {0}, 1}, {true, {1}, 2},
                              {false, {0}, 3}, {false, {2, 3}, 4}};
-  Allocation a(BuildModel(specs, ops, {4}, offline, second_graph), linear);
+  Allocation a(BuildModel(specs, ops, {4}, offline, second_graph, legacy_codes), linear);
   assert((a.data(1) == a.data(2)) == !(linear || offline || second_graph));
   assert(a.data(2) != a.data(3));
   assert(a.data(2) != a.data(4));
@@ -180,7 +182,8 @@ int main() {
   CheckLifetimeAndValues(true);
   CheckLifetimeAndValues(false, true);
   CheckLifetimeAndValues(false, false, true);
+  CheckLifetimeAndValues(false, false, false, true);
   CheckChainAndBranch();
   CheckExclusions();
-  std::cout << "RESHAPE_ALIAS_PASS cases=12 repeated_inferences=28\n";
+  std::cout << "RESHAPE_ALIAS_PASS cases=13 repeated_inferences=35\n";
 }
