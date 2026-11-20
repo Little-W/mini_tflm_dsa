@@ -16,41 +16,49 @@ static inline uint64_t dsa_schedule_scale(uint64_t count, uint64_t work,
     return product/original+(product%original!=0u);
 }
 
-/* Windowed-cache sets use spatial pixel indices for aligned channel
- * fragments. Count the largest set occupancy in each possible spatial
- * window. Vertical stride can revisit a subset of the sets even when the
- * useful byte count is smaller than the complete data RAM. */
+/* 按输入缓存的实际行宽计算空间窗口占用。同一缓存行内的相邻像素
+ * 共用一个位置，跨输入行的步幅决定各组的最大占用数量。 */
 static inline void dsa_schedule_window_footprints(const dsa_schedule_config_t *c,
     uint32_t *footprints)
 {
-    uint32_t sets=c->im2col.cache_bytes/32u;
+    uint32_t line_bytes=DSA_IM2COL_CACHE_LINE_BYTES;
+    uint32_t sets=c->im2col.cache_bytes/(2u*line_bytes);
+    uint32_t pixel_bytes=c->im2col.input_channels*c->im2col.source_bytes;
+    uint32_t pixel_shift=0u;
     uint32_t peak=0u,points=dsa_schedule_min(c->rows,1024u);
     for (uint32_t i=0u;i<=64u;++i) footprints[i]=0u;
     if (!c->im2col_input_width || !c->im2col_output_width || !c->im2col_stride_h ||
-        c->im2col.group_channels<16u || c->im2col.input_channels%16u ||
+        c->im2col.group_channels<16u || !pixel_bytes ||
+        c->lhs_address%line_bytes ||
+        (pixel_bytes>=line_bytes ? pixel_bytes%line_bytes : pixel_bytes&(pixel_bytes-1u)) ||
         sets<2u || sets>2048u || (sets&(sets-1u))) return;
-    uint32_t row_step=(c->im2col_stride_h*c->im2col_input_width)&(sets-1u);
-    uint32_t step=c->im2col.stride_w&(sets-1u);
-    /* Process set ranges separately to bound initialization stack usage. */
+    if (pixel_bytes<line_bytes)
+        for (uint32_t pixels=line_bytes/pixel_bytes;pixels>1u;pixels>>=1u) ++pixel_shift;
+    uint64_t row_step=(uint64_t)c->im2col_stride_h*c->im2col_input_width;
+    /* 分段累计缓存组占用，限制初始化所需的栈空间。 */
     for (uint32_t first=0u;first<sets;first+=256u) {
         uint16_t occupancy[256]={0};
-        uint32_t x=0u,row_base=0u,index=0u,range_peak=0u;
+        uint32_t x=0u,range_peak=0u;
+        uint64_t row_base=0u,pixel=0u,previous_line=UINT64_MAX;
         for (uint32_t point=1u;point<=points;++point) {
-            if (index>=first && index-first<256u) {
+            uint64_t line=pixel>>pixel_shift;
+            uint32_t index=(uint32_t)line&(sets-1u);
+            if (line!=previous_line && index>=first && index-first<256u) {
                 uint32_t count=++occupancy[index-first];
                 if (range_peak<count) range_peak=count;
             }
-            uint32_t footprint=range_peak*sets*16u*c->im2col.source_bytes;
+            previous_line=line;
+            uint32_t footprint=range_peak*sets*line_bytes;
             uint32_t window=(point+15u)>>4;
             if (footprints[window]<footprint) footprints[window]=footprint;
             if (++x==c->im2col_output_width) {
-                x=0u;row_base=(row_base+row_step)&(sets-1u);index=row_base;
-            } else index=(index+step)&(sets-1u);
+                x=0u;row_base+=row_step;pixel=row_base;
+            } else pixel+=c->im2col.stride_w;
         }
         if (peak<range_peak) peak=range_peak;
     }
     for (uint32_t i=(points+15u)/16u+1u;i<=64u;++i)
-        footprints[i]=peak*sets*16u*c->im2col.source_bytes;
+        footprints[i]=peak*sets*line_bytes;
 }
 
 static inline uint64_t dsa_schedule_image_cost(const gempact_device_request_t *q,
@@ -61,7 +69,9 @@ static inline uint64_t dsa_schedule_image_cost(const gempact_device_request_t *q
     uint32_t positions,overflow,mode=p->is_mode;
     if (!q->im2col_source_bytes) return 0u;
     elements=mode?stationary:stream;
-    cost=elements+6u*(1u+(elements-1u)/q->im2col_pixel_channels);
+    // 输入片段每周期返回至多十六个通道，描述符保存和接收另计四个周期。
+    cost=1u+(elements-1u)/q->im2col_pixel_channels;
+    cost+=4u*(1u+(elements-1u)/(q->size*q->size));
     positions=gempact_min_u32(q->rows,(mode?p->tiling.w_reuse:p->tiling.ia_reuse)*16u);
     if (mode&&(p->ps_control&DSA_PS_CTRL_FRAME)&&p->predicted_resident_frames) {
         uint32_t parts=gempact_ceil_div(gempact_min_u32(q->cols,p->tiling.ia_reuse*16u),p->slice_rows);
@@ -170,6 +180,16 @@ static inline void dsa_schedule_memory_score_work(const dsa_schedule_config_t *c
     b_beats=dsa_schedule_scale(b_words/words_per_beat,b_work,(uint64_t)c->cols*c->depth);
     a_reads=dsa_schedule_scale(a_requests,a_work,(uint64_t)c->rows*c->depth);
     b_reads=dsa_schedule_scale(b_requests,b_work,(uint64_t)c->cols*c->depth);
+    if (c->spatial && c->im2col.input_bytes) {
+        // 图像由原始输入缓存按行读取，矩阵元素由前端生成。
+        // 原图读取次数随输出通道分组增加，空间窗口超出缓存的代价在 image_cost 中计算。
+        uint64_t image_bytes=c->im2col.input_bytes;
+        uint32_t line_bytes=DSA_IM2COL_CACHE_LINE_BYTES;
+        a_beats=dsa_schedule_scale((image_bytes+beat_bytes-1u)/beat_bytes,
+            a_work,(uint64_t)c->rows*c->depth);
+        a_reads=dsa_schedule_scale((image_bytes+line_bytes-1u)/line_bytes,
+            a_work,(uint64_t)c->rows*c->depth);
+    }
     out->read_beats=dsa_schedule_add(dsa_schedule_add(a_beats,b_beats),parameter_beats);
     out->read_words=dsa_schedule_mul(out->read_beats,words_per_beat);
     out->read_requests=dsa_schedule_add(dsa_schedule_add(a_reads,b_reads),parameter_requests);
@@ -195,7 +215,15 @@ static inline void dsa_schedule_memory_score_work(const dsa_schedule_config_t *c
         /* A final-K frame completes its output writes before the following
          * command starts. Length-dependent service is separate from setup. */
         out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,write_cycles);
-    } else out->estimated_cycles=dsa_schedule_max(out->estimated_cycles,write_cycles);
+    } else {
+        /* 输出在最后一个归约分块完成后产生。写回只能与该分块的工作重叠，
+         * 超出可重叠时间的总线服务会延长执行时间。 */
+        uint32_t reduction_tiles=gempact_ceil_div(c->depth,c->size);
+        uint64_t overlap_cycles=out->estimated_cycles/reduction_tiles;
+        if (write_cycles>overlap_cycles)
+            out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,
+                write_cycles-overlap_cycles);
+    }
     out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,
         p->micro_commands*q->micro_setup_cycles);
     out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,

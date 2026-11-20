@@ -58,6 +58,13 @@
 #define DSA_IM2COL_CACHE_BYTES 4096u
 #endif
 #endif
+#ifndef DSA_IM2COL_CACHE_LINE_BYTES
+#ifdef NPU_CONFIG_IM2COL_CACHE_LINE_BYTES
+#define DSA_IM2COL_CACHE_LINE_BYTES NPU_CONFIG_IM2COL_CACHE_LINE_BYTES
+#else
+#define DSA_IM2COL_CACHE_LINE_BYTES 128u
+#endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {
