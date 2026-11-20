@@ -61,17 +61,27 @@ static inline void dsa_schedule_window_footprints(const dsa_schedule_config_t *c
         footprints[i]=peak*sets*line_bytes;
 }
 
-static inline uint64_t dsa_schedule_image_cost(const gempact_device_request_t *q,
+static inline uint64_t dsa_schedule_image_cost(const dsa_schedule_config_t *c,
+    const gempact_device_request_t *q,
     const gempact_dispatch_t *p,const uint32_t *footprints,
     uint64_t stream,uint64_t stationary)
 {
-    uint64_t elements,bytes,unreused,footprint,cost;
-    uint32_t positions,overflow,mode=p->is_mode;
+    uint64_t elements,bytes,unreused,footprint,cost,descriptors;
+    uint32_t positions,overflow,mode=p->is_mode,lanes;
     if (!q->im2col_source_bytes) return 0u;
     elements=mode?stationary:stream;
-    // 输入片段每周期返回至多十六个通道，描述符保存和接收另计四个周期。
-    cost=1u+(elements-1u)/q->im2col_pixel_channels;
-    cost+=4u*(1u+(elements-1u)/(q->size*q->size));
+    if (!elements) return 0u;
+    // 输入片段并行度受原始字宽和 IA 写端口限制，描述符保存和接收另计四个周期。
+    lanes=gempact_min_u32(q->im2col_pixel_channels,16u/q->im2col_source_bytes);
+    if (!mode && !(q->compact_mode_mask&1u))
+        lanes=gempact_min_u32(lanes,dsa_schedule_bus_bytes(c));
+    cost=1u+(elements-1u)/lanes;
+    // 空间维与归约维分别向上取整，每个尾块具有独立描述符。
+    descriptors=dsa_schedule_mul(gempact_ceil_div(q->rows,q->size),
+        gempact_ceil_div(q->reduction,q->size));
+    descriptors=dsa_schedule_scale(descriptors,elements,(uint64_t)q->rows*q->reduction);
+    cost=dsa_schedule_add(cost,dsa_schedule_mul(descriptors,4u));
+    if (!q->im2col_cache_bytes) return cost;
     positions=gempact_min_u32(q->rows,(mode?p->tiling.w_reuse:p->tiling.ia_reuse)*16u);
     if (mode&&(p->ps_control&DSA_PS_CTRL_FRAME)&&p->predicted_resident_frames) {
         uint32_t parts=gempact_ceil_div(gempact_min_u32(q->cols,p->tiling.ia_reuse*16u),p->slice_rows);
@@ -180,15 +190,20 @@ static inline void dsa_schedule_memory_score_work(const dsa_schedule_config_t *c
     b_beats=dsa_schedule_scale(b_words/words_per_beat,b_work,(uint64_t)c->cols*c->depth);
     a_reads=dsa_schedule_scale(a_requests,a_work,(uint64_t)c->rows*c->depth);
     b_reads=dsa_schedule_scale(b_requests,b_work,(uint64_t)c->cols*c->depth);
-    if (c->spatial && c->im2col.input_bytes) {
+    if (c->spatial && c->im2col.input_bytes && c->im2col.cache_bytes) {
         // 图像由原始输入缓存按行读取，矩阵元素由前端生成。
         // 原图读取次数随输出通道分组增加，空间窗口超出缓存的代价在 image_cost 中计算。
         uint64_t image_bytes=c->im2col.input_bytes;
         uint32_t line_bytes=DSA_IM2COL_CACHE_LINE_BYTES;
         a_beats=dsa_schedule_scale((image_bytes+beat_bytes-1u)/beat_bytes,
             a_work,(uint64_t)c->rows*c->depth);
-        a_reads=dsa_schedule_scale((image_bytes+line_bytes-1u)/line_bytes,
+        a_reads=dsa_schedule_scale((image_bytes+c->lhs_address%line_bytes+line_bytes-1u)/line_bytes,
             a_work,(uint64_t)c->rows*c->depth);
+    } else if (c->spatial && c->im2col.input_bytes) {
+        // 缓存旁路按每次窗口访问读取原始数据字，读取数量随生成的矩阵规模增长。
+        uint32_t word_bytes=16u,word_lanes=word_bytes/c->im2col.source_bytes;
+        a_reads=a_work ? 1u+(a_work-1u)/word_lanes : 0u;
+        a_beats=dsa_schedule_mul(a_reads,gempact_ceil_div(word_bytes,beat_bytes));
     }
     out->read_beats=dsa_schedule_add(dsa_schedule_add(a_beats,b_beats),parameter_beats);
     out->read_words=dsa_schedule_mul(out->read_beats,words_per_beat);
@@ -229,7 +244,7 @@ static inline void dsa_schedule_memory_score_work(const dsa_schedule_config_t *c
     out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,
         dsa_schedule_loader_cost(c,p));
     out->estimated_cycles=dsa_schedule_add(out->estimated_cycles,
-        dsa_schedule_image_cost(q,p,footprints,stream,stationary));
+        dsa_schedule_image_cost(c,q,p,footprints,stream,stationary));
     out->tiling=p->tiling;out->dataflow_mode=mode;
     out->ps_payload_bytes=p->payload_bound_bytes;
     out->ps_control=p->ps_control;out->ia_bank_count=q->ia_bank_count;

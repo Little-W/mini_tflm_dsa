@@ -37,9 +37,10 @@ static int dsa_schedule_cached_plan(const dsa_schedule_config_t *configuration,
 {
     uint32_t started=dsa_planner_clock();
     dsa_schedule_config_t key=*configuration;
-    /* Operand transfer padding depends on the physical beat residue for both
-     * row-major and packed layouts. Output grouping also uses the page offset. */
-    key.lhs_address&=dsa_schedule_bus_bytes(&key)-1u;
+    /* 图像计划保留缓存行内偏移，矩阵计划保留总线拍内偏移。
+     * 输出分组同时使用页面内偏移。 */
+    key.lhs_address&=(key.spatial ? DSA_IM2COL_CACHE_LINE_BYTES:
+        dsa_schedule_bus_bytes(&key))-1u;
     key.rhs_address&=dsa_schedule_bus_bytes(&key)-1u;
     key.output_address&=4095u;
     for (uint32_t i=0u;i<DSA_PLANNER_CACHE_ENTRIES;++i) {
