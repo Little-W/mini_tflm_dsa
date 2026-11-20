@@ -324,12 +324,12 @@ module axi_dual_block_dma #(
                 end
             end
             if (conv_pending && fe_tile_ready) conv_pending <= 1'b0;
-            if (conv_active && (fe_done || fe_tile_error)) begin
+            if (conv_active && (fe_done || fe_tile_error || fe_error)) begin
                 conv_finished <= 1'b1;
                 conv_command_error <= conv_command_error || fe_tile_error || fe_error;
             end
-            if (conv_active && (conv_finished || fe_done || fe_tile_error)) begin
-                conv_active <= 1'b0; conv_finished <= 1'b0;
+            if (conv_active && (conv_finished || fe_done || fe_tile_error || fe_error)) begin
+                conv_active <= 1'b0; conv_pending <= 1'b0; conv_finished <= 1'b0;
                 conv_done_r <= 1'b1;
                 conv_done_error <= conv_command_error || fe_error || fe_tile_error;
             end

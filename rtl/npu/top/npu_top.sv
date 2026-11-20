@@ -845,22 +845,15 @@ module npu_top #(
     assign block_dma_arbiter_i_abort = abort_pending || task_fault;
     wire controller_done_valid;
     wire [1:0] controller_err_code;
-    wire operand_completion_seen;
-    generate if (OPERAND_CACHE_ENABLE != 0) begin : g_operand_retirement
-        logic completion_seen;
-        assign operand_completion_seen=completion_seen;
-        // WAIT_DONE holds the controller until the physical cache tail drains.
-        // Its registered valid has one trailing cycle after the handshake;
-        // expose exactly one completion, including after a prolonged wait.
-        always_ff @(posedge clk or negedge core_rst_n) begin
-            if (!core_rst_n) completion_seen<=1'b0;
-            else if (!controller_done_valid) completion_seen<=1'b0;
-            else if (abort_state==AB_IDLE && done_valid && done_ready)
-                completion_seen<=1'b1;
-        end
-    end else begin : g_no_operand_retirement
-        assign operand_completion_seen=1'b0;
-    end endgenerate
+    logic operand_completion_seen;
+    // 控制器保持完成状态直到接收，公开接口为每个普通任务报告一次完成。
+    // 状态清除覆盖接收后的寄存尾拍，也适用于后台预取排空及外部背压。
+    always_ff @(posedge clk or negedge core_rst_n) begin
+        if (!core_rst_n) operand_completion_seen<=1'b0;
+        else if (!controller_done_valid) operand_completion_seen<=1'b0;
+        else if (abort_state==AB_IDLE && done_valid && done_ready)
+            operand_completion_seen<=1'b1;
+    end
 `ifdef GEMMORA_INT8_PROFILE
     wire profile_input_invalid=cfg_16bits_ia || cfg_16x8 || lhs_zp!=0 || rhs_zp!=0;
     logic profile_error;
