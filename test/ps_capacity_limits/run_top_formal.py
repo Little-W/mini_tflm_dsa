@@ -35,7 +35,24 @@ def section(text, start, end):
     return text.split(start, 1)[1].split(end, 1)[0]
 
 
-def capacity_module(text, name):
+def abstract_capture(text, target, expression):
+    """组合公式比较直接使用寄存器的输入，时序关系由配置流水测试验证。"""
+    if f"logic [" not in text or f" {target};" not in text:
+        return text
+    capture = (r"        always_ff @\(posedge clk\) begin\n"
+               r"            if \(cfg_stage2_valid && cfg_capacity_phase==[0-7]\)\n"
+               rf"                {target} <= {expression};\n        end\n")
+    text, count = re.subn(capture, "", text)
+    if count != 1:
+        raise ValueError(f"Expected one configuration capture for {target}")
+    text, count = re.subn(rf"logic (\[[^\n]+\]) {target};",
+                         rf"wire \1 {target} = {expression};", text)
+    if count != 1:
+        raise ValueError(f"Expected one configuration register {target}")
+    return text
+
+
+def capacity_module(text, name, sequential=False):
     active = "    wire [31:0] active_ia_cache_blocks" + section(
         text, "    wire [31:0] active_ia_cache_blocks", "    wire shared_ram_capacity_fault;")
     if 'active_ps_bank_count_q' in active:
@@ -50,29 +67,47 @@ def capacity_module(text, name):
         observers = (count + '\n' + invalid + '\n').replace(
             'requested_shared_ia_banks', 'shared_ia_banks_q')
         active = observers + active
-    shape_start = ("        logic [REG_WIDTH-1:0] ia_reuse_shape_i_value;"
-                   if "ia_reuse_shape_i_value" in text else "        wire legacy_window_shape_s2")
+    if "IA_SHAPE_REQUIRED_WIDTH" in text:
+        shape_start = "        localparam int unsigned IA_SHAPE_REQUIRED_WIDTH"
+    elif "ia_reuse_shape_i_value" in text:
+        shape_start = "        logic [REG_WIDTH-1:0] ia_reuse_shape_i_value;"
+    else:
+        shape_start = "        wire legacy_window_shape_s2"
     shape = shape_start + section(text, shape_start, "        wire ctrl_calc_start")
+    if not sequential and 'frame_slice_tiles_calc' in shape:
+        shape = abstract_capture(shape, 'frame_slice_tiles_s2', 'frame_slice_tiles_calc')
     bounds = "        wire [IA_REUSE_W-1:0] ext_r_small" + section(
         text, "        wire [IA_REUSE_W-1:0] ext_r_small", "`ifdef GEMPACT_PS_COMPRESS")
     body = "        localparam int CAP_ROWS_W" + section(text,
         "        localparam int CAP_ROWS_W", "\n`else\n        localparam bit PS_REQUIRE_RAW_CAPACITY")
-    # 同一阶段寄存器作为任意共享状态输入，比较其后全部组合表达式。
-    body, count = re.subn(r"        always_ff @\(posedge clk\) begin\n"
-                          r"            if \(cfg_stage2_valid && cfg_capacity_phase==[01]\) begin\n"
-                          r".*?            end\n        end\n", "", body, flags=re.DOTALL)
-    if count != 2:
-        raise ValueError("Expected two existing capacity register groups")
-    body = body.replace("logic [CAP_ROWS_W-1:0] ps_rows_bounded;",
-                        "wire [CAP_ROWS_W-1:0] ps_rows_bounded = i_ps_rows;")
-    body = body.replace("logic [CAP_FRAMES_W-1:0] ps_frames_bounded;",
-                        "wire [CAP_FRAMES_W-1:0] ps_frames_bounded = i_ps_frames;")
-    body = body.replace("logic ps_raw_capacity_fits_q, ps_long_capacity_fits_q;",
-                        "wire ps_raw_capacity_fits_q = i_raw_fits_q;\n"
-                        "        wire ps_long_capacity_fits_q = i_long_fits_q;")
+    if not sequential:
+        # 同一阶段寄存器作为任意共享状态输入，比较其后全部组合表达式。
+        body, count = re.subn(r"        always_ff @\(posedge clk\) begin\n"
+                              r"            if \(cfg_stage2_valid && cfg_capacity_phase==[01]\) begin\n"
+                              r".*?            end\n        end\n", "", body, flags=re.DOTALL)
+        if count != 2:
+            raise ValueError("Expected two existing capacity register groups")
+        body = body.replace("logic [CAP_ROWS_W-1:0] ps_rows_bounded;",
+                            "wire [CAP_ROWS_W-1:0] ps_rows_bounded = i_ps_rows;")
+        body = body.replace("logic [CAP_FRAMES_W-1:0] ps_frames_bounded;",
+                            "wire [CAP_FRAMES_W-1:0] ps_frames_bounded = i_ps_frames;")
+        body = body.replace("logic ps_raw_capacity_fits_q, ps_long_capacity_fits_q;",
+                            "wire ps_raw_capacity_fits_q = i_raw_fits_q;\n"
+                            "        wire ps_long_capacity_fits_q = i_long_fits_q;")
+        if 'ps_admission_rows_calc' in body:
+            body = abstract_capture(body, 'ps_admission_rows', 'ps_admission_rows_calc')
+    stage_ports = """
+    input logic clk, core_rst_n, cfg_stage2_valid, ctrl_sa_ready, frame_scheduler_ready,
+    output logic [p_rows_width-1:0] o_rows_state,
+    output logic [p_frames_width-1:0] o_frames_state,
+    output logic o_raw_state, o_long_state, o_invalid_state, o_fire,
+    output logic [2:0] o_phase,
+""" if sequential else ""
     header = f"module {name} #(\n{PARAMETERS}) (\n{PORTS},\n" + """
     output logic o_raw_calc, o_long_calc, o_invalid_calc,
     output logic [63:0] o_admission_rows,
+    output logic [31:0] o_slice_tiles,
+""" + stage_ports + """
     output logic o_bank_in_range
 );
     localparam int SIZE=16, SIZE_SHIFT=4, REG_WIDTH=32;
@@ -92,11 +127,33 @@ def capacity_module(text, name):
     typedef struct packed {logic input_s16; logic signed [15:0] input_offset;} conv_fields_t;
     wire conv_fields_t conv_cfg_q='0;
 """
-    return header + active + shape + bounds + body + """
+    stages = ""
+    controls = ""
+    if sequential:
+        phase = "        assign cfg_stage2_fire =" + section(
+            text, "        assign cfg_stage2_fire =", "        // Validate tensor extents")
+        invalid = "        logic ps_capacity_config_invalid;" + section(
+            text, "        logic ps_capacity_config_invalid;",
+            "        always_ff @(posedge clk or negedge core_rst_n)")
+        controls = """
+    logic [2:0] cfg_capacity_phase;
+    wire cfg_stage2_fire;
+""" + phase
+        stages = invalid + """
+    assign o_rows_state=ps_rows_bounded;
+    assign o_frames_state=ps_frames_bounded;
+    assign o_raw_state=ps_raw_capacity_fits_q;
+    assign o_long_state=ps_long_capacity_fits_q;
+    assign o_invalid_state=ps_capacity_config_invalid;
+    assign o_fire=cfg_stage2_fire;
+    assign o_phase=cfg_capacity_phase;
+"""
+    return header + controls + active + shape + bounds + body + stages + """
     assign o_raw_calc=ps_raw_capacity_fits_calc;
     assign o_long_calc=ps_long_capacity_fits_calc;
     assign o_invalid_calc=ps_capacity_config_invalid_calc;
     assign o_admission_rows=ps_admission_rows;
+    assign o_slice_tiles=frame_slice_tiles_s2;
     assign o_bank_in_range=(active_ps_bank_count<32'(SHARED_PHYSICAL_BANKS));
 endmodule
 """
@@ -129,13 +186,14 @@ def main():
     instances = []
     for label in ("reference", "candidate"):
         instances += [f"    logic {label}_raw, {label}_long, {label}_invalid, {label}_bank_range;",
+                      f"    logic [31:0] {label}_slice;",
                       f"    logic [63:0] {label}_rows;",
                       f"    capacity_{label} #(.p_max_rows(p_max_rows), .p_rows_width(p_rows_width),",
                       "        .p_frames_width(p_frames_width), .p_total_banks(p_total_banks),",
                       f"        .p_bank_bytes(p_bank_bytes)) u_{label} (.*,"]
         instances += [f"        .o_raw_calc({label}_raw), .o_long_calc({label}_long),",
                       f"        .o_invalid_calc({label}_invalid), .o_admission_rows({label}_rows),",
-                      f"        .o_bank_in_range({label}_bank_range));"]
+                      f"        .o_bank_in_range({label}_bank_range), .o_slice_tiles({label}_slice));"]
     formal.write_text(f"module capacity_top_formal #(\n{PARAMETERS}) (\n{PORTS});\n" +
                       "\n".join(instances) + """
     always_comb begin
@@ -145,6 +203,7 @@ def main():
         end
         assert(reference_invalid==candidate_invalid);
         assert(reference_rows==candidate_rows);
+        assert(reference_slice==candidate_slice);
     end
 endmodule
 """)
@@ -155,7 +214,7 @@ endmodule
                "source_sha256": {str(top_path.relative_to(ROOT)): hashlib.sha256(top_path.read_bytes()).hexdigest()},
                "generated_sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in sources},
                "max_rows": args.max_rows, "frames_width": args.frames_width,
-               "allocation_input_bits": 32, "properties_per_case": 4, "runs": []}
+               "allocation_input_bits": 32, "properties_per_case": 5, "runs": []}
     for banks in args.bank_counts:
         for bank_bytes in args.bank_bytes:
             folder = out / f"banks{banks}_bytes{bank_bytes}"

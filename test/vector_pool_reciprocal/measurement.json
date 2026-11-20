@@ -1,0 +1,290 @@
+{
+  "passed": true,
+  "reference_revision": "e03a7421468032c955f654cd6168a5d7e76fddc4",
+  "source_sha256": {
+    "rtl/npu/conv/vector_engine.sv": "896023feb4b81215dee2f1b7291786b775058d770e43570847ea6ce47d043b9c",
+    "test/vector_pool_reciprocal/check_mapped.py": "9668a62baed0cf3976e0937d7b69a81b2ab976d521ca9092c95c38790f4645a0",
+    "test/vector_pool_reciprocal/control_worker.py": "14ab4ac0bfa6450a04daa02d04e78b5777a14503f2d32ee8b7ed8ce655785cff",
+    "test/vector_pool_reciprocal/run_control.py": "6d7b40eeaaa4ddd035795c7859dd0e7cf5fbcf299255c1c3b4c199124cfa219f",
+    "test/vector_pool_reciprocal/run_formal.py": "b23edbb68be67c397b8fd30ad05771bd02bd71ddb44965ddf79b74b03929ac6a",
+    "test/vector_pool_reciprocal/run_four_state.py": "016f4b0c257fa36e36df03725d98d39e21c48a5bf96dd7ccba412190cccbada7",
+    "test/vector_pool_reciprocal/run_numeric.py": "cd1b678b48b998845e2360c1d9ca80e4de241883466c6d7c4d4f5ed258c3c777"
+  },
+  "rom": {
+    "pool_max_taps": 256,
+    "entries": 257,
+    "bits_per_entry": 18,
+    "logical_bits": 4626,
+    "read_latency_cycles": 1
+  },
+  "rom_formal": {
+    "passed": true,
+    "unchanged_surrounding_rtl": true,
+    "method": "原始常量表延迟一拍与当前同步读取进行完整时序等价比较",
+    "input_constraints": null,
+    "runs": [
+      {
+        "pool_max_taps": 1,
+        "mode": "fpga",
+        "passed": true,
+        "entries": 2,
+        "output_bits": 10,
+        "log_sha256": "12de78ee1d141741b519d4510c1ce76f5b066aca23a18f10ff540d49ea7a6b9b"
+      },
+      {
+        "pool_max_taps": 1,
+        "mode": "asic",
+        "passed": true,
+        "entries": 2,
+        "output_bits": 10,
+        "log_sha256": "0df44d7f2cf458220d91d7c4e8c04dc960422ffc25e0208d2f4a684c3882838e"
+      },
+      {
+        "pool_max_taps": 3,
+        "mode": "fpga",
+        "passed": true,
+        "entries": 4,
+        "output_bits": 11,
+        "log_sha256": "0d3af9098b98b71b245f870b6f40a6164fbd7644836e09f06d5de2fac777c0df"
+      },
+      {
+        "pool_max_taps": 3,
+        "mode": "asic",
+        "passed": true,
+        "entries": 4,
+        "output_bits": 11,
+        "log_sha256": "cce3562f8acc21805dc0d20fb31b6130cb5d97216e17b94b262025942b2edb5a"
+      },
+      {
+        "pool_max_taps": 49,
+        "mode": "fpga",
+        "passed": true,
+        "entries": 50,
+        "output_bits": 15,
+        "log_sha256": "ee78e4d8a68cda24d74a1a74a8d6c006d69a591c8468b98d2b5c5a0906a7bc58"
+      },
+      {
+        "pool_max_taps": 49,
+        "mode": "asic",
+        "passed": true,
+        "entries": 50,
+        "output_bits": 15,
+        "log_sha256": "7c1320e578697d017a10753089321ebf235faa5560ba496a2652e9802cf8fc29"
+      },
+      {
+        "pool_max_taps": 255,
+        "mode": "fpga",
+        "passed": true,
+        "entries": 256,
+        "output_bits": 17,
+        "log_sha256": "5d6f16fc5fdbc3e295e498d6a0ecb8b13a14d22af039b96776f6fc0596e79770"
+      },
+      {
+        "pool_max_taps": 255,
+        "mode": "asic",
+        "passed": true,
+        "entries": 256,
+        "output_bits": 17,
+        "log_sha256": "0437655b5e65fe05aa6377eda991aca31d0b6144c34e1a1d20b649ce710d0cab"
+      },
+      {
+        "pool_max_taps": 256,
+        "mode": "fpga",
+        "passed": true,
+        "entries": 257,
+        "output_bits": 18,
+        "log_sha256": "a536b5133c50f569f83174e1359b33b61399d1bb5cd70a256ad72ddf9b81af77"
+      },
+      {
+        "pool_max_taps": 256,
+        "mode": "asic",
+        "passed": true,
+        "entries": 257,
+        "output_bits": 18,
+        "log_sha256": "b16a213c27db0ae86081cce6445c18581108dbbb6e73d5707bef9d5f039e2b1f"
+      },
+      {
+        "pool_max_taps": 257,
+        "mode": "fpga",
+        "passed": true,
+        "entries": 258,
+        "output_bits": 18,
+        "log_sha256": "bcf0fc1eeb254fc766d092958574c8e944cef8997a695d17679bf95b78daa607"
+      },
+      {
+        "pool_max_taps": 257,
+        "mode": "asic",
+        "passed": true,
+        "entries": 258,
+        "output_bits": 18,
+        "log_sha256": "092af18c214ae85de3bb353d37923daf58261463af8a9b8dc326744d4e6a74bd"
+      }
+    ]
+  },
+  "controller_induction": [
+    {
+      "passed": true,
+      "bus_width": 32,
+      "input_constraints": null,
+      "actual_state_machine": true,
+      "actual_denominator_updates": true,
+      "abstracted_register_cells": 138,
+      "property": "rst_n && state==AVG_START 时 valid_taps 等于前一时钟边沿读取的分母",
+      "peak_rss_bytes": 94248960
+    },
+    {
+      "passed": true,
+      "bus_width": 64,
+      "input_constraints": null,
+      "actual_state_machine": true,
+      "actual_denominator_updates": true,
+      "abstracted_register_cells": 138,
+      "property": "rst_n && state==AVG_START 时 valid_taps 等于前一时钟边沿读取的分母",
+      "peak_rss_bytes": 98455552
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "runs": [
+      {
+        "mode": "fpga",
+        "passed": true,
+        "four_state_addresses": 262144,
+        "defined_addresses": 257,
+        "out_of_range_defined_bit_patterns": 255,
+        "log_sha256": "27337f15a19e4a31ea8a50205d2294935abd9c3ebb88471780ec9d10056fd56e"
+      },
+      {
+        "mode": "asic",
+        "passed": true,
+        "four_state_addresses": 262144,
+        "defined_addresses": 257,
+        "out_of_range_defined_bit_patterns": 255,
+        "log_sha256": "27337f15a19e4a31ea8a50205d2294935abd9c3ebb88471780ec9d10056fd56e"
+      }
+    ]
+  },
+  "mapped_structure": {
+    "passed": true,
+    "ramb18_cells": 1,
+    "logic_lut_cells": 0,
+    "defined_words": 257,
+    "word_bits": 18,
+    "checked_defined_bits": 4626,
+    "logical_rom_bits": 4626,
+    "physical_rom_bits": 18432,
+    "registered_read_data_bits": 18,
+    "read_latency_cycles": 1,
+    "out_of_range_words": 255,
+    "out_of_range_bits_unknown": true,
+    "address_clock_output_connections_checked": true,
+    "mapped_sha256": "511a158244afb543aa623a84cfdd9b6328f568b942b851716221cb21720119f7",
+    "capacity": {
+      "existing_buffer_bits": 994508,
+      "buffer_and_rom_bits": 999134,
+      "buffer_rom_and_read_register_bits": 999152,
+      "budget_bits": 1048576,
+      "within_budget": true,
+      "reference_sha256": "4a9d4a5a97b66e151d78df7645f277928933a902e209b6fda3008246a31e3c25"
+    }
+  },
+  "numeric": {
+    "passed": true,
+    "bus_width": 64,
+    "public_output_ports": 35,
+    "public_outputs_compared": [
+      "ready",
+      "done_valid",
+      "error",
+      "dma_cfg_valid",
+      "dma_conv_enable",
+      "dma_range_enable",
+      "dma_conv_cfg",
+      "dma_range_base",
+      "dma_range_end",
+      "win_req_valid",
+      "win_req_p0",
+      "win_req_q0",
+      "win_req_cols",
+      "win_req_tag",
+      "win_rsp_ready",
+      "rd_req",
+      "rd_start",
+      "rd_im2col",
+      "rd_p0",
+      "rd_q0",
+      "rd_base_addr",
+      "rd_row_stride",
+      "rd_rows_to_read",
+      "rd_valid_cols",
+      "rd_burst_len_m1",
+      "rd_use_16bits",
+      "wr_req",
+      "wr_start",
+      "wr_base_addr",
+      "wr_row_stride",
+      "wr_rows_to_write",
+      "wr_burst_len_m1",
+      "src_wdata",
+      "src_wmask",
+      "src_wvalid"
+    ],
+    "all_outputs_checked_each_clock": true,
+    "totals": {
+      "cases": 592,
+      "outputs": 168601,
+      "add_cases": 143,
+      "add_outputs": 135305,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188
+    },
+    "task_cycles": 2979488,
+    "comparison_top_sha256": "1aad58d9f2afe39a9f12768ce0f732fb4f95e61bc7dbd11c3d4dc616639bf3f2",
+    "reference_engine_sha256": "77ab738646d9d296902e5344ac7436b93e8eabfd09c70b7f1a5fc7fafa971558",
+    "executable_sha256": "ecd8095f69b5d7259fb736e31a4e7480a46e9808ac605930ec9235cda931ea05"
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "scope": "从生产源码提取的完整倒数表独立模块",
+    "cases": {
+      "reference": {
+        "lut_cells": 90,
+        "flip_flops": 0,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 0,
+        "cell_counts": {
+          "LUT2": 13,
+          "LUT3": 2,
+          "LUT4": 6,
+          "LUT5": 16,
+          "LUT6": 53,
+          "MUXF7": 17,
+          "MUXF8": 5
+        }
+      },
+      "current": {
+        "lut_cells": 0,
+        "flip_flops": 0,
+        "ramb36": 0,
+        "ramb18": 1,
+        "dsp": 0,
+        "carry4": 0,
+        "cell_counts": {
+          "RAMB18E1": 1
+        }
+      }
+    }
+  },
+  "reports_sha256": {
+    "formal/summary.json": "8c2af165f1294323d25ac8ae3eb514e26fc8cfe75616f0f74f0536e92df0d662",
+    "control32/summary.json": "5caf5794edacd7038efd10dc8a43cf875bc49007c09a41743af4d2421a091419",
+    "control64/summary.json": "cb725d19a3fb5f59b8363a588add513db7f253803269051166456fd95b8a02a7",
+    "four_state/summary.json": "7aaa73543d4aa8750062bd0fc3755393b6d5a0ffe2b6f51464f38b4ab95f9d37",
+    "mapped_check.json": "dd68654c2a3b97036e6ed50f20f799a766ae46993bfe6ff611484f34c06f40db",
+    "dual_numeric64/summary.json": "245d32c3d0dc30acde22bc984a2016c4365dc31f43bcb0dba7fb177bc9e60bae",
+    "synthesis/summary.json": "db943c901f6301305d51e5ce78ee826d4d6fc1d0c29af42fa5db31ab61334659"
+  }
+}

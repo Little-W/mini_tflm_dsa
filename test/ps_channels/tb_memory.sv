@@ -31,6 +31,7 @@ module tb_ps_channel_memory #(
         .o_capacity_fault(capacity_fault), .i_ia_read_en(ia_read_en), .i_ia_write_en(ia_write_en),
         .i_ia_read_addr(ia_read_addr), .i_ia_write_addr(ia_write_addr), .o_ia_read_data(ia_read_data),
         .i_ia_write_data(ia_write_data), .i_ia_write_mask(ia_write_mask),
+        .i_ia_shared_write_data(128'd0),
         .i_ps_read_en(ps_read_en), .i_ps_write_en(ps_write_en),
         .i_ps_read_addr(ps_read_addr), .i_ps_write_addr(ps_write_addr),
         .o_ps_read_data(ps_read_data), .i_ps_write_data(ps_write_data)

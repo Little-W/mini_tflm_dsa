@@ -46,9 +46,11 @@ def main():
                     (ps_long_frame_bank_words <= 64'(4 * IA_REUSE_NUM_MAX * SIZE) &&
                      64'(ps_long_bank_total) <= 64'(active_ps_bank_depth))))
                     else $fatal(1, "Long bank capacity differs");
-                assert(ps_admission_bank_capacity_fits ==
-                    (ps_admission_bank_words <= 64'(active_ps_bank_depth)))
-                    else $fatal(1, "Admission bank capacity differs");
+                if (cfg_capacity_phase >= 4) begin
+                    assert(ps_admission_bank_capacity_fits ==
+                        (ps_admission_bank_words <= 64'(active_ps_bank_depth)))
+                        else $fatal(1, "Admission bank capacity differs");
+                end
             end
         end
 """

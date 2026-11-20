@@ -1,0 +1,211 @@
+{
+  "passed": true,
+  "configuration_extra_cycles": 2,
+  "phase_sequence": [
+    "bounded_rows_frames",
+    "capacity_fits",
+    "slice_tiles",
+    "directory_rows",
+    "capacity_invalid",
+    "tiling_invalid",
+    "frame_config_error",
+    "submit_when_ready"
+  ],
+  "combinational": {
+    "reference_rev": "8c707c1",
+    "method": "SAT of expressions extracted from both npu_top revisions with arbitrary shared register state",
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "383a2ece9fe3c8ee9ce5c6f717273c8d68bb071682a4287cda7e2178c43d2f4a"
+    },
+    "generated_sha256": {
+      "reference.sv": "7ea7b7e6b9bc1967f94d86a5dc4c77be19357b06f52f468efdc6fb763537f24d",
+      "candidate.sv": "da19997494b35d09708e751c67bfee84fdc4018ca6d33b164f64afc576cade0f",
+      "formal.sv": "3cb52cf0f2c53640c593f26c8a3a6d5f5d3c25c36760b6c1df6669b586003b97",
+      "ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+      "onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14"
+    },
+    "max_rows": 512,
+    "frames_width": 5,
+    "allocation_input_bits": 32,
+    "properties_per_case": 5,
+    "runs": [
+      {
+        "total_banks": 6,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 6,
+        "bank_bytes": 8192,
+        "passed": true
+      },
+      {
+        "total_banks": 7,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 7,
+        "bank_bytes": 8192,
+        "passed": true
+      },
+      {
+        "total_banks": 8,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 8,
+        "bank_bytes": 8192,
+        "passed": true
+      },
+      {
+        "total_banks": 9,
+        "bank_bytes": 2048,
+        "passed": true
+      },
+      {
+        "total_banks": 9,
+        "bank_bytes": 8192,
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "induction": {
+    "passed": true,
+    "reference": "e379425d783c7a134e165eb180f0bbf6c0c1a4b0",
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "383a2ece9fe3c8ee9ce5c6f717273c8d68bb071682a4287cda7e2178c43d2f4a"
+    },
+    "generated_sha256": {
+      "candidate.sv": "60db4df30bed185ab0c287d8b1c8e692324d9e56670226ece7a35c6d0fe2c50e",
+      "reference.sv": "321a9120b095de6c526fe11f5ec7885574f6a95f6259a5c606d039cf91739c33",
+      "formal.sv": "ebf6b71cf0e3df0cbde87f0f4065dba2482ebde51b0765c9021bd368fc663792",
+      "ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+      "onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14"
+    },
+    "proof_scope": "Actual configuration counter and captures; arbitrary fields latched at stage-2 entry",
+    "reset_assumption": "First sampled cycle has core_rst_n=0; later reset and ready inputs arbitrary",
+    "configuration_extra_cycles": 2,
+    "runs": [
+      {
+        "banks": 6,
+        "bank_bytes": 2048,
+        "passed": true,
+        "script_sha256": "87f5b51d1564811d0fd8fc44045bfea13446d567f265295f70cd4482723d9d54",
+        "log_sha256": "e9b9c3dcb70ab5167bab8c793a2fe5ad1e0256b4a01cfddd1af34898a97c3678"
+      },
+      {
+        "banks": 6,
+        "bank_bytes": 8192,
+        "passed": true,
+        "script_sha256": "9040ce11cdf42b00f0779a9e0d73a3f43854b6ab54bc6b9333352e06a8b82491",
+        "log_sha256": "1c39bfa912345bd6670e86bf68dd1eb838c87439d7e912e9834a95abff3eb7d3"
+      },
+      {
+        "banks": 7,
+        "bank_bytes": 2048,
+        "passed": true,
+        "script_sha256": "6b055f43ffd84e163d7fdad1405c5293bad216cbbd88118e8a4f20ac94bbd183",
+        "log_sha256": "072c17149fbc94bb41197a104f66fe8af02f07cef14342d46b4ad6e6c69518ad"
+      },
+      {
+        "banks": 7,
+        "bank_bytes": 8192,
+        "passed": true,
+        "script_sha256": "d16b849d2171631563c227bc18efd50556e343c5d39253c7cec8d3ed8d6acf80",
+        "log_sha256": "a7874b3279eae32c6fa1fea39946771903aa7d40a480400f1b3e12fab653fbd4"
+      },
+      {
+        "banks": 8,
+        "bank_bytes": 2048,
+        "passed": true,
+        "script_sha256": "0c2627a64b9ca8883cfa9e49df6c6c44250a11ea63d027edb7d9d55cccb02da9",
+        "log_sha256": "d30f34b186117cf92639c4ce7735f7cfc93a01f4913b2c40b3f8411b654217a5"
+      },
+      {
+        "banks": 8,
+        "bank_bytes": 8192,
+        "passed": true,
+        "script_sha256": "b0384d76a52cfe5cf2a405eb17f7c6467fb9fcde614c22a62075a64f4a30b14c",
+        "log_sha256": "08618dd678149b2c8b04020175ab8072c8e8fa88574b6f992d3efd182740a096"
+      },
+      {
+        "banks": 9,
+        "bank_bytes": 2048,
+        "passed": true,
+        "script_sha256": "5e17c9115ae6f83d6baa0767c5afc7e60e08681c8579f91f7f94069f1900b956",
+        "log_sha256": "37c61a8e80458c6c678dc2618e6e44a6ae4bd069112020731781ab845b069c31"
+      },
+      {
+        "banks": 9,
+        "bank_bytes": 8192,
+        "passed": true,
+        "script_sha256": "324e624818fc89aaf6d41398337d956c3e87d5867dd9cac9b13fe8ef96a4c751",
+        "log_sha256": "0d2746729d6bb5cbe9df3cdecaabdea48ccb4e53c8e6b4c62087b3d0d25f2278"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "reference": "e379425d783c7a134e165eb180f0bbf6c0c1a4b0",
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "383a2ece9fe3c8ee9ce5c6f717273c8d68bb071682a4287cda7e2178c43d2f4a"
+    },
+    "generated_sha256": {
+      "candidate.sv": "60db4df30bed185ab0c287d8b1c8e692324d9e56670226ece7a35c6d0fe2c50e",
+      "reference.sv": "321a9120b095de6c526fe11f5ec7885574f6a95f6259a5c606d039cf91739c33",
+      "harness.sv": "ebf6b71cf0e3df0cbde87f0f4065dba2482ebde51b0765c9021bd368fc663792",
+      "tb.sv": "b1f94c37e42a3e0185e71aa8a1fecbf48d311903ead02cd064c1c99441d0b260",
+      "ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7",
+      "onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14"
+    },
+    "runs": [
+      {
+        "passed": true,
+        "banks": 6,
+        "cycles": 20000,
+        "submissions": 1503,
+        "stalls": 4497,
+        "checks": 59199,
+        "resets": 78,
+        "known_invalid": 820,
+        "unknown_values": 232
+      },
+      {
+        "passed": true,
+        "banks": 7,
+        "cycles": 20000,
+        "submissions": 1503,
+        "stalls": 4497,
+        "checks": 59199,
+        "resets": 78,
+        "known_invalid": 820,
+        "unknown_values": 232
+      },
+      {
+        "passed": true,
+        "banks": 9,
+        "cycles": 20000,
+        "submissions": 1503,
+        "stalls": 4497,
+        "checks": 59199,
+        "resets": 78,
+        "known_invalid": 334,
+        "unknown_values": 232
+      }
+    ]
+  },
+  "source_sha256": {
+    "rtl/npu/top/npu_top.sv": "383a2ece9fe3c8ee9ce5c6f717273c8d68bb071682a4287cda7e2178c43d2f4a",
+    "test/ps_capacity_limits/run_top_formal.py": "50a2bcb4488567c4df97e9b34e52d9057f41fc7426ff8ea7b69b5e6b9fe93450",
+    "test/ps_capacity_limits/run_pipeline_formal.py": "3ad6b155c0068e1fee75cd2ab8ebdc83df8067f0f77d3939f0595fee61dbe796",
+    "test/ps_capacity_limits/run_pipeline_four_state.py": "75353fc359f52e07a9a84a917a801b1aee1924b4597843b73129cb28613ff22f",
+    "test/ps_capacity_limits/run_npu.py": "33dfd728b36f53c1400dbfb438ede4e996b8cb0ade878b997e837932302af9a4"
+  },
+  "complete_npu_integration": {
+    "status": "pending",
+    "scope": "Complete main-branch transaction regression after integration"
+  }
+}

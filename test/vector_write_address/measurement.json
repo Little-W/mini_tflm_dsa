@@ -1,0 +1,125 @@
+{
+  "passed": true,
+  "formal": {
+    "passed": true,
+    "reference_commit": "67c25118e14579c5391ec85929ef9eeaecee533e",
+    "source_sha256": {
+      "rtl/npu/conv/vector_engine.sv": "2fae87c9b1754f18f204e15a23a070698c34c5dffe99be4482cd60a5ad23cd32",
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+      "test/vector_write_address/run_formal.py": "f8b327e75e951b2242b5551516e0813b36859a40856b1f11151e1afdd8f32f96"
+    },
+    "reference_engine_sha256": "e75609d5ad69fcd201dfa93f9fded8f30d1a96aafa2a069af19cecb8c5d3d54d",
+    "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+    "proof_sha256": "da9f0a5357974600eea5724e22b4ac5592c947aa512aa7e2baf4ba4e8ecd34e9",
+    "actual_source_expressions": true,
+    "other_logic_unchanged": true,
+    "register_update_conditions_unchanged": true,
+    "update_states": [
+      "ADD_STORE",
+      "AVG_POWER_STORE",
+      "AVG_WAIT",
+      "EXECUTE_COMMIT",
+      "POOL_STORE",
+      "QUANT_STREAM",
+      "SOFT_RUN",
+      "VECTOR_REDUCE"
+    ],
+    "input_constraints": null,
+    "address_input_bits": 112,
+    "compared_address_bits": 32,
+    "compared_state_values": 64,
+    "checks": [
+      {
+        "mode": "rtl",
+        "passed": true,
+        "log_sha256": "7c2081e45331a0cecaa891ea9af7775effee25d58bac9a08fcc4a24a51590aa7"
+      },
+      {
+        "mode": "mapped_dsp",
+        "passed": true,
+        "log_sha256": "2e8bad13543fceef81406ca4d88230ec58570d25c9f53e75560423c3cb1e0c7d",
+        "input_json_sha256": "99b8b5a4105a616c3737e9cdc8d9315785382d9199db2b91370997ca02060c56",
+        "mapped_json_sha256": "a89d88757086e2239fd9c44e215a45720095db79f6c583cdc9f4f0de075e9520",
+        "mapped_source_sha256": "44a7e7baee90a6cb65ad686641f25a3dc3b8516e5bad1884732985d3f47c9459",
+        "helper_sha256": "5f3550f7b3b1250d8c7fdcc9888051bbf3fcc52715bc637f41f33a6afdc4e0ed",
+        "initial_relation": "两份任意且相同的32位地址寄存器内容"
+      }
+    ]
+  },
+  "local_synthesis": {
+    "reference": {
+      "lut_cells": 130,
+      "flip_flops": 32,
+      "ramb36": 0,
+      "ramb18": 0,
+      "dsp": 2,
+      "carry4": 8,
+      "longest_combinational_path_cells": 10,
+      "longest_register_path_cells": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "mapped_verilog_sha256": "49998af886eeeb50711d87702a4e46988e91710647559828d62324af4be79176"
+    },
+    "current": {
+      "lut_cells": 36,
+      "flip_flops": 32,
+      "ramb36": 0,
+      "ramb18": 0,
+      "dsp": 2,
+      "carry4": 0,
+      "longest_combinational_path_cells": 3,
+      "longest_register_path_cells": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "mapped_verilog_sha256": "cc4b7f8648714f7cd94ec07382b681630e228c7ffb53a18b2d700fad12c015d9"
+    },
+    "logic_lut_reduction": 94,
+    "dsp_budget": 4,
+    "minimum_width": 8,
+    "maximum_chain": 2
+  },
+  "vector_synthesis": {
+    "reference": {
+      "lut_cells": 9740,
+      "flip_flops": 6030,
+      "ramb36": 2,
+      "ramb18": 0,
+      "dsp": 53,
+      "carry4": 391,
+      "longest_combinational_path_cells": 15,
+      "longest_register_path_cells": 15,
+      "distributed_ram_lut_sites_nominal": 56,
+      "mapped_verilog_sha256": "7afdf704128eb096c53e746fa21e2c4a453e418352913da4d3347e66ad4a99f6"
+    },
+    "current": {
+      "lut_cells": 9616,
+      "flip_flops": 6030,
+      "ramb36": 2,
+      "ramb18": 0,
+      "dsp": 53,
+      "carry4": 383,
+      "longest_combinational_path_cells": 15,
+      "longest_register_path_cells": 15,
+      "distributed_ram_lut_sites_nominal": 56,
+      "mapped_verilog_sha256": "e3590a1c47f138c7a360e2bdaf599cd1614b7a6ac9c1604f9e7f94cfe7fcdfcf"
+    },
+    "logic_lut_reduction": 124,
+    "dsp_budget": 53,
+    "minimum_width": 8,
+    "maximum_chain": 2,
+    "configuration": {
+      "TILE": 16,
+      "BUS_WIDTH": 64,
+      "PE_COUNT": 8
+    },
+    "part": "xc7a200tfbg484-3",
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "flow": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph"
+  },
+  "reports_sha256": {
+    "final_formal/summary.json": "3628dda82d4987f70852ec41715f3e8339f08984e54c44af718775d00bdc9114",
+    "local_dsp/reference/metrics.json": "909202957400ba4593d0d5b691d5e65c0cdad08a70eed64bb1f30136f506d3cb",
+    "final_local/current/metrics.json": "a61b7f7039c5c443dd300037b2d8ee441673644d57ce7ce8b35394fad1ecf73b",
+    "vector_dsp/reference/metrics.json": "ce7b0fd931edabbd8fc53ba4f259d6edb1c41aa507b12540dffd539be044de83",
+    "vector_dsp/current/metrics.json": "d9f857318c289f699bd5e52372f35fa5d50e6f9f6a4dfdefa90ccfe682166e0d"
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "passed": true,
+  "reference_revision": "1c3dae2642b89a3c5c4cd593bd087a330cd443e5",
+  "source_sha256": {
+    "reference": "896023feb4b81215dee2f1b7291786b775058d770e43570847ea6ce47d043b9c",
+    "current": "dd5185bd341768d7e203956780a2faed263bc242bb42bab7400ed7ee59d6c4e5"
+  },
+  "unchanged_surrounding_rtl": true,
+  "formal_input_constraints": null,
+  "formal": [
+    {
+      "tile": 16,
+      "pe_count": 8,
+      "dma_size": 64,
+      "compared_bits": 256,
+      "passed": true,
+      "elapsed_seconds": 1.21,
+      "peak_process_tree_rss_bytes": 89718784,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "formal_16_8_64.ys",
+      "log": "formal_16_8_64.log"
+    },
+    {
+      "tile": 16,
+      "pe_count": 8,
+      "dma_size": 32,
+      "compared_bits": 256,
+      "passed": true,
+      "elapsed_seconds": 0.6,
+      "peak_process_tree_rss_bytes": 45727744,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "formal_16_8_32.ys",
+      "log": "formal_16_8_32.log"
+    },
+    {
+      "tile": 8,
+      "pe_count": 4,
+      "dma_size": 32,
+      "compared_bits": 128,
+      "passed": true,
+      "elapsed_seconds": 0.2,
+      "peak_process_tree_rss_bytes": 8192,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "formal_8_4_32.ys",
+      "log": "formal_8_4_32.log"
+    }
+  ],
+  "four_state_checks": 262144,
+  "four_state_address_patterns": 16384,
+  "mapping": [
+    {
+      "variant": "reference",
+      "small_lut_cost": 0.75,
+      "lut_cells": 410,
+      "cell_counts": {
+        "CARRY4": 11,
+        "INV": 3,
+        "LUT2": 64,
+        "LUT3": 1,
+        "LUT4": 207,
+        "LUT5": 137,
+        "LUT6": 1
+      },
+      "port_to_port_combinational_cells": 6,
+      "elapsed_seconds": 5.42,
+      "peak_process_tree_rss_bytes": 179892224,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "reference_0.75.ys",
+      "log": "reference_0.75.log"
+    },
+    {
+      "variant": "current",
+      "small_lut_cost": 0.75,
+      "lut_cells": 279,
+      "cell_counts": {
+        "CARRY4": 10,
+        "INV": 3,
+        "LUT2": 2,
+        "LUT3": 66,
+        "LUT4": 23,
+        "LUT5": 56,
+        "LUT6": 132
+      },
+      "port_to_port_combinational_cells": 6,
+      "elapsed_seconds": 5.65,
+      "peak_process_tree_rss_bytes": 178671616,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "current_0.75.ys",
+      "log": "current_0.75.log"
+    },
+    {
+      "variant": "reference",
+      "small_lut_cost": 1.0,
+      "lut_cells": 406,
+      "cell_counts": {
+        "CARRY4": 6,
+        "INV": 3,
+        "LUT2": 64,
+        "LUT3": 3,
+        "LUT4": 69,
+        "LUT5": 131,
+        "LUT6": 139
+      },
+      "port_to_port_combinational_cells": 5,
+      "elapsed_seconds": 5.62,
+      "peak_process_tree_rss_bytes": 179970048,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "reference_1.ys",
+      "log": "reference_1.log"
+    },
+    {
+      "variant": "current",
+      "small_lut_cost": 1.0,
+      "lut_cells": 275,
+      "cell_counts": {
+        "CARRY4": 6,
+        "INV": 3,
+        "LUT3": 2,
+        "LUT4": 81,
+        "LUT5": 2,
+        "LUT6": 190
+      },
+      "port_to_port_combinational_cells": 5,
+      "elapsed_seconds": 5.22,
+      "peak_process_tree_rss_bytes": 178434048,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "current_1.ys",
+      "log": "current_1.log"
+    }
+  ]
+}

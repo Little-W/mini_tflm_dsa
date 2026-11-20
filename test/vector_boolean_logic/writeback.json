@@ -1,0 +1,43 @@
+{
+  "source_sha256": "e7a5a55d414747a7e1a9ef0292334dd5103a73dac697175a6eab441d82efc8df",
+  "test_sha256": "1bc5088aacd798cc10ddd982a3af3ea7d3d96d2f3ef62bcb3cd3294b24704219",
+  "runs": [
+    {
+      "passed": true,
+      "bus_width": 32,
+      "requests": 512,
+      "checked_bytes": 16640,
+      "accepted_beats": 4544,
+      "stalled_cycles": 1652,
+      "error_completions": 31,
+      "cycles": 9524,
+      "binary_sha256": "586bd0905e87b71c11035c5e6fdac90da2bfdfbb3c81eb7bbdbaaa52ab4985d5",
+      "log_sha256": "dc5a46c376b0d660e248f5456f29c91e32f8e490c21d1aa025e006d5ea610bbd"
+    },
+    {
+      "passed": true,
+      "bus_width": 64,
+      "requests": 1024,
+      "checked_bytes": 33280,
+      "accepted_beats": 5056,
+      "stalled_cycles": 1734,
+      "error_completions": 61,
+      "cycles": 13447,
+      "binary_sha256": "0a7d2f5352b1bd4847347e8e8fa6d2be8de82e1c32eb9d23f8b36090b9860bd6",
+      "log_sha256": "4c37b16ceb6c463ed884b493b81ebfeff65608b2999dcce6b2bb684098f1d809"
+    },
+    {
+      "passed": true,
+      "bus_width": 128,
+      "requests": 2048,
+      "checked_bytes": 66560,
+      "accepted_beats": 6080,
+      "stalled_cycles": 2015,
+      "error_completions": 121,
+      "cycles": 21407,
+      "binary_sha256": "c1cd1d6b5b87390bc53649f65c9d3f59ebff5519bd974c37207a76b40d1684a6",
+      "log_sha256": "f5ad1fcb9aad5be6e1789247afae7121ba4695cf0ae420a51a2b724a3ed873c2"
+    }
+  ],
+  "passed": true
+}

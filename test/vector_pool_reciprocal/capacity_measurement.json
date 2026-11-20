@@ -1,0 +1,440 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "scripts/capacity/elaboration.py": "23f5081fb391492c675fe3ec96020cd0f22a884fe0bf9b55ecf797d98dad1af1",
+    "scripts/capacity/model.py": "c4f876fb1741033cc158ec1b596562c1a03356e9aae9ecf5df39c13265ae65e7",
+    "test/capacity/test_capacity_solver.py": "9f5ee68c575fae9754c96e78d2548e37f5e27248c1dd945c5a309838447126e2",
+    "test/capacity/test_read_only_inventory.py": "a88f443fb2dfafce0109ee4e8e8d92a6e8f1a468e3e1be436c93e8f9fd4af577",
+    "test/capacity/check_elaboration.py": "58d465a0758be548be492dc367b92077e8c169d54a17d7bc3333e0e2e3cea04d",
+    "test/capacity/run_raw_only_capability.py": "906d4bb1e80907de754e914fbfc156e45e8cab5fa6c2c195132468ed9474daa3",
+    "test/vector_pool_reciprocal/run_capacity.py": "6c6a8a021bb2c0626b77ed782104f27d288043dbb48de9a0cf9eb9677c0945bf",
+    "rtl/npu/conv/vector_engine.sv": "896023feb4b81215dee2f1b7291786b775058d770e43570847ea6ce47d043b9c"
+  },
+  "unit_tests": {
+    "passed": true,
+    "count": 95
+  },
+  "actual_rom_ast": {
+    "passed": true,
+    "runs": [
+      {
+        "passed": true,
+        "pool_max_taps": 1,
+        "mode": "fpga",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 20
+        },
+        "total_bits": 30,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 20,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 2,
+            "word_bits": 10,
+            "initialized_words": 2,
+            "initialization_kinds": [
+              "initial"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "c26948a37db0136e3b264695ac811afb1719eebf38e8d48d175076457c777af2"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 1,
+        "mode": "asic",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 20
+        },
+        "total_bits": 30,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 20,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 2,
+            "word_bits": 10,
+            "initialized_words": 2,
+            "initialization_kinds": [
+              "continuous"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "80d54c159d536166bbc7da8edcaaeab5b9f0ed74103aa9c1eeca8906658af21f"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 3,
+        "mode": "fpga",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 44
+        },
+        "total_bits": 55,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 44,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 4,
+            "word_bits": 11,
+            "initialized_words": 4,
+            "initialization_kinds": [
+              "initial"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "4b967113bd08bc90be8c4702dc6eb1b6e5d3a60edc4896fc94f89aa9e27ce0ff"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 3,
+        "mode": "asic",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 44
+        },
+        "total_bits": 55,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 44,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 4,
+            "word_bits": 11,
+            "initialized_words": 4,
+            "initialization_kinds": [
+              "continuous"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "b1600626a1f0fd39e95beb5aaabb2525bdda424d9fe835c861d31d01699fdc4d"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 49,
+        "mode": "fpga",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 750
+        },
+        "total_bits": 765,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 750,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 50,
+            "word_bits": 15,
+            "initialized_words": 50,
+            "initialization_kinds": [
+              "initial"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "a7763bffe0de9a6937fc11dd6274c7184b776a9e94b64dd0be26d38d22624db9"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 49,
+        "mode": "asic",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 750
+        },
+        "total_bits": 765,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 750,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 50,
+            "word_bits": 15,
+            "initialized_words": 50,
+            "initialization_kinds": [
+              "continuous"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "0f52123ffc48364953cdc27d65b6a8146a5ee9a082c4128a81a503dccc9a29b2"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 255,
+        "mode": "fpga",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 4352
+        },
+        "total_bits": 4369,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 4352,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 256,
+            "word_bits": 17,
+            "initialized_words": 256,
+            "initialization_kinds": [
+              "initial"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "a373a3948fb2e29dd5d01a45945322492e3b815d7bec684ccb4ae1cea3856e03"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 255,
+        "mode": "asic",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 4352
+        },
+        "total_bits": 4369,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 4352,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 256,
+            "word_bits": 17,
+            "initialized_words": 256,
+            "initialization_kinds": [
+              "continuous"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "1110cc8811b56b203258b0bdcfc6a51889ae8fd6e1e30fca9c22c9568b1bc9bb"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 256,
+        "mode": "fpga",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 4626
+        },
+        "total_bits": 4644,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 4626,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 257,
+            "word_bits": 18,
+            "initialized_words": 257,
+            "initialization_kinds": [
+              "initial"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "4cadc5670dd19daf4abf03dd49d09b245c7be123278fc1a34f2c0f995b0f39b5"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 256,
+        "mode": "asic",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 4626
+        },
+        "total_bits": 4644,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 4626,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 257,
+            "word_bits": 18,
+            "initialized_words": 257,
+            "initialization_kinds": [
+              "continuous"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "d2a01af65e36cc52b59bff56ec42493d70dd1c19004717e24aec0d182b690afa"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 257,
+        "mode": "fpga",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 4644
+        },
+        "total_bits": 4662,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 4644,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 258,
+            "word_bits": 18,
+            "initialized_words": 258,
+            "initialization_kinds": [
+              "initial"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "ac769ad4ca68584bde21348992982465df5e4ffc738a6a7032c74a3d657981b4"
+      },
+      {
+        "passed": true,
+        "pool_max_taps": 257,
+        "mode": "asic",
+        "buffer_arrays_bits": {
+          "vector_pool_reciprocal_rom": 4644
+        },
+        "total_bits": 4662,
+        "declarations": [
+          {
+            "path": "npu_axil_top.engine.avg_reciprocal",
+            "module": "vector_engine",
+            "name": "avg_reciprocal",
+            "bits": 4644,
+            "buffer_category": "vector_pool_reciprocal_rom",
+            "register_array_category": null,
+            "category": "vector_pool_reciprocal_rom",
+            "words": 258,
+            "word_bits": 18,
+            "initialized_words": 258,
+            "initialization_kinds": [
+              "continuous"
+            ],
+            "read_latency_cycles": 1
+          }
+        ],
+        "tree_sha256": "4a7a41969933a5da4a4bb4d420264a54377ac0f902bc33cd4f6559ece6897ac8"
+      }
+    ],
+    "source_sha256": {
+      "rtl/npu/conv/vector_engine.sv": "896023feb4b81215dee2f1b7291786b775058d770e43570847ea6ce47d043b9c",
+      "scripts/capacity/elaboration.py": "23f5081fb391492c675fe3ec96020cd0f22a884fe0bf9b55ecf797d98dad1af1",
+      "scripts/capacity/model.py": "c4f876fb1741033cc158ec1b596562c1a03356e9aae9ecf5df39c13265ae65e7",
+      "test/vector_pool_reciprocal/run_capacity.py": "6c6a8a021bb2c0626b77ed782104f27d288043dbb48de9a0cf9eb9677c0945bf"
+    }
+  },
+  "production": {
+    "passed": true,
+    "hardware_configuration": {
+      "PCR_ENGINE": 1,
+      "SIZE": 16,
+      "IA_CACHE_BLOCKS": 4,
+      "PS_FRAME_COUNT": 16,
+      "AXI_READ_OUTSTANDING": 4,
+      "PS_POOL_BYTES": 49152,
+      "PS_FORCE_RAW": 1,
+      "NPU_AXI_DATA_WIDTH": 64,
+      "SHARED_BANK_BYTES": 8192,
+      "SHARED_BANK_COUNT": 7,
+      "IM2COL_CACHE_BYTES": 4096
+    },
+    "model_version": "dip-shared-bank-rom-v11",
+    "buffer_arrays_bits": {
+      "vector_buffers": 9696,
+      "vector_pool_reciprocal_rom": 4626,
+      "conv_prefetch_queue": 1032,
+      "conv_data_cache": 32768,
+      "conv_cache_metadata": 40192,
+      "conv_request_queue": 552,
+      "conv_response_queue": 132,
+      "ia_slot_metadata": 768,
+      "ia_cache_tags": 3968,
+      "kernel_cache": 12288,
+      "bias_cache": 32768,
+      "ia_ps_shared_ram": 458752,
+      "ps_decoded_fifo": 4096,
+      "ps_decoded_first": 8,
+      "ps_frame_valid": 16,
+      "ps_frame_lengths": 160,
+      "requant_is_cache": 52736,
+      "requant_input_rows": 262656,
+      "oa_s8_fifo": 65536,
+      "oa_s16_fifo": 16384
+    },
+    "read_only_arrays_bits": {
+      "vector_pool_reciprocal_rom": 4626
+    },
+    "read_only_declarations": [
+      {
+        "path": "npu_axil_top.u_npu_top.g_vector_engine.u_engine.avg_reciprocal",
+        "module": "vector_engine",
+        "name": "avg_reciprocal",
+        "bits": 4626,
+        "buffer_category": "vector_pool_reciprocal_rom",
+        "register_array_category": null,
+        "category": "vector_pool_reciprocal_rom",
+        "words": 257,
+        "word_bits": 18,
+        "initialized_words": 257,
+        "initialization_kinds": [
+          "continuous"
+        ],
+        "read_latency_cycles": 1
+      }
+    ],
+    "writable_arrays_unchanged": true,
+    "buffer_array_bits": 999134,
+    "buffer_array_bytes": 124891.75,
+    "budget_used_bytes": 124892,
+    "budget_bytes": 131072,
+    "within_budget": true,
+    "sequential_bits": 1055249,
+    "read_only_bits": 4626,
+    "total_bits": 1059875,
+    "matrix_pe_count": 256,
+    "vector_pe_count": 8
+  },
+  "reports_sha256": {
+    "capacity_units.log": "7934c88b3ad163ee1712b9aba122705e2baba87740cd3cdbb61a429fe6bf629f",
+    "capacity_rom/summary.json": "7c7311acf9f464c5307f0f9b3583dbf4b19a911f89a738e7cc6a7cbf188152d9",
+    "capacity_npu/result.json": "ea9fdce85bb62b84f0bf6b106141ae114ff654d61f62abcd8a6ece3bb003088b"
+  }
+}

@@ -22,8 +22,13 @@ assign write_sel=vec_s8_to_fifo.g_full.u_full.write_bank[0];
 assign read_sel=vec_s8_to_fifo.g_full.u_full.read_bank[0];
 assign bank_ready0=vec_s8_to_fifo.g_full.u_full.bank_ready[0];
 assign bank_ready1=TB_BANKS>1 ? vec_s8_to_fifo.g_full.u_full.bank_ready[1] : 1'b0;
-assign bank_count0=vec_s8_to_fifo.g_full.u_full.bank_count[0];
-assign bank_count1=TB_BANKS>1 ? vec_s8_to_fifo.g_full.u_full.bank_count[1] : '0;
+if (TB_BANKS >= 8 && (TB_BANKS & (TB_BANKS-1)) == 0) begin : g_count_memory
+assign bank_count0=bank_ready0 ? vec_s8_to_fifo.g_full.u_full.g_count_memory.u_bank_count.mem[0] : '0;
+assign bank_count1=bank_ready1 ? vec_s8_to_fifo.g_full.u_full.g_count_memory.u_bank_count.mem[1] : '0;
+end else begin : g_count_registers
+assign bank_count0=vec_s8_to_fifo.g_full.u_full.g_count_registers.bank_count[0];
+assign bank_count1=TB_BANKS>1 ? vec_s8_to_fifo.g_full.u_full.g_count_registers.bank_count[1] : '0;
+end
 end
 
 endmodule

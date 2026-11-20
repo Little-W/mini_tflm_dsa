@@ -48,6 +48,7 @@ module tb_ps_channel_store #(
                 .o_capacity_fault(memory_fault[variant]),.i_ia_read_en(2'b0),.i_ia_write_en(2'b0),
                 .i_ia_read_addr('{default:'0}),.i_ia_write_addr('{default:'0}),.o_ia_read_data(ia_read_data),
                 .i_ia_write_data('{default:'0}),.i_ia_write_mask('{default:'0}),
+                .i_ia_shared_write_data(128'd0),
                 .i_ps_read_en(ram_read_en),.i_ps_write_en(ram_write_en),
                 .i_ps_read_addr(ram_read_addr),.i_ps_write_addr(ram_write_addr),
                 .o_ps_read_data(ram_read_data),.i_ps_write_data(ram_write_data)

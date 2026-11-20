@@ -1,0 +1,117 @@
+{
+  "formal": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/writeback/requant_group_buffer.sv": "922dbd584bf591fed0a0d2fcce2bb63fb1b966615f0e40b435f367117d692c30",
+      "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+      "test/requant_input_stage/buffer_proof.sv": "d26248c204651c620239919b781be8816393aa36da7229c15ec39aac80dec48a"
+    },
+    "results": [
+      {
+        "rows": 1,
+        "passed": true,
+        "elapsed_seconds": 0.41,
+        "peak_process_tree_rss_bytes": 46747648,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "rows_1.ys",
+        "log": "rows_1.log"
+      },
+      {
+        "rows": 3,
+        "passed": true,
+        "elapsed_seconds": 0.41,
+        "peak_process_tree_rss_bytes": 45649920,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "rows_3.ys",
+        "log": "rows_3.log"
+      },
+      {
+        "rows": 16,
+        "passed": true,
+        "elapsed_seconds": 0.4,
+        "peak_process_tree_rss_bytes": 55099392,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "rows_16.ys",
+        "log": "rows_16.log"
+      },
+      {
+        "rows": 512,
+        "passed": true,
+        "elapsed_seconds": 3.01,
+        "peak_process_tree_rss_bytes": 62287872,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "rows_512.ys",
+        "log": "rows_512.log"
+      },
+      {
+        "rows": 1024,
+        "passed": true,
+        "elapsed_seconds": 4.02,
+        "peak_process_tree_rss_bytes": 63225856,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "rows_1024.ys",
+        "log": "rows_1024.log"
+      }
+    ],
+    "assumptions": [
+      "组开始时已就绪且行数在容量以内",
+      "生产者不超过已预留行数",
+      "输出只释放已经发射的行"
+    ],
+    "arbitrary_inputs": [
+      "生产者间隔",
+      "缓存读取暂停",
+      "量化输出等待",
+      "复位与清空"
+    ],
+    "invariant": "未完成预留等于未产生行、生产者寄存行、RAM行、读出行与已发射行之和"
+  },
+  "simulation": {
+    "passed": true,
+    "source_sha256": {
+      "test/requant_input_stage/tb.sv": "63b0c2336001aa61704a68424420837a1a1481f78c9834cff8fbfd5c25572755",
+      "rtl/npu/writeback/vec_requant.sv": "53fe95e02959e9b99b45122ec7fef0c8e48194b05683ec29cf0b4e0cf724f645",
+      "rtl/npu/writeback/requant_compute_lane.sv": "6a80704946cbaf4abaf891d44c470f2a9f963c69287e22e16122c14089be79e3",
+      "rtl/npu/writeback/requant_group_buffer.sv": "922dbd584bf591fed0a0d2fcce2bb63fb1b966615f0e40b435f367117d692c30",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "90ede5cea45c58707d396b7ceb1c2955a7643da0a6fbcd2a337b30ecefad8b59",
+      "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+      "test/requant_time_share/main.cpp": "de2b75dff041d636891f6aa4e2bc006b08ce173d757fecd0231dac9ba5225344",
+      "test/requant_input_stage/run.py": "ee235710915d397417ed8523da11b5140bfb3d6e369379ed94ade45471a38b1a"
+    },
+    "xilinx": true,
+    "input_register_cycles": [
+      0,
+      1
+    ],
+    "compute_lanes": [
+      2,
+      2
+    ],
+    "group_start_waits_for_parameters": false,
+    "result": {
+      "passed": true,
+      "vlen": 16,
+      "lanes": 2,
+      "reuse": 32,
+      "bus": 64,
+      "cycles": 87139,
+      "outputs": 19617,
+      "elements": 627744,
+      "groups": 180,
+      "clears": 7,
+      "resets": 6,
+      "full_groups": 15,
+      "parameter_wait_cycles": 1905,
+      "dma_commands": 578
+    },
+    "driver_sha256": "dee7cdd0768ca91b35e950cfb830d09b67a0f23aed64ba5b65c682582c4528b8",
+    "binary_sha256": "21d678415f05cc9fb4641fe51ffa7747a9f134ed273db91f6b8cd074e8e416b6",
+    "build": {
+      "elapsed_seconds": 39.07,
+      "peak_process_tree_rss_bytes": 10915840,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "build.command.json",
+      "log": "build.log"
+    }
+  }
+}

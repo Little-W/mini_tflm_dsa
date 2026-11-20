@@ -1,0 +1,599 @@
+{
+  "formal": {
+    "passed": true,
+    "reference": "954ed7c9",
+    "inputs_constrained": false,
+    "all_public_outputs_compared": true,
+    "all_metadata_compared": true,
+    "profiles": [
+      {
+        "size": 1,
+        "frames": 1,
+        "max_reuse_tiles": 1,
+        "passed": true,
+        "equivalent_bits": 1619,
+        "log_sha256": "96800a5b0ed479c14c3632f8ac39913eab6e4ddfc2a221c68f12bcd73e38449f"
+      },
+      {
+        "size": 4,
+        "frames": 3,
+        "max_reuse_tiles": 4,
+        "passed": true,
+        "equivalent_bits": 1981,
+        "log_sha256": "7076a3270d36c40c222dd738ab510aacf962899027825591c8b1a9d4f51eda89"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "max_reuse_tiles": 32,
+        "passed": true,
+        "equivalent_bits": 3930,
+        "log_sha256": "f118411b428007dd5a14f5a4e452be94e0e9087f6752d70606dbe1b1b27f9011"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "max_reuse_tiles": 0,
+        "passed": true,
+        "equivalent_bits": 4178,
+        "log_sha256": "00a84ca896eacb6adda7f424411a379fa5755ee24ce11ff3ee1000ecca5692f4"
+      },
+      {
+        "size": 16,
+        "frames": 17,
+        "max_reuse_tiles": 64,
+        "passed": true,
+        "equivalent_bits": 4106,
+        "log_sha256": "5cdfe8661dc7c8445b0f3f1f0ed6878fabc2dbdb7c8ee57cd57cb6d1e8f45098"
+      }
+    ],
+    "source_sha256": "d4e53a6b14531046c5ffe50242676b7ed4f8aa558da0af09e0f924d511ae284e"
+  },
+  "numeric": {
+    "passed": true,
+    "cases": 975,
+    "commands": 182426,
+    "tests": {
+      "unsliced": {
+        "passed": true,
+        "cases": 321,
+        "commands": 52104,
+        "pressure_events": 3961,
+        "early_finish_frames": 582,
+        "invalid_configurations": 4,
+        "source_sha256": {
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv": "d4e53a6b14531046c5ffe50242676b7ed4f8aa558da0af09e0f924d511ae284e",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_test.cpp": "fd91e071e5120fca7fcfda592e23636b479563c3d582918714adee01c2dc280c",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_ref.hpp": "e45053218655ce44e8ddaaf677a468dce99378f9e3a381307dd0313fa2e9350b",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/run_window_scheduler.py": "7f26be530dc5101eaf0ba940f6d0097eaa598bdf2de49373ce2314bc452e4863",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv": "dbc5ad96e9dd4f758ee1ff0ed11f943891dff05086ffb65ead82b69e6c5ac46e",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv": "7ec792a39f50173c36840bdf65c7ed36cf12ea142ce6f75843325ca853ac67fa"
+        },
+        "binary_sha256": "f1929e09012554edcdd49f86fed3df6acd19477e81ca32b3b8b89bb35cf5b1f5",
+        "compile_command": [
+          "verilator-modern",
+          "--cc",
+          "--exe",
+          "--build",
+          "--assert",
+          "-j",
+          "1",
+          "--top-module",
+          "window_scheduler_tb",
+          "--prefix",
+          "Vps_window_scheduler",
+          "--Mdir",
+          "/tmp/npu45000_root/scheduler_metadata/numeric/unsliced/obj",
+          "-Wno-fatal",
+          "--output-groups",
+          "0",
+          "-CFLAGS",
+          "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all",
+          "-LDFLAGS",
+          "-fsanitize=undefined",
+          "-MAKEFLAGS",
+          "-B",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/onehot_check.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_test.cpp"
+        ],
+        "run_command": [
+          "/tmp/npu45000_root/scheduler_metadata/numeric/unsliced/obj/Vps_window_scheduler"
+        ],
+        "undefined_behavior_sanitizer": true,
+        "sanitized_translation_units": 4,
+        "elapsed_seconds": 13.28133792000881,
+        "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+        "input_format": "One matrix row contains zero to four 128-bit words; per-bank reservation uses reserve_rows."
+      },
+      "sliced": {
+        "passed": true,
+        "cases": 654,
+        "slice_1_cases": 321,
+        "slice_2_cases": 321,
+        "directed_cases": 12,
+        "commands": 130322,
+        "mnk_tile_checks": 167577,
+        "pressure_events": 10799,
+        "opening_pressures": 9563,
+        "update_pressures": 1236,
+        "early_finish_frames": 1236,
+        "frame_id_reuses": 25212,
+        "tail_frames": 1346,
+        "reserve_checks": 141121,
+        "bank_checks": 1085772,
+        "raw_cases": 218,
+        "word_rotation_cases": 218,
+        "bounded_bank_cases": 218,
+        "peak_bank_words": [
+          130,
+          130,
+          129,
+          128
+        ],
+        "source_sha256": {
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv": "d4e53a6b14531046c5ffe50242676b7ed4f8aa558da0af09e0f924d511ae284e",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_fragment_test.cpp": "8b9c1fadb13f963ea39adb36657cf0596a07f21ca65d576f69cd8aaaf6cc7063",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_ref.hpp": "e45053218655ce44e8ddaaf677a468dce99378f9e3a381307dd0313fa2e9350b",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/run_window_scheduler.py": "7f26be530dc5101eaf0ba940f6d0097eaa598bdf2de49373ce2314bc452e4863",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv": "dbc5ad96e9dd4f758ee1ff0ed11f943891dff05086ffb65ead82b69e6c5ac46e",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv": "7ec792a39f50173c36840bdf65c7ed36cf12ea142ce6f75843325ca853ac67fa"
+        },
+        "binary_sha256": "7c1aeb986f08028101a1a4b11845d66cd7a27a39b5c8955dadbd342b6dedfeeb",
+        "compile_command": [
+          "verilator-modern",
+          "--cc",
+          "--exe",
+          "--build",
+          "--assert",
+          "-j",
+          "1",
+          "--top-module",
+          "window_scheduler_tb",
+          "--prefix",
+          "Vps_window_scheduler",
+          "--Mdir",
+          "/tmp/npu45000_root/scheduler_metadata/numeric/sliced/obj",
+          "-Wno-fatal",
+          "--output-groups",
+          "0",
+          "-CFLAGS",
+          "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all",
+          "-LDFLAGS",
+          "-fsanitize=undefined",
+          "-MAKEFLAGS",
+          "-B",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/onehot_check.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv",
+          "/workspace/scratch/d8ec29656755/mini_tflm_dsa/test/ps_compression/window_scheduler_fragment_test.cpp"
+        ],
+        "run_command": [
+          "/tmp/npu45000_root/scheduler_metadata/numeric/sliced/obj/Vps_window_scheduler"
+        ],
+        "undefined_behavior_sanitizer": true,
+        "sanitized_translation_units": 4,
+        "elapsed_seconds": 14.036578423998435,
+        "verilator": "rev vUNKNOWN-built20260516-4e853d8",
+        "input_format": "One matrix row contains zero to four 128-bit words; per-bank reservation uses reserve_rows."
+      }
+    }
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.667,
+    "cases": {
+      "scheduler_reference": {
+        "top": "ps_window_scheduler",
+        "configuration": "完整十六帧调度器，包含预测、命令与所有帧进度存储",
+        "sources_sha256": {
+          "/tmp/npu45000_root/scheduler_metadata/inputs/reference/ps_window_scheduler.sv": "3375383e978e0c162f0423e4917c2538e2f6840a72d717625169fbebba5fc2ca",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+          "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+          "rtl/common/pseudo_dual_port_ram.v": "ddf9081bf36b76e7ce986948a94d3b4b0774b09c735da114af5af042332d354d",
+          "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 32
+        },
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 1.2,
+            "peak_process_tree_rss_bytes": 151371776,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "f4573004adc75fd99cecd49f1302aa0e22aba436dedbad6996987f9e795e808a",
+            "output_sha256": "c8b83a8575854f389bf5301b0000150fb9c98d499151085f6e47bd9c230162ca"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 5.02,
+            "peak_process_tree_rss_bytes": 188551168,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "01a8ca9e77f92b1c168a254b03dc9c2634665b4552124a989c1affb6c704a257",
+            "output_sha256": "68c6035c950cf8cc22e8d024fea3fbeb9811c649e6459163d833acc7ac1f609a"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 3.83,
+            "peak_process_tree_rss_bytes": 210186240,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "414ca20f7d4b8c803e50c8ba9896e4203fc0274a704df20209457436ed2e61fb",
+            "output_sha256": "d46c99822a8a22f35baa669c0e2f3b9cec4e006e5b2f970127960da61fe6f466",
+            "mapped_verilog_sha256": "7ab0edf628aa5a150c7b45e86efe8ece977feba9458def36beb55e2109a65da1"
+          }
+        },
+        "options": [
+          "-D",
+          "SYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GSIZE=16",
+          "-GFRAME_COUNT=16",
+          "-GMAX_REUSE_TILES=32"
+        ],
+        "build_configuration": null,
+        "elapsed_seconds": 10.37,
+        "lut_cells": 1323,
+        "flip_flops": 892,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 2,
+        "carry4": 134,
+        "longest_combinational_path_cells": 17,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$84363$lut$not$aiger84362$107",
+            "type": "INV"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8772.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8772.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$84363$lut$not$aiger84362$1720",
+            "type": "INV"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[3].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[4].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[5].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[6].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8746.genblk1.slice[7].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$84573",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$abc$84363$lut$aiger$o2969",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$947.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$84363$lut$aiger84362$7471",
+            "type": "LUT4"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$84446",
+            "type": "LUT4"
+          }
+        ],
+        "cell_counts": {
+          "CARRY4": 134,
+          "DSP48E1": 2,
+          "FDCE": 341,
+          "FDPE": 3,
+          "FDRE": 539,
+          "FDSE": 9,
+          "INV": 84,
+          "LUT2": 407,
+          "LUT3": 261,
+          "LUT4": 196,
+          "LUT5": 254,
+          "LUT6": 205,
+          "MUXF7": 2,
+          "MUXF8": 1,
+          "RAM32M": 27
+        },
+        "resources": {
+          "logic_lut_cells": 1323,
+          "distributed_ram_lut_sites_nominal": 108,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1431,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 892,
+          "dsp48e1": 2,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 134,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 134,
+            "DSP48E1": 2,
+            "FDCE": 341,
+            "FDPE": 3,
+            "FDRE": 539,
+            "FDSE": 9,
+            "INV": 84,
+            "LUT2": 407,
+            "LUT3": 261,
+            "LUT4": 196,
+            "LUT5": 254,
+            "LUT6": 205,
+            "MUXF7": 2,
+            "MUXF8": 1,
+            "RAM32M": 27
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 13,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 13,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/tmp/npu45000_root/scheduler_metadata/synthesis/scheduler_reference/mapped.v",
+          "sha256": "7ab0edf628aa5a150c7b45e86efe8ece977feba9458def36beb55e2109a65da1",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        }
+      },
+      "scheduler_current": {
+        "top": "ps_window_scheduler",
+        "configuration": "完整十六帧调度器，包含预测、命令与所有帧进度存储",
+        "sources_sha256": {
+          "/tmp/npu45000_root/scheduler_metadata/inputs/current/ps_window_scheduler.sv": "d4e53a6b14531046c5ffe50242676b7ed4f8aa558da0af09e0f924d511ae284e",
+          "rtl/common/add3_equal.sv": "94ffaa57ff69a879a2233337a20dbbd394608169370264785164faa70b89c004",
+          "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
+          "rtl/common/onehot_check.sv": "6f1c9ca725f703556e847ffa247a834cc272d5c767840146bd822275434a7d14",
+          "rtl/common/pseudo_dual_port_ram.v": "ddf9081bf36b76e7ce986948a94d3b4b0774b09c735da114af5af042332d354d",
+          "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+        },
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 32
+        },
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 1.0,
+            "peak_process_tree_rss_bytes": 156831744,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "eb3798875c7bb40195f44635f6ef7e03135d2623dd1a6af250175e50560e75d1",
+            "output_sha256": "db25d934fb81e1d9d05e8518ad50ba0fea8593b7fd352ad1663c228df68b7723"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 4.82,
+            "peak_process_tree_rss_bytes": 186757120,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "fde3fdd646fed105ebce2adcf3ebac1196589c1b14dbd91cc926a43d6a14e554",
+            "output_sha256": "d14ae8ad32d65c30493f7e20cd9621be37941f782b427261a61ac7891257cf8c"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 3.81,
+            "peak_process_tree_rss_bytes": 208961536,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "ae440922830cc2c0462cc0c2ef2ca71180b57bdd9c3d9dc7b37354e0d04ecea5",
+            "output_sha256": "7059bf552b9de5dab14ab0bce265d45994a7126766aa433fc0704056505fe2ab",
+            "mapped_verilog_sha256": "a3e11252d98a9d85f2437693d4c8c799175d1acf5840f899abc82ab69ecd23cf"
+          }
+        },
+        "options": [
+          "-D",
+          "SYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GSIZE=16",
+          "-GFRAME_COUNT=16",
+          "-GMAX_REUSE_TILES=32"
+        ],
+        "build_configuration": null,
+        "elapsed_seconds": 9.97,
+        "lut_cells": 1324,
+        "flip_flops": 892,
+        "ramb36": 2,
+        "ramb18": 0,
+        "dsp": 2,
+        "carry4": 134,
+        "longest_combinational_path_cells": 17,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$85021$lut$not$aiger85020$107",
+            "type": "INV"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8842.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8842.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$85021$lut$not$aiger85020$2863",
+            "type": "INV"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[3].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[4].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[5].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[6].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$8813.genblk1.slice[7].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$85227",
+            "type": "LUT2"
+          },
+          {
+            "cell": "$abc$85021$lut$aiger$o2845",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$978.genblk1.slice[2].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$85021$lut$aiger85020$7567",
+            "type": "LUT4"
+          },
+          {
+            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$85142",
+            "type": "LUT4"
+          }
+        ],
+        "cell_counts": {
+          "CARRY4": 134,
+          "DSP48E1": 2,
+          "FDCE": 341,
+          "FDPE": 3,
+          "FDRE": 539,
+          "FDSE": 9,
+          "INV": 84,
+          "LUT2": 351,
+          "LUT3": 262,
+          "LUT4": 203,
+          "LUT5": 273,
+          "LUT6": 235,
+          "MUXF7": 2,
+          "MUXF8": 1,
+          "RAM32M": 14,
+          "RAMB36E1": 2
+        },
+        "resources": {
+          "logic_lut_cells": 1324,
+          "distributed_ram_lut_sites_nominal": 56,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1380,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 892,
+          "dsp48e1": 2,
+          "ramb36e1": 2,
+          "ramb18e1": 0,
+          "carry4": 134,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 134,
+            "DSP48E1": 2,
+            "FDCE": 341,
+            "FDPE": 3,
+            "FDRE": 539,
+            "FDSE": 9,
+            "INV": 84,
+            "LUT2": 351,
+            "LUT3": 262,
+            "LUT4": 203,
+            "LUT5": 273,
+            "LUT6": 235,
+            "MUXF7": 2,
+            "MUXF8": 1,
+            "RAM32M": 14,
+            "RAMB36E1": 2
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 13,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 15,
+          "observed_combinational_cells": 13,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/tmp/npu45000_root/scheduler_metadata/synthesis/scheduler_current/mapped.v",
+          "sha256": "a3e11252d98a9d85f2437693d4c8c799175d1acf5840f899abc82ab69ecd23cf",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        }
+      }
+    },
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
+  }
+}
