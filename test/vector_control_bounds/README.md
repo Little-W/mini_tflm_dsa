@@ -19,7 +19,7 @@ python3 test/vector_engine/run.py --bus-width 32 --pes 8 --jobs 1 --xilinx --out
 python3 scripts/fpga/open_fpga_synth.py --cases vector_engine --out build/vector_timing/synthesis
 ```
 
-局部算术证明覆盖全部输入编码。分组比较检查 `TILE=1、3、16、32、64`，完整配置检查覆盖 824 个等价位，舍入的组合版本和中间寄存版本分别覆盖 455 位和 523 位。完整状态比较核对 13,446 位寄存状态和 35 个公开输出，并检查共享标量乘法器的输入。
+局部算术证明覆盖全部输入编码。分组比较检查 `TILE=1、3、16、32、64`，完整配置检查复用 `test/vector_checked_ranges/run_checker.py`，比较全部原有公开输出及二十个内部状态信号。新增读取范围端口由 `test/vector_checked_ranges/run_control.py` 检查消费时的完整值。舍入的组合版本和中间寄存版本分别覆盖 455 位和 523 位。完整状态比较核对 13,446 位寄存状态和 35 个公开输出，并检查共享标量乘法器的输入。
 
 BUS32 和 BUS64 各通过 592 项完整向量任务，分别检查 168,491 和 169,361 个数值输出。全部任务的周期、访存和缓存统计与附件对应参照完全相同。仿真使用官方 Xilinx 原语功能模型。
 

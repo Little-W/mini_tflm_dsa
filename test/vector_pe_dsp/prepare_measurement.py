@@ -44,14 +44,14 @@ def main():
         cases[label] = {'top':'pe_bank','options':['-D','SYNTHESIS=1'],
                         'sources':[str(snapshot),str(path)],
                         'configuration':'8 PE, signed INT16 inputs and INT32 accumulators, independent operand enable'}
-    dependencies = ['conv_im2col_pkg.sv','vector_engine_pkg.sv','vector_config_check.sv',
+    dependencies = ['conv_im2col_pkg.sv','vector_engine_pkg.sv',
                     'vector_writeback.sv','vector_round_shift.sv','vector_scalar_multiplier.sv',
                     'vector_softmax.sv','vector_quant_params.sv']
     dependencies = [ROOT/'rtl/npu/conv'/name for name in dependencies]
     source_hashes = {}
     for label in ['reference','registered']:
         selected = []
-        for name in ['vector_pe.sv','vector_engine.sv']:
+        for name in ['vector_pe.sv','vector_engine.sv','vector_config_check.sv']:
             relative = 'rtl/npu/conv/' + name
             data = (read_rtl_source(args.reference_rev+':'+relative, cwd=ROOT)
                     if label == 'reference' else (ROOT/relative).read_bytes())

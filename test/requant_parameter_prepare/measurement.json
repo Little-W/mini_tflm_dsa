@@ -1,0 +1,339 @@
+{
+  "passed": true,
+  "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+  "source_sha256": "b64d39531aaed49a79ca3621bd4036292d72d35edccdea5b811f4fa3c4bb073f",
+  "formal": {
+    "passed": true,
+    "reference": "2297cb12",
+    "source_sha256": "b64d39531aaed49a79ca3621bd4036292d72d35edccdea5b811f4fa3c4bb073f",
+    "reference_sha256": "3d5ecebaf80388abb30322f29385406b85a06de75bcf84c354e00d52194c9ba3",
+    "input_value_constraints": null,
+    "runs": [
+      {
+        "check": "functions",
+        "enable_s16": 0,
+        "passed": true,
+        "compared_output_bits": 39,
+        "arbitrary_init_and_reset": false,
+        "elapsed_seconds": 0.2,
+        "peak_process_tree_rss_bytes": 24576,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "functions_s16_0.ys",
+        "log": "functions_s16_0.log"
+      },
+      {
+        "check": "functions",
+        "enable_s16": 1,
+        "passed": true,
+        "compared_output_bits": 39,
+        "arbitrary_init_and_reset": false,
+        "elapsed_seconds": 0.2,
+        "peak_process_tree_rss_bytes": 77824,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "functions_s16_1.ys",
+        "log": "functions_s16_1.log"
+      },
+      {
+        "check": "configuration",
+        "enable_s16": 0,
+        "passed": true,
+        "compared_output_bits": 104,
+        "arbitrary_init_and_reset": true,
+        "elapsed_seconds": 0.4,
+        "peak_process_tree_rss_bytes": 12288,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "configuration_s16_0.ys",
+        "log": "configuration_s16_0.log"
+      },
+      {
+        "check": "configuration",
+        "enable_s16": 1,
+        "passed": true,
+        "compared_output_bits": 104,
+        "arbitrary_init_and_reset": true,
+        "elapsed_seconds": 0.4,
+        "peak_process_tree_rss_bytes": 49512448,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "configuration_s16_1.ys",
+        "log": "configuration_s16_1.log"
+      }
+    ]
+  },
+  "parallel_interface": {
+    "implementation": "official Xilinx functional models",
+    "reference_rev": "2297cb12",
+    "ports": [
+      "load_quant_req",
+      "quant_params_valid",
+      "dma_start",
+      "dma_is_write",
+      "dma_linear_read_mode",
+      "dma_base_addr",
+      "dma_row_stride",
+      "dma_rows_to_read",
+      "dma_burst_len_m1",
+      "dma_slot_id",
+      "dma_use_16bits",
+      "dma_lhs_zp",
+      "o_group_ready",
+      "out_valid",
+      "out_tile_done",
+      "out_vec_s8",
+      "out_vec_s16",
+      "quant_multiplier_lane",
+      "quant_shift_lane"
+    ],
+    "source_sha256": "b64d39531aaed49a79ca3621bd4036292d72d35edccdea5b811f4fa3c4bb073f",
+    "runs": [
+      {
+        "passed": true,
+        "bus_width": 32,
+        "scenarios": 256,
+        "cycles": 528878,
+        "vectors": 209953,
+        "dma_commands": 998,
+        "config_with_input": 472,
+        "consecutive_configs": 192,
+        "first_inputs": 128,
+        "dma_beats": 13445,
+        "binary_sha256": "e59fd0dfadea5feec04a49f747f87a4c464ea991b8d6fe0f82e50f8c26e8e7bc"
+      },
+      {
+        "passed": true,
+        "bus_width": 64,
+        "scenarios": 256,
+        "cycles": 528878,
+        "vectors": 208537,
+        "dma_commands": 994,
+        "config_with_input": 472,
+        "consecutive_configs": 192,
+        "first_inputs": 128,
+        "dma_beats": 6801,
+        "binary_sha256": "38408465e29aa00bb0a173ef9114566643a14ce2d10b24a0a66508f2062d984c"
+      }
+    ],
+    "shared_multiplier_sha256": "26ada7a6421e7f7916bab8777271b5bcbd1cb8f35751e9dc38248ce9fae2e644",
+    "test_cpp_sha256": "4dbfc545adb53066ac0cd6e1a8b175d6d0d2d4ade83a503461ccc4e0a71edc48",
+    "wrapper_sha256": "062b27ae0abd6f065fe9dacd25c156a11f6bd4a733036a4047d6796ad583a9d8"
+  },
+  "production_serial": {
+    "passed": true,
+    "source_sha256": {
+      "test/requant_input_stage/tb.sv": "63b0c2336001aa61704a68424420837a1a1481f78c9834cff8fbfd5c25572755",
+      "rtl/npu/writeback/vec_requant.sv": "b64d39531aaed49a79ca3621bd4036292d72d35edccdea5b811f4fa3c4bb073f",
+      "rtl/npu/writeback/requant_compute_lane.sv": "6fc57402088084ed5941a7143695d989f75479066a61c33b3d23ec71c23c7b0b",
+      "rtl/npu/writeback/requant_group_buffer.sv": "fd2eb48521a0a70c9be8feb654a290806e5f491a350bcebf7203b99eee4e7e2a",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "26ada7a6421e7f7916bab8777271b5bcbd1cb8f35751e9dc38248ce9fae2e644",
+      "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+      "test/requant_time_share/main.cpp": "de2b75dff041d636891f6aa4e2bc006b08ce173d757fecd0231dac9ba5225344",
+      "test/requant_input_stage/run.py": "ee235710915d397417ed8523da11b5140bfb3d6e369379ed94ade45471a38b1a"
+    },
+    "xilinx": true,
+    "input_register_cycles": [
+      0,
+      1
+    ],
+    "compute_lanes": [
+      2,
+      2
+    ],
+    "group_start_waits_for_parameters": false,
+    "result": {
+      "passed": true,
+      "vlen": 16,
+      "lanes": 2,
+      "reuse": 32,
+      "bus": 64,
+      "cycles": 87139,
+      "outputs": 19617,
+      "elements": 627744,
+      "groups": 180,
+      "clears": 7,
+      "resets": 6,
+      "full_groups": 15,
+      "parameter_wait_cycles": 1905,
+      "dma_commands": 578
+    },
+    "driver_sha256": "dee7cdd0768ca91b35e950cfb830d09b67a0f23aed64ba5b65c682582c4528b8",
+    "binary_sha256": "bce861982f29862e52d54c393d045dba871c04ac52fc37dc2df715771c4d2d76",
+    "build": {
+      "elapsed_seconds": 43.68,
+      "peak_process_tree_rss_bytes": 10907648,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "build.command.json",
+      "log": "build.log"
+    }
+  },
+  "native_mapping": {
+    "source_sha256": "b64d39531aaed49a79ca3621bd4036292d72d35edccdea5b811f4fa3c4bb073f",
+    "reference": "2297cb12",
+    "compute_lanes": 2,
+    "dsp_remapping": false,
+    "physical_lut_packing": false,
+    "dependency_sha256": {
+      "rtl/npu/writeback/requant_compute_lane.sv": "6fc57402088084ed5941a7143695d989f75479066a61c33b3d23ec71c23c7b0b",
+      "rtl/npu/writeback/requant_group_buffer.sv": "fd2eb48521a0a70c9be8feb654a290806e5f491a350bcebf7203b99eee4e7e2a",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "26ada7a6421e7f7916bab8777271b5bcbd1cb8f35751e9dc38248ce9fae2e644",
+      "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+    },
+    "mapping": {
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 3980,
+          "distributed_ram_lut_sites_nominal": 704,
+          "shift_register_lut_sites_nominal": 0,
+          "flip_flops": 3418,
+          "dsp48e1": 10,
+          "ramb18e1": 19,
+          "ramb36e1": 0,
+          "carry4": 198
+        },
+        "maximum_register_path_cells": 15,
+        "maximum_parameter_path_cells": 9,
+        "longest_paths": [
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "state [1]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [0]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [22]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [25]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [28]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [31]"
+          }
+        ],
+        "parameter_paths": [
+          {
+            "combinational_cells": 9,
+            "startpoint": "mul_base_r [2]",
+            "endpoint": "cmd_base_addr_r [30]"
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": "mul_base_r [2]",
+            "endpoint": "cmd_base_addr_r [31]"
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": "mul_base_r [2]",
+            "endpoint": "cmd_base_addr_r [26]"
+          },
+          {
+            "combinational_cells": 8,
+            "startpoint": "mul_base_r [2]",
+            "endpoint": "cmd_base_addr_r [27]"
+          }
+        ],
+        "mapped_json_sha256": "00356c3b651c8d919a0b669cb0fe0d1a8187b98baa7f47cd846f1a99d8614ed8",
+        "stage": {
+          "elapsed_seconds": 8.64,
+          "peak_process_tree_rss_bytes": 278851584,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "native_map.ys",
+          "log": "native_map.log"
+        }
+      },
+      "current": {
+        "resources": {
+          "logic_lut_cells": 3981,
+          "distributed_ram_lut_sites_nominal": 704,
+          "shift_register_lut_sites_nominal": 0,
+          "flip_flops": 3379,
+          "dsp48e1": 10,
+          "ramb18e1": 19,
+          "ramb36e1": 0,
+          "carry4": 185
+        },
+        "maximum_register_path_cells": 15,
+        "maximum_parameter_path_cells": 9,
+        "longest_paths": [
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "state [2]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [22]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [23]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [24]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [25]"
+          },
+          {
+            "combinational_cells": 15,
+            "startpoint": "load_offset [0]",
+            "endpoint": "load_offset [26]"
+          }
+        ],
+        "parameter_paths": [
+          {
+            "combinational_cells": 9,
+            "startpoint": "sh_base_r [2]",
+            "endpoint": "cmd_base_addr_r [30]"
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": "sh_base_r [2]",
+            "endpoint": "cmd_base_addr_r [31]"
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": "sh_base_r [7]",
+            "endpoint": "g_serial_arithmetic.g_compute_lane[0].u_lane.amount_q[0] [0]"
+          },
+          {
+            "combinational_cells": 9,
+            "startpoint": "sh_base_r [7]",
+            "endpoint": "g_serial_arithmetic.g_compute_lane[0].u_lane.amount_q[0] [1]"
+          }
+        ],
+        "mapped_json_sha256": "201baebdbb7ae41804cc1d90e35d8ac450a3a10f6f5c8fea93c01c714e9cdb47",
+        "stage": {
+          "elapsed_seconds": 8.44,
+          "peak_process_tree_rss_bytes": 277262336,
+          "memory_sample_interval_seconds": 0.2,
+          "script": "native_map.ys",
+          "log": "native_map.log"
+        }
+      }
+    }
+  },
+  "test_source_sha256": {
+    "test/requant_parameter_prepare/run_formal.py": "aca64312b5b9ba37fb7c9b8e317cef62795d5f0708e5c5ad0e59f2e1a2bd62b3",
+    "test/requant_parameter_prepare/run_interface.py": "dee5d05bbfaea3611f025491913df33ca3dd15e483b25e2be08cb3e5e27c9f4c",
+    "test/requant_parameter_prepare/measure.py": "abbf2ce3e787ecdcd73c721ca73a33a4a938ca4455fe0412684fcccc047062cd"
+  }
+}

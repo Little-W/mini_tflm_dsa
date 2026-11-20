@@ -24,7 +24,7 @@ def main():
                     '--out', str(formal), '--reference', args.reference], cwd=ROOT, check=True)
     reference = out / 'reference'
     reference.mkdir(exist_ok=True)
-    for name in ('vector_engine.sv', 'vector_pe.sv'):
+    for name in ('vector_engine.sv', 'vector_pe.sv', 'vector_config_check.sv'):
         (reference / name).write_bytes(read_rtl_source(f'{args.reference}:rtl/npu/conv/{name}', cwd=ROOT))
     names = ['conv_im2col_pkg.sv', 'vector_engine_pkg.sv', 'vector_config_check.sv',
              'vector_writeback.sv', 'vector_round_shift.sv', 'vector_scalar_multiplier.sv',
@@ -32,7 +32,8 @@ def main():
     cases = {}
     for label in ('reference', 'current'):
         sources = [str(reference / name) if label == 'reference' and name in
-                   ('vector_engine.sv', 'vector_pe.sv') else 'rtl/npu/conv/' + name for name in names]
+                   ('vector_engine.sv', 'vector_pe.sv', 'vector_config_check.sv')
+                   else 'rtl/npu/conv/' + name for name in names]
         cases['vector_' + label] = {
             'top': 'vector_engine', 'options': ['-D', 'SYNTHESIS=1', '-GTILE=16', '-GBUS_WIDTH=64', '-GPE_COUNT=8'],
             'sources': sources, 'configuration': 'TILE16, BUS64, 8 vector PEs'}

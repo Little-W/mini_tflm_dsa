@@ -9,9 +9,6 @@ import shlex
 import subprocess
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
-
 ROOT=Path(__file__).resolve().parents[2]
 
 
@@ -49,7 +46,10 @@ def main():
     source=(ROOT/'rtl/npu/conv/vector_engine.sv').read_text()
     assert 'VECTOR_NEXT: if (vector_has_more)' in source
     declaration=re.search(r'  logic \[ACTIVE_COUNT_W:0\] vector_low_sum;.*?logic vector_has_more;',source,re.S)[0]
-    body=re.search(r'  assign vector_low_sum.*?(?=  // 偏移)',source,re.S)[0]
+    names=('vector_low_sum','vector_high_equal','vector_high_less',
+           'vector_high_next_equal','vector_high_next_less','vector_has_more')
+    body='\n'.join(re.search(r'\bassign\s+'+name+r'\s*=.*?;',source,re.S)[0]
+                   for name in names)
     report={'inputs_constrained':False,'source_sha256':{},'group_comparison':[]}
     for tile in (1,3,16,32,64):
         folder=out/f'tile{tile}';folder.mkdir(exist_ok=True);paths=[]
@@ -67,11 +67,11 @@ def main():
             path=folder/(label+'.sv');path.write_text(header+logic+'\nendmodule\n');paths.append((label,path))
         result=run(compare(paths,'vector_group_compare','',packages),folder)
         result['tile']=tile;report['group_comparison'].append(result)
-    relative='rtl/npu/conv/vector_config_check.sv'
-    original=read_rtl_source(args.reference_rev+':'+relative, cwd=ROOT, text=True)
-    reference=out/'config_reference.sv';reference.write_text(original)
-    result=run(compare([('reference',reference),('candidate',ROOT/relative)],'vector_config_check','',packages),out/'config')
-    report['configuration']=result
+    # 配置检查使用完整状态证明，新增范围端口由专用消费状态证明覆盖。
+    subprocess.run([sys.executable, ROOT/'test/vector_checked_ranges/run_checker.py',
+                    '--reference', args.reference_rev, '--tiles', '16', '--out', out/'config'],
+                   cwd=ROOT, check=True)
+    report['configuration']=json.loads((out/'config/summary.json').read_text())
     for relative in ['rtl/npu/conv/vector_engine.sv','rtl/npu/conv/vector_config_check.sv']:
         report['source_sha256'][relative]=hashlib.sha256((ROOT/relative).read_bytes()).hexdigest()
     report['reference_rev']=args.reference_rev

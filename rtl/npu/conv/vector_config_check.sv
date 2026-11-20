@@ -6,10 +6,12 @@ module vector_config_check #(
   parameter int POOL_MAX_TAPS=256
 ) (
   input logic clk,rst_n,start,
+  input logic i_input_range,
   input vector_engine_pkg::vector_engine_cfg_t cfg,
   output logic ready,done,error,
   output logic [31:0] kernel_count,position_count,
-  output logic [63:0] input_bytes,output_bytes,weight_bytes
+  output logic [63:0] input_bytes,output_bytes,weight_bytes,
+  output logic [32:0] o_read_end[4]
 );
   import vector_engine_pkg::*;
   typedef enum logic [3:0] {IDLE,CALCULATE,CAPTURE,FIELDS,
@@ -30,6 +32,8 @@ module vector_config_check #(
   logic [63:0] selected_bytes,range_bytes_q;
   logic selected_enable,range_enable_q,range_size_ok;
   logic [32:0] range_end_q,output_end_q;
+  logic [7:0] range_end_low;
+  logic range_end_carry;
   assign ready=state==IDLE;
   assign done=state==COMPLETE;
   assign spatial=cfg.op<=MINPOOL_S8;
@@ -175,7 +179,9 @@ module vector_config_check #(
         state<=RANGE_ADD;
       end
       RANGE_ADD: begin
-        range_end_q<={1'b0,range_base_q}+{1'b0,range_bytes_q[31:0]};
+        range_end_q[7:0] <= range_end_low;
+        range_end_q[32:8] <= {1'b0, range_base_q[31:8]} +
+            {1'b0, range_bytes_q[31:8]} + range_end_carry;
         range_size_ok<=range_bytes_q!=0 && range_bytes_q[63:32]==0;
         state<=RANGE_COMPARE;
       end
@@ -193,5 +199,35 @@ module vector_config_check #(
       COMPLETE: state<=IDLE;
       default: begin error<=1;state<=COMPLETE;end
     endcase
+  end
+
+  // 选择范围时先完成低字节求和，高位在下一状态使用已保存的进位。
+  always_ff @(posedge clk) begin
+    if (rst_n && state == RANGE_SELECT) begin
+      {range_end_carry, range_end_low} <=
+          {1'b0, selected_base[7:0]} + {1'b0, selected_bytes[7:0]};
+    end
+  end
+
+  // 四个读取槽位复用检查阶段的完整末地址，未启用槽位保持零值。
+  // 开始新配置、复位和错误完成均清零；调用方仅在检查成功后消费。
+  always_ff @(posedge clk) begin
+    if (!rst_n || (state == IDLE && start) || (state == COMPLETE && error)) begin
+      for (int slot = 0; slot < 4; slot++) o_read_end[slot] <= '0;
+    end else if (state == RANGE_COMPARE) begin
+      case (range_index)
+        3'd1: if (i_input_range || !spatial) o_read_end[0] <= range_end_q;
+        3'd2: begin
+          if (!i_input_range && depthwise) o_read_end[0] <= range_end_q;
+          else if (!i_input_range && !spatial && (binary_vector || softmax_s8))
+            o_read_end[1] <= range_end_q;
+        end
+        3'd3: if (!i_input_range && depthwise && cfg.bias_base != 0)
+            o_read_end[1] <= range_end_q;
+        3'd4: if (!i_input_range && depthwise) o_read_end[2] <= range_end_q;
+        3'd5: if (!i_input_range && depthwise) o_read_end[3] <= range_end_q;
+        default: begin end
+      endcase
+    end
   end
 endmodule

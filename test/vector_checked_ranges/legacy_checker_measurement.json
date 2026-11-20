@@ -1,0 +1,61 @@
+{
+  "inputs_constrained": false,
+  "source_sha256": {
+    "rtl/npu/conv/vector_engine.sv": "a0b193986b57dcacc75a0d804fb83b1dc1f8ac974f56ba724761c95a77da119f",
+    "rtl/npu/conv/vector_config_check.sv": "071363b15f7d4f0aad7575260a262d536ea328e4cdf34e082e265523c462ffa8"
+  },
+  "group_comparison": [
+    {
+      "passed": true,
+      "equivalent_bits": 1,
+      "log_sha256": "3ccb4b0e14df22059b7dfdd9ccb8176488072c78c23fd4bcb584c79bb01ec057",
+      "tile": 1
+    },
+    {
+      "passed": true,
+      "equivalent_bits": 1,
+      "log_sha256": "df63df9f737a2ef9488d5568f2cb3cc56f40f8478818adf6c731987b8cd6db0b",
+      "tile": 3
+    },
+    {
+      "passed": true,
+      "equivalent_bits": 1,
+      "log_sha256": "0c0ae868fc32fda6bdf74ccdd2edb0e760c9f256592bbdc43dc072db238116cc",
+      "tile": 16
+    },
+    {
+      "passed": true,
+      "equivalent_bits": 1,
+      "log_sha256": "a0004169472fa274bf3e43b8aca0aa7edefe48c4000d2f2426afef9688807446",
+      "tile": 32
+    },
+    {
+      "passed": true,
+      "equivalent_bits": 1,
+      "log_sha256": "e37c3d3b7e86ba14ca9ecd016e28d25dce2012295dbe3980dd4d0f52c9cb52f4",
+      "tile": 64
+    }
+  ],
+  "configuration": {
+    "passed": true,
+    "reference": "2f06471c",
+    "source_sha256": "071363b15f7d4f0aad7575260a262d536ea328e4cdf34e082e265523c462ffa8",
+    "reference_sha256": "b1edd1481734a1305842f76e3d990a3fc7e8f89cb405cea1999cde8be8a3d106",
+    "input_constraints": null,
+    "all_original_outputs_and_state_each_cycle": true,
+    "runs": [
+      {
+        "tile": 16,
+        "passed": true,
+        "state_signals": 20,
+        "elapsed_seconds": 10.44,
+        "peak_process_tree_rss_bytes": 170954752,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "tile_16.ys",
+        "log": "tile_16.log"
+      }
+    ]
+  },
+  "reference_rev": "2f06471c",
+  "passed": true
+}
