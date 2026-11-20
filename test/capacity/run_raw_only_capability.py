@@ -170,7 +170,9 @@ def hardware_checks(args, out):
                       shared_total_bytes=shared_total, shared_bank_bytes=shared_bank,
                       shared_ia_bank_mask=shared_mask, ps_directory_rows=directory_rows,
                       elaborated_tree_sha256=digest(tree_path), module_instances=counts,
-                      total_sequential_bits=inventory["total_bits"])
+                      total_sequential_bits=inventory["sequential_bits"],
+                      total_read_only_bits=inventory["read_only_bits"],
+                      total_logical_state_bits=inventory["total_bits"])
         (directory / "summary.json").write_text(json.dumps(report, indent=2) + "\n")
         reports.append(report)
         del tree, inventory

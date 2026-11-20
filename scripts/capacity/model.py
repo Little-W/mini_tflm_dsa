@@ -1,8 +1,8 @@
 """Shared-array buffer sizing and conservative host tiling.
 
 Buffer arrays follow the full INT16, WS/IS, per-channel, Conv and vector engine
-configuration. Complete sequential state is obtained from a source-matched
-Verilator elaboration, including every pipeline register and PE register.
+configuration. Complete logical storage is obtained from a source-matched
+Verilator elaboration, including read-only arrays, every pipeline register and PE register.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ POOL_ALIGNMENT = 64
 MAX_POOL_BYTES = 1 << 24
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-bank-regfile-v10"
+MODEL_VERSION = "dip-shared-bank-rom-v11"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -28,6 +28,7 @@ SHARED_BANK_BYTE_CHOICES = (2048, 4096, 8192)
 SHARED_MIN_BANKS = 6
 SHARED_MAX_BANKS = 9
 SHARED_DIRECTORY_ROWS = 1024
+VECTOR_POOL_MAX_TAPS = 256
 
 
 def ceil_div(x, y):
@@ -144,8 +145,9 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     Shared IA storage reads one 128-bit word for compact S8 and two words from
     separate banks for S16. IA and PS use disjoint allocations of the same
     physical data memory. IA, the DiP array and PS transfer complete rows.
-    Pipeline work registers, DMA descriptor queues and compute registers are
-    counted by the complete-state elaboration.
+    Constant read-only tables are included in the array budget. Pipeline work
+    registers, DMA descriptor queues and compute registers are counted by the
+    complete-state elaboration.
     """
     layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
                              bank_bytes=bank_bytes, bank_count=bank_count)
@@ -170,6 +172,7 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         "conv_request_queue": 4 * (4 * 32 + (image_cache["sets"] - 1).bit_length() + 3),
         "conv_response_queue": 4 * (32 + 1),
         "vector_buffers": size * (5 * 16 + 49 * 8 + 4 * 32 + 6),
+        "vector_pool_reciprocal_rom": (VECTOR_POOL_MAX_TAPS + 1) * (9 + VECTOR_POOL_MAX_TAPS.bit_length()),
         "ps_frame_lengths": frames * frame_length_bits,
     }
     if layout["shared_ia_ps_enabled"]:

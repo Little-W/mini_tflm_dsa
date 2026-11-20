@@ -1,0 +1,280 @@
+{
+  "source_sha256": {
+    "scripts/fpga/techmap/fpga_dsp_alu4.sv": "e51814500d997db798b0d69f9b711398d778faa03618f54d297a5a655ec03aea",
+    "test/fpga_dsp_alu4/run.py": "287768b6494569dcbbe733ec6757e8f172903a314403db8dd6b4f40d89a85dbd",
+    "test/fpga_dsp_alu4/tb_four_state.sv": "ce0fb56bea493e7b0bd049a7c60c2bac180096b6056cc5bccf843010039b4341"
+  },
+  "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+  "arithmetic_library_sha256": "a7df1f7cbf09c98d96f791c7b11ab55e64dd197663f67aa6a9d4ada13a61cd82",
+  "official_models_sha256": "7cd6b6b3841dca39a46b1ba7a8448ce81734245cd6ea209ee68968aae70c6d5c",
+  "method": "官方 $alu 与 DSP48E1 模型的全部已定义输入 SAT",
+  "ports": {
+    "operand_bits_per_lane": 10,
+    "lanes": 4,
+    "independent_carry_bits": 4,
+    "shared_invert_bits": 1
+  },
+  "formal": [
+    {
+      "name": "equality_0",
+      "passed": true,
+      "configurations": [
+        [
+          10,
+          10,
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          10,
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          10,
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          10,
+          10,
+          0,
+          0
+        ]
+      ],
+      "compared_bits": 120,
+      "log_sha256": "cc5b330f5dffc65acfb446d45da4fe9022913cbc34260b692d302f57c3982b7d"
+    },
+    {
+      "name": "equality_1",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          1,
+          1,
+          0,
+          0
+        ],
+        [
+          2,
+          2,
+          2,
+          0,
+          0
+        ],
+        [
+          3,
+          3,
+          3,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "compared_bits": 30,
+      "log_sha256": "e636d5f2d637527b153fa64227646c59aabaf67b5e47c3d82d521d31ef059cff"
+    },
+    {
+      "name": "equality_2",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          7,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          8,
+          0,
+          0
+        ]
+      ],
+      "compared_bits": 78,
+      "log_sha256": "8f5c059ad698b1021898b70be4e6423b7085fe0b569d6db8491c71b01316d2e5"
+    },
+    {
+      "name": "equality_3",
+      "passed": true,
+      "configurations": [
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          10,
+          10,
+          10,
+          1,
+          1
+        ],
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          3,
+          7,
+          10,
+          1,
+          0
+        ]
+      ],
+      "compared_bits": 117,
+      "log_sha256": "d1ac45ad8a532de21053b8b0aa35cc8ac52cc4e2e5ba527b544e118c6f73d104"
+    },
+    {
+      "name": "equality_4",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          0,
+          1
+        ],
+        [
+          13,
+          17,
+          10,
+          0,
+          0
+        ],
+        [
+          13,
+          17,
+          10,
+          1,
+          1
+        ],
+        [
+          1,
+          12,
+          1,
+          1,
+          1
+        ]
+      ],
+      "compared_bits": 93,
+      "log_sha256": "1fcdb77176a9521c38fde0a2b0b2ddeb4dda664fedfc1829b8ecda2120cfe539"
+    },
+    {
+      "name": "equality_5",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          6,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          2,
+          6,
+          1,
+          1
+        ],
+        [
+          6,
+          3,
+          4,
+          1,
+          0
+        ],
+        [
+          2,
+          9,
+          5,
+          0,
+          1
+        ]
+      ],
+      "compared_bits": 72,
+      "log_sha256": "23743ace13b90784c847daeb1f7277c9a3b504692a90cd67807f1a9fe53c8922"
+    },
+    {
+      "name": "independence_0",
+      "passed": true,
+      "observed_lane": 0,
+      "compared_bits": 30,
+      "log_sha256": "acc4ab24f6503cbeef0ce41c95d36eadc7000c9beaec0d61f0519cd33476f003"
+    },
+    {
+      "name": "independence_1",
+      "passed": true,
+      "observed_lane": 1,
+      "compared_bits": 30,
+      "log_sha256": "2408b85389af038fdc33f53661b2d96e59969ce7aef598cb409d528701c9f01f"
+    },
+    {
+      "name": "independence_2",
+      "passed": true,
+      "observed_lane": 2,
+      "compared_bits": 30,
+      "log_sha256": "f6bb44cd26ae9d534328946ff16f19104cd89520b2326dd7212412510dc138de"
+    },
+    {
+      "name": "independence_3",
+      "passed": true,
+      "observed_lane": 3,
+      "compared_bits": 30,
+      "log_sha256": "4060c1251ecf2dff855a8b83a2854f8fd008ef39cd4eda52e0ee596ca2746ad2"
+    }
+  ],
+  "structure": {
+    "passed": true,
+    "dsp48e1": 1,
+    "use_simd": "FOUR12",
+    "internal_registers": 0,
+    "techmap_log_sha256": "7d2a0931c293b6bca11c0736feeaad89b516a7a66f219a54ea28fc69b9b5ce22",
+    "techmap_json_sha256": "8ba99253146fd3a1bff4f91262a7a00aa77b6ba6fb773dbec84cfa3fde102bb7"
+  },
+  "simulation": {
+    "passed": true,
+    "defined_cases": 52768,
+    "four_state_cases": 5696,
+    "checked_output_bits": 120,
+    "log_sha256": "9fce9e5cf6776622ee92321e14c2cdd6a2c80954c3a3e9bf9dbcecb0bdea00b1",
+    "binary_sha256": "c69dae827da981fb232f14733a90a9276e08134e638f30d3d13aff936a7349ce"
+  },
+  "passed": true
+}

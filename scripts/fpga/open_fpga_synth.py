@@ -338,6 +338,8 @@ def main():
                         help='DSP capacity reserved beyond the mapped design')
     parser.add_argument('--wide-alu-minimum-width', type=int, default=24)
     parser.add_argument('--wide-alu-maximum-chain', type=int, choices=(1, 2), default=1)
+    parser.add_argument('--pack-small-alu', action='store_true',
+                        help='Share each DSP among up to four independent arithmetic cells of at most ten bits')
     parser.add_argument('--reuse-elaboration-from', type=Path,
                         help='Case directory containing a validated elaborated.il with identical inputs')
     parser.add_argument('--reuse-pre-alu-from', type=Path,
@@ -351,6 +353,8 @@ def main():
     if args.wide_alu_dsp_budget is not None and (args.wide_alu_dsp_budget < 0 or args.wide_alu_dsp_reserve < 0
                                                or not 1 <= args.wide_alu_minimum_width <= 48):
         parser.error('Invalid wide arithmetic DSP budget, reserve, or minimum width')
+    if args.pack_small_alu and (args.wide_alu_dsp_budget is None or args.wide_alu_maximum_chain != 1):
+        parser.error('--pack-small-alu requires a DSP budget and --wide-alu-maximum-chain 1')
     ROOT = args.source_root.resolve()
     if args.out is None:
         args.out = ROOT / 'build/open_fpga_synth'
@@ -437,6 +441,7 @@ def main():
             helper_directory = Path(__file__).resolve().parent
             mapper = helper_directory / 'map_wide_alu.py'
             mapping = helper_directory / 'techmap/wide_alu_dsp.sv'
+            packed_mapping = helper_directory / 'techmap/fpga_dsp_alu4.sv'
             pre_alu = folder / 'pre_alu.json'
             mapped_alu = folder / 'mapped_alu.json'
             mapping_report = folder / 'wide_alu_mapping.json'
@@ -446,6 +451,10 @@ def main():
                        '--minimum-width', str(args.wide_alu_minimum_width)]
             if args.wide_alu_maximum_chain != 1:
                 command += ['--maximum-chain', str(args.wide_alu_maximum_chain)]
+            if args.pack_small_alu:
+                command += ['--pack-small-alu']
+            mapping_files = [mapping] + ([packed_mapping] if args.pack_small_alu else [])
+            mapping_commands = ''.join(f'techmap -map {shlex.quote(str(path))}\n' for path in mapping_files)
             external_commands['02b_map_alu'] = command
             stage_commands = {
                 '01_elaborate': stage_commands['01_elaborate'],
@@ -458,7 +467,7 @@ def main():
                               'read_verilog -lib -specify -overwrite +/xilinx/cells_sim.v\n'
                               'read_verilog -lib -overwrite +/xilinx/cells_xtra.v\n'
                               'verilog_defaults -push\nverilog_defaults -add -sv\n'
-                              f'techmap -map {shlex.quote(str(mapping))}\nverilog_defaults -pop\nopt_clean\n'
+                              f'{mapping_commands}verilog_defaults -pop\nopt_clean\n'
                               f'{synth_command} -run fine:map_luts\n'
                               f'write_rtlil {shlex.quote(str(pre_lut))}\n',
                 '03_map_lut': stage_commands['03_map_lut'],
@@ -472,6 +481,11 @@ def main():
             }
             if args.wide_alu_maximum_chain != 1:
                 wide_alu_configuration['maximum_selected_combinational_dsps'] = args.wide_alu_maximum_chain
+            if args.pack_small_alu:
+                wide_alu_configuration['small_alu_packing'] = {
+                    'maximum_width': 10, 'lanes_per_dsp': 4,
+                    'techmap_sha256': digest(packed_mapping),
+                }
         stages = {}
         manifest = {'top': top, 'configuration': case['configuration'],
                     'parameters': case.get('parameters', {}), 'sources_sha256': source_hash,

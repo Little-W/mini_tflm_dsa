@@ -74,6 +74,29 @@ state against the configuration. It writes the effective bank dimensions, AXI
 data width, compiler command, and source hashes into `result.json`.
 It deletes the rebuildable AST by default; `--keep-tree` retains it.
 
+### 只读表容量
+
+展开统计通过明确的模块及数组名称识别只读表，并检查实际 AST 中的完整
+常量赋值、逐项地址覆盖和时钟边沿读取。只读表要求所有元素均有常量值，
+运行期间保持只读。普通 `initial` 赋值不会自动成为存储容量统计对象。
+
+`vector_engine.avg_reciprocal` 的默认容量为 `257 × 18 = 4626 bit`。
+报告将它列为 `vector_pool_reciprocal_rom`，同时纳入 `buffer_arrays_bits`
+及容量规划程序的预算。`read_only_arrays_bits` 和 `read_only_declarations`
+保存独立的只读容量及层次信息。`sequential_bits` 统计时序状态，
+`read_only_bits` 统计只读表，两者之和为 `total_bits`。
+
+七个 8 KiB 共享存储块的生产配置使用 999134 位逻辑存储数组，包含上述
+只读表；预算按字节向上取整为 124892 字节，低于 128 KiB。普通触发器和
+流水线寄存器在完整逻辑状态统计中单独保留。只读表的实际 FPGA/ASIC AST
+检查命令为：
+
+```sh
+python3 test/vector_pool_reciprocal/run_capacity.py \
+  --verilator /absolute/path/to/verilator \
+  --out build/capacity/vector_pool_reciprocal
+```
+
 This checks the actual array sizes seen by the RTL compiler. The shared RAM
 uses `SHARED_BANK_BYTES` in {2048, 4096, 8192} and `SHARED_BANK_COUNT` in 6..9.
 `NPU_AXI_DATA_WIDTH` selects a 32-bit or 64-bit AXI4 data bus; AXI-Lite retains

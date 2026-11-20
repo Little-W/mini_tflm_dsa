@@ -50,7 +50,8 @@ def main():
     parser.add_argument('--base', default=BASE)
     parser.add_argument('--label', required=True)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--kind', choices=('rolling', 'synthesis-60000', 'physical-60000'), default='rolling')
+    parser.add_argument('--kind', choices=('rolling', 'synthesis-60000', 'physical-60000',
+                                          'physical-45000'), default='rolling')
     parser.add_argument('--measurement-name')
     parser.add_argument('--measurement-file', type=Path, default=ROOT / 'docs/data/fpga_soc_measurements.json')
     parser.add_argument('--next-steps', type=Path, required=True)
@@ -83,9 +84,10 @@ def main():
         else:
             placement = measurement.get('placement') or {}
             positions = resources.get('physical_lut_sites_after_placement')
+            maximum_positions = 45000 if args.kind == 'physical-45000' else 60000
             if (not placement.get('complete') or placement.get('resource_errors') or
-                    placement.get('unplaced_cells') or positions is None or not 0 < positions <= 60000):
-                raise RuntimeError('物理 LUT 位置尚未满足合法布局和 60,000 条件')
+                    placement.get('unplaced_cells') or positions is None or not 0 < positions <= maximum_positions):
+                raise RuntimeError(f'物理 LUT 位置尚未满足合法布局和 {maximum_positions:,} 条件')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=False)
     (out / 'patches').mkdir()
@@ -189,12 +191,16 @@ def main():
                 'bundle_main_ref': main_ref, 'bundle_refs': sorted(temporary_refs),
                 'historical_reference_commits': references, 'submodules': submodules,
                 'measurement': args.measurement_name, 'included_results': included,
-                'requirements': {'physical_lut_positions_maximum': 50000,
+                'requirements': {'physical_lut_positions_maximum': 45000,
                                  'clock_frequency_mhz': 150,
-                                 'register_path_combinational_cells_maximum': 15},
+                                 'register_path_combinational_cells_maximum': 9},
                 'requirement_status': {
-                    'register_path_within_15_cells':
-                        measurement['longest_register_path_cells'] <= 15
+                    'physical_lut_positions_within_45000':
+                        measurement['resources']['physical_lut_sites_after_placement'] <= 45000
+                        if measurement and measurement['resources'].get('physical_lut_sites_after_placement') is not None
+                        else None,
+                    'register_path_within_limit':
+                        measurement['longest_register_path_cells'] <= 9
                         if measurement and measurement.get('register_path_graph_complete') else None,
                     'timing_150mhz_confirmed':
                         measurement['timing_150mhz_confirmed'] if measurement else None,
@@ -209,7 +215,8 @@ def main():
         changes.append(f"| {index} | `{record['commit'][:12]}` | {record['author_date']} | {subject} |")
     (out / 'CHANGES.md').write_text('\n'.join(changes) + '\n')
     title = {'rolling': '工作版本交接包', 'synthesis-60000': '完整 SoC 60,000 逻辑 LUT 交接包',
-             'physical-60000': '完整 SoC 60,000 物理 LUT 位置交接包'}[args.kind]
+             'physical-60000': '完整 SoC 60,000 物理 LUT 位置交接包',
+             'physical-45000': '完整 SoC 45,000 物理 LUT 位置交接包'}[args.kind]
     (out / 'README.md').write_text(f'''# {title}
 
 固定提交为 `{revision}`，源码树为 `{tree}`。补丁起始提交为 `{base}`，共 {len(records)} 个提交。
@@ -217,7 +224,7 @@ def main():
 ## 内容
 
 - `CHANGES.md`：按提交顺序列出的修改记录。
-- `NEXT_STEPS.md`：继续面积与时序优化的方向。
+- `NEXT_STEPS.md`：复测流程及器件时序检查方法。
 - `patches/` 与 `series`：完整二进制补丁系列及应用顺序。
 - `commits/`：原始 Git 提交对象，保留作者、提交者、日期、说明和父提交。
 - `source.bundle`：完整提交历史和验证脚本引用的历史提交。

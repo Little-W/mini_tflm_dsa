@@ -46,16 +46,16 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(path['path'][0]['cell'], 'merge')
         self.assertTrue(filtered['graph_complete'])
 
-    def test_fifteen_cell_requirement(self):
-        for length in (14, 15, 16):
+    def test_nine_cell_requirement(self):
+        for length in (8, 9, 10):
             cells = {'first': flop(1, '0')}
             for index in range(length):
                 cells[f'logic_{index}'] = cell('LUT1', {'I0': [index + 1]}, {'O': [index + 2]})
             cells['last'] = flop(length + 3, length + 1)
             requirement = self.measure(cells)['register_path_requirement']
             self.assertEqual(requirement['observed_combinational_cells'], length)
-            self.assertEqual(requirement['maximum_combinational_cells'], 15)
-            self.assertEqual(requirement['met'], length <= 15)
+            self.assertEqual(requirement['maximum_combinational_cells'], 9)
+            self.assertEqual(requirement['met'], length <= 9)
 
     def test_incomplete_path_requirement(self):
         result = register_path_requirement({'longest_register_path_cells': 0, 'graph_complete': False})
@@ -173,7 +173,7 @@ class MetricsTest(unittest.TestCase):
                 self.assertEqual(fanout['register_path_groups'][0]['maximum_pin_fanout'], 1)
 
     def test_dsp_arithmetic_plus_lut_limit(self):
-        for length in (14, 15):
+        for length in (8, 9):
             cells = {'dsp': cell('DSP48E1', {'A': [50], 'B': [51], 'CLK': [100]},
                                  {'P': [1]}, {'PREG': 0, 'AREG': 1, 'BREG': 1})}
             for index in range(length):
@@ -181,7 +181,7 @@ class MetricsTest(unittest.TestCase):
             cells['last'] = flop(80, length + 1)
             result = self.measure(cells)
             self.assertEqual(result['paths']['longest_register_path_cells'], length + 1)
-            self.assertEqual(result['register_path_requirement']['met'], length == 14)
+            self.assertEqual(result['register_path_requirement']['met'], length == 8)
 
     def test_dsp_combination_between_two_registered_boundaries(self):
         cells = {'first_dsp': cell('DSP48E1', {'A': [1], 'B': [2], 'CLK': [100]},
@@ -300,6 +300,31 @@ class MetricsTest(unittest.TestCase):
             measured = connected_paths(module, root_filter=lambda name, _cell, _port: name == 'first',
                                        sink_filter=lambda name, _cell, _port: name == 'last')
             self.assertEqual(measured['longest_register_path_cells'], 1)
+
+    def test_four12_arithmetic_keeps_data_within_each_lane(self):
+        settings = {'USE_MULT': 'NONE', 'USE_DPORT': 'FALSE', 'USE_SIMD': 'FOUR12',
+                    'A_INPUT': 'DIRECT', 'B_INPUT': 'DIRECT', 'OPMODEREG': 0,
+                    'INMODEREG': 0, 'CARRYINSELREG': 0, 'PREG': 0, 'AREG': 0, 'BREG': 0, 'CREG': 0}
+        control = {'OPMODE': list(reversed('0110011')), 'INMODE': ['0'] * 5,
+                   'CARRYINSEL': ['0'] * 3, 'ALUMODE': [70, 71, 72, 73], 'CARRYIN': [74]}
+        boundaries = (0, 11, 12, 17, 18, 23, 24, 35, 36, 47)
+        for output in ('P', 'PCOUT'):
+            for port, width, offset in (('A', 30, 18), ('B', 18, 0), ('C', 48, 0)):
+                for source in boundaries:
+                    if not offset <= source < offset + width:
+                        continue
+                    for target in boundaries:
+                        data = {name: ['0'] * bits for name, bits in (('A', 30), ('B', 18), ('C', 48))}
+                        data[port][source - offset] = 1
+                        result = ['0'] * 48
+                        result[target] = 2
+                        dsp = cell('DSP48E1', {**control, **data}, {output: result}, settings)
+                        module = {'cells': {'first': flop(1, '0'), 'dsp': dsp, 'last': flop(3, 2)}}
+                        measured = connected_paths(module, root_filter=lambda name, _cell, _port: name == 'first',
+                                                   sink_filter=lambda name, _cell, _port: name == 'last')
+                        expected = source // 12 == target // 12 and source <= target
+                        self.assertEqual(measured['longest_register_path_cells'], int(expected),
+                                         (output, port, source, target))
 
 
 if __name__ == '__main__':

@@ -1,0 +1,5429 @@
+{
+  "method": "select_cells、apply_mapping、JSON 导入及实际 techmap 后的完整输出 SAT",
+  "mapper_sha256": "7ad4488dd953591e78a5bd12f1dc8bafee0e580a829a9d28117e2d8eb3d08d9e",
+  "dependency_analyzer_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88",
+  "source_sha256": {
+    "test/fpga_alu4_mapping/run.py": "064b44d704f02fe040112e510b2319a4404921e4e67e2853cd476e552586596e",
+    "scripts/fpga/techmap/wide_alu_dsp.sv": "d8d15c8acfc6c78fbc52fd459d8ea0ec16f3dce1b2b99124e043e254f57c3da2",
+    "scripts/fpga/techmap/fpga_dsp_alu4.sv": "e51814500d997db798b0d69f9b711398d778faa03618f54d297a5a655ec03aea"
+  },
+  "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+  "reference_model": "Yosys 内建 $alu SAT 模型",
+  "runs": [
+    {
+      "name": "mixed",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 81,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "cd67df88991da2c326c2a14404c73230c6f3328c0331d097ae98eb2039d8c95e",
+      "input_json_sha256": "0962a28f0ce199cfac0bd08e0444d8e357adc8c8225176856eb8cbbc4d6e7c71",
+      "mapped_json_sha256": "1e51431fda44fbfced0af1b37f26050f9896ef82d47b306e07305e090080abdd"
+    },
+    {
+      "name": "empty_unsigned",
+      "passed": true,
+      "configurations": [
+        [
+          0,
+          7,
+          10,
+          0,
+          0
+        ],
+        [
+          8,
+          0,
+          7,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          15,
+          8,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 78,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "cf8f72692a614c33cd4c946a571b0c7692f44e26d234af1e6c1e7f444dea5b7b",
+      "input_json_sha256": "b97d8cd75dc3b31970118079a94ec24c29f4d4df9587df24560653411f5f9c18",
+      "mapped_json_sha256": "d88f4f8db7d41d077f991ac7ad8b75fdf87fe7e2998e1970a0e7ceaa748c18ea"
+    },
+    {
+      "name": "empty_signed",
+      "passed": true,
+      "configurations": [
+        [
+          0,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          8,
+          0,
+          7,
+          1,
+          1
+        ],
+        [
+          0,
+          0,
+          9,
+          1,
+          1
+        ],
+        [
+          15,
+          0,
+          8,
+          1,
+          1
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 102,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "3cbce77072c79afcec5bf4957e7a8d4b169872541942e9eb3727b26f3b0bb190",
+      "input_json_sha256": "5708b441b1e3557eae9e989e081f380a5964cd07c743247b4308e5728186bae5",
+      "mapped_json_sha256": "d2da13f9c4ce060b0d6ebf16737e44d1f33ff1f3dd12bd83ecd96f1c7a000270"
+    },
+    {
+      "name": "widths1_4",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          1,
+          1,
+          0,
+          0
+        ],
+        [
+          2,
+          2,
+          2,
+          0,
+          0
+        ],
+        [
+          3,
+          3,
+          3,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 30,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "36eadb93d75e6d6f309cf6b16654e0387b3f8ccc2e546b668610edf8220eb221",
+      "input_json_sha256": "9e9edeaa90aec43b2ea1503d98c06a87c184925d04583de5379f02cb42495adf",
+      "mapped_json_sha256": "540f580b34ef2b37ca197e35c8b0f90bf76434b98ca2e80066ed117cb8f23ba7"
+    },
+    {
+      "name": "widths5_8",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          5,
+          5,
+          1,
+          1
+        ],
+        [
+          6,
+          6,
+          6,
+          1,
+          1
+        ],
+        [
+          7,
+          7,
+          7,
+          1,
+          1
+        ],
+        [
+          8,
+          8,
+          8,
+          1,
+          1
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 78,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "048e90477d4d07bf76134e32f907e5e2c6d9afc67f7dfaf1bdb22cf14d3d3154",
+      "input_json_sha256": "67b63c47179ccecfdc555f2f648e53e5feca77d74144adb694c8899557c0061a",
+      "mapped_json_sha256": "4b09f232a09a01e6ecbc1be9251ecb9f42e29dd916013ffa18acf43fa41ab48b"
+    },
+    {
+      "name": "widths9_10",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          3,
+          9,
+          1,
+          1
+        ],
+        [
+          3,
+          1,
+          10,
+          0,
+          0
+        ],
+        [
+          12,
+          7,
+          9,
+          1,
+          1
+        ],
+        [
+          10,
+          10,
+          10,
+          1,
+          1
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 114,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "681828c570143d998e58e2624488a4cc6e05c0441521bf288f0bf4b6ce24c218",
+      "input_json_sha256": "dced45b82ad6db6af69a0a9fab76cdeae74e342cd0099cba487415edd903637f",
+      "mapped_json_sha256": "6aa1ff9553c20fe6a68e082ea74ad27f5907d2b7e79d9817b236a837da280b6c"
+    },
+    {
+      "name": "partial_two",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 2,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 2,
+      "shared_variable_BI": true,
+      "log_sha256": "02e0fad0ba20fa912582922923b3e7f61b3212d9ed0ace308f05a8e7c81c81d4",
+      "input_json_sha256": "98a06ef69673d11b476e6d98b25386108a7d75c1a0e2603c0c00359c80af0859",
+      "mapped_json_sha256": "05de3623b00fa01e49b4cda94b0ccb6a67b63935cfd9439fb2a6e6be1aa84146"
+    },
+    {
+      "name": "partial_three",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 3,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 3,
+      "shared_variable_BI": true,
+      "log_sha256": "4dd68f12e291f4e4a732104d8b465f42f8588d155f8098447aa80ab1f3edcfb9",
+      "input_json_sha256": "28d5ceb1409080772cd3bdd38f8c5ec87e7cb997e3a3cce288b7a9e9e7a5ecd0",
+      "mapped_json_sha256": "8064d0bc3c0e92b58d1daa61d8df32d7b9a69adfc318038b5f83d1c230b306bf"
+    },
+    {
+      "name": "single",
+      "passed": true,
+      "configurations": [
+        [
+          13,
+          11,
+          7,
+          1,
+          1
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 1,
+      "packed_groups": 0,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 21,
+      "independent_carry_inputs": 1,
+      "shared_variable_BI": true,
+      "log_sha256": "635cc4ed1f3ffe6dd222bd418bf9a001f3184e53fcc5100639716e56a25a0050",
+      "input_json_sha256": "6742fdf1fe136c4ebc0d1ee7ec4804ff6526b80ea9adea3130caebf6fbe333f0",
+      "mapped_json_sha256": "c14cc1b4416f04832d5926d5b3c2ea81187c0a658b801da3b186a9dc42a924f7"
+    },
+    {
+      "name": "five_cells",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          2,
+          1,
+          1
+        ]
+      ],
+      "budget": 2,
+      "reserve": 0,
+      "selected_cells": 5,
+      "packed_groups": 1,
+      "actual_dsp_cells": 2,
+      "compared_output_bits": 87,
+      "independent_carry_inputs": 5,
+      "shared_variable_BI": true,
+      "log_sha256": "ebf9299febf58cd1278eb798c7d7c4ee73f2655a50eaea89f6b9d7e421103812",
+      "input_json_sha256": "27158d8825062b51966f3aa403fffd812d3e7608d48989bace7c8086f3a5913e",
+      "mapped_json_sha256": "7892e6954754afd53b4067d492abb24ae89fd1bb94768ce73bbc1361864085f5"
+    },
+    {
+      "name": "limited_budget",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        [
+          4,
+          7,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 102,
+      "independent_carry_inputs": 6,
+      "shared_variable_BI": true,
+      "log_sha256": "4745857e95cbb5c77893daee614b27ab6dbc5e884828ab8b8099f5801fbea15b",
+      "input_json_sha256": "52b810e56bb38461811c74f93fe95cd8de2a906c304fd46735d49f82e9afa591",
+      "mapped_json_sha256": "c07cbed568fe1c7dcc2a4ae5024862bbd3a948d901030b29e2a5cbb6cbe30db8"
+    },
+    {
+      "name": "zero_budget",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 0,
+      "reserve": 0,
+      "selected_cells": 0,
+      "packed_groups": 0,
+      "actual_dsp_cells": 0,
+      "compared_output_bits": 81,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "2cb57821889cf72938c83071db54391749af9e51c05a0098433ffb3e7afb78b5",
+      "input_json_sha256": "0962a28f0ce199cfac0bd08e0444d8e357adc8c8225176856eb8cbbc4d6e7c71",
+      "mapped_json_sha256": "2fdcf7f6aeaf5f9dd4995c851ca50e89443107c595846a53d5c631e2ff3666fc"
+    },
+    {
+      "name": "reserved_budget",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        [
+          4,
+          7,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 2,
+      "reserve": 1,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 102,
+      "independent_carry_inputs": 6,
+      "shared_variable_BI": true,
+      "log_sha256": "899e3cf25bc93ee5686ac4bb01b514356e1c255c89a5bef88b541f1a61ccce7d",
+      "input_json_sha256": "52b810e56bb38461811c74f93fe95cd8de2a906c304fd46735d49f82e9afa591",
+      "mapped_json_sha256": "c07cbed568fe1c7dcc2a4ae5024862bbd3a948d901030b29e2a5cbb6cbe30db8"
+    },
+    {
+      "name": "distinct_polarities",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 2,
+      "reserve": 0,
+      "selected_cells": 8,
+      "packed_groups": 2,
+      "actual_dsp_cells": 2,
+      "compared_output_bits": 162,
+      "independent_carry_inputs": 8,
+      "shared_variable_BI": false,
+      "log_sha256": "d82eb5583e7c259d9ddfee11619125a89a6aa7563567b7417a537057d71059f1",
+      "input_json_sha256": "fe870474b4cc1e918f58368392c239072df4050b797a35c62a63c5b1bd250ead",
+      "mapped_json_sha256": "12a5be9471ee18beea3201d99f95aded3efa20e80219279ef5696b23c5add43b"
+    },
+    {
+      "name": "constant_polarities",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 2,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 2,
+      "actual_dsp_cells": 2,
+      "compared_output_bits": 81,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": false,
+      "log_sha256": "557945ea9927b256224755877a8dd9862a05aa6b7d3510396583f21f01c27147",
+      "input_json_sha256": "943348364ac309232d75458c242e5e79210f3d967b2a9659b35b5bd164cbe72e",
+      "mapped_json_sha256": "bb1edb16d9e63a331d906bcd9ac739fb1e3684aca8f40d0d768f4e5bb63ea121"
+    },
+    {
+      "name": "wide_and_small",
+      "passed": true,
+      "configurations": [
+        [
+          17,
+          13,
+          32,
+          1,
+          1
+        ],
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 2,
+      "reserve": 0,
+      "selected_cells": 5,
+      "packed_groups": 1,
+      "actual_dsp_cells": 2,
+      "compared_output_bits": 177,
+      "independent_carry_inputs": 5,
+      "shared_variable_BI": true,
+      "log_sha256": "ce1ad7da7c4703682110a95f55398f9b0b2a7fd7f88ab5623c252c429a3a04c7",
+      "input_json_sha256": "d7290f8b26994d3d4de7614c009817eb60ca14326a280715e85e49bfe38c5eef",
+      "mapped_json_sha256": "b74118a7b0375a58e65c7a79f6cc2fa87013d84582d2d60d0fc81ddecb6ea3b3"
+    },
+    {
+      "name": "dependent_cells",
+      "passed": true,
+      "configurations": [
+        [
+          8,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          8,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 3,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 96,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "a081ffa4ae608d6bb774e3fa1f5c759459a0ccd370a8e4ed5d5343d0040c6789",
+      "input_json_sha256": "75fb8fcd7237ccd6390d6d9ceb8400d2cbeb1ba3d6a159592b31bbb62c76e00b",
+      "mapped_json_sha256": "e8b49c600d483a6e4306726394268373bcca4bf3d8c49102778b466d1125d425"
+    },
+    {
+      "name": "constant_and_repeated",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          10,
+          1,
+          1
+        ],
+        [
+          13,
+          17,
+          6,
+          0,
+          0
+        ],
+        [
+          9,
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          2,
+          8,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 81,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "16e37003c6f6579080186f018c379df0fc41f45d3df165d1d1e3280d437c4dc6",
+      "input_json_sha256": "50a06f9d4c00da618b35b79cf58a8d861ff1166280360fdbd32f918089898823",
+      "mapped_json_sha256": "05d1ed26d576e96151d5c603ab41657d86ff8691cb2314cac9fcb3b8e5a21deb"
+    },
+    {
+      "name": "selected_0",
+      "passed": true,
+      "configurations": [
+        [
+          10,
+          10,
+          10,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 111,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "2f5ba0a32936631ee131ef53a6e9c6ceda64f70ca486b00ea1399b1ec3e302c5",
+      "input_json_sha256": "3dbe9c96cdf72791270429fc6a368c69b067d779019fe7fb63521046d02cf2f1",
+      "mapped_json_sha256": "e1ef357114141596ef4ee84efa14a3394aac4e5013b26188833a8c3d6dcf204e"
+    },
+    {
+      "name": "selected_1",
+      "passed": true,
+      "configurations": [
+        [
+          7,
+          7,
+          8,
+          0,
+          0
+        ],
+        [
+          10,
+          1,
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          1,
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          1,
+          10,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 114,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "f55512dedf00591d28c8b031edce10ffd8fd3af203284a415fd323c872619200",
+      "input_json_sha256": "cf5c3c8c8f761e2faf16db9c9e1830d8c438f69898ce2673eaa4ab7d6d10ebc8",
+      "mapped_json_sha256": "35fe4dd03a64eae7f6165f94a3c49bbd7a03aaedc7ac3aa11a9951e08322f6b0"
+    },
+    {
+      "name": "selected_2",
+      "passed": true,
+      "configurations": [
+        [
+          10,
+          9,
+          10,
+          0,
+          0
+        ],
+        [
+          9,
+          1,
+          10,
+          0,
+          0
+        ],
+        [
+          9,
+          1,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          1,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 114,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "4e39a7e47c2d8c5f427632c81afaded6a130bbbb44fdf059bd5abc74860ab64c",
+      "input_json_sha256": "439ee74006b3f022ca7cba305257510510da7a69fe72bce69a517a134d7a702e",
+      "mapped_json_sha256": "65da5f4147f3b59069d6510dcb51fc07a7b6141491ae61ff5fab7be086be80e0"
+    },
+    {
+      "name": "selected_3",
+      "passed": true,
+      "configurations": [
+        [
+          9,
+          1,
+          9,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 81,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "be3346cdd2c4926b2488c45a0080032369b231571e8016e865c380a4ca0c1a90",
+      "input_json_sha256": "3ce724e9306cdc8ab349e9286fc09e16bff0f92addcd8c889a8677899c8c1068",
+      "mapped_json_sha256": "4fe06945609b5b3261e4254f28cdd37b542526d68d920a950d6f1da5f40e7136"
+    },
+    {
+      "name": "selected_4",
+      "passed": true,
+      "configurations": [
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          0,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          1,
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          1,
+          8,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 93,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "6d315d8c9e1ef77421ceb4cb0b538da70a28e7fbe160cbf389c56c8c08a6ccc0",
+      "input_json_sha256": "8057d3cd387bd88e3c60b61a5c313b2ebbb16c813d5fa3ccfb8c9b4a5d24ec8c",
+      "mapped_json_sha256": "a9b2693e0587b952a41b105669cadf50a27b3736309edf358c9c1fe3dec985e3"
+    },
+    {
+      "name": "selected_5",
+      "passed": true,
+      "configurations": [
+        [
+          8,
+          1,
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          1,
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          1,
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          1,
+          8,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 96,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "bff3577b93b6869d229053e284887bfa562e3af4f17b972d3be033e7db037b43",
+      "input_json_sha256": "0a547e486deaecae4c0b82a56d29d7137e8cba0da5c65bfb0ef6ede26b866a41",
+      "mapped_json_sha256": "70c4d00ba3e3ebb0a66af0664883201108666df608d64bce3be48d00efb45c9b"
+    },
+    {
+      "name": "selected_6",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          7,
+          1,
+          7,
+          0,
+          0
+        ],
+        [
+          5,
+          3,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          3,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 66,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "462a21d27671df85745331ab06212705de50e108c4f7ca74e4a9c562a9c44376",
+      "input_json_sha256": "a142879e9732f3294bc5b7a63b1f922108f9d77ff69edea10dee301695f17647",
+      "mapped_json_sha256": "f3e7a7c60f955b6ac6af5ed456d52b39fcd5625ef9f28d849432b906d092cb4e"
+    },
+    {
+      "name": "selected_7",
+      "passed": true,
+      "configurations": [
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          1,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          1,
+          6,
+          0,
+          0
+        ],
+        [
+          5,
+          1,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 72,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "eab430584f57f70326053dcf04bf546660d51ef15d7a4ffaf4b6b16286b679e2",
+      "input_json_sha256": "fb8cdebdcfca7b7e612ba32aba226045ea8704cbb059de029e324e27ef9f1260",
+      "mapped_json_sha256": "6c174f3f9c1afc7269e5679a84ad4abeaf83c941b13e07de883b836871270205"
+    },
+    {
+      "name": "selected_8",
+      "passed": true,
+      "configurations": [
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 72,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "f4d68f96b76c5e2462f7e036731429bae014230141e2ea4da41b3701aceb81aa",
+      "input_json_sha256": "8778f32f28be8a9151ea20511f57a7e3500989e979685d18c8424280a428e1cb",
+      "mapped_json_sha256": "46b1bd3e687274cf197b53649c20cf645c970a258f938b5dda244e6df375b4c8"
+    },
+    {
+      "name": "selected_9",
+      "passed": true,
+      "configurations": [
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          5,
+          1,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          1,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 66,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "1c135e24db8d64f0b13fd4cd72ac462c1a7e04cec75283412628e83eb4f2e220",
+      "input_json_sha256": "914406212ec91dcc6c2518e3885750891e79396761cdcef37ea48b59cdc349b1",
+      "mapped_json_sha256": "2ed2858cce3ecedaf4ccca8ddc9343bac2f707cf17d23c7d05dbaf8138bcc254"
+    },
+    {
+      "name": "selected_10",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          1,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          1,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          1,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          1,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "4a5ff79db15d042074d2b363ceb4410698449d61c87ccf9da6e4e434f3447895",
+      "input_json_sha256": "cceb755cd66c98918541c70ea1981be9703fcba3015b9621ba4d5a6567567042",
+      "mapped_json_sha256": "f729e82d74c40c396f3ba333230be17b4b1423071a4a48fb8c1da1386a0beef1"
+    },
+    {
+      "name": "selected_11",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "5a248ec437e3013cf2579739d9296f3e4d28a91b7c85c8c0e08690bda2a83a73",
+      "input_json_sha256": "10bf17a7c86a1fdf268a8e41f1502839ad0866f48c85b43144750a31ab524fe1",
+      "mapped_json_sha256": "af77aa94899242d3870d47cf21b9c688f6e4502215ba4666b13b9b0d6c50f8d9"
+    },
+    {
+      "name": "selected_12",
+      "passed": true,
+      "configurations": [
+        [
+          4,
+          1,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          1,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          1,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          1,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "cf36fb8b07884c7a5c0e1d9b231af11cd23d9399413ac770cce2b8ef4213229a",
+      "input_json_sha256": "98ed3ef191ddb508a6595d4ea6a739ba02605aa1ff2ea985bcb3e6f28ada867f",
+      "mapped_json_sha256": "64483203835307f02f969ddc964b5ffd410804b7867ab5ecb46cf3b617b2ffc5"
+    },
+    {
+      "name": "selected_13",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          2,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          3,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          3,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "dafd78dcdc5ac6731e00dac329969e2190b4978495495d8ca4e19f6ffc7cdd71",
+      "input_json_sha256": "05edb68d0a6d8d7a592b448e7a07baf25e1bcc2977b8a7641208859f3194f66b",
+      "mapped_json_sha256": "32c935b979937cefcb4f36b62fab488170dd4a847cd07aa717294ae51160f204"
+    },
+    {
+      "name": "selected_14",
+      "passed": true,
+      "configurations": [
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "f181b5c94e52ef625905051989ede8a054c1a77bbf1601b5bc89ff1b572aab5f",
+      "input_json_sha256": "cc4cd4f6120c0ea7ec57a191da1ad6dbe086b28fda4790a2a5b228712f5550b3",
+      "mapped_json_sha256": "481e349fe3017a7e280f6487597a1d515a47622c848864a0cb0b1d5ab7569c81"
+    },
+    {
+      "name": "selected_15",
+      "passed": true,
+      "configurations": [
+        [
+          4,
+          1,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          1,
+          4,
+          0,
+          0
+        ],
+        [
+          2,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          3,
+          1,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "150993f849571af6ca63862ffe1a42f77b4b4a103fb2162aea1bb9920d87a1d6",
+      "input_json_sha256": "1ff8061bbb5ee98ff3d9fb072900d256b3ea750d6d2346204e06549c123957af",
+      "mapped_json_sha256": "811f3e52a6cb7507b0166b396025f90a960043e643e4600eb435d3a0c2ecb0df"
+    },
+    {
+      "name": "selected_16",
+      "passed": true,
+      "configurations": [
+        [
+          8,
+          10,
+          10,
+          1,
+          1
+        ],
+        [
+          9,
+          9,
+          10,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          10,
+          0,
+          0
+        ],
+        [
+          8,
+          9,
+          10,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 120,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "849a7b73da41d8aae0feb7edcb4ef94bb9ce49c47b3912695620725fbd3f2a64",
+      "input_json_sha256": "312906f042a67f216396ede22235fe8fdc06ad571b7056aa53fd5d84ce7d5c76",
+      "mapped_json_sha256": "a83f89dfad1329084d102a907273744105e1202f96be8d2800b31d4f9b754b4d"
+    },
+    {
+      "name": "selected_17",
+      "passed": true,
+      "configurations": [
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          9,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "a8560b23c0b8a3d008800b379c30ca9e06fb49266e550060101402a5355eee68",
+      "input_json_sha256": "0b0b6fa2d569b8f4c8f5fc6324766b75357ce140a7f17231dc56f44c1a3a76c5",
+      "mapped_json_sha256": "52c54046b5586b368a8f25ac85ea21bea315d2f55d64cb454c69a56fc86396de"
+    },
+    {
+      "name": "selected_18",
+      "passed": true,
+      "configurations": [
+        [
+          8,
+          9,
+          9,
+          1,
+          1
+        ],
+        [
+          8,
+          9,
+          9,
+          1,
+          1
+        ],
+        [
+          8,
+          9,
+          9,
+          1,
+          1
+        ],
+        [
+          7,
+          9,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "67832f28f122d78479b8b83a5c13fb1aa2a0f66cb15a27c817165f4181532f79",
+      "input_json_sha256": "f4339831f10f2dee37bb4804430f33b1d32280f83a0323fa565cec706a79a62b",
+      "mapped_json_sha256": "c96a5ac3af9f2b51d6595aea99a5c3c65e6fd636bf5b504bf8c3aa0f1b091684"
+    },
+    {
+      "name": "selected_19",
+      "passed": true,
+      "configurations": [
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "c9f7b5bd11096f1ba47158237433087cdfdf7364c44aa7996f5bb47b9fe89bf6",
+      "input_json_sha256": "ce541fcac2b3e43081379deb3a0f01875d1af90aac1431814d27a110389db2e8",
+      "mapped_json_sha256": "f3ab1583c5f939918ff449960ef95219f29b2aab0c661cbc6ff7ff115d2853ce"
+    },
+    {
+      "name": "selected_20",
+      "passed": true,
+      "configurations": [
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "1c8703d048aac4b472a97fd529bd4101b119a916ff01a21ff4a623c29993962e",
+      "input_json_sha256": "553f38f34c212faf3a12223d777f982fe1532ded62c687d9d9affd5210afded1",
+      "mapped_json_sha256": "0d4407b7dc8b99c0bab8ae2f26ed7703a80ff19151932ca8d0bfbe33a83cd46f"
+    },
+    {
+      "name": "selected_21",
+      "passed": true,
+      "configurations": [
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "5f6d9dd2a778d0a39e1adbea0f8560552fdeceb6f74192ea3d52ba933edca05d",
+      "input_json_sha256": "2cf6adaf6120e2d6ad9d9fb063a540a4a5f57ae5e00ceb623b48ed3c86f99b51",
+      "mapped_json_sha256": "e3fc2a2dae68cf7ea7081ca07a373d0c5b1f1e0189e43ed12bcf4679bcbe91c2"
+    },
+    {
+      "name": "selected_22",
+      "passed": true,
+      "configurations": [
+        [
+          9,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          8,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          5,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          10,
+          10,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 111,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "f4ad0fba80b163f3688023bfb0e0a298b2586e9989e44ef30a4f7a8d61265923",
+      "input_json_sha256": "446d0e1d0fa66fa5f6f3e260c4ea28bddfeef98ae0d56f4df29c5532b379ddc8",
+      "mapped_json_sha256": "a3047dcbd82a9b20cf40098eeb6176e4983289e51d8fc8a6408c8a06b2b008bb"
+    },
+    {
+      "name": "selected_23",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          10,
+          10,
+          0,
+          0
+        ],
+        [
+          1,
+          10,
+          10,
+          0,
+          0
+        ],
+        [
+          1,
+          10,
+          10,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          10,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 120,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "ab0f5f5c39d049349fae85e0b7f6f31167e26b04a5dfa441f7ab9cefb491084c",
+      "input_json_sha256": "ceb41cc18c1f0b0863a48765be90edccd081e2223162d24f65c56783867b7109",
+      "mapped_json_sha256": "81fa0d76b453453c6f00591608dd36f29a0f39393f0b80a9b9877b8bcd5adc9d"
+    },
+    {
+      "name": "selected_24",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          9,
+          10,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          10,
+          0,
+          0
+        ],
+        [
+          5,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "93bb4a6a588d1443bea06bf002b6e4044fc239fe5eaf94ab62d698108bbdbf6a",
+      "input_json_sha256": "eaa455526748f48f3be1587c744af843fe083e1cbe211ea1582370b1ab606439",
+      "mapped_json_sha256": "5784ce652d169b4c90fe1d8ad940b4f1d885cfbad352738d8db760135213a55a"
+    },
+    {
+      "name": "selected_25",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "e9e3dcbfa9553760060aaf9210b50300476256aef365bc8a6e698e5a04004f0f",
+      "input_json_sha256": "893864960f7a48f890243f04417b3c747f4de2aa861b280a3c16602de0017895",
+      "mapped_json_sha256": "ba989f68d634de28f799ef41d72921e384068c7e14d94a65a86f3ef80e3a0ece"
+    },
+    {
+      "name": "selected_26",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          9,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          9,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 108,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "0f4e88e45c196de9479fa1e73cafdadd77b73be02ea9b6d4f56be997c7362208",
+      "input_json_sha256": "342ea6377c7b757c4fc90ec27478be6c7936be700731184c507c255f222c3180",
+      "mapped_json_sha256": "da1d8149c7744c55a9005042bb372e4caf770a5172813bb8daff3ede934aba71"
+    },
+    {
+      "name": "selected_27",
+      "passed": true,
+      "configurations": [
+        [
+          4,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 75,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "e651df303ad4b98df40ebc9986fd0ea4304ea5a81cb0c476fbf9b23151294659",
+      "input_json_sha256": "c7eda466ae2fa754a8141b02321dfa1aeac24ee3290d8bc5e127c078ba397247",
+      "mapped_json_sha256": "8a0fe51d51f37454e9ada6e511d5004fd69bf24053df8e4815e2d5cb72838c2c"
+    },
+    {
+      "name": "selected_28",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          8,
+          9,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 99,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "dd7d99724a33642cb40586be6a9f7b6a47ccc11e140d3df26e3a1a0fa833a8a7",
+      "input_json_sha256": "fe22c15640cecbb6c626603934aa86be2c9186f34499137e215ac61b589283db",
+      "mapped_json_sha256": "38bee55b78f4ac09c34139eae19d2b2c87ab91811a100619dea8f655d6eb11e0"
+    },
+    {
+      "name": "selected_29",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 96,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "1e2f969a14effbc9a047e997d1e8237714294caba625b10342a13a571b015387",
+      "input_json_sha256": "82dedff64dfbdf6e1b96aa0c45a3d93da3f8c3d27a9fa31f0e82dc80fe92b614",
+      "mapped_json_sha256": "60812bc3982a3bdece122434af36d437342ca6f77c622fa1840d73fd0c95ebb1"
+    },
+    {
+      "name": "selected_30",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 90,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "32afd3db51a1afdda9722ad44445c1edfd3929d7e34dddaa729ca3d3db1761ac",
+      "input_json_sha256": "ecd14d0dfe1a0acad2b824bf3872d6e04cc20886979bb77ac351f3a7e1e4fc39",
+      "mapped_json_sha256": "d47bdb3d10aafd7f16349810765e1a2b788bfea19ba5babbd3b48e00dd0f8c42"
+    },
+    {
+      "name": "selected_31",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 84,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "d2e8250d58fc62aeebd0a8f78bc43bfe94f1fbfdd244e6b9d6e7f03b526eba08",
+      "input_json_sha256": "35ba6d68572eeca1be486dea648a826ee2a2bbe2862fc2e6ddbf10bc067c4eba",
+      "mapped_json_sha256": "dabd10c0cdb38880a363e4a3371a90f1909e9b561cf093029f52f5d07e4803dd"
+    },
+    {
+      "name": "selected_32",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          5,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          5,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 78,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "0256bbf0258551037eb82245e6aeb9d7fd0478686f2818695d3b7fcbfbefb831",
+      "input_json_sha256": "d7f09b97d397eb020848be8c5d2cee4594d1a9cb34c97669f852a581baad5900",
+      "mapped_json_sha256": "36e1a1b98703c2b0611d6c6c766545a96b13be1a5979ce47bc28a59bd74ec951"
+    },
+    {
+      "name": "selected_33",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ],
+        [
+          1,
+          8,
+          8,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 90,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "b430d752a1bba40de92552db8a1760d41d04bd00d6ed22afb0e2fb5df682756a",
+      "input_json_sha256": "b8f2addfa9dd744f6b818f9143b83103fb7758c108b37af7eb8074e7b34ae2a3",
+      "mapped_json_sha256": "8fa5810ea963856a31db69dd8be2aa7adecd0c0f826f6954fdea125cca2706d4"
+    },
+    {
+      "name": "selected_34",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          4,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 72,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "5d417bd74ad822109dddecd07266816149e8fc9785a9b983ed26a32707933b63",
+      "input_json_sha256": "2a4886c76fa608357f8a74f9f81891f766b8b0242e3ad6d56d688baa38639971",
+      "mapped_json_sha256": "10a39bb8af532199070636994e130a739b5f9dd5240b8ddcd0580a33568315c5"
+    },
+    {
+      "name": "selected_35",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          7,
+          8,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          7,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 75,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "bf1754e2cfe9e24870900c3d17f8899e91ad356bcdfb4fbc1515e8ca9e0d95bf",
+      "input_json_sha256": "dfa907382a1edd36a5d8ebd8fbe2ddeb3815addfbc14827c1416af37c2aa6dc7",
+      "mapped_json_sha256": "564592f95d5a84db57e5c2831d0a2df44d6e14b238cfe84719cd52be2d8d38e7"
+    },
+    {
+      "name": "selected_36",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          7,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          7,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 84,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "d63dd5f57b08cd0638843aa14cf7999915859dca734d5eea4bd6fb5c48b05394",
+      "input_json_sha256": "025f358685cff3448a6dadda7de83b07cd1a72b7999435165d3644cb14537938",
+      "mapped_json_sha256": "177665b5b1ea0e69b345cd75bc0f3812041d0ff7378f5266bd7a048f77b39fea"
+    },
+    {
+      "name": "selected_37",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          6,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          6,
+          7,
+          0,
+          0
+        ],
+        [
+          2,
+          6,
+          7,
+          0,
+          0
+        ],
+        [
+          3,
+          6,
+          7,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 84,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "7119eff8bbe7a39a70f74a924deb0bd64587ddef6024928143c6d28e985975d5",
+      "input_json_sha256": "3e88396c0e4bbca2b3c909149132504c36bdccdace448858fd8e32e8dcaf7b78",
+      "mapped_json_sha256": "9aa53c1503c424d0487b69f0e04e4d2ec4e34d92f9253ccdaffa1ce65b53d8e8"
+    },
+    {
+      "name": "selected_38",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          6,
+          7,
+          0,
+          0
+        ],
+        [
+          5,
+          6,
+          7,
+          0,
+          0
+        ],
+        [
+          5,
+          6,
+          7,
+          0,
+          0
+        ],
+        [
+          1,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 81,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "623a7a21ca1384fbee8878407d2e3ee87ba983208b88a54f406b72b96b6bf519",
+      "input_json_sha256": "a7c29b49e61a58393ca713d0f2d70be8c38401f300bc1d3cb5c7984fdb90c95a",
+      "mapped_json_sha256": "ea14cf949ce06af3cc460f089ffa638deffce83ffb0b501195e70adb10786e12"
+    },
+    {
+      "name": "selected_39",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 72,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "a6ba4f0df8395f288c270b6b4d2194e82fc5358985e2dc50c02bd80e6afc1c1b",
+      "input_json_sha256": "5132f2d6564d8fd43e891a09065d212a7b58621ec792c9f5d5ef796b2cb00167",
+      "mapped_json_sha256": "26bbef8b7315711379001fd6c53676f2a0717eecab53859a5039f0e693e6a6f4"
+    },
+    {
+      "name": "selected_40",
+      "passed": true,
+      "configurations": [
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          3,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "f8879df7e9176556f52838173b26a49f61f3e8fc38135d48dad764ea99383478",
+      "input_json_sha256": "0723a526b6dec6a23ef72cf0925a57d5fe3cac0dfb30d8815828419ab4236f52",
+      "mapped_json_sha256": "a0c92b5a1b5a14bd527a2e3cbe8dc2b872f3ae524719d85d64b35f37cbd2d48e"
+    },
+    {
+      "name": "selected_41",
+      "passed": true,
+      "configurations": [
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "89cd9be3461e13a2ba582af4ce4352d442ea577211b95218817f83ad2423e869",
+      "input_json_sha256": "74d0390fc9e7a96ab1ad90542283f0089e15ec00d7fc60e1ca301bcbf75cc61b",
+      "mapped_json_sha256": "3a4338e3fccaafc6c80f4ba22786f4e6221d43ae16f4cf0946af67a55565729b"
+    },
+    {
+      "name": "selected_42",
+      "passed": true,
+      "configurations": [
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          6,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 63,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "a13f59d93916a527df1dc6b86fb152db5a472680ff57f70fefd5004a5fc67227",
+      "input_json_sha256": "ae2653d86434b94ec56634b20214aac933f7047879a2e3073c433a475ff125fc",
+      "mapped_json_sha256": "0a32ebe22fd6e591fc7b49c4359efde8a51588bc0b7fa00c03d88b945a05105c"
+    },
+    {
+      "name": "selected_43",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          6,
+          6,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "793c04f6555ebebe6303f6f72bec21c7d4e894aae8326ec4368aa21da9245be1",
+      "input_json_sha256": "8d80503fba86c9e070d74a03f97d187841490db3991f85e07a194fa7c0770e40",
+      "mapped_json_sha256": "072c6b1a53702e4ecaf29429dd9b12d58bf3be4151c9315f15b80c18175d8714"
+    },
+    {
+      "name": "selected_44",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          6,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 72,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "0caeb409e064e911aee0143896a4e663613455a2479a65dfe594cafcdafe4aca",
+      "input_json_sha256": "549440cfabcf515a1d6ef7ca91ae33c81c2b7573ce666ec8d76e7fe9f6763a9c",
+      "mapped_json_sha256": "27349a716b6c9e6edcac75916896aa0a00e8c26e3998850764119eb63e7a1820"
+    },
+    {
+      "name": "selected_45",
+      "passed": true,
+      "configurations": [
+        [
+          2,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          6,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 69,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "a41b3c467cb1b768f068e8ff06423c6a8a0cfbb6955a310b87852b0127bdefd6",
+      "input_json_sha256": "59b5fa38662ccfcfcc4f0102ace65e3bb779fcb4bd120139e1d79d9b7707ec8b",
+      "mapped_json_sha256": "fd147627ef8a84d597f5b8d1ebda6502c020e56d70da31b79258d6be3dd12862"
+    },
+    {
+      "name": "selected_46",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "0e9f9e75bd00c0b31b5a4c45cd3430c694da86ca3abdc7fe0aeb68acb5d3c984",
+      "input_json_sha256": "bd47b2ce842a20f29ac0ef8b831669f548a8f9896860dc9520ff19e3a13b1450",
+      "mapped_json_sha256": "6d80f1612cbabcc1a0886e75c8357d7c586c8c843b340cc6998facbaabaa9212"
+    },
+    {
+      "name": "selected_47",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          2,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          3,
+          5,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "74f73577c7202fdc09b033a699a7651620a3cd60b22a63df9e0eb71fc3316957",
+      "input_json_sha256": "7ef961dafe9f63d82386c079ace5027ca3fa8a545b23bf61d3b964475bdf0a9e",
+      "mapped_json_sha256": "868e439b6ae751f81c2d4efbce7a193a7af964d26f159c12ad7f1605d0003519"
+    },
+    {
+      "name": "selected_48",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          3,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          3,
+          3,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 54,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "4bda7867b9ed82347770da6fbd5c6b2180011299a7efff895fdad297759def4c",
+      "input_json_sha256": "4a2269c0d17bc428d6d604378ee69c5e4e49d93ced28e5c5555682a84f0ae6bc",
+      "mapped_json_sha256": "39076af5b9ce2b51fffa5d02dc297ee35c54fb0f0c4c4f5fb932bac7553e8052"
+    },
+    {
+      "name": "selected_49",
+      "passed": true,
+      "configurations": [
+        [
+          2,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          3,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 54,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "3a8274cbca45abd4ab463e6c0d1346a9c31b08b34b665d2155c90320575cc652",
+      "input_json_sha256": "2fb95e80f1d192ff1c8f66824c90363a3edfac58252eccb06f2243b7f44a47b8",
+      "mapped_json_sha256": "04c097e7d0f099feb6a0ec44b313d3e1c51e3ce8f635afb22a42940a27c3dd26"
+    },
+    {
+      "name": "selected_50",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          2,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          3,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          3,
+          4,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "cff8164b2125d8da712ffc9f20aa9c74053c3847e6807df8eaa94b39b6e51aab",
+      "input_json_sha256": "da2acda0c7e35abd4556a76c7d50a182b96f63b1da33d7e328d89696f2e98fd8",
+      "mapped_json_sha256": "11bc9ffa528dbc9df31db738ef0d981cb8e33e44ac7fb3ae2ffa1672a97808ea"
+    },
+    {
+      "name": "selected_51",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          5,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 60,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "d955464241642afd28d3f40d16a918850ffe3f60d28c56d88217b1ee9fd5289b",
+      "input_json_sha256": "4d2cad316da8611f0b8a28a9d0fbdd620348264ba289a56dc5ec77c238f0c3f3",
+      "mapped_json_sha256": "8a21a56f41028c7ad888bb5614521c0333e4df463ddd516b675b62025d27ea3f"
+    },
+    {
+      "name": "selected_52",
+      "passed": true,
+      "configurations": [
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          5,
+          5,
+          5,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 57,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "86e0061e47187a6ecb18e4067c31c0620321308ed065a5be61ebdc695e36c4ef",
+      "input_json_sha256": "2a6d84a03dca5bac541ee2931794a9426608037b0c17f8459a3277d12826e82e",
+      "mapped_json_sha256": "512f75d6a26c0adf3fdd08f9f5650b260c29e6ca73646b2c8c776063c8aad53f"
+    },
+    {
+      "name": "selected_53",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "f269473fa68737a1082e35c8d7e4bc8b98bdb995ddba1240cc30f4f64d187397",
+      "input_json_sha256": "850bf73939f3012ed835f7cf42c318961dcab29f2b38ef1592163f8e38084c5a",
+      "mapped_json_sha256": "a8a810951908fbadd142177d7bbe53c6c0b9fb46af31b287d6735d1dacb64a72"
+    },
+    {
+      "name": "selected_54",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "f2d5df930453f0608601ccb37d18b8b47b86dfff5c627e9bd0ca4c299f17bcbd",
+      "input_json_sha256": "6a98dd56886320ed8a9e88ffaf9b55127e5d22c6f8455ba0f91919624222755c",
+      "mapped_json_sha256": "44ab9d7dd235938a1d56cf91165f8f35977e976d00b541aae4bcb935548423a4"
+    },
+    {
+      "name": "selected_55",
+      "passed": true,
+      "configurations": [
+        [
+          1,
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          2,
+          3,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 4,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 48,
+      "independent_carry_inputs": 4,
+      "shared_variable_BI": true,
+      "log_sha256": "fdb6a8ee98219791e66b510c0aaea6f262fe992c9f670c3e42c3211b08e7081a",
+      "input_json_sha256": "cd7d7457d40cdb528730664160ad7aa0da98e5f5434e8286219af57034bc1158",
+      "mapped_json_sha256": "d19e17a8819ec189588958eb70ddd861fdcb6f7e733ff0a23006ae528b5f99d6"
+    },
+    {
+      "name": "selected_56",
+      "passed": true,
+      "configurations": [
+        [
+          3,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          3,
+          3,
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          4,
+          4,
+          0,
+          0
+        ]
+      ],
+      "budget": 1,
+      "reserve": 0,
+      "selected_cells": 3,
+      "packed_groups": 1,
+      "actual_dsp_cells": 1,
+      "compared_output_bits": 36,
+      "independent_carry_inputs": 3,
+      "shared_variable_BI": true,
+      "log_sha256": "6be00a8087bbb1f13bfd17fdffefe81a8b4f15fd7ecec49c4d69ad86c8f1f457",
+      "input_json_sha256": "c8a514a16ddd55e8850b3d6cc823eac6c92f45b00f56ffe0fc620beea91be37b",
+      "mapped_json_sha256": "dcde673882779d9035bec5b95b1bb86cd2c8571da1966f6cf9eae701d3c02f71"
+    }
+  ],
+  "production_selection": {
+    "selection_sha256": "6007ae0fc280673432b423027d45b73b8c9dfab81dab91b7e36ed1076a1cfb78",
+    "input_netlist_sha256": "f153d978261aca57e413b9c5397ac94dc1ffc75727567297161bc776fbf1e90f",
+    "groups": 76,
+    "members": 303,
+    "parameter_shapes": 57,
+    "resulting_dsp_cells": 728,
+    "additional_dsp_cells": 360,
+    "shape_groups": [
+      {
+        "shape": [
+          [
+            10,
+            10,
+            10,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          0
+        ]
+      },
+      {
+        "shape": [
+          [
+            7,
+            7,
+            8,
+            0,
+            0
+          ],
+          [
+            10,
+            1,
+            10,
+            0,
+            0
+          ],
+          [
+            10,
+            1,
+            10,
+            0,
+            0
+          ],
+          [
+            10,
+            1,
+            10,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          1
+        ]
+      },
+      {
+        "shape": [
+          [
+            10,
+            9,
+            10,
+            0,
+            0
+          ],
+          [
+            9,
+            1,
+            10,
+            0,
+            0
+          ],
+          [
+            9,
+            1,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            1,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          2
+        ]
+      },
+      {
+        "shape": [
+          [
+            9,
+            1,
+            9,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          3
+        ]
+      },
+      {
+        "shape": [
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            0,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            1,
+            8,
+            0,
+            0
+          ],
+          [
+            8,
+            1,
+            8,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          4
+        ]
+      },
+      {
+        "shape": [
+          [
+            8,
+            1,
+            8,
+            0,
+            0
+          ],
+          [
+            8,
+            1,
+            8,
+            0,
+            0
+          ],
+          [
+            8,
+            1,
+            8,
+            0,
+            0
+          ],
+          [
+            8,
+            1,
+            8,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          5
+        ]
+      },
+      {
+        "shape": [
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            7,
+            1,
+            7,
+            0,
+            0
+          ],
+          [
+            5,
+            3,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            3,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          6
+        ]
+      },
+      {
+        "shape": [
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            1,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            1,
+            6,
+            0,
+            0
+          ],
+          [
+            5,
+            1,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          7
+        ]
+      },
+      {
+        "shape": [
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          8,
+          9,
+          10,
+          11,
+          37
+        ]
+      },
+      {
+        "shape": [
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            5,
+            1,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            1,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          12
+        ]
+      },
+      {
+        "shape": [
+          [
+            5,
+            1,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            1,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            1,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            1,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          13
+        ]
+      },
+      {
+        "shape": [
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          14,
+          15
+        ]
+      },
+      {
+        "shape": [
+          [
+            4,
+            1,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            1,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            1,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            1,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          16,
+          19
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            2,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            3,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            3,
+            4,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          17
+        ]
+      },
+      {
+        "shape": [
+          [
+            4,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          18,
+          21
+        ]
+      },
+      {
+        "shape": [
+          [
+            4,
+            1,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            1,
+            4,
+            0,
+            0
+          ],
+          [
+            2,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            3,
+            1,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          20
+        ]
+      },
+      {
+        "shape": [
+          [
+            8,
+            10,
+            10,
+            1,
+            1
+          ],
+          [
+            9,
+            9,
+            10,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            10,
+            0,
+            0
+          ],
+          [
+            8,
+            9,
+            10,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          22
+        ]
+      },
+      {
+        "shape": [
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            9,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          23
+        ]
+      },
+      {
+        "shape": [
+          [
+            8,
+            9,
+            9,
+            1,
+            1
+          ],
+          [
+            8,
+            9,
+            9,
+            1,
+            1
+          ],
+          [
+            8,
+            9,
+            9,
+            1,
+            1
+          ],
+          [
+            7,
+            9,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          24
+        ]
+      },
+      {
+        "shape": [
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          25,
+          28
+        ]
+      },
+      {
+        "shape": [
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          26,
+          29
+        ]
+      },
+      {
+        "shape": [
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          27
+        ]
+      },
+      {
+        "shape": [
+          [
+            9,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            8,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            5,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            10,
+            10,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          30
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            10,
+            10,
+            0,
+            0
+          ],
+          [
+            1,
+            10,
+            10,
+            0,
+            0
+          ],
+          [
+            1,
+            10,
+            10,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            10,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          31
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            9,
+            10,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            10,
+            0,
+            0
+          ],
+          [
+            5,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          32
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          33,
+          34
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            9,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            9,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          35
+        ]
+      },
+      {
+        "shape": [
+          [
+            4,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            6,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          36
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            8,
+            9,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          38
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          39
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          40
+        ]
+      },
+      {
+        "shape": [
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          41
+        ]
+      },
+      {
+        "shape": [
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            3,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            5,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            5,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          42
+        ]
+      },
+      {
+        "shape": [
+          [
+            5,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ],
+          [
+            1,
+            8,
+            8,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          43
+        ]
+      },
+      {
+        "shape": [
+          [
+            5,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            4,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          44
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            7,
+            8,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            7,
+            7,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          45
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            1,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            1,
+            7,
+            7,
+            0,
+            0
+          ],
+          [
+            1,
+            7,
+            7,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          46
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            6,
+            7,
+            0,
+            0
+          ],
+          [
+            3,
+            6,
+            7,
+            0,
+            0
+          ],
+          [
+            2,
+            6,
+            7,
+            0,
+            0
+          ],
+          [
+            3,
+            6,
+            7,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          47
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            6,
+            7,
+            0,
+            0
+          ],
+          [
+            5,
+            6,
+            7,
+            0,
+            0
+          ],
+          [
+            5,
+            6,
+            7,
+            0,
+            0
+          ],
+          [
+            1,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          48
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          49,
+          50,
+          51,
+          55
+        ]
+      },
+      {
+        "shape": [
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            3,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          52
+        ]
+      },
+      {
+        "shape": [
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          53,
+          65
+        ]
+      },
+      {
+        "shape": [
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            6,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          54
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            6,
+            6,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          56
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            6,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          57
+        ]
+      },
+      {
+        "shape": [
+          [
+            2,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            6,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          58
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          59,
+          60
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            2,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            3,
+            5,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          61
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            3,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            3,
+            3,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          62
+        ]
+      },
+      {
+        "shape": [
+          [
+            2,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            3,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          63
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            2,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            3,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            3,
+            4,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          64
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            5,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          66,
+          67
+        ]
+      },
+      {
+        "shape": [
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            5,
+            5,
+            5,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          68
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          69,
+          70,
+          71,
+          72
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          73
+        ]
+      },
+      {
+        "shape": [
+          [
+            1,
+            4,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            2,
+            3,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          74
+        ]
+      },
+      {
+        "shape": [
+          [
+            3,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            3,
+            3,
+            4,
+            0,
+            0
+          ],
+          [
+            4,
+            4,
+            4,
+            0,
+            0
+          ]
+        ],
+        "groups": [
+          75
+        ]
+      }
+    ]
+  },
+  "passed": true
+}

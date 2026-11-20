@@ -1,4 +1,4 @@
-"""Measure instantiated sequential state with Verilator's JSON elaboration."""
+"""Measure instantiated state and read-only arrays with Verilator's JSON elaboration."""
 from __future__ import annotations
 
 from functools import lru_cache
@@ -14,6 +14,9 @@ from . import model
 
 ROOT = Path(__file__).resolve().parents[2]
 CACHE = ROOT / "build/capacity/state_cache"
+READ_ONLY_ARRAY_SCHEMAS = {
+    ("vector_engine", "avg_reciprocal"): "vector_pool_reciprocal_rom",
+}
 
 
 def digest(path):
@@ -144,7 +147,10 @@ def array_category(origin, name, ancestors, instance_path=""):
             return None
         if "vector_engine" in ancestors and instance_path.rsplit(".", 1)[-1] == "u_bias_storage":
             return "vector_buffers"
-        if instance_path.rsplit(".", 1)[-1] in ("u_prefetch_keys", "u_prefetch_payload"):
+        if "vector_weight_store" in ancestors:
+            return "vector_buffers"
+        if instance_path.rsplit(".", 1)[-1] in (
+                "u_prefetch_keys", "u_prefetch_payload", "u_prefetch_retire", "u_prefetch_index"):
             return "conv_prefetch_queue"
         if "vec_s8_fifo_row_ram" in ancestors:
             return "oa_s16_fifo" if "vec_s16_to_fifo" in ancestors else "oa_s8_fifo"
@@ -242,10 +248,99 @@ def register_array_category(origin, name, ancestors=(), instance_path=""):
     return None
 
 
+def read_only_arrays(node, refs, width, variable_names):
+    """按明确的数组类别和实际常量写入、同步读取结构识别只读存储。"""
+    origin = node.get("origName", node["name"])
+    selected = {ref: READ_ONLY_ARRAY_SCHEMAS[(origin, name)]
+                for ref, name in variable_names.items()
+                if (origin, name) in READ_ONLY_ARRAY_SCHEMAS}
+    if not selected:
+        return {}
+    writes = {ref: [] for ref in selected}
+    registered_reads = set()
+
+    def scan(child, context=None, clocked=False, assignment=None):
+        kind = child.get("type")
+        if kind == "CELL":
+            return
+        if kind == "INITIAL":
+            context, clocked = "initial", False
+        elif kind == "ALWAYS":
+            context = "continuous" if child.get("keyword") == "cont_assign" else None
+            clocked = any(item.get("edgeType") in ("POS", "NEG")
+                          for tree in child.get("sentreep", [])
+                          for item in tree.get("sensesp", []))
+        elif kind in ("IF", "CASE", "WHILE", "FOR", "FOREACH", "DELAY", "WAIT"):
+            context = None
+        if kind in ("ASSIGN", "ASSIGNW", "ASSIGNDLY"):
+            assignment = (child, context, clocked)
+        if kind == "VARREF" and child.get("varp") in selected:
+            ref = child["varp"]
+            if child.get("access") in ("WR", "RW"):
+                writes[ref].append(assignment)
+            if child.get("access") in ("RD", "RW") and assignment and \
+                    assignment[0]["type"] == "ASSIGNDLY" and assignment[2]:
+                registered_reads.add(ref)
+        for descendant in children(child):
+            scan(descendant, context, clocked, assignment)
+    scan(node)
+
+    def constant(value):
+        if value.get("type") != "CONST":
+            raise ValueError("只读表的地址和内容必须在展开后为常量")
+        match = re.fullmatch(r"\d+'s?([hodb])([0-9a-fA-F]+)", value["name"])
+        if match is None:
+            raise ValueError("只读表包含未定义的常量位")
+        return int(match[2], {"h": 16, "o": 8, "d": 10, "b": 2}[match[1]])
+
+    result = {}
+    for ref, category in selected.items():
+        var = refs[ref]
+        dtype = refs[var["dtypep"]]
+        if dtype.get("type") != "UNPACKARRAYDTYPE":
+            raise ValueError(f"{origin}.{variable_names[ref]} 必须为只读数组")
+        left, right = map(int, dtype["declRange"].strip("[]").split(":"))
+        words = abs(left-right)+1
+        word_bits = width(dtype["refDTypep"])
+        initialized, contexts = set(), set()
+        for assignment in writes[ref]:
+            if assignment is None:
+                raise ValueError("只读表存在非赋值形式的写入")
+            statement, context, _ = assignment
+            if (statement["type"], context) not in (("ASSIGN", "initial"), ("ASSIGNW", "continuous")):
+                raise ValueError("只读表存在运行期写入或条件初始化")
+            if statement.get("timingControlp"):
+                raise ValueError("只读表初始化包含延迟控制")
+            lhs, rhs = statement.get("lhsp", []), statement.get("rhsp", [])
+            if len(lhs) != 1 or len(rhs) != 1 or lhs[0].get("type") != "ARRAYSEL":
+                raise ValueError("只读表需要完整数组元素的常量赋值")
+            source, index = lhs[0].get("fromp", []), lhs[0].get("bitp", [])
+            if len(source) != 1 or source[0].get("type") != "VARREF" or \
+                    source[0].get("varp") != ref or len(index) != 1:
+                raise ValueError("只读表的数组元素选择形式不受支持")
+            address, value = constant(index[0]), constant(rhs[0])
+            # ARRAYSEL 使用从零开始的展开后元素偏移。
+            if address not in range(words) or address in initialized:
+                raise ValueError("只读表初始化地址超出数组范围或重复")
+            if value >= 1 << word_bits:
+                raise ValueError("只读表常量超出元素位宽")
+            initialized.add(address)
+            contexts.add(context)
+        if initialized != set(range(words)):
+            raise ValueError("只读表未逐项初始化完整数组")
+        if ref not in registered_reads:
+            raise ValueError("只读表缺少时钟边沿的同步读取")
+        result[ref] = dict(category=category, words=words, word_bits=word_bits,
+                           initialized_words=len(initialized),
+                           initialization_kinds=sorted(contexts), read_latency_cycles=1)
+    return result
+
+
 def inventory(tree):
     refs, width = elaboration_types(tree)
     module_bits, instances, arrays, array_counts, declarations = {}, {}, {}, {}, []
     register_arrays = {}
+    read_only_bits, read_only_declarations = {}, []
     ps_storage_bits = 0
     shared_ram_bits = 0
 
@@ -280,13 +375,15 @@ def inventory(tree):
             for descendant in children(child):
                 scan(descendant, scope)
         scan(node)
+        read_only = read_only_arrays(node, refs, width, variable_names)
         total = 0
-        for ref in sorted(targets):
+        for ref in sorted(targets | set(read_only)):
             var = refs[ref]
             name = variable_names.get(ref, var["name"])
             bits = width(var["dtypep"])
             total += bits
-            category = array_category(origin, name, ancestors, path)
+            category = read_only[ref]["category"] if ref in read_only else \
+                array_category(origin, name, ancestors, path)
             if category:
                 arrays[category] = arrays.get(category, 0) + bits
                 array_counts[category] = array_counts.get(category, 0) + 1
@@ -298,16 +395,25 @@ def inventory(tree):
             if origin in ("ia_ps_shared_ram", "ia_ps_channel_ram") or any(
                     owner in ancestors for owner in ("ia_ps_shared_ram", "ia_ps_channel_ram")):
                 shared_ram_bits += bits
-            declarations.append(dict(path=path + "." + name, module=origin,
-                                     name=name, bits=bits, buffer_category=category,
-                                     register_array_category=register_category))
+            declaration = dict(path=path + "." + name, module=origin,
+                               name=name, bits=bits, buffer_category=category,
+                               register_array_category=register_category)
+            if ref in read_only:
+                read_only_bits[category] = read_only_bits.get(category, 0) + bits
+                read_only_declarations.append(dict(declaration, **read_only[ref]))
+            else:
+                declarations.append(declaration)
         module_bits[origin] = module_bits.get(origin, 0) + total
         instances[origin] = instances.get(origin, 0) + 1
     top = next(node for node in tree["modulesp"] if node.get("name") == "npu_axil_top")
     module(top, top["name"], ())
     return dict(total_bits=sum(module_bits.values()), module_bits=module_bits,
+                sequential_bits=sum(item["bits"] for item in declarations),
+                read_only_bits=sum(read_only_bits.values()),
                 module_instances=instances, buffer_arrays_bits=arrays, declaration_counts=array_counts,
                 register_arrays_bits=register_arrays,
+                read_only_arrays_bits=read_only_bits,
+                read_only_declarations=sorted(read_only_declarations, key=lambda x: x["path"]),
                 ps_storage_and_codec_bits=ps_storage_bits,
                 shared_ram_and_port_state_bits=shared_ram_bits,
                 sequential_declarations=sorted(declarations, key=lambda x: x["path"]))
@@ -448,7 +554,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     passed = (unchanged and expected == state["buffer_arrays_bits"] and
               expected_registers == state["register_arrays_bits"] and architecture and capabilities_match)
     report = dict(passed=passed, model_version=model.MODEL_VERSION,
-                  scope="Instantiated sequential declarations, including RAM, metadata, PE state, pipeline registers and clock-gate latch.",
+                  scope="Instantiated sequential declarations and verified read-only arrays, including RAM, ROM, metadata, PE state, pipeline registers and clock-gate latch.",
                   configuration=values, hardware_configuration=hardware_config(values),
                   source_sha256=hashes, sources_unchanged=unchanged, cache_identity=key,
                   verilator=subprocess.check_output([executable, "--version"], text=True).strip(),

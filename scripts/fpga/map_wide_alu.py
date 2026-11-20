@@ -56,9 +56,11 @@ def combinational_inputs(cell, output=None):
 
 
 def select_cells(module, budget, reserve=0, minimum_width=24, maximum_width=48,
-                 maximum_chain=1):
+                 maximum_chain=1, pack_small_alu=False):
     if maximum_chain not in (1, 2):
         raise ValueError('Selected combinational DSP limit must be one or two')
+    if pack_small_alu and maximum_chain != 1:
+        raise ValueError('Four-lane arithmetic requires independent selected DSP cells')
     cells = module['cells']
     existing = sum(cell['type'] == 'DSP48E1' for cell in cells.values())
     if existing + reserve > budget:
@@ -155,6 +157,8 @@ def select_cells(module, budget, reserve=0, minimum_width=24, maximum_width=48,
 
     limit = budget - reserve - existing
     selected = []
+    additional = 0
+    small_groups = collections.defaultdict(list)
     blocked = sum(1 << indices[name] for name in blocked_by_existing)
     selected_bits = 0
     prefix, suffix = {}, {}
@@ -184,12 +188,27 @@ def select_cells(module, budget, reserve=0, minimum_width=24, maximum_width=48,
     for name in sorted(names, key=lambda item: (-(candidates[item]['width'] >= 24),
                                                 -candidates[item]['score'], -candidates[item]['width'], item)):
         index = indices[name]
-        if len(selected) == limit:
+        if additional == limit and not pack_small_alu:
             break
         if blocked & (1 << index):
             continue
         if maximum_chain > 1 and 1 + peak(ancestors[name], prefix) + peak(descendants[index], suffix) > maximum_chain:
             continue
+        group = None
+        if pack_small_alu and candidates[name]['width'] <= 10:
+            polarity = tuple(cells[name]['connections']['BI'])
+            groups = small_groups[polarity]
+            if groups and len(groups[-1]) < 4:
+                group = groups[-1]
+        cost = int(group is None)
+        if additional + cost > limit:
+            continue
+        if pack_small_alu and candidates[name]['width'] <= 10:
+            if group is None:
+                group = []
+                small_groups[polarity].append(group)
+            group.append(name)
+        additional += cost
         selected.append(name)
         selected_bits |= 1 << index
         if maximum_chain == 1:
@@ -204,12 +223,20 @@ def select_cells(module, budget, reserve=0, minimum_width=24, maximum_width=48,
         raise AssertionError('Selected DSP chain exceeds its configured limit')
     report = {
         'dsp_budget': budget, 'dsp_reserve': reserve, 'existing_dsp_cells': existing,
-        'additional_dsp_cells': len(selected), 'resulting_dsp_cells': existing + len(selected),
+        'additional_dsp_cells': additional, 'resulting_dsp_cells': existing + additional,
         'minimum_width': minimum_width, 'maximum_width': maximum_width,
         'candidate_cells': len(candidates), 'blocked_by_existing_combinational_dsp': blocked_by_existing,
         'selected': [{'cell': name, **candidates[name]} for name in selected],
         'selection_rule': 'Select 24 to 48 bit arithmetic first, then narrower independent cells; highest estimated area within each group; no combinational path between selected DSP cells or an existing unregistered DSP',
     }
+    if pack_small_alu:
+        report['small_alu_packing'] = {
+            'maximum_width': 10, 'lanes_per_dsp': 4,
+            'groups': [{'cells': group, 'BI': list(polarity)}
+                       for polarity, groups in small_groups.items()
+                       for group in groups if len(group) > 1],
+        }
+        report['selection_rule'] += '; up to four independent cells of at most ten bits share a DSP when BI is identical'
     if maximum_chain > 1:
         report.update(maximum_selected_combinational_dsps=maximum_chain,
                       selected_combinational_dsp_upper_bound=max(prefix.values(), default=0),
@@ -219,6 +246,8 @@ def select_cells(module, budget, reserve=0, minimum_width=24, maximum_width=48,
 
 def retain_as_carry(report, reference, names):
     """从已验证的选择中保留指定算术单元，其余 DSP 选择保持不变。"""
+    if 'small_alu_packing' in report or 'small_alu_packing' in reference:
+        raise ValueError('Retained carry cells require an unpacked arithmetic selection')
     for key in ('dsp_budget', 'dsp_reserve', 'existing_dsp_cells', 'minimum_width', 'maximum_width', 'selected'):
         if report[key] != reference[key]:
             raise ValueError('The arithmetic selection does not match its reference: ' + key)
@@ -240,6 +269,87 @@ def retain_as_carry(report, reference, names):
     return report
 
 
+def apply_mapping(module, report):
+    """保留原始输出连接，将独立小位宽运算组合为四通道 DSP 输入。"""
+    cells = module['cells']
+    groups = report.get('small_alu_packing', {}).get('groups', [])
+    grouped = {name for group in groups for name in group['cells']}
+    selected = {item['cell'] for item in report['selected']}
+    if not grouped <= selected or sum(len(group['cells']) for group in groups) != len(grouped):
+        raise ValueError('Packed groups must contain distinct selected cells')
+    maximum_bit = max((bit for collection in (module.get('ports', {}).values(),
+                                              module.get('netnames', {}).values())
+                       for item in collection for bit in item.get('bits', [])
+                       if isinstance(bit, int)), default=1)
+    maximum_bit = max(maximum_bit, max((bit for cell in cells.values()
+                                      for values in cell['connections'].values()
+                                      for bit in values if isinstance(bit, int)), default=1))
+
+    def unused(width):
+        nonlocal maximum_bit
+        result = list(range(maximum_bit + 1, maximum_bit + width + 1))
+        maximum_bit += width
+        return result
+
+    def operand(cell, port):
+        parameters = cell['parameters']
+        width = integer(parameters['Y_WIDTH'])
+        values = list(cell['connections'][port])
+        if len(values) != integer(parameters[port + '_WIDTH']):
+            raise ValueError('Arithmetic operand width differs from its connection')
+        signed = integer(parameters['A_SIGNED']) and integer(parameters['B_SIGNED'])
+        extension = values[-1] if signed and values else '0'
+        # 零位操作数按零扩展，其余操作数先扩展或截断，再补零至通道宽度。
+        return (values + [extension] * width)[:width] + ['0'] * (10 - width)
+
+    for index, group in enumerate(groups):
+        if not 2 <= len(group['cells']) <= 4 or len(group['BI']) != 1:
+            raise ValueError('A packed arithmetic group needs two to four cells and one BI bit')
+        name = f'$__fpga_dsp_alu4${index}'
+        if name in cells:
+            raise ValueError('Packed arithmetic cell name already exists: ' + name)
+        connections = {port: [] for port in ('A', 'B', 'CI', 'X', 'Y', 'CO')}
+        connections['BI'] = group['BI'][:]
+        sources = []
+        lanes = []
+        for member in group['cells']:
+            cell = cells[member]
+            width = integer(cell['parameters']['Y_WIDTH'])
+            if cell['type'] != '$alu' or not 1 <= width <= 10 or cell['connections']['BI'] != group['BI']:
+                raise ValueError('Packed arithmetic cell has incompatible type, width, or BI')
+            for port in ('A', 'B'):
+                connections[port].extend(operand(cell, port))
+            if len(cell['connections']['CI']) != 1:
+                raise ValueError('Each arithmetic lane requires one CI bit')
+            connections['CI'].extend(cell['connections']['CI'])
+            for port in ('X', 'Y', 'CO'):
+                if len(cell['connections'][port]) != width:
+                    raise ValueError('Arithmetic output width differs from its connection')
+                connections[port].extend(cell['connections'][port] + unused(10 - width))
+            if cell.get('attributes', {}).get('src'):
+                sources.append(cell['attributes']['src'])
+            lanes.append({'cell': member, 'width': width, 'parameters': cell['parameters'].copy()})
+        for _ in range(4 - len(group['cells'])):
+            for port in ('A', 'B'):
+                connections[port].extend(['0'] * 10)
+            connections['CI'].append('0')
+            for port in ('X', 'Y', 'CO'):
+                connections[port].extend(unused(10))
+        cells[name] = {
+            'hide_name': 1, 'type': '$__FPGA_DSP_ALU4', 'parameters': {},
+            'attributes': {'src': '|'.join(dict.fromkeys(sources))} if sources else {},
+            'port_directions': {port: ('input' if port in ('A', 'B', 'CI', 'BI') else 'output')
+                                for port in connections},
+            'connections': connections,
+        }
+        group.update(mapped_cell=name, lanes=lanes)
+        for member in group['cells']:
+            del cells[member]
+    for selection in report['selected']:
+        if selection['cell'] not in grouped:
+            cells[selection['cell']]['type'] = '$__FPGA_DSP_ALU'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input', type=Path, required=True)
@@ -250,6 +360,8 @@ def main():
     parser.add_argument('--reserve', type=int, default=0)
     parser.add_argument('--minimum-width', type=int, default=24)
     parser.add_argument('--maximum-chain', type=int, choices=(1, 2), default=1)
+    parser.add_argument('--pack-small-alu', action='store_true',
+                        help='将最多四个相同 BI、独立且不超过十位的运算组合到一个 DSP')
     parser.add_argument('--selection-reference', type=Path,
                         help='使用同一输入网表生成的 DSP 选择报告')
     parser.add_argument('--keep-as-carry', action='append', default=[],
@@ -259,19 +371,20 @@ def main():
         parser.error('DSP budget and reserve must be nonnegative; minimum width must be from 1 through 48')
     if bool(args.selection_reference) != bool(args.keep_as_carry):
         parser.error('--selection-reference and --keep-as-carry must be specified together')
+    if args.pack_small_alu and (args.maximum_chain != 1 or args.keep_as_carry):
+        parser.error('--pack-small-alu requires --maximum-chain 1 and no retained carry cells')
     input_sha256 = hashlib.sha256(args.input.read_bytes()).hexdigest()
     design = json.loads(args.input.read_text())
     module = design['modules'][args.top]
     report = select_cells(module, args.budget, args.reserve, args.minimum_width,
-                          maximum_chain=args.maximum_chain)
+                          maximum_chain=args.maximum_chain, pack_small_alu=args.pack_small_alu)
     if args.selection_reference:
         reference = json.loads(args.selection_reference.read_text())
         if reference['input_sha256'] != input_sha256:
             raise ValueError('The arithmetic input differs from the saved selection')
         report = retain_as_carry(report, reference, args.keep_as_carry)
         report['selection_reference_sha256'] = hashlib.sha256(args.selection_reference.read_bytes()).hexdigest()
-    for selection in report['selected']:
-        module['cells'][selection['cell']]['type'] = '$__FPGA_DSP_ALU'
+    apply_mapping(module, report)
     args.output.write_text(json.dumps(design, separators=(',', ':')) + '\n')
     autoidx_path = args.output.with_suffix('.autoidx.il')
     autoidx_value = next_autoidx(design)

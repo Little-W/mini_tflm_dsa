@@ -52,14 +52,14 @@ logic unused_patternbdetect;
 //! 1. 输入规格化
 //! -----------------
 
-// 两个操作数同时有符号时进行符号扩展，与 Yosys $alu 的扩展规则一致。
+// 零位操作数表示常量零；两个操作数同时有符号时按 $alu 的规则扩展。
 generate
     if (A_SIGNED != 0 && B_SIGNED != 0) begin : g_signed
-        assign a_extended = Y_WIDTH'($signed(A));
-        assign b_extended = Y_WIDTH'($signed(B));
+        assign a_extended = (A_WIDTH == 0) ? '0 : Y_WIDTH'($signed(A));
+        assign b_extended = (B_WIDTH == 0) ? '0 : Y_WIDTH'($signed(B));
     end else begin : g_unsigned
-        assign a_extended = Y_WIDTH'($unsigned(A));
-        assign b_extended = Y_WIDTH'($unsigned(B));
+        assign a_extended = (A_WIDTH == 0) ? '0 : Y_WIDTH'($unsigned(A));
+        assign b_extended = (B_WIDTH == 0) ? '0 : Y_WIDTH'($unsigned(B));
     end
 endgenerate
 

@@ -41,6 +41,7 @@ class ModelTests(unittest.TestCase):
                         conv_data_cache=128*2*16*8, conv_cache_metadata=128*2*157,
                         conv_prefetch_queue=8*129, conv_request_queue=4*138,
                         conv_response_queue=4*33, vector_buffers=16*(80+49*8+134),
+                        vector_pool_reciprocal_rom=257*18,
                         ps_payload=16384*8, ps_frame_lengths=8*7,
                         ps_decoded_fifo=8*512, ps_decoded_first=8, ps_frame_valid=8)
         self.assertEqual(a["buffer_arrays_bits"], expected)
@@ -140,7 +141,7 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn("requant_input_rows", fixed)
 
     def test_production_bank_configurations_preserve_capacity_budget(self):
-        expected_bytes = {6: 116121.5, 7: 124313.5, 8: 119147.5, 9: 127339.5}
+        expected_bytes = {6: 116699.75, 7: 124891.75, 8: 119725.75, 9: 127917.75}
         for bank_count, expected in expected_bytes.items():
             arrays = model.buffer_arrays_bits(4, 16, 49152, bank_bytes=8192,
                                              bank_count=bank_count)

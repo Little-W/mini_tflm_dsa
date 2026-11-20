@@ -3,9 +3,19 @@
 # Usage:
 #   vivado -mode batch -source scripts/fpga/vivado_synth_soc.tcl
 #   vivado -mode batch -source scripts/fpga/vivado_synth_soc.tcl -tclargs build/my_synth
+#   vivado -mode batch -source scripts/fpga/vivado_synth_soc.tcl -tclargs build/my_impl soc_pins.xdc
 
 set script_dir [file dirname [file normalize [info script]]]
 set repo_root  [file normalize [file join $script_dir ../..]]
+source [file join $script_dir vivado_soc_reports.tcl]
+set report_helper [file join $script_dir vivado_soc_results.py]
+
+if {[llength $argv] > 2} { error "Expected an output directory and optional SoC pin XDC" }
+set pin_xdc ""
+if {[llength $argv] == 2} {
+    set pin_xdc [file normalize [lindex $argv 1]]
+    if {![file isfile $pin_xdc]} { error "SoC pin constraints do not exist: $pin_xdc" }
+}
 
 if {[llength $argv] >= 1} {
     set out_dir [file normalize [lindex $argv 0]]
@@ -59,22 +69,57 @@ close $xdc_fh
 
 create_project -in_memory -part $part_name
 set_property include_dirs $incdirs [current_fileset]
-set_property verilog_define {
+set synth_defines {
     SYNTHESIS=1 XILINX_FPGA=1 XILINX_CLK_WIZ_IP=1
     GEMPACT_PS_COMPRESS=1 GEMMORA_PS_POOL_BYTES=49152 GEMMORA_PS_FORCE_RAW=1
-} [current_fileset]
+}
+set_property verilog_define $synth_defines [current_fileset]
+
+set measurement_sources [concat $rtl_files [soc_reports::dependency_sources] [list $xdc_file $report_helper \
+    [file join $script_dir vivado_soc_reports.tcl] [file normalize [info script]] \
+    [file join $out_dir hardware_config.mk]]]
+foreach source_file [glob -directory [file join $repo_root fpga vivado tflm_ai_dsa_soc scripts] *.tcl] {
+    lappend measurement_sources $source_file
+}
+if {$pin_xdc ne ""} { lappend measurement_sources $pin_xdc }
+set source_manifest [soc_reports::snapshot $out_dir $report_helper \
+    [dict create repository $repo_root vivado_version [version -short] part $part_name \
+        top $top_name clock_period_ns $clock_period_ns generics [join $synth_generics " "] \
+        defines [join $synth_defines " "] pin_xdc $pin_xdc] $measurement_sources $incdirs]
 
 read_verilog -sv $rtl_files
 read_xdc $xdc_file
 
 synth_design -top $top_name -part $part_name -generic $synth_generics -flatten_hierarchy rebuilt
 
-report_utilization -file [file join $out_dir soc_top_utilization.rpt]
-report_utilization -hierarchical -file [file join $out_dir soc_top_utilization_hier.rpt]
-report_timing_summary -delay_type max -report_unconstrained -check_timing_verbose \
-    -file [file join $out_dir soc_top_timing_summary.rpt]
-report_timing -delay_type max -sort_by group -max_paths 200 -nworst 1 \
-    -file [file join $out_dir soc_top_timing_paths.rpt]
-report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
-    -file [file join $out_dir soc_top_high_fanout.rpt]
+soc_reports::write $out_dir
 write_checkpoint -force [file join $out_dir soc_top_synth.dcp]
+puts [exec python3 $report_helper summarize --manifest $source_manifest \
+    --directory $out_dir --stage synthesized]
+soc_reports::check_array $out_dir 16
+
+if {$pin_xdc ne ""} {
+    read_xdc $pin_xdc
+    set main_clock [get_clocks -quiet -of_objects [get_ports clk]]
+    if {[llength $main_clock] != 1} { error "Expected one clock on soc_top.clk" }
+    set actual_period [timing_checks::finite_number [get_property PERIOD $main_clock] "SoC clock period"]
+    if {$actual_period <= 0 || $actual_period > 6.667001} {
+        error "The SoC clock period exceeds the 6.667 ns requirement"
+    }
+    opt_design
+    place_design
+    phys_opt_design
+    route_design
+    set routed_dir [file join $out_dir routed]
+    soc_reports::write $routed_dir
+    write_checkpoint -force [file join $routed_dir soc_top_routed.dcp]
+    report_route_status -file [file join $routed_dir soc_top_route_status.rpt]
+    # 即使时序条件未满足，也保存实际测量结果及源码指纹。
+    set check_status [catch {timing_checks::check_implementation $routed_dir} check_message check_options]
+    if {[file isfile [file join $routed_dir implementation_checks.tsv]]} {
+        puts [exec python3 $report_helper summarize --manifest $source_manifest \
+            --directory $routed_dir --stage routed]
+    }
+    if {$check_status} { return -options $check_options $check_message }
+    soc_reports::check_array $routed_dir 16
+}

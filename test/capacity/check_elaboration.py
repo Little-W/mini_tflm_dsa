@@ -30,6 +30,7 @@ def main():
                                   output_dir=args.output_root, keep_tree=args.keep_tree)
     print(json.dumps(dict(passed=report["passed"], sources_unchanged=report["sources_unchanged"],
                           state_bits=report["elaborated_state"]["total_bits"],
+                          read_only_arrays_bits=report["elaborated_state"]["read_only_arrays_bits"],
                           buffer_arrays_bits=report["elaborated_state"]["buffer_arrays_bits"],
                           module_instances=report["elaborated_state"]["module_instances"],
                           result=str(args.output_root.resolve() / "result.json")), indent=2))

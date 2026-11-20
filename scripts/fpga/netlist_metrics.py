@@ -53,14 +53,16 @@ def parameter(cell, name, default=0):
 
 
 def dsp_alu_low_bit_dependencies(cell):
-    """识别无移位的 A:B 与 C 运算，进位只从低位传播至高位。"""
+    """识别无移位的 A:B 与 C 运算，进位在同一 SIMD 通道内向高位传播。"""
     settings = cell.get('parameters', {})
-    required = {'USE_MULT': 'NONE', 'USE_DPORT': 'FALSE', 'USE_SIMD': 'ONE48',
+    required = {'USE_MULT': 'NONE', 'USE_DPORT': 'FALSE',
                 'A_INPUT': 'DIRECT', 'B_INPUT': 'DIRECT'}
     if any(str(settings.get(key, default)).strip() != default for key, default in required.items()):
         return False
     # 未声明的 USE_MULT 采用原语默认乘法模式，不能按纯 ALU 处理。
     if str(settings.get('USE_MULT', 'MULTIPLY')).strip() != 'NONE':
+        return False
+    if str(settings.get('USE_SIMD', 'ONE48')).strip() not in ('ONE48', 'FOUR12'):
         return False
     for name in ('OPMODEREG', 'INMODEREG', 'CARRYINSELREG'):
         if parameter(cell, name, 1):
@@ -267,13 +269,15 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
                 else:
                     if port != 'MULTSIGNOUT' or not mreg:
                         if low_bit_dependencies and port in ('P', 'PCOUT'):
+                            lane_width = 12 if str(cell['parameters'].get('USE_SIMD', 'ONE48')).strip() == 'FOUR12' else 48
                             for index, bit in enumerate(ports[port]):
+                                first_bit = index // lane_width * lane_width
                                 selected = []
                                 for input_port, bits in combinational:
                                     if input_port in ('A', 'B', 'C'):
                                         offset = 18 if input_port == 'A' else 0
                                         bits = [(position, value) for position, value in bits
-                                                if position + offset <= index]
+                                                if first_bit <= position + offset <= index]
                                     selected.append((input_port, bits))
                                 view = {**cell, 'connections': {**ports, port: [bit]}}
                                 arcs(name, view, port, selected, index)
@@ -444,11 +448,11 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
         'unclassified_cell_types': dict(sorted(unknown.items())),
         'graph_complete': not unknown and not cyclic,
         'dsp_without_output_register': dsp_bypass,
-        'path_method': 'Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis.',
+        'path_method': 'Connected bit graph from clocked storage to synchronous data/control inputs. Each LUT output follows its INIT truth table after binding constants and repeated signals; unknown truth tables retain all possible dependencies. CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. Identified ONE48 and FOUR12 A:B/C ALU modes preserve low-to-high carry direction within each SIMD lane for P and PCOUT; other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis.',
     }
 
 
-def register_path_requirement(paths, maximum=15):
+def register_path_requirement(paths, maximum=9):
     """分别保存完整路径图、实际组合单元数和指定结构限制。"""
     if maximum < 0:
         raise ValueError('The register path limit must be nonnegative')
