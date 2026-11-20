@@ -3,13 +3,13 @@
 module soc_axi_pingpong_chan #(
     parameter int unsigned WIDTH = 1
 ) (
-    input  logic             clk,
-    input  logic             rst_n,
-    input  logic             s_valid,
+    input  wire logic             clk,
+    input  wire logic             rst_n,
+    input  wire logic             s_valid,
     output logic             s_ready,
-    input  logic [WIDTH-1:0] s_data,
+    input  wire logic [WIDTH-1:0] s_data,
     output logic             m_valid,
-    input  logic             m_ready,
+    input  wire logic             m_ready,
     output logic [WIDTH-1:0] m_data
 );
 

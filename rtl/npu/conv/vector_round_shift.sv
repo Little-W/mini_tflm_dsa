@@ -13,9 +13,9 @@ module vector_round_shift #(
   parameter bit p_use_lut = 1'b0
 `endif
 ) (
-  input logic clk,
-  input logic signed [63:0] value,
-  input logic [5:0] amount,
+  input wire logic clk,
+  input wire logic signed [63:0] value,
+  input wire logic [5:0] amount,
   output logic signed [63:0] result,
   output logic signed [63:0] floor_value
 );

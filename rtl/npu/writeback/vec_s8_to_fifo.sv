@@ -1019,12 +1019,12 @@ module vec_s8_fifo_row_ram #(
     parameter int unsigned DEPTH = 16,
     parameter int unsigned ADDR_WIDTH = 4
 ) (
-    input  logic                  clk,
-    input  logic                  wr_en,
-    input  logic [ADDR_WIDTH-1:0] wr_addr,
-    input  logic [DATA_WIDTH-1:0] wr_data,
-    input  logic                  rd_en,
-    input  logic [ADDR_WIDTH-1:0] rd_addr,
+    input  wire logic                  clk,
+    input  wire logic                  wr_en,
+    input  wire logic [ADDR_WIDTH-1:0] wr_addr,
+    input  wire logic [DATA_WIDTH-1:0] wr_data,
+    input  wire logic                  rd_en,
+    input  wire logic [ADDR_WIDTH-1:0] rd_addr,
     output logic [DATA_WIDTH-1:0] rd_data
 );
 
@@ -1062,9 +1062,9 @@ module fifo_bank_watermark #(
     parameter int p_banks = 16,
     parameter int p_count_width = (p_banks <= 1) ? 1 : $clog2(p_banks + 1)
 ) (
-    input  logic [31:0] i_reserve,
-    input  logic [p_count_width-1:0] i_ready_banks,
-    input  logic i_partial_write,
+    input  wire logic [31:0] i_reserve,
+    input  wire logic [p_count_width-1:0] i_ready_banks,
+    input  wire logic i_partial_write,
     output logic o_full
 );
     logic [p_count_width-1:0] reserve_count, ready_threshold;

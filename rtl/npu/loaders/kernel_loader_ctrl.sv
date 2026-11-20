@@ -5,30 +5,30 @@ module kernel_loader_ctrl #(
     parameter int unsigned REG_WIDTH = 32,
     parameter int unsigned COUNT_WIDTH = REG_WIDTH
 ) (
-    input  logic                        clk,
-    input  logic                        rst_n,
-    input  logic                        clear = 1'b0,
-    input  logic                        cfg_valid,
-    input  logic [REG_WIDTH-1:0]        cfg_k,
-    input  logic [REG_WIDTH-1:0]        cfg_n,
-    input  logic [REG_WIDTH-1:0]        cfg_m,
-    input  logic [REG_WIDTH-1:0]        cfg_rhs_base,
-    input  logic [REG_WIDTH-1:0]        cfg_rhs_row_stride_b,
-    input  logic signed [REG_WIDTH-1:0] cfg_rhs_zp,
-    input  logic                        cfg_use_16bits,
-    input  logic                        cfg_tile_packed = 1'b0,
-    input  logic [REG_WIDTH-1:0]        cfg_ia_reuse_num,
-    input  logic [REG_WIDTH-1:0]        cfg_w_reuse_num,
-    input logic [REG_WIDTH-1:0] cfg_row_groups,
-    input logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
-    input logic [REG_WIDTH-1:0] cfg_col_groups,
-    input logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
-    input  logic                        load_weight_granted,
-    input  logic                        send_weight_trigger,
-    input  logic                        buf_weight_data_valid,
-    input  logic                        buf_weight_sending_done,
-    input  logic                        buf_load_ready,
-    input  logic                        load_done,
+    input  wire logic                        clk,
+    input  wire logic                        rst_n,
+    input  wire logic                        clear = 1'b0,
+    input  wire logic                        cfg_valid,
+    input  wire logic [REG_WIDTH-1:0]        cfg_k,
+    input  wire logic [REG_WIDTH-1:0]        cfg_n,
+    input  wire logic [REG_WIDTH-1:0]        cfg_m,
+    input  wire logic [REG_WIDTH-1:0]        cfg_rhs_base,
+    input  wire logic [REG_WIDTH-1:0]        cfg_rhs_row_stride_b,
+    input  wire logic signed [REG_WIDTH-1:0] cfg_rhs_zp,
+    input  wire logic                        cfg_use_16bits,
+    input  wire logic                        cfg_tile_packed = 1'b0,
+    input  wire logic [REG_WIDTH-1:0]        cfg_ia_reuse_num,
+    input  wire logic [REG_WIDTH-1:0]        cfg_w_reuse_num,
+    input wire logic [REG_WIDTH-1:0] cfg_row_groups,
+    input wire logic [REG_WIDTH-1:0] cfg_row_tail_tiles,
+    input wire logic [REG_WIDTH-1:0] cfg_col_groups,
+    input wire logic [REG_WIDTH-1:0] cfg_col_tail_tiles,
+    input  wire logic                        load_weight_granted,
+    input  wire logic                        send_weight_trigger,
+    input  wire logic                        buf_weight_data_valid,
+    input  wire logic                        buf_weight_sending_done,
+    input  wire logic                        buf_load_ready,
+    input  wire logic                        load_done,
     output logic                        load_weight_req,
     output logic                        dma_start,
     output logic [REG_WIDTH-1:0]        dma_p0,
@@ -452,7 +452,7 @@ endmodule
 module kernel_count_increment #(
     parameter int p_width = 48
 ) (
-    input  logic [p_width-1:0] i_value,
+    input  wire logic [p_width-1:0] i_value,
     output logic [p_width-1:0] o_next
 );
     localparam int p_parts = (p_width + 5) / 6;
@@ -553,8 +553,8 @@ module kernel_count_compare #(
     parameter int p_width = 48,
     parameter int p_chunk_width = 8
 ) (
-    input  logic [p_width-1:0] i_lhs,
-    input  logic [p_width-1:0] i_rhs,
+    input  wire logic [p_width-1:0] i_lhs,
+    input  wire logic [p_width-1:0] i_rhs,
     output logic o_ge
 );
 `ifdef SYNTHESIS

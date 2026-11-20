@@ -4,10 +4,10 @@
 module add3_equal #(
     parameter int unsigned p_width = 32
 ) (
-    input  logic [p_width-1:0] i_a,
-    input  logic [p_width-1:0] i_b,
-    input  logic [p_width-1:0] i_c,
-    input  logic [p_width-1:0] i_target,
+    input  wire logic [p_width-1:0] i_a,
+    input  wire logic [p_width-1:0] i_b,
+    input  wire logic [p_width-1:0] i_c,
+    input  wire logic [p_width-1:0] i_target,
     output logic o_equal
 );
   logic [p_width-1:0] sum_equal_i_a;

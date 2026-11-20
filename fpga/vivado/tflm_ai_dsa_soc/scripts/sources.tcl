@@ -88,7 +88,7 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_buffers_root ps_buffer.sv] \
         [file join $npu_buffers_root ps_buffer_fifo.sv] \
         [file join $common_root pseudo_dual_port_ram.v] \
-        [file join $common_root REGFILE.v] \
+        [file join $common_root regfile.v] \
         [file join $common_root add_equal.sv] \
         [file join $common_root add3_equal.sv] \
         [file join $common_root onehot_check.sv] \
@@ -135,7 +135,7 @@ proc require_files {files label} {
 # 公共存储封装沿用 .v 文件名，并显式采用 SystemVerilog 解析。
 proc set_common_systemverilog {files} {
     foreach source $files {
-        if {[file tail $source] in {REGFILE.v pseudo_dual_port_ram.v}} {
+        if {[file tail $source] in {regfile.v pseudo_dual_port_ram.v}} {
             set_property file_type SystemVerilog [get_files $source]
         }
     }

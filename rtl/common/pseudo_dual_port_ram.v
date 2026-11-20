@@ -6,13 +6,13 @@ module pseudo_dual_port_ram #(
     parameter DATA_WIDTH = 8,
     parameter ADDR_WIDTH = 6
 ) (
-    input  logic clk,
-    input  logic ena,
-    input  logic enb,
-    input  logic wea,
-    input  logic [ADDR_WIDTH-1:0] addra,
-    input  logic [DATA_WIDTH-1:0] dia,
-    input  logic [ADDR_WIDTH-1:0] addrb,
+    input  wire logic clk,
+    input  wire logic ena,
+    input  wire logic enb,
+    input  wire logic wea,
+    input  wire logic [ADDR_WIDTH-1:0] addra,
+    input  wire logic [DATA_WIDTH-1:0] dia,
+    input  wire logic [ADDR_WIDTH-1:0] addrb,
     output logic [DATA_WIDTH-1:0] dob
 );
     logic storage_i_wr_en;

@@ -13,11 +13,11 @@ module select_add #(
     parameter bit p_use_dsp = 1'b0
 `endif
 ) (
-    input  logic signed [p_width-1:0] i_lhs,
-    input  logic signed [p_width-1:0] i_rhs0,
-    input  logic signed [p_width-1:0] i_rhs1,
-    input  logic                      i_rhs_select,
-    input  logic                      i_add_enable,
+    input  wire logic signed [p_width-1:0] i_lhs,
+    input  wire logic signed [p_width-1:0] i_rhs0,
+    input  wire logic signed [p_width-1:0] i_rhs1,
+    input  wire logic                      i_rhs_select,
+    input  wire logic                      i_add_enable,
     output logic signed [p_width-1:0] o_sum
 );
     //! 0. 辅助定义
@@ -98,9 +98,11 @@ module select_add #(
             .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .ADREG(0),
             .CREG(0), .DREG(0), .MREG(0), .PREG(0), .CARRYINREG(0),
             .CARRYINSELREG(0), .INMODEREG(0), .OPMODEREG(0), .ALUMODEREG(0),
+            .A_INPUT("DIRECT"), .B_INPUT("DIRECT"),
             .USE_DPORT("FALSE"), .USE_MULT("NONE"), .USE_SIMD("ONE48")
         ) u_dsp (
-            .CLK(dsp_i_zero), .A(dsp_i_a), .ACIN(dsp_i_a), .B(dsp_i_b), .BCIN(dsp_i_b),
+            // Cascade inputs have dedicated routing and are unused in DIRECT mode.
+            .CLK(dsp_i_zero), .A(dsp_i_a), .ACIN(30'b0), .B(dsp_i_b), .BCIN(18'b0),
             .C(dsp_i_c), .D(dsp_i_d), .PCIN(dsp_i_pcin),
             .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode), .ALUMODE(dsp_i_alumode),
             .CARRYIN(dsp_i_zero), .CARRYINSEL(dsp_i_carry_select),

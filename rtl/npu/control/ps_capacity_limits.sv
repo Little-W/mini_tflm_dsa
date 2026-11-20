@@ -9,11 +9,11 @@ module ps_capacity_limits #(
     parameter int p_bank_bytes = 2048,
     parameter int p_tile_shift = 4
 ) (
-    input  logic [p_rows_width-1:0]   i_frame_rows,
-    input  logic [p_frames_width-1:0] i_frames,
-    input  logic [31:0]               i_bank_count,
-    input  logic [31:0]               i_frame_slice_tiles,
-    input  logic                      i_use_frame_commands,
+    input  wire logic [p_rows_width-1:0]   i_frame_rows,
+    input  wire logic [p_frames_width-1:0] i_frames,
+    input  wire logic [31:0]               i_bank_count,
+    input  wire logic [31:0]               i_frame_slice_tiles,
+    input  wire logic                      i_use_frame_commands,
     output logic                      o_frames_fit,
     output logic                      o_admission_fit
 );

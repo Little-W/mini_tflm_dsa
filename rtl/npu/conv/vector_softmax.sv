@@ -7,28 +7,28 @@ module vector_softmax #(
   parameter int IW = MAX_DEPTH <= 1 ? 1 : $clog2(MAX_DEPTH),
   parameter int unsigned MULTIPLIER_LATENCY = 0
 ) (
-  input  logic clk, rst_n,
-  input  logic start,
-  input  logic [31:0] depth,
+  input  wire logic clk, rst_n,
+  input  wire logic start,
+  input  wire logic [31:0] depth,
   output logic ready, done,
   output logic [1:0] error,
   output logic [IW-1:0] input_index,
-  input  logic signed [7:0] input_data,
+  input  wire logic signed [7:0] input_data,
   output logic lut_req_valid,
-  input  logic lut_req_ready,
+  input  wire logic lut_req_ready,
   output logic [7:0] lut_index,
-  input  logic lut_rsp_valid,
-  input  logic [31:0] lut_rsp_data,
-  input  logic lut_rsp_error,
+  input  wire logic lut_rsp_valid,
+  input  wire logic [31:0] lut_rsp_data,
+  input  wire logic lut_rsp_error,
   output logic exp_we,
   output logic [IW-1:0] exp_index,
   output logic signed [31:0] exp_wdata,
-  input  logic signed [31:0] exp_rdata,
+  input  wire logic signed [31:0] exp_rdata,
   output logic out_we,
   output logic [IW-1:0] out_index,
   output logic signed [7:0] out_data,
   output logic signed [31:0] mul_a, mul_b,
-  input  logic signed [63:0] mul_product
+  input  wire logic signed [63:0] mul_product
 );
   //! 0. 辅助定义
   //! -----------
@@ -411,12 +411,12 @@ module vector_softmax_accumulator #(
 `endif
 `endif
 ) (
-    input  logic        clk,
-    input  logic        rst_n,
-    input  logic        i_clear,
-    input  logic        i_vld,
-    input  logic [19:0] i_value,
-    input  logic        i_increment,
+    input  wire logic        clk,
+    input  wire logic        rst_n,
+    input  wire logic        i_clear,
+    input  wire logic        i_vld,
+    input  wire logic [19:0] i_value,
+    input  wire logic        i_increment,
     output logic [31:0] o_sum
 );
     //! 0. 辅助定义

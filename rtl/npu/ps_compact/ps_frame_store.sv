@@ -359,11 +359,11 @@ module ps_frame_store_capacity #(
     parameter int p_bank_words_width = 10,
     parameter int p_bank_count_width = 4
 ) (
-    input  logic [p_initial_row_width-1:0] i_initial_row,
-    input  logic [31:0]                    i_frame_rows,
-    input  logic [31:0]                    i_reserve_rows,
-    input  logic [p_bank_words_width-1:0]   i_bank_words,
-    input  logic [p_bank_count_width-1:0]   i_bank_count,
+    input  wire logic [p_initial_row_width-1:0] i_initial_row,
+    input  wire logic [31:0]                    i_frame_rows,
+    input  wire logic [31:0]                    i_reserve_rows,
+    input  wire logic [p_bank_words_width-1:0]   i_bank_words,
+    input  wire logic [p_bank_count_width-1:0]   i_bank_count,
     output logic                           o_rows_fit
 );
     localparam int p_pool_word_width = p_bank_words_width + p_bank_count_width;

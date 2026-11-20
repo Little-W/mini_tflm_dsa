@@ -16,18 +16,18 @@ module ia_buffer_wrapper #(
     parameter int unsigned DEPTH = 128,       // 深度
     parameter int unsigned ADDR_WIDTH = $clog2(DEPTH)
 ) (
-    input  logic                      clk,
-    input  logic                      rst_n,
+    input  wire logic                      clk,
+    input  wire logic                      rst_n,
     
     // 写接口
-    input  logic                      wr_en,
-    input  logic [ADDR_WIDTH-1:0]     wr_addr,
-    input  logic [DATA_WIDTH-1:0]     wr_data,
-    input  logic [DATA_WIDTH/8-1:0]   wr_mask,  // 字节写使能
+    input  wire logic                      wr_en,
+    input  wire logic [ADDR_WIDTH-1:0]     wr_addr,
+    input  wire logic [DATA_WIDTH-1:0]     wr_data,
+    input  wire logic [DATA_WIDTH/8-1:0]   wr_mask,  // 字节写使能
     
     // 读接口
-    input  logic                      rd_en,
-    input  logic [ADDR_WIDTH-1:0]     rd_addr,
+    input  wire logic                      rd_en,
+    input  wire logic [ADDR_WIDTH-1:0]     rd_addr,
     output logic [DATA_WIDTH-1:0]     rd_data
 );
 

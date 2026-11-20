@@ -13,7 +13,7 @@ module onehot_check #(
         1'b0
 `endif
 ) (
-    input  logic [p_width-1:0] i_value,
+    input  wire logic [p_width-1:0] i_value,
     output logic o_valid
 );
     //! 0. 分组尺寸与查找表

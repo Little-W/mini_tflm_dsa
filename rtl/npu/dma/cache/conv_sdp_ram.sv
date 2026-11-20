@@ -7,14 +7,14 @@ module conv_sdp_ram #(
   parameter int AW = $clog2(DEPTH),
   parameter int WRITE_WIDTH = 32
 ) (
-  input logic clk,
-  input logic rd_en,
-  input logic [AW-1:0] rd_addr,
+  input wire logic clk,
+  input wire logic rd_en,
+  input wire logic [AW-1:0] rd_addr,
   output logic [31:0] rd_data,
-  input logic wr_en,
-  input logic [AW-1:0] wr_addr,
-  input logic [WRITE_WIDTH-1:0] wr_data,
-  input logic [WRITE_WIDTH/8-1:0] wr_strb
+  input wire logic wr_en,
+  input wire logic [AW-1:0] wr_addr,
+  input wire logic [WRITE_WIDTH-1:0] wr_data,
+  input wire logic [WRITE_WIDTH/8-1:0] wr_strb
 );
   localparam int p_words = WRITE_WIDTH / 32;
   localparam int p_select_width = (p_words <= 1) ? 1 : $clog2(p_words);

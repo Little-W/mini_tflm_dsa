@@ -12,9 +12,9 @@ module vector_scalar_multiplier #(
     parameter bit p_use_dsp = 1'b0
 `endif
 ) (
-    input  logic clk,
-    input  logic signed [31:0] a,
-    input  logic signed [31:0] b,
+    input  wire logic clk,
+    input  wire logic signed [31:0] a,
+    input  wire logic signed [31:0] b,
     output logic signed [63:0] product
 );
     logic multiplier_i_en;
@@ -49,10 +49,10 @@ module registered_multiplier_s32 #(
     parameter bit p_use_dsp = 1'b0
 `endif
 ) (
-    input  logic clk,
-    input  logic i_en,
-    input  logic signed [31:0] i_a,
-    input  logic signed [31:0] i_b,
+    input  wire logic clk,
+    input  wire logic i_en,
+    input  wire logic signed [31:0] i_a,
+    input  wire logic signed [31:0] i_b,
     output logic signed [63:0] o_product
 );
     //! 0. 部分积与组合中间结果
@@ -191,12 +191,12 @@ module registered_multiplier_dsp #(
     parameter bit p_output_register = 1'b1,
     parameter int p_cascade_mode = 0
 ) (
-    input  logic clk,
-    input  logic i_en,
-    input  logic [29:0] i_a,
-    input  logic [17:0] i_b,
-    input  logic [47:0] i_c,
-    input  logic [47:0] i_pcin,
+    input  wire logic clk,
+    input  wire logic i_en,
+    input  wire logic [29:0] i_a,
+    input  wire logic [17:0] i_b,
+    input  wire logic [47:0] i_c,
+    input  wire logic [47:0] i_pcin,
     output logic [47:0] o_p,
     output logic [47:0] o_pcout
 );

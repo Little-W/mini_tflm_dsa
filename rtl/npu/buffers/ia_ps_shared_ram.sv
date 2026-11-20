@@ -9,24 +9,24 @@ module ia_ps_shared_ram #(
     parameter int PS_ADDR_BITS = $clog2(TOTAL_BYTES/16),
     parameter int BANK_COUNT_BITS = $clog2(TOTAL_BYTES/BANK_BYTES+1)
 ) (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic cfg_valid,
-    input  logic [BANK_COUNT_BITS-1:0] cfg_ia_banks,
+    input  wire logic clk,
+    input  wire logic rst_n,
+    input  wire logic cfg_valid,
+    input  wire logic [BANK_COUNT_BITS-1:0] cfg_ia_banks,
     output logic capacity_fault,
-    input  logic [1:0] ia_read_en,
-    input  logic [1:0] ia_write_en,
-    input  logic [IA_ADDR_BITS-1:0] ia_read_addr [0:1],
-    input  logic [IA_ADDR_BITS-1:0] ia_write_addr [0:1],
+    input  wire logic [1:0] ia_read_en,
+    input  wire logic [1:0] ia_write_en,
+    input  wire logic [IA_ADDR_BITS-1:0] ia_read_addr [0:1],
+    input  wire logic [IA_ADDR_BITS-1:0] ia_write_addr [0:1],
     output logic [127:0] ia_read_data [0:1],
-    input  logic [127:0] ia_write_data [0:1],
-    input  logic [15:0] ia_write_mask [0:1],
-    input  logic [3:0] ps_read_en,
-    input  logic [3:0] ps_write_en,
-    input  logic [PS_ADDR_BITS-1:0] ps_read_addr [0:3],
-    input  logic [PS_ADDR_BITS-1:0] ps_write_addr [0:3],
+    input  wire logic [127:0] ia_write_data [0:1],
+    input  wire logic [15:0] ia_write_mask [0:1],
+    input  wire logic [3:0] ps_read_en,
+    input  wire logic [3:0] ps_write_en,
+    input  wire logic [PS_ADDR_BITS-1:0] ps_read_addr [0:3],
+    input  wire logic [PS_ADDR_BITS-1:0] ps_write_addr [0:3],
     output logic [127:0] ps_read_data [0:3],
-    input  logic [127:0] ps_write_data [0:3]
+    input  wire logic [127:0] ps_write_data [0:3]
 );
     //! 0. 常量与内部信号
     //! --------------------
@@ -311,8 +311,8 @@ module shared_ram_read_mux #(
     parameter int p_inputs = 7,
     parameter int p_select_width = $clog2(p_inputs)
 ) (
-    input  logic [p_width-1:0] i_data [p_inputs],
-    input  logic [p_select_width-1:0] i_select,
+    input  wire logic [p_width-1:0] i_data [p_inputs],
+    input  wire logic [p_select_width-1:0] i_select,
     output logic [p_width-1:0] o_data
 );
 `ifdef SYNTHESIS
@@ -384,24 +384,24 @@ module ia_ps_channel_ram #(
     parameter int p_addr_width = $clog2(p_total_bytes/16),
     parameter int p_bank_count_width = $clog2(p_total_bytes/p_bank_bytes+1)
 ) (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic i_cfg_valid,
-    input  logic [p_bank_count_width-1:0] i_cfg_ia_banks,
+    input  wire logic clk,
+    input  wire logic rst_n,
+    input  wire logic i_cfg_valid,
+    input  wire logic [p_bank_count_width-1:0] i_cfg_ia_banks,
     output logic o_capacity_fault,
-    input  logic [1:0] i_ia_read_en,
-    input  logic [1:0] i_ia_write_en,
-    input  logic [p_addr_width-1:0] i_ia_read_addr [2],
-    input  logic [p_addr_width-1:0] i_ia_write_addr [2],
+    input  wire logic [1:0] i_ia_read_en,
+    input  wire logic [1:0] i_ia_write_en,
+    input  wire logic [p_addr_width-1:0] i_ia_read_addr [2],
+    input  wire logic [p_addr_width-1:0] i_ia_write_addr [2],
     output logic [127:0] o_ia_read_data [2],
-    input  logic [127:0] i_ia_write_data [2],
-    input  logic [15:0] i_ia_write_mask [2],
-    input  logic [3:0] i_ps_read_en,
-    input  logic [3:0] i_ps_write_en,
-    input  logic [p_addr_width-1:0] i_ps_read_addr [4],
-    input  logic [p_addr_width-1:0] i_ps_write_addr [4],
+    input  wire logic [127:0] i_ia_write_data [2],
+    input  wire logic [15:0] i_ia_write_mask [2],
+    input  wire logic [3:0] i_ps_read_en,
+    input  wire logic [3:0] i_ps_write_en,
+    input  wire logic [p_addr_width-1:0] i_ps_read_addr [4],
+    input  wire logic [p_addr_width-1:0] i_ps_write_addr [4],
     output logic [127:0] o_ps_read_data [4],
-    input  logic [127:0] i_ps_write_data [4]
+    input  wire logic [127:0] i_ps_write_data [4]
 );
     //! 0. 存储尺寸与配置
     //! -------------------

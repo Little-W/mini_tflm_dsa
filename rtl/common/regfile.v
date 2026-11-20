@@ -10,13 +10,13 @@ module regfile #(
     parameter int p_read_ports = 1,
     parameter bit p_sync_read = 1'b1
 ) (
-    input  logic clk,
-    input  logic i_wr_en,
-    input  logic [p_addr_width-1:0] i_wr_addr,
-    input  logic [p_data_width-1:0] i_wr_data,
-    input  logic [p_data_width/p_write_unit-1:0] i_wr_mask,
-    input  logic [p_read_ports-1:0] i_rd_en,
-    input  logic [p_read_ports-1:0][p_addr_width-1:0] i_rd_addr,
+    input  wire logic clk,
+    input  wire logic i_wr_en,
+    input  wire logic [p_addr_width-1:0] i_wr_addr,
+    input  wire logic [p_data_width-1:0] i_wr_data,
+    input  wire logic [p_data_width/p_write_unit-1:0] i_wr_mask,
+    input  wire logic [p_read_ports-1:0] i_rd_en,
+    input  wire logic [p_read_ports-1:0][p_addr_width-1:0] i_rd_addr,
     output logic [p_read_ports-1:0][p_data_width-1:0] o_rd_data
 );
 

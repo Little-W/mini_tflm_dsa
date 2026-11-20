@@ -5,20 +5,20 @@ module requant_group_buffer #(
     parameter int unsigned p_lanes = 16,
     parameter int unsigned p_rows = 512
 ) (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic i_clear,
-    input  logic i_group_start,
-    input  logic [31:0] i_group_rows,
+    input  wire logic clk,
+    input  wire logic rst_n,
+    input  wire logic i_clear,
+    input  wire logic i_group_start,
+    input  wire logic [31:0] i_group_rows,
     output logic o_group_ready,
-    input  logic i_row_valid,
-    input  logic i_row_tile_done,
-    input  logic signed [31:0] i_row_data [p_lanes],
+    input  wire logic i_row_valid,
+    input  wire logic i_row_tile_done,
+    input  wire logic signed [31:0] i_row_data [p_lanes],
     output logic o_row_valid,
     output logic o_row_tile_done,
     output logic signed [31:0] o_row_data [p_lanes],
-    input  logic i_row_ready,
-    input  logic i_output_valid
+    input  wire logic i_row_ready,
+    input  wire logic i_output_valid
 );
     localparam int p_addr_width = (p_rows <= 1) ? 1 : $clog2(p_rows);
     localparam int p_count_width = (p_rows <= 1) ? 1 : $clog2(p_rows + 1);

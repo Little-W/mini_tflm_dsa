@@ -11,27 +11,27 @@ module vec_requant #(
     parameter int unsigned p_compute_lanes = VLEN,
     parameter int unsigned p_input_rows = VLEN * MAX_IA_REUSE
 ) (
-    input logic clk,
-    input logic rst_n,
+    input wire logic clk,
+    input wire logic rst_n,
 
     // 配置
-    input logic               init_cfg,
-    input logic               cfg_per_channel,
-    input logic               cfg_dataflow_mode,
-    input logic               cfg_s16 = 1'b0,
-    input logic signed [31:0] activation_min_in,
-    input logic signed [31:0] activation_max_in,
-    input logic signed [31:0] dst_offset_in,
+    input wire logic               init_cfg,
+    input wire logic               cfg_per_channel,
+    input wire logic               cfg_dataflow_mode,
+    input wire logic               cfg_s16 = 1'b0,
+    input wire logic signed [31:0] activation_min_in,
+    input wire logic signed [31:0] activation_max_in,
+    input wire logic signed [31:0] dst_offset_in,
     // per-tensor 常量；per-channel 下这两个做为“基地址”使用
-    input logic signed [31:0] multiplier_in,
-    input logic signed [31:0] shift_in,
-    input logic        [31:0] k,                  // 行数
-    input logic        [31:0] m,                  // 列数
-    input logic        [31:0] ia_reuse_num_in,    // 输出 tile 行复用顺序
+    input wire logic signed [31:0] multiplier_in,
+    input wire logic signed [31:0] shift_in,
+    input wire logic        [31:0] k,                  // 行数
+    input wire logic        [31:0] m,                  // 列数
+    input wire logic        [31:0] ia_reuse_num_in,    // 输出 tile 行复用顺序
 
     // 量化参数装载握手（外部可用；TB里通常 grant=req）
     output logic load_quant_req,
-    input  logic load_quant_granted,
+    input  wire logic load_quant_granted,
     output logic quant_params_valid,
 
     // Native DMA read client for per-channel quant parameters.
@@ -45,18 +45,18 @@ module vec_requant #(
     output logic                        dma_slot_id,
     output logic                        dma_use_16bits,
     output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    input  logic [BUS_WIDTH-1:0]        dma_raw_data,
-    input  logic                        dma_raw_valid,
+    input  wire logic [BUS_WIDTH-1:0]        dma_raw_data,
+    input  wire logic                        dma_raw_valid,
 
     // 组级预留在输入首行之前完成，分时运算在整组输出后恢复接收许可。
-    input logic i_group_start = 1'b0,
-    input logic [31:0] i_group_rows = 32'd0,
+    input wire logic i_group_start = 1'b0,
+    input wire logic [31:0] i_group_rows = 32'd0,
     output logic o_group_ready,
 
     // 数据口
-    input  logic               in_valid,
-    input  logic               in_tile_done,
-    input  logic signed [31:0] in_vec_s32[VLEN],
+    input  wire logic               in_valid,
+    input  wire logic               in_tile_done,
+    input  wire logic signed [31:0] in_vec_s32[VLEN],
     output logic               out_valid,
     output logic               out_tile_done,
     output logic signed [ 7:0] out_vec_s8[VLEN],
@@ -177,23 +177,23 @@ module vec_requant_tensor_ws #(
     parameter int VLEN      = 16,
     parameter int REG_WIDTH = 32
 ) (
-    input logic clk,
-    input logic rst_n,
+    input wire logic clk,
+    input wire logic rst_n,
 
-    input logic               init_cfg,
-    input logic               cfg_per_channel,
-    input logic               cfg_dataflow_mode,
-    input logic signed [31:0] activation_min_in,
-    input logic signed [31:0] activation_max_in,
-    input logic signed [31:0] dst_offset_in,
-    input logic signed [31:0] multiplier_in,
-    input logic signed [31:0] shift_in,
-    input logic        [31:0] k,
-    input logic        [31:0] m,
-    input logic        [31:0] ia_reuse_num_in,
+    input wire logic               init_cfg,
+    input wire logic               cfg_per_channel,
+    input wire logic               cfg_dataflow_mode,
+    input wire logic signed [31:0] activation_min_in,
+    input wire logic signed [31:0] activation_max_in,
+    input wire logic signed [31:0] dst_offset_in,
+    input wire logic signed [31:0] multiplier_in,
+    input wire logic signed [31:0] shift_in,
+    input wire logic        [31:0] k,
+    input wire logic        [31:0] m,
+    input wire logic        [31:0] ia_reuse_num_in,
 
     output logic load_quant_req,
-    input  logic load_quant_granted,
+    input  wire logic load_quant_granted,
     output logic quant_params_valid,
 
     output logic                        dma_start,
@@ -206,12 +206,12 @@ module vec_requant_tensor_ws #(
     output logic                        dma_slot_id,
     output logic                        dma_use_16bits,
     output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    input  logic [BUS_WIDTH-1:0]        dma_raw_data,
-    input  logic                        dma_raw_valid,
+    input  wire logic [BUS_WIDTH-1:0]        dma_raw_data,
+    input  wire logic                        dma_raw_valid,
 
-    input  logic               in_valid,
-    input  logic               in_tile_done,
-    input  logic signed [31:0] in_vec_s32[VLEN],
+    input  wire logic               in_valid,
+    input  wire logic               in_tile_done,
+    input  wire logic signed [31:0] in_vec_s32[VLEN],
     output logic               out_valid,
     output logic               out_tile_done,
     output logic signed [ 7:0] out_vec_s8[VLEN]
@@ -643,27 +643,27 @@ module vec_requant_full #(
     parameter int unsigned p_compute_lanes = VLEN,
     parameter int unsigned p_input_rows = VLEN * MAX_IA_REUSE
 ) (
-    input logic clk,
-    input logic rst_n,
+    input wire logic clk,
+    input wire logic rst_n,
 
     // 配置
-    input logic               init_cfg,
-    input logic               cfg_per_channel,
-    input logic               cfg_dataflow_mode,
-    input logic               cfg_s16 = 1'b0,
-    input logic signed [31:0] activation_min_in,
-    input logic signed [31:0] activation_max_in,
-    input logic signed [31:0] dst_offset_in,
+    input wire logic               init_cfg,
+    input wire logic               cfg_per_channel,
+    input wire logic               cfg_dataflow_mode,
+    input wire logic               cfg_s16 = 1'b0,
+    input wire logic signed [31:0] activation_min_in,
+    input wire logic signed [31:0] activation_max_in,
+    input wire logic signed [31:0] dst_offset_in,
     // per-tensor 常量；per-channel 下这两个做为“基地址”使用
-    input logic signed [31:0] multiplier_in,
-    input logic signed [31:0] shift_in,
-    input logic        [31:0] k,                  // 行数
-    input logic        [31:0] m,                  // 列数
-    input logic        [31:0] ia_reuse_num_in,    // 输出 tile 行复用顺序
+    input wire logic signed [31:0] multiplier_in,
+    input wire logic signed [31:0] shift_in,
+    input wire logic        [31:0] k,                  // 行数
+    input wire logic        [31:0] m,                  // 列数
+    input wire logic        [31:0] ia_reuse_num_in,    // 输出 tile 行复用顺序
 
     // 量化参数装载握手（外部可用；TB里通常 grant=req）
     output logic load_quant_req,
-    input  logic load_quant_granted,
+    input  wire logic load_quant_granted,
     output logic quant_params_valid,
 
     // Native DMA read client for per-channel quant parameters.
@@ -677,18 +677,18 @@ module vec_requant_full #(
     output logic                        dma_slot_id,
     output logic                        dma_use_16bits,
     output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
-    input  logic [BUS_WIDTH-1:0]        dma_raw_data,
-    input  logic                        dma_raw_valid,
+    input  wire logic [BUS_WIDTH-1:0]        dma_raw_data,
+    input  wire logic                        dma_raw_valid,
 
     // 组级预留在输入首行之前完成，分时运算在整组输出后恢复接收许可。
-    input logic i_group_start = 1'b0,
-    input logic [31:0] i_group_rows = 32'd0,
+    input wire logic i_group_start = 1'b0,
+    input wire logic [31:0] i_group_rows = 32'd0,
     output logic o_group_ready,
 
     // 数据口
-    input  logic               in_valid,
-    input  logic               in_tile_done,
-    input  logic signed [31:0] in_vec_s32[VLEN],
+    input  wire logic               in_valid,
+    input  wire logic               in_tile_done,
+    input  wire logic signed [31:0] in_vec_s32[VLEN],
     output logic               out_valid,
     output logic               out_tile_done,
     output logic signed [ 7:0] out_vec_s8[VLEN],
@@ -2059,11 +2059,11 @@ module requant_registered_sum #(
     parameter bit p_use_dsp = 1'b0
 `endif
 ) (
-    input  logic clk,
-    input  logic i_en,
-    input  logic signed [p_width-1:0] i_lhs,
-    input  logic signed [p_width-1:0] i_rhs,
-    input  logic i_carry,
+    input  wire logic clk,
+    input  wire logic i_en,
+    input  wire logic signed [p_width-1:0] i_lhs,
+    input  wire logic signed [p_width-1:0] i_rhs,
+    input  wire logic i_carry,
     output logic signed [p_width-1:0] o_sum
 );
     generate
@@ -2145,10 +2145,10 @@ endmodule
 
 // 有符号乘积右移：保留三十四位商、保护位和舍弃位，支持每周期一组输入。
 module requant_shift_pipeline (
-    input  logic               clk,
-    input  logic               i_en,
-    input  logic signed [63:0] i_product,
-    input  logic        [6:0]  i_amount,
+    input  wire logic               clk,
+    input  wire logic               i_en,
+    input  wire logic signed [63:0] i_product,
+    input  wire logic        [6:0]  i_amount,
     output logic signed [33:0] o_quotient,
     output logic              o_increment
 );
@@ -2301,9 +2301,9 @@ endmodule
 module requant_shift_mux #(
     parameter int p_width = 2
 ) (
-    input  logic [p_width-1:0] i_direct,
-    input  logic [p_width-1:0] i_shifted,
-    input  logic               i_select,
+    input  wire logic [p_width-1:0] i_direct,
+    input  wire logic [p_width-1:0] i_shifted,
+    input  wire logic               i_select,
     output logic [p_width-1:0] o_value
 );
     //! 0. 辅助定义
@@ -2358,9 +2358,9 @@ endmodule
 
 // 根据完整三十六位结果与两个三十二位有符号边界产生激活裁剪条件。
 module requant_activation_compare (
-    input  logic signed [35:0] i_value,
-    input  logic signed [31:0] i_minimum,
-    input  logic signed [31:0] i_maximum,
+    input  wire logic signed [35:0] i_value,
+    input  wire logic signed [31:0] i_minimum,
+    input  wire logic signed [31:0] i_maximum,
     output logic               o_below_minimum,
     output logic               o_above_maximum
 );

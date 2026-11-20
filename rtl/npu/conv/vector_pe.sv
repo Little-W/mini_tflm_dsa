@@ -4,9 +4,9 @@
 module vector_pe #(
   parameter bit ENABLE_EXTENDED_MULTIPLY=1'b1
 ) (
-  input logic [2:0] op,
-  input logic signed [15:0] a, b,
-  input logic signed [31:0] acc,
+  input wire logic [2:0] op,
+  input wire logic signed [15:0] a, b,
+  input wire logic signed [31:0] acc,
   output logic signed [31:0] result
 );
   logic [31:0] product_uu, product_su;
@@ -51,12 +51,12 @@ module registered_vector_pe #(
   parameter bit p_use_dsp = 1'b0
 `endif
 ) (
-  input logic clk,
-  input logic i_en,
-  input logic [2:0] i_op,
-  input logic signed [15:0] i_a,
-  input logic signed [15:0] i_b,
-  input logic signed [31:0] i_acc,
+  input wire logic clk,
+  input wire logic i_en,
+  input wire logic [2:0] i_op,
+  input wire logic signed [15:0] i_a,
+  input wire logic signed [15:0] i_b,
+  input wire logic signed [31:0] i_acc,
   output logic signed [31:0] o_result
 );
   //! 0. 操作数寄存
@@ -196,11 +196,11 @@ module vector_reduce_alu #(
   parameter bit p_use_dsp = 1'b0
 `endif
 ) (
-  input logic clk,
-  input logic signed [31:0] i_lhs,
-  input logic signed [31:0] i_rhs,
-  input logic i_max,
-  input logic i_min,
+  input wire logic clk,
+  input wire logic signed [31:0] i_lhs,
+  input wire logic signed [31:0] i_rhs,
+  input wire logic i_max,
+  input wire logic i_min,
   output logic signed [31:0] o_result
 );
   if (p_use_dsp) begin : g_dsp

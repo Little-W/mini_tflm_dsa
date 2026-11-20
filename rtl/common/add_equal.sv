@@ -5,10 +5,10 @@ module add_equal #(
     parameter int unsigned p_width = 32,
     parameter bit p_use_lut = 1'b0
 ) (
-    input  logic [p_width-1:0] i_a,
-    input  logic [p_width-1:0] i_b,
-    input  logic [p_width-1:0] i_target,
-    input  logic               i_carry_in,
+    input  wire logic [p_width-1:0] i_a,
+    input  wire logic [p_width-1:0] i_b,
+    input  wire logic [p_width-1:0] i_target,
+    input  wire logic               i_carry_in,
     output logic               o_equal
 );
     //! 0. 进位信号

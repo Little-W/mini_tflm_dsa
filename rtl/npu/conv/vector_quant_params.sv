@@ -8,14 +8,14 @@ module vector_quant_params #(
     parameter int p_read_index_width = $clog2(p_entries+1),
     parameter int p_active_width = $clog2(p_entries+1)
 ) (
-    input  logic clk,
-    input  logic i_wr_en,
-    input  logic i_wr_multiplier,
-    input  logic i_wr_shift,
-    input  logic [p_dma_index_width-1:0] i_wr_byte_index,
-    input  logic [p_bus_width-1:0] i_wr_data,
-    input  logic [p_active_width-1:0] i_active,
-    input  logic [p_read_index_width-1:0] i_rd_index,
+    input  wire logic clk,
+    input  wire logic i_wr_en,
+    input  wire logic i_wr_multiplier,
+    input  wire logic i_wr_shift,
+    input  wire logic [p_dma_index_width-1:0] i_wr_byte_index,
+    input  wire logic [p_bus_width-1:0] i_wr_data,
+    input  wire logic [p_active_width-1:0] i_active,
+    input  wire logic [p_read_index_width-1:0] i_rd_index,
     output logic signed [31:0] o_multiplier,
     output logic [5:0] o_right_shift
 );

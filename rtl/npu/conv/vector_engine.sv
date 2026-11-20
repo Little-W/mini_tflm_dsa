@@ -777,8 +777,8 @@ module vector_engine #(
     wire signed [7:0] write_value=8'(rd_data[DMA_LANE]);
     vector_weight_bank #(.DEPTH(MAX_TAPS)) u_bank (
       .clk, .write_enable(rst_n && write_enable),
-      .write_address(load_tap), .write_data(write_value),
-      .read_address(tap), .read_data(weight_tap_data[channel])
+      .write_address(32'(load_tap)), .write_data(write_value),
+      .read_address(32'(tap)), .read_data(weight_tap_data[channel])
     );
   end
 
