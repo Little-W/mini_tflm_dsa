@@ -61,6 +61,35 @@ class MetricsTest(unittest.TestCase):
         result = register_path_requirement({'longest_register_path_cells': 0, 'graph_complete': False})
         self.assertIsNone(result['met'])
 
+    def test_reporting_limits_preserve_complete_graph_maximum(self):
+        cells = {'first': flop(1, '0')}
+        for index in range(10):
+            cells[f'logic_{index}'] = cell('LUT1', {'I0': [index + 1]}, {'O': [index + 2]})
+        cells['long'] = flop(20, 11)
+        cells['short'] = flop(21, 2)
+        module = {'cells': cells, 'netnames': {}}
+        for options in ({'limit': 0, 'group_limit': 0}, {'minimum_path_cells': 11}):
+            result = analyze(module, **options)
+            self.assertEqual(result['paths']['register_to_register_paths'], [])
+            self.assertEqual(result['paths']['longest_register_path_cells'], 10)
+            self.assertFalse(result['register_path_requirement']['met'])
+            self.assertEqual(result['paths']['endpoint_port_maximum_depth_histogram'], {1: 1, 10: 1})
+
+    def test_minimum_path_cells_filters_only_reported_paths(self):
+        module = {'cells': {'first': flop(1, '0'),
+                           'a': cell('LUT1', {'I0': [1]}, {'O': [2]}),
+                           'b': cell('LUT1', {'I0': [2]}, {'O': [3]}),
+                           'short': flop(4, 2), 'long': flop(5, 3)}, 'netnames': {}}
+        paths = connected_paths(module, minimum_path_cells=2, group_limit=100)
+        self.assertEqual([path['endpoint']['cell'] for path in paths['register_to_register_paths']], ['long'])
+        self.assertEqual(len(paths['distinct_register_path_groups']), 1)
+        self.assertEqual(paths['endpoint_port_maximum_depth_histogram'], {1: 1, 2: 1})
+
+    def test_negative_path_reporting_limits(self):
+        for name in ('limit', 'group_limit', 'minimum_path_cells'):
+            with self.assertRaises(ValueError):
+                connected_paths({'cells': {}, 'netnames': {}}, **{name: -1})
+
     def test_primary_input_has_no_register_start(self):
         result = self.measure({'logic': cell('LUT1', {'I0': [1]}, {'O': [2]}), 'last': flop(3, 2)})
         self.assertEqual(result['paths']['register_to_register_paths'], [])

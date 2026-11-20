@@ -1,0 +1,351 @@
+{
+  "passed": true,
+  "scope": "source elaboration and module dependency checks; historical equivalence proofs are separate tests",
+  "helper_sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9",
+  "checks": [
+    {
+      "entry": "test/bias_read_depth/prove.py",
+      "elaborated_models": 2,
+      "passed": true,
+      "script_sha256": "420a55e3a806be306bfe3dc29798bd469e0bfcab6372d9e8ce00539133eef28f",
+      "log_sha256": "4ca831787dad0015ef1874038ad2b7a6b52b438c20479d8d5a4451d75c1414b0"
+    },
+    {
+      "entry": "test/bias_read_depth/prove_shared.py",
+      "elaborated_models": 1,
+      "passed": true,
+      "script_sha256": "03b053931563d95502b11b6308e75423daba3d5492b471cf20e5df91df682e8d",
+      "log_sha256": "18d7317757f38ea5561f41f4bc93ef3bed9ee2bdb8804334da47c2229990d3a6"
+    },
+    {
+      "entry": "test/bias_loader_range/run_formal.py",
+      "elaborated_models": 2,
+      "passed": true,
+      "script_sha256": "aac69abd0b76027ced5de4f6e76ea054f26c9ed55e54d92419f53f6b3d230dff",
+      "log_sha256": "489394b1fb7e0aeaebe7a4dff2a1abc279209f8289a94a08d3e9ed4ad748e1fb"
+    },
+    {
+      "entry": "test/bias_loader_range/synthesis.py",
+      "elaborated_models": 1,
+      "passed": true,
+      "script_sha256": "b2f7ea43d58828d7f133ecaec14e6f432250844f817f1791b53a5d8df2967db3",
+      "log_sha256": "dd30f21a9c7c835df5750f12cb7cd45e29b3148d7ad4825f148bb85bb48b0373"
+    },
+    {
+      "entry": "test/bias_group_index/run_formal.py",
+      "elaborated_models": 2,
+      "passed": true,
+      "script_sha256": "9c6646fdf7ed593c6cccb09066dbb6c81d947b2e77a26a141d590a9d94c60767",
+      "log_sha256": "e22904cb3f98d1ca08ac7914d3a74263280775793e82e76601f34f5f2025ef7c"
+    },
+    {
+      "entry": "test/bias_residency_timing/run_formal.py",
+      "elaborated_models": 2,
+      "passed": true,
+      "script_sha256": "17dcd1a7a760c98c4cbce89439b6bec95a4205513efdd62fea6320fed705f976",
+      "log_sha256": "0edfef476bfca57f5eb7d01e4811e369176aa8ded4bef3cab56485948541be60"
+    },
+    {
+      "entry": "test/bias_read_depth/prove_shared.py",
+      "elaborated_models": 2,
+      "passed": true,
+      "script_sha256": "76271852699f61d1df243529d89da2866df2011ca3bca8be74183b0515ceebbc",
+      "log_sha256": "f3164e8bd78c23ebdda9f57f170d8c6f10926a8d8dfa30e6fb5436de9fc77d68"
+    },
+    {
+      "entry": "test/bias_cache_data/run_formal.py",
+      "elaborated_models": 1,
+      "passed": true,
+      "script_sha256": "bf12dcebab676be2115028e0ce411c77344d7a90a4981acafd493f73e07dcb3c",
+      "log_sha256": "9636309e9b097c7348b8c52b1906544f0fb071d45f87a46476ae31b030e6fd05"
+    },
+    {
+      "entry": "test/bias_loader_reuse/Makefile",
+      "passed": true,
+      "method": "actual Makefile source list with Verilator --lint-only",
+      "command": [
+        "verilator",
+        "--lint-only",
+        "--timing",
+        "--assert",
+        "-Wno-fatal",
+        "--top-module",
+        "tb_bias_loader_reuse",
+        "-j",
+        "1",
+        "--Mdir",
+        "/tmp/npu45000_compute/r9/bias_sources/make_obj",
+        "tb_bias_loader_reuse.sv",
+        "../../rtl/npu/loaders/bias_loader.sv",
+        "../../rtl/npu/loaders/bias_loader_ctrl.sv",
+        "../../rtl/npu/loaders/bias_loader_buffer.sv",
+        "../../rtl/common/regfile.v",
+        "../../rtl/common/parallel_prefix_add.sv"
+      ],
+      "log_sha256": "582da06ec408acb8cb9ab268c282e12cf2ae2b471e3468e1e58ee094213de5fb"
+    }
+  ],
+  "entry_sha256": {
+    "test/bias_read_depth/prove.py": "8a40165ccde44ab5aad0873f2b27a88b23e09c93f52240864c5aae7bc55f47c0",
+    "test/bias_read_depth/prove_shared.py": "e1c5d1f0c11f42f5cf45f6ffe8277a1f1bdca1c2dda35b6bdadb6e26b5a064dc",
+    "test/bias_loader_range/run_formal.py": "77365159163b3edda549f227197082d608ba58c8207838f99d38997f528b912b",
+    "test/bias_loader_range/synthesis.py": "9cecf4f9417f575fd94632e90acdf213094ca60c7cd05dca5513ecff86451822",
+    "test/bias_group_index/run_formal.py": "eb1c38be1231d6933bfef8bb560234d7ca5b02004191f183bef4ae6fe22964ba",
+    "test/bias_residency_timing/run_formal.py": "5c9e853aabe88b0a51e24f58c107235697acda410834937a2261682f5cc9b086",
+    "test/bias_cache_data/run_formal.py": "4985abe2b94d5a824c713d579d9fc99b2d6d64bc8a7e26682e41fe3f7a90fbc0",
+    "test/bias_loader_reuse/Makefile": "dd2e82ac4512264bbd2948f23758c1e27db2be1f3feb11d6b1679a6fdfbe9b29"
+  },
+  "script_sha256": "38aafc0a66186e3f5da38df7f3140604817f0b0dc13874c4c869b2c69363d3a4",
+  "formal_checks": {
+    "read_proof": {
+      "passed": true,
+      "inputs": {
+        "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+        "reference_scope": [
+          "rtl/npu/loaders/bias_loader_buffer.sv",
+          "rtl/npu/loaders/bias_loader.sv"
+        ],
+        "shared_current_sources": [
+          "rtl/npu/loaders/bias_loader_ctrl.sv",
+          "rtl/common/parallel_prefix_add.sv"
+        ],
+        "sources": [
+          {
+            "source": "rtl/npu/loaders/bias_loader.sv",
+            "reference_sha256": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+            "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+          },
+          {
+            "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+            "reference_sha256": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+            "current_sha256": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987"
+          },
+          {
+            "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+            "reference_sha256": "8860c138b08cd030a4ce0482c0ea91342abc9d409c8bec4b5d1158fc2f199d9f",
+            "current_sha256": "c7f770c410205743ebcfdf3b82d09b6e9e851af273f8e1392736d1b3644ede90"
+          },
+          {
+            "source": "rtl/common/regfile.v",
+            "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+            "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+          },
+          {
+            "source": "rtl/common/parallel_prefix_add.sv",
+            "reference_sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9",
+            "current_sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9"
+          }
+        ]
+      },
+      "input_assumptions": [],
+      "memory_return": "same unconstrained 64-bit value each cycle",
+      "storage_relation": "same initial bits, identical read/write addresses, enables, data and byte masks",
+      "profiles": [
+        {
+          "SIZE": 4,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 1,
+          "GROUP_BLOCKS_MAX": 1,
+          "passed": true,
+          "equivalent_bits": 474,
+          "script_sha256": "f7785f956e71820a7d42625385b93b17aa1c98d58c031cbc3594a1ff1d00a118",
+          "log_sha256": "102357a36ea5ca61c2eb923390ff6912008e33a5a6579bdfa1ab0da0ce7fc851"
+        },
+        {
+          "SIZE": 8,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "GROUP_BLOCKS_MAX": 3,
+          "passed": true,
+          "equivalent_bits": 781,
+          "script_sha256": "5f4579d9287e9b3a09d103a28d13a1df22195d0927131d13e43090bc72ac796d",
+          "log_sha256": "7fbf8ad93e62c110ba0fe95dfb205c53f371d28a8ea25b13fcb8244b6a79c758"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 4,
+          "passed": true,
+          "equivalent_bits": 1318,
+          "script_sha256": "fa767cadafc75d30b5509ba4e670715bf4c258410e08b2c06dbbca72b08f24ff",
+          "log_sha256": "22bcf438e55a09df36c4828fce3b8ff86c0b01ce054a1c239dfd9d3bd7efc844"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 29,
+          "GROUP_BLOCKS_MAX": 32,
+          "passed": true,
+          "equivalent_bits": 1443,
+          "script_sha256": "59deb9fc54268065eba4e613d09a96b1160d1c6bf8d7ddf2c670e79cd5704986",
+          "log_sha256": "af50214abffcdaf87b658431a650eb1f9ba8343ec34867d7b4ad4382d113a7a3"
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 32,
+          "GROUP_BLOCKS_MAX": 64,
+          "passed": true,
+          "equivalent_bits": 1462,
+          "script_sha256": "c3c22b543e9a889e4307f45b6a85d49aa2aa47e0de04bbe9dc432fd12fc332eb",
+          "log_sha256": "df8f9c3f76871e5ae9f0f3f7b5f13af15782f316c8d76678909bb2e8d5967439"
+        },
+        {
+          "SIZE": 32,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 32,
+          "GROUP_BLOCKS_MAX": 1,
+          "passed": true,
+          "equivalent_bits": 2450,
+          "script_sha256": "c565e9c56c40588c66635ae58a8e57d755525862de603cbe6d5eb234b1a8cf01",
+          "log_sha256": "899f66289ffaaa2e3881ba02a34d988d9130cc4fb66e36ee8249a5e26dd35c12"
+        }
+      ]
+    },
+    "shared_proof": {
+      "passed": true,
+      "inputs": {
+        "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+        "reference_scope": [
+          "rtl/npu/loaders/bias_loader_buffer.sv",
+          "rtl/npu/loaders/bias_loader.sv"
+        ],
+        "shared_current_sources": [
+          "rtl/npu/loaders/bias_loader_ctrl.sv",
+          "rtl/common/parallel_prefix_add.sv"
+        ],
+        "sources": [
+          {
+            "source": "rtl/npu/loaders/bias_loader.sv",
+            "reference_sha256": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+            "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+          },
+          {
+            "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+            "reference_sha256": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+            "current_sha256": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987"
+          },
+          {
+            "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+            "reference_sha256": "8860c138b08cd030a4ce0482c0ea91342abc9d409c8bec4b5d1158fc2f199d9f",
+            "current_sha256": "c7f770c410205743ebcfdf3b82d09b6e9e851af273f8e1392736d1b3644ede90"
+          },
+          {
+            "source": "rtl/common/regfile.v",
+            "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+            "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+          },
+          {
+            "source": "rtl/common/parallel_prefix_add.sv",
+            "reference_sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9",
+            "current_sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9"
+          }
+        ]
+      },
+      "external_input_assumptions": [],
+      "invariant": "state == S_CMD implies current_block_idx == load_block_idx",
+      "invariant_initial_reset": true,
+      "load_hit_consumption": "load_block_valid and load_block_bank are consumed only in S_CMD",
+      "memory_return": "common arbitrary 64-bit data in every cycle",
+      "memory_state_relation": "same initial memory and equal read/write ports",
+      "profiles": [
+        {
+          "SIZE": 4,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 1,
+          "GROUP_BLOCKS_MAX": 1,
+          "control_invariant": {
+            "passed": true,
+            "script_sha256": "aa650adfe54fc378a06bb6acc3120c29a12c8adefeb5e9fe7cc97581dd373e08",
+            "log_sha256": "e4924cbea1f2199f1524472ec95fc4890c358b3205477d465f04dbb21e3b89b8",
+            "equivalent_bits": null
+          },
+          "complete_loader_equivalence": {
+            "passed": true,
+            "script_sha256": "1a0ac070a94e7a771430125a945b99dffdb982921fb2ef2f40298e85ed70b359",
+            "log_sha256": "7c211573565ad83cc692874e24c151203f179ef32e8feace1413b1522e3319c0",
+            "equivalent_bits": 924
+          },
+          "passed": true
+        },
+        {
+          "SIZE": 8,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "GROUP_BLOCKS_MAX": 3,
+          "control_invariant": {
+            "passed": true,
+            "script_sha256": "64db5fa00aa1917a049622420bdfa8ba398ec733f2d46f1568a9f272a5ed1f35",
+            "log_sha256": "5a18434141a604031782648b46242f2690100df53c8307b573bf1bda06140bf5",
+            "equivalent_bits": null
+          },
+          "complete_loader_equivalence": {
+            "passed": true,
+            "script_sha256": "7e571cc73404c60ca51241ba2cc0dc6922f657202d0d7b8a1849e19a848e4230",
+            "log_sha256": "69b1d962ff2a43e55a09eab004f8c5fa2b0cd6de8df719a6f9286e1a974606f5",
+            "equivalent_bits": 1370
+          },
+          "passed": true
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 12,
+          "GROUP_BLOCKS_MAX": 4,
+          "control_invariant": {
+            "passed": true,
+            "script_sha256": "c6d4d8e70bd69c7184a95fb7f098d60b178a119a6f6c541a5bcfcd27f2d7f0b1",
+            "log_sha256": "1ec49901bd37772643c0c37a53800b7db4c6cfb65fc39b8ae49ce0e7d4a89f8b",
+            "equivalent_bits": null
+          },
+          "complete_loader_equivalence": {
+            "passed": true,
+            "script_sha256": "5a33393f3315e0df7ef945bc963031be174f05dd83d77573bd0eb6eb2baa76e9",
+            "log_sha256": "b9017d856ba1961793ac917b1fc02cc8b04ba451834ca1b8e8ff8e22f62347ac",
+            "equivalent_bits": 2032
+          },
+          "passed": true
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 29,
+          "GROUP_BLOCKS_MAX": 32,
+          "control_invariant": {
+            "passed": true,
+            "script_sha256": "e1e9897231b05e515fc504e8ca5d045b54d0b9a420710200c6f40a8a0bbf8853",
+            "log_sha256": "b8d10c21930cebf9574e93c29d72c9c71283290408bce3818e281275e43530a8",
+            "equivalent_bits": null
+          },
+          "complete_loader_equivalence": {
+            "passed": true,
+            "script_sha256": "b6847784f7a0c2888d17403e74f1a0ec5aaee5c1ab3b4d9ce03d9bef15fb6eee",
+            "log_sha256": "016be6857a804ae543eb3b42798072cdd43778859391cfb7ff0ea17918797903",
+            "equivalent_bits": 2595
+          },
+          "passed": true
+        },
+        {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 32,
+          "GROUP_BLOCKS_MAX": 64,
+          "control_invariant": {
+            "passed": true,
+            "script_sha256": "5df57564f91cc6e93310d7236e31aae3c989b77fb93cad55272ad6adfd850a7b",
+            "log_sha256": "7a4ddb2706da21591c4c8fa047f93d60cc089aa8845e088993271d458187208d",
+            "equivalent_bits": null
+          },
+          "complete_loader_equivalence": {
+            "passed": true,
+            "script_sha256": "a8e134cd68a560e88024036badd04ec27cb539b41fb99b7fc90632872e8618a1",
+            "log_sha256": "f8290e92d734fd3112b74cbb1d501011dbffebbfceeaf3e18973ff2a0500abe9",
+            "equivalent_bits": 2670
+          },
+          "passed": true
+        }
+      ]
+    }
+  }
+}

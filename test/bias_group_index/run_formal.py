@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TOP = Path('rtl/npu/top/npu_top.sv')
 BUFFER = Path('rtl/npu/loaders/bias_loader_buffer.sv')
 MEMORY = Path('rtl/common/regfile.v')
+HELPER = Path('rtl/common/parallel_prefix_add.sv')
 
 # 两侧接收同一任意存储返回值；同时证明所有读写端口逐周期相同。
 # 相同初始存储和相同端口操作可逐拍保持每一个存储位相同。
@@ -58,8 +59,8 @@ def prepare_buffer(buffer, block, start):
     input logic [$clog2(GROUP_BLOCKS_MAX * SIZE):0] is_bias_rows_valid,
     input logic [63:0] i_formal_read_data,
 '''
-    old_ports = '''    input  logic                 group_read_start,
-    input  logic [$clog2(GROUP_BLOCKS_MAX * SIZE)-1:0] group_read_idx,
+    old_ports = '''    input  wire logic                 group_read_start,
+    input  wire logic [$clog2(GROUP_BLOCKS_MAX * SIZE)-1:0] group_read_idx,
 '''
     if buffer.count(old_ports) != 1:
         raise RuntimeError('Bias buffer group ports changed')
@@ -100,7 +101,7 @@ def main():
     starts = {label: group_start(source) for label, source in
               (('reference', reference_top), ('current', current_top))}
     buffer = (ROOT / BUFFER).read_text()
-    hashes = {str(p): digest((ROOT / p).read_bytes()) for p in (TOP, BUFFER, MEMORY)}
+    hashes = {str(p): digest((ROOT / p).read_bytes()) for p in (TOP, BUFFER, MEMORY, HELPER)}
     model = out / 'memory_model.sv'
     model.write_text(MEMORY_MODEL)
     snapshots = {}
@@ -124,7 +125,8 @@ def main():
             commands += [
                 f'read_slang --top bias_loader_buffer -GSIZE={size} -GBUS_WIDTH={bus} '
                 f'-GCOUNT_WIDTH={count} -GGROUP_BLOCKS_MAX={groups} '
-                + shlex.quote(str(source)) + ' ' + shlex.quote(str(model)),
+                + shlex.quote(str(source)) + ' ' + shlex.quote(str(model)) + ' '
+                + shlex.quote(str(ROOT / HELPER)),
                 'prep -top bias_loader_buffer -flatten', 'memory_map', 'async2sync', 'opt_clean',
                 'rename -hide bias_loader_buffer/is_bias_read_idx bias_loader_buffer/group_read_idx',
                 f'rename bias_loader_buffer {label}', f'design -stash {label}',
@@ -153,7 +155,7 @@ def main():
         print(json.dumps(case), flush=True)
         if not case['passed']:
             raise RuntimeError(f'Formal comparison did not complete: {log}')
-    if hashes != {str(p): digest((ROOT / p).read_bytes()) for p in (TOP, BUFFER, MEMORY)}:
+    if hashes != {str(p): digest((ROOT / p).read_bytes()) for p in (TOP, BUFFER, MEMORY, HELPER)}:
         raise RuntimeError('Sources changed during verification')
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

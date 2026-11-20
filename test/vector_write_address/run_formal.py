@@ -172,6 +172,9 @@ endmodule
     (out / 'cases.json').write_text(json.dumps(cases, ensure_ascii=False, indent=2) + '\n')
     reference_path = out / 'vector_engine_reference.sv'
     reference_path.write_text(reference)
+    reference_checker = out / 'vector_config_check_reference.sv'
+    reference_checker.write_bytes(subprocess.check_output(
+        ['git', 'show', f'{revision}:rtl/npu/conv/vector_config_check.sv'], cwd=ROOT))
     vector_sources = [ROOT / 'rtl/npu/conv' / name for name in (
         'conv_im2col_pkg.sv', 'vector_engine_pkg.sv', 'vector_config_check.sv',
         'vector_writeback.sv', 'vector_round_shift.sv', 'vector_scalar_multiplier.sv',
@@ -180,7 +183,9 @@ endmodule
     for label, path in (('reference', reference_path), ('current', ROOT / SOURCE)):
         vector_cases[label] = {'top': 'vector_engine',
             'options': ['-D', 'SYNTHESIS=1', '-GTILE=16', '-GBUS_WIDTH=64', '-GPE_COUNT=8'],
-            'sources': [str(item) for item in [*vector_sources, path]],
+            'sources': [str(reference_checker) if label == 'reference' and
+                        item.name == 'vector_config_check.sv' else str(item)
+                        for item in [*vector_sources, path]],
             'configuration': 'TILE16 BUS64 PE8 完整向量引擎'}
     (out / 'vector_cases.json').write_text(json.dumps(vector_cases, ensure_ascii=False, indent=2) + '\n')
     if hashes != {str(path.relative_to(ROOT)): sha(path) for path in sources}:

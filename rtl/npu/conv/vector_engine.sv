@@ -130,15 +130,19 @@ module vector_engine #(
   logic signed [33:0] input_y, input_x, input_origin_x, input_origin_y;
   logic in_bounds, param_bad, param_bad_seen;
   logic [63:0] input_bytes,output_bytes,weight_bytes,parameter_bytes;
+  logic [32:0] checked_range_end[4];
+  logic global_pool;
   wire [31:0] checked_kernel_count,checked_position_count;
   wire [63:0] kernel_count={32'd0,checked_kernel_count};
   wire [63:0] position_count={32'd0,checked_position_count};
   logic config_check_ready,config_check_done,config_check_error;
   vector_config_check #(.TILE(TILE),.MAX_TAPS(MAX_TAPS),.POOL_MAX_TAPS(POOL_MAX_TAPS)) u_config_check (
     .clk,.rst_n,.start(state==CHECK),.cfg(c),.ready(config_check_ready),
+    .i_input_range(global_pool),
     .done(config_check_done),.error(config_check_error),
     .kernel_count(checked_kernel_count),.position_count(checked_position_count),
-    .input_bytes,.output_bytes,.weight_bytes);
+    .input_bytes,.output_bytes,.weight_bytes,
+    .o_read_end(checked_range_end));
   assign parameter_bytes=64'(channels)<<2;
   logic [31:0] load_bytes;
   logic signed [31:0] q_accumulator, q_multiplier;
@@ -261,7 +265,6 @@ module vector_engine #(
   logic signed [7:0] soft_out_data;
   logic signed [31:0] multiplier_a, multiplier_b;
   logic signed [63:0] multiplier_product;
-  logic global_pool;
   logic [TAP_COUNT_W-1:0] pool_offset;
   logic [INPUT_INDEX_W:0] pool_pixels, pool_received, pool_pixel;
   logic [INPUT_INDEX_W:0] pool_elements, pool_next_elements, pool_next_pixels, pool_input_index;
@@ -437,13 +440,9 @@ module vector_engine #(
     for (int bit_index=0;bit_index<TAP_COUNT_W;bit_index++) if (valid_taps[bit_index]) avg_shift=6'(bit_index);
   end
 
-  logic [32:0] dma_range_size [4];
-  logic [3:0] unused_dma_range_carry;
-
-  // 每个范围先选择起点和字节数，再使用一个加法器生成末端。
+  // 四个末地址已在检查阶段按当前配置分配槽位。
   for (genvar range_index = 0; range_index < 4; range_index++) begin : g_dma_range_end
-    assign {unused_dma_range_carry[range_index], dma_range_end[range_index]} =
-        {2'b00, dma_range_base[range_index]} + {1'b0, dma_range_size[range_index]};
+    assign dma_range_end[range_index] = checked_range_end[range_index];
   end
   always_comb begin
     // 配置等待期间持续提供描述符，接收边沿由就绪信号决定。
@@ -457,21 +456,20 @@ module vector_engine #(
     dma_conv_cfg.input_s16 = 0;
     dma_conv_cfg.windowed = spatial;
     dma_conv_cfg.prefetch_enable = 1;
-    for (int i=0;i<4;i++) begin dma_range_base[i]=0; dma_range_size[i]=0; end
+    for (int i=0;i<4;i++) begin dma_range_base[i]=0; end
     if (global_pool && input_range_mode) begin
-      dma_range_base[0]=c.input_base;dma_range_size[0]=input_bytes[32:0];
+      dma_range_base[0]=c.input_base;
     end else if (depthwise) begin
-      dma_range_base[0]=c.rhs_base; dma_range_size[0]=weight_bytes[32:0];
+      dma_range_base[0]=c.rhs_base;
       if (c.bias_base!=0) begin
-        dma_range_base[1]=c.bias_base; dma_range_size[1]=parameter_bytes[32:0];
+        dma_range_base[1]=c.bias_base;
       end
-      dma_range_base[2]=c.multiplier_base; dma_range_size[2]=parameter_bytes[32:0];
-      dma_range_base[3]=c.shift_base; dma_range_size[3]=parameter_bytes[32:0];
+      dma_range_base[2]=c.multiplier_base;
+      dma_range_base[3]=c.shift_base;
     end else if (!spatial) begin
-      dma_range_base[0]=c.input_base; dma_range_size[0]=input_bytes[32:0];
+      dma_range_base[0]=c.input_base;
       if (binary_vector || softmax_s8) begin
         dma_range_base[1]=c.rhs_base;
-        dma_range_size[1]=softmax_s8 ? 33'd1024 : input_bytes[32:0];
       end
     end
   end

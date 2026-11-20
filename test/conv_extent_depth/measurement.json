@@ -1,0 +1,154 @@
+{
+  "formal": {
+    "passed": true,
+    "reference": "2297cb12",
+    "source_sha256": "3ebbcda8c3c0492d114822c37ea400298070aca41ce13b4015049408b315104a",
+    "extracted_sha256": {
+      "reference.sv": "b699cb527b8f7c8e80dd3ceb8540148334699de4cc9e1ea8cff2df98c3eca71b",
+      "candidate.sv": "80b0b8ddb2366160aee80d5db0b4b49154f115cfb26bd064411c03624ae84eab",
+      "formal.sv": "e9e0f007dfb5cefde2348d84099aaeb2ded67c04d617b1642d278aa898bd0ac2"
+    },
+    "proof_scope": "Actual phase counter and extent assignments; unrestricted partial products and fields captured at stage-2 entry",
+    "reset": "First sampled cycle resets control; later reset, ready, and load inputs arbitrary",
+    "runs": [
+      {
+        "size": 1,
+        "passed": true,
+        "log_sha256": "5351c74c862e224bf6415df89b403ebfc9704afd39c3ae9212e721a1c57d7d77"
+      },
+      {
+        "size": 2,
+        "passed": true,
+        "log_sha256": "6212b2ca9bc3e8b2137a3ee43c9a0423936b4122796654f7606f13679791dd75"
+      },
+      {
+        "size": 3,
+        "passed": true,
+        "log_sha256": "166c9953c69ced60ae32f393814543abc952605a0562173cc76a88974d9688e5"
+      },
+      {
+        "size": 4,
+        "passed": true,
+        "log_sha256": "391f22ad6d5cab990317c6b3fd5bcdd5eda4d5465f82dd2d12542a95fd7ca4fe"
+      },
+      {
+        "size": 16,
+        "passed": true,
+        "log_sha256": "9125e13b27a265f471144a4717427c02c23eaf20f0569cc585478b34f53aca89"
+      },
+      {
+        "size": 32,
+        "passed": true,
+        "log_sha256": "82bc991fcf7c72fbab89e218e7473101b6f8f96f042ee5067b86880293dd6868"
+      }
+    ]
+  },
+  "mapping": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 351,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 351,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 817,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 71,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 71,
+          "FDCE": 4,
+          "FDRE": 813,
+          "INV": 2,
+          "LUT2": 227,
+          "LUT3": 56,
+          "LUT4": 22,
+          "LUT5": 12,
+          "LUT6": 34
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 14,
+      "register_path_requirement": {
+        "maximum_combinational_cells": 9,
+        "observed_combinational_cells": 14,
+        "graph_complete": true,
+        "met": false,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "bf33216e25da648f350f1361425734b4b5c8a21f4ac5e51e183dd5c5aca922c3"
+      },
+      "mapping_stage": {
+        "elapsed_seconds": 2.21,
+        "peak_process_tree_rss_bytes": 179486720,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "03_map_lut.ys",
+        "log": "03_map_lut.log",
+        "script_sha256": "dc0a154723f5d0546acfbf3eb88e8fdf77ce7d21f1c597c1b38b49c6861e904d",
+        "mapped_json_sha256": "20217fa752ed61cf9cd5909ee67bd219c3ac712178d1f751dde9be311dac9c5d",
+        "mapped_verilog_sha256": "4ee512ca4b323846e13eddd022e17bd4c4b365fd4c943ca07c324f7d119852f2",
+        "input_library_sha256": "94caf8cf8244dae462929c45cacf23b979b504cd2c3dddeede7726000a53f3d3",
+        "log_sha256": "bf33216e25da648f350f1361425734b4b5c8a21f4ac5e51e183dd5c5aca922c3"
+      }
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 355,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 355,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 905,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 85,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 85,
+          "FDCE": 4,
+          "FDRE": 901,
+          "INV": 2,
+          "LUT2": 225,
+          "LUT3": 58,
+          "LUT4": 23,
+          "LUT5": 12,
+          "LUT6": 37
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 8,
+      "register_path_requirement": {
+        "maximum_combinational_cells": 9,
+        "observed_combinational_cells": 8,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "df7f19d6c12e225cccd4c8b07cac70a18c00f8349b53a043e2365bf752503015"
+      },
+      "mapping_stage": {
+        "elapsed_seconds": 2.61,
+        "peak_process_tree_rss_bytes": 180715520,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "03_map_lut.ys",
+        "log": "03_map_lut.log",
+        "script_sha256": "5822e14dcd1bb073dc14abf6771db19e2e30dd243d1c608397a9e04a1171463a",
+        "mapped_json_sha256": "8ee0d73b7653883bfb015dfc822ece1b34df8cf953822a46a8ee4b429f12a993",
+        "mapped_verilog_sha256": "2d9fbd354629808b82f8dbf044d6155ead9aff60ee146e5254325c702e875138",
+        "input_library_sha256": "94caf8cf8244dae462929c45cacf23b979b504cd2c3dddeede7726000a53f3d3",
+        "log_sha256": "df7f19d6c12e225cccd4c8b07cac70a18c00f8349b53a043e2365bf752503015"
+      }
+    }
+  }
+}

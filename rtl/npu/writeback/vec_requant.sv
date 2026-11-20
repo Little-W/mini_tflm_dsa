@@ -701,30 +701,40 @@ module vec_requant_full #(
   // 常量与类型
   // ----------------------------
 
+  // INT16 乘数采用最近偶数舍入，两个字节并行递增并保留正向饱和。
   function automatic logic signed [31:0] prepare_multiplier(
       input logic signed [31:0] value, input logic use_s16);
-    logic signed [16:0] reduced;
+    logic round_increment, high_increment;
+    logic [15:0] rounded;
+    logic unused_low_carry, unused_high_carry;
     begin
-      reduced = $signed({value[31],value[31:16]}) +
-          ((value[15:0]>16'h8000 || (value[15:0]==16'h8000 && value[16])) ? 17'sd1 : 17'sd0);
+      round_increment = value[15] && ((|value[14:0]) || value[16]);
+      high_increment = value[15] && (&value[23:16]);
+      {unused_low_carry, rounded[7:0]} = {1'b0, value[23:16]} + 9'(round_increment);
+      {unused_high_carry, rounded[15:8]} = {1'b0, value[31:24]} + 9'(high_increment);
       prepare_multiplier = (ENABLE_S16 && use_s16) ?
-          (reduced>17'sd32767 ? 32'sd32767 : 32'($signed(reduced))) : value;
+          ((value[31:16] == 16'h7fff) ? 32'sd32767 : 32'($signed(rounded))) : value;
     end
   endfunction
 
+  // 两种输出精度共用六位模减法，范围判断保留各自的边界处理。
   function automatic logic [6:0] prepare_amount(
       input logic signed [31:0] value, input logic use_s16);
+    logic [5:0] amount_base, amount_difference;
+    logic unused_borrow;
     begin
+      amount_base = (ENABLE_S16 && use_s16) ? 6'd15 : 6'd31;
+      {unused_borrow, amount_difference} = {1'b0, amount_base} - {1'b0, value[5:0]};
       if (ENABLE_S16 && use_s16) begin
-        if (value>=32'sd15 || value[31:4]==28'h8000000) prepare_amount=7'd0;
-        else if (value < -32'sd48) prepare_amount=7'd63;
-        else prepare_amount={1'b0,(6'd15-value[5:0])};
+        if (value >= 32'sd15 || value[31:4] == 28'h8000000) prepare_amount = 7'd0;
+        else if (value < -32'sd48) prepare_amount = 7'd63;
+        else prepare_amount = {1'b0, amount_difference};
       end else begin
-        if (value>32'sd0)
-          prepare_amount=(value[5:0]>=6'd31) ? 7'd0 : {1'b0,(6'd31-value[5:0])};
-        else if (value==32'sh80000000) prepare_amount=7'd31;
-        else if (value < -32'sd32) prepare_amount=7'd64;
-        else prepare_amount=7'd31+{1'b0,(6'd0-value[5:0])};
+        if (value > 32'sd0)
+          prepare_amount = (value[5:0] >= 6'd31) ? 7'd0 : {1'b0, amount_difference};
+        else if (value == 32'sh80000000) prepare_amount = 7'd31;
+        else if (value < -32'sd32) prepare_amount = 7'd64;
+        else prepare_amount = {1'b0, amount_difference};
       end
     end
   endfunction
@@ -830,12 +840,14 @@ module vec_requant_full #(
   logic [31:0] mul_base_r, sh_base_r;  // per-channel 基地址
   logic        is_mode_r;
 
+  // 原始参数和精度已在配置边沿保存，准备值直接供现有运算输入级采样。
+  assign pt_product_multiplier_r = prepare_multiplier(pt_multiplier_r, s16_mode);
+  assign pt_product_amount_r = prepare_amount(pt_shift_r, s16_mode);
+
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       pt_multiplier_r  <= '0;
       pt_shift_r       <= '0;
-      pt_product_multiplier_r <= '0;
-      pt_product_amount_r <= 7'd31;
       activation_min_r  <= '0;
       activation_max_r  <= '0;
       dst_offset_r      <= '0;
@@ -852,8 +864,6 @@ module vec_requant_full #(
     end else if (init_cfg) begin
       pt_multiplier_r  <= multiplier_in;
       pt_shift_r       <= shift_in;
-      pt_product_multiplier_r <= prepare_multiplier(multiplier_in,cfg_s16);
-      pt_product_amount_r <= prepare_amount(shift_in,cfg_s16);
       activation_min_r  <= activation_min_in;
       activation_max_r  <= activation_max_in;
       dst_offset_r      <= dst_offset_in;

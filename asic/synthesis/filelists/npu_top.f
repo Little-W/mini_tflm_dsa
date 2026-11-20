@@ -35,6 +35,7 @@
 ../../rtl/common/regfile.v
 ../../rtl/common/add_equal.sv
 ../../rtl/common/add3_equal.sv
+../../rtl/common/parallel_prefix_add.sv
 ../../rtl/common/onehot_check.sv
 ../../rtl/common/single_port_ram.v
 

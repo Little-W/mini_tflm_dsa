@@ -1,0 +1,99 @@
+{
+  "reservation": {
+    "reference": "2297cb12",
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "4812da502ba92b10c2e2ed549d6fbc5e487c5021f3586887097c4f4741e57387",
+      "rtl/common/parallel_prefix_add.sv": "441dbaca268bec1e4cc5d260483a8c3799d43949a4071bd0c0fc89a3d4ade8d4"
+    },
+    "inputs": "Unconstrained configuration, commit, mode and subsequent reset inputs",
+    "initialization": "Reset on the first sampled cycle",
+    "runs": [
+      {
+        "width": 16,
+        "extra": 2,
+        "passed": true,
+        "log_sha256": "180602705a0d69e8ff340eff163f5cdbda6ed2cbaa7b99d4bee55567b64e984e"
+      },
+      {
+        "width": 32,
+        "extra": 1,
+        "passed": true,
+        "log_sha256": "debb428c92f992d8ab0777609f7917c2be82bc360fab226757c5c1e72adc20d3"
+      },
+      {
+        "width": 32,
+        "extra": 2,
+        "passed": true,
+        "log_sha256": "0f251a99ead4c7772cf8eb10a3447fe591e45cd52e5bb1a53103c5d2f54045fd"
+      },
+      {
+        "width": 32,
+        "extra": 3,
+        "passed": true,
+        "log_sha256": "da87bf67cb16df932cfd4cd3482f63184f33b1e49690a449d1a46b7e59ee2d3f"
+      },
+      {
+        "width": 32,
+        "extra": 7,
+        "passed": true,
+        "log_sha256": "85eaf8dcf500f4ea6260fbf69fa601c3358cb963f772741f333f0da14bff71a2"
+      },
+      {
+        "width": 32,
+        "extra": 13,
+        "passed": true,
+        "log_sha256": "dce938f7ebaea7ef7cb294f0f1242ec626dfb1f4d3e9f26d5943842a0dcbfc2b"
+      },
+      {
+        "width": 64,
+        "extra": 2,
+        "passed": true,
+        "log_sha256": "2195c557b9b4a36f54eec9d7a1d92fd7d3964ef6201bec5538a3407f392b1cd1"
+      }
+    ],
+    "passed": true
+  },
+  "frame_context": {
+    "source_sha256": {
+      "rtl/npu/top/npu_top.sv": "903bbb5ae8224a33ab6b02a286d471b23ce1bd69bf93de11e74d1248a19e8f1c",
+      "rtl/npu/control/ps_window_scheduler.sv": "60ad928f0fd629c9dffceac685868b53f1539d080e2b3e477293c2b8cf1694df",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+      "rtl/common/parallel_prefix_add.sv": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9"
+    },
+    "extracted_sha256": "63cc5cb78904ad3753499f1112477f23556840f9f4c2288b826a862f6bab0307",
+    "inputs_constrained": false,
+    "initialization": "Reset on the first sampled cycle",
+    "runs": [
+      {
+        "size": 1,
+        "frames": 1,
+        "reuse": 1,
+        "passed": true,
+        "log_sha256": "03a7dc13bfea2b2467e8a699462f885a91d999ef3b7755d444a36da19c6a42d0"
+      },
+      {
+        "size": 4,
+        "frames": 3,
+        "reuse": 4,
+        "passed": true,
+        "log_sha256": "4d13d4c8c82fc76ccb81e68bb86619005da87f33b9174123d4cf03b4973bd80d"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "reuse": 32,
+        "passed": true,
+        "log_sha256": "bf5927128f54bb4d7cd8039167dd251ebf4a4211d848f879807a4118b51ceea7"
+      },
+      {
+        "size": 16,
+        "frames": 16,
+        "reuse": 0,
+        "passed": true,
+        "log_sha256": "70bf6c2ece65bf605d89c286f4bd90870a8bb2482b8821550965b5221b746305"
+      }
+    ],
+    "passed": true
+  }
+}

@@ -15,6 +15,8 @@ from rtl_reference import read_rtl_source
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/control/ps_window_scheduler.sv')
 HELPER = Path('rtl/common/onehot_check.sv')
+ADDER = Path('rtl/common/parallel_prefix_add.sv')
+MEMORY = Path('rtl/common/regfile.v')
 PROOF = '''module scheduler_any_proof #(
     parameter int p_width=16, parameter bit p_use_lut=1'b0
 ) (
@@ -41,7 +43,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    sources = [ROOT/SOURCE, ROOT/HELPER]
+    sources = [ROOT/SOURCE, ROOT/HELPER, ROOT/ADDER, ROOT/MEMORY]
     hashes = {str(p.relative_to(ROOT)): digest(p) for p in sources}
     current = out/'current.sv'
     reference = out/'reference.sv'
@@ -90,7 +92,7 @@ def main():
         for fpga in (False, True):
             commands = []
             for label, source in [('reference', reference), ('current', current)]:
-                paths = [source, ROOT/HELPER, model]
+                paths = [source, ROOT/HELPER, ROOT/ADDER, ROOT/MEMORY, model]
                 define = 'XILINX_FPGA=1' if fpga else 'ASIC_SYNTHESIS=1'
                 commands += [f'read_slang -D {define} --top ps_window_scheduler '
                              f'-GSIZE={size} -GFRAME_COUNT={frames} -GMAX_REUSE_TILES={reuse} '+

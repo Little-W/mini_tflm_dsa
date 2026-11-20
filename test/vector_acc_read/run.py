@@ -41,10 +41,11 @@ def modified_source(source, label, control=False):
     return top, result
 
 
-def source_list(design):
+def source_list(design, checker):
     files = [ROOT/'rtl/npu/conv/conv_im2col_pkg.sv', ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
     files += [path for path in sorted((ROOT/'rtl/npu/conv').glob('*.sv'))
-              if path not in files and path.name != 'vector_engine.sv']
+              if path not in files and path.name not in ('vector_engine.sv', 'vector_config_check.sv')]
+    files.append(checker)
     return files + [ROOT/'rtl/common/pseudo_dual_port_ram.v', ROOT/'rtl/common/regfile.v',
                     ROOT/'rtl/common/add_equal.sv', design]
 
@@ -74,15 +75,20 @@ def main():
     source_path = ROOT/'rtl/npu/conv/vector_engine.sv'
     candidate = source_path.read_text()
     reference = read_rtl_source(args.reference_rev+':rtl/npu/conv/vector_engine.sv', cwd=ROOT, text=True)
+    reference_checker = out/'reference_checker.sv'
+    reference_checker.write_bytes(read_rtl_source(args.reference_rev+
+        ':rtl/npu/conv/vector_config_check.sv', cwd=ROOT))
     options = f'-DASIC_SYNTHESIS -GTILE={args.tile} -GPE_COUNT={args.pes} -GBUS_WIDTH={args.bus_width}'
     identities = {'reference_rev':args.reference_rev, 'reference_sha256':hashlib.sha256(reference.encode()).hexdigest(),
                   'candidate_sha256':hashlib.sha256(candidate.encode()).hexdigest(),
+                  'reference_checker_sha256':hashlib.sha256(reference_checker.read_bytes()).hexdigest(),
                   'tile':args.tile, 'pe_count':args.pes, 'bus_width':args.bus_width}
     for label, source, control in [('reference',reference,False), ('candidate',candidate,False), ('control',candidate,True)]:
         top, body = modified_source(source,label,control)
         path = out/(label+'.sv')
         path.write_text(body)
-        script = f'read_slang --top {top} {options} '+ ' '.join(shlex.quote(str(p)) for p in source_list(path))+'\n'
+        checker = reference_checker if label == 'reference' else ROOT/'rtl/npu/conv/vector_config_check.sv'
+        script = f'read_slang --top {top} {options} '+ ' '.join(shlex.quote(str(p)) for p in source_list(path, checker))+'\n'
         if control:
             script += f'delete -output {top}/w:*\nprep -top {top} -flatten\nasync2sync\nsetattr -unset keep\nopt -full\nchformal -lower\nopt_clean\n'
             script += f'rename -top vector_engine_control_proof\nwrite_rtlil {out}/control.il\nwrite_json {out}/control_cells.json\n'

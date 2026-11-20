@@ -43,11 +43,20 @@ module ps_window_scheduler #(
     logic sliced;
     logic next_part_is_last;
     logic [31:0] row_base;
-    logic [TILE_W:0] next_column_tile;
+    logic [31:0] stream_rows_remaining, next_stream_rows_remaining;
+    logic row_group_complete;
+    logic [31:0] row_advance_i_a, row_advance_i_b, row_advance_o_sum;
+    logic row_advance_i_carry, row_advance_o_carry;
+    logic [31:0] stream_remaining_i_a, stream_remaining_i_b, stream_remaining_o_sum;
+    logic stream_remaining_i_carry, stream_remaining_o_carry;
+
+    logic [TILE_W:0] next_column_tile, column_after_part;
     logic [ROW_PART_W:0] next_row_part;
     logic [ID_W:0] opened, target, cursor;
+    logic [ID_W:0] opened_after_init, active_after_frame;
     logic [FRAME_COUNT-1:0] live;
     logic [TILE_W-1:0] frame_k [FRAME_COUNT];
+    logic [TILE_W-1:0] active_frame_k, frame_k_after_command;
     localparam int p_metadata_width = TILE_W + ROW_PART_W + ROW_COUNT_W;
     logic frame_metadata_i_wr_en, frame_metadata_i_wr_mask;
     logic [ID_W-1:0] frame_metadata_i_wr_addr;
@@ -65,6 +74,11 @@ module ps_window_scheduler #(
     logic candidate_found;
     logic [ID_W-1:0] candidate_id, scanned_id, selected_id_q;
     logic selected_id_valid, selected_init_q;
+    logic [ROW_COUNT_W-1:0] selected_initial_offset;
+    logic [31:0] initial_row_i_a, initial_row_i_b, initial_row_o_sum;
+    logic initial_row_i_carry, initial_row_o_carry;
+    logic [31:0] stored_row_i_a, stored_row_i_b, stored_row_o_sum;
+    logic stored_row_i_carry, stored_row_o_carry;
     logic candidate_init;
     logic command_buffer_valid;
     logic [ID_W-1:0] command_buffer_id;
@@ -81,16 +95,74 @@ module ps_window_scheduler #(
     logic [ID_W-1:0] eligible_first_id, after_first_id;
     logic [TILE_W:0] column_tiles, remaining_columns;
     logic [TILE_W:0] incoming_column_tiles;
+    logic [TILE_W:0] remaining_columns_i_a, remaining_columns_i_b, remaining_columns_o_sum;
+    logic remaining_columns_i_carry, remaining_columns_o_carry;
     logic [ROW_COUNT_W-1:0] current_rows;
     logic [ROW_PART_W:0] group_parts;
     logic [31:0] candidate_row, candidate_rows, initial_slice_rows;
     logic [SLICE_SHIFT_W-1:0] initial_slice_shift;
     wire [ROW_COUNT_W-1:0] next_slice_offset = ROW_COUNT_W'(next_row_part) << slice_shift;
-    wire [ROW_COUNT_W-1:0] next_slice_remaining = current_rows - next_slice_offset;
+    wire [ROW_COUNT_W-1:0] next_slice_remaining = current_rows - selected_initial_offset;
+
+    // 行起点和剩余行数保持相同的模加关系，准备阶段直接比较已保存的余量。
+    assign row_advance_i_a = row_base;
+    assign row_advance_i_b = 32'(current_rows);
+    assign row_advance_i_carry = 1'b0;
+    parallel_prefix_add #(.p_width(32)) u_row_advance (
+        .i_a(row_advance_i_a), .i_b(row_advance_i_b), .i_carry(row_advance_i_carry),
+        .o_sum(row_advance_o_sum), .o_carry(row_advance_o_carry)
+    );
+    assign stream_remaining_i_a = stream_rows_remaining;
+    assign stream_remaining_i_b = ~32'(current_rows);
+    assign stream_remaining_i_carry = 1'b1;
+    parallel_prefix_add #(.p_width(32)) u_stream_remaining (
+        .i_a(stream_remaining_i_a), .i_b(stream_remaining_i_b), .i_carry(stream_remaining_i_carry),
+        .o_sum(stream_remaining_o_sum), .o_carry(stream_remaining_o_carry)
+    );
 
     function automatic logic [31:0] minimum(input logic [31:0] a, b);
         return (a < b) ? a : b;
     endfunction
+
+    // 帧计数的各位进位并行求值，预测选择与状态更新共用同一结果。
+    assign opened_after_init[0] = ~opened[0];
+    for (genvar opened_bit = 1; opened_bit <= ID_W; opened_bit++) begin : g_opened_increment
+        assign opened_after_init[opened_bit] = opened[opened_bit] ^ (&opened[opened_bit-1:0]);
+    end
+
+    assign active_after_frame[0] = ~active_id[0];
+    for (genvar active_bit = 1; active_bit < ID_W; active_bit++) begin : g_active_increment
+        assign active_after_frame[active_bit] = active_id[active_bit] ^ (&active_id[active_bit-1:0]);
+    end
+    assign active_after_frame[ID_W] = &active_id;
+
+    assign column_after_part[0] = ~next_column_tile[0];
+    for (genvar column_bit = 1; column_bit <= TILE_W; column_bit++) begin : g_column_increment
+        assign column_after_part[column_bit] = next_column_tile[column_bit] ^
+            (&next_column_tile[column_bit-1:0]);
+    end
+
+    assign active_frame_k = frame_k[active_id];
+    assign frame_k_after_command[0] = ~active_frame_k[0];
+    for (genvar k_bit = 1; k_bit < TILE_W; k_bit++) begin : g_frame_k_increment
+        assign frame_k_after_command[k_bit] = active_frame_k[k_bit] ^ (&active_frame_k[k_bit-1:0]);
+    end
+
+    // 初始切片偏移与帧索引同时保存，候选命令阶段只计算完整行地址。
+    assign initial_row_i_a = row_base;
+    assign initial_row_i_b = 32'(selected_initial_offset);
+    assign initial_row_i_carry = 1'b0;
+    parallel_prefix_add #(.p_width(32)) u_initial_row (
+        .i_a(initial_row_i_a), .i_b(initial_row_i_b), .i_carry(initial_row_i_carry),
+        .o_sum(initial_row_o_sum), .o_carry(initial_row_o_carry)
+    );
+    assign stored_row_i_a = row_base;
+    assign stored_row_i_b = 32'(selected_row_part) << SHIFT;
+    assign stored_row_i_carry = 1'b0;
+    parallel_prefix_add #(.p_width(32)) u_stored_row (
+        .i_a(stored_row_i_a), .i_b(stored_row_i_b), .i_carry(stored_row_i_carry),
+        .o_sum(stored_row_o_sum), .o_carry(stored_row_o_carry)
+    );
 
     // 零切片数由原有配置分支处理，其他值按幂次决定分块形状。
     logic [31:0] slice_shape_i_value;
@@ -104,26 +176,47 @@ module ps_window_scheduler #(
     localparam int unsigned CAP_W = ID_W + 1;
     localparam int unsigned PRODUCT_W = 2 * CAP_W + 1;
     logic [ROW_COUNT_W-1:0] prepare_rows;
+    localparam int PART_MATH_W = ROW_COUNT_W > (ROW_PART_W+1) ? ROW_COUNT_W : (ROW_PART_W+1);
+    logic [PART_MATH_W-1:0] prepare_rows_extended, prepare_rows_last, prepare_rows_last_value;
+    logic [PART_MATH_W-1:0] prepare_part_quotient, prepare_part_rounded;
     logic [TILE_W:0] prepare_remaining_columns;
     logic [ROW_PART_W:0] prepare_parts;
     logic [CAP_W-1:0] parts_cap, window_cap, remaining_cap, tail_cap;
     logic [PRODUCT_W-1:0] window_product, available_product;
     logic [CAP_W-1:0] next_target;
     wire [ROW_PART_W:0] remaining_tail = prepare_parts - next_row_part;
+    // 切片取整的减一与加一按位计算，移位保持完整表达式宽度。
+    assign prepare_rows_extended = PART_MATH_W'(ROW_COUNT_W'(minimum(32'(cfg_rows), stream_rows_remaining)));
+    assign prepare_rows_last_value[0] = ~prepare_rows_extended[0];
+    for (genvar part_bit = 1; part_bit < PART_MATH_W; part_bit++) begin : g_part_decrement
+        assign prepare_rows_last_value[part_bit] = prepare_rows_extended[part_bit] ^
+            (~|prepare_rows_extended[part_bit-1:0]);
+    end
+    assign prepare_part_quotient = prepare_rows_last >> slice_shift;
+    assign prepare_part_rounded[0] = ~prepare_part_quotient[0];
+    for (genvar part_bit = 1; part_bit < PART_MATH_W; part_bit++) begin : g_part_increment
+        assign prepare_part_rounded[part_bit] = prepare_part_quotient[part_bit] ^
+            (&prepare_part_quotient[part_bit-1:0]);
+    end
+
     always_ff @(posedge clk) begin
         if (phase == PREPARING) begin
-            prepare_rows <= ROW_COUNT_W'(minimum(32'(cfg_rows), cfg_stream - row_base));
+            prepare_rows <= ROW_COUNT_W'(minimum(32'(cfg_rows), stream_rows_remaining));
+            prepare_rows_last <= prepare_rows_last_value;
             prepare_remaining_columns <= remaining_columns;
             if (!sliced) prepare_parts <= (ROW_PART_W+1)'(1);
         end
         if (phase == PREPARE_PARTS)
-            prepare_parts <= sliced ? (ROW_PART_W+1)'(((prepare_rows - ROW_COUNT_W'(1)) >> slice_shift) + ROW_COUNT_W'(1)) : (ROW_PART_W+1)'(1);
+            prepare_parts <= sliced ? (ROW_PART_W+1)'(prepare_part_rounded) : (ROW_PART_W+1)'(1);
         if (phase == PREPARE_CAPS) begin
-            parts_cap <= prepare_parts >= 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(prepare_parts);
-            window_cap <= cfg_window >= 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(cfg_window);
-            remaining_cap <= prepare_remaining_columns > 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) :
+            // 分组结束时直接使用准备结果，完成判断独立于行地址加法。
+            next_stream_rows_remaining <= stream_remaining_o_sum;
+            row_group_complete <= stream_rows_remaining == 32'(current_rows);
+            parts_cap <= 64'(prepare_parts) >= 64'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(prepare_parts);
+            window_cap <= 64'(cfg_window) >= 64'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(cfg_window);
+            remaining_cap <= 64'(prepare_remaining_columns) > 64'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) :
                              CAP_W'(prepare_remaining_columns - 32'd1);
-            tail_cap <= remaining_tail >= 32'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(remaining_tail);
+            tail_cap <= 64'(remaining_tail) >= 64'(FRAME_COUNT) ? CAP_W'(FRAME_COUNT) : CAP_W'(remaining_tail);
         end
         if (phase == PREPARE_PRODUCTS) begin
             window_product <= PRODUCT_W'(window_cap) * PRODUCT_W'(parts_cap);
@@ -141,13 +234,32 @@ module ps_window_scheduler #(
     if (SHIFT == 0) begin : g_single_column
         assign incoming_column_tiles = (TILE_W+1)'(stationary_rows);
     end else begin : g_column_tiles
+        logic [TILE_W:0] column_quotient, column_rounded;
+        logic column_round_up;
+        assign column_quotient = (TILE_W+1)'(stationary_rows >> SHIFT);
+        assign column_round_up = |stationary_rows[SHIFT-1:0];
+        // 单比特递增的各位进位独立计算，保留最高位和零输入的回绕值。
+        for (genvar bit_i = 0; bit_i <= TILE_W; bit_i++) begin : g_round_bit
+            if (bit_i == 0) begin : g_first
+                assign column_rounded[bit_i] = column_quotient[bit_i] ^ column_round_up;
+            end else begin : g_upper
+                assign column_rounded[bit_i] = column_quotient[bit_i] ^
+                    (column_round_up && (&column_quotient[bit_i-1:0]));
+            end
+        end
         assign incoming_column_tiles = stationary_rows == 32'd0 ?
             ((TILE_W+1)'(1) << TILE_W) :
-            (TILE_W+1)'(stationary_rows >> SHIFT) +
-            (TILE_W+1)'(|stationary_rows[SHIFT-1:0]);
+            column_rounded;
     end
     assign current_rows = prepare_rows;
-    assign remaining_columns = column_tiles - next_column_tile;
+    assign remaining_columns_i_a = column_tiles;
+    assign remaining_columns_i_b = ~next_column_tile;
+    assign remaining_columns_i_carry = 1'b1;
+    parallel_prefix_add #(.p_width(TILE_W+1)) u_remaining_columns (
+        .i_a(remaining_columns_i_a), .i_b(remaining_columns_i_b), .i_carry(remaining_columns_i_carry),
+        .o_sum(remaining_columns_o_sum), .o_carry(remaining_columns_o_carry)
+    );
+    assign remaining_columns = remaining_columns_o_sum;
     assign group_parts = prepare_parts;
     assign reserve_rows = minimum(cfg_slice_rows, current_rows);
     assign ready = phase == IDLE;
@@ -199,8 +311,7 @@ module ps_window_scheduler #(
             candidate_found = candidate_exists;
             scanned_id = candidate_after_exists ? after_first_id : eligible_first_id;
         end
-        candidate_row = candidate_init ? row_base + 32'(next_slice_offset) :
-            row_base + (32'(selected_row_part) << SHIFT);
+        candidate_row = candidate_init ? initial_row_o_sum : stored_row_o_sum;
         candidate_rows = candidate_init ? minimum(32'(cfg_slice_rows),
             32'(next_slice_remaining)) : 32'(selected_rows);
         candidate_q = candidate_init ? 32'd0 : (32'(frame_k[candidate_id]) << SHIFT);
@@ -269,20 +380,19 @@ module ps_window_scheduler #(
         prediction_direct_q = '0;
         prediction_direct_column = '0;
         if (command_active) begin
-            if (phase == OPENING && opened + (ID_W+1)'(1) < target) begin
+            if (phase == OPENING && opened_after_init < target) begin
                 prediction_request = 1'b1;
-                prediction_direct_column = (32'(next_column_tile) +
-                    (next_part_is_last ? 32'd1 : 32'd0)) << SHIFT;
+                prediction_direct_column = 32'(next_part_is_last ? column_after_part : next_column_tile) << SHIFT;
             end else if (phase == DRAINING && !active_final) begin
                 prediction_request = 1'b1;
                 prediction_direct_q = active_q0 + 32'(SIZE);
                 prediction_direct_column = active_column;
             end else begin
                 prediction_reads_frame = 1'b1;
-                if (phase == OPENING) search_count = opened + (ID_W+1)'(1);
+                if (phase == OPENING) search_count = opened_after_init;
                 else if (phase == DRAINING) search_start = resume_valid ? (ID_W+1)'(resume_id) : '0;
-                else search_start = ((ID_W+1)'(active_id) + (ID_W+1)'(1) == opened) ?
-                    '0 : (ID_W+1)'(active_id) + (ID_W+1)'(1);
+                else search_start = (active_after_frame == opened) ?
+                    '0 : active_after_frame;
                 for (int unsigned i = 0; i < FRAME_COUNT; i++) begin
                     future_eligible[i] = future_live[i] && (i < search_count);
                     future_after_start[i] = future_eligible[i] && (i >= search_start);
@@ -348,6 +458,7 @@ module ps_window_scheduler #(
         if (!command_active && !selected_id_valid && candidate_found) begin
             selected_id_q <= scanned_id;
             selected_init_q <= phase == OPENING;
+            selected_initial_offset <= next_slice_offset;
         end
     end
 
@@ -397,6 +508,7 @@ module ps_window_scheduler #(
             cfg_rows <= '0; cfg_window <= '0; cfg_slice_rows <= '0;
             slice_shift <= SLICE_SHIFT_W'(SHIFT); sliced <= 1'b0;
             row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
+            stream_rows_remaining <= '0;
             opened <= '0; target <= '0; cursor <= '0;
             live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
             protected_id <= '0; resume_id <= '0;
@@ -416,8 +528,10 @@ module ps_window_scheduler #(
                 slice_shift <= initial_slice_shift;
                 sliced <= slice_tiles != 0;
                 row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
+                stream_rows_remaining <= stream_rows;
                 opened <= '0; cursor <= '0;
-                target <= minimum(window_frames, 32'(incoming_column_tiles));
+                // 帧目标数量在 PREPARE_TARGET 保存后供所有命令和预测阶段使用。
+                target <= '0;
                 live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
                 command_active <= 1'b0;
 
@@ -465,9 +579,9 @@ module ps_window_scheduler #(
                 command_active <= 1'b0;
 
                 if (active_init) begin
-                    opened <= opened + 1'b1;
+                    opened <= opened_after_init;
                     if (next_row_part + (ROW_PART_W+1)'(1) == group_parts) begin
-                        next_column_tile <= next_column_tile + (TILE_W+1)'(1);
+                        next_column_tile <= column_after_part;
                         next_row_part <= '0;
                     end else next_row_part <= next_row_part + (ROW_PART_W+1)'(1);
                 end
@@ -478,7 +592,7 @@ module ps_window_scheduler #(
                     protected_id <= active_id;
                     protected_valid <= 1'b1;
                 end
-                if (phase == OPENING && opened + (ID_W+1)'(1) == target) begin
+                if (phase == OPENING && opened_after_init == target) begin
                     phase <= SWEEPING;
                     cursor <= '0;
                 end else if (phase == DRAINING && active_final) begin
@@ -487,7 +601,7 @@ module ps_window_scheduler #(
                     resume_valid <= 1'b0;
 
                 end else if (phase == SWEEPING) begin
-                    cursor <= ((ID_W+1)'(active_id) + (ID_W+1)'(1) == opened) ? '0 : (ID_W+1)'(active_id) + (ID_W+1)'(1);
+                    cursor <= (active_after_frame == opened) ? '0 : active_after_frame;
                 end
             end else if (phase == PREPARING) begin
                 phase <= sliced ? PREPARE_PARTS : PREPARE_CAPS;
@@ -505,13 +619,14 @@ module ps_window_scheduler #(
                 protected_valid <= 1'b0; resume_valid <= 1'b0;
                 live <= '0;
                 if (next_column_tile == column_tiles) begin
-                    row_base <= row_base + current_rows;
+                    row_base <= row_advance_o_sum;
+                    stream_rows_remaining <= next_stream_rows_remaining;
                     next_column_tile <= '0;
                     next_row_part <= '0;
-                    target <= minimum(cfg_window, column_tiles);
-                    phase <= (row_base + current_rows == cfg_stream) ? COMPLETE : PREPARING;
+                    target <= '0;
+                    phase <= row_group_complete ? COMPLETE : PREPARING;
                 end else begin
-                    target <= minimum(cfg_window, remaining_columns);
+                    target <= '0;
                     phase <= PREPARING;
                 end
             end
@@ -520,7 +635,7 @@ module ps_window_scheduler #(
 
     always_ff @(posedge clk) begin
         if (command_active && command_complete) begin
-            frame_k[active_id] <= active_init ? TILE_W'(1) : frame_k[active_id] + 1'b1;
+            frame_k[active_id] <= active_init ? TILE_W'(1) : frame_k_after_command;
         end
     end
 

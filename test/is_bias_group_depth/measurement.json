@@ -1,0 +1,240 @@
+{
+  "formal": {
+    "reference": "2297cb12",
+    "source_sha256": "3ebbcda8c3c0492d114822c37ea400298070aca41ce13b4015049408b315104a",
+    "inputs_constrained": false,
+    "runs": [
+      {
+        "width": 4,
+        "count_bits": 1,
+        "passed": true,
+        "log_sha256": "f4405280e194f0ccd789dd2e38da22f02fb5e911f17194db38238fcd62c33d14"
+      },
+      {
+        "width": 4,
+        "count_bits": 4,
+        "passed": true,
+        "log_sha256": "8a80fdbfd43f833fb96cb89de46eb6de351ad1c2a4ccc2a66d649065e20bd9e7"
+      },
+      {
+        "width": 8,
+        "count_bits": 6,
+        "passed": true,
+        "log_sha256": "50d5859601069e7386d2c736aac8e80ce03355b206a2ad7ac796a145b711730f"
+      },
+      {
+        "width": 16,
+        "count_bits": 8,
+        "passed": true,
+        "log_sha256": "7bb437f9be7270126bf9b6f14dce4587b6430593abc09c7687e9f95ed558298d"
+      },
+      {
+        "width": 32,
+        "count_bits": 1,
+        "passed": true,
+        "log_sha256": "d6f991436419303ed9be9657dcb5ea0b185d6dab894657f4c1625c07369b23db"
+      },
+      {
+        "width": 32,
+        "count_bits": 5,
+        "passed": true,
+        "log_sha256": "2f9683559f42356dfc5808e2245d762e9df43da876624be789ba3f6ac5387049"
+      },
+      {
+        "width": 32,
+        "count_bits": 10,
+        "passed": true,
+        "log_sha256": "18f7a124d50fb6c337b94cdf0c080b074e824c0997d64d8def95e6bc7fad1597"
+      },
+      {
+        "width": 32,
+        "count_bits": 16,
+        "passed": true,
+        "log_sha256": "45863816739b9844e0e72868ebba9b021935eeeaf9a29eef426644f7cc4c9e73"
+      },
+      {
+        "width": 32,
+        "count_bits": 32,
+        "passed": true,
+        "log_sha256": "d09b4342c1d7fd80af4724e9eee6aaf803fc16fa1bd6f628e5bdbeecd8af34a6"
+      },
+      {
+        "width": 40,
+        "count_bits": 10,
+        "passed": true,
+        "log_sha256": "1fc638c7546ac6f87b1e4f304358baf58a41a56ec134652aa9b73af15167c583"
+      },
+      {
+        "width": 40,
+        "count_bits": 32,
+        "passed": true,
+        "log_sha256": "24f9a6344e494c7e6c0df572806aa22a3689ec8209050c5000c34ac473a6ac1f"
+      },
+      {
+        "width": 64,
+        "count_bits": 10,
+        "passed": true,
+        "log_sha256": "5653389a791b957ef958632216172bc58e269b8949f0df0e47f7aecb14a16ce0"
+      },
+      {
+        "width": 64,
+        "count_bits": 20,
+        "passed": true,
+        "log_sha256": "ea89bb3e02aa007ffae4813099c6fa62cd31dcc97cc2091a6fc60f666a9eddcb"
+      },
+      {
+        "width": 64,
+        "count_bits": 24,
+        "passed": true,
+        "log_sha256": "54e59e172fe1a5f50b5ed9688d4996782650d9ec35e7e6b930baf75bd92274cb"
+      },
+      {
+        "width": 64,
+        "count_bits": 32,
+        "passed": true,
+        "log_sha256": "a9cab6fb6c16b3e3ab9409316b0ae15e7478f7fb5425231023a1d48d00952994"
+      }
+    ],
+    "passed": true
+  },
+  "four_state": {
+    "passed": true,
+    "source_sha256": "3ebbcda8c3c0492d114822c37ea400298070aca41ce13b4015049408b315104a",
+    "extracted_sha256": "81ba6ea7e87f1d747cf6b0a91a78e0819b25c5781ca9609698aabbf68193b066",
+    "reference": "2297cb12",
+    "known_reference_bits_preserved": true,
+    "runs": [
+      {
+        "width": 16,
+        "count_bits": 8,
+        "samples": 32768,
+        "equal": 8210,
+        "known": 470567,
+        "refined": 287881
+      },
+      {
+        "width": 32,
+        "count_bits": 10,
+        "samples": 32768,
+        "equal": 8192,
+        "known": 688595,
+        "refined": 518376
+      },
+      {
+        "width": 64,
+        "count_bits": 20,
+        "samples": 32768,
+        "equal": 8192,
+        "known": 1387703,
+        "refined": 1472767
+      }
+    ]
+  },
+  "mapping": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 51,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 51,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 94,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 13,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 13,
+          "FDRE": 93,
+          "FDSE": 1,
+          "INV": 32,
+          "LUT2": 1,
+          "LUT3": 16,
+          "LUT4": 17,
+          "LUT5": 6,
+          "LUT6": 11
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 17,
+      "register_path_requirement": {
+        "maximum_combinational_cells": 9,
+        "observed_combinational_cells": 17,
+        "graph_complete": true,
+        "met": false,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "d2be6e7efb7ea7783c220ed8cf6e8e900be962e0818a2876e13c7c099110fae0"
+      },
+      "mapping_stage": {
+        "elapsed_seconds": 2.41,
+        "peak_process_tree_rss_bytes": 171175936,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "03_map_lut.ys",
+        "log": "03_map_lut.log",
+        "script_sha256": "1dbfe6829746449ca64ae561ffe23183e4e20fe49a0627dd152cbf8105162339",
+        "mapped_json_sha256": "b29aa90c28736e054fc64648def8775812357167e174f76b97fc3b89a03c65cc",
+        "mapped_verilog_sha256": "cc84ed5cf61c930383bc451200466788a8ca6ef4ebc500dca9e2c1c7fb1e2c4d",
+        "input_library_sha256": "94caf8cf8244dae462929c45cacf23b979b504cd2c3dddeede7726000a53f3d3",
+        "log_sha256": "d2be6e7efb7ea7783c220ed8cf6e8e900be962e0818a2876e13c7c099110fae0"
+      }
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 95,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 95,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 94,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 5,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 5,
+          "FDRE": 93,
+          "FDSE": 1,
+          "LUT2": 19,
+          "LUT3": 30,
+          "LUT4": 16,
+          "LUT5": 15,
+          "LUT6": 15
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 9,
+      "register_path_requirement": {
+        "maximum_combinational_cells": 9,
+        "observed_combinational_cells": 9,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "functional_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "7377bd9a82e3c9ed47c91d6251982e8277fa4c0b0de490474ce363abd68ea472"
+      },
+      "mapping_stage": {
+        "elapsed_seconds": 2.0,
+        "peak_process_tree_rss_bytes": 171692032,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "03_map_lut.ys",
+        "log": "03_map_lut.log",
+        "script_sha256": "106faed8b69629addb7c07ca851c2172e5e9d53166d70259cc5a93fe0a882e54",
+        "mapped_json_sha256": "a0329b7ccd320f606c82fef46d43c7926ef9024b0235a10118ee16adcc1096e5",
+        "mapped_verilog_sha256": "46f7bd14ddd660a9d1809a7933f16f46f7362e7043c8e7cc12d50315d0b6e57a",
+        "input_library_sha256": "94caf8cf8244dae462929c45cacf23b979b504cd2c3dddeede7726000a53f3d3",
+        "log_sha256": "7377bd9a82e3c9ed47c91d6251982e8277fa4c0b0de490474ce363abd68ea472"
+      }
+    }
+  }
+}

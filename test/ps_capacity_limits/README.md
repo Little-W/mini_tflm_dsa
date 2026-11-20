@@ -82,3 +82,30 @@ python3 test/ps_capacity_limits/run_npu.py \
 可通过 `--sim /path/to/simulator_directory` 复用容量 RTL 一致的生产仿真器，或通过 `--reference-sim /path/to/simulator_directory` 检查这些用例与既有生产版本的行为。两种复用方式均检查器件参数、64 位或 32 位总线、原始部分和配置及可执行文件摘要；参考版本方式在结果中单独标记为用例预期检查。
 
 21 项用例已在 64 位总线、7 个 8192 字节物理存储块、`force_raw=True` 的生产参考仿真器上通过，完成 173,642 次 INT32 累加值检查。`r=32`、`w=5`、515 行的任务通过逐帧执行完成，每种 WS/IS 模式产生 594 条帧命令。两项传统窗口模式的非法行复用配置返回容量错误，其余五项非法配置返回参数错误。
+
+## 有界列数计算
+
+帧数计算并行比较原始列数和窗口上界，再选择窗口大小或按块向上取整的列数。配置准备相位 0 保存结果，执行阶段和命令时序保持。64 位加法溢出时按照原始定宽表达式返回零。
+
+```sh
+python3 test/ps_capacity_limits/run_window_formal.py \
+  --reference 2297cb12 --out build/ps_window_count
+```
+
+该证明直接提取实际 `npu_top` 中的列数计算，覆盖全部输入编码。19 组参数包含 4、16、32、64 位配置字段，1、3、16、17、32 列的块尺寸，以及不同宽度的窗口和容量计数。
+
+生产参数下，独立寄存器间测量的逻辑 LUT 为 20，最长组合路径为 6 级；相同输入和输出寄存器的参考实现为 13 个逻辑 LUT、11 级。映射使用六输入 LUT、面积成本 1、连线成本 500 ps 和目标 6,667 ps。该结果描述局部逻辑，完整 SoC 与器件时序分别测量。详细结果保存于 [window_measurement.json](window_measurement.json)。
+
+```sh
+python3 scripts/fpga/open_fpga_synth.py \
+  --case-config build/ps_window_count/cases.json \
+  --cases reference candidate --through pre_lut \
+  --out build/ps_window_count/pre
+for version in reference candidate; do
+  python3 scripts/fpga/remap_fpga_luts.py \
+    --source build/ps_window_count/pre/$version \
+    --out build/ps_window_count/mapped/$version \
+    --mode physical-cost --wire-delay-ps 500 --delay-target-ps 6667 \
+    --max-lut-inputs 6 --small-lut-area-cost 1
+done
+```

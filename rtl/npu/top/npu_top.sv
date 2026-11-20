@@ -246,19 +246,41 @@ module npu_top #(
     logic [32:0] rhs_product_cross;
     logic [31:0] conv_input_area, conv_kernel_area, conv_output_area;
     logic [31:0] conv_input_low, conv_input_high, conv_kernel_low, conv_kernel_high;
+    logic [24:0] rhs_product_low_sum;
+    logic [16:0] conv_input_middle_sum, conv_kernel_middle_sum;
+    logic [24:0] rhs_product_middle_q;
+    logic [23:0] rhs_product_high_q;
+    logic [16:0] conv_input_middle_q, conv_kernel_middle_q;
+    assign rhs_product_low_sum = {1'b0, rhs_product_diagonal[39:16]} +
+        {1'b0, rhs_product_cross[23:0]};
+    assign conv_input_middle_sum = {1'b0, conv_input_low[31:16]} +
+        {1'b0, conv_input_high[15:0]};
+    assign conv_kernel_middle_sum = {1'b0, conv_kernel_low[31:16]} +
+        {1'b0, conv_kernel_high[15:0]};
     logic conv_input_range_invalid, conv_rhs_range_invalid, conv_parameter_range_invalid;
     logic conv_dimension_invalid, conv_validation_invalid;
-    wire [32:0] conv_rhs_end_low = {1'b0, 32'(rhs_base)} +
-        {1'b0, rhs_allocation_bytes[31:0]};
-    wire [32:0] conv_input_end_low = {1'b0, conv_cfg_q.input_base} +
-        {1'b0, conv_input_bytes[31:0]};
     wire [31:0] conv_parameter_bytes_low = {30'(m), 2'b00};
-    wire [32:0] conv_bias_end_low = {1'b0, 32'(bias_base)} +
-        {1'b0, conv_parameter_bytes_low};
-    wire [32:0] conv_mult_end_low = {1'b0, 32'($unsigned(q_mult_pt))} +
-        {1'b0, conv_parameter_bytes_low};
-    wire [32:0] conv_shift_end_low = {1'b0, 32'($unsigned(q_shift_pt))} +
-        {1'b0, conv_parameter_bytes_low};
+    logic [24:0] conv_rhs_end_low, conv_input_end_low, conv_bias_end_low;
+    logic [24:0] conv_mult_end_low, conv_shift_end_low;
+    logic [8:0] conv_rhs_end_high, conv_input_end_high, conv_bias_end_high;
+    logic [8:0] conv_mult_end_high, conv_shift_end_high;
+    logic conv_input_end_carry;
+    logic [3:0] conv_range_end_carry;
+    assign conv_rhs_end_low = {1'b0, 24'(rhs_base)} + {1'b0, rhs_allocation_bytes[23:0]};
+    assign conv_input_end_low = {1'b0, conv_cfg_q.input_base[23:0]} + {1'b0, conv_input_bytes[23:0]};
+    assign conv_bias_end_low = {1'b0, 24'(bias_base)} + {1'b0, conv_parameter_bytes_low[23:0]};
+    assign conv_mult_end_low = {1'b0, 24'(q_mult_pt)} + {1'b0, conv_parameter_bytes_low[23:0]};
+    assign conv_shift_end_low = {1'b0, 24'(q_shift_pt)} + {1'b0, conv_parameter_bytes_low[23:0]};
+    assign conv_rhs_end_high = {1'b0, 8'(rhs_base >> 24)} +
+        {1'b0, rhs_allocation_bytes[31:24]} + 9'(conv_range_end_carry[0]);
+    assign conv_input_end_high = {1'b0, conv_cfg_q.input_base[31:24]} +
+        {1'b0, conv_input_bytes[31:24]} + 9'(conv_input_end_carry);
+    assign conv_bias_end_high = {1'b0, 8'(bias_base >> 24)} +
+        {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[1]);
+    assign conv_mult_end_high = {1'b0, 8'(q_mult_pt >> 24)} +
+        {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[2]);
+    assign conv_shift_end_high = {1'b0, 8'(q_shift_pt >> 24)} +
+        {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[3]);
     wire abort_pending = abort_state != AB_IDLE;
     wire core_rst_n = rst_n && (abort_state != AB_RESET);
 
@@ -870,10 +892,31 @@ module npu_top #(
         // 更大银行配置保留全并行量化，使可寻址缓冲容量继续满足原有预算。
         localparam int unsigned p_requant_compute_lanes =
             SHARED_RAM_ENABLED && SHARED_PHYSICAL_BANKS < 8 && SIZE > 2 && (SIZE % 2) == 0 ? 2 : SIZE;
+        logic [31:0] frame_exec_rows, frame_exec_cols, frame_exec_p0, frame_exec_column;
+        logic frame_exec_init, frame_exec_final;
+
+        // 接收帧命令时保存尺寸、起始位置和首末帧标志，执行期间使用同一份参数。
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) begin
+                frame_exec_rows <= '0;
+                frame_exec_cols <= '0;
+                frame_exec_p0 <= '0;
+                frame_exec_column <= '0;
+                frame_exec_init <= 1'b0;
+                frame_exec_final <= 1'b0;
+            end else if (frame_command_start) begin
+                frame_exec_rows <= frame_command_rows;
+                frame_exec_cols <= frame_command_cols;
+                frame_exec_p0 <= frame_command_p0;
+                frame_exec_column <= frame_command_column;
+                frame_exec_init <= frame_command_init;
+                frame_exec_final <= frame_command_final;
+            end
+        end
         logic requant_group_ready;
-        wire requant_output_group = frame_mode_q ? frame_command_final : ia_output_pending;
+        wire requant_output_group = frame_mode_q ? frame_exec_final : ia_output_pending;
         wire requant_group_start = send_ia_trigger && requant_output_group;
-        wire [31:0] requant_group_rows = frame_mode_q ? frame_command_rows : ps_frame_rows;
+        wire [31:0] requant_group_rows = frame_mode_q ? frame_exec_rows : ps_frame_rows;
         localparam int unsigned IS_BIAS_ROWS = BIAS_GROUP_BLOCKS_MAX * SIZE;
         localparam int unsigned IS_BIAS_ROW_W = (IS_BIAS_ROWS <= 1) ? 1 : $clog2(IS_BIAS_ROWS);
         localparam int unsigned IS_BIAS_VALID_W =
@@ -964,8 +1007,7 @@ module npu_top #(
             else if (!cfg_stage2_valid || cfg_stage2_fire) cfg_capacity_phase <= 0;
             else if (cfg_capacity_phase != 3'd7) cfg_capacity_phase <= cfg_capacity_phase + 1'b1;
         end
-        // Validate tensor extents within the existing configuration stages.
-        // Each product stage uses independent 16-bit partial multipliers.
+        // 配置阶段用独立的 16 位部分乘积计算张量范围，随后分段归并进位。
         always_ff @(posedge clk) begin
             if (cfg_start_event) begin
                 rhs_extent_n <= cfg_rhs_tile_packed ?
@@ -993,31 +1035,51 @@ module npu_top #(
             if (cfg_stage2_valid) begin
                 case (cfg_capacity_phase)
                     3'd0: begin
-                        rhs_allocation_bytes <= (rhs_product_diagonal +
-                            (64'(rhs_product_cross) << 16)) <<
-                            (run_rhs_tile_packed ? (2 * SIZE_SHIFT) : 0);
-                        conv_input_bytes <= 48'(conv_input_low) +
-                            (48'(conv_input_high) << 16);
-                        conv_kernel_elements <= 48'(conv_kernel_low) +
-                            (48'(conv_kernel_high) << 16);
+                        // 独立寄存器保存各段和，下一相位只归并已保存的进位。
+                        rhs_product_high_q <= rhs_product_diagonal[63:40] +
+                            24'(rhs_product_cross[32:24]);
+                        rhs_product_middle_q <= rhs_product_low_sum;
+                        conv_input_middle_q <= conv_input_middle_sum;
+                        conv_kernel_middle_q <= conv_kernel_middle_sum;
                     end
                     3'd1: begin
-                        conv_range_end[0] <= conv_rhs_end_low ^
-                            {rhs_allocation_bytes[32], 32'd0};
-                        conv_range_end[1] <= conv_bias_end_low ^ {m[30], 32'd0};
-                        conv_range_end[2] <= conv_mult_end_low ^ {m[30], 32'd0};
-                        conv_range_end[3] <= conv_shift_end_low ^ {m[30], 32'd0};
-                        conv_input_range_invalid <= (|conv_input_bytes[47:32]) ||
-                            conv_input_end_low[32];
-                        conv_rhs_range_invalid <= (|rhs_allocation_bytes[63:32]) ||
-                            conv_rhs_end_low[32];
-                        conv_parameter_range_invalid <= (|(32'(m) >> 30)) ||
-                            conv_bias_end_low[32] ||
-                            (use_per_channel && (conv_mult_end_low[32] || conv_shift_end_low[32]));
+                        rhs_allocation_bytes <= {
+                            (rhs_product_high_q + 24'(rhs_product_middle_q[24])),
+                            rhs_product_middle_q[23:0], rhs_product_diagonal[15:0]} <<
+                            (run_rhs_tile_packed ? (2 * SIZE_SHIFT) : 0);
+                        conv_input_bytes <= {
+                            (conv_input_high[31:16] + 16'(conv_input_middle_q[16])),
+                            conv_input_middle_q[15:0], conv_input_low[15:0]};
+                        conv_kernel_elements <= {
+                            (conv_kernel_high[31:16] + 16'(conv_kernel_middle_q[16])),
+                            conv_kernel_middle_q[15:0], conv_kernel_low[15:0]};
+                    end
+                    3'd2: begin
+                        // 范围寄存器按位段分别使能，进位独立保存供下一相位使用。
+                        conv_range_end[0][23:0] <= conv_rhs_end_low[23:0];
+                        conv_range_end[1][23:0] <= conv_bias_end_low[23:0];
+                        conv_range_end[2][23:0] <= conv_mult_end_low[23:0];
+                        conv_range_end[3][23:0] <= conv_shift_end_low[23:0];
+                        conv_range_end_carry <= {conv_shift_end_low[24], conv_mult_end_low[24],
+                            conv_bias_end_low[24], conv_rhs_end_low[24]};
+                        conv_input_end_carry <= conv_input_end_low[24];
                         conv_dimension_invalid <= 64'(conv_output_area) != 64'(k) ||
                             64'(conv_kernel_elements) != 64'(n);
                     end
-                    3'd2: conv_validation_invalid <= conv_syntax_invalid ||
+                    3'd3: begin
+                        conv_range_end[0][32:24] <= conv_rhs_end_high ^ {rhs_allocation_bytes[32], 8'd0};
+                        conv_range_end[1][32:24] <= conv_bias_end_high ^ {m[30], 8'd0};
+                        conv_range_end[2][32:24] <= conv_mult_end_high ^ {m[30], 8'd0};
+                        conv_range_end[3][32:24] <= conv_shift_end_high ^ {m[30], 8'd0};
+                        conv_input_range_invalid <= (|conv_input_bytes[47:32]) ||
+                            conv_input_end_high[8];
+                        conv_rhs_range_invalid <= (|rhs_allocation_bytes[63:32]) ||
+                            conv_rhs_end_high[8];
+                        conv_parameter_range_invalid <= (|(32'(m) >> 30)) ||
+                            conv_bias_end_high[8] ||
+                            (use_per_channel && (conv_mult_end_high[8] || conv_shift_end_high[8]));
+                    end
+                    3'd4: conv_validation_invalid <= conv_syntax_invalid ||
                         conv_input_range_invalid || conv_rhs_range_invalid ||
                         conv_parameter_range_invalid || conv_dimension_invalid;
                 endcase
@@ -1138,9 +1200,12 @@ module npu_top #(
         wire [63:0] ps_max_frame_rows = 64'(ps_rows_bounded);
         wire [63:0] ps_output_column_tiles =
             (64'(cfg_stream_m_s2) + 64'(SIZE - 1)) >> SIZE_SHIFT;
-        assign ps_frames_bounded_calc = !ext_w_legal ? '0 :
-            (ps_output_column_tiles < 64'(ext_w_small) ?
-             CAP_FRAMES_W'(ps_output_column_tiles) : CAP_FRAMES_W'(ext_w_small));
+        wire ps_column_sum_overflow =
+            64'(cfg_stream_m_s2) > (64'hffffffffffffffff - 64'(SIZE - 1));
+        // 先比较未取整的列数与窗口上界，取整结果只保留容量计数需要的低位。
+        assign ps_frames_bounded_calc = (!ext_w_legal || ps_column_sum_overflow) ? '0 :
+            (64'(cfg_stream_m_s2) >= (64'(ext_w_small) << SIZE_SHIFT) ?
+             CAP_FRAMES_W'(ext_w_small) : CAP_FRAMES_W'(ps_output_column_tiles));
         wire [63:0] ps_live_frames = 64'(ps_frames_bounded);
         wire [CAP_ROWS_W+CAP_FRAMES_W-1:0] ps_rows_frames =
             ps_rows_bounded * ps_frames_bounded;
@@ -1440,6 +1505,11 @@ module npu_top #(
         logic [REG_WIDTH-1:0] stream_m;
         logic [REG_WIDTH-1:0] ia_reuse_num_eff;
         logic [REG_WIDTH-1:0] w_reuse_num_eff;
+        // 输出预留覆盖阵列尾部、计算输出寄存和十二级量化流水。
+        localparam int unsigned p_compute_output_stages = 1;
+        localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS =
+            (SIZE - 1 + p_compute_output_stages + 12 + SIZE - 1) / SIZE;
+        logic [31:0] output_reserve_with_extra, output_reserve_calc;
         logic [IS_BIAS_VALID_W-1:0] is_bias_group_rows_target;
 
         always_ff @(posedge clk or negedge core_rst_n) begin
@@ -1457,6 +1527,7 @@ module npu_top #(
                 stream_k <= '0;
                 stream_m <= '0;
                 ia_reuse_num_eff <= REG_WIDTH'(1);
+                output_reserve_with_extra <= 32'(1 + DIRECT_OUTPUT_EXTRA_BANKS);
                 w_reuse_num_eff <= REG_WIDTH'(1);
                 is_bias_group_rows_target <= IS_BIAS_VALID_W'(SIZE);
             end else if (cfg_stage2_fire) begin
@@ -1473,6 +1544,7 @@ module npu_top #(
                 stream_k <= cfg_stream_k_s2;
                 stream_m <= cfg_stream_m_s2;
                 ia_reuse_num_eff <= cfg_ia_reuse_eff_s2;
+                output_reserve_with_extra <= output_reserve_calc;
                 w_reuse_num_eff <= cfg_w_reuse_eff_s2;
                 is_bias_group_rows_target <= cfg_bias_rows_target_s2;
             end
@@ -1488,25 +1560,32 @@ module npu_top #(
         wire signed [REG_WIDTH-1:0] weight_zp_eff = is_mode ? lhs_zp : rhs_zp;
         wire weight_use_16bits_eff = ((KERNEL_DATA_WIDTH > 8) && is_mode) ? run_use_16bits : 1'b0;
         wire ws_final_bias = FRAME_EXEC_ENABLED && !is_mode;
-        wire compute_bias_sleep = frame_mode_q ? !frame_command_init : bias_sleep;
-        // 输出预留覆盖阵列尾部、计算输出寄存和十二级量化流水。
-        localparam int unsigned p_compute_output_stages = 1;
-        localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS =
-            (SIZE - 1 + p_compute_output_stages + 12 + SIZE - 1) / SIZE;
+        wire compute_bias_sleep = frame_mode_q ? !frame_exec_init : bias_sleep;
         wire direct_final_stream;
-        wire [31:0] output_reserve_banks = ia_reuse_num_eff +
-            (direct_final_stream ? 32'(DIRECT_OUTPUT_EXTRA_BANKS) : 32'd0);
-        wire [31:0] exec_stream_k = frame_mode_q ? frame_command_rows : stream_k;
-        wire [31:0] exec_stream_m = frame_mode_q ? frame_command_cols : stream_m;
+        logic [31:0] output_reserve_i_a, output_reserve_i_b;
+        logic output_reserve_i_carry, output_reserve_o_carry;
+        logic [31:0] output_reserve_banks;
+
+        // 配置接收时保存附加预留量，运行时的流模式选择只选择已完成的计数。
+        assign output_reserve_i_a = 32'(cfg_ia_reuse_eff_s2);
+        assign output_reserve_i_b = 32'(DIRECT_OUTPUT_EXTRA_BANKS);
+        assign output_reserve_i_carry = 1'b0;
+        parallel_prefix_add #(.p_width(32)) u_output_reserve_add (
+            .i_a(output_reserve_i_a), .i_b(output_reserve_i_b), .i_carry(output_reserve_i_carry),
+            .o_sum(output_reserve_calc), .o_carry(output_reserve_o_carry)
+        );
+        assign output_reserve_banks = direct_final_stream ? output_reserve_with_extra : 32'(ia_reuse_num_eff);
+        wire [31:0] exec_stream_k = frame_mode_q ? frame_exec_rows : stream_k;
+        wire [31:0] exec_stream_m = frame_mode_q ? frame_exec_cols : stream_m;
         wire [31:0] exec_n = frame_mode_q ? frame_command_k : run_n;
-        wire [31:0] exec_k = frame_mode_q ? (is_mode ? frame_command_cols : frame_command_rows) : run_k;
-        wire [31:0] exec_m = frame_mode_q ? (is_mode ? frame_command_rows : frame_command_cols) : run_m;
+        wire [31:0] exec_k = frame_mode_q ? (is_mode ? frame_exec_cols : frame_exec_rows) : run_k;
+        wire [31:0] exec_m = frame_mode_q ? (is_mode ? frame_exec_rows : frame_exec_cols) : run_m;
         wire [31:0] exec_w = frame_mode_q ? 32'd1 : w_reuse_num_eff;
         wire [31:0] exec_row_groups = frame_mode_q ? 32'd1 : cfg_row_groups;
-        wire [31:0] exec_row_tail = frame_mode_q ? ((frame_command_rows + 32'(SIZE-1)) >> SIZE_SHIFT) : cfg_row_tail_tiles;
+        wire [31:0] exec_row_tail = frame_mode_q ? ((frame_exec_rows + 32'(SIZE-1)) >> SIZE_SHIFT) : cfg_row_tail_tiles;
         wire [31:0] exec_col_groups = frame_mode_q ? 32'd1 : cfg_col_groups;
         wire [31:0] exec_col_tail = frame_mode_q ? 32'd1 : cfg_col_tail_tiles;
-        wire [31:0] exec_channel = is_mode ? frame_command_p0 : frame_command_column;
+        wire [31:0] exec_channel = is_mode ? frame_exec_p0 : frame_exec_column;
         // 接收帧命令时保存三个地址的上下文，准备结果接收后启动计算控制器。
         assign frame_address_i_start = frame_command_start;
         assign frame_address_i_abort = abort_pending || task_fault || cfg_start_event;
@@ -1547,7 +1626,7 @@ module npu_top #(
         wire [31:0] exec_ia_base = frame_mode_q ? frame_address_o_ia_base : ia_base_eff;
         wire [31:0] exec_weight_base = frame_mode_q ? frame_address_o_weight_base : weight_base_eff;
         wire [31:0] exec_bias_base = frame_mode_q ?
-            ((bias_base != 0 && ((is_mode || ws_final_bias) ? frame_command_final : frame_command_init)) ?
+            ((bias_base != 0 && ((is_mode || ws_final_bias) ? frame_exec_final : frame_exec_init)) ?
                 bias_base + (exec_channel << 2) : 32'd0) : bias_base;
         // 控制器仅检查偏置地址是否为零，按其端口可见位宽并行检查模加结果。
         localparam int unsigned p_controller_bias_w = (REG_WIDTH < 32) ? REG_WIDTH : 32;
@@ -1567,7 +1646,7 @@ module npu_top #(
         );
         assign exec_bias_present = frame_mode_q ?
             ((bias_base != REG_WIDTH'(0)) &&
-             ((is_mode || ws_final_bias) ? frame_command_final : frame_command_init) &&
+             ((is_mode || ws_final_bias) ? frame_exec_final : frame_exec_init) &&
              !bias_zero_o_equal) : (p_controller_bias_w'(bias_base) != p_controller_bias_w'(0));
         assign controller_i_bias_base = REG_WIDTH'(exec_bias_present);
         wire [31:0] exec_dst_base = frame_mode_q ? frame_address_o_dst_base : dst_base;
@@ -1575,12 +1654,12 @@ module npu_top #(
             ((frame_mode_q && use_per_channel_eff) ? (exec_channel << 2) : 32'd0);
         wire signed [31:0] exec_q_shift = q_shift_pt +
             ((frame_mode_q && use_per_channel_eff) ? (exec_channel << 2) : 32'd0);
-        wire exec_init_requant = init_cfg_requant && (!frame_mode_q || frame_command_final);
-        wire exec_init_oa = init_cfg_oa && (!frame_mode_q || frame_command_final);
+        wire exec_init_requant = init_cfg_requant && (!frame_mode_q || frame_exec_final);
+        wire exec_init_oa = init_cfg_oa && (!frame_mode_q || frame_exec_final);
         wire exec_dma_job_init = frame_dma_init_q || (init_cfg_ia && !frame_mode_q);
         wire exec_oa_complete = frame_mode_q ?
             (frame_command_active && frame_execution_started && (frame_compute_seen || partial_sum_calc_over) && (frame_store_seen || ps_frame_complete) &&
-             (!frame_command_final || frame_output_seen || (frame_output_armed && oa_calc_over))) : oa_calc_over;
+             (!frame_exec_final || frame_output_seen || (frame_output_armed && oa_calc_over))) : oa_calc_over;
         logic tiling_invalid;
         logic [1:0] frame_config_error;
         wire tiling_invalid_calc = conv_config_invalid || ps_capacity_config_invalid || !ext_r_legal || !ext_w_legal ||
@@ -1923,7 +2002,7 @@ module npu_top #(
             .bias_valid           (bias_group_valid),
             .bias_sleep           (bias_load_sleep),
             // Requantization Interface
-            .quant_params_valid   ((quant_params_valid || (frame_mode_q && !frame_command_final)) &&
+            .quant_params_valid   ((quant_params_valid || (frame_mode_q && !frame_exec_final)) &&
                                    (!requant_output_group || requant_group_ready)),
         // FIFO Interface
         .fifo_full_flag       (fifo_full_flag && ia_output_pending),
@@ -2410,20 +2489,61 @@ module npu_top #(
         logic [IS_BIAS_VALID_W-1:0] is_bias_rows_valid_pending;
         wire [REG_WIDTH-1:0] is_bias_group_rows_target_ext =
           REG_WIDTH'(is_bias_group_rows_target);
-        wire [REG_WIDTH-1:0] is_bias_target_mask_ext =
-          is_bias_group_rows_target_ext - REG_WIDTH'(1);
+        localparam int unsigned p_bias_count_bits =
+            (IS_BIAS_VALID_W < REG_WIDTH) ? IS_BIAS_VALID_W : REG_WIDTH;
+        logic [REG_WIDTH-1:0] is_bias_exec_m_ext;
+        logic [REG_WIDTH-1:0] is_bias_target_mask_ext;
+        logic [REG_WIDTH-1:0] is_bias_full_group_base;
+        logic [p_bias_count_bits:0] is_bias_low_difference;
+        assign is_bias_exec_m_ext = REG_WIDTH'(exec_m);
+        for (genvar bit_idx = 0; bit_idx < p_bias_count_bits; bit_idx++) begin : g_bias_mask_low
+            if (bit_idx == 0) begin : g_first
+                assign is_bias_target_mask_ext[bit_idx] = ~is_bias_group_rows_target_ext[bit_idx];
+            end else begin : g_later
+                assign is_bias_target_mask_ext[bit_idx] = is_bias_group_rows_target_ext[bit_idx] ^
+                    (~|is_bias_group_rows_target_ext[bit_idx-1:0]);
+            end
+        end
+        if (REG_WIDTH > p_bias_count_bits) begin : g_bias_mask_high
+            assign is_bias_target_mask_ext[REG_WIDTH-1:p_bias_count_bits] =
+                {(REG_WIDTH-p_bias_count_bits){is_bias_group_rows_target_ext == REG_WIDTH'(0)}};
+        end
+        assign is_bias_low_difference =
+            {1'b0, is_bias_exec_m_ext[p_bias_count_bits-1:0]} -
+            {1'b0, is_bias_group_rows_target_ext[p_bias_count_bits-1:0]};
+        assign is_bias_full_group_base[p_bias_count_bits-1:0] =
+            is_bias_low_difference[p_bias_count_bits-1:0];
+        // 各高位字节并行准备减一结果，低位借位只选择保持值或减一值。
+        for (genvar group = p_bias_count_bits; group < REG_WIDTH; group += 8) begin : g_bias_high
+            localparam int unsigned p_bits = (REG_WIDTH-group < 8) ? REG_WIDTH-group : 8;
+            localparam logic [REG_WIDTH-1:0] p_mask =
+                (REG_WIDTH'(1) << group) - (REG_WIDTH'(1) << p_bias_count_bits);
+            logic [p_bits-1:0] decremented;
+            logic borrow;
+            for (genvar bit_idx = 0; bit_idx < p_bits; bit_idx++) begin : g_bit
+                if (bit_idx == 0) begin : g_first
+                    assign decremented[bit_idx] = ~is_bias_exec_m_ext[group+bit_idx];
+                end else begin : g_later
+                    assign decremented[bit_idx] = is_bias_exec_m_ext[group+bit_idx] ^
+                        (~|is_bias_exec_m_ext[group +: bit_idx]);
+                end
+            end
+            assign borrow = is_bias_low_difference[p_bias_count_bits] &&
+                ((is_bias_exec_m_ext & p_mask) == REG_WIDTH'(0));
+            assign is_bias_full_group_base[group +: p_bits] = borrow ?
+                decremented : is_bias_exec_m_ext[group +: p_bits];
+        end
         wire [REG_WIDTH-1:0] is_bias_tail_rows_raw =
           exec_m & is_bias_target_mask_ext;
         wire [IS_BIAS_VALID_W-1:0] is_bias_tail_rows_calc =
           (is_bias_tail_rows_raw == '0)
               ? is_bias_group_rows_target
               : is_bias_tail_rows_raw[IS_BIAS_VALID_W-1:0];
-        wire [REG_WIDTH-1:0] is_bias_tail_rows_ext =
-          REG_WIDTH'(is_bias_tail_rows_calc);
+        // 尾组直接清除所选低位，整组末尾使用独立的借位选择计算。
         wire [REG_WIDTH-1:0] is_bias_last_group_base_calc =
-          (exec_m <= is_bias_group_rows_target_ext)
-              ? REG_WIDTH'(0)
-              : (exec_m - is_bias_tail_rows_ext);
+          (exec_m <= is_bias_group_rows_target_ext) ? REG_WIDTH'(0) :
+          (is_bias_tail_rows_raw == REG_WIDTH'(0)) ? is_bias_full_group_base :
+          (is_bias_exec_m_ext & ~REG_WIDTH'(IS_BIAS_VALID_W'(is_bias_target_mask_ext)));
         wire [IS_BIAS_VALID_W-1:0] is_bias_first_rows_valid =
           (exec_m == '0) ? IS_BIAS_VALID_W'(1) :
           (exec_m > is_bias_group_rows_target_ext)
@@ -2614,18 +2734,51 @@ module npu_top #(
     assign fifo_output_data = run_16x8 ? fifo_s16_output_data : fifo_s8_output_data;
     assign fifo_full_flag = run_16x8 ? fifo_s16_full_flag : fifo_s8_full_flag;
 
-    // Prepare output grouping alongside the shared-memory configuration.
-    // Runtime admission reads registered choices and performs no geometry product.
+    // 配置阶段准备输出分组，运行期间直接使用已保存的容量选择。
     localparam int OA_REUSE_ROWS_WIDTH=$clog2(OA_FIFO_BANKS+2);
     localparam int OA_DIRECT_AVAILABLE_BANKS=OA_FIFO_BANKS>DIRECT_OUTPUT_EXTRA_BANKS ?
         OA_FIFO_BANKS-DIRECT_OUTPUT_EXTRA_BANKS : 0;
-    wire [REG_WIDTH-1:0] oa_cfg_row_tiles=(cfg_k_s2 >> 4)+REG_WIDTH'(cfg_k_s2[3:0]!=0);
-    wire [REG_WIDTH-1:0] oa_cfg_reuse_rows=oa_cfg_row_tiles<cfg_ia_reuse_eff_s2 ?
-        oa_cfg_row_tiles : cfg_ia_reuse_eff_s2;
+    logic [OA_REUSE_ROWS_WIDTH-1:0] oa_cfg_row_tiles;
+    logic [OA_REUSE_ROWS_WIDTH-1:0] oa_cfg_reuse_limit;
+    logic [OA_REUSE_ROWS_WIDTH-1:0] oa_cfg_reuse_rows;
+    logic [REG_WIDTH+3:0] oa_cfg_k_limit;
+    logic oa_cfg_rows_exceed;
+
+    // 两个操作数先限制到容量加一，再求最小值；该值完整保留容量判断所需的信息。
+    // 先比较未取整的行数，使向上取整仅在容量计数位宽内传播进位。
+    assign oa_cfg_k_limit = (REG_WIDTH+4)'(REG_WIDTH'(OA_FIFO_BANKS)) << 4;
+    assign oa_cfg_rows_exceed = (REG_WIDTH+4)'(cfg_k_s2) > oa_cfg_k_limit;
+    assign oa_cfg_row_tiles = oa_cfg_rows_exceed ? OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS+1) :
+        OA_REUSE_ROWS_WIDTH'(cfg_k_s2 >> 4) + OA_REUSE_ROWS_WIDTH'(|cfg_k_s2[3:0]);
+    assign oa_cfg_reuse_limit = cfg_ia_reuse_eff_s2 > REG_WIDTH'(OA_FIFO_BANKS) ?
+        OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS+1) : OA_REUSE_ROWS_WIDTH'(cfg_ia_reuse_eff_s2);
+    assign oa_cfg_reuse_rows = oa_cfg_row_tiles < oa_cfg_reuse_limit ?
+        oa_cfg_row_tiles : oa_cfg_reuse_limit;
     logic [OA_REUSE_ROWS_WIDTH-1:0] oa_ws_reuse_rows_pre;
     logic [4:0] oa_chunk_cols_pre;
     logic oa_ws_coalesce_q,oa_is_coalesce_q,oa_ws_reserve_fits;
     logic direct_output_cfg;
+    logic [3:0] oa_cfg_chunk_fit;
+    logic oa_cfg_narrow_chunk;
+    logic [4:0] oa_cfg_chunk_choice;
+
+    // 各分组容量条件并行形成，较大分组满足时，其较小分组也必然满足。
+    assign oa_cfg_chunk_fit[0] = cfg_w_reuse_eff_s2 >= 2 && cfg_m_s2 >= 32 &&
+        oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 1);
+    assign oa_cfg_chunk_fit[1] = cfg_w_reuse_eff_s2 >= 4 && cfg_m_s2 >= 64 &&
+        oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 2);
+    assign oa_cfg_chunk_fit[2] = cfg_w_reuse_eff_s2 >= 8 && cfg_m_s2 >= 128 &&
+        oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 3);
+    assign oa_cfg_chunk_fit[3] = cfg_w_reuse_eff_s2 >= 16 && cfg_m_s2 >= 256 &&
+        oa_ws_reuse_rows_pre <= OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 4);
+    assign oa_cfg_narrow_chunk = cfg_k_s2 > 1 && cfg_k_s2 < 16 && oa_cfg_chunk_fit[0];
+    assign oa_cfg_chunk_choice = {
+        oa_cfg_chunk_fit[3] && !oa_cfg_narrow_chunk,
+        oa_cfg_chunk_fit[2] && !oa_cfg_chunk_fit[3] && !oa_cfg_narrow_chunk,
+        oa_cfg_chunk_fit[1] && !oa_cfg_chunk_fit[2] && !oa_cfg_narrow_chunk,
+        oa_cfg_narrow_chunk || (oa_cfg_chunk_fit[0] && !oa_cfg_chunk_fit[1]),
+        !oa_cfg_chunk_fit[0]
+    };
     wire oa_ws_coalesce_pre=!frame_mode_q && oa_ws_coalesce_q;
     wire oa_is_coalesce_pre=!frame_mode_q && oa_is_coalesce_q;
     always_ff @(posedge clk or negedge core_rst_n) begin
@@ -2639,22 +2792,11 @@ module npu_top #(
         end else if (cfg_stage2_valid) begin
             case (cfg_capacity_phase)
                 3'd0: begin
-                    // Rows beyond the output capacity disable merged writes.
-                    oa_ws_reuse_rows_pre<=oa_cfg_reuse_rows>REG_WIDTH'(OA_FIFO_BANKS) ?
-                        OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS+1) : OA_REUSE_ROWS_WIDTH'(oa_cfg_reuse_rows);
+                    // 容量加一表示该组无法合并写出。
+                    oa_ws_reuse_rows_pre <= oa_cfg_reuse_rows;
                 end
                 3'd1: begin
-                    if (cfg_k_s2>1 && cfg_k_s2<16 && cfg_w_reuse_eff_s2>=2 && cfg_m_s2>=32 &&
-                        oa_ws_reuse_rows_pre<=OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 1)) oa_chunk_cols_pre<=2;
-                    else if (cfg_w_reuse_eff_s2>=16 && cfg_m_s2>=256 &&
-                        oa_ws_reuse_rows_pre<=OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 4)) oa_chunk_cols_pre<=16;
-                    else if (cfg_w_reuse_eff_s2>=8 && cfg_m_s2>=128 &&
-                        oa_ws_reuse_rows_pre<=OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 3)) oa_chunk_cols_pre<=8;
-                    else if (cfg_w_reuse_eff_s2>=4 && cfg_m_s2>=64 &&
-                        oa_ws_reuse_rows_pre<=OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 2)) oa_chunk_cols_pre<=4;
-                    else if (cfg_w_reuse_eff_s2>=2 && cfg_m_s2>=32 &&
-                        oa_ws_reuse_rows_pre<=OA_REUSE_ROWS_WIDTH'(OA_FIFO_BANKS >> 1)) oa_chunk_cols_pre<=2;
-                    else oa_chunk_cols_pre<=1;
+                    oa_chunk_cols_pre <= oa_cfg_chunk_choice;
                 end
                 3'd2: begin
                     oa_ws_coalesce_q<=(SIZE==16) && (ENABLE_IS_MODE!=0) && !cfg_mode_s2 && !cfg_16x8_s2 &&

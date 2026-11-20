@@ -1,65 +1,59 @@
 {
   "passed": true,
   "source_sha256": {
-    "rtl/npu/top/npu_top.sv": "cc95d9413b8c438144eaf8c26cdceb6985c6245d7220bef20ad7009353c3b488",
-    "rtl/npu/top/frame_address_prepare.sv": "d8ce4bbda94872e4d2a19d73b2137e981e58b2be1a5523a711d0ed6f819fdc65",
-    "rtl/npu/control/ps_window_scheduler.sv": "1c4163d8c94ec44ad2441c375a0120ebf651ba4a6874c889a10e28fe748b5885",
-    "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529"
+    "rtl/npu/top/npu_top.sv": "903bbb5ae8224a33ab6b02a286d471b23ce1bd69bf93de11e74d1248a19e8f1c",
+    "rtl/npu/top/frame_address_prepare.sv": "62f614b8b472541a979e187f4a4324c9580bcb553c2fa2510e17ba3e03375382",
+    "rtl/npu/control/ps_window_scheduler.sv": "60ad928f0fd629c9dffceac685868b53f1539d080e2b3e477293c2b8cf1694df",
+    "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+    "rtl/common/parallel_prefix_add.sv": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9",
+    "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
   },
   "validation_scope": {
-    "rtl_revision": "bbc3955c4c8ff44e577b02f08a358cf1c031b65f",
-    "admission_expression_sha256": "cf419406e219b98ff2fe79be2255d3e54dd20daa32073f28b75564b0452aa434",
+    "rtl_revision": "b18ed0d21390e62300545d1fd1bc1039043a89ae",
+    "admission_expression_sha256": "c0bc5729bec8e73a465199156f323598c03397a14d245cb9772267d789f79ff8",
     "npu_top_sections": [
       "配置接收表达式",
-      "帧命令接受与地址中止表达式",
-      "共享银行配置寄存器"
+      "帧命令接受与地址中止表达式"
     ],
     "complete_rtl_modules": [
       "frame_address_prepare",
       "ps_window_scheduler",
       "onehot_check",
-      "ps_capacity_limits"
+      "parallel_prefix_add",
+      "regfile"
     ],
-    "independent_admission_inputs": [
-      "ia_prefetch_idle",
-      "kernel_prefetch_idle"
-    ],
-    "address_numeric_parameters": {
-      "p_size": 16,
-      "p_use_dsp": [
-        0,
-        1
-      ],
-      "p_ready_mask_abort": [
-        0,
-        1
-      ]
-    }
+    "admission_input_bits": 19,
+    "admission_input_assumptions": [],
+    "frame_address_comparison": "same current complete module; p_ready_mask_abort=1 compared with 0 and 1"
   },
   "formal": {
     "passed": true,
-    "reference_rev": "eaba7635",
     "source_sha256": {
-      "rtl/npu/top/npu_top.sv": "cc95d9413b8c438144eaf8c26cdceb6985c6245d7220bef20ad7009353c3b488",
-      "rtl/npu/top/frame_address_prepare.sv": "d8ce4bbda94872e4d2a19d73b2137e981e58b2be1a5523a711d0ed6f819fdc65",
-      "rtl/npu/control/ps_window_scheduler.sv": "1c4163d8c94ec44ad2441c375a0120ebf651ba4a6874c889a10e28fe748b5885",
-      "rtl/common/onehot_check.sv": "d6569e8c464851f30c077921f041141fcdb0f304771371a96abdbf15171b5529"
+      "rtl/npu/top/npu_top.sv": "903bbb5ae8224a33ab6b02a286d471b23ce1bd69bf93de11e74d1248a19e8f1c",
+      "rtl/npu/top/frame_address_prepare.sv": "62f614b8b472541a979e187f4a4324c9580bcb553c2fa2510e17ba3e03375382",
+      "rtl/npu/control/ps_window_scheduler.sv": "60ad928f0fd629c9dffceac685868b53f1539d080e2b3e477293c2b8cf1694df",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9",
+      "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
     },
+    "script_sha256": "b18018380e4afc798378e43e9d70df78eed0fe5d6be23f1227fff3c8efad2054",
     "official_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
     "admission": [
       {
         "fpga": 0,
-        "input_bits": 15,
+        "input_bits": 19,
         "output_bits": 2,
+        "inputs_constrained": false,
         "passed": true,
-        "log_sha256": "f714a4c7f754c58b1278535d0c86b43e276334719e515f79f49f70fa92c4da21"
+        "log_sha256": "423bf6825641cab280785121a7d01e0cfa94d0d2591c35eb2b118cda6b1ca8f4"
       },
       {
         "fpga": 1,
-        "input_bits": 15,
+        "input_bits": 19,
         "output_bits": 2,
+        "inputs_constrained": false,
         "passed": true,
-        "log_sha256": "c4462e804852d1d17f7b5d651d369abb630cb0b3d0d2b01972a82e1eeca10185"
+        "log_sha256": "acde7cc9800062267ac640061be3a4e9aaac88e7ccfd7601d63a7606cb6c16e7"
       }
     ],
     "scheduler_invariant": [
@@ -72,9 +66,9 @@
         "initialization": "all original state is unconstrained until reset is observed",
         "method": "ABC PDR with zero-initialization conversion and free initial-state inputs",
         "passed": true,
-        "log_sha256": "ca97511fdea253780776cc3623a1b9dab7c9eda8dbbf726c9e682cd790d905c9",
-        "aiger_sha256": "6bdfd89b3359916cd2f1f62a2a3dca03fb42a838a8ec3f85fa34438c86e34cb1",
-        "build_log_sha256": "ac251cd7fa927ffb723149bdcbeb5a22805d1849633beec8222b0ae1e863584b"
+        "log_sha256": "d5b1c576f1d186fc9f79720e3254918214beec6d40041468297123e6fa6621ad",
+        "aiger_sha256": "95a356092e015129d65b42b9b6da32a9adca3403a8aba71747032ca2ad151ce5",
+        "build_log_sha256": "e6ee4c9d86688657056fadd8caaaa39ac0a2d70a7d1a1737b9590eb99c20de95"
       },
       {
         "size": 4,
@@ -85,9 +79,9 @@
         "initialization": "all original state is unconstrained until reset is observed",
         "method": "ABC PDR with zero-initialization conversion and free initial-state inputs",
         "passed": true,
-        "log_sha256": "07092512e0ca79dc83dd63c04dbced54c99965f9155a61e6271e19db65be3a0f",
-        "aiger_sha256": "59e3a1f8094f8972d9c3d7df31a33e60b0e05fce3f00978e4f51d30559e877af",
-        "build_log_sha256": "edf6e96fed013de738625a684658f62d4ca708ecd4b86036acc25baafbac1c7a"
+        "log_sha256": "18e36da37cc0e7e71f56fb66c3f5bcd634fa9ab2c7735e449c0ce8eeb485b4c7",
+        "aiger_sha256": "f3fdd06514388e1ce3dbc7a76248f1b52651cd2f2434d5557b26b2bb2574590a",
+        "build_log_sha256": "08f07e6bda5ae2f97f080b00eb2965e89c01ee54551a412f429ed30c4990e2fb"
       },
       {
         "size": 16,
@@ -98,9 +92,9 @@
         "initialization": "all original state is unconstrained until reset is observed",
         "method": "ABC PDR with zero-initialization conversion and free initial-state inputs",
         "passed": true,
-        "log_sha256": "902e6482a0109eec0d0514c0db9f11acb657f3bbb60c8115607bdbc0a0b809e8",
-        "aiger_sha256": "1ab19c46ece9a7f5f9502543f9c4d139a1ce3d2dc2b1d73afeaa6895178eafd7",
-        "build_log_sha256": "1d80c52bad2df09462fc538f1ea9dcdcf1cd25ff122bfeb4c792be7fdf6df7b2"
+        "log_sha256": "9c25aa6f30ab6877f748a81288e661600478e7b5a06468e12d704678d6490dff",
+        "aiger_sha256": "012b245578f46cf5b49b3f3e167e07e810533c391b61947437aeffe75c4589d4",
+        "build_log_sha256": "176d57de7e114adfedec040bea55cef9b464cecaf88ed1df88957c199dea0e88"
       },
       {
         "size": 16,
@@ -111,9 +105,9 @@
         "initialization": "all original state is unconstrained until reset is observed",
         "method": "ABC PDR with zero-initialization conversion and free initial-state inputs",
         "passed": true,
-        "log_sha256": "4990ef51d4c49ccd6942c7d5c84ea2788a7adf53f4598c8044e721c6183df328",
-        "aiger_sha256": "4cdb0ff36a897606913f325497c54995ffd994550ea717383f7ebcb185caebf5",
-        "build_log_sha256": "a1a6adde870ec3e6428b910d87d9d26769cfda244eefe8e1c8dc1191427dc942"
+        "log_sha256": "378f7832ccc3448c5bda24ca435d6624405814366d384610d319167009d92c81",
+        "aiger_sha256": "3271eb1269210ae80a3480b4481ca7dc7ade517d7b54cfaec19bc2059d0f1c0f",
+        "build_log_sha256": "85af210f5562fe20149bda7aa22ac0512c3d42697a7fcdacdb7bcbaf6a887ab2"
       }
     ],
     "frame_address": [
@@ -123,9 +117,38 @@
         "ready_mask_abort": 0,
         "input_constraints": false,
         "ready_observation": "raw_start_rdy and not i_abort",
-        "equivalent_bits": 965,
+        "reference": "current complete module with p_ready_mask_abort=1",
+        "ports": [
+          "clk",
+          "rst_n",
+          "i_start",
+          "i_abort",
+          "o_start_rdy",
+          "i_result_rdy",
+          "o_result_vld",
+          "i_p0",
+          "i_q0",
+          "i_column",
+          "i_total_depth",
+          "i_ia_base",
+          "i_ia_stride",
+          "i_ia_packed",
+          "i_ia_s16",
+          "i_weight_base",
+          "i_weight_stride",
+          "i_weight_packed",
+          "i_weight_s16",
+          "i_dst_base",
+          "i_dst_stride",
+          "i_is_mode",
+          "i_output_s16",
+          "o_ia_base",
+          "o_weight_base",
+          "o_dst_base"
+        ],
+        "equivalent_bits": 1042,
         "passed": true,
-        "log_sha256": "18e91931d337a8aaf0bdca355c961625387e6f1f9cf76dda9e3dfc625cebfa54"
+        "log_sha256": "2912625534b3e598c09b84ea00915235b109c978f0d723474a42976a7dc0cd7c"
       },
       {
         "size": 16,
@@ -133,9 +156,38 @@
         "ready_mask_abort": 0,
         "input_constraints": false,
         "ready_observation": "raw_start_rdy and not i_abort",
-        "equivalent_bits": 929,
+        "reference": "current complete module with p_ready_mask_abort=1",
+        "ports": [
+          "clk",
+          "rst_n",
+          "i_start",
+          "i_abort",
+          "o_start_rdy",
+          "i_result_rdy",
+          "o_result_vld",
+          "i_p0",
+          "i_q0",
+          "i_column",
+          "i_total_depth",
+          "i_ia_base",
+          "i_ia_stride",
+          "i_ia_packed",
+          "i_ia_s16",
+          "i_weight_base",
+          "i_weight_stride",
+          "i_weight_packed",
+          "i_weight_s16",
+          "i_dst_base",
+          "i_dst_stride",
+          "i_is_mode",
+          "i_output_s16",
+          "o_ia_base",
+          "o_weight_base",
+          "o_dst_base"
+        ],
+        "equivalent_bits": 1015,
         "passed": true,
-        "log_sha256": "b367234e7d5b2025ae6b51eaf200d9ea68230aed0a101a3a508b5fbc96a3ffac"
+        "log_sha256": "a1a3ad3a05e61a4a57f1a58a5f37022f45f6810c27b53e441007a1f33563b45a"
       },
       {
         "size": 32,
@@ -143,9 +195,38 @@
         "ready_mask_abort": 0,
         "input_constraints": false,
         "ready_observation": "raw_start_rdy and not i_abort",
-        "equivalent_bits": 928,
+        "reference": "current complete module with p_ready_mask_abort=1",
+        "ports": [
+          "clk",
+          "rst_n",
+          "i_start",
+          "i_abort",
+          "o_start_rdy",
+          "i_result_rdy",
+          "o_result_vld",
+          "i_p0",
+          "i_q0",
+          "i_column",
+          "i_total_depth",
+          "i_ia_base",
+          "i_ia_stride",
+          "i_ia_packed",
+          "i_ia_s16",
+          "i_weight_base",
+          "i_weight_stride",
+          "i_weight_packed",
+          "i_weight_s16",
+          "i_dst_base",
+          "i_dst_stride",
+          "i_is_mode",
+          "i_output_s16",
+          "o_ia_base",
+          "o_weight_base",
+          "o_dst_base"
+        ],
+        "equivalent_bits": 1015,
         "passed": true,
-        "log_sha256": "415710da179abfd7e920fbc71cc30595ce25c7803e70d444dcc059ab7e29542d"
+        "log_sha256": "7d81a526bf8efe229ebdf66602c960c39d2003e253a70b8b37cccd57273b4853"
       },
       {
         "size": 16,
@@ -153,9 +234,38 @@
         "ready_mask_abort": 0,
         "input_constraints": false,
         "ready_observation": "raw_start_rdy and not i_abort",
-        "equivalent_bits": 1076,
+        "reference": "current complete module with p_ready_mask_abort=1",
+        "ports": [
+          "clk",
+          "rst_n",
+          "i_start",
+          "i_abort",
+          "o_start_rdy",
+          "i_result_rdy",
+          "o_result_vld",
+          "i_p0",
+          "i_q0",
+          "i_column",
+          "i_total_depth",
+          "i_ia_base",
+          "i_ia_stride",
+          "i_ia_packed",
+          "i_ia_s16",
+          "i_weight_base",
+          "i_weight_stride",
+          "i_weight_packed",
+          "i_weight_s16",
+          "i_dst_base",
+          "i_dst_stride",
+          "i_is_mode",
+          "i_output_s16",
+          "o_ia_base",
+          "o_weight_base",
+          "o_dst_base"
+        ],
+        "equivalent_bits": 1162,
         "passed": true,
-        "log_sha256": "5ec551baf0e8059c84af526c634528bc88ade4551c664ecbe2e21bc6cb1655ef"
+        "log_sha256": "78185552f0b9652b64872202cbb0d48800fb933716c91465380292f881d154d0"
       },
       {
         "size": 16,
@@ -163,9 +273,38 @@
         "ready_mask_abort": 1,
         "input_constraints": false,
         "ready_observation": "raw_start_rdy and not i_abort",
-        "equivalent_bits": 929,
+        "reference": "current complete module with p_ready_mask_abort=1",
+        "ports": [
+          "clk",
+          "rst_n",
+          "i_start",
+          "i_abort",
+          "o_start_rdy",
+          "i_result_rdy",
+          "o_result_vld",
+          "i_p0",
+          "i_q0",
+          "i_column",
+          "i_total_depth",
+          "i_ia_base",
+          "i_ia_stride",
+          "i_ia_packed",
+          "i_ia_s16",
+          "i_weight_base",
+          "i_weight_stride",
+          "i_weight_packed",
+          "i_weight_s16",
+          "i_dst_base",
+          "i_dst_stride",
+          "i_is_mode",
+          "i_output_s16",
+          "o_ia_base",
+          "o_weight_base",
+          "o_dst_base"
+        ],
+        "equivalent_bits": 1015,
         "passed": true,
-        "log_sha256": "b4b821dbcbf6201322614caa48a178652ffab1deefa984b07d4e490757d5613c"
+        "log_sha256": "14d0bce9cd6399b136455d29ccdb9c069f9486b5806a57c5c85c6d38ea8d7d84"
       },
       {
         "size": 16,
@@ -173,978 +312,60 @@
         "ready_mask_abort": 1,
         "input_constraints": false,
         "ready_observation": "raw_start_rdy and not i_abort",
-        "equivalent_bits": 1076,
+        "reference": "current complete module with p_ready_mask_abort=1",
+        "ports": [
+          "clk",
+          "rst_n",
+          "i_start",
+          "i_abort",
+          "o_start_rdy",
+          "i_result_rdy",
+          "o_result_vld",
+          "i_p0",
+          "i_q0",
+          "i_column",
+          "i_total_depth",
+          "i_ia_base",
+          "i_ia_stride",
+          "i_ia_packed",
+          "i_ia_s16",
+          "i_weight_base",
+          "i_weight_stride",
+          "i_weight_packed",
+          "i_weight_s16",
+          "i_dst_base",
+          "i_dst_stride",
+          "i_is_mode",
+          "i_output_s16",
+          "o_ia_base",
+          "o_weight_base",
+          "o_dst_base"
+        ],
+        "equivalent_bits": 1162,
         "passed": true,
-        "log_sha256": "f0995c9a2d6f8b85273338440a8299bf941adf9229d104bb989664a6b7f95f40"
+        "log_sha256": "47f64b95484bbf093395dd629d67f037ba7ab4e639846510e4bf3518133be89f"
       }
     ],
     "abc_sha256": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3",
     "scheduler_ready_coverage": {
       "passed": true,
-      "log_sha256": "dc84a21f8b77dd6f566d54714bc58c6c44f451462f76292e5ee3a8f3f5ff10e8",
-      "build_log_sha256": "b4cac69233f74a4fc474e3de99fd242fdc5c570f16194ee0ceecac3380c79e54",
-      "aiger_sha256": "fa3cd268d02de60092eedbe088c442077e7120a421c1e8b463b96c7faacf9727"
+      "log_sha256": "913f294a64963e05b6d09ec062c249199b3e962384581a33a86ab01527f51eb7",
+      "build_log_sha256": "34084639c5b0671af4c3995054a095d267215058c779104b7d8a3b8c275a7d4f",
+      "aiger_sha256": "2da7a9aeef50a88669a4f764e34b243e2ad4aee82eaff944470d5087f59db43c"
     },
     "composition": {
       "passed": true,
       "scheduler_invariant_proven": true,
-      "log_sha256": "d4bb73a47bee448461f72adcd8cbdf735a9b0b540981e34f04070b693819e0f5"
+      "condition": "actual scheduler ready implies not command_valid",
+      "abort_pending_derived_from_abort_state": true,
+      "log_sha256": "18f1e1ea78f893dc88860595af26d434ac171f49a9ea0365501c1df9064eac26"
     }
   },
-  "frame_numeric": {
-    "passed": true,
-    "size": 16,
-    "address_width": 32,
-    "result_latency_cycles": 10,
-    "source_sha256": {
-      "test/npu_admission/run_numeric.py": "4c9a7cf2977168e751f65746c4f8da0b1943f3863cbd8c486d672284d5eda21f",
-      "rtl/npu/top/frame_address_prepare.sv": "d8ce4bbda94872e4d2a19d73b2137e981e58b2be1a5523a711d0ed6f819fdc65",
-      "test/frame_address/frame_address_tb.sv": "8648dab253a8d28f4c60b3af2b1de17022e0f2e4f3aed20b68e845e65526133d",
-      "build/admission/frame_numeric/ready_mask_0/dsp48e1.sv": "05f9622a2cc1b62d4d35c8588abdd26e1718c9e8ac0c584af4b3ce1aa36e21bd",
-      "test/frame_address/run.py": "b15a4b25e347f5a107407187bb99f82f963bcc6a9d9f0332f168c27a6d698e3b",
-      "build/admission/frame_numeric/ready_mask_1/dsp48e1.sv": "05f9622a2cc1b62d4d35c8588abdd26e1718c9e8ac0c584af4b3ce1aa36e21bd"
-    },
-    "profiles": [
-      {
-        "passed": true,
-        "size": 16,
-        "address_width": 32,
-        "ready_mask_abort": 0,
-        "cancellation_phases": [
-          {
-            "age": 1,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 2,
-            "abort": 389,
-            "reset": 138
-          },
-          {
-            "age": 3,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 4,
-            "abort": 390,
-            "reset": 137
-          },
-          {
-            "age": 5,
-            "abort": 389,
-            "reset": 137
-          },
-          {
-            "age": 6,
-            "abort": 389,
-            "reset": 137
-          },
-          {
-            "age": 7,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 8,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 9,
-            "abort": 389,
-            "reset": 137
-          },
-          {
-            "age": 10,
-            "abort": 390,
-            "reset": 137
-          },
-          {
-            "age": 11,
-            "abort": 390,
-            "reset": 137
-          }
-        ],
-        "result_latency_cycles": 10,
-        "source_sha256": {
-          "rtl/npu/top/frame_address_prepare.sv": "d8ce4bbda94872e4d2a19d73b2137e981e58b2be1a5523a711d0ed6f819fdc65",
-          "test/frame_address/frame_address_tb.sv": "8648dab253a8d28f4c60b3af2b1de17022e0f2e4f3aed20b68e845e65526133d",
-          "build/admission/frame_numeric/ready_mask_0/dsp48e1.sv": "05f9622a2cc1b62d4d35c8588abdd26e1718c9e8ac0c584af4b3ce1aa36e21bd",
-          "test/frame_address/run.py": "b15a4b25e347f5a107407187bb99f82f963bcc6a9d9f0332f168c27a6d698e3b"
-        },
-        "mapped_netlist": null,
-        "mapped_netlist_sha256": null,
-        "primitive_models": [
-          "DSP48E1"
-        ],
-        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
-        "binary_sha256": "e2d5a388a6c48e01f3e21eadda7ce486ec652a49f6b7dfa22be2507e1ea9519b",
-        "command": [
-          "/workspace/scratch/92f7be750f11/toolchain/bin/verilator-modern",
-          "--binary",
-          "--timing",
-          "--assert",
-          "-sv",
-          "-Wno-fatal",
-          "--top-module",
-          "frame_address_tb",
-          "--Mdir",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/build/admission/frame_numeric/ready_mask_0/obj",
-          "-Gp_ready_mask_abort=0",
-          "-j",
-          "2",
-          "-CFLAGS",
-          "-std=c++20 -O1",
-          "-MAKEFLAGS",
-          "CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/rtl/npu/top/frame_address_prepare.sv",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/test/frame_address/frame_address_tb.sv",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/build/admission/frame_numeric/ready_mask_0/dsp48e1.sv"
-        ],
-        "completed": 36746,
-        "cancelled": 4286,
-        "reset_cases": 1512,
-        "wait_checks": 185328,
-        "cycles": 672662,
-        "abort_ready_checks": 4287,
-        "idle_abort_checks": 1
-      },
-      {
-        "passed": true,
-        "size": 16,
-        "address_width": 32,
-        "ready_mask_abort": 1,
-        "cancellation_phases": [
-          {
-            "age": 1,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 2,
-            "abort": 389,
-            "reset": 138
-          },
-          {
-            "age": 3,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 4,
-            "abort": 390,
-            "reset": 137
-          },
-          {
-            "age": 5,
-            "abort": 389,
-            "reset": 137
-          },
-          {
-            "age": 6,
-            "abort": 389,
-            "reset": 137
-          },
-          {
-            "age": 7,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 8,
-            "abort": 390,
-            "reset": 138
-          },
-          {
-            "age": 9,
-            "abort": 389,
-            "reset": 137
-          },
-          {
-            "age": 10,
-            "abort": 390,
-            "reset": 137
-          },
-          {
-            "age": 11,
-            "abort": 390,
-            "reset": 137
-          }
-        ],
-        "result_latency_cycles": 10,
-        "source_sha256": {
-          "rtl/npu/top/frame_address_prepare.sv": "d8ce4bbda94872e4d2a19d73b2137e981e58b2be1a5523a711d0ed6f819fdc65",
-          "test/frame_address/frame_address_tb.sv": "8648dab253a8d28f4c60b3af2b1de17022e0f2e4f3aed20b68e845e65526133d",
-          "build/admission/frame_numeric/ready_mask_1/dsp48e1.sv": "05f9622a2cc1b62d4d35c8588abdd26e1718c9e8ac0c584af4b3ce1aa36e21bd",
-          "test/frame_address/run.py": "b15a4b25e347f5a107407187bb99f82f963bcc6a9d9f0332f168c27a6d698e3b"
-        },
-        "mapped_netlist": null,
-        "mapped_netlist_sha256": null,
-        "primitive_models": [
-          "DSP48E1"
-        ],
-        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
-        "binary_sha256": "0db617c72a357ec5f0ea3eac353f69f680ab3b4e17e47d34f54f394e04e88497",
-        "command": [
-          "/workspace/scratch/92f7be750f11/toolchain/bin/verilator-modern",
-          "--binary",
-          "--timing",
-          "--assert",
-          "-sv",
-          "-Wno-fatal",
-          "--top-module",
-          "frame_address_tb",
-          "--Mdir",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/build/admission/frame_numeric/ready_mask_1/obj",
-          "-Gp_ready_mask_abort=1",
-          "-j",
-          "2",
-          "-CFLAGS",
-          "-std=c++20 -O1",
-          "-MAKEFLAGS",
-          "CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/rtl/npu/top/frame_address_prepare.sv",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/test/frame_address/frame_address_tb.sv",
-          "/workspace/scratch/76fc8a977a8f/worktrees/npu_admission_timing/build/admission/frame_numeric/ready_mask_1/dsp48e1.sv"
-        ],
-        "completed": 36746,
-        "cancelled": 4286,
-        "reset_cases": 1512,
-        "wait_checks": 185328,
-        "cycles": 672662,
-        "abort_ready_checks": 4287,
-        "idle_abort_checks": 1
-      }
-    ],
-    "totals": {
-      "completed": 73492,
-      "cancelled": 8572,
-      "reset_cases": 3024,
-      "wait_checks": 370656,
-      "cycles": 1345324,
-      "abort_ready_checks": 8574,
-      "idle_abort_checks": 2
-    },
-    "counting": "Each parameter profile runs the generic and DSP implementations with identical inputs."
-  },
-  "shared_allocation_formal": {
-    "passed": true,
-    "reference_rev": "087542cb",
-    "source_sha256": {
-      "rtl/npu/top/npu_top.sv": "cc95d9413b8c438144eaf8c26cdceb6985c6245d7220bef20ad7009353c3b488",
-      "rtl/npu/control/ps_capacity_limits.sv": "cb8ce10fb275b96c968ab3051573c8b635d09434fb0f2b4ba0d3edd1349aebf7"
-    },
-    "inputs_constrained": false,
-    "configuration_input_bits": 32,
-    "generated_sha256": {
-      "reference": "44a8ba06715b0d1f443206ddd9ebb7349b4fb166c84a4a78ba4f4411d1074cb2",
-      "current": "3c7cbff2d81df35f8fb9c03c966f437a378e0b63a6fbf3f68a1de5da66269a6c"
-    },
-    "profiles": [
-      {
-        "total_banks": 6,
-        "bank_bytes": 2048,
-        "shared": true,
-        "max_rows": 128,
-        "passed": true,
-        "equivalent_bits": 311,
-        "script_sha256": "d129ac01bfc9935e0168bab9a4b9b6afd172d1e30795ef08f0a78d64c5a4c7ba",
-        "log_sha256": "efc042d9d840e507142c5c80a93e9b190714c7c355d4bac4cbb0e5ba3d5b43c3"
-      },
-      {
-        "total_banks": 6,
-        "bank_bytes": 4096,
-        "shared": true,
-        "max_rows": 256,
-        "passed": true,
-        "equivalent_bits": 349,
-        "script_sha256": "f5b191ddc53a104a08944e1c0777cf7289e0aee0406ceea6d17454400260d918",
-        "log_sha256": "57db808987a3dd039fc55c415c6f4288b6370b5c5bc73dff04c06314c291b55f"
-      },
-      {
-        "total_banks": 6,
-        "bank_bytes": 8192,
-        "shared": true,
-        "max_rows": 512,
-        "passed": true,
-        "equivalent_bits": 394,
-        "script_sha256": "252bc5b96f8687da90a6e047dc4a721dccf1ea13302ff167a2aa3618b2336302",
-        "log_sha256": "fb40f8de154e5fd7ebab4a87e0883855166abd4eac56530343124b42ea2b2e69"
-      },
-      {
-        "total_banks": 7,
-        "bank_bytes": 2048,
-        "shared": true,
-        "max_rows": 128,
-        "passed": true,
-        "equivalent_bits": 314,
-        "script_sha256": "8bb08732e2d7e453664668fc10eea3de3950b705a11125c5a08b48543f5f2ca5",
-        "log_sha256": "713b4edf5ae51e516d21069c6bcace8423395ce6b9451090553ccc5bc25524b1"
-      },
-      {
-        "total_banks": 7,
-        "bank_bytes": 4096,
-        "shared": true,
-        "max_rows": 256,
-        "passed": true,
-        "equivalent_bits": 353,
-        "script_sha256": "b705472670aaf1a1da2016be0bbc96f6f63901872e79c84a5549ebfe376263b5",
-        "log_sha256": "d461f7bf313cfef61882eea9aa35d1cd8d39dd6dd7b50b620dd89deb6f616cd6"
-      },
-      {
-        "total_banks": 7,
-        "bank_bytes": 8192,
-        "shared": true,
-        "max_rows": 512,
-        "passed": true,
-        "equivalent_bits": 401,
-        "script_sha256": "ba22b4cfb91e0a8c9006a363a619d3c154231416daed176034de53b4618998d8",
-        "log_sha256": "37ecd3a34390fc90b5d9fc0fbb6f03d2c9d82c39975b6b76c38a8e36f631f28e"
-      },
-      {
-        "total_banks": 8,
-        "bank_bytes": 2048,
-        "shared": true,
-        "max_rows": 256,
-        "passed": true,
-        "equivalent_bits": 323,
-        "script_sha256": "e75d1d932d4fa4152ff059f72fc5197d0c8c5a98e7e838cd4de8a98635b609fd",
-        "log_sha256": "a6ba0c2d76b53d9e8d7efba367b38a89cf2473d0b2f07f5dab865a2b056488c0"
-      },
-      {
-        "total_banks": 8,
-        "bank_bytes": 4096,
-        "shared": true,
-        "max_rows": 512,
-        "passed": true,
-        "equivalent_bits": 361,
-        "script_sha256": "84de28d0ac4e56e21565c45320ca52624a2830d95c3295b4c057c5fab6adc7dd",
-        "log_sha256": "5b291de7111e7427e0c1e1421813583e1367717b34367bd7a1e4dad145126946"
-      },
-      {
-        "total_banks": 8,
-        "bank_bytes": 8192,
-        "shared": true,
-        "max_rows": 1024,
-        "passed": true,
-        "equivalent_bits": 410,
-        "script_sha256": "dff8fbd46dc9a6d877b7543e3f2df5b279b3e358000df4c48cab715b98dbcf01",
-        "log_sha256": "24091559bad701ac11500d5c8e954d61cc303cb1332225c5694e5290abdfda11"
-      },
-      {
-        "total_banks": 9,
-        "bank_bytes": 2048,
-        "shared": true,
-        "max_rows": 256,
-        "passed": true,
-        "equivalent_bits": 330,
-        "script_sha256": "9eccd07175edaf4c563f06ba4d333e1242f7bf4bdd8ec5d5ba4e49c56864e220",
-        "log_sha256": "c9f1b786cbbaaaa1635216cc46df8421e7e62329975664e8bb06fead171510f3"
-      },
-      {
-        "total_banks": 9,
-        "bank_bytes": 4096,
-        "shared": true,
-        "max_rows": 512,
-        "passed": true,
-        "equivalent_bits": 371,
-        "script_sha256": "5cf2140f45469e048b29c379b03ac0afe7c7c1918c47d16a1e7add4b5b11363b",
-        "log_sha256": "b0d243b24d0d8db3e20e9126f299c834ca9f1e7eec75c15535ed771476ff19d8"
-      },
-      {
-        "total_banks": 9,
-        "bank_bytes": 8192,
-        "shared": true,
-        "max_rows": 1024,
-        "passed": true,
-        "equivalent_bits": 421,
-        "script_sha256": "95129fe2324f54c15df79ad37ba9e438963ac41ab30c4879cb9ee9448670a605",
-        "log_sha256": "0924bbcd4504975252413196f3c64b18ca531059b0136b4e01ee35538336f085"
-      },
-      {
-        "total_banks": 1,
-        "bank_bytes": 8192,
-        "shared": false,
-        "max_rows": 512,
-        "passed": true,
-        "equivalent_bits": 195,
-        "script_sha256": "0b3bea73e0727e837711ffcc6febbfb56afb0af09fbfca5498261aa503f5b50c",
-        "log_sha256": "426263e7b9c599148abac2e28518e09e24b5755eb692c1475a9ec3f00b9c03a0"
-      },
-      {
-        "total_banks": 7,
-        "bank_bytes": 8192,
-        "shared": false,
-        "max_rows": 512,
-        "passed": true,
-        "equivalent_bits": 195,
-        "script_sha256": "a46d41e7c59463de4a79159624c1dc924ac35eb3fc2126d70061fe4cfb9ca8ac",
-        "log_sha256": "74b7d4c5d6186952ccedc15165ef6a49cf66e18a530174345bb9207ff331518e"
-      }
-    ]
-  },
-  "mapping": {
-    "reference": {
-      "metrics": {
-        "resources": {
-          "logic_lut_cells": 5,
-          "distributed_ram_lut_sites_nominal": 0,
-          "shift_register_lut_sites_nominal": 0,
-          "lut_sites_nominal_before_packing": 5,
-          "physical_lut_sites_after_placement": null,
-          "flip_flops": 17,
-          "dsp48e1": 0,
-          "ramb36e1": 0,
-          "ramb18e1": 0,
-          "carry4": 0,
-          "unclassified_distributed_ram_types": [],
-          "cell_counts": {
-            "FDRE": 17,
-            "LUT2": 1,
-            "LUT4": 1,
-            "LUT5": 1,
-            "LUT6": 2
-          },
-          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
-        },
-        "paths": {
-          "register_to_register_paths": [
-            {
-              "combinational_cells": 2,
-              "startpoint": {
-                "cell": "$auto$ff.cc:337:slice$2199",
-                "type": "FDRE",
-                "port": "Q",
-                "net": "flags_q[4]",
-                "detail": "register output",
-                "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "flags_q [4]"
-              },
-              "endpoint": {
-                "cell": "$auto$ff.cc:337:slice$2193",
-                "type": "FDRE",
-                "port": "D",
-                "net": "$abc$22444$aiger$o3",
-                "category": "data",
-                "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "o_flags [0]"
-              },
-              "path": [
-                {
-                  "cell": "$abc$22444$lut$aiger22443$38",
-                  "type": "LUT6",
-                  "input_port": "I0[0]",
-                  "output_port": "O[0]",
-                  "input_net": "flags_q[4]",
-                  "output_net": "$techmap22448$abc$22444$lut$aiger$o5.A[5]",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
-                },
-                {
-                  "cell": "$abc$22444$lut$aiger$o3",
-                  "type": "LUT5",
-                  "input_port": "I4[0]",
-                  "output_port": "O[0]",
-                  "input_net": "$techmap22448$abc$22444$lut$aiger$o5.A[5]",
-                  "output_net": "$abc$22444$aiger$o3",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
-                }
-              ]
-            },
-            {
-              "combinational_cells": 2,
-              "startpoint": {
-                "cell": "$auto$ff.cc:337:slice$2199",
-                "type": "FDRE",
-                "port": "Q",
-                "net": "flags_q[4]",
-                "detail": "register output",
-                "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "flags_q [4]"
-              },
-              "endpoint": {
-                "cell": "$auto$ff.cc:337:slice$2194",
-                "type": "FDRE",
-                "port": "D",
-                "net": "$abc$22444$aiger$o5",
-                "category": "data",
-                "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "o_flags [1]"
-              },
-              "path": [
-                {
-                  "cell": "$abc$22444$lut$aiger22443$38",
-                  "type": "LUT6",
-                  "input_port": "I0[0]",
-                  "output_port": "O[0]",
-                  "input_net": "flags_q[4]",
-                  "output_net": "$techmap22448$abc$22444$lut$aiger$o5.A[5]",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
-                },
-                {
-                  "cell": "$abc$22444$lut$aiger$o5",
-                  "type": "LUT6",
-                  "input_port": "I5[0]",
-                  "output_port": "O[0]",
-                  "input_net": "$techmap22448$abc$22444$lut$aiger$o5.A[5]",
-                  "output_net": "$abc$22444$aiger$o5",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
-                }
-              ]
-            }
-          ],
-          "distinct_register_path_groups": [
-            {
-              "combinational_cells": 2,
-              "startpoint": {
-                "cell": "$auto$ff.cc:337:slice$2199",
-                "type": "FDRE",
-                "port": "Q",
-                "net": "flags_q[4]",
-                "detail": "register output",
-                "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "flags_q [4]"
-              },
-              "endpoint": {
-                "cell": "$auto$ff.cc:337:slice$2193",
-                "type": "FDRE",
-                "port": "D",
-                "net": "$abc$22444$aiger$o3",
-                "category": "data",
-                "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "o_flags [0]"
-              },
-              "path": [
-                {
-                  "cell": "$abc$22444$lut$aiger22443$38",
-                  "type": "LUT6",
-                  "input_port": "I0[0]",
-                  "output_port": "O[0]",
-                  "input_net": "flags_q[4]",
-                  "output_net": "$techmap22448$abc$22444$lut$aiger$o5.A[5]",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
-                },
-                {
-                  "cell": "$abc$22444$lut$aiger$o3",
-                  "type": "LUT5",
-                  "input_port": "I4[0]",
-                  "output_port": "O[0]",
-                  "input_net": "$techmap22448$abc$22444$lut$aiger$o5.A[5]",
-                  "output_net": "$abc$22444$aiger$o3",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
-                }
-              ]
-            }
-          ],
-          "longest_register_path_cells": 2,
-          "graph_nodes": 37,
-          "visited_graph_nodes": 37,
-          "combinational_cycle_nodes": [],
-          "unclassified_cell_types": {},
-          "graph_complete": true,
-          "dsp_without_output_register": [],
-          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. LUT6_2 O5 excludes I5, CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
-        },
-        "register_path_requirement": {
-          "maximum_combinational_cells": 15,
-          "observed_combinational_cells": 2,
-          "graph_complete": true,
-          "met": true,
-          "scope": "Clocked storage outputs to synchronous data and control inputs",
-          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
-        }
-      },
-      "kernel_prefetch_idle_to_output": {
-        "register_to_register_paths": [
-          {
-            "combinational_cells": 1,
-            "startpoint": {
-              "cell": "$auto$ff.cc:337:slice$2205",
-              "type": "FDRE",
-              "port": "Q",
-              "net": "flags_q[10]",
-              "detail": "register output",
-              "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "endpoint": {
-              "cell": "$auto$ff.cc:337:slice$2193",
-              "type": "FDRE",
-              "port": "D",
-              "net": "$abc$22444$aiger$o3",
-              "category": "data",
-              "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "path": [
-              {
-                "cell": "$abc$22444$lut$aiger$o3",
-                "type": "LUT5",
-                "input_port": "I1[0]",
-                "output_port": "O[0]",
-                "input_net": "flags_q[10]",
-                "output_net": "$abc$22444$aiger$o3",
-                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
-              }
-            ]
-          },
-          {
-            "combinational_cells": 1,
-            "startpoint": {
-              "cell": "$auto$ff.cc:337:slice$2205",
-              "type": "FDRE",
-              "port": "Q",
-              "net": "flags_q[10]",
-              "detail": "register output",
-              "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "endpoint": {
-              "cell": "$auto$ff.cc:337:slice$2194",
-              "type": "FDRE",
-              "port": "D",
-              "net": "$abc$22444$aiger$o5",
-              "category": "data",
-              "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "path": [
-              {
-                "cell": "$abc$22444$lut$aiger$o5",
-                "type": "LUT6",
-                "input_port": "I1[0]",
-                "output_port": "O[0]",
-                "input_net": "flags_q[10]",
-                "output_net": "$abc$22444$aiger$o5",
-                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:61.26-63.41"
-              }
-            ]
-          }
-        ],
-        "distinct_register_path_groups": [
-          {
-            "combinational_cells": 1,
-            "startpoint": {
-              "cell": "$auto$ff.cc:337:slice$2205",
-              "type": "FDRE",
-              "port": "Q",
-              "net": "flags_q[10]",
-              "detail": "register output",
-              "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "endpoint": {
-              "cell": "$auto$ff.cc:337:slice$2193",
-              "type": "FDRE",
-              "port": "D",
-              "net": "$abc$22444$aiger$o3",
-              "category": "data",
-              "source": "build/admission/mapping/reference.sv:14.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "path": [
-              {
-                "cell": "$abc$22444$lut$aiger$o3",
-                "type": "LUT5",
-                "input_port": "I1[0]",
-                "output_port": "O[0]",
-                "input_net": "flags_q[10]",
-                "output_net": "$abc$22444$aiger$o3",
-                "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:56.26-58.30"
-              }
-            ]
-          }
-        ],
-        "longest_register_path_cells": 1,
-        "graph_nodes": 35,
-        "visited_graph_nodes": 35,
-        "combinational_cycle_nodes": [],
-        "unclassified_cell_types": {},
-        "graph_complete": true,
-        "dsp_without_output_register": [],
-        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. LUT6_2 O5 excludes I5, CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
-      },
-      "mapped_sha256": "16908ed623d59933c9a1fd34fd73926b43775743f8f9e915242df7ed4d1b0643"
-    },
-    "current": {
-      "metrics": {
-        "resources": {
-          "logic_lut_cells": 4,
-          "distributed_ram_lut_sites_nominal": 0,
-          "shift_register_lut_sites_nominal": 0,
-          "lut_sites_nominal_before_packing": 4,
-          "physical_lut_sites_after_placement": null,
-          "flip_flops": 17,
-          "dsp48e1": 0,
-          "ramb36e1": 0,
-          "ramb18e1": 0,
-          "carry4": 0,
-          "unclassified_distributed_ram_types": [],
-          "cell_counts": {
-            "FDRE": 17,
-            "LUT2": 1,
-            "LUT6_2": 3
-          },
-          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
-        },
-        "paths": {
-          "register_to_register_paths": [
-            {
-              "combinational_cells": 2,
-              "startpoint": {
-                "cell": "$auto$ff.cc:337:slice$2207",
-                "type": "FDRE",
-                "port": "Q",
-                "net": "flags_q[12]",
-                "detail": "register output",
-                "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "flags_q [12]"
-              },
-              "endpoint": {
-                "cell": "$auto$ff.cc:337:slice$2193",
-                "type": "FDRE",
-                "port": "D",
-                "net": "accepted[0]",
-                "category": "data",
-                "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "o_flags [0]"
-              },
-              "path": [
-                {
-                  "cell": "$abc$22444$lut$aiger$o15",
-                  "type": "LUT2",
-                  "input_port": "I0[0]",
-                  "output_port": "O[0]",
-                  "input_net": "flags_q[12]",
-                  "output_net": "$abc$22444$aiger$o15",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
-                },
-                {
-                  "cell": "u_admission.g_admission_fpga.u_admission",
-                  "type": "LUT6_2",
-                  "input_port": "I4[0]",
-                  "output_port": "O5[0]",
-                  "input_net": "$abc$22444$aiger$o15",
-                  "output_net": "accepted[0]",
-                  "source": "build/admission/mapping/current.sv:45.54"
-                }
-              ]
-            },
-            {
-              "combinational_cells": 2,
-              "startpoint": {
-                "cell": "$auto$ff.cc:337:slice$2207",
-                "type": "FDRE",
-                "port": "Q",
-                "net": "flags_q[12]",
-                "detail": "register output",
-                "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "flags_q [12]"
-              },
-              "endpoint": {
-                "cell": "$auto$ff.cc:337:slice$2194",
-                "type": "FDRE",
-                "port": "D",
-                "net": "accepted[1]",
-                "category": "data",
-                "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "o_flags [1]"
-              },
-              "path": [
-                {
-                  "cell": "$abc$22444$lut$aiger$o15",
-                  "type": "LUT2",
-                  "input_port": "I0[0]",
-                  "output_port": "O[0]",
-                  "input_net": "flags_q[12]",
-                  "output_net": "$abc$22444$aiger$o15",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
-                },
-                {
-                  "cell": "u_admission.g_admission_fpga.u_admission",
-                  "type": "LUT6_2",
-                  "input_port": "I4[0]",
-                  "output_port": "O6[0]",
-                  "input_net": "$abc$22444$aiger$o15",
-                  "output_net": "accepted[1]",
-                  "source": "build/admission/mapping/current.sv:45.54"
-                }
-              ]
-            }
-          ],
-          "distinct_register_path_groups": [
-            {
-              "combinational_cells": 2,
-              "startpoint": {
-                "cell": "$auto$ff.cc:337:slice$2207",
-                "type": "FDRE",
-                "port": "Q",
-                "net": "flags_q[12]",
-                "detail": "register output",
-                "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "flags_q [12]"
-              },
-              "endpoint": {
-                "cell": "$auto$ff.cc:337:slice$2193",
-                "type": "FDRE",
-                "port": "D",
-                "net": "accepted[0]",
-                "category": "data",
-                "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-                "register_origin": "o_flags [0]"
-              },
-              "path": [
-                {
-                  "cell": "$abc$22444$lut$aiger$o15",
-                  "type": "LUT2",
-                  "input_port": "I0[0]",
-                  "output_port": "O[0]",
-                  "input_net": "flags_q[12]",
-                  "output_net": "$abc$22444$aiger$o15",
-                  "source": "/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/lut_map.v:43.26-44.30"
-                },
-                {
-                  "cell": "u_admission.g_admission_fpga.u_admission",
-                  "type": "LUT6_2",
-                  "input_port": "I4[0]",
-                  "output_port": "O5[0]",
-                  "input_net": "$abc$22444$aiger$o15",
-                  "output_net": "accepted[0]",
-                  "source": "build/admission/mapping/current.sv:45.54"
-                }
-              ]
-            }
-          ],
-          "longest_register_path_cells": 2,
-          "graph_nodes": 39,
-          "visited_graph_nodes": 39,
-          "combinational_cycle_nodes": [],
-          "unclassified_cell_types": {},
-          "graph_complete": true,
-          "dsp_without_output_register": [],
-          "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. LUT6_2 O5 excludes I5, CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
-        },
-        "register_path_requirement": {
-          "maximum_combinational_cells": 15,
-          "observed_combinational_cells": 2,
-          "graph_complete": true,
-          "met": true,
-          "scope": "Clocked storage outputs to synchronous data and control inputs",
-          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
-        }
-      },
-      "kernel_prefetch_idle_to_output": {
-        "register_to_register_paths": [
-          {
-            "combinational_cells": 1,
-            "startpoint": {
-              "cell": "$auto$ff.cc:337:slice$2205",
-              "type": "FDRE",
-              "port": "Q",
-              "net": "flags_q[10]",
-              "detail": "register output",
-              "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "endpoint": {
-              "cell": "$auto$ff.cc:337:slice$2193",
-              "type": "FDRE",
-              "port": "D",
-              "net": "accepted[0]",
-              "category": "data",
-              "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "path": [
-              {
-                "cell": "u_admission.g_admission_fpga.u_admission",
-                "type": "LUT6_2",
-                "input_port": "I0[0]",
-                "output_port": "O5[0]",
-                "input_net": "flags_q[10]",
-                "output_net": "accepted[0]",
-                "source": "build/admission/mapping/current.sv:45.54"
-              }
-            ]
-          },
-          {
-            "combinational_cells": 1,
-            "startpoint": {
-              "cell": "$auto$ff.cc:337:slice$2205",
-              "type": "FDRE",
-              "port": "Q",
-              "net": "flags_q[10]",
-              "detail": "register output",
-              "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "endpoint": {
-              "cell": "$auto$ff.cc:337:slice$2194",
-              "type": "FDRE",
-              "port": "D",
-              "net": "accepted[1]",
-              "category": "data",
-              "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "path": [
-              {
-                "cell": "u_admission.g_admission_fpga.u_admission",
-                "type": "LUT6_2",
-                "input_port": "I0[0]",
-                "output_port": "O6[0]",
-                "input_net": "flags_q[10]",
-                "output_net": "accepted[1]",
-                "source": "build/admission/mapping/current.sv:45.54"
-              }
-            ]
-          }
-        ],
-        "distinct_register_path_groups": [
-          {
-            "combinational_cells": 1,
-            "startpoint": {
-              "cell": "$auto$ff.cc:337:slice$2205",
-              "type": "FDRE",
-              "port": "Q",
-              "net": "flags_q[10]",
-              "detail": "register output",
-              "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "endpoint": {
-              "cell": "$auto$ff.cc:337:slice$2193",
-              "type": "FDRE",
-              "port": "D",
-              "net": "accepted[0]",
-              "category": "data",
-              "source": "build/admission/mapping/current.sv:60.5|/workspace/scratch/92f7be750f11/toolchain/python/pyosys/share/xilinx/ff_map.v:68.41-68.95",
-              "register_origin": null
-            },
-            "path": [
-              {
-                "cell": "u_admission.g_admission_fpga.u_admission",
-                "type": "LUT6_2",
-                "input_port": "I0[0]",
-                "output_port": "O5[0]",
-                "input_net": "flags_q[10]",
-                "output_net": "accepted[0]",
-                "source": "build/admission/mapping/current.sv:45.54"
-              }
-            ]
-          }
-        ],
-        "longest_register_path_cells": 1,
-        "graph_nodes": 37,
-        "visited_graph_nodes": 37,
-        "combinational_cycle_nodes": [],
-        "unclassified_cell_types": {},
-        "graph_complete": true,
-        "dsp_without_output_register": [],
-        "path_method": "Connected bit graph from clocked storage to synchronous data/control inputs. LUT6_2 O5 excludes I5, CARRY4 dependencies follow carry direction, and asynchronous memory outputs depend on read addresses. DSP register parameters define clocked boundaries. Arithmetic between an input port and an internal register, between internal registers, or between an internal register and an output port contributes one DSP cell for that connected segment. Direct registered outputs contribute zero arithmetic cells. The identified ONE48 A:B/C ALU mode preserves low-to-high carry direction for P and PCOUT; all other DSP dependencies remain conservative, including the A:B ALU bypass. Counts describe structural depth; primitive and routing delays require device timing analysis."
-      },
-      "mapped_sha256": "c213f9b291dbcdcc19bb49f278f817e9d8d3d547b9cf6c63cced0461e9ec3d88"
-    }
+  "mapping": null,
+  "scripts_sha256": {
+    "test/npu_admission/prepare_measurement.py": "be26dfe9aa9a17e01a511d317bc7636e61eef5d2d690c58e59e82052b8c5d824",
+    "test/npu_admission/run_numeric.py": "4c9a7cf2977168e751f65746c4f8da0b1943f3863cbd8c486d672284d5eda21f",
+    "test/npu_admission/collect_report.py": "5c92a52207021c29600a2123e5dedc2327ae44aa8a7798f1534cef5357f2a335",
+    "test/npu_admission/run_formal.py": "b18018380e4afc798378e43e9d70df78eed0fe5d6be23f1227fff3c8efad2054"
   }
 }

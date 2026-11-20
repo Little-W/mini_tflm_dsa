@@ -1,0 +1,442 @@
+{
+  "inputs": {
+    "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+    "sources": [
+      {
+        "source": "rtl/npu/loaders/bias_loader.sv",
+        "reference_sha256": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+        "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+      },
+      {
+        "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+        "reference_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+        "current_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29"
+      },
+      {
+        "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+        "reference_sha256": "8860c138b08cd030a4ce0482c0ea91342abc9d409c8bec4b5d1158fc2f199d9f",
+        "current_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd"
+      },
+      {
+        "source": "rtl/common/regfile.v",
+        "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+        "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+      }
+    ]
+  },
+  "parameters": {
+    "SIZE": 16,
+    "BUS_WIDTH": 64,
+    "DATA_WIDTH": 32,
+    "REG_WIDTH": 32,
+    "COUNT_WIDTH": 29,
+    "GROUP_BLOCKS_MAX": 32
+  },
+  "behavior": {
+    "external_latency_cycles_changed": false,
+    "sequential_logic_changed": false,
+    "bias_storage_bits": 32768,
+    "ws_cache_bits": 512,
+    "buffer_default_independent_indices": true,
+    "integrated_request_sharing": "enabled only by bias_loader; S_CMD index equality is derived from actual control state"
+  },
+  "formal_default_buffer": {
+    "passed": true,
+    "inputs": {
+      "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+      "sources": [
+        {
+          "source": "rtl/npu/loaders/bias_loader.sv",
+          "reference_sha256": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+          "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+          "reference_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+          "current_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+          "reference_sha256": "8860c138b08cd030a4ce0482c0ea91342abc9d409c8bec4b5d1158fc2f199d9f",
+          "current_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd"
+        },
+        {
+          "source": "rtl/common/regfile.v",
+          "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+          "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+        }
+      ]
+    },
+    "input_assumptions": [],
+    "memory_return": "same unconstrained 64-bit value each cycle",
+    "storage_relation": "same initial bits, identical read/write addresses, enables, data and byte masks",
+    "profiles": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 1,
+        "GROUP_BLOCKS_MAX": 1,
+        "passed": true,
+        "equivalent_bits": 474,
+        "script_sha256": "da307e92879a8865f1265b3e0c1a578c0db5a14cad79d4fb82e62935d920d3d0",
+        "log_sha256": "33e87762a21ccd8288c043446c742852974ce0bdaccae54601c6276bdcd322a4"
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 8,
+        "GROUP_BLOCKS_MAX": 3,
+        "passed": true,
+        "equivalent_bits": 781,
+        "script_sha256": "7c154b919a2db1f70f93ac4179d283595fe66cba4bfb8055acbe337395b46317",
+        "log_sha256": "4ecdd26db236ab2e762ad5bde403a4acef84fb63efc1846067a8d7c3fa22b712"
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 12,
+        "GROUP_BLOCKS_MAX": 4,
+        "passed": true,
+        "equivalent_bits": 1318,
+        "script_sha256": "350ce56b103dee44925682449afa6a9fa47953a5635980f675dd3fef87df61a3",
+        "log_sha256": "a7b589202ef37755b21286d5b6b76d0b4caa5de6a31a60007d25bba4c5999193"
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "passed": true,
+        "equivalent_bits": 1443,
+        "script_sha256": "4e30632a0338214ecd058ed8951123abf4685a63d752985743df4e573f3c37e7",
+        "log_sha256": "b28b1f0538f2ff6e3beadf78ad9e00e83cfc987e20ca38f9807939a6204e7a91"
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 64,
+        "passed": true,
+        "equivalent_bits": 1462,
+        "script_sha256": "52e7498eeb79db1c31bdf32caa8c53371cd166e16185d0c2265e0cc8db387c3c",
+        "log_sha256": "ef41748b0ec7003ef81dd16185edfe66da9ebe9724b768c084a8014735de68fa"
+      },
+      {
+        "SIZE": 32,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 1,
+        "passed": true,
+        "equivalent_bits": 2450,
+        "script_sha256": "b2c5c9616e176742def8bda7b29eed9daf0a0c1cc8b2e9853dbef36cc5e21229",
+        "log_sha256": "d6abd15a58e2c12d0dbcfe530c3d5101cbd9822ee6eaa25990085d3d91fe24cd"
+      }
+    ]
+  },
+  "formal_complete_loader": {
+    "passed": true,
+    "inputs": {
+      "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+      "sources": [
+        {
+          "source": "rtl/npu/loaders/bias_loader.sv",
+          "reference_sha256": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+          "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+          "reference_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+          "current_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+          "reference_sha256": "8860c138b08cd030a4ce0482c0ea91342abc9d409c8bec4b5d1158fc2f199d9f",
+          "current_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd"
+        },
+        {
+          "source": "rtl/common/regfile.v",
+          "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+          "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+        }
+      ]
+    },
+    "external_input_assumptions": [],
+    "invariant": "state == S_CMD implies current_block_idx == load_block_idx",
+    "invariant_initial_reset": true,
+    "load_hit_consumption": "load_block_valid and load_block_bank are consumed only in S_CMD",
+    "memory_return": "common arbitrary 64-bit data in every cycle",
+    "memory_state_relation": "same initial memory and equal read/write ports",
+    "profiles": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 1,
+        "GROUP_BLOCKS_MAX": 1,
+        "control_invariant": {
+          "passed": true,
+          "script_sha256": "5390c63b97aba837f702ebc98b7b14889f5ae4498c8b21fc6b3f38cb2889f041",
+          "log_sha256": "a972ede1d438c0fd750f61ea3fa4c732cfba94c49863a111484415fb3fd07868",
+          "equivalent_bits": null
+        },
+        "complete_loader_equivalence": {
+          "passed": true,
+          "script_sha256": "25eda331ee7f974aae2477bb08050adfeff3fe710f636f082ecd8c33cb1c7be0",
+          "log_sha256": "3f1f8be34f40071f91b24f23bb11ba59f6e67339305e381f09a639e2b75553a7",
+          "equivalent_bits": 668
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 8,
+        "GROUP_BLOCKS_MAX": 3,
+        "control_invariant": {
+          "passed": true,
+          "script_sha256": "f64362068614fdeaa0069c4f14a34a890a65a83ae55789dfea29f5739355a21a",
+          "log_sha256": "69266e88d763a583b22126e610cae8ceb7caef8289dcd5e9bbbbd1453ed6101f",
+          "equivalent_bits": null
+        },
+        "complete_loader_equivalence": {
+          "passed": true,
+          "script_sha256": "2e9d43cc79086e8e0d67cfc4550f54e5c81015d9f4cc453de429a8c376dda28b",
+          "log_sha256": "04a210711b26884e6b09b9e2bafe396dfb0ecf39d1e52a4841845d19bee112ee",
+          "equivalent_bits": 1072
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 12,
+        "GROUP_BLOCKS_MAX": 4,
+        "control_invariant": {
+          "passed": true,
+          "script_sha256": "73bbd25f49e13d912c5db19cf44a49e2d5184154d3d7935ed00814d55907e78a",
+          "log_sha256": "90ed45384c2c583f03a993a15d27671232bbdd031f1e1e03342ec8aff9dcb8f7",
+          "equivalent_bits": null
+        },
+        "complete_loader_equivalence": {
+          "passed": true,
+          "script_sha256": "65631aa2b5bf2f132b8c0c577ab3170e58a27d1546e7068c0174884a592c1b90",
+          "log_sha256": "470e268d841d0dc4f1a9a45c179fec3751a14673d2282bb8c97156a5b6935229",
+          "equivalent_bits": 1661
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "control_invariant": {
+          "passed": true,
+          "script_sha256": "e4717ca8b3ce23e1945bffb2271010bb677ea9d8fc1fec0966e85fb7ad26e5bc",
+          "log_sha256": "cc928dbe00c6f08ca9a7ed348ecf09b9d102463f228d397aed89e4edaaeeedce",
+          "equivalent_bits": null
+        },
+        "complete_loader_equivalence": {
+          "passed": true,
+          "script_sha256": "dada5f03c2ac658a800e225c8626c6b292659f7bc92d110780a1805bae1977a6",
+          "log_sha256": "6b5548da4c94ee4bc0bc17b1772357db24ba6b67c6bb1da6ccf2a9882edb8bb8",
+          "equivalent_bits": 2007
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 64,
+        "control_invariant": {
+          "passed": true,
+          "script_sha256": "0b8bf81bd4de16c0f95a4ddd8dae40bce1dfc84bcd82933aaf4ace98d2085341",
+          "log_sha256": "36bc949ce46ec76efbac87f61f37be7679ec87147108593bc4c5891a34885dcd",
+          "equivalent_bits": null
+        },
+        "complete_loader_equivalence": {
+          "passed": true,
+          "script_sha256": "6ba217c6c2449c24893f84abb6f232fc99effe89bc57d265bb53825a94761cc6",
+          "log_sha256": "0463570b3848852b5362b2fccf2854776e59567dc864c100fc1816b6dc2c6db7",
+          "equivalent_bits": 2063
+        },
+        "passed": true
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "inputs": {
+      "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+      "sources": [
+        {
+          "source": "rtl/npu/loaders/bias_loader.sv",
+          "reference_sha256": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+          "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+          "reference_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+          "current_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+          "reference_sha256": "8860c138b08cd030a4ce0482c0ea91342abc9d409c8bec4b5d1158fc2f199d9f",
+          "current_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd"
+        },
+        {
+          "source": "rtl/common/regfile.v",
+          "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+          "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+        }
+      ]
+    },
+    "parameters": {
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "DATA_WIDTH": 32,
+      "REG_WIDTH": 32,
+      "COUNT_WIDTH": 29,
+      "GROUP_BLOCKS_MAX": 32
+    },
+    "checks": 34624,
+    "known_bits": 388111,
+    "refined_bits": 11945,
+    "unknown_bits": 50056,
+    "property": "Every known reference output bit is unchanged; unknown reference bits may resolve",
+    "scope": "Actual range comparators and read address expressions with default independent request indices",
+    "strict_four_state_equivalence": false,
+    "source_sha256": {
+      "reference.sv": "8fa7e79ff05a929ef94393d12b250a26f34630bb0ee65c1840d8e472bc8b4173",
+      "current.sv": "2b6bec1d0c61e240f124051967b8fcaf78dad91bba4ed54fc78e877865f1b01c",
+      "tb.sv": "93d4edbf1b1340d711738f0702aeb4b5f08170a9fcee3f81320420232f5de4ba"
+    },
+    "build_command": [
+      "iverilog",
+      "-g2012",
+      "-s",
+      "tb",
+      "-o",
+      "/tmp/npu45000_compute/r9/bias_shared/four_state/four_state.vvp",
+      "/tmp/npu45000_compute/r9/bias_shared/four_state/reference.sv",
+      "/tmp/npu45000_compute/r9/bias_shared/four_state/current.sv",
+      "/tmp/npu45000_compute/r9/bias_shared/four_state/tb.sv"
+    ],
+    "build_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run_log_sha256": "f67399f1f92408f90d6149acde6a4dd2ecd8ff7e905622299326298b82912412"
+  },
+  "numeric_regression": {
+    "passed": true,
+    "case_count": 392,
+    "source_sha256": {
+      "test/bias_loader_reuse/tb_bias_loader_reuse.sv": "32d8cec52cfaef13f180d1859b6699da9bb8ebbbb760dfffb1ca6dcfb8217893",
+      "rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+      "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+    },
+    "simulator_sha256": "53cd9b4ace824d9743f28aaaee8d69a9222853f4e2738525d9f78fc2c4e439cf",
+    "build_warnings": [],
+    "report_sha256": "70820692f209e3b92a0bfce87ec8dd4450e982e0e906936b43aca74451882412",
+    "build_log_sha256": "316653ae84d6afcaf88744bf8fbb377843cf1b361f31d812c87f5940362486cb",
+    "run_log_sha256": "78150b405f8c75174238610e42fbeda289b41f91e445c83b125793ae4c1709c2"
+  },
+  "mapping": [
+    {
+      "version": "reference",
+      "logic_lut_cells": 1243,
+      "flip_flops": 1184,
+      "carry4": 137,
+      "dsp48e1": 0,
+      "ramb36e1": 1,
+      "ramb18e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 16,
+      "storage_address_path_cells": 16,
+      "graph_complete": true,
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "9f5413dba9c263aba7cdef1ae13ecbe1ca94a3ef752362d783b869eae07c0096"
+      },
+      "sources_sha256": {
+        "/tmp/npu45000_compute/r9/bias/inputs/reference/rtl/npu/loaders/bias_loader.sv": "738131bd0d8ccf4efe2749cf14cc92a5ccc95c9c6fad227b3d7d48168b93e64a",
+        "/tmp/npu45000_compute/r9/bias/inputs/reference/rtl/npu/loaders/bias_loader_ctrl.sv": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+        "/tmp/npu45000_compute/r9/bias/inputs/reference/rtl/npu/loaders/bias_loader_buffer.sv": "8860c138b08cd030a4ce0482c0ea91342abc9d409c8bec4b5d1158fc2f199d9f",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+      },
+      "mapping_tools_sha256": {
+        "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+        "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+      },
+      "summary_sha256": "8aa05c6c8634cc6cc9644531a13d6de7f6e97e60590b914868c7135a64f0ec04",
+      "metrics_sha256": "9da54b529d860d90b66b44f5fbea7e9b8dbd7f5506221016030f4c1af8fa5cd6",
+      "storage_address_paths_sha256": "3a27e0791763e06bbd1cb03d19fb92e69be98b97657db98a4a9b59d18ade3e7b",
+      "peak_process_tree_rss_bytes": 208429056
+    },
+    {
+      "version": "current",
+      "logic_lut_cells": 1180,
+      "flip_flops": 1181,
+      "carry4": 101,
+      "dsp48e1": 0,
+      "ramb36e1": 1,
+      "ramb18e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 14,
+      "storage_address_path_cells": 8,
+      "graph_complete": true,
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "69a03e8cbd4c112ce0dd9bee4076811bfa9b4d8bd75bcc4d6fb28a64b798464f"
+      },
+      "sources_sha256": {
+        "/tmp/npu45000_compute/r9/bias_shared/inputs/current/rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+        "/tmp/npu45000_compute/r9/bias_shared/inputs/current/rtl/npu/loaders/bias_loader_ctrl.sv": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+        "/tmp/npu45000_compute/r9/bias_shared/inputs/current/rtl/npu/loaders/bias_loader_buffer.sv": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+      },
+      "mapping_tools_sha256": {
+        "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+        "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+      },
+      "summary_sha256": "056cb7c07aab3445b1166b96c02832c12089a11e018e4139fe79722bd3c0ce27",
+      "metrics_sha256": "102de82139357906cf68dabac6f97008bc8478fb93b35a3945bc8af63d26f6bc",
+      "storage_address_paths_sha256": "98caf908cd0822de1bc44c8313b07eb3930f44f2f0482767728c09043a653301",
+      "peak_process_tree_rss_bytes": 204902400
+    }
+  ],
+  "mapping_options": {
+    "source_arithmetic": "ordinary RTL",
+    "additional_dsp_replacement": false,
+    "mode": "physical-cost",
+    "small_lut_area_cost": 1.0,
+    "max_lut_inputs": 6,
+    "wire_delay_ps": 500,
+    "delay_target_ps": 6667
+  },
+  "physical_lut_positions": null,
+  "timing_150mhz_confirmed": null,
+  "vivado_validation": "not run; Vivado is unavailable in this environment",
+  "scripts_sha256": {
+    "test/bias_read_depth/check_four_state.py": "ec0731149d30019aa2338dde0904a03263f7aafae2300a6b6e14f1456660e2e3",
+    "test/bias_read_depth/collect_report.py": "52cf877eaa53c66c93e3e08d4aff47d55ebfa01448a557fbf051de23e1141118",
+    "test/bias_read_depth/common.py": "d0a970cdf32fb0f977b669f52c304ed271eb6809405b0454eeb2013ba341b068",
+    "test/bias_read_depth/prepare_measurement.py": "9d24f513643e332fbab930e0f45dbee6579a8faf1ee8928154aa178851f9d727",
+    "test/bias_read_depth/prove.py": "ea9302267ede7e73a19005043510babdc6c092b342a387e1bd4d88e3c3abe345",
+    "test/bias_read_depth/prove_shared.py": "40db78347bc5072a5b5305ef0e635bc3a0ad3db99002c3f042e82488273461ee"
+  }
+}

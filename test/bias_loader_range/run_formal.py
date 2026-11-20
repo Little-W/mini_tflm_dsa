@@ -14,6 +14,7 @@ from rtl_reference import read_rtl_source
 
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE='rtl/npu/loaders/bias_loader_buffer.sv'
+HELPER='rtl/common/parallel_prefix_add.sv'
 
 
 def main():
@@ -31,8 +32,8 @@ def main():
   end
 '''
     reference=out/'reference.sv';reference.write_text(original.replace(marker,observer))
-    current=ROOT/SOURCE;memory=ROOT/'rtl/common/regfile.v'
-    hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,memory)}
+    current=ROOT/SOURCE;memory=ROOT/'rtl/common/regfile.v';helper=ROOT/HELPER
+    hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,memory,helper)}
     summary={'passed':False,'reference_ref':args.reference_ref,'source_sha256':hashes,
              'inputs_constrained':False,'reference_observer':'combinational sum of the original stored base and count',
              'original_reference_sha256':hashlib.sha256(original.encode()).hexdigest(),'runs':[]}
@@ -41,7 +42,7 @@ def main():
         options=f'-GSIZE={size} -GBUS_WIDTH={bus} -GCOUNT_WIDTH={count_width} -GGROUP_BLOCKS_MAX={groups}'
         commands=[]
         for name,source in (('reference',reference),('current',current)):
-            commands.extend([f'read_slang --top bias_loader_buffer {options} {shlex.quote(str(source))} {shlex.quote(str(memory))}',
+            commands.extend([f'read_slang --top bias_loader_buffer {options} {shlex.quote(str(source))} {shlex.quote(str(memory))} {shlex.quote(str(helper))}',
                              'prep -top bias_loader_buffer -flatten','memory_map','async2sync','opt_clean',
                              f'rename bias_loader_buffer {name}',f'design -stash {name}'])
         commands.extend(['design -copy-from reference -as reference reference','design -copy-from current -as current current',
@@ -57,7 +58,7 @@ def main():
                 'equivalent_bits':int(match[1]) if match else None,'log_sha256':hashlib.sha256(log.read_bytes()).hexdigest()}
         summary['runs'].append(report);print(json.dumps(report),flush=True)
         if not report['passed']:raise RuntimeError(text[-9000:])
-    if hashes!={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,memory)}:
+    if hashes!={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,memory,helper)}:
         raise RuntimeError('Source changed during verification')
     summary['passed']=True
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')

@@ -47,7 +47,11 @@ module bias_loader_ctrl #(
   localparam int unsigned SIZE_SHIFT = $clog2(SIZE);
   localparam int unsigned BLOCK_ADDR_SHIFT = SIZE_SHIFT + 2;
   localparam int unsigned CNT_W = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
+  localparam int unsigned LOAD_CNT_BITS = $clog2(33'(GROUP_BLOCKS_MAX) + 33'd1);
+  localparam int unsigned LOAD_CNT_W = (LOAD_CNT_BITS < 1) ? 1 :
+      ((LOAD_CNT_BITS < CNT_W) ? LOAD_CNT_BITS : CNT_W);
   typedef logic [CNT_W-1:0] count_t;
+  typedef logic [LOAD_CNT_W-1:0] load_count_t;
 
   typedef enum logic [3:0] {
     S_IDLE       = 4'd0,
@@ -76,9 +80,77 @@ module bias_loader_ctrl #(
   logic                 current_is_last_group;
   logic                 bias_switch_d;
   logic                 tail_pending;
+  count_t remaining_blocks;
+  count_t bounded_load_count;
+  load_count_t bounded_load_count_narrow;
+  count_t load_tail_offset;
+  count_t initial_num_blocks;
+  logic load_window_last;
+  logic [REG_WIDTH-1:0] tail_base_addr;
+
+  logic [CNT_W-1:0] remaining_i_a, remaining_i_b, remaining_o_sum;
+  logic remaining_i_carry, remaining_o_carry;
+  logic [REG_WIDTH-1:0] command_address_i_a, command_address_i_b, command_address_o_sum;
+  logic command_address_i_carry, command_address_o_carry;
+  logic [REG_WIDTH-1:0] tail_address_i_a, tail_address_i_b, tail_address_o_sum;
+  logic tail_address_i_carry, tail_address_o_carry;
+  logic [CNT_W-1:0] next_index_i_a, next_index_i_b, next_index_o_sum;
+  logic next_index_i_carry, next_index_o_carry;
+
+  assign remaining_i_a = num_blocks;
+  assign remaining_i_b = ~load_block_idx;
+  assign remaining_i_carry = 1'b1;
+  parallel_prefix_add #(.p_width(CNT_W)) u_remaining (
+      .i_a(remaining_i_a), .i_b(remaining_i_b), .i_carry(remaining_i_carry),
+      .o_sum(remaining_o_sum), .o_carry(remaining_o_carry)
+  );
+  assign bounded_load_count_narrow = (remaining_blocks < count_t'(GROUP_BLOCKS_MAX)) ?
+      load_count_t'(remaining_blocks) : load_count_t'(GROUP_BLOCKS_MAX);
+  assign bounded_load_count = count_t'(bounded_load_count_narrow);
+
+  assign next_index_i_a = current_block_idx;
+  assign next_index_i_b = step_blocks_eff;
+  assign next_index_i_carry = 1'b0;
+  parallel_prefix_add #(.p_width(CNT_W)) u_next_index (
+      .i_a(next_index_i_a), .i_b(next_index_i_b), .i_carry(next_index_i_carry),
+      .o_sum(next_index_o_sum), .o_carry(next_index_o_carry)
+  );
+
+  assign command_address_i_a = cfg_bias_base;
+  assign command_address_i_b = REG_WIDTH'(load_block_idx) << BLOCK_ADDR_SHIFT;
+  assign command_address_i_carry = 1'b0;
+  parallel_prefix_add #(.p_width(REG_WIDTH)) u_command_address (
+      .i_a(command_address_i_a), .i_b(command_address_i_b), .i_carry(command_address_i_carry),
+      .o_sum(command_address_o_sum), .o_carry(command_address_o_carry)
+  );
+
+  // 命令地址已在 S_CMD 保存，尾块地址在后续请求阶段独立准备。
+  assign tail_address_i_a = dma_base_addr;
+  assign tail_address_i_b = REG_WIDTH'(load_tail_offset) << BLOCK_ADDR_SHIFT;
+  assign tail_address_i_carry = 1'b0;
+  parallel_prefix_add #(.p_width(REG_WIDTH)) u_tail_address (
+      .i_a(tail_address_i_a), .i_b(tail_address_i_b), .i_carry(tail_address_i_carry),
+      .o_sum(tail_address_o_sum), .o_carry(tail_address_o_carry)
+  );
+
+  // 二次幂分块先取商再加低位非零标志，显式保留原计数宽度的回绕。
+  if ((SIZE == (1 << SIZE_SHIFT)) && (CNT_W > SIZE_SHIFT)) begin : g_initial_blocks
+    localparam int unsigned QUOTIENT_W = CNT_W - SIZE_SHIFT;
+    logic [QUOTIENT_W-1:0] rounded_i_a, rounded_i_b, rounded_o_sum;
+    logic rounded_i_carry, rounded_o_carry;
+    assign rounded_i_a = QUOTIENT_W'(cfg_m >> SIZE_SHIFT);
+    assign rounded_i_b = '0;
+    assign rounded_i_carry = (cfg_m & count_t'(SIZE - 1)) != '0;
+    parallel_prefix_add #(.p_width(QUOTIENT_W)) u_rounded (
+        .i_a(rounded_i_a), .i_b(rounded_i_b), .i_carry(rounded_i_carry),
+        .o_sum(rounded_o_sum), .o_carry(rounded_o_carry)
+    );
+    assign initial_num_blocks = count_t'(rounded_o_sum);
+  end else begin : g_initial_blocks_general
+    assign initial_num_blocks = (cfg_m + count_t'(SIZE - 1)) >> SIZE_SHIFT;
+  end
 
   wire bias_switch_rise = bias_switch && !bias_switch_d;
-  wire load_window_last = load_block_idx + load_blocks_count >= num_blocks;
   wire split_tail_group = load_window_last &&
                           (load_blocks_count > count_t'(1)) &&
                           (last_block_elems != count_t'(SIZE));
@@ -115,6 +187,10 @@ module bias_loader_ctrl #(
       dma_row_offset        <= '0;
       tail_pending          <= 1'b0;
       bias_switch_d          <= 1'b0;
+      remaining_blocks      <= '0;
+      load_tail_offset      <= '0;
+      load_window_last      <= 1'b0;
+      tail_base_addr        <= '0;
     end else begin
       dma_start     <= 1'b0;
       bias_switch_d <= bias_switch;
@@ -141,6 +217,10 @@ module bias_loader_ctrl #(
         dma_burst_len_m1     <= '0;
         dma_row_offset      <= '0;
         tail_pending        <= 1'b0;
+        remaining_blocks    <= '0;
+        load_tail_offset    <= '0;
+        load_window_last    <= 1'b0;
+        tail_base_addr      <= '0;
         state                <= S_INIT_GEOM;
       end else begin
         unique case (state)
@@ -153,7 +233,7 @@ module bias_loader_ctrl #(
             // bias_base==0 means that this operation has no bias tensor.
             // Keep the loader idle instead of reading address zero.
             num_blocks       <= ((cfg_bias_base == '0) || (cfg_m == '0)) ? '0 :
-                                ((cfg_m + count_t'(SIZE - 1)) >> SIZE_SHIFT);
+                                initial_num_blocks;
             last_block_elems <= (cfg_m == '0) ? '0 :
                                 (((cfg_m & count_t'(SIZE - 1)) == '0)
                                   ? count_t'(SIZE)
@@ -176,6 +256,7 @@ module bias_loader_ctrl #(
             load_block_idx        <= '0;
             active_bank           <= 1'b0;
             load_bank             <= 1'b0;
+            remaining_blocks      <= num_blocks;
             state                 <= S_INIT_GROUP;
           end
 
@@ -184,13 +265,14 @@ module bias_loader_ctrl #(
                                    (current_is_last_group
                                      ? num_blocks
                                      : step_blocks_eff);
-            load_blocks_count <= (num_blocks < count_t'(GROUP_BLOCKS_MAX)) ?
-                                 num_blocks : count_t'(GROUP_BLOCKS_MAX);
+            load_blocks_count <= bounded_load_count;
+            load_tail_offset <= bounded_load_count - count_t'(1);
+            load_window_last <= num_blocks <= count_t'(GROUP_BLOCKS_MAX);
             state               <= S_CMD;
           end
 
           S_CMD: begin
-            dma_base_addr    <= cfg_bias_base + (REG_WIDTH'(load_block_idx) << BLOCK_ADDR_SHIFT);
+            dma_base_addr    <= command_address_o_sum;
             dma_rows_to_read <= split_tail_group ? load_rows_without_tail : load_rows_full;
             dma_row_offset  <= '0;
             tail_pending    <= split_tail_group;
@@ -219,6 +301,7 @@ module bias_loader_ctrl #(
 
           S_REQ: begin
             load_bias_req <= 1'b1;
+            if (tail_pending) tail_base_addr <= tail_address_o_sum;
             if (load_bias_granted) begin
               load_bias_req <= 1'b0;
               dma_start     <= 1'b1;
@@ -231,8 +314,7 @@ module bias_loader_ctrl #(
               if (tail_pending) begin
                 // The final partial block has its own bounded read. Both
                 // requests fill the same resident group before it is visible.
-                dma_base_addr <= cfg_bias_base +
-                    ((REG_WIDTH'(load_block_idx) + REG_WIDTH'(load_blocks_count) - 1) << BLOCK_ADDR_SHIFT);
+                dma_base_addr <= tail_base_addr;
                 dma_rows_to_read <= REG_WIDTH'(1);
                 dma_burst_len_m1 <= 8'((32'(last_block_elems) + BUS_WIDTH/32-1)/(BUS_WIDTH/32) - 1);
                 dma_row_offset <= load_blocks_count - count_t'(1);
@@ -263,7 +345,7 @@ module bias_loader_ctrl #(
 
           S_NEXT_IDX: begin
             load_block_idx <= current_is_last_group ? '0 :
-                              (current_block_idx + step_blocks_eff);
+                              next_index_o_sum;
             state          <= S_NEXT_MARK;
           end
 
@@ -271,16 +353,18 @@ module bias_loader_ctrl #(
             current_block_idx     <= load_block_idx;
             current_is_last_group <= (num_blocks == '0) ||
                                      (load_block_idx >= last_group_start_idx);
+            remaining_blocks      <= remaining_o_sum;
             state                 <= S_NEXT_GROUP;
           end
 
           S_NEXT_GROUP: begin
             group_blocks_needed <= (num_blocks == '0) ? '0 :
                                    (current_is_last_group
-                                     ? (num_blocks - load_block_idx)
+                                     ? remaining_blocks
                                      : step_blocks_eff);
-            load_blocks_count <= (num_blocks - load_block_idx < count_t'(GROUP_BLOCKS_MAX)) ?
-                                 (num_blocks - load_block_idx) : count_t'(GROUP_BLOCKS_MAX);
+            load_blocks_count <= bounded_load_count;
+            load_tail_offset <= bounded_load_count - count_t'(1);
+            load_window_last <= remaining_blocks <= count_t'(GROUP_BLOCKS_MAX);
             state               <= S_CMD;
           end
 

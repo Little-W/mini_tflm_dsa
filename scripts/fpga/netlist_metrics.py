@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import gzip
 import json
 from pathlib import Path
 import re
@@ -94,7 +95,7 @@ def register_origins(path):
     """Read register Q names from a saved RTLIL file, including compressed-name comments."""
     origins = {}
     current = None
-    with path.open() as source:
+    with (gzip.open(path, 'rt') if path.suffix == '.gz' else path.open()) as source:
         for line in source:
             if line.startswith('  cell '):
                 fields = line.split()
@@ -110,8 +111,11 @@ def register_origins(path):
     return origins
 
 
-def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_filter=None):
+def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_filter=None,
+                    minimum_path_cells=0):
     """Find actual connected paths, respecting per-output carry and LUT6_2 dependencies."""
+    if min(limit, group_limit, minimum_path_cells) < 0:
+        raise ValueError('Path reporting limits must be nonnegative')
     cells = module['cells']
     names = net_names(module)
     incoming = collections.defaultdict(list)
@@ -415,11 +419,17 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
               for bit, endpoint in sinks if depth[bit] >= 0]
     ranked.extend((1, -index - 1, path['endpoint']) for index, path in enumerate(internal_paths))
     ranked.sort(key=lambda item: (-item[0], item[2]['cell'], item[2]['port'], item[1]))
+    endpoint_depths = {}
+    for length, _, endpoint in ranked:
+        endpoint_depths.setdefault((endpoint['cell'], endpoint['port']), length)
+    depth_histogram = collections.Counter(endpoint_depths.values())
     paths = []
     groups = []
     seen_endpoints = set()
     seen_groups = set()
-    for _, bit, endpoint in ranked:
+    for length, bit, endpoint in ranked:
+        if length < minimum_path_cells:
+            break
         key = (endpoint['cell'], endpoint['port'])
         if key in seen_endpoints:
             continue
@@ -442,7 +452,10 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
     return {
         'register_to_register_paths': paths,
         'distinct_register_path_groups': groups,
-        'longest_register_path_cells': paths[0]['combinational_cells'] if paths else 0,
+        'longest_register_path_cells': ranked[0][0] if ranked else 0,
+        'endpoint_port_maximum_depth_histogram': dict(sorted(depth_histogram.items())),
+        'report_limits': {'paths': limit, 'groups': group_limit,
+                          'minimum_combinational_cells': minimum_path_cells},
         'graph_nodes': len(nodes), 'visited_graph_nodes': visited,
         'combinational_cycle_nodes': [names.get(bit, str(bit)) for bit in cyclic[:20]],
         'unclassified_cell_types': dict(sorted(unknown.items())),
@@ -464,8 +477,8 @@ def register_path_requirement(paths, maximum=9):
             'timing_frequency_validation': 'Requires primitive and routing delays for the target device'}
 
 
-def analyze(module):
-    paths = connected_paths(module)
+def analyze(module, **path_options):
+    paths = connected_paths(module, **path_options)
     return {'resources': resources(module['cells']), 'paths': paths,
             'register_path_requirement': register_path_requirement(paths)}
 
@@ -476,14 +489,20 @@ def main():
     parser.add_argument('--top', required=True)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--register-origins', type=Path, help='pre_lut.il containing original register signal names')
+    parser.add_argument('--path-limit', type=int, default=20)
+    parser.add_argument('--group-limit', type=int, default=12)
+    parser.add_argument('--minimum-path-cells', type=int, default=0,
+                        help='Filter reported paths; the complete graph still determines the maximum depth')
     args = parser.parse_args()
-    design = json.loads(args.netlist.read_text())
+    with (gzip.open(args.netlist, 'rt') if args.netlist.suffix == '.gz' else args.netlist.open()) as source:
+        design = json.load(source)
     module = design['modules'][args.top]
     if args.register_origins:
         for name, origin in register_origins(args.register_origins).items():
             if name in module['cells']:
                 module['cells'][name].setdefault('attributes', {})['fpga_register_origin'] = origin
-    result = analyze(module)
+    result = analyze(module, limit=args.path_limit, group_limit=args.group_limit,
+                     minimum_path_cells=args.minimum_path_cells)
     args.out.write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result['resources'], indent=2))
     print('longest_register_path_cells', result['paths']['longest_register_path_cells'])

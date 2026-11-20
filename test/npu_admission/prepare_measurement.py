@@ -3,46 +3,45 @@
 import argparse
 import json
 from pathlib import Path
-import subprocess
 
-from run_formal import ROOT, TOP, FLAGS, admission, digest
-import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rtl_reference import read_rtl_source
+from run_formal import ROOT, TOP, CURRENT_FLAGS, current_admission, admission_specification, digest
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='eaba7635')
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     args = parser.parse_args()
+    source_root = args.source_root.resolve()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     cases = {}
+    input_width = len(CURRENT_FLAGS) + 2
     for label in ('reference', 'current'):
-        source = ((ROOT/TOP).read_text() if label == 'current' else
-                  read_rtl_source(f'{args.reference_rev}:{TOP}', cwd=ROOT, text=True))
+        source = (source_root/TOP).read_text()
         path = out / (label + '.sv')
-        connections = ','.join('.'+name+f'(flags_q[{i}])' for i,name in enumerate(FLAGS))
-        wrapper = '''module admission_measure(input logic clk,
-    input logic [14:0] i_flags, output logic [1:0] o_flags);
-    logic [14:0] flags_q;
+        connections = ','.join('.'+name+f'(flags_q[{i}])' for i,name in enumerate(CURRENT_FLAGS))
+        wrapper = f'''module admission_measure(input logic clk,
+    input logic [{input_width-1}:0] i_flags, output logic [1:0] o_flags);
+    logic [{input_width-1}:0] flags_q;
     logic [1:0] accepted;
     always_ff @(posedge clk) begin
         flags_q<=i_flags;
         o_flags<=accepted;
     end
-    admission_logic u_admission('''+connections+''',.abort_state(flags_q[14:13]),
+    admission_logic u_admission('''+connections+f''',.abort_state(flags_q[{input_width-1}:{input_width-2}]),
         .sa_ready(accepted[0]),.cfg_start_event(accepted[1]));
 endmodule
 '''
-        path.write_text(admission(source, 'admission_logic') + wrapper)
+        implementation = (current_admission(source, 'admission_logic') if label == 'current'
+                          else admission_specification('admission_logic'))
+        path.write_text(implementation + wrapper)
         cases['admission_'+label]={'top':'admission_measure','options':['-DSYNTHESIS=1','-DXILINX_FPGA=1'],
             'parameters':{},'sources':[str(path)],'configuration':'实际配置接收表达式及寄存边界'}
     (out/'cases.json').write_text(json.dumps(cases,ensure_ascii=False,indent=2)+'\n')
-    (out/'manifest.json').write_text(json.dumps({'source_sha256':{str(TOP):digest(ROOT/TOP)},
-        'reference_rev':args.reference_rev,'input_bits':15,'output_bits':2,
+    (out/'manifest.json').write_text(json.dumps({'source_sha256':{str(TOP):digest(source_root/TOP)},
+        'reference':'complete current acceptance conditions','input_bits':input_width,'output_bits':2,
+        'flags':list(CURRENT_FLAGS),
         'source_files_sha256':{p.name:digest(p) for p in out.glob('*.sv')}},indent=2)+'\n')
 
 
