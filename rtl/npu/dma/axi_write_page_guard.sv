@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Preserve the direct AW/W/B path for page-local bursts. A crossing burst
-// waits for earlier B responses, then emits page-local segments and one
-// combined response to the original DMA command.
+// 页内突发保持 AW/W/B 直接传递。跨页突发等待先前响应完成后，
+// 按页拆分物理突发，并向原始 DMA 命令返回一次合并响应。
 module axi_write_page_guard #(
     parameter int ADDR_W=32, DATA_W=32, WRITE_OUTSTANDING=4
 ) (
@@ -42,15 +41,71 @@ module axi_write_page_guard #(
     logic [12:0] page_beats;
     logic [1:0] response_q;
     logic page_local;
+    logic [ADDR_W-1:0] address_nxt;
     wire direct_aw = state == DIRECT && page_local && s_awvalid && m_awready;
     wire direct_b = state == DIRECT && m_bvalid && s_bready;
     wire direct_last = state == DIRECT && direct_data_outstanding != 0 &&
                        s_wvalid && m_wready && s_wlast;
 
+    // 页内字序号与剩余拍数并行相加，越过页末时直接构造截短后的地址。
+    // 非整字地址保留最低字节位，分页计算仍取完整总线拍数。
+    if (SIZE < 12 && ADDR_W >= 12) begin : g_page_words
+        localparam int p_word_bits = 12 - SIZE;
+        localparam int p_sum_bits = p_word_bits > 9 ? p_word_bits + 1 : 10;
+        logic [p_sum_bits-1:0] word_sum;
+        logic [p_word_bits:0] word_space;
+        logic unaligned, reaches_page;
+        logic [11:0] offset_nxt;
+
+        if (SIZE == 0) begin : g_byte_bus
+            assign unaligned = 1'b0;
+        end else begin : g_word_bus
+            assign unaligned = |address_q[SIZE-1:0];
+            assign offset_nxt[SIZE-1:0] = address_q[SIZE-1:0];
+        end
+        assign word_sum = p_sum_bits'(address_q[11:SIZE]) + p_sum_bits'(remaining_q);
+        assign word_space = {1'b0, ~address_q[11:SIZE]} + (p_word_bits+1)'(!unaligned);
+        assign reaches_page = (|word_sum[p_sum_bits-1:p_word_bits]) ||
+            (unaligned && (&word_sum[p_word_bits-1:0]));
+        assign page_beats = 13'(word_space);
+        assign segment_beats = reaches_page ? 9'(word_space) : remaining_q;
+        assign offset_nxt[11:SIZE] = reaches_page ?
+            {p_word_bits{unaligned}} : word_sum[p_word_bits-1:0];
+        if (ADDR_W > 12) begin : g_page_number
+            logic [ADDR_W-13:0] page_nxt;
+            logic unused_page_carry;
+            assign {unused_page_carry, page_nxt} =
+                {1'b0, address_q[ADDR_W-1:12]} + (ADDR_W-11)'(1);
+            assign address_nxt = {
+                (reaches_page && !unaligned) ? page_nxt : address_q[ADDR_W-1:12],
+                offset_nxt
+            };
+        end else begin : g_page_only
+            assign address_nxt = offset_nxt;
+        end
+    end else begin : g_wide_transfer
+        assign page_beats = (13'd4096 - {1'b0,address_q[11:0]}) >> SIZE;
+        assign segment_beats = 13'(remaining_q) < page_beats ? remaining_q : 9'(page_beats);
+        assign address_nxt = address_q + (ADDR_W'(segment_beats) << SIZE);
+    end
+
+    // 长度字段表示最后一拍，页内字序号直接与该字段相加即可判断是否跨页。
+    if (SIZE <= 4 && ADDR_W >= 12) begin : g_direct_page
+        localparam int p_word_bits = 12 - SIZE;
+        logic [p_word_bits:0] last_word;
+        logic unaligned;
+        if (SIZE == 0) begin : g_byte_bus
+            assign unaligned = 1'b0;
+        end else begin : g_word_bus
+            assign unaligned = |s_awaddr[SIZE-1:0];
+        end
+        assign last_word = (p_word_bits+1)'(s_awaddr[11:SIZE]) + (p_word_bits+1)'(s_awlen);
+        assign page_local = !(last_word[p_word_bits] || (unaligned && (&last_word[p_word_bits-1:0])));
+    end else begin : g_direct_wide_transfer
+        assign page_local = ({1'b0,s_awaddr[11:0]} + ((13'(s_awlen)+13'd1)<<SIZE)) <= 13'd4096;
+    end
+
     always_comb begin
-        page_local = ({1'b0,s_awaddr[11:0]} + ((13'(s_awlen)+13'd1)<<SIZE)) <= 13'd4096;
-        page_beats = (13'd4096 - {1'b0,address_q[11:0]}) >> SIZE;
-        segment_beats = 13'(remaining_q) < page_beats ? remaining_q : 9'(page_beats);
         s_awready = page_local ? m_awready : direct_outstanding == 0;
         m_awvalid = s_awvalid && page_local;
         m_awaddr = s_awaddr; m_awlen = s_awlen;
@@ -95,7 +150,7 @@ module axi_write_page_guard #(
                 end
                 ADDRESS: if (m_awready) begin
                     segment_left_q <= segment_beats;
-                    address_q <= address_q + (ADDR_W'(segment_beats)<<SIZE);
+                    address_q <= address_nxt;
                     state <= DATA;
                 end
                 DATA: if (s_wvalid && m_wready) begin
