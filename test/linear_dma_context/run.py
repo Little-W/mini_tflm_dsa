@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--contexts', type=int, choices=[1,4], default=4)
     parser.add_argument('--bus-width', type=int, choices=[32, 64], default=32)
     parser.add_argument('--dma-max-bytes', type=int, help='Optional physical burst limit; default: 256 bus beats')
+    parser.add_argument('--fpga', action='store_true')
     args = parser.parse_args()
     if args.dma_max_bytes is None:
         args.dma_max_bytes = 256 * (args.bus_width // 8)
@@ -30,16 +31,27 @@ def main():
         parser.error("DMA limit must be 1 through 256 complete bus beats with a power-of-two byte length")
     out = args.out.resolve();out.mkdir(parents=True, exist_ok=True)
     sources = [ROOT/'rtl/npu/dma/axi_linear_block_dma.sv',
+               ROOT/'rtl/common/REGFILE.v',
+               ROOT/'rtl/common/add_equal.sv',
                ROOT/'test/linear_dma_context/linear_dma_4k_top.sv',
                ROOT/'test/linear_dma_context/main.cpp', Path(__file__).resolve()]
     hashes = {str(p.relative_to(ROOT)): sha(p) for p in sources}
+    primitive_library_sha256 = None
+    primitive_args = []
+    if args.fpga:
+        import pyosys
+        library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
+        model = out/'lut6_2.sv'
+        model.write_text(re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S).group(0)+'\n')
+        primitive_library_sha256 = sha(library)
+        primitive_args = ['-DSYNTHESIS', str(model)]
     generate = [args.verilator, '--cc', '--exe', '--assert', '-Wno-fatal',
                 '--top-module', 'linear_dma_4k_top', '--Mdir', str(out/'obj'),
                 '--output-groups', '0', '--output-split', '12000',
                 f'-GREAD_OUTSTANDING={args.outstanding}', f'-GRD_CONTEXT_DEPTH={args.contexts}',
                 f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
                 '-CFLAGS', f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
-                *[str(p) for p in sources[:3]]]
+                *primitive_args, *[str(p) for p in sources[:5]]]
     compile_args = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_4k_top.mk', '-j', '1',
                     'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
                     'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E']
@@ -63,6 +75,7 @@ def main():
     (out/'summary.json').write_text(json.dumps({'passed': passed, 'outstanding': args.outstanding, 'contexts':args.contexts, 'dma_max_bytes': args.dma_max_bytes, 'bus_width': args.bus_width,
         'source_sha256': hashes, 'sources_unchanged_during_build': unchanged,
         'binary_sha256': sha(binary), 'generate_command': generate, 'compile_command': compile_args,
+        'fpga': args.fpga, 'primitive_library_sha256': primitive_library_sha256,
         'runs': records}, indent=2)+'\n')
     return 0 if passed else 1
 

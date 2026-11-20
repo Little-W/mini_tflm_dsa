@@ -29,6 +29,8 @@ def main():
         parser.error("DMA limit must be 1 through 256 complete bus beats with a power-of-two byte length")
     out = args.out.resolve();out.mkdir(parents=True, exist_ok=True)
     sources = [ROOT/'rtl/npu/dma/axi_linear_block_dma.sv',
+               ROOT/'rtl/common/REGFILE.v',
+               ROOT/'rtl/common/add_equal.sv',
                ROOT/'test/linear_dma_4k/linear_dma_4k_top.sv',
                ROOT/'test/linear_dma_4k/main.cpp', Path(__file__).resolve()]
     hashes = {str(p.relative_to(ROOT)): sha(p) for p in sources}
@@ -38,7 +40,7 @@ def main():
                 f'-GREAD_OUTSTANDING={args.outstanding}',
                 f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
                 '-CFLAGS', f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
-                *[str(p) for p in sources[:3]]]
+                *[str(p) for p in sources[:5]]]
     compile_args = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_4k_top.mk', '-j', '1',
                     'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
                     'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E']

@@ -55,3 +55,65 @@ python test/conv_frontend/tools/run_native_geometry.py --policies 1 2
 ## 范围说明
 
 本目录覆盖前端、缓存、精确范围读取器及两个适配模块。完整 NPU 的 IA 调度、脉动阵列、bias、逐通道量化、写回，以及 CPU/NMSIS 分发，由对应的 NPU/SoC 测试验证。模型/C 数值参考、实际 RTL 仿真与 NMSIS 二进制测试分别记录结果。
+
+## 描述符行范围检查
+
+描述符的行范围使用完整 33 位无符号语义检查 `tile_p0 + tile_rows <= position_count`。当 `RW < 32` 时，低 `RW` 位加法与高位大小、相等比较并行计算。配置完成时同时保存 `position_count` 和其高位减一值，使低位进位只参与最后的条件合并。复位、配置接受和配置完成的更新优先级保持一致。`RW >= 32` 使用完整 33 位表达式。
+
+```bash
+python3 test/conv_frontend/tools/row_range_equivalence.py \
+  --measure --out build/frontend_row_range/arithmetic
+python3 test/conv_frontend/tools/compare_frontend.py \
+  --reference-ref f5b7573 --out build/frontend_row_range/compare
+python3 test/conv_frontend/tools/synthesis.py \
+  --reference-ref f5b7573 --out build/frontend_row_range/synth_reference
+python3 test/conv_frontend/tools/synthesis.py \
+  --out build/frontend_row_range/synth_current
+```
+
+算术检查从 RTL 提取实际分段表达式与配置预计算表达式，对 `RW=1/2/3/4/5/8/16/31/32/33` 的全部输入编码证明结果一致，包含位置为零、低位进位、32 位位置越界以及宽行计数截断。
+
+公开输出比较在同一测试中运行修改前后的前端，共检查 1,665,368 个周期。数值测试包含 32/64 位总线、SIZE 4/8/16，以及 windowed 和 prefetch 配置，共 148 个任务；控制测试包含 23 项配置、非法描述符和恢复检查。所有返回数据、握手、写入位置、完成脉冲及错误状态均逐周期一致。
+
+`SIZE=16` 的范围检查结构使用 5 位行计数，新增 27 个配置触发器。独立映射统计如下。
+
+| 检查结构指标 | 修改前 | 分段比较 |
+|---|---:|---:|
+| 描述符输入到范围结果的组合单元数 | 13 | 6 |
+| 包含配置预计算的最长组合单元数 | 13 | 8 |
+| LUT 单元 | 27 | 51 |
+| 配置触发器 | 32 | 59 |
+| CARRY4 | 12 | 12 |
+
+独立前端综合保留真实缓存、预测器端口，并将这两个子模块作为黑盒。使用 `SIZE=16`、64 位总线时，前端为 6,485 个 LUT、3,148 个触发器、30 个 DSP 和 720 个 CARRY4；修改前分别为 6,435、3,121、30 和 708。完整前端的最长组合路径为 26 个单元，位于行坐标更新；修改前最长路径为 25 个单元，位于输入坐标计算。整机时序检查继续使用完整的模块连接和器件约束。
+
+## 坐标更新边界判断
+
+配置接受时保存 16 位卷积核末列。运行阶段通过当前 `kx_q` 与末列相等关系确定卷积核换行；`kernel_w` 为零时该关系保持无效。更新后的 35 位坐标通过高 19 位为零、低 16 位小于对应图像尺寸判断是否有效。完整坐标加法、符号扩展、溢出截断和所有公开接口周期保持一致。
+
+```bash
+python3 test/conv_frontend/tools/coordinate_boundary_equivalence.py \
+  --reference-ref b8b34d5 --out build/frontend_coordinate_boundary/arithmetic
+python3 test/conv_frontend/tools/compare_frontend.py \
+  --reference-ref b8b34d5 --out build/frontend_coordinate_boundary/compare
+python3 test/conv_frontend/tools/synthesis.py \
+  --reference-ref b8b34d5 --out build/frontend_coordinate_boundary/synth_reference
+python3 test/conv_frontend/tools/synthesis.py \
+  --out build/frontend_coordinate_boundary/synth_current
+```
+
+算术检查直接提取 RTL 的两种换行条件、四个坐标更新表达式和两种边界判断，并检查配置阶段的末列计算。SAT 证明覆盖全部 16 位几何参数、33 位增量和 35 位坐标编码，包括零尺寸、负坐标以及最高位溢出。公开输出比较检查 1,665,368 个周期，包含 148 个数值任务和 23 项控制、错误恢复检查。
+
+独立前端使用 `SIZE=16`、64 位总线，缓存和预测器保持相同接口黑盒。
+
+| 指标 | 提交 `b8b34d5` | 当前坐标边界结构 |
+|---|---:|---:|
+| LUT 单元 | 6,485 | 6,583 |
+| 触发器 | 3,148 | 3,164 |
+| CARRY4 | 720 | 719 |
+| DSP48E1 | 30 | 30 |
+| 最长寄存器间组合路径单元数 | 26 | 24 |
+| `kx_q` 到状态寄存器的组合路径单元数 | 26 | 21 |
+| `ox_q` 到状态寄存器的组合路径单元数 | 26 | 24 |
+
+综合脚本保存源码快照、SHA-256、映射后 JSON 和 `pre_lut.il`。后者保留映射前的寄存器名称，供寄存器间连通路径分析使用。这里的单元数用于比较组合结构；器件频率由完整 SoC 的布局布线时序报告确定。

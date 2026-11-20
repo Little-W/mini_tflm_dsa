@@ -17,6 +17,8 @@ def main():
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     packages=[ROOT/'rtl/npu/conv/conv_im2col_pkg.sv',ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
     rtl=packages+[p for p in sorted((ROOT/'rtl/npu/conv').rglob('*.sv')) if p not in packages]+sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
+    rtl += sorted((ROOT/'rtl/common').glob('*.v'))
+    rtl += [ROOT/'rtl/common/add_equal.sv']
     sources=[Path(__file__).resolve(),ROOT/'test/dma_abort/arbiter_read_tb.sv',*rtl]
     hashes={str(p.relative_to(ROOT)):sha(p) for p in sources}
     command=[args.verilator,'--binary','--timing','--assert','-Wno-fatal','-Wno-PINMISSING',

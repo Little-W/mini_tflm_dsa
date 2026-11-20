@@ -1,38 +1,31 @@
-# Outstanding window DMA tests
+# 有序窗口 DMA 验证
 
-This test instantiates the production `axi_block_dma_arbiter`, window descriptor
-queue, image frontend, shared window cache, and AXI read engine. It uses a
-32-bit AXI memory model and an independent NHWC window reference. Requests may
-visit spatial positions in any order; responses retain request order and the
-two-bit destination tag.
+测试实例包含生产使用的 `axi_block_dma_arbiter`、窗口描述队列、im2col 前端、共享窗口缓存和 AXI 读取模块。32 位 AXI 存储模型提供数据，独立 NHWC 模型计算每个窗口的期望值。窗口访问可以使用任意空间坐标，响应保持请求顺序和两位目标标签。
 
 ```sh
 python3 test/window_dma/run.py --out build/window_dma --jobs 2
+python3 test/window_dma/run.py --fpga --out build/window_dma_fpga --jobs 1
 ```
 
-The test covers:
+验证覆盖以下行为：
 
-- Four accepted descriptors before their responses are consumed.
-- A continuous resident-data stream with 128 descriptors, 512 response beats,
-  2,048 useful elements, and one accepted response beat per cycle.
-- Ordinary reads and window requests presented together, including an
-  ordinary grant held for three cycles before its start signal.
-- Arbitrary spatial and reduction coordinates, unaligned tensors, channel
-  tails, padding, random AXI delays, and response backpressure.
-- Read failures and invalid lengths `0`, `17`, `32`, and `33`; every accepted
-  descriptor receives one terminal error response before reconfiguration.
-- A configuration request held while four previous descriptors drain.
-- Configuration requests held while the first read address is blocked and
-  while the final response of one burst coincides with the next read address.
-- Reset with four outstanding descriptors, followed by a new configuration
-  and numerical checks on its responses.
+- 暂停响应接收后，描述队列可以保留四个已接受的请求。
+- 连续驻留数据包含 128 个描述、512 次响应和 2048 个有效元素；响应之间最多相隔三个周期，首个响应至最后响应的跨度不超过 1534 个周期。
+- 普通读取与窗口请求同时出现时，普通读取优先；授予准备和保持期间，窗口请求继续等待。测试还检查普通授予保持三个周期后启动的行为。
+- 窗口请求经过一个周期的寄存授予后接受，连续窗口描述的最小接受间隔为两个周期。已保存的窗口授予优先完成，随后到达的普通读取请求在其后接受。
+- 尚未接受的窗口授予可以由请求撤回、中止或配置请求取消；取消后没有新增响应或残留的忙碌状态。
+- 任意空间和归约坐标、未对齐张量、通道尾部、填充、随机 AXI 等待及响应背压。
+- 读取错误，以及长度为 0、17、32、33 的非法描述；每个已接受的描述均返回一次带原标签的终止错误响应。
+- 配置更新等待四个已接受的窗口描述全部完成。
+- 首个读取地址暂停期间，以及仍有多个窗口描述等待完成的最后 RLAST 周期，配置请求保持等待。
+- 四个描述尚未完成时复位，随后重新配置并校验新任务的数值结果。
 
-Every useful returned lane is checked after signed input-offset correction.
-The scoreboard also checks tags, response columns, masks, last markers, stable
-responses under backpressure, AXI address bounds, and the 4 KiB burst boundary.
-`summary.json` records the tested source hashes, executable hash, and completed
-scenario summaries. Reset cancellations are counted separately from completed
-descriptors.
+前端在消费当前字时将下一字请求写入请求寄存器，缓存随后执行同步读取。四通道 S8 驻留流采用上述三个周期的返回间隔检查。缓存自身的每周期读取能力由 `test/cache_pipeline` 单独检查。
 
-The complementary `test/vector_engine` suite checks DW, Pool, vector, Add,
-Softmax, quantization, output writes, and complete output memory contents.
+`--fpga` 使用官方 `LUT6_2`、`DSP48E1` 等原语功能模型，并启用 RTL 断言与 C++ 未定义行为检查。
+
+每个有效返回元素均与有符号输入偏移修正后的期望值比较。测试同时检查标签、列位置、掩码、最后响应标志、背压期间的数据稳定性、张量地址范围和 4 KiB 边界。`summary.json` 保存源码摘要、可执行文件摘要和完成场景；复位取消数量与完成数量分别统计。
+
+使用 `--reference-ref` 时，脚本将指定 Git 版本的 RTL 保存到独立目录，使用相同测试程序和输入再次运行。`resident_stream.csv` 记录连续驻留流的每周期请求、响应、AXI 事务及忙碌状态，两份文件必须完全一致。
+
+`test/vector_engine` 继续验证 DW、Pool、Vector、Add、Softmax、量化、输出写入及完整输出存储内容。

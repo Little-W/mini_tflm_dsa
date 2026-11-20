@@ -17,7 +17,7 @@ status={'scope':'production conv_axi_read_guard standalone RTL',
         'simulator':subprocess.check_output([sim,'--version'],text=True).strip(),'status':'FAIL'}
 log=RESULTS/'guard.log'
 with tempfile.TemporaryDirectory(prefix='conv_guard_',dir=os.environ.get('TMPDIR','/tmp')) as temporary:
-    command=[sim,'--binary','--timing','--assert','-Wall','-Wno-fatal',
+    command=[sim,'--binary','--timing','--assert','-DNPU_SIM_ASSERT','-Wall','-Wno-fatal',
              '--top-module','tb_conv_axi_read_guard','--Mdir',temporary,'-j','2',
              str(ROOT/'rtl/npu/conv/conv_axi_read_guard.sv'),str(HERE/'tb_conv_axi_read_guard.sv')]
     status['command']=command

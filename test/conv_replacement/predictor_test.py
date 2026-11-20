@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import sys
 
-from geometry_oracle import Geometry, INF, ROOT, relative, sha256
+from geometry_oracle import Current, Geometry, INF, ROOT, predict, relative, sha256
 
 
 HERE = Path(__file__).resolve().parent
@@ -47,6 +47,7 @@ def main():
     parser.add_argument("--out", type=Path, default=ROOT / "build/conv_replacement/predictor/validation.json")
     parser.add_argument("--verilator", type=Path,
                         default=Path(shutil.which("verilator") or "verilator"))
+    parser.add_argument("--reference-ref", help="Compare every public output with this Git revision")
     args = parser.parse_args()
     args.build = args.build.resolve()
     args.out = args.out.resolve()
@@ -79,6 +80,31 @@ def main():
     for name, changes in disabled:
         cases.append(disabled_case(name, replace(base, **changes)))
     cases.append(disabled_case("explicit_bypass", base, bypass=True))
+    boundaries = [
+        ("large_padding_dilation", replace(base, input_h=16, input_w=16,
+            kernel_h=5, kernel_w=5, output_h=3, output_w=3,
+            dilation_h=65535, dilation_w=65535, pad_top=65535, pad_left=65535,
+            r=1, groups=2), (0, 1, 2, 3, 15), (0, 1, 2, 3, 15)),
+        ("large_stride_mask", replace(base, input_h=65535, input_w=1,
+            kernel_h=1, kernel_w=1, output_h=65535, output_w=1,
+            stride_h=32768, stride_w=1, dilation_h=1, dilation_w=1,
+            pad_top=65535, pad_left=0, r=1, groups=2),
+            (0, 1, 32768, 32769, 65534), (0,)),
+    ]
+    for name, g, ys, xs in boundaries:
+        if g.unsupported_reasons():
+            raise AssertionError((name, g.unsupported_reasons()))
+        boundary_vectors = []
+        for iy in ys:
+            for ix in xs:
+                for group in range(2):
+                    for position in (0, 1, 2):
+                        current = Current(position, 0, group)
+                        boundary_vectors.append(dict(input_y=iy, input_x=ix, channel=0,
+                            current_p=position, current_q=0, current_group=group,
+                            expected_next_rank=predict(g, current, iy, ix, 0).next_rank))
+        cases.append(dict(case=name, source="coordinate width and signed boundary model",
+                          geometry=asdict(g), enabled=True, bypass=False, vectors=boundary_vectors))
     configs, vectors = [], []
     for case in cases:
         fields = [int(case["geometry"][name]) for name in CONFIG_FIELDS]
@@ -89,12 +115,41 @@ def main():
     config_path, vectors_path = args.build / "config.txt", args.build / "vectors.txt"
     config_path.write_text("\n".join(configs) + "\n")
     vectors_path.write_text("\n".join(vectors) + "\n")
-    sources = [ROOT / "rtl/npu/conv/conv_im2col_pkg.sv",
+    sources = [ROOT / "rtl/npu/conv/conv_im2col_pkg.sv", ROOT / "rtl/common/onehot_check.sv",
                ROOT / "rtl/npu/dma/cache/conv_next_use_predictor.sv", HERE / "predictor_tb.sv"]
+    if args.reference_ref:
+        reference = args.build / "reference_predictor.sv"
+        original = subprocess.check_output(["git", "show", args.reference_ref +
+            ":rtl/npu/dma/cache/conv_next_use_predictor.sv"], cwd=ROOT, text=True)
+        reference.write_text(original.replace("module conv_next_use_predictor", "module reference_conv_next_use_predictor"))
+        comparison = args.build / "predictor_tb.sv"
+        tb = (HERE / "predictor_tb.sv").read_text()
+        check = '''
+  logic reference_cfg_eligible, reference_cfg_busy, reference_enabled, reference_busy, reference_done;
+  logic [31:0] reference_next_rank;
+  integer compared_cycles=0;
+  reference_conv_next_use_predictor u_reference (
+    .cfg_eligible(reference_cfg_eligible), .cfg_busy(reference_cfg_busy), .enabled(reference_enabled),
+    .busy(reference_busy), .done(reference_done), .next_rank(reference_next_rank), .*);
+  always @(posedge clk) begin
+    #2;
+    if(rst_n) begin
+      compared_cycles++;
+      if({cfg_eligible,cfg_busy,enabled,busy,done,next_rank} !==
+         {reference_cfg_eligible,reference_cfg_busy,reference_enabled,reference_busy,reference_done,reference_next_rank})
+        $fatal(1,"predictor public output mismatch cycle=%0d",compared_cycles);
+    end
+  end
+'''
+        tb = tb.replace("  conv_next_use_predictor dut (.*);", "  conv_next_use_predictor dut (.*);\n" + check)
+        tb = tb.replace("    $finish;", '    @(negedge clk);\n    $display("PREDICTOR_CYCLE_COMPARE_PASS cycles=%0d",compared_cycles);\n    $finish;')
+        comparison.write_text(tb)
+        sources[-1] = comparison
+        sources.append(reference)
     source_hashes = {relative(path): sha256(path) for path in sources + [Path(__file__), HERE / "geometry_oracle.py"]}
     obj_dir = args.build / "obj_dir"
     binary = obj_dir / "Vpredictor_tb"
-    command([args.verilator, "--binary", "--timing", "--assert", "-DCONV_ASSERT", "-Wno-fatal",
+    command([args.verilator, "--binary", "--timing", "--assert", "-DCONV_ASSERT", "-DNPU_SIM_ASSERT", "-Wno-fatal",
              "--top-module", "predictor_tb", "--Mdir", obj_dir, "-j", "2", *sources],
             args.build / "build.log")
     command([binary, f"+CONFIG={config_path}", f"+VECTORS={vectors_path}", f"+CASES={len(cases)}"],
@@ -121,6 +176,10 @@ def main():
         "build": str(args.build), "build_log_sha256": sha256(args.build / "build.log"),
         "run_log_sha256": sha256(args.build / "run.log"),
     }
+    if args.reference_ref:
+        comparison = next(line for line in run_log.splitlines() if line.startswith("PREDICTOR_CYCLE_COMPARE_PASS"))
+        report.update(reference_ref=args.reference_ref, cycle_comparison=comparison,
+                      public_outputs_cycle_equivalent=True)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     # All generated vectors, logs and reports remain beneath selected build/output paths.

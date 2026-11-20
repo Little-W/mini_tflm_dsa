@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--verilator', default=shutil.which('verilator') or 'verilator')
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--out', type=Path, default=ROOT / 'build/cache_pipeline')
-    parser.add_argument('--profiles', nargs='+', default=['4:2', '4:1', '1:2'])
+    parser.add_argument('--profiles', nargs='+', default=['4:2', '2:2', '4:1', '1:2'])
     args = parser.parse_args()
     sources = [(ROOT / 'rtl/npu/dma' / name if name.startswith('cache/') else ROOT / 'rtl/npu/conv' / name) for name in
                ['cache/conv_read_cache.sv', 'cache/conv_sdp_ram.sv', 'conv_axi_span_reader.sv']]
@@ -68,7 +68,8 @@ def main():
         if result is None or len(cases) != 12:
             raise RuntimeError('Incomplete RTL scenarios')
         profiles.append({'passed': True, 'depth': depth, 'ways': ways,
-                         'binary_sha256': digest(binary), 'result': result, 'cases': cases})
+                         'binary_sha256': digest(binary), 'hit_latency_cycles': 2 if depth > 1 else 1,
+                         'result': result, 'cases': cases})
     for name, value in hashes.items():
         if digest(ROOT / name) != value:
             raise RuntimeError(f'Source changed during verification: {name}')

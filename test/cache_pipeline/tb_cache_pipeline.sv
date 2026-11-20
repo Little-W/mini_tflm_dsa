@@ -1,6 +1,7 @@
 module tb_cache_pipeline #(
     parameter int DEMAND_DEPTH=4,
-    parameter int CACHE_WAYS=2
+    parameter int CACHE_WAYS=2,
+    parameter int HIT_LATENCY=(DEMAND_DEPTH>1 ? 2 : 1)
 );
     logic clk=0;
     always #5 clk=~clk;
@@ -207,7 +208,7 @@ module tb_cache_pipeline #(
         old_bytes=read_bytes;first=accepted;
         stream(64,1);drain();
         for(int i=first;i<first+64;i++) begin
-            if(completed_cycle[i]-accepted_cycle[i]!=1) $fatal(1,"warm response latency");
+            if(completed_cycle[i]-accepted_cycle[i]!=HIT_LATENCY) $fatal(1,"warm response latency");
             if(i>first) begin
                 if(accepted_cycle[i]-accepted_cycle[i-1]!=1 ||
                    completed_cycle[i]-completed_cycle[i-1]!=1) $fatal(1,"warm pipeline throughput");

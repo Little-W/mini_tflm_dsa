@@ -13,6 +13,8 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
     int completions[5]='{default:0};
     int cases=0, checks=0, cancellations=0, simultaneous_release=0;
     int accepted_overlap=0;
+    int cycle=0, last_command_cycle=-1, minimum_command_interval=100000;
+    int grant_withdrawals=0, full_context_checks=0;
     wire rvalid=serve_reads && pending!=0;
 
     axi_block_dma_arbiter #(.DATA_WIDTH(8),.KERNEL_WIDTH(8),.SIZE(4),
@@ -44,7 +46,9 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
         checks++;
     endtask
     always @(posedge clk) begin
+        cycle++;
         if(!rst_n)begin
+            last_command_cycle=-1;
             pending<=0;ar_count<=0;r_count<=0;
             completions<='{default:0};
         end else begin
@@ -64,6 +68,15 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
                 if(dut.rd_dma_done)simultaneous_release++;
             end
             if(dut.rd_client_inflight[1]==2)accepted_overlap++;
+            if(dut.rd_dma_start)begin
+                if(last_command_cycle>=0 && cycle-last_command_cycle<minimum_command_interval)
+                    minimum_command_interval=cycle-last_command_cycle;
+                last_command_cycle=cycle;
+            end
+            check(int'(dut.rd_pending_count)==int'(dut.rd_client_inflight[0])+int'(dut.rd_client_inflight[1])+
+                  int'(dut.rd_client_inflight[2])+int'(dut.rd_client_inflight[3])+int'(dut.rd_client_inflight[4]),
+                  "Outstanding count matches all client contexts");
+            check(dut.rd_pending_count<=4,"At most four outstanding response contexts");
         end
     end
     task automatic reset_case;
@@ -120,7 +133,11 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
         for(int client=0;client<5;client++)begin
             reset_case();launch(1);
             wait(pending==1);@(negedge clk);
-            serve_reads=1;launch(client);abort=1;
+            request=5'(1<<client);start=5'(1<<client);
+            do @(negedge clk);while(!granted[client]);
+            serve_reads=1;
+            @(posedge clk);
+            @(negedge clk);request=0;start=0;abort=1;
             check(dut.rd_dma_done,"Older response completion coincides with cancellation");
             drained();
             check(ar_count==1 && completions[1]==1,"Concurrent release preserves the older completion exactly once");
@@ -131,9 +148,36 @@ module arbiter_read_tb #(parameter int BUS_WIDTH=32);
         abort=1;serve_reads=1;drained();
         check(ar_count==2 && completions[1]==2,"Accepted kernel contexts drain in order");
         recovery(1,2,2);
+        // 授予可以等待启动；请求撤销后不产生DMA命令。
+        for(int client=0;client<5;client++)begin
+            reset_case();
+            request=5'(1<<client);
+            do @(negedge clk);while(!granted[client]);
+            repeat(3)begin
+                check(granted[client] && !dut.rd_dma_start_q && busy==0,"Reserved grant holds before start");
+                @(negedge clk);
+            end
+            request=0;
+            @(negedge clk);
+            check(granted==0 && idle && ar_count==0,"Withdrawn request releases its grant");
+            grant_withdrawals++;
+            recovery(client,0,0);
+        end
+        // 两个权重请求和两个独立客户端占满四个返回上下文。
+        reset_case();launch(1);launch(1);launch(3);launch(0);
+        request=5'b00100;start=5'b00100;
+        repeat(8)begin
+            @(negedge clk);
+            check(dut.rd_pending_count==4 && !granted[2],"Fifth context waits for a completed response");
+            full_context_checks++;
+        end
+        request=0;start=0;serve_reads=1;drained();
+        check(ar_count==4 && completions[1]==2 && completions[3]==1 && completions[0]==1,
+              "Four accepted contexts retain their client tags");
+        check(minimum_command_interval==2,"Continuous command acceptance interval remains two cycles");
         check(cancellations==15 && simultaneous_release==5 && accepted_overlap>0,"Read cancellation boundary coverage");
-        $display("{\"passed\":true,\"bus_width\":%0d,\"cases\":%0d,\"checks\":%0d,\"cancelled_descriptors\":%0d,\"simultaneous_releases\":%0d,\"kernel_overlap_cycles\":%0d}",
-            BUS_WIDTH,cases,checks,cancellations,simultaneous_release,accepted_overlap);
+        $display("{\"passed\":true,\"bus_width\":%0d,\"cases\":%0d,\"checks\":%0d,\"cancelled_descriptors\":%0d,\"simultaneous_releases\":%0d,\"kernel_overlap_cycles\":%0d,\"minimum_command_interval\":%0d,\"grant_withdrawals\":%0d,\"full_context_checks\":%0d}",
+            BUS_WIDTH,cases,checks,cancellations,simultaneous_release,accepted_overlap,minimum_command_interval,grant_withdrawals,full_context_checks);
         $finish;
     end
     initial begin #100000;$fatal(1,"Read arbiter test timeout");end

@@ -23,8 +23,10 @@ module dma_page_guard_top (
     input logic m_bvalid, output logic m_bready, input logic [1:0] m_bresp,
     output logic read_idle, write_idle
 );
-    wire [31:0] cfg_base[4]='{default:'0};
-    wire [32:0] cfg_end[4]='{default:'0};
+    wire [31:0] cfg_base[4];
+    wire [32:0] cfg_end[4];
+    assign cfg_base = '{default:'0};
+    assign cfg_end = '{default:'0};
     conv_axi_read_guard #(.SPLIT_GEMM_4K(1'b1),.READ_OUTSTANDING(4)) u_read (
         .clk,.rst_n,.enable(1'b0),.cfg_valid(1'b0),.cfg_base,.cfg_end,
         .s_arvalid,.s_arready,.s_araddr,.s_arlen,.s_arsize(3'd2),.s_arburst(2'b01),

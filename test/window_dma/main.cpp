@@ -6,11 +6,16 @@
 #include <cstdint>
 #include <cstdio>
 #include <deque>
+#include <fstream>
 #include <random>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
+
+#ifndef WINDOW_RESPONSE_INTERVAL
+#define WINDOW_RESPONSE_INTERVAL 3
+#endif
 
 static void check(bool value,const std::string& message) {
   if(!value) throw std::runtime_error(message);
@@ -27,11 +32,13 @@ class Simulation {
   std::deque<Expected> expected;
   std::mt19937 random{11202026};
   std::vector<uint64_t> response_cycles;
+  std::ofstream window_trace;
+  bool trace_enabled=false;
   uint64_t cycle=0,accepted=0,completed=0,elements=0,error_responses=0,cancelled=0;
   uint64_t ordinary_completed=0,ordinary_words=0;
   bool random_memory=false,read_hold=false,inject_error=false,error_used=false,response_stalled=false;
-  bool block_ar=false,configure_on_handoff=false;
-  uint64_t configuration_handoffs=0;
+  bool block_ar=false,configure_at_burst_boundary=false;
+  uint64_t configuration_boundaries=0;
   std::array<uint32_t,9> held_response{};
 
   std::vector<int16_t> reference(const Request& request) const {
@@ -62,12 +69,13 @@ class Simulation {
       read_hold=true;
     }
     top.rvalid=read_hold;top.eval();
-    if(configure_on_handoff && top.rvalid && top.rready && top.rlast && top.arvalid && top.arready) {
+    if(configure_at_burst_boundary && top.rvalid && top.rready && top.rlast && expected.size()>1) {
+      bool address_transfer=top.arvalid && top.arready;
       top.cfg_valid=1;top.eval();
-      check(!top.cfg_ready && top.read_busy,"configuration accepted at read handoff");
-      check(top.rvalid && top.rready && top.rlast && top.arvalid && top.arready,
-            "pending configuration changed the read handoff");
-      configure_on_handoff=false;configuration_handoffs++;
+      check(!top.cfg_ready && top.read_busy,"configuration accepted with queued window descriptors");
+      check(top.rvalid && top.rready && top.rlast && bool(top.arvalid && top.arready)==address_transfer,
+            "pending configuration changed the active memory transfer");
+      configure_at_burst_boundary=false;configuration_boundaries++;
     }
     if(top.rst_n && top.cfg_valid && (!expected.empty() || !reads.empty() || read_hold))
       check(!top.cfg_ready && top.read_busy,"configuration accepted before read-side drain");
@@ -75,6 +83,23 @@ class Simulation {
       check(top.rsp_valid && response()==held_response,"response changed under backpressure");
     response_stalled=top.rsp_valid && !top.rsp_ready;held_response=response();
     bool request_fire=top.req_valid && top.req_ready;
+    if(trace_enabled && window_trace.is_open()) {
+      window_trace<<cycle<<','<<unsigned(top.req_valid)<<','<<unsigned(top.req_ready)
+        <<','<<top.req_p0<<','<<top.req_q0<<','<<top.req_cols<<','<<unsigned(top.req_tag)
+        <<','<<unsigned(top.rsp_valid)<<','<<unsigned(top.rsp_ready);
+      if(top.rsp_valid) {
+        for(auto value:response()) window_trace<<','<<value;
+      } else {
+        for(unsigned i=0;i<9;i++) window_trace<<",0";
+      }
+      window_trace<<','<<unsigned(top.arvalid)<<','<<unsigned(top.arready);
+      if(top.arvalid) window_trace<<','<<top.araddr<<','<<unsigned(top.arlen)<<','<<unsigned(top.arsize);
+      else window_trace<<",0,0,0";
+      window_trace<<','<<unsigned(top.rvalid)<<','<<unsigned(top.rready);
+      if(top.rvalid) window_trace<<','<<top.rdata<<','<<unsigned(top.rresp)<<','<<unsigned(top.rlast);
+      else window_trace<<",0,0,0";
+      window_trace<<','<<unsigned(top.busy)<<','<<unsigned(top.read_busy)<<'\n';
+    }
     if(top.rst_n && request_fire) {
       check(request!=nullptr,"request without reference");
       expected.push_back({*request,reference(*request),0});accepted++;
@@ -122,8 +147,8 @@ class Simulation {
   }
   void reset() {
     cancelled+=expected.size();expected.clear();reads.clear();read_hold=false;response_stalled=false;
-    block_ar=false;configure_on_handoff=false;
-    top.ordinary_req=0;top.ordinary_start=0;top.req_valid=0;top.cfg_valid=0;top.rsp_ready=1;top.rst_n=0;top.rvalid=0;
+    block_ar=false;configure_at_burst_boundary=false;
+    top.i_abort=0;top.ordinary_req=0;top.ordinary_start=0;top.req_valid=0;top.cfg_valid=0;top.rsp_ready=1;top.rst_n=0;top.rvalid=0;
     for(int i=0;i<4;i++) tick();top.rst_n=1;tick();
     check(!top.rsp_valid && !top.busy,"reset retained a window response");
   }
@@ -171,15 +196,15 @@ class Simulation {
     }
     block_ar=false;finish_pending_configuration(next);
   }
-  void configuration_at_read_handoff(const std::array<uint32_t,16>& next) {
+  void configuration_at_burst_boundary(const std::array<uint32_t,16>& next) {
     for(unsigned i=0;i<4;) {
       Request request{i,4*16,16,i};drive(request);if(tick(&request))i++;
     }
     top.req_valid=0;
     for(unsigned i=0;i<next.size();i++)top.config_words[i]=next[i];
-    uint64_t before=configuration_handoffs;configure_on_handoff=true;
+    uint64_t before=configuration_boundaries;configure_at_burst_boundary=true;
     finish_pending_configuration(next);
-    check(configuration_handoffs==before+1,"same-cycle read handoff was not exercised");
+    check(configuration_boundaries==before+1,"configuration with queued windows at a burst boundary was not exercised");
   }
   void configure_with_pending(std::array<uint32_t,16> next) {
     top.rsp_ready=0;
@@ -202,10 +227,49 @@ class Simulation {
     for(unsigned i=0;!top.cfg_ready && i<100000;i++)tick();
     check(top.cfg_ready && !top.busy,"new configuration did not become ready");
   }
+  void cancel_window_reservations() {
+    for(unsigned kind=0;kind<3;kind++) {
+      const auto before=accepted;
+      Request request{0,0,16,2};drive(request);
+      check(!tick(&request),"window accepted before registered grant");
+      check(top.window_granted,"window grant was not stored");
+      if(kind==0) top.req_valid=0;
+      if(kind==1) top.i_abort=1;
+      if(kind==2) top.cfg_valid=1;
+      check(!tick(&request),"cancelled window reservation was accepted");
+      top.req_valid=0;top.i_abort=0;top.cfg_valid=0;
+      for(unsigned i=0;i<4;i++) tick();
+      check(!top.window_granted && accepted==before && expected.empty() && !top.busy,
+            "cancelled window reservation retained state");
+    }
+  }
+  void ordinary_after_window_grant() {
+    const auto before=ordinary_completed, words=ordinary_words;
+    Request request{0,0,16,1};drive(request);
+    check(!tick(&request) && top.window_granted,"window reservation preparation");
+    top.ordinary_req=1;
+    check(tick(&request) && !top.ordinary_granted,"stored window grant was preempted");
+    top.req_valid=0;
+    for(unsigned i=0;!top.ordinary_granted;i++) {
+      check(i<8,"ordinary request after window grant timed out");tick();
+    }
+    top.ordinary_start=1;tick();top.ordinary_start=0;top.ordinary_req=0;
+    for(unsigned i=0;i<100000;i++) {
+      if(expected.empty() && !top.busy && ordinary_completed==before+1) break;
+      tick();
+    }
+    for(unsigned i=0;i<5;i++) tick();
+    check(ordinary_completed==before+1 && ordinary_words==words+4 && expected.empty() && !top.busy,
+          "ordinary read after stored window grant did not complete");
+  }
   void concurrent_ordinary(unsigned start_delay) {
     auto before=ordinary_completed,words=ordinary_words;
     Request request{0,0,16,2};drive(request);top.ordinary_req=1;top.ordinary_start=start_delay==0;
-    top.eval();check(!top.req_ready && top.ordinary_granted,"ordinary/window priority mismatch");
+    top.eval();check(!top.req_ready,"ordinary/window priority mismatch");
+    for(unsigned i=0;!top.ordinary_granted;i++) {
+      check(i<8,"ordinary grant preparation timeout");
+      check(!tick(&request),"window accepted during ordinary grant preparation");
+    }
     for(unsigned i=0;i<start_delay;i++) {
       check(!tick(&request),"window accepted during ordinary reservation");
       check(top.ordinary_granted && !top.req_ready,"ordinary reservation did not persist");
@@ -247,15 +311,33 @@ int main(int argc,char** argv) {
     s.run({{0,0,16,0}});
     size_t first=s.response_cycles.size();uint64_t before=s.elements;
     std::vector<Request> hits;for(unsigned i=0;i<128;i++) hits.push_back({0,0,16,i%4});
+    std::string trace_arg=Verilated::commandArgsPlusMatch("WINDOW_TRACE=");
+    const std::string trace_prefix="+WINDOW_TRACE=";
+    if(trace_arg.rfind(trace_prefix,0)==0) {
+      s.window_trace.open(trace_arg.substr(trace_prefix.size()));
+      check(s.window_trace.good(),"cannot open window trace");
+      s.trace_enabled=true;
+    }
     s.run(hits);
+    s.trace_enabled=false;s.window_trace.close();
     check(s.top.peak_outstanding==4,"four outstanding descriptors not reached");
     check(s.elements-before==128*16,"continuous hit payload count");
     auto last=s.response_cycles.size();
-    check(last-first==512 && s.response_cycles.back()-s.response_cycles[first]+1==512,"hit stream has a return bubble");
+    check(last-first==512,"continuous hit response count");
+    uint64_t maximum_interval=0;
+    for(size_t i=first+1;i<last;i++)
+      maximum_interval=std::max(maximum_interval,s.response_cycles[i]-s.response_cycles[i-1]);
+    check(maximum_interval<=WINDOW_RESPONSE_INTERVAL &&
+          s.response_cycles.back()-s.response_cycles[first]+1<=511*WINDOW_RESPONSE_INTERVAL+1,
+          "hit stream exceeded the selected pipeline response interval");
     check(s.top.request_response_overlap>0,"requests did not overlap responses");
-    std::printf("CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 interval=1\n");
+    std::printf("CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=%llu cycles=%llu\n",
+      static_cast<unsigned long long>(maximum_interval),
+      static_cast<unsigned long long>(s.response_cycles.back()-s.response_cycles[first]+1));
     s.concurrent_ordinary(0);s.concurrent_ordinary(3);
     std::printf("CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2\n");
+    s.cancel_window_reservations();s.ordinary_after_window_grant();
+    std::printf("CASE registered_window_grant withdrawal=1 abort=1 configuration=1 ordinary_after_grant=1\n");
     s.random_memory=true;s.configure(configuration(0x2ffd,7,3));
     std::vector<Request> mixed;
     for(unsigned i=0;i<240;i++) mixed.push_back({unsigned(s.random()%64),unsigned(s.random()%63),1+unsigned(s.random()%16),i%4});
@@ -286,9 +368,9 @@ int main(int argc,char** argv) {
     std::printf("CASE configuration_before_first_ar stalled_cycles=24 old_requests=1 recovery_requests=1\n");
     auto prefetch_config=configuration(0xc000,16,3);prefetch_config[14]=1;
     s.configure(prefetch_config);
-    s.configuration_at_read_handoff(configuration(0xd000,16,1));
+    s.configuration_at_burst_boundary(configuration(0xd000,16,1));
     s.run({{0,0,16,0}});
-    std::printf("CASE configuration_at_read_handoff simultaneous_last_r_ar=1 old_requests=4 recovery_requests=1\n");
+    std::printf("CASE configuration_at_burst_boundary pending_windows_at_last_r=1 old_requests=4 recovery_requests=1\n");
     s.configure(configuration());s.run({{0,0,16,0}});
     s.top.rsp_ready=0;
     for(unsigned i=0;i<4;) {Request request{0,0,16,i};s.drive(request);if(s.tick(&request))i++;}

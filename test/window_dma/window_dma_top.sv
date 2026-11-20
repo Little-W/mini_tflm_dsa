@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 module window_dma_top (
   input logic clk,rst_n,cfg_valid,
+  input logic i_abort,
+  output logic window_granted,
   output logic cfg_ready,
   input logic [31:0] config_words[16],
   input logic req_valid,
@@ -55,8 +57,9 @@ module window_dma_top (
   assign consecutive_responses=dma.u_dma.tb_observer.win_stat_consecutive_responses;
   assign request_response_overlap=dma.u_dma.tb_observer.win_stat_request_response_overlap;
   assign read_busy=dma.u_dma.rd_busy;
+  assign window_granted=dma.rd_grant_client==3'd5;
   axi_block_dma_arbiter #(.SIZE(16),.DMA_SIZE(64),.CONV_CACHE_SETS(128),.CONV_CACHE_POLICY(3)) dma (
-    .clk,.rst_n,.conv_cfg_valid(cfg_valid),.conv_cfg_ready(cfg_ready),.conv_enable(1'b1),
+    .clk,.rst_n,.abort(i_abort),.conv_cfg_valid(cfg_valid),.conv_cfg_ready(cfg_ready),.conv_enable(1'b1),
     .dma_range_enable(1'b0),.conv_cfg(cfg),.conv_range_base(range_base),.conv_range_end(range_end),
     .win_req_valid(req_valid),.win_req_ready(req_ready),.win_req_p0(req_p0),.win_req_q0(req_q0),
     .win_req_cols(req_cols),.win_req_tag(req_tag),.win_rsp_valid(rsp_valid),.win_rsp_ready(rsp_ready),

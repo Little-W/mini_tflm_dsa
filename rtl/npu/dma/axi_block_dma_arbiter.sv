@@ -213,10 +213,21 @@ module axi_block_dma_arbiter #(
     output logic                   m_axi_bready,
     input  logic [            1:0] m_axi_bresp,
     output logic                   idle,
-    output logic                   bus_error
+    output logic                   bus_error,
+    // 未计入同周期中止的权重命令资格，供顶层并行计算接收条件。
+    output logic                   o_kernel_eligible
 );
 
     localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_fpga_control = 1'b0;
+`elsif XILINX_FPGA
+    localparam bit p_fpga_control = 1'b1;
+`elsif SYNTHESIS
+    localparam bit p_fpga_control = 1'b1;
+`else
+    localparam bit p_fpga_control = 1'b0;
+`endif
 
     typedef enum logic [2:0] {
         C_IA     = 3'd0,
@@ -224,6 +235,7 @@ module axi_block_dma_arbiter #(
         C_BIAS   = 3'd2,
         C_QUANT  = 3'd3,
         C_DW     = 3'd4,
+        C_WINDOW = 3'd5,
         C_NONE   = 3'd7
     } client_e;
 
@@ -231,8 +243,10 @@ module axi_block_dma_arbiter #(
     logic rd_active;
     logic [1:0] rd_client_inflight [5];
     logic [3:0] rd_pending_count;
-    logic rd_command_space;
+    logic [2:0] rd_pending_count_q;
+    logic rd_command_space, rd_reservation_space;
     logic rd_dma_start;
+    logic [4:0] rd_client_accept;
     logic rd_dma_start_q, rd_dma_start_ready;
     wire rd_dma_cancel = abort && rd_dma_start_q;
     logic [2:0] rd_dma_tag_q, rd_dma_response_tag, rd_dma_finish_tag;
@@ -240,11 +254,18 @@ module axi_block_dma_arbiter #(
     logic rd_dma_done;
     logic rd_finish_beat;
     logic dma_conv_cfg_ready, dma_conv_cfg_valid;
-    assign rd_command_space = !rd_dma_start_q || rd_dma_start_ready;
-    assign rd_command_client = (rd_grant_client != C_NONE) ?
-                               rd_grant_client : rd_next_client;
+    // 授予仅使用已保存的请求方和命令寄存器状态，隔开请求优先选择与外部握手。
+    assign rd_command_space = !rd_dma_start_q;
+    assign rd_reservation_space = !rd_dma_start_q || rd_dma_start_ready;
+    assign rd_command_client = rd_grant_client;
     assign rd_response_client = client_e'(rd_dma_response_tag);
     assign rd_active = (rd_pending_count != 0);
+    // 各请求方直接记录自身握手，计数更新只依赖本通道的接收条件。
+    assign rd_client_accept[C_IA] = ia_start && ia_granted;
+    assign rd_client_accept[C_KERNEL] = kernel_start && kernel_granted;
+    assign rd_client_accept[C_BIAS] = bias_start && bias_granted;
+    assign rd_client_accept[C_QUANT] = quant_start && quant_granted;
+    assign rd_client_accept[C_DW] = dw_start && dw_granted;
     assign dma_conv_cfg_valid = conv_cfg_valid && !rd_active &&
                                 !rd_dma_start_q && rd_grant_client == C_NONE;
     assign conv_cfg_ready = dma_conv_cfg_ready && !rd_active &&
@@ -290,15 +311,25 @@ module axi_block_dma_arbiter #(
         else if (conv_cfg_valid && conv_cfg_ready) conv_job_q <= conv_enable;
     end
 
-    always_comb begin
-        rd_pending_count = '0;
-        for (int i = 0; i < 5; i++)
-            rd_pending_count += 4'(rd_client_inflight[i]);
+    // 在途总数与各请求方计数使用同一组接受、完成和取消事件更新。
+    // 完成旧描述符并取消暂存描述符时，同一边沿释放两个位置。
+    assign rd_pending_count = {1'b0, rd_pending_count_q};
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            rd_pending_count_q <= 3'd0;
+        end else begin
+            case ({rd_dma_start, rd_dma_done, rd_dma_cancel})
+                3'b100: rd_pending_count_q <= rd_pending_count_q + 3'd1;
+                3'b010, 3'b001, 3'b111: rd_pending_count_q <= rd_pending_count_q - 3'd1;
+                3'b011: rd_pending_count_q <= rd_pending_count_q - 3'd2;
+                default: ;
+            endcase
+        end
     end
 
     always_comb begin
         rd_next_client = C_NONE;
-        if (!abort && rd_command_space && !conv_cfg_valid && rd_pending_count < 4 &&
+        if (!abort && rd_reservation_space && !conv_cfg_valid && rd_pending_count < 4 &&
             (!conv_job_q || rd_pending_count == 0)) begin
             if (dw_req && rd_client_inflight[C_DW] == 0)
                 rd_next_client = C_DW;
@@ -310,46 +341,102 @@ module axi_block_dma_arbiter #(
                 rd_next_client = C_BIAS;
             else if (ia_req && rd_client_inflight[C_IA] == 0)
                 rd_next_client = C_IA;
+            else if (win_req_valid && !rd_active && !rd_dma_start_q)
+                rd_next_client = C_WINDOW;
         end
     end
 
-    // Reserve a grant through a registered client start. Each accepted
-    // descriptor keeps its client tag until its final registered response.
+    // 当前描述符交付DMA的边沿可同时保存下一次授予，连续命令保留两周期接收间隔。
+    // 请求撤销清除尚未启动的授予；已接收描述符按各自返回标记释放。
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             rd_grant_client <= C_NONE;
-            for (int i = 0; i < 5; i++) rd_client_inflight[i] <= '0;
         end else begin
             if (rd_dma_start) rd_grant_client <= C_NONE;
             else if (rd_grant_client == C_NONE) rd_grant_client <= rd_next_client;
+            else if (rd_grant_client == C_WINDOW) begin
+                if (abort || conv_cfg_valid || !win_req_valid || win_req_ready)
+                    rd_grant_client <= C_NONE;
+            end
             else if (abort || (rd_grant_client == C_IA && !ia_req) ||
                      (rd_grant_client == C_KERNEL && !kernel_req) ||
                      (rd_grant_client == C_BIAS && !bias_req) ||
                      (rd_grant_client == C_QUANT && !quant_req_eff) ||
                      (rd_grant_client == C_DW && !dw_req))
                 rd_grant_client <= C_NONE;
-            for (int i = 0; i < 5; i++) begin
-                case ({rd_dma_start && rd_command_client == client_e'(i),
-                       rd_dma_done && rd_response_client == client_e'(i),
-                       rd_dma_cancel && rd_dma_tag_q == 3'(i)})
-                    3'b100: rd_client_inflight[i] <= rd_client_inflight[i] + 1'b1;
-                    3'b001, 3'b010, 3'b111:
-                        rd_client_inflight[i] <= rd_client_inflight[i] - 1'b1;
-                    3'b011: rd_client_inflight[i] <= rd_client_inflight[i] - 2'd2;
+        end
+    end
+    // 每个请求方独立更新两位计数，接收、完成和取消按同一张更新表合并。
+    for (genvar client_index = 0; client_index < 5; client_index++) begin : g_client_inflight
+        logic [1:0] count_q, count_d;
+        logic client_done, client_cancel;
+
+        assign rd_client_inflight[client_index] = count_q;
+        assign client_done = rd_dma_done && rd_response_client == client_e'(client_index);
+        assign client_cancel = rd_dma_cancel && rd_dma_tag_q == 3'(client_index);
+        if (p_fpga_control) begin : g_fpga
+            logic [4:0] count_i_value;
+            logic count_i_one;
+            assign count_i_value = {client_cancel, client_done, rd_client_accept[client_index], count_q};
+            assign count_i_one = 1'b1;
+            LUT6_2 #(.INIT(64'h93c9_c96c_5aa5_a55a)) u_count (
+                .I0(count_i_value[0]), .I1(count_i_value[1]), .I2(count_i_value[2]),
+                .I3(count_i_value[3]), .I4(count_i_value[4]), .I5(count_i_one),
+                .O5(count_d[0]), .O6(count_d[1])
+            );
+        end else begin : g_generic
+            always_comb begin
+                count_d = count_q;
+                case ({rd_client_accept[client_index], client_done, client_cancel})
+                    3'b100: count_d = count_q + 2'd1;
+                    3'b001, 3'b010, 3'b111: count_d = count_q - 2'd1;
+                    3'b011: count_d = count_q - 2'd2;
                     default: ;
                 endcase
             end
         end
+        always_ff @(posedge clk) begin
+            if (!rst_n) count_q <= 2'd0;
+            else count_q <= count_d;
+        end
     end
-    assign dw_granted = !abort && rd_command_space && rd_command_client == C_DW;
+    assign o_kernel_eligible = rd_command_space && rd_command_client == C_KERNEL;
+    // 请求方译码与命令位置、中止条件在同一级完成，保留所有请求方的同周期撤销。
+    if (p_fpga_control) begin : g_fpga_read_grant
+        localparam logic [63:0] p_parameter_grants = ENABLE_QUANT_CLIENT != 0 ?
+            64'h0000_0008_0000_0004 : 64'h0000_0000_0000_0004;
+        logic [4:0] grant_i_value;
+        logic grant_i_one;
+        logic unused_dw_grant;
+
+        assign grant_i_value = {abort, rd_dma_start_q, rd_command_client};
+        assign grant_i_one = 1'b1;
+        LUT6_2 #(.INIT(64'h0000_0002_0000_0001)) u_operand_grant (
+            .I0(grant_i_value[0]), .I1(grant_i_value[1]), .I2(grant_i_value[2]),
+            .I3(grant_i_value[3]), .I4(grant_i_value[4]), .I5(grant_i_one),
+            .O5(ia_granted), .O6(kernel_granted)
+        );
+        LUT6_2 #(.INIT(p_parameter_grants)) u_parameter_grant (
+            .I0(grant_i_value[0]), .I1(grant_i_value[1]), .I2(grant_i_value[2]),
+            .I3(grant_i_value[3]), .I4(grant_i_value[4]), .I5(grant_i_one),
+            .O5(bias_granted), .O6(quant_granted)
+        );
+        LUT6_2 #(.INIT(64'h0000_0000_0000_0010)) u_depthwise_grant (
+            .I0(grant_i_value[0]), .I1(grant_i_value[1]), .I2(grant_i_value[2]),
+            .I3(grant_i_value[3]), .I4(grant_i_value[4]), .I5(grant_i_one),
+            .O5(dw_granted), .O6(unused_dw_grant)
+        );
+    end else begin : g_generic_read_grant
+        assign dw_granted = !abort && rd_command_space && rd_command_client == C_DW;
+        assign ia_granted = !abort && rd_command_space && rd_command_client == C_IA;
+        assign kernel_granted = !abort && rd_command_space && rd_command_client == C_KERNEL;
+        assign bias_granted = !abort && rd_command_space && rd_command_client == C_BIAS;
+        assign quant_granted = !abort && (ENABLE_QUANT_CLIENT != 0) && rd_command_space &&
+                               rd_command_client == C_QUANT;
+    end
     assign dw_busy = (rd_client_inflight[C_DW] != 0);
     assign dw_done = rd_response_client == C_DW && rd_dma_done;
     assign dw_error = dw_done && dma_rd_error;
-    assign ia_granted = !abort && rd_command_space && rd_command_client == C_IA;
-    assign kernel_granted = !abort && rd_command_space && rd_command_client == C_KERNEL;
-    assign bias_granted = !abort && rd_command_space && rd_command_client == C_BIAS;
-    assign quant_granted = !abort && (ENABLE_QUANT_CLIENT != 0) && rd_command_space &&
-                           rd_command_client == C_QUANT;
     assign ia_busy = (rd_client_inflight[C_IA] != 0);
     assign kernel_busy = (rd_client_inflight[C_KERNEL] != 0);
     assign bias_busy = (rd_client_inflight[C_BIAS] != 0);
@@ -532,17 +619,34 @@ module axi_block_dma_arbiter #(
     // Registered command descriptor separates client arbitration from DMA
     // address arithmetic. Client grants and completion tags keep their order.
     logic win_dma_req_ready, win_accept_allowed;
-    // A granted ordinary read owns the registered command stage through
-    // launch. Window descriptors use credits only when that stage is free.
-    assign win_accept_allowed = !rd_active && rd_command_client == C_NONE &&
-                                !rd_dma_start && !rd_dma_start_q;
+    // 窗口与普通读请求共用寄存授予，窗口接受后释放本次授予。
+    // 描述符保持到接受边沿，请求优先选择只驱动授予寄存器。
+    assign win_accept_allowed = !abort && !conv_cfg_valid && !rd_active &&
+                                rd_command_client == C_WINDOW && !rd_dma_start_q;
     assign win_req_ready = win_dma_req_ready && win_accept_allowed;
     assign idle = !rd_active && rd_grant_client == C_NONE &&
                   !rd_dma_busy && !wr_dma_busy && !rd_dma_start_q &&
-                  !rd_dma_start && !wr_dma_start;
-    assign bus_error = (m_axi_rvalid && m_axi_rready && m_axi_rresp[1]) ||
-                       (m_axi_bvalid && m_axi_bready && m_axi_bresp[1]) ||
-                       (rd_dma_done && dma_rd_error) || (wr_dma_done && dma_wr_error);
+                  !wr_dma_start;
+    // 写响应资格和完成错误提前计算，读写就绪同时直接参与末级错误判断。
+    if (p_fpga_control) begin : g_fpga_bus_error
+        logic completion_error, write_response_error;
+        logic [5:0] error_i_value;
+        logic unused_bus_error;
+
+        assign completion_error = (rd_dma_done && dma_rd_error) || (wr_dma_done && dma_wr_error);
+        assign write_response_error = m_axi_bvalid && m_axi_bresp[1];
+        assign error_i_value = {completion_error, write_response_error, m_axi_bready,
+                               m_axi_rresp[1], m_axi_rvalid, m_axi_rready};
+        LUT6_2 #(.INIT(64'hffffffffff808080)) u_bus_error (
+            .I0(error_i_value[0]), .I1(error_i_value[1]), .I2(error_i_value[2]),
+            .I3(error_i_value[3]), .I4(error_i_value[4]), .I5(error_i_value[5]),
+            .O5(unused_bus_error), .O6(bus_error)
+        );
+    end else begin : g_generic_bus_error
+        assign bus_error = (m_axi_rvalid && m_axi_rready && m_axi_rresp[1]) ||
+            (m_axi_bvalid && m_axi_bready && m_axi_bresp[1]) ||
+            (rd_dma_done && dma_rd_error) || (wr_dma_done && dma_wr_error);
+    end
     logic rd_dma_linear_read_mode_q;
     logic rd_dma_im2col_q;
     logic [31:0] rd_dma_p0_q, rd_dma_q0_q, rd_dma_group_q;

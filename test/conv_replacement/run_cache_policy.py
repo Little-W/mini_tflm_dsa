@@ -49,8 +49,10 @@ def main():
             report.update(command=manifest['command'], warnings=manifest['warnings'],
                           reused_build=str(existing))
         else:
-            command = [sim, '--binary', '--timing', '--assert', '-DCONV_ASSERT', '-Wall', '-Wno-fatal',
-                       '--top-module', 'tb_cache_policy', '--Mdir', str(out / 'obj'), '-j', '2'] + list(map(str, sources))
+            command = [sim, '--binary', '--timing', '--assert', '-DCONV_ASSERT', '-DNPU_SIM_ASSERT', '-Wall', '-Wno-fatal',
+                       '--top-module', 'tb_cache_policy', '--Mdir', str(out / 'obj'), '-j', '2',
+                       '--output-groups', '0', '--output-split', '12000', '-CFLAGS', '-std=c++20 -O1',
+                       '-MAKEFLAGS', 'OPT_FAST=-O1 OPT_SLOW=-O0 VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E'] + list(map(str, sources))
             report['command'] = command
             with (out / 'build.log').open('w') as stream:
                 subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, check=True)
@@ -70,6 +72,9 @@ def main():
         report.update(status='PASS', binary_sha256=sha(binary),
                       summary=next(s for s in output.splitlines() if s.startswith('CACHE_POLICY_PASS')),
                       cases=[s for s in output.splitlines() if s.startswith('CACHE_POLICY_CASE')])
+        for suffix in ('*.o', '*.gch'):
+            for path in (out / 'obj').glob(suffix):
+                path.unlink()
     except (subprocess.SubprocessError, OSError, RuntimeError, StopIteration) as exc:
         report['reason'] = str(exc)
     (out / 'status.json').write_text(json.dumps(report, indent=2) + '\n')

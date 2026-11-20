@@ -22,6 +22,28 @@ module conv_next_use_predictor (
       if (value[bit_n]) result = 6'(bit_n);
     return result;
   endfunction
+  // 非零幂次直接由并行分组判断，结果与配置寄存器同时采样。
+  logic [31:0] row_shape_i_value;
+  logic row_shape_o_valid;
+  assign row_shape_i_value = cfg_r;
+  onehot_check #(.p_width(32), .p_allow_zero(1'b0)) u_row_shape (
+    .i_value(row_shape_i_value),
+    .o_valid(row_shape_o_valid)
+  );
+  logic [15:0] height_shape_i_value;
+  logic height_shape_o_valid;
+  assign height_shape_i_value = cfg.stride_h;
+  onehot_check #(.p_width(16), .p_allow_zero(1'b0)) u_height_shape (
+    .i_value(height_shape_i_value),
+    .o_valid(height_shape_o_valid)
+  );
+  logic [15:0] width_shape_i_value;
+  logic width_shape_o_valid;
+  assign width_shape_i_value = cfg.stride_w;
+  onehot_check #(.p_width(16), .p_allow_zero(1'b0)) u_width_shape (
+    .i_value(width_shape_i_value),
+    .o_valid(width_shape_o_valid)
+  );
   logic [5:0] cfg_r_shift, cfg_h_shift, cfg_w_shift;
   logic [2:0] cfg_phase;
   logic cfg_basic_q;
@@ -37,11 +59,24 @@ module conv_next_use_predictor (
   wire cfg_product_start = cfg_phase>=1 && cfg_phase<=4 &&
       cfg_multiply_phase==0 && !cfg_product_done &&
       (cfg_phase!=1 || (cfg_basic_q && cfg_taps_q!=0 && cfg_taps_q<=25));
-  wire [32:0] cfg_block_round = {1'b0,cfg_points_q} + {1'b0,block_rows_q} - 33'd1;
+  logic [32:0] cfg_block_round;
+  logic [32:0] cfg_round_sum, cfg_round_carry;
+  logic [16:0] cfg_round_low, cfg_round_high_zero, cfg_round_high_one;
+  logic unused_cfg_round_zero_carry, unused_cfg_round_one_carry;
+
+  // 取整偏移先压缩为两个操作数，高位并行计算两种进位结果。
+  assign cfg_round_sum = ~({1'b0, cfg_points_q} ^ {1'b0, block_rows_q});
+  assign cfg_round_carry = {cfg_points_q | block_rows_q, 1'b0};
+  assign cfg_round_low = {1'b0, cfg_round_sum[15:0]} + {1'b0, cfg_round_carry[15:0]};
+  assign {unused_cfg_round_zero_carry, cfg_round_high_zero} =
+    {1'b0, cfg_round_sum[32:16]} + {1'b0, cfg_round_carry[32:16]};
+  assign {unused_cfg_round_one_carry, cfg_round_high_one} =
+    {1'b0, cfg_round_sum[32:16]} + {1'b0, cfg_round_carry[32:16]} + 18'd1;
+  assign cfg_block_round = {
+    cfg_round_low[16] ? cfg_round_high_one : cfg_round_high_zero, cfg_round_low[15:0]};
   assign cfg_r_shift = log2_pow2(cfg_r);
   assign cfg_h_shift = log2_pow2({16'd0,cfg.stride_h});
   assign cfg_w_shift = log2_pow2({16'd0,cfg.stride_w});
-  assign cfg_busy = cfg_phase != 0;
   assign cfg_eligible = enabled;
 
   logic [15:0] kh_q, kw_q, oh_q, ow_q, cg_q, dh_q, dw_q, ph_q, pw_q;
@@ -49,7 +84,8 @@ module conv_next_use_predictor (
   logic [31:0] groups_q, group_span_q, block_span_q;
   logic [31:0] y_limit_q, x_limit_q;
   logic [15:0] h_mask_q, w_mask_q;
-  logic [31:0] y_q, x_q, channel_q, current_pb_q, current_local_q, current_group_q;
+  logic [32:0] y_pad_q, x_pad_q;
+  logic [31:0] channel_q, current_pb_q, current_local_q, current_group_q;
   logic [15:0] ky_q, kx_q;
   logic [4:0] tap_index_q;
   logic issue_complete;
@@ -57,7 +93,10 @@ module conv_next_use_predictor (
   logic [6:0] pipe_valid, pipe_last;
   logic [31:0] mul_y_s0, mul_x_s0;
   logic [4:0] tap_s0, tap_s1;
-  logic signed [63:0] ny_s0, nx_s0;
+  logic signed [33:0] ny_s0, nx_s0;
+  logic [1:0][32:0] coordinate_pad;
+  logic [1:0][31:0] coordinate_product;
+  logic [1:0][33:0] coordinate_difference;
   logic [31:0] oy_s0, ox_s0;
   logic coordinate_good_s0, coordinate_good_s1;
   logic [15:0] oy_s1, ox_s1;
@@ -66,7 +105,7 @@ module conv_next_use_predictor (
   logic [31:0] block_s3, local_s3, block_s4, group_s4, local_s4, local_s5;
   logic [31:0] product_block_s5, product_group_s5;
   logic [31:0] rank_s6;
-  logic [31:0] selected_rank_s6, best_next;
+  logic [31:0] best_next;
   logic last_tap;
 
   always_comb begin
@@ -120,42 +159,64 @@ module conv_next_use_predictor (
     end
   end
 
+  // 高十八位的两种借位结果并行计算，低十六位只选择相应结果。
+  assign coordinate_pad[0] = y_pad_q;
+  assign coordinate_pad[1] = x_pad_q;
+  assign coordinate_product[0] = mul_y_s0;
+  assign coordinate_product[1] = mul_x_s0;
+  for (genvar axis = 0; axis < 2; axis++) begin : g_coordinate_difference
+    logic [16:0] low_difference;
+    logic [17:0] high_without_borrow, high_with_borrow;
+
+    assign low_difference = {1'b0, coordinate_pad[axis][15:0]} -
+      {1'b0, coordinate_product[axis][15:0]};
+    assign high_without_borrow = {1'b0, coordinate_pad[axis][32:16]} -
+      {2'b0, coordinate_product[axis][31:16]};
+    assign high_with_borrow = {1'b0, coordinate_pad[axis][32:16]} -
+      {2'b0, coordinate_product[axis][31:16]} - 18'd1;
+    assign coordinate_difference[axis] = {
+      low_difference[16] ? high_with_borrow : high_without_borrow,
+      low_difference[15:0]};
+  end
+  assign ny_s0 = $signed(coordinate_difference[0]);
+  assign nx_s0 = $signed(coordinate_difference[1]);
+
   always_comb begin
-    ny_s0 = $signed({32'd0,y_q}) + $signed({48'd0,ph_q}) - $signed({32'd0,mul_y_s0});
-    nx_s0 = $signed({32'd0,x_q}) + $signed({48'd0,pw_q}) - $signed({32'd0,mul_x_s0});
     oy_s0 = 32'(ny_s0) >> h_shift_q;
     ox_s0 = 32'(nx_s0) >> w_shift_q;
-    coordinate_good_s0 = ny_s0>=0 && nx_s0>=0 &&
-      ($unsigned(ny_s0) & 64'(h_mask_q))==0 &&
-      ($unsigned(nx_s0) & 64'(w_mask_q))==0 &&
-      $unsigned(ny_s0)<64'(y_limit_q) && $unsigned(nx_s0)<64'(x_limit_q);
+    coordinate_good_s0 = ny_s0>=34'sd0 && nx_s0>=34'sd0 &&
+      ($unsigned(ny_s0) & 34'(h_mask_q))==34'd0 &&
+      ($unsigned(nx_s0) & 34'(w_mask_q))==34'd0 &&
+      $unsigned(ny_s0)<34'(y_limit_q) && $unsigned(nx_s0)<34'(x_limit_q);
     last_tap = ky_q==kh_q-16'd1 && kx_q==kw_q-16'd1;
-    selected_rank_s6 = candidate_good_s6 ? rank_s6 : INF;
-    best_next = (selected_rank_s6<best_q) ? selected_rank_s6 : best_q;
+    // 候选比较与有效性判断并行，无效候选直接保留当前最早访问位置。
+    best_next = candidate_good_s6 && rank_s6<best_q ? rank_s6 : best_q;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       enabled<=0;busy<=0;done<=0;next_rank<=INF;best_q<=INF;
-      cfg_phase<=0;cfg_basic_q<=0;
+      cfg_phase<=0;cfg_busy<=0;cfg_basic_q<=0;
       kh_q<=0;kw_q<=0;oh_q<=0;ow_q<=0;cg_q<=0;dh_q<=0;dw_q<=0;ph_q<=0;pw_q<=0;
       block_shift_q<=0;h_shift_q<=0;w_shift_q<=0;
       groups_q<=0;block_rows_q<=0;group_span_q<=0;block_span_q<=0;
       y_limit_q<=0;x_limit_q<=0;h_mask_q<=0;w_mask_q<=0;
-      y_q<=0;x_q<=0;channel_q<=0;current_pb_q<=0;current_local_q<=0;current_group_q<=0;
+      y_pad_q<=33'd0;x_pad_q<=33'd0;
+      channel_q<=0;current_pb_q<=0;current_local_q<=0;current_group_q<=0;
       ky_q<=0;kx_q<=0;tap_index_q<=0;issue_complete<=0;pipe_valid<='0;pipe_last<='0;
     end else begin
       done<=0;
       if (cfg_valid) begin
         enabled<=0;busy<=0;next_rank<=INF;pipe_valid<='0;pipe_last<='0;
-        cfg_phase<=1;
+        // 配置忙标志与阶段同时更新，使用方直接读取寄存结果。
+        cfg_phase<=1;cfg_busy<=1;
         cfg_basic_q<=!cfg.input_s16 && !cfg.bypass_cache &&
           cfg.input_base[3:0]==0 && cfg.input_c!=0 && cfg.input_c[3:0]==0 &&
           cfg.group_c!=0 && cfg.group_c[3:0]==0 && cfg.group_offset[3:0]==0 &&
           cfg.input_h!=0 && cfg.input_w!=0 && cfg.output_h!=0 && cfg.output_w!=0 &&
-          cfg_r!=0 && (cfg_r & (cfg_r-32'd1))==0 && cfg_r[31:28]==0 && cfg_groups!=0 &&
-          cfg.stride_h!=0 && (cfg.stride_h & (cfg.stride_h-16'd1))==0 &&
-          cfg.stride_w!=0 && (cfg.stride_w & (cfg.stride_w-16'd1))==0 &&
+          row_shape_o_valid && cfg_r[31:28]==0 && cfg_groups!=0 &&
+          height_shape_o_valid &&
+          width_shape_o_valid &&
           cfg.dilation_h!=0 && cfg.dilation_w!=0;
         cfg_points_q<=32'(cfg.output_h)*32'(cfg.output_w);
         cfg_taps_q<=32'(cfg.kernel_h)*32'(cfg.kernel_w);
@@ -169,7 +230,7 @@ module conv_next_use_predictor (
       end else if (cfg_phase!=0) begin
         if (cfg_phase==1 && (!cfg_basic_q || cfg_taps_q==0 || cfg_taps_q>25)) begin
           enabled<=1'b0;
-          cfg_phase<=0;
+          cfg_phase<=0;cfg_busy<=0;
         end else if (cfg_product_done) begin
           case (cfg_phase)
             1: begin
@@ -180,19 +241,24 @@ module conv_next_use_predictor (
             2: begin
               group_span_q<=cfg_product[31:0];
               cfg_phase<=cfg_product[63:32]!=0 ? 3'd0 : 3'd3;
+              cfg_busy<=cfg_product[63:32]==0;
             end
             3: begin
               block_span_q<=cfg_product[31:0];
               cfg_phase<=cfg_product[63:32]!=0 ? 3'd0 : 3'd4;
+              cfg_busy<=cfg_product[63:32]==0;
             end
             default: begin
               enabled<=cfg_product<64'hffff_ffff;
-              cfg_phase<=0;
+              cfg_phase<=0;cfg_busy<=0;
             end
           endcase
         end
       end else if (start && !busy) begin
-        y_q<=input_y;x_q<=input_x;channel_q<=channel;
+        // 33位求和保留32位坐标加16位填充的进位，每次启动后保持至候选处理结束。
+        y_pad_q <= {1'b0, input_y} + {17'd0, ph_q};
+        x_pad_q <= {1'b0, input_x} + {17'd0, pw_q};
+        channel_q<=channel;
         current_pb_q<=current_p>>block_shift_q;
         current_local_q<=((current_q>>4)<<block_shift_q) | (current_p & (block_rows_q-32'd1));
         current_group_q<=current_group;

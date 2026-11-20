@@ -7,14 +7,17 @@ ROOT=Path(__file__).resolve().parents[2]
 def main():
     p=argparse.ArgumentParser();p.add_argument('--cache-sets',type=int,default=128)
     p.add_argument('--cache-policy',type=int,default=3);p.add_argument('--no-prefetch',action='store_true')
+    p.add_argument('--verilator',default='verilator');p.add_argument('--out',type=Path)
     a=p.parse_args();pf=not a.no_prefetch
-    out=ROOT/f'build/windowed_cache/s{a.cache_sets}_p{a.cache_policy}_pf{int(pf)}';out.mkdir(parents=True,exist_ok=True)
+    out=(a.out.resolve() if a.out else ROOT/f'build/windowed_cache/s{a.cache_sets}_p{a.cache_policy}_pf{int(pf)}');out.mkdir(parents=True,exist_ok=True)
     files=[(ROOT/'rtl/npu/dma'/n if n.startswith('cache/') else ROOT/'rtl/npu/conv'/n) for n in ['conv_im2col_pkg.sv','cache/conv_sdp_ram.sv','cache/conv_next_use_predictor.sv','conv_axi_span_reader.sv','cache/conv_read_cache.sv','conv_im2col_frontend.sv']]
     files += [ROOT/'test/conv_reuse/axi_counted_memory.sv',ROOT/'test/windowed_cache/tb_windowed_cache.sv']
     import runpy
     files = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](files)
     source_sha={str(path.relative_to(ROOT)):hashlib.sha256(path.read_bytes()).hexdigest() for path in files+[Path(__file__)]}
-    cmd=[shutil.which('verilator') or 'verilator','--binary','--timing','--assert','-DCONV_ASSERT','-DNPU_SIM_ASSERT','-Wall','-Wno-fatal','--top-module','tb_windowed_cache',f'-GCACHE_SETS={a.cache_sets}',f'-GCACHE_POLICY={a.cache_policy}',f'-GPREFETCH={int(pf)}','--Mdir',str(out/'obj'),'-j','2',*map(str,files)]
+    cmd=[shutil.which(a.verilator) or a.verilator,'--binary','--timing','--assert','-DCONV_ASSERT','-DNPU_SIM_ASSERT','-Wall','-Wno-fatal','--top-module','tb_windowed_cache',f'-GCACHE_SETS={a.cache_sets}',f'-GCACHE_POLICY={a.cache_policy}',f"-GPREFETCH=1'b{int(pf)}",'--Mdir',str(out/'obj'),'-j','2',
+         '--output-groups','0','--output-split','12000','-CFLAGS','-std=c++20 -O1',
+         '-MAKEFLAGS','OPT_FAST=-O1 OPT_SLOW=-O0 VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E',*map(str,files)]
     with (out/'build.log').open('w') as f:subprocess.run(cmd,cwd=ROOT,stdout=f,stderr=subprocess.STDOUT,check=True)
     warnings=[line for line in (out/'build.log').read_text().splitlines() if line.startswith('%Warning')]
     reviewed={'UNUSEDSIGNAL','UNUSEDPARAM','BLKSEQ','PROCASSINIT','SYNCASYNCNET'}
@@ -31,5 +34,7 @@ def main():
     (out/'results.json').write_text(json.dumps({'status':'PASS','bus_bits':32,'cache_data_bytes':a.cache_sets*32,
         'policy':a.cache_policy,'prefetch':pf,'source_sha256':source_sha,
         'binary_sha256':hashlib.sha256((out/'obj/Vtb_windowed_cache').read_bytes()).hexdigest(),'cases':rows},indent=2)+'\n')
+    for suffix in ('*.o','*.gch'):
+        for path in (out/'obj').glob(suffix):path.unlink()
     print('WINDOW_CACHE_PASS '+str(out/'results.json'))
 if __name__=='__main__':main()

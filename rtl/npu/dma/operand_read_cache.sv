@@ -29,10 +29,10 @@ module operand_read_cache #(
 );
     localparam int AL=$clog2(A_BYTES), BL=$clog2(B_BYTES), BI=BL-4;
     localparam int QW=$clog2(OUTSTANDING), CW=$clog2(OUTSTANDING+1);
-    (* ram_style="block" *) logic [31:0] a_ram[A_BYTES/4];
-    (* ram_style="block" *) logic [31:0] b_ram[B_BYTES/4];
-    (* ram_style="block" *) logic [AW-AL-1:0] a_tags[A_BYTES/16];
-    (* ram_style="block" *) logic [AW-BL-1:0] b_tags[B_BYTES/16];
+    logic [31:0] a_ram[A_BYTES/4];
+    logic [31:0] b_ram[B_BYTES/4];
+    logic [AW-AL-1:0] a_tags[A_BYTES/16];
+    logic [AW-BL-1:0] b_tags[B_BYTES/16];
     localparam int AVDEPTH=A_BYTES/64, BVDEPTH=B_BYTES/64;
     localparam int APAGE=(AVDEPTH<256)?AVDEPTH:256, BPAGE=(BVDEPTH<256)?BVDEPTH:256;
     localparam int APW=$clog2(APAGE), BPW=$clog2(BPAGE);
@@ -40,9 +40,9 @@ module operand_read_cache #(
     wire [BVDEPTH-1:0] b_valid_bank[4];
     logic flush_pending;
     always_ff @(posedge clk) flush_pending <= !rst_n || flush;
-    (* ram_style="registers" *) logic q_hit[OUTSTANDING], q_a[OUTSTANDING], q_b[OUTSTANDING], q_wide[OUTSTANDING];
-    (* ram_style="registers" *) logic [AL-5:0] q_ai[OUTSTANDING][4];
-    (* ram_style="registers" *) logic [BI-1:0] q_bi[OUTSTANDING][4];
+    logic q_hit[OUTSTANDING], q_a[OUTSTANDING], q_b[OUTSTANDING], q_wide[OUTSTANDING];
+    logic [AL-5:0] q_ai[OUTSTANDING][4];
+    logic [BI-1:0] q_bi[OUTSTANDING][4];
     logic [AW-1:0] q_addr[OUTSTANDING], q_fetch[OUTSTANDING];
     logic [7:0] q_len[OUTSTANDING], q_first[OUTSTANDING];
     logic [QW-1:0] head, tail;

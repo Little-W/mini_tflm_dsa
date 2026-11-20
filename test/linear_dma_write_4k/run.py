@@ -17,7 +17,8 @@ def sha(path):
 
 def build(rtl, out, outstanding, args):
     out.mkdir(parents=True, exist_ok=True)
-    sources = [rtl, Path(__file__).with_name('linear_dma_write_4k_top.sv'),
+    sources = [rtl, ROOT/'rtl/common/REGFILE.v', ROOT/'rtl/common/add_equal.sv',
+               Path(__file__).with_name('linear_dma_write_4k_top.sv'),
                Path(__file__).with_name('main.cpp'), Path(__file__).resolve()]
     hashes = {str(p): sha(p) for p in sources}
     generate = [args.verilator, '--cc', '--exe', '--assert', '-Wno-fatal',
@@ -26,7 +27,7 @@ def build(rtl, out, outstanding, args):
                 f'-GWRITE_OUTSTANDING={outstanding}',
                 f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
                 '-CFLAGS', f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
-                *map(str, sources[:3])]
+                *map(str, sources[:5])]
     compile_command = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_write_4k_top.mk',
                        '-j', str(args.jobs), 'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
                        'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E']

@@ -161,8 +161,18 @@ module axi_dual_block_dma #(
     localparam int CONV_RW = $clog2(IM2COL_SIZE+1);
     localparam bit CONV_SUPPORTED = DATA_WIDTH >= 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
                                    REG_WIDTH == 32 && IM2COL_SIZE <= SIZE;
+    localparam bit p_response_tag_use_lut =
+`ifdef ASIC_SYNTHESIS
+        1'b0;
+`elsif XILINX_FPGA
+        1'b1;
+`elsif SYNTHESIS
+        1'b1;
+`else
+        1'b0;
+`endif
 
-    logic job_conv, job_range;
+    logic job_conv, job_read_guard;
     logic cfg_fire;
     logic linear_start, linear_busy, linear_done, linear_finish, linear_error;
     logic linear_start_ready;
@@ -209,9 +219,8 @@ module axi_dual_block_dma #(
     logic [2:0] fe_arsize;
     logic [1:0] fe_arburst, fe_rresp;
 
-    // An im2col command is captured before launching the frontend. Ownership
-    // lasts through its matrix output and all pending cache/predictor activity.
-    // Failed descriptors complete exactly once without issuing an AXI read.
+    // 普通 im2col 描述符在接收边沿保存，下一边沿起由前端接收。
+    // 已接收事务在中止后继续执行，直到矩阵输出和缓存活动全部结束。
     logic conv_active, conv_pending, conv_finished, conv_command_error;
     logic conv_done_r, conv_done_error, descriptor_error, command_im2col;
     logic [31:0] p0_q, q0_q, group_q;
@@ -221,11 +230,14 @@ module axi_dual_block_dma #(
     logic [31:0] win_frontend_p0,win_frontend_q0,win_frontend_cols;
     logic win_cols_valid;
     logic [CONV_CW-1:0] win_response_col;
+    logic frontend_i_tile_valid;
+    logic [31:0] frontend_i_tile_p0, frontend_i_tile_q0, frontend_i_tile_group;
+    logic [CONV_RW-1:0] frontend_i_tile_rows, frontend_i_tile_cols;
+    logic [SLOT_W-1:0] frontend_i_tile_slot;
 
     assign win_rsp_col=32'(win_response_col);
-    assign win_cols_valid=win_frontend_cols>0 && win_frontend_cols<=32'(IM2COL_SIZE);
     assign win_req_ready=win_queue_req_ready && !conv_cfg_valid && !rd_start;
-    conv_window_queue #(.DEPTH(WINDOW_OUTSTANDING),.COL_W(CONV_CW)) u_window_queue (
+    conv_window_queue #(.DEPTH(WINDOW_OUTSTANDING),.COL_W(CONV_CW),.p_max_cols(IM2COL_SIZE)) u_window_queue (
         .clk,.rst_n,.configure(cfg_fire),
         .enable(CONV_SUPPORTED && job_conv && !conv_active && !conv_pending && !linear_busy),
         .req_valid(win_req_valid && !conv_cfg_valid && !rd_start),.req_ready(win_queue_req_ready),
@@ -235,10 +247,12 @@ module axi_dual_block_dma #(
         .rsp_last(win_rsp_last),.rsp_error(win_rsp_error),.busy(win_busy),
         .frontend_valid(win_frontend_valid),.frontend_active(win_frontend_active),.frontend_ready(fe_tile_ready),
         .frontend_p0(win_frontend_p0),.frontend_q0(win_frontend_q0),.frontend_cols(win_frontend_cols),
+        .frontend_cols_valid(win_cols_valid),
         .frontend_rsp_valid(fe_wr_valid),.frontend_rsp_ready(win_frontend_rsp_ready),
         .frontend_rsp_col(fe_col),.frontend_rsp_data(fe_data),.frontend_rsp_mask(fe_mask),
         .frontend_rsp_last(fe_wr_last),.frontend_error(fe_error || fe_tile_error));
-    logic accept_read, accept_linear, accept_image, image_start_ready, direct_issue;
+    logic accept_read, accept_linear, accept_image, image_start_ready;
+    logic win_payload_select;
     assign rd_busy = linear_busy || conv_active || fe_busy || win_busy || !guard_idle || !mux_idle;
     assign rd_done = linear_done || conv_done_r;
     // Linear completion keeps the original final-R-edge launch window. The
@@ -253,12 +267,41 @@ module axi_dual_block_dma #(
     assign accept_linear = rd_start && !abort && !rd_im2col && rd_start_ready;
     assign accept_image = rd_start && !abort && rd_im2col && image_start_ready;
     assign accept_read = accept_linear || accept_image;
-    assign rd_response_tag = ((fe_wr_valid && !win_frontend_active) || conv_done_r) ?
-                             conv_tag_q : linear_response_tag;
+    if (p_response_tag_use_lut) begin : g_response_tag_fpga
+        logic [2:0] tag_i_flags;
+        logic [RD_TAG_WIDTH-1:0] tag_i_conv, tag_i_linear, tag_o_value;
+        logic tag_i_zero;
+
+        assign tag_i_flags = {conv_done_r, win_frontend_active, fe_wr_valid};
+        assign tag_i_conv = conv_tag_q;
+        assign tag_i_linear = linear_response_tag;
+        assign tag_i_zero = 1'b0;
+        // 窗口归属、完成状态和两个标签值在同一级选择，保留无效周期的输出值。
+        for (genvar bit_index=0;bit_index<RD_TAG_WIDTH;bit_index++) begin : g_bit
+            LUT6 #(.INIT(64'hff0d_f200_ff0d_f200)) u_tag (
+                .I0(tag_i_flags[0]), .I1(tag_i_flags[1]), .I2(tag_i_flags[2]),
+                .I3(tag_i_conv[bit_index]), .I4(tag_i_linear[bit_index]),
+                .I5(tag_i_zero), .O(tag_o_value[bit_index])
+            );
+        end
+        assign rd_response_tag = tag_o_value;
+    end else begin : g_response_tag_generic
+        assign rd_response_tag = ((fe_wr_valid && !win_frontend_active) || conv_done_r) ?
+                                 conv_tag_q : linear_response_tag;
+    end
     assign rd_finish_tag = linear_finish ? linear_finish_tag : conv_tag_q;
     assign linear_start = accept_linear;
-    assign direct_issue=accept_image && CONV_SUPPORTED && job_conv && !fe_error &&
-      rd_rows_to_read>0 && rd_rows_to_read<=REG_WIDTH'(IM2COL_SIZE) && fe_tile_ready;
+    // 普通描述符只在窗口队列为空时接收，等待前端期间禁止窗口入队。
+    // 队列占用状态直接选择已准备字段，最终返回周期只控制该项是否有效。
+    assign win_payload_select=win_busy;
+    assign frontend_i_tile_valid = conv_pending || win_frontend_valid;
+    assign frontend_i_tile_p0 = win_payload_select ? win_frontend_p0 : p0_q;
+    assign frontend_i_tile_q0 = win_payload_select ? win_frontend_q0 : q0_q;
+    assign frontend_i_tile_rows = win_payload_select ? CONV_RW'(1) : rows_q;
+    assign frontend_i_tile_cols = win_payload_select ?
+        (win_cols_valid ? CONV_RW'(win_frontend_cols) : CONV_RW'(IM2COL_SIZE+1)) : cols_q;
+    assign frontend_i_tile_slot = slot_q;
+    assign frontend_i_tile_group = group_q;
     assign rd_error = linear_done ? linear_error :
                       conv_done_r ? conv_done_error :
                       command_im2col ? (conv_command_error || fe_error) : linear_error;
@@ -269,7 +312,7 @@ module axi_dual_block_dma #(
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            job_conv <= 1'b0; job_range <= 1'b0; conv_active <= 1'b0; conv_pending <= 1'b0;
+            job_conv <= 1'b0; job_read_guard <= 1'b0; conv_active <= 1'b0; conv_pending <= 1'b0;
             conv_finished <= 1'b0; conv_command_error <= 1'b0;
             conv_done_r <= 1'b0; conv_done_error <= 1'b0;
             descriptor_error <= 1'b0; command_im2col <= 1'b0;
@@ -279,7 +322,8 @@ module axi_dual_block_dma #(
             conv_done_r <= 1'b0;
             if (cfg_fire) begin
                 job_conv <= conv_enable && CONV_SUPPORTED;
-                job_range <= dma_range_enable;
+                // 读取保护和请求复用共用已保存的模式条件，返回路径直接使用寄存位。
+                job_read_guard <= (conv_enable && CONV_SUPPORTED) || dma_range_enable;
                 descriptor_error <= conv_enable && !CONV_SUPPORTED;
                 conv_command_error <= 1'b0;
             end
@@ -297,7 +341,7 @@ module axi_dual_block_dma #(
                         conv_pending <= 1'b0; conv_finished <= 1'b1;
                         conv_command_error <= 1'b1; descriptor_error <= 1'b1;
                     end else begin
-                        conv_pending <= !direct_issue; conv_finished <= 1'b0;
+                        conv_pending <= 1'b1; conv_finished <= 1'b0;
                         conv_command_error <= 1'b0;
                     end
                 end
@@ -398,13 +442,10 @@ module axi_dual_block_dma #(
         ) u_frontend (
             .clk, .rst_n, .cfg_valid(cfg_fire && conv_enable), .cfg_ready(fe_cfg_ready),
             .cfg(conv_cfg), .cfg_sched_r(conv_sched_r), .cfg_sched_groups(conv_sched_groups),
-            .tile_valid(conv_pending || direct_issue || win_frontend_valid), .tile_ready(fe_tile_ready),
-            .tile_p0(win_frontend_valid ? win_frontend_p0 : direct_issue ? rd_p0 : p0_q),
-            .tile_q0(win_frontend_valid ? win_frontend_q0 : direct_issue ? rd_q0 : q0_q),
-            .tile_rows(win_frontend_valid ? CONV_RW'(1) : direct_issue ? CONV_RW'(rd_rows_to_read) : rows_q),
-            .tile_cols(win_frontend_valid ? (win_cols_valid ? CONV_RW'(win_frontend_cols) : CONV_RW'(IM2COL_SIZE+1)) : direct_issue ? ((rd_valid_cols>0 && rd_valid_cols<=REG_WIDTH'(IM2COL_SIZE)) ?
-                CONV_RW'(rd_valid_cols) : CONV_RW'(IM2COL_SIZE)) : cols_q),
-            .tile_slot(direct_issue ? rd_slot_id : slot_q), .tile_group(direct_issue ? rd_group : group_q),
+            .tile_valid(frontend_i_tile_valid), .tile_ready(fe_tile_ready),
+            .tile_p0(frontend_i_tile_p0), .tile_q0(frontend_i_tile_q0),
+            .tile_rows(frontend_i_tile_rows), .tile_cols(frontend_i_tile_cols),
+            .tile_slot(frontend_i_tile_slot), .tile_group(frontend_i_tile_group),
             .wr_valid(fe_wr_valid), .wr_ready(win_frontend_active ? win_frontend_rsp_ready : 1'b1), .wr_slot(fe_slot),
             .wr_row(fe_row), .wr_col(fe_col), .wr_data(fe_data), .wr_mask(fe_mask),
             .tile_done(fe_done), .tile_error(fe_tile_error), .error(fe_error), .busy(fe_busy), .wr_last(fe_wr_last),
@@ -414,25 +455,28 @@ module axi_dual_block_dma #(
         );
         // Conv's ordinary matrix reads also need allocation-tail clipping.
         // The im2col span reader already emits exact legal byte/word transfers.
+        logic read_mux_i_arvalid, read_mux_o_arvalid;
         conv_axi_read_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH),
             .SPLIT_GEMM_4K(1'b1), .READ_OUTSTANDING(READ_OUTSTANDING)) u_read_guard (
-            .clk, .rst_n, .enable(job_conv || job_range), .cfg_valid(cfg_fire),
+            .clk, .rst_n, .enable(job_read_guard), .cfg_valid(cfg_fire),
             .cfg_base(conv_range_base), .cfg_end(conv_range_end),
             .s_arvalid(linear_arvalid), .s_arready(linear_arready),
             .s_araddr(linear_araddr), .s_arlen(linear_arlen),
             .s_arsize(linear_arsize), .s_arburst(linear_arburst),
             .s_rvalid(linear_rvalid), .s_rready(linear_rready),
             .s_rdata(linear_rdata), .s_rresp(linear_rresp), .s_rlast(linear_rlast),
-            .m_arvalid(guard_arvalid), .m_arready(guard_arready),
+            .m_arvalid(guard_arvalid), .o_arb_arvalid(read_mux_i_arvalid), .m_arready(guard_arready),
             .m_araddr(guard_araddr), .m_arlen(guard_arlen),
             .m_arsize(guard_arsize), .m_arburst(guard_arburst),
             .m_rvalid(guard_rvalid), .m_rready(guard_rready),
             .m_rdata(guard_rdata), .m_rresp(guard_rresp), .m_rlast(guard_rlast),
             .idle(guard_idle)
         );
+        // 保护模式的请求参与通道仲裁，直通模式的地址有效信号直接送往总线。
+        assign m_axi_arvalid = job_read_guard ? read_mux_o_arvalid : guard_arvalid;
         conv_axi_read_mux #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH)) u_read_mux (
-            .clk, .rst_n, .enable(job_conv || job_range),
-            .a_arvalid(guard_arvalid), .a_arready(guard_arready),
+            .clk, .rst_n, .enable(job_read_guard),
+            .a_arvalid(read_mux_i_arvalid), .a_arready(guard_arready),
             .a_araddr(guard_araddr), .a_arlen(guard_arlen),
             .a_arsize(guard_arsize), .a_arburst(guard_arburst),
             .a_rvalid(guard_rvalid), .a_rready(guard_rready),
@@ -441,7 +485,7 @@ module axi_dual_block_dma #(
             .b_araddr(fe_araddr), .b_arlen(fe_arlen), .b_arsize(fe_arsize), .b_arburst(fe_arburst),
             .b_rvalid(fe_rvalid), .b_rready(fe_rready),
             .b_rdata(fe_rdata), .b_rresp(fe_rresp), .b_rlast(fe_rlast),
-            .m_arvalid(m_axi_arvalid), .m_arready(m_axi_arready),
+            .m_arvalid(read_mux_o_arvalid), .m_arready(m_axi_arready),
             .m_araddr(m_axi_araddr), .m_arlen(m_axi_arlen),
             .m_arsize(m_axi_arsize), .m_arburst(m_axi_arburst),
             .m_rvalid(m_axi_rvalid), .m_rready(m_axi_rready),

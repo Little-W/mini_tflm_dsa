@@ -6,7 +6,8 @@ module conv_window_queue #(
   parameter int TAG_W=2,
   parameter int COL_W=4,
   parameter int PTR_W=(DEPTH<=1 ? 1 : $clog2(DEPTH)),
-  parameter int COUNT_W=$clog2(DEPTH+1)
+  parameter int COUNT_W=$clog2(DEPTH+1),
+  parameter int p_max_cols=16
 ) (
   input logic clk,rst_n,configure,enable,
   input logic req_valid,
@@ -23,6 +24,7 @@ module conv_window_queue #(
   output logic frontend_valid,frontend_active,
   input logic frontend_ready,
   output logic [31:0] frontend_p0,frontend_q0,frontend_cols,
+  output logic frontend_cols_valid,
   input logic frontend_rsp_valid,
   output logic frontend_rsp_ready,
   input logic [COL_W-1:0] frontend_rsp_col,
@@ -30,14 +32,25 @@ module conv_window_queue #(
   input logic [3:0] frontend_rsp_mask,
   input logic frontend_rsp_last,frontend_error);
   logic [31:0] p0[DEPTH],q0[DEPTH],cols[DEPTH];
+  logic cols_valid[DEPTH];
   logic [TAG_W-1:0] tags[DEPTH];
   logic [PTR_W-1:0] head,tail,present;
   logic [COUNT_W-1:0] count,next_count;
   logic active,failed,accept,retire,launch,response_fire;
+  logic descriptor_available,descriptor_prepared;
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
     return value==PTR_W'(DEPTH-1) ? '0 : value+1'b1;
   endfunction
-  assign busy=count!=0;
+  // 占用标志与计数在同一边沿更新，描述符选择直接读取寄存结果。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      busy <= 1'b0;
+    end else if (configure) begin
+      busy <= 1'b0;
+    end else begin
+      busy <= next_count != COUNT_W'(0);
+    end
+  end
   assign frontend_active=active;
   assign rsp_valid=count!=0 && (failed || frontend_error || (active && frontend_rsp_valid));
   assign rsp_error=failed || frontend_error;
@@ -53,13 +66,27 @@ module conv_window_queue #(
                    (count<COUNT_W'(DEPTH) || retire);
   assign accept=req_valid && req_ready;
   assign present=active ? increment(head) : head;
-  assign frontend_valid=enable && !configure && !failed && !frontend_error &&
-    (!active || retire) && count>(active ? COUNT_W'(1) : COUNT_W'(0));
-  assign frontend_p0=p0[present];
-  assign frontend_q0=q0[present];
-  assign frontend_cols=cols[present];
+  assign descriptor_available=count>(active ? COUNT_W'(1) : COUNT_W'(0));
+  // 准备项始终占用队列位置，显式非空条件使空闲配置与前端发送保持互斥。
+  assign frontend_valid=enable && !configure && !failed && !frontend_error && busy &&
+    (!active || retire) && descriptor_prepared;
   assign frontend_rsp_ready=active && rsp_ready;
   assign launch=frontend_valid && frontend_ready;
+  // 当前窗口执行时提前保存下一项描述符，队列索引变化在此结束组合计算。
+  // 已准备项仍占用原队列位置，直至对应的最后一次响应被接收。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) descriptor_prepared<=1'b0;
+    else if (configure) descriptor_prepared<=1'b0;
+    else descriptor_prepared<=descriptor_available && !launch;
+  end
+  always_ff @(posedge clk) begin
+    if (descriptor_available) begin
+      frontend_p0<=p0[present];
+      frontend_q0<=q0[present];
+      frontend_cols<=cols[present];
+      frontend_cols_valid<=cols_valid[present];
+    end
+  end
   always_comb begin
     next_count=count;
     case ({accept,retire})
@@ -80,6 +107,8 @@ module conv_window_queue #(
 
       if (accept) begin
         p0[tail]<=req_p0;q0[tail]<=req_q0;cols[tail]<=req_cols;tags[tail]<=req_tag;
+        // 列范围在请求接收时计算，与对应描述符占用同一个队列位置。
+        cols_valid[tail]<=req_cols>0 && req_cols<=32'(p_max_cols);
         tail<=increment(tail);
       end
       if (retire) begin head<=increment(head);active<=0;end

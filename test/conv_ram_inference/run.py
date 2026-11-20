@@ -11,6 +11,7 @@ import subprocess
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 SOURCE = ROOT / "rtl/npu/dma/cache/conv_sdp_ram.sv"
+STORAGE = ROOT / "rtl/common/REGFILE.v"
 
 
 def main():
@@ -23,7 +24,8 @@ def main():
     status = {
         "scope": "generic Yosys memory inference; not device mapping, full-NPU synthesis, timing or power",
         "status": "FAIL",
-        "source_sha256": {str(SOURCE.relative_to(ROOT)): hashlib.sha256(SOURCE.read_bytes()).hexdigest()},
+        "source_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+                          for path in (SOURCE, STORAGE)},
     }
     log = out / "yosys.log"
     netlist = out / "ram.json"
@@ -35,8 +37,8 @@ def main():
         # Paths are quoted for Yosys's own command parser, never passed to a shell.
         quote = lambda path: '"' + str(path).replace('\\', '\\\\').replace('"', '\\"') + '"'
         script = (
-            f"read_verilog -sv {quote(SOURCE)}; hierarchy -top conv_sdp_ram; "
-            "proc; opt; memory_dff; memory_share; memory_collect; stat; "
+            f"read_verilog -sv {quote(SOURCE)} {quote(STORAGE)}; hierarchy -check -top conv_sdp_ram; "
+            "proc; flatten; opt; memory_dff; memory_share; memory_collect; stat; "
             f"write_json {quote(netlist)}"
         )
         command = [executable, "-Q", "-T", "-p", script]
