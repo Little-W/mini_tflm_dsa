@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""使用官方 DSP48E1 功能模型验证指数累加、舍入进位、清除和有效位。"""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[2]
+HERE = Path(__file__).resolve().parent
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--worker", type=Path)
+    args = parser.parse_args()
+    if args.worker:
+        from pyosys import libyosys
+        libyosys.run_pass("script " + shlex.quote(str(args.worker)))
+        return
+    import pyosys
+    out = args.out.resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    library = Path(pyosys.__file__).parent / "share/xilinx/cells_sim.v"
+    model = re.search(r"^module DSP48E1\b.*?^endmodule", library.read_text(), re.MULTILINE | re.DOTALL).group(0)
+    model = re.sub(r"\bspecify\b.*?\bendspecify\b", "", model, flags=re.DOTALL)
+    model_file = out / "xilinx_dsp48e1.sv"
+    model_file.write_text(model + "\n")
+    sources = [ROOT / "rtl/npu/conv/vector_softmax.sv", HERE / "accumulator_formal.sv"]
+    script = out / "run.ys"
+    script.write_text(
+        "read_verilog -formal -sv -D VERIFIC " +
+        " ".join(shlex.quote(str(path)) for path in sources + [model_file]) + "\n"
+        "prep -top accumulator_formal -flatten\n"
+        "async2sync\n"
+        "opt_clean\n"
+        "sat -seq 1 -tempinduct -initsteps 3 -maxsteps 6 -set-at 1 rst_n 0 -prove-asserts -verify\n"
+    )
+    with (out / "formal.log").open("w") as stream:
+        result = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--out", str(out),
+                                 "--worker", str(script)], cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
+    log = (out / "formal.log").read_text()
+    passed = result.returncode == 0 and "Induction step proven" in log
+    summary = {
+        "passed": passed,
+        "method": "Yosys SAT temporal induction with official DSP48E1 functional model",
+        "data_bits": 20,
+        "increment_bits": 1,
+        "sum_bits": 32,
+        "latency_edges": 2,
+        "arbitrary_controls": ["rst_n", "i_clear", "i_vld"],
+        "source_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources},
+        "primitive_library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
+    }
+    (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    print(json.dumps(summary, indent=2))
+    if not passed:
+        print(log[-14000:])
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

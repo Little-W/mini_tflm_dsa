@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""比较向量坐标范围判断的全部输入编码。"""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import re
+import shlex
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[2]
+SOURCE = 'rtl/npu/conv/vector_engine.sv'
+
+
+def span(source):
+    marker = '  logic [16:0] next_column_low' if '  logic [16:0] next_column_low' in source else '  wire next_column_valid='
+    return source.index(marker), source.index('  logic soft_ready', source.index(marker))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--reference-rev', default='2f06471c')
+    args = parser.parse_args()
+    out = args.out.resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    reference = subprocess.check_output(['git', 'show', args.reference_rev + ':' + SOURCE], cwd=ROOT, text=True)
+    candidate = (ROOT / SOURCE).read_text()
+    packages = [ROOT/'rtl/npu/conv/conv_im2col_pkg.sv', ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
+    header = '''module coordinate_bounds (
+      input logic signed [33:0] input_x, input_y, input_origin_x,
+      input vector_engine_pkg::vector_engine_cfg_t c,
+      output logic o_column_valid, o_row_valid
+    );
+      wire signed [33:0] next_column_x=input_x+$signed(34'(c.image.dilation_w));
+      wire signed [33:0] next_row_y=input_y+$signed(34'(c.image.dilation_h));
+    '''
+    commands = []
+    for label, source in [('reference', reference), ('candidate', candidate)]:
+        first, last = span(source)
+        path = out/(label+'.sv')
+        path.write_text(header+source[first:last]+'''
+          assign o_column_valid = next_column_valid;
+          assign o_row_valid = next_row_valid;
+        endmodule
+        ''')
+        commands += ['read_slang --top coordinate_bounds ' + ' '.join(shlex.quote(str(p)) for p in packages+[path]),
+                     'prep -top coordinate_bounds -flatten', 'opt -full',
+                     'rename coordinate_bounds '+label, 'design -stash '+label]
+    commands += ['design -copy-from reference -as reference reference',
+                 'design -copy-from candidate -as candidate candidate',
+                 'equiv_make reference candidate comparison', 'hierarchy -top comparison',
+                 'equiv_simple', 'equiv_status -assert']
+    script = out/'run.ys'
+    script.write_text('\n'.join(commands)+'\n')
+    log = out/'formal.log'
+    with log.open('w') as stream:
+        result = subprocess.run([sys.executable,ROOT/'scripts/fpga/open_fpga_synth.py','--worker',script],
+                                stdout=stream,stderr=subprocess.STDOUT,cwd=ROOT)
+    report = {'reference_rev':args.reference_rev,
+              'source_sha256':hashlib.sha256(candidate.encode()).hexdigest(),
+              'reference_sha256':hashlib.sha256(reference.encode()).hexdigest(),
+              'proof_scope':'Both coordinate validity predicates extracted from vector_engine RTL',
+              'inputs_constrained':False,
+              'coordinate_width':34,'dimension_width':16,
+              'formal_log_sha256':hashlib.sha256(log.read_bytes()).hexdigest(),
+              'passed':result.returncode==0 and 'Equivalence successfully proven' in log.read_text()}
+    (out/'summary.json').write_text(json.dumps(report,indent=2)+'\n')
+    print(json.dumps(report),flush=True)
+    if not report['passed']:
+        raise RuntimeError(log.read_text()[-8000:])
+
+
+if __name__ == '__main__':
+    main()

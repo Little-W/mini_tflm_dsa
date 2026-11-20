@@ -89,17 +89,27 @@ module vector_engine #(
   localparam int TILE_INDEX_W = $clog2(TILE + PE_COUNT + 1);
   localparam int INPUT_INDEX_W = $clog2(DMA_SIZE);
   logic [31:0] vector_offset;
+  logic [ACTIVE_COUNT_W:0] vector_low_sum;
+  logic vector_high_equal, vector_high_less;
+  logic vector_high_next_equal, vector_high_next_less;
+  logic [ACTIVE_COUNT_W:0] vector_remaining_low;
+  logic [ACTIVE_COUNT_W-1:0] vector_next_active;
+  logic [31-ACTIVE_COUNT_W:0] vector_high_increment;
+  logic [31-ACTIVE_COUNT_W:0] vector_remaining_carry_needed;
+  logic [31-ACTIVE_COUNT_W:0] vector_remaining_carry_generated;
+  logic [31-ACTIVE_COUNT_W:0] vector_remaining_carry_expected;
+  logic vector_remaining_high_zero, unused_vector_remaining_carry;
+  logic vector_has_more;
   logic [TILE_INDEX_W-1:0] compute_index, quant_index, reduce_index;
   logic [31:0] fetch_tap_offset, load_tap_offset, position_offset, pool_byte_offset;
   logic signed [15:0] input_buf [DMA_SIZE], rhs_buf [TILE];
+  logic signed [15:0] input_bank_data [BUS_BYTES];
   wire signed [7:0] weight_tap_data [TILE];
-  logic signed [31:0] bias_buf [TILE], mult_buf [TILE];
-  logic [5:0] right_shift_buf [TILE];
+  logic signed [31:0] bias_buf [TILE];
   logic signed [31:0] acc_buf [TILE], result_buf [TILE];
   logic [2:0] pe_op;
   logic [2:0] pe_op_q;
-  logic signed [15:0] pe_a_q [PE_COUNT],pe_b_q [PE_COUNT];
-  logic signed [31:0] pe_acc_q [PE_COUNT];
+  logic pe_operand_en;
   logic signed [15:0] pe_a [PE_COUNT], pe_b [PE_COUNT];
   logic signed [31:0] pe_acc [PE_COUNT], pe_result [PE_COUNT];
   logic [1:0] add_stage;
@@ -124,7 +134,26 @@ module vector_engine #(
   assign parameter_bytes=64'(channels)<<2;
   logic [31:0] load_bytes;
   logic signed [31:0] q_accumulator, q_multiplier;
-  logic signed [63:0] q_product, q_rounded, q_with_offset;
+  logic signed [63:0] q_product, q_rounded;
+  logic [32:0] q_offset_low;
+  logic [31:0] q_offset_sum;
+  logic [15:0] q_offset_generate [4];
+  logic [15:0] q_offset_propagate [4];
+`ifdef ASIC_SYNTHESIS
+  localparam bit p_offset_use_lut = 1'b0;
+`elsif XILINX_FPGA
+  localparam bit p_offset_use_lut = 1'b1;
+`elsif SYNTHESIS
+  localparam bit p_offset_use_lut = 1'b1;
+`else
+  localparam bit p_offset_use_lut = 1'b0;
+`endif
+  logic q_offset_high_zero, q_offset_high_ones, q_offset_high_negative;
+  logic q_offset_increment, q_offset_decrement, q_offset_keep_high;
+  logic q_offset_fits_s32;
+  logic q_offset_below_s32, q_offset_above_s32;
+  logic q_below_min, q_above_max;
+  logic signed [31:0] q_clamped_data;
   logic [5:0] q_right_0, q_right_1, q_right_2, q_right_3;
   logic [5:0] q_valid;
   logic [TILE_INDEX_W-1:0] q_index_0, q_index_1, q_index_2, q_index_3, q_index_4, q_index_5, q_issue, q_count;
@@ -166,6 +195,7 @@ module vector_engine #(
   logic [5:0] cache_channel_shift;
   logic [1:0] read_bank,wf_bank,input_bank_mask;
   logic [3:0] input_ready,input_reserved;
+  logic window_slot_available, input_reservations_clear;
   logic [INPUT_INDEX_W-1:0] input_read_base,input_response_base;
   logic [31:0] window_received;
   logic [2:0] window_response_count;
@@ -181,10 +211,20 @@ module vector_engine #(
   wire kernel_column_end=kx==kernel_last_column;
   wire signed [33:0] next_column_x=input_x+$signed(34'(c.image.dilation_w));
   wire signed [33:0] next_row_y=input_y+$signed(34'(c.image.dilation_h));
-  wire next_column_valid=next_column_x>=0 && next_column_x<$signed(34'(c.image.input_w)) &&
-      input_y>=0 && input_y<$signed(34'(c.image.input_h));
-  wire next_row_valid=input_origin_x>=0 && input_origin_x<$signed(34'(c.image.input_w)) &&
-      next_row_y>=0 && next_row_y<$signed(34'(c.image.input_h));
+  logic [16:0] next_column_low, next_row_low;
+  logic next_column_high_zero, next_row_high_zero;
+  logic next_column_valid, next_row_valid;
+
+  // 图像尺寸为十六位，坐标范围由低位和高位条件并行检查。
+  // 低位加法进位只选择原坐标高位的零值或全一值，保留完整坐标回绕行为。
+  assign next_column_low = {1'b0, input_x[15:0]} + {1'b0, c.image.dilation_w};
+  assign next_row_low = {1'b0, input_y[15:0]} + {1'b0, c.image.dilation_h};
+  assign next_column_high_zero = next_column_low[16] ? (&input_x[33:16]) : !(|input_x[33:16]);
+  assign next_row_high_zero = next_row_low[16] ? (&input_y[33:16]) : !(|input_y[33:16]);
+  assign next_column_valid = next_column_high_zero && (next_column_low[15:0] < c.image.input_w) &&
+      !(|input_y[33:16]) && (input_y[15:0] < c.image.input_h);
+  assign next_row_valid = !(|input_origin_x[33:16]) && (input_origin_x[15:0] < c.image.input_w) &&
+      next_row_high_zero && (next_row_low[15:0] < c.image.input_h);
   logic soft_ready, soft_done, soft_exp_we, soft_out_we;
   logic [1:0] soft_error;
   logic [$clog2(TILE)-1:0] soft_input_index, soft_exp_index, soft_out_index;
@@ -201,9 +241,25 @@ module vector_engine #(
   logic [INPUT_INDEX_W:0] pool_elements, pool_next_elements, pool_next_pixels, pool_input_index;
   logic [INPUT_INDEX_W:0] pool_row_columns, pool_row_remaining;
   wire pool_response_fire=state==POOL_LOAD_WAIT && rd_valid[0];
-  wire [BUS_SHIFT:0] pool_received_count=pool_response_fire ?
-      (pool_row_remaining>BUS_BYTES ? (BUS_SHIFT+1)'(BUS_BYTES) :
-       (BUS_SHIFT+1)'(pool_row_remaining)) : '0;
+  logic [BUS_SHIFT:0] pool_beat_count;
+  logic [INPUT_INDEX_W:0] pool_count_i_a, pool_count_i_b, pool_count_i_target;
+  logic pool_count_i_carry;
+  (* keep = 1 *) logic pool_count_o_equal, pool_received_equal;
+  logic pool_receive_complete;
+
+  // 单拍数量由已保存的行长度决定，完成条件在响应到达前并行计算。
+  assign pool_beat_count = pool_row_remaining>BUS_BYTES ? (BUS_SHIFT+1)'(BUS_BYTES) :
+      (BUS_SHIFT+1)'(pool_row_remaining);
+  assign pool_count_i_a = pool_received;
+  assign pool_count_i_b = (INPUT_INDEX_W+1)'(pool_beat_count);
+  assign pool_count_i_target = pool_elements;
+  assign pool_count_i_carry = 1'b0;
+  assign pool_received_equal = pool_received == pool_elements;
+  assign pool_receive_complete = rd_valid[0] ? pool_count_o_equal : pool_received_equal;
+  add_equal #(.p_width(INPUT_INDEX_W+1)) u_pool_count_equal (
+      .i_a(pool_count_i_a), .i_b(pool_count_i_b), .i_target(pool_count_i_target),
+      .i_carry_in(pool_count_i_carry), .o_equal(pool_count_o_equal)
+  );
   localparam int POOL_ROW_W=INPUT_INDEX_W>BUS_SHIFT ? INPUT_INDEX_W-BUS_SHIFT : 1;
   logic [BUS_BYTES-1:0] pool_bank_valid;
   logic [POOL_ROW_W-1:0] pool_bank_row[BUS_BYTES];
@@ -215,7 +271,190 @@ module vector_engine #(
   assign softmax_s8 = c.op == SOFTMAX_S8;
   assign byte_output = spatial || add_s8 || softmax_s8;
   assign binary_vector = c.op == VEC_DOT || c.op == VEC_HADAMARD || add_s8;
-  assign q_with_offset = q_rounded + $signed(64'(c.output_offset));
+
+  // 有效通道数只影响低位；高位比较与低位加法并行执行，保留三十二位回绕。
+  assign vector_low_sum = {1'b0, vector_offset[ACTIVE_COUNT_W-1:0]} + {1'b0, active};
+  assign vector_high_equal = vector_offset[31:ACTIVE_COUNT_W] == c.length[31:ACTIVE_COUNT_W];
+  assign vector_high_less = vector_offset[31:ACTIVE_COUNT_W] < c.length[31:ACTIVE_COUNT_W];
+  assign vector_high_next_equal =
+      ((vector_offset[31:ACTIVE_COUNT_W] ^ c.length[31:ACTIVE_COUNT_W]) ==
+       {(vector_offset[30:ACTIVE_COUNT_W] & ~c.length[30:ACTIVE_COUNT_W]), 1'b1});
+  assign vector_high_next_less = (vector_high_less && !vector_high_next_equal) ||
+      ((&vector_offset[31:ACTIVE_COUNT_W]) && (|c.length[31:ACTIVE_COUNT_W]));
+  assign vector_has_more = vector_low_sum[ACTIVE_COUNT_W] ?
+      (vector_high_next_less || (vector_high_next_equal &&
+          (vector_low_sum[ACTIVE_COUNT_W-1:0] < c.length[ACTIVE_COUNT_W-1:0]))) :
+      (vector_high_less || (vector_high_equal &&
+          (vector_low_sum[ACTIVE_COUNT_W-1:0] < c.length[ACTIVE_COUNT_W-1:0])));
+  // 剩余长度复用低位偏移加法；低位借位与加法进位共同决定高位的递增量。
+  // 逐位检查高位差值是否为零，只保留下一批需要的有效通道数。
+  assign vector_remaining_low = {1'b0, c.length[ACTIVE_COUNT_W-1:0]} -
+      {1'b0, vector_low_sum[ACTIVE_COUNT_W-1:0]};
+  assign vector_high_increment = (32-ACTIVE_COUNT_W)'({
+      vector_low_sum[ACTIVE_COUNT_W] && vector_remaining_low[ACTIVE_COUNT_W],
+      vector_low_sum[ACTIVE_COUNT_W] ^ vector_remaining_low[ACTIVE_COUNT_W]});
+  assign vector_remaining_carry_needed = vector_offset[31:ACTIVE_COUNT_W] ^
+      vector_high_increment ^ c.length[31:ACTIVE_COUNT_W];
+  assign vector_remaining_carry_generated =
+      (vector_offset[31:ACTIVE_COUNT_W] & vector_high_increment) |
+      ((vector_offset[31:ACTIVE_COUNT_W] | vector_high_increment) & ~c.length[31:ACTIVE_COUNT_W]);
+  assign {unused_vector_remaining_carry, vector_remaining_carry_expected} =
+      {vector_remaining_carry_generated, 1'b0};
+  assign vector_remaining_high_zero = vector_remaining_carry_needed == vector_remaining_carry_expected;
+  assign vector_next_active = vector_remaining_high_zero &&
+      vector_remaining_low[ACTIVE_COUNT_W-1:0] < ACTIVE_COUNT_W'(TILE) ?
+      vector_remaining_low[ACTIVE_COUNT_W-1:0] : ACTIVE_COUNT_W'(TILE);
+  // 偏移的高三十二位只可能为全零或全一，高位结果只需判断符号和范围。
+  // 低位加法与高位零值、全一值及符号条件并行计算，保留六十四位回绕行为。
+  assign q_offset_low = {q_offset_generate[3][15], q_offset_sum};
+  // 每两个数据位产生局部进位；三层并行前缀给出各段输入进位。
+  // FPGA 双输出查找表分别保存产生、传播条件或两个结果位。
+  for (genvar part = 0; part < 16; part++) begin : g_q_offset_pair
+    logic [4:0] leaf_i_data, sum_i_data;
+    logic leaf_i_upper;
+    logic leaf_o_generate, leaf_o_propagate;
+    logic [1:0] sum_o_data;
+    logic sum_i_carry;
+
+    assign leaf_i_upper = 1'b1;
+    assign leaf_i_data = {1'b0, c.output_offset[part*2+:2], q_rounded[part*2+:2]};
+    assign sum_i_data = {sum_i_carry, c.output_offset[part*2+:2], q_rounded[part*2+:2]};
+    assign q_offset_generate[0][part] = leaf_o_generate;
+    assign q_offset_propagate[0][part] = leaf_o_propagate;
+    assign q_offset_sum[part*2+:2] = sum_o_data;
+    if (part == 0) begin : g_first_carry
+      assign sum_i_carry = 1'b0;
+    end else begin : g_lower_prefix
+      assign sum_i_carry = q_offset_generate[3][part-1];
+    end
+    if (p_offset_use_lut) begin : g_lut
+      LUT6_2 #(.INIT(64'h1248_1248_ec80_ec80)) u_leaf (
+        .I0(leaf_i_data[0]), .I1(leaf_i_data[1]), .I2(leaf_i_data[2]),
+        .I3(leaf_i_data[3]), .I4(leaf_i_data[4]), .I5(leaf_i_upper),
+        .O5(leaf_o_generate), .O6(leaf_o_propagate)
+      );
+      LUT6_2 #(.INIT(64'hc936_936c_a5a5_5a5a)) u_sum (
+        .I0(sum_i_data[0]), .I1(sum_i_data[1]), .I2(sum_i_data[2]),
+        .I3(sum_i_data[3]), .I4(sum_i_data[4]), .I5(leaf_i_upper),
+        .O5(sum_o_data[0]), .O6(sum_o_data[1])
+      );
+    end else begin : g_generic
+      logic [2:0] pair_sum;
+      logic unused_carry;
+
+      assign pair_sum = {1'b0, q_rounded[part*2+:2]} + {1'b0, c.output_offset[part*2+:2]};
+      assign leaf_o_generate = pair_sum[2];
+      assign leaf_o_propagate = &(q_rounded[part*2+:2] ^ c.output_offset[part*2+:2]);
+      assign {unused_carry, sum_o_data} = {1'b0, q_rounded[part*2+:2]} +
+          {1'b0, c.output_offset[part*2+:2]} + 3'(sum_i_carry);
+    end
+  end
+  for (genvar level = 0; level < 3; level++) begin : g_q_offset_prefix
+    localparam int p_distance = 3 ** level;
+    for (genvar part = 0; part < 16; part++) begin : g_pair
+      localparam int p_group = (part / p_distance) % 3;
+      localparam int p_base = (part / (3*p_distance)) * (3*p_distance);
+      if (p_group == 1) begin : g_join
+        localparam int p_lower = p_base + p_distance - 1;
+        logic [4:0] prefix_i_data;
+        logic prefix_i_upper;
+        logic prefix_o_generate, prefix_o_propagate;
+
+        assign prefix_i_data = {1'b0, q_offset_propagate[level][p_lower],
+            q_offset_generate[level][p_lower], q_offset_propagate[level][part],
+            q_offset_generate[level][part]};
+        assign prefix_i_upper = 1'b1;
+        assign q_offset_generate[level+1][part] = prefix_o_generate;
+        assign q_offset_propagate[level+1][part] = prefix_o_propagate;
+        if (p_offset_use_lut) begin : g_lut
+          LUT6_2 #(.INIT(64'hcc00_cc00_eaea_eaea)) u_prefix (
+            .I0(prefix_i_data[0]), .I1(prefix_i_data[1]), .I2(prefix_i_data[2]),
+            .I3(prefix_i_data[3]), .I4(prefix_i_data[4]), .I5(prefix_i_upper),
+            .O5(prefix_o_generate), .O6(prefix_o_propagate)
+          );
+        end else begin : g_generic
+          assign prefix_o_generate = prefix_i_data[0] || (prefix_i_data[1] && prefix_i_data[2]);
+          assign prefix_o_propagate = prefix_i_data[1] && prefix_i_data[3];
+        end
+      end else if (p_group == 2) begin : g_join_three
+        localparam int p_lower = p_base + p_distance - 1;
+        localparam int p_middle = p_base + 2*p_distance - 1;
+        logic [4:0] prefix_i_data;
+        logic [2:0] propagate_i_data;
+        logic prefix_i_upper, prefix_o_generate;
+
+        // 三段进位生成只依赖五个条件，可在一级查找表内合并。
+        assign prefix_i_data = {q_offset_generate[level][p_lower],
+            q_offset_propagate[level][p_middle], q_offset_generate[level][p_middle],
+            q_offset_propagate[level][part], q_offset_generate[level][part]};
+        assign propagate_i_data = {q_offset_propagate[level][p_lower],
+            q_offset_propagate[level][p_middle], q_offset_propagate[level][part]};
+        assign prefix_i_upper = 1'b1;
+        assign q_offset_generate[level+1][part] = prefix_o_generate;
+        assign q_offset_propagate[level+1][part] = &propagate_i_data;
+        if (p_offset_use_lut) begin : g_lut
+          LUT6_2 #(.INIT(64'heeea_eaea_eeea_eaea)) u_prefix (
+            .I0(prefix_i_data[0]), .I1(prefix_i_data[1]), .I2(prefix_i_data[2]),
+            .I3(prefix_i_data[3]), .I4(prefix_i_data[4]), .I5(prefix_i_upper),
+            .O5(prefix_o_generate), .O6()
+          );
+        end else begin : g_generic
+          assign prefix_o_generate = prefix_i_data[0] ||
+              (prefix_i_data[1] && prefix_i_data[2]) ||
+              (prefix_i_data[1] && prefix_i_data[3] && prefix_i_data[4]);
+        end
+      end else begin : g_passthrough
+        assign q_offset_generate[level+1][part] = q_offset_generate[level][part];
+        assign q_offset_propagate[level+1][part] = q_offset_propagate[level][part];
+      end
+    end
+  end
+  assign q_offset_increment = q_offset_low[32] && !c.output_offset[31];
+  assign q_offset_decrement = !q_offset_low[32] && c.output_offset[31];
+  assign q_offset_keep_high = q_offset_low[32] == c.output_offset[31];
+  assign q_offset_high_zero =
+      (q_offset_keep_high && q_rounded[63:32] == 32'h0000_0000) ||
+      (q_offset_increment && q_rounded[63:32] == 32'hffff_ffff) ||
+      (q_offset_decrement && q_rounded[63:32] == 32'h0000_0001);
+  assign q_offset_high_ones =
+      (q_offset_keep_high && q_rounded[63:32] == 32'hffff_ffff) ||
+      (q_offset_increment && q_rounded[63:32] == 32'hffff_fffe) ||
+      (q_offset_decrement && q_rounded[63:32] == 32'h0000_0000);
+  assign q_offset_high_negative = q_rounded[63] ^
+      ((q_offset_increment && (&q_rounded[62:32])) ||
+       (q_offset_decrement && !(|q_rounded[62:32])));
+  assign q_offset_below_s32 = $signed(q_offset_low[31:0]) < c.activation_min;
+  assign q_offset_above_s32 = $signed(q_offset_low[31:0]) > c.activation_max;
+  if (p_offset_use_lut) begin : g_offset_clamp_lut
+    logic [4:0] fits_i_data, limits_i_data;
+    logic select_i_upper;
+    logic fits_o_value, limits_o_below, limits_o_above;
+
+    // 范围与有符号比较并行计算，最终边界选择各经过一级查找表。
+    assign fits_i_data = {2'b00, q_offset_high_ones, q_offset_high_zero, q_offset_low[31]};
+    assign limits_i_data = {1'b0, q_offset_above_s32, q_offset_below_s32,
+        q_offset_high_negative, q_offset_fits_s32};
+    assign select_i_upper = 1'b1;
+    LUT6_2 #(.INIT(64'he4e4_e4e4_e4e4_e4e4)) u_fits (
+      .I0(fits_i_data[0]), .I1(fits_i_data[1]), .I2(fits_i_data[2]),
+      .I3(fits_i_data[3]), .I4(fits_i_data[4]), .I5(select_i_upper),
+      .O5(), .O6(fits_o_value)
+    );
+    LUT6_2 #(.INIT(64'hbb11_bb11_e4e4_e4e4)) u_limits (
+      .I0(limits_i_data[0]), .I1(limits_i_data[1]), .I2(limits_i_data[2]),
+      .I3(limits_i_data[3]), .I4(limits_i_data[4]), .I5(select_i_upper),
+      .O5(limits_o_below), .O6(limits_o_above)
+    );
+    assign q_offset_fits_s32 = fits_o_value;
+    assign q_below_min = limits_o_below;
+    assign q_above_max = limits_o_above;
+  end else begin : g_offset_clamp_logic
+    assign q_offset_fits_s32 = q_offset_low[31] ? q_offset_high_ones : q_offset_high_zero;
+    assign q_below_min = (!q_offset_fits_s32 && q_offset_high_negative) ||
+        (q_offset_fits_s32 && q_offset_below_s32);
+    assign q_above_max = (!q_offset_fits_s32 && !q_offset_high_negative) ||
+        (q_offset_fits_s32 && q_offset_above_s32);
+  end
   assign ready = state == IDLE;
   assign done_valid = state == DONE;
   assign channels = {16'd0,c.image.input_c};
@@ -242,8 +481,9 @@ module vector_engine #(
   assign input_bank_mask=active<=TILE/2 ? 2'b11 : 2'b01;
   assign input_read_base=active<=TILE/2 ? (32'(read_bank)<<($clog2(TILE)-1)) : (32'(read_bank)<<$clog2(TILE));
   assign input_response_base=active<=TILE/2 ? (32'(win_rsp_tag)<<($clog2(TILE)-1)) : (32'(win_rsp_tag)<<$clog2(TILE));
-  assign win_req_valid=window_fetch_enabled && fetch_position<32'(position_count) &&
-    !input_ready[wf_bank] && !input_reserved[wf_bank] && window_fetch_in_bounds;
+  assign window_slot_available = window_fetch_enabled &&
+      (fetch_position < 32'(position_count)) && window_fetch_in_bounds;
+  assign win_req_valid = window_slot_available && !input_ready[wf_bank] && !input_reserved[wf_bank];
   assign win_req_p0=fetch_position;
   assign win_req_q0=fetch_tap_offset+channel_base;
   assign win_req_cols=active;
@@ -254,6 +494,22 @@ module vector_engine #(
   assign window_fetch_advance=window_request_fire ||
     (window_fetch_enabled && fetch_position<32'(position_count) &&
      !input_ready[wf_bank] && !input_reserved[wf_bank] && !window_fetch_in_bounds);
+  assign input_reservations_clear = (state == IDLE && start) || (state == TILE_INIT) ||
+      (state == FAILED && !rd_busy && !wr_busy && !win_busy && !writeback_busy && dma_cfg_ready);
+
+  // 每个槽位并行生成接收和释放条件，就绪信号只参与最后的数据选择。
+  // 同周期返回完成优先释放对应槽位，初始化和错误恢复同时清空全部槽位。
+  for (genvar bank = 0; bank < 4; bank++) begin : g_input_reservation
+    (* keep = 1 *) logic request_selected, release_selected;
+    assign request_selected = window_slot_available && (wf_bank == 2'(bank)) && !input_ready[bank];
+    assign release_selected = input_reservations_clear ||
+        (window_response_fire && win_rsp_last && win_rsp_tag == 2'(bank));
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) input_reserved[bank] <= 1'b0;
+      else input_reserved[bank] <= !release_selected &&
+          (input_reserved[bank] || (win_req_ready && request_selected));
+    end
+  end
   always_comb begin
     window_response_count=0;
     for(int lane=0;lane<4;lane++) if(win_rsp_mask[lane])
@@ -284,10 +540,17 @@ module vector_engine #(
     for (int bit_index=0;bit_index<TAP_COUNT_W;bit_index++) if (valid_taps[bit_index]) avg_shift=6'(bit_index);
   end
 
-  // Parameter and cached-input phases configure their exact allocation ranges
-  // after the preceding transfers have completed. The descriptor stays fixed.
+  logic [32:0] dma_range_size [4];
+  logic [3:0] unused_dma_range_carry;
+
+  // 每个范围先选择起点和字节数，再使用一个加法器生成末端。
+  for (genvar range_index = 0; range_index < 4; range_index++) begin : g_dma_range_end
+    assign {unused_dma_range_carry[range_index], dma_range_end[range_index]} =
+        {2'b00, dma_range_base[range_index]} + {1'b0, dma_range_size[range_index]};
+  end
   always_comb begin
-    dma_cfg_valid = state==CONFIGURE && dma_cfg_ready;
+    // 配置等待期间持续提供描述符，接收边沿由就绪信号决定。
+    dma_cfg_valid = state==CONFIGURE;
     dma_conv_enable = spatial;
     dma_range_enable = 1'b1;
     dma_conv_cfg = c.image;
@@ -297,57 +560,91 @@ module vector_engine #(
     dma_conv_cfg.input_s16 = 0;
     dma_conv_cfg.windowed = spatial;
     dma_conv_cfg.prefetch_enable = 1;
-    for (int i=0;i<4;i++) begin dma_range_base[i]=0; dma_range_end[i]=0; end
+    for (int i=0;i<4;i++) begin dma_range_base[i]=0; dma_range_size[i]=0; end
     if (global_pool && input_range_mode) begin
-      dma_range_base[0]=c.input_base;dma_range_end[0]=33'(64'(c.input_base)+input_bytes);
+      dma_range_base[0]=c.input_base;dma_range_size[0]=input_bytes[32:0];
     end else if (depthwise) begin
-      dma_range_base[0]=c.rhs_base; dma_range_end[0]=33'(64'(c.rhs_base)+weight_bytes);
+      dma_range_base[0]=c.rhs_base; dma_range_size[0]=weight_bytes[32:0];
       if (c.bias_base!=0) begin
-        dma_range_base[1]=c.bias_base; dma_range_end[1]=33'(64'(c.bias_base)+parameter_bytes);
+        dma_range_base[1]=c.bias_base; dma_range_size[1]=parameter_bytes[32:0];
       end
-      dma_range_base[2]=c.multiplier_base; dma_range_end[2]=33'(64'(c.multiplier_base)+parameter_bytes);
-      dma_range_base[3]=c.shift_base; dma_range_end[3]=33'(64'(c.shift_base)+parameter_bytes);
+      dma_range_base[2]=c.multiplier_base; dma_range_size[2]=parameter_bytes[32:0];
+      dma_range_base[3]=c.shift_base; dma_range_size[3]=parameter_bytes[32:0];
     end else if (!spatial) begin
-      dma_range_base[0]=c.input_base; dma_range_end[0]=33'(64'(c.input_base)+input_bytes);
+      dma_range_base[0]=c.input_base; dma_range_size[0]=input_bytes[32:0];
       if (binary_vector || softmax_s8) begin
         dma_range_base[1]=c.rhs_base;
-        dma_range_end[1]=33'(64'(c.rhs_base)+(softmax_s8 ? 64'd1024 : input_bytes));
+        dma_range_size[1]=softmax_s8 ? 33'd1024 : input_bytes[32:0];
       end
     end
   end
 
   assign rd_req = state==LOAD_REQ || state==POOL_LOAD_REQ || state==SOFT_LUT_REQ;
   assign rd_start = rd_req && rd_granted;
+  logic [31:0] read_address_base, read_address_offset;
+  logic [15:0] read_address_channel;
+  logic [1:0] unused_read_address_carry;
+
+  // 状态译码选择读取起点、偏移和通道号，各类读取共用地址加法器。
+  vector_read_address_add u_read_address (
+    .clk(clk), .i_base(read_address_base), .i_offset(read_address_offset),
+    .i_channel(read_address_channel), .o_address(rd_base_addr),
+    .o_carry(unused_read_address_carry)
+  );
   always_comb begin
     rd_im2col = 1'b0;
     rd_p0 = 0;
     rd_q0 = 0;
-    rd_base_addr = 0;
+    read_address_base = 32'd0;
+    read_address_offset = 32'd0;
+    read_address_channel = 16'd0;
     rd_row_stride = 0;
     rd_rows_to_read = 1;
     rd_valid_cols = active;
     rd_use_16bits = !spatial && c.vector_s16;
     load_bytes = active << rd_use_16bits;
     case (load_kind)
-      LD_WEIGHT: begin rd_base_addr=c.rhs_base+load_tap_offset+channel_base;
-        rd_use_16bits=0; load_bytes=active; end
-      LD_BIAS: begin rd_base_addr=c.bias_base+(channel_base<<2);
-        rd_use_16bits=0; load_bytes=active<<2; rd_valid_cols=active<<2; end
-      LD_MULT: begin rd_base_addr=c.multiplier_base+(channel_base<<2);
-        rd_use_16bits=0; load_bytes=active<<2; rd_valid_cols=active<<2; end
-      LD_SHIFT: begin rd_base_addr=c.shift_base+(channel_base<<2);
-        rd_use_16bits=0; load_bytes=active<<2; rd_valid_cols=active<<2; end
-      LD_A: rd_base_addr=c.input_base+(vector_offset<<c.vector_s16);
-      LD_B: rd_base_addr=c.rhs_base+(vector_offset<<c.vector_s16);
-      default: ;
+      LD_WEIGHT: begin
+        read_address_base = c.rhs_base;
+        read_address_offset = load_tap_offset;
+        read_address_channel = channel_base;
+        rd_use_16bits = 1'b0;
+        load_bytes = active;
+      end
+      LD_BIAS, LD_MULT, LD_SHIFT: begin
+        case (load_kind)
+          LD_BIAS: read_address_base = c.bias_base;
+          LD_MULT: read_address_base = c.multiplier_base;
+          default: read_address_base = c.shift_base;
+        endcase
+        read_address_offset = {14'd0, channel_base, 2'b00};
+        rd_use_16bits = 1'b0;
+        load_bytes = active << 2;
+        rd_valid_cols = active << 2;
+      end
+      LD_A: begin
+        read_address_base = c.input_base;
+        read_address_offset = vector_offset << c.vector_s16;
+      end
+      LD_B: begin
+        read_address_base = c.rhs_base;
+        read_address_offset = vector_offset << c.vector_s16;
+      end
+      default: begin
+      end
     endcase
     rd_burst_len_m1 = 8'(((load_bytes+BUS_BYTES-1)>>BUS_SHIFT)-1);
     if (state==SOFT_LUT_REQ || state==SOFT_LUT_WAIT) begin
-      rd_base_addr=c.rhs_base+({24'd0,soft_lut_index}<<2);
+      read_address_base = c.rhs_base;
+      read_address_offset = {22'd0, soft_lut_index, 2'b00};
+      read_address_channel = 16'd0;
       rd_use_16bits=0;rd_valid_cols=4;rd_burst_len_m1=0;
     end
     if (state==POOL_LOAD_REQ || state==POOL_LOAD_WAIT) begin
-      rd_base_addr=c.input_base+pool_byte_offset+channel_base;rd_use_16bits=0;
+      read_address_base = c.input_base;
+      read_address_offset = pool_byte_offset;
+      read_address_channel = channel_base;
+      rd_use_16bits = 1'b0;
       if (channels==active) begin
         rd_rows_to_read=1;rd_valid_cols=pool_elements;rd_row_stride=0;
         rd_burst_len_m1=8'(((pool_elements+BUS_BYTES-1)>>BUS_SHIFT)-1);
@@ -463,16 +760,13 @@ module vector_engine #(
       default: ;
     endcase
   end
-  for (genvar lane=0;lane<PE_COUNT;lane++) begin : g_operand_register
+  assign pe_operand_en = (state == EXECUTE) && ((c.op != VEC_HADAMARD) || !writeback_busy);
+  for (genvar lane=0;lane<PE_COUNT;lane++) begin : g_operand_select
     wire enabled=(TILE_INDEX_W+1)'(compute_index)+(TILE_INDEX_W+1)'(lane)<(TILE_INDEX_W+1)'(active);
     assign pe_a[lane]=enabled ? input_lane[lane] : 16'sd0;
-    assign pe_b[lane]=enabled ? (depthwise ? 16'($signed(weight_lane[lane])) : rhs_lane[lane]) : 16'sd0;
+    // 无效通道的 a 和 acc 已为零，各运算结果与 b 的取值无关。
+    assign pe_b[lane]=depthwise ? 16'($signed(weight_lane[lane])) : rhs_lane[lane];
     assign pe_acc[lane]=enabled ? accum_lane[lane] : 32'sd0;
-    always_ff @(posedge clk) if (state==EXECUTE && (c.op!=VEC_HADAMARD || !writeback_busy)) begin
-      pe_a_q[lane]<=pe_a[lane];
-      pe_b_q[lane]<=pe_b[lane];
-      pe_acc_q[lane]<=pe_acc[lane];
-    end
   end
   always_ff @(posedge clk) if (state==EXECUTE) pe_op_q<=pe_op;
   // Channel banks provide a complete tap without a flattened channel/tap mux.
@@ -488,8 +782,25 @@ module vector_engine #(
     );
   end
 
-  for (genvar l=0;l<PE_COUNT;l++) begin : g_pe
-    vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) u_pe(.op(pe_op_q),.a(pe_a_q[l]),.b(pe_b_q[l]),.acc(pe_acc_q[l]),.result(pe_result[l]));
+  // 操作码在 EXECUTE 更新；操作数独立等待写出允许后接收，下一周期提交结果。
+  for (genvar lane = 0; lane < PE_COUNT; lane++) begin : g_pe
+    logic pe_i_en;
+    logic [2:0] pe_i_op;
+    logic signed [15:0] pe_i_a;
+    logic signed [15:0] pe_i_b;
+    logic signed [31:0] pe_i_acc;
+    logic signed [31:0] pe_o_result;
+
+    assign pe_i_en = pe_operand_en;
+    assign pe_i_op = pe_op_q;
+    assign pe_i_a = pe_a[lane];
+    assign pe_i_b = pe_b[lane];
+    assign pe_i_acc = pe_acc[lane];
+    assign pe_result[lane] = pe_o_result;
+    registered_vector_pe u_pe (
+      .clk(clk), .i_en(pe_i_en), .i_op(pe_i_op), .i_a(pe_i_a), .i_b(pe_i_b),
+      .i_acc(pe_i_acc), .o_result(pe_o_result)
+    );
   end
 
   localparam int ADD_INDEX_WIDTH=$clog2(TILE)>0 ? $clog2(TILE) : 1;
@@ -513,13 +824,37 @@ module vector_engine #(
       add_operand<=32'(add_next_lhs_offset);
   end
 
+  // 串行运算在各自消费周期选择地址，共用一个累加存储读取端口。
+  // 量化和归约由当前状态选择，其余周期服务 Softmax 或平均池化。
+  logic [TILE_INDEX_W-1:0] serial_acc_read_index;
+  logic signed [31:0] serial_acc_read_data;
+  logic signed [31:0] softmax_i_exp_rdata;
   always_comb begin
-    reduce_next=reduce_acc+acc_buf[reduce_index];
-    if (c.op==VEC_MAX) reduce_next=reduce_acc>acc_buf[reduce_index] ? reduce_acc : acc_buf[reduce_index];
-    if (c.op==VEC_MIN) reduce_next=reduce_acc<acc_buf[reduce_index] ? reduce_acc : acc_buf[reduce_index];
+    serial_acc_read_index = quant_index;
+    if (state==QUANT_STREAM) begin
+      serial_acc_read_index = q_issue;
+    end else if (state==VECTOR_REDUCE) begin
+      serial_acc_read_index = reduce_index;
+    end else if (softmax_s8) begin
+      serial_acc_read_index = TILE_INDEX_W'(soft_exp_index);
+    end
   end
+  assign serial_acc_read_data = acc_buf[serial_acc_read_index];
+  assign softmax_i_exp_rdata = serial_acc_read_data;
+
+  logic signed [31:0] reduce_alu_i_lhs, reduce_alu_i_rhs;
+  logic reduce_alu_i_max, reduce_alu_i_min;
+  assign reduce_alu_i_lhs = reduce_acc;
+  assign reduce_alu_i_rhs = serial_acc_read_data;
+  assign reduce_alu_i_max = c.op == VEC_MAX;
+  assign reduce_alu_i_min = c.op == VEC_MIN;
+  // 共享串行读端口在本周期提供操作数，加法与有符号极值比较共用归约单元。
+  vector_reduce_alu u_reduce_alu (
+    .clk(clk), .i_lhs(reduce_alu_i_lhs), .i_rhs(reduce_alu_i_rhs),
+    .i_max(reduce_alu_i_max), .i_min(reduce_alu_i_min), .o_result(reduce_next)
+  );
   localparam int POOL_SUM_WIDTH=8+$clog2(POOL_MAX_TAPS);
-  wire signed [POOL_SUM_WIDTH-1:0] avg_pool_sum=acc_buf[quant_index][POOL_SUM_WIDTH-1:0];
+  wire signed [POOL_SUM_WIDTH-1:0] avg_pool_sum=serial_acc_read_data[POOL_SUM_WIDTH-1:0];
   wire [POOL_SUM_WIDTH-1:0] avg_unsigned_magnitude=avg_pool_sum<0 ?
       $unsigned(-avg_pool_sum) : $unsigned(avg_pool_sum);
   assign avg_input_magnitude=32'(avg_unsigned_magnitude);
@@ -569,7 +904,7 @@ module vector_engine #(
     .input_index(soft_input_index),.input_data(8'(input_buf[32'(soft_input_index)])),
     .lut_req_valid(soft_lut_req_valid),.lut_req_ready(soft_lut_req_ready),.lut_index(soft_lut_index),
     .lut_rsp_valid(soft_lut_rsp_valid),.lut_rsp_data(rd_raw_valid ? rd_raw_data[31:0] : soft_lut_data),.lut_rsp_error(rd_error),
-    .exp_we(soft_exp_we),.exp_index(soft_exp_index),.exp_wdata(soft_exp_data),.exp_rdata(acc_buf[soft_exp_index]),
+    .exp_we(soft_exp_we),.exp_index(soft_exp_index),.exp_wdata(soft_exp_data),.exp_rdata(softmax_i_exp_rdata),
     .out_we(soft_out_we),.out_index(soft_out_index),.out_data(soft_out_data),
     .mul_a(soft_mul_a),.mul_b(soft_mul_b),.mul_product(multiplier_product)
   );
@@ -604,7 +939,7 @@ module vector_engine #(
   for (genvar bank=0;bank<BUS_BYTES;bank++) begin : g_pool_bank
     wire [BUS_SHIFT-1:0] source_lane=BUS_SHIFT'(bank)-pool_first_bank;
     wire [INPUT_INDEX_W:0] destination_index=pool_received+(INPUT_INDEX_W+1)'(source_lane);
-    wire bank_receive=pool_response_fire && (BUS_SHIFT+1)'(source_lane)<pool_received_count &&
+    wire bank_receive=pool_response_fire && (BUS_SHIFT+1)'(source_lane)<pool_beat_count &&
         destination_index<pool_elements;
     wire [POOL_ROW_W-1:0] destination_row=POOL_ROW_W'(pool_received>>BUS_SHIFT)+
         POOL_ROW_W'(BUS_SHIFT'(bank)<pool_first_bank);
@@ -620,8 +955,21 @@ module vector_engine #(
     end
   end
 
-  wire signed [31:0] q_clamped_data=q_with_offset<$signed(64'(c.activation_min)) ? c.activation_min :
-      q_with_offset>$signed(64'(c.activation_max)) ? c.activation_max : q_with_offset[31:0];
+  assign q_clamped_data = q_below_min ? c.activation_min :
+      q_above_max ? c.activation_max : q_offset_low[31:0];
+
+  // 每个总线银行共用一个数据选择器，存储项分别保留地址比较和写使能。
+  // 已保存的运算模式确定普通向量、窗口和全局池化响应的数据来源。
+  for (genvar bank=0;bank<BUS_BYTES;bank++) begin : g_input_bank_data
+    localparam int p_s16_lane = bank % (BUS_BYTES / 2);
+    localparam int p_window_bank = bank % 4;
+    logic signed [15:0] dma_bank_data;
+
+    assign dma_bank_data = c.vector_s16 ? rd_data[p_s16_lane] : rd_data[bank];
+    assign input_bank_data[bank] = global_pool ? pool_bank_data[bank] :
+        spatial ? window_bank_data[p_window_bank] : dma_bank_data;
+  end
+
   for (genvar entry=0;entry<DMA_SIZE;entry++) begin : g_input_write
     if (entry>=2*TILE) begin : g_unused
       assign input_buf[entry]=16'sd0;
@@ -631,48 +979,128 @@ module vector_engine #(
     wire load_match=c.vector_s16 ?
         dma_input_write_valid[S16_LANE] && dma_input_write_index[S16_LANE]==INPUT_INDEX_W'(entry) :
         dma_input_write_valid[S8_LANE] && dma_input_write_index[S8_LANE]==INPUT_INDEX_W'(entry);
-    wire signed [15:0] load_value=c.vector_s16 ? rd_data[S16_LANE] : rd_data[S8_LANE];
     logic write_enable;
     logic signed [15:0] write_value;
     localparam int WINDOW_BANK=entry%4;
     wire window_match=window_bank_valid[WINDOW_BANK] &&
         window_bank_index[WINDOW_BANK]==INPUT_INDEX_W'(entry);
-    wire signed [15:0] window_value=window_bank_data[WINDOW_BANK];
     wire pool_match=pool_bank_valid[S8_LANE] &&
         pool_bank_row[S8_LANE]==POOL_ROW_W'(entry/BUS_BYTES);
-    // DMA, window and pool responses share fixed write ports in each bank.
-    always_comb begin
-      write_enable=window_match || load_match;
-      write_value=load_match ? load_value : window_value;
-      if (pool_match) begin
-        write_enable=1'b1;write_value=pool_bank_data[S8_LANE];
-      end
-    end
+
+    assign write_enable = window_match || load_match || pool_match;
+    assign write_value = input_bank_data[S8_LANE];
     always_ff @(posedge clk) if (rst_n && write_enable) input_buf[entry] <= write_value;
     end
   end
 
-  for (genvar entry=0;entry<TILE;entry++) begin : g_parameter_write
-    always_ff @(posedge clk) begin
-      if (rst_n && state==TILE_INIT) bias_buf[entry]<=0;
-      if (rst_n && state==LOAD_WAIT && rd_raw_valid && 32'(entry)<active) begin
-        for (int word=0;word<BUS_WIDTH/32;word++) begin
-          if ((32'(rd_col_base)>>2)+32'(word)==32'(entry)) begin
-            case (load_kind)
-              LD_BIAS: bias_buf[entry]<=$signed(rd_raw_data[word*32+:32]);
-              LD_MULT: mult_buf[entry]<=$signed(rd_raw_data[word*32+:32]);
-              LD_SHIFT: right_shift_buf[entry]<=6'd31-rd_raw_data[word*32+:6];
-              default: ;
-            endcase
-          end
+  // 每拍的连续偏置字分配到固定分组，同组存储项共用数据字选择。
+  localparam int p_bias_words_per_beat = BUS_WIDTH / 32;
+  logic bias_load_fire;
+  logic [31:0] bias_word_index [p_bias_words_per_beat];
+  logic bias_bank_valid [p_bias_words_per_beat];
+  logic [31:0] bias_bank_index [p_bias_words_per_beat];
+  logic [31:0] bias_bank_data [p_bias_words_per_beat];
+
+  assign bias_load_fire = (state == LOAD_WAIT) && (load_kind == LD_BIAS) && rd_raw_valid;
+  for (genvar word = 0; word < p_bias_words_per_beat; word++) begin : g_bias_word_index
+    assign bias_word_index[word] = (32'(rd_col_base) >> 2) + 32'(word);
+  end
+  for (genvar bank = 0; bank < p_bias_words_per_beat; bank++) begin : g_bias_write_bank
+    always_comb begin
+      bias_bank_valid[bank] = 1'b0;
+      bias_bank_index[bank] = 32'd0;
+      bias_bank_data[bank] = 32'd0;
+      for (int word = 0; word < p_bias_words_per_beat; word++) begin
+        if ((bias_word_index[word] % 32'(p_bias_words_per_beat)) == 32'(bank)) begin
+          bias_bank_valid[bank] = bias_load_fire && (bias_word_index[word] < 32'(active));
+          bias_bank_index[bank] = bias_word_index[word];
+          bias_bank_data[bank] = rd_raw_data[word*32 +: 32];
         end
+      end
+      if (state == TILE_INIT) begin
+        bias_bank_data[bank] = 32'd0;
       end
     end
   end
+  // 深度为一的存储保留所有偏置的并行读取，初始化周期同时写入零值。
+  for (genvar entry = 0; entry < TILE; entry++) begin : g_bias_storage
+    localparam int p_bank = entry % p_bias_words_per_beat;
+    logic bias_storage_i_wr_en;
+    logic [0:0] bias_storage_i_wr_addr;
+    logic [31:0] bias_storage_i_wr_data;
+    logic [0:0] bias_storage_i_wr_mask;
+    logic [0:0] bias_storage_i_rd_en;
+    logic [0:0][0:0] bias_storage_i_rd_addr;
+    logic [0:0][31:0] bias_storage_o_rd_data;
+
+    assign bias_storage_i_wr_en = rst_n && ((state == TILE_INIT) ||
+        (bias_bank_valid[p_bank] && (bias_bank_index[p_bank] == 32'(entry))));
+    assign bias_storage_i_wr_addr = '0;
+    assign bias_storage_i_wr_data = bias_bank_data[p_bank];
+    assign bias_storage_i_wr_mask = '1;
+    assign bias_storage_i_rd_en = '1;
+    assign bias_storage_i_rd_addr = '0;
+    assign bias_buf[entry] = $signed(bias_storage_o_rd_data[0]);
+    REGFILE #(
+        .p_data_width(32),
+        .p_depth(1),
+        .p_addr_width(1),
+        .p_write_unit(32),
+        .p_read_ports(1),
+        .p_sync_read(1'b0)
+    ) u_bias_storage (
+        .clk(clk),
+        .i_wr_en(bias_storage_i_wr_en),
+        .i_wr_addr(bias_storage_i_wr_addr),
+        .i_wr_data(bias_storage_i_wr_data),
+        .i_wr_mask(bias_storage_i_wr_mask),
+        .i_rd_en(bias_storage_i_rd_en),
+        .i_rd_addr(bias_storage_i_rd_addr),
+        .o_rd_data(bias_storage_o_rd_data)
+    );
+  end
+
+  // DMA 参数写入按数据字分组，量化阶段仍在原有时钟边沿接收异步读数据。
+  logic params_i_wr_en;
+  logic params_i_wr_multiplier, params_i_wr_shift;
+  logic [INPUT_INDEX_W-1:0] params_i_wr_byte_index;
+  logic [BUS_WIDTH-1:0] params_i_wr_data;
+  logic [ACTIVE_COUNT_W-1:0] params_i_active;
+  logic [TILE_INDEX_W-1:0] params_i_rd_index;
+  logic signed [31:0] params_o_multiplier;
+  logic [5:0] params_o_right_shift;
+  assign params_i_wr_en = rst_n && state==LOAD_WAIT && rd_raw_valid;
+  assign params_i_wr_multiplier = (load_kind==LD_MULT);
+  assign params_i_wr_shift = (load_kind==LD_SHIFT);
+  assign params_i_wr_byte_index = rd_col_base;
+  assign params_i_wr_data = rd_raw_data;
+  assign params_i_active = active;
+  assign params_i_rd_index = q_issue;
+  vector_quant_params #(
+      .p_entries(TILE),
+      .p_bus_width(BUS_WIDTH),
+      .p_dma_index_width(INPUT_INDEX_W),
+      .p_read_index_width(TILE_INDEX_W),
+      .p_active_width(ACTIVE_COUNT_W)
+  ) u_quant_params (
+      .clk(clk),
+      .i_wr_en(params_i_wr_en),
+      .i_wr_multiplier(params_i_wr_multiplier),
+      .i_wr_shift(params_i_wr_shift),
+      .i_wr_byte_index(params_i_wr_byte_index),
+      .i_wr_data(params_i_wr_data),
+      .i_active(params_i_active),
+      .i_rd_index(params_i_rd_index),
+      .o_multiplier(params_o_multiplier),
+      .o_right_shift(params_o_right_shift)
+  );
 
   for (genvar entry=0;entry<TILE;entry++) begin : g_accumulator_write
     localparam int LANE_INDEX = entry % PE_COUNT;
     localparam int GROUP_BASE = entry - LANE_INDEX;
+    (* keep = 1 *) logic soft_selected;
+    // 下标和模式先行检查，指数接收条件直接参与当前项的写入选择。
+    assign soft_selected = softmax_s8 && soft_exp_index==$bits(soft_exp_index)'(entry);
     always_ff @(posedge clk) if (rst_n) begin
       if (state==EXECUTE_COMMIT && c.op!=VEC_HADAMARD && 32'(entry)<active &&
           compute_index==TILE_INDEX_W'(GROUP_BASE)) acc_buf[entry]<=pe_result[LANE_INDEX];
@@ -687,7 +1115,7 @@ module vector_engine #(
         else if (c.op==VEC_MIN) acc_buf[entry]<=32'sh7fff_ffff;
         else acc_buf[entry]<=0;
       end
-      if (softmax_s8 && soft_exp_we && soft_exp_index==$bits(soft_exp_index)'(entry))
+      if (soft_selected && soft_exp_we)
         acc_buf[entry]<=soft_exp_data;
       if (state==LOAD_WAIT && load_kind==LD_B && 32'(entry)<active) begin
         if (c.vector_s16) begin
@@ -704,7 +1132,7 @@ module vector_engine #(
   end
 
   wire signed [63:0] rounding_input = add_s8 ? add_product :
-      c.op==AVGPOOL_S8 ? $signed(64'(acc_buf[quant_index])) : q_product;
+      c.op==AVGPOOL_S8 ? $signed(64'(serial_acc_read_data)) : q_product;
   wire [5:0] rounding_amount = add_s8 ? add_right : c.op==AVGPOOL_S8 ? avg_shift : q_right_3;
   wire signed [63:0] rounding_result,rounding_floor;
   vector_round_shift #(.REGISTER_MIDDLE(1'b1)) u_rounding (
@@ -725,6 +1153,47 @@ module vector_engine #(
       add_rounded< -64'sd256 ? c.activation_min :
       add_adjusted<$signed(c.activation_min) ? c.activation_min :
       add_adjusted>$signed(c.activation_max) ? c.activation_max : 32'(add_adjusted);
+
+  // 串行结果共用字节数据选择，每个存储项仅保留地址使能和并行结果选择。
+  logic result_background_write;
+  logic result_quant_write;
+  logic [TILE_INDEX_W-1:0] result_background_index;
+  logic [7:0] result_background_data;
+  logic result_serial_write;
+  logic [TILE_INDEX_W-1:0] result_serial_index;
+  logic [7:0] result_serial_data;
+  assign result_quant_write = depthwise && state!=IDLE && state!=FAILED && state!=DONE &&
+      q_active && q_valid[5];
+  assign result_background_write = result_quant_write || (softmax_s8 && soft_out_we);
+  assign result_background_index = result_quant_write ? q_index_5 : TILE_INDEX_W'(soft_out_index);
+  assign result_background_data = result_quant_write ? q_clamped_data[7:0] : soft_out_data;
+  always_comb begin
+    result_serial_write = 1'b0;
+    result_serial_index = '0;
+    result_serial_data = '0;
+    case (state)
+      ADD_STORE: begin
+        result_serial_write = !writeback_busy && compute_index<TILE_INDEX_W'(active);
+        result_serial_index = compute_index;
+        result_serial_data = add_clamped[7:0];
+      end
+      AVG_POWER_STORE: begin
+        result_serial_write = 1'b1;
+        result_serial_index = quant_index;
+        result_serial_data = avg_power_result[7:0];
+      end
+      AVG_WAIT: begin
+        result_serial_write = avg_done;
+        result_serial_index = quant_index;
+        result_serial_data = avg_div_result[7:0];
+      end
+      VECTOR_REDUCE: begin
+        result_serial_write = reduce_index+1>=TILE;
+        result_serial_data = reduce_next[7:0];
+      end
+      default: ;
+    endcase
+  end
   for (genvar entry=0;entry<TILE;entry++) begin : g_result_write
     localparam int LANE_INDEX = entry % PE_COUNT;
     localparam int GROUP_BASE = entry - LANE_INDEX;
@@ -733,35 +1202,21 @@ module vector_engine #(
     always_comb begin
       write_enable = 1'b0;
       write_value = '0;
-      if (softmax_s8 && soft_out_we && soft_out_index==$bits(soft_out_index)'(entry)) begin
-        write_enable = 1'b1;write_value = soft_out_data;
-      end
-      if (depthwise && state!=IDLE && state!=FAILED && state!=DONE &&
-          q_active && q_valid[5] && q_index_5==TILE_INDEX_W'(entry)) begin
-        write_enable = 1'b1;write_value = q_clamped_data[7:0];
+      if (result_background_write && result_background_index==TILE_INDEX_W'(entry)) begin
+        write_enable = 1'b1;write_value = result_background_data;
       end
       if (state==EXECUTE_COMMIT && c.op==VEC_HADAMARD && !writeback_busy &&
           32'(entry)<active && compute_index==TILE_INDEX_W'(GROUP_BASE)) begin
         write_enable = 1'b1;write_value = pe_result[LANE_INDEX][7:0];
       end
-      if (state==ADD_STORE && !writeback_busy &&
-          32'(entry)<active && compute_index==TILE_INDEX_W'(entry)) begin
-        write_enable = 1'b1;write_value = add_clamped[7:0];
-      end
-      if (state==AVG_POWER_STORE && quant_index==TILE_INDEX_W'(entry)) begin
-        write_enable = 1'b1;write_value = avg_power_result[7:0];
-      end
-      if (state==AVG_WAIT && avg_done && quant_index==TILE_INDEX_W'(entry)) begin
-        write_enable = 1'b1;write_value = avg_div_result[7:0];
+      if (result_serial_write && result_serial_index==TILE_INDEX_W'(entry)) begin
+        write_enable = 1'b1;write_value = result_serial_data;
       end
       if (state==POOL_STORE && 32'(entry)<active) begin
         write_enable = 1'b1;
         write_value = $signed(acc_buf[entry][7:0])<$signed(c.activation_min[7:0]) ? c.activation_min[7:0] :
             $signed(acc_buf[entry][7:0])>$signed(c.activation_max[7:0]) ? c.activation_max[7:0] :
             acc_buf[entry][7:0];
-      end
-      if (entry==0 && state==VECTOR_REDUCE && reduce_index+1>=TILE) begin
-        write_enable = 1'b1;write_value = reduce_next[7:0];
       end
     end
     // Byte results update only the byte consumed by byte-mode writeback.
@@ -789,7 +1244,7 @@ module vector_engine #(
       q_accumulator<=0;q_multiplier<=0;q_rounded<=0;q_product<=0;q_right_0<=0;q_right_1<=0;q_right_2<=0;q_right_3<=0;
       q_valid<=0;q_index_0<=0;q_index_1<=0;q_index_2<=0;q_index_3<=0;q_index_4<=0;q_index_5<=0;q_issue<=0;q_count<=0;
       q_active<=0;
-      read_bank<=0;wf_bank<=0;input_ready<=0;input_reserved<=0;
+      read_bank<=0;wf_bank<=0;input_ready<=0;
       window_received<=0;soft_lut_data<=0;avg_negative<=0;
       fetch_position<=0;fetch_tap<=0;fetch_ox<=0;fetch_kx<=0;
       fetch_x<=0;fetch_y<=0;fetch_origin_x<=0;fetch_origin_y<=0;
@@ -827,19 +1282,18 @@ module vector_engine #(
         end
       end
       if (window_request_fire) begin
-        input_reserved[wf_bank]<=1;
         wf_bank<=(wf_bank+1'b1)&input_bank_mask;
       end
       if (window_response_fire) begin
         window_received<=window_received+32'(window_response_count);
         if(win_rsp_last) begin
-          input_reserved[win_rsp_tag]<=0;input_ready[win_rsp_tag]<=!win_rsp_error;
+          input_ready[win_rsp_tag]<=!win_rsp_error;
           window_received<=0;
         end
       end
       if (param_bad) param_bad_seen<=1;
       if (pool_response_fire) begin
-        pool_received<=pool_received+(INPUT_INDEX_W+1)'(pool_received_count);
+        pool_received<=pool_received+(INPUT_INDEX_W+1)'(pool_beat_count);
         if (pool_row_remaining<=BUS_BYTES) pool_row_remaining<=pool_row_columns;
         else pool_row_remaining<=pool_row_remaining-(INPUT_INDEX_W+1)'(BUS_BYTES);
       end
@@ -848,7 +1302,7 @@ module vector_engine #(
           c<=cfg; error<=0; state<=CHECK;
           input_range_mode<=0;
           q_active<=0;q_valid<=0;
-          input_ready<=0;input_reserved<=0;read_bank<=0;wf_bank<=0;window_received<=0;
+          input_ready<=0;read_bank<=0;wf_bank<=0;window_received<=0;
           param_bad_seen<=0;
         end
         CHECK: if (config_check_ready) state<=CHECK_WAIT;
@@ -864,7 +1318,7 @@ module vector_engine #(
           active<=channels-channel_base<TILE ? channels-channel_base : 32'(TILE);
           position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_tap_offset<=0;load_kind<=LD_WEIGHT;
           input_origin_x<=-$signed(34'(c.image.pad_left));input_origin_y<=-$signed(34'(c.image.pad_top));
-          input_ready<=0;input_reserved<=0;read_bank<=0;wf_bank<=0;window_received<=0;
+          input_ready<=0;read_bank<=0;wf_bank<=0;window_received<=0;
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
           fetch_x<=-$signed(34'(c.image.pad_left));fetch_y<=-$signed(34'(c.image.pad_top));
           fetch_origin_x<=-$signed(34'(c.image.pad_left));fetch_origin_y<=-$signed(34'(c.image.pad_top));
@@ -905,7 +1359,7 @@ module vector_engine #(
         end
         POOL_LOAD_REQ: if (rd_granted) state<=POOL_LOAD_WAIT;
         POOL_LOAD_WAIT: if (rd_done) begin
-          if (rd_error || pool_received+(INPUT_INDEX_W+1)'(pool_received_count)!=pool_elements) begin error<=2'b10;state<=FAILED;end
+          if (rd_error || !pool_receive_complete) begin error<=2'b10;state<=FAILED;end
           else begin compute_index<=0;state<=POOL_LOAD_DRAIN;end
         end
         POOL_LOAD_DRAIN: state<=EXECUTE;
@@ -991,8 +1445,8 @@ module vector_engine #(
         QUANT_STREAM: begin
           q_valid<={q_valid[4:0],q_issue<q_count};
           if (q_issue<q_count) begin
-            q_accumulator<=acc_buf[q_issue];q_multiplier<=mult_buf[q_issue];
-            q_right_0<=right_shift_buf[q_issue];q_index_0<=q_issue;q_issue<=q_issue+1'b1;
+            q_accumulator<=serial_acc_read_data;q_multiplier<=params_o_multiplier;
+            q_right_0<=params_o_right_shift;q_index_0<=q_issue;q_issue<=q_issue+1'b1;
           end
           if (q_valid[0]) begin q_right_1<=q_right_0;q_index_1<=q_index_0;end
           if (q_valid[1]) begin q_right_2<=q_right_1;q_index_2<=q_index_1;end
@@ -1007,7 +1461,7 @@ module vector_engine #(
           end
         end
         AVG_START: if (avg_power_two) state<=AVG_POWER_STORE;
-          else begin avg_negative<=acc_buf[quant_index]<0;state<=AVG_WAIT;end
+          else begin avg_negative<=serial_acc_read_data<0;state<=AVG_WAIT;end
         AVG_POWER_STORE: begin
           if (quant_index+1<active) begin quant_index<=quant_index+1;state<=AVG_START;end
           else begin write_origin<=c.output_base+position_offset+channel_base;write_total<=active;state<=WRITE_PREP;end
@@ -1056,9 +1510,9 @@ module vector_engine #(
           vector_offset<=0;active<=c.length<TILE ? c.length : 32'(TILE);
           load_kind<=LD_A;state<=LOAD_REQ;
         end
-        VECTOR_NEXT: if (vector_offset+active<c.length) begin
+        VECTOR_NEXT: if (vector_has_more) begin
           vector_offset<=vector_offset+active;
-          active<=c.length-vector_offset-active<TILE ? c.length-vector_offset-active : 32'(TILE);
+          active<=vector_next_active;
           load_kind<=LD_A;state<=LOAD_REQ;
         end else if (c.op==VEC_HADAMARD || add_s8) state<=DRAIN;
         else begin
@@ -1072,7 +1526,7 @@ module vector_engine #(
         end
         FAILED: if (!rd_busy && !wr_busy && !win_busy && !writeback_busy && dma_cfg_ready) begin
           q_active<=0;q_valid<=0;
-          input_reserved<=0;input_ready<=0;state<=DONE;
+          input_ready<=0;state<=DONE;
         end
         DONE: if (done_ready) state<=IDLE;
         default: begin error<=2'b10;state<=FAILED;end
@@ -1137,6 +1591,101 @@ module vector_engine #(
     end
   end
 `endif
+endmodule
+
+// 三个无符号地址分量先保存逐位进位，再由 DSP 完成完整宽度加法。
+module vector_read_address_add #(
+`ifdef ASIC_SYNTHESIS
+  parameter bit p_use_dsp = 1'b0
+`elsif XILINX_FPGA
+  parameter bit p_use_dsp = 1'b1
+`elsif SYNTHESIS
+  parameter bit p_use_dsp = 1'b1
+`else
+  parameter bit p_use_dsp = 1'b0
+`endif
+) (
+  input logic clk,
+  input logic [31:0] i_base,
+  input logic [31:0] i_offset,
+  input logic [15:0] i_channel,
+  output logic [31:0] o_address,
+  output logic [1:0] o_carry
+);
+  if (p_use_dsp) begin : g_dsp
+    logic [31:0] extended_channel, sum_bits, carry_bits;
+    logic [47:0] extended_sum;
+    logic [29:0] dsp_i_a, dsp_i_acin;
+    logic [17:0] dsp_i_b, dsp_i_bcin;
+    logic [47:0] dsp_i_c, dsp_i_pcin;
+    logic [24:0] dsp_i_d;
+    logic [6:0] dsp_i_opmode;
+    logic [4:0] dsp_i_inmode;
+    logic [3:0] dsp_i_alumode;
+    logic [2:0] dsp_i_carry_select;
+    logic dsp_i_zero;
+    logic [47:0] dsp_o_p;
+    logic [29:0] unused_acout;
+    logic [17:0] unused_bcout;
+    logic [47:0] unused_pcout;
+    logic [3:0] unused_carryout;
+    logic unused_carrycascout, unused_multsignout;
+    logic unused_overflow, unused_underflow;
+    logic unused_patterndetect, unused_patternbdetect;
+
+    assign extended_channel = {16'd0, i_channel};
+    for (genvar bit_index = 0; bit_index < 32; bit_index++) begin : g_compress
+      // 同一个 LUT 同时产生异或结果和三输入多数值，逐位处理不传播进位。
+      LUT6_2 #(.INIT(64'he8e8_e8e8_9696_9696)) u_sum_carry (
+        .I0(i_base[bit_index]), .I1(i_offset[bit_index]),
+        .I2(extended_channel[bit_index]), .I3(1'b0), .I4(1'b0), .I5(1'b1),
+        .O5(sum_bits[bit_index]), .O6(carry_bits[bit_index])
+      );
+    end
+    assign extended_sum = {16'd0, sum_bits};
+    assign dsp_i_a = extended_sum[47:18];
+    assign dsp_i_b = extended_sum[17:0];
+    assign dsp_i_c = {15'd0, carry_bits, 1'b0};
+    assign dsp_i_acin = '0;
+    assign dsp_i_bcin = '0;
+    assign dsp_i_pcin = '0;
+    assign dsp_i_d = '0;
+    assign dsp_i_opmode = 7'b0110011;
+    assign dsp_i_inmode = '0;
+    assign dsp_i_alumode = '0;
+    assign dsp_i_carry_select = '0;
+    assign dsp_i_zero = 1'b0;
+
+    // 所有内部寄存器均旁路，读请求仍在原来的周期提供地址。
+    // 保留两位溢出，覆盖两个三十二位分量与十六位通道号的完整和。
+    DSP48E1 #(
+      .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .ADREG(0),
+      .CREG(0), .DREG(0), .MREG(0), .PREG(0), .CARRYINREG(0),
+      .CARRYINSELREG(0), .INMODEREG(0), .OPMODEREG(0), .ALUMODEREG(0),
+      .USE_DPORT("FALSE"), .USE_MULT("NONE"), .USE_SIMD("ONE48")
+    ) u_dsp (
+      .CLK(clk), .A(dsp_i_a), .ACIN(dsp_i_acin), .B(dsp_i_b), .BCIN(dsp_i_bcin),
+      .C(dsp_i_c), .D(dsp_i_d), .PCIN(dsp_i_pcin),
+      .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode), .ALUMODE(dsp_i_alumode),
+      .CARRYIN(dsp_i_zero), .CARRYINSEL(dsp_i_carry_select),
+      .CARRYCASCIN(dsp_i_zero), .MULTSIGNIN(dsp_i_zero),
+      .CEA1(dsp_i_zero), .CEA2(dsp_i_zero), .CEAD(dsp_i_zero),
+      .CEB1(dsp_i_zero), .CEB2(dsp_i_zero), .CEC(dsp_i_zero),
+      .CECARRYIN(dsp_i_zero), .CED(dsp_i_zero), .CEM(dsp_i_zero), .CEP(dsp_i_zero),
+      .CECTRL(dsp_i_zero), .CEINMODE(dsp_i_zero), .CEALUMODE(dsp_i_zero),
+      .RSTA(dsp_i_zero), .RSTB(dsp_i_zero), .RSTC(dsp_i_zero), .RSTD(dsp_i_zero),
+      .RSTM(dsp_i_zero), .RSTP(dsp_i_zero), .RSTALLCARRYIN(dsp_i_zero),
+      .RSTCTRL(dsp_i_zero), .RSTINMODE(dsp_i_zero), .RSTALUMODE(dsp_i_zero),
+      .P(dsp_o_p), .ACOUT(unused_acout), .BCOUT(unused_bcout), .PCOUT(unused_pcout),
+      .CARRYOUT(unused_carryout), .CARRYCASCOUT(unused_carrycascout),
+      .MULTSIGNOUT(unused_multsignout), .OVERFLOW(unused_overflow),
+      .UNDERFLOW(unused_underflow), .PATTERNDETECT(unused_patterndetect),
+      .PATTERNBDETECT(unused_patternbdetect)
+    );
+    assign {o_carry, o_address} = dsp_o_p[33:0];
+  end else begin : g_generic
+    assign {o_carry, o_address} = {2'b00, i_base} + {2'b00, i_offset} + {18'd0, i_channel};
+  end
 endmodule
 
 // Asynchronous tap reads preserve the vector issue schedule.

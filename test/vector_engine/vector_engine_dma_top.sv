@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3)(
+module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3, BUS_WIDTH=32)(
   input logic clk,rst_n,start,done_ready,
   input logic [31:0] config_words[40],
   output logic [31:0] pe_count,
@@ -16,17 +16,18 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   output logic m_axi_arvalid,input logic m_axi_arready,
   output logic [31:0] m_axi_araddr,output logic [7:0] m_axi_arlen,
   output logic [2:0] m_axi_arsize,output logic [1:0] m_axi_arburst,
-  input logic m_axi_rvalid,output logic m_axi_rready,input logic [31:0] m_axi_rdata,
+  input logic m_axi_rvalid,output logic m_axi_rready,input logic [BUS_WIDTH-1:0] m_axi_rdata,
   input logic [1:0] m_axi_rresp,input logic m_axi_rlast,
   output logic m_axi_awvalid,input logic m_axi_awready,
   output logic [31:0] m_axi_awaddr,output logic [7:0] m_axi_awlen,
   output logic [2:0] m_axi_awsize,output logic [1:0] m_axi_awburst,
-  output logic m_axi_wvalid,input logic m_axi_wready,output logic [31:0] m_axi_wdata,
-  output logic [3:0] m_axi_wstrb,output logic m_axi_wlast,
+  output logic m_axi_wvalid,input logic m_axi_wready,output logic [BUS_WIDTH-1:0] m_axi_wdata,
+  output logic [BUS_WIDTH/8-1:0] m_axi_wstrb,output logic m_axi_wlast,
   input logic m_axi_bvalid,output logic m_axi_bready,input logic [1:0] m_axi_bresp
 );
   import vector_engine_pkg::*;
   localparam int DMA_SIZE=4*TILE;
+  localparam int BUS_BYTES=BUS_WIDTH/8;
   vector_engine_cfg_t cfg;
   assign pe_count=32'(PE_COUNT);
   assign observed_window_elements=engine.window_received;
@@ -62,13 +63,15 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
     logic [3:0] win_rsp_mask;
     logic win_rsp_last,win_rsp_error,win_busy;
   logic rd_req,rd_start,rd_granted,rd_im2col,rd_use_16bits,rd_busy,rd_done,rd_error;
-  logic [31:0] rd_p0,rd_q0,rd_base_addr,rd_row_stride,rd_rows_to_read,rd_valid_cols,rd_raw_data;
-  logic [7:0] rd_burst_len_m1;logic rd_raw_valid;logic signed [15:0] rd_data[4];logic rd_valid[4];
+  logic [31:0] rd_p0,rd_q0,rd_base_addr,rd_row_stride,rd_rows_to_read,rd_valid_cols;
+  logic [BUS_WIDTH-1:0] rd_raw_data;
+  logic [7:0] rd_burst_len_m1;logic rd_raw_valid;logic signed [15:0] rd_data[BUS_BYTES];logic rd_valid[BUS_BYTES];
   logic [$clog2(DMA_SIZE)-1:0] rd_col_base;
   logic wr_req,wr_start,wr_granted,src_wvalid,src_wready,wr_busy,wr_done,wr_error;
-  logic [31:0] wr_base_addr,wr_row_stride,wr_rows_to_write,src_wdata;
-  logic [7:0] wr_burst_len_m1;logic [3:0] src_wmask;
-  vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT)) engine(.*);
+  logic [31:0] wr_base_addr,wr_row_stride,wr_rows_to_write;
+  logic [BUS_WIDTH-1:0] src_wdata;
+  logic [7:0] wr_burst_len_m1;logic [BUS_BYTES-1:0] src_wmask;
+  vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT),.BUS_WIDTH(BUS_WIDTH)) engine(.*);
     assign stat_cycles=engine.tb_observer.stat_cycles;
     assign stat_compute=engine.tb_observer.stat_compute;
     assign stat_dma_wait=engine.tb_observer.stat_dma_wait;
@@ -112,22 +115,22 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
       if (mac_active && quant_active && write_active) all_overlap<=all_overlap+1;
       if (wr_start) begin
         write16<=engine.depthwise && engine.u_writeback.total_bytes==16 &&
-                 engine.u_writeback.lane_offset[1:0]==0;
+                 engine.u_writeback.lane_offset==0;
         write16_beats<=0;
         if (engine.depthwise && engine.u_writeback.total_bytes==16 &&
-            engine.u_writeback.lane_offset[1:0]==0) begin
-          assert(wr_burst_len_m1==3);
+            engine.u_writeback.lane_offset==0) begin
+          assert(wr_burst_len_m1==16/BUS_BYTES-1);
           write_bursts16<=write_bursts16+1;
         end
       end
       if (write16 && src_wvalid && src_wready) begin
         write16_beats<=write16_beats+1;write_beats16<=write_beats16+1;
-        assert(src_wmask==4'b1111);
+        assert(src_wmask=={BUS_BYTES{1'b1}});
       end
-      if (write16 && wr_done) begin assert(write16_beats==4);write16<=0;end
+      if (write16 && wr_done) begin assert(write16_beats==16/BUS_BYTES);write16<=0;end
     end
   end
-  axi_block_dma_arbiter #(.SIZE(TILE),.DMA_SIZE(DMA_SIZE),.DATA_WIDTH(16),
+  axi_block_dma_arbiter #(.SIZE(TILE),.DMA_SIZE(DMA_SIZE),.DATA_WIDTH(16),.BUS_WIDTH(BUS_WIDTH),
     .CONV_CACHE_SETS(CACHE_SETS),.CONV_CACHE_POLICY(CACHE_POLICY)) dma(
     .clk,.rst_n,.conv_cfg_valid(dma_cfg_valid),.conv_cfg_ready(dma_cfg_ready),
     .conv_enable(dma_conv_enable),.dma_range_enable,.conv_cfg(dma_conv_cfg),
@@ -141,7 +144,7 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
     .quant_req(1'b0),.quant_start(1'b0),.quant_linear_read_mode(1'b0),.quant_base_addr(32'd0),
     .quant_row_stride(32'd0),.quant_rows_to_read(32'd0),.quant_burst_len_m1(8'd0),.quant_slot_id(1'b0),.quant_use_16bits(1'b0),.quant_lhs_zp(32'd0),
     .oa_req(1'b0),.oa_start(1'b0),.oa_base_addr(32'd0),.oa_row_stride(32'd0),
-    .oa_rows_to_read(32'd0),.oa_burst_len_m1(8'd0),.oa_src_wdata(32'd0),.oa_src_wmask(4'd0),.oa_src_wvalid(1'b0),
+    .oa_rows_to_read(32'd0),.oa_burst_len_m1(8'd0),.oa_src_wdata(BUS_WIDTH'(0)),.oa_src_wmask(BUS_BYTES'(0)),.oa_src_wvalid(1'b0),
             .win_req_valid,.win_req_ready,.win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
             .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
             .win_rsp_last,.win_rsp_error,.win_busy,

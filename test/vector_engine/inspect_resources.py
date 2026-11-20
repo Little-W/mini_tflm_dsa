@@ -73,20 +73,23 @@ def inspect(repository, out, executable, top, tile, pes):
     conv = repository / "rtl/npu/conv"
     if top == "vector_engine":
         names = ["conv_im2col_pkg.sv", "vector_engine_pkg.sv",
-                 "vector_pe.sv", "vector_softmax.sv", "vector_config_check.sv", "vector_writeback.sv", "vector_round_shift.sv", "vector_scalar_multiplier.sv", "vector_engine.sv"]
+                 "vector_pe.sv", "vector_softmax.sv", "vector_config_check.sv", "vector_writeback.sv", "vector_round_shift.sv", "vector_scalar_multiplier.sv", "vector_quant_params.sv", "vector_engine.sv"]
         parameters = [f"-GTILE={tile}", f"-GPE_COUNT={pes}"]
     else:
         names = ["conv_im2col_pkg.sv", "cache/conv_sdp_ram.sv",
                  "cache/conv_next_use_predictor.sv", "conv_axi_span_reader.sv",
                  "cache/conv_read_cache.sv", "conv_im2col_frontend.sv"]
         parameters = [f"-GSIZE={tile}", "-GLANES=4", "-GCACHE_SETS=128", "-GCACHE_POLICY=3"]
-    sources = [(conv.parent / "dma" / name if name.startswith("cache/") else conv / name) for name in names]
+    sources = [(conv.parent / "dma" / name if name.startswith("cache/") else conv / name) for name in names
+               if name != "vector_quant_params.sv" or (conv / name).exists()]
+    if (repository / "rtl/common/REGFILE.v").exists():
+        sources.append(repository / "rtl/common/REGFILE.v")
     identity = {str(path.relative_to(repository)): hashlib.sha256(path.read_bytes()).hexdigest()
                 for path in sources}
     tree, metadata = out / "design.tree.json", out / "design.meta.json"
     command = [executable, "--json-only", "--flatten", "--json-only-output", str(tree),
                "--json-only-meta-output", str(metadata), "--top-module", top,
-               *parameters, "-DSYNTHESIS", "-Wno-fatal", *map(str, sources)]
+               *parameters, "-DSYNTHESIS", "-DASIC_SYNTHESIS", "-Wno-fatal", *map(str, sources)]
     with (out / "elaboration.log").open("w") as log:
         subprocess.run(command, cwd=repository, stdout=log, stderr=subprocess.STDOUT, check=True)
     if any(hashlib.sha256((repository / name).read_bytes()).hexdigest() != digest
@@ -175,10 +178,21 @@ def main():
     if args.reference:
         old = result["designs"]["reference"]["vector_engine"]
         new = result["designs"]["current"]["vector_engine"]
-        for name in ("input_buf", "rhs_buf", "bias_buf", "mult_buf", "shift_buf", "acc_buf", "result_buf"):
+        for name in ("input_buf", "rhs_buf", "bias_buf", "acc_buf", "result_buf"):
             key = "vector_engine." + name
             if old["declared_arrays"][key] != new["declared_arrays"][key]:
                 raise RuntimeError("Vector data storage differs: " + key)
+        def parameter_bits(record):
+            arrays = record["declared_arrays"]
+            selected = [shape for name, shape in arrays.items() if name in {
+                "vector_engine.mult_buf", "vector_engine.shift_buf", "vector_engine.right_shift_buf"} or
+                ("u_quant_params.g_bank[" in name and name.endswith(".u_regfile.mem"))]
+            if not selected:
+                raise RuntimeError("Vector quantization parameter storage was not found")
+            return sum(math.prod(shape["dimensions"]) * shape["element_bits"] for shape in selected)
+        if parameter_bits(old) != parameter_bits(new):
+            raise RuntimeError("Vector quantization parameter storage capacity differs")
+        result["quantization_parameter_storage_bits"] = parameter_bits(new)
         def weight_bits(record):
             arrays=record["declared_arrays"]
             selected=[shape for name,shape in arrays.items() if name=="vector_engine.weight_buf" or

@@ -12,6 +12,11 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#ifndef TEST_BUS_WIDTH
+#define TEST_BUS_WIDTH 32
+#endif
+static constexpr unsigned BUS_BYTES=TEST_BUS_WIDTH/8;
+static_assert(TEST_BUS_WIDTH==32 || TEST_BUS_WIDTH==64,"supported AXI data width");
 extern "C" int vector_engine_reference(const uint32_t*,const int8_t*,const int8_t*,const int32_t*,int32_t*,int32_t*,int8_t*);
 static void require(bool condition,const std::string &s){if(!condition)throw std::runtime_error(s);}
 struct Range{uint32_t base,size;};
@@ -32,7 +37,8 @@ public:
  uint64_t cycles=0,read_bytes=0,write_bytes=0,bursts=0,next_read_cycle=0;
  bool common_memory_service=false;
  bool ar_stall=false,aw_stall=false,w_stall=false;
- std::tuple<uint32_t,uint32_t,uint32_t> old_ar,old_aw,old_w;
+ std::tuple<uint32_t,uint32_t,uint32_t> old_ar,old_aw;
+ std::tuple<uint64_t,uint32_t,uint32_t> old_w;
  bool chance(){return !random_wait || rng()%4!=0;}
  bool readable(uint32_t addr)const{for(auto r:ranges)if(addr>=r.base&&uint64_t(addr)<uint64_t(r.base)+r.size)return true;return false;}
  void tick(){
@@ -40,8 +46,8 @@ public:
    top.m_axi_arready=reads.size()<8 && chance();top.m_axi_awready=writes.size()<8 && chance();
    top.m_axi_wready=!writes.empty()&&chance();
    if(!rhold&&!reads.empty()&&chance()&&(!common_memory_service || (cycles>=next_read_cycle && cycles>=reads.front().ready_cycle))){
-     auto r=reads.front();uint32_t word=0;
-     for(unsigned i=0;i<r.size;i++)word|=uint32_t(mem.at(r.addr+i))<<(((r.addr+i)&3)*8);
+     auto r=reads.front();uint64_t word=0;
+     for(unsigned i=0;i<r.size;i++)word|=uint64_t(mem.at(r.addr+i))<<(((r.addr+i)&(BUS_BYTES-1))*8);
      top.m_axi_rdata=word;top.m_axi_rlast=r.left==1;top.m_axi_rresp=0;
      if(read_fault&&!fault_used&&(fault_addr<0||(uint64_t(fault_addr)>=r.addr&&uint64_t(fault_addr)<uint64_t(r.addr)+r.size))){top.m_axi_rresp=2;fault_used=true;}
      rhold=true;
@@ -52,7 +58,7 @@ public:
    top.eval();
    auto ar=std::make_tuple(uint32_t(top.m_axi_araddr),uint32_t(top.m_axi_arlen),uint32_t(top.m_axi_arsize));
    auto aw=std::make_tuple(uint32_t(top.m_axi_awaddr),uint32_t(top.m_axi_awlen),uint32_t(top.m_axi_awsize));
-   auto wd=std::make_tuple(uint32_t(top.m_axi_wdata),uint32_t(top.m_axi_wstrb),uint32_t(top.m_axi_wlast));
+   auto wd=std::make_tuple(uint64_t(top.m_axi_wdata),uint32_t(top.m_axi_wstrb),uint32_t(top.m_axi_wlast));
    if(top.rst_n){
      if(ar_stall)require(top.m_axi_arvalid&&ar==old_ar,"AR changed under backpressure");
      if(aw_stall)require(top.m_axi_awvalid&&aw==old_aw,"AW changed under backpressure");
@@ -70,7 +76,7 @@ public:
    if(bh){responses.pop_front();bhold=false;}
    if(arh){
      uint32_t a=top.m_axi_araddr,n=top.m_axi_arlen+1,s=1u<<top.m_axi_arsize;
-     require(top.m_axi_arburst==1&&s<=4,"unsupported read burst");
+     require(top.m_axi_arburst==1&&s<=BUS_BYTES,"unsupported read burst");
      require((a&4095)+n*s<=4096,"read crossed 4 KiB");
      require(a%s==0,"unaligned read transfer");
      for(uint32_t i=0;i<n*s;i++)require(readable(a+i),"read outside allocations at "+std::to_string(a+i));
@@ -78,17 +84,17 @@ public:
    }
    if(awh){
      uint32_t a=top.m_axi_awaddr,n=top.m_axi_awlen+1,s=1u<<top.m_axi_awsize;
-     require(top.m_axi_awburst==1&&s==4&&a%4==0,"invalid write burst");
+     require(top.m_axi_awburst==1&&s==BUS_BYTES&&a%BUS_BYTES==0,"invalid write burst");
      require((a&4095)+n*s<=4096,"write crossed 4 KiB");writes.push_back({a,n,s});
    }
    if(wh){
      require(!writes.empty(),"write without address");auto &w=writes.front();
      require(bool(top.m_axi_wlast)==(w.left==1),"incorrect WLAST");
-     for(unsigned i=0;i<4;i++)if(top.m_axi_wstrb&(1u<<i)){
+     for(unsigned i=0;i<BUS_BYTES;i++)if(top.m_axi_wstrb&(1u<<i)){
        uint32_t addr=w.addr+i;require(addr>=output_base&&uint64_t(addr)<uint64_t(output_base)+output_size,"write outside output");
        mem.at(addr)=uint8_t(top.m_axi_wdata>>(i*8));write_bytes++;
      }
-     w.addr+=4;if(--w.left==0){writes.pop_front();unsigned resp=0;if(write_fault&&!fault_used){resp=2;fault_used=true;}responses.push_back(resp);}
+     w.addr+=w.size;if(--w.left==0){writes.pop_front();unsigned resp=0;if(write_fault&&!fault_used){resp=2;fault_used=true;}responses.push_back(resp);}
    }
    top.clk=1;top.eval();Verilated::timeInc(1);cycles++;top.clk=0;top.eval();
  }
@@ -114,7 +120,7 @@ public:
    if((config[0]&15)==0 && expected_error==0)
      require(top.quant_inputs==uint64_t(config[13])*config[16]*config[17],"depthwise quantization input count");
    require(top.window_requests==top.window_completions,"window requests did not drain");
-   require(top.write_beats16==4*top.write_bursts16,"16-channel output burst count");
+   require(top.write_beats16==(16/BUS_BYTES)*top.write_bursts16,"16-channel output burst count");
    for(int i=0;i<7;i++){tick();require(top.done_valid&&top.error==expected_error,"completion not retained");}
    require(reads.empty()&&writes.empty()&&responses.empty()&&!rhold&&!bhold,"DONE before AXI drain");
    top.done_ready=1;tick();top.done_ready=0;tick();return result;
@@ -340,12 +346,13 @@ int main(int argc,char**argv){
      require(aligned.monitor[8]==1024 && aligned.monitor[9]==64*15,"continuous scalar quantization inputs");
      require(aligned.monitor[10]==0 && aligned.monitor[12]==0,"scalar quantization phase separation");
      require(aligned.monitor[11]>0,"MAC overlap with writeback");
-     require(aligned.monitor[13]==64 && aligned.monitor[14]==256,"aligned four-beat depthwise writes");
+     require(aligned.monitor[13]==64 && aligned.monitor[14]==64*(16/BUS_BYTES),"aligned depthwise write count");
      if(perf)require(pointwise.monitor[10]==0 && pointwise.monitor[12]==0,"pointwise scalar quantization phase separation");
      require(aligned.monitor[17]>=2,"multiple outstanding window requests");
      if(s.top.pe_count>=8)require(aligned.monitor[20]>0,"overlapping window request and response");
    }
    if(!softmax_replay_path.empty())softmax_replay(s,softmax_replay_path);
+   s.top.final();
    std::printf("VECTOR_ENGINE_DMA_PASS cases=%u outputs=%llu add_cases=%u add_outputs=%llu softmax_cases=%u softmax_outputs=%llu\n",
      cases,(unsigned long long)outputs,add_cases,(unsigned long long)add_outputs,softmax_cases,(unsigned long long)softmax_outputs);return 0;
  }catch(const std::exception&e){std::fprintf(stderr,"FAIL: %s\n",e.what());return 1;}

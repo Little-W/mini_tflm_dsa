@@ -21,6 +21,10 @@ module vector_config_check #(
   (* use_dsp="yes" *) logic [31:0] multiply_low,multiply_high;
   (* use_dsp="no" *) wire [47:0] product_q={16'd0,multiply_low}+{multiply_high,16'd0};
   logic [47:0] last_y,last_x;
+  logic [16:0] range_x_sum, range_y_sum;
+  logic [16:0] range_x_carry, range_y_carry;
+  logic [17:0] range_x_compare, range_y_compare;
+  logic output_x_in_range, output_y_in_range;
   logic fields_ok,spatial,depthwise,binary_vector,add_s8,softmax_s8;
   logic [31:0] selected_base,range_base_q;
   logic [63:0] selected_bytes,range_bytes_q;
@@ -49,6 +53,18 @@ module vector_config_check #(
       default: ;
     endcase
   end
+  // 将尺寸、填充和末坐标反码先压缩为两项，单次进位给出严格小于关系。
+  assign range_x_sum = {1'b0, cfg.image.input_w} ^ {1'b0, cfg.image.pad_left} ^ ~last_x[16:0];
+  assign range_y_sum = {1'b0, cfg.image.input_h} ^ {1'b0, cfg.image.pad_top} ^ ~last_y[16:0];
+  assign range_x_carry = ({1'b0, cfg.image.input_w} & {1'b0, cfg.image.pad_left}) |
+      (({1'b0, cfg.image.input_w} ^ {1'b0, cfg.image.pad_left}) & ~last_x[16:0]);
+  assign range_y_carry = ({1'b0, cfg.image.input_h} & {1'b0, cfg.image.pad_top}) |
+      (({1'b0, cfg.image.input_h} ^ {1'b0, cfg.image.pad_top}) & ~last_y[16:0]);
+  assign range_x_compare = {1'b0, range_x_sum} + {range_x_carry, 1'b0};
+  assign range_y_compare = {1'b0, range_y_sum} + {range_y_carry, 1'b0};
+  assign output_x_in_range = !(|last_x[47:17]) && range_x_compare[17];
+  assign output_y_in_range = !(|last_y[47:17]) && range_y_compare[17];
+
   always_comb begin
     fields_ok=cfg.op<=SOFTMAX_S8;
     if (spatial) begin
@@ -68,8 +84,7 @@ module vector_config_check #(
         fields_ok=fields_ok && cfg.image.input_offset==0 && cfg.output_offset==0 &&
           cfg.image.dilation_h==1 && cfg.image.dilation_w==1 &&
           cfg.image.pad_top<cfg.image.kernel_h && cfg.image.pad_left<cfg.image.kernel_w &&
-          last_y<48'(17'(cfg.image.input_h)+17'(cfg.image.pad_top)) &&
-          last_x<48'(17'(cfg.image.input_w)+17'(cfg.image.pad_left));
+          output_y_in_range && output_x_in_range;
       end
     end else begin
       fields_ok=fields_ok && cfg.length!=0 && (add_s8 || softmax_s8 || cfg.output_base[1:0]==0);

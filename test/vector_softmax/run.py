@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -49,9 +50,20 @@ def main():
     parser.add_argument('--prepared',type=Path)
     parser.add_argument('--depths',type=int,nargs='+',default=[16,32])
     parser.add_argument('--verilator',default='verilator')
+    parser.add_argument('--xilinx',action='store_true')
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     replay=out/'model_cases.txt';models=prepare_replay(args.prepared,replay);records=[]
     includes=[TF,TF/'tensorflow/lite/micro/tools/make/downloads/gemmlowp']
+    primitive_options=[]
+    primitive_library_sha256=None
+    if args.xilinx:
+        import pyosys
+        library=Path(pyosys.__file__).parent/'share/xilinx/cells_sim.v'
+        model=re.search(r'^module DSP48E1\b.*?^endmodule',library.read_text(),re.MULTILINE|re.DOTALL).group(0)
+        model_file=out/'xilinx_dsp48e1.sv'
+        model_file.write_text(model+'\n')
+        primitive_options=['-DXILINX_FPGA',model_file]
+        primitive_library_sha256=hashlib.sha256(library.read_bytes()).hexdigest()
     for depth in args.depths:
         folder=out/f'depth_{depth}';folder.mkdir(exist_ok=True)
         flags=['-std=c++17','-O2','-fsanitize=undefined','-fno-sanitize-recover=all',
@@ -59,7 +71,7 @@ def main():
         cmd=[args.verilator,'--cc','--exe','--build','-j','2','-Wno-fatal',
              '--top-module','vector_softmax_test','--Mdir',folder/'obj',f'-GMAX_DEPTH={depth}',
              '-CFLAGS',' '.join(flags),'-LDFLAGS','-fsanitize=undefined',
-             ROOT/'rtl/npu/conv/vector_softmax.sv',HERE/'vector_softmax_test.sv',HERE/'main.cpp',
+             ROOT/'rtl/npu/conv/vector_softmax.sv',HERE/'vector_softmax_test.sv',*primitive_options,HERE/'main.cpp',
              TF/'tensorflow/lite/kernels/internal/common.cc',
              TF/'tensorflow/lite/kernels/internal/runtime_shape.cc',
              TF/'tensorflow/lite/kernels/internal/quantization_util.cc']
@@ -69,7 +81,10 @@ def main():
         assert record['model_cases']==models
         print(stdout,end='',flush=True)
     result={'passed':True,'rounding_mode':'nearest_even','ubsan':True,'seed':20261115,
-            'model_cases_per_configuration':models,'configurations':records}
+            'model_cases_per_configuration':models,'configurations':records,
+            'implementation':'official DSP48E1 functional model' if args.xilinx else 'generic',
+            'primitive_library_sha256':primitive_library_sha256,
+            'source_sha256':hashlib.sha256((ROOT/'rtl/npu/conv/vector_softmax.sv').read_bytes()).hexdigest()}
     (out/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
 
 if __name__=='__main__':main()

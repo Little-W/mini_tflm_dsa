@@ -68,6 +68,7 @@ def main():
     svsrc = [package, dw_package]
     svsrc += [p for p in sorted(npu.rglob('*.sv')) if p not in svsrc]
     svsrc += sorted(npu.rglob('*.v'))
+    svsrc += sorted((ROOT / 'rtl/common').glob('REGFILE.v'))
     svsrc += [ROOT / 'rtl/common/pseudo_dual_port_ram.v',
               ROOT / 'rtl/axi_top/npu_axil_reg_if.sv',
               ROOT / 'rtl/axi_top/npu_axil_top.sv',

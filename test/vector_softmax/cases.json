@@ -1,0 +1,8 @@
+{
+  "softmax": {
+    "top": "vector_softmax",
+    "options": ["-GMAX_DEPTH=16", "-GMULTIPLIER_LATENCY=2"],
+    "sources": ["rtl/npu/conv/vector_softmax.sv"],
+    "configuration": "16 elements, two-cycle external multiplier"
+  }
+}
