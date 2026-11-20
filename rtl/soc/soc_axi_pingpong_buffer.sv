@@ -1,38 +1,56 @@
+`default_nettype none
+
 module soc_axi_pingpong_chan #(
     parameter int unsigned WIDTH = 1
 ) (
-    input  wire                   clk,
-    input  wire                   rst_n,
-
-    input  wire                   s_valid,
-    output wire                   s_ready,
-    input  wire [WIDTH-1:0]       s_data,
-
-    output wire                   m_valid,
-    input  wire                   m_ready,
-    output wire [WIDTH-1:0]       m_data
+    input  logic             clk,
+    input  logic             rst_n,
+    input  logic             s_valid,
+    output logic             s_ready,
+    input  logic [WIDTH-1:0] s_data,
+    output logic             m_valid,
+    input  logic             m_ready,
+    output logic [WIDTH-1:0] m_data
 );
+
+    //! 0. 内部信号
+    //! ------------
 
     logic [WIDTH-1:0] data0_q;
     logic [WIDTH-1:0] data1_q;
     logic             rd_sel_q;
     logic             wr_sel_q;
     logic [1:0]       count_q;
+    logic             push;
+    logic             pop;
 
-    wire push = s_valid && s_ready;
-    wire pop  = m_valid && m_ready;
+`ifdef SYNTHESIS
+`ifndef ASIC_SYNTHESIS
+    localparam bit p_fpga_read_mux = 1'b1;
+`else
+    localparam bit p_fpga_read_mux = 1'b0;
+`endif
+`else
+    localparam bit p_fpga_read_mux = 1'b0;
+`endif
 
-    assign s_ready = (count_q != 2'd2);
-    assign m_valid = (count_q != 2'd0);
-    assign m_data  = rd_sel_q ? data1_q : data0_q;
+    //! 1. 接收与发送事件
+    //! ------------------
 
+    assign push = s_valid && s_ready;
+    assign pop = m_valid && m_ready;
+
+    //! 2. 数据与状态更新
+    //! ------------------
+
+    // 两项缓冲保存完整数据；同周期接收和发送保持占用计数并推进读写位置。
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            data0_q  <= '0;
-            data1_q  <= '0;
+            data0_q <= '0;
+            data1_q <= '0;
             rd_sel_q <= 1'b0;
             wr_sel_q <= 1'b0;
-            count_q  <= 2'd0;
+            count_q <= 2'd0;
         end else begin
             if (push) begin
                 if (wr_sel_q) begin
@@ -42,17 +60,48 @@ module soc_axi_pingpong_chan #(
                 end
                 wr_sel_q <= ~wr_sel_q;
             end
-
             if (pop) begin
                 rd_sel_q <= ~rd_sel_q;
             end
-
-            unique case ({push, pop})
+            case ({push, pop})
                 2'b10: count_q <= count_q + 2'd1;
                 2'b01: count_q <= count_q - 2'd1;
-                default: count_q <= count_q;
+                default: begin end
             endcase
         end
+    end
+
+    //! 3. 输出生成
+    //! ------------
+
+    assign s_ready = count_q != 2'd2;
+    assign m_valid = count_q != 2'd0;
+
+    // 相邻数据位共用读位置选择，两个结果由同一查找表并行产生。
+    if (p_fpga_read_mux) begin : g_read_pair
+        for (genvar pair_index = 0; pair_index < WIDTH/2; pair_index++) begin : g_pair
+            logic [1:0] mux_i_first, mux_i_second;
+            logic mux_i_select, mux_i_one;
+            logic mux_o_lower, mux_o_upper;
+
+            assign mux_i_first = data0_q[2*pair_index +: 2];
+            assign mux_i_second = data1_q[2*pair_index +: 2];
+            assign mux_i_select = rd_sel_q;
+            assign mux_i_one = 1'b1;
+            assign m_data[2*pair_index] = mux_o_lower;
+            assign m_data[2*pair_index+1] = mux_o_upper;
+            LUT6_2 #(.INIT(64'hff00f0f0ccccaaaa)) u_mux (
+                .I0(mux_i_first[0]), .I1(mux_i_second[0]),
+                .I2(mux_i_first[1]), .I3(mux_i_second[1]),
+                .I4(mux_i_select), .I5(mux_i_one),
+                .O5(mux_o_lower), .O6(mux_o_upper)
+            );
+        end
+        if ((WIDTH % 2) != 0) begin : g_last_bit
+            assign m_data[WIDTH-1] = rd_sel_q ? data1_q[WIDTH-1] : data0_q[WIDTH-1];
+        end
+    end else begin : g_generic_read
+        assign m_data = rd_sel_q ? data1_q : data0_q;
     end
 
 endmodule
@@ -544,3 +593,5 @@ module soc_axi_pingpong_buffer #(
     );
 
 endmodule
+
+`default_nettype wire

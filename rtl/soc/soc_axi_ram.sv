@@ -64,7 +64,7 @@ module soc_axi_ram #(
     localparam int unsigned RD_USED_W = RD_CNT_W + 1;
     localparam int unsigned WR_USED_W = WR_CNT_W + 1;
 
-    (* ram_style = "block" *) logic [DW-1:0] mem_r [0:DP-1];
+    logic [DW-1:0] mem_r [0:DP-1];
 
     // Independent saturating delays preserve the age of queued requests.
     localparam int RD_DELAY_W = (READ_FIRST_LATENCY <= 2) ? 1 : $clog2(READ_FIRST_LATENCY);

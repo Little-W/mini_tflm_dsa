@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
+`default_nettype none
 
-// Fixed INT32 rows occupy deterministic frame slots in the shared data banks.
+// INT32 行按帧编号占用固定的共享存储位置。
 module ps_frame_store #(
     parameter integer MAX_FRAME_ROWS = 47,
     parameter integer FRAME_COUNT = 16,
@@ -8,6 +9,7 @@ module ps_frame_store #(
     parameter integer BANK_BYTES = 2048,
     parameter integer DECODE_FIFO_ROWS = 8,
     parameter integer EXTERNAL_RAM = 0,
+    parameter bit p_fixed_ps_channels = 1'b0,
     parameter integer DIRECTORY_ROWS = FRAME_COUNT * MAX_FRAME_ROWS,
     parameter integer RAM_ADDR_BITS = EXTERNAL_RAM!=0 ? $clog2(POOL_BYTES/16) :
         ($clog2(POOL_BYTES/64)>0 ? $clog2(POOL_BYTES/64) : 1)
@@ -62,7 +64,8 @@ module ps_frame_store #(
     reg [FRAME_ID_BITS-1:0] frame_id_q;
     reg [LENGTH_BITS-1:0] frame_rows_q,capture_count,commit_count,read_index,replay_index;
     reg frame_init_q,frame_final_q;
-    reg [BANK_ADDR_BITS:0] read_cursor,write_cursor;
+    localparam int p_cursor_bits = (EXTERNAL_RAM != 0 && p_fixed_ps_channels) ? RAM_ADDR_BITS : BANK_ADDR_BITS+1;
+    logic [p_cursor_bits-1:0] read_cursor, write_cursor;
     reg [ROTATION_BITS-1:0] read_rotation,write_rotation;
     wire configuration_valid=cfg_pool_bank_count>=4 && cfg_pool_bank_count<=BANKS &&
         cfg_pool_bank_words>0 && cfg_pool_bank_words<=BANK_DEPTH &&
@@ -85,14 +88,44 @@ module ps_frame_store #(
     end
     localparam integer RAW_LINEAR_BITS=$clog2(FRAME_COUNT*MAX_FRAME_ROWS*4+1);
     wire [RAW_LINEAR_BITS-1:0] initial_linear=RAW_LINEAR_BITS'(frame_id)*RAW_LINEAR_BITS'(directory_stride_q)<<2;
-    wire [63:0] reserve_rows=frame_reserve_rows>frame_rows ? 64'(frame_reserve_rows) : 64'(frame_rows);
     wire request_valid=32'(frame_id)<FRAME_COUNT && frame_rows>0 && frame_rows<=MAX_FRAME_ROWS &&
         frame_rows<=directory_stride_q && (frame_init ? !frame_valid[frame_id] :
         frame_valid[frame_id] && frame_lengths[frame_id]==frame_rows);
-    wire request_fits=(frame_init && frame_final) ||
-        64'(initial_linear)+(reserve_rows<<2)<=64'(pool_bank_words_q)*64'(pool_bank_count_q);
+    logic [RAW_LINEAR_BITS-3:0] capacity_i_initial_row;
+    logic [31:0] capacity_i_frame_rows, capacity_i_reserve_rows;
+    logic [BANK_ADDR_BITS:0] capacity_i_bank_words;
+    logic [ROTATION_BITS:0] capacity_i_bank_count;
+    logic capacity_o_rows_fit;
+    logic request_fits;
+
+    // 起始位置按四个存储字对齐，容量判断使用完整行数并保留大输入检查。
+    assign capacity_i_initial_row = initial_linear[RAW_LINEAR_BITS-1:2];
+    assign capacity_i_frame_rows = frame_rows;
+    assign capacity_i_reserve_rows = frame_reserve_rows;
+    assign capacity_i_bank_words = pool_bank_words_q;
+    assign capacity_i_bank_count = pool_bank_count_q;
+
+    ps_frame_store_capacity #(
+        .p_initial_row_width(RAW_LINEAR_BITS-2),
+        .p_bank_words_width(BANK_ADDR_BITS+1),
+        .p_bank_count_width(ROTATION_BITS+1)
+    ) u_capacity (
+        .i_initial_row(capacity_i_initial_row),
+        .i_frame_rows(capacity_i_frame_rows),
+        .i_reserve_rows(capacity_i_reserve_rows),
+        .i_bank_words(capacity_i_bank_words),
+        .i_bank_count(capacity_i_bank_count),
+        .o_rows_fit(capacity_o_rows_fit)
+    );
+    assign request_fits = (frame_init && frame_final) || capacity_o_rows_fit;
     wire prepare_start=frame_request && configuration_ready && !command_present && request_valid && request_fits && !capacity_fault;
     assign frame_pressure=frame_request && configuration_ready && !command_present && request_valid && !request_fits && !capacity_fault;
+    logic [31:0] initial_row, initial_bank;
+    if (EXTERNAL_RAM != 0 && p_fixed_ps_channels) begin : g_fixed_address
+        // 固定通道中地址为完整部分和的行号，每次读写同时处理四个数据段。
+        assign initial_row = 32'(initial_linear >> 2);
+        assign initial_bank = 32'd0;
+    end else begin : g_rotating_address
     wire [RAW_LINEAR_BITS-1:0] quotient_5,quotient_6,quotient_7;
     wire [2:0] remainder_5,remainder_6,remainder_7;
     ps_raw_address #(.WIDTH(RAW_LINEAR_BITS),.DIVISOR(5)) u_address_5
@@ -101,7 +134,6 @@ module ps_frame_store #(
         (.linear(initial_linear),.quotient(quotient_6),.remainder(remainder_6));
     ps_raw_address #(.WIDTH(RAW_LINEAR_BITS),.DIVISOR(7)) u_address_7
         (.linear(initial_linear),.quotient(quotient_7),.remainder(remainder_7));
-    reg [31:0] initial_row,initial_bank;
     always @* begin
         initial_row=0;initial_bank=0;
         case(pool_bank_count_q)
@@ -112,6 +144,7 @@ module ps_frame_store #(
             8:begin initial_row=32'(initial_linear>>3);initial_bank=32'(initial_linear&7);end
             default:;
         endcase
+    end
     end
     reg encoder_done;
     wire encoder_start=write_valid && command_accepted && !frame_final_q && !input_ended && !capacity_fault;
@@ -124,9 +157,12 @@ module ps_frame_store #(
             if(encoder_start) encode_commit_packet<=write_data;
         end
     end
-    reg [511:0] decoded_ram [DECODE_FIFO_ROWS];
     reg decoded_first_mem [DECODE_FIFO_ROWS];
     reg [FIFO_PTR_BITS-1:0] decoded_write_pointer,decoded_read_pointer;
+    logic [FIFO_PTR_BITS-1:0] decoded_output_pointer;
+    logic decoded_i_wr_en, decoded_i_rd_en, decoded_i_wr_mask;
+    logic [FIFO_PTR_BITS-1:0] decoded_i_wr_addr, decoded_i_rd_addr;
+    logic [511:0] decoded_i_wr_data, decoded_o_rd_data;
     reg [FIFO_PTR_BITS:0] decoded_count,decoder_inflight;
     wire prefetch_fire=command_present && !frame_init_q && read_index<frame_rows_q &&
         32'(decoded_count)+32'(decoder_inflight)<PREFETCH_CREDITS && !capacity_fault && !clear_metadata;
@@ -142,8 +178,10 @@ module ps_frame_store #(
         wire [ROTATION_BITS-1:0] wb=ROTATION_BITS'(wwrap ? 32'(wsum)-pool_bank_count_q : 32'(wsum));
         assign ram_read_en[word]=prefetch_fire;
         assign ram_write_en[word]=encode_commit_valid;
-        assign ram_read_addr[word]=EXTERNAL_RAM!=0 ? RAM_ADDR_BITS'({rb,BANK_ADDR_BITS'(read_cursor+rwrap)}) : RAM_ADDR_BITS'(read_cursor);
-        assign ram_write_addr[word]=EXTERNAL_RAM!=0 ? RAM_ADDR_BITS'({wb,BANK_ADDR_BITS'(write_cursor+wwrap)}) : RAM_ADDR_BITS'(write_cursor);
+        assign ram_read_addr[word] = EXTERNAL_RAM != 0 && !p_fixed_ps_channels ?
+            RAM_ADDR_BITS'({rb,BANK_ADDR_BITS'(read_cursor+rwrap)}) : RAM_ADDR_BITS'(read_cursor);
+        assign ram_write_addr[word] = EXTERNAL_RAM != 0 && !p_fixed_ps_channels ?
+            RAM_ADDR_BITS'({wb,BANK_ADDR_BITS'(write_cursor+wwrap)}) : RAM_ADDR_BITS'(write_cursor);
         assign ram_write_data[word]=encode_commit_packet[word*128+:128];
         assign incoming_words[word]=EXTERNAL_RAM!=0 ? ram_read_data[word] : payload_read_data[word];
     end
@@ -171,17 +209,15 @@ module ps_frame_store #(
     end
 
     reg ram_read_valid,ram_read_first,decoder_done,decoder_first;
-    reg [511:0] decoded_row;
     wire decoder_fault=1'b0;
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
-            ram_read_valid<=0;ram_read_first<=0;decoder_done<=0;decoder_first<=0;decoded_row<=0;
+            ram_read_valid<=0;ram_read_first<=0;decoder_done<=0;decoder_first<=0;
         end else begin
             ram_read_valid<=prefetch_fire;
             if(prefetch_fire)ram_read_first<=read_index==0;
             decoder_done<=ram_read_valid && !clear_metadata;
             if(ram_read_valid) begin
-                decoded_row<={incoming_words[3],incoming_words[2],incoming_words[1],incoming_words[0]};
                 decoder_first<=ram_read_first;
             end
         end
@@ -190,22 +226,38 @@ module ps_frame_store #(
     wire replay_bypass=replay_active && decoded_count==0 && decoder_done && !capacity_fault;
     wire decoded_write_en=decoder_done && !replay_bypass && !capacity_fault;
     wire replay_consume=decoded_read_en || replay_bypass;
-    reg [511:0] replay_q;
-    assign replay_data=replay_valid ? replay_q : 512'd0;
+    assign replay_data = replay_valid ? decoded_o_rd_data : 512'd0;
     assign frame_ready=command_present && !command_accepted && !capacity_fault &&
         (frame_init_q || decoded_count!=0);
     wire complete_now=command_present && command_accepted && input_ended && !capacity_fault &&
         !replay_armed && !replay_active && !encoder_done && !ram_read_valid && !decoder_done &&
         decoded_count==0 && decoder_inflight==0 && (frame_final_q || commit_count==frame_rows_q) &&
         (frame_init_q || replay_index==frame_rows_q);
-    always @(posedge clk) begin
-        if(decoded_write_en) begin
-            decoded_ram[decoded_write_pointer]<=decoded_row;
-            decoded_first_mem[decoded_write_pointer]<=decoder_first;
+    always_ff @(posedge clk) begin
+        if (decoded_i_wr_en) begin
+            decoded_first_mem[decoded_write_pointer] <= ram_read_first;
         end
-        if(decoded_read_en) replay_q<=decoded_ram[decoded_read_pointer];
-        else if(replay_bypass)replay_q<=decoded_row;
+        if (replay_consume) begin
+            decoded_output_pointer <= decoded_read_pointer;
+        end
     end
+    // 存储返回行直接写入队列，完成指示仍经过原有控制流水级。
+    // 每次接收和重放均推进物理位置，包括空队列直通；输出只保存地址。
+    // 预取最多占用深度减一行，为正在输出的行保留一个物理位置。
+    assign decoded_i_wr_en = ram_read_valid && !capacity_fault && !clear_metadata;
+    assign decoded_i_wr_addr = decoded_write_pointer;
+    assign decoded_i_wr_data = {incoming_words[3], incoming_words[2], incoming_words[1], incoming_words[0]};
+    assign decoded_i_wr_mask = 1'b1;
+    assign decoded_i_rd_en = 1'b1;
+    assign decoded_i_rd_addr = decoded_output_pointer;
+    REGFILE #(
+        .p_data_width(512), .p_depth(DECODE_FIFO_ROWS), .p_addr_width(FIFO_PTR_BITS),
+        .p_write_unit(512), .p_sync_read(1'b0)
+    ) u_decoded (
+        .clk(clk), .i_wr_en(decoded_i_wr_en), .i_wr_addr(decoded_i_wr_addr),
+        .i_wr_data(decoded_i_wr_data), .i_wr_mask(decoded_i_wr_mask),
+        .i_rd_en(decoded_i_rd_en), .i_rd_addr(decoded_i_rd_addr), .o_rd_data(decoded_o_rd_data)
+    );
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
             capacity_fault<=0;frame_complete<=0;frame_valid<=0;
@@ -230,7 +282,8 @@ module ps_frame_store #(
                 frame_id_q<=frame_id;frame_rows_q<=frame_rows;frame_init_q<=frame_init;frame_final_q<=frame_final;
                 replay_armed<=!frame_init;replay_active<=0;
                 capture_count<=0;commit_count<=0;read_index<=0;replay_index<=0;
-                read_cursor<=(BANK_ADDR_BITS+1)'(initial_row);write_cursor<=(BANK_ADDR_BITS+1)'(initial_row);
+                read_cursor <= p_cursor_bits'(initial_row);
+                write_cursor <= p_cursor_bits'(initial_row);
                 read_rotation<=ROTATION_BITS'(initial_bank);write_rotation<=ROTATION_BITS'(initial_bank);
             end
             if(frame_accept)begin
@@ -240,13 +293,17 @@ module ps_frame_store #(
             if(encoder_start)capture_count<=capture_count+1;
             if(encode_commit_valid)begin
                 commit_count<=commit_count+1;
-                if(32'(write_rotation)+4>=pool_bank_count_q)begin
+                if (EXTERNAL_RAM != 0 && p_fixed_ps_channels) begin
+                    write_cursor <= write_cursor + p_cursor_bits'(1);
+                end else if(32'(write_rotation)+4>=pool_bank_count_q)begin
                     write_cursor<=write_cursor+1;write_rotation<=ROTATION_BITS'(32'(write_rotation)+4-pool_bank_count_q);
                 end else write_rotation<=write_rotation+ROTATION_BITS'(4);
             end
             if(prefetch_fire)begin
                 read_index<=read_index+1;
-                if(32'(read_rotation)+4>=pool_bank_count_q)begin
+                if (EXTERNAL_RAM != 0 && p_fixed_ps_channels) begin
+                    read_cursor <= read_cursor + p_cursor_bits'(1);
+                end else if(32'(read_rotation)+4>=pool_bank_count_q)begin
                     read_cursor<=read_cursor+1;read_rotation<=ROTATION_BITS'(32'(read_rotation)+4-pool_bank_count_q);
                 end else read_rotation<=read_rotation+ROTATION_BITS'(4);
             end
@@ -254,8 +311,12 @@ module ps_frame_store #(
                 if(!command_accepted || replay_armed || (!frame_final_q && capture_count+(encoder_start ? 1 : 0)!=frame_rows_q))capacity_fault<=1;
                 input_ended<=1;
             end
-            if(decoded_write_en)decoded_write_pointer<=decoded_write_pointer+1'b1;
-            if(decoded_read_en)decoded_read_pointer<=decoded_read_pointer+1'b1;
+            if (decoded_i_wr_en) begin
+                decoded_write_pointer <= decoded_write_pointer + 1'b1;
+            end
+            if (replay_consume) begin
+                decoded_read_pointer <= decoded_read_pointer + 1'b1;
+            end
             if(replay_trigger && replay_armed && (command_accepted || frame_accept))begin replay_active<=1;replay_armed<=0;end
             if(replay_active)begin
                 if(!replay_consume)capacity_fault<=1;
@@ -272,7 +333,7 @@ module ps_frame_store #(
     end
 endmodule
 
-// Constant reciprocal address calculation with one bounded correction.
+// 用常数倒数计算商与余数，并通过一次有界修正得到精确地址。
 module ps_raw_address #(
     parameter integer WIDTH=13,
     parameter integer DIVISOR=5
@@ -291,3 +352,51 @@ module ps_raw_address #(
     assign quotient=WIDTH'(estimate-overshot);
     assign remainder=3'(residual);
 endmodule
+
+// 帧容量检查并行比较实际行数和预留行数，不增加寄存器或等待周期。
+module ps_frame_store_capacity #(
+    parameter int p_initial_row_width = 10,
+    parameter int p_bank_words_width = 10,
+    parameter int p_bank_count_width = 4
+) (
+    input  logic [p_initial_row_width-1:0] i_initial_row,
+    input  logic [31:0]                    i_frame_rows,
+    input  logic [31:0]                    i_reserve_rows,
+    input  logic [p_bank_words_width-1:0]   i_bank_words,
+    input  logic [p_bank_count_width-1:0]   i_bank_count,
+    output logic                           o_rows_fit
+);
+    localparam int p_pool_word_width = p_bank_words_width + p_bank_count_width;
+    localparam int p_rows_width = (p_initial_row_width > p_pool_word_width-2) ?
+        p_initial_row_width : p_pool_word_width-2;
+
+    if (p_rows_width < 32) begin : g_bounded_rows
+        logic [p_pool_word_width-1:0] pool_words;
+        logic [p_rows_width-1:0] pool_rows;
+        logic [p_rows_width:0] remaining_rows;
+        logic frame_rows_fit, reserve_rows_fit;
+
+        // 一行占四个存储字；起始位置为整行，末尾不足一行的容量直接舍去。
+        assign pool_words = p_pool_word_width'(i_bank_words) * p_pool_word_width'(i_bank_count);
+        assign pool_rows = p_rows_width'((p_rows_width+2)'(pool_words) >> 2);
+        assign remaining_rows = {1'b0, pool_rows} - {1'b0, p_rows_width'(i_initial_row)};
+
+        // 高位单独检查，低位比较与容量减法的借位检查共同确定结果。
+        assign frame_rows_fit = !(|i_frame_rows[31:p_rows_width]) &&
+            (i_frame_rows[p_rows_width-1:0] <= remaining_rows[p_rows_width-1:0]);
+        assign reserve_rows_fit = !(|i_reserve_rows[31:p_rows_width]) &&
+            (i_reserve_rows[p_rows_width-1:0] <= remaining_rows[p_rows_width-1:0]);
+        assign o_rows_fit = !remaining_rows[p_rows_width] && frame_rows_fit && reserve_rows_fit;
+    end else begin : g_wide_rows
+        logic [63:0] reserve_rows;
+        logic [63:0] initial_words, pool_words;
+
+        // 宽参数配置保留 64 位无符号容量运算。
+        assign reserve_rows = (i_reserve_rows > i_frame_rows) ? 64'(i_reserve_rows) : 64'(i_frame_rows);
+        assign initial_words = 64'(i_initial_row) << 2;
+        assign pool_words = 64'(i_bank_words) * 64'(i_bank_count);
+        assign o_rows_fit = initial_words + (reserve_rows << 2) <= pool_words;
+    end
+endmodule
+
+`default_nettype wire

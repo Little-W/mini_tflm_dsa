@@ -98,7 +98,7 @@ module pico_native_to_axi #(
     logic                    aw_pending_q;
     logic                    w_pending_q;
 
-    (* ram_style = "block" *) logic [DATA_WIDTH-1:0] ic_data_q [0:ICACHE_WORDS-1];
+    logic [DATA_WIDTH-1:0] ic_data_q [0:ICACHE_WORDS-1];
     logic [IC_TAG_WIDTH-1:0] ic_tag_q [0:ICACHE_LINES-1];
     logic ic_valid_q [0:ICACHE_LINES-1];
 

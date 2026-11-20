@@ -33,7 +33,7 @@ module ps_window_scheduler #(
     typedef enum logic [3:0] {IDLE, PREPARING, PREPARE_PARTS, PREPARE_CAPS,
                               PREPARE_PRODUCTS, PREPARE_TARGET, OPENING, SWEEPING, DRAINING, COMPLETE} phase_t;
     phase_t phase;
-    logic [31:0] cfg_stream, cfg_stationary, cfg_reduction;
+    logic [31:0] cfg_stream, cfg_reduction;
     logic [ROW_COUNT_W-1:0] cfg_rows, cfg_slice_rows;
     logic [ID_W:0] cfg_window;
     logic [31:0] final_q0, final_column0;
@@ -70,7 +70,10 @@ module ps_window_scheduler #(
     logic candidate_final;
     wire candidate_ready = candidate_found && selected_id_valid;
     logic [FRAME_COUNT-1:0] candidate_eligible, candidate_after_cursor, candidate_select;
+    logic candidate_exists, candidate_after_exists;
+    logic [ID_W-1:0] eligible_first_id, after_first_id;
     logic [TILE_W:0] column_tiles, remaining_columns;
+    logic [TILE_W:0] incoming_column_tiles;
     logic [ROW_COUNT_W-1:0] current_rows;
     logic [ROW_PART_W:0] group_parts;
     logic [31:0] candidate_row, candidate_rows, initial_slice_rows;
@@ -81,6 +84,15 @@ module ps_window_scheduler #(
     function automatic logic [31:0] minimum(input logic [31:0] a, b);
         return (a < b) ? a : b;
     endfunction
+
+    // 零切片数由原有配置分支处理，其他值按幂次决定分块形状。
+    logic [31:0] slice_shape_i_value;
+    logic slice_shape_o_valid;
+    assign slice_shape_i_value = slice_tiles;
+    onehot_check #(.p_width(32), .p_allow_zero(1'b1)) u_slice_shape (
+      .i_value(slice_shape_i_value),
+      .o_valid(slice_shape_o_valid)
+    );
 
     localparam int unsigned CAP_W = ID_W + 1;
     localparam int unsigned PRODUCT_W = 2 * CAP_W + 1;
@@ -117,13 +129,40 @@ module ps_window_scheduler #(
         if (available_product < PRODUCT_W'(next_target)) next_target = CAP_W'(available_product);
     end
 
-    assign column_tiles = ((cfg_stationary - 32'd1) >> SHIFT) + 32'd1;
+    // 配置接收时保存列分块数，后续调度直接使用已保存的结果。
+    // 低位非零时向上取整，零输入保留完整位宽减法的回绕结果。
+    if (SHIFT == 0) begin : g_single_column
+        assign incoming_column_tiles = (TILE_W+1)'(stationary_rows);
+    end else begin : g_column_tiles
+        assign incoming_column_tiles = stationary_rows == 32'd0 ?
+            ((TILE_W+1)'(1) << TILE_W) :
+            (TILE_W+1)'(stationary_rows >> SHIFT) +
+            (TILE_W+1)'(|stationary_rows[SHIFT-1:0]);
+    end
     assign current_rows = prepare_rows;
     assign remaining_columns = column_tiles - next_column_tile;
     assign group_parts = prepare_parts;
     assign reserve_rows = minimum(cfg_slice_rows, current_rows);
     assign ready = phase == IDLE;
     assign done_valid = phase == COMPLETE;
+
+    // 有效帧判断独立使用平衡归并树，保持命令写使能的组合层数。
+    ps_scheduler_any #(.p_width(FRAME_COUNT)) u_candidate_exists (
+        .i_value(candidate_eligible), .o_any(candidate_exists)
+    );
+    ps_scheduler_any #(.p_width(FRAME_COUNT)) u_candidate_after_exists (
+        .i_value(candidate_after_cursor), .o_any(candidate_after_exists)
+    );
+
+    // 两段候选分别编码，最后选择游标之后的首个帧或循环回到首个有效帧。
+    always_comb begin
+        eligible_first_id = '0;
+        after_first_id = '0;
+        for (int i = FRAME_COUNT - 1; i >= 0; i--) begin
+            if (candidate_eligible[i]) eligible_first_id = ID_W'(i);
+            if (candidate_after_cursor[i]) after_first_id = ID_W'(i);
+        end
+    end
 
     always_comb begin
         initial_slice_shift = '0;
@@ -149,11 +188,9 @@ module ps_window_scheduler #(
                 candidate_eligible[i] = live[i] && (i < opened);
                 candidate_after_cursor[i] = candidate_eligible[i] && (i >= cursor);
             end
-            candidate_select = (|candidate_after_cursor) ? candidate_after_cursor : candidate_eligible;
-            candidate_found = |candidate_eligible;
-            for (int i = FRAME_COUNT - 1; i >= 0; i--) begin
-                if (candidate_select[i]) scanned_id = ID_W'(i);
-            end
+            candidate_select = candidate_after_exists ? candidate_after_cursor : candidate_eligible;
+            candidate_found = candidate_exists;
+            scanned_id = candidate_after_exists ? after_first_id : eligible_first_id;
         end
         candidate_row = candidate_init ? row_base + 32'(next_slice_offset) :
             row_base + (32'(frame_row_part[candidate_id]) << SHIFT);
@@ -324,7 +361,8 @@ module ps_window_scheduler #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             phase <= IDLE;
-            cfg_stream <= '0; cfg_stationary <= '0; cfg_reduction <= '0;
+            cfg_stream <= '0; cfg_reduction <= '0;
+            column_tiles <= SHIFT == 0 ? '0 : ((TILE_W+1)'(1) << TILE_W);
             cfg_rows <= '0; cfg_window <= '0; cfg_slice_rows <= '0;
             slice_shift <= SLICE_SHIFT_W'(SHIFT); sliced <= 1'b0;
             row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
@@ -339,7 +377,7 @@ module ps_window_scheduler #(
         end else begin
             if (phase == IDLE && start) begin
                 cfg_stream <= stream_rows;
-                cfg_stationary <= stationary_rows;
+                column_tiles <= incoming_column_tiles;
                 cfg_reduction <= reduction;
                 cfg_rows <= ROW_COUNT_W'(reuse_rows << SHIFT);
                 cfg_window <= (ID_W+1)'(window_frames);
@@ -348,7 +386,7 @@ module ps_window_scheduler #(
                 sliced <= slice_tiles != 0;
                 row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
                 opened <= '0; cursor <= '0;
-                target <= minimum(window_frames, ((stationary_rows - 32'd1) >> SHIFT) + 32'd1);
+                target <= minimum(window_frames, 32'(incoming_column_tiles));
                 live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
                 command_active <= 1'b0;
 
@@ -356,7 +394,7 @@ module ps_window_scheduler #(
                     reuse_rows == 0 || (reuse_rows >> (32-SHIFT)) != 0 ||
                     (MAX_REUSE_TILES != 0 && reuse_rows > MAX_REUSE_TILES) ||
                     window_frames == 0 || window_frames > 32'(FRAME_COUNT) ||
-                    slice_tiles > reuse_rows || (slice_tiles & (slice_tiles - 32'd1)) != 0) begin
+                    slice_tiles > reuse_rows || !slice_shape_o_valid) begin
                     err_code <= (config_error != 0) ? config_error : 2'b01;
                     phase <= COMPLETE;
                 end else begin
@@ -465,8 +503,72 @@ module ps_window_scheduler #(
         if (command_complete) assert(command_active);
         if (command_valid && command_ready) begin
             assert(rows != 0 && cols != 0 && count_k != 0);
-            assert(q0 < cfg_reduction && column0 < cfg_stationary && p0 < cfg_stream);
+            assert(q0 < cfg_reduction && column0 < (final_column0 + 32'(final_column_count)) && p0 < cfg_stream);
         end
     end
 `endif
+endmodule
+
+// 六输入归并树：每一级仅依赖前一级的六个结果。
+module ps_scheduler_any #(
+    parameter int p_width = 16,
+    parameter bit p_use_lut =
+`ifdef ASIC_SYNTHESIS
+        1'b0
+`elsif XILINX_FPGA
+        1'b1
+`elsif SYNTHESIS
+        1'b1
+`else
+        1'b0
+`endif
+) (
+    input  logic [p_width-1:0] i_value,
+    output logic o_any
+);
+    localparam int p_groups = (p_width + 5) / 6;
+    localparam int p_levels = $clog2(p_groups) + 1;
+    localparam logic [63:0] p_any_init = 64'hffff_ffff_ffff_fffe;
+
+    for (genvar level = 0; level <= p_levels; level++) begin : g_level
+        localparam int p_span = 6 ** level;
+        localparam int p_nodes = (p_width + p_span - 1) / p_span;
+        localparam int p_previous_span = level > 0 ? 6 ** (level - 1) : 1;
+        localparam int p_previous_nodes = (p_width + p_previous_span - 1) / p_previous_span;
+
+        for (genvar node = 0; node < p_width; node++) begin : g_node
+            logic any_set;
+
+            if (level == 0) begin : g_input
+                assign any_set = i_value[node];
+            end else if (node == 0 && p_previous_nodes == 1) begin : g_pass
+                assign any_set = g_level[level-1].g_node[0].any_set;
+            end else if (node < p_nodes) begin : g_reduce
+                logic [5:0] any_i_value;
+                logic any_o_value;
+
+                for (genvar child = 0; child < 6; child++) begin : g_child
+                    if (6 * node + child < p_previous_nodes) begin : g_present
+                        assign any_i_value[child] = g_level[level-1].g_node[6*node+child].any_set;
+                    end else begin : g_empty
+                        assign any_i_value[child] = 1'b0;
+                    end
+                end
+                if (p_use_lut) begin : g_lut
+                    LUT6 #(.INIT(p_any_init)) u_any (
+                        .I0(any_i_value[0]), .I1(any_i_value[1]),
+                        .I2(any_i_value[2]), .I3(any_i_value[3]),
+                        .I4(any_i_value[4]), .I5(any_i_value[5]),
+                        .O(any_o_value)
+                    );
+                end else begin : g_logic
+                    assign any_o_value = |any_i_value;
+                end
+                assign any_set = any_o_value;
+            end else begin : g_unused
+                assign any_set = 1'b0;
+            end
+        end
+    end
+    assign o_any = g_level[p_levels].g_node[0].any_set;
 endmodule

@@ -1,0 +1,26 @@
+{
+  "capacity_reference": {
+    "top": "ps_capacity_measure",
+    "options": ["-Gp_reference=1"],
+    "sources": ["test/ps_capacity_limits/measure.sv", "test/ps_capacity_limits/reference.sv", "rtl/npu/control/ps_capacity_limits.sv"],
+    "configuration": "1024-row bound, five-bit frame count, seven 2048-byte physical banks"
+  },
+  "capacity_candidate": {
+    "top": "ps_capacity_measure",
+    "options": ["-Gp_reference=0"],
+    "sources": ["test/ps_capacity_limits/measure.sv", "test/ps_capacity_limits/reference.sv", "rtl/npu/control/ps_capacity_limits.sv"],
+    "configuration": "1024-row bound, five-bit frame count, seven 2048-byte physical banks"
+  },
+  "capacity_reference_production": {
+    "top": "ps_capacity_measure",
+    "options": ["-Gp_reference=1", "-Gp_max_rows=512", "-Gp_bank_bytes=8192"],
+    "sources": ["test/ps_capacity_limits/measure.sv", "test/ps_capacity_limits/reference.sv", "rtl/npu/control/ps_capacity_limits.sv"],
+    "configuration": "512-row bound, five-bit frame count, seven 8192-byte physical banks"
+  },
+  "capacity_candidate_production": {
+    "top": "ps_capacity_measure",
+    "options": ["-Gp_reference=0", "-Gp_max_rows=512", "-Gp_bank_bytes=8192"],
+    "sources": ["test/ps_capacity_limits/measure.sv", "test/ps_capacity_limits/reference.sv", "rtl/npu/control/ps_capacity_limits.sv"],
+    "configuration": "512-row bound, five-bit frame count, seven 8192-byte physical banks"
+  }
+}

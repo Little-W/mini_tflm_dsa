@@ -19,7 +19,8 @@ def main():
     parser.add_argument('--out', type=Path, default=Path(__file__).resolve().parents[2]/'build/ps_buffer_replay')
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
-    sources = [args.rtl.resolve(), here/'top.sv', here/'main.cpp', here/'run.py']
+    sources = [args.rtl.resolve(), here/'top.sv', here/'main.cpp', here/'run.py',
+               here.parents[1]/'rtl/common/REGFILE.v']
     hashes = {str(path): digest(path) for path in sources}
     records = []
     for depth, frames, length in [(7, 1, 3), (17, 3, 7), (16, 2, 7)]:
@@ -29,7 +30,7 @@ def main():
                     '--top-module', 'ps_replay_top', '--Mdir', str(out/'obj'),
                     f'-GDEPTH={depth}', f'-GFRAME_COUNT={frames}', f'-GMAX_FRAME_LEN={length}',
                     '-CFLAGS', f'-std=c++17 -DTEST_DEPTH={depth} -DTEST_FRAMES={frames} -DTEST_MAX_LEN={length}',
-                    *map(str, sources[:3])]
+                    *map(str, [path for path in sources if path.suffix in ('.sv', '.v', '.cpp')])]
         compile_command = ['make', '-C', str(out/'obj'), '-f', 'Vps_replay_top.mk',
                            '-j', '1', 'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1']
         for command, name in [(generate, 'generate.log'), (compile_command, 'compile.log')]:

@@ -9,6 +9,7 @@ module ps_buffer #(
     parameter int unsigned MAX_IA_REUSE = 2,
     parameter int unsigned STORAGE_ROWS = 0,
     parameter int unsigned PS_EXTERNAL_RAM = 0,
+    parameter bit p_fixed_ps_channels = 1'b0,
     parameter int unsigned PS_POOL_BYTES = `GEMMORA_PS_POOL_BYTES,
     parameter int unsigned PS_BANK_BYTES = 2048,
     parameter int unsigned PS_DIRECTORY_ROWS = FRAME_COUNT * MAX_IA_REUSE * SIZE,
@@ -107,6 +108,7 @@ module ps_buffer #(
             .POOL_BYTES(PS_POOL_BYTES),
             .BANK_BYTES(PS_BANK_BYTES),
             .EXTERNAL_RAM(PS_EXTERNAL_RAM),
+            .p_fixed_ps_channels(p_fixed_ps_channels),
             .DIRECTORY_ROWS(PS_DIRECTORY_ROWS),
             .RAM_ADDR_BITS(PS_RAM_ADDR_BITS)
         ) u_store (
@@ -371,23 +373,41 @@ module ps_buffer_wide_fifo #(
     end
 endmodule
 
-// Exact-depth synchronous 1R1W SRAM. Ring addresses already wrap at DEPTH.
+// 精确深度的同步单写单读存储，环形地址由外层控制器按 DEPTH 回绕。
 module ps_buffer_exact_ram #(
     parameter int DEPTH=16, DATA_WIDTH=512, ADDR_WIDTH=$clog2(DEPTH)
 )(input logic clk, ena, enb, wea,
   input logic [ADDR_WIDTH-1:0] addra, addrb,
   input logic [DATA_WIDTH-1:0] dia,
   output logic [DATA_WIDTH-1:0] dob);
+  logic storage_i_wr_en, storage_i_rd_en;
+  logic [ADDR_WIDTH-1:0] storage_i_wr_addr, storage_i_rd_addr;
+  logic [DATA_WIDTH-1:0] storage_i_wr_data, storage_o_rd_data;
+  assign storage_i_wr_en = ena && wea;
+  assign storage_i_wr_addr = addra;
+  assign storage_i_wr_data = dia;
+  assign storage_i_rd_en = enb;
+  assign storage_i_rd_addr = addrb;
+  assign dob = storage_o_rd_data;
 `ifdef ASIC_SRAM
+  logic [DATA_WIDTH-1:0] storage_i_wr_mask;
+  assign storage_i_wr_mask = '1;
   smic40_sram_1r1w #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(DEPTH), .ADDR_WIDTH(ADDR_WIDTH)) u_sram (
-    .clk(clk), .write_enable(ena && wea), .write_address(addra), .write_data(dia),
-    .write_mask({DATA_WIDTH{1'b1}}), .read_enable(enb), .read_address(addrb), .read_data(dob));
+    .clk(clk), .write_enable(storage_i_wr_en), .write_address(storage_i_wr_addr),
+    .write_data(storage_i_wr_data), .write_mask(storage_i_wr_mask),
+    .read_enable(storage_i_rd_en), .read_address(storage_i_rd_addr), .read_data(storage_o_rd_data)
+  );
 `else
-  (* ram_style="block" *) logic [DATA_WIDTH-1:0] ram [DEPTH];
-  always_ff @(posedge clk) begin
-    if (ena && wea) ram[addra] <= dia;
-    if (enb) dob <= ram[addrb];
-  end
+  logic storage_i_wr_mask;
+  assign storage_i_wr_mask = 1'b1;
+  REGFILE #(
+    .p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH),
+    .p_write_unit(DATA_WIDTH)
+  ) u_storage (
+    .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),
+    .i_wr_data(storage_i_wr_data), .i_wr_mask(storage_i_wr_mask),
+    .i_rd_en(storage_i_rd_en), .i_rd_addr(storage_i_rd_addr), .o_rd_data(storage_o_rd_data)
+  );
 `endif
 
 endmodule

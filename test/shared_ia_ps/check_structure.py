@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 
 def digest(path):
@@ -27,8 +28,15 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     sources = [Path(__file__).resolve(), root / "rtl/npu/buffers/ia_ps_shared_ram.sv",
                root / "rtl/npu/ps_compact/ps_frame_store.sv", root / "rtl/npu/ps_compact/ps_adaptive_codec.sv",
-               root / "rtl/npu/loaders/ia_loader_cache_mgr.sv", root / "rtl/common/pseudo_dual_port_ram.v"]
+               root / "rtl/npu/loaders/ia_loader_cache_mgr.sv", root / "rtl/common/pseudo_dual_port_ram.v",
+               root / "rtl/common/REGFILE.v"]
     before = {str(path.relative_to(root)): digest(path) for path in sources}
+    import pyosys
+    sys.path.insert(0, str(root / "scripts/fpga"))
+    from open_fpga_synth import primitive_models
+    primitive_options, primitive_manifest = primitive_models(
+        out, [str(path) for path in sources if path.suffix in (".v", ".sv")],
+        Path(pyosys.__file__).parent / "share/xilinx")
     profiles = []
     for bank_bytes in args.bank_bytes:
         for banks in (6, 7, 8, 9):
@@ -50,8 +58,10 @@ def main():
                             f"-GRAM_WORD_ADDR_WIDTH={(banks*(bank_bytes//16)-1).bit_length()} "
                             "rtl/npu/loaders/ia_loader_cache_mgr.sv rtl/common/pseudo_dual_port_ram.v")
                 script = out / f"{name}.ys"
+                read += " rtl/common/REGFILE.v"
+                read = read.replace("read_slang ", "read_slang " + primitive_options + " ", 1)
                 memory_passes = "\nopt\nmemory_dff\n" + ("" if kind == "ia" else "memory_share\nopt_clean\n")
-                script.write_text(read + memory_passes + "memory_collect\n"
+                script.write_text(read + memory_passes + "memory_collect\nopt_clean\n"
                                   f"check -assert\nstat\nwrite_json {json_path}\n")
                 command = [args.yosys, "-Q", "-T", "-s", str(script)]
                 with (out / f"{name}.log").open("w") as log:
@@ -79,19 +89,16 @@ def main():
                         for m in memories):
                         raise RuntimeError(f"Shared memory geometry or synchronous ports differ: {name}")
                 elif kind == "store":
-                    directory = [m for m in memories if m["name"].endswith(".directory")]
-                    decoded = [m for m in memories if m["name"].endswith(".decoded_ram")]
-                    if len(directory) != 1 or (directory[0]["width"], directory[0]["size"]) != (3+(banks-2).bit_length()+4*(bank_bytes//16-1).bit_length(), 1024):
-                        raise RuntimeError(f"Directory dimensions differ: {name}")
+                    decoded = [m for m in memories if m["name"].endswith(".u_decoded.mem")]
                     if len(decoded) != 1 or any(decoded[0][key] != expected for key, expected in
                         dict(width=512, size=8, rd_ports=1, wr_ports=1, rd_clk_enable=1, wr_clk_enable=1).items()):
                         raise RuntimeError(f"Decoded FIFO dimensions or timing differ: {name}")
-                    if any(m["width"] == 128 or "payload_ram" in m["name"] for m in memories):
-                        raise RuntimeError(f"External store contains a payload memory: {name}")
+                    if len(memories) != 1:
+                        raise RuntimeError(f"External frame storage contains an unexpected memory: {name}")
                 else:
                     expected_control = {"l1_last_pipe": (1, 16), "ram_rd_en_d1": (1, 16),
                                         "rd_addr_pipe": ((bank_bytes//4-1).bit_length(), 16), "rd_en_pipe": (1, 16),
-                                        "tile_last_pipe": (1, 16)}
+                                        "tile_last_pipe": (1, 16), "slot_written_cols": (5, bank_bytes//64)}
                     found_control = set()
                     for memory in memories:
                         control_name = memory["name"].removeprefix("ia_loader_cache_mgr.")
@@ -119,7 +126,7 @@ def main():
                     proof_cases += 1
     if before != {str(path.relative_to(root)): digest(path) for path in sources}:
         raise RuntimeError("Sources changed during structural checks")
-    result = dict(passed=True, source_sha256=before, profiles=profiles,
+    result = dict(passed=True, source_sha256=before, profiles=profiles, primitive_models=primitive_manifest,
                   checked_read_prefix_cases=proof_cases,
                   yosys_version=subprocess.check_output([args.yosys, "-V"], text=True).strip())
     (out / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
