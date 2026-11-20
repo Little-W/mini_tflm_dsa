@@ -117,11 +117,9 @@ def utilization(text):
 def endpoint_statistics(path):
     with Path(path).open() as stream:
         rows = list(csv.DictReader(stream, delimiter='\t'))
-    if not rows:
-        raise ValueError('No timed endpoints were reported')
     result = {}
     for delay_type in ('max', 'min'):
-        endpoints = {}
+        paths = []
         for row in rows:
             if row['delay_type'] != delay_type:
                 continue
@@ -129,21 +127,53 @@ def endpoint_statistics(path):
             levels = int(row['logic_levels'])
             if levels < 0:
                 raise ValueError('Logic level count must be nonnegative')
-            # 同一捕获引脚在多个时钟下出现时保留各时钟关系中的最差结果。
-            key = (row['clock'], row['endpoint'])
-            previous = endpoints.get(key)
-            if previous is None or slack < previous['slack_ns']:
-                endpoints[key] = dict(slack_ns=slack, logic_levels=levels,
-                                      startpoint=row['startpoint'], endpoint=row['endpoint'])
-        if not endpoints:
-            raise ValueError(f'No {delay_type} timing endpoints were reported')
-        values = list(endpoints.values())
-        result[delay_type] = dict(wns_ns=min(row['slack_ns'] for row in values),
-                                 tns_ns=sum(min(0.0, row['slack_ns']) for row in values),
-                                 endpoints=len(values),
-                                 failing_endpoints=sum(row['slack_ns'] < 0 for row in values),
-                                 maximum_observed_logic_levels=max(row['logic_levels'] for row in values),
-                                 worst_path=min(values, key=lambda row: row['slack_ns']))
+            paths.append(dict(slack_ns=slack, logic_levels=levels, clock=row['clock'],
+                              startpoint=row['startpoint'], endpoint=row['endpoint']))
+        result[delay_type] = dict(sampled_paths=len(paths),
+                                  maximum_observed_logic_levels=max(
+                                      (row['logic_levels'] for row in paths), default=None),
+                                  worst_sampled_path=min(paths, key=lambda row: row['slack_ns'],
+                                                         default=None))
+    return result
+
+
+def timing_summary(text):
+    """Read global design setup/hold metrics, never substituting sampled paths."""
+    fields = ('wns_ns', 'tns_ns', 'failing_endpoints', 'endpoints')
+    result = {kind: dict.fromkeys(fields) for kind in ('max', 'min')}
+    section = re.search(r'^\s*\|\s*Design Timing Summary\s*$', text, re.MULTILINE)
+    if not section:
+        return result
+    lines = text[section.end():].splitlines()
+    for index, line in enumerate(lines):
+        if 'WNS(ns)' not in line or 'TNS Failing Endpoints' not in line:
+            continue
+        if index + 2 >= len(lines):
+            return result
+        separators = list(re.finditer(r'-+', lines[index + 1]))
+        headers = [('max', ('WNS(ns)', 'TNS(ns)', 'TNS Failing Endpoints', 'TNS Total Endpoints')),
+                   ('min', ('WHS(ns)', 'THS(ns)', 'THS Failing Endpoints', 'THS Total Endpoints'))]
+        # Fixed-width columns preserve blanks for unavailable metrics.
+        bounds = [(separators[i - 1].end() if i else 0, match.end())
+                  for i, match in enumerate(separators)]
+        for kind, names in headers:
+            for field, name in zip(fields, names):
+                position = line.find(name)
+                column = next((i for i, (start, end) in enumerate(bounds)
+                               if start <= position < end), None) if position >= 0 else None
+                if column is None:
+                    continue
+                raw = lines[index + 2][bounds[column][0]:bounds[column][1]].strip()
+                try:
+                    value = number(raw)
+                    if field in ('failing_endpoints', 'endpoints'):
+                        if value < 0 or not value.is_integer():
+                            continue
+                        value = int(value)
+                    result[kind][field] = value
+                except ValueError:
+                    pass
+        break
     return result
 
 
@@ -151,25 +181,33 @@ def summarize(manifest, directory, stage, prefix='soc_top'):
     inputs = verify(manifest)
     directory = Path(directory)
     resources = utilization((directory / f'{prefix}_utilization.rpt').read_text())
-    timing = endpoint_statistics(directory / f'{prefix}_endpoints.tsv')
+    sampled = endpoint_statistics(directory / f'{prefix}_endpoints.tsv')
+    summary_path = directory / f'{prefix}_timing_summary.rpt'
+    timing = timing_summary(summary_path.read_text() if summary_path.is_file() else '')
+    for kind in timing:
+        timing[kind]['sample'] = sampled[kind]
     implementation = None
     if stage == 'routed':
         with (directory / 'implementation_checks.tsv').open() as stream:
             implementation = {row['check']: row['value'] for row in csv.DictReader(stream, delimiter='\t')}
-    result = dict(schema_version=1, measurement_tool='Vivado', stage=stage,
+    result = dict(schema_version=2, measurement_tool='Vivado', stage=stage,
                   source_manifest_sha256=digest(manifest), inputs_unchanged=True,
                   configuration=inputs['metadata'], git=inputs['git'], resources=resources,
                   timing=timing, implementation_checks=implementation,
                   requirements=dict(slice_luts_maximum=45000, clock_period_ns_maximum=6.667,
                                     combinational_logic_levels_maximum=9),
                   status=dict(slice_luts_within_limit=resources['slice_luts'] <= 45000,
-                              observed_endpoint_paths_within_nine_levels=
-                              max(item['maximum_observed_logic_levels'] for item in timing.values()) <= 9,
+                               observed_endpoint_paths_within_nine_levels=
+                               (max(item['maximum_observed_logic_levels'] for item in sampled.values()) <= 9
+                                if all(item['maximum_observed_logic_levels'] is not None
+                                       for item in sampled.values()) else None),
                               all_connected_paths_within_nine_levels=None,
                               timing_150mhz_confirmed=
                               implementation.get('passed') == '1' if implementation else None),
-                  logic_level_scope='Worst setup and hold path per timed endpoint and capture clock; '
-                                    'all connected alternatives require a separate structural path analysis',
+                  timing_scope='WNS, TNS and endpoint counts are from the Vivado design timing summary; '
+                               'null means unavailable. Path details are bounded samples.',
+                  logic_level_scope='Maximum among sampled worst setup and hold paths only; '
+                                    'not a maximum over all endpoints or connected paths.',
                   reports_sha256={path.name: digest(path) for path in sorted(directory.iterdir())
                                   if path.is_file() and path.suffix in ('.rpt', '.tsv')})
     save(directory / 'measurement.json', result)

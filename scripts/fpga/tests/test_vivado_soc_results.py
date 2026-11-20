@@ -77,7 +77,7 @@ class ResultsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             results.snapshot(records, self.work / 'manifest.json')
 
-    def test_endpoint_statistics_cover_all_rows(self):
+    def test_endpoint_statistics_are_sampled_paths_not_totals(self):
         report = self.work / 'endpoints.tsv'
         report.write_text('delay_type\tclock\tclock_period_ns\tstartpoint\tendpoint\tslack_ns\tlogic_levels\n'
                           'max\tclk\t6.667\ta/Q\tx/D\t-4.536\t16\n'
@@ -86,10 +86,57 @@ class ResultsTests(unittest.TestCase):
                           'max\tclk\t6.667\td/Q\tz/D\t0.5\t8\n'
                           'min\tclk\t6.667\te/Q\tz/D\t0.1\t2\n')
         value = results.endpoint_statistics(report)
-        self.assertEqual(value['max']['endpoints'], 3)
-        self.assertEqual(value['max']['failing_endpoints'], 2)
-        self.assertAlmostEqual(value['max']['tns_ns'], -6.536)
+        self.assertEqual(value['max']['sampled_paths'], 4)
+        self.assertNotIn('tns_ns', value['max'])
+        self.assertNotIn('endpoints', value['max'])
         self.assertEqual(value['max']['maximum_observed_logic_levels'], 16)
+        self.assertEqual(value['max']['worst_sampled_path']['startpoint'], 'a/Q')
+
+    def test_native_summary_metrics_and_missing_hold(self):
+        text = '''
+ | Design Timing Summary
+ | ---------------------
+
+    WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints     WPWS(ns)
+    -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------     --------
+     -6.327   -81810.898                  49435               144664        0.056        0.000                      0               144664        2.283
+'''
+        value = results.timing_summary(text)
+        self.assertEqual(value['max'], dict(wns_ns=-6.327, tns_ns=-81810.898,
+                                            failing_endpoints=49435, endpoints=144664))
+        self.assertEqual(value['min'], dict(wns_ns=0.056, tns_ns=0.0,
+                                            failing_endpoints=0, endpoints=144664))
+        missing = text.replace('        0.056        0.000                      0               144664',
+                               '                                                                     ')
+        self.assertTrue(all(v is None for v in results.timing_summary(missing)['min'].values()))
+        self.assertTrue(all(v is None for v in results.timing_summary('missing')['max'].values()))
+
+    def test_empty_sample_is_not_a_pass(self):
+        report = self.work / 'endpoints.tsv'
+        report.write_text('delay_type\tclock\tclock_period_ns\tstartpoint\tendpoint\tslack_ns\tlogic_levels\n')
+        sample = results.endpoint_statistics(report)
+        self.assertEqual(sample['max']['sampled_paths'], 0)
+        self.assertIsNone(sample['max']['maximum_observed_logic_levels'])
+        self.assertIsNone(sample['min']['worst_sampled_path'])
+
+    def test_summary_does_not_derive_global_metrics_from_sample(self):
+        manifest = self.work / 'manifest.json'
+        manifest.write_text(json.dumps(dict(inputs=[], metadata={}, git={})))
+        (self.work / 'soc_top_utilization.rpt').write_text(UTILIZATION)
+        (self.work / 'soc_top_endpoints.tsv').write_text(
+            'delay_type\tclock\tstartpoint\tendpoint\tslack_ns\tlogic_levels\n'
+            'max\tclk\ta\tx\t-1\t8\nmin\tclk\tb\ty\t0.1\t3\n')
+        (self.work / 'soc_top_timing_summary.rpt').write_text('''
+ | Design Timing Summary
+    WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints      WHS(ns)      THS(ns)  THS Failing Endpoints  THS Total Endpoints
+    -------      -------  ---------------------  -------------------      -------      -------  ---------------------  -------------------
+     -6.327   -81810.898                  49435               144664        0.056        0.000                      0               144664
+''')
+        value = results.summarize(manifest, self.work, 'synthesized')
+        self.assertEqual(value['timing']['max']['tns_ns'], -81810.898)
+        self.assertEqual(value['timing']['max']['endpoints'], 144664)
+        self.assertEqual(value['timing']['max']['sample']['sampled_paths'], 1)
+        self.assertIsNone(value['status']['all_connected_paths_within_nine_levels'])
 
     def run_native_flow(self, *, routed=False, fail_route=False, board=False):
         mock = ROOT / 'scripts/fpga/tests/vivado_timing_mock.tcl'
@@ -145,8 +192,15 @@ foreach command {set_param create_project set_property read_verilog read_xdc syn
 foreach command {add_files generate_target export_ip_user_files update_compile_order launch_runs wait_on_run open_run} {
     proc $command {args} [format {vivado_timing_mock::record %s {*}$args; return} $command]
 }
-foreach command {report_timing_summary report_timing report_high_fanout_nets} {
+foreach command {report_timing_summary report_high_fanout_nets} {
     proc $command {args} { vivado_timing_mock::report_file $args }
+}
+proc report_timing {args} {
+    if {[lsearch -exact $args -return_string] >= 0} {
+        set path [vivado_timing_mock::option $args -of_objects]
+        return "Slack (MET) : 1.0ns\n  Source: $path\n  Destination: $path\n"
+    }
+    vivado_timing_mock::report_file $args
 }
 proc report_utilization {args} {
     set destination [vivado_timing_mock::option $args -file]
@@ -179,6 +233,9 @@ source $entry
         self.assertIsNone(value['status']['timing_150mhz_confirmed'])
         self.assertTrue(value['status']['observed_endpoint_paths_within_nine_levels'])
         self.assertIsNone(value['status']['all_connected_paths_within_nine_levels'])
+        self.assertIsNone(value['timing']['max']['tns_ns'])
+        self.assertGreater(value['timing']['max']['sample']['sampled_paths'], 0)
+        self.assertIn('sampled', value['logic_level_scope'])
         self.assertEqual(value['configuration']['vivado_version'], 'command_model')
         manifest = json.loads((output / 'source_manifest.json').read_text())
         names = [row['relative_path'] for row in manifest['inputs']]

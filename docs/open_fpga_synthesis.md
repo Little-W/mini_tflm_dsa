@@ -394,7 +394,7 @@ vivado -mode batch -source scripts/fpga/vivado_implement_mapped_soc.tcl \
 
 | 输出文件 | 内容 |
 | --- | --- |
-| `synchronous_timing.tsv` | 每个实际捕获时钟的周期、setup WNS/TNS、hold WNS/TNS、端点数量和 Fmax 适用状态 |
+| `synchronous_timing.tsv` | 每个捕获时钟的周期及最差 setup/hold 裕量；TNS、端点总数和 Fmax 标记为不可用 |
 | `internal_timing_checks.tsv` | 五项内部时序完整性检查的问题数量 |
 | `implementation_checks.tsv` | 布线、严重 DRC、时钟与路径数量，以及最终检查结果 |
 | `required_post_route_drc.rpt` | 必须通过的严重 DRC 规则结果 |
@@ -402,9 +402,9 @@ vivado -mode batch -source scripts/fpga/vivado_implement_mapped_soc.tcl \
 | `effective_timing.xdc` | 当前设计中的有效时序约束 |
 | `timing_exceptions.rpt` | 当前设计的时序例外摘要 |
 
-统计使用 `get_timing_paths` 的实际 clock 对象选择捕获端点，逐步扩大查询数量，直至完整结果小于查询上限。每个端点保留最差裕量；WNS 为其中的最小值，TNS 为所有负裕量之和。hold 字段对应 Vivado 原生报告的 WHS/THS。跨时钟路径同样计入其捕获时钟的结果。
+检查使用有界 `get_timing_paths` 查询每个捕获时钟的最差 setup 和 hold 路径，并单独检查全设计最差路径；不再逐步扩大查询并枚举全部端点。完整的 WNS/TNS 和端点数量应以 Vivado 原生 `report_timing_summary` 为准，不得从有限路径样本推算。由于未检查所有路径的时钟关系和例外，Fmax 估算标记为不可用。
 
-`single_cycle_setup_fmax_estimate_mhz` 按当前布线结果计算 `1000 / (周期 − setup WNS)`，只用于同一时钟、同一边沿、普通单周期路径。存在跨时钟、外部输入或输出路径、跨边沿路径、非单周期要求、路径例外，或者有效约束包含 `set_multicycle_path`、`set_max_delay` 时，该字段留空，原因写入 `fmax_status`。跨时钟、外部端口和跨边沿关系均单独查询，覆盖同一端点的次差路径。Fmax 估算独立于 setup/hold 的通过条件；所有实际路径仍按已有约束检查。
+详细路径报告按裕量排序，保留最多 100 条去重结果，正文使用 Vivado 的原生路径详情。去重比较原生详情文本（不含报告头），不是仅比较起点和终点；查询最多 1000 条候选路径，达到上限或不足 100 条时会在报告中注明。该报告是有界诊断样本，不能证明全设计路径的最大逻辑级数或完整端点统计。
 
 板级 `run_batch_impl.tcl` 和 `export_project.tcl` 的实现入口使用相同检查，并在检查通过后生成比特流。生产 RTL 文件列表覆盖帧地址准备、量化运算通道及量化输入队列。RTL 直接综合入口 `vivado_synth_soc.tcl` 生成综合报告；目标器件布线后的时序由上述实现入口检查。
 
@@ -419,7 +419,7 @@ python3 fpga/vivado/tflm_ai_dsa_soc/scripts/test_npu_config.py \
   --out build/vivado_configuration_checks --picorv32 /path/to/picorv32
 ```
 
-这些测试检查 Tcl 语法、Vivado 命令调用、结果判断、端点统计和生产源文件完整性，使用模拟命令提供设计对象。测试报告分别记录这些检查与实际 Vivado 执行状态。执行生产实现需要包含 Artix-7 器件支持的 Vivado 环境、对应固定源码的原语网表，以及实际封装和接口约束。
+这些测试检查 Tcl 语法、Vivado 命令调用、结果判断、有界路径查询和生产源文件完整性，使用模拟命令提供设计对象。测试报告分别记录这些检查与实际 Vivado 执行状态。执行生产实现需要包含 Artix-7 器件支持的 Vivado 环境、对应固定源码的原语网表，以及实际封装和接口约束。
 
 [脚本验证结果](data/vivado_timing_validation.json) 保存 Tcl 调用检查及源码 SHA-256。生产源文件检查比较 Vivado 列表与 `dut_axil.f`，排除仿真包装 `axil_top_with_ram.sv`。
 

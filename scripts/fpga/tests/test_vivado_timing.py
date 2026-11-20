@@ -181,138 +181,55 @@ puts TIMING_COMMAND_MODEL_PASS
         _, _, result = self.run_helper('empty_selection', set_option('no_drc_checks', 1), success=False)
         self.assertIn('No required post-route DRC checks', result.stderr)
 
-    def test_clock_statistics_count_each_endpoint_once(self):
+    def test_bounded_worst_path_queries(self):
         configuration = '''vivado_timing_mock::clear_paths
+vivado_timing_mock::set_option max_path_query_limit 1
 vivado_timing_mock::set_clock aux_clk 10.0
-vivado_timing_mock::add_path a0 max endpoint_a/D -0.1 soc_clk soc_clk 6.667
-vivado_timing_mock::add_path a1 max endpoint_a/D -0.3 soc_clk soc_clk 6.667
-vivado_timing_mock::add_path a2 max endpoint_b/D -0.2 soc_clk soc_clk 6.667
-vivado_timing_mock::add_path a3 max endpoint_c/D 0.8 soc_clk soc_clk 6.667
-vivado_timing_mock::add_path h0 min endpoint_a/D -0.4 soc_clk soc_clk 0
-vivado_timing_mock::add_path h1 min endpoint_a/D -0.1 soc_clk soc_clk 0
-vivado_timing_mock::add_path h2 min endpoint_c/D 0.2 soc_clk soc_clk 0
-vivado_timing_mock::add_path b0 max endpoint_a/D 1.0 aux_clk aux_clk 10.0
-vivado_timing_mock::add_path b1 min endpoint_a/D 0.3 aux_clk aux_clk 0
-'''
-        output, _, _ = self.run_helper('deduplicated', configuration, success=False)
-        rows = self.clock_rows(output)
-        soc, aux = rows['soc_clk'], rows['aux_clk']
-        for key, value in {'setup_wns_ns': -0.3, 'setup_tns_ns': -0.5,
-                           'hold_wns_ns': -0.4, 'hold_tns_ns': -0.4}.items():
-            self.assertAlmostEqual(float(soc[key]), value)
-        self.assertEqual((soc['setup_endpoints'], soc['setup_failing_endpoints'],
-                          soc['hold_endpoints'], soc['hold_failing_endpoints']), ('3', '2', '2', '1'))
-        self.assertEqual((aux['setup_endpoints'], aux['hold_endpoints']), ('1', '1'))
-        self.assertEqual(float(aux['setup_wns_ns']), 1.0)
-        self.assertEqual(float(aux['setup_tns_ns']), 0.0)
-
-    def test_endpoint_queries_expand_beyond_1024(self):
-        configuration = '''vivado_timing_mock::clear_paths
 for {set index 0} {$index < 1105} {incr index} {
-    vivado_timing_mock::add_path setup_$index max endpoint_$index/D -0.1 soc_clk soc_clk 6.667
+    vivado_timing_mock::add_path setup_$index max endpoint_$index/D 0.1 soc_clk soc_clk 6.667
     vivado_timing_mock::add_path hold_$index min endpoint_$index/D 0.25 soc_clk soc_clk 0
 }
+vivado_timing_mock::add_path aux_setup max aux/D 0.4 aux_clk aux_clk 10.0
+vivado_timing_mock::add_path aux_hold min aux/D 0.2 aux_clk aux_clk 0
 '''
-        output, case, _ = self.run_helper('1105_endpoints', configuration, success=False)
-        row = self.clock_rows(output)['soc_clk']
-        self.assertEqual((row['setup_endpoints'], row['hold_endpoints']), ('1105', '1105'))
-        self.assertAlmostEqual(float(row['setup_tns_ns']), -110.5)
-        calls = (case / 'calls.tcllist').read_text().splitlines()
-        for delay in ('max', 'min'):
-            selected = [line for line in calls if line.startswith(f'get_timing_paths -delay_type {delay} -to soc_clk ')]
-            self.assertEqual(len(selected), 2)
-            self.assertIn('-max_paths 1024 ', selected[0])
-            self.assertIn('-max_paths 2048 ', selected[1])
-
-    def test_single_cycle_fmax(self):
-        output, _, _ = self.run_helper('single_cycle')
-        row = self.clock_rows(output)['soc_clk']
-        self.assertAlmostEqual(float(row['single_cycle_setup_fmax_estimate_mhz']), 1000.0 / 6.0)
-        self.assertEqual(row['fmax_status'], 'single_cycle_setup_estimate')
-        self.assertEqual(self.status_values(output)['passed'], '1')
-
-    def test_independent_clocks_have_separate_fmax(self):
-        configuration = '''vivado_timing_mock::set_clock aux_clk 10.0
-vivado_timing_mock::add_path aux_setup max endpoint_aux/D 1.0 aux_clk aux_clk 10.0
-vivado_timing_mock::add_path aux_hold min endpoint_aux/D 0.2 aux_clk aux_clk 0
-'''
-        output, _, _ = self.run_helper('independent_clocks', configuration)
+        output, case, _ = self.run_helper('bounded', configuration)
+        status = self.status_values(output)
+        self.assertEqual(status['passed'], '1')
+        self.assertEqual((status['setup_endpoints'], status['hold_endpoints']),
+                         ('unavailable', 'unavailable'))
+        self.assertEqual((status['clocks_with_setup_paths'], status['clocks_with_hold_paths']), ('2', '2'))
         rows = self.clock_rows(output)
-        for name, expected in (('soc_clk', 1000.0 / 6.0), ('aux_clk', 1000.0 / 9.0)):
-            self.assertEqual(rows[name]['fmax_status'], 'single_cycle_setup_estimate')
-            self.assertAlmostEqual(float(rows[name]['single_cycle_setup_fmax_estimate_mhz']), expected)
+        for clock, setup, hold in (('soc_clk', 0.1, 0.25), ('aux_clk', 0.4, 0.2)):
+            row = rows[clock]
+            self.assertAlmostEqual(float(row['setup_wns_ns']), setup)
+            self.assertAlmostEqual(float(row['hold_wns_ns']), hold)
+            for field in ('setup_tns_ns', 'setup_endpoints', 'setup_failing_endpoints',
+                          'hold_tns_ns', 'hold_endpoints', 'hold_failing_endpoints',
+                          'single_cycle_setup_fmax_estimate_mhz'):
+                self.assertEqual(row[field], 'unavailable', field)
+            self.assertEqual(row['fmax_status'], 'unavailable_bounded_path_sampling')
+        calls = (case / 'calls.tcllist').read_text().splitlines()
+        queries = [line for line in calls if line.startswith('get_timing_paths ')]
+        for clock in ('soc_clk', 'aux_clk'):
+            for delay in ('max', 'min'):
+                selected = [line for line in queries if f'-delay_type {delay} ' in line
+                            and f'-to {clock} ' in line]
+                self.assertEqual(len(selected), 1, queries)
+                self.assertIn('-max_paths 1 ', selected[0])
+                self.assertIn('-nworst 1 ', selected[0])
+        self.assertTrue(all('-max_paths 1 ' in line for line in queries), queries)
 
-    def test_secondary_inter_clock_paths_disable_fmax(self):
-        shared = '''vivado_timing_mock::set_clock aux_clk 10.0
-vivado_timing_mock::add_path aux_setup max endpoint_aux/D 0.25 aux_clk aux_clk 10.0
-vivado_timing_mock::add_path aux_hold min endpoint_aux/D 0.2 aux_clk aux_clk 0
-'''
-        for direction, endpoint, launch, capture, period in (
-            ('incoming', 'endpoint_default/D', 'aux_clk', 'soc_clk', '6.667'),
-            ('outgoing', 'endpoint_aux/D', 'soc_clk', 'aux_clk', '10.0'),
-        ):
-            with self.subTest(direction=direction):
-                configuration = shared + f'vivado_timing_mock::add_path secondary max {endpoint} 1.5 {launch} {capture} {period}\n'
-                output, _, _ = self.run_helper(direction, configuration)
-                rows = self.clock_rows(output)
-                self.assertAlmostEqual(float(rows['soc_clk']['setup_wns_ns']), 0.667)
-                self.assertAlmostEqual(float(rows['aux_clk']['setup_wns_ns']), 0.25)
-                for row in rows.values():
-                    self.assertEqual(row['fmax_status'], 'inter_clock_paths_present')
-                    self.assertEqual(row['single_cycle_setup_fmax_estimate_mhz'], '')
-
-    def test_external_port_paths_disable_fmax(self):
-        for direction, configuration in (
-            ('input', '''vivado_timing_mock::set_option input_ports {clk data_in}
-vivado_timing_mock::add_path external_setup max endpoint_default/D 1.5 soc_clk soc_clk 6.667
-dict set ::vivado_timing_mock::paths external_setup STARTPOINT_PIN data_in
-'''),
-            ('output', '''vivado_timing_mock::set_option output_ports data_out
-vivado_timing_mock::add_path external_setup max data_out 1.5 soc_clk soc_clk 6.667
-vivado_timing_mock::add_path external_hold min data_out 0.5 soc_clk soc_clk 0
-'''),
-        ):
-            with self.subTest(direction=direction):
-                output, _, _ = self.run_helper(direction, configuration)
-                row = self.clock_rows(output)['soc_clk']
-                self.assertAlmostEqual(float(row['setup_wns_ns']), 0.667)
-                self.assertEqual(row['fmax_status'], 'external_port_paths_present')
-                self.assertEqual(row['single_cycle_setup_fmax_estimate_mhz'], '')
-
-    def test_fmax_is_empty_for_special_paths(self):
-        cases = (
-            ('cross_clock', 'dict set ::vivado_timing_mock::paths setup_default STARTPOINT_CLOCK aux_clk\n', 'paths_from_other_clock_or_input'),
-            ('input_path', 'dict set ::vivado_timing_mock::paths setup_default STARTPOINT_CLOCK {}\n', 'paths_from_other_clock_or_input'),
-            ('rise_to_fall', set_option('half_rise_fall', 'half_cycle_path'), 'opposite_clock_edges'),
-            ('fall_to_rise', set_option('half_fall_rise', 'half_cycle_path'), 'opposite_clock_edges'),
-            ('half_requirement', 'dict set ::vivado_timing_mock::paths setup_default REQUIREMENT 3.3335\n', 'non_single_cycle_requirement'),
-            ('multicycle_requirement', 'dict set ::vivado_timing_mock::paths setup_default REQUIREMENT 13.334\n', 'non_single_cycle_requirement'),
-            ('path_exception', 'dict set ::vivado_timing_mock::paths setup_default EXCEPTION {Max Delay}\n', 'timing_exception_on_path'),
-            ('multicycle_xdc', set_option('xdc', 'set_multicycle_path 2 -setup -from [get_cells source] -to [get_cells target]\n'), 'special_timing_exceptions_present'),
-            ('max_delay_xdc', set_option('xdc', '  set_max_delay 8.0 -from [get_pins source/Q] -to [get_pins target/D]\n'), 'special_timing_exceptions_present'),
-            ('nonpositive_estimate', 'dict set ::vivado_timing_mock::paths setup_default SLACK 6.667\n', 'nonpositive_estimated_period'),
-        )
-        for name, configuration, status in cases:
-            with self.subTest(name=name):
-                output, _, _ = self.run_helper(name, configuration)
-                row = self.clock_rows(output)['soc_clk']
-                self.assertEqual(row['single_cycle_setup_fmax_estimate_mhz'], '')
-                self.assertEqual(row['fmax_status'], status)
-
-    def test_special_constraints_disable_fmax_for_all_clocks(self):
-        configuration = '''vivado_timing_mock::set_clock aux_clk 10.0
-vivado_timing_mock::add_path aux_s max endpoint_aux/D 1.0 aux_clk aux_clk 10.0
-vivado_timing_mock::add_path aux_h min endpoint_aux/D 0.2 aux_clk aux_clk 0
-''' + set_option('xdc', 'set_multicycle_path 2 -setup -to [get_pins endpoint_aux/D]\n')
-        output, _, _ = self.run_helper('all_clocks', configuration)
-        self.assertEqual(len(self.clock_rows(output)), 2)
-        for row in self.clock_rows(output).values():
-            self.assertEqual(row['single_cycle_setup_fmax_estimate_mhz'], '')
-            self.assertEqual(row['fmax_status'], 'special_timing_exceptions_present')
-
-    def test_comments_are_not_timing_exceptions(self):
-        output, _, _ = self.run_helper('comment', set_option('xdc', '# set_max_delay 1.0\n# set_multicycle_path 2\n'))
-        self.assertEqual(self.clock_rows(output)['soc_clk']['fmax_status'], 'single_cycle_setup_estimate')
+    def test_negative_setup_and_hold_slack_fail(self):
+        for delay in ('max', 'min'):
+            for capture in ('soc_clk', '{}'):
+                with self.subTest(delay=delay, capture=capture):
+                    configuration = f'vivado_timing_mock::add_path bad {delay} bad/D -0.2 soc_clk {capture} 6.667\n'
+                    output, _, result = self.run_helper(delay + ('_global' if capture == '{}' else '_clock'),
+                                                        configuration, success=False)
+                    self.assertEqual(self.status_values(output)['passed'], '0')
+                    self.assertIn('negative', result.stderr.lower())
+                    if capture == '{}':
+                        self.assertIn(f'negative {delay} timing slack', result.stderr)
 
     def test_absent_setup_or_hold_paths_fail(self):
         for name, configuration in (
@@ -338,8 +255,6 @@ vivado_timing_mock::add_path auxiliary min endpoint_aux/D 0.5 aux_clk aux_clk 0
             cases.append((f'period_{value or "empty"}', f'vivado_timing_mock::set_clock soc_clk {tcl_word(value)}\n'))
         for value in ('0', '-1'):
             cases.append((f'period_{value}', f'vivado_timing_mock::set_clock soc_clk {value}\n'))
-        cases += [('requirement_NaN', 'dict set ::vivado_timing_mock::paths setup_default REQUIREMENT NaN\n'),
-                  ('endpoint_empty', 'dict set ::vivado_timing_mock::paths setup_default ENDPOINT_PIN {}\n')]
         for name, configuration in cases:
             with self.subTest(name=name):
                 _, _, result = self.run_helper(name, configuration, success=False)
@@ -377,6 +292,10 @@ puts MAPPED_COMMAND_MODEL_PASS
                 positions = [commands.index(command) for command in ordered]
                 self.assertEqual(positions, sorted(positions))
                 self.assertLess(commands.index('route_design'), calls.index('report_route_status -boolean_check ROUTED_FULLY'))
+                routed_summary = next(i for i, line in enumerate(calls)
+                                      if line.startswith('report_timing_summary ') and 'routed_timing.rpt' in line)
+                self.assertLess(commands.index('route_design'), routed_summary)
+                self.assertLess(routed_summary, calls.index('report_route_status -boolean_check ROUTED_FULLY'))
                 self.assertLess(calls.index('report_route_status -boolean_check ROUTED_FULLY'), commands.index('write_xdc'))
                 self.assertEqual(commands.count('create_clock'), 1)
                 self.assertNotIn('write_bitstream', commands)

@@ -237,12 +237,14 @@ rules, complete internal clock and timing constraints, and nonnegative setup
 and hold slack. The original route, DRC, and timing reports remain in the
 output directory.
 
-`synchronous_timing.tsv` records setup WNS/TNS and hold WNS/TNS for each actual
-capture clock, using every reported endpoint. The hold fields correspond to
-Vivado's WHS/THS. Cross-clock paths contribute to their capture clock's
-statistics. `single_cycle_setup_fmax_estimate_mhz` is calculated only for
-ordinary single-cycle paths within one clock; `fmax_status` explains when
-this estimate is unavailable. The flow also saves `effective_timing.xdc`,
+`synchronous_timing.tsv` records the worst setup and hold slack queried for each
+capture clock. Endpoint totals, TNS and Fmax are marked `unavailable` because
+the checks use bounded path queries. Use Vivado's routed timing summary for
+complete design timing statistics; do not infer TNS from a path sample.
+Detailed path reports retain at most 100 distinct native path-detail texts,
+ranked by slack from a bounded query of at most 1,000 candidates; the report
+flags a reached limit and does not establish a complete path census.
+The flow also saves `effective_timing.xdc`,
 `timing_exceptions.rpt`, `internal_timing_checks.tsv`, and
 `implementation_checks.tsv`. See the
 [production implementation description](../../../docs/open_fpga_synthesis.md#使用-vivado-实现原语网表)

@@ -9,6 +9,7 @@ set script_dir [file dirname [file normalize [info script]]]
 source [file join $script_dir npu_config.tcl]
 source [file join $script_dir cpu_memory.tcl]
 source [file join $script_dir timing_checks.tcl]
+source [file join $script_dir vivado_unique_timing_paths.tcl]
 set export_dir [file normalize [file join $script_dir ..]]
 set dsa_root [npu_config::repository_root $script_dir]
 set npu_hardware_config [npu_config::read $dsa_root]
@@ -154,8 +155,7 @@ report_route_status -file [file join $out_dir fpga_top_route_status.rpt]
 report_drc -file [file join $out_dir fpga_top_drc.rpt]
 report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
     -file [file join $out_dir fpga_top_timing_summary_routed.rpt]
-report_timing -delay_type max -sort_by group -max_paths 200 -nworst 1 \
-    -file [file join $out_dir fpga_top_timing_paths_routed.rpt]
+unique_timing_paths::write [file join $out_dir fpga_top_timing_paths_routed.rpt]
 report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
     -file [file join $out_dir fpga_top_high_fanout_routed.rpt]
 

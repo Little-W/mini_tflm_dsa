@@ -1,14 +1,17 @@
 # 原生 RTL 综合和布局布线共用的端点与资源报告。
 source [file join [file dirname [file normalize [info script]]] .. .. fpga vivado tflm_ai_dsa_soc scripts timing_checks.tcl]
+source [file join [file dirname [file normalize [info script]]] .. .. fpga vivado tflm_ai_dsa_soc scripts vivado_unique_timing_paths.tcl]
 
 namespace eval soc_reports {
     variable dsp_check_dir [file normalize [file join [file dirname [info script]] .. .. test pe_dsp_boundary]]
+    variable unique_timing_helper [file normalize [file join [file dirname [info script]] .. .. fpga vivado tflm_ai_dsa_soc scripts vivado_unique_timing_paths.tcl]]
 }
 source [file join $soc_reports::dsp_check_dir check_vivado.tcl]
 
 proc soc_reports::dependency_sources {} {
     variable dsp_check_dir
-    return [list [file join $dsp_check_dir check_vivado.tcl] [file join $dsp_check_dir check.py]]
+    variable unique_timing_helper
+    return [list [file join $dsp_check_dir check_vivado.tcl] [file join $dsp_check_dir check.py] $unique_timing_helper]
 }
 
 proc soc_reports::check_array {directory {size 16}} {
@@ -41,20 +44,18 @@ proc soc_reports::write {directory {prefix soc_top}} {
     report_utilization -hierarchical -file [file join $directory ${prefix}_utilization_hier.rpt]
     report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
         -file [file join $directory ${prefix}_timing_summary.rpt]
-    report_timing -delay_type max -sort_by group -max_paths 200 -nworst 1 \
-        -file [file join $directory ${prefix}_timing_paths.rpt]
-    report_timing -delay_type min -sort_by group -max_paths 200 -nworst 1 \
-        -file [file join $directory ${prefix}_hold_paths.rpt]
+    unique_timing_paths::write [file join $directory ${prefix}_timing_paths.rpt] max
+    unique_timing_paths::write [file join $directory ${prefix}_hold_paths.rpt] min
     report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
         -file [file join $directory ${prefix}_high_fanout.rpt]
-    # 每个捕获时钟分别枚举全部端点，不用前200条路径估算TNS。
+    # 限量样本只用于诊断；完整的 WNS/TNS 和端点数量以原生汇总报告为准。
     set stream [open [file join $directory ${prefix}_endpoints.tsv] w]
     puts $stream "delay_type\tclock\tclock_period_ns\tstartpoint\tendpoint\tslack_ns\tlogic_levels"
     foreach clock [get_clocks -quiet] {
         set name [get_property NAME $clock]
         set period [get_property PERIOD $clock]
         foreach delay_type {max min} {
-            foreach path [timing_checks::all_endpoint_paths $delay_type $clock] {
+            foreach path [get_timing_paths -delay_type $delay_type -to $clock -nworst 1 -max_paths 100 -no_report_unconstrained] {
                 set values [list $delay_type $name $period \
                     [get_property STARTPOINT_PIN $path] [get_property ENDPOINT_PIN $path] \
                     [get_property SLACK $path] [get_property LOGIC_LEVELS $path]]

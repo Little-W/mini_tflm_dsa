@@ -142,8 +142,8 @@ report_utilization -file [file join $out_dir fpga_top_utilization.rpt]
 report_utilization -hierarchical -file [file join $out_dir fpga_top_utilization_hier.rpt]
 report_timing_summary -delay_type max -report_unconstrained -check_timing_verbose \
     -file [file join $out_dir fpga_top_timing_summary.rpt]
-report_timing -delay_type max -sort_by group -max_paths 200 -nworst 1 \
-    -file [file join $out_dir fpga_top_timing_paths.rpt]
+source [file join $script_dir vivado_unique_timing_paths.tcl]
+unique_timing_paths::write [file join $out_dir fpga_top_timing_paths.rpt]
 report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
     -file [file join $out_dir fpga_top_high_fanout.rpt]
 

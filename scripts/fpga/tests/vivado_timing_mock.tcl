@@ -64,7 +64,7 @@ proc vivado_timing_mock::reset {} {
         input_clocks [list soc_clk] clock_ports [list clk] \
         input_ports [list clk] output_ports [list] \
         half_rise_fall [list] half_fall_rise [list] \
-        drc_failures [list] no_drc_checks 0 \
+        drc_failures [list] no_drc_checks 0 max_path_query_limit 0 \
         check_report [default_report] \
         xdc "create_clock -name soc_clk -period 6.667 \[get_ports clk\]\n"]
     add_path setup_default max endpoint_default/D 0.667 soc_clk soc_clk 6.667
@@ -243,6 +243,10 @@ proc get_timing_paths {args} {
         {-delay_type -to -from -nworst -max_paths -rise_from -fall_from -rise_to -fall_to} \
         {-no_report_unconstrained}
     set limit [vivado_timing_mock::option $args -max_paths 1]
+    set maximum [dict get $::vivado_timing_mock::options max_path_query_limit]
+    if {$maximum > 0 && ($limit > $maximum || $limit < 1)} {
+        error "Timing path query exceeds modeled limit: $args"
+    }
     if {[lsearch -exact $args -rise_from] >= 0 && [lsearch -exact $args -fall_to] >= 0} {
         return [lrange [dict get $::vivado_timing_mock::options half_rise_fall] 0 [expr {$limit-1}]]
     }
