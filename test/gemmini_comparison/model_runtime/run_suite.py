@@ -10,7 +10,7 @@ from pathlib import Path
 import struct
 
 from build_firmware import load_network_builder
-from build_sim import run_sim
+from build_sim import run_sim, common as simulator_common
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -46,12 +46,58 @@ def compare(actual, expected):
         expected_sha256=hashlib.sha256(expected).hexdigest())
 
 
-def verify_sources(firmware):
-    sources = {str(ROOT / path): value for path, value in firmware['source_sha256'].items()}
+def verify_sources(firmware, source_root=ROOT):
+    sources = {str(source_root / path): value for path, value in firmware['source_sha256'].items()}
     sources.update(firmware.get('external_dependency_sha256', {}))
     changed = [path for path, value in sources.items() if not Path(path).is_file() or digest(path) != value]
     if changed:
         raise ValueError('Firmware inputs changed: ' + ', '.join(changed))
+
+
+def reusable_result(directory, case, firmware, binary, binary_sha256):
+    """恢复前重新核对二进制结果、输入、逐层输出与实际日志。"""
+    try:
+        run = json.loads((directory / 'result.json').read_text())
+        simulation = run['simulator']
+        checks = [run['passed'], all(run['checks'].values()), simulation['passed'],
+                  simulation['returncode'] == 0,
+                  run['firmware_elf_sha256'] == firmware['elf_sha256'],
+                  simulation['simulator_sha256'] == binary_sha256,
+                  Path(simulation['command'][0]).resolve() == binary.resolve(),
+                  run['model'] == case['model'], run['input_sha256'] == case['sample']['input']['sha256'],
+                  all(run[name] == case[name] for name in ('model_id', 'sample_index', 'kind', 'mode', 'convolution_policy')),
+                  simulation['data_memory_sha256'] == digest(directory / 'data.mem'),
+                  simulation['firmware_memory_sha256'] == firmware['mem_sha256'],
+                  run['ram_fixed_lat'] == 0]
+        for name, expected in (('result.bin', simulation['result_sha256']),
+                ('output.bin', case['sample']['output']['sha256']),
+                ('model_after.bin', case['model']['sha256']),
+                ('input_after.bin', case['sample']['input']['sha256'])):
+            checks.append(digest(directory / name) == expected)
+        packed = simulation['packed_memory']
+        checks.append(digest(directory / 'memory_axi64.mem') == packed['sha256'])
+        fields = firmware['result_fields']
+        values = struct.unpack('<' + 'I' * len(fields), (directory / 'result.bin').read_bytes())
+        checks.append(dict(zip(fields, values)) == run['result'])
+        parsed = simulator_common.parse_log(directory / 'run.log')
+        checks.extend(parsed[name] == simulation[name] for name in ('counters', 'cpu_profiles', 'dma_profiles'))
+        checks.append(parsed['passed'])
+        if case['kind'] == 'trace':
+            expected = case['sample']['nodes']
+            checks.append(len(run['trace']) == len(expected))
+            lines = (directory / 'trace.txt').read_text().splitlines()
+            checks.append(len(lines) == len(expected))
+            for ordinal, (reference, observed) in enumerate(zip(expected, run['trace'])):
+                checks.append(digest(directory / f'tensors/tensor_{ordinal}.bin') == reference['sha256'])
+                descriptor = dict(zip(firmware['trace_fields'], [int(word, 16) for word in lines[ordinal].split()], strict=True))
+                checks.append(descriptor == observed['descriptor'])
+            layers = [row for row in parsed['counters'] if row['scope'] == 'layer']
+            checks.append(len(layers) == len(run['layers']) == case['config']['expected_operators'])
+            checks.extend(all(saved.get(name) == value for name, value in actual.items())
+                          for actual, saved in zip(layers, run['layers']))
+        return run if all(checks) else None
+    except (OSError, ValueError, KeyError, IndexError, struct.error):
+        return None
 
 
 def create_case(directory, prepared, model, sample, firmware_directory, firmware, mode):
@@ -89,7 +135,7 @@ def create_case(directory, prepared, model, sample, firmware_directory, firmware
     return case
 
 
-def execute(binary, directory, case, firmware, latency, cycle_limit, seconds_limit):
+def execute(binary, directory, case, firmware, latency, cycle_limit, seconds_limit, source_root=ROOT):
     cfg = case['config']
     fields = firmware['result_fields']
     trace = case['kind'] == 'trace'
@@ -182,7 +228,7 @@ def execute(binary, directory, case, firmware, latency, cycle_limit, seconds_lim
                     layer['execution_path'] = 'software'
         else:
             checks['ordinary_firmware'] = result['trace_records'] == 0
-        verify_sources(firmware)
+        verify_sources(firmware, source_root)
         checks['firmware_sources_current'] = True
         report['passed'] = all(checks.values())
     except (OSError, ValueError, KeyError, IndexError) as error:
@@ -198,6 +244,10 @@ def main():
     parser.add_argument('--simulator', type=Path, required=True)
     parser.add_argument('--firmware', type=Path, required=True)
     parser.add_argument('--trace-firmware', type=Path)
+    parser.add_argument('--firmware-repo', type=Path, default=ROOT,
+                        help='编译固件时使用的固定源码目录')
+    parser.add_argument('--resume', action='store_true',
+                        help='核对并保留已经完成且文件内容一致的结果')
     parser.add_argument('--models', nargs='+', choices=MODELS, default=list(MODELS))
     parser.add_argument('--samples', type=int, nargs='+', default=[0,1])
     parser.add_argument('--kind', choices=['perf','trace','both'], default='both')
@@ -207,13 +257,19 @@ def main():
     parser.add_argument('--cycle-limit', type=int, default=1000000000)
     parser.add_argument('--seconds-limit', type=int, default=7200)
     args = parser.parse_args()
-    tasks = []
+    # 固定输入与输出的绝对路径，使执行结果不依赖子进程的工作目录。
+    for name in ('out', 'prepared', 'simulator', 'firmware', 'trace_firmware', 'firmware_repo'):
+        value = getattr(args, name)
+        if value is not None:
+            setattr(args, name, value.resolve())
+    tasks, reports = [], []
+    binary_sha256 = digest(args.simulator)
     for kind in (('perf','trace') if args.kind == 'both' else (args.kind,)):
         fw_directory = args.firmware if kind == 'perf' else args.trace_firmware
         if fw_directory is None:
             parser.error('--trace-firmware is required for tensor verification')
         firmware = json.loads((fw_directory / 'firmware.json').read_text())
-        verify_sources(firmware)
+        verify_sources(firmware, args.firmware_repo)
         for name in args.models:
             prepared = args.prepared / name
             model = json.loads((prepared / 'manifest.json').read_text())
@@ -222,11 +278,15 @@ def main():
                     continue
                 directory = args.out / name / f'{sample["sample_index"]:04d}' / kind
                 case = create_case(directory, prepared, model, sample, fw_directory, firmware, args.mode)
+                if args.resume:
+                    saved = reusable_result(directory, case, firmware, args.simulator, binary_sha256)
+                    if saved is not None:
+                        reports.append(saved)
+                        continue
                 tasks.append((directory, case, firmware))
-    reports = []
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures = {pool.submit(execute, args.simulator, directory, case, firmware,
-            args.ram_fixed_lat, args.cycle_limit, args.seconds_limit):directory
+            args.ram_fixed_lat, args.cycle_limit, args.seconds_limit, args.firmware_repo):directory
             for directory, case, firmware in tasks}
         for future in as_completed(futures):
             value = future.result()

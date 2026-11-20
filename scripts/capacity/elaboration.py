@@ -53,25 +53,35 @@ def hardware_config(values):
     result["SHARED_BANK_BYTES"] = values.get("SHARED_BANK_BYTES", 2048)
     result["SHARED_BANK_COUNT"] = values.get("SHARED_BANK_COUNT", 7)
     result["IM2COL_CACHE_BYTES"] = values.get("IM2COL_CACHE_BYTES", 4096)
+    result["CONV_LINE_BYTES"] = model.im2col_cache.LINE_BYTES
+    result["CONV_CACHE_WAYS"] = model.im2col_cache.WAYS
+    result["VECTOR_PE_COUNT"] = values.get("VECTOR_PE_COUNT", min(values["SIZE"], 16))
+    result["WINDOW_LANES"] = 16 if result["VECTOR_PE_COUNT"] >= 16 else result["NPU_AXI_DATA_WIDTH"] // 8
+    shared = bool(values["PCR_ENGINE"] and values["SIZE"] == 16 and
+                  6 <= result["SHARED_BANK_COUNT"] <= 9)
+    result["SHARED_QUANT_ENABLE"] = int(not (shared and result["SHARED_BANK_COUNT"] < 8))
+    result["QUANT_LANES"] = values["SIZE"] if result["SHARED_QUANT_ENABLE"] else 1
     return result
 
 
-def identity(values, source_hashes=None):
-    payload = {"hardware": hardware_config(values), "source_sha256": source_hashes or sources_sha256()}
+def identity(values, source_hashes=None, *, target="asic"):
+    payload = {"hardware": hardware_config(values), "source_sha256": source_hashes or sources_sha256(),
+               "elaboration_target": target}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
-def current_report(values, report):
+def current_report(values, report, *, target="asic"):
     return bool(report and report.get("passed") and
+                report.get("elaboration_target", "asic") == target and
                 report.get("hardware_configuration") == hardware_config(values) and
                 report.get("source_sha256") == sources_sha256())
 
 
-def find_cached(values, cache_dir=CACHE):
-    path = Path(cache_dir) / identity(values) / "result.json"
+def find_cached(values, cache_dir=CACHE, *, target="asic"):
+    path = Path(cache_dir) / identity(values, target=target) / "result.json"
     if path.is_file():
         report = json.loads(path.read_text())
-        if current_report(values, report):
+        if current_report(values, report, target=target):
             return report
     return None
 
@@ -210,6 +220,12 @@ def array_category(origin, name, ancestors, instance_path=""):
         if name in ("input_buf", "rhs_buf", "weight_buf", "bias_buf",
                     "mult_buf", "shift_buf", "right_shift_buf", "acc_buf", "result_buf"):
             return "vector_buffers"
+        if name == "dw_snapshot":
+            return "vector_dw_snapshot"
+        if name == "dw_result_bytes":
+            return "vector_dw_result_queue"
+    if origin == "vector_writeback" and name in ("pending_data", "payload_data"):
+        return "vector_write_queue"
     if origin == "vector_weight_bank" and name == "data":
         return "vector_buffers"
     if origin == "ps_frame_store":
@@ -419,11 +435,14 @@ def inventory(tree):
                 sequential_declarations=sorted(declarations, key=lambda x: x["path"]))
 
 
-def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, keep_tree=False):
+def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, keep_tree=False,
+            target="asic"):
+    if target not in ("asic", "generic"):
+        raise ValueError("Elaboration target must be asic or generic")
     hashes = sources_sha256()
-    key = identity(values, hashes)
+    key = identity(values, hashes, target=target)
     cache_file = Path(cache_dir) / key / "result.json"
-    cached = find_cached(values, cache_dir)
+    cached = find_cached(values, cache_dir, target=target)
     if cached is not None:
         if output_dir:
             Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -433,14 +452,16 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     out = Path(output_dir).resolve() if output_dir else cache_file.parent
     out.mkdir(parents=True, exist_ok=True)
     tree_path = out / "elaborated.tree.json"
-    command = [executable, "--json-only", "--assert", "-DSYNTHESIS", "-DASIC_SYNTHESIS", "-Wno-fatal",
+    # 通用目标与周期仿真采用相同参数分支，独立测试观察器不参加容量统计。
+    target_defines = ["-DSYNTHESIS", "-DASIC_SYNTHESIS"] if target == "asic" else []
+    command = [executable, "--json-only", "--assert", *target_defines, "-Wno-fatal",
                "--top-module", "npu_axil_top", "--json-only-output", str(tree_path),
                "--Mdir", str(out / "obj"), "-GDATA_WIDTH=16", "-GWEIGHT_WIDTH=16",
                f'-GBUS_WIDTH={hardware_config(values)["NPU_AXI_DATA_WIDTH"]}',
                f'-GSHARED_BANK_BYTES={hardware_config(values)["SHARED_BANK_BYTES"]}',
                f'-GSHARED_BANK_COUNT={hardware_config(values)["SHARED_BANK_COUNT"]}',
                f'-GIM2COL_CACHE_BYTES={hardware_config(values)["IM2COL_CACHE_BYTES"]}',
-               "-GENABLE_VECTOR_ENGINE=1", f'-GVECTOR_PE_COUNT={min(values["SIZE"], 8)}',
+               "-GENABLE_VECTOR_ENGINE=1", f'-GVECTOR_PE_COUNT={hardware_config(values)["VECTOR_PE_COUNT"]}',
                f'-GSIZE={values["SIZE"]}', f'-GIA_CACHE_BLOCKS={values["IA_CACHE_BLOCKS"]}',
                f'-GPS_FRAME_COUNT={values["PS_FRAME_COUNT"]}',
                f'-GAXI_READ_OUTSTANDING={values["AXI_READ_OUTSTANDING"]}',
@@ -469,7 +490,13 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
             "npu_top": constant_parameters(tree, "npu_top", (
                 "SHARED_RAM_ENABLED", "IA_MAX_CACHE_BLOCKS", "IA_REUSE_NUM_MAX",
                 "OA_FIFO_BANKS", "OA_S16_FIFO_BANKS", "PS_REQUIRE_RAW_CAPACITY",
-                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES")),
+                "IM2COL_CACHE_BYTES", "CONV_CACHE_SETS", "CONV_CACHE_WAYS", "CONV_LINE_BYTES",
+                "VECTOR_PE_COUNT", "WINDOW_LANES", "MATRIX_INPUT_LANES",
+                "REQUANT_COMPUTE_LANES", "DW_SHARED_QUANT_ENABLE")),
+            "vector_engine": constant_parameters(tree, "vector_engine", (
+                "PE_COUNT", "WINDOW_LANES", "QUANT_LANES", "SHARED_QUANT_ENABLE")),
+            "conv_im2col_frontend": constant_parameters(tree, "conv_im2col_frontend", (
+                "LANES", "NARROW_LANES", "p_cache_read_width")),
         }
     finally:
         if not keep_tree:
@@ -479,6 +506,8 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     expected = model.buffer_arrays_bits(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                          values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
                                          im2col_cache_bytes=hardware_config(values)["IM2COL_CACHE_BYTES"],
+                                         bus_width=hardware_config(values)["NPU_AXI_DATA_WIDTH"],
+                                         vector_pe_count=hardware_config(values)["VECTOR_PE_COUNT"],
                                          **geometry_options)
     expected_registers = model.register_arrays_bits(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                                      values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
@@ -488,7 +517,18 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     architecture = (counts.get("compute_core", 0) == 1 and counts.get("ws_systolic_array", 0) == 1
                     and counts.get("de_diagonalizer", 0) == 0
                     and counts.get("vector_engine", 0) == 1
-                    and counts.get("vector_pe", 0) == min(values["SIZE"], 8))
+                    and counts.get("vector_pe", 0) == hardware_config(values)["VECTOR_PE_COUNT"])
+    vector_parameters = capabilities["vector_engine"]
+    frontend_parameters = capabilities["conv_im2col_frontend"]
+    architecture = architecture and \
+        vector_parameters["PE_COUNT"] == hardware_config(values)["VECTOR_PE_COUNT"] and \
+        vector_parameters["QUANT_LANES"] == hardware_config(values)["QUANT_LANES"] and \
+        vector_parameters["SHARED_QUANT_ENABLE"] == hardware_config(values)["SHARED_QUANT_ENABLE"] and \
+        capabilities["npu_top"]["DW_SHARED_QUANT_ENABLE"] == hardware_config(values)["SHARED_QUANT_ENABLE"] and \
+        vector_parameters["WINDOW_LANES"] == hardware_config(values)["WINDOW_LANES"] and \
+        capabilities["npu_top"]["WINDOW_LANES"] == hardware_config(values)["WINDOW_LANES"] and \
+        frontend_parameters["LANES"] == hardware_config(values)["WINDOW_LANES"] and \
+        frontend_parameters["p_cache_read_width"] == 8 * hardware_config(values)["WINDOW_LANES"]
     layout = model.memory_geometry(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                    values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
                                    **geometry_options)
@@ -548,12 +588,15 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
         registers["PS_DIRECTORY_ROWS"] == (model.SHARED_DIRECTORY_ROWS if layout["shared_ia_ps_enabled"] else 0)
     for module_name in ("npu_axil_top", "npu_top"):
         cache=capabilities[module_name]
+        capabilities_match = capabilities_match and \
+            cache["CONV_LINE_BYTES"] == hardware_config(values)["CONV_LINE_BYTES"] and \
+            cache["CONV_CACHE_WAYS"] == hardware_config(values)["CONV_CACHE_WAYS"]
         capabilities_match = capabilities_match and cache["IM2COL_CACHE_BYTES"] == \
             cache["CONV_CACHE_SETS"]*cache["CONV_CACHE_WAYS"]*cache["CONV_LINE_BYTES"] == \
             hardware_config(values)["IM2COL_CACHE_BYTES"]
     passed = (unchanged and expected == state["buffer_arrays_bits"] and
               expected_registers == state["register_arrays_bits"] and architecture and capabilities_match)
-    report = dict(passed=passed, model_version=model.MODEL_VERSION,
+    report = dict(passed=passed, model_version=model.MODEL_VERSION, elaboration_target=target,
                   scope="Instantiated sequential declarations and verified read-only arrays, including RAM, ROM, metadata, PE state, pipeline registers and clock-gate latch.",
                   configuration=values, hardware_configuration=hardware_config(values),
                   source_sha256=hashes, sources_unchanged=unchanged, cache_identity=key,

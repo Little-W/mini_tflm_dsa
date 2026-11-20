@@ -18,16 +18,24 @@ def main():
     parser.add_argument("--set", action="append", default=[])
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--bus-width", type=int, choices=(32, 64))
+    parser.add_argument("--vector-pe-count", type=int, choices=(1, 2, 4, 8, 16))
     parser.add_argument("--output-root", type=Path, default=ROOT / "build/capacity/elaboration")
     parser.add_argument("--keep-tree", action="store_true")
+    parser.add_argument("--target", choices=("asic", "generic"), default="asic",
+                        help="选择与被测 RTL 一致的实现参数")
     args = parser.parse_args()
     values = config.selected_config(args.config)
     values.update(config.parse_override(text) for text in args.set)
     values = config.validate_config(values, check_budget=False)
     if args.bus_width is not None:
         values["NPU_AXI_DATA_WIDTH"] = args.bus_width
+    if args.vector_pe_count is not None:
+        if args.vector_pe_count > values["SIZE"]:
+            parser.error("VECTOR_PE_COUNT 不得大于 SIZE")
+        values["VECTOR_PE_COUNT"] = args.vector_pe_count
     report = elaboration.measure(values, verilator=args.verilator,
-                                  output_dir=args.output_root, keep_tree=args.keep_tree)
+                                  output_dir=args.output_root, keep_tree=args.keep_tree,
+                                  target=args.target)
     print(json.dumps(dict(passed=report["passed"], sources_unchanged=report["sources_unchanged"],
                           state_bits=report["elaborated_state"]["total_bits"],
                           read_only_arrays_bits=report["elaborated_state"]["read_only_arrays_bits"],

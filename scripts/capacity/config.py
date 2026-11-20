@@ -72,7 +72,8 @@ def parse_override(text):
     return key, literal_value(key, value)
 
 
-def validate_config(values, require_pcr=False, *, check_budget=True, state_report=None):
+def validate_config(values, require_pcr=False, *, check_budget=True, state_report=None,
+                    target="asic"):
     missing = [key for key in MANAGED_KEYS if key not in values]
     if missing:
         raise ValueError("configuration is missing: " + ", ".join(missing))
@@ -107,7 +108,7 @@ def validate_config(values, require_pcr=False, *, check_budget=True, state_repor
     if require_pcr and normalized["PCR_ENGINE"] != 1:
         raise ValueError("this operation requires PCR_ENGINE=1")
     if check_budget:
-        alloc = allocation_from_config(normalized, state_report=state_report)
+        alloc = allocation_from_config(normalized, state_report=state_report, target=target)
         if alloc["unused_budget_bytes"] < 0:
             raise ValueError(f"configured {normalized['CAPACITY_BUDGET_SCOPE']} uses "
                              f"{alloc['budget_used_bytes']:g} B, exceeding "
@@ -151,10 +152,12 @@ def shared_geometry(values):
                 bank_count=values["SHARED_BANK_COUNT"] if values["PCR_ENGINE"] else None)
 
 
-def allocation_from_config(values, *, state_report=None):
+def allocation_from_config(values, *, state_report=None, target="asic"):
     from . import elaboration
-    report = state_report or elaboration.find_cached(values)
-    if report is not None and not elaboration.current_report(values, report):
+    if target not in ("asic", "generic"):
+        raise ValueError("target must be asic or generic")
+    report = state_report or elaboration.find_cached(values, target=target)
+    if report is not None and not elaboration.current_report(values, report, target=target):
         raise ValueError("state report does not match the current configuration and sources")
     bits = report["elaborated_state"]["total_bits"] if report is not None else None
     result = model.allocation(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
@@ -162,9 +165,12 @@ def allocation_from_config(values, *, state_report=None):
                               values["CAPACITY_BUDGET_SCOPE"], size=values["SIZE"],
                               compressed=bool(values["PCR_ENGINE"]), measured_state_bits=bits,
                               im2col_cache_bytes=values["IM2COL_CACHE_BYTES"],
+                              bus_width=values["NPU_AXI_DATA_WIDTH"],
+                              vector_pe_count=values.get("VECTOR_PE_COUNT"),
                               **shared_geometry(values))
     result["state_measurement"] = None if report is None else {
-        "source_identity": report["cache_identity"], "verilator": report["verilator"]}
+        "source_identity": report["cache_identity"], "verilator": report["verilator"],
+        "elaboration_target": report.get("elaboration_target", "asic")}
     return result
 
 

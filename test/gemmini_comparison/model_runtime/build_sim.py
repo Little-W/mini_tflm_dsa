@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 HERE = Path(__file__).resolve().parent
@@ -60,10 +61,14 @@ def build_sim(out, generated, verilator='verilator', jobs=2, *, skip=False, idle
     sources = [picorv32/'picorv32.v',picorv32/'picosoc/simpleuart.v',
                *[ROOT/'rtl/soc'/name for name in
                  ('pico_native_to_axi.sv','soc_axi_interconnect.sv','soc_axi_pingpong_buffer.sv',
-                  'soc_axi_ram.sv','soc_axil_ctrl.sv','soc_axil_simpleuart.sv')],
+                  'soc_axil_ctrl.sv','soc_axil_simpleuart.sv')],
+               ROOT/'test/models/soc_axi_ram.sv',
                soc_path,HERE/'rtl/gemmini_mmio.sv',HERE/'rtl/tb_gemmini_model.sv',
                rtl,generated/'plusarg_reader.v',ROOT/'test/model_benchmark/sim_main.cpp']
-    tracked = sources + [Path(__file__),COMMON_PATH,ROOT/'rtl/soc_top.sv',gem_manifest_path]
+    # 两侧模型仿真共用行为 RAM 及 SoC 观察模块，保留相同的事务时序检查。
+    observer_selector = ROOT/'test/monitors/sources.py'
+    sources = runpy.run_path(str(observer_selector))['with_observers'](sources)
+    tracked = sources + [Path(__file__),COMMON_PATH,ROOT/'rtl/soc_top.sv',gem_manifest_path,observer_selector]
     hashes = {str(p):common.digest(p) for p in tracked}
     profile = dict(cpu_profile='performance',cpu_icache=1,cpu='PicoRV32',cpu_isa='RV32IM',
                    cpu_icache_data_bytes=1024,ram_words=524288,ram_read_first_latency=first_read_latency,

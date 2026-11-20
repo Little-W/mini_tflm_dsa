@@ -90,7 +90,7 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
         raise ValueError('Shared RAM requires 2048, 4096 or 8192 bytes per bank and 6..9 banks')
     protocol_max_bytes=256*(bus_width//8)
     if dma_max_bytes is None:dma_max_bytes=protocol_max_bytes
-    if (jobs<1 or pe_count not in (4,8) or icache not in (0,1) or ram_words<1 or
+    if (jobs<1 or pe_count not in (4,8,16) or icache not in (0,1) or ram_words<1 or
         ia_cache_blocks<1 or ps_frame_count<1 or ps_frame_count>64 or ps_storage_rows<0 or s16_output_banks<0 or cpu_profile not in CPU_PROFILES or
         bus_width not in (32,64) or ram_words*32%bus_width or dma_max_bytes!=protocol_max_bytes or first_read_latency<1):
         raise ValueError('Invalid simulator configuration')
@@ -114,7 +114,9 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
     expanded = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     source_args += [str(p) for p in expanded if p not in sources]
     sources = expanded
-    sources += [HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp',Path(__file__),ROOT/'test/conv_npu/simulator.vlt']
+    vector_profile_path=ROOT/'test/gemmini_comparison/storage_vector_profile.py'
+    sources += [HERE/'tb_model_benchmark.sv',HERE/'sim_main.cpp',Path(__file__),
+                ROOT/'test/conv_npu/simulator.vlt',vector_profile_path]
     capture=ROOT/'test/ps_compression/ps_stream_capture.sv'
     if ps_pool_bytes:sources.append(capture)
     sources+=list((ROOT/'rtl/npu/ps_compact').glob('*.svh'))
@@ -122,7 +124,18 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
         return ({str(p.relative_to(ROOT)):digest(p) for p in sorted(set(sources)) if p.is_relative_to(ROOT)},
                 {str(p):digest(p) for p in sorted(set(sources)) if not p.is_relative_to(ROOT)})
     before,external_before=hashes();binary=out/'obj/Vtb_model_benchmark';manifest_path=out/'build.json'
-    profile={'size':16,'pe_count':pe_count,'ram_words':ram_words,'cpu_icache':icache,
+    # 根据生产顶层和向量模块的并行参数记录实际执行资源。
+    resources=runpy.run_path(str(vector_profile_path))
+    vector=resources['resolve_vector_configuration'](
+        ROOT,pe_count=pe_count,bank_count=shared_bank_count,bus_width=bus_width,
+        shared_enabled=bool(ps_pool_bytes))
+    cache_geometry=resources['resolve_cache_configuration'](ROOT,im2col_cache_bytes)
+    window_lanes=vector['window_lanes']
+    quantization_lanes=vector['quantization_lanes']
+    profile={'size':16,'pe_count':pe_count,'vector_pe_count':pe_count,
+             'quantization_lanes':quantization_lanes,'window_lanes':window_lanes,
+             'shared_quant_enable':vector['shared_quant_enable'],
+             'ram_words':ram_words,'cpu_icache':icache,
              'ia_cache_blocks':ia_cache_blocks,'ps_frame_count':ps_frame_count,
              'ps_storage_rows':ps_storage_rows,'output_banks_s16_max':s16_output_banks,
              'matrix_tile_packed':True,'axi_read_outstanding':4,
@@ -136,13 +149,14 @@ def build_sim(out,verilator='verilator',jobs=1,*,skip=False,icache=1,ram_words=5
              'im2col_cache_bytes':im2col_cache_bytes,
              'conv_cache_prefetch':True,'vector_line_cache_bytes':0,
              'conv_cache_demand_outstanding':4,'vector_window_outstanding':4,
-             'im2col_corrected_elements_per_cycle':4,
+             'im2col_corrected_elements_per_cycle':window_lanes,
              'cpu':'PicoRV32','cpu_profile':cpu_profile,**CPU_PROFILES[cpu_profile],
              'cpu_isa':'RV32IM','cpu_compressed_isa':0,
              'cpu_icache_lines':64,'cpu_icache_line_words':4,
              'cpu_icache_data_bytes':1024 if icache else 0,
              'cpu_axi_read_timing_buffer':1,'cpu_axi_write_timing_buffer':1,
              'npu_axi_timing_buffer':1,'bypass_ram_pingpong':1,'ram_write_timing_buffer':1}
+    profile.update(cache_geometry)
     shared_total = shared_bank_bytes * shared_bank_count
     shared_enabled = bool(ps_pool_bytes)
     profile.update(shared_ia_ps=shared_enabled,
@@ -319,7 +333,7 @@ def main():
     parser.add_argument('--im2col-cache-bytes',type=int,
                         help='Input window cache bytes; default comes from NPU_CONFIG')
     parser.add_argument('--ram-words',type=int,default=524288)
-    parser.add_argument('--pe-count',type=int,default=8)
+    parser.add_argument('--pe-count',type=int,choices=(4,8,16),default=8)
     parser.add_argument('--ia-cache-blocks',type=int)
     parser.add_argument('--ps-frame-count',type=int)
     parser.add_argument('--ps-storage-rows',type=int)

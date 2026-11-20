@@ -66,6 +66,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
         .OA_S16_FIFO_BANKS_MAX(`SOC_NETWORK_S16_OUTPUT_BANKS),
         .ENABLE_VECTOR_ENGINE(1), .VECTOR_PE_COUNT(`SOC_NETWORK_PE_COUNT), .DW_MAX_TAPS(49), .POOL_MAX_TAPS(256),
         .CPU_MEM_DP(RAM_WORDS), .CPU_MEM_PATH(""), .CPU_MEM_INIT_EN(1),
+        .CPU_MEM_WORD_WIDTH(`SOC_NETWORK_BUS_WIDTH),
         .CPU_ENABLE_ICACHE(`SOC_NETWORK_ICACHE),
         .CPU_ENABLE_MUL(`SOC_NETWORK_CPU_ENABLE_MUL),
         .CPU_ENABLE_FAST_MUL(`SOC_NETWORK_CPU_ENABLE_FAST_MUL),
@@ -91,6 +92,7 @@ module tb_model_benchmark(input logic clk, rst_n, output logic finished,
 
     initial begin
         assert(dut.u_axi_sim_ram.DW==`SOC_NETWORK_BUS_WIDTH &&
+               dut.u_axi_sim_ram.MEM_WORD_WIDTH==`SOC_NETWORK_BUS_WIDTH &&
                dut.u_axi_sim_ram.DP*BUS_BYTES==RAM_WORDS*4 &&
                dut.u_pico_axi_bridge.DATA_WIDTH==32)
             else $fatal(1,"CPU or shared-memory data width differs from the profile");

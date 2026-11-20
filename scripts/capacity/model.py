@@ -20,7 +20,7 @@ POOL_ALIGNMENT = 64
 MAX_POOL_BYTES = 1 << 24
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-bank-rom-v11"
+MODEL_VERSION = "dip-shared-window-vector-v14"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -137,11 +137,12 @@ def memory_geometry(cache, frames, pool_bytes, size=16, compressed=True, *, shar
 
 def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
                        bank_bytes=SHARED_BANK_BYTES, bank_count=None,
-                       im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
+                       im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
+                       vector_pe_count=None):
     """Addressable data arrays and their persistent metadata, in logical bits.
 
     The full interface has 16-bit activation and stationary operands, both S8
-    and S16 output queues, and eight vector processing elements at SIZE>=8.
+    and S16 output queues, and up to sixteen vector processing elements.
     Shared IA storage reads one 128-bit word for compact S8 and two words from
     separate banks for S16. IA and PS use disjoint allocations of the same
     physical data memory. IA, the DiP array and PS transfer complete rows.
@@ -151,6 +152,12 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
     """
     layout = memory_geometry(cache, frames, pool_bytes, size, compressed, shared=shared,
                              bank_bytes=bank_bytes, bank_count=bank_count)
+    if bus_width not in (32, 64):
+        raise ValueError("bus_width must be 32 or 64")
+    vector_pe_count = min(size, 16) if vector_pe_count is None else vector_pe_count
+    if vector_pe_count not in (1, 2, 4, 8, 16) or vector_pe_count > size:
+        raise ValueError("vector_pe_count must be a power of two no greater than SIZE and 16")
+    window_lanes = 16 if vector_pe_count >= 16 else bus_width // 8
     rmax, max_frame = layout["max_r_s8"], layout["max_frame_rows"]
     slots = 2 * layout["max_ia_cache_blocks"]
     oa_banks = layout["output_banks_s8"]
@@ -169,9 +176,12 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         "conv_data_cache": image_cache["data_bytes"] * 8,
         "conv_cache_metadata": image_cache["metadata_bits"],
         "conv_prefetch_queue": 8 * (4 * 32 + 1),
-        "conv_request_queue": 4 * (4 * 32 + (image_cache["sets"] - 1).bit_length() + 3),
-        "conv_response_queue": 4 * (32 + 1),
+        "conv_request_queue": 4 * 32 + (image_cache["sets"] - 1).bit_length() + 3,
+        "conv_response_queue": 8 * window_lanes + 1,
         "vector_buffers": size * (5 * 16 + 49 * 8 + 4 * 32 + 6),
+        "vector_dw_snapshot": size * 32,
+        "vector_dw_result_queue": 2 * size * 8,
+        "vector_write_queue": 2 * (4 * size) * 8,
         "vector_pool_reciprocal_rom": (VECTOR_POOL_MAX_TAPS + 1) * (9 + VECTOR_POOL_MAX_TAPS.bit_length()),
         "ps_frame_lengths": frames * frame_length_bits,
     }
@@ -201,23 +211,28 @@ def register_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *,
 
 def buffer_ram_bytes(cache, frames, pool_bytes, size=16, compressed=True, *, shared=None,
                      bank_bytes=SHARED_BANK_BYTES, bank_count=None,
-                     im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
+                     im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
+                     vector_pe_count=None):
     return ceil_div(sum(buffer_arrays_bits(cache, frames, pool_bytes, size, compressed,
                                           shared=shared, bank_bytes=bank_bytes,
                                           bank_count=bank_count,
-                                          im2col_cache_bytes=im2col_cache_bytes).values()), 8)
+                                          im2col_cache_bytes=im2col_cache_bytes,
+                                          bus_width=bus_width,
+                                          vector_pe_count=vector_pe_count).values()), 8)
 
 
 def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
                size=16, compressed=True, measured_state_bits=None, shared=None,
                bank_bytes=SHARED_BANK_BYTES, bank_count=None,
-               im2col_cache_bytes=im2col_cache.DEFAULT_BYTES):
+               im2col_cache_bytes=im2col_cache.DEFAULT_BYTES, bus_width=64,
+               vector_pe_count=None):
     _integer(budget_bytes, "budget bytes")
     if scope not in SCOPES:
         raise ValueError(f"budget scope must be one of {SCOPES}")
     arrays = buffer_arrays_bits(cache, frames, pool_bytes, size, compressed, shared=shared,
                                 bank_bytes=bank_bytes, bank_count=bank_count,
-                                im2col_cache_bytes=im2col_cache_bytes)
+                                im2col_cache_bytes=im2col_cache_bytes, bus_width=bus_width,
+                                vector_pe_count=vector_pe_count)
     ram_bits = sum(arrays.values())
     ram_bytes = ceil_div(ram_bits, 8)
     if measured_state_bits is not None:
@@ -230,7 +245,7 @@ def allocation(cache, frames, pool_bytes, budget_bytes, scope="buffer-ram", *,
     registers = register_arrays_bits(cache, frames, pool_bytes, size, compressed, shared=shared,
                                      bank_bytes=bank_bytes, bank_count=bank_count)
     used = measured_state_bits / 8 if scope == "logical-state" else ram_bytes
-    return dict(ia_cache_blocks=cache, ps_frame_count=frames, size=size,
+    return dict(ia_cache_blocks=cache, ps_frame_count=frames, size=size, bus_width=bus_width,
                 compressed_ps=False,
                 ps_frame_store_enabled=bool(compressed),
                 ps_pool_bytes=(layout["default_ps_pool_bytes"] if layout["shared_ia_ps_enabled"]

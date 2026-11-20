@@ -7,9 +7,10 @@ import math
 DEFAULT_BYTES = 4096
 BYTE_CHOICES = tuple(512 << index for index in range(8))
 WAYS = 2
-LINE_BYTES = 16
+LINE_BYTES = 128
 # 每行包含标签、两组时间戳、三组替换次序、有效位和三个两位来源存储体。
-METADATA_BITS_PER_LINE = 28 + 2 * 13 + 3 * 32 + 1 + 3 * 2
+LINE_BITS = LINE_BYTES.bit_length() - 1
+METADATA_BITS_PER_LINE = (32 - LINE_BITS) + 2 * (17 - LINE_BITS) + 3 * 32 + 1 + 3 * 2
 
 
 def validate_bytes(value):
@@ -40,7 +41,7 @@ def analyze_convolution(cache_bytes, *, input_h, input_w, input_channels,
                         dilation_h=1, dilation_w=1, input_base_mod16=0):
     """Describe one output row's conservative full-width band in ungrouped NHWC.
 
-    The channel group starts at zero. K16 channel fragments start on 16-byte lines.
+    The channel group starts at zero and the tensor begins on a cache-line boundary.
     The band includes gaps introduced by dilation and every input column.
     Capacity therefore describes a spatial working set, without predicting
     the selected R/W schedule, prefetch traffic, misses or execution cycles.
@@ -85,7 +86,7 @@ def analyze_convolution(cache_bytes, *, input_h, input_w, input_channels,
         sets_needed = (band_pixels + WAYS // lines_per_pixel - 1) // (WAYS // lines_per_pixel)
         detail = "Spatial index is pixel position modulo sets; channel fragments share the two ways."
     else:
-        # Complete input rows can start at any reachable 16-byte line offset.
+        # 输入行起点可以位于其步长能够到达的任意缓存行内偏移。
         maximum_row_offset = LINE_BYTES - math.gcd(input_w * pixel_bytes, LINE_BYTES)
         band_lines = (band_pixels * pixel_bytes + maximum_row_offset + LINE_BYTES - 1) // LINE_BYTES
         lines_per_pixel = None
@@ -99,7 +100,7 @@ def analyze_convolution(cache_bytes, *, input_h, input_w, input_channels,
                   band_peak_lines_per_set=peak, band_fits=peak <= WAYS,
                   minimum_band_cache_bytes=needed,
                   recommended_cache_bytes=recommended,
-                  next_s8_fragment_spatial_condition=(pixel_bytes >= LINE_BYTES and
+                  next_s8_fragment_spatial_condition=(LINE_BYTES == 16 and pixel_bytes >= LINE_BYTES and
                       input_h * input_w <= hardware["sets"] and element_bytes == 1 and
                       input_channels >= 32), detail=detail)
     return result
@@ -108,16 +109,22 @@ def analyze_convolution(cache_bytes, *, input_h, input_w, input_channels,
 def guidance(cache_bytes=DEFAULT_BYTES):
     hardware = geometry(cache_bytes)
     sets = hardware["sets"]
-    widths = [dict(kernel=kernel,
-                   effective_kernel_h=kernel,
-                   s8_k16_max_input_width=WAYS * sets // kernel,
-                   s16_k16_max_input_width=sets // kernel)
+    # C=16 的紧凑像素可能跨缓存行，逐个宽度检查所有可达行起点。
+    def maximum_width(kernel, element):
+        limit = cache_bytes // (kernel * 16 * element)
+        return max((width for width in range(1, limit + 1)
+                    if analyze_convolution(cache_bytes, input_h=kernel, input_w=width,
+                        input_channels=16, kernel_h=kernel, kernel_w=kernel,
+                        element_bytes=element)["band_fits"]), default=0)
+    widths = [dict(kernel=kernel, effective_kernel_h=kernel,
+                   s8_k16_max_input_width=maximum_width(kernel, 1),
+                   s16_k16_max_input_width=maximum_width(kernel, 2))
               for kernel in (3, 5, 7)]
     return dict(
-        scope="Aligned NHWC input; one full-width input band for one K16 channel fragment",
-        requirements="Ungrouped NHWC; 16-byte-aligned input base and channel fragments; channels a multiple of 16; dilation 1",
+        scope="Cache-line-aligned NHWC input; full-width input band with 16 channels",
+        requirements=f"Ungrouped NHWC; {LINE_BYTES}-byte-aligned input base; 16 channels; dilation 1",
         band_width_limits=widths,
-        next_s8_fragment_max_spatial_pixels=sets,
+        next_s8_fragment_max_spatial_pixels=sets if LINE_BYTES == 16 else 0,
         whole_tensor_capacity_condition="input_h * input_w * input_channels * element_bytes <= data_bytes; check set occupancy separately",
         dilation_condition="Replace kernel height by 1 + (kernel_h - 1) * dilation_h for the conservative band",
         scheduling_condition="R/W windows, padding, stride and prefetch affect traffic; capacity guidance does not predict cycles",
@@ -131,15 +138,15 @@ def help_text(cache_bytes=DEFAULT_BYTES):
     hardware = geometry(cache_bytes)
     limits = guidance(cache_bytes)["band_width_limits"]
     lines = [f"Selected input cache: {hardware['data_bytes']} B, {hardware['sets']} sets, "
-             "two ways and 16 B per line.",
+             f"two ways and {LINE_BYTES} B per line.",
              f"Tags and lifetime state add {hardware['metadata_bytes']} B; queues are counted separately.",
-             "", "One K16 channel fragment across the full input width:",
+             "", "A 16-channel input band across the full input width:",
              "Kernel       Maximum width, S8 / S16"]
     for row in limits:
         lines.append(f"{row['kernel']}x{row['kernel']}          "
                      f"{row['s8_k16_max_input_width']} / {row['s16_k16_max_input_width']}")
-    lines += ["", "These band limits assume ungrouped NHWC, a 16-byte-aligned input and channel fragments, channels divisible by 16, "
-              "and dilation 1. They describe the current channel fragment. Full input storage also "
+    lines += ["", f"These band limits assume ungrouped NHWC, a {LINE_BYTES}-byte-aligned input, exactly 16 channels, "
+              "and dilation 1. Full input storage also "
               "depends on height and all channels. R/W, stride and prefetch determine actual reuse.",
               "For dilation, use effective kernel height 1 + (kernel_h - 1) * dilation_h. "
               "Other alignments and channel strides use physical-line XOR indexing.",
