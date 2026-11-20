@@ -223,6 +223,7 @@ module npu_top #(
     wire ia_prefetch_idle;
     wire kernel_prefetch_idle;
     wire kernel_loader_o_quiescent;
+    logic kernel_loader_o_admission_request;
     wire block_dma_arbiter_o_kernel_eligible;
     wire frame_prefetch_idle = ia_prefetch_idle && kernel_prefetch_idle;
     logic arbiter_ia_granted;
@@ -510,6 +511,7 @@ module npu_top #(
     logic [1:0] ia_ram_write_en, ia_ram_read_en;
     logic [SHARED_IA_ADDR_WIDTH-1:0] ia_ram_write_addr [0:1], ia_ram_read_addr [0:1];
     logic [127:0] ia_ram_write_data [0:1], ia_ram_read_data [0:1];
+    logic [127:0] ia_ram_shared_write_data;
     logic [15:0] ia_ram_write_mask [0:1];
     logic [3:0] ps_ram_write_en, ps_ram_read_en;
     logic [SHARED_PS_ADDR_WIDTH-1:0] ps_ram_write_addr [0:3], ps_ram_read_addr [0:3];
@@ -780,39 +782,11 @@ module npu_top #(
 
     wire ps_capacity_fault;
     logic block_dma_arbiter_i_abort;
-    localparam bit p_fault_use_lut =
-`ifdef ASIC_SYNTHESIS
-        1'b0;
-`elsif XILINX_FPGA
-        1'b1;
-`elsif SYNTHESIS
-        1'b1;
-`else
-        1'b0;
-`endif
-    generate
-        if (p_fault_use_lut) begin : g_fault_fpga
-            logic [4:0] fault_i_flags;
-            // 容量与帧错误共用六输入条件，DMA 和卷积输入直接进入末级。
-            assign fault_i_flags[0] = ps_capacity_fault || shared_ram_capacity_fault ||
-                                      (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00));
-            assign fault_i_flags[1] = run_conv;
-            assign fault_i_flags[2] = run_vector;
-            assign fault_i_flags[3] = conv_error;
-            assign fault_i_flags[4] = dma_bus_error;
-            // O5 汇总当前故障，O6 还包含第六输入上的已登记中止状态。
-            LUT6_2 #(.INIT(64'hffff_ffff_ffff_feaa)) u_fault (
-                .I0(fault_i_flags[0]), .I1(fault_i_flags[1]), .I2(fault_i_flags[2]),
-                .I3(fault_i_flags[3]), .I4(fault_i_flags[4]), .I5(abort_pending),
-                .O5(task_fault), .O6(block_dma_arbiter_i_abort)
-            );
-        end else begin : g_fault_generic
-            assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
-                                (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)) ||
-                                ((run_conv || run_vector) && conv_error);
-            assign block_dma_arbiter_i_abort = abort_pending || task_fault;
-        end
-    endgenerate
+    // 各运算来源并行汇总故障，中止状态持续保持至当前任务结束。
+    assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
+                        (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)) ||
+                        ((run_conv || run_vector) && conv_error);
+    assign block_dma_arbiter_i_abort = abort_pending || task_fault;
     wire controller_done_valid;
     wire [1:0] controller_err_code;
     wire operand_completion_seen;
@@ -983,12 +957,12 @@ module npu_top #(
                 shared_allocation_invalid_q <= requested_allocation_invalid;
             end
         end
-        assign cfg_stage2_fire = cfg_stage2_valid && cfg_capacity_phase==3'd5 &&
+        assign cfg_stage2_fire = cfg_stage2_valid && cfg_capacity_phase==3'd7 &&
                                  ctrl_sa_ready && frame_scheduler_ready;
         always_ff @(posedge clk or negedge core_rst_n) begin
             if (!core_rst_n) cfg_capacity_phase <= 0;
             else if (!cfg_stage2_valid || cfg_stage2_fire) cfg_capacity_phase <= 0;
-            else if (cfg_capacity_phase != 3'd5) cfg_capacity_phase <= cfg_capacity_phase + 1'b1;
+            else if (cfg_capacity_phase != 3'd7) cfg_capacity_phase <= cfg_capacity_phase + 1'b1;
         end
         // Validate tensor extents within the existing configuration stages.
         // Each product stage uses independent 16-bit partial multipliers.
@@ -1049,12 +1023,16 @@ module npu_top #(
                 endcase
             end
         end
-        // 相同配置值共用幂次检查，容量与输出合并逻辑保持原有采样阶段。
+        // 相同配置值共用幂次检查，供容量与输出合并逻辑使用。
+        // 容量检查限制有效复用数，输出合并最多使用16行，幂次判断仅需覆盖相应低位。
+        localparam int unsigned IA_SHAPE_REQUIRED_WIDTH = IA_REUSE_W > 5 ? IA_REUSE_W : 5;
+        localparam int unsigned IA_SHAPE_WIDTH =
+            IA_SHAPE_REQUIRED_WIDTH < REG_WIDTH ? IA_SHAPE_REQUIRED_WIDTH : REG_WIDTH;
         logic [REG_WIDTH-1:0] ia_reuse_shape_i_value;
         logic ia_reuse_shape_o_valid;
         assign ia_reuse_shape_i_value = cfg_ia_reuse_eff_s2;
-        onehot_check #(.p_width(REG_WIDTH), .p_allow_zero(1'b1)) u_ia_reuse_shape (
-          .i_value(ia_reuse_shape_i_value),
+        onehot_check #(.p_width(IA_SHAPE_WIDTH), .p_allow_zero(1'b1)) u_ia_reuse_shape (
+          .i_value(IA_SHAPE_WIDTH'(ia_reuse_shape_i_value)),
           .o_valid(ia_reuse_shape_o_valid)
         );
         logic [REG_WIDTH-1:0] w_reuse_shape_i_value;
@@ -1068,11 +1046,17 @@ module npu_top #(
         assign legacy_window_shape_s2 = w_reuse_shape_o_valid;
         wire use_frame_commands_s2 = FRAME_EXEC_ENABLED &&
             (!ps_long_capacity_fits || !legacy_window_shape_s2 || ps_control_q[1]);
-        wire [31:0] frame_slice_tiles_s2 =
+        wire [31:0] frame_slice_tiles_calc =
             ps_control_q[3:2] == 2'd3 ? cfg_ia_reuse_eff_s2 :
             ps_control_q[3:2] == 2'd2 ? ((cfg_ia_reuse_eff_s2 < 2) ? cfg_ia_reuse_eff_s2 : 32'd2) :
             ps_control_q[3:2] == 2'd1 ? 32'd1 :
             ps_raw_capacity_fits ? cfg_ia_reuse_eff_s2 : 32'd1;
+        logic [31:0] frame_slice_tiles_s2;
+        // 容量比较完成后保存分片大小，后续目录行数计算从该寄存级开始。
+        always_ff @(posedge clk) begin
+            if (cfg_stage2_valid && cfg_capacity_phase==2)
+                frame_slice_tiles_s2 <= frame_slice_tiles_calc;
+        end
         wire ctrl_calc_start = (cfg_stage2_fire && !use_frame_commands_s2) || frame_execute_start;
         localparam bit p_admission_use_lut =
 `ifdef ASIC_SYNTHESIS
@@ -1088,8 +1072,7 @@ module npu_top #(
             // 后台状态和命令资格并行准备，中止信号直接参与最后一级就绪判断。
             logic [5:0] idle_i_flags, ready_i_flags;
             logic idle_o_valid, ready_o_valid;
-            logic unused_idle_o5, unused_ready_o5;
-            logic [5:0] admission_i_flags, admission_ready_i_flags;
+            logic [5:0] admission_ready_i_flags;
             logic admission_kernel_occupied;
             logic admission_i_zero;
             logic admission_o_ready, admission_o_start;
@@ -1099,39 +1082,21 @@ module npu_top #(
                                    cfg_stage0_valid, vector_rejected, run_vector};
             assign ready_i_flags = {operand_cache_idle, frame_scheduler_ready, ctrl_sa_ready,
                                     vector_engine_ready, abort_state};
-            LUT6_2 #(.INIT(64'h0000_0000_0000_0001)) u_idle_flags (
-                .I0(idle_i_flags[0]), .I1(idle_i_flags[1]), .I2(idle_i_flags[2]),
-                .I3(idle_i_flags[3]), .I4(idle_i_flags[4]), .I5(idle_i_flags[5]),
-                .O5(unused_idle_o5), .O6(idle_o_valid)
-            );
-            LUT6_2 #(.INIT(64'h1000_0000_0000_0000)) u_ready_flags (
-                .I0(ready_i_flags[0]), .I1(ready_i_flags[1]), .I2(ready_i_flags[2]),
-                .I3(ready_i_flags[3]), .I4(ready_i_flags[4]), .I5(ready_i_flags[5]),
-                .O5(unused_ready_o5), .O6(ready_o_valid)
-            );
-            assign admission_i_flags = {cfg_vector_enable, calc_start, ready_o_valid, idle_o_valid,
-                                        ia_prefetch_idle, kernel_prefetch_idle};
-            assign admission_kernel_occupied = load_weight_req && block_dma_arbiter_o_kernel_eligible;
+            assign idle_o_valid = ~(|idle_i_flags);
+            assign ready_o_valid = (&ready_i_flags[5:2]) && (ready_i_flags[1:0] == 2'b00);
+            assign admission_kernel_occupied = kernel_loader_o_admission_request && block_dma_arbiter_o_kernel_eligible;
             assign admission_ready_i_flags = {block_dma_arbiter_i_abort, admission_kernel_occupied,
                 ready_o_valid, idle_o_valid, ia_prefetch_idle, kernel_loader_o_quiescent};
-            // 中止撤销当前授予，后台空闲状态保持独立；任意请求和命令编码均使用同一布尔关系。
-            LUT6 #(.INIT(64'h8000_8000_0000_8000)) u_admission_ready (
-                .I0(admission_ready_i_flags[0]), .I1(admission_ready_i_flags[1]),
-                .I2(admission_ready_i_flags[2]), .I3(admission_ready_i_flags[3]),
-                .I4(admission_ready_i_flags[4]), .I5(admission_ready_i_flags[5]),
-                .O(admission_o_ready)
-            );
-            // 开始请求可由上层就绪信号形成，直接参与末级六输入配置接收判断。
-            LUT6 #(.INIT(64'h0000_0000_8000_0000)) u_admission_start (
-                .I0(admission_i_flags[0]), .I1(admission_i_flags[1]), .I2(admission_i_flags[2]),
-                .I3(admission_i_flags[3]), .I4(admission_i_flags[4]), .I5(admission_i_flags[5]),
-                .O(admission_o_start)
-            );
+            // 故障与未完成的后台请求均阻止接收配置。
+            assign admission_o_ready = (&admission_ready_i_flags[3:0]) &&
+                !(|admission_ready_i_flags[5:4]);
+            // 内部配置接收与公开请求握手使用同一就绪条件。
+            assign admission_o_start = calc_start && !cfg_vector_enable && admission_o_ready;
             assign sa_ready = admission_o_ready;
             assign cfg_start_event = admission_o_start;
         end else begin : g_admission_generic
             assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && frame_scheduler_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
-                              (abort_state == AB_IDLE) && operand_cache_idle && frame_prefetch_idle;
+                              (abort_state == AB_IDLE) && !task_fault && operand_cache_idle && frame_prefetch_idle;
             assign cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
         end
 
@@ -1230,9 +1195,15 @@ module npu_top #(
         end
         assign ps_raw_capacity_fits = ps_raw_capacity_fits_q;
         assign ps_long_capacity_fits = ps_long_capacity_fits_q;
-        wire [63:0] ps_admission_rows = use_frame_commands_s2 ?
+        wire [63:0] ps_admission_rows_calc = use_frame_commands_s2 ?
             ((ps_max_frame_rows < (64'(frame_slice_tiles_s2) << SIZE_SHIFT)) ?
                 ps_max_frame_rows : (64'(frame_slice_tiles_s2) << SIZE_SHIFT)) : ps_max_frame_rows;
+        logic [63:0] ps_admission_rows;
+        // 目录步长与分片选择分拍保存，配置提交后保持至下一项任务。
+        always_ff @(posedge clk) begin
+            if (cfg_stage2_valid && cfg_capacity_phase==3)
+                ps_admission_rows <= ps_admission_rows_calc;
+        end
         wire [63:0] ps_admission_words = ps_config_word_cap == 3'd2 ?
             (ps_admission_rows << 1) : ps_config_word_cap == 3'd3 ?
             (ps_admission_rows << 1) + ps_admission_rows : (ps_admission_rows << 2);
@@ -1279,7 +1250,7 @@ module npu_top #(
             assign ps_admission_bank_words = (ps_admission_words + 64'd3) >> 2;
         end endgenerate
 
-        // 原始定宽部分和使用固定物理容量表，容量检查仍在第 1、2 阶段寄存。
+        // 原始定宽部分和使用固定物理容量表，分组容量与配置检查分阶段寄存。
         // 总字节数与目录行数检查独立保留，存储块容量只比较对应的行数上限。
         generate if (SHARED_RAM_ENABLED && PS_REQUIRE_RAW_CAPACITY) begin : g_ps_capacity_limits
             logic [CAP_ROWS_W-1:0] capacity_i_frame_rows;
@@ -1344,7 +1315,7 @@ module npu_top #(
 
         logic ps_capacity_config_invalid;
         always_ff @(posedge clk) begin
-            if (cfg_stage2_valid && cfg_capacity_phase==2)
+            if (cfg_stage2_valid && cfg_capacity_phase==4)
                 ps_capacity_config_invalid <= ps_capacity_config_invalid_calc;
         end
 
@@ -1518,8 +1489,10 @@ module npu_top #(
         wire weight_use_16bits_eff = ((KERNEL_DATA_WIDTH > 8) && is_mode) ? run_use_16bits : 1'b0;
         wire ws_final_bias = FRAME_EXEC_ENABLED && !is_mode;
         wire compute_bias_sleep = frame_mode_q ? !frame_command_init : bias_sleep;
-        // Preserve room for the array tail and twelve requantization stages.
-        localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS = (SIZE - 1 + 12 + SIZE - 1) / SIZE;
+        // 输出预留覆盖阵列尾部、计算输出寄存和十二级量化流水。
+        localparam int unsigned p_compute_output_stages = 1;
+        localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS =
+            (SIZE - 1 + p_compute_output_stages + 12 + SIZE - 1) / SIZE;
         wire direct_final_stream;
         wire [31:0] output_reserve_banks = ia_reuse_num_eff +
             (direct_final_stream ? 32'(DIRECT_OUTPUT_EXTRA_BANKS) : 32'd0);
@@ -1623,9 +1596,9 @@ module npu_top #(
             ((tiling_invalid || lhs_row_stride_b == 0 || rhs_col_stride_b == 0 || dst_row_stride_b == 0 ||
               (use_per_channel_eff && q_mult_pt == 0 && q_shift_pt == 0)) ? 2'b01 : 2'b00);
         always_ff @(posedge clk) begin
-            if (cfg_stage2_valid && cfg_capacity_phase==3)
+            if (cfg_stage2_valid && cfg_capacity_phase==5)
                 tiling_invalid <= tiling_invalid_calc;
-            if (cfg_stage2_valid && cfg_capacity_phase==4)
+            if (cfg_stage2_valid && cfg_capacity_phase==6)
                 frame_config_error <= frame_config_error_calc;
         end
         assign frame_command_ready = frame_mode_q && frame_address_o_start_rdy && ps_frame_ready && ctrl_sa_ready && !inner_done_valid && !abort_pending && !task_fault;
@@ -1725,7 +1698,8 @@ module npu_top #(
             .CONV_CACHE_SETS(CONV_CACHE_SETS),
             .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
             .CONV_LINE_BYTES(CONV_LINE_BYTES),
-            .CONV_CACHE_POLICY(CONV_CACHE_POLICY)
+            .CONV_CACHE_POLICY(CONV_CACHE_POLICY),
+            .p_register_bus_error(1'b1)
         ) u_block_dma_arbiter (
             .clk                     (clk),
             .rst_n                   (core_rst_n),
@@ -1971,6 +1945,9 @@ module npu_top #(
                 .COMPACT_S8(IA_COMPACT_ENABLE),
                 .EXTERNAL_RAM(SHARED_RAM_ENABLED),
                 .ORDERED_JOB(1'b1),
+                // 输入来自双模式 DMA，使用其固定的列位置和有效通道排列。
+                .p_dma_source_layout(1'b1),
+                .p_shared_write_stage(SHARED_RAM_ENABLED && p_fixed_ps_channels),
                 .RAM_WORD_ADDR_WIDTH(SHARED_IA_ADDR_WIDTH),
                 .PS_FRAME_COUNT(PS_FRAME_COUNT)
             ) u_ia_loader (
@@ -2035,6 +2012,7 @@ module npu_top #(
             .ext_dma_wr_use_16bits(ia_dma_wr_use_16bits),
             .ram_port_wr_en(ia_ram_write_en), .ram_port_wr_addr(ia_ram_write_addr),
             .ram_port_wr_data(ia_ram_write_data), .ram_port_wr_mask(ia_ram_write_mask),
+            .ram_shared_wr_data(ia_ram_shared_write_data),
             .ram_port_rd_en(ia_ram_read_en), .ram_port_rd_addr(ia_ram_read_addr),
             .ram_port_rd_data(ia_ram_read_data),
 
@@ -2158,6 +2136,7 @@ module npu_top #(
         .prefetch_valid_cols(weight_prediction[3].cols),
         .prefetch_idle      (kernel_prefetch_idle),
         .o_prefetch_quiescent(kernel_loader_o_quiescent),
+        .o_admission_request(kernel_loader_o_admission_request),
         .cfg_im2col          (run_conv && is_mode),
         .cfg_tile_packed     (is_mode ? run_lhs_tile_packed : run_rhs_tile_packed),
         .cfg_p0_base         (frame_mode_q ? frame_command_column : 32'd0),
@@ -2305,6 +2284,7 @@ module npu_top #(
             logic [1:0] ram_i_ia_read_en, ram_i_ia_write_en;
             logic [SHARED_IA_ADDR_WIDTH-1:0] ram_i_ia_read_addr [2], ram_i_ia_write_addr [2];
             logic [127:0] ram_o_ia_read_data [2], ram_i_ia_write_data [2];
+            logic [127:0] ram_i_ia_shared_write_data;
             logic [15:0] ram_i_ia_write_mask [2];
             logic [3:0] ram_i_ps_read_en, ram_i_ps_write_en;
             logic [SHARED_PS_ADDR_WIDTH-1:0] ram_i_ps_read_addr [4], ram_i_ps_write_addr [4];
@@ -2319,6 +2299,7 @@ module npu_top #(
             assign ram_i_ia_write_addr = ia_ram_write_addr;
             assign ia_ram_read_data = ram_o_ia_read_data;
             assign ram_i_ia_write_data = ia_ram_write_data;
+            assign ram_i_ia_shared_write_data = ia_ram_shared_write_data;
             assign ram_i_ia_write_mask = ia_ram_write_mask;
             assign ram_i_ps_read_en = ps_ram_read_en;
             assign ram_i_ps_write_en = ps_ram_write_en;
@@ -2329,7 +2310,8 @@ module npu_top #(
 
             ia_ps_channel_ram #(
                 .p_bank_bytes(SHARED_BANK_BYTES), .p_total_bytes(SHARED_TOTAL_BYTES),
-                .p_addr_width(SHARED_IA_ADDR_WIDTH), .p_bank_count_width(SHARED_PHYSICAL_BANKS_WIDTH)
+                .p_addr_width(SHARED_IA_ADDR_WIDTH), .p_bank_count_width(SHARED_PHYSICAL_BANKS_WIDTH),
+                .p_shared_write_stage(1'b1)
             ) u_ram (
                 .clk(clk), .rst_n(core_rst_n),
                 .i_cfg_valid(ram_i_cfg_valid), .i_cfg_ia_banks(ram_i_cfg_ia_banks),
@@ -2337,6 +2319,7 @@ module npu_top #(
                 .i_ia_read_en(ram_i_ia_read_en), .i_ia_read_addr(ram_i_ia_read_addr), .o_ia_read_data(ram_o_ia_read_data),
                 .i_ia_write_en(ram_i_ia_write_en), .i_ia_write_addr(ram_i_ia_write_addr),
                 .i_ia_write_data(ram_i_ia_write_data), .i_ia_write_mask(ram_i_ia_write_mask),
+                .i_ia_shared_write_data(ram_i_ia_shared_write_data),
                 .i_ps_read_en(ram_i_ps_read_en), .i_ps_read_addr(ram_i_ps_read_addr), .o_ps_read_data(ram_o_ps_read_data),
                 .i_ps_write_en(ram_i_ps_write_en), .i_ps_write_addr(ram_i_ps_write_addr), .i_ps_write_data(ram_i_ps_write_data)
             );
@@ -2475,15 +2458,6 @@ module npu_top #(
                 is_bias_read_idx = '0;
         end
 
-`ifdef ASIC_SYNTHESIS
-        localparam bit p_fpga_bias_row_index = 1'b0;
-`elsif XILINX_FPGA
-        localparam bit p_fpga_bias_row_index = 1'b1;
-`elsif SYNTHESIS
-        localparam bit p_fpga_bias_row_index = 1'b1;
-`else
-        localparam bit p_fpga_bias_row_index = 1'b0;
-`endif
         logic [IS_BIAS_ROW_W-1:0] is_bias_row_increment;
         logic [IS_BIAS_ROW_W-1:0] is_bias_row_step;
         logic [IS_BIAS_ROW_W-1:0] is_bias_row_next;
@@ -2494,21 +2468,9 @@ module npu_top #(
         // 先计算保持、递增和回绕结果，组首触发只参与最后一级清零选择。
         assign is_bias_row_step = (is_mode && acc_data_valid) ?
             (is_bias_row_wrap ? IS_BIAS_ROW_W'(0) : is_bias_row_increment) : is_bias_row_idx;
-        if (p_fpga_bias_row_index) begin : g_bias_row_last_select
-            for (genvar row_bit = 0; row_bit < IS_BIAS_ROW_W; row_bit++) begin : g_bit
-                logic row_i_one, unused_row_o5;
-                assign row_i_one = 1'b1;
-                LUT6_2 #(.INIT(64'h2202222222022222)) u_row_next (
-                    .I0(is_bias_row_step[row_bit]), .I1(init_cfg_ia), .I2(is_mode),
-                    .I3(bias_sleep), .I4(send_ia_trigger), .I5(row_i_one),
-                    .O5(unused_row_o5), .O6(is_bias_row_next[row_bit])
-                );
-            end
-        end else begin : g_bias_row_generic
-            assign is_bias_row_next =
-                (init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep)) ?
-                    IS_BIAS_ROW_W'(0) : is_bias_row_step;
-        end
+        assign is_bias_row_next =
+            (init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep)) ?
+                IS_BIAS_ROW_W'(0) : is_bias_row_step;
         always_ff @(posedge clk or negedge core_rst_n) begin
             if (!core_rst_n) is_bias_row_idx <= '0;
             else is_bias_row_idx <= is_bias_row_next;
@@ -2558,7 +2520,7 @@ module npu_top #(
             assign add_i_enable = is_mode || ws_final_bias;
             assign requant_in_vec[rq_i] = add_o_sum;
 
-            // 偏置选择和三十二位模加在当前周期完成，量化输入的接收边沿保持不变。
+            // 偏置选择和三十二位模加位于计算输出寄存与量化输入缓存之间。
             select_add #(.p_width(32)) u_bias_add (
                 .i_lhs       (add_i_lhs),
                 .i_rhs0      (add_i_rhs0),

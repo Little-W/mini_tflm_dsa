@@ -36,7 +36,8 @@ module vector_softmax #(
   typedef enum logic [4:0] {
     IDLE, FIND_MAX, LUT_REQUEST, LUT_WAIT, NORMALIZE, RECIP_INIT,
     RECIP_ERROR, RECIP_UPDATE, RECIP_SCALE, OUTPUT_MULT, OUTPUT_STORE, FINISH,
-    RECIP_INIT_WAIT, RECIP_ERROR_WAIT, RECIP_UPDATE_WAIT, RECIP_ROUND, MULTIPLY_WAIT, LUT_DRAIN
+    RECIP_INIT_WAIT, RECIP_ERROR_WAIT, RECIP_UPDATE_WAIT, RECIP_ROUND, MULTIPLY_WAIT, LUT_DRAIN,
+    NORMALIZE_COMMIT
   } state_t;
   state_t c_st, reciprocal_return;
   logic signed [31:0] reciprocal_q31;
@@ -64,10 +65,11 @@ module vector_softmax #(
   logic [5:0] leading_zeros;
   logic [31:0] normalized_minus_one;
 
-  logic norm16_zero;
-  logic [31:0] norm16;
+  logic normalization_invalid;
   logic norm8_zero;
   logic [31:0] norm8;
+  logic norm8_zero_q;
+  logic [31:0] norm8_q;
   logic norm4_zero;
   logic [31:0] norm4;
   logic norm2_zero;
@@ -83,28 +85,39 @@ module vector_softmax #(
   logic signed [17:0] output_shift1;
   logic output_increment;
   logic [8:0] output_small;
-  logic signed [33:0] reciprocal_rounded;
+  logic [31:0] reciprocal_rounded_word;
+  logic [3:0] reciprocal_byte_carry;
+  logic reciprocal_above_range;
   logic signed [31:0] reciprocal_rounded_q31;
   logic signed [33:0] update_scaled;
   logic signed [31:0] update_saturated;
+  logic [31:0] estimate_lhs, estimate_rhs, estimate_next;
+  logic [16:0] estimate_low;
+  logic [15:0] estimate_high_direct, estimate_high_increment;
   logic signed [32:0] reciprocal_scaled;
   logic signed [31:0] reciprocal_saturated;
 
   //! 1. 输入处理
   //! -----------
 
-  assign norm16_zero =(sum[31:16]==0);
-  assign norm16 =norm16_zero ? {sum[15:0],16'b0} : sum;
-  assign norm8_zero =(norm16[31:24]==0);
-  assign norm8 =norm8_zero ? {norm16[23:0],8'b0} : norm16;
-  assign norm4_zero =(norm8[31:28]==0);
-  assign norm4 =norm4_zero ? {norm8[27:0],4'b0} : norm8;
+  // 有效累计值位于 [2^19, 2^31)，所需左移量为一至十二位。
+  // 八位粗移位先寄存，四位、两位和一位细移位在下一周期合并。
+  assign normalization_invalid = sum[31] || !(|sum[30:19]);
+  assign norm8_zero = (sum[31:24] == 0);
+  assign norm8 = norm8_zero ? {sum[23:0], 8'b0} : sum;
+  always_ff @(posedge clk) begin
+    if (c_st == NORMALIZE) begin
+      norm8_q <= norm8;
+      norm8_zero_q <= norm8_zero;
+    end
+  end
+  assign norm4_zero =(norm8_q[31:28]==0);
+  assign norm4 =norm4_zero ? {norm8_q[27:0],4'b0} : norm8_q;
   assign norm2_zero =(norm4[31:30]==0);
   assign norm2 =norm2_zero ? {norm4[29:0],2'b0} : norm4;
   assign norm1_zero =!norm2[31];
   assign norm1 =norm1_zero ? {norm2[30:0],1'b0} : norm2;
-  assign leading_zeros=(sum==0) ? 6'd32 :
-      {1'b0,norm16_zero,norm8_zero,norm4_zero,norm2_zero,norm1_zero};
+  assign leading_zeros = {2'b00, norm8_zero_q, norm4_zero, norm2_zero, norm1_zero};
   assign normalized_minus_one={1'b0,norm1[30:0]};
 
   // 接收乘积时保存商、保护位和舍弃位信息，随后寄存阶段完成舍入。
@@ -125,15 +138,34 @@ module vector_softmax #(
   assign output_increment =output_shift1[1] && (output_shift1[0] || output_shift1[2]);
   assign output_small ={1'b0,output_shift1[9:2]}+9'(output_increment);
 
-  assign reciprocal_rounded =
-      $signed({reciprocal_quotient_q[32], reciprocal_quotient_q}) + 34'(reciprocal_increment_q);
-  assign reciprocal_rounded_q31 =
-      (!reciprocal_rounded[33] && (|reciprocal_rounded[32:31])) ?
-      32'sh7fff_ffff : reciprocal_rounded[31:0];
+  // 正向饱和条件由舍入前的商确定，商等于最大值时输出仍为最大值。
+  // 四个字节分别递增，低位全一条件并行提供各字节的进位。
+  assign reciprocal_above_range = !reciprocal_quotient_q[32] &&
+      (reciprocal_quotient_q[31] || (&reciprocal_quotient_q[30:0]));
+  assign reciprocal_byte_carry[0] = reciprocal_increment_q;
+  for (genvar part = 0; part < 4; part++) begin : g_reciprocal_round
+    logic unused_carry;
+    if (part > 0) begin : g_carry
+      assign reciprocal_byte_carry[part] = reciprocal_increment_q &&
+          (&reciprocal_quotient_q[8*part-1:0]);
+    end
+    assign {unused_carry, reciprocal_rounded_word[8*part +: 8]} =
+        {1'b0, reciprocal_quotient_q[8*part +: 8]} + 9'(reciprocal_byte_carry[part]);
+  end
+  assign reciprocal_rounded_q31 = reciprocal_above_range ?
+      32'sh7fff_ffff : $signed(reciprocal_rounded_word);
   assign update_scaled ={reciprocal_q31,2'b00};
   assign update_saturated =
       update_scaled[33:31]!={3{update_scaled[31]}} ?
       (update_scaled[33] ? 32'sh8000_0000 : 32'sh7fff_ffff) : update_scaled[31:0];
+  // 初值和迭代更新共用模加法，高半字预先计算两种进位结果。
+  assign estimate_lhs = (c_st == RECIP_INIT_WAIT) ? 32'd1515870810 : estimate;
+  assign estimate_rhs = (c_st == RECIP_INIT_WAIT) ? reciprocal_q31 : update_saturated;
+  assign estimate_low = {1'b0, estimate_lhs[15:0]} + {1'b0, estimate_rhs[15:0]};
+  assign estimate_high_direct = estimate_lhs[31:16] + estimate_rhs[31:16];
+  assign estimate_high_increment = estimate_lhs[31:16] + estimate_rhs[31:16] + 16'd1;
+  assign estimate_next = {estimate_low[16] ? estimate_high_increment : estimate_high_direct,
+                          estimate_low[15:0]};
   assign reciprocal_scaled ={estimate,1'b0};
   assign reciprocal_saturated =
       reciprocal_scaled[32:31]!={2{reciprocal_scaled[31]}} ?
@@ -229,16 +261,19 @@ module vector_softmax #(
           c_st <= NORMALIZE;
         end
         NORMALIZE: begin
-          if (sum == 32'd0 || sum[31] || leading_zeros > 6'd12) begin
+          if (normalization_invalid) begin
             error <= 2'b01;
             c_st <= FINISH;
           end else begin
-            half_denominator <= {2'b01, normalized_minus_one[30:2],
-                (normalized_minus_one[1] && normalized_minus_one[0])};
-            result_shift <= 6'(7'd66 - {1'b0, leading_zeros});
-            iteration <= '0;
-            c_st <= RECIP_INIT;
+            c_st <= NORMALIZE_COMMIT;
           end
+        end
+        NORMALIZE_COMMIT: begin
+          half_denominator <= {2'b01, normalized_minus_one[30:2],
+              (normalized_minus_one[1] && normalized_minus_one[0])};
+          result_shift <= 6'(7'd66 - {1'b0, leading_zeros});
+          iteration <= '0;
+          c_st <= RECIP_INIT;
         end
         RECIP_INIT: begin
           reciprocal_return <= RECIP_INIT_WAIT;
@@ -253,7 +288,7 @@ module vector_softmax #(
           end
         end
         RECIP_INIT_WAIT: begin
-          estimate <= 32'sd1515870810 + reciprocal_q31;
+          estimate <= $signed(estimate_next);
           c_st <= RECIP_ERROR;
         end
         RECIP_ERROR: begin
@@ -285,7 +320,7 @@ module vector_softmax #(
           end
         end
         RECIP_UPDATE_WAIT: begin
-          estimate <= estimate + update_saturated;
+          estimate <= $signed(estimate_next);
           if (iteration == 2'd2) begin
             c_st <= RECIP_SCALE;
           end else begin

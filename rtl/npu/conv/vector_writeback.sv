@@ -72,44 +72,14 @@ module vector_writeback #(
       end
     end
   end
-`ifdef ASIC_SYNTHESIS
-  localparam bit p_fpga_rotation = 1'b0;
-`elsif XILINX_FPGA
-  localparam bit p_fpga_rotation = 1'b1;
-`elsif SYNTHESIS
-  localparam bit p_fpga_rotation = 1'b1;
-`else
-  localparam bit p_fpga_rotation = 1'b0;
-`endif
   wire [BUS_WIDTH-1:0] rotation_stage[BUS_SHIFT+1];
   assign rotation_stage[0]=bank_bytes;
   for (genvar stage=0;stage<BUS_SHIFT;stage++) begin : g_rotation
     localparam int SHIFT_BITS=8*(1<<stage);
-    if (p_fpga_rotation) begin : g_paired_bits
-      // 相邻两位共用本级选择位，各自的两个数据来源由同一查找表选择。
-      for (genvar pair_index = 0; pair_index < BUS_WIDTH/2; pair_index++) begin : g_pair
-        logic [1:0] select_i_first, select_i_second;
-        logic select_i_control, select_i_one, select_o_lower, select_o_upper;
-        assign select_i_first = rotation_stage[stage][2*pair_index+:2];
-        assign select_i_second = {
-          rotation_stage[stage][(2*pair_index+1+SHIFT_BITS) % BUS_WIDTH],
-          rotation_stage[stage][(2*pair_index+SHIFT_BITS) % BUS_WIDTH]};
-        assign select_i_control = first_bank[stage];
-        assign select_i_one = 1'b1;
-        assign rotation_stage[stage+1][2*pair_index] = select_o_lower;
-        assign rotation_stage[stage+1][2*pair_index+1] = select_o_upper;
-        LUT6_2 #(.INIT(64'hff00f0f0ccccaaaa)) u_select (
-          .I0(select_i_first[0]), .I1(select_i_second[0]),
-          .I2(select_i_first[1]), .I3(select_i_second[1]),
-          .I4(select_i_control), .I5(select_i_one),
-          .O5(select_o_lower), .O6(select_o_upper)
-        );
-      end
-    end else begin : g_generic_bits
-      assign rotation_stage[stage+1] = first_bank[stage] ?
+    // 每一级按一个偏移位循环选择全部数据，组合深度随总线字节数的对数增长。
+    assign rotation_stage[stage+1] = first_bank[stage] ?
         {rotation_stage[stage][SHIFT_BITS-1:0], rotation_stage[stage][BUS_WIDTH-1:SHIFT_BITS]} :
         rotation_stage[stage];
-    end
   end
   assign request_ready=state==IDLE;
   assign busy=state!=IDLE;

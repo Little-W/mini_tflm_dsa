@@ -305,7 +305,7 @@ module ia_ps_shared_ram #(
 `endif
 endmodule
 
-// 7 系列专用多路选择器连接相邻查找表，缩短宽存储返回数据的选择路径。
+// 按低位选择组内数据，再由高位选择对应组。
 module shared_ram_read_mux #(
     parameter int p_width = 128,
     parameter int p_inputs = 7,
@@ -315,14 +315,16 @@ module shared_ram_read_mux #(
     input  wire logic [p_select_width-1:0] i_select,
     output logic [p_width-1:0] o_data
 );
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    assign o_data = i_data[i_select];
-`else
-    if (p_inputs > 4 && p_inputs <= 16) begin : g_fpga
-        localparam int p_groups = (p_inputs <= 8) ? 2 : 4;
+    //! 0. 辅助定义
+    //! -----------
+
+    localparam int p_groups = (p_inputs <= 8) ? 2 : 4;
+
+    //! 1. 选择存储返回数据
+    //! -------------------
+
+    if (p_inputs > 4 && p_inputs <= 16) begin : g_grouped
         logic [p_width-1:0] group_data [p_groups];
-        logic [p_width-1:0] half_data [p_groups/2];
         logic [p_width-1:0] padded_data [4*p_groups];
         for (genvar bank = 0; bank < 4*p_groups; bank++) begin : g_pad
             if (bank < p_inputs) begin : g_present
@@ -332,53 +334,24 @@ module shared_ram_read_mux #(
             end
         end
         for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
-            for (genvar bit_index = 0; bit_index < p_width; bit_index++) begin : g_bit
-                logic [5:0] select_i_bits;
-                logic select_o_bit;
-                assign select_i_bits = {i_select[1:0], padded_data[4*group_index+3][bit_index],
-                    padded_data[4*group_index+2][bit_index], padded_data[4*group_index+1][bit_index],
-                    padded_data[4*group_index][bit_index]};
-                assign group_data[group_index][bit_index] = select_o_bit;
-                LUT6 #(.INIT(64'hff00f0f0ccccaaaa)) u_select (
-                    .I0(select_i_bits[0]), .I1(select_i_bits[1]), .I2(select_i_bits[2]),
-                    .I3(select_i_bits[3]), .I4(select_i_bits[4]), .I5(select_i_bits[5]), .O(select_o_bit)
-                );
-            end
-        end
-        for (genvar half_index = 0; half_index < p_groups/2; half_index++) begin : g_half
-            for (genvar bit_index = 0; bit_index < p_width; bit_index++) begin : g_bit
-                logic select_i_low, select_i_high, select_i_control, select_o_bit;
-                assign select_i_low = group_data[2*half_index][bit_index];
-                assign select_i_high = group_data[2*half_index+1][bit_index];
-                assign select_i_control = i_select[2];
-                assign half_data[half_index][bit_index] = select_o_bit;
-                MUXF7 u_select (.I0(select_i_low), .I1(select_i_high), .S(select_i_control), .O(select_o_bit));
-            end
+            // 二级二选一表达组内选择，组间只读取已选中的数据。
+            assign group_data[group_index] = i_select[1] ?
+                (i_select[0] ? padded_data[4*group_index+3] : padded_data[4*group_index+2]) :
+                (i_select[0] ? padded_data[4*group_index+1] : padded_data[4*group_index]);
         end
         if (p_inputs <= 8) begin : g_eight
-            assign o_data = half_data[0];
+            assign o_data = group_data[i_select[2]];
         end else begin : g_sixteen
-            for (genvar bit_index = 0; bit_index < p_width; bit_index++) begin : g_bit
-                logic select_i_low, select_i_high, select_i_control, select_o_bit;
-                assign select_i_low = half_data[0][bit_index];
-                assign select_i_high = half_data[1][bit_index];
-                assign select_i_control = i_select[3];
-                assign o_data[bit_index] = select_o_bit;
-                MUXF8 u_select (.I0(select_i_low), .I1(select_i_high), .S(select_i_control), .O(select_o_bit));
-            end
+            assign o_data = group_data[i_select[3:2]];
         end
-    end else begin : g_generic
+    end else begin : g_direct
         assign o_data = i_data[i_select];
     end
-`endif
-`else
-    assign o_data = i_data[i_select];
-`endif
 endmodule
-
 
 // 部分和的四个固定通道共享 IA 可分配空间，每个通道保存一个 128 位数据段。
 module ia_ps_channel_ram #(
+    parameter bit p_shared_write_stage = 1'b0,
     parameter int p_bank_bytes = 8192,
     parameter int p_total_bytes = 57344,
     parameter int p_addr_width = $clog2(p_total_bytes/16),
@@ -395,6 +368,7 @@ module ia_ps_channel_ram #(
     input  wire logic [p_addr_width-1:0] i_ia_write_addr [2],
     output logic [127:0] o_ia_read_data [2],
     input  wire logic [127:0] i_ia_write_data [2],
+    input  wire logic [127:0] i_ia_shared_write_data = 128'd0,
     input  wire logic [15:0] i_ia_write_mask [2],
     input  wire logic [3:0] i_ps_read_en,
     input  wire logic [3:0] i_ps_write_en,
@@ -656,7 +630,12 @@ module ia_ps_channel_ram #(
                 i_ps_write_addr[channel][p_chunk_bits-1:0];
             assign ram_i_rd_addr = ia_selected ? ia_bank_read_addr[bank][p_chunk_bits-1:0] :
                 i_ps_read_addr[channel][p_chunk_bits-1:0];
-            assign ram_i_wr_data = ia_selected ? ia_bank_write_data[bank] : i_ps_write_data[channel];
+            if (p_shared_write_stage && p_max_ia_banks == 2) begin : g_shared_write_stage
+                // 两块 IA 布局的共享写数据已在缓存写命令边沿完成端口选择。
+                assign ram_i_wr_data = ia_selected ? i_ia_shared_write_data : i_ps_write_data[channel];
+            end else begin : g_general_write_stage
+                assign ram_i_wr_data = ia_selected ? ia_bank_write_data[bank] : i_ps_write_data[channel];
+            end
             assign ram_i_wr_mask = ia_selected ? ia_bank_write_mask[bank] : 16'hffff;
             assign chunk_read_data[channel] = ram_o_rd_data;
             assign ps_segment_read_data[channel][bank] = ram_o_rd_data;

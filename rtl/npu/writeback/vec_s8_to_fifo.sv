@@ -46,17 +46,9 @@ module vec_s8_to_fifo_full #(
   localparam integer p_mem_data_width = p_use_cyclic_storage ? ROW_BEATS * 8 : VLEN * 8;
   localparam integer MEM_ADDR_W  = (MEM_DEPTH <= 1) ? 1 : $clog2(MEM_DEPTH);
 
-`ifdef ASIC_SYNTHESIS
-  localparam bit p_fpga_rotation = 1'b0;
-`elsif XILINX_FPGA
-  localparam bit p_fpga_rotation = 1'b1;
-`elsif SYNTHESIS
-  localparam bit p_fpga_rotation = 1'b1;
-`else
-  localparam bit p_fpga_rotation = 1'b0;
-`endif
+  localparam bit p_count_storage = BANKS >= 8 && (BANKS & (BANKS-1)) == 0;
+  logic [BANKS-1:0] bank_write_complete, bank_release;
 
-  reg [COUNT_WIDTH-1:0] bank_count [0:BANKS-1];
   reg [BANKS-1:0] bank_ready;
   reg [BANK_COUNT_WIDTH-1:0] ready_bank_count_q;
   reg [COUNT_WIDTH-1:0] active_read_count_q;
@@ -131,73 +123,19 @@ module vec_s8_to_fifo_full #(
     else if (co_fire && co_row_last)
       co_row_limit_q <= COUNT_WIDTH'(co_next_row_low) + COUNT_WIDTH'(1);
   end
-  if (p_fpga_rotation && BANKS >= 8 && (BANKS & (BANKS-1)) == 0) begin : g_parallel_row_predicate
-    localparam int p_levels = $clog2(BANKS);
-    logic [BANKS-1:0] selected_last [0:p_levels];
-    // 各银行先判断行结束，平衡归并仅选择一位结果。
-    for (genvar bank=0; bank<BANKS; bank++) begin : g_bank
-      assign selected_last[0][bank] = co_current_bank == BANK_WIDTH'(bank) &&
-          co_row_limit_q >= bank_count[bank];
-    end
-    for (genvar level=1; level<=p_levels; level++) begin : g_level
-      localparam int p_previous_span = 6 ** (level-1);
-      localparam int p_current_span = 6 ** level;
-      localparam int p_previous_nodes = (BANKS+p_previous_span-1) / p_previous_span;
-      localparam int p_current_nodes = (BANKS+p_current_span-1) / p_current_span;
-      for (genvar node=0; node<BANKS; node++) begin : g_node
-        if (node<p_current_nodes) begin : g_present
-          localparam int p_children = (p_previous_nodes-6*node>=6) ? 6 : p_previous_nodes-6*node;
-          logic [5:0] merge_i_last;
-          logic merge_o_last, unused_merge_o5;
-          for (genvar child=0; child<6; child++) begin : g_child
-            if (child<p_children) begin : g_present
-              assign merge_i_last[child] = selected_last[level-1][6*node+child];
-            end else begin : g_padding
-              assign merge_i_last[child] = 1'b0;
-            end
-          end
-          if (p_children==1) begin : g_forward
-            assign merge_o_last = merge_i_last[0];
-          end else begin : g_lut
-            LUT6_2 #(.INIT(64'hffff_ffff_ffff_fffe)) u_merge (
-                .I0(merge_i_last[0]), .I1(merge_i_last[1]), .I2(merge_i_last[2]),
-                .I3(merge_i_last[3]), .I4(merge_i_last[4]), .I5(merge_i_last[5]),
-                .O5(unused_merge_o5), .O6(merge_o_last)
-            );
-          end
-          assign selected_last[level][node] = merge_o_last;
-        end else begin : g_padding
-          assign selected_last[level][node] = 1'b0;
-        end
-      end
-    end
-    assign co_selected_row_last = selected_last[p_levels][0];
-  end else begin : g_indexed_row_predicate
-    assign co_selected_row_last = co_row_limit_q >= bank_count[co_current_bank];
-  end
+  logic bank_count_i_wr_en;
+  logic [BANK_WIDTH-1:0] bank_count_i_wr_addr;
+  logic [COUNT_WIDTH-1:0] bank_count_i_wr_data;
+  logic [1:0][BANK_WIDTH-1:0] bank_count_i_rd_addr;
+  logic [1:0][COUNT_WIDTH-1:0] bank_count_o_rd_data;
+  logic [COUNT_WIDTH-1:0] read_bank_count, co_bank_count;
+
   logic co_group_last_result;
   wire co_group_last = co_group_last_result;
-  if (p_fpga_rotation) begin : g_group_last_lut
-    logic [4:0] group_i_last;
-    logic group_i_one, unused_group_o5;
-    // 各行列条件并行完成比较，所选银行的行结束条件只经过最后一级组合。
-    assign group_i_last[0] = co_row_last;
-    assign group_i_last[1] = transpose_mode_eff;
-    assign group_i_last[2] = co_row[3:0] == vec_valid_num_row;
-    assign group_i_last[3] = co_row[8:4] == co_last_tile_row_q;
-    assign group_i_last[4] = co_selected_row_last;
-    assign group_i_one = 1'b1;
-    LUT6_2 #(.INIT(64'ha2808080a2808080)) u_group_last (
-        .I0(group_i_last[0]), .I1(group_i_last[1]), .I2(group_i_last[2]),
-        .I3(group_i_last[3]), .I4(group_i_last[4]), .I5(group_i_one),
-        .O5(unused_group_o5), .O6(co_group_last_result)
-    );
-  end else begin : g_group_last_generic
-    assign co_group_last_result = co_row_last &&
-        (transpose_mode_eff ? (co_row[3:0] == vec_valid_num_row)
-                            : (co_row[8:4] == co_last_tile_row_q &&
-                               co_selected_row_last));
-  end
+  // 行列结束条件并行比较，转置模式按有效行数选择组结束结果。
+  assign co_group_last_result = co_row_last &&
+      (transpose_mode_eff ? (co_row[3:0] == vec_valid_num_row)
+                          : (co_row[8:4] == co_last_tile_row_q && co_selected_row_last));
   wire co_finish = co_fire && co_group_last;
   wire [BANK_WIDTH-1:0] co_bank_after = BANK_WIDTH'((int'(read_bank) + int'(co_tiles)) % BANKS);
   wire co_load_waiting = coalesce_enable && co_active && !co_data_valid && bank_ready[co_current_bank];
@@ -271,6 +209,38 @@ module vec_s8_to_fifo_full #(
   wire finish_write_bank = in_valid && in_tile_done;
   wire [COUNT_WIDTH-1:0] write_rows_next =
       in_valid ? (COUNT_WIDTH'(write_ptr) + COUNT_WIDTH'(1)) : COUNT_WIDTH'(write_ptr);
+  assign co_selected_row_last = co_row_limit_q >= co_bank_count;
+  if (p_count_storage) begin : g_count_memory
+    // 计数只在银行完成写入时保存；有效位同时管理复位和银行释放。
+    // 两个异步读端口分别服务普通输出和合并输出，读取周期保持不变。
+    assign bank_count_i_wr_en = rst_n && finish_write_bank && !write_bank_blocked;
+    assign bank_count_i_wr_addr = write_bank;
+    assign bank_count_i_wr_data = write_rows_next;
+    assign bank_count_i_rd_addr[0] = read_bank;
+    assign bank_count_i_rd_addr[1] = co_current_bank;
+    assign read_bank_count = bank_ready[read_bank] ? bank_count_o_rd_data[0] : '0;
+    assign co_bank_count = bank_ready[co_current_bank] ? bank_count_o_rd_data[1] : '0;
+
+    regfile #(
+        .p_data_width(COUNT_WIDTH), .p_depth(BANKS), .p_addr_width(BANK_WIDTH),
+        .p_write_unit(COUNT_WIDTH), .p_read_ports(2), .p_sync_read(1'b0)
+    ) u_bank_count (
+        .clk(clk), .i_wr_en(bank_count_i_wr_en), .i_wr_addr(bank_count_i_wr_addr),
+        .i_wr_data(bank_count_i_wr_data), .i_wr_mask(1'b1),
+        .i_rd_en(2'b11), .i_rd_addr(bank_count_i_rd_addr), .o_rd_data(bank_count_o_rd_data)
+    );
+  end else begin : g_count_registers
+    logic [COUNT_WIDTH-1:0] bank_count [0:BANKS-1];
+    assign read_bank_count = bank_count[read_bank];
+    assign co_bank_count = bank_count[co_current_bank];
+    for (genvar bank=0; bank<BANKS; bank++) begin : g_bank
+      always_ff @(posedge clk) begin
+        if (!rst_n || bank_release[bank]) bank_count[bank] <= '0;
+        else if (bank_write_complete[bank]) bank_count[bank] <= write_rows_next;
+      end
+    end
+  end
+
   wire [COUNT_WIDTH-1:0] active_read_count = active_read_count_q;
   wire [COUNT_WIDTH-1:0] output_row_count =
       transpose_mode_tmp ? (COUNT_WIDTH'(vec_valid_num_row_tmp) + COUNT_WIDTH'(1))
@@ -278,7 +248,7 @@ module vec_s8_to_fifo_full #(
   wire [COUNT_WIDTH-1:0] output_col_count =
       transpose_mode_tmp ? active_read_count
                          : (COUNT_WIDTH'(vec_valid_num_col_tmp) + COUNT_WIDTH'(1));
-  wire read_bank_ready = bank_ready[read_bank] && (bank_count[read_bank] != '0);
+  wire read_bank_ready = bank_ready[read_bank] && (read_bank_count != '0);
   wire [COUNT_WIDTH-1:0] last_beat_idx_cur =
       (output_col_count == '0) ? '0 : ((output_col_count - COUNT_WIDTH'(1)) >> BYTE_SHIFT);
   wire output_fire = output_ready && output_valid;
@@ -350,31 +320,10 @@ module vec_s8_to_fifo_full #(
         assign write_rotation[column_group][0] = in_vec_s8[column_group*BUS_WIDTH+:BUS_WIDTH];
         for (genvar stage = 0; stage < BYTE_SHIFT; stage++) begin : g_rotation
           localparam int p_shift_bits = 8 * (1 << stage);
-          if (p_fpga_rotation) begin : g_paired_bits
-            for (genvar pair_index = 0; pair_index < BUS_WIDTH/2; pair_index++) begin : g_pair
-              logic [1:0] select_i_first, select_i_second;
-              logic select_i_control, select_i_one, select_o_lower, select_o_upper;
-              assign select_i_first = write_rotation[column_group][stage][2*pair_index+:2];
-              assign select_i_second = {
-                write_rotation[column_group][stage][(2*pair_index+1+BUS_WIDTH-p_shift_bits) % BUS_WIDTH],
-                write_rotation[column_group][stage][(2*pair_index+BUS_WIDTH-p_shift_bits) % BUS_WIDTH]};
-              assign select_i_control = write_ptr[stage];
-              assign select_i_one = 1'b1;
-              assign write_rotation[column_group][stage+1][2*pair_index] = select_o_lower;
-              assign write_rotation[column_group][stage+1][2*pair_index+1] = select_o_upper;
-              LUT6_2 #(.INIT(64'hff00f0f0ccccaaaa)) u_select (
-                .I0(select_i_first[0]), .I1(select_i_second[0]),
-                .I2(select_i_first[1]), .I3(select_i_second[1]),
-                .I4(select_i_control), .I5(select_i_one),
-                .O5(select_o_lower), .O6(select_o_upper)
-              );
-            end
-          end else begin : g_generic_bits
-            assign write_rotation[column_group][stage+1] = write_ptr[stage] ?
+          assign write_rotation[column_group][stage+1] = write_ptr[stage] ?
               {write_rotation[column_group][stage][BUS_WIDTH-p_shift_bits-1:0],
                write_rotation[column_group][stage][BUS_WIDTH-1:BUS_WIDTH-p_shift_bits]} :
               write_rotation[column_group][stage];
-          end
         end
       end
 
@@ -466,16 +415,15 @@ module vec_s8_to_fifo_full #(
         (((bank + BANKS - int'(read_bank)) % BANKS) < int'(co_tiles));
     assign stream_release = !coalesce_enable && output_fire && last_row_in_bank &&
         read_bank == BANK_WIDTH'(bank);
+    assign bank_write_complete[bank] = write_complete;
+    assign bank_release[bank] = group_release || stream_release;
     always_ff @(posedge clk) begin
       if (!rst_n) begin
         bank_ready[bank] <= 1'b0;
-        bank_count[bank] <= '0;
       end else if (group_release || stream_release) begin
         bank_ready[bank] <= 1'b0;
-        bank_count[bank] <= '0;
       end else if (write_complete) begin
         bank_ready[bank] <= 1'b1;
-        bank_count[bank] <= write_rows_next;
       end
     end
   end
@@ -536,7 +484,7 @@ module vec_s8_to_fifo_full #(
         data_valid    <= 1'b1;
         beat_idx      <= '0;
         read_ptr      <= '0;
-        active_read_count_q <= bank_count[read_bank];
+        active_read_count_q <= read_bank_count;
         vec_valid_num_col_tmp <= vec_valid_num_col;
         vec_valid_num_row_tmp <= vec_valid_num_row;
         transpose_mode_tmp <= transpose_mode_eff;
@@ -595,30 +543,9 @@ module vec_s8_to_fifo_full #(
     // 每个存储体先选择同一列组，再按行号恢复输出字节顺序。
     for (genvar stage = 0; stage < BYTE_SHIFT; stage++) begin : g_rotation
       localparam int p_shift_bits = 8 * (1 << stage);
-      if (p_fpga_rotation) begin : g_paired_bits
-        for (genvar pair_index = 0; pair_index < BUS_WIDTH/2; pair_index++) begin : g_pair
-          logic [1:0] select_i_first, select_i_second;
-          logic select_i_control, select_i_one, select_o_lower, select_o_upper;
-          assign select_i_first = read_rotation[stage][2*pair_index+:2];
-          assign select_i_second = {
-            read_rotation[stage][(2*pair_index+1+p_shift_bits) % BUS_WIDTH],
-            read_rotation[stage][(2*pair_index+p_shift_bits) % BUS_WIDTH]};
-          assign select_i_control = select_bank[stage];
-          assign select_i_one = 1'b1;
-          assign read_rotation[stage+1][2*pair_index] = select_o_lower;
-          assign read_rotation[stage+1][2*pair_index+1] = select_o_upper;
-          LUT6_2 #(.INIT(64'hff00f0f0ccccaaaa)) u_select (
-            .I0(select_i_first[0]), .I1(select_i_second[0]),
-            .I2(select_i_first[1]), .I3(select_i_second[1]),
-            .I4(select_i_control), .I5(select_i_one),
-            .O5(select_o_lower), .O6(select_o_upper)
-          );
-        end
-      end else begin : g_generic_bits
-        assign read_rotation[stage+1] = select_bank[stage] ?
+      assign read_rotation[stage+1] = select_bank[stage] ?
           {read_rotation[stage][p_shift_bits-1:0], read_rotation[stage][BUS_WIDTH-1:p_shift_bits]} :
           read_rotation[stage];
-      end
     end
   end
 
@@ -1017,7 +944,8 @@ endmodule
 module vec_s8_fifo_row_ram #(
     parameter int unsigned DATA_WIDTH = 128,
     parameter int unsigned DEPTH = 16,
-    parameter int unsigned ADDR_WIDTH = 4
+    parameter int unsigned ADDR_WIDTH = 4,
+    parameter string p_ram_style = "auto"
 ) (
     input  wire logic                  clk,
     input  wire logic                  wr_en,
@@ -1048,7 +976,10 @@ module vec_s8_fifo_row_ram #(
 `else
     logic storage_i_wr_mask;
     assign storage_i_wr_mask = 1'b1;
-    regfile #(.p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH), .p_write_unit(DATA_WIDTH)) u_storage (
+    regfile #(
+        .p_data_width(DATA_WIDTH), .p_depth(DEPTH), .p_addr_width(ADDR_WIDTH),
+        .p_write_unit(DATA_WIDTH), .p_ram_style(p_ram_style)
+    ) u_storage (
         .clk(clk), .i_wr_en(storage_i_wr_en), .i_wr_addr(storage_i_wr_addr),
         .i_wr_data(storage_i_wr_data), .i_wr_mask(storage_i_wr_mask),
         .i_rd_en(storage_i_rd_en), .i_rd_addr(storage_i_rd_addr), .o_rd_data(storage_o_rd_data)

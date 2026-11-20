@@ -68,7 +68,9 @@ module kernel_loader #(
     output logic signed [DATA_WIDTH-1:0] weight_out [SIZE],
     output logic                        weight_data_valid,
     // 后台状态独立于当前授予，供顶层在末级合并同周期中止。
-    output logic                        o_prefetch_quiescent
+    output logic                        o_prefetch_quiescent,
+    // 供任务接收在后台空闲条件下判断当前需求请求。
+    output logic                        o_admission_request
 );
 
   typedef enum logic [1:0] {TOP_IDLE, TOP_INIT, TOP_RUN} top_state_t;
@@ -155,6 +157,7 @@ module kernel_loader #(
   logic response_accept;
   logic load_idle_i_request, load_idle_i_granted, load_idle_i_quiescent;
   logic load_idle_o_start, load_idle_o_idle;
+  logic admission_o_request;
 
   always_comb begin
     ctrl_descriptor = '0;
@@ -287,8 +290,10 @@ module kernel_loader #(
       prefetch_valid_cols != 0 && prefetch_valid_cols <= REG_WIDTH'(SIZE);
   assign prefetch_capture = prefetch_candidate_valid && comparison_ready && !comparison_match_q;
   // 新候选等待比较时占用预取窗口，调度器只在处理结束后观察空闲。
+  // 有效候选已确定为空状态，稳定检查直接合并已保存的比较条件。
   assign prefetch_check_pending = prefetch_candidate_valid &&
-      (!comparison_ready || !comparison_match_q);
+      !(comparison_valid_q && comparison_from_candidate_q &&
+        candidate_equal_o_equal && comparison_match_q);
   // 请求和后台空闲条件提前并行准备，授予信号只参与最后一级接收与空闲选择。
   assign load_idle_i_request = load_weight_req;
   assign load_idle_i_granted = load_weight_granted;
@@ -296,6 +301,11 @@ module kernel_loader #(
       !prefetch_check_pending && !ext_dma_busy && response_slots_active == 0;
   assign prefetch_idle = load_idle_o_idle;
   assign o_prefetch_quiescent = load_idle_i_quiescent;
+  // 后台空闲已排除待发预取和在途传输；仅空状态的控制请求可能占用当前授予。
+  // 待发状态由同一空闲条件屏蔽，因此请求选择只需检查预取状态的高位。
+  assign admission_o_request = !prefetch_state[1] && !cache_flush && ctrl_load_req &&
+    (!command_mode_q || (buf_load_ready && !init_cfg));
+  assign o_admission_request = admission_o_request;
 
   kernel_request_idle u_load_idle (
       .i_request(load_idle_i_request), .i_granted(load_idle_i_granted),
@@ -584,16 +594,6 @@ module kernel_loader #(
     logic signed [DATA_WIDTH-1:0] rotated_data [BYTE_PER_BEAT];
     logic rotated_valid [BYTE_PER_BEAT];
     logic row_clear, row_finish;
-`ifdef SYNTHESIS
-`ifndef ASIC_SYNTHESIS
-    localparam bit p_fpga_row_pair = 1'b1;
-`else
-    localparam bit p_fpga_row_pair = 1'b0;
-`endif
-`else
-    localparam bit p_fpga_row_pair = 1'b0;
-`endif
-
     // 相隔一个总线通道组的列使用同一输入数据，只计算一组循环选择结果。
     assign row_clear = cache_flush || (managed_mode && transfer_discard);
     assign row_finish = beat_valid && last_ext_beat;
@@ -614,28 +614,11 @@ module kernel_loader #(
       assign column_update = beat_valid && column_in_beat && rotated_valid[column % BYTE_PER_BEAT] &&
         REG_WIDTH'(column) < ext_dma_valid_cols_r[ext_dma_wr_slot];
       assign column_logical = REG_WIDTH'(column) < ext_dma_logical_cols_r[ext_dma_wr_slot];
-      if (p_fpga_row_pair) begin : g_paired_output
-        // 两个结果共用一次数据选择，完成条件只影响累积结果。
-        for (genvar bit_index = 0; bit_index < DATA_WIDTH; bit_index++) begin : g_bit
-          logic [5:0] pair_i_bits;
-          logic pair_o_emit, pair_o_accumulate;
-          assign pair_i_bits = {row_finish, row_clear, column_logical, column_update,
-            rotated_data[column % BYTE_PER_BEAT][bit_index], row_acc[column][bit_index]};
-          assign row_emit_n[column][bit_index] = pair_o_emit;
-          assign row_acc_n[column][bit_index] = pair_o_accumulate;
-          LUT6_2 #(.INIT(64'h00000000c000ca0a)) u_pair (
-            .I0(pair_i_bits[0]), .I1(pair_i_bits[1]), .I2(pair_i_bits[2]),
-            .I3(pair_i_bits[3]), .I4(pair_i_bits[4]), .I5(pair_i_bits[5]),
-            .O5(pair_o_emit), .O6(pair_o_accumulate)
-          );
-        end
-      end else begin : g_generic_output
-        // 每列独立决定接收、填零或保留；最后一次传输同时清空累积状态。
-        assign row_emit_n[column] = column_update ?
-          (column_logical ? rotated_data[column % BYTE_PER_BEAT] : '0) :
-          (row_clear ? '0 : row_acc[column]);
-        assign row_acc_n[column] = row_finish ? '0 : row_emit_n[column];
-      end
+      // 每列独立选择接收、填零或保留；最后一次传输清空累积状态。
+      assign row_emit_n[column] = column_update ?
+        (column_logical ? rotated_data[column % BYTE_PER_BEAT] : '0) :
+        (row_clear ? '0 : row_acc[column]);
+      assign row_acc_n[column] = row_finish ? '0 : row_emit_n[column];
     end
   end else begin : g_general_rows
     // 通道数为其他整数时，逐项更新对应列并保留相同的覆盖顺序。
@@ -764,7 +747,7 @@ module kernel_loader #(
 
 endmodule
 
-// 同周期请求占用空闲状态，两个输出共用一个双输出 LUT。
+// 同周期请求参与空闲判断，开始事件和后台空闲条件并行计算。
 module kernel_request_idle #(
     parameter bit p_use_lut =
 `ifdef ASIC_SYNTHESIS
@@ -783,19 +766,11 @@ module kernel_request_idle #(
     output logic o_start,
     output logic o_idle
 );
-    if (p_use_lut) begin : g_fpga
-        LUT6_2 #(.INIT(64'h7070_7070_8888_8888)) u_select (
-            .I0(i_request), .I1(i_granted), .I2(i_quiescent),
-            .I3(1'b0), .I4(1'b0), .I5(1'b1),
-            .O5(o_start), .O6(o_idle)
-        );
-    end else begin : g_generic
-        assign o_start = i_request && i_granted;
-        assign o_idle = i_quiescent && !(i_request && i_granted);
-    end
+    assign o_start = i_request && i_granted;
+    assign o_idle = i_quiescent && !(i_request && i_granted);
 endmodule
 
-// 三位相等比较以六路组合树归并，完整候选字段使用四级 LUT。
+// 三位相等比较以六路组合树合并，完整候选字段按固定分组并行检查。
 module kernel_candidate_equal #(
     parameter int p_width = 160,
     parameter bit p_use_lut =
@@ -815,7 +790,8 @@ module kernel_candidate_equal #(
 );
     localparam int p_groups = (p_width + 2) / 3;
     localparam int p_levels = (p_groups <= 1) ? 0 : $clog2(p_groups);
-    logic [p_groups-1:0] level_equal [0:p_levels];
+    // 保留分组结果，限制字段相等比较的组合树高度。
+    (* keep = p_use_lut *) logic [p_groups-1:0] level_equal [0:p_levels];
 
     for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_leaf
         logic [2:0] current_bits, saved_bits;
@@ -823,16 +799,7 @@ module kernel_candidate_equal #(
 
         assign current_bits = 3'(i_current >> (3*group_index));
         assign saved_bits = 3'(i_saved >> (3*group_index));
-        if (p_use_lut) begin : g_fpga
-            LUT6 #(.INIT(64'h9009_0000_0000_9009)) u_equal (
-                .I0(current_bits[0]), .I1(saved_bits[0]),
-                .I2(current_bits[1]), .I3(saved_bits[1]),
-                .I4(current_bits[2]), .I5(saved_bits[2]),
-                .O(leaf_o_equal)
-            );
-        end else begin : g_generic
-            assign leaf_o_equal = current_bits == saved_bits;
-        end
+        assign leaf_o_equal = current_bits == saved_bits;
         assign level_equal[0][group_index] = leaf_o_equal;
     end
 
@@ -856,18 +823,7 @@ module kernel_candidate_equal #(
                         assign merge_i_equal[child] = 1'b1;
                     end
                 end
-                if (p_children == 1) begin : g_forward
-                    assign merge_o_equal = merge_i_equal[0];
-                end else if (p_use_lut) begin : g_fpga
-                    LUT6 #(.INIT(64'h8000_0000_0000_0000)) u_merge (
-                        .I0(merge_i_equal[0]), .I1(merge_i_equal[1]),
-                        .I2(merge_i_equal[2]), .I3(merge_i_equal[3]),
-                        .I4(merge_i_equal[4]), .I5(merge_i_equal[5]),
-                        .O(merge_o_equal)
-                    );
-                end else begin : g_generic
-                    assign merge_o_equal = &merge_i_equal;
-                end
+                assign merge_o_equal = &merge_i_equal;
                 assign level_equal[level][node] = merge_o_equal;
             end else begin : g_padding
                 assign level_equal[level][node] = 1'b1;

@@ -48,9 +48,16 @@ module ps_window_scheduler #(
     logic [ID_W:0] opened, target, cursor;
     logic [FRAME_COUNT-1:0] live;
     logic [TILE_W-1:0] frame_k [FRAME_COUNT];
-    logic [TILE_W-1:0] frame_column [FRAME_COUNT];
-    logic [ROW_PART_W-1:0] frame_row_part [FRAME_COUNT];
-    logic [ROW_COUNT_W-1:0] frame_rows [FRAME_COUNT];
+    localparam int p_metadata_width = TILE_W + ROW_PART_W + ROW_COUNT_W;
+    logic frame_metadata_i_wr_en, frame_metadata_i_wr_mask;
+    logic [ID_W-1:0] frame_metadata_i_wr_addr;
+    logic [p_metadata_width-1:0] frame_metadata_i_wr_data;
+    logic [1:0] frame_metadata_i_rd_en;
+    logic [1:0][ID_W-1:0] frame_metadata_i_rd_addr;
+    logic [1:0][p_metadata_width-1:0] frame_metadata_o_rd_data;
+    logic [TILE_W-1:0] selected_column, predicted_column;
+    logic [ROW_PART_W-1:0] selected_row_part;
+    logic [ROW_COUNT_W-1:0] selected_rows;
     logic protected_valid, resume_valid;
     logic [ID_W-1:0] protected_id, resume_id, active_id;
     logic active_init, active_final;
@@ -193,12 +200,12 @@ module ps_window_scheduler #(
             scanned_id = candidate_after_exists ? after_first_id : eligible_first_id;
         end
         candidate_row = candidate_init ? row_base + 32'(next_slice_offset) :
-            row_base + (32'(frame_row_part[candidate_id]) << SHIFT);
+            row_base + (32'(selected_row_part) << SHIFT);
         candidate_rows = candidate_init ? minimum(32'(cfg_slice_rows),
-            32'(next_slice_remaining)) : 32'(frame_rows[candidate_id]);
+            32'(next_slice_remaining)) : 32'(selected_rows);
         candidate_q = candidate_init ? 32'd0 : (32'(frame_k[candidate_id]) << SHIFT);
         candidate_column = candidate_init ? (32'(next_column_tile) << SHIFT) :
-            (32'(frame_column[candidate_id]) << SHIFT);
+            (32'(selected_column) << SHIFT);
         candidate_final = candidate_q == final_q0;
         candidate_cols = candidate_column == final_column0 ? final_column_count : (SHIFT+1)'(SIZE);
         candidate_k = candidate_final ? final_k_count : (SHIFT+1)'(SIZE);
@@ -317,7 +324,7 @@ module ps_window_scheduler #(
                     32'(frame_k[prediction_frame_q]) << SHIFT) : prediction_q_direct_s1;
             prediction_column_s1 <= prediction_reads_frame_q ?
                 (prediction_is_active_q ? active_column :
-                    32'(frame_column[prediction_frame_q]) << SHIFT) : prediction_column_direct_s1;
+                    32'(predicted_column) << SHIFT) : prediction_column_direct_s1;
         end
         if (prediction_valid[2]) begin
             lookahead_q0 <= prediction_q_s1;
@@ -343,6 +350,30 @@ module ps_window_scheduler #(
             selected_init_q <= phase == OPENING;
         end
     end
+
+    // 候选帧和预测帧在保存索引的同一边沿读取元数据，后续计算直接使用同步结果。
+    assign frame_metadata_i_wr_en = command_active && command_complete && active_init;
+    assign frame_metadata_i_wr_addr = active_id;
+    assign frame_metadata_i_wr_mask = 1'b1;
+    assign frame_metadata_i_wr_data = {TILE_W'(active_column >> SHIFT),
+        ROW_PART_W'((active_row - row_base) >> SHIFT), ROW_COUNT_W'(active_rows)};
+    assign frame_metadata_i_rd_en[0] = !command_active && !selected_id_valid && candidate_found;
+    assign frame_metadata_i_rd_en[1] = prediction_valid[0];
+    assign frame_metadata_i_rd_addr[0] = scanned_id;
+    assign frame_metadata_i_rd_addr[1] = prediction_frame;
+    assign {selected_column, selected_row_part, selected_rows} = frame_metadata_o_rd_data[0];
+    assign predicted_column = frame_metadata_o_rd_data[1][p_metadata_width-1 -: TILE_W];
+
+    regfile #(
+        .p_data_width(p_metadata_width), .p_depth(FRAME_COUNT), .p_addr_width(ID_W),
+        .p_write_unit(p_metadata_width), .p_read_ports(2), .p_sync_read(1'b1),
+        .p_ram_style("block")
+    ) u_frame_metadata (
+        .clk(clk), .i_wr_en(frame_metadata_i_wr_en), .i_wr_addr(frame_metadata_i_wr_addr),
+        .i_wr_data(frame_metadata_i_wr_data), .i_wr_mask(frame_metadata_i_wr_mask),
+        .i_rd_en(frame_metadata_i_rd_en), .i_rd_addr(frame_metadata_i_rd_addr),
+        .o_rd_data(frame_metadata_o_rd_data)
+    );
 
     always_ff @(posedge clk) begin
         next_part_is_last <= next_row_part + (ROW_PART_W+1)'(1) == group_parts;
@@ -490,11 +521,6 @@ module ps_window_scheduler #(
     always_ff @(posedge clk) begin
         if (command_active && command_complete) begin
             frame_k[active_id] <= active_init ? TILE_W'(1) : frame_k[active_id] + 1'b1;
-            if (active_init) begin
-                frame_column[active_id] <= TILE_W'(active_column >> SHIFT);
-                frame_row_part[active_id] <= ROW_PART_W'((active_row - row_base) >> SHIFT);
-                frame_rows[active_id] <= ROW_COUNT_W'(active_rows);
-            end
         end
     end
 
@@ -528,7 +554,6 @@ module ps_scheduler_any #(
 );
     localparam int p_groups = (p_width + 5) / 6;
     localparam int p_levels = $clog2(p_groups) + 1;
-    localparam logic [63:0] p_any_init = 64'hffff_ffff_ffff_fffe;
 
     for (genvar level = 0; level <= p_levels; level++) begin : g_level
         localparam int p_span = 6 ** level;
@@ -554,16 +579,7 @@ module ps_scheduler_any #(
                         assign any_i_value[child] = 1'b0;
                     end
                 end
-                if (p_use_lut) begin : g_lut
-                    LUT6 #(.INIT(p_any_init)) u_any (
-                        .I0(any_i_value[0]), .I1(any_i_value[1]),
-                        .I2(any_i_value[2]), .I3(any_i_value[3]),
-                        .I4(any_i_value[4]), .I5(any_i_value[5]),
-                        .O(any_o_value)
-                    );
-                end else begin : g_logic
-                    assign any_o_value = |any_i_value;
-                end
+                assign any_o_value = |any_i_value;
                 assign any_set = any_o_value;
             end else begin : g_unused
                 assign any_set = 1'b0;

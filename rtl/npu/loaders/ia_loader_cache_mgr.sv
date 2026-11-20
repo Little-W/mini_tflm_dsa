@@ -14,6 +14,10 @@ module ia_loader_cache_mgr #(
     parameter bit EXTERNAL_RAM = 1'b0,
     parameter int unsigned RAM_WORD_ADDR_WIDTH = 10,
     parameter int unsigned p_compact_offset_width = DATA_WIDTH,
+    // 生产 DMA 的 S8 起点按八列排列，S16 每次最多提供四个有效通道。
+    parameter bit p_dma_source_layout = 1'b0,
+    // 在写命令寄存级提前选择第二个物理存储块的数据。
+    parameter bit p_shared_write_stage = 1'b0,
     localparam int unsigned SLOT_BLOCKS =
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS
 ) (
@@ -28,6 +32,7 @@ module ia_loader_cache_mgr #(
     output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1],
     output logic [127:0] ram_port_wr_data [0:1],
     output logic [15:0] ram_port_wr_mask [0:1],
+    output logic [127:0] ram_shared_wr_data,
     output logic [1:0] ram_port_rd_en,
     output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1],
     input  logic [127:0] ram_port_rd_data [0:1] = '{default:'0},
@@ -87,22 +92,50 @@ module ia_loader_cache_mgr #(
 
   // 偏移有效位宽由调用者给出，默认保留完整输入位宽。
   // 有符号字节与偏移先在足够的结果位宽中相加，再扩展为阵列数据位宽。
-  for (genvar lane = 0; lane < SIZE; lane++) begin : g_compact_read
-    localparam int unsigned p_sum_width =
-        ((p_compact_offset_width > 8) ? p_compact_offset_width : 8) + 1;
-    logic signed [p_sum_width:0] byte_extended;
-    logic signed [p_sum_width:0] offset_extended;
-    logic signed [p_sum_width-1:0] restored_sum;
-    logic unused_restore_carry;
+  localparam int unsigned p_restore_width =
+      ((p_compact_offset_width > 8) ? p_compact_offset_width : 8) + 1;
+  if (p_restore_width <= 12) begin : g_compact_read_packed
+    logic restore_i_zero, restore_i_one;
+    assign restore_i_zero = 1'b0;
+    assign restore_i_one = 1'b1;
+    for (genvar group_index = 0; group_index < (SIZE+3)/4; group_index++) begin : g_group
+      logic signed [47:0] packed_lhs, packed_rhs, packed_sum;
 
-    assign byte_extended = (p_sum_width + 1)'($signed(compact_read_byte[lane]));
-    assign offset_extended =
-        (p_sum_width + 1)'($signed(compact_offset[p_compact_offset_width-1:0]));
-    assign {unused_restore_carry, restored_sum} = byte_extended + offset_extended;
-    assign compact_read_data[lane] = DATA_WIDTH'($signed(restored_sum));
+      // 四个字节独立恢复有符号值，每个 12 位通道保留完整和及符号。
+      for (genvar group_lane = 0; group_lane < 4; group_lane++) begin : g_lane
+        localparam int p_lane = 4 * group_index + group_lane;
+        if (p_lane < SIZE) begin : g_data
+          assign packed_lhs[group_lane*12 +: 12] = 12'($signed(compact_read_byte[p_lane]));
+          assign packed_rhs[group_lane*12 +: 12] =
+              12'($signed(compact_offset[p_compact_offset_width-1:0]));
+          assign compact_read_data[p_lane] =
+              DATA_WIDTH'($signed(packed_sum[group_lane*12 +: p_restore_width]));
+        end else begin : g_padding
+          assign packed_lhs[group_lane*12 +: 12] = '0;
+          assign packed_rhs[group_lane*12 +: 12] = '0;
+        end
+      end
+      select_add #(.p_width(48), .p_split_12bit(1'b1)) u_restore (
+        .i_lhs(packed_lhs), .i_rhs0(packed_rhs), .i_rhs1(packed_rhs),
+        .i_rhs_select(restore_i_zero), .i_add_enable(restore_i_one), .o_sum(packed_sum)
+      );
+    end
+  end else begin : g_compact_read_wide
+    for (genvar lane = 0; lane < SIZE; lane++) begin : g_lane
+      logic signed [p_restore_width:0] byte_extended, offset_extended;
+      logic signed [p_restore_width-1:0] restored_sum;
+      logic unused_restore_carry;
+
+      assign byte_extended = (p_restore_width + 1)'($signed(compact_read_byte[lane]));
+      assign offset_extended =
+          (p_restore_width + 1)'($signed(compact_offset[p_compact_offset_width-1:0]));
+      assign {unused_restore_carry, restored_sum} = byte_extended + offset_extended;
+      assign compact_read_data[lane] = DATA_WIDTH'($signed(restored_sum));
+    end
   end
 
   generate if (!EXTERNAL_RAM) begin : g_local_ram
+    assign ram_shared_wr_data = '0;
     assign ram_port_wr_en = '0;
     assign ram_port_rd_en = '0;
     assign ram_port_wr_addr = '{default:'0};
@@ -143,41 +176,69 @@ module ia_loader_cache_mgr #(
       end
     end
   end else begin : g_external_ram
+    localparam int p_compact_lanes = (BYTE_PER_BEAT < SIZE) ? BYTE_PER_BEAT : SIZE;
+    localparam int p_compact_groups = (p_compact_lanes + 3) / 4;
     logic [1:0] write_en;
     logic [RAM_WORD_ADDR_WIDTH-1:0] write_addr [0:1];
     logic [127:0] write_data [0:1];
     logic [15:0] write_mask [0:1];
     logic [7:0] compact_empty_byte;
-    logic [SIZE*8-1:0] compact_source_data, compact_shifted_data;
+    logic [SIZE*8-1:0] compact_source_bytes, compact_shifted_bytes;
+    logic [7:0] compact_input_byte [p_compact_lanes];
     logic [7:0] compact_write_byte [SIZE];
     logic compact_add_i_zero, compact_add_i_one;
 
-    // 紧凑字节先完成偏移运算，再由有效位和列位置选择。
-    // 异或编码使移位补入的零恢复为零数据对应的紧凑字节。
+    // 紧凑字节先完成偏移运算，再按列位置排列。
+    // 排列后的写掩码选择数据字节或零数据对应的紧凑字节。
     assign compact_empty_byte = 8'(0 - compact_offset);
     assign compact_add_i_zero = 1'b0;
     assign compact_add_i_one = 1'b1;
+    for (genvar group_index = 0; group_index < p_compact_groups; group_index++) begin : g_compact_add
+      logic signed [47:0] packed_lhs, packed_rhs, packed_sum;
+
+      // 每个字节零扩展到独立的 12 位通道，低八位保持模 256 运算。
+      // DSP 的分段进位与通用表达式均隔离各通道的数据和未知位传播。
+      for (genvar group_lane = 0; group_lane < 4; group_lane++) begin : g_lane
+        localparam int p_lane = 4 * group_index + group_lane;
+        if (p_lane < p_compact_lanes) begin : g_input
+          assign packed_lhs[group_lane*12 +: 12] = {4'd0, 8'(wr_data[p_lane])};
+          assign packed_rhs[group_lane*12 +: 12] = {4'd0, compact_empty_byte};
+          assign compact_input_byte[p_lane] = packed_sum[group_lane*12 +: 8];
+        end else begin : g_padding
+          assign packed_lhs[group_lane*12 +: 12] = '0;
+          assign packed_rhs[group_lane*12 +: 12] = '0;
+        end
+      end
+      select_add #(.p_width(48), .p_split_12bit(1'b1)) u_compact_add (
+        .i_lhs(packed_lhs), .i_rhs0(packed_rhs), .i_rhs1(packed_rhs),
+        .i_rhs_select(compact_add_i_zero), .i_add_enable(compact_add_i_one), .o_sum(packed_sum)
+      );
+    end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_compact_write
       if (lane < BYTE_PER_BEAT) begin : g_source
-        logic signed [7:0] compact_add_i_lhs;
-        logic [7:0] original_byte;
-
-        // 偏移的模 256 相反数提前生成，组合加法保持完整输入的低八位差值。
-        assign compact_add_i_lhs = 8'(wr_data[lane]);
-        select_add #(.p_width(8)) u_compact_add (
-          .i_lhs(compact_add_i_lhs),
-          .i_rhs0(compact_empty_byte), .i_rhs1(compact_empty_byte),
-          .i_rhs_select(compact_add_i_zero), .i_add_enable(compact_add_i_one),
-          .o_sum(original_byte)
-        );
-        assign compact_source_data[lane*8 +: 8] = wr_valid[lane] ?
-            original_byte ^ compact_empty_byte : 8'd0;
+        assign compact_source_bytes[lane*8 +: 8] = compact_input_byte[lane];
       end else begin : g_unused_source
-        assign compact_source_data[lane*8 +: 8] = 8'd0;
+        assign compact_source_bytes[lane*8 +: 8] = 8'd0;
       end
-      assign compact_write_byte[lane] = compact_shifted_data[lane*8 +: 8] ^ compact_empty_byte;
+      assign compact_write_byte[lane] = ram_wr_en[lane] ?
+          compact_shifted_bytes[lane*8 +: 8] : compact_empty_byte;
     end
-    assign compact_shifted_data = compact_source_data << (int'(wr_col_base) * 8);
+    if (p_dma_source_layout && SIZE == 16 && DATA_WIDTH == 16 && BUS_WIDTH == 64) begin : g_dma_compact_layout
+      logic [87:0] compact_group_low, compact_group_data;
+
+      // S16 的四个输入字节先在八列范围内移动，最高位置为第十列。
+      // S8 的后四个字节占据第四至第七列，再统一选择整行的前后八列。
+      assign compact_group_low =
+          88'(compact_source_bytes[31:0]) << (int'(wr_col_base[2:0]) * 8);
+      assign compact_group_data[31:0] = compact_group_low[31:0];
+      assign compact_group_data[63:32] = (|wr_col_base[2:0]) ?
+          compact_group_low[63:32] : compact_source_bytes[63:32];
+      assign compact_group_data[87:64] = compact_group_low[87:64];
+      assign compact_shifted_bytes =
+          128'(compact_group_data) << (int'(wr_col_base[3]) * 64);
+    end else begin : g_general_compact_layout
+      assign compact_shifted_bytes = compact_source_bytes << (int'(wr_col_base) * 8);
+    end
     // 写命令在同一时钟沿保存地址、数据与掩码，未写入的端口保持原命令。
     always_ff @(posedge clk) begin
       if(!rst_n) ram_port_wr_en<='0;
@@ -189,6 +250,18 @@ module ia_loader_cache_mgr #(
           ram_port_wr_mask[port_index]<=write_mask[port_index];
         end
       end
+    end
+
+    if (p_shared_write_stage && SIZE == 16 && DATA_WIDTH == 16) begin : g_shared_write_stage
+      // 宽数据的第二端口位于奇数物理字；紧凑数据只使用第一端口。
+      // 两种写命令均在原有边沿保存预选数据，使共享块只需选择 IA 或部分和。
+      always_ff @(posedge clk) begin
+        if (|write_en) begin
+          ram_shared_wr_data <= write_en[1] ? write_data[1] : write_data[0];
+        end
+      end
+    end else begin : g_general_write_stage
+      assign ram_shared_wr_data = '0;
     end
 
     wire [RAM_WORD_ADDR_WIDTH-1:0] write_row_word =
@@ -272,7 +345,22 @@ module ia_loader_cache_mgr #(
       assign write_source_mask[lane] = 1'b0;
     end
   end
-  assign write_shifted_data = write_source_data << (int'(wr_col_base) * DATA_WIDTH);
+  if (p_dma_source_layout && SIZE == 16 && DATA_WIDTH == 16 && BUS_WIDTH == 64) begin : g_dma_write_layout
+    logic [175:0] write_group_low, write_group_data;
+
+    // S16 只移动前四个有效通道；S8 的后四个通道直接放入同组高半部。
+    // 局部列偏移与跨八列偏移分别处理，越过第十五列的数据自然移出。
+    assign write_group_low =
+        176'(write_source_data[63:0]) << (int'(wr_col_base[2:0]) * 16);
+    assign write_group_data[63:0] = write_group_low[63:0];
+    assign write_group_data[127:64] = (|wr_col_base[2:0]) ?
+        write_group_low[127:64] : write_source_data[127:64];
+    assign write_group_data[175:128] = write_group_low[175:128];
+    assign write_shifted_data =
+        256'(write_group_data) << (int'(wr_col_base[3]) * 128);
+  end else begin : g_general_write_layout
+    assign write_shifted_data = write_source_data << (int'(wr_col_base) * DATA_WIDTH);
+  end
   assign write_shifted_mask = write_source_mask << wr_col_base;
   for (genvar col = 0; col < SIZE; col++) begin : g_write_select
     assign ram_wr_en[col] = write_shifted_mask[col];
@@ -288,7 +376,7 @@ module ia_loader_cache_mgr #(
   //
   localparam int SLOT_W = (SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS);
   localparam int ROW_CNT_W = $clog2(SIZE + 1);
-  logic [ROW_CNT_W-1:0] slot_written_cols [SLOT_BLOCKS];
+  (* ram_style = "block" *) logic [ROW_CNT_W-1:0] slot_written_cols [SLOT_BLOCKS];
   logic [ROW_CNT_W-1:0] write_extent, read_extent_q;
   logic any_lane_write;
   logic [SIZE-1:0] write_last_column;
@@ -452,7 +540,8 @@ module ia_loader_cache_mgr #(
             // 切到下一个 tile（下一拍若 valid 则立刻发射）
             issue_slot_r    <= next_issue_slot;
             issue_row_idx_r <= '0;
-            issue_rows_r    <= ROW_CNT_W'(slot_rows[(next_issue_slot - slot_base) & slot_mask]);
+            // 发射期间 next_issue_slot_now 与 next_issue_slot 相同，复用行数选择结果。
+            issue_rows_r    <= slot_rows_next_now;
             issue_gap_cnt   <= GAP_CNT_W'(ISSUE_GAP_CYCLES);
           end
         end else begin

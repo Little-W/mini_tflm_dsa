@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Ordered window descriptors share one image frontend. Each accepted tag owns
-// its destination until the final response is consumed.
+// 窗口描述符按接收顺序共用图像前端，标签保持所属目标直至末次响应完成。
+`default_nettype none
 module conv_window_queue #(
   parameter int DEPTH=4,
   parameter int TAG_W=2,
@@ -31,11 +31,17 @@ module conv_window_queue #(
   input logic signed [15:0] frontend_rsp_data[4],
   input logic [3:0] frontend_rsp_mask,
   input logic frontend_rsp_last,frontend_error);
-  logic [31:0] p0[DEPTH],q0[DEPTH],cols[DEPTH];
+  logic descriptor_i_wr_en;
+  logic [PTR_W-1:0] descriptor_i_wr_addr;
+  logic [2:0][31:0] descriptor_i_wr_data;
+  logic [0:0] descriptor_i_wr_mask, descriptor_i_rd_en;
+  logic [0:0][PTR_W-1:0] descriptor_i_rd_addr;
+  logic [2:0][0:0][31:0] descriptor_o_rd_data;
   logic cols_valid[DEPTH];
   logic [TAG_W-1:0] tags[DEPTH];
   logic [PTR_W-1:0] head,tail,present;
   logic [COUNT_W-1:0] count,next_count;
+  logic count_increment, count_decrement, next_busy;
   logic active,failed,accept,retire,launch,response_fire;
   logic descriptor_available,descriptor_prepared;
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
@@ -48,7 +54,7 @@ module conv_window_queue #(
     end else if (configure) begin
       busy <= 1'b0;
     end else begin
-      busy <= next_count != COUNT_W'(0);
+      busy <= next_busy;
     end
   end
   assign frontend_active=active;
@@ -79,20 +85,48 @@ module conv_window_queue #(
     else if (configure) descriptor_prepared<=1'b0;
     else descriptor_prepared<=descriptor_available && !launch;
   end
-  always_ff @(posedge clk) begin
-    if (descriptor_available) begin
-      frontend_p0<=p0[present];
-      frontend_q0<=q0[present];
-      frontend_cols<=cols[present];
-      frontend_cols_valid<=cols_valid[present];
-    end
+  // 三个描述符字段共用接收和读取事件，同步读端口保存当前准备项。
+  assign descriptor_i_wr_en = rst_n && accept;
+  assign descriptor_i_wr_addr = tail;
+  assign descriptor_i_wr_data[0] = req_p0;
+  assign descriptor_i_wr_data[1] = req_q0;
+  assign descriptor_i_wr_data[2] = req_cols;
+  assign descriptor_i_wr_mask = 1'b1;
+  assign descriptor_i_rd_en = descriptor_available;
+  assign descriptor_i_rd_addr[0] = present;
+  for (genvar field_index = 0; field_index < 3; field_index++) begin : g_descriptor
+    regfile #(
+      .p_data_width(32), .p_depth(DEPTH), .p_addr_width(PTR_W),
+      .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b1), .p_ram_style("block")
+    ) u_value (
+      .clk(clk), .i_wr_en(descriptor_i_wr_en), .i_wr_addr(descriptor_i_wr_addr),
+      .i_wr_data(descriptor_i_wr_data[field_index]), .i_wr_mask(descriptor_i_wr_mask),
+      .i_rd_en(descriptor_i_rd_en), .i_rd_addr(descriptor_i_rd_addr),
+      .o_rd_data(descriptor_o_rd_data[field_index])
+    );
   end
+  assign frontend_p0 = descriptor_o_rd_data[0][0];
+  assign frontend_q0 = descriptor_o_rd_data[1][0];
+  assign frontend_cols = descriptor_o_rd_data[2][0];
+  always_ff @(posedge clk) begin
+    if (descriptor_available) frontend_cols_valid <= cols_valid[present];
+  end
+  // 加一与减一的传播条件直接取自当前计数，各结果位并行更新。
+  assign count_increment = accept && !retire;
+  assign count_decrement = retire && !accept;
+  assign next_count[0] = count[0] ^ (accept ^ retire);
+  for (genvar bit_index = 1; bit_index < COUNT_W; bit_index++) begin : g_count_bit
+    assign next_count[bit_index] = count[bit_index] ^
+      ((count_increment && (&count[bit_index-1:0])) ||
+       (count_decrement && !(|count[bit_index-1:0])));
+  end
+  // 非空结果使用当前计数的边界标志，与计数数据的翻转并行计算。
   always_comb begin
-    next_count=count;
+    next_busy = |count;
     case ({accept,retire})
-      2'b10:next_count=count+1'b1;
-      2'b01:next_count=count-1'b1;
-      default:;
+      2'b10: next_busy = !(&count);
+      2'b01: next_busy = count != COUNT_W'(1);
+      default: ;
     endcase
   end
   always_ff @(posedge clk or negedge rst_n) begin
@@ -106,7 +140,7 @@ module conv_window_queue #(
       count<=next_count;
 
       if (accept) begin
-        p0[tail]<=req_p0;q0[tail]<=req_q0;cols[tail]<=req_cols;tags[tail]<=req_tag;
+        tags[tail]<=req_tag;
         // 列范围在请求接收时计算，与对应描述符占用同一个队列位置。
         cols_valid[tail]<=req_cols>0 && req_cols<=32'(p_max_cols);
         tail<=increment(tail);
@@ -128,3 +162,5 @@ module conv_window_queue #(
   end
 `endif
 endmodule
+
+`default_nettype wire

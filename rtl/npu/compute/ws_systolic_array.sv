@@ -48,18 +48,7 @@ module ws_systolic_array #(
 
     generate
         for (genvar column=0; column<SIZE; column++) begin : gen_store_weight_buf
-`ifdef SYNTHESIS
-`ifndef ASIC_SYNTHESIS
-            (* DONT_TOUCH = "TRUE" *)
-            LUT1 #(.INIT(2'b10)) u_store_weight_buf (
-                .I0(store_weight_req), .O(store_weight_req_col[column])
-            );
-`else
             assign store_weight_req_col[column] = store_weight_req;
-`endif
-`else
-            assign store_weight_req_col[column] = store_weight_req;
-`endif
         end
         for (genvar row=0; row<SIZE; row++) begin : gen_row
             wire incoming_weight_select;

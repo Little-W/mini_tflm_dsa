@@ -35,15 +35,6 @@ module conv_axi_read_mux #(
 );
     logic active, owner, hold_grant, held_owner, prefer_b;
     logic select_b, retire, address_slot;
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_response_ready = 1'b0;
-`elsif XILINX_FPGA
-    localparam bit p_fpga_response_ready = 1'b1;
-`elsif SYNTHESIS
-    localparam bit p_fpga_response_ready = 1'b1;
-`else
-    localparam bit p_fpga_response_ready = 1'b0;
-`endif
     assign retire = active && m_rvalid && (owner ? b_rready : a_rready) && m_rlast;
     assign address_slot = !active || retire;
     assign select_b = hold_grant ? held_owner :
@@ -51,22 +42,8 @@ module conv_axi_read_mux #(
     // Clients report their pending work separately. This status describes the
     // transactions and stalled address grants retained inside the arbiter.
     assign idle = !active && !hold_grant;
-    // 当前模式、响应所有者和两路就绪并行选择，迟到的就绪输入只经过一级查找表。
-    if (p_fpga_response_ready) begin : g_fpga_response_ready
-        logic [4:0] response_i_value;
-        logic response_i_zero;
-        logic unused_response_ready;
-
-        assign response_i_value = {enable, active, owner, b_rready, a_rready};
-        assign response_i_zero = 1'b0;
-        LUT6_2 #(.INIT(64'hca00_aaaa_ca00_aaaa)) u_response_ready (
-            .I0(response_i_value[0]), .I1(response_i_value[1]), .I2(response_i_value[2]),
-            .I3(response_i_value[3]), .I4(response_i_value[4]), .I5(response_i_zero),
-            .O5(m_rready), .O6(unused_response_ready)
-        );
-    end else begin : g_generic_response_ready
-        assign m_rready = !enable ? a_rready : active && (owner ? b_rready : a_rready);
-    end
+    // 当前模式和响应来源决定返回通道，保持直通模式的就绪传播。
+    assign m_rready = !enable ? a_rready : active && (owner ? b_rready : a_rready);
     always_comb begin
         a_arready = 1'b0; b_arready = 1'b0;
         a_rvalid = 1'b0; b_rvalid = 1'b0;

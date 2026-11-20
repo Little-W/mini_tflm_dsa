@@ -20,7 +20,11 @@ module ia_loader #(
     parameter int unsigned RAM_WORD_ADDR_WIDTH = 10,
     localparam int unsigned SLOT_BLOCKS =
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS,
-    parameter int unsigned PS_FRAME_COUNT = SIZE
+    parameter int unsigned PS_FRAME_COUNT = SIZE,
+    // 使用生产 DMA 的 S8 列排列和 S16 有效通道范围。
+    parameter bit p_dma_source_layout = 1'b0,
+    // 共享块写数据与原写命令在同一寄存级产生。
+    parameter bit p_shared_write_stage = 1'b0
 ) (
     input logic clk,
     input logic rst_n,
@@ -93,6 +97,7 @@ module ia_loader #(
     output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_wr_addr [0:1],
     output logic [127:0] ram_port_wr_data [0:1],
     output logic [15:0] ram_port_wr_mask [0:1],
+    output logic [127:0] ram_shared_wr_data,
     output logic [1:0] ram_port_rd_en,
     output logic [RAM_WORD_ADDR_WIDTH-1:0] ram_port_rd_addr [0:1],
     input  logic [127:0] ram_port_rd_data [0:1] = '{default:'0},
@@ -445,8 +450,8 @@ module ia_loader #(
         else if (init_cfg) im2col_q <= cfg_im2col;
     end
 
-    // Tags describe every stored value, including K-tail zeroes. Image
-    // geometry is held for the job and invalidated by cache_flush.
+    // 标签覆盖缓存中的全部数据及 K 维尾部补零，图像参数在当前任务内保持。
+    // cache_flush 统一清除有效位，数据阵列保持原有内容。
     localparam int unsigned ORDERED_TAG_W = 2 * (REG_WIDTH - LOG2_SIZE) + $clog2(SIZE + 1);
     localparam int unsigned CACHE_TAG_W = ORDERED_JOB ? ORDERED_TAG_W :
         8 * REG_WIDTH + DATA_WIDTH + 12;
@@ -477,7 +482,8 @@ module ia_loader #(
     logic [CACHE_SLOT_W-1:0] request_slot;
     dma_descriptor_t demand_descriptor, request_descriptor, dma_descriptor;
     dma_descriptor_t prefetch_descriptor, prefetch_dma_descriptor;
-    logic [CACHE_TAG_W-1:0] cache_tags [SLOT_BLOCKS];
+    // 两个同步读取端口使用块存储，写入完成周期由有效位屏蔽同址查询。
+    (* ram_style = "block" *) logic [CACHE_TAG_W-1:0] cache_tags [SLOT_BLOCKS];
     logic [SLOT_BLOCKS-1:0] cache_tags_valid;
     logic [CACHE_TAG_W-1:0] fill_tag;
     logic [CACHE_SLOT_W-1:0] fill_slot;
@@ -568,16 +574,6 @@ module ia_loader #(
     if (ORDERED_JOB) begin : g_ordered_request_match
         localparam int unsigned p_coord_width = REG_WIDTH - LOG2_SIZE;
         localparam int unsigned p_rows_width = $clog2(SIZE + 1);
-        localparam bit p_match_use_lut =
-`ifdef ASIC_SYNTHESIS
-            1'b0;
-`elsif XILINX_FPGA
-            1'b1;
-`elsif SYNTHESIS
-            1'b1;
-`else
-            1'b0;
-`endif
         logic [REG_WIDTH-1:0] request_p0_equal_i_a_full, request_p0_equal_i_b_full;
         logic [REG_WIDTH-1:0] request_q0_equal_i_a_full, request_q0_equal_i_b_full;
         logic [p_coord_width-1:0] request_p0_equal_i_target;
@@ -592,104 +588,30 @@ module ia_loader #(
         assign request_p0_equal_i_target = request_lookup_q[CACHE_TAG_W-1 -: p_coord_width];
         assign request_q0_equal_i_target = request_lookup_q[p_rows_width +: p_coord_width];
         ia_ordered_coordinate_equal #(
-            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE), .p_use_lut(p_match_use_lut)
+            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
         ) u_request_p0_equal (
             .i_a(request_p0_equal_i_a_full), .i_b(request_p0_equal_i_b_full),
             .i_target(request_p0_equal_i_target),
             .o_equal(request_p0_equal_o_equal)
         );
         ia_ordered_coordinate_equal #(
-            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE), .p_use_lut(p_match_use_lut)
+            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
         ) u_request_q0_equal (
             .i_a(request_q0_equal_i_a_full), .i_b(request_q0_equal_i_b_full),
             .i_target(request_q0_equal_i_target),
             .o_equal(request_q0_equal_o_equal)
         );
-        localparam int unsigned p_rows_groups = (p_rows_width + 2) / 3;
-        localparam int unsigned p_slot_groups = (CACHE_SLOT_W + 2) / 3;
-        localparam int unsigned p_filter_groups = p_rows_groups + p_slot_groups;
         logic request_rows_match;
+        logic request_slot_match;
+        logic request_filter_ready;
 
-        assign request_lookup_match = request_p0_equal_o_equal &&
-            request_q0_equal_o_equal && request_rows_match;
-
-        // 行数、槽位与有效标志先独立完成比较，坐标等式仅进入末级选择。
-        if (p_match_use_lut && (p_filter_groups <= 5)) begin : g_fpga_lookup_ready
-            logic [p_rows_groups-1:0] rows_equal;
-            logic [p_slot_groups-1:0] slot_equal;
-            logic [5:0] filter_i_value;
-            logic filter_o_ready;
-            logic [2:0] ready_i_value;
-
-            for (genvar group_index = 0; group_index < p_rows_groups; group_index++) begin : g_rows
-                logic [5:0] equal_i_value;
-                logic equal_o_value;
-                for (genvar pair_index = 0; pair_index < 3; pair_index++) begin : g_pair
-                    localparam int unsigned p_bit = group_index * 3 + pair_index;
-                    if (p_bit < p_rows_width) begin : g_used
-                        assign equal_i_value[pair_index*2] = request_lookup_q[p_bit];
-                        assign equal_i_value[pair_index*2+1] = request_rows[p_bit];
-                    end else begin : g_padding
-                        assign equal_i_value[pair_index*2 +: 2] = 2'b00;
-                    end
-                end
-                LUT6 #(.INIT(64'h9009_0000_0000_9009)) u_equal (
-                    .I0(equal_i_value[0]), .I1(equal_i_value[1]),
-                    .I2(equal_i_value[2]), .I3(equal_i_value[3]),
-                    .I4(equal_i_value[4]), .I5(equal_i_value[5]),
-                    .O(equal_o_value)
-                );
-                assign rows_equal[group_index] = equal_o_value;
-            end
-            for (genvar group_index = 0; group_index < p_slot_groups; group_index++) begin : g_slot
-                logic [5:0] equal_i_value;
-                logic equal_o_value;
-                for (genvar pair_index = 0; pair_index < 3; pair_index++) begin : g_pair
-                    localparam int unsigned p_bit = group_index * 3 + pair_index;
-                    if (p_bit < CACHE_SLOT_W) begin : g_used
-                        assign equal_i_value[pair_index*2] = request_lookup_slot_q[p_bit];
-                        assign equal_i_value[pair_index*2+1] = request_descriptor.slot[p_bit];
-                    end else begin : g_padding
-                        assign equal_i_value[pair_index*2 +: 2] = 2'b00;
-                    end
-                end
-                LUT6 #(.INIT(64'h9009_0000_0000_9009)) u_equal (
-                    .I0(equal_i_value[0]), .I1(equal_i_value[1]),
-                    .I2(equal_i_value[2]), .I3(equal_i_value[3]),
-                    .I4(equal_i_value[4]), .I5(equal_i_value[5]),
-                    .O(equal_o_value)
-                );
-                assign slot_equal[group_index] = equal_o_value;
-            end
-            assign request_rows_match = &rows_equal;
-            assign filter_i_value[0] = request_lookup_valid;
-            for (genvar input_index = 1; input_index < 6; input_index++) begin : g_filter
-                if (input_index <= p_rows_groups) begin : g_rows
-                    assign filter_i_value[input_index] = rows_equal[input_index-1];
-                end else if (input_index <= p_filter_groups) begin : g_slot
-                    assign filter_i_value[input_index] = slot_equal[input_index-p_rows_groups-1];
-                end else begin : g_padding
-                    assign filter_i_value[input_index] = 1'b1;
-                end
-            end
-            LUT6 #(.INIT(64'h8000_0000_0000_0000)) u_filter (
-                .I0(filter_i_value[0]), .I1(filter_i_value[1]),
-                .I2(filter_i_value[2]), .I3(filter_i_value[3]),
-                .I4(filter_i_value[4]), .I5(filter_i_value[5]),
-                .O(filter_o_ready)
-            );
-            assign ready_i_value = {filter_o_ready, request_q0_equal_o_equal,
-                                   request_p0_equal_o_equal};
-            LUT3 #(.INIT(8'h80)) u_ready (
-                .I0(ready_i_value[0]), .I1(ready_i_value[1]), .I2(ready_i_value[2]),
-                .O(request_lookup_ready)
-            );
-        end else begin : g_generic_lookup_ready
-            assign request_rows_match =
-                (request_lookup_q[p_rows_width-1:0] == request_rows[p_rows_width-1:0]);
-            assign request_lookup_ready = request_lookup_valid &&
-                (request_lookup_slot_q == request_descriptor.slot) && request_lookup_match;
-        end
+        // 行数与槽位先完成比较，坐标等式在末级合并。
+        assign request_rows_match =
+            (request_lookup_q[p_rows_width-1:0] == request_rows[p_rows_width-1:0]);
+        assign request_slot_match = (request_lookup_slot_q == request_descriptor.slot);
+        assign request_filter_ready = request_lookup_valid && request_rows_match && request_slot_match;
+        assign request_lookup_match = request_p0_equal_o_equal && request_q0_equal_o_equal && request_rows_match;
+        assign request_lookup_ready = request_filter_ready && request_p0_equal_o_equal && request_q0_equal_o_equal;
     end else begin : g_generic_request_match
         assign request_lookup_match = (request_lookup_q == descriptor_tag(request_descriptor));
         assign request_lookup_ready = request_lookup_valid &&
@@ -720,16 +642,6 @@ module ia_loader #(
         (prefetch_done || (!prefetch_inflight && prefetch_cached && !init_cfg && !cache_flush));
 
     // 缓存资格和请求条件先独立计算，查询就绪仅进入请求与授予的末级组合。
-    localparam bit p_request_use_lut =
-`ifdef ASIC_SYNTHESIS
-        1'b0;
-`elsif XILINX_FPGA
-        1'b1;
-`elsif SYNTHESIS
-        1'b1;
-`else
-        1'b0;
-`endif
     logic request_without_lookup, request_with_lookup;
     logic grant_without_lookup, grant_with_lookup;
     logic prefetch_grant_enabled;
@@ -745,29 +657,9 @@ module ia_loader #(
     assign grant_with_lookup = prefetch_enable_q ?
         (prefetch_grant_enabled && (request_cache_eligible || (dma_available && load_ia_granted))) :
         load_ia_granted;
-    if (p_request_use_lut) begin : g_fpga_request_grant
-        logic [5:0] request_i_value;
-        logic [2:0] grant_i_value;
-        logic request_o_req, grant_o_granted;
-        assign request_i_value = {1'b0, prefetch_enable_q, ext_dma_start,
-                                  request_without_lookup, request_with_lookup, request_lookup_ready};
-        assign grant_i_value = {grant_without_lookup, grant_with_lookup, request_lookup_ready};
-        LUT6 #(.INIT(64'hfff8_f8f8_fff8_f8f8)) u_request (
-            .I0(request_i_value[0]), .I1(request_i_value[1]), .I2(request_i_value[2]),
-            .I3(request_i_value[3]), .I4(request_i_value[4]), .I5(request_i_value[5]),
-            .O(request_o_req)
-        );
-        LUT3 #(.INIT(8'hf8)) u_grant (
-            .I0(grant_i_value[0]), .I1(grant_i_value[1]), .I2(grant_i_value[2]),
-            .O(grant_o_granted)
-        );
-        assign load_ia_req = request_o_req;
-        assign ctrl_load_granted = grant_o_granted;
-    end else begin : g_generic_request_grant
-        assign load_ia_req = request_without_lookup || (request_lookup_ready && request_with_lookup) ||
+    assign load_ia_req = request_without_lookup || (request_lookup_ready && request_with_lookup) ||
                              (prefetch_enable_q && ext_dma_start);
-        assign ctrl_load_granted = grant_without_lookup || (request_lookup_ready && grant_with_lookup);
-    end
+    assign ctrl_load_granted = grant_without_lookup || (request_lookup_ready && grant_with_lookup);
     assign prefetch_idle = !prefetch_pending && !prefetch_inflight;
 
     // A following command may consume the prefetched K group or reuse its
@@ -1148,7 +1040,9 @@ module ia_loader #(
         .COMPACT_S8(COMPACT_S8),
         .EXTERNAL_RAM(EXTERNAL_RAM),
         .RAM_WORD_ADDR_WIDTH(RAM_WORD_ADDR_WIDTH),
-        .p_compact_offset_width((DATA_WIDTH == 16) ? 9 : DATA_WIDTH)
+        .p_compact_offset_width((DATA_WIDTH == 16) ? 9 : DATA_WIDTH),
+        .p_dma_source_layout(p_dma_source_layout),
+        .p_shared_write_stage(p_shared_write_stage)
     ) u_cache_mgr (
         .clk  (clk),
         .rst_n(rst_n),
@@ -1158,6 +1052,7 @@ module ia_loader #(
         .cfg_cache_blocks(cache_blocks_q),
         .slot_base(cache_slot_base_q),
         .ram_port_wr_en, .ram_port_wr_addr, .ram_port_wr_data, .ram_port_wr_mask,
+        .ram_shared_wr_data,
         .ram_port_rd_en, .ram_port_rd_addr, .ram_port_rd_data,
 
         // ---- 写入端（来自 tile_loader）----
@@ -1199,98 +1094,35 @@ module ia_ordered_coordinate_equal #(
     input  logic [p_width-p_low_width-1:0] i_target,
     output logic o_equal
 );
+    //! 0. 辅助定义
+    //! -----------
+
     localparam int unsigned p_high_width = p_width - p_low_width;
+    logic carry_in;
+    logic [p_high_width-1:0] carry_needed;
+    logic [p_high_width-1:0] carry_generated;
+    logic [p_high_width-1:0] carry_expected;
+    logic unused_final_carry;
 
-    if (p_use_lut && p_low_width == 4 && p_high_width > 1 && p_high_width <= 31) begin : g_fpga
-        localparam int unsigned p_groups = (p_high_width - 1 + 5) / 6;
-        localparam logic [63:0] p_bit_equal = 64'h9669_6969_9696_9669;
-        localparam logic [63:0] p_all_equal = 64'h8000_0000_0000_0000;
-        logic [5:0] carry_i_value, needed_i_value, first_i_value, result_i_value;
-        logic low_carry, needed_carry, first_equal;
-        logic [p_high_width-2:0] high_equal;
-        logic [p_groups-1:0] group_equal;
+    //! 1. 计算坐标进位条件
+    //! -------------------
 
-        // 最低两位先产生进位；目标高位最低位独立确定需要的进位。
-        assign carry_i_value = {2'b00, i_b[1], i_a[1], i_b[0], i_a[0]};
-        assign needed_i_value = {3'b000, i_target[0], i_b[4], i_a[4]};
-        LUT6 #(.INIT(64'hf880_f880_f880_f880)) u_low_carry (
-            .I0(carry_i_value[0]), .I1(carry_i_value[1]), .I2(carry_i_value[2]),
-            .I3(carry_i_value[3]), .I4(carry_i_value[4]), .I5(carry_i_value[5]),
-            .O(low_carry)
-        );
-        LUT6 #(.INIT(64'h9696_9696_9696_9696)) u_needed_carry (
-            .I0(needed_i_value[0]), .I1(needed_i_value[1]), .I2(needed_i_value[2]),
-            .I3(needed_i_value[3]), .I4(needed_i_value[4]), .I5(needed_i_value[5]),
-            .O(needed_carry)
-        );
-        // 第三、四位操作数与两种进位条件在同一级形成首位等式。
-        assign first_i_value = {needed_carry, i_b[3], i_a[3], i_b[2], i_a[2], low_carry};
-        LUT6 #(.INIT(64'hffe8_e800_0017_17ff)) u_first_equal (
-            .I0(first_i_value[0]), .I1(first_i_value[1]), .I2(first_i_value[2]),
-            .I3(first_i_value[3]), .I4(first_i_value[4]), .I5(first_i_value[5]),
-            .O(first_equal)
-        );
-
-        // 其余高位只检查本位与相邻低位的加法一致性，各位并行计算。
-        for (genvar bit_index = 1; bit_index < p_high_width; bit_index++) begin : g_bit
-            logic [5:0] equal_i_value;
-            logic equal_o_value;
-            assign equal_i_value = {
-                i_target[bit_index-1], i_b[p_low_width+bit_index-1], i_a[p_low_width+bit_index-1],
-                i_target[bit_index], i_b[p_low_width+bit_index], i_a[p_low_width+bit_index]};
-            LUT6 #(.INIT(p_bit_equal)) u_equal (
-                .I0(equal_i_value[0]), .I1(equal_i_value[1]), .I2(equal_i_value[2]),
-                .I3(equal_i_value[3]), .I4(equal_i_value[4]), .I5(equal_i_value[5]),
-                .O(equal_o_value)
-            );
-            assign high_equal[bit_index-1] = equal_o_value;
-        end
-        for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
-            logic [5:0] group_i_value;
-            logic group_o_value;
-            for (genvar item = 0; item < 6; item++) begin : g_item
-                if (6*group_index+item < p_high_width-1) begin : g_present
-                    assign group_i_value[item] = high_equal[6*group_index+item];
-                end else begin : g_padding
-                    assign group_i_value[item] = 1'b1;
-                end
-            end
-            LUT6 #(.INIT(p_all_equal)) u_group (
-                .I0(group_i_value[0]), .I1(group_i_value[1]), .I2(group_i_value[2]),
-                .I3(group_i_value[3]), .I4(group_i_value[4]), .I5(group_i_value[5]),
-                .O(group_o_value)
-            );
-            assign group_equal[group_index] = group_o_value;
-        end
-        // 首位等式直接进入最终归约，低位坐标不经过高位的分组归约。
-        assign result_i_value[0] = first_equal;
-        for (genvar group_index = 0; group_index < 5; group_index++) begin : g_result
-            if (group_index < p_groups) begin : g_present
-                assign result_i_value[group_index+1] = group_equal[group_index];
-            end else begin : g_padding
-                assign result_i_value[group_index+1] = 1'b1;
-            end
-        end
-        LUT6 #(.INIT(p_all_equal)) u_result (
-            .I0(result_i_value[0]), .I1(result_i_value[1]), .I2(result_i_value[2]),
-            .I3(result_i_value[3]), .I4(result_i_value[4]), .I5(result_i_value[5]),
-            .O(o_equal)
-        );
-    end else begin : g_generic
-        logic carry_in;
-        logic [p_high_width-1:0] equal_i_a, equal_i_b;
-        assign equal_i_a = i_a[p_width-1:p_low_width];
-        assign equal_i_b = i_b[p_width-1:p_low_width];
-        if (p_low_width > 0) begin : g_low_carry
-            logic [p_low_width-1:0] unused_low_sum;
-            assign {carry_in, unused_low_sum} =
-                {1'b0, i_a[p_low_width-1:0]} + {1'b0, i_b[p_low_width-1:0]};
-        end else begin : g_no_low_carry
-            assign carry_in = 1'b0;
-        end
-        add_equal #(.p_width(p_high_width), .p_use_lut(p_use_lut)) u_equal (
-            .i_a(equal_i_a), .i_b(equal_i_b),
-            .i_target(i_target), .i_carry_in(carry_in), .o_equal(o_equal)
-        );
+    if (p_low_width > 0) begin : g_low_carry
+        logic [p_low_width-1:0] unused_low_sum;
+        assign {carry_in, unused_low_sum} =
+            {1'b0, i_a[p_low_width-1:0]} + {1'b0, i_b[p_low_width-1:0]};
+    end else begin : g_no_low_carry
+        assign carry_in = 1'b0;
     end
+    // 目标和值给出每一位所需的进位，各位与相邻低位并行检查。
+    assign carry_needed = i_a[p_width-1:p_low_width] ^ i_b[p_width-1:p_low_width] ^ i_target;
+    assign carry_generated =
+        (i_a[p_width-1:p_low_width] & i_b[p_width-1:p_low_width]) |
+        ((i_a[p_width-1:p_low_width] | i_b[p_width-1:p_low_width]) & ~i_target);
+    assign {unused_final_carry, carry_expected} = {carry_generated, carry_in};
+
+    //! 2. 生成坐标比较结果
+    //! -------------------
+
+    assign o_equal = (carry_needed == carry_expected);
 endmodule

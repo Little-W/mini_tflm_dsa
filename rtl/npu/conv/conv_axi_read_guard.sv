@@ -32,15 +32,6 @@ module conv_axi_read_guard #(
 );
     localparam int BUS_BYTES=DATA_W/8;
     localparam int BUS_SHIFT=$clog2(BUS_BYTES);
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_page_range = 1'b0;
-`else
-    localparam bit p_fpga_page_range = 1'b1;
-`endif
-`else
-    localparam bit p_fpga_page_range = 1'b0;
-`endif
     typedef enum logic [2:0] {IDLE, FAST_AR, FAST_R, PREP, WORD_AR, WORD_R, OUT} state_t;
     state_t state;
     logic [31:0] base_q[4];
@@ -55,7 +46,7 @@ module conv_axi_read_guard #(
     logic [DATA_W-1:0] word_q;
     logic fast_legal;
     logic [32:0] request_addr_ext;
-    logic generic_page_fits;
+    logic request_page_fits;
     logic request_format_legal;
     logic direct_legal;
     logic [3:0] fast_allocation;
@@ -106,61 +97,32 @@ module conv_axi_read_guard #(
         assign request_last_word = {1'b0, request_addr_ext[11:BUS_SHIFT]} + (p_page_word_w+1)'(s_arlen);
         // ARLEN 最多为八位。页内高位未全置一时，整个突发都位于当前页。
         // 其余情况并行比较两个四位字段，直接得到跨页条件。
-        if (p_fpga_page_range) begin : g_fpga_tail
-            logic [3:0] page_generate, page_propagate;
-            logic lower_carry, page_high_full;
-            logic [5:0] direct_i_value;
-            logic unused_direct_o5;
-
-            if (p_page_word_w > 8) begin : g_page_high
-                assign page_high_full = &request_addr_ext[11:BUS_SHIFT+8];
-            end else begin : g_page_eight
-                assign page_high_full = 1'b1;
-            end
-
-            // 每个查找表同时产生两位加法的进位与传播条件。
-            // 页内地址与ARLEN之和的最高进位由两组并行关系得到。
-            for (genvar group_index = 0; group_index < 4; group_index++) begin : g_group
-                logic [1:0] range_i_address, range_i_length;
-                localparam logic [63:0] p_range_init = group_index == 3 ?
-                    64'hec80_0000_1248_0000 : 64'hec80_ec80_1248_1248;
-                logic range_i_enable, range_i_one;
-
-                assign range_i_address = request_addr_ext[BUS_SHIFT+2*group_index +: 2];
-                assign range_i_length = s_arlen[2*group_index +: 2];
-                // 最高两位的进位同时检查页内高位，其余分组保留完整加法关系。
-                assign range_i_enable = group_index == 3 ? page_high_full : 1'b0;
-                assign range_i_one = 1'b1;
-                LUT6_2 #(.INIT(p_range_init)) u_page_group (
-                    .I0(range_i_address[0]), .I1(range_i_address[1]),
-                    .I2(range_i_length[0]), .I3(range_i_length[1]),
-                    .I4(range_i_enable), .I5(range_i_one),
-                    .O5(page_propagate[group_index]), .O6(page_generate[group_index])
-                );
-            end
-            assign lower_carry = page_generate[1] ||
-                (page_propagate[1] && page_generate[0]);
-            // 末级同时判断请求格式与页范围，握手控制直接读取完整判断结果。
-            assign direct_i_value = {request_format_legal, lower_carry, page_propagate[2],
-                page_generate[2], page_propagate[3], page_generate[3]};
-            LUT6_2 #(.INIT(64'h1115_1515_0000_0000)) u_direct_legal (
-                .I0(direct_i_value[0]), .I1(direct_i_value[1]), .I2(direct_i_value[2]),
-                .I3(direct_i_value[3]), .I4(direct_i_value[4]), .I5(direct_i_value[5]),
-                .O5(unused_direct_o5), .O6(direct_legal)
-            );
-        end else begin : g_generic_tail
-            logic request_tail_fits;
-
-            assign request_tail_fits =
-                (s_arlen[7:4] < ~request_addr_ext[BUS_SHIFT+4 +: 4]) ||
-                ((s_arlen[7:4] == ~request_addr_ext[BUS_SHIFT+4 +: 4]) &&
-                 (s_arlen[3:0] <= ~request_addr_ext[BUS_SHIFT +: 4]));
-            if (p_page_word_w > 8) begin : g_page_high
-                assign generic_page_fits = !(&request_addr_ext[11:BUS_SHIFT+8]) || request_tail_fits;
-            end else begin : g_page_eight
-                assign generic_page_fits = request_tail_fits;
-            end
+        (* keep *) logic [3:0] page_generate, page_propagate;
+        (* keep *) logic lower_carry, upper_generate, upper_propagate;
+        logic page_high_full;
+        if (p_page_word_w > 8) begin : g_page_high
+            assign page_high_full = &request_addr_ext[11:BUS_SHIFT+8];
+        end else begin : g_page_eight
+            assign page_high_full = 1'b1;
         end
+        // 每两位独立计算进位和传播条件，最高分组同时检查页内高位。
+        for (genvar group_index = 0; group_index < 4; group_index++) begin : g_page_group
+            logic [1:0] address_part, length_part;
+            logic part_enabled;
+            assign address_part = request_addr_ext[BUS_SHIFT+2*group_index +: 2];
+            assign length_part = s_arlen[2*group_index +: 2];
+            assign part_enabled = group_index == 3 ? page_high_full : 1'b1;
+            // 二位加法的进位由生成项和传播项直接组成，组内不串联算术运算。
+            assign page_generate[group_index] = part_enabled &&
+                ((address_part[1] && length_part[1]) ||
+                 ((address_part[1] || length_part[1]) && address_part[0] && length_part[0]));
+            assign page_propagate[group_index] = (&(address_part ^ length_part)) && part_enabled;
+        end
+        // 两对分组独立合并，再组合高、低两部分的进位。
+        assign lower_carry = page_generate[1] || (page_propagate[1] && page_generate[0]);
+        assign upper_generate = page_generate[3] || (page_propagate[3] && page_generate[2]);
+        assign upper_propagate = page_propagate[3] && page_propagate[2];
+        assign request_page_fits = !(upper_generate || (upper_propagate && lower_carry));
         // 保留33位地址运算的回绕语义；32位地址配置会将此项化简为零。
         assign request_end_wrap = (&request_addr_ext[32:12]) && (&request_last_word[p_page_word_w-1:0]);
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
@@ -175,7 +137,7 @@ module conv_axi_read_guard #(
         logic [32:0] request_end;
 
         assign request_end = request_addr_ext + ((33'(s_arlen) + 33'd1) << BUS_SHIFT);
-        assign generic_page_fits = {1'b0, s_araddr[11:0]} + ((13'(s_arlen) + 13'd1) << BUS_SHIFT) <= 13'd4096;
+        assign request_page_fits = {1'b0, s_araddr[11:0]} + ((13'(s_arlen) + 13'd1) << BUS_SHIFT) <= 13'd4096;
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
             assign fast_allocation[allocation] = base_q[allocation] != 0 &&
                 request_addr_ext >= {1'b0, base_q[allocation]} && request_end <= end_q[allocation];
@@ -185,9 +147,7 @@ module conv_axi_read_guard #(
     // 直接传输只检查 AXI 请求格式和页范围；分配区间检查由卷积请求使用。
     assign request_format_legal = s_arsize == 3'(BUS_SHIFT) &&
                                   s_arburst == 2'b01 && s_araddr[BUS_SHIFT-1:0] == 0;
-    if (!p_fpga_page_range || BUS_SHIFT > 4) begin : g_generic_direct_legal
-        assign direct_legal = request_format_legal && generic_page_fits;
-    end
+    assign direct_legal = request_format_legal && request_page_fits;
     assign fast_legal = direct_legal && (!enable || (|fast_allocation));
     always_comb begin
         lane = '0;
@@ -207,21 +167,7 @@ module conv_axi_read_guard #(
     // 通道仲裁直接读取保护模式的待发状态，直通请求继续使用完整格式和页范围检查。
     assign o_arb_arvalid = enable && (state == FAST_AR || state == WORD_AR);
     // 单字返回独立接收；直通与整段返回并行选择下游就绪状态。
-    if (p_fpga_page_range) begin : g_fpga_response_ready
-        localparam logic [63:0] p_ready_table = SPLIT_GEMM_4K ?
-            64'hFFFF_CC40_FFFF_CC40 : 64'hEEEE_CC44_EEEE_CC44;
-        logic [4:0] response_i_conditions;
-        logic unused_response_ready;
-
-        assign response_i_conditions = {state == WORD_R, state == FAST_R,
-            state == IDLE, s_rready, enable};
-        LUT6_2 #(.INIT(p_ready_table)) u_response_ready (
-            .I0(response_i_conditions[0]), .I1(response_i_conditions[1]),
-            .I2(response_i_conditions[2]), .I3(response_i_conditions[3]),
-            .I4(response_i_conditions[4]), .I5(1'b0),
-            .O5(m_rready), .O6(unused_response_ready)
-        );
-    end else if (SPLIT_GEMM_4K) begin : g_split_response_ready
+    if (SPLIT_GEMM_4K) begin : g_split_response_ready
         assign m_rready = state == WORD_R ||
             (s_rready && ((state == FAST_R) || (!enable && state == IDLE)));
     end else begin : g_response_ready

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+`default_nettype none
 // Implicit im2col frontend. Does not change the PE array or allocate an expanded
 // activation matrix in external memory. Feed tile descriptors from IA scheduling.
 // Emits corrected signed-16 values to the existing IA tile RAM write interface.
@@ -122,14 +123,6 @@ module conv_im2col_frontend #(
   logic [2:0][31:0] decode_end_i_target;
   logic [2:0] decode_end_o_equal;
   logic cache_cfg_ready, cache_req_ready, cache_rsp_valid, cache_rsp_error;
-  localparam bit p_cfg_idle_use_lut =
-`ifdef ASIC_SYNTHESIS
-    1'b0;
-`elsif XILINX_FPGA
-    1'b1;
-`else
-    1'b0;
-`endif
   logic cache_req_valid, cache_rsp_ready, stream_next_request,stream_context;
   logic [3:0] byte_offset_sum;
   logic word_boundary;
@@ -174,14 +167,6 @@ module conv_im2col_frontend #(
   logic p_fast_wrap;
   logic [31:0] p_fast_y,p_fast_x,p_decode;
   logic [15:0] p_delta;
-  localparam bit p_row_end_use_lut =
-`ifdef ASIC_SYNTHESIS
-    1'b0;
-`elsif XILINX_FPGA
-    1'b1;
-`else
-    1'b0;
-`endif
   logic [16:0] p_sum;
   logic [15:0] p_sum_wrap_i_a, p_sum_wrap_i_b, p_sum_wrap_i_target;
   logic p_sum_wrap_i_carry_in, p_sum_wrap_o_equal;
@@ -199,12 +184,12 @@ module conv_im2col_frontend #(
   logic [31:0] incoming_pixel;
   logic [1:0] p_cache_select;
   logic [31:0] req_index, req_epoch, request_retire;
-  logic [2:0][15:0] retirement_row;
-  logic [2:0][31:0] retirement_value;
+  logic [1:0][15:0] retirement_input;
+  logic [1:0][31:0] retirement_result;
   logic req_index_valid,window_index_valid_q;
   logic [4:0] window_index_shift_q;
   logic pf_valid, pf_ready;
-  logic [31:0] pf_addr, pf_index, pf_epoch, pf_retire;
+  logic [31:0] pf_addr, pf_index, pf_epoch;
   logic pf_index_valid;
   logic [3:0] prefetch_phase;
   logic [31:0] pf_distance_q, pf_step_q, pf_address_calc, pf_channel_product;
@@ -213,7 +198,7 @@ module conv_im2col_frontend #(
   logic signed [COORD_W-1:0] pfa_x, pfa_y;
   logic [31:0] pfa_channel, pfa_origin_channel, pfa_output_x, pfa_output_y;
   logic [31:0] pfa_kernel_x, pfa_rows, pfa_cols;
-  logic [31:0] pfa_ref_addr, pfa_ref_index, pfa_ref_epoch, pfa_retire;
+  logic [31:0] pfa_ref_addr, pfa_ref_index, pfa_ref_epoch;
   logic pfa_ref_index_valid;
   logic [31:0] pf0_x, pf0_y, pf0_channel, pf0_epoch;
   logic [31:0] pf0_ref_addr, pf0_ref_index, pf0_ref_epoch, pf0_ref_retire;
@@ -303,56 +288,32 @@ module conv_im2col_frontend #(
 
     // 描述符低位相加与高位比较并行，末端只合并低位进位和边界关系。
     assign row_end_low = {1'b0, tile_p0[p_row_low_w-1:0]} + {1'b0, tile_rows};
-    if (p_cfg_idle_use_lut && p_row_high_w <= 27) begin : g_high_range_lut
-      logic [26:0] row_high_i_a, row_high_i_b, row_high_i_last;
+    if (p_row_high_w <= 27) begin : g_high_range_tree
+      logic [26:0] row_high_a, row_high_b, row_high_last;
       logic [8:0] leaf_before, leaf_equal, leaf_last_equal;
       logic [2:0] group_before, group_equal;
-      logic [5:0] result_i_flags;
 
-      // 每三位并行比较，再按高位优先合并；二十七位范围保持三级逻辑。
-      assign row_high_i_a = 27'(tile_p0[31:p_row_low_w]);
-      assign row_high_i_b = 27'(position_count[31:p_row_low_w]);
-      assign row_high_i_last = 27'(position_high_minus_one_q);
+      // 每三位并行比较，再按高位优先合并各组结果。
+      assign row_high_a = 27'(tile_p0[31:p_row_low_w]);
+      assign row_high_b = 27'(position_count[31:p_row_low_w]);
+      assign row_high_last = 27'(position_high_minus_one_q);
       assign high_before_end_by_one = &leaf_last_equal;
       for (genvar part = 0; part < 9; part++) begin : g_leaf
-        logic [5:0] compare_i_bits, last_i_bits;
-        assign compare_i_bits = {row_high_i_b[3*part +: 3], row_high_i_a[3*part +: 3]};
-        assign last_i_bits = {row_high_i_last[3*part +: 3], row_high_i_a[3*part +: 3]};
-        LUT6 #(.INIT(64'h7F3F_1F0F_0703_0100)) u_before (
-          .I0(compare_i_bits[0]), .I1(compare_i_bits[1]), .I2(compare_i_bits[2]),
-          .I3(compare_i_bits[3]), .I4(compare_i_bits[4]), .I5(compare_i_bits[5]),
-          .O(leaf_before[part])
-        );
-        LUT6 #(.INIT(64'h8040_2010_0804_0201)) u_equal (
-          .I0(compare_i_bits[0]), .I1(compare_i_bits[1]), .I2(compare_i_bits[2]),
-          .I3(compare_i_bits[3]), .I4(compare_i_bits[4]), .I5(compare_i_bits[5]),
-          .O(leaf_equal[part])
-        );
-        LUT6 #(.INIT(64'h8040_2010_0804_0201)) u_last_equal (
-          .I0(last_i_bits[0]), .I1(last_i_bits[1]), .I2(last_i_bits[2]),
-          .I3(last_i_bits[3]), .I4(last_i_bits[4]), .I5(last_i_bits[5]),
-          .O(leaf_last_equal[part])
-        );
+        assign leaf_before[part] = row_high_a[3*part +: 3] < row_high_b[3*part +: 3];
+        assign leaf_equal[part] = row_high_a[3*part +: 3] == row_high_b[3*part +: 3];
+        assign leaf_last_equal[part] = row_high_a[3*part +: 3] == row_high_last[3*part +: 3];
       end
       for (genvar part = 0; part < 3; part++) begin : g_group
-        logic [5:0] merge_i_flags;
-        assign merge_i_flags = {1'b0, leaf_equal[3*part+2], leaf_equal[3*part+1],
-          leaf_before[3*part+2], leaf_before[3*part+1], leaf_before[3*part]};
         assign group_equal[part] = &leaf_equal[3*part +: 3];
-        LUT6 #(.INIT(64'hFEFC_F0F0_FEFC_F0F0)) u_before (
-          .I0(merge_i_flags[0]), .I1(merge_i_flags[1]), .I2(merge_i_flags[2]),
-          .I3(merge_i_flags[3]), .I4(merge_i_flags[4]), .I5(merge_i_flags[5]),
-          .O(group_before[part])
-        );
+        assign group_before[part] = leaf_before[3*part+2] ||
+          (leaf_equal[3*part+2] && leaf_before[3*part+1]) ||
+          (leaf_equal[3*part+2] && leaf_equal[3*part+1] && leaf_before[3*part]);
       end
-      assign result_i_flags = {1'b0, group_equal[2], group_equal[1], group_before};
       assign high_at_end = &group_equal;
-      LUT6 #(.INIT(64'hFEFC_F0F0_FEFC_F0F0)) u_before (
-        .I0(result_i_flags[0]), .I1(result_i_flags[1]), .I2(result_i_flags[2]),
-        .I3(result_i_flags[3]), .I4(result_i_flags[4]), .I5(result_i_flags[5]),
-        .O(high_before_end)
-      );
-    end else begin : g_high_range_logic
+      assign high_before_end = group_before[2] ||
+        (group_equal[2] && group_before[1]) ||
+        (group_equal[2] && group_equal[1] && group_before[0]);
+    end else begin : g_high_range_wide
       assign high_before_end = tile_p0[31:p_row_low_w] < position_count[31:p_row_low_w];
       assign high_at_end = tile_p0[31:p_row_low_w] == position_count[31:p_row_low_w];
       assign high_before_end_by_one = tile_p0[31:p_row_low_w] == position_high_minus_one_q;
@@ -419,21 +380,18 @@ module conv_im2col_frontend #(
   assign bound_limit[6] = c.input_h;
   for (genvar axis = 0; axis < 7; axis++) begin : g_coordinate_bound
     logic [8:0] byte_low_sum, byte_high_zero, byte_high_one;
-    logic [COORD_W-9:0] coordinate_high_zero, coordinate_high_one;
-    logic unused_coordinate_zero_carry, unused_coordinate_one_carry;
+    logic unused_coordinate_carry;
     logic byte_low_before, byte_high_zero_before, byte_high_one_before;
     logic low_carry, low_before, high_o_equal;
 
     // 高字节分别计算两种进位及边界关系，低字节只选择最终结果。
     assign byte_low_sum = {1'b0, bound_a[axis][7:0]} + {1'b0, bound_b[axis][7:0]};
     assign byte_high_zero = {1'b0, bound_a[axis][15:8]} + {1'b0, bound_b[axis][15:8]};
-    assign byte_high_one = {1'b0, bound_a[axis][15:8]} + {1'b0, bound_b[axis][15:8]} + 9'd1;
-    assign {unused_coordinate_zero_carry, coordinate_high_zero} =
-      {1'b0, bound_a[axis][COORD_W-1:8]} + {1'b0, bound_b[axis][COORD_W-1:8]};
-    assign {unused_coordinate_one_carry, coordinate_high_one} =
-      {1'b0, bound_a[axis][COORD_W-1:8]} + {1'b0, bound_b[axis][COORD_W-1:8]} + (COORD_W-7)'(1);
-    assign bound_sum[axis] = {
-      byte_low_sum[8] ? coordinate_high_one : coordinate_high_zero, byte_low_sum[7:0]};
+    // 两个九位补数之和取反，得到含固定进位的完整高字节和。
+    assign byte_high_one = ~(~{1'b0, bound_a[axis][15:8]} + ~{1'b0, bound_b[axis][15:8]});
+    // 完整坐标共用一次加法，范围判断由独立的字节进位逻辑并行完成。
+    assign {unused_coordinate_carry, bound_sum[axis]} =
+      {1'b0, bound_a[axis]} + {1'b0, bound_b[axis]};
     assign byte_low_before = byte_low_sum[7:0] < bound_limit[axis][7:0];
     assign byte_high_zero_before = byte_high_zero[7:0] < bound_limit[axis][15:8] ||
       (byte_high_zero[7:0] == bound_limit[axis][15:8] && byte_low_before);
@@ -477,13 +435,13 @@ module conv_im2col_frontend #(
   assign incoming_word_i_a = row_base_addr[31:2];
   assign incoming_word_i_b = incoming_delta[31:2];
   assign incoming_word_i_target = word_addr[31:2];
-  add_equal #(.p_width(30), .p_use_lut(p_cfg_idle_use_lut)) u_incoming_word (
+  add_equal #(.p_width(30), .p_use_lut(1'b0)) u_incoming_word (
     .i_a(incoming_word_i_a), .i_b(incoming_word_i_b), .i_target(incoming_word_i_target),
     .i_carry_in(incoming_word_i_carry_in), .o_equal(incoming_word_o_equal)
   );
   // 两个来源的数据字提前完成比较，当前传输的完成条件只选择一位命中结果。
   assign incoming_live_word_i_target = addr[31:2];
-  add_equal #(.p_width(30), .p_use_lut(p_cfg_idle_use_lut)) u_incoming_live_word (
+  add_equal #(.p_width(30), .p_use_lut(1'b0)) u_incoming_live_word (
     .i_a(incoming_word_i_a), .i_b(incoming_word_i_b), .i_target(incoming_live_word_i_target),
     .i_carry_in(incoming_word_i_carry_in), .o_equal(incoming_live_word_o_equal)
   );
@@ -609,102 +567,50 @@ module conv_im2col_frontend #(
     for (int b=0;b<32;b++) if (value[b]) result=5'(b);
     return result;
   endfunction
-  // 请求先选择输入行，再共用计算；预取的两个阶段各自保留独立结果。
-  assign retirement_row[0] = request_pending ? request_y_q : iy[15:0];
-  assign retirement_row[1] = pfa_y[15:0];
-  assign retirement_row[2] = pf0_y[15:0];
-  for (genvar row_port = 0; row_port < 3; row_port++) begin : g_retirement
+  // 请求与预取各保留一个退休行号计算端口，两个预取阶段按原有采样周期共用端口。
+  assign retirement_input[0] = request_pending ? request_y_q : iy[15:0];
+  assign retirement_input[1] = prefetch_phase == 3 ? pfa_y[15:0] : pf0_y[15:0];
+  for (genvar row_port = 0; row_port < 2; row_port++) begin : g_retirement_port
     logic [16:0] padded_row, shifted_row, incremented_row;
     logic unused_increment_carry;
     logic [16:0] bounded_row;
 
     // 行递增与上限比较并行，最后选择限幅结果，避免串联两次范围比较。
-    assign padded_row = {1'b0, retirement_row[row_port]} + {1'b0, c.pad_top};
+    assign padded_row = {1'b0, retirement_input[row_port]} + {1'b0, c.pad_top};
     assign shifted_row = padded_row >> retire_shift_q;
-    localparam bit p_increment_use_lut =
-`ifdef ASIC_SYNTHESIS
-      1'b0;
-`elsif XILINX_FPGA
-      1'b1;
-`else
-      1'b0;
-`endif
-    if (p_increment_use_lut) begin : g_increment_lut
-      localparam logic [6:0][4:0] p_pair_low = {5'd14, 5'd12, 5'd10, 5'd8, 5'd6, 5'd2, 5'd0};
-      localparam logic [2:0][4:0] p_single_bit = {5'd16, 5'd5, 5'd4};
-      localparam logic [63:0] p_pair_increment = 64'h6ccc_cccc_5aaa_aaaa;
-      localparam logic [1:0][63:0] p_range_all = {64'h8000_8000_8888_8888, 64'h8000_0000_8080_8080};
-      logic [1:0][5:0] prefix_i_bits;
-      logic [1:0] prefix_o_all;
-      logic [1:0][4:0] range_i_bits;
-      logic [1:0][1:0] range_o_all;
-      logic [6:0][4:0] pair_i_bits;
-      logic [2:0][5:0] single_i_bits;
-      logic increment_i_one;
-
-      // 低五位进位含递增使能，各个高位区间独立检查，所有结果最多经过两级查找表。
-      assign increment_i_one = 1'b1;
-      assign prefix_i_bits[0] = {short_pixel_q, shifted_row[4:0]};
-      assign prefix_i_bits[1] = {1'b1, shifted_row[14:10]};
-      for (genvar prefix_index = 0; prefix_index < 2; prefix_index++) begin : g_prefix
-        LUT6 #(.INIT(64'h8000_0000_0000_0000)) u_all (
-          .I0(prefix_i_bits[prefix_index][0]), .I1(prefix_i_bits[prefix_index][1]),
-          .I2(prefix_i_bits[prefix_index][2]), .I3(prefix_i_bits[prefix_index][3]),
-          .I4(prefix_i_bits[prefix_index][4]), .I5(prefix_i_bits[prefix_index][5]),
-          .O(prefix_o_all[prefix_index])
-        );
+    // 五位分组并行产生进位，各结果位只需组合组进位与组内低位。
+    localparam int p_increment_bits = 17;
+    localparam int p_chunk_bits = 5;
+    localparam int p_chunks = (p_increment_bits + p_chunk_bits - 1) / p_chunk_bits;
+    (* keep *) logic [p_chunks-2:0] chunk_all;
+    for (genvar chunk = 0; chunk < p_chunks; chunk++) begin : g_increment_chunk
+      localparam int p_low = chunk * p_chunk_bits;
+      localparam int p_chunk_width = p_increment_bits - p_low < p_chunk_bits ?
+          p_increment_bits - p_low : p_chunk_bits;
+      (* keep *) logic chunk_carry;
+      if (chunk < p_chunks - 1) begin : g_full_chunk
+        assign chunk_all[chunk] = &shifted_row[p_low +: p_chunk_width];
       end
-      assign range_i_bits[0] = shifted_row[9:5];
-      assign range_i_bits[1] = {1'b1, shifted_row[13:10]};
-      for (genvar range_index = 0; range_index < 2; range_index++) begin : g_range
-        LUT6_2 #(.INIT(p_range_all[range_index])) u_all (
-          .I0(range_i_bits[range_index][0]), .I1(range_i_bits[range_index][1]),
-          .I2(range_i_bits[range_index][2]), .I3(range_i_bits[range_index][3]),
-          .I4(range_i_bits[range_index][4]), .I5(increment_i_one),
-          .O5(range_o_all[range_index][0]), .O6(range_o_all[range_index][1])
-        );
+      if (chunk == 0) begin : g_first
+        assign chunk_carry = short_pixel_q;
+      end else begin : g_following
+        assign chunk_carry = short_pixel_q && (&chunk_all[chunk-1:0]);
       end
-
-      // 相邻结果共享低位进位条件，五个输入以内的两位结果共用一个物理查找表。
-      assign pair_i_bits[0] = {2'b11, short_pixel_q, shifted_row[1:0]};
-      assign pair_i_bits[1] = {shifted_row[1:0], short_pixel_q, shifted_row[3:2]};
-      assign pair_i_bits[2] = {1'b1, shifted_row[5], prefix_o_all[0], shifted_row[7:6]};
-      assign pair_i_bits[3] = {1'b1, range_o_all[0][0], prefix_o_all[0], shifted_row[9:8]};
-      assign pair_i_bits[4] = {1'b1, range_o_all[0][1], prefix_o_all[0], shifted_row[11:10]};
-      assign pair_i_bits[5] = {range_o_all[1][0], range_o_all[0][1], prefix_o_all[0], shifted_row[13:12]};
-      assign pair_i_bits[6] = {range_o_all[1][1], range_o_all[0][1], prefix_o_all[0], shifted_row[15:14]};
-      for (genvar pair_index = 0; pair_index < 7; pair_index++) begin : g_pair
-        localparam int p_low = int'(p_pair_low[pair_index]);
-        LUT6_2 #(.INIT(p_pair_increment)) u_increment (
-          .I0(pair_i_bits[pair_index][0]), .I1(pair_i_bits[pair_index][1]),
-          .I2(pair_i_bits[pair_index][2]), .I3(pair_i_bits[pair_index][3]),
-          .I4(pair_i_bits[pair_index][4]), .I5(increment_i_one),
-          .O5(incremented_row[p_low]), .O6(incremented_row[p_low+1])
-        );
+      for (genvar bit_index = 0; bit_index < p_chunk_width; bit_index++) begin : g_bit
+        if (bit_index == 0) begin : g_low
+          assign incremented_row[p_low] = shifted_row[p_low] ^ chunk_carry;
+        end else begin : g_high
+          assign incremented_row[p_low+bit_index] = shifted_row[p_low+bit_index] ^
+              (chunk_carry && (&shifted_row[p_low +: bit_index]));
+        end
       end
-      assign single_i_bits[0] = {shifted_row[3:0], short_pixel_q, shifted_row[4]};
-      assign single_i_bits[1] = {4'b1111, prefix_o_all[0], shifted_row[5]};
-      assign single_i_bits[2] = {1'b1, shifted_row[15], prefix_o_all[1], range_o_all[0][1], prefix_o_all[0], shifted_row[16]};
-      for (genvar single_index = 0; single_index < 3; single_index++) begin : g_single
-        localparam int p_bit = int'(p_single_bit[single_index]);
-        LUT6 #(.INIT(64'h6aaa_aaaa_aaaa_aaaa)) u_increment (
-          .I0(single_i_bits[single_index][0]), .I1(single_i_bits[single_index][1]),
-          .I2(single_i_bits[single_index][2]), .I3(single_i_bits[single_index][3]),
-          .I4(single_i_bits[single_index][4]), .I5(single_i_bits[single_index][5]),
-          .O(incremented_row[p_bit])
-        );
-      end
-      assign unused_increment_carry = short_pixel_q && (&shifted_row);
-    end else begin : g_increment_logic
-      assign {unused_increment_carry, incremented_row} = {1'b0, shifted_row} + {17'd0, short_pixel_q};
     end
+    assign unused_increment_carry = short_pixel_q && (&shifted_row);
     assign bounded_row = shifted_row < {1'b0, retire_last_row_q} ?
         incremented_row : {1'b0, retire_last_row_q};
-    assign retirement_value[row_port] = retire_enabled_q ? {15'd0, bounded_row} : 32'hffff_ffff;
+    assign retirement_result[row_port] = retire_enabled_q ? {15'd0, bounded_row} : 32'hffff_ffff;
   end
-  assign request_retire = retirement_value[0];
-  assign pfa_retire = retirement_value[1];
-  assign pf_retire = retirement_value[2];
+  assign request_retire = retirement_result[0];
 
   // 位置解码使用已接受的描述符，快速请求的资格条件保证输入位置与保存位置相同。
   // 解码行尾在减去输出宽度之前检查模加法等式，与坐标结果并行。
@@ -738,7 +644,7 @@ module conv_im2col_frontend #(
   assign {unused_p_sum_wrap_carry, p_sum_wrap_i_b} = {p_sum_wrap_carry, 1'b1};
   assign p_sum_wrap_i_target = last_output_col_q + c.output_w;
   assign p_sum_wrap_i_carry_in = 1'b0;
-  add_equal #(.p_width(16), .p_use_lut(p_row_end_use_lut)) u_p_sum_wrap (
+  add_equal #(.p_width(16), .p_use_lut(1'b0)) u_p_sum_wrap (
     .i_a(p_sum_wrap_i_a),
     .i_b(p_sum_wrap_i_b),
     .i_target(p_sum_wrap_i_target),
@@ -749,7 +655,7 @@ module conv_im2col_frontend #(
   assign p_sum_last_i_b = p_sum_wrap_i_b;
   assign p_sum_last_i_target = last_output_col_q;
   assign p_sum_last_i_carry_in = 1'b0;
-  add_equal #(.p_width(16), .p_use_lut(p_row_end_use_lut)) u_p_sum_last (
+  add_equal #(.p_width(16), .p_use_lut(1'b0)) u_p_sum_last (
     .i_a(p_sum_last_i_a), .i_b(p_sum_last_i_b), .i_target(p_sum_last_i_target),
     .i_carry_in(p_sum_last_i_carry_in), .o_equal(p_sum_last_o_equal)
   );
@@ -798,7 +704,6 @@ module conv_im2col_frontend #(
     logic high_before, high_equal, low_within, remaining_wrap;
     logic [p_high_w-1:0] high_next_i_a, high_next_i_b, high_next_i_target;
     logic high_next_i_carry_in, high_next_o_equal;
-    logic [5:0] range_i_flags;
 
     assign column_end_low = {1'b0, ch0_q[TILE_COUNT_W-1:0]} + {1'b0, cols_q};
     assign high_before = ch0_q[15:TILE_COUNT_W] < c.group_c[15:TILE_COUNT_W];
@@ -810,163 +715,67 @@ module conv_im2col_frontend #(
     assign high_next_i_b = '0;
     assign high_next_i_carry_in = 1'b1;
     assign high_next_i_target = c.group_c[15:TILE_COUNT_W];
-    add_equal #(.p_width(p_high_w), .p_use_lut(p_cfg_idle_use_lut)) u_high_next (
+    add_equal #(.p_width(p_high_w), .p_use_lut(1'b0)) u_high_next (
       .i_a(high_next_i_a),
       .i_b(high_next_i_b),
       .i_carry_in(high_next_i_carry_in),
       .i_target(high_next_i_target),
       .o_equal(high_next_o_equal)
     );
-    // 低位进位和高位关系在单个查找表中合并，组范围直接参与快速接收的末级判断。
-    assign range_i_flags = {high_equal, low_within, high_next_o_equal,
-                            column_end_low[TILE_COUNT_W], high_before, remaining_wrap};
-    if (p_cfg_idle_use_lut) begin : g_range_lut
-      LUT6 #(.INIT(64'hefef_aeee_eeee_aeee)) u_range (
-        .I0(range_i_flags[0]), .I1(range_i_flags[1]), .I2(range_i_flags[2]),
-        .I3(range_i_flags[3]), .I4(range_i_flags[4]), .I5(range_i_flags[5]),
-        .O(incoming_group_fits)
-      );
-    end else begin : g_range_logic
-      assign incoming_group_fits = remaining_wrap ||
-        (high_before && (!column_end_low[TILE_COUNT_W] || !high_next_o_equal || low_within)) ||
-        (high_equal && !column_end_low[TILE_COUNT_W] && low_within);
-    end
+    // 低位进位和高位关系并行合并，范围结果参与快速接收判断。
+    assign incoming_group_fits = remaining_wrap ||
+      (high_before && (!column_end_low[TILE_COUNT_W] || !high_next_o_equal || low_within)) ||
+      (high_equal && !column_end_low[TILE_COUNT_W] && low_within);
   end else begin : g_incoming_group_range_wide
     assign incoming_group_fits = 32'(cols_q) <= 32'(c.group_c) - ch0;
   end
 
   assign incoming_tap_wrap = incoming_tap_wrap_q;
 
-  // 五位位置同时查出除三的商和余数，组内通道直接保留高位位置。
-  localparam bit p_q_decode_use_lut =
-`ifdef ASIC_SYNTHESIS
-    1'b0;
-`elsif XILINX_FPGA
-    1'b1;
-`else
-    1'b0;
-`endif
-  localparam logic [63:0] p_q_quotient_low = 64'hc0fc_0fc0_38e3_8e38;
-  localparam logic [63:0] p_q_quotient_high = 64'hff00_0000_00ff_f000;
-  localparam logic [63:0] p_q_remainder = 64'h2492_4924_9249_2492;
-  logic [4:0] q_decode_i_index;
-  logic q_decode_i_one;
+  // 五位位置乘以 11 后右移五位，精确得到除三的商。
+  // 余数保留低两位；模四运算中减去三倍商等价于加上商。
+  logic [8:0] q_decode_scaled;
   logic [3:0] q_decode_o_quotient;
   logic [1:0] q_decode_o_remainder;
-
-  assign q_decode_i_index = q0[4:0];
-  assign q_decode_i_one = 1'b1;
-  if (p_q_decode_use_lut) begin : g_q_decode_lut
-    LUT6_2 #(.INIT(p_q_quotient_low)) u_quotient_low (
-      .I0(q_decode_i_index[0]), .I1(q_decode_i_index[1]),
-      .I2(q_decode_i_index[2]), .I3(q_decode_i_index[3]),
-      .I4(q_decode_i_index[4]), .I5(q_decode_i_one),
-      .O5(q_decode_o_quotient[0]), .O6(q_decode_o_quotient[1])
-    );
-    LUT6_2 #(.INIT(p_q_quotient_high)) u_quotient_high (
-      .I0(q_decode_i_index[0]), .I1(q_decode_i_index[1]),
-      .I2(q_decode_i_index[2]), .I3(q_decode_i_index[3]),
-      .I4(q_decode_i_index[4]), .I5(q_decode_i_one),
-      .O5(q_decode_o_quotient[2]), .O6(q_decode_o_quotient[3])
-    );
-    LUT6_2 #(.INIT(p_q_remainder)) u_remainder (
-      .I0(q_decode_i_index[0]), .I1(q_decode_i_index[1]),
-      .I2(q_decode_i_index[2]), .I3(q_decode_i_index[3]),
-      .I4(q_decode_i_index[4]), .I5(q_decode_i_one),
-      .O5(q_decode_o_remainder[0]), .O6(q_decode_o_remainder[1])
-    );
-  end else begin : g_q_decode_logic
-    assign q_decode_o_quotient[0] = p_q_quotient_low[q_decode_i_index];
-    assign q_decode_o_quotient[1] = p_q_quotient_low[{1'b1, q_decode_i_index}];
-    assign q_decode_o_quotient[2] = p_q_quotient_high[q_decode_i_index];
-    assign q_decode_o_quotient[3] = p_q_quotient_high[{1'b1, q_decode_i_index}];
-    assign q_decode_o_remainder[0] = p_q_remainder[q_decode_i_index];
-    assign q_decode_o_remainder[1] = p_q_remainder[{1'b1, q_decode_i_index}];
-  end
+  assign q_decode_scaled = {1'b0, q0[4:0], 3'b000} +
+    {3'b000, q0[4:0], 1'b0} + {4'b0000, q0[4:0]};
+  assign q_decode_o_quotient = q_decode_scaled[8:5];
+  assign q_decode_o_remainder = q0[1:0] + q_decode_o_quotient[1:0];
   assign current_q_div3 = {1'b0, q_decode_o_quotient};
   assign current_q_remainder = {q0[15:5], 3'b000, q_decode_o_remainder};
 
-  // 描述符字段分别比较，快速接收资格在末级合并。
-  if (p_cfg_idle_use_lut) begin : g_incoming_compare_lut
-    logic [2:0][32:0] compare_i_a, compare_i_b;
-    logic [2:0][10:0] part_equal;
-    logic [2:0][1:0] group_equal;
-    logic [5:0] q_fast_i_groups;
-    logic [5:0] carry_i_bits;
-
-    assign compare_i_a[0] = {1'b0, tile_p0};
-    assign compare_i_a[1] = {1'b0, tile_q0};
-    assign compare_i_a[2] = {1'b0, tile_q0};
-    assign compare_i_b[0] = {1'b0, p0};
-    assign compare_i_b[1] = {1'b0, q0};
-    assign compare_i_b[2] = next_group_q;
-    for (genvar value = 0; value < 3; value++) begin : g_value
-      for (genvar part = 0; part < 11; part++) begin : g_part
-        logic [5:0] equal_i_bits;
-        assign equal_i_bits = {compare_i_b[value][3*part +: 3], compare_i_a[value][3*part +: 3]};
-        LUT6 #(.INIT(64'h8040_2010_0804_0201)) u_equal (
-          .I0(equal_i_bits[0]), .I1(equal_i_bits[1]), .I2(equal_i_bits[2]),
-          .I3(equal_i_bits[3]), .I4(equal_i_bits[4]), .I5(equal_i_bits[5]),
-          .O(part_equal[value][part])
-        );
-      end
-      assign group_equal[value][0] = &part_equal[value][5:0];
-      assign group_equal[value][1] = &part_equal[value][10:6];
+  // 描述符字段分组比较，步长和低位进位使用同一个接收条件。
+  logic [2:0][32:0] incoming_compare_a, incoming_compare_b;
+  logic [2:0][10:0] incoming_part_equal;
+  logic [2:0][1:0] incoming_group_equal;
+  assign incoming_compare_a[0] = {1'b0, tile_p0};
+  assign incoming_compare_a[1] = {1'b0, tile_q0};
+  assign incoming_compare_a[2] = {1'b0, tile_q0};
+  assign incoming_compare_b[0] = {1'b0, p0};
+  assign incoming_compare_b[1] = {1'b0, q0};
+  assign incoming_compare_b[2] = next_group_q;
+  for (genvar value = 0; value < 3; value++) begin : g_incoming_compare
+    for (genvar part = 0; part < 11; part++) begin : g_part
+      assign incoming_part_equal[value][part] =
+        incoming_compare_a[value][3*part +: 3] == incoming_compare_b[value][3*part +: 3];
     end
-    assign incoming_position_equal = group_equal[0];
-    assign incoming_q_equal = &group_equal[1];
-    // 两段位置等值直接参与每位步长选择，等值时输出零，其他位置选择相应字节步长。
-    for (genvar bit_index = 0; bit_index < 32; bit_index++) begin : g_delta
-      logic [5:0] delta_i_bits;
-
-      assign delta_i_bits = {1'b0, group_equal[1], incoming_tap_wrap,
-                            tap_step_bytes[bit_index], tap_wrap_bytes[bit_index]};
-      LUT6 #(.INIT(64'h00ac_acac_00ac_acac)) u_delta (
-        .I0(delta_i_bits[0]), .I1(delta_i_bits[1]), .I2(delta_i_bits[2]),
-        .I3(delta_i_bits[3]), .I4(delta_i_bits[4]), .I5(delta_i_bits[5]),
-        .O(incoming_delta[bit_index])
-      );
-    end
-    // 已算出的低两位进位沿用同一选择关系，与各步长位并行进入数据字比较。
-    assign carry_i_bits = {1'b0, group_equal[1], incoming_tap_wrap,
-                           incoming_step_low_sum[2], incoming_wrap_low_sum[2]};
-    LUT6 #(.INIT(64'h00ac_acac_00ac_acac)) u_carry (
-      .I0(carry_i_bits[0]), .I1(carry_i_bits[1]), .I2(carry_i_bits[2]),
-      .I3(carry_i_bits[3]), .I4(carry_i_bits[4]), .I5(carry_i_bits[5]),
-      .O(incoming_word_i_carry_in)
-    );
-    assign q_fast_i_groups = {2'b00, group_equal[2], group_equal[1]};
-    LUT6 #(.INIT(64'hF888_F888_F888_F888)) u_q_fast (
-      .I0(q_fast_i_groups[0]), .I1(q_fast_i_groups[1]),
-      .I2(q_fast_i_groups[2]), .I3(q_fast_i_groups[3]),
-      .I4(q_fast_i_groups[4]), .I5(q_fast_i_groups[5]),
-      .O(incoming_q_fast)
-    );
-  end else begin : g_incoming_compare_logic
-    assign incoming_q_equal = tile_q0 == q0;
-    assign incoming_delta = incoming_q_equal ? 32'd0 :
-      (incoming_tap_wrap ? tap_wrap_bytes : tap_step_bytes);
-    assign incoming_word_i_carry_in = !incoming_q_equal &&
-      (incoming_tap_wrap ? incoming_wrap_low_sum[2] : incoming_step_low_sum[2]);
-    assign incoming_q_fast = incoming_q_equal || {1'b0, tile_q0} == next_group_q;
-    assign incoming_position_equal = {2{tile_p0 == p0}};
+    assign incoming_group_equal[value][0] = &incoming_part_equal[value][5:0];
+    assign incoming_group_equal[value][1] = &incoming_part_equal[value][10:6];
   end
+  assign incoming_position_equal = incoming_group_equal[0];
+  assign incoming_q_equal = &incoming_group_equal[1];
+  assign incoming_delta = incoming_q_equal ? 32'd0 :
+    (incoming_tap_wrap ? tap_wrap_bytes : tap_step_bytes);
+  assign incoming_word_i_carry_in = !incoming_q_equal &&
+    (incoming_tap_wrap ? incoming_wrap_low_sum[2] : incoming_step_low_sum[2]);
+  assign incoming_q_fast = incoming_q_equal || (&incoming_group_equal[2]);
   // 坐标资格与单行条件提前合并，晚到的组范围保持单级接收选择。
   assign incoming_fast_i_flags[0] = c.windowed && row_base_valid && coordinate_address_valid;
   assign incoming_fast_i_flags[1] = rows_q == TILE_COUNT_W'(1) && tile_rows == RW'(1);
   assign incoming_fast_i_flags[2] = incoming_group_fits;
   assign incoming_fast_i_flags[4:3] = incoming_position_equal;
   assign incoming_fast_i_flags[5] = incoming_q_fast;
-  if (CACHE_POLICY == 3 && p_cfg_idle_use_lut) begin : g_incoming_fast_lut
-    LUT6 #(.INIT(64'h8000_0000_0000_0000)) u_fast (
-      .I0(incoming_fast_i_flags[0]), .I1(incoming_fast_i_flags[1]),
-      .I2(incoming_fast_i_flags[2]), .I3(incoming_fast_i_flags[3]),
-      .I4(incoming_fast_i_flags[4]), .I5(incoming_fast_i_flags[5]),
-      .O(incoming_fast)
-    );
-  end else begin : g_incoming_fast_logic
-    assign incoming_fast = CACHE_POLICY == 3 && (&incoming_fast_i_flags);
-  end
+  assign incoming_fast = CACHE_POLICY == 3 && (&incoming_fast_i_flags);
   always_comb begin
     incoming_tap=tap0;incoming_ch=ch0;incoming_kx=kx0;incoming_ky=ky0;
     incoming_ix=row_base_ix;incoming_iy=row_base_iy;
@@ -1038,37 +847,16 @@ module conv_im2col_frontend #(
       default: ;
     endcase
   end
-  // 配置接收与忙状态共用空闲条件，缓存就绪只参与末级组合计算。
-  if (p_cfg_idle_use_lut) begin : g_cfg_idle_lut
-    logic [2:0][5:0] idle_i_groups;
-    logic [2:0] idle_o_groups;
-    logic [5:0] idle_i_final;
-    logic idle_o_ready;
-
-    // 三个分组直接检查寄存位为零，状态和阶段均采用声明中的二进制取值。
-    assign idle_i_groups[0] = {request_pending, state};
-    assign idle_i_groups[1] = {cfg_prepare_phase, address_step_phase, prefetch_phase[1:0]};
-    assign idle_i_groups[2] = {prefetch_phase[3:2], pred_busy, pred_cfg_busy, pred_cfg_pending, cache_cfg_pending};
-    for (genvar idle_group = 0; idle_group < 3; idle_group++) begin : g_group
-      LUT6 #(.INIT(64'h0000_0000_0000_0001)) u_idle (
-        .I0(idle_i_groups[idle_group][0]), .I1(idle_i_groups[idle_group][1]),
-        .I2(idle_i_groups[idle_group][2]), .I3(idle_i_groups[idle_group][3]),
-        .I4(idle_i_groups[idle_group][4]), .I5(idle_i_groups[idle_group][5]),
-        .O(idle_o_groups[idle_group])
-      );
-    end
-    assign idle_i_final = {1'b1, !cache_hint_pending, cache_cfg_ready, idle_o_groups};
-    LUT6 #(.INIT(64'h8000_0000_0000_0000)) u_ready (
-      .I0(idle_i_final[0]), .I1(idle_i_final[1]), .I2(idle_i_final[2]),
-      .I3(idle_i_final[3]), .I4(idle_i_final[4]), .I5(idle_i_final[5]),
-      .O(idle_o_ready)
-    );
-    assign cfg_ready = idle_o_ready;
-  end else begin : g_cfg_idle_logic
-    assign cfg_ready = state==IDLE && cfg_prepare_phase==0 && cache_cfg_ready && !pred_busy && !pred_cfg_busy &&
-      !cache_cfg_pending && !pred_cfg_pending && !cache_hint_pending &&
-      !prefetch_active && !request_pending && address_step_phase==0;
+  // 配置接收并行检查各组状态，缓存就绪参与末级条件。
+  logic [2:0][5:0] cfg_idle_groups;
+  logic [2:0] cfg_idle_group_clear;
+  assign cfg_idle_groups[0] = {request_pending, state};
+  assign cfg_idle_groups[1] = {cfg_prepare_phase, address_step_phase, prefetch_phase[1:0]};
+  assign cfg_idle_groups[2] = {prefetch_phase[3:2], pred_busy, pred_cfg_busy, pred_cfg_pending, cache_cfg_pending};
+  for (genvar group_index = 0; group_index < 3; group_index++) begin : g_cfg_idle_group
+    assign cfg_idle_group_clear[group_index] = !(|cfg_idle_groups[group_index]);
   end
+  assign cfg_ready = (&cfg_idle_group_clear) && cache_cfg_ready && !cache_hint_pending;
   assign finishing_tile=wr_valid && wr_ready && wr_last;
   // 描述符就绪的静态条件共用，配置有效只参与最终接收选择。
   assign tile_ready_context = (state==IDLE || finishing_tile) && cfg_prepare_phase==0 && configured && !error &&
@@ -1243,7 +1031,7 @@ module conv_im2col_frontend #(
     end
     assign group_end_o_equal = |selected_end;
   end else begin : g_group_end_wide
-    add_equal #(.p_width(17), .p_use_lut(p_cfg_idle_use_lut)) u_group_end (
+    add_equal #(.p_width(17), .p_use_lut(1'b0)) u_group_end (
       .i_a(group_end_i_a), .i_b(group_end_i_b), .i_target(group_end_i_target),
       .i_carry_in(group_end_i_carry_in), .o_equal(group_end_o_equal)
     );
@@ -1276,9 +1064,6 @@ module conv_im2col_frontend #(
         logic [11:0] high_i_a, high_i_b;
         logic [3:0] low_i_a;
         logic low_i_carry_in;
-        localparam logic [63:0] p_priority_select = 64'hfedc_3210_fedc_3210;
-        localparam logic [63:0] p_priority_select_high = 64'hfedc_3210_0000_0000;
-
         // 目标低位确定传向高位的进位，高位等式可与各个固定增量并行计算。
         assign high_i_a = ch_q[15:4];
         assign high_i_b = 12'd0;
@@ -1290,10 +1075,6 @@ module conv_im2col_frontend #(
           logic [3:0] low_i_target;
           logic high_i_carry_in, high_o_equal, high_gate;
           logic [LANES:0] step_equal;
-          localparam logic [63:0] p_final_select = boundary == 0 ?
-              ~p_priority_select_high : p_priority_select_high;
-          localparam logic [63:0] p_lower_select = LANES >= 3 ? p_priority_select : p_final_select;
-
           assign high_i_target = step_i_target[boundary][15:4];
           assign low_i_target = step_i_target[boundary][3:0];
           assign high_i_carry_in = ch_q[3] && !step_i_target[boundary][3];
@@ -1311,63 +1092,19 @@ module conv_im2col_frontend #(
               .i_carry_in(low_i_carry_in), .o_equal(step_equal[step])
             );
           end
-          if (p_cfg_idle_use_lut) begin : g_lut_select
-            logic [5:0] lower_i_value;
-            logic lower_o_value;
+          logic low_selected;
 
-            // 两级优先选择保留任意有效通道掩码，选择控制位于宽比较之后。
-            assign lower_i_value[0] = chunk_lane_allowed[0];
-            assign lower_i_value[2] = step_equal[0];
-            assign lower_i_value[3] = step_equal[1];
-            assign lower_i_value[5] = LANES >= 3 ? 1'b0 : high_gate;
-            if (LANES >= 2) begin : g_second_lane
-              assign lower_i_value[1] = chunk_lane_allowed[1];
-              assign lower_i_value[4] = step_equal[2];
-            end else begin : g_one_lane
-              assign lower_i_value[1] = 1'b0;
-              assign lower_i_value[4] = 1'b0;
-            end
-            LUT6 #(.INIT(p_lower_select)) u_lower (
-              .I0(lower_i_value[0]), .I1(lower_i_value[1]), .I2(lower_i_value[2]),
-              .I3(lower_i_value[3]), .I4(lower_i_value[4]), .I5(lower_i_value[5]),
-              .O(lower_o_value)
-            );
-            if (LANES >= 3) begin : g_upper_lanes
-              logic [5:0] upper_i_value;
-              logic upper_o_value;
-
-              assign upper_i_value[0] = chunk_lane_allowed[2];
-              assign upper_i_value[2] = lower_o_value;
-              assign upper_i_value[3] = step_equal[3];
-              assign upper_i_value[5] = high_gate;
-              if (LANES == 4) begin : g_fourth_lane
-                assign upper_i_value[1] = chunk_lane_allowed[3];
-                assign upper_i_value[4] = step_equal[4];
-              end else begin : g_three_lanes
-                assign upper_i_value[1] = 1'b0;
-                assign upper_i_value[4] = 1'b0;
-              end
-              LUT6 #(.INIT(p_final_select)) u_upper (
-                .I0(upper_i_value[0]), .I1(upper_i_value[1]), .I2(upper_i_value[2]),
-                .I3(upper_i_value[3]), .I4(upper_i_value[4]), .I5(upper_i_value[5]),
-                .O(upper_o_value)
-              );
-              assign boundary_selected[boundary] = upper_o_value;
-            end else begin : g_lower_lanes
-              assign boundary_selected[boundary] = lower_o_value;
-            end
-          end else begin : g_logic_select
-            logic low_selected;
-
-            always_comb begin
-              low_selected = step_equal[0];
-              for (int lane = 0; lane < LANES; lane++) begin
-                if (chunk_lane_allowed[lane]) low_selected = step_equal[lane+1];
+          // 较高有效通道具有优先级，宽位范围关系只合并一次。
+          always_comb begin
+            low_selected = step_equal[0];
+            for (int lane = 0; lane < LANES; lane++) begin
+              if (chunk_lane_allowed[lane]) begin
+                low_selected = step_equal[lane+1];
               end
             end
-            assign boundary_selected[boundary] = boundary == 0 ?
-                !(high_gate && low_selected) : high_gate && low_selected;
           end
+          assign boundary_selected[boundary] = boundary == 0 ?
+            !(high_gate && low_selected) : high_gate && low_selected;
         end
         assign group_has_channel = boundary_selected[0];
         assign one_channel = boundary_selected[1];
@@ -1380,24 +1117,8 @@ module conv_im2col_frontend #(
         assign three_channels = c.group_c >= 16'd3 && group_range_channel[source] == group_minus_three_q;
       end
       for (genvar lane = 0; lane < 4; lane++) begin : g_lane
-        if (source == 5 && p_cfg_idle_use_lut && lane > 0) begin : g_fixed_range
-          localparam logic [63:0] p_range_value = lane == 1 ? 64'h2222_2222_2222_2222 :
-              lane == 2 ? 64'h0202_0202_0202_0202 : 64'h0002_0002_0002_0002;
-          logic [5:0] range_i_value;
-          logic range_o_value;
-
-          // 各通道独立合并边界标志，使晚到的通道选择只增加一级范围逻辑。
-          assign range_i_value = {2'b00, three_channels, two_channels, one_channel, group_has_channel};
-          LUT6 #(.INIT(p_range_value)) u_range (
-            .I0(range_i_value[0]), .I1(range_i_value[1]), .I2(range_i_value[2]),
-            .I3(range_i_value[3]), .I4(range_i_value[4]), .I5(range_i_value[5]),
-            .O(range_o_value)
-          );
-          assign group_range_next[source][lane] = range_o_value;
-        end else begin : g_logic_range
-          assign group_range_next[source][lane] = group_has_channel &&
-            (lane < 1 || !one_channel) && (lane < 2 || !two_channels) && (lane < 3 || !three_channels);
-        end
+        assign group_range_next[source][lane] = group_has_channel &&
+          (lane < 1 || !one_channel) && (lane < 2 || !two_channels) && (lane < 3 || !three_channels);
       end
     end
     // 范围标志与当前通道同时保存，传输结束判断直接读取寄存结果。
@@ -1668,14 +1389,14 @@ module conv_im2col_frontend #(
           pf0_x <= pf_x; pf0_y <= pf_y; pf0_channel <= pf_channel;
           pf0_epoch <= pfa_ref_epoch;
           pf0_ref_addr <= pfa_ref_addr; pf0_ref_index <= pfa_ref_index;
-          pf0_ref_epoch <= pfa_ref_epoch; pf0_ref_retire <= pfa_retire;
+          pf0_ref_epoch <= pfa_ref_epoch; pf0_ref_retire <= retirement_result[1];
           pf0_ref_index_valid <= pfa_ref_index_valid; pf0_fragment <= pf_next_fragment;
           pf0_coordinate_valid <= pf_coordinate_valid;
           prefetch_phase <= 4;
         end
         4: begin
           pf1_pixel <= pf0_y * 32'(c.input_w) + pf0_x;
-          pf1_channel <= pf0_channel; pf1_epoch <= pf0_epoch; pf1_retire <= pf_retire;
+          pf1_channel <= pf0_channel; pf1_epoch <= pf0_epoch; pf1_retire <= retirement_result[1];
           pf1_ref_addr <= pf0_ref_addr; pf1_ref_index <= pf0_ref_index;
           pf1_ref_epoch <= pf0_ref_epoch; pf1_ref_retire <= pf0_ref_retire;
           pf1_ref_index_valid <= pf0_ref_index_valid; pf1_fragment <= pf0_fragment;
@@ -1716,16 +1437,7 @@ module conv_im2col_frontend #(
     32'(tile_cols) <= SIZE && tile_q_before_end && tile_rows_in_range;
   assign channel_accept_i_flags = {1'b1, incoming_fast, channel_descriptor_valid,
                                   tile_ready_context, !cfg_valid, tile_valid};
-  if (p_cfg_idle_use_lut) begin : g_channel_accept_lut
-    LUT6 #(.INIT(64'h8000_0000_0000_0000)) u_accept (
-      .I0(channel_accept_i_flags[0]), .I1(channel_accept_i_flags[1]),
-      .I2(channel_accept_i_flags[2]), .I3(channel_accept_i_flags[3]),
-      .I4(channel_accept_i_flags[4]), .I5(channel_accept_i_flags[5]),
-      .O(channel_accept_fire)
-    );
-  end else begin : g_channel_accept_logic
-    assign channel_accept_fire = &channel_accept_i_flags;
-  end
+  assign channel_accept_fire = &channel_accept_i_flags;
   always_comb begin
     channel_update = ch_q;
     case (state)
@@ -1761,23 +1473,8 @@ module conv_im2col_frontend #(
       default: ;
     endcase
   end
-  // 相邻两位共用接收选择，配置和描述符有效只经过一个最终数据选择表。
-  if (p_cfg_idle_use_lut) begin : g_channel_mux_lut
-    logic channel_mux_i_one;
-    assign channel_mux_i_one = 1'b1;
-    for (genvar pair = 0; pair < 8; pair++) begin : g_pair
-      logic [4:0] mux_i_bits;
-      assign mux_i_bits = {channel_accept_fire, incoming_ch[2*pair+1], channel_update[2*pair+1],
-                          incoming_ch[2*pair], channel_update[2*pair]};
-      LUT6_2 #(.INIT(64'hff00_f0f0_cccc_aaaa)) u_mux (
-        .I0(mux_i_bits[0]), .I1(mux_i_bits[1]), .I2(mux_i_bits[2]),
-        .I3(mux_i_bits[3]), .I4(mux_i_bits[4]), .I5(channel_mux_i_one),
-        .O5(channel_value[2*pair]), .O6(channel_value[2*pair+1])
-      );
-    end
-  end else begin : g_channel_mux_logic
-    assign channel_value = channel_accept_fire ? 16'(incoming_ch) : channel_update;
-  end
+  // 当前通道和新描述符并行准备，接收事件只选择最终数据。
+  assign channel_value = channel_accept_fire ? 16'(incoming_ch) : channel_update;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       ch_q <= 16'd0;
@@ -2176,3 +1873,5 @@ module conv_im2col_frontend #(
   end
 `endif
 endmodule
+
+`default_nettype wire

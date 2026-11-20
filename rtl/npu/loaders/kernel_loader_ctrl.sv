@@ -108,6 +108,9 @@ module kernel_loader_ctrl #(
   logic                 final_load_done;
   logic                 load_complete_after;
   total_count_t issued_count_next;
+  localparam int p_issued_part_bits = 6;
+  localparam int p_issued_parts = (TOTAL_CNT_W + p_issued_part_bits - 1) / p_issued_part_bits;
+  logic [p_issued_parts-1:0] issued_chunk_carry_q;
   logic [1:0] remaining_loads, remaining_sends;
   logic issued_zero, issued_one, loads_wrap, sends_wrap;
   logic load_count_reached, sent_count_covers_loads;
@@ -429,9 +432,27 @@ module kernel_loader_ctrl #(
   // 已发出总数保留完整模宽；加载与发送数量由有界差值表示。
   assign loaded_count = issued_count - total_count_t'(pending_loads);
   assign sent_count = issued_count - total_count_t'(pending_sends);
-  kernel_count_increment #(.p_width(TOTAL_CNT_W)) u_issued_increment (
-      .i_value(issued_count), .o_next(issued_count_next)
-  );
+  // 各组输入进位对应当前计数的低位全一条件，与完整计数在同一边沿更新。
+  assign issued_chunk_carry_q[0] = 1'b1;
+  for (genvar part = 0; part < p_issued_parts; part++) begin : g_issued_part
+    localparam int p_low = part * p_issued_part_bits;
+    localparam int p_width = TOTAL_CNT_W - p_low < p_issued_part_bits ?
+      TOTAL_CNT_W - p_low : p_issued_part_bits;
+    logic unused_carry;
+    assign {unused_carry, issued_count_next[p_low +: p_width]} =
+      {1'b0, issued_count[p_low +: p_width]} + (p_width+1)'(issued_chunk_carry_q[part]);
+    if (part != 0) begin : g_carry
+      always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) issued_chunk_carry_q[part] <= 1'b0;
+        else if (!clear) begin
+          if (state == S_IDLE && cfg_valid)
+            issued_chunk_carry_q[part] <= 1'b0;
+          else if (state == S_RUN && dma_start)
+            issued_chunk_carry_q[part] <= !issued_count[0] && (&issued_count[p_low-1:1]);
+        end
+      end
+    end
+  end
 
   // 比较完整无符号计数时，同时处理低端回绕后的大小关系。
   assign issued_zero = issued_count == '0;
@@ -448,103 +469,52 @@ module kernel_loader_ctrl #(
 
 endmodule
 
-// 六位一组形成进位条件，各组同时计算常量递增。
+// 五位分组和六组聚合形成并行进位，各结果位独立计算翻转条件。
 module kernel_count_increment #(
     parameter int p_width = 48
 ) (
     input  wire logic [p_width-1:0] i_value,
     output logic [p_width-1:0] o_next
 );
-    localparam int p_parts = (p_width + 5) / 6;
-    localparam int p_groups = (p_parts + 5) / 6;
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_increment = 1'b0;
-`else
-    localparam bit p_fpga_increment = 1'b1;
-`endif
-`else
-    localparam bit p_fpga_increment = 1'b0;
-`endif
+    localparam int p_chunk_bits = 5;
+    localparam int p_block_chunks = 6;
+    localparam int p_chunks = (p_width + p_chunk_bits - 1) / p_chunk_bits;
+    localparam int p_blocks = (p_chunks + p_block_chunks - 1) / p_block_chunks;
+    (* keep *) logic [p_chunks-1:0] chunk_all;
+    (* keep *) logic [p_blocks-1:0] block_all;
 
-    if (p_fpga_increment) begin : g_fpga_increment
-        logic [p_parts-1:0] part_all;
-        logic [p_groups-1:0] group_all;
-        for (genvar part = 0; part < p_parts; part++) begin : g_part_all
-            logic [5:0] lut_i_bits;
-            logic lut_o_all;
-            for (genvar bit_index = 0; bit_index < 6; bit_index++) begin : g_input
-                if ((part*6 + bit_index) < p_width) begin : g_value
-                    assign lut_i_bits[bit_index] = i_value[part*6 + bit_index];
-                end else begin : g_padding
-                    assign lut_i_bits[bit_index] = 1'b1;
-                end
-            end
-            assign part_all[part] = lut_o_all;
-            LUT6 #(.INIT(64'h8000000000000000)) u_all (
-                .I0(lut_i_bits[0]), .I1(lut_i_bits[1]), .I2(lut_i_bits[2]),
-                .I3(lut_i_bits[3]), .I4(lut_i_bits[4]), .I5(lut_i_bits[5]), .O(lut_o_all)
-            );
+    for (genvar block_index = 0; block_index < p_blocks; block_index++) begin : g_block
+        localparam int p_low_chunk = block_index * p_block_chunks;
+        localparam int p_block_width = p_chunks - p_low_chunk < p_block_chunks ?
+            p_chunks - p_low_chunk : p_block_chunks;
+        assign block_all[block_index] = &chunk_all[p_low_chunk +: p_block_width];
+    end
+    for (genvar chunk = 0; chunk < p_chunks; chunk++) begin : g_chunk
+        localparam int p_low = chunk * p_chunk_bits;
+        localparam int p_chunk_width = p_width - p_low < p_chunk_bits ?
+            p_width - p_low : p_chunk_bits;
+        localparam int p_block = chunk / p_block_chunks;
+        localparam int p_inner = chunk % p_block_chunks;
+        logic chunk_carry;
+        assign chunk_all[chunk] = &i_value[p_low +: p_chunk_width];
+        if (chunk == 0) begin : g_first
+            assign chunk_carry = 1'b1;
+        end else if (p_block == 0) begin : g_first_block
+            assign chunk_carry = &chunk_all[chunk-1:0];
+        end else if (p_inner == 0) begin : g_block_start
+            assign chunk_carry = &block_all[p_block-1:0];
+        end else begin : g_inside_block
+            assign chunk_carry = (&block_all[p_block-1:0]) &&
+                (&chunk_all[p_block*p_block_chunks +: p_inner]);
         end
-        for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group_all
-            logic [5:0] lut_i_bits;
-            logic lut_o_all;
-            for (genvar bit_index = 0; bit_index < 6; bit_index++) begin : g_input
-                if ((group_index*6 + bit_index) < p_parts) begin : g_value
-                    assign lut_i_bits[bit_index] = part_all[group_index*6 + bit_index];
-                end else begin : g_padding
-                    assign lut_i_bits[bit_index] = 1'b1;
-                end
+        for (genvar bit_index = 0; bit_index < p_chunk_width; bit_index++) begin : g_bit
+            if (bit_index == 0) begin : g_low
+                assign o_next[p_low] = i_value[p_low] ^ chunk_carry;
+            end else begin : g_high
+                assign o_next[p_low+bit_index] = i_value[p_low+bit_index] ^
+                    (chunk_carry && (&i_value[p_low +: bit_index]));
             end
-            assign group_all[group_index] = lut_o_all;
-            LUT6 #(.INIT(64'h8000000000000000)) u_all (
-                .I0(lut_i_bits[0]), .I1(lut_i_bits[1]), .I2(lut_i_bits[2]),
-                .I3(lut_i_bits[3]), .I4(lut_i_bits[4]), .I5(lut_i_bits[5]), .O(lut_o_all)
-            );
         end
-        for (genvar part = 0; part < p_parts; part++) begin : g_increment
-            localparam int p_low = part*6;
-            localparam int p_part_width = ((p_width-p_low) < 6) ? p_width-p_low : 6;
-            logic carry_in, unused_carry;
-            if (part == 0) begin : g_first
-                assign carry_in = 1'b1;
-            end else begin : g_upper
-                localparam int p_full_groups = part/6;
-                localparam int p_tail_parts = part%6;
-                localparam int p_factors = p_full_groups+p_tail_parts;
-                logic [p_factors-1:0] carry_factors;
-                for (genvar index = 0; index < p_full_groups; index++) begin : g_complete
-                    assign carry_factors[index] = group_all[index];
-                end
-                for (genvar index = 0; index < p_tail_parts; index++) begin : g_tail
-                    assign carry_factors[p_full_groups+index] = part_all[p_full_groups*6+index];
-                end
-                if (p_factors == 1) begin : g_single
-                    assign carry_in = carry_factors[0];
-                end else if (p_factors <= 6) begin : g_lut
-                    logic [5:0] lut_i_bits;
-                    logic lut_o_all;
-                    for (genvar index = 0; index < 6; index++) begin : g_input
-                        if (index < p_factors) begin : g_value
-                            assign lut_i_bits[index] = carry_factors[index];
-                        end else begin : g_padding
-                            assign lut_i_bits[index] = 1'b1;
-                        end
-                    end
-                    assign carry_in = lut_o_all;
-                    LUT6 #(.INIT(64'h8000000000000000)) u_all (
-                        .I0(lut_i_bits[0]), .I1(lut_i_bits[1]), .I2(lut_i_bits[2]),
-                        .I3(lut_i_bits[3]), .I4(lut_i_bits[4]), .I5(lut_i_bits[5]), .O(lut_o_all)
-                    );
-                end else begin : g_large_width
-                    assign carry_in = &carry_factors;
-                end
-            end
-            assign {unused_carry, o_next[p_low +: p_part_width]} =
-                {1'b0, i_value[p_low +: p_part_width]} + (p_part_width+1)'(carry_in);
-        end
-    end else begin : g_generic_increment
-        assign o_next = i_value + p_width'(1);
     end
 endmodule
 

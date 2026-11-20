@@ -215,24 +215,82 @@ module soc_axi_ram #(
     function automatic logic [AW:0] axi_next_addr(
         input logic [AW:0] byte_addr, input logic [2:0] size,
         input logic [1:0] burst);
-        logic [AW:0] step;
+        logic [7:0] low_keep_mask;
+        logic [7:0] low_address;
+        logic [7:0] low_carry_bits;
+        logic [7:0] low_prefix_mask;
+        logic [7:0] low_next;
+        logic [AW:0] incremented_addr;
+        logic [AW:0] high_prefix_mask;
         begin
-            step = (AW+1)'(1) << size;
-            axi_next_addr = (burst == 2'b00) ? byte_addr :
-                             ((byte_addr & ~(step - 1'b1)) + step);
+            // 步长最高为 128 字节，低于传输边界的地址位清零并退出进位判断。
+            low_keep_mask = 8'hff << size;
+            low_address = 8'(byte_addr);
+            low_carry_bits = low_address | ~low_keep_mask;
+            for (int bit_index=0; bit_index<8; bit_index++) begin
+                low_prefix_mask = (8'd1 << bit_index) - 8'd1;
+                low_next[bit_index] = low_keep_mask[bit_index] &
+                    (low_address[bit_index] ^ (&(low_carry_bits | ~low_prefix_mask)));
+            end
+            incremented_addr = (AW+1)'(low_next);
+            // 各高位独立计算低位全一条件，保留扩展地址位以检测地址越界。
+            for (int bit_index=8; bit_index<=AW; bit_index++) begin
+                high_prefix_mask = ((AW+1)'(1) << bit_index) - (AW+1)'(256);
+                incremented_addr[bit_index] = byte_addr[bit_index] ^
+                    ((&low_carry_bits) && ((byte_addr & high_prefix_mask) == high_prefix_mask));
+            end
+            axi_next_addr = (burst == 2'b00) ? byte_addr : incremented_addr;
         end
     endfunction
 
     function automatic logic axi_command_bad(
         input logic [AW-1:0] byte_addr, input logic [7:0] len,
         input logic [2:0] size, input logic [1:0] burst);
+        logic [11:0] page_address;
+        logic [7:0] page_word_low;
+        logic page_word_high_full;
+        logic [8:0] page_last_word;
         logic [31:0] step, page_start, page_end;
         begin
-            step = 32'd1 << size;
-            page_start = (32'(byte_addr) & 32'hfff) & ~(step-1'b1);
-            page_end = page_start + ((burst == 2'b00) ? step : ((32'(len)+1'b1) << size));
-            axi_command_bad = (32'(size) > ADDR_LSB) || (burst > 2'b01) ||
-                               ((burst == 2'b00) && len > 8'd15) || (page_end > 32'd4096);
+            if (ADDR_LSB <= 4) begin
+                // 末拍字序号超过页容量时才跨页，长度比较只需要低八位与页内高位。
+                page_address = 12'(byte_addr);
+                page_word_low = '0;
+                page_word_high_full = 1'b0;
+                case (size)
+                    3'd0: begin
+                        page_word_low = page_address[7:0];
+                        page_word_high_full = &page_address[11:8];
+                    end
+                    3'd1: begin
+                        page_word_low = page_address[8:1];
+                        page_word_high_full = &page_address[11:9];
+                    end
+                    3'd2: begin
+                        page_word_low = page_address[9:2];
+                        page_word_high_full = &page_address[11:10];
+                    end
+                    3'd3: begin
+                        page_word_low = page_address[10:3];
+                        page_word_high_full = page_address[11];
+                    end
+                    3'd4: begin
+                        page_word_low = page_address[11:4];
+                        page_word_high_full = 1'b1;
+                    end
+                    default: begin end
+                endcase
+                page_last_word = {1'b0, page_word_low} + {1'b0, len};
+                axi_command_bad = (32'(size) > ADDR_LSB) || (burst > 2'b01) ||
+                    ((burst == 2'b00) && len > 8'd15) ||
+                    ((burst == 2'b01) && page_word_high_full && page_last_word[8]);
+            end else begin
+                step = 32'd1 << size;
+                page_start = (32'(byte_addr) & 32'hfff) & ~(step-1'b1);
+                page_end = page_start + ((burst == 2'b00) ? step : ((32'(len)+1'b1) << size));
+                axi_command_bad = (32'(size) > ADDR_LSB) || (burst > 2'b01) ||
+                    ((burst == 2'b00) && len > 8'd15) || (page_end > 32'd4096);
+            end
         end
     endfunction
 
@@ -283,7 +341,11 @@ module soc_axi_ram #(
         rd_pipe_beat ? axi_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q) : rd_byte_addr_q;
     wire [WORD_ADDR_BITS:0] rd_issue_word_addr = rd_issue_byte_addr[AW:ADDR_LSB];
     // Compare against the actual word count, also for non-power-of-two RAMs.
-    wire rd_issue_oob = rd_issue_word_addr >= (WORD_ADDR_BITS+1)'(DP);
+    logic rd_issue_oob;
+    // 二次幂容量只需检查高地址位；其余容量保留完整无符号比较。
+    assign rd_issue_oob = ((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0) ?
+        (|(rd_issue_word_addr >> $clog2(DP))) :
+        (rd_issue_word_addr >= (WORD_ADDR_BITS+1)'(DP));
     wire rd_issue_fault = rd_issue_oob || (rd_pipe_cmd ? rd_pipe_cmd_bad : rd_cmd_error_q);
     wire rd_can_issue = rd_cmd_valid_q && rd_active_mature &&
                         (!s_axi_rvalid || rd_pipe_beat || rd_pipe_cmd) && r_rsp_delay_clear;
@@ -308,14 +370,21 @@ module soc_axi_ram #(
     wire wr_b_queue_full = (wr_b_count_q == WR_CNT_W'(WR_DEPTH));
     wire wr_b_pop = b_fire;
     wire wr_has_addr_for_w = wr_cmd_valid_q;
-    wire wr_active_oob = wr_word_addr_q >= (WORD_ADDR_BITS+1)'(DP);
-    wire [31:0] wr_lane_first = 32'(wr_byte_addr_q) & (BYTEW-1);
-    wire [31:0] wr_lane_end = (wr_lane_first & ~((32'd1 << wr_size_active_q)-1)) +
-                             (32'd1 << wr_size_active_q);
+    logic wr_active_oob;
+    logic [31:0] wr_lane_first;
+    logic [31:0] wr_transfer_block;
     logic [BYTEW-1:0] wr_legal_lanes;
+    assign wr_active_oob = ((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0) ?
+        (|(wr_word_addr_q >> $clog2(DP))) :
+        (wr_word_addr_q >= (WORD_ADDR_BITS+1)'(DP));
+    assign wr_lane_first = 32'(wr_byte_addr_q) & (BYTEW-1);
+    assign wr_transfer_block = wr_lane_first >> wr_size_active_q;
+    // 有效字节位于起始字节之后，且与起始地址属于同一个传输块。
     always_comb begin
-        for (int i=0; i<BYTEW; i++)
-            wr_legal_lanes[i] = 32'(i) >= wr_lane_first && 32'(i) < wr_lane_end;
+        for (int i=0; i<BYTEW; i++) begin
+            wr_legal_lanes[i] = (32'(i) >= wr_lane_first) &&
+                ((32'(i) >> wr_size_active_q) == wr_transfer_block);
+        end
     end
     wire wr_strobe_error = |(s_axi_wstrb & ~wr_legal_lanes);
     wire wr_last_expected = (wr_beat_q == wr_len_active_q);

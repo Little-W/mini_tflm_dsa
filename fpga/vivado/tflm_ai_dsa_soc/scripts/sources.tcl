@@ -114,6 +114,11 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $project_export_dir constraints tflm_ai_dsa_soc.xdc] \
     ]
 
+    # 公共模块按实际文件收集，保留已列出的编译顺序。
+    foreach source_file [lsort [glob -nocomplain -directory $common_root *.v *.sv]] {
+        if {$source_file ni $design_sources} { lappend design_sources $source_file }
+    }
+
 }
 
 proc require_files {files label} {

@@ -480,6 +480,18 @@ module conv_windowed_cache #(
   logic [PF_AW-1:0] prefetch_payload_i_wr_addr, prefetch_payload_i_rd_addr;
   logic [64:0] prefetch_payload_i_wr_data, prefetch_payload_o_rd_data;
   logic [0:0] prefetch_payload_i_wr_mask;
+  logic prefetch_retire_i_wr_en;
+  logic [PF_AW-1:0] prefetch_retire_i_wr_addr;
+  logic [31:0] prefetch_retire_i_wr_data;
+  logic [0:0] prefetch_retire_i_wr_mask, prefetch_retire_i_rd_en;
+  logic [0:0][PF_AW-1:0] prefetch_retire_i_rd_addr;
+  logic [0:0][31:0] prefetch_retire_o_rd_data;
+  logic prefetch_index_i_wr_en;
+  logic [PF_AW-1:0] prefetch_index_i_wr_addr;
+  logic [32:0] prefetch_index_i_wr_data;
+  logic [0:0] prefetch_index_i_wr_mask, prefetch_index_i_rd_en;
+  logic [0:0][PF_AW-1:0] prefetch_index_i_rd_addr;
+  logic [0:0][32:0] prefetch_index_o_rd_data;
   logic pf_push, pf_pop, pf_duplicate, pf_retire_q, pf_retire_ready;
   logic [PF_DEPTH-1:0] pf_slot_valid, pf_current_by_slot;
   logic [PF_DEPTH-1:0] pf_pick_by_slot;
@@ -508,8 +520,9 @@ module conv_windowed_cache #(
   logic select_capture;
   logic candidate_metadata_busy, select_metadata_busy;
   logic [31:0] select_progress, farthest;
-  logic [32:0] select_end_wide;
-  logic [31:0] select_line_base, select_first, select_end;
+  logic [32:0] fill_candidate_end_wide;
+  logic [31:0] select_line_base, select_first;
+  logic [31:0] fill_candidate_line_base, fill_candidate_end;
   logic ram_ren, ram_wen, spec_read_conflict;
   logic [DA-1:0] ram_raddr, ram_waddr;
   logic [31:0] ram_rdata;
@@ -581,38 +594,8 @@ module conv_windowed_cache #(
   logic [p_cfg_idle_width-1:0] cfg_idle_state;
   assign cfg_idle_state = {fg_state, clearing, pf_count, pf_active_valid, offer_valid,
                            outstanding_count, request_count, response_count, select_stage_valid};
-`ifdef XILINX_FPGA
-  if (p_cfg_idle_width <= 24) begin : g_cfg_idle_fpga
-    // 其余状态分成四组并行检查，填充状态直接进入最后一级。
-    logic [23:0] idle_i_groups;
-    logic [3:0] idle_o_groups;
-    logic [5:0] idle_i_final;
-    logic unused_idle_o5;
-
-    assign idle_i_groups = 24'(cfg_idle_state);
-    for (genvar group_index = 0; group_index < 4; group_index++) begin : g_idle_group
-      logic [5:0] group_i_state;
-      logic unused_group_o5;
-
-      assign group_i_state = idle_i_groups[group_index*6 +: 6];
-      LUT6_2 #(.INIT(64'h0000_0000_0000_0001)) u_idle_group (
-        .I0(group_i_state[0]), .I1(group_i_state[1]), .I2(group_i_state[2]),
-        .I3(group_i_state[3]), .I4(group_i_state[4]), .I5(group_i_state[5]),
-        .O5(unused_group_o5), .O6(idle_o_groups[group_index])
-      );
-    end
-    assign idle_i_final = {idle_o_groups, fill_state};
-    LUT6_2 #(.INIT(64'h1000_0000_0000_0000)) u_cfg_idle (
-      .I0(idle_i_final[0]), .I1(idle_i_final[1]), .I2(idle_i_final[2]),
-      .I3(idle_i_final[3]), .I4(idle_i_final[4]), .I5(idle_i_final[5]),
-      .O5(unused_idle_o5), .O6(cfg_ready)
-    );
-  end else begin : g_cfg_idle_wide
-    assign cfg_ready = fill_state == F_IDLE && cfg_idle_state == '0;
-  end
-`else
-  assign cfg_ready = fill_state == F_IDLE && cfg_idle_state == '0;
-`endif
+  // 缓存各状态并行检查，填充状态独立参与最终接收条件。
+  assign cfg_ready = fill_state == F_IDLE && !(|cfg_idle_state);
   assign req_ready=configured && !clearing && !cfg_valid &&
                    (outstanding_count<DQ_CW'(DEMAND_DEPTH) || consumed_response) &&
                    (windowed_q || outstanding_count==0 || consumed_response);
@@ -741,13 +724,39 @@ module conv_windowed_cache #(
   assign prefetch_payload_i_wr_mask = 1'b1;
   assign prefetch_payload_i_rd_en = 1'b1;
   assign prefetch_payload_i_rd_addr = pf_read_slot;
+  // 缓存行释放序号与索引独立存储，原有接收寄存级并入释放序号的块 RAM。
+  // 两个存储体共用地址和写使能，完整保留每项 65 位描述及其读取周期。
+  assign prefetch_retire_i_wr_en = prefetch_payload_i_wr_en;
+  assign prefetch_retire_i_wr_addr = prefetch_payload_i_wr_addr;
+  assign prefetch_retire_i_wr_data = prefetch_payload_i_wr_data[31:0];
+  assign prefetch_retire_i_wr_mask = prefetch_payload_i_wr_mask;
+  assign prefetch_retire_i_rd_en[0] = prefetch_payload_i_rd_en;
+  assign prefetch_retire_i_rd_addr[0] = prefetch_payload_i_rd_addr;
+  assign prefetch_payload_o_rd_data[31:0] = prefetch_retire_o_rd_data[0];
   regfile #(
-    .p_data_width(65), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
-    .p_write_unit(65), .p_read_ports(1), .p_sync_read(1'b0)
-  ) u_prefetch_payload (
-    .clk(clk), .i_wr_en(prefetch_payload_i_wr_en), .i_wr_addr(prefetch_payload_i_wr_addr),
-    .i_wr_data(prefetch_payload_i_wr_data), .i_wr_mask(prefetch_payload_i_wr_mask),
-    .i_rd_en(prefetch_payload_i_rd_en), .i_rd_addr(prefetch_payload_i_rd_addr), .o_rd_data(prefetch_payload_o_rd_data)
+    .p_data_width(32), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
+    .p_write_unit(32), .p_read_ports(1), .p_sync_read(1'b0), .p_ram_style("block")
+  ) u_prefetch_retire (
+    .clk(clk), .i_wr_en(prefetch_retire_i_wr_en), .i_wr_addr(prefetch_retire_i_wr_addr),
+    .i_wr_data(prefetch_retire_i_wr_data), .i_wr_mask(prefetch_retire_i_wr_mask),
+    .i_rd_en(prefetch_retire_i_rd_en), .i_rd_addr(prefetch_retire_i_rd_addr),
+    .o_rd_data(prefetch_retire_o_rd_data)
+  );
+  assign prefetch_index_i_wr_en = prefetch_payload_i_wr_en;
+  assign prefetch_index_i_wr_addr = prefetch_payload_i_wr_addr;
+  assign prefetch_index_i_wr_data = prefetch_payload_i_wr_data[64:32];
+  assign prefetch_index_i_wr_mask = prefetch_payload_i_wr_mask;
+  assign prefetch_index_i_rd_en[0] = prefetch_payload_i_rd_en;
+  assign prefetch_index_i_rd_addr[0] = prefetch_payload_i_rd_addr;
+  assign prefetch_payload_o_rd_data[64:32] = prefetch_index_o_rd_data[0];
+  regfile #(
+    .p_data_width(33), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
+    .p_write_unit(33), .p_read_ports(1), .p_sync_read(1'b0)
+  ) u_prefetch_index (
+    .clk(clk), .i_wr_en(prefetch_index_i_wr_en), .i_wr_addr(prefetch_index_i_wr_addr),
+    .i_wr_data(prefetch_index_i_wr_data), .i_wr_mask(prefetch_index_i_wr_mask),
+    .i_rd_en(prefetch_index_i_rd_en), .i_rd_addr(prefetch_index_i_rd_addr),
+    .o_rd_data(prefetch_index_o_rd_data)
   );
   // 从队首开始循环查找第一个代次匹配项，无匹配时选择队首。
   // 固定逻辑位置只检查一次代次，各位置并行检查循环次序中更早的匹配项。
@@ -819,7 +828,9 @@ module conv_windowed_cache #(
   always_comb begin
     lookup_hit=0;lookup_way=0;
     for (int w=0;w<WAYS;w++)
-      if (lookup_ready && valid_lookup[w] && lookup_tag[w]==lookup_addr[31:LB]) begin
+      if (lookup_ready && valid_lookup[w] &&
+          (fg_state==FG_MISS ? lookup_tag[w]==demand_addr[31:LB] :
+                               lookup_tag[w]==work_request.address[31:LB])) begin
         lookup_hit=1;lookup_way=WI'(w);
       end
     if (bypass_q) begin lookup_hit=demand_filled && fg_state==FG_MISS && lookup_ready;
@@ -906,8 +917,13 @@ module conv_windowed_cache #(
     // A pending miss is served before lookahead can claim another data line.
     select_line_base=bypass_q ? {select_addr[31:2],2'b0} : {select_addr[31:LB],{LB{1'b0}}};
     select_first=select_line_base<base_q ? base_q : select_line_base;
-    select_end_wide={1'b0,select_line_base}+33'(bypass_q ? 4 : LINE_BYTES);
-    select_end=select_end_wide>{1'b0,end_q} ? end_q : select_end_wide[31:0];
+    // 两种填充方式在同一边沿采样，共用相同的上界计算。
+    fill_candidate_line_base = bypass_q ?
+        {demand_addr[31:2], 2'b0} : {select_addr[31:LB], {LB{1'b0}}};
+    fill_candidate_end_wide = {1'b0, fill_candidate_line_base} +
+        33'(bypass_q ? 4 : LINE_BYTES);
+    fill_candidate_end = fill_candidate_end_wide > {1'b0, end_q} ?
+        end_q : fill_candidate_end_wide[31:0];
     ram_ren=(req_fire && lookup_range && lookup_hit) ||
             (fg_state==FG_MISS && lookup_hit);
     ram_raddr=DA'((32'(lookup_way)*SETS+32'(lookup_set))*(LINE_BYTES/4)+
@@ -936,8 +952,6 @@ module conv_windowed_cache #(
                        fill_state==F_IDLE && !select_stage_valid;
   wire [31:0] bypass_line_base = {demand_addr[31:2], 2'b0};
   wire [31:0] bypass_first = bypass_line_base < base_q ? base_q : bypass_line_base;
-  wire [32:0] bypass_end_wide = {1'b0, bypass_line_base} + 33'd4;
-  wire [31:0] bypass_end = bypass_end_wide > {1'b0, end_q} ? end_q : bypass_end_wide[31:0];
   assign span_rsp_ready=fill_state==F_DATA;
   conv_axi_span_reader #(.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
     .MAX_REQUEST_BYTES(LINE_BYTES)) u_span(
@@ -1067,7 +1081,8 @@ module conv_windowed_cache #(
     assign valid_i_wr_data = !clearing && metadata_fill_good && !bypass_q;
     assign valid_i_wr_mask = 1'b1;
     assign valid_i_rd_en = '1;
-    assign valid_i_rd_addr[0] = lookup_set;
+    // 有效命中已要求请求组号与读取快照一致，存储选择使用已保存的组号。
+    assign valid_i_rd_addr[0] = lookup_snapshot_set;
     assign valid_i_rd_addr[1] = pf_set;
     assign valid_i_rd_addr[2] = offer_set_q;
     assign valid_i_rd_addr[3] = offer_next_set_q;
@@ -1180,7 +1195,7 @@ module conv_windowed_cache #(
     assign fill_epoch_q = fill_epoch_o_rd_data;
     regfile #(
       .p_data_width(EPOCH_W), .p_depth(SETS), .p_addr_width(SI),
-      .p_write_unit(EPOCH_W), .p_read_ports(1), .p_sync_read(1'b1)
+      .p_write_unit(EPOCH_W), .p_read_ports(1), .p_sync_read(1'b1), .p_ram_style("block")
     ) u_fill_epoch (
       .clk(clk), .i_wr_en(fill_epoch_i_wr_en), .i_wr_addr(fill_epoch_i_wr_addr),
       .i_wr_data(fill_epoch_i_wr_data), .i_wr_mask(fill_epoch_i_wr_mask),
@@ -1195,7 +1210,7 @@ module conv_windowed_cache #(
     assign hit_epoch_q = hit_epoch_o_rd_data;
     regfile #(
       .p_data_width(EPOCH_W), .p_depth(SETS), .p_addr_width(SI),
-      .p_write_unit(EPOCH_W), .p_read_ports(1), .p_sync_read(1'b1)
+      .p_write_unit(EPOCH_W), .p_read_ports(1), .p_sync_read(1'b1), .p_ram_style("block")
     ) u_hit_epoch (
       .clk(clk), .i_wr_en(hit_epoch_i_wr_en), .i_wr_addr(hit_epoch_i_wr_addr),
       .i_wr_data(hit_epoch_i_wr_data), .i_wr_mask(hit_epoch_i_wr_mask),
@@ -1380,7 +1395,7 @@ module conv_windowed_cache #(
     if (fill_state==F_IDLE || fill_success) begin
       fill_addr <= bypass_q ? demand_addr : select_addr;
       fill_first <= bypass_q ? bypass_first : select_first;
-      fill_end <= bypass_q ? bypass_end : select_end;
+      fill_end <= fill_candidate_end;
       fill_set <= bypass_q ? SI'(0) : select_set;
       fill_way <= bypass_q ? WI'(0) : select_way;
       fill_epoch <= bypass_q ? demand_epoch : select_epoch;
@@ -1501,6 +1516,9 @@ module conv_windowed_cache #(
   end
 `endif
 `ifdef NPU_SIM_ASSERT
+  wire [32:0] select_end_wide = {1'b0, select_line_base} + 33'(bypass_q ? 4 : LINE_BYTES);
+  wire [31:0] select_end = select_end_wide > {1'b0, end_q} ? end_q : select_end_wide[31:0];
+
   initial forever @(posedge clk) if (rst_n) begin
     if (cfg_valid && cfg_ready) begin
       assert(cfg_bytes!=0);

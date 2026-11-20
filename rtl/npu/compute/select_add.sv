@@ -4,14 +4,16 @@
 module select_add #(
     parameter int p_width = 32,
 `ifdef ASIC_SYNTHESIS
-    parameter bit p_use_dsp = 1'b0
+    parameter bit p_use_dsp = 1'b0,
 `elsif XILINX_FPGA
-    parameter bit p_use_dsp = 1'b1
+    parameter bit p_use_dsp = 1'b1,
 `elsif SYNTHESIS
-    parameter bit p_use_dsp = 1'b1
+    parameter bit p_use_dsp = 1'b1,
 `else
-    parameter bit p_use_dsp = 1'b0
+    parameter bit p_use_dsp = 1'b0,
 `endif
+    // 48 位端口可分为四个独立的 12 位模加通道。
+    parameter bit p_split_12bit = 1'b0
 ) (
     input  wire logic signed [p_width-1:0] i_lhs,
     input  wire logic signed [p_width-1:0] i_rhs0,
@@ -23,6 +25,8 @@ module select_add #(
     //! 0. 辅助定义
     //! -----------
 
+    localparam p_simd_mode =
+        ((p_width == 48) && p_split_12bit) ? "FOUR12" : "ONE48";
     logic signed [p_width-1:0] selected_rhs;
 
     //! 1. 选择输入并生成组合结果
@@ -32,6 +36,8 @@ module select_add #(
         logic [47:0] extended_lhs;
         logic [29:0] dsp_i_a;
         logic [17:0] dsp_i_b;
+        logic [29:0] dsp_i_acin;
+        logic [17:0] dsp_i_bcin;
         logic [47:0] dsp_i_c;
         logic [24:0] dsp_i_d;
         logic [47:0] dsp_i_pcin;
@@ -52,36 +58,14 @@ module select_add #(
         logic unused_patterndetect;
         logic unused_patternbdetect;
 
-        // 相邻两个数据位共用选择输入，分别使用查找表的两个输出。
-        for (genvar pair_index = 0; pair_index < p_width/2; pair_index++) begin : g_pair
-            logic [1:0] lut_i_rhs0;
-            logic [1:0] lut_i_rhs1;
-            logic lut_i_select;
-            logic lut_i_one;
-            logic lut_o_lower;
-            logic lut_o_upper;
-
-            assign lut_i_rhs0 = i_rhs0[2*pair_index +: 2];
-            assign lut_i_rhs1 = i_rhs1[2*pair_index +: 2];
-            assign lut_i_select = i_rhs_select;
-            assign lut_i_one = 1'b1;
-            assign selected_rhs[2*pair_index] = lut_o_lower;
-            assign selected_rhs[2*pair_index+1] = lut_o_upper;
-
-            LUT6_2 #(.INIT(64'hff00f0f0ccccaaaa)) u_lut (
-                .I0(lut_i_rhs0[0]), .I1(lut_i_rhs1[0]),
-                .I2(lut_i_rhs0[1]), .I3(lut_i_rhs1[1]),
-                .I4(lut_i_select), .I5(lut_i_one),
-                .O5(lut_o_lower), .O6(lut_o_upper)
-            );
-        end
-        if ((p_width % 2) != 0) begin : g_last_bit
-            assign selected_rhs[p_width-1] = i_rhs_select ? i_rhs1[p_width-1] : i_rhs0[p_width-1];
-        end
+        // 操作数选择在组合加法之前完成，各数据位并行选择。
+        assign selected_rhs = i_rhs_select ? i_rhs1 : i_rhs0;
 
         assign extended_lhs = {{(48-p_width){i_lhs[p_width-1]}}, i_lhs};
         assign dsp_i_a = extended_lhs[47:18];
         assign dsp_i_b = extended_lhs[17:0];
+        assign dsp_i_acin = '0;
+        assign dsp_i_bcin = '0;
         assign dsp_i_c = {{(48-p_width){selected_rhs[p_width-1]}}, selected_rhs};
         assign dsp_i_d = '0;
         assign dsp_i_pcin = '0;
@@ -93,16 +77,16 @@ module select_add #(
         assign o_sum = dsp_o_sum[p_width-1:0];
 
         // A:B 始终提供左操作数，Y 在零与 C 之间选择。全部内部寄存器旁路，
-        // 保留输入到输出的组合时序；高位舍弃实现模 2^p_width 的加法语义。
+        // 保留输入到输出的组合时序，各通道按对应位宽保留模加结果。
         DSP48E1 #(
             .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .ADREG(0),
             .CREG(0), .DREG(0), .MREG(0), .PREG(0), .CARRYINREG(0),
             .CARRYINSELREG(0), .INMODEREG(0), .OPMODEREG(0), .ALUMODEREG(0),
             .A_INPUT("DIRECT"), .B_INPUT("DIRECT"),
-            .USE_DPORT("FALSE"), .USE_MULT("NONE"), .USE_SIMD("ONE48")
+            .USE_DPORT("FALSE"), .USE_MULT("NONE"), .USE_SIMD(p_simd_mode)
         ) u_dsp (
-            // Cascade inputs have dedicated routing and are unused in DIRECT mode.
-            .CLK(dsp_i_zero), .A(dsp_i_a), .ACIN(30'b0), .B(dsp_i_b), .BCIN(18'b0),
+            // 直接输入模式使用 A、B 端口，专用级联输入固定为零。
+            .CLK(dsp_i_zero), .A(dsp_i_a), .ACIN(dsp_i_acin), .B(dsp_i_b), .BCIN(dsp_i_bcin),
             .C(dsp_i_c), .D(dsp_i_d), .PCIN(dsp_i_pcin),
             .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode), .ALUMODE(dsp_i_alumode),
             .CARRYIN(dsp_i_zero), .CARRYINSEL(dsp_i_carry_select),
@@ -122,7 +106,15 @@ module select_add #(
         );
     end else begin : g_generic
         assign selected_rhs = i_rhs_select ? i_rhs1 : i_rhs0;
-        assign o_sum = i_add_enable ? i_lhs + selected_rhs : i_lhs;
+        if ((p_width == 48) && p_split_12bit) begin : g_parallel
+            for (genvar lane = 0; lane < 4; lane++) begin : g_lane
+                assign o_sum[lane*12 +: 12] = i_add_enable ?
+                    i_lhs[lane*12 +: 12] + selected_rhs[lane*12 +: 12] :
+                    i_lhs[lane*12 +: 12];
+            end
+        end else begin : g_single
+            assign o_sum = i_add_enable ? i_lhs + selected_rhs : i_lhs;
+        end
     end
 endmodule
 `default_nettype wire

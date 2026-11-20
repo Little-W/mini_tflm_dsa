@@ -1,6 +1,6 @@
 `default_nettype none
 
-// Linear output FIFO for little-endian TFLM int16 activations.
+// 按小端字节顺序保存和输出 TFLM 的 INT16 激活数据。
 module vec_s16_to_fifo #(
     parameter int unsigned VLEN  = 16,
     parameter int unsigned BANKS = 16,
@@ -110,7 +110,8 @@ module vec_s16_to_fifo #(
     vec_s8_fifo_row_ram #(
         .DATA_WIDTH(VLEN * 16),
         .DEPTH(MEM_DEPTH),
-        .ADDR_WIDTH(MEM_ADDR_W)
+        .ADDR_WIDTH(MEM_ADDR_W),
+        .p_ram_style("block")
     ) u_ram (
         .clk(clk),
         .wr_en(in_valid && !write_bank_blocked),

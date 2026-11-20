@@ -74,6 +74,7 @@ module compute_core #(
     logic ps_replay_ready;
     logic [SIZE-1:0] row_valid_pipe, row_final_pipe, row_init_pipe, row_last_pipe;
     logic final_group_complete_q;
+    logic final_output_complete;
 
     // A PE registers the input and the incoming sum in the same cycle.
     // After SIZE such stages, all output columns belong to one matrix row.
@@ -161,14 +162,32 @@ module compute_core #(
         .stream_calc_over(ps_stream_calc_over)
     );
 
-    assign acc_data_valid = ps_acc_data_valid;
-    // Parameter groups advance when their final output row is accepted.
-    // The following cycle observes their updated bias and quantization readiness.
-    assign partial_sum_calc_over = final_group_complete_q ||
-        (ps_group_switch_d && (!ps_calc_done_d || final_output_overlap));
+    // 最终结果先寄存再进入偏置加法，乘加与偏置加法分别位于两个时钟周期。
+    // 数据寄存器不需要复位；有效标志清零后，复位期间的数值不会被接收。
+    always_ff @(posedge clk) begin
+        for (int lane = 0; lane < SIZE; lane++) begin
+            acc_data_out[lane] <= ps_acc_out[lane];
+        end
+    end
+
+    // 最终分组的完成事件随输出延迟一拍，保留重叠模式与参数切换的先后关系。
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            acc_data_valid <= 1'b0;
+            tile_calc_over <= 1'b0;
+            final_output_complete <= 1'b0;
+        end else begin
+            acc_data_valid <= ps_acc_data_valid;
+            tile_calc_over <= ps_tile_calc_over;
+            final_output_complete <= final_group_complete_q ||
+                (ps_group_switch_d && ps_calc_done_d && final_output_overlap);
+        end
+    end
+
+    // 中间部分和仍按 PS 存储的原有完成周期推进。
+    assign partial_sum_calc_over = final_output_complete ||
+        (ps_group_switch_d && !ps_calc_done_d);
     assign partial_sum_advance_ready = direct_final_stream;
-    assign tile_calc_over = ps_tile_calc_over;
-    assign acc_data_out = ps_acc_out;
 
 `ifdef NPU_SIM_ASSERT
     initial forever @(posedge clk) if (rst_n) begin

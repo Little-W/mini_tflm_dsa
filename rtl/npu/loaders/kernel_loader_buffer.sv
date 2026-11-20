@@ -44,6 +44,8 @@ module kernel_loader_buffer #(
     logic [p_valid_width-1:0] slot_valid_cols [p_slot_count];
     logic [p_valid_width-1:0] send_valid_cols;
     logic [p_index_width-1:0] emit_col_idx;
+    logic [p_index_width-1:0] output_column_q;
+    logic [SIZE-1:0] output_lane_valid_q;
     logic send_active, send_pending, send_prefetch;
     logic row_valid_q, row_slot_q, load_done_q, done_slot_q;
     logic [p_index_width-1:0] row_idx_q;
@@ -55,8 +57,8 @@ module kernel_loader_buffer #(
     logic [p_index_width-1:0] read_column;
     logic [p_index_width:0] read_row_ext [SIZE];
     logic [p_index_width-1:0] read_row [SIZE];
-    logic [p_index_width:0] emit_bank_ext [SIZE];
-    logic [p_index_width-1:0] emit_bank [SIZE];
+    logic [p_index_width:0] output_bank_ext [SIZE];
+    logic [p_index_width-1:0] output_bank [SIZE];
 
     logic column_i_wr_en, column_i_rd_en;
     logic [p_addr_width-1:0] column_i_wr_addr;
@@ -77,12 +79,12 @@ module kernel_loader_buffer #(
         (p_valid_width'(row_idx_q) + p_valid_width'(1)) : load_valid_cols[row_slot_q];
     assign read_column = send_prefetch ? p_index_width'(SIZE - 1) : emit_col_idx;
 
-    // 按列保存权重。每个列存储器只需一个写端口和一个异步读端口。
-    // 发送时读取不同的物理行，再按当前列号旋转，得到阵列要求的对角排列。
+    // 按列保存权重，每列使用一个写端口和一个同步读端口。
+    // 同步读取与输出列号同时保存，组合旋转生成阵列要求的对角排列。
     assign column_i_wr_en = row_valid_q && slot_reserved[row_slot_q] && !cache_flush;
     assign column_i_wr_addr = p_addr_width'(slot_storage[row_slot_q] * SIZE) + p_addr_width'(row_idx_q);
     assign column_i_wr_mask = 1'b1;
-    assign column_i_rd_en = 1'b1;
+    assign column_i_rd_en = rst_n && !cache_flush && emit_fire;
     for (genvar column = 0; column < SIZE; column++) begin : g_column_address
         assign row_data_vec[column*DATA_WIDTH+:DATA_WIDTH] = row_data[column];
         assign column_i_wr_data[column] = row_data_vec_q[column*DATA_WIDTH+:DATA_WIDTH];
@@ -91,9 +93,12 @@ module kernel_loader_buffer #(
             ((p_index_width+1)'(column + SIZE) - {1'b0, read_column});
         assign read_row[column] = read_row_ext[column][p_index_width-1:0];
         assign column_i_rd_addr[column] = p_addr_width'(active_storage * SIZE) + p_addr_width'(read_row[column]);
-        assign emit_bank_ext[column] = {1'b0, read_column} + (p_index_width+1)'(column);
-        assign emit_bank[column] = (emit_bank_ext[column] >= (p_index_width+1)'(SIZE)) ?
-            p_index_width'(emit_bank_ext[column] - (p_index_width+1)'(SIZE)) : p_index_width'(emit_bank_ext[column]);
+        assign output_bank_ext[column] = {1'b0, output_column_q} + (p_index_width+1)'(column);
+        assign output_bank[column] = (output_bank_ext[column] >= (p_index_width+1)'(SIZE)) ?
+            p_index_width'(output_bank_ext[column] - (p_index_width+1)'(SIZE)) :
+            p_index_width'(output_bank_ext[column]);
+        assign weight_out[column] = output_lane_valid_q[column] ?
+            $signed(column_o_rd_data[output_bank[column]]) : '0;
     end
 
     //! 2. 输入寄存与槽位管理
@@ -186,9 +191,8 @@ module kernel_loader_buffer #(
             send_prefetch <= 1'b0;
             store_weight_req <= 1'b0;
             weight_sending_done <= 1'b0;
-            for (int column = 0; column < SIZE; column++) begin
-                weight_out[column] <= '0;
-            end
+            output_column_q <= '0;
+            output_lane_valid_q <= '0;
         end else begin
             store_weight_req <= 1'b0;
             weight_sending_done <= 1'b0;
@@ -204,9 +208,9 @@ module kernel_loader_buffer #(
                 send_active <= !send_complete_event;
                 store_weight_req <= 1'b1;
                 weight_sending_done <= send_complete_event;
+                output_column_q <= read_column;
                 for (int column = 0; column < SIZE; column++) begin
-                    weight_out[column] <= (p_valid_width'(column) < send_valid_cols) ?
-                        $signed(column_o_rd_data[emit_bank[column]]) : '0;
+                    output_lane_valid_q[column] <= p_valid_width'(column) < send_valid_cols;
                 end
                 if (!send_complete_event) begin
                     emit_col_idx <= send_prefetch ? p_index_width'(SIZE - 2) : (emit_col_idx - 1'b1);
@@ -229,7 +233,8 @@ module kernel_loader_buffer #(
             .p_depth(p_depth),
             .p_addr_width(p_addr_width),
             .p_write_unit(DATA_WIDTH),
-            .p_sync_read(1'b0)
+            .p_sync_read(1'b1),
+            .p_ram_style("block")
         ) u_column (
             .clk(clk),
             .i_wr_en(column_i_wr_en),

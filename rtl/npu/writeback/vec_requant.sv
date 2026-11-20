@@ -1169,7 +1169,7 @@ module vec_requant_full #(
     );
     regfile #(
         .p_data_width(7), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
-        .p_write_unit(7), .p_sync_read(1'b1)
+        .p_write_unit(7), .p_sync_read(1'b1), .p_ram_style("block")
     ) u_product_amount (
         .clk(clk), .i_wr_en(product_amount_i_wr_en), .i_wr_addr(product_amount_i_wr_addr),
         .i_wr_data(product_amount_i_wr_data), .i_wr_mask(product_amount_i_wr_mask),
@@ -2164,16 +2164,6 @@ module requant_shift_pipeline (
     logic signed [33:0] quotient_stage_q;
     logic increment_stage_q;
 
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_clamp = 1'b0;
-`else
-    localparam bit p_fpga_clamp = 1'b1;
-`endif
-`else
-    localparam bit p_fpga_clamp = 1'b0;
-`endif
-
     //! 1. 输入编码
     //! -----------
 
@@ -2247,39 +2237,13 @@ module requant_shift_pipeline (
         assign sign_stage[stage+1] = stored_sign_q;
     end
 
-    // 大于六十三位的移位返回零；溢出时保留饱和方向。
-    // 相邻两位共用溢出、符号和清零条件，在一个查找表内同时产生结果。
-    if (p_fpga_clamp) begin : g_quotient_clamp
-        for (genvar pair_index = 0; pair_index < 17; pair_index++) begin : g_pair
-            localparam logic [63:0] p_clamp_init = (pair_index == 16) ?
-                64'h0000fc0c00000afa : 64'h00000cfc00000afa;
-            logic [1:0] lut_i_value;
-            logic lut_i_overflow, lut_i_sign, lut_i_zero, lut_i_one;
-            logic lut_o_lower, lut_o_upper;
-
-            assign lut_i_value = shifted_stage[5][2*pair_index+2 +: 2];
-            assign lut_i_overflow = overflow_stage[5];
-            assign lut_i_sign = sign_stage[5];
-            assign lut_i_zero = amount_stage[5][6];
-            assign lut_i_one = 1'b1;
-            assign bounded_quotient[2*pair_index] = lut_o_lower;
-            assign bounded_quotient[2*pair_index+1] = lut_o_upper;
-
-            LUT6_2 #(.INIT(p_clamp_init)) u_lut (
-                .I0(lut_i_value[0]), .I1(lut_i_value[1]),
-                .I2(lut_i_overflow), .I3(lut_i_sign),
-                .I4(lut_i_zero), .I5(lut_i_one),
-                .O5(lut_o_lower), .O6(lut_o_upper)
-            );
-        end
-    end else begin : g_generic_clamp
-        always_comb begin
-            bounded_quotient = $signed(shifted_stage[5][35:2]);
-            if (amount_stage[5][6]) begin
-                bounded_quotient = '0;
-            end else if (overflow_stage[5]) begin
-                bounded_quotient = sign_stage[5] ? 34'sh200000000 : 34'sh1ffffffff;
-            end
+    // 大于六十三位的移位返回零；溢出时按原始符号选择饱和值。
+    always_comb begin
+        bounded_quotient = $signed(shifted_stage[5][35:2]);
+        if (amount_stage[5][6]) begin
+            bounded_quotient = '0;
+        end else if (overflow_stage[5]) begin
+            bounded_quotient = sign_stage[5] ? 34'sh200000000 : 34'sh1ffffffff;
         end
     end
     assign round_increment = (amount_stage[5] != 7'd0) && !amount_stage[5][6] &&
@@ -2297,7 +2261,7 @@ module requant_shift_pipeline (
 endmodule
 
 
-// 两个相邻数据位共用选择信号，在七系列器件上使用查找表的两个输出。
+// 选择当前移位阶段的直接输入或候选移位结果。
 module requant_shift_mux #(
     parameter int p_width = 2
 ) (
@@ -2306,54 +2270,7 @@ module requant_shift_mux #(
     input  wire logic               i_select,
     output logic [p_width-1:0] o_value
 );
-    //! 0. 辅助定义
-    //! -----------
-
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_lut = 1'b0;
-`else
-    localparam bit p_fpga_lut = 1'b1;
-`endif
-`else
-    localparam bit p_fpga_lut = 1'b0;
-`endif
-
-    //! 1. 选择输出数据
-    //! ---------------
-
-    if (p_fpga_lut) begin : g_fpga
-        for (genvar pair_index = 0; pair_index < p_width/2; pair_index++) begin : g_pair
-            logic [1:0] lut_i_direct;
-            logic [1:0] lut_i_shifted;
-            logic lut_i_one;
-            logic lut_i_select;
-            logic lut_o_lower;
-            logic lut_o_upper;
-
-            assign lut_i_direct = i_direct[2*pair_index +: 2];
-            assign lut_i_shifted = i_shifted[2*pair_index +: 2];
-            assign lut_i_one = 1'b1;
-            assign lut_i_select = i_select;
-            assign o_value[2*pair_index] = lut_o_lower;
-            assign o_value[2*pair_index+1] = lut_o_upper;
-            LUT6_2 #(.INIT(64'hff00f0f0ccccaaaa)) u_lut (
-                .I0(lut_i_direct[0]),
-                .I1(lut_i_shifted[0]),
-                .I2(lut_i_direct[1]),
-                .I3(lut_i_shifted[1]),
-                .I4(lut_i_select),
-                .I5(lut_i_one),
-                .O5(lut_o_lower),
-                .O6(lut_o_upper)
-            );
-        end
-        if ((p_width % 2) != 0) begin : g_last_bit
-            assign o_value[p_width-1] = i_select ? i_shifted[p_width-1] : i_direct[p_width-1];
-        end
-    end else begin : g_generic
-        assign o_value = i_select ? i_shifted : i_direct;
-    end
+    assign o_value = i_select ? i_shifted : i_direct;
 endmodule
 
 // 根据完整三十六位结果与两个三十二位有符号边界产生激活裁剪条件。
@@ -2364,99 +2281,54 @@ module requant_activation_compare (
     output logic               o_below_minimum,
     output logic               o_above_maximum
 );
-    //! 0. 辅助定义
-    //! -----------
+    //! 0. 比较分组信号
+    //! -----------------
 
     logic [1:0] bound_less;
 
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_compare = 1'b0;
-`else
-    localparam bit p_fpga_compare = 1'b1;
-`endif
-`else
-    localparam bit p_fpga_compare = 1'b0;
-`endif
+    //! 1. 并行比较数据分组
+    //! -------------------
 
-    //! 1. 比较激活边界
-    //! ---------------
+    // 八位分组独立计算大小与相等关系，最高四位按有符号数解释。
+    // 分组输出形成组合边界，高位相等条件与各组大小关系并行合并。
+    for (genvar bound_index = 0; bound_index < 2; bound_index++) begin : g_bound
+        logic [35:0] lhs, rhs;
+        (* keep = 1 *) logic [4:0] equal_group, greater_group;
+        logic [4:0] greater_selected;
+        logic greater_or_equal;
 
-    if (p_fpga_compare) begin : g_fpga
-        for (genvar bound_index = 0; bound_index < 2; bound_index++) begin : g_bound
-            logic [35:0] lhs, rhs;
-            logic [17:0] equal_group, greater_group;
-            logic [19:0] equal_padded, greater_padded;
-            logic [4:0] carry_out;
-
-            if (bound_index == 0) begin : g_minimum
-                assign lhs = i_value;
-                assign rhs = {{4{i_minimum[31]}}, i_minimum};
-            end else begin : g_maximum
-                assign lhs = {{4{i_maximum[31]}}, i_maximum};
-                assign rhs = i_value;
-            end
-            assign equal_padded = {2'b11, equal_group};
-            assign greater_padded = {2'b00, greater_group};
-
-            // 每两个数据位共用一个查找表，分别输出相等条件和大小结果。
-            // 最高一组使用有符号比较，其余各组按无符号位段比较。
-            for (genvar pair_index = 0; pair_index < 18; pair_index++) begin : g_pair
-                localparam logic [63:0] p_group_init = (pair_index == 17) ?
-                    64'h2f022f0290099009 : 64'h20f220f290099009;
-                logic [1:0] lut_i_lhs, lut_i_rhs;
-                logic lut_i_zero, lut_i_one;
-                logic lut_o_equal, lut_o_greater;
-
-                assign lut_i_lhs = lhs[2*pair_index +: 2];
-                assign lut_i_rhs = rhs[2*pair_index +: 2];
-                assign lut_i_zero = 1'b0;
-                assign lut_i_one = 1'b1;
-                assign equal_group[pair_index] = lut_o_equal;
-                assign greater_group[pair_index] = lut_o_greater;
-                LUT6_2 #(.INIT(p_group_init)) u_lut (
-                    .I0(lut_i_lhs[0]), .I1(lut_i_rhs[0]),
-                    .I2(lut_i_lhs[1]), .I3(lut_i_rhs[1]),
-                    .I4(lut_i_zero), .I5(lut_i_one),
-                    .O5(lut_o_equal), .O6(lut_o_greater)
-                );
-            end
-
-            // 相等的高位组传递低位结果，不相等时由高位组决定比较结果。
-            // 最低位以相等为真开始，末端取反后得到严格小于。
-            for (genvar carry_index = 0; carry_index < 5; carry_index++) begin : g_carry
-                logic carry_i_cin, carry_i_init;
-                logic [3:0] carry_i_greater, carry_i_equal;
-                logic [3:0] carry_o_result, unused_sum;
-
-                if (carry_index == 0) begin : g_first
-                    assign carry_i_cin = 1'b0;
-                    assign carry_i_init = 1'b1;
-                end else begin : g_following
-                    assign carry_i_cin = carry_out[carry_index-1];
-                    assign carry_i_init = 1'b0;
-                end
-                assign carry_i_greater = greater_padded[4*carry_index +: 4];
-                assign carry_i_equal = equal_padded[4*carry_index +: 4];
-                assign carry_out[carry_index] = carry_o_result[3];
-                CARRY4 u_carry (
-                    .CI(carry_i_cin), .CYINIT(carry_i_init),
-                    .DI(carry_i_greater), .S(carry_i_equal),
-                    .CO(carry_o_result), .O(unused_sum)
-                );
-            end
-            assign bound_less[bound_index] = !carry_out[4];
+        if (bound_index == 0) begin : g_minimum
+            assign lhs = i_value;
+            assign rhs = {{4{i_minimum[31]}}, i_minimum};
+        end else begin : g_maximum
+            assign lhs = {{4{i_maximum[31]}}, i_maximum};
+            assign rhs = i_value;
         end
-    end else begin : g_generic
-        assign bound_less[0] = i_value < $signed({{4{i_minimum[31]}}, i_minimum});
-        assign bound_less[1] = i_value > $signed({{4{i_maximum[31]}}, i_maximum});
+        for (genvar group_index = 0; group_index < 5; group_index++) begin : g_group
+            localparam int p_group_width = (group_index == 4) ? 4 : 8;
+
+            assign equal_group[group_index] =
+                lhs[8*group_index +: p_group_width] == rhs[8*group_index +: p_group_width];
+            if (group_index == 4) begin : g_signed
+                assign greater_group[group_index] = $signed(lhs[35:32]) > $signed(rhs[35:32]);
+                assign greater_selected[group_index] = greater_group[group_index];
+            end else begin : g_unsigned
+                assign greater_group[group_index] =
+                    lhs[8*group_index +: 8] > rhs[8*group_index +: 8];
+                assign greater_selected[group_index] = greater_group[group_index] &
+                    (&equal_group[4:group_index+1]);
+            end
+        end
+        assign greater_or_equal = (|greater_selected) | (&equal_group);
+        assign bound_less[bound_index] = !greater_or_equal;
     end
 
-    //! 2. 输出比较条件
+    //! 2. 输出比较结果
     //! ---------------
 
     assign o_below_minimum = bound_less[0];
     assign o_above_maximum = bound_less[1];
+
 endmodule
 
 `default_nettype wire

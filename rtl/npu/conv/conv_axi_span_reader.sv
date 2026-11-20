@@ -43,8 +43,7 @@ module conv_axi_span_reader #(
   localparam int BURST_LIMIT=MAX_SPAN_BEATS<DMA_MAX_BYTES/BUS_BYTES ?
       MAX_SPAN_BEATS : DMA_MAX_BYTES/BUS_BYTES;
   localparam int BEAT_W=BURST_LIMIT<2 ? 1 : $clog2(BURST_LIMIT+1);
-  localparam int PAGE_WORD_W=13-BUS_SHIFT;
-  localparam int COMPARE_W=BEAT_W>PAGE_WORD_W ? BEAT_W : PAGE_WORD_W;
+  localparam int p_page_low_width = BEAT_W + BUS_SHIFT < 12 ? BEAT_W + BUS_SHIFT : 12;
   `ifdef NPU_SIM_ASSERT
 initial begin
     if (DMA_MAX_BYTES < BUS_BYTES || DMA_MAX_BYTES > 256*BUS_BYTES ||
@@ -62,26 +61,45 @@ initial begin
   logic [BEAT_W-1:0] beats_left;
   logic [BUS_SHIFT:0] beat_bytes;
   logic [WORD_W-1:0] nwords;
-  logic [PAGE_WORD_W-1:0] page_words;
   logic [BEAT_W-1:0] burst_beats, next_beats;
-  logic [12:0] page_bytes;
+  logic [p_page_low_width:0] page_low_bytes;
+  logic [BEAT_W:0] page_low_words;
+  logic near_page_end;
   logic [11:0] prepare_addr;
   logic [COUNT_W-1:0] prepare_bytes;
   logic finishing_span, forward_ar;
+  logic [31:0] cursor_increment, cursor_advance;
+  logic [16:0] cursor_low_sum, cursor_high_zero, cursor_high_one;
   logic [31:0] araddr_q;
   logic [7:0] arlen_q;
   logic [2:0] arsize_q;
+  // 高半地址的两种进位结果并行计算，低半进位仅选择最终高半地址。
+  assign cursor_increment = 32'(beat_bytes);
+  assign cursor_low_sum = {1'b0, cursor[15:0]} + {1'b0, cursor_increment[15:0]};
+  assign cursor_high_zero = {1'b0, cursor[31:16]} + {1'b0, cursor_increment[31:16]};
+  assign cursor_high_one = {1'b0, cursor[31:16]} + {1'b0, cursor_increment[31:16]} + 17'd1;
+  assign cursor_advance = {cursor_low_sum[16] ? cursor_high_one[15:0] : cursor_high_zero[15:0],
+                           cursor_low_sum[15:0]};
   assign prepare_addr = req_ready ? req_addr[11:0] : cursor[11:0];
   assign prepare_bytes = req_ready ? COUNT_W'(req_bytes) : left_bytes;
   assign nwords = WORD_W'(prepare_bytes >> BUS_SHIFT);
-  assign page_bytes = 13'd4096 - {1'b0,prepare_addr};
-  assign page_words = PAGE_WORD_W'(page_bytes >> BUS_SHIFT);
+  // 只有最后一个最大突发范围内的地址需要按页截短，较高地址位并行判断。
+  // 低位减法保留一个扩展位，同时覆盖字节读取造成的非整字页余量。
+  assign page_low_bytes = {1'b1, {p_page_low_width{1'b0}}} -
+      {1'b0, prepare_addr[p_page_low_width-1:0]};
+  assign page_low_words = (BEAT_W+1)'(page_low_bytes >> BUS_SHIFT);
+  if (p_page_low_width < 12) begin : g_page_prefix
+    assign near_page_end = &prepare_addr[11:p_page_low_width];
+  end else begin : g_complete_page
+    assign near_page_end = 1'b1;
+  end
   generate if (BURST_LIMIT == (1<<WORD_W)-1) begin : g_full_word_range
     assign burst_beats = BEAT_W'(nwords);
   end else begin : g_limited_word_range
     assign burst_beats = nwords>WORD_W'(BURST_LIMIT) ? BEAT_W'(BURST_LIMIT) : BEAT_W'(nwords);
   end endgenerate
-  assign next_beats = COMPARE_W'(burst_beats)>COMPARE_W'(page_words) ? BEAT_W'(page_words) : burst_beats;
+  assign next_beats = near_page_end && {1'b0, burst_beats} > page_low_words ?
+      BEAT_W'(page_low_words) : burst_beats;
   assign finishing_span = rsp_valid && rsp_ready && rsp_last;
   assign req_ready = state == IDLE || finishing_span;
   assign busy = state != IDLE;
@@ -128,7 +146,7 @@ initial begin
         end
         AR: if (arready) state <= DATA;
         DATA: if (rvalid && rready) begin
-          cursor <= cursor + 32'(beat_bytes);
+          cursor <= cursor_advance;
           left_bytes <= left_bytes - COUNT_W'(beat_bytes);
           beats_left <= beats_left - 1'b1;
           if (left_bytes == COUNT_W'(beat_bytes)) state <= IDLE;

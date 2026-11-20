@@ -1,22 +1,8 @@
 /*
- * ia_loader_ctrl — 缓存调度与发送控制
- * ============================================================
- * 功能：
- *   1. 管理 SLOT_BLOCKS 个 cache block 的状态表（valid/busy）
- *   2. 维护 L2/L1/W/IA 循环计数器
- *   3. 计算 tile 基地址，下发加载命令给 tile_loader
- *   4. 生成 ia_data_valid，协调 send_ia_trigger → cache_send_start
- *   5. 支持 load-send overlap：加载下一组 tile 的同时可发送已就绪的 tile
- *   6. 早期释放：tile 完成最后一次 reuse 后立即释放 slot
- *
- * 核心思想：
- *   - 原始 v1.1 是 LOAD-all-then-SEND-all（串行）
- *   - 新版本：一个 tile 加载完成就可以开始发送（不等待整组 R 个 tile 全部加完）
- *   - 每次发送完成后检查：下一个要发送的 tile 是否已在缓存中（valid）
- *     如果是 → 立即 ia_data_valid
- *     如果否 → 等待 tile_loader 完成后再 ia_data_valid
- *   - 每次发送完成后检查：该 slot 是否还需要 reuse
- *     如果不需要 → 立即释放该 slot（标记 free）
+ * IA 缓存调度与发送控制。
+ * 管理缓存有效状态和使用状态，维护 L2、L1、权重与输入激活循环。
+ * 计算矩阵块地址并生成加载请求，同时允许已就绪的数据组连续发射。
+ * 当前矩阵块完成最后一次复用后释放存储位置，供后续加载使用。
  */
 
 module ia_loader_ctrl #(
@@ -137,16 +123,6 @@ module ia_loader_ctrl #(
   localparam int W_CNT_W       = (PS_FRAME_COUNT <= 1) ? 1 : ($clog2(PS_FRAME_COUNT) + 1);
   localparam int ROW_CNT_W     = $clog2(SIZE + 1);
   localparam int CNT_W         = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
-  localparam bit p_control_use_lut =
-`ifdef ASIC_SYNTHESIS
-      1'b0;
-`elsif XILINX_FPGA
-      1'b1;
-`elsif SYNTHESIS
-      1'b1;
-`else
-      1'b0;
-`endif
   typedef logic [CNT_W-1:0] count_t;
   wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
   wire [SLOT_W-1:0] slot_mask =
@@ -173,7 +149,7 @@ module ia_loader_ctrl #(
   end
 
   // =====================================================================
-  // IA tile 行步进。配置要求 reuse 为 2 的幂，用移位代替动态乘法。
+  // IA 行步长按幂次复用数量或 25 倍生成，其他配置保留单组步长。
   // =====================================================================
   logic [REG_WIDTH-1:0] tile_row_step_b;
   logic [REG_WIDTH-1:0] l2_group_row_step_b;
@@ -199,18 +175,43 @@ module ia_loader_ctrl #(
       (packed_k_tiles << (2*LOG2_SIZE + (cfg_use_16bits ? 1 : 0))) :
       (cfg_lhs_row_stride_b << LOG2_SIZE);
 
-  always_comb begin
-    unique case (cfg_ia_reuse_num)
-      REG_WIDTH'(1):  l2_group_row_step_b_comb = tile_row_step_b_comb;
-      REG_WIDTH'(2):  l2_group_row_step_b_comb = tile_row_step_b_comb << 1;
-      REG_WIDTH'(4):  l2_group_row_step_b_comb = tile_row_step_b_comb << 2;
-      REG_WIDTH'(8):  l2_group_row_step_b_comb = tile_row_step_b_comb << 3;
-      REG_WIDTH'(16): l2_group_row_step_b_comb = tile_row_step_b_comb << 4;
-      REG_WIDTH'(25): l2_group_row_step_b_comb = (tile_row_step_b_comb << 4) + (tile_row_step_b_comb << 3) + tile_row_step_b_comb;
-      REG_WIDTH'(32): l2_group_row_step_b_comb = tile_row_step_b_comb << 5;
-      REG_WIDTH'(64): l2_group_row_step_b_comb = tile_row_step_b_comb << 6;
-      default:        l2_group_row_step_b_comb = tile_row_step_b_comb;
-    endcase
+  if (REG_WIDTH >= 7) begin : g_encoded_row_step
+    logic [2:0] reuse_shift;
+
+    // 幂次复用数量编码为移位量，所有数据位共享同一个移位网络。
+    always_comb begin
+      case (cfg_ia_reuse_num)
+        REG_WIDTH'(2): reuse_shift = 3'd1;
+        REG_WIDTH'(4): reuse_shift = 3'd2;
+        REG_WIDTH'(8): reuse_shift = 3'd3;
+        REG_WIDTH'(16): reuse_shift = 3'd4;
+        REG_WIDTH'(32): reuse_shift = 3'd5;
+        REG_WIDTH'(64): reuse_shift = 3'd6;
+        default: reuse_shift = 3'd0;
+      endcase
+    end
+    always_comb begin
+      l2_group_row_step_b_comb = tile_row_step_b_comb << reuse_shift;
+      if (cfg_ia_reuse_num == REG_WIDTH'(25)) begin
+        l2_group_row_step_b_comb = (tile_row_step_b_comb << 4) +
+                                   (tile_row_step_b_comb << 3) + tile_row_step_b_comb;
+      end
+    end
+  end else begin : g_narrow_row_step
+    always_comb begin
+      unique case (cfg_ia_reuse_num)
+        REG_WIDTH'(1):  l2_group_row_step_b_comb = tile_row_step_b_comb;
+        REG_WIDTH'(2):  l2_group_row_step_b_comb = tile_row_step_b_comb << 1;
+        REG_WIDTH'(4):  l2_group_row_step_b_comb = tile_row_step_b_comb << 2;
+        REG_WIDTH'(8):  l2_group_row_step_b_comb = tile_row_step_b_comb << 3;
+        REG_WIDTH'(16): l2_group_row_step_b_comb = tile_row_step_b_comb << 4;
+        REG_WIDTH'(25): l2_group_row_step_b_comb =
+            (tile_row_step_b_comb << 4) + (tile_row_step_b_comb << 3) + tile_row_step_b_comb;
+        REG_WIDTH'(32): l2_group_row_step_b_comb = tile_row_step_b_comb << 5;
+        REG_WIDTH'(64): l2_group_row_step_b_comb = tile_row_step_b_comb << 6;
+        default: l2_group_row_step_b_comb = tile_row_step_b_comb;
+      endcase
+    end
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -466,79 +467,24 @@ module ia_loader_ctrl #(
   assign load_last_equal_i_tail = LOAD_CNT_W'(count_t'(ia_reuse_num_act));
   assign load_last_equal_i_prefetch = pf_r_target;
   assign load_last_equal_i_one = 1'b1;
-  if (p_control_use_lut) begin : g_fpga_load_equal
-      localparam int p_groups = (LOAD_CNT_W < 2) ? 1 : LOAD_CNT_W / 2;
-      logic [LOAD_CNT_W-1:0] target [3];
-      logic [2:0] equal;
-      assign target[0] = load_last_equal_i_regular;
-      assign target[1] = load_last_equal_i_tail;
-      assign target[2] = load_last_equal_i_prefetch;
-      assign load_last_equal_o_regular = equal[0];
-      assign load_last_equal_o_tail = equal[1];
-      assign load_last_equal_o_prefetch = equal[2];
-      // 首组比较最低三位；后续各组检查相邻低位确定的进位与两个结果位。
-      for (genvar target_index = 0; target_index < 3; target_index++) begin : g_target
-          logic [p_groups-1:0] group_equal;
-          for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_group
-              localparam int p_first_bit = (group_index == 0) ? 0 : 2 * group_index;
-              localparam int p_remaining = LOAD_CNT_W - p_first_bit;
-              localparam logic [63:0] p_init = (group_index == 0) ?
-                  ((p_remaining == 1) ? 64'h6666_6666_6666_6666 :
-                   (p_remaining == 2) ? 64'h4224_4224_4224_4224 : 64'h4204_0020_0020_4204) :
-                  ((p_remaining == 2) ? 64'hd22d_d22d_d22d_d22d : 64'hd20d_0020_0020_d20d);
-              logic [5:0] equal_i_value;
-              logic equal_o_value;
-              for (genvar pair_index = 0; pair_index < 3; pair_index++) begin : g_pair
-                  if (p_first_bit + pair_index < LOAD_CNT_W) begin : g_present
-                      assign equal_i_value[2*pair_index] = load_ia_cursor_cnt[p_first_bit+pair_index];
-                      assign equal_i_value[2*pair_index+1] = target[target_index][p_first_bit+pair_index];
-                  end else begin : g_padding
-                      assign equal_i_value[2*pair_index +: 2] = 2'b00;
-                  end
-              end
-              LUT6 #(.INIT(p_init)) u_equal (
-                  .I0(equal_i_value[0]), .I1(equal_i_value[1]), .I2(equal_i_value[2]),
-                  .I3(equal_i_value[3]), .I4(equal_i_value[4]), .I5(equal_i_value[5]),
-                  .O(equal_o_value)
-              );
-              assign group_equal[group_index] = equal_o_value;
-          end
-          assign equal[target_index] = &group_equal;
-      end
-  end else begin : g_generic_load_equal
-      add_equal #(.p_width(LOAD_CNT_W)) u_regular (
-          .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
-          .i_target(load_last_equal_i_regular), .i_carry_in(load_last_equal_i_one),
-          .o_equal(load_last_equal_o_regular)
-      );
-      add_equal #(.p_width(LOAD_CNT_W)) u_tail (
-          .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
-          .i_target(load_last_equal_i_tail), .i_carry_in(load_last_equal_i_one),
-          .o_equal(load_last_equal_o_tail)
-      );
-      add_equal #(.p_width(LOAD_CNT_W)) u_prefetch (
-          .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
-          .i_target(load_last_equal_i_prefetch), .i_carry_in(load_last_equal_i_one),
-          .o_equal(load_last_equal_o_prefetch)
-      );
-  end
-  if (p_control_use_lut) begin : g_fpga_load_last
-      logic [5:0] last_i_value;
-      logic last_o_value;
-      assign last_i_value = {load_l2_is_last, prefetch_active, is_last_l2_group,
-                            load_last_equal_o_prefetch, load_last_equal_o_tail,
-                            load_last_equal_o_regular};
-      LUT6 #(.INIT(64'hf0f0_ccaa_0000_0000)) u_last (
-          .I0(last_i_value[0]), .I1(last_i_value[1]), .I2(last_i_value[2]),
-          .I3(last_i_value[3]), .I4(last_i_value[4]), .I5(last_i_value[5]),
-          .O(last_o_value)
-      );
-      assign load_is_last_row_tile = last_o_value;
-  end else begin : g_generic_load_last
-      assign load_is_last_row_tile = load_l2_is_last &&
-          (prefetch_active ? load_last_equal_o_prefetch :
-           (is_last_l2_group ? load_last_equal_o_tail : load_last_equal_o_regular));
-  end
+  add_equal #(.p_width(LOAD_CNT_W)) u_regular (
+      .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
+      .i_target(load_last_equal_i_regular), .i_carry_in(load_last_equal_i_one),
+      .o_equal(load_last_equal_o_regular)
+  );
+  add_equal #(.p_width(LOAD_CNT_W)) u_tail (
+      .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
+      .i_target(load_last_equal_i_tail), .i_carry_in(load_last_equal_i_one),
+      .o_equal(load_last_equal_o_tail)
+  );
+  add_equal #(.p_width(LOAD_CNT_W)) u_prefetch (
+      .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
+      .i_target(load_last_equal_i_prefetch), .i_carry_in(load_last_equal_i_one),
+      .o_equal(load_last_equal_o_prefetch)
+  );
+  assign load_is_last_row_tile = load_l2_is_last &&
+      (prefetch_active ? load_last_equal_o_prefetch :
+       (is_last_l2_group ? load_last_equal_o_tail : load_last_equal_o_regular));
   logic load_is_last_col_tile;
   assign load_is_last_col_tile = prefetch_active ?
     (next_l1_idx == last_col_tile_idx) :
@@ -651,43 +597,16 @@ module ia_loader_ctrl #(
                              (load_tiles_done_cnt != load_last_equal_i_tail);
   assign load_prefetch_pending = (load_ia_cursor_cnt < load_last_equal_i_prefetch) &&
                                  (load_tiles_done_cnt != load_last_equal_i_prefetch);
-  if (p_control_use_lut) begin : g_fpga_load_pending
-      logic [5:0] pending_i_value;
-      logic pending_o_value;
-      assign pending_i_value = {1'b0, prefetch_active, is_last_l2_group,
-                                load_prefetch_pending, load_tail_pending, load_regular_pending};
-      LUT6 #(.INIT(64'hf0f0_ccaa_f0f0_ccaa)) u_pending (
-          .I0(pending_i_value[0]), .I1(pending_i_value[1]), .I2(pending_i_value[2]),
-          .I3(pending_i_value[3]), .I4(pending_i_value[4]), .I5(pending_i_value[5]),
-          .O(pending_o_value)
-      );
-      assign load_target_pending = pending_o_value;
-  end else begin : g_generic_load_pending
-      assign load_target_pending = prefetch_active ? load_prefetch_pending :
-          (is_last_l2_group ? load_tail_pending : load_regular_pending);
-  end
+  assign load_target_pending = prefetch_active ? load_prefetch_pending :
+      (is_last_l2_group ? load_tail_pending : load_regular_pending);
   logic can_start_load;
   logic load_state_active, load_slot_busy, load_slot_valid;
   assign load_state_active = (state == S_LOAD) || (state == S_SEND && prefetch_active);
   assign load_slot_busy = blk_busy[wr_slot_ptr];
   assign load_slot_valid = blk_valid[wr_slot_ptr];
   // 槽号选择独立完成后再合并加载条件，保留当周期请求许可。
-  if (p_control_use_lut) begin : g_fpga_load_start
-      logic [5:0] start_i_value;
-      logic start_o_allowed;
-      assign start_i_value = {1'b0, load_slot_valid, load_slot_busy, tl_busy,
-                              load_state_active, load_target_pending};
-      LUT6 #(.INIT(64'h0000_0008_0000_0008)) u_start (
-          .I0(start_i_value[0]), .I1(start_i_value[1]), .I2(start_i_value[2]),
-          .I3(start_i_value[3]), .I4(start_i_value[4]), .I5(start_i_value[5]),
-          .O(start_o_allowed)
-      );
-      assign can_start_load = start_o_allowed;
-  end else begin : g_generic_load_start
-      assign can_start_load = load_state_active && !tl_busy && load_target_pending &&
+  assign can_start_load = load_state_active && !tl_busy && load_target_pending &&
                               !load_slot_busy && !load_slot_valid;
-  end
-
   // 当前是否存在待加载工作（用于维持 req 握手）
   logic load_need_active;
   assign load_need_active = (state == S_INIT)

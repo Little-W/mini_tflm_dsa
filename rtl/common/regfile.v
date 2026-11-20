@@ -8,7 +8,8 @@ module regfile #(
     parameter int p_addr_width = (p_depth <= 1) ? 1 : $clog2(p_depth),
     parameter int p_write_unit = 8,
     parameter int p_read_ports = 1,
-    parameter bit p_sync_read = 1'b1
+    parameter bit p_sync_read = 1'b1,
+    parameter string p_ram_style = "auto"
 ) (
     input  wire logic clk,
     input  wire logic i_wr_en,
@@ -20,7 +21,8 @@ module regfile #(
     output logic [p_read_ports-1:0][p_data_width-1:0] o_rd_data
 );
 
-    logic [p_data_width-1:0] mem [0:p_depth-1];
+    // 存储类型由参数给出综合建议，端口行为和读取周期保持一致。
+    (* ram_style = p_ram_style *) logic [p_data_width-1:0] mem [0:p_depth-1];
 
     // 写入掩码独立控制每个分段，未选中的分段保留原值。
     always_ff @(posedge clk) begin

@@ -161,16 +161,6 @@ module axi_dual_block_dma #(
     localparam int CONV_RW = $clog2(IM2COL_SIZE+1);
     localparam bit CONV_SUPPORTED = DATA_WIDTH >= 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) &&
                                    REG_WIDTH == 32 && IM2COL_SIZE <= SIZE;
-    localparam bit p_response_tag_use_lut =
-`ifdef ASIC_SYNTHESIS
-        1'b0;
-`elsif XILINX_FPGA
-        1'b1;
-`elsif SYNTHESIS
-        1'b1;
-`else
-        1'b0;
-`endif
 
     logic job_conv, job_read_guard;
     logic cfg_fire;
@@ -267,28 +257,9 @@ module axi_dual_block_dma #(
     assign accept_linear = rd_start && !abort && !rd_im2col && rd_start_ready;
     assign accept_image = rd_start && !abort && rd_im2col && image_start_ready;
     assign accept_read = accept_linear || accept_image;
-    if (p_response_tag_use_lut) begin : g_response_tag_fpga
-        logic [2:0] tag_i_flags;
-        logic [RD_TAG_WIDTH-1:0] tag_i_conv, tag_i_linear, tag_o_value;
-        logic tag_i_zero;
-
-        assign tag_i_flags = {conv_done_r, win_frontend_active, fe_wr_valid};
-        assign tag_i_conv = conv_tag_q;
-        assign tag_i_linear = linear_response_tag;
-        assign tag_i_zero = 1'b0;
-        // 窗口归属、完成状态和两个标签值在同一级选择，保留无效周期的输出值。
-        for (genvar bit_index=0;bit_index<RD_TAG_WIDTH;bit_index++) begin : g_bit
-            LUT6 #(.INIT(64'hff0d_f200_ff0d_f200)) u_tag (
-                .I0(tag_i_flags[0]), .I1(tag_i_flags[1]), .I2(tag_i_flags[2]),
-                .I3(tag_i_conv[bit_index]), .I4(tag_i_linear[bit_index]),
-                .I5(tag_i_zero), .O(tag_o_value[bit_index])
-            );
-        end
-        assign rd_response_tag = tag_o_value;
-    end else begin : g_response_tag_generic
-        assign rd_response_tag = ((fe_wr_valid && !win_frontend_active) || conv_done_r) ?
-                                 conv_tag_q : linear_response_tag;
-    end
+    // 窗口归属与完成状态决定返回标签，选择保持无效周期的数据行为。
+    assign rd_response_tag = ((fe_wr_valid && !win_frontend_active) || conv_done_r) ?
+      conv_tag_q : linear_response_tag;
     assign rd_finish_tag = linear_finish ? linear_finish_tag : conv_tag_q;
     assign linear_start = accept_linear;
     // 普通描述符只在窗口队列为空时接收，等待前端期间禁止窗口入队。

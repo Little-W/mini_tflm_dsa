@@ -141,15 +141,6 @@ module axi_linear_block_dma #(
     localparam int unsigned ROW_CNT_W = (SIZE <= 1) ? 1 : $clog2(SIZE + 1);
     localparam int unsigned BEAT_CNT_W = 9;
     localparam bit SUPPORT_16BIT = (DATA_WIDTH > 8);
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_completion = 1'b0;
-`else
-    localparam bit p_fpga_completion = 1'b1;
-`endif
-`else
-    localparam bit p_fpga_completion = 1'b0;
-`endif
     typedef logic [ROW_CNT_W-1:0] row_count_t;
     // A segmented output descriptor can span 16 row tiles (256 rows).
     localparam int unsigned WR_ROW_CNT_W = (ROW_CNT_W > 9) ? ROW_CNT_W : 9;
@@ -173,7 +164,6 @@ module axi_linear_block_dma #(
     typedef logic [RD_CTX_PTR_W-1:0] context_ptr_t;
     typedef logic [RD_CTX_CNT_W-1:0] context_count_t;
     typedef struct packed {
-        logic [REG_WIDTH-1:0] base_addr;
         logic [REG_WIDTH-1:0] row_stride;
         row_count_t rows;
         logic [REG_WIDTH-1:0] valid_cols;
@@ -183,20 +173,27 @@ module axi_linear_block_dma #(
         logic use_16bits;
         logic signed [REG_WIDTH-1:0] zp;
         logic [RD_TAG_WIDTH-1:0] tag;
+    } response_context_t;
+    typedef struct packed {
+        logic [REG_WIDTH-1:0] base_addr;
+        response_context_t response;
     } read_context_t;
 
-    localparam int unsigned p_context_data_width = $bits(read_context_t) - RD_TAG_WIDTH;
+    localparam int unsigned p_context_data_width = $bits(response_context_t) - RD_TAG_WIDTH;
     logic [RD_TAG_WIDTH-1:0] rd_context_tag_q [RD_CTX_DEPTH];
     logic context_storage_i_wr_en;
     logic [RD_CTX_PTR_W-1:0] context_storage_i_wr_addr;
     logic [p_context_data_width-1:0] context_storage_i_wr_data;
     logic [0:0] context_storage_i_wr_mask;
-    logic [1:0] context_storage_i_rd_en;
-    logic [1:0][RD_CTX_PTR_W-1:0] context_storage_i_rd_addr;
-    logic [1:0][p_context_data_width-1:0] context_storage_o_rd_data;
-    logic [REG_WIDTH-1:0] rd_next_context_base;
-    logic [p_context_data_width-REG_WIDTH-1:0] unused_next_context_data;
-    read_context_t rd_head, rd_incoming;
+    logic [0:0] context_storage_i_rd_en;
+    logic [0:0][RD_CTX_PTR_W-1:0] context_storage_i_rd_addr;
+    logic [0:0][p_context_data_width-1:0] context_storage_o_rd_data;
+    logic [0:0] context_base_i_rd_en;
+    logic [0:0][RD_CTX_PTR_W-1:0] context_base_i_rd_addr;
+    logic [REG_WIDTH-1:0] context_base_i_wr_data;
+    logic [0:0][REG_WIDTH-1:0] context_base_o_rd_data;
+    response_context_t rd_head;
+    read_context_t rd_incoming;
     context_ptr_t rd_context_head, rd_context_tail;
     context_ptr_t rd_context_head_nxt, rd_context_tail_nxt;
     context_ptr_t rd_context_head_plus_one, rd_context_tail_plus_one;
@@ -218,7 +215,8 @@ module axi_linear_block_dma #(
     logic rd_pending_cmd_cross;
 
     row_count_t rd_rsp_row_cnt;
-    logic [REG_WIDTH-1:0] rd_rsp_row_addr_cur;
+    logic [REG_WIDTH-1:0] rd_rsp_row_addr_cur, rd_rsp_row_addr_direct;
+    logic rd_rsp_from_context;
     beat_count_t rd_rsp_beat_cnt;
     logic [BUS_WIDTH-1:0] rd_rsp_prev_data, rd_rsp_data_r;
     row_count_t rd_rsp_row_r;
@@ -274,31 +272,10 @@ module axi_linear_block_dma #(
     assign rd_rsp_last_with_cross = rd_head.linear_read ?
         (rd_rsp_beat_cnt == beat_count_t'(1)) :
         rsp_last_equal_o_equal;
-    // 末拍选择与末行条件由同一查找表并行生成，行地址低位只经过一次选择。
-    if (p_fpga_completion) begin : g_completion
-        logic lut_i_handshake, lut_i_cross, lut_i_aligned_last, lut_i_cross_last;
-        logic lut_i_last_row, lut_i_one;
-        logic lut_o_row_done, lut_o_command_done;
-
-        assign lut_i_handshake = rd_r_hs;
-        assign lut_i_cross = rd_rsp_cross;
-        assign lut_i_aligned_last = rd_rsp_last_without_cross;
-        assign lut_i_cross_last = rd_rsp_last_with_cross;
-        assign lut_i_last_row = rsp_row_equal_o_equal;
-        assign lut_i_one = 1'b1;
-        assign rd_rsp_done = lut_o_row_done;
-        assign rd_finish_beat = lut_o_command_done;
-        LUT6_2 #(.INIT(64'ha8200000a820a820)) u_complete (
-            .I0(lut_i_handshake), .I1(lut_i_cross),
-            .I2(lut_i_aligned_last), .I3(lut_i_cross_last),
-            .I4(lut_i_last_row), .I5(lut_i_one),
-            .O5(lut_o_row_done), .O6(lut_o_command_done)
-        );
-    end else begin : g_generic_completion
-        assign rd_rsp_done = rd_r_hs &&
-            (rd_rsp_cross ? rd_rsp_last_with_cross : rd_rsp_last_without_cross);
-        assign rd_finish_beat = rd_active && rd_rsp_done && rsp_row_equal_o_equal;
-    end
+    // 末拍和末行条件并行准备，地址低位只选择对应的完成结果。
+    assign rd_rsp_done = rd_r_hs &&
+        (rd_rsp_cross ? rd_rsp_last_with_cross : rd_rsp_last_without_cross);
+    assign rd_finish_beat = rd_rsp_done && rsp_row_equal_o_equal;
     wire rd_issue_last_ar = rd_issue_active && rd_ar_hs && rd_follow_beats == '0 &&
                             rd_cmd_row_cnt == rd_cfg_rows;
 
@@ -314,18 +291,23 @@ module axi_linear_block_dma #(
     // 描述符数据采用异步读取，命令标签独立复位，保持原有接收和响应周期。
     assign context_storage_i_wr_en = rst_n && rd_accept_start;
     assign context_storage_i_wr_addr = rd_context_tail;
-    assign context_storage_i_wr_data = rd_incoming[$bits(read_context_t)-1:RD_TAG_WIDTH];
+    assign context_storage_i_wr_data = rd_incoming.response[$bits(response_context_t)-1:RD_TAG_WIDTH];
     assign context_storage_i_wr_mask = 1'b1;
-    assign context_storage_i_rd_en = 2'b11;
+    assign context_storage_i_rd_en = 1'b1;
     assign context_storage_i_rd_addr[0] = rd_context_head;
-    assign context_storage_i_rd_addr[1] = rd_context_head_nxt;
     assign rd_head = {context_storage_o_rd_data[0], rd_context_tag_q[rd_context_head]};
-    assign {rd_next_context_base, unused_next_context_data} = context_storage_o_rd_data[1];
+    // 下一描述符的基地址在当前描述符完成边沿读取，保持原有地址更新周期。
+    assign context_base_i_wr_data = rd_incoming.base_addr;
+    assign context_base_i_rd_en[0] = rst_n && rd_finish_beat &&
+        rd_context_count > context_count_t'(1);
+    assign context_base_i_rd_addr[0] = rd_context_head_nxt;
+    assign rd_rsp_row_addr_cur = rd_rsp_from_context ?
+        context_base_o_rd_data[0] : rd_rsp_row_addr_direct;
 
     regfile #(
         .p_data_width(p_context_data_width), .p_depth(RD_CTX_DEPTH),
         .p_addr_width(RD_CTX_PTR_W), .p_write_unit(p_context_data_width),
-        .p_read_ports(2), .p_sync_read(1'b0)
+        .p_read_ports(1), .p_sync_read(1'b0)
     ) u_context_storage (
         .clk(clk), .i_wr_en(context_storage_i_wr_en), .i_wr_addr(context_storage_i_wr_addr),
         .i_wr_data(context_storage_i_wr_data), .i_wr_mask(context_storage_i_wr_mask),
@@ -333,17 +315,28 @@ module axi_linear_block_dma #(
         .o_rd_data(context_storage_o_rd_data)
     );
 
+    regfile #(
+        .p_data_width(REG_WIDTH), .p_depth(RD_CTX_DEPTH),
+        .p_addr_width(RD_CTX_PTR_W), .p_write_unit(REG_WIDTH),
+        .p_read_ports(1), .p_sync_read(1'b1), .p_ram_style("block")
+    ) u_context_base (
+        .clk(clk), .i_wr_en(context_storage_i_wr_en), .i_wr_addr(context_storage_i_wr_addr),
+        .i_wr_data(context_base_i_wr_data), .i_wr_mask(context_storage_i_wr_mask),
+        .i_rd_en(context_base_i_rd_en), .i_rd_addr(context_base_i_rd_addr),
+        .o_rd_data(context_base_o_rd_data)
+    );
+
     always_comb begin
         rd_incoming.base_addr = rd_base_addr;
-        rd_incoming.row_stride = rd_row_stride;
-        rd_incoming.rows = row_count_t'(rd_rows_to_read);
-        rd_incoming.valid_cols = rd_valid_cols == '0 ? REG_WIDTH'(SIZE) : rd_valid_cols;
-        rd_incoming.burst_len_m1 = rd_burst_len_m1;
-        rd_incoming.slot = rd_slot_id;
-        rd_incoming.linear_read = rd_linear_read_mode;
-        rd_incoming.use_16bits = SUPPORT_16BIT && rd_use_16bits;
-        rd_incoming.zp = rd_lhs_zp;
-        rd_incoming.tag = rd_tag;
+        rd_incoming.response.row_stride = rd_row_stride;
+        rd_incoming.response.rows = row_count_t'(rd_rows_to_read);
+        rd_incoming.response.valid_cols = rd_valid_cols == '0 ? REG_WIDTH'(SIZE) : rd_valid_cols;
+        rd_incoming.response.burst_len_m1 = rd_burst_len_m1;
+        rd_incoming.response.slot = rd_slot_id;
+        rd_incoming.response.linear_read = rd_linear_read_mode;
+        rd_incoming.response.use_16bits = SUPPORT_16BIT && rd_use_16bits;
+        rd_incoming.response.zp = rd_lhs_zp;
+        rd_incoming.response.tag = rd_tag;
     end
 
     assign rd_finish_tag = rd_head.tag;
@@ -384,7 +377,7 @@ module axi_linear_block_dma #(
         if (!rst_n) begin
             for (int i=0; i<RD_CTX_DEPTH; i++) rd_context_tag_q[i] <= '0;
         end else if (rd_accept_start) begin
-            rd_context_tag_q[rd_context_tail] <= rd_incoming.tag;
+            rd_context_tag_q[rd_context_tail] <= rd_incoming.response.tag;
         end
     end
 
@@ -495,42 +488,10 @@ module axi_linear_block_dma #(
         // 剩余拍数的减一结果提前计算，最终长度只选择已经完成的三个候选值。
         // 仅保留低八位，包含零拍数对应的模减法结果。
         assign remaining_len[0] = ~rd_segment_remaining[segment][0];
-        if (p_fpga_completion) begin : g_remaining_fpga_length
-            logic [5:0] low_i_value;
-            logic low_o_zero, unused_low_o5;
-
-            assign low_i_value = rd_segment_remaining[segment][5:0];
-            LUT6_2 #(.INIT(64'h0000_0000_0000_0001)) u_low_zero (
-                .I0(low_i_value[0]), .I1(low_i_value[1]), .I2(low_i_value[2]),
-                .I3(low_i_value[3]), .I4(low_i_value[4]), .I5(low_i_value[5]),
-                .O5(unused_low_o5), .O6(low_o_zero)
-            );
-            for (genvar bit_index = 1; bit_index < 6; bit_index++) begin : g_low_bit
-                localparam logic [63:0] p_init = bit_index == 1 ? 64'h9999_9999_9999_9999 :
-                    bit_index == 2 ? 64'he1e1_e1e1_e1e1_e1e1 :
-                    bit_index == 3 ? 64'hfe01_fe01_fe01_fe01 :
-                    bit_index == 4 ? 64'hfffe_0001_fffe_0001 : 64'hffff_fffe_0000_0001;
-                logic [5:0] length_i_value;
-                logic unused_length_o5;
-
-                assign length_i_value = 6'(rd_segment_remaining[segment][bit_index:0]);
-                LUT6_2 #(.INIT(p_init)) u_length_bit (
-                    .I0(length_i_value[0]), .I1(length_i_value[1]), .I2(length_i_value[2]),
-                    .I3(length_i_value[3]), .I4(length_i_value[4]), .I5(length_i_value[5]),
-                    .O5(unused_length_o5), .O6(remaining_len[bit_index])
-                );
-            end
-            assign remaining_len[6] = rd_segment_remaining[segment][6] ^ low_o_zero;
-            assign remaining_len[7] = rd_segment_remaining[segment][7] ^
-                (low_o_zero && !rd_segment_remaining[segment][6]);
-        end else begin : g_remaining_generic_length
-            for (genvar bit_index = 1; bit_index < 8; bit_index++) begin : g_length_borrow
-                logic lower_zero;
-
-                assign lower_zero = rd_segment_remaining[segment][bit_index-1:0] == '0;
-                assign remaining_len[bit_index] =
-                    rd_segment_remaining[segment][bit_index] ^ lower_zero;
-            end
+        for (genvar bit_index = 1; bit_index < 8; bit_index++) begin : g_length_borrow
+            logic lower_zero;
+            assign lower_zero = !(|rd_segment_remaining[segment][bit_index-1:0]);
+            assign remaining_len[bit_index] = rd_segment_remaining[segment][bit_index] ^ lower_zero;
         end
 
         if (REG_WIDTH > 12) begin : g_page_upper
@@ -640,7 +601,7 @@ module axi_linear_block_dma #(
     // Logical row progression uses the response head, independent of AR issue.
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            rd_rsp_row_cnt <= '0; rd_rsp_row_addr_cur <= '0;
+            rd_rsp_row_cnt <= '0; rd_rsp_row_addr_direct <= '0; rd_rsp_from_context <= 1'b0;
             rd_rsp_beat_cnt <= '0; rd_rsp_prev_data <= '0;
             rd_done_r <= 1'b0; rd_response_error <= 1'b0; rd_completed_error <= 1'b0;
         end else begin
@@ -651,12 +612,14 @@ module axi_linear_block_dma #(
                 rd_rsp_row_cnt <= '0;
                 rd_rsp_beat_cnt <= '0;
                 rd_rsp_prev_data <= '0;
-                if (rd_context_count > context_count_t'(1))
-                    rd_rsp_row_addr_cur <= rd_next_context_base;
-                else if (rd_accept_start) rd_rsp_row_addr_cur <= rd_base_addr;
-                else rd_rsp_row_addr_cur <= '0;
+                // 同步 RAM 输出与来源标志同时更新，同址读写保留写入前的基地址。
+                rd_rsp_from_context <= rd_context_count > context_count_t'(1);
+                if (rd_context_count <= context_count_t'(1)) begin
+                    rd_rsp_row_addr_direct <= rd_accept_start ? rd_base_addr : REG_WIDTH'(0);
+                end
             end else if (!rd_active && rd_accept_start) begin
-                rd_rsp_row_cnt <= '0; rd_rsp_row_addr_cur <= rd_base_addr;
+                rd_rsp_row_cnt <= '0; rd_rsp_row_addr_direct <= rd_base_addr;
+                rd_rsp_from_context <= 1'b0;
                 rd_rsp_beat_cnt <= '0; rd_rsp_prev_data <= '0;
                 rd_response_error <= 1'b0;
             end else if (rd_r_hs) begin
@@ -665,7 +628,8 @@ module axi_linear_block_dma #(
                 if (rd_rsp_done) begin
                     rd_rsp_beat_cnt <= '0;
                     rd_rsp_row_cnt <= rd_rsp_row_cnt + row_count_t'(1);
-                    rd_rsp_row_addr_cur <= rd_rsp_row_addr_cur + rd_head.row_stride;
+                    rd_rsp_row_addr_direct <= rd_rsp_row_addr_cur + rd_head.row_stride;
+                    rd_rsp_from_context <= 1'b0;
                 end else rd_rsp_beat_cnt <= rd_rsp_beat_cnt + beat_count_t'(1);
             end
         end

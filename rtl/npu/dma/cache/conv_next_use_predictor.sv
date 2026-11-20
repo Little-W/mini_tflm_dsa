@@ -172,8 +172,9 @@ module conv_next_use_predictor (
       {1'b0, coordinate_product[axis][15:0]};
     assign high_without_borrow = {1'b0, coordinate_pad[axis][32:16]} -
       {2'b0, coordinate_product[axis][31:16]};
-    assign high_with_borrow = {1'b0, coordinate_pad[axis][32:16]} -
-      {2'b0, coordinate_product[axis][31:16]} - 18'd1;
+    // 减去乘积和借位等价于相反次序的差值取反，只需一次十八位减法。
+    assign high_with_borrow = ~({2'b0, coordinate_product[axis][31:16]} -
+      {1'b0, coordinate_pad[axis][32:16]});
     assign coordinate_difference[axis] = {
       low_difference[16] ? high_with_borrow : high_without_borrow,
       low_difference[15:0]};

@@ -159,10 +159,9 @@ module ps_frame_store #(
     end
     reg decoded_first_mem [DECODE_FIFO_ROWS];
     reg [FIFO_PTR_BITS-1:0] decoded_write_pointer,decoded_read_pointer;
-    logic [FIFO_PTR_BITS-1:0] decoded_output_pointer;
     logic decoded_i_wr_en, decoded_i_rd_en, decoded_i_wr_mask;
     logic [FIFO_PTR_BITS-1:0] decoded_i_wr_addr, decoded_i_rd_addr;
-    logic [511:0] decoded_i_wr_data, decoded_o_rd_data;
+    logic [511:0] decoded_i_wr_data, replay_row_data;
     reg [FIFO_PTR_BITS:0] decoded_count,decoder_inflight;
     wire prefetch_fire=command_present && !frame_init_q && read_index<frame_rows_q &&
         32'(decoded_count)+32'(decoder_inflight)<PREFETCH_CREDITS && !capacity_fault && !clear_metadata;
@@ -226,7 +225,7 @@ module ps_frame_store #(
     wire replay_bypass=replay_active && decoded_count==0 && decoder_done && !capacity_fault;
     wire decoded_write_en=decoder_done && !replay_bypass && !capacity_fault;
     wire replay_consume=decoded_read_en || replay_bypass;
-    assign replay_data = replay_valid ? decoded_o_rd_data : 512'd0;
+    assign replay_data = replay_valid ? replay_row_data : 512'd0;
     assign frame_ready=command_present && !command_accepted && !capacity_fault &&
         (frame_init_q || decoded_count!=0);
     wire complete_now=command_present && command_accepted && input_ended && !capacity_fault &&
@@ -237,26 +236,23 @@ module ps_frame_store #(
         if (decoded_i_wr_en) begin
             decoded_first_mem[decoded_write_pointer] <= ram_read_first;
         end
-        if (replay_consume) begin
-            decoded_output_pointer <= decoded_read_pointer;
-        end
     end
     // 存储返回行直接写入队列，完成指示仍经过原有控制流水级。
-    // 每次接收和重放均推进物理位置，包括空队列直通；输出只保存地址。
-    // 预取最多占用深度减一行，为正在输出的行保留一个物理位置。
+    // 重放接收边沿同步读取下一行，读取结果与 replay_valid 在同一周期输出。
+    // 预取最多占用深度减一行，连续读取与写入使用不同物理位置。
     assign decoded_i_wr_en = ram_read_valid && !capacity_fault && !clear_metadata;
     assign decoded_i_wr_addr = decoded_write_pointer;
     assign decoded_i_wr_data = {incoming_words[3], incoming_words[2], incoming_words[1], incoming_words[0]};
     assign decoded_i_wr_mask = 1'b1;
-    assign decoded_i_rd_en = 1'b1;
-    assign decoded_i_rd_addr = decoded_output_pointer;
+    assign decoded_i_rd_en = replay_consume;
+    assign decoded_i_rd_addr = decoded_read_pointer;
     regfile #(
         .p_data_width(512), .p_depth(DECODE_FIFO_ROWS), .p_addr_width(FIFO_PTR_BITS),
-        .p_write_unit(512), .p_sync_read(1'b0)
+        .p_write_unit(512), .p_sync_read(1'b1), .p_ram_style("block")
     ) u_decoded (
         .clk(clk), .i_wr_en(decoded_i_wr_en), .i_wr_addr(decoded_i_wr_addr),
         .i_wr_data(decoded_i_wr_data), .i_wr_mask(decoded_i_wr_mask),
-        .i_rd_en(decoded_i_rd_en), .i_rd_addr(decoded_i_rd_addr), .o_rd_data(decoded_o_rd_data)
+        .i_rd_en(decoded_i_rd_en), .i_rd_addr(decoded_i_rd_addr), .o_rd_data(replay_row_data)
     );
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
