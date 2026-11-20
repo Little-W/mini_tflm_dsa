@@ -1,0 +1,14 @@
+{
+  "select_add_reference": {
+    "top": "select_add_reference",
+    "options": [],
+    "sources": ["test/select_add/measure.sv", "rtl/npu/compute/select_add.sv"],
+    "configuration": "one 32-bit output channel with WS/IS bias selection"
+  },
+  "select_add_candidate": {
+    "top": "select_add_candidate",
+    "options": [],
+    "sources": ["test/select_add/measure.sv", "rtl/npu/compute/select_add.sv"],
+    "configuration": "one 32-bit output channel with WS/IS bias selection"
+  }
+}

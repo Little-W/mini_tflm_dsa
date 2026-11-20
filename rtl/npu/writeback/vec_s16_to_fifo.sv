@@ -1,3 +1,5 @@
+`default_nettype none
+
 // Linear output FIFO for little-endian TFLM int16 activations.
 module vec_s16_to_fifo #(
     parameter int unsigned VLEN  = 16,
@@ -48,9 +50,6 @@ module vec_s16_to_fifo #(
     logic [MEM_ADDR_W-1:0] ram_wr_addr;
     logic [MEM_ADDR_W-1:0] ram_rd_addr;
     logic [PTR_WIDTH-1:0] next_read_row;
-    logic [BANK_COUNT_WIDTH-1:0] reserve_bank_count;
-    logic [BANK_COUNT_WIDTH-1:0] used_bank_count;
-    logic [BANK_COUNT_WIDTH-1:0] free_bank_count;
 
     function automatic logic [BANK_WIDTH-1:0] next_bank(
         input logic [BANK_WIDTH-1:0] bank
@@ -81,17 +80,19 @@ module vec_s16_to_fifo #(
     assign output_valid = stream_active && data_valid;
     assign output_row_switch = last_beat_in_row;
 
-    always_comb begin
-        reserve_bank_count = (reserve_banks == 0) ? BANK_COUNT_WIDTH'(1) :
-                             (reserve_banks >= 32'(BANKS)) ? BANK_COUNT_WIDTH'(BANKS) :
-                             BANK_COUNT_WIDTH'(reserve_banks);
-        used_bank_count = ready_bank_count_q +
-                          ((write_ptr != '0) ? BANK_COUNT_WIDTH'(1) : '0);
-        free_bank_count = (used_bank_count >= BANK_COUNT_WIDTH'(BANKS)) ? '0 :
-                          (BANK_COUNT_WIDTH'(BANKS) - used_bank_count);
-        fifo_full_flag = write_bank_blocked || next_write_bank_blocked ||
-                         (free_bank_count < reserve_bank_count);
+    logic [31:0] watermark_i_reserve;
+    logic [BANK_COUNT_WIDTH-1:0] watermark_i_ready_banks;
+    logic watermark_i_partial_write, watermark_o_full;
+    assign watermark_i_reserve = reserve_banks;
+    assign watermark_i_ready_banks = ready_bank_count_q;
+    assign watermark_i_partial_write = write_ptr != '0;
+    assign fifo_full_flag = write_bank_blocked || next_write_bank_blocked || watermark_o_full;
+    fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH)) u_watermark (
+        .i_reserve(watermark_i_reserve), .i_ready_banks(watermark_i_ready_banks),
+        .i_partial_write(watermark_i_partial_write), .o_full(watermark_o_full)
+    );
 
+    always_comb begin
         next_read_row = start_stream ? '0 : (read_ptr + 1'b1);
         ram_wr_addr = MEM_ADDR_W'((int'(write_bank) * VLEN) + int'(write_ptr));
         ram_rd_addr = MEM_ADDR_W'((int'(read_bank) * VLEN) + int'(next_read_row));
@@ -193,3 +194,5 @@ module vec_s16_to_fifo #(
     end
 
 endmodule
+
+`default_nettype wire

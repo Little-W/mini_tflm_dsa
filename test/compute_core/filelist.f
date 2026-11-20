@@ -7,6 +7,7 @@ tb_compute_core.sv
 ../../rtl/npu/compute/bias_mux.sv
 ../../rtl/npu/buffers/ps_buffer.sv
 ../../rtl/common/pseudo_dual_port_ram.v
+../../rtl/common/REGFILE.v
 ../../rtl/npu/compute/ws_systolic_array.sv
 ../../rtl/npu/compute/ws_systolic_cell.sv
 ../../rtl/npu/ps_compact/ps_adaptive_codec.sv

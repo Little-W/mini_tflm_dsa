@@ -1,3 +1,5 @@
+`default_nettype none
+
 module vec_requant #(
     parameter int BUS_WIDTH = 32,
     parameter int VLEN         = 16,
@@ -5,7 +7,9 @@ module vec_requant #(
     parameter int MAX_IA_REUSE = 2,
     parameter int unsigned ENABLE_PER_CHANNEL = 1,
     parameter int unsigned ENABLE_IS_MODE = 1,
-    parameter bit ENABLE_S16 = 1'b0
+    parameter bit ENABLE_S16 = 1'b0,
+    parameter int unsigned p_compute_lanes = VLEN,
+    parameter int unsigned p_input_rows = VLEN * MAX_IA_REUSE
 ) (
     input logic clk,
     input logic rst_n,
@@ -44,6 +48,11 @@ module vec_requant #(
     input  logic [BUS_WIDTH-1:0]        dma_raw_data,
     input  logic                        dma_raw_valid,
 
+    // 组级预留在输入首行之前完成，分时运算在整组输出后恢复接收许可。
+    input logic i_group_start = 1'b0,
+    input logic [31:0] i_group_rows = 32'd0,
+    output logic o_group_ready,
+
     // 数据口
     input  logic               in_valid,
     input  logic               in_tile_done,
@@ -57,7 +66,8 @@ module vec_requant #(
 );
 
   generate
-    if ((ENABLE_PER_CHANNEL == 0) && (ENABLE_IS_MODE == 0) && !ENABLE_S16) begin : g_tensor_ws
+    if ((ENABLE_PER_CHANNEL == 0) && (ENABLE_IS_MODE == 0) && !ENABLE_S16 && (p_compute_lanes >= VLEN)) begin : g_tensor_ws
+      assign o_group_ready = 1'b1;
       vec_requant_tensor_ws #(
           .BUS_WIDTH(BUS_WIDTH),
           .VLEN     (VLEN),
@@ -111,8 +121,13 @@ module vec_requant #(
           .MAX_IA_REUSE      (MAX_IA_REUSE),
           .ENABLE_PER_CHANNEL(ENABLE_PER_CHANNEL),
           .ENABLE_IS_MODE    (ENABLE_IS_MODE),
-          .ENABLE_S16        (ENABLE_S16)
+          .ENABLE_S16        (ENABLE_S16),
+          .p_compute_lanes   (p_compute_lanes),
+          .p_input_rows      (p_input_rows)
       ) u_full (
+          .i_group_start(i_group_start),
+          .i_group_rows(i_group_rows),
+          .o_group_ready(o_group_ready),
           .clk               (clk),
           .rst_n             (rst_n),
           .init_cfg          (init_cfg),
@@ -624,7 +639,9 @@ module vec_requant_full #(
     parameter int MAX_IA_REUSE = 2,
     parameter int unsigned ENABLE_PER_CHANNEL = 1,
     parameter int unsigned ENABLE_IS_MODE = 1,
-    parameter bit ENABLE_S16 = 1'b0
+    parameter bit ENABLE_S16 = 1'b0,
+    parameter int unsigned p_compute_lanes = VLEN,
+    parameter int unsigned p_input_rows = VLEN * MAX_IA_REUSE
 ) (
     input logic clk,
     input logic rst_n,
@@ -662,6 +679,11 @@ module vec_requant_full #(
     output logic signed [REG_WIDTH-1:0] dma_lhs_zp,
     input  logic [BUS_WIDTH-1:0]        dma_raw_data,
     input  logic                        dma_raw_valid,
+
+    // 组级预留在输入首行之前完成，分时运算在整组输出后恢复接收许可。
+    input logic i_group_start = 1'b0,
+    input logic [31:0] i_group_rows = 32'd0,
+    output logic o_group_ready,
 
     // 数据口
     input  logic               in_valid,
@@ -719,6 +741,8 @@ module vec_requant_full #(
   localparam int VLEN_SHIFT     = $clog2(VLEN);
   localparam int VLEN_CNT_W     = (VLEN <= 1) ? 1 : $clog2(VLEN + 1);
   localparam int TILE_CNT_W     = (REG_WIDTH < 16) ? REG_WIDTH : 16;
+  localparam bit p_direct_tail_count = (VLEN > 0) && ((VLEN & (VLEN - 1)) == 0) &&
+      (REG_WIDTH >= VLEN_CNT_W);
 
   typedef logic [TILE_CNT_W-1:0] tile_idx_t;
 
@@ -753,6 +777,12 @@ module vec_requant_full #(
   logic     [31:0] group_rows_need_cur;
   logic     [31:0] load_offset;
   logic     [31:0] chunk_need_cur;
+  logic     [32:0] remaining_words;
+  logic [VLEN_CNT_W-1:0] chunk_words;
+  logic [VLEN_CNT_W-1:0] burst_word_index;
+  logic [32:0] load_advance;
+  logic load_remainder_greater;
+  logic load_has_more;
 
   // per-channel：mul/shift 两次突发的采样计数
   logic [VLEN_CNT_W-1:0] rd_beats_cnt;
@@ -774,7 +804,13 @@ module vec_requant_full #(
   tile_idx_t       last_col_tile;
   logic            all_tiles_done;
 
-  wire cfg_per_channel_eff = (ENABLE_PER_CHANNEL != 0) ? cfg_per_channel : 1'b0;
+  logic serial_per_channel_q;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) serial_per_channel_q <= 1'b0;
+    else if (init_cfg) serial_per_channel_q <= cfg_per_channel;
+  end
+  wire cfg_per_channel_eff = (ENABLE_PER_CHANNEL != 0) ?
+      (((p_compute_lanes < VLEN) && !init_cfg) ? serial_per_channel_q : cfg_per_channel) : 1'b0;
   wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
 
   // ----------------------------
@@ -868,12 +904,31 @@ module vec_requant_full #(
     row_start_cur  = REG_WIDTH'(tile_row) << VLEN_SHIFT;
     lane_remaining_cur = (m_r > lane_start_cur) ? (m_r - lane_start_cur) : 32'd0;
     rows_remaining_cur = (k_r > row_start_cur) ? (k_r - row_start_cur) : 32'd0;
-    lane_need_cur = (lane_remaining_cur >= REG_WIDTH'(VLEN))
-                  ? REG_WIDTH'(VLEN)
-                  : lane_remaining_cur;
-    rows_need_cur = (rows_remaining_cur >= REG_WIDTH'(VLEN))
-                  ? REG_WIDTH'(VLEN)
-                  : rows_remaining_cur;
+    // 通道数为二的幂次时，块起点的低位恒为零；高位比较决定整块、尾块或空块。
+    // 尾块直接使用尺寸的低位，保持完整三十二位尺寸和块坐标的范围行为。
+    if (p_direct_tail_count) begin
+      if ((m_r >> VLEN_SHIFT) > (lane_start_cur >> VLEN_SHIFT)) begin
+        lane_need_cur = REG_WIDTH'(VLEN);
+      end else if ((m_r >> VLEN_SHIFT) == (lane_start_cur >> VLEN_SHIFT)) begin
+        lane_need_cur = m_r & REG_WIDTH'(VLEN - 1);
+      end else begin
+        lane_need_cur = 32'd0;
+      end
+      if ((k_r >> VLEN_SHIFT) > (row_start_cur >> VLEN_SHIFT)) begin
+        rows_need_cur = REG_WIDTH'(VLEN);
+      end else if ((k_r >> VLEN_SHIFT) == (row_start_cur >> VLEN_SHIFT)) begin
+        rows_need_cur = k_r & REG_WIDTH'(VLEN - 1);
+      end else begin
+        rows_need_cur = 32'd0;
+      end
+    end else begin
+      lane_need_cur = (lane_remaining_cur >= REG_WIDTH'(VLEN))
+                    ? REG_WIDTH'(VLEN)
+                    : lane_remaining_cur;
+      rows_need_cur = (rows_remaining_cur >= REG_WIDTH'(VLEN))
+                    ? REG_WIDTH'(VLEN)
+                    : rows_remaining_cur;
+    end
 
     reuse_group_base_row = tile_row & ~ia_reuse_mask_tile_r;
     row_offset_in_group  = tile_row & ia_reuse_mask_tile_r;
@@ -887,11 +942,6 @@ module vec_requant_full #(
                          : group_rows_remaining_cur;
     quant_need_cur       = is_mode_r ? group_rows_need_cur : lane_need_cur;
     quant_tile_idx_cur   = is_mode_r ? REG_WIDTH'(reuse_group_base_row) : REG_WIDTH'(tile_col);
-    chunk_need_cur       = (quant_need_load_r > load_offset)
-                         ? (((quant_need_load_r - load_offset) > VLEN)
-                              ? VLEN
-                              : (quant_need_load_r - load_offset))
-                         : 32'd0;
 
     tile_row_inc = tile_row + tile_idx_t'(1);
     tile_col_inc = tile_col + tile_idx_t'(1);
@@ -938,9 +988,35 @@ module vec_requant_full #(
     end
   end
 
-  // DMA len = 需要拍数-1（0 表示 1 拍）
+  // 完整三十三位差值同时给出剩余字数和借位，超过装载总数的偏移返回零。
+  // 末拍编号的窄减法与范围判断并行，随后按 VLEN 上限选择饱和值。
+  assign remaining_words = {1'b0, quant_need_load_r} - {1'b0, load_offset};
+  assign burst_word_index = VLEN_CNT_W'(remaining_words) - VLEN_CNT_W'(1);
   always_comb begin
-    burst_len_cur = 8'((chunk_need_cur > 0) ? ((chunk_need_cur+BUS_WIDTH/32-1)/(BUS_WIDTH/32) - 1) : 0);
+    if (remaining_words[32]) begin
+      chunk_words = '0;
+      burst_len_cur = 8'd0;
+    end else if (remaining_words[31:0] > 32'(VLEN)) begin
+      chunk_words = VLEN_CNT_W'(VLEN);
+      burst_len_cur = 8'((VLEN - 1) / (BUS_WIDTH/32));
+    end else begin
+      chunk_words = VLEN_CNT_W'(remaining_words);
+      burst_len_cur = (VLEN_CNT_W'(remaining_words) != '0) ?
+          8'(burst_word_index / (BUS_WIDTH/32)) : 8'd0;
+    end
+  end
+  assign chunk_need_cur = 32'(chunk_words);
+
+  // 装载完成比较复用剩余字数，扩展加法保留三十二位偏移回绕的进位。
+  // 剩余字数的借位决定进位与短计数比较的组合方式。
+  assign load_advance = {1'b0, load_offset} + 33'(REG_WIDTH'(beats_expect));
+  assign load_remainder_greater = remaining_words[31:0] > 32'(REG_WIDTH'(beats_expect));
+  if (REG_WIDTH == 32) begin : g_load_completion_compare
+    assign load_has_more = remaining_words[32] ?
+        (load_advance[32] && load_remainder_greater) :
+        (load_advance[32] || load_remainder_greater);
+  end else begin : g_generic_load_completion_compare
+    assign load_has_more = (load_offset + REG_WIDTH'(beats_expect)) < quant_need_load_r;
   end
 
   // ----------------------------
@@ -993,13 +1069,11 @@ module vec_requant_full #(
     assign parameter_index[word]=quant_rsp_idx+QBUF_IDX_W'(word);
   end
   logic [QBUF_IDX_W-1:0] input_group_idx_cur;
+  logic [QBUF_IDX_W-1:0] parameter_read_idx;
+  logic row_consume_valid, row_consume_tile_done;
   for (genvar bank = 0; bank < PARAM_BANKS; bank++) begin : gen_is_parameter_bank
     localparam int BANK_DEPTH = (QBUF_DEPTH + PARAM_BANKS - 1) / PARAM_BANKS;
     localparam int BANK_ADDR_W = (BANK_DEPTH <= 1) ? 1 : $clog2(BANK_DEPTH);
-    (* ram_style = "distributed" *) logic signed [31:0] multiplier_mem [BANK_DEPTH];
-    (* ram_style = "distributed" *) logic signed [31:0] shift_mem [BANK_DEPTH];
-    (* ram_style = "distributed" *) logic signed [31:0] product_multiplier_mem[BANK_DEPTH];
-    (* ram_style = "distributed" *) logic [6:0] product_amount_mem[BANK_DEPTH];
     logic write_enable;
     logic [BANK_ADDR_W-1:0] write_addr;
     logic signed [31:0] write_value;
@@ -1023,33 +1097,183 @@ module vec_requant_full #(
         end
       end
     end
-    always_ff @(posedge clk) begin
-      if (write_enable) begin
-        if (load_phase == PH_MUL) begin
-          multiplier_mem[write_addr] <= write_value;
-          product_multiplier_mem[write_addr] <= write_product_multiplier;
-        end
-        else begin
-          shift_mem[write_addr] <= write_value;
-          product_amount_mem[write_addr] <= write_product_amount;
+    // 原始参数保持组合读取；运算参数在输入采样边沿同步读取。
+    // 两类存储使用相同的写入条件，保存完整的原始参数与预处理参数。
+    logic multiplier_i_wr_en, multiplier_i_wr_mask, multiplier_i_rd_en;
+    logic [BANK_ADDR_W-1:0] multiplier_i_wr_addr, multiplier_i_rd_addr;
+    logic [31:0] multiplier_i_wr_data, multiplier_o_rd_data;
+    logic shift_i_wr_en, shift_i_wr_mask, shift_i_rd_en;
+    logic [BANK_ADDR_W-1:0] shift_i_wr_addr, shift_i_rd_addr;
+    logic [31:0] shift_i_wr_data, shift_o_rd_data;
+    logic product_multiplier_i_wr_en, product_multiplier_i_wr_mask, product_multiplier_i_rd_en;
+    logic [BANK_ADDR_W-1:0] product_multiplier_i_wr_addr, product_multiplier_i_rd_addr;
+    logic [31:0] product_multiplier_i_wr_data, product_multiplier_o_rd_data;
+    logic product_amount_i_wr_en, product_amount_i_wr_mask, product_amount_i_rd_en;
+    logic [BANK_ADDR_W-1:0] product_amount_i_wr_addr, product_amount_i_rd_addr;
+    logic [6:0] product_amount_i_wr_data, product_amount_o_rd_data;
+
+    assign multiplier_i_wr_en = write_enable && (load_phase == PH_MUL);
+    assign multiplier_i_wr_addr = write_addr;
+    assign multiplier_i_wr_data = write_value;
+    assign multiplier_i_wr_mask = 1'b1;
+    assign multiplier_i_rd_en = 1'b1;
+    assign multiplier_i_rd_addr = BANK_ADDR_W'(input_group_idx_cur / PARAM_BANKS);
+    assign ch_multiplier_is_read[bank] = $signed(multiplier_o_rd_data);
+    assign shift_i_wr_en = write_enable && (load_phase != PH_MUL);
+    assign shift_i_wr_addr = write_addr;
+    assign shift_i_wr_data = write_value;
+    assign shift_i_wr_mask = 1'b1;
+    assign shift_i_rd_en = 1'b1;
+    assign shift_i_rd_addr = BANK_ADDR_W'(input_group_idx_cur / PARAM_BANKS);
+    assign ch_shift_is_read[bank] = $signed(shift_o_rd_data);
+
+    assign product_multiplier_i_wr_en = multiplier_i_wr_en;
+    assign product_multiplier_i_wr_addr = write_addr;
+    assign product_multiplier_i_wr_data = write_product_multiplier;
+    assign product_multiplier_i_wr_mask = 1'b1;
+    assign product_multiplier_i_rd_en = !init_cfg;
+    assign product_multiplier_i_rd_addr = BANK_ADDR_W'(parameter_read_idx / PARAM_BANKS);
+    assign ch_product_multiplier_is_read[bank] = $signed(product_multiplier_o_rd_data);
+    assign product_amount_i_wr_en = shift_i_wr_en;
+    assign product_amount_i_wr_addr = write_addr;
+    assign product_amount_i_wr_data = write_product_amount;
+    assign product_amount_i_wr_mask = 1'b1;
+    assign product_amount_i_rd_en = !init_cfg;
+    assign product_amount_i_rd_addr = product_multiplier_i_rd_addr;
+    assign ch_product_amount_is_read[bank] = product_amount_o_rd_data;
+
+    REGFILE #(
+        .p_data_width(32), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
+        .p_write_unit(32), .p_sync_read(1'b0)
+    ) u_multiplier (
+        .clk(clk), .i_wr_en(multiplier_i_wr_en), .i_wr_addr(multiplier_i_wr_addr),
+        .i_wr_data(multiplier_i_wr_data), .i_wr_mask(multiplier_i_wr_mask),
+        .i_rd_en(multiplier_i_rd_en), .i_rd_addr(multiplier_i_rd_addr), .o_rd_data(multiplier_o_rd_data)
+    );
+    REGFILE #(
+        .p_data_width(32), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
+        .p_write_unit(32), .p_sync_read(1'b0)
+    ) u_shift (
+        .clk(clk), .i_wr_en(shift_i_wr_en), .i_wr_addr(shift_i_wr_addr),
+        .i_wr_data(shift_i_wr_data), .i_wr_mask(shift_i_wr_mask),
+        .i_rd_en(shift_i_rd_en), .i_rd_addr(shift_i_rd_addr), .o_rd_data(shift_o_rd_data)
+    );
+    REGFILE #(
+        .p_data_width(32), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
+        .p_write_unit(32), .p_sync_read(1'b1)
+    ) u_product_multiplier (
+        .clk(clk), .i_wr_en(product_multiplier_i_wr_en), .i_wr_addr(product_multiplier_i_wr_addr),
+        .i_wr_data(product_multiplier_i_wr_data), .i_wr_mask(product_multiplier_i_wr_mask),
+        .i_rd_en(product_multiplier_i_rd_en), .i_rd_addr(product_multiplier_i_rd_addr),
+        .o_rd_data(product_multiplier_o_rd_data)
+    );
+    REGFILE #(
+        .p_data_width(7), .p_depth(BANK_DEPTH), .p_addr_width(BANK_ADDR_W),
+        .p_write_unit(7), .p_sync_read(1'b1)
+    ) u_product_amount (
+        .clk(clk), .i_wr_en(product_amount_i_wr_en), .i_wr_addr(product_amount_i_wr_addr),
+        .i_wr_data(product_amount_i_wr_data), .i_wr_mask(product_amount_i_wr_mask),
+        .i_rd_en(product_amount_i_rd_en), .i_rd_addr(product_amount_i_rd_addr),
+        .o_rd_data(product_amount_o_rd_data)
+    );
+  end
+  // 连续 DMA 字按低位分入不同 bank，同一 bank 的通道共用写数据选择。
+  // 每个通道保持独立存储位置，常量读地址同时提供全部 WS 通道参数。
+  if (((PARAM_BANKS & (PARAM_BANKS - 1)) == 0) && (PARAM_BANKS <= VLEN) &&
+      ((VLEN & (VLEN - 1)) == 0)) begin : g_ws_bank_write
+    localparam int p_bank_depth = VLEN / PARAM_BANKS;
+    localparam int p_bank_addr_width = (p_bank_depth <= 1) ? 1 : $clog2(p_bank_depth);
+
+    for (genvar bank = 0; bank < PARAM_BANKS; bank++) begin : g_bank
+      logic write_word_vld;
+      logic write_fire;
+      logic [p_bank_addr_width-1:0] write_addr;
+      logic signed [31:0] write_value;
+      logic signed [31:0] write_product_multiplier;
+      logic [6:0] write_product_amount;
+      logic multiplier_i_wr_en, multiplier_i_wr_mask;
+      logic [p_bank_addr_width-1:0] multiplier_i_wr_addr;
+      logic [63:0] multiplier_i_wr_data;
+      logic [p_bank_depth-1:0] multiplier_i_rd_en;
+      logic [p_bank_depth-1:0][p_bank_addr_width-1:0] multiplier_i_rd_addr;
+      logic [p_bank_depth-1:0][63:0] multiplier_o_rd_data;
+      logic shift_i_wr_en, shift_i_wr_mask;
+      logic [p_bank_addr_width-1:0] shift_i_wr_addr;
+      logic [38:0] shift_i_wr_data;
+      logic [p_bank_depth-1:0] shift_i_rd_en;
+      logic [p_bank_depth-1:0][p_bank_addr_width-1:0] shift_i_rd_addr;
+      logic [p_bank_depth-1:0][38:0] shift_o_rd_data;
+
+      // bank 数为二的幂时，一个总线拍恰好为每个 bank 提供一个字。
+      // 尾拍有效字数只控制写使能，数据选择可由全部通道共用。
+      always_comb begin
+        write_word_vld = 1'b0;
+        write_addr = '0;
+        write_value = '0;
+        write_product_multiplier = '0;
+        write_product_amount = '0;
+        for (int word = 0; word < PARAM_BANKS; word++) begin
+          if ((int'(parameter_index[word]) % PARAM_BANKS) == bank) begin
+            write_word_vld = (32'(rd_beats_cnt) + 32'(word)) < 32'(beats_expect);
+            write_addr = p_bank_addr_width'(VLEN_IDX_W'(parameter_index[word]) / PARAM_BANKS);
+            write_value = parameter_value[word];
+            write_product_multiplier = parameter_product_multiplier[word];
+            write_product_amount = parameter_product_amount[word];
+          end
         end
       end
+
+      assign write_fire = rsp_hskd && !is_mode_r && write_word_vld;
+      assign multiplier_i_wr_en = write_fire && (load_phase == PH_MUL);
+      assign multiplier_i_wr_addr = write_addr;
+      assign multiplier_i_wr_data = {write_product_multiplier, write_value};
+      assign multiplier_i_wr_mask = 1'b1;
+      assign multiplier_i_rd_en = '1;
+      assign shift_i_wr_en = write_fire && (load_phase != PH_MUL);
+      assign shift_i_wr_addr = write_addr;
+      assign shift_i_wr_data = {write_product_amount, write_value};
+      assign shift_i_wr_mask = 1'b1;
+      assign shift_i_rd_en = '1;
+
+      for (genvar row = 0; row < p_bank_depth; row++) begin : g_read_lane
+        localparam int p_lane = row * PARAM_BANKS + bank;
+        assign multiplier_i_rd_addr[row] = p_bank_addr_width'(row);
+        assign shift_i_rd_addr[row] = p_bank_addr_width'(row);
+        assign ch_multiplier_lane_r[p_lane] = $signed(multiplier_o_rd_data[row][31:0]);
+        assign ch_product_multiplier_lane_r[p_lane] = $signed(multiplier_o_rd_data[row][63:32]);
+        assign ch_shift_lane_r[p_lane] = $signed(shift_o_rd_data[row][31:0]);
+        assign ch_product_amount_lane_r[p_lane] = shift_o_rd_data[row][38:32];
+      end
+
+      REGFILE #(
+          .p_data_width(64), .p_depth(p_bank_depth), .p_addr_width(p_bank_addr_width),
+          .p_write_unit(64), .p_read_ports(p_bank_depth), .p_sync_read(1'b0)
+      ) u_multiplier (
+          .clk(clk), .i_wr_en(multiplier_i_wr_en), .i_wr_addr(multiplier_i_wr_addr),
+          .i_wr_data(multiplier_i_wr_data), .i_wr_mask(multiplier_i_wr_mask),
+          .i_rd_en(multiplier_i_rd_en), .i_rd_addr(multiplier_i_rd_addr), .o_rd_data(multiplier_o_rd_data)
+      );
+      REGFILE #(
+          .p_data_width(39), .p_depth(p_bank_depth), .p_addr_width(p_bank_addr_width),
+          .p_write_unit(39), .p_read_ports(p_bank_depth), .p_sync_read(1'b0)
+      ) u_shift (
+          .clk(clk), .i_wr_en(shift_i_wr_en), .i_wr_addr(shift_i_wr_addr),
+          .i_wr_data(shift_i_wr_data), .i_wr_mask(shift_i_wr_mask),
+          .i_rd_en(shift_i_rd_en), .i_rd_addr(shift_i_rd_addr), .o_rd_data(shift_o_rd_data)
+      );
     end
-    assign ch_multiplier_is_read[bank] = multiplier_mem[BANK_ADDR_W'(input_group_idx_cur / PARAM_BANKS)];
-    assign ch_shift_is_read[bank] = shift_mem[BANK_ADDR_W'(input_group_idx_cur / PARAM_BANKS)];
-    assign ch_product_multiplier_is_read[bank] = product_multiplier_mem[BANK_ADDR_W'(input_group_idx_cur / PARAM_BANKS)];
-    assign ch_product_amount_is_read[bank] = product_amount_mem[BANK_ADDR_W'(input_group_idx_cur / PARAM_BANKS)];
-  end
-  always @(posedge clk) begin
-    for (integer word = 0; word < BUS_WIDTH/32; word++) begin
-      if (rsp_hskd && !is_mode_r && (32'(rd_beats_cnt)+word)<32'(beats_expect)) begin
-        if (load_phase==PH_MUL) begin
-          ch_multiplier_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_value[word];
-          ch_product_multiplier_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_product_multiplier[word];
-        end
-        else begin
-          ch_shift_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_value[word];
-          ch_product_amount_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_product_amount[word];
+  end else begin : g_ws_direct_write
+    // 其他参数组合按字顺序更新；同地址重复写入由较后的有效字覆盖。
+    always_ff @(posedge clk) begin
+      for (int word = 0; word < BUS_WIDTH/32; word++) begin
+        if (rsp_hskd && !is_mode_r && (32'(rd_beats_cnt) + 32'(word)) < 32'(beats_expect)) begin
+          if (load_phase == PH_MUL) begin
+            ch_multiplier_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_value[word];
+            ch_product_multiplier_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_product_multiplier[word];
+          end else begin
+            ch_shift_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_value[word];
+            ch_product_amount_lane_r[VLEN_IDX_W'(parameter_index[word])] <= parameter_product_amount[word];
+          end
         end
       end
     end
@@ -1134,8 +1358,8 @@ module vec_requant_full #(
 
               // per-tensor 或 已有参数: 直接响应输入
               if (!cfg_per_channel_eff || quant_params_valid) begin
-                if (in_valid) begin
-                  if (in_tile_done) begin
+                if (row_consume_valid) begin
+                  if (row_consume_tile_done) begin
                     row_in_tile_cnt <= '0;
                     all_tiles_done  <= final_tile_cur;
 
@@ -1165,7 +1389,7 @@ module vec_requant_full #(
                       end
                     end
                   end else begin
-                    // IDLE 中接住的第一拍 in_valid 已经被数据通路消费，
+                    // IDLE 中接住的第一拍 row_consume_valid 已经被数据通路消费，
                     // 行计数也必须同步推进，避免下一拍把 tile_done 提前一行。
                     row_in_tile_cnt <= VLEN_CNT_W'(1);
                     state <= COMPUTE;
@@ -1221,7 +1445,7 @@ module vec_requant_full #(
                 cmd_busy <= 1'b0;  // 本突发结束
 
                 if (load_phase == PH_MUL) begin
-                  if ((load_offset + REG_WIDTH'(beats_expect)) < quant_need_load_r) begin
+                  if (load_has_more) begin
                     load_offset <= load_offset + REG_WIDTH'(beats_expect);
                   end else begin
                     // mul 收满 -> 切到 shift，下一拍会去发 shift 的命令
@@ -1229,17 +1453,17 @@ module vec_requant_full #(
                     load_offset <= 32'd0;
                   end
                 end else begin
-                  if ((load_offset + REG_WIDTH'(beats_expect)) < quant_need_load_r) begin
+                  if (load_has_more) begin
                     load_offset <= load_offset + REG_WIDTH'(beats_expect);
                   end else begin
-                    // shift 也收满，参数就绪：同时锁存 lane_need，并根据当拍 in_valid 决定是否直接进 COMPUTE
+                    // shift 也收满，参数就绪：同时锁存 lane_need，并根据当拍 row_consume_valid 决定是否直接进 COMPUTE
                     quant_params_valid <= 1'b1;
                     load_offset        <= 32'd0;
                     load_meta_valid    <= 1'b0;
                     //lane_need_q        <= lane_need_cur;   // <-- 把 lane_need 在参数就绪时锁存
 
-                    if (in_valid) begin
-                      state <= COMPUTE; // 允许在同一时钟周期观察到 in_valid 并直接进入 COMPUTE
+                    if (row_consume_valid) begin
+                      state <= COMPUTE; // 允许在同一时钟周期观察到 row_consume_valid 并直接进入 COMPUTE
                     end else begin
                       state <= IDLE;
                     end
@@ -1253,9 +1477,9 @@ module vec_requant_full #(
           COMPUTE: begin
             load_phase <= PH_MUL;
 
-            if (in_valid) begin
+            if (row_consume_valid) begin
 
-              if (in_tile_done) begin
+              if (row_consume_tile_done) begin
                 row_in_tile_cnt <= '0;
                 all_tiles_done  <= final_tile_cur;
 
@@ -1331,8 +1555,14 @@ module vec_requant_full #(
   logic stage11_tile_done;
 
   assign accept_valid = in_valid && ((!cfg_per_channel_eff) || quant_params_valid);
-  assign out_valid = stage11_valid;
-  assign out_tile_done = stage11_tile_done;
+  if (p_compute_lanes >= VLEN) begin : g_parallel_control
+    assign row_consume_valid = in_valid;
+    assign row_consume_tile_done = in_tile_done;
+    assign parameter_read_idx = input_group_idx_cur;
+    assign o_group_ready = 1'b1;
+    assign out_valid = stage11_valid;
+    assign out_tile_done = stage11_tile_done;
+  end
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -1415,104 +1645,175 @@ module vec_requant_full #(
 
   logic [VLEN_CNT_W-1:0] input_row_idx_cur;
   logic signed [31:0] ch_multiplier_is_sel;
+  logic signed [31:0] ch_shift_is_sel;
   logic signed [31:0] ch_product_multiplier_is_sel;
   logic [6:0] ch_product_amount_is_sel;
+  localparam int p_parameter_width = 32 + 32;
+  localparam int p_product_parameter_width = 32 + 7;
+  localparam int p_bank_index_width = (PARAM_BANKS <= 1) ? 1 : $clog2(PARAM_BANKS);
+  logic [p_parameter_width-1:0] common_parameters;
+  logic ws_parameters_select;
+  logic ws_parameters_select_s0;
+  logic per_channel_s0;
+  logic [p_bank_index_width-1:0] parameter_bank_s0;
+  logic signed [31:0] pt_product_multiplier_s0;
+  logic [6:0] pt_product_amount_s0;
+  logic [p_product_parameter_width-1:0] common_product_parameters_s0;
   assign input_row_idx_cur = row_in_tile_cnt;
   assign input_group_idx_cur = QBUF_IDX_W'((REG_WIDTH'(row_offset_in_group) << VLEN_SHIFT) +
                                          REG_WIDTH'(input_row_idx_cur));
   always_comb begin
     ch_multiplier_is_sel = ch_multiplier_is_read[(int'(input_group_idx_cur) % PARAM_BANKS)];
-    ch_product_multiplier_is_sel = ch_product_multiplier_is_read[(int'(input_group_idx_cur) % PARAM_BANKS)];
-    ch_product_amount_is_sel = ch_product_amount_is_read[(int'(input_group_idx_cur) % PARAM_BANKS)];
+    ch_shift_is_sel = ch_shift_is_read[(int'(input_group_idx_cur) % PARAM_BANKS)];
+    ch_product_multiplier_is_sel = ch_product_multiplier_is_read[parameter_bank_s0];
+    ch_product_amount_is_sel = ch_product_amount_is_read[parameter_bank_s0];
   end
 
-  // Parameters are normalized during configuration and DMA loading. Each lane
-  // accepts one accumulator every cycle with twelve cycles of fixed latency.
-  // Partial products and the six shift decisions use separate register stages.
+  // IS 与 per-tensor 参数由所有通道共用，先形成一个公共数据字。
+  // 只有 per-channel WS 从各通道独立参数中取值，选择保持当前周期的模式行为。
+  assign common_parameters = cfg_per_channel_eff ?
+      {ch_multiplier_is_sel, ch_shift_is_sel} : {pt_multiplier_r, pt_shift_r};
+  assign ws_parameters_select = cfg_per_channel_eff && !is_mode_r;
+  assign common_product_parameters_s0 = per_channel_s0 ?
+      {ch_product_multiplier_is_sel, ch_product_amount_is_sel} :
+      {pt_product_multiplier_s0, pt_product_amount_s0};
+
+  // 存储读地址、模式和整张量参数在同一边沿采样，与 DSP 的 AREG 输入同步。
+  always_ff @(posedge clk) begin
+    if (!init_cfg) begin
+      ws_parameters_select_s0 <= ws_parameters_select;
+      per_channel_s0 <= cfg_per_channel_eff;
+      parameter_bank_s0 <= p_bank_index_width'(int'(input_group_idx_cur) % PARAM_BANKS);
+      pt_product_multiplier_s0 <= pt_product_multiplier_r;
+      pt_product_amount_s0 <= pt_product_amount_r;
+    end
+  end
+
+  logic signed [35:0] rounding_offset;
+  assign rounding_offset = s16_mode ? 36'sd0 : {{4{dst_offset_r[31]}}, dst_offset_r};
+
+  // 配置和 DMA 装载阶段预先处理量化参数。每个通道每周期接收一个累加值，
+  // 十二个寄存阶段保持固定延迟；乘积形成、移位和输出裁剪分别执行。
+  if (p_compute_lanes >= VLEN) begin : g_parallel_arithmetic
   for (genvar j = 0; j < VLEN; j++) begin : LANE
     logic signed [31:0] mult_sel, shift_sel_raw;
     logic signed [31:0] product_multiplier_sel;
     logic [6:0] product_amount_sel;
-    logic signed [31:0] acc_s0, mult_s0;
+    logic [p_parameter_width-1:0] parameter_mux_i_direct, parameter_mux_i_shifted;
+    logic parameter_mux_i_select;
+    logic [p_parameter_width-1:0] parameter_mux_o_value;
+    logic signed [31:0] ws_product_multiplier_s0;
+    logic [6:0] ws_product_amount_s0;
+    logic [p_product_parameter_width-1:0] product_parameter_mux_i_direct;
+    logic [p_product_parameter_width-1:0] product_parameter_mux_i_shifted;
+    logic product_parameter_mux_i_select;
+    logic [p_product_parameter_width-1:0] product_parameter_mux_o_value;
     logic [6:0] amount_s0;
     logic [6:0] amount_s1, amount_s2;
-    (* use_dsp = "yes" *) logic signed [47:0] product_low_s1, product_high_s1;
-    (* use_dsp = "yes" *) logic signed [47:0] product_high_s2;
-    logic [15:0] product_low_s2;
-    wire signed [63:0] prod_s2 = {product_high_s2,product_low_s2};
+    logic signed [63:0] prod_s2;
     logic lane_en_s0, lane_en_s1, lane_en_s2, lane_en_s3;
     logic lane_en_s4, lane_en_s5, lane_en_s6, lane_en_s7;
     logic lane_en_s8, lane_en_s9, lane_en_s10;
     logic signed [33:0] quotient_s9;
     logic round_increment_s9;
     (* use_dsp = "yes" *) logic signed [35:0] rounded_s10;
+    logic product_i_en;
+    logic signed [31:0] product_i_a, product_i_b;
+    logic signed [63:0] product_o_product;
+    logic rounding_sum_i_en;
+    logic signed [35:0] rounding_sum_i_lhs, rounding_sum_i_rhs;
+    logic rounding_sum_i_carry;
+    logic signed [35:0] rounding_sum_o_sum;
+    logic signed [35:0] activation_compare_i_value;
+    logic signed [31:0] activation_compare_i_minimum, activation_compare_i_maximum;
+    logic activation_compare_o_below, activation_compare_o_above;
 
-    always_comb begin
-      if (cfg_per_channel_eff) begin
-        mult_sel = is_mode_r ? ch_multiplier_is_sel : ch_multiplier_lane_r[j];
-        shift_sel_raw = is_mode_r ? ch_shift_is_read[(int'(input_group_idx_cur) % PARAM_BANKS)]
-                                  : ch_shift_lane_r[j];
-        product_multiplier_sel = is_mode_r ? ch_product_multiplier_is_sel : ch_product_multiplier_lane_r[j];
-        product_amount_sel = is_mode_r ? ch_product_amount_is_sel : ch_product_amount_lane_r[j];
-      end else begin
-        mult_sel = pt_multiplier_r;
-        shift_sel_raw = pt_shift_r;
-        product_multiplier_sel = pt_product_multiplier_r;
-        product_amount_sel = pt_product_amount_r;
-      end
-      quant_multiplier_lane[j] = mult_sel;
-      quant_shift_lane[j] = shift_sel_raw;
-    end
+    // 阶段 0 在 AREG 保存累加值，同步参数存储或通道寄存器保存右操作数。
+    // 阶段 1/2 依次保存部分积及完整乘积，三个边沿共用配置暂停使能。
+    assign product_i_en = !init_cfg;
+    assign product_i_a = in_vec_s32[j];
+    assign product_i_b = product_multiplier_sel;
+    assign prod_s2 = product_o_product;
+    registered_multiplier_s32 #(
+        .p_input_register(1'b1), .p_b_input_register(1'b0)
+    ) u_product (
+        .clk(clk),
+        .i_en(product_i_en),
+        .i_a(product_i_a),
+        .i_b(product_i_b),
+        .o_product(product_o_product)
+    );
 
-    wire signed [65:0] shifted_stage [7];
-    wire [6:0] amount_stage [7];
-    wire overflow_stage [7];
-    wire sign_stage [7];
-    assign shifted_stage[0] = {prod_s2,2'b00};
-    assign amount_stage[0] = amount_s2;
-    assign overflow_stage[0] = 1'b0;
-    assign sign_stage[0] = prod_s2[63];
-    for (genvar stage=0;stage<6;stage++) begin : g_round_stage
-      localparam int DISTANCE = 32 >> stage;
-      localparam int PREVIOUS_DISTANCE = 64 >> stage;
-      localparam int INPUT_WIDTH = (stage<2) ? 66 : 35+PREVIOUS_DISTANCE;
-      localparam int OUTPUT_WIDTH = (35+DISTANCE>66) ? 66 : 35+DISTANCE;
-      wire signed [INPUT_WIDTH-1:0] input_value = shifted_stage[stage][INPUT_WIDTH-1:0];
-      wire signed [INPUT_WIDTH-1:0] shifted_value = amount_stage[stage][5-stage] ?
-          {{DISTANCE{input_value[INPUT_WIDTH-1]}},input_value[INPUT_WIDTH-1:DISTANCE+1],
-           (|input_value[DISTANCE:0])} : input_value;
-      logic signed [OUTPUT_WIDTH-1:0] value_r;
-      logic [6:0] amount_r;
-      logic overflow_r, sign_r;
-      wire new_overflow;
-      if (OUTPUT_WIDTH < INPUT_WIDTH) begin : g_overflow
-        assign new_overflow = shifted_value[INPUT_WIDTH-1:OUTPUT_WIDTH-1] !=
-            {(INPUT_WIDTH-OUTPUT_WIDTH+1){shifted_value[OUTPUT_WIDTH-1]}};
-      end else begin : g_same_width
-        assign new_overflow = 1'b0;
-      end
-      always_ff @(posedge clk) begin
-        if (!init_cfg) begin
-          value_r <= shifted_value[OUTPUT_WIDTH-1:0];
-          amount_r <= amount_stage[stage];
-          overflow_r <= overflow_stage[stage] || new_overflow;
-          sign_r <= sign_stage[stage];
-        end
-      end
-      assign shifted_stage[stage+1] = {{(66-OUTPUT_WIDTH){value_r[OUTPUT_WIDTH-1]}},value_r};
-      assign amount_stage[stage+1] = amount_r;
-      assign overflow_stage[stage+1] = overflow_r;
-      assign sign_stage[stage+1] = sign_r;
-    end
-    wire [35:0] shifted_s8 = shifted_stage[6][35:0];
-    logic signed [33:0] bounded_quotient_s8;
-    always_comb begin
-      if (amount_stage[6][6]) bounded_quotient_s8 = '0;
-      else if (!overflow_stage[6]) bounded_quotient_s8 = $signed(shifted_s8[35:2]);
-      else bounded_quotient_s8 = sign_stage[6] ? 34'sh200000000 : 34'sh1ffffffff;
-    end
-    wire round_up_s8 = amount_stage[6] != 0 && !amount_stage[6][6] &&
-        shifted_s8[1] && (shifted_s8[0] || shifted_s8[2]);
+    // 阶段 10 同时接收商、偏移和舍入进位，不改变最终裁剪的采样边沿。
+    assign rounding_sum_i_en = !init_cfg;
+    assign rounding_sum_i_lhs = {{2{quotient_s9[33]}}, quotient_s9};
+    assign rounding_sum_i_rhs = rounding_offset;
+    assign rounding_sum_i_carry = round_increment_s9;
+    assign rounded_s10 = rounding_sum_o_sum;
+    requant_registered_sum #(.p_width(36)) u_rounding_sum (
+        .clk(clk),
+        .i_en(rounding_sum_i_en),
+        .i_lhs(rounding_sum_i_lhs),
+        .i_rhs(rounding_sum_i_rhs),
+        .i_carry(rounding_sum_i_carry),
+        .o_sum(rounding_sum_o_sum)
+    );
+
+    // 两种输出精度共用完整结果与激活边界的有符号比较。
+    assign activation_compare_i_value = rounded_s10;
+    assign activation_compare_i_minimum = activation_min_r;
+    assign activation_compare_i_maximum = activation_max_r;
+    requant_activation_compare u_activation_compare (
+        .i_value(activation_compare_i_value),
+        .i_minimum(activation_compare_i_minimum),
+        .i_maximum(activation_compare_i_maximum),
+        .o_below_minimum(activation_compare_o_below),
+        .o_above_maximum(activation_compare_o_above)
+    );
+
+    // 通道端只执行二选一，相邻数据位可共用同一个查找表的两个输出。
+    assign parameter_mux_i_direct = common_parameters;
+    assign parameter_mux_i_shifted = {ch_multiplier_lane_r[j], ch_shift_lane_r[j]};
+    assign parameter_mux_i_select = ws_parameters_select;
+    assign {mult_sel, shift_sel_raw} = parameter_mux_o_value;
+    assign quant_multiplier_lane[j] = mult_sel;
+    assign quant_shift_lane[j] = shift_sel_raw;
+    requant_shift_mux #(.p_width(p_parameter_width)) u_parameter_mux (
+        .i_direct(parameter_mux_i_direct),
+        .i_shifted(parameter_mux_i_shifted),
+        .i_select(parameter_mux_i_select),
+        .o_value(parameter_mux_o_value)
+    );
+
+    // WS 参数与 IS 同步读结果占用同一个输入周期，再选择本次运算参数。
+    assign product_parameter_mux_i_direct = common_product_parameters_s0;
+    assign product_parameter_mux_i_shifted = {ws_product_multiplier_s0, ws_product_amount_s0};
+    assign product_parameter_mux_i_select = ws_parameters_select_s0;
+    assign {product_multiplier_sel, product_amount_sel} = product_parameter_mux_o_value;
+    assign amount_s0 = product_amount_sel;
+    requant_shift_mux #(.p_width(p_product_parameter_width)) u_product_parameter_mux (
+        .i_direct(product_parameter_mux_i_direct),
+        .i_shifted(product_parameter_mux_i_shifted),
+        .i_select(product_parameter_mux_i_select),
+        .o_value(product_parameter_mux_o_value)
+    );
+
+    logic shift_en;
+    logic signed [33:0] shift_o_quotient;
+    logic shift_o_increment;
+
+    // 乘积的移位、溢出检查和舍入信息占用七个时钟边沿，保持通道输出延迟。
+    assign shift_en = !init_cfg;
+    assign quotient_s9 = shift_o_quotient;
+    assign round_increment_s9 = shift_o_increment;
+    requant_shift_pipeline u_shift (
+        .clk         (clk),
+        .i_en        (shift_en),
+        .i_product   (prod_s2),
+        .i_amount    (amount_s2),
+        .o_quotient  (shift_o_quotient),
+        .o_increment (shift_o_increment)
+    );
 
     always_ff @(posedge clk) begin
       if (!rst_n) begin
@@ -1557,17 +1858,17 @@ module vec_requant_full #(
         lane_en_s10 <= lane_en_s9;
 
         if (!lane_en_s10) out_vec_s16[j]<=16'sd0;
-        else if (rounded_s10<$signed({{4{activation_min_r[31]}},activation_min_r})) out_vec_s16[j]<=activation_min_r[15:0];
-        else if (rounded_s10>$signed({{4{activation_max_r[31]}},activation_max_r})) out_vec_s16[j]<=activation_max_r[15:0];
+        else if (activation_compare_o_below) out_vec_s16[j]<=activation_min_r[15:0];
+        else if (activation_compare_o_above) out_vec_s16[j]<=activation_max_r[15:0];
         else if (rounded_s10 < -36'sd32768) out_vec_s16[j]<=-16'sd32768;
         else if (rounded_s10 > 36'sd32767) out_vec_s16[j]<=16'sd32767;
         else out_vec_s16[j]<=rounded_s10[15:0];
 
         if (!lane_en_s10) begin
           out_vec_s8[j] <= 8'sd0;
-        end else if (rounded_s10 < $signed({{4{activation_min_r[31]}},activation_min_r})) begin
+        end else if (activation_compare_o_below) begin
           out_vec_s8[j] <= activation_min_r[7:0];
-        end else if (rounded_s10 > $signed({{4{activation_max_r[31]}},activation_max_r})) begin
+        end else if (activation_compare_o_above) begin
           out_vec_s8[j] <= activation_max_r[7:0];
         end else if (rounded_s10 > 36'sd127) begin
           out_vec_s8[j] <= 8'sd127;
@@ -1581,23 +1882,581 @@ module vec_requant_full #(
 
     always_ff @(posedge clk) begin
       if (!init_cfg) begin
-        acc_s0 <= in_vec_s32[j];
-        mult_s0 <= product_multiplier_sel;
-        amount_s0 <= product_amount_sel;
-        product_low_s1 <= acc_s0 * $signed({1'b0,mult_s0[15:0]});
-        product_high_s1 <= acc_s0 * $signed(mult_s0[31:16]);
+        ws_product_multiplier_s0 <= ch_product_multiplier_lane_r[j];
+        ws_product_amount_s0 <= ch_product_amount_lane_r[j];
         amount_s1 <= amount_s0;
-        product_high_s2 <= product_high_s1 +
-            {{16{product_low_s1[47]}},product_low_s1[47:16]};
-        product_low_s2 <= product_low_s1[15:0];
         amount_s2 <= amount_s1;
-        quotient_s9 <= bounded_quotient_s8;
-        round_increment_s9 <= round_up_s8;
-        rounded_s10 <= {{2{quotient_s9[33]}},quotient_s9} +
-            (s16_mode ? 36'sd0 : {{4{dst_offset_r[31]}},dst_offset_r}) +
-            36'(round_increment_s9);
+      end
+    end
+  end
+  end
+
+  if (p_compute_lanes < VLEN) begin : g_serial_arithmetic
+    localparam int p_batches = VLEN / p_compute_lanes;
+    localparam int p_batch_width = (p_batches <= 1) ? 1 : $clog2(p_batches);
+    localparam int p_stages = 12;
+    logic [p_batch_width-1:0] batch_q;
+    logic [p_batch_width-1:0] batch_pipe_q [p_stages];
+    logic [p_stages-1:0] tile_done_pipe_q;
+    logic row_i_group_start, row_i_clear, row_i_valid, row_i_tile_done;
+    logic [31:0] row_i_group_rows;
+    logic signed [31:0] row_i_data [VLEN], row_o_data [VLEN];
+    logic row_o_group_ready, row_o_valid, row_o_tile_done;
+    logic row_i_ready, row_i_output_valid;
+    logic issue_valid, last_batch, parameters_ready_q;
+    logic [p_bank_index_width-1:0] parameter_bank_q;
+    logic signed [31:0] common_multiplier;
+    logic [6:0] common_amount;
+    logic lane_o_valid [p_compute_lanes];
+    logic signed [7:0] lane_o_s8 [p_compute_lanes];
+    logic signed [15:0] lane_o_s16 [p_compute_lanes];
+
+    assign row_i_group_start = i_group_start;
+    assign row_i_group_rows = i_group_rows;
+    assign row_i_clear = init_cfg;
+    assign row_i_valid = in_valid;
+    assign row_i_tile_done = in_tile_done;
+    assign row_i_data = in_vec_s32;
+    assign o_group_ready = row_o_group_ready;
+    assign issue_valid = row_o_valid && parameters_ready_q &&
+        (!cfg_per_channel_eff || quant_params_valid) && !init_cfg;
+    assign last_batch = batch_q == p_batch_width'(p_batches-1);
+    assign row_consume_valid = issue_valid && last_batch;
+    assign row_consume_tile_done = row_o_tile_done;
+    assign row_i_ready = row_consume_valid;
+    assign row_i_output_valid = out_valid;
+
+    requant_group_buffer #(.p_lanes(VLEN), .p_rows(p_input_rows)) u_group_buffer (
+        .clk(clk), .rst_n(rst_n), .i_clear(row_i_clear),
+        .i_group_start(row_i_group_start), .i_group_rows(row_i_group_rows),
+        .o_group_ready(row_o_group_ready),
+        .i_row_valid(row_i_valid), .i_row_tile_done(row_i_tile_done), .i_row_data(row_i_data),
+        .o_row_valid(row_o_valid), .o_row_tile_done(row_o_tile_done), .o_row_data(row_o_data),
+        .i_row_ready(row_i_ready), .i_output_valid(row_i_output_valid)
+    );
+
+    // 最后一批发射时读取下一行参数，读取结果与下一行缓存同时更新。
+    // 原始参数的观察端口仍由当前行坐标选择。
+    always_comb begin
+      parameter_read_idx = input_group_idx_cur;
+      if (row_consume_valid) begin
+        if (row_consume_tile_done) begin
+          parameter_read_idx = QBUF_IDX_W'(
+              REG_WIDTH'(next_tile_row_cur & ia_reuse_mask_tile_r) << VLEN_SHIFT);
+        end else begin
+          parameter_read_idx = input_group_idx_cur + 1'b1;
+        end
+      end
+    end
+    always_ff @(posedge clk) begin
+      if (!init_cfg) parameter_bank_q <= p_bank_index_width'(int'(parameter_read_idx) % PARAM_BANKS);
+    end
+    // 装载完成后留出同步读边沿，保证仅一行参数的短组也取得本次装载值。
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) parameters_ready_q <= 1'b0;
+      else if (init_cfg) parameters_ready_q <= 1'b0;
+      else parameters_ready_q <= !cfg_per_channel_eff || quant_params_valid;
+    end
+    assign common_multiplier = cfg_per_channel_eff ?
+        ch_product_multiplier_is_read[parameter_bank_q] : pt_product_multiplier_r;
+    assign common_amount = cfg_per_channel_eff ?
+        ch_product_amount_is_read[parameter_bank_q] : pt_product_amount_r;
+
+    for (genvar lane = 0; lane < VLEN; lane++) begin : g_parameter_output
+      assign quant_multiplier_lane[lane] = ws_parameters_select ?
+          ch_multiplier_lane_r[lane] : $signed(common_parameters[63:32]);
+      assign quant_shift_lane[lane] = ws_parameters_select ?
+          ch_shift_lane_r[lane] : $signed(common_parameters[31:0]);
+    end
+
+    for (genvar lane = 0; lane < p_compute_lanes; lane++) begin : g_compute_lane
+      logic lane_i_en, lane_i_clear, lane_i_valid, lane_i_lane_enable, lane_i_s16;
+      logic [VLEN_IDX_W-1:0] element_index;
+      logic signed [31:0] lane_i_value, lane_i_multiplier, lane_i_dst_offset;
+      logic signed [31:0] lane_i_activation_min, lane_i_activation_max;
+      logic [6:0] lane_i_amount;
+
+      assign element_index = VLEN_IDX_W'(batch_q * p_compute_lanes + lane);
+      assign lane_i_en = 1'b1;
+      assign lane_i_clear = init_cfg;
+      assign lane_i_valid = issue_valid;
+      assign lane_i_lane_enable = 32'(element_index) <
+          (cfg_per_channel_eff ? lane_need_q : lane_need_cur);
+      assign lane_i_s16 = s16_mode;
+      assign lane_i_value = row_o_data[element_index];
+      assign lane_i_multiplier = ws_parameters_select ?
+          ch_product_multiplier_lane_r[element_index] : common_multiplier;
+      assign lane_i_amount = ws_parameters_select ?
+          ch_product_amount_lane_r[element_index] : common_amount;
+      assign lane_i_dst_offset = dst_offset_r;
+      assign lane_i_activation_min = activation_min_r;
+      assign lane_i_activation_max = activation_max_r;
+
+      requant_compute_lane u_lane (
+          .clk(clk), .rst_n(rst_n), .i_en(lane_i_en), .i_clear(lane_i_clear),
+          .i_valid(lane_i_valid), .i_lane_enable(lane_i_lane_enable),
+          .i_value(lane_i_value), .i_multiplier(lane_i_multiplier), .i_amount(lane_i_amount),
+          .i_s16(lane_i_s16), .i_dst_offset(lane_i_dst_offset),
+          .i_activation_min(lane_i_activation_min), .i_activation_max(lane_i_activation_max),
+          .o_valid(lane_o_valid[lane]), .o_s8(lane_o_s8[lane]), .o_s16(lane_o_s16[lane])
+      );
+    end
+
+    // 各批次使用相同的十二级有效流水，完整一行组装后产生一个输出有效周期。
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) begin
+        batch_q <= '0;
+        tile_done_pipe_q <= '0;
+        out_valid <= 1'b0;
+        out_tile_done <= 1'b0;
+        for (int stage = 0; stage < p_stages; stage++) batch_pipe_q[stage] <= '0;
+        for (int lane = 0; lane < VLEN; lane++) begin
+          out_vec_s8[lane] <= '0;
+          out_vec_s16[lane] <= '0;
+        end
+      end else if (init_cfg) begin
+        batch_q <= '0;
+        tile_done_pipe_q <= '0;
+        out_valid <= 1'b0;
+        out_tile_done <= 1'b0;
+        for (int stage = 0; stage < p_stages; stage++) batch_pipe_q[stage] <= '0;
+        for (int lane = 0; lane < VLEN; lane++) begin
+          out_vec_s8[lane] <= '0;
+          out_vec_s16[lane] <= '0;
+        end
+      end else begin
+        if (issue_valid) batch_q <= last_batch ? '0 : batch_q + 1'b1;
+        batch_pipe_q[0] <= batch_q;
+        for (int stage = 1; stage < p_stages; stage++)
+          batch_pipe_q[stage] <= batch_pipe_q[stage-1];
+        tile_done_pipe_q <= {tile_done_pipe_q[p_stages-2:0],
+                            row_consume_valid && row_o_tile_done};
+        out_valid <= lane_o_valid[0] &&
+            (batch_pipe_q[p_stages-1] == p_batch_width'(p_batches-1));
+        out_tile_done <= lane_o_valid[0] && tile_done_pipe_q[p_stages-1];
+        if (lane_o_valid[0]) begin
+          for (int lane = 0; lane < p_compute_lanes; lane++) begin
+            out_vec_s8[batch_pipe_q[p_stages-1]*p_compute_lanes+lane] <= lane_o_s8[lane];
+            out_vec_s16[batch_pipe_q[p_stages-1]*p_compute_lanes+lane] <= lane_o_s16[lane];
+          end
+        end
       end
     end
   end
 
 endmodule
+
+// 定宽加法在一个使能边沿后更新结果，支持与原寄存数据通路相同的暂停行为。
+module requant_registered_sum #(
+    parameter int p_width = 48,
+`ifdef ASIC_SYNTHESIS
+    parameter bit p_use_dsp = 1'b0
+`elsif XILINX_FPGA
+    parameter bit p_use_dsp = 1'b1
+`elsif SYNTHESIS
+    parameter bit p_use_dsp = 1'b1
+`else
+    parameter bit p_use_dsp = 1'b0
+`endif
+) (
+    input  logic clk,
+    input  logic i_en,
+    input  logic signed [p_width-1:0] i_lhs,
+    input  logic signed [p_width-1:0] i_rhs,
+    input  logic i_carry,
+    output logic signed [p_width-1:0] o_sum
+);
+    generate
+        if (p_use_dsp && p_width <= 48) begin : g_dsp
+            logic [47:0] extended_lhs, extended_rhs;
+            logic [29:0] dsp_i_a, dsp_i_acin;
+            logic [17:0] dsp_i_b, dsp_i_bcin;
+            logic [47:0] dsp_i_c, dsp_i_pcin;
+            logic [24:0] dsp_i_d;
+            logic [6:0] dsp_i_opmode;
+            logic [4:0] dsp_i_inmode;
+            logic [3:0] dsp_i_alumode;
+            logic [2:0] dsp_i_carry_select;
+            logic dsp_i_carry, dsp_i_enable, dsp_i_zero;
+            logic [47:0] dsp_o_p;
+            logic [29:0] unused_acout;
+            logic [17:0] unused_bcout;
+            logic [47:0] unused_pcout;
+            logic [3:0] unused_carryout;
+            logic unused_carrycascout, unused_multsignout;
+            logic unused_overflow, unused_underflow;
+            logic unused_patterndetect, unused_patternbdetect;
+
+            assign extended_lhs = {{(48-p_width){i_lhs[p_width-1]}}, i_lhs};
+            assign extended_rhs = {{(48-p_width){i_rhs[p_width-1]}}, i_rhs};
+            assign dsp_i_a = extended_lhs[47:18];
+            assign dsp_i_acin = '0;
+            assign dsp_i_b = extended_lhs[17:0];
+            assign dsp_i_bcin = '0;
+            assign dsp_i_c = extended_rhs;
+            assign dsp_i_d = '0;
+            assign dsp_i_pcin = '0;
+            assign dsp_i_opmode = 7'b0001111;
+            assign dsp_i_inmode = '0;
+            assign dsp_i_alumode = '0;
+            assign dsp_i_carry_select = '0;
+            assign dsp_i_carry = i_carry;
+            assign dsp_i_enable = i_en;
+            assign dsp_i_zero = 1'b0;
+            assign o_sum = $signed(dsp_o_p[p_width-1:0]);
+
+            // A:B 与 C 相加，CARRYIN 接收舍入增量；只启用 PREG 和对应使能。
+            DSP48E1 #(
+                .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .ADREG(0),
+                .CREG(0), .DREG(0), .MREG(0), .PREG(1), .CARRYINREG(0),
+                .CARRYINSELREG(0), .INMODEREG(0), .OPMODEREG(0), .ALUMODEREG(0),
+                .USE_DPORT("FALSE"), .USE_MULT("NONE"), .USE_SIMD("ONE48")
+            ) u_dsp (
+                .CLK(clk), .A(dsp_i_a), .ACIN(dsp_i_acin), .B(dsp_i_b), .BCIN(dsp_i_bcin),
+                .C(dsp_i_c), .D(dsp_i_d), .PCIN(dsp_i_pcin),
+                .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode), .ALUMODE(dsp_i_alumode),
+                .CARRYIN(dsp_i_carry), .CARRYINSEL(dsp_i_carry_select),
+                .CARRYCASCIN(dsp_i_zero), .MULTSIGNIN(dsp_i_zero),
+                .CEA1(dsp_i_zero), .CEA2(dsp_i_zero), .CEAD(dsp_i_zero),
+                .CEB1(dsp_i_zero), .CEB2(dsp_i_zero), .CEC(dsp_i_zero),
+                .CECARRYIN(dsp_i_zero), .CED(dsp_i_zero), .CEM(dsp_i_zero), .CEP(dsp_i_enable),
+                .CECTRL(dsp_i_zero), .CEINMODE(dsp_i_zero), .CEALUMODE(dsp_i_zero),
+                .RSTA(dsp_i_zero), .RSTB(dsp_i_zero), .RSTC(dsp_i_zero), .RSTD(dsp_i_zero),
+                .RSTM(dsp_i_zero), .RSTP(dsp_i_zero), .RSTALLCARRYIN(dsp_i_zero),
+                .RSTCTRL(dsp_i_zero), .RSTINMODE(dsp_i_zero), .RSTALUMODE(dsp_i_zero),
+                .P(dsp_o_p), .ACOUT(unused_acout), .BCOUT(unused_bcout),
+                .PCOUT(unused_pcout), .CARRYOUT(unused_carryout),
+                .CARRYCASCOUT(unused_carrycascout), .MULTSIGNOUT(unused_multsignout),
+                .OVERFLOW(unused_overflow), .UNDERFLOW(unused_underflow),
+                .PATTERNDETECT(unused_patterndetect), .PATTERNBDETECT(unused_patternbdetect)
+            );
+        end else begin : g_generic
+            logic [p_width-1:0] next_sum;
+            logic unused_carry;
+            assign {unused_carry, next_sum} = {1'b0, i_lhs} + {1'b0, i_rhs} + (p_width+1)'(i_carry);
+            always_ff @(posedge clk) begin
+                if (i_en) begin
+                    o_sum <= $signed(next_sum);
+                end
+            end
+        end
+    endgenerate
+endmodule
+
+// 有符号乘积右移：保留三十四位商、保护位和舍弃位，支持每周期一组输入。
+module requant_shift_pipeline (
+    input  logic               clk,
+    input  logic               i_en,
+    input  logic signed [63:0] i_product,
+    input  logic        [6:0]  i_amount,
+    output logic signed [33:0] o_quotient,
+    output logic              o_increment
+);
+    //! 0. 辅助定义
+    //! -----------
+
+    logic signed [65:0] shifted_stage [6];
+    logic [6:0] amount_stage [6];
+    logic overflow_stage [6];
+    logic sign_stage [6];
+    logic signed [33:0] bounded_quotient;
+    logic round_increment;
+    logic signed [33:0] quotient_stage_q;
+    logic increment_stage_q;
+
+`ifdef SYNTHESIS
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_fpga_clamp = 1'b0;
+`else
+    localparam bit p_fpga_clamp = 1'b1;
+`endif
+`else
+    localparam bit p_fpga_clamp = 1'b0;
+`endif
+
+    //! 1. 输入编码
+    //! -----------
+
+    assign shifted_stage[0] = {i_product, 2'b00};
+    assign amount_stage[0] = i_amount;
+    assign overflow_stage[0] = 1'b0;
+    assign sign_stage[0] = i_product[63];
+
+    //! 2. 寄存移位结果
+    //! ---------------
+
+    // 首级合并三十二位和十六位选择。后续仅保留最终商及尚未移出的位，
+    // 每次缩窄前记录符号扩展不成立的情况，避免丢失最终饱和方向。
+    for (genvar stage = 0; stage < 5; stage++) begin : g_shift
+        localparam int p_distance = 16 >> stage;
+        localparam int p_input_width = (stage == 0) ? 66 : 35 + (32 >> stage);
+        localparam int p_output_width = 35 + p_distance;
+        logic signed [p_input_width-1:0] input_value;
+        logic signed [p_input_width-1:0] coarse_value;
+        logic signed [p_input_width-1:0] shifted_value;
+        logic signed [p_output_width-1:0] stored_value_q;
+        logic [6:0] stored_amount_q;
+        logic stored_overflow_q;
+        logic stored_sign_q;
+        logic new_overflow;
+
+        assign input_value = shifted_stage[stage][p_input_width-1:0];
+        if (stage == 0) begin : g_coarse_shift
+            assign coarse_value = amount_stage[stage][5] ?
+                {{32{input_value[p_input_width-1]}}, input_value[p_input_width-1:33], (|input_value[32:0])} :
+                input_value;
+        end else begin : g_direct_input
+            assign coarse_value = input_value;
+        end
+        if (stage == 0) begin : g_first_selection
+            assign shifted_value = amount_stage[stage][4-stage] ?
+                {{p_distance{coarse_value[p_input_width-1]}}, coarse_value[p_input_width-1:p_distance+1],
+                 (|coarse_value[p_distance:0])} : coarse_value;
+        end else begin : g_paired_selection
+            logic [p_input_width-2:0] mux_i_direct;
+            logic [p_input_width-2:0] mux_i_shifted;
+            logic mux_i_select;
+            logic [p_input_width-2:0] mux_o_value;
+
+            assign mux_i_direct = coarse_value[p_input_width-2:0];
+            assign mux_i_shifted = {{(p_distance-1){coarse_value[p_input_width-1]}},
+                coarse_value[p_input_width-1:p_distance+1], (|coarse_value[p_distance:0])};
+            assign mux_i_select = amount_stage[stage][4-stage];
+            assign shifted_value = {coarse_value[p_input_width-1], mux_o_value};
+            requant_shift_mux #(.p_width(p_input_width-1)) u_mux (
+                .i_direct (mux_i_direct),
+                .i_shifted(mux_i_shifted),
+                .i_select (mux_i_select),
+                .o_value  (mux_o_value)
+            );
+        end
+        assign new_overflow = shifted_value[p_input_width-1:p_output_width-1] !=
+            {(p_input_width-p_output_width+1){shifted_value[p_output_width-1]}};
+
+        always_ff @(posedge clk) begin
+            if (i_en) begin
+                stored_value_q <= shifted_value[p_output_width-1:0];
+                stored_amount_q <= amount_stage[stage];
+                stored_overflow_q <= overflow_stage[stage] || new_overflow;
+                stored_sign_q <= sign_stage[stage];
+            end
+        end
+        assign shifted_stage[stage+1] = {{(66-p_output_width){stored_value_q[p_output_width-1]}}, stored_value_q};
+        assign amount_stage[stage+1] = stored_amount_q;
+        assign overflow_stage[stage+1] = stored_overflow_q;
+        assign sign_stage[stage+1] = stored_sign_q;
+    end
+
+    // 大于六十三位的移位返回零；溢出时保留饱和方向。
+    // 相邻两位共用溢出、符号和清零条件，在一个查找表内同时产生结果。
+    if (p_fpga_clamp) begin : g_quotient_clamp
+        for (genvar pair_index = 0; pair_index < 17; pair_index++) begin : g_pair
+            localparam logic [63:0] p_clamp_init = (pair_index == 16) ?
+                64'h0000fc0c00000afa : 64'h00000cfc00000afa;
+            logic [1:0] lut_i_value;
+            logic lut_i_overflow, lut_i_sign, lut_i_zero, lut_i_one;
+            logic lut_o_lower, lut_o_upper;
+
+            assign lut_i_value = shifted_stage[5][2*pair_index+2 +: 2];
+            assign lut_i_overflow = overflow_stage[5];
+            assign lut_i_sign = sign_stage[5];
+            assign lut_i_zero = amount_stage[5][6];
+            assign lut_i_one = 1'b1;
+            assign bounded_quotient[2*pair_index] = lut_o_lower;
+            assign bounded_quotient[2*pair_index+1] = lut_o_upper;
+
+            LUT6_2 #(.INIT(p_clamp_init)) u_lut (
+                .I0(lut_i_value[0]), .I1(lut_i_value[1]),
+                .I2(lut_i_overflow), .I3(lut_i_sign),
+                .I4(lut_i_zero), .I5(lut_i_one),
+                .O5(lut_o_lower), .O6(lut_o_upper)
+            );
+        end
+    end else begin : g_generic_clamp
+        always_comb begin
+            bounded_quotient = $signed(shifted_stage[5][35:2]);
+            if (amount_stage[5][6]) begin
+                bounded_quotient = '0;
+            end else if (overflow_stage[5]) begin
+                bounded_quotient = sign_stage[5] ? 34'sh200000000 : 34'sh1ffffffff;
+            end
+        end
+    end
+    assign round_increment = (amount_stage[5] != 7'd0) && !amount_stage[5][6] &&
+        shifted_stage[5][1] && (shifted_stage[5][0] || shifted_stage[5][2]);
+
+    // 两级商寄存与量化通道的有效位同步，使完整量化仍为十二个寄存阶段。
+    always_ff @(posedge clk) begin
+        if (i_en) begin
+            quotient_stage_q <= bounded_quotient;
+            increment_stage_q <= round_increment;
+            o_quotient <= quotient_stage_q;
+            o_increment <= increment_stage_q;
+        end
+    end
+endmodule
+
+
+// 两个相邻数据位共用选择信号，在七系列器件上使用查找表的两个输出。
+module requant_shift_mux #(
+    parameter int p_width = 2
+) (
+    input  logic [p_width-1:0] i_direct,
+    input  logic [p_width-1:0] i_shifted,
+    input  logic               i_select,
+    output logic [p_width-1:0] o_value
+);
+    //! 0. 辅助定义
+    //! -----------
+
+`ifdef SYNTHESIS
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_fpga_lut = 1'b0;
+`else
+    localparam bit p_fpga_lut = 1'b1;
+`endif
+`else
+    localparam bit p_fpga_lut = 1'b0;
+`endif
+
+    //! 1. 选择输出数据
+    //! ---------------
+
+    if (p_fpga_lut) begin : g_fpga
+        for (genvar pair_index = 0; pair_index < p_width/2; pair_index++) begin : g_pair
+            logic [1:0] lut_i_direct;
+            logic [1:0] lut_i_shifted;
+            logic lut_i_one;
+            logic lut_i_select;
+            logic lut_o_lower;
+            logic lut_o_upper;
+
+            assign lut_i_direct = i_direct[2*pair_index +: 2];
+            assign lut_i_shifted = i_shifted[2*pair_index +: 2];
+            assign lut_i_one = 1'b1;
+            assign lut_i_select = i_select;
+            assign o_value[2*pair_index] = lut_o_lower;
+            assign o_value[2*pair_index+1] = lut_o_upper;
+            LUT6_2 #(.INIT(64'hff00f0f0ccccaaaa)) u_lut (
+                .I0(lut_i_direct[0]),
+                .I1(lut_i_shifted[0]),
+                .I2(lut_i_direct[1]),
+                .I3(lut_i_shifted[1]),
+                .I4(lut_i_select),
+                .I5(lut_i_one),
+                .O5(lut_o_lower),
+                .O6(lut_o_upper)
+            );
+        end
+        if ((p_width % 2) != 0) begin : g_last_bit
+            assign o_value[p_width-1] = i_select ? i_shifted[p_width-1] : i_direct[p_width-1];
+        end
+    end else begin : g_generic
+        assign o_value = i_select ? i_shifted : i_direct;
+    end
+endmodule
+
+// 根据完整三十六位结果与两个三十二位有符号边界产生激活裁剪条件。
+module requant_activation_compare (
+    input  logic signed [35:0] i_value,
+    input  logic signed [31:0] i_minimum,
+    input  logic signed [31:0] i_maximum,
+    output logic               o_below_minimum,
+    output logic               o_above_maximum
+);
+    //! 0. 辅助定义
+    //! -----------
+
+    logic [1:0] bound_less;
+
+`ifdef SYNTHESIS
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_fpga_compare = 1'b0;
+`else
+    localparam bit p_fpga_compare = 1'b1;
+`endif
+`else
+    localparam bit p_fpga_compare = 1'b0;
+`endif
+
+    //! 1. 比较激活边界
+    //! ---------------
+
+    if (p_fpga_compare) begin : g_fpga
+        for (genvar bound_index = 0; bound_index < 2; bound_index++) begin : g_bound
+            logic [35:0] lhs, rhs;
+            logic [17:0] equal_group, greater_group;
+            logic [19:0] equal_padded, greater_padded;
+            logic [4:0] carry_out;
+
+            if (bound_index == 0) begin : g_minimum
+                assign lhs = i_value;
+                assign rhs = {{4{i_minimum[31]}}, i_minimum};
+            end else begin : g_maximum
+                assign lhs = {{4{i_maximum[31]}}, i_maximum};
+                assign rhs = i_value;
+            end
+            assign equal_padded = {2'b11, equal_group};
+            assign greater_padded = {2'b00, greater_group};
+
+            // 每两个数据位共用一个查找表，分别输出相等条件和大小结果。
+            // 最高一组使用有符号比较，其余各组按无符号位段比较。
+            for (genvar pair_index = 0; pair_index < 18; pair_index++) begin : g_pair
+                localparam logic [63:0] p_group_init = (pair_index == 17) ?
+                    64'h2f022f0290099009 : 64'h20f220f290099009;
+                logic [1:0] lut_i_lhs, lut_i_rhs;
+                logic lut_i_zero, lut_i_one;
+                logic lut_o_equal, lut_o_greater;
+
+                assign lut_i_lhs = lhs[2*pair_index +: 2];
+                assign lut_i_rhs = rhs[2*pair_index +: 2];
+                assign lut_i_zero = 1'b0;
+                assign lut_i_one = 1'b1;
+                assign equal_group[pair_index] = lut_o_equal;
+                assign greater_group[pair_index] = lut_o_greater;
+                LUT6_2 #(.INIT(p_group_init)) u_lut (
+                    .I0(lut_i_lhs[0]), .I1(lut_i_rhs[0]),
+                    .I2(lut_i_lhs[1]), .I3(lut_i_rhs[1]),
+                    .I4(lut_i_zero), .I5(lut_i_one),
+                    .O5(lut_o_equal), .O6(lut_o_greater)
+                );
+            end
+
+            // 相等的高位组传递低位结果，不相等时由高位组决定比较结果。
+            // 最低位以相等为真开始，末端取反后得到严格小于。
+            for (genvar carry_index = 0; carry_index < 5; carry_index++) begin : g_carry
+                logic carry_i_cin, carry_i_init;
+                logic [3:0] carry_i_greater, carry_i_equal;
+                logic [3:0] carry_o_result, unused_sum;
+
+                if (carry_index == 0) begin : g_first
+                    assign carry_i_cin = 1'b0;
+                    assign carry_i_init = 1'b1;
+                end else begin : g_following
+                    assign carry_i_cin = carry_out[carry_index-1];
+                    assign carry_i_init = 1'b0;
+                end
+                assign carry_i_greater = greater_padded[4*carry_index +: 4];
+                assign carry_i_equal = equal_padded[4*carry_index +: 4];
+                assign carry_out[carry_index] = carry_o_result[3];
+                CARRY4 u_carry (
+                    .CI(carry_i_cin), .CYINIT(carry_i_init),
+                    .DI(carry_i_greater), .S(carry_i_equal),
+                    .CO(carry_o_result), .O(unused_sum)
+                );
+            end
+            assign bound_less[bound_index] = !carry_out[4];
+        end
+    end else begin : g_generic
+        assign bound_less[0] = i_value < $signed({{4{i_minimum[31]}}, i_minimum});
+        assign bound_less[1] = i_value > $signed({{4{i_maximum[31]}}, i_maximum});
+    end
+
+    //! 2. 输出比较条件
+    //! ---------------
+
+    assign o_below_minimum = bound_less[0];
+    assign o_above_maximum = bound_less[1];
+endmodule
+
+`default_nettype wire

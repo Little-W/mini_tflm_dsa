@@ -1,0 +1,14 @@
+{
+  "reference": {
+    "top": "vec_s8_to_fifo_full",
+    "sources": ["rtl/npu/writeback/vec_s8_to_fifo.sv"],
+    "options": ["-GVLEN=16", "-GBANKS=32", "-GBUS_WIDTH=64", "-GENABLE_TRANSPOSE=1", "-Gp_cyclic_storage=0"],
+    "configuration": "16x16 INT8 tiles, 32 tiles, BUS64, row storage"
+  },
+  "cyclic": {
+    "top": "vec_s8_to_fifo_full",
+    "sources": ["rtl/npu/writeback/vec_s8_to_fifo.sv"],
+    "options": ["-GVLEN=16", "-GBANKS=32", "-GBUS_WIDTH=64", "-GENABLE_TRANSPOSE=1", "-Gp_cyclic_storage=1"],
+    "configuration": "16x16 INT8 tiles, 32 tiles, BUS64, cyclic storage"
+  }
+}

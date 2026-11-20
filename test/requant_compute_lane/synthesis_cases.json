@@ -1,0 +1,12 @@
+{
+  "requant_compute_lane": {
+    "top": "requant_compute_lane",
+    "options": [],
+    "sources": [
+      "rtl/npu/writeback/requant_compute_lane.sv",
+      "rtl/npu/conv/vector_scalar_multiplier.sv",
+      "rtl/npu/writeback/vec_requant.sv"
+    ],
+    "configuration": "Complete signed32 lane, both input operands registered, S8 and S16 outputs"
+  }
+}

@@ -62,6 +62,54 @@ module tb_writeback_bus;
         .output_mask(s16_mask), .output_data(s16_data), .fifo_full_flag(s16_full)
     );
 
+`ifdef WRITEBACK_COMPARE_REFERENCE
+    wire [BUS_WIDTH-1:0] ref_full_data, ref_linear_data, ref_s16_data;
+    wire [BYTES-1:0] ref_full_mask, ref_linear_mask, ref_s16_mask;
+    wire ref_full_valid, ref_linear_valid, ref_s16_valid;
+    wire ref_full_switch, ref_linear_switch, ref_s16_switch;
+    wire ref_full_req, ref_linear_req, ref_s16_req;
+    wire ref_full_full, ref_linear_full, ref_s16_full;
+    vec_s8_to_fifo_ref #(.VLEN(VLEN), .BANKS(BANKS), .BUS_WIDTH(BUS_WIDTH)) ref_full_fifo (
+        .clk, .rst_n, .in_valid(in_valid && select_fifo == 0), .in_tile_done,
+        .in_vec_s8, .oa_fifo_req(ref_full_req), .transpose_mode, .coalesce_enable,
+        .coalesce_group_start, .coalesce_rows, .coalesce_cols, .reserve_banks(32'd1),
+        .vec_valid_num_col(valid_col), .vec_valid_num_row(valid_row),
+        .output_valid(ref_full_valid), .output_ready(output_ready && select_fifo == 0),
+        .output_row_switch(ref_full_switch), .output_mask(ref_full_mask), .output_data(ref_full_data),
+        .fifo_full_flag(ref_full_full)
+    );
+    vec_s8_to_fifo_ref #(.VLEN(VLEN), .BANKS(BANKS), .BUS_WIDTH(BUS_WIDTH),
+        .ENABLE_TRANSPOSE(0)) ref_linear_fifo (
+        .clk, .rst_n, .in_valid(in_valid && select_fifo == 1), .in_tile_done,
+        .in_vec_s8, .oa_fifo_req(ref_linear_req), .transpose_mode(1'b0),
+        .coalesce_enable(1'b0), .coalesce_group_start(1'b0),
+        .coalesce_rows(32'd1), .coalesce_cols(32'd1), .reserve_banks(32'd1),
+        .vec_valid_num_col(valid_col), .vec_valid_num_row(valid_row),
+        .output_valid(ref_linear_valid), .output_ready(output_ready && select_fifo == 1),
+        .output_row_switch(ref_linear_switch), .output_mask(ref_linear_mask), .output_data(ref_linear_data),
+        .fifo_full_flag(ref_linear_full)
+    );
+    vec_s16_to_fifo_ref #(.VLEN(VLEN), .BANKS(BANKS), .BUS_WIDTH(BUS_WIDTH)) ref_s16_fifo (
+        .clk, .rst_n, .in_valid(in_valid && select_fifo == 2), .in_tile_done,
+        .in_vec_s16, .oa_fifo_req(ref_s16_req), .reserve_banks(32'd1),
+        .vec_valid_num_col(valid_col), .output_valid(ref_s16_valid),
+        .output_ready(output_ready && select_fifo == 2), .output_row_switch(ref_s16_switch),
+        .output_mask(ref_s16_mask), .output_data(ref_s16_data), .fifo_full_flag(ref_s16_full)
+    );
+
+    always @(posedge clk) if (rst_n) begin
+        assert ({full_data, full_mask, full_valid, full_switch, full_req, full_full} ===
+            {ref_full_data, ref_full_mask, ref_full_valid, ref_full_switch, ref_full_req, ref_full_full})
+            else $fatal(1, "full FIFO cycle mismatch");
+        assert ({linear_data, linear_mask, linear_valid, linear_switch, linear_req, linear_full} ===
+            {ref_linear_data, ref_linear_mask, ref_linear_valid, ref_linear_switch, ref_linear_req, ref_linear_full})
+            else $fatal(1, "linear FIFO cycle mismatch");
+        assert ({s16_data, s16_mask, s16_valid, s16_switch, s16_req, s16_full} ===
+            {ref_s16_data, ref_s16_mask, ref_s16_valid, ref_s16_switch, ref_s16_req, ref_s16_full})
+            else $fatal(1, "s16 FIFO cycle mismatch");
+    end
+`endif
+
     int tests = 0;
     int total_bytes = 0;
     int expected_rows, expected_cols, element_bytes;

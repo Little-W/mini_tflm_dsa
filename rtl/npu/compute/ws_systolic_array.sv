@@ -1,12 +1,11 @@
-// Diagonal-input, permuted-stationary array. A complete input vector enters
-// row zero in one cycle. Each subsequent row receives the previous row's
-// next column, including the wrap from column zero to column SIZE-1.
-// The stationary tile is B[(row+column)%SIZE][column]; sums move vertically.
+// 输入向量同时进入第零行，随后每行接收上一行的右邻列，列零环形连接到最后一列。
+// 驻留权重采用 B[(row+column)%SIZE][column] 排列，部分和沿行方向传递。
 module ws_systolic_array #(
     parameter int unsigned SIZE          = 16,
     parameter int unsigned DATA_IN_WIDTH = 16,
     parameter int unsigned WEIGHT_WIDTH  = 16,
-    parameter int unsigned ACC_WIDTH     = 32
+    parameter int unsigned ACC_WIDTH     = 32,
+    parameter bit p_exchange_weights = 1'b1
 ) (
     input  wire                              clk,
     input  wire                              rst_n,
@@ -30,14 +29,14 @@ module ws_systolic_array #(
     for(genvar phase_row=1;phase_row<SIZE;phase_row++)begin:g_buffer_phase
         assign incoming_buffer_phase[phase_row] = row_weight_select[phase_row-1];
     end
-    // Preserve the physical bank order across reset before the next tile load.
+    // 保存各行的缓冲相位，复位后在下次分块装载前恢复缓冲顺序。
     always_ff @(posedge clk) begin
         if (!rst_n) row_buffer_phase <= '0;
         else row_buffer_phase <= incoming_buffer_phase;
     end
 
-    // The selector follows the same registers as data and partial sums.
-    // A commit selects the completed tile for the next row entering row zero.
+    // 选择信号与数据及部分和经过相同的逐行寄存，
+    // 提交时选择第零行新输入使用的完整权重块。
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) row_weight_select <= '0;
         else begin
@@ -69,9 +68,8 @@ module ws_systolic_array #(
             end else begin : g_select_pipeline
                 assign incoming_weight_select = row_weight_select[row-1];
             end
-            // A bank becomes writable on the edge that selects the other bank.
-            // Bottom-first loading needs only the final SIZE-row shifts here;
-            // earlier shifts may wait for the preceding input stream to leave.
+            // 该行在提交边沿获得加载使能，自底行开始装入的权重逐行传播。
+            // 已完成提交的行可接收下一块权重，同时保留前一输入流所需的活动权重。
             wire row_load_enable = rst_n && (incoming_weight_select != weight_load_select);
             wire row_commit_weight = rst_n ?
                 incoming_weight_select != row_buffer_phase[row] : row_buffer_phase[row];
@@ -90,7 +88,7 @@ module ws_systolic_array #(
                 end
                 ws_systolic_cell #(
                     .DATA_IN_WIDTH(DATA_IN_WIDTH), .WEIGHT_WIDTH(WEIGHT_WIDTH),
-                    .ACC_WIDTH(ACC_WIDTH)
+                    .ACC_WIDTH(ACC_WIDTH), .p_exchange_weights(p_exchange_weights)
                 ) ws_cell (
                     .clk(clk), .commit_weight(row_commit_weight),
                     .store_weight_req(store_weight_req_col[column] && row_load_enable),

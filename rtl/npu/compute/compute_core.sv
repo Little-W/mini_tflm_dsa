@@ -10,6 +10,7 @@ module compute_core #(
     parameter int unsigned MAX_IA_REUSE = 2,
     parameter int unsigned PS_STORAGE_ROWS = 0,
     parameter int unsigned PS_EXTERNAL_RAM = 0,
+    parameter bit p_fixed_ps_channels = 1'b0,
     parameter int unsigned PS_POOL_BYTES = `GEMMORA_PS_POOL_BYTES,
     parameter int unsigned PS_BANK_BYTES = 2048,
     parameter int unsigned PS_DIRECTORY_ROWS = PS_FRAME_COUNT * MAX_IA_REUSE * SIZE,
@@ -112,9 +113,10 @@ module compute_core #(
         .sum_in(bias_or_ps_sum)
     );
 
+    // 每块权重在提交前完成 SIZE 次装载，预取寄存器采用覆盖写入。
     ws_systolic_array #(
         .SIZE(SIZE), .DATA_IN_WIDTH(DATA_WIDTH), .WEIGHT_WIDTH(WEIGHT_WIDTH),
-        .ACC_WIDTH(32)
+        .ACC_WIDTH(32), .p_exchange_weights(1'b0)
     ) u_systolic_array (
         .clk(clk), .rst_n(rst_n),
         .store_weight_req(store_weight_req), .weight_commit(weight_commit),
@@ -129,6 +131,7 @@ module compute_core #(
         .MAX_IA_REUSE(MAX_IA_REUSE),
         .STORAGE_ROWS(PS_STORAGE_ROWS),
         .PS_EXTERNAL_RAM(PS_EXTERNAL_RAM),
+        .p_fixed_ps_channels(p_fixed_ps_channels),
         .PS_POOL_BYTES(PS_POOL_BYTES),
         .PS_BANK_BYTES(PS_BANK_BYTES),
         .PS_DIRECTORY_ROWS(PS_DIRECTORY_ROWS),

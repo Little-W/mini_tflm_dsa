@@ -19,16 +19,32 @@ def main() -> None:
     parser.add_argument('--bus-width', type=int, choices=(32, 64), required=True)
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=2)
+    parser.add_argument('--reference', help='Compare every output cycle with this git revision')
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     sources = [ROOT/'rtl/npu/writeback/vec_s8_to_fifo.sv',
+               ROOT/'rtl/common/REGFILE.v',
                ROOT/'rtl/npu/writeback/vec_s16_to_fifo.sv',
                Path(__file__).with_name('tb_writeback_bus.sv')]
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
               for p in sources}
+    reference_hashes = {}
+    reference_sources = []
+    if args.reference:
+        for filename in ('vec_s8_to_fifo.sv', 'vec_s16_to_fifo.sv'):
+            original = subprocess.check_output(['git', 'show',
+                f'{args.reference}:rtl/npu/writeback/{filename}'], cwd=ROOT, text=True)
+            renamed = original.replace('vec_s8_to_fifo', 'vec_s8_to_fifo_ref').replace(
+                'vec_s16_to_fifo', 'vec_s16_to_fifo_ref').replace('vec_s8_fifo_row_ram', 'vec_s8_fifo_row_ram_ref')
+            reference = args.out/(filename.removesuffix('.sv')+'_ref.sv')
+            reference.write_text(renamed)
+            reference_sources.append(reference)
+            reference_hashes[filename] = hashlib.sha256(original.encode()).hexdigest()
     command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal',
                '--top-module', 'tb_writeback_bus', f'-DTB_BUS_WIDTH={args.bus_width}',
-               '--Mdir', str(args.out/'obj'), '-j', str(args.jobs), *map(str, sources)]
+               '--Mdir', str(args.out/'obj'), '-j', str(args.jobs), *map(str, sources), *map(str, reference_sources)]
+    if args.reference:
+        command.append('-DWRITEBACK_COMPARE_REFERENCE')
     with (args.out/'build.log').open('w') as log:
         subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
     binary = args.out/'obj/Vtb_writeback_bus'
@@ -37,7 +53,7 @@ def main() -> None:
     match = re.search(r'WRITEBACK_BUS_PASS bus_width=(\d+) cases=(\d+) checked_bytes=(\d+)', run.stdout)
     result = dict(passed=run.returncode == 0 and match is not None,
                   bus_width=args.bus_width, returncode=run.returncode,
-                  command=command, source_sha256=hashes,
+                  command=command, source_sha256=hashes, reference=args.reference, reference_sha256=reference_hashes,
                   sources_unchanged=all(hashlib.sha256((ROOT/p).read_bytes()).hexdigest() == h
                                         for p, h in hashes.items()))
     if match:
