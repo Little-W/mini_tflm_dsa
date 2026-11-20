@@ -6,6 +6,7 @@
 ../../rtl/npu/conv/vector_writeback.sv
 ../../rtl/npu/conv/vector_round_shift.sv
 ../../rtl/npu/conv/vector_scalar_multiplier.sv
+../../rtl/npu/conv/vector_quant_params.sv
 ../../rtl/npu/conv/vector_engine.sv
 ../../rtl/npu/conv/conv_axi_read_guard.sv
 ../../rtl/npu/conv/conv_axi_read_mux.sv
@@ -31,9 +32,14 @@
 +incdir+../../rtl/npu/ps_compact
 
 ../../rtl/common/pseudo_dual_port_ram.v
+../../rtl/common/REGFILE.v
+../../rtl/common/add_equal.sv
+../../rtl/common/add3_equal.sv
+../../rtl/common/onehot_check.sv
 ../../rtl/common/single_port_ram.v
 
 ../../rtl/npu/compute/bias_mux.sv
+../../rtl/npu/compute/select_add.sv
 ../../rtl/npu/compute/ws_systolic_cell.sv
 ../../rtl/npu/compute/ws_systolic_array.sv
 ../../rtl/npu/compute/de_diagonalizer.sv
@@ -67,9 +73,13 @@
 ../../rtl/npu/writeback/vec_s8_to_fifo.sv
 ../../rtl/npu/writeback/vec_s16_to_fifo.sv
 ../../rtl/npu/writeback/vec_requant.sv
+../../rtl/npu/writeback/requant_compute_lane.sv
+../../rtl/npu/writeback/requant_group_buffer.sv
 ../../rtl/npu/writeback/vec_requant_s64.sv
 ../../rtl/npu/writeback/oa_writer.sv
 
 ../../rtl/npu/control/npu_controller.sv
 ../../rtl/npu/control/ps_window_scheduler.sv
+../../rtl/npu/control/ps_capacity_limits.sv
+../../rtl/npu/top/frame_address_prepare.sv
 ../../rtl/npu/top/npu_top.sv

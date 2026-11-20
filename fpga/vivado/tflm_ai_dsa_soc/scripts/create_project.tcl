@@ -92,6 +92,7 @@ if {[info exists ::env(VIVADO_JOBS)] && $::env(VIVADO_JOBS) ne ""} {
 set_param general.maxThreads $vivado_jobs_value
 
 add_files -norecurse -fileset sources_1 $design_sources
+set_common_systemverilog $design_sources
 add_files -norecurse -fileset constrs_1 $constraint_files
 
 create_tflm_soc_clk_wiz $core_clk_mhz_value

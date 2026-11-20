@@ -230,6 +230,24 @@ settings. `scripts/export_sources.tcl` resolves source paths relative to the
 export directory. Routed reports are added when `RUN_IMPL=1`, followed by
 `fpga_top.bit` after bitstream generation.
 
+The implementation entries use `scripts/timing_checks.tcl` after routing and
+before writing the bitstream. They require complete routing without routing
+errors, no `Fatal`, `Error`, or `Critical Warning` violations in the default DRC
+rules, complete internal clock and timing constraints, and nonnegative setup
+and hold slack. The original route, DRC, and timing reports remain in the
+output directory.
+
+`synchronous_timing.tsv` records setup WNS/TNS and hold WNS/TNS for each actual
+capture clock, using every reported endpoint. The hold fields correspond to
+Vivado's WHS/THS. Cross-clock paths contribute to their capture clock's
+statistics. `single_cycle_setup_fmax_estimate_mhz` is calculated only for
+ordinary single-cycle paths within one clock; `fmax_status` explains when
+this estimate is unavailable. The flow also saves `effective_timing.xdc`,
+`timing_exceptions.rpt`, `internal_timing_checks.tsv`, and
+`implementation_checks.tsv`. See the
+[production implementation description](../../../docs/open_fpga_synthesis.md#使用-vivado-实现原语网表)
+for the conditions and the Tcl command simulation tests.
+
 After moving an export, the copied scripts can create a project using its
 local sources and configuration. Pass the local CPU32 image when enabling
 initialization; the scripts generate the selected native image:

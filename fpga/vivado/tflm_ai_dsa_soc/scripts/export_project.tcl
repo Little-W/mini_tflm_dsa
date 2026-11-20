@@ -16,6 +16,7 @@
 set script_dir [file dirname [file normalize [info script]]]
 source [file join $script_dir npu_config.tcl]
 source [file join $script_dir cpu_memory.tcl]
+source [file join $script_dir timing_checks.tcl]
 set flow_root [file normalize [file join $script_dir ..]]
 set dsa_root [npu_config::repository_root $script_dir]
 set npu_hardware_config [npu_config::read $dsa_root]
@@ -360,6 +361,7 @@ set_param general.maxThreads $vivado_jobs_value
 create_tflm_soc_clk_wiz $core_clk_mhz_value
 
 add_files -norecurse -fileset sources_1 $local_design_sources
+set_common_systemverilog $local_design_sources
 add_files -norecurse -fileset constrs_1 $local_constraint_files
 add_files -norecurse -fileset sim_1 $local_sim_sources
 
@@ -437,7 +439,8 @@ set project_xpr [file normalize [file join $project_dir ${project_name}.xpr]]
 set bit_path ""
 
 if {$run_impl_value} {
-    launch_runs $impl_run -to_step write_bitstream -jobs $vivado_jobs_value
+    # 完成所选策略的实现步骤，再检查当前设计并生成比特流。
+    launch_runs $impl_run -jobs $vivado_jobs_value
     wait_on_run $impl_run
     set impl_status [get_property STATUS $impl_run]
     if {![string match "*Complete*" $impl_status]} {
@@ -451,7 +454,7 @@ if {$run_impl_value} {
     report_utilization -hierarchical -file [file join $report_dir fpga_top_utilization_hier_routed.rpt]
     report_route_status -file [file join $report_dir fpga_top_route_status.rpt]
     report_drc -file [file join $report_dir fpga_top_drc.rpt]
-    report_timing_summary -delay_type max -report_unconstrained -check_timing_verbose \
+    report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
         -file [file join $report_dir fpga_top_timing_summary_routed.rpt]
     report_timing -delay_type max -sort_by group -max_paths 400 -nworst 1 \
         -file [file join $report_dir fpga_top_timing_paths_routed.rpt]
@@ -460,6 +463,7 @@ if {$run_impl_value} {
         -file [file join $report_dir fpga_top_high_fanout_routed.rpt]
 
     write_checkpoint -force [file join $report_dir fpga_top_routed.dcp]
+    timing_checks::check_implementation $report_dir
     set bit_path [file normalize [file join $export_root fpga_top.bit]]
     write_bitstream -force $bit_path
 }

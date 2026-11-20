@@ -1,4 +1,4 @@
-# Non-project Vivado implementation entry for routed timing checks.
+# Vivado 工程模式的布线实现与时序检查入口。
 #
 # Usage:
 #   vivado -mode batch -source fpga/vivado/tflm_ai_dsa_soc/scripts/run_batch_impl.tcl
@@ -8,6 +8,7 @@
 set script_dir [file dirname [file normalize [info script]]]
 source [file join $script_dir npu_config.tcl]
 source [file join $script_dir cpu_memory.tcl]
+source [file join $script_dir timing_checks.tcl]
 set export_dir [file normalize [file join $script_dir ..]]
 set dsa_root [npu_config::repository_root $script_dir]
 set npu_hardware_config [npu_config::read $dsa_root]
@@ -94,6 +95,7 @@ set_param general.maxThreads $vivado_jobs_value
 create_tflm_soc_clk_wiz $core_clk_mhz_value
 
 add_files -norecurse -fileset sources_1 $design_sources
+set_common_systemverilog $design_sources
 add_files -norecurse -fileset constrs_1 $constraint_files
 
 set_property include_dirs $include_dirs [get_filesets sources_1]
@@ -137,7 +139,8 @@ set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY rebuilt $synth_run
 set impl_run [get_runs impl_1]
 set_property strategy $impl_strategy_value $impl_run
 
-launch_runs $impl_run -to_step write_bitstream -jobs $vivado_jobs_value
+# 完成所选策略的实现步骤，再检查当前设计并生成比特流。
+launch_runs $impl_run -jobs $vivado_jobs_value
 wait_on_run $impl_run
 set impl_status [get_property STATUS $impl_run]
 if {![string match "*Complete*" $impl_status]} {
@@ -149,7 +152,7 @@ report_utilization -file [file join $out_dir fpga_top_utilization_routed.rpt]
 report_utilization -hierarchical -file [file join $out_dir fpga_top_utilization_hier_routed.rpt]
 report_route_status -file [file join $out_dir fpga_top_route_status.rpt]
 report_drc -file [file join $out_dir fpga_top_drc.rpt]
-report_timing_summary -delay_type max -report_unconstrained -check_timing_verbose \
+report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
     -file [file join $out_dir fpga_top_timing_summary_routed.rpt]
 report_timing -delay_type max -sort_by group -max_paths 200 -nworst 1 \
     -file [file join $out_dir fpga_top_timing_paths_routed.rpt]
@@ -157,6 +160,7 @@ report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
     -file [file join $out_dir fpga_top_high_fanout_routed.rpt]
 
 write_checkpoint -force [file join $out_dir fpga_top_routed.dcp]
+timing_checks::check_implementation $out_dir
 write_bitstream -force [file join $out_dir fpga_top.bit]
 
 puts "Batch implementation completed."

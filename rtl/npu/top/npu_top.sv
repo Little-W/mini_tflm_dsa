@@ -12,6 +12,14 @@ module npu_top #(
     parameter int unsigned IA_CACHE_BLOCKS = 4,  // Physical 16-bit IA tile capacity.
     parameter int unsigned IA_COMPACT_ENABLE = 1,
     parameter int unsigned SHARED_IA_PS_ENABLE = 1,
+    parameter bit p_fixed_ps_channels =
+`ifdef ASIC_SYNTHESIS
+        1'b0,
+`elsif ASIC_SRAM
+        1'b0,
+`else
+        1'b1,
+`endif
     parameter int unsigned SHARED_BANK_BYTES = 2048,
     parameter int unsigned SHARED_BANK_COUNT = 0,
     parameter int unsigned SHARED_TOTAL_BYTES = SHARED_BANK_COUNT != 0 ?
@@ -214,6 +222,8 @@ module npu_top #(
     wire operand_cache_idle;
     wire ia_prefetch_idle;
     wire kernel_prefetch_idle;
+    wire kernel_loader_o_quiescent;
+    wire block_dma_arbiter_o_kernel_eligible;
     wire frame_prefetch_idle = ia_prefetch_idle && kernel_prefetch_idle;
     logic arbiter_ia_granted;
 
@@ -478,19 +488,24 @@ module npu_top #(
         (($clog2(`GEMMORA_PS_POOL_BYTES / 64) > 0) ? $clog2(`GEMMORA_PS_POOL_BYTES / 64) : 1);
     localparam int unsigned SHARED_PS_DIRECTORY_ROWS = 1024;
     logic [31:0] shared_ia_banks_q;
+    logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] active_ps_bank_count_q;
+    logic shared_allocation_invalid_q;
     wire [31:0] requested_shared_ia_banks = cfg_shared_ia_banks == 0 ?
         (SHARED_RAM_ENABLED && !cfg_stream_compact ? 32'd2 : 32'd1) : cfg_shared_ia_banks;
+    wire [31:0] requested_ps_bank_count = SHARED_RAM_ENABLED ?
+        (requested_shared_ia_banks < SHARED_PHYSICAL_BANKS ?
+         32'(SHARED_PHYSICAL_BANKS) - requested_shared_ia_banks : 32'd1) : 32'd4;
+    wire requested_allocation_invalid = SHARED_RAM_ENABLED &&
+        (requested_shared_ia_banks == 0 || requested_shared_ia_banks > SHARED_PHYSICAL_BANKS - 4 ||
+         (requested_shared_ia_banks != 1 && requested_shared_ia_banks != 2 && requested_shared_ia_banks != 4));
     wire [31:0] active_ia_cache_blocks = SHARED_RAM_ENABLED ?
         shared_ia_banks_q * (SHARED_BANK_BYTES / 512) : 32'(IA_CACHE_BLOCKS);
     wire [31:0] active_ps_pool_bytes = SHARED_RAM_ENABLED ?
         32'(SHARED_TOTAL_BYTES) - shared_ia_banks_q * 32'(SHARED_BANK_BYTES) : 32'(`GEMMORA_PS_POOL_BYTES);
-    wire [31:0] active_ps_bank_count = SHARED_RAM_ENABLED ?
-        (shared_ia_banks_q < SHARED_PHYSICAL_BANKS ? 32'(SHARED_PHYSICAL_BANKS) - shared_ia_banks_q : 32'd1) : 32'd4;
+    wire [31:0] active_ps_bank_count = SHARED_RAM_ENABLED ? 32'(active_ps_bank_count_q) : 32'd4;
     wire [31:0] active_ps_bank_depth = SHARED_RAM_ENABLED ?
         32'(SHARED_BANK_BYTES / 16) : active_ps_pool_bytes >> 6;
-    wire shared_allocation_invalid = SHARED_RAM_ENABLED &&
-        (shared_ia_banks_q == 0 || shared_ia_banks_q > SHARED_PHYSICAL_BANKS - 4 ||
-         (shared_ia_banks_q != 1 && shared_ia_banks_q != 2 && shared_ia_banks_q != 4));
+    wire shared_allocation_invalid = shared_allocation_invalid_q;
     wire shared_ram_capacity_fault;
     logic [1:0] ia_ram_write_en, ia_ram_read_en;
     logic [SHARED_IA_ADDR_WIDTH-1:0] ia_ram_write_addr [0:1], ia_ram_read_addr [0:1];
@@ -528,6 +543,17 @@ module npu_top #(
     wire [31:0] frame_lookahead_q0, frame_lookahead_column, frame_lookahead_cols, frame_lookahead_k;
     wire frame_command_init, frame_command_final;
     wire frame_command_ready, frame_command_start;
+    logic frame_execute_start, frame_execution_started;
+    logic frame_address_i_start, frame_address_i_abort, frame_address_i_result_rdy;
+    logic frame_address_o_start_rdy, frame_address_o_result_vld;
+    logic [31:0] frame_address_i_p0, frame_address_i_q0, frame_address_i_column, frame_address_i_total_depth;
+    logic [31:0] frame_address_i_ia_base, frame_address_i_ia_stride;
+    logic [31:0] frame_address_i_weight_base, frame_address_i_weight_stride;
+    logic [31:0] frame_address_i_dst_base, frame_address_i_dst_stride;
+    logic frame_address_i_ia_packed, frame_address_i_ia_s16;
+    logic frame_address_i_weight_packed, frame_address_i_weight_s16;
+    logic frame_address_i_is_mode, frame_address_i_output_s16;
+    logic [31:0] frame_address_o_ia_base, frame_address_o_weight_base, frame_address_o_dst_base;
     wire ps_frame_pressure, ps_frame_complete;
     logic frame_ps_accepted, frame_compute_seen, frame_store_seen, frame_output_seen, frame_output_armed;
     logic stationary_valid, frame_stationary_hit;
@@ -753,9 +779,40 @@ module npu_top #(
     end endgenerate
 
     wire ps_capacity_fault;
-    assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
-                      (frame_mode_q && inner_done_valid && inner_err_code != 0) ||
-                      ((run_conv || run_vector) && conv_error);
+    logic block_dma_arbiter_i_abort;
+    localparam bit p_fault_use_lut =
+`ifdef ASIC_SYNTHESIS
+        1'b0;
+`elsif XILINX_FPGA
+        1'b1;
+`elsif SYNTHESIS
+        1'b1;
+`else
+        1'b0;
+`endif
+    generate
+        if (p_fault_use_lut) begin : g_fault_fpga
+            logic [4:0] fault_i_flags;
+            // 容量与帧错误共用六输入条件，DMA 和卷积输入直接进入末级。
+            assign fault_i_flags[0] = ps_capacity_fault || shared_ram_capacity_fault ||
+                                      (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00));
+            assign fault_i_flags[1] = run_conv;
+            assign fault_i_flags[2] = run_vector;
+            assign fault_i_flags[3] = conv_error;
+            assign fault_i_flags[4] = dma_bus_error;
+            // O5 汇总当前故障，O6 还包含第六输入上的已登记中止状态。
+            LUT6_2 #(.INIT(64'hffff_ffff_ffff_feaa)) u_fault (
+                .I0(fault_i_flags[0]), .I1(fault_i_flags[1]), .I2(fault_i_flags[2]),
+                .I3(fault_i_flags[3]), .I4(fault_i_flags[4]), .I5(abort_pending),
+                .O5(task_fault), .O6(block_dma_arbiter_i_abort)
+            );
+        end else begin : g_fault_generic
+            assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
+                                (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)) ||
+                                ((run_conv || run_vector) && conv_error);
+            assign block_dma_arbiter_i_abort = abort_pending || task_fault;
+        end
+    endgenerate
     wire controller_done_valid;
     wire [1:0] controller_err_code;
     wire operand_completion_seen;
@@ -835,6 +892,14 @@ module npu_top #(
             (ENABLE_IS_MODE != 0) ? IA_REUSE_NUM_MAX : 1;
         localparam int unsigned REQUANT_MAX_IA_REUSE =
             ((ENABLE_IS_MODE != 0) && (ENABLE_PER_CHANNEL != 0)) ? IA_REUSE_NUM_MAX : 1;
+        // 六、七个共享银行配置以两个量化通道处理整行，输入组缓存保留最大复用容量。
+        // 更大银行配置保留全并行量化，使可寻址缓冲容量继续满足原有预算。
+        localparam int unsigned p_requant_compute_lanes =
+            SHARED_RAM_ENABLED && SHARED_PHYSICAL_BANKS < 8 && SIZE > 2 && (SIZE % 2) == 0 ? 2 : SIZE;
+        logic requant_group_ready;
+        wire requant_output_group = frame_mode_q ? frame_command_final : ia_output_pending;
+        wire requant_group_start = send_ia_trigger && requant_output_group;
+        wire [31:0] requant_group_rows = frame_mode_q ? frame_command_rows : ps_frame_rows;
         localparam int unsigned IS_BIAS_ROWS = BIAS_GROUP_BLOCKS_MAX * SIZE;
         localparam int unsigned IS_BIAS_ROW_W = (IS_BIAS_ROWS <= 1) ? 1 : $clog2(IS_BIAS_ROWS);
         localparam int unsigned IS_BIAS_VALID_W =
@@ -904,10 +969,19 @@ module npu_top #(
         wire [REG_WIDTH-1:0] cfg_ps_w_s0 = cfg_w_req_s0 < cfg_ps_col_tiles_s0 ?
             cfg_w_req_s0 : cfg_ps_col_tiles_s0;
 
-        wire cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
+        wire cfg_start_event;
         always_ff @(posedge clk or negedge core_rst_n) begin
-            if (!core_rst_n) shared_ia_banks_q <= 32'd1;
-            else if (cfg_start_event) shared_ia_banks_q <= requested_shared_ia_banks;
+            if (!core_rst_n) begin
+                shared_ia_banks_q <= 32'd1;
+                active_ps_bank_count_q <= SHARED_PHYSICAL_BANKS_WIDTH'(
+                    SHARED_RAM_ENABLED ? SHARED_PHYSICAL_BANKS-1 : 4);
+                shared_allocation_invalid_q <= 1'b0;
+            end else if (cfg_start_event) begin
+                // 配置接收时并行保存分配结果，后续容量检查直接使用寄存结果。
+                shared_ia_banks_q <= requested_shared_ia_banks;
+                active_ps_bank_count_q <= SHARED_PHYSICAL_BANKS_WIDTH'(requested_ps_bank_count);
+                shared_allocation_invalid_q <= requested_allocation_invalid;
+            end
         end
         assign cfg_stage2_fire = cfg_stage2_valid && cfg_capacity_phase==3'd5 &&
                                  ctrl_sa_ready && frame_scheduler_ready;
@@ -975,8 +1049,23 @@ module npu_top #(
                 endcase
             end
         end
-        wire legacy_window_shape_s2 =
-            (cfg_w_reuse_eff_s2 & (cfg_w_reuse_eff_s2 - 32'd1)) == 0;
+        // 相同配置值共用幂次检查，容量与输出合并逻辑保持原有采样阶段。
+        logic [REG_WIDTH-1:0] ia_reuse_shape_i_value;
+        logic ia_reuse_shape_o_valid;
+        assign ia_reuse_shape_i_value = cfg_ia_reuse_eff_s2;
+        onehot_check #(.p_width(REG_WIDTH), .p_allow_zero(1'b1)) u_ia_reuse_shape (
+          .i_value(ia_reuse_shape_i_value),
+          .o_valid(ia_reuse_shape_o_valid)
+        );
+        logic [REG_WIDTH-1:0] w_reuse_shape_i_value;
+        logic w_reuse_shape_o_valid;
+        assign w_reuse_shape_i_value = cfg_w_reuse_eff_s2;
+        onehot_check #(.p_width(REG_WIDTH), .p_allow_zero(1'b1)) u_w_reuse_shape (
+          .i_value(w_reuse_shape_i_value),
+          .o_valid(w_reuse_shape_o_valid)
+        );
+        logic legacy_window_shape_s2;
+        assign legacy_window_shape_s2 = w_reuse_shape_o_valid;
         wire use_frame_commands_s2 = FRAME_EXEC_ENABLED &&
             (!ps_long_capacity_fits || !legacy_window_shape_s2 || ps_control_q[1]);
         wire [31:0] frame_slice_tiles_s2 =
@@ -984,9 +1073,67 @@ module npu_top #(
             ps_control_q[3:2] == 2'd2 ? ((cfg_ia_reuse_eff_s2 < 2) ? cfg_ia_reuse_eff_s2 : 32'd2) :
             ps_control_q[3:2] == 2'd1 ? 32'd1 :
             ps_raw_capacity_fits ? cfg_ia_reuse_eff_s2 : 32'd1;
-        wire ctrl_calc_start = (cfg_stage2_fire && !use_frame_commands_s2) || frame_command_start;
-        assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && frame_scheduler_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
-                          (abort_state == AB_IDLE) && operand_cache_idle && frame_prefetch_idle;
+        wire ctrl_calc_start = (cfg_stage2_fire && !use_frame_commands_s2) || frame_execute_start;
+        localparam bit p_admission_use_lut =
+`ifdef ASIC_SYNTHESIS
+            1'b0;
+`elsif XILINX_FPGA
+            1'b1;
+`elsif SYNTHESIS
+            1'b1;
+`else
+            1'b0;
+`endif
+        if (p_admission_use_lut) begin : g_admission_fpga
+            // 后台状态和命令资格并行准备，中止信号直接参与最后一级就绪判断。
+            logic [5:0] idle_i_flags, ready_i_flags;
+            logic idle_o_valid, ready_o_valid;
+            logic unused_idle_o5, unused_ready_o5;
+            logic [5:0] admission_i_flags, admission_ready_i_flags;
+            logic admission_kernel_occupied;
+            logic admission_i_zero;
+            logic admission_o_ready, admission_o_start;
+
+            assign admission_i_zero = 1'b0;
+            assign idle_i_flags = {admission_i_zero, cfg_stage2_valid, cfg_stage1_valid,
+                                   cfg_stage0_valid, vector_rejected, run_vector};
+            assign ready_i_flags = {operand_cache_idle, frame_scheduler_ready, ctrl_sa_ready,
+                                    vector_engine_ready, abort_state};
+            LUT6_2 #(.INIT(64'h0000_0000_0000_0001)) u_idle_flags (
+                .I0(idle_i_flags[0]), .I1(idle_i_flags[1]), .I2(idle_i_flags[2]),
+                .I3(idle_i_flags[3]), .I4(idle_i_flags[4]), .I5(idle_i_flags[5]),
+                .O5(unused_idle_o5), .O6(idle_o_valid)
+            );
+            LUT6_2 #(.INIT(64'h1000_0000_0000_0000)) u_ready_flags (
+                .I0(ready_i_flags[0]), .I1(ready_i_flags[1]), .I2(ready_i_flags[2]),
+                .I3(ready_i_flags[3]), .I4(ready_i_flags[4]), .I5(ready_i_flags[5]),
+                .O5(unused_ready_o5), .O6(ready_o_valid)
+            );
+            assign admission_i_flags = {cfg_vector_enable, calc_start, ready_o_valid, idle_o_valid,
+                                        ia_prefetch_idle, kernel_prefetch_idle};
+            assign admission_kernel_occupied = load_weight_req && block_dma_arbiter_o_kernel_eligible;
+            assign admission_ready_i_flags = {block_dma_arbiter_i_abort, admission_kernel_occupied,
+                ready_o_valid, idle_o_valid, ia_prefetch_idle, kernel_loader_o_quiescent};
+            // 中止撤销当前授予，后台空闲状态保持独立；任意请求和命令编码均使用同一布尔关系。
+            LUT6 #(.INIT(64'h8000_8000_0000_8000)) u_admission_ready (
+                .I0(admission_ready_i_flags[0]), .I1(admission_ready_i_flags[1]),
+                .I2(admission_ready_i_flags[2]), .I3(admission_ready_i_flags[3]),
+                .I4(admission_ready_i_flags[4]), .I5(admission_ready_i_flags[5]),
+                .O(admission_o_ready)
+            );
+            // 开始请求可由上层就绪信号形成，直接参与末级六输入配置接收判断。
+            LUT6 #(.INIT(64'h0000_0000_8000_0000)) u_admission_start (
+                .I0(admission_i_flags[0]), .I1(admission_i_flags[1]), .I2(admission_i_flags[2]),
+                .I3(admission_i_flags[3]), .I4(admission_i_flags[4]), .I5(admission_i_flags[5]),
+                .O(admission_o_start)
+            );
+            assign sa_ready = admission_o_ready;
+            assign cfg_start_event = admission_o_start;
+        end else begin : g_admission_generic
+            assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && frame_scheduler_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
+                              (abort_state == AB_IDLE) && operand_cache_idle && frame_prefetch_idle;
+            assign cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
+        end
 
         // ABI 2: external software provides effective, legal R/W values.
         // There is no automatic rounding or resizing after the host computes groups.
@@ -996,15 +1143,19 @@ module npu_top #(
         wire [W_REUSE_W-1:0] ext_w_small = cfg_w_reuse_eff_s2[W_REUSE_W-1:0];
         wire ext_r_legal = (cfg_ia_reuse_eff_s2 >> IA_REUSE_W)==0 && ext_r_small!=0 &&
             cfg_ia_reuse_eff_s2 <= (cfg_compact_s2 ? active_ia_cache_blocks : active_ia_cache_blocks >> 1) &&
-            (((ext_r_small & (ext_r_small-IA_REUSE_W'(1)))==0) || ext_r_small==25);
+            (ia_reuse_shape_o_valid || ext_r_small==25);
         wire ext_w_legal = (cfg_w_reuse_eff_s2 >> W_REUSE_W)==0 && ext_w_small!=0 &&
             ext_w_small<=W_REUSE_W'(W_REUSE_NUM_MAX) &&
-            (FRAME_EXEC_ENABLED || ((ext_w_small & (ext_w_small-W_REUSE_W'(1)))==0) || ext_w_small==25);
+            (FRAME_EXEC_ENABLED || w_reuse_shape_o_valid || ext_w_small==25);
 
 `ifdef GEMPACT_PS_COMPRESS
         localparam int CAP_ROWS_W = $clog2(IA_REUSE_NUM_MAX * SIZE + 1);
         localparam int CAP_FRAMES_W = $clog2(W_REUSE_NUM_MAX + 1);
         localparam int CAP_WORDS_W = $clog2(4 * IA_REUSE_NUM_MAX * SIZE + 1);
+        localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b1;
+        wire ps_raw_bank_capacity_fits;
+        wire ps_long_bank_capacity_fits;
+        wire ps_admission_bank_capacity_fits;
         wire [CAP_ROWS_W-1:0] ps_group_rows_bounded = ext_r_legal ?
             CAP_ROWS_W'(ext_r_small) << SIZE_SHIFT : '0;
         wire [CAP_ROWS_W-1:0] ps_rows_bounded_calc =
@@ -1036,10 +1187,7 @@ module npu_top #(
         wire ps_raw_capacity_fits_calc =
             !ps_cross_k_required ||
             (ps_capacity_required_bytes <= 64'(active_ps_pool_bytes) &&
-             (ps_frames_bounded == '0 ||
-              (ps_raw_frame_bank_words <= 64'(4 * IA_REUSE_NUM_MAX * SIZE) &&
-               64'(ps_raw_bank_total) <= 64'(active_ps_bank_depth))));
-        localparam bit PS_REQUIRE_RAW_CAPACITY = 1'b1;
+             ps_raw_bank_capacity_fits);
         wire ps_config_force_raw = PS_REQUIRE_RAW_CAPACITY || ps_control_q[0];
         // Bias is applied after the final K block. Bound all retained sums from
         // operand formats and the largest nonfinal K prefix, without sampling
@@ -1071,9 +1219,7 @@ module npu_top #(
             CAP_WORDS_W'(ps_long_frame_bank_words) * ps_frames_bounded;
         wire ps_long_capacity_fits_calc = !ps_cross_k_required ||
             (32'(ps_config_word_cap) <= active_ps_bank_count &&
-             (ps_frames_bounded == '0 ||
-              (ps_long_frame_bank_words <= 64'(4 * IA_REUSE_NUM_MAX * SIZE) &&
-               64'(ps_long_bank_total) <= 64'(active_ps_bank_depth))) &&
+             ps_long_bank_capacity_fits &&
              (!SHARED_RAM_ENABLED || 64'(ps_rows_frames) <= 64'(SHARED_PS_DIRECTORY_ROWS)));
         logic ps_raw_capacity_fits_q, ps_long_capacity_fits_q;
         always_ff @(posedge clk) begin
@@ -1132,11 +1278,58 @@ module npu_top #(
             assign ps_long_frame_bank_words = (ps_long_frame_words + 64'd3) >> 2;
             assign ps_admission_bank_words = (ps_admission_words + 64'd3) >> 2;
         end endgenerate
+
+        // 原始定宽部分和使用固定物理容量表，容量检查仍在第 1、2 阶段寄存。
+        // 总字节数与目录行数检查独立保留，存储块容量只比较对应的行数上限。
+        generate if (SHARED_RAM_ENABLED && PS_REQUIRE_RAW_CAPACITY) begin : g_ps_capacity_limits
+            logic [CAP_ROWS_W-1:0] capacity_i_frame_rows;
+            logic [CAP_FRAMES_W-1:0] capacity_i_frames;
+            logic [31:0] capacity_i_bank_count;
+            logic [31:0] capacity_i_frame_slice_tiles;
+            logic capacity_i_use_frame_commands;
+            logic capacity_o_frames_fit;
+            logic capacity_o_admission_fit;
+
+            assign capacity_i_frame_rows = ps_rows_bounded;
+            assign capacity_i_frames = ps_frames_bounded;
+            assign capacity_i_bank_count = active_ps_bank_count;
+            assign capacity_i_frame_slice_tiles = frame_slice_tiles_s2;
+            assign capacity_i_use_frame_commands = use_frame_commands_s2;
+            ps_capacity_limits #(
+                .p_max_rows(IA_REUSE_NUM_MAX * SIZE),
+                .p_rows_width(CAP_ROWS_W),
+                .p_frames_width(CAP_FRAMES_W),
+                .p_total_banks(SHARED_PHYSICAL_BANKS),
+                .p_bank_bytes(SHARED_BANK_BYTES),
+                .p_tile_shift(SIZE_SHIFT)
+            ) u_capacity_limits (
+                .i_frame_rows(capacity_i_frame_rows),
+                .i_frames(capacity_i_frames),
+                .i_bank_count(capacity_i_bank_count),
+                .i_frame_slice_tiles(capacity_i_frame_slice_tiles),
+                .i_use_frame_commands(capacity_i_use_frame_commands),
+                .o_frames_fit(capacity_o_frames_fit),
+                .o_admission_fit(capacity_o_admission_fit)
+            );
+            assign ps_raw_bank_capacity_fits = capacity_o_frames_fit;
+            assign ps_long_bank_capacity_fits = capacity_o_frames_fit;
+            assign ps_admission_bank_capacity_fits = capacity_o_admission_fit;
+        end else begin : g_ps_capacity_arithmetic
+            assign ps_raw_bank_capacity_fits = ps_frames_bounded == '0 ||
+                (ps_raw_frame_bank_words <= 64'(4 * IA_REUSE_NUM_MAX * SIZE) &&
+                 64'(ps_raw_bank_total) <= 64'(active_ps_bank_depth));
+            assign ps_long_bank_capacity_fits = ps_frames_bounded == '0 ||
+                (ps_long_frame_bank_words <= 64'(4 * IA_REUSE_NUM_MAX * SIZE) &&
+                 64'(ps_long_bank_total) <= 64'(active_ps_bank_depth));
+            assign ps_admission_bank_capacity_fits =
+                ps_admission_bank_words <= 64'(active_ps_bank_depth);
+        end endgenerate
+
         wire ps_capacity_config_invalid_calc = (SIZE == 16) &&
             (shared_allocation_invalid || active_ps_pool_bytes < 64 ||
              ((active_ps_pool_bytes % 64) != 0) ||
              (SHARED_RAM_ENABLED && !cfg_compact_s2 && shared_ia_banks_q < 2) ||
-             (ps_cross_k_required && (ps_admission_bank_words > 64'(active_ps_bank_depth) ||
+             (ps_cross_k_required && (!ps_admission_bank_capacity_fits ||
                                       32'(ps_config_word_cap) > active_ps_bank_count)) ||
              (!use_frame_commands_s2 && !ps_long_capacity_fits));
 `else
@@ -1341,32 +1534,70 @@ module npu_top #(
         wire [31:0] exec_col_groups = frame_mode_q ? 32'd1 : cfg_col_groups;
         wire [31:0] exec_col_tail = frame_mode_q ? 32'd1 : cfg_col_tail_tiles;
         wire [31:0] exec_channel = is_mode ? frame_command_p0 : frame_command_column;
-        wire [31:0] exec_output_row = is_mode ? frame_command_column : frame_command_p0;
-        function automatic logic [REG_WIDTH-1:0] operand_frame_offset(
-            input logic [REG_WIDTH-1:0] row0, depth0, stride, total_depth,
-            input logic tile_packed, element_s16
+        // 接收帧命令时保存三个地址的上下文，准备结果接收后启动计算控制器。
+        assign frame_address_i_start = frame_command_start;
+        assign frame_address_i_abort = abort_pending || task_fault || cfg_start_event;
+        assign frame_address_i_result_rdy = frame_command_active && ctrl_sa_ready && !abort_pending && !task_fault;
+        assign frame_execute_start = frame_address_o_result_vld && frame_address_i_result_rdy;
+        assign frame_address_i_p0 = frame_command_p0;
+        assign frame_address_i_q0 = frame_command_q0;
+        assign frame_address_i_column = frame_command_column;
+        assign frame_address_i_total_depth = 32'(run_n);
+        assign frame_address_i_ia_base = 32'(ia_base_eff);
+        assign frame_address_i_ia_stride = 32'(ia_stride_eff);
+        assign frame_address_i_ia_packed = is_mode ? run_rhs_tile_packed : run_lhs_tile_packed;
+        assign frame_address_i_ia_s16 = ia_use_16bits_eff;
+        assign frame_address_i_weight_base = 32'(weight_base_eff);
+        assign frame_address_i_weight_stride = 32'(weight_stride_eff);
+        assign frame_address_i_weight_packed = is_mode ? run_lhs_tile_packed : run_rhs_tile_packed;
+        assign frame_address_i_weight_s16 = weight_use_16bits_eff;
+        assign frame_address_i_dst_base = 32'(dst_base);
+        assign frame_address_i_dst_stride = 32'(dst_row_stride_b);
+        assign frame_address_i_is_mode = is_mode;
+        assign frame_address_i_output_s16 = run_16x8;
+        // 命令接收检查任务中止；配置接收时调度器空闲，没有有效帧命令。
+        frame_address_prepare #(.p_size(SIZE), .p_ready_mask_abort(1'b0)) u_frame_address (
+            .clk(clk), .rst_n(core_rst_n), .i_start(frame_address_i_start), .i_abort(frame_address_i_abort),
+            .o_start_rdy(frame_address_o_start_rdy), .i_result_rdy(frame_address_i_result_rdy),
+            .o_result_vld(frame_address_o_result_vld),
+            .i_p0(frame_address_i_p0), .i_q0(frame_address_i_q0), .i_column(frame_address_i_column),
+            .i_total_depth(frame_address_i_total_depth),
+            .i_ia_base(frame_address_i_ia_base), .i_ia_stride(frame_address_i_ia_stride),
+            .i_ia_packed(frame_address_i_ia_packed), .i_ia_s16(frame_address_i_ia_s16),
+            .i_weight_base(frame_address_i_weight_base), .i_weight_stride(frame_address_i_weight_stride),
+            .i_weight_packed(frame_address_i_weight_packed), .i_weight_s16(frame_address_i_weight_s16),
+            .i_dst_base(frame_address_i_dst_base), .i_dst_stride(frame_address_i_dst_stride),
+            .i_is_mode(frame_address_i_is_mode), .i_output_s16(frame_address_i_output_s16),
+            .o_ia_base(frame_address_o_ia_base), .o_weight_base(frame_address_o_weight_base),
+            .o_dst_base(frame_address_o_dst_base)
         );
-            logic [REG_WIDTH-1:0] depth_tiles, element_offset;
-            begin
-                depth_tiles = (total_depth + REG_WIDTH'(SIZE-1)) >> SIZE_SHIFT;
-                element_offset = ((row0 >> SIZE_SHIFT) * depth_tiles +
-                    (depth0 >> SIZE_SHIFT)) << (2 * SIZE_SHIFT);
-                element_offset = element_offset + ((row0 & REG_WIDTH'(SIZE-1)) << SIZE_SHIFT);
-                operand_frame_offset = tile_packed ? (element_offset << element_s16) :
-                    row0 * stride + (depth0 << element_s16);
-            end
-        endfunction
-        wire [31:0] exec_ia_base = ia_base_eff + (frame_mode_q ?
-            operand_frame_offset(frame_command_p0, frame_command_q0, ia_stride_eff, run_n,
-                is_mode ? run_rhs_tile_packed : run_lhs_tile_packed, ia_use_16bits_eff) : 32'd0);
-        wire [31:0] exec_weight_base = weight_base_eff + (frame_mode_q ?
-            operand_frame_offset(frame_command_column, frame_command_q0, weight_stride_eff, run_n,
-                is_mode ? run_lhs_tile_packed : run_rhs_tile_packed, weight_use_16bits_eff) : 32'd0);
+        wire [31:0] exec_ia_base = frame_mode_q ? frame_address_o_ia_base : ia_base_eff;
+        wire [31:0] exec_weight_base = frame_mode_q ? frame_address_o_weight_base : weight_base_eff;
         wire [31:0] exec_bias_base = frame_mode_q ?
             ((bias_base != 0 && ((is_mode || ws_final_bias) ? frame_command_final : frame_command_init)) ?
                 bias_base + (exec_channel << 2) : 32'd0) : bias_base;
-        wire [31:0] exec_dst_base = dst_base + (frame_mode_q ?
-            exec_output_row * dst_row_stride_b + (exec_channel << run_16x8) : 32'd0);
+        // 控制器仅检查偏置地址是否为零，按其端口可见位宽并行检查模加结果。
+        localparam int unsigned p_controller_bias_w = (REG_WIDTH < 32) ? REG_WIDTH : 32;
+        logic [p_controller_bias_w-1:0] bias_zero_i_base, bias_zero_i_offset, bias_zero_i_target;
+        logic bias_zero_i_carry, bias_zero_o_equal;
+        logic exec_bias_present;
+        logic [REG_WIDTH-1:0] controller_i_bias_base;
+
+        assign bias_zero_i_base = p_controller_bias_w'(bias_base);
+        assign bias_zero_i_offset = p_controller_bias_w'(exec_channel << 2);
+        assign bias_zero_i_target = p_controller_bias_w'(0);
+        assign bias_zero_i_carry = 1'b0;
+        add_equal #(.p_width(p_controller_bias_w), .p_use_lut(p_admission_use_lut)) u_bias_zero (
+            .i_a(bias_zero_i_base), .i_b(bias_zero_i_offset),
+            .i_target(bias_zero_i_target), .i_carry_in(bias_zero_i_carry),
+            .o_equal(bias_zero_o_equal)
+        );
+        assign exec_bias_present = frame_mode_q ?
+            ((bias_base != REG_WIDTH'(0)) &&
+             ((is_mode || ws_final_bias) ? frame_command_final : frame_command_init) &&
+             !bias_zero_o_equal) : (p_controller_bias_w'(bias_base) != p_controller_bias_w'(0));
+        assign controller_i_bias_base = REG_WIDTH'(exec_bias_present);
+        wire [31:0] exec_dst_base = frame_mode_q ? frame_address_o_dst_base : dst_base;
         wire signed [31:0] exec_q_mult = q_mult_pt +
             ((frame_mode_q && use_per_channel_eff) ? (exec_channel << 2) : 32'd0);
         wire signed [31:0] exec_q_shift = q_shift_pt +
@@ -1375,7 +1606,7 @@ module npu_top #(
         wire exec_init_oa = init_cfg_oa && (!frame_mode_q || frame_command_final);
         wire exec_dma_job_init = frame_dma_init_q || (init_cfg_ia && !frame_mode_q);
         wire exec_oa_complete = frame_mode_q ?
-            (frame_command_active && (frame_compute_seen || partial_sum_calc_over) && (frame_store_seen || ps_frame_complete) &&
+            (frame_command_active && frame_execution_started && (frame_compute_seen || partial_sum_calc_over) && (frame_store_seen || ps_frame_complete) &&
              (!frame_command_final || frame_output_seen || (frame_output_armed && oa_calc_over))) : oa_calc_over;
         logic tiling_invalid;
         logic [1:0] frame_config_error;
@@ -1397,8 +1628,20 @@ module npu_top #(
             if (cfg_stage2_valid && cfg_capacity_phase==4)
                 frame_config_error <= frame_config_error_calc;
         end
-        assign frame_command_ready = frame_mode_q && ps_frame_ready && ctrl_sa_ready && !inner_done_valid && !abort_pending && !task_fault;
+        assign frame_command_ready = frame_mode_q && frame_address_o_start_rdy && ps_frame_ready && ctrl_sa_ready && !inner_done_valid && !abort_pending && !task_fault;
         assign frame_command_start = frame_command_valid && frame_command_ready;
+        // 地址准备期间保持执行状态为空，计算完成信息只属于已经启动的当前帧。
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) begin
+                frame_execution_started <= 1'b0;
+            end else if (cfg_start_event || abort_pending || task_fault || frame_command_start) begin
+                frame_execution_started <= 1'b0;
+            end else if (frame_execute_start) begin
+                frame_execution_started <= 1'b1;
+            end else if (!frame_command_active) begin
+                frame_execution_started <= 1'b0;
+            end
+        end
         always_ff @(posedge clk or negedge core_rst_n) begin
             if (!core_rst_n) begin
                 frame_mode_q <= 1'b0;
@@ -1413,7 +1656,7 @@ module npu_top #(
                     frame_mode_q <= use_frame_commands_s2;
                     frame_whole_rows_q <= frame_slice_tiles_s2 == cfg_ia_reuse_eff_s2;
                     stationary_valid <= 1'b0;
-                end else if (frame_mode_q && weight_commit) begin
+                end else if (frame_mode_q && frame_execution_started && weight_commit) begin
                     stationary_valid <= 1'b1;
                     stationary_q0 <= frame_command_q0;
                     stationary_column <= frame_command_column;
@@ -1423,7 +1666,7 @@ module npu_top #(
                                             stationary_column == frame_command_column;
                     frame_ps_accepted <= 1'b0; frame_compute_seen <= 1'b0; frame_store_seen <= 1'b0;
                     frame_output_seen <= 1'b0; frame_output_armed <= 1'b0;
-                end else if (frame_command_active) begin
+                end else if (frame_command_active && frame_execution_started) begin
                     if (send_ia_trigger) frame_ps_accepted <= 1'b1;
                     if (partial_sum_calc_over) frame_compute_seen <= 1'b1;
                     if (ps_frame_complete) frame_store_seen <= 1'b1;
@@ -1486,7 +1729,7 @@ module npu_top #(
         ) u_block_dma_arbiter (
             .clk                     (clk),
             .rst_n                   (core_rst_n),
-            .abort                   (abort_pending || task_fault),
+            .abort                   (block_dma_arbiter_i_abort),
             // Reconfigure even for GEMM so a previous Conv task cannot leave
             // image bounds or cache policy active on ordinary matrix reads.
             .conv_cfg_valid          (run_vector ? vector_dma_cfg_valid : exec_dma_job_init),
@@ -1543,6 +1786,7 @@ module npu_top #(
             .ia_wr_use_16bits        (ia_dma_wr_use_16bits),
                 .kernel_req(load_weight_req && !abort_pending && !task_fault),
                 .kernel_granted          (load_weight_granted),
+            .o_kernel_eligible       (block_dma_arbiter_o_kernel_eligible),
                 .kernel_start            (kernel_dma_start),
                 .kernel_linear_read_mode (kernel_dma_linear_read_mode),
             .kernel_im2col           (kernel_dma_im2col),
@@ -1680,7 +1924,7 @@ module npu_top #(
         .lhs_base             (lhs_base),
         .rhs_base             (rhs_base),
         .dst_base             (dst_base),
-        .bias_base            (exec_bias_base),
+        .bias_base            (controller_i_bias_base),
         .q_mult_pt            (q_mult_pt),
         .q_shift_pt           (q_shift_pt),
         .use_per_channel      (use_per_channel_eff),
@@ -1705,7 +1949,8 @@ module npu_top #(
             .bias_valid           (bias_group_valid),
             .bias_sleep           (bias_load_sleep),
             // Requantization Interface
-            .quant_params_valid   (quant_params_valid || (frame_mode_q && !frame_command_final)),
+            .quant_params_valid   ((quant_params_valid || (frame_mode_q && !frame_command_final)) &&
+                                   (!requant_output_group || requant_group_ready)),
         // FIFO Interface
         .fifo_full_flag       (fifo_full_flag && ia_output_pending),
             // OA Writer Interface
@@ -1831,7 +2076,7 @@ module npu_top #(
             wire [31:0] depth_offset = packed_weights ?
                 ((frame_lookahead_q0 >> SIZE_SHIFT) << (2*SIZE_SHIFT + 32'(weight_use_16bits_eff))) :
                 (frame_lookahead_q0 << weight_use_16bits_eff);
-            wire prediction_start = frame_mode_q && frame_command_active && frame_lookahead_valid &&
+            wire prediction_start = frame_mode_q && frame_command_active && frame_execution_started && frame_lookahead_valid &&
                 (frame_lookahead_column != frame_command_column || frame_lookahead_q0 != frame_command_q0);
             (* use_dsp="yes" *) logic [31:0] product_low;
             (* use_dsp="yes" *) logic [15:0] product_lh, product_hl;
@@ -1845,7 +2090,7 @@ module npu_top #(
                     frame_command_sequence <= '0;
                 end else begin
                     if (frame_command_start) frame_command_sequence <= frame_command_sequence + 1'b1;
-                    if (cfg_start_event || !frame_command_active) weight_prediction_valid <= '0;
+                    if (cfg_start_event || !frame_command_active || !frame_execution_started) weight_prediction_valid <= '0;
                     else weight_prediction_valid <= {weight_prediction_valid[2:0], prediction_start};
                 end
             end
@@ -1883,7 +2128,7 @@ module npu_top #(
                     weight_prediction[3] <= weight_prediction[2];
                 end
             end
-            assign weight_prefetch_valid = frame_command_active && weight_prediction_valid[3] &&
+            assign weight_prefetch_valid = frame_command_active && frame_execution_started && weight_prediction_valid[3] &&
                 weight_prediction[3].sequence_id == frame_command_sequence;
         end else begin : g_no_weight_prediction
             assign weight_prediction_valid = '0;
@@ -1912,6 +2157,7 @@ module npu_top #(
         .prefetch_rows      (weight_prediction[3].rows),
         .prefetch_valid_cols(weight_prediction[3].cols),
         .prefetch_idle      (kernel_prefetch_idle),
+        .o_prefetch_quiescent(kernel_loader_o_quiescent),
         .cfg_im2col          (run_conv && is_mode),
         .cfg_tile_packed     (is_mode ? run_lhs_tile_packed : run_rhs_tile_packed),
         .cfg_p0_base         (frame_mode_q ? frame_command_column : 32'd0),
@@ -2052,6 +2298,49 @@ module npu_top #(
   endgenerate
 
     generate if (SHARED_RAM_ENABLED) begin : g_shared_ia_ps
+        if (p_fixed_ps_channels) begin : g_channels
+            logic ram_i_cfg_valid;
+            logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] ram_i_cfg_ia_banks;
+            logic ram_o_capacity_fault;
+            logic [1:0] ram_i_ia_read_en, ram_i_ia_write_en;
+            logic [SHARED_IA_ADDR_WIDTH-1:0] ram_i_ia_read_addr [2], ram_i_ia_write_addr [2];
+            logic [127:0] ram_o_ia_read_data [2], ram_i_ia_write_data [2];
+            logic [15:0] ram_i_ia_write_mask [2];
+            logic [3:0] ram_i_ps_read_en, ram_i_ps_write_en;
+            logic [SHARED_PS_ADDR_WIDTH-1:0] ram_i_ps_read_addr [4], ram_i_ps_write_addr [4];
+            logic [127:0] ram_o_ps_read_data [4], ram_i_ps_write_data [4];
+
+            assign ram_i_cfg_valid = cfg_stage2_fire && !shared_allocation_invalid;
+            assign ram_i_cfg_ia_banks = SHARED_PHYSICAL_BANKS_WIDTH'(shared_ia_banks_q);
+            assign shared_ram_capacity_fault = ram_o_capacity_fault;
+            assign ram_i_ia_read_en = ia_ram_read_en;
+            assign ram_i_ia_write_en = ia_ram_write_en;
+            assign ram_i_ia_read_addr = ia_ram_read_addr;
+            assign ram_i_ia_write_addr = ia_ram_write_addr;
+            assign ia_ram_read_data = ram_o_ia_read_data;
+            assign ram_i_ia_write_data = ia_ram_write_data;
+            assign ram_i_ia_write_mask = ia_ram_write_mask;
+            assign ram_i_ps_read_en = ps_ram_read_en;
+            assign ram_i_ps_write_en = ps_ram_write_en;
+            assign ram_i_ps_read_addr = ps_ram_read_addr;
+            assign ram_i_ps_write_addr = ps_ram_write_addr;
+            assign ps_ram_read_data = ram_o_ps_read_data;
+            assign ram_i_ps_write_data = ps_ram_write_data;
+
+            ia_ps_channel_ram #(
+                .p_bank_bytes(SHARED_BANK_BYTES), .p_total_bytes(SHARED_TOTAL_BYTES),
+                .p_addr_width(SHARED_IA_ADDR_WIDTH), .p_bank_count_width(SHARED_PHYSICAL_BANKS_WIDTH)
+            ) u_ram (
+                .clk(clk), .rst_n(core_rst_n),
+                .i_cfg_valid(ram_i_cfg_valid), .i_cfg_ia_banks(ram_i_cfg_ia_banks),
+                .o_capacity_fault(ram_o_capacity_fault),
+                .i_ia_read_en(ram_i_ia_read_en), .i_ia_read_addr(ram_i_ia_read_addr), .o_ia_read_data(ram_o_ia_read_data),
+                .i_ia_write_en(ram_i_ia_write_en), .i_ia_write_addr(ram_i_ia_write_addr),
+                .i_ia_write_data(ram_i_ia_write_data), .i_ia_write_mask(ram_i_ia_write_mask),
+                .i_ps_read_en(ram_i_ps_read_en), .i_ps_read_addr(ram_i_ps_read_addr), .o_ps_read_data(ram_o_ps_read_data),
+                .i_ps_write_en(ram_i_ps_write_en), .i_ps_write_addr(ram_i_ps_write_addr), .i_ps_write_data(ram_i_ps_write_data)
+            );
+        end else begin : g_rotating
         ia_ps_shared_ram #(
             .BANK_BYTES(SHARED_BANK_BYTES), .TOTAL_BYTES(SHARED_TOTAL_BYTES),
             .IA_ADDR_BITS(SHARED_IA_ADDR_WIDTH), .PS_ADDR_BITS(SHARED_PS_ADDR_WIDTH)
@@ -2066,6 +2355,7 @@ module npu_top #(
             .ps_read_en(ps_ram_read_en), .ps_read_addr(ps_ram_read_addr), .ps_read_data(ps_ram_read_data),
             .ps_write_en(ps_ram_write_en), .ps_write_addr(ps_ram_write_addr), .ps_write_data(ps_ram_write_data)
         );
+        end
     end else begin : g_fixed_ia_ps
         assign shared_ram_capacity_fault = 1'b0;
         assign ia_ram_read_data = '{default:'0};
@@ -2080,6 +2370,7 @@ module npu_top #(
         .MAX_IA_REUSE  (IA_REUSE_NUM_MAX),
         .PS_STORAGE_ROWS(PS_STORAGE_ROWS),
         .PS_EXTERNAL_RAM(int'(SHARED_RAM_ENABLED)),
+        .p_fixed_ps_channels(SHARED_RAM_ENABLED && p_fixed_ps_channels),
         .PS_POOL_BYTES(SHARED_RAM_ENABLED ? SHARED_TOTAL_BYTES - SHARED_BANK_BYTES : `GEMMORA_PS_POOL_BYTES),
         .PS_BANK_BYTES(SHARED_BANK_BYTES),
         .PS_DIRECTORY_ROWS(SHARED_RAM_ENABLED ? SHARED_PS_DIRECTORY_ROWS : PS_FRAME_COUNT * IA_REUSE_NUM_MAX * SIZE),
@@ -2179,13 +2470,52 @@ module npu_top #(
                 else
                     is_bias_read_idx = is_bias_row_idx + 1'b1;
             end
-            if (init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep))
+            // 组首读取由偏置缓冲区的 group_read_start 选择当前组基址。
+            if (init_cfg_ia)
                 is_bias_read_idx = '0;
+        end
+
+`ifdef ASIC_SYNTHESIS
+        localparam bit p_fpga_bias_row_index = 1'b0;
+`elsif XILINX_FPGA
+        localparam bit p_fpga_bias_row_index = 1'b1;
+`elsif SYNTHESIS
+        localparam bit p_fpga_bias_row_index = 1'b1;
+`else
+        localparam bit p_fpga_bias_row_index = 1'b0;
+`endif
+        logic [IS_BIAS_ROW_W-1:0] is_bias_row_increment;
+        logic [IS_BIAS_ROW_W-1:0] is_bias_row_step;
+        logic [IS_BIAS_ROW_W-1:0] is_bias_row_next;
+        logic is_bias_row_wrap;
+        assign is_bias_row_increment = is_bias_row_idx + IS_BIAS_ROW_W'(1);
+        assign is_bias_row_wrap = (is_bias_rows_valid <= IS_BIAS_VALID_W'(1)) ||
+            ((IS_BIAS_VALID_W'(is_bias_row_idx) + IS_BIAS_VALID_W'(1)) >= is_bias_rows_valid);
+        // 先计算保持、递增和回绕结果，组首触发只参与最后一级清零选择。
+        assign is_bias_row_step = (is_mode && acc_data_valid) ?
+            (is_bias_row_wrap ? IS_BIAS_ROW_W'(0) : is_bias_row_increment) : is_bias_row_idx;
+        if (p_fpga_bias_row_index) begin : g_bias_row_last_select
+            for (genvar row_bit = 0; row_bit < IS_BIAS_ROW_W; row_bit++) begin : g_bit
+                logic row_i_one, unused_row_o5;
+                assign row_i_one = 1'b1;
+                LUT6_2 #(.INIT(64'h2202222222022222)) u_row_next (
+                    .I0(is_bias_row_step[row_bit]), .I1(init_cfg_ia), .I2(is_mode),
+                    .I3(bias_sleep), .I4(send_ia_trigger), .I5(row_i_one),
+                    .O5(unused_row_o5), .O6(is_bias_row_next[row_bit])
+                );
+            end
+        end else begin : g_bias_row_generic
+            assign is_bias_row_next =
+                (init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep)) ?
+                    IS_BIAS_ROW_W'(0) : is_bias_row_step;
+        end
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) is_bias_row_idx <= '0;
+            else is_bias_row_idx <= is_bias_row_next;
         end
 
         always_ff @(posedge clk or negedge core_rst_n) begin
             if (!core_rst_n) begin
-                is_bias_row_idx <= '0;
                 is_bias_group_base <= '0;
                 is_bias_last_group_base <= '0;
                 is_bias_last_rows <= IS_BIAS_VALID_W'(1);
@@ -2193,31 +2523,18 @@ module npu_top #(
                 is_bias_rows_valid_pending <= IS_BIAS_VALID_W'(1);
             end else begin
                 if (init_cfg_ia) begin
-                    is_bias_row_idx <= '0;
                     is_bias_group_base <= '0;
                     is_bias_last_group_base <= is_bias_last_group_base_calc;
                     is_bias_last_rows <= is_bias_tail_rows_calc;
                     is_bias_rows_valid <= IS_BIAS_VALID_W'(1);
                     is_bias_rows_valid_pending <= is_bias_first_rows_valid;
                 end else begin
-                    if (is_mode && acc_data_valid) begin
-                        if (is_bias_rows_valid <= IS_BIAS_VALID_W'(1)) begin
-                            is_bias_row_idx <= '0;
-                        end else if ((IS_BIAS_VALID_W'(is_bias_row_idx) +
-                                      IS_BIAS_VALID_W'(1)) >= is_bias_rows_valid) begin
-                            is_bias_row_idx <= '0;
-                        end else begin
-                            is_bias_row_idx <= is_bias_row_idx + 1'b1;
-                        end
-                    end
-
                     if (is_mode && bias_switch) begin
                         is_bias_group_base <= is_bias_group_base_step;
                         is_bias_rows_valid_pending <= is_bias_rows_valid_step;
                     end
 
                     if (is_mode && send_ia_trigger && !bias_sleep) begin
-                        is_bias_row_idx <= '0;
                         is_bias_rows_valid <= is_bias_rows_valid_pending;
                     end
                 end
@@ -2227,9 +2544,29 @@ module npu_top #(
     genvar rq_i;
     generate
         for (rq_i = 0; rq_i < SIZE; rq_i = rq_i + 1) begin : gen_requant_in_vec
-            assign requant_in_vec[rq_i] =
-          is_mode ? (acc_data_out[rq_i] + is_bias_scalar) :
-          ws_final_bias ? (acc_data_out[rq_i] + compute_bias_latched[rq_i]) : acc_data_out[rq_i];
+            logic signed [31:0] add_i_lhs;
+            logic signed [31:0] add_i_rhs0;
+            logic signed [31:0] add_i_rhs1;
+            logic add_i_rhs_select;
+            logic add_i_enable;
+            logic signed [31:0] add_o_sum;
+
+            assign add_i_lhs = acc_data_out[rq_i];
+            assign add_i_rhs0 = compute_bias_latched[rq_i];
+            assign add_i_rhs1 = is_bias_scalar;
+            assign add_i_rhs_select = is_mode;
+            assign add_i_enable = is_mode || ws_final_bias;
+            assign requant_in_vec[rq_i] = add_o_sum;
+
+            // 偏置选择和三十二位模加在当前周期完成，量化输入的接收边沿保持不变。
+            select_add #(.p_width(32)) u_bias_add (
+                .i_lhs       (add_i_lhs),
+                .i_rhs0      (add_i_rhs0),
+                .i_rhs1      (add_i_rhs1),
+                .i_rhs_select(add_i_rhs_select),
+                .i_add_enable(add_i_enable),
+                .o_sum       (add_o_sum)
+            );
             assign requant_in_vec_s64[rq_i] =
           {{32{requant_in_vec[rq_i][31]}}, requant_in_vec[rq_i]};
         end
@@ -2242,10 +2579,15 @@ module npu_top #(
             .VLEN        (SIZE),
             .REG_WIDTH   (REG_WIDTH),
             .MAX_IA_REUSE(REQUANT_MAX_IA_REUSE),
+            .p_compute_lanes(p_requant_compute_lanes),
+            .p_input_rows(IA_REUSE_NUM_MAX * SIZE),
             .ENABLE_PER_CHANNEL(ENABLE_PER_CHANNEL),
             .ENABLE_IS_MODE(ENABLE_IS_MODE),
             .ENABLE_S16(1)
     ) u_vec_requant (
+        .i_group_start(requant_group_start),
+        .i_group_rows(requant_group_rows),
+        .o_group_ready(requant_group_ready),
         .clk               (clk),
         .rst_n             (core_rst_n),
         .init_cfg          (exec_init_requant),
@@ -2359,7 +2701,7 @@ module npu_top #(
                     oa_is_coalesce_q<=(SIZE==16) && (ENABLE_IS_MODE!=0) && cfg_mode_s2 && !cfg_16x8_s2 &&
                         cfg_k_s2!=0 && cfg_m_s2!=0 && cfg_ia_reuse_eff_s2>=2 && cfg_ia_reuse_eff_s2<=16 &&
                         cfg_ia_reuse_eff_s2<=OA_FIFO_BANKS &&
-                        (cfg_ia_reuse_eff_s2 & (cfg_ia_reuse_eff_s2-1'b1))==0 &&
+                        ia_reuse_shape_o_valid &&
                         (cfg_m_s2 & ((cfg_ia_reuse_eff_s2<<4)-1'b1))==0 &&
                         (dst_base & ((cfg_ia_reuse_eff_s2<<4)-1'b1))==0 &&
                         (dst_row_stride_b & ((cfg_ia_reuse_eff_s2<<4)-1'b1))==0;
@@ -2402,7 +2744,9 @@ module npu_top #(
     vec_s8_to_fifo #(.BUS_WIDTH(BUS_WIDTH),
         .VLEN (SIZE),
         .BANKS(OA_FIFO_BANKS),
-        .ENABLE_TRANSPOSE(ENABLE_IS_MODE)
+        .ENABLE_TRANSPOSE(ENABLE_IS_MODE),
+        // 任务配置只在控制器和帧调度器均空闲时更新，合并输出期间保持方向。
+        .p_cyclic_storage(1'b1)
     ) u_vec_s8_to_fifo (
         .clk              (clk),
         .rst_n            (core_rst_n),

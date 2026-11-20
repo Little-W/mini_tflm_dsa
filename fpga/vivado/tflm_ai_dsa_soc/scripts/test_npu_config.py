@@ -17,6 +17,7 @@ import unittest
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
+TIMING_MOCK = ROOT/'scripts/fpga/tests/vivado_timing_mock.tcl'
 ENVIRONMENT_KEYS = (
     'NPU_CONFIG', 'NPU_AXI_DATA_WIDTH', 'SHARED_BANK_BYTES', 'SHARED_BANK_COUNT', 'IM2COL_CACHE_BYTES',
     'GEMPACT_PCR_ENGINE', 'GEMPACT_PS_COMPRESS', 'GEMPACT_PS_POOL_BYTES', 'GEMPACT_PS_FORCE_RAW',
@@ -63,6 +64,7 @@ proc get_runs {args} { return [lindex $args end] }
 proc get_ips {args} { return clk_wiz_0 }
 proc get_files {args} { return {} }
 proc create_project {args} {
+    vivado_timing_mock::record create_project {*}$args
     set offset [expr {[lindex $args 0] eq "-force" ? 1 : 0}]
     set name [lindex $args $offset]
     set path [lindex $args [expr {$offset+1}]]
@@ -75,9 +77,17 @@ foreach command {
     report_timing report_high_fanout_nets report_route_status report_drc report_power
     write_checkpoint write_bitstream
 } {
-    proc $command {args} { return }
+    proc $command {args} [format {vivado_timing_mock::record %s {*}$args; return} $command]
+}
+# 时序与实现接口使用确定性命令模型，参数读取仍使用上面的属性记录。
+source $::env(TEST_TIMING_MOCK)
+if {[info exists ::env(TEST_TIMING_ROUTE_FAILURE)]} {
+    vivado_timing_mock::set_option fully_routed 0
 }
 set status [catch {source $entry} message options]
+foreach event $::vivado_timing_mock::events {
+    puts "MOCK_CALL\t[string map [list \n " " \r " "] $event]"
+}
 if {$status && $message ne "TEST_PARAMETERS_CAPTURED"} {
     puts stderr [dict get $options -errorinfo]
     exit 1
@@ -115,6 +125,7 @@ class ConfigurationTests(unittest.TestCase):
         self.environment = {key: value for key, value in os.environ.items()
                             if key not in ENVIRONMENT_KEYS and not key.startswith('TEST_')}
         self.environment['NPU_CONFIG'] = str(self.config)
+        self.environment['TEST_TIMING_MOCK'] = str(TIMING_MOCK)
         if self.picorv32:
             self.environment['PICORV32_ROOT'] = str(self.picorv32)
         self.helper = self.work/'read_config.tcl'
@@ -130,12 +141,19 @@ class ConfigurationTests(unittest.TestCase):
     def execute(self, command, *, environment=None, success=True):
         result = subprocess.run([self.tclsh, *map(str, command)], cwd=ROOT,
                                 env=environment or self.environment, text=True, capture_output=True, timeout=60)
+        log_dir = self.directory/'process_logs'
+        log_dir.mkdir(exist_ok=True)
+        log_name = f'{len(self.cases):03d}_{self._testMethodName}'
+        stdout_log, stderr_log = log_dir/(log_name+'.stdout.log'), log_dir/(log_name+'.stderr.log')
+        stdout_log.write_text(result.stdout)
+        stderr_log.write_text(result.stderr)
         if success:
             self.assertEqual(result.returncode, 0, result.stdout+'\n'+result.stderr)
         else:
             self.assertNotEqual(result.returncode, 0, result.stdout)
         self.cases.append(dict(test=self._testMethodName, accepted=result.returncode==0,
-                               expected_accept=success))
+                               expected_accept=success, stdout_log=str(stdout_log.relative_to(self.directory)),
+                               stderr_log=str(stderr_log.relative_to(self.directory))))
         return result
 
     def read_values(self, *, success=True, environment=None):
@@ -293,6 +311,40 @@ UNRELATED = $(shell echo unused)
                     self.assertIn('SHARED_BANK_BYTES=8192', result.stderr)
                     self.assertFalse(output.exists())
 
+    def test_implementation_checks_precede_bitstream(self):
+        for name in ('run_batch_impl.tcl', 'export_project.tcl'):
+            for fail_routing in (False, True):
+                with self.subTest(name=name, fail_routing=fail_routing):
+                    output = self.work/(name+('_incomplete' if fail_routing else '_complete'))
+                    arguments = [output, 'xc7a200tfbg484-3', 16, 4, 16]
+                    arguments += [self.memory] if name == 'export_project.tcl' else [1, self.memory]
+                    environment = dict(self.environment, VIVADO_RUN_IMPL='1')
+                    if fail_routing:
+                        environment['TEST_TIMING_ROUTE_FAILURE'] = '1'
+                    result = self.execute([self.vivado, HERE/name, *arguments],
+                                          environment=environment, success=not fail_routing)
+                    calls = [line.split('\t', 1)[1] for line in result.stdout.splitlines()
+                             if line.startswith('MOCK_CALL\t')]
+                    launched = [line for line in calls if line.startswith('launch_runs ')]
+                    self.assertTrue(launched)
+                    self.assertTrue(any('impl_1' in line for line in launched))
+                    self.assertTrue(all('-to_step' not in line for line in launched))
+                    route_check = calls.index('report_route_status -boolean_check ROUTED_FULLY')
+                    self.assertLess(next(i for i, line in enumerate(calls) if line.startswith('open_run ')), route_check)
+                    captured_checks = [i for i, line in enumerate(calls)
+                                       if line.startswith('check_timing -verbose -override_defaults ')]
+                    self.assertEqual(len(captured_checks), 1)
+                    self.assertGreater(captured_checks[0], route_check)
+                    bitstream_calls = [i for i, line in enumerate(calls) if line.startswith('write_bitstream ')]
+                    if fail_routing:
+                        self.assertEqual(bitstream_calls, [])
+                        self.assertIn('incomplete or erroneous routing', result.stderr)
+                    else:
+                        self.assertEqual(len(bitstream_calls), 1)
+                        self.assertGreater(bitstream_calls[0], captured_checks[0])
+                        self.assertGreater(bitstream_calls[0], next(i for i, line in enumerate(calls)
+                            if line.startswith('write_xdc -force -constraints valid -type timing ')))
+
     def test_legacy_environment_overrides(self):
         self.config.write_text('PCR_ENGINE=0\nPS_POOL_BYTES=12288\nPS_FORCE_RAW=0\n')
         self.environment.update(GEMPACT_PCR_ENGINE='1', GEMPACT_PS_POOL_BYTES='24576', GEMPACT_PS_FORCE_RAW='1', IM2COL_CACHE_BYTES='16384')
@@ -312,6 +364,7 @@ UNRELATED = $(shell echo unused)
         self.flow('export_project.tcl', original)
         self.assertTrue((original/'scripts/npu_config.tcl').is_file())
         self.assertTrue((original/'scripts/cpu_memory.tcl').is_file())
+        self.assertTrue((original/'scripts/timing_checks.tcl').is_file())
         self.assertTrue((original/'scripts/export_sources.tcl').is_file())
         snapshot = (original/'config/npu_fpga.mk').read_text()
         self.assertIn('SHARED_BANK_BYTES := 8192', snapshot)
@@ -403,10 +456,13 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    if (out/'process_logs').exists():
+        shutil.rmtree(out/'process_logs')
     ConfigurationTests.directory = out
     ConfigurationTests.tclsh = args.tclsh
     ConfigurationTests.picorv32 = args.picorv32.resolve() if args.picorv32 else None
-    sources = [*sorted(HERE.glob('*.tcl')), Path(__file__).resolve(), ROOT/'config/npu_fpga.mk',
+    ConfigurationTests.cases = []
+    sources = [*sorted(HERE.glob('*.tcl')), Path(__file__).resolve(), TIMING_MOCK, ROOT/'config/npu_fpga.mk',
                HERE.parent/'rtl/fpga_top.sv', HERE.parent/'sim/fpga_top_behav_smoke_tb.sv',
                HERE.parent/'sim/fpga_top_post_impl_tb.sv']
     before = {str(path.relative_to(ROOT)): digest(path) for path in sources}
@@ -418,11 +474,13 @@ def main():
     report = dict(passed=result.wasSuccessful() and before==after,
                   tests=result.testsRun, tcl_processes=len(ConfigurationTests.cases),
                   elapsed_seconds=time.monotonic()-started, source_sha256=before,
+                  actual_vivado_executed=False, synthesis_executed=False, implementation_executed=False,
                   cases=ConfigurationTests.cases, checks=['Literal Make configuration and environment precedence',
                     'FPGA preset selection and 8 KiB bank requirement before project creation',
                     'AXI width, shared bank and im2col cache capacity propagation to all Vivado project entries',
                     'Exported scripts, configuration snapshot, full data capacity, and relative source paths',
-                    'Behavioral and implementation testbench configuration and existing project geometry'],
+                    'Behavioral and implementation testbench configuration and existing project geometry',
+                    'Implementation checks complete before bitstream writing; failed routing prevents bitstream writing'],
                   vivado_commands='Tcl command replacements record properties; synthesis and implementation are not executed')
     (out/'summary.json').write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps({key: report[key] for key in ('passed','tests','tcl_processes','elapsed_seconds')}))
