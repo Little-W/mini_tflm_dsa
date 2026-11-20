@@ -119,6 +119,32 @@ def parse_log(path):
     return groups
 
 
+def verify_window_jobs(rows, network, profile):
+    """根据构建参数独立检查日志中的窗口请求与响应守恒。"""
+    lanes = profile.get('window_lanes')
+    require(type(lanes) is int and lanes > 0, '构建记录必须包含有效的窗口返回并行数')
+    require(profile.get('vector_window_outstanding') == 4, '窗口在途请求上限与实验配置不同')
+    require(len(rows) == network['dw_jobs'] + network['pool_jobs'], '窗口任务记录数量不完整')
+    require(sum(row['requests'] for row in rows) == network['dw_windows'], '窗口请求总数不同')
+    for row in rows:
+        counts = ('requests', 'completions', 'peak_outstanding', 'response_beats',
+                  'requested_elements', 'response_elements', 'return_span_cycles',
+                  'consecutive_responses', 'request_response_overlap')
+        require(all(type(row[key]) is int and row[key] >= 0 for key in counts), '窗口计数必须是非负整数')
+        require(row['requests'] == row['completions'], '已接受窗口请求与完成数不守恒')
+        require(row['requested_elements'] == row['response_elements'], '窗口请求元素与响应元素不守恒')
+        peak = row['peak_outstanding']
+        require((1 <= peak <= min(4, row['requests'])) if row['requests'] else peak == 0,
+                '窗口在途请求峰值超出实际容量')
+        if row['operation'] == 2:
+            require(row['requests'] > 0 and row['response_elements'] > 0, 'DW 窗口任务缺少实际数据传输')
+        beats, elements = row['response_beats'], row['response_elements']
+        require(beats <= elements <= lanes * beats, '窗口响应元素数超过实际每拍返回宽度')
+        require(beats <= row['return_span_cycles'], '窗口响应拍数超过记录周期数')
+        require(row['consecutive_responses'] <= max(0, beats - 1), '连续响应计数超过总响应拍数')
+        require(row['request_response_overlap'] <= row['requests'], '请求与响应重叠计数超过请求总数')
+
+
 def memory_words(path, bits, ram_bytes=2097152):
     words, address = {}, 0
     text = re.sub(r"/\*.*?\*/|//[^\n]*", "", Path(path).read_text(), flags=re.S)
@@ -288,6 +314,13 @@ def verify_complete_models(repo, npu, gemmini_sim, variants, prepared=None, *,
                         npu / "results/cases" / model / f"sample_{sample:04d}" / f"{kind}_{mode}")
                     run, case = (v.read(directory / name) for name in ("result.json", "case.json"))
                     require(run["passed"] and all(run["checks"].values()), "A saved model run did not pass: " + str(directory))
+                    if not gemmini:
+                        parser_path = 'test/model_benchmark/run.py'
+                        require(run.get('validation_source_sha256', {}).get(parser_path) ==
+                                v.digest(repo / parser_path, role='result_parser'), 'NPU 结果解析器来源不匹配')
+                        v.hashes(run['validation_source_sha256'], repo, 'result_parser')
+                        require(run.get('window_response_lanes') == build['profile'].get('window_lanes'),
+                                'NPU 结果记录使用的窗口并行数与实际构建不同')
                     for record in (run, case):
                         require((record["model_id"], record["sample_index"], record["kind"], record["mode"]) ==
                             (model, sample, kind, mode), "Run identity differs: " + str(directory))
@@ -401,6 +434,8 @@ def verify_complete_models(repo, npu, gemmini_sim, variants, prepared=None, *,
                     network = [item for item in parsed["counters"] if item["scope"] == "network"]
                     require(network == [run["network"]], "Network counters differ from the saved log")
                     require(network[0]["axi_errors"] == network[0]["npu_errors"] == 0, "Hardware errors were recorded")
+                    if not gemmini:
+                        verify_window_jobs(parsed['window_jobs'], network[0], build['profile'])
                     if platform == "software":
                         require(network[0]["npu_busy_cycles"] == network[0]["npu_read_bytes"] == network[0]["npu_write_bytes"] == 0,
                             "Software run issued accelerator work")

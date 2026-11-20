@@ -126,7 +126,8 @@ def summarize(out,prepared_root):
         'soc_profile':build['profile'] if build else None,
         'simulator_sha256':build['binary_sha256'] if build else None,
         'picorv32_commit':build['picorv32_commit'] if build else None,
-        'rounding_mode':'nearest_even','bus_width':build['profile']['bus_width'] if build else None,'systolic_size':16,'vector_pes':8,
+        'rounding_mode':'nearest_even','bus_width':build['profile']['bus_width'] if build else None,'systolic_size':16,
+        'vector_pes':build['profile']['vector_pe_count'] if build else None,
         'ram_bytes':2097152,'measurement':'Full Invoke cycles from performance firmware; operator shares from separate profiling firmware',
         'runs':[{'model':r['model_id'],'sample':r['sample_index'],'kind':r['kind'],
                  'mode':r['mode_name'],'passed':r['passed'],'case_dir':r['case_dir']} for r in runs]}

@@ -44,7 +44,7 @@ def write_csv(path, rows):
 
 def summarize(npu, prepared, variants):
     platforms = ("npu", *variants)
-    runs, model_rows, layer_samples, layer_rows = [], [], [], []
+    runs, model_rows, model_samples, layer_samples, layer_rows = [], [], [], [], []
     source_files = {}
     for model in MODELS:
         manifest_path = prepared / model / "manifest.json"
@@ -53,6 +53,7 @@ def summarize(npu, prepared, variants):
         grouped = defaultdict(list)
         for sample in (0, 1):
             traced = {}
+            sample_perf = {}
             identities = set()
             for platform in platforms:
                 for kind in ("perf", "trace"):
@@ -81,9 +82,22 @@ def summarize(npu, prepared, variants):
                     runs.append(run)
                     if kind == "perf":
                         grouped[platform].append(run)
+                        sample_perf[platform] = run
                     else:
                         traced[platform] = record
             require(len(identities) == 1, "Models, inputs and outputs differ between platforms")
+            fastest = min(variants, key=lambda name: (sample_perf[name]['invoke_cycles'], name))
+            fastest_startup = min(variants, key=lambda name: (sample_perf[name]['initialization_and_invoke_cycles'], name))
+            npu_cycles, gemmini_cycles = sample_perf['npu']['invoke_cycles'], sample_perf[fastest]['invoke_cycles']
+            npu_startup = sample_perf['npu']['initialization_and_invoke_cycles']
+            gemmini_startup = sample_perf[fastest_startup]['initialization_and_invoke_cycles']
+            model_samples.append(dict(model=model, sample=sample, selected_gemmini_variant=fastest,
+                gemmini_over_npu=gemmini_cycles / npu_cycles, target_met=6 * npu_cycles <= 5 * gemmini_cycles,
+                fastest_startup_gemmini_variant=fastest_startup,
+                startup_gemmini_over_npu=gemmini_startup / npu_startup,
+                **{platform: {key: values[key] for key in ('invoke_cycles', 'initialization_cycles',
+                    'planning_cycles', 'initialization_and_invoke_cycles', 'arena_used_bytes')}
+                   for platform, values in sample_perf.items()}))
             nodes = manifest["graph"]["nodes"]
             expected_tensors = {row["descriptor"]["ordinal"]: row["comparison"]["expected_sha256"]
                                 for row in traced["npu"]["trace"]}
@@ -122,6 +136,10 @@ def summarize(npu, prepared, variants):
         selected = min(variants, key=lambda name: (row[name]["invoke_cycles"], name))
         row["selected_gemmini_variant"] = selected
         row["gemmini_over_npu"] = row[selected]["invoke_cycles"] / row["npu"]["invoke_cycles"]
+        samples_for_model = [item for item in model_samples if item['model'] == model]
+        row['minimum_sample_speedup'] = min(item['gemmini_over_npu'] for item in samples_for_model)
+        row['all_samples_at_least_1_2x'] = all(item['target_met'] for item in samples_for_model)
+        row['minimum_startup_speedup'] = min(item['startup_gemmini_over_npu'] for item in samples_for_model)
         model_rows.append(row)
     lookup = {row["model"]: row for row in model_rows}
     for model in MODELS:
@@ -164,7 +182,10 @@ def summarize(npu, prepared, variants):
     return dict(passed=True, measurement="两个输入的完整 MicroInterpreter::Invoke 平均周期；初始化单独记录",
         selection="每个模型选取完整实测推理最快的 Gemmini 固件，保留该次整网计时",
         layer_measurement="独立逐层记录固件，包含命令提交、加速器等待和软件处理",
-        source_files=source_files, variants=variants, models=model_rows, aggregate=aggregate, runs=runs,
+        source_files=source_files, variants=variants, models=model_rows, model_samples=model_samples,
+        model_target_rule='逐个输入使用 6*NPU_Invoke<=5*Gemmini_Invoke，Gemmini 为该输入完整推理最快固件',
+        startup_measurement='初始化加首个 Invoke，按启动总时间最快的完整 Gemmini 固件单独比较',
+        aggregate=aggregate, runs=runs,
         layers=layer_rows, layer_samples=layer_samples, operator_categories=categories,
         actual_execution_paths=paths, model_nodes=len(layer_rows))
 
@@ -205,9 +226,18 @@ def main():
         entry = dict(model=row["model"], selected_gemmini_variant=row["selected_gemmini_variant"])
         for platform in ("npu", *variants):
             entry.update({f"{platform}_{key}": value for key, value in row[platform].items()})
-        entry.update(gemmini_over_npu=row["gemmini_over_npu"])
+        entry.update({key: row[key] for key in ('gemmini_over_npu', 'minimum_sample_speedup',
+                                               'all_samples_at_least_1_2x', 'minimum_startup_speedup')})
         model_csv.append(entry)
     write_csv(out / "models.csv", model_csv)
+    write_csv(out / 'runs.csv', result['runs'])
+    sample_csv = []
+    for row in result['model_samples']:
+        entry = {key: value for key, value in row.items() if key not in ('npu', *variants)}
+        for platform in ('npu', *variants):
+            entry.update({f'{platform}_{key}': value for key, value in row[platform].items()})
+        sample_csv.append(entry)
+    write_csv(out / 'model_samples.csv', sample_csv)
     for key, name in (("layers", "layers.csv"), ("layer_samples", "layer_samples.csv")):
         values = []
         for row in result[key]:

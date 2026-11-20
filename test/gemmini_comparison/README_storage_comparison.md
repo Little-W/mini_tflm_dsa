@@ -12,6 +12,8 @@
 
 完整模型采用两组独立固件：`perf` 记录初始化后的完整 `MicroInterpreter::Invoke()`，`trace` 记录全部节点与中间张量。RESHAPE 等软件节点参与逐层检查。两种计时分别报告，各层最低时间不用于重建整网时间。每层的两个输入分别检查，随后再计算相同输入集合的整数周期总量。
 
+完整模型比较当前 NPU 软件实现与固定 Gemmini DW 固件。CPU、外部存储及数值条件按上述参数核对，软件来源按各自编译记录分别核验。NPU 的 RESHAPE 描述符缓存和兼容算子编码的存储共享属于 CPU/TFLM 优化；独立硬件算子报告用于分析加速器性能。模型报告同时保留初始化时间、全部软件节点及每个输入的经过周期。
+
 ## 向量资源
 
 `run_storage_operators.py` 与 `run_storage_models.py` 接受 `--pe-count 8` 或 `--pe-count 16`。配置记录明确列出 `vector_pe_count`、`quantization_lanes`、`window_lanes` 和 `shared_quant_enable`。检查器以容量展开中的实际 `vector_pe` 实例数量及 `vector_engine` 参数核对这些字段。
@@ -83,6 +85,13 @@ python test/gemmini_comparison/run_storage_models.py \
 
 该命令默认执行四个模型、两个输入的 `perf` 与 `trace`，共 16 次。固件与仿真器显式采用 4 个 IA cache blocks、16 个 PS frames 和 raw32 部分和存储。`--prepare-only` 检查工具及模型输入；`--firmware-only` 构建固件；`--build-only` 构建固件和仿真器。已经完成的有效结果可用 `--resume` 继续检查。
 
+窗口计数按构建记录中的 `window_lanes` 检查每拍有效元素上限，同时要求接受请求数等于完成数、请求元素数等于响应元素数，并在任务完成时确认窗口模块空闲。已完成运行可重新核验原始输出、日志和 INT32 部分和，记录本次解析程序的 SHA-256：
+
+```sh
+python test/gemmini_comparison/recheck_storage_models.py \
+  --repo "$PWD" --out /absolute/path/npu_models
+```
+
 Gemmini 完整模型仿真器由本仓库 `model_runtime/build_sim.py` 构建，使用与 NPU 相同的行为 RAM、CPU 适配器和 SoC 模块。每种固件策略分别运行上述 16 次执行。比较 `native`、`im2col`、`pipelined` 和 `selected` 四种策略时，共运行 64 次。
 
 ```sh
@@ -97,11 +106,13 @@ python test/gemmini_comparison/model_runtime/run_suite.py \
   --simulator /absolute/path/gemmini_models/model_simulator/obj/Vtb_model_benchmark \
   --firmware /absolute/path/gemmini_models/firmware_native_perf \
   --trace-firmware /absolute/path/gemmini_models/firmware_native_trace \
-  --firmware-repo /absolute/path/firmware_sources \
+  --firmware-repo /absolute/path/gemmini_models/firmware_sources_current \
   --samples 0 1 --kind both --jobs 2 --resume
 ```
 
 `--firmware-repo` 指向该套固件编译时的固定源码目录，执行前后均检查文件内容。`--resume` 重新核对仿真器、固件、实际结果文件、全部中间张量及日志后保留有效结果。不同策略可在独立输出目录并行执行，单次仿真仍采用相同 RTL 周期计数。
+
+`native` 和 `im2col` 使用其编译输入副本 `firmware_sources_current`；`pipelined` 使用环境包的 `source_im2col_pipelined`；`selected` 使用环境包的 `source_selected`。核验器根据每套固件记录的 SHA-256 检查相应目录，保留各策略的实际软件版本。
 
 ```sh
 python test/gemmini_comparison/compare_storage_models.py \
@@ -109,8 +120,10 @@ python test/gemmini_comparison/compare_storage_models.py \
   --npu /absolute/path/npu_models \
   --prepared "$NPU_EXPERIMENT_ROOT/prepared" \
   --gemmini-sim /absolute/path/gemmini_models/model_simulator \
-  --gemmini-variant "native=/absolute/path/gemmini_models/models_native=$PWD=native" \
-  --gemmini-variant "im2col=/absolute/path/gemmini_models/models_im2col=$PWD=im2col" \
+  --gemmini-variant "native=/absolute/path/gemmini_models/models_native=/absolute/path/gemmini_models/firmware_sources_current=native" \
+  --gemmini-variant "im2col=/absolute/path/gemmini_models/models_im2col=/absolute/path/gemmini_models/firmware_sources_current=im2col" \
+  --gemmini-variant "pipelined=/absolute/path/gemmini_models/models_pipelined=$NPU_EXPERIMENT_ROOT/source_im2col_pipelined=im2col" \
+  --gemmini-variant "selected=/absolute/path/gemmini_models/models_selected=$NPU_EXPERIMENT_ROOT/source_selected=auto" \
   --npu-capacity /absolute/path/npu_capacity/result.json \
   --gemmini-capacity /absolute/path/gemmini_capacity/result.json \
   --out /absolute/path/model_comparison
@@ -121,7 +134,7 @@ python test/gemmini_comparison/check_layer_speedup.py \
   --out /absolute/path/model_targets.json
 ```
 
-模型核验重新读取仿真器、固件 ELF、输入 RAM 镜像、实际输出、逐层记录和容量文件。整网汇总、逐输入层记录及全部层性能要求分别保存。
+模型核验重新读取仿真器、固件 ELF、输入 RAM 镜像、实际输出、逐层记录和容量文件。`runs.csv` 保留 80 次执行的原始计时，`model_samples.csv` 分别列出八个输入的完整 Invoke、初始化及初始化加首个 Invoke。逐层结果保留 68 个节点和 136 个输入记录，并独立计算每个输入是否达到性能要求。
 
 ## 检查器测试
 
@@ -130,6 +143,8 @@ python -m unittest discover \
   -s test/gemmini_comparison -p test_layer_speedup.py -v
 python -m unittest discover \
   -s test/gemmini_comparison -p test_storage_vector_profile.py -v
+python -m unittest discover \
+  -s test/gemmini_comparison -p test_model_window_checks.py -v
 ```
 
-测试覆盖整数边界、超出浮点精确范围的周期、不同计时起点、遗漏或重复输入、错误输出、RESHAPE、单个输入未达到要求及实际向量资源不一致。
+测试覆盖整数边界、超出浮点精确范围的周期、不同计时起点、遗漏或重复输入、错误输出、RESHAPE、单个输入未达到要求、实际向量资源不一致，以及 4/8/16 路窗口返回的计数范围和事务守恒。

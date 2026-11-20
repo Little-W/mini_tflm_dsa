@@ -159,6 +159,34 @@ def fnv1a(raw):
     return result
 
 
+def window_checks(window_jobs, network, window_lanes):
+    """按实际返回宽度检查窗口事务数、有效元素数和响应周期。"""
+    if type(window_lanes) is not int or window_lanes <= 0:
+        raise ValueError('窗口返回并行数必须来自实际仿真构建中的正整数参数')
+    fields = ('requests', 'completions', 'peak_outstanding', 'response_beats',
+              'requested_elements', 'response_elements', 'return_span_cycles',
+              'consecutive_responses', 'request_response_overlap')
+    checks = {}
+    checks['window_counter_domains'] = all(
+        type(row[key]) is int and row[key] >= 0 for row in window_jobs for key in fields)
+    checks['window_completion_records'] = len(window_jobs) == network['dw_jobs'] + network['pool_jobs']
+    checks['window_request_completion'] = all(row['requests'] == row['completions'] for row in window_jobs)
+    checks['window_response_elements'] = all(row['requested_elements'] == row['response_elements'] for row in window_jobs)
+    checks['window_outstanding_capacity'] = all(
+        (1 <= row['peak_outstanding'] <= min(4, row['requests'])) if row['requests'] else row['peak_outstanding'] == 0
+        for row in window_jobs)
+    checks['window_request_count'] = sum(row['requests'] for row in window_jobs) == network['dw_windows']
+    checks['depthwise_window_activity'] = all(row['requests'] > 0 and row['response_elements'] > 0
+                                              for row in window_jobs if row['operation'] == 2)
+    checks['window_response_counters'] = all(
+        row['response_beats'] <= row['response_elements'] <= window_lanes * row['response_beats'] and
+        row['response_beats'] <= row['return_span_cycles'] and
+        0 <= row['consecutive_responses'] <= max(0, row['response_beats'] - 1) and
+        0 <= row['request_response_overlap'] <= row['requests']
+        for row in window_jobs)
+    return checks
+
+
 def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_limit, extra_plusargs=()):
     cfg = case['config']; fw = Path(case['firmware_dir']); prepared = Path(case['prepared_dir'])
     trace = case['kind'] == 'trace'
@@ -171,10 +199,24 @@ def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_l
         extra_plusargs=[f'+MODEL_ADDR={cfg["model_address"]:x}', f'+MODEL_BYTES={cfg["model_bytes"]}',
                         f'+MODEL_FILE={out/"model_after.bin"}', f'+INPUT_ADDR={cfg["input_address"]:x}',
                         f'+INPUT_BYTES={cfg["input_bytes"]}', f'+INPUT_FILE={out/"input_after.bin"}', *extra_plusargs])
+    build = json.loads((Path(binary).resolve().parents[1] / 'build.json').read_text())
+    if build['binary_sha256'] != simulator['simulator_sha256']:
+        raise RuntimeError('窗口参数记录与实际执行的仿真二进制不一致')
+    return validate_case(out, case, firmware, simulator, latency=latency,
+                         window_lanes=build['profile']['window_lanes'])
+
+
+def validate_case(out, case, firmware, simulator, *, latency, window_lanes):
+    """重读完整推理文件，并使用固定构建中的窗口参数检查运行结果。"""
+    cfg = case['config']; prepared = Path(case['prepared_dir'])
+    trace = case['kind'] == 'trace'
+    fields = firmware['result_fields']
     value = {key: case[key] for key in ('model_id', 'sample_index', 'mode', 'mode_name', 'kind',
                                         'model', 'firmware_elf_sha256')}
     value['input_sha256'] = case['sample']['input']['sha256']
     value['ram_fixed_lat'] = latency
+    value['window_response_lanes'] = window_lanes
+    value['validation_source_sha256'] = {str(Path(__file__).relative_to(ROOT)): digest(__file__)}
     value.update(passed=False, case_dir=str(out), simulator=simulator, checks={}, trace=[])
     checks = value['checks']
     checks['simulator_completed'] = simulator['passed']
@@ -230,21 +272,7 @@ def execute_case(binary, out, case, firmware, *, latency, cycle_limit, seconds_l
             (network['ia_windows'] + network['kernel_windows'] > 0) == (case['expected_jobs']['conv_jobs'] > 0) and
             (network['dw_windows'] == 0 or case['expected_jobs']['dw_jobs'] + case['expected_jobs']['pool_jobs'] > 0))
         window_jobs = simulator['window_jobs']
-        checks['window_completion_records'] = len(window_jobs) == network['dw_jobs'] + network['pool_jobs']
-        checks['window_request_completion'] = all(row['requests'] == row['completions'] for row in window_jobs)
-        checks['window_response_elements'] = all(row['requested_elements'] == row['response_elements'] for row in window_jobs)
-        checks['window_outstanding_capacity'] = all(
-            (1 <= row['peak_outstanding'] <= min(4, row['requests'])) if row['requests'] else row['peak_outstanding'] == 0
-            for row in window_jobs)
-        checks['window_request_count'] = sum(row['requests'] for row in window_jobs) == network['dw_windows']
-        checks['depthwise_window_activity'] = all(row['requests'] > 0 and row['response_elements'] > 0
-                                                  for row in window_jobs if row['operation'] == 2)
-        checks['window_response_counters'] = all(
-            row['response_beats'] <= row['response_elements'] <= 4 * row['response_beats'] and
-            row['response_beats'] <= row['return_span_cycles'] and
-            0 <= row['consecutive_responses'] <= max(0, row['response_beats'] - 1) and
-            0 <= row['request_response_overlap'] <= row['requests']
-            for row in window_jobs)
+        checks.update(window_checks(window_jobs, network, window_lanes))
         if case['mode'] == 0:
             checks['cpu_only'] = all(total[key] == 0 for key in
                 ('jobs', 'done_jobs', 'npu_busy_cycles', 'npu_read_bytes', 'npu_write_bytes',
