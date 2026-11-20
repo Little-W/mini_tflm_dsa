@@ -4,10 +4,10 @@
 // 四个十位算术通道共用一个 DSP，各通道分别接收进位并保留完整结果。
 (* techmap_celltype = "$__FPGA_DSP_ALU4" *)
 module fpga_dsp_alu4 (
-    input  logic [39:0] A,
-    input  logic [39:0] B,
-    input  logic [3:0]  CI,
-    input  logic        BI,
+    input  wire logic [39:0] A,
+    input  wire logic [39:0] B,
+    input  wire logic [3:0]  CI,
+    input  wire logic        BI,
     output logic [39:0] X,
     output logic [39:0] Y,
     output logic [39:0] CO

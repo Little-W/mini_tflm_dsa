@@ -518,7 +518,7 @@ module kernel_count_increment #(
     end
 endmodule
 
-// FPGA 比较器并行计算四十七位差值，符号和零值由同一 DSP 提供。
+// 分块无符号比较并组合各块结果。
 module kernel_count_compare #(
     parameter int p_width = 48,
     parameter int p_chunk_width = 8
@@ -527,16 +527,7 @@ module kernel_count_compare #(
     input  wire logic [p_width-1:0] i_rhs,
     output logic o_ge
 );
-`ifdef SYNTHESIS
-`ifdef ASIC_SYNTHESIS
-    localparam bit p_fpga_compare = 1'b0;
-`else
-    localparam bit p_fpga_compare = 1'b1;
-`endif
-`else
-    localparam bit p_fpga_compare = 1'b0;
-`endif
-    localparam int p_compare_width = p_fpga_compare ? 47 : p_chunk_width;
+    localparam int p_compare_width = p_chunk_width;
     localparam int p_chunks = (p_width + p_compare_width - 1) / p_compare_width;
     localparam int p_leaves = 1 << $clog2(p_chunks);
     logic [2*p_leaves-1:1] equal_tree;
@@ -547,72 +538,10 @@ module kernel_count_compare #(
             localparam int p_low = part * p_compare_width;
             localparam int p_part_width = ((p_width - p_low) < p_compare_width) ?
                 p_width - p_low : p_compare_width;
-            if (p_fpga_compare) begin : g_dsp
-                logic [47:0] rhs_extended;
-                logic [29:0] dsp_i_a, dsp_i_acin;
-                logic [17:0] dsp_i_b, dsp_i_bcin;
-                logic [47:0] dsp_i_c, dsp_i_pcin, dsp_o_p;
-                logic [24:0] dsp_i_d;
-                logic [6:0] dsp_i_opmode;
-                logic [4:0] dsp_i_inmode;
-                logic [3:0] dsp_i_alumode;
-                logic [2:0] dsp_i_carryinsel;
-                logic dsp_i_zero, dsp_o_equal;
-                logic [29:0] unused_acout;
-                logic [17:0] unused_bcout;
-                logic [47:0] unused_pcout;
-                logic [3:0] unused_carryout;
-                logic unused_carrycascout, unused_multsignout;
-                logic unused_overflow, unused_underflow, unused_patternbdetect;
-
-                assign rhs_extended = 48'(i_rhs[p_low +: p_part_width]);
-                assign dsp_i_a = rhs_extended[47:18];
-                assign dsp_i_b = rhs_extended[17:0];
-                assign dsp_i_c = 48'(i_lhs[p_low +: p_part_width]);
-                assign dsp_i_acin = 30'd0;
-                assign dsp_i_bcin = 18'd0;
-                assign dsp_i_pcin = 48'd0;
-                assign dsp_i_d = 25'd0;
-                assign dsp_i_opmode = 7'b0110011;
-                assign dsp_i_inmode = 5'd0;
-                assign dsp_i_alumode = 4'b0011;
-                assign dsp_i_carryinsel = 3'd0;
-                assign dsp_i_zero = 1'b0;
-                assign equal_tree[p_leaves + part] = dsp_o_equal;
-                assign greater_tree[p_leaves + part] = !dsp_o_p[47] && !dsp_o_equal;
-
-                DSP48E1 #(
-                    .A_INPUT("DIRECT"), .B_INPUT("DIRECT"), .USE_DPORT("FALSE"),
-                    .USE_MULT("NONE"), .USE_SIMD("ONE48"),
-                    .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .CREG(0), .DREG(0),
-                    .ADREG(0), .MREG(0), .PREG(0), .INMODEREG(0), .OPMODEREG(0),
-                    .ALUMODEREG(0), .CARRYINREG(0), .CARRYINSELREG(0),
-                    .USE_PATTERN_DETECT("PATDET"), .MASK(48'd0), .PATTERN(48'd0)
-                ) u_dsp (
-                    .A(dsp_i_a), .B(dsp_i_b), .C(dsp_i_c), .D(dsp_i_d),
-                    .ACIN(dsp_i_acin), .BCIN(dsp_i_bcin), .PCIN(dsp_i_pcin),
-                    .ALUMODE(dsp_i_alumode), .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode),
-                    .CARRYIN(dsp_i_zero), .CARRYINSEL(dsp_i_carryinsel),
-                    .CARRYCASCIN(dsp_i_zero), .MULTSIGNIN(dsp_i_zero), .CLK(dsp_i_zero),
-                    .CEA1(dsp_i_zero), .CEA2(dsp_i_zero), .CEB1(dsp_i_zero), .CEB2(dsp_i_zero),
-                    .CEC(dsp_i_zero), .CED(dsp_i_zero), .CEAD(dsp_i_zero), .CEM(dsp_i_zero),
-                    .CEP(dsp_i_zero), .CEINMODE(dsp_i_zero), .CECTRL(dsp_i_zero),
-                    .CEALUMODE(dsp_i_zero), .CECARRYIN(dsp_i_zero),
-                    .RSTA(dsp_i_zero), .RSTB(dsp_i_zero), .RSTC(dsp_i_zero), .RSTD(dsp_i_zero),
-                    .RSTM(dsp_i_zero), .RSTP(dsp_i_zero), .RSTINMODE(dsp_i_zero),
-                    .RSTCTRL(dsp_i_zero), .RSTALUMODE(dsp_i_zero), .RSTALLCARRYIN(dsp_i_zero),
-                    .P(dsp_o_p), .CARRYOUT(unused_carryout),
-                    .ACOUT(unused_acout), .BCOUT(unused_bcout), .PCOUT(unused_pcout),
-                    .CARRYCASCOUT(unused_carrycascout), .MULTSIGNOUT(unused_multsignout),
-                    .OVERFLOW(unused_overflow), .UNDERFLOW(unused_underflow),
-                    .PATTERNDETECT(dsp_o_equal), .PATTERNBDETECT(unused_patternbdetect)
-                );
-            end else begin : g_logic
-                assign equal_tree[p_leaves + part] =
-                    i_lhs[p_low +: p_part_width] == i_rhs[p_low +: p_part_width];
-                assign greater_tree[p_leaves + part] =
-                    i_lhs[p_low +: p_part_width] > i_rhs[p_low +: p_part_width];
-            end
+            assign equal_tree[p_leaves + part] =
+                i_lhs[p_low +: p_part_width] == i_rhs[p_low +: p_part_width];
+            assign greater_tree[p_leaves + part] =
+                i_lhs[p_low +: p_part_width] > i_rhs[p_low +: p_part_width];
         end else begin : g_padding
             assign equal_tree[p_leaves + part] = 1'b1;
             assign greater_tree[p_leaves + part] = 1'b0;

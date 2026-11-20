@@ -1,7 +1,7 @@
 `default_nettype none
 module bounded_dsp_chain (
-    input logic clk,
-    input logic [31:0] i_a, i_b, i_c, i_d,
+    input wire logic clk,
+    input wire logic [31:0] i_a, i_b, i_c, i_d,
     output logic [31:0] o_y
 );
     logic [31:0] a_q, b_q, c_q, d_q;

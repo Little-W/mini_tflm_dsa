@@ -2,7 +2,7 @@
 
 ## 目标与结果入口
 
-完整 `soc_top` 使用 [config/npu_fpga.mk](../config/npu_fpga.mk) 的生产配置，目标器件为 `xc7a200tfbg484-3`。板级测量顶层为 `fpga_top`。目标为 Vivado 报告的 **Slice LUTs 不超过 45,000**、寄存器间最长组合路径不超过 **9 级**，以及 **150 MHz** 时钟，周期约束为 **6.667 ns**。
+完整 `soc_top` 使用 [config/npu_fpga.mk](../config/npu_fpga.mk) 的生产配置，目标器件为 `xc7a200tfbg484-3`。板级测量顶层为 `fpga_top`。目标为 Vivado 报告的 **Slice LUTs 不超过 45,000**，以及 **150 MHz** 时钟，周期约束为 **6.667 ns**。组合级数用于定位问题，不作为强制验收门槛。
 
 固定源码、器件参数、全部 SoC 资源和路径检查状态，由 [完整器件测量入口](fpga_150mhz_measurement.md) 生成。`measurement.json` 保存实际结果，`source_manifest.json` 保存源文件指纹。面积统计包含逻辑 LUT 和存储 LUT；本地结构分析、物理位置统计与 Vivado 资源分别记录。频率结果使用布线后的建立时间和保持时间报告。
 

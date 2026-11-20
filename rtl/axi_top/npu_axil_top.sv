@@ -273,10 +273,11 @@ module npu_axil_top #(
 `else
             logic npu_clk_gate_latch;
 
+            // Reset requests clock via npu_clk_reset_warmup_q. Never
+            // asynchronously modify the latch during the high phase: doing
+            // so could create a partial pulse on npu_core_clk.
             always_latch begin
-                if (!rst_n) begin
-                    npu_clk_gate_latch <= 1'b1;
-                end else if (!clk) begin
+                if (!clk) begin
                     npu_clk_gate_latch <= npu_clk_gate_en;
                 end
             end

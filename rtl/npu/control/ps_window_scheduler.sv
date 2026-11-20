@@ -177,7 +177,7 @@ module ps_window_scheduler #(
     localparam int unsigned PRODUCT_W = 2 * CAP_W + 1;
     logic [ROW_COUNT_W-1:0] prepare_rows;
     localparam int PART_MATH_W = ROW_COUNT_W > (ROW_PART_W+1) ? ROW_COUNT_W : (ROW_PART_W+1);
-    logic [PART_MATH_W-1:0] prepare_rows_extended, prepare_rows_last, prepare_rows_last_value;
+    logic [PART_MATH_W-1:0] prepare_rows_extended, prepare_rows_last;
     logic [PART_MATH_W-1:0] prepare_part_quotient, prepare_part_rounded;
     logic [TILE_W:0] prepare_remaining_columns;
     logic [ROW_PART_W:0] prepare_parts;
@@ -186,12 +186,9 @@ module ps_window_scheduler #(
     logic [CAP_W-1:0] next_target;
     wire [ROW_PART_W:0] remaining_tail = prepare_parts - next_row_part;
     // 切片取整的减一与加一按位计算，移位保持完整表达式宽度。
-    assign prepare_rows_extended = PART_MATH_W'(ROW_COUNT_W'(minimum(32'(cfg_rows), stream_rows_remaining)));
-    assign prepare_rows_last_value[0] = ~prepare_rows_extended[0];
-    for (genvar part_bit = 1; part_bit < PART_MATH_W; part_bit++) begin : g_part_decrement
-        assign prepare_rows_last_value[part_bit] = prepare_rows_extended[part_bit] ^
-            (~|prepare_rows_extended[part_bit-1:0]);
-    end
+    // 减法必须在扩展后执行，以保留零输入在 PART_MATH_W 位上的回绕。
+    assign prepare_rows_extended = PART_MATH_W'(prepare_rows);
+    assign prepare_rows_last = prepare_rows_extended - PART_MATH_W'(1);
     assign prepare_part_quotient = prepare_rows_last >> slice_shift;
     assign prepare_part_rounded[0] = ~prepare_part_quotient[0];
     for (genvar part_bit = 1; part_bit < PART_MATH_W; part_bit++) begin : g_part_increment
@@ -202,7 +199,6 @@ module ps_window_scheduler #(
     always_ff @(posedge clk) begin
         if (phase == PREPARING) begin
             prepare_rows <= ROW_COUNT_W'(minimum(32'(cfg_rows), stream_rows_remaining));
-            prepare_rows_last <= prepare_rows_last_value;
             prepare_remaining_columns <= remaining_columns;
             if (!sliced) prepare_parts <= (ROW_PART_W+1)'(1);
         end

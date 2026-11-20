@@ -61,6 +61,11 @@ module tb_conv_im2col_frontend;
       .tile_done,.tile_error,.error,.busy,
       .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
     );
+    // 对停顿、行切换和归约尾部检查新寄存状态与原组合判断一致。
+    always @(posedge clk) begin
+      if (rst_n && dut.past_active_q !== (dut.col_idx >= dut.active_cols_q))
+        $fatal(1, "active-column boundary mismatch");
+    end
     assign stat_hits=dut.tb_observer.stat_hits;
     assign stat_misses=dut.tb_observer.stat_misses;
     assign stat_read_bytes=dut.tb_observer.stat_read_bytes;

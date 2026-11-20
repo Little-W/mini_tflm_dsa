@@ -945,7 +945,7 @@ module vec_s8_fifo_row_ram #(
     parameter int unsigned DATA_WIDTH = 128,
     parameter int unsigned DEPTH = 16,
     parameter int unsigned ADDR_WIDTH = 4,
-    parameter string p_ram_style = "auto"
+    parameter [8*16-1:0] p_ram_style = "auto"
 ) (
     input  wire logic                  clk,
     input  wire logic                  wr_en,

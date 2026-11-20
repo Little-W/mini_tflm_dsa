@@ -16,23 +16,23 @@ module conv_im2col_frontend #(
   parameter int CW=$clog2(SIZE),
   parameter int RW=$clog2(SIZE+1)
 ) (
-  input logic clk, rst_n,
-  input logic cfg_valid,
+  input wire logic clk, rst_n,
+  input wire logic cfg_valid,
   output logic cfg_ready,
   input conv_im2col_pkg::conv_cfg_t cfg,
   // Native IA scheduler context. Zero groups disables the geometry policy for
   // standalone clients that do not promise the native descriptor order.
-  input logic [31:0] cfg_sched_r = 32'd0,
-  input logic [31:0] cfg_sched_groups = 32'd0,
-  input logic tile_valid,
+  input wire logic [31:0] cfg_sched_r = 32'd0,
+  input wire logic [31:0] cfg_sched_groups = 32'd0,
+  input wire logic tile_valid,
   output logic tile_ready,
-  input logic [31:0] tile_p0, tile_q0,
-  input logic [RW-1:0] tile_rows,
-  input logic [RW-1:0] tile_cols = '0, // Zero selects the full SIZE columns.
-  input logic [SLOT_W-1:0] tile_slot,
-  input logic [31:0] tile_group = 32'd0,
+  input wire logic [31:0] tile_p0, tile_q0,
+  input wire logic [RW-1:0] tile_rows,
+  input wire logic [RW-1:0] tile_cols = '0, // Zero selects the full SIZE columns.
+  input wire logic [SLOT_W-1:0] tile_slot,
+  input wire logic [31:0] tile_group = 32'd0,
   output logic wr_valid,
-  input logic wr_ready,
+  input wire logic wr_ready,
   output logic [SLOT_W-1:0] wr_slot,
   output logic [CW-1:0] wr_row, wr_col,
   output logic signed [15:0] wr_data [LANES],
@@ -40,16 +40,16 @@ module conv_im2col_frontend #(
   output logic tile_done, tile_error, error, busy,
   output logic wr_last,
   output logic arvalid,
-  input logic arready,
+  input wire logic arready,
   output logic [31:0] araddr,
   output logic [7:0] arlen,
   output logic [2:0] arsize,
   output logic [1:0] arburst,
-  input logic rvalid,
+  input wire logic rvalid,
   output logic rready,
-  input logic [BUS_WIDTH-1:0] rdata,
-  input logic [1:0] rresp,
-  input logic rlast
+  input wire logic [BUS_WIDTH-1:0] rdata,
+  input wire logic [1:0] rresp,
+  input wire logic rlast
 );
   import conv_im2col_pkg::*;
   typedef enum logic [4:0] {IDLE, P_DECODE, P_START, P_WAIT, Q_DECODE, Q_START, Q_WAIT,
@@ -92,6 +92,7 @@ module conv_im2col_frontend #(
   logic row_last_q, next_row_last;
   logic unused_row_index_carry;
   logic [TILE_COUNT_W-1:0] col_remaining, active_remaining;
+  logic past_active_q;
   logic [16:0] group_remaining;
   logic [LANES-1:0] chunk_lane_allowed, word_lane_allowed, chunk_end_lane;
   logic chunk_reaches_end;
@@ -1231,7 +1232,7 @@ module conv_im2col_frontend #(
     chunk_count = '0;
     for (int lane=0;lane<LANES;lane++) begin
       chunk_lane_allowed[lane]=TILE_COUNT_W'(lane)<col_remaining &&
-        (col_idx>=active_cols_q || (group_lane_allowed[lane] && TILE_COUNT_W'(lane)<active_remaining)) &&
+        (past_active_q || (group_lane_allowed[lane] && TILE_COUNT_W'(lane)<active_remaining)) &&
         ((state!=STREAM && state!=WAIT_WORD) || word_lane_allowed[lane]);
       if (chunk_lane_allowed[lane]) chunk_count=CHUNK_COUNT_W'(lane+1);
     end
@@ -1519,6 +1520,7 @@ module conv_im2col_frontend #(
       incoming_tap_wrap_q <= 1'b0;
       col_remaining <= TILE_COUNT_W'(SIZE);
       active_remaining <= '0;
+      past_active_q <= 1'b1;
       ox_q <= 16'(0); oy_q <= 16'(0); ky_q <= 16'(0); kx_q <= 16'(0); ky0_q <= 16'(0); kx0_q <= 16'(0); ch0_q <= 16'(0);
       group_range_q <= 4'b0000;
       tap_group_base<=0;row_group_base<=0;
@@ -1588,7 +1590,8 @@ module conv_im2col_frontend #(
             row_last_q <= TILE_COUNT_W'(tile_rows) == TILE_COUNT_W'(1);
             rows_q<=TILE_COUNT_W'(tile_rows); cols_q <= (tile_cols==0) ? TILE_COUNT_W'(SIZE) : TILE_COUNT_W'(tile_cols);
             // 接收描述符时保存剩余列数，后续写入直接消费该计数。
-            col_remaining <= (tile_cols==0) ? TILE_COUNT_W'(SIZE) : TILE_COUNT_W'(tile_cols);
+             col_remaining <= (tile_cols==0) ? TILE_COUNT_W'(SIZE) : TILE_COUNT_W'(tile_cols);
+             past_active_q <= 1'b0;
             if (reduction_len-tile_q0<32'(tile_cols==0 ? TILE_COUNT_W'(SIZE) : TILE_COUNT_W'(tile_cols))) begin
               active_cols_q <= TILE_COUNT_W'(reduction_len-tile_q0);
               active_remaining <= TILE_COUNT_W'(reduction_len-tile_q0);
@@ -1632,8 +1635,9 @@ module conv_im2col_frontend #(
             if (row_last_q) begin tile_done<=1; state<=IDLE; end
             else begin
               row_idx<=next_row_idx; row_last_q<=next_row_last; col_idx<=0; q_current<={1'b0,q0};
-              col_remaining <= cols_q;
-              active_remaining <= active_cols_q;
+               col_remaining <= cols_q;
+               active_remaining <= active_cols_q;
+               past_active_q <= 1'b0;
               ky_q <= 16'(ky0); kx_q <= 16'(kx0); tap_wrap_q <= kernel_width_valid_q && (16'(kx0) == last_kernel_col_q);
               group_range_q <= group_range_next[1];
               if (row_wrap) begin ox_q <= 16'(0); row_wrap_q <= c.output_w != 16'd0 && (16'(0) == last_output_col_q); oy_q <= 16'(oy+1); end
@@ -1658,8 +1662,10 @@ module conv_im2col_frontend #(
             col_idx<=col_idx+TILE_COUNT_W'(chunk_count); q_current<=next_q_current;
             // 填充列同样推进计数，保留原有定宽减法的回绕结果。
             col_remaining <= col_remaining - TILE_COUNT_W'(chunk_count);
-            active_remaining <= active_remaining - TILE_COUNT_W'(chunk_count);
-            if (col_idx>=active_cols_q || TILE_COUNT_W'(chunk_count)>=active_remaining) state<=ZERO_STREAM;
+             active_remaining <= active_remaining - TILE_COUNT_W'(chunk_count);
+             // 仅在写入握手时推进；到达有效尾部后保持，直到下一行或描述符。
+             past_active_q <= past_active_q || TILE_COUNT_W'(chunk_count)>=active_remaining;
+             if (past_active_q || TILE_COUNT_W'(chunk_count)>=active_remaining) state<=ZERO_STREAM;
             else if (group_end_o_equal) begin
 
               group_range_q <= group_range_next[0];

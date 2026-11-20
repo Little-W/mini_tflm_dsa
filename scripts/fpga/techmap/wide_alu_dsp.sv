@@ -9,10 +9,10 @@ module fpga_dsp_alu #(
     parameter integer B_WIDTH  = 1,
     parameter integer Y_WIDTH  = 1
 ) (
-    input  logic [A_WIDTH-1:0] A,
-    input  logic [B_WIDTH-1:0] B,
-    input  logic               CI,
-    input  logic               BI,
+    input  wire logic [A_WIDTH-1:0] A,
+    input  wire logic [B_WIDTH-1:0] B,
+    input  wire logic               CI,
+    input  wire logic               BI,
     output logic [Y_WIDTH-1:0] X,
     output logic [Y_WIDTH-1:0] Y,
     output logic [Y_WIDTH-1:0] CO

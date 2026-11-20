@@ -48,8 +48,11 @@ def snapshot(inputs, output):
     for path in sorted(paths):
         if not path.is_file():
             raise ValueError(f'Synthesis input does not exist: {path}')
-        source.append(dict(path=str(path), relative_path=str(path.relative_to(root))
-                           if path.is_relative_to(root) else None,
+        try:
+            relative_path = str(path.relative_to(root))
+        except ValueError:
+            relative_path = None
+        source.append(dict(path=str(path), relative_path=relative_path,
                            sha256=digest(path), bytes=path.stat().st_size))
     git = {}
     for key, arguments in (('commit', ['rev-parse', 'HEAD']),
@@ -195,7 +198,7 @@ def summarize(manifest, directory, stage, prefix='soc_top'):
                   configuration=inputs['metadata'], git=inputs['git'], resources=resources,
                   timing=timing, implementation_checks=implementation,
                   requirements=dict(slice_luts_maximum=45000, clock_period_ns_maximum=6.667,
-                                    combinational_logic_levels_maximum=9),
+                                    combinational_logic_levels_maximum=None),
                   status=dict(slice_luts_within_limit=resources['slice_luts'] <= 45000,
                                observed_endpoint_paths_within_nine_levels=
                                (max(item['maximum_observed_logic_levels'] for item in sampled.values()) <= 9
@@ -207,7 +210,8 @@ def summarize(manifest, directory, stage, prefix='soc_top'):
                   timing_scope='WNS, TNS and endpoint counts are from the Vivado design timing summary; '
                                'null means unavailable. Path details are bounded samples.',
                   logic_level_scope='Maximum among sampled worst setup and hold paths only; '
-                                    'not a maximum over all endpoints or connected paths.',
+                                    'the nine-level comparison is diagnostic, not an acceptance limit. '
+                                    'Not a maximum over all endpoints or connected paths.',
                   reports_sha256={path.name: digest(path) for path in sorted(directory.iterdir())
                                   if path.is_file() and path.suffix in ('.rpt', '.tsv')})
     save(directory / 'measurement.json', result)

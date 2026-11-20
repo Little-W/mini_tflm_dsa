@@ -9,28 +9,28 @@ module conv_window_queue #(
   parameter int COUNT_W=$clog2(DEPTH+1),
   parameter int p_max_cols=16
 ) (
-  input logic clk,rst_n,configure,enable,
-  input logic req_valid,
+  input wire logic clk,rst_n,configure,enable,
+  input wire logic req_valid,
   output logic req_ready,
-  input logic [31:0] req_p0,req_q0,req_cols,
-  input logic [TAG_W-1:0] req_tag,
+  input wire logic [31:0] req_p0,req_q0,req_cols,
+  input wire logic [TAG_W-1:0] req_tag,
   output logic rsp_valid,
-  input logic rsp_ready,
+  input wire logic rsp_ready,
   output logic [TAG_W-1:0] rsp_tag,
   output logic [COL_W-1:0] rsp_col,
   output logic signed [15:0] rsp_data[4],
   output logic [3:0] rsp_mask,
   output logic rsp_last,rsp_error,busy,
   output logic frontend_valid,frontend_active,
-  input logic frontend_ready,
+  input wire logic frontend_ready,
   output logic [31:0] frontend_p0,frontend_q0,frontend_cols,
   output logic frontend_cols_valid,
-  input logic frontend_rsp_valid,
+  input wire logic frontend_rsp_valid,
   output logic frontend_rsp_ready,
-  input logic [COL_W-1:0] frontend_rsp_col,
-  input logic signed [15:0] frontend_rsp_data[4],
-  input logic [3:0] frontend_rsp_mask,
-  input logic frontend_rsp_last,frontend_error);
+  input wire logic [COL_W-1:0] frontend_rsp_col,
+  input wire logic signed [15:0] frontend_rsp_data[4],
+  input wire logic [3:0] frontend_rsp_mask,
+  input wire logic frontend_rsp_last,frontend_error);
   logic descriptor_i_wr_en;
   logic [PTR_W-1:0] descriptor_i_wr_addr;
   logic [2:0][31:0] descriptor_i_wr_data;

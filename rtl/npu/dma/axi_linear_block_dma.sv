@@ -461,14 +461,28 @@ module axi_linear_block_dma #(
         assign page_follow_beats = rd_segment_remaining[segment] - beat_count_t'(page_beats);
         assign limit_follow_beats = rd_segment_remaining[segment] - beat_count_t'(MAX_BURST_BEATS);
         assign rd_segment_beats[segment] = page_limited ? beat_count_t'(page_beats) : limited_beats;
-        assign rd_segment_follow[segment] = page_limited ? page_follow_beats :
-            (burst_limited ? limit_follow_beats : beat_count_t'(0));
         if (segment == 0) begin : g_first_address
             // 普通首行与合并首行分别完成地址计算，合并条件只选择最终地址。
             assign rd_segment_next_addr[segment] = rd_merge_rows ?
                 address_candidate[1] : address_candidate[0];
+            // 同样将首段剩余拍数分支提前计算，避免合并资格判定串接页比较。
+            beat_count_t follow_candidate [2];
+            for (genvar candidate = 0; candidate < 2; candidate++) begin : g_follow_candidate
+                beat_count_t remaining, page_follow, limit_follow;
+                logic page_limit, burst_limit;
+                assign remaining = candidate == 0 ? rd_first_beats : beat_count_t'(rd_merged_beats);
+                assign page_limit = page_beats < 13'(MAX_BURST_BEATS) && 13'(remaining) > page_beats;
+                assign burst_limit = remaining > beat_count_t'(MAX_BURST_BEATS);
+                assign page_follow = remaining - beat_count_t'(page_beats);
+                assign limit_follow = remaining - beat_count_t'(MAX_BURST_BEATS);
+                assign follow_candidate[candidate] = page_limit ? page_follow :
+                    (burst_limit ? limit_follow : beat_count_t'(0));
+            end
+            assign rd_segment_follow[segment] = rd_merge_rows ? follow_candidate[1] : follow_candidate[0];
         end else begin : g_next_address
             assign rd_segment_next_addr[segment] = address_candidate[0];
+            assign rd_segment_follow[segment] = page_limited ? page_follow_beats :
+                (burst_limited ? limit_follow_beats : beat_count_t'(0));
         end
 
         logic [7:0] remaining_len, page_len, page_last_full_word;
@@ -482,8 +496,30 @@ module axi_linear_block_dma #(
         assign page_byte_offset_nonzero = rd_segment_addr[segment][ADDR_LSB-1:0] != '0;
         assign {unused_page_length_borrow, page_len} = {1'b0, page_last_full_word} -
             {8'b0, page_byte_offset_nonzero};
-        assign rd_segment_len[segment] = page_limited ? page_len :
-            (burst_limited ? 8'(MAX_BURST_BEATS-1) : remaining_len);
+        if (segment == 0) begin : g_first_length
+            logic [7:0] length_candidate [2];
+            for (genvar candidate = 0; candidate < 2; candidate++) begin : g_candidate
+                beat_count_t remaining;
+                logic candidate_page_limit, candidate_burst_limit;
+                logic [7:0] candidate_remaining_len;
+                assign remaining = candidate == 0 ? rd_first_beats : beat_count_t'(rd_merged_beats);
+                assign candidate_page_limit = page_beats < 13'(MAX_BURST_BEATS) &&
+                    13'(remaining) > page_beats;
+                assign candidate_burst_limit = remaining > beat_count_t'(MAX_BURST_BEATS);
+                assign candidate_remaining_len[0] = ~remaining[0];
+                for (genvar bit_index = 1; bit_index < 8; bit_index++) begin : g_borrow
+                    assign candidate_remaining_len[bit_index] = remaining[bit_index] ^
+                        !(|remaining[bit_index-1:0]);
+                end
+                assign length_candidate[candidate] = candidate_page_limit ? page_len :
+                    (candidate_burst_limit ? 8'(MAX_BURST_BEATS-1) : candidate_remaining_len);
+            end
+            // 合并资格只在页限制、突发限制及减一运算完成后选择结果。
+            assign rd_segment_len[segment] = rd_merge_rows ? length_candidate[1] : length_candidate[0];
+        end else begin : g_next_length
+            assign rd_segment_len[segment] = page_limited ? page_len :
+                (burst_limited ? 8'(MAX_BURST_BEATS-1) : remaining_len);
+        end
 
         // 剩余拍数的减一结果提前计算，最终长度只选择已经完成的三个候选值。
         // 仅保留低八位，包含零拍数对应的模减法结果。

@@ -193,66 +193,9 @@ module frame_address_prepare #(
         end
     end
 
+    // 参数保留以兼容原有实例；乘加寄存器与原 PREG 一样无复位并受使能控制。
     generate
-        if (p_use_dsp) begin : g_dsp
-            logic [29:0] dsp_i_a, dsp_i_acin;
-            logic [17:0] dsp_i_b, dsp_i_bcin;
-            logic [47:0] dsp_i_c, dsp_i_pcin;
-            logic [24:0] dsp_i_d;
-            logic [6:0] dsp_i_opmode;
-            logic [4:0] dsp_i_inmode;
-            logic [3:0] dsp_i_alumode;
-            logic [2:0] dsp_i_carry_select;
-            logic dsp_i_zero, dsp_i_en;
-            logic [47:0] dsp_o_p, unused_pcout;
-            logic [29:0] unused_acout;
-            logic [17:0] unused_bcout;
-            logic [3:0] unused_carryout;
-            logic unused_carrycascout, unused_multsignout;
-            logic unused_overflow, unused_underflow;
-            logic unused_patterndetect, unused_patternbdetect;
-
-            assign dsp_i_a = {{12{multiply_a[17]}}, multiply_a};
-            assign dsp_i_b = multiply_b;
-            assign dsp_i_c = {16'd0, addend};
-            assign dsp_i_acin = '0;
-            assign dsp_i_bcin = '0;
-            assign dsp_i_pcin = '0;
-            assign dsp_i_d = '0;
-            assign dsp_i_opmode = (phase == 2'd0) ? 7'b0110101 : ((phase == 2'd1) ? 7'b1100101 : 7'b0100101);
-            assign dsp_i_inmode = '0;
-            assign dsp_i_alumode = '0;
-            assign dsp_i_carry_select = '0;
-            assign dsp_i_zero = 1'b0;
-            assign dsp_i_en = multiply_en;
-            assign accumulated = dsp_o_p;
-
-            // PREG 每周期保存乘加结果，反馈可直接取完整 P 或算术右移十七位的 P。
-            DSP48E1 #(
-                .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .ADREG(0),
-                .CREG(0), .DREG(0), .MREG(0), .PREG(1), .CARRYINREG(0),
-                .CARRYINSELREG(0), .INMODEREG(0), .OPMODEREG(0), .ALUMODEREG(0),
-                .USE_DPORT("FALSE"), .USE_MULT("MULTIPLY"), .USE_SIMD("ONE48")
-            ) u_dsp (
-                .CLK(clk), .A(dsp_i_a), .ACIN(dsp_i_acin), .B(dsp_i_b), .BCIN(dsp_i_bcin),
-                .C(dsp_i_c), .D(dsp_i_d), .PCIN(dsp_i_pcin),
-                .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode), .ALUMODE(dsp_i_alumode),
-                .CARRYIN(dsp_i_zero), .CARRYINSEL(dsp_i_carry_select),
-                .CARRYCASCIN(dsp_i_zero), .MULTSIGNIN(dsp_i_zero),
-                .CEA1(dsp_i_zero), .CEA2(dsp_i_zero), .CEAD(dsp_i_zero),
-                .CEB1(dsp_i_zero), .CEB2(dsp_i_zero), .CEC(dsp_i_zero),
-                .CECARRYIN(dsp_i_zero), .CED(dsp_i_zero), .CEM(dsp_i_zero), .CEP(dsp_i_en),
-                .CECTRL(dsp_i_zero), .CEINMODE(dsp_i_zero), .CEALUMODE(dsp_i_zero),
-                .RSTA(dsp_i_zero), .RSTB(dsp_i_zero), .RSTC(dsp_i_zero), .RSTD(dsp_i_zero),
-                .RSTM(dsp_i_zero), .RSTP(dsp_i_zero), .RSTALLCARRYIN(dsp_i_zero),
-                .RSTCTRL(dsp_i_zero), .RSTINMODE(dsp_i_zero), .RSTALUMODE(dsp_i_zero),
-                .P(dsp_o_p), .ACOUT(unused_acout), .BCOUT(unused_bcout),
-                .PCOUT(unused_pcout), .CARRYOUT(unused_carryout),
-                .CARRYCASCOUT(unused_carrycascout), .MULTSIGNOUT(unused_multsignout),
-                .OVERFLOW(unused_overflow), .UNDERFLOW(unused_underflow),
-                .PATTERNDETECT(unused_patterndetect), .PATTERNBDETECT(unused_patternbdetect)
-            );
-        end else begin : g_generic
+        begin : g_generic
             logic signed [35:0] partial_product;
             logic signed [47:0] feedback;
             assign partial_product = multiply_a * multiply_b;

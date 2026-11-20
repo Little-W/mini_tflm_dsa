@@ -226,6 +226,7 @@ int main(int argc,char** argv) {
         Simulation simulation;
         std::mt19937 rng(20261117);
         const bool irregular_only=argc>1 && std::string(argv[1])=="--irregular-only";
+        const unsigned max_reuse=argc>1 && std::string(argv[1])=="--max-reuse-4" ? 4 : 0;
         unsigned cases1=0,cases2=0,directed=0;
         if(!irregular_only) {
             for(unsigned slice:{1U,2U})
@@ -248,6 +249,7 @@ int main(int argc,char** argv) {
             {65,17,17,4,16,1}, {65,17,33,4,16,2}, {1,269,129,4,16,1}
         };
         for(const auto& cfg:directed_cases) {
+            if(max_reuse && cfg.reuse_rows>max_reuse) continue;
             run_case(simulation,cfg,unsigned(totals.cases),directed%3,rng);
             ++directed;
         }

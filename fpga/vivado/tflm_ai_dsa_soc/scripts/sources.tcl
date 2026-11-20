@@ -92,6 +92,7 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $common_root add_equal.sv] \
         [file join $common_root add3_equal.sv] \
         [file join $common_root onehot_check.sv] \
+        [file join $common_root parallel_prefix_add.sv] \
         [file join $npu_compute_root shift_accumulator.sv] \
         [file join $npu_writeback_root requant_compute_lane.sv] \
         [file join $npu_writeback_root requant_group_buffer.sv] \

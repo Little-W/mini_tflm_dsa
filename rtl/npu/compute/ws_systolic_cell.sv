@@ -10,12 +10,12 @@ module ws_systolic_cell #(
     parameter int unsigned ACC_WIDTH     = 32,  // 累加/输出位宽，默认32位
     parameter bit p_exchange_weights = 1'b1
 ) (
-    input  logic                            clk,
-    input  logic                            commit_weight,
-    input  logic                            store_weight_req,  // 置位时加载新权重
-    input  logic signed [ WEIGHT_WIDTH-1:0] weight_in,
-    input  logic signed [DATA_IN_WIDTH-1:0] data_in,
-    input  logic signed [    ACC_WIDTH-1:0] sum_in,
+    input  wire logic                            clk,
+    input  wire logic                            commit_weight,
+    input  wire logic                            store_weight_req,  // 置位时加载新权重
+    input  wire logic signed [ WEIGHT_WIDTH-1:0] weight_in,
+    input  wire logic signed [DATA_IN_WIDTH-1:0] data_in,
+    input  wire logic signed [    ACC_WIDTH-1:0] sum_in,
     output logic signed [DATA_IN_WIDTH-1:0] data_out,
     output logic signed [ WEIGHT_WIDTH-1:0] weight_out,
     output logic signed [    ACC_WIDTH-1:0] sum_out

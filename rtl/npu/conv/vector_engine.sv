@@ -1566,7 +1566,7 @@ module vector_engine #(
 `endif
 endmodule
 
-// 三个无符号地址分量先保存逐位进位，再由 DSP 完成完整宽度加法。
+// 三个无符号地址分量进行完整宽度组合加法。
 module vector_read_address_add #(
 `ifdef ASIC_SYNTHESIS
   parameter bit p_use_dsp = 1'b0
@@ -1585,76 +1585,8 @@ module vector_read_address_add #(
   output logic [31:0] o_address,
   output logic [1:0] o_carry
 );
-  if (p_use_dsp) begin : g_dsp
-    logic [31:0] extended_channel, sum_bits, carry_bits;
-    logic [47:0] extended_sum;
-    logic [29:0] dsp_i_a, dsp_i_acin;
-    logic [17:0] dsp_i_b, dsp_i_bcin;
-    logic [47:0] dsp_i_c, dsp_i_pcin;
-    logic [24:0] dsp_i_d;
-    logic [6:0] dsp_i_opmode;
-    logic [4:0] dsp_i_inmode;
-    logic [3:0] dsp_i_alumode;
-    logic [2:0] dsp_i_carry_select;
-    logic dsp_i_zero;
-    logic [47:0] dsp_o_p;
-    logic [29:0] unused_acout;
-    logic [17:0] unused_bcout;
-    logic [47:0] unused_pcout;
-    logic [3:0] unused_carryout;
-    logic unused_carrycascout, unused_multsignout;
-    logic unused_overflow, unused_underflow;
-    logic unused_patterndetect, unused_patternbdetect;
-
-    assign extended_channel = {16'd0, i_channel};
-    // 三个地址分量逐位产生和位及进位，进位在下一步统一左移。
-    assign sum_bits = i_base ^ i_offset ^ extended_channel;
-    assign carry_bits = (i_base & i_offset) | (i_base & extended_channel) |
-        (i_offset & extended_channel);
-    assign extended_sum = {16'd0, sum_bits};
-    assign dsp_i_a = extended_sum[47:18];
-    assign dsp_i_b = extended_sum[17:0];
-    assign dsp_i_c = {15'd0, carry_bits, 1'b0};
-    assign dsp_i_acin = '0;
-    assign dsp_i_bcin = '0;
-    assign dsp_i_pcin = '0;
-    assign dsp_i_d = '0;
-    assign dsp_i_opmode = 7'b0110011;
-    assign dsp_i_inmode = '0;
-    assign dsp_i_alumode = '0;
-    assign dsp_i_carry_select = '0;
-    assign dsp_i_zero = 1'b0;
-
-    // 所有内部寄存器均旁路，读请求仍在原来的周期提供地址。
-    // 保留两位溢出，覆盖两个三十二位分量与十六位通道号的完整和。
-    DSP48E1 #(
-      .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .ADREG(0),
-      .CREG(0), .DREG(0), .MREG(0), .PREG(0), .CARRYINREG(0),
-      .CARRYINSELREG(0), .INMODEREG(0), .OPMODEREG(0), .ALUMODEREG(0),
-      .USE_DPORT("FALSE"), .USE_MULT("NONE"), .USE_SIMD("ONE48")
-    ) u_dsp (
-      .CLK(clk), .A(dsp_i_a), .ACIN(dsp_i_acin), .B(dsp_i_b), .BCIN(dsp_i_bcin),
-      .C(dsp_i_c), .D(dsp_i_d), .PCIN(dsp_i_pcin),
-      .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode), .ALUMODE(dsp_i_alumode),
-      .CARRYIN(dsp_i_zero), .CARRYINSEL(dsp_i_carry_select),
-      .CARRYCASCIN(dsp_i_zero), .MULTSIGNIN(dsp_i_zero),
-      .CEA1(dsp_i_zero), .CEA2(dsp_i_zero), .CEAD(dsp_i_zero),
-      .CEB1(dsp_i_zero), .CEB2(dsp_i_zero), .CEC(dsp_i_zero),
-      .CECARRYIN(dsp_i_zero), .CED(dsp_i_zero), .CEM(dsp_i_zero), .CEP(dsp_i_zero),
-      .CECTRL(dsp_i_zero), .CEINMODE(dsp_i_zero), .CEALUMODE(dsp_i_zero),
-      .RSTA(dsp_i_zero), .RSTB(dsp_i_zero), .RSTC(dsp_i_zero), .RSTD(dsp_i_zero),
-      .RSTM(dsp_i_zero), .RSTP(dsp_i_zero), .RSTALLCARRYIN(dsp_i_zero),
-      .RSTCTRL(dsp_i_zero), .RSTINMODE(dsp_i_zero), .RSTALUMODE(dsp_i_zero),
-      .P(dsp_o_p), .ACOUT(unused_acout), .BCOUT(unused_bcout), .PCOUT(unused_pcout),
-      .CARRYOUT(unused_carryout), .CARRYCASCOUT(unused_carrycascout),
-      .MULTSIGNOUT(unused_multsignout), .OVERFLOW(unused_overflow),
-      .UNDERFLOW(unused_underflow), .PATTERNDETECT(unused_patterndetect),
-      .PATTERNBDETECT(unused_patternbdetect)
-    );
-    assign {o_carry, o_address} = dsp_o_p[33:0];
-  end else begin : g_generic
-    assign {o_carry, o_address} = {2'b00, i_base} + {2'b00, i_offset} + {18'd0, i_channel};
-  end
+  // 无寄存器组合加法，保留完整进位。
+  assign {o_carry, o_address} = {2'b00, i_base} + {2'b00, i_offset} + {18'd0, i_channel};
 endmodule
 
 // 权重采用异步读取，计算单元在原有发射周期接收当前卷积核位置的数据。

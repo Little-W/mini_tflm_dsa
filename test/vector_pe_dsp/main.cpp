@@ -8,14 +8,15 @@
 #include <limits>
 #include <random>
 
-static uint32_t expected(unsigned operation, int16_t a, int16_t b, int32_t acc) {
+static uint32_t expected(unsigned operation, int16_t a, int16_t b, int32_t acc, bool extended = false) {
     switch (operation) {
     case 0: return uint32_t(int64_t(a) * int64_t(b) + int64_t(acc));
     case 1: return uint32_t(int64_t(acc) + int64_t(a));
     case 2: return uint32_t(acc > int32_t(a) ? acc : int32_t(a));
     case 3: return uint32_t(acc < int32_t(a) ? acc : int32_t(a));
     case 4: return uint32_t(int64_t(a) * int64_t(b));
-    case 5: case 6: return 0;
+    case 5: return extended ? uint32_t(uint16_t(a)) * uint32_t(uint16_t(b)) : 0;
+    case 6: return extended ? uint32_t(int64_t(a) * uint16_t(b)) : 0;
     default: return uint32_t(acc);
     }
 }
@@ -52,6 +53,12 @@ int main(int argc, char **argv) {
         dut.i_b = uint16_t(b);
         dut.i_acc = uint32_t(acc);
         dut.eval();
+        const uint32_t direct_want = expected(operation, a, b, acc, true);
+        if (uint32_t(dut.o_extended) != direct_want) {
+            std::fprintf(stderr, "Extended PE mismatch op=%u a=%d b=%d acc=%d expected=%08x got=%08x\n",
+                         operation, int(a), int(b), int(acc), direct_want, uint32_t(dut.o_extended));
+            std::exit(1);
+        }
         check();
         dut.clk = 1;
         if (enable) {

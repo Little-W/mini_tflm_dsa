@@ -9,7 +9,8 @@ module regfile #(
     parameter int p_write_unit = 8,
     parameter int p_read_ports = 1,
     parameter bit p_sync_read = 1'b1,
-    parameter string p_ram_style = "auto"
+    // Packed string keeps the synthesis attribute compatible with Vivado.
+    parameter [8*16-1:0] p_ram_style = "auto"
 ) (
     input  wire logic clk,
     input  wire logic i_wr_en,

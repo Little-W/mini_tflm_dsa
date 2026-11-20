@@ -177,7 +177,6 @@ module ia_loader_cache_mgr #(
     end
   end else begin : g_external_ram
     localparam int p_compact_lanes = (BYTE_PER_BEAT < SIZE) ? BYTE_PER_BEAT : SIZE;
-    localparam int p_compact_groups = (p_compact_lanes + 3) / 4;
     logic [1:0] write_en;
     logic [RAM_WORD_ADDR_WIDTH-1:0] write_addr [0:1];
     logic [127:0] write_data [0:1];
@@ -186,33 +185,20 @@ module ia_loader_cache_mgr #(
     logic [SIZE*8-1:0] compact_source_bytes, compact_shifted_bytes;
     logic [7:0] compact_input_byte [p_compact_lanes];
     logic [7:0] compact_write_byte [SIZE];
-    logic compact_add_i_zero, compact_add_i_one;
 
     // 紧凑字节先完成偏移运算，再按列位置排列。
     // 排列后的写掩码选择数据字节或零数据对应的紧凑字节。
     assign compact_empty_byte = 8'(0 - compact_offset);
-    assign compact_add_i_zero = 1'b0;
-    assign compact_add_i_one = 1'b1;
-    for (genvar group_index = 0; group_index < p_compact_groups; group_index++) begin : g_compact_add
-      logic signed [47:0] packed_lhs, packed_rhs, packed_sum;
+    for (genvar lane = 0; lane < p_compact_lanes; lane++) begin : g_compact_add
+      logic [4:0] low_sum;
+      logic [3:0] high_sum0, high_sum1;
 
-      // 每个字节零扩展到独立的 12 位通道，低八位保持模 256 运算。
-      // DSP 的分段进位与通用表达式均隔离各通道的数据和未知位传播。
-      for (genvar group_lane = 0; group_lane < 4; group_lane++) begin : g_lane
-        localparam int p_lane = 4 * group_index + group_lane;
-        if (p_lane < p_compact_lanes) begin : g_input
-          assign packed_lhs[group_lane*12 +: 12] = {4'd0, 8'(wr_data[p_lane])};
-          assign packed_rhs[group_lane*12 +: 12] = {4'd0, compact_empty_byte};
-          assign compact_input_byte[p_lane] = packed_sum[group_lane*12 +: 8];
-        end else begin : g_padding
-          assign packed_lhs[group_lane*12 +: 12] = '0;
-          assign packed_rhs[group_lane*12 +: 12] = '0;
-        end
-      end
-      select_add #(.p_width(48), .p_split_12bit(1'b1)) u_compact_add (
-        .i_lhs(packed_lhs), .i_rhs0(packed_rhs), .i_rhs1(packed_rhs),
-        .i_rhs_select(compact_add_i_zero), .i_add_enable(compact_add_i_one), .o_sum(packed_sum)
-      );
+      // 两个高半字节候选与低半字节并行计算，缩短数据到高位的进位路径。
+      // 结果仍是独立字节模 256 加法，不改变写命令寄存周期。
+      assign low_sum = {1'b0, wr_data[lane][3:0]} + {1'b0, compact_empty_byte[3:0]};
+      assign high_sum0 = wr_data[lane][7:4] + compact_empty_byte[7:4];
+      assign high_sum1 = wr_data[lane][7:4] + compact_empty_byte[7:4] + 4'd1;
+      assign compact_input_byte[lane] = {low_sum[4] ? high_sum1 : high_sum0, low_sum[3:0]};
     end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_compact_write
       if (lane < BYTE_PER_BEAT) begin : g_source

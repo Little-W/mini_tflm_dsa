@@ -56,4 +56,26 @@ module linear_dma_4k_top #(
         .rd_raw_data, .rd_raw_valid, .rd_raw_row, .rd_raw_col_base,
         .rd_error, .wr_error()
     );
+
+    // Reference the pre-optimization first-segment selection, including the
+    // nine-bit zero/wrap case. Check every cycle, not just valid AR transfers.
+    logic [8:0] reference_remaining;
+    logic [12:0] reference_page_beats;
+    logic [8:0] reference_limited;
+    logic [7:0] reference_len;
+    always_comb begin
+        reference_remaining = dut.rd_merge_rows ? 9'(dut.rd_merged_beats) : dut.rd_first_beats;
+        reference_page_beats = (13'd4096 - {1'b0, dut.rd_first_ar_addr[11:0]}) >> $clog2(BUS_WIDTH/8);
+        reference_limited = reference_remaining > 9'(DMA_MAX_BYTES/(BUS_WIDTH/8)) ?
+            9'(DMA_MAX_BYTES/(BUS_WIDTH/8)) : reference_remaining;
+        if (reference_page_beats < 13'(DMA_MAX_BYTES/(BUS_WIDTH/8)) &&
+            13'(reference_remaining) > reference_page_beats)
+            reference_len = 8'(reference_page_beats - 13'd1);
+        else
+            reference_len = 8'(reference_limited - 9'd1);
+    end
+    always @(posedge clk) begin
+        if (rst_n) assert (dut.rd_segment_len[0] == reference_len)
+            else $fatal(1, "first ARLEN differs from pre-optimization logic");
+    end
 endmodule

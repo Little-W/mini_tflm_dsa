@@ -2076,71 +2076,9 @@ module requant_registered_sum #(
     input  wire logic i_carry,
     output logic signed [p_width-1:0] o_sum
 );
+    // p_use_dsp 仅保留实例参数兼容；无复位、使能保持与原寄存器一致。
     generate
-        if (p_use_dsp && p_width <= 48) begin : g_dsp
-            logic [47:0] extended_lhs, extended_rhs;
-            logic [29:0] dsp_i_a, dsp_i_acin;
-            logic [17:0] dsp_i_b, dsp_i_bcin;
-            logic [47:0] dsp_i_c, dsp_i_pcin;
-            logic [24:0] dsp_i_d;
-            logic [6:0] dsp_i_opmode;
-            logic [4:0] dsp_i_inmode;
-            logic [3:0] dsp_i_alumode;
-            logic [2:0] dsp_i_carry_select;
-            logic dsp_i_carry, dsp_i_enable, dsp_i_zero;
-            logic [47:0] dsp_o_p;
-            logic [29:0] unused_acout;
-            logic [17:0] unused_bcout;
-            logic [47:0] unused_pcout;
-            logic [3:0] unused_carryout;
-            logic unused_carrycascout, unused_multsignout;
-            logic unused_overflow, unused_underflow;
-            logic unused_patterndetect, unused_patternbdetect;
-
-            assign extended_lhs = {{(48-p_width){i_lhs[p_width-1]}}, i_lhs};
-            assign extended_rhs = {{(48-p_width){i_rhs[p_width-1]}}, i_rhs};
-            assign dsp_i_a = extended_lhs[47:18];
-            assign dsp_i_acin = '0;
-            assign dsp_i_b = extended_lhs[17:0];
-            assign dsp_i_bcin = '0;
-            assign dsp_i_c = extended_rhs;
-            assign dsp_i_d = '0;
-            assign dsp_i_pcin = '0;
-            assign dsp_i_opmode = 7'b0001111;
-            assign dsp_i_inmode = '0;
-            assign dsp_i_alumode = '0;
-            assign dsp_i_carry_select = '0;
-            assign dsp_i_carry = i_carry;
-            assign dsp_i_enable = i_en;
-            assign dsp_i_zero = 1'b0;
-            assign o_sum = $signed(dsp_o_p[p_width-1:0]);
-
-            // A:B 与 C 相加，CARRYIN 接收舍入增量；只启用 PREG 和对应使能。
-            DSP48E1 #(
-                .AREG(0), .ACASCREG(0), .BREG(0), .BCASCREG(0), .ADREG(0),
-                .CREG(0), .DREG(0), .MREG(0), .PREG(1), .CARRYINREG(0),
-                .CARRYINSELREG(0), .INMODEREG(0), .OPMODEREG(0), .ALUMODEREG(0),
-                .USE_DPORT("FALSE"), .USE_MULT("NONE"), .USE_SIMD("ONE48")
-            ) u_dsp (
-                .CLK(clk), .A(dsp_i_a), .ACIN(dsp_i_acin), .B(dsp_i_b), .BCIN(dsp_i_bcin),
-                .C(dsp_i_c), .D(dsp_i_d), .PCIN(dsp_i_pcin),
-                .OPMODE(dsp_i_opmode), .INMODE(dsp_i_inmode), .ALUMODE(dsp_i_alumode),
-                .CARRYIN(dsp_i_carry), .CARRYINSEL(dsp_i_carry_select),
-                .CARRYCASCIN(dsp_i_zero), .MULTSIGNIN(dsp_i_zero),
-                .CEA1(dsp_i_zero), .CEA2(dsp_i_zero), .CEAD(dsp_i_zero),
-                .CEB1(dsp_i_zero), .CEB2(dsp_i_zero), .CEC(dsp_i_zero),
-                .CECARRYIN(dsp_i_zero), .CED(dsp_i_zero), .CEM(dsp_i_zero), .CEP(dsp_i_enable),
-                .CECTRL(dsp_i_zero), .CEINMODE(dsp_i_zero), .CEALUMODE(dsp_i_zero),
-                .RSTA(dsp_i_zero), .RSTB(dsp_i_zero), .RSTC(dsp_i_zero), .RSTD(dsp_i_zero),
-                .RSTM(dsp_i_zero), .RSTP(dsp_i_zero), .RSTALLCARRYIN(dsp_i_zero),
-                .RSTCTRL(dsp_i_zero), .RSTINMODE(dsp_i_zero), .RSTALUMODE(dsp_i_zero),
-                .P(dsp_o_p), .ACOUT(unused_acout), .BCOUT(unused_bcout),
-                .PCOUT(unused_pcout), .CARRYOUT(unused_carryout),
-                .CARRYCASCOUT(unused_carrycascout), .MULTSIGNOUT(unused_multsignout),
-                .OVERFLOW(unused_overflow), .UNDERFLOW(unused_underflow),
-                .PATTERNDETECT(unused_patterndetect), .PATTERNBDETECT(unused_patternbdetect)
-            );
-        end else begin : g_generic
+        begin : g_generic
             logic [p_width-1:0] next_sum;
             logic unused_carry;
             assign {unused_carry, next_sum} = {1'b0, i_lhs} + {1'b0, i_rhs} + (p_width+1)'(i_carry);
