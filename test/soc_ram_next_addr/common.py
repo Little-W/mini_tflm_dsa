@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'test'))
 from rtl_reference import read_rtl_source
 
-REFERENCE = '47a4c4a36e51376d75f682257f5b1a2d38d9b8d7'
+REFERENCE = '2297cb12deac56b476f9a2a656da4038a9d8a75c'
 SOURCES = ['rtl/soc/soc_axi_ram.sv', 'test/models/soc_axi_ram.sv']
 FUNCTION = re.compile(r'    function automatic logic \[AW:0\] axi_next_addr\(.*?    endfunction', re.S)
 READ_BOUND = re.compile(r'    (?:wire|logic) rd_issue_oob.*?(?=    wire rd_issue_fault)', re.S)

@@ -366,8 +366,11 @@ module soc_axi_interconnect #(
     wire cpu_aw_hs = s0_axi_awvalid && s0_axi_awready;
     wire cpu_w_hs = s0_axi_wvalid && s0_axi_wready;
     wire cpu_b_hs = s0_axi_bvalid && s0_axi_bready;
-    wire cpu_err_write_hs = cpu_aw_hs && (cpu_aw_dest == D_ERR) &&
-                            cpu_w_hs && (cpu_w_dest == D_ERR);
+    logic cpu_err_write_hs;
+    // 错误地址同时接收地址与数据，直接使用本地响应容量计算接收条件。
+    assign cpu_err_write_hs = cpu_issue_aw_allowed && s0_axi_awvalid &&
+        s0_axi_wvalid && !err_bvalid_q && (cpu_aw_dest == D_ERR) &&
+        (!cpu_wr_active_q || (cpu_wr_dest_q == D_ERR));
 
     always_comb begin
         s0_axi_arready = !cpu_block_new_req && !cpu_arq_full;

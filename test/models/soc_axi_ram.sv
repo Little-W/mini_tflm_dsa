@@ -222,6 +222,10 @@ module soc_axi_ram #(
         logic [7:0] low_next;
         logic [AW:0] incremented_addr;
         logic [AW:0] high_prefix_mask;
+        logic [7:0] high_byte_address;
+        logic [7:0] high_byte_next;
+        logic [7:0] high_byte_prefix;
+        logic high_byte_carry;
         begin
             // 步长最高为 128 字节，低于传输边界的地址位清零并退出进位判断。
             low_keep_mask = 8'hff << size;
@@ -233,11 +237,23 @@ module soc_axi_ram #(
                     (low_address[bit_index] ^ (&(low_carry_bits | ~low_prefix_mask)));
             end
             incremented_addr = (AW+1)'(low_next);
-            // 各高位独立计算低位全一条件，保留扩展地址位以检测地址越界。
-            for (int bit_index=8; bit_index<=AW; bit_index++) begin
-                high_prefix_mask = ((AW+1)'(1) << bit_index) - (AW+1)'(256);
-                incremented_addr[bit_index] = byte_addr[bit_index] ^
-                    ((&low_carry_bits) && ((byte_addr & high_prefix_mask) == high_prefix_mask));
+            // 高位各字节预先递增，低位前缀进位只选择保持值或递增值。
+            for (int byte_start=8; byte_start<=AW; byte_start+=8) begin
+                high_prefix_mask = ((AW+1)'(1) << byte_start) - (AW+1)'(256);
+                // 异或零保持高位地址经过逻辑运算时的四态传播。
+                high_byte_address = 8'(byte_addr >> byte_start) ^ 8'h00;
+                for (int bit_index=0; bit_index<8; bit_index++) begin
+                    high_byte_prefix = (8'd1 << bit_index) - 8'd1;
+                    high_byte_next[bit_index] = high_byte_address[bit_index] ^
+                        (&(high_byte_address | ~high_byte_prefix));
+                end
+                high_byte_carry = (&low_carry_bits) &&
+                    ((byte_addr & high_prefix_mask) == high_prefix_mask);
+                for (int bit_index=0; bit_index<8; bit_index++) begin
+                    if (byte_start+bit_index <= AW)
+                        incremented_addr[byte_start+bit_index] = high_byte_carry ?
+                            high_byte_next[bit_index] : high_byte_address[bit_index];
+                end
             end
             axi_next_addr = (burst == 2'b00) ? byte_addr : incremented_addr;
         end

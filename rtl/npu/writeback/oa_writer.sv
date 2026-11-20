@@ -63,6 +63,7 @@ module oa_writer #(
     localparam int unsigned LOG2_BPB = $clog2(BYTE_PER_BEAT);
     localparam logic [VCOL_W:0] VLEN_COUNT = (VCOL_W + 1)'(VLEN);
     localparam int unsigned CNT_W = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
+    localparam int unsigned ADDR_LOW_W = (REG_WIDTH < 8) ? REG_WIDTH : 8;
     typedef logic [CNT_W-1:0] count_t;
 
     typedef enum logic [2:0] {
@@ -110,6 +111,13 @@ module oa_writer #(
     logic [REG_WIDTH-1:0] row_group_base_addr_cur;
     logic [REG_WIDTH-1:0] col_offset_addr_cur;
     logic [REG_WIDTH-1:0] row_offset_addr_cur;
+    logic [REG_WIDTH-1:0] column_base_addr;
+    logic [REG_WIDTH-1:0] address_base, address_step;
+    logic [REG_WIDTH-1:0] next_address_base, next_address_step;
+    logic [REG_WIDTH-1:0] next_address;
+    logic [ADDR_LOW_W-1:0] next_address_low;
+    logic next_address_carry;
+    logic unused_next_address_carry;
     logic                 tile_row_is_last;
     logic                 tile_col_is_last;
     logic                 dma_done_q;
@@ -313,6 +321,40 @@ module oa_writer #(
         group_next_is_last_q <= row_group_next_base_idx == row_tiles_last_idx;
         co_next_rows_remaining_q <= co_next_rows_remaining;
         co_next_col_offset_q <= col_offset_addr_cur + co_chunk_bytes;
+    end
+
+    // 当前列首地址随列和组推进保存，后续地址只需要一次完整加法。
+    // 请求准备期间选择互斥分支，S_WRITE 消费已经稳定的结果。
+    always_comb begin
+        if (cfg_coalesce && !cfg_is_mode) begin
+            address_base = co_has_next_col ? tile_base_addr_cur : row_group_base_addr_cur;
+            address_step = co_has_next_col ? co_chunk_bytes : group_row_addr_step_cur;
+        end else if (next_tile_row_advance_cur) begin
+            address_base = tile_base_addr_cur;
+            address_step = row_addr_step_cur;
+        end else if (next_tile_col_advance_cur) begin
+            address_base = column_base_addr;
+            address_step = col_addr_step_cur;
+        end else begin
+            address_base = row_group_base_addr_cur;
+            address_step = group_row_addr_step_cur;
+        end
+    end
+
+    // 低字节和进位在准备边沿保存，高位加法随后使用同一组操作数。
+    always_ff @(posedge clk) begin
+        next_address_base <= address_base;
+        next_address_step <= address_step;
+        {next_address_carry, next_address_low} <=
+            {1'b0, address_base[ADDR_LOW_W-1:0]} + {1'b0, address_step[ADDR_LOW_W-1:0]};
+    end
+    assign next_address[ADDR_LOW_W-1:0] = next_address_low;
+    if (REG_WIDTH > ADDR_LOW_W) begin : g_address_high
+        assign {unused_next_address_carry, next_address[REG_WIDTH-1:ADDR_LOW_W]} =
+            {1'b0, next_address_base[REG_WIDTH-1:ADDR_LOW_W]} +
+            {1'b0, next_address_step[REG_WIDTH-1:ADDR_LOW_W]} + next_address_carry;
+    end else begin : g_address_low_only
+        assign unused_next_address_carry = next_address_carry;
     end
 
     assign write_oa_req = (state == S_REQ) || (state == S_START);
@@ -523,6 +565,7 @@ module oa_writer #(
             col_addr_step_cur <= '0;
             group_row_addr_step_cur <= '0;
             row_group_base_addr_cur <= '0;
+            column_base_addr <= '0;
             col_offset_addr_cur <= '0;
             row_offset_addr_cur <= '0;
             tile_row_is_last <= 1'b1;
@@ -560,6 +603,7 @@ module oa_writer #(
                 col_addr_step_cur <= init_col_addr_step;
                 group_row_addr_step_cur <= init_group_row_addr_step;
                 row_group_base_addr_cur <= dst_base;
+                column_base_addr <= dst_base;
                 col_offset_addr_cur <= '0;
                 row_offset_addr_cur <= '0;
                 tile_row_is_last <= (row_tiles_total_pre <= count_t'(1));
@@ -631,8 +675,9 @@ module oa_writer #(
 
                             if (cfg_coalesce && !cfg_is_mode) begin
                                 if (co_has_next_col) begin
-                                    col_offset_addr_cur <= col_offset_addr_cur + co_chunk_bytes;
-                                    tile_base_addr_cur <= tile_base_addr_cur + co_chunk_bytes;
+                                    col_offset_addr_cur <= co_next_col_offset_q;
+                                    tile_base_addr_cur <= next_address;
+                                    column_base_addr <= next_address;
                                     state <= S_IDLE;
                                 end else if (!co_has_next_group) begin
                                     oa_calc_over_r <= 1'b1;
@@ -641,8 +686,9 @@ module oa_writer #(
                                     row_group_base_idx <= row_group_next_base_idx;
                                     row_group_next_base_idx <= row_group_next_base_idx + cfg_ia_reuse_num;
                                     col_offset_addr_cur <= 0;
-                                    row_group_base_addr_cur <= row_group_base_addr_cur + group_row_addr_step_cur;
-                                    tile_base_addr_cur <= row_group_base_addr_cur + group_row_addr_step_cur;
+                                    row_group_base_addr_cur <= next_address;
+                                    tile_base_addr_cur <= next_address;
+                                    column_base_addr <= next_address;
                                     state <= S_IDLE;
                                 end
                             end else if (next_tile_wrap_r) begin
@@ -654,6 +700,7 @@ module oa_writer #(
                                 row_group_next_base_idx <= cfg_ia_reuse_num;
                                 tile_base_addr_cur <= cfg_dst_base;
                                 row_group_base_addr_cur <= cfg_dst_base;
+                                column_base_addr <= cfg_dst_base;
                                 col_offset_addr_cur <= '0;
                                 row_offset_addr_cur <= '0;
                                 tile_row_is_last <= (row_tiles_last_idx == '0);
@@ -668,23 +715,21 @@ module oa_writer #(
                                 vec_valid_num_row_r <= vec_valid_num_row_next_r;
                                 if (next_tile_row_advance_r) begin
                                     row_offset_addr_cur <= row_offset_addr_cur + row_addr_step_cur;
-                                    tile_base_addr_cur <= tile_base_addr_cur + row_addr_step_cur;
+                                    tile_base_addr_cur <= next_address;
                                 end else if (next_tile_col_advance_r) begin
                                     col_offset_addr_cur <= col_offset_addr_cur + col_addr_step_cur;
                                     row_offset_addr_cur <= '0;
-                                    tile_base_addr_cur <= row_group_base_addr_cur +
-                                                          col_offset_addr_cur +
-                                                          col_addr_step_cur;
+                                    tile_base_addr_cur <= next_address;
+                                    column_base_addr <= next_address;
                                 end else if (next_tile_group_advance_r) begin
                                     row_group_base_idx <= row_group_next_base_idx;
                                     row_group_next_base_idx <= row_group_next_base_idx +
                                                                cfg_ia_reuse_num;
-                                    row_group_base_addr_cur <= row_group_base_addr_cur +
-                                                               group_row_addr_step_cur;
+                                    row_group_base_addr_cur <= next_address;
                                     col_offset_addr_cur <= '0;
                                     row_offset_addr_cur <= '0;
-                                    tile_base_addr_cur <= row_group_base_addr_cur +
-                                                          group_row_addr_step_cur;
+                                    tile_base_addr_cur <= next_address;
+                                    column_base_addr <= next_address;
                                 end
                                 state <= S_IDLE;
 
