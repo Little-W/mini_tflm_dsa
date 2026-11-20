@@ -37,7 +37,8 @@ def main():
     model = out / "xilinx_lut_models.sv"
     model.write_text("\n".join(re.search(r"^module " + name + r"\b.*?^endmodule",
         library.read_text(), re.M | re.S).group(0) for name in ("LUT6", "LUT6_2")) + "\n")
-    common = [ROOT / "rtl/npu/conv/conv_im2col_pkg.sv", ROOT / "rtl/common/onehot_check.sv", model]
+    common = [ROOT / "rtl/npu/conv/conv_im2col_pkg.sv", ROOT / "rtl/common/onehot_check.sv",
+              ROOT / "rtl/common/regfile.v", ROOT / "rtl/common/parallel_prefix_add.sv", model]
     summary = {"reference_ref": args.reference_ref,
                "method": "complete-state SAT and temporal induction with official LUT primitives",
                "inputs_constrained": False, "runs": [],

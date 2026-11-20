@@ -8,7 +8,7 @@ def with_observers(sources):
     values = list(sources)
     modules = set()
     common = Path(__file__).resolve().parents[2] / 'rtl/common'
-    for name in ('regfile.v', 'onehot_check.sv', 'add_equal.sv'):
+    for name in ('regfile.v', 'onehot_check.sv', 'add_equal.sv', 'parallel_prefix_add.sv'):
         dependency = common / name
         if dependency not in values:
             values.append(dependency)
