@@ -1,6 +1,6 @@
 # ASIC 综合与路径优化
 
-综合使用 SMIC40 RVT 标准单元和双端口 SRAM 时序库。RTL 中的同步存储通过 `asic/rtl/smic40_sram_1r1w.sv` 映射到 `RAMTP128X16` 或 `RAMTP1024X16`，宏的面积和时序均参与综合统计。
+综合使用 SMIC40 RVT 标准单元和双端口 SRAM 时序库。启用 `ASIC_SRAM` 的存储模块通过 `asic/rtl/smic40_sram_1r1w.sv` 映射到 `RAMTP128X16` 或 `RAMTP1024X16`，宏的面积和时序均参与综合统计。
 
 ## 环境与初始综合
 
@@ -14,7 +14,57 @@ make -C asic/synthesis syn \
 
 初始综合采用 50 MHz、单进程和较低优化强度。Design Compiler 的 `compile` 执行标准映射，`quick` 使用较低的面积优化强度；`standard` 使用较高的映射优化强度；`ultra` 调用 `compile_ultra`。
 
+默认硬件参数来自 `config/npu.mk`：16×16 阵列、64 位 AXI4、九个 2 KiB
+共享 bank、`IA_CACHE_BLOCKS=2` 和 `PS_FRAME_COUNT=4`。该配置使用全并行
+量化。生产 FPGA 参数保存在 `config/npu_fpga.mk`，包含七个 8 KiB 共享
+bank、`IA_CACHE_BLOCKS=4` 和 `PS_FRAME_COUNT=16`，可通过 `NPU_CONFIG`
+选择这份配置进行 ASIC 结构检查。
+
 `prepare-rtl` 在构建目录生成综合输入，将带默认值的输入端口转换为显式连接。RTL 源码、生成文件和综合结果分别保存在源码目录、构建目录的 `sources/` 以及构建目录根部。
+
+## 量化输出缓冲的 SRAM 实现
+
+`requant_group_buffer` 在 `ASIC_SRAM` 配置下，通过
+`smic40_sram_1r1w` 保存完整的量化输入行。每行包含所有通道的 INT32
+数据和一个 tile 完成标记，读写地址、读使能及输出保持方式与模块接口
+一致。控制状态在复位或 `i_clear` 时清空，SRAM 数据阵列保持独立。
+
+生产 FPGA 的七个 8 KiB 共享 bank 配置采用两个量化计算通道，分组缓冲
+参数为 `p_lanes=16`、`p_rows=512`。使用 ASIC 编译定义展开同一容量配置，
+得到以下结构：
+
+| 项目 | 数值 |
+|---|---:|
+| 每行逻辑位宽 | 513 bit |
+| 逻辑深度 | 512 行 |
+| 有效存储容量 | 262,656 bit，32,832 byte |
+| SRAM 宏型号 | `RAMTP128X16` |
+| 深度方向分组 | 4 组，每组 128 行 |
+| 每组宽度方向宏数量 | 33 |
+| SRAM 宏总数 | 132 |
+| 物理存储容量 | 270,336 bit，33 KiB |
+
+每行未使用的高 15 位补零，其写掩码关闭。读写双方使用原始行地址，
+完整行数据和 tile 标记在同一同步读取边沿更新。`MACRO_DEPTH=128`
+固定了该缓冲的宏深度；位宽和深度方向均按参数计算宏数量。
+FPGA 和通用仿真配置继续使用同步读出的 `regfile`。
+
+从仓库根目录运行对应的 ASIC 展开命令：
+
+```sh
+make -C asic/synthesis elaborate \
+  NPU_CONFIG="$PWD/config/npu_fpga.mk" \
+  STD_ROOT="$STD_ROOT" SRAM_ROOT="$SRAM_ROOT"
+```
+
+RTL 展开并链接库之后，综合流程生成
+`npu_top_requant_storage.rpt`。报告逐一列出量化缓冲区的宏数量、物理
+容量和 `regfile` 子实例数量。上述生产参数应显示 132 个宏、270,336
+个物理存储位和零个 `regfile` 子实例。检查通过后再执行标准单元映射。
+
+修改 RTL 后，从源码重新执行 `prepare-rtl`、分析和展开，以生成包含
+SRAM 实例的新 DDC。分模块综合使用新生成的展开结果，并将公共 RTL、
+存储器封装、模块参数和子模块结果共同纳入源文件检查。
 
 ## 前 100 条最大延时路径
 

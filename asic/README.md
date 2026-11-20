@@ -29,7 +29,15 @@ export SRAM_ROOT="<SRAM_Lib_2025 目录>"
 
 ## SRAM 封装
 
-`rtl/smic40_sram_1r1w.sv` 使用 `RAMTP128X16` 或 `RAMTP1024X16` 拼接所需字宽和深度，支持独立同步读写及逐位写掩码。读取使能有效时输出在时钟沿更新，未读取时保持输出。当前 SoC/NPU 宏接入位置包括输入缓存、部分和存储、权重行缓存、输出 FIFO，以及统一计算路径的 IA/PS 共享 bank。
+`rtl/smic40_sram_1r1w.sv` 使用 `RAMTP128X16` 或 `RAMTP1024X16` 拼接所需字宽和深度，支持独立同步读写及逐位写掩码。读取使能有效时输出在时钟沿更新，未读取时保持输出。当前 SoC/NPU 宏接入位置包括输入缓存、部分和存储、权重行缓存、输出 FIFO、量化输出组缓冲，以及统一计算路径的 IA/PS 共享 bank。
+
+量化输出组缓冲 `requant_group_buffer` 使用 128 行宏保存完整数据行。
+16 通道、512 行配置中，每行 513 位，由 132 个 `RAMTP128X16`
+实现，物理容量为 33 KiB。综合展开报告
+`npu_top_requant_storage.rpt` 单独列出该缓冲的存储宏，检查通过后
+进行标准单元映射。这组缓冲参数对应七个 8 KiB 共享 bank 的生产 FPGA
+配置，在 ASIC 编译定义下用于完整 NPU 的结构检查。详细结构见
+`docs/asic_synthesis.md`。
 
 宏的同地址同时读写结果未定义；仿真封装会报告这一冲突。小容量状态寄存器和采用其他访问方式的数组由综合器映射为标准单元。SRAM 容量向宏的物理尺寸取整，资源报告应以实际宏实例为准。
 
@@ -48,16 +56,26 @@ make -C asic/synthesis elaborate PCR_ENGINE=1 NPU_SIZE=16  # 检查统一路径�
 
 SRAM 功能仿真使用 Icarus Verilog 或 VCS。NPU 仿真禁用厂商模型中的器件级时序检查，以便验证零延迟 RTL 与宏的功能连接；实际时序由工艺时序库和综合约束分析。
 
-综合读取仓库的 `config/npu.mk`，也可通过 `NPU_CONFIG` 选择另一份配置。默认使用 16×16 阵列、64 位 AXI4、七个 2 KiB 共享 bank 和 400 MHz 综合目标。频率是约束目标，实际时序结果记录在综合报告中。
+综合读取仓库的 `config/npu.mk`，也可通过 `NPU_CONFIG` 选择另一份配置。ASIC 默认使用 16×16 阵列、64 位 AXI4、九个 2 KiB 共享 bank、`IA_CACHE_BLOCKS=2`、`PS_FRAME_COUNT=4` 和 50 MHz 综合目标。频率是约束目标，实际时序结果记录在综合报告中。
 
 | 参数 | 范围 | 默认值 |
 |---|---|---:|
 | `NPU_AXI_DATA_WIDTH` | 32、64 位，传入 RTL 的 `BUS_WIDTH` | 64 |
 | `IM2COL_CACHE_BYTES` | 512～65536 字节，二次幂 | 4096 |
 | `SHARED_BANK_BYTES` | 2048、4096、8192 字节 | 2048 |
-| `SHARED_BANK_COUNT` | 6、7、8、9 | 7 |
+| `SHARED_BANK_COUNT` | 6、7、8、9 | 9 |
 
-共享数据 RAM 总量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`，默认 14336 字节。每层执行前为 IA 分配 1、2 或 4 个 bank，其余用于 PS。S16 输入至少需要两个 IA bank；跨 K 的 RAW32 部分和至少需要四个 PS bank，经严格范围检查的 S24、S16 部分和上限分别要求至少三个、两个 PS bank。任务执行期间分配保持固定。
+共享数据 RAM 总量为 `SHARED_BANK_BYTES × SHARED_BANK_COUNT`，ASIC 默认 18432 字节。每层执行前为 IA 分配 1、2 或 4 个 bank，其余用于 PS。S16 输入至少需要两个 IA bank；跨 K 的 RAW32 部分和至少需要四个 PS bank，经严格范围检查的 S24、S16 部分和上限分别要求至少三个、两个 PS bank。任务执行期间分配保持固定。
+
+`config/npu_fpga.mk` 保存生产 FPGA 的七个 8 KiB 共享 bank、`IA_CACHE_BLOCKS=4` 和 `PS_FRAME_COUNT=16` 配置。通过以下命令，可以使用同一容量配置执行 ASIC 展开；ASIC 编译定义仍由 DC 流程设置：
+
+```bash
+make -C asic/synthesis elaborate \
+  NPU_CONFIG="$PWD/config/npu_fpga.mk" \
+  STD_ROOT="$STD_ROOT" SRAM_ROOT="$SRAM_ROOT"
+```
+
+ASIC 默认的九 bank 配置使用全并行量化。六、七 bank 配置使用两个量化计算通道，并由 `requant_group_buffer` 保存完整输出组。
 
 `IM2COL_CACHE_BYTES` 配置独立的原始输入窗口缓存，固定使用两路和 16 字节缓存行。数据 RAM、标签及使用状态分别计入容量报告；对应卷积尺寸和计算方法见 [im2col 缓存容量配置](../docs/im2col_cache_configuration.md)。
 
@@ -75,13 +93,13 @@ make -C asic/synthesis syn NPU_AXI_DATA_WIDTH=32 \
 
 `PCR_ENGINE=1` 启用统一路径中的 PS 编码和 frame 调度。ASIC 共享 RAM 使用同步 128 位 1R1W bank，逻辑行数为 `SHARED_BANK_BYTES / 16`。生产路径为 `ia_ps_shared_ram` → `smic40_sram_1r1w`，共享 bank 固定使用 `MACRO_DEPTH=128`。
 
-| 每个共享 bank | 128 位行数 | 每 bank 的 `RAMTP128X16` 数量 | 七 bank 的宏数量 | 七 bank 数据容量 |
-|---:|---:|---:|---:|---:|
-| 2 KiB | 128 | 8 | 56 | 14 KiB |
-| 4 KiB | 256 | 16 | 112 | 28 KiB |
-| 8 KiB | 512 | 32 | 224 | 56 KiB |
+| 每个共享 bank | 128 位行数 | 每 bank 的 `RAMTP128X16` 数量 |
+|---:|---:|---:|
+| 2 KiB | 128 | 8 |
+| 4 KiB | 256 | 16 |
+| 8 KiB | 512 | 32 |
 
-三种配置使用全部宏数据位，逻辑数据容量与物理数据容量相等。目录、缓存标签和其他存储分别统计。完整说明见 [共享 RAM 映射](../docs/shared_ram_mapping.md)。
+三种配置使用全部宏数据位，逻辑数据容量与物理数据容量相等。ASIC 默认九个 2 KiB bank 共需 72 个宏，容量为 18 KiB；七个 8 KiB bank 的 ASIC 结构检查配置共需 224 个宏，容量为 56 KiB。目录、缓存标签和其他存储分别统计。完整说明见 [共享 RAM 映射](../docs/shared_ram_mapping.md)。
 
 以下检查通过生产封装展开 SRAM 实例，覆盖三种 bank 大小与 6 至 9 个 bank，核对宏数量、位宽、时钟和控制连接：
 
