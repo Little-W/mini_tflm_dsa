@@ -15,7 +15,8 @@ module conv_read_cache #(
   parameter int WI=(WAYS==1 ? 1 : $clog2(WAYS)),
   parameter int DEPTH=WAYS*SETS*(LINE_BYTES/4),
   parameter int DA=$clog2(DEPTH),
-  parameter int TAGW=32-LB-SI
+  parameter int TAGW=32-LB-SI,
+  parameter bit p_defer_retire_shift=1'b0
 ) (
   input logic clk, rst_n,
   input logic cfg_valid,
@@ -68,7 +69,8 @@ module conv_read_cache #(
   input logic [31:0] prefetch_ref_epoch = 32'd0);
   generate if (CACHE_POLICY==3) begin : g_window
     conv_windowed_cache #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
-      .DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_window (.*);
+      .DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
+      .p_defer_retire_shift(p_defer_retire_shift)) u_window (.*);
   end else begin : g_reference
     conv_read_cache_reference #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
       .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_reference (.*);
@@ -376,7 +378,8 @@ module conv_windowed_cache #(
   parameter int WI=(WAYS==1 ? 1 : $clog2(WAYS)),
   parameter int DEPTH=WAYS*SETS*(LINE_BYTES/4),
   parameter int DA=$clog2(DEPTH),
-  parameter int TAGW=32-LB-SI
+  parameter int TAGW=32-LB-SI,
+  parameter bit p_defer_retire_shift=1'b0
 ) (
   input logic clk, rst_n,
   input logic cfg_valid,
@@ -554,6 +557,7 @@ module conv_windowed_cache #(
     logic geometry, event_first, in_range;
   } demand_t;
   demand_t request_queue[DEMAND_DEPTH], incoming_request, work_request, lookup_read_request;
+  logic [1:0][31:0] retire_decode_input, retire_decode_output;
   logic [SI-1:0] lookup_read_set, lookup_snapshot_set;
   logic [31:2] lookup_read_word, lookup_snapshot_word;
   logic lookup_snapshot_valid, lookup_ready;
@@ -605,6 +609,25 @@ module conv_windowed_cache #(
   assign incoming_request={req_addr,req_window_epoch,req_window_retire,req_window_progress,
                            cache_set(req_addr, windowed_q && req_window_index_valid, req_window_index),
                            req_geometry,req_event_first,incoming_range};
+  assign retire_decode_input[0] = work_request.retire;
+  assign retire_decode_input[1] = offer_retire_q;
+  if (p_defer_retire_shift) begin : g_retire_shift
+    // 接收元数据后完成行释放位置移位，需求和预取分别使用已有接收寄存级。
+    // 位[17:0]为被移位数，位[21:18]为右移量，位22表示禁止释放。
+    for (genvar retire_port = 0; retire_port < 2; retire_port++) begin : g_port
+      logic [8:0] unused_padding;
+      logic disabled;
+      logic [3:0] shift;
+      logic [17:0] row_value;
+      logic [31:0] shifted_value;
+
+      assign {unused_padding, disabled, shift, row_value} = retire_decode_input[retire_port];
+      assign shifted_value = {14'd0, row_value} >> shift;
+      assign retire_decode_output[retire_port] = disabled ? INF : shifted_value;
+    end
+  end else begin : g_retire_value
+    assign retire_decode_output = retire_decode_input;
+  end
   // 地址范围结果随接收描述保存，出队时只选择已保存的一位状态。
   // 队首描述与标签、数据预读同步更新，命中控制使用同一周期的寄存信息。
   always_ff @(posedge clk) begin
@@ -795,7 +818,7 @@ module conv_windowed_cache #(
 
   assign lookup_addr = fg_state==FG_MISS ? demand_addr : work_request.address;
   assign lookup_epoch = fg_state==FG_MISS ? demand_epoch : work_request.epoch;
-  assign lookup_retire = fg_state==FG_MISS ? demand_retire : work_request.retire;
+  assign lookup_retire = fg_state==FG_MISS ? demand_retire : retire_decode_output[0];
   assign lookup_progress = fg_state==FG_MISS ? demand_progress : work_request.progress;
   assign lookup_set = bypass_q ? demand_fill_set :
       (fg_state==FG_MISS ? demand_set : work_request.set_index);
@@ -861,7 +884,7 @@ module conv_windowed_cache #(
   end
   assign pf_offer_addr = offer_select_next_q ? offer_next_addr_q : offer_addr_q;
   assign pf_offer_epoch = offer_select_next_q ? offer_next_epoch_q : offer_epoch_q;
-  assign pf_offer_retire = offer_select_next_q ? offer_next_retire_q : offer_retire_q;
+  assign pf_offer_retire = offer_select_next_q ? offer_next_retire_q : retire_decode_output[1];
   assign pf_offer_index = offer_select_next_q ? offer_next_index_q : offer_index_q;
   assign pf_offer_index_valid = offer_select_next_q ? offer_next_index_valid_q : offer_index_valid_q;
 
@@ -1062,7 +1085,7 @@ module conv_windowed_cache #(
   end
   always_ff @(posedge clk) pf_hit_q <= pf_hit_raw;
 
-  wire [31:0] metadata_hit_rank=windowed_q ? work_request.retire : hint_next;
+  wire [31:0] metadata_hit_rank=windowed_q ? retire_decode_output[0] : hint_next;
   wire [31:0] metadata_fill_rank=windowed_q ? fill_retire : fill_rank;
   for(genvar metadata_way=0;metadata_way<WAYS;metadata_way++) begin:g_metadata_way
     logic valid_i_wr_en;
@@ -1432,7 +1455,7 @@ module conv_windowed_cache #(
         if (req_fire) begin
           demand_addr<=work_request.address;demand_set<=work_request.set_index;
           demand_range<=work_range;
-          demand_epoch<=work_request.epoch;demand_retire<=work_request.retire;
+          demand_epoch<=work_request.epoch;demand_retire<=retire_decode_output[0];
           demand_progress<=work_request.progress;demand_filled<=0;response_error<=0;
           if (!lookup_range) begin response_error<=1;fg_state<=FG_RESP;end
           else if (lookup_hit) begin

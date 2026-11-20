@@ -567,48 +567,68 @@ module conv_im2col_frontend #(
     for (int b=0;b<32;b++) if (value[b]) result=5'(b);
     return result;
   endfunction
-  // 请求与预取各保留一个退休行号计算端口，两个预取阶段按原有采样周期共用端口。
-  assign retirement_input[0] = request_pending ? request_y_q : iy[15:0];
-  assign retirement_input[1] = prefetch_phase == 3 ? pfa_y[15:0] : pf0_y[15:0];
-  for (genvar row_port = 0; row_port < 2; row_port++) begin : g_retirement_port
-    logic [16:0] padded_row, shifted_row, incremented_row;
-    logic unused_increment_carry;
-    logic [16:0] bounded_row;
+  // 配置准备阶段保存行偏移和限幅阈值，运行时的加法与范围判断并行。
+  logic [16:0] retire_bias_q;
+  logic [30:0] retire_scaled_last;
+  logic [16:0] retire_compare_delta;
+  logic [15:0] retire_compare_q;
+  logic retire_all_bounded_q, retire_no_bound_q;
+  logic prefetch_retire_pfa_q;
 
-    // 行递增与上限比较并行，最后选择限幅结果，避免串联两次范围比较。
-    assign padded_row = {1'b0, retirement_input[row_port]} + {1'b0, c.pad_top};
-    assign shifted_row = padded_row >> retire_shift_q;
-    // 五位分组并行产生进位，各结果位只需组合组进位与组内低位。
-    localparam int p_increment_bits = 17;
-    localparam int p_chunk_bits = 5;
-    localparam int p_chunks = (p_increment_bits + p_chunk_bits - 1) / p_chunk_bits;
-    (* keep *) logic [p_chunks-2:0] chunk_all;
-    for (genvar chunk = 0; chunk < p_chunks; chunk++) begin : g_increment_chunk
-      localparam int p_low = chunk * p_chunk_bits;
-      localparam int p_chunk_width = p_increment_bits - p_low < p_chunk_bits ?
-          p_increment_bits - p_low : p_chunk_bits;
-      (* keep *) logic chunk_carry;
-      if (chunk < p_chunks - 1) begin : g_full_chunk
-        assign chunk_all[chunk] = &shifted_row[p_low +: p_chunk_width];
+  assign retire_scaled_last = {15'd0, retire_last_row_q} << retire_shift_q;
+  assign retire_compare_delta = {1'b0, retire_compare_q} - {1'b0, c.pad_top};
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      retire_bias_q <= 17'd0;
+      retire_compare_q <= 16'd0;
+      retire_all_bounded_q <= 1'b0;
+      retire_no_bound_q <= 1'b0;
+    end else begin
+      if (cfg_prepare_phase == 2'd1) begin
+        retire_bias_q <= {1'b0, c.pad_top} +
+          (short_pixel_q ? (17'd1 << retire_shift_q) : 17'd0);
+        // 准备期间复用最终阈值寄存器，先保存低位及高位范围分类。
+        retire_compare_q <= retire_scaled_last[15:0];
+        retire_all_bounded_q <= !(|retire_scaled_last[30:16]);
+        retire_no_bound_q <= |retire_scaled_last[30:17];
       end
-      if (chunk == 0) begin : g_first
-        assign chunk_carry = short_pixel_q;
-      end else begin : g_following
-        assign chunk_carry = short_pixel_q && (&chunk_all[chunk-1:0]);
-      end
-      for (genvar bit_index = 0; bit_index < p_chunk_width; bit_index++) begin : g_bit
-        if (bit_index == 0) begin : g_low
-          assign incremented_row[p_low] = shifted_row[p_low] ^ chunk_carry;
-        end else begin : g_high
-          assign incremented_row[p_low+bit_index] = shifted_row[p_low+bit_index] ^
-              (chunk_carry && (&shifted_row[p_low +: bit_index]));
-        end
+      if (cfg_prepare_phase == 2'd2) begin
+        retire_compare_q <= retire_compare_delta[15:0];
+        retire_all_bounded_q <= retire_all_bounded_q && retire_compare_delta[16];
+        retire_no_bound_q <= retire_no_bound_q ||
+          (!retire_all_bounded_q && !retire_compare_delta[16]);
       end
     end
-    assign unused_increment_carry = short_pixel_q && (&shifted_row);
-    assign bounded_row = shifted_row < {1'b0, retire_last_row_q} ?
-        incremented_row : {1'b0, retire_last_row_q};
-    assign retirement_result[row_port] = retire_enabled_q ? {15'd0, bounded_row} : 32'hffff_ffff;
+  end
+
+  // 预取输入选择随原状态转换保存，计算端口直接使用已寄存的一位选择。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) prefetch_retire_pfa_q <= 1'b0;
+    else if (cfg_valid && cfg_ready) prefetch_retire_pfa_q <= 1'b0;
+    else prefetch_retire_pfa_q <= prefetch_phase == 4'd2;
+  end
+
+  // 请求和预取各共用一个计算端口，全部结果仍在原请求接收周期使用。
+  assign retirement_input[0] = request_pending ? request_y_q : iy[15:0];
+  assign retirement_input[1] = prefetch_retire_pfa_q ? pfa_y[15:0] : pf0_y[15:0];
+  for (genvar row_port = 0; row_port < 2; row_port++) begin : g_retirement_port
+    logic [17:0] biased_row, retire_payload_row;
+    logic [3:0] retire_payload_shift;
+    logic limit_reached;
+
+    logic unused_row_carry;
+
+    // 行偏移加法在缓存接收之前完成，移位使用缓存已有的接收寄存级。
+    assign {unused_row_carry, biased_row} =
+      {3'b0, retirement_input[row_port]} + {2'b0, retire_bias_q};
+    assign limit_reached = retire_all_bounded_q ||
+      (!retire_no_bound_q && retirement_input[row_port] >= retire_compare_q);
+    assign retire_payload_row = limit_reached ? {2'b0, retire_last_row_q} : biased_row;
+    assign retire_payload_shift = limit_reached ? 4'd0 : retire_shift_q;
+    // 元数据低十八位保存被移位数，随后四位保存移位量，第22位表示禁止释放。
+    // 缓存接收寄存之后执行移位，高九位保留为零。
+    assign retirement_result[row_port] =
+        {9'd0, !retire_enabled_q, retire_payload_shift, retire_payload_row};
   end
   assign request_retire = retirement_result[0];
 
@@ -959,7 +979,8 @@ module conv_im2col_frontend #(
     end
   end
   conv_read_cache #(.SETS(CACHE_SETS),.WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES),
-    .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_cache (
+    .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
+    .p_defer_retire_shift(CACHE_POLICY == 3)) u_cache (
     .clk,.rst_n,
     .cfg_valid(cache_config_valid),.cfg_ready(cache_cfg_ready),
     .cfg_base(c.input_base),.cfg_bytes(tensor_bytes),.cfg_bypass(c.bypass_cache),
