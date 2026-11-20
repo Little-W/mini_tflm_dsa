@@ -35,12 +35,12 @@ class ModelTests(unittest.TestCase):
     def test_buffer_inventory_includes_every_shared_subsystem(self):
         a = model.allocation(4, 8, 16384, 131072, shared=False)
         expected = dict(ia_cache=4*16*16*16, ia_cache_tags=8*62, ia_slot_metadata=8*12,
-                        kernel_cache=2*16*16*16,
-                        bias_cache=2*4*16*32, requant_is_cache=4*16*76,
+                        kernel_cache=3*16*16*16,
+                        bias_cache=2*4*16*32, requant_is_cache=4*16*103,
                         oa_s8_fifo=16*16*16*8, oa_s16_fifo=4*16*16*16,
-                        conv_data_cache=128*2*16*8, conv_cache_metadata=128*2*322,
-                        conv_prefetch_queue=8*129, conv_request_queue=4*137,
-                        conv_response_queue=4*33, vector_buffers=16*(80+49*8+160),
+                        conv_data_cache=128*2*16*8, conv_cache_metadata=128*2*157,
+                        conv_prefetch_queue=8*129, conv_request_queue=4*138,
+                        conv_response_queue=4*33, vector_buffers=16*(80+49*8+134),
                         ps_payload=16384*8, ps_frame_lengths=8*7,
                         ps_decoded_fifo=8*512, ps_decoded_first=8, ps_frame_valid=8)
         self.assertEqual(a["buffer_arrays_bits"], expected)
@@ -118,7 +118,7 @@ class ModelTests(unittest.TestCase):
 
     def test_search_uses_shared_physical_banks(self):
         tasks = [dict(M=961, K=144, N=32), dict(M=225, K=288, N=64)]
-        result = model.solve(tasks, 44000)
+        result = model.solve(tasks, 49152)
         allocation = result["allocation"]
         self.assertTrue(allocation["shared_ia_ps_enabled"])
         self.assertEqual(allocation["shared_total_bytes"], allocation["shared_physical_bank_count"] * 2048)
@@ -127,6 +127,26 @@ class ModelTests(unittest.TestCase):
                              result["search"]["enumerated_geometries"])
         self.assertEqual(result["search"]["feasible_configurations"],
                          result["search"]["feasible_geometries"])
+
+    def test_requant_group_storage_follows_physical_bank_selection(self):
+        for bank_bytes in (2048, 4096, 8192):
+            for bank_count in (6, 7, 8, 9):
+                parameters = dict(bank_bytes=bank_bytes, bank_count=bank_count)
+                layout = model.memory_geometry(4, 16, 49152, **parameters)
+                arrays = model.buffer_arrays_bits(4, 16, 49152, **parameters)
+                expected = layout["max_r_s8"] * 16 * 513 if bank_count < 8 else 0
+                self.assertEqual(arrays.get("requant_input_rows", 0), expected)
+        fixed = model.buffer_arrays_bits(4, 16, 49152, shared=False)
+        self.assertNotIn("requant_input_rows", fixed)
+
+    def test_production_bank_configurations_preserve_capacity_budget(self):
+        expected_bytes = {6: 116121.5, 7: 124313.5, 8: 119147.5, 9: 127339.5}
+        for bank_count, expected in expected_bytes.items():
+            arrays = model.buffer_arrays_bits(4, 16, 49152, bank_bytes=8192,
+                                             bank_count=bank_count)
+            used = sum(arrays.values()) / 8
+            self.assertEqual(used, expected)
+            self.assertLessEqual(used, 131072)
 
     def test_pool_increment_and_real_tails(self):
         for pool in (4096, 8192, 16384):

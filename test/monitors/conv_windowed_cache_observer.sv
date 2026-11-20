@@ -13,6 +13,7 @@ module conv_windowed_cache_observer #(
 
 
 logic prefetched[TB_WAYS][TB_SETS];
+logic observed_valid[TB_WAYS][TB_SETS];
 logic [31:TB_LB] observed_tags[TB_WAYS][TB_SETS];
 for(genvar way=0;way<TB_WAYS;way++)begin:g_way
  for(genvar set_id=0;set_id<TB_SETS;set_id++)begin:g_set
@@ -21,6 +22,18 @@ for(genvar way=0;way<TB_WAYS;way++)begin:g_way
   wire fill_target=32'(conv_windowed_cache.fill_way)==way && 32'(conv_windowed_cache.fill_set)==set_id;
   wire consumed=(conv_windowed_cache.req_fire && conv_windowed_cache.lookup_range && conv_windowed_cache.lookup_hit) ||
                 (32'(conv_windowed_cache.fg_state)==TB_FG_MISS && conv_windowed_cache.lookup_hit);
+  // 统计使用独立的有效位模型，保持复位与配置清除期间的统计定义。
+  always @(posedge conv_windowed_cache.clk or negedge conv_windowed_cache.rst_n) begin
+    if (!conv_windowed_cache.rst_n) observed_valid[way][set_id] <= 1'b0;
+    else if (conv_windowed_cache.metadata_enable) begin
+      if ((conv_windowed_cache.clearing && 32'(conv_windowed_cache.clear_set)==set_id) ||
+          (conv_windowed_cache.select_launch && select_target) ||
+          (conv_windowed_cache.metadata_fill_bad && fill_target))
+        observed_valid[way][set_id] <= 1'b0;
+      if (conv_windowed_cache.metadata_fill_good && fill_target)
+        observed_valid[way][set_id] <= !conv_windowed_cache.bypass_q;
+    end
+  end
   always @(posedge conv_windowed_cache.clk) begin
     if (conv_windowed_cache.metadata_enable && conv_windowed_cache.metadata_fill_good && fill_target)
       observed_tags[way][set_id] <= conv_windowed_cache.fill_addr[31:TB_LB];
@@ -47,10 +60,10 @@ always_comb begin
   accepted_range=conv_windowed_cache.req_addr>=conv_windowed_cache.base_q && conv_windowed_cache.req_addr<conv_windowed_cache.end_q;
   accepted_hit=0;
   for(int w=0;w<TB_WAYS;w++)
-    if(!conv_windowed_cache.bypass_q && conv_windowed_cache.valid[w][accepted_set] && observed_tags[w][accepted_set]==conv_windowed_cache.req_addr[31:TB_LB])accepted_hit=1;
+    if(!conv_windowed_cache.bypass_q && observed_valid[w][accepted_set] && observed_tags[w][accepted_set]==conv_windowed_cache.req_addr[31:TB_LB])accepted_hit=1;
   stat_prefetch_unused=0;
   for(int w=0;w<TB_WAYS;w++)for(int s=0;s<TB_SETS;s++)
-    if(conv_windowed_cache.valid[w][s] && prefetched[w][s])stat_prefetch_unused++;
+    if(observed_valid[w][s] && prefetched[w][s])stat_prefetch_unused++;
 end
 always @(posedge conv_windowed_cache.clk or negedge conv_windowed_cache.rst_n) begin
   if(!conv_windowed_cache.rst_n)begin
@@ -79,7 +92,7 @@ always @(posedge conv_windowed_cache.clk or negedge conv_windowed_cache.rst_n) b
       else stat_lookup_misses<=stat_lookup_misses+1;
     end
     if(((conv_windowed_cache.req_fire && conv_windowed_cache.lookup_range && conv_windowed_cache.lookup_hit) || (32'(conv_windowed_cache.fg_state)==TB_FG_MISS && conv_windowed_cache.lookup_hit)) && prefetched[conv_windowed_cache.lookup_way][conv_windowed_cache.lookup_set])stat_prefetch_used<=stat_prefetch_used+1;
-    if(conv_windowed_cache.select_launch && prefetched[conv_windowed_cache.select_way][conv_windowed_cache.select_set] && conv_windowed_cache.valid[conv_windowed_cache.select_way][conv_windowed_cache.select_set])
+    if(conv_windowed_cache.select_launch && prefetched[conv_windowed_cache.select_way][conv_windowed_cache.select_set] && observed_valid[conv_windowed_cache.select_way][conv_windowed_cache.select_set])
       stat_prefetch_wasted<=stat_prefetch_wasted+1;
     if(32'(conv_windowed_cache.fill_state)==TB_F_DATA && conv_windowed_cache.span_rsp_valid && conv_windowed_cache.span_rsp_ready)begin
       stat_read_bytes<=stat_read_bytes+32'($countones(conv_windowed_cache.span_strb));

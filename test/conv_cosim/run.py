@@ -43,6 +43,7 @@ def main():
     csrc += [HERE/'reference.c']
     npu=ROOT/'rtl/npu';packages=[npu/'conv/conv_im2col_pkg.sv',npu/'conv/vector_engine_pkg.sv']
     svsrc=packages+[p for p in sorted(npu.rglob('*.sv')) if p not in packages]+sorted(npu.rglob('*.v'))
+    svsrc += sorted((ROOT/'rtl/common').glob('REGFILE.v')) + sorted((ROOT/'rtl/common').glob('onehot_check.sv')) + sorted((ROOT/'rtl/common').glob('add_equal.sv'))
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/axi_top/npu_axil_reg_if.sv',
         ROOT/'rtl/axi_top/npu_axil_top.sv',ROOT/'test/models/soc_axi_ram.sv',HERE/'conv_cosim_top.sv']
     cflags=['-std=c11','-O2','-Wall','-Wextra','-Werror','-DDSA_MMIO_CUSTOM',f'-DDSA_TILE_SIZE={a.size}',

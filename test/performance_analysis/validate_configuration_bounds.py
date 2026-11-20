@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import resource
 import subprocess
+import sys
 import time
 
 
@@ -27,14 +28,30 @@ def segment_checks(scope, bus_width, dma_bytes):
     beats = dma_bytes // beat_bytes
     lines = [f"assert({scope}.BUS_WIDTH=={bus_width});",
              f"assert({scope}.DMA_MAX_BYTES=={dma_bytes});"]
-    for function in ("read_segment_beats", "write_segment_beats"):
-        for address, remaining, expected in (
-            (0x1000, 256, beats),
-            (0x1000, 1, 1),
-            (0x2000-beat_bytes, 256, 1),
-            (0x2000-2*beat_bytes, 256, min(2, beats)),
-        ):
-            lines.append(f"assert({scope}.{function}(32'h{address:08x},9'd{remaining})=={expected});")
+    cases = ((0x1000, 256, beats), (0x1000, 1, 1),
+             (0x2000-beat_bytes, 256, 1),
+             (0x2000-2*beat_bytes, 256, min(2, beats)))
+    lines += [f"force {scope}.rd_linear_read_mode=1'b0;",
+              f"force {scope}.rd_rows_to_read=32'd1;",
+              f"force {scope}.rd_row_stride=32'd0;"]
+    for address, remaining, expected in cases:
+        lines += [f"force {scope}.rd_base_addr=32'h{address:08x};",
+                  f"force {scope}.rd_burst_len_m1=8'd{remaining-1};",
+                  '#1;', f"assert({scope}.rd_first_segment==9'd{expected});"]
+    lines += [f'release {scope}.{port};' for port in
+              ('rd_linear_read_mode', 'rd_rows_to_read', 'rd_row_stride',
+               'rd_base_addr', 'rd_burst_len_m1')]
+    lines += [f"force {scope}.wr_cmd_beat_cnt=9'd0;",
+              f"force {scope}.wr_beat_cnt=9'd0;"]
+    for address, remaining, expected in cases:
+        lines += [f"force {scope}.wr_cmd_row_addr_cur=32'h{address:08x};",
+                  f"force {scope}.wr_data_row_addr_cur=32'h{address:08x};",
+                  f"force {scope}.wr_cfg_burst_len_m1=8'd{remaining-1};", '#1;',
+                  f"assert({scope}.wr_selected_last_beat[0]==9'd{expected-1});",
+                  f"assert({scope}.wr_selected_last_beat[1]==9'd{expected-1});"]
+    lines += [f'release {scope}.{port};' for port in
+              ('wr_cmd_beat_cnt', 'wr_beat_cnt', 'wr_cmd_row_addr_cur',
+               'wr_data_row_addr_cur', 'wr_cfg_burst_len_m1')]
     return lines
 
 
@@ -81,17 +98,21 @@ def unified_testbench(bus_width):
                           frontend+'.u_cache.g_window.u_window.u_span'):
             checks += [f"assert({component}.DMA_MAX_BYTES==16);",
                        f"assert({component}.BUS_WIDTH=={bus_width});"]
-        checks += segment_checks(dma+'.u_linear', bus_width, 16)
+        # 各层实例核对参数传播，独立 DMA 实例覆盖全部合法上限和页内分段计算。
+        checks += [f"assert({dma}.u_linear.BUS_WIDTH=={bus_width});",
+                   f"assert({dma}.u_linear.DMA_MAX_BYTES==16);",
+                   f"assert({dma}.u_linear.MAX_BURST_BEATS=={16//(bus_width//8)});"]
         if enabled:
-            ram = core + '.g_shared_ia_ps.u_ram'
+            ram = core + '.g_shared_ia_ps.g_channels.u_ram'
             checks += [f"assert({register}.SHARED_TOTAL_BYTES=={total});",
                        f"assert({register}.SHARED_BANK_BYTES=={size});",
                        f"assert({register}.SHARED_IA_BANK_MASK==32'h{0x16 if count >= 8 else 0x6:x});",
                        f"assert({register}.PS_DIRECTORY_ROWS==1024);",
-                       f"assert({ram}.BANK_BYTES=={size});",
-                       f"assert({ram}.TOTAL_BYTES=={total});",
-                       f"assert({ram}.BANKS=={count});",
-                       f"assert({ram}.ROWS=={size//16});",
+                       f"assert({core}.p_fixed_ps_channels==1'b1);",
+                       f"assert({ram}.p_bank_bytes=={size});",
+                       f"assert({ram}.p_total_bytes=={total});",
+                       f"assert({ram}.p_banks=={count});",
+                       f"assert({ram}.p_rows=={size//16});",
                        f"assert({core}.IA_MAX_CACHE_BLOCKS=={max_ia_banks*size//512});",
                        f"assert({pool}.EXTERNAL_RAM==1);",
                        f"assert({pool}.POOL_BYTES=={total-size});",
@@ -104,9 +125,9 @@ def unified_testbench(bus_width):
                        f"assert({register}.SHARED_BANK_BYTES==0);",
                        f"assert({register}.SHARED_IA_BANK_MASK==0);",
                        f"assert({register}.PS_DIRECTORY_ROWS==0);"]
-    source = ('module parameter_test(output logic passed);\n' + '\n'.join(instances) +
-              '\ninitial begin\n' + '\n'.join(checks) + '\npassed=1;\nend\nendmodule\n')
-    return source, cases, len(checks)
+    source = ('`timescale 1ns/1ps\nmodule parameter_test(output logic passed);\n' + '\n'.join(instances) +
+              '\ninitial begin\npassed=0;\n' + '\n'.join(checks) + '\npassed=1;\nend\nendmodule\n')
+    return source, cases, sum(line.startswith('assert(') for line in checks)
 
 
 def main():
@@ -117,7 +138,13 @@ def main():
                         help='Directory for generated tests, binaries, logs, and summary.json')
     parser.add_argument('--verilator', default=os.environ.get('VERILATOR', 'verilator'),
                         help='Verilator executable (default: VERILATOR environment variable or PATH)')
+    parser.add_argument('--compile-timeout', type=float, default=900,
+                        help='Maximum seconds for each generation or compilation command')
+    parser.add_argument('--jobs', type=int, default=2,
+                        help='Parallel C++ compilation jobs')
     args = parser.parse_args()
+    if args.jobs < 1 or args.compile_timeout <= 0:
+        parser.error('jobs and compile-timeout must be positive')
     repo, out = args.repo.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
@@ -125,6 +152,7 @@ def main():
     spec = importlib.util.spec_from_file_location('configuration_build_sim', repo/'test/model_benchmark/build_sim.py')
     build_sim = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(build_sim)
+    sys.path.insert(0, str(repo))
     from scripts.capacity.config import DEFAULTS, validate_config
 
     source_list, source_args = build_sim.filelist_sources(
@@ -165,10 +193,27 @@ def main():
             else:
                 raise RuntimeError(f'Benchmark accepted shared bank geometry {size} x {count}')
     main_cpp = out/'main.cpp'
-    main_cpp.write_text('#include "Vparameter_test.h"\n#include "verilated.h"\n#include <cstdio>\n'
-                        'int main(int argc,char**argv){Verilated::commandArgs(argc,argv);'
-                        'Vparameter_test top;top.eval();if(!top.passed)return 2;'
-                        'std::puts("CONFIGURATION_BOUNDS_PASS");return 0;}\n')
+    main_cpp.write_text('''#include "Vparameter_test.h"
+#include "verilated.h"
+#include <cstdio>
+int main(int argc, char** argv) {
+    VerilatedContext context;
+    context.commandArgs(argc, argv);
+    Vparameter_test top{&context};
+    for (unsigned event = 0; event < 4096 && !context.gotFinish(); ++event) {
+        top.eval();
+        if (top.passed) {
+            top.final();
+            std::puts("CONFIGURATION_BOUNDS_PASS");
+            return 0;
+        }
+        if (!top.eventsPending()) break;
+        context.time(top.nextTimeSlot());
+    }
+    top.final();
+    return 2;
+}
+''')
     records = []
 
     def execute(name, sv, sources, *, expected_accept=True, rejection_marker=None,
@@ -177,16 +222,18 @@ def main():
         directory.mkdir(parents=True, exist_ok=True)
         tb = directory/'parameter_test.sv'
         tb.write_text(sv)
-        command = [args.verilator, '--cc', '--exe', '--assert', '-Wno-fatal', '-Wno-PINMISSING',
+        command = [args.verilator, '--cc', '--exe', '--assert', '--timing', '--flatten',
+                   '-Wno-fatal', '-Wno-PINMISSING',
                    '--top-module', 'parameter_test', '--Mdir', str(directory/'obj'),
                    '--output-groups', '0', '--output-split', '12000',
-                   '-CFLAGS', '-std=c++17', *defines, *sources, str(tb), str(main_cpp)]
-        compile_command = ['make', '-C', str(directory/'obj'), '-f', 'Vparameter_test.mk', '-j', '1',
+                   '-CFLAGS', '-std=c++20', *defines, *sources, str(tb), str(main_cpp)]
+        compile_command = ['make', '-C', str(directory/'obj'), '-f', 'Vparameter_test.mk', '-j', str(args.jobs),
                            'OPT_FAST=-O0', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O0',
                            'VK_PCH_I_FAST=', 'VK_PCH_I_SLOW=', 'CFG_CXXFLAGS_PCH=-E']
         for cmd, filename in ((command, 'generate.log'), (compile_command, 'compile.log')):
             with (directory/filename).open('w') as stream:
-                result = subprocess.run(cmd, cwd=repo, stdout=stream, stderr=subprocess.STDOUT, timeout=300)
+                result = subprocess.run(cmd, cwd=repo, stdout=stream, stderr=subprocess.STDOUT,
+                                        timeout=args.compile_timeout)
             if result.returncode:
                 raise RuntimeError(f'{name}: see {directory/filename}: '+(directory/filename).read_text()[-3000:])
         binary = directory/'obj/Vparameter_test'
@@ -208,7 +255,9 @@ def main():
             if path.suffix in ('.o', '.d', '.gch'):
                 path.unlink()
 
-    dma_sources = [str(repo/name) for name in ('rtl/npu/dma/axi_linear_block_dma.sv',
+    dma_sources = [str(repo/name) for name in ('rtl/common/REGFILE.v',
+                                              'rtl/common/add_equal.sv',
+                                              'rtl/npu/dma/axi_linear_block_dma.sv',
                                               'rtl/npu/conv/conv_axi_span_reader.sv')]
     supported_by_bus = {bus: [bus//8 * 2**power for power in range(9)] for bus in BUS_WIDTHS}
     for bus_width, supported in supported_by_bus.items():
@@ -227,11 +276,13 @@ def main():
                     checks += segment_checks(f'linear{index}', bus_width, value)
                     checks += [f'assert(span{index}.DMA_MAX_BYTES=={value});',
                                f'assert(span{index}.BUS_WIDTH=={bus_width});']
-            sv = ('module parameter_test(output logic passed);\n' + '\n'.join(instances) +
-                  '\ninitial begin\n' + '\n'.join(checks) + '\npassed=1;\nend\nendmodule\n')
+            sv = ('`timescale 1ns/1ps\nmodule parameter_test(output logic passed);\n' + '\n'.join(instances) +
+                  '\ninitial begin\npassed=0;\n' + '\n'.join(checks) + '\npassed=1;\nend\nendmodule\n')
             execute(f'axi{bus_width}_'+name, sv, dma_sources, expected_accept=accepted,
                     rejection_marker='DMA_MAX_BYTES',
-                    details=dict(bus_width=bus_width, dma_bytes=list(values), assertions=len(checks)))
+                    defines=('-DNPU_SIM_ASSERT',),
+                    details=dict(bus_width=bus_width, dma_bytes=list(values),
+                                 assertions=sum(line.startswith('assert(') for line in checks)))
     for bus_width in BUS_WIDTHS:
         sv, cases, assertions = unified_testbench(bus_width)
         execute(f'axi{bus_width}_unified_shared', sv, source_args,

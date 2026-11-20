@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,7 @@ ROOT=Path(__file__).resolve().parents[2]
 HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT))
 from scripts.capacity.config import selected_config
+with_observers = runpy.run_path(str(ROOT/'test/monitors/sources.py'))['with_observers']
 
 CAPACITIES=(512,1024,2048,4096,8192,16384,32768,65536)
 RTL_NAMES=('conv_im2col_pkg.sv','conv_sdp_ram.sv',
@@ -55,6 +57,7 @@ def main():
              '--size','16','--out',vector],out/'vectors.log')
     files=[rtl_path(n) for n in RTL_NAMES]
     files += [ROOT/'test/conv_frontend/tests/tb_conv_im2col_frontend.sv',HERE/'tb_frontend_profile.sv']
+    files = with_observers(files)
     tracked=files+[Path(__file__),ROOT/'test/conv_frontend/tests/gen_rtl_vectors.py',
                    ROOT/'test/conv_frontend/tests/run_model_tests.py',
                    ROOT/'test/conv_frontend/model/conv_model.py']
@@ -94,6 +97,7 @@ def main():
         print(json.dumps({'bytes':capacity,'jobs':len(rows),'passed':True}),flush=True)
     traffic_files=[rtl_path(n) for n in RTL_NAMES[:7]]
     traffic_files += [ROOT/'test/conv_reuse/axi_counted_memory.sv',ROOT/'test/windowed_cache/tb_windowed_cache.sv']
+    traffic_files = with_observers(traffic_files)
     traffic_hashes={str(p.relative_to(ROOT)):digest(p) for p in traffic_files}
     for capacity in args.traffic_capacities:
         folder=out/('traffic_'+str(capacity));folder.mkdir(exist_ok=True)

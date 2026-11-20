@@ -86,5 +86,69 @@ bind vector_engine vector_engine_observer #(
   .hw_wr_granted(wr_granted),
   .hw_wr_req(wr_req)
 );
+
+module vector_input_write_observer #(
+  parameter int p_tile=16,
+  parameter int p_bus_width=64,
+  parameter int p_dma_size=64,
+  parameter int p_load_wait=0,
+  parameter int p_load_a=0
+);
+  localparam int p_bus_bytes=p_bus_width/8;
+  longint unsigned checked_cycles=0, ordinary_cycles=0, window_cycles=0, pool_cycles=0;
+  logic ordinary_phase;
+  assign ordinary_phase=32'(vector_engine.state)==p_load_wait && 32'(vector_engine.load_kind)==p_load_a;
+
+  // 写入来源及模式直接观察真实向量和 DMA，检查过程不改变请求和响应。
+  always @(posedge vector_engine.clk) if (vector_engine.rst_n) begin
+    checked_cycles<=checked_cycles+1;
+    assert(!vector_engine.global_pool || (vector_engine.spatial && !vector_engine.depthwise));
+    assert(!ordinary_phase || !vector_engine.spatial);
+    assert(!vector_engine.win_busy || (vector_engine.spatial && !vector_engine.global_pool));
+    assert(vector_engine.pool_bank_valid==0 || (vector_engine.spatial && vector_engine.global_pool));
+    assert(!(ordinary_phase && vector_engine.window_response_fire));
+    assert(!(ordinary_phase && vector_engine.pool_bank_valid!=0));
+    assert(!(vector_engine.window_response_fire && vector_engine.pool_bank_valid!=0));
+    if(ordinary_phase && vector_engine.rd_valid[0]) ordinary_cycles<=ordinary_cycles+1;
+    if(vector_engine.window_response_fire) window_cycles<=window_cycles+1;
+    if(vector_engine.pool_bank_valid!=0) pool_cycles<=pool_cycles+1;
+  end
+
+  for(genvar entry=0;entry<2*p_tile && entry<p_dma_size;entry++) begin : g_entry
+    localparam int p_s8_lane=entry%p_bus_bytes;
+    localparam int p_s16_lane=entry%(p_bus_bytes/2);
+    localparam int p_window_bank=entry%4;
+    wire load_match=vector_engine.g_input_write[entry].g_buffer.load_match;
+    wire window_match=vector_engine.g_input_write[entry].g_buffer.window_match;
+    wire pool_match=vector_engine.g_input_write[entry].g_buffer.pool_match;
+    wire write_enable=window_match || load_match || pool_match;
+    wire signed [15:0] load_value=vector_engine.c.vector_s16 ?
+      vector_engine.rd_data[p_s16_lane] : vector_engine.rd_data[p_s8_lane];
+    wire signed [15:0] reference_value=pool_match ? vector_engine.pool_bank_data[p_s8_lane] :
+      load_match ? load_value : vector_engine.window_bank_data[p_window_bank];
+    logic reference_valid;
+    logic signed [15:0] reference_data;
+
+    // 每个实际写入与逐项数据选择比较，下一拍再检查完整十六位存储值。
+    always @(posedge vector_engine.clk) begin
+      if(!vector_engine.rst_n) reference_valid<=1'b0;
+      else begin
+        if(reference_valid) assert(vector_engine.input_buf[entry]==reference_data);
+        assert(vector_engine.g_input_write[entry].g_buffer.write_enable==write_enable);
+        if(write_enable) begin
+          assert(vector_engine.g_input_write[entry].g_buffer.write_value==reference_value);
+          reference_data<=reference_value;
+          reference_valid<=1'b1;
+        end
+      end
+    end
+  end
+  final $display("VECTOR_INPUT_BANKS_PASS cycles=%0d ordinary=%0d window=%0d pool=%0d",
+    checked_cycles,ordinary_cycles,window_cycles,pool_cycles);
+endmodule
+bind vector_engine vector_input_write_observer #(
+  .p_tile(TILE),.p_bus_width(BUS_WIDTH),.p_dma_size(DMA_SIZE),
+  .p_load_wait(32'(LOAD_WAIT)),.p_load_a(32'(LD_A))
+) tb_input_write_observer();
 /* verilator lint_on DECLFILENAME */
 `endif

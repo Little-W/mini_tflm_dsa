@@ -337,7 +337,8 @@ def source_files():
 
 def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
           ps_compress=False,pool_bytes=16384,force_raw=False,lint_only=False,
-          bus_width=None,shared_bank_bytes=2048,shared_bank_count=0,ps_frame_count=16):
+          bus_width=None,shared_bank_bytes=2048,shared_bank_count=0,ps_frame_count=16,
+          build_timeout=7200):
     bus_width=axi_data_width(bus_width)
     if cache_sets is None:
         cache_sets=selected_config()['IM2COL_CACHE_BYTES']//32
@@ -363,10 +364,10 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
          '--top-module','tb_conv_npu','-Wno-fatal','--output-groups','0',
          '--output-split','10000','--output-split-cfuncs','1000',
          *[f'-I{path}' for path in includes],*defines,'--Mdir',out/'obj','-j',jobs,
-         '-CFLAGS','-std=c++20 -O1 --param ggc-min-expand=1 --param ggc-min-heapsize=1024',
+         '-CFLAGS','-std=c++20 -O1 --param ggc-min-expand=10 --param ggc-min-heapsize=32768',
          '-MAKEFLAGS',f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',HERE/'simulator.vlt',*sources]
     before={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
-    rc=command(cmd,out/'compile.log',timeout=1200)
+    rc=command(cmd,out/'compile.log',timeout=build_timeout)
     text=(out/'compile.log').read_text()
     warnings={w:text.count('%Warning-'+w+':') for w in sorted(set(re.findall(r'%Warning-([^:]+):',text)))}
     after={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
@@ -375,7 +376,8 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
             'shared_bank_count':shared_bank_count,'cache_sets':cache_sets,'cache_ways':2,'cache_line_bytes':16,'cache_data_bytes':cache_sets*32,'cache_policy':cache_policy,
             'ps_compress':ps_compress,'pool_bytes':pool_bytes,'force_raw':force_raw,'lint_only':lint_only,
             'ps_frame_count':ps_frame_count,
-            'source_sha256':before,'sources_unchanged_during_build':before==after}
+            'source_sha256':before,'sources_unchanged_during_build':before==after,
+            'build_timeout_seconds':build_timeout}
     if rc==0 and not lint_only:
         result['binary_sha256']=hashlib.sha256((out/'obj/Vtb_conv_npu').read_bytes()).hexdigest()
     (out/'build.json').write_text(json.dumps(result,indent=2)+'\n')
@@ -383,13 +385,13 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
     if before!=after:raise RuntimeError('RTL sources changed during compilation; rebuild after edits complete')
     return out/'obj/Vtb_conv_npu'
 
-def run_suite(binary,out,name,tasks,no_random=False,force_codec=False):
+def run_suite(binary,out,name,tasks,no_random=False,force_codec=False,timeout=300):
     suite=out/(name+'.suite')
     suite.write_text(''.join(f'{d}/config.mem {d}/init.mem {d}/golden.mem {d}/required.mem {d}/acc.mem\n' for d in tasks))
     cmd=[binary,f'+SUITE={suite}']+(['+NO_RANDOM_WAIT'] if no_random else [])
     if force_codec:cmd.append('+FORCE_PS_CODEC')
     binary_hash=hashlib.sha256(binary.read_bytes()).hexdigest()
-    rc=command(cmd,out/(name+'.log'),timeout=300)
+    rc=command(cmd,out/(name+'.log'),timeout=timeout)
     text=(out/(name+'.log')).read_text()
     measurements=[{k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',line)} for line in text.splitlines() if line.startswith('CONV_TASK_PASS')]
     ok=rc==0 and f'CONV_NPU_PASS tasks={len(tasks)}' in text and len(measurements)==len(tasks)
@@ -412,10 +414,12 @@ def main():
     a.add_argument('--window-only',action='store_true',help='Compare Conv2 and Dense reuse configurations')
     a.add_argument('--lint-only',action='store_true')
     a.add_argument('--keep-objects',action='store_true')
+    a.add_argument('--build-timeout',type=int,default=7200)
     a.add_argument('--bus-width',type=int,choices=(32,64))
     a.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192))
     a.add_argument('--shared-bank-count',type=int,choices=(6,7,8,9))
     x=a.parse_args()
+    if x.build_timeout<=0:a.error('--build-timeout must be positive')
     selected=selected_config()
     if x.cache_sets is not None and x.cache_bytes is not None:
         a.error('--cache-sets and --cache-bytes are mutually exclusive')
@@ -436,7 +440,8 @@ def main():
         for size in x.sizes:
             build(out/f's{size}',size,x.verilator,x.jobs,x.cache_sets,x.cache_policy,
                   x.ps_compress,x.pool_bytes,x.force_raw,True,bus_width=x.bus_width,
-                  shared_bank_bytes=x.shared_bank_bytes,shared_bank_count=x.shared_bank_count)
+                  shared_bank_bytes=x.shared_bank_bytes,shared_bank_count=x.shared_bank_count,
+                  build_timeout=x.build_timeout)
         print('CONV_LINT_PASS',flush=True)
         return 0
     ref=make_reference(out)
@@ -468,7 +473,7 @@ def main():
             binary=build(sd,size,x.verilator,x.jobs,cache_sets=x.cache_sets,cache_policy=x.cache_policy,
                          ps_compress=x.ps_compress,pool_bytes=x.pool_bytes,force_raw=x.force_raw,
                          bus_width=x.bus_width,shared_bank_bytes=x.shared_bank_bytes,
-                         shared_bank_count=x.shared_bank_count)
+                         shared_bank_count=x.shared_bank_count,build_timeout=x.build_timeout)
         if x.window_only:
             summary['cases'].append(run_suite(binary,sd,'conv2_windows',
                 conv_window_cases(sd,size,ref,x.pool_bytes,x.force_raw),True,x.force_codec))

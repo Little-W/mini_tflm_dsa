@@ -25,15 +25,15 @@ class Im2colCacheConfiguration(unittest.TestCase):
             self.assertEqual(values["IM2COL_CACHE_BYTES"], capacity)
             geometry = im2col_cache.geometry(capacity)
             self.assertEqual(geometry["sets"] * 2 * 16, capacity)
-            self.assertEqual(geometry["metadata_bits"], capacity // 16 * 322)
+            self.assertEqual(geometry["metadata_bits"], capacity // 16 * 157)
             arrays = model.buffer_arrays_bits(4, 16, 12288, bank_count=7,
                                                im2col_cache_bytes=capacity)
             self.assertEqual(arrays["conv_data_cache"], capacity * 8)
-            self.assertEqual(arrays["conv_cache_metadata"], capacity // 16 * 322)
+            self.assertEqual(arrays["conv_cache_metadata"], capacity // 16 * 157)
             if previous is not None:
                 old_capacity, old_arrays = previous
                 self.assertEqual(sum(arrays.values()) - sum(old_arrays.values()),
-                                 (capacity - old_capacity) // 16 * (128 + 322) + 4)
+                                 (capacity - old_capacity) // 16 * (128 + 157) + 4)
             previous = capacity, arrays
 
     def test_invalid_capacities(self):
@@ -66,7 +66,7 @@ class Im2colCacheConfiguration(unittest.TestCase):
         help_text = im2col_cache.help_text(4096)
         self.assertIn("128 sets", help_text)
         self.assertIn("85 / 42", help_text)
-        self.assertIn("10304 B", help_text)
+        self.assertIn("5024 B", help_text)
 
     def test_capacity_show_reads_selected_cache(self):
         command = [sys.executable, str(ROOT / "scripts/capacity/solve.py"),

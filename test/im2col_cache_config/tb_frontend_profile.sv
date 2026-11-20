@@ -6,7 +6,8 @@ module tb_frontend_profile;
     .CACHE_SETS(CACHE_BYTES/32),.CACHE_WAYS(2),.LINE_BYTES(16),
     .PREFETCH(1),.WINDOWED(1)) u_suite();
   initial begin
-    if ($bits(u_suite.g_direct.dut.u_cache.g_window.u_window.u_data.g_bank[0].mem)
+    if (($bits(u_suite.g_direct.dut.u_cache.g_window.u_window.g_data_way[0].u_data.g_bank[0].u_storage.mem) +
+         $bits(u_suite.g_direct.dut.u_cache.g_window.u_window.g_data_way[1].u_data.g_bank[0].u_storage.mem))
         != CACHE_BYTES*8) $fatal(1,"Input cache data RAM capacity mismatch");
     $display("IM2COL_RAM_CAPACITY_PASS bytes=%0d sets=%0d ways=2 line_bytes=16",
              CACHE_BYTES,CACHE_BYTES/32);

@@ -94,10 +94,11 @@ def main() -> int:
 
     buffer_dir = out / 'kernel_buffer'
     buffer_rtl = repo / 'rtl/npu/loaders/kernel_loader_buffer.sv'
+    regfile_rtl = repo / 'rtl/common/REGFILE.v'
     buffer_tb = Path(__file__).resolve().with_name('tb_kernel_prefetch.sv')
     buffer_command = [args.verilator, '--binary', '--timing', '--assert', '-sv',
         '--top-module', 'tb_kernel_prefetch', '-Wno-fatal', '--Mdir', buffer_dir/'obj',
-        '-j', args.jobs, buffer_rtl, buffer_tb]
+        '-j', args.jobs, buffer_rtl, regfile_rtl, buffer_tb]
     buffer_returncode = runner.command(buffer_command, buffer_dir/'compile.log')
     buffer_binary = buffer_dir/'obj/Vtb_kernel_prefetch'
     if buffer_returncode == 0:
@@ -111,6 +112,7 @@ def main() -> int:
         'runs': runs, 'kernel_buffer': {'passed': buffer_passed,
             'returncode': buffer_returncode,
             'source_sha256': {str(buffer_rtl): common.sha256(buffer_rtl),
+                              str(regfile_rtl): common.sha256(regfile_rtl),
                               str(buffer_tb): common.sha256(buffer_tb)}}}
     (out/'summary.json').write_text(json.dumps(result, indent=2)+'\n')
     print(json.dumps({'passed': result['passed'], 'summary': str(out/'summary.json')}, indent=2))

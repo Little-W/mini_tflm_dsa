@@ -80,6 +80,7 @@ def build(size,pcr=False):
     d=out/tag;d.mkdir(exist_ok=True);npu=r/'rtl/npu'
     packages=[npu/'conv/conv_im2col_pkg.sv',npu/'conv/vector_engine_pkg.sv']
     src=packages+[p for p in sorted(npu.rglob('*.sv')) if p not in packages]+sorted(npu.rglob('*.v'))+[r/'rtl/common/pseudo_dual_port_ram.v']
+    src += sorted((r/'rtl/common').glob('REGFILE.v')) + sorted((r/'rtl/common').glob('onehot_check.sv')) + sorted((r/'rtl/common').glob('add_equal.sv'))
     src += [r/'test/dep_modules/ddr_axi_mem_model.sv',Path(__file__).resolve().parent/'tb_npu_top.sv']
     src += [metrics]
     flags=['--binary','--timing','--assert','-sv','--top-module','tb_npu_top','-Wno-fatal','--output-groups','0','--output-split','10000',f'-I{r/"rtl/npu/ps_compact"}',f'-DTB_SIZE={size}','-DTB_IA_CACHE_BLOCKS=4','-DTB_PS_FRAME_COUNT=16','-DTB_AXI_READ_OUTSTANDING=4','-DTB_DATA_WIDTH=16','-DTB_WEIGHT_WIDTH=16','-DTB_MEM_WORDS=131072','--Mdir',str(d/'obj'),'-j',str(x.jobs),'-CFLAGS','-std=c++20 -O1','-MAKEFLAGS','CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0']
