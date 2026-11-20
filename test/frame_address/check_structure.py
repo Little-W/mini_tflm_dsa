@@ -27,7 +27,7 @@ def main() -> None:
     assert dsp['connections']['OPMODE'][:4]==['1','0','1','0']
     assert dsp['connections']['PCIN']==['0']*48
     paths = connected_paths(module,limit=5,group_limit=0)
-    assert paths['graph_complete'] and paths['longest_register_path_cells']<=15
+    assert paths['graph_complete'] and paths['longest_register_path_cells']<=9
     report = {'passed':True,'mapped_sha256':hashlib.sha256(args.mapped.read_bytes()).hexdigest(),
               'resources':resources(module['cells']),'dsp_name':name,'dsp_registers':registers,'paths':paths}
     args.out.parent.mkdir(parents=True,exist_ok=True)

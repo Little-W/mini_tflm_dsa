@@ -52,6 +52,8 @@ module frame_address_prepare #(
     logic start_fire, multiply_en;
     logic [31:0] depth_rounded, depth_tiles;
     logic unused_depth_carry;
+    logic [31:0] depth_round_i_size;
+    logic depth_round_i_carry;
     logic [31:0] ia_factor, weight_factor;
     logic [31:0] packed_depth_offset, ia_packed_offset, weight_packed_offset;
     logic [31:0] factor_a [0:2];
@@ -61,6 +63,7 @@ module frame_address_prepare #(
     logic [31:0] selected_a, selected_b, selected_base, selected_offset;
     logic [31:0] addend;
     logic unused_addend_carry;
+    logic addend_i_carry;
     logic signed [17:0] multiply_a, multiply_b;
     logic [47:0] accumulated;
     logic [16:0] result_low;
@@ -72,7 +75,12 @@ module frame_address_prepare #(
     assign multiply_en = (c_st == PRODUCT) && !i_abort;
 
     // 分块计数保留三十二位回绕；两个偏移位段互不重叠，可直接组合。
-    assign {unused_depth_carry, depth_rounded} = {1'b0, i_total_depth} + 33'(p_size-1);
+    assign depth_round_i_size = 32'(p_size-1);
+    assign depth_round_i_carry = 1'b0;
+    parallel_prefix_add #(.p_width(32)) u_depth_round (
+        .i_a(i_total_depth), .i_b(depth_round_i_size), .i_carry(depth_round_i_carry),
+        .o_sum(depth_rounded), .o_carry(unused_depth_carry)
+    );
     assign depth_tiles = depth_rounded >> p_size_shift;
     assign ia_factor = (i_p0 >> p_size_shift) << (2*p_size_shift + int'(i_ia_s16));
     assign weight_factor = (i_column >> p_size_shift) << (2*p_size_shift + int'(i_weight_s16));
@@ -119,7 +127,12 @@ module frame_address_prepare #(
             end
         endcase
     end
-    assign {unused_addend_carry, addend} = {1'b0, selected_base} + {1'b0, selected_offset};
+    // 组间进位并行计算，使地址选择、基址加法和乘加输入处于同一短组合阶段。
+    assign addend_i_carry = 1'b0;
+    parallel_prefix_add #(.p_width(32)) u_addend (
+        .i_a(selected_base), .i_b(selected_offset), .i_carry(addend_i_carry),
+        .o_sum(addend), .o_carry(unused_addend_carry)
+    );
     assign multiply_a = (phase == 2'd2) ? $signed({{3{selected_a[31]}}, selected_a[31:17]}) : $signed({1'b0, selected_a[16:0]});
     assign multiply_b = (phase == 2'd1) ? $signed({{3{selected_b[31]}}, selected_b[31:17]}) : $signed({1'b0, selected_b[16:0]});
 

@@ -47,7 +47,9 @@ def main() -> None:
         mapped.write_text(args.mapped.read_text().replace('module frame_address_prepare(', 'module frame_address_prepare_mapped(', 1))
         header = rtl[rtl.index('module frame_address_prepare #('):rtl.index('\n);')+3]
         ports = re.search(r'\) \(\n(.*?)\n\);', header, re.S)[1]
-        names = re.findall(r'(?:input|output)\s+logic\s*(?:\[[^]]+\]\s*)?(\w+)', ports)
+        names = re.findall(r'(?:input|output)\s+(?:wire\s+)?logic\s*(?:\[[^]]+\]\s*)?(\w+)', ports)
+        if len(names) != len(re.findall(r'\b(?:input|output)\b', ports)):
+            raise RuntimeError('Every declared port must have an explicit connection')
         connections = ',\n'.join('.'+name+'('+name+')' for name in names)
         wrapper = out/'frame_address_prepare.sv'
         wrapper.write_text(header+'\nif(p_use_dsp) begin : g_mapped\n'+
@@ -55,8 +57,10 @@ def main() -> None:
             'frame_address_prepare_rtl #(.p_size(p_size),.p_use_dsp(0),'+
             '.p_ready_mask_abort(p_ready_mask_abort)) u_impl('+connections+');\nend\nendmodule\n')
         sources = [renamed,mapped,wrapper,sources[1],model_file]
+    sources.append(ROOT / 'rtl/common/parallel_prefix_add.sv')
     recorded_sources = sources + [Path(__file__).resolve()]
-    hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in recorded_sources}
+    source_key = lambda p: str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p)
+    hashes = {source_key(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in recorded_sources}
     verilator = shutil.which(args.verilator)
     if not verilator:
         raise RuntimeError('Cannot locate Verilator: ' + args.verilator)
@@ -74,7 +78,7 @@ def main() -> None:
     match = re.search(r'FRAME_ADDRESS_PASS (.*)', (out / 'run.log').read_text())
     if not match:
         raise RuntimeError('Completion marker missing')
-    if hashes != {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in recorded_sources}:
+    if hashes != {source_key(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in recorded_sources}:
         raise RuntimeError('Sources changed during validation')
     phases = [{'age': int(age), 'abort': int(abort), 'reset': int(reset)}
               for age, abort, reset in re.findall(

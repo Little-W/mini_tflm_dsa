@@ -26,6 +26,7 @@ def main() -> None:
     source = ROOT / 'rtl/npu/top/frame_address_prepare.sv'
     candidate = out / source.name
     candidate.write_bytes(source.read_bytes())
+    helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
     original = read_rtl_source(args.reference_rev + ':rtl/npu/top/npu_top.sv', cwd=ROOT, text=True)
     function = re.search(r'function automatic logic \[REG_WIDTH-1:0\] operand_frame_offset\(.*?endfunction', original, re.S)[0]
     ports = re.search(r'\) \(\n(.*?)\n\);', source.read_text(), re.S)[1]
@@ -42,12 +43,13 @@ endmodule
     cases = {}
     for label, path, top in [('reference', reference, 'frame_address_reference'),
                              ('candidate', candidate, 'frame_address_prepare')]:
-        cases[label] = {'top': top, 'options': ['-D', 'SYNTHESIS=1'], 'sources': [str(path)],
+        cases[label] = {'top': top, 'options': ['-D', 'SYNTHESIS=1'],
+                        'sources': [str(path), str(helper.relative_to(ROOT))],
                         'configuration': 'Three complete 32-bit frame addresses, tile16, all layout and precision modes'}
     (out / 'cases.json').write_text(json.dumps(cases, indent=2) + '\n')
     summary = {'reference_revision': args.reference_rev,
                'reference_top_sha256': hashlib.sha256(original.encode()).hexdigest(),
-               'input_sha256': {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in (reference,candidate)}}
+               'input_sha256': {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in (reference,candidate,helper)}}
     (out / 'input_manifest.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2))
 

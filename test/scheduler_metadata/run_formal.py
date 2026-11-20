@@ -51,7 +51,8 @@ def main():
     for size, frames, reuse in ((1,1,1), (4,3,4), (16,16,32), (16,16,0), (16,17,64)):
         commands = []
         for label in ('reference', 'current'):
-            paths = [out / f'{label}.sv', ROOT / 'rtl/common/onehot_check.sv', ROOT / 'rtl/common/regfile.v']
+            paths = [out / f'{label}.sv', ROOT / 'rtl/common/onehot_check.sv',
+                     ROOT / 'rtl/common/regfile.v', ROOT / 'rtl/common/parallel_prefix_add.sv']
             commands += [f'read_slang -D SYNTHESIS=1 -D XILINX_FPGA=1 --top ps_window_scheduler '
                          f'-GSIZE={size} -GFRAME_COUNT={frames} -GMAX_REUSE_TILES={reuse} ' + ' '.join(map(str,paths)),
                          'prep -top ps_window_scheduler -flatten', 'memory_map', 'async2sync', 'opt_clean',

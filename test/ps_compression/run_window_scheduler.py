@@ -35,7 +35,8 @@ def main():
         target.mkdir(parents=True, exist_ok=True)
         helper = ROOT / 'rtl/common/onehot_check.sv'
         storage = ROOT / 'rtl/common/regfile.v'
-        sources = [rtl, helper, storage, test_dir / cpp, test_dir / 'window_scheduler_ref.hpp', Path(__file__).resolve()]
+        prefix_adder = ROOT / 'rtl/common/parallel_prefix_add.sv'
+        sources = [rtl, helper, storage, prefix_adder, test_dir / cpp, test_dir / 'window_scheduler_ref.hpp', Path(__file__).resolve()]
         sources += [HERE / 'window_scheduler_tb.sv', ROOT / 'test/monitors/ps_window_scheduler_observer.sv']
         hashes = {str(path): digest(path) for path in sources}
         binary = target / 'obj/Vps_window_scheduler'
@@ -43,7 +44,7 @@ def main():
                    '--top-module', 'window_scheduler_tb', '--prefix', 'Vps_window_scheduler', '--Mdir', str(target / 'obj'),
                    '-Wno-fatal', '--output-groups', '0',
                    '-CFLAGS', '-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all',
-                   '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS', '-B', str(rtl), str(helper), str(storage), str(HERE / 'window_scheduler_tb.sv'), str(ROOT / 'test/monitors/ps_window_scheduler_observer.sv'), str(test_dir / cpp)]
+                   '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS', '-B', str(rtl), str(helper), str(storage), str(prefix_adder), str(HERE / 'window_scheduler_tb.sv'), str(ROOT / 'test/monitors/ps_window_scheduler_observer.sv'), str(test_dir / cpp)]
         started = time.monotonic()
         if args.reuse_build:
             previous = json.loads((target / 'summary.json').read_text())

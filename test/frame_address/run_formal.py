@@ -26,7 +26,9 @@ def main() -> None:
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = ROOT / 'rtl/npu/top/frame_address_prepare.sv'
+    helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    helper_hash = hashlib.sha256(helper.read_bytes()).hexdigest()
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
     model = re.search(r'^module DSP48E1\b.*?^endmodule', library.read_text(), re.M | re.S)[0]
@@ -45,7 +47,9 @@ def main() -> None:
         return log.read_text()
 
     ports = re.search(r'\) \(\n(.*?)\n\);', source.read_text(), re.S)[1]
-    names = re.findall(r'(?:input|output)\s+logic\s*(?:\[[^]]+\]\s*)?(\w+)', ports)
+    names = re.findall(r'(?:input|output)\s+(?:wire\s+)?logic\s*(?:\[[^]]+\]\s*)?(\w+)', ports)
+    if len(names) != len(re.findall(r'\b(?:input|output)\b', ports)):
+        raise RuntimeError('Every declared port must have an explicit connection')
     connections = ',\n'.join('.' + name + '(' + name + ')' for name in names)
     commands = []
     for label, dsp in [('reference', 0), ('candidate', 1)]:
@@ -54,7 +58,7 @@ def main() -> None:
                            f'frame_address_prepare #(.p_size(16),.p_use_dsp({dsp})) u_impl (\n{connections}\n);\nendmodule\n')
         commands += [
             'read_slang --top ' + label + ' -D VERIFIC --blackboxed-module DSP48E1 -v ' +
-            shlex.quote(str(model_file)) + ' ' + ' '.join(shlex.quote(str(p)) for p in (source, wrapper)),
+            shlex.quote(str(model_file)) + ' ' + ' '.join(shlex.quote(str(p)) for p in (source, helper, wrapper)),
             'read_verilog -formal -sv -D VERIFIC -overwrite ' + shlex.quote(str(model_file)),
             'prep -top ' + label + ' -flatten', 'memory_map', 'wreduce', 'opt -full', 'async2sync', 'opt -full',
             'write_json ' + shlex.quote(str(out / (label + '_flat.json'))),
@@ -84,6 +88,7 @@ def main() -> None:
     if 'Equivalence successfully proven' not in state_log:
         raise RuntimeError('Incomplete primitive state proof')
     summary = {'source_sha256': source_hash,
+               'helper_sha256': helper_hash, 'connected_ports': names,
                'primitive_library_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
                'inputs_constrained': False, 'abort_constrained': False, 'result_ready_constrained': False,
                'primitive_state': {'passed': True, 'equivalent_bits': int(re.search(
@@ -155,6 +160,8 @@ endmodule
 
     if source_hash != hashlib.sha256(source.read_bytes()).hexdigest():
         raise RuntimeError('RTL changed during formal verification')
+    if helper_hash != hashlib.sha256(helper.read_bytes()).hexdigest():
+        raise RuntimeError('Adder changed during formal verification')
     summary['passed'] = True
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2))
