@@ -115,8 +115,10 @@ def main():
     next_state = out / 'next_state.sv'
     next_state.write_text(next_state_module(reference, current))
     memory = ROOT / 'rtl/common/regfile.v'
+    helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
     report = {'passed': False, 'reference_ref': args.reference,
               'source_sha256': digest(ROOT / SOURCE), 'memory_sha256': digest(memory),
+              'helper_sha256': digest(helper),
               'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
               'control_and_storage_identical': True, 'external_inputs_constrained': False,
               'initial_reset_applied': True, 'runs': []}
@@ -139,7 +141,7 @@ def main():
         control = run(name + '_control', [
             f'read_slang --top bias_loader_buffer -GSIZE={size} -GBUS_WIDTH={bus} '
             f'-GCOUNT_WIDTH={count} -GGROUP_BLOCKS_MAX={groups} ' +
-            ' '.join(shlex.quote(str(path)) for path in (observer, memory)),
+            ' '.join(shlex.quote(str(path)) for path in (observer, memory, helper)),
             'prep -top bias_loader_buffer -flatten', 'async2sync', 'opt -full',
             'memory_map', 'opt -full', 'chformal -lower',
             'sat -seq 3 -tempinduct -maxsteps 8 -set-at 1 rst_n 0 -prove-asserts -verify',
@@ -157,6 +159,8 @@ def main():
         print(json.dumps(item), flush=True)
     if report['source_sha256'] != digest(ROOT / SOURCE) or report['memory_sha256'] != digest(memory):
         raise RuntimeError('Source changed during verification')
+    if report['helper_sha256'] != digest(helper):
+        raise RuntimeError('Helper changed during verification')
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
 

@@ -4,7 +4,7 @@ ROOT := ../..
 BUILD := $(ROOT)/build/bias_loader_reuse
 SOURCES := tb_bias_loader_reuse.sv $(ROOT)/rtl/npu/loaders/bias_loader.sv \
            $(ROOT)/rtl/npu/loaders/bias_loader_ctrl.sv $(ROOT)/rtl/npu/loaders/bias_loader_buffer.sv \
-           $(ROOT)/rtl/common/regfile.v
+           $(ROOT)/rtl/common/regfile.v $(ROOT)/rtl/common/parallel_prefix_add.sv
 
 .PHONY: run
 run:

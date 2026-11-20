@@ -21,7 +21,7 @@ def main():
     name='rtl/npu/loaders/bias_loader_buffer.sv'
     data=read_rtl_source(args.reference_ref+':'+name, cwd=ROOT) if args.reference_ref else (ROOT/name).read_bytes()
     source=out/'source.sv';source.write_bytes(data)
-    sources=[source,ROOT/'rtl/common/regfile.v']
+    sources=[source,ROOT/'rtl/common/regfile.v',ROOT/'rtl/common/parallel_prefix_add.sv']
     top='bias_loader_buffer';pre=out/'pre_lut.il';mapped=out/'mapped.json';script=out/'run.ys'
     script.write_text(f'read_slang --top {top} -GSIZE=16 -GBUS_WIDTH=64 -GCOUNT_WIDTH=28 -GGROUP_BLOCKS_MAX=32 '+
                      ' '.join(shlex.quote(str(p)) for p in sources)+'\n'+
@@ -38,7 +38,7 @@ def main():
         if name_ in design['cells']:design['cells'][name_].setdefault('attributes',{})['fpga_register_origin']=origin
     report=netlist_metrics.analyze(design)
     report.update(reference_ref=args.reference_ref,source_sha256={name:hashlib.sha256(data).hexdigest(),
-                  'rtl/common/regfile.v':hashlib.sha256(sources[1].read_bytes()).hexdigest()},
+                  **{str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources[1:]}},
                   configuration={'SIZE':16,'BUS_WIDTH':64,'COUNT_WIDTH':28,'GROUP_BLOCKS_MAX':32})
     (out/'summary.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({**report['resources'],'longest_register_path_cells':report['paths']['longest_register_path_cells']}),flush=True)

@@ -12,7 +12,8 @@ module bias_loader_buffer #(
     parameter int unsigned BUS_WIDTH  = 32,
     parameter int unsigned REG_WIDTH  = 32,
     parameter int unsigned COUNT_WIDTH = REG_WIDTH,
-    parameter int unsigned GROUP_BLOCKS_MAX = 1
+    parameter int unsigned GROUP_BLOCKS_MAX = 1,
+    parameter bit p_share_load_index = 1'b0
 ) (
     input  wire logic clk,
     input  wire logic rst_n,
@@ -51,6 +52,17 @@ module bias_loader_buffer #(
   logic [CNT_W-1:0]             bank_block_idx [2];
   // 接收装载命令时保存扩展一位的末端位置，读取驻留判断直接使用该位置。
   logic [CNT_W:0] bank_end_q [2];
+  logic [CNT_W:0] bank_end_i_a, bank_end_i_b, bank_end_o_sum;
+  logic bank_end_i_carry, bank_end_o_carry;
+  // 完整银行末端包含扩展位，分组进位计算缩短命令接收边沿的数据路径。
+  assign bank_end_i_a = {1'b0, load_block_idx};
+  assign bank_end_i_b = {1'b0, load_blocks_count};
+  assign bank_end_i_carry = 1'b0;
+  parallel_prefix_add #(.p_width(CNT_W + 1)) u_bank_end (
+      .i_a(bank_end_i_a), .i_b(bank_end_i_b), .i_carry(bank_end_i_carry),
+      .o_sum(bank_end_o_sum), .o_carry(bank_end_o_carry)
+  );
+
   logic                         load_bank_q;
   logic                         load_word_valid_q [BUS_WIDTH/8];
   logic [REG_WIDTH-1:0]         load_word_row_q;
@@ -101,7 +113,7 @@ module bias_loader_buffer #(
       if (load_start) begin
         bank_loaded[load_bank]    <= 1'b0;
         bank_block_idx[load_bank] <= load_block_idx;
-        bank_end_q[load_bank] <= {1'b0, load_block_idx} + {1'b0, load_blocks_count};
+        bank_end_q[load_bank] <= bank_end_o_sum;
       end else if (load_done_q) begin
         bank_loaded[load_bank_q] <= 1'b1;
       end
@@ -124,6 +136,10 @@ module bias_loader_buffer #(
   localparam int GROUP_ADDR_W = $clog2(GROUP_ELEMS);
   localparam int BLOCK_ADDR_W = (GROUP_BLOCKS_MAX > 1) ? $clog2(GROUP_BLOCKS_MAX) : 1;
 
+  localparam int RANGE_WIDTH = CNT_W + 1;
+  localparam int RANGE_STAGES = $clog2(RANGE_WIDTH);
+  logic [1:0][1:0] window_end_valid;
+  logic [CNT_W-1:0] load_request_idx;
   logic [1:0] load_window_hit;
   logic [1:0] current_window_hit;
   logic resident_current;
@@ -157,16 +173,56 @@ module bias_loader_buffer #(
   logic [RAM_WIDTH-1:0] ws_cache_pair [READS_PER_BLOCK];
   logic [RAM_WIDTH-1:0] ws_cache_update_data;
 
+  // 顶层控制器只在命令阶段使用装载命中，此时两个请求的块索引相同。
+  // 通用缓冲区默认分别处理两个索引，集成控制器时可共享范围比较。
+  assign load_request_idx = p_share_load_index ? current_block_idx : load_block_idx;
+
+  // 上界比较只需要判断请求末端是否产生超出银行末端的进位。
+  // 三个操作数先压缩为两项，再并行合并各位进位，保留完整扩展位。
+  for (genvar request_i = 0; request_i < 2; request_i++) begin : g_range_request
+    logic [RANGE_WIDTH-1:0] request_base;
+    logic [RANGE_WIDTH-1:0] request_count;
+    assign request_base = {1'b0, request_i == 0 ? load_request_idx : current_block_idx};
+    assign request_count = {1'b0, group_blocks_needed};
+    for (genvar bank_i = 0; bank_i < 2; bank_i++) begin : g_range_bank
+      logic [RANGE_WIDTH-1:0] sum_bits;
+      logic [RANGE_WIDTH-1:0] carry_bits;
+      logic [RANGE_WIDTH-1:0] shifted_carry;
+      logic unused_high_carry;
+      assign sum_bits = request_base ^ request_count ^ ~bank_end_q[bank_i];
+      assign carry_bits = (request_base & request_count) |
+          ((request_base | request_count) & ~bank_end_q[bank_i]);
+      assign {unused_high_carry, shifted_carry} = {carry_bits, 1'b0};
+      for (genvar stage_i = 0; stage_i <= RANGE_STAGES; stage_i++) begin : g_prefix_stage
+        logic [RANGE_WIDTH-1:0] carry_generate;
+        logic [RANGE_WIDTH-1:0] carry_propagate;
+        if (stage_i == 0) begin : g_initial
+          assign carry_generate = sum_bits & shifted_carry;
+          assign carry_propagate = sum_bits | shifted_carry;
+        end else begin : g_advance
+          for (genvar bit_i = 0; bit_i < RANGE_WIDTH; bit_i++) begin : g_prefix_bit
+            if (bit_i >= (1 << (stage_i-1))) begin : g_merge
+              assign carry_generate[bit_i] = g_prefix_stage[stage_i-1].carry_generate[bit_i] |
+                  (g_prefix_stage[stage_i-1].carry_propagate[bit_i] &
+                   g_prefix_stage[stage_i-1].carry_generate[bit_i-(1<<(stage_i-1))]);
+              assign carry_propagate[bit_i] = g_prefix_stage[stage_i-1].carry_propagate[bit_i] &
+                  g_prefix_stage[stage_i-1].carry_propagate[bit_i-(1<<(stage_i-1))];
+            end else begin : g_copy
+              assign carry_generate[bit_i] = g_prefix_stage[stage_i-1].carry_generate[bit_i];
+              assign carry_propagate[bit_i] = g_prefix_stage[stage_i-1].carry_propagate[bit_i];
+            end
+          end
+        end
+      end
+      assign window_end_valid[request_i][bank_i] = ~g_prefix_stage[RANGE_STAGES].carry_generate[RANGE_WIDTH-1];
+    end
+  end
   for (genvar b = 0; b < 2; b++) begin : gen_window_hit
     assign load_window_hit[b] = bank_loaded[b] &&
-        load_block_idx >= bank_block_idx[b] &&
-        {1'b0, load_block_idx} + {1'b0, group_blocks_needed} <=
-        bank_end_q[b];
+        load_request_idx >= bank_block_idx[b] && window_end_valid[0][b];
     // 两个银行并行判断驻留范围，银行选择仅作用于最终的一位结果。
     assign current_window_hit[b] = bank_loaded[b] &&
-        current_block_idx >= bank_block_idx[b] &&
-        {1'b0, current_block_idx} + {1'b0, group_blocks_needed} <=
-        bank_end_q[b];
+        current_block_idx >= bank_block_idx[b] && window_end_valid[1][b];
   end
   assign resident_current = current_window_hit[active_bank];
   assign load_block_valid = |load_window_hit;
@@ -244,12 +300,12 @@ module bias_loader_buffer #(
       (ws_busy && ws_issue_count < READ_COUNT_W'(READS_PER_BLOCK)));
   assign ws_issue_index = ws_read_start ? '0 : READ_INDEX_W'(ws_issue_count);
   assign read_enable = !init_cfg && (is_mode || ws_read_issue);
+  // 首次读取直接选择块起点，后续地址独立递增，资格判断只选择最终地址。
   assign read_address = is_mode ?
       {scalar_request_bank, BANK_ADDR_W'(scalar_request_word / WORDS_PER_READ)} :
-      {ws_read_start ? active_bank : ws_cache_bank,
-       BANK_ADDR_W'((ws_read_start ? BANK_ADDR_W'(current_block_offset) *
-                     BANK_ADDR_W'(READS_PER_BLOCK) : ws_read_base) +
-                    BANK_ADDR_W'(ws_issue_index))};
+      (ws_read_start ?
+       {active_bank, BANK_ADDR_W'(current_block_offset) * BANK_ADDR_W'(READS_PER_BLOCK)} :
+       {ws_cache_bank, BANK_ADDR_W'(ws_read_base + BANK_ADDR_W'(ws_issue_index))});
   always_ff @(posedge clk) begin
     if (is_mode && !init_cfg)
       scalar_half_q <= WORD_INDEX_W'(scalar_request_word % WORDS_PER_READ);

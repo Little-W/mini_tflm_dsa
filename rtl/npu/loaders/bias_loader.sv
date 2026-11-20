@@ -157,7 +157,8 @@ module bias_loader #(
         .DMA_DATA_WIDTH (8),
         .REG_WIDTH      (REG_WIDTH),
         .COUNT_WIDTH    (COUNT_WIDTH),
-        .GROUP_BLOCKS_MAX(GROUP_BLOCKS_MAX)
+        .GROUP_BLOCKS_MAX(GROUP_BLOCKS_MAX),
+        .p_share_load_index(1'b1)
     ) u_buffer (
         .clk               (clk),
         .rst_n             (rst_n),

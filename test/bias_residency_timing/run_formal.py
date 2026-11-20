@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCES = [Path('rtl/npu/loaders') / name for name in
            ('bias_loader.sv', 'bias_loader_ctrl.sv', 'bias_loader_buffer.sv')]
 MEMORY = Path('rtl/common/regfile.v')
+HELPER = Path('rtl/common/parallel_prefix_add.sv')
 
 
 def digest(path):
@@ -30,7 +31,7 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    hashes = {str(p): digest(ROOT / p) for p in SOURCES + [MEMORY]}
+    hashes = {str(p): digest(ROOT / p) for p in SOURCES + [MEMORY, HELPER]}
     snapshots = {}
     for label in ('reference', 'current'):
         folder = out / label
@@ -63,7 +64,7 @@ def main():
         for label, paths in snapshots.items():
             commands += [
                 f'read_slang --top bias_loader {options} ' +
-                ' '.join(shlex.quote(str(p)) for p in paths + [ROOT / MEMORY]),
+                ' '.join(shlex.quote(str(p)) for p in paths + [ROOT / MEMORY, ROOT / HELPER]),
                 'prep -top bias_loader -flatten', 'memory_map', 'async2sync',
                 'opt_clean', f'rename bias_loader {label}', f'design -stash {label}',
             ]
@@ -95,7 +96,7 @@ def main():
         print(json.dumps(case), flush=True)
         if not case['passed']:
             raise RuntimeError(f'Formal comparison did not complete: {log}')
-    if hashes != {str(p): digest(ROOT / p) for p in SOURCES + [MEMORY]}:
+    if hashes != {str(p): digest(ROOT / p) for p in SOURCES + [MEMORY, HELPER]}:
         raise RuntimeError('Sources changed during verification')
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

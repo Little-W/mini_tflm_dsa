@@ -1,0 +1,428 @@
+{
+  "inputs": {
+    "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+    "reference_scope": "rtl/npu/loaders/bias_loader_ctrl.sv",
+    "sources": [
+      {
+        "source": "rtl/npu/loaders/bias_loader.sv",
+        "reference_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+        "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+      },
+      {
+        "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+        "reference_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+        "current_sha256": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987"
+      },
+      {
+        "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+        "reference_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+        "current_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd"
+      },
+      {
+        "source": "rtl/common/regfile.v",
+        "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+        "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+      }
+    ],
+    "common_helper": {
+      "source": "rtl/common/parallel_prefix_add.sv",
+      "sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9"
+    }
+  },
+  "parameters": {
+    "SIZE": 16,
+    "BUS_WIDTH": 64,
+    "DATA_WIDTH": 32,
+    "REG_WIDTH": 32,
+    "COUNT_WIDTH": 29,
+    "GROUP_BLOCKS_MAX": 32
+  },
+  "behavior": {
+    "all_public_outputs_compared_each_cycle": true,
+    "original_state_registers_compared_each_cycle": 24,
+    "external_latency_cycles_changed": false,
+    "state_transition_sequence_changed": false,
+    "bias_storage_bits": 32768,
+    "ws_cache_bits": 512,
+    "preparation_registers": [
+      "remaining_blocks",
+      "load_tail_offset",
+      "load_window_last",
+      "tail_base_addr"
+    ]
+  },
+  "formal": {
+    "passed": true,
+    "inputs": {
+      "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+      "reference_scope": "rtl/npu/loaders/bias_loader_ctrl.sv",
+      "sources": [
+        {
+          "source": "rtl/npu/loaders/bias_loader.sv",
+          "reference_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+          "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+          "reference_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+          "current_sha256": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+          "reference_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+          "current_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd"
+        },
+        {
+          "source": "rtl/common/regfile.v",
+          "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+          "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+        }
+      ],
+      "common_helper": {
+        "source": "rtl/common/parallel_prefix_add.sv",
+        "sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9"
+      }
+    },
+    "external_input_assumptions": [],
+    "initial_reset_for_invariants": true,
+    "profiles": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 1,
+        "GROUP_BLOCKS_MAX": 1,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "b3187ebca28ecea0886c997ec6752f34fabc2d2743f82c9c5e59478a265ae967",
+          "log_sha256": "b6c64249f5542348d85540d77684b313209f486ea647f1a568b9aecf899c8764"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 32,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 8,
+        "GROUP_BLOCKS_MAX": 3,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "a24b78b7469784c79d8f8d593ea1fafb7036cdb06e0d4c676ce59f07886baf36",
+          "log_sha256": "ba1d88503d02f9e36cb3efcabcab347fadb0114a3c7b3b8d0225022dce68e258"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 12,
+        "BUS_WIDTH": 64,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 12,
+        "GROUP_BLOCKS_MAX": 5,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "1dd2f7055fa4bdf8d1523f319ee8c2457d2b2c5542f84a935a8c54fe32847f74",
+          "log_sha256": "dc41e2fb87396071779e10ecf88735229ed800f58f1b3fd0b63310fe0fc124ee"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 32,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 12,
+        "GROUP_BLOCKS_MAX": 4,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "fb9fd16a528b3f9464d4d3908e586c663f7dbc408ce5322694f3ae770e3d4246",
+          "log_sha256": "94d4501ab34d052bdee3b4a0a82b208a431143f0a28d208f858c2753bf80f832"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 29,
+        "GROUP_BLOCKS_MAX": 32,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "5778eea7e82acaae11b4c947d5c519996a2d252995b6b547dfc9e5441f019e95",
+          "log_sha256": "5340443359c278f5d7aa2a71b2b782fa9b0b25a4db06f767555fb57529e6bb9e"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 32,
+        "GROUP_BLOCKS_MAX": 64,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "e9acbd3da1d9bfde8bd1cd23f83e0bd9bc40ab5ab9792afdfc2261ea9d8d8258",
+          "log_sha256": "56814181c8dc77d379da98ba5dc9f920712df82fb0222c4bc756c6c328a03ae9"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 128,
+        "REG_WIDTH": 16,
+        "COUNT_WIDTH": 12,
+        "GROUP_BLOCKS_MAX": 16,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "91f211be84c5bc86c7af00f5a6d25ce19c38cb27a41b89cc22a53f509bb302ca",
+          "log_sha256": "8bac84ac325554da5513c9bcfa70c8fec3c6a30b9973b6ab7656bdba7f27b408"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      },
+      {
+        "SIZE": 32,
+        "BUS_WIDTH": 64,
+        "REG_WIDTH": 40,
+        "COUNT_WIDTH": 35,
+        "GROUP_BLOCKS_MAX": 1,
+        "equivalence": {
+          "passed": true,
+          "equivalent_bits": null,
+          "script_sha256": "ce73c4b5c3b3e3f64a280e004e1818a3cca83148c8a2685ef5e398c145b36ffc",
+          "log_sha256": "b466ad2007e28f6038c4aa56761d973fd82d9ad912d3c78edd8bcce67ae71385"
+        },
+        "invariant": {
+          "passed": true,
+          "method": "proved with the complete state and output comparison",
+          "common_state_signals": 24
+        },
+        "passed": true
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "inputs": {
+      "reference_commit": "2297cb12deac56b476f9a2a656da4038a9d8a75c",
+      "reference_scope": "rtl/npu/loaders/bias_loader_ctrl.sv",
+      "sources": [
+        {
+          "source": "rtl/npu/loaders/bias_loader.sv",
+          "reference_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+          "current_sha256": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_ctrl.sv",
+          "reference_sha256": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+          "current_sha256": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987"
+        },
+        {
+          "source": "rtl/npu/loaders/bias_loader_buffer.sv",
+          "reference_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+          "current_sha256": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd"
+        },
+        {
+          "source": "rtl/common/regfile.v",
+          "reference_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+          "current_sha256": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63"
+        }
+      ],
+      "common_helper": {
+        "source": "rtl/common/parallel_prefix_add.sv",
+        "sha256": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9"
+      }
+    },
+    "parameters": {
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "DATA_WIDTH": 32,
+      "REG_WIDTH": 32,
+      "COUNT_WIDTH": 29,
+      "GROUP_BLOCKS_MAX": 32
+    },
+    "cycles": 32768,
+    "accepted_configs": 1039,
+    "unknown_handshake_cycles": 8192,
+    "common_state_signals": 24,
+    "all_public_outputs_compared_each_cycle": true,
+    "sampled_configuration": "binary values covering the complete input widths",
+    "unknown_inputs": "X/Z handshake controls and configuration bits when init_cfg is zero",
+    "universal_four_state_equivalence_claimed": false,
+    "source_sha256": {
+      "reference.sv": "ace97bcf64e0a34bf2d50615d8a78427e5a9ebae9cefb74925e0ead5970d248c",
+      "current.sv": "281ca3cab54f627df0504dc21c9521bc62966f49c8567936c4c8af8dbf9724f4",
+      "tb.sv": "d398557ffffdbec07debee08c59798e88ab90e724f9cb0f2bb0257857371c99b"
+    },
+    "build_command": [
+      "iverilog",
+      "-g2012",
+      "-s",
+      "tb",
+      "-o",
+      "/tmp/npu45000_compute/r9/bias_control/four_state_release/simulation.vvp",
+      "/tmp/npu45000_compute/r9/bias_control/four_state_release/reference.sv",
+      "/tmp/npu45000_compute/r9/bias_control/four_state_release/current.sv",
+      "/tmp/npu45000_compute/r9/bias_control/four_state_release/source/rtl/common/parallel_prefix_add.sv",
+      "/tmp/npu45000_compute/r9/bias_control/four_state_release/tb.sv"
+    ],
+    "build_log_sha256": "af95d9d87c905b4bb5ddfb4693e20ec9713d2208d3bfc7b80ff1a352f47adf3c",
+    "run_log_sha256": "aaf107a4a563bd66e32cc4090f76a3dd34311359e457fbd60f9ff37c4d39fb4e"
+  },
+  "numeric_regression": {
+    "passed": true,
+    "case_count": 392,
+    "source_sha256": {
+      "test/bias_loader_reuse/tb_bias_loader_reuse.sv": "32d8cec52cfaef13f180d1859b6699da9bb8ebbbb760dfffb1ca6dcfb8217893",
+      "rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+      "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+      "rtl/common/parallel_prefix_add.sv": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9"
+    },
+    "simulator_sha256": "925100b09e13fb5694068e109d03c0dadabf37c2134fb367705ccd730f148aa3",
+    "build_warnings": [],
+    "report_sha256": "c545e9321aadbcc1ea12b37977c76ba951cd775fa7881c8f36efab22e89e484a",
+    "build_log_sha256": "7ffde8ce906d36b4da246a56b8dd33b4800b966f1df4fec117805546ca7320d4",
+    "run_log_sha256": "8fae6322fb6d00db95d506bf8f2065fc7f54bb2d42ee88133254079661f93605"
+  },
+  "mapping": [
+    {
+      "version": "reference",
+      "logic_lut_cells": 1180,
+      "flip_flops": 1181,
+      "carry4": 101,
+      "dsp48e1": 0,
+      "ramb36e1": 1,
+      "ramb18e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 14,
+      "control_register_path_cells": 14,
+      "graph_complete": true,
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "273a4762a54e144c353173d9ea58ad04957743ff13f19123a35b8311aa3856d8"
+      },
+      "sources_sha256": {
+        "/tmp/npu45000_compute/r9/bias_control/final_mapping/inputs/reference/rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+        "/tmp/npu45000_compute/r9/bias_control/final_mapping/inputs/reference/rtl/npu/loaders/bias_loader_ctrl.sv": "a36488274d79d0fe999d23152d8fbfd6670a31b5b5e9c7449497c6970a2d5c29",
+        "/tmp/npu45000_compute/r9/bias_control/final_mapping/inputs/reference/rtl/npu/loaders/bias_loader_buffer.sv": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+      },
+      "mapping_tools_sha256": {
+        "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+        "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+      },
+      "summary_sha256": "853918001508fa79e4953653d462721bb25a8b4253c30b7f99a780923f1e38af",
+      "metrics_sha256": "d7a84bb2ebc5ffa7e9251db96d0a4beb75b7dd51de677eb58bd198e7259c9ff9",
+      "control_paths_sha256": "20e2c080e1e64eedbd9f2552b42712fdeebf0f51935e0e87c06e26d7bbd973e7",
+      "peak_process_tree_rss_bytes": 204783616
+    },
+    {
+      "version": "current",
+      "logic_lut_cells": 1190,
+      "flip_flops": 1227,
+      "carry4": 91,
+      "dsp48e1": 0,
+      "ramb36e1": 1,
+      "ramb18e1": 0,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "longest_register_path_cells": 10,
+      "control_register_path_cells": 9,
+      "graph_complete": true,
+      "mapping_verification": {
+        "passed": true,
+        "method": "ABC9 &verify",
+        "log_sha256": "4d9311c4ad400099444c03b125d3d30e89ca02a71de256ac14c08a2837dfa3a4"
+      },
+      "sources_sha256": {
+        "/tmp/npu45000_compute/r9/bias_control/final_mapping/inputs/current/rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+        "/tmp/npu45000_compute/r9/bias_control/final_mapping/inputs/current/rtl/npu/loaders/bias_loader_ctrl.sv": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+        "/tmp/npu45000_compute/r9/bias_control/final_mapping/inputs/current/rtl/npu/loaders/bias_loader_buffer.sv": "4ac0b24279e25325e36cf0389aab38c42d1168fd192ff8ab86c21266a75fe7dd",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "08d088d5ac9a484b6af46f801f47e3b52cdfa51212ee24c36cf359c9c28fedc9",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "ab98a803c1de6c8deabf0c0059d9ed0f78784d24c275e2fa8a58eef5e1638c63",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+      },
+      "mapping_tools_sha256": {
+        "libyosys.so": "63ccae89cf9cc2ab2e29b2aa4087291b18d475eb8e02365432bf88fa743bd1c2",
+        "yosys-abc": "b5d3ee6db5cc8ce5bacffea17cd86e746067b84a16a616313a3c23c16a04a9f3"
+      },
+      "summary_sha256": "9f17c6a306b482fc58d37c1914c3fb69fd359fbadd86049cadd2f3ff808d3f78",
+      "metrics_sha256": "23a52b9e6baa7d060a1d7acbe49d5467b33d62015d9150569453497b621de74c",
+      "control_paths_sha256": "4455cfb87b703f38fc64312fc635314fcb6100fb27c79f6973c003cf3ba43982",
+      "peak_process_tree_rss_bytes": 205856768
+    }
+  ],
+  "mapping_options": {
+    "source_arithmetic": "ordinary RTL",
+    "additional_dsp_replacement": false,
+    "mode": "physical-cost",
+    "small_lut_area_cost": 1.0,
+    "max_lut_inputs": 6,
+    "wire_delay_ps": 500,
+    "delay_target_ps": 6667
+  },
+  "physical_lut_positions": null,
+  "timing_150mhz_confirmed": null,
+  "vivado_validation": "not run; Vivado is unavailable in this environment",
+  "scripts_sha256": {
+    "test/bias_control_depth/check_four_state.py": "8ce8bb1500e3ddfa6d74f00ebf4a5dd3c96dca4802093acd04ce1fb496e27dd6",
+    "test/bias_control_depth/collect_report.py": "8a0b11c5648c311a3903d1af2390e7c488a8050ac0939fdb60144042af76612f",
+    "test/bias_control_depth/common.py": "cdbccb502c187f473cf6f7b71752dbe61491fb4ee2462db9889824a846b13105",
+    "test/bias_control_depth/prepare_measurement.py": "d8e000d010428c5a98e6f6dac9e57166752082c108d9a6583025661945e5ee07",
+    "test/bias_control_depth/prove.py": "f5123ff0a75ff8de41d895bf40eab9797e5124902602370821e085feba7a53ef"
+  },
+  "numeric_runner_sha256": "19ad059b210ca62d953455a85b71eaac3348f23bb74f5da893bfd2c165f73e18"
+}
