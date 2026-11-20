@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3)(
-  input logic clk,rst_n,start,done_ready,inject_fault,
+module window_error_top #(
+  parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3, CACHE_LINE_BYTES=16,
+  parameter int WINDOW_LANES=4, SHARED_QUANT_ENABLE=0,
+  parameter int QUANT_LANES=(SHARED_QUANT_ENABLE ? TILE : 1)
+)(
+  input logic clk,rst_n,start,done_ready,inject_fault,inject_inflight,
   output logic [31:0] injected_errors,write_launches_in_failed,
+  output logic shared_quant_enabled, shared_quant_idle,
   output logic dma_idle,write_idle,
   input logic [31:0] config_words[40],
   output logic [31:0] pe_count,
@@ -31,6 +36,8 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
   localparam int DMA_SIZE=4*TILE;
   vector_engine_cfg_t cfg;
   assign pe_count=32'(PE_COUNT);
+  assign shared_quant_enabled=SHARED_QUANT_ENABLE;
+  assign shared_quant_idle=engine.dw_shared_inflight==0;
   assign observed_window_elements=engine.window_received;
   assign expected_window_elements=engine.active;
   always_comb begin
@@ -60,8 +67,8 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
     logic win_req_valid,win_req_ready,win_rsp_valid,win_rsp_ready;
     logic [31:0] win_req_p0,win_req_q0,win_req_cols,win_rsp_col;
     logic [1:0] win_req_tag,win_rsp_tag;
-    logic signed [15:0] win_rsp_data[4];
-    logic [3:0] win_rsp_mask;
+    logic signed [15:0] win_rsp_data[WINDOW_LANES];
+    logic [WINDOW_LANES-1:0] win_rsp_mask;
     logic win_rsp_last,win_rsp_error,win_busy;
   logic rd_req,rd_start,rd_granted,rd_im2col,rd_use_16bits,rd_busy,rd_done,rd_error;
   logic [31:0] rd_p0,rd_q0,rd_base_addr,rd_row_stride,rd_rows_to_read,rd_valid_cols,rd_raw_data;
@@ -70,37 +77,56 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
   logic wr_req,wr_start,wr_granted,src_wvalid,src_wready,wr_busy,wr_done,wr_error;
   logic [31:0] wr_base_addr,wr_row_stride,wr_rows_to_write,src_wdata;
   logic [7:0] wr_burst_len_m1;logic [3:0] src_wmask;
+  logic quant_req_valid,quant_req_ready,quant_req_tag,quant_rsp_valid,quant_rsp_tag;
+  logic signed [31:0] quant_req_accumulator[TILE],quant_req_multiplier[TILE];
+  logic [5:0] quant_req_right[TILE];
+  logic [TILE-1:0] quant_req_mask;
+  logic signed [31:0] quant_req_offset,quant_req_minimum,quant_req_maximum;
+  logic signed [7:0] quant_rsp_data[TILE];
   logic engine_response_valid,engine_response_ready,engine_response_error;
   logic response_allow,fault_target,dma_write_request;
   assign fault_target=inject_fault && injected_errors==0 &&
     win_rsp_valid && win_rsp_last && window_completions==1;
-  // Keep write arbitration pending until the terminal response is available.
-  // This schedules the injected error immediately before the write grant.
+  // 第一个像素进入待写队列后才返回第二个像素的错误响应。
+  // 错误处理必须发送已接收的数据，并等待其写入响应。
   assign dma_write_request=wr_req && (!inject_fault || injected_errors!=0 || fault_target);
-  assign response_allow=!fault_target ||
-    (engine.tb_observer.is_WB_REQ && !wr_granted);
+  assign response_allow=!fault_target || (inject_inflight ?
+    engine.dw_shared_inflight!=0 : (engine.u_writeback.pending_bytes!=0 && !wr_granted));
   assign win_rsp_ready=engine_response_ready && response_allow;
   assign engine_response_valid=win_rsp_valid && response_allow;
   assign engine_response_error=win_rsp_error || (fault_target && response_allow);
-  vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT)) engine(
+  vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT),
+    .WINDOW_LANES(WINDOW_LANES),.QUANT_LANES(QUANT_LANES),.SHARED_QUANT_ENABLE(SHARED_QUANT_ENABLE)) engine(
     .win_rsp_valid(engine_response_valid),.win_rsp_ready(engine_response_ready),
     .win_rsp_error(engine_response_error),.*);
+  if (SHARED_QUANT_ENABLE) begin : g_shared_quant
+    logic quant_backend_ready, quant_request_allow;
+    // 在途错误场景先保存第二个窗口响应，再启动真实量化流水。
+    assign quant_request_allow=!inject_fault || !inject_inflight || fault_target;
+    assign quant_req_ready=quant_backend_ready && quant_request_allow;
+    vector_shared_quant_test #(.TILE(TILE),.BUS_WIDTH(32)) u_quant (
+      .quant_req_valid(quant_req_valid && quant_request_allow),.quant_req_ready(quant_backend_ready),.*);
+  end else begin : g_scalar_quant
+    assign quant_req_ready=1'b0;
+    assign quant_rsp_valid=1'b0;
+    assign quant_rsp_tag=1'b0;
+    for (genvar lane=0;lane<TILE;lane++) assign quant_rsp_data[lane]='0;
+  end
     assign stat_cycles=engine.tb_observer.stat_cycles;
     assign stat_compute=engine.tb_observer.stat_compute;
     assign stat_dma_wait=engine.tb_observer.stat_dma_wait;
 
   assign dma_idle=dma.idle;
   assign write_idle=engine.tb_observer.is_WB_IDLE;
-  // Hold the second position's final response while the first position
-  // completes quantization. Deliver a terminal error one cycle before the
-  // output request receives the write arbiter's grant.
+  // 第二个窗口的末响应等待第一个像素完成量化并进入写入队列。
   always_ff @(posedge clk) begin
     if (!rst_n || (start && ready)) begin
       injected_errors<=0;write_launches_in_failed<=0;
     end else begin
       if (fault_target && response_allow && win_rsp_valid && win_rsp_ready) begin
         assert(window_requests==2 && window_completions==1);
-        assert(engine.tb_observer.is_WB_REQ && !wr_granted);
+        if (inject_inflight) assert(SHARED_QUANT_ENABLE && engine.dw_shared_inflight!=0);
+        else assert(engine.u_writeback.pending_bytes!=0 && !wr_granted);
         injected_errors<=injected_errors+1;
       end
       if (wr_start && engine.tb_observer.is_FAILED) begin
@@ -108,7 +134,7 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
         write_launches_in_failed<=write_launches_in_failed+1;
       end
       if (done_valid) begin
-        assert(dma_idle && write_idle);
+        assert(dma_idle && write_idle && shared_quant_idle);
         assert(window_requests==window_completions);
       end
     end
@@ -123,8 +149,10 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
   logic previous_quant_issue,previous_quant_more,write16;
   logic [31:0] previous_quant_index,write16_beats;
   assign mac_active=engine.depthwise && engine.tb_observer.is_EXECUTE;
-  assign quant_active=engine.depthwise && engine.q_active && !engine.tb_observer.is_FAILED;
-  assign quant_issue=quant_active && engine.q_issue<engine.q_count;
+  assign quant_active=engine.depthwise && (SHARED_QUANT_ENABLE ? engine.dw_shared_inflight!=0 : engine.q_active) &&
+    !engine.tb_observer.is_FAILED;
+  assign quant_issue=(SHARED_QUANT_ENABLE ? engine.dw_shared_fire : engine.dw_quant_input_active) &&
+    !engine.tb_observer.is_FAILED;
   assign write_active=engine.depthwise && !engine.tb_observer.is_WB_IDLE;
   assign cache_prefetch_lines=dma.u_dma.tb_observer.conv_stat_prefetch_lines;
   assign cache_prefetch_used=dma.u_dma.tb_observer.conv_stat_prefetch_used;
@@ -139,9 +167,9 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
       previous_quant_issue<=0;previous_quant_more<=0;previous_quant_index<=0;
     end else begin
       previous_quant_issue<=quant_issue;
-      previous_quant_more<=quant_issue && engine.q_issue+1<engine.q_count;
+      previous_quant_more<=!SHARED_QUANT_ENABLE && quant_issue && engine.q_issue+1<engine.q_count;
       previous_quant_index<=engine.q_issue;
-      if (quant_issue) quant_inputs<=quant_inputs+1;
+      if (quant_issue) quant_inputs<=quant_inputs+(SHARED_QUANT_ENABLE ? 32'(engine.active) : 32'd1);
       if (quant_issue && previous_quant_issue) quant_consecutive<=quant_consecutive+1;
       if (previous_quant_more && !engine.tb_observer.is_FAILED) begin
         assert(quant_issue);
@@ -167,8 +195,8 @@ module window_error_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), C
       if (write16 && wr_done) begin assert(write16_beats==4);write16<=0;end
     end
   end
-  axi_block_dma_arbiter #(.SIZE(TILE),.DMA_SIZE(DMA_SIZE),.DATA_WIDTH(16),
-    .CONV_CACHE_SETS(CACHE_SETS),.CONV_CACHE_POLICY(CACHE_POLICY)) dma(
+  axi_block_dma_arbiter #(.SIZE(TILE),.DMA_SIZE(DMA_SIZE),.DATA_WIDTH(16),.WINDOW_LANES(WINDOW_LANES),
+    .CONV_CACHE_SETS(CACHE_SETS),.CONV_LINE_BYTES(CACHE_LINE_BYTES),.CONV_CACHE_POLICY(CACHE_POLICY)) dma(
     .clk,.rst_n,.conv_cfg_valid(dma_cfg_valid),.conv_cfg_ready(dma_cfg_ready),
     .conv_enable(dma_conv_enable),.dma_range_enable,.conv_cfg(dma_conv_cfg),
     .conv_range_base(dma_range_base),.conv_range_end(dma_range_end),

@@ -1,5 +1,6 @@
 // AXI responder and independent handshake/byte-address counters for reuse tests.
 module axi_counted_memory #(
+    parameter int BUS_WIDTH=32,
     parameter logic [31:0] TRACK_BASE=32'h1003,
     parameter int TRACK_BYTES=256
 ) (
@@ -12,12 +13,13 @@ module axi_counted_memory #(
     input logic [2:0] arsize,
     input logic [1:0] arburst,
     output logic rvalid,input logic rready,
-    output logic [31:0] rdata,
+    output logic [BUS_WIDTH-1:0] rdata,
     output logic [1:0] rresp,
     output logic rlast,
     output longint unsigned read_bytes,ar_count,
     output logic active
 );
+    localparam int BUS_BYTES=BUS_WIDTH/8;
     int unsigned byte_reads[TRACK_BYTES];
     logic [31:0] rng;
     logic [31:0] address;
@@ -35,17 +37,17 @@ module axi_counted_memory #(
             rng<={rng[30:0],rng[31]^rng[21]^rng[1]^rng[0]};
             arready<=!active && !block_ar && rng[0];
             if(arvalid && arready) begin
-                if(active || arburst!=1 || !(arsize==0 || arsize==2)) $fatal(1,"bad AXI request");
+                if(active || arburst!=1 || !(arsize==0 || arsize==3'($clog2(BUS_BYTES)))) $fatal(1,"bad AXI request");
                 if((araddr&4095)+((32'(arlen)+1)<<arsize)>4096) $fatal(1,"4 KiB crossing");
                 if(araddr<allocation_base || 64'(araddr)+((64'(arlen)+1)<<arsize)>
                    64'(allocation_base)+64'(allocation_bytes)) $fatal(1,"allocation overread");
-                if(arsize==2 && araddr[1:0]!=0) $fatal(1,"unaligned full word");
+                if(arsize==3'($clog2(BUS_BYTES)) && (araddr & 32'(BUS_BYTES-1))!=0) $fatal(1,"unaligned full word");
                 active=1;address=araddr;left=32'(arlen)+1;step=1<<arsize;
                 arready<=0;ar_count<=ar_count+1;
                 $display("REUSE_EXTERNAL_AR addr=%h beats=%0d size=%0d",araddr,32'(arlen)+1,arsize);
             end
             if(rvalid && rready) begin
-                for(int b=0;b<4;b++) if(32'(b)<step) begin
+                for(int b=0;b<BUS_BYTES;b++) if(32'(b)<step) begin
                     if(address+32'(b)<TRACK_BASE || address+32'(b)>=TRACK_BASE+32'(TRACK_BYTES))
                         $fatal(1,"byte counter mapping exceeded");
                     byte_reads[address+32'(b)-TRACK_BASE]=byte_reads[address+32'(b)-TRACK_BASE]+1;
@@ -53,9 +55,9 @@ module axi_counted_memory #(
                 read_bytes<=read_bytes+64'(step);rvalid<=0;
                 address=address+step;left=left-1;if(left==0) active=0;
             end else if(active && !rvalid && rng[2]) begin
-                rdata<=32'hbadacafe;
-                for(int b=0;b<4;b++) if(32'(b)<step)
-                    rdata[((address&3)+32'(b))*8 +:8]<=value_at(address+32'(b));
+                rdata<={BUS_WIDTH/32{32'hbadacafe}};
+                for(int b=0;b<BUS_BYTES;b++) if(32'(b)<step)
+                    rdata[((address&32'(BUS_BYTES-1))+32'(b))*8 +:8]<=value_at(address+32'(b));
                 rresp<=0;rlast<=left==1;rvalid<=1;
             end
         end

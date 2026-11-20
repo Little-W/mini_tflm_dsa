@@ -31,6 +31,11 @@ def main():
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--out',type=Path,default=ROOT/'build/vector_window_error')
     parser.add_argument('--jobs',type=int,default=2)
+    parser.add_argument('--pes',type=int,choices=(8,16),default=8)
+    parser.add_argument('--window-lanes',type=int,choices=(4,8,16),default=4)
+    parser.add_argument('--shared-quant',action='store_true')
+    parser.add_argument('--cache-sets',type=int,default=128)
+    parser.add_argument('--cache-line-bytes',type=int,choices=(16,32,64,128),default=16)
     parser.add_argument('--skip-build',action='store_true')
     args=parser.parse_args()
     if args.jobs<1 or args.jobs>2:
@@ -40,14 +45,23 @@ def main():
     sources=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
     sources += [path for path in sorted(conv.rglob('*.sv')) if path not in sources]
     sources += sorted((ROOT/'rtl/npu/dma').rglob('*.sv'))
+    sources += [ROOT/'rtl/npu/writeback'/name for name in
+                ('vec_requant.sv','requant_compute_lane.sv','requant_group_buffer.sv')]
+    sources += [HERE/'shared_quant_model.sv']
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_error_top.sv']
     import runpy
     sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
     dependencies=sources+[HERE/'window_error.cpp',Path(__file__)]
     source_sha={str(path.relative_to(ROOT)):digest(path) for path in dependencies}
+    parameters={'pe_count':args.pes,'window_lanes':args.window_lanes,'shared_quant':args.shared_quant,
+                'cache_sets':args.cache_sets,'cache_line_bytes':args.cache_line_bytes,
+                'cache_bytes':2*args.cache_sets*args.cache_line_bytes}
     binary=out/'obj/Vwindow_error_top'; manifest_path=out/'build.json'
     build_command=[args.verilator,'--cc','--exe','--assert','--top-module','window_error_top',
-                   '-Wno-fatal','-Wno-PINMISSING','--Mdir',out/'obj',
+                   '-Wno-fatal','-Wno-PINMISSING',f'-GPE_COUNT={args.pes}',
+                   f'-GWINDOW_LANES={args.window_lanes}',f'-GSHARED_QUANT_ENABLE={int(args.shared_quant)}',
+                   f'-GCACHE_SETS={args.cache_sets}',f'-GCACHE_LINE_BYTES={args.cache_line_bytes}',
+                   '--Mdir',out/'obj',
                    '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
                    '-CFLAGS','-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
                    ROOT/'test/conv_npu/simulator.vlt',*sources,HERE/'window_error.cpp']
@@ -56,25 +70,27 @@ def main():
                   'VK_PCH_I_SLOW=','CFG_CXXFLAGS_PCH=-E']
     if args.skip_build:
         previous=json.loads(manifest_path.read_text())
-        if previous['source_sha256']!=source_sha or digest(binary)!=previous['binary_sha256']:
+        if (previous['source_sha256']!=source_sha or digest(binary)!=previous['binary_sha256'] or
+                previous.get('parameters')!=parameters):
             raise RuntimeError('Sources or executable differ from the saved build')
     else:
         command(build_command,out/'verilate.log')
         command(make_command,out/'compile.log')
         if any(digest(ROOT/name)!=value for name,value in source_sha.items()):
             raise RuntimeError('Sources changed during build')
-        manifest_path.write_text(json.dumps({'passed':True,'source_sha256':source_sha,
+        manifest_path.write_text(json.dumps({'passed':True,'source_sha256':source_sha,'parameters':parameters,
             'sources_unchanged_during_build':True,'binary_sha256':digest(binary),
             'build_command':list(map(str,build_command)),'make_command':list(map(str,make_command))},indent=2)+'\n')
     command([binary],out/'run.log')
     text=(out/'run.log').read_text()
     match=re.search(r'WINDOW_ERROR_PASS cases=(\d+) injected_errors=(\d+) recovery_tasks=(\d+)',text)
-    if not match or tuple(map(int,match.groups()))!=(16,8,8):
+    task_count=32 if args.shared_quant else 16
+    if not match or tuple(map(int,match.groups()))!=(task_count,task_count//2,task_count//2):
         raise RuntimeError('Incomplete directed test result')
     if any(digest(ROOT/name)!=value for name,value in source_sha.items()):
         raise RuntimeError('Sources changed during execution')
-    result={'passed':True,'cases':16,'injected_errors':8,'recovery_tasks':8,
-            'verification':'Terminal window error before WB_REQ grant; fixed and random AXI waits; byte offsets 0..3 across a page; complete memory comparison; no transactions after DONE; next task numerical comparison.',
+    result={'passed':True,'cases':task_count,'injected_errors':task_count//2,'recovery_tasks':task_count//2,'parameters':parameters,
+            'verification':'Terminal window error with queued output and shared quantization in flight; fixed and random AXI waits; byte offsets 0..3 across a page; complete memory comparison; no transactions after DONE; next task numerical comparison.',
             'source_sha256':source_sha,'binary_sha256':digest(binary),
             'build_manifest':str(manifest_path),'build_manifest_sha256':digest(manifest_path),
             'run_log':str(out/'run.log'),'run_log_sha256':digest(out/'run.log'),

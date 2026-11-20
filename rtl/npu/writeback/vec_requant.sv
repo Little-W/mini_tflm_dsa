@@ -53,6 +53,21 @@ module vec_requant #(
     input wire logic [31:0] i_group_rows = 32'd0,
     output logic o_group_ready,
 
+    // DW 与矩阵任务共用运算流水，任务期间配置保持稳定。
+    input wire logic i_dw_enable = 1'b0,
+    input wire logic i_dw_valid = 1'b0,
+    output logic o_dw_ready,
+    input wire logic i_dw_tag = 1'b0,
+    input wire logic signed [31:0] i_dw_accumulator[VLEN] = '{default:32'sd0},
+    input wire logic signed [31:0] i_dw_multiplier[VLEN] = '{default:32'sd0},
+    input wire logic [5:0] i_dw_right[VLEN] = '{default:6'd0},
+    input wire logic [VLEN-1:0] i_dw_mask = '0,
+    input wire logic signed [31:0] i_dw_offset = 32'sd0,
+    input wire logic signed [31:0] i_dw_minimum = -32'sd128,
+    input wire logic signed [31:0] i_dw_maximum = 32'sd127,
+    output logic o_dw_valid,
+    output logic o_dw_tag,
+
     // 数据口
     input  wire logic               in_valid,
     input  wire logic               in_tile_done,
@@ -68,6 +83,9 @@ module vec_requant #(
   generate
     if ((ENABLE_PER_CHANNEL == 0) && (ENABLE_IS_MODE == 0) && !ENABLE_S16 && (p_compute_lanes >= VLEN)) begin : g_tensor_ws
       assign o_group_ready = 1'b1;
+      assign o_dw_ready = 1'b0;
+      assign o_dw_valid = 1'b0;
+      assign o_dw_tag = 1'b0;
       vec_requant_tensor_ws #(
           .BUS_WIDTH(BUS_WIDTH),
           .VLEN     (VLEN),
@@ -125,6 +143,11 @@ module vec_requant #(
           .p_compute_lanes   (p_compute_lanes),
           .p_input_rows      (p_input_rows)
       ) u_full (
+          .i_dw_enable(i_dw_enable), .i_dw_valid(i_dw_valid), .o_dw_ready(o_dw_ready),
+          .i_dw_tag(i_dw_tag), .i_dw_accumulator(i_dw_accumulator),
+          .i_dw_multiplier(i_dw_multiplier), .i_dw_right(i_dw_right), .i_dw_mask(i_dw_mask),
+          .i_dw_offset(i_dw_offset), .i_dw_minimum(i_dw_minimum), .i_dw_maximum(i_dw_maximum),
+          .o_dw_valid(o_dw_valid), .o_dw_tag(o_dw_tag),
           .i_group_start(i_group_start),
           .i_group_rows(i_group_rows),
           .o_group_ready(o_group_ready),
@@ -684,6 +707,21 @@ module vec_requant_full #(
     input wire logic i_group_start = 1'b0,
     input wire logic [31:0] i_group_rows = 32'd0,
     output logic o_group_ready,
+
+    // DW 输入在原有输入寄存器采样，输出标签随有效信号传播。
+    input wire logic i_dw_enable = 1'b0,
+    input wire logic i_dw_valid = 1'b0,
+    output logic o_dw_ready,
+    input wire logic i_dw_tag = 1'b0,
+    input wire logic signed [31:0] i_dw_accumulator[VLEN] = '{default:32'sd0},
+    input wire logic signed [31:0] i_dw_multiplier[VLEN] = '{default:32'sd0},
+    input wire logic [5:0] i_dw_right[VLEN] = '{default:6'd0},
+    input wire logic [VLEN-1:0] i_dw_mask = '0,
+    input wire logic signed [31:0] i_dw_offset = 32'sd0,
+    input wire logic signed [31:0] i_dw_minimum = -32'sd128,
+    input wire logic signed [31:0] i_dw_maximum = 32'sd127,
+    output logic o_dw_valid,
+    output logic o_dw_tag,
 
     // 数据口
     input  wire logic               in_valid,
@@ -1564,14 +1602,34 @@ module vec_requant_full #(
   logic stage10_tile_done;
   logic stage11_tile_done;
 
-  assign accept_valid = in_valid && ((!cfg_per_channel_eff) || quant_params_valid);
+  logic dw_accept;
+  assign dw_accept = i_dw_valid && o_dw_ready;
+  assign accept_valid = dw_accept ||
+      (in_valid && !i_dw_enable && ((!cfg_per_channel_eff) || quant_params_valid));
   if (p_compute_lanes >= VLEN) begin : g_parallel_control
-    assign row_consume_valid = in_valid;
+    logic [11:0] dw_owner_pipe, dw_tag_pipe;
+    assign o_dw_ready = i_dw_enable && !init_cfg && !in_valid;
+    assign o_dw_valid = stage11_valid && dw_owner_pipe[11];
+    assign o_dw_tag = dw_tag_pipe[11];
+    assign row_consume_valid = in_valid && !i_dw_enable;
     assign row_consume_tile_done = in_tile_done;
     assign parameter_read_idx = input_group_idx_cur;
     assign o_group_ready = 1'b1;
-    assign out_valid = stage11_valid;
-    assign out_tile_done = stage11_tile_done;
+    assign out_valid = stage11_valid && !dw_owner_pipe[11];
+    assign out_tile_done = stage11_tile_done && !dw_owner_pipe[11];
+    always_ff @(posedge clk) begin
+      if (!rst_n || init_cfg) begin
+        dw_owner_pipe <= '0;
+        dw_tag_pipe <= '0;
+      end else begin
+        dw_owner_pipe <= {dw_owner_pipe[10:0],dw_accept};
+        dw_tag_pipe <= {dw_tag_pipe[10:0],i_dw_tag};
+      end
+    end
+  end else begin : g_private_serial_control
+    assign o_dw_ready = 1'b0;
+    assign o_dw_valid = 1'b0;
+    assign o_dw_tag = 1'b0;
   end
 
   always_ff @(posedge clk) begin
@@ -1691,7 +1749,7 @@ module vec_requant_full #(
   // 存储读地址、模式和整张量参数在同一边沿采样，与 DSP 的 AREG 输入同步。
   always_ff @(posedge clk) begin
     if (!init_cfg) begin
-      ws_parameters_select_s0 <= ws_parameters_select;
+      ws_parameters_select_s0 <= i_dw_enable || ws_parameters_select;
       per_channel_s0 <= cfg_per_channel_eff;
       parameter_bank_s0 <= p_bank_index_width'(int'(input_group_idx_cur) % PARAM_BANKS);
       pt_product_multiplier_s0 <= pt_product_multiplier_r;
@@ -1700,7 +1758,11 @@ module vec_requant_full #(
   end
 
   logic signed [35:0] rounding_offset;
-  assign rounding_offset = s16_mode ? 36'sd0 : {{4{dst_offset_r[31]}}, dst_offset_r};
+  logic signed [31:0] arithmetic_minimum, arithmetic_maximum;
+  assign rounding_offset = i_dw_enable ? {{4{i_dw_offset[31]}},i_dw_offset} :
+      s16_mode ? 36'sd0 : {{4{dst_offset_r[31]}}, dst_offset_r};
+  assign arithmetic_minimum = i_dw_enable ? i_dw_minimum : activation_min_r;
+  assign arithmetic_maximum = i_dw_enable ? i_dw_maximum : activation_max_r;
 
   // 配置和 DMA 装载阶段预先处理量化参数。每个通道每周期接收一个累加值，
   // 十二个寄存阶段保持固定延迟；乘积形成、移位和输出裁剪分别执行。
@@ -1741,7 +1803,7 @@ module vec_requant_full #(
     // 阶段 0 在 AREG 保存累加值，同步参数存储或通道寄存器保存右操作数。
     // 阶段 1/2 依次保存部分积及完整乘积，三个边沿共用配置暂停使能。
     assign product_i_en = !init_cfg;
-    assign product_i_a = in_vec_s32[j];
+    assign product_i_a = i_dw_enable ? i_dw_accumulator[j] : in_vec_s32[j];
     assign product_i_b = product_multiplier_sel;
     assign prod_s2 = product_o_product;
     registered_multiplier_s32 #(
@@ -1771,8 +1833,8 @@ module vec_requant_full #(
 
     // 两种输出精度共用完整结果与激活边界的有符号比较。
     assign activation_compare_i_value = rounded_s10;
-    assign activation_compare_i_minimum = activation_min_r;
-    assign activation_compare_i_maximum = activation_max_r;
+    assign activation_compare_i_minimum = arithmetic_minimum;
+    assign activation_compare_i_maximum = arithmetic_maximum;
     requant_activation_compare u_activation_compare (
         .i_value(activation_compare_i_value),
         .i_minimum(activation_compare_i_minimum),
@@ -1855,7 +1917,8 @@ module vec_requant_full #(
         out_vec_s8[j] <= '0;
         out_vec_s16[j] <= '0;
       end else begin
-        lane_en_s0  <= accept_valid && (j < (cfg_per_channel_eff ? lane_need_q : lane_need_cur));
+        lane_en_s0  <= accept_valid && (i_dw_enable ? i_dw_mask[j] :
+            (j < (cfg_per_channel_eff ? lane_need_q : lane_need_cur)));
         lane_en_s1  <= lane_en_s0;
         lane_en_s2  <= lane_en_s1;
         lane_en_s3  <= lane_en_s2;
@@ -1868,8 +1931,8 @@ module vec_requant_full #(
         lane_en_s10 <= lane_en_s9;
 
         if (!lane_en_s10) out_vec_s16[j]<=16'sd0;
-        else if (activation_compare_o_below) out_vec_s16[j]<=activation_min_r[15:0];
-        else if (activation_compare_o_above) out_vec_s16[j]<=activation_max_r[15:0];
+        else if (activation_compare_o_below) out_vec_s16[j]<=arithmetic_minimum[15:0];
+        else if (activation_compare_o_above) out_vec_s16[j]<=arithmetic_maximum[15:0];
         else if (rounded_s10 < -36'sd32768) out_vec_s16[j]<=-16'sd32768;
         else if (rounded_s10 > 36'sd32767) out_vec_s16[j]<=16'sd32767;
         else out_vec_s16[j]<=rounded_s10[15:0];
@@ -1877,9 +1940,9 @@ module vec_requant_full #(
         if (!lane_en_s10) begin
           out_vec_s8[j] <= 8'sd0;
         end else if (activation_compare_o_below) begin
-          out_vec_s8[j] <= activation_min_r[7:0];
+          out_vec_s8[j] <= arithmetic_minimum[7:0];
         end else if (activation_compare_o_above) begin
-          out_vec_s8[j] <= activation_max_r[7:0];
+          out_vec_s8[j] <= arithmetic_maximum[7:0];
         end else if (rounded_s10 > 36'sd127) begin
           out_vec_s8[j] <= 8'sd127;
         end else if (rounded_s10 < -36'sd128) begin
@@ -1892,8 +1955,8 @@ module vec_requant_full #(
 
     always_ff @(posedge clk) begin
       if (!init_cfg) begin
-        ws_product_multiplier_s0 <= ch_product_multiplier_lane_r[j];
-        ws_product_amount_s0 <= ch_product_amount_lane_r[j];
+        ws_product_multiplier_s0 <= i_dw_enable ? i_dw_multiplier[j] : ch_product_multiplier_lane_r[j];
+        ws_product_amount_s0 <= i_dw_enable ? {1'b0,i_dw_right[j]} : ch_product_amount_lane_r[j];
         amount_s1 <= amount_s0;
         amount_s2 <= amount_s1;
       end

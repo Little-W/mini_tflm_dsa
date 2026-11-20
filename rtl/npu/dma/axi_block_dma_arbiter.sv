@@ -14,6 +14,7 @@ module axi_block_dma_arbiter #(
     parameter int unsigned SIZE         = 16,
     parameter int unsigned DMA_SIZE     = SIZE,
     parameter int unsigned BUS_WIDTH    = 32,
+    parameter int unsigned DATA_LANES   = BUS_WIDTH / 8,
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned CACHE_BLOCKS = 4,
     parameter int unsigned ENABLE_QUANT_CLIENT = 1,
@@ -21,6 +22,7 @@ module axi_block_dma_arbiter #(
     parameter int unsigned READ_OUTSTANDING = 4,
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
     parameter int unsigned WINDOW_OUTSTANDING = 4,
+    parameter int unsigned WINDOW_LANES = 4,
     parameter int unsigned CONV_CACHE_SETS = 128,
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
@@ -40,8 +42,8 @@ module axi_block_dma_arbiter #(
     input logic win_rsp_ready = 1'b1,
     output logic [1:0] win_rsp_tag,
     output logic [31:0] win_rsp_col,
-    output logic signed [15:0] win_rsp_data[4],
-    output logic [3:0] win_rsp_mask,
+    output logic signed [15:0] win_rsp_data[WINDOW_LANES],
+    output logic [WINDOW_LANES-1:0] win_rsp_mask,
     output logic win_rsp_last,win_rsp_error,win_busy,
 
     // Job context belongs to the shared DMA, never to an individual loader.
@@ -76,8 +78,9 @@ module axi_block_dma_arbiter #(
     output logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] ia_wr_slot,
     output logic [$clog2(SIZE)-1:0] ia_wr_row,
     output logic [$clog2(SIZE)-1:0] ia_wr_col_base,
-    output logic signed [DATA_WIDTH-1:0] ia_wr_data [BUS_WIDTH/8],
-    output logic ia_wr_valid [BUS_WIDTH/8],
+    output logic signed [DATA_WIDTH-1:0] ia_wr_data [DATA_LANES],
+    output logic ia_wr_valid [DATA_LANES],
+    input logic ia_wide_im2col = 1'b0,
     output logic ia_wr_use_16bits,
 
     input  logic kernel_req,
@@ -100,8 +103,8 @@ module axi_block_dma_arbiter #(
     output logic kernel_wr_slot,
     output logic [$clog2(SIZE)-1:0] kernel_wr_row,
     output logic [$clog2(SIZE)-1:0] kernel_wr_col_base,
-    output logic signed [KERNEL_WIDTH-1:0] kernel_wr_data [BUS_WIDTH/8],
-    output logic kernel_wr_valid [BUS_WIDTH/8],
+    output logic signed [KERNEL_WIDTH-1:0] kernel_wr_data [DATA_LANES],
+    output logic kernel_wr_valid [DATA_LANES],
 
     input  logic bias_req,
     output logic bias_granted,
@@ -293,8 +296,8 @@ module axi_block_dma_arbiter #(
     logic [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] dma_wr_slot;
     logic [$clog2(DMA_SIZE)-1:0] dma_wr_row;
     logic [$clog2(DMA_SIZE)-1:0] dma_wr_col_base;
-    logic signed [DATA_WIDTH-1:0] dma_wr_data [BYTE_PER_BEAT];
-    logic dma_wr_valid [BYTE_PER_BEAT];
+    logic signed [DATA_WIDTH-1:0] dma_wr_data [DATA_LANES];
+    logic dma_wr_valid [DATA_LANES];
     logic dma_wr_use_16bits;
     logic [BUS_WIDTH-1:0] dma_raw_data;
     logic dma_raw_valid;
@@ -337,7 +340,7 @@ module axi_block_dma_arbiter #(
     always_comb begin
         rd_next_client = C_NONE;
         if (!local_abort && rd_reservation_space && !conv_cfg_valid && rd_pending_count < 4 &&
-            (!conv_job_q || rd_pending_count == 0)) begin
+            (!conv_job_q || rd_pending_count < 2)) begin
             if (dw_req && rd_client_inflight[C_DW] == 0)
                 rd_next_client = C_DW;
             else if (kernel_req && rd_client_inflight[C_KERNEL] < 2)
@@ -362,8 +365,11 @@ module axi_block_dma_arbiter #(
             if (rd_dma_start) rd_grant_client <= C_NONE;
             else if (rd_grant_client == C_NONE) rd_grant_client <= rd_next_client;
             else if (rd_grant_client == C_WINDOW) begin
-                if (local_abort || conv_cfg_valid || !win_req_valid || win_req_ready)
+                if (local_abort || conv_cfg_valid || !win_req_valid)
                     rd_grant_client <= C_NONE;
+                // 窗口描述符完成握手后立即选择下一请求，连续窗口保持逐周期接收。
+                else if (win_req_ready)
+                    rd_grant_client <= rd_next_client;
             end
             else if (local_abort || (rd_grant_client == C_IA && !ia_req) ||
                      (rd_grant_client == C_KERNEL && !kernel_req) ||
@@ -556,12 +562,14 @@ module axi_block_dma_arbiter #(
     for (genvar i = 0; i < BYTE_PER_BEAT; i++) begin : gen_route_wr
         assign dw_data[i] = dma_wr_data[i];
         assign dw_valid[i] = (rd_response_client == C_DW) && dma_wr_valid[i];
+        assign bias_wr_data[i]    = dma_wr_data[i][7:0];
+        assign bias_wr_valid[i]   = (rd_response_client == C_BIAS) && dma_wr_valid[i];
+    end
+    for (genvar i = 0; i < DATA_LANES; i++) begin : g_matrix_data
         assign ia_wr_data[i]      = dma_wr_data[i];
         assign ia_wr_valid[i]     = (rd_response_client == C_IA) && dma_wr_valid[i];
         assign kernel_wr_data[i]  = KERNEL_WIDTH'($signed(dma_wr_data[i]));
         assign kernel_wr_valid[i] = (rd_response_client == C_KERNEL) && dma_wr_valid[i];
-        assign bias_wr_data[i]    = dma_wr_data[i][7:0];
-        assign bias_wr_valid[i]   = (rd_response_client == C_BIAS) && dma_wr_valid[i];
     end
 
     assign dw_row = dma_wr_row;
@@ -589,8 +597,8 @@ module axi_block_dma_arbiter #(
     // Registered command descriptor separates client arbitration from DMA
     // address arithmetic. Client grants and completion tags keep their order.
     logic win_dma_req_ready, win_accept_allowed;
-    // 窗口与普通读请求共用寄存授予，窗口接受后释放本次授予。
-    // 描述符保持到接受边沿，请求优先选择只驱动授予寄存器。
+    // 窗口与普通读请求共用寄存授予，连续窗口可在相邻周期完成握手。
+    // 普通卷积可提前保存一条命令，描述符按接受顺序进入 DMA。
     assign win_accept_allowed = !local_abort && !conv_cfg_valid && !rd_active &&
                                 rd_command_client == C_WINDOW && !rd_dma_start_q;
     assign win_req_ready = win_dma_req_ready && win_accept_allowed;
@@ -659,6 +667,8 @@ module axi_block_dma_arbiter #(
         .SIZE             (DMA_SIZE),
         .IM2COL_SIZE      (SIZE),
         .WINDOW_OUTSTANDING(WINDOW_OUTSTANDING),
+        .WINDOW_LANES(WINDOW_LANES),
+        .DATA_LANES(DATA_LANES),
         .BUS_WIDTH        (BUS_WIDTH),
         .REG_WIDTH        (REG_WIDTH),
         .CACHE_BLOCKS     (CACHE_BLOCKS),
@@ -686,6 +696,7 @@ module axi_block_dma_arbiter #(
         .rd_response_tag    (rd_dma_response_tag),
         .rd_finish_tag      (rd_dma_finish_tag),
         .rd_im2col          (rd_dma_im2col_q),
+        .rd_wide_im2col     (rd_dma_tag_q == C_KERNEL || (rd_dma_tag_q == C_IA && ia_wide_im2col)),
         .rd_p0              (rd_dma_p0_q),
         .rd_q0              (rd_dma_q0_q),
         .rd_group           (rd_dma_group_q),

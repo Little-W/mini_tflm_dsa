@@ -21,7 +21,7 @@ extern "C" int vector_engine_reference(const uint32_t*,const int8_t*,const int8_
 static void require(bool condition,const std::string &s){if(!condition)throw std::runtime_error(s);}
 struct Range{uint32_t base,size;};
 struct Transaction{uint32_t addr,left,size;uint64_t ready_cycle=0;};
-struct Result{uint64_t cycles,compute,wait,reads,writes,bursts;std::array<uint64_t,21> monitor;};
+struct Result{uint64_t cycles,compute,wait,reads,writes,bursts;std::array<uint64_t,21> monitor;uint64_t write_transactions=0;};
 using Config=std::array<uint32_t,40>;
 class Sim {
 public:
@@ -33,8 +33,10 @@ public:
  std::mt19937 rng{20261115};
  bool random_wait=true,rhold=false,bhold=false,read_fault=false,write_fault=false,fault_used=false;
  int64_t fault_addr=-1;
+ uint64_t fault_write_transaction=0;
  uint32_t output_base=0,output_size=0;
  uint64_t cycles=0,read_bytes=0,write_bytes=0,bursts=0,next_read_cycle=0;
+ uint64_t write_transactions=0;
  bool common_memory_service=false;
  bool ar_stall=false,aw_stall=false,w_stall=false;
  std::tuple<uint32_t,uint32_t,uint32_t> old_ar,old_aw;
@@ -83,6 +85,7 @@ public:
      reads.push_back({a,n,s,cycles+3});read_bytes+=uint64_t(n)*s;bursts++;
    }
    if(awh){
+     ++write_transactions;
      uint32_t a=top.m_axi_awaddr,n=top.m_axi_awlen+1,s=1u<<top.m_axi_awsize;
      require(top.m_axi_awburst==1&&s==BUS_BYTES&&a%BUS_BYTES==0,"invalid write burst");
      require((a&4095)+n*s<=4096,"write crossed 4 KiB");writes.push_back({a,n,s});
@@ -94,7 +97,8 @@ public:
        uint32_t addr=w.addr+i;require(addr>=output_base&&uint64_t(addr)<uint64_t(output_base)+output_size,"write outside output");
        mem.at(addr)=uint8_t(top.m_axi_wdata>>(i*8));write_bytes++;
      }
-     w.addr+=w.size;if(--w.left==0){writes.pop_front();unsigned resp=0;if(write_fault&&!fault_used){resp=2;fault_used=true;}responses.push_back(resp);}
+     w.addr+=w.size;if(--w.left==0){writes.pop_front();unsigned resp=0;if(write_fault&&!fault_used&&
+         (fault_write_transaction==0||write_transactions==fault_write_transaction)){resp=2;fault_used=true;}responses.push_back(resp);}
    }
    top.clk=1;top.eval();Verilated::timeInc(1);cycles++;top.clk=0;top.eval();
  }
@@ -102,7 +106,7 @@ public:
  Result execute(const Config &config,unsigned expected_error=0,bool mutate=true){
    for(unsigned i=0;!top.ready&&i<1000;i++)tick();require(top.ready,"engine did not become ready");
    require(reads.empty()&&writes.empty()&&responses.empty()&&!rhold&&!bhold,"transactions survived command");
-   auto rb=read_bytes,wb=write_bytes,br=bursts;fault_used=false;
+   auto rb=read_bytes,wb=write_bytes,br=bursts,wt=write_transactions;fault_used=false;
    for(unsigned i=0;i<40;i++)top.config_words[i]=config[i];top.start=1;tick();top.start=0;
    if(mutate)for(unsigned i=0;i<40;i++)top.config_words[i]=0xa5a5a5a5;
    uint64_t deadline=cycles+10000000;
@@ -116,6 +120,7 @@ public:
       top.write_bursts16,top.write_beats16,top.window_requests,top.window_completions,
       top.window_peak_outstanding,top.window_response_beats,top.window_consecutive_responses,
       top.window_request_response_overlap}};
+   result.write_transactions=write_transactions-wt;
    if((config[0]&15)>3)for(size_t i=0;i<8;i++)result.monitor[i]=0;
    if((config[0]&15)==0 && expected_error==0)
      require(top.quant_inputs==uint64_t(config[13])*config[16]*config[17],"depthwise quantization input count");
@@ -137,9 +142,12 @@ static void report(const char *name,const Result&r){
  std::printf("\n");
 }
 static unsigned cases=0;static uint64_t outputs=0;
-static Result spatial(Sim&s,const std::string&name,unsigned op,int h,int w,int ch,int kh,int kw,int stride,int dilation,int pad,int offset,bool bias=true,int special=0,bool bypass=false,int output_h=0,int output_w=0,bool aligned=false){
+static Result spatial(Sim&s,const std::string&name,unsigned op,int h,int w,int ch,int kh,int kw,int stride,int dilation,int pad,int offset,bool bias=true,int special=0,bool bypass=false,int output_h=0,int output_w=0,bool aligned=false,unsigned parameter_layout=0,bool cross_weight_page=false){
  auto c=config(op);c[11]=h;c[12]=w;c[13]=ch;c[14]=kh;c[15]=kw;c[18]=c[19]=stride;c[20]=c[21]=dilation;c[22]=c[23]=pad;
  if(aligned){c[2]=0x2000;c[3]=0x11000;c[4]=0x61000;}
+ if(parameter_layout==1){c[5]=0x20004;c[6]=0x30ffc;c[7]=0x41000;}
+ if(parameter_layout==2){c[5]=0x40000;c[6]=0x30000;c[7]=0x20004;}
+ if(cross_weight_page)c[3]=0x10ffd;
  c[16]=(h+2*pad-(kh-1)*dilation-1)/stride+1;c[17]=(w+2*pad-(kw-1)*dilation-1)/stride+1;
  if(output_h)c[16]=output_h;if(output_w)c[17]=output_w;
  require(int(c[16])>0&&int(c[17])>0,"empty test shape");c[24]=uint32_t(offset);c[8]=op==0?uint32_t(-3):0;c[25]=bypass;
@@ -229,10 +237,72 @@ static void errors(Sim&s){
  std::vector<int32_t> zero(3,0),mult(3,0x40000000),shift{0,0,31};s.put(c[5],zero);s.put(c[6],mult);s.put(c[7],shift);
  before=s.mem;r=s.execute(c,2);require(r.writes==0&&s.mem==before,"invalid shift wrote data");report("invalid_shift",r);cases++;
  shift[2]=-31;s.put(c[7],shift);r=s.execute(c);report("shift_recovery",r);cases++;
+ // 参数各行分别注入总线错误，检查全部在途读取结束后再报告完成。
+ for(unsigned parameter:{5u,6u,7u}){
+   before=s.mem;s.read_fault=true;s.fault_addr=c[parameter]+4;r=s.execute(c,2);
+   require(s.fault_used&&r.writes==0&&s.mem==before,"parameter read error wrote output");
+   s.read_fault=false;report(("parameter_read_error_"+std::to_string(parameter)).c_str(),r);cases++;
+   r=s.execute(c);require(r.writes==3,"parameter read recovery");
+   report(("parameter_read_recovery_"+std::to_string(parameter)).c_str(),r);cases++;
+ }
+ mult[1]=-1;s.put(c[6],mult);before=s.mem;r=s.execute(c,2);
+ require(r.writes==0&&s.mem==before,"invalid multiplier wrote data");report("invalid_multiplier",r);cases++;
+ mult[1]=0x40000000;s.put(c[6],mult);r=s.execute(c);report("multiplier_recovery",r);cases++;
  before=s.mem;s.read_fault=true;s.fault_addr=c[2];r=s.execute(c,2);
  require(s.fault_used&&r.writes==0&&s.mem==before,"window read error wrote output");
  s.read_fault=false;report("window_read_error",r);cases++;
  r=s.execute(c);require(r.writes==3,"window read recovery");report("window_read_recovery",r);cases++;
+}
+
+static void weight_row_errors(Sim&s){
+ auto c=config(0);c[11]=c[12]=c[16]=c[17]=3;c[13]=15;c[14]=c[15]=7;
+ c[22]=c[23]=3;c[3]=0x10ffd;
+ std::vector<int8_t> input(3*3*15),weight(7*7*15),gold(3*3*15);
+ std::vector<int32_t> bias(15),mult(15,0x40000000),shift(15,-2);
+ for(auto&v:input)v=int8_t(int(s.rng()%256)-128);
+ for(auto&v:weight)v=int8_t(int(s.rng()%17)-8);
+ for(auto&v:bias)v=int(s.rng()%1025)-512;
+ s.put(c[2],input);s.put(c[3],weight);s.put(c[5],bias);s.put(c[6],mult);s.put(c[7],shift);
+ require(vector_engine_reference(c.data(),input.data(),weight.data(),bias.data(),mult.data(),shift.data(),gold.data())==0,
+         "weight row error recovery reference");
+ s.ranges={{c[2],uint32_t(input.size())},{c[3],uint32_t(weight.size())},
+           {c[5],60},{c[6],60},{c[7],60}};s.output_base=c[4];s.output_size=gold.size();
+ // 首行、页面边界、中间行和末行分别返回错误，检查多行读取的完整排空。
+ const unsigned offsets[]={0,3,24*15+7,48*15+14};
+ for(unsigned fault=0;fault<4;fault++){
+   std::fill(s.mem.begin()+c[4]-16,s.mem.begin()+c[4]+gold.size()+16,0xa5);
+   auto before=s.mem;s.read_fault=true;s.fault_addr=c[3]+offsets[fault];auto r=s.execute(c,2);
+   require(s.fault_used&&r.writes==0&&s.mem==before,"weight row error wrote output");
+   s.read_fault=false;report(("weight_row_error_"+std::to_string(fault)).c_str(),r);cases++;
+   auto expected=s.mem;std::memcpy(expected.data()+c[4],gold.data(),gold.size());
+   r=s.execute(c);require(s.mem==expected&&r.writes==gold.size(),"weight row error recovery mismatch");
+   report(("weight_row_recovery_"+std::to_string(fault)).c_str(),r);cases++;outputs+=gold.size();
+ }
+}
+
+static void dw_tile_write_error(Sim&s){
+ auto c=config(0);c[11]=c[12]=c[14]=c[15]=c[16]=c[17]=3;c[13]=32;
+ c[22]=c[23]=1;c[2]=0x2000;c[3]=0x11000;c[4]=0x61000;c[24]=128;c[8]=uint32_t(-7);
+ std::vector<int8_t> input(3*3*32),weight(3*3*32),gold(3*3*32);
+ std::vector<int32_t> bias(32),mult(32,0x40000000),shift(32,-8);
+ for(auto&v:input)v=int8_t(int(s.rng()%256)-128);
+ for(auto&v:weight)v=int8_t(int(s.rng()%17)-8);
+ for(auto&v:bias)v=int(s.rng()%1025)-512;
+ s.put(c[2],input);s.put(c[3],weight);s.put(c[5],bias);s.put(c[6],mult);s.put(c[7],shift);
+ require(vector_engine_reference(c.data(),input.data(),weight.data(),bias.data(),mult.data(),shift.data(),gold.data())==0,
+         "tile write error reference");
+ s.ranges={{c[2],uint32_t(input.size())},{c[3],uint32_t(weight.size())},
+           {c[5],128},{c[6],128},{c[7],128}};s.output_base=c[4];s.output_size=gold.size();
+ std::fill(s.mem.begin()+c[4]-16,s.mem.begin()+c[4]+gold.size()+16,0xa5);
+ auto expected=s.mem;
+ for(unsigned pixel=0;pixel<9;pixel++)std::memcpy(expected.data()+c[4]+32*pixel,gold.data()+32*pixel,16);
+ // 第一组最后一次写响应返回错误，同时下一组权重读取可以已经开始。
+ s.write_fault=true;s.fault_write_transaction=s.write_transactions+9;
+ auto r=s.execute(c,2);require(s.fault_used&&r.writes==9*16&&s.mem==expected,"tile write error output mismatch");
+ s.write_fault=false;s.fault_write_transaction=0;report("dw_tile_write_error",r);cases++;
+ std::memcpy(expected.data()+c[4],gold.data(),gold.size());r=s.execute(c);
+ require(r.writes==gold.size()&&s.mem==expected,"tile write error recovery mismatch");
+ report("dw_tile_write_recovery",r);cases++;outputs+=gold.size();
 }
 
 static void cached_read_errors(Sim&s){
@@ -304,9 +374,13 @@ int main(int argc,char**argv){
      spatial(s,"dw_c17_stride2",0,7,9,17,3,3,2,1,1,128,false);
      spatial(s,"dw_rect_dilation",0,7,8,5,2,3,1,2,2,-11);
      spatial(s,"dw_7x7_c1",0,7,7,1,7,7,1,1,3,0);
+     spatial(s,"dw_7x7_c17_page",0,3,3,17,7,7,1,1,3,0,true,0,false,0,0,false,0,true);
      spatial(s,"dw_1x1_c31",0,2,3,31,1,1,1,1,0,17);
      spatial(s,"dw_bias_only_padding",0,1,1,3,1,1,1,1,2,128);
      spatial(s,"dw_bypass",0,3,4,7,3,3,1,1,1,-5,true,0,true);
+     for(unsigned layout:{1u,2u})for(bool bias:{false,true})
+       spatial(s,"dw_parameter_layout_"+std::to_string(layout)+(bias?"_bias":"_zero_bias"),
+               0,3,4,17,3,3,1,1,1,-7,bias,0,false,0,0,false,layout);
      spatial(s,"avg_negative_ties",1,2,4,3,2,2,1,1,0,0,true,2);
      spatial(s,"avg_padding_c17",1,4,5,17,3,3,2,1,1,0);
      spatial(s,"max_all_negative",2,4,5,5,3,3,1,1,1,0,true,1);
@@ -329,7 +403,9 @@ int main(int argc,char**argv){
      for(unsigned op=4;op<=8;op++)for(bool wide:{false,true})for(unsigned n:{1u,3u,16u,17u,65u})
        vector_case(s,"v"+std::to_string(op)+(wide?"_s16_":"_s8_")+std::to_string(n),op,n,wide);
      vector_case(s,"dot_s16_wrap",7,65,true,1);vector_case(s,"max_negative_s16",5,33,true,2);
-     invalid_cases(s);errors(s);quant_edges(s);
+     invalid_cases(s);errors(s);weight_row_errors(s);
+     if(TEST_TILE_SIZE==16)dw_tile_write_error(s);
+     quant_edges(s);
      for(unsigned i=0;i<16;i++){
        int h=3+s.rng()%4,w=3+s.rng()%5,ch=1+s.rng()%21;unsigned op=i%4;
        spatial(s,"random_"+std::to_string(i),op,h,w,ch,3,3,1+i%2,1,1,op==0?int(s.rng()%256)-127:0,i%3!=0);
@@ -343,11 +419,11 @@ int main(int argc,char**argv){
    spatial(s,"pipeline_dw_c64",0,8,8,64,3,3,1,1,1,128,true,0,false,0,0,true);
    spatial(s,"pipeline_dw_c128_s2",0,8,8,128,3,3,2,1,1,-127,true,0,false,0,0,true);
    if(TEST_TILE_SIZE==16){
-     require(aligned.monitor[8]==1024 && aligned.monitor[9]==64*15,"continuous scalar quantization inputs");
-     require(aligned.monitor[10]==0 && aligned.monitor[12]==0,"scalar quantization phase separation");
+     require(aligned.monitor[8]==1024 && aligned.monitor[9]==64*(16/s.top.quant_lane_count-1),"continuous quantization input groups");
+     require(aligned.monitor[10]>0 && aligned.monitor[12]>0,"depthwise compute quantization and write overlap");
      require(aligned.monitor[11]>0,"MAC overlap with writeback");
-     require(aligned.monitor[13]==64 && aligned.monitor[14]==64*(16/BUS_BYTES),"aligned depthwise write count");
-     if(perf)require(pointwise.monitor[10]==0 && pointwise.monitor[12]==0,"pointwise scalar quantization phase separation");
+     require(aligned.writes==1024 && aligned.write_transactions==16,"coalesced depthwise writes preserve all output bytes");
+     if(perf)require(pointwise.write_transactions==8 && pointwise.writes==512,"pointwise coalesced write count");
      require(aligned.monitor[17]>=2,"multiple outstanding window requests");
      if(s.top.pe_count>=8)require(aligned.monitor[20]>0,"overlapping window request and response");
    }

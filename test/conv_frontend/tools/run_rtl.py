@@ -18,8 +18,11 @@ FILES = [str(p) for p in runpy.run_path(str(ROOT.parents[1] / "test/monitors/sou
 
 def main():
     ap=argparse.ArgumentParser()
+    ap.add_argument('--bus-width',type=int,choices=[32,64],default=32)
     ap.add_argument('--size',type=int,default=16)
     ap.add_argument('--lanes',type=int,default=2)
+    ap.add_argument('--narrow-mode',type=int,choices=[0,1,2],default=0,
+                    help='0: full width; 1: bus-byte width; 2: alternate by descriptor')
     ap.add_argument('--cache-policy',type=int,default=3)
     ap.add_argument('--prefetch',action='store_true')
     ap.add_argument('--windowed',action='store_true')
@@ -52,19 +55,25 @@ def main():
         ap.error('Native scheduler parameters must be unsigned 32-bit integers')
     if a.expect_geometry_predictions < -1 or not 1<=a.max_cycles<2**32:
         ap.error('Invalid expected prediction count or cycle limit')
+    if a.tile_path and a.bus_width!=32:
+        ap.error('The standalone tile-path bench uses a 32-bit memory interface')
+    if a.tile_path and a.narrow_mode:
+        ap.error('Narrow output checks require the direct frontend interface')
     if a.tile_path and (a.native_sched_r or a.native_sched_groups or a.expect_geometry_predictions>=0):
         ap.error('Native scheduler checks require the direct frontend interface')
     output=(a.out or OUTPUT).resolve()
     name=f'rtl_s{a.size}_sets{a.cache_sets}_ways{a.cache_ways}_line{a.line_bytes}'
     if a.tile_path: name+='_path'
-    name+=f'_lanes{a.lanes}_policy{a.cache_policy}_pf{int(a.prefetch)}_win{int(a.windowed)}'
+    name+=f'_bus{a.bus_width}_lanes{a.lanes}_policy{a.cache_policy}_pf{int(a.prefetch)}_win{int(a.windowed)}'
+    if a.narrow_mode: name+=f'_narrow{a.narrow_mode}'
     if a.native_sched_r or a.native_sched_groups or a.expect_geometry_predictions>=0:
         name+=f'_native_r{a.native_sched_r}_groups{a.native_sched_groups}'
     output.mkdir(parents=True, exist_ok=True)
     status={'scope':'frontend and optional standalone tile adapter RTL; original npu_top not integrated',
             'size':a.size,'cache_sets':a.cache_sets,'cache_ways':a.cache_ways,
             'line_bytes':a.line_bytes,'cache_data_bytes':a.cache_sets*a.cache_ways*a.line_bytes,'tile_path':a.tile_path,
-            'lanes':a.lanes,'policy':a.cache_policy,'prefetch':a.prefetch,'windowed':a.windowed,
+            'bus_width':a.bus_width,'lanes':a.lanes,'policy':a.cache_policy,'prefetch':a.prefetch,'windowed':a.windowed,
+            'narrow_mode':a.narrow_mode,
             'native_sched_r':a.native_sched_r,'native_sched_groups':a.native_sched_groups,
             'expected_geometry_predictions':a.expect_geometry_predictions,'max_cycles':a.max_cycles}
     verilator=shutil.which('verilator');vcs=shutil.which('vcs')
@@ -86,7 +95,7 @@ def main():
                 cmd=[verilator,'--binary','--timing','--assert','-Wall','-Wno-fatal',
                      '-DCONV_ASSERT','-DNPU_SIM_ASSERT','--top-module','tb_conv_im2col_frontend',f'-GSIZE={a.size}',f'-GCACHE_SETS={a.cache_sets}',
                      f'-GCACHE_WAYS={a.cache_ways}',f'-GLINE_BYTES={a.line_bytes}',
-                     f'-GUSE_TILE_PATH={int(a.tile_path)}',f'-GLANES={a.lanes}',
+                     f'-GUSE_TILE_PATH={int(a.tile_path)}',f'-GLANES={a.lanes}',f'-GBUS_WIDTH={a.bus_width}',f'-GNARROW_MODE={a.narrow_mode}',
                      f'-GCACHE_POLICY={a.cache_policy}',f'-GPREFETCH={int(a.prefetch)}',f'-GWINDOWED={int(a.windowed)}',
                      f'-GNATIVE_SCHED_R={a.native_sched_r}',f'-GNATIVE_SCHED_GROUPS={a.native_sched_groups}',
                      f'-GEXPECT_GEOMETRY_PREDICTIONS={a.expect_geometry_predictions}',f'-GMAX_CYCLES={a.max_cycles}',
@@ -103,6 +112,8 @@ def main():
                      f'-pvalue+tb_conv_im2col_frontend.LINE_BYTES={a.line_bytes}',
                      f'-pvalue+tb_conv_im2col_frontend.USE_TILE_PATH={int(a.tile_path)}',
                      f'-pvalue+tb_conv_im2col_frontend.LANES={a.lanes}',
+                     f'-pvalue+tb_conv_im2col_frontend.BUS_WIDTH={a.bus_width}',
+                     f'-pvalue+tb_conv_im2col_frontend.NARROW_MODE={a.narrow_mode}',
                      f'-pvalue+tb_conv_im2col_frontend.CACHE_POLICY={a.cache_policy}',
                      f'-pvalue+tb_conv_im2col_frontend.PREFETCH={int(a.prefetch)}',
                      f'-pvalue+tb_conv_im2col_frontend.WINDOWED={int(a.windowed)}',
@@ -128,8 +139,11 @@ def main():
             return (warning.startswith('%Warning-PINMISSING:') and
                     str(RTL/'conv_ia_tile_path.sv') in warning and
                     warning.endswith("Instance has missing pin: 'wr_last'"))
+        # 单项需求队列的计数器范围由位宽保证，相关比较在展开后为常量。
+        def single_request_counter(warning):
+            return warning.startswith('%Warning-CMPCONST:') and 'dma/cache/conv_read_cache.sv:' in warning
         unexpected=[w for w in warnings if w.split(':',1)[0].removeprefix('%Warning-') not in reviewed
-                    and not unused_adapter_last(w)]
+                    and not unused_adapter_last(w) and not single_request_counter(w)]
         if unexpected: raise RuntimeError('unreviewed lint warnings: '+repr(unexpected))
         status.update(status='PASS',simulator=verilator or vcs,log=str(log),
                       warnings=warnings,command=cmd)

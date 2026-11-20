@@ -36,6 +36,20 @@ def main():
         jobs.append((high,[-128,-1,0,126,127],tile_plan(high,size),bypass,False))
         high16=Config(1,1,3,1,1,1,1,s16=True,base=0xfffffff8)
         jobs.append((high16,[-32768,0,32767],tile_plan(high16,size),bypass,False))
+    # 通道分组逐个遍历空间位置，检查非零通道起点、跨输出行和步长变化。
+    for channels,stride,base,s16 in ((32,1,0x28000,False),(64,1,0x2c000,True),
+                                    (48,2,0x30001,False)):
+        grouped=Config(5,7,channels,3,3,5 if stride==1 else 3,7 if stride==1 else 4,
+                       sh=stride,sw=stride,pt=1,pl=1,offset=0 if s16 else -17,base=base,s16=s16)
+        values=[rng.randint(-3000,3000) if s16 else rng.randint(-128,127)
+                for _ in range(grouped.h*grouped.w*grouped.cin)]
+        plan=[Tile(position,tap*channels+channel,1,(position+tap)%8)
+              for channel in range(0,channels,size)
+              for position in range(grouped.positions)
+              for tap in range(grouped.kh*grouped.kw)
+              if 0<=(position//grouped.ow)*grouped.sh+(tap//grouped.kw)*grouped.dh-grouped.pt<grouped.h
+              and 0<=(position%grouped.ow)*grouped.sw+(tap%grouped.kw)*grouped.dw-grouped.pl<grouped.w]
+        jobs.append((grouped,values,plan,False,False))
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('w') as f:
         f.write(f'{len(jobs)}\n')

@@ -28,14 +28,15 @@ module npu_top #(
     parameter bit FRAME_PREFETCH_ENABLE = 1'b1,
     parameter int unsigned OPERAND_CACHE_ENABLE = 0,
     parameter int unsigned IM2COL_CACHE_BYTES = 4096,
-    parameter int unsigned CONV_CACHE_SETS = IM2COL_CACHE_BYTES / 32,
     parameter int unsigned CONV_CACHE_WAYS = 2,
-    parameter int unsigned CONV_LINE_BYTES = 16,
+    parameter int unsigned CONV_LINE_BYTES = 128,
+    parameter int unsigned CONV_CACHE_SETS = IM2COL_CACHE_BYTES / (CONV_CACHE_WAYS * CONV_LINE_BYTES),
     parameter int unsigned CONV_CACHE_POLICY = 3,
     parameter int unsigned ENABLE_DW_POOL = 1,
-    parameter int unsigned DW_PE_COUNT = (SIZE < 8) ? SIZE : 8,
+    parameter int unsigned DW_PE_COUNT = (SIZE < 16) ? SIZE : 16,
     parameter int unsigned ENABLE_VECTOR_ENGINE = ENABLE_DW_POOL,
     parameter int unsigned VECTOR_PE_COUNT = DW_PE_COUNT,
+    parameter int unsigned WINDOW_LANES = VECTOR_PE_COUNT >= 16 ? 16 : BUS_WIDTH / 8,
     parameter int unsigned DW_MAX_TAPS = 49,
     parameter int unsigned POOL_MAX_TAPS = 256,
     parameter int unsigned PS_FRAME_COUNT = SIZE,  // PS buffer 可保留的输出列 tile 数
@@ -226,6 +227,8 @@ module npu_top #(
     logic kernel_loader_o_admission_request;
     wire block_dma_arbiter_o_kernel_eligible;
     wire frame_prefetch_idle = ia_prefetch_idle && kernel_prefetch_idle;
+    // 图像描述符可在预取期间完成，整层完成和下一任务接收仍等待实际读取结束。
+    wire conv_task_idle = !run_conv || (dma_idle && !conv_busy);
     logic arbiter_ia_granted;
 
     logic legacy_axi_arvalid, legacy_axi_arready, legacy_axi_rvalid, legacy_axi_rready, legacy_axi_rlast;
@@ -485,6 +488,8 @@ module npu_top #(
     localparam int unsigned BIAS_DMA_SIZE = SIZE * 4;
     localparam int unsigned SHARED_DMA_SIZE =
         (BIAS_DMA_SIZE > SIZE) ? BIAS_DMA_SIZE : SIZE;
+    localparam int unsigned MATRIX_INPUT_LANES =
+        WINDOW_LANES > BUS_WIDTH/8 ? WINDOW_LANES : BUS_WIDTH/8;
     // int8 activations plus zero-point need more than 8 signed bits.
 
 `ifdef GEMPACT_PS_COMPRESS
@@ -498,6 +503,9 @@ module npu_top #(
     localparam bit SHARED_RAM_ENABLED = 1'b0;
 `endif
     localparam int unsigned SHARED_PHYSICAL_BANKS = SHARED_TOTAL_BYTES / SHARED_BANK_BYTES;
+    localparam int unsigned REQUANT_COMPUTE_LANES =
+        SHARED_RAM_ENABLED && SHARED_PHYSICAL_BANKS < 8 && SIZE > 2 && (SIZE % 2) == 0 ? 2 : SIZE;
+    localparam bit DW_SHARED_QUANT_ENABLE = REQUANT_COMPUTE_LANES == SIZE;
     localparam int unsigned SHARED_PHYSICAL_BANKS_WIDTH =
         ($clog2(SHARED_PHYSICAL_BANKS+1) > 0) ? $clog2(SHARED_PHYSICAL_BANKS+1) : 1;
     localparam int unsigned SHARED_MAX_IA_BANKS =
@@ -682,8 +690,8 @@ module npu_top #(
     logic ia_dma_busy, ia_dma_done;
     logic [IA_CACHE_SLOT_W-1:0] ia_dma_wr_slot;
     logic [$clog2(SIZE)-1:0] ia_dma_wr_row, ia_dma_wr_col_base;
-    logic signed [IA_DATA_WIDTH-1:0] ia_dma_wr_data[BUS_WIDTH/8];
-    logic ia_dma_wr_valid[BUS_WIDTH/8];
+    logic signed [IA_DATA_WIDTH-1:0] ia_dma_wr_data[MATRIX_INPUT_LANES];
+    logic ia_dma_wr_valid[MATRIX_INPUT_LANES];
     logic ia_dma_wr_use_16bits;
 
     logic kernel_dma_start, kernel_dma_linear_read_mode;
@@ -696,8 +704,8 @@ module npu_top #(
     logic kernel_dma_busy, kernel_dma_done;
     logic kernel_dma_wr_slot;
     logic [$clog2(SIZE)-1:0] kernel_dma_wr_row, kernel_dma_wr_col_base;
-    logic signed [KERNEL_DATA_WIDTH-1:0] kernel_dma_wr_data[BUS_WIDTH/8];
-    logic kernel_dma_wr_valid[BUS_WIDTH/8];
+    logic signed [KERNEL_DATA_WIDTH-1:0] kernel_dma_wr_data[MATRIX_INPUT_LANES];
+    logic kernel_dma_wr_valid[MATRIX_INPUT_LANES];
 
     logic bias_dma_start, bias_dma_linear_read_mode;
     logic [REG_WIDTH-1:0] bias_dma_base_addr, bias_dma_row_stride, bias_dma_rows_to_read;
@@ -728,8 +736,8 @@ module npu_top #(
     logic win_req_valid,win_req_ready,win_rsp_valid,win_rsp_ready;
     logic [31:0] win_req_p0,win_req_q0,win_req_cols,win_rsp_col;
     logic [1:0] win_req_tag,win_rsp_tag;
-    logic signed [15:0] win_rsp_data[4];
-    logic [3:0] win_rsp_mask;
+    logic signed [15:0] win_rsp_data[WINDOW_LANES];
+    logic [WINDOW_LANES-1:0] win_rsp_mask;
     logic win_rsp_last,win_rsp_error,win_busy;
     logic dw_rd_req, dw_rd_granted, dw_rd_start, dw_rd_im2col, dw_rd_use_16bits;
     logic [31:0] dw_rd_p0, dw_rd_q0, dw_rd_base_addr, dw_rd_row_stride;
@@ -748,11 +756,19 @@ module npu_top #(
     logic [BUS_WIDTH-1:0] dw_src_wdata;
     logic [BUS_WIDTH/8-1:0] dw_src_wmask;
     logic dw_src_wvalid, dw_src_wready, dw_wr_busy, dw_wr_done, dw_wr_error;
+    logic dw_quant_req_valid, dw_quant_req_ready, dw_quant_req_tag;
+    logic signed [31:0] dw_quant_accumulator[SIZE], dw_quant_multiplier[SIZE];
+    logic [5:0] dw_quant_right[SIZE];
+    logic [SIZE-1:0] dw_quant_mask;
+    logic signed [31:0] dw_quant_offset, dw_quant_minimum, dw_quant_maximum;
+    logic dw_quant_rsp_valid, dw_quant_rsp_tag;
     generate if (VECTOR_ENGINE_CAPABLE) begin : g_vector_engine
         for (genvar lane = 0; lane < BUS_WIDTH/8; lane++) begin : g_data
             assign dw_rd_data[lane] = 16'($signed(vector_dma_data[lane]));
         end
         vector_engine #(.BUS_WIDTH(BUS_WIDTH),.TILE(SIZE), .DMA_SIZE(SHARED_DMA_SIZE),
+            .WINDOW_LANES(WINDOW_LANES),
+            .SHARED_QUANT_ENABLE(DW_SHARED_QUANT_ENABLE),
             .PE_COUNT(VECTOR_PE_COUNT), .MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS)) u_engine (
             .clk, .rst_n(core_rst_n),
             .start(calc_start && sa_ready && cfg_vector_enable && !cfg_conv_enable),
@@ -765,6 +781,13 @@ module npu_top #(
             .win_req_valid,.win_req_ready,.win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
             .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
             .win_rsp_last,.win_rsp_error,.win_busy,
+            .quant_req_valid(dw_quant_req_valid), .quant_req_ready(dw_quant_req_ready),
+            .quant_req_tag(dw_quant_req_tag), .quant_req_accumulator(dw_quant_accumulator),
+            .quant_req_multiplier(dw_quant_multiplier), .quant_req_right(dw_quant_right),
+            .quant_req_mask(dw_quant_mask), .quant_req_offset(dw_quant_offset),
+            .quant_req_minimum(dw_quant_minimum), .quant_req_maximum(dw_quant_maximum),
+            .quant_rsp_valid(dw_quant_rsp_valid), .quant_rsp_tag(dw_quant_rsp_tag),
+            .quant_rsp_data(requant_out),
             .rd_req(dw_rd_req), .rd_start(dw_rd_start), .rd_granted(dw_rd_granted),
             .rd_im2col(dw_rd_im2col), .rd_p0(dw_rd_p0), .rd_q0(dw_rd_q0),
             .rd_base_addr(dw_rd_base_addr), .rd_row_stride(dw_rd_row_stride),
@@ -800,6 +823,17 @@ module npu_top #(
         assign dw_wr_base_addr = '0; assign dw_wr_row_stride = '0;
         assign dw_wr_rows_to_write = '0; assign dw_wr_burst_len_m1 = '0;
         assign dw_src_wdata = '0; assign dw_src_wmask = '0; assign dw_src_wvalid = 1'b0;
+        assign dw_quant_req_valid = 1'b0;
+        assign dw_quant_req_tag = 1'b0;
+        assign dw_quant_mask = '0;
+        assign dw_quant_offset = '0;
+        assign dw_quant_minimum = '0;
+        assign dw_quant_maximum = '0;
+        for (genvar lane = 0; lane < SIZE; lane++) begin : g_quant_zero
+            assign dw_quant_accumulator[lane] = '0;
+            assign dw_quant_multiplier[lane] = '0;
+            assign dw_quant_right[lane] = '0;
+        end
     end endgenerate
 
     wire ps_capacity_fault;
@@ -838,7 +872,7 @@ module npu_top #(
     wire profile_input_invalid=1'b0;
     wire profile_error=1'b0;
 `endif
-    assign normal_done_valid = operand_cache_idle && frame_prefetch_idle &&
+    assign normal_done_valid = operand_cache_idle && frame_prefetch_idle && conv_task_idle &&
         ((controller_done_valid && !operand_completion_seen) || profile_error);
     assign normal_err_code = profile_error ? 2'b01 : controller_err_code;
 
@@ -891,7 +925,7 @@ module npu_top #(
         // 六、七个共享银行配置以两个量化通道处理整行，输入组缓存保留最大复用容量。
         // 更大银行配置保留全并行量化，使可寻址缓冲容量继续满足原有预算。
         localparam int unsigned p_requant_compute_lanes =
-            SHARED_RAM_ENABLED && SHARED_PHYSICAL_BANKS < 8 && SIZE > 2 && (SIZE % 2) == 0 ? 2 : SIZE;
+            REQUANT_COMPUTE_LANES;
         logic [31:0] frame_exec_rows, frame_exec_cols, frame_exec_p0, frame_exec_column;
         logic frame_exec_init, frame_exec_final;
 
@@ -1151,14 +1185,14 @@ module npu_top #(
                 ready_o_valid, idle_o_valid, ia_prefetch_idle, kernel_loader_o_quiescent};
             // 故障与未完成的后台请求均阻止接收配置。
             assign admission_o_ready = (&admission_ready_i_flags[3:0]) &&
-                !(|admission_ready_i_flags[5:4]);
+                !(|admission_ready_i_flags[5:4]) && conv_task_idle;
             // 内部配置接收与公开请求握手使用同一就绪条件。
             assign admission_o_start = calc_start && !cfg_vector_enable && admission_o_ready;
             assign sa_ready = admission_o_ready;
             assign cfg_start_event = admission_o_start;
         end else begin : g_admission_generic
             assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && frame_scheduler_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
-                              (abort_state == AB_IDLE) && !task_fault && operand_cache_idle && frame_prefetch_idle;
+                              (abort_state == AB_IDLE) && !task_fault && operand_cache_idle && frame_prefetch_idle && conv_task_idle;
             assign cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
         end
 
@@ -1735,7 +1769,7 @@ module npu_top #(
                 .reuse_rows(cfg_ia_reuse_eff_s2), .window_frames(cfg_w_reuse_eff_s2),
                 .slice_tiles(frame_slice_tiles_s2), .config_error(frame_config_error),
                 .ready(frame_scheduler_ready), .done_valid(frame_scheduler_done),
-                .done_ready(done_ready && operand_cache_idle && frame_prefetch_idle), .err_code(frame_scheduler_error),
+                .done_ready(done_ready && operand_cache_idle && frame_prefetch_idle && conv_task_idle), .err_code(frame_scheduler_error),
                 .command_valid(frame_command_valid), .command_ready(frame_command_ready),
                 .command_pressure(frame_mode_q && ps_frame_pressure),
                 .command_complete(frame_mode_q && frame_command_active && inner_done_valid && inner_err_code == 0),
@@ -1774,6 +1808,8 @@ module npu_top #(
             .ENABLE_QUANT_CLIENT(ENABLE_PER_CHANNEL),
             .READ_OUTSTANDING(AXI_READ_OUTSTANDING),
             .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING),
+            .WINDOW_LANES(WINDOW_LANES),
+            .DATA_LANES(MATRIX_INPUT_LANES),
             .CONV_CACHE_SETS(CONV_CACHE_SETS),
             .CONV_CACHE_WAYS(CONV_CACHE_WAYS),
             .CONV_LINE_BYTES(CONV_LINE_BYTES),
@@ -1837,6 +1873,7 @@ module npu_top #(
             .ia_wr_data              (ia_dma_wr_data),
             .ia_wr_valid             (ia_dma_wr_valid),
             .ia_wr_use_16bits        (ia_dma_wr_use_16bits),
+            .ia_wide_im2col          (run_compact),
                 .kernel_req(load_weight_req && !abort_pending && !task_fault),
                 .kernel_granted          (load_weight_granted),
             .o_kernel_eligible       (block_dma_arbiter_o_kernel_eligible),
@@ -2010,7 +2047,7 @@ module npu_top #(
             .oa_calc_over         (exec_oa_complete),
         // Task Completion Handshake Interface
         .done_valid             (inner_done_valid),
-        .done_ready             (frame_mode_q || (done_ready && operand_cache_idle)),
+        .done_ready             (frame_mode_q || (done_ready && operand_cache_idle && frame_prefetch_idle && conv_task_idle)),
         .err_code             (inner_err_code)
     );
         // IA Loader
@@ -2018,6 +2055,7 @@ module npu_top #(
                 .DATA_WIDTH  (IA_DATA_WIDTH),
                 .SIZE        (SIZE),
                 .BUS_WIDTH   (BUS_WIDTH),
+                .DMA_LANES   (MATRIX_INPUT_LANES),
                 .REG_WIDTH   (REG_WIDTH),
                 .COUNT_WIDTH (DIM_COUNT_WIDTH),
                 .CACHE_BLOCKS(IA_MAX_CACHE_BLOCKS),
@@ -2199,6 +2237,7 @@ module npu_top #(
                 .DATA_WIDTH(KERNEL_DATA_WIDTH),
                 .SIZE      (SIZE),
                 .BUS_WIDTH (BUS_WIDTH),
+                .DMA_LANES (MATRIX_INPUT_LANES),
                 .REG_WIDTH (REG_WIDTH),
                 .COUNT_WIDTH(DIM_COUNT_WIDTH)
             ) u_kernel_loader (
@@ -2667,6 +2706,13 @@ module npu_top #(
             .ENABLE_IS_MODE(ENABLE_IS_MODE),
             .ENABLE_S16(1)
     ) u_vec_requant (
+        .i_dw_enable(run_vector && DW_SHARED_QUANT_ENABLE),
+        .i_dw_valid(dw_quant_req_valid), .o_dw_ready(dw_quant_req_ready),
+        .i_dw_tag(dw_quant_req_tag), .i_dw_accumulator(dw_quant_accumulator),
+        .i_dw_multiplier(dw_quant_multiplier), .i_dw_right(dw_quant_right),
+        .i_dw_mask(dw_quant_mask), .i_dw_offset(dw_quant_offset),
+        .i_dw_minimum(dw_quant_minimum), .i_dw_maximum(dw_quant_maximum),
+        .o_dw_valid(dw_quant_rsp_valid), .o_dw_tag(dw_quant_rsp_tag),
         .i_group_start(requant_group_start),
         .i_group_rows(requant_group_rows),
         .o_group_ready(requant_group_ready),

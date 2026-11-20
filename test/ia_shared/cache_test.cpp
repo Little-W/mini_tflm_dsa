@@ -15,9 +15,13 @@
 #ifndef TEST_BANK_COUNT
 #define TEST_BANK_COUNT 7
 #endif
+#ifndef TEST_DMA_LANES
+#define TEST_DMA_LANES 4
+#endif
 
 namespace {
 constexpr int kSize = 16;
+constexpr int kDmaLanes = TEST_DMA_LANES;
 constexpr int kBankBytes = TEST_BANK_BYTES, kBanks = TEST_BANK_COUNT;
 constexpr int kBankRows = kBankBytes/16, kMaxSlots = 4*kBankBytes/256;
 using Word = std::array<std::uint32_t, 4>;
@@ -63,7 +67,7 @@ void set_byte(Word& word, unsigned index, unsigned value) {
                       ((value & 0xffU) << shift);
 }
 void clear_write(Via_shared_cache_tb& dut) {
-    for (int i = 0; i < 4; ++i) dut.wr_valid[i] = 0;
+    for (int i = 0; i < kDmaLanes; ++i) dut.wr_valid[i] = 0;
 }
 void ps_drive_background(Via_shared_cache_tb& dut) {
     if (!ps_background) return;
@@ -99,7 +103,7 @@ void tick(Via_shared_cache_tb& dut) {
     unsigned masks[2]{};
     const unsigned row_word = (unsigned(dut.wr_slot) * 16U + unsigned(dut.wr_row)) *
                               (dut.compact_mode ? 1U : 2U);
-    for (unsigned i = 0; i < 4; ++i) {
+    for (unsigned i = 0; i < kDmaLanes; ++i) {
         const unsigned column = unsigned(dut.wr_col_base) + i;
         if (!dut.wr_valid[i] || column >= 16U) continue;
         const unsigned port = dut.compact_mode ? 0U : column / 8U;
@@ -235,6 +239,7 @@ void configure(Via_shared_cache_tb& dut, int banks, bool legacy = false) {
 }
 void drive_write(Via_shared_cache_tb& dut, int slot, int row, int column,
                  unsigned mask, const std::array<std::int16_t, 4>& values) {
+    clear_write(dut);
     dut.wr_slot = slot;
     dut.wr_row = row;
     dut.wr_col_base = column;
@@ -245,12 +250,19 @@ void drive_write(Via_shared_cache_tb& dut, int slot, int row, int column,
 }
 void fill_slots(Via_shared_cache_tb& dut, int slots,
                 const std::function<std::int16_t(int, int, int)>& value) {
+    // 压缩行按全部输入通道写入；宽元素行保留跨存储字边界的四通道测试。
+    const int lanes = dut.compact_mode ? kDmaLanes : 4;
     for (int slot = 0; slot < slots; ++slot)
         for (int row = 0; row < 16; ++row)
-            for (int col = 0; col < 16; col += 4) {
-                std::array<std::int16_t, 4> values{};
-                for (int i = 0; i < 4; ++i) values[i] = value(slot, row, col + i);
-                drive_write(dut, slot, row, col, 15, values);
+            for (int col = 0; col < 16; col += lanes) {
+                clear_write(dut);
+                dut.wr_slot = slot;
+                dut.wr_row = row;
+                dut.wr_col_base = col;
+                for (int lane = 0; lane < lanes; ++lane) {
+                    dut.wr_valid[lane] = col + lane < 16;
+                    dut.wr_data[lane] = static_cast<std::uint16_t>(value(slot, row, col + lane));
+                }
                 tick(dut);
             }
     clear_write(dut);

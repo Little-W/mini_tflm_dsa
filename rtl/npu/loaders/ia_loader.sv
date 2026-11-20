@@ -10,6 +10,7 @@ module ia_loader #(
     parameter int unsigned DATA_WIDTH   = 16,
     parameter int unsigned SIZE         = 16,
     parameter int unsigned BUS_WIDTH    = 32,
+    parameter int unsigned DMA_LANES    = BUS_WIDTH / 8,
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned COUNT_WIDTH  = REG_WIDTH,
     parameter int unsigned CACHE_BLOCKS = 4,
@@ -89,8 +90,8 @@ module ia_loader #(
     input  logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] ext_dma_wr_slot,
     input  logic        [        $clog2(SIZE)-1:0] ext_dma_wr_row,
     input  logic        [        $clog2(SIZE)-1:0] ext_dma_wr_col_base,
-    input  logic signed [          DATA_WIDTH-1:0] ext_dma_wr_data         [BUS_WIDTH/8],
-    input  logic                                   ext_dma_wr_valid        [BUS_WIDTH/8],
+    input  logic signed [          DATA_WIDTH-1:0] ext_dma_wr_data         [DMA_LANES],
+    input  logic                                   ext_dma_wr_valid        [DMA_LANES],
     input  logic                                   ext_dma_wr_use_16bits,
 
     output logic [1:0] ram_port_wr_en,
@@ -434,8 +435,8 @@ module ia_loader #(
 	    logic        [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] tl_wr_slot;
     logic        [        $clog2(SIZE)-1:0] tl_wr_row;
     logic        [        $clog2(SIZE)-1:0] tl_wr_col_base;
-    logic signed [          DATA_WIDTH-1:0] tl_wr_data          [BYTE_PER_BEAT];
-    logic                                   tl_wr_valid         [BYTE_PER_BEAT];
+    logic signed [          DATA_WIDTH-1:0] tl_wr_data          [DMA_LANES];
+    logic                                   tl_wr_valid         [DMA_LANES];
     logic                                   tl_wr_use_16bits;
 
     // ctrl init_start 信号
@@ -962,7 +963,7 @@ module ia_loader #(
     // =======================================================================
     logic [REG_WIDTH-1:0] active_valid_cols;
     localparam int p_column_values = 1 << LOG2_SIZE;
-    localparam int p_valid_mask_width = p_column_values + BYTE_PER_BEAT - 1;
+    localparam int p_valid_mask_width = p_column_values + DMA_LANES - 1;
     localparam int p_element_width = $clog2(p_valid_mask_width);
     logic [p_valid_mask_width-1:0] active_column_mask;
 
@@ -1002,7 +1003,7 @@ module ia_loader #(
     assign tl_wr_use_16bits = ext_dma_wr_use_16bits;
 
     generate
-        for (genvar dma_i = 0; dma_i < BYTE_PER_BEAT; dma_i++) begin : gen_ext_wr
+        for (genvar dma_i = 0; dma_i < DMA_LANES; dma_i++) begin : gen_ext_wr
             localparam int unsigned DMA_I = dma_i;
             wire [REG_WIDTH-1:0] elem_col =
                 REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(DMA_I);
@@ -1035,6 +1036,7 @@ module ia_loader #(
         .DATA_WIDTH  (DATA_WIDTH),
         .SIZE        (SIZE),
         .BUS_WIDTH   (BUS_WIDTH),
+        .DMA_LANES   (DMA_LANES),
         .REG_WIDTH   (REG_WIDTH),
         .CACHE_BLOCKS(CACHE_BLOCKS),
         .COMPACT_S8(COMPACT_S8),

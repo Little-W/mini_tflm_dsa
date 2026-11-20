@@ -52,7 +52,7 @@ module vector_weight_issue_observer #(
 endmodule
 
 bind vector_engine vector_weight_issue_observer #(.p_channels(TILE), .p_depth(MAX_TAPS)) weight_rows_observer (
-    .clk(clk), .rst_n(rst_n), .i_execute(state == EXECUTE), .i_depthwise(depthwise),
+    .clk(clk), .rst_n(rst_n), .i_execute(dw_issue_fire), .i_depthwise(depthwise),
     .i_wr_en(weights_i_wr_en), .i_wr_tap(weights_i_wr_tap),
     .i_wr_mask(weights_i_wr_mask), .i_wr_data(weights_i_wr_data),
     .i_rd_tap(weights_i_rd_tap), .i_current_tap(32'(tap)), .i_weight_data(weights_o_rd_data)

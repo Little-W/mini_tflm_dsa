@@ -34,7 +34,7 @@ struct Command {
     std::array<bool, 16 * 16> seen{};
 };
 
-struct Burst { uint32_t address; unsigned beats, size, index; };
+struct Burst { uint32_t address; unsigned beats, size, index; uint64_t ready_cycle; };
 
 class Test {
 public:
@@ -53,6 +53,8 @@ public:
     uint64_t ar_requests = 0, error_completions = 0, immediate_ready_starts = 0;
     uint64_t maximum_start_delay = 0;
     uint64_t linear_finish_accept_overlap = 0;
+    uint64_t image_accept_during_prefetch = 0, image_complete_during_prefetch = 0;
+    unsigned response_delay = 0;
     unsigned scenario = 0;
 
     Test() {
@@ -81,7 +83,8 @@ public:
     void step() {
         dut.clk = 0;
         dut.m_axi_arready = !hold_ar && (cycles % 7U != 2U);
-        dut.m_axi_rvalid = !bus.empty() && !hold_r && (cycles % 5U != 1U);
+        dut.m_axi_rvalid = !bus.empty() && !hold_r && (cycles % 5U != 1U) &&
+                          cycles >= bus.front().ready_cycle;
         dut.m_axi_rdata = 0; dut.m_axi_rlast = 0; dut.m_axi_rresp = 0;
         if (!bus.empty()) {
             const auto& b = bus.front();
@@ -102,7 +105,7 @@ public:
         const bool ar_fire = dut.m_axi_arvalid && dut.m_axi_arready;
         const bool r_fire = dut.m_axi_rvalid && dut.m_axi_rready;
         const Burst incoming{dut.m_axi_araddr, unsigned(dut.m_axi_arlen) + 1U,
-                             dut.m_axi_arsize, 0};
+                             dut.m_axi_arsize, 0, cycles + response_delay};
         if (dut.rst_n) {
             if (dut.m_axi_arvalid && !dut.m_axi_arready) ++ar_waits;
             if (!bus.empty() && !dut.m_axi_rvalid) ++r_waits;
@@ -133,7 +136,13 @@ public:
                 require(row < 16 && col < 16 && !c.seen[row * 16U + col], "duplicate matrix element");
                 require(dut.wr_slot == (c.slot & slot_mask), "matrix slot changed");
                 require(dut.rd_response_tag == c.tag, "matrix response tag changed");
-                require(int16_t(dut.wr_data[lane]) == expected(c, row, col), "matrix value mismatch");
+                require(int16_t(dut.wr_data[lane]) == expected(c, row, col),
+                        "matrix value mismatch scenario=" + std::to_string(scenario) +
+                        " cycle=" + std::to_string(cycles) + " p=" + std::to_string(c.p) +
+                        " q=" + std::to_string(c.q) + " row=" + std::to_string(row) +
+                        " col=" + std::to_string(col) + " got=" +
+                        std::to_string(int16_t(dut.wr_data[lane])) + " expected=" +
+                        std::to_string(expected(c, row, col)));
                 c.seen[row * 16U + col] = true; ++c.values; ++checked_values;
             }
             if (dut.rd_done) {
@@ -147,6 +156,7 @@ public:
                     require(c.values == c.rows * cols, "incomplete matrix output");
                 }
                 if (c.error) ++error_completions;
+                if (c.image && dut.observe_frontend_busy) ++image_complete_during_prefetch;
                 if (c.immediate_error) { require(c.values == 0, "immediate error produced data"); ++immediate_errors; }
                 ++completed; commands.pop_front();
                 if (dut.observe_accept || dut.observe_linear_accept) ++completion_accept_overlap;
@@ -158,6 +168,9 @@ public:
                 require(!offered.image || !dut.observe_frontend_fire, "image accepted without register separation");
                 has_offer = false;
                 if (dut.observe_accept && dut.observe_linear_finish) ++linear_finish_accept_overlap;
+                if (dut.observe_accept && dut.observe_frontend_busy) ++image_accept_during_prefetch;
+                require(!dut.observe_linear_accept || !dut.observe_frontend_busy,
+                        "linear command accepted before image reads drained");
             }
             if (dut.win_rsp_valid && dut.win_rsp_ready) ++window_responses;
         }
@@ -187,10 +200,10 @@ public:
         throw std::runtime_error("DMA did not finish");
     }
 
-    void configure(bool windowed = false) {
+    void configure(bool windowed = false, bool prefetch = false) {
         wait_idle(); dut.i_abort = 0; dut.conv_enable = 1; inject_error = false; injected = false;
         const uint32_t words[16] = {input_base, 5, 7, 5, 3, 3, 5, 7, 1, 1, 1, 1,
-                                    uint32_t(-7), unsigned(windowed), 0, 0};
+                                    uint32_t(-7), unsigned(windowed), unsigned(prefetch), 0};
         for (unsigned i = 0; i < 16; ++i) dut.config_words[i] = words[i];
         dut.conv_range_base[0] = linear_base; dut.conv_range_end[0] = linear_base + 512U;
         evaluate();
@@ -302,6 +315,22 @@ public:
             c.slot = (random_state >> 22U) & slot_mask; c.tag = i % 8U;
             c.group = random_state; start(c); wait_idle(); ++scenario;
         }
+        // 连续图像分块共享配置，缓存预取与后续分块同时执行。
+        // 首拍延迟使后台读取跨越描述符完成，线性命令仍等待这些读取结束。
+        configure(false, true);
+        response_delay = 32;
+        for (unsigned i = 0; i < 32; ++i) {
+            Command c;
+            c.p = 7U + (i % 14U); c.q = (i * 5U) % 40U;
+            c.rows = 2; c.cols = 5; c.tag = i % 8U; c.slot = i & slot_mask;
+            start(c); ++scenario;
+        }
+        Command after_prefetch; after_prefetch.image = false;
+        after_prefetch.rows = 2; after_prefetch.tag = 3;
+        start(after_prefetch); wait_idle(); ++scenario;
+        response_delay = 0;
+        require(image_accept_during_prefetch > 0 && image_complete_during_prefetch > 0,
+                "image prefetch overlap was not exercised");
         require(abort_pending > 0 && completion_accept_overlap > 0 && linear_finish_accept_overlap > 0 && ar_waits > 0 && r_waits > 0,
                 "required control coverage absent");
         require(accepted == completed + reset_cancelled, "accepted transaction count mismatch");
@@ -317,6 +346,8 @@ public:
                   << ",\"error_completions\":" << error_completions
                   << ",\"immediate_ready_starts\":" << immediate_ready_starts
                   << ",\"linear_finish_accept_overlap\":" << linear_finish_accept_overlap
+                  << ",\"image_accept_during_prefetch\":" << image_accept_during_prefetch
+                  << ",\"image_complete_during_prefetch\":" << image_complete_during_prefetch
                   << ",\"maximum_start_delay\":" << maximum_start_delay << "}\n";
     }
 };

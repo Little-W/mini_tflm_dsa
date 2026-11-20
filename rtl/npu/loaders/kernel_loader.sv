@@ -4,6 +4,7 @@ module kernel_loader #(
 	    parameter int unsigned DATA_WIDTH   = 8,
 	    parameter int unsigned SIZE         = 4,
 	    parameter int unsigned BUS_WIDTH    = 32,
+        parameter int unsigned DMA_LANES    = BUS_WIDTH / 8,
 	    parameter int unsigned REG_WIDTH    = 32,
 	    parameter int unsigned COUNT_WIDTH  = REG_WIDTH,
 	    parameter int unsigned CACHE_BLOCKS = 1
@@ -60,8 +61,8 @@ module kernel_loader #(
         input  wire logic                        ext_dma_wr_slot,
 	    input  wire logic [$clog2(SIZE)-1:0]     ext_dma_wr_row,
 	    input  wire logic [$clog2(SIZE)-1:0]     ext_dma_wr_col_base,
-	    input  wire logic signed [DATA_WIDTH-1:0] ext_dma_wr_data [BUS_WIDTH/8],
-	    input  wire logic                        ext_dma_wr_valid[BUS_WIDTH/8],
+	    input  wire logic signed [DATA_WIDTH-1:0] ext_dma_wr_data [DMA_LANES],
+	    input  wire logic                        ext_dma_wr_valid[DMA_LANES],
 	    output logic                        weight_sending_done,
 	    output logic                        load_weight_done,
 	    output logic                        store_weight_req,
@@ -579,7 +580,7 @@ module kernel_loader #(
   always_comb begin
     beat_valid = 1'b0;
     last_ext_beat = 1'b0;
-    for (int lane = 0; lane < BYTE_PER_BEAT; lane++) begin
+    for (int lane = 0; lane < DMA_LANES; lane++) begin
       beat_valid |= ext_dma_wr_valid[lane] && response_accept;
       if (ext_dma_wr_valid[lane] && response_accept &&
           (REG_WIDTH'(ext_dma_wr_col_base) + REG_WIDTH'(lane) + REG_WIDTH'(1) >=
@@ -589,15 +590,15 @@ module kernel_loader #(
     end
   end
 
-  if (BYTE_PER_BEAT > 1 && (BYTE_PER_BEAT & (BYTE_PER_BEAT-1)) == 0) begin : g_rotated_rows
-    localparam int p_lane_bits = $clog2(BYTE_PER_BEAT);
-    logic signed [DATA_WIDTH-1:0] rotated_data [BYTE_PER_BEAT];
-    logic rotated_valid [BYTE_PER_BEAT];
+  if (DMA_LANES > 1 && (DMA_LANES & (DMA_LANES-1)) == 0) begin : g_rotated_rows
+    localparam int p_lane_bits = $clog2(DMA_LANES);
+    logic signed [DATA_WIDTH-1:0] rotated_data [DMA_LANES];
+    logic rotated_valid [DMA_LANES];
     logic row_clear, row_finish;
     // 相隔一个总线通道组的列使用同一输入数据，只计算一组循环选择结果。
     assign row_clear = cache_flush || (managed_mode && transfer_discard);
     assign row_finish = beat_valid && last_ext_beat;
-    for (genvar lane = 0; lane < BYTE_PER_BEAT; lane++) begin : g_rotate
+    for (genvar lane = 0; lane < DMA_LANES; lane++) begin : g_rotate
       logic [p_lane_bits-1:0] source_lane;
       assign source_lane = p_lane_bits'(lane) - p_lane_bits'(ext_dma_wr_col_base);
       assign rotated_data[lane] = ext_dma_wr_data[source_lane];
@@ -605,18 +606,18 @@ module kernel_loader #(
     end
     for (genvar column = 0; column < SIZE; column++) begin : g_column
       logic column_in_beat, column_update, column_logical;
-      if (column < BYTE_PER_BEAT) begin : g_first_group
+      if (column < DMA_LANES) begin : g_first_group
         assign column_in_beat = int'(ext_dma_wr_col_base) <= column;
       end else begin : g_later_group
         assign column_in_beat = int'(ext_dma_wr_col_base) <= column &&
-          int'(ext_dma_wr_col_base) > column-BYTE_PER_BEAT;
+          int'(ext_dma_wr_col_base) > column-DMA_LANES;
       end
-      assign column_update = beat_valid && column_in_beat && rotated_valid[column % BYTE_PER_BEAT] &&
+      assign column_update = beat_valid && column_in_beat && rotated_valid[column % DMA_LANES] &&
         REG_WIDTH'(column) < ext_dma_valid_cols_r[ext_dma_wr_slot];
       assign column_logical = REG_WIDTH'(column) < ext_dma_logical_cols_r[ext_dma_wr_slot];
       // 每列独立选择接收、填零或保留；最后一次传输清空累积状态。
       assign row_emit_n[column] = column_update ?
-        (column_logical ? rotated_data[column % BYTE_PER_BEAT] : '0) :
+        (column_logical ? rotated_data[column % DMA_LANES] : '0) :
         (row_clear ? '0 : row_acc[column]);
       assign row_acc_n[column] = row_finish ? '0 : row_emit_n[column];
     end
@@ -634,7 +635,7 @@ module kernel_loader #(
         end
       end
       if (beat_valid) begin
-        for (int i = 0; i < BYTE_PER_BEAT; i++) begin
+        for (int i = 0; i < DMA_LANES; i++) begin
           automatic int col;
           col = int'(ext_dma_wr_col_base) + i;
           if (ext_dma_wr_valid[i] && col < SIZE && REG_WIDTH'(col) < ext_dma_valid_cols_r[ext_dma_wr_slot]) begin

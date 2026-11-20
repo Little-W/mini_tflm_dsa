@@ -25,6 +25,7 @@ def wrapper(source):
                             'input logic [31:0] config_words [16],')
     header = header.replace('output logic wr_error\n', '''output logic wr_error,
     output logic observe_pending, observe_active, observe_accept, observe_linear_accept,
+    output logic observe_frontend_busy,
     output logic observe_linear_finish,
     output logic observe_frontend_valid, observe_frontend_ready, observe_frontend_fire,
     output logic [31:0] observe_p0, observe_q0, observe_group,
@@ -61,6 +62,7 @@ def wrapper(source):
     assign observe_active = dut.conv_active;
     assign observe_accept = dut.accept_image;
     assign observe_linear_accept = dut.accept_linear;
+    assign observe_frontend_busy = dut.fe_busy;
     assign observe_linear_finish = dut.linear_finish;
     assign observe_frontend_valid = dut.frontend_i_tile_valid;
     assign observe_frontend_ready = dut.fe_tile_ready;
@@ -101,6 +103,7 @@ def main():
     parser.add_argument('--bus-width', type=int, choices=(32, 64), default=64)
     parser.add_argument('--cache-blocks', type=int, choices=(1, 64), default=64)
     parser.add_argument('--verilator', default='verilator')
+    parser.add_argument('--fpga', action='store_true', help='使用官方 FPGA 原语功能模型')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -109,15 +112,20 @@ def main():
     sources = [ROOT / 'rtl/npu/conv/conv_im2col_pkg.sv', ROOT / 'rtl/npu/conv/vector_engine_pkg.sv']
     sources += [p for p in sorted((ROOT / 'rtl/npu/conv').glob('*.sv')) if p not in sources]
     sources += sorted((ROOT / 'rtl/npu/dma').rglob('*.sv'))
-    sources += [target, HERE / 'main.cpp']
+    sources += [ROOT / 'rtl/common/pseudo_dual_port_ram.v', target, HERE / 'main.cpp']
     sources = runpy.run_path(str(ROOT / 'test/monitors/sources.py'))['with_observers'](sources)
-    import pyosys
-    library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
-    model = out / 'xilinx_models.sv'
-    model.write_text('\n\n'.join(re.search(r'^module ' + name + r'\b.*?^endmodule',
-        library.read_text(), re.M | re.S).group(0)
-        for name in ('LUT1', 'LUT6', 'LUT6_2', 'MUXF7', 'MUXF8', 'DSP48E1')) + '\n')
-    sources.append(model)
+    defines = []
+    primitive_hash = None
+    if args.fpga:
+        import pyosys
+        library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
+        model = out / 'xilinx_models.sv'
+        model.write_text('\n\n'.join(re.search(r'^module ' + name + r'\b.*?^endmodule',
+            library.read_text(), re.M | re.S).group(0)
+            for name in ('LUT1', 'LUT6', 'LUT6_2', 'MUXF7', 'MUXF8', 'DSP48E1')) + '\n')
+        sources.append(model)
+        defines = ['-DSYNTHESIS']
+        primitive_hash = digest(library)
     hashes = {str(p): digest(p) for p in [Path(__file__).resolve(), *sources]}
     rules = out / 'compile_rules.mk'
     rules.write_text('%.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_FAST) -c -o $@ $<\n'
@@ -126,7 +134,7 @@ def main():
                     '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
     flags = f'-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BUS_WIDTH={args.bus_width} -DTEST_CACHE_BLOCKS={args.cache_blocks}'
     command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', '1',
-        '--top-module', 'dma_registered_tb', '-Wno-fatal', '-Wno-PINMISSING', '-DSYNTHESIS',
+        '--top-module', 'dma_registered_tb', '-Wno-fatal', '-Wno-PINMISSING', *defines,
         f'-GBUS_WIDTH={args.bus_width}', '-GSIZE=64', '-GIM2COL_SIZE=16',
         f'-GCACHE_BLOCKS={args.cache_blocks}', '-GCONV_CACHE_SETS=128',
         '--Mdir', str(out / 'obj'), '--output-groups', '0', '--output-split', '10000',
@@ -142,7 +150,7 @@ def main():
     result = json.loads((out / 'run.log').read_text().strip().splitlines()[-1])
     assert result['passed']
     result.update(source_sha256=hashes, binary_sha256=digest(binary), compile_command=command,
-                  primitive_library_sha256=digest(library), fpga=True,
+                  primitive_library_sha256=primitive_hash, fpga=args.fpga,
                   parameters={'BUS_WIDTH': args.bus_width, 'SIZE': 64, 'IM2COL_SIZE': 16,
                               'CACHE_BLOCKS': args.cache_blocks, 'CONV_CACHE_SETS': 128},
                   undefined_behavior_sanitizer=True)

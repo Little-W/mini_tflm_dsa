@@ -5,6 +5,7 @@ module conv_window_queue #(
   parameter int DEPTH=4,
   parameter int TAG_W=2,
   parameter int COL_W=4,
+  parameter int WINDOW_LANES=4,
   parameter int PTR_W=(DEPTH<=1 ? 1 : $clog2(DEPTH)),
   parameter int COUNT_W=$clog2(DEPTH+1),
   parameter int p_max_cols=16
@@ -18,8 +19,8 @@ module conv_window_queue #(
   input wire logic rsp_ready,
   output logic [TAG_W-1:0] rsp_tag,
   output logic [COL_W-1:0] rsp_col,
-  output logic signed [15:0] rsp_data[4],
-  output logic [3:0] rsp_mask,
+  output logic signed [15:0] rsp_data[WINDOW_LANES],
+  output logic [WINDOW_LANES-1:0] rsp_mask,
   output logic rsp_last,rsp_error,busy,
   output logic frontend_valid,frontend_active,
   input wire logic frontend_ready,
@@ -28,8 +29,8 @@ module conv_window_queue #(
   input wire logic frontend_rsp_valid,
   output logic frontend_rsp_ready,
   input wire logic [COL_W-1:0] frontend_rsp_col,
-  input wire logic signed [15:0] frontend_rsp_data[4],
-  input wire logic [3:0] frontend_rsp_mask,
+  input wire logic signed [15:0] frontend_rsp_data[WINDOW_LANES],
+  input wire logic [WINDOW_LANES-1:0] frontend_rsp_mask,
   input wire logic frontend_rsp_last,frontend_error);
   logic descriptor_i_wr_en;
   logic [PTR_W-1:0] descriptor_i_wr_addr;
@@ -43,7 +44,10 @@ module conv_window_queue #(
   logic [COUNT_W-1:0] count,next_count;
   logic count_increment, count_decrement, next_busy;
   logic active,failed,accept,retire,launch,response_fire;
-  logic descriptor_available,descriptor_prepared;
+  logic descriptor_available,descriptor_prepared,descriptor_read_available;
+  logic [PTR_W-1:0] descriptor_read_index;
+  logic descriptor_forward,descriptor_forward_valid;
+  logic [2:0][31:0] descriptor_forward_data;
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
     return value==PTR_W'(DEPTH-1) ? '0 : value+1'b1;
   endfunction
@@ -64,8 +68,10 @@ module conv_window_queue #(
   assign rsp_col=rsp_error ? '0 : frontend_rsp_col;
   assign rsp_mask=rsp_error ? '0 : frontend_rsp_mask;
   assign rsp_last=rsp_error || frontend_rsp_last;
-  for (genvar lane=0;lane<4;lane++)
+  // 每个响应保持前端通道宽度，尾部有效元素由掩码指定。
+  for (genvar lane=0;lane<WINDOW_LANES;lane++) begin : g_response_lane
     assign rsp_data[lane]=rsp_error ? 16'sd0 : frontend_rsp_data[lane];
+  end
   assign response_fire=rsp_valid && rsp_ready;
   assign retire=response_fire && rsp_last;
   assign req_ready=enable && !configure && !failed && !frontend_error &&
@@ -78,12 +84,26 @@ module conv_window_queue #(
     (!active || retire) && descriptor_prepared;
   assign frontend_rsp_ready=active && rsp_ready;
   assign launch=frontend_valid && frontend_ready;
-  // 当前窗口执行时提前保存下一项描述符，队列索引变化在此结束组合计算。
-  // 已准备项仍占用原队列位置，直至对应的最后一次响应被接收。
+  // 发送当前准备项的同时读取下一项，连续单拍窗口可以逐周期接收。
+  // 同周期接收的新条目直接保存到返回寄存器，存储器继续保持先读后写语义。
+  assign descriptor_read_index=launch ? increment(present) : present;
+  assign descriptor_read_available=launch ?
+      count>(active ? COUNT_W'(2) : COUNT_W'(1)) : descriptor_available;
+  assign descriptor_forward=accept && !descriptor_read_available && descriptor_read_index==tail;
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) descriptor_prepared<=1'b0;
-    else if (configure) descriptor_prepared<=1'b0;
-    else descriptor_prepared<=descriptor_available && !launch;
+    if (!rst_n) begin
+      descriptor_prepared<=1'b0;
+      descriptor_forward_valid<=1'b0;
+    end else if (configure) begin
+      descriptor_prepared<=1'b0;
+      descriptor_forward_valid<=1'b0;
+    end else begin
+      descriptor_prepared<=descriptor_read_available || descriptor_forward;
+      descriptor_forward_valid<=descriptor_forward;
+    end
+  end
+  always_ff @(posedge clk) begin
+    if (descriptor_forward) descriptor_forward_data<=descriptor_i_wr_data;
   end
   // 三个描述符字段共用接收和读取事件，同步读端口保存当前准备项。
   assign descriptor_i_wr_en = rst_n && accept;
@@ -92,8 +112,8 @@ module conv_window_queue #(
   assign descriptor_i_wr_data[1] = req_q0;
   assign descriptor_i_wr_data[2] = req_cols;
   assign descriptor_i_wr_mask = 1'b1;
-  assign descriptor_i_rd_en = descriptor_available;
-  assign descriptor_i_rd_addr[0] = present;
+  assign descriptor_i_rd_en = descriptor_read_available;
+  assign descriptor_i_rd_addr[0] = descriptor_read_index;
   for (genvar field_index = 0; field_index < 3; field_index++) begin : g_descriptor
     regfile #(
       .p_data_width(32), .p_depth(DEPTH), .p_addr_width(PTR_W),
@@ -105,11 +125,12 @@ module conv_window_queue #(
       .o_rd_data(descriptor_o_rd_data[field_index])
     );
   end
-  assign frontend_p0 = descriptor_o_rd_data[0][0];
-  assign frontend_q0 = descriptor_o_rd_data[1][0];
-  assign frontend_cols = descriptor_o_rd_data[2][0];
+  assign frontend_p0 = descriptor_forward_valid ? descriptor_forward_data[0] : descriptor_o_rd_data[0][0];
+  assign frontend_q0 = descriptor_forward_valid ? descriptor_forward_data[1] : descriptor_o_rd_data[1][0];
+  assign frontend_cols = descriptor_forward_valid ? descriptor_forward_data[2] : descriptor_o_rd_data[2][0];
   always_ff @(posedge clk) begin
-    if (descriptor_available) frontend_cols_valid <= cols_valid[present];
+    if (descriptor_forward) frontend_cols_valid <= req_cols>0 && req_cols<=32'(p_max_cols);
+    else if (descriptor_read_available) frontend_cols_valid <= cols_valid[descriptor_read_index];
   end
   // 加一与减一的传播条件直接取自当前计数，各结果位并行更新。
   assign count_increment = accept && !retire;

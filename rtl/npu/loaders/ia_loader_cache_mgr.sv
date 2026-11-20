@@ -8,6 +8,7 @@ module ia_loader_cache_mgr #(
     parameter int unsigned DATA_WIDTH   = 16,
     parameter int unsigned SIZE         = 16,
     parameter int unsigned BUS_WIDTH    = 32,
+    parameter int unsigned DMA_LANES    = BUS_WIDTH / 8,
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned CACHE_BLOCKS = 4,
     parameter int unsigned COMPACT_S8 = 1,
@@ -41,8 +42,8 @@ module ia_loader_cache_mgr #(
     input  logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]      wr_slot,
     input  logic [$clog2(SIZE)-1:0]              wr_row,
     input  logic [$clog2(SIZE)-1:0]              wr_col_base,
-    input  logic signed [DATA_WIDTH-1:0]         wr_data  [BUS_WIDTH/8],  // 最多 BYTE_PER_BEAT 个
-    input  logic                                 wr_valid [BUS_WIDTH/8],
+    input  logic signed [DATA_WIDTH-1:0]         wr_data  [DMA_LANES],
+    input  logic                                 wr_valid [DMA_LANES],
     input  logic                                 wr_use_16bits,
 
     // ---- L1 group row-stream control ----
@@ -67,7 +68,6 @@ module ia_loader_cache_mgr #(
   // =====================================================================
   // 局部参数
   // =====================================================================
-  localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
   localparam int LOG2_SIZE     = $clog2(SIZE);
   localparam int RAM_DEPTH     = SLOT_BLOCKS * SIZE;
   localparam int ADDR_W        = $clog2(RAM_DEPTH);
@@ -176,7 +176,7 @@ module ia_loader_cache_mgr #(
       end
     end
   end else begin : g_external_ram
-    localparam int p_compact_lanes = (BYTE_PER_BEAT < SIZE) ? BYTE_PER_BEAT : SIZE;
+    localparam int p_compact_lanes = (DMA_LANES < SIZE) ? DMA_LANES : SIZE;
     logic [1:0] write_en;
     logic [RAM_WORD_ADDR_WIDTH-1:0] write_addr [0:1];
     logic [127:0] write_data [0:1];
@@ -201,7 +201,7 @@ module ia_loader_cache_mgr #(
       assign compact_input_byte[lane] = {low_sum[4] ? high_sum1 : high_sum0, low_sum[3:0]};
     end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_compact_write
-      if (lane < BYTE_PER_BEAT) begin : g_source
+      if (lane < DMA_LANES) begin : g_source
         assign compact_source_bytes[lane*8 +: 8] = compact_input_byte[lane];
       end else begin : g_unused_source
         assign compact_source_bytes[lane*8 +: 8] = 8'd0;
@@ -209,7 +209,7 @@ module ia_loader_cache_mgr #(
       assign compact_write_byte[lane] = ram_wr_en[lane] ?
           compact_shifted_bytes[lane*8 +: 8] : compact_empty_byte;
     end
-    if (p_dma_source_layout && SIZE == 16 && DATA_WIDTH == 16 && BUS_WIDTH == 64) begin : g_dma_compact_layout
+    if (p_dma_source_layout && SIZE == 16 && DATA_WIDTH == 16 && BUS_WIDTH == 64 && DMA_LANES == 8) begin : g_dma_compact_layout
       logic [87:0] compact_group_low, compact_group_data;
 
       // S16 的四个输入字节先在八列范围内移动，最高位置为第十列。
@@ -265,7 +265,7 @@ module ia_loader_cache_mgr #(
       logic [SIZE-1:0] write_first_half, write_second_half, write_compact_row;
 
       for (genvar lane = 0; lane < SIZE; lane++) begin : g_lane
-        if (lane < BYTE_PER_BEAT) begin : g_input
+        if (lane < DMA_LANES) begin : g_input
           assign write_compact_row[lane] = wr_valid[lane] && wr_col_base <= LOG2_SIZE'(SIZE-1-lane);
           if (lane < 8) begin : g_first_source
             assign write_first_half[lane] = wr_valid[lane] && wr_col_base <= LOG2_SIZE'(7-lane);
@@ -323,7 +323,7 @@ module ia_loader_cache_mgr #(
 
   // 一次列偏移同时排列整组数据与有效位，超出当前行的数据自然移出。
   for (genvar lane = 0; lane < SIZE; lane++) begin : g_write_source
-    if (lane < BYTE_PER_BEAT) begin : g_input
+    if (lane < DMA_LANES) begin : g_input
       assign write_source_data[lane*DATA_WIDTH+:DATA_WIDTH] = wr_valid[lane] ? wr_data[lane] : '0;
       assign write_source_mask[lane] = wr_valid[lane];
     end else begin : g_padding
@@ -331,7 +331,7 @@ module ia_loader_cache_mgr #(
       assign write_source_mask[lane] = 1'b0;
     end
   end
-  if (p_dma_source_layout && SIZE == 16 && DATA_WIDTH == 16 && BUS_WIDTH == 64) begin : g_dma_write_layout
+  if (p_dma_source_layout && SIZE == 16 && DATA_WIDTH == 16 && BUS_WIDTH == 64 && DMA_LANES == 8) begin : g_dma_write_layout
     logic [175:0] write_group_low, write_group_data;
 
     // S16 只移动前四个有效通道；S8 的后四个通道直接放入同组高半部。

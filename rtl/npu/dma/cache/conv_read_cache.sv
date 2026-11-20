@@ -6,6 +6,7 @@ module conv_read_cache #(
   parameter int WAYS=2,
   parameter int LINE_BYTES=16,
   parameter int BUS_WIDTH=32,
+  parameter int READ_WIDTH=32,
   parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=3,
   parameter int DEMAND_DEPTH=4,
@@ -34,7 +35,7 @@ module conv_read_cache #(
   output logic hint_pending,
   output logic rsp_valid,
   input logic rsp_ready,
-  output logic [31:0] rsp_data,
+  output logic [READ_WIDTH-1:0] rsp_data,
   output logic rsp_error,
   output logic arvalid,
   input logic arready,
@@ -69,11 +70,11 @@ module conv_read_cache #(
   input logic [31:0] prefetch_ref_epoch = 32'd0);
   generate if (CACHE_POLICY==3) begin : g_window
     conv_windowed_cache #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
-      .DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
+      .DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
       .p_defer_retire_shift(p_defer_retire_shift)) u_window (.*);
   end else begin : g_reference
     conv_read_cache_reference #(.SETS(SETS),.WAYS(WAYS),.LINE_BYTES(LINE_BYTES),
-      .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_reference (.*);
+      .CACHE_POLICY(CACHE_POLICY),.BUS_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES)) u_reference (.*);
     assign prefetch_ready=1'b0;
   end endgenerate
 endmodule
@@ -88,6 +89,7 @@ module conv_read_cache_reference #(
   parameter int WAYS=2,
   parameter int LINE_BYTES=16,
   parameter int BUS_WIDTH=32,
+  parameter int READ_WIDTH=32,
   parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=2,
   parameter int SI=$clog2(SETS),
@@ -114,7 +116,7 @@ module conv_read_cache_reference #(
   output logic hint_pending,
   output logic rsp_valid,
   input logic rsp_ready,
-  output logic [31:0] rsp_data,
+  output logic [READ_WIDTH-1:0] rsp_data,
   output logic rsp_error,
   output logic arvalid,
   input logic arready,
@@ -127,6 +129,8 @@ module conv_read_cache_reference #(
   input logic [BUS_WIDTH-1:0] rdata,
   input logic [1:0] rresp,
   input logic rlast);
+  localparam int p_read_bytes = READ_WIDTH / 8;
+  localparam int p_read_shift = $clog2(p_read_bytes);
   localparam logic [31:0] INF = 32'hffff_ffff;
   typedef enum logic [3:0] {UNCONFIGURED, CLEAR, IDLE, TAG_READ, TAG_EVAL,
     HINT_WAIT, FILL_REQ, FILL, COMMIT, STREAM_READ, RAM_READ, RAM_WAIT, RESP} st_t;
@@ -156,13 +160,23 @@ module conv_read_cache_reference #(
   logic [31:0] transient_words [4];
   logic ram_ren, ram_wen;
   logic [DA-1:0] ram_raddr, ram_waddr;
-  logic [31:0] ram_rdata;
+  logic [READ_WIDTH-1:0] ram_rdata;
   logic span_req_valid, span_req_ready;
   logic span_rsp_valid, span_rsp_ready, span_last, span_error;
   logic [31:0] span_addr;
   logic [BUS_WIDTH-1:0] span_data;
   logic [BUS_WIDTH/8-1:0] span_strb;
   logic span_busy;
+
+  // 按读取宽度选择瞬态行中的连续数据，地址低位不改变返回分组。
+  function automatic logic [READ_WIDTH-1:0] transient_read(input logic [31:0] address);
+    logic [READ_WIDTH-1:0] value;
+    value = '0;
+    for (int word = 0; word < READ_WIDTH/32; word++) begin
+      value[word*32 +: 32] = transient_words[(int'(address[3:2]) & (4-READ_WIDTH/32))+word];
+    end
+    return value;
+  endfunction
 
   function automatic logic [SI-1:0] address_set(input logic [31:0] address,
                                                 input logic geometric);
@@ -176,8 +190,8 @@ module conv_read_cache_reference #(
   assign rsp_valid = state==RESP;
   assign wanted_tag = addr_q[31:LB+SI];
   assign line_base = {addr_q[31:LB],{LB{1'b0}}};
-  assign fetch_base = bypass_q ? {addr_q[31:2],2'b0} : line_base;
-  assign fetch_bytes = bypass_q ? 32'd4 : 32'(LINE_BYTES);
+  assign fetch_base = bypass_q ? {addr_q[31:p_read_shift],{p_read_shift{1'b0}}} : line_base;
+  assign fetch_bytes = bypass_q ? 32'(p_read_bytes) : 32'(LINE_BYTES);
   assign fill_first = fetch_base<base_q ? base_q : fetch_base;
   assign fetch_limit = {1'b0,fetch_base}+{1'b0,fetch_bytes};
   assign fill_end = fetch_limit>{1'b0,end_q} ? end_q : fetch_limit[31:0];
@@ -203,7 +217,7 @@ module conv_read_cache_reference #(
   assign ram_wen = state==FILL && span_rsp_valid && span_rsp_ready && allocation_q;
   assign ram_waddr = DA'((32'(way_q)*SETS+32'(set_q))*(LINE_BYTES/4)
                          +((span_addr>>2)&(LINE_BYTES/4-1)));
-  conv_sdp_ram #(.DEPTH(DEPTH),.AW(DA),.WRITE_WIDTH(BUS_WIDTH)) u_data (
+  conv_sdp_ram #(.DEPTH(DEPTH),.AW(DA),.WRITE_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH)) u_data (
     .clk,.rd_en(ram_ren),.rd_addr(ram_raddr),.rd_data(ram_rdata),
     .wr_en(ram_wen),.wr_addr(ram_waddr),.wr_data(span_data),.wr_strb(span_strb)
   );
@@ -262,7 +276,7 @@ module conv_read_cache_reference #(
             way_q<=0;allocation_q<=1;fill_error<=0;
             state<=FILL_REQ;
           end else if (geometry_q && req_geometry && transient_valid && transient_tag==req_addr[31:4]) begin
-            rsp_data<=transient_words[req_addr[3:2]];
+            rsp_data<=transient_read(req_addr);
             state<=RESP;
           end else state<=TAG_READ;
         end
@@ -332,7 +346,7 @@ module conv_read_cache_reference #(
             transient_valid<=1;transient_tag<=addr_q[31:4];state<=STREAM_READ;
           end
         end
-        STREAM_READ: begin rsp_data<=transient_words[addr_q[3:2]];rsp_error<=0;state<=RESP;end
+        STREAM_READ: begin rsp_data<=transient_read(addr_q);rsp_error<=0;state<=RESP;end
         RAM_READ: state<=RAM_WAIT;
         RAM_WAIT: begin rsp_data<=ram_rdata;rsp_error<=0;state<=RESP;end
         RESP: if (rsp_ready) state<=IDLE;
@@ -369,6 +383,7 @@ module conv_windowed_cache #(
   parameter int WAYS=2,
   parameter int LINE_BYTES=16,
   parameter int BUS_WIDTH=32,
+  parameter int READ_WIDTH=32,
   parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=3,
   parameter int DEMAND_DEPTH=4,
@@ -397,7 +412,7 @@ module conv_windowed_cache #(
   output logic hint_pending,
   output logic rsp_valid,
   input logic rsp_ready,
-  output logic [31:0] rsp_data,
+  output logic [READ_WIDTH-1:0] rsp_data,
   output logic rsp_error,
   output logic arvalid,
   input logic arready,
@@ -430,6 +445,8 @@ module conv_windowed_cache #(
   input logic prefetch_ref_index_valid = 1'b0,
   input logic [31:0] prefetch_ref_index = 32'd0,
   input logic [31:0] prefetch_ref_epoch = 32'd0);
+  localparam int p_read_bytes = READ_WIDTH / 8;
+  localparam int p_read_shift = $clog2(p_read_bytes);
   localparam logic [31:0] INF=32'hffff_ffff;
   localparam int EPOCH_W=17-LB;
   typedef enum logic [1:0] {FG_IDLE, FG_MISS, FG_RESP} fg_state_t;
@@ -528,7 +545,7 @@ module conv_windowed_cache #(
   logic [31:0] fill_candidate_line_base, fill_candidate_end;
   logic ram_ren, ram_wen, spec_read_conflict;
   logic [DA-1:0] ram_raddr, ram_waddr;
-  logic [31:0] ram_rdata;
+  logic [READ_WIDTH-1:0] ram_rdata;
   logic span_req_ready, span_rsp_valid, span_rsp_ready, span_last, span_error, span_busy;
   logic [31:0] span_addr;
   logic [BUS_WIDTH-1:0] span_data;
@@ -563,7 +580,7 @@ module conv_windowed_cache #(
   logic lookup_snapshot_valid, lookup_ready;
   logic work_lookup_ready, demand_lookup_ready;
   logic work_word_matches_q, demand_word_matches_q;
-  logic [31:0] response_queue_data[DEMAND_DEPTH];
+  logic [READ_WIDTH-1:0] response_queue_data[DEMAND_DEPTH];
   logic response_queue_error[DEMAND_DEPTH];
   logic [DQ_AW-1:0] request_head, request_tail, response_head, response_tail;
   logic [DQ_CW-1:0] request_count, response_count, outstanding_count;
@@ -571,8 +588,8 @@ module conv_windowed_cache #(
   logic response_push, response_pop, work_valid, work_ready;
   logic core_rsp_valid, core_rsp_ready, core_rsp_error, fast_hit_response;
   logic incoming_range;
-  logic [31:0] core_rsp_data;
-  logic [31:0] speculative_data [WAYS];
+  logic [READ_WIDTH-1:0] core_rsp_data;
+  logic [READ_WIDTH-1:0] speculative_data [WAYS];
   function automatic logic [SI-1:0] cache_set(input logic [31:0] address,
       input logic indexed, input logic [31:0] index);
     if (indexed) return SI'(index);
@@ -649,7 +666,7 @@ module conv_windowed_cache #(
   assign fast_hit_response = fg_state==FG_IDLE && req_fire && lookup_range && lookup_hit;
   assign core_rsp_valid=fg_state==FG_RESP || fast_hit_response;
   assign core_rsp_data=fast_hit_response ? speculative_data[lookup_way] :
-                       response_error ? 32'd0 : ram_rdata;
+                       response_error ? '0 : ram_rdata;
   assign core_rsp_error = fast_hit_response ? 1'b0 : response_error;
   assign core_rsp_ready=response_count<DQ_CW'(DEMAND_DEPTH) ||
                         (response_count!=0 && rsp_ready);
@@ -938,13 +955,13 @@ module conv_windowed_cache #(
     if (select_launch && fill_complete && select_set==fill_set && select_way==fill_way)
       select_launch=0;
     // A pending miss is served before lookahead can claim another data line.
-    select_line_base=bypass_q ? {select_addr[31:2],2'b0} : {select_addr[31:LB],{LB{1'b0}}};
+    select_line_base=bypass_q ? {select_addr[31:p_read_shift],{p_read_shift{1'b0}}} : {select_addr[31:LB],{LB{1'b0}}};
     select_first=select_line_base<base_q ? base_q : select_line_base;
     // 两种填充方式在同一边沿采样，共用相同的上界计算。
     fill_candidate_line_base = bypass_q ?
-        {demand_addr[31:2], 2'b0} : {select_addr[31:LB], {LB{1'b0}}};
+        {demand_addr[31:p_read_shift], {p_read_shift{1'b0}}} : {select_addr[31:LB], {LB{1'b0}}};
     fill_candidate_end_wide = {1'b0, fill_candidate_line_base} +
-        33'(bypass_q ? 4 : LINE_BYTES);
+        33'(bypass_q ? p_read_bytes : LINE_BYTES);
     fill_candidate_end = fill_candidate_end_wide > {1'b0, end_q} ?
         end_q : fill_candidate_end_wide[31:0];
     ram_ren=(req_fire && lookup_range && lookup_hit) ||
@@ -957,7 +974,7 @@ module conv_windowed_cache #(
                       ((span_addr>>2)&(LINE_BYTES/4-1)));
   localparam int WAY_DEPTH = SETS * (LINE_BYTES/4);
   localparam int WAY_AW = $clog2(WAY_DEPTH);
-  localparam int RAM_BANK_SHIFT = $clog2(BUS_WIDTH/32);
+  localparam int RAM_BANK_SHIFT = $clog2((BUS_WIDTH > READ_WIDTH ? BUS_WIDTH : READ_WIDTH)/32);
   wire [WAY_AW-1:0] speculative_address = WAY_AW'((32'(lookup_read_set) * (LINE_BYTES/4)) +
       (32'(lookup_read_word) & (LINE_BYTES/4-1)));
   wire [WAY_AW-1:0] fill_word_address = WAY_AW'((32'(fill_set) * (LINE_BYTES/4)) +
@@ -965,7 +982,7 @@ module conv_windowed_cache #(
   assign spec_read_conflict = ram_wen &&
       (speculative_address >> RAM_BANK_SHIFT) == (fill_word_address >> RAM_BANK_SHIFT);
   for (genvar data_way=0; data_way<WAYS; data_way++) begin : g_data_way
-    conv_sdp_ram #(.DEPTH(WAY_DEPTH),.AW(WAY_AW),.WRITE_WIDTH(BUS_WIDTH)) u_data (
+    conv_sdp_ram #(.DEPTH(WAY_DEPTH),.AW(WAY_AW),.WRITE_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH)) u_data (
       .clk, .rd_en(!spec_read_conflict), .rd_addr(speculative_address), .rd_data(speculative_data[data_way]),
       .wr_en(ram_wen && fill_way==WI'(data_way)), .wr_addr(fill_word_address),
       .wr_data(span_data), .wr_strb(span_strb));
@@ -973,7 +990,7 @@ module conv_windowed_cache #(
   always_ff @(posedge clk) if (ram_ren) ram_rdata <= speculative_data[lookup_way];
   wire bypass_launch = bypass_q && fg_state==FG_MISS && !demand_filled && lookup_range &&
                        fill_state==F_IDLE && !select_stage_valid;
-  wire [31:0] bypass_line_base = {demand_addr[31:2], 2'b0};
+  wire [31:0] bypass_line_base = {demand_addr[31:p_read_shift], {p_read_shift{1'b0}}};
   wire [31:0] bypass_first = bypass_line_base < base_q ? base_q : bypass_line_base;
   assign span_rsp_ready=fill_state==F_DATA;
   conv_axi_span_reader #(.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
@@ -1539,7 +1556,7 @@ module conv_windowed_cache #(
   end
 `endif
 `ifdef NPU_SIM_ASSERT
-  wire [32:0] select_end_wide = {1'b0, select_line_base} + 33'(bypass_q ? 4 : LINE_BYTES);
+  wire [32:0] select_end_wide = {1'b0, select_line_base} + 33'(bypass_q ? p_read_bytes : LINE_BYTES);
   wire [31:0] select_end = select_end_wide > {1'b0, end_q} ? end_q : select_end_wide[31:0];
 
   initial forever @(posedge clk) if (rst_n) begin

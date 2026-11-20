@@ -6,7 +6,8 @@ module vector_quant_params #(
     parameter int p_bus_width = 64,
     parameter int p_dma_index_width = $clog2(4*p_entries),
     parameter int p_read_index_width = $clog2(p_entries+1),
-    parameter int p_active_width = $clog2(p_entries+1)
+    parameter int p_active_width = $clog2(p_entries+1),
+    parameter bit p_parallel_output = 1'b0
 ) (
     input  wire logic clk,
     input  wire logic i_wr_en,
@@ -17,7 +18,9 @@ module vector_quant_params #(
     input  wire logic [p_active_width-1:0] i_active,
     input  wire logic [p_read_index_width-1:0] i_rd_index,
     output logic signed [31:0] o_multiplier,
-    output logic [5:0] o_right_shift
+    output logic [5:0] o_right_shift,
+    output logic signed [31:0] o_multiplier_vec[p_entries],
+    output logic [5:0] o_right_shift_vec[p_entries]
 );
     //! 0. 分组尺寸与写入地址
     //! ---------------------
@@ -26,9 +29,11 @@ module vector_quant_params #(
     localparam int p_rows = (p_entries + p_banks - 1) / p_banks;
     localparam int p_row_width = (p_rows <= 1) ? 1 : $clog2(p_rows);
     localparam int p_word_index_width = p_dma_index_width + 1;
+    localparam int p_read_ports = p_parallel_output ? p_rows : 1;
     logic [p_word_index_width-1:0] write_index [0:p_banks-1];
     logic [37:0] write_data [0:p_banks-1];
     logic [37:0] bank_read_data [0:p_banks-1];
+    logic [37:0] bank_parallel_data [p_banks][p_rows];
     logic [37:0] read_data;
 
     // 每拍各数据字具有连续的逻辑地址，取余分组保证每个 regfile 至多写入一次。
@@ -48,16 +53,16 @@ module vector_quant_params #(
         logic [p_row_width-1:0] regfile_i_wr_addr;
         logic [37:0] regfile_i_wr_data;
         logic [37:0] regfile_i_wr_mask;
-        logic [0:0] regfile_i_rd_en;
-        logic [0:0][p_row_width-1:0] regfile_i_rd_addr;
-        logic [0:0][37:0] regfile_o_rd_data;
+        logic [p_read_ports-1:0] regfile_i_rd_en;
+        logic [p_read_ports-1:0][p_row_width-1:0] regfile_i_rd_addr;
+        logic [p_read_ports-1:0][37:0] regfile_o_rd_data;
 
         always_comb begin
             regfile_i_wr_en = 1'b0;
             regfile_i_wr_addr = '0;
             regfile_i_wr_data = '0;
             for (int word_index = 0; word_index < p_banks; word_index++) begin
-                if ((write_index[word_index] % p_banks) == p_word_index_width'(bank_index)) begin
+                if ((write_index[word_index] % p_word_index_width'(p_banks)) == p_word_index_width'(bank_index)) begin
                     regfile_i_wr_en = i_wr_en && (i_wr_multiplier || i_wr_shift) &&
                         write_index[word_index] < p_word_index_width'(p_entries) &&
                         write_index[word_index] < p_word_index_width'(i_active);
@@ -67,14 +72,27 @@ module vector_quant_params #(
             end
         end
         assign regfile_i_wr_mask = {{6{i_wr_shift}}, {32{i_wr_multiplier}}};
-        assign regfile_i_rd_en = 1'b1;
-        assign regfile_i_rd_addr[0] = p_row_width'(i_rd_index / p_banks);
+        assign regfile_i_rd_en = '1;
+        if (p_parallel_output) begin : g_parallel_read
+            // 固定地址读取直接连接原存储项，全部通道共用同一份参数状态。
+            for (genvar row = 0; row < p_rows; row++) begin : g_row
+                assign regfile_i_rd_addr[row] = p_row_width'(row);
+                assign bank_parallel_data[bank_index][row] = regfile_o_rd_data[row];
+            end
+            assign bank_read_data[bank_index] = regfile_o_rd_data[p_row_width'(i_rd_index / p_banks)];
+        end else begin : g_single_read
+            assign regfile_i_rd_addr[0] = p_row_width'(i_rd_index / p_banks);
+            assign bank_read_data[bank_index] = regfile_o_rd_data[0];
+            for (genvar row = 0; row < p_rows; row++) begin : g_row
+                assign bank_parallel_data[bank_index][row] = '0;
+            end
+        end
         regfile #(
             .p_data_width(38),
             .p_depth(p_rows),
             .p_addr_width(p_row_width),
             .p_write_unit(1),
-            .p_read_ports(1),
+            .p_read_ports(p_read_ports),
             .p_sync_read(1'b0)
         ) u_regfile (
             .clk(clk),
@@ -86,7 +104,6 @@ module vector_quant_params #(
             .i_rd_addr(regfile_i_rd_addr),
             .o_rd_data(regfile_o_rd_data)
         );
-        assign bank_read_data[bank_index] = regfile_o_rd_data[0];
     end
 
     //! 2. 当前量化通道的异步读取
@@ -95,12 +112,16 @@ module vector_quant_params #(
     always_comb begin
         read_data = '0;
         for (int bank_index = 0; bank_index < p_banks; bank_index++) begin
-            if ((i_rd_index % p_banks) == p_read_index_width'(bank_index) &&
+            if ((i_rd_index % p_read_index_width'(p_banks)) == p_read_index_width'(bank_index) &&
                 i_rd_index < p_read_index_width'(p_entries))
                 read_data = bank_read_data[bank_index];
         end
     end
     assign o_multiplier = $signed(read_data[31:0]);
     assign o_right_shift = read_data[37:32];
+    for (genvar lane = 0; lane < p_entries; lane++) begin : g_parallel_output
+        assign o_multiplier_vec[lane] = $signed(bank_parallel_data[lane%p_banks][lane/p_banks][31:0]);
+        assign o_right_shift_vec[lane] = bank_parallel_data[lane%p_banks][lane/p_banks][37:32];
+    end
 endmodule
 `default_nettype wire

@@ -248,7 +248,9 @@ class Simulation {
     Request request{0,0,16,1};drive(request);
     check(!tick(&request) && top.window_granted,"window reservation preparation");
     top.ordinary_req=1;
-    check(tick(&request) && !top.ordinary_granted,"stored window grant was preempted");
+    top.eval();
+    check(top.req_ready && !top.ordinary_granted,"stored window grant ownership before acceptance");
+    check(tick(&request),"stored window request was not accepted");
     top.req_valid=0;
     for(unsigned i=0;!top.ordinary_granted;i++) {
       check(i<8,"ordinary request after window grant timed out");tick();
@@ -334,6 +336,17 @@ int main(int argc,char** argv) {
     std::printf("CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=%llu cycles=%llu\n",
       static_cast<unsigned long long>(maximum_interval),
       static_cast<unsigned long long>(s.response_cycles.back()-s.response_cycles[first]+1));
+    // 单拍窗口连续命中时，仲裁器与描述符队列每周期接收并返回一个请求。
+    std::vector<Request> short_hits;
+    for(unsigned i=0;i<256;i++) short_hits.push_back({0,0,4,i%4});
+    first=s.response_cycles.size();
+    s.run(short_hits);
+    last=s.response_cycles.size();
+    check(last-first==256,"single-beat window response count");
+    unsigned consecutive=0;
+    for(size_t i=first+1;i<last;i++) consecutive+=s.response_cycles[i]==s.response_cycles[i-1]+1;
+    check(consecutive==255,"single-beat windows require consecutive responses");
+    std::printf("CASE single_beat_hits requests=256 consecutive=255 elements=1024\n");
     s.concurrent_ordinary(0);s.concurrent_ordinary(3);
     std::printf("CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2\n");
     s.cancel_window_reservations();s.ordinary_after_window_grant();

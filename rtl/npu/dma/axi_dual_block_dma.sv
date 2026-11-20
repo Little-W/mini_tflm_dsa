@@ -16,6 +16,7 @@ module axi_dual_block_dma #(
     parameter int unsigned DATA_WIDTH   = 16,
     parameter int unsigned SIZE         = 16,
     parameter int unsigned BUS_WIDTH    = 32,
+    parameter int unsigned DATA_LANES   = BUS_WIDTH / 8,
     parameter int unsigned REG_WIDTH    = 32,
     parameter int unsigned CACHE_BLOCKS = 4,
     parameter int unsigned DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8),
@@ -25,6 +26,7 @@ module axi_dual_block_dma #(
     parameter int unsigned RD_TAG_WIDTH = 3,
     parameter int unsigned IM2COL_SIZE = SIZE,
     parameter int unsigned WINDOW_OUTSTANDING = 4,
+    parameter int unsigned WINDOW_LANES = 4,
     parameter int unsigned CONV_CACHE_SETS = 128,
     parameter int unsigned CONV_CACHE_WAYS = 2,
     parameter int unsigned CONV_LINE_BYTES = 16,
@@ -46,8 +48,8 @@ module axi_dual_block_dma #(
     input logic win_rsp_ready = 1'b1,
     output logic [1:0] win_rsp_tag,
     output logic [31:0] win_rsp_col,
-    output logic signed [15:0] win_rsp_data[4],
-    output logic [3:0] win_rsp_mask,
+    output logic signed [15:0] win_rsp_data[WINDOW_LANES],
+    output logic [WINDOW_LANES-1:0] win_rsp_mask,
     output logic win_rsp_last,win_rsp_error,win_busy,
 
     input  logic conv_cfg_valid = 1'b0,
@@ -65,6 +67,7 @@ module axi_dual_block_dma #(
     // Im2col returns rows_to_read by IM2COL_SIZE signed-16 elements. Padding
     // and reduction tail are explicit zero; no extra transpose is performed.
     input  logic rd_im2col = 1'b0,
+    input  logic rd_wide_im2col = 1'b0,
     input  logic [31:0] rd_p0 = 32'd0,
     input  logic [31:0] rd_q0 = 32'd0,
     input  logic [31:0] rd_group = 32'd0,
@@ -140,8 +143,8 @@ module axi_dual_block_dma #(
     output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot,
     output logic        [        $clog2(SIZE)-1:0] wr_row,
     output logic        [        $clog2(SIZE)-1:0] wr_col_base,
-    output logic signed [          DATA_WIDTH-1:0] wr_data      [BUS_WIDTH/8],
-    output logic                                   wr_valid     [BUS_WIDTH/8],
+    output logic signed [          DATA_WIDTH-1:0] wr_data      [DATA_LANES],
+    output logic                                   wr_valid     [DATA_LANES],
     output logic                                   wr_use_16bits,
 
     // ---- Raw read stream for quant/bias-like users ----
@@ -200,8 +203,8 @@ module axi_dual_block_dma #(
 
     logic [SLOT_W-1:0] fe_slot;
     logic [CONV_CW-1:0] fe_row, fe_col;
-    logic signed [15:0] fe_data [4];
-    logic [3:0] fe_mask;
+    logic signed [15:0] fe_data [WINDOW_LANES];
+    logic [WINDOW_LANES-1:0] fe_mask;
     logic fe_arvalid, fe_arready, fe_rvalid, fe_rready, fe_rlast;
     logic [31:0] fe_araddr;
     logic [BUS_WIDTH-1:0] fe_rdata;
@@ -210,8 +213,8 @@ module axi_dual_block_dma #(
     logic [1:0] fe_arburst, fe_rresp;
 
     // 普通 im2col 描述符在接收边沿保存，下一边沿起由前端接收。
-    // 已接收事务在中止后继续执行，直到矩阵输出和缓存活动全部结束。
-    logic conv_active, conv_pending, conv_finished, conv_command_error;
+    // 描述符完成表示矩阵数据已返回，后台填充由 busy 持续记录至全部结束。
+    logic conv_active, conv_pending, conv_finished, conv_command_error, conv_wide;
     logic conv_done_r, conv_done_error, descriptor_error, command_im2col;
     logic [31:0] p0_q, q0_q, group_q;
     logic [CONV_RW-1:0] rows_q, cols_q;
@@ -227,7 +230,8 @@ module axi_dual_block_dma #(
 
     assign win_rsp_col=32'(win_response_col);
     assign win_req_ready=win_queue_req_ready && !conv_cfg_valid && !rd_start;
-    conv_window_queue #(.DEPTH(WINDOW_OUTSTANDING),.COL_W(CONV_CW),.p_max_cols(IM2COL_SIZE)) u_window_queue (
+    conv_window_queue #(.DEPTH(WINDOW_OUTSTANDING),.COL_W(CONV_CW),
+        .WINDOW_LANES(WINDOW_LANES),.p_max_cols(IM2COL_SIZE)) u_window_queue (
         .clk,.rst_n,.configure(cfg_fire),
         .enable(CONV_SUPPORTED && job_conv && !conv_active && !conv_pending && !linear_busy),
         .req_valid(win_req_valid && !conv_cfg_valid && !rd_start),.req_ready(win_queue_req_ready),
@@ -245,15 +249,15 @@ module axi_dual_block_dma #(
     logic win_payload_select;
     assign rd_busy = linear_busy || conv_active || fe_busy || win_busy || !guard_idle || !mux_idle;
     assign rd_done = linear_done || conv_done_r;
-    // Linear completion keeps the original final-R-edge launch window. The
-    // frontend completion follows its final output and read-side drain.
+    // 线性命令保留最后返回拍的接收机会，图像命令在最后输出后完成。
+    // 同一图像配置内可继续处理下一块，后台预取与下一块的读取重叠。
     assign rd_finish_beat = linear_finish || conv_done_r;
-    assign image_start_ready = !conv_cfg_valid &&
-        ((!rd_busy || (job_conv && rd_finish_beat)) && !win_busy);
-    assign rd_start_ready =
-        ((!job_conv && !rd_im2col) ?
-            (!conv_cfg_valid && linear_start_ready && !conv_active &&
-             !conv_pending && !fe_busy && !win_busy) : image_start_ready);
+    assign image_start_ready = !conv_cfg_valid && !conv_active && !conv_pending &&
+        (!linear_busy || linear_finish) && !win_busy && (!fe_busy || job_conv);
+    // 切换至线性读取前，先排空图像前端及其物理读取通道。
+    assign rd_start_ready = rd_im2col ? image_start_ready :
+        (!conv_cfg_valid && linear_start_ready && !conv_active && !conv_pending &&
+         !fe_busy && !win_busy && (!job_conv || (guard_idle && mux_idle)));
     assign accept_linear = rd_start && !abort && !rd_im2col && rd_start_ready;
     assign accept_image = rd_start && !abort && rd_im2col && image_start_ready;
     assign accept_read = accept_linear || accept_image;
@@ -285,6 +289,7 @@ module axi_dual_block_dma #(
         if (!rst_n) begin
             job_conv <= 1'b0; job_read_guard <= 1'b0; conv_active <= 1'b0; conv_pending <= 1'b0;
             conv_finished <= 1'b0; conv_command_error <= 1'b0;
+            conv_wide <= 1'b0;
             conv_done_r <= 1'b0; conv_done_error <= 1'b0;
             descriptor_error <= 1'b0; command_im2col <= 1'b0;
             conv_tag_q <= '0;
@@ -301,6 +306,7 @@ module axi_dual_block_dma #(
             if (accept_read) begin
                 command_im2col <= rd_im2col;
                 if (rd_im2col) begin
+                    conv_wide <= rd_wide_im2col && DATA_LANES >= WINDOW_LANES;
                     conv_tag_q <= rd_tag;
                     conv_active <= 1'b1;
                     p0_q <= rd_p0; q0_q <= rd_q0; group_q <= rd_group;
@@ -322,7 +328,7 @@ module axi_dual_block_dma #(
                 conv_finished <= 1'b1;
                 conv_command_error <= conv_command_error || fe_tile_error || fe_error;
             end
-            if (conv_active && (conv_finished || fe_done || fe_tile_error) && !fe_busy && guard_idle && mux_idle) begin
+            if (conv_active && (conv_finished || fe_done || fe_tile_error)) begin
                 conv_active <= 1'b0; conv_finished <= 1'b0;
                 conv_done_r <= 1'b1;
                 conv_done_error <= conv_command_error || fe_error || fe_tile_error;
@@ -337,15 +343,19 @@ module axi_dual_block_dma #(
         wr_slot = linear_slot; wr_row = linear_row; wr_col_base = linear_col;
         if (conv_done_r) wr_slot = slot_q;
         wr_use_16bits = linear_use_16bits;
-        for (int i=0; i<LANES; i++) begin
-            wr_data[i] = linear_data[i]; wr_valid[i] = linear_valid[i];
+        // 线性 DMA 维持外部总线宽度，窗口命中可向矩阵端返回更多元素。
+        for (int i=0; i<DATA_LANES; i++) begin
+            wr_data[i] = '0; wr_valid[i] = 1'b0;
+            if (i<LANES) begin
+                wr_data[i] = linear_data[i]; wr_valid[i] = linear_valid[i];
+            end
         end
         if (fe_wr_valid && !win_frontend_active) begin
             wr_slot = fe_slot; wr_row = COL_W'(fe_row); wr_col_base = COL_W'(fe_col);
             wr_use_16bits = 1'b1;
-            for (int i=0; i<LANES; i++) begin
+            for (int i=0; i<DATA_LANES; i++) begin
                 wr_data[i] = '0; wr_valid[i] = 1'b0;
-                if (i<4) begin
+                if (i<WINDOW_LANES) begin
                     wr_data[i] = DATA_WIDTH'($signed(fe_data[i]));
                     wr_valid[i] = fe_mask[i];
                 end
@@ -407,7 +417,7 @@ module axi_dual_block_dma #(
     generate if (CONV_SUPPORTED) begin : g_im2col
         conv_im2col_frontend #(
             .BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
-            .SIZE(IM2COL_SIZE), .SLOT_W(SLOT_W), .LANES(4),
+            .SIZE(IM2COL_SIZE), .SLOT_W(SLOT_W), .LANES(WINDOW_LANES),
             .CACHE_SETS(CONV_CACHE_SETS), .CACHE_WAYS(CONV_CACHE_WAYS),
             .LINE_BYTES(CONV_LINE_BYTES), .CACHE_POLICY(CONV_CACHE_POLICY)
         ) u_frontend (
@@ -417,6 +427,7 @@ module axi_dual_block_dma #(
             .tile_p0(frontend_i_tile_p0), .tile_q0(frontend_i_tile_q0),
             .tile_rows(frontend_i_tile_rows), .tile_cols(frontend_i_tile_cols),
             .tile_slot(frontend_i_tile_slot), .tile_group(frontend_i_tile_group),
+            .tile_narrow(!win_payload_select && !conv_wide),
             .wr_valid(fe_wr_valid), .wr_ready(win_frontend_active ? win_frontend_rsp_ready : 1'b1), .wr_slot(fe_slot),
             .wr_row(fe_row), .wr_col(fe_col), .wr_data(fe_data), .wr_mask(fe_mask),
             .tile_done(fe_done), .tile_error(fe_tile_error), .error(fe_error), .busy(fe_busy), .wr_last(fe_wr_last),
@@ -468,7 +479,10 @@ module axi_dual_block_dma #(
         assign fe_wr_valid=1'b0; assign fe_wr_last=1'b0; assign fe_done=1'b0; assign fe_tile_error=1'b0;
         assign fe_error=1'b0; assign fe_busy=1'b0;
         assign fe_slot='0; assign fe_row='0; assign fe_col='0;
-        assign fe_mask='0; for (genvar i=0;i<4;i++) assign fe_data[i]='0;
+        assign fe_mask='0;
+        for (genvar lane=0;lane<WINDOW_LANES;lane++) begin : g_empty_window_data
+            assign fe_data[lane]='0;
+        end
         assign guard_idle=1'b1; assign mux_idle=1'b1;
         assign guard_arvalid=linear_arvalid; assign linear_arready=guard_arready;
         assign guard_araddr=linear_araddr; assign guard_arlen=linear_arlen;

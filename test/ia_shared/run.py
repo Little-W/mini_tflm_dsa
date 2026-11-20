@@ -25,6 +25,8 @@ def main():
     parser.add_argument('--bank-bytes',type=int,choices=(2048,4096,8192),default=2048)
     parser.add_argument('--bank-count',type=int,choices=range(6,10),default=7)
     parser.add_argument('--compact-offset-width', type=int, choices=(9, 16), default=16)
+    parser.add_argument('--bus-width', type=int, choices=(32, 64), default=32)
+    parser.add_argument('--dma-lanes', type=int, choices=(4, 8, 16), default=4)
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
@@ -47,9 +49,10 @@ def main():
     top = 'ia_shared_cache_tb'
     command = [args.verilator, '--cc', '--exe', '--build', '--assert', '-j', str(args.jobs),
                '--top-module', top, f'-GBANK_BYTES={args.bank_bytes}', f'-GBANK_COUNT={args.bank_count}',
+               f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_LANES={args.dma_lanes}',
                f'-GCOMPACT_OFFSET_WIDTH={args.compact_offset_width}', '--Mdir', str(out / 'obj'), '-Wno-fatal',
                '--output-groups', '0', '--output-split', '10000',
-               '-CFLAGS', f'-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BANK_BYTES={args.bank_bytes} -DTEST_BANK_COUNT={args.bank_count}',
+               '-CFLAGS', f'-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BANK_BYTES={args.bank_bytes} -DTEST_BANK_COUNT={args.bank_count} -DTEST_DMA_LANES={args.dma_lanes}',
                '-LDFLAGS', '-fsanitize=undefined', '-MAKEFLAGS',
                f'-B OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',
                *map(str, rtl), str(cpp)]
@@ -61,6 +64,8 @@ def main():
             raise RuntimeError('Executable does not match the current sources')
         if previous.get('compact_offset_width', 16) != args.compact_offset_width:
             raise RuntimeError('Executable compact offset width differs')
+        if previous.get('bus_width', 32) != args.bus_width or previous.get('dma_lanes', 4) != args.dma_lanes:
+            raise RuntimeError('Executable input width differs')
         command = previous['compile_command']
     else:
         with (out / 'compile.log').open('w') as log:
@@ -89,6 +94,7 @@ def main():
                   binary_sha256=digest(binary), compile_command=command,
                   run_command=[str(binary)], undefined_behavior_sanitizer=True,
                   compact_offset_width=args.compact_offset_width,
+                  bus_width=args.bus_width, dma_lanes=args.dma_lanes,
                   sanitized_translation_units=len(units), compile_seconds=compile_seconds,
                   run_seconds=time.monotonic() - run_start, source_hashes_unchanged=True)
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

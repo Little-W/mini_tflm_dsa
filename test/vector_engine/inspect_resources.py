@@ -68,22 +68,32 @@ def dtype_shape(identifier, types):
     raise ValueError("Unsupported elaborated data type: " + kind)
 
 
-def inspect(repository, out, executable, top, tile, pes):
+def inspect(repository, out, executable, top, tile, pes, bus_width, window_lanes, shared_quant):
     out.mkdir(parents=True, exist_ok=True)
     conv = repository / "rtl/npu/conv"
     if top == "vector_engine":
         names = ["conv_im2col_pkg.sv", "vector_engine_pkg.sv",
                  "vector_pe.sv", "vector_softmax.sv", "vector_config_check.sv", "vector_writeback.sv", "vector_round_shift.sv", "vector_scalar_multiplier.sv", "vector_quant_params.sv", "vector_engine.sv"]
-        parameters = [f"-GTILE={tile}", f"-GPE_COUNT={pes}"]
+        parameters = [f"-GTILE={tile}", f"-GPE_COUNT={pes}", f"-GBUS_WIDTH={bus_width}"]
+        engine_text = (conv / "vector_engine.sv").read_text()
+        if "parameter bit SHARED_QUANT_ENABLE" in engine_text:
+            parameters.append(f"-GSHARED_QUANT_ENABLE={int(shared_quant)}")
+        if "parameter int WINDOW_LANES" in engine_text:
+            parameters.append(f"-GWINDOW_LANES={window_lanes}")
     else:
         names = ["conv_im2col_pkg.sv", "cache/conv_sdp_ram.sv",
                  "cache/conv_next_use_predictor.sv", "conv_axi_span_reader.sv",
                  "cache/conv_read_cache.sv", "conv_im2col_frontend.sv"]
-        parameters = [f"-GSIZE={tile}", "-GLANES=4", "-GCACHE_SETS=128", "-GCACHE_POLICY=3"]
+        parameters = [f"-GSIZE={tile}", f"-GLANES={window_lanes}", f"-GBUS_WIDTH={bus_width}",
+                      "-GCACHE_SETS=128", "-GCACHE_POLICY=3"]
     sources = [(conv.parent / "dma" / name if name.startswith("cache/") else conv / name) for name in names
                if name != "vector_quant_params.sv" or (conv / name).exists()]
     if (repository / "rtl/common/regfile.v").exists():
         sources.append(repository / "rtl/common/regfile.v")
+    if (repository / "rtl/common/add_equal.sv").exists():
+        sources.append(repository / "rtl/common/add_equal.sv")
+    if (repository / "rtl/common/onehot_check.sv").exists():
+        sources.append(repository / "rtl/common/onehot_check.sv")
     identity = {str(path.relative_to(repository)): hashlib.sha256(path.read_bytes()).hexdigest()
                 for path in sources}
     tree, metadata = out / "design.tree.json", out / "design.meta.json"
@@ -160,19 +170,26 @@ def main():
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--tile", type=int, default=16)
     parser.add_argument("--pes", type=int, default=8)
+    parser.add_argument("--bus-width", type=int, choices=(32, 64), default=64)
+    parser.add_argument("--window-lanes", type=int, choices=(4, 8, 16))
+    parser.add_argument("--shared-quant", action="store_true")
     args = parser.parse_args()
+    args.window_lanes = args.window_lanes or (16 if args.pes >= 16 else args.bus_width // 8)
     out = args.out.resolve()
     result = {"scope": "Elaborated RTL operators and declared arrays before synthesis; configuration and address expressions may be shared or simplified during synthesis.",
               "analyzer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "verilator": subprocess.check_output([args.verilator, "--version"], text=True).strip(),
-              "tile": args.tile, "pes": args.pes, "designs": {}}
+              "tile": args.tile, "pes": args.pes, "bus_width": args.bus_width,
+              "window_lanes": args.window_lanes, "shared_quant": args.shared_quant,
+              "quantization_lanes": args.tile if args.shared_quant else 1, "designs": {}}
     repositories = {"current": ROOT}
     if args.reference:
         repositories["reference"] = args.reference.resolve()
     for label, repository in repositories.items():
         result["designs"][label] = {}
         for top in ("vector_engine", "conv_im2col_frontend"):
-            record = inspect(repository, out / label / top, args.verilator, top, args.tile, args.pes)
+            record = inspect(repository, out / label / top, args.verilator, top, args.tile, args.pes,
+                             args.bus_width, args.window_lanes, args.shared_quant)
             result["designs"][label][top] = record
             print(label, top, record["categories"], flush=True)
     if args.reference:
@@ -196,7 +213,8 @@ def main():
         def weight_bits(record):
             arrays=record["declared_arrays"]
             selected=[shape for name,shape in arrays.items() if name=="vector_engine.weight_buf" or
-                      ("g_weight_channel[" in name and name.endswith(".u_bank.data"))]
+                      ("g_weight_channel[" in name and name.endswith(".u_bank.data")) or
+                      name == "vector_engine.u_weights.u_storage.mem"]
             if not selected:
                 raise RuntimeError("Vector weight storage was not found")
             return sum(math.prod(shape["dimensions"])*shape["element_bits"] for shape in selected)

@@ -17,7 +17,7 @@ python test/conv_frontend/tests/run_model_tests.py
 
 ## RTL 覆盖
 
-每组前端配置运行 37 个任务，覆盖矩形核、stride/dilation、padding、归约尾部、非对齐 p0/q0、乱序 tile、S8/S16 数值极值、非零 input_offset、缓存旁路、同地址换内容失效、读错误和下一任务恢复，以及接近 4 GiB 的读裁剪。配置握手后将外部 cfg 清零，确认正在执行的配置已经锁存。总线 AR/R 和 tile 写端有随机停顿，并核对实际 AXI 读字节与硬件统计值一致。
+每组前端配置运行 40 个任务，覆盖矩形核、stride/dilation、padding、归约尾部、非对齐 p0/q0、乱序 tile、S8/S16 数值极值、非零 input_offset、缓存旁路、同地址换内容失效、读错误和下一任务恢复，以及接近 4 GiB 的读裁剪。通道分组任务逐组遍历空间位置，并跳过图像外的核位置，检查非零通道起点、顶部和左右边缘、跨输出行以及步长变化。配置握手后将外部 cfg 清零，确认正在执行的配置已经锁存。总线 AR/R 和 tile 写端有随机停顿，并核对实际 AXI 读字节与硬件统计值一致。
 
 | SIZE | sets | ways | line bytes | 入口 |
 |---:|---:|---:|---:|---|
@@ -31,6 +31,33 @@ python test/conv_frontend/tests/run_model_tests.py
 | 16 | 2 | 2 | 256 | 直接 descriptor |
 
 另外，AXI span testbench 检查 251 个请求，覆盖 65535 字节长度、首尾非对齐、4 KiB 分段、高地址、AR/R/响应端等待和 RRESP 传播；实际检查 913763 个读取字节、2043 个 burst。控制 testbench 检查 23 个配置/描述符与恢复事件，包括溢出、非法 offset、S16 对齐、运行中配置等待和失败后恢复。
+
+## 读取宽度与连续窗口
+
+`LANES` 决定每拍输出的有符号 16 位元素数。缓存原始数据的读取宽度为至少 32 位、覆盖 `LANES` 个字节的最小二次幂宽度，并限制在单个缓存行内。`LANES=16` 且 `LINE_BYTES>=16` 时一次读取 128 位，最多输出 16 个 S8 元素或 8 个 S16 元素；外部 AXI 总线宽度由 `BUS_WIDTH` 独立决定。
+
+`tile_narrow` 随描述符保存。该位为一时，每拍有效元素数量不超过 `NARROW_LANES`，默认值为 `BUS_WIDTH/8`。同一缓存字可分多拍输出，元素位置和尾部有效掩码由实际输出数量推进。读取地址按原始数据字宽选择自然地址分组，非零字节偏移、通道边界和归约尾部均由有效掩码处理。
+
+默认 `REGISTER_CACHE_REQUEST=0` 使用缓存自身的请求寄存器，并配置单个在途需求请求。同步 RAM 命中可在下一周期返回，连续命中每周期返回一个原始数据字。末拍输出与下一行或下一描述符的请求可以在同一周期发生。设置 `REGISTER_CACHE_REQUEST=1` 可使用独立请求寄存器及四项需求队列。
+
+相邻空间分块、同一输出位置的连续核位置、左右边缘的有效核位置跳转以及顶部边缘到下一输出行的跳转使用已保存的坐标递推。其余描述符使用通用坐标解码。配置变更、任意 `q0`、乱序空间位置和错误恢复仍遵循相同的描述符检查。
+
+在 `windowed=1` 且输入通道数不少于 16 时，预取距离为四个缓存行对应的像素数量，最长限制为一个输入行。垂直步长和膨胀均为一时，预测目标选择当前窗口最下方的输入行；其余情况沿当前核行预测。跨输入行时保留横坐标余量，并按垂直步长推进。预取的坐标、物理地址、缓存索引与有效范围按同一流水保存。
+
+```bash
+python3 test/conv_frontend/tools/run_rtl.py \
+  --bus-width 64 --lanes 16 --narrow-mode 2 \
+  --cache-bytes 8192 --line-bytes 128 --windowed --prefetch \
+  --out build/frontend_wide
+
+python3 test/conv_frontend/tools/run_rtl.py \
+  --bus-width 32 --lanes 4 --cache-bytes 4096 --line-bytes 16 \
+  --windowed --prefetch --out build/frontend_axi32
+```
+
+`--narrow-mode 2` 逐描述符交替使用完整输出宽度和受限输出宽度。缓存容量由 `--cache-bytes` 指定，组数据此结合缓存行大小和路数计算。
+
+仿真附加参数 `+CONV_FRONTEND_PROFILE` 输出各状态驻留周期、坐标递推次数、缓存等待周期、连续输出拍数及预取活动周期。`+CONV_FRONTEND_TRACE` 输出前 64 个已接收描述符。统计逻辑位于独立观察模块中，不参与综合。
 
 ## Native geometry 检查
 

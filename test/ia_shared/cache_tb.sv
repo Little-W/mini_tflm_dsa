@@ -2,6 +2,8 @@ module ia_shared_cache_tb #(
     parameter int BANK_BYTES=2048,
     parameter int BANK_COUNT=7,
     parameter int COMPACT_OFFSET_WIDTH=16,
+    parameter int BUS_WIDTH=32,
+    parameter int DMA_LANES=BUS_WIDTH/8,
     localparam int CACHE_BLOCKS=4*BANK_BYTES/512,
     localparam int SLOT_BLOCKS=2*CACHE_BLOCKS,
     localparam int SLOT_BITS=$clog2(SLOT_BLOCKS),
@@ -16,8 +18,8 @@ module ia_shared_cache_tb #(
     input logic [BANK_COUNT_BITS-1:0] cfg_ia_banks,
     input logic [SLOT_BITS-1:0] wr_slot,
     input logic [3:0] wr_row, wr_col_base,
-    input logic signed [15:0] wr_data [0:3],
-    input logic wr_valid [0:3],
+    input logic signed [15:0] wr_data [DMA_LANES],
+    input logic wr_valid [DMA_LANES],
     input logic wr_use_16bits,
     input logic l1_start,
     input logic [SLOT_BITS-1:0] l1_slot_start, l1_slot_end,
@@ -43,7 +45,7 @@ module ia_shared_cache_tb #(
     logic [127:0] ia_read_data [0:1];
 
     ia_loader_cache_mgr #(
-        .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(32), .CACHE_BLOCKS(CACHE_BLOCKS),
+        .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(BUS_WIDTH), .DMA_LANES(DMA_LANES), .CACHE_BLOCKS(CACHE_BLOCKS),
         .COMPACT_S8(1), .EXTERNAL_RAM(1), .RAM_WORD_ADDR_WIDTH(WORD_BITS),
         .p_compact_offset_width(COMPACT_OFFSET_WIDTH)
     ) u_shared_manager (
@@ -62,7 +64,7 @@ module ia_shared_cache_tb #(
     );
 
     ia_loader_cache_mgr #(
-        .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(32), .CACHE_BLOCKS(CACHE_BLOCKS),
+        .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(BUS_WIDTH), .DMA_LANES(DMA_LANES), .CACHE_BLOCKS(CACHE_BLOCKS),
         .COMPACT_S8(1), .EXTERNAL_RAM(0), .RAM_WORD_ADDR_WIDTH(WORD_BITS)
     ) u_local_manager (
         .clk, .rst_n, .compact_mode, .compact_offset, .cfg_cache_blocks,

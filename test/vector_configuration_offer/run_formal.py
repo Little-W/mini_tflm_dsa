@@ -186,7 +186,7 @@ def vector_worker(out):
     design = json.loads((out / "vector.json").read_text())
     module = design["modules"]["vector_offer_properties"]
     wanted = ("state", "c", "global_pool", "input_range_mode", "input_bytes", "weight_bytes",
-              "u_config_check.state", "u_writeback.state", "formal_started", "formal_waited",
+              "u_config_check.state", "u_writeback.c_st", "formal_started", "formal_waited",
               "formal_previous_payload")
     roots = {bit for name in wanted for bit in module["netnames"].get(name, {}).get("bits", []) if isinstance(bit, int)}
     drivers = {}
@@ -226,7 +226,7 @@ def vector_worker(out):
     libyosys.run_pass("stat")
     libyosys.run_pass("sat -seq 2 -tempinduct -maxsteps 16 -timeout 30 -set-init-zero "
                      "-prove formal_bad 0 -verify -show state -show u_config_check.state "
-                     "-show u_writeback.state -show formal_waited -show rst_n "
+                     "-show u_writeback.c_st -show formal_waited -show rst_n "
                      "-dump_vcd " + str(out / "vector_witness.vcd"))
     report = {"passed": True, "preserved_registers": sorted(keep),
               "abstracted_registers": sorted(abstracted), "input_constraints": None,

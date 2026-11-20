@@ -105,7 +105,7 @@ class Simulation {
     dut.clk=0; dut.eval();
   }
   Simulation() {
-    dut.rst_n=0; dut.start=0; dut.done_ready=0; dut.inject_fault=0;
+    dut.rst_n=0; dut.start=0; dut.done_ready=0; dut.inject_fault=0; dut.inject_inflight=0;
     for (unsigned i=0;i<40;i++) dut.config_words[i]=0;
     for (unsigned i=0;i<4;i++) tick();
     dut.rst_n=1; tick();
@@ -122,11 +122,11 @@ class Simulation {
     require(dut.done_valid,"task did not complete");
     require(dut.error==(fault ? 2 : 0),"unexpected task status");
     require(dut.injected_errors==(fault ? 1u : 0u),"terminal error was not scheduled exactly once");
-    require(dut.write_launches_in_failed==(fault ? 1u : 0u),"write launch did not exercise FAILED");
+    require(dut.write_launches_in_failed==(fault && !dut.inject_inflight ? 1u : 0u),"unexpected write launch in FAILED");
     require(dut.window_requests==2 && dut.window_completions==2,"window descriptors did not drain");
-    require(empty() && dut.dma_idle && dut.write_idle,"completion before AXI drain");
+    require(empty() && dut.dma_idle && dut.write_idle && dut.shared_quant_idle,"completion before AXI and quantization drain");
     require(aw_count-start_aw==b_count-start_b,"write responses did not drain");
-    require(written_bytes-start_bytes==(fault ? 16u : 32u),"unexpected output byte count");
+    require(written_bytes-start_bytes==(fault ? (dut.inject_inflight ? 0u : 16u) : 32u),"unexpected output byte count");
     for (unsigned i=0;i<32;i++) {
       require(!dut.m_axi_arvalid && !dut.m_axi_awvalid && !dut.m_axi_wvalid,"transaction after completion");
       tick();
@@ -150,6 +150,8 @@ int main(int argc,char **argv) {
   try {
     unsigned cases=0;
     Simulation simulation;
+    for (unsigned inflight=0;inflight<(simulation.dut.shared_quant_enabled ? 2u : 1u);inflight++) {
+    simulation.dut.inject_inflight=inflight;
     for (unsigned random_wait=0;random_wait<2;random_wait++) {
       simulation.random_wait=random_wait;
       for (unsigned offset=0;offset<4;offset++) {
@@ -178,7 +180,7 @@ int main(int argc,char **argv) {
           }
         }
         auto expected=simulation.memory;
-        for (unsigned i=0;i<16;i++) expected[config[4]+i]=uint8_t(expected_output[i]);
+        if (!inflight) for (unsigned i=0;i<16;i++) expected[config[4]+i]=uint8_t(expected_output[i]);
         simulation.execute(config,true);
         require(simulation.memory==expected,"error task altered an unexpected byte");
         ++cases;
@@ -186,10 +188,11 @@ int main(int argc,char **argv) {
         simulation.execute(config,false);
         require(simulation.memory==expected,"recovery task output or surrounding memory differs");
         ++cases;
-        std::printf("CASE offset=%u random=%u fault_and_recovery=pass\n",offset,random_wait);
+        std::printf("CASE offset=%u random=%u inflight=%u fault_and_recovery=pass\n",offset,random_wait,inflight);
       }
     }
-    std::printf("WINDOW_ERROR_PASS cases=%u injected_errors=8 recovery_tasks=8\n",cases);
+    }
+    std::printf("WINDOW_ERROR_PASS cases=%u injected_errors=%u recovery_tasks=%u\n",cases,cases/2,cases/2);
     return 0;
   } catch (const std::exception &error) {
     std::fprintf(stderr,"WINDOW_ERROR_FAIL %s\n",error.what());

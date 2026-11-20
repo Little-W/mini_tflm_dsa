@@ -29,13 +29,15 @@ module vector_engine_observer #(
   input wire hw_start,
   input wire [31:0] hw_state,
   input wire hw_writeback_busy,
+  input wire hw_dw_issue_fire,
+  input wire hw_dw_commit_vld,
   input wire hw_win_busy,
   input wire hw_wr_granted,
   input wire hw_wr_req
 );
 
 
-wire is_EXECUTE=hw_state==TB_EXECUTE_COMMIT;
+wire is_EXECUTE=hw_state==TB_EXECUTE_COMMIT || (hw_dw_commit_vld && hw_state!=TB_FAILED);
 wire is_FAILED=hw_state==TB_FAILED;
 wire is_WB_IDLE=!hw_writeback_busy;
 wire is_WB_REQ=hw_wr_req;
@@ -45,7 +47,7 @@ always @(posedge hw_clk or negedge hw_rst_n) begin
   else if(32'(hw_state)==TB_IDLE && hw_start)begin stat_cycles<=0;stat_compute<=0;stat_dma_wait<=0;end
   else begin
     if(32'(hw_state)!=TB_IDLE && 32'(hw_state)!=TB_DONE)stat_cycles<=stat_cycles+1;
-    if(32'(hw_state)==TB_EXECUTE || 32'(hw_state)==TB_EXECUTE_COMMIT || 32'(hw_state)==TB_ADD_MULT || 32'(hw_state)==TB_ADD_DRAIN || 32'(hw_state)==TB_ADD_ROUND || 32'(hw_state)==TB_ADD_ROUND_WAIT || 32'(hw_state)==TB_ADD_SUM || 32'(hw_state)==TB_ADD_STORE ||
+    if(hw_dw_issue_fire || 32'(hw_state)==TB_EXECUTE || 32'(hw_state)==TB_EXECUTE_COMMIT || 32'(hw_state)==TB_ADD_MULT || 32'(hw_state)==TB_ADD_DRAIN || 32'(hw_state)==TB_ADD_ROUND || 32'(hw_state)==TB_ADD_ROUND_WAIT || 32'(hw_state)==TB_ADD_SUM || 32'(hw_state)==TB_ADD_STORE ||
        (32'(hw_state)==TB_SOFT_RUN && !hw_soft_lut_req_valid && !hw_soft_done))stat_compute<=stat_compute+1;
     if(32'(hw_state)==TB_LOAD_WAIT || hw_win_busy || 32'(hw_state)==TB_POOL_LOAD_WAIT || (hw_writeback_busy && !hw_wr_req) ||
        32'(hw_state)==TB_SOFT_LUT_WAIT || (hw_rd_req && !hw_rd_granted) || (hw_wr_req && !hw_wr_granted) ||
@@ -82,6 +84,8 @@ bind vector_engine vector_engine_observer #(
   .hw_start(start),
   .hw_state(32'(state)),
   .hw_writeback_busy(writeback_busy),
+  .hw_dw_issue_fire(dw_issue_fire),
+  .hw_dw_commit_vld(dw_commit_vld),
   .hw_win_busy(win_busy),
   .hw_wr_granted(wr_granted),
   .hw_wr_req(wr_req)
@@ -90,7 +94,9 @@ bind vector_engine vector_engine_observer #(
 module vector_input_write_observer #(
   parameter int p_tile=16,
   parameter int p_bus_width=64,
+  parameter int p_window_lanes=4,
   parameter int p_dma_size=64,
+  parameter int p_stored_elements=32,
   parameter int p_load_wait=0,
   parameter int p_load_a=0
 );
@@ -114,10 +120,10 @@ module vector_input_write_observer #(
     if(vector_engine.pool_bank_valid!=0) pool_cycles<=pool_cycles+1;
   end
 
-  for(genvar entry=0;entry<2*p_tile && entry<p_dma_size;entry++) begin : g_entry
+  for(genvar entry=0;entry<p_stored_elements && entry<p_dma_size;entry++) begin : g_entry
     localparam int p_s8_lane=entry%p_bus_bytes;
     localparam int p_s16_lane=entry%(p_bus_bytes/2);
-    localparam int p_window_bank=entry%4;
+    localparam int p_window_bank=entry%p_window_lanes;
     wire load_match=vector_engine.g_input_write[entry].g_buffer.load_match;
     wire window_match=vector_engine.g_input_write[entry].g_buffer.window_match;
     wire pool_match=vector_engine.g_input_write[entry].g_buffer.pool_match;
@@ -147,8 +153,106 @@ module vector_input_write_observer #(
     checked_cycles,ordinary_cycles,window_cycles,pool_cycles);
 endmodule
 bind vector_engine vector_input_write_observer #(
-  .p_tile(TILE),.p_bus_width(BUS_WIDTH),.p_dma_size(DMA_SIZE),
+  .p_tile(TILE),.p_bus_width(BUS_WIDTH),.p_window_lanes(WINDOW_LANES),.p_dma_size(DMA_SIZE),
+  .p_stored_elements(INPUT_STORED_ELEMENTS),
   .p_load_wait(32'(LOAD_WAIT)),.p_load_a(32'(LD_A))
 ) tb_input_write_observer();
+
+module vector_dw_progress_observer #(
+  parameter int p_idle=0, p_done=0, p_execute=0, p_finish=0
+);
+  longint unsigned request_count, issue_count, wait_input, wait_snapshot;
+  longint unsigned request_slot_ready, request_slot_reserved, request_queue_wait;
+  longint unsigned quant_slot_wait, write_busy_cycles, fetch_padding;
+  logic previous_done;
+  logic [2:0] owned_slots, peak_owned_slots;
+
+  always_comb begin
+    owned_slots=0;
+    for (int slot=0;slot<4;slot++)
+      owned_slots=owned_slots+3'(vector_engine.input_ready[slot] || vector_engine.input_reserved[slot]);
+  end
+  // 计数器仅观察请求、槽位和后台流水的等待原因，不参与设计控制。
+  always @(posedge vector_engine.clk) begin
+    if (!vector_engine.rst_n || (32'(vector_engine.state)==p_idle && vector_engine.start)) begin
+      request_count<=0; issue_count<=0; wait_input<=0; wait_snapshot<=0;
+      request_slot_ready<=0; request_slot_reserved<=0; request_queue_wait<=0;
+      quant_slot_wait<=0; write_busy_cycles<=0; fetch_padding<=0;
+      previous_done<=0; peak_owned_slots<=0;
+    end else begin
+      previous_done<=32'(vector_engine.state)==p_done;
+      if (vector_engine.depthwise) begin
+        if (vector_engine.window_request_fire) request_count<=request_count+1;
+        if (vector_engine.dw_issue_fire) issue_count<=issue_count+1;
+        if (32'(vector_engine.state)==p_execute && vector_engine.in_bounds &&
+            !vector_engine.input_ready[vector_engine.read_bank]) wait_input<=wait_input+1;
+        if (32'(vector_engine.state)==p_finish && vector_engine.dw_snapshot_vld)
+          wait_snapshot<=wait_snapshot+1;
+        if (vector_engine.window_slot_available) begin
+          if (vector_engine.input_ready[vector_engine.wf_bank]) request_slot_ready<=request_slot_ready+1;
+          else if (vector_engine.input_reserved[vector_engine.wf_bank]) request_slot_reserved<=request_slot_reserved+1;
+          else if (!vector_engine.win_req_ready) request_queue_wait<=request_queue_wait+1;
+        end
+        if (vector_engine.window_fetch_advance && !vector_engine.window_fetch_in_bounds)
+          fetch_padding<=fetch_padding+1;
+        if (vector_engine.dw_snapshot_vld && !vector_engine.dw_quant_input_active &&
+            vector_engine.dw_result_reserved[vector_engine.dw_quant_next_slot])
+          quant_slot_wait<=quant_slot_wait+1;
+        if (vector_engine.writeback_busy) write_busy_cycles<=write_busy_cycles+1;
+        if (owned_slots>peak_owned_slots) peak_owned_slots<=owned_slots;
+        if (32'(vector_engine.state)==p_done && !previous_done)
+          $display("VECTOR_DW_PROFILE requests=%0d issues=%0d wait_input=%0d wait_snapshot=%0d slot_ready=%0d slot_reserved=%0d queue_wait=%0d quant_slots=%0d write_busy=%0d padding=%0d peak_owned=%0d",
+            request_count,issue_count,wait_input,wait_snapshot,request_slot_ready,request_slot_reserved,
+            request_queue_wait,quant_slot_wait,write_busy_cycles,fetch_padding,peak_owned_slots);
+      end
+    end
+  end
+endmodule
+bind vector_engine vector_dw_progress_observer #(
+  .p_idle(32'(IDLE)),.p_done(32'(DONE)),.p_execute(32'(DW_EXECUTE)),.p_finish(32'(DW_FINISH))
+) tb_dw_progress_observer();
 /* verilator lint_on DECLFILENAME */
+
+module vector_parameter_rows_observer #(
+  parameter int p_load_bias=0,
+  parameter int p_load_mult=0,
+  parameter int p_load_shift=0
+);
+  longint unsigned commands_one=0, commands_two=0, commands_three=0;
+  always @(posedge vector_engine.clk) if(vector_engine.rst_n && vector_engine.rd_start &&
+      (32'(vector_engine.load_kind)==p_load_bias || 32'(vector_engine.load_kind)==p_load_mult ||
+       32'(vector_engine.load_kind)==p_load_shift)) begin
+    case(vector_engine.rd_rows_to_read)
+      1: commands_one<=commands_one+1;
+      2: commands_two<=commands_two+1;
+      3: commands_three<=commands_three+1;
+      default: assert(0);
+    endcase
+  end
+  final $display("VECTOR_PARAMETER_ROWS_CHECK one=%0d two=%0d three=%0d",
+      commands_one,commands_two,commands_three);
+endmodule
+bind vector_engine vector_parameter_rows_observer #(
+  .p_load_bias(32'(LD_BIAS)), .p_load_mult(32'(LD_MULT)), .p_load_shift(32'(LD_SHIFT))
+) tb_parameter_rows();
+
+
+module vector_tile_overlap_observer #(
+  parameter int p_load_wait=0,
+  parameter int p_load_weight=0
+);
+  longint unsigned read_write_cycles=0, write_error_read_cycles=0;
+  always @(posedge vector_engine.clk) if(vector_engine.rst_n && vector_engine.depthwise) begin
+    if(32'(vector_engine.state)==p_load_wait && 32'(vector_engine.load_kind)==p_load_weight &&
+        vector_engine.writeback_busy) read_write_cycles<=read_write_cycles+1;
+    if(vector_engine.writeback_error && vector_engine.rd_busy)
+      write_error_read_cycles<=write_error_read_cycles+1;
+  end
+  final $display("VECTOR_TILE_OVERLAP_CHECK read_write=%0d error_during_read=%0d",
+      read_write_cycles,write_error_read_cycles);
+endmodule
+bind vector_engine vector_tile_overlap_observer #(
+  .p_load_wait(32'(LOAD_WAIT)), .p_load_weight(32'(LD_WEIGHT))
+) tb_tile_overlap();
+
 `endif

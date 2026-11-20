@@ -1,46 +1,64 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
 
-// 缓存按32位字读取，以总线宽度和字节掩码写入；存储资源由综合工具选择。
+// 缓存使用独立读写宽度；地址均以32位字为单位，数据容量保持不变。
 module conv_sdp_ram #(
   parameter int DEPTH = 1024,
   parameter int AW = $clog2(DEPTH),
-  parameter int WRITE_WIDTH = 32
+  parameter int WRITE_WIDTH = 32,
+  parameter int READ_WIDTH = 32
 ) (
   input wire logic clk,
   input wire logic rd_en,
   input wire logic [AW-1:0] rd_addr,
-  output logic [31:0] rd_data,
+  output logic [READ_WIDTH-1:0] rd_data,
   input wire logic wr_en,
   input wire logic [AW-1:0] wr_addr,
   input wire logic [WRITE_WIDTH-1:0] wr_data,
   input wire logic [WRITE_WIDTH/8-1:0] wr_strb
 );
-  localparam int p_words = WRITE_WIDTH / 32;
+  //! 0. 参数与内部信号
+  //! ------------------
+
+  localparam int p_words = (WRITE_WIDTH > READ_WIDTH ? WRITE_WIDTH : READ_WIDTH) / 32;
+  localparam int p_read_words = READ_WIDTH / 32;
+  localparam int p_write_words = WRITE_WIDTH / 32;
   localparam int p_select_width = (p_words <= 1) ? 1 : $clog2(p_words);
   localparam int p_bank_shift = $clog2(p_words);
+  localparam int p_write_shift = $clog2(p_write_words);
   localparam int p_bank_depth = DEPTH / p_words;
   localparam int p_bank_addr_width = (p_bank_depth <= 1) ? 1 : $clog2(p_bank_depth);
-  logic [p_select_width-1:0] read_bank_q;
+  logic [p_select_width-1:0] read_bank;
+  logic [p_select_width-1:0] read_bank_nxt;
   logic [p_words-1:0][31:0] read_words;
 
-  // 数据与所在存储块在同一读取边沿保存，未读取时保留输出。
+  //! 1. 读取区域选择
+  //! ----------------
+
+  // 一次读取覆盖自然地址分组；低位字地址只选择该组中的起始存储块。
+  assign read_bank_nxt = p_select_width'(rd_addr) & p_select_width'(p_words-p_read_words);
+
+  //! 2. 同步存储访问
+  //! ----------------
+
+  // 数据与读取区域在同一边沿保存，停顿期间保持已经返回的数据。
   always_ff @(posedge clk) begin
     if (rd_en) begin
-      read_bank_q <= (p_words == 1) ? '0 : p_select_width'(rd_addr);
+      read_bank <= read_bank_nxt;
     end
   end
-  assign rd_data = read_words[read_bank_q];
 
   for (genvar word = 0; word < p_words; word++) begin : g_bank
     logic storage_i_wr_en, storage_i_rd_en;
     logic [p_bank_addr_width-1:0] storage_i_wr_addr, storage_i_rd_addr;
     logic [31:0] storage_i_wr_data, storage_o_rd_data;
     logic [3:0] storage_i_byte_mask;
-    assign storage_i_wr_en = wr_en;
+    // 读取宽度大于写入宽度时，每次写入只更新所属的一组存储块。
+    assign storage_i_wr_en = wr_en && ((p_words == p_write_words) ||
+      ((p_select_width'(wr_addr) >> p_write_shift) == p_select_width'(word/p_write_words)));
     assign storage_i_wr_addr = p_bank_addr_width'(wr_addr >> p_bank_shift);
-    assign storage_i_wr_data = wr_data[word*32 +: 32];
-    assign storage_i_byte_mask = wr_strb[word*4 +: 4];
+    assign storage_i_wr_data = wr_data[(word%p_write_words)*32 +: 32];
+    assign storage_i_byte_mask = wr_strb[(word%p_write_words)*4 +: 4];
     assign storage_i_rd_en = rd_en;
     assign storage_i_rd_addr = p_bank_addr_width'(rd_addr >> p_bank_shift);
     assign read_words[word] = storage_o_rd_data;
@@ -65,10 +83,20 @@ module conv_sdp_ram #(
     );
 `endif
   end
+
+  //! 3. 读取结果选择
+  //! ----------------
+
+  // 每个输出字选择对应存储块，选择过程中保留各块完整的32位数据。
+  for (genvar output_word = 0; output_word < p_read_words; output_word++) begin : g_read_word
+    assign rd_data[output_word*32 +: 32] = read_words[read_bank+p_select_width'(output_word)];
+  end
 `ifdef NPU_SIM_ASSERT
   initial begin
     assert (WRITE_WIDTH >= 32 && WRITE_WIDTH % 32 == 0 &&
-            (p_words & (p_words - 1)) == 0 && DEPTH % p_words == 0);
+            READ_WIDTH >= 32 && READ_WIDTH % 32 == 0 &&
+            (p_write_words & (p_write_words - 1)) == 0 &&
+            (p_read_words & (p_read_words - 1)) == 0 && DEPTH % p_words == 0);
   end
   initial forever @(posedge clk)
     assert (!(rd_en && wr_en && (rd_addr >> p_bank_shift) == (wr_addr >> p_bank_shift)));

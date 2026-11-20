@@ -1,15 +1,22 @@
 module tb_cache_pipeline #(
     parameter int DEMAND_DEPTH=4,
+    parameter int BUS_WIDTH=32,
+    parameter int READ_WIDTH=32,
+    parameter int CACHE_SETS=8,
     parameter int CACHE_WAYS=2,
+    parameter int LINE_BYTES=16,
     parameter int HIT_LATENCY=(DEMAND_DEPTH>1 ? 2 : 1)
 );
+    localparam int READ_BYTES=READ_WIDTH/8;
+    localparam int READ_SHIFT=$clog2(READ_BYTES);
     logic clk=0;
     always #5 clk=~clk;
     logic rst_n=0,cfg_valid=0,cfg_ready,cfg_bypass=0;
     logic cfg_windowed=1,cfg_prefetch_enable=0;
     logic [31:0] cfg_base=32'h1003,cfg_bytes=2042;
     logic req_valid=0,req_ready,rsp_valid,rsp_ready=0,rsp_error;
-    logic [31:0] req_addr=0,rsp_data,stat_hits,stat_misses,stat_read_bytes;
+    logic [31:0] req_addr=0,stat_hits,stat_misses,stat_read_bytes;
+    logic [READ_WIDTH-1:0] rsp_data;
     logic req_geometry=0,req_event_first=0,hint_valid=0,hint_pending;
     logic [31:0] hint_next=32'hffffffff;
     logic req_window_index_valid=0;
@@ -20,7 +27,8 @@ module tb_cache_pipeline #(
     logic [31:0] stat_prefetch_lines,stat_prefetch_used,stat_prefetch_wasted;
     logic [31:0] stat_prefetch_unused,stat_prefetch_bytes,stat_prefetch_late;
     logic arvalid,arready,rvalid,rready,rlast;
-    logic [31:0] araddr,rdata;
+    logic [31:0] araddr;
+    logic [BUS_WIDTH-1:0] rdata;
     logic [7:0] arlen;
     logic [2:0] arsize;
     logic [1:0] arburst,rresp,mem_rresp;
@@ -29,15 +37,16 @@ module tb_cache_pipeline #(
     longint unsigned read_bytes,ar_count;
     int cycle=0,accepted=0,completed=0,cancelled=0,pending=0,peak=0,tests=0;
     int accepted_cycle[4096],completed_cycle[4096];
-    logic [31:0] expected_address[4096],expected_data[4096];
-    logic [3:0] expected_mask[4096];
+    logic [31:0] expected_address[4096];
+    logic [READ_WIDTH-1:0] expected_data[4096];
+    logic [READ_BYTES-1:0] expected_mask[4096];
     logic expected_error[4096];
     bit stalled_response=0;
-    logic [32:0] stalled_value=0;
+    logic [READ_WIDTH:0] stalled_value=0;
     int warm_accept_interval=0,warm_return_interval=0;
 
-    conv_read_cache #(.SETS(8),.WAYS(CACHE_WAYS),.LINE_BYTES(16),
-        .CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH)) dut(
+    conv_read_cache #(.SETS(CACHE_SETS),.WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES),
+        .CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH)) dut(
         .cfg_geometry(1'b0),.prefetch_next_fragment(1'b0),
         .prefetch_window_index_valid(1'b0),.prefetch_window_index(0),
         .prefetch_window_epoch(0),.prefetch_window_retire(32'hffffffff),
@@ -54,7 +63,7 @@ module tb_cache_pipeline #(
     assign stat_prefetch_late=dut.tb_observer.stat_prefetch_late;
 
     assign rresp=fail_reads ? 2'b10 : mem_rresp;
-    axi_counted_memory #(.TRACK_BASE(32'h1000),.TRACK_BYTES(4096)) mem(
+    axi_counted_memory #(.BUS_WIDTH(BUS_WIDTH),.TRACK_BASE(32'h1000),.TRACK_BYTES(4096)) mem(
         .clk,.rst_n,.allocation_base(cfg_base),.allocation_bytes(cfg_bytes),.epoch,.block_ar,
         .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,
         .rresp(mem_rresp),.rlast,.read_bytes,.ar_count,.active(mem_active));
@@ -70,12 +79,12 @@ module tb_cache_pipeline #(
             stalled_value={rsp_error,rsp_data};
             if(req_valid && req_ready) begin
                 logic [31:0] a;
-                a={req_addr[31:2],2'b0};
+                a={req_addr[31:READ_SHIFT],{READ_SHIFT{1'b0}}};
                 if(accepted>=4096) $fatal(1,"scoreboard capacity");
                 expected_address[accepted]=req_addr;
                 expected_error[accepted]=req_expect_error || req_addr<cfg_base || req_addr>=cfg_base+cfg_bytes;
                 expected_data[accepted]=0;expected_mask[accepted]=0;
-                for(int b=0;b<4;b++) if(a+32'(b)>=cfg_base && a+32'(b)<cfg_base+cfg_bytes) begin
+                for(int b=0;b<READ_BYTES;b++) if(a+32'(b)>=cfg_base && a+32'(b)<cfg_base+cfg_bytes) begin
                     expected_mask[accepted][b]=1;
                     expected_data[accepted][b*8 +:8]=8'(((a+32'(b))*32'd29)^((a+32'(b))>>4)^epoch);
                 end
@@ -86,7 +95,7 @@ module tb_cache_pipeline #(
                 if(rsp_error!=expected_error[completed])
                     $fatal(1,"response error mismatch request=%0d address=%h got=%0d expected=%0d",
                            completed,expected_address[completed],rsp_error,expected_error[completed]);
-                if(!rsp_error) for(int b=0;b<4;b++) if(expected_mask[completed][b])
+                if(!rsp_error) for(int b=0;b<READ_BYTES;b++) if(expected_mask[completed][b])
                     if(rsp_data[b*8 +:8]!=expected_data[completed][b*8 +:8])
                         $fatal(1,"response data/order mismatch request=%0d address=%h got=%h expected=%h",
                                completed,expected_address[completed],rsp_data,expected_data[completed]);
@@ -131,7 +140,7 @@ module tb_cache_pipeline #(
         case(mode)
             0:return 32'h1004;
             1:return 32'h1100+32'(4*(index%16));
-            2:return 32'h1014+32'(16*((index*5)%13));
+            2:return 32'h1014+32'(LINE_BYTES*((index*5)%13));
             3:case(index%4)
                 0:return 32'h1002;
                 1:return 32'h1004;
@@ -140,7 +149,7 @@ module tb_cache_pipeline #(
               endcase
             4:return 32'h1204;
             5:return 32'h1304;
-            6:return 32'h1404+32'(16*index);
+            6:return 32'h1404+32'(LINE_BYTES*index);
             default:return index%2!=0 ? 32'h17fc : 32'h1003;
         endcase
     endfunction
@@ -240,7 +249,7 @@ module tb_cache_pipeline #(
         @(negedge clk);fail_reads=1;block_ar=1;rsp_ready=0;
         repeat(3) @(negedge clk);
         stream(DEMAND_DEPTH,4,0,1);block_ar=0;drain();
-        if(read_bytes-old_bytes!=64'(DEMAND_DEPTH*16) || stat_hits!=0 ||
+        if(read_bytes-old_bytes!=64'(DEMAND_DEPTH*LINE_BYTES) || stat_hits!=0 ||
            dut.g_window.u_window.tb_observer.stat_lookup_misses!=DEMAND_DEPTH)
             $fatal(1,"failed fills were admitted to cache");
         @(negedge clk);fail_reads=0;

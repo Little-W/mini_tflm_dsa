@@ -3,7 +3,9 @@
 // Generate vectors with tests/gen_rtl_vectors.py; run with +VECTORS=<path>.
 module tb_conv_im2col_frontend;
   import conv_im2col_pkg::*;
-  parameter int SIZE=16, LANES=2, CACHE_POLICY=3;
+  parameter int SIZE=16, LANES=2, CACHE_POLICY=3, BUS_WIDTH=32;
+  parameter int NARROW_MODE=0;
+  localparam int BUS_BYTES=BUS_WIDTH/8;
   parameter bit PREFETCH=0, WINDOWED=0;
   parameter int CACHE_SETS=128, CACHE_WAYS=2, LINE_BYTES=16;
   parameter bit USE_TILE_PATH=0;
@@ -17,6 +19,7 @@ module tb_conv_im2col_frontend;
   logic rst_n=0, cfg_valid=0, cfg_ready;
   conv_cfg_t cfg;
   logic tile_valid=0,tile_ready;
+  logic tile_narrow=0;
   logic [31:0] tile_p0=0,tile_q0=0;
   logic [RW-1:0] tile_rows=0;
   logic [2:0] tile_slot=0;
@@ -29,7 +32,8 @@ module tb_conv_im2col_frontend;
   logic [31:0] stat_hits,stat_misses,stat_read_bytes;
   logic [31:0] stat_prefetch_lines,stat_prefetch_used,stat_prefetch_wasted,stat_prefetch_unused,stat_prefetch_bytes,stat_prefetch_late;
   logic arvalid,arready,rvalid,rready,rlast;
-  logic [31:0] araddr,rdata;
+  logic [31:0] araddr;
+  logic [BUS_WIDTH-1:0] rdata;
   logic [7:0] arlen;
   logic [2:0] arsize;
   logic [1:0] arburst,rresp;
@@ -53,10 +57,10 @@ module tb_conv_im2col_frontend;
   string vectors;
   logic [31:0] virtual_stride;
   generate if (!USE_TILE_PATH) begin : g_direct
-    conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(3),.LANES(LANES),.CACHE_POLICY(CACHE_POLICY),.CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES)) dut (
+    conv_im2col_frontend #(.SIZE(SIZE),.SLOT_W(3),.LANES(LANES),.BUS_WIDTH(BUS_WIDTH),.CACHE_POLICY(CACHE_POLICY),.CACHE_SETS(CACHE_SETS),.CACHE_WAYS(CACHE_WAYS),.LINE_BYTES(LINE_BYTES)) dut (
       .clk,.rst_n,.cfg_valid,.cfg_ready,.cfg,
       .cfg_sched_r(NATIVE_SCHED_R),.cfg_sched_groups(NATIVE_SCHED_GROUPS),
-      .tile_valid,.tile_ready,.tile_p0,.tile_q0,.tile_rows,.tile_slot,
+      .tile_valid,.tile_ready,.tile_p0,.tile_q0,.tile_rows,.tile_slot,.tile_narrow,
       .wr_valid,.wr_ready,.wr_slot,.wr_row,.wr_col,.wr_data,.wr_mask,.wr_last(unused_wr_last),
       .tile_done,.tile_error,.error,.busy,
       .arvalid,.arready,.araddr,.arlen,.arsize,.arburst,.rvalid,.rready,.rdata,.rresp,.rlast
@@ -65,6 +69,8 @@ module tb_conv_im2col_frontend;
     always @(posedge clk) begin
       if (rst_n && dut.past_active_q !== (dut.col_idx >= dut.active_cols_q))
         $fatal(1, "active-column boundary mismatch");
+      if (rst_n && wr_valid && dut.narrow_output && $countones(wr_mask)>BUS_BYTES)
+        $fatal(1, "narrow output width exceeded");
     end
     assign stat_hits=dut.tb_observer.stat_hits;
     assign stat_misses=dut.tb_observer.stat_misses;
@@ -131,7 +137,7 @@ module tb_conv_im2col_frontend;
       arready<=!mem_active && (lfsr[0] || lfsr[3]);
       if (arvalid && arready) begin
         if (mem_active) $fatal(1,"multiple outstanding requests in single-burst slave");
-        if (arburst!=1 || !(arsize==0 || arsize==2)) $fatal(1,"unsupported AR");
+        if (arburst!=1 || !(arsize==0 || arsize==3'($clog2(BUS_BYTES)))) $fatal(1,"unsupported AR");
         if ((araddr&4095)+((int'(arlen)+1)<<arsize)>4096) $fatal(1,"4 KiB crossing");
         mem_active=1;mem_addr=araddr;mem_left=int'(arlen)+1;mem_size=1<<arsize;
         arready<=0;
@@ -143,10 +149,10 @@ module tb_conv_im2col_frontend;
       end else if (mem_active && !rvalid && lfsr[2]) begin
         if (mem_addr<input_base || 64'(mem_addr)+64'(mem_size)>input_end)
           $fatal(1,"out-of-range read addr=%h size=%0d bounds=%h..%h",mem_addr,mem_size,input_base,input_end);
-        if (mem_size==4 && mem_addr[1:0]!=0) $fatal(1,"unaligned full-width burst");
-        rdata<=32'ha5b6c7d8; // Invalid byte lanes deliberately not zero.
-        for (int b=0;b<4;b++)
-          if (b<mem_size) rdata[((mem_addr&3)+b)*8 +: 8]<=memory[mem_addr-input_base+unsigned'(b)];
+        if (mem_size==BUS_BYTES && (mem_addr & (BUS_BYTES-1))!=0) $fatal(1,"unaligned full-width burst");
+        rdata<={BUS_WIDTH/32{32'ha5b6c7d8}}; // Invalid byte lanes deliberately not zero.
+        for (int b=0;b<BUS_BYTES;b++)
+          if (b<mem_size) rdata[((mem_addr&(BUS_BYTES-1))+b)*8 +: 8]<=memory[mem_addr-input_base+unsigned'(b)];
         rlast<=mem_left==1;
         rresp<=(inject_error && !error_injected) ? 2'b10 : 2'b00;
         if (inject_error && !error_injected) error_injected=1;
@@ -202,6 +208,7 @@ module tb_conv_im2col_frontend;
       for(ti=0;ti<ntiles;ti++) begin
         for(int j=0;j<4;j++) begin rc=$fscanf(fd,"%d",v[j]);if(rc!=1)$fatal(1,"bad tile");end
         tile_p0=32'(v[0]);tile_q0=32'(v[1]);tile_rows=RW'(v[2]);tile_slot=3'(v[3]);
+        tile_narrow=NARROW_MODE==1 || (NARROW_MODE==2 && (ti%2)!=0);
         active_rows=v[2];expected_slot=v[3];written=0;
         for(int r=0;r<SIZE;r++) for(int c=0;c<SIZE;c++) seen[r][c]=0;
         for(int r=0;r<active_rows;r++) for(int c=0;c<SIZE;c++) begin
