@@ -2,7 +2,7 @@
 
 本项目使用 Yosys、Slang 和 ABC 将 RTL 转换为 Xilinx 7 系列器件单元。脚本支持独立模块、完整 NPU 和包含 PicoRV32、片上存储器、AXI 互连及 UART 的完整 SoC。综合结果用于比较硬件结构与资源数量；150 MHz 工作频率由目标器件的布局布线时序报告检查。
 
-完整 SoC 同时检查三个目标：合法布局中的物理 LUT 位置不超过 50,000，最长寄存器间组合路径不超过 15 个组合单元，以及目标器件在 6.667 ns 周期下满足时序要求。综合逻辑 LUT 或合法布局物理 LUT 首次不超过 60,000 时，保存对应阶段的独立交接检查点；检查点分别记录三个目标的实际完成状态。
+完整 SoC 同时检查三个目标：合法布局中的物理 LUT 位置不超过 45,000，最长寄存器间组合路径不超过 15 个组合单元，以及目标器件在 6.667 ns 周期下满足时序要求。物理 LUT 总数包含逻辑、分布式 RAM 和 SRL 使用的位置。每轮独立保存源码、参数、工具与结果摘要，分别记录面积、组合级数和布线后时序的检查状态。
 
 ## 环境与运行
 
@@ -64,9 +64,11 @@ python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
 
 各测量项自动包含 `rtl/common/` 下的 `.v` 和 `.sv` 文件，供 regfile 等公共模块使用。
 
-显式实例化的 `LUT1`、`LUT6_2`、`DSP48E1` 等原语，从所安装 Yosys 的 `cells_sim.v` 和 `cells_xtra.v` 读取完整参数与功能定义。展开阶段保留原语实例及参数，后续由 Xilinx 综合流程处理。生成的 `xilinx_primitives.sv`、所选原语名称和工具库的 SHA-256 随测量结果保存。功能仿真可直接使用相同版本的原始 Xilinx 功能模型。
+RTL 使用普通运算符描述选择、比较和布尔逻辑，未显式实例化 LUT 或 MUXF。当前直接使用的器件原语包括 `DSP48E1`、`FDRE` 和 `BUFGCE`。脚本从所安装 Yosys 的 `cells_sim.v` 和 `cells_xtra.v` 提取实际引用的原语定义，保留参数、端口和功能模型；Slang 展开时按黑盒导入这些器件实例，随后加载完整 Xilinx 单元库进行技术映射。技术映射还可生成 LUT、MUXF、CARRY、存储器和触发器原语。
 
-存储器使用 RTL 描述的容量、读写端口和读取周期进行自动推断。综合脚本不增加强制 BRAM 属性。小型存储器使用公共 regfile 封装时，最终采用寄存器、分布式 RAM 或块 RAM 由综合工具决定。
+生成的 `xilinx_primitives.sv`、所选原语名称和工具库的 SHA-256 随测量结果保存。功能仿真使用相同版本的原始 Xilinx 功能模型。
+
+存储器按 RTL 描述的容量、读写端口、读取周期和存储属性进行推断。综合脚本不另加 BRAM 属性。公共 `regfile` 的 `p_ram_style` 默认为 `"auto"`，具体模块可显式选择 `"block"` 等推断属性；逻辑容量与公开读写周期由 RTL 接口保持。
 
 ## 阶段文件与继续执行
 
@@ -97,7 +99,7 @@ python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
 
 `manage_intermediate_archives.py` 对已完成测量的中间文件执行无损 gzip 压缩。每份压缩文件保存前，程序解压并核对原始 SHA-256，再保存清单并移除原始副本。清单保存原始文件与压缩文件的大小、SHA-256、权限和修改时间。恢复时检查两种 SHA-256，已有文件内容不一致时停止操作。
 
-当前 [intermediate_archives.json](data/intermediate_archives.json) 记录 46 份文件，原始大小为 8,150,330,641 字节，压缩后为 615,944,285 字节。恢复单个文件时，`--root` 指向包含 `worktrees` 的测量目录：
+[intermediate_archives.json](data/intermediate_archives.json) 记录已归档文件的路径、大小及摘要。恢复单个文件时，`--root` 指向包含 `worktrees` 的测量目录：
 
 ```sh
 python3 scripts/fpga/manage_intermediate_archives.py restore \
@@ -108,7 +110,7 @@ python3 scripts/fpga/manage_intermediate_archives.py restore \
 
 使用 `--all` 代替 `--path` 可以恢复清单中的全部文件。恢复完成后，压缩文件仍保留。继续旧综合阶段前，先恢复相应阶段文件，使综合程序能够按原有清单检查文件摘要。新增压缩任务使用 `archive` 子命令和 `--paths-file`，文件内容为相对于 `--root` 的路径数组；仅选择已停止使用的中间文件。
 
-## 宽算术单元的 DSP 映射
+## 算术单元的 DSP 映射
 
 `--wide-alu-dsp-budget` 启用宽算术单元到 `DSP48E1` 的组合映射。默认筛选输出宽度为 24 至 48 位的 Yosys `$alu`，统计已有 DSP 后，在给定总预算内选择候选。
 
@@ -124,9 +126,50 @@ python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
 
 `--wide-alu-maximum-chain 2` 允许同一组合路径包含至多两个本轮选中的算术 DSP。选择时同时检查候选的全部上游与下游依赖，维持与已有未寄存 DSP 的分隔；默认值为 `1`。完整设计的 DSP 内部组合段、LUT、MUX 和 CARRY 仍由 `netlist_metrics.py` 统一统计，并使用相同的十五级要求。两次三十二位模加之间包含异或的验证电路，通过四万余个周期的实际综合网表比较及真实参数形式证明；两 DSP 实现的寄存器间路径为三个组合单元。对应结果见 [DSP 选择与复用验证](data/bounded_dsp_mapping_validation.json)。
 
+```sh
+python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
+  --out build/open_soc_two_dsp --through pre_lut \
+  --wide-alu-dsp-budget 740 --wide-alu-minimum-width 16 \
+  --wide-alu-maximum-chain 2 \
+  --lock-file /tmp/mini_tflm_dsa_synthesis.lock
+```
+
+### 可选 FOUR12 映射
+
+`--pack-small-alu` 将最多四个相互独立、结果宽度不超过十位且使用相同
+`BI` 信号的 `$alu` 组合到一个 `DSP48E1`，使用 `FOUR12` 的四个独立
+十二位算术段。各运算保持独立的 `CI`，并保留全部 `X`、`Y` 和逐位
+`CO` 输出。位宽、符号扩展和截断按原 `$alu` 参数处理，DSP 内部寄存器
+旁路，原有周期关系保持。
+
+该选项需要显式给出 DSP 总预算，并使用 `--wide-alu-maximum-chain 1`。
+`--wide-alu-minimum-width` 应设为不大于十的值，才能包含相应窄算术。
+宽算术仍优先选择，窄算术使用剩余预算；映射报告记录分组、实际 DSP
+数量及预算检查结果。
+
+```sh
+python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
+  --out build/open_soc_four12 --through pre_lut \
+  --wide-alu-dsp-budget 740 --wide-alu-minimum-width 1 \
+  --wide-alu-maximum-chain 1 --pack-small-alu \
+  --lock-file /tmp/mini_tflm_dsa_synthesis.lock
+python3 test/fpga_dsp_alu4/run.py --out build/fpga_dsp_alu4
+python3 test/fpga_alu4_mapping/run.py --out build/fpga_alu4_mapping \
+  --selection build/open_soc_four12/soc_top/wide_alu_mapping.json \
+  --selected-netlist build/open_soc_four12/soc_top/pre_alu.json
+```
+
+算术功能、四态行为和通道独立性见
+[四通道 DSP 算术验证](../test/fpga_dsp_alu4/README.md)；实际 JSON
+重写、技术映射及生产参数比较见
+[完整映射验证](../test/fpga_alu4_mapping/README.md)。每个候选分别保存
+测量目录，并根据功能检查、合法布局面积和时序报告选择。
+
+### 映射复用与验证
+
 固定同一份 RTL 比较不同 DSP 选择时，可以用 `--reuse-pre-alu-from` 指定已完成粗综合的单个 case 目录。工具核对全部源码、生产参数、原语模型、综合命令及网表 SHA-256，再复用 `elaborated.il` 和 `pre_alu.json`；后续算术选择和 LUT 映射重新执行。该选项与 `--wide-alu-dsp-budget` 一起使用。
 
-分析布局中的组合 DSP 长连接后，可以单独保留指定算术单元的进位逻辑。直接运行 `map_wide_alu.py` 时，使用 `--selection-reference` 指定同一输入的 `wide_alu_mapping.json`，并用 `--keep-as-carry` 指定其中的完整单元名称；多个单元可以重复给出该选项。输入 SHA-256、预算、位宽范围和原有选择必须与参考报告一致。指定单元保留 `$alu` 类型，其余 DSP 选择、连线、参数和自动编号保持。报告保存保留的单元及减少后的 DSP 数量。该候选需要从修改后的算术映射阶段重新生成 `pre_lut.il`，并完成相同的 LUT 映射、功能检查和物理测量。
+分析布局中的组合 DSP 长连接后，可以单独保留指定算术单元的进位逻辑。直接运行 `map_wide_alu.py` 时，使用 `--selection-reference` 指定同一输入的 `wide_alu_mapping.json`，并用 `--keep-as-carry` 指定其中的完整单元名称；多个单元可以重复给出该选项。这两个参数成对使用，适用于关闭 `--pack-small-alu` 的单通道映射。输入 SHA-256、预算、位宽范围和原有选择必须与参考报告一致。指定单元保留 `$alu` 类型，其余 DSP 选择、连线、参数和自动编号保持。报告保存保留的单元及减少后的 DSP 数量。该候选需要从修改后的算术映射阶段重新生成 `pre_lut.il`，并完成相同的 LUT 映射、功能检查和物理测量。
 
 形式验证直接使用安装版本的 Yosys `$alu` 与 `DSP48E1` 功能模型，覆盖 1、17、24、32、48 位、符号组合、截断与扩展，以及动态 `BI`、`CI` 的全部确定输入取值。
 
@@ -135,7 +178,7 @@ python3 scripts/fpga/test_wide_alu_dsp.py --out build/wide_alu_formal
 python3 scripts/fpga/test_map_wide_alu.py -v
 ```
 
-对具体生产综合结果，验证脚本从选择清单读取每个算术单元的真实参数，合并相同参数组合后执行全输入证明，并保存网表、选择清单与模型摘要。
+对单通道宽算术的生产综合结果，验证脚本从选择清单读取每个算术单元的真实参数，合并相同参数组合后执行全输入证明，并保存网表、选择清单与模型摘要。
 
 ```sh
 python3 scripts/fpga/test_wide_alu_dsp.py \
@@ -184,24 +227,24 @@ python3 scripts/fpga/remap_fpga_luts.py \
   --mode physical-cost --lock-file /tmp/mini_tflm_dsa_synthesis.lock
 ```
 
-面积成本模式从当前 Xilinx 原语模型生成 LUT 库，保留每个输入引脚的延迟，将 1 至 6 输入 LUT 的面积成本设为 1，7 输入和 8 输入选择网络的成本分别设为 2 和 4。ABC9 使用 XAIGER 版本 1、300 ps 连线成本及 6667 ps 延迟目标，并执行 `&verify`。这些成本指导逻辑映射；最终 LUT 占用仍由合法布局中的物理位置统计。
+面积成本模式从当前 Xilinx 原语模型生成 LUT 库，保留每个输入引脚的延迟。默认将 1 至 6 输入 LUT 的面积成本设为 1，7 输入和 8 输入选择网络的成本分别设为 2 和 4。ABC9 使用 XAIGER 版本 1，默认采用 300 ps 连线成本和 6667 ps 延迟目标，并执行 `&verify`。`--wire-delay-ps`、`--delay-target-ps` 和 `--max-lut-inputs` 分别设置连线成本、延迟目标与最多六输入或八输入的映射范围。这些成本指导逻辑映射；最终 LUT 占用由合法布局中的物理位置统计。
 
-可通过 `--small-lut-area-cost 0.75` 比较较小 LUT 的成本选择。该参数只调整一至五输入 LUT 的面积成本，六输入 LUT 保持为 1，七/八输入保持为 2/4，全部引脚延迟、连线成本和目标周期保持。各候选使用独立输出目录，并完成组合等价、实际配对和合法布局后比较物理占用。默认值为 1。
+`remap_fpga_luts.py` 的 `--small-lut-area-cost` 只用于 `physical-cost`
+模式，允许大于零且不超过一的有限数值，默认值为 `1`。例如 `0.75`
+只调整一至五输入 LUT 的面积成本，六输入保持为 `1`，七/八输入保持为
+`2/4`；单独改变此参数时，引脚延迟、连线成本和目标周期保持。
+各候选使用独立输出目录，并完成组合等价、实际配对和合法布局后
+比较物理占用。
 
-固定 `dab4a8d` 的完整 SoC 使用相同器件、种子 1 和十轮布局细化完成比较：标准成本为 61,514 个物理 LUT 位置，成本 0.75 为 61,271 个，减少 243 个。两者的综合逻辑 LUT 分别为 61,644 和 63,598，占用 Slice 数分别为 19,893 和 20,958。资源、工具、网表、配置和实际阶段摘要保存于 [fpga_lut_cost_variants.json](data/fpga_lut_cost_variants.json)。两份结果均完成合法布局，布线与完整目标器件时序检查另行执行。
+```sh
+python3 scripts/fpga/remap_fpga_luts.py \
+  --source build/soc_pre/soc_top --out build/soc_cost_075/soc_top \
+  --mode physical-cost --small-lut-area-cost 0.75 \
+  --max-lut-inputs 6 --wire-delay-ps 500 --delay-target-ps 6667 \
+  --lock-file /tmp/mini_tflm_dsa_synthesis.lock
+```
 
 `native-xaiger1` 保留原语库的默认面积成本与引脚延迟。`legacy` 使用普通 ABC LUT 映射，并对提取前后的全部组合边界执行按名称匹配的分区 CEC。三种模式都要求功能等价检查成功。`--resume` 仅复用输入摘要、脚本、库文件、输出网表及日志全部一致的阶段。
-
-固定提交 `b8b34d5` 的同一 DSP 映射检查点得到下列结果；各方案均使用 700 个 DSP。
-
-| 映射方案 | 逻辑 LUT | RAM LUT | SRL LUT | FF | 最长寄存器组合路径 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| ABC9 默认 XAIGER 版本 2 | 71,161 | 4,012 | 192 | 54,499 | 32 |
-| ABC9 原语成本、XAIGER 版本 1 | 70,207 | 4,012 | 192 | 54,499 | 33 |
-| ABC9 面积成本 | 65,917 | 4,012 | 192 | 54,499 | 32 |
-| 普通 ABC | 77,345 | 4,012 | 0 | 55,434 | 36 |
-
-表内最后一列为实际连通路径中的组合单元数。对应资源、配置、网表与证明摘要保存于 [fpga_lut_mapping_comparison.json](data/fpga_lut_mapping_comparison.json)。面积成本方案的物理位置与目标速度等级时序需继续执行布局布线后确定。
 
 可运行包含寄存乘法、加法和动态移位的小设计，检查三种映射的完整功能证明以及检查点复用：
 
@@ -221,9 +264,28 @@ python3 scripts/fpga/tests/test_lut_remapping.py --out build/lut_remapping_valid
 | `lut_sites_nominal_before_packing` | 上述三项之和 |
 | `physical_lut_sites_after_placement` | 合法布局后的物理 LUT 位置数量；单独综合阶段为空 |
 
-`RAM32M` 和 `RAM64M` 各需要四个 LUT 存储位置，`RAM64X1D` 需要两个，`SRL16E` 和 `SRLC32E` 各需要一个。打包过程可以把满足条件的逻辑函数放入同一个 LUT，也可能为连接增加 LUT 单元。因此，完整 SoC 的 50,000 LUT 目标使用合法布局后的物理占用检查。
+`RAM32M` 和 `RAM64M` 各需要四个 LUT 存储位置，`RAM64X1D` 需要两个，`SRL16E` 和 `SRLC32E` 各需要一个。打包过程可以把满足条件的逻辑函数放入同一个 LUT，也可能为连接增加 LUT 单元。因此，完整 SoC 的 45,000 LUT 目标使用合法布局后的物理占用检查。
 
 ## 布局与布线
+
+完整 SoC 的面积检查可使用 `test/soc_rtl_optimization/run_physical.py`。
+它依次执行打包、普通 LUT 配对、带寄存器的 LUT 配对、混合配对和进位
+LUT 配对，再完成合法布局与逻辑引脚检查。各次配对核对功能单元内容，
+最终 `resources.json` 保存 `physical_lut_positions`、
+`placement_complete`、`pin_mapping_passed` 和 45,000 位置限制的检查结果。
+
+```sh
+python3 test/soc_rtl_optimization/run_physical.py \
+  --source build/soc_cost/soc_top --out build/soc_physical \
+  --nextpnr /path/to/nextpnr-xilinx \
+  --chipdb /path/to/chipdb-xc7a200tfbg484-3.bin \
+  --package-pins /path/to/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv
+```
+
+`--through pair` 保存配对网表，随后可通过 `--resume` 继续布局。配对数量
+用于安排候选比较，实际物理占用从完成布局的报告读取。该脚本执行到
+布局阶段，150 MHz 时序状态单独记录；频率确认需要继续完成布线和
+完整目标器件时序检查。
 
 `open_fpga_implementation.py` 将综合后的网表交给 `nextpnr-xilinx`，依次保存时钟缓冲器处理、器件打包、合法布局和完整布线结果。
 
@@ -357,9 +419,9 @@ python3 fpga/vivado/tflm_ai_dsa_soc/scripts/test_npu_config.py \
   --out build/vivado_configuration_checks --picorv32 /path/to/picorv32
 ```
 
-这些测试检查 Tcl 语法、Vivado 命令调用、结果判断、端点统计和生产源文件完整性，使用模拟命令提供设计对象。测试报告分别记录这些检查与实际 Vivado 执行状态。本次环境没有可调用的 Vivado，实际 Vivado 布局布线尚未执行；执行生产实现需要包含 Artix-7 器件支持的 Vivado 环境、对应固定源码的原语网表，以及实际封装和接口约束。
+这些测试检查 Tcl 语法、Vivado 命令调用、结果判断、端点统计和生产源文件完整性，使用模拟命令提供设计对象。测试报告分别记录这些检查与实际 Vivado 执行状态。执行生产实现需要包含 Artix-7 器件支持的 Vivado 环境、对应固定源码的原语网表，以及实际封装和接口约束。
 
-[脚本验证结果](data/vivado_timing_validation.json) 保存通过的 40 项测试、173 次 Tcl 调用及源码 SHA-256。Vivado 列表中的 79 个文件覆盖 `dut_axil.f` 所需的 64 个生产文件；该比较排除仿真包装 `axil_top_with_ram.sv`。
+[脚本验证结果](data/vivado_timing_validation.json) 保存 Tcl 调用检查及源码 SHA-256。生产源文件检查比较 Vivado 列表与 `dut_axil.f`，排除仿真包装 `axil_top_with_ram.sv`。
 
 ### CARRY 专用输入
 
@@ -608,18 +670,18 @@ python3 scripts/fpga/module_resources.py \
 
 分析考虑以下结构：
 
-- `LUT6_2` 的 `O5` 仅依赖 `I0` 至 `I4`，`O6` 还依赖 `I5`。
+- `LUT6_2` 按 `INIT`、常量和重复输入确定实际依赖；`O5` 最多使用 `I0` 至 `I4`，`O6` 最多使用 `I0` 至 `I5`。
 - `CARRY4` 按从低位到高位的进位方向确定输入与输出关系。
 - 分布式 RAM 和 SRL 的异步地址选择进入组合路径，写入数据以时钟为分隔。
 - DSP 启用的寄存器形成时钟分隔；输入、内部寄存器和输出之间实际经过的每段算术计为一个 DSP 组合单元。直接连接寄存器的输出计为零个算术单元。
-- 对控制为常量的 `ONE48`、`A:B` 与 `C` 纯 ALU 运算，`P` 和 `PCOUT` 的每一位只依赖同位及更低位操作数。该关系已使用官方 `DSP48E1` 模型对全部 48 种低位宽度和任意 `ALUMODE` 完成形式证明。其他 DSP 配置继续保留保守依赖。
+- 对固定 `OPMODE=0110011`、`INMODE=00000`、`CARRYINSEL=000` 的 `A:B` 与 `C` 纯 ALU 运算，`ONE48` 的每个输出位只依赖同位及更低位操作数；`FOUR12` 按四个十二位通道分别处理，同一规则限于各自通道。`P` 和 `PCOUT` 使用相同的逐位依赖，公共控制与进位输入仍保留依赖。其他 DSP 配置采用保守依赖。
 - 外部输入直接形成的组合路径不记为寄存器之间的路径。
 
 `remap_fpga_luts.py` 另外保存 `fanout.json`，按实际单元输入引脚统计高扇出信号，分别列出时钟负载、控制负载以及每类最长路径中的高扇出连接。`summary.json` 记录 ABC 各轮映射延迟成本和 6667 ps 目标的满足情况；该数值用于比较映射选择，布线后的完整器件时序另行检查。
 
 `graph_complete` 表示分析器是否识别全部相关单元且不存在组合环路。`longest_register_path_cells` 是结构级数，包含进位单元及可能存在的未寄存 DSP 运算。它不包含单元延迟或连线延迟。完整 SoC 必须使用器件、封装、速度等级和全部所用单元的有效时序模型检查 6.667 ns 要求。
 
-`register_path_requirement` 保存 15 个组合单元的限制、实际最长路径以及检查结果。路径图完整时，`met` 按实际单元数是否不超过 15 计算；路径图未完成时该字段为空。同步数据输入和使能等同步控制输入均纳入检查。报告同时保留完整起止点、逐单元连接及 LUT、CARRY、DSP 等类型，供各模块缩短实际组合路径。
+`register_path_requirement` 保存 15 个组合单元的限制、实际最长路径以及检查结果。路径图完整时，`met` 按实际单元数是否不超过 15 计算；路径图未完成时该字段为空。同步数据输入和使能等同步控制输入均纳入检查。报告同时保留完整起止点、逐单元连接及 LUT、CARRY、DSP 等类型，供各模块缩短实际组合路径。该字段表示结构级数要求；150 MHz 通过状态由完整目标器件模型和布线后的 setup、hold 检查确定。
 
 可单独分析已保存的网表：
 
@@ -631,7 +693,12 @@ python3 scripts/fpga/test_netlist_metrics.py -v
 python3 scripts/fpga/test_dsp_alu_bit_dependencies.py --out build/dsp_alu_bit_dependencies/formal
 ```
 
-[DSP 按位依赖验证结果](data/dsp_alu_bit_dependencies_validation.json) 同时保存 48 组算术关系证明与 9 组实际内部寄存器边界检查。组合级数和器件延迟分别记录，150 MHz 要求继续通过完整器件时序检查确认。
+[DSP 按位依赖验证结果](../test/fpga_dsp_alu4/dependencies.json) 保存官方
+`DSP48E1` 模型的 96 项 SAT 证明：48 项覆盖 `ONE48` 的全部输出位，
+另外 48 项覆盖 `FOUR12` 的四个通道。每项保持被观察通道的相应低位
+不变，允许其他操作数位、公共进位和 `ALUMODE` 任意取值，检查 `P`
+与 `PCOUT` 的结果。内部寄存器边界由 `test_netlist_metrics.py` 另行
+核对。组合级数、物理面积和器件时序分别保存检查结果。
 
 ## 增加独立模块测量
 
@@ -653,6 +720,11 @@ python3 scripts/fpga/open_fpga_synth.py --case-config cases.json \
   --cases writeback_check --source-root /path/to/worktree --out build/writeback_check
 ```
 
-## 已保存的模块参考数据
+## 测量结果与工具参考
 
-[模块参考数据](data/open_fpga_reference.json) 保存提交 `c3712e54` 的独立模块结果及对应源码 SHA-256，可用于检查工具版本与参数。该文件中的完整 NPU 统计包含 69,871 个逻辑 LUT、45,171 个触发器和 390 个 DSP48E1。新的完整 SoC 测量应使用本页给出的固定配置，并保存自身的资源与时序结果。
+每轮完整 SoC 测量使用本页给出的固定配置，分别保存 `manifest.json`、
+`metrics.json`、布局资源报告和布线后时序报告。比较时核对对应源码、
+工具版本、参数及文件 SHA-256。
+
+[模块参考数据](data/open_fpga_reference.json) 保存独立模块的工具验证
+数据及其源码摘要，具体配置和资源值以文件内记录为准。

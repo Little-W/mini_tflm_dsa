@@ -1,125 +1,165 @@
-# FPGA 面积与时序优化
+# FPGA 面积、时序与存储实现交接
 
-## 目标和当前结果
+## 目标与测量记录
 
-工作分支为 `experiment/no-ps-compression`，完整顶层为 `soc_top`，目标器件为 Artix-7 `xc7a200tfbg484-3`。目标为不超过50,000个物理LUT位置、寄存器间最长组合路径不超过15个组合单元，以及150 MHz时钟，周期约束为6.667 ns。
+SoC 顶层为 `soc_top`，板级测量顶层为 `fpga_top`，目标器件为 Artix-7 `xc7a200tfbg484-3`。生产设计的目标为：Vivado 报告的 **Slice LUTs 不超过 45,000**，寄存器间最长组合路径不超过 **9 个组合单元**，目标时钟为 **150 MHz**，周期约束为 **6.667 ns**。
 
-最新完成综合、合法布局和同版本完整NPU验证的固定RTL提交为 `7ef39f0101ebf39184d11dbdc80a4042faee75c2`。实际布局占用 **49,828个物理LUT位置**，面积目标已满足，剩余172个位置；该版本映射网表的最长组合路径为18级。继续优化的重点为前端组范围和配置接收，以及DMA上下文状态向向量控制传播的条件。
+每次完整 SoC 测量保存固定源码、综合参数、逻辑 LUT、存储 LUT、FF、DSP、BRAM 和时序状态。详细入口见 [器件测量说明](fpga_150mhz_measurement.md)。`source_manifest.json` 保存完整输入指纹，`measurement.json` 汇总实际 Vivado 资源和时序报告。独立保存本地 LUT 原语计数及物理位置计数。
 
-| 第23轮完整SoC项目 | 结果 |
-| --- | ---: |
-| 综合逻辑LUT原语 | 50,005 |
-| RAM LUT位置 | 2,444 |
-| SRL位置 | 24 |
-| 布局前名义LUT总数 | 52,473 |
-| 合法布局后逻辑LUT位置 | 47,360 |
-| 合法布局后全部LUT位置 | 49,828 |
-| FF | 42,862 |
-| DSP48E1 | 740 |
-| RAMB36E1 / RAMB18E1 | 91 / 45 |
-| 映射网表最长组合路径 | 18级 |
-| 150 MHz布线时序 | 尚未确认 |
+9 级限制用于检查组合路径结构；150 MHz 通过状态使用布线后的建立时间和保持时间报告。综合结果分别保存资源条件、观察到的逻辑级数条件与频率确认状态。
 
-详细资源、完整路径、源码与工具SHA256见 [第23轮测量](fpga_round23_measurement.md)、[布局结果](data/fpga_round23_placement.json) 和 [完整NPU结果](data/fpga_round23_npu.json)。物理位置按实际BEL所在Slice及字母去重统计，逻辑LUT、RAM LUT和SRL分别计数。全部单元已放置，资源和位置检查通过。
+## FPGA 生产配置与完整功能
 
-## 固定生产配置
+参数来自 [config/npu_fpga.mk](../config/npu_fpga.mk)。完整 SoC 保留以下配置与功能。
 
 | 项目 | 配置 |
 | --- | --- |
-| 脉动阵列 | 16×16，共256个计算单元 |
-| 向量计算 | 8个PE，保留深度卷积、池化、Add、Softmax等操作 |
-| 数据精度 | INT8、INT16输入及INT32累加和部分和 |
-| 数据流 | WS和IS，逐张量及逐通道量化 |
-| NPU AXI数据宽度 | 64位 |
-| im2col缓存 | 4,096字节 |
-| IA/PS共享RAM | 7个银行，每个8,192字节 |
-| PS最大存储池 | 49,152字节，直接保存INT32 |
-| 部分和帧数 | 16 |
-| AXI在途读写事务 | 各4个 |
-| 量化计算通道 | 2个 |
-| 量化整组缓存 | 512行，每行513位 |
-| CPU存储器 | 65,536个32位字，共256 KiB，64位物理端口 |
-| CPU乘法、除法 | 启用 |
-| CPU指令缓存 | 关闭 |
+| 计算阵列 | 16 × 16，共 256 个计算 PE |
+| 向量计算 | 8 个 PE，保留深度卷积、池化、Add、Softmax 等操作 |
+| 数据精度 | INT8、INT16 输入，INT32 累加与部分和 |
+| 数据流与量化 | WS、IS，逐张量和逐通道量化 |
+| NPU AXI 数据宽度 | 64 位，读写在途事务各 4 个 |
+| im2col 缓存 | 4,096 字节 |
+| IA/PS 共享数据 RAM | 7 个银行，每个 8,192 字节，共 57,344 字节 |
+| IA 缓存与部分和帧数 | `IA_CACHE_BLOCKS=4`，`PS_FRAME_COUNT=16` |
+| PS 最大存储池 | 49,152 字节，直接保存 INT32 |
+| 量化计算通道 | 2 个，每行 16 个元素分 8 批计算 |
+| 量化整组缓冲 | 512 行，每行 513 位 |
+| NPU 数组容量预算 | 131,072 字节，范围为 `buffer-ram` |
+| CPU 与存储器 | 完整 PicoRV32，乘除法启用；65,536 个 32 位字，共 256 KiB |
+| CPU RAM 物理端口与指令缓存 | 64 位物理端口；指令缓存关闭 |
 
-参数来源为 `config/npu_fpga.mk`。综合定义为 `SYNTHESIS=1`、`XILINX_FPGA=1`、`XILINX_CLK_WIZ_IP=1`、`GEMPACT_PS_COMPRESS=1`、`GEMMORA_PS_POOL_BYTES=49152` 和 `GEMMORA_PS_FORCE_RAW=1`。`GEMPACT_PS_COMPRESS` 是共享存储及帧调度使用的工程开关名称，生产部分和直接保存INT32。
+FPGA 编译定义为 `SYNTHESIS=1`、`XILINX_FPGA=1`、`XILINX_CLK_WIZ_IP=1`、`GEMPACT_PS_COMPRESS=1`、`GEMMORA_PS_POOL_BYTES=49152` 和 `GEMMORA_PS_FORCE_RAW=1`。`GEMPACT_PS_COMPRESS` 用于启用共享存储和帧调度，生产部分和采用 INT32 存储。
 
-NPU缓存数组按实际声明位数折算为124,313.5字节，满足131,072字节的 `buffer-ram` 预算。CPU存储器单独计入SoC资源。完整数组、参数存储和生产结构检查见 [分时量化与整组缓存](../test/requant_time_share/README.md)。
+容量检查使用实际数组声明和生产层次展开，核对数据、标签、参数与状态存储；CPU RAM 单独计入 SoC 资源。逻辑容量、ASIC 宏取整后的物理容量以及 FPGA 资源分别报告。功能、容量、并行规模和公开接口周期均属于后续优化必须保持的设计条件。
 
-## 当前RTL结构
+## RTL 组织与实现方式
 
-### 存储和量化
+组合选择、比较、移位和布尔逻辑采用普通 RTL 运算及命名生成块，RTL 中没有显式 LUT 或 MUXF 实例。器件相关路径使用 `DSP48E1`、`FDRE` 和 `BUFGCE`；技术映射产生的 LUT、进位、存储器与触发器由工具处理。修改继续遵循 `rtl-design` 和 `synthesizable-rtl-style`，使用明确的位宽、符号、事件优先级和实例连接，说明性注释使用中文。
 
-小型存储器统一使用 `rtl/common/regfile.v` 表达容量、写入分组、端口和读取周期，由综合工具选择物理存储资源。同步读取的同址读写返回写入前的数据，存储内容由有效状态管理。IA/PS共享存储采用四个128位通道处理512位部分和行，IA与PS地址集合覆盖全部57,344字节。
+公共存储模块统一命名为 `regfile`，文件为 `rtl/common/regfile.v`。端口、读写周期、写入分组和 `p_ram_style` 属性由实例参数表达。同步读取分支保留读使能暂停时的输出，同址读写返回写入前的数据；数据有效性由对应控制状态管理。
 
-两个 `requant_compute_lane` 分八批处理每行16个元素。`requant_group_buffer` 在最终输出组开始前预留整组容量，预留包含阵列内、缓存内及算术流水中的未完成行。每输出一行释放一行预留，下一最终输出组等待当前组完成。参数状态在组内保持稳定；队列和参数持续就绪时，每8个周期输出一行。算术通道保留12个使能采样阶段及完整整数舍入、限幅和INT8/INT16结果。
+IA 标签和 PS 重放使用同步存储结构。IA 写入预选在已有写命令寄存阶段准备共享银行的 128 位数据，原有写端口的地址、掩码、有效位和接受周期保持。生产 DMA 布局关系通过真实 DMA 输出的归纳证明后，用于启用专用参数；通用模块的默认参数保留完整输入行为。对应检查见 [DMA 输出布局](../test/dma_source_layout/README.md) 和 [共享存储写数据预选](../test/ia_shared_write_stage/README.md)。
 
-S8输出FIFO按循环银行组织，数据容量为8,192字节。每个银行分别计算写入和释放条件，释放保持同周期较高优先级。行列结束条件并行比较，最后一级LUT选择组结束结果。存储端口、数据、掩码和两项输出寄存保持原有行为。
+量化缓冲在最终输出组开始前预留整组容量，覆盖尚在阵列中、存储中、同步读出中和算术流水中的全部未完成行。每输出一行释放一行预留，下一最终输出组等待当前组完成。参数在未完成组期间保持稳定；队列与参数持续就绪时，两个量化通道每 8 个周期输出一行。完整的 INT8、INT16 舍入、限幅和 tile 完成标志随数据保持，详见 [分时量化与整组缓冲](../test/requant_time_share/README.md)。
 
-### 地址、缓存和控制
+## ASIC 量化缓冲与 DC 流程
 
-卷积缓存保存预取代次及字地址比较结果，配置接收使用并行空闲状态检查。前端分别准备当前请求与新描述符的移位元数据；退休行的条件递增使用并行前缀。输入边界、行尾和卷积核坐标采用固定宽度的并行计算。
+### 默认配置和生产配置
 
-线性DMA保留四个描述符及两个异步读取端口。普通首行和合并首行分别计算后续地址，页边界、剩余长度和突发上限分别准备候选结果。读取保护维持4 KiB边界和范围检查，数据有效、就绪、中止及通道归属按实际输入输出行为验证。
+ASIC Makefile 默认读取 [config/npu.mk](../config/npu.mk)，通过 `NPU_CONFIG` 可以选择其他配置。
 
-IA请求坐标使用显式LUT比较，普通、尾组和预取目标并行准备。前端S8偏移共享高字节候选，递增通道范围采用提前比较和末级有效通道选择。向量配置在等待期间持续提供有效描述符。权重加载器的预取空闲判断把当前请求置于末级。
+| 项目 | ASIC 默认配置 | FPGA 生产配置用于 ASIC 展开 |
+| --- | --- | --- |
+| 配置文件 | `config/npu.mk` | `config/npu_fpga.mk` |
+| 计算阵列与 AXI 数据宽度 | 16 × 16，64 位 | 16 × 16，64 位 |
+| 共享银行 | 9 × 2,048 字节 | 7 × 8,192 字节 |
+| `IA_CACHE_BLOCKS` | 2 | 4 |
+| `PS_FRAME_COUNT` | 4 | 16 |
+| 量化计算 | 完整并行 | 两个物理计算通道 |
+| 分时量化整组缓冲 | 该路径不启用 | 513 位 × 512 行 |
+| ASIC 默认目标频率 | 50 MHz | 由 `TARGET_FREQ_MHZ` 指定，默认仍为 50 MHz |
 
-向量输出偏移采用三层并行进位前缀和固定限幅选择，保留完整64位回绕、符号处理和限幅顺序。该结构通过全输入证明和592个实际向量任务，并已纳入第23轮完整生产NPU验证，见 [三层前缀偏移](../test/vector_offset_prefix3/README.md)。
+DC 的 `3_read_design.tcl` 定义 `SYNTHESIS`、`ASIC_SYNTHESIS` 和 `ASIC_SRAM`，读取 `prepare_dc_sources.py` 生成的源文件列表，并加入 `asic/rtl/smic40_sram_1r1w.sv`。共享存储与 RAW32 部分和的编译定义由所选 Make 配置提供。
 
-窗口队列在更新计数的同一边沿保存占用标志，前端采用三位分组范围和相等比较。完整队列的20项归纳及输出证明、30项条件检查均通过，所有179位公开字段包含无效周期均保持一致。顶层并行计算控制器需要的偏置零值关系，偏置加载器继续接收完整32位地址；总线读写就绪与配置开始请求直接参与各自末级条件。
+标准单元时序库由 `STD_ROOT` 指定，SRAM 库由 `SRAM_ROOT` 指定；标准单元作为目标库，`RAMTP128X16` 与 `RAMTP1024X16` 的 `.db` 文件作为链接库。展开并链接后，`check_requant_storage.tcl` 生成 `npu_top_requant_storage.rpt`，检查实际量化缓冲的宏实例、容量和 `regfile` 子实例。分模块综合使用相同的公共 RTL、宏封装、参数与展开结果。详细运行说明见 [ASIC 综合环境](../asic/README.md) 和 [ASIC 综合与路径优化](asic_synthesis.md)。
 
-配置接收把各模块状态分组并行检查，两个预取空闲信号直接进入末级LUT。帧地址准备向上层提供内部空闲状态，内部接受事件始终检查中止条件；上层检查任务中止。实际帧调度器已证明在配置可接收的空闲状态没有有效帧命令。
+### 513 位、512 行的 SRAM 结构
 
-新增和修改的RTL采用显式位宽及符号、命名生成块和实例中间信号，说明性注释使用中文。接口和参数保留原有英文标识符。
+`requant_group_buffer` 在 `ASIC_SRAM` 下通过 `smic40_sram_1r1w` 保存每行全部 16 个 INT32 数据和一个 `tile_done` 标志。
 
-## 功能及形式验证
+| 项目 | 数值 |
+| --- | ---: |
+| 逻辑存储容量 | 513 × 512 = 262,656 位，32,832 字节 |
+| 宏型号与尺寸 | `RAMTP128X16`，128 行 × 16 位 |
+| 深度方向分组 | 4 |
+| 每个深度分组的宽度切片 | 33 |
+| SRAM 宏总数 | **132** |
+| 物理宏容量 | 270,336 位，33,792 字节，即 33 KiB |
+| 填充容量 | 7,680 位，960 字节 |
+| 该缓冲的推断数据存储与 `regfile` 子实例 | 均为 0 |
+| 控制和读取 bank 选择寄存器 | 41 位 |
 
-第23轮实际FPGA分支使用官方LUT和DSP模型，以及同一个固定仿真程序运行以下任务。综合与仿真的共同RTL文件逐项核对SHA256一致。
+每行最后一个宽度切片仅使用一位，其余 15 位写数据为零且写掩码关闭。读使能有效时，同步更新整行数据及读取 bank；读使能暂停时，宏输出和读取 bank 都保持。复位和清空重置队列控制，不要求复位 SRAM 数据阵列。
 
-| 类别 | 任务数 | INT32数值检查 | 任务周期 |
-| --- | ---: | ---: | ---: |
-| 完整NPU功能 | 38 | 11,118 | 143,037 |
-| 共享银行、部分和容量和恢复 | 21 | 173,642 | 663,521 |
-| 输出模式和合并 | 15 | 11,392 | 45,446 |
-| 紧凑输入格式 | 12 | 20,196 | 109,869 |
-| 合计 | 86 | 216,348 | 961,873 |
+真实宏的同址并发读写行为不用于实现队列功能。控制归纳证明从合法整组预留、输入不超过预留数量、输出仅消费已发射行等协议条件导出读写地址互斥。功能模型保存全部宏数据和写掩码，并在同址并发读写时报告冲突。
 
-整组量化实际处理742组、17,360行，覆盖512行最大组以及尚未产生数据的预留取消。输入、发射和输出行数一致，配置在163,340个未完成输出周期内保持稳定。容量模型的83项单元检查通过。
+### 已保存的检查结果
 
-近期模块检查及重现方法如下。
-
-| 模块 | 说明与结果 |
+| 检查 | 范围与结果 |
 | --- | --- |
-| 生产分时量化 | [完整模块和容量](../test/requant_time_share/README.md) |
-| FIFO银行状态 | [完整状态、324个场景及联合映射](../test/fifo_bank_depth/README.md) |
-| DMA首段地址 | [18组形式比较及752个命令](../test/dma_first_address/README.md) |
-| 配置接收和帧地址 | [全输入、调度器不变量及地址数值](../test/npu_admission/README.md) |
-| 前端配置控制 | [并行状态和请求元数据](../test/frontend_control_depth/README.md) |
-| 退休行计算 | [条件递增及完整前端与缓存](../test/frontend_retire_prefix/README.md) |
-| IA请求及DMA客户端计数 | [完整状态、接口与联合映射](../test/ia_arbiter_request/README.md) |
-| IA写入数据与使能 | [全输入和公开接口检查](../test/ia_write_output_depth/README.md) |
-| 卷积描述符来源选择 | [窗口请求与周期比较](../test/frontend_pending_select/README.md) |
-| 共享银行分配 | [配置寄存及容量条件](../test/ps_allocation_registration/README.md) |
-| 向量输出偏移 | [全输入算术与BUS32/64任务](../test/vector_offset_clamp/README.md) |
+| [ASIC/FPGA 结构检查](../test/requant_group_buffer_asic/README.md) | 13 组参数分别展开两个分支，**26 项通过**；检查完整数据位、掩码、时钟、使能、读取 bank 和宏数量 |
+| [SRAM 功能比较](../test/requant_group_buffer_memory/README.md) | **10 种深度通过**；比较实际封装、同步 SRAM 功能模型、通用存储分支与独立队列，覆盖满容量、回绕、边界、背压、复位和输出保持 |
+| [控制归纳证明](../test/requant_group_buffer_memory/measurement.json) | **10 种深度通过**；证明预留守恒、地址范围和合法并发读写地址不同 |
+| [完整 NPU 的 ASIC 结构检查](../test/requant_group_buffer_npu/README.md) | 使用真实 DC 源文件准备流程，在实际 `u_vec_requant` 层次确认 132 个宏和完整 513 位行；保留 **256 个计算 PE、8 个向量 PE** |
+| DC 流程与分模块源文件检查 | `test/asic_requant_storage/` 的 8 项测试通过，检查存储报告条件和公共源文件收集 |
 
-模块LUT数量用于选择候选结构，整机资源使用固定源码的完整SoC报告。不同模块的独立综合数量不直接相加。
+结构检查覆盖 `p_lanes=1/3/16`，行数覆盖 `1/15/16/17/127/128/129/511/512/513/1024/2048/2049`，包含非二次幂深度。功能与归纳检查的深度为 `1/3/16/127/128/129/511/512/513/1024`。
 
-## 综合和实现方法
+完整 NPU 结构检查使用 Yosys 0.71 的 Slang 前端和 SRAM 端口黑盒，执行真实层次展开、连接与存储检查。Design Compiler 工艺映射、宏时序模型仿真及 ASIC 静态时序尚未在该检查中执行；这些结果由实际工艺工具和库文件生成。
 
-完整综合使用Yosys 0.71与ABC9，采用740个DSP的预算、最小8位宽算术候选和每条组合路径最多一个选中的组合DSP。第23轮为370个原有DSP加370个算术单元。全部100组被选中参数使用官方模型完成 `X`、`Y` 和全部 `CO` 位的SAT证明，ABC9网络等价检查通过。
+## FPGA 验证与测量方法
 
-组合路径从寄存器输出遍历实际连接至同步数据与控制输入，包含DSP内部寄存边界之间的组合运算。所有单元必须完成分类，并检查图中没有组合环。物理实现随后执行余因子、普通LUT、寄存LUT、混合LUT和进位输入配对，并检查功能单元及真值表。
+完整 NPU 功能检查使用生产 FPGA 分支和相同版本的原语功能模型，覆盖完整运算、共享银行及 PS 容量、恢复、输出模式和紧凑输入格式。每次执行分别保存源码摘要、构建记录、任务结果与容量结果。模块级形式比较包含相关公开输出、无效周期和同周期事件优先级。
 
-第23轮布局使用种子1、两次HeAP分析布局和一次退火细化，106,313个单元全部具有唯一BEL。逐单元检查覆盖55,204个普通逻辑LUT的INIT、230,937个逻辑输入和55,204个输出，全部通过。实现工具保留每个LUT的原逻辑输入编号，并递归检查相对位置组的连通性。相关检查见 [LUT实现验证](nextpnr_lut_cluster_validation.md)。开源实现工具当前缺少完整目标器件延迟模型，150 MHz需要使用完整模型和布线后的时序报告确认。器件与时钟约束保存在工程实现脚本中。
+本地 Yosys 与 ABC9 完成展开、算术和存储综合及 LUT 映射。直接 RTL 的比较不启用额外 DSP 替换。可选宽算术 DSP 实验分别记录其选择参数、预算与组合依赖；`ONE48` 和 `FOUR12` 输出位依赖分析见 [96 项符号检查](../test/fpga_dsp_alu4/dependencies.json)。可选实验与证明命令见 [开源 FPGA 综合与资源分析](open_fpga_synthesis.md)。
 
-## 运行与恢复
+组合路径按实际寄存器来源、同步数据和控制输入及 DSP 内部寄存边界计算。所有组合单元需完成分类，连接图需通过组合环检查。面积成本用于指导映射，完整物理占用由打包、合法配对和布局决定。配对阶段保留功能单元和真值表，并在布局后核对全部单元的位置及逻辑引脚对应关系。
+
+## 运行命令
+
+以下命令从仓库根目录执行。Python 环境需可导入项目使用的 `pyosys` 并支持 `read_slang`，Verilator 使用支持当前 SystemVerilog 的版本。
 
 ```sh
-python3 test/requant_time_share/run_npu.py   --out build/production_npu --verilator verilator-modern --jobs 2
+python3 test/npu_registered_fault/run.py \
+  --out build/production_npu --verilator verilator-modern \
+  --jobs 1
 python3 -m unittest discover -s test/capacity -p 'test_*.py'
+python3 test/ps_channels/run_npu_structure.py \
+  --out build/production_structure --verilator verilator-modern
 
-python3 scripts/fpga/open_fpga_synth.py   --cases soc_top --out build/soc_pre --through pre_lut   --wide-alu-dsp-budget 740 --wide-alu-minimum-width 8   --wide-alu-maximum-chain 1
-python3 scripts/fpga/remap_fpga_luts.py   --source build/soc_pre/soc_top --out build/soc_cost/soc_top   --mode physical-cost --delay-target-ps 6667 --wire-delay-ps 300   --max-lut-inputs 8
+python3 test/requant_group_buffer_asic/check_structure.py \
+  --out build/requant_group_buffer_asic
+python3 test/requant_group_buffer_memory/run.py \
+  --out build/requant_group_buffer_memory --verilator verilator-modern --jobs 1
+python3 test/requant_group_buffer_memory/run_control.py \
+  --out build/requant_group_buffer_control
+python3 test/requant_group_buffer_npu/run.py \
+  --source-root "$PWD" --out build/requant_group_buffer_npu
+python3 -m unittest discover -s test/asic_requant_storage -p 'test_*.py'
 ```
 
-工具安装和源码恢复见 [恢复与运行](fpga_optimization_reproduction.md)，综合、合法布局、LUT位置计数和时序模型说明见 [开源FPGA综合与资源分析](open_fpga_synthesis.md)。完整交接保存固定提交、补丁、Git对象、所引用的历史提交、配置、工具摘要和验证结果，并实际执行补丁应用及Git恢复检查。
+完整板级测量与直接 RTL 的本地结构比较分别使用独立输出目录。
+
+```sh
+vivado -mode batch -source scripts/fpga/vivado_synth_fpga.tcl \
+  -tclargs build/vivado_fpga_150
+VIVADO_RUN_IMPL=1 vivado -mode batch -source scripts/fpga/vivado_synth_fpga.tcl \
+  -tclargs build/vivado_fpga_150_impl
+
+python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
+  --out build/soc_pre --through pre_lut \
+  --lock-file /tmp/mini_tflm_dsa_synthesis.lock
+python3 scripts/fpga/remap_fpga_luts.py \
+  --source build/soc_pre/soc_top --out build/soc_cost/soc_top \
+  --mode physical-cost --small-lut-area-cost 1 \
+  --max-lut-inputs 6 --wire-delay-ps 500 --delay-target-ps 6667 \
+  --lock-file /tmp/mini_tflm_dsa_synthesis.lock
+python3 test/soc_rtl_optimization/run_physical.py \
+  --source build/soc_cost/soc_top --out build/soc_physical \
+  --nextpnr /path/to/nextpnr-xilinx \
+  --chipdb /path/to/chipdb-xc7a200tfbg484-3.bin \
+  --package-pins /path/to/prjxray-db/artix7/xc7a200tfbg484-3/package_pins.csv
+```
+
+ASIC 默认综合与同容量生产参数展开分别使用以下入口。`STD_ROOT`、`SRAM_ROOT` 和 Synopsys 工具需由实际环境提供。
+
+```sh
+make -C asic/synthesis syn \
+  STD_ROOT="$STD_ROOT" SRAM_ROOT="$SRAM_ROOT"
+make -C asic/synthesis elaborate \
+  NPU_CONFIG="$PWD/config/npu_fpga.mk" \
+  STD_ROOT="$STD_ROOT" SRAM_ROOT="$SRAM_ROOT"
+```
+
+每次测量保存固定源码、工具与库的 SHA-256、完整参数、命令、原始报告和结果摘要。恢复测量时先核对这些内容，再继续相应阶段。后续执行顺序见 [测量与优化说明](fpga_next_optimization.md)。

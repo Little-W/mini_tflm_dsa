@@ -1,0 +1,1062 @@
+{
+  "tool": "Vivado 2024.2.1",
+  "part": "xc7a200tfbg484-3",
+  "top": "fpga_top",
+  "stage": "Synthesized",
+  "resources": {
+    "slice_luts": 58210,
+    "logic_luts": 56075,
+    "memory_luts": 2135,
+    "slice_registers": 37766,
+    "bram_tiles": 130.0,
+    "ramb36": 111,
+    "ramb18": 38,
+    "dsps": 370
+  },
+  "setup": {
+    "wns_ns": -4.536,
+    "tns_ns": -8493.516,
+    "failing_endpoints": 9765
+  },
+  "path_groups": {
+    "clk_out1_clk_wiz_0": 200,
+    "**async_default**": 200
+  },
+  "worst_path": {
+    "slack_ns": -4.536,
+    "source": "u_soc_top/u_npu_axil_top/u_npu_top/u_compute_core/u_systolic_array/gen_row[1].gen_col[0].ws_cell/sum_reg_reg/CLK",
+    "destination": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_serial_arithmetic.u_group_buffer/u_rows/mem_reg_0/DIADI[0]",
+    "levels": "16  (DSP48E1=16)",
+    "delay": "10.779ns  (logic 9.582ns (88.892%)  route 1.197ns (11.108%))",
+    "group": "clk_out1_clk_wiz_0",
+    "combinational_dsp_cells": 16,
+    "data_delay_ns": 10.779,
+    "logic_delay_ns": 9.582,
+    "routing_delay_ns": 1.197
+  },
+  "high_fanout": [
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/soc_rst_n_sync_reg[2]",
+      "fanout": 13822,
+      "driver": "LUT1"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_axil_reg_if/soc_rst_n_sync_reg[2]",
+      "fanout": 4231,
+      "driver": "LUT1"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/u_ctrl/FSM_onehot_abort_state_reg[2]",
+      "fanout": 2744,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_npu_controller/init_cfg_bias",
+      "fanout": 1409,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_admission_fpga.idle_i_flags[0]",
+      "fanout": 885,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_axil_reg_if/c",
+      "fanout": 849,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/g_cfg_idle_lut.u_ready_0",
+      "fanout": 830,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/u_prefetch_keys/pf_push",
+      "fanout": 780,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/u_prefetch_keys/ADDRD[0]",
+      "fanout": 768,
+      "driver": "LUT1"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/u_prefetch_keys/ADDRD[1]",
+      "fanout": 768,
+      "driver": "LUT1"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/u_prefetch_keys/ADDRD[2]",
+      "fanout": 768,
+      "driver": "LUT1"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_serial_arithmetic.g_compute_lane[1].u_lane/arithmetic_en",
+      "fanout": 732,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/p_70_in",
+      "fanout": 634,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_shared_ia_ps.g_channels.u_ram/g_shared_bank[1].g_channel[3].u_ram/ia_banks_q_reg[2]",
+      "fanout": 583,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_shared_ia_ps.g_channels.u_ram/g_shared_bank[1].g_channel[3].u_ram/g_external_ram.ram_port_wr_addr_reg[0][0]",
+      "fanout": 545,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_npu_controller/exec_init_requant",
+      "fanout": 536,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_compute_core/u_ps_buffer/g_compressed.u_store/p_19_in",
+      "fanout": 528,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[1].u_multiplier/O[1]",
+      "fanout": 523,
+      "driver": "CARRY4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[1].u_multiplier/O[2]",
+      "fanout": 521,
+      "driver": "CARRY4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[1].u_multiplier/O[3]",
+      "fanout": 518,
+      "driver": "CARRY4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_bias_loader/u_buffer/run_is_mode_reg_rep__6",
+      "fanout": 516,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/u_cache_mgr/run_is_mode_reg_rep__6[0]",
+      "fanout": 512,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_npu_controller/init_cfg_bias_reg_0[0]",
+      "fanout": 512,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[0].u_multiplier/i_wr_addr[0]",
+      "fanout": 512,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[0].u_multiplier/i_wr_addr[1]",
+      "fanout": 512,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[0].u_multiplier/i_wr_addr[2]",
+      "fanout": 512,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_npu_controller/init_cfg_oa_reg_0[0]",
+      "fanout": 462,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/g_metadata_way[1].u_rank_source/g_bank[2].u_storage/soc_rst_n_sync_reg[2]",
+      "fanout": 462,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/g_column_ram[15].u_column/B[0]",
+      "fanout": 448,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/i_wr_addr[3]",
+      "fanout": 448,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/i_wr_addr[2]",
+      "fanout": 448,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/i_wr_addr[1]",
+      "fanout": 448,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/i_wr_addr[0]",
+      "fanout": 448,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/g_column_ram[15].u_column/B[1]",
+      "fanout": 448,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/cfg_k0",
+      "fanout": 434,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_pingpong/u_ar_buf/g_read_pair.g_pair[2].u_mux/O6",
+      "fanout": 429,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_pingpong/u_ar_buf/g_read_pair.g_pair[3].u_mux/O5",
+      "fanout": 428,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/u_writeback/FSM_onehot_state_reg[33][0]",
+      "fanout": 402,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/g_column_ram[9].u_column/ADDRA[0]",
+      "fanout": 400,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/g_result_write[1].result_buf[1][31]_i_6_n_0",
+      "fanout": 386,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[1].u_multiplier/mem_reg_r1_0_7_30_35_i_1__2_n_0",
+      "fanout": 384,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_ws_bank_write.g_bank[0].u_multiplier/mem_reg_r1_0_7_30_35_i_1__3_n_0",
+      "fanout": 384,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/pred_cfg_pending_reg_n_0",
+      "fanout": 376,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/g_admission_fpga.u_admission_start_1[0]",
+      "fanout": 374,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_npu_controller/init_cfg_ia",
+      "fanout": 364,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/u_ctrl/prefetch_pending_reg",
+      "fanout": 363,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/g_column_ram[15].u_column/column_i_wr_en",
+      "fanout": 352,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/g_column_ram[15].u_column/send_prefetch_reg[0]",
+      "fanout": 340,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/E[0]",
+      "fanout": 328,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/cfg_start_event",
+      "fanout": 321,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/g_rotated_rows.g_column[0].g_paired_output.g_bit[0].pair_i_bits[4]",
+      "fanout": 320,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_pingpong/u_ar_buf/g_read_pair.g_pair[3].u_mux/O6",
+      "fanout": 316,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/row_valid_q0",
+      "fanout": 315,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_ctrl/FSM_onehot_state_reg[3]_0[2]",
+      "fanout": 304,
+      "driver": "FDCE"
+    },
+    {
+      "net": "soc_rst_n_sync[2]",
+      "fanout": 295,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/g_cfg_idle_lut.u_ready",
+      "fanout": 281,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/g_accumulator_write[1].acc_buf[1][31]_i_7_n_0",
+      "fanout": 275,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/i___96_n_0",
+      "fanout": 273,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/active_id[0]",
+      "fanout": 267,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/cfg_stage1_valid0",
+      "fanout": 266,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/active_id[3]",
+      "fanout": 263,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/active_id[2]",
+      "fanout": 263,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/cfg_stage0_valid0",
+      "fanout": 260,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/active_id[1]",
+      "fanout": 259,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/row_valid_q_reg_i_7",
+      "fanout": 257,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_ctrl/tile_rows_total[27]_i_1_n_0",
+      "fanout": 252,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/u_ctrl/tile_row_step_b0",
+      "fanout": 252,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/pf_slot_valid1",
+      "fanout": 251,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/compute_index_reg_n_0_[4]",
+      "fanout": 251,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/load_tap_reg_n_0_[0]",
+      "fanout": 250,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/load_tap_reg_n_0_[2]",
+      "fanout": 249,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/load_tap_reg_n_0_[3]",
+      "fanout": 248,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/load_tap_reg_n_0_[1]",
+      "fanout": 248,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/final_q00",
+      "fanout": 247,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/load_tap_reg_n_0_[4]",
+      "fanout": 247,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/load_tap_reg_n_0_[5]",
+      "fanout": 246,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/rd_dma_start",
+      "fanout": 241,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/send_prefetch_reg_5",
+      "fanout": 240,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/run_is_mode_reg_rep__7_n_0",
+      "fanout": 226,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_npu_controller/vec_valid_num_row_next_r",
+      "fanout": 225,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/run_is_mode_reg_rep__8_n_0",
+      "fanout": 221,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_npu_controller/init_cfg_requant_reg_0",
+      "fanout": 213,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/rd_rsp_col_base_r_reg[4]_0",
+      "fanout": 211,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/g_metadata_way[1].u_tags/offer_capture",
+      "fanout": 205,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/g_fpga_read_grant.u_operand_grant_0[0]",
+      "fanout": 201,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/col_idx_reg[3]_4",
+      "fanout": 200,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_oa_writer/next_tile_wrap_r",
+      "fanout": 194,
+      "driver": "FDSE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/tile_packed_q_i_1_n_0",
+      "fanout": 194,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/active_reg",
+      "fanout": 192,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/g_rotated_rows.g_column[0].g_paired_output.g_bit[0].u_pair_i_4_n_0",
+      "fanout": 192,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/block_shift_q[3]",
+      "fanout": 191,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/pool_received_reg[2]_0[2]",
+      "fanout": 190,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_load_idle/prefetch_dma_start0",
+      "fanout": 190,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/pf0_ref_index_valid_i_1_n_0",
+      "fanout": 190,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/FSM_onehot_rd_grant_client_reg[5]_0[1]",
+      "fanout": 190,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_read_guard/g_completion.lut_i_handshake",
+      "fanout": 189,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/block_shift_q[1]",
+      "fanout": 188,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/active_reg[4]_0[4]",
+      "fanout": 187,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/pool_received_reg[2]_0[1]",
+      "fanout": 187,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/block_shift_q[2]",
+      "fanout": 186,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/run_16x8",
+      "fanout": 185,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/bypass_q",
+      "fanout": 185,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/g_data_way[1].u_data/g_bank[1].u_storage/request_count_reg[2]",
+      "fanout": 185,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/p_7_in44_in",
+      "fanout": 184,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/active_reg[4]_0[2]",
+      "fanout": 184,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/x_pad_q[32]_i_1_n_0",
+      "fanout": 179,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/rd_rsp_col_base_r_reg[5]_0",
+      "fanout": 179,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/base_q[0][31]_i_3_n_0",
+      "fanout": 179,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_ctrl/command_waiting_reg",
+      "fanout": 176,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_oa_writer/cfg_is_mode",
+      "fanout": 176,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/col_idx_reg[0]_1",
+      "fanout": 176,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/active_reg[4]_0[3]",
+      "fanout": 176,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/pf1_channel[16]_i_1_n_0",
+      "fanout": 176,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/FSM_onehot_state_reg[1]_rep__0_0",
+      "fanout": 173,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/u_ctrl/g_fpga_load_last.last_i_value[4]",
+      "fanout": 173,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_pingpong/u_ar_buf/g_read_pair.g_pair[4].u_mux/O5",
+      "fanout": 172,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/pool_received_reg[2]_0[0]",
+      "fanout": 171,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/u_config_check/range_index_reg_n_0_[0]",
+      "fanout": 170,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_picorv32/pcpi_mul/mul_waiting",
+      "fanout": 170,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/u_context_storage/p_47_in",
+      "fanout": 169,
+      "driver": "LUT5"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/incoming_q_equal",
+      "fanout": 169,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_ctrl/prefetch_descriptor",
+      "fanout": 169,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/tile_packed_q",
+      "fanout": 168,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_bias_loader/u_ctrl/state__0[3]",
+      "fanout": 165,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/active_storage[0]",
+      "fanout": 164,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/p_2_in",
+      "fanout": 164,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_buf/active_storage[1]",
+      "fanout": 164,
+      "driver": "FDSE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/c_reg[vector_s16]__0",
+      "fanout": 163,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/u_writeback/vector_dma_conv_cfg[windowed]",
+      "fanout": 163,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/u_span/fill_state_reg[1][0]",
+      "fanout": 162,
+      "driver": "LUT1"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_address_equal/u_sum_equal/prefetch_state_reg[0]",
+      "fanout": 162,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/g_metadata_way[1].u_rank_source/g_metadata_way[0].fill_epoch_i_rd_en",
+      "fanout": 162,
+      "driver": "LUT1"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/is_mode",
+      "fanout": 161,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_cfg_idle_lut.idle_i_groups[0]_4[2]",
+      "fanout": 161,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_shared_ia_ps.g_channels.u_ram/u_ia_ram/g_external_ram.ram_port_wr_addr_reg[0][0]",
+      "fanout": 161,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/tap_reg_n_0_[0]",
+      "fanout": 160,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/tap_reg_n_0_[1]",
+      "fanout": 159,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/run_is_mode_reg_rep__6_n_0",
+      "fanout": 157,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/global_pool_reg_rep__0_n_0",
+      "fanout": 157,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/cfg_compact_q_reg_rep__0[0]",
+      "fanout": 156,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/u_config_check/range_index_reg_n_0_[1]",
+      "fanout": 156,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/tap_reg_n_0_[2]",
+      "fanout": 156,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_oa_writer/cfg_coalesce",
+      "fanout": 155,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/g_external_ram.write_en_1",
+      "fanout": 155,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/tap_reg_n_0_[3]",
+      "fanout": 154,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/fetch_position0",
+      "fanout": 152,
+      "driver": "CARRY4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/col_idx_reg[2]_0",
+      "fanout": 152,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/tap_reg_n_0_[4]",
+      "fanout": 152,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/tap_reg_n_0_[5]",
+      "fanout": 151,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/tile_packed_q",
+      "fanout": 151,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/col_idx_reg[2]_16",
+      "fanout": 151,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/g_data_way[1].u_data/g_bank[1].u_storage/bypass_q_reg",
+      "fanout": 151,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_frame_address/run_lhs_tile_packed_reg_0",
+      "fanout": 150,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/c_reg[prefetch_enable][0]",
+      "fanout": 149,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/block_shift_q_reg[0]_rep_n_0",
+      "fanout": 149,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/g_next_use.u_predictor/block_shift_q_reg[5]_rep_n_0",
+      "fanout": 149,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_requant/g_full.u_full/g_serial_arithmetic.batch_q[2]",
+      "fanout": 147,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/u_softmax/c_st_reg_n_0_[1]",
+      "fanout": 147,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/oa_row_coalesce",
+      "fanout": 147,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/run_is_mode_reg_rep__0_0",
+      "fanout": 146,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/col_idx_reg[3]_0",
+      "fanout": 144,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/g_pe[3].u_pe/pool_input_index_reg[4]_0",
+      "fanout": 144,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/g_pe[3].u_pe/pool_input_index_reg[4]",
+      "fanout": 144,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/g_pe[3].u_pe/active_reg[1]",
+      "fanout": 144,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_kernel_loader/u_ctrl/issued_count[86]_i_1_n_0",
+      "fanout": 144,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/active_reg[4]_0[1]",
+      "fanout": 144,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/conv_range_end",
+      "fanout": 143,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_axil_reg_if/use_per_channel_reg",
+      "fanout": 142,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_read_guard/FSM_onehot_state_reg[6]_0[0]",
+      "fanout": 142,
+      "driver": "FDPE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/rd_rsp_row_addr_cur_reg[2]_0",
+      "fanout": 141,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/u_ctrl/E[0]",
+      "fanout": 140,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_s8_to_fifo/g_full.u_full/Q[0]",
+      "fanout": 139,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/run_is_mode_reg_rep__2_0",
+      "fanout": 139,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_compute_core/u_systolic_array/gen_row[1].gen_col[15].ws_cell/direct_final_stream",
+      "fanout": 139,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/u_context_storage/E[0]",
+      "fanout": 139,
+      "driver": "LUT2"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/request_head_reg[1]_rep__0_n_0",
+      "fanout": 138,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/wr_active0_0",
+      "fanout": 138,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_s8_to_fifo/g_full.u_full/g_cyclic_storage.g_write_group[0].g_rotation[1].g_paired_bits.g_pair[0].select_i_control",
+      "fanout": 137,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/u_rounding/c_reg[op][2]",
+      "fanout": 137,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/Q[1]",
+      "fanout": 137,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/FSM_onehot_rd_grant_client_reg[5]_rep_0",
+      "fanout": 135,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_vec_s8_to_fifo/g_full.u_full/g_cyclic_storage.g_write_group[0].g_rotation[2].g_paired_bits.g_pair[0].select_i_control",
+      "fanout": 135,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_frame_schedule.u_scheduler/command_active_reg_rep_2[0]",
+      "fanout": 135,
+      "driver": "LUT6"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_weight_prediction.weight_prediction_valid_reg_n_0_[1]",
+      "fanout": 135,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_frame_address/operation_reg_n_0_[1]",
+      "fanout": 134,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/fetch_ox1",
+      "fanout": 134,
+      "driver": "CARRY4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/rd_rsp_row_addr_cur_reg[1]_0",
+      "fanout": 134,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_frame_address/operation_reg_n_0_[0]",
+      "fanout": 134,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/u_linear/u_context_storage/rd_follow_beats_reg[4]",
+      "fanout": 133,
+      "driver": "LUT4"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/c_reg[op][1]_rep_n_0",
+      "fanout": 132,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/u_ctrl/is_last_w_group_reg_n_0",
+      "fanout": 131,
+      "driver": "FDPE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/c_reg[op][0]_rep_n_0",
+      "fanout": 130,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_ia_loader/prefetch_start_reg_rep_0",
+      "fanout": 130,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/job_read_guard",
+      "fanout": 130,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/u_block_dma_arbiter/u_dma/g_im2col.u_frontend/u_cache/g_window.u_window/offer_select_next_q",
+      "fanout": 129,
+      "driver": "FDRE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_shared_ia_ps.g_channels.u_ram/g_ps_address[0].ps_return_select_q_reg[0]_577",
+      "fanout": 129,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_shared_ia_ps.g_channels.u_ram/g_ps_address[1].ps_return_select_q_reg[1]_578",
+      "fanout": 129,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_shared_ia_ps.g_channels.u_ram/g_ps_address[2].ps_return_select_q_reg[2]_579",
+      "fanout": 129,
+      "driver": "FDCE"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_vector_engine.u_engine/g_pe[3].u_pe/compute_index_reg[2]",
+      "fanout": 129,
+      "driver": "LUT3"
+    },
+    {
+      "net": "u_soc_top/u_npu_axil_top/u_npu_top/g_shared_ia_ps.g_channels.u_ram/g_ps_address[3].ps_return_select_q_reg[3]_580",
+      "fanout": 129,
+      "driver": "FDCE"
+    }
+  ],
+  "files_sha256": {
+    "fpga_top_utilization.rpt": "93e1985a768b2b1c82afe38df8fdc4999ddb7fed7f1603c2d50f06b9b9f6280a",
+    "fpga_top_high_fanout.rpt": "a0c426b424561521e7e02b0a055fe837dcf9fcdde1cd03398883aad13e4dc641",
+    "fpga_top_timing_paths.rpt": "74e0182392edc797c195f029634ebbebe386a0ce16ccf9fce85c2eab3a5cbd44",
+    "fpga_top_timing_summary.rpt": "7c2f404f7736c27d51a0f6eccf68e6a08b7ae7b11d8ae6c7bfb30f627962be0f"
+  },
+  "schema_version": 1,
+  "source_association": {
+    "reported_commit_subject": "test(asic): cover full NPU requantization storage and document synthesis",
+    "matching_repository_commit": "0fbe1970fe9713a0690ab5d2b18184de4c9954e2",
+    "source_manifest_available": false
+  },
+  "clock_period_ns": 6.667,
+  "requirements": {
+    "slice_luts_maximum": 45000,
+    "combinational_logic_levels_maximum": 9,
+    "clock_period_ns_maximum": 6.667
+  },
+  "status": {
+    "slice_luts_within_limit": false,
+    "observed_paths_within_nine_levels": false,
+    "timing_150mhz_confirmed": null
+  }
+}
