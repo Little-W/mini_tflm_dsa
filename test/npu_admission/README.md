@@ -1,43 +1,57 @@
 # 配置接收与帧地址就绪
 
-`npu_top` 使用并行状态分组检查配置接收条件，两个预取空闲信号直接进入最后一个 `LUT6_2`。同一原语输出 `sa_ready` 与 `cfg_start_event`，配置开始和向量模式参与后一个输出。通用RTL分支保留相同布尔表达式。
+`npu_top` 使用普通 RTL 检查配置接收条件。向量和矩阵执行状态、配置流水、操作数缓存、IA 预取以及权重加载状态共同决定 `sa_ready`。任务故障和中止状态阻止配置接收；`cfg_start_event` 同时要求 `calc_start`、`sa_ready` 和矩阵模式。
 
-`frame_address_prepare` 的 `p_ready_mask_abort` 默认为1。设为0时，就绪输出表示内部状态为空闲；内部接受事件始终检查 `i_abort`。生产实例由 `frame_command_ready` 检查任务中止，配置接收使用调度器空闲条件。实际调度器的空闲状态没有有效帧命令，因此配置接收不会产生帧命令接受事件。
+FPGA 分支以权重加载器的静止状态、后台请求和仲裁资格检查可接收条件。通用分支使用 `kernel_prefetch_idle`。检查分别覆盖各分支的全部输入，不对这两组输入附加相等假设。
 
-## 验证范围
+`frame_address_prepare` 的 `p_ready_mask_abort` 默认为 1。设为 0 时，就绪输出表示内部状态为空闲；内部接受事件始终检查 `i_abort`。生产实例的帧命令接收条件包含任务故障和中止状态。实际调度器的空闲状态没有有效帧命令，因此配置接收不会同时接受帧命令。
 
-- 实际配置接收表达式的通用与官方LUT模型分别完成15个输入位、2个输出位的全部取值SAT证明。
-- 在完整 `ps_window_scheduler` 中添加只读观察输出，使用ABC PDR证明 `ready` 蕴含 `!command_valid`。覆盖阵列大小1、4、16，帧数1、3、16及有界和无界复用参数；原有状态在观察到复位前保持任意取值。另检查实际复位后空闲状态可达。
-- 六组帧地址参数完成5,903位状态与输出等价检查，覆盖通用算术、官方DSP模型、默认就绪以及内部空闲就绪。中止、结果等待和所有地址输入均不受约束。
-- 提取实际上层接收表达式，结合已证明的调度器性质，证明帧命令接受事件相同。
-- 数值检查分别运行生产参数 `p_ready_mask_abort=0` 和默认值 `1`，每组同时比较通用实现与官方DSP模型。每组通过36,746次地址计算、4,286次中止、1,512次复位和185,328次结果等待检查，共运行672,662个周期，结果延迟保持10个周期。
-- 每组在十个计算阶段及结果等待阶段分别施加中止和复位，并在同周期令 `start=1`。另检查空闲状态下的中止与开始同时有效，逐周期核对两种参数各自的就绪输出、中止后的恢复及结果有效信号。
-- 共享银行配置提取器支持独立声明的 `cfg_start_event`；14组银行参数的完整状态比较通过。
+## 形式检查
 
-## 局部映射
+- 从当前实际源码提取配置接收逻辑，分别对 FPGA 和通用分支完成 19 个输入位、2 个输出位的全部取值 SAT 证明。
+- 在完整 `ps_window_scheduler` 中增加只读观察输出，使用 ABC PDR 证明 `ready` 蕴含 `!command_valid`。参数覆盖阵列大小 1、4、16，帧数 1、3、16，以及有界和无界复用。所有外部输入保持任意取值，原有状态在观察到复位前保持任意值。另检查复位后的空闲状态可达。
+- 使用当前完整 `frame_address_prepare` 比较就绪参数。6 组配置覆盖阵列大小 1、16、32，通用算术、官方 DSP48E1 功能模型及 `p_ready_mask_abort=0/1`。全部公开端口均连接，包括 `input wire logic` 声明的输入。内部状态、接受事件和中止屏蔽后的公开就绪逐周期相等。
+- 从当前顶层提取帧命令接收和地址中止表达式，结合实际调度器已证明的空闲性质，证明帧命令接受事件保持一致。
 
-输入和输出均加寄存器，使用实际配置接收表达式进行映射。逻辑LUT从5个减少至4个，17个测量寄存器保持不变；最长组合路径为2级。预取空闲信号到输出为1级。整个SoC的组合级数由固定源码的整机映射另行测量。
+报告保存于 [measurement.json](measurement.json)。源码与测试脚本的 SHA256 标识实际受测内容。收集器要求完整形式检查通过，并核对所收集的数值检查、兼容性检查和映射结果各自的源码摘要。
 
-全部结果、源码及映射文件SHA256见 [measurement.json](measurement.json)。
+## 运行
 
-## 受测源码
-
-`validation_scope.rtl_revision` 标识受测RTL提交，`source_sha256` 保存完整文件哈希。报告汇总逐项核对形式证明、数值测试及共享银行验证记录的全部源码和测试文件，包括调度器及其辅助模块。
-
-`npu_top` 的测试范围包括配置接收表达式、帧命令接受与地址中止表达式，以及共享银行配置寄存器。配置接收证明把 `ia_prefetch_idle`、`kernel_prefetch_idle` 作为独立输入，偏置请求的内部实现不参与该提取模块。与整机固定提交 `524be9c3` 比较，配置接收提取内容、帧控制表达式、地址模块及调度器保持一致。报告同时记录配置接收提取内容的SHA256，便于与其他提交比较；整机面积与时序由固定整机源码另行测量。
-
-## 重现
-
-```sh
-python3 test/npu_admission/run_formal.py --out build/admission/verified_formal
-python3 test/npu_admission/run_numeric.py \
-  --out build/admission/frame_numeric --verilator verilator-modern --jobs 2
-python3 test/ps_allocation_registration/run_formal.py \
-  --out build/admission/allocation_formal
-python3 test/npu_admission/prepare_measurement.py --out build/admission/mapping
-python3 scripts/fpga/open_fpga_synth.py \
-  --case-config build/admission/mapping/cases.json \
-  --cases admission_reference admission_current --out build/admission/mapping/results
+```bash
+export PYTHONDONTWRITEBYTECODE=1
+ADMISSION_OUT=/tmp/npu_admission
+python3 test/npu_admission/run_formal.py --out "$ADMISSION_OUT/verified_formal"
+python3 test/npu_registered_fault/run_formal.py --out "$ADMISSION_OUT/registered_fault"
 python3 test/npu_admission/collect_report.py \
-  --build build/admission --out test/npu_admission/measurement.json
+  --build "$ADMISSION_OUT" --out "$ADMISSION_OUT/measurement.json"
 ```
+
+形式检查和收集器支持 `--source-root`，可在固定的另一份源码上运行。默认使用测试脚本所在仓库。
+
+地址数值检查分别运行默认和生产就绪参数，并比较通用实现与官方 DSP 模型。各计算阶段、结果等待阶段和空闲阶段均检查中止、复位、同时开始以及恢复后的行为：
+
+```bash
+python3 test/npu_admission/run_numeric.py \
+  --out "$ADMISSION_OUT/frame_numeric" --verilator verilator --jobs 1
+```
+
+局部映射使用实际配置接收表达式及完整接收条件参考，在输入和输出处添加相同寄存器。原始条件中的全部状态输入仍保留在测量接口中，未使用的输入由综合工具处理：
+
+```bash
+python3 test/npu_admission/prepare_measurement.py --out "$ADMISSION_OUT/mapping"
+python3 scripts/fpga/open_fpga_synth.py \
+  --case-config "$ADMISSION_OUT/mapping/cases.json" \
+  --cases admission_reference admission_current \
+  --through pre_lut --out "$ADMISSION_OUT/mapping/pre"
+for version in admission_reference admission_current; do
+  python3 scripts/fpga/remap_fpga_luts.py \
+    --source "$ADMISSION_OUT/mapping/pre/$version" \
+    --out "$ADMISSION_OUT/mapping/results/$version" \
+    --mode physical-cost --small-lut-area-cost 1 --max-lut-inputs 6 \
+    --wire-delay-ps 500 --delay-target-ps 6667
+done
+python3 test/npu_admission/collect_report.py \
+  --build "$ADMISSION_OUT" --out "$ADMISSION_OUT/measurement.json"
+```
+
+局部映射用于检查这一段组合逻辑。整机资源和 150 MHz 时序由固定源码的实际 Vivado 报告确认。

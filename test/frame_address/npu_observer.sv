@@ -7,6 +7,7 @@ module frame_address_npu_observer #(parameter int p_size = 16);
     longint unsigned accepted = 0, started = 0, cancelled = 0;
     longint unsigned ws_frames = 0, is_frames = 0, packed_frames = 0, wide_frames = 0;
     longint unsigned prepare_cycles = 0;
+    longint unsigned context_cycles = 0, context_consumptions = 0;
 
     function automatic logic [31:0] operand_address(
         input logic [31:0] base, row0, depth0, stride, total_depth,
@@ -26,6 +27,31 @@ module frame_address_npu_observer #(parameter int p_size = 16);
             pending <= 0;
             age <= 0;
         end else begin
+            assert(npu_top.output_reserve_banks ==
+                   32'(npu_top.ia_reuse_num_eff +
+                       (npu_top.direct_final_stream ? 32'(npu_top.DIRECT_OUTPUT_EXTRA_BANKS) : 32'd0)))
+                else $fatal(1,"Output reservation differs");
+            if (npu_top.frame_command_active) begin
+                assert({npu_top.frame_exec_rows, npu_top.frame_exec_cols,
+                        npu_top.frame_exec_p0, npu_top.frame_exec_column,
+                        npu_top.frame_exec_init, npu_top.frame_exec_final} ==
+                       {npu_top.frame_command_rows, npu_top.frame_command_cols,
+                        npu_top.frame_command_p0, npu_top.frame_command_column,
+                        npu_top.frame_command_init, npu_top.frame_command_final})
+                    else $fatal(1,"Frame execution context differs");
+                context_cycles <= context_cycles + 1;
+            end
+            if (npu_top.frame_mode_q && npu_top.requant_group_start) begin
+                assert(npu_top.frame_command_active &&
+                       npu_top.requant_group_rows == npu_top.frame_command_rows)
+                    else $fatal(1,"Requantization group context differs");
+            end
+            if (npu_top.frame_mode_q && (npu_top.init_cfg_ia || npu_top.init_cfg_bias ||
+                npu_top.exec_init_requant || npu_top.exec_init_oa || npu_top.frame_execute_start)) begin
+                assert(npu_top.frame_command_active)
+                    else $fatal(1,"Frame context consumed without an active command");
+                context_consumptions <= context_consumptions + 1;
+            end
             if (npu_top.frame_command_start) begin
                 assert(!pending && !npu_top.frame_execution_started)
                     else $fatal(1,"Frame preparation accepted overlapping work");
@@ -63,8 +89,9 @@ module frame_address_npu_observer #(parameter int p_size = 16);
             end
         end
     end
-    final $display("FRAME_ADDRESS_NPU_PASS accepted=%0d started=%0d cancelled=%0d prepare_cycles=%0d ws_frames=%0d is_frames=%0d packed_frames=%0d wide_frames=%0d",
-        accepted,started,cancelled,prepare_cycles,ws_frames,is_frames,packed_frames,wide_frames);
+    final $display("FRAME_ADDRESS_NPU_PASS accepted=%0d started=%0d cancelled=%0d prepare_cycles=%0d ws_frames=%0d is_frames=%0d packed_frames=%0d wide_frames=%0d context_cycles=%0d context_consumptions=%0d",
+        accepted,started,cancelled,prepare_cycles,ws_frames,is_frames,packed_frames,wide_frames,
+        context_cycles,context_consumptions);
 endmodule
 
 bind npu_top frame_address_npu_observer #(.p_size(SIZE)) u_frame_address_observer();
