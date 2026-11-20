@@ -1,0 +1,2516 @@
+{
+  "format_version": 1,
+  "review_type": "existing_measurements_and_sources",
+  "passed": true,
+  "production_commit": "3a95bec65abc9b03395bb10e5e1322df4af38901",
+  "scope": {
+    "operator_count": 45,
+    "gemm_count": 31,
+    "convolution_count": 3,
+    "depthwise_count": 11,
+    "gemmini_execution_count": 59,
+    "numeric_format": "S8 输入和权重，S32 累加，S8 输出",
+    "quantization": "零零点，统一 1/32 缩放，最近偶数舍入，[-128, 127] 饱和",
+    "cycle_scope": "独立加速器任务，包括冷数据搬运、计算、硬件量化、写回以及全部 AXI 响应完成；主机布局准备和调度计算在计时之外"
+  },
+  "common_conditions": {
+    "matrix_array_rows": 16,
+    "matrix_array_columns": 16,
+    "axi_data_bits": 64,
+    "axi_read_outstanding_limit": 4,
+    "axi_write_outstanding_limit": 4,
+    "read_first_response_ready_cycles_after_ar": 8,
+    "read_beat_interval_cycles": 1,
+    "mature_read_burst_transition_cycle_distance": 1,
+    "write_beat_interval_cycles": 1,
+    "aw_to_first_w_min_cycles": 1,
+    "last_w_to_b_min_cycles": 1,
+    "dma_max_bytes": 2048,
+    "axi_max_burst_beats": 256,
+    "axi_boundary_bytes": 4096,
+    "external_memory_bytes": 2097152,
+    "logical_state_budget_bytes": 81920,
+    "read_latency_semantics": "每个请求从 AR 握手独立计算首拍就绪时间；请求排队和接收端背压计入实际等待周期"
+  },
+  "npu_hardware": {
+    "matrix_cell_count": 256,
+    "matrix_input_register_bits": 16,
+    "matrix_weight_register_bits": 16,
+    "external_operand_bits": 8,
+    "accumulator_bits": 32,
+    "depthwise_pe_count": 16,
+    "shared_matrix_depthwise_quantization_lanes": 16,
+    "shared_quant_enable": true,
+    "window_lanes": 16,
+    "window_cache_read_bits": 128,
+    "image_cache_bytes": 8192,
+    "image_cache_line_bytes": 128,
+    "image_cache_sets": 32,
+    "image_cache_ways": 2,
+    "shared_ia_ps_bytes": 32768,
+    "shared_physical_banks": 8,
+    "shared_bank_bytes": 4096,
+    "shared_ia_banks_runtime_options": [
+      1,
+      2,
+      4
+    ],
+    "ps_representation": "raw32",
+    "configuration_uniform_across_all_operators": true,
+    "layout_and_tiling_selection": "生产驱动根据几何、物理布局及共享存储配置选择 WS/IS 和分块；DW 使用向量执行器"
+  },
+  "gemmini_hardware": {
+    "hardware_repository": "https://github.com/dwconv/gemmini-dwconv",
+    "hardware_commit": "4a33b75f975297e309847f41f81f4c0f8b20b81d",
+    "software_repository": "https://github.com/dwconv/gemmini-rocc-tests-dwconv",
+    "software_commit": "576f08c217dfefb9fa2e3e087575f23699565560",
+    "array_rows": 16,
+    "array_columns": 16,
+    "input_bits": 8,
+    "weight_bits": 8,
+    "accumulator_bits": 32,
+    "scratchpad_bytes": 32768,
+    "accumulator_bytes": 32768,
+    "spad_read_delay_cycles": 1,
+    "hardware_im2col_enabled": true,
+    "loop_conv_enabled": true,
+    "bird_depthwise_enabled": true,
+    "depthwise_execution": "gemmini_loop_dwconv_dw_ws / LoopConvDW",
+    "depthwise_native_im2col_exporters_have_identical_commands_and_cycles": true,
+    "source_adaptations": {
+      "dma_completion_counter_bits": 16,
+      "supported_dma_max_bytes": 2048
+    }
+  },
+  "logical_state_capacity": {
+    "scope": "实例化的加速器 RAM、ROM、参数与数据缓冲、标签、队列、PE、流水和控制状态，包含命令接口；共同 CPU、互连及外部 RAM 单独计量",
+    "quantity": "技术映射前的逻辑存储位数",
+    "budget_bits": 655360,
+    "budget_bytes": 81920,
+    "npu": {
+      "total_bits": 615083,
+      "total_bytes": 76885.375,
+      "sequential_bits": 610457,
+      "read_only_bits": 4626,
+      "remaining_budget_bytes": 5034.625,
+      "top": "npu_axil_top",
+      "elaboration_target": "generic",
+      "simulation_and_capacity_common_rtl_files": 66
+    },
+    "gemmini": {
+      "total_bits": 650391,
+      "total_bytes": 81298.875,
+      "data_ram_bytes": 65536,
+      "assertion_monitor_bits": 1671,
+      "remaining_budget_bytes": 621.125,
+      "top": "gemmini_mmio"
+    },
+    "both_within_budget": true
+  },
+  "timing_review": {
+    "npu_start": "calc_start && sa_ready 握手",
+    "npu_end": "done_valid，观察器同时断言读写 outstanding 均为零",
+    "gemmini_start": "首条 LoopMatmul、LoopConv 或 LoopConvDW 启动命令握手",
+    "gemmini_end": "最终 fence 完成，硬件空闲且所有 AXI 读写响应完成",
+    "gemmini_selected_interval": "逐项选择已测路径中最短的 launch_to_complete_cycles，完整命令序列周期另行保存",
+    "gemmini_prelaunch_reads_in_compared_runs": 0,
+    "cold_state": "每个独立算子在复位后的加速器上执行，初始数据位于外部存储器",
+    "maximum_observed_npu_read_outstanding": 4,
+    "maximum_observed_npu_write_outstanding": 4,
+    "maximum_observed_gemmini_read_outstanding": 4,
+    "maximum_observed_gemmini_write_outstanding": 4
+  },
+  "source_identity": {
+    "production_files_match_commit": true,
+    "unique_production_files_checked": 84,
+    "all_recorded_source_files_match_current_bytes": true,
+    "manifest_entry_counts": {
+      "npu_simulation": 100,
+      "npu_capacity": 71,
+      "npu_planner": 20,
+      "gemmini_simulation": 9
+    },
+    "simulation_capacity_common_sources": 67,
+    "simulation_capacity_common_rtl_files": 66,
+    "simulation_capacity_common_hashes_match": true,
+    "npu_build_sources_unchanged": true,
+    "npu_capacity_sources_unchanged": true,
+    "gemmini_build_sources_unchanged": true,
+    "npu_simulator_sha256": "80ef1a476b0bc8b493ba4be2035baa6aebca2cc9e266dc9d213ab69193143661",
+    "gemmini_simulator_sha256": "92706aae9087c5958c47ccf6e0d09284ff4ababf028472adcfa6a24f47edd7b2",
+    "gemmini_generated_rtl_sha256": "d5913f226b1d174be2d386db7374ce839793259eaefb1451aa39ee0e0b94ed99",
+    "gemmini_capacity_and_simulation_generated_rtl_match": true,
+    "gemmini_capacity_wrapper_source_matches": true,
+    "memory_service_source_hashes_match_existing_sv_cpp_verification": true,
+    "existing_memory_verification": {
+      "passed": true,
+      "cross_checked_write_cycles": 610,
+      "transfers": 30,
+      "write_max_outstanding": 4,
+      "write_max_response_queue": 4,
+      "write_response_stall_cycles": 38,
+      "simultaneous_aw_w_b": 2,
+      "consecutive_write_burst_transitions": 26,
+      "aw_to_first_w_min": 1,
+      "last_w_to_b_min": 1,
+      "read_cycles": 551,
+      "read_beats": 470,
+      "read_max_outstanding": 4,
+      "first_read_offer_latency_min": 8,
+      "consecutive_read_burst_transitions": 25,
+      "physical_memory_bytes": 2097152
+    }
+  },
+  "numerical_and_input_checks": {
+    "all_npu_operators_passed": true,
+    "all_gemmini_runs_passed": true,
+    "input_and_geometry_pairs_checked": 59,
+    "expected_output_hash_pairs_matched": 59,
+    "gemmini_actual_output_files_checked": 59,
+    "npu_actual_output_hashes_matched": 45,
+    "npu_configuration_input_and_expected_memory_files_checked": 135,
+    "npu_memory_preservation_check": "每个算子完成后比较全部 2 MiB 存储器的 32 位字",
+    "gemmini_memory_preservation_check": "输出逐字节比较，输出区域之外的初始内存保持一致",
+    "depthwise_exporter_equivalence_cases": 11
+  },
+  "performance_conclusion": {
+    "required_speedup_numerator": 6,
+    "required_speedup_denominator": 5,
+    "integer_rule": "npu_cycles * 6 <= gemmini_cycles * 5",
+    "passed_count": 45,
+    "case_count": 45,
+    "all_passed": true,
+    "minimum": {
+      "name": "model_m1_n64_k784",
+      "npu_cycles": 6493,
+      "gemmini_cycles": 7811,
+      "speedup": 1.202987833050978,
+      "maximum_npu_cycles": 6509,
+      "remaining_cycles_to_threshold": 16
+    },
+    "minimum_depthwise": {
+      "name": "model_dw3x3_s1_6x6_c128",
+      "npu_cycles": 5263,
+      "gemmini_cycles": 6365,
+      "speedup": 1.2093862815884477,
+      "maximum_npu_cycles": 5304,
+      "remaining_cycles_to_threshold": 41
+    },
+    "groups": {
+      "gemm": {
+        "count": 31,
+        "npu_cycles_sum": 171007,
+        "gemmini_cycles_sum": 418434,
+        "minimum_speedup": 1.202987833050978
+      },
+      "conv2d": {
+        "count": 3,
+        "npu_cycles_sum": 84867,
+        "gemmini_cycles_sum": 150539,
+        "minimum_speedup": 1.2919078185836053
+      },
+      "depthwise": {
+        "count": 11,
+        "npu_cycles_sum": 97352,
+        "gemmini_cycles_sum": 147088,
+        "minimum_speedup": 1.2093862815884477
+      }
+    }
+  },
+  "reporting_scope": [
+    "1.2× 结论适用于这里列出的 45 个独立 S8 算子及其固定几何、数值和计时条件。",
+    "两侧采用共同矩阵规模、外部存储服务和 80 KiB 逻辑状态上限；NPU 的 16 个专用 DW PE、共享 16 通道量化及 8 KiB 图像缓存均计入容量。",
+    "周期比较用于评价当前 RTL、数据搬运和调度；芯片面积、能耗与最高频率由技术映射和时序结果评价。",
+    "完整模型使用实际模型量化参数和 CPU 软件路径，其逐层与整网时间由完整模型报告分别给出。"
+  ],
+  "material_issues": [],
+  "operator_checks": [
+    {
+      "name": "tile16",
+      "operation": "gemm",
+      "shape": {
+        "m": 16,
+        "n": 16,
+        "k": 16
+      },
+      "npu_cycles": 223,
+      "gemmini_cycles": 334,
+      "speedup": 1.4977578475336324,
+      "integer_check": {
+        "npu_times_six": 1338,
+        "gemmini_times_five": 1670
+      },
+      "maximum_npu_cycles": 278,
+      "remaining_cycles_to_threshold": 55,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tile16/result.json",
+        "sha256": "b27a918698097265b936fe546f1cdf5e815d1634055d4e6aeb41124ba4711f88"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tile16/run.log",
+        "sha256": "0f427c320aa86ce4dcd20ef0963d6149aa2ae051ea9f596c3900253c58e15f45"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 334,
+          "complete_command_cycles": 345,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/tile16.json",
+            "sha256": "f5ba3b747aab88dac5ff2a258dd47eb06a14550fdf01369a5d5292d2a7a56898"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "dbb07585f223bfaf9f241467a2c6fba5efa29b64a1c468453c4310cae0da8f8e",
+      "output_sha256": "69ce56722c76955b54ee8358b729cb59332644c02c72d8b39bcf9143f8e30247"
+    },
+    {
+      "name": "tile32",
+      "operation": "gemm",
+      "shape": {
+        "m": 32,
+        "n": 32,
+        "k": 32
+      },
+      "npu_cycles": 540,
+      "gemmini_cycles": 779,
+      "speedup": 1.4425925925925926,
+      "integer_check": {
+        "npu_times_six": 3240,
+        "gemmini_times_five": 3895
+      },
+      "maximum_npu_cycles": 649,
+      "remaining_cycles_to_threshold": 109,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tile32/result.json",
+        "sha256": "2b119c9b908861cd43168591694c2e04af05a830aa0aed4341f9c2e63208e272"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tile32/run.log",
+        "sha256": "c6f27b92f2be0926fdb2083d632c496e68d8d6ca0f29bbb8953007f5625c29d8"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 779,
+          "complete_command_cycles": 790,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/tile32.json",
+            "sha256": "82633aa3ba79904d80a923e62c463300d52124872d613a745b7af570fed69af9"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "e3e29bd6713162013379ca32ea3d649d8e9e0a8b18151ca5da19d75fc0cac248",
+      "output_sha256": "d841a8ab7e25323f3762e8881aafec344f04b50ee7ae910dfd0f617545095327"
+    },
+    {
+      "name": "tile64",
+      "operation": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 64
+      },
+      "npu_cycles": 2184,
+      "gemmini_cycles": 3155,
+      "speedup": 1.4445970695970696,
+      "integer_check": {
+        "npu_times_six": 13104,
+        "gemmini_times_five": 15775
+      },
+      "maximum_npu_cycles": 2629,
+      "remaining_cycles_to_threshold": 445,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tile64/result.json",
+        "sha256": "4a99f0921ebbf42264d5586dd96982e0e0e81bc816640a5169eca11038fd6f05"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tile64/run.log",
+        "sha256": "45a1a05900eb3b3ba8ea0d724fd62c546aaf674a9e41d4220ff7dbebbe50fab4"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 3155,
+          "complete_command_cycles": 3166,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/tile64.json",
+            "sha256": "09624ae3fe6184e0f769cfce92fb675b582ea6b4b114f4c538987870d02a0fec"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "b39e71176ead9a28e20e6d38570968f63755e92119f2ed2565905a3ced86b893",
+      "output_sha256": "2f4b9bdd7a6e745823e95040c37cde979d7525ebeb776873ed59fe4fa57abfb2"
+    },
+    {
+      "name": "tail17",
+      "operation": "gemm",
+      "shape": {
+        "m": 17,
+        "n": 23,
+        "k": 19
+      },
+      "npu_cycles": 408,
+      "gemmini_cycles": 2054,
+      "speedup": 5.034313725490196,
+      "integer_check": {
+        "npu_times_six": 2448,
+        "gemmini_times_five": 10270
+      },
+      "maximum_npu_cycles": 1711,
+      "remaining_cycles_to_threshold": 1303,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tail17/result.json",
+        "sha256": "1256a09bd15a986427a9e74f4b173814d56c9aec84b5f21f25880f8e7d0ade8f"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/tail17/run.log",
+        "sha256": "bbdf1693442afe5d376037a5dad70add5e44a476db7599fc21a1e6b648f52619"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 2054,
+          "complete_command_cycles": 2065,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/tail17.json",
+            "sha256": "1102e8dcc504cd9005e9c211facae06f7c1debaa50e44962abec19527e9c8670"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "b1d676b9bb99a3f7cfbb277def5de0ac6e11393a0408b8835be316c73433960d",
+      "output_sha256": "de02dbd78faa1380616baa13afad6e6fcaf991c03fe790cd73ba5b62bbfc35c4"
+    },
+    {
+      "name": "vector_m1",
+      "operation": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 64,
+        "k": 64
+      },
+      "npu_cycles": 643,
+      "gemmini_cycles": 842,
+      "speedup": 1.3094867807153965,
+      "integer_check": {
+        "npu_times_six": 3858,
+        "gemmini_times_five": 4210
+      },
+      "maximum_npu_cycles": 701,
+      "remaining_cycles_to_threshold": 58,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/vector_m1/result.json",
+        "sha256": "a76ad3c2fc695b3feb3a02279f8c4e104e7b89792409176fb663c99de9432c4b"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/vector_m1/run.log",
+        "sha256": "12c49080487c890678ce9606de547c473d1fc076640632cd0cf9d925dd8d30ef"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 842,
+          "complete_command_cycles": 853,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/vector_m1.json",
+            "sha256": "5a92437c1fb8c945d58c5b35468a875745a8446bea52efc3ff84d84d5deed45a"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "3790e2ad818518ce78be1bd898026440804b52d59f2316c6f210aca9afb9646f",
+      "output_sha256": "03932b5f80702f94ab53732858104fdbc7ca144488c8c5e971828632c85df8e9"
+    },
+    {
+      "name": "model_m784_n8_k9",
+      "operation": "gemm",
+      "shape": {
+        "m": 784,
+        "n": 8,
+        "k": 9
+      },
+      "npu_cycles": 2214,
+      "gemmini_cycles": 10299,
+      "speedup": 4.651761517615176,
+      "integer_check": {
+        "npu_times_six": 13284,
+        "gemmini_times_five": 51495
+      },
+      "maximum_npu_cycles": 8582,
+      "remaining_cycles_to_threshold": 6368,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m784_n8_k9/result.json",
+        "sha256": "fd69b3fc272661edcf27a3d6b8aa55ff0a75cb4b68340d4aa3e70cb7ff892896"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m784_n8_k9/run.log",
+        "sha256": "d6c18604be0da2cf1ada5ce3dc80c86414d5e32fd24a972406c5d11c0fd64d43"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 10299,
+          "complete_command_cycles": 10310,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m784_n8_k9.json",
+            "sha256": "8fc7b0646b421635d01ca686f3e9d1620f8f8587612b8a1d3817ba38ac61cb0f"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "7cbabbba45bb809b37980d7ea52c630003e8a688c58d1e5b2f917ebe20c4673a",
+      "output_sha256": "835d39ef1b6eea118b85556dd217d6e6d6357ecfeb503659d6f18885a5a35f79"
+    },
+    {
+      "name": "model_m196_n16_k72",
+      "operation": "gemm",
+      "shape": {
+        "m": 196,
+        "n": 16,
+        "k": 72
+      },
+      "npu_cycles": 3777,
+      "gemmini_cycles": 9795,
+      "speedup": 2.5933280381254966,
+      "integer_check": {
+        "npu_times_six": 22662,
+        "gemmini_times_five": 48975
+      },
+      "maximum_npu_cycles": 8162,
+      "remaining_cycles_to_threshold": 4385,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m196_n16_k72/result.json",
+        "sha256": "f8efd49fdeaf733901f4c4dd339a513bb8ea793494f4ae3185753fa2c0acd178"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m196_n16_k72/run.log",
+        "sha256": "f89a279aeaa2ce2d3f0034ff3f7a924024c53505e606631fe77733ada948c801"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 9795,
+          "complete_command_cycles": 9806,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m196_n16_k72.json",
+            "sha256": "7a66d1bee33cd529e24583e7fa275118f74dbd73e2dd9adbb1983fbea5869ba6"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "d94e2e24e907ce90565781f2ade827d0f999a0faf73ef9216a4445a78465d8a2",
+      "output_sha256": "e7070af425963815fb527228ab71cfd2dedb21dac32c195f2ba96eee1bc9b99d"
+    },
+    {
+      "name": "model_m1_n64_k784",
+      "operation": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 64,
+        "k": 784
+      },
+      "npu_cycles": 6493,
+      "gemmini_cycles": 7811,
+      "speedup": 1.202987833050978,
+      "integer_check": {
+        "npu_times_six": 38958,
+        "gemmini_times_five": 39055
+      },
+      "maximum_npu_cycles": 6509,
+      "remaining_cycles_to_threshold": 16,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n64_k784/result.json",
+        "sha256": "3c784706f4cf1a35d7190595b2646c4cb0d577213706eb076f40a9ac2b64fb6d"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n64_k784/run.log",
+        "sha256": "9a1335c02e14347698144c820bccfb23e9558dc26c404447c6076219459e33b2"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 7811,
+          "complete_command_cycles": 7822,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m1_n64_k784.json",
+            "sha256": "7162c8d49dc3a8c55a1dbb2babdf585329fd982fef8b25e15ccf68bf8e3074c1"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "73894abd08045975a42d5361885a48322d149e9d2d929697f70e631181abadb7",
+      "output_sha256": "15efa3f0448fa22667b5ada3827f0cd14a98c5a97647fe08ceb9763ea33dfee1"
+    },
+    {
+      "name": "model_m1_n10_k64",
+      "operation": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 10,
+        "k": 64
+      },
+      "npu_cycles": 199,
+      "gemmini_cycles": 755,
+      "speedup": 3.7939698492462313,
+      "integer_check": {
+        "npu_times_six": 1194,
+        "gemmini_times_five": 3775
+      },
+      "maximum_npu_cycles": 629,
+      "remaining_cycles_to_threshold": 430,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n10_k64/result.json",
+        "sha256": "94c0902b4bae35f8c7a52f0078d093745084b099e9376665b7b780b98f059f56"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n10_k64/run.log",
+        "sha256": "169359aee642bf69f748445b3b6c03099b2934fb590776628d7226e3c2a7bc97"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 755,
+          "complete_command_cycles": 766,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m1_n10_k64.json",
+            "sha256": "da94fff2ccca7e3c2a3f67b65e1ad2bb9955dd1a964fd89e779393eca1e13c7f"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "6ac836c42da6ae1014b1be75056992361f3b7ef5731224b9eb7959639665aaab",
+      "output_sha256": "a9fca07e33e074df2cb69611b15226ec7f271d2d0541b5e72647c2c89602cdd4"
+    },
+    {
+      "name": "model_m2304_n8_k27",
+      "operation": "gemm",
+      "shape": {
+        "m": 2304,
+        "n": 8,
+        "k": 27
+      },
+      "npu_cycles": 14077,
+      "gemmini_cycles": 57697,
+      "speedup": 4.098671591958514,
+      "integer_check": {
+        "npu_times_six": 84462,
+        "gemmini_times_five": 288485
+      },
+      "maximum_npu_cycles": 48080,
+      "remaining_cycles_to_threshold": 34003,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m2304_n8_k27/result.json",
+        "sha256": "d6111cdfb9c92a71756df68335e4dfca05b79547b53353beff92eccecf5d9983"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m2304_n8_k27/run.log",
+        "sha256": "9113dedff6dcac39b4f1ddd5253ae34e68bf181ebfe4bbd235cfbfbc287d725a"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 57697,
+          "complete_command_cycles": 57708,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m2304_n8_k27.json",
+            "sha256": "1b3435f69231467782b3e95956efd6b1e22b0c50f770d3b729db0d3dc01f17ea"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "d21a10e704ceb7836a9ea3892cd5c526f38329f1be7800a2fbc7496b54ae16aa",
+      "output_sha256": "04dc2c25fe3e82b3da5a6232dace105717cdce4c010a7e98a110de54daeef6b8"
+    },
+    {
+      "name": "model_m2304_n16_k8",
+      "operation": "gemm",
+      "shape": {
+        "m": 2304,
+        "n": 16,
+        "k": 8
+      },
+      "npu_cycles": 8488,
+      "gemmini_cycles": 18874,
+      "speedup": 2.2236098020735158,
+      "integer_check": {
+        "npu_times_six": 50928,
+        "gemmini_times_five": 94370
+      },
+      "maximum_npu_cycles": 15728,
+      "remaining_cycles_to_threshold": 7240,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m2304_n16_k8/result.json",
+        "sha256": "6b14c0c41ead78fb632c8b9fee3cd092e9d29f73fe57fa1cedcecc114b5036b5"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m2304_n16_k8/run.log",
+        "sha256": "a3a71e1c10774f769bfe576b1fb99cf664119cafdb004b41d36f1cd6d4709522"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 18874,
+          "complete_command_cycles": 18885,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m2304_n16_k8.json",
+            "sha256": "04deec3d1539e86f093b61066be4e7dae0293bf7912e407a6844c3bb507898db"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "401644c9841c793cf5f58efbd4259181c20cbec893b5f125aa21860162d496d2",
+      "output_sha256": "f7638a1be62d15a458476a70a661c4b0c113f3fedfb01b1638201af88d38f5ff"
+    },
+    {
+      "name": "model_m576_n32_k16",
+      "operation": "gemm",
+      "shape": {
+        "m": 576,
+        "n": 32,
+        "k": 16
+      },
+      "npu_cycles": 3934,
+      "gemmini_cycles": 6608,
+      "speedup": 1.6797153024911031,
+      "integer_check": {
+        "npu_times_six": 23604,
+        "gemmini_times_five": 33040
+      },
+      "maximum_npu_cycles": 5506,
+      "remaining_cycles_to_threshold": 1572,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m576_n32_k16/result.json",
+        "sha256": "a9c6a68e9491eda7c2dbbbf793ced85463e04bfa9fc37d4b392e40b94c42ed5e"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m576_n32_k16/run.log",
+        "sha256": "28bbf5225ee1f8bd6518dfd45ee505c49a3bf3af19fd88b80614d05073a9c6af"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 6608,
+          "complete_command_cycles": 6619,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m576_n32_k16.json",
+            "sha256": "4ab7b978323cc1b56c99c972fcde177ca9d974fdabd3414b69c88218b6a903e0"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "959e61112f6b45b1a66460792c950a256a0274bfb28224fcb2d9f530409d109b",
+      "output_sha256": "f253ebc52aac1dfd6697ea25fb6006f7fdf7a26b7dc5a0bc6795b895fcd93055"
+    },
+    {
+      "name": "model_m576_n32_k32",
+      "operation": "gemm",
+      "shape": {
+        "m": 576,
+        "n": 32,
+        "k": 32
+      },
+      "npu_cycles": 4334,
+      "gemmini_cycles": 7341,
+      "speedup": 1.6938163359483156,
+      "integer_check": {
+        "npu_times_six": 26004,
+        "gemmini_times_five": 36705
+      },
+      "maximum_npu_cycles": 6117,
+      "remaining_cycles_to_threshold": 1783,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m576_n32_k32/result.json",
+        "sha256": "4279d3e6c330876bf42513879ef6431509701588c3bfe82d5874e333a4ed478c"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m576_n32_k32/run.log",
+        "sha256": "1107306245426ef52059ac18242d3ab6e6a7f59cd0c7a8eebec0ba15ffecc08e"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 7341,
+          "complete_command_cycles": 7352,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m576_n32_k32.json",
+            "sha256": "ba5d8041636878c2e475895be615d84c2da31092cd7e9f72911aae6e4876fbfb"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "629651e08dffa6a2863887177d4702263f53aaab3b81f3e5a14011f1a857b870",
+      "output_sha256": "2b4e1ecbfd6befed64bfa19cbfac0bd1b84b603e993e132a5ebb1ebda6fd137f"
+    },
+    {
+      "name": "model_m144_n64_k32",
+      "operation": "gemm",
+      "shape": {
+        "m": 144,
+        "n": 64,
+        "k": 32
+      },
+      "npu_cycles": 2307,
+      "gemmini_cycles": 4189,
+      "speedup": 1.8157780667533594,
+      "integer_check": {
+        "npu_times_six": 13842,
+        "gemmini_times_five": 20945
+      },
+      "maximum_npu_cycles": 3490,
+      "remaining_cycles_to_threshold": 1183,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m144_n64_k32/result.json",
+        "sha256": "0e8967a15ec6c56d527758c992883d0e7cac0b6f8134c4cbae6e3b6ac25c3d72"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m144_n64_k32/run.log",
+        "sha256": "508a0d1520759c46363376e9e72f677396186c9e95ef1a8fe2ba41a7152be00c"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 4189,
+          "complete_command_cycles": 4200,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m144_n64_k32.json",
+            "sha256": "dd845e0f4e9dfa2018da72d0ca470f7178bcef14c3e7eed6d821fa82cfba2a98"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "a2f1c953e0d1410cc05aa380ed4898180e164637b8697c20bfd71a625f722f6e",
+      "output_sha256": "9761446caeff8aaf02556d2f998f75bdeb87231d37fb92f46ba54d956095bfe8"
+    },
+    {
+      "name": "model_m144_n64_k64",
+      "operation": "gemm",
+      "shape": {
+        "m": 144,
+        "n": 64,
+        "k": 64
+      },
+      "npu_cycles": 3894,
+      "gemmini_cycles": 5241,
+      "speedup": 1.3459167950693374,
+      "integer_check": {
+        "npu_times_six": 23364,
+        "gemmini_times_five": 26205
+      },
+      "maximum_npu_cycles": 4367,
+      "remaining_cycles_to_threshold": 473,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m144_n64_k64/result.json",
+        "sha256": "1b69c127e7a9ff1f8a43152d4d7183f361ac39bc9fb750cabf1761b1ce76d5f5"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m144_n64_k64/run.log",
+        "sha256": "eb68a70062b9bc21c2d29f45d97eb443c038bd97b56b292a5ab075e6596267ed"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 5241,
+          "complete_command_cycles": 5252,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m144_n64_k64.json",
+            "sha256": "a492131827d9dd5beb42b9ed551d2dcc8d60a41de50b87a71fada9769d8f7566"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "13d323d8ce4162063198dcaf67c4a3ebcb704b327ca484748229bc177c97dfa1",
+      "output_sha256": "69e3256552cb721a4b6e7ca534e915be3e3dc7c4d2966a2f36fd0f5f70f3cfa4"
+    },
+    {
+      "name": "model_m36_n128_k64",
+      "operation": "gemm",
+      "shape": {
+        "m": 36,
+        "n": 128,
+        "k": 64
+      },
+      "npu_cycles": 2767,
+      "gemmini_cycles": 8654,
+      "speedup": 3.127574990964944,
+      "integer_check": {
+        "npu_times_six": 16602,
+        "gemmini_times_five": 43270
+      },
+      "maximum_npu_cycles": 7211,
+      "remaining_cycles_to_threshold": 4444,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m36_n128_k64/result.json",
+        "sha256": "ea2bf21e805338057014bd7ff356fef8b7b0da06896eab8da5ec8cbc1ae4f438"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m36_n128_k64/run.log",
+        "sha256": "0352f6078b2cc2861dc6aeec860a5ee494a1d7d378e51387502ea1d84f448e07"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 8654,
+          "complete_command_cycles": 8665,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m36_n128_k64.json",
+            "sha256": "439f5495795c9203e18000c3d76b4ab4ccdad3f0f99bb3fe00dd17071bde04a5"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "89b6f510e58d7773322dfeb843ce665ca970e7f4ebf7ae48e46badb669347a9d",
+      "output_sha256": "64d294e035388dac022d4907b3e88d703789fd40fba03025a6887286da3dd533"
+    },
+    {
+      "name": "model_m36_n128_k128",
+      "operation": "gemm",
+      "shape": {
+        "m": 36,
+        "n": 128,
+        "k": 128
+      },
+      "npu_cycles": 4701,
+      "gemmini_cycles": 13770,
+      "speedup": 2.929164007657945,
+      "integer_check": {
+        "npu_times_six": 28206,
+        "gemmini_times_five": 68850
+      },
+      "maximum_npu_cycles": 11475,
+      "remaining_cycles_to_threshold": 6774,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m36_n128_k128/result.json",
+        "sha256": "da8fd9916ea813f1dd33f51c5df6dc09b80129ff279edc1c192c61a86a83da1c"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m36_n128_k128/run.log",
+        "sha256": "916f7d3484f7b6abd04efed0dd31b25b8c540c3bcc1b04520f455504d023d108"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 13770,
+          "complete_command_cycles": 13781,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m36_n128_k128.json",
+            "sha256": "b3768409ae97098c6cc6bd8d9a53beb5a1d3a92c4ee14b457e8f4501fc5e4b6c"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "246364c4c22d34f1057182ade7e7fc84e0b0a55ab12b82b9dc8c1004b8b9fe06",
+      "output_sha256": "02b5a556bc07dd5810b0a138cc3dd6f0c608ec7990551975dd407bac5b7cf9b8"
+    },
+    {
+      "name": "model_m9_n256_k128",
+      "operation": "gemm",
+      "shape": {
+        "m": 9,
+        "n": 256,
+        "k": 128
+      },
+      "npu_cycles": 6737,
+      "gemmini_cycles": 19241,
+      "speedup": 2.856018999554698,
+      "integer_check": {
+        "npu_times_six": 40422,
+        "gemmini_times_five": 96205
+      },
+      "maximum_npu_cycles": 16034,
+      "remaining_cycles_to_threshold": 9297,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m9_n256_k128/result.json",
+        "sha256": "1a083a2fdb949be055c33e6df53201d00f2ce88f2125f078ec4f3d77e8b3d324"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m9_n256_k128/run.log",
+        "sha256": "84e6080a1f5ae9fa5d4a25185d8631fab45ae8b9313701bf811897b09a107534"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 19241,
+          "complete_command_cycles": 19252,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m9_n256_k128.json",
+            "sha256": "608dd49fc4aa145bbb9299b002e6745330815153bf5b77533c7a9e955455c836"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "d88726d259716bd958a78fc9f89def0f1e45a115e7e02e1f77ed9018548ca284",
+      "output_sha256": "b1387f43e83e18ae9767189d2c8a0d8c49ae3627b5242f83323e61fca09aad7e"
+    },
+    {
+      "name": "model_m9_n256_k256",
+      "operation": "gemm",
+      "shape": {
+        "m": 9,
+        "n": 256,
+        "k": 256
+      },
+      "npu_cycles": 12673,
+      "gemmini_cycles": 17751,
+      "speedup": 1.4006943896472817,
+      "integer_check": {
+        "npu_times_six": 76038,
+        "gemmini_times_five": 88755
+      },
+      "maximum_npu_cycles": 14792,
+      "remaining_cycles_to_threshold": 2119,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m9_n256_k256/result.json",
+        "sha256": "3c2370453047437c05e765425c044d410c22012e85c656538d4ab3e10af42b4f"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m9_n256_k256/run.log",
+        "sha256": "824b0f2780246c825356dcdbb94797d5163e76598ca116a4430b9165b459a2fc"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 17751,
+          "complete_command_cycles": 17762,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m9_n256_k256.json",
+            "sha256": "8b31b4f52e17741e88c6484c91adea75eccdd49d8e0168420886ff010099d7cf"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "03d59fa6b7874ba2b53f88a18a3e37f79d64e97e8b8fe96adb7eae5e266a0767",
+      "output_sha256": "2506056e69324cc3489b9c599662fa703a85f3e4301617c97ae079cd1b7477f4"
+    },
+    {
+      "name": "model_m1_n2_k256",
+      "operation": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 2,
+        "k": 256
+      },
+      "npu_cycles": 494,
+      "gemmini_cycles": 1274,
+      "speedup": 2.5789473684210527,
+      "integer_check": {
+        "npu_times_six": 2964,
+        "gemmini_times_five": 6370
+      },
+      "maximum_npu_cycles": 1061,
+      "remaining_cycles_to_threshold": 567,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n2_k256/result.json",
+        "sha256": "551efffcf50cb3b91bb72f62ca18840bc818fa21b133cac07a14c3161cb29db6"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n2_k256/run.log",
+        "sha256": "37eed86092073c134f5c0d42c15f0a1062e2f243617d7ec14cf5b95e4d915fde"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 1274,
+          "complete_command_cycles": 1285,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m1_n2_k256.json",
+            "sha256": "1e46ea6bd48cb7bdb73fa05e79ab899144b61f67e75d6bf5f8ff5181d1567d4b"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "a87f79a125bb580b000ec67b4307e264cf0246bc81d9fef0dce89bc4f9f7964a",
+      "output_sha256": "47dc540c94ceb704a23875c11273e16bb0b8a87aed84de911f2133568115f254"
+    },
+    {
+      "name": "model_m125_n64_k40",
+      "operation": "gemm",
+      "shape": {
+        "m": 125,
+        "n": 64,
+        "k": 40
+      },
+      "npu_cycles": 2947,
+      "gemmini_cycles": 6419,
+      "speedup": 2.178147268408551,
+      "integer_check": {
+        "npu_times_six": 17682,
+        "gemmini_times_five": 32095
+      },
+      "maximum_npu_cycles": 5349,
+      "remaining_cycles_to_threshold": 2402,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m125_n64_k40/result.json",
+        "sha256": "0401b91fa5f0afe324ca0a017542d3a0a6706a208654e47527e5ed28dce82589"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m125_n64_k40/run.log",
+        "sha256": "0efe97fa45f733a0fad7e13a687e5e1dec3a4922e716a89259ad8d4df136c429"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 6419,
+          "complete_command_cycles": 6430,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m125_n64_k40.json",
+            "sha256": "4d5fa624c5044dc2e7d55420a15acccc5ad7afcff228e5cfdbf626dbfceeda58"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "aaf65423da92b7d24a3229a3cb44d9314d6e4e46a2e7da02dac26c94f25498a0",
+      "output_sha256": "2519f0db487a9ceb99a03101ac5789d76ae8aecacd8ce8ba4189611217856ae5"
+    },
+    {
+      "name": "model_m125_n64_k64",
+      "operation": "gemm",
+      "shape": {
+        "m": 125,
+        "n": 64,
+        "k": 64
+      },
+      "npu_cycles": 3581,
+      "gemmini_cycles": 4622,
+      "speedup": 1.2907009215302987,
+      "integer_check": {
+        "npu_times_six": 21486,
+        "gemmini_times_five": 23110
+      },
+      "maximum_npu_cycles": 3851,
+      "remaining_cycles_to_threshold": 270,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m125_n64_k64/result.json",
+        "sha256": "37aad8c01530410d5ff06c20d5a013e5a1bb85b0ec4ee4fb6a8535caf7493f1a"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m125_n64_k64/run.log",
+        "sha256": "dadbfc3e425b374ceaec8d14297eea6b8f906b8f4fb5bef1ee714129369b77d1"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 4622,
+          "complete_command_cycles": 4633,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m125_n64_k64.json",
+            "sha256": "5f0c496ccde48f7947ddaa572428a48800995fa808541f3c5bbf715ee20f8a46"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "9c2dcbd9957b86ac5f16bdca70b895cf40d30a2c99c2f0782dca91a43c87aff4",
+      "output_sha256": "402bd5bb1ac322628f97ce6d0ccc3dd2ff55f65eed7ecab7a2a5149917b1b6f1"
+    },
+    {
+      "name": "model_m1_n12_k64",
+      "operation": "gemm",
+      "shape": {
+        "m": 1,
+        "n": 12,
+        "k": 64
+      },
+      "npu_cycles": 215,
+      "gemmini_cycles": 716,
+      "speedup": 3.3302325581395347,
+      "integer_check": {
+        "npu_times_six": 1290,
+        "gemmini_times_five": 3580
+      },
+      "maximum_npu_cycles": 596,
+      "remaining_cycles_to_threshold": 381,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n12_k64/result.json",
+        "sha256": "c258ee5b5c9840b90e33b5113adf1800fa72cd289e01256cd73355da73a230d5"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1_n12_k64/run.log",
+        "sha256": "adf27d41a49c6524ce29e232d6c94218644c3ab398b2303e6e5ea346cf18960f"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 716,
+          "complete_command_cycles": 727,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m1_n12_k64.json",
+            "sha256": "d19a677f61d934f17ca413c8a3af480ef0fce7cd7077657c0f7fb7f36cb3cce7"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "34fb52cfd2fdd6a4603756a46ed27a69bab0bc10f87cf7c581a013702051bdba",
+      "output_sha256": "42b8cc1e8a38832ed6b16b9b13c4737a1b564e793839824ab78ca2c8a16fd7b6"
+    },
+    {
+      "name": "model_m1024_n16_k27",
+      "operation": "gemm",
+      "shape": {
+        "m": 1024,
+        "n": 16,
+        "k": 27
+      },
+      "npu_cycles": 7065,
+      "gemmini_cycles": 28029,
+      "speedup": 3.9673036093418257,
+      "integer_check": {
+        "npu_times_six": 42390,
+        "gemmini_times_five": 140145
+      },
+      "maximum_npu_cycles": 23357,
+      "remaining_cycles_to_threshold": 16292,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1024_n16_k27/result.json",
+        "sha256": "50b520fdaadc9d00d0375ae014595fac9478efd5c434e251e2c12ade06a310ea"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1024_n16_k27/run.log",
+        "sha256": "40e5cc64aad83c41b7bd6858569aeb99d4a1f996fabdfaa3e43f40b68657c8e4"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 28029,
+          "complete_command_cycles": 28040,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m1024_n16_k27.json",
+            "sha256": "7ea7cb491539cf8dd9d93404d510f55dba1013597795edcf7b2eae7361e360d5"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "fc684486b6938654bc54952786c6b7dda8b4c3a1cf9902ad1e5eabf721f58158",
+      "output_sha256": "d7e1814b995b2b7609da4c4e35d484ed48c161b70452ba2c9814d0b5efc08ccb"
+    },
+    {
+      "name": "model_m1024_n16_k144",
+      "operation": "gemm",
+      "shape": {
+        "m": 1024,
+        "n": 16,
+        "k": 144
+      },
+      "npu_cycles": 28233,
+      "gemmini_cycles": 81212,
+      "speedup": 2.876492048312259,
+      "integer_check": {
+        "npu_times_six": 169398,
+        "gemmini_times_five": 406060
+      },
+      "maximum_npu_cycles": 67676,
+      "remaining_cycles_to_threshold": 39443,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1024_n16_k144/result.json",
+        "sha256": "5b610a10755097a622d470b92571b324ab31593e8306679f56efcb2249538cee"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m1024_n16_k144/run.log",
+        "sha256": "980677a331dc43e052adfe214e1dc434756d5ed10618bcb44abf1d155cb8158f"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 81212,
+          "complete_command_cycles": 81223,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m1024_n16_k144.json",
+            "sha256": "52d08eb28af23307c91857a55bfa1cdfea51f6f3e382696185480221b28f7be0"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "acb5cd66ee49cd803b0a773f88fc331e45c959f4dc457e8aa22d1bc4341a6b9d",
+      "output_sha256": "715640445dc2f839926ca4dbd9c42ba34feccf9a7bc4389cfa79c14904c7cf06"
+    },
+    {
+      "name": "model_m256_n32_k144",
+      "operation": "gemm",
+      "shape": {
+        "m": 256,
+        "n": 32,
+        "k": 144
+      },
+      "npu_cycles": 8090,
+      "gemmini_cycles": 21997,
+      "speedup": 2.719035846724351,
+      "integer_check": {
+        "npu_times_six": 48540,
+        "gemmini_times_five": 109985
+      },
+      "maximum_npu_cycles": 18330,
+      "remaining_cycles_to_threshold": 10240,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m256_n32_k144/result.json",
+        "sha256": "6f44e03d37f7930e703d71928d258810bf8cf0e740e514c257df139f284134ac"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m256_n32_k144/run.log",
+        "sha256": "c52ef5a19beb37d70273b31170b6a654eb1cc764fd80644c7dc4fa46a544b443"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 21997,
+          "complete_command_cycles": 22008,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m256_n32_k144.json",
+            "sha256": "a1a8a4d60e0305f04a1eaee86f8b09832fc0c528f4022e63e4fae08214a0ab5d"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "65350000664aa538147b07cbe110a48c4437c6372723c7eafbfa685eb61cd255",
+      "output_sha256": "c78517cf4eba9b2879de17f85b7f08b5737e75d750a72c7780609320ecf43635"
+    },
+    {
+      "name": "model_m256_n32_k288",
+      "operation": "gemm",
+      "shape": {
+        "m": 256,
+        "n": 32,
+        "k": 288
+      },
+      "npu_cycles": 15398,
+      "gemmini_cycles": 42182,
+      "speedup": 2.739446681387193,
+      "integer_check": {
+        "npu_times_six": 92388,
+        "gemmini_times_five": 210910
+      },
+      "maximum_npu_cycles": 35151,
+      "remaining_cycles_to_threshold": 19753,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m256_n32_k288/result.json",
+        "sha256": "aad75b205ba5d3299bf854a145c40c31b2854cb58737c6818b98c9928442b9b2"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m256_n32_k288/run.log",
+        "sha256": "2f8ad8af53c3a18ced99e36ceadde4dc918830b5dbf6fd4b6bbf231f79768eeb"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 42182,
+          "complete_command_cycles": 42193,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m256_n32_k288.json",
+            "sha256": "5ef2bc6d7992622603752a9bc12cae471f435bece469eb90e5168f8df4dbc508"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "9f1ce37cdb2afa134c1afa7717bcd4294590eeaed3fa9e0d4213cc4f2e12ce5f",
+      "output_sha256": "7a3d71bf83b48c1fc59a1dd7b9e4208df3f2111942296462ed7566bd52347738"
+    },
+    {
+      "name": "model_m256_n32_k16",
+      "operation": "gemm",
+      "shape": {
+        "m": 256,
+        "n": 32,
+        "k": 16
+      },
+      "npu_cycles": 2175,
+      "gemmini_cycles": 3439,
+      "speedup": 1.5811494252873564,
+      "integer_check": {
+        "npu_times_six": 13050,
+        "gemmini_times_five": 17195
+      },
+      "maximum_npu_cycles": 2865,
+      "remaining_cycles_to_threshold": 690,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m256_n32_k16/result.json",
+        "sha256": "31c0d01d5565c8321ee7b579f0ac0a06b69c651a91f957e43b0b9815421735b0"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m256_n32_k16/run.log",
+        "sha256": "70d4a3d4e086216906fcd7ad6961179d77278931036fbce4d3f98c9659bd5c29"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 3439,
+          "complete_command_cycles": 3450,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m256_n32_k16.json",
+            "sha256": "85b37a5902b62bf99c401096bdd70b9dc6773b8771f05a6a33be6ae6022f65c4"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "e641ded9e4536fbcb99e4c63b252e34659392fc6b709f59016f9f7225e673661",
+      "output_sha256": "98260410220397b9159875283bbfd2d31e8da7be272d71ab2b04c03cb36c0da6"
+    },
+    {
+      "name": "model_m64_n64_k288",
+      "operation": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 288
+      },
+      "npu_cycles": 7168,
+      "gemmini_cycles": 12210,
+      "speedup": 1.7034040178571428,
+      "integer_check": {
+        "npu_times_six": 43008,
+        "gemmini_times_five": 61050
+      },
+      "maximum_npu_cycles": 10175,
+      "remaining_cycles_to_threshold": 3007,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m64_n64_k288/result.json",
+        "sha256": "58494f181d75cf214c4d4871be0d1875a813fc7bf17ea31e83c68f27df9f92cf"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m64_n64_k288/run.log",
+        "sha256": "d02ee3d7abf53362032ff09c5097b06cf95536fa88180e9e14ad055ab980a436"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 12210,
+          "complete_command_cycles": 12221,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m64_n64_k288.json",
+            "sha256": "6abe458e6ecf4fa24bfbd48dba4bf3230f3cd99db5249d867e62abafd4314be3"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "4b058ac00fc25bcb4d46be67bd2602dfaeaeb743936f0165aea782396ad67b11",
+      "output_sha256": "fc288c9e51a9037577b847b8393032f951c42b2a0ef2c21b1451f26b353bb8a7"
+    },
+    {
+      "name": "model_m64_n64_k576",
+      "operation": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 576
+      },
+      "npu_cycles": 13576,
+      "gemmini_cycles": 18769,
+      "speedup": 1.382513258691809,
+      "integer_check": {
+        "npu_times_six": 81456,
+        "gemmini_times_five": 93845
+      },
+      "maximum_npu_cycles": 15640,
+      "remaining_cycles_to_threshold": 2064,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m64_n64_k576/result.json",
+        "sha256": "04ecef00589059586f1f54b7e33f77c590d0dc895217f3d52e82ed3ca3dd4aad"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m64_n64_k576/run.log",
+        "sha256": "f7270b0077a6282f19cdf8813f44732905a2fcb7e5c203daa958463b86a04e14"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 18769,
+          "complete_command_cycles": 18780,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m64_n64_k576.json",
+            "sha256": "14a555f94d91a2746c3eab1d298142030b101af2eef272484f9f5dfd4ae69270"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "44b71e7821e6a909863a8eaf0fa5ba493f1693b2ec2bc1dcd5fb082ce5b49031",
+      "output_sha256": "0418f3e26f7b88b880f8e5f7d942f77b8fb72c11643d05770d761ce29dc6280e"
+    },
+    {
+      "name": "model_m64_n64_k32",
+      "operation": "gemm",
+      "shape": {
+        "m": 64,
+        "n": 64,
+        "k": 32
+      },
+      "npu_cycles": 1472,
+      "gemmini_cycles": 2375,
+      "speedup": 1.6134510869565217,
+      "integer_check": {
+        "npu_times_six": 8832,
+        "gemmini_times_five": 11875
+      },
+      "maximum_npu_cycles": 1979,
+      "remaining_cycles_to_threshold": 507,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m64_n64_k32/result.json",
+        "sha256": "ffaeb35828914fd1d3e2aacaf88ffe72bb7df729fa6fc5bfbb55a303a1abcce4"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/cases/model_m64_n64_k32/run.log",
+        "sha256": "8718d6954fae7b5923004c7dbd2e946c9d19ca4daf54d8b576d0d874e3244687"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini",
+          "cycles": 2375,
+          "complete_command_cycles": 2386,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/model_m64_n64_k32.json",
+            "sha256": "81ff09c88436f980921a3a46d99c5df45b7bedcf210d12410c124e2285e964b8"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "f69852901f179814c4c8f70d63c33c90d001de11df2cd07e8578f834b60cec3a",
+      "output_sha256": "cf862850b4d1e0ca79ac511221734211a50af063c5f4b16dcfefc41a4691ef25"
+    },
+    {
+      "name": "conv3x3_s2_96_c3_o8",
+      "operation": "conv2d",
+      "shape": {
+        "batch": 1,
+        "input_h": 96,
+        "input_w": 96,
+        "input_channels": 3,
+        "output_channels": 8,
+        "output_h": 48,
+        "output_w": 48,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "npu_cycles": 51534,
+      "gemmini_cycles": 85495,
+      "speedup": 1.659001824038499,
+      "integer_check": {
+        "npu_times_six": 309204,
+        "gemmini_times_five": 427475
+      },
+      "maximum_npu_cycles": 71245,
+      "remaining_cycles_to_threshold": 19711,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_native",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/conv3x3_s2_96_c3_o8/result.json",
+        "sha256": "5458d633eb51630e5b0228a86bfdaf40f6daf94d4a92271939c35394dac4c360"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/conv3x3_s2_96_c3_o8/run.log",
+        "sha256": "d4d43de2d4ba1c9e263a00b8872471fb35a4fc44a289dfbdca2377c95c55f00e"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 85495,
+          "complete_command_cycles": 85503,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/conv3x3_s2_96_c3_o8/result.json",
+            "sha256": "3514891eb9a80653c8c785077e6a61d00c774367b2ba27f3d4f6d70958b6e97f"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 174293,
+          "complete_command_cycles": 174293,
+          "interval": "timed_command_sequence_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/conv3x3_s2_96_c3_o8/result.json",
+            "sha256": "cc4d445459124511ab59eb20b8cdd6297868322cda7042b6ed1bd1e3c51ff896"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "bf935b0840bf79508c2c0c274208934ea3c0a014792a0bfa537555e99b32bbc6",
+      "output_sha256": "966e3ff9f5091ac83d2aba9c0a1ab4b82be6552a78eb219bfe64d1e918c06e85"
+    },
+    {
+      "name": "dw3x3_s1_48_c8",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 48,
+        "input_w": 48,
+        "input_channels": 8,
+        "output_channels": 8,
+        "output_h": 48,
+        "output_w": 48,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 24145,
+      "gemmini_cycles": 32705,
+      "speedup": 1.3545247463242907,
+      "integer_check": {
+        "npu_times_six": 144870,
+        "gemmini_times_five": 163525
+      },
+      "maximum_npu_cycles": 27254,
+      "remaining_cycles_to_threshold": 3109,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/dw3x3_s1_48_c8/result.json",
+        "sha256": "b769cef7a8769fcc0dba4b2509a8da35e807eae2eb0a06b0d2e41bea11e45a7b"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/dw3x3_s1_48_c8/run.log",
+        "sha256": "a8fcca669517eb2f3d88af518a863ec84e0c6bfe941e71a13b1c3019cffd767e"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 32705,
+          "complete_command_cycles": 32710,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/dw3x3_s1_48_c8/result.json",
+            "sha256": "8a4c4975761081310848699490c5785670489719d9b2897686f18b283ebe981d"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 32705,
+          "complete_command_cycles": 32710,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/dw3x3_s1_48_c8/result.json",
+            "sha256": "a8e4414ce8e2d24dfe63ee51bd666e70c5081ed967dd07c31473784fbe159459"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "c028c91e9ba6f5fdf1b338b839a977ff0b29b67acf5f7b447e5f61f4e3fc5027",
+      "output_sha256": "257944df19cb3c669f3a38970104f2bfd6aa97744e1eb2a78c52ad266e7d5f28"
+    },
+    {
+      "name": "dw3x3_s2_48_c8",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 48,
+        "input_w": 48,
+        "input_channels": 8,
+        "output_channels": 8,
+        "output_h": 24,
+        "output_w": 24,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "npu_cycles": 10216,
+      "gemmini_cycles": 17802,
+      "speedup": 1.7425606891151135,
+      "integer_check": {
+        "npu_times_six": 61296,
+        "gemmini_times_five": 89010
+      },
+      "maximum_npu_cycles": 14835,
+      "remaining_cycles_to_threshold": 4619,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/dw3x3_s2_48_c8/result.json",
+        "sha256": "f44c31a357cc2b98cb7acd4ee85a8ac6c235d9e162eab1377b98a2c0efbf798f"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/dw3x3_s2_48_c8/run.log",
+        "sha256": "a80da624bddf7506214dbd531989445a658f49f96d676ab230f8f5f8b2e27a15"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 17802,
+          "complete_command_cycles": 17807,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/dw3x3_s2_48_c8/result.json",
+            "sha256": "d68f75b9b698301787e94b19830d032be5bb30ffd48a8894d4343bf8e23c1f5a"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 17802,
+          "complete_command_cycles": 17807,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/dw3x3_s2_48_c8/result.json",
+            "sha256": "ed4994eff909f7e720cf5dbeb7f048d200748aa97f1f7b7df81de6e7881db67a"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "e8d9adff443631c9c52d44dfac2248b46d514f3664f1df7a5d76af00e3229e41",
+      "output_sha256": "c9c540dc43e5313db0b8b1090acda1e53e7e67d9252c50931e6d67273e33081c"
+    },
+    {
+      "name": "conv3x3_32_c16_o16",
+      "operation": "conv2d",
+      "shape": {
+        "batch": 1,
+        "input_h": 32,
+        "input_w": 32,
+        "input_channels": 16,
+        "output_channels": 16,
+        "output_h": 32,
+        "output_w": 32,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 19006,
+      "gemmini_cycles": 24554,
+      "speedup": 1.2919078185836053,
+      "integer_check": {
+        "npu_times_six": 114036,
+        "gemmini_times_five": 122770
+      },
+      "maximum_npu_cycles": 20461,
+      "remaining_cycles_to_threshold": 1455,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_native",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/conv3x3_32_c16_o16/result.json",
+        "sha256": "1c8f0834187fed1416616d858f652d5d8ccd7136e24bc6fb59e2921123b305ba"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/conv3x3_32_c16_o16/run.log",
+        "sha256": "922729e371ee637a906c73e0ab8fc5b5644c0c2adb319dc56ba78f343879cd6d"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 24554,
+          "complete_command_cycles": 24562,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/conv3x3_32_c16_o16/result.json",
+            "sha256": "929e2c51b1758cdff558e21f8d7b05a49fd818ff293415773d9689cce31864af"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 57886,
+          "complete_command_cycles": 57886,
+          "interval": "timed_command_sequence_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/conv3x3_32_c16_o16/result.json",
+            "sha256": "58604036d672ad80337da2d26333a63c4d14e5855979f222edc33b339963fc4c"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "c7231bf673ae8e4a1c72eef2c440e0317b06ce23b8bf73a989bbdbc074dfb9a8",
+      "output_sha256": "7a77a1c9ec9eb6716903b85f007421bdc1143cbd76ca905afd5d4e1f952ecf37"
+    },
+    {
+      "name": "conv3x3_8_c64_o64",
+      "operation": "conv2d",
+      "shape": {
+        "batch": 1,
+        "input_h": 8,
+        "input_w": 8,
+        "input_channels": 64,
+        "output_channels": 64,
+        "output_h": 8,
+        "output_w": 8,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 14327,
+      "gemmini_cycles": 40490,
+      "speedup": 2.8261324771410625,
+      "integer_check": {
+        "npu_times_six": 85962,
+        "gemmini_times_five": 202450
+      },
+      "maximum_npu_cycles": 33741,
+      "remaining_cycles_to_threshold": 19414,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_native",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/conv3x3_8_c64_o64/result.json",
+        "sha256": "32687e2178cae856abb8588c6bc7a07aa7b031e9a36f8f59dcb2e0ca911f971e"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/conv3x3_8_c64_o64/run.log",
+        "sha256": "1cf27dadc940168cf8b2dc9a594569348c6d2b86188688af9769b1497579b58e"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 40490,
+          "complete_command_cycles": 40498,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/conv3x3_8_c64_o64/result.json",
+            "sha256": "97d42a9aa55df30bc19cc48df4517b00586b0777b3909646de50ec9efc859b7d"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 65214,
+          "complete_command_cycles": 65214,
+          "interval": "timed_command_sequence_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/conv3x3_8_c64_o64/result.json",
+            "sha256": "5ff4491c14aa12c772901b383f18fe04a64025a954f550980787b8039b3a1394"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "0306ee352c1a0f30dc0e2d7a538d6d4a87090e02af71133a22f92cf9ab60785e",
+      "output_sha256": "c1b0c7c68bb85c43b79b9eb95f094c190813782854c644367d43c44e656a6eed"
+    },
+    {
+      "name": "model_dw3x3_s1_25x5_c64",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 25,
+        "input_w": 5,
+        "input_channels": 64,
+        "output_channels": 64,
+        "output_h": 25,
+        "output_w": 5,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 6520,
+      "gemmini_cycles": 14089,
+      "speedup": 2.1608895705521474,
+      "integer_check": {
+        "npu_times_six": 39120,
+        "gemmini_times_five": 70445
+      },
+      "maximum_npu_cycles": 11740,
+      "remaining_cycles_to_threshold": 5220,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_25x5_c64/result.json",
+        "sha256": "3d3bff22dd0d69cb04de2c8ad0eb1b205f4c166b9e08bf021c64db9a74f11d28"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_25x5_c64/run.log",
+        "sha256": "c62cbe8d2267ffdf0db684a6a484c23164ff4c6b712e0e572363372818ffa706"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 14089,
+          "complete_command_cycles": 14094,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s1_25x5_c64/result.json",
+            "sha256": "c99cdc8b6999c13d6dc8541cde9335e02291b60696279c32fa88ee2074a53220"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 14089,
+          "complete_command_cycles": 14094,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s1_25x5_c64/result.json",
+            "sha256": "db9ccf4d27c10949a2dc4d9217a97fdb409ff9cf9a0fdd7a254bf072cad25cde"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "6fe984e627f5e3632503791344cc551f176bae050d2f0917efe9410dfdec9017",
+      "output_sha256": "a96cdd272b7face4d16a27dad302f1cd1e73e6ed53e113b05e98f9f1386ca6bf"
+    },
+    {
+      "name": "model_dw3x3_s2_48x48_c16",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 48,
+        "input_w": 48,
+        "input_channels": 16,
+        "output_channels": 16,
+        "output_h": 24,
+        "output_w": 24,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "npu_cycles": 9816,
+      "gemmini_cycles": 19689,
+      "speedup": 2.00580684596577,
+      "integer_check": {
+        "npu_times_six": 58896,
+        "gemmini_times_five": 98445
+      },
+      "maximum_npu_cycles": 16407,
+      "remaining_cycles_to_threshold": 6591,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_48x48_c16/result.json",
+        "sha256": "b32d88ee303e79004a39454e12bbda5b53d2f8bc0376878b62c18251570524c2"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_48x48_c16/run.log",
+        "sha256": "18f08d9240278b911c5671c96df41fb18cfc1c84b2b4b0ae18a639de4596f7cc"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 19689,
+          "complete_command_cycles": 19694,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s2_48x48_c16/result.json",
+            "sha256": "b1776707fe1ff0ce7170d2c9a62f155b70cadf72af2b4b6343d96f6f5f1380c7"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 19689,
+          "complete_command_cycles": 19694,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s2_48x48_c16/result.json",
+            "sha256": "d31896f3ac1a45afa21d5000a4bfdf453c0a169150c04db1b6a0c62caf0df2d9"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "5142cb506732ef9c16ee633881be2b380f33432b34fffbf61ad322d4ae962b78",
+      "output_sha256": "4f633ccdba510d8bdbd90c919866bd07903433f9cb5fffcfea73b898877efa28"
+    },
+    {
+      "name": "model_dw3x3_s1_24x24_c32",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 24,
+        "input_w": 24,
+        "input_channels": 32,
+        "output_channels": 32,
+        "output_h": 24,
+        "output_w": 24,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 12496,
+      "gemmini_cycles": 17837,
+      "speedup": 1.4274167733674776,
+      "integer_check": {
+        "npu_times_six": 74976,
+        "gemmini_times_five": 89185
+      },
+      "maximum_npu_cycles": 14864,
+      "remaining_cycles_to_threshold": 2368,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_24x24_c32/result.json",
+        "sha256": "7fa317d80e20183eb4d30dd8c975eea5ed59a72bff1ad15ab0da2f886160abab"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_24x24_c32/run.log",
+        "sha256": "13f890c911f602a5bc114b0c6f1212b9b59a3b56bd06afe53069750f8ac7d2d3"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 17837,
+          "complete_command_cycles": 17842,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s1_24x24_c32/result.json",
+            "sha256": "1ae629d69d1f0dbfed455b792359ddd3f4563b47df35ea03e414de82679a54ab"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 17837,
+          "complete_command_cycles": 17842,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s1_24x24_c32/result.json",
+            "sha256": "4030d96a79801f3a7ed95118454b0cb68c0f028ea7517e5c8711b95d70b7dbc0"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "26b70d706053dd0936625a4f6af358bb30159f67c16be20fa6461ddaf4ac8e7a",
+      "output_sha256": "e74e7f14960d78704aa20a9032065024d13966c647c3e3df326ac7765cac92e6"
+    },
+    {
+      "name": "model_dw3x3_s2_24x24_c32",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 24,
+        "input_w": 24,
+        "input_channels": 32,
+        "output_channels": 32,
+        "output_h": 12,
+        "output_w": 12,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "npu_cycles": 7790,
+      "gemmini_cycles": 10733,
+      "speedup": 1.3777920410783056,
+      "integer_check": {
+        "npu_times_six": 46740,
+        "gemmini_times_five": 53665
+      },
+      "maximum_npu_cycles": 8944,
+      "remaining_cycles_to_threshold": 1154,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_24x24_c32/result.json",
+        "sha256": "f95aede4e7b56fe9c39927722a4bd9663d6b4e2b15eea070a8396e9cfa8203d9"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_24x24_c32/run.log",
+        "sha256": "c2a085edf30af0d2b6f753355e8e30ff2989e2601b3c32d9f46a5bd31464e1c8"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 10733,
+          "complete_command_cycles": 10738,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s2_24x24_c32/result.json",
+            "sha256": "88fdf2ae21d2bf6625699041fe4e67c9197d633d9f4b28d2928ab7b91c76002f"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 10733,
+          "complete_command_cycles": 10738,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s2_24x24_c32/result.json",
+            "sha256": "faab4afb6e85dcdc9988a61705f93f0a8a175e982fa21ec89d8d1fbdd22acd74"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "2a103dc210ea45788d83f829231c7e22dd2c1ad028550b94951d8bf46983eb6e",
+      "output_sha256": "65016c0de210858696def14ae170464bb9d3b8d1f278587e715135fe92cac559"
+    },
+    {
+      "name": "model_dw3x3_s1_12x12_c64",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 12,
+        "input_w": 12,
+        "input_channels": 64,
+        "output_channels": 64,
+        "output_h": 12,
+        "output_w": 12,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 7688,
+      "gemmini_cycles": 9837,
+      "speedup": 1.2795265348595213,
+      "integer_check": {
+        "npu_times_six": 46128,
+        "gemmini_times_five": 49185
+      },
+      "maximum_npu_cycles": 8197,
+      "remaining_cycles_to_threshold": 509,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_12x12_c64/result.json",
+        "sha256": "b9ff32886d82fe94f41daa38a980923db599f8027a327da1d0b806aa2fd80696"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_12x12_c64/run.log",
+        "sha256": "c27999c5f003e94f598d9680a9e90fa2064cea8221d187471b1dad1d7a72221b"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 9837,
+          "complete_command_cycles": 9842,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s1_12x12_c64/result.json",
+            "sha256": "0fa84af123dc343ad0157a5107b7a573fafe681c9514a5589382f7f34f4c4aaa"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 9837,
+          "complete_command_cycles": 9842,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s1_12x12_c64/result.json",
+            "sha256": "bd92c578636300bc983cfbbea45f2a50d5858337c7a34baa3313995d885047b8"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "d4da2b5be27e69f9b01fc486f2468b867168dba0d5e18172df3a6d3845799ffc",
+      "output_sha256": "48de0cfc290b29ca045603d5a4d35bb703927256aa095e93817bf037941a3fd2"
+    },
+    {
+      "name": "model_dw3x3_s2_12x12_c64",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 12,
+        "input_w": 12,
+        "input_channels": 64,
+        "output_channels": 64,
+        "output_h": 6,
+        "output_w": 6,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "npu_cycles": 5258,
+      "gemmini_cycles": 6813,
+      "speedup": 1.295739825028528,
+      "integer_check": {
+        "npu_times_six": 31548,
+        "gemmini_times_five": 34065
+      },
+      "maximum_npu_cycles": 5677,
+      "remaining_cycles_to_threshold": 419,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_12x12_c64/result.json",
+        "sha256": "081f28dc5c2f8fc533abe5f6ee108b585cded171b2b2bc4af0081c3b9fdbd95c"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_12x12_c64/run.log",
+        "sha256": "170e25d0270652b23f28499b1362b041f337cf76fa4ff6afe040bc37928e8a4f"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 6813,
+          "complete_command_cycles": 6818,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s2_12x12_c64/result.json",
+            "sha256": "ec4c44086b214e9c439142214c935a8acfa7e84a62c800ed055fea12da774baa"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 6813,
+          "complete_command_cycles": 6818,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s2_12x12_c64/result.json",
+            "sha256": "48ddb22deedb84f9dd7a3051929e19c21927d1ee3f33c93d68c0a4ecb1ed917d"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "95e2cdd7620b321fc473755919b7d3b7ea6ce39abafc986c275127d2f4183147",
+      "output_sha256": "844b6ca48e793de2ce4c7e6552ba84183dadb0efc59d45f024bd2a15bb08a82e"
+    },
+    {
+      "name": "model_dw3x3_s1_6x6_c128",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 6,
+        "input_w": 6,
+        "input_channels": 128,
+        "output_channels": 128,
+        "output_h": 6,
+        "output_w": 6,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 5263,
+      "gemmini_cycles": 6365,
+      "speedup": 1.2093862815884477,
+      "integer_check": {
+        "npu_times_six": 31578,
+        "gemmini_times_five": 31825
+      },
+      "maximum_npu_cycles": 5304,
+      "remaining_cycles_to_threshold": 41,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_6x6_c128/result.json",
+        "sha256": "57b56fb1e0e13305e8fc24925ca5238b879d296d05ae74d04b483b304d71d24a"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_6x6_c128/run.log",
+        "sha256": "f7e9bb890bc1171a3443d3762fcf4a6adb1ecfcf4a2037f625524f28d362444d"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 6365,
+          "complete_command_cycles": 6370,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s1_6x6_c128/result.json",
+            "sha256": "6b86e9e9edc10e8795fd8796a961122eb29ed354f7b12fe89b097918a5f50fae"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 6365,
+          "complete_command_cycles": 6370,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s1_6x6_c128/result.json",
+            "sha256": "b0a43be23d656c158a2173caf311db72ec67bcfd3830578394bed0e81b4f3f80"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "2b58e85bd7c57bf42e020e046fc16dfa8a0f400e7afab95abd93c7989df89395",
+      "output_sha256": "ccd73fabec6605cb6e79f2319ebbd58d33016e2d23cb651b26d7f77dcc0df60e"
+    },
+    {
+      "name": "model_dw3x3_s2_6x6_c128",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 6,
+        "input_w": 6,
+        "input_channels": 128,
+        "output_channels": 128,
+        "output_h": 3,
+        "output_w": 3,
+        "stride": 2,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 0,
+        "kernel": 3
+      },
+      "npu_cycles": 3212,
+      "gemmini_cycles": 4645,
+      "speedup": 1.4461394769613947,
+      "integer_check": {
+        "npu_times_six": 19272,
+        "gemmini_times_five": 23225
+      },
+      "maximum_npu_cycles": 3870,
+      "remaining_cycles_to_threshold": 658,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_6x6_c128/result.json",
+        "sha256": "706cbc174e57b7dd130a29158215089a63ac2cd69f9085baec8abba7e3964222"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s2_6x6_c128/run.log",
+        "sha256": "cb2c53b9497dc1e59dbea575687cb3489741c9963d32c22365ae44c3bae7c8a7"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 4645,
+          "complete_command_cycles": 4650,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s2_6x6_c128/result.json",
+            "sha256": "7b5cff14c181e9ab97066acbf072634554f2eb4fdfcda5c8ea77a5b8a4356549"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 4645,
+          "complete_command_cycles": 4650,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s2_6x6_c128/result.json",
+            "sha256": "97020f8ba37fda02a7facd11b6dfdb719edf4252c3b0ac2e5f465daad900203d"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "e288880e029e59b9b50026687b84d851f021ec033a9ddf57d5547a22e9491bf0",
+      "output_sha256": "d1e6de444c1327932c3f67d20867b039df59234b80a5b2935098ac0101958232"
+    },
+    {
+      "name": "model_dw3x3_s1_3x3_c256",
+      "operation": "depthwise",
+      "shape": {
+        "batch": 1,
+        "input_h": 3,
+        "input_w": 3,
+        "input_channels": 256,
+        "output_channels": 256,
+        "output_h": 3,
+        "output_w": 3,
+        "stride": 1,
+        "input_dilation": 1,
+        "kernel_dilation": 1,
+        "padding": 1,
+        "kernel": 3
+      },
+      "npu_cycles": 4948,
+      "gemmini_cycles": 6573,
+      "speedup": 1.328415521422797,
+      "integer_check": {
+        "npu_times_six": 29688,
+        "gemmini_times_five": 32865
+      },
+      "maximum_npu_cycles": 5477,
+      "remaining_cycles_to_threshold": 529,
+      "passed": true,
+      "gemmini_selected_variant": "gemmini_im2col",
+      "gemmini_interval": "loop_launch_to_completion",
+      "npu_result": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_3x3_c256/result.json",
+        "sha256": "650c838e7113a8a97e5018489cc749ed47961d956d3f66aed48d64c0cdb763b9"
+      },
+      "npu_run_log": {
+        "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/cases/model_dw3x3_s1_3x3_c256/run.log",
+        "sha256": "819dbd32f120335b18ac362b3f04e6be215538fb5e79342f50f1ad5272d517e2"
+      },
+      "gemmini_candidates": [
+        {
+          "variant": "gemmini_native",
+          "cycles": 6573,
+          "complete_command_cycles": 6578,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/model_dw3x3_s1_3x3_c256/result.json",
+            "sha256": "05882af8d7b06aaef6f371230c0cdd6e04542343bc35f0636d129b1046e851b0"
+          }
+        },
+        {
+          "variant": "gemmini_im2col",
+          "cycles": 6573,
+          "complete_command_cycles": 6578,
+          "interval": "loop_launch_to_completion",
+          "result": {
+            "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/model_dw3x3_s1_3x3_c256/result.json",
+            "sha256": "6ab48dbd4034b5ca892df32a72f6512d90a52c85d0ae429e6a5711261c0909aa"
+          }
+        }
+      ],
+      "workload_manifest_sha256": "47a8b03b7c76036e4b1e49dd643fe4fe062aa29f223aa78a3b62df8fd3c8bba5",
+      "output_sha256": "2a2ac6c8246c9d071316a695c65b9b03f9fd08b2f7eb90f897d5f8f54bd4ec36"
+    }
+  ],
+  "sources": {
+    "npu_summary": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/summary.json",
+      "sha256": "045660201d61a618f41c17e536fad0940d1762974af747e2e5b757a88f41fa26"
+    },
+    "npu_profile": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/hardware_profile.json",
+      "sha256": "b60c833290bcc823cdb160374e3126c470d2a6232fb588ae99b8980fe5dc1a25"
+    },
+    "npu_build": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/sim/build.json",
+      "sha256": "eb37b4aa2abd30c4d3f57cef39b18d929becb2dce5db6ad373ad876d72fe0c69"
+    },
+    "npu_planner": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/planner/build.json",
+      "sha256": "9dfa4ef13af9b3221d27f4ecc19993e9eb1fc809f177f6e2dccf4e1fde648269"
+    },
+    "npu_gemm": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/gemm/summary.json",
+      "sha256": "cd25978dd21182549feb9353f2fe55d00f875bfb52c103db408ded6be24043c7"
+    },
+    "npu_spatial": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/conv/summary.json",
+      "sha256": "60b1cfc8e9543c12448241e4b7a6d765edc463c144952a50ee061140c646dee8"
+    },
+    "npu_capacity": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_capacity/result.json",
+      "sha256": "cb28994a94297bc9838a3bb86ef172defd9af75240e06db4c30cdd224bc64700"
+    },
+    "gemmini_build": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/work/gemmini_reproduction_20261121/generated/build_manifest.json",
+      "sha256": "35a207553334d9de0aad36295d2edb72d696d56b994e82defb11405287a8ae9f"
+    },
+    "gemmini_rebuild": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/work/gemmini_reproduction_20261121/rebuild.json",
+      "sha256": "5ac86ee7c0e92c08fa5905d74ffd71f86f763a973eaf7e5a71dad5e7b17d4548"
+    },
+    "gemmini_capacity": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/measurements/capacity/gemmini_with_mmio/result.json",
+      "sha256": "135a5456a8caeae5efce5f06570958afa696c244351200a5049d82ddd450a4a2"
+    },
+    "gemmini_storage_groups": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/measurements/capacity/storage_comparison.json",
+      "sha256": "0404f07c5e45dfd8739ff929c2944152851288f0e64697c696e90b8f1699066a"
+    },
+    "gemmini_gemm": {
+      "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_gemm/results.json",
+      "sha256": "b877e7890954de4370ed918c327fd71137ace05006292478549484df87499ace"
+    },
+    "gemmini_native": {
+      "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_native/results.json",
+      "sha256": "ac1532844bec4f472b8d2a899a08b4e3cdcef1b06e75c0289224908cff656ad9"
+    },
+    "gemmini_im2col": {
+      "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/operators_conv_im2col/results.json",
+      "sha256": "e7122da63749a73bfbcff3ae35c93b9957fb21bb99403abcc5a96d828501a171"
+    },
+    "gemmini_command_build": {
+      "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_full_geometry/gemm_traces/build/build.json",
+      "sha256": "44632442d5337d3835f564fc7180a2512d25a185c640068011c5680de2c03971"
+    },
+    "memory_verification": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/measurements/memory_service/service_verification.json",
+      "sha256": "3ce774f3dba64af762a9b23f17c37366e45c78f54a8eba0b733497aae23e1ef6"
+    },
+    "memory_sv": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/scripts/memory_service/axi_memory.sv",
+      "sha256": "885b024ef7bd2dfa3173c66e99d7e6b27e32aa822c79acbe802276b9f9f8c4d1"
+    },
+    "memory_cpp": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/scripts/memory_service/run_compare.cpp",
+      "sha256": "46a4f536ce2101539e201aa805fbff9217ea6d60c976f8c7e1342e1713f4f20d"
+    },
+    "npu_timing_monitor": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/test/gemmini_comparison/axi_monitor.sv",
+      "sha256": "0536de33be140bb85daa74050d395834858c06fccea624076d19122d826be8e4"
+    },
+    "npu_testbench": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_operators/sim/tb_latest_operators.sv",
+      "sha256": "5f59d29c85b75994a72fae2b0087dce947cb4822d3088decefa3ddc9a2cbe463"
+    },
+    "target_comparison": {
+      "path": "/workspace/scratch/a6d1b7ed9049/benchmark_work/final_operator_targets.json",
+      "sha256": "ae36aafef94f5cb2b55739c8eb08304f692818683869fa28f2fad2bcb2344378"
+    }
+  }
+}

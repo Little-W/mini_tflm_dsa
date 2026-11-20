@@ -1,0 +1,1932 @@
+{
+  "format_version": 1,
+  "required_speedup": "6/5",
+  "input_checks_passed": true,
+  "generator_sha256": "f8bf19e245c262b4f233027c00183fbdad2424a43a85ad449d34b9bb4157dc4b",
+  "operators": {
+    "count": 45,
+    "passed_count": 45,
+    "passed": true,
+    "minimum_speedup": 1.202987833050978,
+    "failed_items": [],
+    "items": [
+      {
+        "name": "tile16",
+        "operation": "gemm",
+        "shape": {
+          "m": 16,
+          "n": 16,
+          "k": 16
+        },
+        "npu_cycles": 223,
+        "gemmini_cycles": 334,
+        "speedup": 1.4977578475336324,
+        "passed": true,
+        "maximum_npu_cycles": 278,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 1338,
+          "gemmini_times_five": 1670
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 223,
+          "gemmini_cycles": 345,
+          "speedup": 1.547085201793722,
+          "passed": true,
+          "maximum_npu_cycles": 287,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 1338,
+            "gemmini_times_five": 1725
+          }
+        },
+        "npu_read_bytes": 576,
+        "npu_write_bytes": 256,
+        "npu_read_requests": 3,
+        "npu_write_requests": 16,
+        "workload_manifest_sha256": "dbb07585f223bfaf9f241467a2c6fba5efa29b64a1c468453c4310cae0da8f8e"
+      },
+      {
+        "name": "tile32",
+        "operation": "gemm",
+        "shape": {
+          "m": 32,
+          "n": 32,
+          "k": 32
+        },
+        "npu_cycles": 540,
+        "gemmini_cycles": 779,
+        "speedup": 1.4425925925925926,
+        "passed": true,
+        "maximum_npu_cycles": 649,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 3240,
+          "gemmini_times_five": 3895
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 540,
+          "gemmini_cycles": 790,
+          "speedup": 1.462962962962963,
+          "passed": true,
+          "maximum_npu_cycles": 658,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 3240,
+            "gemmini_times_five": 3950
+          }
+        },
+        "npu_read_bytes": 2176,
+        "npu_write_bytes": 1024,
+        "npu_read_requests": 9,
+        "npu_write_requests": 1,
+        "workload_manifest_sha256": "e3e29bd6713162013379ca32ea3d649d8e9e0a8b18151ca5da19d75fc0cac248"
+      },
+      {
+        "name": "tile64",
+        "operation": "gemm",
+        "shape": {
+          "m": 64,
+          "n": 64,
+          "k": 64
+        },
+        "npu_cycles": 2184,
+        "gemmini_cycles": 3155,
+        "speedup": 1.4445970695970696,
+        "passed": true,
+        "maximum_npu_cycles": 2629,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 13104,
+          "gemmini_times_five": 15775
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 2184,
+          "gemmini_cycles": 3166,
+          "speedup": 1.4496336996336996,
+          "passed": true,
+          "maximum_npu_cycles": 2638,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 13104,
+            "gemmini_times_five": 15830
+          }
+        },
+        "npu_read_bytes": 8448,
+        "npu_write_bytes": 4096,
+        "npu_read_requests": 34,
+        "npu_write_requests": 3,
+        "workload_manifest_sha256": "b39e71176ead9a28e20e6d38570968f63755e92119f2ed2565905a3ced86b893"
+      },
+      {
+        "name": "tail17",
+        "operation": "gemm",
+        "shape": {
+          "m": 17,
+          "n": 23,
+          "k": 19
+        },
+        "npu_cycles": 408,
+        "gemmini_cycles": 2054,
+        "speedup": 5.034313725490196,
+        "passed": true,
+        "maximum_npu_cycles": 1711,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 2448,
+          "gemmini_times_five": 10270
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 408,
+          "gemmini_cycles": 2065,
+          "speedup": 5.061274509803922,
+          "passed": true,
+          "maximum_npu_cycles": 1720,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 2448,
+            "gemmini_times_five": 10325
+          }
+        },
+        "npu_read_bytes": 1376,
+        "npu_write_bytes": 391,
+        "npu_read_requests": 10,
+        "npu_write_requests": 34,
+        "workload_manifest_sha256": "b1d676b9bb99a3f7cfbb277def5de0ac6e11393a0408b8835be316c73433960d"
+      },
+      {
+        "name": "vector_m1",
+        "operation": "gemm",
+        "shape": {
+          "m": 1,
+          "n": 64,
+          "k": 64
+        },
+        "npu_cycles": 643,
+        "gemmini_cycles": 842,
+        "speedup": 1.3094867807153965,
+        "passed": true,
+        "maximum_npu_cycles": 701,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 3858,
+          "gemmini_times_five": 4210
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 643,
+          "gemmini_cycles": 853,
+          "speedup": 1.3265940902021773,
+          "passed": true,
+          "maximum_npu_cycles": 710,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 3858,
+            "gemmini_times_five": 4265
+          }
+        },
+        "npu_read_bytes": 4416,
+        "npu_write_bytes": 64,
+        "npu_read_requests": 22,
+        "npu_write_requests": 1,
+        "workload_manifest_sha256": "3790e2ad818518ce78be1bd898026440804b52d59f2316c6f210aca9afb9646f"
+      },
+      {
+        "name": "model_m784_n8_k9",
+        "operation": "gemm",
+        "shape": {
+          "m": 784,
+          "n": 8,
+          "k": 9
+        },
+        "npu_cycles": 2214,
+        "gemmini_cycles": 10299,
+        "speedup": 4.651761517615176,
+        "passed": true,
+        "maximum_npu_cycles": 8582,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 13284,
+          "gemmini_times_five": 51495
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 2214,
+          "gemmini_cycles": 10310,
+          "speedup": 4.65672990063234,
+          "passed": true,
+          "maximum_npu_cycles": 8591,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 13284,
+            "gemmini_times_five": 51550
+          }
+        },
+        "npu_read_bytes": 13088,
+        "npu_write_bytes": 6272,
+        "npu_read_requests": 54,
+        "npu_write_requests": 784,
+        "workload_manifest_sha256": "7cbabbba45bb809b37980d7ea52c630003e8a688c58d1e5b2f917ebe20c4673a"
+      },
+      {
+        "name": "model_m196_n16_k72",
+        "operation": "gemm",
+        "shape": {
+          "m": 196,
+          "n": 16,
+          "k": 72
+        },
+        "npu_cycles": 3777,
+        "gemmini_cycles": 9795,
+        "speedup": 2.5933280381254966,
+        "passed": true,
+        "maximum_npu_cycles": 8162,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 22662,
+          "gemmini_times_five": 48975
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 3777,
+          "gemmini_cycles": 9806,
+          "speedup": 2.5962404024357957,
+          "passed": true,
+          "maximum_npu_cycles": 8171,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 22662,
+            "gemmini_times_five": 49030
+          }
+        },
+        "npu_read_bytes": 17024,
+        "npu_write_bytes": 3136,
+        "npu_read_requests": 71,
+        "npu_write_requests": 196,
+        "workload_manifest_sha256": "d94e2e24e907ce90565781f2ade827d0f999a0faf73ef9216a4445a78465d8a2"
+      },
+      {
+        "name": "model_m1_n64_k784",
+        "operation": "gemm",
+        "shape": {
+          "m": 1,
+          "n": 64,
+          "k": 784
+        },
+        "npu_cycles": 6493,
+        "gemmini_cycles": 7811,
+        "speedup": 1.202987833050978,
+        "passed": true,
+        "maximum_npu_cycles": 6509,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 38958,
+          "gemmini_times_five": 39055
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 6493,
+          "gemmini_cycles": 7822,
+          "speedup": 1.2046819651932852,
+          "passed": true,
+          "maximum_npu_cycles": 6518,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 38958,
+            "gemmini_times_five": 39110
+          }
+        },
+        "npu_read_bytes": 51216,
+        "npu_write_bytes": 64,
+        "npu_read_requests": 258,
+        "npu_write_requests": 1,
+        "workload_manifest_sha256": "73894abd08045975a42d5361885a48322d149e9d2d929697f70e631181abadb7"
+      },
+      {
+        "name": "model_m1_n10_k64",
+        "operation": "gemm",
+        "shape": {
+          "m": 1,
+          "n": 10,
+          "k": 64
+        },
+        "npu_cycles": 199,
+        "gemmini_cycles": 755,
+        "speedup": 3.7939698492462313,
+        "passed": true,
+        "maximum_npu_cycles": 629,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 1194,
+          "gemmini_times_five": 3775
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 199,
+          "gemmini_cycles": 766,
+          "speedup": 3.849246231155779,
+          "passed": true,
+          "maximum_npu_cycles": 638,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 1194,
+            "gemmini_times_five": 3830
+          }
+        },
+        "npu_read_bytes": 744,
+        "npu_write_bytes": 10,
+        "npu_read_requests": 9,
+        "npu_write_requests": 1,
+        "workload_manifest_sha256": "6ac836c42da6ae1014b1be75056992361f3b7ef5731224b9eb7959639665aaab"
+      },
+      {
+        "name": "model_m2304_n8_k27",
+        "operation": "gemm",
+        "shape": {
+          "m": 2304,
+          "n": 8,
+          "k": 27
+        },
+        "npu_cycles": 14077,
+        "gemmini_cycles": 57697,
+        "speedup": 4.098671591958514,
+        "passed": true,
+        "maximum_npu_cycles": 48080,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 84462,
+          "gemmini_times_five": 288485
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 14077,
+          "gemmini_cycles": 57708,
+          "speedup": 4.099453008453506,
+          "passed": true,
+          "maximum_npu_cycles": 48090,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 84462,
+            "gemmini_times_five": 288540
+          }
+        },
+        "npu_read_bytes": 76064,
+        "npu_write_bytes": 18432,
+        "npu_read_requests": 307,
+        "npu_write_requests": 2304,
+        "workload_manifest_sha256": "d21a10e704ceb7836a9ea3892cd5c526f38329f1be7800a2fbc7496b54ae16aa"
+      },
+      {
+        "name": "model_m2304_n16_k8",
+        "operation": "gemm",
+        "shape": {
+          "m": 2304,
+          "n": 16,
+          "k": 8
+        },
+        "npu_cycles": 8488,
+        "gemmini_cycles": 18874,
+        "speedup": 2.2236098020735158,
+        "passed": true,
+        "maximum_npu_cycles": 15728,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 50928,
+          "gemmini_times_five": 94370
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 8488,
+          "gemmini_cycles": 18885,
+          "speedup": 2.2249057492931197,
+          "passed": true,
+          "maximum_npu_cycles": 15737,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 50928,
+            "gemmini_times_five": 94425
+          }
+        },
+        "npu_read_bytes": 19648,
+        "npu_write_bytes": 36864,
+        "npu_read_requests": 154,
+        "npu_write_requests": 2304,
+        "workload_manifest_sha256": "401644c9841c793cf5f58efbd4259181c20cbec893b5f125aa21860162d496d2"
+      },
+      {
+        "name": "model_m576_n32_k16",
+        "operation": "gemm",
+        "shape": {
+          "m": 576,
+          "n": 32,
+          "k": 16
+        },
+        "npu_cycles": 3934,
+        "gemmini_cycles": 6608,
+        "speedup": 1.6797153024911031,
+        "passed": true,
+        "maximum_npu_cycles": 5506,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 23604,
+          "gemmini_times_five": 33040
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 3934,
+          "gemmini_cycles": 6619,
+          "speedup": 1.6825114387391968,
+          "passed": true,
+          "maximum_npu_cycles": 5515,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 23604,
+            "gemmini_times_five": 33095
+          }
+        },
+        "npu_read_bytes": 10880,
+        "npu_write_bytes": 18432,
+        "npu_read_requests": 43,
+        "npu_write_requests": 13,
+        "workload_manifest_sha256": "959e61112f6b45b1a66460792c950a256a0274bfb28224fcb2d9f530409d109b"
+      },
+      {
+        "name": "model_m576_n32_k32",
+        "operation": "gemm",
+        "shape": {
+          "m": 576,
+          "n": 32,
+          "k": 32
+        },
+        "npu_cycles": 4334,
+        "gemmini_cycles": 7341,
+        "speedup": 1.6938163359483156,
+        "passed": true,
+        "maximum_npu_cycles": 6117,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 26004,
+          "gemmini_times_five": 36705
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 4334,
+          "gemmini_cycles": 7352,
+          "speedup": 1.6963544070143055,
+          "passed": true,
+          "maximum_npu_cycles": 6126,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 26004,
+            "gemmini_times_five": 36760
+          }
+        },
+        "npu_read_bytes": 23680,
+        "npu_write_bytes": 18432,
+        "npu_read_requests": 93,
+        "npu_write_requests": 14,
+        "workload_manifest_sha256": "629651e08dffa6a2863887177d4702263f53aaab3b81f3e5a14011f1a857b870"
+      },
+      {
+        "name": "model_m144_n64_k32",
+        "operation": "gemm",
+        "shape": {
+          "m": 144,
+          "n": 64,
+          "k": 32
+        },
+        "npu_cycles": 2307,
+        "gemmini_cycles": 4189,
+        "speedup": 1.8157780667533594,
+        "passed": true,
+        "maximum_npu_cycles": 3490,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 13842,
+          "gemmini_times_five": 20945
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 2307,
+          "gemmini_cycles": 4200,
+          "speedup": 1.8205461638491547,
+          "passed": true,
+          "maximum_npu_cycles": 3500,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 13842,
+            "gemmini_times_five": 21000
+          }
+        },
+        "npu_read_bytes": 11008,
+        "npu_write_bytes": 9216,
+        "npu_read_requests": 43,
+        "npu_write_requests": 7,
+        "workload_manifest_sha256": "a2f1c953e0d1410cc05aa380ed4898180e164637b8697c20bfd71a625f722f6e"
+      },
+      {
+        "name": "model_m144_n64_k64",
+        "operation": "gemm",
+        "shape": {
+          "m": 144,
+          "n": 64,
+          "k": 64
+        },
+        "npu_cycles": 3894,
+        "gemmini_cycles": 5241,
+        "speedup": 1.3459167950693374,
+        "passed": true,
+        "maximum_npu_cycles": 4367,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 23364,
+          "gemmini_times_five": 26205
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 3894,
+          "gemmini_cycles": 5252,
+          "speedup": 1.3487416538263997,
+          "passed": true,
+          "maximum_npu_cycles": 4376,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 23364,
+            "gemmini_times_five": 26260
+          }
+        },
+        "npu_read_bytes": 21760,
+        "npu_write_bytes": 9216,
+        "npu_read_requests": 88,
+        "npu_write_requests": 7,
+        "workload_manifest_sha256": "13d323d8ce4162063198dcaf67c4a3ebcb704b327ca484748229bc177c97dfa1"
+      },
+      {
+        "name": "model_m36_n128_k64",
+        "operation": "gemm",
+        "shape": {
+          "m": 36,
+          "n": 128,
+          "k": 64
+        },
+        "npu_cycles": 2767,
+        "gemmini_cycles": 8654,
+        "speedup": 3.127574990964944,
+        "passed": true,
+        "maximum_npu_cycles": 7211,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 16602,
+          "gemmini_times_five": 43270
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 2767,
+          "gemmini_cycles": 8665,
+          "speedup": 3.1315504156125766,
+          "passed": true,
+          "maximum_npu_cycles": 7220,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 16602,
+            "gemmini_times_five": 43325
+          }
+        },
+        "npu_read_bytes": 11008,
+        "npu_write_bytes": 4608,
+        "npu_read_requests": 179,
+        "npu_write_requests": 10,
+        "workload_manifest_sha256": "89b6f510e58d7773322dfeb843ce665ca970e7f4ebf7ae48e46badb669347a9d"
+      },
+      {
+        "name": "model_m36_n128_k128",
+        "operation": "gemm",
+        "shape": {
+          "m": 36,
+          "n": 128,
+          "k": 128
+        },
+        "npu_cycles": 4701,
+        "gemmini_cycles": 13770,
+        "speedup": 2.929164007657945,
+        "passed": true,
+        "maximum_npu_cycles": 11475,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 28206,
+          "gemmini_times_five": 68850
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 4701,
+          "gemmini_cycles": 13781,
+          "speedup": 2.9315039353329078,
+          "passed": true,
+          "maximum_npu_cycles": 11484,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 28206,
+            "gemmini_times_five": 68905
+          }
+        },
+        "npu_read_bytes": 21504,
+        "npu_write_bytes": 4608,
+        "npu_read_requests": 93,
+        "npu_write_requests": 10,
+        "workload_manifest_sha256": "246364c4c22d34f1057182ade7e7fc84e0b0a55ab12b82b9dc8c1004b8b9fe06"
+      },
+      {
+        "name": "model_m9_n256_k128",
+        "operation": "gemm",
+        "shape": {
+          "m": 9,
+          "n": 256,
+          "k": 128
+        },
+        "npu_cycles": 6737,
+        "gemmini_cycles": 19241,
+        "speedup": 2.856018999554698,
+        "passed": true,
+        "maximum_npu_cycles": 16034,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 40422,
+          "gemmini_times_five": 96205
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 6737,
+          "gemmini_cycles": 19252,
+          "speedup": 2.857651773786552,
+          "passed": true,
+          "maximum_npu_cycles": 16043,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 40422,
+            "gemmini_times_five": 96260
+          }
+        },
+        "npu_read_bytes": 34944,
+        "npu_write_bytes": 2304,
+        "npu_read_requests": 145,
+        "npu_write_requests": 144,
+        "workload_manifest_sha256": "d88726d259716bd958a78fc9f89def0f1e45a115e7e02e1f77ed9018548ca284"
+      },
+      {
+        "name": "model_m9_n256_k256",
+        "operation": "gemm",
+        "shape": {
+          "m": 9,
+          "n": 256,
+          "k": 256
+        },
+        "npu_cycles": 12673,
+        "gemmini_cycles": 17751,
+        "speedup": 1.4006943896472817,
+        "passed": true,
+        "maximum_npu_cycles": 14792,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 76038,
+          "gemmini_times_five": 88755
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 12673,
+          "gemmini_cycles": 17762,
+          "speedup": 1.4015623767063836,
+          "passed": true,
+          "maximum_npu_cycles": 14801,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 76038,
+            "gemmini_times_five": 88810
+          }
+        },
+        "npu_read_bytes": 68864,
+        "npu_write_bytes": 2304,
+        "npu_read_requests": 289,
+        "npu_write_requests": 144,
+        "workload_manifest_sha256": "03d59fa6b7874ba2b53f88a18a3e37f79d64e97e8b8fe96adb7eae5e266a0767"
+      },
+      {
+        "name": "model_m1_n2_k256",
+        "operation": "gemm",
+        "shape": {
+          "m": 1,
+          "n": 2,
+          "k": 256
+        },
+        "npu_cycles": 494,
+        "gemmini_cycles": 1274,
+        "speedup": 2.5789473684210527,
+        "passed": true,
+        "maximum_npu_cycles": 1061,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 2964,
+          "gemmini_times_five": 6370
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 494,
+          "gemmini_cycles": 1285,
+          "speedup": 2.6012145748987856,
+          "passed": true,
+          "maximum_npu_cycles": 1070,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 2964,
+            "gemmini_times_five": 6425
+          }
+        },
+        "npu_read_bytes": 776,
+        "npu_write_bytes": 2,
+        "npu_read_requests": 33,
+        "npu_write_requests": 1,
+        "workload_manifest_sha256": "a87f79a125bb580b000ec67b4307e264cf0246bc81d9fef0dce89bc4f9f7964a"
+      },
+      {
+        "name": "model_m125_n64_k40",
+        "operation": "gemm",
+        "shape": {
+          "m": 125,
+          "n": 64,
+          "k": 40
+        },
+        "npu_cycles": 2947,
+        "gemmini_cycles": 6419,
+        "speedup": 2.178147268408551,
+        "passed": true,
+        "maximum_npu_cycles": 5349,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 17682,
+          "gemmini_times_five": 32095
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 2947,
+          "gemmini_cycles": 6430,
+          "speedup": 2.181879877841873,
+          "passed": true,
+          "maximum_npu_cycles": 5358,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 17682,
+            "gemmini_times_five": 32150
+          }
+        },
+        "npu_read_bytes": 10376,
+        "npu_write_bytes": 8000,
+        "npu_read_requests": 760,
+        "npu_write_requests": 64,
+        "workload_manifest_sha256": "aaf65423da92b7d24a3229a3cb44d9314d6e4e46a2e7da02dac26c94f25498a0"
+      },
+      {
+        "name": "model_m125_n64_k64",
+        "operation": "gemm",
+        "shape": {
+          "m": 125,
+          "n": 64,
+          "k": 64
+        },
+        "npu_cycles": 3581,
+        "gemmini_cycles": 4622,
+        "speedup": 1.2907009215302987,
+        "passed": true,
+        "maximum_npu_cycles": 3851,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 21486,
+          "gemmini_times_five": 23110
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 3581,
+          "gemmini_cycles": 4633,
+          "speedup": 1.2937726891929628,
+          "passed": true,
+          "maximum_npu_cycles": 3860,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 21486,
+            "gemmini_times_five": 23165
+          }
+        },
+        "npu_read_bytes": 16448,
+        "npu_write_bytes": 8000,
+        "npu_read_requests": 67,
+        "npu_write_requests": 64,
+        "workload_manifest_sha256": "9c2dcbd9957b86ac5f16bdca70b895cf40d30a2c99c2f0782dca91a43c87aff4"
+      },
+      {
+        "name": "model_m1_n12_k64",
+        "operation": "gemm",
+        "shape": {
+          "m": 1,
+          "n": 12,
+          "k": 64
+        },
+        "npu_cycles": 215,
+        "gemmini_cycles": 716,
+        "speedup": 3.3302325581395347,
+        "passed": true,
+        "maximum_npu_cycles": 596,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 1290,
+          "gemmini_times_five": 3580
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 215,
+          "gemmini_cycles": 727,
+          "speedup": 3.3813953488372093,
+          "passed": true,
+          "maximum_npu_cycles": 605,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 1290,
+            "gemmini_times_five": 3635
+          }
+        },
+        "npu_read_bytes": 880,
+        "npu_write_bytes": 12,
+        "npu_read_requests": 9,
+        "npu_write_requests": 1,
+        "workload_manifest_sha256": "34fb52cfd2fdd6a4603756a46ed27a69bab0bc10f87cf7c581a013702051bdba"
+      },
+      {
+        "name": "model_m1024_n16_k27",
+        "operation": "gemm",
+        "shape": {
+          "m": 1024,
+          "n": 16,
+          "k": 27
+        },
+        "npu_cycles": 7065,
+        "gemmini_cycles": 28029,
+        "speedup": 3.9673036093418257,
+        "passed": true,
+        "maximum_npu_cycles": 23357,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 42390,
+          "gemmini_times_five": 140145
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 7065,
+          "gemmini_cycles": 28040,
+          "speedup": 3.9688605803255483,
+          "passed": true,
+          "maximum_npu_cycles": 23366,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 42390,
+            "gemmini_times_five": 140200
+          }
+        },
+        "npu_read_bytes": 34880,
+        "npu_write_bytes": 16384,
+        "npu_read_requests": 137,
+        "npu_write_requests": 1024,
+        "workload_manifest_sha256": "fc684486b6938654bc54952786c6b7dda8b4c3a1cf9902ad1e5eabf721f58158"
+      },
+      {
+        "name": "model_m1024_n16_k144",
+        "operation": "gemm",
+        "shape": {
+          "m": 1024,
+          "n": 16,
+          "k": 144
+        },
+        "npu_cycles": 28233,
+        "gemmini_cycles": 81212,
+        "speedup": 2.876492048312259,
+        "passed": true,
+        "maximum_npu_cycles": 67676,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 169398,
+          "gemmini_times_five": 406060
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 28233,
+          "gemmini_cycles": 81223,
+          "speedup": 2.87688166330181,
+          "passed": true,
+          "maximum_npu_cycles": 67685,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 169398,
+            "gemmini_times_five": 406115
+          }
+        },
+        "npu_read_bytes": 156736,
+        "npu_write_bytes": 16384,
+        "npu_read_requests": 613,
+        "npu_write_requests": 1024,
+        "workload_manifest_sha256": "acb5cd66ee49cd803b0a773f88fc331e45c959f4dc457e8aa22d1bc4341a6b9d"
+      },
+      {
+        "name": "model_m256_n32_k144",
+        "operation": "gemm",
+        "shape": {
+          "m": 256,
+          "n": 32,
+          "k": 144
+        },
+        "npu_cycles": 8090,
+        "gemmini_cycles": 21997,
+        "speedup": 2.719035846724351,
+        "passed": true,
+        "maximum_npu_cycles": 18330,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 48540,
+          "gemmini_times_five": 109985
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 8090,
+          "gemmini_cycles": 22008,
+          "speedup": 2.720395550061805,
+          "passed": true,
+          "maximum_npu_cycles": 18340,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 48540,
+            "gemmini_times_five": 110040
+          }
+        },
+        "npu_read_bytes": 46208,
+        "npu_write_bytes": 8192,
+        "npu_read_requests": 183,
+        "npu_write_requests": 6,
+        "workload_manifest_sha256": "65350000664aa538147b07cbe110a48c4437c6372723c7eafbfa685eb61cd255"
+      },
+      {
+        "name": "model_m256_n32_k288",
+        "operation": "gemm",
+        "shape": {
+          "m": 256,
+          "n": 32,
+          "k": 288
+        },
+        "npu_cycles": 15398,
+        "gemmini_cycles": 42182,
+        "speedup": 2.739446681387193,
+        "passed": true,
+        "maximum_npu_cycles": 35151,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 92388,
+          "gemmini_times_five": 210910
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 15398,
+          "gemmini_cycles": 42193,
+          "speedup": 2.7401610598779063,
+          "passed": true,
+          "maximum_npu_cycles": 35160,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 92388,
+            "gemmini_times_five": 210965
+          }
+        },
+        "npu_read_bytes": 92288,
+        "npu_write_bytes": 8192,
+        "npu_read_requests": 365,
+        "npu_write_requests": 6,
+        "workload_manifest_sha256": "9f1ce37cdb2afa134c1afa7717bcd4294590eeaed3fa9e0d4213cc4f2e12ce5f"
+      },
+      {
+        "name": "model_m256_n32_k16",
+        "operation": "gemm",
+        "shape": {
+          "m": 256,
+          "n": 32,
+          "k": 16
+        },
+        "npu_cycles": 2175,
+        "gemmini_cycles": 3439,
+        "speedup": 1.5811494252873564,
+        "passed": true,
+        "maximum_npu_cycles": 2865,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 13050,
+          "gemmini_times_five": 17195
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 2175,
+          "gemmini_cycles": 3450,
+          "speedup": 1.5862068965517242,
+          "passed": true,
+          "maximum_npu_cycles": 2875,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 13050,
+            "gemmini_times_five": 17250
+          }
+        },
+        "npu_read_bytes": 4736,
+        "npu_write_bytes": 8192,
+        "npu_read_requests": 19,
+        "npu_write_requests": 6,
+        "workload_manifest_sha256": "e641ded9e4536fbcb99e4c63b252e34659392fc6b709f59016f9f7225e673661"
+      },
+      {
+        "name": "model_m64_n64_k288",
+        "operation": "gemm",
+        "shape": {
+          "m": 64,
+          "n": 64,
+          "k": 288
+        },
+        "npu_cycles": 7168,
+        "gemmini_cycles": 12210,
+        "speedup": 1.7034040178571428,
+        "passed": true,
+        "maximum_npu_cycles": 10175,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 43008,
+          "gemmini_times_five": 61050
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 7168,
+          "gemmini_cycles": 12221,
+          "speedup": 1.7049386160714286,
+          "passed": true,
+          "maximum_npu_cycles": 10184,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 43008,
+            "gemmini_times_five": 61105
+          }
+        },
+        "npu_read_bytes": 37120,
+        "npu_write_bytes": 4096,
+        "npu_read_requests": 150,
+        "npu_write_requests": 3,
+        "workload_manifest_sha256": "4b058ac00fc25bcb4d46be67bd2602dfaeaeb743936f0165aea782396ad67b11"
+      },
+      {
+        "name": "model_m64_n64_k576",
+        "operation": "gemm",
+        "shape": {
+          "m": 64,
+          "n": 64,
+          "k": 576
+        },
+        "npu_cycles": 13576,
+        "gemmini_cycles": 18769,
+        "speedup": 1.382513258691809,
+        "passed": true,
+        "maximum_npu_cycles": 15640,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 81456,
+          "gemmini_times_five": 93845
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 13576,
+          "gemmini_cycles": 18780,
+          "speedup": 1.3833235120801415,
+          "passed": true,
+          "maximum_npu_cycles": 15650,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 81456,
+            "gemmini_times_five": 93900
+          }
+        },
+        "npu_read_bytes": 73984,
+        "npu_write_bytes": 4096,
+        "npu_read_requests": 298,
+        "npu_write_requests": 3,
+        "workload_manifest_sha256": "44b71e7821e6a909863a8eaf0fa5ba493f1693b2ec2bc1dcd5fb082ce5b49031"
+      },
+      {
+        "name": "model_m64_n64_k32",
+        "operation": "gemm",
+        "shape": {
+          "m": 64,
+          "n": 64,
+          "k": 32
+        },
+        "npu_cycles": 1472,
+        "gemmini_cycles": 2375,
+        "speedup": 1.6134510869565217,
+        "passed": true,
+        "maximum_npu_cycles": 1979,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 8832,
+          "gemmini_times_five": 11875
+        },
+        "gemmini_variant": "gemmini",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini",
+        "complete_command": {
+          "npu_cycles": 1472,
+          "gemmini_cycles": 2386,
+          "speedup": 1.6209239130434783,
+          "passed": true,
+          "maximum_npu_cycles": 1988,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 8832,
+            "gemmini_times_five": 11930
+          }
+        },
+        "npu_read_bytes": 4352,
+        "npu_write_bytes": 4096,
+        "npu_read_requests": 18,
+        "npu_write_requests": 3,
+        "workload_manifest_sha256": "f69852901f179814c4c8f70d63c33c90d001de11df2cd07e8578f834b60cec3a"
+      },
+      {
+        "name": "conv3x3_s2_96_c3_o8",
+        "operation": "conv2d",
+        "shape": {
+          "batch": 1,
+          "input_h": 96,
+          "input_w": 96,
+          "input_channels": 3,
+          "output_channels": 8,
+          "output_h": 48,
+          "output_w": 48,
+          "stride": 2,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 0,
+          "kernel": 3
+        },
+        "npu_cycles": 51534,
+        "gemmini_cycles": 85495,
+        "speedup": 1.659001824038499,
+        "passed": true,
+        "maximum_npu_cycles": 71245,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 309204,
+          "gemmini_times_five": 427475
+        },
+        "gemmini_variant": "gemmini_native",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 51534,
+          "gemmini_cycles": 85503,
+          "speedup": 1.6591570613575504,
+          "passed": true,
+          "maximum_npu_cycles": 71252,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 309204,
+            "gemmini_times_five": 427515
+          }
+        },
+        "npu_read_bytes": 29984,
+        "npu_write_bytes": 18432,
+        "npu_read_requests": 235,
+        "npu_write_requests": 2304,
+        "workload_manifest_sha256": "bf935b0840bf79508c2c0c274208934ea3c0a014792a0bfa537555e99b32bbc6"
+      },
+      {
+        "name": "dw3x3_s1_48_c8",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 48,
+          "input_w": 48,
+          "input_channels": 8,
+          "output_channels": 8,
+          "output_h": 48,
+          "output_w": 48,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 24145,
+        "gemmini_cycles": 32705,
+        "speedup": 1.3545247463242907,
+        "passed": true,
+        "maximum_npu_cycles": 27254,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 144870,
+          "gemmini_times_five": 163525
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 24145,
+          "gemmini_cycles": 32710,
+          "speedup": 1.3547318285359287,
+          "passed": true,
+          "maximum_npu_cycles": 27258,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 144870,
+            "gemmini_times_five": 163550
+          }
+        },
+        "npu_read_bytes": 18600,
+        "npu_write_bytes": 18432,
+        "npu_read_requests": 148,
+        "npu_write_requests": 288,
+        "workload_manifest_sha256": "c028c91e9ba6f5fdf1b338b839a977ff0b29b67acf5f7b447e5f61f4e3fc5027"
+      },
+      {
+        "name": "dw3x3_s2_48_c8",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 48,
+          "input_w": 48,
+          "input_channels": 8,
+          "output_channels": 8,
+          "output_h": 24,
+          "output_w": 24,
+          "stride": 2,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 0,
+          "kernel": 3
+        },
+        "npu_cycles": 10216,
+        "gemmini_cycles": 17802,
+        "speedup": 1.7425606891151135,
+        "passed": true,
+        "maximum_npu_cycles": 14835,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 61296,
+          "gemmini_times_five": 89010
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 10216,
+          "gemmini_cycles": 17807,
+          "speedup": 1.7430501174628035,
+          "passed": true,
+          "maximum_npu_cycles": 14839,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 61296,
+            "gemmini_times_five": 89035
+          }
+        },
+        "npu_read_bytes": 18600,
+        "npu_write_bytes": 4608,
+        "npu_read_requests": 148,
+        "npu_write_requests": 72,
+        "workload_manifest_sha256": "e8d9adff443631c9c52d44dfac2248b46d514f3664f1df7a5d76af00e3229e41"
+      },
+      {
+        "name": "conv3x3_32_c16_o16",
+        "operation": "conv2d",
+        "shape": {
+          "batch": 1,
+          "input_h": 32,
+          "input_w": 32,
+          "input_channels": 16,
+          "output_channels": 16,
+          "output_h": 32,
+          "output_w": 32,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 19006,
+        "gemmini_cycles": 24554,
+        "speedup": 1.2919078185836053,
+        "passed": true,
+        "maximum_npu_cycles": 20461,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 114036,
+          "gemmini_times_five": 122770
+        },
+        "gemmini_variant": "gemmini_native",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 19006,
+          "gemmini_cycles": 24562,
+          "speedup": 1.2923287382931705,
+          "passed": true,
+          "maximum_npu_cycles": 20468,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 114036,
+            "gemmini_times_five": 122810
+          }
+        },
+        "npu_read_bytes": 26176,
+        "npu_write_bytes": 16384,
+        "npu_read_requests": 169,
+        "npu_write_requests": 1024,
+        "workload_manifest_sha256": "c7231bf673ae8e4a1c72eef2c440e0317b06ce23b8bf73a989bbdbc074dfb9a8"
+      },
+      {
+        "name": "conv3x3_8_c64_o64",
+        "operation": "conv2d",
+        "shape": {
+          "batch": 1,
+          "input_h": 8,
+          "input_w": 8,
+          "input_channels": 64,
+          "output_channels": 64,
+          "output_h": 8,
+          "output_w": 8,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 14327,
+        "gemmini_cycles": 40490,
+        "speedup": 2.8261324771410625,
+        "passed": true,
+        "maximum_npu_cycles": 33741,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 85962,
+          "gemmini_times_five": 202450
+        },
+        "gemmini_variant": "gemmini_native",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 14327,
+          "gemmini_cycles": 40498,
+          "speedup": 2.8266908634047603,
+          "passed": true,
+          "maximum_npu_cycles": 33748,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 85962,
+            "gemmini_times_five": 202490
+          }
+        },
+        "npu_read_bytes": 41216,
+        "npu_write_bytes": 4096,
+        "npu_read_requests": 177,
+        "npu_write_requests": 2,
+        "workload_manifest_sha256": "0306ee352c1a0f30dc0e2d7a538d6d4a87090e02af71133a22f92cf9ab60785e"
+      },
+      {
+        "name": "model_dw3x3_s1_25x5_c64",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 25,
+          "input_w": 5,
+          "input_channels": 64,
+          "output_channels": 64,
+          "output_h": 25,
+          "output_w": 5,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 6520,
+        "gemmini_cycles": 14089,
+        "speedup": 2.1608895705521474,
+        "passed": true,
+        "maximum_npu_cycles": 11740,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 39120,
+          "gemmini_times_five": 70445
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 6520,
+          "gemmini_cycles": 14094,
+          "speedup": 2.1616564417177915,
+          "passed": true,
+          "maximum_npu_cycles": 11745,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 39120,
+            "gemmini_times_five": 70470
+          }
+        },
+        "npu_read_bytes": 9344,
+        "npu_write_bytes": 8000,
+        "npu_read_requests": 111,
+        "npu_write_requests": 500,
+        "workload_manifest_sha256": "6fe984e627f5e3632503791344cc551f176bae050d2f0917efe9410dfdec9017"
+      },
+      {
+        "name": "model_dw3x3_s2_48x48_c16",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 48,
+          "input_w": 48,
+          "input_channels": 16,
+          "output_channels": 16,
+          "output_h": 24,
+          "output_w": 24,
+          "stride": 2,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 0,
+          "kernel": 3
+        },
+        "npu_cycles": 9816,
+        "gemmini_cycles": 19689,
+        "speedup": 2.00580684596577,
+        "passed": true,
+        "maximum_npu_cycles": 16407,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 58896,
+          "gemmini_times_five": 98445
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 9816,
+          "gemmini_cycles": 19694,
+          "speedup": 2.006316218418908,
+          "passed": true,
+          "maximum_npu_cycles": 16411,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 58896,
+            "gemmini_times_five": 98470
+          }
+        },
+        "npu_read_bytes": 37200,
+        "npu_write_bytes": 9216,
+        "npu_read_requests": 292,
+        "npu_write_requests": 144,
+        "workload_manifest_sha256": "5142cb506732ef9c16ee633881be2b380f33432b34fffbf61ad322d4ae962b78"
+      },
+      {
+        "name": "model_dw3x3_s1_24x24_c32",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 24,
+          "input_w": 24,
+          "input_channels": 32,
+          "output_channels": 32,
+          "output_h": 24,
+          "output_w": 24,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 12496,
+        "gemmini_cycles": 17837,
+        "speedup": 1.4274167733674776,
+        "passed": true,
+        "maximum_npu_cycles": 14864,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 74976,
+          "gemmini_times_five": 89185
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 12496,
+          "gemmini_cycles": 17842,
+          "speedup": 1.4278169014084507,
+          "passed": true,
+          "maximum_npu_cycles": 14868,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 74976,
+            "gemmini_times_five": 89210
+          }
+        },
+        "npu_read_bytes": 33440,
+        "npu_write_bytes": 18432,
+        "npu_read_requests": 280,
+        "npu_write_requests": 1152,
+        "workload_manifest_sha256": "26b70d706053dd0936625a4f6af358bb30159f67c16be20fa6461ddaf4ac8e7a"
+      },
+      {
+        "name": "model_dw3x3_s2_24x24_c32",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 24,
+          "input_w": 24,
+          "input_channels": 32,
+          "output_channels": 32,
+          "output_h": 12,
+          "output_w": 12,
+          "stride": 2,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 0,
+          "kernel": 3
+        },
+        "npu_cycles": 7790,
+        "gemmini_cycles": 10733,
+        "speedup": 1.3777920410783056,
+        "passed": true,
+        "maximum_npu_cycles": 8944,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 46740,
+          "gemmini_times_five": 53665
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 7790,
+          "gemmini_cycles": 10738,
+          "speedup": 1.3784338896020538,
+          "passed": true,
+          "maximum_npu_cycles": 8948,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 46740,
+            "gemmini_times_five": 53690
+          }
+        },
+        "npu_read_bytes": 33440,
+        "npu_write_bytes": 4608,
+        "npu_read_requests": 280,
+        "npu_write_requests": 288,
+        "workload_manifest_sha256": "2a103dc210ea45788d83f829231c7e22dd2c1ad028550b94951d8bf46983eb6e"
+      },
+      {
+        "name": "model_dw3x3_s1_12x12_c64",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 12,
+          "input_w": 12,
+          "input_channels": 64,
+          "output_channels": 64,
+          "output_h": 12,
+          "output_w": 12,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 7688,
+        "gemmini_cycles": 9837,
+        "speedup": 1.2795265348595213,
+        "passed": true,
+        "maximum_npu_cycles": 8197,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 46128,
+          "gemmini_times_five": 49185
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 7688,
+          "gemmini_cycles": 9842,
+          "speedup": 1.2801768990634756,
+          "passed": true,
+          "maximum_npu_cycles": 8201,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 46128,
+            "gemmini_times_five": 49210
+          }
+        },
+        "npu_read_bytes": 16704,
+        "npu_write_bytes": 9216,
+        "npu_read_requests": 168,
+        "npu_write_requests": 576,
+        "workload_manifest_sha256": "d4da2b5be27e69f9b01fc486f2468b867168dba0d5e18172df3a6d3845799ffc"
+      },
+      {
+        "name": "model_dw3x3_s2_12x12_c64",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 12,
+          "input_w": 12,
+          "input_channels": 64,
+          "output_channels": 64,
+          "output_h": 6,
+          "output_w": 6,
+          "stride": 2,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 0,
+          "kernel": 3
+        },
+        "npu_cycles": 5258,
+        "gemmini_cycles": 6813,
+        "speedup": 1.295739825028528,
+        "passed": true,
+        "maximum_npu_cycles": 5677,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 31548,
+          "gemmini_times_five": 34065
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 5258,
+          "gemmini_cycles": 6818,
+          "speedup": 1.296690756941803,
+          "passed": true,
+          "maximum_npu_cycles": 5681,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 31548,
+            "gemmini_times_five": 34090
+          }
+        },
+        "npu_read_bytes": 16704,
+        "npu_write_bytes": 2304,
+        "npu_read_requests": 168,
+        "npu_write_requests": 144,
+        "workload_manifest_sha256": "95e2cdd7620b321fc473755919b7d3b7ea6ce39abafc986c275127d2f4183147"
+      },
+      {
+        "name": "model_dw3x3_s1_6x6_c128",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 6,
+          "input_w": 6,
+          "input_channels": 128,
+          "output_channels": 128,
+          "output_h": 6,
+          "output_w": 6,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 5263,
+        "gemmini_cycles": 6365,
+        "speedup": 1.2093862815884477,
+        "passed": true,
+        "maximum_npu_cycles": 5304,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 31578,
+          "gemmini_times_five": 31825
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 5263,
+          "gemmini_cycles": 6370,
+          "speedup": 1.2103363100893028,
+          "passed": true,
+          "maximum_npu_cycles": 5308,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 31578,
+            "gemmini_times_five": 31850
+          }
+        },
+        "npu_read_bytes": 7296,
+        "npu_write_bytes": 4608,
+        "npu_read_requests": 132,
+        "npu_write_requests": 288,
+        "workload_manifest_sha256": "2b58e85bd7c57bf42e020e046fc16dfa8a0f400e7afab95abd93c7989df89395"
+      },
+      {
+        "name": "model_dw3x3_s2_6x6_c128",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 6,
+          "input_w": 6,
+          "input_channels": 128,
+          "output_channels": 128,
+          "output_h": 3,
+          "output_w": 3,
+          "stride": 2,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 0,
+          "kernel": 3
+        },
+        "npu_cycles": 3212,
+        "gemmini_cycles": 4645,
+        "speedup": 1.4461394769613947,
+        "passed": true,
+        "maximum_npu_cycles": 3870,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 19272,
+          "gemmini_times_five": 23225
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 3212,
+          "gemmini_cycles": 4650,
+          "speedup": 1.4476961394769614,
+          "passed": true,
+          "maximum_npu_cycles": 3875,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 19272,
+            "gemmini_times_five": 23250
+          }
+        },
+        "npu_read_bytes": 7296,
+        "npu_write_bytes": 1152,
+        "npu_read_requests": 132,
+        "npu_write_requests": 72,
+        "workload_manifest_sha256": "e288880e029e59b9b50026687b84d851f021ec033a9ddf57d5547a22e9491bf0"
+      },
+      {
+        "name": "model_dw3x3_s1_3x3_c256",
+        "operation": "depthwise",
+        "shape": {
+          "batch": 1,
+          "input_h": 3,
+          "input_w": 3,
+          "input_channels": 256,
+          "output_channels": 256,
+          "output_h": 3,
+          "output_w": 3,
+          "stride": 1,
+          "input_dilation": 1,
+          "kernel_dilation": 1,
+          "padding": 1,
+          "kernel": 3
+        },
+        "npu_cycles": 4948,
+        "gemmini_cycles": 6573,
+        "speedup": 1.328415521422797,
+        "passed": true,
+        "maximum_npu_cycles": 5477,
+        "cycles_above_target": 0,
+        "integer_check": {
+          "npu_times_six": 29688,
+          "gemmini_times_five": 32865
+        },
+        "gemmini_variant": "gemmini_im2col",
+        "gemmini_interval": "loop_launch_to_completion",
+        "complete_command_variant": "gemmini_native",
+        "complete_command": {
+          "npu_cycles": 4948,
+          "gemmini_cycles": 6578,
+          "speedup": 1.3294260307194825,
+          "passed": true,
+          "maximum_npu_cycles": 5481,
+          "cycles_above_target": 0,
+          "integer_check": {
+            "npu_times_six": 29688,
+            "gemmini_times_five": 32890
+          }
+        },
+        "npu_read_bytes": 7680,
+        "npu_write_bytes": 2304,
+        "npu_read_requests": 210,
+        "npu_write_requests": 144,
+        "workload_manifest_sha256": "47a8b03b7c76036e4b1e49dd643fe4fe062aa29f223aa78a3b62df8fd3c8bba5"
+      }
+    ],
+    "npu_storage_bytes": 76885.375,
+    "npu_source_commit": "3a95bec65abc9b03395bb10e5e1322df4af38901",
+    "npu_binary_sha256": "80ef1a476b0bc8b493ba4be2035baa6aebca2cc9e266dc9d213ab69193143661",
+    "gemmini_binary_sha256": "92706aae9087c5958c47ccf6e0d09284ff4ababf028472adcfa6a24f47edd7b2",
+    "configuration_checked": true,
+    "storage_structure": {
+      "simulation_fixed_channels": true,
+      "capacity_fixed_channels": true
+    },
+    "vector_resources": {
+      "physical_pe_count": 16,
+      "quantization_lanes": 16,
+      "window_lanes": 16,
+      "shared_quant_enable": 1
+    },
+    "cache_resources": {
+      "cache_line_bytes": 128,
+      "cache_ways": 2,
+      "cache_sets": 32
+    },
+    "pending_checks": []
+  },
+  "passed": true,
+  "sources": {
+    "npu_capacity": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/experiments/final_capacity/result.json",
+      "sha256": "cb28994a94297bc9838a3bb86ef172defd9af75240e06db4c30cdd224bc64700"
+    },
+    "gemmini_capacity": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/measurements/capacity/gemmini_with_mmio/result.json",
+      "sha256": "135a5456a8caeae5efce5f06570958afa696c244351200a5049d82ddd450a4a2"
+    },
+    "gemmini_build": {
+      "path": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/work/gemmini_reproduction_20261121/generated/build_manifest.json",
+      "sha256": "35a207553334d9de0aad36295d2edb72d696d56b994e82defb11405287a8ae9f"
+    }
+  }
+}

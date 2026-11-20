@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "capability_cases": 10,
+  "configurations": 3456,
+  "legal": 2790,
+  "rejected": 666,
+  "output_burst_cases": 600,
+  "packing_cases": 224,
+  "layout_cases": 8370,
+  "output_merge_configurations": 60,
+  "tail_read_cases": 960,
+  "memory_policy_cases": 48,
+  "source_sha256": {
+    "drivers/dsa_schedule.h": "b777fc7bce4ddc733acdfb961d1ce64f67b89bc931ecd7627bc1566bfbc43057",
+    "drivers/dsa_memory_schedule.h": "63fea8b1c650483ce56fd2d6d2e27ccdb2ffa63bedfccbb306b44f7cc47d6417",
+    "drivers/dsa_memory.h": "8df9d8b962c8e6eef159d80c408aa24ea78b3feebd20aec9680e88acf8f4ed2f",
+    "drivers/gempact_tiling.h": "440531423a06e341fb33fc94b040ba7ec53ecae14e8677b7e57c6eb3f507dffa",
+    "drivers/dsa_matrix.h": "eca31cb8f3689c2ec310cd9500dac90220a8d323f9e1c70e1068938ef2bdb3e3",
+    "drivers/dsa_schedule_impl.h": "e8b39cbbc5decf2f9b0b70bd59a07897cbf92b86926a3568bcd8ac5f0a9c61cb",
+    "veri/top_regression/host_schedule.py": "ad99f6aac056e0676dac7bb09eca1abe80571f4f2665cb8dc92f84b7478a4a71",
+    "test/performance_analysis/schedule_oracle.c": "422edbd8caf6ca3aea4d0409ca2cd4c662d74f7eac8db7c9b3b135fc82c55334",
+    "test/performance_analysis/test_schedule.py": "cd7e012fc7b234c12f4c96d23a8f327ccece4c0a7069416f2e459f8ace084047"
+  }
+}

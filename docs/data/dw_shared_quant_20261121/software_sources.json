@@ -1,0 +1,212 @@
+{
+  "passed": true,
+  "scope": "实际编译记录中共同使用的 TFLM 源码文件及独立软件来源",
+  "hardware_measurement": "45 个共同硬件算子，使用相同张量与外部存储时序",
+  "model_measurement": "当前 NPU 软件实现与固定 Gemmini DW 固件的完整 Invoke 及逐节点记录",
+  "npu_reshape_changes": {
+    "descriptor_cache": "在 Prepare 保存 TfLiteEvalTensor 指针和固定字节数，Invoke 读取分配完成后的数据地址",
+    "storage_alias": "使用 GetBuiltinCode 识别兼容算子编码，按已验证的生命周期共享静态 RESHAPE 张量"
+  },
+  "variants": [
+    {
+      "variant": "native",
+      "measurement_kind": "perf",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_models_current/firmware_sources_current",
+      "npu_firmware_sha256": "e1541e52d04018f4aa51ce5ba9af5ee687c441fcbcd853da27d30d623c93834c",
+      "gemmini_firmware_sha256": "f5f38e134512ec176b9fc5f61d93b2d8eda6d80f8a71b47982b7a0f0558d0b41",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    },
+    {
+      "variant": "im2col",
+      "measurement_kind": "perf",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_models_current/firmware_sources_current",
+      "npu_firmware_sha256": "e1541e52d04018f4aa51ce5ba9af5ee687c441fcbcd853da27d30d623c93834c",
+      "gemmini_firmware_sha256": "95ac884164a7a5a8bdd659a0d0ea8578de8ebbf03c2af071aa32b774d38e01a9",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    },
+    {
+      "variant": "pipelined",
+      "measurement_kind": "perf",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/source_im2col_pipelined",
+      "npu_firmware_sha256": "e1541e52d04018f4aa51ce5ba9af5ee687c441fcbcd853da27d30d623c93834c",
+      "gemmini_firmware_sha256": "9f4049d1d095cbeebe52e873d1e161ef8b11514e28b91f92d774e2d81197bf20",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    },
+    {
+      "variant": "selected",
+      "measurement_kind": "perf",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/source_selected",
+      "npu_firmware_sha256": "e1541e52d04018f4aa51ce5ba9af5ee687c441fcbcd853da27d30d623c93834c",
+      "gemmini_firmware_sha256": "3792bcb303c2ca607ade6bc965f45c5275d8fd7ff515e7fed99e0decb2a83939",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    },
+    {
+      "variant": "native",
+      "measurement_kind": "trace",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_models_current/firmware_sources_current",
+      "npu_firmware_sha256": "89d8c5f776094916154ef5c3a32d3d89057ef671cba48f0b8f034ffc09ef2c34",
+      "gemmini_firmware_sha256": "0ac2f375ac51828353c67a36a0b47366acc2e18d036469ffe68f2783a0787d77",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    },
+    {
+      "variant": "im2col",
+      "measurement_kind": "trace",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/benchmark_work/gemmini_models_current/firmware_sources_current",
+      "npu_firmware_sha256": "89d8c5f776094916154ef5c3a32d3d89057ef671cba48f0b8f034ffc09ef2c34",
+      "gemmini_firmware_sha256": "c9a92a74ce96f3d53de4b2e11f5527d2c7433782e953e376412f5e10126f6821",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    },
+    {
+      "variant": "pipelined",
+      "measurement_kind": "trace",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/source_im2col_pipelined",
+      "npu_firmware_sha256": "89d8c5f776094916154ef5c3a32d3d89057ef671cba48f0b8f034ffc09ef2c34",
+      "gemmini_firmware_sha256": "2458545bc4ad89570a8dbf1d00c455d0f8526bd9a9f5a0817ef6bb95152e4655",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    },
+    {
+      "variant": "selected",
+      "measurement_kind": "trace",
+      "gemmini_source_root": "/workspace/scratch/a6d1b7ed9049/reference_bundle/npu_gemmini_bird_axi64_80k_20261117/source_selected",
+      "npu_firmware_sha256": "89d8c5f776094916154ef5c3a32d3d89057ef671cba48f0b8f034ffc09ef2c34",
+      "gemmini_firmware_sha256": "9d75cfc32503f12f43438f56e62ffd64981804e3f73630c5783fe591f4fbcbea",
+      "shared_compiled_tflm_files": 187,
+      "unchanged_shared_files": 185,
+      "changed_shared_files": [
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/reshape.cc",
+          "npu_sha256": "d9b62e1de6145ed98628e47e6cdc952833f498ed3395aab2a894dc216159b1f7",
+          "gemmini_sha256": "9041fd0250c849ef728dde0a56add90fcd3b2b8a061ce58c7ced250e9f1bb752"
+        },
+        {
+          "path": "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/micro_allocation_info.cc",
+          "npu_sha256": "c9d3530859643b422d1ed9b6cbd2403a4be205372dd62fa1670165745780ec13",
+          "gemmini_sha256": "4984d1aabb3e010a6fcd37fe2ac4ae56308974fed4a635cdaba24b954d17cd77"
+        }
+      ],
+      "npu_only_compiled_tflm_files": [
+        "drivers/tflm/tflm/tflite-micro/tensorflow/lite/micro/kernels/softmax_vce.h"
+      ],
+      "gemmini_only_compiled_tflm_files": []
+    }
+  ]
+}

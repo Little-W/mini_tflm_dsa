@@ -6,7 +6,19 @@
 
 `rtl/npu/top/npu_top.sv` 使用一套 GEMM 控制器、IA/kernel loader、计算阵列、量化及写回单元。Conv 的 im2col 请求由加载器提交给 DMA；Dense 和可直接映射为 GEMM 的点卷积使用矩阵请求。`PCR_ENGINE=1` 定义 `GEMPACT_PS_COMPRESS`，在该路径内启用可寻址 PS frame 和容量调度；部分和采用固定 INT32 格式。计算阵列、Conv、INT16、逐通道量化和 WS/IS 能力由同一顶层参数控制。
 
-VCE 与矩阵路径共享 DMA 窗口缓存，支持 DW、池化、Add、Softmax 和基础向量运算。默认 8 个 PE；Conv 与 DW 的原始输入读取经过 4 KiB、双路组相联的窗口缓存。详见 [VCE 说明](vector_engine.md) 和 [调度与窗口缓存](scheduling_and_window_cache.md)。
+VCE 与矩阵路径共享 DMA 窗口缓存，支持 DW、池化、Add、Softmax 和基础向量运算。`VECTOR_PE_COUNT` 默认取 `min(SIZE, 16)`，16×16 阵列配置使用 16 个向量 PE。DW 的乘加、参数读取、量化请求及输出写回可以并行推进；结果缓冲保存量化返回标签和有效通道数，使下一通道组的权重加载能够与上一组的结果返回重叠。
+
+量化资源由共享存储配置选择。SIZE=16 且共享 RAM 使用六个或七个 bank 时，矩阵量化使用两个计算通道，VCE 使用本地量化；使用八个或九个 bank 时，矩阵量化使用 16 个计算通道，DW 通过带标签的请求接口共用这条流水。顶层以 `REQUANT_COMPUTE_LANES == SIZE` 生成 `DW_SHARED_QUANT_ENABLE`，并在当前矩阵任务或向量任务的上下文中选择数据与参数。
+
+Conv 与 DW 的原始输入读取经过双路组相联窗口缓存。默认数据容量为 4 KiB，缓存行大小为 128 B，对应 16 个缓存组；`IM2COL_CACHE_BYTES` 控制数据容量，`CONV_CACHE_SETS` 按容量、路数和行长计算。AXI64 性能比较配置使用 8 KiB、32 组、双路缓存及八个 4 KiB IA/PS bank。具体配置与结果见 [DW 共享量化与性能比较](dw_shared_quant_20261121.md)，执行结构见 [VCE 说明](vector_engine.md)。
+
+## 窗口供数与任务完成
+
+`WINDOW_LANES` 在 16 个向量 PE 配置下默认为 16；较小 PE 配置默认采用 `BUS_WIDTH / 8`。窗口缓存的同步读取宽度独立于外部 AXI 宽度，16 路窗口对应 128 位原始数据，一次可提供 16 个 S8 元素或八个 S16 元素。原始 S8 经过符号扩展和 offset 校正后，以 16 位元素返回。IA 紧凑写入和 kernel im2col 写入可接收完整窗口，非紧凑 IA 写入按总线字节数限制每拍的元素数量。字边界、卷积核位置边界及尾部由有效掩码控制，加载器只消费有效元素。
+
+共享读仲裁器先保存客户端和矩阵描述符，`axi_dual_block_dma` 再保存前端所需的几何坐标。普通卷积最多保留两条尚未完成的描述符，使下一条描述符的准备与当前块执行重叠。当前 im2col 块的末拍返回后即可报告描述符完成，缓存填充和预取继续由 `rd_busy`、`conv_busy` 记录；相同图像配置的下一块可以继续执行。切换到线性读取、新任务配置或报告整个卷积任务完成时，均等待相应物理读取结束。
+
+所有普通矩阵与 Conv 任务使用 `operand_completion_seen` 记录完成接收。`done_valid` 在输出、加载器预取、窗口缓存及可选 operand cache 满足完成条件后发布；握手后保持抑制，直到控制器的完成状态撤销。外部背压和后台读取均由这些状态处理，每项任务只接受一次完成。接口及排空条件见 [block_dma 矩阵与 im2col 接口](block_dma_im2col.md)。
 
 ## 任务配置与范围检查
 
