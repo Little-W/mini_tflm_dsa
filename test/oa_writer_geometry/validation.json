@@ -1,0 +1,286 @@
+{
+  "passed": true,
+  "rtl_sha256": "fcef0c8031e8869c5f9735f9a39c13393e2a9bed2a2d63e76ab9b4630a930ee9",
+  "reference_rtl_sha256": "305fd681270d5aeb82111e30ebb880146a20d21dec7856b2842db7af69c7c264",
+  "production_parameters": {
+    "VLEN": 16,
+    "BUS_WIDTH": 64,
+    "REG_WIDTH": 32,
+    "COUNT_WIDTH": 29
+  },
+  "source_sha256": {
+    "rtl/npu/writeback/oa_writer.sv": "fcef0c8031e8869c5f9735f9a39c13393e2a9bed2a2d63e76ab9b4630a930ee9",
+    "test/oa_writer_geometry/run_formal.py": "ba89b81d3303238bdbe66aa7b464cf1d63cd36909b5cc59f64814607b0dbdfac",
+    "test/oa_writer_geometry/run_equivalence.py": "2428c6c74fe54e5b2a6376a2e88da7203d55ed327ea2111e85c5a394f9ef76a0",
+    "test/oa_writer_geometry/run_four_state.py": "aa0fed5586019dac1bff8e064cb3587d92e2a99a80ebd9c228ec904766e683e9",
+    "test/oa_writer_geometry/synthesis_cases.json": "38972ceccaf7fd7b373176add9adf39eaf0a917a0c53b8e550986a0ca5d458f4",
+    "test/oa_writer/tb_equivalence.sv": "d110abb2833881567d2a5e6f9621a9eace4701361d9e32fa6e6c2749196bce34",
+    "test/oa_fifo_timing/run_formal.py": "b2ff08d31b44e016c1612114fdf23205c729158ca3c3ea3b10df1ebd198d2d41"
+  },
+  "measurement": {
+    "reference": {
+      "report": "build/oa_geometry_r1/synthesis/reference/metrics.json",
+      "sha256": "873149ae9e918834e042aae1a2f8f8ee390f921854057a1d4f1c33858c18135b",
+      "resources": {
+        "logic_lut_cells": 1235,
+        "lut_sites_nominal_before_packing": 1235,
+        "flip_flops": 940,
+        "dsp48e1": 8,
+        "carry4": 77
+      },
+      "longest_register_path_cells": 10,
+      "graph_complete": true
+    },
+    "final": {
+      "report": "build/oa_geometry_r1/synthesis/final/metrics.json",
+      "sha256": "5029a601f2fba68e9ea6e194b818c6ef3bc7ed06a9e27c13d9eb925d40972d09",
+      "resources": {
+        "logic_lut_cells": 1138,
+        "lut_sites_nominal_before_packing": 1138,
+        "flip_flops": 944,
+        "dsp48e1": 16,
+        "carry4": 41
+      },
+      "longest_register_path_cells": 8,
+      "graph_complete": true
+    }
+  },
+  "verification": {
+    "final_formal_synthesis": {
+      "passed": true,
+      "report": "build/oa_geometry_r1/final_formal_synthesis/summary.json",
+      "sha256": "6b610701a50d2a1ab8f6fb66eecbeaada4cfd3690b9ad7fa98087305e98cac41",
+      "profiles_passed": 11,
+      "synthesis_define": true,
+      "all_public_outputs_compared_each_cycle": true,
+      "state_comparison_scope": "Common state each cycle; effective WS/IS row tiles; group step after configuration preparation; next row tiles when consumed",
+      "parameters": [
+        {
+          "vlen": 4,
+          "bus_width": 32,
+          "count_width": 4,
+          "register_width": 32
+        },
+        {
+          "vlen": 8,
+          "bus_width": 64,
+          "count_width": 6,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 32,
+          "count_width": 7,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 8,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 16,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 29,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 32,
+          "register_width": 32
+        },
+        {
+          "vlen": 32,
+          "bus_width": 64,
+          "count_width": 32,
+          "register_width": 32
+        },
+        {
+          "vlen": 4,
+          "bus_width": 32,
+          "count_width": 4,
+          "register_width": 4
+        },
+        {
+          "vlen": 8,
+          "bus_width": 64,
+          "count_width": 8,
+          "register_width": 8
+        },
+        {
+          "vlen": 8,
+          "bus_width": 64,
+          "count_width": 9,
+          "register_width": 9
+        }
+      ]
+    },
+    "final_formal_simulation": {
+      "passed": true,
+      "report": "build/oa_geometry_r1/final_formal_simulation/summary.json",
+      "sha256": "6341feeb78705a83e580ae94c4550bcc4a45ee59fe4cec976e6e6118338ced34",
+      "profiles_passed": 6,
+      "synthesis_define": false,
+      "all_public_outputs_compared_each_cycle": true,
+      "state_comparison_scope": "Common state each cycle; effective WS/IS row tiles; group step after configuration preparation; next row tiles when consumed",
+      "parameters": [
+        {
+          "vlen": 4,
+          "bus_width": 32,
+          "count_width": 4,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 29,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 1,
+          "register_width": 32
+        },
+        {
+          "vlen": 12,
+          "bus_width": 64,
+          "count_width": 29,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 128,
+          "count_width": 29,
+          "register_width": 32
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 29,
+          "register_width": 40
+        }
+      ]
+    },
+    "final_numeric": {
+      "passed": true,
+      "report": "build/oa_geometry_r1/final_numeric/summary.json",
+      "sha256": "2ca54b355c2ab60d6965c63eb97bce064a8d02bef143294b02f81a2d504317ae",
+      "profiles_passed": 8,
+      "undefined_behavior_sanitizer": true,
+      "totals": {
+        "scenarios": 4096,
+        "cycles": 4178136,
+        "commands": 128375,
+        "groups": 19793,
+        "completions": 2214,
+        "interrupted": 1429
+      },
+      "parameters": [
+        {
+          "vlen": 4,
+          "bus_width": 32,
+          "count_width": 8
+        },
+        {
+          "vlen": 8,
+          "bus_width": 64,
+          "count_width": 8
+        },
+        {
+          "vlen": 16,
+          "bus_width": 32,
+          "count_width": 16
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 16
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 28
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 29
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 32
+        },
+        {
+          "vlen": 32,
+          "bus_width": 64,
+          "count_width": 32
+        }
+      ]
+    },
+    "final_four_state_complete": {
+      "passed": true,
+      "report": "build/oa_geometry_r1/final_four_state_complete/summary.json",
+      "sha256": "aff156b7429fdf1838447bcbc9c515bd97bdc6195592384b1d11510b8806894c",
+      "profiles_passed": 4,
+      "strict_four_state_comparison": true,
+      "totals": {
+        "scenarios": 4096,
+        "cycles": 102780,
+        "checks": 205556
+      },
+      "parameters": [
+        {
+          "vlen": 4,
+          "bus_width": 32,
+          "count_width": 4
+        },
+        {
+          "vlen": 8,
+          "bus_width": 64,
+          "count_width": 6
+        },
+        {
+          "vlen": 16,
+          "bus_width": 64,
+          "count_width": 29
+        },
+        {
+          "vlen": 32,
+          "bus_width": 64,
+          "count_width": 32
+        }
+      ]
+    },
+    "final_fifo_integration": {
+      "passed": true,
+      "report": "build/oa_geometry_r1/final_fifo_integration/summary.json",
+      "sha256": "8b3bd7b09ad2b0b989e6e85069b073397d1be2a4d748bed838f84f008df992da",
+      "writer_profiles_passed": 1,
+      "truncated_product_profiles_passed": 12,
+      "retained_product_bits": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    }
+  }
+}
