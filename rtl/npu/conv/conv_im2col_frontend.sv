@@ -107,6 +107,8 @@ module conv_im2col_frontend #(
 `else
   localparam bit p_short_sum_dsp = 1'b0;
 `endif
+  localparam bit p_saved_word_range = p_short_sum_dsp && LANES <= 8 && LANES <= p_cache_read_bytes;
+  logic [p_cache_read_bytes-1:0] word_available_q;
   conv_cfg_t c;
   logic configured, cfg_ok, cfg_basic_valid, cfg_basic_saved;
   logic [1:0] cfg_prepare_phase;
@@ -183,7 +185,7 @@ module conv_im2col_frontend #(
   logic [LANES-1:0] chunk_lane_allowed, word_lane_allowed, chunk_end_lane;
   logic [LANES-1:0] lane_context_allowed, word_lane_s8, word_lane_s16;
   logic [LANES-1:0] chunk_end_s8, chunk_end_s16;
-  (* keep = 1 *) logic [LANES-1:0] chunk_data_allowed;
+  (* keep = !p_short_sum_dsp *) logic [LANES-1:0] chunk_data_allowed;
   (* keep = 1 *) logic chunk_reaches_end;
   logic [15:0] ox_q, oy_q, ky_q, kx_q, ch_q, ky0_q, kx0_q, ch0_q;
   wire [31:0] ox=32'(ox_q), oy=32'(oy_q), ky=32'(ky_q), kx=32'(kx_q), ch=32'(ch_q);
@@ -1850,12 +1852,14 @@ module conv_im2col_frontend #(
         if (step >= p_cache_read_bytes) begin : g_s8_full_word
           assign boundary_s8 = 1'b1;
         end else begin : g_s8_remaining
-          assign boundary_s8 = addr[p_word_shift-1:0] >= p_word_shift'(p_cache_read_bytes-step);
+          assign boundary_s8 = p_saved_word_range ? !word_available_q[step] :
+              addr[p_word_shift-1:0] >= p_word_shift'(p_cache_read_bytes-step);
         end
         if (2*step >= p_cache_read_bytes) begin : g_s16_full_word
           assign boundary_s16 = 1'b1;
         end else begin : g_s16_remaining
-          assign boundary_s16 = addr[p_word_shift-1:0] >= p_word_shift'(p_cache_read_bytes-2*step);
+          assign boundary_s16 = p_saved_word_range ? !word_available_q[2*step] :
+              addr[p_word_shift-1:0] >= p_word_shift'(p_cache_read_bytes-2*step);
         end
       end
       assign step_boundary_s8[step] = boundary_s8;
@@ -2178,12 +2182,14 @@ module conv_im2col_frontend #(
       before_word_end = {1'b0, value} < limit;
     endfunction
     if (lane < p_cache_read_bytes) begin : g_s8
-      assign allowed_s8 = before_word_end(addr[p_word_shift-1:0], (p_word_shift+1)'(p_cache_read_bytes-lane));
+      assign allowed_s8 = p_saved_word_range ? word_available_q[lane] :
+          before_word_end(addr[p_word_shift-1:0], (p_word_shift+1)'(p_cache_read_bytes-lane));
     end else begin : g_s8_empty
       assign allowed_s8 = 1'b0;
     end
     if (lane < p_cache_read_bytes/2) begin : g_s16
-      assign allowed_s16 = before_word_end(addr[p_word_shift-1:0], (p_word_shift+1)'(p_cache_read_bytes-1-2*lane));
+      assign allowed_s16 = p_saved_word_range ? word_available_q[2*lane+1] :
+          before_word_end(addr[p_word_shift-1:0], (p_word_shift+1)'(p_cache_read_bytes-1-2*lane));
     end else begin : g_s16_empty
       assign allowed_s16 = 1'b0;
     end
@@ -3007,12 +3013,16 @@ module conv_im2col_frontend #(
   end
   // 行切换、组切换和通道递增先选择范围，写入握手只控制最终保存。
   logic [p_saved_group_lanes:0] group_range_stream_value;
-  (* keep = 1 *) logic [p_saved_group_lanes:0] group_range_row_value;
-  (* keep = 1 *) logic [p_saved_group_lanes:0] group_range_restart_value;
-  (* keep = 1 *) logic [p_saved_group_lanes:0] group_range_advance_value;
+  logic [p_saved_group_lanes:0] group_range_row_value;
+  logic [p_saved_group_lanes:0] group_range_restart_value;
+  logic [p_saved_group_lanes:0] group_range_advance_value;
+  (* keep = 1 *) logic group_range_restart_select, group_range_advance_select;
+  // 组末选择先完成一位条件，各通道范围独立合并三种数据来源。
+  assign group_range_restart_select = !chunk_reaches_end && group_end_o_equal;
+  assign group_range_advance_select = !chunk_reaches_end && !group_end_o_equal;
   assign group_range_row_value = {(p_saved_group_lanes+1){chunk_reaches_end}} & group_range_next[1];
-  assign group_range_restart_value = {(p_saved_group_lanes+1){!chunk_reaches_end && group_end_o_equal}} & group_range_next[0];
-  assign group_range_advance_value = {(p_saved_group_lanes+1){!chunk_reaches_end && !group_end_o_equal}} & group_range_next[5];
+  assign group_range_restart_value = {(p_saved_group_lanes+1){group_range_restart_select}} & group_range_next[0];
+  assign group_range_advance_value = {(p_saved_group_lanes+1){group_range_advance_select}} & group_range_next[5];
   assign group_range_stream_value = group_range_row_value | group_range_restart_value | group_range_advance_value;
 
   // 流式范围的保存资格与三种候选值并行计算，返回有效只控制寄存器写入。
@@ -3128,6 +3138,32 @@ module conv_im2col_frontend #(
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) addr <= 32'd0;
     else if (|address_update_select) addr <= address_update_value;
+  end
+
+  if (p_saved_word_range) begin : g_saved_word_range
+    logic [4:0][p_word_shift-1:0] source_low;
+    logic [p_cache_read_bytes-1:0][4:0] source_available;
+    logic [p_cache_read_bytes-1:0] next_available;
+
+    // 各地址候选并行计算字内剩余范围，接收地址的边沿同时保存范围位。
+    assign source_low[0] = committing_tile.address[p_word_shift-1:0];
+    assign source_low[1] = next_row_addr[p_word_shift-1:0];
+    assign source_low[2] = next_tap_addr[p_word_shift-1:0];
+    assign source_low[3] = next_byte_addr[p_word_shift-1:0];
+    assign source_low[4] = channel_addr[p_word_shift-1:0];
+    for (genvar byte_index = 0; byte_index < p_cache_read_bytes; byte_index++) begin : g_byte
+      for (genvar source = 0; source < 5; source++) begin : g_source
+        assign source_available[byte_index][source] =
+            {1'b0, source_low[source]} < (p_word_shift+1)'(p_cache_read_bytes-byte_index);
+      end
+      assign next_available[byte_index] = |(source_available[byte_index] & address_update_select);
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) word_available_q <= '1;
+      else if (|address_update_select) word_available_q <= next_available;
+    end
+  end else begin : g_combinational_word_range
+    assign word_available_q = '0;
   end
 
   // 保存字命中标志与地址共用更新事件，比较结果仅经过末端选择。

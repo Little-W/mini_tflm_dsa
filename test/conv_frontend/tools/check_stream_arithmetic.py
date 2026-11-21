@@ -29,6 +29,14 @@ def implementation(text,name):
     prepared=between(text,'  if (TILE_COUNT_W < 32','  assign prepared_group_i_a')
     expected='chunk_lane_allowed[lane] = chunk_data_allowed[lane] && column_lane_allowed_q[lane];'
     if expected not in text:raise RuntimeError('Channel assignment missing')
+    saved_range_relation = ''
+    if 'p_saved_word_range' in text:
+        saved_range_relation = '''
+ for(genvar byte_index=0;byte_index<WORD_BYTES;byte_index++)begin:g_range_relation
+  assign word_available_q[byte_index]=
+   {1'b0,addr[p_word_shift-1:0]}<(p_word_shift+1)'(WORD_BYTES-byte_index);
+ end
+'''
     return f'module implementation_{name} #({PARAMS})({PORTS},\n'+'''
  output logic[TILE_COUNT_W+5*LANES+4:0]result);
  localparam int p_cache_read_bytes=WORD_BYTES;
@@ -49,7 +57,7 @@ def implementation(text,name):
  for(genvar lane=0;lane<LANES;lane++)begin:g_channel
   assign chunk_lane_allowed[lane]=chunk_data_allowed[lane]&&column_lane_allowed_q[lane];
  end
-'''+settings+word+lanes+prepared+'''
+'''+settings+saved_range_relation+word+lanes+prepared+'''
  assign result={prepared_active_columns,step_word_boundary,step_saved_hit,word_boundary,
    next_byte_saved_hit,chunk_reaches_end,chunk_data_allowed,word_lane_allowed,chunk_lane_allowed};
 endmodule
