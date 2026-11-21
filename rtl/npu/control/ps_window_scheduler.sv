@@ -109,6 +109,7 @@ module ps_window_scheduler #(
     logic stored_row_i_carry, stored_row_o_carry;
     logic candidate_init;
     logic command_buffer_valid;
+    logic command_buffer_recoverable, command_buffer_opening;
     logic [ID_W-1:0] command_buffer_id;
     logic command_buffer_init, command_buffer_final;
     logic [31:0] command_buffer_row, command_buffer_q, command_buffer_column;
@@ -408,6 +409,10 @@ module ps_window_scheduler #(
     end
     always_ff @(posedge clk) begin
         if (!command_active && !command_buffer_valid && candidate_ready) begin
+            // 压力恢复资格与命令描述同时保存，外部压力返回仅选择保存的动作。
+            command_buffer_recoverable <= !candidate_final && protected_valid && live[protected_id] &&
+                protected_id != candidate_id && (phase == OPENING || phase == SWEEPING);
+            command_buffer_opening <= phase == OPENING;
             command_buffer_id <= candidate_id;
             command_buffer_init <= candidate_init;
             command_buffer_final <= candidate_final;
@@ -607,6 +612,7 @@ module ps_window_scheduler #(
         end
     end
 
+    // 完成与准备事件独立更新；等待中的命令在最后选择压力恢复或接收。
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             phase <= IDLE;
@@ -656,33 +662,6 @@ module ps_window_scheduler #(
                 end
             end else if (phase == COMPLETE && done_ready) begin
                 phase <= IDLE;
-            end else if (command_valid && command_pressure) begin
-                if (!frame_final && protected_valid && live[protected_id] && protected_id != command_buffer_id &&
-                    (phase == OPENING || phase == SWEEPING)) begin
-
-                    if (phase == OPENING) begin
-                        target <= opened;
-                        resume_valid <= 1'b0;
-                        cursor_mask <= '1;
-                        phase <= SWEEPING;
-                    end else begin
-                        resume_id <= command_buffer_id;
-                        resume_valid <= 1'b1;
-                        phase <= DRAINING;
-                    end
-                end else begin
-                    err_code <= 2'b10;
-                    phase <= COMPLETE;
-                end
-            end else if (command_valid && command_ready) begin
-                command_active <= 1'b1;
-                active_id <= command_buffer_id;
-                active_init <= command_buffer_init;
-                active_final <= frame_final;
-                active_q0 <= q0;
-                active_column <= column0;
-                active_row <= p0;
-                active_rows <= rows;
             end else if (command_active && command_complete) begin
                 command_active <= 1'b0;
 
@@ -744,6 +723,32 @@ module ps_window_scheduler #(
                     target <= '0;
                     phase <= PREPARING;
                 end
+            end else if (command_valid && command_pressure) begin
+                if (command_buffer_recoverable) begin
+                    if (command_buffer_opening) begin
+                        target <= opened;
+                        resume_valid <= 1'b0;
+                        cursor_mask <= '1;
+                        phase <= SWEEPING;
+                    end else begin
+                        resume_id <= command_buffer_id;
+                        resume_valid <= 1'b1;
+                        phase <= DRAINING;
+                    end
+                end else begin
+                    err_code <= 2'b10;
+                    phase <= COMPLETE;
+                end
+            end else if (command_valid && command_ready) begin
+                command_active <= 1'b1;
+                active_id <= command_buffer_id;
+                active_init <= command_buffer_init;
+                active_final <= frame_final;
+                active_q0 <= q0;
+                active_column <= column0;
+                active_row <= p0;
+                active_rows <= rows;
+
             end
         end
     end

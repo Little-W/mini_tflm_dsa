@@ -1,0 +1,17 @@
+{
+  "scheduler": {
+    "top": "ps_scheduler_pressure_measure",
+    "sources": [
+      "rtl/npu/control/ps_window_scheduler.sv",
+      "test/scheduler_pressure_state/measure.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GFRAME_COUNT=16",
+      "-GMAX_REUSE_TILES=32"
+    ],
+    "configuration": "生产调度器，压力输入由独立寄存器驱动，完整公开输出保留"
+  }
+}

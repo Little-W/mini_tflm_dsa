@@ -1,0 +1,415 @@
+{
+  "passed": true,
+  "source_sha256": "76ee3ee9ab21b51f80582471b7b66151ed4cdcebb7250d6edb1b899f2f414dbd",
+  "reference_revision": "cfcc1a95",
+  "reference_sha256": "9277bfd484a00e31e2b05858628b25fa9557bf42fdc12bfda84f4c8537f1e7bd",
+  "formal": {
+    "passed": true,
+    "profiles": [
+      {
+        "profile": "16:16:32",
+        "passed": true,
+        "common_state_bits": 2286,
+        "additional_state_bits": 2,
+        "groups": 18,
+        "invariant_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/16_16_32/invariant/summary.json",
+        "invariant_sha256": "1054b559de0b773d783a0f6634c3bc86e35a7ffd0746442b5f2f7864b80d7c56",
+        "transition_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/16_16_32/transition/summary.json",
+        "transition_sha256": "7348bc8db25dccdd947d94be6c27196e350a2206f59dd82b0d44caaef1a6f123",
+        "coverage_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/16_16_32/transition/16_16_32/groups.json",
+        "coverage_sha256": "d3da7272630b0e7ff8dc07d3ffc0c715049c4afcfdf302961793437a8769e019"
+      },
+      {
+        "profile": "4:4:4",
+        "passed": true,
+        "common_state_bits": 1278,
+        "additional_state_bits": 2,
+        "groups": 10,
+        "invariant_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/4_4_4/invariant/summary.json",
+        "invariant_sha256": "bfe912a6652ad4d7f1287deac45f853fce7a7db2ed4dda0805c276aed30e0724",
+        "transition_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/4_4_4/transition/summary.json",
+        "transition_sha256": "f2bb2710ffcdb669e01d7622b1aab74ea1a0c5888e169938fde4b3cf8844ee5a",
+        "coverage_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/4_4_4/transition/4_4_4/groups.json",
+        "coverage_sha256": "81995d86af68dae5b21204ba351afaea4885c1fd9f62a8231cd8058a4b1bd37e"
+      },
+      {
+        "profile": "4:2:0",
+        "passed": true,
+        "common_state_bits": 1530,
+        "additional_state_bits": 2,
+        "groups": 12,
+        "invariant_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/4_2_0/invariant/summary.json",
+        "invariant_sha256": "5d467670a5965ec57089c31d90dfcc7610316bbffd32ebe9c799d5786203ce2f",
+        "transition_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/4_2_0/transition/summary.json",
+        "transition_sha256": "9c3ae63dae3d38976e788d8863e0094453b26ee068363748c4f4f906ecfa0228",
+        "coverage_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/4_2_0/transition/4_2_0/groups.json",
+        "coverage_sha256": "22c0ff280d54edd552bb4c834af666643cfe3a794830503abb0ebfc21fd2e8b4"
+      },
+      {
+        "profile": "8:4:1",
+        "passed": true,
+        "common_state_bits": 1249,
+        "additional_state_bits": 2,
+        "groups": 10,
+        "invariant_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/8_4_1/invariant/summary.json",
+        "invariant_sha256": "c005e2634c8704ea63c821ce83c7a69fbf56238d073189454e1dfe695242fbf6",
+        "transition_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/8_4_1/transition/summary.json",
+        "transition_sha256": "edc17628b79e5120856cd6d990288c1299c1c5dc32b454d3bef4a75fb6d2bd1b",
+        "coverage_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/8_4_1/transition/8_4_1/groups.json",
+        "coverage_sha256": "0523e808883aac44a25a905dc3351699a4d4f708f31bb1c1c5be6413b3654906"
+      },
+      {
+        "profile": "16:8:16",
+        "passed": true,
+        "common_state_bits": 1634,
+        "additional_state_bits": 2,
+        "groups": 13,
+        "invariant_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/16_8_16/invariant/summary.json",
+        "invariant_sha256": "509bc4faed3c2735dee6ff5528507389de3bad195a8337b85ae24f2485017514",
+        "transition_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/16_8_16/transition/summary.json",
+        "transition_sha256": "a9a95a105c44c5336490ba527a72ca02c0428d607acb1bdb5b485ccc0ea01d70",
+        "coverage_report": "/tmp/timing_analysis_scheduler_pressure_r12/final_formal/16_8_16/transition/16_8_16/groups.json",
+        "coverage_sha256": "65abe3d42d6c7dac31e0e914aa339df7a1b61ecff9932e30a786b58e9ca3346d"
+      }
+    ],
+    "common_state_bits": 7977,
+    "all_common_register_state_bits_and_public_outputs": true,
+    "unconstrained_external_inputs": true
+  },
+  "four_state": {
+    "passed": true,
+    "profiles": 10,
+    "checks": 850512,
+    "four_state_cycles": 286240,
+    "report": "/tmp/timing_analysis_scheduler_pressure_r12/final_four_state/summary.json",
+    "sha256": "c5b07596675fe0fd88f3458f5c0a2350c4fcef583fb06c7e1ad9655b9598f39c"
+  },
+  "public_runner": {
+    "passed": true,
+    "profile": "4:2:0",
+    "report": "/tmp/timing_analysis_scheduler_pressure_r12/public_runner/summary.json",
+    "sha256": "fda35b2d25aefe6d754c47ee8593f69e2ede4cca91c73f1a4d2ca8b2d93bfa06"
+  },
+  "measurement": [
+    {
+      "variant": "reference",
+      "resources": {
+        "logic_lut_cells": 1130,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1186,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 913,
+        "dsp48e1": 13,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "carry4": 42,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 42,
+          "DSP48E1": 13,
+          "FDCE": 302,
+          "FDPE": 19,
+          "FDRE": 583,
+          "FDSE": 9,
+          "INV": 46,
+          "LUT2": 313,
+          "LUT3": 203,
+          "LUT4": 159,
+          "LUT5": 260,
+          "LUT6": 195,
+          "RAM32M": 14,
+          "RAMB36E1": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "complete_graph": true,
+      "module_maximum_register_path": 9,
+      "pressure_maximum_register_path": 6,
+      "pressure_endpoints": [
+        {
+          "name": "ready",
+          "port": "D",
+          "cells": 6
+        },
+        {
+          "name": "dut.phase [1]",
+          "port": "D",
+          "cells": 6
+        },
+        {
+          "name": "done_valid",
+          "port": "D",
+          "cells": 6
+        },
+        {
+          "name": "dut.frame_open [1]",
+          "port": "D",
+          "cells": 6
+        },
+        {
+          "name": "dut.next_row_part [0]",
+          "port": "D",
+          "cells": 6
+        },
+        {
+          "name": "dut.next_column_tile [0]",
+          "port": "D",
+          "cells": 6
+        },
+        {
+          "name": "dut.protected_id [0]",
+          "port": "CE",
+          "cells": 5
+        },
+        {
+          "name": "dut.resume_valid",
+          "port": "CE",
+          "cells": 5
+        },
+        {
+          "name": "dut.protected_valid",
+          "port": "CE",
+          "cells": 5
+        },
+        {
+          "name": "dut.cursor_mask [0]",
+          "port": "CE",
+          "cells": 5
+        },
+        {
+          "name": "dut.target [0]",
+          "port": "CE",
+          "cells": 5
+        },
+        {
+          "name": "dut.opened [0]",
+          "port": "D",
+          "cells": 5
+        },
+        {
+          "name": "dut.live [15]",
+          "port": "CE",
+          "cells": 5
+        },
+        {
+          "name": "dut.resume_id [0]",
+          "port": "CE",
+          "cells": 4
+        },
+        {
+          "name": "dut.selected_id_valid",
+          "port": "CE",
+          "cells": 4
+        },
+        {
+          "name": "dut.u_frame_metadata.i_wr_data [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.active_row [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.active_column [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.active_final",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.active_init",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.u_frame_metadata.i_wr_addr [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.u_stream_remaining.i_a [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.u_stored_row.o_sum [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.u_stored_row.i_a [4]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.command_buffer_valid",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "command_active",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "err_code [0]",
+          "port": "D",
+          "cells": 3
+        },
+        {
+          "name": "dut.active_q0 [4]",
+          "port": "CE",
+          "cells": 3
+        }
+      ],
+      "metrics": "/tmp/timing_analysis_scheduler_pressure_r12/measure/reference/metrics.json",
+      "metrics_sha256": "d0b9e12d7fde405f61bacf7c25199d640287562f68f57f3f7fea76d51310e334"
+    },
+    {
+      "variant": "current",
+      "resources": {
+        "logic_lut_cells": 1134,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1190,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 915,
+        "dsp48e1": 13,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "carry4": 42,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 42,
+          "DSP48E1": 13,
+          "FDCE": 302,
+          "FDPE": 19,
+          "FDRE": 585,
+          "FDSE": 9,
+          "INV": 46,
+          "LUT2": 318,
+          "LUT3": 204,
+          "LUT4": 195,
+          "LUT5": 269,
+          "LUT6": 148,
+          "MUXF7": 2,
+          "MUXF8": 1,
+          "RAM32M": 14,
+          "RAMB36E1": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "complete_graph": true,
+      "module_maximum_register_path": 9,
+      "pressure_maximum_register_path": 4,
+      "pressure_endpoints": [
+        {
+          "name": "dut.phase [1]",
+          "port": "D",
+          "cells": 4
+        },
+        {
+          "name": "dut.selected_id_valid",
+          "port": "CE",
+          "cells": 4
+        },
+        {
+          "name": "dut.cursor_mask [0]",
+          "port": "CE",
+          "cells": 4
+        },
+        {
+          "name": "ready",
+          "port": "D",
+          "cells": 3
+        },
+        {
+          "name": "done_valid",
+          "port": "D",
+          "cells": 3
+        },
+        {
+          "name": "dut.command_buffer_valid",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "err_code [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.resume_id [0]",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.resume_valid",
+          "port": "CE",
+          "cells": 3
+        },
+        {
+          "name": "dut.u_frame_metadata.i_wr_data [0]",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "dut.active_row [0]",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "dut.active_column [0]",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "dut.active_final",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "dut.active_init",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "dut.u_frame_metadata.i_wr_addr [0]",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "dut.target [0]",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "dut.active_q0 [4]",
+          "port": "CE",
+          "cells": 2
+        },
+        {
+          "name": "command_active",
+          "port": "CE",
+          "cells": 1
+        }
+      ],
+      "metrics": "/tmp/timing_analysis_scheduler_pressure_r12/final_measure/scheduler/metrics.json",
+      "metrics_sha256": "45894f8df877d45fb6ef9ec6beead7017b4d6f4141843023d92f01b8436b13e5"
+    }
+  ],
+  "test_sha256": {
+    "test/scheduler_pressure_state/measure.sv": "6664612f2045898e301bce81d6cb4e7241765531aed363cbc5b0717d3d4bbb58",
+    "test/scheduler_pressure_state/prove_invariant.py": "0a74f2e227114b8bb2777020c4f2a2f23eb99eb5fe01c981840186dc5d9461e9",
+    "test/scheduler_pressure_state/prove_transition.py": "af5bb96e116597d323e6855bf6b25658933bef891d023f67d2ebc6b0ce167f45",
+    "test/scheduler_pressure_state/run_formal.py": "404d01100d9b8581de92187fa6c7d06781936b914239e719f87aa03af7151446",
+    "test/scheduler_pressure_state/synthesis_cases.json": "3b6ed2aabcf385ccf0020364de463b883073a391037fba4055a7419cf111b368"
+  },
+  "four_state_runner_sha256": "a59f3fa7091cf908eabaf6082910701b4062ca645f8abfecf4cd952148d48b22"
+}
