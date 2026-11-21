@@ -1,0 +1,136 @@
+{
+  "buffer": {
+    "passed": true,
+    "source_sha256": "646cf97ddc0bac33d3afb229bad18a7551a38582cc4c8b81fe09c7b5f4a217eb",
+    "module_sha256": "e1cacfdf81b3393ee699b80ca4327c4dab7863ac6e936341de7450c3a97ef9fa",
+    "inputs_constrained": false,
+    "profiles": [
+      {
+        "width": 1,
+        "passed": true,
+        "log_sha256": "9d1757233347812af9c428e66c2a02f15ff5162b05dcf8b8ab14908cc74db4e8"
+      },
+      {
+        "width": 13,
+        "passed": true,
+        "log_sha256": "b08663b7c3557cb3552556eceaf1e039e135041f7f80dee2d26750b5a7c527bf"
+      },
+      {
+        "width": 45,
+        "passed": true,
+        "log_sha256": "150131a8c14bdc7fed1fdba9b914cf0e8f5b4909f1e9af92f29655e627aadf2e"
+      },
+      {
+        "width": 73,
+        "passed": true,
+        "log_sha256": "416699fb4eba6fff95103f7c5d5f0c7e586380224e75a92c79736a7b8ff92d9c"
+      },
+      {
+        "width": 129,
+        "passed": true,
+        "log_sha256": "0ccf3ad66115e76a7d9c75cc4082d41f090e5f6dcec7c9ba488d528721b45e03"
+      }
+    ]
+  },
+  "npu": {
+    "passed": true,
+    "tasks": 38,
+    "int32_checks": 11118
+  },
+  "soc_firmware": {
+    "passed": true,
+    "source_root": "/workspace/scratch/9625a7463d70/candidate_soc_r7",
+    "parameters": {
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "IA_CACHE_BLOCKS": 4,
+      "IM2COL_CACHE_BYTES": 4096,
+      "SHARED_BANK_BYTES": 8192,
+      "SHARED_BANK_COUNT": 7,
+      "PS_FRAME_COUNT": 16,
+      "AXI_READ_OUTSTANDING": 4,
+      "AXI_WRITE_OUTSTANDING": 4,
+      "ENABLE_VECTOR_ENGINE": 1,
+      "VECTOR_PE_COUNT": 8,
+      "CPU_MEM_DP": 65536,
+      "CPU_MEM_WORD_WIDTH": 64,
+      "CPU_MEM_INIT_EN": 0,
+      "CPU_ENABLE_ICACHE": 0,
+      "CPU_ENABLE_MUL": 1,
+      "CPU_ENABLE_DIV": 1,
+      "NPU_ENABLE_IS_MODE": 1,
+      "NPU_ENABLE_PER_CHANNEL": 1,
+      "NPU_ENABLE_CLOCK_GATING": 1,
+      "NPU_AXI_TIMING_BUFFER": 1,
+      "CPU_AXI_WRITE_TIMING_BUFFER": 1,
+      "BYPASS_RAM_PINGPONG": 0,
+      "RAM_WRITE_TIMING_BUFFER": 1
+    },
+    "firmware_elf_sha256": "f26f36416ff093908c28ce1bdda793b19eca0f61c8964fc894bccb13688702af",
+    "results": [
+      {
+        "mode": 0,
+        "passed": true,
+        "cpu_result": {
+          "magic": 1129730130,
+          "version": 1,
+          "complete": 1,
+          "mode": 0,
+          "compiled_dataflow": 0,
+          "case_id": 0,
+          "nmsis_status": 0,
+          "error": 0,
+          "start_cycle": 766552,
+          "end_cycle": 50039230,
+          "total_call_cycles": 49272678,
+          "npu_cycles_last": 4294967295,
+          "conv_caps": 65543,
+          "input_bytes": 784,
+          "filter_bytes": 72,
+          "output_bytes": 6272,
+          "scratch_bytes": 384,
+          "compared_outputs": 6272,
+          "mismatches": 0,
+          "first_mismatch": 4294967295,
+          "first_expected": 0,
+          "first_actual": 0,
+          "output_fnv1a": 1207381914,
+          "guard_errors": 0
+        },
+        "result": "/workspace/scratch/9625a7463d70/soc_functional_production_r7/cases/mnist_cnn_sg0_op0_mode0_lat0/result.json"
+      },
+      {
+        "mode": 1,
+        "passed": true,
+        "cpu_result": {
+          "magic": 1129730130,
+          "version": 1,
+          "complete": 1,
+          "mode": 1,
+          "compiled_dataflow": 0,
+          "case_id": 0,
+          "nmsis_status": 0,
+          "error": 0,
+          "start_cycle": 766585,
+          "end_cycle": 3547602,
+          "total_call_cycles": 2781017,
+          "npu_cycles_last": 0,
+          "conv_caps": 65543,
+          "input_bytes": 784,
+          "filter_bytes": 72,
+          "output_bytes": 6272,
+          "scratch_bytes": 384,
+          "compared_outputs": 6272,
+          "mismatches": 0,
+          "first_mismatch": 4294967295,
+          "first_expected": 0,
+          "first_actual": 0,
+          "output_fnv1a": 1207381914,
+          "guard_errors": 0
+        },
+        "result": "/workspace/scratch/9625a7463d70/soc_functional_production_r7/cases/mnist_cnn_sg0_op0_mode1_lat0/result.json"
+      }
+    ],
+    "build_manifest_sha256": "0b6e44fbd814af72d7028d2dac98b0e889899139cd53a922bde7de391e0938b3"
+  }
+}
