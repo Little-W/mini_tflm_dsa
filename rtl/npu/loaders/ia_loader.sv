@@ -546,6 +546,7 @@ module ia_loader #(
     logic request_lookup_valid, prefetch_lookup_valid;
     logic request_lookup_match;
     logic request_q0_matches;
+    logic request_rows_matches;
     logic request_lookup_ready;
     (* keep = 1 *) logic request_tag_match;
 
@@ -675,8 +676,7 @@ module ia_loader #(
         logic request_filter_ready;
 
         // 行数与槽位先完成比较，坐标等式在末级合并。
-        assign request_rows_match =
-            (request_lookup_q[p_rows_width-1:0] == request_rows[p_rows_width-1:0]);
+        assign request_rows_match = request_rows_matches;
         assign request_slot_match = (request_lookup_slot_q == request_descriptor.slot);
         assign request_filter_ready = request_lookup_valid && request_rows_match && request_slot_match;
         assign request_lookup_match = request_p0_equal_o_equal && request_q0_equal_o_equal && request_rows_match;
@@ -1055,6 +1055,8 @@ module ia_loader #(
         .request_q0_base(q0_base_q[REG_WIDTH-1:LOG2_SIZE]),
         .request_q0_target(request_lookup_q[$clog2(SIZE + 1) +: REG_WIDTH-LOG2_SIZE]),
         .request_q0_matches(request_q0_matches),
+        .request_rows_target(request_lookup_q[$clog2(SIZE+1)-1:0]),
+        .request_rows_matches(request_rows_matches),
         .request_rows(request_rows), .request_cols(request_cols),
         .request_burst_len_m1(request_burst_len_m1), .request_slot(request_slot),
 

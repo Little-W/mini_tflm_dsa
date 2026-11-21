@@ -102,6 +102,8 @@ module ia_loader_ctrl #(
     input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_base = '0,
     input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_target = '0,
     output logic                        request_q0_matches,
+    input  logic [$clog2(SIZE+1)-1:0]     request_rows_target = '0,
+    output logic                        request_rows_matches,
     output logic [REG_WIDTH-1:0]        request_group,
     output logic [REG_WIDTH-1:0]        request_rows,
     output logic [REG_WIDTH-1:0]        request_cols,
@@ -135,6 +137,17 @@ module ia_loader_ctrl #(
   localparam int ROW_CNT_W     = $clog2(SIZE + 1);
   localparam int CNT_W         = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
   typedef logic [CNT_W-1:0] count_t;
+`ifdef ASIC_SYNTHESIS
+  localparam bit p_saved_load_boundary = 1'b0;
+`elsif SYNTHESIS
+`ifdef XILINX_FPGA
+  localparam bit p_saved_load_boundary = 1'b1;
+`else
+  localparam bit p_saved_load_boundary = 1'b0;
+`endif
+`else
+  localparam bit p_saved_load_boundary = 1'b0;
+`endif
   wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
   // 上层可在配置边沿保存槽位掩码，所有运行阶段复用同一映射。
   wire [SLOT_W-1:0] slot_mask = p_precomputed_slot_mask ? cfg_slot_mask :
@@ -487,12 +500,27 @@ module ia_loader_ctrl #(
   logic [LOAD_CNT_W-1:0] load_last_equal_i_tail;
   logic [LOAD_CNT_W-1:0] load_last_equal_i_prefetch;
   logic load_last_equal_i_one;
-  logic load_last_equal_o_regular, load_last_equal_o_tail, load_last_equal_o_prefetch;
+  (* keep = p_saved_load_boundary *) logic load_last_equal_o_regular, load_last_equal_o_tail, load_last_equal_o_prefetch;
   assign load_last_equal_i_zero = '0;
   assign load_last_equal_i_regular = LOAD_CNT_W'(count_t'(cfg_ia_reuse_num));
   assign load_last_equal_i_tail = LOAD_CNT_W'(count_t'(ia_reuse_num_act));
   assign load_last_equal_i_prefetch = pf_r_target;
   assign load_last_equal_i_one = 1'b1;
+  // 下一游标与当前游标在同一边沿保存，末项比较直接读取完整计数值。
+  if (p_saved_load_boundary) begin : g_saved_load_boundary
+    logic [LOAD_CNT_W-1:0] cursor_after_q;
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) cursor_after_q <= LOAD_CNT_W'(1);
+      else if (retirement_l1 && !prefetch_active) cursor_after_q <= LOAD_CNT_W'(1);
+      else if (state == S_INIT) cursor_after_q <= LOAD_CNT_W'(1);
+      else if (prefetch_entering) cursor_after_q <= LOAD_CNT_W'(1);
+      else if ((state == S_LOAD || state == S_SEND) && tl_tile_done)
+        cursor_after_q <= load_ia_cursor_cnt + LOAD_CNT_W'(2);
+    end
+    assign load_last_equal_o_regular = cursor_after_q == load_last_equal_i_regular;
+    assign load_last_equal_o_tail = cursor_after_q == load_last_equal_i_tail;
+    assign load_last_equal_o_prefetch = cursor_after_q == load_last_equal_i_prefetch;
+  end else begin : g_current_load_boundary
   add_equal #(.p_width(LOAD_CNT_W)) u_regular (
       .i_a(load_ia_cursor_cnt), .i_b(load_last_equal_i_zero),
       .i_target(load_last_equal_i_regular), .i_carry_in(load_last_equal_i_one),
@@ -508,6 +536,7 @@ module ia_loader_ctrl #(
       .i_target(load_last_equal_i_prefetch), .i_carry_in(load_last_equal_i_one),
       .o_equal(load_last_equal_o_prefetch)
   );
+  end
   assign load_is_last_row_tile = load_l2_is_last &&
       (prefetch_active ? load_last_equal_o_prefetch :
        (is_last_l2_group ? load_last_equal_o_tail : load_last_equal_o_regular));
@@ -870,6 +899,16 @@ module ia_loader_ctrl #(
   end
 
   assign request_group = REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
+  // 两种候选行数先并行比较，尾行选择只合并一位结果。
+  if (p_saved_load_boundary) begin : g_parallel_rows_match
+    (* keep = 1 *) logic normal_equal, tail_equal;
+    assign normal_equal = request_rows_target == ROW_CNT_W'(REG_WIDTH'(SIZE));
+    assign tail_equal = request_rows_target == ROW_CNT_W'(rsp_rows_last_tile);
+    assign request_rows_matches = load_is_last_row_tile ? tail_equal : normal_equal;
+  end else begin : g_current_rows_match
+    assign request_rows_matches = request_rows_target == load_rows_cur[ROW_CNT_W-1:0];
+  end
+
   assign request_rows = load_rows_cur;
   assign request_cols = load_cols_cur;
   assign request_burst_len_m1 = load_burst_len_m1;
