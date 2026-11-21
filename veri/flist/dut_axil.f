@@ -49,6 +49,7 @@
 ../../rtl/npu/ps_compact/ps_frame_store.sv
 ../../rtl/npu/dma/operand_read_cache.sv
 ../../rtl/npu/buffers/ia_ps_shared_ram.sv
+../../rtl/npu/buffers/vector_shared_store.sv
 ../../rtl/npu/buffers/ps_buffer.sv
 ../../rtl/npu/buffers/ps_buffer_fifo.sv
 ../../rtl/common/pseudo_dual_port_ram.v

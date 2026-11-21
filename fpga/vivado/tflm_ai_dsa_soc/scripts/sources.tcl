@@ -85,6 +85,7 @@ if {[file isfile [file join $flow_dir export_sources.tcl]]} {
         [file join $npu_root ps_compact ps_frame_store.sv] \
         [file join $npu_root dma operand_read_cache.sv] \
         [file join $npu_buffers_root ia_ps_shared_ram.sv] \
+        [file join $npu_buffers_root vector_shared_store.sv] \
         [file join $npu_buffers_root ps_buffer.sv] \
         [file join $npu_buffers_root ps_buffer_fifo.sv] \
         [file join $common_root pseudo_dual_port_ram.v] \
