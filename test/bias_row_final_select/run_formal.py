@@ -62,7 +62,7 @@ def main():
                 commands += [
                     f'read_slang --top bias_row_control -GSIZE={size} '
                     f'-GBIAS_GROUP_BLOCKS_MAX={groups} -GREG_WIDTH={width} {define} '
-                    + ' '.join(shlex.quote(str(p)) for p in (snapshot, model)),
+                    + ' '.join(shlex.quote(str(p)) for p in (snapshot, model, ROOT / 'rtl/common/unsigned_compare.sv')),
                     'prep -top bias_row_control -flatten', 'async2sync', 'opt -full',
                     f'rename bias_row_control {label}', f'design -stash {label}',
                 ]

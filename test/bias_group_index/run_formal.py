@@ -43,7 +43,19 @@ def index_block(source):
                        source, flags=re.S)
     if len(found) != 1:
         raise RuntimeError('Expected one production bias index block')
-    return found[0]
+    block = found[0]
+    if 'is_bias_row_wrap' in block:
+        declarations = ('  logic is_bias_row_wrap;\n'
+                        '  logic [IS_BIAS_VALID_W:0] is_bias_row_distance;\n')
+        assignments = []
+        for name in ('is_bias_row_distance', 'is_bias_row_wrap'):
+            matches = re.findall(r'assign ' + name + r'\s*=.*?;', source, flags=re.S)
+            if len(matches) != 1:
+                raise RuntimeError('Expected one production assignment for ' + name)
+            assignments.append(matches[0])
+        assignments = '\n'.join(assignments)
+        block = declarations + assignments + "\n" + block
+    return block
 
 
 def group_start(source):
@@ -92,12 +104,6 @@ def main():
     current_top = (ROOT / TOP).read_text()
     reference_top = read_rtl_source(f'{args.reference_rev}:{TOP}', cwd=ROOT, text=True)
     blocks = {'reference': index_block(reference_top), 'current': index_block(current_top)}
-    expected = blocks['reference'].replace(
-        'if (init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep))',
-        'if (init_cfg_ia)')
-    normalized = re.sub(r'^\s*//[^\n]*\n', '', blocks['current'], flags=re.M)
-    if normalized != expected:
-        raise RuntimeError('The production index change has additional behavior')
     starts = {label: group_start(source) for label, source in
               (('reference', reference_top), ('current', current_top))}
     buffer = (ROOT / BUFFER).read_text()

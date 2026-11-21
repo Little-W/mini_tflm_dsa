@@ -2948,11 +2948,17 @@ module npu_top #(
     wire signed [31:0] requant_in_vec[SIZE];
     wire signed [63:0] requant_in_vec_s64[SIZE];
 
+        logic [IS_BIAS_ROW_W-1:0] is_bias_row_increment;
+        (* keep = 1 *) logic [IS_BIAS_ROW_W-1:0] is_bias_row_step;
+        logic [IS_BIAS_ROW_W-1:0] is_bias_row_next;
+        logic is_bias_row_wrap;
+        (* keep = 1 *) logic is_bias_row_clear;
+        (* use_dsp = "yes" *) logic [IS_BIAS_VALID_W:0] is_bias_row_distance;
+
         always_comb begin
             is_bias_read_idx = is_bias_row_idx;
             if (is_mode && acc_data_valid) begin
-                if ((is_bias_rows_valid <= IS_BIAS_VALID_W'(1)) ||
-                    (IS_BIAS_VALID_W'(is_bias_row_idx) + IS_BIAS_VALID_W'(1) >= is_bias_rows_valid))
+                if (is_bias_row_wrap)
                     is_bias_read_idx = '0;
                 else
                     is_bias_read_idx = is_bias_row_idx + 1'b1;
@@ -2962,14 +2968,12 @@ module npu_top #(
                 is_bias_read_idx = '0;
         end
 
-        logic [IS_BIAS_ROW_W-1:0] is_bias_row_increment;
-        (* keep = 1 *) logic [IS_BIAS_ROW_W-1:0] is_bias_row_step;
-        logic [IS_BIAS_ROW_W-1:0] is_bias_row_next;
-        logic is_bias_row_wrap;
-        (* keep = 1 *) logic is_bias_row_clear;
         assign is_bias_row_increment = is_bias_row_idx + IS_BIAS_ROW_W'(1);
+        // 扩展差值表示剩余行数，符号位和零值共同判断递增后的回绕。
+        assign is_bias_row_distance = {1'b0, is_bias_rows_valid} +
+            ~((IS_BIAS_VALID_W+1)'(is_bias_row_idx));
         assign is_bias_row_wrap = (is_bias_rows_valid <= IS_BIAS_VALID_W'(1)) ||
-            ((IS_BIAS_VALID_W'(is_bias_row_idx) + IS_BIAS_VALID_W'(1)) >= is_bias_rows_valid);
+            is_bias_row_distance[IS_BIAS_VALID_W] || (is_bias_row_distance == '0);
         // 先计算保持、递增和回绕结果，组首触发只参与最后一级清零选择。
         assign is_bias_row_step = (is_mode && acc_data_valid) ?
             (is_bias_row_wrap ? IS_BIAS_ROW_W'(0) : is_bias_row_increment) : is_bias_row_idx;
