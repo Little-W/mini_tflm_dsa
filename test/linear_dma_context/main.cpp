@@ -15,6 +15,12 @@
 #endif
 constexpr unsigned BusBytes = TEST_BUS_WIDTH / 8;
 constexpr unsigned BusSize = TEST_BUS_WIDTH == 64 ? 3 : 2;
+#ifndef TEST_SIZE
+#define TEST_SIZE 16
+#endif
+#ifndef TEST_CACHE_BLOCKS
+#define TEST_CACHE_BLOCKS 4
+#endif
 
 #ifndef TEST_DMA_MAX_BYTES
 #define TEST_DMA_MAX_BYTES (256 * BusBytes)
@@ -79,9 +85,9 @@ class Simulation {
             for (unsigned word = 0; word < physical_words; ++word)
                 expected_addresses.push_back({aligned + word*BusBytes,unsigned(commands)});
             for (unsigned word = 0; word < words; ++word) {
-                unsigned col = ((command.linear ? row : word) * (command.use16 ? BusBytes/2 : BusBytes)) & 15u;
+                unsigned col = ((command.linear ? row : word) * (command.use16 ? BusBytes/2 : BusBytes)) & (TEST_SIZE-1u);
                 expected_outputs.push_back({read(base+word*BusBytes), command.linear ? 0u : row,
-                                            col, command.slot, command.valid_cols ? command.valid_cols : 16,
+                                            col, command.slot, command.valid_cols ? command.valid_cols : TEST_SIZE,
                                             command.zero_point, command.use16,command.tag});
             }
         }
@@ -102,7 +108,7 @@ class Simulation {
         require(top.wr_row==e.row && top.wr_col_base==e.col && top.wr_slot==e.slot && top.wr_use_16bits==e.use16,
                 "unpack metadata mismatch");
         for (unsigned i=0; i<BusBytes; ++i) {
-            const bool valid = i < (e.use16 ? BusBytes/2 : BusBytes) && e.col+i < 16;
+            const bool valid = i < (e.use16 ? BusBytes/2 : BusBytes) && e.col+i < TEST_SIZE;
             require(bool(top.wr_valid[i])==valid, "unpack lane validity mismatch");
             if (!valid) continue;
             ++elements;
@@ -246,6 +252,15 @@ int main(int argc,char** argv){
         commands.push_back({0x80000u,16,16,16/BusBytes,15,-98,2,false,false});
         commands.push_back({0x200000u+8,16,3,2,13,7123,1,false,true,true});
         commands.push_back({0x90007u,29,7,3,16,-347,3,false,true});
+        if (TEST_SIZE > 16) {
+            // 覆盖完整生产块的行计数、列范围及全部缓存槽编号。
+            for (unsigned slot=0;slot<TEST_CACHE_BLOCKS;++slot) {
+                commands.push_back({0xa0000u+slot*0x1000u,TEST_SIZE+slot%BusBytes,
+                    TEST_SIZE,TEST_SIZE/BusBytes,TEST_SIZE,-211,slot,false,false});
+                commands.push_back({0x100ffdu+slot*0x1000u,2*TEST_SIZE+3u,
+                    TEST_SIZE,2*TEST_SIZE/BusBytes,TEST_SIZE-3,617,slot,false,true});
+            }
+        }
         for(unsigned i=0;i<commands.size();i++)commands[i].tag=(i*5u+3u)%8;
         Simulation sim(random,outstanding,argc,argv);sim.run(commands);sim.finish(depth);return 0;
     }catch(const std::exception& e){std::fprintf(stderr,"LINEAR_CONTEXT_FAIL %s\n",e.what());return 1;}

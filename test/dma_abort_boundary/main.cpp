@@ -5,6 +5,14 @@
 #include <cstdio>
 #include <stdexcept>
 
+#ifndef TEST_BUS_WIDTH
+#define TEST_BUS_WIDTH 32
+#endif
+#ifndef TEST_PREPARE_ABORT
+#define TEST_PREPARE_ABORT 0
+#endif
+constexpr uint32_t ByteMask = (1u << (TEST_BUS_WIDTH/8))-1u;
+
 static void require(bool value, const char* message) {
   if (!value) throw std::runtime_error(message);
 }
@@ -18,7 +26,9 @@ struct Simulation {
   bool observed_grant=false;
   unsigned write_left=0, accepted=0, written=0, completed=0, errors=0, addresses=0;
   unsigned raw_completed=0, error_completions=0;
-  uint32_t held_data=0, held_mask=0, held_last=0;
+  unsigned read_addresses=0, read_completions=0;
+  uint64_t held_data=0;
+  uint32_t held_mask=0, held_last=0;
   void step() {
     dut.clk=0;
     dut.i_abort=external_abort || fault_latched;
@@ -26,7 +36,7 @@ struct Simulation {
     dut.rvalid=read_release && read_pending;
     dut.wready=write_release && write_left!=0;
     dut.bvalid=response_release && response_pending;
-    dut.source_data=0x91827364u + accepted;
+    dut.source_data=(TEST_BUS_WIDTH==64 ? UINT64_C(0xc0d1e2f391827364) : UINT64_C(0x91827364)) + accepted;
     dut.eval();
     observed_grant=dut.write_granted;
     if (stalled) require(dut.wvalid && dut.wdata==held_data && dut.wstrb==held_mask &&
@@ -39,19 +49,19 @@ struct Simulation {
       if (dut.write_done_raw) ++raw_completed;
       if (dut.write_error_raw) ++error_completions;
       if (dut.source_valid && dut.source_ready) ++accepted;
-      if (dut.rvalid && dut.rready) read_pending=false;
+      if (dut.rvalid && dut.rready) {read_pending=false;++read_completions;}
       if (dut.bvalid && dut.bready) response_pending=false;
       if (dut.wvalid && dut.wready) {
         require(write_left>0, "W beat has no accepted AW");
         require(bool(dut.wlast)==(write_left==1), "W last differs from AW length");
         if (!fault_latched && !external_abort)
-          require(dut.wstrb==15, "live transfer lost byte enables");
+          require(dut.wstrb==ByteMask, "live transfer lost byte enables");
         if (fault_latched && written>0)
           require(dut.wstrb==0, "aborted transfer consumed new source data");
         ++written;
         if (--write_left==0) response_pending=true;
       }
-      if (dut.arvalid && dut.arready) {require(dut.arlen==0,"unexpected read length");read_pending=true;}
+      if (dut.arvalid && dut.arready) {require(dut.arlen==0,"unexpected read length");read_pending=true;++read_addresses;}
       if (dut.awvalid && dut.awready) {require(dut.awlen==3,"unexpected write length");write_left=4;++addresses;}
     }
     dut.clk=1;dut.eval();context.timeInc(1);
@@ -133,6 +143,38 @@ int main(int argc, char** argv) {
         require(s.completed==prior_done+1,"write recovery failed without reset");
         std::printf("DMA_ABORT_CASE owner=%u mode=%u initial_source_beats=%u recovery=1\n",
                     owner,mode,s.accepted-4);++cases;
+      }
+      if (TEST_PREPARE_ABORT) {
+        // 已接收的读取命令在准备期间收到中止后继续完成总线排空。
+        for (unsigned preparation_cycle=0;preparation_cycle<2;++preparation_cycle) {
+          Simulation s;s.dut.owner_dw=owner;s.reset();s.read();
+          for(unsigned cycle=0;cycle<preparation_cycle;++cycle)s.step();
+          require(!s.read_pending && s.read_addresses==0,"read preparation coverage is missing");
+          s.external_abort=true;s.read_release=true;s.drain();
+          require(s.read_addresses==1 && s.read_completions==1,
+                  "accepted read did not drain after preparation abort");
+          require(s.addresses==0 && s.accepted==0,"preparation abort issued a write");
+          s.external_abort=false;s.read_release=false;
+          for(unsigned cycle=0;cycle<4;++cycle)s.step();
+          s.write_release=false;s.write();s.drain();
+          require(s.completed==1 && s.accepted==4,"preparation abort recovery failed");
+          std::printf("DMA_ABORT_PREPARE owner=%u preparation_cycle=%u recovery=1\n",owner,preparation_cycle);
+          ++cases;
+        }
+        for (unsigned preparation_cycle=0;preparation_cycle<2;++preparation_cycle) {
+          Simulation s;s.dut.owner_dw=owner;s.reset();s.read();
+          for(unsigned cycle=0;cycle<preparation_cycle;++cycle)s.step();
+          require(!s.read_pending && s.read_addresses==0,"read reset preparation coverage is missing");
+          s.reset();
+          for(unsigned cycle=0;cycle<4;++cycle)s.step();
+          require(s.dut.idle && s.read_addresses==0,"reset retained a prepared read");
+          s.read();s.drain();
+          require(s.read_addresses==1 && s.read_completions==1,"read recovery after preparation reset failed");
+          s.write_release=false;s.write();s.drain();
+          require(s.completed==1 && s.accepted==4,"write recovery after preparation reset failed");
+          std::printf("DMA_RESET_PREPARE owner=%u preparation_cycle=%u recovery=1\n",owner,preparation_cycle);
+          ++cases;
+        }
       }
     }
     std::printf("DMA_ABORT_BOUNDARY_PASS cases=%u\n",cases);return 0;

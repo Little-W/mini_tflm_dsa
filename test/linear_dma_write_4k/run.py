@@ -21,12 +21,15 @@ def build(rtl, out, outstanding, args):
                Path(__file__).with_name('linear_dma_write_4k_top.sv'),
                Path(__file__).with_name('main.cpp'), Path(__file__).resolve()]
     hashes = {str(p): sha(p) for p in sources}
+    options = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1'] if args.fpga else []
     generate = [args.verilator, '--cc', '--exe', '--assert', '-Wno-fatal',
                 '--top-module', 'linear_dma_write_4k_top', '--Mdir', str(out/'obj'),
                 '--output-groups', '0', '--output-split', '12000',
                 f'-GWRITE_OUTSTANDING={outstanding}',
+                f'-GSIZE={args.size}', f'-GCACHE_BLOCKS={args.cache_blocks}',
                 f'-GBUS_WIDTH={args.bus_width}', f'-GDMA_MAX_BYTES={args.dma_max_bytes}',
-                '-CFLAGS', f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
+                '-CFLAGS', f'-std=c++20 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -fsanitize=undefined -fno-sanitize-recover=undefined -DTEST_DMA_MAX_BYTES={args.dma_max_bytes} -DTEST_BUS_WIDTH={args.bus_width}',
+                '-LDFLAGS', '-fsanitize=undefined', *options,
                 *map(str, sources[:5])]
     compile_command = ['make', '-C', str(out/'obj'), '-f', 'Vlinear_dma_write_4k_top.mk',
                        '-j', str(args.jobs), 'OPT_FAST=-O1', 'OPT_SLOW=-O0', 'OPT_GLOBAL=-O1',
@@ -37,7 +40,9 @@ def build(rtl, out, outstanding, args):
         if result.returncode:
             raise RuntimeError((out/filename).read_text()[-6000:])
     binary = out/'obj/Vlinear_dma_write_4k_top'
-    manifest = dict(bus_width=args.bus_width, dma_max_bytes=args.dma_max_bytes, source_sha256=hashes, binary_sha256=sha(binary),
+    manifest = dict(bus_width=args.bus_width, dma_max_bytes=args.dma_max_bytes, size=args.size,
+                    cache_blocks=args.cache_blocks, fpga=args.fpga, undefined_behavior_sanitizer=True,
+                    source_sha256=hashes, binary_sha256=sha(binary),
                     sources_unchanged_during_build=hashes == {str(p): sha(p) for p in sources},
                     generate_command=generate, compile_command=compile_command)
     (out/'build.json').write_text(json.dumps(manifest, indent=2)+'\n')
@@ -75,6 +80,9 @@ def main():
     parser.add_argument('--source-root', type=Path, default=ROOT,
                         help='包含待验证 RTL 的独立源码目录')
     parser.add_argument('--reference-rtl', type=Path)
+    parser.add_argument('--size', type=int, choices=[16,64], default=16)
+    parser.add_argument('--cache-blocks', type=int, choices=[4,64], default=4)
+    parser.add_argument('--fpga', action='store_true')
     parser.add_argument('--bus-width', type=int, choices=[32, 64], default=32)
     parser.add_argument('--dma-max-bytes', type=int, help='Optional physical burst limit; default: 256 bus beats')
     args = parser.parse_args()

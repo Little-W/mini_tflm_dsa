@@ -1,0 +1,25 @@
+{
+  "linear_dma": {
+    "top": "axi_linear_block_dma",
+    "parameters": {
+      "SIZE": 64,
+      "BUS_WIDTH": 64,
+      "DATA_WIDTH": 16,
+      "REG_WIDTH": 32,
+      "CACHE_BLOCKS": 64,
+      "RD_CONTEXT_DEPTH": 4,
+      "RD_TAG_WIDTH": 3,
+      "READ_OUTSTANDING": 4,
+      "WRITE_OUTSTANDING": 4,
+      "DMA_MAX_BYTES": 2048
+    },
+    "options": [
+      "-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1",
+      "-GSIZE=64", "-GBUS_WIDTH=64", "-GDATA_WIDTH=16", "-GREG_WIDTH=32",
+      "-GCACHE_BLOCKS=64", "-GRD_CONTEXT_DEPTH=4", "-GRD_TAG_WIDTH=3",
+      "-GREAD_OUTSTANDING=4", "-GWRITE_OUTSTANDING=4", "-GDMA_MAX_BYTES=2048"
+    ],
+    "sources": ["rtl/npu/dma/axi_linear_block_dma.sv"],
+    "configuration": "完整 SoC 中线性 DMA 的生产参数"
+  }
+}

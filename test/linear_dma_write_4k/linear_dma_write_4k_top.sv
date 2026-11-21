@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 module linear_dma_write_4k_top #(
     parameter int WRITE_OUTSTANDING = 4,
+    parameter int SIZE = 16,
+    parameter int CACHE_BLOCKS = 4,
     parameter int BUS_WIDTH = 32,
     parameter int DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8)
 ) (
@@ -30,15 +32,15 @@ module linear_dma_write_4k_top #(
 );
     axi_linear_block_dma #(
         .DMA_MAX_BYTES(DMA_MAX_BYTES),
-        .DATA_WIDTH(16), .SIZE(16), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(32),
-        .CACHE_BLOCKS(4), .READ_OUTSTANDING(4),
+        .DATA_WIDTH(16), .SIZE(SIZE), .BUS_WIDTH(BUS_WIDTH), .REG_WIDTH(32),
+        .CACHE_BLOCKS(CACHE_BLOCKS), .READ_OUTSTANDING(4),
         .WRITE_OUTSTANDING(WRITE_OUTSTANDING)
     ) dut (
         .clk, .rst_n,
         .rd_start(1'b0), .rd_start_ready(), .rd_tag(3'd0),
         .rd_response_tag(), .rd_finish_tag(), .rd_linear_read_mode(1'b0), .rd_base_addr(32'd0),
         .rd_row_stride(32'd0), .rd_rows_to_read(32'd0), .rd_valid_cols(32'd0),
-        .rd_burst_len_m1(8'd0), .rd_slot_id(2'd0), .rd_use_16bits(1'b0),
+        .rd_burst_len_m1(8'd0), .rd_slot_id('0), .rd_use_16bits(1'b0),
         .rd_lhs_zp(32'sd0), .rd_busy(), .rd_done(), .rd_finish_beat(),
         .wr_start, .wr_base_addr, .wr_row_stride, .wr_rows_to_write,
         .wr_burst_len_m1, .wr_busy, .wr_done,
