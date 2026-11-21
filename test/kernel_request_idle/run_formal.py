@@ -17,7 +17,7 @@ SOURCE = Path('rtl/npu/loaders/kernel_loader.sv')
 DEPENDENCIES = tuple(Path(path) for path in (
     'rtl/npu/loaders/kernel_loader_ctrl.sv',
     'rtl/npu/loaders/kernel_loader_buffer.sv',
-    'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv'))
+    'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv', 'rtl/common/unsigned_compare.sv'))
 PROOF = '''module kernel_request_idle_proof #(parameter bit p_use_lut=1'b0) (
     input logic request, granted, quiescent,
     output logic equivalent

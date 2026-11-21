@@ -70,7 +70,7 @@ def main():
         ('kernel_loader_ctrl.sv', 'kernel_loader.sv', 'kernel_loader_buffer.sv')]
     tracked += [ROOT / path for path in (
         'rtl/npu/dma/axi_linear_block_dma.sv', 'rtl/npu/dma/axi_dual_block_dma.sv',
-        'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv',
+        'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv', 'rtl/common/unsigned_compare.sv',
         'test/monitors/kernel_loader_observer.sv', 'scripts/fpga/open_fpga_synth.py')]
     hashes = {str(path.relative_to(ROOT)): digest(path) for path in tracked if path.is_file()}
     revision = subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()
@@ -116,7 +116,7 @@ prep -top buffer_pending -flatten
 ''', True)
     if 'kernel' in args.groups:
         complete = out / 'kernel_complete.json'
-        run('kernel_elaborate', f'''read_slang -D VERIFIC=1 -D YOSYS=1 -D SYNTHESIS=1 --top kernel_pending -GCOUNT_WIDTH=29 {HERE / 'kernel_pending.sv'} {reference / 'kernel_loader.sv'} {reference / 'kernel_loader_ctrl.sv'} {reference / 'kernel_loader_buffer.sv'} rtl/common/regfile.v rtl/common/add_equal.sv rtl/common/add3_equal.sv rtl/common/parallel_prefix_add.sv {model}
+        run('kernel_elaborate', f'''read_slang -D VERIFIC=1 -D YOSYS=1 -D SYNTHESIS=1 --top kernel_pending -GCOUNT_WIDTH=29 {HERE / 'kernel_pending.sv'} {reference / 'kernel_loader.sv'} {reference / 'kernel_loader_ctrl.sv'} {reference / 'kernel_loader_buffer.sv'} rtl/common/regfile.v rtl/common/add_equal.sv rtl/common/add3_equal.sv rtl/common/parallel_prefix_add.sv rtl/common/unsigned_compare.sv {model}
 prep -top kernel_pending -flatten
 write_json {complete}
 ''')

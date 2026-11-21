@@ -15,7 +15,7 @@ SOURCE_PATHS = (
     'rtl/npu/loaders/kernel_loader_buffer.sv',
     'rtl/common/regfile.v',
     'rtl/common/add_equal.sv',
-    'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv',
+    'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv', 'rtl/common/unsigned_compare.sv',
 )
 OBSERVATION = '''
     logic initial_cycle = 1'b1;
@@ -82,7 +82,7 @@ def main():
         module = design['modules']['kernel_compare_proof']
         module['ports'] = {name: value for name, value in module['ports'].items()
                            if value['direction'] == 'input' or name in ('comparison_stable', 'pending_visible')}
-        cuts = ['dut.comparison_equal', 'dut.u_ctrl.load_limit_o_ge', 'dut.u_ctrl.sent_count_covers_loads',
+        cuts = ['dut.comparison_equal', 'dut.u_ctrl.load_count_reached', 'dut.u_ctrl.sent_count_covers_loads',
                 'dut.u_ctrl.last_col_in_group', 'dut.u_ctrl.last_tile_row',
                 'dut.u_ctrl.last_l2_group', 'dut.u_ctrl.last_repeat']
         next_bit = max(bit for net in module['netnames'].values() for bit in net['bits'] if isinstance(bit, int)) + 1

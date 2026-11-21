@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--compiler", default="g++")
     parser.add_argument("--bus-width", type=int, choices=(32,64,128), default=64)
     parser.add_argument("--count-width", type=int, default=29)
+    parser.add_argument("--rtl", type=Path, help="待验证的 kernel_loader.sv 源文件")
     parser.add_argument("--reuse-build", action="store_true")
     parser.add_argument("--fpga", action="store_true")
     args = parser.parse_args()
@@ -30,15 +31,19 @@ def main():
     obj.mkdir(parents=True, exist_ok=True)
     sources = [
         Path(__file__).resolve(), test / "tb.sv", test / "main.cpp",
-        root / "rtl/npu/loaders/kernel_loader.sv",
+        args.rtl.resolve() if args.rtl else root / "rtl/npu/loaders/kernel_loader.sv",
         root / "rtl/npu/loaders/kernel_loader_buffer.sv",
         root / "rtl/npu/loaders/kernel_loader_ctrl.sv",
         root / "rtl/common/regfile.v",
         root / "rtl/common/add_equal.sv",
         root / "rtl/common/add3_equal.sv",
         root / "rtl/common/parallel_prefix_add.sv",
+        root / "rtl/common/unsigned_compare.sv",
     ]
-    before = {str(path.relative_to(root)): digest(path) for path in sources}
+    def source_key(path):
+        return str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
+
+    before = {source_key(path): digest(path) for path in sources}
     primitive_sources = []
     primitive_library_sha256 = None
     if args.fpga:
@@ -48,7 +53,7 @@ def main():
         model.write_text('\n\n'.join(re.search(r'^module ' + name + r'\b.*?^endmodule',
                          library.read_text(), re.M | re.S).group(0)
                          for name in ('LUT1', 'LUT6', 'LUT6_2', 'MUXF7', 'MUXF8', 'DSP48E1')) + '\n')
-        primitive_sources = ['-DSYNTHESIS', str(model)]
+        primitive_sources = ['-DSYNTHESIS', '-DXILINX_FPGA', str(model)]
         primitive_library_sha256 = digest(library)
     rules = out / "compile_rules.mk"
     rules.write_text("""%.o: %.cpp
@@ -97,7 +102,7 @@ $(VK_GLOBAL_OBJS): %.o: %.cpp
     report = json.loads(result.stdout.strip().splitlines()[-1])
     if not report.get("passed"):
         raise RuntimeError("RTL simulation did not report success")
-    if before != {str(path.relative_to(root)): digest(path) for path in sources}:
+    if before != {source_key(path): digest(path) for path in sources}:
         raise RuntimeError("Sources changed during validation")
     report.update(
         source_sha256=before, binary_sha256=digest(binary), compile_command=command,
