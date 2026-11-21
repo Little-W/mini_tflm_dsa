@@ -156,9 +156,13 @@ module bias_loader_ctrl #(
                           (last_block_elems != count_t'(SIZE));
   logic [REG_WIDTH-1:0] load_rows_full;
   logic [REG_WIDTH-1:0] load_rows_without_tail;
+  (* use_dsp = "yes" *) count_t final_group_start;
+  count_t final_row_offset;
   // 完整行数和扣除尾块后的行数并行计算，范围判断只选择最终结果。
   assign load_rows_full = REG_WIDTH'(load_blocks_count);
   assign load_rows_without_tail = load_rows_full - REG_WIDTH'(1);
+  assign final_group_start = num_blocks - step_blocks_eff;
+  assign final_row_offset = load_blocks_count - count_t'(1);
   assign load_group_done = dma_done && !tail_pending;
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -245,7 +249,7 @@ module bias_loader_ctrl #(
 
           S_INIT_LAST: begin
             last_group_start_idx <= (num_blocks <= step_blocks_eff) ? '0 :
-                                    (num_blocks - step_blocks_eff);
+                                    final_group_start;
             state                <= S_INIT_MARK;
           end
 
@@ -317,7 +321,7 @@ module bias_loader_ctrl #(
                 dma_base_addr <= tail_base_addr;
                 dma_rows_to_read <= REG_WIDTH'(1);
                 dma_burst_len_m1 <= 8'((32'(last_block_elems) + BUS_WIDTH/32-1)/(BUS_WIDTH/32) - 1);
-                dma_row_offset <= load_blocks_count - count_t'(1);
+                dma_row_offset <= final_row_offset;
                 tail_pending <= 1'b0;
                 load_bias_req <= 1'b1;
                 state <= S_REQ;
