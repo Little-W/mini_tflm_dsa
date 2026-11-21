@@ -34,6 +34,10 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--reference-ref',default='e19e4f4')
+    parser.add_argument('--reference-rtl',type=Path,
+                        help='使用给定的完整线性 DMA 文件作为参考实现')
+    parser.add_argument('--rtl',type=Path,default=ROOT/SOURCE,
+                        help='待验证的完整线性 DMA 源文件')
     parser.add_argument('--address-parameters', action='store_true',
                         help='Include narrow addresses and shorter physical burst limits')
     parser.add_argument('--context-parameters', action='store_true',
@@ -48,8 +52,9 @@ def main():
     if args.fpga and args.asic:
         parser.error('--fpga and --asic select separate hardware implementations')
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    original=read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT, text=True)
-    current=ROOT/SOURCE
+    original=(args.reference_rtl.resolve().read_text() if args.reference_rtl is not None else
+              read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT, text=True))
+    current=args.rtl.resolve()
     reference=out/'reference.sv'
     candidate=out/'current.sv'
     reference.write_text(observe_context_storage(original) if args.observe_context_storage else original)
@@ -62,8 +67,10 @@ def main():
     comparator=ROOT/'rtl/common/add_equal.sv'
     comparator_snapshot=out/'add_equal.sv';comparator_snapshot.write_bytes(comparator.read_bytes())
     dependencies=(current,common,comparator)
-    hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
-    summary={'passed':False,'reference_ref':args.reference_ref,'source_sha256':hashes,
+    hashes={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
+    summary={'passed':False,'reference_ref':args.reference_ref if args.reference_rtl is None else None,
+             'source_sha256':hashes,
+             'reference_file':str(args.reference_rtl.resolve()) if args.reference_rtl is not None else None,
              'inputs_constrained':False,
              'original_reference_sha256':hashlib.sha256(original.encode()).hexdigest(),'runs':[]}
     primitive_options = ' -D ASIC_SYNTHESIS=1' if args.asic else ''
@@ -72,7 +79,7 @@ def main():
         library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
         model = out/'lut6_2.sv'
         model.write_text(re.search(r'^module LUT6_2\b.*?^endmodule', library.read_text(), re.M | re.S).group(0)+'\n')
-        primitive_options = ' -D SYNTHESIS '+shlex.quote(str(model))
+        primitive_options = ' -D SYNTHESIS=1 -D XILINX_FPGA=1 '+shlex.quote(str(model))
         summary['primitive_library_sha256'] = hashlib.sha256(library.read_bytes()).hexdigest()
     summary['fpga'] = args.fpga
     summary['asic'] = args.asic
@@ -125,7 +132,7 @@ def main():
                 'equivalent_bits':int(match[1]) if match else None,'log_sha256':hashlib.sha256(log.read_bytes()).hexdigest()}
         summary['runs'].append(report);print(json.dumps(report),flush=True)
         if not report['passed']:raise RuntimeError(text[-9000:])
-    if hashes!={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}:
+    if hashes!={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}:
         raise RuntimeError('Source changed during verification')
     summary['passed']=True
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
