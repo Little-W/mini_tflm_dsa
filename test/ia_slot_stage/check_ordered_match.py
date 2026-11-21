@@ -53,7 +53,7 @@ assign equivalent=current_result==reference_result;
 endmodule
 ''')
             script, log = out / (name + '.ys'), out / (name + '.log')
-            script.write_text('read_slang --top proof ' + shlex.join(map(str, [modules, *common, proof])) +
+            script.write_text('read_slang --top proof -DSYNTHESIS=1 -DXILINX_FPGA=1 ' + shlex.join(map(str, [modules, *common, proof])) +
                 '\nprep -top proof -flatten\nsat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
             with log.open('w') as stream:
                 result = subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
@@ -113,7 +113,7 @@ endmodule
     expected_checks = (1024+20004)*16
     if f'checks={expected_checks}' not in run.stdout or hashes != {str(path): digest(path) for path in [source, reference, *common]}:
         raise RuntimeError('Coordinate check did not complete or source changed')
-    report = dict(passed=True, source_sha256=hashes, binary_input_constraints=[], runs=runs,
+    report = dict(passed=True, source_sha256=hashes, binary_input_constraints=[], synthesis_configuration=['SYNTHESIS=1', 'XILINX_FPGA=1'], runs=runs,
         four_state=dict(passed=True, comparisons=expected_checks, exhaustive_input_bits=5,
             exhaustive_patterns=1024, additional_patterns=20004, values=['0','1','x','z']))
     (out / 'summary.json').write_text(json.dumps(report, indent=2)+'\n')

@@ -405,6 +405,16 @@ module ia_loader_ctrl #(
     end
   end
 
+  // 计数和末项索引形成完整模运算结果，在各自的更新边沿保存。
+  (* use_dsp = "yes" *) count_t l2_group_last_value, w_group_last_value, last_column_value;
+  (* use_dsp = "yes" *) count_t l1_index_advance, l1_next_index_advance, l2_tile_row_advance;
+  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] load_cursor_p0_advance;
+  assign l2_group_last_value = count_t'(l2_group_num - REG_WIDTH'(1));
+  assign w_group_last_value = count_t'(w_groups_total - REG_WIDTH'(1));
+  assign last_column_value = count_t'(horizontal_tile_num - REG_WIDTH'(1));
+  assign l1_index_advance = l1_idx + 1;
+  assign l1_next_index_advance = l1_idx_next + 1;
+
   // =====================================================================
   // Loop-boundary flags
   // =====================================================================
@@ -419,10 +429,10 @@ module ia_loader_ctrl #(
       is_last_w_group   <= 1'b1;
       is_last_l1_group  <= 1'b1;
     end else if (state == S_IDLE && init_start) begin
-      l2_group_last_idx <= (l2_group_num <= REG_WIDTH'(1)) ? '0 : count_t'(l2_group_num - REG_WIDTH'(1));
-      w_group_last_idx  <= (w_groups_total <= REG_WIDTH'(1)) ? '0 : count_t'(w_groups_total - REG_WIDTH'(1));
+      l2_group_last_idx <= (l2_group_num <= REG_WIDTH'(1)) ? '0 : l2_group_last_value;
+      w_group_last_idx  <= (w_groups_total <= REG_WIDTH'(1)) ? '0 : w_group_last_value;
       l1_last_idx       <= (l1_per_l2 <= REG_WIDTH'(1)) ? '0 : count_t'(l1_per_l2 - REG_WIDTH'(1));
-      last_col_tile_idx <= (horizontal_tile_num <= REG_WIDTH'(1)) ? '0 : count_t'(horizontal_tile_num - REG_WIDTH'(1));
+      last_col_tile_idx <= (horizontal_tile_num <= REG_WIDTH'(1)) ? '0 : last_column_value;
       last_col_valid_cols <= (cfg_n_tail_cols == '0) ? REG_WIDTH'(SIZE) : REG_WIDTH'(cfg_n_tail_cols);
       is_last_l2_group  <= (l2_group_num <= REG_WIDTH'(1));
       is_last_w_group   <= (w_groups_total <= REG_WIDTH'(1));
@@ -453,6 +463,7 @@ module ia_loader_ctrl #(
   count_t tile_row_idx;
   count_t tile_col_idx;
   count_t l2_tile_row_base;
+  assign l2_tile_row_advance = l2_tile_row_base + count_t'(cfg_ia_reuse_num);
   always_comb begin
     tile_row_idx = l2_tile_row_base + count_t'(ia_idx);
     tile_col_idx = l1_idx;
@@ -556,7 +567,7 @@ module ia_loader_ctrl #(
       l2_tile_row_base <= '0;
     end else if (l2_group_retire) begin
       l2_row_base <= l2_row_base_advanced;
-      l2_tile_row_base <= l2_tile_row_base + count_t'(cfg_ia_reuse_num);
+      l2_tile_row_base <= l2_tile_row_advance;
     end
   end
 
@@ -579,6 +590,7 @@ module ia_loader_ctrl #(
   (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] load_row_base_advanced;
   logic [REG_WIDTH-1:0] load_cursor_row_base;
   logic [REG_WIDTH-1:0] load_cursor_p0;
+  assign load_cursor_p0_advance = load_cursor_p0 + REG_WIDTH'(SIZE);
   wire [REG_WIDTH-1:0] next_group_p0 =
       (REG_WIDTH'(l2_tile_row_base) +
        (next_group_advances_l2 ? cfg_ia_reuse_num : REG_WIDTH'(0))) << LOG2_SIZE;
@@ -939,7 +951,7 @@ module ia_loader_ctrl #(
         load_tiles_done     <= load_tiles_done + 1;
         load_ia_cursor      <= load_ia_cursor + 1;
         load_cursor_row_base <= load_row_base_advanced;
-        load_cursor_p0       <= load_cursor_p0 + REG_WIDTH'(SIZE);
+        load_cursor_p0       <= load_cursor_p0_advance;
       end
     end
   end
@@ -1028,9 +1040,9 @@ module ia_loader_ctrl #(
         end else begin
           w_cnt <= '0;
           if (!is_last_l1_group) begin
-            l1_idx <= l1_idx + 1;
+            l1_idx <= l1_index_advance;
             is_first_tile <= &l1_idx;
-            l1_idx_next <= l1_idx_next + 1;
+            l1_idx_next <= l1_next_index_advance;
           end else begin
             l1_idx <= '0;
             is_first_tile <= 1'b1;

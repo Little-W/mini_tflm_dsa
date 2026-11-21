@@ -1240,29 +1240,57 @@ module ia_ordered_coordinate_equal #(
     //! -----------
 
     localparam int unsigned p_high_width = p_width - p_low_width;
-    logic carry_in;
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_complete_sum = 1'b0;
+`elsif SYNTHESIS
+`ifdef XILINX_FPGA
+    localparam bit p_complete_sum = p_use_lut && p_width >= 17 && p_width <= 47;
+`else
+    localparam bit p_complete_sum = 1'b0;
+`endif
+`else
+    localparam bit p_complete_sum = 1'b0;
+`endif
 
-    //! 1. 计算坐标进位条件
-    //! -------------------
+    if (p_complete_sum) begin : g_complete_sum
+        // 低位进位包含在完整模加中，高位结果按三对输入位并行比较。
+        localparam int unsigned p_groups = (p_high_width + 2) / 3;
+        (* use_dsp = "yes" *) logic [p_width-1:0] arithmetic_result;
+        (* keep = 1 *) logic [p_groups-1:0] group_equal;
+        assign arithmetic_result = i_a + i_b;
+        for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_compare
+            localparam int unsigned p_first = group_index * 3;
+            localparam int unsigned p_bits = p_high_width - p_first < 3 ? p_high_width - p_first : 3;
+            assign group_equal[group_index] =
+                arithmetic_result[p_low_width+p_first +: p_bits] == i_target[p_first +: p_bits];
+        end
+        assign o_equal = &group_equal;
+    end else begin : g_grouped_expression
+        logic carry_in;
 
-    if (p_low_width > 0) begin : g_low_carry
-        logic [p_low_width-1:0] unused_low_sum;
-        // 只消费低位进位，分组生成条件避免先计算完整低位和值。
-        parallel_prefix_add #(
-            .p_width(p_low_width), .p_group_width(3), .p_preserve_groups(1'b1)
-        ) u_low_carry (
-            .i_a(i_a[p_low_width-1:0]), .i_b(i_b[p_low_width-1:0]), .i_carry(1'b0),
-            .o_sum(unused_low_sum), .o_carry(carry_in)
+        //! 1. 计算坐标进位条件
+        //! -------------------
+
+        if (p_low_width > 0) begin : g_low_carry
+            logic [p_low_width-1:0] unused_low_sum;
+            // 只消费低位进位，分组生成条件避免先计算完整低位和值。
+            parallel_prefix_add #(
+                .p_width(p_low_width), .p_group_width(3), .p_preserve_groups(1'b1)
+            ) u_low_carry (
+                .i_a(i_a[p_low_width-1:0]), .i_b(i_b[p_low_width-1:0]), .i_carry(1'b0),
+                .o_sum(unused_low_sum), .o_carry(carry_in)
+            );
+        end else begin : g_no_low_carry
+            assign carry_in = 1'b0;
+        end
+        //! 2. 生成坐标比较结果
+        //! -------------------
+
+        // 相邻两位的进位一致性并行计算，公共比较器保留每位实际计算结果。
+        add_equal #(.p_width(p_high_width), .p_use_lut(p_use_lut)) u_high_equal (
+            .i_a(i_a[p_width-1:p_low_width]), .i_b(i_b[p_width-1:p_low_width]),
+            .i_target(i_target), .i_carry_in(carry_in), .o_equal(o_equal)
         );
-    end else begin : g_no_low_carry
-        assign carry_in = 1'b0;
     end
-    //! 2. 生成坐标比较结果
-    //! -------------------
 
-    // 相邻两位的进位一致性并行计算，公共比较器保留每位实际计算结果。
-    add_equal #(.p_width(p_high_width), .p_use_lut(p_use_lut)) u_high_equal (
-        .i_a(i_a[p_width-1:p_low_width]), .i_b(i_b[p_width-1:p_low_width]),
-        .i_target(i_target), .i_carry_in(carry_in), .o_equal(o_equal)
-    );
 endmodule
