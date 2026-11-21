@@ -1,7 +1,7 @@
 {
   "passed": true,
   "source_sha256": {
-    "rtl/npu/conv/conv_im2col_frontend.sv": "d7d8afd835f5797f9bb566e4127512b2a87490d0c03e6519903f7d4d9be8125d",
+    "rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
     "rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
     "rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316"
   },
@@ -21,7 +21,7 @@
   "numeric_cycle_comparison": {
     "passed": true,
     "reference_ref": null,
-    "reference_source_root": "/workspace/scratch/9625a7463d70/dma_study/iteration34",
+    "reference_source_root": "/workspace/scratch/9625a7463d70/dma_study/iteration38",
     "register_cache_request": null,
     "register_descriptor": null,
     "cache_sets": 16,
@@ -37,39 +37,39 @@
         "windowed_prefetch": 0,
         "passed": true,
         "source_sha256": {
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv": "d7d8afd835f5797f9bb566e4127512b2a87490d0c03e6519903f7d4d9be8125d",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_im2col_frontend_observer.sv": "9c53eea9c619245b84595694c39ab0a349f99b98f6be06830581e5ec8d9429ce",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
-          "/tmp/npu_dma_compare36/reference_frontend.sv": "86eb2f8e77d5eb2e17f847c11b88afcc50bfbe3b2866791cb73492483583ef93",
-          "/tmp/npu_dma_compare36/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
+          "/tmp/npu_dma_compare39/reference_frontend.sv": "5096128afb2fef0c73b4cdb44e3551823c74aca5d3eed689f120bf81c6d8677c",
+          "/tmp/npu_dma_compare39/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
         },
         "warnings": [
-          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'",
-          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv:2926:64: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv:2927:61: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv:2920:61: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv:2921:64: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv:2933:81: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /tmp/npu_dma_compare36/reference_frontend.sv:2979:64: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /tmp/npu_dma_compare36/reference_frontend.sv:2980:61: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /tmp/npu_dma_compare36/reference_frontend.sv:2973:61: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /tmp/npu_dma_compare36/reference_frontend.sv:2974:64: Comparison is constant due to limited range",
-          "%Warning-CMPCONST: /tmp/npu_dma_compare36/reference_frontend.sv:2986:81: Comparison is constant due to limited range"
+          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2971:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2972:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2965:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2966:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2978:81: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39/reference_frontend.sv:2973:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39/reference_frontend.sv:2974:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39/reference_frontend.sv:2967:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39/reference_frontend.sv:2968:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39/reference_frontend.sv:2980:81: Comparison is constant due to limited range"
         ],
         "summary": [
           "RTL_FRONTEND_PASS jobs=42 cycles=1015217 cache_sets=16 cache_ways=2 line_bytes=128 tile_path=0 (not upstream full NPU)",
@@ -83,29 +83,29 @@
         "windowed_prefetch": 0,
         "passed": true,
         "source_sha256": {
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv": "d7d8afd835f5797f9bb566e4127512b2a87490d0c03e6519903f7d4d9be8125d",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_im2col_frontend_observer.sv": "9c53eea9c619245b84595694c39ab0a349f99b98f6be06830581e5ec8d9429ce",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
-          "/tmp/npu_dma_compare36/reference_frontend.sv": "86eb2f8e77d5eb2e17f847c11b88afcc50bfbe3b2866791cb73492483583ef93",
-          "/tmp/npu_dma_compare36/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
+          "/tmp/npu_dma_compare39/reference_frontend.sv": "5096128afb2fef0c73b4cdb44e3551823c74aca5d3eed689f120bf81c6d8677c",
+          "/tmp/npu_dma_compare39/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
         },
         "warnings": [
-          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
         ],
         "summary": [
           "RTL_FRONTEND_PASS jobs=42 cycles=409120 cache_sets=16 cache_ways=2 line_bytes=128 tile_path=0 (not upstream full NPU)",
@@ -119,29 +119,29 @@
         "windowed_prefetch": 0,
         "passed": true,
         "source_sha256": {
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv": "d7d8afd835f5797f9bb566e4127512b2a87490d0c03e6519903f7d4d9be8125d",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_im2col_frontend_observer.sv": "9c53eea9c619245b84595694c39ab0a349f99b98f6be06830581e5ec8d9429ce",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
-          "/tmp/npu_dma_compare36/reference_frontend.sv": "86eb2f8e77d5eb2e17f847c11b88afcc50bfbe3b2866791cb73492483583ef93",
-          "/tmp/npu_dma_compare36/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
+          "/tmp/npu_dma_compare39/reference_frontend.sv": "5096128afb2fef0c73b4cdb44e3551823c74aca5d3eed689f120bf81c6d8677c",
+          "/tmp/npu_dma_compare39/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
         },
         "warnings": [
-          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
         ],
         "summary": [
           "RTL_FRONTEND_PASS jobs=42 cycles=222861 cache_sets=16 cache_ways=2 line_bytes=128 tile_path=0 (not upstream full NPU)",
@@ -155,29 +155,29 @@
         "windowed_prefetch": 1,
         "passed": true,
         "source_sha256": {
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_im2col_frontend.sv": "d7d8afd835f5797f9bb566e4127512b2a87490d0c03e6519903f7d4d9be8125d",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
-          "/workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_im2col_frontend_observer.sv": "9c53eea9c619245b84595694c39ab0a349f99b98f6be06830581e5ec8d9429ce",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
           "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
-          "/tmp/npu_dma_compare36/reference_frontend.sv": "86eb2f8e77d5eb2e17f847c11b88afcc50bfbe3b2866791cb73492483583ef93",
-          "/tmp/npu_dma_compare36/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
+          "/tmp/npu_dma_compare39/reference_frontend.sv": "5096128afb2fef0c73b4cdb44e3551823c74aca5d3eed689f120bf81c6d8677c",
+          "/tmp/npu_dma_compare39/tb_conv_im2col_frontend.sv": "f5e6065e2b4257132994c159aa68b44884dc623f4486e99f1a4f5ef2ddf79cee"
         },
         "warnings": [
-          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
         ],
         "summary": [
           "RTL_FRONTEND_PASS jobs=42 cycles=155872 cache_sets=16 cache_ways=2 line_bytes=128 tile_path=0 (not upstream full NPU)",
@@ -188,7 +188,7 @@
         "control": true,
         "passed": true,
         "warnings": [
-          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration36/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
         ],
         "summary": [
           "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=140",
@@ -514,39 +514,77 @@
       "passed": true
     },
     "frontend_address": {
-      "source_sha256": "0230cc7ec3b0053496cb48b59d8d5a395966d1318121d919bed13dfb1c1adf00",
-      "proof_sha256": "41577ed4b65f39cab5657151e77125c8efd71469bc41bc113d46163fba8e715a",
+      "source_sha256": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+      "proof_sha256": "e6543601c4ded217013d66f637ec0bdc86609016e315f09d50954dc74c4950a6",
       "input_constraints": [],
       "state_encoding": "one-hot value selected by an unconstrained five-bit index",
       "column_range_reset_checked": true,
+      "event_relationships": "Configuration requires IDLE and no prepared descriptor; registered commit requires a prepared descriptor in IDLE; direct commit requires IDLE or final transfer and no configuration; decode writes require Q_DECODE or Q_WAIT.",
+      "event_relationship_proof": "check_frontend_event_domains.py",
       "runs": [
         {
           "SIZE": 4,
           "LANES": 8,
           "xilinx_fpga": false,
+          "register_descriptor": false,
           "passed": true,
-          "log_sha256": "8fbacadff98a8e2789488fed033db07dba3b1df44a6832b30744238ee731e16f"
+          "log_sha256": "707e03f8cf2b6faba42ba022236aff6b99f28ba158f32849843fe933fb99ea9d"
+        },
+        {
+          "SIZE": 4,
+          "LANES": 8,
+          "xilinx_fpga": false,
+          "register_descriptor": true,
+          "passed": true,
+          "log_sha256": "3aa81933c2a55112c28687af119a2ed3ec7d92cf8ce80fa27a3842b0a5b4e9ec"
         },
         {
           "SIZE": 4,
           "LANES": 8,
           "xilinx_fpga": true,
+          "register_descriptor": false,
           "passed": true,
-          "log_sha256": "1bdb68b5717f9dadb0fe7ba78e8dbe5e4ac86e223ecdee2cb20cb1985717f8f7"
+          "log_sha256": "d99a805edcac49ab1ece4f84ea9074e401bad4d23e4741db825a428f70e190ae"
+        },
+        {
+          "SIZE": 4,
+          "LANES": 8,
+          "xilinx_fpga": true,
+          "register_descriptor": true,
+          "passed": true,
+          "log_sha256": "40e03576f38b39b0b04e4cd187a1c206c1b3a84df26a46f3f4e817eb72153001"
         },
         {
           "SIZE": 16,
           "LANES": 8,
           "xilinx_fpga": false,
+          "register_descriptor": false,
           "passed": true,
-          "log_sha256": "7a09a91f6c2e5f5595b71c687477b9b2e685de9e525987b1900bb9b51b061371"
+          "log_sha256": "70467c6b28394f2795014e4c99333c7b79df23ff39dff8302033b41bdfa47fe9"
+        },
+        {
+          "SIZE": 16,
+          "LANES": 8,
+          "xilinx_fpga": false,
+          "register_descriptor": true,
+          "passed": true,
+          "log_sha256": "53b63aa9d33860b7a25707bc9f6dfa82ad3f73087306876f7ec493e646626c42"
         },
         {
           "SIZE": 16,
           "LANES": 8,
           "xilinx_fpga": true,
+          "register_descriptor": false,
           "passed": true,
-          "log_sha256": "9c54dfd00faf9c48fc0eae9e4f175ea59c31dce02ca1392efda29841540dd79f"
+          "log_sha256": "fdff8b4c0d3bb7d12c4aa6eb7e752879ef828678718d3a1be3b73dd76ba49885"
+        },
+        {
+          "SIZE": 16,
+          "LANES": 8,
+          "xilinx_fpga": true,
+          "register_descriptor": true,
+          "passed": true,
+          "log_sha256": "d131a2cf30f9d6af32f32b22d0767d531d4fa76f087b459eb98408e002ec1cd8"
         }
       ],
       "passed": true
@@ -574,10 +612,10 @@
     "saved_word": {
       "passed": true,
       "source_sha256": {
-        "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/conv/conv_im2col_frontend.sv": "0230cc7ec3b0053496cb48b59d8d5a395966d1318121d919bed13dfb1c1adf00",
-        "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
-        "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
-        "/workspace/scratch/9625a7463d70/dma_study/current_frontend_proofs/saved_word/saved_word.sv": "47da0a40f3c45a23b56dc89d28c76238a37df6dc5342976aac1b1586b8ad7bb9"
+        "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+        "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+        "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+        "/tmp/npu_dma_saved39/saved_word.sv": "ec9b9696ab1fc3d055708888b6944a99409c0da03b3ed357b8f575503c257ae1"
       },
       "runs": [
         {
@@ -900,6 +938,117 @@
       "operation_onehot": true,
       "binary_inputs_constrained": false,
       "configuration_scope": "Capture and commit use the same task coefficients"
+    },
+    "event_domains": {
+      "passed": true,
+      "runs": [
+        {
+          "name": "state_assignment_values",
+          "passed": true,
+          "source_sha256": "41a226f11e38d783b023260253cbcf6435d837f3169e4810a5bd28ab396bb02b",
+          "log_sha256": "21f26a1b43f0158a1a60eabe7d744080d3a081751e7790e9553352d9fec4007f"
+        },
+        {
+          "name": "event_selection_register0",
+          "passed": true,
+          "source_sha256": "86b36c4e3a66bbca6ca6496d3d74fd8e14164c892a571c954665a8b24d7e3fb5",
+          "log_sha256": "5deb30ef24fbe63cd04a71581ef01013511e031d3e2ba8960a9acaf7b1d25c5c"
+        },
+        {
+          "name": "event_selection_register1",
+          "passed": true,
+          "source_sha256": "534302b5433cfd5b318f3c98dff74c7d290960ea7331756334a4b755ab346ea7",
+          "log_sha256": "ff1781941055bb5a121e292ad99d232d1f3fb2181ba729800a0d0431869bbc2d"
+        }
+      ],
+      "source_sha256": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+      "reference_sha256": "d2a6036a8caaa48c6f6f0e34188534134883ce38ad4aa69c87f62d4b5aeac3fd",
+      "state_assignment_count": 55,
+      "distinct_state_assignment_values": [
+        "ADDRESS",
+        "ADDRESS_BASE",
+        "ADDRESS_CHANNEL",
+        "ADDRESS_PIXEL",
+        "ADDRESS_PRODUCT",
+        "COORD",
+        "COORD_PAD",
+        "COORD_SUM",
+        "FETCH",
+        "IDLE",
+        "K_DECODE",
+        "K_START",
+        "K_WAIT",
+        "P_DECODE",
+        "P_START",
+        "P_WAIT",
+        "Q_DECODE",
+        "Q_START",
+        "Q_WAIT",
+        "STREAM",
+        "WAIT_WORD",
+        "ZERO_STREAM",
+        "cache_req_ready ? WAIT_WORD : FETCH",
+        "next_row_request && cache_req_ready ? WAIT_WORD : FETCH"
+      ],
+      "state_invariant": "Reset IDLE; every state assignment is one-hot; unassigned cycles hold state.",
+      "event_input_constraints": [],
+      "event_state_encoding": "One-hot or zero from unrestricted five-bit index",
+      "descriptor_modes": [
+        0,
+        1
+      ],
+      "compared_event_bits": 21
+    },
+    "shared_prefetch": {
+      "passed": true,
+      "runs": [
+        {
+          "name": "prefetch_w33",
+          "passed": true,
+          "source_sha256": "405b0d4e695dc9cbcebe844a7e140cce6b76b12fc46038647920df7406c3c7aa",
+          "log_sha256": "b04a63b65b01fa309e20680ee727d7100190c0dfa83f9c35181006797a2519b9"
+        },
+        {
+          "name": "configuration_sum_w33",
+          "passed": true,
+          "source_sha256": "f63d1d5b7126f96b9b3ce537d2b06a3f64e9509f0bb20936d3bff138943e1600",
+          "log_sha256": "08b700f872009447108726020dd39209d5e2bc61d961d2620711d42489b44652"
+        },
+        {
+          "name": "prefetch_w35",
+          "passed": true,
+          "source_sha256": "52302e82ebd89fb3f4b4317ab27ae7c0df2e169f32d0cf695a687cb43c8181a0",
+          "log_sha256": "331f02e67e5132c5079cda246cc21c54e2951e115de8cf6c3cddb7645a0df02e"
+        },
+        {
+          "name": "configuration_sum_w35",
+          "passed": true,
+          "source_sha256": "77ce31be0de357099fc1d82465e73bc30117ad0d51513d6527da49bf27f98641",
+          "log_sha256": "174a9229e3d7e8f6d18a6bd4219d998e0ad05a5f24cf6edc307fbb019ad7c266"
+        },
+        {
+          "name": "prefetch_w40",
+          "passed": true,
+          "source_sha256": "24d5ff194d4e91c9f17db9198328125c016af57fbd6d68fab0510d226d7d899e",
+          "log_sha256": "ad28941069e034a6dcdd361b171f2b08414fd8e7b4173fdec44f7843d1dee516"
+        },
+        {
+          "name": "configuration_sum_w40",
+          "passed": true,
+          "source_sha256": "590687ead1b05c8d7348db0eb0ab1b42bf36bc2719bdde20ce31b45dcadb0511",
+          "log_sha256": "89affcc3113e3142dae532799e9b514801a6b3ac167de8dc25f3ca02e8df5c67"
+        }
+      ],
+      "source_sha256": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+      "reference_sha256": "ba6de43226f5f895eb6646c07754b7eb39d68266b683bc91926819420f7b433b",
+      "input_constraints": [],
+      "coordinate_widths": [
+        33,
+        35,
+        40
+      ],
+      "prefetch_compared_bits": 69,
+      "configuration_compared_bits": 99
     }
   },
   "cache_tag_stage": {
@@ -1328,30 +1477,30 @@
   },
   "synthesis": {
     "resources": {
-      "logic_lut_cells": 9616,
+      "logic_lut_cells": 9438,
       "distributed_ram_lut_sites_nominal": 364,
       "shift_register_lut_sites_nominal": 0,
-      "lut_sites_nominal_before_packing": 9980,
+      "lut_sites_nominal_before_packing": 9802,
       "physical_lut_sites_after_placement": null,
       "flip_flops": 5937,
-      "dsp48e1": 104,
+      "dsp48e1": 111,
       "ramb36e1": 0,
       "ramb18e1": 9,
-      "carry4": 568,
+      "carry4": 504,
       "unclassified_distributed_ram_types": [],
       "cell_counts": {
-        "CARRY4": 568,
-        "DSP48E1": 104,
+        "CARRY4": 504,
+        "DSP48E1": 111,
         "FDCE": 2181,
         "FDPE": 105,
         "FDRE": 3648,
         "FDSE": 3,
         "INV": 283,
-        "LUT2": 1730,
-        "LUT3": 1318,
-        "LUT4": 1794,
-        "LUT5": 2628,
-        "LUT6": 2146,
+        "LUT2": 1518,
+        "LUT3": 1295,
+        "LUT4": 1802,
+        "LUT5": 2621,
+        "LUT6": 2202,
         "RAM32M": 91,
         "RAMB18E1": 9
       },
@@ -1365,6 +1514,145 @@
       "scope": "Clocked storage outputs to synchronous data and control inputs",
       "timing_frequency_validation": "Requires primitive and routing delays for the target device"
     },
-    "mapping": "xc7, only arithmetic explicitly marked use_dsp=yes uses the arithmetic DSP mapping"
+    "mapping": "xc7, only arithmetic explicitly marked use_dsp=yes uses the arithmetic DSP mapping",
+    "manifest": {
+      "top": "conv_im2col_frontend",
+      "configuration": "SIZE16 BUS64 LANES8 CACHE4096 SETS16 WAYS2 LINE128 REGISTER_DESCRIPTOR1 XILINX_FPGA",
+      "parameters": {},
+      "sources_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+        "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+        "rtl/npu/conv/vector_engine.sv": "e0c0138bb89d2f786a4691aae86516e41f2474aa806a2f503375597f5577d854",
+        "rtl/npu/conv/conv_axi_read_guard.sv": "a1ef76f0e5f9252e311addf4fa0b54339cbb0498e91d7ef156cc37624dc68109",
+        "rtl/npu/conv/vector_softmax.sv": "720f57c5b33c3b3996698f3de026b2dca4166be21e993c5172d432194668b6c2",
+        "rtl/npu/conv/vector_config_check.sv": "94cf886d38520774ed5536c12952537a446fd340cee29ecbd3cfb862e7ae59af",
+        "rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
+        "rtl/npu/conv/vector_round_shift.sv": "2f26bbdb5188ed2953b73392aebdd5885477b431fd3ce74676e7c6e8f6a95c4e",
+        "rtl/npu/conv/vector_scalar_multiplier.sv": "66d853a2a4e4b0a1aacb3fc72130ca135fc980bf322db9c18ec698bbd2772523",
+        "rtl/npu/conv/conv_axi_read_mux.sv": "1a22339597320f0327c28452d47053f2cb3eb40d0f37ed0a62f6ffdefc2f5de8",
+        "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+        "rtl/npu/conv/vector_quant_params.sv": "136150ca5086ef69a9b28b9bf811d550621e3a94c3f5bff7aefb6f02c51b18b2",
+        "rtl/npu/conv/vector_writeback.sv": "8a04ed73fed51661bc0322b4a486d7fabe0693bc7ce745cd5687598b4dae8481",
+        "rtl/npu/conv/vector_pe.sv": "b3f727309ca2c752c6eace27f34cf2c6357e4a9a5ab38c3cfa1f77ba46ffdaed",
+        "rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+        "rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
+        "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+        "rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
+      },
+      "options": [
+        "-D",
+        "SYNTHESIS=1",
+        "-GSIZE=16",
+        "-GBUS_WIDTH=64",
+        "-GLANES=8",
+        "-GCACHE_SETS=16",
+        "-GCACHE_WAYS=2",
+        "-GLINE_BYTES=128",
+        "-GREGISTER_DESCRIPTOR=1",
+        "-D",
+        "XILINX_FPGA=1"
+      ],
+      "build_configuration": null,
+      "primitive_models": {
+        "library_sha256": {
+          "cells_sim.v": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+          "cells_xtra.v": "39078cf0cbd191bbcf347e6f0e7877325baed81fff64129fcecc6ec30b9749c5"
+        },
+        "primitives": [],
+        "model_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      },
+      "part": "xc7a200tfbg484-3",
+      "clock_period_ns": 6.666666666666667,
+      "wide_alu_mapping": {
+        "total_dsp_budget": 740,
+        "reserved_dsp_cells": 0,
+        "minimum_width": 24,
+        "maximum_width": 48,
+        "mapper_sha256": "b8aa2fe9c53b85ef692c5891ce7c119e91759aeaf32d25cb6ed9efa56b9a0f03",
+        "techmap_sha256": "407e7f5a9db2c53ccc8dfdb3a7756ce233b5984c848cd92e7478f21ce8fae1ae",
+        "lut_dependencies_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88",
+        "use_dsp_attributes": true
+      }
+    }
+  },
+  "direct_descriptor_cycle_comparison": {
+    "passed": true,
+    "reference_ref": null,
+    "reference_source_root": "/workspace/scratch/9625a7463d70/dma_study/iteration36",
+    "register_cache_request": 0,
+    "register_descriptor": 0,
+    "cache_sets": 16,
+    "cache_response_depth": null,
+    "line_bytes": 128,
+    "narrow_mode": 0,
+    "fpga": true,
+    "configurations": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "LANES": 8,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "source_sha256": {
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_next_use_predictor.sv": "bd070a3937c6d4c0211b6b96e2dcf0ea5f33e9260d4f21e706fbdac7e5069316",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/dma/cache/conv_read_cache.sv": "ae7f095fe51c75db45d13e77265a200a673e55f8f1c4dca49332f0f2cd7b79bd",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv": "16c41e3627c7696a323828d562026336bbbf776a819834e2bd41215c78d8d3a3",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_ia_tile_path_observer.sv": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_im2col_frontend_observer.sv": "9c53eea9c619245b84595694c39ab0a349f99b98f6be06830581e5ec8d9429ce",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_observer.sv": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_read_cache_reference_observer.sv": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/conv_windowed_cache_observer.sv": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+          "/tmp/npu_dma_compare39_direct/reference_frontend.sv": "54044d83d241c89f2c047e2ac8d6e4e2422672242893a30e77277b9b017af259",
+          "/tmp/npu_dma_compare39_direct/tb_conv_im2col_frontend.sv": "fa7b55e4abf4fdf4e9be94ad4229340ad75e78ce7f9b3eb59b00aa63c327b32a"
+        },
+        "warnings": [
+          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2971:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2972:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2965:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2966:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_im2col_frontend.sv:2978:81: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39_direct/reference_frontend.sv:2926:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39_direct/reference_frontend.sv:2927:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39_direct/reference_frontend.sv:2920:61: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39_direct/reference_frontend.sv:2921:64: Comparison is constant due to limited range",
+          "%Warning-CMPCONST: /tmp/npu_dma_compare39_direct/reference_frontend.sv:2933:81: Comparison is constant due to limited range"
+        ],
+        "summary": [
+          "RTL_FRONTEND_PASS jobs=42 cycles=972912 cache_sets=16 cache_ways=2 line_bytes=128 tile_path=0 (not upstream full NPU)",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_im2col_frontend.g_direct cycles=972912"
+        ]
+      },
+      {
+        "control": true,
+        "passed": true,
+        "warnings": [
+          "%Warning-PINMISSING: /workspace/scratch/9625a7463d70/dma_study/iteration39/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=134",
+          "FRONTEND_COMPARE_PASS instance=tb_conv_control cycles=134"
+        ]
+      }
+    ]
   }
 }

@@ -25,7 +25,10 @@ def main():
         r'    preparing_tile.word_address = .*?;',
         r'    preparing_tile.saved_word_valid = .*?;'))
     compare = '\n'.join(re.search(r'  assign ' + name + r' = .*?;', text, re.S)[0] for name in
-        ('committing_saved_word_hit', 'prepared_live_word_match', 'committing_live_word_hit'))
+        ('committing_saved_word_hit', 'committing_live_word_hit'))
+    group_start = text.index('  for (genvar target = 0; target < 2; target++) begin : g_commit_word_match')
+    group_stop = text.index('  // 当前数据字', group_start)
+    compare += '\n' + text[group_start:group_stop]
     start = text.index('  for (genvar address_port = 0; address_port < 2; address_port++) begin : g_commit_address')
     stop = text.index('  always_comb begin\n    preparing_tile =', start)
     address = text[start:stop]
@@ -36,6 +39,7 @@ def main():
     input logic address_carry,
     output logic equivalent
 );
+    localparam bit REGISTER_DESCRIPTOR=1;
     localparam logic [21:0] WAIT_WORD=22'h080000;
     logic [21:0] state;
     typedef struct packed {
@@ -48,7 +52,10 @@ def main():
     logic [1:0][31:0] committing_address;
     logic [1:0] unused_committing_address_carry;
     logic committing_saved_word_hit, reference_hit, reference_hit_q, captured;
-    logic prepared_live_word_match, committing_live_word_hit, reference_live_hit;
+    logic prepared_live_word_match, committing_live_word_hit, reference_live_hit,committing_saved_word_match;
+    logic[31:0]committing_address_delta;logic committing_address_carry;
+    assign committing_address_delta=prepared_tile_q.address_delta;
+    assign committing_address_carry=prepared_tile_q.address_carry;
     logic [31:0] reference_address_q;
     logic [p_word_shift:0] low_sum;
     logic high_equal;

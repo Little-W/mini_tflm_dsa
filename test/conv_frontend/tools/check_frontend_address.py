@@ -59,10 +59,11 @@ def main():
     proof = out / 'address.sv'
     proof.write_text('''module frontend_address_proof #(
     parameter int SIZE = 16,
-    parameter int LANES = 8
+    parameter int LANES = 8,
+    parameter bit REGISTER_DESCRIPTOR = 1
 ) (
     input logic [4:0] state_index,
-    input logic cfg_valid, cfg_ready, tile_commit,
+    input logic cfg_valid, cfg_ready_input, tile_commit_input, tile_prepared_valid,
     input logic commit_invalid, commit_fast, wr_ready, cache_rsp_valid, cache_rsp_error,
     input logic chunk_reaches_end, past_active_q, row_last_q, row_base_valid, geometry_tile,
     input logic coordinate_address_valid, current_coordinate_valid, tap_wrap, pad_q,
@@ -73,14 +74,14 @@ def main():
     input logic [31:0] q0, tile_q0,
     input logic [15:0] group_c, input_c, group_offset, dilation_w,
     input logic [15:0] last_x, p_delta, output_w,
-    input logic range_decode_write, range_stream_allowed,
+    input logic range_decode_input, range_stream_allowed,
     input logic [8:0] range_decode_value, group_range_cfg, commit_channel_range, group_range_stream_value, group_range_q,
     input logic [$clog2(SIZE+1)-1:0] commit_active_columns, active_cols_q,
     input logic [$clog2(SIZE+1)-1:0] commit_columns, cols_q,
     output logic equivalent
 );
     localparam int TILE_COUNT_W = $clog2(SIZE+1), CHUNK_COUNT_W = $clog2(LANES+1);
-    localparam logic [21:0] ADDRESS_CHANNEL=22'h020000, WAIT_WORD=22'h080000,
+    localparam logic [21:0] IDLE=22'h000001, Q_DECODE=22'h000010, Q_WAIT=22'h000040, ADDRESS_CHANNEL=22'h020000, WAIT_WORD=22'h080000,
         STREAM=22'h100000, ZERO_STREAM=22'h200000;
     logic [21:0] state;
     typedef struct packed { logic [15:0] group_c, input_c, group_offset, dilation_w, output_w; logic input_s16; } cfg_t;
@@ -108,6 +109,7 @@ def main():
     logic [31:0] address_update_value, reference_address, candidate_address;
     logic address_stream_write, address_column_advance, address_linear_tap;
     logic wr_valid, column_after_chunk, active_after_chunk;
+    logic cfg_ready,tile_commit,range_decode_write;
     logic [CHUNK_COUNT_W-1:0] chunk_count;
     logic [2:0][32:0] window_tap_target;
     logic [2:0] unused_window_tap_carry;
@@ -128,6 +130,14 @@ def main():
                               commit_active_columns, commit_columns};
     assign wr_valid = state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)] ||
         (state[$clog2(WAIT_WORD)] && cache_rsp_valid && !cache_rsp_error);
+    // 更新事件采用接口定义保证的状态关系，其他数据保持任意取值。
+    assign cfg_ready = cfg_ready_input && state[$clog2(IDLE)] && !tile_prepared_valid;
+    assign tile_commit = REGISTER_DESCRIPTOR ?
+        tile_commit_input && tile_prepared_valid && state[$clog2(IDLE)] :
+        tile_commit_input && !cfg_valid &&
+        (state[$clog2(IDLE)] || (wr_valid && wr_ready && row_last_q && chunk_reaches_end));
+    assign range_decode_write = range_decode_input &&
+        (state[$clog2(Q_DECODE)] || state[$clog2(Q_WAIT)]);
     always_comb begin
         chunk_count = '0;
         for (int lane=0; lane<LANES; lane++)
@@ -220,10 +230,12 @@ endmodule
                'proof_sha256': hashlib.sha256(proof.read_bytes()).hexdigest(),
                'input_constraints': [], 'state_encoding': 'one-hot value selected by an unconstrained five-bit index',
                'column_range_reset_checked': has_column_update,
+               'event_relationships': 'Configuration requires IDLE and no prepared descriptor; registered commit requires a prepared descriptor in IDLE; direct commit requires IDLE or final transfer and no configuration; decode writes require Q_DECODE or Q_WAIT.',
+               'event_relationship_proof': 'check_frontend_event_domains.py',
                'runs': []}
-    for size, fpga in ((size, fpga) for size in (4, 16) for fpga in (0, 1)):
-        script, log = out / f's{size}_f{fpga}.ys', out / f's{size}_f{fpga}.log'
-        script.write_text('read_slang --top frontend_address_proof -GSIZE=' + str(size) + ' ' +
+    for size, fpga, registered in ((size, fpga, registered) for size in (4, 16) for fpga in (0, 1) for registered in (0, 1)):
+        script, log = out / f's{size}_f{fpga}_r{registered}.ys', out / f's{size}_f{fpga}_r{registered}.log'
+        script.write_text('read_slang --top frontend_address_proof -GSIZE=' + str(size) + ' -GREGISTER_DESCRIPTOR=' + str(registered) + ' ' +
                           ('-D XILINX_FPGA=1 ' if fpga else '') + shlex.join(map(str, (prefix, proof))) + '\n' +
                           'prep -top frontend_address_proof -flatten\ncheck -assert\n' +
                           'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
@@ -232,9 +244,9 @@ endmodule
                            stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=180)
         if 'SAT proof finished - no model found: SUCCESS!' not in log.read_text():
             raise RuntimeError('Address comparison did not complete')
-        summary['runs'].append({'SIZE': size, 'LANES': 8, 'xilinx_fpga': bool(fpga), 'passed': True,
+        summary['runs'].append({'SIZE': size, 'LANES': 8, 'xilinx_fpga': bool(fpga), 'register_descriptor': bool(registered), 'passed': True,
                                 'log_sha256': hashlib.sha256(log.read_bytes()).hexdigest()})
-        print(f'FRONTEND_ADDRESS_FORMAL_PASS size={size} fpga={fpga}', flush=True)
+        print(f'FRONTEND_ADDRESS_FORMAL_PASS size={size} fpga={fpga} registered={registered}', flush=True)
     summary['passed'] = True
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 
