@@ -1,0 +1,31 @@
+{
+  "soc_ram": {
+    "top": "soc_axi_ram",
+    "sources": [
+      "rtl/soc/soc_axi_ram.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GDP=32768",
+      "-GDW=64",
+      "-GAW=32",
+      "-GMEM_WORD_WIDTH=64",
+      "-GINIT_EN=0",
+      "-GREAD_OUTSTANDING=4",
+      "-GWRITE_OUTSTANDING=4",
+      "-GREAD_FIRST_LATENCY=2"
+    ],
+    "parameters": {
+      "DP": 32768,
+      "DW": 64,
+      "AW": 32,
+      "MEM_WORD_WIDTH": 64,
+      "INIT_EN": 0,
+      "READ_OUTSTANDING": 4,
+      "WRITE_OUTSTANDING": 4,
+      "READ_FIRST_LATENCY": 2
+    },
+    "configuration": "完整生产配置 CPU RAM，64 位物理存储与 256 KiB 容量"
+  }
+}

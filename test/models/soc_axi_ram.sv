@@ -376,7 +376,30 @@ module soc_axi_ram #(
     // Compare against the actual word count, also for non-power-of-two RAMs.
     logic rd_issue_oob;
     // 二次幂容量只需检查高地址位；其余容量保留完整无符号比较。
-    if (((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0)) begin : g_read_power_bound
+    if (((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0) &&
+        ADDR_LSB + $clog2(DP) >= 8) begin : g_read_predicted_bound
+        localparam int p_capacity_bits = ADDR_LSB + $clog2(DP);
+        logic [7:0] lower_keep_mask;
+        logic lower_carry, middle_carry;
+        logic current_oob, upper_all_ones, next_oob, command_oob;
+
+        // 容量边界以下的进位与边界以上的地址独立归约，直接预测下一拍越界状态。
+        // 最高扩展位参与判断，地址空间末端的定宽回绕也保留相同结果。
+        assign lower_keep_mask = 8'hff << rd_size_active_q;
+        assign lower_carry = &(rd_byte_addr_q[7:0] | ~lower_keep_mask);
+        if (p_capacity_bits > 8) begin : g_middle
+            assign middle_carry = &rd_byte_addr_q[p_capacity_bits-1:8];
+        end else begin : g_no_middle
+            assign middle_carry = 1'b1;
+        end
+        assign current_oob = |rd_byte_addr_q[AW:p_capacity_bits];
+        assign upper_all_ones = &rd_byte_addr_q[AW:p_capacity_bits];
+        assign next_oob = rd_burst_active_q == 2'b00 ? current_oob :
+            ((lower_carry && middle_carry) ? !upper_all_ones : current_oob);
+        assign command_oob = |rd_pipe_cmd_byte_addr[AW:p_capacity_bits];
+        assign rd_issue_oob = rd_pipe_cmd ? command_oob :
+            (rd_pipe_beat ? next_oob : current_oob);
+    end else if (((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0)) begin : g_read_power_bound
         localparam int p_groups = (WORD_ADDR_BITS + 4) / 4;
         logic [WORD_ADDR_BITS:0] high_address;
         (* keep = 1 *) logic [p_groups-1:0] group_nonzero;

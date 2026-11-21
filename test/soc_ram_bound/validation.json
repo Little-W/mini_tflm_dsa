@@ -1,0 +1,759 @@
+{
+  "scope": "生产 RAM 地址越界预测、地址辅助计算与 AXI 接口",
+  "source_sha256": "babbe8904084294c5b52e4486366e23398be7addab1d407084e083909e3af72a",
+  "model_sha256": "6e814b0a6481282c3459d2ee0d0dc1e80f2b66448521d5d5f837eba9e209c219",
+  "combinational_proof": {
+    "passed": true,
+    "inputs_constrained": false,
+    "source_sha256": "babbe8904084294c5b52e4486366e23398be7addab1d407084e083909e3af72a",
+    "model_sha256": "6e814b0a6481282c3459d2ee0d0dc1e80f2b66448521d5d5f837eba9e209c219",
+    "profiles": [
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 1,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 3,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 16,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 32,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 64,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 128,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 1024,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 1031,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 32768,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 32769,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 1,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 3,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 16,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 32,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 64,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 128,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 1024,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 1031,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 32768,
+        "passed": true
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 32769,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 1,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 3,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 16,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 32,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 64,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 128,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 1024,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 1031,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 32768,
+        "passed": true
+      },
+      {
+        "address_width": 16,
+        "data_width": 32,
+        "memory_words": 32769,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 1,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 3,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 16,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 32,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 64,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 128,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 1024,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 1031,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 32768,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 32,
+        "memory_words": 32769,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 1,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 3,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 16,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 32,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 64,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 128,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 1024,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 1031,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 32768,
+        "passed": true
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 32769,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 1,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 3,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 16,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 32,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 64,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 128,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 1024,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 1031,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 32768,
+        "passed": true
+      },
+      {
+        "address_width": 40,
+        "data_width": 128,
+        "memory_words": 32769,
+        "passed": true
+      }
+    ]
+  },
+  "four_state_helpers": {
+    "passed": true,
+    "profiles": [
+      {
+        "address_width": 8,
+        "data_width": 8,
+        "memory_words": 1,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      },
+      {
+        "address_width": 8,
+        "data_width": 32,
+        "memory_words": 3,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 32,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      },
+      {
+        "address_width": 8,
+        "data_width": 64,
+        "memory_words": 64,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      },
+      {
+        "address_width": 16,
+        "data_width": 24,
+        "memory_words": 1031,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      },
+      {
+        "address_width": 16,
+        "data_width": 128,
+        "memory_words": 1024,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      },
+      {
+        "address_width": 32,
+        "data_width": 64,
+        "memory_words": 32768,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      },
+      {
+        "address_width": 40,
+        "data_width": 1024,
+        "memory_words": 32769,
+        "samples": 4096,
+        "equal_results": 4096,
+        "unknown_to_known_bits": 0,
+        "known_to_unknown_bits": 0,
+        "known_bit_conflicts": 0
+      }
+    ]
+  },
+  "axi_protocol": {
+    "passed": true,
+    "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
+    "runs": [
+      {
+        "first_read_latency": 1,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6628 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 1,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7319 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6632 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7324 perf_beats=256 perf_intervals=292 no_random=0"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6636 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7327 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6683 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=879 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7364 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6816 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7496 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=8805 perf_beats=256 perf_intervals=375 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=9496 perf_beats=256 perf_intervals=412 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6736 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7411 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 1,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7788 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 1,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8544 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7792 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8550 perf_beats=256 perf_intervals=292 no_random=0"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7796 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8554 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7843 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=880 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8591 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7976 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8722 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=10445 perf_beats=256 perf_intervals=375 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=11203 perf_beats=256 perf_intervals=412 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": false,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7936 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": true,
+        "status": "PASS",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8660 perf_beats=256 perf_intervals=291 no_random=0"
+      }
+    ]
+  },
+  "synthesis": {
+    "parameters": {
+      "DP": 32768,
+      "DW": 64,
+      "AW": 32,
+      "MEM_WORD_WIDTH": 64,
+      "INIT_EN": 0,
+      "READ_OUTSTANDING": 4,
+      "WRITE_OUTSTANDING": 4,
+      "READ_FIRST_LATENCY": 2
+    },
+    "resources": {
+      "logic_lut_cells": 499,
+      "distributed_ram_lut_sites_nominal": 68,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 567,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 198,
+      "dsp48e1": 0,
+      "ramb36e1": 64,
+      "ramb18e1": 0,
+      "carry4": 15,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 15,
+        "FDRE": 192,
+        "FDSE": 6,
+        "INV": 8,
+        "LUT2": 132,
+        "LUT3": 66,
+        "LUT4": 50,
+        "LUT5": 137,
+        "LUT6": 114,
+        "MUXF7": 1,
+        "RAM32M": 17,
+        "RAMB36E1": 64
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 6,
+    "analysis_complete": null,
+    "physical_timing_measured": false
+  }
+}
