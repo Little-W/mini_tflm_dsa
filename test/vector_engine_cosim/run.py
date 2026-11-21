@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run production NMSIS and VCE drivers against AXI-Lite and NPU RTL."""
+"""使用生产驱动、实际 AXI-Lite 顶层及外存模型核验矩阵与向量任务。"""
 import argparse
 import hashlib
 import json
@@ -28,10 +28,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--size', type=int, default=16)
     parser.add_argument('--pe-count', type=int, default=8)
+    parser.add_argument('--bus-width', type=int, choices=(32, 64), default=32)
+    parser.add_argument('--bank-bytes', type=int, choices=(2048, 4096, 8192), default=2048)
+    parser.add_argument('--bank-count', type=int, choices=(6, 7, 8, 9), default=7)
+    parser.add_argument('--cache-bytes', type=int, default=4096)
+    parser.add_argument('--target', choices=('generic', 'asic'), default='generic',
+                        help='选择固定 PS 通道或 ASIC 轮转 bank 的实际 RTL 分支')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--disabled', action='store_true')
     mode.add_argument('--pcr', action='store_true',
-                      help='Enable unified compressed PS storage with 14 KiB shared IA/PS RAM')
+                      help='启用既有 IA/PS 共享 RAM 和 raw32 部分和存储')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=2)
@@ -39,6 +45,8 @@ def main():
     args = parser.parse_args()
     if args.pcr and args.size != 16:
         parser.error('PCR requires --size 16')
+    if not 512 <= args.cache_bytes <= 65536 or args.cache_bytes & (args.cache_bytes - 1):
+        parser.error('输入缓存容量须为 512 至 65536 B 之间的二次幂')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     build = out / 'build'
@@ -68,6 +76,7 @@ def main():
     svsrc = [package, dw_package]
     svsrc += [p for p in sorted(npu.rglob('*.sv')) if p not in svsrc]
     svsrc += sorted(npu.rglob('*.v'))
+    svsrc += sorted((ROOT / 'rtl/common').glob('*.sv'))
     svsrc += sorted((ROOT / 'rtl/common').glob('regfile.v'))
     svsrc += [ROOT / 'rtl/common/pseudo_dual_port_ram.v',
               ROOT / 'rtl/axi_top/npu_axil_reg_if.sv',
@@ -78,7 +87,7 @@ def main():
               '-include', ROOT / 'test/conv_driver/host_compat.h',
               '-I', nn / 'Include', '-I', ROOT / 'drivers']
     if args.pcr:
-        cflags += ['-DDSA_PS_COMPRESS=1']
+        cflags += ['-DDSA_PS_COMPRESS=1', '-DDSA_PS_FORCE_RAW=1']
     simulator_config = ROOT / 'test/conv_npu/simulator.vlt'
     inputs = set(csrc + svsrc + [HERE / 'main.cpp', Path(__file__), simulator_config])
     inputs.update(npu.rglob('*.svh'))
@@ -92,7 +101,10 @@ def main():
         'scope': 'Production NMSIS C and MMIO driver, actual AXI-Lite NPU top, production AXI RAM.',
         'reference': 'Repository NMSIS scalar kernels compiled with accelerator dispatch disabled.',
         'size': args.size, 'pe_count': args.pe_count, 'enabled': not args.disabled, 'pcr': args.pcr,
-        'shared_data_bytes': 14336 if args.pcr else 0,
+        'bus_width': args.bus_width, 'bank_bytes': args.bank_bytes, 'bank_count': args.bank_count,
+        'cache_bytes': args.cache_bytes, 'ps_force_raw': bool(args.pcr),
+        'implementation_target': args.target,
+        'shared_data_bytes': args.bank_bytes * args.bank_count if args.pcr else 0,
         'verilator': subprocess.check_output([args.verilator, '--version'], text=True).strip(),
         'source_sha256': hashes, 'runs': [],
     }
@@ -100,7 +112,9 @@ def main():
     binary = build / 'obj/Vvector_engine_cosim_top'
     if args.skip_build:
         previous = json.loads(manifest.read_text())
-        for key in ['source_sha256', 'size', 'pe_count', 'enabled', 'pcr']:
+        for key in ['source_sha256', 'size', 'pe_count', 'enabled', 'pcr',
+                    'bus_width', 'bank_bytes', 'bank_count', 'cache_bytes', 'ps_force_raw',
+                    'implementation_target']:
             if previous[key] != status[key]:
                 raise RuntimeError(f'Build inputs changed: {key}')
         status['build'] = previous['build']
@@ -126,19 +140,27 @@ def main():
             return 1
         cppflags = (f'-std=c++17 -O1 -D__GNUC_PYTHON__ -DDSA_MMIO_CUSTOM '
                     f'-DDSA_TILE_SIZE={args.size} -DDSA_PS_FRAME_COUNT=16 -DDW_TEST_PE_COUNT={args.pe_count} '
+                    f'-DDW_TEST_BUS_BYTES={args.bus_width // 8} '
+                    f'-DDW_TEST_BANK_BYTES={args.bank_bytes} -DDW_TEST_BANK_COUNT={args.bank_count} '
                     f'-I{nn / "Include"} -I{ROOT / "drivers"}')
         if args.pcr:
-            cppflags += ' -DDSA_PS_COMPRESS=1'
+            cppflags += ' -DDSA_PS_COMPRESS=1 -DDSA_PS_FORCE_RAW=1'
         command = [args.verilator, '--cc', '--exe', '--assert',
                    '--output-groups', '0', '--output-split', '12000',
                    '--top-module', 'vector_engine_cosim_top', '-Wno-fatal', f'-I{npu / "ps_compact"}',
                    f'-GSIZE={args.size}', f'-GVECTOR_PE_COUNT={args.pe_count}',
+                   f'-GBUS_WIDTH={args.bus_width}', f'-GSHARED_BANK_BYTES={args.bank_bytes}',
+                   f'-GSHARED_BANK_COUNT={args.bank_count}', f'-GIM2COL_CACHE_BYTES={args.cache_bytes}',
                    f'-GENABLE_VECTOR_ENGINE={int(not args.disabled)}',
                    '--Mdir', build / 'obj', '-j', args.jobs, '-CFLAGS', cppflags,
                    '-MAKEFLAGS', 'OPT_FAST=-O1 OPT_SLOW=-O0',
                    simulator_config, *svsrc, HERE / 'main.cpp', library]
         if args.pcr:
-            command += ['-DGEMPACT_PS_COMPRESS=1', '-DGEMMORA_PS_POOL_BYTES=12288']
+            command += ['-DGEMPACT_PS_COMPRESS=1', '-DGEMMORA_PS_POOL_BYTES=12288',
+                        '-DGEMMORA_PS_FORCE_RAW=1']
+        if args.target == 'asic':
+            # ASIC 分支选择作用于生产 RTL，测试外存保留运行期延迟配置。
+            command += ['-DASIC_SYNTHESIS']
         rc = run(command, out / 'compile.log')
         compile_command = ['make', '-C', build / 'obj', '-f', 'Vvector_engine_cosim_top.mk',
                            '-j', args.jobs, 'OPT_FAST=-O1', 'OPT_SLOW=-O0',
@@ -175,13 +197,16 @@ def main():
             flags += ['+PS_COMPRESS']
         rc = run([binary, *flags], out / f'{name}.log', timeout=300)
         log = (out / f'{name}.log').read_text()
-        passed = rc == 0 and 'VECTOR_ENGINE_C_RTL_COSIM_PASS' in log
+        random_latency_enabled = 'RAM random response latency enabled' in log
+        passed = (rc == 0 and 'VECTOR_ENGINE_C_RTL_COSIM_PASS' in log and
+                  (name != 'random' or random_latency_enabled))
         mapping = [dict(re.findall(r'(\w+)=([^\s]+)', line))
                    for line in log.splitlines() if line.startswith('VECTOR_ENGINE_CONV_MAPPING_PASS ')]
         lines = [line for line in log.splitlines() if line.startswith('VECTOR_ENGINE_')]
         for line in lines:
             print(line, flush=True)
         status['runs'].append({'name': name, 'returncode': rc, 'passed': bool(passed),
+                               'random_latency_enabled': random_latency_enabled,
                                'single_input_dw_mapping': mapping, 'case_lines': lines})
         status['passed'] = len(status['runs']) == 2 and all(run['passed'] for run in status['runs'])
         (out / 'summary.json').write_text(json.dumps(status, indent=2) + '\n')

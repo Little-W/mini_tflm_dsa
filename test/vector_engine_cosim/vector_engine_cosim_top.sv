@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-// Test-only second AXI master loads/checks the unmodified production SoC RAM.
-// The CPU-side production driver uses the actual NPU AXI-Lite slave below.
+// 测试主设备通过 AXI 装入并读取生产 SoC RAM，驱动访问实际 NPU AXI-Lite 从设备。
 module vector_engine_cosim_top #(
   parameter int SIZE=16,
   parameter int VECTOR_PE_COUNT=8,
+  parameter int BUS_WIDTH=32,
+  parameter int SHARED_BANK_BYTES=2048,
+  parameter int SHARED_BANK_COUNT=7,
+  parameter int IM2COL_CACHE_BYTES=4096,
   parameter int ENABLE_VECTOR_ENGINE=1,
   parameter int ENABLE_PER_CHANNEL=1,
   parameter int ENABLE_IS_MODE=1,
@@ -30,27 +33,34 @@ module vector_engine_cosim_top #(
   input logic s_axil_rready,
   output wire npu_busy,irq,
   input logic host_mode,
-  input logic [31:0] h_awaddr,h_wdata,h_araddr,
+  input logic [31:0] h_awaddr,h_araddr,
+  input logic [BUS_WIDTH-1:0] h_wdata,
   input logic [7:0] h_awlen,h_arlen,
   input logic h_awvalid,h_wvalid,h_wlast,h_bready,h_arvalid,h_rready,
-  input logic [3:0] h_wstrb,
+  input logic [BUS_WIDTH/8-1:0] h_wstrb,
   output wire h_awready,h_wready,h_bvalid,h_arready,h_rvalid,h_rlast,
   output wire [1:0] h_bresp,h_rresp,
-  output wire [31:0] h_rdata,
+  output wire [BUS_WIDTH-1:0] h_rdata,
+  input logic [1:0] inject_shared_fault,
+  output wire shared_read_activity,
   output logic [63:0] npu_read_bytes,npu_write_bytes,npu_read_bursts
 );
   wire n_arvalid,n_arready,n_rvalid,n_rready,n_rlast;
   wire n_awvalid,n_awready,n_wvalid,n_wready,n_wlast,n_bvalid,n_bready;
-  wire [31:0] n_araddr,n_rdata,n_awaddr,n_wdata;
+  wire [31:0] n_araddr,n_awaddr;
+  wire [BUS_WIDTH-1:0] n_rdata,n_wdata;
   wire [7:0] n_arlen,n_awlen;
   wire [2:0] n_arsize,n_awsize,n_arprot,n_awprot;
   wire [1:0] n_arburst,n_awburst,n_rresp,n_bresp,n_arlock,n_awlock;
-  wire [3:0] n_arcache,n_awcache,n_wstrb;
+  wire [3:0] n_arcache,n_awcache;
+  wire [BUS_WIDTH/8-1:0] n_wstrb;
   wire ram_arready,ram_rvalid,ram_rlast,ram_awready,ram_wready,ram_bvalid;
-  wire [31:0] ram_rdata;
+  wire [BUS_WIDTH-1:0] ram_rdata;
   wire [1:0] ram_rresp,ram_bresp;
 
-  npu_axil_top #(.SIZE(SIZE),.PS_FRAME_COUNT(16),.ENABLE_PER_CHANNEL(ENABLE_PER_CHANNEL),
+  npu_axil_top #(.SIZE(SIZE),.BUS_WIDTH(BUS_WIDTH),.PS_FRAME_COUNT(16),
+    .SHARED_BANK_BYTES(SHARED_BANK_BYTES),.SHARED_BANK_COUNT(SHARED_BANK_COUNT),
+    .IM2COL_CACHE_BYTES(IM2COL_CACHE_BYTES),.ENABLE_PER_CHANNEL(ENABLE_PER_CHANNEL),
     .ENABLE_IS_MODE(ENABLE_IS_MODE),.WEIGHT_WIDTH(WEIGHT_WIDTH),.ENABLE_CLOCK_GATING(1),
     .ENABLE_VECTOR_ENGINE(ENABLE_VECTOR_ENGINE),.VECTOR_PE_COUNT(VECTOR_PE_COUNT)) dut (
     .clk,.rst_n,.s_axil_awaddr,.s_axil_awprot(3'd0),.s_axil_awvalid,.s_axil_awready,
@@ -70,7 +80,7 @@ module vector_engine_cosim_top #(
     .m_axi_wstrb(n_wstrb),.m_axi_wlast(n_wlast),
     .m_axi_bvalid(n_bvalid),.m_axi_bready(n_bready),.m_axi_bresp(n_bresp),.irq,.npu_busy
   );
-  soc_axi_ram #(.DP(RAM_WORDS),.DW(32),.AW(32),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) ram (
+  soc_axi_ram #(.DP(RAM_WORDS*32/BUS_WIDTH),.DW(BUS_WIDTH),.AW(32),.READ_OUTSTANDING(4),.WRITE_OUTSTANDING(4)) ram (
     .clk,.rst_n,.mem_reload_req(1'b0),
     .s_axi_awvalid(host_mode?h_awvalid:n_awvalid),.s_axi_awready(ram_awready),
     .s_axi_awaddr(host_mode?h_awaddr:n_awaddr),.s_axi_awcache(host_mode?4'd0:n_awcache),
@@ -101,6 +111,25 @@ module vector_engine_cosim_top #(
   assign h_awready=host_mode && ram_awready;
   assign h_wready=host_mode && ram_wready;
   assign h_bvalid=host_mode && ram_bvalid; assign h_bresp=ram_bresp;
+
+  // 故障注入仅存在于测试顶层，等待真实共享读请求后触发任务错误处理。
+`ifdef GEMPACT_PS_COMPRESS
+  assign shared_read_activity = dut.u_npu_top.run_vector &&
+    ((|dut.u_npu_top.g_shared_ia_ps.ram_i_ia_read_en) ||
+     (|dut.u_npu_top.g_shared_ia_ps.ram_i_ps_read_en));
+  always_comb begin
+    if (inject_shared_fault == 2'd1)
+      force dut.u_npu_top.vector_shared_store_o_error = 1'b1;
+    else
+      release dut.u_npu_top.vector_shared_store_o_error;
+    if (inject_shared_fault == 2'd2)
+      force dut.u_npu_top.g_shared_ia_ps.ram_o_capacity_fault = 1'b1;
+    else
+      release dut.u_npu_top.g_shared_ia_ps.ram_o_capacity_fault;
+  end
+`else
+  assign shared_read_activity = 1'b0;
+`endif
   always_ff @(posedge clk) begin
     if (!rst_n) begin npu_read_bytes<=0;npu_write_bytes<=0;npu_read_bursts<=0; end
     else begin

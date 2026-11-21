@@ -25,16 +25,23 @@ public:
     std::unique_ptr<VerilatedContext> context;
     std::unique_ptr<Vvector_engine_cosim_top> dut;
     uint64_t cycles=0, commands=0;
+    unsigned shared_fault_armed=0,shared_fault_injections=0;
     Simulation(int argc,char** argv):context(new VerilatedContext),dut(nullptr) {
         context->commandArgs(argc,argv); dut.reset(new Vvector_engine_cosim_top(context.get()));
-        dut->clk=0;dut->rst_n=0;dut->host_mode=1;
+        dut->clk=0;dut->rst_n=0;dut->host_mode=1;dut->inject_shared_fault=0;
         for(int i=0;i<8;i++)tick(); dut->rst_n=1;
         for(int i=0;i<8;i++)tick();
     }
     void settle() { dut->clk=0;dut->eval(); }
     void tick() {
-        settle();context->timeInc(5);dut->clk=1;dut->eval();context->timeInc(5);
+        settle();
+        if(shared_fault_armed && dut->shared_read_activity) {
+            dut->inject_shared_fault=shared_fault_armed;
+            shared_fault_armed=0;shared_fault_injections++;dut->eval();
+        }
+        context->timeInc(5);dut->clk=1;dut->eval();context->timeInc(5);
         settle();cycles++;
+        dut->inject_shared_fault=0;dut->eval();
         require(cycles<100000000,"simulation cycle limit exceeded");
         require(!context->gotFinish(),"RTL called finish unexpectedly");
     }
@@ -92,7 +99,10 @@ public:
         dut->h_awaddr=addr;dut->h_awlen=words-1;dut->h_awvalid=1;dut->h_bready=0;
         settle();wait([&]{return dut->h_awready;},"host AW timeout");tick();dut->h_awvalid=0;
         for(unsigned i=0;i<words;i++) {
-            dut->h_wdata=data[i];dut->h_wstrb=15;dut->h_wlast=(i+1==words);dut->h_wvalid=1;
+            // 测试主设备保留 32 位访问，64 位总线按地址选择有效字节通道。
+            const unsigned lane=(addr+4*i)&(DW_TEST_BUS_BYTES-1);
+            dut->h_wdata=uint64_t(data[i])<<(8*lane);dut->h_wstrb=15u<<lane;
+            dut->h_wlast=(i+1==words);dut->h_wvalid=1;
             settle();wait([&]{return dut->h_wready;},"host W timeout");tick();
         }
         dut->h_wvalid=0;dut->h_wlast=0;settle();
@@ -106,7 +116,8 @@ public:
         for(unsigned i=0;i<words;i++) {
             wait([&]{return dut->h_rvalid;},"host R timeout");
             require(dut->h_rresp==0,"host read error");require(bool(dut->h_rlast)==(i+1==words),"host RLAST mismatch");
-            data[i]=dut->h_rdata;dut->h_rready=1;tick();
+            const unsigned lane=(addr+4*i)&(DW_TEST_BUS_BYTES-1);
+            data[i]=uint32_t(uint64_t(dut->h_rdata)>>(8*lane));dut->h_rready=1;tick();
         }
         dut->h_rready=0;settle();
     }
@@ -152,6 +163,7 @@ static uint32_t rng_state=0xf058b31;
 static uint32_t rng(){rng_state^=rng_state<<13;rng_state^=rng_state>>17;rng_state^=rng_state<<5;return rng_state;}
 static unsigned total_cases=0,total_outputs=0;
 static bool hardware_available=true;
+static bool shared_storage_available=false;
 
 static void checkBytes(const char* name,const int8_t* output,const std::vector<int8_t>& expected) {
     for(size_t i=0;i<expected.size();i++) {
@@ -377,6 +389,104 @@ static int64_t divideEven(int64_t value, unsigned shift) {
     if(r>divisor-r || (r==divisor-r && q%2))q+=value<0?-1:1;
     return q;
 }
+
+static void runGemmSwitch(const char* name,uint8_t* arena,bool is_mode,
+                          unsigned reuse,unsigned depth,unsigned expected_ia_banks=0) {
+    // 多归约块检查 INT32 部分和，较大的单归约块分别使用 2 个和 4 个 IA bank。
+    const unsigned rows=reuse==1?17:16*reuse,cols=19;
+    const size_t ni=rows*depth,nw=cols*depth,no=rows*cols;
+    auto* input=reinterpret_cast<int8_t*>(arena+0x1ffd);
+    auto* weight=reinterpret_cast<int8_t*>(arena+0x20fff);
+    auto* output=reinterpret_cast<int8_t*>(arena+0x40003);
+    auto* bias=reinterpret_cast<int32_t*>(arena+0x30000);
+    for(size_t i=0;i<ni;i++)input[i]=int8_t(int(rng()%9)-4);
+    for(size_t i=0;i<nw;i++)weight[i]=int8_t(int(rng()%7)-3);
+    for(unsigned i=0;i<cols;i++)bias[i]=int32_t(i)-9;
+    std::vector<int8_t> expected(no);
+    for(unsigned row=0;row<rows;row++)for(unsigned col=0;col<cols;col++) {
+        int32_t accumulator=bias[col];
+        for(unsigned red=0;red<depth;red++)
+            accumulator+=(int32_t(input[row*depth+red])+3)*(int32_t(weight[col*depth+red])-1);
+        const int64_t value=divideEven(accumulator,5)-3;
+        expected[row*cols+col]=int8_t(std::max<int64_t>(-119,std::min<int64_t>(113,value)));
+    }
+    memset(output-16,0xa5,no+32);
+    sim->copyToRam(input,ni);sim->copyToRam(weight,nw);sim->copyToRam(output-16,no+32);
+    sim->copyToRam(bias,cols*4);
+    protect(input,ni,PROT_NONE);protect(weight,nw,PROT_NONE);
+    protect(output-16,no+32,PROT_NONE);protect(bias,cols*4,PROT_NONE);
+    dsa_matmul_config_t job;dsa_matmul_config_init(&job);
+    job.lhs_ptr=input;job.rhs_ptr=weight;job.dst_ptr=output;job.bias_ptr=bias;
+    job.K=rows;job.N=depth;job.M=cols;
+    job.lhs_row_stride=depth;job.rhs_row_stride=depth;job.dst_row_stride=cols;
+    job.dataflow_mode=is_mode?DSA_DATAFLOW_IS:DSA_DATAFLOW_WS;
+    job.ia_reuse_num=reuse;job.w_reuse_num=1;
+    job.lhs_offset=3;job.rhs_offset=-1;job.dst_offset=-3;
+    job.dst_mult=0x40000000;job.dst_shift=-4;job.act_min=-119;job.act_max=113;
+    const uint64_t commands=sim->commands,cycles=sim->cycles;
+    const uint64_t reads=sim->dut->npu_read_bytes,writes=sim->dut->npu_write_bytes;
+    sim->useNpu();require(dsa_matmul_execute(&job)==DSA_SUCCESS,"GEMM task switch failed");
+    const uint64_t duration=sim->cycles-cycles;sim->useHost();
+    protect(input,ni,PROT_READ|PROT_WRITE);protect(weight,nw,PROT_READ|PROT_WRITE);
+    protect(output-16,no+32,PROT_READ|PROT_WRITE);protect(bias,cols*4,PROT_READ|PROT_WRITE);
+    sim->copyFromRam(output-16,no+32);checkBytes(name,output,expected);
+    require(sim->commands-commands==1,"GEMM task switch command count mismatch");
+    if(shared_storage_available) {
+        const uint32_t banks=sim->axilRead(DSA_MMIO_BASE+NPU_REG_IA_BANKS);
+        if(expected_ia_banks)require(banks==expected_ia_banks,"matrix did not use the requested shared-memory allocation");
+        std::cout<<"VECTOR_ENGINE_MATRIX_ALLOCATION name="<<name<<" ia_banks="<<banks
+                 <<" requested_r="<<reuse<<" reduction="<<depth<<"\n";
+    }
+    reportCase(is_mode?"gemm_is":"gemm_ws",name,no,1,duration,
+               sim->dut->npu_read_bytes-reads,sim->dut->npu_write_bytes-writes);
+}
+
+static void runFaultRecovery(uint8_t* arena) {
+    constexpr unsigned h=5,w=7,c=17,ni=h*w*c,nw=9*c,no=ni;
+    auto* input=reinterpret_cast<int8_t*>(arena+0x1ffd);
+    auto* weight=reinterpret_cast<int8_t*>(arena+0x20fff);
+    auto* output=reinterpret_cast<int8_t*>(arena+0x40003);
+    auto* bias=reinterpret_cast<int32_t*>(arena+0x30000);
+    auto* mult=reinterpret_cast<int32_t*>(arena+0x31000);
+    auto* shift=reinterpret_cast<int32_t*>(arena+0x32000);
+    const unsigned fault_count=shared_storage_available?5:3;
+    for(unsigned fault=0;fault<fault_count;fault++) {
+        for(unsigned i=0;i<ni;i++)input[i]=int8_t(int(rng()%17)-8);
+        for(unsigned i=0;i<nw;i++)weight[i]=int8_t(int(rng()%9)-4);
+        for(unsigned i=0;i<c;i++){bias[i]=int32_t(i)-8;mult[i]=0x40000000;shift[i]=-4;}
+        memset(output-16,0xa5,no+32);
+        sim->copyToRam(input,ni);sim->copyToRam(weight,nw);sim->copyToRam(output-16,no+32);
+        sim->copyToRam(bias,c*4);sim->copyToRam(mult,c*4);sim->copyToRam(shift,c*4);
+        dsa_vector_config_t job;dsa_vector_config_init(&job);
+        job.operation=DSA_VECTOR_OP_DW_S8;
+        job.input_base=uint32_t(uintptr_t(input));job.rhs_base=uint32_t(uintptr_t(weight));
+        job.output_base=uint32_t(uintptr_t(output));job.bias_base=uint32_t(uintptr_t(bias));
+        job.multiplier_base=uint32_t(uintptr_t(mult));job.shift_base=uint32_t(uintptr_t(shift));
+        job.input_h=job.output_h=h;job.input_w=job.output_w=w;job.input_c=c;
+        job.kernel_h=job.kernel_w=3;job.stride_h=job.stride_w=job.dilation_h=job.dilation_w=1;
+        job.pad_top=job.pad_left=1;
+        if(fault==0)job.rhs_base=0x10000000u;
+        if(fault==1)job.input_base=0x10000000u;
+        if(fault==2)job.output_base=0x10000000u;
+        const unsigned injections=sim->shared_fault_injections;
+        if(fault>=3)sim->shared_fault_armed=fault-2;
+        const uint64_t commands=sim->commands,cycles=sim->cycles;
+        sim->useNpu();const uint32_t error=dsa_vector_execute(&job);sim->useHost();
+        require(error==(fault<3?3u:2u),"RAM error did not reach the driver with the expected code");
+        require(sim->commands-commands==1,"fault test did not issue exactly one command");
+        require(sim->shared_fault_armed==0,"shared RAM fault was not injected during a read");
+        require(sim->shared_fault_injections-injections==unsigned(fault>=3),"shared RAM injection count mismatch");
+        sim->copyFromRam(output-16,no+32);
+        checkBytes("failed_task_output",output,std::vector<int8_t>(no,int8_t(0xa5)));
+        total_cases++;
+        std::cout<<"VECTOR_ENGINE_RAM_ERROR_PASS kind="<<fault<<" error="<<error
+                 <<" cycles="<<sim->cycles-cycles<<" reset=0\n";
+        // 每次错误后直接执行两种数值任务，检查共享状态、DMA 与完成状态均可重新使用。
+        runDepthwise({"dw_after_ram_error",1,5,7,17,3,3,1,1,1,1,1,1,17},arena);
+        if(fault&1u)runGemmSwitch("gemm_after_ram_error",arena,false,1,35);
+        else runConvSwitch("conv_after_ram_error",arena,bool(fault&2u));
+    }
+}
 static void runAdd(const char* name,uint8_t* arena,unsigned length,
                    const dsa_vector_add_params_t& p,int offset=-128,
                    bool identical_inputs=false,bool inplace=false) {
@@ -479,17 +589,20 @@ int main(int argc,char** argv) {
                 "Vector capability register mismatch");
         if(hardware_available)require(((caps>>8)&0xffu)==DW_TEST_PE_COUNT,"PE count capability mismatch");
         for(int i=1;i<argc;i++)if(std::string(argv[i])=="+PS_COMPRESS") {
+            shared_storage_available=true;
             const uint32_t ps_caps=sim->axilRead(DSA_MMIO_BASE+NPU_REG_PS_CAPS);
             const uint32_t required=DSA_PS_CAP_STORE|DSA_PS_CAP_FRAME_SCHEDULE|
                 DSA_PS_CAP_IA_COMPACT|DSA_PS_CAP_SHARED;
             require((ps_caps&required)==required && (ps_caps>>24)==DSA_PS_CAP_VERSION,
                     "Compressed PS capabilities differ");
-            require(sim->axilRead(DSA_MMIO_BASE+NPU_REG_SHARED_TOTAL_BYTES)==14336 &&
-                    sim->axilRead(DSA_MMIO_BASE+NPU_REG_SHARED_BANK_BYTES)==2048,
+            require(sim->axilRead(DSA_MMIO_BASE+NPU_REG_SHARED_TOTAL_BYTES)==DW_TEST_BANK_BYTES*DW_TEST_BANK_COUNT &&
+                    sim->axilRead(DSA_MMIO_BASE+NPU_REG_SHARED_BANK_BYTES)==DW_TEST_BANK_BYTES,
                     "Shared IA/PS capacity differs");
+            require(ps_caps&DSA_PS_CAP_RAW_ONLY,"Shared PS must use raw32 storage");
             require((dsa_conv_capabilities()&(DSA_CONV_CAP_S8|DSA_CONV_CAP_IS))==
                     (DSA_CONV_CAP_S8|DSA_CONV_CAP_IS),"Conv capabilities differ");
-            std::cout<<"VECTOR_ENGINE_SHARED_PS_PASS total_bytes=14336 bank_bytes=2048 conv=1 vce=1\n";
+            std::cout<<"VECTOR_ENGINE_SHARED_PS_PASS total_bytes="<<DW_TEST_BANK_BYTES*DW_TEST_BANK_COUNT
+                     <<" bank_bytes="<<DW_TEST_BANK_BYTES<<" conv=1 vce=1\n";
         }
         if(hardware_available)runConvSwitch("conv_ws_before_dw",arena,false);
         runDepthwise({"dw3x3_tail",1,5,7,5,3,3,1,1,1,1,1,1,17},arena);
@@ -538,6 +651,19 @@ int main(int argc,char** argv) {
             invalidDriverCalls();
             runConvSwitch("conv_ws_after_vector",arena,false);
             runDepthwise({"dw_after_conv_recovery",1,3,3,5,3,3,1,1,1,1,1,1,17},arena);
+            runGemmSwitch("gemm_ws_before_dw",arena,false,1,35);
+            runDepthwise({"dw_between_gemm_modes",1,5,7,17,3,3,1,1,1,1,1,1,17},arena);
+            runGemmSwitch("gemm_is_after_dw",arena,true,1,35);
+            if(shared_storage_available) {
+                runGemmSwitch("gemm_two_ia_banks",arena,false,2*(DW_TEST_BANK_BYTES/512),9,2);
+                runDepthwise({"dw_after_two_banks",1,5,7,31,3,3,1,1,1,1,1,1,-11},arena);
+                if(DW_TEST_BANK_COUNT>=8) {
+                    runGemmSwitch("gemm_four_ia_banks",arena,false,4*(DW_TEST_BANK_BYTES/512),9,4);
+                    runDepthwise({"dw_after_four_banks",1,5,7,17,3,3,1,1,1,1,1,1,17},arena);
+                }
+                runConvSwitch("conv_after_shared_bank_changes",arena,true);
+            }
+            runFaultRecovery(arena);
         } else {
             unavailableHardware();
         }
