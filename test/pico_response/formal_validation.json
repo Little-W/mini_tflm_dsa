@@ -1,0 +1,78 @@
+{
+  "reference": "415a70a",
+  "source_sha256": "fbc9367376a1be2928406f81fae39785d9f26780ca779f5067ac90d716dce261",
+  "input_constraints": null,
+  "observation": "全部控制端口；读数据在实际读响应周期比较",
+  "profiles": [
+    {
+      "parameters": {
+        "ADDR_WIDTH": 32,
+        "DATA_WIDTH": 32,
+        "ENABLE_ICACHE": 0,
+        "ICACHE_LINES": 64,
+        "ICACHE_LINE_WORDS": 4
+      },
+      "passed": true,
+      "log_sha256": "e7dc716d7185abe114cbb8418fb731019f3b9a801c8becb08e1d9d3c5e3affb6"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 40,
+        "DATA_WIDTH": 64,
+        "ENABLE_ICACHE": 0,
+        "ICACHE_LINES": 64,
+        "ICACHE_LINE_WORDS": 4
+      },
+      "passed": true,
+      "log_sha256": "ee5a8dee3bf080515818e8cf75a5a7d96347cf6b20bb94d4a7f2860ebab955ac"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 32,
+        "DATA_WIDTH": 32,
+        "ENABLE_ICACHE": 1,
+        "ICACHE_LINES": 1,
+        "ICACHE_LINE_WORDS": 1
+      },
+      "passed": true,
+      "log_sha256": "3e9b27522e21742f63ba6bd7f555dbb7924fb4f533d73070c4b5df13787f19ab"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 32,
+        "DATA_WIDTH": 32,
+        "ENABLE_ICACHE": 1,
+        "ICACHE_LINES": 4,
+        "ICACHE_LINE_WORDS": 2
+      },
+      "passed": true,
+      "log_sha256": "9366a8fbff249b1c4fb6e0241512fef82a0582d6d2751744989d316dd8639b20"
+    },
+    {
+      "parameters": {
+        "ADDR_WIDTH": 40,
+        "DATA_WIDTH": 64,
+        "ENABLE_ICACHE": 1,
+        "ICACHE_LINES": 4,
+        "ICACHE_LINE_WORDS": 2
+      },
+      "passed": true,
+      "log_sha256": "c14f9ec10c5f12d8a3a37af3f4127df59e722b308b213db1ac81bc82ab4f9065"
+    }
+  ],
+  "registered_response": [
+    {
+      "address_width": 32,
+      "data_width": 32,
+      "passed": true,
+      "log_sha256": "369031e4b5b47d8fcca875f18ee03fa934cab2789912fb864f11a5474103edee"
+    },
+    {
+      "address_width": 40,
+      "data_width": 64,
+      "passed": true,
+      "log_sha256": "da0d085e03cbb2365ab3d1a26f15a7b797635358a59a91420b1db445b384e458"
+    }
+  ],
+  "passed": true
+}

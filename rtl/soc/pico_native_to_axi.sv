@@ -3,7 +3,8 @@ module pico_native_to_axi #(
     parameter int unsigned DATA_WIDTH = 32,
     parameter int unsigned ICACHE_LINES = 64,
     parameter int unsigned ICACHE_LINE_WORDS = 4,
-    parameter bit          ENABLE_ICACHE = 1'b1
+    parameter bit          ENABLE_ICACHE = 1'b1,
+    parameter bit          REGISTER_RESPONSE = 1'b0
 ) (
     input  wire                       clk,
     input  wire                       rst_n,
@@ -160,10 +161,20 @@ module pico_native_to_axi #(
 
     assign m_axi_rready = read_busy_q;
     assign m_axi_bready = write_busy_q || new_write_req;
-    assign mem_ready = rsp_valid_q || read_done_fire || b_fire;
-    assign mem_rdata = rsp_valid_q     ? rsp_data_q :
-                       read_done_fire  ? (ic_fill_q ? ic_fill_rsp_data : m_axi_rdata) :
-                                         '0;
+    assign mem_ready = (!ENABLE_ICACHE && REGISTER_RESPONSE) ? rsp_valid_q :
+        (rsp_valid_q || read_done_fire || b_fire);
+    if (!ENABLE_ICACHE) begin : g_direct_response
+        if (REGISTER_RESPONSE) begin : g_registered
+            // 响应数据与完成标志同时保存，CPU 在下一周期接收完整结果。
+            assign mem_rdata = rsp_data_q;
+        end else begin : g_forwarded
+            // CPU 只在读请求完成时采样数据，直接转发可分离握手控制与指令译码。
+            assign mem_rdata = m_axi_rdata;
+        end
+    end else begin : g_cached_response
+        assign mem_rdata = rsp_valid_q ? rsp_data_q :
+                           read_done_fire ? (ic_fill_q ? ic_fill_rsp_data : m_axi_rdata) : '0;
+    end
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -198,6 +209,12 @@ module pico_native_to_axi #(
             w_pending_q  <= 1'b0;
         end else begin
             rsp_valid_q <= 1'b0;
+            if (!ENABLE_ICACHE && REGISTER_RESPONSE) begin
+                rsp_valid_q <= read_done_fire || b_fire;
+                if (read_done_fire) begin
+                    rsp_data_q <= m_axi_rdata;
+                end
+            end
 
             if (new_ic_read_req) begin
                 ic_req_q <= 1'b1;

@@ -415,7 +415,8 @@ module soc_top #(
     pico_native_to_axi #(
         .ADDR_WIDTH(REG_WIDTH),
         .DATA_WIDTH(32),
-        .ENABLE_ICACHE(CPU_ENABLE_ICACHE)
+        .ENABLE_ICACHE(CPU_ENABLE_ICACHE),
+        .REGISTER_RESPONSE(1'b1)
     ) u_pico_axi_bridge (
         .clk(clk),
         .rst_n(rst_n),
