@@ -26,6 +26,7 @@ module requant_group_buffer #(
 
     logic [p_addr_width-1:0] write_addr_q, read_addr_q;
     logic [p_count_width-1:0] stored_rows_q;
+    logic [p_count_width-1:0] stored_rows_next;
     logic [p_count_width-1:0] expected_rows_q, pending_rows_q;
     logic head_valid_q;
     logic push_row, read_row, consume_row;
@@ -46,6 +47,25 @@ module requant_group_buffer #(
     assign storage_i_wr_data[p_row_width-1] = i_row_tile_done;
     assign storage_i_rd_en = read_row;
     assign storage_i_rd_addr = read_addr_q;
+    // 各位独立准备加一与减一的翻转条件，读写事件只选择最终计数位。
+    for (genvar bit_index = 0; bit_index < p_count_width; bit_index++) begin : g_stored_count
+        logic increase_toggle, decrease_toggle;
+        if (bit_index == 0) begin : g_low_bit
+            assign increase_toggle = 1'b1;
+            assign decrease_toggle = 1'b1;
+        end else begin : g_upper_bit
+            assign increase_toggle = &stored_rows_q[bit_index-1:0];
+            assign decrease_toggle = ~|stored_rows_q[bit_index-1:0];
+        end
+        always_comb begin
+            stored_rows_next[bit_index] = stored_rows_q[bit_index];
+            case ({push_row, read_row})
+                2'b10: stored_rows_next[bit_index] = stored_rows_q[bit_index] ^ increase_toggle;
+                2'b01: stored_rows_next[bit_index] = stored_rows_q[bit_index] ^ decrease_toggle;
+                default: begin end
+            endcase
+        end
+    end
     for (genvar lane = 0; lane < p_lanes; lane++) begin : g_row_word
         assign storage_i_wr_data[32*lane +: 32] = i_row_data[lane];
         assign o_row_data[lane] = $signed(storage_o_rd_data[32*lane +: 32]);
@@ -98,11 +118,7 @@ module requant_group_buffer #(
                 read_addr_q <= (read_addr_q == p_addr_width'(p_rows-1)) ?
                     '0 : read_addr_q + 1'b1;
             end
-            case ({push_row, read_row})
-                2'b10: stored_rows_q <= stored_rows_q + 1'b1;
-                2'b01: stored_rows_q <= stored_rows_q - 1'b1;
-                default: begin end
-            endcase
+            stored_rows_q <= stored_rows_next;
             if (read_row) head_valid_q <= 1'b1;
             else if (consume_row) head_valid_q <= 1'b0;
         end

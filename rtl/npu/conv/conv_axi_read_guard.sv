@@ -49,9 +49,10 @@ module conv_axi_read_guard #(
     logic request_page_fits;
     logic request_format_legal;
     logic direct_legal;
-    logic [3:0] fast_allocation;
+    (* keep *) logic [3:0] fast_allocation;
     logic [ADDR_W-1:0] word_addr;
-    logic [ADDR_W-BUS_SHIFT-1:0] word_addr_upper_next;
+    (* use_dsp = "yes" *) logic [ADDR_W-BUS_SHIFT-1:0] word_addr_upper_next;
+    (* use_dsp = "yes" *) logic [32:0] next_word_address;
     logic unused_word_addr_upper_carry;
     logic [BUS_SHIFT-1:0] selected_lane;
     logic [BUS_SHIFT:0] word_addr_low_sum;
@@ -62,11 +63,16 @@ module conv_axi_read_guard #(
     wire direct_ar = direct_mode && direct_legal && s_arvalid && m_arready;
     wire direct_last = direct_mode && m_rvalid && s_rready && m_rlast;
     logic [BUS_BYTES-1:0] allocation_mask [4];
+    logic [3:0] allocation_has_byte;
+    logic allowed_word_has_byte;
     // Accepted AXI words and the internal word cursor are bus aligned.
     // Share the word-address comparisons across every byte in each range.
     for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation_mask
         wire base_present = base_q[allocation] != 0;
         localparam int p_word_width = 33 - BUS_SHIFT;
+        localparam int p_compare_groups = (p_word_width + 2) / 3;
+        (* keep *) logic [p_compare_groups-1:0] base_group_equal, end_group_equal;
+        logic [BUS_BYTES-1:0] before_end_byte_mask, overlapping_byte_mask;
         (* use_dsp = "yes" *) logic [p_word_width:0] base_word_difference;
         (* use_dsp = "yes" *) logic [p_word_width:0] end_word_difference;
         // 字范围比较保留扩展借位，四个分配区间并行产生边界条件。
@@ -75,9 +81,19 @@ module conv_axi_read_guard #(
         assign end_word_difference = {1'b0,addr_q[32:BUS_SHIFT]} -
             {1'b0,end_q[allocation][32:BUS_SHIFT]};
         wire after_base_word = base_word_difference[p_word_width];
-        wire at_base_word = addr_q[32:BUS_SHIFT] == {1'b0,base_q[allocation][31:BUS_SHIFT]};
+        // 保留完整字地址比较结果，使字节选择与状态判断共享并行范围条件。
+        (* keep *) wire at_base_word = &base_group_equal;
         wire before_end_word = end_word_difference[p_word_width];
-        wire at_end_word = addr_q[32:BUS_SHIFT] == end_q[allocation][32:BUS_SHIFT];
+        (* keep *) wire at_end_word = &end_group_equal;
+        for (genvar part = 0; part < p_compare_groups; part++) begin : g_word_compare
+            localparam int p_first = part * 3;
+            localparam int p_width = p_word_width - p_first < 3 ? p_word_width - p_first : 3;
+            wire [32:0] extended_base = {1'b0, base_q[allocation]};
+            assign base_group_equal[part] = addr_q[BUS_SHIFT+p_first +: p_width] ==
+                extended_base[BUS_SHIFT+p_first +: p_width];
+            assign end_group_equal[part] = addr_q[BUS_SHIFT+p_first +: p_width] ==
+                end_q[allocation][BUS_SHIFT+p_first +: p_width];
+        end
         for (genvar byte_lane=0; byte_lane<BUS_BYTES; byte_lane++) begin : g_byte_lane
             wire after_base_byte, before_end_byte;
             if (byte_lane==BUS_BYTES-1) begin : g_last_byte
@@ -90,15 +106,23 @@ module conv_axi_read_guard #(
             assign allocation_mask[allocation][byte_lane] = base_present &&
                 (after_base_word || (at_base_word && after_base_byte)) &&
                 (before_end_word || (at_end_word && before_end_byte));
+            assign before_end_byte_mask[byte_lane] = before_end_byte;
+            assign overlapping_byte_mask[byte_lane] = after_base_byte && before_end_byte;
         end
+        // 状态更新使用区间是否含有字节的条件，字节掩码独立保存到数据返回阶段。
+        // 低位范围继续由逐字节比较归并，保留未知输入的四态行为。
+        assign allocation_has_byte[allocation] = base_present &&
+            ((after_base_word && (before_end_word || (at_end_word && (|before_end_byte_mask)))) ||
+             (at_base_word && (before_end_word || (at_end_word && (|overlapping_byte_mask)))));
     end
     assign allowed_mask = (!enable && !addr_q[32] ? {BUS_BYTES{1'b1}} : {BUS_BYTES{1'b0}}) |
         allocation_mask[0] | allocation_mask[1] | allocation_mask[2] | allocation_mask[3];
+    assign allowed_word_has_byte = (!enable && !addr_q[32]) || (|allocation_has_byte);
 
     assign request_addr_ext = 33'(s_araddr);
     if (BUS_SHIFT <= 4) begin : g_page_range
         localparam int p_page_word_w = 12 - BUS_SHIFT;
-        logic [p_page_word_w:0] request_last_word;
+        (* use_dsp = "yes" *) logic [p_page_word_w:0] request_last_word;
         logic request_end_wrap;
 
         // 页内末字索引只需首字索引加ARLEN，最高位直接表示请求是否跨页。
@@ -179,6 +203,8 @@ module conv_axi_read_guard #(
     assign selected_word_addr = {
         word_addr_low_sum[BUS_SHIFT] ? word_addr_upper_next : word_addr[ADDR_W-1:BUS_SHIFT],
         word_addr_low_sum[BUS_SHIFT-1:0]};
+    // 下一字地址保留第三十三位，地址更新与保护范围比较分别使用完整结果。
+    assign next_word_address = addr_q + 33'(BUS_BYTES);
     assign idle = state == IDLE && direct_outstanding == 0;
     // 通道仲裁直接读取保护模式的待发状态，直通请求继续使用完整格式和页范围检查。
     assign o_arb_arvalid = enable && (state == FAST_AR || state == WORD_AR);
@@ -242,7 +268,7 @@ module conv_axi_read_guard #(
                 FAST_R: if (m_rvalid && m_rready && m_rlast) state <= IDLE;
                 PREP: begin
                     word_q <= '0; error_q <= !enable && addr_q[32]; pending_mask <= allowed_mask;
-                    state <= allowed_mask == 0 ? OUT : WORD_AR;
+                    state <= !allowed_word_has_byte ? OUT : WORD_AR;
                 end
                 WORD_AR: if (m_arready) state <= WORD_R;
                 WORD_R: if (m_rvalid && m_rready) begin
@@ -257,7 +283,7 @@ module conv_axi_read_guard #(
                 end
                 OUT: if (s_rready) begin
                     if (beat_q == len_q) state <= IDLE;
-                    else begin addr_q <= addr_q + 33'(BUS_BYTES); beat_q <= beat_q + 8'd1; state <= PREP; end
+                    else begin addr_q <= next_word_address; beat_q <= beat_q + 8'd1; state <= PREP; end
                 end
                 default: state <= IDLE;
             endcase

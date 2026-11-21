@@ -201,6 +201,7 @@ module axi_dual_block_dma #(
     logic fe_cfg_ready, fe_tile_ready, fe_wr_valid, fe_done, fe_tile_error, fe_wr_last;
     logic fe_error, fe_busy;
     logic fe_output_valid, fe_output_ready, fe_output_window, fe_output_last;
+    logic fe_matrix_output_valid;
     logic fe_input_ready, fe_output_drained, fe_window_error;
     logic [SLOT_W-1:0] fe_output_slot;
     logic [CONV_CW-1:0] fe_output_row, fe_output_col;
@@ -269,7 +270,7 @@ module axi_dual_block_dma #(
     assign accept_image = rd_start && !abort && rd_im2col && image_start_ready;
     assign accept_read = accept_linear || accept_image;
     // 窗口归属与完成状态决定返回标签，选择保持无效周期的数据行为。
-    assign rd_response_tag = ((fe_output_valid && !fe_output_window) || conv_done_r) ?
+    assign rd_response_tag = (fe_matrix_output_valid || conv_done_r) ?
       conv_tag_q : linear_response_tag;
     assign rd_finish_tag = linear_finish ? linear_finish_tag : conv_tag_q;
     assign linear_start = accept_linear;
@@ -366,9 +367,16 @@ module axi_dual_block_dma #(
         if (!rst_n) begin
             fe_output_valid <= 1'b0;
             fe_output_window <= 1'b0;
+            fe_matrix_output_valid <= 1'b0;
         end else if (fe_input_ready) begin
             fe_output_valid <= fe_wr_valid;
-            if (fe_wr_valid) fe_output_window <= win_frontend_active;
+            // 响应种类与数据同时保存，矩阵返回可直接使用已寄存的路由资格。
+            if (fe_wr_valid) begin
+                fe_output_window <= win_frontend_active;
+                fe_matrix_output_valid <= !win_frontend_active;
+            end else begin
+                fe_matrix_output_valid <= fe_wr_valid && !fe_output_window;
+            end
         end
     end
     always_ff @(posedge clk) begin
@@ -396,7 +404,7 @@ module axi_dual_block_dma #(
                 wr_data[i] = linear_data[i]; wr_valid[i] = linear_valid[i];
             end
         end
-        if (fe_output_valid && !fe_output_window) begin
+        if (fe_matrix_output_valid) begin
             wr_slot = fe_output_slot; wr_row = COL_W'(fe_output_row); wr_col_base = COL_W'(fe_output_col);
             wr_use_16bits = 1'b1;
             for (int i=0; i<DATA_LANES; i++) begin
