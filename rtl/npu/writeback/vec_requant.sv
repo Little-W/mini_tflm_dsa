@@ -2179,10 +2179,10 @@ module requant_registered_sum #(
     input  wire logic i_carry,
     output logic signed [p_width-1:0] o_sum
 );
-    // p_use_dsp 仅保留实例参数兼容；无复位、使能保持与原寄存器一致。
+    // 定宽模加保留输入进位，寄存器仅在使能边沿更新。
     generate
         begin : g_generic
-            logic [p_width-1:0] next_sum;
+            (* use_dsp = p_use_dsp ? "yes" : "no" *) logic [p_width-1:0] next_sum;
             logic unused_carry;
             assign {unused_carry, next_sum} = {1'b0, i_lhs} + {1'b0, i_rhs} + (p_width+1)'(i_carry);
             always_ff @(posedge clk) begin
