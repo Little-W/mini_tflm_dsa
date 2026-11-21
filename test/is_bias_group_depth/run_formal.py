@@ -31,11 +31,12 @@ def extract(text, name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='2297cb12')
+    parser.add_argument('--reference', default='cedf4ed33661a53c8194eca1d484cdc2279d7549')
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    path = ROOT / 'rtl/npu/top/npu_top.sv'
+    path = args.source_root / 'rtl/npu/top/npu_top.sv'
     reference = read_rtl_source(args.reference + ':rtl/npu/top/npu_top.sv', cwd=ROOT, text=True)
     for label, source in (('reference', reference), ('candidate', path.read_text())):
         (out / (label + '.sv')).write_text(extract(source, label))
@@ -58,7 +59,8 @@ endmodule
     compare = ROOT / 'rtl/common/unsigned_compare.sv'
     files = [compare, out / 'reference.sv', out / 'candidate.sv', harness]
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
-    report = dict(reference=args.reference, source_sha256=digest(path), inputs_constrained=False, runs=[])
+    report = dict(reference=args.reference, source_sha256=digest(path), inputs_constrained=False,
+                  synthesis_expression=True, runs=[])
     profiles = [(4,1),(4,4),(8,6),(16,8),(32,1),(32,5),(32,10),(32,16),
                 (32,32),(40,10),(40,32),(64,10),(64,20),(64,24),(64,32)]
     for fpga in (False, True):
@@ -66,7 +68,7 @@ endmodule
             folder = out / f'{"fpga" if fpga else "generic"}_w{width}_c{count}'
             folder.mkdir(exist_ok=True)
             script, log = folder / 'run.ys', folder / 'formal.log'
-            script.write_text('read_slang --top group_formal ' + ('-D XILINX_FPGA ' if fpga else '') +
+            script.write_text('read_slang -D SYNTHESIS=1 --top group_formal ' + ('-D XILINX_FPGA ' if fpga else '-D ASIC_SYNTHESIS ') +
                               f'-GREG_WIDTH={width} -GIS_BIAS_VALID_W={count} ' +
                               shlex.join(map(str, files)) + '\nprep -top group_formal -flatten\ncheck -assert\n' +
                               'sat -verify -prove o_equal 1 -show-inputs -show-outputs\n')

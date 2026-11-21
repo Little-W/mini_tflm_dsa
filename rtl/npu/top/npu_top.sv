@@ -2812,12 +2812,27 @@ module npu_top #(
             (IS_BIAS_VALID_W < REG_WIDTH) ? IS_BIAS_VALID_W : REG_WIDTH;
         logic [REG_WIDTH-1:0] is_bias_exec_m_ext;
         logic [REG_WIDTH-1:0] is_bias_target_mask_ext;
-        logic [REG_WIDTH-1:0] is_bias_full_group_base;
+        logic [REG_WIDTH-1:0] is_bias_full_group_base, is_bias_full_group_fallback;
+`ifdef ASIC_SYNTHESIS
+        localparam bit p_bias_full_dsp = 1'b0;
+`elsif SYNTHESIS
+        localparam bit p_bias_full_dsp = REG_WIDTH >= 17 && REG_WIDTH <= 47;
+`else
+        localparam bit p_bias_full_dsp = 1'b0;
+`endif
+        if (p_bias_full_dsp) begin : g_bias_full_arithmetic
+            (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] full_difference;
+            // 整组起始位置使用一次定宽减法，保存完整地址的模运算结果。
+            assign full_difference = is_bias_exec_m_ext - is_bias_group_rows_target_ext;
+            assign is_bias_full_group_base = full_difference;
+        end else begin : g_bias_full_grouped
+            assign is_bias_full_group_base = is_bias_full_group_fallback;
+        end
         logic [p_bias_count_bits:0] is_bias_low_difference;
         localparam int unsigned p_bias_mask_groups = (p_bias_count_bits + 3) / 4;
         localparam int unsigned p_bias_high_groups = (REG_WIDTH - p_bias_count_bits + 3) / 4;
         (* keep = 1 *) logic [p_bias_mask_groups-1:0] is_bias_mask_group_zero;
-        (* keep = 1 *) logic [(p_bias_high_groups > 0 ? p_bias_high_groups : 1)-1:0] is_bias_high_group_zero;
+        (* keep = !p_bias_full_dsp *) logic [(p_bias_high_groups > 0 ? p_bias_high_groups : 1)-1:0] is_bias_high_group_zero;
         assign is_bias_exec_m_ext = REG_WIDTH'(exec_m);
         // 每四位独立产生零判断，跨组借位只归并这些短组结果。
         for (genvar group = 0; group < p_bias_mask_groups; group++) begin : g_bias_mask_zero
@@ -2855,14 +2870,14 @@ module npu_top #(
         assign is_bias_low_difference =
             {1'b0, is_bias_exec_m_ext[p_bias_count_bits-1:0]} -
             {1'b0, is_bias_group_rows_target_ext[p_bias_count_bits-1:0]};
-        assign is_bias_full_group_base[p_bias_count_bits-1:0] =
+        assign is_bias_full_group_fallback[p_bias_count_bits-1:0] =
             is_bias_low_difference[p_bias_count_bits-1:0];
         // 各高位字节并行准备减一结果，低位借位只选择保持值或减一值。
         for (genvar group = p_bias_count_bits; group < REG_WIDTH; group += 8) begin : g_bias_high
             localparam int unsigned p_bits = (REG_WIDTH-group < 8) ? REG_WIDTH-group : 8;
             logic [p_bits-1:0] decremented;
             logic borrow;
-            (* keep = 1 *) logic low_nibble_zero;
+            (* keep = !p_bias_full_dsp *) logic low_nibble_zero;
             if (p_bits > 4) begin : g_low_nibble
                 assign low_nibble_zero = ~|is_bias_exec_m_ext[group +: 4];
             end else begin : g_short_group
@@ -2885,7 +2900,7 @@ module npu_top #(
                 assign borrow = is_bias_low_difference[p_bias_count_bits] &&
                     (&is_bias_high_group_zero[(group-p_bias_count_bits)/4-1:0]);
             end
-            assign is_bias_full_group_base[group +: p_bits] = borrow ?
+            assign is_bias_full_group_fallback[group +: p_bits] = borrow ?
                 decremented : is_bias_exec_m_ext[group +: p_bits];
         end
         wire [REG_WIDTH-1:0] is_bias_tail_rows_raw =

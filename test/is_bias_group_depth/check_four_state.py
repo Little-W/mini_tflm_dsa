@@ -11,11 +11,13 @@ from run_formal import ROOT, extract, read_rtl_source
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='2297cb12')
+    parser.add_argument('--reference', default='cedf4ed33661a53c8194eca1d484cdc2279d7549')
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--strict', action='store_true')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = ROOT / 'rtl/npu/top/npu_top.sv'
+    source = args.source_root / 'rtl/npu/top/npu_top.sv'
     current = source.read_text()
     original = read_rtl_source(args.reference + ':rtl/npu/top/npu_top.sv', cwd=ROOT, text=True)
     modules = out / 'arithmetic.sv'
@@ -60,6 +62,8 @@ def main():
                 endcase
             end
             #1;
+            if ({int(args.strict)} && expected !== actual)
+                $fatal(1,"Group arithmetic differs, sample=%0d",sample);
             if (expected===actual) equal_count++;
             for (integer bit_idx=0;bit_idx<{bits};bit_idx=bit_idx+1) begin
                 if (expected[bit_idx]===1'b0 || expected[bit_idx]===1'b1) begin
@@ -87,7 +91,7 @@ endmodule
     digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
     if source.read_text()!=current:
         raise RuntimeError('Top source changed during verification')
-    report=dict(passed=True,source_sha256=hashlib.sha256(current.encode()).hexdigest(),extracted_sha256=digest(modules),
+    report=dict(passed=True,strict_four_state=args.strict,source_sha256=hashlib.sha256(current.encode()).hexdigest(),extracted_sha256=digest(modules),
                 reference=args.reference,known_reference_bits_preserved=True,runs=results)
     (out/'summary.json').write_text(json.dumps(report,indent=2)+'\n')
 
