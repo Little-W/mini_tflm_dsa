@@ -52,12 +52,16 @@ def module(text, name):
  output logic[20:0]result,output logic invariant);
 {enum}
  logic descriptor_response_forward;
+ logic linear_channel_layout_q;
  st_t state;
  assign state=st_t'(22'b1<<state_index);
  typedef struct packed {{logic[15:0]group_c,input_c,group_offset,dilation_w;}} cfg_t;
  typedef struct packed {{logic invalid,fast,word_hit;}} tile_t;
  cfg_t c;tile_t committing_tile;
  assign c={{group_c,input_c,group_offset,dilation_w}};
+ // 配置保存关系由 check_decode_configuration.py 单独验证。
+ assign linear_channel_layout_q = c.group_c == c.input_c &&
+     c.group_offset == 16'd0 && c.dilation_w == 16'd1;
  assign committing_tile={{commit_invalid,commit_fast,commit_word_hit}};
  localparam int p_saved_group_lanes=8;
  logic[2:0][5:0]cfg_idle_groups;

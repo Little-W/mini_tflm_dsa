@@ -912,24 +912,32 @@ module conv_im2col_frontend #(
   );
   logic [15:0] output_shape_i_value;
   logic output_shape_o_valid, output_shape_check_o_valid;
-  logic [4:0] output_width_shift;
+  logic [4:0] output_width_shift, group_width_shift, kernel_width_shift;
+  logic linear_channel_layout_q;
   assign output_shape_i_value = cfg.output_w;
   onehot_check #(.p_width(16), .p_allow_zero(1'b0)) u_output_shape (
     .i_value(output_shape_i_value),
     .o_valid(output_shape_check_o_valid)
   );
-  // 形状判断与配置同时保存，后续解码直接使用对应配置的寄存结果。
+  // 形状、移位量和连续通道条件随配置保存，运行阶段直接读取寄存结果。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       group_shape_o_valid <= 1'b0;
       kernel_shape_o_valid <= 1'b0;
       output_shape_o_valid <= 1'b0;
       output_width_shift <= 5'd0;
+      group_width_shift <= 5'd0;
+      kernel_width_shift <= 5'd0;
+      linear_channel_layout_q <= 1'b0;
     end else if (cfg_valid && cfg_ready) begin
       group_shape_o_valid <= group_shape_check_o_valid;
       kernel_shape_o_valid <= kernel_shape_check_o_valid;
       output_shape_o_valid <= output_shape_check_o_valid;
       output_width_shift <= power_shift({16'd0,cfg.output_w});
+      group_width_shift <= power_shift({16'd0,cfg.group_c});
+      kernel_width_shift <= power_shift({16'd0,cfg.kernel_w});
+      linear_channel_layout_q <= cfg.group_c == cfg.input_c &&
+          cfg.group_offset == 16'd0 && cfg.dilation_w == 16'd1;
     end
   end
   function automatic logic [4:0] power_shift(input logic [31:0] value);
@@ -3001,7 +3009,7 @@ module conv_im2col_frontend #(
         if (q0 == 32'd0) begin
           channel_update = 16'd0;
         end else if (group_shape_o_valid) begin
-          channel_update = 16'(q0 & (32'(c.group_c) - 32'd1));
+          channel_update = group_range_channel[2];
         end else if (c.group_c == 16'd3 && q0 < 32'd27) begin
           channel_update = current_q_remainder;
         end
@@ -3123,7 +3131,7 @@ module conv_im2col_frontend #(
   assign address_stream_write = wr_valid && wr_ready && (REGISTER_DESCRIPTOR || !tile_commit);
   assign address_column_advance = !chunk_reaches_end && !past_active_q && active_after_chunk;
   assign address_linear_tap = !coordinate_address_valid && !current_coordinate_valid && !tap_wrap &&
-    !pad_q && c.group_c == c.input_c && c.group_offset == 16'd0 && c.dilation_w == 16'd1 &&
+    !pad_q && linear_channel_layout_q &&
     ix_step_below_limit;
   assign address_update_select[0] = tile_commit && !committing_tile.invalid && committing_tile.fast;
   assign address_update_select[1] = address_stream_write && chunk_reaches_end && !row_last_q &&
@@ -3453,7 +3461,7 @@ module conv_im2col_frontend #(
               end
               else begin
                 kx_q <= 16'(kx+1); tap_wrap_q <= kernel_width_valid_q && tap_next_o_equal;
-                if (!pad_q && c.group_c==c.input_c && c.group_offset==0 && c.dilation_w==1 &&
+                if (!pad_q && linear_channel_layout_q &&
                     ix_step_below_limit) begin
                   ix <= $signed(ix_increment);pixel_index <= pixel_increment;
                   if (!word_boundary) {word_output_q, state} <= {state_uses_word(STREAM), STREAM};
@@ -3498,8 +3506,10 @@ module conv_im2col_frontend #(
 
           end
           else if (group_shape_o_valid) begin
-            tap0<=q0>>power_shift(32'(c.group_c));
-            ch0_q <= 16'(q0&(32'(c.group_c)-1));{word_output_q, state} <= {state_uses_word(K_DECODE), K_DECODE};
+            tap0 <= q0 >> group_width_shift;
+            // 通道余数与分组范围准备共用已经保存的配置掩码。
+            ch0_q <= group_range_channel[2];
+            {word_output_q, state} <= {state_uses_word(K_DECODE), K_DECODE};
 
           end else if (c.group_c==3 && q0<27) begin
             tap0<=32'(current_q_div3);
@@ -3521,7 +3531,8 @@ module conv_im2col_frontend #(
         end
         state[$clog2(K_DECODE)]: begin
           if (kernel_shape_o_valid) begin
-            ky_q <= 16'(tap0>>power_shift(32'(c.kernel_w)));ky0_q <= 16'(tap0>>power_shift(32'(c.kernel_w)));
+            ky_q <= 16'(tap0 >> kernel_width_shift);
+            ky0_q <= 16'(tap0 >> kernel_width_shift);
             kx_q <= kernel_decode_column;
             tap_wrap_q <= kernel_width_valid_q && (kernel_decode_last);
             kx0_q <= kernel_decode_column;
