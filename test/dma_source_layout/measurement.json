@@ -2,29 +2,29 @@
   "passed": true,
   "source_sha256": {
     "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
-    "rtl/npu/dma/axi_dual_block_dma.sv": "568ded98b06ef978f077faf3cade52d96c5b9108fa43b9fccea81616c80eb242",
-    "rtl/npu/dma/axi_linear_block_dma.sv": "5baa97c81a8439ce5795570314e2f0e8f8540a04cc41dd0697e46e285fd49eec",
-    "rtl/common/regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
-    "rtl/common/add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
-    "rtl/npu/conv/conv_im2col_frontend.sv": "264d08aebf8b7b8c38b575a0d2a02b2bfdda98c3e46e02b9f814936f2bda9163",
-    "rtl/npu/dma/conv_window_queue.sv": "9165375a6c36eb48a7706b4f8f6a6b12e36c81e03bfe7fd4217299b2166ea0d8",
-    "rtl/npu/dma/axi_write_page_guard.sv": "acb3e356b4c84dba27b36c4b6fefe9c485592401ec900fb561c6b70d50102ceb",
-    "rtl/npu/conv/conv_axi_read_guard.sv": "b6609cffd29ae69b1fcae97eab0eb50c99d88f1af69333c07f32a76d96e8b5ad",
+    "rtl/npu/dma/axi_dual_block_dma.sv": "5b8d89116261df0953086a22680f27d03f7d7f2610f7ab578129971802088882",
+    "rtl/npu/dma/axi_linear_block_dma.sv": "d8fc66a5f21703ab3cd5aaa60d8a63260fa1b3354a136a92c13204ec1d0314c6",
+    "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+    "rtl/npu/conv/conv_im2col_frontend.sv": "cf285ce60b7a15c0d362f7bf8966d297ebef585b6490f15a98a77c4b8ef75028",
+    "rtl/npu/dma/conv_window_queue.sv": "44b36e00b634db6a6b52160b33358fede94fa64d80be7147c3f203eb32e1d4e9",
+    "rtl/npu/dma/axi_write_page_guard.sv": "b6a8ff0273cb4cef306fa604cc4c7e57bf6c0a413c60f2a2ae3110bc20e913f9",
+    "rtl/npu/conv/conv_axi_read_guard.sv": "6baaa01d07b2ba41910215d509de4082e222764668d13c1192353d0c784c4f15",
     "rtl/npu/conv/conv_axi_read_mux.sv": "1a22339597320f0327c28452d47053f2cb3eb40d0f37ed0a62f6ffdefc2f5de8"
   },
   "snapshot_sha256": {
     "conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
-    "axi_dual_block_dma.sv": "aafc0fa03b52a50d6f6a12dcf53fbaab3cb8bec1e039d29df0ad115efe52fd29",
-    "axi_linear_block_dma.sv": "5baa97c81a8439ce5795570314e2f0e8f8540a04cc41dd0697e46e285fd49eec",
-    "regfile.v": "83ecc8d15863bfd99991daaacd1977334beb9fa1881362eadc6b5231e54b859f",
-    "add_equal.sv": "002b9ba21a7f9311e33f49e46085a542caa9ab52338821c003183bd1991e031c",
-    "conv_im2col_frontend.sv": "94b2274d31e5407b6a84346a8c10254a207a32bc54fce8364daf114035b8a8b8",
-    "conv_window_queue.sv": "d41a088d79299670da50347db2fd4e1d8fcaf913633482cc6aed0ca91c9c57ea",
+    "axi_dual_block_dma.sv": "1ca2cce805850681a41cf009bb42422c8ceafc52df868c4c93c687f3b17adc61",
+    "axi_linear_block_dma.sv": "d8fc66a5f21703ab3cd5aaa60d8a63260fa1b3354a136a92c13204ec1d0314c6",
+    "regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+    "conv_im2col_frontend.sv": "a4edf08cafb987401ecdf02223dacea1ddc1e340fc28b1d9485b5736ba056913",
+    "conv_window_queue.sv": "dc68397fe7ec2f1449bb178d3a10b0d4df5d416a6820ee36be30088cc0e559aa",
     "axi_write_page_guard.sv": "940f1f4f597776e8eb4c062e01998df9535cabd72ca27abe997ae85314c85a7d",
     "conv_axi_read_guard.sv": "57fbbd70472dadee291f21de15ac6d27e52ed0f86ed510f04d0877f817f0a377",
     "conv_axi_read_mux.sv": "750d613f0cfdb3ff5ae3471c5f40e5d33b748941f4df2235c2b0f172bfe92981"
   },
-  "driver_sha256": "7a2c068b6a798ebab750dc053ae5328a90a7bf56e3932dcdc963d42250186385",
+  "driver_sha256": "a50cf6a8416e86339c42c0d541fc4ed6cfb789bf49f8a015d000200cdd84a416",
   "actual_modules": [
     "axi_dual_block_dma",
     "axi_linear_block_dma",
@@ -44,7 +44,7 @@
   "initial_state": "arbitrary defined values before the first reset clock",
   "properties": {
     "s8": "wr_use_16bits == 0 implies wr_col_base[2:0] == 0",
-    "s16": "wr_use_16bits == 1 implies wr_valid[7:4] == 0",
+    "s16": "wr_use_16bits == 1 implies wr_valid[7:4] == 0 unless the output is wide im2col",
     "qualification": "every cycle following the first reset clock, including invalid output cycles"
   },
   "profiles": [
@@ -53,22 +53,48 @@
       "IM2COL_SIZE": 16,
       "BUS_WIDTH": 64,
       "DATA_WIDTH": 16,
+      "WINDOW_LANES": 4,
       "passed": true,
       "reset_base_steps": 2,
       "induction_steps": 1,
-      "script_sha256": "17466d864c6f5b66aa58bf7eb111caca913a5c1507e7a6a3fa5a53192da9b0bd",
-      "log_sha256": "4e641615c348ac5cf42d5dbb90472bc9d89c22ee00761e68c9011517d73442c0"
+      "script_sha256": "a4a8b3cbac3ae993725906bf1d05ecbb4b9ffdf95b9b1bfc804811af8b1c7c85",
+      "log_sha256": "59f8ddb76e3f02065c73ee4ecf96ba85cf7f05dd2eb14bc4650694843164c2a9"
+    },
+    {
+      "SIZE": 16,
+      "IM2COL_SIZE": 16,
+      "BUS_WIDTH": 64,
+      "DATA_WIDTH": 16,
+      "WINDOW_LANES": 8,
+      "passed": true,
+      "reset_base_steps": 2,
+      "induction_steps": 1,
+      "script_sha256": "92be3af6457f0d4b17761265012ed6c3c68e158ebc3c8ae6cc39016cbf48ad07",
+      "log_sha256": "7e17288402d895361753392732ef2aa020c3addba65b2f263563ac9587c9a937"
     },
     {
       "SIZE": 64,
       "IM2COL_SIZE": 16,
       "BUS_WIDTH": 64,
       "DATA_WIDTH": 16,
+      "WINDOW_LANES": 4,
       "passed": true,
       "reset_base_steps": 2,
       "induction_steps": 1,
-      "script_sha256": "832b9e2a4cd9b637938c7b643be0cc28fc6ae70e986bc70d7931f65e3c36f693",
-      "log_sha256": "f6e218f65c4e164894e134844fac5492bbfbd34211cd04e2be5514cadc0c917c"
+      "script_sha256": "8281532f20f71613bab6b59fc3fa68045f73b8d6ef8ccb102cfff72cf162e200",
+      "log_sha256": "566f8a99b8e4a3b83f1c99fe1065068c9e041eb714d7af00eb92fff5d1fee59a"
+    },
+    {
+      "SIZE": 64,
+      "IM2COL_SIZE": 16,
+      "BUS_WIDTH": 64,
+      "DATA_WIDTH": 16,
+      "WINDOW_LANES": 8,
+      "passed": true,
+      "reset_base_steps": 2,
+      "induction_steps": 1,
+      "script_sha256": "3d8530b99c8cd625c8f2f5342a1db4385b86271ef917731eeffbde70e48995a4",
+      "log_sha256": "c1560a2f28f096b754eddd78d9891ae3a34ed0be274bdfa266e8263205b0f733"
     }
   ]
 }
