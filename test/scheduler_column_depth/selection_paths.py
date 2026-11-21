@@ -28,10 +28,16 @@ def analyze_selection(folder):
         return {"cells": paths["longest_register_path_cells"],
                 "path": entries[0] if entries else None}
 
-    report = {"opened_paths": {}, "protected_paths": {}, "phase_paths": {}, "output_paths": {}}
-    for section, source in (("opened_paths", "opened"),
-                            ("protected_paths", "protected_valid"), ("phase_paths", "phase")):
-        for target in ("all_registers", "phase", "selected_id_q", "frame_k$rdreg", "next_column_tile", "cursor"):
+    sources = (("opened_paths", "opened"), ("protected_paths", "protected_valid"),
+               ("phase_paths", "phase"), ("frame_open_paths", "frame_open"),
+               ("live_paths", "live"), ("cursor_paths", "cursor"))
+    report = {section: {} for section, _ in sources}
+    report["output_paths"] = {}
+    # 帧资格和游标可以同时影响候选索引及状态控制端，分别统计这些完整连接路径。
+    for section, source in sources:
+        for target in ("all_registers", "phase", "selected_id_q", "frame_k$rdreg",
+                       "next_column_tile", "cursor", "live", "resume_valid",
+                       "command_buffer_valid"):
             result = connected_paths(
                 module, limit=1, group_limit=1,
                 root_filter=lambda name, cell, port: origin(cell).split(" ")[0] == source,

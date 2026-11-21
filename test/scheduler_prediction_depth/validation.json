@@ -1,0 +1,462 @@
+{
+  "passed": true,
+  "source": "rtl/npu/control/ps_window_scheduler.sv",
+  "source_sha256": "3c6ee15d4b51a3d3d8f8301c41b236045d603ff7399c0c074d3feb1932c21d8d",
+  "reference_sha256": "9f6d1f5376caf4bada59b2f16ee7951c6e5ad249415ec0b6f249b8dc405e4dcb",
+  "parameters": {
+    "SIZE": 16,
+    "FRAME_COUNT": 16,
+    "MAX_REUSE_TILES": 32
+  },
+  "formal": {
+    "passed": true,
+    "inputs": {
+      "source": "rtl/npu/control/ps_window_scheduler.sv",
+      "reference_commit": null,
+      "reference_file": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/source/reference/rtl/npu/control/ps_window_scheduler.sv",
+      "source_path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/source/grouped/rtl/npu/control/ps_window_scheduler.sv",
+      "reference_sha256": "a9dd6c36f350ccb97e4d1c5f30fc57412fdf709771f26f689924426c06b7fecf",
+      "source_sha256": "3c6ee15d4b51a3d3d8f8301c41b236045d603ff7399c0c074d3feb1932c21d8d",
+      "helper_sha256": {
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67"
+      }
+    },
+    "input_assumptions": [],
+    "state_relation": "Every public output and every shared clocked state is compared; equal register states remain equal for every input sequence.",
+    "memory_relation": "Both complete metadata memories and frame K memories are expanded and compared.",
+    "additional_relation_outputs": [
+      "frame_open"
+    ],
+    "increment_profiles": [
+      {
+        "width": 29,
+        "passed": true,
+        "script_sha256": "76d094427aa1e89ddf324b262d7649fd66b7ff563f69405887b0c85aef28ff53",
+        "log_sha256": "3d888203ff090770f60309fb3c91e0b44300e7d33f2418194adcd26790173baa"
+      }
+    ],
+    "scheduler_profiles": [
+      {
+        "SIZE": 1,
+        "FRAME_COUNT": 1,
+        "MAX_REUSE_TILES": 1,
+        "equivalent_bits": 1237,
+        "passed": true,
+        "script_sha256": "50f78a723eeab419c3a4f397e6e41e7efdf3fffe7869fcebe4daf813831ba939",
+        "log_sha256": "78a458c89378a89dc3bc2a304c08c2bb88e37e9dbaaff17315ab67847961c801"
+      },
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 3,
+        "MAX_REUSE_TILES": 4,
+        "equivalent_bits": 1438,
+        "passed": true,
+        "script_sha256": "27e2f68c575c9b1c57ad3b21373d5c4ccd5edf57377964d0870f8a9c542e79cd",
+        "log_sha256": "35f01c067910a70d83c78f5129b4e38fe1dc79bb97aa1e190dc3d285ccb40c5b"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "equivalent_bits": 2509,
+        "passed": true,
+        "script_sha256": "689dea3ff7814b3686541ea92b1b757fb9c802f7398b9a7e0214e3ceb2a542a4",
+        "log_sha256": "86e4ce7e0bd32e4eb6518fe2a4bbed12052c52245f750c96c2b1406f9f18b207"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 0,
+        "equivalent_bits": 3476,
+        "passed": true,
+        "script_sha256": "109d1f4d8c13681f10ad36771f6d927f40b74f5e693cfa75aacc51cef1245d91",
+        "log_sha256": "a6ee2090df731a835538cb9106d90c2bc01efd4b902a736ad844352249727f56"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 17,
+        "MAX_REUSE_TILES": 64,
+        "equivalent_bits": 2648,
+        "passed": true,
+        "script_sha256": "01db88a8b34ab3b9c272b6d0e856bc7feefb332a773f8970425b0ca685ebf748",
+        "log_sha256": "b13d4dffc70ad2790a8101f4d7590b8cd4cecbdd8ca34602eec58bf036f49679"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "strict_four_state": true,
+    "source_sha256": "3c6ee15d4b51a3d3d8f8301c41b236045d603ff7399c0c074d3feb1932c21d8d",
+    "profiles": [
+      {
+        "width": 1,
+        "frames": 1,
+        "passed": true,
+        "checks": 4108,
+        "model_sha256": "5fa8268260768b9d9a8f9ed40d77c9886881a347e21d6cfe8594469dcc2bdf13",
+        "test_sha256": "616554cdddba98ec45566e6299daadc9312d41fb4ba67f4769a2e0de32498d37",
+        "log_sha256": "218742dd44d1f0324f651b7d3556fae9a11d1bca47b996b11c2954defdea642c"
+      },
+      {
+        "width": 2,
+        "frames": 3,
+        "passed": true,
+        "checks": 4116,
+        "model_sha256": "e1216902bff56da14c95c10043cd6c9c29c76976bdd6644ac8df341422180527",
+        "test_sha256": "ef7e0387928b6efcc72ac4e708d0caa4178d0ddd45153ab744af32e7928bb6c5",
+        "log_sha256": "8bc4302b570cc3971bb9870f965c23989c5c3c066c444f5a3a88ec92c75d8236"
+      },
+      {
+        "width": 5,
+        "frames": 4,
+        "passed": true,
+        "checks": 4140,
+        "model_sha256": "ccbb6a12cd94e041bd27aed07d6b01953c2b0397991a28e5ad3cad61bb7bc27d",
+        "test_sha256": "99b8cdb82ecafeb09421f93c8b37196b0a441de8c1d48db62b9e0d1963bbe82e",
+        "log_sha256": "13426e66359d9f6e5369701516c5788848db9075e8f5417eb5000751cd63c3d6"
+      },
+      {
+        "width": 10,
+        "frames": 16,
+        "passed": true,
+        "checks": 4180,
+        "model_sha256": "8ee1631ebd48c8e7a9fa9a09f2210dbdb8e503e99f56cef41d5a8121a0197b70",
+        "test_sha256": "3a4b3794bee67435d09ec94680cd0544883f98acb0951da8057f750c658771f2",
+        "log_sha256": "6f55a791f3d8c03283a748e395fde1e30e22409a053579e8fcbd644edf2cf3a9"
+      },
+      {
+        "width": 11,
+        "frames": 17,
+        "passed": true,
+        "checks": 4188,
+        "model_sha256": "1827419e1a42e25794143c6570e55f9f11441a36e7a02c0c8f71b06eb16a4efa",
+        "test_sha256": "2245f1c1be98e88500ad1cd857144300c6470a895201fdbc4e557829117ae0ae",
+        "log_sha256": "d7721db589e458aba2cce08ac03e3c7ece41850cc340bf527e2985d79f38bc7c"
+      },
+      {
+        "width": 32,
+        "frames": 16,
+        "passed": true,
+        "checks": 4356,
+        "model_sha256": "046c077df3db0d59ddf8c4df455d4a3e30ee712d116ea5cd7eafb6f80ca60899",
+        "test_sha256": "b878ae3f9762927f5d62e7c04e43a999002b3c7ea766ee35b2f43fde1db020d7",
+        "log_sha256": "171cbedc53cb7bdc6248cfb621741efe729e29f7b92e97c3470f089ebbdef8e9"
+      },
+      {
+        "width": 33,
+        "frames": 33,
+        "passed": true,
+        "checks": 4364,
+        "model_sha256": "61003d0e0cdfd0b7e0f0a7642bcf552c84785097e1964dc146713a530bd0c4cb",
+        "test_sha256": "d90e804a26f3eabd65a581faa300f2a8e1b315c27d77c63946152fc6f5a77cd0",
+        "log_sha256": "f08544c0477c1089e26c2d967424307d9dedced64d917d4ec55b5fdb36ff2397"
+      }
+    ],
+    "checks": 29452
+  },
+  "numeric": {
+    "passed": true,
+    "cases": 975,
+    "commands": 182426,
+    "tests": {
+      "unsliced": {
+        "passed": true,
+        "cases": 321,
+        "commands": 52104,
+        "pressure_events": 3961,
+        "early_finish_frames": 582,
+        "invalid_configurations": 4,
+        "source_sha256": {
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/source/grouped/rtl/npu/control/ps_window_scheduler.sv": "3c6ee15d4b51a3d3d8f8301c41b236045d603ff7399c0c074d3feb1932c21d8d",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_test.cpp": "fd91e071e5120fca7fcfda592e23636b479563c3d582918714adee01c2dc280c",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_ref.hpp": "e45053218655ce44e8ddaaf677a468dce99378f9e3a381307dd0313fa2e9350b",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/run_window_scheduler.py": "bf200cc5d6a5d71e316b7044ce15a552c69bc9f8ed29b71c06b3ab3311cedc55",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv": "90b8aecf83fb8e41be6ee3b3caf1fa5e788a875d6976c1893c4cacd8744c2e90",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv": "7ec792a39f50173c36840bdf65c7ed36cf12ea142ce6f75843325ca853ac67fa"
+        },
+        "binary_sha256": "f5d4bafc6e7b0fdb10fcd6d4cc015b2ae102064898aaf5009797590e8391fc41",
+        "compile_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--assert",
+          "-j",
+          "1",
+          "--top-module",
+          "window_scheduler_tb",
+          "--prefix",
+          "Vps_window_scheduler",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/grouped_numeric/unsliced/obj",
+          "-Wno-fatal",
+          "--output-groups",
+          "0",
+          "-CFLAGS",
+          "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all",
+          "-LDFLAGS",
+          "-fsanitize=undefined",
+          "-MAKEFLAGS",
+          "-B",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/source/grouped/rtl/npu/control/ps_window_scheduler.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/onehot_check.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_test.cpp"
+        ],
+        "run_command": [
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/grouped_numeric/unsliced/obj/Vps_window_scheduler"
+        ],
+        "undefined_behavior_sanitizer": true,
+        "sanitized_translation_units": 4,
+        "elapsed_seconds": 17.330904094997095,
+        "verilator": "Verilator 5.054 2026-11-01 rev v5.054",
+        "input_format": "One matrix row contains zero to four 128-bit words; per-bank reservation uses reserve_rows."
+      },
+      "sliced": {
+        "passed": true,
+        "cases": 654,
+        "slice_1_cases": 321,
+        "slice_2_cases": 321,
+        "directed_cases": 12,
+        "commands": 130322,
+        "mnk_tile_checks": 167577,
+        "pressure_events": 10799,
+        "opening_pressures": 9563,
+        "update_pressures": 1236,
+        "early_finish_frames": 1236,
+        "frame_id_reuses": 25212,
+        "tail_frames": 1346,
+        "reserve_checks": 141121,
+        "bank_checks": 1085772,
+        "raw_cases": 218,
+        "word_rotation_cases": 218,
+        "bounded_bank_cases": 218,
+        "peak_bank_words": [
+          130,
+          130,
+          129,
+          128
+        ],
+        "source_sha256": {
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/source/grouped/rtl/npu/control/ps_window_scheduler.sv": "3c6ee15d4b51a3d3d8f8301c41b236045d603ff7399c0c074d3feb1932c21d8d",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_fragment_test.cpp": "71cf1149ffd5ab2301aa612393c36cae0a6040cb29b9e608e5745c641c1c9c44",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_ref.hpp": "e45053218655ce44e8ddaaf677a468dce99378f9e3a381307dd0313fa2e9350b",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/run_window_scheduler.py": "bf200cc5d6a5d71e316b7044ce15a552c69bc9f8ed29b71c06b3ab3311cedc55",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv": "90b8aecf83fb8e41be6ee3b3caf1fa5e788a875d6976c1893c4cacd8744c2e90",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv": "7ec792a39f50173c36840bdf65c7ed36cf12ea142ce6f75843325ca853ac67fa"
+        },
+        "binary_sha256": "e881264bfa35039dd508f39ba7faa73a164c4ec77867f337df068f1c9fb29d43",
+        "compile_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--assert",
+          "-j",
+          "1",
+          "--top-module",
+          "window_scheduler_tb",
+          "--prefix",
+          "Vps_window_scheduler",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/grouped_numeric/sliced/obj",
+          "-Wno-fatal",
+          "--output-groups",
+          "0",
+          "-CFLAGS",
+          "-std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all",
+          "-LDFLAGS",
+          "-fsanitize=undefined",
+          "-MAKEFLAGS",
+          "-B",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/source/grouped/rtl/npu/control/ps_window_scheduler.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/onehot_check.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_tb.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/monitors/ps_window_scheduler_observer.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/ps_compression/window_scheduler_fragment_test.cpp"
+        ],
+        "run_command": [
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/control_paths_r5/grouped_numeric/sliced/obj/Vps_window_scheduler"
+        ],
+        "undefined_behavior_sanitizer": true,
+        "sanitized_translation_units": 4,
+        "elapsed_seconds": 19.601459541998338,
+        "verilator": "Verilator 5.054 2026-11-01 rev v5.054",
+        "input_format": "One matrix row contains zero to four 128-bit words; per-bank reservation uses reserve_rows."
+      }
+    }
+  },
+  "measurements": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1262,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1318,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 966,
+        "dsp48e1": 7,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "carry4": 72,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 72,
+          "DSP48E1": 7,
+          "FDCE": 356,
+          "FDPE": 3,
+          "FDRE": 598,
+          "FDSE": 9,
+          "INV": 110,
+          "LUT2": 270,
+          "LUT3": 307,
+          "LUT4": 182,
+          "LUT5": 264,
+          "LUT6": 239,
+          "MUXF7": 1,
+          "RAM32M": 14,
+          "RAMB36E1": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 9,
+      "graph_complete": true,
+      "metrics_sha256": "b33213f079c8bfbcbbc5540ecc25ef5f5099229a28dc9bef96baa33c6cba3292",
+      "manifest_sha256": "94bb9f2c3722a17637c51157bab610595528cdcd2b7fc185bf1aff9f183cbf57"
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 1289,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1345,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 966,
+        "dsp48e1": 7,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "carry4": 72,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 72,
+          "DSP48E1": 7,
+          "FDCE": 356,
+          "FDPE": 3,
+          "FDRE": 598,
+          "FDSE": 9,
+          "INV": 110,
+          "LUT2": 327,
+          "LUT3": 283,
+          "LUT4": 201,
+          "LUT5": 259,
+          "LUT6": 219,
+          "MUXF7": 2,
+          "MUXF8": 1,
+          "RAM32M": 14,
+          "RAMB36E1": 2
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 9,
+      "graph_complete": true,
+      "metrics_sha256": "71580358a35305336967aef435ac6248a5a83ca21350e9bd7958bc0ac35465e8",
+      "manifest_sha256": "4424425dc59449a8367fa99f951435caa217d9f5807a1cd01a451a8b738fb15e"
+    }
+  },
+  "commit_formal": {
+    "passed": true,
+    "inputs": {
+      "source": "rtl/npu/control/ps_window_scheduler.sv",
+      "reference_commit": "415a70a",
+      "reference_file": null,
+      "source_path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/control/ps_window_scheduler.sv",
+      "reference_sha256": "9f6d1f5376caf4bada59b2f16ee7951c6e5ad249415ec0b6f249b8dc405e4dcb",
+      "source_sha256": "3c6ee15d4b51a3d3d8f8301c41b236045d603ff7399c0c074d3feb1932c21d8d",
+      "helper_sha256": {
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67"
+      }
+    },
+    "input_assumptions": [],
+    "state_relation": "Every public output and every shared clocked state is compared; equal register states remain equal for every input sequence.",
+    "memory_relation": "Both complete metadata memories and frame K memories are expanded and compared.",
+    "additional_relation_outputs": [
+      "frame_open"
+    ],
+    "increment_profiles": [
+      {
+        "width": 29,
+        "passed": true,
+        "script_sha256": "d630575eb8cd00be271f478c2d743a75fad78762722fba8b83f0d5cfa1a05eab",
+        "log_sha256": "2fbc33e095a3872ea1967c2bcb139c7996422fb7ed82028aafb4258e543fe78e"
+      }
+    ],
+    "scheduler_profiles": [
+      {
+        "SIZE": 1,
+        "FRAME_COUNT": 1,
+        "MAX_REUSE_TILES": 1,
+        "equivalent_bits": 1237,
+        "passed": true,
+        "script_sha256": "21124d1a3ec9139d9272964509a86baa9042c241032d6facaed735617a930837",
+        "log_sha256": "7c9bcb54690c76ed3b09e2362794a2d719c53beff22dd540dca740a5594a9623"
+      },
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 3,
+        "MAX_REUSE_TILES": 4,
+        "equivalent_bits": 1432,
+        "passed": true,
+        "script_sha256": "6c8e44909a372cdd302e3028bfd1d89d4513479621f0fbefb24bef02e722ccb4",
+        "log_sha256": "5af97ca45d4b555b2546d470571aa49058cb491f591fa9233de55d0aef04ac47"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "equivalent_bits": 2477,
+        "passed": true,
+        "script_sha256": "53a0bfb245ac87a3883f1d08cffe622aeb2293b7b331f6d43040e427c9671dfc",
+        "log_sha256": "52fb04853456d613127d59302d5716227627aee61652ec3796fa2186d02c289f"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 0,
+        "equivalent_bits": 3444,
+        "passed": true,
+        "script_sha256": "cca56a3a2c249af3a5807d1a75b91b46e505cbbe3fb7db965994748a26b0dc4d",
+        "log_sha256": "c90d842baea1fa9a9d99c3dba858c393dae8bee3eaafac86483c8af330a9cba2"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 17,
+        "MAX_REUSE_TILES": 64,
+        "equivalent_bits": 2614,
+        "passed": true,
+        "script_sha256": "3bd4ad9dec794d0034d4c3a79f73e7e697ff0e0fce4b49b02c95ac05f49ab8a3",
+        "log_sha256": "c10bd00952ff406c1cf759f1b43c4240f9b7f5801a750619604116f9fb0b81eb"
+      }
+    ]
+  },
+  "targeted_paths": {
+    "prediction_frame_register_maximum": 6,
+    "prediction_is_active_register_maximum": 8,
+    "detail": "build/control_paths_r5/grouped_selection_paths.json"
+  },
+  "four_state_runner_sha256": "4c39b1c21e2cdfef672c59c582649fbf0a1ca64ff36f2ffeded23ef89bd07ebb"
+}

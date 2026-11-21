@@ -1,4 +1,4 @@
-// Schedule physical output frames while retaining each frame's K progress.
+// 调度物理输出帧，并保存每一帧沿 K 维度的执行进度。
 module ps_window_scheduler #(
     parameter int unsigned SIZE = 16,
     parameter int unsigned FRAME_COUNT = 16,
@@ -71,8 +71,8 @@ module ps_window_scheduler #(
     logic [ID_W-1:0] protected_id, resume_id, active_id;
     logic active_init, active_final;
     logic [31:0] active_q0, active_column, active_row, active_rows;
-    // 帧资格、分组存在性和状态选择分别保存组合结果。
-    (* keep = 1 *) logic candidate_found;
+    // 帧资格、分组存在性和状态选择各自描述独立的组合关系。
+    logic candidate_found;
     logic [ID_W-1:0] candidate_id, scanned_id, selected_id_q;
     logic selected_id_valid, selected_init_q;
     logic [ROW_COUNT_W-1:0] selected_initial_offset;
@@ -91,12 +91,11 @@ module ps_window_scheduler #(
     logic [SHIFT:0] candidate_cols, candidate_k;
     logic candidate_final;
     wire candidate_ready = candidate_found && selected_id_valid;
-    (* keep = 1 *) logic [FRAME_COUNT-1:0] frame_open;
-    (* keep = 1 *) logic [FRAME_COUNT-1:0] candidate_eligible, candidate_after_cursor;
+    logic [FRAME_COUNT-1:0] frame_open;
+    logic [FRAME_COUNT-1:0] candidate_eligible, candidate_after_cursor;
     logic [FRAME_COUNT-1:0] candidate_select;
-    (* keep = 1 *) logic candidate_exists, candidate_after_exists;
-    (* keep = 1 *) logic [ID_W-1:0] eligible_first_id, after_first_id;
-    (* keep = 1 *) logic [FRAME_COUNT-1:0] eligible_first, after_first;
+    logic candidate_exists, candidate_after_exists;
+    logic [ID_W-1:0] eligible_first_id, after_first_id;
     logic [TILE_W:0] column_tiles, remaining_columns;
     logic [TILE_W:0] incoming_column_tiles;
     logic [TILE_W:0] remaining_columns_i_a, remaining_columns_i_b, remaining_columns_o_sum;
@@ -200,7 +199,8 @@ module ps_window_scheduler #(
     localparam int unsigned PRODUCT_W = 2 * CAP_W + 1;
     logic [ROW_COUNT_W-1:0] prepare_rows;
     localparam int PART_MATH_W = ROW_COUNT_W > (ROW_PART_W+1) ? ROW_COUNT_W : (ROW_PART_W+1);
-    logic [PART_MATH_W-1:0] prepare_rows_extended, prepare_rows_last;
+    logic [PART_MATH_W-1:0] prepare_rows_extended, prepare_rows_last, prepare_rows_last_binary;
+    logic [PART_MATH_W-1:0] prepare_rows_lower_nonzero;
     logic [PART_MATH_W-1:0] prepare_part_quotient, prepare_part_rounded;
     logic [TILE_W:0] prepare_remaining_columns;
     logic [ROW_PART_W:0] prepare_parts;
@@ -211,7 +211,17 @@ module ps_window_scheduler #(
     // 切片取整的减一与加一按位计算，移位保持完整表达式宽度。
     // 减法必须在扩展后执行，以保留零输入在 PART_MATH_W 位上的回绕。
     assign prepare_rows_extended = PART_MATH_W'(prepare_rows);
-    assign prepare_rows_last = prepare_rows_extended - PART_MATH_W'(1);
+    assign prepare_rows_lower_nonzero[0] = 1'b0;
+    for (genvar part_bit = 1; part_bit < PART_MATH_W; part_bit++) begin : g_part_decrement
+        assign prepare_rows_lower_nonzero[part_bit] = |prepare_rows_extended[part_bit-1:0];
+    end
+    assign prepare_rows_last_binary = prepare_rows_extended ^ ~prepare_rows_lower_nonzero;
+    always_comb begin
+        case (^prepare_rows_extended)
+            1'b0, 1'b1: prepare_rows_last = prepare_rows_last_binary;
+            default: prepare_rows_last = prepare_rows_extended - PART_MATH_W'(1);
+        endcase
+    end
     assign prepare_part_quotient = prepare_rows_last >> slice_shift;
     assign prepare_part_rounded[0] = ~prepare_part_quotient[0];
     for (genvar part_bit = 1; part_bit < PART_MATH_W; part_bit++) begin : g_part_increment
@@ -290,85 +300,15 @@ module ps_window_scheduler #(
     assign done_valid = phase == COMPLETE;
 
 
-    // 四帧组内与组间分别建立平衡前缀，保存各层归并结果。
-    // 首候选的排除条件只经过对数级前缀，避免共享表达式变成逐帧串接。
-    localparam int p_select_group_width = 4;
-    localparam int p_select_groups = (FRAME_COUNT + p_select_group_width - 1) / p_select_group_width;
-    localparam int p_select_levels = $clog2(p_select_groups);
-    (* keep = 1 *) logic [p_select_groups-1:0] eligible_group_any, after_group_any;
-    (* keep = 1 *) logic [p_select_groups-1:0] eligible_group_prefix [p_select_levels+1];
-    (* keep = 1 *) logic [p_select_groups-1:0] after_group_prefix [p_select_levels+1];
-    assign eligible_group_prefix[0] = eligible_group_any;
-    assign after_group_prefix[0] = after_group_any;
-    assign candidate_exists = eligible_group_prefix[p_select_levels][p_select_groups-1];
-    assign candidate_after_exists = after_group_prefix[p_select_levels][p_select_groups-1];
-    for (genvar level = 0; level < p_select_levels; level++) begin : g_selection_prefix
-        for (genvar group = 0; group < p_select_groups; group++) begin : g_group
-            if (group >= (1 << level)) begin : g_merge
-                assign eligible_group_prefix[level+1][group] = eligible_group_prefix[level][group] |
-                    eligible_group_prefix[level][group-(1 << level)];
-                assign after_group_prefix[level+1][group] = after_group_prefix[level][group] |
-                    after_group_prefix[level][group-(1 << level)];
-            end else begin : g_pass
-                assign eligible_group_prefix[level+1][group] = eligible_group_prefix[level][group];
-                assign after_group_prefix[level+1][group] = after_group_prefix[level][group];
-            end
-        end
-    end
-    for (genvar group = 0; group < p_select_groups; group++) begin : g_candidate_group
-        localparam int p_first = group * p_select_group_width;
-        localparam int p_bits = FRAME_COUNT - p_first < p_select_group_width ?
-            FRAME_COUNT - p_first : p_select_group_width;
-        localparam int p_levels = $clog2(p_bits);
-        (* keep = 1 *) logic [p_bits-1:0] eligible_prefix [p_levels+1];
-        (* keep = 1 *) logic [p_bits-1:0] after_prefix [p_levels+1];
-        logic eligible_groups_empty, after_groups_empty;
-        assign eligible_prefix[0] = candidate_eligible[p_first +: p_bits];
-        assign after_prefix[0] = candidate_after_cursor[p_first +: p_bits];
-        assign eligible_group_any[group] = eligible_prefix[p_levels][p_bits-1];
-        assign after_group_any[group] = after_prefix[p_levels][p_bits-1];
-        for (genvar level = 0; level < p_levels; level++) begin : g_local_prefix
-            for (genvar offset = 0; offset < p_bits; offset++) begin : g_position
-                if (offset >= (1 << level)) begin : g_merge
-                    assign eligible_prefix[level+1][offset] = eligible_prefix[level][offset] |
-                        eligible_prefix[level][offset-(1 << level)];
-                    assign after_prefix[level+1][offset] = after_prefix[level][offset] |
-                        after_prefix[level][offset-(1 << level)];
-                end else begin : g_pass
-                    assign eligible_prefix[level+1][offset] = eligible_prefix[level][offset];
-                    assign after_prefix[level+1][offset] = after_prefix[level][offset];
-                end
-            end
-        end
-        if (group == 0) begin : g_first
-            assign eligible_groups_empty = 1'b1;
-            assign after_groups_empty = 1'b1;
-        end else begin : g_later
-            assign eligible_groups_empty = !eligible_group_prefix[p_select_levels][group-1];
-            assign after_groups_empty = !after_group_prefix[p_select_levels][group-1];
-        end
-        for (genvar offset = 0; offset < p_bits; offset++) begin : g_frame
-            if (offset == 0) begin : g_first
-                assign eligible_first[p_first+offset] =
-                    candidate_eligible[p_first+offset] && eligible_groups_empty;
-                assign after_first[p_first+offset] =
-                    candidate_after_cursor[p_first+offset] && after_groups_empty;
-            end else begin : g_later
-                assign eligible_first[p_first+offset] = candidate_eligible[p_first+offset] &&
-                    eligible_groups_empty && !eligible_prefix[p_levels][offset-1];
-                assign after_first[p_first+offset] = candidate_after_cursor[p_first+offset] &&
-                    after_groups_empty && !after_prefix[p_levels][offset-1];
-            end
-        end
-    end
-    always_comb begin
-        eligible_first_id = '0;
-        after_first_id = '0;
-        for (int i = 0; i < FRAME_COUNT; i++) begin
-            eligible_first_id |= ID_W'(i) & {ID_W{eligible_first[i]}};
-            after_first_id |= ID_W'(i) & {ID_W{after_first[i]}};
-        end
-    end
+    // 候选集合分别编码，状态和扫描起点在末端选择编号。
+    assign candidate_exists = |candidate_eligible;
+    assign candidate_after_exists = |candidate_after_cursor;
+    ps_scheduler_priority #(.p_frames(FRAME_COUNT), .p_id_width(ID_W)) u_eligible_priority (
+        .i_eligible(candidate_eligible), .o_id(eligible_first_id)
+    );
+    ps_scheduler_priority #(.p_frames(FRAME_COUNT), .p_id_width(ID_W)) u_after_priority (
+        .i_eligible(candidate_after_cursor), .o_id(after_first_id)
+    );
 
     // 帧资格与状态选择并行计算，扫描状态只在末端选择候选编号。
     always_comb begin
@@ -444,8 +384,12 @@ module ps_window_scheduler #(
     logic [3:0] prediction_valid;
     logic prediction_request, prediction_reads_frame;
     logic [ID_W-1:0] prediction_frame;
-    logic [FRAME_COUNT-1:0] prediction_selection, prediction_selection_q;
-    (* keep = 1 *) logic [FRAME_COUNT-1:0] prediction_first;
+    logic [FRAME_COUNT-1:0] prediction_selection_q;
+    logic [FRAME_COUNT-1:0] prediction_eligible, prediction_after_start;
+    logic [FRAME_COUNT-1:0] prediction_eligible_q, prediction_after_start_q;
+    (* keep = "true" *) logic [ID_W-1:0] prediction_eligible_frame, prediction_after_frame;
+    (* keep = "true" *) logic prediction_eligible_is_active, prediction_after_is_active;
+    logic prediction_is_active;
     logic prediction_reads_frame_s0;
     logic [31:0] prediction_direct_q, prediction_direct_column;
     logic prediction_reads_frame_q, prediction_is_active_q;
@@ -453,17 +397,17 @@ module ps_window_scheduler #(
     logic [31:0] prediction_q_s0, prediction_column_s0, prediction_q_direct_s1, prediction_column_direct_s1;
     logic [31:0] prediction_q_s1, prediction_column_s1;
     always_comb begin : select_lookahead
-        logic [FRAME_COUNT-1:0] future_live, future_select;
-        (* keep = 1 *) logic [FRAME_COUNT-1:0] future_eligible, future_after_start;
+        logic [FRAME_COUNT-1:0] future_live;
+        logic [FRAME_COUNT-1:0] future_eligible, future_after_start;
         for (int unsigned i = 0; i < FRAME_COUNT; i++) begin
             future_live[i] = (active_id == ID_W'(i)) ? !active_final : live[i];
         end
         future_eligible = '0;
         future_after_start = '0;
-        future_select = '0;
         prediction_request = 1'b0;
         prediction_reads_frame = 1'b0;
-        prediction_selection = '0;
+        prediction_eligible = '0;
+        prediction_after_start = '0;
         prediction_direct_q = '0;
         prediction_direct_column = '0;
         if (command_active) begin
@@ -484,25 +428,51 @@ module ps_window_scheduler #(
                          ((phase == DRAINING) ? (!resume_valid || i >= resume_id) :
                           (active_after_frame == opened || i >= active_after_frame)));
                 end
-                future_select = (|future_after_start) ? future_after_start : future_eligible;
                 prediction_request = |future_eligible;
-                prediction_selection = future_select;
+                prediction_eligible = future_eligible;
+                prediction_after_start = future_after_start;
             end
         end
     end
-    for (genvar frame = 0; frame < FRAME_COUNT; frame++) begin : g_first_prediction
-        if (frame == 0) begin : g_first
-            assign prediction_first[frame] = prediction_selection_q[frame];
-        end else begin : g_later
-            assign prediction_first[frame] = prediction_selection_q[frame] &&
-                !(|prediction_selection_q[frame-1:0]);
+    // 两个集合并行编码，末端仅选择帧编号及活动帧匹配结果。
+    assign prediction_selection_q = (|prediction_after_start_q) ?
+        prediction_after_start_q : prediction_eligible_q;
+    function automatic logic [ID_W-1:0] first_prediction_frame(
+        input logic [FRAME_COUNT-1:0] selection
+    );
+        logic [FRAME_COUNT-1:0] first;
+        begin
+            first[0] = selection[0];
+            for (int frame = 1; frame < FRAME_COUNT; frame++) begin
+                first[frame] = selection[frame] && !(|(selection & ((FRAME_COUNT'(1) << frame) - 1'b1)));
+            end
+            first_prediction_frame = '0;
+            for (int frame = 0; frame < FRAME_COUNT; frame++) begin
+                first_prediction_frame |= ID_W'(frame) & {ID_W{first[frame]}};
+            end
         end
-    end
+    endfunction
+    ps_scheduler_priority #(.p_frames(FRAME_COUNT), .p_id_width(ID_W)) u_prediction_eligible (
+        .i_eligible(prediction_eligible_q), .o_id(prediction_eligible_frame)
+    );
+    ps_scheduler_priority #(.p_frames(FRAME_COUNT), .p_id_width(ID_W)) u_prediction_after (
+        .i_eligible(prediction_after_start_q), .o_id(prediction_after_frame)
+    );
+    assign prediction_eligible_is_active = prediction_eligible_frame == active_id;
+    assign prediction_after_is_active = prediction_after_frame == active_id;
     always_comb begin
-        prediction_frame = '0;
-        for (int i = 0; i < FRAME_COUNT; i++) begin
-            prediction_frame |= ID_W'(i) & {ID_W{prediction_first[i]}};
-        end
+        case (^{prediction_eligible_q, prediction_after_start_q})
+            1'b0, 1'b1: begin
+                prediction_frame = (|prediction_after_start_q) ?
+                    prediction_after_frame : prediction_eligible_frame;
+                prediction_is_active = (|prediction_after_start_q) ?
+                    prediction_after_is_active : prediction_eligible_is_active;
+            end
+            default: begin
+                prediction_frame = first_prediction_frame(prediction_selection_q);
+                prediction_is_active = prediction_frame == active_id;
+            end
+        endcase
     end
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) prediction_valid <= '0;
@@ -512,7 +482,8 @@ module ps_window_scheduler #(
     assign lookahead_valid = prediction_valid[3] && command_active;
     always_ff @(posedge clk) begin
         if (prediction_request) begin
-            prediction_selection_q <= prediction_selection;
+            prediction_eligible_q <= prediction_eligible;
+            prediction_after_start_q <= prediction_after_start;
             prediction_reads_frame_s0 <= prediction_reads_frame;
             prediction_q_s0 <= prediction_direct_q;
             prediction_column_s0 <= prediction_direct_column;
@@ -520,7 +491,7 @@ module ps_window_scheduler #(
         if (prediction_valid[0]) begin
             prediction_frame_q <= prediction_frame;
             prediction_reads_frame_q <= prediction_reads_frame_s0;
-            prediction_is_active_q <= prediction_frame == active_id;
+            prediction_is_active_q <= prediction_is_active;
             prediction_q_direct_s1 <= prediction_q_s0;
             prediction_column_direct_s1 <= prediction_column_s0;
         end
@@ -804,4 +775,76 @@ module ps_scheduler_any #(
         end
     end
     assign o_any = g_level[p_levels].g_node[0].any_set;
+endmodule
+
+// 四帧组内编码与组间选择并行计算，保留实际的分组归并节点。
+module ps_scheduler_priority #(
+    parameter int p_frames = 16,
+    parameter int p_id_width = (p_frames <= 1) ? 1 : $clog2(p_frames)
+) (
+    input wire [p_frames-1:0] i_eligible,
+    output logic [p_id_width-1:0] o_id
+);
+    localparam int p_group_width = 4;
+    localparam int p_groups = (p_frames + p_group_width - 1) / p_group_width;
+    logic [p_groups-1:0] group_any, group_first;
+    logic [p_id_width-1:0] group_id [p_groups];
+    logic [p_id_width-1:0] grouped_id, flat_id;
+    logic [p_frames-1:0] flat_first;
+
+    for (genvar group = 0; group < p_groups; group++) begin : g_group
+        localparam int p_first = group * p_group_width;
+        localparam int p_bits = (p_frames - p_first < p_group_width) ?
+            p_frames - p_first : p_group_width;
+        logic [p_bits-1:0] local_first;
+        if (p_bits == 1) begin : g_single
+            assign group_any[group] = i_eligible[p_first];
+        end else begin : g_many
+            (* keep = "true" *) logic found;
+            assign found = |i_eligible[p_first +: p_bits];
+            assign group_any[group] = found;
+        end
+        if (group == 0) begin : g_first_group
+            assign group_first[group] = group_any[group];
+        end else begin : g_later_group
+            (* keep = "true" *) logic selected;
+            assign selected = group_any[group] && !(|group_any[group-1:0]);
+            assign group_first[group] = selected;
+        end
+        for (genvar frame = 0; frame < p_bits; frame++) begin : g_frame
+            if (frame == 0) begin : g_first
+                assign local_first[frame] = i_eligible[p_first];
+            end else begin : g_later
+                assign local_first[frame] = i_eligible[p_first+frame] &&
+                    !(|i_eligible[p_first +: frame]);
+            end
+        end
+        always_comb begin
+            group_id[group] = '0;
+            for (int frame = 0; frame < p_bits; frame++) begin
+                group_id[group] |= p_id_width'(p_first+frame) & {p_id_width{local_first[frame]}};
+            end
+        end
+    end
+    for (genvar frame = 0; frame < p_frames; frame++) begin : g_flat
+        if (frame == 0) begin : g_first
+            assign flat_first[frame] = i_eligible[frame];
+        end else begin : g_later
+            assign flat_first[frame] = i_eligible[frame] && !(|i_eligible[frame-1:0]);
+        end
+    end
+    always_comb begin
+        grouped_id = '0;
+        for (int group = 0; group < p_groups; group++) begin
+            grouped_id |= group_id[group] & {p_id_width{group_first[group]}};
+        end
+        flat_id = '0;
+        for (int frame = 0; frame < p_frames; frame++) begin
+            flat_id |= p_id_width'(frame) & {p_id_width{flat_first[frame]}};
+        end
+        case (^i_eligible)
+            1'b0, 1'b1: o_id = grouped_id;
+            default: o_id = flat_id;
+        endcase
+    end
 endmodule
