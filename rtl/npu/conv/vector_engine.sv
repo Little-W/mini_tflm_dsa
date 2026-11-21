@@ -106,13 +106,14 @@ module vector_engine #(
     POOL_LOAD_PREP, POOL_LOAD_REQ, POOL_LOAD_WAIT,
     DRAIN, DRAIN_TILE, SOFT_START, SOFT_RUN, SOFT_LUT_REQ, SOFT_LUT_WAIT,
     CHECK_WAIT, QUANT_STREAM, EXECUTE_COMMIT, ADD_ROUND_WAIT, AVG_POWER_STORE, POOL_LOAD_DRAIN,
-    DW_EXECUTE, DW_FINISH
+    DW_EXECUTE, DW_FINISH, ADD_CLAMP, AVG_POWER_DELAY, AVG_POWER_CLAMP, LOAD_VERIFY
   } state_t;
   typedef enum logic [2:0] {LD_WEIGHT, LD_BIAS, LD_MULT, LD_SHIFT, LD_A, LD_B, LD_LUT} load_t;
   state_t state;
   load_t load_kind;
   vector_engine_cfg_t c;
   logic spatial, depthwise, binary_vector, add_s8, softmax_s8, byte_output;
+  logic avg_pool, max_pool, min_pool, vector_max, vector_min, vector_hadamard;
   localparam int ACTIVE_COUNT_W = $clog2(TILE + 1);
   localparam int TAP_LIMIT = MAX_TAPS > POOL_MAX_TAPS ? MAX_TAPS : POOL_MAX_TAPS;
   localparam int TAP_COUNT_W = $clog2(TAP_LIMIT + 1);
@@ -132,16 +133,20 @@ module vector_engine #(
   logic vector_high_equal, vector_high_less;
   logic vector_high_next_equal, vector_high_next_less;
   logic [ACTIVE_COUNT_W:0] vector_remaining_low;
-  logic [ACTIVE_COUNT_W-1:0] vector_next_active;
+  logic [ACTIVE_COUNT_W-1:0] vector_next_active, vector_next_active_comb;
   logic [31-ACTIVE_COUNT_W:0] vector_high_increment;
   logic [31-ACTIVE_COUNT_W:0] vector_remaining_carry_needed;
   logic [31-ACTIVE_COUNT_W:0] vector_remaining_carry_generated;
   logic [31-ACTIVE_COUNT_W:0] vector_remaining_carry_expected;
   logic vector_remaining_high_zero, unused_vector_remaining_carry;
-  logic vector_has_more;
+  logic vector_has_more, vector_has_more_comb;
   logic [TILE_INDEX_W-1:0] compute_index, quant_index, reduce_index;
   logic compute_group_last_q;
   logic [31:0] fetch_tap_offset, position_offset, pool_byte_offset;
+  (* use_dsp = "yes" *) logic [31:0] fetch_position_next, fetch_tap_offset_next;
+  (* use_dsp = "yes" *) logic [31:0] position_offset_next, pool_byte_offset_next, vector_offset_next;
+  (* use_dsp = "yes" *) logic [31:0] window_request_offset;
+  (* use_dsp = "yes" *) logic signed [31:0] add_input_sum;
   logic signed [15:0] input_buf [DMA_SIZE], rhs_buf [TILE];
   logic signed [15:0] input_bank_data [INPUT_BANKS];
   logic weights_i_wr_en, weights_i_rd_en;
@@ -153,6 +158,8 @@ module vector_engine #(
   logic [31:0] weights_i_wr_tap, weights_i_rd_tap;
   logic [TILE-1:0] weights_i_wr_mask;
   logic [8*TILE-1:0] weights_i_wr_data, weights_o_rd_data;
+  logic weight_data_ready;
+  logic [SHARED_STORAGE_ADDR_WIDTH-1:0] weight_data_tap;
   logic weight_tap_advance;
   logic [TAP_COUNT_W-1:0] weight_tap_nxt;
   logic tap_last_wide, tap_last_modulo;
@@ -160,7 +167,9 @@ module vector_engine #(
 
   wire signed [7:0] weight_tap_data [TILE];
   logic signed [31:0] bias_buf [TILE];
-  logic signed [31:0] acc_buf [TILE], result_buf [TILE];
+  logic signed [31:0] acc_buf [TILE];
+  logic [TILE-1:0] result_write_enable;
+  logic [7:0] result_write_data [TILE];
   logic [2:0] pe_op;
   logic [2:0] pe_op_q;
   logic pe_operand_en;
@@ -171,11 +180,17 @@ module vector_engine #(
   logic [5:0] add_right;
   logic signed [31:0] add_multiplier, add_operand;
   logic signed [31:0] add_scaled_a;
-  logic signed [63:0] add_product, add_rounded;
+  logic signed [63:0] add_rounded;
   logic signed [31:0] reduce_acc, reduce_next;
   logic signed [33:0] input_y, input_x, input_origin_x, input_origin_y;
   logic in_bounds, param_bad, param_bad_seen;
   logic input_column_in_bounds, input_row_in_bounds;
+  logic dw_in_bounds;
+  logic origin_column_in_bounds, origin_row_in_bounds;
+  logic next_origin_column_valid, next_origin_row_valid;
+  logic signed [16:0] dilation_x_min, dilation_x_max, dilation_y_min, dilation_y_max;
+  logic signed [16:0] stride_x_min, stride_x_max, stride_y_min, stride_y_max;
+  logic [15:0] output_last_column;
   logic [63:0] input_bytes,output_bytes,weight_bytes,parameter_bytes;
   logic [32:0] checked_range_end[4];
   logic global_pool;
@@ -192,18 +207,21 @@ module vector_engine #(
     .o_read_end(checked_range_end));
   assign parameter_bytes=64'(channels)<<2;
   logic [31:0] load_bytes;
+  logic load_completion_error;
   logic signed [31:0] q_accumulator, q_multiplier;
-  logic signed [63:0] q_product, q_rounded;
+  logic signed [63:0] q_rounded;
   logic [8:0] q_offset_low;
-  logic q_offset_high_zero, q_offset_high_ones, q_offset_high_negative;
-  logic q_offset_increment, q_offset_decrement, q_offset_keep_high;
-  logic q_offset_fits_s8;
-  logic q_offset_below_s8, q_offset_above_s8;
+  logic signed [8:0] q_minimum_before_offset, q_maximum_before_offset;
+  logic q_rounded_fits_s9;
+  logic q_before_offset_below, q_before_offset_above;
+  logic q_offset_increment, q_offset_decrement;
+  logic q_positive_overflow, q_negative_overflow;
   logic q_below_min, q_above_max;
   logic signed [31:0] q_clamped_data;
-  logic [5:0] q_right_0, q_right_1, q_right_2, q_right_3;
-  logic [5:0] q_valid;
-  logic [TILE_INDEX_W-1:0] q_index_0, q_index_1, q_index_2, q_index_3, q_index_4, q_index_5, q_issue, q_count;
+  logic [5:0] q_right_0, q_right_1, q_right_2;
+  logic [6:0] q_valid;
+  logic [7:0] q_clamped_q, serial_clamped_q;
+  logic [TILE_INDEX_W-1:0] q_index_0, q_index_1, q_index_2, q_index_3, q_index_4, q_index_5, q_index_6, q_issue, q_count;
   logic q_active;
   // DW 前台每周期发射一组操作数，提交下标独立保存，连续卷积位置转发累加结果。
   logic dw_issue_fire, dw_commit_vld, dw_group_last, dw_tap_advance;
@@ -213,7 +231,7 @@ module vector_engine #(
   logic [31:0] dw_snapshot_address;
   logic dw_snapshot_last;
   logic dw_quant_input_active, dw_quant_slot, dw_quant_next_slot;
-  logic [5:0] dw_quant_slot_pipe;
+  logic [6:0] dw_quant_slot_pipe;
   logic [1:0] dw_result_reserved, dw_result_ready;
   logic [7:0] dw_result_bytes [2][TILE];
   logic [31:0] dw_result_address [2];
@@ -227,11 +245,19 @@ module vector_engine #(
   logic [31:0] writeback_request_address;
   logic [$clog2(4*TILE+1)-1:0] writeback_request_bytes;
   logic [31:0] write_origin, write_total;
-  wire writeback_ready, writeback_busy, writeback_done, writeback_error;
+  wire writeback_ready, writeback_busy_raw, writeback_done, writeback_error;
+  logic writeback_sink_ready, writeback_metadata_valid, writeback_metadata_slot;
+  logic writeback_metadata_coalesce, writeback_metadata_last, writeback_metadata_match;
+  logic [31:0] writeback_metadata_address;
+  logic [$clog2(4*TILE+1)-1:0] writeback_metadata_bytes;
+  logic writeback_busy;
   wire [32*TILE-1:0] writeback_words;
   for (genvar word_index=0;word_index<TILE;word_index++) begin : g_writeback_word
-    assign writeback_words[32*word_index+:32]=depthwise ?
-        {24'd0, dw_result_bytes[dw_result_read_slot][word_index]} : result_buf[word_index];
+    wire [31:0] word_value = word_index==0 && !byte_output && !vector_hadamard ?
+        reduce_acc : acc_buf[word_index];
+    // 标量字节结果保存在已消费的累加项中，DW 使用独立的双组结果存储。
+    assign writeback_words[32*word_index+:32] = {word_value[31:8],
+        depthwise ? dw_result_bytes[dw_result_read_slot][word_index] : word_value[7:0]};
   end
   assign writeback_request_valid = depthwise ?
       (dw_result_ready[dw_result_read_slot] && state!=FAILED) : state==WRITE_PREP;
@@ -240,20 +266,42 @@ module vector_engine #(
       $clog2(4*TILE+1)'(write_total);
   assign writeback_request_last = !depthwise || dw_result_last[dw_result_read_slot];
   assign dw_result_accept = depthwise && writeback_request_valid && writeback_ready;
+  // 地址与长度先行保存；源数据在写入队列实际接收之前保持在原结果存储中。
+  assign writeback_metadata_match = writeback_metadata_valid &&
+      (!depthwise || writeback_metadata_slot == dw_result_read_slot);
+  assign writeback_ready = writeback_sink_ready && writeback_metadata_match;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) writeback_metadata_valid <= 1'b0;
+    else writeback_metadata_valid <= writeback_request_valid;
+  end
+  always_ff @(posedge clk) begin
+    if (writeback_request_valid) begin
+      writeback_metadata_address <= writeback_request_address;
+      writeback_metadata_bytes <= writeback_request_bytes;
+      writeback_metadata_slot <= dw_result_read_slot;
+      writeback_metadata_last <= writeback_request_last;
+      writeback_metadata_coalesce <= depthwise && channels==32'(dw_result_count[dw_result_read_slot]);
+    end
+  end
+  // 请求有效时提前保存占用状态，完成后的空闲状态在下一周期提供给控制逻辑。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) writeback_busy <= 1'b0;
+    else writeback_busy <= writeback_busy_raw || writeback_request_valid;
+  end
   // 引擎仅合并连续 DW 字节结果，完整数据字使用独立写事务。
-  vector_writeback #(.TILE(TILE),.BUS_WIDTH(BUS_WIDTH),.p_coalesce_bytes_only(1'b1)) u_writeback (
-    .clk,.rst_n,.request_valid(writeback_request_valid),.request_ready(writeback_ready),
-    .request_address(writeback_request_address),.request_bytes(writeback_request_bytes),
+  vector_banked_writeback #(.TILE(TILE),.BUS_WIDTH(BUS_WIDTH),.p_coalesce_bytes_only(1'b1)) u_writeback (
+    .clk,.rst_n,.request_valid(writeback_request_valid && writeback_metadata_match),.request_ready(writeback_sink_ready),
+    .request_address(writeback_metadata_address),.request_bytes(writeback_metadata_bytes),
     .request_byte_output(byte_output),.result_words(writeback_words),
-    .request_coalesce(depthwise && channels==32'(dw_result_count[dw_result_read_slot])),
-    .request_last(writeback_request_last),
+    .request_coalesce(writeback_metadata_coalesce),
+    .request_last(writeback_metadata_last),
     .flush(state==FAILED),
-    .busy(writeback_busy),.done(writeback_done),.error(writeback_error),
+    .busy(writeback_busy_raw),.done(writeback_done),.error(writeback_error),
     .wr_req,.wr_start,.wr_granted,.wr_base_addr,.wr_row_stride,.wr_rows_to_write,
     .wr_burst_len_m1,.src_wdata,.src_wmask,.src_wvalid,.src_wready,.wr_done,.wr_error);
-  logic avg_negative, avg_power_two;
+  logic avg_negative, avg_power_two, avg_power_two_next;
   logic avg_done;
-  logic [5:0] avg_shift;
+  logic [5:0] avg_shift, avg_shift_next;
   localparam int AVG_SCALE_BITS = 8+$clog2(POOL_MAX_TAPS+1);
 `ifdef ASIC_SYNTHESIS
   logic [AVG_SCALE_BITS:0] avg_reciprocal [0:POOL_MAX_TAPS];
@@ -291,6 +339,8 @@ module vector_engine #(
   end
   logic input_range_mode, cache_power_two;
   logic [5:0] cache_channel_shift;
+  logic cache_power_two_next;
+  logic [5:0] cache_channel_shift_next;
   logic [1:0] read_bank,wf_bank,input_bank_mask;
   logic input_slot_release;
   logic [3:0] input_ready,input_reserved;
@@ -308,11 +358,47 @@ module vector_engine #(
   logic [p_window_count_width-1:0] window_count_tree [2*p_window_count_leaves];
   logic window_response_fire,window_request_fire;
   logic window_fetch_enabled, window_fetch_in_bounds, window_fetch_advance;
+  logic window_response_last_q, window_response_error_q, window_response_fault;
+  logic [31:0] window_response_total_q;
   logic [31:0] fetch_position;
   logic [TAP_COUNT_W-1:0] fetch_tap;
   logic [15:0] fetch_ox;
   logic [TAP_COUNT_W-1:0] fetch_kx;
   logic signed [33:0] fetch_x, fetch_y, fetch_origin_x, fetch_origin_y;
+  logic [33:0] coordinate_step_i_value [8], coordinate_step_i_delta [8];
+  logic [33:0] coordinate_step_o_value [8];
+  logic [7:0] unused_coordinate_step_carry;
+  // 宽计数和地址偏移并行计算，状态只选择各自已完成的下一值。
+  assign fetch_position_next = fetch_position + 32'd1;
+  assign fetch_tap_offset_next = fetch_tap_offset + channels;
+  assign position_offset_next = position_offset + channels;
+  assign pool_byte_offset_next = pool_byte_offset + 32'(channels);
+  assign vector_offset_next = vector_offset + 32'(active);
+  assign window_request_offset = fetch_tap_offset + {16'd0, channel_base};
+  assign add_input_sum = add_scaled_a + 32'(add_rounded);
+
+  // 输入扫描和预取扫描各自并行准备坐标；状态只选择已完成的计算结果。
+  assign coordinate_step_i_value[0] = $unsigned(input_x);
+  assign coordinate_step_i_value[1] = $unsigned(input_y);
+  assign coordinate_step_i_value[2] = $unsigned(input_origin_x);
+  assign coordinate_step_i_value[3] = $unsigned(input_origin_y);
+  assign coordinate_step_i_value[4] = $unsigned(fetch_x);
+  assign coordinate_step_i_value[5] = $unsigned(fetch_y);
+  assign coordinate_step_i_value[6] = $unsigned(fetch_origin_x);
+  assign coordinate_step_i_value[7] = $unsigned(fetch_origin_y);
+  for (genvar coordinate_group = 0; coordinate_group < 2; coordinate_group++) begin : g_coordinate_delta
+    assign coordinate_step_i_delta[4*coordinate_group] = {18'd0, c.image.dilation_w};
+    assign coordinate_step_i_delta[4*coordinate_group+1] = {18'd0, c.image.dilation_h};
+    assign coordinate_step_i_delta[4*coordinate_group+2] = {18'd0, c.image.stride_w};
+    assign coordinate_step_i_delta[4*coordinate_group+3] = {18'd0, c.image.stride_h};
+  end
+  for (genvar coordinate = 0; coordinate < 8; coordinate++) begin : g_coordinate_step
+    parallel_prefix_add #(.p_width(34), .p_group_width(4)) u_step (
+        .i_a(coordinate_step_i_value[coordinate]), .i_b(coordinate_step_i_delta[coordinate]),
+        .i_carry(1'b0), .o_sum(coordinate_step_o_value[coordinate]),
+        .o_carry(unused_coordinate_step_carry[coordinate])
+    );
+  end
   // 完成条件逐位检查所需进位，保留接收计数的三十二位回绕行为。
   assign window_count_i_value = window_received;
   assign window_count_i_increment = 32'(window_response_count);
@@ -323,90 +409,52 @@ module vector_engine #(
       .i_target(window_count_i_target), .i_carry_in(window_count_i_carry),
       .o_equal(window_count_o_equal)
   );
-  logic [p_window_count_width:0] window_count_low_sum;
-  logic [p_window_count_width-1:0] window_count_low_value, window_count_low_increment;
-  localparam int p_window_upper_width = 32 - p_window_count_width;
-  localparam int p_window_upper_groups = (p_window_upper_width + 2) / 3;
-  localparam int p_window_prefix_levels = $clog2(p_window_upper_groups);
-  (* keep = 1 *) logic [p_window_upper_groups-1:0] window_upper_prefix [p_window_prefix_levels+1];
-  (* keep = 1 *) logic [32-p_window_count_width:0] window_count_upper_full;
-
-  // 增量只占低位，高位连续全一条件独立准备，低位进位只参与最终位翻转。
-  // 保留完整三十二位计数和溢出位，不改变任意计数值的回绕结果。
-  assign window_count_low_value = window_count_i_value[p_window_count_width-1:0];
-  assign window_count_low_increment = window_count_i_increment[p_window_count_width-1:0];
-  parallel_prefix_add #(
-      .p_width(p_window_count_width), .p_group_width(p_window_count_width)
-  ) u_window_count_low_sum (
-      .i_a(window_count_low_value), .i_b(window_count_low_increment), .i_carry(window_count_i_carry),
-      .o_sum(window_count_low_sum[p_window_count_width-1:0]),
-      .o_carry(window_count_low_sum[p_window_count_width])
+  // 接收累计值保留完整三十二位，FPGA 配置使用公共加法器的算术推断。
+  parallel_prefix_add #(.p_width(32)) u_window_count_sum (
+      .i_a(window_count_i_value), .i_b(window_count_i_increment), .i_carry(window_count_i_carry),
+      .o_sum(window_count_o_sum), .o_carry(unused_window_count_carry)
   );
-  assign window_count_o_sum[p_window_count_width-1:0] = window_count_low_sum[p_window_count_width-1:0];
-  // 相邻三位先归并，各层按倍增区间计算，限制完整层次中的共享前缀深度。
-  for (genvar group = 0; group < p_window_upper_groups; group++) begin : g_window_upper_group
-    localparam int p_first = p_window_count_width + 3*group;
-    localparam int p_bits = (32 - p_first < 3) ? 32 - p_first : 3;
-    assign window_upper_prefix[0][group] = &window_count_i_value[p_first +: p_bits];
-  end
-  for (genvar level = 0; level < p_window_prefix_levels; level++) begin : g_window_upper_level
-    for (genvar group = 0; group < p_window_upper_groups; group++) begin : g_node
-      if (group >= (1 << level)) begin : g_merge
-        assign window_upper_prefix[level+1][group] = window_upper_prefix[level][group] &&
-            window_upper_prefix[level][group-(1 << level)];
-      end else begin : g_pass
-        assign window_upper_prefix[level+1][group] = window_upper_prefix[level][group];
-      end
-    end
-  end
-  assign window_count_upper_full[0] = 1'b1;
-  for (genvar bit_index = p_window_count_width; bit_index < 32; bit_index++) begin : g_window_count_high
-    localparam int p_group = (bit_index - p_window_count_width) / 3;
-    localparam int p_first = p_window_count_width + 3*p_group;
-    if (p_group == 0) begin : g_first
-      assign window_count_upper_full[bit_index-p_window_count_width+1] =
-          &window_count_i_value[bit_index:p_first];
-    end else begin : g_later
-      assign window_count_upper_full[bit_index-p_window_count_width+1] =
-          window_upper_prefix[p_window_prefix_levels][p_group-1] &&
-          (&window_count_i_value[bit_index:p_first]);
-    end
-    assign window_count_o_sum[bit_index] = window_count_i_value[bit_index] ^
-        (window_count_low_sum[p_window_count_width] && window_count_upper_full[bit_index-p_window_count_width]);
-  end
-  assign unused_window_count_carry = window_count_low_sum[p_window_count_width] &&
-      window_count_upper_full[32-p_window_count_width];
   logic next_window_valid, next_window_valid_q;
   logic signed [33:0] next_window_x, next_window_y;
   wire kernel_column_end=kx==kernel_last_column;
-  wire signed [33:0] next_column_x=input_x+$signed(34'(c.image.dilation_w));
-  wire signed [33:0] next_row_y=input_y+$signed(34'(c.image.dilation_h));
-  logic [16:0] next_column_low, next_row_low;
-  logic [16:0] coordinate_low_i_a [2], coordinate_low_i_b [2], coordinate_low_sum [2];
-  logic [1:0] unused_coordinate_low_carry;
-  logic next_column_high_zero, next_row_high_zero;
+  wire signed [33:0] next_column_x=$signed(coordinate_step_o_value[0]);
+  wire signed [33:0] next_row_y=$signed(coordinate_step_o_value[1]);
+  logic input_x_fits_interval, input_y_fits_interval;
+  logic origin_x_fits_interval, origin_y_fits_interval;
   logic next_column_valid, next_row_valid;
 
-  // 图像尺寸为十六位，坐标范围由低位和高位条件并行检查。
-  // 低位加法进位只选择原坐标高位的零值或全一值，保留完整坐标回绕行为。
-  assign coordinate_low_i_a[0] = {1'b0, input_x[15:0]};
-  assign coordinate_low_i_a[1] = {1'b0, input_y[15:0]};
-  assign coordinate_low_i_b[0] = {1'b0, c.image.dilation_w};
-  assign coordinate_low_i_b[1] = {1'b0, c.image.dilation_h};
-  for (genvar axis = 0; axis < 2; axis++) begin : g_coordinate_low_sum
-    parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
-        .i_a(coordinate_low_i_a[axis]), .i_b(coordinate_low_i_b[axis]), .i_carry(1'b0),
-        .o_sum(coordinate_low_sum[axis]), .o_carry(unused_coordinate_low_carry[axis])
-    );
+  // 配置阶段保存坐标增量对应的有效区间。运行时并行比较当前坐标与两个端点，
+  // 十七位符号扩展检查覆盖完整三十四位坐标，范围判断不再依赖坐标加法的进位。
+  assign input_x_fits_interval = input_x[33:17] == {17{input_x[16]}};
+  assign input_y_fits_interval = input_y[33:17] == {17{input_y[16]}};
+  assign origin_x_fits_interval = input_origin_x[33:17] == {17{input_origin_x[16]}};
+  assign origin_y_fits_interval = input_origin_y[33:17] == {17{input_origin_y[16]}};
+  assign next_column_valid = input_x_fits_interval &&
+      ($signed(input_x[16:0]) >= dilation_x_min) && ($signed(input_x[16:0]) < dilation_x_max) &&
+      input_row_in_bounds;
+  assign next_row_valid = origin_column_in_bounds && input_y_fits_interval &&
+      ($signed(input_y[16:0]) >= dilation_y_min) && ($signed(input_y[16:0]) < dilation_y_max);
+  assign next_origin_column_valid = origin_x_fits_interval &&
+      ($signed(input_origin_x[16:0]) >= stride_x_min) &&
+      ($signed(input_origin_x[16:0]) < stride_x_max) && origin_row_in_bounds;
+  assign next_origin_row_valid = (c.image.pad_left == 16'd0) && (c.image.input_w != 16'd0) &&
+      origin_y_fits_interval &&
+      ($signed(input_origin_y[16:0]) >= stride_y_min) &&
+      ($signed(input_origin_y[16:0]) < stride_y_max);
+
+  always_ff @(posedge clk) begin
+    if (state == CHECK_WAIT && config_check_done) begin
+      dilation_x_min <= $signed({(|c.image.dilation_w), (16'd0 - c.image.dilation_w)});
+      dilation_x_max <= $signed({1'b0, c.image.input_w}) - $signed({1'b0, c.image.dilation_w});
+      dilation_y_min <= $signed({(|c.image.dilation_h), (16'd0 - c.image.dilation_h)});
+      dilation_y_max <= $signed({1'b0, c.image.input_h}) - $signed({1'b0, c.image.dilation_h});
+      stride_x_min <= $signed({(|c.image.stride_w), (16'd0 - c.image.stride_w)});
+      stride_x_max <= $signed({1'b0, c.image.input_w}) - $signed({1'b0, c.image.stride_w});
+      stride_y_min <= $signed({(|c.image.stride_h), (16'd0 - c.image.stride_h)});
+      stride_y_max <= $signed({1'b0, c.image.input_h}) - $signed({1'b0, c.image.stride_h});
+      output_last_column <= c.image.output_w - 16'd1;
+    end
   end
-  assign next_column_low = coordinate_low_sum[0];
-  assign next_row_low = coordinate_low_sum[1];
-  assign next_column_high_zero = next_column_low[16] ? (&input_x[33:16]) : !(|input_x[33:16]);
-  assign next_row_high_zero = next_row_low[16] ? (&input_y[33:16]) : !(|input_y[33:16]);
-  assign next_column_valid = next_column_high_zero && (next_column_low[15:0] < c.image.input_w) &&
-      !(|input_y[33:16]) && (input_y[15:0] < c.image.input_h);
-  assign next_row_valid = !(|input_origin_x[33:16]) && (input_origin_x[15:0] < c.image.input_w) &&
-      next_row_high_zero && (next_row_low[15:0] < c.image.input_h);
   logic soft_ready, soft_done, soft_exp_we, soft_out_we;
   logic [1:0] soft_error;
   logic [$clog2(TILE)-1:0] soft_input_index, soft_exp_index, soft_out_index;
@@ -417,9 +465,10 @@ module vector_engine #(
   logic signed [7:0] soft_out_data;
   logic signed [31:0] multiplier_a, multiplier_b;
   logic signed [63:0] multiplier_product;
-  logic [TAP_COUNT_W-1:0] pool_offset;
+  logic [TAP_COUNT_W-1:0] pool_offset, pool_taps_remaining;
   logic [INPUT_INDEX_W:0] pool_pixels, pool_received, pool_pixel;
   logic [INPUT_INDEX_W:0] pool_elements, pool_next_elements, pool_next_pixels, pool_input_index;
+  logic [INPUT_INDEX_W:0] pool_capacity;
   logic [INPUT_INDEX_W:0] pool_row_columns, pool_row_remaining;
   wire pool_response_fire=state==POOL_LOAD_WAIT && rd_valid[0];
   logic [BUS_SHIFT:0] pool_beat_count;
@@ -446,12 +495,44 @@ module vector_engine #(
   logic [POOL_ROW_W-1:0] pool_bank_row[BUS_BYTES];
   logic signed [15:0] pool_bank_data[BUS_BYTES];
 
-  assign spatial = c.op <= MINPOOL_S8;
-  assign depthwise = c.op == DW_S8;
-  assign add_s8 = c.op == ADD_S8;
-  assign softmax_s8 = c.op == SOFTMAX_S8;
-  assign byte_output = spatial || add_s8 || softmax_s8;
-  assign binary_vector = c.op == VEC_DOT || c.op == VEC_HADAMARD || add_s8;
+  // 运算类型和描述符同时保存，数据通路直接使用已寄存的选择信号。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      spatial <= 1'b1;
+      depthwise <= 1'b1;
+      byte_output <= 1'b1;
+      add_s8 <= 1'b0;
+      softmax_s8 <= 1'b0;
+      binary_vector <= 1'b0;
+      avg_pool <= 1'b0;
+      max_pool <= 1'b0;
+      min_pool <= 1'b0;
+      vector_max <= 1'b0;
+      vector_min <= 1'b0;
+      vector_hadamard <= 1'b0;
+      pe_op <= PE_MADD;
+    end else if (state == IDLE && start) begin
+      spatial <= cfg.op <= MINPOOL_S8;
+      depthwise <= cfg.op == DW_S8;
+      add_s8 <= cfg.op == ADD_S8;
+      softmax_s8 <= cfg.op == SOFTMAX_S8;
+      byte_output <= cfg.op <= MINPOOL_S8 || cfg.op == ADD_S8 || cfg.op == SOFTMAX_S8;
+      binary_vector <= cfg.op == VEC_DOT || cfg.op == VEC_HADAMARD || cfg.op == ADD_S8;
+      avg_pool <= cfg.op == AVGPOOL_S8;
+      max_pool <= cfg.op == MAXPOOL_S8;
+      min_pool <= cfg.op == MINPOOL_S8;
+      vector_max <= cfg.op == VEC_MAX;
+      vector_min <= cfg.op == VEC_MIN;
+      vector_hadamard <= cfg.op == VEC_HADAMARD;
+      case (cfg.op)
+        AVGPOOL_S8, VEC_SUM: pe_op <= PE_SUM;
+        MAXPOOL_S8, VEC_MAX: pe_op <= PE_MAX;
+        MINPOOL_S8, VEC_MIN: pe_op <= PE_MIN;
+        VEC_HADAMARD: pe_op <= PE_MUL;
+        default: pe_op <= PE_MADD;
+      endcase
+    end
+  end
 
   logic [31:0] position_next;
   logic unused_position_carry;
@@ -463,14 +544,16 @@ module vector_engine #(
 
   // 有效通道数只影响低位；高位比较与低位加法并行执行，保留三十二位回绕。
   assign vector_low_sum = {1'b0, vector_offset[ACTIVE_COUNT_W-1:0]} + {1'b0, active};
-  assign vector_high_equal = vector_offset[31:ACTIVE_COUNT_W] == c.length[31:ACTIVE_COUNT_W];
-  assign vector_high_less = vector_offset[31:ACTIVE_COUNT_W] < c.length[31:ACTIVE_COUNT_W];
+  unsigned_compare #(.p_width(32-ACTIVE_COUNT_W)) u_vector_length_compare (
+      .i_a(vector_offset[31:ACTIVE_COUNT_W]), .i_b(c.length[31:ACTIVE_COUNT_W]),
+      .o_less(vector_high_less), .o_equal(vector_high_equal)
+  );
   assign vector_high_next_equal =
       ((vector_offset[31:ACTIVE_COUNT_W] ^ c.length[31:ACTIVE_COUNT_W]) ==
        {(vector_offset[30:ACTIVE_COUNT_W] & ~c.length[30:ACTIVE_COUNT_W]), 1'b1});
   assign vector_high_next_less = (vector_high_less && !vector_high_next_equal) ||
       ((&vector_offset[31:ACTIVE_COUNT_W]) && (|c.length[31:ACTIVE_COUNT_W]));
-  assign vector_has_more = vector_low_sum[ACTIVE_COUNT_W] ?
+  assign vector_has_more_comb = vector_low_sum[ACTIVE_COUNT_W] ?
       (vector_high_next_less || (vector_high_next_equal &&
           (vector_low_sum[ACTIVE_COUNT_W-1:0] < c.length[ACTIVE_COUNT_W-1:0]))) :
       (vector_high_less || (vector_high_equal &&
@@ -490,31 +573,36 @@ module vector_engine #(
   assign {unused_vector_remaining_carry, vector_remaining_carry_expected} =
       {vector_remaining_carry_generated, 1'b0};
   assign vector_remaining_high_zero = vector_remaining_carry_needed == vector_remaining_carry_expected;
-  assign vector_next_active = vector_remaining_high_zero &&
+  assign vector_next_active_comb = vector_remaining_high_zero &&
       vector_remaining_low[ACTIVE_COUNT_W-1:0] < ACTIVE_COUNT_W'(TILE) ?
       vector_remaining_low[ACTIVE_COUNT_W-1:0] : ACTIVE_COUNT_W'(TILE);
+  // 一个分块的偏移和有效通道数在计算期间保持稳定，转移周期使用准备好的条件。
+  always_ff @(posedge clk) begin
+    vector_has_more <= vector_has_more_comb;
+    vector_next_active <= vector_next_active_comb;
+  end
   // 配置检查保证量化偏移和激活范围为 S8，低八位加法保留输出字节。
   // 高五十六位并行检查进位、借位和符号，保留完整六十四位回绕行为。
   assign q_offset_low = {1'b0, q_rounded[7:0]} + {1'b0, c.output_offset[7:0]};
   assign q_offset_increment = q_offset_low[8] && !c.output_offset[7];
   assign q_offset_decrement = !q_offset_low[8] && c.output_offset[7];
-  assign q_offset_keep_high = q_offset_low[8] == c.output_offset[7];
-  assign q_offset_high_zero =
-      (q_offset_keep_high && q_rounded[63:8] == 56'd0) ||
-      (q_offset_increment && q_rounded[63:8] == 56'hff_ffff_ffff_ffff) ||
-      (q_offset_decrement && q_rounded[63:8] == 56'd1);
-  assign q_offset_high_ones =
-      (q_offset_keep_high && q_rounded[63:8] == 56'hff_ffff_ffff_ffff) ||
-      (q_offset_increment && q_rounded[63:8] == 56'hff_ffff_ffff_fffe) ||
-      (q_offset_decrement && q_rounded[63:8] == 56'd0);
-  assign q_offset_high_negative = q_rounded[63] ^
-      ((q_offset_increment && (&q_rounded[62:8])) ||
-       (q_offset_decrement && !(|q_rounded[62:8])));
-  assign q_offset_below_s8 = $signed(q_offset_low[7:0]) < $signed(c.activation_min[7:0]);
-  assign q_offset_above_s8 = $signed(q_offset_low[7:0]) > $signed(c.activation_max[7:0]);
-  assign q_offset_fits_s8 = q_offset_low[7] ? q_offset_high_ones : q_offset_high_zero;
-  assign q_below_min = q_offset_fits_s8 ? q_offset_below_s8 : q_offset_high_negative;
-  assign q_above_max = q_offset_fits_s8 ? q_offset_above_s8 : !q_offset_high_negative;
+  // 配置稳定期间先扣除输出偏移，限幅比较与低字节加法并行执行。
+  always_ff @(posedge clk) begin
+    q_minimum_before_offset <= $signed({c.activation_min[7],c.activation_min[7:0]}) -
+        $signed({c.output_offset[7],c.output_offset[7:0]});
+    q_maximum_before_offset <= $signed({c.activation_max[7],c.activation_max[7:0]}) -
+        $signed({c.output_offset[7],c.output_offset[7:0]});
+  end
+  assign q_rounded_fits_s9 = q_rounded[63:9] == {55{q_rounded[8]}};
+  assign q_before_offset_below = q_rounded_fits_s9 ?
+      $signed(q_rounded[8:0]) < q_minimum_before_offset : q_rounded[63];
+  assign q_before_offset_above = q_rounded_fits_s9 ?
+      $signed(q_rounded[8:0]) > q_maximum_before_offset : !q_rounded[63];
+  // 保留六十四位补码加法在两个符号边界处的回绕结果。
+  assign q_positive_overflow = !q_rounded[63] && (&q_rounded[62:8]) && q_offset_increment;
+  assign q_negative_overflow = q_rounded[63] && !(|q_rounded[62:8]) && q_offset_decrement;
+  assign q_below_min = !q_negative_overflow && (q_positive_overflow || q_before_offset_below);
+  assign q_above_max = !q_positive_overflow && (q_negative_overflow || q_before_offset_above);
   assign ready = state == IDLE;
   assign done_valid = state == DONE;
   assign channels = {16'd0,c.image.input_c};
@@ -524,7 +612,25 @@ module vector_engine #(
   vector_coordinate_bound u_input_row_bound (
       .i_coordinate(input_y), .i_limit(c.image.input_h), .o_in_bounds(input_row_in_bounds)
   );
+  vector_coordinate_bound u_origin_column_bound (
+      .i_coordinate(input_origin_x), .i_limit(c.image.input_w), .o_in_bounds(origin_column_in_bounds)
+  );
+  vector_coordinate_bound u_origin_row_bound (
+      .i_coordinate(input_origin_y), .i_limit(c.image.input_h), .o_in_bounds(origin_row_in_bounds)
+  );
   assign in_bounds = input_column_in_bounds && input_row_in_bounds;
+  // DW 发射读取与坐标同时保存的有效位；权重地址选择只经过寄存后的范围结果。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      dw_in_bounds <= 1'b0;
+    end else if (state == OUTPUT_INIT) begin
+      dw_in_bounds <= origin_column_in_bounds && origin_row_in_bounds;
+    end else if (state == DW_EXECUTE && dw_tap_advance && !tap_last_modulo) begin
+      dw_in_bounds <= kernel_column_end ? next_row_valid : next_column_valid;
+    end else if (state == DW_FINISH && dw_snapshot_fire) begin
+      dw_in_bounds <= (ox == output_last_column) ? next_origin_row_valid : next_origin_column_valid;
+    end
+  end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) global_pool <= 1'b0;
     else if (state==IDLE && start)
@@ -539,7 +645,7 @@ module vector_engine #(
   assign window_fetch_enabled=spatial && !global_pool &&
     (state==OUTPUT_INIT || state==TAP_CHECK || state==WINDOW_WAIT || state==QUANT_STREAM ||
      state==EXECUTE || state==EXECUTE_COMMIT || state==TAP_NEXT || state==QUANT_INIT || state==OUTPUT_NEXT ||
-     state==AVG_START || state==AVG_POWER_STORE || state==AVG_WAIT || state==POOL_STORE || state==WRITE_PREP ||
+     state==AVG_START || state==AVG_POWER_DELAY || state==AVG_POWER_CLAMP || state==AVG_POWER_STORE || state==AVG_WAIT || state==POOL_STORE || state==WRITE_PREP ||
      state==DW_EXECUTE || state==DW_FINISH);
   assign window_fetch_in_bounds=fetch_x>=0 && fetch_y>=0 &&
     fetch_x<$signed(34'(c.image.input_w)) && fetch_y<$signed(34'(c.image.input_h));
@@ -552,14 +658,29 @@ module vector_engine #(
       (fetch_position < 32'(position_count)) && window_fetch_in_bounds;
   // PE 在释放边沿保存旧槽操作数，新请求可以在同一边沿预留该槽。
   assign input_slot_release = dw_issue_fire && dw_group_last && wf_bank==read_bank;
-  assign win_req_valid = window_slot_available &&
+  assign win_req_valid = window_slot_available && !window_response_fault &&
       (!input_ready[wf_bank] || input_slot_release) && !input_reserved[wf_bank];
   assign win_req_p0=fetch_position;
-  assign win_req_q0=fetch_tap_offset+channel_base;
+  assign win_req_q0=window_request_offset;
   assign win_req_cols=active;
   assign win_req_tag=wf_bank;
   assign win_rsp_ready=1'b1;
   assign window_request_fire=win_req_valid && win_req_ready;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      window_response_last_q <= 1'b0;
+      window_response_error_q <= 1'b0;
+      window_response_total_q <= '0;
+    end else begin
+      window_response_last_q <= window_response_fire && win_rsp_last;
+      if (window_response_fire) begin
+        window_response_error_q <= win_rsp_error;
+        window_response_total_q <= window_count_o_sum;
+      end
+    end
+  end
+  assign window_response_fault = window_response_last_q &&
+      (window_response_error_q || window_response_total_q != 32'(active));
   assign window_response_fire=win_rsp_valid && win_rsp_ready;
   assign window_fetch_advance=window_request_fire ||
     (window_fetch_enabled && fetch_position<32'(position_count) && !window_fetch_in_bounds);
@@ -613,28 +734,38 @@ module vector_engine #(
   end
   assign window_response_count = window_count_tree[1];
   always_comb begin
-    cache_power_two=1'b1;
+    cache_power_two_next=1'b1;
     case (active)
-      32'd1: cache_channel_shift=0;
-      32'd2: cache_channel_shift=1;
-      32'd4: cache_channel_shift=2;
-      32'd8: cache_channel_shift=3;
-      32'd16: cache_channel_shift=4;
-      32'd32: cache_channel_shift=5;
-      32'd64: cache_channel_shift=6;
-      default: begin cache_channel_shift=0;cache_power_two=1'b0;end
+      32'd1: cache_channel_shift_next=0;
+      32'd2: cache_channel_shift_next=1;
+      32'd4: cache_channel_shift_next=2;
+      32'd8: cache_channel_shift_next=3;
+      32'd16: cache_channel_shift_next=4;
+      32'd32: cache_channel_shift_next=5;
+      32'd64: cache_channel_shift_next=6;
+      default: begin cache_channel_shift_next=0;cache_power_two_next=1'b0;end
     endcase
-    pool_next_pixels=cache_power_two && active>=4 ? 32'(2*TILE)>>cache_channel_shift : 32'd1;
-    if (pool_next_pixels>taps-pool_offset) pool_next_pixels=taps-pool_offset;
+    pool_next_pixels=pool_capacity;
+    if (pool_next_pixels>pool_taps_remaining) pool_next_pixels=(INPUT_INDEX_W+1)'(pool_taps_remaining);
     pool_next_elements=cache_power_two ? pool_next_pixels<<cache_channel_shift : active;
     next_window_x=kernel_column_end ? input_origin_x : next_column_x;
     next_window_y=kernel_column_end ? next_row_y : input_y;
     // 两组候选坐标先分别检查范围，再选择下一个卷积核位置。
     next_window_valid=spatial && !global_pool && tap+1<taps &&
       (kernel_column_end ? next_row_valid : next_column_valid);
-    avg_power_two=valid_taps!=0 && (valid_taps&(valid_taps-1))==0;
-    avg_shift=0;
-    for (int bit_index=0;bit_index<TAP_COUNT_W;bit_index++) if (valid_taps[bit_index]) avg_shift=6'(bit_index);
+    avg_power_two_next=valid_taps!=0 && (valid_taps&(valid_taps-1))==0;
+    avg_shift_next=0;
+    for (int bit_index=0;bit_index<TAP_COUNT_W;bit_index++) if (valid_taps[bit_index]) avg_shift_next=6'(bit_index);
+  end
+
+  // 通道数在分块初始化时保存，池化请求准备前完成容量和移位量译码。
+  always_ff @(posedge clk) begin
+    cache_power_two <= cache_power_two_next;
+    cache_channel_shift <= cache_channel_shift_next;
+    pool_capacity <= cache_power_two_next && active >= 4 ?
+        (INPUT_INDEX_W+1)'(2*TILE) >> cache_channel_shift_next : (INPUT_INDEX_W+1)'(1);
+    avg_power_two <= avg_power_two_next;
+    avg_shift <= avg_shift_next;
   end
 
   // 执行阶段提前保存下一坐标的范围判断，提交阶段直接选择后续状态。
@@ -1014,19 +1145,10 @@ module vector_engine #(
     add_right = add_stage==0 ? 6'(31-c.add.input1_shift-c.add.left_shift) :
                 add_stage==1 ? 6'(31-c.add.input2_shift-c.add.left_shift) :
                                6'(31-c.add.output_shift);
-    pe_op=PE_MADD;
-    case (c.op)
-      AVGPOOL_S8,VEC_SUM: pe_op=PE_SUM;
-      MAXPOOL_S8,VEC_MAX: pe_op=PE_MAX;
-      MINPOOL_S8,VEC_MIN: pe_op=PE_MIN;
-      VEC_HADAMARD: pe_op=PE_MUL;
-      default: ;
-    endcase
   end
   assign dw_group_last = compute_index + TILE_INDEX_W'(PE_COUNT) >= TILE_INDEX_W'(active);
-  assign dw_issue_fire = state==DW_EXECUTE && in_bounds && input_ready[read_bank] &&
-      (!SHARED_STORAGE_ENABLE || i_weight_read_valid);
-  assign dw_tap_advance = state==DW_EXECUTE && (!in_bounds || (dw_issue_fire && dw_group_last));
+  assign dw_issue_fire = state==DW_EXECUTE && !window_response_fault && dw_in_bounds && input_ready[read_bank] && weight_data_ready;
+  assign dw_tap_advance = state==DW_EXECUTE && (!dw_in_bounds || (dw_issue_fire && dw_group_last));
   assign dw_snapshot_fire = state==DW_FINISH && !dw_snapshot_vld;
   assign quant_req_valid = SHARED_QUANT_ENABLE && dw_snapshot_vld && dw_snapshot_data_ready &&
       !dw_result_reserved[dw_quant_next_slot] && state!=FAILED;
@@ -1044,10 +1166,10 @@ module vector_engine #(
   assign dw_quant_last_issue = SHARED_QUANT_ENABLE ? dw_shared_fire :
       dw_quant_input_active && q_issue+1'b1>=q_count;
   assign dw_quant_complete = SHARED_QUANT_ENABLE ? quant_rsp_valid :
-      depthwise && q_valid[5] && q_index_5+1'b1>=q_count;
+      depthwise && q_valid[6] && q_index_6+1'b1>=q_count;
   assign dw_group_pending = dw_snapshot_vld || dw_quant_input_active || (|q_valid);
   assign dw_work_pending = dw_group_pending || (|dw_result_reserved) || (dw_shared_inflight!=0);
-  assign pe_operand_en = dw_issue_fire || ((state == EXECUTE) && ((c.op != VEC_HADAMARD) || !writeback_busy));
+  assign pe_operand_en = dw_issue_fire || ((state == EXECUTE) && ((!vector_hadamard) || !writeback_busy));
   for (genvar lane=0;lane<PE_COUNT;lane++) begin : g_operand_select
     wire enabled=(TILE_INDEX_W+1)'(compute_index)+(TILE_INDEX_W+1)'(lane)<(TILE_INDEX_W+1)'(active);
     assign pe_a[lane]=enabled ? input_lane[lane] : 16'sd0;
@@ -1096,13 +1218,45 @@ module vector_engine #(
     assign weight_tap_data[channel] = $signed(weights_o_rd_data[8*channel+:8]);
   end
   if (SHARED_STORAGE_ENABLE) begin : g_shared_weights
+    logic [SHARED_STORAGE_ADDR_WIDTH-1:0] prefetch_tap, return_tap, saved_tap;
+    logic [127:0] saved_data;
+    logic saved_valid, return_matches, saved_matches;
+
+    // 当前权重和下一核位置并行保留。预取地址只取决于已保存的核位置，
+    // 当前输入是否就绪以及是否发射均不参与共享存储器的地址选择。
+    assign prefetch_tap = (state == OUTPUT_INIT || state == DW_FINISH || tap_last_modulo) ?
+        '0 : SHARED_STORAGE_ADDR_WIDTH'(weight_tap_nxt);
+    assign return_matches = i_weight_read_valid && return_tap == SHARED_STORAGE_ADDR_WIDTH'(tap);
+    assign saved_matches = saved_valid && saved_tap == SHARED_STORAGE_ADDR_WIDTH'(tap);
+    assign weight_data_ready = return_matches || saved_matches;
+    assign weight_data_tap = return_matches ? return_tap : saved_tap;
     assign o_weight_read_en = weights_i_rd_en;
-    assign o_weight_read_addr = SHARED_STORAGE_ADDR_WIDTH'(weights_i_rd_tap);
+    assign o_weight_read_addr = prefetch_tap;
     assign o_weight_write_en = weights_i_wr_en && !i_storage_error;
     assign o_weight_write_addr = SHARED_STORAGE_ADDR_WIDTH'(weights_i_wr_tap);
     assign o_weight_write_data = 128'(weights_i_wr_data);
     assign o_weight_write_mask = 16'(weights_i_wr_mask);
-    assign weights_o_rd_data = (8*TILE)'(i_weight_read_data);
+    assign weights_o_rd_data = (8*TILE)'(return_matches ? i_weight_read_data : saved_data);
+
+    // 返回地址与同步 RAM 请求同拍保存；首次返回可直接供发射使用，
+    // 下一边沿保存该行，使后续通道组及输入等待周期继续使用同一份权重。
+    always_ff @(posedge clk) begin
+      if (o_weight_read_en) return_tap <= prefetch_tap;
+      if (return_matches) begin
+        saved_tap <= return_tap;
+        saved_data <= i_weight_read_data;
+      end
+    end
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) begin
+        saved_valid <= 1'b0;
+      end else if ((state == IDLE && start) || state == TILE_INIT ||
+                   state == OUTPUT_INIT || state == FAILED) begin
+        saved_valid <= 1'b0;
+      end else if (return_matches) begin
+        saved_valid <= 1'b1;
+      end
+    end
   end else begin : g_private_weights
     vector_weight_store #(.p_channels(TILE), .p_depth(MAX_TAPS)) u_weights (
         .clk(clk), .i_wr_en(weights_i_wr_en), .i_wr_tap(weights_i_wr_tap),
@@ -1115,6 +1269,8 @@ module vector_engine #(
     assign o_weight_write_addr = '0;
     assign o_weight_write_data = '0;
     assign o_weight_write_mask = '0;
+    assign weight_data_ready = 1'b1;
+    assign weight_data_tap = '0;
   end
 
   // 操作码在 EXECUTE 更新；操作数独立等待写出允许后接收，下一周期提交结果。
@@ -1154,22 +1310,19 @@ module vector_engine #(
     else if(state==ADD_ROUND_WAIT && add_stage==0)
       add_operand<=32'(add_rhs_offset);
     else if(state==ADD_SUM)
-      add_operand<=add_scaled_a+32'(add_rounded);
+      add_operand<=add_input_sum;
     else if(state==ADD_STORE && !writeback_busy && compute_index+1<active)
       add_operand<=32'(add_next_lhs_offset);
   end
 
-  // 串行运算在各自消费周期选择地址，共用一个累加存储读取端口。
-  // 量化和归约由当前状态选择，其余周期服务 Softmax 或平均池化。
+  // 串行运算按任务操作码选择累加存储地址；归约使用独立的提前读取寄存器。
   logic [TILE_INDEX_W-1:0] serial_acc_read_index;
   logic signed [31:0] serial_acc_read_data;
   logic signed [31:0] softmax_i_exp_rdata;
   always_comb begin
     serial_acc_read_index = quant_index;
-    if (state==QUANT_STREAM) begin
+    if (depthwise) begin
       serial_acc_read_index = q_issue;
-    end else if (state==VECTOR_REDUCE) begin
-      serial_acc_read_index = reduce_index;
     end else if (softmax_s8) begin
       serial_acc_read_index = TILE_INDEX_W'(soft_exp_index);
     end
@@ -1184,13 +1337,13 @@ module vector_engine #(
   assign reduce_alu_i_rhs = reduce_rhs_q;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) reduce_rhs_q <= '0;
-    else if (state == VECTOR_NEXT && !vector_has_more && c.op != VEC_HADAMARD && !add_s8)
+    else if (state == VECTOR_NEXT && !vector_has_more && !vector_hadamard && !add_s8)
       reduce_rhs_q <= acc_buf[0];
     else if (state == VECTOR_REDUCE && reduce_index + 1 < TILE)
       reduce_rhs_q <= acc_buf[reduce_index + TILE_INDEX_W'(1)];
   end
-  assign reduce_alu_i_max = c.op == VEC_MAX;
-  assign reduce_alu_i_min = c.op == VEC_MIN;
+  assign reduce_alu_i_max = vector_max;
+  assign reduce_alu_i_min = vector_min;
   // 当前索引在本周期提供操作数，加法与有符号极值比较共用归约单元。
   vector_reduce_alu u_reduce_alu (
     .clk(clk), .i_lhs(reduce_alu_i_lhs), .i_rhs(reduce_alu_i_rhs),
@@ -1203,10 +1356,10 @@ module vector_engine #(
   assign avg_input_magnitude=32'(avg_unsigned_magnitude);
   assign avg_overestimate=avg_residual_q[AVG_SCALE_BITS+1];
   assign avg_twice_remainder={avg_remainder_q,1'b0};
-  assign avg_done=state==AVG_WAIT && avg_phase==4'd8;
+  assign avg_done=state==AVG_WAIT && avg_phase==4'd9;
   always_ff @(posedge clk) begin
     // 倒数平均运算先经过 QUANT_INIT，累加器选择和绝对值计算在进入乘法器前完成。
-    if (state==QUANT_INIT && c.op==AVGPOOL_S8 && !avg_power_two)
+    if (state==QUANT_INIT && avg_pool && !avg_power_two)
       avg_numerator_q<=AVG_SCALE_BITS'(avg_input_magnitude);
     if (state==AVG_START && !avg_power_two) begin
       avg_phase<=0;
@@ -1231,10 +1384,10 @@ module vector_engine #(
     end
   end
 
-  assign multiplier_a=c.op==AVGPOOL_S8 ?
+  assign multiplier_a=avg_pool ?
       (state==AVG_START ? $signed(32'(avg_numerator_q)) : $signed({24'd0,avg_estimate_q})) :
       add_s8 ? add_operand : softmax_s8 ? soft_mul_a : q_accumulator;
-  assign multiplier_b=c.op==AVGPOOL_S8 ?
+  assign multiplier_b=avg_pool ?
       (state==AVG_START ? $signed(32'(avg_reciprocal_data)) : $signed(32'(valid_taps))) :
       add_s8 ? add_multiplier : softmax_s8 ? soft_mul_b : q_multiplier;
   vector_scalar_multiplier u_scalar_multiplier (
@@ -1446,7 +1599,7 @@ module vector_engine #(
   logic accumulator_compute_fire, accumulator_soft_fire;
   logic accumulator_init_fire, accumulator_bias_selected;
   logic signed [31:0] accumulator_init_data;
-  assign accumulator_compute_fire = (state == EXECUTE_COMMIT && c.op != VEC_HADAMARD) ||
+  assign accumulator_compute_fire = (state == EXECUTE_COMMIT && (!vector_hadamard || !writeback_busy)) ||
       (dw_commit_vld && state!=FAILED && !dw_snapshot_fire);
   assign accumulator_soft_fire = softmax_s8 && soft_exp_we;
   // 计算提交与 Softmax 指数接收处于独立状态，各 PE 通道共用写入数据。
@@ -1460,17 +1613,17 @@ module vector_engine #(
   always_comb begin
     accumulator_init_data = 32'sd0;
     if (state == OUTPUT_INIT) begin
-      if (c.op == MAXPOOL_S8) accumulator_init_data = -32'sd128;
-      else if (c.op == MINPOOL_S8) accumulator_init_data = 32'sd127;
+      if (max_pool) accumulator_init_data = -32'sd128;
+      else if (min_pool) accumulator_init_data = 32'sd127;
     end else if (state == VECTOR_INIT) begin
-      if (c.op == VEC_MAX) accumulator_init_data = 32'sh8000_0000;
-      else if (c.op == VEC_MIN) accumulator_init_data = 32'sh7fff_ffff;
+      if (vector_max) accumulator_init_data = 32'sh8000_0000;
+      else if (vector_min) accumulator_init_data = 32'sh7fff_ffff;
     end
   end
   for (genvar entry=0;entry<TILE;entry++) begin : g_accumulator_write
     localparam int LANE_INDEX = entry % PE_COUNT;
     localparam int GROUP_BASE = entry - LANE_INDEX;
-    (* keep = 1 *) logic soft_selected;
+    logic soft_selected;
     // 下标和模式先行检查，指数接收条件直接参与当前项的写入选择。
     assign soft_selected = softmax_s8 && soft_exp_index==$bits(soft_exp_index)'(entry);
     logic soft_write, compute_write, bias_write, constant_write;
@@ -1486,8 +1639,13 @@ module vector_engine #(
     assign write_value = acc_common_write_data[LANE_INDEX] |
         ({32{bias_write}} & bias_buf[entry]) |
         ({32{constant_write}} & accumulator_init_data);
+    // 字节输出在当前累加项已完成全部读取后更新低字节。
     always_ff @(posedge clk) begin
-      if (rst_n && write_enable) acc_buf[entry] <= write_value;
+      if (rst_n && write_enable) acc_buf[entry][31:8] <= write_value[31:8];
+      if (rst_n) begin
+        if (result_write_enable[entry]) acc_buf[entry][7:0] <= result_write_data[entry];
+        else if (write_enable) acc_buf[entry][7:0] <= write_value[7:0];
+      end
     end
     always_ff @(posedge clk) if (rst_n) begin
       if (state==LOAD_WAIT && load_kind==LD_B && 32'(entry)<active) begin
@@ -1504,11 +1662,11 @@ module vector_engine #(
     end
   end
 
-  wire signed [63:0] rounding_input = add_s8 ? add_product :
-      c.op==AVGPOOL_S8 ? $signed(64'(serial_acc_read_data)) : q_product;
-  wire [5:0] rounding_amount = add_s8 ? add_right : c.op==AVGPOOL_S8 ? avg_shift : q_right_3;
+  // 乘法器已完成的输出直接进入舍入输入寄存器，乘积与移位量同拍保存。
+  wire signed [63:0] rounding_input = avg_pool ? $signed(64'(serial_acc_read_data)) : multiplier_product;
+  wire [5:0] rounding_amount = add_s8 ? add_right : avg_pool ? avg_shift : q_right_2;
   wire signed [63:0] rounding_result,rounding_floor;
-  vector_round_shift #(.REGISTER_MIDDLE(1'b1)) u_rounding (
+  vector_round_shift #(.REGISTER_MIDDLE(1'b1),.REGISTER_INPUT(1'b1)) u_rounding (
     .clk(clk),.value(rounding_input),.amount(rounding_amount),.result(rounding_result),.floor_value(rounding_floor));
   // 有效 S8 池化输入及激活范围使精确平均值保持在 [-128,127] 内。
   wire signed [8:0] pool_activation_min={c.activation_min[7],c.activation_min[7:0]};
@@ -1539,18 +1697,22 @@ module vector_engine #(
       add_rounded< -64'sd256 ? c.activation_min :
       add_below_min ? c.activation_min : add_above_max ? c.activation_max : 32'(add_adjusted);
 
+  // 标量限幅先保存字节结果，存储写使能仅选择已经完成的数值。
+  always_ff @(posedge clk) begin
+    if (state == ADD_CLAMP) serial_clamped_q <= add_clamped[7:0];
+    else if (state == AVG_POWER_CLAMP) serial_clamped_q <= avg_power_result[7:0];
+    else if (state == AVG_WAIT && avg_phase == 4'd8) serial_clamped_q <= avg_div_result[7:0];
+  end
+
   // 串行结果共用字节数据选择，每个存储项仅保留地址使能和并行结果选择。
   logic result_background_write;
-  logic result_quant_write;
   logic [TILE_INDEX_W-1:0] result_background_index;
   logic result_serial_write;
   logic [TILE_INDEX_W-1:0] result_serial_index;
   logic [7:0] result_serial_data;
   logic [7:0] result_common_data;
-  assign result_quant_write = depthwise && state!=IDLE && state!=FAILED && state!=DONE &&
-      q_active && q_valid[5];
-  assign result_background_write = result_quant_write || (softmax_s8 && soft_out_we);
-  assign result_background_index = result_quant_write ? q_index_5 : TILE_INDEX_W'(soft_out_index);
+  assign result_background_write = softmax_s8 && soft_out_we;
+  assign result_background_index = TILE_INDEX_W'(soft_out_index);
   always_comb begin
     result_serial_write = 1'b0;
     result_serial_index = '0;
@@ -1559,57 +1721,40 @@ module vector_engine #(
       ADD_STORE: begin
         result_serial_write = !writeback_busy && compute_index<TILE_INDEX_W'(active);
         result_serial_index = compute_index;
-        result_serial_data = add_clamped[7:0];
+        result_serial_data = serial_clamped_q;
       end
       AVG_POWER_STORE: begin
         result_serial_write = 1'b1;
         result_serial_index = quant_index;
-        result_serial_data = avg_power_result[7:0];
+        result_serial_data = serial_clamped_q;
       end
       AVG_WAIT: begin
         result_serial_write = avg_done;
         result_serial_index = quant_index;
-        result_serial_data = avg_div_result[7:0];
-      end
-      VECTOR_REDUCE: begin
-        result_serial_write = reduce_index+1>=TILE;
-        result_serial_data = reduce_next[7:0];
+        result_serial_data = serial_clamped_q;
       end
       default: ;
     endcase
   end
   // 字节写入来源互斥，各存储项共用已按写使能选择的数据。
-  assign result_common_data = ({8{result_quant_write}} & q_clamped_data[7:0]) |
-      ({8{softmax_s8 && soft_out_we}} & soft_out_data) |
+  assign result_common_data = ({8{softmax_s8 && soft_out_we}} & soft_out_data) |
       ({8{result_serial_write}} & result_serial_data);
   for (genvar entry=0;entry<TILE;entry++) begin : g_result_write
     localparam int LANE_INDEX = entry % PE_COUNT;
     localparam int GROUP_BASE = entry - LANE_INDEX;
     logic write_enable;
     logic [7:0] write_value;
-    logic background_selected, serial_selected, multiply_selected, pool_selected;
+    logic background_selected, serial_selected, pool_selected;
     logic [7:0] pool_value;
     assign background_selected = result_background_write && result_background_index == TILE_INDEX_W'(entry);
     assign serial_selected = result_serial_write && result_serial_index == TILE_INDEX_W'(entry);
-    assign multiply_selected = state == EXECUTE_COMMIT && c.op == VEC_HADAMARD && !writeback_busy &&
-        32'(entry) < active && compute_index == TILE_INDEX_W'(GROUP_BASE);
     assign pool_selected = state == POOL_STORE && 32'(entry) < active;
     assign pool_value = $signed(acc_buf[entry][7:0]) < $signed(c.activation_min[7:0]) ? c.activation_min[7:0] :
         $signed(acc_buf[entry][7:0]) > $signed(c.activation_max[7:0]) ? c.activation_max[7:0] : acc_buf[entry][7:0];
-    assign write_enable = background_selected || serial_selected || multiply_selected || pool_selected;
-    assign write_value = result_common_data | ({8{multiply_selected}} & pe_result[LANE_INDEX][7:0]) |
-        ({8{pool_selected}} & pool_value);
-    // 字节运算只更新字节写回模式使用的低八位。
-    always_ff @(posedge clk) if (rst_n && write_enable) result_buf[entry][7:0] <= write_value;
-    always_ff @(posedge clk) begin
-      if(rst_n) begin
-        if(state==EXECUTE_COMMIT && c.op==VEC_HADAMARD && !writeback_busy &&
-            32'(entry)<active && compute_index==TILE_INDEX_W'(GROUP_BASE))
-          result_buf[entry][31:8]<=pe_result[LANE_INDEX][31:8];
-        if(entry==0 && state==VECTOR_REDUCE && reduce_index+1>=TILE)
-          result_buf[entry][31:8]<=reduce_next[31:8];
-      end
-    end
+    assign write_enable = background_selected || serial_selected || pool_selected;
+    assign write_value = result_common_data | ({8{pool_selected}} & pool_value);
+    assign result_write_enable[entry] = write_enable;
+    assign result_write_data[entry] = write_value;
   end
 
   // 完成的像素保存到独立存储行，量化读取期间，PE 继续累加下一像素。
@@ -1674,9 +1819,9 @@ module vector_engine #(
         if (rst_n && depthwise && state!=FAILED) begin
           if (SHARED_QUANT_ENABLE && quant_rsp_valid && quant_rsp_tag==1'(slot) && entry<dw_result_count[slot])
             dw_result_bytes[slot][entry] <= quant_rsp_data[entry];
-          else if (!SHARED_QUANT_ENABLE && q_valid[5] &&
-                   dw_quant_slot_pipe[5]==1'(slot) && q_index_5==TILE_INDEX_W'(entry))
-            dw_result_bytes[slot][entry] <= q_clamped_data[7:0];
+          else if (!SHARED_QUANT_ENABLE && q_valid[6] &&
+                   dw_quant_slot_pipe[6]==1'(slot) && q_index_6==TILE_INDEX_W'(entry))
+            dw_result_bytes[slot][entry] <= q_clamped_q;
         end
       end
     end
@@ -1731,9 +1876,9 @@ module vector_engine #(
         dw_result_last[dw_quant_next_slot] <= dw_snapshot_last;
         dw_quant_next_slot <= !dw_quant_next_slot;
       end
-      if (depthwise && !SHARED_QUANT_ENABLE) dw_quant_slot_pipe <= {dw_quant_slot_pipe[4:0],dw_quant_slot};
+      if (depthwise && !SHARED_QUANT_ENABLE) dw_quant_slot_pipe <= {dw_quant_slot_pipe[5:0],dw_quant_slot};
       if (dw_quant_complete)
-        dw_result_ready[SHARED_QUANT_ENABLE ? quant_rsp_tag : dw_quant_slot_pipe[5]] <= 1'b1;
+        dw_result_ready[SHARED_QUANT_ENABLE ? quant_rsp_tag : dw_quant_slot_pipe[6]] <= 1'b1;
       if (dw_result_accept) begin
         dw_result_ready[dw_result_read_slot] <= 1'b0;
         dw_result_reserved[dw_result_read_slot] <= 1'b0;
@@ -1763,10 +1908,10 @@ module vector_engine #(
       ox<=0;oy<=0;kx<=0;ky<=0;tap<=0;load_tap<=0;valid_taps<=0;
       input_x<=0;input_y<=0;input_origin_x<=0;input_origin_y<=0;
       vector_offset<=0;compute_index<=0;quant_index<=0;reduce_index<=0;
-      reduce_acc<=0; param_bad_seen<=0;
-      add_stage<=0;add_multiply_wait<=0;add_product<=0;add_scaled_a<=0;add_rounded<=0;
-      q_accumulator<=0;q_multiplier<=0;q_rounded<=0;q_product<=0;q_right_0<=0;q_right_1<=0;q_right_2<=0;q_right_3<=0;
-      q_valid<=0;q_index_0<=0;q_index_1<=0;q_index_2<=0;q_index_3<=0;q_index_4<=0;q_index_5<=0;q_issue<=0;q_count<=0;
+      reduce_acc<=0; param_bad_seen<=0;load_completion_error<=1'b0;
+      add_stage<=0;add_multiply_wait<=0;add_scaled_a<=0;add_rounded<=0;
+      q_accumulator<=0;q_multiplier<=0;q_rounded<=0;q_right_0<=0;q_right_1<=0;q_right_2<=0;
+      q_valid<=0;q_index_0<=0;q_index_1<=0;q_index_2<=0;q_index_3<=0;q_index_4<=0;q_index_5<=0;q_index_6<=0;q_clamped_q<=0;q_issue<=0;q_count<=0;
       q_active<=0;
       read_bank<=0;wf_bank<=0;
       window_received<=0;soft_lut_data<=0;soft_lut_index_q<=0;avg_negative<=0;
@@ -1774,14 +1919,14 @@ module vector_engine #(
       fetch_x<=0;fetch_y<=0;fetch_origin_x<=0;fetch_origin_y<=0;
       write_origin<=0;write_total<=0;
       input_range_mode<=0;
-      pool_offset<=0;pool_pixels<=0;pool_received<=0;pool_pixel<=0;
+      pool_offset<=0;pool_taps_remaining<=0;pool_pixels<=0;pool_received<=0;pool_pixel<=0;
       pool_elements<=0;pool_row_columns<=0;pool_row_remaining<=0;pool_input_index<=0;
       fetch_tap_offset<=0;position_offset<=0;pool_byte_offset<=0;
     end else begin
       // 量化流水独立于空间位置状态运行，连续像素可在同一流水内交叠。
       if (depthwise && !SHARED_QUANT_ENABLE && state!=IDLE && state!=FAILED && state!=DONE) begin
         q_active <= dw_quant_input_active || (|q_valid) || dw_quant_start;
-        q_valid <= {q_valid[4:0],dw_quant_input_active};
+        q_valid <= {q_valid[5:0],dw_quant_input_active};
         if (dw_quant_start) begin
           q_count <= TILE_INDEX_W'(active);
           q_issue <= '0;
@@ -1794,9 +1939,10 @@ module vector_engine #(
         end
         if (q_valid[0]) begin q_right_1<=q_right_0;q_index_1<=q_index_0;end
         if (q_valid[1]) begin q_right_2<=q_right_1;q_index_2<=q_index_1;end
-        if (q_valid[2]) begin q_product<=multiplier_product;q_right_3<=q_right_2;q_index_3<=q_index_2;end
+        if (q_valid[2]) begin q_index_3<=q_index_2;end
         if (q_valid[3]) q_index_4<=q_index_3;
         if (q_valid[4]) begin q_rounded<=rounding_result;q_index_5<=q_index_4;end
+        if (q_valid[5]) begin q_clamped_q<=q_clamped_data[7:0];q_index_6<=q_index_5;end
       end
       if (softmax_s8) begin
         if (state==SOFT_LUT_WAIT && rd_raw_valid) soft_lut_data<=rd_raw_data[31:0];
@@ -1809,24 +1955,24 @@ module vector_engine #(
 
       if (window_fetch_advance) begin
         if (fetch_tap+1==taps) begin
-          fetch_position<=fetch_position+1;fetch_tap<=0;fetch_tap_offset<=0;fetch_kx<=0;
-          if (fetch_ox+1==32'(c.image.output_w)) begin
+          fetch_position<=fetch_position_next;fetch_tap<=0;fetch_tap_offset<=0;fetch_kx<=0;
+          if (fetch_ox==output_last_column) begin
             fetch_ox<=0;
-            fetch_origin_x<=-$signed(34'(c.image.pad_left));
-            fetch_origin_y<=fetch_origin_y+$signed(34'(c.image.stride_h));
-            fetch_x<=-$signed(34'(c.image.pad_left));
-            fetch_y<=fetch_origin_y+$signed(34'(c.image.stride_h));
+            fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+            fetch_origin_y<=$signed(coordinate_step_o_value[7]);
+            fetch_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+            fetch_y<=$signed(coordinate_step_o_value[7]);
           end else begin
             fetch_ox<=fetch_ox+1;
-            fetch_origin_x<=fetch_origin_x+$signed(34'(c.image.stride_w));
-            fetch_x<=fetch_origin_x+$signed(34'(c.image.stride_w));fetch_y<=fetch_origin_y;
+            fetch_origin_x<=$signed(coordinate_step_o_value[6]);
+            fetch_x<=$signed(coordinate_step_o_value[6]);fetch_y<=fetch_origin_y;
           end
         end else begin
-          fetch_tap<=fetch_tap+1;fetch_tap_offset<=fetch_tap_offset+channels;
+          fetch_tap<=fetch_tap+1;fetch_tap_offset<=fetch_tap_offset_next;
           if (fetch_kx==kernel_last_column) begin
-            fetch_kx<=0;fetch_x<=fetch_origin_x;fetch_y<=fetch_y+$signed(34'(c.image.dilation_h));
+            fetch_kx<=0;fetch_x<=fetch_origin_x;fetch_y<=$signed(coordinate_step_o_value[5]);
           end else begin
-            fetch_kx<=fetch_kx+1;fetch_x<=fetch_x+$signed(34'(c.image.dilation_w));
+            fetch_kx<=fetch_kx+1;fetch_x<=$signed(coordinate_step_o_value[4]);
           end
         end
       end
@@ -1865,11 +2011,11 @@ module vector_engine #(
         TILE_INIT: begin
           active<=channels-channel_base<TILE ? channels-channel_base : 32'(TILE);
           position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=LD_WEIGHT;
-          input_origin_x<=-$signed(34'(c.image.pad_left));input_origin_y<=-$signed(34'(c.image.pad_top));
+          input_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});input_origin_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
           read_bank<=0;wf_bank<=0;window_received<=0;
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
-          fetch_x<=-$signed(34'(c.image.pad_left));fetch_y<=-$signed(34'(c.image.pad_top));
-          fetch_origin_x<=-$signed(34'(c.image.pad_left));fetch_origin_y<=-$signed(34'(c.image.pad_top));
+          fetch_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});fetch_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
+          fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});fetch_origin_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
           state<=depthwise ? LOAD_REQ : OUTPUT_INIT;
         end
         LOAD_REQ: if (rd_granted) begin
@@ -1879,7 +2025,11 @@ module vector_engine #(
           state<=LOAD_WAIT;
         end
         LOAD_WAIT: if (rd_done) begin
-          if (rd_error || param_bad || param_bad_seen) begin error<=2'b10;state<=FAILED;end
+          load_completion_error<=rd_error;
+          state<=LOAD_VERIFY;
+        end
+        LOAD_VERIFY: begin
+          if (load_completion_error || param_bad_seen) begin error<=2'b10;state<=FAILED;end
           else case (load_kind)
             LD_WEIGHT: begin load_kind<=c.bias_base==0 ? LD_MULT : LD_BIAS;state<=LOAD_REQ;end
             LD_BIAS: begin load_kind<=LD_MULT;state<=LOAD_REQ;end
@@ -1898,7 +2048,7 @@ module vector_engine #(
           tap<=0;kx<=0;ky<=0;valid_taps<=0;compute_index<=0;
           input_x<=input_origin_x;input_y<=input_origin_y;
           if (global_pool) begin
-            valid_taps<=taps;pool_offset<=0;pool_byte_offset<=0;state<=POOL_LOAD_PREP;
+            valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;state<=POOL_LOAD_PREP;
           end else state<=depthwise ? DW_EXECUTE : TAP_CHECK;
         end
         DW_EXECUTE: begin
@@ -1922,17 +2072,17 @@ module vector_engine #(
         DW_FINISH: if (dw_snapshot_fire) begin
           compute_index<='0;tap<='0;kx<='0;ky<='0;
           if (position_next<32'(position_count)) begin
-            position<=position_next;position_offset<=position_offset+channels;
-            if (ox+16'd1==c.image.output_w) begin
+            position<=position_next;position_offset<=position_offset_next;
+            if (ox==output_last_column) begin
               ox<=0;oy<=oy+16'd1;
-              input_origin_x<=-$signed(34'(c.image.pad_left));
-              input_x<=-$signed(34'(c.image.pad_left));
-              input_origin_y<=input_origin_y+$signed(34'(c.image.stride_h));
-              input_y<=input_origin_y+$signed(34'(c.image.stride_h));
+              input_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+              input_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+              input_origin_y<=$signed(coordinate_step_o_value[3]);
+              input_y<=$signed(coordinate_step_o_value[3]);
             end else begin
               ox<=ox+16'd1;
-              input_origin_x<=input_origin_x+$signed(34'(c.image.stride_w));
-              input_x<=input_origin_x+$signed(34'(c.image.stride_w));
+              input_origin_x<=$signed(coordinate_step_o_value[2]);
+              input_x<=$signed(coordinate_step_o_value[2]);
               input_y<=input_origin_y;
             end
             state<=DW_EXECUTE;
@@ -1959,17 +2109,21 @@ module vector_engine #(
           end
           else state<=TAP_NEXT;
         WINDOW_WAIT: if (input_ready[read_bank]) begin compute_index<=0;state<=EXECUTE;end
-        EXECUTE: if (c.op!=VEC_HADAMARD || !writeback_busy) state<=EXECUTE_COMMIT;
+        EXECUTE: if (!vector_hadamard || !writeback_busy) state<=EXECUTE_COMMIT;
         EXECUTE_COMMIT: begin
           state<=EXECUTE;
           if (!compute_group_last_q) compute_index<=compute_index+32'(PE_COUNT);
           else if (global_pool) begin
-            pool_byte_offset<=pool_byte_offset+channels;
+            pool_byte_offset<=pool_byte_offset_next;
             if (pool_pixel+1<pool_pixels) begin
               pool_pixel<=pool_pixel+1;pool_input_index<=pool_input_index+(INPUT_INDEX_W+1)'(active);
               compute_index<=0;
             end
-            else if (pool_offset+pool_pixels<taps) begin pool_offset<=pool_offset+pool_pixels;state<=POOL_LOAD_PREP;end
+            else if (pool_taps_remaining>pool_pixels) begin
+              pool_offset<=pool_offset+pool_pixels;
+              pool_taps_remaining<=pool_taps_remaining-TAP_COUNT_W'(pool_pixels);
+              state<=POOL_LOAD_PREP;
+            end
             else begin quant_index<=0;state<=QUANT_INIT;end
           end
           else if (spatial) begin
@@ -1984,7 +2138,7 @@ module vector_engine #(
               end else state<=TAP_CHECK;
             end
           end
-          else if (c.op==VEC_HADAMARD) begin
+          else if (vector_hadamard) begin
             write_origin<=write_origin_next;write_total<=active<<2;state<=WRITE_PREP;
           end else state<=VECTOR_NEXT;
         end
@@ -1992,7 +2146,7 @@ module vector_engine #(
           add_multiply_wait<=0;state<=ADD_DRAIN;
         end
         ADD_DRAIN: if (add_multiply_wait) begin
-          add_product<=multiplier_product;state<=ADD_ROUND;
+          state<=ADD_ROUND;
         end else add_multiply_wait<=1;
         ADD_ROUND: state<=ADD_ROUND_WAIT;
         ADD_ROUND_WAIT: begin
@@ -2002,12 +2156,13 @@ module vector_engine #(
           end else if (add_stage==1) begin
             add_rounded<=rounding_result;state<=ADD_SUM;
           end else begin
-            add_rounded<=rounding_result;state<=ADD_STORE;
+            add_rounded<=rounding_result;state<=ADD_CLAMP;
           end
         end
         ADD_SUM: begin
           add_stage<=2;state<=ADD_MULT;
         end
+        ADD_CLAMP: state<=ADD_STORE;
         ADD_STORE: if (!writeback_busy) begin
           if (compute_index+1<active) begin
             compute_index<=compute_index+1'b1;add_stage<=0;state<=ADD_MULT;
@@ -2027,13 +2182,13 @@ module vector_engine #(
               q_active<=1;q_count<=active;q_issue<=0;q_valid<=0;state<=QUANT_STREAM;
             end
           end else if (!writeback_busy) begin
-            if (c.op==AVGPOOL_S8) begin
+            if (avg_pool) begin
               if (valid_taps==0) begin error<=2'b01;state<=FAILED;end else state<=AVG_START;
             end else state<=POOL_STORE;
           end
         end
         QUANT_STREAM: begin
-          q_valid<={q_valid[4:0],q_issue<q_count};
+          q_valid<={q_valid[5:0],q_issue<q_count};
           if (q_issue<q_count) begin
             q_accumulator<=serial_acc_read_data;q_multiplier<=params_o_multiplier;
             q_right_0<=params_o_right_shift;q_index_0<=q_issue;q_issue<=q_issue+1'b1;
@@ -2041,17 +2196,20 @@ module vector_engine #(
           if (q_valid[0]) begin q_right_1<=q_right_0;q_index_1<=q_index_0;end
           if (q_valid[1]) begin q_right_2<=q_right_1;q_index_2<=q_index_1;end
           if (q_valid[2]) begin
-            q_product<=multiplier_product;q_right_3<=q_right_2;q_index_3<=q_index_2;
+            q_index_3<=q_index_2;
           end
           if (q_valid[3]) q_index_4<=q_index_3;
           if (q_valid[4]) begin q_rounded<=rounding_result;q_index_5<=q_index_4;end
-          if (q_valid[5] && q_index_5+1==q_count) begin
+          if (q_valid[5]) begin q_clamped_q<=q_clamped_data[7:0];q_index_6<=q_index_5;end
+          if (q_valid[6] && q_index_6+1==q_count) begin
             q_active<=0;q_valid<=0;
             write_origin<=write_origin_next;write_total<=active;state<=WRITE_PREP;
           end
         end
-        AVG_START: if (avg_power_two) state<=AVG_POWER_STORE;
+        AVG_START: if (avg_power_two) state<=AVG_POWER_DELAY;
           else begin avg_negative<=serial_acc_read_data<0;state<=AVG_WAIT;end
+        AVG_POWER_DELAY: state<=AVG_POWER_CLAMP;
+        AVG_POWER_CLAMP: state<=AVG_POWER_STORE;
         AVG_POWER_STORE: begin
           if (quant_index+1<active) begin quant_index<=quant_index+1;state<=AVG_START;end
           else begin write_origin<=write_origin_next;write_total<=active;state<=WRITE_PREP;end
@@ -2067,17 +2225,17 @@ module vector_engine #(
         end
         WRITE_PREP: if (writeback_ready) begin
           if (spatial) state<=OUTPUT_NEXT;
-          else if (c.op==VEC_HADAMARD || add_s8) state<=VECTOR_NEXT;
+          else if (vector_hadamard || add_s8) state<=VECTOR_NEXT;
           else state<=DRAIN;
         end
         OUTPUT_NEXT: begin
           if (position_next<32'(position_count)) begin
-            position<=position_next;position_offset<=position_offset+channels;
-            if (ox+1==32'(c.image.output_w)) begin
-              ox<=0;oy<=oy+1;input_origin_x<=-$signed(34'(c.image.pad_left));
-              input_origin_y<=input_origin_y+$signed(34'(c.image.stride_h));
+            position<=position_next;position_offset<=position_offset_next;
+            if (ox==output_last_column) begin
+              ox<=0;oy<=oy+1;input_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+              input_origin_y<=$signed(coordinate_step_o_value[3]);
             end else begin
-              ox<=ox+1;input_origin_x<=input_origin_x+$signed(34'(c.image.stride_w));
+              ox<=ox+1;input_origin_x<=$signed(coordinate_step_o_value[2]);
             end
             state<=OUTPUT_INIT;
           end else if (channel_base+active<channels) begin
@@ -2105,12 +2263,12 @@ module vector_engine #(
           load_kind<=LD_A;state<=LOAD_REQ;
         end
         VECTOR_NEXT: if (vector_has_more) begin
-          vector_offset<=vector_offset+active;
+          vector_offset<=vector_offset_next;
           active<=vector_next_active;
           load_kind<=LD_A;state<=LOAD_REQ;
-        end else if (c.op==VEC_HADAMARD || add_s8) state<=DRAIN;
+        end else if (vector_hadamard || add_s8) state<=DRAIN;
         else begin
-          reduce_acc<=c.op==VEC_MAX ? 32'sh8000_0000 : c.op==VEC_MIN ? 32'sh7fff_ffff : 32'sd0;
+          reduce_acc<=vector_max ? 32'sh8000_0000 : vector_min ? 32'sh7fff_ffff : 32'sd0;
           reduce_index<=0;state<=VECTOR_REDUCE;
         end
         VECTOR_REDUCE: begin
@@ -2126,7 +2284,7 @@ module vector_engine #(
         default: begin error<=2'b10;state<=FAILED;end
       endcase
       if ((writeback_done && writeback_error) ||
-          (window_response_fire && win_rsp_last && (win_rsp_error || !window_count_o_equal))) begin
+          window_response_fault) begin
         error<=2'b10;state<=FAILED;
       end
       if (SHARED_STORAGE_ENABLE && i_storage_error &&
@@ -2138,6 +2296,45 @@ module vector_engine #(
 
 `ifdef NPU_SIM_ASSERT
   logic [31:0] input_position[4],input_tap[4];
+  logic writeback_metadata_stalled;
+  logic [31:0] previous_writeback_address;
+  logic [$clog2(4*TILE+1)-1:0] previous_writeback_bytes;
+  logic previous_writeback_last, previous_writeback_coalesce;
+  logic [32*TILE-1:0] previous_writeback_words;
+  always @(posedge clk) begin
+    if (!rst_n) begin
+      writeback_metadata_stalled <= 1'b0;
+    end else begin
+      if (writeback_request_valid && writeback_metadata_match) begin
+        assert(writeback_metadata_address == writeback_request_address);
+        assert(writeback_metadata_bytes == writeback_request_bytes);
+        assert(writeback_metadata_last == writeback_request_last);
+        assert(writeback_metadata_coalesce ==
+            (depthwise && channels==32'(dw_result_count[dw_result_read_slot])));
+      end
+      if (writeback_metadata_stalled && state != FAILED) begin
+        assert(writeback_request_valid && writeback_metadata_match);
+        assert(writeback_metadata_address == previous_writeback_address);
+        assert(writeback_metadata_bytes == previous_writeback_bytes);
+        assert(writeback_metadata_last == previous_writeback_last);
+        assert(writeback_metadata_coalesce == previous_writeback_coalesce);
+        if (byte_output) begin
+          for (int entry=0; entry<TILE; entry++)
+            assert(writeback_words[32*entry+:8] == previous_writeback_words[32*entry+:8]);
+        end else assert(writeback_words == previous_writeback_words);
+      end
+      if (window_response_fault) begin
+        assert(!dw_issue_fire);
+        assert(!win_req_valid);
+      end
+      writeback_metadata_stalled <= writeback_request_valid && writeback_metadata_match && !writeback_sink_ready;
+      previous_writeback_address <= writeback_metadata_address;
+      previous_writeback_bytes <= writeback_metadata_bytes;
+      previous_writeback_last <= writeback_metadata_last;
+      previous_writeback_coalesce <= writeback_metadata_coalesce;
+      previous_writeback_words <= writeback_words;
+    end
+  end
   initial forever begin
     @(posedge clk or negedge rst_n);
     if (!rst_n) begin
@@ -2155,6 +2352,33 @@ module vector_engine #(
     assert(POOL_MAX_TAPS>=1 && POOL_MAX_TAPS<=65535);
   end
   initial forever @(posedge clk) if (rst_n) begin
+    if (writeback_busy_raw) assert(writeback_busy);
+    assert(spatial == (c.op <= MINPOOL_S8) && depthwise == (c.op == DW_S8));
+    assert(add_s8 == (c.op == ADD_S8) && softmax_s8 == (c.op == SOFTMAX_S8));
+    assert(byte_output == (spatial || add_s8 || softmax_s8));
+    assert(binary_vector == (c.op == VEC_DOT || c.op == VEC_HADAMARD || add_s8));
+    assert(avg_pool == (c.op == AVGPOOL_S8) && max_pool == (c.op == MAXPOOL_S8));
+    assert(min_pool == (c.op == MINPOOL_S8) && vector_hadamard == (c.op == VEC_HADAMARD));
+    assert(vector_max == (c.op == VEC_MAX) && vector_min == (c.op == VEC_MIN));
+    if (state == VECTOR_NEXT) begin
+      assert(vector_has_more == vector_has_more_comb);
+      assert(vector_next_active == vector_next_active_comb);
+    end
+    if (global_pool && (state == POOL_LOAD_PREP || state == EXECUTE || state == EXECUTE_COMMIT))
+      assert(pool_taps_remaining == taps - pool_offset);
+    if (state == POOL_LOAD_PREP) begin
+      assert(cache_power_two == cache_power_two_next && cache_channel_shift == cache_channel_shift_next);
+      assert(pool_capacity == (cache_power_two_next && active >= 4 ?
+          (INPUT_INDEX_W+1)'(2*TILE) >> cache_channel_shift_next : (INPUT_INDEX_W+1)'(1)));
+    end
+    if (state == QUANT_INIT || state == AVG_START || state == AVG_POWER_STORE || state == AVG_WAIT)
+      assert(avg_power_two == avg_power_two_next && avg_shift == avg_shift_next);
+    if (q_valid[6]) begin
+      assert(q_minimum_before_offset == $signed({c.activation_min[7],c.activation_min[7:0]}) -
+          $signed({c.output_offset[7],c.output_offset[7:0]}));
+      assert(q_maximum_before_offset == $signed({c.activation_max[7],c.activation_max[7:0]}) -
+          $signed({c.output_offset[7],c.output_offset[7:0]}));
+    end
     if (src_wvalid && !src_wready) begin
       assert(wr_busy);
     end
@@ -2207,8 +2431,8 @@ module vector_coordinate_bound (
   //! -----------
 
   logic [15:0] bit_generate, bit_propagate;
-  (* keep = 1 *) logic [5:0] group_generate, group_propagate;
-  (* keep = 1 *) logic [1:0] half_generate, half_propagate;
+  logic [5:0] group_generate, group_propagate;
+  logic [1:0] half_generate, half_propagate;
   logic coordinate_high_zero, coordinate_low_less;
 
   //! 1. 并行比较坐标与尺寸
@@ -2355,3 +2579,274 @@ module vector_weight_store #(
 
     assign o_rd_data = read_in_range ? storage_o_rd_data[0] : '0;
 endmodule
+
+// SPDX-License-Identifier: Apache-2.0
+`default_nettype none
+
+// 按总线字接收结果，两个字节银行组分别保存待发数据与当前事务。
+module vector_banked_writeback #(
+  parameter int TILE = 16,
+  parameter int BUS_WIDTH = 64,
+  parameter int COUNT_WIDTH = $clog2(4*TILE+1),
+  parameter bit p_coalesce_bytes_only = 1'b1,
+`ifdef XILINX_FPGA
+  parameter bit p_use_dsp = 1'b1
+`else
+  parameter bit p_use_dsp = 1'b0
+`endif
+) (
+  input  logic clk, rst_n,
+  input  logic request_valid,
+  output logic request_ready,
+  input  logic [31:0] request_address,
+  input  logic [COUNT_WIDTH-1:0] request_bytes,
+  input  logic request_byte_output,
+  input  logic [32*TILE-1:0] result_words,
+  input  logic request_coalesce,
+  input  logic request_last,
+  input  logic flush,
+  output logic busy, done, error,
+  output logic wr_req, wr_start,
+  input  logic wr_granted,
+  output logic [31:0] wr_base_addr, wr_row_stride, wr_rows_to_write,
+  output logic [7:0] wr_burst_len_m1,
+  output logic [BUS_WIDTH-1:0] src_wdata,
+  output logic [BUS_WIDTH/8-1:0] src_wmask,
+  output logic src_wvalid,
+  input  logic src_wready, wr_done, wr_error
+);
+  //! 0. 内部定义
+  //! ----------------
+
+  localparam int BUS_BYTES = BUS_WIDTH/8;
+  localparam int BUS_SHIFT = $clog2(BUS_BYTES);
+  localparam int CAPACITY = 4*TILE;
+  localparam int GROUP_COUNT = (CAPACITY+BUS_BYTES-1)/BUS_BYTES;
+  localparam int ROW_WIDTH = GROUP_COUNT<=1 ? 1 : $clog2(GROUP_COUNT);
+  localparam int BANK_DEPTH = 1 << (ROW_WIDTH+1);
+  localparam int ARITH_WIDTH = COUNT_WIDTH>BUS_SHIFT ? COUNT_WIDTH+1 : BUS_SHIFT+2;
+  typedef enum logic [1:0] {IDLE, REQUEST, DATA, RESPONSE} state_t;
+  state_t c_st, n_st;
+  logic pending_slot, payload_slot;
+  logic [31:0] pending_address, payload_address;
+  logic [32:0] pending_end_address;
+  (* use_dsp = p_use_dsp ? "yes" : "no" *) logic [32:0] request_end_address;
+  logic [COUNT_WIDTH-1:0] pending_bytes, total_bytes, written_bytes;
+  logic pending_last;
+  logic [7:0] payload_burst_length;
+  logic [BUS_SHIFT-1:0] lane_offset, first_bank;
+  logic [COUNT_WIDTH:0] appended_bytes;
+  logic append_compatible, append_fits, append_allowed;
+  logic publish_fire, request_fire, data_fire;
+  logic copy_active, copy_word_fire, copy_cancel, copy_last;
+  logic [ROW_WIDTH-1:0] copy_source_q, copy_row_q;
+  logic [BUS_SHIFT-1:0] copy_offset_q;
+  logic [ROW_WIDTH-1:0] source_group, destination_row;
+  logic [BUS_SHIFT-1:0] destination_offset;
+  logic [ARITH_WIDTH-1:0] copy_remaining, remaining, available, beat_bytes, pending_span;
+  logic [BUS_SHIFT:0] copy_count;
+  logic [BUS_WIDTH-1:0] source_word, bank_word;
+  logic [BUS_WIDTH-1:0] store_rotation [0:BUS_SHIFT];
+  logic [BUS_WIDTH-1:0] output_rotation [0:BUS_SHIFT];
+  logic [ROW_WIDTH-1:0] read_row [BUS_BYTES];
+  logic read_enable;
+
+  //! 1. 接收资格与传输数量
+  //! ------------------------
+
+  assign request_end_address = {1'b0, request_address} + 33'(request_bytes);
+  assign appended_bytes = {1'b0, pending_bytes} + {1'b0, request_bytes};
+  assign append_compatible = pending_bytes==0 ||
+      (request_coalesce && (!p_coalesce_bytes_only || request_byte_output) &&
+       !pending_end_address[32] && request_address==pending_end_address[31:0]);
+  assign append_fits = appended_bytes <= (COUNT_WIDTH+1)'(CAPACITY);
+  assign copy_cancel = copy_active && (!request_valid || flush);
+  assign publish_fire = (c_st==IDLE || (c_st==RESPONSE && wr_done && !wr_error)) &&
+      pending_bytes!=0 && (!copy_active || copy_cancel) &&
+      (pending_last || flush || pending_bytes==COUNT_WIDTH'(CAPACITY) ||
+       (request_valid && (!append_compatible || !append_fits)));
+  assign append_allowed = !flush && !pending_last && append_compatible && append_fits && !publish_fire;
+  assign source_group = copy_active ? copy_source_q : '0;
+  assign destination_row = copy_active ? copy_row_q : ROW_WIDTH'(pending_bytes >> BUS_SHIFT);
+  assign destination_offset = copy_active ? copy_offset_q : BUS_SHIFT'(pending_bytes);
+  assign copy_remaining = ARITH_WIDTH'(request_bytes) -
+      (ARITH_WIDTH'(source_group) << BUS_SHIFT);
+  assign copy_count = copy_remaining > ARITH_WIDTH'(BUS_BYTES) ?
+      (BUS_SHIFT+1)'(BUS_BYTES) : (BUS_SHIFT+1)'(copy_remaining);
+  assign copy_last = copy_remaining <= ARITH_WIDTH'(BUS_BYTES);
+  assign copy_word_fire = request_valid && append_allowed;
+  // 最后一个总线字存入银行时确认请求，生产方在此之前保存地址、长度和数据。
+  assign request_ready = append_allowed && copy_last;
+  assign request_fire = request_valid && request_ready;
+  assign data_fire = c_st==DATA && src_wready;
+  assign remaining = ARITH_WIDTH'(total_bytes) - ARITH_WIDTH'(written_bytes);
+  assign available = ARITH_WIDTH'(BUS_BYTES) - ARITH_WIDTH'(lane_offset);
+  assign beat_bytes = remaining<available ? remaining : available;
+  assign pending_span = ARITH_WIDTH'(pending_address[BUS_SHIFT-1:0]) +
+      ARITH_WIDTH'(pending_bytes) + ARITH_WIDTH'(BUS_BYTES-1);
+  assign read_enable = publish_fire || (data_fire && remaining>available);
+
+  //! 2. 按银行保存与读取数据
+  //! --------------------------
+
+  // 源地址的低位为固定通道号，每个银行只选择当前组中的一个字节。
+  for (genvar bank=0; bank<BUS_BYTES; bank++) begin : g_source_bank
+    logic [7:0] word_group [1<<ROW_WIDTH];
+    logic [7:0] byte_group [1<<ROW_WIDTH];
+    for (genvar group=0; group<(1<<ROW_WIDTH); group++) begin : g_group
+      localparam int INDEX = group*BUS_BYTES+bank;
+      if (INDEX<CAPACITY) begin : g_word
+        assign word_group[group] = result_words[8*INDEX+:8];
+      end else begin : g_word_padding
+        assign word_group[group] = '0;
+      end
+      if (INDEX<TILE) begin : g_byte
+        assign byte_group[group] = result_words[32*INDEX+:8];
+      end else begin : g_byte_padding
+        assign byte_group[group] = '0;
+      end
+    end
+    assign source_word[8*bank+:8] = request_byte_output ? byte_group[source_group] : word_group[source_group];
+  end
+  assign store_rotation[0] = source_word;
+  for (genvar stage=0; stage<BUS_SHIFT; stage++) begin : g_store_rotation
+    localparam int SHIFT_BITS = 8*(1<<stage);
+    assign store_rotation[stage+1] = destination_offset[stage] ?
+        {store_rotation[stage][BUS_WIDTH-SHIFT_BITS-1:0],
+         store_rotation[stage][BUS_WIDTH-1:BUS_WIDTH-SHIFT_BITS]} : store_rotation[stage];
+  end
+  for (genvar bank=0; bank<BUS_BYTES; bank++) begin : g_storage_bank
+    logic [BUS_SHIFT-1:0] source_lane;
+    logic [ROW_WIDTH-1:0] write_row, next_read_row;
+    logic [ROW_WIDTH:0] write_address, read_address;
+    logic write_enable;
+    logic [7:0] read_data;
+    (* ram_style = "block" *) logic [7:0] memory [0:BANK_DEPTH-1];
+
+    assign source_lane = BUS_SHIFT'(bank) - destination_offset;
+    assign write_row = destination_row + ROW_WIDTH'(BUS_SHIFT'(bank)<destination_offset);
+    assign write_address = {pending_slot, write_row};
+    assign write_enable = copy_word_fire && {1'b0, source_lane}<copy_count;
+    assign next_read_row = written_bytes==0 && first_bank!=0 ?
+        ROW_WIDTH'(BUS_SHIFT'(bank)<first_bank) : read_row[bank]+ROW_WIDTH'(1);
+    assign read_address = publish_fire ? {pending_slot, {ROW_WIDTH{1'b0}}} :
+        {payload_slot, next_read_row};
+    always_ff @(posedge clk) begin
+      if (write_enable) memory[write_address] <= store_rotation[BUS_SHIFT][8*bank+:8];
+      if (read_enable) read_data <= memory[read_address];
+    end
+    assign bank_word[8*bank+:8] = read_data;
+    always_ff @(posedge clk) begin
+      if (publish_fire) read_row[bank] <= '0;
+      else if (data_fire && remaining>available) read_row[bank] <= next_read_row;
+    end
+  end
+
+  //! 3. 更新接收与事务状态
+  //! ------------------------
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      copy_active <= 1'b0;
+      copy_source_q <= '0;
+      copy_row_q <= '0;
+      copy_offset_q <= '0;
+    end else if (copy_cancel || publish_fire) begin
+      copy_active <= 1'b0;
+    end else if (copy_word_fire) begin
+      copy_active <= !copy_last;
+      copy_source_q <= source_group + ROW_WIDTH'(1);
+      copy_row_q <= destination_row + ROW_WIDTH'(1);
+      copy_offset_q <= destination_offset;
+    end
+  end
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      pending_slot <= 1'b0;
+      pending_address <= '0;
+      pending_end_address <= '0;
+      pending_bytes <= '0;
+      pending_last <= 1'b0;
+    end else if (publish_fire) begin
+      pending_slot <= !pending_slot;
+      pending_bytes <= '0;
+      pending_last <= 1'b0;
+    end else if (request_fire) begin
+      if (pending_bytes==0) pending_address <= request_address;
+      pending_end_address <= request_end_address;
+      pending_bytes <= appended_bytes[COUNT_WIDTH-1:0];
+      pending_last <= request_last || !request_coalesce || (p_coalesce_bytes_only && !request_byte_output);
+    end
+  end
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) c_st <= IDLE;
+    else c_st <= n_st;
+  end
+  always_comb begin
+    n_st = c_st;
+    case (c_st)
+      IDLE: if (publish_fire) n_st = REQUEST;
+      REQUEST: if (wr_granted) n_st = DATA;
+      DATA: if (data_fire && remaining<=available) n_st = RESPONSE;
+      RESPONSE: if (wr_done) n_st = publish_fire ? REQUEST : IDLE;
+      default: n_st = IDLE;
+    endcase
+  end
+  always_ff @(posedge clk) begin
+    if (publish_fire) begin
+      payload_slot <= pending_slot;
+      payload_address <= {pending_address[31:BUS_SHIFT], {BUS_SHIFT{1'b0}}};
+      payload_burst_length <= 8'((pending_span >> BUS_SHIFT)-1'b1);
+      total_bytes <= pending_bytes;
+      written_bytes <= '0;
+      lane_offset <= pending_address[BUS_SHIFT-1:0];
+      first_bank <= BUS_SHIFT'(0)-pending_address[BUS_SHIFT-1:0];
+    end else if (data_fire) begin
+      written_bytes <= written_bytes + COUNT_WIDTH'(beat_bytes);
+      lane_offset <= '0;
+    end
+  end
+
+  //! 4. 输出与握手
+  //! ----------------
+
+  assign output_rotation[0] = bank_word;
+  for (genvar stage=0; stage<BUS_SHIFT; stage++) begin : g_output_rotation
+    localparam int SHIFT_BITS = 8*(1<<stage);
+    assign output_rotation[stage+1] = first_bank[stage] ?
+        {output_rotation[stage][SHIFT_BITS-1:0], output_rotation[stage][BUS_WIDTH-1:SHIFT_BITS]} :
+        output_rotation[stage];
+  end
+  assign src_wdata = output_rotation[BUS_SHIFT];
+  assign src_wvalid = c_st==DATA;
+  for (genvar lane=0; lane<BUS_BYTES; lane++) begin : g_byte_mask
+    logic [BUS_SHIFT-1:0] distance;
+    assign distance = BUS_SHIFT'(lane)-lane_offset;
+    assign src_wmask[lane] = BUS_SHIFT'(lane)>=lane_offset && remaining>ARITH_WIDTH'(distance);
+  end
+  assign busy = c_st!=IDLE || pending_bytes!=0 || copy_active;
+  assign done = c_st==RESPONSE && wr_done;
+  assign error = done && wr_error;
+  assign wr_req = c_st==REQUEST;
+  assign wr_start = wr_req && wr_granted;
+  assign wr_base_addr = payload_address;
+  assign wr_row_stride = 32'd0;
+  assign wr_rows_to_write = 32'd1;
+  assign wr_burst_len_m1 = payload_burst_length;
+
+`ifdef NPU_SIM_ASSERT
+  initial begin
+    assert(TILE>=1 && BUS_BYTES>=4 && (BUS_BYTES&(BUS_BYTES-1))==0);
+    assert(COUNT_WIDTH>0 && COUNT_WIDTH<=16);
+  end
+  always @(posedge clk) if (rst_n) begin
+    assert(!(publish_fire && copy_word_fire));
+    if (copy_word_fire) assert(appended_bytes<=(COUNT_WIDTH+1)'(CAPACITY));
+    if (request_fire) assert(copy_last);
+    if (c_st!=IDLE && pending_bytes!=0) assert(payload_slot!=pending_slot);
+    if (data_fire) assert(beat_bytes!=0);
+  end
+`endif
+endmodule
+
+`default_nettype wire

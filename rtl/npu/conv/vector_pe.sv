@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 `default_nettype none
-// One 16-bit multiplier supports signed MAC and full-width product assembly.
+// 十六位乘法器同时承担乘加、加法及完整乘积组合。
 module vector_pe #(
   parameter bit ENABLE_EXTENDED_MULTIPLY=1'b1
 ) (
@@ -11,9 +11,16 @@ module vector_pe #(
 );
   logic [31:0] product_uu, product_su;
   logic signed [31:0] product_ss, extended_a;
-  wire signed [31:0] mac_acc = op==3'd0 ? acc : 32'sd0;
-  (* use_dsp = "yes" *) wire signed [32:0] mac_value =
-      $signed(a) * $signed(b) + $signed({mac_acc[31],mac_acc});
+  logic signed [15:0] mac_rhs;
+  logic signed [31:0] mac_acc;
+  (* use_dsp = "yes" *) logic signed [32:0] mac_value;
+  logic acc_high_equal, acc_less_than_a;
+  logic signed [31:0] extremum;
+
+  // 求和操作把第二乘数设为一，与乘加操作共用同一个算术单元。
+  assign mac_rhs = op == 3'd1 ? 16'sd1 : b;
+  assign mac_acc = (op == 3'd0 || op == 3'd1) ? acc : 32'sd0;
+  assign mac_value = $signed(a) * $signed(mac_rhs) + $signed({mac_acc[31], mac_acc});
   assign product_ss = mac_value[31:0];
   generate
     if (ENABLE_EXTENDED_MULTIPLY) begin : g_extended_multiply
@@ -25,13 +32,14 @@ module vector_pe #(
     end
   endgenerate
   assign extended_a = {{16{a[15]}},a};
-  // Both extrema use the same signed comparison; equality selects equivalent values.
-  wire acc_less_than_a = acc < extended_a;
-  wire signed [31:0] extremum = (acc_less_than_a ^ op[0]) ? extended_a : acc;
+  // 高半字相等时比较低半字；高半字不等时，完整累加值的符号决定次序。
+  assign acc_high_equal = acc[31:16] == {16{a[15]}};
+  assign acc_less_than_a = acc_high_equal ? (acc[15:0] < a[15:0]) : acc[31];
+  assign extremum = (acc_less_than_a ^ op[0]) ? extended_a : acc;
   always_comb begin
     case (op)
       3'd0: result = product_ss;
-      3'd1: result = acc + extended_a;
+      3'd1: result = product_ss;
       3'd2, 3'd3: result = extremum;
       3'd4: result = product_ss;
       3'd5: result = $signed(product_uu);

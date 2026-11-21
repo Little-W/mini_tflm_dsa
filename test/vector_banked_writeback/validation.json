@@ -1,0 +1,255 @@
+{
+  "rtl_source_sha256": {
+    "rtl/npu/conv/vector_config_check.sv": "7bee672b10d98c7411fc6efc5beabb2e969ccd34b2f2e3572e3e50bd4600eca0",
+    "rtl/npu/conv/vector_engine.sv": "789a9227c1331a3d1c42bd1ce8209c329f46fc1c58083d9e7242450312089eb7",
+    "rtl/npu/conv/vector_pe.sv": "b3f727309ca2c752c6eace27f34cf2c6357e4a9a5ab38c3cfa1f77ba46ffdaed",
+    "rtl/npu/conv/vector_round_shift.sv": "2e980a0a1d78815489fb271dbd515fbdd4145d37968214826ab2b63ad8c33509",
+    "rtl/npu/conv/vector_scalar_multiplier.sv": "66d853a2a4e4b0a1aacb3fc72130ca135fc980bf322db9c18ec698bbd2772523",
+    "rtl/npu/conv/vector_softmax.sv": "893a9dced39ba5f68d6fa6025b92c2e8f946900fb12db8d58a5eb63261e046a1"
+  },
+  "validation": {
+    "production": {
+      "path": "build/vector_r14_banked_production/summary.json",
+      "sha256": "dae09404f530eab4f687f0ef96efaf8455d7b20b9c216cb52ee6f2bb752cef66",
+      "result": {
+        "verification": "RTL engine + production DMA; independent signed-integer nearest-even reference",
+        "tile": 16,
+        "cache_sets": 16,
+        "cache_policy": 3,
+        "cache_line_bytes": 128,
+        "cache_bytes": 4096,
+        "bus_width": 64,
+        "window_lanes": 8,
+        "shared_quant": false,
+        "shared_storage": true,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "shared_ia_banks": 2,
+        "check_weight_prefetch": true,
+        "rtl_assertions": true,
+        "stable_stimulus": true,
+        "implementation": "official Xilinx primitive models",
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "verilator": "Verilator 5.054 2026-11-01 rev v5.054",
+        "runs": [
+          {
+            "pe": 8,
+            "passed": true,
+            "log": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/vector_r14_banked_production/pe8/functional.log",
+            "totals": {
+              "cases": 615,
+              "outputs": 170668,
+              "add_cases": 143,
+              "add_outputs": 135758,
+              "softmax_cases": 273,
+              "softmax_outputs": 2188
+            },
+            "executable_sha256": "7b7008d1d9f75392f3324d2adbc0c12e2110b45ed30b3703bf54400cf67ed84a",
+            "case_count": 615
+          }
+        ]
+      }
+    },
+    "shared_quantization": {
+      "path": "build/vector_r14_banked_shared_quant/summary.json",
+      "sha256": "0591fedec3b498063db1025452a708896810086e75908fa7603f82c8e60a3941",
+      "result": {
+        "verification": "RTL engine + production DMA; independent signed-integer nearest-even reference",
+        "tile": 16,
+        "cache_sets": 16,
+        "cache_policy": 3,
+        "cache_line_bytes": 128,
+        "cache_bytes": 4096,
+        "bus_width": 32,
+        "window_lanes": 4,
+        "shared_quant": true,
+        "shared_storage": true,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "shared_ia_banks": 2,
+        "check_weight_prefetch": true,
+        "rtl_assertions": true,
+        "stable_stimulus": true,
+        "implementation": "official Xilinx primitive models",
+        "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+        "verilator": "Verilator 5.054 2026-11-01 rev v5.054",
+        "runs": [
+          {
+            "pe": 8,
+            "passed": true,
+            "log": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/vector_r14_banked_shared_quant/pe8/functional.log",
+            "totals": {
+              "cases": 615,
+              "outputs": 170668,
+              "add_cases": 143,
+              "add_outputs": 135758,
+              "softmax_cases": 273,
+              "softmax_outputs": 2188
+            },
+            "executable_sha256": "3ac39eb7eeb8194e4a13eb848fdc2a03cedf3aab8e09baccc1744818d0051a8a",
+            "case_count": 615
+          }
+        ]
+      }
+    },
+    "writeback": {
+      "path": "build/vector_banked_writeback_final_unit/summary.json",
+      "sha256": "22a2ac152b3e1ed37a9842c2865e824282e4f672091960fdc6c0f492c81f44b8",
+      "result": {
+        "source_sha256": "789a9227c1331a3d1c42bd1ce8209c329f46fc1c58083d9e7242450312089eb7",
+        "test_sha256": {
+          "run.py": "90c31708d41c894c1b59a4b07c974501eb2ea676ac8064680ceec5a6a6c1fe55",
+          "main.cpp": "4aad45f8d9de387c8f433915bf727bb30b6491a7a886e31815c20b247437b09a"
+        },
+        "module_sha256": "f20b70a28702c22c52a37d385e6fa58f67a2b2af19a351d0a552f1347083c047",
+        "runs": [
+          {
+            "tile": 1,
+            "bus_bits": 32,
+            "coalesce_bytes_only": 1,
+            "requests": 341,
+            "bytes": 565,
+            "transactions": 288,
+            "responses": 288,
+            "errors": 16,
+            "grant_stalls": 95,
+            "data_stalls": 104,
+            "partial_cancels": 0,
+            "cycles": 2116,
+            "passed": true,
+            "log_sha256": "f12c4f351b4f624f70546b697243049ee91ab003051db4569b7ef96d8b05e05e"
+          },
+          {
+            "tile": 2,
+            "bus_bits": 64,
+            "coalesce_bytes_only": 1,
+            "requests": 437,
+            "bytes": 1334,
+            "transactions": 384,
+            "responses": 384,
+            "errors": 22,
+            "grant_stalls": 87,
+            "data_stalls": 100,
+            "partial_cancels": 0,
+            "cycles": 2475,
+            "passed": true,
+            "log_sha256": "a1c1cf22cbc93fb3907e8aa82a31adcfc27427c7468d9ef8bd65886406607699"
+          },
+          {
+            "tile": 3,
+            "bus_bits": 32,
+            "coalesce_bytes_only": 1,
+            "requests": 406,
+            "bytes": 1751,
+            "transactions": 353,
+            "responses": 353,
+            "errors": 20,
+            "grant_stalls": 88,
+            "data_stalls": 147,
+            "partial_cancels": 1,
+            "cycles": 2747,
+            "passed": true,
+            "log_sha256": "b3a7989ae36c6665d2ccfafb294da85e4c9a61fee33a2aca3da316738c4cc57c"
+          },
+          {
+            "tile": 16,
+            "bus_bits": 32,
+            "coalesce_bytes_only": 1,
+            "requests": 846,
+            "bytes": 21741,
+            "transactions": 769,
+            "responses": 769,
+            "errors": 45,
+            "grant_stalls": 95,
+            "data_stalls": 512,
+            "partial_cancels": 1,
+            "cycles": 9378,
+            "passed": true,
+            "log_sha256": "81fd0bd142a4d566f1e89ea0c6bf40d834abb20dd9af2e77ed2db8fe156d752f"
+          },
+          {
+            "tile": 16,
+            "bus_bits": 64,
+            "coalesce_bytes_only": 1,
+            "requests": 1342,
+            "bytes": 38684,
+            "transactions": 1281,
+            "responses": 1281,
+            "errors": 75,
+            "grant_stalls": 77,
+            "data_stalls": 283,
+            "partial_cancels": 1,
+            "cycles": 10069,
+            "passed": true,
+            "log_sha256": "16ff3a7d8e347842330285e9fa29d190194820d87f03168942c1202acf19351a"
+          },
+          {
+            "tile": 16,
+            "bus_bits": 128,
+            "coalesce_bytes_only": 1,
+            "requests": 2358,
+            "bytes": 71859,
+            "transactions": 2305,
+            "responses": 2305,
+            "errors": 135,
+            "grant_stalls": 68,
+            "data_stalls": 189,
+            "partial_cancels": 1,
+            "cycles": 12686,
+            "passed": true,
+            "log_sha256": "cdda591ef06c06d5335ada43919171d6905b91776d2a412d691c5e0a2840cb03"
+          },
+          {
+            "tile": 64,
+            "bus_bits": 64,
+            "coalesce_bytes_only": 1,
+            "requests": 4462,
+            "bytes": 545849,
+            "transactions": 4353,
+            "responses": 4353,
+            "errors": 256,
+            "grant_stalls": 80,
+            "data_stalls": 877,
+            "partial_cancels": 1,
+            "cycles": 83670,
+            "passed": true,
+            "log_sha256": "84efdb0330be00e7433fcbb54f20c8e1e0bc4502bf50de8ee1e7403e5dbfc11e"
+          },
+          {
+            "tile": 3,
+            "bus_bits": 32,
+            "coalesce_bytes_only": 0,
+            "requests": 406,
+            "bytes": 1701,
+            "transactions": 282,
+            "responses": 282,
+            "errors": 16,
+            "grant_stalls": 56,
+            "data_stalls": 146,
+            "partial_cancels": 1,
+            "cycles": 2156,
+            "passed": true,
+            "log_sha256": "6a655f645ff77f0856a57eb7078d5e2405dbfae34b02919d6c5408042d3e0a1a"
+          },
+          {
+            "tile": 16,
+            "bus_bits": 64,
+            "coalesce_bytes_only": 0,
+            "requests": 1342,
+            "bytes": 38447,
+            "transactions": 1220,
+            "responses": 1220,
+            "errors": 71,
+            "grant_stalls": 46,
+            "data_stalls": 272,
+            "partial_cancels": 1,
+            "cycles": 9595,
+            "passed": true,
+            "log_sha256": "4daa8ed3876ec5d9175b2cfba637754b010d94116f157a33524d15f32bf40f9d"
+          }
+        ],
+        "passed": true
+      }
+    }
+  }
+}

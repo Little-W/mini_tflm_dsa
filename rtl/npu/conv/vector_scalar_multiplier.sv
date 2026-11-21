@@ -22,7 +22,7 @@ module vector_scalar_multiplier #(
     );
 endmodule
 
-// Each input register is independently optional; all stages share the enable.
+// 两个输入寄存阶段分别可选，全部流水阶段共用使能。
 module registered_multiplier_s32 #(
     parameter bit p_input_register = 1'b0,
     parameter bit p_b_input_register = p_input_register,
@@ -61,8 +61,7 @@ module registered_multiplier_s32 #(
         end
     endgenerate
 
-    // p_use_dsp remains an interface parameter. Multipliers are inferred so
-    // technology mapping is left to synthesis rather than primitive instances.
+    // 四个完整部分积由行为级乘法推断，各寄存阶段保持相同的使能周期。
     (* keep, use_dsp = "yes" *) logic [31:0] low_product;
     (* keep, use_dsp = "yes" *) logic signed [32:0] low_high_product;
     (* keep, use_dsp = "yes" *) logic signed [32:0] high_low_product;
@@ -70,7 +69,7 @@ module registered_multiplier_s32 #(
     logic [47:0] diagonal;
     logic [47:0] low_high_extended, high_low_extended;
     logic [47:0] compressed_sum, compressed_carry;
-    (* use_dsp = "no" *) logic [47:0] upper_sum;
+    logic [47:0] upper_sum;
     logic [47:0] upper_add_i_a, upper_add_i_b;
     logic upper_add_i_carry;
     logic [47:0] upper_add_o_sum;
@@ -98,16 +97,24 @@ module registered_multiplier_s32 #(
     assign upper_add_i_carry = 1'b0;
     assign upper_sum = upper_add_o_sum;
 
-    // 三个部分积压缩为两个操作数，保留八位分组边界并行计算最后一级进位。
-    parallel_prefix_add #(
-        .p_width(48), .p_group_width(8), .p_preserve_groups(1'b1)
-    ) u_upper_add (
-        .i_a(upper_add_i_a),
-        .i_b(upper_add_i_b),
-        .i_carry(upper_add_i_carry),
-        .o_sum(upper_add_o_sum),
-        .o_carry(unused_upper_add_carry)
-    );
+    // 完整乘积只消费高四十八位的模加法结果，溢出位不参与输出。
+    // FPGA 配置允许综合器推断加法 DSP，其余配置使用四位分组并行进位。
+    if (p_use_dsp) begin : g_inferred_upper_add
+        (* use_dsp = "yes" *) logic [47:0] inferred_sum;
+        assign inferred_sum = upper_add_i_a + upper_add_i_b;
+        assign upper_add_o_sum = inferred_sum;
+        assign unused_upper_add_carry = 1'b0;
+    end else begin : g_grouped_upper_add
+        parallel_prefix_add #(
+            .p_width(48), .p_group_width(4), .p_preserve_groups(1'b0)
+        ) u_upper_add (
+            .i_a(upper_add_i_a),
+            .i_b(upper_add_i_b),
+            .i_carry(upper_add_i_carry),
+            .o_sum(upper_add_o_sum),
+            .o_carry(unused_upper_add_carry)
+        );
+    end
 
     always_ff @(posedge clk) begin
         if (i_en) o_product <= {upper_sum, low_product[15:0]};

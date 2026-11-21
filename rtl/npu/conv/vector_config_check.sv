@@ -21,15 +21,16 @@ module vector_config_check #(
   logic [31:0] input_pixels,multiply_a;
   logic [15:0] multiply_b;
   (* use_dsp="yes" *) logic [31:0] multiply_low,multiply_high;
-  (* use_dsp="no" *) wire [47:0] product_q={16'd0,multiply_low}+{multiply_high,16'd0};
-  logic [47:0] last_y,last_x;
-  logic [16:0] range_x_sum, range_y_sum;
-  logic [16:0] range_x_carry, range_y_carry;
-  logic [17:0] range_x_compare, range_y_compare;
-  logic [17:0] range_x_i_a, range_x_i_b, range_y_i_a, range_y_i_b;
-  logic unused_range_x_carry, unused_range_y_carry;
+  (* use_dsp="yes" *) logic [31:0] product_upper;
+  wire [47:0] product_q={product_upper,multiply_low[15:0]};
+  logic [15:0] range_dimension, range_padding;
+  logic [16:0] range_sum, range_carry;
+  logic [17:0] range_compare, range_i_a, range_i_b;
+  logic unused_range_carry;
+  logic output_coordinate_in_range;
   logic output_x_in_range, output_y_in_range;
   logic fields_ok,spatial,depthwise,binary_vector,add_s8,softmax_s8;
+  logic static_fields_ok, static_fields_ok_q;
   logic activation_range_ok;
   logic [31:0] selected_base,range_base_q;
   logic [63:0] selected_bytes,range_bytes_q;
@@ -37,6 +38,10 @@ module vector_config_check #(
   logic [32:0] range_end_q,output_end_q;
   logic [7:0] range_end_low;
   logic range_end_carry;
+  (* use_dsp="yes" *) logic [24:0] range_end_high;
+  assign product_upper = multiply_high + {16'd0,multiply_low[31:16]};
+  assign range_end_high = {1'b0, range_base_q[31:8]} +
+      {1'b0, range_bytes_q[31:8]} + range_end_carry;
   // 两端均为有效 INT8 值时，仅比较低八位的有符号次序。
   assign activation_range_ok =
       (cfg.activation_min[31:8] == {24{cfg.activation_min[7]}}) &&
@@ -65,55 +70,44 @@ module vector_config_check #(
       default: ;
     endcase
   end
-  // 将尺寸、填充和末坐标反码先压缩为两项，单次进位给出严格小于关系。
-  assign range_x_sum = {1'b0, cfg.image.input_w} ^ {1'b0, cfg.image.pad_left} ^ ~last_x[16:0];
-  assign range_y_sum = {1'b0, cfg.image.input_h} ^ {1'b0, cfg.image.pad_top} ^ ~last_y[16:0];
-  assign range_x_carry = ({1'b0, cfg.image.input_w} & {1'b0, cfg.image.pad_left}) |
-      (({1'b0, cfg.image.input_w} ^ {1'b0, cfg.image.pad_left}) & ~last_x[16:0]);
-  assign range_y_carry = ({1'b0, cfg.image.input_h} & {1'b0, cfg.image.pad_top}) |
-      (({1'b0, cfg.image.input_h} ^ {1'b0, cfg.image.pad_top}) & ~last_y[16:0]);
-  assign range_x_i_a = {1'b0, range_x_sum};
-  assign range_x_i_b = {range_x_carry, 1'b0};
-  assign range_y_i_a = {1'b0, range_y_sum};
-  assign range_y_i_b = {range_y_carry, 1'b0};
-  // 四位分组独立计算坐标范围的进位，完整比较结果保持十八位。
-  parallel_prefix_add #(.p_width(18), .p_group_width(4)) u_range_x (
-      .i_a(range_x_i_a), .i_b(range_x_i_b), .i_carry(1'b0),
-      .o_sum(range_x_compare), .o_carry(unused_range_x_carry)
+  // 纵、横坐标按乘积阶段共用范围检查器，分别保存检查结果。
+  assign range_dimension = phase == 3'd6 ? cfg.image.input_h : cfg.image.input_w;
+  assign range_padding = phase == 3'd6 ? cfg.image.pad_top : cfg.image.pad_left;
+  assign range_sum = {1'b0, range_dimension} ^ {1'b0, range_padding} ^ ~product_q[16:0];
+  assign range_carry = ({1'b0, range_dimension} & {1'b0, range_padding}) |
+      (({1'b0, range_dimension} ^ {1'b0, range_padding}) & ~product_q[16:0]);
+  assign range_i_a = {1'b0, range_sum};
+  assign range_i_b = {range_carry, 1'b0};
+  parallel_prefix_add #(.p_width(18), .p_group_width(4)) u_range (
+      .i_a(range_i_a), .i_b(range_i_b), .i_carry(1'b0),
+      .o_sum(range_compare), .o_carry(unused_range_carry)
   );
-  parallel_prefix_add #(.p_width(18), .p_group_width(4)) u_range_y (
-      .i_a(range_y_i_a), .i_b(range_y_i_b), .i_carry(1'b0),
-      .o_sum(range_y_compare), .o_carry(unused_range_y_carry)
-  );
-  assign output_x_in_range = !(|last_x[47:17]) && range_x_compare[17];
-  assign output_y_in_range = !(|last_y[47:17]) && range_y_compare[17];
+  assign output_coordinate_in_range = !(|product_q[47:17]) && range_compare[17];
 
   always_comb begin
-    fields_ok=cfg.op<=SOFTMAX_S8;
+    static_fields_ok=cfg.op<=SOFTMAX_S8;
     if (spatial) begin
-      fields_ok=fields_ok && cfg.image.input_h!=0 && cfg.image.input_w!=0 && cfg.image.input_c!=0 &&
+      static_fields_ok=static_fields_ok && cfg.image.input_h!=0 && cfg.image.input_w!=0 && cfg.image.input_c!=0 &&
         cfg.image.output_h!=0 && cfg.image.output_w!=0 && cfg.image.kernel_h!=0 && cfg.image.kernel_w!=0 &&
-        kernel_count<=32'(depthwise ? MAX_TAPS : POOL_MAX_TAPS) &&
         cfg.image.stride_h!=0 && cfg.image.stride_w!=0 &&
         cfg.image.dilation_h!=0 && cfg.image.dilation_w!=0 && !cfg.image.input_s16 && !cfg.vector_s16 &&
-        weight_bytes[63:32]==0 && activation_range_ok;
+        activation_range_ok;
       if (depthwise) begin
-        fields_ok=fields_ok && cfg.image.input_offset>=-127 && cfg.image.input_offset<=128 &&
+        static_fields_ok=static_fields_ok && cfg.image.input_offset>=-127 && cfg.image.input_offset<=128 &&
           cfg.output_offset>=-128 && cfg.output_offset<=127 &&
           cfg.multiplier_base[1:0]==0 && cfg.shift_base[1:0]==0;
-        if (cfg.bias_base!=0) fields_ok=fields_ok && cfg.bias_base[1:0]==0;
+        if (cfg.bias_base!=0) static_fields_ok=static_fields_ok && cfg.bias_base[1:0]==0;
       end else begin
-        fields_ok=fields_ok && cfg.image.input_offset==0 && cfg.output_offset==0 &&
+        static_fields_ok=static_fields_ok && cfg.image.input_offset==0 && cfg.output_offset==0 &&
           cfg.image.dilation_h==1 && cfg.image.dilation_w==1 &&
-          cfg.image.pad_top<cfg.image.kernel_h && cfg.image.pad_left<cfg.image.kernel_w &&
-          output_y_in_range && output_x_in_range;
+          cfg.image.pad_top<cfg.image.kernel_h && cfg.image.pad_left<cfg.image.kernel_w;
       end
     end else begin
-      fields_ok=fields_ok && cfg.length!=0 && (add_s8 || softmax_s8 || cfg.output_base[1:0]==0);
-      if (cfg.vector_s16) fields_ok=fields_ok && cfg.input_base[0]==0;
-      if (binary_vector && cfg.vector_s16) fields_ok=fields_ok && cfg.rhs_base[0]==0;
-      if (softmax_s8) fields_ok=fields_ok && !cfg.vector_s16 && cfg.length<=32'(TILE) && cfg.rhs_base[1:0]==0;
-      if (add_s8) fields_ok=fields_ok && !cfg.vector_s16 &&
+      static_fields_ok=static_fields_ok && cfg.length!=0 && (add_s8 || softmax_s8 || cfg.output_base[1:0]==0);
+      if (cfg.vector_s16) static_fields_ok=static_fields_ok && cfg.input_base[0]==0;
+      if (binary_vector && cfg.vector_s16) static_fields_ok=static_fields_ok && cfg.rhs_base[0]==0;
+      if (softmax_s8) static_fields_ok=static_fields_ok && !cfg.vector_s16 && cfg.length<=32'(TILE) && cfg.rhs_base[1:0]==0;
+      if (add_s8) static_fields_ok=static_fields_ok && !cfg.vector_s16 &&
         cfg.add.input1_offset>=-127 && cfg.add.input1_offset<=128 &&
         cfg.add.input2_offset>=-127 && cfg.add.input2_offset<=128 &&
         cfg.add.input1_multiplier>=0 && cfg.add.input2_multiplier>=0 && cfg.add.output_multiplier>=0 &&
@@ -125,6 +119,13 @@ module vector_config_check #(
         activation_range_ok;
     end
   end
+  // 静态字段提前检查，乘积和末坐标在各自计算阶段完成后检查。
+  always_ff @(posedge clk) begin
+    static_fields_ok_q <= static_fields_ok;
+  end
+  assign fields_ok = static_fields_ok_q && (!spatial ||
+      (kernel_count <= 32'(depthwise ? MAX_TAPS : POOL_MAX_TAPS) &&
+       weight_bytes[63:32] == 0 && (depthwise || (output_y_in_range && output_x_in_range))));
   always_comb begin
     selected_base=0;selected_bytes=0;selected_enable=0;
     case (range_index)
@@ -182,8 +183,8 @@ module vector_config_check #(
           3: weight_bytes<={16'd0,product_q};
           4: input_bytes<={16'd0,product_q};
           5: output_bytes<={16'd0,product_q};
-          6: last_y<=product_q;
-          7: last_x<=product_q;
+          6: output_y_in_range<=output_coordinate_in_range;
+          7: output_x_in_range<=output_coordinate_in_range;
           default: ;
         endcase
         if (phase==7) state<=FIELDS;
@@ -197,8 +198,7 @@ module vector_config_check #(
       end
       RANGE_ADD: begin
         range_end_q[7:0] <= range_end_low;
-        range_end_q[32:8] <= {1'b0, range_base_q[31:8]} +
-            {1'b0, range_bytes_q[31:8]} + range_end_carry;
+        range_end_q[32:8] <= range_end_high;
         range_size_ok<=range_bytes_q!=0 && range_bytes_q[63:32]==0;
         state<=RANGE_COMPARE;
       end

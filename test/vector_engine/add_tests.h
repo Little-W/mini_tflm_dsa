@@ -48,7 +48,7 @@ static void add_random_case(Sim&s,const std::string&name,const vector_add_refere
  uint32_t length,unsigned alignment,int pattern=0){
  std::vector<int8_t>a(length),b(length);
  for(uint32_t i=0;i<length;i++){
-   a[i]=int8_t(int(s.rng()%256)-128);b[i]=int8_t(int(s.rng()%256)-128);
+   a[i]=int8_t(int(s.sample()%256)-128);b[i]=int8_t(int(s.sample()%256)-128);
    if(pattern==1){a[i]=(i&1)?-128:127;b[i]=a[i];}
    if(pattern==2){a[i]=int8_t(int(i%255)-127);b[i]=int8_t(-a[i]);}
  }
@@ -84,10 +84,10 @@ static void add_functional(Sim&s){
  p={0,0,0x40000000,0,0x40000000,0,20,0,-31,-19,-7,3};
  add_random_case(s,"add_zero_output_multiplier",p,17,47);
  for(unsigned i=0;i<32;i++){
-   p={int(s.rng()%256)-127,int(s.rng()%256)-127,int32_t(s.rng()&INT32_MAX),-int(s.rng()%32),
-      int32_t(s.rng()&INT32_MAX),-int(s.rng()%32),int(s.rng()%23),
-      int32_t(s.rng()&INT32_MAX),int(s.rng()%62)-31,int(s.rng()%256)-128,-128,127};
-   add_random_case(s,"add_random_"+std::to_string(i),p,1+s.rng()%129,s.rng()%64);
+   p={int(s.sample()%256)-127,int(s.sample()%256)-127,int32_t(s.sample()&INT32_MAX),-int(s.sample()%32),
+      int32_t(s.sample()&INT32_MAX),-int(s.sample()%32),int(s.sample()%23),
+      int32_t(s.sample()&INT32_MAX),int(s.sample()%62)-31,int(s.sample()%256)-128,-128,127};
+   add_random_case(s,"add_random_"+std::to_string(i),p,1+s.sample()%129,s.sample()%64);
  }
 }
 
