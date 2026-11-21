@@ -642,12 +642,53 @@ module conv_windowed_cache #(
   wire reference_index_valid = prefetch_ref_valid ? prefetch_ref_index_valid : req_window_index_valid;
   wire [SI-1:0] next_pf_set = cache_set(reference_next_address,
       windowed_q && reference_index_valid, reference_index);
-  wire incoming_lookup_ready = offer_fresh_q ?
-      (incoming_snapshot_valid && incoming_snapshot_set==offer_set_q) :
-      (incoming_hold_snapshot_valid && incoming_hold_snapshot_set==offer_set_q);
-  wire next_lookup_ready = offer_fresh_q ?
-      (next_snapshot_valid && next_snapshot_set==offer_next_set_q) :
-      (next_hold_snapshot_valid && next_hold_snapshot_set==offer_next_set_q);
+  logic [3:0] offer_read_set_match_q;
+  logic offer_read_set_match_valid;
+  logic [3:0][SI-1:0] offer_read_next_set;
+  logic [1:0][SI-1:0] offer_next_set;
+  // 预取描述和读取快照同时更新时保存组号匹配结果，队列接收直接使用资格位。
+  // 下一状态使用相同的条件更新顺序，复位和未知控制值保持原有读取行为。
+  always_comb begin
+    offer_next_set = {offer_next_set_q, offer_set_q};
+    if (offer_capture) offer_next_set = {next_pf_set, initial_pf_set};
+    offer_read_next_set = {offer_next_set_q, offer_set_q, next_pf_set, initial_pf_set};
+    if (!rst_n) begin
+      offer_read_next_set = {next_hold_snapshot_set, incoming_hold_snapshot_set,
+                             next_snapshot_set, incoming_snapshot_set};
+    end
+  end
+  always_ff @(posedge clk) begin
+    offer_read_set_match_q[0] <= offer_read_next_set[0] == offer_next_set[0];
+    offer_read_set_match_q[1] <= offer_read_next_set[1] == offer_next_set[1];
+    offer_read_set_match_q[2] <= offer_read_next_set[2] == offer_next_set[0];
+    offer_read_set_match_q[3] <= offer_read_next_set[3] == offer_next_set[1];
+  end
+  // 保存采样边沿的复位状态，未知复位恢复期间仍按快照字段计算四态结果。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) offer_read_set_match_valid <= 1'b0;
+    else offer_read_set_match_valid <= rst_n;
+  end
+  logic incoming_lookup_ready, next_lookup_ready;
+  always_comb begin
+    case (offer_read_set_match_valid)
+      1'b0, 1'b1: begin
+        incoming_lookup_ready = offer_fresh_q ?
+            (incoming_snapshot_valid && offer_read_set_match_q[0]) :
+            (incoming_hold_snapshot_valid && offer_read_set_match_q[2]);
+        next_lookup_ready = offer_fresh_q ?
+            (next_snapshot_valid && offer_read_set_match_q[1]) :
+            (next_hold_snapshot_valid && offer_read_set_match_q[3]);
+      end
+      default: begin
+        incoming_lookup_ready = offer_fresh_q ?
+            (incoming_snapshot_valid && incoming_snapshot_set == offer_set_q) :
+            (incoming_hold_snapshot_valid && incoming_hold_snapshot_set == offer_set_q);
+        next_lookup_ready = offer_fresh_q ?
+            (next_snapshot_valid && next_snapshot_set == offer_next_set_q) :
+            (next_hold_snapshot_valid && next_hold_snapshot_set == offer_next_set_q);
+      end
+    endcase
+  end
 
   // 地址范围比较共享操作数列表，完整扩展减法由综合工具推断。
   // 每对端口依次比较下界和上界，最后两项分别检查普通填充和旁路填充的起点。
@@ -911,7 +952,16 @@ module conv_windowed_cache #(
   assign prefetch_keys_i_wr_data = {pf_offer_addr, pf_offer_epoch};
   assign prefetch_keys_i_wr_mask = 1'b1;
   assign prefetch_keys_i_rd_en = '1;
-  assign pf_selected_keys = prefetch_keys_o_rd_data[pf_read_slot];
+  // 活动预取项使用独立读取端口，固定位置比较继续并行读取各项关键字段。
+  // 两份存储共用同一写入事件，同步接收寄存级并入行为级块存储器读取。
+  regfile #(
+    .p_data_width(64), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
+    .p_write_unit(64), .p_read_ports(1), .p_sync_read(1'b0), .p_ram_style("block")
+  ) u_prefetch_selected (
+    .clk(clk), .i_wr_en(prefetch_keys_i_wr_en), .i_wr_addr(prefetch_keys_i_wr_addr),
+    .i_wr_data(prefetch_keys_i_wr_data), .i_wr_mask(prefetch_keys_i_wr_mask),
+    .i_rd_en(1'b1), .i_rd_addr(pf_read_slot), .o_rd_data(pf_selected_keys)
+  );
   regfile #(
     .p_data_width(64), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
     .p_write_unit(64), .p_read_ports(PF_DEPTH), .p_sync_read(1'b0)
@@ -953,7 +1003,7 @@ module conv_windowed_cache #(
   assign prefetch_payload_o_rd_data[64:32] = prefetch_index_o_rd_data[0];
   regfile #(
     .p_data_width(33), .p_depth(PF_DEPTH), .p_addr_width(PF_AW),
-    .p_write_unit(33), .p_read_ports(1), .p_sync_read(1'b0)
+    .p_write_unit(33), .p_read_ports(1), .p_sync_read(1'b0), .p_ram_style("block")
   ) u_prefetch_index (
     .clk(clk), .i_wr_en(prefetch_index_i_wr_en), .i_wr_addr(prefetch_index_i_wr_addr),
     .i_wr_data(prefetch_index_i_wr_data), .i_wr_mask(prefetch_index_i_wr_mask),
@@ -1019,12 +1069,19 @@ module conv_windowed_cache #(
     lookup_read_word = fg_state==FG_MISS ? demand_addr[31:2] : lookup_read_request.address[31:2];
   end
   logic [3:0][SI-1:0] lookup_candidate_set;
+  logic [3:0][31:2] lookup_candidate_word;
+  logic [3:0] lookup_candidate_fill_match, lookup_candidate_conflict;
+  logic lookup_fill_match;
   logic [1:0] lookup_candidate_select;
   // 四个位置独立读取有效位，出队状态只选择已经形成的单比特结果。
   assign lookup_candidate_set[0] = request_queue[request_head].set_index;
   assign lookup_candidate_set[1] = request_queue[DQ_AW'(request_head + DQ_AW'(1))].set_index;
   assign lookup_candidate_set[2] = incoming_request.set_index;
   assign lookup_candidate_set[3] = bypass_q ? demand_fill_set : demand_set;
+  assign lookup_candidate_word[0] = request_queue[request_head].address[31:2];
+  assign lookup_candidate_word[1] = request_queue[DQ_AW'(request_head + DQ_AW'(1))].address[31:2];
+  assign lookup_candidate_word[2] = incoming_request.address[31:2];
+  assign lookup_candidate_word[3] = demand_addr[31:2];
   always_comb begin
     lookup_candidate_select = request_count == 0 ? 2'd2 : 2'd0;
     if (fg_state != FG_MISS && req_fire && request_count != 0) begin
@@ -1237,8 +1294,29 @@ module conv_windowed_cache #(
       (32'(lookup_read_word) & (LINE_BYTES/4-1)));
   wire [WAY_AW-1:0] fill_word_address = WAY_AW'((32'(fill_set) * (LINE_BYTES/4)) +
       ((span_addr >> 2) & (LINE_BYTES/4-1)));
-  assign spec_read_conflict = ram_wen &&
-      (speculative_address >> RAM_BANK_SHIFT) == (fill_word_address >> RAM_BANK_SHIFT);
+  // 四个读取位置独立检查填充冲突，请求出队只选择单比特比较结果。
+  // 原始地址仍驱动存储器端口，冲突状态与地址采用相同的位置选择。
+  for (genvar candidate = 0; candidate < 4; candidate++) begin : g_lookup_conflict
+    logic [WAY_AW-1:0] candidate_address;
+    assign candidate_address = WAY_AW'((32'(lookup_candidate_set[candidate]) * (LINE_BYTES/4)) +
+        (32'(lookup_candidate_word[candidate]) & (LINE_BYTES/4-1)));
+    assign lookup_candidate_conflict[candidate] =
+        (candidate_address >> RAM_BANK_SHIFT) == (fill_word_address >> RAM_BANK_SHIFT);
+    assign lookup_candidate_fill_match[candidate] = lookup_candidate_set[candidate] == fill_set;
+  end
+  always_comb begin
+    case (^{fg_state, req_fire, req_valid, request_count})
+      1'b0, 1'b1: begin
+        spec_read_conflict = ram_wen && lookup_candidate_conflict[lookup_candidate_select];
+        lookup_fill_match = lookup_candidate_fill_match[lookup_candidate_select];
+      end
+      default: begin
+        spec_read_conflict = ram_wen &&
+            (speculative_address >> RAM_BANK_SHIFT) == (fill_word_address >> RAM_BANK_SHIFT);
+        lookup_fill_match = fill_set == lookup_read_set;
+      end
+    endcase
+  end
   for (genvar data_way=0; data_way<WAYS; data_way++) begin : g_data_way
     conv_sdp_ram #(.DEPTH(WAY_DEPTH),.AW(WAY_AW),.WRITE_WIDTH(BUS_WIDTH),.READ_WIDTH(READ_WIDTH)) u_data (
       .clk, .rd_en(!spec_read_conflict), .rd_addr(speculative_address), .rd_data(speculative_data[data_way]),
@@ -1328,7 +1406,7 @@ module conv_windowed_cache #(
     end else begin
       lookup_snapshot_set <= lookup_read_set;
       lookup_snapshot_word <= lookup_read_word;
-      lookup_snapshot_valid <= !(metadata_enable && metadata_fill_good && fill_set==lookup_read_set) &&
+      lookup_snapshot_valid <= !(metadata_enable && metadata_fill_good && lookup_fill_match) &&
                                !spec_read_conflict;
     end
   end
