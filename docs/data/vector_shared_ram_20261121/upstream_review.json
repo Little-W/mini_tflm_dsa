@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "upstream_commit": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+  "integrated_commit": "bccbb54b0ca7bed20e2400428b7b2f89803c3095",
+  "production_files_modified_by_review": false,
+  "all_recorded_sources_match_current_files": true,
+  "flatbuffers_version": "25.2.10",
+  "reports": {
+    "predictor/result.json": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/upstream_33c994c/predictor/result.json",
+      "sha256": "7fb4740ded6ad8dad594430f4b5bfe05e561c700dbc0df14491b73298f4a7078"
+    },
+    "predictor_stress/result.json": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/upstream_33c994c/predictor_stress/result.json",
+      "sha256": "b23ed339c6fac7e994da378dbf2c33ca320b8dd5eb80b74cdb89312ca6057d1e"
+    },
+    "operand_drain/summary.json": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/upstream_33c994c/operand_drain/summary.json",
+      "sha256": "a5b2d0f9c550a3b900c61728e7bead9d742940d35c4d74d287f1b42de59fc86b"
+    },
+    "clock_gate_reset/summary.json": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/upstream_33c994c/clock_gate_reset/summary.json",
+      "sha256": "2f6f338fd85751a53668d4e7ccdf7dce79b30384e3c6f327c3a665f3990339d8"
+    },
+    "writeback_miter/summary.json": {
+      "path": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/upstream_33c994c/writeback_miter/summary.json",
+      "sha256": "eb83cc67f5468fdc2ed4f9a0058cfeba673b83c20b406c21b71af78377f8ea15"
+    }
+  },
+  "predictor": {
+    "configurations_per_run": 40,
+    "enabled": 16,
+    "disabled": 24,
+    "vectors_per_run": 13303,
+    "normal_equivalent_cycles": 208633,
+    "interrupt_equivalent_cycles": 208768,
+    "interrupt_stress_passed": true,
+    "reference_commit": "0bc63b3d7f7b2a0cfa8941737953cf8c9ef16591"
+  },
+  "writeback_miter": {
+    "bus_widths": [
+      32,
+      64
+    ],
+    "equivalent_cycles_per_width": 30000,
+    "reference_commit": "0bc63b3d7f7b2a0cfa8941737953cf8c9ef16591"
+  },
+  "operand_drain": {
+    "jobs": 3,
+    "held_response_cycles": 250,
+    "completion_handshakes": 3,
+    "core_clock_edges": 832,
+    "read_bytes": 326,
+    "write_bytes": 6,
+    "passed": true
+  },
+  "clock_gate_reset": {
+    "core_clock_edges": 32,
+    "passed": true
+  },
+  "static_review": [
+    "vector_writeback 的组合循环移位保留写入使能范围内的全部源字节，接口、状态寄存器和握手时序不变。",
+    "conv_next_use_predictor 启用条件包含 1<=kh*kw<=25，五位核坐标完整表示全部发射位置，坐标与十六位 dilation 的乘积可由二十一位精确表示。",
+    "vector_shared_store 源文件保持不变；顶层 DMA 排空回归使用当前共享 RAM 集成源码，接口和任务完成条件兼容。"
+  ],
+  "material_findings": []
+}

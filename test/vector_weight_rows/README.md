@@ -1,8 +1,12 @@
 # 向量权重的整行同步存储
 
-`vector_weight_store` 按卷积核位置保存全部通道权重。生产配置为 49 行、
+本地存储配置的 `vector_weight_store` 按卷积核位置保存全部通道权重。默认配置为 49 行、
 每行 16 个八位通道，共 6,272 位。存储通过公共 `regfile` 提供字节写掩码、
 同步读取与块 RAM 资源选择，每个 DMA 字节仍按原有通道条件写入。
+
+`SHARED_STORAGE_ENABLE=1` 时，向量单元通过 `vector_shared_store` 访问已有的
+IA/PS 共享 RAM。共享存储测试及两类配置的运行方法见
+[`test/vector_engine`](../vector_engine/README.md)。
 
 状态机在 `OUTPUT_INIT` 读取位置零，在最后一组计算的 `EXECUTE_COMMIT`
 准备下一个卷积核位置；其余周期使用当前 `tap`。计算发射周期始终取得
@@ -38,10 +42,10 @@ BUS64 的全部任务周期、DMA 统计和重叠统计逐项等于已有完整�
 
 ## 资源与容量
 
-完整独立向量模块的生产配置映射为 11,183 个逻辑 LUT、56 个分布式 RAM
+本地存储配置下，完整独立向量模块的测量结果为 11,183 个逻辑 LUT、56 个分布式 RAM
 LUT、6,030 个触发器、17 个 DSP48E1 和 2 个 RAMB36E1。权重存储占用这两个
 块 RAM，原有 192 个权重 RAM LUT 转入块 RAM。实际存储层次为
-`u_vector.u_weights.u_storage.mem`，容量统计应计算 49×128 位。
+`u_vector.g_private_weights.u_weights.u_storage.mem`，容量统计应计算 49×128 位。
 `measurement.json` 保存所测源码摘要、全部验证摘要和综合资源信息。
 
 ## 运行方法

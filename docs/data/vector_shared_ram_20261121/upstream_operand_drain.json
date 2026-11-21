@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "returncode": 0,
+  "source_manifest_sha256": "5a5174c512114745a5a416adca90dc974a383eb51b3132b4396ab940f210988f",
+  "binary_sha256": "d5fb6205db15e22964ae3e268abc48cd71e3e2ac724a08cd6bf1106e695f3cee",
+  "log_sha256": "4c60b265e2fed971db7121d93a1b4944b78440d4d49f6b5ff67386fc4f4c30a2",
+  "observations": [
+    "OPERAND_DRAIN_GEMM_RETIRED done_handshakes=1 remaining_reads=0",
+    "OPERAND_DRAIN_PASS jobs=3 flushes=3 done_handshakes=3 held_cycles=250 core_edges=832 conv_outputs=4 read_bytes=326 write_bytes=6"
+  ],
+  "scope": "Real AXI-Lite clock-gated core, optional operand cache enabled by a top-level parameter, held last 12 beats of wide input allocation; after drain real IS Conv then changed-data GEMM."
+}

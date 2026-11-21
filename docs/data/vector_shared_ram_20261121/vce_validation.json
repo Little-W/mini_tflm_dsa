@@ -1,0 +1,113 @@
+{
+  "passed": true,
+  "revision": "bccbb54b0ca7bed20e2400428b7b2f89803c3095",
+  "upstream_revision": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+  "runs": [
+    {
+      "name": "vector_shared_storage_pe16",
+      "passed": true,
+      "pe": 16,
+      "bus_width": 64,
+      "window_lanes": 16,
+      "shared_quant": true,
+      "shared_storage": true,
+      "totals": {
+        "cases": 615,
+        "outputs": 172195,
+        "add_cases": 143,
+        "add_outputs": 135593,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "source_files": 56,
+      "sources_match_current": true,
+      "summary": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_shared_storage_pe16/summary.json",
+      "summary_sha256": "ca1dc6ce4f4ab468eb5d2a1311d811feec471af69105cb3f8770ac9e624d8c91",
+      "build_manifest": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_shared_storage_pe16/pe16/build.json",
+      "build_manifest_sha256": "aebe8164d02b5308ca276bef7988c5fea501a1ce32fd97e5584e17592324c152",
+      "log": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_shared_storage_pe16/pe16/functional.log",
+      "log_sha256": "b98dfc55ece35dff60c27ba64d0e9bb30ca67a76c1c41d25ce2b37ed19790a3a",
+      "executable_sha256": "1adcea86a0995461872cb6748efac537e8b2f5afe56e444667adb94f5ce4fa65"
+    },
+    {
+      "name": "vector_shared_storage_pe8_local",
+      "passed": true,
+      "pe": 8,
+      "bus_width": 32,
+      "window_lanes": 4,
+      "shared_quant": false,
+      "shared_storage": true,
+      "totals": {
+        "cases": 615,
+        "outputs": 170802,
+        "add_cases": 143,
+        "add_outputs": 135717,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "source_files": 56,
+      "sources_match_current": true,
+      "summary": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_shared_storage_pe8_local/summary.json",
+      "summary_sha256": "cfe87dd735a733f379ef206000bc823995d2037874579989587bc5e51b81ac67",
+      "build_manifest": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_shared_storage_pe8_local/pe8/build.json",
+      "build_manifest_sha256": "3846f9dc0551589b0451df022350a4a576627e12ca1ab4a30b33b31fb89ac58a",
+      "log": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_shared_storage_pe8_local/pe8/functional.log",
+      "log_sha256": "1a7b5537201a454701916344496ac58750fbd85bac8e9d1bbbb7baf279354a0d",
+      "executable_sha256": "12151dffb528384f1448874a94613a966a399033c7b9260d2308332bace89df6"
+    },
+    {
+      "name": "vector_private_storage_pe8",
+      "passed": true,
+      "pe": 8,
+      "bus_width": 32,
+      "window_lanes": 4,
+      "shared_quant": false,
+      "shared_storage": false,
+      "totals": {
+        "cases": 615,
+        "outputs": 170971,
+        "add_cases": 143,
+        "add_outputs": 135439,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "source_files": 56,
+      "sources_match_current": true,
+      "summary": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_private_storage_pe8/summary.json",
+      "summary_sha256": "950c03f9839eb0051c3433383d52a9744254903589372a2efe73f799107ba60d",
+      "build_manifest": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_private_storage_pe8/pe8/build.json",
+      "build_manifest_sha256": "39884c703f627de663393f04a21193bc13e4a949c33fa82ab48a82680448f55b",
+      "log": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_private_storage_pe8/pe8/functional.log",
+      "log_sha256": "b7ee28b802916dbf61f4cc82f336d146dbb2c6b1b8be4bf97d4718e39621043a",
+      "executable_sha256": "be8da92bddeb8380319b2960641ff119f642122f091b4d9ec5656dfb54340724"
+    }
+  ],
+  "window_error": {
+    "passed": true,
+    "cases": 32,
+    "injected_errors": 16,
+    "recovery_tasks": 16,
+    "shared_storage": false,
+    "shared_quant": true,
+    "sources_match_current": true,
+    "summary": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_shared_storage_window_compat/summary.json",
+    "summary_sha256": "6a234e8511f82698d41424fd284ef7330f0354dbfbba99ac2a77bb80dafc580f",
+    "binary_sha256": "26fe7e09035cc5af974b67d3a55fe4e7560810c418b9211da6f0f28c4d4a8f7a"
+  },
+  "private_resource_path_check": {
+    "passed": true,
+    "sources_match_current": true,
+    "weight_storage_bits": 6272,
+    "quantization_parameter_storage_bits": 608,
+    "summary": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/vector_private_resource_check/summary.json",
+    "summary_sha256": "852034b748d7fdde96ecbfa544c416fec1c5e048203b67a1497f82a7b6e01f94"
+  },
+  "vector_engine_sha256": "439b85d37617ce57847a94fac101bee2b7e3d1695313bf8d899d19b0010e1f4f",
+  "production_source_sha256": {
+    "rtl/npu/conv/vector_engine.sv": "439b85d37617ce57847a94fac101bee2b7e3d1695313bf8d899d19b0010e1f4f",
+    "rtl/npu/conv/vector_writeback.sv": "f86745e3fc93f5b3750d0376c864f73397b40f83d466659848813f2a5f85a674",
+    "rtl/npu/dma/cache/conv_next_use_predictor.sv": "1cc08b61aec605fa350bdaa99f66b65671f259b6bfce5ed855241b30db7cdaa0",
+    "rtl/npu/buffers/vector_shared_store.sv": "4a33845a90a054cefcb33586fcbafb85df8c97b720f238cd69ef141c5a161fc0",
+    "rtl/npu/buffers/ia_ps_shared_ram.sv": "f81ce1b0b52bc961f91c4ec7f68927e956fabe248761521067bfe61cb1ad313c"
+  }
+}

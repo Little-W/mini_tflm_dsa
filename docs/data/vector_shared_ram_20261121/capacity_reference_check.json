@@ -1,0 +1,15 @@
+{
+  "reference_commit": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+  "current_commit": "bccbb54b0ca7bed20e2400428b7b2f89803c3095",
+  "reference_report": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/reference_capacity_generic/result.json",
+  "reference_report_sha256": "211ad9165e8568895c200ddd01cf4bff99b56edd8926c41f1c862211b4899088",
+  "reference_cache_identity": "b438383ff5a0baeff38008ba837e157a344bd81bf3336c3c3611bb0c4dccc380",
+  "source_files_checked": 71,
+  "source_files_different": [],
+  "hardware_configuration_differences": {},
+  "elaboration_target": "generic",
+  "old_total_bits": 615083,
+  "new_total_bits": 608187,
+  "saved_bits": 6896,
+  "passed": true
+}

@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "returncode": 0,
+  "source_manifest_sha256": "cf4729a8b65dd257fe0886b6a509ff2ad2cd55f627e2d3b12f769adddf08d5a5",
+  "binary_sha256": "79d74af063eb409b7cdbb59a38b2ec6249deff685b319270dbc7436dc5b962f0",
+  "log_sha256": "e21abad6804d012885c5ab845e328af5f35bff3db9ec8fa035cab77775356a82",
+  "observations": [
+    "CLOCK_GATE_RESET_PASS edges=32"
+  ],
+  "scope": "Production npu_axil_top clock gate; source-clock high and low reset phases, retained start through wakeup, AXI response drain."
+}

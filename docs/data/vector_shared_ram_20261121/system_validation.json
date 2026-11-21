@@ -1,0 +1,466 @@
+{
+  "passed": true,
+  "source_commit": "bccbb54b0ca7bed20e2400428b7b2f89803c3095",
+  "reference_commit": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+  "capacity_reports": {
+    "generic": {
+      "report": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/capacity_generic/result.json",
+      "passed": true,
+      "sources_unchanged": true,
+      "sources_match_current": true,
+      "total_bits": 608187,
+      "total_bytes": 76023.375,
+      "vector_storage": {
+        "passed": true,
+        "shared_storage_enabled": true,
+        "adapter_instances": 1,
+        "shared_ram_instances": 1,
+        "adapter_state_bits": 15,
+        "adapter_state_declarations": [
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.configured",
+            "module": "vector_shared_store",
+            "name": "configured",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.ia_word_limit",
+            "module": "vector_shared_store",
+            "name": "ia_word_limit",
+            "bits": 11,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.o_error",
+            "module": "vector_shared_store",
+            "name": "o_error",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.ps_return_vld",
+            "module": "vector_shared_store",
+            "name": "ps_return_vld",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.weight_return_vld",
+            "module": "vector_shared_store",
+            "name": "weight_return_vld",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          }
+        ],
+        "private_weight_module_instances": 0,
+        "private_weight_declarations": [],
+        "private_snapshot_declarations": [],
+        "working_accumulator_declarations": [
+          {
+            "path": "npu_axil_top.u_npu_top.g_vector_engine.u_engine.acc_buf",
+            "module": "vector_engine",
+            "name": "acc_buf",
+            "bits": 512,
+            "buffer_category": "vector_buffers",
+            "register_array_category": null
+          }
+        ]
+      }
+    },
+    "asic": {
+      "report": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/capacity_asic/result.json",
+      "passed": true,
+      "sources_unchanged": true,
+      "sources_match_current": true,
+      "total_bits": 606903,
+      "total_bytes": 75862.875,
+      "vector_storage": {
+        "passed": true,
+        "shared_storage_enabled": true,
+        "adapter_instances": 1,
+        "shared_ram_instances": 1,
+        "adapter_state_bits": 15,
+        "adapter_state_declarations": [
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.configured",
+            "module": "vector_shared_store",
+            "name": "configured",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.ia_word_limit",
+            "module": "vector_shared_store",
+            "name": "ia_word_limit",
+            "bits": 11,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.o_error",
+            "module": "vector_shared_store",
+            "name": "o_error",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.ps_return_vld",
+            "module": "vector_shared_store",
+            "name": "ps_return_vld",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          },
+          {
+            "path": "npu_axil_top.u_npu_top.g_shared_ia_ps.u_vector_shared_store.weight_return_vld",
+            "module": "vector_shared_store",
+            "name": "weight_return_vld",
+            "bits": 1,
+            "buffer_category": null,
+            "register_array_category": null
+          }
+        ],
+        "private_weight_module_instances": 0,
+        "private_weight_declarations": [],
+        "private_snapshot_declarations": [],
+        "working_accumulator_declarations": [
+          {
+            "path": "npu_axil_top.u_npu_top.g_vector_engine.u_engine.acc_buf",
+            "module": "vector_engine",
+            "name": "acc_buf",
+            "bits": 512,
+            "buffer_category": "vector_buffers",
+            "register_array_category": null
+          }
+        ]
+      }
+    },
+    "private": {
+      "report": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/capacity_private/result.json",
+      "passed": true,
+      "sources_unchanged": true,
+      "sources_match_current": true,
+      "total_bits": 690816,
+      "total_bytes": 86352.0,
+      "vector_storage": {
+        "passed": true,
+        "shared_storage_enabled": false,
+        "adapter_instances": 0,
+        "shared_ram_instances": 0,
+        "adapter_state_bits": 0,
+        "adapter_state_declarations": [],
+        "private_weight_module_instances": 1,
+        "private_weight_declarations": [
+          {
+            "path": "npu_axil_top.u_npu_top.g_vector_engine.u_engine.g_private_weights.u_weights.u_storage.mem",
+            "module": "regfile",
+            "name": "mem",
+            "bits": 6272,
+            "buffer_category": "vector_buffers",
+            "register_array_category": null
+          }
+        ],
+        "private_snapshot_declarations": [
+          {
+            "path": "npu_axil_top.u_npu_top.g_vector_engine.u_engine.g_private_snapshot.dw_snapshot",
+            "module": "vector_engine",
+            "name": "g_private_snapshot.dw_snapshot",
+            "bits": 512,
+            "buffer_category": "vector_dw_snapshot",
+            "register_array_category": null
+          }
+        ],
+        "working_accumulator_declarations": [
+          {
+            "path": "npu_axil_top.u_npu_top.g_vector_engine.u_engine.acc_buf",
+            "module": "vector_engine",
+            "name": "acc_buf",
+            "bits": 512,
+            "buffer_category": "vector_buffers",
+            "register_array_category": null
+          }
+        ]
+      }
+    }
+  },
+  "cosim_runs": [
+    {
+      "implementation_target": "generic",
+      "memory_latency": "fixed",
+      "random_latency_enabled": false,
+      "passed": true,
+      "sources_unchanged": true,
+      "sources_match_current": true,
+      "binary_sha256_matches": true,
+      "bus_width": 64,
+      "pe_count": 16,
+      "shared_data_bytes": 32768,
+      "bank_bytes": 4096,
+      "bank_count": 8,
+      "cache_bytes": 8192,
+      "ia_bank_allocations": [
+        1,
+        2,
+        4
+      ],
+      "fault_cases": [
+        {
+          "kind": 0,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 1,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 2,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 3,
+          "error": 2,
+          "reset": 0
+        },
+        {
+          "kind": 4,
+          "error": 2,
+          "reset": 0
+        }
+      ],
+      "log": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/cosim_generic/fixed.log",
+      "log_sha256": "3d26df3a5e878f741ebfe2cc85cdfa231197ec119c4f221927c54b29c5a480c0",
+      "cases": 106,
+      "outputs": 57673,
+      "hardware_commands": 101
+    },
+    {
+      "implementation_target": "generic",
+      "memory_latency": "random",
+      "random_latency_enabled": true,
+      "passed": true,
+      "sources_unchanged": true,
+      "sources_match_current": true,
+      "binary_sha256_matches": true,
+      "bus_width": 64,
+      "pe_count": 16,
+      "shared_data_bytes": 32768,
+      "bank_bytes": 4096,
+      "bank_count": 8,
+      "cache_bytes": 8192,
+      "ia_bank_allocations": [
+        1,
+        2,
+        4
+      ],
+      "fault_cases": [
+        {
+          "kind": 0,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 1,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 2,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 3,
+          "error": 2,
+          "reset": 0
+        },
+        {
+          "kind": 4,
+          "error": 2,
+          "reset": 0
+        }
+      ],
+      "log": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/cosim_generic/random.log",
+      "log_sha256": "665d1ce0d8c487b75ce2a0d665ea96137fcc699fed72fa1c2bbe7f33eec1e088",
+      "cases": 106,
+      "outputs": 57673,
+      "hardware_commands": 101
+    },
+    {
+      "implementation_target": "asic",
+      "memory_latency": "fixed",
+      "random_latency_enabled": false,
+      "passed": true,
+      "sources_unchanged": true,
+      "sources_match_current": true,
+      "binary_sha256_matches": true,
+      "bus_width": 64,
+      "pe_count": 16,
+      "shared_data_bytes": 32768,
+      "bank_bytes": 4096,
+      "bank_count": 8,
+      "cache_bytes": 8192,
+      "ia_bank_allocations": [
+        1,
+        2,
+        4
+      ],
+      "fault_cases": [
+        {
+          "kind": 0,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 1,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 2,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 3,
+          "error": 2,
+          "reset": 0
+        },
+        {
+          "kind": 4,
+          "error": 2,
+          "reset": 0
+        }
+      ],
+      "log": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/cosim_asic/fixed.log",
+      "log_sha256": "315133074b8a1b747c4ee0072ffcf66636293a977e41501b56fbe4b78da5c845",
+      "cases": 106,
+      "outputs": 57673,
+      "hardware_commands": 101
+    },
+    {
+      "implementation_target": "asic",
+      "memory_latency": "random",
+      "random_latency_enabled": true,
+      "passed": true,
+      "sources_unchanged": true,
+      "sources_match_current": true,
+      "binary_sha256_matches": true,
+      "bus_width": 64,
+      "pe_count": 16,
+      "shared_data_bytes": 32768,
+      "bank_bytes": 4096,
+      "bank_count": 8,
+      "cache_bytes": 8192,
+      "ia_bank_allocations": [
+        1,
+        2,
+        4
+      ],
+      "fault_cases": [
+        {
+          "kind": 0,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 1,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 2,
+          "error": 3,
+          "reset": 0
+        },
+        {
+          "kind": 3,
+          "error": 2,
+          "reset": 0
+        },
+        {
+          "kind": 4,
+          "error": 2,
+          "reset": 0
+        }
+      ],
+      "log": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/cosim_asic/random.log",
+      "log_sha256": "4e0762e5895a5b26b01f1f98ac622bdb477f792cc73334b0bedfbc1507527f39",
+      "cases": 106,
+      "outputs": 57673,
+      "hardware_commands": 101
+    }
+  ],
+  "host_tests": {
+    "log": "/workspace/scratch/a6d1b7ed9049/capacity_shared_host_tests.log",
+    "log_sha256": "1481bf52759248def4a075cab0360b8156b8bca7e2dfffe2363f39d0d8ef9d59",
+    "passed": true,
+    "cases": 108
+  },
+  "fault_kinds": {
+    "0": "外存权重读取越界",
+    "1": "外存输入读取越界",
+    "2": "外存输出写入越界",
+    "3": "共享存储适配器错误",
+    "4": "共享物理 RAM 容量错误"
+  },
+  "capacity_reference_check": {
+    "reference_commit": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+    "current_commit": "bccbb54b0ca7bed20e2400428b7b2f89803c3095",
+    "reference_report": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/reference_capacity_generic/result.json",
+    "reference_report_sha256": "211ad9165e8568895c200ddd01cf4bff99b56edd8926c41f1c862211b4899088",
+    "reference_cache_identity": "b438383ff5a0baeff38008ba837e157a344bd81bf3336c3c3611bb0c4dccc380",
+    "source_files_checked": 71,
+    "source_files_different": [],
+    "hardware_configuration_differences": {},
+    "elaboration_target": "generic",
+    "old_total_bits": 615083,
+    "new_total_bits": 608187,
+    "saved_bits": 6896,
+    "passed": true
+  },
+  "cache_parameter_checks": {
+    "passed": true,
+    "source_commit": "bccbb54b0ca7bed20e2400428b7b2f89803c3095",
+    "runner_sha256": "0ec268b935d3c75a9f9de9434fc5ee3fc9abdc0b5875e6dafebb2fa8ae24ecda",
+    "checks": [
+      {
+        "cache_bytes": 256,
+        "returncode": 2,
+        "output_created": false,
+        "passed": true
+      },
+      {
+        "cache_bytes": 131072,
+        "returncode": 2,
+        "output_created": false,
+        "passed": true
+      }
+    ]
+  },
+  "reference_operators": {
+    "passed": true,
+    "source_commit": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+    "summary": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/original_dw/summary.json",
+    "summary_sha256": "a3b1c019837545f9f4d51b3467f2ac1279018d54dd88da2b4b5e9bbdee859964",
+    "build": "/workspace/scratch/a6d1b7ed9049/shared_storage_results/original_dw/sim/build.json",
+    "build_sha256": "2190a5efc587143c2bc180429545eb3b364eb0d236db89705a24214d3538371c",
+    "sources_match_current": true,
+    "sources_unchanged_during_build": true,
+    "binary_sha256_matches": true,
+    "case_count": 45,
+    "gemm_cases": 31,
+    "conv_cases": 3,
+    "depthwise_cases": 11
+  }
+}

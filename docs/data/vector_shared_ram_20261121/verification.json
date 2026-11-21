@@ -1,0 +1,185 @@
+{
+  "passed": true,
+  "date": "2026-11-21",
+  "base_commit": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+  "verilator": "5.054",
+  "adapter_profiles": 13,
+  "vce_runs": [
+    {
+      "name": "vector_shared_storage_pe16",
+      "passed": true,
+      "cases": 615,
+      "outputs": 172195,
+      "add_cases": 143,
+      "add_outputs": 135593,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188
+    },
+    {
+      "name": "vector_shared_storage_pe8_local",
+      "passed": true,
+      "cases": 615,
+      "outputs": 170802,
+      "add_cases": 143,
+      "add_outputs": 135717,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188
+    },
+    {
+      "name": "vector_private_storage_pe8",
+      "passed": true,
+      "cases": 615,
+      "outputs": 170971,
+      "add_cases": 143,
+      "add_outputs": 135439,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188
+    }
+  ],
+  "window_error_cases": 32,
+  "cosim": [
+    {
+      "target": "generic",
+      "passed": true,
+      "runs": [
+        {
+          "name": "fixed",
+          "passed": true,
+          "random_latency_enabled": false
+        },
+        {
+          "name": "random",
+          "passed": true,
+          "random_latency_enabled": true
+        }
+      ],
+      "cases_per_run": 106,
+      "outputs_per_run": 57673,
+      "hardware_tasks_per_run": 101,
+      "ia_bank_allocations": [
+        1,
+        2,
+        4
+      ],
+      "fault_classes": 5
+    },
+    {
+      "target": "asic",
+      "passed": true,
+      "runs": [
+        {
+          "name": "fixed",
+          "passed": true,
+          "random_latency_enabled": false
+        },
+        {
+          "name": "random",
+          "passed": true,
+          "random_latency_enabled": true
+        }
+      ],
+      "cases_per_run": 106,
+      "outputs_per_run": 57673,
+      "hardware_tasks_per_run": 101,
+      "ia_bank_allocations": [
+        1,
+        2,
+        4
+      ],
+      "fault_classes": 5
+    }
+  ],
+  "capacity_unit_tests": 108,
+  "upstream_compatibility": {
+    "passed": true,
+    "upstream_commit": "33c994c42df2b6d123d3c2c6c6108d95cae1a8fe",
+    "report": "upstream_review.json"
+  },
+  "capacity": {
+    "generic_bits": 608187,
+    "asic_bits": 606903,
+    "saved_bits": 6896
+  },
+  "operator_count": 45,
+  "all_operator_targets_passed": true,
+  "minimum_operator_speedup": 1.202987833050978,
+  "minimum_depthwise_speedup": 1.2075507493834188,
+  "matrix_and_conv_cycles_unchanged": true,
+  "source_consistency": [
+    {
+      "name": "capacity_generic.json",
+      "checked_files": 72,
+      "matches_current": true
+    },
+    {
+      "name": "capacity_asic.json",
+      "checked_files": 72,
+      "matches_current": true
+    },
+    {
+      "name": "capacity_private.json",
+      "checked_files": 72,
+      "matches_current": true
+    },
+    {
+      "name": "capacity_reference_generic.json",
+      "checked_files": 71,
+      "matches_current": true
+    },
+    {
+      "name": "adapter_validation.json",
+      "checked_files": 5,
+      "matches_current": true
+    },
+    {
+      "name": "cosim_generic.json",
+      "checked_files": 114,
+      "matches_current": true
+    },
+    {
+      "name": "cosim_asic.json",
+      "checked_files": 114,
+      "matches_current": true
+    },
+    {
+      "name": "window_error.json",
+      "checked_files": 48,
+      "matches_current": true
+    },
+    {
+      "name": "operator_build.json",
+      "checked_files": 101,
+      "matches_current": true
+    },
+    {
+      "name": "reference_operator_build.json",
+      "checked_files": 100,
+      "matches_current": true
+    },
+    {
+      "name": "vce_shared_pe16_build.json",
+      "checked_files": 56,
+      "matches_current": true
+    },
+    {
+      "name": "vce_shared_pe8_build.json",
+      "checked_files": 56,
+      "matches_current": true
+    },
+    {
+      "name": "vce_private_pe8_build.json",
+      "checked_files": 56,
+      "matches_current": true
+    },
+    {
+      "name": "top_lint_0",
+      "checked_files": 68,
+      "matches_current": true
+    },
+    {
+      "name": "top_lint_1",
+      "checked_files": 68,
+      "matches_current": true
+    }
+  ]
+}

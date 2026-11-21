@@ -1,0 +1,279 @@
+{
+  "passed": true,
+  "scope": "Standalone production conv_next_use_predictor RTL; every next-rank vector and eligibility case checked, not a whole-NPU/cache performance run",
+  "sources": {
+    "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+    "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+    "rtl/npu/dma/cache/conv_next_use_predictor.sv": "1cc08b61aec605fa350bdaa99f66b65671f259b6bfce5ed855241b30db7cdaa0",
+    "build/upstream_33c994c/predictor/predictor_tb.sv": "ebc1bb5a9dc05ff21e77d19eef871c0682eef6186150578f3f807849dc7eacfc",
+    "build/upstream_33c994c/predictor/reference_predictor.sv": "8f597bfd7311a9497e863f46b99039f2da7fbaf969ce56394fe58cfc7fa4a769",
+    "test/conv_replacement/predictor_test.py": "a7ce3f811b122b0be534270aa57b5e479cb6833ee2ab2ec7a7a8e1105691b29d",
+    "test/conv_replacement/geometry_oracle.py": "0a044d242fa1ecf830c5e8cc1b05a1b81f10a395642ec3f2a514bc6c8d2ab733"
+  },
+  "geometry_is_generated_on_each_run": true,
+  "oracle_validation_sha256": "e0f558e874113d2000f693f067bb00a645a9f85d3c5aaef37104485326fac074",
+  "vector_json_sha256": "bfe2e9e8167c9a22102a8f31ed6124ac9b7f2fcd9f0c1a2a1ab5fa99dc05ea24",
+  "config_text_sha256": "1053031d57ec82c6288cb1f2e87d073e7f6ed0bbb6cadc7c81a21bf9a9c442e8",
+  "vector_text_sha256": "348daefabc8f9aba1d6215ded12ab8221edc59682a4f14c7ec31c64d3d1c215a",
+  "total_cases": 40,
+  "enabled_cases": 16,
+  "disabled_cases": 24,
+  "total_vectors": 13303,
+  "max_kernel_taps_tested": 25,
+  "result_checks": [
+    "exact next_rank",
+    "no-future INF",
+    "eligibility before and after latch",
+    "one cycle per kernel tap",
+    "single-cycle done",
+    "result holds until next request"
+  ],
+  "cases": [
+    {
+      "case": "justure_detect:sg0:op7",
+      "source": "checked-in real CNN shape / current C tiling / freshly enumerated forward sequence",
+      "enabled": true,
+      "vectors": 529
+    },
+    {
+      "case": "justure_detect:sg0:op16",
+      "source": "checked-in real CNN shape / current C tiling / freshly enumerated forward sequence",
+      "enabled": true,
+      "vectors": 242
+    },
+    {
+      "case": "justure_detect:sg0:op10",
+      "source": "checked-in real CNN shape / current C tiling / freshly enumerated forward sequence",
+      "enabled": true,
+      "vectors": 256
+    },
+    {
+      "case": "person_detect:sg0:op6",
+      "source": "checked-in real CNN shape / current C tiling / freshly enumerated forward sequence",
+      "enabled": true,
+      "vectors": 1152
+    },
+    {
+      "case": "person_detect:sg0:op10",
+      "source": "checked-in real CNN shape / current C tiling / freshly enumerated forward sequence",
+      "enabled": true,
+      "vectors": 576
+    },
+    {
+      "case": "mobilenet_v2:sg0:op32",
+      "source": "checked-in real CNN shape / current C tiling / freshly enumerated forward sequence",
+      "enabled": true,
+      "vectors": 2352
+    },
+    {
+      "case": "mobilenet_v2:sg0:op52",
+      "source": "checked-in real CNN shape / current C tiling / freshly enumerated forward sequence",
+      "enabled": true,
+      "vectors": 3528
+    },
+    {
+      "case": "grouped_dilation_and_tail",
+      "source": "synthetic forward scalar address enumeration",
+      "enabled": true,
+      "vectors": 2052
+    },
+    {
+      "case": "equal_line_across_distinct_events",
+      "source": "synthetic forward scalar address enumeration",
+      "enabled": true,
+      "vectors": 6
+    },
+    {
+      "case": "tap_limit_25_dilation",
+      "source": "synthetic forward scalar address enumeration",
+      "enabled": true,
+      "vectors": 1320
+    },
+    {
+      "case": "r4_partial_block",
+      "source": "synthetic forward scalar address enumeration",
+      "enabled": true,
+      "vectors": 630
+    },
+    {
+      "case": "stride4_sparse_taps",
+      "source": "synthetic forward scalar address enumeration",
+      "enabled": true,
+      "vectors": 384
+    },
+    {
+      "case": "mnist_cnn:sg0:op0:unsupported",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "mnist_cnn:sg0:op2:unsupported",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "justure_detect:sg0:op1:unsupported",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "s16",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "base_alignment",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "cin_alignment",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "group_alignment",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "group_offset_alignment",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "r_not_power_of_two",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "stride_h_not_power_of_two",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "stride_w_not_power_of_two",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "kernel_tap_limit",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "kernel_zero_h",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "kernel_zero_w",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "kernel_max_h",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "kernel_max_w",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "kernel_max_product",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "rank_block_span_overflow",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "rank_total_overflow",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "zero_dilation",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "zero_groups",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "zero_r",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "zero_stride",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "explicit_bypass",
+      "source": "predictor eligibility guard",
+      "enabled": false,
+      "vectors": 1
+    },
+    {
+      "case": "kernel_25_by_1",
+      "source": "coordinate width and signed boundary model",
+      "enabled": true,
+      "vectors": 36
+    },
+    {
+      "case": "kernel_1_by_25",
+      "source": "coordinate width and signed boundary model",
+      "enabled": true,
+      "vectors": 36
+    },
+    {
+      "case": "large_padding_dilation",
+      "source": "coordinate width and signed boundary model",
+      "enabled": true,
+      "vectors": 150
+    },
+    {
+      "case": "large_stride_mask",
+      "source": "coordinate width and signed boundary model",
+      "enabled": true,
+      "vectors": 30
+    }
+  ],
+  "build": "/workspace/scratch/a6d1b7ed9049/mini_tflm_dsa/build/upstream_33c994c/predictor",
+  "build_log_sha256": "d9374dade6c0d7585b858996d9c547978bc5fdb648dc778566cde9e53765594f",
+  "run_log_sha256": "63d509e74c2bdd17ba32acb39d2f0556175135d9937eebc61c0a2bb734e9c944",
+  "reference_ref": "0bc63b3",
+  "cycle_comparison": "PREDICTOR_CYCLE_COMPARE_PASS cycles=208633",
+  "public_outputs_cycle_equivalent": true
+}

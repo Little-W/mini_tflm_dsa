@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "source_commit": "bccbb54b0ca7bed20e2400428b7b2f89803c3095",
+  "runner_sha256": "0ec268b935d3c75a9f9de9434fc5ee3fc9abdc0b5875e6dafebb2fa8ae24ecda",
+  "checks": [
+    {
+      "cache_bytes": 256,
+      "returncode": 2,
+      "output_created": false,
+      "passed": true
+    },
+    {
+      "cache_bytes": 131072,
+      "returncode": 2,
+      "output_created": false,
+      "passed": true
+    }
+  ]
+}

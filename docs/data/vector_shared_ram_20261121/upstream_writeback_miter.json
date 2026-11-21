@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "reference_ref": "0bc63b3",
+  "source_sha256": {
+    "test/vector_writeback/miter.sv": "5689747b65c65c9b912c7f749cafeb94c0918535848af6d9b6937e44b270895c",
+    "rtl/npu/conv/vector_writeback.sv": "f86745e3fc93f5b3750d0376c864f73397b40f83d466659848813f2a5f85a674",
+    "build/upstream_33c994c/writeback_miter/vector_writeback_baseline.sv": "1222196db802d03f0ea6a05dfba7c72ac9f224e7705a67727a968579cf21dcee"
+  },
+  "results": [
+    {
+      "passed": true,
+      "bus_width": 32,
+      "cycles": 30000,
+      "returncode": 0,
+      "binary_sha256": "49482063e466679f248b62824d1c07bfbbe5f4c4b7e6a810e0d3af7a7aafad6c",
+      "run_log_sha256": "85efd2b5d666e6f428d6ec1a9b8602e40f62648bf0f818975d4ff2430ef5fa14",
+      "manifest_sha256": "8f6ced4d8fd76132f7e20b307db188a21550407366e5a5be9ac51fd3c3981837"
+    },
+    {
+      "passed": true,
+      "bus_width": 64,
+      "cycles": 30000,
+      "returncode": 0,
+      "binary_sha256": "c668344a9217d634a57e6d163196bac7359035100a698edb0f9a252ba17767fb",
+      "run_log_sha256": "a9a2ba26bfaf6c505c884e4581d9066faa5ffb3ece9b78f34878167014f0e8c4",
+      "manifest_sha256": "15dc307e69e1a1dc141f1530de888d765a21abd701ef122ae8dd973a0b2ce9d8"
+    }
+  ]
+}
