@@ -1,0 +1,111 @@
+{
+  "passed": true,
+  "reference_commit": "b9773a15",
+  "rtl_sha256": "3f5ce2f659074b97d9a6d58be4de0565c1cd2df9cf7bda1f8e40ad882e2d7625",
+  "reference_rtl_sha256": "693df3b4fbe16c7378cf3050b4c0096af611462b7440f2b4d70834b5dc8b8b84",
+  "formal": {
+    "parameters": [
+      {
+        "SIZE": 16,
+        "COUNT_WIDTH": 29,
+        "BUS_WIDTH": 64,
+        "DATA_WIDTH": 16
+      },
+      {
+        "SIZE": 3,
+        "COUNT_WIDTH": 33,
+        "BUS_WIDTH": 32,
+        "DATA_WIDTH": 16
+      }
+    ],
+    "equivalent_bits": 24261,
+    "inputs_constrained": false,
+    "state_and_outputs_every_cycle": true,
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/formal.json",
+    "report_sha256": "be9d55876228032310733d1a764ce8160fc9e027bd7278c817b07446088febf3"
+  },
+  "four_state": {
+    "widths": [
+      1,
+      2,
+      3,
+      5,
+      31,
+      32,
+      33,
+      99,
+      160
+    ],
+    "p_use_lut": [
+      false,
+      true
+    ],
+    "checks": 97224,
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/four_state.json",
+    "report_sha256": "24983f62c37c4e56a54d4575607594208d62b530a1cef6f859435d9b66164ff9"
+  },
+  "synthesis": {
+    "reference": {
+      "logic_lut_cells": 3443,
+      "lut_sites_nominal_before_packing": 3443,
+      "flip_flops": 2333,
+      "dsp48e1": 24,
+      "ramb36e1": 64,
+      "ramb18e1": 0,
+      "maximum_register_path_cells": 12,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/reference_metrics.json",
+      "report_sha256": "7fc38a48e0af4aef0bafc94b9782f60a2e2c2b35b7b2c4390b3fb5b9f6c73a25"
+    },
+    "current": {
+      "logic_lut_cells": 3407,
+      "lut_sites_nominal_before_packing": 3407,
+      "flip_flops": 2333,
+      "dsp48e1": 24,
+      "ramb36e1": 64,
+      "ramb18e1": 0,
+      "maximum_register_path_cells": 12,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/current_metrics.json",
+      "report_sha256": "025555bbc094c21ff161fe3d20e354bb5205e8e0041d1b5ed31293aa701e2df1"
+    }
+  },
+  "micro_synthesis": [
+    {
+      "width": 99,
+      "reference": {
+        "logic_lut_cells": 70,
+        "maximum_register_path_cells": 5,
+        "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/reference_99_metrics.json",
+        "report_sha256": "886da36db8ceb153e0aa780879af22637a27ddd402e18f95ee77b9013c0be4dc"
+      },
+      "current": {
+        "logic_lut_cells": 47,
+        "maximum_register_path_cells": 4,
+        "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/current_99_metrics.json",
+        "report_sha256": "ce81469facd2cd9b5039150dc3ba6079b5a255a9ee2cb118c3ed1c2b4cde7745"
+      }
+    },
+    {
+      "width": 160,
+      "reference": {
+        "logic_lut_cells": 117,
+        "maximum_register_path_cells": 5,
+        "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/reference_160_metrics.json",
+        "report_sha256": "5d19aab507fef01fb54a92789237f7a2f2adfde0c1f48f9ff475f0af7efce018"
+      },
+      "current": {
+        "logic_lut_cells": 81,
+        "maximum_register_path_cells": 4,
+        "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_candidate_compare/results/current_160_metrics.json",
+        "report_sha256": "1a26c146ff1727cb52d273b233614a4d9dc92d128dff822ad44d2e1d3080b880"
+      }
+    }
+  ],
+  "tests_sha256": {
+    "test/kernel_candidate_compare/README.md": "a2a2477cdfe9f2ec84fa7f602ec8c0d2462a957e41ff481e04738e1f767903d6",
+    "test/kernel_candidate_compare/run_formal.py": "b2bf0aaaf535efc8a739265a1ffb1775b124431d14596307d035b847dbb1b97f",
+    "test/kernel_candidate_compare/run_four_state.py": "2ba89f895177f81d0fcdad663ce233266751bda43825986f07dccfbca5c6182f",
+    "test/kernel_candidate_compare/synthesis_cases.json": "c5e9c9888a0b878877932ce88f02915d29dc044d4bf4ef72c226a7deb3f8d012"
+  }
+}

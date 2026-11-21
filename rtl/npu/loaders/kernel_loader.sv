@@ -889,7 +889,8 @@ module kernel_candidate_equal #(
 
     for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_leaf
         logic [2:0] current_bits, saved_bits;
-        logic leaf_o_equal;
+        // 三位相等结果独立保留，后续归并仅处理单比特条件。
+        (* keep = p_use_lut *) logic leaf_o_equal;
 
         assign current_bits = 3'(i_current >> (3*group_index));
         assign saved_bits = 3'(i_saved >> (3*group_index));
