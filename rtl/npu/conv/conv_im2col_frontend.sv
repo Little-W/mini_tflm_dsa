@@ -173,6 +173,8 @@ module conv_im2col_frontend #(
   logic [2:0][TILE_COUNT_W-1:0] column_update_candidate;
   logic [TILE_COUNT_W-1:0] column_update_value;
   logic [2:0] active_update_select;
+  logic active_select_commit;
+  logic [2:0] active_data_select;
   logic [2:0][TILE_COUNT_W-1:0] active_update_candidate;
   logic [TILE_COUNT_W-1:0] active_update_value;
   logic past_active_q;
@@ -565,6 +567,27 @@ module conv_im2col_frontend #(
   assign {unused_cfg_output_col_carry, cfg_last_output_col} = {1'b0, cfg.output_w} - 17'd1;
   assign {unused_cfg_kernel_col_carry, cfg_last_kernel_col} = {1'b0, cfg.kernel_w} - 17'd1;
 
+  logic cfg_output_last, cfg_kernel_last, cfg_incoming_kernel_last;
+  if (p_short_sum_dsp) begin : g_cfg_last_column
+    // 配置末列直接比较坐标加一的等式，各结果独立计算。
+    add_equal #(.p_width(16)) u_output (
+        .i_a(ox_q), .i_b(16'd0), .i_target(cfg.output_w),
+        .i_carry_in(1'b1), .o_equal(cfg_output_last)
+    );
+    add_equal #(.p_width(16)) u_kernel (
+        .i_a(kx_q), .i_b(16'd0), .i_target(cfg.kernel_w),
+        .i_carry_in(1'b1), .o_equal(cfg_kernel_last)
+    );
+    add_equal #(.p_width(16)) u_incoming_kernel (
+        .i_a(kx0_q), .i_b(16'd0), .i_target(cfg.kernel_w),
+        .i_carry_in(1'b1), .o_equal(cfg_incoming_kernel_last)
+    );
+  end else begin : g_cfg_last_column_expression
+    assign cfg_output_last = ox_q == cfg_last_output_col;
+    assign cfg_kernel_last = kx_q == cfg_last_kernel_col;
+    assign cfg_incoming_kernel_last = kx0_q == cfg_last_kernel_col;
+  end
+
   // 列号加一后的末列关系直接检查进位一致性，与列号结果并行。
   assign tap_next_i_a = kx_q;
   assign tap_next_i_b = 16'd0;
@@ -655,6 +678,7 @@ module conv_im2col_frontend #(
     logic [p_step_width-1:0] byte_step;
     logic [p_step_width:0] address_low;
     logic [31-p_step_width:0] address_high_next;
+    (* use_dsp = "yes" *) logic [32-p_step_width:0] address_high_sum;
     logic unused_address_carry;
 
     // 块内字节步长仅影响低位，高位加一提前完成。
@@ -691,8 +715,8 @@ module conv_im2col_frontend #(
     end else begin : g_encoded_byte_step
       assign address_low = {1'b0, addr[p_step_width-1:0]} + {1'b0, byte_step};
     end
-    assign {unused_address_carry, address_high_next} =
-      {1'b0, addr[31:p_step_width]} + (33-p_step_width)'(1);
+    assign address_high_sum = {1'b0, addr[31:p_step_width]} + (33-p_step_width)'(1);
+    assign {unused_address_carry, address_high_next} = address_high_sum;
     assign next_byte_addr = {
       address_low[p_step_width] ? address_high_next : addr[31:p_step_width],
       address_low[p_step_width-1:0]};
@@ -705,12 +729,13 @@ module conv_im2col_frontend #(
   if (CHUNK_COUNT_W < 33) begin : g_reduction_position
     logic [CHUNK_COUNT_W:0] position_low;
     logic [32-CHUNK_COUNT_W:0] position_high_next;
+    (* use_dsp = "yes" *) logic [33-CHUNK_COUNT_W:0] position_high_sum;
     logic unused_position_carry;
 
     // 当前归约位置使用同一短步长，高位加一与低位求和并行。
     assign position_low = {1'b0, q_current[CHUNK_COUNT_W-1:0]} + {1'b0, chunk_count};
-    assign {unused_position_carry, position_high_next} =
-      {1'b0, q_current[32:CHUNK_COUNT_W]} + (34-CHUNK_COUNT_W)'(1);
+    assign position_high_sum = {1'b0, q_current[32:CHUNK_COUNT_W]} + (34-CHUNK_COUNT_W)'(1);
+    assign {unused_position_carry, position_high_next} = position_high_sum;
     assign next_q_current = {
       position_low[CHUNK_COUNT_W] ? position_high_next : q_current[32:CHUNK_COUNT_W],
       position_low[CHUNK_COUNT_W-1:0]};
@@ -1665,15 +1690,36 @@ module conv_im2col_frontend #(
     (cfg_address_propagate[3] && cfg_address_propagate[2] && cfg_address_generate[1]) ||
     (cfg_address_propagate[3] && cfg_address_propagate[2] && cfg_address_propagate[1] && cfg_address_generate[0]);
 
-  // Configuration products cross register boundaries before overflow checks.
+  // 三项通道数量先逐位压缩，再形成完整十八位求和结果的范围条件。
+  logic cfg_group_within_input;
+  logic cfg_s8_offset_valid;
+  if (p_short_sum_dsp) begin : g_cfg_group_arithmetic
+    logic [15:0] sum_bits, carry_bits;
+    (* use_dsp = "yes" *) logic [17:0] arithmetic_result;
+    assign sum_bits = cfg.group_offset ^ cfg.group_c ^ ~cfg.input_c;
+    assign carry_bits = (cfg.group_offset & cfg.group_c) |
+        (cfg.group_offset & ~cfg.input_c) | (cfg.group_c & ~cfg.input_c);
+    assign arithmetic_result = {2'b00, sum_bits} + {1'b0, carry_bits, 1'b0};
+    assign cfg_group_within_input = arithmetic_result[17:16] == 2'b00;
+    // 高位符号扩展与低字节范围共同覆盖负127至128。
+    assign cfg_s8_offset_valid =
+        (!(|cfg.input_offset[15:8]) && (!cfg.input_offset[7] || !(|cfg.input_offset[6:0]))) ||
+        ((&cfg.input_offset[15:8]) && cfg.input_offset[7] && (|cfg.input_offset[6:0]));
+  end else begin : g_cfg_group_compare
+    assign cfg_group_within_input =
+        17'(cfg.group_offset) + 17'(cfg.group_c) <= 17'(cfg.input_c);
+    assign cfg_s8_offset_valid = $signed(cfg.input_offset) >= -127 && $signed(cfg.input_offset) <= 128;
+  end
+
+  // 配置乘积经过寄存器后检查溢出。
   always_comb begin
     cfg_basic_valid=cfg.input_h!=0 && cfg.input_w!=0 && cfg.input_c!=0 &&
       cfg.group_c!=0 && cfg.kernel_h!=0 && cfg.kernel_w!=0 &&
       cfg.output_h!=0 && cfg.output_w!=0 && cfg.stride_h!=0 && cfg.stride_w!=0 &&
       cfg.dilation_h!=0 && cfg.dilation_w!=0 &&
-      (17'(cfg.group_offset)+17'(cfg.group_c)<=17'(cfg.input_c));
+      cfg_group_within_input;
     if (cfg.input_s16) cfg_basic_valid=cfg_basic_valid && cfg.input_offset==0 && !cfg.input_base[0];
-    else cfg_basic_valid=cfg_basic_valid && $signed(cfg.input_offset)>=-127 && $signed(cfg.input_offset)<=128;
+    else cfg_basic_valid=cfg_basic_valid && cfg_s8_offset_valid;
     cfg_input_bytes={15'd0,cfg_tensor_product};
     cfg_red={16'd0,cfg_reduction_product};
     cfg_positions=cfg_position_product;
@@ -2956,11 +3002,17 @@ module conv_im2col_frontend #(
   end
 
   // 配置通道数只作用于低十六位，高位递增与低位求和并行完成。
-  assign cfg_next_group_low = {1'b0, q0[15:0]} + {1'b0, cfg.group_c};
-  assign cfg_next_group_high = {1'b0, q0[31:16]} + 17'd1;
-  assign cfg_next_group = {
-    cfg_next_group_low[16] ? cfg_next_group_high : {1'b0, q0[31:16]},
-    cfg_next_group_low[15:0]};
+  if (p_short_sum_dsp) begin : g_cfg_next_group_arithmetic
+    (* use_dsp = "yes" *) logic [32:0] arithmetic_result;
+    assign arithmetic_result = {1'b0, q0} + {17'd0, cfg.group_c};
+    assign cfg_next_group = arithmetic_result;
+  end else begin : g_cfg_next_group_expression
+    assign cfg_next_group_low = {1'b0, q0[15:0]} + {1'b0, cfg.group_c};
+    assign cfg_next_group_high = {1'b0, q0[31:16]} + 17'd1;
+    assign cfg_next_group = {
+      cfg_next_group_low[16] ? cfg_next_group_high : {1'b0, q0[31:16]},
+      cfg_next_group_low[15:0]};
+  end
   parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_cfg_skip_group (
     .i_a({1'b0, q0}), .i_b({16'd0, cfg.group_c, 1'b0}), .i_carry(1'b0),
     .o_sum(cfg_skip_group), .o_carry(unused_cfg_skip_carry)
@@ -3008,6 +3060,11 @@ module conv_im2col_frontend #(
   end
 
   // 有效列数量与逐通道范围在同一边沿更新，运行期直接读取范围寄存器。
+  // 数据选择使用任务阶段；传输和行末资格只控制寄存器使能。
+  assign active_select_commit = REGISTER_DESCRIPTOR ? state[$clog2(IDLE)] : tile_commit;
+  assign active_data_select[0] = active_select_commit;
+  assign active_data_select[1] = !active_select_commit && chunk_reaches_end;
+  assign active_data_select[2] = !active_select_commit && !chunk_reaches_end;
   assign active_update_select[0] = tile_commit && !committing_tile.invalid;
   assign active_update_select[1] = address_stream_write && chunk_reaches_end && !row_last_q;
   assign active_update_select[2] = address_stream_write && !chunk_reaches_end;
@@ -3015,16 +3072,16 @@ module conv_im2col_frontend #(
   assign active_update_candidate[1] = active_cols_q;
   assign active_update_candidate[2] = active_remaining - TILE_COUNT_W'(chunk_count);
   assign active_update_value =
-      ({TILE_COUNT_W{active_update_select[0]}} & active_update_candidate[0]) |
-      ({TILE_COUNT_W{active_update_select[1]}} & active_update_candidate[1]) |
-      ({TILE_COUNT_W{active_update_select[2]}} & active_update_candidate[2]);
+      ({TILE_COUNT_W{active_data_select[0]}} & active_update_candidate[0]) |
+      ({TILE_COUNT_W{active_data_select[1]}} & active_update_candidate[1]) |
+      ({TILE_COUNT_W{active_data_select[2]}} & active_update_candidate[2]);
   assign column_update_candidate[0] = committing_tile.columns;
   assign column_update_candidate[1] = cols_q;
   assign column_update_candidate[2] = col_remaining - TILE_COUNT_W'(chunk_count);
   assign column_update_value =
-      ({TILE_COUNT_W{active_update_select[0]}} & column_update_candidate[0]) |
-      ({TILE_COUNT_W{active_update_select[1]}} & column_update_candidate[1]) |
-      ({TILE_COUNT_W{active_update_select[2]}} & column_update_candidate[2]);
+      ({TILE_COUNT_W{active_data_select[0]}} & column_update_candidate[0]) |
+      ({TILE_COUNT_W{active_data_select[1]}} & column_update_candidate[1]) |
+      ({TILE_COUNT_W{active_data_select[2]}} & column_update_candidate[2]);
   for (genvar lane = 0; lane <= LANES; lane++) begin : g_active_lane_update
     logic [2:0] candidate_allowed, column_allowed;
     for (genvar source = 0; source < 3; source++) begin : g_source
@@ -3045,8 +3102,8 @@ module conv_im2col_frontend #(
         assign column_allowed[source] = TILE_COUNT_W'(lane) < column_update_candidate[source];
       end
     end
-    assign active_lane_update[lane] = |(active_update_select & candidate_allowed);
-    assign column_lane_update[lane] = |(active_update_select & column_allowed);
+    assign active_lane_update[lane] = |(active_data_select & candidate_allowed);
+    assign column_lane_update[lane] = |(active_data_select & column_allowed);
     always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) column_lane_allowed_q[lane] <= $unsigned(TILE_COUNT_W'(lane)) < $unsigned(TILE_COUNT_W'(SIZE));
       else if (|active_update_select) column_lane_allowed_q[lane] <= column_lane_update[lane];
@@ -3065,6 +3122,13 @@ module conv_im2col_frontend #(
       active_lane_allowed_q <= active_lane_update;
     end
   end
+
+  // 解码递增与配置边界的完整结果分别连接已有保存边沿。
+  (* use_dsp = "yes" *) logic [31:0] decode_index_advance, decode_inner_advance;
+  (* use_dsp = "yes" *) logic [p_row_high_w-1:0] position_high_minus_one;
+  assign decode_index_advance = decode_index + 1;
+  assign decode_inner_advance = decode_inner + 1;
+  assign position_high_minus_one = cfg_positions[31:p_row_low_w] - p_row_high_w'(1);
 
   // 保存前端配置、描述符和坐标状态。
   always_ff @(posedge clk or negedge rst_n) begin
@@ -3114,7 +3178,7 @@ module conv_im2col_frontend #(
         configured<=cfg_ok;error<=!cfg_ok;
         reduction_len<=32'(cfg_red);position_count<=cfg_positions;tensor_bytes<=32'(cfg_input_bytes);
         // 配置边沿同时保存位置上限及其高位减一值，供低位进位时比较。
-        position_high_minus_one_q <= cfg_positions[31:p_row_low_w] - p_row_high_w'(1);
+        position_high_minus_one_q <= position_high_minus_one;
         fragment_image_fits<=CACHE_WAYS>=2 &&
           cfg_input_bytes<=((64'(c.input_c)<<c.input_s16)<<$clog2(CACHE_SETS));
       end
@@ -3123,9 +3187,9 @@ module conv_im2col_frontend #(
       // 配置、描述符提交与各运行状态互斥选择，公共写条件只参与末级组合。
       unique case (1'b1)
         (cfg_valid && cfg_ready): begin
-        row_wrap_q <= cfg.output_w != 16'd0 && ox_q == cfg_last_output_col;
-        tap_wrap_q <= cfg.kernel_w != 16'd0 && kx_q == cfg_last_kernel_col;
-        incoming_tap_wrap_q <= cfg.kernel_w != 16'd0 && kx0_q == cfg_last_kernel_col;
+        row_wrap_q <= cfg.output_w != 16'd0 && cfg_output_last;
+        tap_wrap_q <= cfg.kernel_w != 16'd0 && cfg_kernel_last;
+        incoming_tap_wrap_q <= cfg.kernel_w != 16'd0 && cfg_incoming_kernel_last;
         c<=cfg; configured<=0; error<=!cfg_basic_valid;
 
         next_group_q <= cfg_next_group;
@@ -3298,9 +3362,9 @@ module conv_im2col_frontend #(
           last_p_valid<=1;last_p<=p0;last_p_overflow_q <= (&p0[31:16]) && history_limit_low_sum[16];last_y<=16'(decode_outer);last_x<=16'(decode_inner);
           p_cache_valid[p_cache_select]<=1;
         end else begin
-          decode_index<=decode_index+1;
+          decode_index<=decode_index_advance;
           if (decode_end_o_equal[0]) begin decode_inner<=0;decode_outer<=decode_outer+1;end
-          else decode_inner<=decode_inner+1;
+          else decode_inner<=decode_inner_advance;
         end
         state[$clog2(Q_DECODE)]: begin
           if (q0==0) begin
@@ -3325,9 +3389,9 @@ module conv_im2col_frontend #(
 
         end
         else begin
-          decode_index<=decode_index+1;
+          decode_index<=decode_index_advance;
           if (decode_end_o_equal[1]) begin decode_inner<=0;decode_outer<=decode_outer+1;end
-          else decode_inner<=decode_inner+1;
+          else decode_inner<=decode_inner_advance;
         end
         state[$clog2(K_DECODE)]: begin
           if (kernel_shape_o_valid) begin
@@ -3358,9 +3422,9 @@ module conv_im2col_frontend #(
           incoming_tap_wrap_q <= kernel_width_valid_q && (16'(decode_inner) == last_kernel_col_q);
           {word_output_q, state} <= {state_uses_word(COORD), COORD};
         end else begin
-          decode_index<=decode_index+1;
+          decode_index<=decode_index_advance;
           if (decode_end_o_equal[2]) begin decode_inner<=0;decode_outer<=decode_outer+1;end
-          else decode_inner<=decode_inner+1;
+          else decode_inner<=decode_inner_advance;
         end
         state[$clog2(COORD)]: begin
           coordinate_address_valid<=0;current_coordinate_valid<=0;
