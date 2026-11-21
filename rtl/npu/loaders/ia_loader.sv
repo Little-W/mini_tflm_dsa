@@ -189,9 +189,42 @@ module ia_loader #(
     logic [31:0] cache_blocks_q;
     wire [31:0] incoming_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
     logic [CACHE_SLOT_W-1:0] cache_slot_mask;
+    logic compact_offset_valid;
+    if (REG_WIDTH >= 9) begin : g_compact_offset_range
+        logic nonnegative_range, negative_range;
+        // 符号扩展部分与低字节分别检查，完整覆盖负127至128。
+`ifdef SYNTHESIS
+        assign nonnegative_range = !(|cfg_compact_offset[REG_WIDTH-1:8]) &&
+            (!cfg_compact_offset[7] || !(|cfg_compact_offset[6:0]));
+        assign negative_range = (&cfg_compact_offset[REG_WIDTH-1:8]) &&
+            cfg_compact_offset[7] && (|cfg_compact_offset[6:0]);
+        assign compact_offset_valid = nonnegative_range || negative_range;
+`else
+        // 事件仿真保留完整有符号比较的未知值传播。
+        assign nonnegative_range = 1'b0;
+        assign negative_range = 1'b0;
+        assign compact_offset_valid = ($signed(cfg_compact_offset) >= -127) &&
+            ($signed(cfg_compact_offset) <= 128);
+`endif
+    end else begin : g_narrow_compact_offset_range
+        assign compact_offset_valid = ($signed(cfg_compact_offset) >= -127) &&
+            ($signed(cfg_compact_offset) <= 128);
+    end
     wire compact_config_valid = (COMPACT_S8 != 0) && (DATA_WIDTH == 16) &&
-        cfg_compact && ($signed(cfg_compact_offset) >= -127) &&
-        ($signed(cfg_compact_offset) <= 128);
+        cfg_compact && compact_offset_valid;
+    logic [REG_WIDTH-1:0] regular_prefetch_capacity, compact_prefetch_capacity;
+    logic regular_reuse_fits, compact_reuse_fits, prefetch_reuse_fits;
+    // 两种存储格式独立比较复用数量，格式有效条件只选择一位范围结果。
+    assign regular_prefetch_capacity = REG_WIDTH'(incoming_cache_blocks) / 2;
+    assign compact_prefetch_capacity = REG_WIDTH'(incoming_cache_blocks << 1) / 2;
+    assign regular_reuse_fits = ia_reuse_num <= regular_prefetch_capacity;
+    assign compact_reuse_fits = ia_reuse_num <= compact_prefetch_capacity;
+`ifdef SYNTHESIS
+    assign prefetch_reuse_fits = compact_config_valid ? compact_reuse_fits : regular_reuse_fits;
+`else
+    assign prefetch_reuse_fits = ia_reuse_num <=
+        REG_WIDTH'(compact_config_valid ? incoming_cache_blocks << 1 : incoming_cache_blocks) / 2;
+`endif
     wire [CACHE_SLOT_W-1:0] incoming_slot_mask =
         CACHE_SLOT_W'((compact_config_valid ? incoming_cache_blocks << 1 : incoming_cache_blocks) - 1);
     logic                 cfg_bias_by_row_mode;
@@ -254,7 +287,7 @@ module ia_loader #(
                 (n != 0) && (n <= SIZE) && (k != 0) &&
                 (row_groups == 1) && (col_groups == 1) && (w_reuse_num == 1) &&
                 (ia_reuse_num != 0) &&
-                (ia_reuse_num <= REG_WIDTH'(compact_config_valid ? incoming_cache_blocks << 1 : incoming_cache_blocks) / 2) &&
+                prefetch_reuse_fits &&
                 (k <= (ia_reuse_num << LOG2_SIZE));
             global_reduction_q <= cfg_global_reduction;
             packed_k_tiles_q <= packed_k_tiles_nxt;
@@ -737,6 +770,14 @@ module ia_loader #(
         end
         assign context_equal[value] = &parts_equal;
     end
+    logic [CACHE_SLOT_W-1:0] context_current_slot, context_advanced_slot;
+    logic context_current_slot_match, context_advanced_slot_match;
+    // 保留当前组和进入下一组分别形成完整物理槽号，坐标关系最后选择比较结果。
+    assign context_current_slot = CACHE_SLOT_W'(cfg_cache_slot_base) & incoming_slot_mask;
+    assign context_advanced_slot = (CACHE_SLOT_W'(cfg_cache_slot_base) +
+        CACHE_SLOT_W'(ia_reuse_num)) & incoming_slot_mask;
+    assign context_current_slot_match = context_current_slot == prefetch_group_slot;
+    assign context_advanced_slot_match = context_advanced_slot == prefetch_group_slot;
     wire prefetch_context_matches = cfg_prefetch_enable && cfg_preserve_cache &&
         (&context_equal[4:2]) && (context_equal[1] || context_equal[0]) &&
         (ORDERED_JOB || (
@@ -752,9 +793,13 @@ module ia_loader #(
         (DATA_WIDTH'(cfg_compact_offset) == prefetch_descriptor.offset) &&
         (incoming_cache_blocks == cache_blocks_q) &&
         (cfg_global_reduction == global_reduction_q))) &&
+`ifdef SYNTHESIS
+        (context_equal[1] ? context_current_slot_match : context_advanced_slot_match);
+`else
         (((CACHE_SLOT_W'(cfg_cache_slot_base) +
            (context_equal[1] ? CACHE_SLOT_W'(0) :
              CACHE_SLOT_W'(ia_reuse_num))) & incoming_slot_mask) == prefetch_group_slot);
+`endif
     (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] next_q0 = q0_base_q + REG_WIDTH'(SIZE);
     wire [REG_WIDTH-1:0] next_beats =
         (((tile_packed_q ? REG_WIDTH'(SIZE) : next_cols) << cfg_use_16bits) +
