@@ -40,7 +40,24 @@ module select_add #(
                     i_lhs[lane*12 +: 12];
             end
         end else begin : g_single
-            assign o_sum = i_add_enable ? i_lhs + selected_rhs : i_lhs;
+            localparam int p_low_width = (p_width <= 16) ? p_width :
+                ((p_width <= 32) ? 16 : (p_width+1)/2);
+            if (p_width == p_low_width) begin : g_short
+                assign o_sum = i_add_enable ? i_lhs + selected_rhs : i_lhs;
+            end else begin : g_partition
+                logic [p_low_width:0] low_sum;
+                logic [p_width-p_low_width-1:0] high_sum, high_sum_with_carry;
+                logic [p_width-1:0] sum;
+
+                // 高半字同时准备两种进位结果，低半字的进位只选择最终结果。
+                assign low_sum = {1'b0, i_lhs[p_low_width-1:0]} +
+                    {1'b0, selected_rhs[p_low_width-1:0]};
+                assign high_sum = i_lhs[p_width-1:p_low_width] + selected_rhs[p_width-1:p_low_width];
+                assign high_sum_with_carry = i_lhs[p_width-1:p_low_width] +
+                    selected_rhs[p_width-1:p_low_width] + (p_width-p_low_width)'(1);
+                assign sum = {low_sum[p_low_width] ? high_sum_with_carry : high_sum, low_sum[p_low_width-1:0]};
+                assign o_sum = i_add_enable ? sum : i_lhs;
+            end
         end
     end
 endmodule

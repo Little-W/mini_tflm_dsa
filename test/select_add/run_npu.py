@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""在完整 NPU 中验证实际 FPGA 偏置加法原语与 WS/IS 量化输入连接。"""
+"""在完整 NPU 的 FPGA 配置中验证偏置加法与 WS/IS 量化输入连接。"""
 import argparse
 import hashlib
 import json
