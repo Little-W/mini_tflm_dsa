@@ -1,0 +1,205 @@
+{
+  "passed": true,
+  "source_root": "/workspace/scratch/9625a7463d70/candidate_soc_r7",
+  "cache_line_bytes": 128,
+  "cache_parameter_source_sha256": "66d20352c7df07bac6535fff88fb9a28b3b8a5ada805c62c0b6e3c282501871e",
+  "address_width": 32,
+  "vector_pe_count": 8,
+  "ps_storage_rows": 799,
+  "oa_s16_fifo_banks_max": 4,
+  "soc_parameter_source_sha256": "e3d523ad962372355e6a231e497552a586a7a0504c5dfe2b863b7c9271d5b104",
+  "configuration": {
+    "path": "config/npu_fpga.mk",
+    "sha256": "39e60e26a3236abb0d50cdecdec3f4a41739629845e005d05813d2bcf5a43ecc",
+    "values": {
+      "PCR_ENGINE": "1",
+      "SIZE": "16",
+      "NPU_AXI_DATA_WIDTH": "64",
+      "IM2COL_CACHE_BYTES": "4096",
+      "SHARED_BANK_BYTES": "8192",
+      "SHARED_BANK_COUNT": "7",
+      "IA_CACHE_BLOCKS": "4",
+      "PS_FRAME_COUNT": "16",
+      "AXI_READ_OUTSTANDING": "4",
+      "PS_POOL_BYTES": "49152",
+      "PS_FORCE_RAW": "1",
+      "CAPACITY_BUDGET_BYTES": "131072",
+      "CAPACITY_BUDGET_SCOPE": "buffer-ram",
+      "CAPACITY_REPRESENTATION": "raw32"
+    },
+    "defines": [
+      "SYNTHESIS=1",
+      "XILINX_FPGA=1",
+      "XILINX_CLK_WIZ_IP=1",
+      "GEMPACT_PS_COMPRESS=1",
+      "GEMMORA_PS_POOL_BYTES=49152",
+      "GEMMORA_PS_FORCE_RAW=1"
+    ]
+  },
+  "simulation_defines": [
+    "SYNTHESIS=1",
+    "XILINX_FPGA=1"
+  ],
+  "primitive_models": [
+    "LUT1",
+    "LUT2",
+    "LUT3",
+    "LUT4",
+    "LUT5",
+    "LUT6",
+    "LUT6_2",
+    "MUXF7",
+    "MUXF8",
+    "DSP48E1",
+    "FDRE",
+    "CARRY4"
+  ],
+  "observer_models": {
+    "test/monitors/axi_block_dma_arbiter_observer.sv": {
+      "source_sha256": "489657046c2f0ff8b6592d970b0fe5201a34da4fc5a1871df8303bf3f0ac49ca",
+      "model_sha256": "823f3882cf39d08c6e35ea43ce5f0e5dcf0671d2e8a142f9c39576b15b1275bb"
+    },
+    "test/monitors/axi_dual_block_dma_observer.sv": {
+      "source_sha256": "38da2c7fdc0613aefe12aa2964e3a526f14771a062879752b579a27062013ddb",
+      "model_sha256": "2fa33fe487c6ee4c65f007f8c07c2f9c65650e9b658f0915c04ec6b69aaee9fc"
+    },
+    "test/monitors/axi_linear_block_dma_observer.sv": {
+      "source_sha256": "a487ebfbfa1c35034c8d6ef5b6c757d7ebb0ffc7661c191653b493808153b741",
+      "model_sha256": "9844adc737aeec6e66292b708ec569f0f5909795723c47ba979af45dc803d0e9"
+    },
+    "test/monitors/conv_ia_tile_path_observer.sv": {
+      "source_sha256": "a32aaecacf7ab65b94bc82e749871c68307d56ae8832cea5c002da31e78d76f5",
+      "model_sha256": "d2da5900eba2b4cfdfa8126432476f25ff9a6b36daab8aeb51f913e54298b406"
+    },
+    "test/monitors/conv_im2col_frontend_observer.sv": {
+      "source_sha256": "9c53eea9c619245b84595694c39ab0a349f99b98f6be06830581e5ec8d9429ce",
+      "model_sha256": "0e1ccb558b76a1530b7608475262a0d85c7c2cd4f759c500d43ac0b4afdcf56d"
+    },
+    "test/monitors/conv_read_cache_observer.sv": {
+      "source_sha256": "1d712e28fa59f287e6dabea704614fb6459136a4bf9ff43cc27abb4b078c5654",
+      "model_sha256": "5994b7a977ee25e05b1bb4dc5cb6e1b5b70b6e4dd71f52544d4c950d5351d4a4"
+    },
+    "test/monitors/conv_read_cache_reference_observer.sv": {
+      "source_sha256": "a7c88412d08eda2a5337e708addace122eb29076366abe58f1d932f51841db99",
+      "model_sha256": "501101e5cf7962f69a8ed54265c152eac12bfc7a8f390b51ef80b7f25c33cf4d"
+    },
+    "test/monitors/conv_window_queue_observer.sv": {
+      "source_sha256": "2b075e1d00d968c5c32766c73060fed8e03654110d6699af50b949ffb8f6e5b1",
+      "model_sha256": "1d2c350906530314b4ea47af303321a838f6205b44bf44810b5e6c0687ed364d"
+    },
+    "test/monitors/conv_windowed_cache_observer.sv": {
+      "source_sha256": "3a3e9409dd7e290a6b60379a666f732d2aa5586c28d3d71fb0e012cdd85c59c8",
+      "model_sha256": "3399fe5ac3466c37378a3f6dee3a0c95c1372dbe7a77855a11d348df52f6d91d"
+    },
+    "test/monitors/ia_loader_ctrl_observer.sv": {
+      "source_sha256": "96ba3d04a50f7b45cd8e1fdd8e84b3723fd9fa8eaf63f9eb26a0d2fee258bcd8",
+      "model_sha256": "d603707a53cac2c2cef64380bfc37baf11cd286f82dad1e41011ae39be0a2770"
+    },
+    "test/monitors/kernel_loader_buffer_observer.sv": {
+      "source_sha256": "f635ada58e9dcf827a8ba7350ebc9cbf919b68b935bbbe47b83e558b3e4f1d3e",
+      "model_sha256": "ecdde8580b714cd7b38b622ab0483191f0dd4425c51586ee93f330c44c32151b"
+    },
+    "test/monitors/kernel_loader_observer.sv": {
+      "source_sha256": "3092bbf27019a08caed610054b515b8e50045b6b279e17430869bc82932401c9",
+      "model_sha256": "7587feefbaa44fec9029edf531bc1edd804f2d715128aaacf699c272a2ff397b"
+    },
+    "test/monitors/npu_controller_observer.sv": {
+      "source_sha256": "2058f20ad84d92686d5e233a35cc25db52d3c1ebcdfcfa28f280825975884608",
+      "model_sha256": "f07405d654e3df188f643cd42b6c39d56c74537069a4f3fcaf606165db5a35ea"
+    },
+    "test/monitors/npu_top_observer.sv": {
+      "source_sha256": "12363f4bf6227bd6b5d13fec38a0f890ebfb1660507bb101f32e43a193642d68",
+      "model_sha256": "566ffbac1ed13a8766d5d54dbfc373dc101d2e62d38d14f5747898b7d3a968ac"
+    },
+    "test/monitors/pico_native_to_axi_observer.sv": {
+      "source_sha256": "685cab011ff04540246f28e7f1b26db59ff7e59967733ce87fab22e214742542",
+      "model_sha256": "3144d13b70e5f9876550e9c6da7939ff9fc873b38da0862f6f54f0607ebc89cb"
+    },
+    "test/monitors/ps_frame_store_observer.sv": {
+      "source_sha256": "7900fa2a7d8438753cff46cddbfe7b6f307c33fd5127b8e7177aa2ee09f8523f",
+      "model_sha256": "dcc609592a25a1f4819afe0557e22ec78dcdb7b544d74f42b07f62594790af3b"
+    },
+    "test/monitors/ps_window_scheduler_observer.sv": {
+      "source_sha256": "7ec792a39f50173c36840bdf65c7ed36cf12ea142ce6f75843325ca853ac67fa",
+      "model_sha256": "9f8743455e845b05a2c6b46ce3651a6fde6135ab9d59b9a8cbf75274501f818b"
+    },
+    "test/monitors/requant_group_buffer_observer.sv": {
+      "source_sha256": "5582f883510b0710c916142216585c3369f0a4b39ecbc494e69665bac3f2249f",
+      "model_sha256": "7ea297df29dbdf2ee1a90a2c1b6b6e92f839526eb88ea0c4c52fcbe7aef4176c"
+    },
+    "test/monitors/smic40_sram_1r1w_observer.sv": {
+      "source_sha256": "2d32c529e9104bc54f3e61d0a442c7efffa5520acf974585a14ed7edd94ea978",
+      "model_sha256": "59b44c745f97be92f7b56ebdd93de225b8b27cae088514f559787f9a923125eb"
+    },
+    "test/monitors/soc_axi_interconnect_observer.sv": {
+      "source_sha256": "9213eb364505a415235b401ef11c50e4a99d2e48d3e4bb523b87ef934ff07401",
+      "model_sha256": "a6096cb4942ba89921a95662024a4511217df82c11763f5d51b351274f920799"
+    },
+    "test/monitors/soc_axil_ctrl_observer.sv": {
+      "source_sha256": "a24b2613b722eb8ed2e0ddd571a5011f1b4957640ef2f2b564c571b2ecfe3e52",
+      "model_sha256": "c03c0d90e2fb54e19c73622aab0454d2bf1215ed29183e89ef14b63beaa8c5e4"
+    },
+    "test/monitors/vec_s8_to_fifo_observer.sv": {
+      "source_sha256": "6ce8364968def7bb5218c22d329dd76cc5b2f428c496ab171fda6c1e62445bf3",
+      "model_sha256": "05bfe46bb0de758364df80b864d5ec9528063e33fa4061400d89fa181473a28b"
+    },
+    "test/monitors/vector_engine_observer.sv": {
+      "source_sha256": "da8c7021a940b3ace09738101a6d7d495023dbf01139223dc643571b08227a33",
+      "model_sha256": "06927719213b42df61ca4bade07a3e8a70fe0112cc02391c436f73d38bc25738"
+    },
+    "test/monitors/vector_weight_store_observer.sv": {
+      "source_sha256": "48997168dbc50fbaef84ea1de9e4741bd58fc4d0ff3639e290c9e117df9d689a",
+      "model_sha256": "6c1cbedbd1d4d910f24723efd3df56ec7c5b03693ef8f51ddc9908b172dee0cd"
+    },
+    "test/monitors/ws_systolic_array_observer.sv": {
+      "source_sha256": "f1c8bea3f264a52ec14164083eb5de3647a38c2f6beb22511b67a002d3a2f1e9",
+      "model_sha256": "0b8c27da5e28c0998d5b503774fdd88aada65a264f5e824deb3e97acdbbdc3c9"
+    }
+  },
+  "primitive_library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
+  "generated_models_sha256": "b0b4f40924194cb485b196abac2d9203cc19abf639e6bf420f4bc278a00dea60",
+  "wrapper_sha256": "7b0617893f6aa23b1764599aca566c3768e2034ddda4b968368f30a3e9f00f59",
+  "runner_sha256": "847e22c23227003d448b2b9c0401ccd69f7491e10cbe6f031082e40cbda4add4",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/conv_npu/run.py",
+    "--out",
+    "/workspace/scratch/9625a7463d70/validation/npu_candidate_r7/npu",
+    "--verilator",
+    "/workspace/scratch/9625a7463d70/validation/npu_candidate_r7/verilator_xilinx",
+    "--source-root",
+    "/workspace/scratch/9625a7463d70/candidate_soc_r7",
+    "--jobs",
+    "1",
+    "--sizes",
+    "16",
+    "--build-timeout",
+    "7200",
+    "--bus-width",
+    "64",
+    "--cache-bytes",
+    "4096",
+    "--cache-line-bytes",
+    "128",
+    "--address-width",
+    "32",
+    "--vector-pe-count",
+    "8",
+    "--ps-storage-rows",
+    "799",
+    "--oa-s16-fifo-banks-max",
+    "4",
+    "--shared-bank-bytes",
+    "8192",
+    "--shared-bank-count",
+    "7",
+    "--ps-compress",
+    "--force-raw",
+    "--pool-bytes",
+    "49152"
+  ],
+  "returncode": 0,
+  "tasks": 38,
+  "int32_checks": 11118,
+  "npu_report": "/workspace/scratch/9625a7463d70/validation/npu_candidate_r7/npu/summary.json"
+}
