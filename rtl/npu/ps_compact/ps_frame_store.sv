@@ -88,9 +88,31 @@ module ps_frame_store #(
     end
     localparam integer RAW_LINEAR_BITS=$clog2(FRAME_COUNT*MAX_FRAME_ROWS*4+1);
     wire [RAW_LINEAR_BITS-1:0] initial_linear=RAW_LINEAR_BITS'(frame_id)*RAW_LINEAR_BITS'(directory_stride_q)<<2;
-    wire request_valid=32'(frame_id)<FRAME_COUNT && frame_rows>0 && frame_rows<=MAX_FRAME_ROWS &&
-        frame_rows<=directory_stride_q && (frame_init ? !frame_valid[frame_id] :
-        frame_valid[frame_id] && frame_lengths[frame_id]==frame_rows);
+    (* keep = "true" *) logic request_rows_high_valid, request_rows_low_valid;
+    (* keep = "true" *) logic request_frame_valid;
+    logic request_valid;
+
+    // 高位范围与低位行数并行检查，范围结果不经过低位大小比较的进位逻辑。
+    if (LENGTH_BITS < 32) begin : g_request_rows_bounded
+        assign request_rows_high_valid = frame_rows[31:LENGTH_BITS] == '0;
+    end else begin : g_request_rows_full
+        assign request_rows_high_valid = 1'b1;
+    end
+    assign request_rows_low_valid = LENGTH_BITS'(frame_rows) > 0 &&
+        LENGTH_BITS'(frame_rows) <= LENGTH_BITS'(MAX_FRAME_ROWS) &&
+        LENGTH_BITS'(frame_rows) <= directory_stride_q;
+    assign request_frame_valid = 32'(frame_id) < FRAME_COUNT &&
+        (frame_init ? !frame_valid[frame_id] : frame_valid[frame_id] &&
+         frame_lengths[frame_id] == LENGTH_BITS'(frame_rows));
+    // 未确定行数字段保留完整四态比较，已确定字段共享实际行宽的范围结果。
+    always_comb begin
+        case (^frame_rows)
+            1'b0, 1'b1: request_valid = request_rows_high_valid && request_rows_low_valid && request_frame_valid;
+            default: request_valid = 32'(frame_id) < FRAME_COUNT && frame_rows > 0 && frame_rows <= MAX_FRAME_ROWS &&
+                frame_rows <= directory_stride_q && (frame_init ? !frame_valid[frame_id] :
+                frame_valid[frame_id] && frame_lengths[frame_id] == frame_rows);
+        endcase
+    end
     logic [RAW_LINEAR_BITS-3:0] capacity_i_initial_row;
     logic [31:0] capacity_i_frame_rows, capacity_i_reserve_rows;
     logic [BANK_ADDR_BITS:0] capacity_i_bank_words;

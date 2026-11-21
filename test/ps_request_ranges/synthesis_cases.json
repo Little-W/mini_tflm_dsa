@@ -1,0 +1,13 @@
+{
+  "qualification": {
+    "top": "ps_request_measure",
+    "sources": [
+      "test/ps_request/qualification.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1"
+    ],
+    "configuration": "MAX_FRAME_ROWS512 FRAME_COUNT16\u5b8c\u6574\u884c\u6570\u4e0e\u5e27\u72b6\u6001\u8bf7\u6c42\u8d44\u683c"
+  }
+}

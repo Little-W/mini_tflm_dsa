@@ -1,0 +1,112 @@
+{
+  "passed": true,
+  "reference_commit": "108e8185",
+  "rtl_sha256": "53b33b6a92d455b164baf6493ab146cdc0bd4a9aab7a72abb84eef1d1fba53ae",
+  "reference_rtl_sha256": "3ab75aa4304b4c0053686d4e82aaef04233227a64e9fbd8956b7f38bb966fb44",
+  "formal_and_four_state": {
+    "passed": true,
+    "inputs_constrained": false,
+    "unchanged_outside_request_qualification": true,
+    "profiles": [
+      {
+        "MAX_FRAME_ROWS": 1,
+        "FRAME_COUNT": 1,
+        "input_bits": 37,
+        "checks": 13698,
+        "unknown_checks": 9472
+      },
+      {
+        "MAX_FRAME_ROWS": 3,
+        "FRAME_COUNT": 3,
+        "input_bits": 46,
+        "checks": 16002,
+        "unknown_checks": 11776
+      },
+      {
+        "MAX_FRAME_ROWS": 47,
+        "FRAME_COUNT": 16,
+        "input_bits": 155,
+        "checks": 43906,
+        "unknown_checks": 39680
+      },
+      {
+        "MAX_FRAME_ROWS": 512,
+        "FRAME_COUNT": 16,
+        "input_bits": 223,
+        "checks": 61314,
+        "unknown_checks": 57088
+      },
+      {
+        "MAX_FRAME_ROWS": 1024,
+        "FRAME_COUNT": 32,
+        "input_bits": 433,
+        "checks": 115074,
+        "unknown_checks": 110848
+      }
+    ],
+    "checks": 249994,
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/ps_request_ranges/results/formal_four_state.json",
+    "report_sha256": "9bb4955125aed75fd7f3c0850f93bf79c699f0ed82d54c0ada5fc41a313c4f96"
+  },
+  "numeric": [
+    {
+      "MAX_FRAME_ROWS": 16,
+      "passed": true,
+      "commands": 818,
+      "int32_values": 89648,
+      "cycles": 18501,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/ps_request_ranges/results/numeric_regular.json",
+      "report_sha256": "4f406f02b4cf182123c6bbe4dd6bc2e4d9d8668be49a0d09e1cfe483d80ba985"
+    },
+    {
+      "MAX_FRAME_ROWS": 256,
+      "passed": true,
+      "commands": 15,
+      "int32_values": 30720,
+      "cycles": 3990,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/ps_request_ranges/results/numeric_large.json",
+      "report_sha256": "3153adb58cca372adc111822b5326123f433a93eabd58e5743f22d8bc9aa0d92"
+    }
+  ],
+  "numeric_totals": {
+    "commands": 833,
+    "int32_values": 120368,
+    "cycles": 22491
+  },
+  "measurement_parameters": {
+    "MAX_FRAME_ROWS": 512,
+    "FRAME_COUNT": 16
+  },
+  "synthesis": {
+    "reference": {
+      "logic_lut_cells": 124,
+      "lut_sites_nominal_before_packing": 124,
+      "flip_flops": 224,
+      "dsp48e1": 0,
+      "ramb18e1": 0,
+      "ramb36e1": 0,
+      "maximum_register_path_cells": 6,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/ps_request_ranges/results/reference_metrics.json",
+      "report_sha256": "4a8661419991e50bb5c2d5b1ff2258706ac587ab2dfcdf91754689e64d9a700d"
+    },
+    "current": {
+      "logic_lut_cells": 108,
+      "lut_sites_nominal_before_packing": 108,
+      "flip_flops": 224,
+      "dsp48e1": 0,
+      "ramb18e1": 0,
+      "ramb36e1": 0,
+      "maximum_register_path_cells": 6,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/ps_request_ranges/results/current_metrics.json",
+      "report_sha256": "9b2f8f682c74d2543db5ab55fa22bf4369aa98139c4889556f52aa3c070f9ab1"
+    }
+  },
+  "tests_sha256": {
+    "test/ps_request_ranges/README.md": "ba0081e10033c93673e5e7c6c395300c11ef30a01b3e6a853770ea94f05e1b40",
+    "test/ps_request_ranges/run_formal.py": "80036e19402d99389a7c46b87b2e494b4ebc34c6014ae160bb77533204871fc0",
+    "test/ps_request_ranges/run_numeric.py": "453c3a4eb6ac3996d9b07b3a4f3794cdedb8d68186f7fdd145bbf615e5d81d03",
+    "test/ps_request_ranges/synthesis_cases.json": "6e363c5f48bbb413c9fa590bb1618caaf29ccc9d796b0158a7026480b31c3f89"
+  }
+}
