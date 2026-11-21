@@ -73,7 +73,8 @@ module ps_window_scheduler #(
 
     logic [TILE_W:0] next_column_tile, column_after_part;
     logic [ROW_PART_W:0] next_row_part;
-    logic [ID_W:0] opened, target, cursor;
+    logic [ID_W:0] opened, target;
+    logic [FRAME_COUNT-1:0] cursor_mask;
     logic [ID_W:0] opened_after_init, active_after_frame;
     logic [FRAME_COUNT-1:0] live;
     logic [TILE_W-1:0] frame_k [FRAME_COUNT];
@@ -337,11 +338,11 @@ module ps_window_scheduler #(
         .i_eligible(candidate_after_cursor), .o_id(after_first_id)
     );
 
-    // 帧资格与状态选择并行计算，扫描状态只在末端选择候选编号。
+    // 扫描范围随游标同时保存，候选筛选直接合并帧资格与范围掩码。
     always_comb begin
         for (int unsigned i = 0; i < FRAME_COUNT; i++) begin
             candidate_eligible[i] = live[i] && frame_open[i];
-            candidate_after_cursor[i] = candidate_eligible[i] && (i >= cursor);
+            candidate_after_cursor[i] = candidate_eligible[i] && cursor_mask[i];
         end
     end
 
@@ -615,7 +616,8 @@ module ps_window_scheduler #(
             slice_shift <= SLICE_SHIFT_W'(SHIFT); sliced <= 1'b0;
             row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
             stream_rows_remaining <= '0;
-            opened <= '0; target <= '0; cursor <= '0;
+            opened <= '0; target <= '0;
+            cursor_mask <= '1;
             frame_open <= '0;
             live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
             protected_id <= '0; resume_id <= '0;
@@ -636,7 +638,8 @@ module ps_window_scheduler #(
                 sliced <= slice_tiles != 0;
                 row_base <= '0; next_column_tile <= '0; next_row_part <= '0;
                 stream_rows_remaining <= stream_rows;
-                opened <= '0; cursor <= '0;
+                opened <= '0;
+                cursor_mask <= '1;
                 frame_open <= '0;
                 // 帧目标数量在 PREPARE_TARGET 保存后供所有命令和预测阶段使用。
                 target <= '0;
@@ -660,7 +663,7 @@ module ps_window_scheduler #(
                     if (phase == OPENING) begin
                         target <= opened;
                         resume_valid <= 1'b0;
-                        cursor <= '0;
+                        cursor_mask <= '1;
                         phase <= SWEEPING;
                     end else begin
                         resume_id <= command_buffer_id;
@@ -702,14 +705,16 @@ module ps_window_scheduler #(
                 end
                 if (phase == OPENING && opened_after_init == target) begin
                     phase <= SWEEPING;
-                    cursor <= '0;
+                    cursor_mask <= '1;
                 end else if (phase == DRAINING && active_final) begin
                     phase <= SWEEPING;
-                    cursor <= resume_valid ? (ID_W+1)'(resume_id) : '0;
+                    for (int unsigned frame_index = 0; frame_index < FRAME_COUNT; frame_index++)
+                        cursor_mask[frame_index] <= frame_index >= (resume_valid ? (ID_W+1)'(resume_id) : '0);
                     resume_valid <= 1'b0;
 
                 end else if (phase == SWEEPING) begin
-                    cursor <= (active_after_frame == opened) ? '0 : active_after_frame;
+                    for (int unsigned frame_index = 0; frame_index < FRAME_COUNT; frame_index++)
+                        cursor_mask[frame_index] <= frame_index >= ((active_after_frame == opened) ? '0 : active_after_frame);
                 end
             end else if (phase == PREPARING) begin
                 phase <= sliced ? PREPARE_PARTS : PREPARE_CAPS;
@@ -723,7 +728,8 @@ module ps_window_scheduler #(
                 target <= next_target;
                 phase <= OPENING;
             end else if (phase == SWEEPING && !command_active && !candidate_found) begin
-                opened <= '0; cursor <= '0;
+                opened <= '0;
+                cursor_mask <= '1;
                 frame_open <= '0;
                 protected_valid <= 1'b0; resume_valid <= 1'b0;
                 live <= '0;

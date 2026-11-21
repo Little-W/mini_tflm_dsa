@@ -1,0 +1,183 @@
+{
+  "passed": true,
+  "rtl_sha256": "9277bfd484a00e31e2b05858628b25fa9557bf42fdc12bfda84f4c8537f1e7bd",
+  "reference_commit": "cedf4ed3",
+  "reference_rtl_sha256": "4a3271378a6e806b9407d4ece32b462bcfde57d2e577c99b3ba7f027290967e9",
+  "formal": {
+    "profiles": [
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 1,
+        "MAX_REUSE_TILES": 1
+      },
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 3,
+        "MAX_REUSE_TILES": 5
+      },
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 0
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 0
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 33,
+        "MAX_REUSE_TILES": 64
+      }
+    ],
+    "state_and_output_bits": 20652,
+    "inputs_constrained": false,
+    "invariant": "cursor_mask[i] == (i >= reference.cursor)",
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_cursor/results/formal.json",
+    "report_sha256": "4c85ecb73e0d0083635f0935adf6032f66e72bbc7224a216b79b392793dba36d"
+  },
+  "four_state": {
+    "profiles": [
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 2,
+        "MAX_REUSE_TILES": 0,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 2,
+        "MAX_REUSE_TILES": 0,
+        "mode": "ASIC_SYNTHESIS"
+      },
+      {
+        "SIZE": 8,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 1,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "SIZE": 8,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 1,
+        "mode": "ASIC_SYNTHESIS"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 8,
+        "MAX_REUSE_TILES": 16,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 8,
+        "MAX_REUSE_TILES": 16,
+        "mode": "ASIC_SYNTHESIS"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "XILINX_FPGA"
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "ASIC_SYNTHESIS"
+      }
+    ],
+    "comparisons": 666384,
+    "four_state_cycles": 228992,
+    "completed_configurations": 768,
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_cursor/results/four_state.json",
+    "report_sha256": "1228917bc1921a479f1a5675fe6cc1093ef2071e2bdd45a0c3ab15e06ca1642e"
+  },
+  "synthesis": {
+    "parameters": {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32
+    },
+    "reference": {
+      "logic_lut_cells": 1111,
+      "distributed_ram_lut_sites_nominal": 56,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1167,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 901,
+      "dsp48e1": 13,
+      "ramb36e1": 2,
+      "ramb18e1": 0,
+      "carry4": 42,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 42,
+        "DSP48E1": 13,
+        "FDCE": 307,
+        "FDPE": 3,
+        "FDRE": 582,
+        "FDSE": 9,
+        "INV": 46,
+        "LUT2": 274,
+        "LUT3": 207,
+        "LUT4": 179,
+        "LUT5": 260,
+        "LUT6": 191,
+        "MUXF7": 1,
+        "RAM32M": 14,
+        "RAMB36E1": 2
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement.",
+      "maximum_register_path_cells": 9,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_cursor/results/reference_metrics.json",
+      "report_sha256": "f78ba96a1d8e1ef32d14bd8bfdaee0abff7e1967a14815a86dd98203f76a6715"
+    },
+    "current": {
+      "logic_lut_cells": 1128,
+      "distributed_ram_lut_sites_nominal": 56,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1184,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 912,
+      "dsp48e1": 13,
+      "ramb36e1": 2,
+      "ramb18e1": 0,
+      "carry4": 42,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 42,
+        "DSP48E1": 13,
+        "FDCE": 302,
+        "FDPE": 19,
+        "FDRE": 582,
+        "FDSE": 9,
+        "INV": 46,
+        "LUT2": 302,
+        "LUT3": 208,
+        "LUT4": 189,
+        "LUT5": 257,
+        "LUT6": 172,
+        "RAM32M": 14,
+        "RAMB36E1": 2
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement.",
+      "maximum_register_path_cells": 9,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_cursor/results/current_metrics.json",
+      "report_sha256": "ce54d4a68c2193402f7f6c46eabaa42230e797b45967afcaa7f8d1812c36fd22"
+    }
+  },
+  "test_sources_sha256": {
+    "test/scheduler_cursor/README.md": "40f778264bdc27edd117888357146d49e9e3bc1fae4ce863ac884ce8c6e54658",
+    "test/scheduler_cursor/run_formal.py": "8d12c55e37ff3143c88e015fb2545381f379a1687f2e0b49a1790acf0735fb5e",
+    "test/scheduler_cursor/synthesis_cases.json": "2987bb2572a1bdfac75183f8a91dd54a044d84c750dde6613d821b447e4f9cf0"
+  }
+}

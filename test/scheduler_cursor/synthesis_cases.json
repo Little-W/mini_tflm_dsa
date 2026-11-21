@@ -1,0 +1,23 @@
+{
+  "scheduler": {
+    "top": "ps_window_scheduler",
+    "sources": [
+      "rtl/npu/control/ps_window_scheduler.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GFRAME_COUNT=16",
+      "-GMAX_REUSE_TILES=32"
+    ],
+    "parameters": {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32
+    },
+    "configuration": "保存游标范围后选择候选帧"
+  }
+}
