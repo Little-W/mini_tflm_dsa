@@ -11,15 +11,19 @@ def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--out',type=Path,required=True);p.add_argument('--verilator',default='verilator')
+    p.add_argument('--source-root',type=Path,default=ROOT)
     p.add_argument('--vlen',type=int,default=16);p.add_argument('--lanes',type=int,default=4)
     p.add_argument('--reuse',type=int,default=32);p.add_argument('--bus',type=int,default=64)
     p.add_argument('--xilinx',action='store_true');a=p.parse_args()
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
-    sources=[ROOT/s for s in ['test/requant_time_share/tb.sv','test/requant_time_share/main.cpp',
+    source_root=a.source_root.resolve()
+    relative_sources=['test/requant_time_share/tb.sv','test/requant_time_share/main.cpp',
         'rtl/npu/writeback/vec_requant.sv','rtl/npu/writeback/requant_compute_lane.sv',
         'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/vector_scalar_multiplier.sv','rtl/common/regfile.v',
-        'rtl/common/parallel_prefix_add.sv','test/monitors/requant_group_buffer_observer.sv']]
-    hashes={str(s.relative_to(ROOT)):sha(s) for s in sources};options=[]
+        'rtl/common/parallel_prefix_add.sv','test/monitors/requant_group_buffer_observer.sv']
+    source_paths={name:(source_root if name.startswith('rtl/') else ROOT)/name for name in relative_sources}
+    sources=list(source_paths.values())
+    hashes={name:sha(path) for name,path in source_paths.items()};options=[]
     if a.xilinx:
         import pyosys
         library=Path(pyosys.__file__).parent/'share/xilinx/cells_sim.v';content=library.read_text()
@@ -36,7 +40,7 @@ def main():
     result=subprocess.run([str(binary)],cwd=ROOT,capture_output=True,text=True,timeout=300)
     (out/'run.log').write_text(result.stdout+result.stderr);result.check_returncode()
     record=json.loads(result.stdout.strip().splitlines()[-1])
-    if hashes!={str(s.relative_to(ROOT)):sha(s) for s in sources}:raise RuntimeError('Sources changed during verification')
+    if hashes!={name:sha(path) for name,path in source_paths.items()}:raise RuntimeError('Sources changed during verification')
     summary={'passed':True,'source_sha256':hashes,'command':cmd,'binary_sha256':sha(binary),'result':record,'xilinx':a.xilinx}
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(record))
 if __name__=='__main__':main()

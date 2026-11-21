@@ -858,6 +858,15 @@ module vec_requant_full #(
   wire cfg_per_channel_eff = (ENABLE_PER_CHANNEL != 0) ?
       (((p_compute_lanes < VLEN) && !init_cfg) ? serial_per_channel_q : cfg_per_channel) : 1'b0;
   wire cfg_dataflow_mode_eff = (ENABLE_IS_MODE != 0) ? cfg_dataflow_mode : 1'b0;
+  // 运行状态只使用已保存的串行配置，初始化边沿仍直接接收外部配置。
+  wire cfg_control_per_channel;
+`ifdef SYNTHESIS
+  assign cfg_control_per_channel = (ENABLE_PER_CHANNEL != 0) ?
+      ((p_compute_lanes < VLEN) ? serial_per_channel_q : cfg_per_channel) : 1'b0;
+`else
+  assign cfg_control_per_channel = cfg_per_channel_eff;
+`endif
+
 
   // ----------------------------
   // 配置寄存
@@ -1445,7 +1454,7 @@ module vec_requant_full #(
               // remain idle
             end else begin
               // 保持请求直到 grant（避免单拍丢失）
-              if (cfg_per_channel_eff && has_tiles_r && !quant_params_valid) begin
+              if (cfg_control_per_channel && has_tiles_r && !quant_params_valid) begin
                 load_quant_req <= 1'b1;
                 if (load_quant_granted) begin
                   load_phase     <= PH_MUL;
@@ -1458,7 +1467,7 @@ module vec_requant_full #(
               end
 
               // per-tensor 或 已有参数: 直接响应输入
-              if (!cfg_per_channel_eff || quant_params_valid) begin
+              if (!cfg_control_per_channel || quant_params_valid) begin
                 if (row_consume_valid) begin
                   if (row_consume_tile_done) begin
                     row_in_tile_cnt <= '0;
@@ -1468,13 +1477,13 @@ module vec_requant_full #(
                       tile_row <= '0;
                       tile_col <= '0;
                       load_quant_req <= 1'b0;
-                      quant_params_valid <= cfg_per_channel_eff ? 1'b0 : 1'b1;
+                      quant_params_valid <= cfg_control_per_channel ? 1'b0 : 1'b1;
                       state <= IDLE;
                     end else begin
                       tile_row <= next_tile_row_cur;
                       tile_col <= next_tile_col_cur;
 
-                      if (!cfg_per_channel_eff) begin
+                      if (!cfg_control_per_channel) begin
                         state <= COMPUTE;
                       end else if (next_same_quant_group_cur) begin
                         load_quant_req <= 1'b0;
@@ -1588,13 +1597,13 @@ module vec_requant_full #(
                   tile_row <= '0;
                   tile_col <= '0;
                   load_quant_req <= 1'b0;
-                          quant_params_valid <= cfg_per_channel_eff ? 1'b0 : 1'b1;
+                          quant_params_valid <= cfg_control_per_channel ? 1'b0 : 1'b1;
                   state <= IDLE;
                 end else begin
                   tile_row <= next_tile_row_cur;
                   tile_col <= next_tile_col_cur;
 
-                  if (!cfg_per_channel_eff) begin
+                  if (!cfg_control_per_channel) begin
                     state <= COMPUTE;
                   end else if (next_same_quant_group_cur) begin
                     load_quant_req <= 1'b0;
@@ -2044,10 +2053,15 @@ module vec_requant_full #(
     assign row_i_tile_done = in_tile_done;
     assign row_i_data = in_vec_s32;
     assign o_group_ready = row_o_group_ready;
+    (* keep = 1 *) logic row_batch_ready;
+    (* keep = 1 *) logic serial_parameters_available;
+    assign serial_parameters_available = !cfg_control_per_channel || quant_params_valid;
     assign issue_valid = row_o_valid && parameters_ready_q &&
-        (!cfg_per_channel_eff || quant_params_valid) && !init_cfg;
+        serial_parameters_available && !init_cfg;
     assign last_batch = batch_q == p_batch_width'(p_batches-1);
-    assign row_consume_valid = issue_valid && last_batch;
+    // 行缓存和末批位置并行判断，初始化与参数许可在末端合并。
+    assign row_batch_ready = row_o_valid && parameters_ready_q && last_batch;
+    assign row_consume_valid = row_batch_ready && serial_parameters_available && !init_cfg;
     assign row_consume_tile_done = row_o_tile_done;
     assign row_i_ready = row_consume_valid;
     assign row_i_output_valid = out_valid;
@@ -2081,7 +2095,7 @@ module vec_requant_full #(
     always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) parameters_ready_q <= 1'b0;
       else if (init_cfg) parameters_ready_q <= 1'b0;
-      else parameters_ready_q <= !cfg_per_channel_eff || quant_params_valid;
+      else parameters_ready_q <= !cfg_control_per_channel || quant_params_valid;
     end
     assign common_multiplier = cfg_per_channel_eff ?
         ch_product_multiplier_is_read[parameter_bank_q] : pt_product_multiplier_r;
