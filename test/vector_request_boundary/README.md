@@ -6,7 +6,7 @@
 
 `tap_last_modulo` 和 `weight_prefetch_q` 与核位置共同更新。配置载入、位置归零和递增分别准备下一周期需要的末项资格与预取地址，全部七处相关更新都保存同一组关系。`tap+1` 与 `tap+2` 通过独立的普通 RTL 加法器并行计算，读取端口直接使用保存的地址。末项比较继续使用 `add_equal`，保留定宽回绕和四态进位一致性；扩展宽度的 `tap_last_wide` 比较保持完整计算范围。
 
-`state_pool_store` 与状态字同时保存，供极值池化结果写入使用。全部 89 处状态更新共同维护该标志，保持计算与写回的周期顺序。
+`state_pool_store`、`state_dw_execute` 和 `state_weight_read_phase` 与状态字同时保存，分别服务于极值池化、深度卷积发射和共享权重读取。全部 89 处状态更新共同维护这些标志。有效通道掩码与通道数在四处更新中共同保存，供权重、量化和结果写入选择使用。
 
 ## 功能验证
 
@@ -38,15 +38,15 @@
 | 逻辑 LUT | 10,498 | 10,399 |
 | LUT RAM 的名义 LUT 数 | 176 | 176 |
 | 名义 LUT 合计 | 10,674 | 10,575 |
-| 触发器 | 6,417 | 6,420 |
+| 触发器 | 6,417 | 6,437 |
 | DSP | 73 | 81 |
 | RAMB18 | 9 | 9 |
 | 完整寄存器连接图最大组合级数 | 10 | 10 |
 | 寄存器到权重读取地址 | 2 | 2 |
 
-`i_weight_read_valid` 到 `win_req_valid` 无组合连接，池化控制到累加数据的局部最长路径为七级。`report_ports.py` 在分析数据中标记接口边界，统计实际寄存器与接口之间的连接。
+`i_weight_read_valid` 到 `win_req_valid` 无组合连接，池化控制到累加数据的局部最长路径为六级，寄存器到权重读取使能为一级。`report_ports.py` 在分析数据中标记接口边界，统计实际寄存器与接口之间的连接。
 
-窗口、区间及组选择的设计和专用检查见 [窗口控制说明](../vector_window_control/README.md)。
+窗口、区间及组选择的设计和专用检查见 [窗口控制说明](../vector_window_control/README.md)。保存的读取阶段、通道掩码及权重归并见 [权重资格说明](../vector_weight_qualification/README.md)。
 
 以上资源与级数来自独立 `vector_engine` 实例。完整 SoC 测量包含共享存储及 DMA 等外围连接，器件实现报告用于确认 150 MHz 时序。
 
@@ -56,7 +56,7 @@
 
 ```sh
 python test/vector_request_boundary/run_formal.py --out /tmp/vector_request_formal
-python test/vector_control_flags/run.py --reference-revision 0c99ca796e8a8cdd99180bcc8f8e5085abf17bca --out /tmp/vector_request_control
+python test/vector_control_flags/run.py --out /tmp/vector_request_control
 ```
 
 生产数值回归使用以下参数，编译与运行期间保持源码不变：

@@ -16,6 +16,8 @@ STATES = {
     'state_failed': 'FAILED', 'state_compute_commit': 'EXECUTE_COMMIT',
     'state_output_init': 'OUTPUT_INIT', 'state_vector_init': 'VECTOR_INIT',
     'state_dw_finish': 'DW_FINISH', 'state_pool_store': 'POOL_STORE',
+    'state_dw_execute': 'DW_EXECUTE',
+    'state_weight_read_phase': 'OUTPUT_INIT',
 }
 
 
@@ -45,14 +47,17 @@ def expression(source, name):
 
 
 def main():
+    global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--tool-root', type=Path, default=ROOT)
     parser.add_argument('--reference-root', type=Path)
-    parser.add_argument('--reference-revision', default='c1c0cb91770a7bb1639afb773f907432f9b12d6f')
+    parser.add_argument('--reference-revision', default='a9c827def8c3e3c0a58965d42fc2a0f9aaec30c0')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--iverilog', default='iverilog')
     parser.add_argument('--vvp', default='vvp')
     args = parser.parse_args()
+    ROOT = args.tool_root.resolve()
     current_path = args.source_root.resolve() / SOURCE
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -76,7 +81,9 @@ def main():
     old_function = old_function.replace('state_control_value', 'original_control_value')
     function = function.replace('state_control_value', 'selected_control_value')
     functions = (old_function+'\n'+function).replace('input state_t next_state', 'input logic [5:0] next_state')
-    expected = '{' + ','.join('next_state=='+STATES[name] for name in extra) + '}'
+    state_expressions={name:'(next_state=='+value+')' for name,value in STATES.items()}
+    state_expressions['state_weight_read_phase']='(next_state==OUTPUT_INIT || next_state==DW_EXECUTE || next_state==DW_FINISH)'
+    expected = '{' + ','.join(state_expressions[name] for name in extra) + '}'
     saved_expected = expected.replace('next_state', 'selected_saved[5:0]')
     model = out / 'control_word.sv'
     model.write_text(f'''module control_word (
@@ -203,7 +210,7 @@ endmodule
     assert current == current_path.read_text() and reference == reference_path.read_text()
     report={'passed':True,'source_sha256':sha(current_path),'reference_sha256':sha(reference_path),
             'reference_revision':None if args.reference_root else args.reference_revision,
-            'state_updates_checked':len(updates),'added_flags':{name:STATES[name]for name in extra},
+            'state_updates_checked':len(updates),'added_flags':{name:state_expressions[name]for name in extra},
             'original_state_control_fields_preserved':True,'formal':proofs,
             'four_state_encodings':4096,'four_state_drain_comparisons':131072,
             'test_sha256':sha(Path(__file__)),'simulation_log_sha256':sha(out/'four_state.log')}
