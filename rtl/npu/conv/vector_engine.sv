@@ -219,10 +219,11 @@ module vector_engine #(
   logic weight_data_ready, shared_weight_write_pending;
   logic [SHARED_STORAGE_ADDR_WIDTH-1:0] weight_data_tap;
   logic weight_tap_advance;
-  logic [TAP_COUNT_W-1:0] weight_tap_nxt;
+  logic [TAP_COUNT_W-1:0] weight_tap_nxt, weight_tap_after_next;
+  logic [TAP_COUNT_W-1:0] weight_prefetch_q;
   logic tap_last_wide, tap_last_modulo;
   logic tap_last_config, tap_last_zero, tap_last_increment;
-  logic unused_weight_tap_carry;
+  logic unused_weight_tap_carry, unused_weight_prefetch_carry;
 
   wire signed [7:0] weight_tap_data [TILE];
   logic signed [31:0] bias_buf [TILE];
@@ -1357,6 +1358,13 @@ module vector_engine #(
       .i_a(tap), .i_b(TAP_COUNT_W'(1)), .i_carry(1'b0),
       .o_sum(weight_tap_nxt), .o_carry(unused_weight_tap_carry)
   );
+  // 下一读取地址在核位置更新边沿保存，预取端口只保留初始化选择。
+  parallel_prefix_add #(
+      .p_width(TAP_COUNT_W), .p_group_width(3), .p_preserve_groups(1'b1)
+  ) u_weight_prefetch_increment (
+      .i_a(tap), .i_b(TAP_COUNT_W'(2)), .i_carry(1'b0),
+      .o_sum(weight_tap_after_next), .o_carry(unused_weight_prefetch_carry)
+  );
   add_equal #(.p_width(32)) u_tap_last_wide (
       .i_a(32'(tap)), .i_b(32'd1), .i_target(32'(taps)), .i_carry_in(1'b0),
       .o_equal(tap_last_wide)
@@ -1411,8 +1419,8 @@ module vector_engine #(
 
     // 当前权重和下一核位置并行保留。预取地址只取决于已保存的核位置，
     // 当前输入是否就绪以及是否发射均不参与共享存储器的地址选择。
-    assign prefetch_tap = (state_output_init || state_dw_finish || tap_last_modulo) ?
-        '0 : SHARED_STORAGE_ADDR_WIDTH'(weight_tap_nxt);
+    assign prefetch_tap = (state_output_init || state_dw_finish) ?
+        '0 : SHARED_STORAGE_ADDR_WIDTH'(weight_prefetch_q);
     assign return_matches = i_weight_read_valid && (&return_match_groups);
     assign saved_matches = saved_valid && (&saved_match_groups);
     assign weight_data_ready = return_matches || saved_matches;
@@ -2230,7 +2238,7 @@ module vector_engine #(
     if (!rst_n) begin
       {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE); c<='0; error<=0; load_kind<=LD_WEIGHT;
       parameter_rows_remaining<=0;
-      taps<=0; tap_last_modulo<=1'b0; active<=0; channel_base<=0; position<=0;
+      taps<=0; tap_last_modulo<=1'b0;weight_prefetch_q<=TAP_COUNT_W'(1); active<=0; channel_base<=0; position<=0;
       ox<=0;oy<=0;kx<=0;ky<=0;tap<=0;load_tap<=0;valid_taps<=0;
       input_x<=0;input_y<=0;input_origin_x<=0;input_origin_y<=0;
       vector_offset<=0;compute_index<=0;quant_index<=0;reduce_index<=0;
@@ -2331,7 +2339,8 @@ module vector_engine #(
         CHECK_WAIT: if (config_check_done) begin
           if (config_check_error) begin error<=2'b01;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           else begin
-            taps<=32'(kernel_count);tap_last_modulo<=tap_last_config;channel_base<=0;input_range_mode<=global_pool;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CONFIGURE);
+            taps<=32'(kernel_count);tap_last_modulo<=tap_last_config;
+            weight_prefetch_q<=tap_last_config ? '0 : weight_tap_nxt;channel_base<=0;input_range_mode<=global_pool;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CONFIGURE);
             kernel_last_column<=TAP_COUNT_W'(c.image.kernel_w)-TAP_COUNT_W'(1);
           end
         end
@@ -2373,7 +2382,7 @@ module vector_engine #(
           endcase
         end
         OUTPUT_INIT: begin
-          tap<=0;tap_last_modulo<=tap_last_zero;kx<=0;ky<=0;valid_taps<=0;compute_index<=0;
+          tap<=0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : TAP_COUNT_W'(1);kx<=0;ky<=0;valid_taps<=0;compute_index<=0;
           input_x<=input_origin_x;input_y<=input_origin_y;
           if (global_pool) begin
             valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
@@ -2390,7 +2399,7 @@ module vector_engine #(
           if (dw_tap_advance) begin
             if (tap_last_modulo) {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_FINISH);
             else begin
-              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;
+              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;
               input_x<=next_window_x;input_y<=next_window_y;
               if (kernel_column_end) begin kx<=0;ky<=ky+1'b1;end
               else kx<=kx+1'b1;
@@ -2398,7 +2407,7 @@ module vector_engine #(
           end
         end
         DW_FINISH: if (dw_snapshot_fire) begin
-          compute_index<='0;tap<='0;tap_last_modulo<=tap_last_zero;kx<='0;ky<='0;
+          compute_index<='0;tap<='0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : TAP_COUNT_W'(1);kx<='0;ky<='0;
           if (position_next<32'(position_count)) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
@@ -2458,7 +2467,7 @@ module vector_engine #(
             read_bank<=(read_bank+1'b1)&input_bank_mask;compute_index<=0;
             if (tap_last_wide) begin quant_index<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
             else begin
-              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;input_x<=next_window_x;input_y<=next_window_y;
+              tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=next_window_x;input_y<=next_window_y;
               if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
               if (next_window_valid_q) begin
                 valid_taps<=valid_taps+1;
@@ -2500,7 +2509,7 @@ module vector_engine #(
         end
         TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           else begin
-            tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;input_x<=next_window_x;input_y<=next_window_y;
+            tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=next_window_x;input_y<=next_window_y;
             if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
             {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
           end

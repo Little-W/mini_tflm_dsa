@@ -53,6 +53,33 @@ def run(command, folder, name, timeout=240):
 def source_audit(reference, selected):
     """逐条确认 tap/taps 的更新与末项状态共同保存。"""
     actual = selected
+    registered_prefetch = 'logic [TAP_COUNT_W-1:0] weight_prefetch_q;' in actual
+    if registered_prefetch:
+        actual = actual.replace('  logic [TAP_COUNT_W-1:0] weight_tap_nxt, weight_tap_after_next;\n'
+                                '  logic [TAP_COUNT_W-1:0] weight_prefetch_q;',
+                                '  logic [TAP_COUNT_W-1:0] weight_tap_nxt;')
+        actual = actual.replace('logic unused_weight_tap_carry, unused_weight_prefetch_carry;',
+                                'logic unused_weight_tap_carry;')
+        block = '''  // 下一读取地址在核位置更新边沿保存，预取端口只保留初始化选择。
+  parallel_prefix_add #(
+      .p_width(TAP_COUNT_W), .p_group_width(3), .p_preserve_groups(1'b1)
+  ) u_weight_prefetch_increment (
+      .i_a(tap), .i_b(TAP_COUNT_W'(2)), .i_carry(1'b0),
+      .o_sum(weight_tap_after_next), .o_carry(unused_weight_prefetch_carry)
+  );
+'''
+        assert actual.count(block) == 1
+        actual = actual.replace(block, '')
+        actual = actual.replace("tap_last_modulo<=1'b0;weight_prefetch_q<=TAP_COUNT_W'(1); active<=0;",
+                                "tap_last_modulo<=1'b0; active<=0;")
+        actual = actual.replace("tap_last_modulo<=tap_last_config;\n            weight_prefetch_q<=tap_last_config ? '0 : weight_tap_nxt;channel_base<=0;",
+                                'tap_last_modulo<=tap_last_config;channel_base<=0;')
+        actual = actual.replace("tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : TAP_COUNT_W'(1);",
+                                'tap_last_modulo<=tap_last_zero;')
+        actual = actual.replace("tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;",
+                                'tap_last_modulo<=tap_last_increment;')
+        actual = actual.replace("assign prefetch_tap = (state_output_init || state_dw_finish) ?\n        '0 : SHARED_STORAGE_ADDR_WIDTH'(weight_prefetch_q);",
+                                "assign prefetch_tap = (state_output_init || state_dw_finish || tap_last_modulo) ?\n        '0 : SHARED_STORAGE_ADDR_WIDTH'(weight_tap_nxt);")
     pool_flag = 'logic state_pool_store;' in actual
     if pool_flag:
         actual = actual.replace('logic [$bits(state_t)+10:0] state_control_value',
@@ -116,6 +143,7 @@ def source_audit(reference, selected):
         actual = actual.replace(new_release, old_release)
     assert actual == reference, '源码包含不属于末项状态保存的其他变换'
     return dict(update_sites=7, original_wide_comparison_preserved=True, registered_pool_qualifier=pool_flag,
+                registered_prefetch_address=registered_prefetch,
                 shared_slot_reuse_after_clear=slot_boundary,
                 all_other_statements_identical=True)
 
@@ -123,7 +151,8 @@ def source_audit(reference, selected):
 def abstract_registers(folder):
     design = json.loads((folder / 'flat.json').read_text())
     module = design['modules']['vector_engine']
-    kept_bits = {bit for name in KEPT for bit in module['netnames'][name]['bits']}
+    kept = KEPT + (('weight_prefetch_q',) if 'weight_prefetch_q' in module['netnames'] else ())
+    kept_bits = {bit for name in kept for bit in module['netnames'][name]['bits']}
     ports = {name: port for name, port in module['ports'].items()
              if port['direction'] == 'input' or name == 'formal_tap_last_property'}
     retained, cut = [], []
@@ -150,11 +179,11 @@ def abstract_registers(folder):
     module['memories'] = {}
     for net in module['netnames'].values():
         net['attributes'].pop('init', None)
-    for name in KEPT:
+    for name in kept:
         module['ports']['o_' + name] = dict(direction='output', bits=module['netnames'][name]['bits'])
-    assert len(retained) == 3
+    assert len(retained) == len(kept)
     (folder / 'abstract.json').write_text(json.dumps(design))
-    record = dict(kept=KEPT, retained=retained, cut=cut)
+    record = dict(kept=kept, retained=retained, cut=cut)
     (folder / 'abstraction.json').write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -173,6 +202,10 @@ def prove(source, tool_root, folder, fpga, params, sources):
   );
   assign formal_tap_last_property = tap_last_modulo == formal_tap_last_expected;
 """
+    if 'logic [TAP_COUNT_W-1:0] weight_prefetch_q;' in text:
+        oracle = oracle.replace('tap_last_modulo == formal_tap_last_expected;',
+            "tap_last_modulo == formal_tap_last_expected &&\n"
+            "      weight_prefetch_q == (formal_tap_last_expected ? '0 : weight_tap_nxt);")
     engine.write_text(text.replace('endmodule', oracle + '\nendmodule', 1))
     arguments = ['read_slang', '--top', 'vector_engine', '-I', str(source / 'include'),
                  '-I', str(source / 'rtl/npu/ps_compact'), '-D', 'SYNTHESIS=1', '-D',
@@ -213,7 +246,8 @@ def four_state(source, folder, iverilog, vvp):
     widths = (1, 2, 3, 5, 6, 9, 11, 16, 24)
     text = (source / ENGINE).read_text()
     blocks = []
-    for name in ('u_weight_tap_increment', 'u_tap_last_config', 'u_tap_last_zero', 'u_tap_last_increment'):
+    for name in ('u_weight_tap_increment', 'u_weight_prefetch_increment',
+                 'u_tap_last_config', 'u_tap_last_zero', 'u_tap_last_increment'):
         match = re.search(r'(?:parallel_prefix_add|add_equal)\s*#\(.*?\)\s*' + name +
                           r'\s*\(.*?\n  \);', text, re.S)
         # 从实例之前最近一个模块类型开始，保留实际运算参数及端口。
@@ -222,26 +256,37 @@ def four_state(source, folder, iverilog, vvp):
         start = max(block.rfind('parallel_prefix_add #'), block.rfind('add_equal #'))
         blocks.append(block[start:])
     model = """module model #(parameter integer TAP_COUNT_W=9)(
- input logic clk,rst_n,configure,clear_position,advance,
+ input logic clk,rst_n,configure,clear_position,advance,output_init,finish,
  input logic [TAP_COUNT_W-1:0] kernel_count,
  output logic identical
 );
  logic [TAP_COUNT_W-1:0] tap,taps,weight_tap_nxt;
+ logic [TAP_COUNT_W-1:0] weight_tap_after_next,weight_prefetch_q,expected_prefetch;
+ logic [TAP_COUNT_W-1:0] original_address,selected_address;
  logic tap_last_modulo,tap_last_config,tap_last_zero,tap_last_increment;
- logic unused_weight_tap_carry,expected;
+ logic unused_weight_tap_carry,unused_weight_prefetch_carry,expected;
 """ + '\n'.join(blocks) + """
  add_equal #(.p_width(TAP_COUNT_W)) oracle(
   .i_a(tap),.i_b(TAP_COUNT_W'(1)),.i_target(taps),.i_carry_in(1'b0),.o_equal(expected));
  always @(posedge clk or negedge rst_n) begin
-  if(!rst_n) begin tap<=0;taps<=0;tap_last_modulo<=0;end
-  else if(configure) begin taps<=kernel_count;tap_last_modulo<=tap_last_config;end
-  else if(clear_position) begin tap<=0;tap_last_modulo<=tap_last_zero;end
-  else if(advance) begin tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;end
+  if(!rst_n) begin tap<=0;taps<=0;tap_last_modulo<=0;weight_prefetch_q<=TAP_COUNT_W'(1);end
+  else if(configure) begin taps<=kernel_count;tap_last_modulo<=tap_last_config;weight_prefetch_q<=tap_last_config?'0:weight_tap_nxt;end
+  else if(clear_position) begin tap<=0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero?'0:TAP_COUNT_W'(1);end
+  else if(advance) begin tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment?'0:weight_tap_after_next;end
  end
- assign identical=(tap_last_modulo===expected);
+ assign expected_prefetch=expected?'0:weight_tap_nxt;
+ assign original_address=(output_init || finish || expected)?'0:weight_tap_nxt;
+ assign selected_address=(output_init || finish)?'0:weight_prefetch_q;
+ // tap 的全部写入为常数或已有 tap 的递增，复位后保持已知。
+ always @(negedge clk) if(rst_n===1'b1) begin
+  if($isunknown(tap))$fatal(1,"核位置在复位后包含未知位");
+ end
+ assign identical=(tap_last_modulo===expected) && (weight_prefetch_q===expected_prefetch) &&
+     (original_address===selected_address);
 endmodule
 module tb;
  logic clk=0,rst_n=0,configure=0,clear_position=0,advance=0;
+ logic output_init=0,finish=0;
  logic [31:0] data=0;
  wire [8:0] identical;
  integer i,j,checks=0;integer unsigned rng=32'h319b8b4e;
@@ -258,7 +303,7 @@ module tb;
  endtask
 """
     for i, width in enumerate(widths):
-        model += f'model #(.TAP_COUNT_W({width})) m{i}(clk,rst_n,configure,clear_position,advance,data[{width-1}:0],identical[{i}]);\n'
+        model += f'model #(.TAP_COUNT_W({width})) m{i}(clk,rst_n,configure,clear_position,advance,output_init,finish,data[{width-1}:0],identical[{i}]);\n'
     model += """
  initial begin
   tick();rst_n=1;
@@ -266,6 +311,7 @@ module tb;
    data=next_random();
    if(i%3==0)for(j=0;j<32;j=j+1)data[j]=four(2'(next_random()));
    configure=four(2'(next_random()));clear_position=four(2'(next_random()));advance=four(2'(next_random()));
+   output_init=four(2'(next_random()));finish=four(2'(next_random()));
    rst_n=(i%97==0)?four(2'(next_random())):1'b1;
    tick();
   end
@@ -344,7 +390,7 @@ def main():
             ['git', 'show', args.reference_revision + ':' + str(ENGINE)], cwd=tools))
     report = dict(passed=False, source_sha256=sha(source / ENGINE), reference_sha256=sha(reference),
                   source_audit=source_audit(reference.read_text(), source_text), profiles=[],
-                  abstraction='Only tap, taps and tap_last_modulo remain sequential; every other state and memory output is free',
+                  abstraction='Only tap, taps, tap_last_modulo and weight_prefetch_q remain sequential; every other state and memory output is free',
                   constraints='rst_n=0 at the first sampled cycle; all other inputs and subsequent resets are free')
     case = json.loads((tools / 'test/vector_engine/production_synthesis_cases.json').read_text())['vector']
     sources = list(dict.fromkeys([Path(path) for path in case['sources']] +
