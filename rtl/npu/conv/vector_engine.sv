@@ -237,7 +237,8 @@ module vector_engine #(
       $clog2(4*TILE+1)'(write_total);
   assign writeback_request_last = !depthwise || dw_result_last[dw_result_read_slot];
   assign dw_result_accept = depthwise && writeback_request_valid && writeback_ready;
-  vector_writeback #(.TILE(TILE),.BUS_WIDTH(BUS_WIDTH)) u_writeback (
+  // 引擎仅合并连续 DW 字节结果，完整数据字使用独立写事务。
+  vector_writeback #(.TILE(TILE),.BUS_WIDTH(BUS_WIDTH),.p_coalesce_bytes_only(1'b1)) u_writeback (
     .clk,.rst_n,.request_valid(writeback_request_valid),.request_ready(writeback_ready),
     .request_address(writeback_request_address),.request_bytes(writeback_request_bytes),
     .request_byte_output(byte_output),.result_words(writeback_words),

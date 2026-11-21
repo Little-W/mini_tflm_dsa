@@ -4,27 +4,28 @@
 module vector_writeback #(
   parameter int TILE=16,
   parameter int BUS_WIDTH=64,
-  parameter int COUNT_WIDTH=$clog2(4*TILE+1)
+  parameter int COUNT_WIDTH=$clog2(4*TILE+1),
+  parameter bit p_coalesce_bytes_only=1'b0
 )(
-  input wire logic clk, rst_n,
-  input wire logic request_valid,
+  input logic clk, rst_n,
+  input logic request_valid,
   output logic request_ready,
-  input wire logic [31:0] request_address,
-  input wire logic [COUNT_WIDTH-1:0] request_bytes,
-  input wire logic request_byte_output,
-  input wire logic [32*TILE-1:0] result_words,
-  input wire logic request_coalesce = 1'b0,
-  input wire logic request_last = 1'b1,
-  input wire logic flush = 1'b0,
+  input logic [31:0] request_address,
+  input logic [COUNT_WIDTH-1:0] request_bytes,
+  input logic request_byte_output,
+  input logic [32*TILE-1:0] result_words,
+  input logic request_coalesce = 1'b0,
+  input logic request_last = 1'b1,
+  input logic flush = 1'b0,
   output logic busy, done, error,
   output logic wr_req, wr_start,
-  input wire logic wr_granted,
+  input logic wr_granted,
   output logic [31:0] wr_base_addr, wr_row_stride, wr_rows_to_write,
   output logic [7:0] wr_burst_len_m1,
   output logic [BUS_WIDTH-1:0] src_wdata,
   output logic [BUS_WIDTH/8-1:0] src_wmask,
   output logic src_wvalid,
-  input wire logic src_wready, wr_done, wr_error
+  input logic src_wready, wr_done, wr_error
 );
   //! 0. 队列存储与事务状态
   //! -----------------------
@@ -43,8 +44,7 @@ module vector_writeback #(
   logic [7:0] burst_length;
   logic [GROUP_INDEX_WIDTH-1:0] group_index [BUS_BYTES];
   logic [7:0] pending_data [CAPACITY], payload_data [CAPACITY];
-  logic [7:0] request_data [CAPACITY];
-  logic [8*CAPACITY-1:0] request_shift [0:$clog2(CAPACITY)];
+  logic [8*CAPACITY-1:0] request_aligned_data;
   logic pending_last, append_compatible, append_fits;
   logic request_fire, publish_fire, data_fire;
   logic [COUNT_WIDTH:0] appended_bytes;
@@ -57,9 +57,9 @@ module vector_writeback #(
   //! -------------------------------
 
   assign appended_bytes = {1'b0,pending_bytes}+{1'b0,request_bytes};
-  assign pending_end_address = {1'b0,pending_address}+33'(pending_bytes);
   assign append_compatible = pending_bytes==0 ||
-      (request_coalesce && !pending_end_address[32] && request_address==pending_end_address[31:0]);
+      (request_coalesce && (!p_coalesce_bytes_only || request_byte_output) &&
+       !pending_end_address[32] && request_address==pending_end_address[31:0]);
   assign append_fits = appended_bytes <= (COUNT_WIDTH+1)'(CAPACITY);
   // 满队列、末尾标记和地址不连续均使待写数据尽早进入写事务。
   assign publish_fire = (c_st==IDLE || (c_st==RESPONSE && wr_done && !wr_error)) && pending_bytes!=0 &&
@@ -75,26 +75,51 @@ module vector_writeback #(
   assign pending_span = ARITH_WIDTH'(pending_address[BUS_SHIFT-1:0])+
       ARITH_WIDTH'(pending_bytes)+ARITH_WIDTH'(BUS_BYTES-1);
 
-  for (genvar entry=0;entry<CAPACITY;entry++) begin : g_request_byte
-    if (entry<TILE) begin : g_byte_output
-      assign request_data[entry] = request_byte_output ? result_words[32*entry+:8] : result_words[8*entry+:8];
-    end else begin : g_word_output
-      assign request_data[entry] = request_byte_output ? 8'd0 : result_words[8*entry+:8];
+  // 字节合并模式仅旋转 TILE 个有效字节，完整数据字直接装入空队列。
+  // 超出 TILE 的字节请求仍以零填充，保留各请求长度对应的输出内容。
+  if (p_coalesce_bytes_only && ((TILE & (TILE-1)) == 0)) begin : g_byte_coalescing
+    logic [8*TILE-1:0] byte_rotation [0:$clog2(TILE)];
+    logic [COUNT_WIDTH:0] byte_end;
+
+    assign byte_end = {1'b0, pending_bytes} + (COUNT_WIDTH+1)'(TILE);
+    for (genvar lane=0;lane<TILE;lane++) begin : g_lane
+      assign byte_rotation[0][8*lane+:8] = result_words[32*lane+:8];
     end
-    assign request_shift[0][8*entry+:8] = request_data[entry];
-  end
-  // Rotate all request bytes once; the per-entry enables exclude wrapped bytes.
-  for (genvar stage=0;stage<$clog2(CAPACITY);stage++) begin : g_request_shift
-    localparam int SHIFT_BYTES = 1<<stage;
+    for (genvar stage=0;stage<$clog2(TILE);stage++) begin : g_rotation
+      localparam int SHIFT_BITS=8*(1<<stage);
+      assign byte_rotation[stage+1] = pending_bytes[stage] ?
+          {byte_rotation[stage][8*TILE-SHIFT_BITS-1:0],
+           byte_rotation[stage][8*TILE-1:8*TILE-SHIFT_BITS]} : byte_rotation[stage];
+    end
     for (genvar entry=0;entry<CAPACITY;entry++) begin : g_entry
-      if (entry>=SHIFT_BYTES) begin : g_in_range
-        assign request_shift[stage+1][8*entry+:8] = pending_bytes[stage] ?
-            request_shift[stage][8*(entry-SHIFT_BYTES)+:8] : request_shift[stage][8*entry+:8];
-      end else begin : g_wrap
-        assign request_shift[stage+1][8*entry+:8] = pending_bytes[stage] ?
-            request_shift[stage][8*(entry+CAPACITY-SHIFT_BYTES)+:8] : request_shift[stage][8*entry+:8];
+      assign request_aligned_data[8*entry+:8] = !request_byte_output ? result_words[8*entry+:8] :
+          ((COUNT_WIDTH+1)'(entry)<byte_end ? byte_rotation[$clog2(TILE)][8*(entry%TILE)+:8] : 8'd0);
+    end
+  end else begin : g_general_coalescing
+    logic [7:0] request_data [CAPACITY];
+    logic [8*CAPACITY-1:0] request_shift [0:$clog2(CAPACITY)];
+
+    for (genvar entry=0;entry<CAPACITY;entry++) begin : g_request_byte
+      if (entry<TILE) begin : g_byte_output
+        assign request_data[entry] = request_byte_output ? result_words[32*entry+:8] : result_words[8*entry+:8];
+      end else begin : g_word_output
+        assign request_data[entry] = request_byte_output ? 8'd0 : result_words[8*entry+:8];
+      end
+      assign request_shift[0][8*entry+:8] = request_data[entry];
+    end
+    // 低于移位量的位置不会被该请求写入，因此可以直接传递中间数据。
+    for (genvar stage=0;stage<$clog2(CAPACITY);stage++) begin : g_request_shift
+      localparam int SHIFT_BYTES=1<<stage;
+      for (genvar entry=0;entry<CAPACITY;entry++) begin : g_entry
+        if (entry>=SHIFT_BYTES) begin : g_in_range
+          assign request_shift[stage+1][8*entry+:8] = pending_bytes[stage] ?
+              request_shift[stage][8*(entry-SHIFT_BYTES)+:8] : request_shift[stage][8*entry+:8];
+        end else begin : g_unused_position
+          assign request_shift[stage+1][8*entry+:8] = request_shift[stage][8*entry+:8];
+        end
       end
     end
+    assign request_aligned_data = request_shift[$clog2(CAPACITY)];
   end
 
   //! 2. 保存队列数据与推进写事务
@@ -104,9 +129,12 @@ module vector_writeback #(
   for (genvar entry=0;entry<CAPACITY;entry++) begin : g_payload_storage
     always_ff @(posedge clk) begin
       if (request_fire && COUNT_WIDTH'(entry)>=pending_bytes &&
-          (COUNT_WIDTH+1)'(entry)<appended_bytes)
-        pending_data[entry] <= request_shift[$clog2(CAPACITY)][8*entry+:8];
-      if (publish_fire) payload_data[entry] <= pending_data[entry];
+          (COUNT_WIDTH+1)'(entry)<appended_bytes) begin
+        pending_data[entry] <= request_aligned_data[8*entry+:8];
+      end
+      if (publish_fire) begin
+        payload_data[entry] <= pending_data[entry];
+      end
     end
   end
   always_ff @(posedge clk or negedge rst_n) begin
@@ -114,29 +142,55 @@ module vector_writeback #(
       pending_bytes <= '0;
       pending_last <= 1'b0;
       pending_address <= '0;
+      pending_end_address <= '0;
     end else if (publish_fire) begin
       pending_bytes <= '0;
       pending_last <= 1'b0;
     end else if (request_fire) begin
-      if (pending_bytes==0) pending_address <= request_address;
+      if (pending_bytes==0) begin
+        pending_address <= request_address;
+      end
+      // 接收时记录下一连续地址，后续追加检查直接比较已保存的末地址。
+      pending_end_address <= {1'b0, request_address} + 33'(request_bytes);
       pending_bytes <= appended_bytes[COUNT_WIDTH-1:0];
-      pending_last <= request_last || !request_coalesce;
+      pending_last <= request_last || !request_coalesce || (p_coalesce_bytes_only && !request_byte_output);
     end
   end
 
   // 状态寄存器与转移条件共同描述接收、数据发送和响应等待的顺序。
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) c_st <= IDLE;
-    else c_st <= n_st;
+    if (!rst_n) begin
+      c_st <= IDLE;
+    end else begin
+      c_st <= n_st;
+    end
   end
   always_comb begin
     n_st = c_st;
     case (c_st)
-      IDLE: if (publish_fire) n_st = REQUEST;
-      REQUEST: if (wr_granted) n_st = DATA;
-      DATA: if (data_fire && remaining<=available) n_st = RESPONSE;
-      RESPONSE: if (wr_done) n_st = publish_fire ? REQUEST : IDLE;
-      default: n_st = IDLE;
+      IDLE: begin
+        if (publish_fire) begin
+          n_st = REQUEST;
+        end
+      end
+      REQUEST: begin
+        if (wr_granted) begin
+          n_st = DATA;
+        end
+      end
+      DATA: begin
+        if (data_fire && remaining<=available) begin
+          n_st = RESPONSE;
+        end
+      end
+      RESPONSE: begin
+        if (wr_done) begin
+          n_st = publish_fire ? REQUEST : IDLE;
+        end
+      end
+      default: begin
+        n_st = IDLE;
+      end
     endcase
   end
   always_ff @(posedge clk) begin
@@ -167,7 +221,9 @@ module vector_writeback #(
       if (publish_fire) begin
         group_index[bank] <= GROUP_INDEX_WIDTH'(
             (BUS_SHIFT+1)'(pending_address[BUS_SHIFT-1:0]) < (BUS_SHIFT+1)'(BUS_BYTES-bank));
-      end else if (data_fire) group_index[bank] <= group_index[bank]+1'b1;
+      end else if (data_fire) begin
+        group_index[bank] <= group_index[bank]+1'b1;
+      end
     end
   end
 

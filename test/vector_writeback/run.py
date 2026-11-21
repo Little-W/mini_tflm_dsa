@@ -31,12 +31,12 @@ def main():
     hashes = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in sources}
     results = []
-    for width in (32, 64):
-        folder = out / f"axi{width}"
+    for byte_only, width in ((0, 32), (0, 64), (1, 32), (1, 64)):
+        folder = out / f"axi{width}_byte_only{byte_only}"
         folder.mkdir(exist_ok=True)
         run([args.verilator, "--cc", "--exe", "--build", "-j", args.jobs,
              "--assert", "--top-module", "vector_writeback", "-Wno-fatal",
-             f"-GBUS_WIDTH={width}", "--Mdir", folder / "obj",
+             f"-GBUS_WIDTH={width}", f"-Gp_coalesce_bytes_only={byte_only}", "--Mdir", folder / "obj",
              "-CFLAGS", f"-std=c++17 -DTEST_BUS_WIDTH={width}", *sources], folder / "build.log")
         run([folder / "obj/Vvector_writeback"], folder / "run.log")
         text = (folder / "run.log").read_text()
@@ -46,6 +46,7 @@ def main():
         result = {key: int(value) for key, value in
                   (item.split("=") for item in match.group(1).split())}
         result["passed"] = True
+        result["byte_only"] = byte_only
         results.append(result)
         print(text.strip(), flush=True)
     if any(hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != value

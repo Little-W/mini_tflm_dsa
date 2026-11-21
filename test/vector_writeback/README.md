@@ -1,6 +1,6 @@
 # 向量结果写入队列验证
 
-`run.py` 对 `vector_writeback` 执行 AXI32 和 AXI64 两组独立 RTL 仿真。每组包含 256 次结果请求，所有接收字节均与模拟内存中的实际写入逐项比较。
+`run.py` 对 `vector_writeback` 的通用合并配置和字节合并配置分别执行 AXI32、AXI64 RTL 仿真，共四组。每组包含 256 次结果请求，所有接收字节均与模拟内存中的实际写入逐项比较。
 
 ```bash
 python3 test/vector_writeback/run.py --verilator /path/to/verilator --jobs 2
@@ -16,15 +16,15 @@ python3 test/vector_writeback/run.py --verilator /path/to/verilator --jobs 2
 - 写入响应错误的传递，以及强制发送尚未填满的队列。
 - 每个有效输出字节恰好写入一次，完成时所有写入响应均已返回。
 
-结果保存在 `build/vector_writeback/summary.json`，其中包含两种总线宽度的请求次数、字节数、事务数、响应数、错误响应数和源文件 SHA-256。
+结果保存在 `build/vector_writeback/summary.json`，其中包含两种总线宽度及两种合并配置的请求次数、字节数、事务数、响应数、错误响应数和源文件 SHA-256。
 
 ## 逐周期 A/B 对照
 
-`miter.sv` 同时实例化当前 RTL 与由调用者提供的基线模块
+`miter.sv` 同时实例化当前 RTL 与由调用者提供的参考模块
 `vector_writeback_baseline`。测试覆盖 AXI32/64、随机等待、错误、flush、
 连续和不连续地址（起点接近 4K 边界），在有效周期比较控制、完整数据及 mask。
 它比较原实现行为，不证明实现符合 4K 突发规则；Verilator 是两态模拟。
-例如，将基线复制并重命名到临时目录后运行：
+例如，将参考实现复制并重命名到临时目录后运行：
 
 ```bash
 sed 's/module vector_writeback #(/module vector_writeback_baseline #(/' "$BASELINE" > /tmp/vector_writeback_baseline.sv
