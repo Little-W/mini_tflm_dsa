@@ -26,11 +26,19 @@ def main():
     p.add_argument('--window-lanes',type=int,choices=(4,8,16),help='window response element count; default follows bus bytes')
     p.add_argument('--shared-quant',action='store_true',help='connect the production matrix quantization pipeline')
     p.add_argument('--shared-storage',action='store_true',help='store DW weights and completed INT32 rows in the production shared RAM')
+    p.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192),default=4096,help='共享存储每个银行的字节数')
+    p.add_argument('--shared-bank-count',type=int,choices=range(6,10),default=8,help='共享存储的物理银行数量')
+    p.add_argument('--shared-ia-banks',type=int,choices=range(1,5),default=1,help='向量任务分配给输入数据的银行数量')
+    p.add_argument('--check-weight-prefetch',action='store_true',help='检查共享权重预取的地址、数据和任务切换')
+    p.add_argument('--rtl-assertions',action='store_true',help='启用 RTL 内部的控制和数据有效性断言')
+    p.add_argument('--stable-stimulus',action='store_true',help='使用独立随机数生成器确定数据与尺寸，使其不受总线等待周期影响')
     p.add_argument('--xilinx',action='store_true',help='simulate the official Xilinx primitive models')
     p.add_argument('--prepared',type=Path,help='prepared model directory containing nearest-even Add tensors')
     p.add_argument('--softmax-replay',type=Path,help='Softmax tables and original model tensors')
     a=p.parse_args();a.pes=a.pes or [min(8,a.tile)];a.window_lanes=a.window_lanes or a.bus_width//8
     if a.shared_storage and a.tile!=16:p.error('--shared-storage requires --tile 16')
+    if a.shared_storage and a.shared_ia_banks+5>a.shared_bank_count:p.error('共享存储需同时容纳输入、权重和四个部分和银行')
+    if a.check_weight_prefetch and not a.shared_storage:p.error('--check-weight-prefetch requires --shared-storage')
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
     csrc=[HERE/'reference.c',HERE/'reference_add.c']
     conv=ROOT/'rtl/npu/conv'
@@ -44,6 +52,7 @@ def main():
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/common/regfile.v',HERE/'vector_engine_dma_top.sv']
     import runpy
     svsrc = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](svsrc)
+    if a.check_weight_prefetch:svsrc.append(ROOT/'test/vector_weight_prefetch/observer.sv')
     source_root=a.source_root.resolve()
     svsrc=[source_root/f.relative_to(ROOT) if f.is_relative_to(ROOT/'rtl') else f for f in svsrc]
     primitive_options=[]
@@ -65,6 +74,10 @@ def main():
     result={'verification':'RTL engine + production DMA; independent signed-integer nearest-even reference','tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,
             'cache_line_bytes':a.cache_line_bytes,'cache_bytes':2*a.cache_sets*a.cache_line_bytes,
             'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
+            'shared_bank_bytes':a.shared_bank_bytes,'shared_bank_count':a.shared_bank_count,'shared_ia_banks':a.shared_ia_banks,
+            'check_weight_prefetch':a.check_weight_prefetch,
+            'rtl_assertions':a.rtl_assertions,
+            'stable_stimulus':a.stable_stimulus,
             'implementation':'official Xilinx primitive models' if a.xilinx else 'generic',
             'primitive_library_sha256':primitive_sha256,
             'verilator':subprocess.check_output([a.verilator,'--version'],text=True).strip(),'runs':[]}
@@ -85,6 +98,9 @@ def main():
         manifest=folder/'build.json'
         identity={'sha256':source_sha,'pe':pe,'tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,'cache_line_bytes':a.cache_line_bytes,
                   'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
+                  'shared_bank_bytes':a.shared_bank_bytes,'shared_bank_count':a.shared_bank_count,'shared_ia_banks':a.shared_ia_banks,
+                  'check_weight_prefetch':a.check_weight_prefetch,
+                  'rtl_assertions':a.rtl_assertions,
                   'xilinx':a.xilinx,'primitive_library_sha256':primitive_sha256}
         if not a.skip_build:
             for i,src in enumerate(csrc):
@@ -94,10 +110,13 @@ def main():
             command([a.verilator,'--cc','--exe','--assert','--top-module','vector_engine_dma_top','-Wno-fatal',
                      '-Wno-PINMISSING',f'-GTILE={a.tile}',f'-GPE_COUNT={pe}',f'-GCACHE_SETS={a.cache_sets}',f'-GCACHE_POLICY={a.cache_policy}',
                      f'-GCACHE_LINE_BYTES={a.cache_line_bytes}',f'-GBUS_WIDTH={a.bus_width}',f'-GWINDOW_LANES={a.window_lanes}',
-                     f'-GSHARED_QUANT_ENABLE={int(a.shared_quant)}',f'-GSHARED_STORAGE_ENABLE={int(a.shared_storage)}','--Mdir',folder/'obj',
+                     f'-GSHARED_QUANT_ENABLE={int(a.shared_quant)}',f'-GSHARED_STORAGE_ENABLE={int(a.shared_storage)}',
+                     f'-GSHARED_BANK_BYTES={a.shared_bank_bytes}',f'-GSHARED_BANK_COUNT={a.shared_bank_count}',f'-GSHARED_IA_BANKS={a.shared_ia_banks}',
+                     '--Mdir',folder/'obj',
                      '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
-                     '-CFLAGS',f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_TILE_SIZE={a.tile} -DTEST_BUS_WIDTH={a.bus_width}',
-                     '-LDFLAGS',lib,ROOT/'test/conv_npu/simulator.vlt',*svsrc,*primitive_options,HERE/'main.cpp'],folder/'verilate.log')
+                     '-CFLAGS',f'-std=c++{20 if a.rtl_assertions else 17} --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_TILE_SIZE={a.tile} -DTEST_BUS_WIDTH={a.bus_width}',
+                     '-LDFLAGS',lib,ROOT/'test/conv_npu/simulator.vlt',*svsrc,*primitive_options,
+                     *(['-DNPU_SIM_ASSERT=1','--timing'] if a.rtl_assertions else []),HERE/'main.cpp'],folder/'verilate.log')
             command(['make','-C',folder/'obj','-f','Vvector_engine_dma_top.mk','-j',a.jobs,
                      'OPT_FAST=-O1','OPT_SLOW=-O0','OPT_GLOBAL=-O1','VK_PCH_I_FAST=',
                      'VK_PCH_I_SLOW=','CFG_CXXFLAGS_PCH=-E'],folder/'build.log')
@@ -109,6 +128,7 @@ def main():
             if old!=identity:raise RuntimeError('Sources or parameters changed; rebuild required')
         logfile=folder/('perf.log' if a.perf else 'functional.log')
         command([folder/'obj/Vvector_engine_dma_top']+(['--perf'] if a.perf else [])+(['--window-study'] if a.window_study else [])+
+                (['--stable-stimulus'] if a.stable_stimulus else [])+
                 (['--replay',replay] if a.prepared else [])+
                 (['--softmax-replay',a.softmax_replay.resolve()] if a.softmax_replay else []),logfile)
         text=logfile.read_text();print(text,flush=True);assert 'VECTOR_ENGINE_DMA_PASS' in text

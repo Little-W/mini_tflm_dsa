@@ -94,8 +94,8 @@ module vector_softmax #(
   logic signed [33:0] update_scaled;
   logic signed [31:0] update_saturated;
   logic [31:0] estimate_lhs, estimate_rhs, estimate_next;
-  logic [16:0] estimate_low;
-  logic [15:0] estimate_high_direct, estimate_high_increment;
+  (* use_dsp = "yes" *) logic [31:0] residual_next;
+  logic unused_estimate_carry;
   logic signed [32:0] reciprocal_scaled;
   logic signed [31:0] reciprocal_saturated;
 
@@ -178,14 +178,14 @@ module vector_softmax #(
   assign update_saturated =
       update_scaled[33:31]!={3{update_scaled[31]}} ?
       (update_scaled[33] ? 32'sh8000_0000 : 32'sh7fff_ffff) : update_scaled[31:0];
-  // 初值和迭代更新共用模加法，高半字预先计算两种进位结果。
+  // 初值和迭代更新共用完整三十二位模加法，操作数选择与后续舍入分属不同周期。
   assign estimate_lhs = (c_st == RECIP_INIT_WAIT) ? 32'd1515870810 : estimate;
   assign estimate_rhs = (c_st == RECIP_INIT_WAIT) ? reciprocal_q31 : update_saturated;
-  assign estimate_low = {1'b0, estimate_lhs[15:0]} + {1'b0, estimate_rhs[15:0]};
-  assign estimate_high_direct = estimate_lhs[31:16] + estimate_rhs[31:16];
-  assign estimate_high_increment = estimate_lhs[31:16] + estimate_rhs[31:16] + 16'd1;
-  assign estimate_next = {estimate_low[16] ? estimate_high_increment : estimate_high_direct,
-                          estimate_low[15:0]};
+  parallel_prefix_add #(.p_width(32), .p_group_width(4)) u_estimate_add (
+      .i_a(estimate_lhs), .i_b(estimate_rhs), .i_carry(1'b0),
+      .o_sum(estimate_next), .o_carry(unused_estimate_carry)
+  );
+  assign residual_next = 32'h2000_0000 - $unsigned(reciprocal_q31);
   assign reciprocal_scaled ={estimate,1'b0};
   assign reciprocal_saturated =
       reciprocal_scaled[32:31]!={2{reciprocal_scaled[31]}} ?
@@ -324,7 +324,7 @@ module vector_softmax #(
           end
         end
         RECIP_ERROR_WAIT: begin
-          residual <= 32'sh2000_0000 - reciprocal_q31;
+          residual <= $signed(residual_next);
           c_st <= RECIP_UPDATE;
         end
         RECIP_UPDATE: begin
@@ -502,6 +502,13 @@ module vector_softmax_accumulator #(
     logic [19:0] value_stage;
     logic increment_stage;
     logic [31:0] sum;
+    logic [31:0] sum_next;
+    logic unused_sum_carry;
+
+    parallel_prefix_add #(.p_width(32)) u_accumulate (
+        .i_a(sum), .i_b({12'd0, value_stage}), .i_carry(increment_stage),
+        .o_sum(sum_next), .o_carry(unused_sum_carry)
+    );
 
     always_ff @(posedge clk) begin
         value_stage <= i_value;
@@ -509,7 +516,7 @@ module vector_softmax_accumulator #(
         if (sum_clear) begin
             sum <= '0;
         end else if (add_pending) begin
-            sum <= sum + {12'd0, value_stage} + {31'd0, increment_stage};
+            sum <= sum_next;
         end
     end
     assign o_sum = sum;

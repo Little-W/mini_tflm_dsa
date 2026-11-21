@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3, CACHE_LINE_BYTES=16, BUS_WIDTH=32,
   WINDOW_LANES=BUS_WIDTH/8, SHARED_QUANT_ENABLE=0, QUANT_LANES=(SHARED_QUANT_ENABLE ? TILE : 1),
-  parameter bit SHARED_STORAGE_ENABLE=1'b0, parameter int SHARED_STORAGE_ADDR_WIDTH=12)(
+  parameter bit SHARED_STORAGE_ENABLE=1'b0, parameter int SHARED_STORAGE_ADDR_WIDTH=12,
+  SHARED_BANK_BYTES=4096, SHARED_BANK_COUNT=8, SHARED_IA_BANKS=1)(
   input logic clk,rst_n,start,done_ready,
   input logic [31:0] config_words[40],
   output logic [31:0] pe_count,
@@ -111,9 +112,9 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
       else if (storage_cfg_valid) storage_active<=1'b1;
       else if (done_valid && done_ready) storage_active<=1'b0;
     end
-    vector_shared_store #(.p_bank_bytes(4096),.p_total_bytes(32768),
+    vector_shared_store #(.p_bank_bytes(SHARED_BANK_BYTES),.p_total_bytes(SHARED_BANK_BYTES*SHARED_BANK_COUNT),
       .p_addr_width(SHARED_STORAGE_ADDR_WIDTH),.p_bank_count_width(4),.p_fixed_ps_channels(1'b1)) u_store (
-      .clk,.rst_n,.i_cfg_valid(storage_cfg_valid),.i_cfg_ia_banks(4'd1),
+      .clk,.rst_n,.i_cfg_valid(storage_cfg_valid),.i_cfg_ia_banks(4'(SHARED_IA_BANKS)),
       .i_enable(storage_active),.i_flush(1'b0),.o_idle(storage_idle),.o_error(adapter_error),
       .i_weight_read_en(o_weight_read_en),.i_weight_read_addr(o_weight_read_addr),
       .o_weight_read_valid(i_weight_read_valid),.o_weight_read_data(i_weight_read_data),
@@ -129,9 +130,9 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
       .o_ps_read_en(ps_read_en),.o_ps_write_en(ps_write_en),
       .o_ps_read_addr(ps_read_addr),.o_ps_write_addr(ps_write_addr),
       .i_ps_read_data(ps_read_data),.o_ps_write_data(ps_write_data));
-    ia_ps_channel_ram #(.p_bank_bytes(4096),.p_total_bytes(32768),
+    ia_ps_channel_ram #(.p_bank_bytes(SHARED_BANK_BYTES),.p_total_bytes(SHARED_BANK_BYTES*SHARED_BANK_COUNT),
       .p_addr_width(SHARED_STORAGE_ADDR_WIDTH),.p_bank_count_width(4)) u_ram (
-      .clk,.rst_n,.i_cfg_valid(storage_cfg_valid),.i_cfg_ia_banks(4'd1),.o_capacity_fault(ram_error),
+      .clk,.rst_n,.i_cfg_valid(storage_cfg_valid),.i_cfg_ia_banks(4'(SHARED_IA_BANKS)),.o_capacity_fault(ram_error),
       .i_ia_read_en(ia_read_en),.i_ia_write_en(ia_write_en),
       .i_ia_read_addr(ia_read_addr),.i_ia_write_addr(ia_write_addr),
       .o_ia_read_data(ia_read_data),.i_ia_write_data(ia_write_data),

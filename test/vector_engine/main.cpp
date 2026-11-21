@@ -31,6 +31,8 @@ public:
  std::deque<Transaction> reads,writes;
  std::deque<unsigned> responses;
  std::mt19937 rng{20261115};
+ std::mt19937 data_rng{20261115};
+ bool stable_stimulus=false;
  bool random_wait=true,rhold=false,bhold=false,read_fault=false,write_fault=false,fault_used=false;
  int64_t fault_addr=-1;
  uint64_t fault_write_transaction=0;
@@ -42,6 +44,7 @@ public:
  std::tuple<uint32_t,uint32_t,uint32_t> old_ar,old_aw;
  std::tuple<uint64_t,uint32_t,uint32_t> old_w;
  bool chance(){return !random_wait || rng()%4!=0;}
+ uint32_t sample(){return stable_stimulus ? data_rng() : rng();}
  bool readable(uint32_t addr)const{for(auto r:ranges)if(addr>=r.base&&uint64_t(addr)<uint64_t(r.base)+r.size)return true;return false;}
  void tick(){
    top.clk=0;
@@ -156,15 +159,15 @@ static Result spatial(Sim&s,const std::string&name,unsigned op,int h,int w,int c
  std::vector<int8_t> input(ins),weight(ws),gold(outs);
  std::vector<int32_t> biases(ch),mult(ch),shift(ch);
  for(size_t i=0;i<ins;i++){
-   input[i]=int8_t(int(s.rng()%256)-128);
-   if(special==1)input[i]=int8_t(-1-int(s.rng()%127));
+   input[i]=int8_t(int(s.sample()%256)-128);
+   if(special==1)input[i]=int8_t(-1-int(s.sample()%127));
    if(special==2)input[i]=(i&1)?0:((i/2)&1)?-1:1;
    if(special==3){int magnitude=1+2*int((i%ch)/2%4);input[i]=(i/ch<ins/ch/2)?int8_t((i%ch)&1?-magnitude:magnitude):0;}
    if(special==4)input[i]=(i%ch)&1?-128:127;
    if(special==5)input[i]=(i/ch<62+((i%ch)&1))?((i%ch)&2?-1:1):0;
  }
- for(auto&v:weight)v=int8_t(int(s.rng()%17)-8);
- for(int i=0;i<ch;i++){biases[i]=int(s.rng()%2001)-1000;mult[i]=0x40000000+int(s.rng()%0x3fffffff);shift[i]=(i%7)-5;}
+ for(auto&v:weight)v=int8_t(int(s.sample()%17)-8);
+ for(int i=0;i<ch;i++){biases[i]=int(s.sample()%2001)-1000;mult[i]=0x40000000+int(s.sample()%0x3fffffff);shift[i]=(i%7)-5;}
  s.put(c[2],input);s.put(c[3],weight);s.put(c[5]?c[5]:0x20000,biases);s.put(c[6],mult);s.put(c[7],shift);
  require(vector_engine_reference(c.data(),input.data(),weight.data(),bias?biases.data():nullptr,mult.data(),shift.data(),gold.data())==0,"independent RNE reference failure");
  std::fill(s.mem.begin()+c[4]-16,s.mem.begin()+c[4]+outs+16,0xa5);auto expected=s.mem;
@@ -179,8 +182,8 @@ static void vector_case(Sim&s,const std::string&name,unsigned op,unsigned length
  std::vector<int16_t>a(length),b(length);std::vector<uint8_t>ab(length*(s16?2:1)),bb(ab.size());
  uint32_t sum=0;int32_t extremum=op==5?INT32_MIN:INT32_MAX;std::vector<int32_t>gold(op==8?length:1);
  for(unsigned i=0;i<length;i++){
-   int lim=s16?32768:128;a[i]=int16_t(int(s.rng()%(2*lim))-lim);b[i]=int16_t(int(s.rng()%(2*lim))-lim);
-   if(pattern==1){a[i]=int16_t(-lim);b[i]=int16_t(-lim);}if(pattern==2)a[i]=int16_t(-1-int(s.rng()%lim));
+   int lim=s16?32768:128;a[i]=int16_t(int(s.sample()%(2*lim))-lim);b[i]=int16_t(int(s.sample()%(2*lim))-lim);
+   if(pattern==1){a[i]=int16_t(-lim);b[i]=int16_t(-lim);}if(pattern==2)a[i]=int16_t(-1-int(s.sample()%lim));
    if(s16){std::memcpy(ab.data()+2*i,&a[i],2);std::memcpy(bb.data()+2*i,&b[i],2);}else{ab[i]=uint8_t(a[i]);bb[i]=uint8_t(b[i]);}
    if(op==4)sum+=uint32_t(int32_t(a[i]));if(op==7)sum+=uint32_t(int32_t(a[i])*int32_t(b[i]));
    if(op==5)extremum=std::max(extremum,int32_t(a[i]));if(op==6)extremum=std::min(extremum,int32_t(a[i]));
@@ -259,9 +262,9 @@ static void weight_row_errors(Sim&s){
  c[22]=c[23]=3;c[3]=0x10ffd;
  std::vector<int8_t> input(3*3*15),weight(7*7*15),gold(3*3*15);
  std::vector<int32_t> bias(15),mult(15,0x40000000),shift(15,-2);
- for(auto&v:input)v=int8_t(int(s.rng()%256)-128);
- for(auto&v:weight)v=int8_t(int(s.rng()%17)-8);
- for(auto&v:bias)v=int(s.rng()%1025)-512;
+ for(auto&v:input)v=int8_t(int(s.sample()%256)-128);
+ for(auto&v:weight)v=int8_t(int(s.sample()%17)-8);
+ for(auto&v:bias)v=int(s.sample()%1025)-512;
  s.put(c[2],input);s.put(c[3],weight);s.put(c[5],bias);s.put(c[6],mult);s.put(c[7],shift);
  require(vector_engine_reference(c.data(),input.data(),weight.data(),bias.data(),mult.data(),shift.data(),gold.data())==0,
          "weight row error recovery reference");
@@ -285,9 +288,9 @@ static void dw_tile_write_error(Sim&s){
  c[22]=c[23]=1;c[2]=0x2000;c[3]=0x11000;c[4]=0x61000;c[24]=128;c[8]=uint32_t(-7);
  std::vector<int8_t> input(3*3*32),weight(3*3*32),gold(3*3*32);
  std::vector<int32_t> bias(32),mult(32,0x40000000),shift(32,-8);
- for(auto&v:input)v=int8_t(int(s.rng()%256)-128);
- for(auto&v:weight)v=int8_t(int(s.rng()%17)-8);
- for(auto&v:bias)v=int(s.rng()%1025)-512;
+ for(auto&v:input)v=int8_t(int(s.sample()%256)-128);
+ for(auto&v:weight)v=int8_t(int(s.sample()%17)-8);
+ for(auto&v:bias)v=int(s.sample()%1025)-512;
  s.put(c[2],input);s.put(c[3],weight);s.put(c[5],bias);s.put(c[6],mult);s.put(c[7],shift);
  require(vector_engine_reference(c.data(),input.data(),weight.data(),bias.data(),mult.data(),shift.data(),gold.data())==0,
          "tile write error reference");
@@ -310,7 +313,7 @@ static void cached_read_errors(Sim&s){
    auto c=config(global?1:2);c[11]=c[12]=4;c[13]=3;c[14]=c[15]=global?4:2;
    c[16]=c[17]=global?1:2;c[18]=c[19]=global?1:2;
    std::vector<int8_t>input(48),gold(size_t(c[16])*c[17]*3);
-   for(auto&value:input)value=int8_t(int(s.rng()%256)-128);
+   for(auto&value:input)value=int8_t(int(s.sample()%256)-128);
    s.put(c[2],input);s.ranges={{c[2],48}};s.output_base=c[4];s.output_size=gold.size();
    auto before=s.mem;s.read_fault=true;s.fault_addr=c[2]+3;auto r=s.execute(c,2);
    require(s.fault_used&&r.writes==0&&s.mem==before,"cached input error handling");s.read_fault=false;
@@ -330,15 +333,16 @@ static void cached_read_errors(Sim&s){
 int main(int argc,char**argv){
  Verilated::commandArgs(argc,argv);
  try{
-   bool perf=false,window_study=false;std::string replay,softmax_replay_path;
+   bool perf=false,window_study=false,stable_stimulus=false;std::string replay,softmax_replay_path;
    for(int i=1;i<argc;i++){
      if(std::string(argv[i])=="--perf")perf=true;
      else if(std::string(argv[i])=="--window-study")window_study=true;
+     else if(std::string(argv[i])=="--stable-stimulus")stable_stimulus=true;
      else if(std::string(argv[i])=="--replay"&&i+1<argc)replay=argv[++i];
      else if(std::string(argv[i])=="--softmax-replay"&&i+1<argc)softmax_replay_path=argv[++i];
      else throw std::runtime_error("unknown command argument");
    }
-   Sim s;s.random_wait=!perf;
+   Sim s;s.random_wait=!perf;s.stable_stimulus=stable_stimulus;
    if(window_study){
      s.random_wait=false;s.common_memory_service=true;
      spatial(s,"study_dw_48_c8_s1",0,48,48,8,3,3,1,1,1,128,true,0,false,48,48,true);
@@ -407,8 +411,8 @@ int main(int argc,char**argv){
      if(TEST_TILE_SIZE==16)dw_tile_write_error(s);
      quant_edges(s);
      for(unsigned i=0;i<16;i++){
-       int h=3+s.rng()%4,w=3+s.rng()%5,ch=1+s.rng()%21;unsigned op=i%4;
-       spatial(s,"random_"+std::to_string(i),op,h,w,ch,3,3,1+i%2,1,1,op==0?int(s.rng()%256)-127:0,i%3!=0);
+       int h=3+s.sample()%4,w=3+s.sample()%5,ch=1+s.sample()%21;unsigned op=i%4;
+       spatial(s,"random_"+std::to_string(i),op,h,w,ch,3,3,1+i%2,1,1,op==0?int(s.sample()%256)-127:0,i%3!=0);
      }
      cached_read_errors(s);add_functional(s);add_invalid(s);
      softmax_functional(s,TEST_TILE_SIZE);softmax_invalid(s,TEST_TILE_SIZE);
