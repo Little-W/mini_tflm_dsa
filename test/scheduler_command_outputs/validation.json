@@ -1,0 +1,218 @@
+{
+  "passed": true,
+  "reference_commit": "e389766c92424d4fab48302c82db4ed6b9a4de61",
+  "source_sha256": {
+    "rtl/npu/control/ps_window_scheduler.sv": "4a3271378a6e806b9407d4ece32b462bcfde57d2e577c99b3ba7f027290967e9",
+    "test/ps_compression/run_window_scheduler.py": "024813a3f13f2dc19b6bbfca0d4286ac4102386f15ba2174918dd768e45b7207",
+    "test/scheduler_command_outputs/run_four_state.py": "a59f3fa7091cf908eabaf6082910701b4062ca645f8abfecf4cd952148d48b22",
+    "test/scheduler_command_outputs/synthesis_cases.json": "924c40880eb8458bc898e94b0392b9f81fc19b45294ec3d9564c98b30caf489c",
+    "test/kernel_issue_timing/run_formal.py": "527d4596dda084e9eb210b233d6648462e5cf1203eb462421eeb9fffed17d935"
+  },
+  "reference_rtl_sha256": "bfac56883bbdf72b113910f9efa7a23d0b3ddd50835919f80fce5356a020dd0b",
+  "formal": {
+    "passed": true,
+    "profile_count": 6,
+    "equivalent_bits": 19400,
+    "inputs_constrained": false,
+    "state_and_outputs_every_cycle": true,
+    "profiles": [
+      {
+        "parameters": {
+          "SIZE": 4,
+          "FRAME_COUNT": 2,
+          "MAX_REUSE_TILES": 0
+        },
+        "equivalent_bits": 2783
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "FRAME_COUNT": 4,
+          "MAX_REUSE_TILES": 1
+        },
+        "equivalent_bits": 2244
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 8,
+          "MAX_REUSE_TILES": 16
+        },
+        "equivalent_bits": 2726
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 16
+        },
+        "equivalent_bits": 3450
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 0
+        },
+        "equivalent_bits": 4694
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 32
+        },
+        "equivalent_bits": 3503
+      }
+    ]
+  },
+  "numeric": {
+    "passed": true,
+    "configurations": 975,
+    "commands": 182426,
+    "pressure_events": 14760,
+    "undefined_behavior_sanitizer": true,
+    "sliced_bank_checks": 1085772,
+    "sliced_mnk_tile_checks": 167577
+  },
+  "four_state": {
+    "passed": true,
+    "profile_count": 8,
+    "public_output_comparisons": 666384,
+    "four_state_cycles": 228992,
+    "active_field_relation_checks": 150304,
+    "profiles": [
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 2,
+        "MAX_REUSE_TILES": 0,
+        "mode": "XILINX_FPGA",
+        "checks": 83448
+      },
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 2,
+        "MAX_REUSE_TILES": 0,
+        "mode": "ASIC_SYNTHESIS",
+        "checks": 83448
+      },
+      {
+        "SIZE": 8,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 1,
+        "mode": "XILINX_FPGA",
+        "checks": 88786
+      },
+      {
+        "SIZE": 8,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 1,
+        "mode": "ASIC_SYNTHESIS",
+        "checks": 88786
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 8,
+        "MAX_REUSE_TILES": 16,
+        "mode": "XILINX_FPGA",
+        "checks": 78898
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 8,
+        "MAX_REUSE_TILES": 16,
+        "mode": "ASIC_SYNTHESIS",
+        "checks": 78898
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "XILINX_FPGA",
+        "checks": 82060
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "ASIC_SYNTHESIS",
+        "checks": 82060
+      }
+    ]
+  },
+  "synthesis": {
+    "parameters": {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32
+    },
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1234,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1290,
+        "flip_flops": 966,
+        "dsp48e1": 13,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "carry4": 42
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 9,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 1111,
+        "distributed_ram_lut_sites_nominal": 56,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1167,
+        "flip_flops": 901,
+        "dsp48e1": 13,
+        "ramb36e1": 2,
+        "ramb18e1": 0,
+        "carry4": 42
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 9,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    }
+  },
+  "detailed_reports": {
+    "formal": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_feedback_r8/results/formal/summary.json",
+      "sha256": "5ea8db743e0b7f797c0e8432af8ae2c4b5e6cd8e577b2f6f2bb4c12a8858566e"
+    },
+    "numeric": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_feedback_r8/results/numeric/summary.json",
+      "sha256": "0db737d7a2313cbf7eb15ba99c055e87cf9577b3e240033c343f7f98143a53c5"
+    },
+    "four_state": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_feedback_r8/results/four_state/summary.json",
+      "sha256": "82a63f6d2534bbd8d6377ccdaf0bf683e4b5dc7b92e471d8adcca83ae170b810"
+    },
+    "synthesis_reference": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_config_r8/synthesis/parallel_validity/metrics.json",
+      "sha256": "1071d0023635ed02b85aad4af9b1b352efbffc69e068b69fc3e9d1133a0b531b"
+    },
+    "synthesis_current": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_feedback_r8/results/synthesis/held_public_fields/metrics.json",
+      "sha256": "f78ba96a1d8e1ef32d14bd8bfdaee0abff7e1967a14815a86dd98203f76a6715"
+    },
+    "archive_locations": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/scheduler_feedback_r8/results/artifact_locations.json",
+      "sha256": "2415350ad70fa6914f7a2831b6e60066e41cfe3054afbe38c1dc849640e9f29f"
+    }
+  }
+}

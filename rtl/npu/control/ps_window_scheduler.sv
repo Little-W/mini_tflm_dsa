@@ -377,15 +377,27 @@ module ps_window_scheduler #(
         candidate_cols = candidate_column == final_column0 ? final_column_count : (SHIFT+1)'(SIZE);
         candidate_k = candidate_final ? final_k_count : (SHIFT+1)'(SIZE);
         command_valid = command_buffer_valid && !command_active;
-        frame_id = command_active ? active_id : command_buffer_id;
-        frame_init = command_active ? active_init : command_buffer_init;
-        p0 = command_active ? active_row : command_buffer_row;
-        rows = command_active ? active_rows : 32'(command_buffer_rows);
-        q0 = command_active ? active_q0 : command_buffer_q;
+        // 执行期间命令描述保持不变，接收状态独立于地址和尺寸输出。
+        frame_id = command_buffer_id;
+        frame_init = command_buffer_init;
+        p0 = command_buffer_row;
+        rows = 32'(command_buffer_rows);
+        q0 = command_buffer_q;
         column0 = command_active ? active_column : command_buffer_column;
         cols = 32'(command_buffer_cols);
         count_k = 32'(command_buffer_k);
-        frame_final = command_active ? active_final : command_buffer_final;
+        frame_final = command_buffer_final;
+`ifndef SYNTHESIS
+        // 未知执行状态按四态条件选择各字段。
+        if ((^command_active) === 1'bx) begin
+            frame_id = command_active ? active_id : command_buffer_id;
+            frame_init = command_active ? active_init : command_buffer_init;
+            p0 = command_active ? active_row : command_buffer_row;
+            rows = command_active ? active_rows : 32'(command_buffer_rows);
+            q0 = command_active ? active_q0 : command_buffer_q;
+            frame_final = command_active ? active_final : command_buffer_final;
+        end
+`endif
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
