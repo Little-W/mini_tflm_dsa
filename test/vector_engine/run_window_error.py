@@ -30,6 +30,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--out',type=Path,default=ROOT/'build/vector_window_error')
+    parser.add_argument('--source-root',type=Path,default=ROOT,help='包含候选 RTL 的独立源码目录')
     parser.add_argument('--jobs',type=int,default=2)
     parser.add_argument('--pes',type=int,choices=(8,16),default=8)
     parser.add_argument('--window-lanes',type=int,choices=(4,8,16),default=4)
@@ -37,6 +38,7 @@ def main():
     parser.add_argument('--cache-sets',type=int,default=128)
     parser.add_argument('--cache-line-bytes',type=int,choices=(16,32,64,128),default=16)
     parser.add_argument('--skip-build',action='store_true')
+    parser.add_argument('--rtl-assertions',action='store_true',help='启用 RTL 内部时序与状态检查')
     args=parser.parse_args()
     if args.jobs<1 or args.jobs>2:
         parser.error('--jobs must be 1 or 2')
@@ -51,11 +53,14 @@ def main():
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_error_top.sv']
     import runpy
     sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
+    source_root=args.source_root.resolve()
+    sources=[source_root/path.relative_to(ROOT) if path.is_relative_to(ROOT/'rtl') else path
+             for path in sources]
     dependencies=sources+[HERE/'window_error.cpp',Path(__file__)]
-    source_sha={str(path.relative_to(ROOT)):digest(path) for path in dependencies}
+    source_sha={str(path):digest(path) for path in dependencies}
     parameters={'pe_count':args.pes,'window_lanes':args.window_lanes,'shared_quant':args.shared_quant,
                 'cache_sets':args.cache_sets,'cache_line_bytes':args.cache_line_bytes,
-                'cache_bytes':2*args.cache_sets*args.cache_line_bytes}
+                'cache_bytes':2*args.cache_sets*args.cache_line_bytes,'rtl_assertions':args.rtl_assertions}
     binary=out/'obj/Vwindow_error_top'; manifest_path=out/'build.json'
     build_command=[args.verilator,'--cc','--exe','--assert','--top-module','window_error_top',
                    '-Wno-fatal','-Wno-PINMISSING',f'-GPE_COUNT={args.pes}',
@@ -63,8 +68,9 @@ def main():
                    f'-GCACHE_SETS={args.cache_sets}',f'-GCACHE_LINE_BYTES={args.cache_line_bytes}',
                    '--Mdir',out/'obj',
                    '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
-                   '-CFLAGS','-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
-                   ROOT/'test/conv_npu/simulator.vlt',*sources,HERE/'window_error.cpp']
+                   '-CFLAGS',f'-std=c++{20 if args.rtl_assertions else 17} --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096',
+                   ROOT/'test/conv_npu/simulator.vlt',*sources,
+                   *(['-DNPU_SIM_ASSERT=1','--timing'] if args.rtl_assertions else []),HERE/'window_error.cpp']
     make_command=['make','-C',out/'obj','-f','Vwindow_error_top.mk','-j',args.jobs,
                   'OPT_FAST=-O1','OPT_SLOW=-O0','OPT_GLOBAL=-O1','VK_PCH_I_FAST=',
                   'VK_PCH_I_SLOW=','CFG_CXXFLAGS_PCH=-E']

@@ -68,12 +68,7 @@ module registered_multiplier_s32 #(
     (* keep, use_dsp = "yes" *) logic signed [31:0] high_product;
     logic [47:0] diagonal;
     logic [47:0] low_high_extended, high_low_extended;
-    logic [47:0] compressed_sum, compressed_carry;
     logic [47:0] upper_sum;
-    logic [47:0] upper_add_i_a, upper_add_i_b;
-    logic upper_add_i_carry;
-    logic [47:0] upper_add_o_sum;
-    logic unused_upper_add_carry;
 
     assign diagonal = {high_product, low_product[31:16]};
 
@@ -88,30 +83,28 @@ module registered_multiplier_s32 #(
 
     assign low_high_extended = {{15{low_high_product[32]}}, low_high_product};
     assign high_low_extended = {{15{high_low_product[32]}}, high_low_product};
-    assign compressed_sum    = diagonal ^ low_high_extended ^ high_low_extended;
-    assign compressed_carry  = ((diagonal & low_high_extended) |
-                                (diagonal & high_low_extended) |
-                                (low_high_extended & high_low_extended)) << 1;
-    assign upper_add_i_a = compressed_sum;
-    assign upper_add_i_b = compressed_carry;
-    assign upper_add_i_carry = 1'b0;
-    assign upper_sum = upper_add_o_sum;
-
-    // 完整乘积只消费高四十八位的模加法结果，溢出位不参与输出。
-    // FPGA 配置允许综合器推断加法 DSP，其余配置使用四位分组并行进位。
+    // 交叉部分积和高低部分积分别进行模四十八位加法，完整乘积保留全部有效位。
+    // FPGA 配置使用普通加法表达式推断 DSP，其余配置使用四位分组并行进位。
     if (p_use_dsp) begin : g_inferred_upper_add
+        (* use_dsp = "yes" *) logic [47:0] cross_sum;
         (* use_dsp = "yes" *) logic [47:0] inferred_sum;
-        assign inferred_sum = upper_add_i_a + upper_add_i_b;
-        assign upper_add_o_sum = inferred_sum;
-        assign unused_upper_add_carry = 1'b0;
+        assign cross_sum = low_high_extended + high_low_extended;
+        assign inferred_sum = diagonal + cross_sum;
+        assign upper_sum = inferred_sum;
     end else begin : g_grouped_upper_add
+        logic [47:0] compressed_sum, compressed_carry;
+        logic unused_upper_add_carry;
+        assign compressed_sum = diagonal ^ low_high_extended ^ high_low_extended;
+        assign compressed_carry = ((diagonal & low_high_extended) |
+                                   (diagonal & high_low_extended) |
+                                   (low_high_extended & high_low_extended)) << 1;
         parallel_prefix_add #(
             .p_width(48), .p_group_width(4), .p_preserve_groups(1'b0)
         ) u_upper_add (
-            .i_a(upper_add_i_a),
-            .i_b(upper_add_i_b),
-            .i_carry(upper_add_i_carry),
-            .o_sum(upper_add_o_sum),
+            .i_a(compressed_sum),
+            .i_b(compressed_carry),
+            .i_carry(1'b0),
+            .o_sum(upper_sum),
             .o_carry(unused_upper_add_carry)
         );
     end
