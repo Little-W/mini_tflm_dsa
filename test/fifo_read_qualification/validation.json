@@ -1,0 +1,556 @@
+{
+  "source": "rtl/npu/writeback/vec_s8_to_fifo.sv",
+  "source_sha256": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+  "reference_commit": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
+  "reference_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+  "configuration": {
+    "VLEN": 16,
+    "BANKS": 32,
+    "BUS_WIDTH": 64,
+    "p_cyclic_storage": 1,
+    "p_precomputed_watermark": 1,
+    "ENABLE_TRANSPOSE": 1
+  },
+  "resources": {
+    "reference": {
+      "logic_lut_cells": 1149,
+      "distributed_ram_lut_sites_nominal": 60,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1209,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 165,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 8,
+      "carry4": 106,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 106,
+        "FDRE": 163,
+        "FDSE": 2,
+        "INV": 30,
+        "LUT2": 162,
+        "LUT3": 413,
+        "LUT4": 144,
+        "LUT5": 344,
+        "LUT6": 86,
+        "MUXF7": 4,
+        "MUXF8": 2,
+        "RAM32M": 15,
+        "RAMB18E1": 8
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "current": {
+      "logic_lut_cells": 1126,
+      "distributed_ram_lut_sites_nominal": 60,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1186,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 165,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 8,
+      "carry4": 100,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 100,
+        "FDRE": 163,
+        "FDSE": 2,
+        "INV": 30,
+        "LUT2": 147,
+        "LUT3": 391,
+        "LUT4": 156,
+        "LUT5": 359,
+        "LUT6": 73,
+        "RAM32M": 15,
+        "RAMB18E1": 8
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    }
+  },
+  "register_paths": {
+    "reference": {
+      "maximum_combinational_cells": 10,
+      "observed_combinational_cells": 10,
+      "graph_complete": true,
+      "met": true,
+      "scope": "Clocked storage outputs to synchronous data and control inputs",
+      "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+    },
+    "current": {
+      "maximum_combinational_cells": 10,
+      "observed_combinational_cells": 10,
+      "graph_complete": true,
+      "met": true,
+      "scope": "Clocked storage outputs to synchronous data and control inputs",
+      "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+    },
+    "read_bank_to_ram_address": {
+      "reference": 8,
+      "current": 7
+    },
+    "read_bank_to_last_beat": {
+      "reference": 9,
+      "current": 8
+    },
+    "read_bank_to_active_count": {
+      "reference": 7,
+      "current": 5
+    },
+    "details_sha256": "19cb298a929ede3c4b79e22885fbd81f98c40cb886ddc12e726e88ad9ab426c0"
+  },
+  "measurement_reports": {
+    "/tmp/vector_fifo_read_measure/results/reference/metrics.json": "96ecd92b36d6d3ab9eff2613ffe1af76d689d8dca28da722d0dfd50eb7ae9af4",
+    "/tmp/vector_fifo_tree_measure/results/tree_mask/metrics.json": "08371e87534109fcd0776f8eb200dc1e1b4d36238c6e21ab334a4872032d9532",
+    "/tmp/vector_fifo_tree_measure/read_bank_paths.json": "19cb298a929ede3c4b79e22885fbd81f98c40cb886ddc12e726e88ad9ab426c0"
+  },
+  "tests": {
+    "fpga_formal": {
+      "path": "/tmp/vector_fifo_tree_formal/summary.json",
+      "sha256": "e895453fcd433afda53b277f8e6b840d4fbd03e67423d1dde5b54cd9bc505077",
+      "result": {
+        "reference": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
+        "source_sha256": {
+          "/tmp/vector_fifo_tree/source/rtl/npu/writeback/vec_s8_to_fifo.sv": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
+        },
+        "reference_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+        "functional_inputs_constrained": false,
+        "initial_reset_cycle": 1,
+        "subsequent_reset_unconstrained": true,
+        "data_ram_inputs_constrained": false,
+        "data_storage_implementation_identical": true,
+        "precomputed_watermark": 1,
+        "fpga": true,
+        "compared": "全部公开输出、数据存储地址和使能、存储写数据、有效银行计数及银行非空状态",
+        "method": "保留完整时序逻辑，同时比较公开输出、共同寄存状态和非空关系，执行复位后的时序归纳证明",
+        "runs": [
+          {
+            "vlen": 16,
+            "banks": 1,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "b5dd8560607ae3781eda9be068942de23867fd1cf5853712d9be9e26c2238372"
+          },
+          {
+            "vlen": 16,
+            "banks": 2,
+            "bus_width": 32,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "cabe07872bfd7e9e6166e6c8b346d6934ac12a5a89a2b404ea137d5df48c3f13"
+          },
+          {
+            "vlen": 16,
+            "banks": 3,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "2c0f02c57bf14e55b30097cc5ee35014b631a945519def667d65b9e4c274f0d6"
+          },
+          {
+            "vlen": 16,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "17d1583c76db08d0b1e668fde37b9ea65c47a910c81d064a114a3c6f2c79b175"
+          },
+          {
+            "vlen": 16,
+            "banks": 16,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "21fe96e6b9c8d9d08b18ce9502a46f63e741aa31b40a4adc1a47bfb107d01cb3"
+          },
+          {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 32,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "001427d5e3e5f5368382865166c445464072b3ecbd50637515639883f2968b9e"
+          },
+          {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "b46e933d160936b0684bf01fa5c2d1729102f507da4a1f72c6e8b55d99b0ba67"
+          },
+          {
+            "vlen": 16,
+            "banks": 64,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "67707e4d177d1e0dc9c88b154379f3280f5b89f12cef08b3f866171e12c857c7"
+          },
+          {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic": 0,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "c23e3c47791189c1babd63fdec5e5c4979b20d76b99bdacf7d7ca168c073d18b"
+          },
+          {
+            "vlen": 8,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic": 0,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "a81f0e438e26d9cfec7235b6bca4f3a3d34af26e472d14816ffced95ffffb379"
+          }
+        ],
+        "passed": true
+      }
+    },
+    "generic_formal": {
+      "path": "/tmp/vector_fifo_tree_generic_formal/summary.json",
+      "sha256": "fd3e8d6c86c3b289e74224621bb0a15e2309b49866172506307d7d93f9c91d68",
+      "result": {
+        "reference": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
+        "source_sha256": {
+          "/tmp/vector_fifo_tree/source/rtl/npu/writeback/vec_s8_to_fifo.sv": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
+        },
+        "reference_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+        "functional_inputs_constrained": false,
+        "initial_reset_cycle": 1,
+        "subsequent_reset_unconstrained": true,
+        "data_ram_inputs_constrained": false,
+        "data_storage_implementation_identical": true,
+        "precomputed_watermark": 0,
+        "fpga": false,
+        "compared": "全部公开输出、数据存储地址和使能、存储写数据、有效银行计数及银行非空状态",
+        "method": "保留完整时序逻辑，同时比较公开输出、共同寄存状态和非空关系，执行复位后的时序归纳证明",
+        "runs": [
+          {
+            "vlen": 16,
+            "banks": 1,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "fecf9f899ed16f185a6856f4c169c485a3c75a7c06d87c2662d3188e52091a16"
+          },
+          {
+            "vlen": 16,
+            "banks": 2,
+            "bus_width": 32,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "2d274cddf12f7b97d5ae533f735b139e2ffd77cfd39bb2344aa4459e856ef535"
+          },
+          {
+            "vlen": 16,
+            "banks": 3,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "65c229bcaca462cd72db42f3a382d156354a606271222278c22204225ca62611"
+          },
+          {
+            "vlen": 16,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "4cbfb793335d44b80eb488d7e875ea2e5addfca344d12ed41eb87be9b365da6a"
+          },
+          {
+            "vlen": 16,
+            "banks": 16,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "ee38dfabd22e1f44c996c3db089f0b9878b0c7836faf885d54f72b6bcc32a8cd"
+          },
+          {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 32,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "d712eb48b6df52cfdb5940606b940174770f3deaf387a2f513b6d4b9daec4464"
+          },
+          {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "032d70f656cf4d7c88e26ec2f04597d647629c3801fa749bb76eea3daa0154f3"
+          },
+          {
+            "vlen": 16,
+            "banks": 64,
+            "bus_width": 64,
+            "cyclic": 1,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "3d8edda36648013ceeb7cb2157ec9f59361461e5e8faee8b0b17caa92cd7201a"
+          },
+          {
+            "vlen": 16,
+            "banks": 32,
+            "bus_width": 64,
+            "cyclic": 0,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "75002ecf30dfac6187595dcf80edd42a4466c175f72cf2af6f8d57c0b6e5fdc1"
+          },
+          {
+            "vlen": 8,
+            "banks": 8,
+            "bus_width": 32,
+            "cyclic": 0,
+            "induction_steps": 1,
+            "passed": true,
+            "log_sha256": "f74efec4cd8f82b3443518c7167ed4db676ecdf2dc94fc1000c05278c7c509a9"
+          }
+        ],
+        "passed": true
+      }
+    },
+    "bank_four_state": {
+      "path": "/tmp/vector_fifo_tree_four_state/summary.json",
+      "sha256": "41f69ce75de63c61502985ebae5a87ef46999533f93dd8381b8c461c841cce23",
+      "result": {
+        "passed": true,
+        "cycles": 24000,
+        "profiles": [
+          [
+            16,
+            1
+          ],
+          [
+            16,
+            2
+          ],
+          [
+            16,
+            3
+          ],
+          [
+            16,
+            8
+          ],
+          [
+            16,
+            16
+          ],
+          [
+            16,
+            32
+          ],
+          [
+            16,
+            64
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            32,
+            32
+          ]
+        ],
+        "comparisons": 1080000,
+        "source_sha256": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+        "reference_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+        "regfile_sha256": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "testbench_sha256": "2fcfcd44c45a87321372d1366175ad98c34343d6727aec72e3712e087605007f",
+        "model_sha256": {
+          "reference.sv": "67c35a61da60726cc7c5f0cfdf043cf214cd0d4c3fa94a198cd298a2539a1f34",
+          "current.sv": "1a6d996cd72825e77a8675fd4c6a691154743d5e086aab0503bef6b81d3bf23f"
+        },
+        "log_sha256": "f85d236a7c542818a30467661e4a947bc360c20947b22a0bc63a2a7cc90e119d"
+      }
+    },
+    "mask_formal": {
+      "path": "/tmp/vector_fifo_tree_mask_formal/summary.json",
+      "sha256": "5a8e4a36b72cff6990ce2fa141294848fa41ac3a6399ab062797ec30389c43a4",
+      "result": {
+        "source_sha256": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+        "reference_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+        "inputs_constrained": false,
+        "runs": [
+          {
+            "vlen": 2,
+            "bus_width": 8,
+            "passed": true,
+            "log_sha256": "7208a0800a110ed14e6649bd67b5e2aa5c6f6cfc6a83e4cc47f8acf65b5365e7"
+          },
+          {
+            "vlen": 2,
+            "bus_width": 64,
+            "passed": true,
+            "log_sha256": "337b3cf29d5ca0306a5b87ab86c2ac973cc8d907a778718a14f57dffe1a161bd"
+          },
+          {
+            "vlen": 7,
+            "bus_width": 32,
+            "passed": true,
+            "log_sha256": "a44809212e3ff57acb0142380ef3e1a60184bc820f39eb2981b16cb3128710ed"
+          },
+          {
+            "vlen": 8,
+            "bus_width": 32,
+            "passed": true,
+            "log_sha256": "96ccdae137828ab1e7970e104a9e6bf98cd7d0379295e69134c4bb0125bdb7ec"
+          },
+          {
+            "vlen": 8,
+            "bus_width": 64,
+            "passed": true,
+            "log_sha256": "0b1556c8ffffa01ead54c04ca61c94db04cfa815ac9fd0ca4662bd6c428b2141"
+          },
+          {
+            "vlen": 16,
+            "bus_width": 32,
+            "passed": true,
+            "log_sha256": "0c5eea2960f8219ce171bf38cc680a598761bf9f757681f5eee31bbad3502d8d"
+          },
+          {
+            "vlen": 16,
+            "bus_width": 64,
+            "passed": true,
+            "log_sha256": "01f84a1fa8cc1612e5657384e3af35cdac85739ee5b57dde88782c325f41b50b"
+          },
+          {
+            "vlen": 16,
+            "bus_width": 128,
+            "passed": true,
+            "log_sha256": "25b9d094f192ab30da30458137dfa937d7f09363afc4b3635a85f4032e3bb505"
+          },
+          {
+            "vlen": 17,
+            "bus_width": 64,
+            "passed": true,
+            "log_sha256": "bf6955b6a1faa106a57b5643f1f0e7193b54bd944d0c4107e0a465cf69da365b"
+          },
+          {
+            "vlen": 32,
+            "bus_width": 32,
+            "passed": true,
+            "log_sha256": "039e7d0d288f6bd7b6192b9b2d8a75d6c23869fe5c220aee4f0ee93ce1d68be4"
+          },
+          {
+            "vlen": 32,
+            "bus_width": 64,
+            "passed": true,
+            "log_sha256": "5394df18931966b2b8e991a7cd2e8d64377e3de6357444e41b1c5bb51991c572"
+          },
+          {
+            "vlen": 64,
+            "bus_width": 256,
+            "passed": true,
+            "log_sha256": "b37702982c8cf22bcbd7af6d00d491d37b8c35c6dc3ea84aecfd40534e8d840f"
+          }
+        ],
+        "passed": true,
+        "four_state_comparisons": 786432,
+        "samples": 65536,
+        "model_sha256": {
+          "reference.sv": "c2540846416e16045b95621269605e43503bedfe46a1fe9e6be5c0252ddc58b3",
+          "current.sv": "18bcc71c3e1d3ad7ed24cc8886e6e38e71cc975b9945858c898fc456ffaef36a"
+        },
+        "testbench_sha256": "353f3be2bae2fbe4c89bb00988df1dd778f9c12954f50c7bad6034a55f7c013b",
+        "log_sha256": "6027269cc12a52c4a9f0f77e5b6c42487493f9f14da8afbf0752206fc17bc7ce"
+      }
+    },
+    "bus32": {
+      "path": "/tmp/vector_fifo_tree_bus32/summary.json",
+      "sha256": "5f8c3de318ba0d50ce4b7e412b2ace21b35dc72b59cd8519b11b1cde805de06a",
+      "result": {
+        "passed": true,
+        "bus_width": 32,
+        "banks": 32,
+        "cyclic": 1,
+        "precomputed_watermark": 1,
+        "fpga": true,
+        "cases": 81,
+        "checked_bytes": 12392,
+        "compared_cycles": 7196,
+        "cycle_difference": 0,
+        "source_sha256": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+        "reference_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+        "sources_sha256": {
+          "/tmp/vector_fifo_tree_bus32/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/tmp/vector_fifo_tree_bus32/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/tmp/vector_fifo_tree_bus32/vec_s16_to_fifo.sv": "9dc338809f1b2675585f7e1723e076bb715aca27f2f20fd345e829a2134902d1",
+          "/tmp/vector_fifo_tree_bus32/current.sv": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+          "/tmp/vector_fifo_tree_bus32/reference.sv": "8b57c0273369592d449e30b4fef8d8c4658dbc0b3d5bf9fb5886d02a247b4ab5",
+          "/tmp/vector_fifo_tree_bus32/vec_s16_to_fifo_ref.sv": "6f1ae2442e33194e8a4c7df301dcccb2b192b730416a15a1e8baa07fe9adb068",
+          "/tmp/vector_fifo_tree_bus32/tb.sv": "097b78332aec8950513d1b120747157eb44da7cfd140d74da1a03d83c980bd3a"
+        },
+        "original_testbench_sha256": "ce0ba669a948508845b54511c921a959bb5ac2e292e8a8e928e8b48929ba5b47",
+        "log_sha256": "25a8259c3ef982ac9641fd7bb5c8302cf9e1854e2730ca794fb4cbf9b2ee3330",
+        "executable_sha256": "b5eaecd342515ca9d8c5f91b01ecd3fd08e64b6a2e1977571a2ba2ca7e5045a8"
+      }
+    },
+    "bus64": {
+      "path": "/tmp/vector_fifo_tree_bus64/summary.json",
+      "sha256": "4f60778ffbc08c1e51181c58bb9d0cb953030564438cf507458198aaad6d2a82",
+      "result": {
+        "passed": true,
+        "bus_width": 64,
+        "banks": 32,
+        "cyclic": 1,
+        "precomputed_watermark": 1,
+        "fpga": true,
+        "cases": 81,
+        "checked_bytes": 12392,
+        "compared_cycles": 4522,
+        "cycle_difference": 0,
+        "source_sha256": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+        "reference_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+        "sources_sha256": {
+          "/tmp/vector_fifo_tree_bus64/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/tmp/vector_fifo_tree_bus64/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "/tmp/vector_fifo_tree_bus64/vec_s16_to_fifo.sv": "9dc338809f1b2675585f7e1723e076bb715aca27f2f20fd345e829a2134902d1",
+          "/tmp/vector_fifo_tree_bus64/current.sv": "d9c265695cd5699de5abd1f3c4a3c21b112b4b1781d38253a04aa32fd58ddeb9",
+          "/tmp/vector_fifo_tree_bus64/reference.sv": "8b57c0273369592d449e30b4fef8d8c4658dbc0b3d5bf9fb5886d02a247b4ab5",
+          "/tmp/vector_fifo_tree_bus64/vec_s16_to_fifo_ref.sv": "6f1ae2442e33194e8a4c7df301dcccb2b192b730416a15a1e8baa07fe9adb068",
+          "/tmp/vector_fifo_tree_bus64/tb.sv": "097b78332aec8950513d1b120747157eb44da7cfd140d74da1a03d83c980bd3a"
+        },
+        "original_testbench_sha256": "ce0ba669a948508845b54511c921a959bb5ac2e292e8a8e928e8b48929ba5b47",
+        "log_sha256": "6d69c20f2faac35db3a25fb5730ab772cc0034dcafd2aa8b2036feb865fea042",
+        "executable_sha256": "abee224e8c68b95bee2ea87795b79f319530b3c2ebc5202e5681328b5546624a"
+      }
+    }
+  },
+  "test_source_sha256": {
+    "test/fifo_read_qualification/prepare_measurement.py": "08496ba801432056a1ae25ebecbb3ec527112512887b0d8261e63908221eb500",
+    "test/fifo_read_qualification/run_cycle.py": "b4acbb6f5c3a98cfbbccc09d2be37f104fb33443a601c6c63bbdf10aba9dac96",
+    "test/fifo_read_qualification/run_formal.py": "b92ab92cc575e74381d1abc8c042ff668e6c9db07e9aaa40816f1b3efa232c2e",
+    "test/fifo_read_qualification/run_four_state.py": "a1d893ed0d4df3ad2a4e2aaf878ccb921cbb985f8b022ec1bdddbf8c044d067f",
+    "test/fifo_read_qualification/run_mask.py": "08ac9996a6ad6c3c225996e2c125fa7340d80becf2cd3845807c44c6041daa6c"
+  },
+  "passed": true
+}

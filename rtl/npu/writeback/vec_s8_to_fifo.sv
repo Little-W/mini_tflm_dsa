@@ -226,6 +226,32 @@ module vec_s8_to_fifo_full #(
   wire [COUNT_WIDTH-1:0] write_rows_next =
       in_valid ? (COUNT_WIDTH'(write_ptr) + COUNT_WIDTH'(1)) : COUNT_WIDTH'(write_ptr);
   assign co_selected_row_last = co_row_limit_q >= co_bank_count;
+  logic selected_read_bank_ready;
+  if (p_count_storage) begin : g_read_bank_selection
+    // 每层完成四选一，所保存的组合边界限制银行有效位选择的深度。
+    localparam integer p_select_levels = (BANK_WIDTH + 1) / 2;
+    wire [BANKS-1:0] ready_level [0:p_select_levels];
+    assign ready_level[0] = bank_ready;
+    for (genvar level = 0; level < p_select_levels; level++) begin : g_level
+      localparam integer p_inputs = BANKS >> (2 * level);
+      localparam integer p_outputs = (p_inputs + 3) / 4;
+      (* keep = 1 *) logic [p_outputs-1:0] ready_group;
+      for (genvar group_index = 0; group_index < p_outputs; group_index++) begin : g_group
+        if (p_inputs >= 4) begin : g_four
+          wire [3:0] group_ready = ready_level[level][group_index*4+:4];
+          assign ready_group[group_index] = group_ready[read_bank[level*2+:2]];
+        end else begin : g_two
+          wire [1:0] group_ready = ready_level[level][1:0];
+          assign ready_group[group_index] = group_ready[read_bank[level*2]];
+        end
+      end
+      assign ready_level[level+1] = BANKS'(ready_group);
+    end
+    assign selected_read_bank_ready = ready_level[p_select_levels][0];
+  end else begin : g_direct_read_bank_selection
+    assign selected_read_bank_ready = bank_ready[read_bank];
+  end
+
   if (p_count_storage) begin : g_count_memory
     // 计数只在银行完成写入时保存；有效位同时管理复位和银行释放。
     // 两个异步读端口分别服务普通输出和合并输出，读取周期保持不变。
@@ -234,7 +260,7 @@ module vec_s8_to_fifo_full #(
     assign bank_count_i_wr_data = write_rows_next;
     assign bank_count_i_rd_addr[0] = read_bank;
     assign bank_count_i_rd_addr[1] = co_current_bank;
-    assign read_bank_count = bank_ready[read_bank] ? bank_count_o_rd_data[0] : '0;
+    assign read_bank_count = selected_read_bank_ready ? bank_count_o_rd_data[0] : '0;
     assign co_bank_count = bank_ready[co_current_bank] ? bank_count_o_rd_data[1] : '0;
 
     regfile #(
@@ -264,7 +290,15 @@ module vec_s8_to_fifo_full #(
   wire [COUNT_WIDTH-1:0] output_col_count =
       transpose_mode_tmp ? active_read_count
                          : (COUNT_WIDTH'(vec_valid_num_col_tmp) + COUNT_WIDTH'(1));
-  wire read_bank_ready = bank_ready[read_bank] && (read_bank_count != '0);
+  logic read_bank_ready;
+  if (p_count_storage) begin : g_memory_read_qualification
+    // 有效位和行数分别完成归并，最终一级生成读取资格。
+    (* keep = 1 *) logic read_count_nonzero;
+    assign read_count_nonzero = bank_count_o_rd_data[0] != '0;
+    assign read_bank_ready = selected_read_bank_ready && read_count_nonzero;
+  end else begin : g_register_read_qualification
+    assign read_bank_ready = selected_read_bank_ready && (read_bank_count != '0);
+  end
   function automatic [COUNT_WIDTH-1:0] last_beat_index(
       input logic transpose,
       input logic [COUNT_WIDTH-1:0] read_count,
@@ -593,8 +627,6 @@ module vec_s8_to_fifo_full #(
     valid_cols_i = int'(output_col_count);
     beat_col_start_i = int'(beat_idx) * BYTE_PER_BEAT;
     valid_in_beat_i = valid_cols_i - beat_col_start_i;
-    if (valid_in_beat_i > BYTE_PER_BEAT) valid_in_beat_i = BYTE_PER_BEAT;
-    if (valid_in_beat_i < 0) valid_in_beat_i = 0;
 
     if (select_coalesce || stream_active) begin
       if (p_use_cyclic_storage) begin
@@ -621,6 +653,7 @@ module vec_s8_to_fifo_full #(
       if (select_coalesce) begin
         output_mask = '1;
       end else begin
+        // 每个字节直接与本拍剩余的有效列数比较。
         for (int byte_lane = 0; byte_lane < BYTE_PER_BEAT; ++byte_lane) begin
           output_mask[byte_lane] = byte_lane < valid_in_beat_i;
         end
