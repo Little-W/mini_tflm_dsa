@@ -2,7 +2,8 @@
 `default_nettype none
 // 十六位乘法器同时承担乘加、加法及完整乘积组合。
 module vector_pe #(
-  parameter bit ENABLE_EXTENDED_MULTIPLY=1'b1
+  parameter bit ENABLE_EXTENDED_MULTIPLY=1'b1,
+  parameter bit p_accumulator_preselected=1'b0
 ) (
   input wire logic [2:0] op,
   input wire logic signed [15:0] a, b,
@@ -19,7 +20,9 @@ module vector_pe #(
 
   // 求和操作把第二乘数设为一，与乘加操作共用同一个算术单元。
   assign mac_rhs = op == 3'd1 ? 16'sd1 : b;
-  assign mac_acc = (op == 3'd0 || op == 3'd1) ? acc : 32'sd0;
+  // 预选模式由调用方在纯乘法输入周期提供零累加值，乘加直接使用已保存操作数。
+  assign mac_acc = p_accumulator_preselected ? acc :
+      ((op == 3'd0 || op == 3'd1) ? acc : 32'sd0);
   assign mac_value = $signed(a) * $signed(mac_rhs) + $signed({mac_acc[31], mac_acc});
   assign product_ss = mac_value[31:0];
   generate
@@ -52,14 +55,15 @@ endmodule
 // 操作数在使能边沿进入寄存器，操作码由上层独立寄存并持续控制当前结果。
 module registered_vector_pe #(
 `ifdef ASIC_SYNTHESIS
-  parameter bit p_use_dsp = 1'b0
+  parameter bit p_use_dsp = 1'b0,
 `elsif XILINX_FPGA
-  parameter bit p_use_dsp = 1'b1
+  parameter bit p_use_dsp = 1'b1,
 `elsif SYNTHESIS
-  parameter bit p_use_dsp = 1'b1
+  parameter bit p_use_dsp = 1'b1,
 `else
-  parameter bit p_use_dsp = 1'b0
+  parameter bit p_use_dsp = 1'b0,
 `endif
+  parameter bit p_accumulator_preselected = 1'b0
 ) (
   input wire logic clk,
   input wire logic i_en,
@@ -81,7 +85,9 @@ module registered_vector_pe #(
     end
   end
 
-  vector_pe #(.ENABLE_EXTENDED_MULTIPLY(1'b0)) u_pe (
+  vector_pe #(
+      .ENABLE_EXTENDED_MULTIPLY(1'b0), .p_accumulator_preselected(p_accumulator_preselected)
+  ) u_pe (
     .op(i_op), .a(operand_a_q), .b(operand_b_q),
     .acc(operand_acc_q), .result(o_result)
   );

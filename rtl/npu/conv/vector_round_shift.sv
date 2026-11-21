@@ -35,6 +35,7 @@ module vector_round_shift #(
   logic signed [63:0] selected_value;
   logic [5:0] selected_amount;
   logic signed [65:0] input_shift32;
+  (* keep = 1 *) logic [4:0] discarded_groups;
   logic increment;
   (* keep = 1 *) logic [7:0] byte_carry;
 
@@ -60,8 +61,15 @@ module vector_round_shift #(
   assign input_shift8 = selected_amount[3] ? {{8{shift4[65]}}, shift4[65:9], (|shift4[8:0])} : shift4;
   assign input_shift16 = selected_amount[4] ? {{16{input_shift8[65]}}, input_shift8[65:17], (|input_shift8[16:0])} : input_shift8;
 
-  assign input_shift32 = selected_amount[5] ?
-      {{32{input_shift16[65]}}, input_shift16[65:33], (|input_shift16[32:0])} : input_shift16;
+  // 各移位级分别归并新舍弃的数据位，最终一次合并，保存保护位之外的非零状态。
+  assign discarded_groups[0] = selected_amount[1] && (|shift1[2:1]);
+  assign discarded_groups[1] = selected_amount[2] && (|shift2[4:1]);
+  assign discarded_groups[2] = selected_amount[3] && (|shift4[8:1]);
+  assign discarded_groups[3] = selected_amount[4] && (|input_shift8[16:1]);
+  assign discarded_groups[4] = selected_amount[5] && (|input_shift16[32:1]);
+  assign input_shift32[65:1] = selected_amount[5] ?
+      {{32{input_shift16[65]}}, input_shift16[65:33]} : input_shift16[65:1];
+  assign input_shift32[0] = |discarded_groups;
 
   //! 2. 中间数据寄存
   //! --------------------

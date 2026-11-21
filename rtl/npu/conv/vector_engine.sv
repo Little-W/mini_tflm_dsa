@@ -126,8 +126,10 @@ module vector_engine #(
   } state_t;
   typedef enum logic [2:0] {LD_WEIGHT, LD_BIAS, LD_MULT, LD_SHIFT, LD_A, LD_B, LD_LUT} load_t;
   // 对外握手标志与状态同时更新，状态保持时也保持这些寄存输出。
-  function automatic logic [$bits(state_t)+4:0] state_control_value(input state_t next_state);
+  function automatic logic [$bits(state_t)+6:0] state_control_value(input state_t next_state);
     state_control_value = {
+        next_state==EXECUTE_COMMIT,
+        next_state==FAILED,
         (next_state==OUTPUT_INIT || next_state==TAP_CHECK || next_state==WINDOW_WAIT || next_state==QUANT_STREAM || next_state==EXECUTE || next_state==EXECUTE_COMMIT || next_state==TAP_NEXT || next_state==QUANT_INIT || next_state==OUTPUT_NEXT || next_state==AVG_START || next_state==AVG_POWER_DELAY || next_state==AVG_POWER_CLAMP || next_state==AVG_POWER_STORE || next_state==AVG_WAIT || next_state==POOL_STORE || next_state==WRITE_PREP || next_state==DW_EXECUTE || next_state==DW_FINISH),
         next_state==CONFIGURE,
         next_state==LOAD_REQ || next_state==POOL_LOAD_REQ || next_state==SOFT_LUT_REQ,
@@ -137,9 +139,8 @@ module vector_engine #(
     };
   endfunction
   state_t state;
-  (* keep = 1 *) logic state_failed;
-  // 失败状态的完整译码供中止控制共用，避免逐位译码进入跨模块握手。
-  assign state_failed = state == FAILED;
+  // 失败标志与状态同时进入寄存器，供中止和排空控制直接使用。
+  logic state_failed, state_compute_commit;
   logic window_fetch_phase;
   load_t load_kind;
   vector_engine_cfg_t c;
@@ -405,7 +406,8 @@ module vector_engine #(
   logic [1:0] read_bank,wf_bank,input_bank_mask;
   logic input_slot_release;
   logic [3:0] input_ready,input_reserved;
-  logic input_ready_clear_all, input_ready_release, input_drain_ready;
+  logic input_ready_clear_all, input_ready_release;
+  (* keep = 1 *) logic input_drain_local_idle, input_drain_ready;
   logic window_slot_available, input_reservations_clear;
   logic [INPUT_INDEX_W-1:0] input_read_base,input_response_base;
   logic [31:0] window_received;
@@ -729,7 +731,7 @@ module vector_engine #(
       dw_in_bounds <= (ox == output_last_column) ? next_origin_row_valid : next_origin_column_valid;
     end else if (state == TAP_NEXT) begin
       dw_in_bounds <= next_window_valid;
-    end else if (state == EXECUTE_COMMIT && compute_group_last_q && spatial && !global_pool) begin
+    end else if (state_compute_commit && compute_group_last_q && spatial && !global_pool) begin
       dw_in_bounds <= next_window_valid_q;
     end
   end
@@ -787,14 +789,16 @@ module vector_engine #(
       (state_failed && input_drain_ready);
   assign input_response_pending = p_input_bank_storage &&
       (window_response_last_q || window_write_pending);
-  assign input_drain_ready = !rd_busy && !read_done_q && !wr_busy && !win_busy &&
+  // 本地活动并行归并，共享存储返回的有效资格只参与最后一级排空判断。
+  assign input_drain_local_idle = !rd_busy && !read_done_q && !wr_busy && !win_busy &&
       !input_response_pending && !writeback_busy && !shared_weight_write_pending &&
-      dw_shared_inflight == 0 && dma_cfg_ready &&
+      dw_shared_inflight == 0 && dma_cfg_ready;
+  assign input_drain_ready = input_drain_local_idle &&
       (!SHARED_STORAGE_ENABLE || (!i_weight_read_valid && !i_ps_read_valid));
   assign input_ready_clear_all = (state == CHECK) || (state == TILE_INIT) ||
       (state_failed && input_drain_ready);
   assign input_ready_release = (dw_issue_fire && dw_group_last) ||
-      (state == EXECUTE_COMMIT && compute_group_last_q && !global_pool && spatial);
+      (state_compute_commit && compute_group_last_q && !global_pool && spatial);
 
   // 各槽分别保存就绪状态，完成返回与计算释放并行译码，清空条件具有最高优先级。
   for (genvar bank = 0; bank < 4; bank++) begin : g_input_ready
@@ -1323,7 +1327,8 @@ module vector_engine #(
     // 无效通道的 a 和 acc 已为零，各运算结果与 b 的取值无关。
     assign pe_b[lane]=depthwise ? 16'($signed(weight_lane[lane])) : rhs_lane[lane];
     // 同一通道连续发射时使用上一拍乘加结果，其余通道读取已提交的累加值。
-    assign pe_acc[lane]=!enabled ? 32'sd0 :
+    // 逐元素乘法在现有输入选择器中提供零累加值。
+    assign pe_acc[lane]=(!enabled || vector_hadamard) ? 32'sd0 :
         (depthwise && dw_commit_vld && dw_commit_index==compute_index) ? pe_result[lane] : accum_lane[lane];
   end
   always_ff @(posedge clk) if (pe_operand_en) pe_op_q<=pe_op;
@@ -1334,7 +1339,7 @@ module vector_engine #(
   // 一个二维 DMA 描述符读取整组卷积核，各行末拍推进权重存储行号。
   assign weight_row_last_fire = weights_i_wr_en && (|weights_i_wr_mask) &&
       32'(rd_col_base)+32'(BUS_BYTES)>=32'(active);
-  assign weight_tap_advance = ((state == EXECUTE_COMMIT) &&
+  assign weight_tap_advance = ((state_compute_commit) &&
       compute_group_last_q && !global_pool && spatial &&
       !tap_last_wide) || (dw_tap_advance && !tap_last_modulo);
   // 递增数据和末项条件并行计算，分别保留扩展比较与窄位回绕比较。
@@ -1468,7 +1473,7 @@ module vector_engine #(
     assign pe_i_b = pe_b[lane];
     assign pe_i_acc = pe_acc[lane];
     assign pe_result[lane] = pe_o_result;
-    registered_vector_pe u_pe (
+    registered_vector_pe #(.p_accumulator_preselected(1'b1)) u_pe (
       .clk(clk), .i_en(pe_i_en), .i_op(pe_i_op), .i_a(pe_i_a), .i_b(pe_i_b),
       .i_acc(pe_i_acc), .o_result(pe_o_result)
     );
@@ -1620,7 +1625,8 @@ module vector_engine #(
     end
   end
 
-  wire window_write_valid[WINDOW_LANES], dma_input_write_valid[BUS_BYTES];
+  (* keep = 1 *) wire window_write_valid[WINDOW_LANES];
+  wire dma_input_write_valid[BUS_BYTES];
   wire [INPUT_INDEX_W-1:0] window_write_index[WINDOW_LANES], dma_input_write_index[BUS_BYTES];
   for (genvar lane=0;lane<WINDOW_LANES;lane++) begin : g_window_write_address
     wire [INPUT_INDEX_W:0] column_sum={1'b0,win_rsp_col[INPUT_INDEX_W-1:0]}+(INPUT_INDEX_W+1)'(lane);
@@ -1898,7 +1904,7 @@ module vector_engine #(
   logic accumulator_compute_fire;
   logic accumulator_init_fire, accumulator_bias_selected;
   logic signed [31:0] accumulator_init_data;
-  assign accumulator_compute_fire = (state == EXECUTE_COMMIT && (!vector_hadamard || !writeback_busy)) ||
+  assign accumulator_compute_fire = (state_compute_commit && (!vector_hadamard || !writeback_busy)) ||
       (dw_commit_vld && !state_failed && !dw_snapshot_fire);
   assign accumulator_init_fire = state == OUTPUT_INIT || state == VECTOR_INIT || dw_snapshot_fire;
   assign accumulator_bias_selected = depthwise && (state == OUTPUT_INIT || dw_snapshot_fire);
@@ -2201,7 +2207,7 @@ module vector_engine #(
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE); c<='0; error<=0; load_kind<=LD_WEIGHT;
+      {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE); c<='0; error<=0; load_kind<=LD_WEIGHT;
       parameter_rows_remaining<=0;
       taps<=0; active<=0; channel_base<=0; position<=0;
       ox<=0;oy<=0;kx<=0;ky<=0;tap<=0;load_tap<=0;valid_taps<=0;
@@ -2292,23 +2298,23 @@ module vector_engine #(
       end
       case (state)
         IDLE: if (start) begin
-          c<=cfg; error<=0; {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK);
+          c<=cfg; error<=0; {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK);
           input_range_mode<=0;
         end
         CHECK: begin
           q_active<=0;q_valid<=0;
           read_bank<=0;wf_bank<=0;window_received<=0;
           param_bad_seen<=0;
-          if (config_check_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK_WAIT);
+          if (config_check_ready) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK_WAIT);
         end
         CHECK_WAIT: if (config_check_done) begin
-          if (config_check_error) begin error<=2'b01;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          if (config_check_error) begin error<=2'b01;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           else begin
-            taps<=32'(kernel_count);channel_base<=0;input_range_mode<=global_pool;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CONFIGURE);
+            taps<=32'(kernel_count);channel_base<=0;input_range_mode<=global_pool;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CONFIGURE);
             kernel_last_column<=TAP_COUNT_W'(c.image.kernel_w)-TAP_COUNT_W'(1);
           end
         end
-        CONFIGURE: if (dma_cfg_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(spatial ? TILE_INIT : VECTOR_INIT);
+        CONFIGURE: if (dma_cfg_ready) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(spatial ? TILE_INIT : VECTOR_INIT);
         TILE_INIT: begin
           active<=channel_remaining<TILE ? channel_remaining : 32'(TILE);
           position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=LD_WEIGHT;
@@ -2317,40 +2323,40 @@ module vector_engine #(
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
           fetch_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});fetch_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
           fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});fetch_origin_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? LOAD_REQ : OUTPUT_INIT);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? LOAD_REQ : OUTPUT_INIT);
         end
         LOAD_REQ: if (rd_granted) begin
           parameter_rows_remaining<=
               load_kind==LD_BIAS && parameter_three_rows ? 2'd2 :
               load_kind==LD_MULT && parameter_two_rows ? 2'd1 : 2'd0;
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_WAIT);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_WAIT);
         end
         LOAD_WAIT: if (read_done_q) begin
           load_completion_error<=read_error_q;
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_VERIFY);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_VERIFY);
         end
         LOAD_VERIFY: begin
-          if (load_completion_error || param_bad_seen) begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          if (load_completion_error || param_bad_seen) begin error<=2'b10;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           else case (load_kind)
-            LD_WEIGHT: begin load_kind<=c.bias_base==0 ? LD_MULT : LD_BIAS;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-            LD_BIAS: begin load_kind<=LD_MULT;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-            LD_MULT: begin load_kind<=LD_SHIFT;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-            LD_SHIFT: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
-            LD_A: if (binary_vector) begin load_kind<=LD_B;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-              else begin compute_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(softmax_s8 ? SOFT_START : EXECUTE);end
+            LD_WEIGHT: begin load_kind<=c.bias_base==0 ? LD_MULT : LD_BIAS;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+            LD_BIAS: begin load_kind<=LD_MULT;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+            LD_MULT: begin load_kind<=LD_SHIFT;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+            LD_SHIFT: {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
+            LD_A: if (binary_vector) begin load_kind<=LD_B;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+              else begin compute_index<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(softmax_s8 ? SOFT_START : EXECUTE);end
             LD_B: begin
               compute_index<=0;add_stage<=0;
-              {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(add_s8 ? ADD_MULT : EXECUTE);
+              {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(add_s8 ? ADD_MULT : EXECUTE);
             end
-            default: begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+            default: begin error<=2'b10;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           endcase
         end
         OUTPUT_INIT: begin
           tap<=0;kx<=0;ky<=0;valid_taps<=0;compute_index<=0;
           input_x<=input_origin_x;input_y<=input_origin_y;
           if (global_pool) begin
-            valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
-          end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? DW_EXECUTE : TAP_CHECK);
+            valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
+          end else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? DW_EXECUTE : TAP_CHECK);
         end
         DW_EXECUTE: begin
           if (dw_issue_fire) begin
@@ -2361,7 +2367,7 @@ module vector_engine #(
             end
           end
           if (dw_tap_advance) begin
-            if (tap_last_modulo) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_FINISH);
+            if (tap_last_modulo) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_FINISH);
             else begin
               tap<=weight_tap_nxt;
               input_x<=next_window_x;input_y<=next_window_y;
@@ -2386,33 +2392,33 @@ module vector_engine #(
               input_x<=$signed(coordinate_step_o_value[2]);
               input_y<=input_origin_y;
             end
-            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_EXECUTE);
+            {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_EXECUTE);
           end else if (channel_has_more) begin
-            channel_base<=channel_next;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
-          end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+            channel_base<=channel_next;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
+          end else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         end
         POOL_LOAD_PREP: begin
           pool_pixels<=pool_next_pixels;pool_received<=0;pool_pixel<=0;pool_input_index<=0;
           pool_elements<=pool_next_elements;
           pool_row_columns<=channels==active ? pool_next_elements : (INPUT_INDEX_W+1)'(active);
           pool_row_remaining<=channels==active ? pool_next_elements : (INPUT_INDEX_W+1)'(active);
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_REQ);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_REQ);
         end
-        POOL_LOAD_REQ: if (rd_granted) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_WAIT);
+        POOL_LOAD_REQ: if (rd_granted) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_WAIT);
         POOL_LOAD_WAIT: if (read_done_q) begin
-          if (read_error_q || !pool_read_complete_saved) begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
-          else begin compute_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_DRAIN);end
+          if (read_error_q || !pool_read_complete_saved) begin error<=2'b10;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          else begin compute_index<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_DRAIN);end
         end
-        POOL_LOAD_DRAIN: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
+        POOL_LOAD_DRAIN: {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
         TAP_CHECK: if (dw_in_bounds) begin
             valid_taps<=valid_taps+1;compute_index<=0;
-            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[read_bank] ? EXECUTE : WINDOW_WAIT);
+            {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[read_bank] ? EXECUTE : WINDOW_WAIT);
           end
-          else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_NEXT);
-        WINDOW_WAIT: if (input_ready[read_bank]) begin compute_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);end
-        EXECUTE: if (!vector_hadamard || !writeback_busy) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE_COMMIT);
+          else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_NEXT);
+        WINDOW_WAIT: if (input_ready[read_bank]) begin compute_index<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);end
+        EXECUTE: if (!vector_hadamard || !writeback_busy) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE_COMMIT);
         EXECUTE_COMMIT: begin
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
           if (!compute_group_last_q) compute_index<=compute_index+32'(PE_COUNT);
           else if (global_pool) begin
             pool_byte_offset<=pool_byte_offset_next;
@@ -2423,71 +2429,71 @@ module vector_engine #(
             else if (pool_taps_remaining>pool_pixels) begin
               pool_offset<=pool_offset+pool_pixels;
               pool_taps_remaining<=pool_taps_remaining-TAP_COUNT_W'(pool_pixels);
-              {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
+              {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
             end
-            else begin quant_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+            else begin quant_index<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           end
           else if (spatial) begin
             read_bank<=(read_bank+1'b1)&input_bank_mask;compute_index<=0;
-            if (tap_last_wide) begin quant_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+            if (tap_last_wide) begin quant_index<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
             else begin
               tap<=weight_tap_nxt;input_x<=next_window_x;input_y<=next_window_y;
               if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
               if (next_window_valid_q) begin
                 valid_taps<=valid_taps+1;
-                {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[(read_bank+1'b1)&input_bank_mask] ? EXECUTE : WINDOW_WAIT);
-              end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
+                {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[(read_bank+1'b1)&input_bank_mask] ? EXECUTE : WINDOW_WAIT);
+              end else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
             end
           end
           else if (vector_hadamard) begin
-            write_origin<=write_origin_next;write_total<=active<<2;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
-          end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
+            write_origin<=write_origin_next;write_total<=active<<2;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+          end else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
         end
         ADD_MULT: begin
-          add_multiply_wait<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_DRAIN);
+          add_multiply_wait<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_DRAIN);
         end
         ADD_DRAIN: if (add_multiply_wait) begin
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND);
         end else add_multiply_wait<=1;
-        ADD_ROUND: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND_WAIT);
+        ADD_ROUND: {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND_WAIT);
         ADD_ROUND_WAIT: begin
           if (add_stage==0) begin
             add_scaled_a<=32'(rounding_result);
-            add_stage<=1;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
+            add_stage<=1;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
           end else if (add_stage==1) begin
-            add_rounded<=rounding_result;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_SUM);
+            add_rounded<=rounding_result;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_SUM);
           end else begin
-            add_rounded<=rounding_result;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_CLAMP);
+            add_rounded<=rounding_result;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_CLAMP);
           end
         end
         ADD_SUM: begin
-          add_stage<=2;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
+          add_stage<=2;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
         end
-        ADD_CLAMP: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_STORE);
+        ADD_CLAMP: {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_STORE);
         ADD_STORE: if (!writeback_busy) begin
           if (compute_index+1<active) begin
-            compute_index<=compute_index+1'b1;add_stage<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
+            compute_index<=compute_index+1'b1;add_stage<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
           end else begin
-            write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+            write_origin<=write_origin_next;write_total<=active;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
           end
         end
-        TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+        TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           else begin
             tap<=weight_tap_nxt;input_x<=next_window_x;input_y<=next_window_y;
             if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
-            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
+            {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
           end
         QUANT_INIT: begin
           if (depthwise) begin
             if (!writeback_busy) begin
-              q_active<=1;q_count<=active;q_issue<=0;q_valid<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_STREAM);
+              q_active<=1;q_count<=active;q_issue<=0;q_valid<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_STREAM);
             end
           end else if (!writeback_busy) begin
             if (avg_pool) begin
-              if (valid_taps==0) begin error<=2'b01;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);
+              if (valid_taps==0) begin error<=2'b01;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);
             end else begin
               compute_index <= '0;
-              {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_STORE);
+              {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_STORE);
             end
           end
         end
@@ -2507,21 +2513,21 @@ module vector_engine #(
           if (q_valid[5]) begin q_clamped_q<=q_clamped_data[7:0];q_index_6<=q_index_5;end
           if (q_valid[6] && q_index_6+1==q_count) begin
             q_active<=0;q_valid<=0;
-            write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+            write_origin<=write_origin_next;write_total<=active;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
           end
         end
-        AVG_START: if (avg_power_two) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_DELAY);
-          else begin avg_negative<=serial_acc_read_data<0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_WAIT);end
-        AVG_POWER_DELAY: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_CLAMP);
-        AVG_POWER_CLAMP: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_STORE);
+        AVG_START: if (avg_power_two) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_DELAY);
+          else begin avg_negative<=serial_acc_read_data<0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_WAIT);end
+        AVG_POWER_DELAY: {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_CLAMP);
+        AVG_POWER_CLAMP: {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_STORE);
         AVG_POWER_STORE: begin
-          if (quant_index+1<active) begin quant_index<=quant_index+1;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);end
-          else begin write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+          if (quant_index+1<active) begin quant_index<=quant_index+1;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);end
+          else begin write_origin<=write_origin_next;write_total<=active;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end
         AVG_WAIT: if (avg_done) begin
-          if (quant_index+1<active) begin quant_index<=quant_index+1;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+          if (quant_index+1<active) begin quant_index<=quant_index+1;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           else begin write_origin<=write_origin_next;
-            write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+            write_total<=active;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end
         POOL_STORE: begin
           if (32'(compute_index)+32'(PE_COUNT) < active) begin
@@ -2529,13 +2535,13 @@ module vector_engine #(
           end else begin
             write_origin <= write_origin_next;
             write_total <= active;
-            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+            {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
           end
         end
         WRITE_PREP: if (writeback_ready) begin
-          if (spatial) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_NEXT);
-          else if (vector_hadamard || add_s8) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
-          else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+          if (spatial) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_NEXT);
+          else if (vector_hadamard || add_s8) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
+          else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         end
         OUTPUT_NEXT: begin
           if (position_next<32'(position_count)) begin
@@ -2546,59 +2552,59 @@ module vector_engine #(
             end else begin
               ox<=ox_next;input_origin_x<=$signed(coordinate_step_o_value[2]);
             end
-            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
+            {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
           end else if (channel_has_more) begin
-            channel_base<=channel_next;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
+            channel_base<=channel_next;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
           end
-          else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+          else {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         end
         // 每个结果槽保存所属通道数，共享量化与写回可跨通道组继续完成。
         DRAIN_TILE: if (!win_busy && input_reserved==0 && !q_active &&
                        (depthwise ? !dw_group_pending : !writeback_busy && !dw_work_pending))
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TILE_INIT);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TILE_INIT);
         DRAIN: if (!writeback_busy && !win_busy && input_reserved==0 && !q_active && !dw_work_pending && dma_cfg_ready)
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
-        SOFT_START: if (soft_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
+        SOFT_START: if (soft_ready) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
         SOFT_RUN: if (soft_done) begin
-          if (soft_error!=0) begin error<=soft_error;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
-          else begin write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+          if (soft_error!=0) begin error<=soft_error;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          else begin write_origin<=write_origin_next;write_total<=active;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end else if (soft_lut_req_valid) begin
-          soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_REQ);
+          soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_REQ);
         end
-        SOFT_LUT_REQ: if (rd_granted) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_WAIT);
-        SOFT_LUT_WAIT: if (read_done_q) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
+        SOFT_LUT_REQ: if (rd_granted) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_WAIT);
+        SOFT_LUT_WAIT: if (read_done_q) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
         VECTOR_INIT: begin
           vector_offset<=0;active<=c.length<TILE ? c.length : 32'(TILE);
-          load_kind<=LD_A;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
+          load_kind<=LD_A;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
         end
         VECTOR_NEXT: if (vector_has_more) begin
           vector_offset<=vector_offset_next;
           active<=vector_next_active;
-          load_kind<=LD_A;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
-        end else if (vector_hadamard || add_s8) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+          load_kind<=LD_A;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
+        end else if (vector_hadamard || add_s8) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         else begin
           reduce_acc<=vector_max ? 32'sh8000_0000 : vector_min ? 32'sh7fff_ffff : 32'sd0;
-          reduce_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_REDUCE);
+          reduce_index<=0;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_REDUCE);
         end
         VECTOR_REDUCE: begin
           reduce_acc<=reduce_next;
           if (reduce_index+1<TILE) reduce_index<=reduce_index+1;
-          else begin write_origin<=write_origin_next;write_total<=4;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+          else begin write_origin<=write_origin_next;write_total<=4;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end
         FAILED: if (input_drain_ready) begin
           q_active<=0;q_valid<=0;
-          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
+          {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
         end
-        DONE: if (done_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE);
-        default: begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+        DONE: if (done_ready) {state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE);
+        default: begin error<=2'b10;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
       endcase
       if ((writeback_done && writeback_error) ||
           window_response_fault) begin
-        error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
+        error<=2'b10;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
       end
       if (SHARED_STORAGE_ENABLE && i_storage_error &&
           state!=IDLE && !state_failed && state!=DONE) begin
-        error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
+        error<=2'b10;{state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
       end
     end
   end
@@ -2638,7 +2644,13 @@ module vector_engine #(
         assert(!o_weight_read_en);
         assert(|o_weight_write_mask);
       end
-      if (state==EXECUTE_COMMIT && global_pool)
+      if (pe_operand_en) begin
+        assert(vector_hadamard == (pe_op == PE_MUL));
+        if (vector_hadamard) begin
+          for (int lane=0;lane<PE_COUNT;lane++) assert(pe_acc[lane] === 32'sd0);
+        end
+      end
+      if (state_compute_commit && global_pool)
         assert(pool_pixel_has_more_q == (pool_pixel+1<pool_pixels));
       if (state==VECTOR_NEXT && !vector_has_more && !vector_hadamard && !add_s8)
         assert(serial_acc_read_data === acc_buf[0]);
@@ -2654,8 +2666,10 @@ module vector_engine #(
         assert(channel_has_more == (channel_base+active<channels));
         assert(channel_next == 16'(channel_base+active));
       end
-      assert(window_fetch_phase == (state==OUTPUT_INIT || state==TAP_CHECK || state==WINDOW_WAIT || state==QUANT_STREAM || state==EXECUTE || state==EXECUTE_COMMIT || state==TAP_NEXT || state==QUANT_INIT || state==OUTPUT_NEXT || state==AVG_START || state==AVG_POWER_DELAY || state==AVG_POWER_CLAMP || state==AVG_POWER_STORE || state==AVG_WAIT || state==POOL_STORE || state==WRITE_PREP || state==DW_EXECUTE || state==DW_FINISH));
+      assert(window_fetch_phase == (state==OUTPUT_INIT || state==TAP_CHECK || state==WINDOW_WAIT || state==QUANT_STREAM || state==EXECUTE || state_compute_commit || state==TAP_NEXT || state==QUANT_INIT || state==OUTPUT_NEXT || state==AVG_START || state==AVG_POWER_DELAY || state==AVG_POWER_CLAMP || state==AVG_POWER_STORE || state==AVG_WAIT || state==POOL_STORE || state==WRITE_PREP || state==DW_EXECUTE || state==DW_FINISH));
       previous_writeback_sink_fire <= writeback_sink_fire;
+      assert(state_failed == (state==FAILED));
+      assert(state_compute_commit == (state==EXECUTE_COMMIT));
       assert(ready == (state==IDLE));
       assert(done_valid == (state==DONE));
       assert(dma_cfg_valid == (state==CONFIGURE));
@@ -2719,7 +2733,7 @@ module vector_engine #(
       assert(vector_has_more == vector_has_more_comb);
       assert(vector_next_active == vector_next_active_comb);
     end
-    if (global_pool && (state == POOL_LOAD_PREP || state == EXECUTE || state == EXECUTE_COMMIT))
+    if (global_pool && (state == POOL_LOAD_PREP || state == EXECUTE || state_compute_commit))
       assert(pool_taps_remaining == taps - pool_offset);
     if (state == POOL_LOAD_PREP) begin
       assert(cache_power_two == cache_power_two_next && cache_channel_shift == cache_channel_shift_next);
