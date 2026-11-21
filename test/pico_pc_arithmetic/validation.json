@@ -4,11 +4,11 @@
   "reference_sha256_verified": true,
   "source_sha256": {
     "reference": "0836050971b3c6cdd28ac3b1e5719a67fb645161912bef1e472e63995ceb0622",
-    "current": "7aec277b929114148655ce34d841a84dfe265ce7fb5aad049c7ab6d94f996e27"
+    "current": "438b563cb235320271189ba1d65ca698a5dcc5ccb5b1c68dcffbf2ae22c22553"
   },
   "source_paths": {
-    "reference": "picorv32/picorv32.v",
-    "current": "rtl/soc/picorv32_npu.v"
+    "reference": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/picorv32/picorv32.v",
+    "current": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/soc/picorv32_npu.v"
   },
   "requested_stages": [
     "formal",
@@ -42,7 +42,7 @@
             "TWO_CYCLE_COMPARE": 0
           },
           "equivalent_bits": 2724,
-          "log_sha256": "ee6cecc259b376675c72ef3d1ac1fc4221e824a63aff90d865a09d55562b9d79"
+          "log_sha256": "3be511cf39cf2549d1c22721ff307bda4a125eca0cb4f4e4fe99abab68b41715"
         },
         {
           "passed": true,
@@ -67,7 +67,7 @@
             "TWO_CYCLE_COMPARE": 0
           },
           "equivalent_bits": 3045,
-          "log_sha256": "b1d273eda72fb88fce661f7600b216dfcf02ffe67756a8670368194f13aa681c"
+          "log_sha256": "63c0ab331c04d43dd342b6e29a2b0cbdf6322bd53f0824684fe7cfa64a1eb8c0"
         },
         {
           "passed": true,
@@ -92,7 +92,7 @@
             "TWO_CYCLE_COMPARE": 1
           },
           "equivalent_bits": 2727,
-          "log_sha256": "f966d146b163ca5a6a2a627355c7da003ae96baff7c220e08e96f47a93ae6e98"
+          "log_sha256": "d1ddca9e189167f7a9402b3cd17c826eee30a83feebeee295668e6b46e5e1cff"
         },
         {
           "passed": true,
@@ -117,7 +117,7 @@
             "TWO_CYCLE_COMPARE": 0
           },
           "equivalent_bits": 1388,
-          "log_sha256": "cd740dcc360fcc274109ca6eb4d1e3df93b6901ebc6766974e9ef03730e24e92"
+          "log_sha256": "9b4f1616acd2c8528fd7a9f60e377f553ae2dea69a888a1055bc2ea432bd7b00"
         }
       ],
       "input_constraints": []
@@ -144,8 +144,8 @@
           "stability_checks": 3258,
           "sum": 5050,
           "marker": 85,
-          "binary_sha256": "ee9f3cee30c91451a379b49bb170bbea4cb48661fba108226e85b3743bf979e2",
-          "log_sha256": "3d7af360e6a6f9162af69662a3e59474b6562a0fa9b481741f3fa6c2860e0cd4"
+          "binary_sha256": "7c8287c90d9e4f20210386152272ab38bb0d67a3ed65745fdbc4f8a550539558",
+          "log_sha256": "2e9132b536b0791b9df262e1a289855d8bc3476414f5009fe85080f89a33e77e"
         },
         {
           "passed": true,
@@ -157,8 +157,8 @@
           "stability_checks": 3258,
           "sum": 5050,
           "marker": 85,
-          "binary_sha256": "1598b4664d158134f1dd3e7a8792d0becf9ad1fc8278a648192dbf86a5b0bdfd",
-          "log_sha256": "cd8eecf89cc592c35b52c0eb9331d49fee7030b8bd2337ea5b0ee59570aaa755"
+          "binary_sha256": "5829cc7829dfc731715731ac53277ffda82fde8e4c878fcdce88e84a745f8bc9",
+          "log_sha256": "ab12d94c83a90c661641c1c7283de3f893734a8818e900e3f76c8b498c1341b7"
         }
       ],
       "reference_modules_renamed": [
@@ -211,44 +211,48 @@
         },
         "current": {
           "resources": {
-            "logic_lut_cells": 1473,
+            "logic_lut_cells": 1405,
             "distributed_ram_lut_sites_nominal": 48,
             "shift_register_lut_sites_nominal": 0,
-            "lut_sites_nominal_before_packing": 1521,
+            "lut_sites_nominal_before_packing": 1453,
             "physical_lut_sites_after_placement": null,
             "flip_flops": 1002,
-            "dsp48e1": 3,
+            "dsp48e1": 9,
             "ramb36e1": 0,
             "ramb18e1": 0,
-            "carry4": 134,
+            "carry4": 88,
             "unclassified_distributed_ram_types": [],
             "cell_counts": {
-              "CARRY4": 134,
-              "DSP48E1": 3,
+              "CARRY4": 88,
+              "DSP48E1": 9,
               "FDRE": 986,
               "FDSE": 16,
-              "INV": 146,
-              "LUT2": 289,
+              "INV": 142,
+              "LUT2": 226,
               "LUT3": 189,
-              "LUT4": 243,
-              "LUT5": 556,
-              "LUT6": 196,
+              "LUT4": 232,
+              "LUT5": 540,
+              "LUT6": 218,
               "RAM32M": 12
             },
             "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
           },
           "graph_complete": true,
           "longest_register_path_cells": 10,
-          "metrics_sha256": "76dca228cd5717d877130f50c4518e30812aa0172238642c725bb9ad9d470fd1",
-          "manifest_sha256": "bb31535e7c5b48c63a736e38eecc4dc2759496b6dcb97c2b0cb6c79028d3afed"
+          "metrics_sha256": "42238cd3f536be8b4f782f9910ea4b68be00fbf5fb7f990bf0d3837b5e741bfb",
+          "manifest_sha256": "397c7e729ca2166f8681952ed5f31463e20524280db8d561bd0cf57b94adbb08"
         }
       }
     }
   },
   "source_unchanged": true,
-  "test_sha256": {
-    "test/pico_pc_arithmetic/run.py": "b7ffacb72fee11fb7d2265b956d19f26578d629cb8f91853d9c9557a5a6a7e72",
-    "test/pico_pc_arithmetic/tb_execution.sv": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
-  },
-  "result_directory": "build/pico_pc_arithmetic_final"
+  "arithmetic_four_state": {
+    "passed": true,
+    "strict_four_state": true,
+    "checks": 240000,
+    "source_sha256": "438b563cb235320271189ba1d65ca698a5dcc5ccb5b1c68dcffbf2ae22c22553",
+    "test_sha256": "1d316734b6dcb0f3126b7b98ae509ce0dc15857d83ced6a498184897b2e80cf1",
+    "testbench_sha256": "3c34de4db864b4c12377de9aa1ff2a4ea8e93662588363d62b4712caf8d2afbb",
+    "log_sha256": "a06f60c83ddaa76ab6cff9ace897248f69f30c79e614347e6d8518afb8a34e46"
+  }
 }

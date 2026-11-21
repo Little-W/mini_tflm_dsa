@@ -1225,6 +1225,14 @@ module picorv32 #(
 	reg alu_out_0, alu_out_0_q;
 	reg alu_wait, alu_wait_2;
 
+	// 加法、无符号差值和有符号比较分别准备，控制只选择已经完成的结果。
+	(* use_dsp = "yes" *) wire [31:0] operand_addition = reg_op1 + reg_op2;
+	(* use_dsp = "yes" *) wire [32:0] operand_difference = {1'b0, reg_op1} - {1'b0, reg_op2};
+	(* use_dsp = "yes" *) wire [32:0] signed_difference =
+		{1'b0, ~reg_op1[31], reg_op1[30:0]} - {1'b0, ~reg_op2[31], reg_op2[30:0]};
+	(* use_dsp = "yes" *) wire [31:0] return_address_sum = reg_pc + (latched_compr ? 32'd2 : 32'd4);
+	(* use_dsp = "yes" *) wire [63:0] next_cycle_count = count_cycle + 64'd1;
+	(* use_dsp = "yes" *) wire [63:0] next_instruction_count = count_instr + 64'd1;
 	reg [31:0] alu_add_sub;
 	reg [31:0] alu_shl, alu_shr;
 	reg alu_eq, alu_ltu, alu_lts;
@@ -1252,19 +1260,19 @@ module picorv32 #(
 
 	generate if (TWO_CYCLE_ALU) begin
 		always @(posedge clk) begin
-			alu_add_sub <= instr_sub ? reg_op1 - reg_op2 : reg_op1 + reg_op2;
+			alu_add_sub <= instr_sub ? operand_difference[31:0] : operand_addition;
 			alu_eq <= reg_op1 == reg_op2;
-			alu_lts <= $signed(reg_op1) < $signed(reg_op2);
-			alu_ltu <= reg_op1 < reg_op2;
+			alu_lts <= signed_difference[32];
+			alu_ltu <= operand_difference[32];
 			alu_shl <= reg_op1 << reg_op2[4:0];
 			alu_shr <= $signed({instr_sra || instr_srai ? reg_op1[31] : 1'b0, reg_op1}) >>> reg_op2[4:0];
 		end
 	end else begin
 		always @* begin
-			alu_add_sub = instr_sub ? reg_op1 - reg_op2 : reg_op1 + reg_op2;
+			alu_add_sub = instr_sub ? operand_difference[31:0] : operand_addition;
 			alu_eq = reg_op1 == reg_op2;
-			alu_lts = $signed(reg_op1) < $signed(reg_op2);
-			alu_ltu = reg_op1 < reg_op2;
+			alu_lts = signed_difference[32];
+			alu_ltu = operand_difference[32];
 			alu_shl = reg_op1 << reg_op2[4:0];
 			alu_shr = $signed({instr_sra || instr_srai ? reg_op1[31] : 1'b0, reg_op1}) >>> reg_op2[4:0];
 		end
@@ -1338,7 +1346,7 @@ module picorv32 #(
 			(* parallel_case *)
 			case (1'b1)
 				latched_branch: begin
-					cpuregs_wrdata = reg_pc + (latched_compr ? 2 : 4);
+					cpuregs_wrdata = return_address_sum;
 					cpuregs_write = 1;
 				end
 				latched_store && !latched_branch: begin
@@ -1454,7 +1462,7 @@ module picorv32 #(
 		end
 
 		if (ENABLE_COUNTERS) begin
-			count_cycle <= resetn ? count_cycle + 1 : 0;
+			count_cycle <= resetn ? next_cycle_count : 0;
 			if (!ENABLE_COUNTERS64) count_cycle[63:32] <= 0;
 		end else begin
 			count_cycle <= 'bx;
@@ -1585,7 +1593,7 @@ module picorv32 #(
 					if (ENABLE_TRACE)
 						latched_trace <= 1;
 					if (ENABLE_COUNTERS) begin
-						count_instr <= count_instr + 1;
+						count_instr <= next_instruction_count;
 						if (!ENABLE_COUNTERS64) count_instr[63:32] <= 0;
 					end
 					if (instr_jal) begin
