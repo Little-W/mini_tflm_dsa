@@ -669,7 +669,7 @@ module axi_linear_block_dma #(
     assign rd_raw_col_base = rd_rsp_col_base_r;
     for (genvar lane = 0; lane < BYTE_PER_BEAT; lane++) begin : g_unpack_lane
         logic [15:0] lane_data;
-        logic [DATA_WIDTH-1:0] adjusted_data;
+        (* use_dsp = "yes" *) logic [DATA_WIDTH-1:0] adjusted_data;
         logic lane_enabled;
         logic lane_in_tile;
         logic lane_in_data;

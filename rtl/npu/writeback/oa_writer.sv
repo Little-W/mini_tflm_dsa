@@ -114,7 +114,7 @@ module oa_writer #(
     logic [REG_WIDTH-1:0] column_base_addr;
     logic [REG_WIDTH-1:0] address_base, address_step;
     logic [REG_WIDTH-1:0] next_address_base, next_address_step;
-    logic [REG_WIDTH-1:0] next_address;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] next_address;
     logic [ADDR_LOW_W-1:0] next_address_low;
     logic next_address_carry;
     logic unused_next_address_carry;

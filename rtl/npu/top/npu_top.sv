@@ -291,6 +291,14 @@ module npu_top #(
     logic [24:0] rhs_product_middle_q;
     logic [23:0] rhs_product_high_q;
     logic [16:0] conv_input_middle_q, conv_kernel_middle_q;
+    (* use_dsp = "yes" *) logic [23:0] rhs_product_high_sum, rhs_product_high_merged;
+    (* use_dsp = "yes" *) logic [15:0] conv_input_high_merged, conv_kernel_high_merged;
+    // 各段算术保留原有宽度，准备相位只选择对应的完整结果。
+    assign rhs_product_high_sum = rhs_product_diagonal[63:40] +
+        24'(rhs_product_cross[32:24]);
+    assign rhs_product_high_merged = rhs_product_high_q + 24'(rhs_product_middle_q[24]);
+    assign conv_input_high_merged = conv_input_high[31:16] + 16'(conv_input_middle_q[16]);
+    assign conv_kernel_high_merged = conv_kernel_high[31:16] + 16'(conv_kernel_middle_q[16]);
     assign rhs_product_low_sum = {1'b0, rhs_product_diagonal[39:16]} +
         {1'b0, rhs_product_cross[23:0]};
     assign conv_input_middle_sum = {1'b0, conv_input_low[31:16]} +
@@ -329,6 +337,8 @@ module npu_top #(
 `else
     localparam bit CONV_CORE_SUPPORTED = DATA_WIDTH >= 16 && (BUS_WIDTH == 32 || BUS_WIDTH == 64) && REG_WIDTH == 32 && ENABLE_PER_CHANNEL != 0;
 `endif
+    (* use_dsp = "yes" *) logic [31:0] conv_group_end;
+    assign conv_group_end = 32'(conv_cfg_q.group_offset) + 32'(conv_cfg_q.group_c);
     wire conv_syntax_invalid =
         (!CONV_CORE_SUPPORTED ||
          (cfg_dataflow_mode && (ENABLE_IS_MODE == 0 || KERNEL_DATA_WIDTH < 16)) ||
@@ -339,7 +349,7 @@ module npu_top #(
          conv_cfg_q.output_h == 0 || conv_cfg_q.output_w == 0 ||
          conv_cfg_q.stride_h == 0 || conv_cfg_q.stride_w == 0 ||
          conv_cfg_q.dilation_h == 0 || conv_cfg_q.dilation_w == 0 ||
-         (32'(conv_cfg_q.group_offset)+32'(conv_cfg_q.group_c) > 32'(conv_cfg_q.input_c)) ||
+         (conv_group_end > 32'(conv_cfg_q.input_c)) ||
          $signed(conv_cfg_q.input_offset) < -127 || $signed(conv_cfg_q.input_offset) > 128);
     wire conv_config_invalid = run_conv && conv_validation_invalid;
     always_ff @(posedge clk or negedge rst_n) begin
@@ -592,7 +602,7 @@ module npu_top #(
          (requested_shared_ia_banks != 1 && requested_shared_ia_banks != 2 && requested_shared_ia_banks != 4));
     wire [31:0] active_ia_cache_blocks = SHARED_RAM_ENABLED ?
         shared_ia_banks_q * (SHARED_BANK_BYTES / 512) : 32'(IA_CACHE_BLOCKS);
-    wire [31:0] active_ps_pool_bytes = SHARED_RAM_ENABLED ?
+    (* use_dsp = "yes" *) wire [31:0] active_ps_pool_bytes = SHARED_RAM_ENABLED ?
         32'(SHARED_TOTAL_BYTES) - shared_ia_banks_q * 32'(SHARED_BANK_BYTES) : 32'(`GEMMORA_PS_POOL_BYTES);
     wire [31:0] active_ps_bank_count = SHARED_RAM_ENABLED ? 32'(active_ps_bank_count_q) : 32'd4;
     wire [31:0] active_ps_bank_depth = SHARED_RAM_ENABLED ?
@@ -1150,22 +1160,21 @@ module npu_top #(
                 case (cfg_capacity_phase)
                     3'd0: begin
                         // 独立寄存器保存各段和，下一相位只归并已保存的进位。
-                        rhs_product_high_q <= rhs_product_diagonal[63:40] +
-                            24'(rhs_product_cross[32:24]);
+                        rhs_product_high_q <= rhs_product_high_sum;
                         rhs_product_middle_q <= rhs_product_low_sum;
                         conv_input_middle_q <= conv_input_middle_sum;
                         conv_kernel_middle_q <= conv_kernel_middle_sum;
                     end
                     3'd1: begin
                         rhs_allocation_bytes <= {
-                            (rhs_product_high_q + 24'(rhs_product_middle_q[24])),
+                            rhs_product_high_merged,
                             rhs_product_middle_q[23:0], rhs_product_diagonal[15:0]} <<
                             (run_rhs_tile_packed ? (2 * SIZE_SHIFT) : 0);
                         conv_input_bytes <= {
-                            (conv_input_high[31:16] + 16'(conv_input_middle_q[16])),
+                            conv_input_high_merged,
                             conv_input_middle_q[15:0], conv_input_low[15:0]};
                         conv_kernel_elements <= {
-                            (conv_kernel_high[31:16] + 16'(conv_kernel_middle_q[16])),
+                            conv_kernel_high_merged,
                             conv_kernel_middle_q[15:0], conv_kernel_low[15:0]};
                     end
                     3'd2: begin
@@ -2319,7 +2328,13 @@ module npu_top #(
             logic [15:0] product_high;
             logic [15:0] product_low_half;
             logic [31:0] offset_s0, offset_s1, base_s0, base_s1, base_s2, relative_address;
+            (* use_dsp = "yes" *) logic [31:0] relative_address_sum, prefetch_address_sum;
             logic packed_s0, packed_s1, wide_s0, wide_s1;
+            // 相对地址和基地址分处两个寄存阶段，每个阶段独立完成一次加法。
+            assign relative_address_sum = (packed_s1 ?
+                ({product_high,product_low_half} << (2*SIZE_SHIFT + 32'(wide_s1))) :
+                {product_high,product_low_half}) + offset_s1;
+            assign prefetch_address_sum = base_s2 + relative_address;
             always_ff @(posedge clk or negedge core_rst_n) begin
                 if (!core_rst_n) begin
                     weight_prediction_valid <= '0;
@@ -2353,14 +2368,12 @@ module npu_top #(
                     weight_prediction[1] <= weight_prediction[0];
                 end
                 if (weight_prediction_valid[1]) begin
-                    relative_address <= (packed_s1 ?
-                        ({product_high,product_low_half} << (2*SIZE_SHIFT + 32'(wide_s1))) :
-                        {product_high,product_low_half}) + offset_s1;
+                    relative_address <= relative_address_sum;
                     base_s2 <= base_s1;
                     weight_prediction[2] <= weight_prediction[1];
                 end
                 if (weight_prediction_valid[2]) begin
-                    weight_prefetch_base <= base_s2 + relative_address;
+                    weight_prefetch_base <= prefetch_address_sum;
                     weight_prediction[3] <= weight_prediction[2];
                 end
             end
