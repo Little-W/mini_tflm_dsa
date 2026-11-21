@@ -16,7 +16,7 @@ from rtl_reference import read_rtl_source
 
 def extract(text, name):
     first = text.index('        wire [REG_WIDTH-1:0] is_bias_group_rows_target_ext =')
-    last = text.index('        wire [REG_WIDTH-1:0] is_bias_group_base_plus =', first)
+    last = text.index('        wire [REG_WIDTH-1:0] is_bias_group_base_plus', first)
     return f'''module {name} #(
     parameter int REG_WIDTH=32, IS_BIAS_VALID_W=10
 ) (
@@ -55,27 +55,29 @@ def main():
     assign o_equal = reference_result == candidate_result;
 endmodule
 ''')
-    files = [out / 'reference.sv', out / 'candidate.sv', harness]
+    compare = ROOT / 'rtl/common/unsigned_compare.sv'
+    files = [compare, out / 'reference.sv', out / 'candidate.sv', harness]
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     report = dict(reference=args.reference, source_sha256=digest(path), inputs_constrained=False, runs=[])
     profiles = [(4,1),(4,4),(8,6),(16,8),(32,1),(32,5),(32,10),(32,16),
                 (32,32),(40,10),(40,32),(64,10),(64,20),(64,24),(64,32)]
-    for width, count in profiles:
-        folder = out / f'w{width}_c{count}'
-        folder.mkdir(exist_ok=True)
-        script, log = folder / 'run.ys', folder / 'formal.log'
-        script.write_text('read_slang --top group_formal ' +
-                          f'-GREG_WIDTH={width} -GIS_BIAS_VALID_W={count} ' +
-                          shlex.join(map(str, files)) + '\nprep -top group_formal -flatten\ncheck -assert\n' +
-                          'sat -verify -prove o_equal 1 -show-inputs -show-outputs\n')
-        with log.open('w') as stream:
-            subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
-                            '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT,
-                           check=True, timeout=120)
-        if 'SAT proof finished - no model found: SUCCESS!' not in log.read_text():
-            raise RuntimeError(f'Proof did not complete: {log}')
-        report['runs'].append(dict(width=width, count_bits=count, passed=True, log_sha256=digest(log)))
-        print(f'width={width} count_bits={count}: PASS', flush=True)
+    for fpga in (False, True):
+        for width, count in profiles:
+            folder = out / f'{"fpga" if fpga else "generic"}_w{width}_c{count}'
+            folder.mkdir(exist_ok=True)
+            script, log = folder / 'run.ys', folder / 'formal.log'
+            script.write_text('read_slang --top group_formal ' + ('-D XILINX_FPGA ' if fpga else '') +
+                              f'-GREG_WIDTH={width} -GIS_BIAS_VALID_W={count} ' +
+                              shlex.join(map(str, files)) + '\nprep -top group_formal -flatten\ncheck -assert\n' +
+                              'sat -verify -prove o_equal 1 -show-inputs -show-outputs\n')
+            with log.open('w') as stream:
+                subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
+                                '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT,
+                               check=True, timeout=120)
+            if 'SAT proof finished - no model found: SUCCESS!' not in log.read_text():
+                raise RuntimeError(f'Proof did not complete: {log}')
+            report['runs'].append(dict(width=width, count_bits=count, fpga=fpga, passed=True, log_sha256=digest(log)))
+            print(f'width={width} count_bits={count}: PASS', flush=True)
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     cases = {}
@@ -98,8 +100,8 @@ endmodule
     {label} u_group (.*);
 endmodule
 ''')
-        cases[label] = dict(top='group_measure', options=['-D', 'SYNTHESIS=1'],
-                            sources=[str(out / (label + '.sv')), str(path)],
+        cases[label] = dict(top='group_measure', options=['-D', 'SYNTHESIS=1', '-D', 'XILINX_FPGA=1'],
+                            sources=[str(compare), str(out / (label + '.sv')), str(path)],
                             configuration='32-bit geometry and ten-bit group size')
     (out / 'cases.json').write_text(json.dumps(cases, indent=2) + '\n')
 

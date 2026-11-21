@@ -230,7 +230,8 @@ endmodule
 """)
     sources += [formal, ROOT / "rtl/npu/control/ps_capacity_limits.sv",
                 ROOT / "rtl/common/onehot_check.sv",
-                ROOT / "rtl/common/parallel_prefix_add.sv"]
+                ROOT / "rtl/common/parallel_prefix_add.sv",
+                ROOT / "rtl/common/unsigned_compare.sv"]
     summary = {"reference_rev": args.reference_rev,
                "method": "SAT of expressions extracted from both npu_top revisions with arbitrary shared register state",
                "source_sha256": {str(top_path.relative_to(ROOT)): hashlib.sha256(top_path.read_bytes()).hexdigest()},

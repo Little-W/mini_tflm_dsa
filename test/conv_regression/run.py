@@ -83,6 +83,7 @@ def build(size,pcr=False):
     src += sorted(p for p in (r/'rtl/common').glob('*.v') if p.stem.lower() == 'regfile')
     src += sorted((r/'rtl/common').glob('onehot_check.sv')) + sorted((r/'rtl/common').glob('add_equal.sv'))
     src += sorted((r/'rtl/common').glob('parallel_prefix_add.sv'))
+    src += sorted((r/'rtl/common').glob('unsigned_compare.sv'))
     src += [r/'test/dep_modules/ddr_axi_mem_model.sv',Path(__file__).resolve().parent/'tb_npu_top.sv']
     src += [metrics]
     flags=['--binary','--timing','--assert','-sv','--top-module','tb_npu_top','-Wno-fatal','--output-groups','0','--output-split','10000',f'-I{r/"rtl/npu/ps_compact"}',f'-DTB_SIZE={size}','-DTB_IA_CACHE_BLOCKS=4','-DTB_PS_FRAME_COUNT=16','-DTB_AXI_READ_OUTSTANDING=4','-DTB_DATA_WIDTH=16','-DTB_WEIGHT_WIDTH=16','-DTB_MEM_WORDS=131072','--Mdir',str(d/'obj'),'-j',str(x.jobs),'-CFLAGS','-std=c++20 -O1','-MAKEFLAGS','CFG_CXXFLAGS_PCH_I=-include OPT_FAST=-O1 OPT_SLOW=-O0']
