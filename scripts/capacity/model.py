@@ -20,7 +20,7 @@ POOL_ALIGNMENT = 64
 MAX_POOL_BYTES = 1 << 24
 SCOPES = ("logical-state", "buffer-ram")
 REPRESENTATIONS = ("adaptive", "raw32")
-MODEL_VERSION = "dip-shared-window-vector-v14"
+MODEL_VERSION = "dip-shared-window-vector-v15"
 DECODE_FIFO_ROWS = 8
 DECODE_PREFETCH_CREDITS = 7
 SHARED_BANK_BYTES = 2048
@@ -178,18 +178,21 @@ def buffer_arrays_bits(cache, frames, pool_bytes, size=16, compressed=True, *, s
         "conv_prefetch_queue": 8 * (4 * 32 + 1),
         "conv_request_queue": 4 * 32 + (image_cache["sets"] - 1).bit_length() + 3,
         "conv_response_queue": 8 * window_lanes + 1,
-        "vector_buffers": size * (5 * 16 + 49 * 8 + 4 * 32 + 6),
-        "vector_dw_snapshot": size * 32,
+        "vector_buffers": size * (5 * 16 + 4 * 32 + 6),
         "vector_dw_result_queue": 2 * size * 8,
         "vector_write_queue": 2 * (4 * size) * 8,
         "vector_pool_reciprocal_rom": (VECTOR_POOL_MAX_TAPS + 1) * (9 + VECTOR_POOL_MAX_TAPS.bit_length()),
         "ps_frame_lengths": frames * frame_length_bits,
     }
     if layout["shared_ia_ps_enabled"]:
+        # 向量权重和 DW 量化暂存使用既有 IA/PS RAM，物理数据容量只计入一次。
+        # acc_buf 保留为当前 PE 的工作累加寄存器，仍包含在 vector_buffers 中。
         bits["ia_ps_shared_ram"] = layout["shared_total_bytes"] * 8
         if layout["shared_physical_bank_count"] < 8 and size > 2 and size % 2 == 0:
             bits["requant_input_rows"] = rmax * size * (32 * size + 1)
     else:
+        bits["vector_buffers"] += size * 49 * 8
+        bits["vector_dw_snapshot"] = size * 32
         bits["ia_cache"] = cache * size * size * 16
         bits["ps_payload"] = pool_bytes * 8 if compressed else logical_rows * size * 32
     if compressed:

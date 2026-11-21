@@ -170,6 +170,8 @@ module npu_top #(
     end
     logic [31:0] ps_control_q;
     logic vector_engine_ready, vector_engine_done;
+    logic vector_start_fire;
+    logic vector_shared_store_o_idle, vector_shared_store_o_error;
     logic [1:0] vector_engine_error;
     logic normal_done_valid;
     logic [1:0] normal_err_code;
@@ -194,6 +196,8 @@ module npu_top #(
         POOL_MAX_TAPS >= 1 && POOL_MAX_TAPS <= 65535 && VECTOR_PE_COUNT >= 1 &&
         VECTOR_PE_COUNT <= SIZE && ((VECTOR_PE_COUNT & (VECTOR_PE_COUNT-1)) == 0);
 `endif
+    assign vector_start_fire = VECTOR_ENGINE_CAPABLE && calc_start && sa_ready &&
+        cfg_vector_enable && !cfg_conv_enable;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             run_vector <= 1'b0;
@@ -210,7 +214,7 @@ module npu_top #(
     end
     assign done_valid = (abort_state == AB_DONE) ||
                         ((abort_state == AB_IDLE) && !task_fault &&
-                         (run_vector ? (vector_rejected || vector_engine_done) : normal_done_valid));
+                         (run_vector ? (vector_rejected || (vector_engine_done && vector_shared_store_o_idle)) : normal_done_valid));
     assign err_code = (abort_state == AB_DONE) ? abort_error_code :
                       run_vector ? (vector_rejected ? 2'b01 : vector_engine_error) : normal_err_code;
     for (genvar r = 0; r < 4; r++) begin : g_dma_ranges
@@ -518,6 +522,22 @@ module npu_top #(
         SHARED_RAM_ENABLED ? SHARED_IA_ADDR_WIDTH :
         (($clog2(`GEMMORA_PS_POOL_BYTES / 64) > 0) ? $clog2(`GEMMORA_PS_POOL_BYTES / 64) : 1);
     localparam int unsigned SHARED_PS_DIRECTORY_ROWS = 1024;
+    // 权重按最大卷积核尺寸分配 IA 存储块，剩余空间至少保留四个 PS 端口。
+    localparam int unsigned VECTOR_SHARED_IA_BANKS =
+        DW_MAX_TAPS * SIZE <= SHARED_BANK_BYTES ? 1 :
+        DW_MAX_TAPS * SIZE <= 2 * SHARED_BANK_BYTES ? 2 : 4;
+    logic engine_o_weight_read_en, engine_o_weight_write_en;
+    logic [SHARED_IA_ADDR_WIDTH-1:0] engine_o_weight_read_addr, engine_o_weight_write_addr;
+    logic [127:0] engine_o_weight_write_data, engine_i_weight_read_data;
+    logic [15:0] engine_o_weight_write_mask;
+    logic engine_i_weight_read_valid;
+    logic engine_o_ps_read_en, engine_o_ps_write_en;
+    logic [SHARED_IA_ADDR_WIDTH-1:0] engine_o_ps_read_addr, engine_o_ps_write_addr;
+    logic [511:0] engine_o_ps_write_data, engine_i_ps_read_data;
+    logic engine_i_ps_read_valid, engine_i_storage_error;
+    logic engine_i_done_ready;
+    assign engine_i_done_ready = done_ready && run_vector && vector_shared_store_o_idle;
+    assign engine_i_storage_error = vector_shared_store_o_error || shared_ram_capacity_fault;
     logic [31:0] shared_ia_banks_q;
     logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] active_ps_bank_count_q;
     logic shared_allocation_invalid_q;
@@ -769,11 +789,21 @@ module npu_top #(
         vector_engine #(.BUS_WIDTH(BUS_WIDTH),.TILE(SIZE), .DMA_SIZE(SHARED_DMA_SIZE),
             .WINDOW_LANES(WINDOW_LANES),
             .SHARED_QUANT_ENABLE(DW_SHARED_QUANT_ENABLE),
+            .SHARED_STORAGE_ENABLE(SHARED_RAM_ENABLED),
+            .SHARED_STORAGE_ADDR_WIDTH(SHARED_IA_ADDR_WIDTH),
             .PE_COUNT(VECTOR_PE_COUNT), .MAX_TAPS(DW_MAX_TAPS), .POOL_MAX_TAPS(POOL_MAX_TAPS)) u_engine (
             .clk, .rst_n(core_rst_n),
-            .start(calc_start && sa_ready && cfg_vector_enable && !cfg_conv_enable),
+            .start(vector_start_fire),
             .cfg(cfg_vector), .ready(vector_engine_ready), .done_valid(vector_engine_done),
-            .done_ready(done_ready && run_vector), .error(vector_engine_error),
+            .done_ready(engine_i_done_ready), .error(vector_engine_error),
+            .o_weight_read_en(engine_o_weight_read_en), .o_weight_read_addr(engine_o_weight_read_addr),
+            .i_weight_read_valid(engine_i_weight_read_valid), .i_weight_read_data(engine_i_weight_read_data),
+            .o_weight_write_en(engine_o_weight_write_en), .o_weight_write_addr(engine_o_weight_write_addr),
+            .o_weight_write_data(engine_o_weight_write_data), .o_weight_write_mask(engine_o_weight_write_mask),
+            .o_ps_read_en(engine_o_ps_read_en), .o_ps_read_addr(engine_o_ps_read_addr),
+            .i_ps_read_valid(engine_i_ps_read_valid), .i_ps_read_data(engine_i_ps_read_data),
+            .o_ps_write_en(engine_o_ps_write_en), .o_ps_write_addr(engine_o_ps_write_addr),
+            .o_ps_write_data(engine_o_ps_write_data), .i_storage_error(engine_i_storage_error),
             .dma_cfg_valid(vector_dma_cfg_valid), .dma_cfg_ready(conv_cfg_ready && run_vector),
             .dma_conv_enable(vector_dma_conv_enable), .dma_range_enable(vector_dma_range_enable),
             .dma_conv_cfg(vector_dma_conv_cfg), .dma_range_base(vector_dma_range_base),
@@ -804,6 +834,17 @@ module npu_top #(
             .wr_error(dw_wr_error)
         );
     end else begin : g_no_vector_engine
+        assign engine_o_weight_read_en = 1'b0;
+        assign engine_o_weight_read_addr = '0;
+        assign engine_o_weight_write_en = 1'b0;
+        assign engine_o_weight_write_addr = '0;
+        assign engine_o_weight_write_data = '0;
+        assign engine_o_weight_write_mask = '0;
+        assign engine_o_ps_read_en = 1'b0;
+        assign engine_o_ps_read_addr = '0;
+        assign engine_o_ps_write_en = 1'b0;
+        assign engine_o_ps_write_addr = '0;
+        assign engine_o_ps_write_data = '0;
         assign vector_engine_ready = 1'b1;
         assign vector_engine_done = 1'b0;
         assign vector_engine_error = 2'b01;
@@ -839,7 +880,7 @@ module npu_top #(
     wire ps_capacity_fault;
     logic block_dma_arbiter_i_abort;
     // 各运算来源并行汇总故障，中止状态持续保持至当前任务结束。
-    assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || dma_bus_error ||
+    assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || vector_shared_store_o_error || dma_bus_error ||
                         (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)) ||
                         ((run_conv || run_vector) && conv_error);
     assign block_dma_arbiter_i_abort = abort_pending || task_fault;
@@ -1019,6 +1060,11 @@ module npu_top #(
                 shared_ia_banks_q <= 32'd1;
                 active_ps_bank_count_q <= SHARED_PHYSICAL_BANKS_WIDTH'(
                     SHARED_RAM_ENABLED ? SHARED_PHYSICAL_BANKS-1 : 4);
+                shared_allocation_invalid_q <= 1'b0;
+            end else if (vector_start_fire && SHARED_RAM_ENABLED) begin
+                shared_ia_banks_q <= 32'(VECTOR_SHARED_IA_BANKS);
+                active_ps_bank_count_q <= SHARED_PHYSICAL_BANKS_WIDTH'(
+                    SHARED_PHYSICAL_BANKS - VECTOR_SHARED_IA_BANKS);
                 shared_allocation_invalid_q <= 1'b0;
             end else if (cfg_start_event) begin
                 // 配置接收时并行保存分配结果，后续容量检查直接使用寄存结果。
@@ -2388,37 +2434,123 @@ module npu_top #(
   endgenerate
 
     generate if (SHARED_RAM_ENABLED) begin : g_shared_ia_ps
+        logic ram_i_cfg_valid, ram_access_en;
+        logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] ram_i_cfg_ia_banks;
+        logic ram_o_capacity_fault;
+        logic [1:0] ram_i_ia_read_en, ram_i_ia_write_en;
+        logic [SHARED_IA_ADDR_WIDTH-1:0] ram_i_ia_read_addr [2], ram_i_ia_write_addr [2];
+        logic [127:0] ram_o_ia_read_data [2], ram_i_ia_write_data [2];
+        logic [127:0] ram_i_ia_shared_write_data;
+        logic [15:0] ram_i_ia_write_mask [2];
+        logic [3:0] ram_i_ps_read_en, ram_i_ps_write_en;
+        logic [SHARED_PS_ADDR_WIDTH-1:0] ram_i_ps_read_addr [4], ram_i_ps_write_addr [4];
+        logic [127:0] ram_o_ps_read_data [4], ram_i_ps_write_data [4];
+
+        logic vector_shared_store_i_cfg_valid, vector_shared_store_i_enable, vector_shared_store_i_flush;
+        logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] vector_shared_store_i_cfg_ia_banks;
+        logic vector_shared_store_i_weight_read_en, vector_shared_store_i_weight_write_en;
+        logic [SHARED_IA_ADDR_WIDTH-1:0] vector_shared_store_i_weight_read_addr, vector_shared_store_i_weight_write_addr;
+        logic [127:0] vector_shared_store_i_weight_write_data, vector_shared_store_o_weight_read_data;
+        logic [15:0] vector_shared_store_i_weight_write_mask;
+        logic vector_shared_store_o_weight_read_valid;
+        logic vector_shared_store_i_ps_read_en, vector_shared_store_i_ps_write_en;
+        logic [SHARED_IA_ADDR_WIDTH-1:0] vector_shared_store_i_ps_read_addr, vector_shared_store_i_ps_write_addr;
+        logic [511:0] vector_shared_store_i_ps_write_data, vector_shared_store_o_ps_read_data;
+        logic vector_shared_store_o_ps_read_valid;
+        logic [1:0] vector_shared_store_o_ia_read_en, vector_shared_store_o_ia_write_en;
+        logic [SHARED_IA_ADDR_WIDTH-1:0] vector_shared_store_o_ia_read_addr [2], vector_shared_store_o_ia_write_addr [2];
+        logic [127:0] vector_shared_store_i_ia_read_data [2], vector_shared_store_o_ia_write_data [2];
+        logic [127:0] vector_shared_store_o_ia_shared_write_data;
+        logic [15:0] vector_shared_store_o_ia_write_mask [2];
+        logic [3:0] vector_shared_store_o_ps_read_en, vector_shared_store_o_ps_write_en;
+        logic [SHARED_IA_ADDR_WIDTH-1:0] vector_shared_store_o_ps_read_addr [4], vector_shared_store_o_ps_write_addr [4];
+        logic [127:0] vector_shared_store_i_ps_read_data [4], vector_shared_store_o_ps_write_data [4];
+
+        // 配置周期禁止访问。VCE 接收任务时直接配置自己的分配，矩阵任务使用已有配置流水。
+        assign ram_i_cfg_valid = core_rst_n &&
+            (vector_start_fire || (cfg_stage2_fire && !shared_allocation_invalid));
+        assign ram_i_cfg_ia_banks = vector_start_fire ?
+            SHARED_PHYSICAL_BANKS_WIDTH'(VECTOR_SHARED_IA_BANKS) :
+            SHARED_PHYSICAL_BANKS_WIDTH'(shared_ia_banks_q);
+        assign ram_access_en = core_rst_n && !ram_i_cfg_valid && !abort_pending && !task_fault;
+        assign shared_ram_capacity_fault = ram_o_capacity_fault;
+
+        assign vector_shared_store_i_cfg_valid = ram_i_cfg_valid;
+        assign vector_shared_store_i_cfg_ia_banks = ram_i_cfg_ia_banks;
+        assign vector_shared_store_i_enable = run_vector;
+        assign vector_shared_store_i_flush = abort_pending;
+        assign vector_shared_store_i_weight_read_en = engine_o_weight_read_en;
+        assign vector_shared_store_i_weight_read_addr = engine_o_weight_read_addr;
+        assign vector_shared_store_i_weight_write_en = engine_o_weight_write_en;
+        assign vector_shared_store_i_weight_write_addr = engine_o_weight_write_addr;
+        assign vector_shared_store_i_weight_write_data = engine_o_weight_write_data;
+        assign vector_shared_store_i_weight_write_mask = engine_o_weight_write_mask;
+        assign engine_i_weight_read_valid = vector_shared_store_o_weight_read_valid;
+        assign engine_i_weight_read_data = vector_shared_store_o_weight_read_data;
+        assign vector_shared_store_i_ps_read_en = engine_o_ps_read_en;
+        assign vector_shared_store_i_ps_read_addr = engine_o_ps_read_addr;
+        assign vector_shared_store_i_ps_write_en = engine_o_ps_write_en;
+        assign vector_shared_store_i_ps_write_addr = engine_o_ps_write_addr;
+        assign vector_shared_store_i_ps_write_data = engine_o_ps_write_data;
+        assign engine_i_ps_read_valid = vector_shared_store_o_ps_read_valid;
+        assign engine_i_ps_read_data = vector_shared_store_o_ps_read_data;
+        assign vector_shared_store_i_ia_read_data = ram_o_ia_read_data;
+        assign vector_shared_store_i_ps_read_data = ram_o_ps_read_data;
+
+        // 矩阵与向量任务互斥，整个任务持有端口；任务结束前等待所有同步读取返回。
+        assign ram_i_ia_read_en = !ram_access_en ? 2'b00 :
+            run_vector ? vector_shared_store_o_ia_read_en : ia_ram_read_en;
+        assign ram_i_ia_write_en = !ram_access_en ? 2'b00 :
+            run_vector ? vector_shared_store_o_ia_write_en : ia_ram_write_en;
+        assign ram_i_ia_read_addr = run_vector ? vector_shared_store_o_ia_read_addr : ia_ram_read_addr;
+        assign ram_i_ia_write_addr = run_vector ? vector_shared_store_o_ia_write_addr : ia_ram_write_addr;
+        assign ram_i_ia_write_data = run_vector ? vector_shared_store_o_ia_write_data : ia_ram_write_data;
+        assign ram_i_ia_write_mask = run_vector ? vector_shared_store_o_ia_write_mask : ia_ram_write_mask;
+        assign ram_i_ia_shared_write_data = run_vector ?
+            vector_shared_store_o_ia_shared_write_data : ia_ram_shared_write_data;
+        assign ram_i_ps_read_en = !ram_access_en ? 4'b0000 :
+            run_vector ? vector_shared_store_o_ps_read_en : ps_ram_read_en;
+        assign ram_i_ps_write_en = !ram_access_en ? 4'b0000 :
+            run_vector ? vector_shared_store_o_ps_write_en : ps_ram_write_en;
+        assign ram_i_ps_read_addr = run_vector ? vector_shared_store_o_ps_read_addr : ps_ram_read_addr;
+        assign ram_i_ps_write_addr = run_vector ? vector_shared_store_o_ps_write_addr : ps_ram_write_addr;
+        assign ram_i_ps_write_data = run_vector ? vector_shared_store_o_ps_write_data : ps_ram_write_data;
+        assign ia_ram_read_data = ram_o_ia_read_data;
+        assign ps_ram_read_data = ram_o_ps_read_data;
+
+        vector_shared_store #(
+            .p_bank_bytes(SHARED_BANK_BYTES), .p_total_bytes(SHARED_TOTAL_BYTES),
+            .p_addr_width(SHARED_IA_ADDR_WIDTH), .p_bank_count_width(SHARED_PHYSICAL_BANKS_WIDTH),
+            .p_fixed_ps_channels(p_fixed_ps_channels)
+        ) u_vector_shared_store (
+            .clk(clk), .rst_n(core_rst_n),
+            .i_cfg_valid(vector_shared_store_i_cfg_valid), .i_cfg_ia_banks(vector_shared_store_i_cfg_ia_banks),
+            .i_enable(vector_shared_store_i_enable), .i_flush(vector_shared_store_i_flush),
+            .o_idle(vector_shared_store_o_idle), .o_error(vector_shared_store_o_error),
+            .i_weight_read_en(vector_shared_store_i_weight_read_en),
+            .i_weight_read_addr(vector_shared_store_i_weight_read_addr),
+            .o_weight_read_valid(vector_shared_store_o_weight_read_valid),
+            .o_weight_read_data(vector_shared_store_o_weight_read_data),
+            .i_weight_write_en(vector_shared_store_i_weight_write_en),
+            .i_weight_write_addr(vector_shared_store_i_weight_write_addr),
+            .i_weight_write_data(vector_shared_store_i_weight_write_data),
+            .i_weight_write_mask(vector_shared_store_i_weight_write_mask),
+            .i_ps_read_en(vector_shared_store_i_ps_read_en), .i_ps_read_addr(vector_shared_store_i_ps_read_addr),
+            .o_ps_read_valid(vector_shared_store_o_ps_read_valid), .o_ps_read_data(vector_shared_store_o_ps_read_data),
+            .i_ps_write_en(vector_shared_store_i_ps_write_en), .i_ps_write_addr(vector_shared_store_i_ps_write_addr),
+            .i_ps_write_data(vector_shared_store_i_ps_write_data),
+            .o_ia_read_en(vector_shared_store_o_ia_read_en), .o_ia_read_addr(vector_shared_store_o_ia_read_addr),
+            .i_ia_read_data(vector_shared_store_i_ia_read_data),
+            .o_ia_write_en(vector_shared_store_o_ia_write_en), .o_ia_write_addr(vector_shared_store_o_ia_write_addr),
+            .o_ia_write_data(vector_shared_store_o_ia_write_data), .o_ia_write_mask(vector_shared_store_o_ia_write_mask),
+            .o_ia_shared_write_data(vector_shared_store_o_ia_shared_write_data),
+            .o_ps_read_en(vector_shared_store_o_ps_read_en), .o_ps_read_addr(vector_shared_store_o_ps_read_addr),
+            .i_ps_read_data(vector_shared_store_i_ps_read_data),
+            .o_ps_write_en(vector_shared_store_o_ps_write_en), .o_ps_write_addr(vector_shared_store_o_ps_write_addr),
+            .o_ps_write_data(vector_shared_store_o_ps_write_data)
+        );
+
         if (p_fixed_ps_channels) begin : g_channels
-            logic ram_i_cfg_valid;
-            logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] ram_i_cfg_ia_banks;
-            logic ram_o_capacity_fault;
-            logic [1:0] ram_i_ia_read_en, ram_i_ia_write_en;
-            logic [SHARED_IA_ADDR_WIDTH-1:0] ram_i_ia_read_addr [2], ram_i_ia_write_addr [2];
-            logic [127:0] ram_o_ia_read_data [2], ram_i_ia_write_data [2];
-            logic [127:0] ram_i_ia_shared_write_data;
-            logic [15:0] ram_i_ia_write_mask [2];
-            logic [3:0] ram_i_ps_read_en, ram_i_ps_write_en;
-            logic [SHARED_PS_ADDR_WIDTH-1:0] ram_i_ps_read_addr [4], ram_i_ps_write_addr [4];
-            logic [127:0] ram_o_ps_read_data [4], ram_i_ps_write_data [4];
-
-            assign ram_i_cfg_valid = cfg_stage2_fire && !shared_allocation_invalid;
-            assign ram_i_cfg_ia_banks = SHARED_PHYSICAL_BANKS_WIDTH'(shared_ia_banks_q);
-            assign shared_ram_capacity_fault = ram_o_capacity_fault;
-            assign ram_i_ia_read_en = ia_ram_read_en;
-            assign ram_i_ia_write_en = ia_ram_write_en;
-            assign ram_i_ia_read_addr = ia_ram_read_addr;
-            assign ram_i_ia_write_addr = ia_ram_write_addr;
-            assign ia_ram_read_data = ram_o_ia_read_data;
-            assign ram_i_ia_write_data = ia_ram_write_data;
-            assign ram_i_ia_shared_write_data = ia_ram_shared_write_data;
-            assign ram_i_ia_write_mask = ia_ram_write_mask;
-            assign ram_i_ps_read_en = ps_ram_read_en;
-            assign ram_i_ps_write_en = ps_ram_write_en;
-            assign ram_i_ps_read_addr = ps_ram_read_addr;
-            assign ram_i_ps_write_addr = ps_ram_write_addr;
-            assign ps_ram_read_data = ram_o_ps_read_data;
-            assign ram_i_ps_write_data = ps_ram_write_data;
-
             ia_ps_channel_ram #(
                 .p_bank_bytes(SHARED_BANK_BYTES), .p_total_bytes(SHARED_TOTAL_BYTES),
                 .p_addr_width(SHARED_IA_ADDR_WIDTH), .p_bank_count_width(SHARED_PHYSICAL_BANKS_WIDTH),
@@ -2435,25 +2567,30 @@ module npu_top #(
                 .i_ps_write_en(ram_i_ps_write_en), .i_ps_write_addr(ram_i_ps_write_addr), .i_ps_write_data(ram_i_ps_write_data)
             );
         end else begin : g_rotating
-        ia_ps_shared_ram #(
-            .BANK_BYTES(SHARED_BANK_BYTES), .TOTAL_BYTES(SHARED_TOTAL_BYTES),
-            .IA_ADDR_BITS(SHARED_IA_ADDR_WIDTH), .PS_ADDR_BITS(SHARED_PS_ADDR_WIDTH)
-        ) u_ram (
-            .clk(clk), .rst_n(core_rst_n),
-            .cfg_valid(cfg_stage2_fire && !shared_allocation_invalid),
-            .cfg_ia_banks(SHARED_PHYSICAL_BANKS_WIDTH'(shared_ia_banks_q)),
-            .capacity_fault(shared_ram_capacity_fault),
-            .ia_read_en(ia_ram_read_en), .ia_read_addr(ia_ram_read_addr), .ia_read_data(ia_ram_read_data),
-            .ia_write_en(ia_ram_write_en), .ia_write_addr(ia_ram_write_addr),
-            .ia_write_data(ia_ram_write_data), .ia_write_mask(ia_ram_write_mask),
-            .ps_read_en(ps_ram_read_en), .ps_read_addr(ps_ram_read_addr), .ps_read_data(ps_ram_read_data),
-            .ps_write_en(ps_ram_write_en), .ps_write_addr(ps_ram_write_addr), .ps_write_data(ps_ram_write_data)
-        );
+            ia_ps_shared_ram #(
+                .BANK_BYTES(SHARED_BANK_BYTES), .TOTAL_BYTES(SHARED_TOTAL_BYTES),
+                .IA_ADDR_BITS(SHARED_IA_ADDR_WIDTH), .PS_ADDR_BITS(SHARED_PS_ADDR_WIDTH)
+            ) u_ram (
+                .clk(clk), .rst_n(core_rst_n),
+                .cfg_valid(ram_i_cfg_valid), .cfg_ia_banks(ram_i_cfg_ia_banks),
+                .capacity_fault(ram_o_capacity_fault),
+                .ia_read_en(ram_i_ia_read_en), .ia_read_addr(ram_i_ia_read_addr), .ia_read_data(ram_o_ia_read_data),
+                .ia_write_en(ram_i_ia_write_en), .ia_write_addr(ram_i_ia_write_addr),
+                .ia_write_data(ram_i_ia_write_data), .ia_write_mask(ram_i_ia_write_mask),
+                .ps_read_en(ram_i_ps_read_en), .ps_read_addr(ram_i_ps_read_addr), .ps_read_data(ram_o_ps_read_data),
+                .ps_write_en(ram_i_ps_write_en), .ps_write_addr(ram_i_ps_write_addr), .ps_write_data(ram_i_ps_write_data)
+            );
         end
     end else begin : g_fixed_ia_ps
         assign shared_ram_capacity_fault = 1'b0;
         assign ia_ram_read_data = '{default:'0};
         assign ps_ram_read_data = '{default:'0};
+        assign engine_i_weight_read_valid = 1'b0;
+        assign engine_i_weight_read_data = '0;
+        assign engine_i_ps_read_valid = 1'b0;
+        assign engine_i_ps_read_data = '0;
+        assign vector_shared_store_o_idle = 1'b1;
+        assign vector_shared_store_o_error = 1'b0;
     end endgenerate
 
     compute_core #(

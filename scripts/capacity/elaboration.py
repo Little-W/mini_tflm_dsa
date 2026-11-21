@@ -59,6 +59,7 @@ def hardware_config(values):
     result["WINDOW_LANES"] = 16 if result["VECTOR_PE_COUNT"] >= 16 else result["NPU_AXI_DATA_WIDTH"] // 8
     shared = bool(values["PCR_ENGINE"] and values["SIZE"] == 16 and
                   6 <= result["SHARED_BANK_COUNT"] <= 9)
+    result["SHARED_STORAGE_ENABLE"] = int(shared)
     result["SHARED_QUANT_ENABLE"] = int(not (shared and result["SHARED_BANK_COUNT"] < 8))
     result["QUANT_LANES"] = values["SIZE"] if result["SHARED_QUANT_ENABLE"] else 1
     return result
@@ -262,6 +263,41 @@ def register_array_category(origin, name, ancestors=(), instance_path=""):
             and name.endswith(".values")):
         return "ia_diagonal_skew"
     return None
+
+
+def vector_storage_inventory(state, shared_enabled, size=16, max_taps=49):
+    """核对向量数据的实际存储位置，保留同步读输出和工作寄存器的完整计数。"""
+    counts = state["module_instances"]
+    declarations = state["sequential_declarations"]
+    weights = [item for item in declarations
+               if item["module"] == "vector_weight_bank" or
+               ".u_weights." in item["path"] and item["name"].rsplit(".", 1)[-1] == "mem" or
+               item["module"] == "vector_engine" and
+               item["name"].rsplit(".", 1)[-1] == "weight_buf"]
+    snapshots = [item for item in declarations
+                 if item["buffer_category"] == "vector_dw_snapshot"]
+    accumulators = [item for item in declarations
+                    if item["module"] == "vector_engine" and
+                    item["name"].rsplit(".", 1)[-1] == "acc_buf"]
+    adapter_count = counts.get("vector_shared_store", 0)
+    adapter_state = [item for item in declarations if item["module"] == "vector_shared_store"]
+    private_weight_modules = counts.get("vector_weight_store", 0) + counts.get("vector_weight_bank", 0)
+    shared_ram_count = counts.get("ia_ps_shared_ram", 0) + counts.get("ia_ps_channel_ram", 0)
+    if shared_enabled:
+        passed = (adapter_count == 1 and shared_ram_count == 1 and
+                  private_weight_modules == 0 and not weights and not snapshots)
+    else:
+        passed = (adapter_count == 0 and private_weight_modules > 0 and
+                  sum(item["bits"] for item in weights) == size * max_taps * 8 and
+                  sum(item["bits"] for item in snapshots) == size * 32)
+    passed = passed and sum(item["bits"] for item in accumulators) == size * 32
+    return dict(passed=passed, shared_storage_enabled=bool(shared_enabled),
+                adapter_instances=adapter_count, shared_ram_instances=shared_ram_count,
+                adapter_state_bits=sum(item["bits"] for item in adapter_state),
+                adapter_state_declarations=adapter_state,
+                private_weight_module_instances=private_weight_modules,
+                private_weight_declarations=weights, private_snapshot_declarations=snapshots,
+                working_accumulator_declarations=accumulators)
 
 
 def read_only_arrays(node, refs, width, variable_names):
@@ -494,7 +530,8 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                 "VECTOR_PE_COUNT", "WINDOW_LANES", "MATRIX_INPUT_LANES",
                 "REQUANT_COMPUTE_LANES", "DW_SHARED_QUANT_ENABLE")),
             "vector_engine": constant_parameters(tree, "vector_engine", (
-                "PE_COUNT", "WINDOW_LANES", "QUANT_LANES", "SHARED_QUANT_ENABLE")),
+                "TILE", "MAX_TAPS", "PE_COUNT", "WINDOW_LANES", "QUANT_LANES",
+                "SHARED_QUANT_ENABLE", "SHARED_STORAGE_ENABLE")),
             "conv_im2col_frontend": constant_parameters(tree, "conv_im2col_frontend", (
                 "LANES", "NARROW_LANES", "p_cache_read_width")),
         }
@@ -532,6 +569,11 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
     layout = model.memory_geometry(values["IA_CACHE_BLOCKS"], values["PS_FRAME_COUNT"],
                                    values["PS_POOL_BYTES"], values["SIZE"], bool(values["PCR_ENGINE"]),
                                    **geometry_options)
+    vector_storage = vector_storage_inventory(state, layout["shared_ia_ps_enabled"],
+                                              values["SIZE"], 49)
+    architecture = architecture and vector_storage["passed"] and \
+        vector_parameters["SHARED_STORAGE_ENABLE"] == int(layout["shared_ia_ps_enabled"]) and \
+        vector_parameters["TILE"] == values["SIZE"] and vector_parameters["MAX_TAPS"] == 49
     shared_data = None
     if layout["shared_ia_ps_enabled"]:
         banks = layout["shared_physical_bank_count"]
@@ -606,6 +648,7 @@ def measure(values, *, verilator="verilator", output_dir=None, cache_dir=CACHE, 
                   expected_register_arrays_bits=expected_registers,
                   memory_geometry=layout, shared_data_memory=shared_data,
                   capability_parameters=capabilities, capabilities_match=capabilities_match,
+                  vector_storage=vector_storage,
                   single_array_and_vector_pe_count=architecture)
     (out / "result.json").write_text(json.dumps(report, indent=2) + "\n")
     if passed:

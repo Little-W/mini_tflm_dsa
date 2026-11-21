@@ -143,7 +143,7 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn("requant_input_rows", fixed)
 
     def test_production_bank_configurations_preserve_capacity_budget(self):
-        expected_bytes = {6: 112439.25, 7: 120631.25, 8: 115465.25, 9: 123657.25}
+        expected_bytes = {6: 111591.25, 7: 119783.25, 8: 114617.25, 9: 122809.25}
         for bank_count, expected in expected_bytes.items():
             arrays = model.buffer_arrays_bits(4, 16, 49152, bank_bytes=8192,
                                              bank_count=bank_count)
