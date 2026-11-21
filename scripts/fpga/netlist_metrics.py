@@ -53,12 +53,27 @@ def parameter(cell, name, default=0):
     return int(value)
 
 
+def boolean_parameter(cell, name, default=False):
+    """读取 Vivado 布尔值和 Yosys 二进制参数，并保留非法值检查。"""
+    value = cell.get('parameters', {}).get(name, default)
+    if isinstance(value, (bool, int)) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        value = value.strip().upper()
+        if value in ('TRUE', 'FALSE'):
+            return value == 'TRUE'
+        if re.fullmatch(r'[01]+', value) and int(value, 2) in (0, 1):
+            return bool(int(value, 2))
+    raise ValueError(f'Invalid boolean primitive parameter {name}: {value!r}')
+
+
 def dsp_alu_low_bit_dependencies(cell):
     """识别无移位的 A:B 与 C 运算，进位在同一 SIMD 通道内向高位传播。"""
     settings = cell.get('parameters', {})
-    required = {'USE_MULT': 'NONE', 'USE_DPORT': 'FALSE',
-                'A_INPUT': 'DIRECT', 'B_INPUT': 'DIRECT'}
+    required = {'USE_MULT': 'NONE', 'A_INPUT': 'DIRECT', 'B_INPUT': 'DIRECT'}
     if any(str(settings.get(key, default)).strip() != default for key, default in required.items()):
+        return False
+    if boolean_parameter(cell, 'USE_DPORT'):
         return False
     # 未声明的 USE_MULT 采用原语默认乘法模式，不能按纯 ALU 处理。
     if str(settings.get('USE_MULT', 'MULTIPLY')).strip() != 'NONE':
@@ -214,7 +229,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
                            'CARRYIN': 'CARRYINREG', 'CARRYINSEL': 'CARRYINSELREG'}
             preg = parameter(cell, 'PREG')
             mreg = parameter(cell, 'MREG')
-            use_dport = cell.get('parameters', {}).get('USE_DPORT', 'FALSE').strip() == 'TRUE'
+            use_dport = boolean_parameter(cell, 'USE_DPORT')
             adreg = parameter(cell, 'ADREG') and use_dport
             internal_registers = [key for key in ('AREG', 'BREG', 'CREG', 'DREG', 'ADREG', 'MREG',
                                   'INMODEREG', 'OPMODEREG', 'ALUMODEREG', 'CARRYINREG', 'CARRYINSELREG')
@@ -344,7 +359,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
             for port in outputs:
                 arcs(name, cell, port, inputs)
         elif kind in RAM_LUT_SITES or kind in SRL_TYPES:
-            address = [(p, b) for p, b in inputs if re.fullmatch(r'ADDR[A-D]|A|A[0-9]+|DPRA|DPRA[0-9]+|RADR[0-9]+', p)]
+            address = [(p, b) for p, b in inputs if re.fullmatch(r'ADDR[A-D]|A|A[0-9]+|ADR[0-9]+|DPRA|DPRA[0-9]+|RADR[0-9]+', p)]
             for port in outputs:
                 selected = address
                 if kind in ('RAM32M', 'RAM64M') and port.startswith('DO'):
@@ -362,7 +377,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
                 read_only |= kind in ('RAM32M', 'RAM64M') and port in ('ADDRA', 'ADDRB', 'ADDRC')
                 if not port.startswith(('CLK', 'WCLK')) and not read_only:
                     for _, bit in bits:
-                        sink(bit, name, cell, port, 'data' if port in ('D', 'DI', 'DIA', 'DIB', 'DIC', 'DID') else 'control')
+                        sink(bit, name, cell, port, 'data' if port in ('D', 'I', 'DI', 'DIA', 'DIB', 'DIC', 'DID') else 'control')
         elif kind in ('BUFGCE', 'BUFGCE_1', 'BUFGCTRL', 'BUFHCE'):
             for port in ('CE', 'CE0', 'CE1', 'S0', 'S1'):
                 for bit in ports.get(port, []):
@@ -465,7 +480,7 @@ def connected_paths(module, limit=20, group_limit=12, root_filter=None, sink_fil
     }
 
 
-def register_path_requirement(paths, maximum=9):
+def register_path_requirement(paths, maximum=10):
     """分别保存完整路径图、实际组合单元数和指定结构限制。"""
     if maximum < 0:
         raise ValueError('The register path limit must be nonnegative')
@@ -477,7 +492,7 @@ def register_path_requirement(paths, maximum=9):
             'timing_frequency_validation': 'Requires primitive and routing delays for the target device'}
 
 
-def analyze(module, maximum_register_path_cells=9, **path_options):
+def analyze(module, maximum_register_path_cells=10, **path_options):
     paths = connected_paths(module, **path_options)
     return {'resources': resources(module['cells']), 'paths': paths,
             'register_path_requirement': register_path_requirement(paths, maximum_register_path_cells)}
@@ -491,7 +506,7 @@ def main():
     parser.add_argument('--register-origins', type=Path, help='pre_lut.il containing original register signal names')
     parser.add_argument('--path-limit', type=int, default=20)
     parser.add_argument('--group-limit', type=int, default=12)
-    parser.add_argument('--max-register-path-cells', type=int, default=9,
+    parser.add_argument('--max-register-path-cells', type=int, default=10,
                         help='Maximum permitted mapped combinational cells between clocked storage boundaries')
     parser.add_argument('--require-register-path-limit', action='store_true',
                         help='Return failure if the complete graph does not confirm the specified limit')

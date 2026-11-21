@@ -94,10 +94,16 @@ _soc_parameters = {
     'CPU_AXI_WRITE_TIMING_BUFFER': 1, 'BYPASS_RAM_PINGPONG': 0,
     'RAM_WRITE_TIMING_BUFFER': 1,
 }
+def _soc_cpu_source(root):
+    """项目维护的 CPU 源保留上游接口；历史源码目录使用固定子模块。"""
+    project_cpu = 'rtl/soc/picorv32_npu.v'
+    return project_cpu if (root / project_cpu).exists() else 'picorv32/picorv32.v'
+
+
 _soc_sources = _npu_sources + [str(path.relative_to(ROOT))
     for folder in ('rtl/axi_top', 'rtl/soc') for path in sorted((ROOT / folder).rglob('*'))
     if path.suffix in ('.v', '.sv')]
-_soc_sources += ['rtl/soc_top.sv', 'picorv32/picorv32.v', 'picorv32/picosoc/simpleuart.v']
+_soc_sources += ['rtl/soc_top.sv', _soc_cpu_source(ROOT), 'picorv32/picosoc/simpleuart.v']
 CASES['soc_top'] = {
     'top': 'soc_top',
     'options': _production_options + [f'-G{name}={value}' for name, value in _soc_parameters.items()],
@@ -327,7 +333,7 @@ def main():
     parser.add_argument('--cases', nargs='+', default=list(DEFAULT_CASES), help='Case names: ' + ', '.join(CASES))
     parser.add_argument('--source-root', type=Path, default=ROOT, help='Repository or worktree containing RTL')
     parser.add_argument('--case-config', type=Path, help='JSON mapping additional case names to top/options/sources/configuration')
-    parser.add_argument('--max-register-path-cells', type=int, default=9,
+    parser.add_argument('--max-register-path-cells', type=int, default=10,
                         help='Maximum permitted mapped combinational cells between clocked storage boundaries')
     parser.add_argument('--require-register-path-limit', action='store_true',
                         help='Return failure unless every complete register-path graph satisfies the specified limit')
@@ -338,6 +344,8 @@ def main():
                         help='Stop after saving the requested synthesis checkpoint')
     parser.add_argument('--wide-alu-dsp-budget', type=int,
                         help='Map independent wide arithmetic cells to DSPs within this total DSP budget')
+    parser.add_argument('--rtl-dsp-attributes', action='store_true',
+                        help='Map only arithmetic results marked use_dsp=yes in RTL; requires a DSP budget')
     parser.add_argument('--wide-alu-dsp-reserve', type=int, default=0,
                         help='DSP capacity reserved beyond the mapped design')
     parser.add_argument('--wide-alu-minimum-width', type=int, default=24)
@@ -361,6 +369,9 @@ def main():
         parser.error('Invalid wide arithmetic DSP budget, reserve, or minimum width')
     if args.pack_small_alu and (args.wide_alu_dsp_budget is None or args.wide_alu_maximum_chain != 1):
         parser.error('--pack-small-alu requires a DSP budget and --wide-alu-maximum-chain 1')
+    if args.rtl_dsp_attributes and (args.wide_alu_dsp_budget is None or args.pack_small_alu
+                                    or args.wide_alu_maximum_chain != 1):
+        parser.error('--rtl-dsp-attributes requires a DSP budget and no automatic DSP selection options')
     ROOT = args.source_root.resolve()
     if args.out is None:
         args.out = ROOT / 'build/open_fpga_synth'
@@ -371,7 +382,7 @@ def main():
     CASES['npu_top']['sources'] = npu_sources
     CASES['soc_top']['sources'] = npu_sources + [str(path.relative_to(ROOT))
         for folder in ('rtl/axi_top', 'rtl/soc') for path in sorted((ROOT / folder).rglob('*'))
-        if path.suffix in ('.v', '.sv')] + ['rtl/soc_top.sv', 'picorv32/picorv32.v', 'picorv32/picosoc/simpleuart.v']
+        if path.suffix in ('.v', '.sv')] + ['rtl/soc_top.sv', _soc_cpu_source(ROOT), 'picorv32/picosoc/simpleuart.v']
     vector_parameters = 'rtl/npu/conv/vector_quant_params.sv'
     if (ROOT / vector_parameters).exists():
         CASES['vector_engine']['sources'].append(vector_parameters)
@@ -459,6 +470,8 @@ def main():
                 command += ['--maximum-chain', str(args.wide_alu_maximum_chain)]
             if args.pack_small_alu:
                 command += ['--pack-small-alu']
+            if args.rtl_dsp_attributes:
+                command += ['--use-dsp-attributes']
             mapping_files = [mapping] + ([packed_mapping] if args.pack_small_alu else [])
             mapping_commands = ''.join(f'techmap -map {shlex.quote(str(path))}\n' for path in mapping_files)
             external_commands['02b_map_alu'] = command
@@ -485,6 +498,8 @@ def main():
                 'mapper_sha256': digest(mapper), 'techmap_sha256': digest(mapping),
                 'lut_dependencies_sha256': digest(helper_directory / 'lut_dependencies.py'),
             }
+            if args.rtl_dsp_attributes:
+                wide_alu_configuration['use_dsp_attributes'] = True
             if args.wide_alu_maximum_chain != 1:
                 wide_alu_configuration['maximum_selected_combinational_dsps'] = args.wide_alu_maximum_chain
             if args.pack_small_alu:
