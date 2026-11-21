@@ -136,10 +136,19 @@ module ps_window_scheduler #(
     end
     assign active_after_frame[ID_W] = &active_id;
 
-    assign column_after_part[0] = ~next_column_tile[0];
-    for (genvar column_bit = 1; column_bit <= TILE_W; column_bit++) begin : g_column_increment
-        assign column_after_part[column_bit] = next_column_tile[column_bit] ^
-            (&next_column_tile[column_bit-1:0]);
+    // 各组并行形成低位传播条件，组内只执行至多 8 位的定宽增量。
+    for (genvar column_group = 0; column_group < (TILE_W+8)/8; column_group++) begin : g_column_increment
+        localparam int unsigned p_first = 8 * column_group;
+        localparam int unsigned p_bits = (TILE_W+1-p_first < 8) ? TILE_W+1-p_first : 8;
+        logic column_carry;
+
+        if (column_group == 0) begin : g_first
+            assign column_carry = 1'b1;
+        end else begin : g_upper
+            assign column_carry = &next_column_tile[p_first-1:0];
+        end
+        assign column_after_part[p_first +: p_bits] =
+            next_column_tile[p_first +: p_bits] + p_bits'(column_carry);
     end
 
     assign active_frame_k = frame_k[active_id];
