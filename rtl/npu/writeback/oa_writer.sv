@@ -140,6 +140,7 @@ module oa_writer #(
     assign vec_valid_num_col = vec_valid_num_col_r;
     assign vec_valid_num_row = vec_valid_num_row_r;
 
+    logic [1:0] initial_axis_is_last;
     logic [REG_WIDTH-1:0] k_tiles_pre_w, m_tiles_pre_w;
     if ((VLEN == (1 << VCOL_W)) && (REG_WIDTH > VCOL_W) && (VCOL_W > 0)) begin : g_rounded_tile_counts
         localparam int p_quotient_width = REG_WIDTH - VCOL_W;
@@ -152,6 +153,24 @@ module oa_writer #(
         for (genvar axis = 0; axis < 2; axis++) begin : g_axis
             logic [p_quotient_width-1:0] quotient;
             logic round_up;
+            localparam int p_effective_width = (CNT_W < p_quotient_width) ? CNT_W : p_quotient_width;
+            logic initial_is_last_binary;
+            if (p_effective_width == 1) begin : g_single_count_bit
+                assign initial_is_last_binary = 1'b1;
+            end else begin : g_multiple_count_bits
+                // 有限位宽商取0或1，以及向上取整后的模回绕，都属于首块末尾。
+                assign initial_is_last_binary =
+                    ((quotient[p_effective_width-1:1] == '0) && (!round_up || !quotient[0])) ||
+                    ((&quotient[p_effective_width-1:0]) && round_up);
+            end
+            always_comb begin
+                initial_axis_is_last[axis] = initial_is_last_binary;
+`ifndef SYNTHESIS
+                if ((^dimensions[axis]) === 1'bx) begin
+                    initial_axis_is_last[axis] = count_t'(REG_WIDTH'(rounded[axis])) <= count_t'(1);
+                end
+`endif
+            end
 
             assign quotient = dimensions[axis][REG_WIDTH-1:VCOL_W];
             assign round_up = |dimensions[axis][VCOL_W-1:0];
@@ -174,6 +193,8 @@ module oa_writer #(
     end else begin : g_general_tile_counts
         assign k_tiles_pre_w = (k == '0) ? '0 : ((k + REG_WIDTH'(VLEN - 1)) >> VCOL_W);
         assign m_tiles_pre_w = (m == '0) ? '0 : ((m + REG_WIDTH'(VLEN - 1)) >> VCOL_W);
+        assign initial_axis_is_last[0] = count_t'(k_tiles_pre_w) <= count_t'(1);
+        assign initial_axis_is_last[1] = count_t'(m_tiles_pre_w) <= count_t'(1);
     end
     wire count_t k_tiles_pre = count_t'(k_tiles_pre_w);
     wire count_t m_tiles_pre = count_t'(m_tiles_pre_w);
@@ -185,10 +206,28 @@ module oa_writer #(
         (m == '0) ? '0 : ((m_tail_pre == '0) ? VLEN_COUNT : {1'b0, m_tail_pre});
     wire count_t row_tiles_total_pre = is_mode_eff ? m_tiles_pre : k_tiles_pre;
     wire count_t col_tiles_total_pre = is_mode_eff ? k_tiles_pre : m_tiles_pre;
+    // 首块末尾资格分别读取两个维度，模式仅选择一位判断结果。
+    (* keep = "true" *) logic k_initial_is_last_pre, m_initial_is_last_pre;
+    logic row_initial_is_last_pre, col_initial_is_last_pre;
+    assign k_initial_is_last_pre = initial_axis_is_last[0];
+    assign m_initial_is_last_pre = initial_axis_is_last[1];
+    always_comb begin
+        row_initial_is_last_pre = is_mode_eff ? m_initial_is_last_pre : k_initial_is_last_pre;
+        col_initial_is_last_pre = is_mode_eff ? k_initial_is_last_pre : m_initial_is_last_pre;
+`ifndef SYNTHESIS
+        if ((^is_mode_eff) === 1'bx) begin
+            row_initial_is_last_pre = row_tiles_total_pre <= count_t'(1);
+            col_initial_is_last_pre = col_tiles_total_pre <= count_t'(1);
+        end
+`endif
+    end
 
-    count_t tile_row_inc;
-    count_t tile_col_inc;
+    (* use_dsp = "yes" *) count_t tile_row_inc;
+    (* use_dsp = "yes" *) count_t tile_col_inc;
+    (* use_dsp = "yes" *) count_t row_group_next_sum;
     count_t tile_row_inc_q, tile_col_inc_q;
+    (* use_dsp = "yes" *) logic [CNT_W:0] row_total_difference, row_group_difference;
+    (* use_dsp = "yes" *) logic [CNT_W:0] column_total_difference, group_total_difference;
     logic row_inc_in_range_q, col_inc_in_range_q, group_inc_in_range_q;
     logic row_inc_is_last_q, col_inc_is_last_q;
     logic group_base_is_last_q, group_next_is_last_q;
@@ -222,11 +261,22 @@ module oa_writer #(
     logic [REG_WIDTH-1:0] init_row_addr_step;
     logic [REG_WIDTH-1:0] init_col_addr_step;
     logic [REG_WIDTH-1:0] init_group_row_addr_step;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] init_group_step_25;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] row_offset_next, col_offset_next;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] co_next_col_offset;
     logic [2:0] init_group_shift;
     logic init_group_by_25;
+    (* use_dsp = "yes" *) logic [REG_WIDTH:0] co_initial_difference, co_next_difference;
+    logic co_initial_is_short, co_next_is_short;
+    (* use_dsp = "yes" *) count_t row_tiles_decrement, col_tiles_decrement;
+    logic co_contiguous_q;
+    logic [2:0] co_row_div_shift_q;
+    logic [8:0] co_rows_per_256;
+    logic [7:0] co_row_low_zero;
+    logic [3:0] co_segment_aligned;
     logic [REG_WIDTH-1:0] co_rows_limit;
     logic [REG_WIDTH-1:0] co_initial_limit;
-    logic [REG_WIDTH-1:0] co_next_rows_remaining;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] co_next_rows_remaining;
     logic [REG_WIDTH-1:0] co_next_rows_remaining_q, co_next_col_offset_q;
     logic [REG_WIDTH-1:0] co_chunk_bytes;
     logic [8:0] co_initial_rows;
@@ -238,12 +288,21 @@ module oa_writer #(
     logic [4:0] co_initial_row_tiles_q, co_current_row_tiles_q;
     logic [4:0] co_next_row_tiles_q;
     logic [4:0] co_initial_row_tiles_calc, co_next_row_tiles_calc;
+    logic [8:0] co_initial_k_rows_low, co_initial_limit_rows_low;
+    logic [4:0] co_initial_k_row_tiles, co_initial_limit_row_tiles;
     logic [8:0] co_next_remaining_rows_low, co_limit_rows_low;
     logic [4:0] co_next_remaining_row_tiles, co_limit_row_tiles;
     logic co_has_next_col;
     logic co_has_next_group;
     logic co_advance_group;
     logic co_wrap_group;
+
+    // 步长与地址推进独立计算，状态机只在原有更新周期选择结果。
+    assign init_group_step_25 = row_addr_step_cur * 5'd25;
+    assign row_group_next_sum = row_group_next_base_idx + cfg_ia_reuse_num;
+    assign row_offset_next = row_offset_addr_cur + row_addr_step_cur;
+    assign col_offset_next = col_offset_addr_cur + col_addr_step_cur;
+    assign co_next_col_offset = col_offset_addr_cur + co_chunk_bytes;
 
     // 末尾索引先完成饱和减一，后续行列条件只选择已经准备的索引。
     assign k_last_index = (k_last_valid == '0) ? '0 : (k_last_valid - 1'b1);
@@ -259,7 +318,7 @@ module oa_writer #(
         init_group_by_25 = 1'b0;
         if (CNT_W >= 7) begin
             // 幂次复用数量共用移位器，25倍步长保留独立的定宽加法。
-            case (init_reuse_num_eff)
+            case (cfg_ia_reuse_num)
                 count_t'(2):  init_group_shift = 3'd1;
                 count_t'(4):  init_group_shift = 3'd2;
                 count_t'(8):  init_group_shift = 3'd3;
@@ -270,19 +329,19 @@ module oa_writer #(
                 default: begin end
             endcase
             init_group_row_addr_step = init_group_by_25 ?
-                (init_row_addr_step << 4) + (init_row_addr_step << 3) + init_row_addr_step :
-                init_row_addr_step << init_group_shift;
+                init_group_step_25 :
+                row_addr_step_cur << init_group_shift;
         end else begin
-            unique case (init_reuse_num_eff)
-                count_t'(1):  init_group_row_addr_step = init_row_addr_step;
-                count_t'(2):  init_group_row_addr_step = init_row_addr_step << 1;
-                count_t'(4):  init_group_row_addr_step = init_row_addr_step << 2;
-                count_t'(8):  init_group_row_addr_step = init_row_addr_step << 3;
-                count_t'(16): init_group_row_addr_step = init_row_addr_step << 4;
-                count_t'(25): init_group_row_addr_step = (init_row_addr_step << 4) + (init_row_addr_step << 3) + init_row_addr_step;
-                count_t'(32): init_group_row_addr_step = init_row_addr_step << 5;
-                count_t'(64): init_group_row_addr_step = init_row_addr_step << 6;
-                default: init_group_row_addr_step = init_row_addr_step;
+            unique case (cfg_ia_reuse_num)
+                count_t'(1):  init_group_row_addr_step = row_addr_step_cur;
+                count_t'(2):  init_group_row_addr_step = row_addr_step_cur << 1;
+                count_t'(4):  init_group_row_addr_step = row_addr_step_cur << 2;
+                count_t'(8):  init_group_row_addr_step = row_addr_step_cur << 3;
+                count_t'(16): init_group_row_addr_step = row_addr_step_cur << 4;
+                count_t'(25): init_group_row_addr_step = init_group_step_25;
+                count_t'(32): init_group_row_addr_step = row_addr_step_cur << 5;
+                count_t'(64): init_group_row_addr_step = row_addr_step_cur << 6;
+                default: init_group_row_addr_step = row_addr_step_cur;
             endcase
         end
 
@@ -339,21 +398,25 @@ module oa_writer #(
                                 ? k_last_index : (VLEN_COUNT - 1'b1);
     end
 
+    assign row_total_difference = {1'b0, tile_row_inc_q} - {1'b0, row_tiles_total};
+    assign row_group_difference = {1'b0, tile_row_inc_q} - {1'b0, row_group_next_base_idx};
+    assign column_total_difference = {1'b0, tile_col_inc_q} - {1'b0, col_tiles_total};
+    assign group_total_difference = {1'b0, row_group_next_base_idx} - {1'b0, row_tiles_total};
+
     // 行列索引在请求准备期间保持，递增与范围判断分别使用已有周期。
     // S_START 才保存下一块控制，S_WRITE 的完成事件随后消费这些结果。
     always_ff @(posedge clk) begin
         tile_row_inc_q <= tile_row_inc;
         tile_col_inc_q <= tile_col_inc;
-        row_inc_in_range_q <= (tile_row_inc_q < row_tiles_total) &&
-                              (tile_row_inc_q < row_group_next_base_idx);
-        col_inc_in_range_q <= tile_col_inc_q < col_tiles_total;
-        group_inc_in_range_q <= row_group_next_base_idx < row_tiles_total;
+        row_inc_in_range_q <= row_total_difference[CNT_W] && row_group_difference[CNT_W];
+        col_inc_in_range_q <= column_total_difference[CNT_W];
+        group_inc_in_range_q <= group_total_difference[CNT_W];
         row_inc_is_last_q <= tile_row_inc_q == row_tiles_last_idx;
         col_inc_is_last_q <= tile_col_inc_q == col_tiles_last_idx;
         group_base_is_last_q <= row_group_base_idx == row_tiles_last_idx;
         group_next_is_last_q <= row_group_next_base_idx == row_tiles_last_idx;
         co_next_rows_remaining_q <= co_next_rows_remaining;
-        co_next_col_offset_q <= col_offset_addr_cur + co_chunk_bytes;
+        co_next_col_offset_q <= co_next_col_offset;
     end
 
     // 当前列首地址随列和组推进保存，后续地址只需要一次完整加法。
@@ -409,13 +472,34 @@ module oa_writer #(
     assign co_valid_rows = co_current_rows;
     assign co_rows_limit = REG_WIDTH'(cfg_ia_reuse_num) << VCOL_W;
     assign co_initial_limit = REG_WIDTH'(init_reuse_num_eff) << VCOL_W;
-    assign co_initial_rows_calc = 9'((k < co_initial_limit) ? k : co_initial_limit);
+    // 扩展减法的最高位保存无符号借位，两个行数选择共用比较结果。
+    assign co_initial_difference = {1'b0, k} - {1'b0, co_initial_limit};
+    assign co_next_difference = {1'b0, co_next_rows_remaining_q} - {1'b0, co_rows_limit};
+    assign co_initial_is_short = co_initial_difference[REG_WIDTH];
+    assign co_next_is_short = co_next_difference[REG_WIDTH];
+    assign row_tiles_decrement = row_tiles_total - count_t'(1);
+    assign col_tiles_decrement = col_tiles_total - count_t'(1);
+    assign co_initial_rows_calc = 9'(co_initial_is_short ? k : co_initial_limit);
     assign co_next_rows_remaining = cfg_k - (REG_WIDTH'(row_group_next_base_idx) << VCOL_W);
-    assign co_next_rows_calc = 9'((co_next_rows_remaining_q < co_rows_limit) ?
+    assign co_next_rows_calc = 9'(co_next_is_short ?
         co_next_rows_remaining_q : co_rows_limit);
     // 行分块数量与行数同时准备，输出 FIFO 的启动判断直接使用寄存结果。
-    assign co_initial_row_tiles_calc = co_initial_rows_calc[8:4] +
-        {4'b0000, (|co_initial_rows_calc[3:0])};
+    assign co_initial_k_rows_low = 9'(k);
+    assign co_initial_limit_rows_low = 9'(co_initial_limit);
+    assign co_initial_k_row_tiles = co_initial_k_rows_low[8:4] +
+        {4'b0000, (|co_initial_k_rows_low[3:0])};
+    assign co_initial_limit_row_tiles = co_initial_limit_rows_low[8:4] +
+        {4'b0000, (|co_initial_limit_rows_low[3:0])};
+    always_comb begin
+        co_initial_row_tiles_calc = co_initial_is_short ?
+            co_initial_k_row_tiles : co_initial_limit_row_tiles;
+`ifndef SYNTHESIS
+        if ((^{k, co_initial_limit}) === 1'bx) begin
+            co_initial_row_tiles_calc = co_initial_rows_calc[8:4] +
+                {4'b0000, (|co_initial_rows_calc[3:0])};
+        end
+`endif
+    end
     // 两种候选行数分别计算分块数量，完整范围比较只选择已经准备的结果。
     assign co_next_remaining_rows_low = 9'(co_next_rows_remaining_q);
     assign co_limit_rows_low = 9'(co_rows_limit);
@@ -423,7 +507,7 @@ module oa_writer #(
         {4'b0000, (|co_next_remaining_rows_low[3:0])};
     assign co_limit_row_tiles = co_limit_rows_low[8:4] +
         {4'b0000, (|co_limit_rows_low[3:0])};
-    assign co_next_row_tiles_calc = (co_next_rows_remaining_q < co_rows_limit) ?
+    assign co_next_row_tiles_calc = co_next_is_short ?
         co_next_remaining_row_tiles : co_limit_row_tiles;
     assign co_advance_group = (state == S_WRITE) && write_done &&
         ((cfg_coalesce && !cfg_is_mode) ? (!co_has_next_col && co_has_next_group) :
@@ -442,6 +526,28 @@ module oa_writer #(
             default: co_group_bytes = 17'(co_valid_rows) << 4;
         endcase
     end
+    // 配置周期保存连续输出资格和每256字节对应的行数右移量。
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            co_contiguous_q <= (REG_WIDTH'(16) == '0);
+            co_row_div_shift_q <= 3'd4;
+        end else if (init_cfg) begin
+            co_contiguous_q <= m == (REG_WIDTH'(coalesce_cols) << 4);
+            case (coalesce_cols)
+                5'd16: co_row_div_shift_q <= 3'd0;
+                5'd8: co_row_div_shift_q <= 3'd1;
+                5'd4: co_row_div_shift_q <= 3'd2;
+                5'd2: co_row_div_shift_q <= 3'd3;
+                default: co_row_div_shift_q <= 3'd4;
+            endcase
+        end
+    end
+    assign co_rows_per_256 = co_valid_rows >> co_row_div_shift_q;
+    assign co_row_low_zero[0] = 1'b1;
+    for (genvar bits_count = 1; bits_count < 8; bits_count++) begin : g_row_divisibility
+        assign co_row_low_zero[bits_count] = (co_valid_rows[bits_count-1:0] == '0);
+    end
+    assign co_segment_aligned = 4'(co_row_low_zero >> co_row_div_shift_q);
     // 描述符发出前保存后续组的范围信息，DMA 完成时只选择已准备的结果。
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -457,17 +563,17 @@ module oa_writer #(
             co_initial_rows <= co_initial_rows_calc;
             co_current_rows <= co_initial_rows_calc;
             co_next_rows_prepared <= '0;
-            co_initial_row_tiles_q <= co_initial_row_tiles_calc;
-            co_current_row_tiles_q <= co_initial_row_tiles_calc;
+            co_initial_row_tiles_q <= is_mode_eff ? 5'd1 : co_initial_row_tiles_calc;
+            co_current_row_tiles_q <= is_mode_eff ? 5'd1 : co_initial_row_tiles_calc;
             co_next_row_tiles_q <= '0;
             co_has_next_col <= 1'b0;
             co_has_next_group <= 1'b0;
         end else begin
             if ((state == S_REQ) && write_oa_granted) begin
                 co_next_rows_prepared <= co_next_rows_calc;
-                co_next_row_tiles_q <= co_next_row_tiles_calc;
+                co_next_row_tiles_q <= cfg_is_mode ? 5'd1 : co_next_row_tiles_calc;
                 co_has_next_col <= co_next_col_offset_q < cfg_m;
-                co_has_next_group <= row_group_next_base_idx < row_tiles_total;
+                co_has_next_group <= group_total_difference[CNT_W];
             end
             if (co_advance_group) begin
                 co_current_rows <= co_next_rows_prepared;
@@ -478,8 +584,8 @@ module oa_writer #(
             end
         end
     end
-    assign coalesce_row_tiles = cfg_is_mode ? 5'd1 :
-        co_current_row_tiles_q;
+    // 保存模式生效后的组大小，输出 FIFO 直接读取寄存值。
+    assign coalesce_row_tiles = co_current_row_tiles_q;
     assign coalesce_group_start = dma_start && cfg_coalesce && !cfg_is_mode;
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -489,20 +595,20 @@ module oa_writer #(
                 co_dma_rows <= 0;
                 co_dma_stride <= 0;
                 co_dma_len <= 8'(REG_WIDTH'(cfg_coalesce_cols) * 16 / BYTE_PER_BEAT) - 1'b1;
-            end else if (BUS_WIDTH == 64 && cfg_m == co_chunk_bytes && co_group_bytes[10:0] == 0) begin
-                co_dma_rows <= 9'(co_group_bytes >> 11);
+            end else if (BUS_WIDTH == 64 && co_contiguous_q && co_segment_aligned[3]) begin
+                co_dma_rows <= co_rows_per_256 >> 3;
                 co_dma_stride <= REG_WIDTH'(2048);
                 co_dma_len <= 8'd255;
-            end else if (cfg_m == co_chunk_bytes && co_group_bytes[9:0] == 0) begin
-                co_dma_rows <= 9'(co_group_bytes >> 10);
+            end else if (co_contiguous_q && co_segment_aligned[2]) begin
+                co_dma_rows <= co_rows_per_256 >> 2;
                 co_dma_stride <= REG_WIDTH'(1024);
                 co_dma_len <= 8'(1024 / BYTE_PER_BEAT - 1);
-            end else if (cfg_m == co_chunk_bytes && co_group_bytes[8:0] == 0) begin
-                co_dma_rows <= 9'(co_group_bytes >> 9);
+            end else if (co_contiguous_q && co_segment_aligned[1]) begin
+                co_dma_rows <= co_rows_per_256 >> 1;
                 co_dma_stride <= REG_WIDTH'(512);
                 co_dma_len <= 8'(512 / BYTE_PER_BEAT - 1);
-            end else if (cfg_m == co_chunk_bytes && co_group_bytes[7:0] == 0) begin
-                co_dma_rows <= 9'(co_group_bytes >> 8);
+            end else if (co_contiguous_q && co_segment_aligned[0]) begin
+                co_dma_rows <= co_rows_per_256;
                 co_dma_stride <= REG_WIDTH'(256);
                 co_dma_len <= 8'(256 / BYTE_PER_BEAT - 1);
             end else begin
@@ -573,8 +679,8 @@ module oa_writer #(
             m_last_valid <= m_last_valid_pre;
         end else if (cfg_lat_tick) begin
             cfg_lat_tick <= 1'b0;
-            row_tiles_last_idx <= (row_tiles_total == '0) ? '0 : (row_tiles_total - count_t'(1));
-            col_tiles_last_idx <= (col_tiles_total == '0) ? '0 : (col_tiles_total - count_t'(1));
+            row_tiles_last_idx <= (row_tiles_total == '0) ? '0 : row_tiles_decrement;
+            col_tiles_last_idx <= (col_tiles_total == '0) ? '0 : col_tiles_decrement;
         end else begin
             cfg_lat_tick <= 1'b0;
         end
@@ -634,13 +740,13 @@ module oa_writer #(
                 tile_base_addr_cur <= dst_base;
                 row_addr_step_cur <= init_row_addr_step;
                 col_addr_step_cur <= init_col_addr_step;
-                group_row_addr_step_cur <= init_group_row_addr_step;
+                group_row_addr_step_cur <= '0;
                 row_group_base_addr_cur <= dst_base;
                 column_base_addr <= dst_base;
                 col_offset_addr_cur <= '0;
                 row_offset_addr_cur <= '0;
-                tile_row_is_last <= (row_tiles_total_pre <= count_t'(1));
-                tile_col_is_last <= (col_tiles_total_pre <= count_t'(1));
+                tile_row_is_last <= row_initial_is_last_pre;
+                tile_col_is_last <= col_initial_is_last_pre;
                 next_tile_row_is_last_r <= 1'b1;
                 next_tile_col_is_last_r <= 1'b1;
                 next_tile_wrap_r <= 1'b1;
@@ -656,6 +762,8 @@ module oa_writer #(
                 case (state)
                     S_IDLE: begin
                         if (cfg_lat_tick) begin
+                            // 行步长与复用数量已经保存，组步长在首次请求之前准备。
+                            group_row_addr_step_cur <= init_group_row_addr_step;
                             vec_valid_num_col_r <= (cols_valid_calc == '0) ? '0 : VCOL_W'(cols_valid_calc - 1'b1);
                             vec_valid_num_row_r <= (rows_valid_calc == '0) ? '0 : VCOL_W'(rows_valid_calc - 1'b1);
                         end
@@ -717,7 +825,7 @@ module oa_writer #(
                                     state <= S_DONE;
                                 end else begin
                                     row_group_base_idx <= row_group_next_base_idx;
-                                    row_group_next_base_idx <= row_group_next_base_idx + cfg_ia_reuse_num;
+                                    row_group_next_base_idx <= row_group_next_sum;
                                     col_offset_addr_cur <= 0;
                                     row_group_base_addr_cur <= next_address;
                                     tile_base_addr_cur <= next_address;
@@ -747,17 +855,16 @@ module oa_writer #(
                                 vec_valid_num_col_r <= vec_valid_num_col_next_r;
                                 vec_valid_num_row_r <= vec_valid_num_row_next_r;
                                 if (next_tile_row_advance_r) begin
-                                    row_offset_addr_cur <= row_offset_addr_cur + row_addr_step_cur;
+                                    row_offset_addr_cur <= row_offset_next;
                                     tile_base_addr_cur <= next_address;
                                 end else if (next_tile_col_advance_r) begin
-                                    col_offset_addr_cur <= col_offset_addr_cur + col_addr_step_cur;
+                                    col_offset_addr_cur <= col_offset_next;
                                     row_offset_addr_cur <= '0;
                                     tile_base_addr_cur <= next_address;
                                     column_base_addr <= next_address;
                                 end else if (next_tile_group_advance_r) begin
                                     row_group_base_idx <= row_group_next_base_idx;
-                                    row_group_next_base_idx <= row_group_next_base_idx +
-                                                               cfg_ia_reuse_num;
+                                    row_group_next_base_idx <= row_group_next_sum;
                                     row_group_base_addr_cur <= next_address;
                                     col_offset_addr_cur <= '0;
                                     row_offset_addr_cur <= '0;

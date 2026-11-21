@@ -1,0 +1,9 @@
+{
+  "oa_writer": {
+    "top": "oa_writer",
+    "sources": ["rtl/npu/writeback/oa_writer.sv"],
+    "options": ["-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1", "-GVLEN=16", "-GBUS_WIDTH=64", "-GCOUNT_WIDTH=29"],
+    "parameters": {"VLEN": 16, "BUS_WIDTH": 64, "COUNT_WIDTH": 29, "REG_WIDTH": 32},
+    "configuration": "16 通道、64 位总线、29 位维度计数器，保留完整写回接口"
+  }
+}
