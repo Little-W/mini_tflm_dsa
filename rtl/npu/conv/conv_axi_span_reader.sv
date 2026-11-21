@@ -105,7 +105,22 @@ initial begin
     end
     assign candidate_beats[candidate] = near_page_end && {1'b0, burst_beats} > page_low_words ?
         BEAT_W'(page_low_words) : burst_beats;
-    assign candidate_arlen[candidate] = 8'(candidate_beats[candidate] - 1'b1);
+    logic [BEAT_W-1:0] page_word_complement;
+    logic [7:0] page_arlen, burst_arlen;
+    // 页末突发编码与请求突发编码并行准备，长度选择后直接保存编码。
+    // 非整字起点的页余量向下取整，保留窄读取所需的边界行为。
+    assign page_word_complement = BEAT_W'({~candidate_addr[candidate][p_page_low_width-1:BUS_SHIFT]});
+    assign page_arlen = candidate_addr[candidate][BUS_SHIFT-1:0] == 0 ?
+        8'(page_word_complement) : 8'((BEAT_W+1)'(page_word_complement) - 1'b1);
+    assign burst_arlen = 8'(burst_beats - 1'b1);
+    always_comb begin
+      candidate_arlen[candidate] = near_page_end && {1'b0, burst_beats} > page_low_words ?
+          page_arlen : burst_arlen;
+`ifndef SYNTHESIS
+      if ((^{candidate_addr[candidate], candidate_bytes[candidate]}) === 1'bx)
+        candidate_arlen[candidate] = 8'(candidate_beats[candidate] - 1'b1);
+`endif
+    end
   end
   assign finishing_span = rsp_valid && rsp_ready && rsp_last;
   assign req_ready = state == IDLE || finishing_span;

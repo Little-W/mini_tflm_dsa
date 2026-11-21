@@ -164,6 +164,9 @@ module conv_read_cache_reference #(
   logic span_req_valid, span_req_ready;
   logic span_rsp_valid, span_rsp_ready, span_last, span_error;
   logic [31:0] span_addr;
+  (* keep = "true", use_dsp = "yes" *) logic [32:0] span_request_bytes_wide;
+  // 完整起止地址相减后选择有效长度，避免长度选择与逐位进位串接。
+  assign span_request_bytes_wide = {1'b0, fill_end} - {1'b0, fill_first};
   logic [BUS_WIDTH-1:0] span_data;
   logic [BUS_WIDTH/8-1:0] span_strb;
   logic span_busy;
@@ -226,7 +229,7 @@ module conv_read_cache_reference #(
   conv_axi_span_reader #(.BUS_WIDTH(BUS_WIDTH),.DMA_MAX_BYTES(DMA_MAX_BYTES),
     .MAX_REQUEST_BYTES(LINE_BYTES)) u_span (
     .clk,.rst_n,.req_valid(span_req_valid),.req_ready(span_req_ready),
-    .req_addr(fill_first),.req_bytes(16'(fill_end-fill_first)),
+    .req_addr(fill_first),.req_bytes(span_request_bytes_wide[15:0]),
     .rsp_valid(span_rsp_valid),.rsp_ready(span_rsp_ready),
     .rsp_word_addr(span_addr),.rsp_data(span_data),.rsp_strb(span_strb),
     .rsp_last(span_last),.rsp_error(span_error),
@@ -471,7 +474,7 @@ module conv_windowed_cache #(
   logic [31:0] lookup_addr, lookup_epoch, lookup_retire, lookup_progress;
   logic [SI-1:0] lookup_set;
   logic lookup_hit;
-  logic [WAYS-1:0] work_tag_hits, demand_tag_hits;
+  (* keep = "true" *) logic [WAYS-1:0] work_tag_hits, demand_tag_hits;
   logic [WI-1:0] lookup_way;
   logic req_fire, lookup_range, work_range, demand_range;
   logic pf_pending;
@@ -543,6 +546,27 @@ module conv_windowed_cache #(
   logic [31:0] select_progress, farthest;
   (* use_dsp = "yes" *) logic [32:0] fill_candidate_end_wide;
   logic [31:0] reference_next_address;
+  (* use_dsp = "yes" *) logic [31:0] reference_next_epoch, configured_end;
+  logic [WAYS-1:0] rank_before_progress, unused_rank_progress_equal;
+  logic rank_one_below_zero, unused_rank_way_equal;
+  // 完整地址与代次算术并行准备，配置及预取接收只控制保存边沿。
+  assign configured_end = cfg_base + cfg_bytes;
+  // 释放序号和替换顺序使用完整无符号比较，由工具推断行为级算术资源。
+  for (genvar rank_way = 0; rank_way < WAYS; rank_way++) begin : g_rank_progress
+    unsigned_compare #(.p_width(32)) u_compare (
+      .i_a(select_ranks[rank_way]), .i_b(select_progress),
+      .o_less(rank_before_progress[rank_way]), .o_equal(unused_rank_progress_equal[rank_way])
+    );
+  end
+  if (WAYS == 2) begin : g_two_way_rank
+    unsigned_compare #(.p_width(32)) u_compare (
+      .i_a(select_ranks[1]), .i_b(select_ranks[0]),
+      .o_less(rank_one_below_zero), .o_equal(unused_rank_way_equal)
+    );
+  end else begin : g_other_way_rank
+    assign rank_one_below_zero = 1'b0;
+    assign unused_rank_way_equal = 1'b0;
+  end
   logic unused_reference_next_carry;
   logic [11:0][31:0] range_i_a, range_i_b;
   logic [11:0] range_below, unused_range_equal;
@@ -554,6 +578,9 @@ module conv_windowed_cache #(
   logic [READ_WIDTH-1:0] ram_rdata;
   logic span_req_ready, span_rsp_valid, span_rsp_ready, span_last, span_error, span_busy;
   logic [31:0] span_addr;
+  (* keep = "true", use_dsp = "yes" *) logic [32:0] span_request_bytes_wide;
+  // 完整起止地址相减后选择有效长度，避免长度选择与逐位进位串接。
+  assign span_request_bytes_wide = {1'b0, fill_end} - {1'b0, fill_first};
   logic [BUS_WIDTH-1:0] span_data;
   logic [BUS_WIDTH/8-1:0] span_strb;
   logic fill_complete, fill_success, completing_demand;
@@ -611,8 +638,9 @@ module conv_windowed_cache #(
   wire [31:0] reference_addr = prefetch_ref_valid ? prefetch_ref_addr : req_addr;
   wire [31:0] reference_index = prefetch_ref_valid ? prefetch_ref_index : req_window_index;
   wire [31:0] reference_epoch = prefetch_ref_valid ? prefetch_ref_epoch : req_window_epoch;
+  assign reference_next_epoch = reference_epoch + 32'd1;
   wire reference_index_valid = prefetch_ref_valid ? prefetch_ref_index_valid : req_window_index_valid;
-  wire [SI-1:0] next_pf_set = cache_set(reference_addr + 32'(LINE_BYTES),
+  wire [SI-1:0] next_pf_set = cache_set(reference_next_address,
       windowed_q && reference_index_valid, reference_index);
   wire incoming_lookup_ready = offer_fresh_q ?
       (incoming_snapshot_valid && incoming_snapshot_set==offer_set_q) :
@@ -706,9 +734,19 @@ module conv_windowed_cache #(
   end
   assign work_range = work_request.in_range;
   assign work_valid=request_count!=0;
-  assign work_ready=configured && !clearing && (bypass_q || work_lookup_ready) &&
-                    response_count<DQ_CW'(DEMAND_DEPTH) &&
-                    (fg_state==FG_IDLE || fg_state==FG_RESP);
+  (* keep = "true" *) logic work_capacity_ready, work_snapshot_ready;
+  // 工作请求的容量和快照资格独立计算，旁路只参与单比特选择。
+  assign work_capacity_ready = configured && !clearing &&
+      response_count < DQ_CW'(DEMAND_DEPTH) &&
+      (fg_state == FG_IDLE || fg_state == FG_RESP);
+  always_comb begin
+    work_snapshot_ready = bypass_q || (lookup_snapshot_valid && work_snapshot_matches_q);
+`ifndef SYNTHESIS
+    if ((^bypass_q) === 1'bx)
+      work_snapshot_ready = bypass_q || work_lookup_ready;
+`endif
+  end
+  assign work_ready = work_capacity_ready && work_snapshot_ready;
   assign req_fire=work_valid && work_ready;
   assign request_push=accepted_request;
   assign request_pop=request_count!=0 && req_fire;
@@ -720,7 +758,7 @@ module conv_windowed_cache #(
     for (genvar hit_way = 0; hit_way < WAYS; hit_way++) begin : g_way
       localparam int p_tag_groups = (32 - LB + 2) / 3;
       (* keep = 1 *) logic [p_tag_groups-1:0] work_group_matches, demand_group_matches;
-      logic work_tag_matches, demand_tag_matches;
+      (* keep = "true" *) logic work_tag_matches, demand_tag_matches;
       for (genvar tag_group = 0; tag_group < p_tag_groups; tag_group++) begin : g_tag_group
         localparam int p_low = LB + tag_group * 3;
         localparam int p_width = (32 - p_low < 3) ? 32 - p_low : 3;
@@ -773,8 +811,20 @@ module conv_windowed_cache #(
     assign core_rsp_data=fg_state == FG_IDLE ? fast_hit_data :
                          response_error ? '0 : ram_rdata;
   end else begin : g_queued_response_lookup
-    // 响应队列已经寄存结果，查询选择同时服务工作请求和缺失处理。
-    assign fast_hit_response = fg_state == FG_IDLE && req_fire && lookup_range && lookup_hit;
+    (* keep = "true" *) logic fast_control_ready, fast_snapshot_ready;
+    // 队列容量、快照资格与数据命中并行检查，共用原有返回寄存边沿。
+    assign fast_control_ready = fg_state == FG_IDLE && configured && !clearing &&
+        work_valid && response_count < DQ_CW'(DEMAND_DEPTH);
+    assign fast_snapshot_ready = lookup_snapshot_valid && work_snapshot_matches_q;
+    always_comb begin
+      fast_hit_response = fast_control_ready && fast_snapshot_ready &&
+          work_range && !bypass_q && (|work_tag_hits);
+`ifndef SYNTHESIS
+      // 控制状态含未知值时，按完整查询条件计算四态结果。
+      if ((^{fg_state, bypass_q}) === 1'bx)
+        fast_hit_response = fg_state == FG_IDLE && req_fire && lookup_range && lookup_hit;
+`endif
+    end
     assign core_rsp_data = fast_hit_response ? speculative_data[lookup_way] :
                            response_error ? '0 : ram_rdata;
   end
@@ -1054,16 +1104,82 @@ module conv_windowed_cache #(
     end
   end
 
+  localparam int p_address_compare_groups = (32 + 2) / 3;
+  (* keep = "true" *) logic [p_address_compare_groups-1:0] select_demand_address_match;
+  (* keep = "true" *) logic [p_address_compare_groups-1:0] select_prefetch_address_match;
+  // 请求身份按固定小组并行比较，状态资格在完整比较之后合并。
+  for (genvar group_index = 0; group_index < p_address_compare_groups; group_index++) begin : g_select_address
+    localparam int p_low = group_index * 3;
+    localparam int p_width = 32 - p_low < 3 ? 32 - p_low : 3;
+    assign select_demand_address_match[group_index] =
+        demand_addr[p_low +: p_width] == select_addr[p_low +: p_width];
+    assign select_prefetch_address_match[group_index] =
+        pf_addr[p_low +: p_width] == select_addr[p_low +: p_width];
+  end
+  (* keep = "true" *) logic select_common_ready, select_prefetch_ready, select_demand_ready;
+  (* keep = "true" *) logic select_victim_conflict;
+  // 替换快照、请求身份和填充容量分别准备，命中状态只参与最终接收选择。
+  logic select_nonfill_busy;
+  assign select_nonfill_busy = (req_fire && lookup_set == select_set) ||
+      (hint_pending_q && hint_effective_valid && hint_set == select_set);
   always_comb begin
-    select_launch = select_stage_valid && select_decision_valid && !select_metadata_busy && (fill_state==F_IDLE || fill_success) &&
-        (select_prefetch ?
-          (pf_pending && pf_match_ready && pf_addr==select_addr && !pf_hit && !pf_in_flight &&
-           !(req_fire && !lookup_hit)) :
-          (fg_state==FG_MISS && demand_addr==select_addr && (bypass_q || lookup_ready) && !lookup_hit &&
-           lookup_range && !completing_demand));
+    select_common_ready = select_stage_valid && select_decision_valid && !select_nonfill_busy &&
+        (fill_state == F_IDLE || (fill_success && fill_set != select_set));
+`ifndef SYNTHESIS
+    if ((^{fill_state, fill_success}) === 1'bx)
+      select_common_ready = select_stage_valid && select_decision_valid &&
+          !select_metadata_busy && (fill_state == F_IDLE || fill_success);
+`endif
+  end
+  assign select_prefetch_ready = pf_pending && pf_match_ready && (&select_prefetch_address_match) &&
+      !pf_hit && !pf_in_flight;
+  (* keep = "true" *) logic select_demand_snapshot_ready, select_demand_request_ready;
+  // 替换需求直接检查保存的需求字段，前台状态在末级选择是否使用该结果。
+  assign select_demand_snapshot_ready = bypass_q ||
+      (lookup_snapshot_valid && lookup_snapshot_set == demand_set && demand_word_matches_q);
+  assign select_demand_request_ready = fg_state == FG_MISS &&
+      (&select_demand_address_match) && demand_range;
+  always_comb begin
+    select_demand_ready = select_demand_request_ready &&
+        select_demand_snapshot_ready && !completing_demand;
+`ifndef SYNTHESIS
+    if ((^{fg_state, bypass_q}) === 1'bx)
+      select_demand_ready = fg_state == FG_MISS && demand_addr == select_addr &&
+          (bypass_q || lookup_ready) && lookup_range && !completing_demand;
+`endif
+  end
+  logic [WAYS-1:0] demand_selected_victim;
+  // 命中路号与目标路直接比较，保留较高路号优先的选择次序。
+  for (genvar victim_way = 0; victim_way < WAYS; victim_way++) begin : g_victim_match
+    logic higher_way_hit;
+    if (victim_way == WAYS-1) begin : g_last
+      assign higher_way_hit = 1'b0;
+    end else begin : g_lower
+      assign higher_way_hit = |demand_tag_hits[WAYS-1:victim_way+1];
+    end
+    assign demand_selected_victim[victim_way] = demand_tag_hits[victim_way] &&
+        !higher_way_hit && select_way == WI'(victim_way);
+  end
+  always_comb begin
+    select_victim_conflict = fg_state == FG_MISS && demand_lookup_ready &&
+        (bypass_q ? (demand_filled && select_set == demand_fill_set && select_way == demand_fill_way) :
+                    (select_set == demand_set && (|demand_selected_victim)));
+`ifndef SYNTHESIS
+    // 未知地址与命中结果使用逐路选择的四态结果。
+    if ((^{fg_state, bypass_q, demand_tag_hits, demand_lookup_ready,
+           select_way, demand_fill_way, select_set, lookup_set}) === 1'bx) begin
+      select_victim_conflict = fg_state == FG_MISS && lookup_hit &&
+          select_set == lookup_set && select_way == lookup_way;
+    end
+`endif
+  end
+  always_comb begin
+    select_launch = select_common_ready &&
+        (select_prefetch ? (select_prefetch_ready && !(req_fire && !lookup_hit)) :
+                           (select_demand_ready && !lookup_hit));
     select_way_next=0;select_found=0;select_expired=0;farthest=select_ranks[0];
     for (int w=1;w<WAYS;w++)
-      if (select_ranks[w]>=farthest) begin
+      if (WAYS == 2 ? !rank_one_below_zero : select_ranks[w] >= farthest) begin
         farthest=select_ranks[w];select_way_next=WI'(w);
       end
     if (windowed_q)
@@ -1071,15 +1187,14 @@ module conv_windowed_cache #(
         if (valid_select[w] &&
             ((select_epochs[w]!=EPOCH_W'(select_epoch) &&
               (!select_prefetch || select_epochs[w]!=EPOCH_W'(demand_epoch))) ||
-             (select_epochs[w]==EPOCH_W'(select_epoch) && select_ranks[w]<select_progress))) begin
+             (select_epochs[w]==EPOCH_W'(select_epoch) && rank_before_progress[w]))) begin
           select_way_next=WI'(w);select_expired=1;
         end
     for (int w=WAYS-1;w>=0;w--)
       if (!valid_select[w]) begin select_way_next=WI'(w);select_found=1;end
     // 工作请求与填充的同组冲突已包含在元数据占用条件中。
     // 预取替换还需避开缺失请求当前命中的存储路。
-    if (select_launch && fg_state == FG_MISS && lookup_hit &&
-        select_set == lookup_set && select_way == lookup_way) begin
+    if (select_launch && select_victim_conflict) begin
       select_launch = 1'b0;
     end
     ram_ren=(req_fire && lookup_range && lookup_hit) ||
@@ -1125,7 +1240,7 @@ module conv_windowed_cache #(
     .MAX_REQUEST_BYTES(LINE_BYTES)) u_span(
     .clk,.rst_n,.req_valid(fill_state==F_REQ),.req_ready(span_req_ready),
     .req_addr(fill_first),
-    .req_bytes(16'(fill_end-fill_first)),
+    .req_bytes(span_request_bytes_wide[15:0]),
     .rsp_valid(span_rsp_valid),.rsp_ready(span_rsp_ready),
     .rsp_word_addr(span_addr),.rsp_data(span_data),.rsp_strb(span_strb),
     .rsp_last(span_last),.rsp_error(span_error),
@@ -1268,8 +1383,19 @@ module conv_windowed_cache #(
       end
       assign valid_read_value[0] = lookup_valid_q;
     end else begin : g_current_lookup_valid
-      assign valid_i_rd_addr[0] = lookup_snapshot_set;
-      assign valid_read_value[0] = valid_o_rd_data[0][0];
+      logic lookup_valid_q;
+      assign valid_i_rd_addr[0] = lookup_read_set;
+      // 有效位与请求在同一边沿保存，写入转发遵循存储器的过程条件。
+      always_ff @(posedge clk) begin
+        if (!rst_n) begin
+        end else if (cfg_valid && cfg_ready) begin
+        end else if (valid_i_wr_en && valid_i_wr_addr == lookup_read_set) begin
+          lookup_valid_q <= valid_i_wr_data[0];
+        end else begin
+          lookup_valid_q <= valid_o_rd_data[0][0];
+        end
+      end
+      assign valid_read_value[0] = lookup_valid_q;
     end
     assign valid_match_address[0] = lookup_snapshot_set;
     for (genvar read_port = 1; read_port < 6; read_port++) begin : g_current_valid
@@ -1545,7 +1671,7 @@ module conv_windowed_cache #(
       offer_next_fragment_q <= prefetch_next_fragment;
       offer_next_addr_q <= reference_next_address;
       offer_next_index_q <= reference_index;
-      offer_next_epoch_q <= reference_epoch + 32'd1;
+      offer_next_epoch_q <= reference_next_epoch;
       offer_next_retire_q <= INF;
       offer_next_index_valid_q <= reference_index_valid;
       offer_set_q <= initial_pf_set;
@@ -1562,7 +1688,7 @@ module conv_windowed_cache #(
   assign select_retire_ready = select_decision_valid && (fill_state == F_IDLE || fill_success) &&
       (select_prefetch ?
         (pf_match_ready && !(req_fire && !lookup_hit) &&
-          !(fg_state == FG_MISS && lookup_hit && select_set == lookup_set && select_way == lookup_way)) :
+          !select_victim_conflict) :
         ((bypass_q || lookup_ready) && !completing_demand));
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -1636,7 +1762,7 @@ module conv_windowed_cache #(
     end else begin
       if (cfg_valid && cfg_ready) begin
         configured<=1;clearing<=1;clear_set<=0;fg_state<=FG_IDLE;
-        base_q<=cfg_base;end_q<=cfg_base+cfg_bytes;bypass_q<=cfg_bypass;
+        base_q<=cfg_base;end_q<=configured_end;bypass_q<=cfg_bypass;
         windowed_q<=cfg_windowed;prefetch_q<=cfg_prefetch_enable;
         pf_head<=0;pf_tail<=0;pf_count<=0;pf_active_valid<=0;hint_pending_q<=0;hint_buffered<=0;demand_filled<=0;
 
