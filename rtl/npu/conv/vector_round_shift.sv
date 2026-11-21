@@ -36,6 +36,7 @@ module vector_round_shift #(
   logic [5:0] selected_amount;
   logic signed [65:0] input_shift32;
   (* keep = 1 *) logic [4:0] discarded_groups;
+  (* keep = 1 *) logic [5:0] discarded_bytes;
   logic increment;
   (* keep = 1 *) logic [7:0] byte_carry;
 
@@ -65,8 +66,15 @@ module vector_round_shift #(
   assign discarded_groups[0] = selected_amount[1] && (|shift1[2:1]);
   assign discarded_groups[1] = selected_amount[2] && (|shift2[4:1]);
   assign discarded_groups[2] = selected_amount[3] && (|shift4[8:1]);
-  assign discarded_groups[3] = selected_amount[4] && (|input_shift8[16:1]);
-  assign discarded_groups[4] = selected_amount[5] && (|input_shift16[32:1]);
+  // 每个八位片段先并行归并，使宽舍弃位归约保持平衡的组合层次。
+  for (genvar part = 0; part < 2; part++) begin : g_discarded16
+    assign discarded_bytes[part] = |input_shift8[8*part+1+:8];
+  end
+  for (genvar part = 0; part < 4; part++) begin : g_discarded32
+    assign discarded_bytes[part+2] = |input_shift16[8*part+1+:8];
+  end
+  assign discarded_groups[3] = selected_amount[4] && (|discarded_bytes[1:0]);
+  assign discarded_groups[4] = selected_amount[5] && (|discarded_bytes[5:2]);
   assign input_shift32[65:1] = selected_amount[5] ?
       {{32{input_shift16[65]}}, input_shift16[65:33]} : input_shift16[65:1];
   assign input_shift32[0] = |discarded_groups;

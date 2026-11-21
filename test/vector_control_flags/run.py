@@ -12,7 +12,11 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('rtl/npu/conv/vector_engine.sv')
-STATES = {'state_failed': 'FAILED', 'state_compute_commit': 'EXECUTE_COMMIT'}
+STATES = {
+    'state_failed': 'FAILED', 'state_compute_commit': 'EXECUTE_COMMIT',
+    'state_output_init': 'OUTPUT_INIT', 'state_vector_init': 'VECTOR_INIT',
+    'state_dw_finish': 'DW_FINISH',
+}
 
 
 def sha(path):

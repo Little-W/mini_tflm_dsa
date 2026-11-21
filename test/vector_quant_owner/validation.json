@@ -1,0 +1,783 @@
+{
+  "passed": true,
+  "rtl_sha256": {
+    "rtl/npu/conv/vector_engine.sv": "1628b8e4c9972f68bf443b830997503d3309b649b2ad68ab735387cd205155d7",
+    "rtl/npu/conv/vector_round_shift.sv": "521a687dffb3bf2f45da3d9cbcfbd0af6e5f991e78ed306ab07dd46fbd4de94c"
+  },
+  "protected_rtl_sha256": {
+    "rtl/npu/conv/vector_writeback.sv": "8a04ed73fed51661bc0322b4a486d7fabe0693bc7ce745cd5687598b4dae8481",
+    "rtl/npu/buffers/vector_shared_store.sv": "4a33845a90a054cefcb33586fcbafb85df8c97b720f238cd69ef141c5a161fc0"
+  },
+  "formal": {
+    "control_and_reachability": {
+      "report_sha256": "5aabe25d3a67f3dcf64b39cbc718038b4515d79a46df3bab87ae0be0fc341ba4",
+      "results": {
+        "passed": true,
+        "source_sha256": "1628b8e4c9972f68bf443b830997503d3309b649b2ad68ab735387cd205155d7",
+        "reference_sha256": "d513747373f83bc4a9b9a43072761c15f948e958d3f56e25c51eb4b24f4cbfd5",
+        "dependency_sha256": {
+          "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+          "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+          "rtl/npu/conv/vector_config_check.sv": "20c3b23d03a44137541da2c7537b22e3ea2eb208a43f2ed47e70425e90f0d543",
+          "rtl/npu/conv/vector_writeback.sv": "8a04ed73fed51661bc0322b4a486d7fabe0693bc7ce745cd5687598b4dae8481",
+          "rtl/npu/conv/vector_round_shift.sv": "521a687dffb3bf2f45da3d9cbcfbd0af6e5f991e78ed306ab07dd46fbd4de94c",
+          "rtl/npu/conv/vector_scalar_multiplier.sv": "3b4609172954db18338546728f1a5eaa7ee9ec53ad3b593ec44c9bef6ce36556",
+          "rtl/npu/conv/vector_pe.sv": "f769abefb57c595fcaa0e4c0c3b0c8d15e19ffd87cc4610a1fd95f58ad6e03fb",
+          "rtl/npu/conv/vector_softmax.sv": "08c3ca2ab3ca8742428aeb7b2d14faeeca9a316df94c8abb05b2091ff4cf357f",
+          "rtl/npu/conv/vector_quant_params.sv": "136150ca5086ef69a9b28b9bf811d550621e3a94c3f5bff7aefb6f02c51b18b2",
+          "rtl/npu/conv/vector_engine.sv": "1628b8e4c9972f68bf443b830997503d3309b649b2ad68ab735387cd205155d7",
+          "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+          "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+          "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+          "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+          "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+          "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+          "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
+        },
+        "source_audit": {
+          "preserved_state_encodings": {
+            "IDLE": 0,
+            "CHECK": 1,
+            "CONFIGURE": 2,
+            "TILE_INIT": 3,
+            "LOAD_REQ": 4,
+            "LOAD_WAIT": 5,
+            "OUTPUT_INIT": 6,
+            "TAP_CHECK": 7,
+            "WINDOW_WAIT": 8,
+            "EXECUTE": 9,
+            "TAP_NEXT": 10,
+            "QUANT_INIT": 11,
+            "AVG_START": 12,
+            "AVG_WAIT": 13,
+            "POOL_STORE": 14,
+            "WRITE_PREP": 15,
+            "OUTPUT_NEXT": 16,
+            "VECTOR_INIT": 17,
+            "VECTOR_NEXT": 18,
+            "VECTOR_REDUCE": 19,
+            "FAILED": 20,
+            "DONE": 21,
+            "ADD_MULT": 22,
+            "ADD_DRAIN": 23,
+            "ADD_ROUND": 24,
+            "ADD_SUM": 25,
+            "ADD_STORE": 26,
+            "POOL_LOAD_PREP": 27,
+            "POOL_LOAD_REQ": 28,
+            "POOL_LOAD_WAIT": 29,
+            "DRAIN": 30,
+            "DRAIN_TILE": 31,
+            "SOFT_START": 32,
+            "SOFT_RUN": 33,
+            "SOFT_LUT_REQ": 34,
+            "SOFT_LUT_WAIT": 35,
+            "CHECK_WAIT": 36,
+            "EXECUTE_COMMIT": 38,
+            "ADD_ROUND_WAIT": 39,
+            "AVG_POWER_STORE": 40,
+            "POOL_LOAD_DRAIN": 41,
+            "DW_EXECUTE": 42,
+            "DW_FINISH": 43,
+            "ADD_CLAMP": 44,
+            "AVG_POWER_DELAY": 45,
+            "AVG_POWER_CLAMP": 46,
+            "LOAD_VERIFY": 47
+          },
+          "registered_initialization_flags": true,
+          "extended_window_bounds": true,
+          "other_source_statements_identical": true,
+          "removed_control_guard": "state == 37 or (state == 11 and depthwise)"
+        },
+        "profiles": [
+          {
+            "profile": "production",
+            "parameters": {
+              "TILE": 16,
+              "BUS_WIDTH": 64,
+              "PE_COUNT": 8,
+              "WINDOW_LANES": 8,
+              "SHARED_STORAGE_ENABLE": 1,
+              "SHARED_QUANT_ENABLE": 0,
+              "SHARED_STORAGE_ADDR_WIDTH": 12,
+              "DMA_SIZE": 64
+            },
+            "fpga": true,
+            "reference": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 471,
+              "proof_log_sha256": "4681cdb93c88112ce6841ee834781dca948033556b34b9afb93ad56f405ea90e",
+              "abstraction_sha256": "094ee958f1d57bc2d1d10bdfadf99021cb06e349ad72cdc25dd7983716f863df"
+            },
+            "selected": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 474,
+              "proof_log_sha256": "6c554f3f638e871203308821fbb15b759e824fc2835219f0ff63e2ddc2594852",
+              "abstraction_sha256": "0e41e73ac57e5e0dcce49faf97cf27c928963cdb6511f0c79ac2d12e53c02a5a"
+            }
+          },
+          {
+            "profile": "generic",
+            "parameters": {
+              "TILE": 16,
+              "BUS_WIDTH": 32,
+              "PE_COUNT": 16,
+              "WINDOW_LANES": 4,
+              "SHARED_STORAGE_ENABLE": 0,
+              "SHARED_QUANT_ENABLE": 1,
+              "DMA_SIZE": 64
+            },
+            "fpga": false,
+            "reference": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 525,
+              "proof_log_sha256": "35d97200421725b21038b63145ca73c610792fc8a7d0b4c2815cc0462b98ceeb",
+              "abstraction_sha256": "ad7535025ae06dec45ba3cb47e4da3088ae63c1b68f663e5d212d999e0959e69"
+            },
+            "selected": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 518,
+              "proof_log_sha256": "619dc710ec9509f1196a001b25a3ee5dee19945a342474e0d35a5ea5535feef1",
+              "abstraction_sha256": "f4a2409ff8da4f7e5022c888393d06963a35b980a207fd5971c95e0354871e1a"
+            }
+          },
+          {
+            "profile": "small",
+            "parameters": {
+              "TILE": 2,
+              "BUS_WIDTH": 32,
+              "PE_COUNT": 1,
+              "WINDOW_LANES": 4,
+              "SHARED_STORAGE_ENABLE": 0,
+              "SHARED_QUANT_ENABLE": 0,
+              "DMA_SIZE": 8
+            },
+            "fpga": false,
+            "reference": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 353,
+              "proof_log_sha256": "b4fce828c0737b9c9ba7a40007011950516a4311568c7c020c7072b598a529d5",
+              "abstraction_sha256": "d7ddd8e13671c604a27e68ab34ea3a869d200539cf1af8f3c231497d57ee1da2"
+            },
+            "selected": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 356,
+              "proof_log_sha256": "c6f99f860d8578b6b5eac89cf63c19ee39feefdb2728b0f05db4a227ab26cdf1",
+              "abstraction_sha256": "7b6ad9e27dbe915a60d4ba94245397a58bf04601de40c51fd87e9723c31b6aff"
+            }
+          },
+          {
+            "profile": "wide",
+            "parameters": {
+              "TILE": 64,
+              "BUS_WIDTH": 64,
+              "PE_COUNT": 16,
+              "WINDOW_LANES": 16,
+              "SHARED_STORAGE_ENABLE": 0,
+              "SHARED_QUANT_ENABLE": 0,
+              "DMA_SIZE": 256
+            },
+            "fpga": false,
+            "reference": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 925,
+              "proof_log_sha256": "0233e1cdb07fbce7ceb181b91202f2dd9630f5858d8767a5b5834b0abb94b857",
+              "abstraction_sha256": "83a53bfb45058ee562426b17d29797b4252a713c7b3bb80662ba10991f8dbc33"
+            },
+            "selected": {
+              "passed": true,
+              "induction_length": 1,
+              "retained_register_groups": 5,
+              "abstracted_state_outputs": 928,
+              "proof_log_sha256": "2215b7f3655ef1c8dde56a8678b35b7dddbab74afdaf87cbd740a911566cd7c0",
+              "abstraction_sha256": "96fbee24567e30bd0d63d7369dded5f3937ce89fc7beb76681e465ce176d80fb"
+            }
+          }
+        ],
+        "input_constraints": "rst_n=0 at the first sampled cycle; all other inputs and subsequent reset values are free",
+        "abstraction": "Only state, depthwise, spatial, global_pool and load_kind remain sequential; all other register and memory outputs are free inputs",
+        "control_words": {
+          "passed": true,
+          "actual_conditional_pairs": 6,
+          "comparisons": 71,
+          "four_state_condition_values": [
+            "0",
+            "1",
+            "X",
+            "Z"
+          ],
+          "log_sha256": "a0d77ec6cdf4c808581bd3eb71091c37a09e3d5ac4552ffb9d899d20f1644913"
+        },
+        "initialization_flags": {
+          "passed": true,
+          "source_sha256": "1628b8e4c9972f68bf443b830997503d3309b649b2ad68ab735387cd205155d7",
+          "reference_sha256": "5ea74215129b01563ece947430ca96caff16b1ea0f064c47f590da99e28e91bd",
+          "reference_revision": null,
+          "state_updates_checked": 89,
+          "added_flags": {
+            "state_output_init": "OUTPUT_INIT",
+            "state_vector_init": "VECTOR_INIT",
+            "state_dw_finish": "DW_FINISH"
+          },
+          "original_state_control_fields_preserved": true,
+          "formal": [
+            {
+              "name": "state_encodings",
+              "passed": true,
+              "log_sha256": "22bd9216e2c2676c5f94a388c284d05f4de8ea4165d6c55591f1e94e7d9064d1"
+            },
+            {
+              "name": "state_sequence",
+              "passed": true,
+              "log_sha256": "cddf6dfdfa33e41bdb7f3b42a485ce35b9df125dcb55a922e0f96e7ae9a5bcee"
+            },
+            {
+              "name": "drain_shared0",
+              "passed": true,
+              "log_sha256": "a62500f239137318ae9b1fc72c2f76852fcbd7ce1e659996a5ef6fff84c6fbed"
+            },
+            {
+              "name": "drain_shared1",
+              "passed": true,
+              "log_sha256": "4fe40a6906dd0411eda1a16e8116254a846c1affe9ce47f7fb8be1fb67c6e4ae"
+            }
+          ],
+          "four_state_encodings": 4096,
+          "four_state_drain_comparisons": 131072,
+          "test_sha256": "7afe47ce3c10d38980616c5c77f21a21c569edd627d4f8b7de785a67137e0912",
+          "simulation_log_sha256": "9bc4dfdc3aa1b2de0f92cb6651a6d6f77d165ce36422fcc398c079e676d15bf4"
+        },
+        "test_sha256": "f3ee92c59e50376ff7accf219617b066aa2b52da98bc5ca102cb0d0df3bd1f08"
+      }
+    },
+    "rounding": {
+      "report_sha256": "fb6021bc2953a6aa846f634d17f960706ea74884d260e733e0733737f146304a",
+      "results": {
+        "source_sha256": "521a687dffb3bf2f45da3d9cbcfbd0af6e5f991e78ed306ab07dd46fbd4de94c",
+        "reference": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
+        "reference_sha256": "aa3767bb3f69680e5ca26eb8b99b7d6ba087a957417303b0bf2554eb528c0819",
+        "input_scope": "每周期任意 64 位有符号输入及任意 6 位移位量。",
+        "input_constraints": null,
+        "formal_runs": [
+          {
+            "implementation": "fpga",
+            "REGISTER_MIDDLE": 0,
+            "REGISTER_INPUT": 0,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "efce990dbaf9dbfdadb5b98295a295944e8f864f71f77fd8db0c55aa8f3af646"
+          },
+          {
+            "implementation": "fpga",
+            "REGISTER_MIDDLE": 0,
+            "REGISTER_INPUT": 1,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "907b8020010e30796ba924bb94c512b9620cd26c26f0a8f1d12ca58a6f32e26f"
+          },
+          {
+            "implementation": "fpga",
+            "REGISTER_MIDDLE": 1,
+            "REGISTER_INPUT": 0,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "d43ef4cbc4e3a88b2286e49ef608fc0539cf77b29f28bb63655f12bab68f1801"
+          },
+          {
+            "implementation": "fpga",
+            "REGISTER_MIDDLE": 1,
+            "REGISTER_INPUT": 1,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "0174ee72adff055a526940ca323feb13f1199a168fffee428d094d6fa2559b62"
+          },
+          {
+            "implementation": "generic",
+            "REGISTER_MIDDLE": 0,
+            "REGISTER_INPUT": 0,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "980159459cd42c64c36d0edb5bbf159fac212e5202444dc2047a3f753be8751b"
+          },
+          {
+            "implementation": "generic",
+            "REGISTER_MIDDLE": 0,
+            "REGISTER_INPUT": 1,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "592b5d6cffc8c44f535a0fa7fbeb7a6054af196ff408e27a73aa6ea71e387194"
+          },
+          {
+            "implementation": "generic",
+            "REGISTER_MIDDLE": 1,
+            "REGISTER_INPUT": 0,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "d16b645b80ad82898e23e114a5a4532991cf768a6cf2e03f7490ab3763ab9a60"
+          },
+          {
+            "implementation": "generic",
+            "REGISTER_MIDDLE": 1,
+            "REGISTER_INPUT": 1,
+            "passed": true,
+            "outputs": [
+              "result[63:0]",
+              "floor_value[63:0]"
+            ],
+            "log_sha256": "9bd0b3875858e7dbef617d676f92674704b68e44d3e849d7b2cc61b44b583936"
+          }
+        ],
+        "test_sha256": "ebe740b2c0142e0b969e61be3e9994c582e8641c23b2416afa708e2510a2eed2",
+        "testbench_sha256": "e6452fbd1a91e4eeabce7e7dfa27c8c10d2b16025e53839b0dcb9a4f87f8face",
+        "four_state_runs": [
+          {
+            "implementation": "fpga",
+            "passed": true,
+            "log_sha256": "39b40ad0f82de7c2e8d5ce3fe035453b5c56dca6b7f1dd5975cb9bc6ddeb80cc"
+          },
+          {
+            "implementation": "generic",
+            "passed": true,
+            "log_sha256": "39b40ad0f82de7c2e8d5ce3fe035453b5c56dca6b7f1dd5975cb9bc6ddeb80cc"
+          }
+        ],
+        "four_state_checks": 52352,
+        "four_state_configurations": 4,
+        "passed": true
+      }
+    },
+    "window_bounds": {
+      "report_sha256": "6000f44ea0eca3e19abba092382bc20bb5f4083a804b70c3d276c6c97274a4d7",
+      "results": {
+        "source_sha256": "1628b8e4c9972f68bf443b830997503d3309b649b2ad68ab735387cd205155d7",
+        "reference_revision": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
+        "reference_sha256": "d513747373f83bc4a9b9a43072761c15f948e958d3f56e25c51eb4b24f4cbfd5",
+        "inputs_constrained": false,
+        "profiles": [
+          {
+            "TILE": 2,
+            "DMA_SIZE": 8,
+            "WINDOW_LANES": 4,
+            "passed": true,
+            "log_sha256": "f663026d46facd15912b089bf7a377aca4ebb20fac84044dac3c712e047956f5"
+          },
+          {
+            "TILE": 16,
+            "DMA_SIZE": 64,
+            "WINDOW_LANES": 4,
+            "passed": true,
+            "log_sha256": "d2896cff855872378463dc1d55b5d1de699334f1b6e5b3235c52cf2ea1ad1395"
+          },
+          {
+            "TILE": 16,
+            "DMA_SIZE": 64,
+            "WINDOW_LANES": 8,
+            "passed": true,
+            "log_sha256": "0315d5cfb5837df9d55e8bbb979d88fe509a40a47950626ba79bc47e8c9f9429"
+          },
+          {
+            "TILE": 32,
+            "DMA_SIZE": 128,
+            "WINDOW_LANES": 8,
+            "passed": true,
+            "log_sha256": "a671d59806bbe83cc41bdf48b03737b4684d8e2df0736c1aa9d270282bd0f7be"
+          },
+          {
+            "TILE": 64,
+            "DMA_SIZE": 256,
+            "WINDOW_LANES": 16,
+            "passed": true,
+            "log_sha256": "ca1416707d43178ac6d49ac556bc12811adb647d34ad27a08ca76187b7c14dfe"
+          }
+        ],
+        "passed": true,
+        "four_state_comparisons": 327680,
+        "test_sha256": "34ef402d7eb1c90e4715ef2af9d0f12ac0ad2b53fd846172b293f9ee4ca99881",
+        "four_state_log_sha256": "d4c21e732cf9e4d8f26d9095ce950d4b8cb398071bbb4fad7766f0f5f0331979"
+      }
+    }
+  },
+  "regressions": [
+    {
+      "configuration": "production",
+      "passed": true,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "case_cycles": 3422533,
+      "all_case_statistics_equal": true,
+      "report_sha256": "e1ac28dae74fd7c64862ac1f3c9794ef8584b92b96f6ca6cd8aa59e682d31558",
+      "reference_report_sha256": "3fecc2f218fb927db09503e80701693b480ebcd5c3efe1b689b213d532d5b438",
+      "case_statistics_sha256": "0711c8781072976a99e98554bae0d3343e145b56abe4a92a0f22699a8c0cb1c4",
+      "executable_sha256": "b836c74d0f3e077e3c64c87a4a685d1c1cdf4141634a564dfaa391fdaf400ada",
+      "log_sha256": "0573b120ca8faa13d122294091e6ca04d047d709bc7cd092a201782c2d168fdf",
+      "assertion_summaries": [
+        "VECTOR_DW_PROFILE requests=169 issues=169 wait_input=897 wait_snapshot=0 slot_ready=158 slot_reserved=768 queue_wait=9 quant_slots=0 write_busy=1060 padding=56 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=169 issues=169 wait_input=901 wait_snapshot=0 slot_ready=158 slot_reserved=772 queue_wait=9 quant_slots=0 write_busy=1059 padding=56 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=260 issues=390 wait_input=4952 wait_snapshot=0 slot_ready=386 slot_reserved=4543 queue_wait=3 quant_slots=0 write_busy=665 padding=100 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=280 issues=280 wait_input=2768 wait_snapshot=4 slot_ready=287 slot_reserved=2573 queue_wait=6 quant_slots=0 write_busy=3219 padding=152 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1369 issues=1369 wait_input=51075 wait_snapshot=0 slot_ready=1766 slot_reserved=49211 queue_wait=17 quant_slots=0 write_busy=52668 padding=1032 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=162 issues=243 wait_input=45007 wait_snapshot=0 slot_ready=390 slot_reserved=42999 queue_wait=11 quant_slots=0 write_busy=305 padding=720 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=12 issues=24 wait_input=186 wait_snapshot=106 slot_ready=26 slot_reserved=189 queue_wait=2 quant_slots=0 write_busy=216 padding=0 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=0 wait_snapshot=131 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=59 write_busy=195 padding=24 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=70 issues=70 wait_input=2063 wait_snapshot=0 slot_ready=63 slot_reserved=1854 queue_wait=5 quant_slots=0 write_busy=1888 padding=38 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=210 wait_input=3273 wait_snapshot=0 slot_ready=205 slot_reserved=2957 queue_wait=3 quant_slots=0 write_busy=403 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=210 wait_input=3274 wait_snapshot=0 slot_ready=205 slot_reserved=2958 queue_wait=3 quant_slots=0 write_busy=393 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=210 wait_input=3283 wait_snapshot=0 slot_ready=205 slot_reserved=2967 queue_wait=3 quant_slots=0 write_busy=404 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=210 wait_input=3271 wait_snapshot=0 slot_ready=205 slot_reserved=2955 queue_wait=3 quant_slots=0 write_busy=404 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=1547 wait_snapshot=0 slot_ready=453 slot_reserved=1289 queue_wait=18 quant_slots=0 write_busy=2156 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=557 wait_snapshot=0 slot_ready=140 slot_reserved=444 queue_wait=8 quant_slots=0 write_busy=669 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=1829 wait_snapshot=0 slot_ready=453 slot_reserved=1553 queue_wait=19 quant_slots=0 write_busy=2424 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=673 wait_snapshot=0 slot_ready=141 slot_reserved=560 queue_wait=7 quant_slots=0 write_busy=790 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=2193 wait_snapshot=0 slot_ready=465 slot_reserved=1911 queue_wait=12 quant_slots=0 write_busy=2742 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=655 wait_snapshot=0 slot_ready=146 slot_reserved=537 queue_wait=5 quant_slots=0 write_busy=786 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=2915 wait_snapshot=0 slot_ready=471 slot_reserved=2505 queue_wait=2 quant_slots=0 write_busy=3312 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=1004 wait_snapshot=0 slot_ready=150 slot_reserved=837 queue_wait=1 quant_slots=0 write_busy=1031 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=950 wait_input=3298 wait_snapshot=0 slot_ready=946 slot_reserved=2919 queue_wait=1 quant_slots=0 write_busy=3646 padding=92 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=154 issues=308 wait_input=1166 wait_snapshot=0 slot_ready=304 slot_reserved=1029 queue_wait=1 quant_slots=0 write_busy=1187 padding=26 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=950 issues=1425 wait_input=11691 wait_snapshot=0 slot_ready=1425 slot_reserved=10746 queue_wait=3 quant_slots=0 write_busy=2123 padding=184 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=308 issues=462 wait_input=3407 wait_snapshot=0 slot_ready=454 slot_reserved=2955 queue_wait=2 quant_slots=0 write_busy=671 padding=52 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=950 issues=1900 wait_input=8436 wait_snapshot=0 slot_ready=1892 slot_reserved=7672 queue_wait=2 quant_slots=0 write_busy=2297 padding=184 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=308 issues=616 wait_input=2859 wait_snapshot=0 slot_ready=608 slot_reserved=2579 queue_wait=2 quant_slots=0 write_busy=741 padding=52 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=950 issues=1900 wait_input=8379 wait_snapshot=0 slot_ready=1892 slot_reserved=7615 queue_wait=2 quant_slots=0 write_busy=2348 padding=184 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=308 issues=616 wait_input=2879 wait_snapshot=0 slot_ready=608 slot_reserved=2599 queue_wait=2 quant_slots=0 write_busy=736 padding=52 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=1900 issues=3800 wait_input=16724 wait_snapshot=0 slot_ready=3784 slot_reserved=15196 queue_wait=4 quant_slots=0 write_busy=4698 padding=368 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=616 issues=1232 wait_input=6957 wait_snapshot=0 slot_ready=1216 slot_reserved=6397 queue_wait=4 quant_slots=0 write_busy=1480 padding=104 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=1330 issues=1330 wait_input=3612 wait_snapshot=0 slot_ready=1269 slot_reserved=2945 queue_wait=83 quant_slots=0 write_busy=5550 padding=398 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1351 issues=1351 wait_input=3642 wait_snapshot=0 slot_ready=1292 slot_reserved=2921 queue_wait=81 quant_slots=0 write_busy=5607 padding=404 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=38 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=15 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=37 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=37 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=39 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=18 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=15 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=1 issues=0 wait_input=33 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=0 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=38 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=16 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=162 wait_input=10095 wait_snapshot=0 slot_ready=138 slot_reserved=10022 queue_wait=10 quant_slots=0 write_busy=8542 padding=360 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=162 wait_input=10100 wait_snapshot=0 slot_ready=136 slot_reserved=10029 queue_wait=10 quant_slots=0 write_busy=8542 padding=360 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=162 wait_input=10103 wait_snapshot=0 slot_ready=138 slot_reserved=10030 queue_wait=10 quant_slots=0 write_busy=8549 padding=360 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=162 wait_input=10098 wait_snapshot=0 slot_ready=138 slot_reserved=10025 queue_wait=10 quant_slots=0 write_busy=8542 padding=360 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=49 issues=98 wait_input=320 wait_snapshot=0 slot_ready=94 slot_reserved=272 queue_wait=1 quant_slots=0 write_busy=149 padding=32 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=98 issues=196 wait_input=601 wait_snapshot=0 slot_ready=188 slot_reserved=505 queue_wait=2 quant_slots=0 write_busy=308 padding=64 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=2 issues=3 wait_input=116 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=2 quant_slots=0 write_busy=34 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=2 issues=3 wait_input=113 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=2 quant_slots=0 write_busy=32 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=2 issues=3 wait_input=113 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=2 quant_slots=0 write_busy=35 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=160 issues=320 wait_input=994 wait_snapshot=0 slot_ready=312 slot_reserved=864 queue_wait=1 quant_slots=0 write_busy=1218 padding=56 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=112 issues=224 wait_input=610 wait_snapshot=0 slot_ready=213 slot_reserved=523 queue_wait=1 quant_slots=0 write_busy=744 padding=50 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=182 issues=273 wait_input=6338 wait_snapshot=0 slot_ready=266 slot_reserved=5962 queue_wait=3 quant_slots=0 write_busy=522 padding=88 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=190 issues=190 wait_input=1256 wait_snapshot=0 slot_ready=186 slot_reserved=1066 queue_wait=2 quant_slots=0 write_busy=1378 padding=62 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=484 issues=968 wait_input=2800 wait_snapshot=0 slot_ready=964 slot_reserved=2417 queue_wait=1 quant_slots=0 write_busy=3399 padding=92 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=32 issues=64 wait_input=69 wait_snapshot=477 slot_ready=483 slot_reserved=74 queue_wait=1 quant_slots=0 write_busy=613 padding=0 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=1936 issues=3872 wait_input=11252 wait_snapshot=0 slot_ready=3856 slot_reserved=9720 queue_wait=4 quant_slots=0 write_busy=4461 padding=368 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=968 issues=1936 wait_input=10745 wait_snapshot=0 slot_ready=1904 slot_reserved=9872 queue_wait=8 quant_slots=0 write_busy=2223 padding=184 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=169 issues=169 wait_input=891 wait_snapshot=0 slot_ready=158 slot_reserved=762 queue_wait=9 quant_slots=0 write_busy=1059 padding=56 peak_owned=4",
+        "VECTOR_SHARED_STORAGE_CHECK weight_bytes=13794 weight_reads=326017 snapshot_writes=2686 snapshot_reads=2686",
+        "VECTOR_WEIGHT_WRITE_STAGE_PASS captured=2015 published=2015 cancelled=0 consecutive=592 last_rows=1171 last_taps=101",
+        "VECTOR_WEIGHT_PREFETCH_PASS cached_issues=30308 returned_issues=626 stalled_cycles=282244 skipped_taps=7546 tap_advances=27430 task_starts=616 failure_cycles=141 checked_returns=326017",
+        "VECTOR_WEIGHT_ROWS_CHECK issues=30934 weights=373800",
+        "VECTOR_CONTROL_DATAPATH_PASS parameter_cycles=5645 lut_cycles=56128 commit_cycles=7300 reduce_cycles=720",
+        "VECTOR_TILE_OVERLAP_CHECK read_write=485 error_during_read=1",
+        "VECTOR_PARAMETER_ROWS_CHECK one=12 two=8 three=85",
+        "VECTOR_INPUT_BANKS_PASS cycles=3428694 ordinary=17738 window=45861 pool=3044",
+        "VECTOR_ENGINE_DMA_PASS cases=616 outputs=170743 add_cases=143 add_outputs=135758 softmax_cases=273 softmax_outputs=2188"
+      ],
+      "configuration_values": {
+        "tile": 16,
+        "bus_width": 64,
+        "window_lanes": 8,
+        "shared_quant": false,
+        "shared_storage": true,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "shared_ia_banks": 2,
+        "cache_sets": 16,
+        "cache_policy": 3,
+        "cache_line_bytes": 128,
+        "rtl_assertions": true,
+        "stable_stimulus": true
+      }
+    },
+    {
+      "configuration": "generic",
+      "passed": true,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "case_cycles": 3711728,
+      "all_case_statistics_equal": true,
+      "report_sha256": "cbeaee265b3db05328af838298a8782ceb36386707241b3b5d1b9c4b745cb70b",
+      "reference_report_sha256": "28f5da26ac9299af4a221ee7a2fe5803a4a45458dfb1715c81e8bb0e72818a27",
+      "case_statistics_sha256": "345daa583ca96e048c39d7a684af8969e9102192622e2ce31b7e99ec9f098a60",
+      "executable_sha256": "40016e7cdaa08ce23ad506862a4d38b30ca622bca618fd2960c7fd7cc8c97f3b",
+      "log_sha256": "f8393631fe910ae2ef2f1bd549e04de2203f63002e67bbcc2def220e5e62ff0f",
+      "assertion_summaries": [
+        "VECTOR_DW_PROFILE requests=169 issues=169 wait_input=1072 wait_snapshot=0 slot_ready=164 slot_reserved=920 queue_wait=5 quant_slots=0 write_busy=1250 padding=56 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=169 issues=169 wait_input=1078 wait_snapshot=0 slot_ready=164 slot_reserved=926 queue_wait=5 quant_slots=0 write_busy=1251 padding=56 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=260 issues=260 wait_input=8621 wait_snapshot=0 slot_ready=256 slot_reserved=8023 queue_wait=4 quant_slots=0 write_busy=766 padding=100 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=280 issues=280 wait_input=3304 wait_snapshot=0 slot_ready=280 slot_reserved=3108 queue_wait=2 quant_slots=0 write_busy=3775 padding=152 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1369 issues=1369 wait_input=51521 wait_snapshot=0 slot_ready=1768 slot_reserved=49651 queue_wait=16 quant_slots=0 write_busy=53129 padding=1032 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=162 issues=162 wait_input=67194 wait_snapshot=0 slot_ready=406 slot_reserved=63443 queue_wait=4 quant_slots=0 write_busy=335 padding=720 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=12 issues=12 wait_input=461 wait_snapshot=0 slot_ready=4 slot_reserved=192 queue_wait=2 quant_slots=0 write_busy=278 padding=0 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=0 wait_snapshot=147 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=156 write_busy=222 padding=24 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=70 issues=70 wait_input=2595 wait_snapshot=0 slot_ready=66 slot_reserved=2371 queue_wait=2 quant_slots=0 write_busy=2396 padding=38 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=140 wait_input=5585 wait_snapshot=0 slot_ready=135 slot_reserved=5079 queue_wait=4 quant_slots=0 write_busy=450 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=140 wait_input=5577 wait_snapshot=0 slot_ready=135 slot_reserved=5071 queue_wait=4 quant_slots=0 write_busy=455 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=140 wait_input=5583 wait_snapshot=0 slot_ready=135 slot_reserved=5077 queue_wait=4 quant_slots=0 write_busy=461 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=140 issues=140 wait_input=5575 wait_snapshot=0 slot_ready=135 slot_reserved=5069 queue_wait=4 quant_slots=0 write_busy=454 padding=76 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=1682 wait_snapshot=0 slot_ready=457 slot_reserved=1411 queue_wait=16 quant_slots=0 write_busy=2308 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=594 wait_snapshot=0 slot_ready=140 slot_reserved=479 queue_wait=8 quant_slots=0 write_busy=710 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=2189 wait_snapshot=0 slot_ready=464 slot_reserved=1905 queue_wait=13 quant_slots=0 write_busy=2796 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=807 wait_snapshot=0 slot_ready=146 slot_reserved=688 queue_wait=5 quant_slots=0 write_busy=918 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=2909 wait_snapshot=0 slot_ready=471 slot_reserved=2499 queue_wait=2 quant_slots=0 write_busy=3453 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=954 wait_snapshot=0 slot_ready=150 slot_reserved=787 queue_wait=1 quant_slots=0 write_busy=1064 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=4353 wait_snapshot=0 slot_ready=471 slot_reserved=3931 queue_wait=2 quant_slots=0 write_busy=4654 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=1486 wait_snapshot=0 slot_ready=150 slot_reserved=1307 queue_wait=1 quant_slots=0 write_busy=1445 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=475 issues=475 wait_input=7294 wait_snapshot=0 slot_ready=471 slot_reserved=6848 queue_wait=2 quant_slots=0 write_busy=6476 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=154 issues=154 wait_input=2458 wait_snapshot=0 slot_ready=150 slot_reserved=2255 queue_wait=1 quant_slots=0 write_busy=2042 padding=26 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=950 issues=950 wait_input=20528 wait_snapshot=0 slot_ready=950 slot_reserved=19394 queue_wait=4 quant_slots=0 write_busy=2402 padding=184 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=308 issues=308 wait_input=5881 wait_snapshot=0 slot_ready=300 slot_reserved=5240 queue_wait=2 quant_slots=0 write_busy=752 padding=52 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=950 issues=950 wait_input=34026 wait_snapshot=0 slot_ready=942 slot_reserved=32653 queue_wait=4 quant_slots=0 write_busy=2863 padding=184 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=308 issues=308 wait_input=9723 wait_snapshot=0 slot_ready=300 slot_reserved=8842 queue_wait=2 quant_slots=0 write_busy=900 padding=52 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=950 issues=950 wait_input=16313 wait_snapshot=0 slot_ready=942 slot_reserved=15411 queue_wait=4 quant_slots=0 write_busy=2977 padding=184 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=308 issues=308 wait_input=5489 wait_snapshot=0 slot_ready=300 slot_reserved=5073 queue_wait=2 quant_slots=0 write_busy=932 padding=52 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1900 issues=1900 wait_input=32627 wait_snapshot=0 slot_ready=1884 slot_reserved=30823 queue_wait=8 quant_slots=0 write_busy=5890 padding=368 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=616 issues=616 wait_input=12809 wait_snapshot=0 slot_ready=600 slot_reserved=11977 queue_wait=4 quant_slots=0 write_busy=1868 padding=104 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1330 issues=1330 wait_input=4947 wait_snapshot=0 slot_ready=1322 slot_reserved=4054 queue_wait=37 quant_slots=0 write_busy=6845 padding=398 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1351 issues=1351 wait_input=5014 wait_snapshot=0 slot_ready=1348 slot_reserved=4098 queue_wait=33 quant_slots=0 write_busy=6952 padding=404 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=41 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=16 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=38 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=38 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=41 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=16 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=38 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=15 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=1 issues=0 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=0 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=37 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=81 wait_input=29901 wait_snapshot=0 slot_ready=167 slot_reserved=28250 queue_wait=2 quant_slots=0 write_busy=25417 padding=360 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=81 wait_input=29892 wait_snapshot=0 slot_ready=167 slot_reserved=28241 queue_wait=2 quant_slots=0 write_busy=25411 padding=360 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=81 wait_input=29908 wait_snapshot=0 slot_ready=167 slot_reserved=28257 queue_wait=2 quant_slots=0 write_busy=25409 padding=360 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=81 issues=81 wait_input=29894 wait_snapshot=0 slot_ready=167 slot_reserved=28243 queue_wait=2 quant_slots=0 write_busy=25412 padding=360 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=49 issues=49 wait_input=878 wait_snapshot=0 slot_ready=45 slot_reserved=767 queue_wait=2 quant_slots=0 write_busy=196 padding=32 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=98 issues=98 wait_input=1706 wait_snapshot=0 slot_ready=90 slot_reserved=1484 queue_wait=4 quant_slots=0 write_busy=393 padding=64 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=2 issues=2 wait_input=89 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=2 quant_slots=0 write_busy=38 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=2 issues=2 wait_input=90 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=2 quant_slots=0 write_busy=38 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=2 issues=2 wait_input=92 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=2 quant_slots=0 write_busy=40 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=160 issues=160 wait_input=4893 wait_snapshot=0 slot_ready=156 slot_reserved=4628 queue_wait=2 quant_slots=0 write_busy=4744 padding=56 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=112 issues=112 wait_input=2136 wait_snapshot=0 slot_ready=108 slot_reserved=1925 queue_wait=2 quant_slots=0 write_busy=1989 padding=50 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=182 issues=182 wait_input=11360 wait_snapshot=0 slot_ready=174 slot_reserved=10766 queue_wait=4 quant_slots=0 write_busy=611 padding=88 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=190 issues=190 wait_input=1836 wait_snapshot=0 slot_ready=186 slot_reserved=1634 queue_wait=2 quant_slots=0 write_busy=1910 padding=62 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=484 issues=484 wait_input=6922 wait_snapshot=0 slot_ready=480 slot_reserved=6476 queue_wait=2 quant_slots=0 write_busy=6152 padding=92 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=32 issues=32 wait_input=754 wait_snapshot=0 slot_ready=28 slot_reserved=689 queue_wait=1 quant_slots=0 write_busy=811 padding=0 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=1936 issues=1936 wait_input=27692 wait_snapshot=0 slot_ready=1920 slot_reserved=25908 queue_wait=8 quant_slots=0 write_busy=5637 padding=368 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=968 issues=968 wait_input=21632 wait_snapshot=0 slot_ready=936 slot_reserved=20024 queue_wait=16 quant_slots=0 write_busy=2808 padding=184 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=169 issues=169 wait_input=1075 wait_snapshot=0 slot_ready=164 slot_reserved=923 queue_wait=5 quant_slots=0 write_busy=1250 padding=56 peak_owned=4",
+        "VECTOR_WEIGHT_ROWS_CHECK issues=19884 weights=199543",
+        "VECTOR_CONTROL_DATAPATH_PASS parameter_cycles=5397 lut_cycles=25640 commit_cycles=4892 reduce_cycles=720",
+        "VECTOR_TILE_OVERLAP_CHECK read_write=752 error_during_read=1",
+        "VECTOR_PARAMETER_ROWS_CHECK one=12 two=8 three=85",
+        "VECTOR_INPUT_BANKS_PASS cycles=3717889 ordinary=35180 window=72482 pool=5562",
+        "VECTOR_ENGINE_DMA_PASS cases=616 outputs=170743 add_cases=143 add_outputs=135758 softmax_cases=273 softmax_outputs=2188"
+      ],
+      "configuration_values": {
+        "tile": 16,
+        "bus_width": 32,
+        "window_lanes": 4,
+        "shared_quant": true,
+        "shared_storage": false,
+        "shared_bank_bytes": 4096,
+        "shared_bank_count": 8,
+        "shared_ia_banks": 1,
+        "cache_sets": 16,
+        "cache_policy": 3,
+        "cache_line_bytes": 128,
+        "rtl_assertions": true,
+        "stable_stimulus": true
+      }
+    },
+    {
+      "configuration": "fixed_wait",
+      "passed": true,
+      "totals": {
+        "cases": 40,
+        "outputs": 103743,
+        "add_cases": 3,
+        "add_outputs": 28672,
+        "softmax_cases": 0,
+        "softmax_outputs": 0
+      },
+      "case_cycles": 1071159,
+      "all_case_statistics_equal": true,
+      "report_sha256": "ef64121adf72243c25994f83aebd5c895573c1565239b791402521b8b80f5e8c",
+      "reference_report_sha256": "e076007be38ec508eb973c1d3ba5bb3b73e5f798ebde26304e226fba8906e3ac",
+      "case_statistics_sha256": "8e688c2e25c9fba5fddf9a9957668f2786eda6064ab6d27e6d54551c14795f89",
+      "executable_sha256": "b836c74d0f3e077e3c64c87a4a685d1c1cdf4141634a564dfaa391fdaf400ada",
+      "log_sha256": "0b751242b4d88e337d915d5c0701b0e712f32a3a0756380808463eea73a370e1",
+      "assertion_summaries": [
+        "VECTOR_DW_PROFILE requests=484 issues=968 wait_input=3323 wait_snapshot=0 slot_ready=964 slot_reserved=2937 queue_wait=1 quant_slots=0 write_busy=3758 padding=92 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=968 issues=1936 wait_input=8482 wait_snapshot=0 slot_ready=1928 slot_reserved=7704 queue_wait=2 quant_slots=0 write_busy=2177 padding=184 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=2116 issues=4232 wait_input=28903 wait_snapshot=0 slot_ready=4216 slot_reserved=27223 queue_wait=4 quant_slots=0 write_busy=4353 padding=188 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=20164 issues=20164 wait_input=101030 wait_snapshot=0 slot_ready=20160 slot_reserved=85333 queue_wait=2 quant_slots=0 write_busy=115170 padding=572 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=5041 issues=10082 wait_input=39500 wait_snapshot=0 slot_ready=10078 slot_reserved=35549 queue_wait=1 quant_slots=0 write_busy=39696 padding=143 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=9800 issues=19600 wait_input=88204 wait_snapshot=0 slot_ready=19592 slot_reserved=80578 queue_wait=2 quant_slots=0 write_busy=19589 padding=568 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=3796 issues=7592 wait_input=33214 wait_snapshot=0 slot_ready=7576 slot_reserved=30230 queue_wait=4 quant_slots=0 write_busy=8502 padding=704 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=484 issues=968 wait_input=2784 wait_snapshot=0 slot_ready=964 slot_reserved=2401 queue_wait=1 quant_slots=0 write_busy=3345 padding=92 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=32 issues=64 wait_input=66 wait_snapshot=477 slot_ready=483 slot_reserved=71 queue_wait=1 quant_slots=0 write_busy=611 padding=0 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=1936 issues=3872 wait_input=11172 wait_snapshot=0 slot_ready=3856 slot_reserved=9640 queue_wait=4 quant_slots=0 write_busy=4096 padding=368 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=968 issues=1936 wait_input=9241 wait_snapshot=0 slot_ready=1904 slot_reserved=8425 queue_wait=8 quant_slots=0 write_busy=2048 padding=184 peak_owned=2",
+        "VECTOR_DW_PROFILE requests=169 issues=169 wait_input=886 wait_snapshot=0 slot_ready=158 slot_reserved=757 queue_wait=9 quant_slots=0 write_busy=1059 padding=56 peak_owned=4",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=0 issues=0 wait_input=0 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=0 quant_slots=0 write_busy=0 padding=0 peak_owned=0",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=1 issues=0 wait_input=33 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=0 padding=0 peak_owned=1",
+        "VECTOR_DW_PROFILE requests=1 issues=1 wait_input=35 wait_snapshot=0 slot_ready=0 slot_reserved=0 queue_wait=1 quant_slots=0 write_busy=14 padding=0 peak_owned=1",
+        "VECTOR_SHARED_STORAGE_CHECK weight_bytes=4039 weight_reads=412772 snapshot_writes=5491 snapshot_reads=5491",
+        "VECTOR_WEIGHT_WRITE_STAGE_PASS captured=518 published=518 cancelled=0 consecutive=240 last_rows=274 last_taps=42",
+        "VECTOR_WEIGHT_PREFETCH_PASS cached_issues=71512 returned_issues=77 stalled_cycles=327048 skipped_taps=3151 tap_advances=49115 task_starts=40 failure_cycles=10 checked_returns=412772",
+        "VECTOR_WEIGHT_ROWS_CHECK issues=71589 weights=981837",
+        "VECTOR_CONTROL_DATAPATH_PASS parameter_cycles=1779 lut_cycles=0 commit_cycles=5407 reduce_cycles=64",
+        "VECTOR_TILE_OVERLAP_CHECK read_write=224 error_during_read=0",
+        "VECTOR_PARAMETER_ROWS_CHECK one=0 two=0 three=42",
+        "VECTOR_INPUT_BANKS_PASS cycles=1071560 ordinary=3985 window=119441 pool=1768",
+        "VECTOR_ENGINE_DMA_PASS cases=40 outputs=103743 add_cases=3 add_outputs=28672 softmax_cases=0 softmax_outputs=0"
+      ],
+      "configuration_values": {
+        "tile": 16,
+        "bus_width": 64,
+        "window_lanes": 8,
+        "shared_quant": false,
+        "shared_storage": true,
+        "shared_bank_bytes": 8192,
+        "shared_bank_count": 7,
+        "shared_ia_banks": 2,
+        "cache_sets": 16,
+        "cache_policy": 3,
+        "cache_line_bytes": 128,
+        "rtl_assertions": true,
+        "stable_stimulus": true
+      }
+    }
+  ],
+  "synthesis": {
+    "top": "vector_engine",
+    "parameters": {
+      "TILE": 16,
+      "PE_COUNT": 8,
+      "BUS_WIDTH": 64,
+      "WINDOW_LANES": 8,
+      "SHARED_STORAGE_ENABLE": 1,
+      "SHARED_QUANT_ENABLE": 0,
+      "SHARED_STORAGE_ADDR_WIDTH": 12
+    },
+    "resources": {
+      "logic_lut_cells": 10427,
+      "distributed_ram_lut_sites_nominal": 176,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 10603,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 6406,
+      "dsp48e1": 71,
+      "ramb36e1": 0,
+      "ramb18e1": 9,
+      "carry4": 389,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 389,
+        "DSP48E1": 71,
+        "FDCE": 2801,
+        "FDPE": 8,
+        "FDRE": 3595,
+        "FDSE": 2,
+        "INV": 186,
+        "LUT2": 1482,
+        "LUT3": 2075,
+        "LUT4": 1344,
+        "LUT5": 3279,
+        "LUT6": 2247,
+        "RAM32M": 44,
+        "RAMB18E1": 9
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 10,
+    "graph_complete": true,
+    "metrics_sha256": "154e089ee36d485e0dce2e60331eeda7c2e8d5395bc74c1b1cb4c9df098579fe",
+    "mapped_json_sha256": "53910f51bdd722365f5269b19041e3e5b3f04e97251881ed6397c1eab6ec93a4",
+    "engine_sha256": "1628b8e4c9972f68bf443b830997503d3309b649b2ad68ab735387cd205155d7",
+    "rounding_sha256": "521a687dffb3bf2f45da3d9cbcfbd0af6e5f991e78ed306ab07dd46fbd4de94c"
+  },
+  "changed_test_sha256": {
+    "test/vector_control_flags/run.py": "7afe47ce3c10d38980616c5c77f21a21c569edd627d4f8b7de785a67137e0912",
+    "test/vector_quant_owner/run.py": "f3ee92c59e50376ff7accf219617b066aa2b52da98bc5ca102cb0d0df3bd1f08",
+    "test/vector_window_write_bounds/run.py": "34ef402d7eb1c90e4715ef2af9d0f12ac0ad2b53fd846172b293f9ee4ca99881"
+  }
+}
