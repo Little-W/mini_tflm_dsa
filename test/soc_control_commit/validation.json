@@ -1,0 +1,135 @@
+{
+  "passed": true,
+  "reference_ref": "fe0ed2325743c9b353b74377fbe7b4a1e9d19d64",
+  "source_sha256": {
+    "reference": "ab924f6cbf7f74cfce4e394a40cab78c5e9813a6bf7b5dfd22d75179d634fcf4",
+    "current": "ee3fd08de3f8280f62a3274460a600f421d51a49f661a0d5b2977a6d7707d484"
+  },
+  "testbench_sha256": "29c6068dc1deb02180b822183d430bc6e7986017617042e63879185b3b0e6aa5",
+  "runs": [
+    {
+      "label": "reference",
+      "address_width": 32,
+      "data_width": 32,
+      "writes": 2048,
+      "reads": 8192,
+      "resets": 37,
+      "cycles": 66458,
+      "log_sha256": "25b275db84709d91761a3843df99b7dd8aca382be50ad8e0a51ceb185f663d6c",
+      "passed": true
+    },
+    {
+      "label": "current",
+      "address_width": 32,
+      "data_width": 32,
+      "writes": 2048,
+      "reads": 8192,
+      "resets": 37,
+      "cycles": 68506,
+      "log_sha256": "577d51eef9384d896064967341886a575af597376bc6c9d98aaafd799b40ebc4",
+      "passed": true
+    },
+    {
+      "label": "reference",
+      "address_width": 40,
+      "data_width": 32,
+      "writes": 2048,
+      "reads": 8192,
+      "resets": 37,
+      "cycles": 66458,
+      "log_sha256": "25b275db84709d91761a3843df99b7dd8aca382be50ad8e0a51ceb185f663d6c",
+      "passed": true
+    },
+    {
+      "label": "current",
+      "address_width": 40,
+      "data_width": 32,
+      "writes": 2048,
+      "reads": 8192,
+      "resets": 37,
+      "cycles": 68506,
+      "log_sha256": "577d51eef9384d896064967341886a575af597376bc6c9d98aaafd799b40ebc4",
+      "passed": true
+    },
+    {
+      "label": "reference",
+      "address_width": 64,
+      "data_width": 64,
+      "writes": 2048,
+      "reads": 8192,
+      "resets": 37,
+      "cycles": 66458,
+      "log_sha256": "25b275db84709d91761a3843df99b7dd8aca382be50ad8e0a51ceb185f663d6c",
+      "passed": true
+    },
+    {
+      "label": "current",
+      "address_width": 64,
+      "data_width": 64,
+      "writes": 2048,
+      "reads": 8192,
+      "resets": 37,
+      "cycles": 68506,
+      "log_sha256": "577d51eef9384d896064967341886a575af597376bc6c9d98aaafd799b40ebc4",
+      "passed": true
+    }
+  ],
+  "mapped": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 115,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 115,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 139,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDCE": 139,
+          "INV": 2,
+          "LUT2": 6,
+          "LUT3": 9,
+          "LUT4": 32,
+          "LUT5": 65,
+          "LUT6": 3
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 2,
+      "graph_complete": true,
+      "metrics_sha256": "a4cadbf27845ce9d3632dd39d74f53261726f6bfc7fcf64f942871fdcba50010"
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 108,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 108,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 139,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "FDCE": 139,
+          "INV": 2,
+          "LUT2": 3,
+          "LUT3": 68,
+          "LUT4": 34,
+          "LUT5": 2,
+          "LUT6": 1
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 1,
+      "graph_complete": true,
+      "metrics_sha256": "b55f81a22fc2ff21f22d6da193f59eb172942e47da09f8a9124bf00d88e933d2"
+    }
+  }
+}

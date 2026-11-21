@@ -40,9 +40,10 @@ module soc_axil_ctrl #(
     wire aw_fire = s_axil_awvalid && s_axil_awready;
     wire w_fire  = s_axil_wvalid  && s_axil_wready;
     wire ar_fire = s_axil_arvalid && s_axil_arready;
-    wire wr_ready = (aw_seen_q || aw_fire) && (w_seen_q || w_fire) && !s_axil_bvalid;
-    wire [AXIL_DATA_WIDTH-1:0] wr_data_eff = w_seen_q ? wdata_q : s_axil_wdata;
-    wire [AXIL_DATA_WIDTH/8-1:0] wr_strb_eff = w_seen_q ? wstrb_q : s_axil_wstrb;
+    // 地址与写数据分别保存，收齐后更新寄存器并产生写响应。
+    wire wr_ready = aw_seen_q && w_seen_q && !s_axil_bvalid;
+    wire [AXIL_DATA_WIDTH-1:0] wr_data_eff = wdata_q;
+    wire [AXIL_DATA_WIDTH/8-1:0] wr_strb_eff = wstrb_q;
     wire [31:0] wr_mask32 = {
         {8{wr_strb_eff[3]}},
         {8{wr_strb_eff[2]}},
@@ -85,7 +86,7 @@ module soc_axil_ctrl #(
             end
 
             if (wr_ready) begin
-                unique case ((aw_seen_q ? awaddr_q[3:2] : s_axil_awaddr[3:2]))
+                unique case (awaddr_q[3:2])
                     2'b00: begin
                         soc_finish <= 1'b1;
                         soc_status <= soc_status_next;
