@@ -176,8 +176,8 @@ module bias_loader_buffer #(
   // 通用缓冲区默认分别处理两个索引，集成控制器时可共享范围比较。
   assign load_request_idx = p_share_load_index ? current_block_idx : load_block_idx;
 
-  // 上界比较只需要判断请求末端是否产生超出银行末端的进位。
-  // 三个操作数先压缩为两项，再并行合并各位进位，保留完整扩展位。
+  // 请求起点、长度和银行末端先压缩为两项，再计算完整扩展进位。
+  // 公共加法器在 FPGA 配置中推断宽算术资源，在通用配置中保留分组进位。
   for (genvar request_i = 0; request_i < 2; request_i++) begin : g_range_request
     logic [RANGE_WIDTH-1:0] request_base;
     logic [RANGE_WIDTH-1:0] request_count;
@@ -187,72 +187,32 @@ module bias_loader_buffer #(
       logic [RANGE_WIDTH-1:0] sum_bits;
       logic [RANGE_WIDTH-1:0] carry_bits;
       logic [RANGE_WIDTH-1:0] shifted_carry;
-      localparam int p_groups = (RANGE_WIDTH + 2) / 3;
-      localparam int p_levels = $clog2(p_groups) + 1;
-      (* keep = 1 *) logic [RANGE_WIDTH-1:0] bit_generate, bit_propagate;
-      (* keep = 1 *) logic [p_groups-1:0] group_generate [p_levels+1];
-      (* keep = 1 *) logic [p_groups-1:0] group_propagate [p_levels+1];
+      logic [RANGE_WIDTH-1:0] unused_range_sum;
+      logic range_i_carry;
       logic range_overflow;
       logic unused_high_carry;
       assign sum_bits = request_base ^ request_count ^ ~bank_end_q[bank_i];
       assign carry_bits = (request_base & request_count) |
           ((request_base | request_count) & ~bank_end_q[bank_i]);
       assign {unused_high_carry, shifted_carry} = {carry_bits, 1'b0};
-      assign bit_generate = sum_bits & shifted_carry;
-      assign bit_propagate = sum_bits | shifted_carry;
-      // 三位叶节点并行计算进位条件，三叉归并只保存最终比较需要的最高进位。
-      for (genvar group_i = 0; group_i < p_groups; group_i++) begin : g_leaf
-        localparam int p_low = 3 * group_i;
-        localparam int p_bits = RANGE_WIDTH - p_low < 3 ? RANGE_WIDTH - p_low : 3;
-        logic [p_bits-1:0] generate_terms;
-        for (genvar bit_i = 0; bit_i < p_bits; bit_i++) begin : g_bit
-          if (bit_i == p_bits-1) begin : g_high
-            assign generate_terms[bit_i] = bit_generate[p_low+bit_i];
-          end else begin : g_low
-            assign generate_terms[bit_i] = bit_generate[p_low+bit_i] &
-                (&bit_propagate[p_low+bit_i+1 +: p_bits-bit_i-1]);
-          end
-        end
-        assign group_generate[0][group_i] = |generate_terms;
-        assign group_propagate[0][group_i] = &bit_propagate[p_low +: p_bits];
-      end
-      for (genvar level = 1; level <= p_levels; level++) begin : g_level
-        localparam int p_previous_span = 3 ** (level-1);
-        localparam int p_current_span = 3 ** level;
-        localparam int p_previous_nodes = (p_groups+p_previous_span-1)/p_previous_span;
-        localparam int p_current_nodes = (p_groups+p_current_span-1)/p_current_span;
-        for (genvar node = 0; node < p_groups; node++) begin : g_node
-          if (node < p_current_nodes) begin : g_present
-            logic [2:0] child_generate, child_propagate;
-            for (genvar child = 0; child < 3; child++) begin : g_child
-              if (3*node+child < p_previous_nodes) begin : g_real
-                assign child_generate[child] = group_generate[level-1][3*node+child];
-                assign child_propagate[child] = group_propagate[level-1][3*node+child];
-              end else begin : g_padding
-                assign child_generate[child] = 1'b0;
-                assign child_propagate[child] = 1'b1;
-              end
-            end
-            assign group_generate[level][node] = child_generate[2] |
-                (child_propagate[2] & child_generate[1]) |
-                (child_propagate[2] & child_propagate[1] & child_generate[0]);
-            assign group_propagate[level][node] = &child_propagate;
-          end else begin : g_unused
-            assign group_generate[level][node] = 1'b0;
-            assign group_propagate[level][node] = 1'b1;
-          end
-        end
-      end
-      assign range_overflow = group_generate[p_levels][0];
+      assign range_i_carry = 1'b0;
+      parallel_prefix_add #(.p_width(RANGE_WIDTH)) u_range_end (
+          .i_a(sum_bits), .i_b(shifted_carry), .i_carry(range_i_carry),
+          .o_sum(unused_range_sum), .o_carry(range_overflow)
+      );
       assign window_end_valid[request_i][bank_i] = ~range_overflow;
     end
   end
   for (genvar b = 0; b < 2; b++) begin : gen_window_hit
+    (* use_dsp = "yes" *) logic [CNT_W:0] load_start_difference;
+    (* use_dsp = "yes" *) logic [CNT_W:0] current_start_difference;
+    // 扩展位保存无符号借位，两个银行同时计算请求起点是否处于驻留范围内。
+    assign load_start_difference = {1'b0, load_request_idx} - {1'b0, bank_block_idx[b]};
+    assign current_start_difference = {1'b0, current_block_idx} - {1'b0, bank_block_idx[b]};
     assign load_window_hit[b] = bank_loaded[b] &&
-        load_request_idx >= bank_block_idx[b] && window_end_valid[0][b];
-    // 两个银行并行判断驻留范围，银行选择仅作用于最终的一位结果。
+        !load_start_difference[CNT_W] && window_end_valid[0][b];
     assign current_window_hit[b] = bank_loaded[b] &&
-        current_block_idx >= bank_block_idx[b] && window_end_valid[1][b];
+        !current_start_difference[CNT_W] && window_end_valid[1][b];
   end
   assign resident_current = current_window_hit[active_bank];
   assign load_block_valid = |load_window_hit;
