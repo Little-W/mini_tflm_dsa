@@ -1,0 +1,640 @@
+{
+  "passed": true,
+  "source_sha256": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
+  "test_source_sha256": "54d0ec00854873cf295ac80ad55d179e72fbdddea2b28beb3c19388c34cba159",
+  "native_reference_helper_sha256": "b2c5ac6418d21abf67593fd70164fc909927b5aa3446ab70707ed452b8e15408",
+  "inputs_constrained": false,
+  "formal": [
+    {
+      "passed": true,
+      "width": 1,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 4,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "d1d3eef67559639f25c81894248e253b05c5c62d8181166f76c94e4a005bbd9a"
+    },
+    {
+      "passed": true,
+      "width": 1,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 4,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "5718cc41612ef4aea8cf742e5ea7a8e8308b3ae3fb06b97e07b838bd0d3cc7a0"
+    },
+    {
+      "passed": true,
+      "width": 2,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 7,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "c89f16f4886a0c8e8b79047085af5681a39091f0f795b03a7b9a5cae14fc7b92"
+    },
+    {
+      "passed": true,
+      "width": 2,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 7,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "72523d0903b8b4dbba357ba862fde44bd9026dceea62e489337dd5b7f78912d6"
+    },
+    {
+      "passed": true,
+      "width": 16,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 49,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "fdce01e03f8e07a02920c59599f6bb6a132dcf334be4404732ab2e8d4241fff4"
+    },
+    {
+      "passed": true,
+      "width": 16,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 49,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "eabfbb6520349eb768b0b6f71ea13f9c6175f9783c92416ff2c0854d4eed38f9"
+    },
+    {
+      "passed": true,
+      "width": 23,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 70,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "33271f4000ad8b67ec0ba740a0c4634a082115d032b21152736991decaf69cd2"
+    },
+    {
+      "passed": true,
+      "width": 23,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 70,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "3366fd1fc0a68c19e26e5676fb67f360830897c0a1ed02c45571d879e79e20da"
+    },
+    {
+      "passed": true,
+      "width": 24,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 73,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "53d88dae828b4072cb19600805d6bab3e6c56066babf594d6de1263bbaddffca"
+    },
+    {
+      "passed": true,
+      "width": 24,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 73,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "c013f72be8f2731f7a1592adde5a95b31c5b2ee53ddea70e039617cba54092dd"
+    },
+    {
+      "passed": true,
+      "width": 28,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 85,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "5e4e51b13d57645507463af1495b460fdd2cecd88ad770a43309682392bcc1a1"
+    },
+    {
+      "passed": true,
+      "width": 28,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 85,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "222562b367440e34f3fea0f3a13e2b49e0c9d986d27a3c95935c894b0259c4d6"
+    },
+    {
+      "passed": true,
+      "width": 32,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 97,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "3a26c238b9a7c293e1a92a3393bb5450c39129ffef69e987c17c028260400891"
+    },
+    {
+      "passed": true,
+      "width": 32,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 97,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "ef7d28a92e7caa21da0c2fca14ddaa6d8a8af20b86a9f7d201af8c13784babf3"
+    },
+    {
+      "passed": true,
+      "width": 33,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 100,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "e7407d54ee41e94d47f3cada38415b067fa070e4310c306810b693d27bd511c0"
+    },
+    {
+      "passed": true,
+      "width": 33,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 100,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "44daeec98456ac440349b257c587c12ae7184a263e7907ea934bbe652252ccdc"
+    },
+    {
+      "passed": true,
+      "width": 47,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 142,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "648d70b7809ade21c472d11b94c376717a3c0df26f81301264f0ad8010f4bdbd"
+    },
+    {
+      "passed": true,
+      "width": 47,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 142,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "a920a221aafc7dba9ebe581a0d74a044e3bfb37f734d069b429884575f60ac43"
+    },
+    {
+      "passed": true,
+      "width": 48,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 145,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "0525966418fbb18d8140b91c8113e6c206731edfd97ee72881d347d1f4b18aa6"
+    },
+    {
+      "passed": true,
+      "width": 48,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 145,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "251d6a0c8a9469650be35172a2cb4698c112ea70c3fa6523d3c54f42b497d476"
+    },
+    {
+      "passed": true,
+      "width": 64,
+      "infer_dsp": false,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 193,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "ee7757f5bf91d943fd5c41d7d152bad28d3d47e0884580168507c522f3ec060a"
+    },
+    {
+      "passed": true,
+      "width": 64,
+      "infer_dsp": true,
+      "synthesis_expression": true,
+      "unconstrained_input_bits": 193,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "be1bee3f7011303bca9c228b9f90b28103476868c7e5f4b7cbda60ade85dd257"
+    }
+  ],
+  "four_state": [
+    {
+      "passed": true,
+      "width": 1,
+      "configuration": "fpga",
+      "tests": 256,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "8ef4390c9fceb158df539d40455d6f3baed45238febe02e0e6db50bf16177bfb"
+    },
+    {
+      "passed": true,
+      "width": 1,
+      "configuration": "generic",
+      "tests": 256,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "8ef4390c9fceb158df539d40455d6f3baed45238febe02e0e6db50bf16177bfb"
+    },
+    {
+      "passed": true,
+      "width": 2,
+      "configuration": "fpga",
+      "tests": 16384,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "9dbc7c4c686d4655ef471474f5dbd91a986d06fb86a25b42df5bc10661a52e93"
+    },
+    {
+      "passed": true,
+      "width": 2,
+      "configuration": "generic",
+      "tests": 16384,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "9dbc7c4c686d4655ef471474f5dbd91a986d06fb86a25b42df5bc10661a52e93"
+    },
+    {
+      "passed": true,
+      "width": 16,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "ae896f0f2e195fa3ea80ff2de59e4ae53487b191aaf8bad7c0fe764bff2812bd"
+    },
+    {
+      "passed": true,
+      "width": 16,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "ae896f0f2e195fa3ea80ff2de59e4ae53487b191aaf8bad7c0fe764bff2812bd"
+    },
+    {
+      "passed": true,
+      "width": 23,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "312d30da7a775e1f64ba79df8f7805bf98ccef79bd1ba47ce1d77e779539b181"
+    },
+    {
+      "passed": true,
+      "width": 23,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "312d30da7a775e1f64ba79df8f7805bf98ccef79bd1ba47ce1d77e779539b181"
+    },
+    {
+      "passed": true,
+      "width": 24,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "a3c464766720b8e35510c910828c8099b5c34600dd5b5abec59adfa525ca78f9"
+    },
+    {
+      "passed": true,
+      "width": 24,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "a3c464766720b8e35510c910828c8099b5c34600dd5b5abec59adfa525ca78f9"
+    },
+    {
+      "passed": true,
+      "width": 28,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "3e72a0d97c3ab5f56df3c72d5bf8aeb7c039de87159f85151b2c81ec4eef2d71"
+    },
+    {
+      "passed": true,
+      "width": 28,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "3e72a0d97c3ab5f56df3c72d5bf8aeb7c039de87159f85151b2c81ec4eef2d71"
+    },
+    {
+      "passed": true,
+      "width": 32,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "cb6ce911d3873e92512484a0170b6de2000bb4c244ff3d0922ce7c64fb954098"
+    },
+    {
+      "passed": true,
+      "width": 32,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "cb6ce911d3873e92512484a0170b6de2000bb4c244ff3d0922ce7c64fb954098"
+    },
+    {
+      "passed": true,
+      "width": 33,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "9c0594d3f6e5e05ec5ba3025a83cbade0b1c0e33b8f5df3ba1258833cd4f7bd6"
+    },
+    {
+      "passed": true,
+      "width": 33,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "9c0594d3f6e5e05ec5ba3025a83cbade0b1c0e33b8f5df3ba1258833cd4f7bd6"
+    },
+    {
+      "passed": true,
+      "width": 47,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "26db0ef369d83d36896ba91bed02fa5d359f7f8c352a6a18842c20a8a032d3e2"
+    },
+    {
+      "passed": true,
+      "width": 47,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "26db0ef369d83d36896ba91bed02fa5d359f7f8c352a6a18842c20a8a032d3e2"
+    },
+    {
+      "passed": true,
+      "width": 48,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "a3349a4d86098d0b5220c2e604f027ffa4a7f48150ab4af9e444899b295f30bb"
+    },
+    {
+      "passed": true,
+      "width": 48,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "a3349a4d86098d0b5220c2e604f027ffa4a7f48150ab4af9e444899b295f30bb"
+    },
+    {
+      "passed": true,
+      "width": 64,
+      "configuration": "fpga",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "aaa75ade4f9eebb251ec24b22ddc5827de38861f59e2917cc1cfc5cc0932f925"
+    },
+    {
+      "passed": true,
+      "width": 64,
+      "configuration": "generic",
+      "tests": 6000,
+      "preserve_modes": [
+        "default",
+        0,
+        1
+      ],
+      "log_sha256": "aaa75ade4f9eebb251ec24b22ddc5827de38861f59e2917cc1cfc5cc0932f925"
+    }
+  ],
+  "four_state_bench_sha256": "2a549d51c229103150da0519af5691d34f411dd1e5ad0b01a1634caf168a0f9b",
+  "measurement": [
+    {
+      "width": 28,
+      "reference": {
+        "logic_lut_cells": 48,
+        "flip_flops": 86,
+        "dsp48e1": 0,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "3efaf2501b345b0348e51758382742032313b70cb568188875b12619ad6d4246"
+      },
+      "current": {
+        "logic_lut_cells": 16,
+        "flip_flops": 86,
+        "dsp48e1": 1,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "2f8a483a5c94947b2e478b65509fd1058f5bfb1c42e307a9a37859cdd6fb43f1"
+      }
+    },
+    {
+      "width": 32,
+      "reference": {
+        "logic_lut_cells": 64,
+        "flip_flops": 98,
+        "dsp48e1": 0,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "29a82c36fc5af9124e3a202123714853930d5f042aef277b52d9f16de6aa85e8"
+      },
+      "current": {
+        "logic_lut_cells": 18,
+        "flip_flops": 98,
+        "dsp48e1": 1,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "483d4b67795e4f42b2d73e62a15c79e5f35ea6b9d031016ca148f4b2cf06f833"
+      }
+    },
+    {
+      "width": 33,
+      "reference": {
+        "logic_lut_cells": 58,
+        "flip_flops": 101,
+        "dsp48e1": 0,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "9f320c0c863961ec46226de6c2fc756aad595a06bda8dfd6f3866677af09c189"
+      },
+      "current": {
+        "logic_lut_cells": 20,
+        "flip_flops": 101,
+        "dsp48e1": 1,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "f2283fb3b8de6d5fabf5c303ce3a2e5b229599d8630c474e4e77965f4d2625ff"
+      }
+    },
+    {
+      "width": 47,
+      "reference": {
+        "logic_lut_cells": 74,
+        "flip_flops": 143,
+        "dsp48e1": 0,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "9ea96f03623895e380bd204995ac429688a1759f7f7a5d8a354ceb687416ee2a"
+      },
+      "current": {
+        "logic_lut_cells": 26,
+        "flip_flops": 143,
+        "dsp48e1": 1,
+        "longest_register_path_cells": 5,
+        "graph_complete": true,
+        "metrics_sha256": "62dbcf9eadd2f81e270b24d99aac928d5b756a106e00b1e741c03d095b45a522"
+      }
+    }
+  ]
+}
