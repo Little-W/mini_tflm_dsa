@@ -26,6 +26,8 @@ module vector_config_check #(
   logic [16:0] range_x_sum, range_y_sum;
   logic [16:0] range_x_carry, range_y_carry;
   logic [17:0] range_x_compare, range_y_compare;
+  logic [17:0] range_x_i_a, range_x_i_b, range_y_i_a, range_y_i_b;
+  logic unused_range_x_carry, unused_range_y_carry;
   logic output_x_in_range, output_y_in_range;
   logic fields_ok,spatial,depthwise,binary_vector,add_s8,softmax_s8;
   logic activation_range_ok;
@@ -70,8 +72,19 @@ module vector_config_check #(
       (({1'b0, cfg.image.input_w} ^ {1'b0, cfg.image.pad_left}) & ~last_x[16:0]);
   assign range_y_carry = ({1'b0, cfg.image.input_h} & {1'b0, cfg.image.pad_top}) |
       (({1'b0, cfg.image.input_h} ^ {1'b0, cfg.image.pad_top}) & ~last_y[16:0]);
-  assign range_x_compare = {1'b0, range_x_sum} + {range_x_carry, 1'b0};
-  assign range_y_compare = {1'b0, range_y_sum} + {range_y_carry, 1'b0};
+  assign range_x_i_a = {1'b0, range_x_sum};
+  assign range_x_i_b = {range_x_carry, 1'b0};
+  assign range_y_i_a = {1'b0, range_y_sum};
+  assign range_y_i_b = {range_y_carry, 1'b0};
+  // 四位分组独立计算坐标范围的进位，完整比较结果保持十八位。
+  parallel_prefix_add #(.p_width(18), .p_group_width(4)) u_range_x (
+      .i_a(range_x_i_a), .i_b(range_x_i_b), .i_carry(1'b0),
+      .o_sum(range_x_compare), .o_carry(unused_range_x_carry)
+  );
+  parallel_prefix_add #(.p_width(18), .p_group_width(4)) u_range_y (
+      .i_a(range_y_i_a), .i_b(range_y_i_b), .i_carry(1'b0),
+      .o_sum(range_y_compare), .o_carry(unused_range_y_carry)
+  );
   assign output_x_in_range = !(|last_x[47:17]) && range_x_compare[17];
   assign output_y_in_range = !(|last_y[47:17]) && range_y_compare[17];
 

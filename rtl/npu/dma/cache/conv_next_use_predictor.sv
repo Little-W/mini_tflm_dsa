@@ -59,21 +59,21 @@ module conv_next_use_predictor (
   wire cfg_product_start = cfg_phase>=1 && cfg_phase<=4 &&
       cfg_multiply_phase==0 && !cfg_product_done &&
       (cfg_phase!=1 || (cfg_basic_q && cfg_taps_q!=0 && cfg_taps_q<=25));
-  logic [32:0] cfg_block_round;
+  logic [32:0] cfg_block_round, cfg_block_round_q;
   logic [32:0] cfg_round_sum, cfg_round_carry;
-  logic [16:0] cfg_round_low, cfg_round_high_zero, cfg_round_high_one;
-  logic unused_cfg_round_zero_carry, unused_cfg_round_one_carry;
+  logic unused_cfg_round_carry;
 
-  // 取整偏移先压缩为两个操作数，高位并行计算两种进位结果。
+  // 取整偏移压缩为两个操作数，再并行计算四位分组进位。
   assign cfg_round_sum = ~({1'b0, cfg_points_q} ^ {1'b0, block_rows_q});
   assign cfg_round_carry = {cfg_points_q | block_rows_q, 1'b0};
-  assign cfg_round_low = {1'b0, cfg_round_sum[15:0]} + {1'b0, cfg_round_carry[15:0]};
-  assign {unused_cfg_round_zero_carry, cfg_round_high_zero} =
-    {1'b0, cfg_round_sum[32:16]} + {1'b0, cfg_round_carry[32:16]};
-  assign {unused_cfg_round_one_carry, cfg_round_high_one} =
-    {1'b0, cfg_round_sum[32:16]} + {1'b0, cfg_round_carry[32:16]} + 18'd1;
-  assign cfg_block_round = {
-    cfg_round_low[16] ? cfg_round_high_one : cfg_round_high_zero, cfg_round_low[15:0]};
+  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_cfg_round (
+    .i_a(cfg_round_sum), .i_b(cfg_round_carry), .i_carry(1'b0),
+    .o_sum(cfg_block_round), .o_carry(unused_cfg_round_carry)
+  );
+  // 配置乘法等待期间保存取整和，分块数量只需经过后续移位。
+  always_ff @(posedge clk) begin
+    cfg_block_round_q <= cfg_block_round;
+  end
   assign cfg_r_shift = log2_pow2(cfg_r);
   assign cfg_h_shift = log2_pow2({16'd0,cfg.stride_h});
   assign cfg_w_shift = log2_pow2({16'd0,cfg.stride_w});
@@ -161,25 +161,38 @@ module conv_next_use_predictor (
     end
   end
 
-  // 高十八位的两种借位结果并行计算，低十六位只选择相应结果。
+  // 坐标减法保持完整三十四位，各字节与范围上限分别比较。
+  logic [1:0] coordinate_before_limit;
   assign coordinate_pad[0] = y_pad_q;
   assign coordinate_pad[1] = x_pad_q;
   assign coordinate_product[0] = mul_y_s0;
   assign coordinate_product[1] = mul_x_s0;
   for (genvar axis = 0; axis < 2; axis++) begin : g_coordinate_difference
-    logic [16:0] low_difference;
-    logic [17:0] high_without_borrow, high_with_borrow;
-
-    assign low_difference = {1'b0, coordinate_pad[axis][15:0]} -
-      {1'b0, coordinate_product[axis][15:0]};
-    assign high_without_borrow = {1'b0, coordinate_pad[axis][32:16]} -
-      {2'b0, coordinate_product[axis][31:16]};
-    // 减去乘积和借位等价于相反次序的差值取反，只需一次十八位减法。
-    assign high_with_borrow = ~({2'b0, coordinate_product[axis][31:16]} -
-      {1'b0, coordinate_pad[axis][32:16]});
-    assign coordinate_difference[axis] = {
-      low_difference[16] ? high_with_borrow : high_without_borrow,
-      low_difference[15:0]};
+    logic [33:0] difference_i_a, difference_i_b;
+    logic unused_difference_carry;
+    logic [31:0] coordinate_limit;
+    logic [33:0] limit_sum_i_a, limit_sum_i_b, limit_sum;
+    logic [33:0] limit_operand_a, limit_operand_b, limit_operand_c;
+    logic unused_limit_carry;
+    assign difference_i_a = {1'b0, coordinate_pad[axis]};
+    assign difference_i_b = ~{2'b0, coordinate_product[axis]};
+    parallel_prefix_add #(.p_width(34), .p_group_width(4), .p_preserve_groups(1'b1)) u_difference (
+      .i_a(difference_i_a), .i_b(difference_i_b), .i_carry(1'b1),
+      .o_sum(coordinate_difference[axis]), .o_carry(unused_difference_carry)
+    );
+    assign coordinate_limit = axis == 0 ? y_limit_q : x_limit_q;
+    // 范围比较直接压缩三个操作数，与完整坐标减法并行计算。
+    assign limit_operand_a = {2'b0, coordinate_product[axis]};
+    assign limit_operand_b = {2'b0, coordinate_limit};
+    assign limit_operand_c = ~{1'b0, coordinate_pad[axis]};
+    assign limit_sum_i_a = limit_operand_a ^ limit_operand_b ^ limit_operand_c;
+    assign limit_sum_i_b = ((limit_operand_a & limit_operand_b) |
+      ((limit_operand_a | limit_operand_b) & limit_operand_c)) << 1;
+    parallel_prefix_add #(.p_width(34), .p_group_width(4), .p_preserve_groups(1'b1)) u_limit (
+      .i_a(limit_sum_i_a), .i_b(limit_sum_i_b), .i_carry(1'b0),
+      .o_sum(limit_sum), .o_carry(unused_limit_carry)
+    );
+    assign coordinate_before_limit[axis] = !coordinate_difference[axis][33] && !limit_sum[33];
   end
   assign ny_s0 = $signed(coordinate_difference[0]);
   assign nx_s0 = $signed(coordinate_difference[1]);
@@ -187,10 +200,9 @@ module conv_next_use_predictor (
   always_comb begin
     oy_s0 = 32'(ny_s0) >> h_shift_q;
     ox_s0 = 32'(nx_s0) >> w_shift_q;
-    coordinate_good_s0 = ny_s0>=34'sd0 && nx_s0>=34'sd0 &&
+    coordinate_good_s0 = coordinate_before_limit[0] && coordinate_before_limit[1] &&
       ($unsigned(ny_s0) & 34'(h_mask_q))==34'd0 &&
-      ($unsigned(nx_s0) & 34'(w_mask_q))==34'd0 &&
-      $unsigned(ny_s0)<34'(y_limit_q) && $unsigned(nx_s0)<34'(x_limit_q);
+      ($unsigned(nx_s0) & 34'(w_mask_q))==34'd0;
     last_tap = 16'(ky_q)==kh_q-16'd1 && 16'(kx_q)==kw_q-16'd1;
     // 候选比较与有效性判断并行，无效候选直接保留当前最早访问位置。
     best_next = candidate_good_s6 && rank_s6<best_q ? rank_s6 : best_q;
@@ -238,7 +250,7 @@ module conv_next_use_predictor (
           case (cfg_phase)
             1: begin
               cfg_qtiles_q<=cfg_product[20:4];
-              cfg_blocks_q<=32'(cfg_block_round>>block_shift_q);
+              cfg_blocks_q<=32'(cfg_block_round_q>>block_shift_q);
               cfg_phase<=2;
             end
             2: begin

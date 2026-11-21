@@ -224,18 +224,20 @@ module axi_block_dma_arbiter #(
 
     localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
 
-    logic local_abort, bus_error_event;
+    logic local_abort, transfer_abort, bus_error_event;
 
     // 错误响应在本地立即阻止新命令，已接收的总线事务继续排空。
     // 选择寄存上报时，顶层控制从下一周期接收错误状态。
     if (p_register_bus_error) begin : g_registered_bus_error
         assign local_abort = abort || bus_error_event;
+        assign transfer_abort = abort || bus_error;
         always_ff @(posedge clk) begin
             if (!rst_n) bus_error <= 1'b0;
             else bus_error <= bus_error_event;
         end
     end else begin : g_direct_bus_error
         assign local_abort = abort;
+        assign transfer_abort = abort;
         assign bus_error = bus_error_event;
     end
 
@@ -254,6 +256,8 @@ module axi_block_dma_arbiter #(
     logic [1:0] rd_client_inflight [5];
     logic [3:0] rd_pending_count;
     logic [2:0] rd_pending_count_q;
+    logic [2:0] rd_pending_count_next;
+    logic rd_pending_increment, rd_pending_decrement, rd_pending_decrement_two;
     logic rd_command_space, rd_reservation_space;
     logic rd_dma_start;
     logic [4:0] rd_client_accept;
@@ -276,6 +280,8 @@ module axi_block_dma_arbiter #(
     assign rd_client_accept[C_BIAS] = bias_start && bias_granted;
     assign rd_client_accept[C_QUANT] = quant_start && quant_granted;
     assign rd_client_accept[C_DW] = dw_start && dw_granted;
+    // 各请求方的接收条件已经包含归属译码，直接并行归并为命令接收事件。
+    assign rd_dma_start = |rd_client_accept;
     assign dma_conv_cfg_valid = conv_cfg_valid && !rd_active &&
                                 !rd_dma_start_q && rd_grant_client == C_NONE;
     assign conv_cfg_ready = dma_conv_cfg_ready && !rd_active &&
@@ -324,16 +330,25 @@ module axi_block_dma_arbiter #(
     // 在途总数与各请求方计数使用同一组接受、完成和取消事件更新。
     // 完成旧描述符并取消暂存描述符时，同一边沿释放两个位置。
     assign rd_pending_count = {1'b0, rd_pending_count_q};
+    assign rd_pending_increment = rd_dma_start && !rd_dma_done && !rd_dma_cancel;
+    assign rd_pending_decrement = (!rd_dma_start && (rd_dma_done ^ rd_dma_cancel)) ||
+        (rd_dma_start && rd_dma_done && rd_dma_cancel);
+    assign rd_pending_decrement_two = !rd_dma_start && rd_dma_done && rd_dma_cancel;
+    // 三位计数逐位计算翻转条件，晚到的完成事件直接参与最终结果选择。
+    assign rd_pending_count_next[0] = rd_pending_count_q[0] ^
+        rd_dma_start ^ rd_dma_done ^ rd_dma_cancel;
+    assign rd_pending_count_next[1] = rd_pending_count_q[1] ^
+        ((rd_pending_increment && rd_pending_count_q[0]) ||
+         (rd_pending_decrement && !rd_pending_count_q[0]) || rd_pending_decrement_two);
+    assign rd_pending_count_next[2] = rd_pending_count_q[2] ^
+        ((rd_pending_increment && (&rd_pending_count_q[1:0])) ||
+         (rd_pending_decrement && !(|rd_pending_count_q[1:0])) ||
+         (rd_pending_decrement_two && !rd_pending_count_q[1]));
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             rd_pending_count_q <= 3'd0;
         end else begin
-            case ({rd_dma_start, rd_dma_done, rd_dma_cancel})
-                3'b100: rd_pending_count_q <= rd_pending_count_q + 3'd1;
-                3'b010, 3'b001, 3'b111: rd_pending_count_q <= rd_pending_count_q - 3'd1;
-                3'b011: rd_pending_count_q <= rd_pending_count_q - 3'd2;
-                default: ;
-            endcase
+            rd_pending_count_q <= rd_pending_count_next;
         end
     end
 
@@ -429,7 +444,6 @@ module axi_block_dma_arbiter #(
     assign quant_done = rd_response_client == C_QUANT && rd_dma_done;
 
     always_comb begin
-        rd_dma_start            = 1'b0;
         rd_dma_im2col           = 1'b0;
         rd_dma_p0               = '0;
         rd_dma_q0               = '0;
@@ -446,7 +460,6 @@ module axi_block_dma_arbiter #(
 
         unique case (rd_command_client)
             C_DW: begin
-                rd_dma_start = dw_start && dw_granted;
                 rd_dma_im2col = dw_im2col;
                 rd_dma_p0 = dw_p0;
                 rd_dma_q0 = dw_q0;
@@ -461,7 +474,6 @@ module axi_block_dma_arbiter #(
                 rd_dma_lhs_zp = dw_lhs_zp;
             end
             C_IA: begin
-                rd_dma_start            = ia_start && ia_granted;
                 rd_dma_im2col           = ia_im2col;
                 rd_dma_p0               = ia_p0;
                 rd_dma_q0               = ia_q0;
@@ -476,7 +488,6 @@ module axi_block_dma_arbiter #(
                 rd_dma_lhs_zp           = ia_lhs_zp;
             end
             C_KERNEL: begin
-                rd_dma_start            = kernel_start && kernel_granted;
                 rd_dma_im2col           = kernel_im2col;
                 rd_dma_p0               = kernel_p0;
                 rd_dma_q0               = kernel_q0;
@@ -492,7 +503,6 @@ module axi_block_dma_arbiter #(
                 rd_dma_lhs_zp           = kernel_lhs_zp;
             end
             C_BIAS: begin
-                rd_dma_start            = bias_start && bias_granted;
                 rd_dma_linear_read_mode = bias_linear_read_mode;
                 rd_dma_base_addr        = bias_base_addr;
                 rd_dma_row_stride       = bias_row_stride;
@@ -505,7 +515,6 @@ module axi_block_dma_arbiter #(
             end
             C_QUANT: begin
                 if (ENABLE_QUANT_CLIENT != 0) begin
-                    rd_dma_start            = quant_start && quant_granted;
                     rd_dma_linear_read_mode = quant_linear_read_mode;
                     rd_dma_base_addr        = quant_base_addr;
                     rd_dma_row_stride       = quant_row_stride;
@@ -551,13 +560,16 @@ module axi_block_dma_arbiter #(
     assign dw_wr_granted = !local_abort && wr_active && wr_owner_dw;
     assign wr_dma_start = !wr_started &&
         ((oa_start && oa_granted) || (dw_wr_start && dw_wr_granted));
-    assign dw_wr_busy = dw_wr_granted && wr_dma_busy;
+    // 已启动的写通道按保存的归属返回忙碌与数据接收资格。
+    // 当周期出现读错误时，已经发送的写数据仍向生产者确认接收，随后停止新数据。
+    wire write_transfer_active = wr_active && !transfer_abort;
+    assign dw_wr_busy = write_transfer_active && wr_owner_dw && wr_dma_busy;
     assign dw_wr_done = dw_wr_granted && wr_dma_done;
     assign dw_wr_error = dw_wr_done && dma_wr_error;
-    assign dw_src_wready = dw_wr_granted && wr_src_wready;
-    assign oa_busy = oa_granted && wr_dma_busy;
+    assign dw_src_wready = write_transfer_active && wr_owner_dw && wr_src_wready;
+    assign oa_busy = write_transfer_active && !wr_owner_dw && wr_dma_busy;
     assign oa_done = oa_granted && wr_dma_done;
-    assign oa_src_wready = oa_granted && wr_src_wready;
+    assign oa_src_wready = write_transfer_active && !wr_owner_dw && wr_src_wready;
 
     for (genvar i = 0; i < BYTE_PER_BEAT; i++) begin : gen_route_wr
         assign dw_data[i] = dma_wr_data[i];
@@ -602,9 +614,9 @@ module axi_block_dma_arbiter #(
     assign win_accept_allowed = !local_abort && !conv_cfg_valid && !rd_active &&
                                 rd_command_client == C_WINDOW && !rd_dma_start_q;
     assign win_req_ready = win_dma_req_ready && win_accept_allowed;
+    // 写授予占用期间保持非空闲，开始资格不再经生产者组合信号返回空闲判断。
     assign idle = !rd_active && rd_grant_client == C_NONE &&
-                  !rd_dma_busy && !wr_dma_busy && !rd_dma_start_q &&
-                  !wr_dma_start;
+                  !rd_dma_busy && !wr_dma_busy && !rd_dma_start_q && !wr_active;
     // 写响应资格和完成错误提前计算，读写就绪同时直接参与末级错误判断。
     assign bus_error_event = (m_axi_rvalid && m_axi_rready && m_axi_rresp[1]) ||
         (m_axi_bvalid && m_axi_bready && m_axi_bresp[1]) ||

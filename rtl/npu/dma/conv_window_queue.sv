@@ -8,7 +8,9 @@ module conv_window_queue #(
   parameter int WINDOW_LANES=4,
   parameter int PTR_W=(DEPTH<=1 ? 1 : $clog2(DEPTH)),
   parameter int COUNT_W=$clog2(DEPTH+1),
-  parameter int p_max_cols=16
+  parameter int p_max_cols=16,
+  parameter int p_frontend_outstanding=1,
+  parameter int p_active_width=$clog2(p_frontend_outstanding+1)
 ) (
   input wire logic clk,rst_n,configure,enable,
   input wire logic req_valid,
@@ -44,9 +46,12 @@ module conv_window_queue #(
   logic [COUNT_W-1:0] count,next_count;
   logic count_increment, count_decrement, next_busy;
   logic active,failed,accept,retire,launch,response_fire;
+  logic [p_active_width-1:0] active_count;
+  logic active_retire;
   logic descriptor_available,descriptor_prepared,descriptor_read_available;
   logic [PTR_W-1:0] descriptor_read_index;
   logic descriptor_forward,descriptor_forward_valid;
+  (* keep = 1 *) logic descriptor_current_cols_valid, descriptor_next_cols_valid;
   logic [2:0][31:0] descriptor_forward_data;
   function automatic logic [PTR_W-1:0] increment(input logic [PTR_W-1:0] value);
     return value==PTR_W'(DEPTH-1) ? '0 : value+1'b1;
@@ -61,6 +66,8 @@ module conv_window_queue #(
       busy <= next_busy;
     end
   end
+  assign active = |active_count;
+  assign active_retire = retire && active;
   assign frontend_active=active;
   assign rsp_valid=count!=0 && (failed || frontend_error || (active && frontend_rsp_valid));
   assign rsp_error=failed || frontend_error;
@@ -77,18 +84,24 @@ module conv_window_queue #(
   assign req_ready=enable && !configure && !failed && !frontend_error &&
                    (count<COUNT_W'(DEPTH) || retire);
   assign accept=req_valid && req_ready;
-  assign present=active ? increment(head) : head;
-  assign descriptor_available=count>(active ? COUNT_W'(1) : COUNT_W'(0));
+  // 已发送窗口可以分别占用前端和输出寄存器，队首保持到外部末拍接收。
+  logic [p_frontend_outstanding:0][PTR_W-1:0] pending_position;
+  assign pending_position[0] = head;
+  for (genvar position = 1; position <= p_frontend_outstanding; position++) begin : g_pending_position
+    assign pending_position[position] = increment(pending_position[position-1]);
+  end
+  assign present = pending_position[active_count];
+  assign descriptor_available = count > COUNT_W'(active_count);
   // 准备项始终占用队列位置，显式非空条件使空闲配置与前端发送保持互斥。
   assign frontend_valid=enable && !configure && !failed && !frontend_error && busy &&
-    (!active || retire) && descriptor_prepared;
+    (active_count < p_active_width'(p_frontend_outstanding) || active_retire) && descriptor_prepared;
   assign frontend_rsp_ready=active && rsp_ready;
   assign launch=frontend_valid && frontend_ready;
   // 发送当前准备项的同时读取下一项，连续单拍窗口可以逐周期接收。
   // 同周期接收的新条目直接保存到返回寄存器，存储器继续保持先读后写语义。
   assign descriptor_read_index=launch ? increment(present) : present;
   assign descriptor_read_available=launch ?
-      count>(active ? COUNT_W'(2) : COUNT_W'(1)) : descriptor_available;
+      count>(COUNT_W'(active_count)+COUNT_W'(1)) : descriptor_available;
   assign descriptor_forward=accept && !descriptor_read_available && descriptor_read_index==tail;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -128,9 +141,13 @@ module conv_window_queue #(
   assign frontend_p0 = descriptor_forward_valid ? descriptor_forward_data[0] : descriptor_o_rd_data[0][0];
   assign frontend_q0 = descriptor_forward_valid ? descriptor_forward_data[1] : descriptor_o_rd_data[1][0];
   assign frontend_cols = descriptor_forward_valid ? descriptor_forward_data[2] : descriptor_o_rd_data[2][0];
+  // 当前项与下一项的列资格并行读取，晚到发送事件只选择一位结果。
+  assign descriptor_current_cols_valid = cols_valid[present];
+  assign descriptor_next_cols_valid = cols_valid[increment(present)];
   always_ff @(posedge clk) begin
     if (descriptor_forward) frontend_cols_valid <= req_cols>0 && req_cols<=32'(p_max_cols);
-    else if (descriptor_read_available) frontend_cols_valid <= cols_valid[descriptor_read_index];
+    else if (descriptor_read_available)
+      frontend_cols_valid <= launch ? descriptor_next_cols_valid : descriptor_current_cols_valid;
   end
   // 加一与减一的传播条件直接取自当前计数，各结果位并行更新。
   assign count_increment = accept && !retire;
@@ -152,10 +169,10 @@ module conv_window_queue #(
   end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      head<=0;tail<=0;count<=0;active<=0;failed<=0;
+      head<=0;tail<=0;count<=0;active_count<=0;failed<=0;
 
     end else if (configure) begin
-      head<=0;tail<=0;count<=0;active<=0;failed<=0;
+      head<=0;tail<=0;count<=0;active_count<=0;failed<=0;
 
     end else begin
       count<=next_count;
@@ -166,20 +183,26 @@ module conv_window_queue #(
         cols_valid[tail]<=req_cols>0 && req_cols<=32'(p_max_cols);
         tail<=increment(tail);
       end
-      if (retire) begin head<=increment(head);active<=0;end
-      if (launch) active<=1;
+      if (retire) head<=increment(head);
+      case ({launch, active_retire})
+        2'b10: active_count <= active_count + p_active_width'(1);
+        2'b01: active_count <= active_count - p_active_width'(1);
+        default: ;
+      endcase
       if (frontend_error) failed<=1;
 
     end
   end
 `ifdef NPU_SIM_ASSERT
-  initial assert(DEPTH>=2 && TAG_W>=1);
+  initial assert(DEPTH>=2 && TAG_W>=1 && p_frontend_outstanding>=1 && p_frontend_outstanding<=DEPTH);
   initial forever @(posedge clk) if(rst_n) begin
     assert(count<=COUNT_W'(DEPTH));
+    assert(active_count<=p_active_width'(p_frontend_outstanding));
+    assert(COUNT_W'(active_count)<=count);
     if(configure) assert(count==0 && !active);
     if(frontend_rsp_valid && active && !rsp_error) assert(rsp_mask!=0);
     if(retire) assert(count!=0);
-    if(launch) assert(count>(active ? COUNT_W'(1) : COUNT_W'(0)));
+    if(launch) assert(count>COUNT_W'(active_count));
   end
 `endif
 endmodule

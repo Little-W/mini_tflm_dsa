@@ -828,8 +828,6 @@ module vec_requant_full #(
   logic     [32:0] remaining_words;
   logic [VLEN_CNT_W-1:0] chunk_words;
   logic [VLEN_CNT_W-1:0] burst_word_index;
-  logic [32:0] load_advance;
-  logic load_remainder_greater;
   logic load_has_more;
 
   // per-channel：mul/shift 两次突发的采样计数
@@ -933,6 +931,12 @@ module vec_requant_full #(
   logic [31:0] reuse_group_row_start;
   logic [31:0] reuse_group_capacity;
   logic [31:0] group_rows_remaining_cur;
+  logic [31:0] group_rows_difference, group_rows_subtrahend;
+  logic unused_group_rows_carry;
+  logic [32:0] group_rows_start_ext, group_rows_capacity_ext, group_rows_limit_inv;
+  logic [32:0] group_rows_sum_bits, group_rows_carry_bits, group_rows_shifted_carry;
+  logic [32:0] unused_group_rows_limit_sum;
+  logic unused_group_rows_high_carry, group_rows_capacity_exceeds;
   tile_idx_t   tile_row_inc;
   tile_idx_t   tile_col_inc;
   tile_idx_t   next_tile_row_cur;
@@ -946,7 +950,30 @@ module vec_requant_full #(
   logic        step_col_in_group;
   logic        step_next_group;
 
-  // 每次进入 LOAD 前计算 lane_need\row_need
+  assign reuse_group_base_row = tile_row & ~ia_reuse_mask_tile_r;
+  assign row_offset_in_group = tile_row & ia_reuse_mask_tile_r;
+  assign reuse_group_row_start = REG_WIDTH'(reuse_group_base_row) << VLEN_SHIFT;
+  assign reuse_group_capacity = ia_reuse_num_r << VLEN_SHIFT;
+  assign group_rows_subtrahend = ~reuse_group_row_start;
+  // 各四位分组独立求差，组间并行产生借位，保留完整三十二位行数。
+  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_group_rows_difference (
+      .i_a(k_r), .i_b(group_rows_subtrahend), .i_carry(1'b1),
+      .o_sum(group_rows_difference), .o_carry(unused_group_rows_carry)
+  );
+  // 容量比较与差值并行计算，三十三位末端覆盖起点与容量相加的溢出。
+  assign group_rows_start_ext = {1'b0, reuse_group_row_start};
+  assign group_rows_capacity_ext = {1'b0, reuse_group_capacity};
+  assign group_rows_limit_inv = ~{1'b0, k_r};
+  assign group_rows_sum_bits = group_rows_start_ext ^ group_rows_capacity_ext ^ group_rows_limit_inv;
+  assign group_rows_carry_bits = (group_rows_start_ext & group_rows_capacity_ext) |
+      ((group_rows_start_ext | group_rows_capacity_ext) & group_rows_limit_inv);
+  assign {unused_group_rows_high_carry, group_rows_shifted_carry} = {group_rows_carry_bits, 1'b0};
+  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_group_rows_limit (
+      .i_a(group_rows_sum_bits), .i_b(group_rows_shifted_carry), .i_carry(1'b0),
+      .o_sum(unused_group_rows_limit_sum), .o_carry(group_rows_capacity_exceeds)
+  );
+
+  // 每次进入 LOAD 前计算有效通道数和有效行数。
   always_comb begin
     lane_start_cur = REG_WIDTH'(tile_col) << VLEN_SHIFT;
     row_start_cur  = REG_WIDTH'(tile_row) << VLEN_SHIFT;
@@ -978,16 +1005,11 @@ module vec_requant_full #(
                     : rows_remaining_cur;
     end
 
-    reuse_group_base_row = tile_row & ~ia_reuse_mask_tile_r;
-    row_offset_in_group  = tile_row & ia_reuse_mask_tile_r;
-    reuse_group_row_start = REG_WIDTH'(reuse_group_base_row) << VLEN_SHIFT;
-    reuse_group_capacity  = ia_reuse_num_r << VLEN_SHIFT;
     group_rows_remaining_cur = (k_r > reuse_group_row_start)
-                             ? (k_r - reuse_group_row_start)
+                             ? group_rows_difference
                              : 32'd0;
-    group_rows_need_cur  = (group_rows_remaining_cur >= reuse_group_capacity)
-                         ? reuse_group_capacity
-                         : group_rows_remaining_cur;
+    group_rows_need_cur = (k_r <= reuse_group_row_start) ? 32'd0 :
+        !group_rows_capacity_exceeds ? reuse_group_capacity : group_rows_difference;
     quant_need_cur       = is_mode_r ? group_rows_need_cur : lane_need_cur;
     quant_tile_idx_cur   = is_mode_r ? REG_WIDTH'(reuse_group_base_row) : REG_WIDTH'(tile_col);
 
@@ -1038,7 +1060,13 @@ module vec_requant_full #(
 
   // 完整三十三位差值同时给出剩余字数和借位，超过装载总数的偏移返回零。
   // 末拍编号的窄减法与范围判断并行，随后按 VLEN 上限选择饱和值。
-  assign remaining_words = {1'b0, quant_need_load_r} - {1'b0, load_offset};
+  logic [32:0] remaining_words_inverse;
+  logic unused_remaining_words_carry;
+  assign remaining_words_inverse = ~{1'b0, load_offset};
+  parallel_prefix_add #(.p_width(33), .p_preserve_groups(1'b1)) u_remaining_words (
+      .i_a({1'b0, quant_need_load_r}), .i_b(remaining_words_inverse), .i_carry(1'b1),
+      .o_sum(remaining_words), .o_carry(unused_remaining_words_carry)
+  );
   assign burst_word_index = VLEN_CNT_W'(remaining_words) - VLEN_CNT_W'(1);
   always_comb begin
     if (remaining_words[32]) begin
@@ -1055,14 +1083,26 @@ module vec_requant_full #(
   end
   assign chunk_need_cur = 32'(chunk_words);
 
-  // 装载完成比较复用剩余字数，扩展加法保留三十二位偏移回绕的进位。
-  // 剩余字数的借位决定进位与短计数比较的组合方式。
-  assign load_advance = {1'b0, load_offset} + 33'(REG_WIDTH'(beats_expect));
-  assign load_remainder_greater = remaining_words[31:0] > 32'(REG_WIDTH'(beats_expect));
+  // 末拍比较并行计算原始加法进位与三操作数压缩进位，保留三十二位回绕。
   if (REG_WIDTH == 32) begin : g_load_completion_compare
-    assign load_has_more = remaining_words[32] ?
-        (load_advance[32] && load_remainder_greater) :
-        (load_advance[32] || load_remainder_greater);
+    logic [31:0] increment, inverse_limit, compressed_sum, compressed_carry;
+    logic [31:0] shifted_carry, unused_advance_sum, unused_comparison_sum;
+    logic advance_carry, comparison_carry;
+    assign increment = 32'(beats_expect);
+    assign inverse_limit = ~quant_need_load_r;
+    assign compressed_sum = load_offset ^ increment ^ inverse_limit;
+    assign compressed_carry = (load_offset & increment) | (load_offset & inverse_limit) |
+        (increment & inverse_limit);
+    assign shifted_carry = {compressed_carry[30:0], 1'b0};
+    parallel_prefix_add #(.p_width(32), .p_group_width(3), .p_preserve_groups(1'b1)) u_advance_carry (
+        .i_a(load_offset), .i_b(increment), .i_carry(1'b0),
+        .o_sum(unused_advance_sum), .o_carry(advance_carry)
+    );
+    parallel_prefix_add #(.p_width(32), .p_group_width(3), .p_preserve_groups(1'b1)) u_comparison_carry (
+        .i_a(compressed_sum), .i_b(shifted_carry), .i_carry(1'b1),
+        .o_sum(unused_comparison_sum), .o_carry(comparison_carry)
+    );
+    assign load_has_more = !(advance_carry ^ compressed_carry[31] ^ comparison_carry);
   end else begin : g_generic_load_completion_compare
     assign load_has_more = (load_offset + REG_WIDTH'(beats_expect)) < quant_need_load_r;
   end

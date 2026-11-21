@@ -71,6 +71,10 @@ module registered_multiplier_s32 #(
     logic [47:0] low_high_extended, high_low_extended;
     logic [47:0] compressed_sum, compressed_carry;
     (* use_dsp = "no" *) logic [47:0] upper_sum;
+    logic [47:0] upper_add_i_a, upper_add_i_b;
+    logic upper_add_i_carry;
+    logic [47:0] upper_add_o_sum;
+    logic unused_upper_add_carry;
 
     assign diagonal = {high_product, low_product[31:16]};
 
@@ -89,7 +93,21 @@ module registered_multiplier_s32 #(
     assign compressed_carry  = ((diagonal & low_high_extended) |
                                 (diagonal & high_low_extended) |
                                 (low_high_extended & high_low_extended)) << 1;
-    assign upper_sum = compressed_sum + compressed_carry;
+    assign upper_add_i_a = compressed_sum;
+    assign upper_add_i_b = compressed_carry;
+    assign upper_add_i_carry = 1'b0;
+    assign upper_sum = upper_add_o_sum;
+
+    // 三个部分积压缩为两个操作数，保留八位分组边界并行计算最后一级进位。
+    parallel_prefix_add #(
+        .p_width(48), .p_group_width(8), .p_preserve_groups(1'b1)
+    ) u_upper_add (
+        .i_a(upper_add_i_a),
+        .i_b(upper_add_i_b),
+        .i_carry(upper_add_i_carry),
+        .o_sum(upper_add_o_sum),
+        .o_carry(unused_upper_add_carry)
+    );
 
     always_ff @(posedge clk) begin
         if (i_en) o_product <= {upper_sum, low_product[15:0]};

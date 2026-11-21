@@ -17,8 +17,8 @@ module parallel_prefix_add #(
     logic [p_width-1:0] bit_generate, bit_propagate;
     // 关键实例可保留分组边界，限制综合时将共享前缀重新串接。
     (* keep = p_preserve_groups *) logic [p_groups-1:0] group_generate;
-    (* keep = p_preserve_groups *) logic [p_groups-1:0] group_propagate;
-    (* keep = p_preserve_groups *) logic [p_groups:0] group_carry;
+    logic [p_groups-1:0] group_propagate;
+    logic [p_groups:0] group_carry;
 
     assign bit_generate = i_a & i_b;
     assign bit_propagate = i_a | i_b;
@@ -49,13 +49,16 @@ module parallel_prefix_add #(
 
     if (p_preserve_groups) begin : g_balanced_prefix
         localparam int unsigned p_levels = $clog2(p_groups);
-        // 每层只合并相邻的等长前缀，保存各层节点以限制进位的组合深度。
+        // 每层只合并相邻的等长前缀，保存产生条件及后续归并使用的传播节点。
         (* keep = 1 *) logic [p_groups-1:0] prefix_generate [p_levels+1];
-        (* keep = 1 *) logic [p_groups-1:0] prefix_propagate [p_levels+1];
+        logic [p_groups-1:0] prefix_propagate [p_levels+1];
         assign prefix_generate[0] = group_generate;
         assign prefix_propagate[0] = group_propagate;
         for (genvar level = 0; level < p_levels; level++) begin : g_level
             for (genvar group = 0; group < p_groups; group++) begin : g_node
+                // 局部传播参与下一层产生条件，完整低位传播由输入进位的实际用途决定。
+                (* keep = (group >= (1 << level)) *) logic propagate_boundary;
+                assign propagate_boundary = prefix_propagate[level][group];
                 if (group >= (1 << level)) begin : g_merge
                     assign prefix_generate[level+1][group] = prefix_generate[level][group] |
                         (prefix_propagate[level][group] & prefix_generate[level][group-(1 << level)]);

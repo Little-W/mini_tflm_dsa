@@ -369,20 +369,37 @@ module ps_frame_store_capacity #(
     if (p_rows_width < 32) begin : g_bounded_rows
         logic [p_pool_word_width-1:0] pool_words;
         logic [p_rows_width-1:0] pool_rows;
-        logic [p_rows_width:0] remaining_rows;
-        logic frame_rows_fit, reserve_rows_fit;
+        logic [1:0] request_fits;
+        logic [31:0] requested_rows [2];
 
-        // 一行占四个存储字；起始位置为整行，末尾不足一行的容量直接舍去。
+        // 每行占四个存储字，实际行数和预留行数分别检查。
         assign pool_words = p_pool_word_width'(i_bank_words) * p_pool_word_width'(i_bank_count);
         assign pool_rows = p_rows_width'((p_rows_width+2)'(pool_words) >> 2);
-        assign remaining_rows = {1'b0, pool_rows} - {1'b0, p_rows_width'(i_initial_row)};
+        assign requested_rows[0] = i_frame_rows;
+        assign requested_rows[1] = i_reserve_rows;
+        for (genvar request = 0; request < 2; request++) begin : g_request
+            logic [p_rows_width:0] initial_row, row_count, inverted_capacity;
+            logic [p_rows_width:0] sum_bits, carry_bits, shifted_carry;
+            logic [p_rows_width:0] unused_row_sum;
+            logic unused_high_carry, exceeds_capacity;
 
-        // 高位单独检查，低位比较与容量减法的借位检查共同确定结果。
-        assign frame_rows_fit = !(|i_frame_rows[31:p_rows_width]) &&
-            (i_frame_rows[p_rows_width-1:0] <= remaining_rows[p_rows_width-1:0]);
-        assign reserve_rows_fit = !(|i_reserve_rows[31:p_rows_width]) &&
-            (i_reserve_rows[p_rows_width-1:0] <= remaining_rows[p_rows_width-1:0]);
-        assign o_rows_fit = !remaining_rows[p_rows_width] && frame_rows_fit && reserve_rows_fit;
+            assign initial_row = (p_rows_width+1)'(i_initial_row);
+            assign row_count = {1'b0, requested_rows[request][p_rows_width-1:0]};
+            assign inverted_capacity = ~{1'b0, pool_rows};
+            assign sum_bits = initial_row ^ row_count ^ inverted_capacity;
+            assign carry_bits = (initial_row & row_count) |
+                ((initial_row | row_count) & inverted_capacity);
+            assign {unused_high_carry, shifted_carry} = {carry_bits, 1'b0};
+            parallel_prefix_add #(
+                .p_width(p_rows_width+1), .p_group_width(4), .p_preserve_groups(1'b1)
+            ) u_end_compare (
+                .i_a(sum_bits), .i_b(shifted_carry), .i_carry(1'b0),
+                .o_sum(unused_row_sum), .o_carry(exceeds_capacity)
+            );
+            assign request_fits[request] = !(|requested_rows[request][31:p_rows_width]) &&
+                !exceeds_capacity;
+        end
+        assign o_rows_fit = &request_fits;
     end else begin : g_wide_rows
         logic [63:0] reserve_rows;
         logic [63:0] initial_words, pool_words;

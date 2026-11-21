@@ -134,6 +134,23 @@ module kernel_loader_ctrl #(
   count_t column_last_equal_i_target;
   logic column_last_equal_o_equal;
 
+  logic [REG_WIDTH-1:0] dma_address_sum, dma_address_carry, dma_address_fast, dma_address_next;
+  logic unused_dma_address_carry;
+  // 三个地址分量先压缩，再以三位分组计算进位。
+  assign dma_address_sum = group_base_addr ^ row_addr_offset ^ col_addr_offset;
+  assign dma_address_carry = ((group_base_addr & row_addr_offset) |
+      (group_base_addr & col_addr_offset) | (row_addr_offset & col_addr_offset)) << 1;
+  parallel_prefix_add #(.p_width(REG_WIDTH), .p_group_width(3), .p_preserve_groups(1'b1)) u_dma_address (
+      .i_a(dma_address_sum), .i_b(dma_address_carry), .i_carry(1'b0),
+      .o_sum(dma_address_fast), .o_carry(unused_dma_address_carry)
+  );
+  always_comb begin
+    case (^{group_base_addr, row_addr_offset, col_addr_offset})
+      1'b0, 1'b1: dma_address_next = dma_address_fast;
+      default: dma_address_next = group_base_addr + row_addr_offset + col_addr_offset;
+    endcase
+  end
+
   logic [3:0][CNT_W-1:0] traversal_i_value, traversal_o_next;
   logic column_value_covers_limit, column_next_equals_limit;
   logic column_increment_wrap;
@@ -275,7 +292,7 @@ module kernel_loader_ctrl #(
     dma_p0            = REG_WIDTH'(load_tile_col) << SIZE_SHIFT;
     dma_q0            = REG_WIDTH'(load_tile_row) << SIZE_SHIFT;
     dma_group         = REG_WIDTH'(load_repeat);
-    dma_tile_base_addr = group_base_addr + row_addr_offset + col_addr_offset;
+    dma_tile_base_addr = dma_address_next;
     dma_rows_to_read   = REG_WIDTH'(valid_m_cols);
     dma_row_stride_b   = cfg_tile_packed ?
         (REG_WIDTH'(SIZE) << (cfg_use_16bits ? 1 : 0)) : cfg_rhs_row_stride_b;

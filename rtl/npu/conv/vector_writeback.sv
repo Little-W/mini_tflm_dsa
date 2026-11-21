@@ -49,7 +49,8 @@ module vector_writeback #(
   logic request_fire, publish_fire, data_fire;
   logic [COUNT_WIDTH:0] appended_bytes;
   logic [32:0] pending_end_address;
-  logic [ARITH_WIDTH-1:0] remaining, available, beat_bytes, beat_end, pending_span;
+  (* keep = 1 *) logic [3:0] append_address_byte_equal;
+  logic [ARITH_WIDTH-1:0] remaining, available, beat_bytes, pending_span;
   logic [BUS_WIDTH-1:0] bank_bytes;
   logic [BUS_WIDTH-1:0] rotation_stage [BUS_SHIFT+1];
 
@@ -57,21 +58,28 @@ module vector_writeback #(
   //! -------------------------------
 
   assign appended_bytes = {1'b0,pending_bytes}+{1'b0,request_bytes};
+  // 各字节独立比较连续地址，最后只归并四个比较结果。
+  for (genvar part = 0; part < 4; part++) begin : g_append_address_compare
+    assign append_address_byte_equal[part] =
+        request_address[part*8+:8] == pending_end_address[part*8+:8];
+  end
   assign append_compatible = pending_bytes==0 ||
       (request_coalesce && (!p_coalesce_bytes_only || request_byte_output) &&
-       !pending_end_address[32] && request_address==pending_end_address[31:0]);
+       !pending_end_address[32] && (&append_address_byte_equal));
   assign append_fits = appended_bytes <= (COUNT_WIDTH+1)'(CAPACITY);
   // 满队列、末尾标记和地址不连续均使待写数据尽早进入写事务。
   assign publish_fire = (c_st==IDLE || (c_st==RESPONSE && wr_done && !wr_error)) && pending_bytes!=0 &&
       (pending_last || flush || pending_bytes==COUNT_WIDTH'(CAPACITY) ||
        (request_valid && (!append_compatible || !append_fits)));
-  assign request_ready = !pending_last && append_compatible && append_fits && !publish_fire;
+  // 可追加请求只需检查主动发布条件，地址与容量判断各经过一次组合计算。
+  assign request_ready = !pending_last && append_compatible && append_fits &&
+      !((c_st==IDLE || (c_st==RESPONSE && wr_done && !wr_error)) && pending_bytes!=0 &&
+        (flush || pending_bytes==COUNT_WIDTH'(CAPACITY)));
   assign request_fire = request_valid && request_ready;
   assign data_fire = c_st==DATA && src_wready;
   assign remaining = ARITH_WIDTH'(total_bytes)-ARITH_WIDTH'(written_bytes);
   assign available = ARITH_WIDTH'(BUS_BYTES)-ARITH_WIDTH'(lane_offset);
   assign beat_bytes = remaining<available ? remaining : available;
-  assign beat_end = ARITH_WIDTH'(lane_offset)+beat_bytes;
   assign pending_span = ARITH_WIDTH'(pending_address[BUS_SHIFT-1:0])+
       ARITH_WIDTH'(pending_bytes)+ARITH_WIDTH'(BUS_BYTES-1);
 
@@ -248,7 +256,12 @@ module vector_writeback #(
   assign src_wvalid = c_st==DATA;
   assign src_wdata = rotation_stage[BUS_SHIFT];
   for (genvar lane=0;lane<BUS_BYTES;lane++) begin : g_write_mask
-    assign src_wmask[lane] = ARITH_WIDTH'(lane)>=ARITH_WIDTH'(lane_offset) && ARITH_WIDTH'(lane)<beat_end;
+    logic [BUS_SHIFT-1:0] byte_distance;
+
+    // 每个字节直接比较剩余长度与距首字节的距离，独立生成写掩码。
+    assign byte_distance = BUS_SHIFT'(lane) - lane_offset;
+    assign src_wmask[lane] = BUS_SHIFT'(lane) >= lane_offset &&
+        remaining > ARITH_WIDTH'(byte_distance);
   end
 endmodule
 `default_nettype wire

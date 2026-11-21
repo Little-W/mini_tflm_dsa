@@ -319,13 +319,8 @@ module soc_axi_interconnect #(
                           (cpu_aw_dest == D_RAM);
     wire npu_ram_aw_req = s1_axi_awvalid;
 
-    wire ram_rd_owner_valid = ram_rd_owner_q == OWNER_NPU ? npu_ram_ar_req :
-                                                           cpu_ram_ar_req;
     wire ram_wr_owner_aw_valid = ram_wr_owner_q == OWNER_NPU ? npu_ram_aw_req :
                                                               cpu_ram_aw_req;
-    wire ram_rd_other_waiting = ram_rd_active_q &&
-                                (ram_rd_owner_q == OWNER_NPU ? cpu_ram_ar_req :
-                                                               npu_ram_ar_req);
     wire ram_wr_other_waiting = ram_wr_active_q &&
                                 (ram_wr_owner_q == OWNER_NPU ? cpu_ram_aw_req :
                                                                npu_ram_aw_req);
@@ -346,6 +341,43 @@ module soc_axi_interconnect #(
                           (!ram_wr_active_q && ram_wr_select_npu);
     wire ram_w_from_cpu = (ram_wr_active_q && (ram_wr_owner_q == OWNER_CPU)) ||
                           (!ram_wr_active_q && ram_wr_select_cpu);
+    logic cpu_mmio_last_valid;
+    logic ram_rd_start_valid;
+    wire cpu_ram_pending = cpu_issue_ar_allowed && cpu_arq_valid &&
+        (cpu_arq_dest == D_RAM);
+    wire cpu_ram_new_owner_req = cpu_ram_pending &&
+        (!cpu_rd_active_q || (cpu_rd_active_q && s0_axi_rready && cpu_mmio_last_valid));
+    wire ram_rd_start_cpu = cpu_ram_new_owner_req &&
+        (!npu_ram_ar_req || (ram_rd_owner_q == OWNER_NPU));
+    wire ram_rd_start_npu = npu_ram_ar_req &&
+        (!cpu_ram_new_owner_req || (ram_rd_owner_q == OWNER_CPU));
+    wire ram_rd_start_accept = ram_rd_start_valid && m_ram_arready;
+
+    // 空闲仲裁和 NPU 持有期间，CPU 完成事件来自独立外设返回通道。
+    always_comb begin
+        cpu_mmio_last_valid = 1'b0;
+        case (cpu_rd_dest_q)
+            D_NPU: cpu_mmio_last_valid = m_npu_rvalid;
+            D_UART: cpu_mmio_last_valid = m_uart_rvalid;
+            D_CTRL: cpu_mmio_last_valid = m_ctrl_rvalid;
+            D_ERR: cpu_mmio_last_valid = err_rvalid_q;
+            default: begin end
+        endcase
+        ram_rd_start_valid = 1'b0;
+        if (ram_rd_start_npu) begin
+            ram_rd_start_valid = npu_ram_ar_req &&
+                (ram_rd_outs_q != RD_OUTS_W'(RD_OUTS_DEPTH));
+        end else if (ram_rd_start_cpu) begin
+            ram_rd_start_valid = cpu_ram_new_owner_req &&
+                (ram_rd_outs_q != RD_OUTS_W'(RD_OUTS_DEPTH));
+        end
+    end
+
+    // 最后一笔响应已接收时，按当前所有者直接判断是否让出读通道。
+    // CPU 在 NPU 等待时停止续发，NPU 则在当前周期未接收新地址时让出。
+    wire ram_rd_owner_release = ram_rd_owner_q == OWNER_NPU ?
+        (!npu_ram_ar_req || (cpu_ram_new_owner_req && !m_ram_arready)) :
+        (!cpu_ram_pending || npu_ram_ar_req);
     wire ram_rd_yield = ram_rd_active_q && (ram_rd_owner_q == OWNER_CPU) && npu_ram_ar_req;
     wire ram_wr_yield = ram_wr_active_q && (ram_wr_owner_q == OWNER_CPU) && npu_ram_aw_req;
 
@@ -684,13 +716,12 @@ module soc_axi_interconnect #(
             endcase
 
             if (!ram_rd_active_q) begin
-                if (ram_ar_hs) begin
+                if (ram_rd_start_accept) begin
                     ram_rd_active_q <= 1'b1;
-                    ram_rd_owner_q  <= ram_ar_from_npu ? OWNER_NPU : OWNER_CPU;
+                    ram_rd_owner_q  <= ram_rd_start_npu ? OWNER_NPU : OWNER_CPU;
                 end
             end else if ((ram_rd_outs_q == RD_OUTS_W'(1)) && ram_r_last_hs &&
-                         !ram_ar_hs &&
-                         (!ram_rd_owner_valid || ram_rd_other_waiting)) begin
+                         ram_rd_owner_release) begin
                 ram_rd_active_q <= 1'b0;
             end
 

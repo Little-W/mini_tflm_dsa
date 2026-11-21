@@ -200,6 +200,12 @@ module axi_dual_block_dma #(
 
     logic fe_cfg_ready, fe_tile_ready, fe_wr_valid, fe_done, fe_tile_error, fe_wr_last;
     logic fe_error, fe_busy;
+    logic fe_output_valid, fe_output_ready, fe_output_window, fe_output_last;
+    logic fe_input_ready, fe_output_drained, fe_window_error;
+    logic [SLOT_W-1:0] fe_output_slot;
+    logic [CONV_CW-1:0] fe_output_row, fe_output_col;
+    logic signed [15:0] fe_output_data [WINDOW_LANES];
+    logic [WINDOW_LANES-1:0] fe_output_mask;
 
     logic [SLOT_W-1:0] fe_slot;
     logic [CONV_CW-1:0] fe_row, fe_col;
@@ -231,9 +237,9 @@ module axi_dual_block_dma #(
     assign win_rsp_col=32'(win_response_col);
     assign win_req_ready=win_queue_req_ready && !conv_cfg_valid && !rd_start;
     conv_window_queue #(.DEPTH(WINDOW_OUTSTANDING),.COL_W(CONV_CW),
-        .WINDOW_LANES(WINDOW_LANES),.p_max_cols(IM2COL_SIZE)) u_window_queue (
+        .WINDOW_LANES(WINDOW_LANES),.p_max_cols(IM2COL_SIZE),.p_frontend_outstanding(WINDOW_OUTSTANDING < 3 ? WINDOW_OUTSTANDING : 3)) u_window_queue (
         .clk,.rst_n,.configure(cfg_fire),
-        .enable(CONV_SUPPORTED && job_conv && !conv_active && !conv_pending && !linear_busy),
+        .enable(CONV_SUPPORTED && job_conv && !conv_active && !conv_pending && !linear_busy && !fe_error),
         .req_valid(win_req_valid && !conv_cfg_valid && !rd_start),.req_ready(win_queue_req_ready),
         .req_p0(win_req_p0),.req_q0(win_req_q0),.req_cols(win_req_cols),.req_tag(win_req_tag),
         .rsp_valid(win_rsp_valid),.rsp_ready(win_rsp_ready),.rsp_tag(win_rsp_tag),
@@ -242,12 +248,13 @@ module axi_dual_block_dma #(
         .frontend_valid(win_frontend_valid),.frontend_active(win_frontend_active),.frontend_ready(fe_tile_ready),
         .frontend_p0(win_frontend_p0),.frontend_q0(win_frontend_q0),.frontend_cols(win_frontend_cols),
         .frontend_cols_valid(win_cols_valid),
-        .frontend_rsp_valid(fe_wr_valid),.frontend_rsp_ready(win_frontend_rsp_ready),
-        .frontend_rsp_col(fe_col),.frontend_rsp_data(fe_data),.frontend_rsp_mask(fe_mask),
-        .frontend_rsp_last(fe_wr_last),.frontend_error(fe_error || fe_tile_error));
+        .frontend_rsp_valid(fe_output_valid && fe_output_window),.frontend_rsp_ready(win_frontend_rsp_ready),
+        .frontend_rsp_col(fe_output_col),.frontend_rsp_data(fe_output_data),.frontend_rsp_mask(fe_output_mask),
+        .frontend_rsp_last(fe_output_last),.frontend_error(fe_window_error));
     logic accept_read, accept_linear, accept_image, image_start_ready;
+    logic configuration_available_q;
     logic win_payload_select;
-    assign rd_busy = linear_busy || conv_active || fe_busy || win_busy || !guard_idle || !mux_idle;
+    assign rd_busy = linear_busy || conv_active || fe_busy || fe_output_valid || win_busy || !guard_idle || !mux_idle;
     assign rd_done = linear_done || conv_done_r;
     // 线性命令保留最后返回拍的接收机会，图像命令在最后输出后完成。
     // 同一图像配置内可继续处理下一块，后台预取与下一块的读取重叠。
@@ -257,12 +264,12 @@ module axi_dual_block_dma #(
     // 切换至线性读取前，先排空图像前端及其物理读取通道。
     assign rd_start_ready = rd_im2col ? image_start_ready :
         (!conv_cfg_valid && linear_start_ready && !conv_active && !conv_pending &&
-         !fe_busy && !win_busy && (!job_conv || (guard_idle && mux_idle)));
+         !fe_busy && !fe_output_valid && !win_busy && (!job_conv || (guard_idle && mux_idle)));
     assign accept_linear = rd_start && !abort && !rd_im2col && rd_start_ready;
     assign accept_image = rd_start && !abort && rd_im2col && image_start_ready;
     assign accept_read = accept_linear || accept_image;
     // 窗口归属与完成状态决定返回标签，选择保持无效周期的数据行为。
-    assign rd_response_tag = ((fe_wr_valid && !win_frontend_active) || conv_done_r) ?
+    assign rd_response_tag = ((fe_output_valid && !fe_output_window) || conv_done_r) ?
       conv_tag_q : linear_response_tag;
     assign rd_finish_tag = linear_finish ? linear_finish_tag : conv_tag_q;
     assign linear_start = accept_linear;
@@ -280,10 +287,21 @@ module axi_dual_block_dma #(
     assign rd_error = linear_done ? linear_error :
                       conv_done_r ? conv_done_error :
                       command_im2col ? (conv_command_error || fe_error) : linear_error;
-    assign conv_cfg_ready = !rd_busy && !rd_done && fe_cfg_ready;
+    // 读通道完全排空后保存配置接收资格；新工作接收时立即清除。
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) configuration_available_q <= 1'b0;
+        else if (cfg_fire || accept_read || (win_req_valid && win_req_ready))
+            configuration_available_q <= 1'b0;
+        else configuration_available_q <= !rd_busy && !rd_done && fe_cfg_ready;
+    end
+    assign conv_cfg_ready = configuration_available_q;
     assign cfg_fire = conv_cfg_valid && conv_cfg_ready;
+`ifdef NPU_SIM_ASSERT
+    always @(posedge clk) if (rst_n && conv_cfg_ready)
+        assert(!rd_busy && !rd_done && fe_cfg_ready);
+`endif
     assign conv_error = descriptor_error || (job_conv && fe_error);
-    assign conv_busy = conv_active || fe_busy || win_busy;
+    assign conv_busy = conv_active || fe_busy || fe_output_valid || win_busy;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -328,7 +346,8 @@ module axi_dual_block_dma #(
                 conv_finished <= 1'b1;
                 conv_command_error <= conv_command_error || fe_tile_error || fe_error;
             end
-            if (conv_active && (conv_finished || fe_done || fe_tile_error || fe_error)) begin
+            if (conv_active && fe_output_drained &&
+                (conv_finished || fe_done || fe_tile_error || fe_error)) begin
                 conv_active <= 1'b0; conv_pending <= 1'b0; conv_finished <= 1'b0;
                 conv_done_r <= 1'b1;
                 conv_done_error <= conv_command_error || fe_error || fe_tile_error;
@@ -336,9 +355,36 @@ module axi_dual_block_dma #(
         end
     end
 
-    // The old engine's final data beat is registered after its physical R
-    // handshake. Select by producer-valid, not the newly accepted command kind,
-    // so a linear->im2col switch cannot discard that final matrix beat.
+    // 图像输出在同一边沿保存数据与位置，普通矩阵和独立窗口共用这一寄存边界。
+    // 独立窗口暂停接收时保持整项内容；接收当前项的同时可保存下一项。
+    assign fe_output_ready = !fe_output_window || win_frontend_rsp_ready;
+    assign fe_input_ready = !fe_output_valid || fe_output_ready;
+    assign fe_output_drained = !fe_output_valid || fe_output_ready;
+    // 已保存的数据先完成发送，随后窗口队列按描述符顺序返回终止错误。
+    assign fe_window_error = (fe_error || fe_tile_error) && !fe_output_valid;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            fe_output_valid <= 1'b0;
+            fe_output_window <= 1'b0;
+        end else if (fe_input_ready) begin
+            fe_output_valid <= fe_wr_valid;
+            if (fe_wr_valid) fe_output_window <= win_frontend_active;
+        end
+    end
+    always_ff @(posedge clk) begin
+        if (fe_wr_valid && fe_input_ready) begin
+            fe_output_slot <= fe_slot;
+            fe_output_row <= fe_row;
+            fe_output_col <= fe_col;
+            fe_output_mask <= fe_mask;
+            fe_output_last <= fe_wr_last;
+            for (int lane = 0; lane < WINDOW_LANES; lane++) begin
+                fe_output_data[lane] <= fe_data[lane];
+            end
+        end
+    end
+
+    // 线性读取的末次输出与图像输出均由各自有效信号选择。
     always_comb begin
         wr_slot = linear_slot; wr_row = linear_row; wr_col_base = linear_col;
         if (conv_done_r) wr_slot = slot_q;
@@ -350,14 +396,14 @@ module axi_dual_block_dma #(
                 wr_data[i] = linear_data[i]; wr_valid[i] = linear_valid[i];
             end
         end
-        if (fe_wr_valid && !win_frontend_active) begin
-            wr_slot = fe_slot; wr_row = COL_W'(fe_row); wr_col_base = COL_W'(fe_col);
+        if (fe_output_valid && !fe_output_window) begin
+            wr_slot = fe_output_slot; wr_row = COL_W'(fe_output_row); wr_col_base = COL_W'(fe_output_col);
             wr_use_16bits = 1'b1;
             for (int i=0; i<DATA_LANES; i++) begin
                 wr_data[i] = '0; wr_valid[i] = 1'b0;
                 if (i<WINDOW_LANES) begin
-                    wr_data[i] = DATA_WIDTH'($signed(fe_data[i]));
-                    wr_valid[i] = fe_mask[i];
+                    wr_data[i] = DATA_WIDTH'($signed(fe_output_data[i]));
+                    wr_valid[i] = fe_output_mask[i];
                 end
             end
         end
@@ -428,7 +474,7 @@ module axi_dual_block_dma #(
             .tile_rows(frontend_i_tile_rows), .tile_cols(frontend_i_tile_cols),
             .tile_slot(frontend_i_tile_slot), .tile_group(frontend_i_tile_group),
             .tile_narrow(!win_payload_select && !conv_wide),
-            .wr_valid(fe_wr_valid), .wr_ready(win_frontend_active ? win_frontend_rsp_ready : 1'b1), .wr_slot(fe_slot),
+            .wr_valid(fe_wr_valid), .wr_ready(fe_input_ready), .wr_slot(fe_slot),
             .wr_row(fe_row), .wr_col(fe_col), .wr_data(fe_data), .wr_mask(fe_mask),
             .tile_done(fe_done), .tile_error(fe_tile_error), .error(fe_error), .busy(fe_busy), .wr_last(fe_wr_last),
             .arvalid(fe_arvalid), .arready(fe_arready), .araddr(fe_araddr), .arlen(fe_arlen),
@@ -509,6 +555,14 @@ module axi_dual_block_dma #(
             assert(!(conv_active && win_frontend_active));
             for (int i=0; i<LANES; i++) assert(!linear_valid[i]);
         end
+        if (fe_output_valid) begin
+            assert(fe_output_window ? win_frontend_active : conv_active);
+            assert(!conv_cfg_ready);
+            if (!fe_output_window) begin
+                for (int lane = 0; lane < LANES; lane++) assert(!linear_valid[lane]);
+            end
+        end
+        if (conv_done_r) assert(!fe_output_valid || fe_output_window);
         assert(!(linear_done && conv_done_r));
         if (!wr_busy) assert(write_guard_idle);
     end

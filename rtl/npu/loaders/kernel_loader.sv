@@ -140,7 +140,9 @@ module kernel_loader #(
   logic [5*REG_WIDTH-1:0] candidate_fields, candidate_fields_q;
   logic [5*REG_WIDTH-1:0] candidate_equal_i_current, candidate_equal_i_saved;
   logic candidate_equal_o_equal;
-  logic comparison_metadata_equal;
+  logic comparison_metadata_equal, comparison_fixed_equal;
+  logic comparison_rows_equal, comparison_columns_equal;
+  logic [3*REG_WIDTH+2:0] metadata_equal_i_current, metadata_equal_i_saved;
   logic [REG_WIDTH-1:0] column_equal_i_a, column_equal_i_b, column_equal_i_c;
   logic [REG_WIDTH-1:0] column_equal_i_target;
   logic column_equal_o_equal;
@@ -192,13 +194,21 @@ module kernel_loader #(
   // 空闲状态比较新候选，已保存状态比较预取项；两个消费条件使用同一比较器。
   assign comparison_descriptor = (prefetch_state == PF_EMPTY) ?
       candidate_descriptor : prefetch_descriptor;
-  assign comparison_metadata_equal =
+  assign metadata_equal_i_current =
       {ctrl_descriptor.im2col, ctrl_descriptor.use16, ctrl_descriptor.tile_packed,
-       ctrl_descriptor.row_stride, ctrl_descriptor.group, ctrl_descriptor.rows,
-       ctrl_descriptor.cols, ctrl_descriptor.zp} ==
+       ctrl_descriptor.row_stride, ctrl_descriptor.group, ctrl_descriptor.zp};
+  assign metadata_equal_i_saved =
       {comparison_descriptor.im2col, comparison_descriptor.use16, comparison_descriptor.tile_packed,
-       comparison_descriptor.row_stride, comparison_descriptor.group, comparison_descriptor.rows,
-       comparison_descriptor.cols, comparison_descriptor.zp};
+       comparison_descriptor.row_stride, comparison_descriptor.group, comparison_descriptor.zp};
+  // 描述符元数据按三位比较，再以六路平衡树合并各组结果。
+  kernel_candidate_equal #(.p_width(3*REG_WIDTH+3)) u_metadata_equal (
+      .i_current(metadata_equal_i_current), .i_saved(metadata_equal_i_saved),
+      .o_equal(comparison_fixed_equal)
+  );
+  // 行列尾项独立比较，晚到的尾项选择不经过其他元数据的归并树。
+  assign comparison_rows_equal = ctrl_descriptor.rows == comparison_descriptor.rows;
+  assign comparison_columns_equal = ctrl_descriptor.cols == comparison_descriptor.cols;
+  assign comparison_metadata_equal = comparison_fixed_equal && comparison_rows_equal && comparison_columns_equal;
   assign comparison_equal = comparison_metadata_equal && column_equal_o_equal &&
       row_equal_o_equal && address_equal_o_equal;
 

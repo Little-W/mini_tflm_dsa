@@ -679,10 +679,52 @@ module conv_windowed_cache #(
   assign req_fire=work_valid && work_ready;
   assign request_push=accepted_request;
   assign request_pop=request_count!=0 && req_fire;
-  assign fast_hit_response = fg_state==FG_IDLE && req_fire && lookup_range && lookup_hit;
+  if (DEMAND_DEPTH == 1) begin : g_direct_response_lookup
+    logic [WAYS-1:0] fast_hits;
+    logic [READ_WIDTH-1:0] fast_hit_data;
+    // 快速返回只检查工作请求，各路标签比较与快照接收条件并行计算。
+    for (genvar hit_way = 0; hit_way < WAYS; hit_way++) begin : g_fast_hit
+      localparam int p_tag_groups = (32 - LB + 2) / 3;
+      (* keep = 1 *) logic [p_tag_groups-1:0] tag_group_matches;
+      // 标签按三位并行比较，保存组结果的组合边界以限制归并深度。
+      for (genvar tag_group = 0; tag_group < p_tag_groups; tag_group++) begin : g_tag_group
+        localparam int p_low = LB + tag_group * 3;
+        localparam int p_width = (32 - p_low < 3) ? 32 - p_low : 3;
+        assign tag_group_matches[tag_group] =
+            lookup_tag[hit_way][p_low +: p_width] == work_request.address[p_low +: p_width];
+      end
+      (* keep = 1 *) logic tag_matches;
+      // 完整标签结果先独立归并，晚到的有效位只参与最后一级命中判断。
+      assign tag_matches = &tag_group_matches;
+      assign fast_hits[hit_way] = valid_lookup[hit_way] && tag_matches;
+    end
+    always_comb begin
+      // 有效命中至少包含一路，较高路号继续保持优先选择。
+      fast_hit_data = speculative_data[0];
+      for (int hit_way = 1; hit_way < WAYS; hit_way++) begin
+        if (fast_hits[hit_way]) begin
+          fast_hit_data = speculative_data[hit_way];
+        end
+      end
+    end
+    (* keep = 1 *) logic fast_control_ready, fast_snapshot_ready;
+    // 普通命中直接使用工作请求的快照，旁路选择只参与最终返回条件。
+    assign fast_snapshot_ready = lookup_snapshot_valid && work_word_matches_q &&
+        lookup_snapshot_set == work_request.set_index;
+    assign fast_control_ready = fg_state == FG_IDLE && configured && !clearing &&
+        work_valid && response_count < DQ_CW'(DEMAND_DEPTH);
+    assign fast_hit_response = fast_control_ready && fast_snapshot_ready &&
+        work_range && !bypass_q && (|fast_hits);
+    // 空闲阶段的有效响应使用命中数据，数据选择与命中接收资格并行。
+    assign core_rsp_data=fg_state == FG_IDLE ? fast_hit_data :
+                         response_error ? '0 : ram_rdata;
+  end else begin : g_queued_response_lookup
+    // 响应队列已经寄存结果，查询选择同时服务工作请求和缺失处理。
+    assign fast_hit_response = fg_state == FG_IDLE && req_fire && lookup_range && lookup_hit;
+    assign core_rsp_data = fast_hit_response ? speculative_data[lookup_way] :
+                           response_error ? '0 : ram_rdata;
+  end
   assign core_rsp_valid=fg_state==FG_RESP || fast_hit_response;
-  assign core_rsp_data=fast_hit_response ? speculative_data[lookup_way] :
-                       response_error ? '0 : ram_rdata;
   assign core_rsp_error = fast_hit_response ? 1'b0 : response_error;
   assign core_rsp_ready=response_count<DQ_CW'(DEMAND_DEPTH) ||
                         (response_count!=0 && rsp_ready);
@@ -872,6 +914,22 @@ module conv_windowed_cache #(
         lookup_read_request.set_index;
     lookup_read_word = fg_state==FG_MISS ? demand_addr[31:2] : lookup_read_request.address[31:2];
   end
+  // 填充组号与查询快照在各自更新边沿同时形成匹配状态。
+  // 返回阶段直接使用这一位结果，保持填充切换与快照暂停的原有周期关系。
+  if (DEMAND_DEPTH == 1) begin : g_saved_fill_match
+    logic [SI-1:0] next_fill_set, next_lookup_set;
+    logic lookup_fill_set_match_q;
+    always_comb begin
+      next_fill_set = fill_set;
+      if (fill_state == F_IDLE || fill_success)
+        next_fill_set = bypass_q ? SI'(0) : select_set;
+      next_lookup_set = lookup_read_set;
+      if (!rst_n) next_lookup_set = lookup_snapshot_set;
+      else if (cfg_valid && cfg_ready) next_lookup_set = lookup_snapshot_set;
+    end
+    always_ff @(posedge clk)
+      lookup_fill_set_match_q <= next_fill_set == next_lookup_set;
+  end
   // 两种请求分别匹配已有快照，队首出队直接使用工作请求的匹配结果。
   assign work_lookup_ready = lookup_snapshot_valid &&
       lookup_snapshot_set == (bypass_q ? demand_fill_set : work_request.set_index) &&
@@ -965,11 +1023,12 @@ module conv_windowed_cache #(
         end
     for (int w=WAYS-1;w>=0;w--)
       if (!valid_select[w]) begin select_way_next=WI'(w);select_found=1;end
-    if (select_launch && ((req_fire && lookup_hit) || (fg_state==FG_MISS && lookup_hit)) &&
-        select_set==lookup_set && select_way==lookup_way) select_launch=0;
-    // The completing line becomes visible to demand lookup on the next cycle.
-    if (select_launch && fill_complete && select_set==fill_set && select_way==fill_way)
-      select_launch=0;
+    // 工作请求与填充的同组冲突已包含在元数据占用条件中。
+    // 预取替换还需避开缺失请求当前命中的存储路。
+    if (select_launch && fg_state == FG_MISS && lookup_hit &&
+        select_set == lookup_set && select_way == lookup_way) begin
+      select_launch = 1'b0;
+    end
     // A pending miss is served before lookahead can claim another data line.
     select_line_base=bypass_q ? {select_addr[31:p_read_shift],{p_read_shift{1'b0}}} : {select_addr[31:LB],{LB{1'b0}}};
     select_first=select_line_base<base_q ? base_q : select_line_base;
@@ -1065,9 +1124,15 @@ module conv_windowed_cache #(
   wire metadata_fill=fill_state==F_DATA && span_rsp_valid && span_rsp_ready && span_last;
   wire metadata_fill_good=metadata_fill && !(fill_bad || span_error);
   wire metadata_fill_bad=metadata_fill && (fill_bad || span_error);
-  assign candidate_metadata_busy = (req_fire && lookup_set==candidate_set) ||
-      (metadata_fill && fill_set==candidate_set) ||
-      (hint_pending_q && hint_effective_valid && hint_set==candidate_set);
+  logic candidate_prefetch_busy, candidate_demand_busy;
+  // 元数据冲突分别检查两个候选位置，再依据候选种类选择结果。
+  assign candidate_prefetch_busy = (req_fire && lookup_set == pf_set) ||
+      (metadata_fill && fill_set == pf_set) ||
+      (hint_pending_q && hint_effective_valid && hint_set == pf_set);
+  assign candidate_demand_busy = (req_fire && lookup_set == demand_set) ||
+      (metadata_fill && fill_set == demand_set) ||
+      (hint_pending_q && hint_effective_valid && hint_set == demand_set);
+  assign candidate_metadata_busy = candidate_prefetch ? candidate_prefetch_busy : candidate_demand_busy;
   assign select_metadata_busy = (req_fire && lookup_set==select_set) ||
       (metadata_fill && fill_set==select_set) ||
       (hint_pending_q && hint_effective_valid && hint_set==select_set);
@@ -1137,17 +1202,50 @@ module conv_windowed_cache #(
     assign valid_i_wr_data = !clearing && metadata_fill_good && !bypass_q;
     assign valid_i_wr_mask = 1'b1;
     assign valid_i_rd_en = '1;
-    // 有效命中已要求请求组号与读取快照一致，存储选择使用已保存的组号。
-    assign valid_i_rd_addr[0] = lookup_snapshot_set;
+    logic [5:0] valid_read_value;
+    logic [5:0][SI-1:0] valid_match_address;
+    // 有效位与标签同时准备，同拍写入显式转发到保存结果。
+    if (DEMAND_DEPTH == 1) begin : g_saved_lookup_valid
+      logic lookup_valid_q;
+      assign valid_i_rd_addr[0] = lookup_read_set;
+      always_ff @(posedge clk) begin
+        if (rst_n && !(cfg_valid && cfg_ready))
+          lookup_valid_q <= valid_i_wr_en && valid_i_wr_addr == lookup_read_set ?
+            valid_i_wr_data[0] : valid_o_rd_data[0][0];
+      end
+      assign valid_read_value[0] = lookup_valid_q;
+    end else begin : g_current_lookup_valid
+      assign valid_i_rd_addr[0] = lookup_snapshot_set;
+      assign valid_read_value[0] = valid_o_rd_data[0][0];
+    end
+    assign valid_match_address[0] = lookup_snapshot_set;
+    for (genvar read_port = 1; read_port < 6; read_port++) begin : g_current_valid
+      assign valid_read_value[read_port] = valid_o_rd_data[read_port][0];
+      assign valid_match_address[read_port] = valid_i_rd_addr[read_port];
+    end
     assign valid_i_rd_addr[1] = pf_set;
     assign valid_i_rd_addr[2] = offer_set_q;
     assign valid_i_rd_addr[3] = offer_next_set_q;
     assign valid_i_rd_addr[4] = select_set;
     assign valid_i_rd_addr[5] = hint_set;
     for (genvar read_port = 0; read_port < 6; read_port++) begin : g_valid_read
-      assign valid_active[read_port] = configured && !clearing && valid_o_rd_data[read_port][0] &&
-          !(fill_state != F_IDLE && fill_way == WI'(metadata_way) &&
-            fill_set == valid_i_rd_addr[read_port]);
+      logic fill_set_matches;
+      if (DEMAND_DEPTH == 1 && read_port == 0) begin : g_saved
+        assign fill_set_matches = g_saved_fill_match.lookup_fill_set_match_q;
+      end else begin : g_current
+        localparam int p_set_groups = (SI + 2) / 3;
+        (* keep = 1 *) logic [p_set_groups-1:0] fill_set_group_matches;
+        // 填充组号按三位并行比较，读取有效位与替换行屏蔽在最后合并。
+        for (genvar set_group = 0; set_group < p_set_groups; set_group++) begin : g_set_group
+          localparam int p_low = set_group * 3;
+          localparam int p_width = (SI - p_low < 3) ? SI - p_low : 3;
+          assign fill_set_group_matches[set_group] =
+              fill_set[p_low +: p_width] == valid_match_address[read_port][p_low +: p_width];
+        end
+        assign fill_set_matches = &fill_set_group_matches;
+      end
+      assign valid_active[read_port] = configured && !clearing && valid_read_value[read_port] &&
+          !(fill_state != F_IDLE && fill_way == WI'(metadata_way) && fill_set_matches);
     end
     assign valid_lookup[metadata_way] = valid_active[0];
     assign valid_prefetch[metadata_way] = valid_active[1];
@@ -1401,17 +1499,26 @@ module conv_windowed_cache #(
     end
   end
 
+  logic select_snapshot_usable, select_retire_ready;
+  // 快照保持条件与替换完成条件并行计算，状态只合并已完成的判断。
+  assign select_snapshot_usable = !select_metadata_busy &&
+      (select_prefetch ?
+        (pf_pending && pf_addr == select_addr && !pf_hit && !pf_in_flight) :
+        (fg_state == FG_MISS && demand_addr == select_addr && !lookup_hit && lookup_range));
+  assign select_retire_ready = select_decision_valid && (fill_state == F_IDLE || fill_success) &&
+      (select_prefetch ?
+        (pf_match_ready && !(req_fire && !lookup_hit) &&
+          !(fg_state == FG_MISS && lookup_hit && select_set == lookup_set && select_way == lookup_way)) :
+        ((bypass_q || lookup_ready) && !completing_demand));
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       select_stage_valid <= 1'b0;
     end else if (cfg_valid && cfg_ready) begin
       select_stage_valid <= 1'b0;
-    end else if (select_launch || (select_stage_valid &&
-                 (select_metadata_busy || (select_prefetch ? (!pf_pending || pf_addr!=select_addr || pf_hit || pf_in_flight) :
-                  (fg_state!=FG_MISS || demand_addr!=select_addr || lookup_hit || !lookup_range))))) begin
-      select_stage_valid <= 1'b0;
-    end else if (select_capture) begin
-      select_stage_valid <= 1'b1;
+    end else if (select_stage_valid) begin
+      select_stage_valid <= select_snapshot_usable && !select_retire_ready;
+    end else begin
+      select_stage_valid <= select_launch_candidate && !candidate_metadata_busy;
     end
   end
   // Separate synchronous metadata reads and replacement comparison from the

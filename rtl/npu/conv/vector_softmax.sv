@@ -84,7 +84,9 @@ module vector_softmax #(
   logic signed [17:0] output_shift2;
   logic signed [17:0] output_shift1;
   logic output_increment;
-  logic [8:0] output_small;
+  logic [7:0] output_rounded_byte;
+  logic output_above_range;
+  (* keep = 1 *) logic [7:0] output_byte_direct, output_byte_increment;
   logic [31:0] reciprocal_rounded_word;
   logic [3:0] reciprocal_byte_carry;
   logic reciprocal_above_range;
@@ -136,7 +138,25 @@ module vector_softmax #(
   assign output_shift1 =result_shift[0] ?
       {output_shift2[17],output_shift2[17:2],(|output_shift2[1:0])} : output_shift2;
   assign output_increment =output_shift1[1] && (output_shift1[0] || output_shift1[2]);
-  assign output_small ={1'b0,output_shift1[9:2]}+9'(output_increment);
+  // 两个舍入结果并行计算，保护位仅选择已完成的结果。
+  assign output_byte_direct = output_shift1[9:2] + 8'd0;
+  assign output_byte_increment = output_shift1[9:2] + 8'd1;
+  always_comb begin
+    case (output_increment)
+      1'b0: output_rounded_byte = output_byte_direct;
+      1'b1: output_rounded_byte = output_byte_increment;
+      default: output_rounded_byte = output_shift1[9:2] + 8'(output_increment);
+    endcase
+  end
+
+  // 饱和资格直接比较舍入前的八位值，与结果递增并行完成。
+  always_comb begin
+    case (output_increment)
+      1'b0: output_above_range = output_shift1[9:2] >= 8'd255;
+      1'b1: output_above_range = output_shift1[9:2] >= 8'd254;
+      default: output_above_range = ({1'b0, output_shift1[9:2]} + 9'(output_increment)) >= 9'd255;
+    endcase
+  end
 
   // 正向饱和条件由舍入前的商确定，商等于最大值时输出仍为最大值。
   // 四个字节分别递增，低位全一条件并行提供各字节的进位。
@@ -407,10 +427,10 @@ module vector_softmax #(
     endcase
     if (output_shift_base_q[17]) begin
       out_data = -8'sd128;
-    end else if ((|output_shift1[17:10]) || output_small >= 9'd255) begin
+    end else if ((|output_shift1[17:10]) || output_above_range) begin
       out_data = 8'sd127;
     end else begin
-      out_data = {~output_small[7], output_small[6:0]};
+      out_data = {~output_rounded_byte[7], output_rounded_byte[6:0]};
     end
   end
 

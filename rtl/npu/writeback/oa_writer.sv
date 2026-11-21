@@ -140,8 +140,41 @@ module oa_writer #(
     assign vec_valid_num_col = vec_valid_num_col_r;
     assign vec_valid_num_row = vec_valid_num_row_r;
 
-    wire [REG_WIDTH-1:0] k_tiles_pre_w = (k == '0) ? '0 : ((k + REG_WIDTH'(VLEN - 1)) >> VCOL_W);
-    wire [REG_WIDTH-1:0] m_tiles_pre_w = (m == '0) ? '0 : ((m + REG_WIDTH'(VLEN - 1)) >> VCOL_W);
+    logic [REG_WIDTH-1:0] k_tiles_pre_w, m_tiles_pre_w;
+    if ((VLEN == (1 << VCOL_W)) && (REG_WIDTH > VCOL_W) && (VCOL_W > 0)) begin : g_rounded_tile_counts
+        localparam int p_quotient_width = REG_WIDTH - VCOL_W;
+        logic [REG_WIDTH-1:0] dimensions [2];
+        logic [p_quotient_width-1:0] rounded [2];
+
+        assign dimensions[0] = k;
+        assign dimensions[1] = m;
+        // 低位非零时递增商，各八位分组直接读取原商的传播条件。
+        for (genvar axis = 0; axis < 2; axis++) begin : g_axis
+            logic [p_quotient_width-1:0] quotient;
+            logic round_up;
+
+            assign quotient = dimensions[axis][REG_WIDTH-1:VCOL_W];
+            assign round_up = |dimensions[axis][VCOL_W-1:0];
+            for (genvar group = 0; group < (p_quotient_width+7)/8; group++) begin : g_group
+                localparam int p_first = 8 * group;
+                localparam int p_bits = (p_quotient_width-p_first < 8) ? p_quotient_width-p_first : 8;
+                logic carry;
+
+                if (group == 0) begin : g_first
+                    assign carry = round_up;
+                end else begin : g_upper
+                    assign carry = round_up && (&quotient[p_first-1:0]);
+                end
+                assign rounded[axis][p_first +: p_bits] =
+                    quotient[p_first +: p_bits] + p_bits'(carry);
+            end
+        end
+        assign k_tiles_pre_w = REG_WIDTH'(rounded[0]);
+        assign m_tiles_pre_w = REG_WIDTH'(rounded[1]);
+    end else begin : g_general_tile_counts
+        assign k_tiles_pre_w = (k == '0) ? '0 : ((k + REG_WIDTH'(VLEN - 1)) >> VCOL_W);
+        assign m_tiles_pre_w = (m == '0) ? '0 : ((m + REG_WIDTH'(VLEN - 1)) >> VCOL_W);
+    end
     wire count_t k_tiles_pre = count_t'(k_tiles_pre_w);
     wire count_t m_tiles_pre = count_t'(m_tiles_pre_w);
     wire [VCOL_W-1:0]    k_tail_pre  = k[VCOL_W-1:0];

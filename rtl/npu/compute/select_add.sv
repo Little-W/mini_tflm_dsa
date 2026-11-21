@@ -30,14 +30,14 @@ module select_add #(
     //! 1. 选择输入并生成组合结果
     //! -------------------------
 
-    // p_use_dsp 保留接口兼容，所有配置均使用普通 RTL。
+    // 四路 12 位组合加法按 p_use_dsp 选择 SIMD 推断。
     begin : g_generic
         assign selected_rhs = i_rhs_select ? i_rhs1 : i_rhs0;
         if ((p_width == 48) && p_split_12bit) begin : g_parallel
             for (genvar lane = 0; lane < 4; lane++) begin : g_lane
-                assign o_sum[lane*12 +: 12] = i_add_enable ?
-                    i_lhs[lane*12 +: 12] + selected_rhs[lane*12 +: 12] :
-                    i_lhs[lane*12 +: 12];
+                (* use_dsp = p_use_dsp ? "simd" : "no" *) logic [11:0] lane_sum;
+                assign lane_sum = i_lhs[lane*12 +: 12] + selected_rhs[lane*12 +: 12];
+                assign o_sum[lane*12 +: 12] = i_add_enable ? lane_sum : i_lhs[lane*12 +: 12];
             end
         end else begin : g_single
             localparam int p_low_width = (p_width <= 16) ? p_width :

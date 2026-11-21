@@ -988,7 +988,7 @@ module vec_s8_fifo_row_ram #(
 
 endmodule
 
-// 预留空间先转换为已就绪块的阈值，写入位置只参与最终比较。
+// 普通预留量与两个饱和值并行比较，写入位置仅参与最后一级进位。
 module fifo_bank_watermark #(
     parameter int p_banks = 16,
     parameter int p_count_width = (p_banks <= 1) ? 1 : $clog2(p_banks + 1)
@@ -998,16 +998,48 @@ module fifo_bank_watermark #(
     input  wire logic i_partial_write,
     output logic o_full
 );
-    logic [p_count_width-1:0] reserve_count, ready_threshold;
-    logic ready_above, ready_at, count_overflow;
-    assign reserve_count = (i_reserve == 32'd0) ? p_count_width'(1) :
-        ((i_reserve >= 32'(p_banks)) ? p_count_width'(p_banks) : p_count_width'(i_reserve));
-    assign ready_threshold = p_count_width'(p_banks) - reserve_count;
-    assign ready_above = i_ready_banks > ready_threshold;
-    assign ready_at = i_ready_banks == ready_threshold;
-    // 计数宽度处的回绕与有限位宽加法一致，覆盖全部输入编码。
-    assign count_overflow = i_partial_write && (&i_ready_banks);
-    assign o_full = !count_overflow && (ready_above || (i_partial_write && ready_at));
+    if (p_banks > 0 && p_count_width >= $clog2(p_banks+1)) begin : g_parallel_compare
+        localparam int p_sum_width = p_count_width + 1;
+        localparam logic [p_sum_width-1:0] p_negative_capacity = ~p_sum_width'(p_banks);
+        logic [p_sum_width-1:0] ready_count, reserve_count;
+        logic [p_sum_width-1:0] sum_bits, carry_bits, shifted_carry, unused_sum;
+        logic unused_high_carry, normal_full, zero_full, saturated_full;
+        logic count_overflow, reserve_zero, reserve_saturated;
+
+        assign ready_count = {1'b0, i_ready_banks};
+        assign reserve_count = p_sum_width'(p_count_width'(i_reserve));
+        assign sum_bits = ready_count ^ reserve_count ^ p_negative_capacity;
+        assign carry_bits = (ready_count & reserve_count) |
+            ((ready_count | reserve_count) & p_negative_capacity);
+        assign {unused_high_carry, shifted_carry} = {carry_bits, 1'b0};
+        parallel_prefix_add #(
+            .p_width(p_sum_width), .p_group_width(4), .p_preserve_groups(1'b1)
+        ) u_capacity_compare (
+            .i_a(sum_bits), .i_b(shifted_carry), .i_carry(i_partial_write),
+            .o_sum(unused_sum), .o_carry(normal_full)
+        );
+        assign zero_full = (i_ready_banks > p_count_width'(p_banks-1)) ||
+            (i_partial_write && i_ready_banks == p_count_width'(p_banks-1));
+        assign saturated_full = (|i_ready_banks) || i_partial_write;
+        assign reserve_zero = i_reserve == 32'd0;
+        assign reserve_saturated = i_reserve >= 32'(p_banks);
+        // 部分写入使计数回绕时，保持有限位宽占用计数的结果。
+        assign count_overflow = i_partial_write && (&i_ready_banks);
+        assign o_full = !count_overflow && ((reserve_zero && zero_full) ||
+            (!reserve_zero && reserve_saturated && saturated_full) ||
+            (!reserve_zero && !reserve_saturated && normal_full));
+    end else begin : g_narrow_count
+        logic [p_count_width-1:0] reserve_count, ready_threshold;
+        logic ready_above, ready_at, count_overflow;
+
+        assign reserve_count = (i_reserve == 32'd0) ? p_count_width'(1) :
+            ((i_reserve >= 32'(p_banks)) ? p_count_width'(p_banks) : p_count_width'(i_reserve));
+        assign ready_threshold = p_count_width'(p_banks) - reserve_count;
+        assign ready_above = i_ready_banks > ready_threshold;
+        assign ready_at = i_ready_banks == ready_threshold;
+        assign count_overflow = i_partial_write && (&i_ready_banks);
+        assign o_full = !count_overflow && (ready_above || (i_partial_write && ready_at));
+    end
 endmodule
 
 `default_nettype wire

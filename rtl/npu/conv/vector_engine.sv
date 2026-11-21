@@ -140,6 +140,7 @@ module vector_engine #(
   logic vector_remaining_high_zero, unused_vector_remaining_carry;
   logic vector_has_more;
   logic [TILE_INDEX_W-1:0] compute_index, quant_index, reduce_index;
+  logic compute_group_last_q;
   logic [31:0] fetch_tap_offset, position_offset, pool_byte_offset;
   logic signed [15:0] input_buf [DMA_SIZE], rhs_buf [TILE];
   logic signed [15:0] input_bank_data [INPUT_BANKS];
@@ -154,6 +155,7 @@ module vector_engine #(
   logic [8*TILE-1:0] weights_i_wr_data, weights_o_rd_data;
   logic weight_tap_advance;
   logic [TAP_COUNT_W-1:0] weight_tap_nxt;
+  logic tap_last_wide, tap_last_modulo;
   logic unused_weight_tap_carry;
 
   wire signed [7:0] weight_tap_data [TILE];
@@ -173,6 +175,7 @@ module vector_engine #(
   logic signed [31:0] reduce_acc, reduce_next;
   logic signed [33:0] input_y, input_x, input_origin_x, input_origin_y;
   logic in_bounds, param_bad, param_bad_seen;
+  logic input_column_in_bounds, input_row_in_bounds;
   logic [63:0] input_bytes,output_bytes,weight_bytes,parameter_bytes;
   logic [32:0] checked_range_end[4];
   logic global_pool;
@@ -291,12 +294,18 @@ module vector_engine #(
   logic [1:0] read_bank,wf_bank,input_bank_mask;
   logic input_slot_release;
   logic [3:0] input_ready,input_reserved;
+  logic input_ready_clear_all, input_ready_release, input_drain_ready;
   logic window_slot_available, input_reservations_clear;
   logic [INPUT_INDEX_W-1:0] input_read_base,input_response_base;
   logic [31:0] window_received;
   logic [$clog2(WINDOW_LANES+1)-1:0] window_response_count;
   logic [31:0] window_count_i_value, window_count_i_increment, window_count_i_target;
   logic window_count_i_carry, window_count_o_equal;
+  logic [31:0] window_count_o_sum;
+  logic unused_window_count_carry;
+  localparam int p_window_count_width = $clog2(WINDOW_LANES+1);
+  localparam int p_window_count_leaves = 1 << $clog2(WINDOW_LANES);
+  logic [p_window_count_width-1:0] window_count_tree [2*p_window_count_leaves];
   logic window_response_fire,window_request_fire;
   logic window_fetch_enabled, window_fetch_in_bounds, window_fetch_advance;
   logic [31:0] fetch_position;
@@ -314,19 +323,84 @@ module vector_engine #(
       .i_target(window_count_i_target), .i_carry_in(window_count_i_carry),
       .o_equal(window_count_o_equal)
   );
-  logic next_window_valid;
+  logic [p_window_count_width:0] window_count_low_sum;
+  logic [p_window_count_width-1:0] window_count_low_value, window_count_low_increment;
+  localparam int p_window_upper_width = 32 - p_window_count_width;
+  localparam int p_window_upper_groups = (p_window_upper_width + 2) / 3;
+  localparam int p_window_prefix_levels = $clog2(p_window_upper_groups);
+  (* keep = 1 *) logic [p_window_upper_groups-1:0] window_upper_prefix [p_window_prefix_levels+1];
+  (* keep = 1 *) logic [32-p_window_count_width:0] window_count_upper_full;
+
+  // 增量只占低位，高位连续全一条件独立准备，低位进位只参与最终位翻转。
+  // 保留完整三十二位计数和溢出位，不改变任意计数值的回绕结果。
+  assign window_count_low_value = window_count_i_value[p_window_count_width-1:0];
+  assign window_count_low_increment = window_count_i_increment[p_window_count_width-1:0];
+  parallel_prefix_add #(
+      .p_width(p_window_count_width), .p_group_width(p_window_count_width)
+  ) u_window_count_low_sum (
+      .i_a(window_count_low_value), .i_b(window_count_low_increment), .i_carry(window_count_i_carry),
+      .o_sum(window_count_low_sum[p_window_count_width-1:0]),
+      .o_carry(window_count_low_sum[p_window_count_width])
+  );
+  assign window_count_o_sum[p_window_count_width-1:0] = window_count_low_sum[p_window_count_width-1:0];
+  // 相邻三位先归并，各层按倍增区间计算，限制完整层次中的共享前缀深度。
+  for (genvar group = 0; group < p_window_upper_groups; group++) begin : g_window_upper_group
+    localparam int p_first = p_window_count_width + 3*group;
+    localparam int p_bits = (32 - p_first < 3) ? 32 - p_first : 3;
+    assign window_upper_prefix[0][group] = &window_count_i_value[p_first +: p_bits];
+  end
+  for (genvar level = 0; level < p_window_prefix_levels; level++) begin : g_window_upper_level
+    for (genvar group = 0; group < p_window_upper_groups; group++) begin : g_node
+      if (group >= (1 << level)) begin : g_merge
+        assign window_upper_prefix[level+1][group] = window_upper_prefix[level][group] &&
+            window_upper_prefix[level][group-(1 << level)];
+      end else begin : g_pass
+        assign window_upper_prefix[level+1][group] = window_upper_prefix[level][group];
+      end
+    end
+  end
+  assign window_count_upper_full[0] = 1'b1;
+  for (genvar bit_index = p_window_count_width; bit_index < 32; bit_index++) begin : g_window_count_high
+    localparam int p_group = (bit_index - p_window_count_width) / 3;
+    localparam int p_first = p_window_count_width + 3*p_group;
+    if (p_group == 0) begin : g_first
+      assign window_count_upper_full[bit_index-p_window_count_width+1] =
+          &window_count_i_value[bit_index:p_first];
+    end else begin : g_later
+      assign window_count_upper_full[bit_index-p_window_count_width+1] =
+          window_upper_prefix[p_window_prefix_levels][p_group-1] &&
+          (&window_count_i_value[bit_index:p_first]);
+    end
+    assign window_count_o_sum[bit_index] = window_count_i_value[bit_index] ^
+        (window_count_low_sum[p_window_count_width] && window_count_upper_full[bit_index-p_window_count_width]);
+  end
+  assign unused_window_count_carry = window_count_low_sum[p_window_count_width] &&
+      window_count_upper_full[32-p_window_count_width];
+  logic next_window_valid, next_window_valid_q;
   logic signed [33:0] next_window_x, next_window_y;
   wire kernel_column_end=kx==kernel_last_column;
   wire signed [33:0] next_column_x=input_x+$signed(34'(c.image.dilation_w));
   wire signed [33:0] next_row_y=input_y+$signed(34'(c.image.dilation_h));
   logic [16:0] next_column_low, next_row_low;
+  logic [16:0] coordinate_low_i_a [2], coordinate_low_i_b [2], coordinate_low_sum [2];
+  logic [1:0] unused_coordinate_low_carry;
   logic next_column_high_zero, next_row_high_zero;
   logic next_column_valid, next_row_valid;
 
   // 图像尺寸为十六位，坐标范围由低位和高位条件并行检查。
   // 低位加法进位只选择原坐标高位的零值或全一值，保留完整坐标回绕行为。
-  assign next_column_low = {1'b0, input_x[15:0]} + {1'b0, c.image.dilation_w};
-  assign next_row_low = {1'b0, input_y[15:0]} + {1'b0, c.image.dilation_h};
+  assign coordinate_low_i_a[0] = {1'b0, input_x[15:0]};
+  assign coordinate_low_i_a[1] = {1'b0, input_y[15:0]};
+  assign coordinate_low_i_b[0] = {1'b0, c.image.dilation_w};
+  assign coordinate_low_i_b[1] = {1'b0, c.image.dilation_h};
+  for (genvar axis = 0; axis < 2; axis++) begin : g_coordinate_low_sum
+    parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
+        .i_a(coordinate_low_i_a[axis]), .i_b(coordinate_low_i_b[axis]), .i_carry(1'b0),
+        .o_sum(coordinate_low_sum[axis]), .o_carry(unused_coordinate_low_carry[axis])
+    );
+  end
+  assign next_column_low = coordinate_low_sum[0];
+  assign next_row_low = coordinate_low_sum[1];
   assign next_column_high_zero = next_column_low[16] ? (&input_x[33:16]) : !(|input_x[33:16]);
   assign next_row_high_zero = next_row_low[16] ? (&input_y[33:16]) : !(|input_y[33:16]);
   assign next_column_valid = next_column_high_zero && (next_column_low[15:0] < c.image.input_w) &&
@@ -337,7 +411,7 @@ module vector_engine #(
   logic [1:0] soft_error;
   logic [$clog2(TILE)-1:0] soft_input_index, soft_exp_index, soft_out_index;
   logic soft_lut_req_valid, soft_lut_req_ready, soft_lut_rsp_valid;
-  logic [7:0] soft_lut_index;
+  logic [7:0] soft_lut_index, soft_lut_index_q;
   logic [31:0] soft_lut_data;
   logic signed [31:0] soft_exp_data, soft_mul_a, soft_mul_b;
   logic signed [7:0] soft_out_data;
@@ -378,6 +452,14 @@ module vector_engine #(
   assign softmax_s8 = c.op == SOFTMAX_S8;
   assign byte_output = spatial || add_s8 || softmax_s8;
   assign binary_vector = c.op == VEC_DOT || c.op == VEC_HADAMARD || add_s8;
+
+  logic [31:0] position_next;
+  logic unused_position_carry;
+  // 像素位置的递增结果供完成判断和状态更新共同使用。
+  parallel_prefix_add #(.p_width(32), .p_preserve_groups(1'b1)) u_position_next (
+      .i_a(position), .i_b(32'd0), .i_carry(1'b1),
+      .o_sum(position_next), .o_carry(unused_position_carry)
+  );
 
   // 有效通道数只影响低位；高位比较与低位加法并行执行，保留三十二位回绕。
   assign vector_low_sum = {1'b0, vector_offset[ACTIVE_COUNT_W-1:0]} + {1'b0, active};
@@ -436,9 +518,13 @@ module vector_engine #(
   assign ready = state == IDLE;
   assign done_valid = state == DONE;
   assign channels = {16'd0,c.image.input_c};
-  assign in_bounds = input_y >= 0 && input_x >= 0 &&
-                     input_y < $signed(34'(c.image.input_h)) &&
-                     input_x < $signed(34'(c.image.input_w));
+  vector_coordinate_bound u_input_column_bound (
+      .i_coordinate(input_x), .i_limit(c.image.input_w), .o_in_bounds(input_column_in_bounds)
+  );
+  vector_coordinate_bound u_input_row_bound (
+      .i_coordinate(input_y), .i_limit(c.image.input_h), .o_in_bounds(input_row_in_bounds)
+  );
+  assign in_bounds = input_column_in_bounds && input_row_in_bounds;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) global_pool <= 1'b0;
     else if (state==IDLE && start)
@@ -479,6 +565,25 @@ module vector_engine #(
     (window_fetch_enabled && fetch_position<32'(position_count) && !window_fetch_in_bounds);
   assign input_reservations_clear = (state == IDLE && start) || (state == TILE_INIT) ||
       (state == FAILED && !rd_busy && !wr_busy && !win_busy && !writeback_busy && dma_cfg_ready);
+  assign input_drain_ready = !rd_busy && !wr_busy && !win_busy && !writeback_busy &&
+      dw_shared_inflight == 0 && dma_cfg_ready &&
+      (!SHARED_STORAGE_ENABLE || (!i_weight_read_valid && !i_ps_read_valid));
+  assign input_ready_clear_all = (state == IDLE && start) || (state == TILE_INIT) ||
+      (state == FAILED && input_drain_ready);
+  assign input_ready_release = (dw_issue_fire && dw_group_last) ||
+      (state == EXECUTE_COMMIT && compute_group_last_q && !global_pool && spatial);
+
+  // 各槽分别保存就绪状态，完成返回与计算释放并行译码，清空条件具有最高优先级。
+  for (genvar bank = 0; bank < 4; bank++) begin : g_input_ready
+    logic response_selected, clear_selected;
+    assign response_selected = window_response_fire && win_rsp_last && win_rsp_tag == 2'(bank);
+    assign clear_selected = input_ready_clear_all || (input_ready_release && read_bank == 2'(bank));
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) input_ready[bank] <= 1'b0;
+      else input_ready[bank] <= !clear_selected &&
+          (response_selected ? !win_rsp_error : input_ready[bank]);
+    end
+  end
 
   // 每个槽位并行生成接收和释放条件，就绪信号只参与最后的数据选择。
   // 同周期返回完成优先释放对应槽位，初始化和错误恢复同时清空全部槽位。
@@ -494,11 +599,19 @@ module vector_engine #(
           (input_reserved[bank] || (win_req_ready && request_selected));
     end
   end
-  always_comb begin
-    window_response_count=0;
-    for(int lane=0;lane<WINDOW_LANES;lane++) if(win_rsp_mask[lane])
-      window_response_count=window_response_count+1'b1;
+  // 相邻通道成对求和，逐层统计有效元素数量。
+  assign window_count_tree[0] = '0;
+  for (genvar lane = 0; lane < p_window_count_leaves; lane++) begin : g_window_count_leaf
+    if (lane < WINDOW_LANES) begin : g_present
+      assign window_count_tree[p_window_count_leaves+lane] = p_window_count_width'(win_rsp_mask[lane]);
+    end else begin : g_empty
+      assign window_count_tree[p_window_count_leaves+lane] = '0;
+    end
   end
+  for (genvar node = 1; node < p_window_count_leaves; node++) begin : g_window_count_sum
+    assign window_count_tree[node] = window_count_tree[2*node] + window_count_tree[2*node+1];
+  end
+  assign window_response_count = window_count_tree[1];
   always_comb begin
     cache_power_two=1'b1;
     case (active)
@@ -522,6 +635,19 @@ module vector_engine #(
     avg_power_two=valid_taps!=0 && (valid_taps&(valid_taps-1))==0;
     avg_shift=0;
     for (int bit_index=0;bit_index<TAP_COUNT_W;bit_index++) if (valid_taps[bit_index]) avg_shift=6'(bit_index);
+  end
+
+  // 执行阶段提前保存下一坐标的范围判断，提交阶段直接选择后续状态。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) next_window_valid_q <= 1'b0;
+    else if (state == EXECUTE) next_window_valid_q <= next_window_valid;
+  end
+
+  // 执行周期保存通道组末项判断，提交周期直接使用该条件。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) compute_group_last_q <= 1'b0;
+    else if (state == EXECUTE)
+      compute_group_last_q <= compute_index + 32'(PE_COUNT) >= active;
   end
 
   // 四个末地址已在检查阶段按当前配置分配槽位。
@@ -563,43 +689,70 @@ module vector_engine #(
   logic [31:0] read_address_base, read_address_offset;
   logic [15:0] read_address_channel;
   logic [1:0] unused_read_address_carry;
+  logic [31:0] parameter_stride_i_b;
+  logic unused_parameter_stride_carry, parameter_stride_equal;
+  logic [31:0] parameter_row_stride_next;
+  logic parameter_two_rows_next, parameter_three_rows_next;
 
   // 等距参数数组由二维 DMA 连续读取，接收端在每行结束后切换参数类型。
-  assign parameter_row_stride = c.shift_base-c.multiplier_base;
-  assign parameter_two_rows = c.shift_base>c.multiplier_base;
-  assign parameter_three_rows = c.bias_base!=0 &&
-      c.multiplier_base>c.bias_base && parameter_two_rows &&
-      c.multiplier_base-c.bias_base==parameter_row_stride;
+  assign parameter_stride_i_b = ~c.multiplier_base;
+  parallel_prefix_add #(.p_width(32)) u_parameter_stride (
+      .i_a(c.shift_base), .i_b(parameter_stride_i_b), .i_carry(1'b1),
+      .o_sum(parameter_row_stride_next), .o_carry(unused_parameter_stride_carry)
+  );
+  add_equal #(.p_width(32)) u_parameter_stride_equal (
+      .i_a(c.bias_base), .i_b(c.shift_base), .i_target({c.multiplier_base[30:0], 1'b0}),
+      .i_carry_in(1'b0), .o_equal(parameter_stride_equal)
+  );
+  assign parameter_two_rows_next = c.shift_base>c.multiplier_base;
+  assign parameter_three_rows_next = c.bias_base!=0 &&
+      c.multiplier_base>c.bias_base && parameter_two_rows_next &&
+      parameter_stride_equal;
+  // 配置检查期间保存参数行描述符，随后各通道复用相同的步长与行数判断。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      parameter_row_stride <= '0;
+      parameter_two_rows <= 1'b0;
+      parameter_three_rows <= 1'b0;
+    end else if (state == CHECK) begin
+      parameter_row_stride <= parameter_row_stride_next;
+      parameter_two_rows <= parameter_two_rows_next;
+      parameter_three_rows <= parameter_three_rows_next;
+    end
+  end
   assign parameter_row_last_fire = state==LOAD_WAIT && rd_raw_valid &&
       (load_kind==LD_BIAS || load_kind==LD_MULT || load_kind==LD_SHIFT) &&
       32'(rd_col_base)+32'(BUS_BYTES)>=(32'(active)<<2);
 
-  // 状态译码选择读取起点、偏移和通道号，各类读取共用地址加法器。
-  vector_read_address_add u_read_address (
-    .clk(clk), .i_base(read_address_base), .i_offset(read_address_offset),
-    .i_channel(read_address_channel), .o_address(rd_base_addr),
-    .o_carry(unused_read_address_carry)
-  );
+  // 低八位突发编码直接判断减一的借位，避免先向上取整再减一。
+  function automatic logic [7:0] burst_length_from_bytes(input logic [31:0] value);
+    burst_length_from_bytes = 8'(((value+BUS_BYTES-1)>>BUS_SHIFT)-1);
+    if (BUS_SHIFT <= 24) begin
+      case (^value)
+        1'b0, 1'b1: begin
+          for (int bit_index = 0; bit_index < 8; bit_index++) begin
+            burst_length_from_bytes[bit_index] = value[BUS_SHIFT+bit_index] ^
+                ((value & ((32'd1 << (BUS_SHIFT+bit_index))-1)) == 32'd0);
+          end
+        end
+        default: begin end
+      endcase
+    end
+  endfunction
+
+  // 普通读取与专用读取并行计算地址，状态信号只选择已算出的结果。
+  logic [31:0] ordinary_read_address, pool_read_address, soft_read_address;
+  logic [31:0] ordinary_sum, ordinary_four_state;
+  logic unused_ordinary_carry;
+  logic [1:0] unused_pool_read_carry, unused_soft_read_carry;
   always_comb begin
-    rd_im2col = 1'b0;
-    rd_p0 = 0;
-    rd_q0 = 0;
     read_address_base = 32'd0;
     read_address_offset = 32'd0;
     read_address_channel = 16'd0;
-    rd_row_stride = 0;
-    rd_rows_to_read = 1;
-    rd_valid_cols = active;
-    rd_use_16bits = !spatial && c.vector_s16;
-    load_bytes = active << rd_use_16bits;
     case (load_kind)
       LD_WEIGHT: begin
         read_address_base = c.rhs_base;
-        read_address_channel = channel_base;
-        rd_use_16bits = 1'b0;
-        rd_rows_to_read = 32'(taps);
-        rd_row_stride = channels;
-        load_bytes = active;
+        read_address_offset = {16'd0, channel_base};
       end
       LD_BIAS, LD_MULT, LD_SHIFT: begin
         case (load_kind)
@@ -608,6 +761,65 @@ module vector_engine #(
           default: read_address_base = c.shift_base;
         endcase
         read_address_offset = {14'd0, channel_base, 2'b00};
+      end
+      LD_A: begin
+        read_address_base = c.input_base;
+        read_address_offset = vector_offset << c.vector_s16;
+      end
+      LD_B: begin
+        read_address_base = c.rhs_base;
+        read_address_offset = vector_offset << c.vector_s16;
+      end
+      default: begin end
+    endcase
+  end
+  vector_read_address_add #(.p_preserve_groups(1'b0)) u_read_address (
+    .clk(clk), .i_base(read_address_base), .i_offset(read_address_offset),
+    .i_channel(read_address_channel), .o_address(ordinary_four_state),
+    .o_carry(unused_read_address_carry)
+  );
+  parallel_prefix_add #(.p_width(32), .p_group_width(3), .p_preserve_groups(1'b1)) u_ordinary_sum (
+    .i_a(read_address_base), .i_b(read_address_offset), .i_carry(1'b0),
+    .o_sum(ordinary_sum), .o_carry(unused_ordinary_carry)
+  );
+  always_comb begin
+    case (^{read_address_base, read_address_offset})
+      1'b0, 1'b1: ordinary_read_address = ordinary_sum;
+      default: ordinary_read_address = ordinary_four_state;
+    endcase
+  end
+  vector_read_address_add u_pool_read_address (
+    .clk(clk), .i_base(c.input_base), .i_offset(pool_byte_offset),
+    .i_channel(channel_base), .o_address(pool_read_address), .o_carry(unused_pool_read_carry)
+  );
+  vector_read_address_add u_soft_read_address (
+    .clk(clk), .i_base(c.rhs_base), .i_offset({22'd0, soft_lut_index_q, 2'b00}),
+    .i_channel(16'd0), .o_address(soft_read_address), .o_carry(unused_soft_read_carry)
+  );
+  always_comb begin
+    case (state)
+      SOFT_LUT_REQ, SOFT_LUT_WAIT: rd_base_addr = soft_read_address;
+      POOL_LOAD_REQ, POOL_LOAD_WAIT: rd_base_addr = pool_read_address;
+      default: rd_base_addr = ordinary_read_address;
+    endcase
+  end
+  always_comb begin
+    rd_im2col = 1'b0;
+    rd_p0 = 0;
+    rd_q0 = 0;
+    rd_row_stride = 0;
+    rd_rows_to_read = 1;
+    rd_valid_cols = active;
+    rd_use_16bits = !spatial && c.vector_s16;
+    load_bytes = active << rd_use_16bits;
+    case (load_kind)
+      LD_WEIGHT: begin
+        rd_use_16bits = 1'b0;
+        rd_rows_to_read = 32'(taps);
+        rd_row_stride = channels;
+        load_bytes = active;
+      end
+      LD_BIAS, LD_MULT, LD_SHIFT: begin
         rd_use_16bits = 1'b0;
         load_bytes = active << 2;
         rd_valid_cols = active << 2;
@@ -619,35 +831,21 @@ module vector_engine #(
           rd_row_stride = parameter_row_stride;
         end
       end
-      LD_A: begin
-        read_address_base = c.input_base;
-        read_address_offset = vector_offset << c.vector_s16;
-      end
-      LD_B: begin
-        read_address_base = c.rhs_base;
-        read_address_offset = vector_offset << c.vector_s16;
-      end
       default: begin
       end
     endcase
-    rd_burst_len_m1 = 8'(((load_bytes+BUS_BYTES-1)>>BUS_SHIFT)-1);
+    rd_burst_len_m1 = burst_length_from_bytes(load_bytes);
     if (state==SOFT_LUT_REQ || state==SOFT_LUT_WAIT) begin
-      read_address_base = c.rhs_base;
-      read_address_offset = {22'd0, soft_lut_index, 2'b00};
-      read_address_channel = 16'd0;
       rd_use_16bits=0;rd_valid_cols=4;rd_burst_len_m1=0;
     end
     if (state==POOL_LOAD_REQ || state==POOL_LOAD_WAIT) begin
-      read_address_base = c.input_base;
-      read_address_offset = pool_byte_offset;
-      read_address_channel = channel_base;
       rd_use_16bits = 1'b0;
       if (channels==active) begin
         rd_rows_to_read=1;rd_valid_cols=pool_elements;rd_row_stride=0;
-        rd_burst_len_m1=8'(((pool_elements+BUS_BYTES-1)>>BUS_SHIFT)-1);
+        rd_burst_len_m1=burst_length_from_bytes(32'(pool_elements));
       end else begin
         rd_rows_to_read=pool_pixels;rd_valid_cols=active;rd_row_stride=channels;
-        rd_burst_len_m1=8'(((active+BUS_BYTES-1)>>BUS_SHIFT)-1);
+        rd_burst_len_m1=burst_length_from_bytes(32'(active));
       end
     end
     param_bad = 1'b0;
@@ -661,18 +859,48 @@ module vector_engine #(
 
   // 写回状态选择完整偏移，公共加法器生成最终输出地址。
   logic [31:0] write_address_offset, write_origin_next;
+  logic [31:0] write_main_offset;
+  logic [15:0] write_channel_offset;
+  logic [1:0] unused_write_origin_carry;
   always_comb begin
     write_address_offset = 32'd0;
+    write_main_offset = 32'd0;
+    write_channel_offset = 16'd0;
     case (state)
-      EXECUTE_COMMIT: write_address_offset = vector_offset << 2;
-      ADD_STORE: write_address_offset = vector_offset;
-      // 空间位置与通道号共同组成行偏移。
-      QUANT_STREAM, AVG_POWER_STORE, AVG_WAIT, POOL_STORE, DW_FINISH:
+      EXECUTE_COMMIT: begin
+        write_address_offset = vector_offset << 2;
+        write_main_offset = vector_offset << 2;
+      end
+      ADD_STORE: begin
+        write_address_offset = vector_offset;
+        write_main_offset = vector_offset;
+      end
+      // 空间位置与通道号分别参与三操作数压缩，减少连续进位计算。
+      QUANT_STREAM, AVG_POWER_STORE, AVG_WAIT, POOL_STORE, DW_FINISH: begin
         write_address_offset = position_offset + {16'd0, channel_base};
+        write_main_offset = position_offset;
+        write_channel_offset = channel_base;
+      end
       default: begin end
     endcase
   end
-  assign write_origin_next = c.output_base + write_address_offset;
+  logic [31:0] write_origin_fast, write_origin_four_state;
+  logic unused_write_origin_four_state_carry;
+  vector_read_address_add u_write_origin (
+      .clk(clk), .i_base(c.output_base), .i_offset(write_main_offset),
+      .i_channel(write_channel_offset), .o_address(write_origin_fast),
+      .o_carry(unused_write_origin_carry)
+  );
+  parallel_prefix_add #(.p_width(32), .p_group_width(8), .p_preserve_groups(1'b0)) u_write_origin_four_state (
+      .i_a(c.output_base), .i_b(write_address_offset), .i_carry(1'b0),
+      .o_sum(write_origin_four_state), .o_carry(unused_write_origin_four_state_carry)
+  );
+  always_comb begin
+    case (^{c.output_base, write_address_offset})
+      1'b0, 1'b1: write_origin_next = write_origin_fast;
+      default: write_origin_next = write_origin_four_state;
+    endcase
+  end
 
   wire signed [15:0] input_lane [PE_COUNT];
   wire signed [15:0] rhs_lane [PE_COUNT];
@@ -838,10 +1066,23 @@ module vector_engine #(
   assign weight_row_last_fire = weights_i_wr_en && (|weights_i_wr_mask) &&
       32'(rd_col_base)+32'(BUS_BYTES)>=32'(active);
   assign weight_tap_advance = ((state == EXECUTE_COMMIT) &&
-      (compute_index + 32'(PE_COUNT) >= active) && !global_pool && spatial &&
-      (32'(tap) + 32'd1 != 32'(taps))) ||
-      (dw_tap_advance && (tap+1'b1 != taps));
-  assign {unused_weight_tap_carry, weight_tap_nxt} = {1'b0, tap} + (TAP_COUNT_W+1)'(1);
+      compute_group_last_q && !global_pool && spatial &&
+      !tap_last_wide) || (dw_tap_advance && !tap_last_modulo);
+  // 递增数据和末项条件并行计算，分别保留扩展比较与窄位回绕比较。
+  parallel_prefix_add #(
+      .p_width(TAP_COUNT_W), .p_group_width(3), .p_preserve_groups(1'b1)
+  ) u_weight_tap_increment (
+      .i_a(tap), .i_b(TAP_COUNT_W'(1)), .i_carry(1'b0),
+      .o_sum(weight_tap_nxt), .o_carry(unused_weight_tap_carry)
+  );
+  add_equal #(.p_width(32)) u_tap_last_wide (
+      .i_a(32'(tap)), .i_b(32'd1), .i_target(32'(taps)), .i_carry_in(1'b0),
+      .o_equal(tap_last_wide)
+  );
+  add_equal #(.p_width(TAP_COUNT_W)) u_tap_last_modulo (
+      .i_a(tap), .i_b(TAP_COUNT_W'(1)), .i_target(taps), .i_carry_in(1'b0),
+      .o_equal(tap_last_modulo)
+  );
   assign weights_i_rd_tap = (state == OUTPUT_INIT || state == DW_FINISH) ? 32'd0 :
       weight_tap_advance ? 32'(weight_tap_nxt) : 32'(tap);
   // 同步读取提前准备当前或下一卷积核位置；加载权重期间不发起共享 RAM 读取。
@@ -936,13 +1177,21 @@ module vector_engine #(
   assign serial_acc_read_data = acc_buf[serial_acc_read_index];
   assign softmax_i_exp_rdata = serial_acc_read_data;
 
-  logic signed [31:0] reduce_alu_i_lhs, reduce_alu_i_rhs;
+  logic signed [31:0] reduce_alu_i_lhs, reduce_alu_i_rhs, reduce_rhs_q;
   logic reduce_alu_i_max, reduce_alu_i_min;
   assign reduce_alu_i_lhs = reduce_acc;
-  assign reduce_alu_i_rhs = serial_acc_read_data;
+  // 归约期间缓冲区保持稳定，提前一拍读取下一项并保存完整 INT32 操作数。
+  assign reduce_alu_i_rhs = reduce_rhs_q;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) reduce_rhs_q <= '0;
+    else if (state == VECTOR_NEXT && !vector_has_more && c.op != VEC_HADAMARD && !add_s8)
+      reduce_rhs_q <= acc_buf[0];
+    else if (state == VECTOR_REDUCE && reduce_index + 1 < TILE)
+      reduce_rhs_q <= acc_buf[reduce_index + TILE_INDEX_W'(1)];
+  end
   assign reduce_alu_i_max = c.op == VEC_MAX;
   assign reduce_alu_i_min = c.op == VEC_MIN;
-  // 共享串行读端口在本周期提供操作数，加法与有符号极值比较共用归约单元。
+  // 当前索引在本周期提供操作数，加法与有符号极值比较共用归约单元。
   vector_reduce_alu u_reduce_alu (
     .clk(clk), .i_lhs(reduce_alu_i_lhs), .i_rhs(reduce_alu_i_rhs),
     .i_max(reduce_alu_i_max), .i_min(reduce_alu_i_min), .o_result(reduce_next)
@@ -1467,7 +1716,7 @@ module vector_engine #(
       if (dw_snapshot_fire) begin
         dw_snapshot_vld <= 1'b1;
         dw_snapshot_address <= write_origin_next;
-        dw_snapshot_last <= position+32'd1==32'(position_count);
+        dw_snapshot_last <= position_next==32'(position_count);
       end
       if (dw_quant_last_issue) begin
         dw_quant_input_active <= 1'b0;
@@ -1519,8 +1768,8 @@ module vector_engine #(
       q_accumulator<=0;q_multiplier<=0;q_rounded<=0;q_product<=0;q_right_0<=0;q_right_1<=0;q_right_2<=0;q_right_3<=0;
       q_valid<=0;q_index_0<=0;q_index_1<=0;q_index_2<=0;q_index_3<=0;q_index_4<=0;q_index_5<=0;q_issue<=0;q_count<=0;
       q_active<=0;
-      read_bank<=0;wf_bank<=0;input_ready<=0;
-      window_received<=0;soft_lut_data<=0;avg_negative<=0;
+      read_bank<=0;wf_bank<=0;
+      window_received<=0;soft_lut_data<=0;soft_lut_index_q<=0;avg_negative<=0;
       fetch_position<=0;fetch_tap<=0;fetch_ox<=0;fetch_kx<=0;
       fetch_x<=0;fetch_y<=0;fetch_origin_x<=0;fetch_origin_y<=0;
       write_origin<=0;write_total<=0;
@@ -1585,9 +1834,8 @@ module vector_engine #(
         wf_bank<=(wf_bank+1'b1)&input_bank_mask;
       end
       if (window_response_fire) begin
-        window_received<=window_received+32'(window_response_count);
+        window_received<=window_count_o_sum;
         if(win_rsp_last) begin
-          input_ready[win_rsp_tag]<=!win_rsp_error;
           window_received<=0;
         end
       end
@@ -1602,7 +1850,7 @@ module vector_engine #(
           c<=cfg; error<=0; state<=CHECK;
           input_range_mode<=0;
           q_active<=0;q_valid<=0;
-          input_ready<=0;read_bank<=0;wf_bank<=0;window_received<=0;
+          read_bank<=0;wf_bank<=0;window_received<=0;
           param_bad_seen<=0;
         end
         CHECK: if (config_check_ready) state<=CHECK_WAIT;
@@ -1618,7 +1866,7 @@ module vector_engine #(
           active<=channels-channel_base<TILE ? channels-channel_base : 32'(TILE);
           position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=LD_WEIGHT;
           input_origin_x<=-$signed(34'(c.image.pad_left));input_origin_y<=-$signed(34'(c.image.pad_top));
-          input_ready<=0;read_bank<=0;wf_bank<=0;window_received<=0;
+          read_bank<=0;wf_bank<=0;window_received<=0;
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
           fetch_x<=-$signed(34'(c.image.pad_left));fetch_y<=-$signed(34'(c.image.pad_top));
           fetch_origin_x<=-$signed(34'(c.image.pad_left));fetch_origin_y<=-$signed(34'(c.image.pad_top));
@@ -1658,14 +1906,13 @@ module vector_engine #(
             if (!dw_group_last) compute_index<=compute_index+TILE_INDEX_W'(PE_COUNT);
             else begin
               compute_index<='0;
-              input_ready[read_bank]<=1'b0;
               read_bank<=(read_bank+1'b1)&input_bank_mask;
             end
           end
           if (dw_tap_advance) begin
-            if (tap+1'b1==taps) state<=DW_FINISH;
+            if (tap_last_modulo) state<=DW_FINISH;
             else begin
-              tap<=tap+1'b1;
+              tap<=weight_tap_nxt;
               input_x<=next_window_x;input_y<=next_window_y;
               if (kernel_column_end) begin kx<=0;ky<=ky+1'b1;end
               else kx<=kx+1'b1;
@@ -1674,8 +1921,8 @@ module vector_engine #(
         end
         DW_FINISH: if (dw_snapshot_fire) begin
           compute_index<='0;tap<='0;kx<='0;ky<='0;
-          if (position+32'd1<32'(position_count)) begin
-            position<=position+32'd1;position_offset<=position_offset+channels;
+          if (position_next<32'(position_count)) begin
+            position<=position_next;position_offset<=position_offset+channels;
             if (ox+16'd1==c.image.output_w) begin
               ox<=0;oy<=oy+16'd1;
               input_origin_x<=-$signed(34'(c.image.pad_left));
@@ -1715,7 +1962,7 @@ module vector_engine #(
         EXECUTE: if (c.op!=VEC_HADAMARD || !writeback_busy) state<=EXECUTE_COMMIT;
         EXECUTE_COMMIT: begin
           state<=EXECUTE;
-          if (compute_index+32'(PE_COUNT)<active) compute_index<=compute_index+32'(PE_COUNT);
+          if (!compute_group_last_q) compute_index<=compute_index+32'(PE_COUNT);
           else if (global_pool) begin
             pool_byte_offset<=pool_byte_offset+channels;
             if (pool_pixel+1<pool_pixels) begin
@@ -1726,12 +1973,12 @@ module vector_engine #(
             else begin quant_index<=0;state<=QUANT_INIT;end
           end
           else if (spatial) begin
-            input_ready[read_bank]<=0;read_bank<=(read_bank+1'b1)&input_bank_mask;compute_index<=0;
-            if (tap+1==taps) begin quant_index<=0;state<=QUANT_INIT;end
+            read_bank<=(read_bank+1'b1)&input_bank_mask;compute_index<=0;
+            if (tap_last_wide) begin quant_index<=0;state<=QUANT_INIT;end
             else begin
-              tap<=tap+1;input_x<=next_window_x;input_y<=next_window_y;
+              tap<=weight_tap_nxt;input_x<=next_window_x;input_y<=next_window_y;
               if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
-              if (next_window_valid) begin
+              if (next_window_valid_q) begin
                 valid_taps<=valid_taps+1;
                 state<=input_ready[(read_bank+1'b1)&input_bank_mask] ? EXECUTE : WINDOW_WAIT;
               end else state<=TAP_CHECK;
@@ -1768,9 +2015,9 @@ module vector_engine #(
             write_origin<=write_origin_next;write_total<=active;state<=WRITE_PREP;
           end
         end
-        TAP_NEXT: if (tap+1==taps) begin quant_index<=0;state<=QUANT_INIT;end
+        TAP_NEXT: if (tap_last_wide) begin quant_index<=0;state<=QUANT_INIT;end
           else begin
-            tap<=tap+1;input_x<=next_window_x;input_y<=next_window_y;
+            tap<=weight_tap_nxt;input_x<=next_window_x;input_y<=next_window_y;
             if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
             state<=TAP_CHECK;
           end
@@ -1824,8 +2071,8 @@ module vector_engine #(
           else state<=DRAIN;
         end
         OUTPUT_NEXT: begin
-          if (position+1<32'(position_count)) begin
-            position<=position+1;position_offset<=position_offset+channels;
+          if (position_next<32'(position_count)) begin
+            position<=position_next;position_offset<=position_offset+channels;
             if (ox+1==32'(c.image.output_w)) begin
               ox<=0;oy<=oy+1;input_origin_x<=-$signed(34'(c.image.pad_left));
               input_origin_y<=input_origin_y+$signed(34'(c.image.stride_h));
@@ -1848,7 +2095,9 @@ module vector_engine #(
         SOFT_RUN: if (soft_done) begin
           if (soft_error!=0) begin error<=soft_error;state<=FAILED;end
           else begin write_origin<=write_origin_next;write_total<=active;state<=WRITE_PREP;end
-        end else if (soft_lut_req_valid) begin soft_lut_data<=0;state<=SOFT_LUT_REQ;end
+        end else if (soft_lut_req_valid) begin
+          soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;state<=SOFT_LUT_REQ;
+        end
         SOFT_LUT_REQ: if (rd_granted) state<=SOFT_LUT_WAIT;
         SOFT_LUT_WAIT: if (rd_done) state<=SOFT_RUN;
         VECTOR_INIT: begin
@@ -1869,11 +2118,9 @@ module vector_engine #(
           if (reduce_index+1<TILE) reduce_index<=reduce_index+1;
           else begin write_origin<=write_origin_next;write_total<=4;state<=WRITE_PREP;end
         end
-        FAILED: if (!rd_busy && !wr_busy && !win_busy && !writeback_busy &&
-                    dw_shared_inflight==0 && dma_cfg_ready &&
-                    (!SHARED_STORAGE_ENABLE || (!i_weight_read_valid && !i_ps_read_valid))) begin
+        FAILED: if (input_drain_ready) begin
           q_active<=0;q_valid<=0;
-          input_ready<=0;state<=DONE;
+          state<=DONE;
         end
         DONE: if (done_ready) state<=IDLE;
         default: begin error<=2'b10;state<=FAILED;end
@@ -1950,17 +2197,65 @@ module vector_engine #(
 `endif
 endmodule
 
+// 有符号坐标与十六位尺寸比较，三个相邻位组并行归并大小关系。
+module vector_coordinate_bound (
+  input  logic signed [33:0] i_coordinate,
+  input  logic [15:0] i_limit,
+  output logic o_in_bounds
+);
+  //! 0. 辅助定义
+  //! -----------
+
+  logic [15:0] bit_generate, bit_propagate;
+  (* keep = 1 *) logic [5:0] group_generate, group_propagate;
+  (* keep = 1 *) logic [1:0] half_generate, half_propagate;
+  logic coordinate_high_zero, coordinate_low_less;
+
+  //! 1. 并行比较坐标与尺寸
+  //! -----------------------
+
+  assign bit_generate = ~i_coordinate[15:0] & i_limit;
+  assign bit_propagate = ~i_coordinate[15:0] | i_limit;
+  for (genvar group_index = 0; group_index < 6; group_index++) begin : g_group
+    localparam int p_low = 3 * group_index;
+    localparam int p_bits = group_index == 5 ? 1 : 3;
+    logic [p_bits-1:0] generate_terms;
+
+    for (genvar bit_index = 0; bit_index < p_bits; bit_index++) begin : g_bit
+      if (bit_index == p_bits-1) begin : g_high
+        assign generate_terms[bit_index] = bit_generate[p_low+bit_index];
+      end else begin : g_low
+        assign generate_terms[bit_index] = bit_generate[p_low+bit_index] &&
+            (&bit_propagate[p_low+bit_index+1 +: p_bits-bit_index-1]);
+      end
+    end
+    assign group_generate[group_index] = |generate_terms;
+    assign group_propagate[group_index] = &bit_propagate[p_low +: p_bits];
+  end
+  for (genvar half_index = 0; half_index < 2; half_index++) begin : g_half
+    localparam int p_low = 3 * half_index;
+    assign half_generate[half_index] = group_generate[p_low+2] ||
+        (group_propagate[p_low+2] && group_generate[p_low+1]) ||
+        (group_propagate[p_low+2] && group_propagate[p_low+1] && group_generate[p_low]);
+    assign half_propagate[half_index] = &group_propagate[p_low +: 3];
+  end
+  assign coordinate_low_less = half_generate[1] || (half_propagate[1] && half_generate[0]);
+  assign coordinate_high_zero = i_coordinate[33:16] == 18'd0;
+  assign o_in_bounds = coordinate_high_zero && coordinate_low_less;
+endmodule
+
 // 三个无符号地址分量进行完整宽度组合加法。
 module vector_read_address_add #(
 `ifdef ASIC_SYNTHESIS
-  parameter bit p_use_dsp = 1'b0
+  parameter bit p_use_dsp = 1'b0,
 `elsif XILINX_FPGA
-  parameter bit p_use_dsp = 1'b1
+  parameter bit p_use_dsp = 1'b1,
 `elsif SYNTHESIS
-  parameter bit p_use_dsp = 1'b1
+  parameter bit p_use_dsp = 1'b1,
 `else
-  parameter bit p_use_dsp = 1'b0
+  parameter bit p_use_dsp = 1'b0,
 `endif
+  parameter bit p_preserve_groups = 1'b1
 ) (
   input logic clk,
   input logic [31:0] i_base,
@@ -1969,8 +2264,22 @@ module vector_read_address_add #(
   output logic [31:0] o_address,
   output logic [1:0] o_carry
 );
-  // 无寄存器组合加法，保留完整进位。
-  assign {o_carry, o_address} = {2'b00, i_base} + {2'b00, i_offset} + {18'd0, i_channel};
+  logic [33:0] base_extended, offset_extended, channel_extended;
+  logic [33:0] address_sum, address_carry, address_result;
+  logic unused_address_carry;
+
+  // 三项先压缩成两项，再以三位分组求和，保留两个地址进位位。
+  assign base_extended = {2'b00, i_base};
+  assign offset_extended = {2'b00, i_offset};
+  assign channel_extended = {18'd0, i_channel};
+  assign address_sum = base_extended ^ offset_extended ^ channel_extended;
+  assign address_carry = ((base_extended & offset_extended) |
+      (base_extended & channel_extended) | (offset_extended & channel_extended)) << 1;
+  parallel_prefix_add #(.p_width(34), .p_group_width(3), .p_preserve_groups(p_preserve_groups)) u_address_sum (
+      .i_a(address_sum), .i_b(address_carry), .i_carry(1'b0),
+      .o_sum(address_result), .o_carry(unused_address_carry)
+  );
+  assign {o_carry, o_address} = address_result;
 endmodule
 
 // 权重采用异步读取，计算单元在原有发射周期接收当前卷积核位置的数据。

@@ -137,7 +137,6 @@ module bias_loader_buffer #(
   localparam int BLOCK_ADDR_W = (GROUP_BLOCKS_MAX > 1) ? $clog2(GROUP_BLOCKS_MAX) : 1;
 
   localparam int RANGE_WIDTH = CNT_W + 1;
-  localparam int RANGE_STAGES = $clog2(RANGE_WIDTH);
   logic [1:0][1:0] window_end_valid;
   logic [CNT_W-1:0] load_request_idx;
   logic [1:0] load_window_hit;
@@ -188,33 +187,64 @@ module bias_loader_buffer #(
       logic [RANGE_WIDTH-1:0] sum_bits;
       logic [RANGE_WIDTH-1:0] carry_bits;
       logic [RANGE_WIDTH-1:0] shifted_carry;
+      localparam int p_groups = (RANGE_WIDTH + 2) / 3;
+      localparam int p_levels = $clog2(p_groups) + 1;
+      (* keep = 1 *) logic [RANGE_WIDTH-1:0] bit_generate, bit_propagate;
+      (* keep = 1 *) logic [p_groups-1:0] group_generate [p_levels+1];
+      (* keep = 1 *) logic [p_groups-1:0] group_propagate [p_levels+1];
+      logic range_overflow;
       logic unused_high_carry;
       assign sum_bits = request_base ^ request_count ^ ~bank_end_q[bank_i];
       assign carry_bits = (request_base & request_count) |
           ((request_base | request_count) & ~bank_end_q[bank_i]);
       assign {unused_high_carry, shifted_carry} = {carry_bits, 1'b0};
-      for (genvar stage_i = 0; stage_i <= RANGE_STAGES; stage_i++) begin : g_prefix_stage
-        logic [RANGE_WIDTH-1:0] carry_generate;
-        logic [RANGE_WIDTH-1:0] carry_propagate;
-        if (stage_i == 0) begin : g_initial
-          assign carry_generate = sum_bits & shifted_carry;
-          assign carry_propagate = sum_bits | shifted_carry;
-        end else begin : g_advance
-          for (genvar bit_i = 0; bit_i < RANGE_WIDTH; bit_i++) begin : g_prefix_bit
-            if (bit_i >= (1 << (stage_i-1))) begin : g_merge
-              assign carry_generate[bit_i] = g_prefix_stage[stage_i-1].carry_generate[bit_i] |
-                  (g_prefix_stage[stage_i-1].carry_propagate[bit_i] &
-                   g_prefix_stage[stage_i-1].carry_generate[bit_i-(1<<(stage_i-1))]);
-              assign carry_propagate[bit_i] = g_prefix_stage[stage_i-1].carry_propagate[bit_i] &
-                  g_prefix_stage[stage_i-1].carry_propagate[bit_i-(1<<(stage_i-1))];
-            end else begin : g_copy
-              assign carry_generate[bit_i] = g_prefix_stage[stage_i-1].carry_generate[bit_i];
-              assign carry_propagate[bit_i] = g_prefix_stage[stage_i-1].carry_propagate[bit_i];
+      assign bit_generate = sum_bits & shifted_carry;
+      assign bit_propagate = sum_bits | shifted_carry;
+      // 三位叶节点并行计算进位条件，三叉归并只保存最终比较需要的最高进位。
+      for (genvar group_i = 0; group_i < p_groups; group_i++) begin : g_leaf
+        localparam int p_low = 3 * group_i;
+        localparam int p_bits = RANGE_WIDTH - p_low < 3 ? RANGE_WIDTH - p_low : 3;
+        logic [p_bits-1:0] generate_terms;
+        for (genvar bit_i = 0; bit_i < p_bits; bit_i++) begin : g_bit
+          if (bit_i == p_bits-1) begin : g_high
+            assign generate_terms[bit_i] = bit_generate[p_low+bit_i];
+          end else begin : g_low
+            assign generate_terms[bit_i] = bit_generate[p_low+bit_i] &
+                (&bit_propagate[p_low+bit_i+1 +: p_bits-bit_i-1]);
+          end
+        end
+        assign group_generate[0][group_i] = |generate_terms;
+        assign group_propagate[0][group_i] = &bit_propagate[p_low +: p_bits];
+      end
+      for (genvar level = 1; level <= p_levels; level++) begin : g_level
+        localparam int p_previous_span = 3 ** (level-1);
+        localparam int p_current_span = 3 ** level;
+        localparam int p_previous_nodes = (p_groups+p_previous_span-1)/p_previous_span;
+        localparam int p_current_nodes = (p_groups+p_current_span-1)/p_current_span;
+        for (genvar node = 0; node < p_groups; node++) begin : g_node
+          if (node < p_current_nodes) begin : g_present
+            logic [2:0] child_generate, child_propagate;
+            for (genvar child = 0; child < 3; child++) begin : g_child
+              if (3*node+child < p_previous_nodes) begin : g_real
+                assign child_generate[child] = group_generate[level-1][3*node+child];
+                assign child_propagate[child] = group_propagate[level-1][3*node+child];
+              end else begin : g_padding
+                assign child_generate[child] = 1'b0;
+                assign child_propagate[child] = 1'b1;
+              end
             end
+            assign group_generate[level][node] = child_generate[2] |
+                (child_propagate[2] & child_generate[1]) |
+                (child_propagate[2] & child_propagate[1] & child_generate[0]);
+            assign group_propagate[level][node] = &child_propagate;
+          end else begin : g_unused
+            assign group_generate[level][node] = 1'b0;
+            assign group_propagate[level][node] = 1'b1;
           end
         end
       end
-      assign window_end_valid[request_i][bank_i] = ~g_prefix_stage[RANGE_STAGES].carry_generate[RANGE_WIDTH-1];
+      assign range_overflow = group_generate[p_levels][0];
+      assign window_end_valid[request_i][bank_i] = ~range_overflow;
     end
   end
   for (genvar b = 0; b < 2; b++) begin : gen_window_hit

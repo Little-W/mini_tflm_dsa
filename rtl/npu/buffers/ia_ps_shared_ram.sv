@@ -359,6 +359,7 @@ module ia_ps_channel_ram #(
 ) (
     input  wire logic clk,
     input  wire logic rst_n,
+    input  wire logic i_access_enable = 1'b1,
     input  wire logic i_cfg_valid,
     input  wire logic [p_bank_count_width-1:0] i_cfg_ia_banks,
     output logic o_capacity_fault,
@@ -392,7 +393,7 @@ module ia_ps_channel_ram #(
 
     logic configured_q;
     logic [p_bank_count_width-1:0] ia_banks_q;
-    logic valid_configuration, access_enabled, access_fault;
+    logic valid_configuration, access_enabled, memory_access_enabled, access_fault;
     logic [p_addr_width-1:0] ps_limit;
     logic [1:0] ia_read_range, ia_write_range;
     logic [3:0] ps_read_range, ps_write_range, ps_collision;
@@ -404,6 +405,8 @@ module ia_ps_channel_ram #(
          i_cfg_ia_banks == p_bank_count_width'(4)) &&
         i_cfg_ia_banks <= p_bank_count_width'(p_max_ia_banks);
     assign access_enabled = configured_q && !o_capacity_fault && !i_cfg_valid;
+    // 全局访问条件在端口译码后统一生效，地址和碰撞判断并行准备。
+    assign memory_access_enabled = access_enabled && i_access_enable;
     always_comb begin
         ps_limit = '0;
         case (ia_banks_q)
@@ -415,13 +418,16 @@ module ia_ps_channel_ram #(
     end
 
     always_comb begin
-        access_fault = (|ia_bank_fault) || (|ps_collision);
-        if (access_enabled) begin
-            access_fault = access_fault ||
-                (|(i_ia_read_en & ~ia_read_range)) || (|(i_ia_write_en & ~ia_write_range)) ||
-                (|(i_ps_read_en & ~ps_read_range)) || (|(i_ps_write_en & ~ps_write_range));
-        end else if ((|i_ia_read_en) || (|i_ia_write_en) || (|i_ps_read_en) || (|i_ps_write_en)) begin
-            access_fault = 1'b1;
+        access_fault = 1'b0;
+        if (i_access_enable) begin
+            access_fault = (|ia_bank_fault) || (|ps_collision);
+            if (access_enabled) begin
+                access_fault = access_fault ||
+                    (|(i_ia_read_en & ~ia_read_range)) || (|(i_ia_write_en & ~ia_write_range)) ||
+                    (|(i_ps_read_en & ~ps_read_range)) || (|(i_ps_write_en & ~ps_write_range));
+            end else if ((|i_ia_read_en) || (|i_ia_write_en) || (|i_ps_read_en) || (|i_ps_write_en)) begin
+                access_fault = 1'b1;
+            end
         end
     end
     always_ff @(posedge clk or negedge rst_n) begin
@@ -494,20 +500,20 @@ module ia_ps_channel_ram #(
         always_ff @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
                 ia_return_bank_q[port_index] <= '0;
-            end else if (access_enabled && i_ia_read_en[port_index]) begin
+            end else if (memory_access_enabled && i_ia_read_en[port_index]) begin
                 ia_return_bank_q[port_index] <= ia_read_bank[port_index];
             end
         end
     end
 
     for (genvar bank = 0; bank < p_max_ia_banks; bank++) begin : g_ia_route
-        logic [1:0] read_request, write_request;
+        (* keep = 1 *) logic [1:0] read_request, write_request;
         logic read_port_one, write_port_one, collision;
         logic [3:0] collision_terms;
         for (genvar port_index = 0; port_index < 2; port_index++) begin : g_request
-            assign read_request[port_index] = access_enabled && i_ia_read_en[port_index] &&
+            assign read_request[port_index] = i_ia_read_en[port_index] &&
                 ia_read_range[port_index] && ia_read_bank[port_index] == p_ia_bank_bits'(bank);
-            assign write_request[port_index] = access_enabled && i_ia_write_en[port_index] &&
+            assign write_request[port_index] = i_ia_write_en[port_index] &&
                 ia_write_range[port_index] && ia_write_bank[port_index] == p_ia_bank_bits'(bank);
         end
         assign read_port_one = read_request[1] && !read_request[0];
@@ -525,8 +531,8 @@ module ia_ps_channel_ram #(
             end
         end
         assign collision = |collision_terms;
-        assign ia_bank_read_en[bank] = |read_request;
-        assign ia_bank_write_en[bank] = (|write_request) && !collision;
+        assign ia_bank_read_en[bank] = memory_access_enabled && (|read_request);
+        assign ia_bank_write_en[bank] = memory_access_enabled && (|write_request) && !collision;
         assign ia_bank_fault[bank] = collision || (&read_request) || (&write_request);
     end
 
@@ -545,10 +551,10 @@ module ia_ps_channel_ram #(
     for (genvar channel = 0; channel < 4; channel++) begin : g_ps_address
         assign ps_read_range[channel] = i_ps_read_addr[channel] < ps_limit;
         assign ps_write_range[channel] = i_ps_write_addr[channel] < ps_limit;
-        assign ps_read_fire[channel] = access_enabled && i_ps_read_en[channel] && ps_read_range[channel];
-        assign ps_write_fire[channel] = access_enabled && i_ps_write_en[channel] && ps_write_range[channel] &&
+        assign ps_read_fire[channel] = memory_access_enabled && i_ps_read_en[channel] && ps_read_range[channel];
+        assign ps_write_fire[channel] = memory_access_enabled && i_ps_write_en[channel] && ps_write_range[channel] &&
             !ps_collision[channel];
-        assign ps_collision[channel] = access_enabled && i_ps_read_en[channel] && i_ps_write_en[channel] &&
+        assign ps_collision[channel] = i_ps_read_en[channel] && i_ps_write_en[channel] &&
             ps_read_range[channel] && ps_write_range[channel] &&
             i_ps_read_addr[channel] == i_ps_write_addr[channel];
 

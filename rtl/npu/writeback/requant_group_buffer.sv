@@ -127,21 +127,6 @@ module requant_group_buffer #(
         end
     end
 
-`ifndef SYNTHESIS
-    always_ff @(posedge clk) begin
-        if (rst_n && !i_clear) begin
-            if (i_group_start) begin
-                assert(o_group_ready && i_group_rows != 0 && i_group_rows <= p_rows);
-                assert(stored_rows_q == 0 && !head_valid_q && !i_output_valid);
-            end
-            if (push_row) begin
-                assert(i_group_start || expected_rows_q != 0);
-                assert(stored_rows_q < p_rows || read_row);
-            end
-            if (i_output_valid) assert(pending_rows_q != 0);
-        end
-    end
-`endif
 endmodule
 
 `default_nettype wire

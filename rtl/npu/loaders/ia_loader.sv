@@ -505,7 +505,7 @@ module ia_loader #(
     logic request_lookup_valid, prefetch_lookup_valid;
     logic request_lookup_match;
     logic request_lookup_ready;
-    logic request_tag_match;
+    (* keep = 1 *) logic request_tag_match;
 
     always_ff @(posedge clk) begin
         request_tag_q <= cache_tags[request_descriptor.slot];
@@ -589,8 +589,8 @@ module ia_loader #(
         logic [REG_WIDTH-1:0] request_q0_equal_i_a_full, request_q0_equal_i_b_full;
         logic [p_coord_width-1:0] request_p0_equal_i_target;
         logic [p_coord_width-1:0] request_q0_equal_i_target;
-        logic request_p0_equal_o_equal;
-        logic request_q0_equal_o_equal;
+        (* keep = 1 *) logic request_p0_equal_o_equal;
+        (* keep = 1 *) logic request_q0_equal_o_equal;
 
         assign request_p0_equal_i_a_full = request_p0;
         assign request_p0_equal_i_b_full = p0_base_q;
@@ -1121,8 +1121,13 @@ module ia_ordered_coordinate_equal #(
 
     if (p_low_width > 0) begin : g_low_carry
         logic [p_low_width-1:0] unused_low_sum;
-        assign {carry_in, unused_low_sum} =
-            {1'b0, i_a[p_low_width-1:0]} + {1'b0, i_b[p_low_width-1:0]};
+        // 只消费低位进位，分组生成条件避免先计算完整低位和值。
+        parallel_prefix_add #(
+            .p_width(p_low_width), .p_group_width(3), .p_preserve_groups(1'b1)
+        ) u_low_carry (
+            .i_a(i_a[p_low_width-1:0]), .i_b(i_b[p_low_width-1:0]), .i_carry(1'b0),
+            .o_sum(unused_low_sum), .o_carry(carry_in)
+        );
     end else begin : g_no_low_carry
         assign carry_in = 1'b0;
     end

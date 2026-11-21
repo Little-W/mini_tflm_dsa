@@ -190,15 +190,8 @@ module ia_loader_cache_mgr #(
     // 排列后的写掩码选择数据字节或零数据对应的紧凑字节。
     assign compact_empty_byte = 8'(0 - compact_offset);
     for (genvar lane = 0; lane < p_compact_lanes; lane++) begin : g_compact_add
-      logic [4:0] low_sum;
-      logic [3:0] high_sum0, high_sum1;
-
-      // 两个高半字节候选与低半字节并行计算，缩短数据到高位的进位路径。
-      // 结果仍是独立字节模 256 加法，不改变写命令寄存周期。
-      assign low_sum = {1'b0, wr_data[lane][3:0]} + {1'b0, compact_empty_byte[3:0]};
-      assign high_sum0 = wr_data[lane][7:4] + compact_empty_byte[7:4];
-      assign high_sum1 = wr_data[lane][7:4] + compact_empty_byte[7:4] + 4'd1;
-      assign compact_input_byte[lane] = {low_sum[4] ? high_sum1 : high_sum0, low_sum[3:0]};
+      // 字节模加法保留低八位结果，由综合工具直接推断短进位结构。
+      assign compact_input_byte[lane] = 8'(wr_data[lane][7:0] + compact_empty_byte);
     end
     for (genvar lane = 0; lane < SIZE; lane++) begin : g_compact_write
       if (lane < DMA_LANES) begin : g_source
@@ -239,11 +232,27 @@ module ia_loader_cache_mgr #(
     end
 
     if (p_shared_write_stage && SIZE == 16 && DATA_WIDTH == 16) begin : g_shared_write_stage
-      // 宽数据的第二端口位于奇数物理字；紧凑数据只使用第一端口。
-      // 两种写命令均在原有边沿保存预选数据，使共享块只需选择 IA 或部分和。
+      (* keep = 1 *) logic [127:0] compact_shared_data;
+      logic [127:0] wide_shared_data;
+      logic [127:0] selected_shared_data;
+
+      // 紧凑字节排列与宽数据端口选择分别完成，存储格式只选择最终结果。
+      for (genvar lane = 0; lane < 8; lane++) begin : g_data
+        assign compact_shared_data[lane*16 +: 16] =
+            {compact_write_byte[lane*2+1], compact_write_byte[lane*2]};
+        assign wide_shared_data[lane*16 +: 16] = write_en[1] ?
+            ram_wr_data[lane+8] : ram_wr_data[lane];
+      end
+      always_comb begin
+        case (compact_mode)
+          1'b0: selected_shared_data = wide_shared_data;
+          1'b1: selected_shared_data = compact_shared_data;
+          default: selected_shared_data = write_en[1] ? write_data[1] : write_data[0];
+        endcase
+      end
       always_ff @(posedge clk) begin
         if (|write_en) begin
-          ram_shared_wr_data <= write_en[1] ? write_data[1] : write_data[0];
+          ram_shared_wr_data <= selected_shared_data;
         end
       end
     end else begin : g_general_write_stage

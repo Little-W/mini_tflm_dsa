@@ -151,11 +151,15 @@ module npu_top #(
 `endif
     typedef enum logic [1:0] {AB_IDLE, AB_DRAIN, AB_RESET, AB_DONE} abort_t;
     abort_t abort_state;
+    wire core_rst_n;
     logic [1:0] abort_error_code;
     logic [31:0] conv_range_base[4];
     logic [32:0] conv_range_end[4];
-    wire task_fault, init_cfg_ia, cfg_stream_compact;
+    (* keep = 1 *) wire task_fault;
+    wire init_cfg_ia, cfg_stream_compact;
     wire ps_raw_capacity_fits, ps_long_capacity_fits, load_ia_granted;
+    logic task_accept_ready;
+    wire task_accept_conditions;
 
     // A Conv task is immutable after acceptance. The legacy software keeps
     // the other task fields stable; the AXI-Lite interface locks writes while busy.
@@ -170,10 +174,12 @@ module npu_top #(
     end
     logic [31:0] ps_control_q;
     logic vector_engine_ready, vector_engine_done;
-    logic vector_start_fire;
+    (* keep = 1 *) logic vector_start_fire;
     logic vector_shared_store_o_idle, vector_shared_store_o_error;
     logic [1:0] vector_engine_error;
-    logic normal_done_valid;
+    (* keep = 1 *) logic normal_done_valid;
+    logic task_completion_pending;
+    (* keep = 1 *) logic task_completion_accept;
     logic [1:0] normal_err_code;
     logic vector_dma_cfg_valid, vector_dma_conv_enable, vector_dma_range_enable;
 `ifdef NPU_SIM_ASSERT
@@ -198,6 +204,18 @@ module npu_top #(
 `endif
     assign vector_start_fire = VECTOR_ENGINE_CAPABLE && calc_start && sa_ready &&
         cfg_vector_enable && !cfg_conv_enable;
+    // 后台通道全部空闲后保存接收资格，接收新任务的边沿立即清除该状态。
+    // 当前故障和中止状态继续直接禁止接收，任务字段仅在公开握手时保存。
+    assign sa_ready = task_accept_ready && abort_state == AB_IDLE && !task_fault;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            task_accept_ready <= 1'b0;
+        end else if ((calc_start && sa_ready) || abort_state != AB_IDLE) begin
+            task_accept_ready <= 1'b0;
+        end else begin
+            task_accept_ready <= task_accept_conditions;
+        end
+    end
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             run_vector <= 1'b0;
@@ -212,9 +230,24 @@ module npu_top #(
             end
         end
     end
+    // 排空判断完成后保存一次完成事件，外部背压期间保持，接收后清除。
+    // 子模块的完成握手与公开握手使用同一个寄存事件。
+    always_ff @(posedge clk or negedge core_rst_n) begin
+        if (!core_rst_n) begin
+            task_completion_pending <= 1'b0;
+        end else if (abort_state != AB_IDLE || task_fault || (calc_start && sa_ready)) begin
+            task_completion_pending <= 1'b0;
+        end else if (task_completion_pending) begin
+            if (done_ready) task_completion_pending <= 1'b0;
+        end else begin
+            task_completion_pending <= run_vector ?
+                (vector_rejected || (vector_engine_done && vector_shared_store_o_idle)) : normal_done_valid;
+        end
+    end
     assign done_valid = (abort_state == AB_DONE) ||
-                        ((abort_state == AB_IDLE) && !task_fault &&
-                         (run_vector ? (vector_rejected || (vector_engine_done && vector_shared_store_o_idle)) : normal_done_valid));
+                        ((abort_state == AB_IDLE) && !task_fault && task_completion_pending);
+    assign task_completion_accept = task_completion_pending && done_ready &&
+        (abort_state == AB_IDLE) && !task_fault;
     assign err_code = (abort_state == AB_DONE) ? abort_error_code :
                       run_vector ? (vector_rejected ? 2'b01 : vector_engine_error) : normal_err_code;
     for (genvar r = 0; r < 4; r++) begin : g_dma_ranges
@@ -230,9 +263,9 @@ module npu_top #(
     wire kernel_loader_o_quiescent;
     logic kernel_loader_o_admission_request;
     wire block_dma_arbiter_o_kernel_eligible;
-    wire frame_prefetch_idle = ia_prefetch_idle && kernel_prefetch_idle;
+    (* keep = 1 *) wire frame_prefetch_idle = ia_prefetch_idle && kernel_prefetch_idle;
     // 图像描述符可在预取期间完成，整层完成和下一任务接收仍等待实际读取结束。
-    wire conv_task_idle = !run_conv || (dma_idle && !conv_busy);
+    (* keep = 1 *) wire conv_task_idle = !run_conv || (dma_idle && !conv_busy);
     logic arbiter_ia_granted;
 
     logic legacy_axi_arvalid, legacy_axi_arready, legacy_axi_rvalid, legacy_axi_rready, legacy_axi_rlast;
@@ -289,7 +322,7 @@ module npu_top #(
     assign conv_shift_end_high = {1'b0, 8'(q_shift_pt >> 24)} +
         {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[3]);
     wire abort_pending = abort_state != AB_IDLE;
-    wire core_rst_n = rst_n && (abort_state != AB_RESET);
+    assign core_rst_n = rst_n && (abort_state != AB_RESET);
 
 `ifdef GEMMORA_INT8_PROFILE
     localparam bit CONV_CORE_SUPPORTED = 1'b0;
@@ -537,7 +570,7 @@ module npu_top #(
     logic engine_i_ps_read_valid, engine_i_storage_error;
     logic engine_i_done_ready;
     logic shared_ram_capacity_fault;
-    assign engine_i_done_ready = done_ready && run_vector && vector_shared_store_o_idle;
+    assign engine_i_done_ready = task_completion_accept && run_vector;
     assign engine_i_storage_error = vector_shared_store_o_error || shared_ram_capacity_fault;
     logic [31:0] shared_ia_banks_q;
     logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] active_ps_bank_count_q;
@@ -878,7 +911,7 @@ module npu_top #(
     end endgenerate
 
     wire ps_capacity_fault;
-    logic block_dma_arbiter_i_abort;
+    (* keep = 1 *) logic block_dma_arbiter_i_abort;
     // 各运算来源并行汇总故障，中止状态持续保持至当前任务结束。
     assign task_fault = ps_capacity_fault || shared_ram_capacity_fault || vector_shared_store_o_error || dma_bus_error ||
                         (frame_mode_q && inner_done_valid && (inner_err_code != 2'b00)) ||
@@ -1179,8 +1212,16 @@ module npu_top #(
         );
         logic legacy_window_shape_s2;
         assign legacy_window_shape_s2 = w_reuse_shape_o_valid;
-        wire use_frame_commands_s2 = FRAME_EXEC_ENABLED &&
+        wire use_frame_commands_calc = FRAME_EXEC_ENABLED &&
             (!ps_long_capacity_fits || !legacy_window_shape_s2 || ps_control_q[1]);
+        logic use_frame_commands_s2;
+        // 容量结果在相位一保存，帧调度资格在相位二保存，供后续配置阶段共同使用。
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n)
+                use_frame_commands_s2 <= 1'b0;
+            else if (cfg_stage2_valid && cfg_capacity_phase == 3'd2)
+                use_frame_commands_s2 <= use_frame_commands_calc;
+        end
         wire [31:0] frame_slice_tiles_calc =
             ps_control_q[3:2] == 2'd3 ? cfg_ia_reuse_eff_s2 :
             ps_control_q[3:2] == 2'd2 ? ((cfg_ia_reuse_eff_s2 < 2) ? cfg_ia_reuse_eff_s2 : 32'd2) :
@@ -1226,11 +1267,11 @@ module npu_top #(
             assign admission_o_ready = (&admission_ready_i_flags[3:0]) &&
                 !(|admission_ready_i_flags[5:4]) && conv_task_idle;
             // 内部配置接收与公开请求握手使用同一就绪条件。
-            assign admission_o_start = calc_start && !cfg_vector_enable && admission_o_ready;
-            assign sa_ready = admission_o_ready;
+            assign admission_o_start = calc_start && !cfg_vector_enable && sa_ready;
+            assign task_accept_conditions = admission_o_ready;
             assign cfg_start_event = admission_o_start;
         end else begin : g_admission_generic
-            assign sa_ready = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && frame_scheduler_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
+            assign task_accept_conditions = !run_vector && !vector_rejected && vector_engine_ready && ctrl_sa_ready && frame_scheduler_ready && !cfg_stage0_valid && !cfg_stage1_valid && !cfg_stage2_valid &&
                               (abort_state == AB_IDLE) && !task_fault && operand_cache_idle && frame_prefetch_idle && conv_task_idle;
             assign cfg_start_event = calc_start && sa_ready && !cfg_vector_enable;
         end
@@ -1271,8 +1312,17 @@ module npu_top #(
             end
         end
         wire [63:0] ps_max_frame_rows = 64'(ps_rows_bounded);
-        wire [63:0] ps_output_column_tiles =
-            (64'(cfg_stream_m_s2) + 64'(SIZE - 1)) >> SIZE_SHIFT;
+        logic [32:0] ps_column_sum;
+        logic [32:0] column_sum_i_a, column_sum_i_b;
+        logic unused_column_sum_carry;
+        wire [63:0] ps_output_column_tiles = 64'(ps_column_sum >> SIZE_SHIFT);
+        // 三十三位保存完整取整结果，分组加法限制配置到调度器的进位深度。
+        assign column_sum_i_a = {1'b0, cfg_stream_m_s2};
+        assign column_sum_i_b = 33'(SIZE - 1);
+        parallel_prefix_add #(.p_width(33)) u_column_sum (
+            .i_a(column_sum_i_a), .i_b(column_sum_i_b), .i_carry(1'b0),
+            .o_sum(ps_column_sum), .o_carry(unused_column_sum_carry)
+        );
         wire ps_column_sum_overflow =
             64'(cfg_stream_m_s2) > (64'hffffffffffffffff - 64'(SIZE - 1));
         // 先比较未取整的列数与窗口上界，取整结果只保留容量计数需要的低位。
@@ -1582,7 +1632,9 @@ module npu_top #(
         localparam int unsigned p_compute_output_stages = 1;
         localparam int unsigned DIRECT_OUTPUT_EXTRA_BANKS =
             (SIZE - 1 + p_compute_output_stages + 12 + SIZE - 1) / SIZE;
-        logic [31:0] output_reserve_with_extra, output_reserve_calc;
+        logic [31:0] output_reserve_calc;
+        logic [31:0] output_reserve_banks;
+        logic direct_output_cfg;
         logic [IS_BIAS_VALID_W-1:0] is_bias_group_rows_target;
 
         always_ff @(posedge clk or negedge core_rst_n) begin
@@ -1600,7 +1652,7 @@ module npu_top #(
                 stream_k <= '0;
                 stream_m <= '0;
                 ia_reuse_num_eff <= REG_WIDTH'(1);
-                output_reserve_with_extra <= 32'(1 + DIRECT_OUTPUT_EXTRA_BANKS);
+                output_reserve_banks <= 32'd1;
                 w_reuse_num_eff <= REG_WIDTH'(1);
                 is_bias_group_rows_target <= IS_BIAS_VALID_W'(SIZE);
             end else if (cfg_stage2_fire) begin
@@ -1617,7 +1669,8 @@ module npu_top #(
                 stream_k <= cfg_stream_k_s2;
                 stream_m <= cfg_stream_m_s2;
                 ia_reuse_num_eff <= cfg_ia_reuse_eff_s2;
-                output_reserve_with_extra <= output_reserve_calc;
+                output_reserve_banks <= (!use_frame_commands_s2 && direct_output_cfg) ?
+                    output_reserve_calc : 32'(cfg_ia_reuse_eff_s2);
                 w_reuse_num_eff <= cfg_w_reuse_eff_s2;
                 is_bias_group_rows_target <= cfg_bias_rows_target_s2;
             end
@@ -1637,9 +1690,7 @@ module npu_top #(
         wire direct_final_stream;
         logic [31:0] output_reserve_i_a, output_reserve_i_b;
         logic output_reserve_i_carry, output_reserve_o_carry;
-        logic [31:0] output_reserve_banks;
-
-        // 配置接收时保存附加预留量，运行时的流模式选择只选择已完成的计数。
+        // 配置接收时保存最终预留量，运行阶段直接使用已完成的计数。
         assign output_reserve_i_a = 32'(cfg_ia_reuse_eff_s2);
         assign output_reserve_i_b = 32'(DIRECT_OUTPUT_EXTRA_BANKS);
         assign output_reserve_i_carry = 1'b0;
@@ -1647,7 +1698,6 @@ module npu_top #(
             .i_a(output_reserve_i_a), .i_b(output_reserve_i_b), .i_carry(output_reserve_i_carry),
             .o_sum(output_reserve_calc), .o_carry(output_reserve_o_carry)
         );
-        assign output_reserve_banks = direct_final_stream ? output_reserve_with_extra : 32'(ia_reuse_num_eff);
         wire [31:0] exec_stream_k = frame_mode_q ? frame_exec_rows : stream_k;
         wire [31:0] exec_stream_m = frame_mode_q ? frame_exec_cols : stream_m;
         wire [31:0] exec_n = frame_mode_q ? frame_command_k : run_n;
@@ -1808,7 +1858,7 @@ module npu_top #(
                 .reuse_rows(cfg_ia_reuse_eff_s2), .window_frames(cfg_w_reuse_eff_s2),
                 .slice_tiles(frame_slice_tiles_s2), .config_error(frame_config_error),
                 .ready(frame_scheduler_ready), .done_valid(frame_scheduler_done),
-                .done_ready(done_ready && operand_cache_idle && frame_prefetch_idle && conv_task_idle), .err_code(frame_scheduler_error),
+                .done_ready(task_completion_accept && !run_vector), .err_code(frame_scheduler_error),
                 .command_valid(frame_command_valid), .command_ready(frame_command_ready),
                 .command_pressure(frame_mode_q && ps_frame_pressure),
                 .command_complete(frame_mode_q && frame_command_active && inner_done_valid && inner_err_code == 0),
@@ -2086,7 +2136,7 @@ module npu_top #(
             .oa_calc_over         (exec_oa_complete),
         // Task Completion Handshake Interface
         .done_valid             (inner_done_valid),
-        .done_ready             (frame_mode_q || (done_ready && operand_cache_idle && frame_prefetch_idle && conv_task_idle)),
+        .done_ready             (frame_mode_q || (task_completion_accept && !run_vector)),
         .err_code             (inner_err_code)
     );
         // IA Loader
@@ -2434,7 +2484,7 @@ module npu_top #(
   endgenerate
 
     generate if (SHARED_RAM_ENABLED) begin : g_shared_ia_ps
-        logic ram_i_cfg_valid, ram_access_en;
+        logic ram_i_cfg_valid, ram_config_request, ram_access_en, ram_request_enable;
         logic [SHARED_PHYSICAL_BANKS_WIDTH-1:0] ram_i_cfg_ia_banks;
         logic ram_o_capacity_fault;
         logic [1:0] ram_i_ia_read_en, ram_i_ia_write_en;
@@ -2466,13 +2516,26 @@ module npu_top #(
         logic [SHARED_IA_ADDR_WIDTH-1:0] vector_shared_store_o_ps_read_addr [4], vector_shared_store_o_ps_write_addr [4];
         logic [127:0] vector_shared_store_i_ps_read_data [4], vector_shared_store_o_ps_write_data [4];
 
-        // 配置周期禁止访问。VCE 接收任务时直接配置自己的分配，矩阵任务使用已有配置流水。
-        assign ram_i_cfg_valid = core_rst_n &&
+        // 保存任务分配后配置共享存储，接收拍和配置拍均禁止物理访问。
+        assign ram_config_request = core_rst_n &&
             (vector_start_fire || (cfg_stage2_fire && !shared_allocation_invalid));
-        assign ram_i_cfg_ia_banks = vector_start_fire ?
-            SHARED_PHYSICAL_BANKS_WIDTH'(VECTOR_SHARED_IA_BANKS) :
-            SHARED_PHYSICAL_BANKS_WIDTH'(shared_ia_banks_q);
-        assign ram_access_en = core_rst_n && !ram_i_cfg_valid && !abort_pending && !task_fault;
+        always_ff @(posedge clk or negedge core_rst_n) begin
+            if (!core_rst_n) begin
+                ram_i_cfg_valid <= 1'b0;
+                ram_i_cfg_ia_banks <= SHARED_PHYSICAL_BANKS_WIDTH'(1);
+            end else begin
+                ram_i_cfg_valid <= ram_config_request;
+                if (ram_config_request) begin
+                    ram_i_cfg_ia_banks <= vector_start_fire ?
+                        SHARED_PHYSICAL_BANKS_WIDTH'(VECTOR_SHARED_IA_BANKS) :
+                        SHARED_PHYSICAL_BANKS_WIDTH'(shared_ia_banks_q);
+                end
+            end
+        end
+        assign ram_access_en = core_rst_n && !ram_config_request && !ram_i_cfg_valid &&
+            !abort_pending && !task_fault;
+        // 固定通道在存储器内部最后合并访问资格，通用布局保持端口输入屏蔽。
+        assign ram_request_enable = p_fixed_ps_channels || ram_access_en;
         assign shared_ram_capacity_fault = ram_o_capacity_fault;
 
         assign vector_shared_store_i_cfg_valid = ram_i_cfg_valid;
@@ -2498,9 +2561,9 @@ module npu_top #(
         assign vector_shared_store_i_ps_read_data = ram_o_ps_read_data;
 
         // 矩阵与向量任务互斥，整个任务持有端口；任务结束前等待所有同步读取返回。
-        assign ram_i_ia_read_en = !ram_access_en ? 2'b00 :
+        assign ram_i_ia_read_en = !ram_request_enable ? 2'b00 :
             run_vector ? vector_shared_store_o_ia_read_en : ia_ram_read_en;
-        assign ram_i_ia_write_en = !ram_access_en ? 2'b00 :
+        assign ram_i_ia_write_en = !ram_request_enable ? 2'b00 :
             run_vector ? vector_shared_store_o_ia_write_en : ia_ram_write_en;
         assign ram_i_ia_read_addr = run_vector ? vector_shared_store_o_ia_read_addr : ia_ram_read_addr;
         assign ram_i_ia_write_addr = run_vector ? vector_shared_store_o_ia_write_addr : ia_ram_write_addr;
@@ -2508,9 +2571,9 @@ module npu_top #(
         assign ram_i_ia_write_mask = run_vector ? vector_shared_store_o_ia_write_mask : ia_ram_write_mask;
         assign ram_i_ia_shared_write_data = run_vector ?
             vector_shared_store_o_ia_shared_write_data : ia_ram_shared_write_data;
-        assign ram_i_ps_read_en = !ram_access_en ? 4'b0000 :
+        assign ram_i_ps_read_en = !ram_request_enable ? 4'b0000 :
             run_vector ? vector_shared_store_o_ps_read_en : ps_ram_read_en;
-        assign ram_i_ps_write_en = !ram_access_en ? 4'b0000 :
+        assign ram_i_ps_write_en = !ram_request_enable ? 4'b0000 :
             run_vector ? vector_shared_store_o_ps_write_en : ps_ram_write_en;
         assign ram_i_ps_read_addr = run_vector ? vector_shared_store_o_ps_read_addr : ps_ram_read_addr;
         assign ram_i_ps_write_addr = run_vector ? vector_shared_store_o_ps_write_addr : ps_ram_write_addr;
@@ -2557,6 +2620,7 @@ module npu_top #(
                 .p_shared_write_stage(1'b1)
             ) u_ram (
                 .clk(clk), .rst_n(core_rst_n),
+                .i_access_enable(ram_access_en),
                 .i_cfg_valid(ram_i_cfg_valid), .i_cfg_ia_banks(ram_i_cfg_ia_banks),
                 .o_capacity_fault(ram_o_capacity_fault),
                 .i_ia_read_en(ram_i_ia_read_en), .i_ia_read_addr(ram_i_ia_read_addr), .o_ia_read_data(ram_o_ia_read_data),
@@ -2664,13 +2728,38 @@ module npu_top #(
         logic [REG_WIDTH-1:0] is_bias_target_mask_ext;
         logic [REG_WIDTH-1:0] is_bias_full_group_base;
         logic [p_bias_count_bits:0] is_bias_low_difference;
+        localparam int unsigned p_bias_mask_groups = (p_bias_count_bits + 3) / 4;
+        localparam int unsigned p_bias_high_groups = (REG_WIDTH - p_bias_count_bits + 3) / 4;
+        (* keep = 1 *) logic [p_bias_mask_groups-1:0] is_bias_mask_group_zero;
+        (* keep = 1 *) logic [(p_bias_high_groups > 0 ? p_bias_high_groups : 1)-1:0] is_bias_high_group_zero;
         assign is_bias_exec_m_ext = REG_WIDTH'(exec_m);
+        // 每四位独立产生零判断，跨组借位只归并这些短组结果。
+        for (genvar group = 0; group < p_bias_mask_groups; group++) begin : g_bias_mask_zero
+            localparam int unsigned p_first = 4 * group;
+            localparam int unsigned p_bits = (p_bias_count_bits-p_first < 4) ? p_bias_count_bits-p_first : 4;
+            assign is_bias_mask_group_zero[group] = ~|is_bias_group_rows_target_ext[p_first +: p_bits];
+        end
+        for (genvar group = 0; group < p_bias_high_groups; group++) begin : g_bias_high_zero
+            localparam int unsigned p_first = p_bias_count_bits + 4 * group;
+            localparam int unsigned p_bits = (REG_WIDTH-p_first < 4) ? REG_WIDTH-p_first : 4;
+            assign is_bias_high_group_zero[group] = ~|is_bias_exec_m_ext[p_first +: p_bits];
+        end
+        if (p_bias_high_groups == 0) begin : g_bias_no_high_bits
+            assign is_bias_high_group_zero = '1;
+        end
         for (genvar bit_idx = 0; bit_idx < p_bias_count_bits; bit_idx++) begin : g_bias_mask_low
             if (bit_idx == 0) begin : g_first
                 assign is_bias_target_mask_ext[bit_idx] = ~is_bias_group_rows_target_ext[bit_idx];
-            end else begin : g_later
+            end else if (bit_idx < 4) begin : g_low
                 assign is_bias_target_mask_ext[bit_idx] = is_bias_group_rows_target_ext[bit_idx] ^
                     (~|is_bias_group_rows_target_ext[bit_idx-1:0]);
+            end else if (bit_idx % 4 == 0) begin : g_boundary
+                assign is_bias_target_mask_ext[bit_idx] = is_bias_group_rows_target_ext[bit_idx] ^
+                    (&is_bias_mask_group_zero[bit_idx/4-1:0]);
+            end else begin : g_later
+                assign is_bias_target_mask_ext[bit_idx] = is_bias_group_rows_target_ext[bit_idx] ^
+                    ((&is_bias_mask_group_zero[bit_idx/4-1:0]) &&
+                     (~|is_bias_group_rows_target_ext[4*(bit_idx/4) +: bit_idx%4]));
             end
         end
         if (REG_WIDTH > p_bias_count_bits) begin : g_bias_mask_high
@@ -2685,20 +2774,31 @@ module npu_top #(
         // 各高位字节并行准备减一结果，低位借位只选择保持值或减一值。
         for (genvar group = p_bias_count_bits; group < REG_WIDTH; group += 8) begin : g_bias_high
             localparam int unsigned p_bits = (REG_WIDTH-group < 8) ? REG_WIDTH-group : 8;
-            localparam logic [REG_WIDTH-1:0] p_mask =
-                (REG_WIDTH'(1) << group) - (REG_WIDTH'(1) << p_bias_count_bits);
             logic [p_bits-1:0] decremented;
             logic borrow;
+            (* keep = 1 *) logic low_nibble_zero;
+            if (p_bits > 4) begin : g_low_nibble
+                assign low_nibble_zero = ~|is_bias_exec_m_ext[group +: 4];
+            end else begin : g_short_group
+                assign low_nibble_zero = 1'b0;
+            end
             for (genvar bit_idx = 0; bit_idx < p_bits; bit_idx++) begin : g_bit
                 if (bit_idx == 0) begin : g_first
                     assign decremented[bit_idx] = ~is_bias_exec_m_ext[group+bit_idx];
-                end else begin : g_later
+                end else if (bit_idx <= 4) begin : g_low
                     assign decremented[bit_idx] = is_bias_exec_m_ext[group+bit_idx] ^
                         (~|is_bias_exec_m_ext[group +: bit_idx]);
+                end else begin : g_high
+                    assign decremented[bit_idx] = is_bias_exec_m_ext[group+bit_idx] ^
+                        (low_nibble_zero && (~|is_bias_exec_m_ext[group+4 +: bit_idx-4]));
                 end
             end
-            assign borrow = is_bias_low_difference[p_bias_count_bits] &&
-                ((is_bias_exec_m_ext & p_mask) == REG_WIDTH'(0));
+            if (group == p_bias_count_bits) begin : g_first_borrow
+                assign borrow = is_bias_low_difference[p_bias_count_bits];
+            end else begin : g_later_borrow
+                assign borrow = is_bias_low_difference[p_bias_count_bits] &&
+                    (&is_bias_high_group_zero[(group-p_bias_count_bits)/4-1:0]);
+            end
             assign is_bias_full_group_base[group +: p_bits] = borrow ?
                 decremented : is_bias_exec_m_ext[group +: p_bits];
         end
@@ -2748,18 +2848,18 @@ module npu_top #(
         end
 
         logic [IS_BIAS_ROW_W-1:0] is_bias_row_increment;
-        logic [IS_BIAS_ROW_W-1:0] is_bias_row_step;
+        (* keep = 1 *) logic [IS_BIAS_ROW_W-1:0] is_bias_row_step;
         logic [IS_BIAS_ROW_W-1:0] is_bias_row_next;
         logic is_bias_row_wrap;
+        (* keep = 1 *) logic is_bias_row_clear;
         assign is_bias_row_increment = is_bias_row_idx + IS_BIAS_ROW_W'(1);
         assign is_bias_row_wrap = (is_bias_rows_valid <= IS_BIAS_VALID_W'(1)) ||
             ((IS_BIAS_VALID_W'(is_bias_row_idx) + IS_BIAS_VALID_W'(1)) >= is_bias_rows_valid);
         // 先计算保持、递增和回绕结果，组首触发只参与最后一级清零选择。
         assign is_bias_row_step = (is_mode && acc_data_valid) ?
             (is_bias_row_wrap ? IS_BIAS_ROW_W'(0) : is_bias_row_increment) : is_bias_row_idx;
-        assign is_bias_row_next =
-            (init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep)) ?
-                IS_BIAS_ROW_W'(0) : is_bias_row_step;
+        assign is_bias_row_clear = init_cfg_ia || (is_mode && send_ia_trigger && !bias_sleep);
+        assign is_bias_row_next = is_bias_row_clear ? IS_BIAS_ROW_W'(0) : is_bias_row_step;
         always_ff @(posedge clk or negedge core_rst_n) begin
             if (!core_rst_n) is_bias_row_idx <= '0;
             else is_bias_row_idx <= is_bias_row_next;
@@ -2933,7 +3033,6 @@ module npu_top #(
     logic [OA_REUSE_ROWS_WIDTH-1:0] oa_ws_reuse_rows_pre;
     logic [4:0] oa_chunk_cols_pre;
     logic oa_ws_coalesce_q,oa_is_coalesce_q,oa_ws_reserve_fits;
-    logic direct_output_cfg;
     logic [3:0] oa_cfg_chunk_fit;
     logic oa_cfg_narrow_chunk;
     logic [4:0] oa_cfg_chunk_choice;

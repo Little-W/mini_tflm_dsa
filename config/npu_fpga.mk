@@ -5,7 +5,7 @@
 PCR_ENGINE ?= 1
 SIZE ?= 16
 NPU_AXI_DATA_WIDTH ?= 64
-# im2col input data cache; two ways and 16-byte lines, 512..65536 bytes.
+# im2col 使用两路缓存，容量为 512..65536 字节，缓存行长度由硬件顶层参数指定。
 # 4 KiB holds one 3-row K16 band up to width 85 (S8) or 42 (S16),
 # for aligned NHWC, channels divisible by 16, and dilation 1.
 # See docs/im2col_cache_configuration.md for complete size guidance.
