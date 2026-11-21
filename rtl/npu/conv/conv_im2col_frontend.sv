@@ -163,7 +163,7 @@ module conv_im2col_frontend #(
   logic [16:0] group_remaining;
   logic [LANES-1:0] chunk_lane_allowed, word_lane_allowed, chunk_end_lane;
   (* keep = 1 *) logic [LANES-1:0] chunk_data_allowed;
-  logic chunk_reaches_end;
+  (* keep = 1 *) logic chunk_reaches_end;
   logic [15:0] ox_q, oy_q, ky_q, kx_q, ch_q, ky0_q, kx0_q, ch0_q;
   wire [31:0] ox=32'(ox_q), oy=32'(oy_q), ky=32'(ky_q), kx=32'(kx_q), ch=32'(ch_q);
   wire [31:0] ky0=32'(ky0_q), kx0=32'(kx0_q), ch0=32'(ch0_q);
@@ -201,9 +201,9 @@ module conv_im2col_frontend #(
   logic next_row_request, next_row_word_hit;
   logic [31:0] stream_request_addr;
   logic unused_stream_request_carry;
-  logic column_after_chunk, active_after_chunk;
+  (* keep = 1 *) logic column_after_chunk, active_after_chunk;
   logic [p_word_shift+1:0] byte_offset_sum;
-  logic word_boundary;
+  (* keep = 1 *) logic word_boundary;
   logic [LANES:0] chunk_selected;
   logic [LANES:0] step_word_boundary, step_saved_hit;
   localparam bit p_contiguous_chunk = LANES <= 8 && LANES <= (1 << TILE_COUNT_W);
@@ -641,12 +641,20 @@ module conv_im2col_frontend #(
     assign byte_step = c.input_s16 ? {chunk_count, 1'b0} : {1'b0, chunk_count};
     if (LANES <= 8) begin : g_parallel_byte_step
       (* keep = 1 *) logic [LANES:0][p_step_width:0] low_for_step;
-      // 固定短步长保留完整进位，常量传播由普通无符号加法完成。
+      // 固定短步长按位生成和值，常量步长消除无效进位项并保留完整进位。
       function automatic logic [p_step_width:0] add_byte_step(
         input logic [p_step_width-1:0] value,
         input logic [p_step_width:0] amount
       );
-        add_byte_step = {1'b0, value} + amount;
+        logic carry;
+        logic value_bit;
+        carry = 1'b0;
+        for (int bit_index = 0; bit_index <= p_step_width; bit_index++) begin
+          value_bit = bit_index < p_step_width ? value[bit_index] : 1'b0;
+          add_byte_step[bit_index] = value_bit ^ amount[bit_index] ^ carry;
+          carry = (value_bit & amount[bit_index]) |
+              ((value_bit | amount[bit_index]) & carry);
+        end
       endfunction
       // 每种传输数量先计算低位地址，通道资格只选择完整候选。
       for (genvar step = 0; step <= LANES; step++) begin : g_step
