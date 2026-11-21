@@ -1,12 +1,12 @@
 {
-  "scope": "生产 RAM 地址越界预测、地址辅助计算与 AXI 接口",
-  "source_sha256": "babbe8904084294c5b52e4486366e23398be7addab1d407084e083909e3af72a",
-  "model_sha256": "6e814b0a6481282c3459d2ee0d0dc1e80f2b66448521d5d5f837eba9e209c219",
+  "scope": "SoC AXI RAM bounds and read response selection",
+  "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+  "model_sha256": "678d553af2a44f38ad1277366802e9458631635a68945ac590b507e52ceb90b4",
   "combinational_proof": {
     "passed": true,
     "inputs_constrained": false,
-    "source_sha256": "babbe8904084294c5b52e4486366e23398be7addab1d407084e083909e3af72a",
-    "model_sha256": "6e814b0a6481282c3459d2ee0d0dc1e80f2b66448521d5d5f837eba9e209c219",
+    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+    "model_sha256": "678d553af2a44f38ad1277366802e9458631635a68945ac590b507e52ceb90b4",
     "profiles": [
       {
         "address_width": 8,
@@ -370,94 +370,26 @@
       }
     ]
   },
-  "four_state_helpers": {
+  "read_selection": {
     "passed": true,
-    "profiles": [
-      {
-        "address_width": 8,
-        "data_width": 8,
-        "memory_words": 1,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      },
-      {
-        "address_width": 8,
-        "data_width": 32,
-        "memory_words": 3,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      },
-      {
-        "address_width": 8,
-        "data_width": 64,
-        "memory_words": 32,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      },
-      {
-        "address_width": 8,
-        "data_width": 64,
-        "memory_words": 64,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      },
-      {
-        "address_width": 16,
-        "data_width": 24,
-        "memory_words": 1031,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      },
-      {
-        "address_width": 16,
-        "data_width": 128,
-        "memory_words": 1024,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      },
-      {
-        "address_width": 32,
-        "data_width": 64,
-        "memory_words": 32768,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      },
-      {
-        "address_width": 40,
-        "data_width": 1024,
-        "memory_words": 32769,
-        "samples": 4096,
-        "equal_results": 4096,
-        "unknown_to_known_bits": 0,
-        "known_to_unknown_bits": 0,
-        "known_bit_conflicts": 0
-      }
-    ]
+    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+    "test_source_sha256": "0add67dfda9bea2c77bfae8238b6b94fe58028765cb9d2708a42e3ee1fb2b024",
+    "formal": {
+      "passed": true,
+      "input_bits": 35,
+      "inputs_constrained": false,
+      "synthesis_expression": true,
+      "log_sha256": "9303f9357662427a2510da263f66be6cf1cce0a8b61fe031fdc19e74cb3c4c49"
+    },
+    "four_state": {
+      "passed": true,
+      "comparisons": 100000,
+      "log_sha256": "9e8cca80624a12de142dc2b9d1e7fd00cec06ab2136210b6ddcc3ae2f0a16fb6"
+    }
   },
   "axi_protocol": {
-    "passed": true,
-    "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
+    "scope": "SoC AXI memory protocol",
+    "simulator": "Verilator 5.054 2026-11-01 rev v5.054",
     "runs": [
       {
         "first_read_latency": 1,
@@ -466,6 +398,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l1_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6628 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -475,6 +408,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l1_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7319 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -484,6 +418,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l2_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6632 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -493,6 +428,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l2_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7324 perf_beats=256 perf_intervals=292 no_random=0"
       },
       {
@@ -502,6 +438,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l3_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6636 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -511,6 +448,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l3_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7327 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -520,6 +458,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l8_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6683 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -529,6 +468,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l8_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=879 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7364 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -538,6 +478,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l17_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6816 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -547,6 +488,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l17_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7496 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -556,6 +498,7 @@
         "outstanding": 1,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw32_dp1024_o1_l8_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=8805 perf_beats=256 perf_intervals=375 no_random=1"
       },
       {
@@ -565,6 +508,7 @@
         "outstanding": 1,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw32_dp1024_o1_l8_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=9496 perf_beats=256 perf_intervals=412 no_random=0"
       },
       {
@@ -574,6 +518,7 @@
         "outstanding": 3,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o3_l8_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6736 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -583,6 +528,7 @@
         "outstanding": 3,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw32_dp1031_o3_l8_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7411 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -592,6 +538,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l1_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7788 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -601,6 +548,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l1_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8544 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -610,6 +558,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l2_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7792 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -619,6 +568,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l2_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8550 perf_beats=256 perf_intervals=292 no_random=0"
       },
       {
@@ -628,6 +578,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l3_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7796 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -637,6 +588,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l3_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8554 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -646,6 +598,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l8_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7843 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -655,6 +608,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l8_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=880 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8591 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -664,6 +618,7 @@
         "outstanding": 4,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l17_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7976 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -673,6 +628,7 @@
         "outstanding": 4,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l17_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8722 perf_beats=256 perf_intervals=291 no_random=0"
       },
       {
@@ -682,6 +638,7 @@
         "outstanding": 1,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw64_dp1024_o1_l8_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=10445 perf_beats=256 perf_intervals=375 no_random=1"
       },
       {
@@ -691,6 +648,7 @@
         "outstanding": 1,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw64_dp1024_o1_l8_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=11203 perf_beats=256 perf_intervals=412 no_random=0"
       },
       {
@@ -700,6 +658,7 @@
         "outstanding": 3,
         "random": false,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o3_l8_random0.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7936 perf_beats=256 perf_intervals=255 no_random=1"
       },
       {
@@ -709,26 +668,21 @@
         "outstanding": 3,
         "random": true,
         "status": "PASS",
+        "log": "modified_dw64_dp1031_o3_l8_random1.log",
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8660 perf_beats=256 perf_intervals=291 no_random=0"
       }
-    ]
+    ],
+    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+    "source_file": "/tmp/npu_soc_ram_r11/source/rtl/soc/soc_axi_ram.sv",
+    "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
+    "compile_jobs": 1
   },
   "synthesis": {
-    "parameters": {
-      "DP": 32768,
-      "DW": 64,
-      "AW": 32,
-      "MEM_WORD_WIDTH": 64,
-      "INIT_EN": 0,
-      "READ_OUTSTANDING": 4,
-      "WRITE_OUTSTANDING": 4,
-      "READ_FIRST_LATENCY": 2
-    },
     "resources": {
-      "logic_lut_cells": 499,
+      "logic_lut_cells": 503,
       "distributed_ram_lut_sites_nominal": 68,
       "shift_register_lut_sites_nominal": 0,
-      "lut_sites_nominal_before_packing": 567,
+      "lut_sites_nominal_before_packing": 571,
       "physical_lut_sites_after_placement": null,
       "flip_flops": 198,
       "dsp48e1": 0,
@@ -740,20 +694,225 @@
         "CARRY4": 15,
         "FDRE": 192,
         "FDSE": 6,
-        "INV": 8,
-        "LUT2": 132,
-        "LUT3": 66,
-        "LUT4": 50,
-        "LUT5": 137,
-        "LUT6": 114,
-        "MUXF7": 1,
+        "INV": 9,
+        "LUT2": 134,
+        "LUT3": 76,
+        "LUT4": 66,
+        "LUT5": 135,
+        "LUT6": 92,
+        "MUXF7": 18,
+        "MUXF8": 9,
         "RAM32M": 17,
         "RAMB36E1": 64
       },
       "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
     },
-    "longest_register_path_cells": 6,
-    "analysis_complete": null,
-    "physical_timing_measured": false
+    "longest_register_path_cells": 7,
+    "graph_complete": true,
+    "metrics_sha256": "fe5e957b7979e2a36a379184498857c0ad8a80b3898a3ddf9fb16c8b23ddcbdb"
+  },
+  "synthesis_manifest": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.666666666666667,
+    "cases": {
+      "soc_ram": {
+        "top": "soc_axi_ram",
+        "configuration": "完整生产配置 CPU RAM，64 位物理存储与 256 KiB 容量",
+        "sources_sha256": {
+          "rtl/soc/soc_axi_ram.sv": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d"
+        },
+        "parameters": {
+          "DP": 32768,
+          "DW": 64,
+          "AW": 32,
+          "MEM_WORD_WIDTH": 64,
+          "INIT_EN": 0,
+          "READ_OUTSTANDING": 4,
+          "WRITE_OUTSTANDING": 4,
+          "READ_FIRST_LATENCY": 2
+        },
+        "stages": {
+          "01_elaborate": {
+            "elapsed_seconds": 1.21,
+            "peak_process_tree_rss_bytes": 148836352,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "01_elaborate.ys",
+            "log": "01_elaborate.log",
+            "script_sha256": "2058281f9f87573cfc0e2caecbde8583dc632c455a1dfafc0084b1e7439c0b1e",
+            "output_sha256": "6a29f2ed6cab9d44d81c05b5e7735f474bc1a807e9978a800a6dbe45bb967dae"
+          },
+          "02a_pre_alu": {
+            "elapsed_seconds": 4.42,
+            "peak_process_tree_rss_bytes": 150736896,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02a_pre_alu.ys",
+            "log": "02a_pre_alu.log",
+            "script_sha256": "830e39590328380cf8bca4b3e1ad0b63864d2a0ab5ae5f5d1ac63eb3605904d3",
+            "output_sha256": "2aa9b4a66286fa7938998b365414c2d5463d04ddc4a6b2c12a21dceba1fe9d39"
+          },
+          "02b_map_alu": {
+            "elapsed_seconds": 0.2,
+            "peak_process_tree_rss_bytes": 12288,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02b_map_alu.command.json",
+            "log": "02b_map_alu.log",
+            "script_sha256": "99efee22e07442e66fd7152d4be671deacdb3dbda6ba97ff606eb67207f854d2",
+            "output_sha256": "11545de6f1247721b8d336df2a8c865188937b9a9201760ba99d0569441988c3",
+            "automatic_name_counter_sha256": "e5cb8a612fc259bd6a644c98a322ba8630385257ebbc5d63f924fc40ff2b849c"
+          },
+          "02_pre_lut": {
+            "elapsed_seconds": 1.81,
+            "peak_process_tree_rss_bytes": 152895488,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "02_pre_lut.ys",
+            "log": "02_pre_lut.log",
+            "script_sha256": "e96c714b8c20db5420cf2734fd102317174dc596d9eaa615ee463e95dc6510e1",
+            "output_sha256": "0a603296de0ae418d614742f63e335711029c37d18adabe10dbb4b4d6bc73eea"
+          },
+          "03_map_lut": {
+            "elapsed_seconds": 4.21,
+            "peak_process_tree_rss_bytes": 200740864,
+            "memory_sample_interval_seconds": 0.2,
+            "script": "03_map_lut.ys",
+            "log": "03_map_lut.log",
+            "script_sha256": "ff16009b98dc3e2deb7191a3fff673db37e21b89a135e500443548246b142eda",
+            "output_sha256": "275dd6f42bb9872dea65faf89ccf789d109c2f8d1b3d3488e57000f229218dfd",
+            "mapped_verilog_sha256": "7094d4f6195cdf1aa2b23e3b8585c6415754bca5161d66f2181bacdd517bff2b"
+          }
+        },
+        "options": [
+          "-DSYNTHESIS=1",
+          "-DXILINX_FPGA=1",
+          "-GDP=32768",
+          "-GDW=64",
+          "-GAW=32",
+          "-GMEM_WORD_WIDTH=64",
+          "-GINIT_EN=0",
+          "-GREAD_OUTSTANDING=4",
+          "-GWRITE_OUTSTANDING=4",
+          "-GREAD_FIRST_LATENCY=2"
+        ],
+        "build_configuration": null,
+        "elapsed_seconds": 12.19,
+        "lut_cells": 503,
+        "flip_flops": 198,
+        "ramb36": 64,
+        "ramb18": 0,
+        "dsp": 0,
+        "carry4": 15,
+        "longest_combinational_path_cells": 7,
+        "longest_combinational_path": [
+          {
+            "cell": "$abc$75232$lut$not$aiger75231$9457",
+            "type": "INV"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$3913.genblk1.slice[0].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$auto$alumacc.cc:578:replace_alu$3913.genblk1.slice[1].genblk1.carry4",
+            "type": "CARRY4"
+          },
+          {
+            "cell": "$abc$75232$lut$aiger75231$18740",
+            "type": "LUT4"
+          },
+          {
+            "cell": "$abc$75232$lut$aiger75231$18747",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$abc$75232$lut$aiger75231$18755",
+            "type": "LUT5"
+          },
+          {
+            "cell": "$auto$xilinx_dffopt.cc:341:execute$76038",
+            "type": "LUT6"
+          }
+        ],
+        "cell_counts": {
+          "CARRY4": 15,
+          "FDRE": 192,
+          "FDSE": 6,
+          "INV": 9,
+          "LUT2": 134,
+          "LUT3": 76,
+          "LUT4": 66,
+          "LUT5": 135,
+          "LUT6": 92,
+          "MUXF7": 18,
+          "MUXF8": 9,
+          "RAM32M": 17,
+          "RAMB36E1": 64
+        },
+        "resources": {
+          "logic_lut_cells": 503,
+          "distributed_ram_lut_sites_nominal": 68,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 571,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 198,
+          "dsp48e1": 0,
+          "ramb36e1": 64,
+          "ramb18e1": 0,
+          "carry4": 15,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 15,
+            "FDRE": 192,
+            "FDSE": 6,
+            "INV": 9,
+            "LUT2": 134,
+            "LUT3": 76,
+            "LUT4": 66,
+            "LUT5": 135,
+            "LUT6": 92,
+            "MUXF7": 18,
+            "MUXF8": 9,
+            "RAM32M": 17,
+            "RAMB36E1": 64
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "longest_register_path_cells": 7,
+        "register_path_requirement": {
+          "maximum_combinational_cells": 10,
+          "observed_combinational_cells": 7,
+          "graph_complete": true,
+          "met": true,
+          "scope": "Clocked storage outputs to synchronous data and control inputs",
+          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        },
+        "mapped_verilog": {
+          "file": "/tmp/npu_soc_ram_r11/measure/soc_ram/mapped.v",
+          "sha256": "7094d4f6195cdf1aa2b23e3b8585c6415754bca5161d66f2181bacdd517bff2b",
+          "port_cells": "IBUF/OBUF",
+          "clock_buffers": "BUFG"
+        },
+        "wide_alu_mapping": {
+          "dsp_budget": 740,
+          "dsp_reserve": 0,
+          "existing_dsp_cells": 0,
+          "additional_dsp_cells": 0,
+          "resulting_dsp_cells": 0,
+          "minimum_width": 1,
+          "maximum_width": 48,
+          "candidate_cells": 0,
+          "selected": [],
+          "use_dsp_attributes": true,
+          "selection_rule": "Select arithmetic cells whose result or cell has RTL use_dsp=yes; preserve all other arithmetic and report complete mapped paths",
+          "automatic_name_counter": 4727,
+          "automatic_name_counter_sha256": "e5cb8a612fc259bd6a644c98a322ba8630385257ebbc5d63f924fc40ff2b849c",
+          "input_sha256": "2aa9b4a66286fa7938998b365414c2d5463d04ddc4a6b2c12a21dceba1fe9d39",
+          "output_sha256": "11545de6f1247721b8d336df2a8c865188937b9a9201760ba99d0569441988c3",
+          "lut_dependencies_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88"
+        }
+      }
+    },
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
   }
 }

@@ -380,8 +380,10 @@ module soc_axi_ram #(
         ADDR_LSB + $clog2(DP) >= 8) begin : g_read_predicted_bound
         localparam int p_capacity_bits = ADDR_LSB + $clog2(DP);
         logic [7:0] lower_keep_mask;
-        logic lower_carry, middle_carry;
-        logic current_oob, upper_all_ones, next_oob, command_oob;
+        // 地址归约独立于突发选择，保留晚到控制信号之前的组合边界。
+        (* keep = 1 *) logic lower_carry, middle_carry;
+        (* keep = 1 *) logic current_oob, upper_all_ones;
+        logic next_oob, command_oob;
 
         // 容量边界以下的进位与边界以上的地址独立归约，直接预测下一拍越界状态。
         // 最高扩展位参与判断，地址空间末端的定宽回绕也保留相同结果。
@@ -419,7 +421,24 @@ module soc_axi_ram #(
     wire rd_can_issue = rd_cmd_valid_q && rd_active_mature &&
                         (!s_axi_rvalid || rd_pipe_beat || rd_pipe_cmd) && r_rsp_delay_clear;
     wire rd_issue_any = rd_can_issue || rd_pipe_cmd;
-    wire rd_issue_last = (rd_issue_beat == rd_issue_len);
+    (* keep = 1 *) logic rd_current_last, rd_following_last, rd_queue_last, rd_ar_last;
+    logic rd_issue_last;
+    // 各来源的末拍条件并行比较，响应握手只选择已经形成的一位结果。
+    assign rd_current_last = rd_beat_q == rd_len_active_q;
+    assign rd_following_last = (rd_beat_q + 8'd1) == rd_len_active_q;
+    assign rd_queue_last = rd_len_q[rd_rd_ptr_q] == 8'd0;
+    assign rd_ar_last = s_axi_arlen == 8'd0;
+    always_comb begin
+        rd_issue_last = rd_pipe_cmd ?
+            (rd_pipe_cmd_from_queue ? rd_queue_last : rd_ar_last) :
+            (rd_pipe_beat ? rd_following_last : rd_current_last);
+`ifndef SYNTHESIS
+        // 部分未知的来源选择使用完整字节比较，保持四态数据合并的结果。
+        if ((^{rd_pipe_cmd, rd_pipe_cmd_from_queue, rd_pipe_beat,
+               rd_beat_q, rd_len_active_q, rd_len_q[rd_rd_ptr_q], s_axi_arlen}) === 1'bx)
+            rd_issue_last = rd_issue_beat == rd_issue_len;
+`endif
+    end
     wire [1:0] rd_issue_resp =
         ((rd_pipe_cmd ? 1'b0 : rd_error_accum_q) || rd_issue_fault) ? 2'b10 : 2'b00;
     // Keep the synchronous RAM read pipeline enabled for every issued beat.

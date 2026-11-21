@@ -1,0 +1,309 @@
+{
+  "read_selection": {
+    "passed": true,
+    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+    "test_source_sha256": "0add67dfda9bea2c77bfae8238b6b94fe58028765cb9d2708a42e3ee1fb2b024",
+    "formal": {
+      "passed": true,
+      "input_bits": 35,
+      "inputs_constrained": false,
+      "synthesis_expression": true,
+      "log_sha256": "9303f9357662427a2510da263f66be6cf1cce0a8b61fe031fdc19e74cb3c4c49"
+    },
+    "four_state": {
+      "passed": true,
+      "comparisons": 100000,
+      "log_sha256": "9e8cca80624a12de142dc2b9d1e7fd00cec06ab2136210b6ddcc3ae2f0a16fb6"
+    }
+  },
+  "axi_protocol": {
+    "scope": "SoC AXI memory protocol",
+    "simulator": "Verilator 5.054 2026-11-01 rev v5.054",
+    "runs": [
+      {
+        "first_read_latency": 1,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l1_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6628 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 1,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l1_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7319 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l2_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6632 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l2_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7324 perf_beats=256 perf_intervals=292 no_random=0"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l3_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6636 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l3_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=877 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7327 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l8_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6683 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l8_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=879 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7364 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l17_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6816 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o4_l17_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=32 dp=1031 outstanding=4 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7496 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw32_dp1024_o1_l8_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=8805 perf_beats=256 perf_intervals=375 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw32_dp1024_o1_l8_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=32 dp=1024 outstanding=1 commands=275 beats=4834 error_beats=201 writes=1579 cycles=9496 perf_beats=256 perf_intervals=412 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o3_l8_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=6736 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 32,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw32_dp1031_o3_l8_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=32 dp=1031 outstanding=3 commands=276 beats=4841 error_beats=195 writes=1586 cycles=7411 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 1,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l1_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7788 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 1,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l1_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=1 min_latency=1 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8544 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l2_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7792 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 2,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l2_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=2 min_latency=2 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8550 perf_beats=256 perf_intervals=292 no_random=0"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l3_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=768 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7796 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 3,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l3_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=3 min_latency=3 max_latency=878 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8554 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l8_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=770 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7843 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l8_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=880 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8591 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l17_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=779 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7976 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 17,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 4,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o4_l17_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=17 min_latency=17 max_latency=889 data_bits=64 dp=1031 outstanding=4 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8722 perf_beats=256 perf_intervals=291 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw64_dp1024_o1_l8_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=8 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=10445 perf_beats=256 perf_intervals=375 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1024,
+        "outstanding": 1,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw64_dp1024_o1_l8_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=9 data_bits=64 dp=1024 outstanding=1 commands=335 beats=5294 error_beats=134 writes=2039 cycles=11203 perf_beats=256 perf_intervals=412 no_random=0"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": false,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o3_l8_random0.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=516 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=7936 perf_beats=256 perf_intervals=255 no_random=1"
+      },
+      {
+        "first_read_latency": 8,
+        "data_bits": 64,
+        "dp": 1031,
+        "outstanding": 3,
+        "random": true,
+        "status": "PASS",
+        "log": "modified_dw64_dp1031_o3_l8_random1.log",
+        "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8660 perf_beats=256 perf_intervals=291 no_random=0"
+      }
+    ],
+    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+    "source_file": "/tmp/npu_soc_ram_r11/source/rtl/soc/soc_axi_ram.sv",
+    "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
+    "compile_jobs": 1
+  }
+}
