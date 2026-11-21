@@ -33,6 +33,27 @@ module ps_window_scheduler #(
     typedef enum logic [3:0] {IDLE, PREPARING, PREPARE_PARTS, PREPARE_CAPS,
                               PREPARE_PRODUCTS, PREPARE_TARGET, OPENING, SWEEPING, DRAINING, COMPLETE} phase_t;
     phase_t phase;
+    logic incoming_window_oversized, incoming_reuse_oversized, incoming_slice_oversized;
+    logic unused_window_equal, unused_reuse_equal, unused_slice_equal;
+    (* keep = "true" *) logic incoming_dimensions_invalid, incoming_window_invalid;
+    (* keep = "true" *) logic incoming_reuse_invalid, incoming_slice_invalid;
+    // 配置尺寸、窗口上界和切片范围并行检查，状态更新只合并单比特结果。
+    unsigned_compare #(.p_width(32)) u_window_bound (
+        .i_a(32'(FRAME_COUNT)), .i_b(window_frames),
+        .o_less(incoming_window_oversized), .o_equal(unused_window_equal)
+    );
+    unsigned_compare #(.p_width(32)) u_reuse_bound (
+        .i_a(32'(MAX_REUSE_TILES)), .i_b(reuse_rows),
+        .o_less(incoming_reuse_oversized), .o_equal(unused_reuse_equal)
+    );
+    unsigned_compare #(.p_width(32)) u_slice_bound (
+        .i_a(reuse_rows), .i_b(slice_tiles),
+        .o_less(incoming_slice_oversized), .o_equal(unused_slice_equal)
+    );
+    assign incoming_dimensions_invalid = stream_rows == 0 || stationary_rows == 0 || reduction == 0;
+    assign incoming_window_invalid = window_frames == 0 || incoming_window_oversized;
+    assign incoming_reuse_invalid = reuse_rows == 0 || (reuse_rows >> (32-SHIFT)) != 0 ||
+        (MAX_REUSE_TILES != 0 && incoming_reuse_oversized);
     logic [31:0] cfg_stream, cfg_reduction;
     logic [ROW_COUNT_W-1:0] cfg_rows, cfg_slice_rows;
     logic [ID_W:0] cfg_window;
@@ -194,6 +215,7 @@ module ps_window_scheduler #(
     // 零切片数由原有配置分支处理，其他值按幂次决定分块形状。
     logic [31:0] slice_shape_i_value;
     logic slice_shape_o_valid;
+    assign incoming_slice_invalid = incoming_slice_oversized || !slice_shape_o_valid;
     assign slice_shape_i_value = slice_tiles;
     onehot_check #(.p_width(32), .p_allow_zero(1'b1)) u_slice_shape (
       .i_value(slice_shape_i_value),
@@ -609,11 +631,8 @@ module ps_window_scheduler #(
                 live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
                 command_active <= 1'b0;
 
-                if (config_error != 0 || stream_rows == 0 || stationary_rows == 0 || reduction == 0 ||
-                    reuse_rows == 0 || (reuse_rows >> (32-SHIFT)) != 0 ||
-                    (MAX_REUSE_TILES != 0 && reuse_rows > MAX_REUSE_TILES) ||
-                    window_frames == 0 || window_frames > 32'(FRAME_COUNT) ||
-                    slice_tiles > reuse_rows || !slice_shape_o_valid) begin
+                if (config_error != 0 || incoming_dimensions_invalid || incoming_reuse_invalid ||
+                    incoming_window_invalid || incoming_slice_invalid) begin
                     err_code <= (config_error != 0) ? config_error : 2'b01;
                     phase <= COMPLETE;
                 end else begin

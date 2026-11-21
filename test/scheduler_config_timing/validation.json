@@ -1,0 +1,298 @@
+{
+  "passed": true,
+  "reference_commit": "0097b66ed57e1b8ef00e402e89dc5b274f1626be",
+  "source_sha256": {
+    "rtl/npu/control/ps_window_scheduler.sv": "bfac56883bbdf72b113910f9efa7a23d0b3ddd50835919f80fce5356a020dd0b",
+    "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7",
+    "test/scheduler_config_timing/run_four_state.py": "1f998d4bc1ba519a53174fe24d086bd5d9ea88718b2015311884f2863721abe6",
+    "test/kernel_issue_timing/run_formal.py": "527d4596dda084e9eb210b233d6648462e5cf1203eb462421eeb9fffed17d935"
+  },
+  "parameters": {
+    "SIZE": 16,
+    "FRAME_COUNT": 16,
+    "MAX_REUSE_TILES": 32
+  },
+  "synthesis": {
+    "reference": {
+      "report": {
+        "path": "build/scheduler_config_r8/synthesis/reference/metrics.json",
+        "sha256": "faa46ab4d4afc24e1e6ed6b8fe2448764c3c550a7bdb473397ccb6bc2b6096ed"
+      },
+      "resources": {
+        "logic_lut_cells": 1258,
+        "distributed_ram_lut_sites_nominal": 56,
+        "lut_sites_nominal_before_packing": 1314,
+        "flip_flops": 966,
+        "dsp48e1": 10,
+        "ramb18e1": 0,
+        "ramb36e1": 2,
+        "carry4": 49
+      },
+      "longest_register_path_cells": 9,
+      "graph_complete": true
+    },
+    "current": {
+      "report": {
+        "path": "build/scheduler_config_r8/synthesis/parallel_validity/metrics.json",
+        "sha256": "1071d0023635ed02b85aad4af9b1b352efbffc69e068b69fc3e9d1133a0b531b"
+      },
+      "resources": {
+        "logic_lut_cells": 1234,
+        "distributed_ram_lut_sites_nominal": 56,
+        "lut_sites_nominal_before_packing": 1290,
+        "flip_flops": 966,
+        "dsp48e1": 13,
+        "ramb18e1": 0,
+        "ramb36e1": 2,
+        "carry4": 42
+      },
+      "longest_register_path_cells": 9,
+      "graph_complete": true
+    },
+    "registered_inputs_reference": {
+      "report": {
+        "path": "build/scheduler_config_r8/synthesis/reference_registered_inputs/metrics.json",
+        "sha256": "8f2db770ce84c38e39fe3bd3872f6be01ca28897fbd9e22db05ded9ffbb6b362"
+      },
+      "resources": {
+        "logic_lut_cells": 1277,
+        "distributed_ram_lut_sites_nominal": 56,
+        "lut_sites_nominal_before_packing": 1333,
+        "flip_flops": 1165,
+        "dsp48e1": 10,
+        "ramb18e1": 0,
+        "ramb36e1": 2,
+        "carry4": 49
+      },
+      "longest_register_path_cells": 9,
+      "graph_complete": true
+    },
+    "registered_inputs_current": {
+      "report": {
+        "path": "build/scheduler_config_r8/synthesis/parallel_validity_registered_inputs/metrics.json",
+        "sha256": "f7ea41831e501ee9bd6488ac1feb196da24510bda14eea309303a69572d6665a"
+      },
+      "resources": {
+        "logic_lut_cells": 1233,
+        "distributed_ram_lut_sites_nominal": 56,
+        "lut_sites_nominal_before_packing": 1289,
+        "flip_flops": 1165,
+        "dsp48e1": 13,
+        "ramb18e1": 0,
+        "ramb36e1": 2,
+        "carry4": 42
+      },
+      "longest_register_path_cells": 9,
+      "graph_complete": true
+    }
+  },
+  "formal": {
+    "passed": true,
+    "inputs_constrained": false,
+    "all_state_and_outputs_every_cycle": true,
+    "profiles": [
+      {
+        "mode": "fpga",
+        "parameters": {
+          "SIZE": 4,
+          "FRAME_COUNT": 2,
+          "MAX_REUSE_TILES": 0
+        },
+        "equivalent_bits": 2777,
+        "passed": true
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "SIZE": 8,
+          "FRAME_COUNT": 4,
+          "MAX_REUSE_TILES": 1
+        },
+        "equivalent_bits": 2237,
+        "passed": true
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 8,
+          "MAX_REUSE_TILES": 16
+        },
+        "equivalent_bits": 2719,
+        "passed": true
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 16
+        },
+        "equivalent_bits": 3443,
+        "passed": true
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 0
+        },
+        "equivalent_bits": 4688,
+        "passed": true
+      },
+      {
+        "mode": "fpga",
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 32
+        },
+        "equivalent_bits": 3496,
+        "passed": true
+      },
+      {
+        "mode": "asic",
+        "parameters": {
+          "SIZE": 4,
+          "FRAME_COUNT": 2,
+          "MAX_REUSE_TILES": 0
+        },
+        "equivalent_bits": 3168,
+        "passed": true
+      },
+      {
+        "mode": "asic",
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 32
+        },
+        "equivalent_bits": 3887,
+        "passed": true
+      }
+    ],
+    "equivalent_bits": 26415,
+    "reports": [
+      {
+        "path": "build/scheduler_config_r8/formal_fpga/summary.json",
+        "sha256": "0ab10fcf0487ccb80c75c07b12c72c62482c01fa4a2ceeaf6ef6d2836a7a4bff"
+      },
+      {
+        "path": "build/scheduler_config_r8/formal_production/summary.json",
+        "sha256": "5359c3b619b74f9dfaa1e0bcf65472680a6855834494a714659c75ce07ed32aa"
+      },
+      {
+        "path": "build/scheduler_config_r8/formal_asic/summary.json",
+        "sha256": "adae42fe653920eead6db84aea177b5b3799ea633f2b41df340c22daadc9ad0e"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "profile_count": 12,
+    "checks": 648276,
+    "parameters": [
+      {
+        "size": 4,
+        "frame_count": 2,
+        "max_reuse_tiles": 0,
+        "mode": "XILINX_FPGA",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 4,
+        "frame_count": 2,
+        "max_reuse_tiles": 0,
+        "mode": "ASIC_SYNTHESIS",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 8,
+        "frame_count": 4,
+        "max_reuse_tiles": 1,
+        "mode": "XILINX_FPGA",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 8,
+        "frame_count": 4,
+        "max_reuse_tiles": 1,
+        "mode": "ASIC_SYNTHESIS",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 8,
+        "max_reuse_tiles": 16,
+        "mode": "XILINX_FPGA",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 8,
+        "max_reuse_tiles": 16,
+        "mode": "ASIC_SYNTHESIS",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 16,
+        "max_reuse_tiles": 16,
+        "mode": "XILINX_FPGA",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 16,
+        "max_reuse_tiles": 16,
+        "mode": "ASIC_SYNTHESIS",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 16,
+        "max_reuse_tiles": 0,
+        "mode": "XILINX_FPGA",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 16,
+        "max_reuse_tiles": 0,
+        "mode": "ASIC_SYNTHESIS",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 16,
+        "max_reuse_tiles": 32,
+        "mode": "XILINX_FPGA",
+        "passed": true,
+        "checks": 54023
+      },
+      {
+        "size": 16,
+        "frame_count": 16,
+        "max_reuse_tiles": 32,
+        "mode": "ASIC_SYNTHESIS",
+        "passed": true,
+        "checks": 54023
+      }
+    ],
+    "report": {
+      "path": "build/scheduler_config_r8/four_state/summary.json",
+      "sha256": "23d54fa80daad4b4c82381038d1d5f24b9d30c3540795a7f29df78f8703c082a"
+    }
+  }
+}
