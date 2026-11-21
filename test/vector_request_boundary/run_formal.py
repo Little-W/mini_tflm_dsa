@@ -53,6 +53,14 @@ def run(command, folder, name, timeout=240):
 def source_audit(reference, selected):
     """逐条确认 tap/taps 的更新与末项状态共同保存。"""
     actual = selected
+    response_refactoring = 'wire [3:0] coordinate_interval_valid;' in actual
+    if response_refactoring:
+        # 各组合变换由独立完整输入检查覆盖；这里确认其余时序源码保持一致。
+        changes = Path(__file__).resolve().parents[1] / 'vector_window_control/engine_transform.json'
+        transformation = json.loads(changes.read_text())
+        for hunk in reversed(transformation['hunks']):
+            assert actual.count(hunk['selected']) == 1
+            actual = actual.replace(hunk['selected'], hunk['previous'], 1)
     registered_prefetch = 'logic [TAP_COUNT_W-1:0] weight_prefetch_q;' in actual
     if registered_prefetch:
         actual = actual.replace('  logic [TAP_COUNT_W-1:0] weight_tap_nxt, weight_tap_after_next;\n'
@@ -143,6 +151,7 @@ def source_audit(reference, selected):
         actual = actual.replace(new_release, old_release)
     assert actual == reference, '源码包含不属于末项状态保存的其他变换'
     return dict(update_sites=7, original_wide_comparison_preserved=True, registered_pool_qualifier=pool_flag,
+                response_refactoring_checked=response_refactoring,
                 registered_prefetch_address=registered_prefetch,
                 shared_slot_reuse_after_clear=slot_boundary,
                 all_other_statements_identical=True)

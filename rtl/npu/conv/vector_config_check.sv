@@ -32,6 +32,7 @@ module vector_config_check #(
   logic output_x_in_range, output_y_in_range;
   logic fields_ok,spatial,depthwise,binary_vector,add_s8,softmax_s8;
   logic static_fields_ok, static_fields_ok_q;
+  logic kernel_limit_ok_q;
   logic activation_range_ok;
   logic [31:0] selected_base,range_base_q;
   logic [63:0] selected_bytes,range_bytes_q;
@@ -132,7 +133,7 @@ module vector_config_check #(
     static_fields_ok_q <= static_fields_ok;
   end
   assign fields_ok = static_fields_ok_q && (!spatial ||
-      (kernel_count <= 32'(depthwise ? MAX_TAPS : POOL_MAX_TAPS) &&
+      (kernel_limit_ok_q &&
        weight_bytes[63:32] == 0 && (depthwise || (output_y_in_range && output_x_in_range))));
   always_comb begin
     selected_base=0;selected_bytes=0;selected_enable=0;
@@ -165,6 +166,7 @@ module vector_config_check #(
       kernel_count<=0;position_count<=0;input_pixels<=0;
       input_bytes<=0;output_bytes<=0;weight_bytes<=0;
       range_enable_q<=0;range_size_ok<=0;output_end_q<=0;
+      kernel_limit_ok_q<=0;
     end else case (state)
       IDLE: if (start) begin
         error<=0;phase<=0;range_index<=0;
@@ -179,6 +181,8 @@ module vector_config_check #(
       end
       // 两个十六位乘积分别寄存，CAPTURE 状态合并结果并保持固定检查周期。
       CALCULATE: begin
+        // 核尺寸乘积已在前一阶段保存，提前记录配置上限检查结果。
+        if (phase==3'd1) kernel_limit_ok_q <= (kernel_count <= 32'(depthwise ? MAX_TAPS : POOL_MAX_TAPS));
         range_dimension_saved<=range_dimension;
         range_padding_saved<=range_padding;
         multiply_low<=multiply_a[15:0]*multiply_b;

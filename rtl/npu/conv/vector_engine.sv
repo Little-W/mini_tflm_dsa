@@ -190,6 +190,16 @@ module vector_engine #(
   logic vector_remaining_high_zero, unused_vector_remaining_carry;
   logic vector_has_more, vector_has_more_comb;
   logic [TILE_INDEX_W-1:0] compute_index, quant_index, reduce_index;
+  localparam int POOL_GROUP_COUNT=(TILE+PE_COUNT-1)/PE_COUNT;
+  logic [POOL_GROUP_COUNT-1:0] compute_pool_group;
+  // PE 组的选择资格与下标同时保存，结果写入直接使用对应组的寄存标志。
+  function automatic logic [TILE_INDEX_W+POOL_GROUP_COUNT-1:0] compute_index_value(
+      input logic [TILE_INDEX_W-1:0] next_index);
+    compute_index_value[TILE_INDEX_W-1:0]=next_index;
+    for (int group=0;group<POOL_GROUP_COUNT;group++) begin
+      compute_index_value[TILE_INDEX_W+group]=(next_index==TILE_INDEX_W'(group*PE_COUNT));
+    end
+  endfunction
   logic compute_group_last_q;
   logic pool_pixel_has_more_q;
   logic [31:0] fetch_tap_offset, position_offset, pool_byte_offset;
@@ -480,7 +490,7 @@ module vector_engine #(
   assign window_count_i_increment = 32'(window_response_count);
   assign window_count_i_target = 32'(active);
   assign window_count_i_carry = 1'b0;
-  add_equal #(.p_width(32)) u_window_count_equal (
+  add_equal #(.p_width(32), .p_use_lut(1'b0), .p_infer_dsp(1'b0)) u_window_count_equal (
       .i_a(window_count_i_value), .i_b(window_count_i_increment),
       .i_target(window_count_i_target), .i_carry_in(window_count_i_carry),
       .o_equal(window_count_o_equal)
@@ -505,18 +515,33 @@ module vector_engine #(
   assign input_y_fits_interval = input_y[33:17] == {17{input_y[16]}};
   assign origin_x_fits_interval = input_origin_x[33:17] == {17{input_origin_x[16]}};
   assign origin_y_fits_interval = input_origin_y[33:17] == {17{input_origin_y[16]}};
-  assign next_column_valid = input_x_fits_interval &&
-      ($signed(input_x[16:0]) >= dilation_x_min) && ($signed(input_x[16:0]) < dilation_x_max) &&
-      input_row_in_bounds;
-  assign next_row_valid = origin_column_in_bounds && input_y_fits_interval &&
-      ($signed(input_y[16:0]) >= dilation_y_min) && ($signed(input_y[16:0]) < dilation_y_max);
-  assign next_origin_column_valid = origin_x_fits_interval &&
-      ($signed(input_origin_x[16:0]) >= stride_x_min) &&
-      ($signed(input_origin_x[16:0]) < stride_x_max) && origin_row_in_bounds;
+  wire [3:0] coordinate_interval_valid;
+  wire signed [16:0] interval_coordinate[4];
+  wire signed [16:0] interval_minimum[4], interval_maximum[4];
+  assign interval_coordinate[0]=input_x[16:0];
+  assign interval_coordinate[1]=input_y[16:0];
+  assign interval_coordinate[2]=input_origin_x[16:0];
+  assign interval_coordinate[3]=input_origin_y[16:0];
+  assign interval_minimum[0]=dilation_x_min;
+  assign interval_minimum[1]=dilation_y_min;
+  assign interval_minimum[2]=stride_x_min;
+  assign interval_minimum[3]=stride_y_min;
+  assign interval_maximum[0]=dilation_x_max;
+  assign interval_maximum[1]=dilation_y_max;
+  assign interval_maximum[2]=stride_x_max;
+  assign interval_maximum[3]=stride_y_max;
+  for (genvar interval=0;interval<4;interval++) begin : g_coordinate_interval
+    vector_interval_bound u_bound (
+        .i_coordinate(interval_coordinate[interval]),
+        .i_minimum(interval_minimum[interval]), .i_maximum(interval_maximum[interval]),
+        .o_inside(coordinate_interval_valid[interval])
+    );
+  end
+  assign next_column_valid = input_x_fits_interval && coordinate_interval_valid[0] && input_row_in_bounds;
+  assign next_row_valid = origin_column_in_bounds && input_y_fits_interval && coordinate_interval_valid[1];
+  assign next_origin_column_valid = origin_x_fits_interval && coordinate_interval_valid[2] && origin_row_in_bounds;
   assign next_origin_row_valid = (c.image.pad_left == 16'd0) && (c.image.input_w != 16'd0) &&
-      origin_y_fits_interval &&
-      ($signed(input_origin_y[16:0]) >= stride_y_min) &&
-      ($signed(input_origin_y[16:0]) < stride_y_max);
+      origin_y_fits_interval && coordinate_interval_valid[3];
 
   // 配置增量的完整差值先由普通算术表达，寄存边沿分别保存各有效区间。
   (* use_dsp = "yes" *) logic [15:0] dilation_x_negative;
@@ -1652,6 +1677,8 @@ module vector_engine #(
   end
 
   (* keep = 1 *) wire window_write_valid[WINDOW_LANES];
+  wire [WINDOW_LANES-1:0] window_lane_valid;
+  wire window_write_pending_next;
   wire dma_input_write_valid[BUS_BYTES];
   wire [INPUT_INDEX_W-1:0] window_write_index[WINDOW_LANES], dma_input_write_index[BUS_BYTES];
   for (genvar lane=0;lane<WINDOW_LANES;lane++) begin : g_window_write_address
@@ -1661,6 +1688,7 @@ module vector_engine #(
     assign column_difference = {1'b0,column_sum} - (INPUT_INDEX_W+2)'(active);
     assign window_write_valid[lane]=window_response_fire && win_rsp_mask[lane] &&
         win_rsp_col<32'(active) && column_difference[INPUT_INDEX_W+1];
+    assign window_lane_valid[lane]=window_write_valid[lane];
     assign window_write_index[lane]=input_response_base+INPUT_INDEX_W'(column_sum);
   end
   localparam int WINDOW_BANK_W=$clog2(WINDOW_LANES);
@@ -1669,13 +1697,23 @@ module vector_engine #(
   wire [WINDOW_BANK_W-1:0] window_first_bank=WINDOW_BANK_W'(input_response_base)+WINDOW_BANK_W'(win_rsp_col);
   for (genvar bank=0;bank<WINDOW_LANES;bank++) begin : g_window_bank
     wire [WINDOW_BANK_W-1:0] source_lane=WINDOW_BANK_W'(bank)-window_first_bank;
-    assign window_bank_valid_next[bank] = window_write_valid[source_lane];
+    if (WINDOW_LANES == 8) begin : g_grouped_valid
+      // 四路选择分别保存组合分组，最后由高位选择对应分组。
+      (* keep = 1 *) wire [1:0] selected_half;
+      for (genvar half=0;half<2;half++) begin : g_half
+        wire [3:0] half_valid=window_lane_valid[4*half+:4];
+        assign selected_half[half]=half_valid[source_lane[1:0]];
+      end
+      assign window_bank_valid_next[bank]=selected_half[source_lane[2]];
+    end else begin : g_direct_valid
+      assign window_bank_valid_next[bank]=window_write_valid[source_lane];
+    end
     if (p_input_bank_storage) begin : g_registered_write
       always_ff @(posedge clk) begin
         if (!rst_n) window_bank_valid[bank] <= 1'b0;
         else begin
           window_bank_valid[bank] <= window_bank_valid_next[bank];
-          if (window_write_valid[source_lane]) window_bank_index[bank] <= window_write_index[source_lane];
+          if (window_bank_valid_next[bank]) window_bank_index[bank] <= window_write_index[source_lane];
         end
       end
     end else begin : g_direct_write
@@ -1686,10 +1724,18 @@ module vector_engine #(
       assign window_bank_data[bank]=win_rsp_data[source_lane];
     end
   end
+  // 二的整数次幂银行数允许先归并有效位，再选择对应的循环起点。
+  // 选择索引仍参与表达式，保留未知索引时的四态结果。
+  if ((WINDOW_LANES & (WINDOW_LANES-1)) == 0) begin : g_window_pending_reduce
+    wire [WINDOW_LANES-1:0] nonempty_by_rotation={WINDOW_LANES{|window_lane_valid}};
+    assign window_write_pending_next=nonempty_by_rotation[window_first_bank];
+  end else begin : g_window_pending_direct
+    assign window_write_pending_next=|window_bank_valid_next;
+  end
   // 保存本拍写入是否非空，排空控制直接使用与各银行有效位同拍的汇总标志。
   always_ff @(posedge clk) begin
     if (!rst_n) window_write_pending <= 1'b0;
-    else window_write_pending <= |window_bank_valid_next;
+    else window_write_pending <= window_write_pending_next;
   end
   for (genvar lane=0;lane<BUS_BYTES;lane++) begin : g_dma_write_address
     wire [INPUT_INDEX_W:0] column_sum={1'b0,rd_col_base}+(INPUT_INDEX_W+1)'(lane);
@@ -2091,7 +2137,7 @@ module vector_engine #(
     logic [7:0] pool_value;
     assign byte_selected = result_byte_pending && result_byte_index == TILE_INDEX_W'(entry);
     assign pool_selected = state_pool_store && 32'(entry) < active &&
-        compute_index == TILE_INDEX_W'(GROUP_BASE);
+        compute_pool_group[GROUP_BASE/PE_COUNT];
     assign pool_value = pool_lane_value[LANE_INDEX];
     assign write_enable = byte_selected || pool_selected;
     assign write_value = ({8{result_byte_pending}} & result_byte_data) | ({8{pool_selected}} & pool_value);
@@ -2241,7 +2287,7 @@ module vector_engine #(
       taps<=0; tap_last_modulo<=1'b0;weight_prefetch_q<=TAP_COUNT_W'(1); active<=0; channel_base<=0; position<=0;
       ox<=0;oy<=0;kx<=0;ky<=0;tap<=0;load_tap<=0;valid_taps<=0;
       input_x<=0;input_y<=0;input_origin_x<=0;input_origin_y<=0;
-      vector_offset<=0;compute_index<=0;quant_index<=0;reduce_index<=0;
+      vector_offset<=0;{compute_pool_group,compute_index}<=compute_index_value(0);quant_index<=0;reduce_index<=0;
       reduce_acc<=0; param_bad_seen<=0;load_completion_error<=1'b0;
       add_stage<=0;add_multiply_wait<=0;add_scaled_a<=0;add_rounded<=0;
       q_accumulator<=0;q_multiplier<=0;q_rounded<=0;q_right_0<=0;q_right_1<=0;q_right_2<=0;
@@ -2373,16 +2419,16 @@ module vector_engine #(
             LD_MULT: begin load_kind<=LD_SHIFT;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
             LD_SHIFT: {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
             LD_A: if (binary_vector) begin load_kind<=LD_B;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-              else begin compute_index<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(softmax_s8 ? SOFT_START : EXECUTE);end
+              else begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(softmax_s8 ? SOFT_START : EXECUTE);end
             LD_B: begin
-              compute_index<=0;add_stage<=0;
+              {compute_pool_group,compute_index}<=compute_index_value(0);add_stage<=0;
               {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(add_s8 ? ADD_MULT : EXECUTE);
             end
             default: begin error<=2'b10;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           endcase
         end
         OUTPUT_INIT: begin
-          tap<=0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : TAP_COUNT_W'(1);kx<=0;ky<=0;valid_taps<=0;compute_index<=0;
+          tap<=0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : TAP_COUNT_W'(1);kx<=0;ky<=0;valid_taps<=0;{compute_pool_group,compute_index}<=compute_index_value(0);
           input_x<=input_origin_x;input_y<=input_origin_y;
           if (global_pool) begin
             valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
@@ -2390,9 +2436,9 @@ module vector_engine #(
         end
         DW_EXECUTE: begin
           if (dw_issue_fire) begin
-            if (!dw_group_last) compute_index<=compute_index+TILE_INDEX_W'(PE_COUNT);
+            if (!dw_group_last) {compute_pool_group,compute_index}<=compute_index_value(compute_index+TILE_INDEX_W'(PE_COUNT));
             else begin
-              compute_index<='0;
+              {compute_pool_group,compute_index}<=compute_index_value('0);
               read_bank<=(read_bank+1'b1)&input_bank_mask;
             end
           end
@@ -2407,7 +2453,7 @@ module vector_engine #(
           end
         end
         DW_FINISH: if (dw_snapshot_fire) begin
-          compute_index<='0;tap<='0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : TAP_COUNT_W'(1);kx<='0;ky<='0;
+          {compute_pool_group,compute_index}<=compute_index_value('0);tap<='0;tap_last_modulo<=tap_last_zero;weight_prefetch_q<=tap_last_zero ? '0 : TAP_COUNT_W'(1);kx<='0;ky<='0;
           if (position_next<32'(position_count)) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
@@ -2437,24 +2483,24 @@ module vector_engine #(
         POOL_LOAD_REQ: if (rd_granted) {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_WAIT);
         POOL_LOAD_WAIT: if (read_done_q) begin
           if (read_error_q || !pool_read_complete_saved) begin error<=2'b10;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
-          else begin compute_index<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_DRAIN);end
+          else begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_DRAIN);end
         end
         POOL_LOAD_DRAIN: {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
         TAP_CHECK: if (dw_in_bounds) begin
-            valid_taps<=valid_taps+1;compute_index<=0;
+            valid_taps<=valid_taps+1;{compute_pool_group,compute_index}<=compute_index_value(0);
             {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[read_bank] ? EXECUTE : WINDOW_WAIT);
           end
           else {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_NEXT);
-        WINDOW_WAIT: if (input_ready[read_bank]) begin compute_index<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);end
+        WINDOW_WAIT: if (input_ready[read_bank]) begin {compute_pool_group,compute_index}<=compute_index_value(0);{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);end
         EXECUTE: if (!vector_hadamard || !writeback_busy) {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE_COMMIT);
         EXECUTE_COMMIT: begin
           {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
-          if (!compute_group_last_q) compute_index<=compute_index+32'(PE_COUNT);
+          if (!compute_group_last_q) {compute_pool_group,compute_index}<=compute_index_value(compute_index+32'(PE_COUNT));
           else if (global_pool) begin
             pool_byte_offset<=pool_byte_offset_next;
             if (pool_pixel_has_more_q) begin
               pool_pixel<=pool_pixel+1;pool_input_index<=pool_input_index+(INPUT_INDEX_W+1)'(active);
-              compute_index<=0;
+              {compute_pool_group,compute_index}<=compute_index_value(0);
             end
             else if (pool_taps_remaining>pool_pixels) begin
               pool_offset<=pool_offset+pool_pixels;
@@ -2464,7 +2510,7 @@ module vector_engine #(
             else begin quant_index<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           end
           else if (spatial) begin
-            read_bank<=(read_bank+1'b1)&input_bank_mask;compute_index<=0;
+            read_bank<=(read_bank+1'b1)&input_bank_mask;{compute_pool_group,compute_index}<=compute_index_value(0);
             if (tap_last_wide) begin quant_index<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
             else begin
               tap<=weight_tap_nxt;tap_last_modulo<=tap_last_increment;weight_prefetch_q<=tap_last_increment ? '0 : weight_tap_after_next;input_x<=next_window_x;input_y<=next_window_y;
@@ -2502,7 +2548,7 @@ module vector_engine #(
         ADD_CLAMP: {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_STORE);
         ADD_STORE: if (!writeback_busy) begin
           if (compute_index+1<active) begin
-            compute_index<=compute_index+1'b1;add_stage<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
+            {compute_pool_group,compute_index}<=compute_index_value(compute_index+1'b1);add_stage<=0;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
           end else begin
             write_origin<=write_origin_next;write_total<=active;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
           end
@@ -2518,7 +2564,7 @@ module vector_engine #(
             if (avg_pool) begin
               if (valid_taps==0) begin error<=2'b01;{state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end else {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);
             end else begin
-              compute_index <= '0;
+              {compute_pool_group,compute_index}<=compute_index_value('0);
               {state_pool_store,state_output_init,state_vector_init,state_dw_finish,state_compute_commit,state_failed,window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_STORE);
             end
           end
@@ -2538,7 +2584,7 @@ module vector_engine #(
         end
         POOL_STORE: begin
           if (32'(compute_index)+32'(PE_COUNT) < active) begin
-            compute_index <= compute_index + TILE_INDEX_W'(PE_COUNT);
+            {compute_pool_group,compute_index}<=compute_index_value(compute_index + TILE_INDEX_W'(PE_COUNT));
           end else begin
             write_origin <= write_origin_next;
             write_total <= active;
@@ -2646,6 +2692,9 @@ module vector_engine #(
       if (writeback_sink_fire && !depthwise) assert(!result_byte_pending);
       assert(!(result_background_write && result_serial_write));
       if (state_pool_store) assert(!result_byte_pending);
+      for (int group=0;group<POOL_GROUP_COUNT;group++) begin
+        assert(compute_pool_group[group] === (compute_index==TILE_INDEX_W'(group*PE_COUNT)));
+      end
       if (p_input_bank_storage) assert(window_write_pending == (|window_bank_valid));
       if (SHARED_STORAGE_ENABLE && o_weight_write_en) begin
         assert(!o_weight_read_en);
@@ -3274,6 +3323,17 @@ module vector_banked_writeback #(
     end
   end
 `endif
+endmodule
+
+// 两个十七位有符号数的差值完整保存为十八位，最高位直接表示次序。
+module vector_interval_bound (
+  input wire signed [16:0] i_coordinate, i_minimum, i_maximum,
+  output wire o_inside
+);
+  (* use_dsp = "yes" *) wire signed [17:0] lower_distance, upper_distance;
+  assign lower_distance=$signed({i_coordinate[16],i_coordinate})-$signed({i_minimum[16],i_minimum});
+  assign upper_distance=$signed({i_coordinate[16],i_coordinate})-$signed({i_maximum[16],i_maximum});
+  assign o_inside=!lower_distance[17] && upper_distance[17];
 endmodule
 
 `default_nettype wire
