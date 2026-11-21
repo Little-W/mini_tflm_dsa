@@ -1,0 +1,114 @@
+{
+  "passed": true,
+  "source_sha256": "6baaa01d07b2ba41910215d509de4082e222764668d13c1192353d0c784c4f15",
+  "formal": {
+    "passed": true,
+    "reference_ref": "415a70a",
+    "inputs_constrained": false,
+    "fpga": false,
+    "primitive_library_sha256": null,
+    "source_sha256": "6baaa01d07b2ba41910215d509de4082e222764668d13c1192353d0c784c4f15",
+    "reference_sha256": "a1ef76f0e5f9252e311addf4fa0b54339cbb0498e91d7ef156cc37624dc68109",
+    "runs": [
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 600,
+        "log_sha256": "1c516bffb6291f86024711742a90a5db98c2214385029cc7c04f0e07b7ac912d"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 32,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 603,
+        "log_sha256": "6a4a1451ca917a7d06ed9e6b4fe1e72fce03f2c8544657f615409b20776b669f"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 0,
+        "passed": true,
+        "equivalent_bits": 719,
+        "log_sha256": "386e1365658f9c94834e0fcbc8728160eb951985c9f5a27fb0c7c222efb824d3"
+      },
+      {
+        "ADDR_W": 32,
+        "DATA_W": 64,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 722,
+        "log_sha256": "62d6137f084912b4f4e3cd13d46c69386e7df5e3a46faca32b93a38ecee282e4"
+      },
+      {
+        "ADDR_W": 16,
+        "DATA_W": 16,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 495,
+        "log_sha256": "6c45d1c8c09e50ceb56d7d758a2eec10762a674a041d16bca90bcfdec2d18117"
+      },
+      {
+        "ADDR_W": 33,
+        "DATA_W": 128,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 966,
+        "log_sha256": "41189630506c8c3d50fc4d75d00114e55b987f8166dc4db0ed70bb6f64c79b5e"
+      },
+      {
+        "ADDR_W": 40,
+        "DATA_W": 256,
+        "SPLIT_GEMM_4K": 1,
+        "passed": true,
+        "equivalent_bits": 1469,
+        "log_sha256": "39e28fbe63427c666ca12a166ba5076a16a184c4d9a1fbc6f23c5db0ff5b087d"
+      }
+    ]
+  },
+  "four_state": {
+    "passed": true,
+    "source_sha256": "6baaa01d07b2ba41910215d509de4082e222764668d13c1192353d0c784c4f15",
+    "reference_sha256": "a1ef76f0e5f9252e311addf4fa0b54339cbb0498e91d7ef156cc37624dc68109",
+    "test_sha256": "313cad7deb191e8f1fbda30b97b895273aa2a254b0ae81e4f4e242272f42408f",
+    "testbench_sha256": "57a300efb1bfddcec127a73d7d1245c52197e42ca2c9839d1c975b04f396919c",
+    "log_sha256": "67e3f098b01fd0ca6406d6f5c73588892edee0731641cd237c4e621062a6c09f",
+    "cycles": 20000,
+    "configurations": 4,
+    "strict_four_state": true,
+    "simulation_type_conversion": "same-width logic state and identical enumeration values"
+  },
+  "mapping": {
+    "resources": {
+      "logic_lut_cells": 783,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 783,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 392,
+      "dsp48e1": 16,
+      "ramb36e1": 0,
+      "ramb18e1": 0,
+      "carry4": 29,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 29,
+        "DSP48E1": 16,
+        "FDCE": 391,
+        "FDPE": 1,
+        "INV": 3,
+        "LUT2": 87,
+        "LUT3": 113,
+        "LUT4": 258,
+        "LUT5": 158,
+        "LUT6": 167
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "graph_complete": true,
+    "longest_register_path_cells": 10
+  },
+  "physical_timing_150mhz_confirmed": null
+}
