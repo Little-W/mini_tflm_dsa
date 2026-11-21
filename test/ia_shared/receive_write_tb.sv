@@ -44,10 +44,10 @@ module receive_write_tb;
       compact_mode=(n<65536) ? 1'b1 : 1'($urandom);
       compact_offset=(n<65536) ? 16'(n >> 8) : 16'($urandom);
       wr_slot=3'($urandom); wr_row=4'($urandom);
-      wr_col_base=compact_mode ? (1'($urandom) ? 4'd8 : 4'd0) : 4'($urandom);
+      wr_col_base=4'($urandom);
       for (int i=0; i<8; i++) begin
         wr_data[i]=(n<65536) ? 16'(n) : 16'($urandom);
-        wr_valid[i]=(n<65536) ? 1'b1 : ((!compact_mode && i>=4) ? 0 : 1'($urandom));
+        wr_valid[i]=(n<65536) ? 1'b1 : 1'($urandom);
       end
       expected_en='0;
       for (int p=0; p<2; p++) begin expected_data[p]='0; expected_mask[p]='0; end
@@ -61,7 +61,7 @@ module receive_write_tb;
             expected_mask[0][col]=1;
             expected_data[0][col*8 +: 8]=8'(wr_data[source]-compact_offset);
           end
-        end else if (source>=0 && source<4 && wr_valid[source]) begin
+        end else if (source>=0 && source<8 && wr_valid[source]) begin
           expected_data[col/8][(col%8)*16 +: 16]=wr_data[source];
           expected_mask[col/8][(col%8)*2 +: 2]=2'b11;
         end

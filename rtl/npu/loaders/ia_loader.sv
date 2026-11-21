@@ -188,11 +188,12 @@ module ia_loader #(
     logic [CACHE_SLOT_W-1:0] cache_slot_base_q;
     logic [31:0] cache_blocks_q;
     wire [31:0] incoming_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
-    wire [CACHE_SLOT_W-1:0] cache_slot_mask = cfg_compact_q
-        ? CACHE_SLOT_W'((cache_blocks_q << 1) - 1) : CACHE_SLOT_W'(cache_blocks_q - 1);
+    logic [CACHE_SLOT_W-1:0] cache_slot_mask;
     wire compact_config_valid = (COMPACT_S8 != 0) && (DATA_WIDTH == 16) &&
         cfg_compact && ($signed(cfg_compact_offset) >= -127) &&
         ($signed(cfg_compact_offset) <= 128);
+    wire [CACHE_SLOT_W-1:0] incoming_slot_mask =
+        CACHE_SLOT_W'((compact_config_valid ? incoming_cache_blocks << 1 : incoming_cache_blocks) - 1);
     logic                 cfg_bias_by_row_mode;
     logic                 cfg_bias_at_end;
     logic [REG_WIDTH-1:0] cfg_ia_reuse_num;
@@ -241,11 +242,13 @@ module ia_loader #(
             next_cols <= ((REG_WIDTH'(0) - REG_WIDTH'(SIZE)) >= REG_WIDTH'(SIZE)) ?
                 REG_WIDTH'(SIZE) : (REG_WIDTH'(0) - REG_WIDTH'(SIZE));
             cache_slot_base_q <= '0;
+            cache_slot_mask <= CACHE_SLOT_W'(CACHE_BLOCKS - 1);
             cache_blocks_q <= 32'(CACHE_BLOCKS);
         end else if (init_cfg) begin
             cfg_compact_q <= compact_config_valid;
             compact_offset_q <= DATA_WIDTH'(cfg_compact_offset);
             cache_blocks_q <= incoming_cache_blocks;
+            cache_slot_mask <= incoming_slot_mask;
             preserve_cache_q <= cfg_preserve_cache;
             prefetch_enable_q <= cfg_prefetch_enable && cfg_preserve_cache &&
                 (n != 0) && (n <= SIZE) && (k != 0) &&
@@ -486,7 +489,10 @@ module ia_loader #(
     logic ctrl_load_req, ctrl_load_granted, ctrl_request_valid;
     logic [REG_WIDTH-1:0] request_base_addr, request_p0, request_q0;
     logic [REG_WIDTH-1:0] demand_p0_q, demand_q0_q;
-    logic [REG_WIDTH-1:0] demand_p0_nxt, demand_q0_nxt;
+    logic [CACHE_SLOT_W-1:0] demand_slot_q, demand_slot_next;
+    logic [CACHE_SLOT_W-1:0] demand_slot_base_next, demand_slot_mask_next;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] demand_p0_nxt, demand_q0_nxt;
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] request_p0_absolute, request_q0_absolute;
     logic unused_demand_p0_carry, unused_demand_q0_carry;
     logic [REG_WIDTH-1:0] request_group, request_rows, request_cols;
     logic [7:0] request_burst_len_m1;
@@ -539,6 +545,21 @@ module ia_loader #(
     assign {unused_demand_q0_carry, demand_q0_nxt} = {1'b0, request_q0} +
         {1'b0, (init_cfg ? cfg_q0_base : q0_base_q)};
 
+    // 物理槽号与控制器的分块槽号共用接收边沿，配置同拍更新时使用新映射。
+    always_comb begin
+        demand_slot_mask_next = cache_slot_mask;
+        demand_slot_base_next = cache_slot_base_q;
+        if (init_cfg) begin
+            demand_slot_mask_next = incoming_slot_mask;
+            demand_slot_base_next = CACHE_SLOT_W'(cfg_cache_slot_base) & incoming_slot_mask;
+        end
+    end
+    assign demand_slot_next = (request_slot + demand_slot_base_next) & demand_slot_mask_next;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) demand_slot_q <= '0;
+        else demand_slot_q <= demand_slot_next;
+    end
+
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             demand_p0_q <= '0;
@@ -548,6 +569,9 @@ module ia_loader #(
             demand_q0_q <= demand_q0_nxt;
         end
     end
+
+    assign request_p0_absolute = request_p0 + p0_base_q;
+    assign request_q0_absolute = request_q0 + q0_base_q;
 
     always_comb begin
         demand_descriptor.base_addr = tl_base_addr;
@@ -564,7 +588,7 @@ module ia_loader #(
         demand_descriptor.im2col = im2col_q;
         demand_descriptor.compact = cfg_compact_q;
         demand_descriptor.tile_packed = tile_packed_q;
-        demand_descriptor.slot = (tl_slot_id + cache_slot_base_q) & cache_slot_mask;
+        demand_descriptor.slot = demand_slot_q;
         request_descriptor = demand_descriptor;
         request_descriptor.base_addr = request_base_addr;
         request_descriptor.row_stride = tile_packed_q ?
@@ -572,8 +596,8 @@ module ia_loader #(
         request_descriptor.rows = request_rows;
         request_descriptor.cols = request_cols;
         request_descriptor.zp = cfg_lhs_zp;
-        request_descriptor.p0 = request_p0 + p0_base_q;
-        request_descriptor.q0 = request_q0 + q0_base_q;
+        request_descriptor.p0 = request_p0_absolute;
+        request_descriptor.q0 = request_q0_absolute;
         request_descriptor.group = request_group;
         request_descriptor.burst = request_burst_len_m1;
         request_descriptor.use16 = cfg_use_16bits;
@@ -630,7 +654,23 @@ module ia_loader #(
     end
 
     // 查询就绪已确认标记与描述符相等，两个命中判断共用已保存标记的比较。
-    assign request_tag_match = (request_tag_q == request_lookup_q);
+    localparam int p_tag_compare_groups = (CACHE_TAG_W + 2) / 3;
+    localparam int p_tag_compare_parts = (p_tag_compare_groups + 5) / 6;
+    (* keep = 1 *) logic [p_tag_compare_groups-1:0] request_tag_group_equal;
+    (* keep = 1 *) logic [p_tag_compare_parts-1:0] request_tag_part_equal;
+    // 每组比较三对标记位，再分两级归并比较结果。
+    for (genvar group_index = 0; group_index < p_tag_compare_groups; group_index++) begin : g_tag_group
+        localparam int p_first = group_index * 3;
+        localparam int p_width = CACHE_TAG_W - p_first < 3 ? CACHE_TAG_W - p_first : 3;
+        assign request_tag_group_equal[group_index] =
+            request_tag_q[p_first +: p_width] == request_lookup_q[p_first +: p_width];
+    end
+    for (genvar part = 0; part < p_tag_compare_parts; part++) begin : g_tag_part
+        localparam int p_first = part * 6;
+        localparam int p_width = p_tag_compare_groups - p_first < 6 ? p_tag_compare_groups - p_first : 6;
+        assign request_tag_part_equal[part] = &request_tag_group_equal[p_first +: p_width];
+    end
+    assign request_tag_match = &request_tag_part_equal;
     wire prefetch_lookup_ready = prefetch_lookup_valid &&
         (prefetch_lookup_slot_q == prefetch_descriptor.slot) &&
         (prefetch_lookup_q == descriptor_tag(prefetch_descriptor));
@@ -639,7 +679,7 @@ module ia_loader #(
         cache_tags_valid[request_descriptor.slot] && request_tag_match;
     wire cache_hit_event = tl_start && preserve_cache_q && request_lookup_valid &&
         (request_lookup_slot_q == demand_descriptor.slot) &&
-        (request_lookup_q == descriptor_tag(demand_descriptor)) && cache_tags_valid[demand_descriptor.slot] &&
+        (request_lookup_q == descriptor_tag(demand_descriptor)) && cache_tags_valid[request_lookup_slot_q] &&
         request_tag_match && !cache_flush && !init_cfg;
     wire prefetch_cached = prefetch_lookup_ready && cache_tags_valid[prefetch_descriptor.slot] &&
         (prefetch_tag_q == prefetch_lookup_q);
@@ -676,13 +716,32 @@ module ia_loader #(
     // A following command may consume the prefetched K group or reuse its
     // predecessor. Any other source/slot mapping cancels unissued requests.
     // Issued reads finish with their captured descriptor before job reconfiguration.
-    wire [CACHE_SLOT_W-1:0] incoming_slot_mask =
-        CACHE_SLOT_W'((compact_config_valid ? incoming_cache_blocks << 1 : incoming_cache_blocks) - 1);
+    localparam int p_context_groups = (REG_WIDTH + 2) / 3;
+    localparam int p_context_parts = (p_context_groups + 5) / 6;
+    logic [4:0][REG_WIDTH-1:0] context_left, context_right;
+    logic [4:0] context_equal;
+    assign context_left = {cfg_p0_base, k, ia_reuse_num, cfg_q0_base, cfg_q0_base};
+    assign context_right = {prefetch_group_p0, prefetch_group_rows, prefetch_group_r,
+        prefetch_descriptor.q0, prefetch_previous_q0};
+    // 配置与归约坐标独立比较，预取保留资格只归并保存字段的比较结果。
+    for (genvar value = 0; value < 5; value++) begin : g_prefetch_context
+        (* keep = 1 *) logic [p_context_groups-1:0] groups_equal;
+        (* keep = 1 *) logic [p_context_parts-1:0] parts_equal;
+        for (genvar part = 0; part < p_context_groups; part++) begin : g_group
+            localparam int p_first = part * 3;
+            localparam int p_width = REG_WIDTH - p_first < 3 ? REG_WIDTH - p_first : 3;
+            assign groups_equal[part] = context_left[value][p_first +: p_width] ==
+                context_right[value][p_first +: p_width];
+        end
+        for (genvar part = 0; part < p_context_parts; part++) begin : g_part
+            localparam int p_first = part * 6;
+            localparam int p_width = p_context_groups - p_first < 6 ? p_context_groups - p_first : 6;
+            assign parts_equal[part] = &groups_equal[p_first +: p_width];
+        end
+        assign context_equal[value] = &parts_equal;
+    end
     wire prefetch_context_matches = cfg_prefetch_enable && cfg_preserve_cache &&
-        (cfg_p0_base == prefetch_group_p0) && (k == prefetch_group_rows) &&
-        (ia_reuse_num == prefetch_group_r) &&
-        ((cfg_q0_base == prefetch_descriptor.q0) ||
-         (cfg_q0_base == prefetch_previous_q0)) &&
+        (&context_equal[4:2]) && (context_equal[1] || context_equal[0]) &&
         (ORDERED_JOB || (
         (lhs_base + ((prefetch_descriptor.q0 - cfg_q0_base) <<
           ((cfg_tile_packed ? LOG2_SIZE : 0) + (use_16bits ? 1 : 0))) == prefetch_group_base) &&
@@ -697,17 +756,24 @@ module ia_loader #(
         (incoming_cache_blocks == cache_blocks_q) &&
         (cfg_global_reduction == global_reduction_q))) &&
         (((CACHE_SLOT_W'(cfg_cache_slot_base) +
-           ((cfg_q0_base == prefetch_descriptor.q0) ? CACHE_SLOT_W'(0) :
+           (context_equal[1] ? CACHE_SLOT_W'(0) :
              CACHE_SLOT_W'(ia_reuse_num))) & incoming_slot_mask) == prefetch_group_slot);
-    wire [REG_WIDTH-1:0] next_q0 = q0_base_q + REG_WIDTH'(SIZE);
+    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] next_q0 = q0_base_q + REG_WIDTH'(SIZE);
     wire [REG_WIDTH-1:0] next_beats =
         (((tile_packed_q ? REG_WIDTH'(SIZE) : next_cols) << cfg_use_16bits) +
          REG_WIDTH'(BYTE_PER_BEAT - 1)) >> LOG2_BYTE_PER_BEAT;
-    wire [REG_WIDTH-1:0] packed_prefetch_k_tiles =
+    (* use_dsp = "yes" *) wire [REG_WIDTH-1:0] packed_prefetch_k_tiles =
         (global_reduction_q >> LOG2_SIZE) +
         REG_WIDTH'((global_reduction_q & REG_WIDTH'(SIZE-1)) != 0);
     wire [REG_WIDTH-1:0] prefetch_next_k_bytes = REG_WIDTH'(SIZE) <<
         ((tile_packed_q ? LOG2_SIZE : 0) + (cfg_use_16bits ? 1 : 0));
+
+    (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] prefetch_advanced_base, prefetch_first_base;
+    assign prefetch_advanced_base = prefetch_descriptor.base_addr +
+        (prefetch_descriptor.tile_packed ?
+         (packed_prefetch_k_tiles << (2*LOG2_SIZE + (prefetch_descriptor.use16 ? 1 : 0))) :
+         (prefetch_descriptor.row_stride << LOG2_SIZE));
+    assign prefetch_first_base = cfg_lhs_base + prefetch_next_k_bytes;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -729,10 +795,7 @@ module ia_loader #(
                 if (prefetch_rows_left <= REG_WIDTH'(SIZE)) prefetch_pending <= 1'b0;
                 else begin
                     prefetch_rows_left <= prefetch_rows_left - REG_WIDTH'(SIZE);
-                    prefetch_descriptor.base_addr <= prefetch_descriptor.base_addr +
-                        (prefetch_descriptor.tile_packed ?
-                         (packed_prefetch_k_tiles << (2*LOG2_SIZE + (prefetch_descriptor.use16 ? 1 : 0))) :
-                         (prefetch_descriptor.row_stride << LOG2_SIZE));
+                    prefetch_descriptor.base_addr <= prefetch_advanced_base;
                     prefetch_descriptor.p0 <= prefetch_descriptor.p0 + REG_WIDTH'(SIZE);
                     prefetch_descriptor.rows <= (prefetch_rows_left >= REG_WIDTH'(2 * SIZE)) ?
                         REG_WIDTH'(SIZE) : prefetch_rows_left - REG_WIDTH'(SIZE);
@@ -745,10 +808,10 @@ module ia_loader #(
                 prefetch_rows_left <= cfg_k;
                 prefetch_group_p0 <= p0_base_q;
                 prefetch_group_rows <= cfg_k;
-                prefetch_group_base <= cfg_lhs_base + prefetch_next_k_bytes;
+                prefetch_group_base <= prefetch_first_base;
                 prefetch_group_r <= cfg_ia_reuse_num;
                 prefetch_group_slot <= (cache_slot_base_q + CACHE_SLOT_W'(cfg_ia_reuse_num)) & cache_slot_mask;
-                prefetch_descriptor.base_addr <= cfg_lhs_base + prefetch_next_k_bytes;
+                prefetch_descriptor.base_addr <= prefetch_first_base;
                 prefetch_descriptor.row_stride <= tile_packed_q ?
                     (REG_WIDTH'(SIZE) << cfg_use_16bits) : cfg_lhs_row_stride_b;
                 prefetch_descriptor.rows <= cfg_k >= REG_WIDTH'(SIZE) ? REG_WIDTH'(SIZE) : cfg_k;
@@ -799,6 +862,13 @@ module ia_loader #(
     end
 
     for (genvar slot_index = 0; slot_index < SLOT_BLOCKS; slot_index++) begin : g_cache_valid
+        (* keep = 1 *) logic demand_slot_selected, prefetch_slot_selected;
+        logic invalidate_slot;
+        // 两个已保存槽号先独立解码，启动条件只参与当前槽的最终写使能。
+        assign demand_slot_selected = demand_descriptor.slot == CACHE_SLOT_W'(slot_index);
+        assign prefetch_slot_selected = prefetch_dma_descriptor.slot == CACHE_SLOT_W'(slot_index);
+        assign invalidate_slot = prefetch_start ? prefetch_slot_selected :
+            (tl_start && !cache_hit_event && demand_slot_selected);
         always_ff @(posedge clk or negedge rst_n) begin
             if (!rst_n)
                 cache_tags_valid[slot_index] <= 1'b0;
@@ -808,7 +878,7 @@ module ia_loader #(
             else begin
                 if (ext_dma_done && fill_pending && fill_slot == CACHE_SLOT_W'(slot_index))
                     cache_tags_valid[slot_index] <= 1'b1;
-                if (ext_dma_start && dma_descriptor.slot == CACHE_SLOT_W'(slot_index))
+                if (invalidate_slot)
                     cache_tags_valid[slot_index] <= 1'b0;
             end
         end
@@ -863,7 +933,8 @@ module ia_loader #(
         .COMPACT_S8(COMPACT_S8),
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .p_precomputed_packed_tiles(1'b1),
-        .p_precomputed_frame_rows(1'b1)
+        .p_precomputed_frame_rows(1'b1),
+        .p_precomputed_slot_mask(1'b1)
     ) u_ctrl (
         .clk  (clk),
         .rst_n(rst_n),
@@ -871,6 +942,7 @@ module ia_loader #(
         .cfg_valid           (ctrl_init_start),
         .cfg_compact         (cfg_compact_q),
         .cfg_cache_blocks    (cache_blocks_q),
+        .cfg_slot_mask(cache_slot_mask),
         .cfg_k               (cfg_k),
         .cfg_n               (cfg_n),
         .cfg_use_16bits      (cfg_use_16bits),
@@ -1054,7 +1126,8 @@ module ia_loader #(
         .RAM_WORD_ADDR_WIDTH(RAM_WORD_ADDR_WIDTH),
         .p_compact_offset_width((DATA_WIDTH == 16) ? 9 : DATA_WIDTH),
         .p_dma_source_layout(p_dma_source_layout),
-        .p_shared_write_stage(p_shared_write_stage)
+        .p_shared_write_stage(p_shared_write_stage),
+        .p_precomputed_slot_mask(1'b1)
     ) u_cache_mgr (
         .clk  (clk),
         .rst_n(rst_n),
@@ -1062,6 +1135,7 @@ module ia_loader #(
         .compact_mode (cfg_compact_q),
         .compact_offset(compact_offset_q),
         .cfg_cache_blocks(cache_blocks_q),
+        .cfg_slot_mask(cache_slot_mask),
         .slot_base(cache_slot_base_q),
         .ram_port_wr_en, .ram_port_wr_addr, .ram_port_wr_data, .ram_port_wr_mask,
         .ram_shared_wr_data,
