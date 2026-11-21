@@ -1,0 +1,183 @@
+{
+  "checkpoint": "R7",
+  "date": "2026-11-22",
+  "rtl_commit": "3eb8ce2ab6a9abfd9d06ce665900da57d278806b",
+  "rtl_tree": "2c90d58ba6a36d0f9b30e3555b2f461618c19761",
+  "picorv32_commit": "ef203c2b0a3fb793280f5114941416c425c5b461",
+  "source_manifest_sha256": "f93400bbc06bb120b99584d4ead2719dc3c4b5d3a24c2813135505ac8d5de44e",
+  "checked_rtl_configuration_and_observer_files": 119,
+  "rtl_configuration_and_observers_match_tested_source": true,
+  "targets": {
+    "soc_lut_sites_max": 50000,
+    "frequency_mhz": 150,
+    "register_path_cells_max": 10
+  },
+  "r7_resources": {
+    "logic_lut_cells": 53517,
+    "distributed_ram_lut_sites_nominal": 852,
+    "shift_register_lut_sites_nominal": 24,
+    "lut_sites_nominal_before_packing": 54393,
+    "physical_lut_sites_after_placement": null,
+    "flip_flops": 43261,
+    "dsp48e1": 600,
+    "ramb36e1": 99,
+    "ramb18e1": 81,
+    "carry4": 2253,
+    "unclassified_distributed_ram_types": []
+  },
+  "r6_resources": {
+    "logic_lut_cells": 55879,
+    "distributed_ram_lut_sites_nominal": 700,
+    "shift_register_lut_sites_nominal": 24,
+    "lut_sites_nominal_before_packing": 56603,
+    "physical_lut_sites_after_placement": null,
+    "flip_flops": 43934,
+    "dsp48e1": 571,
+    "ramb36e1": 99,
+    "ramb18e1": 81,
+    "carry4": 2552,
+    "unclassified_distributed_ram_types": []
+  },
+  "register_paths": {
+    "longest_register_path_cells": 15,
+    "graph_nodes": 188601,
+    "visited_graph_nodes": 188601,
+    "graph_complete": true,
+    "combinational_cycle_nodes": [],
+    "unclassified_cell_types": {}
+  },
+  "target_status": {
+    "lut_sites_met": false,
+    "register_path_cells_met": false,
+    "frequency_mhz_150": "Awaiting Vivado implementation for this RTL"
+  },
+  "functional_validation": {
+    "complete_npu": {
+      "passed": true,
+      "tasks": 38,
+      "int32_checks": 11118
+    },
+    "cpu_modes": [
+      {
+        "mode": 0,
+        "passed": true,
+        "total_call_cycles": 49272678,
+        "compared_outputs": 6272,
+        "mismatches": 0,
+        "guard_errors": 0
+      },
+      {
+        "mode": 1,
+        "passed": true,
+        "total_call_cycles": 2781017,
+        "compared_outputs": 6272,
+        "mismatches": 0,
+        "guard_errors": 0
+      }
+    ],
+    "arithmetic_mapping": {
+      "passed": true,
+      "parameter_profiles": 63,
+      "selected_netlist_sha256": "7682d8f9911b558b90d8dad278ea9b79f02d21d7bf846821f33b43b866c307c8",
+      "selection_sha256": "0e63f105085eeb68703088cb3fc4e0c33085e5d0df0d162ac41f8616e386c112",
+      "selected_cell_count": 265
+    }
+  },
+  "longest_path_groups": [
+    {
+      "cells": 15,
+      "start": "u_npu_axil_top.u_npu_top.u_ia_loader.u_ctrl.ps_frame_final",
+      "end": "u_npu_axil_top.u_npu_top.u_ia_loader.u_ctrl.tl_start_r"
+    },
+    {
+      "cells": 15,
+      "start": "u_npu_axil_top.u_npu_top.w_reuse_shape_i_value [18]",
+      "end": "u_npu_axil_top.u_npu_top.g_frame_schedule.u_scheduler.phase [6]"
+    },
+    {
+      "cells": 15,
+      "start": "u_npu_axil_top.u_npu_top.u_ia_loader.u_ctrl.ps_frame_final",
+      "end": "u_npu_axil_top.u_npu_top.u_ia_loader.u_ctrl.state [2]"
+    },
+    {
+      "cells": 15,
+      "start": "u_npu_axil_top.u_npu_top.u_vec_s16_to_fifo.vec_valid_num_col_q [0]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_write_guard.s_wstrb [1]"
+    },
+    {
+      "cells": 15,
+      "start": "u_npu_axil_top.u_npu_top.u_ia_loader.u_ctrl.ps_frame_final",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.rd_grant_client [0]"
+    },
+    {
+      "cells": 15,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.state [0]",
+      "end": null
+    },
+    {
+      "cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.state [0]",
+      "end": "u_npu_axil_top.u_npu_top.task_completion_pending"
+    },
+    {
+      "cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.word_addr [15]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.state [1]"
+    },
+    {
+      "cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.win_busy",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.prepared_tile_q [87]"
+    },
+    {
+      "cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_kernel_loader.cfg_command_mode",
+      "end": "u_npu_axil_top.u_npu_top.u_vec_requant.g_full.u_full.g_serial_arithmetic.u_group_buffer.stored_rows_q [8]"
+    },
+    {
+      "cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.win_req_cols [3]",
+      "end": "u_npu_axil_top.u_npu_top.shared_ram_capacity_fault"
+    },
+    {
+      "cells": 14,
+      "start": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_read_guard.state [0]",
+      "end": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_linear.wr_row_offset [0]"
+    }
+  ],
+  "rtl_explicit_lut_bram_dsp_instances": 0,
+  "reports": {
+    "arithmetic_selection.json": {
+      "sha256": "0e63f105085eeb68703088cb3fc4e0c33085e5d0df0d162ac41f8616e386c112",
+      "bytes": 69220
+    },
+    "arithmetic_validation.json": {
+      "sha256": "19a2b2140278f8bf4de9066670dab16bc3fd0ed57d37e4a8d49942b59d58a412",
+      "bytes": 31506
+    },
+    "cpu_validation.json": {
+      "sha256": "e255530140a6af3d6b53699ef95c991086904cefa1b64e057711d6250cbfc2c2",
+      "bytes": 2801
+    },
+    "npu_validation.json": {
+      "sha256": "95fcee66af806b7b67d4d932dc5a2a2ddd0833e387a41a2ed634a3fd6791910f",
+      "bytes": 8958
+    },
+    "soc_metrics.json": {
+      "sha256": "a45be41f8de3c898c29c846de527aa6ec4f5626251bf2295ab8ca0a8245b97b9",
+      "bytes": 278436
+    },
+    "source_hashes.json": {
+      "sha256": "f92f4515abd37d6138ba469afb9a7ae4216db7dfc99b4c023d6ff56cd50bfe61",
+      "bytes": 20282
+    },
+    "synthesis_manifest.json": {
+      "sha256": "9aeff2950544955585956ba39651c37a756cdc4676fb44d6cfc76eb933c5390d",
+      "bytes": 12524
+    },
+    "synthesis_stages.json": {
+      "sha256": "18a689e28735a1c15ff2b16eabe216277fcfe03346ae504ca15856b682880d00",
+      "bytes": 2126
+    }
+  }
+}
