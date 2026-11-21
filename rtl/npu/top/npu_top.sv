@@ -151,6 +151,8 @@ module npu_top #(
 `endif
     typedef enum logic [1:0] {AB_IDLE, AB_DRAIN, AB_RESET, AB_DONE} abort_t;
     abort_t abort_state;
+    // 中止资格与状态转换同时保存，DMA 接收控制直接读取该寄存结果。
+    (* keep = 1 *) logic abort_pending_q;
     wire core_rst_n;
     logic [1:0] abort_error_code;
     logic [31:0] conv_range_base[4];
@@ -329,7 +331,7 @@ module npu_top #(
         {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[2]);
     assign conv_shift_end_high = {1'b0, 8'(q_shift_pt >> 24)} +
         {1'b0, conv_parameter_bytes_low[31:24]} + 9'(conv_range_end_carry[3]);
-    wire abort_pending = abort_state != AB_IDLE;
+    wire abort_pending = abort_pending_q;
     assign core_rst_n = rst_n && (abort_state != AB_RESET);
 
 `ifdef GEMMORA_INT8_PROFILE
@@ -355,6 +357,7 @@ module npu_top #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             run_conv <= 1'b0; conv_cfg_q <= '0; abort_state <= AB_IDLE;
+            abort_pending_q <= 1'b0;
             ps_control_q <= '0;
             abort_error_code <= 2'b11;
 
@@ -368,6 +371,7 @@ module npu_top #(
             case (abort_state)
                 AB_IDLE: if (task_fault) begin
                     abort_state <= AB_DRAIN;
+                    abort_pending_q <= 1'b1;
                     abort_error_code <= (dma_bus_error || ((run_conv || run_vector) && conv_error))
                                         ? 2'b11 : 2'b10;
                 end
@@ -376,8 +380,15 @@ module npu_top #(
                     if (dma_idle && !conv_busy && operand_cache_idle) abort_state <= AB_RESET;
                 end
                 AB_RESET: abort_state <= AB_DONE;
-                AB_DONE: if (done_ready) begin abort_state <= AB_IDLE; run_conv <= 1'b0; end
-                default: abort_state <= AB_IDLE;
+                AB_DONE: if (done_ready) begin
+                    abort_state <= AB_IDLE;
+                    abort_pending_q <= 1'b0;
+                    run_conv <= 1'b0;
+                end
+                default: begin
+                    abort_state <= AB_IDLE;
+                    abort_pending_q <= 1'b0;
+                end
             endcase
         end
     end
