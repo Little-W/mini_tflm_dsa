@@ -1018,6 +1018,21 @@ module conv_windowed_cache #(
         lookup_read_request.set_index;
     lookup_read_word = fg_state==FG_MISS ? demand_addr[31:2] : lookup_read_request.address[31:2];
   end
+  logic [3:0][SI-1:0] lookup_candidate_set;
+  logic [1:0] lookup_candidate_select;
+  // 四个位置独立读取有效位，出队状态只选择已经形成的单比特结果。
+  assign lookup_candidate_set[0] = request_queue[request_head].set_index;
+  assign lookup_candidate_set[1] = request_queue[DQ_AW'(request_head + DQ_AW'(1))].set_index;
+  assign lookup_candidate_set[2] = incoming_request.set_index;
+  assign lookup_candidate_set[3] = bypass_q ? demand_fill_set : demand_set;
+  always_comb begin
+    lookup_candidate_select = request_count == 0 ? 2'd2 : 2'd0;
+    if (fg_state != FG_MISS && req_fire && request_count != 0) begin
+      if (request_count > DQ_CW'(1)) lookup_candidate_select = 2'd1;
+      else if (req_valid) lookup_candidate_select = 2'd2;
+    end
+    if (fg_state == FG_MISS) lookup_candidate_select = 2'd3;
+  end
   // 填充组号与查询快照在各自更新边沿同时形成匹配状态。
   // 返回阶段直接使用这一位结果，保持填充切换与快照暂停的原有周期关系。
   if (DEMAND_DEPTH == 1) begin : g_saved_fill_match
@@ -1357,9 +1372,10 @@ module conv_windowed_cache #(
     logic valid_i_wr_en;
     logic [SI-1:0] valid_i_wr_addr;
     logic [0:0] valid_i_wr_data, valid_i_wr_mask;
-    logic [5:0] valid_i_rd_en;
-    logic [5:0][SI-1:0] valid_i_rd_addr;
-    logic [5:0][0:0] valid_o_rd_data;
+    localparam int p_valid_read_ports = DEMAND_DEPTH > 1 ? 10 : 6;
+    logic [p_valid_read_ports-1:0] valid_i_rd_en;
+    logic [p_valid_read_ports-1:0][SI-1:0] valid_i_rd_addr;
+    logic [p_valid_read_ports-1:0][0:0] valid_o_rd_data;
     logic [5:0] valid_active;
 
     // 配置清除和填充结束共用一个写端口，填充期间屏蔽被替换行。
@@ -1384,15 +1400,31 @@ module conv_windowed_cache #(
       assign valid_read_value[0] = lookup_valid_q;
     end else begin : g_current_lookup_valid
       logic lookup_valid_q;
+      (* keep = "true" *) logic [3:0] lookup_candidate_valid;
       assign valid_i_rd_addr[0] = lookup_read_set;
-      // 有效位与请求在同一边沿保存，写入转发遵循存储器的过程条件。
+      for (genvar candidate = 0; candidate < 4; candidate++) begin : g_candidate
+        assign valid_i_rd_addr[6+candidate] = lookup_candidate_set[candidate];
+        always_comb begin
+          lookup_candidate_valid[candidate] = valid_o_rd_data[6+candidate][0];
+          if (valid_i_wr_en && valid_i_wr_addr == lookup_candidate_set[candidate])
+            lookup_candidate_valid[candidate] = valid_i_wr_data[0];
+        end
+      end
+      // 每个候选位置独立处理同拍写入，时钟边沿仅保存选择结果。
       always_ff @(posedge clk) begin
         if (!rst_n) begin
         end else if (cfg_valid && cfg_ready) begin
-        end else if (valid_i_wr_en && valid_i_wr_addr == lookup_read_set) begin
-          lookup_valid_q <= valid_i_wr_data[0];
         end else begin
-          lookup_valid_q <= valid_o_rd_data[0][0];
+          lookup_valid_q <= lookup_candidate_valid[lookup_candidate_select];
+`ifndef SYNTHESIS
+          // 未知地址按完整数组索引读取，保持部分未知索引的四态语义。
+          if ((^{fg_state, req_fire, request_count, req_valid, request_head,
+                 lookup_candidate_set, valid_i_wr_en, valid_i_wr_addr, valid_i_wr_data}) === 1'bx) begin
+            if (valid_i_wr_en && valid_i_wr_addr == lookup_read_set)
+              lookup_valid_q <= valid_i_wr_data[0];
+            else lookup_valid_q <= valid_o_rd_data[0][0];
+          end
+`endif
         end
       end
       assign valid_read_value[0] = lookup_valid_q;
@@ -1434,7 +1466,7 @@ module conv_windowed_cache #(
     assign valid_hint[metadata_way] = valid_active[5];
     regfile #(
       .p_data_width(1), .p_depth(SETS), .p_addr_width(SI),
-      .p_write_unit(1), .p_read_ports(6), .p_sync_read(1'b0)
+      .p_write_unit(1), .p_read_ports(p_valid_read_ports), .p_sync_read(1'b0)
     ) u_valid (
       .clk(clk), .i_wr_en(valid_i_wr_en), .i_wr_addr(valid_i_wr_addr),
       .i_wr_data(valid_i_wr_data), .i_wr_mask(valid_i_wr_mask),

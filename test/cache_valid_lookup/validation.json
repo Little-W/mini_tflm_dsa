@@ -1,0 +1,233 @@
+{
+  "passed": true,
+  "reference_commit": "5ce30e267f4323cacab9427c686349658a225b41",
+  "reference_source_sha256": "3a1cd609d1a10ca0f70466fb12e19ea77b2ba6beb32ee38df53f5949082e3c61",
+  "current_source_sha256": "b6437babb95665352d49384128092d63464b4b8521526a02d67c73fe53fd6dc7",
+  "interface_and_cycle_behavior_preserved": true,
+  "parameters": {
+    "SETS": 16,
+    "WAYS": 2,
+    "LINE_BYTES": 128,
+    "BUS_WIDTH": 64,
+    "READ_WIDTH": 64,
+    "DEMAND_DEPTH": 2,
+    "CACHE_POLICY": 3,
+    "p_defer_retire_shift": 1
+  },
+  "formal": {
+    "profiles": [
+      {
+        "parameters": {
+          "SETS": 2,
+          "WAYS": 2,
+          "LINE_BYTES": 16,
+          "DEMAND_DEPTH": 2,
+          "BUS_WIDTH": 32,
+          "READ_WIDTH": 32,
+          "p_defer_retire_shift": 0
+        },
+        "passed": true,
+        "equivalent_bits": 7063,
+        "unproven_bits": 0,
+        "script_sha256": "17bd6693f7e50393b5e1321c540f7af16dfb108f864c3ed375a135421214cf41",
+        "log_sha256": "df6ba277593efca41fa6e0106e6cc977f9ca537005619b80b2623217bb5650bb"
+      },
+      {
+        "parameters": {
+          "SETS": 16,
+          "WAYS": 2,
+          "LINE_BYTES": 128,
+          "DEMAND_DEPTH": 2,
+          "BUS_WIDTH": 64,
+          "READ_WIDTH": 64,
+          "p_defer_retire_shift": 1
+        },
+        "passed": true,
+        "equivalent_bits": 43894,
+        "unproven_bits": 0,
+        "script_sha256": "757b65e7372fded63b4d3bf06d1c9ba2dabe57d4c04ca6de35914a6ca21a3ec7",
+        "log_sha256": "72ef1aee072245b7824b1f0575809a0c06be1eb5d0c25a5845f435bfd35a8f65"
+      },
+      {
+        "parameters": {
+          "SETS": 4,
+          "WAYS": 1,
+          "LINE_BYTES": 32,
+          "DEMAND_DEPTH": 4,
+          "BUS_WIDTH": 64,
+          "READ_WIDTH": 32,
+          "p_defer_retire_shift": 0
+        },
+        "passed": true,
+        "equivalent_bits": 5459,
+        "unproven_bits": 0,
+        "script_sha256": "a25dbac879b9d26ec49f38fc83e92295b94992ffbde6ee32e457c4d430d12c68",
+        "log_sha256": "cd7ad9e8c3351167bdd72e436d566c59d13a85fdfc56e296d9982d92b860533b"
+      }
+    ],
+    "equivalent_bits": 56416,
+    "inputs_constrained": false,
+    "all_storage_state_and_consumers_checked": true
+  },
+  "four_state": {
+    "profiles": 4,
+    "checks": 54400,
+    "known_result_checks": 52050,
+    "four_state_cycles": 38400
+  },
+  "cache_transactions": {
+    "profiles": [
+      {
+        "depth": 1,
+        "ways": 2,
+        "sets": 16,
+        "tests": 12,
+        "accepted": 178,
+        "completed": 177,
+        "cancelled": 1,
+        "peak_outstanding": 1,
+        "warm_accept_interval": 1,
+        "warm_return_interval": 1,
+        "demand_depth": 1
+      },
+      {
+        "depth": 2,
+        "ways": 2,
+        "sets": 16,
+        "tests": 12,
+        "accepted": 185,
+        "completed": 183,
+        "cancelled": 2,
+        "peak_outstanding": 2,
+        "warm_accept_interval": 1,
+        "warm_return_interval": 1,
+        "demand_depth": 2
+      }
+    ]
+  },
+  "frontend": {
+    "configuration_source": "candidate_soc_r9",
+    "jobs": 84,
+    "continuous_descriptors": true,
+    "build_jobs": 1,
+    "configurations": [
+      {
+        "size": 16,
+        "bus_width": 64,
+        "lanes": 8,
+        "windowed": false,
+        "passed": true,
+        "warnings": [
+          "%Warning-PINMISSING: /tmp/timing_analysis_cache_selected_frontend_source/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "FRONTEND_CONTINUOUS_PASS blocked=203008 concurrent=32810 finish_captures=35 capacity=2",
+          "RTL_FRONTEND_PASS jobs=42 cycles=216837 cache_sets=16 cache_ways=2 line_bytes=128 tile_path=0 (not upstream full NPU)"
+        ]
+      },
+      {
+        "size": 16,
+        "bus_width": 64,
+        "lanes": 8,
+        "windowed": true,
+        "passed": true,
+        "warnings": [
+          "%Warning-PINMISSING: /tmp/timing_analysis_cache_selected_frontend_source/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "FRONTEND_CONTINUOUS_PASS blocked=153171 concurrent=32745 finish_captures=35 capacity=2",
+          "RTL_FRONTEND_PASS jobs=42 cycles=167025 cache_sets=16 cache_ways=2 line_bytes=128 tile_path=0 (not upstream full NPU)"
+        ]
+      },
+      {
+        "control": true,
+        "passed": true,
+        "warnings": [
+          "%Warning-PINMISSING: /tmp/timing_analysis_cache_selected_frontend_source/rtl/npu/conv/conv_ia_tile_path.sv:66:58: Instance has missing pin: 'wr_last'"
+        ],
+        "summary": [
+          "RTL_CONTROL_PASS checks=23 padding_writes=16 cycles=140"
+        ]
+      }
+    ]
+  },
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 3288,
+        "distributed_ram_lut_sites_nominal": 420,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3708,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2461,
+        "dsp48e1": 21,
+        "ramb36e1": 0,
+        "ramb18e1": 9,
+        "carry4": 31,
+        "unclassified_distributed_ram_types": []
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 11,
+        "graph_complete": true,
+        "met": false,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 3439,
+        "distributed_ram_lut_sites_nominal": 420,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3859,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 2461,
+        "dsp48e1": 21,
+        "ramb36e1": 0,
+        "ramb18e1": 9,
+        "carry4": 31,
+        "unclassified_distributed_ram_types": []
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 10,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      }
+    }
+  },
+  "reports": {
+    "formal_production": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/timing_analysis_completed_20261122/timing_analysis_cache_valid_ports_formal/summary.json",
+      "sha256": "719185bd133dd3e8cafbe669da6e07547530a3cfcab0c93d62e20a2f97445a74"
+    },
+    "formal_depth4": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/cache_valid_lookup/results/extra_formal/summary.json",
+      "sha256": "3bcf3cc4f4dd7e8d8bc37b124554792f5dcf70838214f2c6057182a0e1cd6b0e"
+    },
+    "four_state": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/cache_valid_lookup/results/public_four_state/summary.json",
+      "sha256": "e70f79c9921e9ef9915f3cae806d583655022af1a89847bed884850960b29460"
+    },
+    "numeric_cache": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/cache_valid_lookup/results/numeric/summary.json",
+      "sha256": "8ed24dec9099cfe24cf3e71d73a0b1460717c24c597031fd54f54755ed44954c"
+    },
+    "numeric_frontend": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/cache_valid_lookup/results/frontend/summary.json",
+      "sha256": "8e79edf86a3e24cf6b6c4d65e021a1b55291a3b91a863b5194b24a201b374b9e"
+    },
+    "reference_synthesis": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/windowed_cache_r1/synthesis_r8/parallel_grouped/metrics.json",
+      "sha256": "8f0036b1a0d7594b2eeceb8a37abef0926c0c583edecfba3c04697c0f1331291"
+    },
+    "current_synthesis": {
+      "path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/timing_analysis_completed_20261122/timing_analysis_cache_valid_ports_measure/parallel_valid_ports/metrics.json",
+      "sha256": "113c2e94dea4c6552ffed8bf9de08434dddc6df7130f2e45cb0d724c335842fa"
+    }
+  },
+  "test_script_sha256": "bf9b0cde146df44cd999649a728fc51426e8225479eb8f51834282b39e10f984"
+}
