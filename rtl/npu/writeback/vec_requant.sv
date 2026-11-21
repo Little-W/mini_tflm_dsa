@@ -1163,6 +1163,12 @@ module vec_requant_full #(
   logic signed [31:0] ch_product_multiplier_lane_r[VLEN];
   logic [6:0] ch_product_amount_lane_r[VLEN];
   localparam int PARAM_BANKS = BUS_WIDTH / 32;
+  localparam int p_serial_read_ports = (p_compute_lanes < VLEN) ? p_compute_lanes : 0;
+  logic [VLEN_IDX_W-1:0] serial_element_index [p_compute_lanes];
+  logic signed [31:0] serial_product_multiplier [p_compute_lanes];
+  logic [6:0] serial_product_amount [p_compute_lanes];
+  wire signed [31:0] serial_bank_multiplier [PARAM_BANKS][p_compute_lanes];
+  wire [6:0] serial_bank_amount [PARAM_BANKS][p_compute_lanes];
   wire signed [31:0] ch_multiplier_is_read [PARAM_BANKS];
   wire signed [31:0] ch_shift_is_read [PARAM_BANKS];
   wire signed [31:0] ch_product_multiplier_is_read[PARAM_BANKS];
@@ -1292,6 +1298,7 @@ module vec_requant_full #(
   if (((PARAM_BANKS & (PARAM_BANKS - 1)) == 0) && (PARAM_BANKS <= VLEN) &&
       ((VLEN & (VLEN - 1)) == 0)) begin : g_ws_bank_write
     localparam int p_bank_depth = VLEN / PARAM_BANKS;
+    localparam int p_read_ports = p_bank_depth + p_serial_read_ports;
     localparam int p_bank_addr_width = (p_bank_depth <= 1) ? 1 : $clog2(p_bank_depth);
 
     for (genvar bank = 0; bank < PARAM_BANKS; bank++) begin : g_bank
@@ -1304,15 +1311,15 @@ module vec_requant_full #(
       logic multiplier_i_wr_en, multiplier_i_wr_mask;
       logic [p_bank_addr_width-1:0] multiplier_i_wr_addr;
       logic [63:0] multiplier_i_wr_data;
-      logic [p_bank_depth-1:0] multiplier_i_rd_en;
-      logic [p_bank_depth-1:0][p_bank_addr_width-1:0] multiplier_i_rd_addr;
-      logic [p_bank_depth-1:0][63:0] multiplier_o_rd_data;
+      logic [p_read_ports-1:0] multiplier_i_rd_en;
+      logic [p_read_ports-1:0][p_bank_addr_width-1:0] multiplier_i_rd_addr;
+      logic [p_read_ports-1:0][63:0] multiplier_o_rd_data;
       logic shift_i_wr_en, shift_i_wr_mask;
       logic [p_bank_addr_width-1:0] shift_i_wr_addr;
       logic [38:0] shift_i_wr_data;
-      logic [p_bank_depth-1:0] shift_i_rd_en;
-      logic [p_bank_depth-1:0][p_bank_addr_width-1:0] shift_i_rd_addr;
-      logic [p_bank_depth-1:0][38:0] shift_o_rd_data;
+      logic [p_read_ports-1:0] shift_i_rd_en;
+      logic [p_read_ports-1:0][p_bank_addr_width-1:0] shift_i_rd_addr;
+      logic [p_read_ports-1:0][38:0] shift_o_rd_data;
 
       // bank 数为二的幂时，一个总线拍恰好为每个 bank 提供一个字。
       // 尾拍有效字数只控制写使能，数据选择可由全部通道共用。
@@ -1355,9 +1362,20 @@ module vec_requant_full #(
         assign ch_product_amount_lane_r[p_lane] = shift_o_rd_data[row][38:32];
       end
 
+      // 串行计算直接读取当前批次的参数，读地址随批次选择独立存储端口。
+      for (genvar lane = 0; lane < p_serial_read_ports; lane++) begin : g_serial_read
+        assign multiplier_i_rd_addr[p_bank_depth + lane] =
+            p_bank_addr_width'(serial_element_index[lane] / PARAM_BANKS);
+        assign shift_i_rd_addr[p_bank_depth + lane] =
+            p_bank_addr_width'(serial_element_index[lane] / PARAM_BANKS);
+        assign serial_bank_multiplier[bank][lane] =
+            $signed(multiplier_o_rd_data[p_bank_depth + lane][63:32]);
+        assign serial_bank_amount[bank][lane] = shift_o_rd_data[p_bank_depth + lane][38:32];
+      end
+
       regfile #(
           .p_data_width(64), .p_depth(p_bank_depth), .p_addr_width(p_bank_addr_width),
-          .p_write_unit(64), .p_read_ports(p_bank_depth), .p_sync_read(1'b0)
+          .p_write_unit(64), .p_read_ports(p_read_ports), .p_sync_read(1'b0)
       ) u_multiplier (
           .clk(clk), .i_wr_en(multiplier_i_wr_en), .i_wr_addr(multiplier_i_wr_addr),
           .i_wr_data(multiplier_i_wr_data), .i_wr_mask(multiplier_i_wr_mask),
@@ -1365,14 +1383,24 @@ module vec_requant_full #(
       );
       regfile #(
           .p_data_width(39), .p_depth(p_bank_depth), .p_addr_width(p_bank_addr_width),
-          .p_write_unit(39), .p_read_ports(p_bank_depth), .p_sync_read(1'b0)
+          .p_write_unit(39), .p_read_ports(p_read_ports), .p_sync_read(1'b0)
       ) u_shift (
           .clk(clk), .i_wr_en(shift_i_wr_en), .i_wr_addr(shift_i_wr_addr),
           .i_wr_data(shift_i_wr_data), .i_wr_mask(shift_i_wr_mask),
           .i_rd_en(shift_i_rd_en), .i_rd_addr(shift_i_rd_addr), .o_rd_data(shift_o_rd_data)
       );
     end
+    for (genvar lane = 0; lane < p_serial_read_ports; lane++) begin : g_serial_parameter
+      assign serial_product_multiplier[lane] =
+          serial_bank_multiplier[int'(serial_element_index[lane]) % PARAM_BANKS][lane];
+      assign serial_product_amount[lane] =
+          serial_bank_amount[int'(serial_element_index[lane]) % PARAM_BANKS][lane];
+    end
   end else begin : g_ws_direct_write
+    for (genvar lane = 0; lane < p_serial_read_ports; lane++) begin : g_serial_parameter
+      assign serial_product_multiplier[lane] = ch_product_multiplier_lane_r[serial_element_index[lane]];
+      assign serial_product_amount[lane] = ch_product_amount_lane_r[serial_element_index[lane]];
+    end
     // 其他参数组合按字顺序更新；同地址重复写入由较后的有效字覆盖。
     always_ff @(posedge clk) begin
       for (int word = 0; word < BUS_WIDTH/32; word++) begin
@@ -2117,6 +2145,7 @@ module vec_requant_full #(
       logic [6:0] lane_i_amount;
 
       assign element_index = VLEN_IDX_W'(batch_q * p_compute_lanes + lane);
+      assign serial_element_index[lane] = element_index;
       assign lane_i_en = 1'b1;
       assign lane_i_clear = init_cfg;
       assign lane_i_valid = issue_valid;
@@ -2125,9 +2154,9 @@ module vec_requant_full #(
       assign lane_i_s16 = s16_mode;
       assign lane_i_value = row_o_data[element_index];
       assign lane_i_multiplier = ws_parameters_select ?
-          ch_product_multiplier_lane_r[element_index] : common_multiplier;
+          serial_product_multiplier[lane] : common_multiplier;
       assign lane_i_amount = ws_parameters_select ?
-          ch_product_amount_lane_r[element_index] : common_amount;
+          serial_product_amount[lane] : common_amount;
       assign lane_i_dst_offset = dst_offset_r;
       assign lane_i_activation_min = activation_min_r;
       assign lane_i_activation_max = activation_max_r;
