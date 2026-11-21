@@ -290,6 +290,15 @@ module conv_im2col_frontend #(
   logic [5:0] incoming_fast_i_flags;
   logic [1:0] incoming_position_equal;
   logic incoming_q_equal;
+  logic [3:0][32:0] incoming_tap_match_i_a, incoming_tap_match_i_b;
+  logic [3:0][32:0] incoming_tap_match_i_target;
+  logic [3:0] incoming_tap_match_i_carry_in, incoming_tap_match_o_equal;
+  logic [31:0] incoming_tile_match_i_a, incoming_tile_match_i_b, incoming_tile_match_i_target;
+  logic incoming_tile_match_i_carry_in, incoming_tile_match_o_equal;
+  logic signed [COORD_W-1:0] window_forward_ix, window_backward_ix, window_previous_iy;
+  logic signed [COORD_W-1:0] incoming_skip_ix, incoming_skip_iy;
+  logic window_forward_padding, window_backward_padding, window_previous_padding;
+  logic incoming_skip_padding, window_shift_padding;
   logic channel_descriptor_valid, channel_accept_fire, tile_ready_context;
   logic [15:0] channel_update, channel_value;
   logic [5:0] channel_accept_i_flags;
@@ -832,8 +841,40 @@ module conv_im2col_frontend #(
   assign incoming_word_i_carry_in = !incoming_q_equal &&
     (incoming_tap_wrap ? incoming_wrap_low_sum[p_word_shift] : incoming_step_low_sum[p_word_shift]);
   // 三列卷积在边缘跳过一个填充位置时，两个核位置的增量仍可直接递推。
-  assign incoming_skip_tap = c.kernel_w == 16'd3 &&
-      {1'b0, tile_q0} == next_group_q + 33'(c.group_c);
+  // 核位置匹配直接检查各位进位一致性，描述符比较不经过串行加法器。
+  assign incoming_tap_match_i_a[0] = next_group_q;
+  assign incoming_tap_match_i_a[1] = {1'b0, window_next_q};
+  assign incoming_tap_match_i_a[2] = {1'b0, tile_q0};
+  assign incoming_tap_match_i_a[3] = {1'b0, tile_q0};
+  assign incoming_tap_match_i_b[0] = {17'd0, c.group_c};
+  assign incoming_tap_match_i_b[1] = {17'd0, c.group_c};
+  assign incoming_tap_match_i_b[2] = {17'd0, c.group_c};
+  assign incoming_tap_match_i_b[3] = {16'd0, c.group_c, 1'b0};
+  assign incoming_tap_match_i_target[0] = {1'b0, tile_q0};
+  assign incoming_tap_match_i_target[1] = {1'b0, tile_q0};
+  assign incoming_tap_match_i_target[2] = {1'b0, window_next_q};
+  assign incoming_tap_match_i_target[3] = {1'b0, window_next_q};
+  assign incoming_tap_match_i_carry_in = '0;
+  for (genvar match_index = 0; match_index < 4; match_index++) begin : g_incoming_tap_match
+    add_equal #(.p_width(33)) u_match (
+      .i_a(incoming_tap_match_i_a[match_index]),
+      .i_b(incoming_tap_match_i_b[match_index]),
+      .i_target(incoming_tap_match_i_target[match_index]),
+      .i_carry_in(incoming_tap_match_i_carry_in[match_index]),
+      .o_equal(incoming_tap_match_o_equal[match_index])
+    );
+  end
+  // 空间分块起点保留三十二位模加结果，溢出行为与描述符地址宽度一致。
+  assign incoming_tile_match_i_a = p0;
+  assign incoming_tile_match_i_b = 32'(rows_q);
+  assign incoming_tile_match_i_target = tile_p0;
+  assign incoming_tile_match_i_carry_in = 1'b0;
+  add_equal #(.p_width(32)) u_incoming_tile_match (
+    .i_a(incoming_tile_match_i_a), .i_b(incoming_tile_match_i_b),
+    .i_target(incoming_tile_match_i_target), .i_carry_in(incoming_tile_match_i_carry_in),
+    .o_equal(incoming_tile_match_o_equal)
+  );
+  assign incoming_skip_tap = c.kernel_w == 16'd3 && incoming_tap_match_o_equal[0];
   assign incoming_q_fast = incoming_q_equal || (&incoming_group_equal[2]) || incoming_skip_tap;
   // 坐标资格与单行条件提前合并，晚到的组范围保持单级接收选择。
   assign incoming_fast_i_flags[0] = c.windowed && row_base_valid && coordinate_address_valid;
@@ -845,13 +886,13 @@ module conv_im2col_frontend #(
   // 相邻空间位置可从同一核行的前后一个有效位置开始，列边界只调整水平步长。
   assign incoming_position_same_tap = tile_q0 == window_next_q;
   assign incoming_position_forward_tap = window_next_kx < last_kernel_col_q &&
-      {1'b0,tile_q0} == {1'b0,window_next_q}+33'(c.group_c);
+      incoming_tap_match_o_equal[1];
   assign incoming_position_backward_tap = window_next_kx != 16'd0 &&
-      {1'b0,window_next_q} == {1'b0,tile_q0}+33'(c.group_c);
+      incoming_tap_match_o_equal[2];
   // 三列卷积从顶部边缘进入下一输出行时，首个有效核位置向前移动两个位置。
   assign incoming_position_previous_row = c.kernel_w == 16'd3 &&
       window_next_kx == 16'd0 && window_next_ky != 16'd0 &&
-      {1'b0,window_next_q} == {1'b0,tile_q0}+(33'(c.group_c)<<1);
+      incoming_tap_match_o_equal[3];
   assign incoming_next_position_fast = CACHE_POLICY == 3 && c.windowed && window_next_valid &&
       tile_rows == RW'(1) && tile_p0 == window_next_p &&
       (incoming_position_same_tap || incoming_position_forward_tap ||
@@ -861,7 +902,7 @@ module conv_im2col_frontend #(
   // 连续空间分块继承末行的下一坐标，归约起点变化时继续执行通用解码。
   assign incoming_next_tile_fast = CACHE_POLICY == 3 && c.windowed && !geometry_tile &&
       row_base_valid && coordinate_address_valid && tile_q0 == q0 &&
-      tile_p0 == p0 + 32'(rows_q) &&
+      incoming_tile_match_o_equal &&
       ({1'b0, ch0_q} + (tile_cols == '0 ? 17'(SIZE) : 17'(tile_cols))) <= {1'b0, c.group_c};
   assign incoming_fast = incoming_same_position_fast || incoming_next_position_fast || incoming_next_tile_fast;
 
@@ -894,6 +935,33 @@ module conv_im2col_frontend #(
       window_next_channel_range <= group_range_next[1];
     end
   end
+  // 各候选坐标和填充状态独立计算，晚到的描述符仅选择计算结果。
+  // 高位检查保留完整的有符号坐标范围，低十六位比较有效图像尺寸。
+  assign window_forward_ix = window_next_ix + $signed(COORD_W'(c.dilation_w));
+  assign window_backward_ix = window_next_ix - $signed(COORD_W'(c.dilation_w));
+  assign window_previous_iy = window_next_iy - $signed(COORD_W'(c.dilation_h));
+  assign window_forward_padding = (|window_forward_ix[COORD_W-1:16]) ||
+    (|window_next_iy[COORD_W-1:16]) || window_forward_ix[15:0] >= c.input_w ||
+    window_next_iy[15:0] >= c.input_h;
+  assign window_backward_padding = (|window_backward_ix[COORD_W-1:16]) ||
+    (|window_next_iy[COORD_W-1:16]) || window_backward_ix[15:0] >= c.input_w ||
+    window_next_iy[15:0] >= c.input_h;
+  assign window_previous_padding = (|window_forward_ix[COORD_W-1:16]) ||
+    (|window_previous_iy[COORD_W-1:16]) || window_forward_ix[15:0] >= c.input_w ||
+    window_previous_iy[15:0] >= c.input_h;
+  assign incoming_skip_ix = kx0_q != 16'd0 ?
+    row_base_ix + $signed(COORD_W'(tap_wrap_dx)) + $signed(COORD_W'(c.dilation_w)) :
+    row_base_ix + ($signed(COORD_W'(c.dilation_w)) <<< 1);
+  assign incoming_skip_iy = kx0_q != 16'd0 ?
+    row_base_iy + $signed(COORD_W'(c.dilation_h)) : row_base_iy;
+  assign incoming_skip_padding = (|incoming_skip_ix[COORD_W-1:16]) ||
+    (|incoming_skip_iy[COORD_W-1:16]) || incoming_skip_ix[15:0] >= c.input_w ||
+    incoming_skip_iy[15:0] >= c.input_h;
+  // 同核位置保留已保存的填充标志，其余候选维持前一行、前向、后向的选择次序。
+  assign window_shift_padding = incoming_position_same_tap ? window_next_padding :
+    incoming_position_previous_row ? window_previous_padding :
+    incoming_position_forward_tap ? window_forward_padding : window_backward_padding;
+
   always_comb begin
     incoming_tap=tap0;incoming_ch=ch0;incoming_kx=kx0;incoming_ky=ky0;
     incoming_ix=row_base_ix;incoming_iy=row_base_iy;
@@ -904,53 +972,47 @@ module conv_im2col_frontend #(
       incoming_kx={16'd0,window_next_kx};incoming_ky={16'd0,window_next_ky};
       incoming_ix=window_next_ix;incoming_iy=window_next_iy;
       incoming_pixel=window_next_pixel;incoming_addr=window_next_addr;
-      incoming_group_base=window_next_group_base;incoming_padding=window_next_padding;
+      incoming_group_base=window_next_group_base;incoming_padding=window_shift_padding;
       if (incoming_position_previous_row) begin
         incoming_tap=window_next_tap-32'd2;
         incoming_kx=32'd1;incoming_ky={16'd0,window_next_ky}-32'd1;
-        incoming_ix=window_next_ix+$signed(COORD_W'(c.dilation_w));
-        incoming_iy=window_next_iy-$signed(COORD_W'(c.dilation_h));
+        incoming_ix=window_forward_ix;
+        incoming_iy=window_previous_iy;
         incoming_pixel=window_next_pixel-32'($unsigned(tap_wrap_pixels))-32'(c.dilation_w);
         incoming_addr=window_next_addr-tap_wrap_bytes-tap_step_bytes;
         incoming_group_base=window_next_group_base-tap_wrap_bytes-tap_step_bytes;
       end else if (incoming_position_forward_tap) begin
         incoming_tap=window_next_tap+32'd1;incoming_kx={16'd0,window_next_kx}+32'd1;
-        incoming_ix=window_next_ix+$signed(COORD_W'(c.dilation_w));
+        incoming_ix=window_forward_ix;
         incoming_pixel=window_next_pixel+32'(c.dilation_w);
         incoming_addr=window_next_addr+tap_step_bytes;
         incoming_group_base=window_next_group_base+tap_step_bytes;
       end else if (incoming_position_backward_tap) begin
         incoming_tap=window_next_tap-32'd1;incoming_kx={16'd0,window_next_kx}-32'd1;
-        incoming_ix=window_next_ix-$signed(COORD_W'(c.dilation_w));
+        incoming_ix=window_backward_ix;
         incoming_pixel=window_next_pixel-32'(c.dilation_w);
         incoming_addr=window_next_addr-tap_step_bytes;
         incoming_group_base=window_next_group_base-tap_step_bytes;
       end
-      if (!incoming_position_same_tap)
-        incoming_padding=incoming_ix<0 || incoming_iy<0 ||
-            incoming_ix>=$signed(COORD_W'(c.input_w)) || incoming_iy>=$signed(COORD_W'(c.input_h));
     end else if (incoming_next_tile_fast) begin
       incoming_ix=next_row_ix;incoming_iy=next_row_iy;
       incoming_pixel=next_row_pixel;incoming_addr=next_row_addr;
       incoming_group_base=next_row_group_base;incoming_padding=next_row_padding;
     end else if (incoming_skip_tap) begin
       incoming_tap=tap0+32'd2;
+      incoming_ix=incoming_skip_ix;incoming_iy=incoming_skip_iy;
+      incoming_padding=incoming_skip_padding;
       if (kx0_q!=16'd0) begin
         incoming_kx=kx0-32'd1;incoming_ky=ky0+32'd1;
-        incoming_ix=row_base_ix+$signed(COORD_W'(tap_wrap_dx))+$signed(COORD_W'(c.dilation_w));
-        incoming_iy=row_base_iy+$signed(COORD_W'(c.dilation_h));
         incoming_pixel=row_base_pixel+32'($unsigned(tap_wrap_pixels))+32'(c.dilation_w);
         incoming_addr=row_base_addr+tap_wrap_bytes+tap_step_bytes;
         incoming_group_base=row_group_base+tap_wrap_bytes+tap_step_bytes;
       end else begin
         incoming_kx=32'd2;
-        incoming_ix=row_base_ix+($signed(COORD_W'(c.dilation_w))<<<1);
         incoming_pixel=row_base_pixel+(32'(c.dilation_w)<<1);
         incoming_addr=row_base_addr+(tap_step_bytes<<1);
         incoming_group_base=row_group_base+(tap_step_bytes<<1);
       end
-      incoming_padding=incoming_ix<0 || incoming_iy<0 ||
-          incoming_ix>=$signed(COORD_W'(c.input_w)) || incoming_iy>=$signed(COORD_W'(c.input_h));
     end else if (!incoming_q_equal) begin
       incoming_tap=tap0+1;
       if (incoming_tap_wrap) begin

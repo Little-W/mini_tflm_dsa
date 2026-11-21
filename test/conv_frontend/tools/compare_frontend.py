@@ -68,6 +68,8 @@ final $display("FRONTEND_COMPARE_PASS instance=%m cycles=%0d",compared_cycles);
 
 
 def widen_memory(source):
+    if re.search(r"parameter\s+int[^;]*\bBUS_WIDTH\s*=", source):
+        return source
     source = source.replace('parameter int SIZE=16, LANES=2, CACHE_POLICY=3;',
         'parameter int SIZE=16, LANES=2, CACHE_POLICY=3, BUS_WIDTH=32;\n'
         '  localparam int BUS_BYTES=BUS_WIDTH/8, BUS_SHIFT=$clog2(BUS_BYTES);')
@@ -90,8 +92,23 @@ def run(command, log, timeout=240):
 def reviewed_warnings(log):
     warnings = [line for line in log.read_text().splitlines() if line.startswith('%Warning')]
     reviewed = {'UNUSEDSIGNAL', 'UNUSEDPARAM', 'BLKSEQ', 'PROCASSINIT', 'SYNCASYNCNET'}
+    def expected_constant_count(line):
+        match = re.match(r"%Warning-CMPCONST: (.*conv_read_cache\.sv):(\d+):", line)
+        if match is None:
+            return False
+        statement = Path(match[1]).read_text().splitlines()[int(match[2]) - 1].strip()
+        # 单个需求名额使用一位计数器，保留参数化队列的上界检查。
+        return statement in {
+            "if (request_count > DQ_CW'(1))",
+            "(request_count > DQ_CW'(1) && lookup_next_work_match);",
+            "assert(outstanding_count<=DQ_CW'(DEMAND_DEPTH));",
+            "assert(request_count<=DQ_CW'(DEMAND_DEPTH));",
+            "assert(response_count<=DQ_CW'(DEMAND_DEPTH));",
+        }
+
     unexpected = [line for line in warnings
                   if line.split(':', 1)[0].removeprefix('%Warning-') not in reviewed
+                  and not expected_constant_count(line)
                   and not (line.startswith('%Warning-PINMISSING:') and
                            '/rtl/npu/conv/conv_ia_tile_path.sv:' in line and
                            line.endswith("pin: 'wr_last'"))]

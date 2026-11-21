@@ -191,7 +191,7 @@ module conv_next_use_predictor (
       ($unsigned(ny_s0) & 34'(h_mask_q))==34'd0 &&
       ($unsigned(nx_s0) & 34'(w_mask_q))==34'd0 &&
       $unsigned(ny_s0)<34'(y_limit_q) && $unsigned(nx_s0)<34'(x_limit_q);
-    last_tap = ky_q==kh_q-16'd1 && kx_q==kw_q-16'd1;
+    last_tap = 16'(ky_q)==kh_q-16'd1 && 16'(kx_q)==kw_q-16'd1;
     // 候选比较与有效性判断并行，无效候选直接保留当前最早访问位置。
     best_next = candidate_good_s6 && rank_s6<best_q ? rank_s6 : best_q;
   end
@@ -276,7 +276,7 @@ module conv_next_use_predictor (
           mul_y_s0<=32'(21'(ky_q)*21'(dh_q));mul_x_s0<=32'(21'(kx_q)*21'(dw_q));
           tap_s0<=tap_index_q;tap_index_q<=tap_index_q+5'd1;
           if (last_tap) issue_complete<=1;
-          else if (kx_q==kw_q-16'd1) begin kx_q<=0;ky_q<=ky_q+5'd1;end
+          else if (16'(kx_q)==kw_q-16'd1) begin kx_q<=0;ky_q<=ky_q+5'd1;end
           else kx_q<=kx_q+5'd1;
         end
         if (pipe_valid[0]) begin

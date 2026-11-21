@@ -1,0 +1,175 @@
+{
+  "passed": true,
+  "reference_commit": "4dee27ffec4dc891daf2681379f8b3fd27fd41f2",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_frontend.sv": "da0ee19122ff884f855d8f009a4bf2579893a7bef4a85abd2a7c43b473c695ae",
+    "rtl/npu/dma/cache/conv_read_cache.sv": "9681455256f2dd991b9eb716efa1ce5f8e23e6e92a2bf965a91291e41443e670",
+    "rtl/npu/dma/cache/conv_next_use_predictor.sv": "a387a762037be53a9c2f56dfdb8baa7676116922c68c457140436d501a667a15"
+  },
+  "formal": {
+    "passed": true,
+    "compared_output_bits": 338,
+    "inputs_constrained": false,
+    "cases": [
+      {
+        "size": 4,
+        "cache_policy": 0,
+        "passed": true,
+        "log_sha256": "f85a8c6c89b16c2ef0b58d8ba03917fc0dbfb3f528c1d82a7768917c60a421df"
+      },
+      {
+        "size": 4,
+        "cache_policy": 3,
+        "passed": true,
+        "log_sha256": "cfceee399cd81b347c55e54a70a64995b0a2b5794fb7c2bf1d4f3da7921a8727"
+      },
+      {
+        "size": 16,
+        "cache_policy": 0,
+        "passed": true,
+        "log_sha256": "50654af581513106866765b3c3bc9ae6278aa9fde2e304dd4e4a22df6b339374"
+      },
+      {
+        "size": 16,
+        "cache_policy": 3,
+        "passed": true,
+        "log_sha256": "87a3d11f6a6fbd70f0bc0aaa2e0ef02a80378f2bc5634d6ec66b44a0e90ebaf1"
+      },
+      {
+        "size": 64,
+        "cache_policy": 0,
+        "passed": true,
+        "log_sha256": "d99f732dcda62843a374765dfe72c9d8d2681c3fd101703f7375658928610787"
+      },
+      {
+        "size": 64,
+        "cache_policy": 3,
+        "passed": true,
+        "log_sha256": "8947f9ad8e780d6d91f95bd792a933bc2f949519e3299ee7c481ebfcebaeb27b"
+      }
+    ]
+  },
+  "frontend": {
+    "passed": true,
+    "configurations": [
+      {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "jobs": 40,
+        "compared_cycles": 1077427,
+        "compared_public_outputs": 19
+      },
+      {
+        "SIZE": 8,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "jobs": 40,
+        "compared_cycles": 510263,
+        "compared_public_outputs": 19
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 0,
+        "passed": true,
+        "jobs": 40,
+        "compared_cycles": 325247,
+        "compared_public_outputs": 19
+      },
+      {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "LANES": 4,
+        "windowed_prefetch": 1,
+        "passed": true,
+        "jobs": 40,
+        "compared_cycles": 258970,
+        "compared_public_outputs": 19
+      },
+      {
+        "control": true,
+        "passed": true,
+        "checks": 23,
+        "padding_writes": 16,
+        "compared_cycles": 134
+      }
+    ]
+  },
+  "dma_window": {
+    "passed": true,
+    "fpga": true,
+    "resident_stream_cycle_equivalent": true,
+    "comparison_cycles": 520,
+    "resident_stream_sha256": "dd374ccc635e9100bb99320478834661bbc90cd7f72d252fb949dd95564c56cb",
+    "accepted_requests": 678,
+    "completed_requests": 674,
+    "cancelled_requests": 4,
+    "payload_elements": 5481,
+    "expected_errors": 19,
+    "consecutive_hit_interval_cycles": 1,
+    "tests": [
+      "CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=1 cycles=512",
+      "CASE single_beat_hits requests=256 consecutive=255 elements=1024",
+      "CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2",
+      "CASE registered_window_grant withdrawal=1 abort=1 configuration=1 ordinary_after_grant=1",
+      "CASE random_coordinates_backpressure requests=240 peak=4",
+      "CASE read_error_drain requests=4 completions=4",
+      "CASE error_reconfigure_recovery requests=3",
+      "CASE invalid_descriptor_order requests=4 completions=4",
+      "CASE invalid_cols cols=0 requests=4 completions=4",
+      "CASE invalid_cols cols=17 requests=4 completions=4",
+      "CASE invalid_cols cols=32 requests=4 completions=4",
+      "CASE invalid_cols cols=33 requests=4 completions=4",
+      "CASE pending_configuration drained=4 recovery_requests=3",
+      "CASE configuration_before_first_ar stalled_cycles=24 old_requests=1 recovery_requests=1",
+      "CASE configuration_at_burst_boundary pending_windows_at_last_r=1 old_requests=4 recovery_requests=1",
+      "CASE reset_with_four_requests cancelled=4 recovery_requests=3",
+      "WINDOW_DMA_PASS accepted=678 completed=674 cancelled=4 payload_elements=5481 errors=19"
+    ]
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "scope": "实际前端源码中的窗口候选选择；所有输入与输出寄存，未包含 DMA 或 SoC 其余逻辑",
+    "resources": {
+      "reference": {
+        "lut_cells": 2456,
+        "flip_flops": 1584,
+        "carry4": 345,
+        "longest_register_path_cells": 19,
+        "tile_q0_register_path_cells": 19,
+        "p0_register_path_cells": 17,
+        "coordinate_register_path_cells": {
+          "window_next_ix": 14,
+          "window_next_iy": 14,
+          "row_base_ix": 17
+        }
+      },
+      "candidate": {
+        "lut_cells": 2527,
+        "flip_flops": 1584,
+        "carry4": 295,
+        "longest_register_path_cells": 17,
+        "tile_q0_register_path_cells": 12,
+        "p0_register_path_cells": 9,
+        "coordinate_register_path_cells": {
+          "window_next_ix": 15,
+          "window_next_iy": 15,
+          "row_base_ix": 17
+        }
+      }
+    },
+    "clock_period_ns": 6.667,
+    "placed_routed_timing_measured": false
+  },
+  "verification_script_sha256": {
+    "test/frontend_window_timing/check.py": "8179c8b48f9e23b125ff807798dfe9690bcbdaafe37a7e45e51980ba6b3ae851",
+    "test/frontend_window_timing/paths.py": "9cdce9eb6592c6828200815027957c8415ac48bfc4457169b671f9142be12bf3",
+    "test/conv_frontend/tools/compare_frontend.py": "fc4c256fc63276cf8d8eff2352910e90b0f2af5197a45a4c0db368ab2d0d8442"
+  }
+}

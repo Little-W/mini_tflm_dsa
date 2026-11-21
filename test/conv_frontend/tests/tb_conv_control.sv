@@ -23,7 +23,7 @@ module tb_conv_control;
   logic [1:0] arburst,rresp=0;
   int checked=0,written=0,cycles=0;
   conv_im2col_frontend #(.SIZE(4),.SLOT_W(2),.CACHE_SETS(2)) dut (
-      .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.wr_last(unused_wr_last),.*);
+      .cfg_sched_r(32'd0),.cfg_sched_groups(32'd0),.tile_group(32'd0),.tile_narrow(1'b0),.wr_last(unused_wr_last),.*);
     assign unused_prefetch[0]=dut.tb_observer.stat_prefetch_lines;
     assign unused_prefetch[1]=dut.tb_observer.stat_prefetch_used;
     assign unused_prefetch[2]=dut.tb_observer.stat_prefetch_wasted;
