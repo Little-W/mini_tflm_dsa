@@ -20,24 +20,29 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     formal = out / 'formal.sv'
-    formal.write_text('''module prefix_add_formal #(parameter int p_width=32) (
+    formal.write_text('''module prefix_add_formal #(
+    parameter int p_width=32,
+    parameter bit p_infer_dsp=1'b0
+) (
     input logic [p_width-1:0] i_a, i_b,
     input logic i_carry,
     output logic o_equal
 );
     logic [p_width-1:0] sum;
     logic carry;
-    parallel_prefix_add #(.p_width(p_width)) u_add (.*, .o_sum(sum), .o_carry(carry));
+    parallel_prefix_add #(.p_width(p_width), .p_infer_dsp(p_infer_dsp)) u_add (
+        .*, .o_sum(sum), .o_carry(carry));
     assign o_equal = {carry, sum} == ({1'b0,i_a} + {1'b0,i_b} + i_carry);
 endmodule
 ''')
     report = {'inputs_constrained': False, 'latency_cycles': 0,
               'source_sha256': hashlib.sha256(RTL.read_bytes()).hexdigest(), 'runs': []}
-    for width in (1, 2, 3, 4, 5, 8, 17, 32, 33, 48, 64):
-        folder = out / f'w{width}'
+    for width, infer_dsp in ((width, mode) for width in (1, 2, 3, 4, 5, 8, 17, 23, 24, 32, 33, 47, 48, 64)
+                            for mode in (0, 1)):
+        folder = out / f'w{width}_dsp{infer_dsp}'
         folder.mkdir(exist_ok=True)
         script, log = folder / 'run.ys', folder / 'formal.log'
-        script.write_text(f'read_slang --top prefix_add_formal -Gp_width={width} ' +
+        script.write_text(f'read_slang --top prefix_add_formal -Gp_width={width} -Gp_infer_dsp={infer_dsp} ' +
                           shlex.join(map(str, (RTL, formal))) + '\n' +
                           'prep -top prefix_add_formal -flatten\ncheck -assert\n' +
                           'sat -verify -prove o_equal 1 -show-inputs -show-outputs\n')
@@ -48,8 +53,8 @@ endmodule
         passed = 'SAT proof finished - no model found: SUCCESS!' in log.read_text()
         if not passed:
             raise RuntimeError(f'Proof did not complete: {log}')
-        report['runs'].append(dict(width=width, passed=True, input_bits=2*width+1))
-        print(f'width={width}: PASS', flush=True)
+        report['runs'].append(dict(width=width, infer_dsp=bool(infer_dsp), passed=True, input_bits=2*width+1))
+        print(f'width={width} infer_dsp={infer_dsp}: PASS', flush=True)
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     measure = out / 'measure.sv'
