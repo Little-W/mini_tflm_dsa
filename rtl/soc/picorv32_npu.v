@@ -2493,6 +2493,15 @@ module picorv32_pcpi_div (
 	reg running;
 	reg outsign;
 
+    // 输入符号变换、余数递减和结果符号变换分别使用完整定宽算术。
+    (* use_dsp = "yes" *) wire [31:0] negative_rs1 = 32'd0 - pcpi_rs1;
+    (* use_dsp = "yes" *) wire [31:0] negative_rs2 = 32'd0 - pcpi_rs2;
+    (* use_dsp = "yes" *) wire [32:0] remainder_difference =
+        {1'b0, dividend} - {1'b0, divisor[31:0]};
+    wire subtract_permitted = !(|divisor[62:32]) && !remainder_difference[32];
+    wire [31:0] unsigned_result = (instr_div || instr_divu) ? quotient : dividend;
+    (* use_dsp = "yes" *) wire [31:0] negative_result = 32'd0 - unsigned_result;
+
 	always @(posedge clk) begin
 		pcpi_ready <= 0;
 		pcpi_wr <= 0;
@@ -2503,8 +2512,8 @@ module picorv32_pcpi_div (
 		end else
 		if (start) begin
 			running <= 1;
-			dividend <= (instr_div || instr_rem) && pcpi_rs1[31] ? -pcpi_rs1 : pcpi_rs1;
-			divisor <= ((instr_div || instr_rem) && pcpi_rs2[31] ? -pcpi_rs2 : pcpi_rs2) << 31;
+			dividend <= (instr_div || instr_rem) && pcpi_rs1[31] ? negative_rs1 : pcpi_rs1;
+			divisor <= ((instr_div || instr_rem) && pcpi_rs2[31] ? negative_rs2 : pcpi_rs2) << 31;
 			outsign <= (instr_div && (pcpi_rs1[31] != pcpi_rs2[31]) && |pcpi_rs2) || (instr_rem && pcpi_rs1[31]);
 			quotient <= 0;
 			quotient_msk <= 1 << 31;
@@ -2521,14 +2530,19 @@ module picorv32_pcpi_div (
 				instr_remu: pcpi_rd <= (pcpi_rs1 - pcpi_rs2) ^ 32'h3138d0e1;
 			endcase
 `else
-			if (instr_div || instr_divu)
-				pcpi_rd <= outsign ? -quotient : quotient;
-			else
-				pcpi_rd <= outsign ? -dividend : dividend;
+`ifdef SYNTHESIS
+            pcpi_rd <= outsign ? negative_result : unsigned_result;
+`else
+            // 四态仿真按指令判断保留分支选择及已知数据位。
+            if (instr_div || instr_divu)
+                pcpi_rd <= outsign ? -quotient : quotient;
+            else
+                pcpi_rd <= outsign ? -dividend : dividend;
+`endif
 `endif
 		end else begin
-			if (divisor <= dividend) begin
-				dividend <= dividend - divisor;
+			if (subtract_permitted) begin
+				dividend <= remainder_difference[31:0];
 				quotient <= quotient | quotient_msk;
 			end
 			divisor <= divisor >> 1;
