@@ -126,8 +126,9 @@ module vector_engine #(
   } state_t;
   typedef enum logic [2:0] {LD_WEIGHT, LD_BIAS, LD_MULT, LD_SHIFT, LD_A, LD_B, LD_LUT} load_t;
   // 对外握手标志与状态同时更新，状态保持时也保持这些寄存输出。
-  function automatic logic [$bits(state_t)+3:0] state_control_value(input state_t next_state);
+  function automatic logic [$bits(state_t)+4:0] state_control_value(input state_t next_state);
     state_control_value = {
+        (next_state==OUTPUT_INIT || next_state==TAP_CHECK || next_state==WINDOW_WAIT || next_state==QUANT_STREAM || next_state==EXECUTE || next_state==EXECUTE_COMMIT || next_state==TAP_NEXT || next_state==QUANT_INIT || next_state==OUTPUT_NEXT || next_state==AVG_START || next_state==AVG_POWER_DELAY || next_state==AVG_POWER_CLAMP || next_state==AVG_POWER_STORE || next_state==AVG_WAIT || next_state==POOL_STORE || next_state==WRITE_PREP || next_state==DW_EXECUTE || next_state==DW_FINISH),
         next_state==CONFIGURE,
         next_state==LOAD_REQ || next_state==POOL_LOAD_REQ || next_state==SOFT_LUT_REQ,
         next_state==IDLE,
@@ -136,6 +137,7 @@ module vector_engine #(
     };
   endfunction
   state_t state;
+  logic window_fetch_phase;
   load_t load_kind;
   vector_engine_cfg_t c;
   logic spatial, depthwise, binary_vector, add_s8, softmax_s8, byte_output;
@@ -154,7 +156,14 @@ module vector_engine #(
   localparam int TILE_INDEX_W = $clog2(TILE + PE_COUNT + 1);
   localparam int INPUT_INDEX_W = $clog2(DMA_SIZE);
   localparam int INPUT_STORED_ELEMENTS = PE_COUNT>=16 ? 4*TILE : 2*TILE;
+  localparam bit p_input_bank_storage = TILE==16 && PE_COUNT==8 && DMA_SIZE==64 &&
+      BUS_WIDTH==64 && WINDOW_LANES==8;
+  localparam int p_input_bank_rows = (INPUT_STORED_ELEMENTS+INPUT_BANKS-1)/INPUT_BANKS;
+  localparam int p_input_row_width = p_input_bank_rows>1 ? $clog2(p_input_bank_rows) : 1;
   logic [31:0] vector_offset;
+  logic [16:0] channel_next_value;
+  logic [15:0] channel_next;
+  logic channel_has_more;
   logic [ACTIVE_COUNT_W:0] vector_low_sum;
   logic vector_high_equal, vector_high_less;
   logic vector_high_next_equal, vector_high_next_less;
@@ -175,6 +184,14 @@ module vector_engine #(
   (* use_dsp = "yes" *) logic signed [31:0] add_input_sum;
   logic signed [15:0] input_buf [DMA_SIZE], rhs_buf [TILE];
   logic signed [15:0] input_bank_data [INPUT_BANKS];
+  logic signed [15:0] input_bank_read_data [INPUT_BANKS];
+  logic [7:0] input_softmax_data;
+  logic [7:0] add_input_saved;
+  logic signed [15:0] input_bank_contents [INPUT_BANKS][p_input_bank_rows];
+  logic [INPUT_INDEX_W:0] input_vector_base;
+  logic [INPUT_INDEX_W-1:0] input_scalar_index;
+  logic signed [15:0] input_scalar_data;
+  logic [p_input_row_width-1:0] input_bank_read_row;
   logic weights_i_wr_en, weights_i_rd_en;
   logic weight_row_last_fire;
   logic parameter_row_last_fire;
@@ -273,7 +290,8 @@ module vector_engine #(
   logic [31:0] write_origin, write_total;
   wire writeback_ready, writeback_busy_raw, writeback_done, writeback_error;
   logic writeback_sink_ready, writeback_metadata_valid, writeback_metadata_slot;
-  logic writeback_metadata_coalesce, writeback_metadata_last, writeback_metadata_match;
+  logic writeback_metadata_coalesce, writeback_metadata_last;
+  logic writeback_metadata_capture, writeback_sink_fire, writeback_accept_pending;
   logic [31:0] writeback_metadata_address;
   logic [$clog2(4*TILE+1)-1:0] writeback_metadata_bytes;
   logic writeback_busy;
@@ -292,16 +310,24 @@ module vector_engine #(
       $clog2(4*TILE+1)'(write_total);
   assign writeback_request_last = !depthwise || dw_result_last[dw_result_read_slot];
   assign dw_result_accept = depthwise && writeback_request_valid && writeback_ready;
-  // 地址与长度先行保存；源数据在写入队列实际接收之前保持在原结果存储中。
-  assign writeback_metadata_match = writeback_metadata_valid &&
-      (!depthwise || writeback_metadata_slot == dw_result_read_slot);
-  assign writeback_ready = writeback_sink_ready && writeback_metadata_match;
+  // 地址、长度与槽位共同保存；接收事件寄存后再释放源存储。
+  // 等待接收确认期间保持原结果，写回端只接收一次当前请求。
+  assign writeback_metadata_capture = writeback_request_valid &&
+      !writeback_metadata_valid && !writeback_accept_pending;
+  assign writeback_sink_fire = writeback_metadata_valid && writeback_sink_ready;
+  assign writeback_ready = writeback_accept_pending;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) writeback_accept_pending <= 1'b0;
+    else writeback_accept_pending <= writeback_sink_fire;
+  end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) writeback_metadata_valid <= 1'b0;
-    else writeback_metadata_valid <= writeback_request_valid;
+    else if (state==CHECK || state==FAILED || writeback_sink_fire)
+      writeback_metadata_valid <= 1'b0;
+    else if (writeback_metadata_capture) writeback_metadata_valid <= 1'b1;
   end
   always_ff @(posedge clk) begin
-    if (writeback_request_valid) begin
+    if (writeback_metadata_capture) begin
       writeback_metadata_address <= writeback_request_address;
       writeback_metadata_bytes <= writeback_request_bytes;
       writeback_metadata_slot <= dw_result_read_slot;
@@ -316,7 +342,7 @@ module vector_engine #(
   end
   // 引擎仅合并连续 DW 字节结果，完整数据字使用独立写事务。
   vector_banked_writeback #(.TILE(TILE),.BUS_WIDTH(BUS_WIDTH),.p_coalesce_bytes_only(1'b1)) u_writeback (
-    .clk,.rst_n,.request_valid(writeback_request_valid && writeback_metadata_match),.request_ready(writeback_sink_ready),
+    .clk,.rst_n,.request_valid(writeback_metadata_valid),.request_ready(writeback_sink_ready),
     .request_address(writeback_metadata_address),.request_bytes(writeback_metadata_bytes),
     .request_byte_output(byte_output),.result_words(writeback_words),
     .request_coalesce(writeback_metadata_coalesce),
@@ -386,6 +412,9 @@ module vector_engine #(
   logic window_fetch_enabled, window_fetch_in_bounds, window_fetch_advance;
   logic window_response_last_q, window_response_error_q, window_response_fault;
   logic window_response_count_ok_q;
+  logic [1:0] window_response_tag;
+  logic input_response_pending;
+  logic [WINDOW_LANES-1:0] window_bank_valid;
   logic [31:0] fetch_position;
   logic [TAP_COUNT_W-1:0] fetch_tap;
   logic [15:0] fetch_ox;
@@ -489,6 +518,8 @@ module vector_engine #(
   logic [31:0] soft_lut_data;
   logic signed [31:0] soft_exp_data, soft_mul_a, soft_mul_b;
   logic signed [7:0] soft_out_data;
+  logic soft_exp_write_valid, soft_out_write_valid;
+  logic [$clog2(TILE)-1:0] soft_exp_write_index, soft_out_write_index;
   logic signed [31:0] multiplier_a, multiplier_b;
   logic signed [63:0] multiplier_product;
   logic [TAP_COUNT_W-1:0] pool_offset, pool_taps_remaining;
@@ -501,7 +532,7 @@ module vector_engine #(
   logic [INPUT_INDEX_W:0] pool_count_i_a, pool_count_i_b, pool_count_i_target;
   logic pool_count_i_carry;
   (* keep = 1 *) logic pool_count_o_equal, pool_received_equal;
-  logic pool_receive_complete;
+  logic pool_receive_complete, pool_read_complete_saved;
 
   // 单拍数量由已保存的行长度决定，完成条件在响应到达前并行计算。
   assign pool_beat_count = pool_row_remaining>BUS_BYTES ? (BUS_SHIFT+1)'(BUS_BYTES) :
@@ -512,6 +543,9 @@ module vector_engine #(
   assign pool_count_i_carry = 1'b0;
   assign pool_received_equal = pool_received == pool_elements;
   assign pool_receive_complete = rd_valid[0] ? pool_count_o_equal : pool_received_equal;
+  always_ff @(posedge clk) begin
+    if (rd_done) pool_read_complete_saved <= pool_receive_complete;
+  end
   add_equal #(.p_width(INPUT_INDEX_W+1)) u_pool_count_equal (
       .i_a(pool_count_i_a), .i_b(pool_count_i_b), .i_target(pool_count_i_target),
       .i_carry_in(pool_count_i_carry), .o_equal(pool_count_o_equal)
@@ -630,6 +664,11 @@ module vector_engine #(
   assign q_below_min = !q_negative_overflow && (q_positive_overflow || q_before_offset_below);
   assign q_above_max = !q_positive_overflow && (q_negative_overflow || q_before_offset_above);
   assign channels = {16'd0,c.image.input_c};
+  assign channel_next_value = {1'b0,channel_base} + 17'(active);
+  always_ff @(posedge clk) begin
+    channel_next <= channel_next_value[15:0];
+    channel_has_more <= channel_next_value < 17'(channels);
+  end
   vector_coordinate_bound u_input_column_bound (
       .i_coordinate(input_x), .i_limit(c.image.input_w), .o_in_bounds(input_column_in_bounds)
   );
@@ -653,6 +692,10 @@ module vector_engine #(
       dw_in_bounds <= kernel_column_end ? next_row_valid : next_column_valid;
     end else if (state == DW_FINISH && dw_snapshot_fire) begin
       dw_in_bounds <= (ox == output_last_column) ? next_origin_row_valid : next_origin_column_valid;
+    end else if (state == TAP_NEXT) begin
+      dw_in_bounds <= next_window_valid;
+    end else if (state == EXECUTE_COMMIT && compute_group_last_q && spatial && !global_pool) begin
+      dw_in_bounds <= next_window_valid_q;
     end
   end
   always_ff @(posedge clk or negedge rst_n) begin
@@ -666,11 +709,7 @@ module vector_engine #(
   end
   // 十六路计算配置保存四个完整通道组；较窄配置保存两个完整组或四个半组。
   // 槽位预留允许 DMA 提前发出请求，并按顺序接收响应。
-  assign window_fetch_enabled=spatial && !global_pool &&
-    (state==OUTPUT_INIT || state==TAP_CHECK || state==WINDOW_WAIT || state==QUANT_STREAM ||
-     state==EXECUTE || state==EXECUTE_COMMIT || state==TAP_NEXT || state==QUANT_INIT || state==OUTPUT_NEXT ||
-     state==AVG_START || state==AVG_POWER_DELAY || state==AVG_POWER_CLAMP || state==AVG_POWER_STORE || state==AVG_WAIT || state==POOL_STORE || state==WRITE_PREP ||
-     state==DW_EXECUTE || state==DW_FINISH);
+  assign window_fetch_enabled=spatial && !global_pool && window_fetch_phase;
   assign window_fetch_in_bounds=fetch_x>=0 && fetch_y>=0 &&
     fetch_x<$signed(34'(c.image.input_w)) && fetch_y<$signed(34'(c.image.input_h));
   assign input_bank_mask=PE_COUNT>=16 || active<=ACTIVE_COUNT_W'(TILE/2) ? 2'b11 : 2'b01;
@@ -699,6 +738,7 @@ module vector_engine #(
       window_response_last_q <= window_response_fire && win_rsp_last;
       if (window_response_fire) begin
         window_response_error_q <= win_rsp_error;
+        window_response_tag <= win_rsp_tag;
         window_response_count_ok_q <= window_count_o_equal;
       end
     end
@@ -709,8 +749,11 @@ module vector_engine #(
   assign window_fetch_advance=window_request_fire ||
     (window_fetch_enabled && fetch_position<32'(position_count) && !window_fetch_in_bounds);
   assign input_reservations_clear = (state == CHECK) || (state == TILE_INIT) ||
-      (state == FAILED && !rd_busy && !wr_busy && !win_busy && !writeback_busy && dma_cfg_ready);
-  assign input_drain_ready = !rd_busy && !read_done_q && !wr_busy && !win_busy && !writeback_busy &&
+      (state == FAILED && input_drain_ready);
+  assign input_response_pending = p_input_bank_storage &&
+      (window_response_last_q || (|window_bank_valid));
+  assign input_drain_ready = !rd_busy && !read_done_q && !wr_busy && !win_busy &&
+      !input_response_pending && !writeback_busy &&
       dw_shared_inflight == 0 && dma_cfg_ready &&
       (!SHARED_STORAGE_ENABLE || (!i_weight_read_valid && !i_ps_read_valid));
   assign input_ready_clear_all = (state == CHECK) || (state == TILE_INIT) ||
@@ -721,12 +764,14 @@ module vector_engine #(
   // 各槽分别保存就绪状态，完成返回与计算释放并行译码，清空条件具有最高优先级。
   for (genvar bank = 0; bank < 4; bank++) begin : g_input_ready
     logic response_selected, clear_selected;
-    assign response_selected = window_response_fire && win_rsp_last && win_rsp_tag == 2'(bank);
+    assign response_selected = p_input_bank_storage ?
+        window_response_last_q && window_response_tag == 2'(bank) :
+        window_response_fire && win_rsp_last && win_rsp_tag == 2'(bank);
     assign clear_selected = input_ready_clear_all || (input_ready_release && read_bank == 2'(bank));
     always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) input_ready[bank] <= 1'b0;
       else input_ready[bank] <= !clear_selected &&
-          (response_selected ? !win_rsp_error : input_ready[bank]);
+          (response_selected ? !(p_input_bank_storage ? window_response_error_q : win_rsp_error) : input_ready[bank]);
     end
   end
 
@@ -737,7 +782,8 @@ module vector_engine #(
     assign request_selected = window_slot_available && (wf_bank == 2'(bank)) &&
         (!input_ready[bank] || input_slot_release);
     assign release_selected = input_reservations_clear ||
-        (window_response_fire && win_rsp_last && win_rsp_tag == 2'(bank));
+        (p_input_bank_storage ? window_response_last_q && window_response_tag == 2'(bank) :
+         window_response_fire && win_rsp_last && win_rsp_tag == 2'(bank));
     always_ff @(posedge clk or negedge rst_n) begin
       if (!rst_n) input_reserved[bank] <= 1'b0;
       else input_reserved[bank] <= !release_selected &&
@@ -1085,7 +1131,44 @@ module vector_engine #(
       assign accum_lane[lane]=acc_buf[compute_index+32'(lane)];
     end
   end endgenerate
-  generate if (PE_COUNT > 1 && (PE_COUNT & (PE_COUNT-1)) == 0 &&
+  // 向量与标量运算共用每个银行的读取端口，标量字节在独立边沿保存。
+  always_comb begin
+    input_vector_base = (INPUT_INDEX_W+1)'(compute_index);
+    if (state==EXECUTE && global_pool)
+      input_vector_base = (INPUT_INDEX_W+1)'(pool_input_index) + (INPUT_INDEX_W+1)'(compute_index);
+    else if (spatial && !global_pool)
+      input_vector_base = (INPUT_INDEX_W+1)'(input_read_base) + (INPUT_INDEX_W+1)'(compute_index);
+  end
+  assign input_scalar_index = add_s8 ?
+      (state==ADD_CLAMP || state==ADD_STORE ? INPUT_INDEX_W'(compute_index+1'b1) : '0) :
+      INPUT_INDEX_W'(soft_input_index);
+  assign input_bank_read_row = add_s8 || softmax_s8 ?
+      p_input_row_width'(input_scalar_index>>$clog2(INPUT_BANKS)) :
+      p_input_row_width'(input_vector_base>>$clog2(INPUT_BANKS));
+  // Add 在结果限幅周期准备下一项，Softmax 在读取状态等待寄存数据。
+  if (p_input_bank_storage) begin : g_add_input_prepare
+    always_ff @(posedge clk) begin
+      if (add_s8 || softmax_s8) add_input_saved <= input_scalar_data[7:0];
+    end
+  end
+  generate if (p_input_bank_storage) begin : g_input_memory_read
+    logic read_valid, half_group;
+    assign half_group = state==EXECUTE && global_pool && active==4 && input_vector_base[2];
+    always_comb begin
+      read_valid = 1'b0;
+      if ((input_vector_base>>$clog2(INPUT_BANKS)) < (INPUT_INDEX_W+1)'(p_input_bank_rows))
+        read_valid = 1'b1;
+    end
+    assign input_scalar_data = {8'd0, input_bank_read_data[input_scalar_index[$clog2(INPUT_BANKS)-1:0]][7:0]};
+    assign input_softmax_data = add_input_saved;
+    for (genvar lane=0;lane<PE_COUNT;lane++) begin : g_lane
+      assign input_lane[lane] = read_valid ?
+          (half_group ? input_bank_read_data[(lane+4)%PE_COUNT] : input_bank_read_data[lane]) : 16'sd0;
+    end
+  end else begin : g_input_general_read
+    assign input_scalar_data = 16'sd0;
+    assign input_softmax_data = 8'd0;
+  if (PE_COUNT > 1 && (PE_COUNT & (PE_COUNT-1)) == 0 &&
                DMA_SIZE % PE_COUNT == 0) begin : g_input_lane_banks
     localparam int BANK_SHIFT = $clog2(PE_COUNT);
     localparam int BANK_ROWS = DMA_SIZE / PE_COUNT;
@@ -1158,6 +1241,8 @@ module vector_engine #(
           spatial && !global_pool ? 32'(input_read_base) : 32'd0;
       assign input_lane[lane] = input_buf[base+32'(compute_index)+32'(lane)];
     end
+  end
+
   end endgenerate
 
   always_comb begin
@@ -1317,8 +1402,9 @@ module vector_engine #(
   end
 
   localparam int ADD_INDEX_WIDTH=$clog2(TILE)>0 ? $clog2(TILE) : 1;
-  wire signed [7:0] add_first_lhs=input_buf[0][7:0];
-  wire signed [7:0] add_next_lhs=input_buf[ADD_INDEX_WIDTH'(compute_index)+ADD_INDEX_WIDTH'(1)][7:0];
+  wire signed [7:0] add_first_lhs=p_input_bank_storage ? add_input_saved : input_buf[0][7:0];
+  wire signed [7:0] add_next_lhs=p_input_bank_storage ? add_input_saved :
+      input_buf[ADD_INDEX_WIDTH'(compute_index)+ADD_INDEX_WIDTH'(1)][7:0];
   wire signed [7:0] add_rhs=rhs_buf[ADD_INDEX_WIDTH'(compute_index)][7:0];
   // 有效 S8 操作数加上 [-127,128] 内的偏移，结果范围为 [-255,255]。
   wire signed [8:0] add_first_lhs_offset=$signed({add_first_lhs[7],add_first_lhs})+$signed(c.add.input1_offset[8:0]);
@@ -1345,12 +1431,15 @@ module vector_engine #(
     serial_acc_read_index = quant_index;
     if (depthwise) begin
       serial_acc_read_index = q_issue;
-    end else if (softmax_s8) begin
-      serial_acc_read_index = TILE_INDEX_W'(soft_exp_index);
     end
   end
   assign serial_acc_read_data = acc_buf[serial_acc_read_index];
-  assign softmax_i_exp_rdata = serial_acc_read_data;
+  // 指数值采用单写入、单读取的普通数组，计算通道保存独立的工作累加值。
+  logic signed [31:0] soft_exp_memory [TILE];
+  always_ff @(posedge clk) begin
+    if (rst_n && soft_exp_write_valid) soft_exp_memory[soft_exp_write_index] <= soft_lut_data;
+  end
+  assign softmax_i_exp_rdata = soft_exp_memory[soft_exp_index];
 
   logic signed [31:0] reduce_alu_i_lhs, reduce_alu_i_rhs, reduce_rhs_q;
   logic reduce_alu_i_max, reduce_alu_i_min;
@@ -1416,15 +1505,36 @@ module vector_engine #(
     .clk(clk),.a(multiplier_a),.b(multiplier_b),.product(multiplier_product));
   assign soft_lut_req_ready=state==SOFT_LUT_REQ && rd_granted;
   assign soft_lut_rsp_valid=state==SOFT_LUT_WAIT && read_done_q;
-  vector_softmax #(.MAX_DEPTH(TILE),.MULTIPLIER_LATENCY(2)) u_softmax (
+  vector_softmax #(.MAX_DEPTH(TILE),.MULTIPLIER_LATENCY(2),
+      .INPUT_REGISTERED(p_input_bank_storage)) u_softmax (
     .clk,.rst_n,.start(state==SOFT_START),.depth(c.length),.ready(soft_ready),.done(soft_done),.error(soft_error),
-    .input_index(soft_input_index),.input_data(8'(input_buf[32'(soft_input_index)])),
+    .input_index(soft_input_index),.input_data(p_input_bank_storage ? input_softmax_data : 8'(input_buf[32'(soft_input_index)])),
     .lut_req_valid(soft_lut_req_valid),.lut_req_ready(soft_lut_req_ready),.lut_index(soft_lut_index),
-    .lut_rsp_valid(soft_lut_rsp_valid),.lut_rsp_data(rd_raw_valid ? rd_raw_data[31:0] : soft_lut_data),.lut_rsp_error(read_error_q),
+    .lut_rsp_valid(soft_lut_rsp_valid),.lut_rsp_data(soft_lut_data),.lut_rsp_error(read_error_q),
     .exp_we(soft_exp_we),.exp_index(soft_exp_index),.exp_wdata(soft_exp_data),.exp_rdata(softmax_i_exp_rdata),
     .out_we(soft_out_we),.out_index(soft_out_index),.out_data(soft_out_data),
     .mul_a(soft_mul_a),.mul_b(soft_mul_b),.mul_product(multiplier_product)
   );
+
+  // 指数与输出字节的写入资格及下标先保存一拍，数据由已有结果寄存器保持。
+  // 下一边沿提交存储，后续归一化和写回准备使用完整结果。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      soft_exp_write_valid <= 1'b0;
+      soft_out_write_valid <= 1'b0;
+    end else begin
+      soft_exp_write_valid <= softmax_s8 && soft_exp_we;
+      soft_out_write_valid <= softmax_s8 && soft_out_we;
+    end
+  end
+  always_ff @(posedge clk) begin
+    if (softmax_s8 && soft_exp_we) begin
+      soft_exp_write_index <= soft_exp_index;
+    end
+    if (softmax_s8 && soft_out_we) begin
+      soft_out_write_index <= soft_out_index;
+    end
+  end
 
   wire window_write_valid[WINDOW_LANES], dma_input_write_valid[BUS_BYTES];
   wire [INPUT_INDEX_W-1:0] window_write_index[WINDOW_LANES], dma_input_write_index[BUS_BYTES];
@@ -1435,15 +1545,26 @@ module vector_engine #(
     assign window_write_index[lane]=input_response_base+INPUT_INDEX_W'(column_sum);
   end
   localparam int WINDOW_BANK_W=$clog2(WINDOW_LANES);
-  wire [WINDOW_LANES-1:0] window_bank_valid;
-  wire [INPUT_INDEX_W-1:0] window_bank_index[WINDOW_LANES];
+  logic [INPUT_INDEX_W-1:0] window_bank_index[WINDOW_LANES];
   wire signed [15:0] window_bank_data[WINDOW_LANES];
   wire [WINDOW_BANK_W-1:0] window_first_bank=WINDOW_BANK_W'(input_response_base)+WINDOW_BANK_W'(win_rsp_col);
   for (genvar bank=0;bank<WINDOW_LANES;bank++) begin : g_window_bank
     wire [WINDOW_BANK_W-1:0] source_lane=WINDOW_BANK_W'(bank)-window_first_bank;
-    assign window_bank_valid[bank]=window_write_valid[source_lane];
-    assign window_bank_index[bank]=window_write_index[source_lane];
-    assign window_bank_data[bank]=win_rsp_data[source_lane];
+    if (p_input_bank_storage) begin : g_registered_write
+      always_ff @(posedge clk) begin
+        if (!rst_n) window_bank_valid[bank] <= 1'b0;
+        else begin
+          window_bank_valid[bank] <= window_write_valid[source_lane];
+          if (window_write_valid[source_lane]) window_bank_index[bank] <= window_write_index[source_lane];
+        end
+      end
+    end else begin : g_direct_write
+      assign window_bank_valid[bank]=window_write_valid[source_lane];
+      assign window_bank_index[bank]=window_write_index[source_lane];
+    end
+    if (!p_input_bank_storage) begin : g_direct_data
+      assign window_bank_data[bank]=win_rsp_data[source_lane];
+    end
   end
   for (genvar lane=0;lane<BUS_BYTES;lane++) begin : g_dma_write_address
     wire [INPUT_INDEX_W:0] column_sum={1'b0,rd_col_base}+(INPUT_INDEX_W+1)'(lane);
@@ -1467,9 +1588,40 @@ module vector_engine #(
         pool_bank_valid[bank]<=bank_receive;
         if (bank_receive) begin
           pool_bank_row[bank]<=destination_row;
-          pool_bank_data[bank]<=rd_data[source_lane];
+
         end
       end
+    end
+    if (!p_input_bank_storage) begin : g_rotated_register
+      always_ff @(posedge clk) begin
+        if (rst_n && bank_receive) pool_bank_data[bank] <= rd_data[source_lane];
+      end
+    end
+  end
+
+  // 空间响应保存原始数据和起始银行，窗口与全局池化共用循环选择器。
+  // 数据与写入行号同时进入寄存阶段，下一边沿写入输入存储并发布完成。
+  if (p_input_bank_storage) begin : g_spatial_input_data
+    logic [WINDOW_BANK_W-1:0] first_bank_saved, selected_first;
+    logic signed [15:0] spatial_raw_data [INPUT_BANKS];
+    logic signed [15:0] selected_data [INPUT_BANKS];
+
+    always_ff @(posedge clk) begin
+      if (pool_response_fire || window_response_fire) begin
+        first_bank_saved <= global_pool ? pool_first_bank : window_first_bank;
+        for (int lane=0;lane<INPUT_BANKS;lane++)
+          spatial_raw_data[lane] <= global_pool ? rd_data[lane] : win_rsp_data[lane];
+      end
+    end
+    assign selected_first = first_bank_saved;
+    for (genvar bank=0;bank<INPUT_BANKS;bank++) begin : g_bank
+      logic [WINDOW_BANK_W-1:0] source_lane;
+      logic signed [15:0] bank_data;
+      assign source_lane = WINDOW_BANK_W'(bank)-selected_first;
+      assign selected_data[bank] = spatial_raw_data[bank];
+      assign bank_data = selected_data[source_lane];
+      assign window_bank_data[bank] = bank_data;
+      assign pool_bank_data[bank] = bank_data;
     end
   end
 
@@ -1485,8 +1637,40 @@ module vector_engine #(
     logic signed [15:0] dma_bank_data;
 
     assign dma_bank_data = c.vector_s16 ? rd_data[p_s16_lane] : rd_data[p_s8_lane];
-    assign input_bank_data[bank] = global_pool ? pool_bank_data[p_s8_lane] :
-        spatial ? window_bank_data[p_window_bank] : dma_bank_data;
+    if (p_input_bank_storage) begin : g_shared_rotation
+      assign input_bank_data[bank] = spatial ? window_bank_data[p_window_bank] : dma_bank_data;
+    end else begin : g_separate_rotation
+      assign input_bank_data[bank] = global_pool ? pool_bank_data[p_s8_lane] :
+          spatial ? window_bank_data[p_window_bank] : dma_bank_data;
+    end
+  end
+
+  // 一个银行每拍至多写入一行，完整数据字保存到普通数组并异步读取。
+  if (p_input_bank_storage) begin : g_input_memory
+    for (genvar bank=0;bank<INPUT_BANKS;bank++) begin : g_bank
+      logic signed [15:0] mem [p_input_bank_rows];
+      logic [p_input_row_width-1:0] write_row;
+      logic [INPUT_INDEX_W-1:0] load_index;
+      logic load_valid, write_valid;
+
+      assign load_index = c.vector_s16 ? dma_input_write_index[bank%(BUS_BYTES/2)] :
+          dma_input_write_index[bank%BUS_BYTES];
+      assign load_valid = (c.vector_s16 ? dma_input_write_valid[bank%(BUS_BYTES/2)] :
+          dma_input_write_valid[bank%BUS_BYTES]) &&
+          load_index[$clog2(INPUT_BANKS)-1:0] == $clog2(INPUT_BANKS)'(bank);
+      assign write_valid = pool_bank_valid[bank] || window_bank_valid[bank] || load_valid;
+      assign write_row = global_pool ? pool_bank_row[bank] : spatial ?
+          p_input_row_width'(window_bank_index[bank]>>$clog2(INPUT_BANKS)) :
+          p_input_row_width'(load_index>>$clog2(INPUT_BANKS));
+
+      always_ff @(posedge clk) begin
+        if (rst_n && write_valid) mem[write_row] <= input_bank_data[bank];
+      end
+      assign input_bank_read_data[bank] = mem[input_bank_read_row];
+      for (genvar row=0;row<p_input_bank_rows;row++) begin : g_row
+        assign input_bank_contents[bank][row] = mem[row];
+      end
+    end
   end
 
   for (genvar entry=0;entry<DMA_SIZE;entry++) begin : g_input_write
@@ -1508,7 +1692,11 @@ module vector_engine #(
 
     assign write_enable = window_match || load_match || pool_match;
     assign write_value = input_bank_data[entry%INPUT_BANKS];
-    always_ff @(posedge clk) if (rst_n && write_enable) input_buf[entry] <= write_value;
+    if (p_input_bank_storage) begin : g_memory_value
+      assign input_buf[entry] = input_bank_contents[entry%INPUT_BANKS][entry/INPUT_BANKS];
+    end else begin : g_register_value
+      always_ff @(posedge clk) if (rst_n && write_enable) input_buf[entry] <= write_value;
+    end
     end
   end
 
@@ -1617,19 +1805,11 @@ module vector_engine #(
       .o_right_shift_vec(quant_req_right)
   );
 
-  logic signed [31:0] acc_common_write_data [PE_COUNT];
-  logic accumulator_compute_fire, accumulator_soft_fire;
+  logic accumulator_compute_fire;
   logic accumulator_init_fire, accumulator_bias_selected;
   logic signed [31:0] accumulator_init_data;
   assign accumulator_compute_fire = (state == EXECUTE_COMMIT && (!vector_hadamard || !writeback_busy)) ||
       (dw_commit_vld && state!=FAILED && !dw_snapshot_fire);
-  assign accumulator_soft_fire = softmax_s8 && soft_exp_we;
-  // 计算提交与 Softmax 指数接收处于独立状态，各 PE 通道共用写入数据。
-  for (genvar lane = 0; lane < PE_COUNT; lane++) begin : g_accumulator_write_data
-    assign acc_common_write_data[lane] =
-        ({32{accumulator_compute_fire}} & pe_result[lane]) |
-        ({32{accumulator_soft_fire}} & soft_exp_data);
-  end
   assign accumulator_init_fire = state == OUTPUT_INIT || state == VECTOR_INIT || dw_snapshot_fire;
   assign accumulator_bias_selected = depthwise && (state == OUTPUT_INIT || dw_snapshot_fire);
   always_comb begin
@@ -1645,20 +1825,15 @@ module vector_engine #(
   for (genvar entry=0;entry<TILE;entry++) begin : g_accumulator_write
     localparam int LANE_INDEX = entry % PE_COUNT;
     localparam int GROUP_BASE = entry - LANE_INDEX;
-    logic soft_selected;
-    // 下标和模式先行检查，指数接收条件直接参与当前项的写入选择。
-    assign soft_selected = softmax_s8 && soft_exp_index==$bits(soft_exp_index)'(entry);
-    logic soft_write, compute_write, bias_write, constant_write;
-    logic write_enable, shared_write;
+    logic compute_write, bias_write, constant_write;
+    logic write_enable;
     logic [31:0] write_value;
-    assign soft_write = soft_selected && soft_exp_we;
-    assign compute_write = !soft_write && accumulator_compute_fire && 32'(entry) < active &&
+    assign compute_write = accumulator_compute_fire && 32'(entry) < active &&
         (depthwise ? dw_commit_index : compute_index) == TILE_INDEX_W'(GROUP_BASE);
-    assign bias_write = !soft_write && accumulator_init_fire && accumulator_bias_selected;
-    assign constant_write = !soft_write && accumulator_init_fire && !accumulator_bias_selected;
-    assign shared_write = soft_write || compute_write;
-    assign write_enable = shared_write || accumulator_init_fire;
-    assign write_value = acc_common_write_data[LANE_INDEX] |
+    assign bias_write = accumulator_init_fire && accumulator_bias_selected;
+    assign constant_write = accumulator_init_fire && !accumulator_bias_selected;
+    assign write_enable = compute_write || accumulator_init_fire;
+    assign write_value = ({32{accumulator_compute_fire}} & pe_result[LANE_INDEX]) |
         ({32{bias_write}} & bias_buf[entry]) |
         ({32{constant_write}} & accumulator_init_data);
     // 字节输出在当前累加项已完成全部读取后更新低字节。
@@ -1733,8 +1908,8 @@ module vector_engine #(
   logic [TILE_INDEX_W-1:0] result_serial_index;
   logic [7:0] result_serial_data;
   logic [7:0] result_common_data;
-  assign result_background_write = softmax_s8 && soft_out_we;
-  assign result_background_index = TILE_INDEX_W'(soft_out_index);
+  assign result_background_write = soft_out_write_valid;
+  assign result_background_index = TILE_INDEX_W'(soft_out_write_index);
   always_comb begin
     result_serial_write = 1'b0;
     result_serial_index = '0;
@@ -1759,7 +1934,7 @@ module vector_engine #(
     endcase
   end
   // 字节写入来源互斥，各存储项共用已按写使能选择的数据。
-  assign result_common_data = ({8{softmax_s8 && soft_out_we}} & soft_out_data) |
+  assign result_common_data = ({8{soft_out_write_valid}} & soft_out_data) |
       ({8{result_serial_write}} & result_serial_data);
   for (genvar entry=0;entry<TILE;entry++) begin : g_result_write
     localparam int LANE_INDEX = entry % PE_COUNT;
@@ -1924,7 +2099,7 @@ module vector_engine #(
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE); c<='0; error<=0; load_kind<=LD_WEIGHT;
+      {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE); c<='0; error<=0; load_kind<=LD_WEIGHT;
       parameter_rows_remaining<=0;
       taps<=0; active<=0; channel_base<=0; position<=0;
       ox<=0;oy<=0;kx<=0;ky<=0;tap<=0;load_tap<=0;valid_taps<=0;
@@ -2015,23 +2190,23 @@ module vector_engine #(
       end
       case (state)
         IDLE: if (start) begin
-          c<=cfg; error<=0; {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK);
+          c<=cfg; error<=0; {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK);
           input_range_mode<=0;
         end
         CHECK: begin
           q_active<=0;q_valid<=0;
           read_bank<=0;wf_bank<=0;window_received<=0;
           param_bad_seen<=0;
-          if (config_check_ready) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK_WAIT);
+          if (config_check_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CHECK_WAIT);
         end
         CHECK_WAIT: if (config_check_done) begin
-          if (config_check_error) begin error<=2'b01;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          if (config_check_error) begin error<=2'b01;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           else begin
-            taps<=32'(kernel_count);channel_base<=0;input_range_mode<=global_pool;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CONFIGURE);
+            taps<=32'(kernel_count);channel_base<=0;input_range_mode<=global_pool;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(CONFIGURE);
             kernel_last_column<=TAP_COUNT_W'(c.image.kernel_w)-TAP_COUNT_W'(1);
           end
         end
-        CONFIGURE: if (dma_cfg_ready) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(spatial ? TILE_INIT : VECTOR_INIT);
+        CONFIGURE: if (dma_cfg_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(spatial ? TILE_INIT : VECTOR_INIT);
         TILE_INIT: begin
           active<=channels-channel_base<TILE ? channels-channel_base : 32'(TILE);
           position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=LD_WEIGHT;
@@ -2040,40 +2215,40 @@ module vector_engine #(
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
           fetch_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});fetch_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
           fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});fetch_origin_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? LOAD_REQ : OUTPUT_INIT);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? LOAD_REQ : OUTPUT_INIT);
         end
         LOAD_REQ: if (rd_granted) begin
           parameter_rows_remaining<=
               load_kind==LD_BIAS && parameter_three_rows ? 2'd2 :
               load_kind==LD_MULT && parameter_two_rows ? 2'd1 : 2'd0;
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_WAIT);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_WAIT);
         end
         LOAD_WAIT: if (read_done_q) begin
           load_completion_error<=read_error_q;
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_VERIFY);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_VERIFY);
         end
         LOAD_VERIFY: begin
-          if (load_completion_error || param_bad_seen) begin error<=2'b10;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          if (load_completion_error || param_bad_seen) begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           else case (load_kind)
-            LD_WEIGHT: begin load_kind<=c.bias_base==0 ? LD_MULT : LD_BIAS;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-            LD_BIAS: begin load_kind<=LD_MULT;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-            LD_MULT: begin load_kind<=LD_SHIFT;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-            LD_SHIFT: {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
-            LD_A: if (binary_vector) begin load_kind<=LD_B;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
-              else begin compute_index<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(softmax_s8 ? SOFT_START : EXECUTE);end
+            LD_WEIGHT: begin load_kind<=c.bias_base==0 ? LD_MULT : LD_BIAS;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+            LD_BIAS: begin load_kind<=LD_MULT;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+            LD_MULT: begin load_kind<=LD_SHIFT;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+            LD_SHIFT: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
+            LD_A: if (binary_vector) begin load_kind<=LD_B;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);end
+              else begin compute_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(softmax_s8 ? SOFT_START : EXECUTE);end
             LD_B: begin
               compute_index<=0;add_stage<=0;
-              {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(add_s8 ? ADD_MULT : EXECUTE);
+              {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(add_s8 ? ADD_MULT : EXECUTE);
             end
-            default: begin error<=2'b10;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+            default: begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
           endcase
         end
         OUTPUT_INIT: begin
           tap<=0;kx<=0;ky<=0;valid_taps<=0;compute_index<=0;
           input_x<=input_origin_x;input_y<=input_origin_y;
           if (global_pool) begin
-            valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
-          end else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? DW_EXECUTE : TAP_CHECK);
+            valid_taps<=taps;pool_offset<=0;pool_taps_remaining<=taps;pool_byte_offset<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
+          end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? DW_EXECUTE : TAP_CHECK);
         end
         DW_EXECUTE: begin
           if (dw_issue_fire) begin
@@ -2084,7 +2259,7 @@ module vector_engine #(
             end
           end
           if (dw_tap_advance) begin
-            if (tap_last_modulo) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_FINISH);
+            if (tap_last_modulo) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_FINISH);
             else begin
               tap<=weight_tap_nxt;
               input_x<=next_window_x;input_y<=next_window_y;
@@ -2109,33 +2284,33 @@ module vector_engine #(
               input_x<=$signed(coordinate_step_o_value[2]);
               input_y<=input_origin_y;
             end
-            {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_EXECUTE);
-          end else if (channel_base+active<channels) begin
-            channel_base<=channel_base+active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
-          end else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DW_EXECUTE);
+          end else if (channel_has_more) begin
+            channel_base<=channel_next;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
+          end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         end
         POOL_LOAD_PREP: begin
           pool_pixels<=pool_next_pixels;pool_received<=0;pool_pixel<=0;pool_input_index<=0;
           pool_elements<=pool_next_elements;
           pool_row_columns<=channels==active ? pool_next_elements : (INPUT_INDEX_W+1)'(active);
           pool_row_remaining<=channels==active ? pool_next_elements : (INPUT_INDEX_W+1)'(active);
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_REQ);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_REQ);
         end
-        POOL_LOAD_REQ: if (rd_granted) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_WAIT);
+        POOL_LOAD_REQ: if (rd_granted) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_WAIT);
         POOL_LOAD_WAIT: if (read_done_q) begin
-          if (read_error_q || !pool_receive_complete) begin error<=2'b10;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
-          else begin compute_index<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_DRAIN);end
+          if (read_error_q || !pool_read_complete_saved) begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          else begin compute_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_DRAIN);end
         end
-        POOL_LOAD_DRAIN: {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
-        TAP_CHECK: if (in_bounds) begin
+        POOL_LOAD_DRAIN: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
+        TAP_CHECK: if (dw_in_bounds) begin
             valid_taps<=valid_taps+1;compute_index<=0;
-            {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[read_bank] ? EXECUTE : WINDOW_WAIT);
+            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[read_bank] ? EXECUTE : WINDOW_WAIT);
           end
-          else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_NEXT);
-        WINDOW_WAIT: if (input_ready[read_bank]) begin compute_index<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);end
-        EXECUTE: if (!vector_hadamard || !writeback_busy) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE_COMMIT);
+          else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_NEXT);
+        WINDOW_WAIT: if (input_ready[read_bank]) begin compute_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);end
+        EXECUTE: if (!vector_hadamard || !writeback_busy) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE_COMMIT);
         EXECUTE_COMMIT: begin
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(EXECUTE);
           if (!compute_group_last_q) compute_index<=compute_index+32'(PE_COUNT);
           else if (global_pool) begin
             pool_byte_offset<=pool_byte_offset_next;
@@ -2146,69 +2321,69 @@ module vector_engine #(
             else if (pool_taps_remaining>pool_pixels) begin
               pool_offset<=pool_offset+pool_pixels;
               pool_taps_remaining<=pool_taps_remaining-TAP_COUNT_W'(pool_pixels);
-              {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
+              {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_LOAD_PREP);
             end
-            else begin quant_index<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+            else begin quant_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           end
           else if (spatial) begin
             read_bank<=(read_bank+1'b1)&input_bank_mask;compute_index<=0;
-            if (tap_last_wide) begin quant_index<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+            if (tap_last_wide) begin quant_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
             else begin
               tap<=weight_tap_nxt;input_x<=next_window_x;input_y<=next_window_y;
               if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
               if (next_window_valid_q) begin
                 valid_taps<=valid_taps+1;
-                {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[(read_bank+1'b1)&input_bank_mask] ? EXECUTE : WINDOW_WAIT);
-              end else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
+                {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(input_ready[(read_bank+1'b1)&input_bank_mask] ? EXECUTE : WINDOW_WAIT);
+              end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
             end
           end
           else if (vector_hadamard) begin
-            write_origin<=write_origin_next;write_total<=active<<2;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
-          end else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
+            write_origin<=write_origin_next;write_total<=active<<2;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+          end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
         end
         ADD_MULT: begin
-          add_multiply_wait<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_DRAIN);
+          add_multiply_wait<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_DRAIN);
         end
         ADD_DRAIN: if (add_multiply_wait) begin
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND);
         end else add_multiply_wait<=1;
-        ADD_ROUND: {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND_WAIT);
+        ADD_ROUND: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_ROUND_WAIT);
         ADD_ROUND_WAIT: begin
           if (add_stage==0) begin
             add_scaled_a<=32'(rounding_result);
-            add_stage<=1;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
+            add_stage<=1;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
           end else if (add_stage==1) begin
-            add_rounded<=rounding_result;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_SUM);
+            add_rounded<=rounding_result;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_SUM);
           end else begin
-            add_rounded<=rounding_result;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_CLAMP);
+            add_rounded<=rounding_result;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_CLAMP);
           end
         end
         ADD_SUM: begin
-          add_stage<=2;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
+          add_stage<=2;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
         end
-        ADD_CLAMP: {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_STORE);
+        ADD_CLAMP: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_STORE);
         ADD_STORE: if (!writeback_busy) begin
           if (compute_index+1<active) begin
-            compute_index<=compute_index+1'b1;add_stage<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
+            compute_index<=compute_index+1'b1;add_stage<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(ADD_MULT);
           end else begin
-            write_origin<=write_origin_next;write_total<=active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+            write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
           end
         end
-        TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+        TAP_NEXT: if (tap_last_wide) begin quant_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           else begin
             tap<=weight_tap_nxt;input_x<=next_window_x;input_y<=next_window_y;
             if (kernel_column_end) begin kx<=0;ky<=ky+1;end else kx<=kx+1;
-            {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
+            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TAP_CHECK);
           end
         QUANT_INIT: begin
           if (depthwise) begin
             if (!writeback_busy) begin
-              q_active<=1;q_count<=active;q_issue<=0;q_valid<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_STREAM);
+              q_active<=1;q_count<=active;q_issue<=0;q_valid<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_STREAM);
             end
           end else if (!writeback_busy) begin
             if (avg_pool) begin
-              if (valid_taps==0) begin error<=2'b01;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);
-            end else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_STORE);
+              if (valid_taps==0) begin error<=2'b01;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);
+            end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_STORE);
           end
         end
         QUANT_STREAM: begin
@@ -2227,30 +2402,30 @@ module vector_engine #(
           if (q_valid[5]) begin q_clamped_q<=q_clamped_data[7:0];q_index_6<=q_index_5;end
           if (q_valid[6] && q_index_6+1==q_count) begin
             q_active<=0;q_valid<=0;
-            write_origin<=write_origin_next;write_total<=active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+            write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
           end
         end
-        AVG_START: if (avg_power_two) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_DELAY);
-          else begin avg_negative<=serial_acc_read_data<0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_WAIT);end
-        AVG_POWER_DELAY: {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_CLAMP);
-        AVG_POWER_CLAMP: {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_STORE);
+        AVG_START: if (avg_power_two) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_DELAY);
+          else begin avg_negative<=serial_acc_read_data<0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_WAIT);end
+        AVG_POWER_DELAY: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_CLAMP);
+        AVG_POWER_CLAMP: {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_POWER_STORE);
         AVG_POWER_STORE: begin
-          if (quant_index+1<active) begin quant_index<=quant_index+1;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);end
-          else begin write_origin<=write_origin_next;write_total<=active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+          if (quant_index+1<active) begin quant_index<=quant_index+1;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);end
+          else begin write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end
         AVG_WAIT: if (avg_done) begin
-          if (quant_index+1<active) begin quant_index<=quant_index+1;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
+          if (quant_index+1<active) begin quant_index<=quant_index+1;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(QUANT_INIT);end
           else begin write_origin<=write_origin_next;
-            write_total<=active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+            write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end
         POOL_STORE: begin
           write_origin<=write_origin_next;
-          write_total<=active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+          write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
         end
         WRITE_PREP: if (writeback_ready) begin
-          if (spatial) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_NEXT);
-          else if (vector_hadamard || add_s8) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
-          else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+          if (spatial) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_NEXT);
+          else if (vector_hadamard || add_s8) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_NEXT);
+          else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         end
         OUTPUT_NEXT: begin
           if (position_next<32'(position_count)) begin
@@ -2261,66 +2436,78 @@ module vector_engine #(
             end else begin
               ox<=ox+1;input_origin_x<=$signed(coordinate_step_o_value[2]);
             end
-            {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
-          end else if (channel_base+active<channels) begin
-            channel_base<=channel_base+active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
+            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
+          end else if (channel_has_more) begin
+            channel_base<=channel_next;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN_TILE);
           end
-          else {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+          else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         end
         // 每个结果槽保存所属通道数，共享量化与写回可跨通道组继续完成。
         DRAIN_TILE: if (!win_busy && input_reserved==0 && !q_active &&
                        (depthwise ? !dw_group_pending : !writeback_busy && !dw_work_pending))
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TILE_INIT);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(TILE_INIT);
         DRAIN: if (!writeback_busy && !win_busy && input_reserved==0 && !q_active && !dw_work_pending && dma_cfg_ready)
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
-        SOFT_START: if (soft_ready) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
+        SOFT_START: if (soft_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
         SOFT_RUN: if (soft_done) begin
-          if (soft_error!=0) begin error<=soft_error;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
-          else begin write_origin<=write_origin_next;write_total<=active;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+          if (soft_error!=0) begin error<=soft_error;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+          else begin write_origin<=write_origin_next;write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end else if (soft_lut_req_valid) begin
-          soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_REQ);
+          soft_lut_data<=0;soft_lut_index_q<=soft_lut_index;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_REQ);
         end
-        SOFT_LUT_REQ: if (rd_granted) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_WAIT);
-        SOFT_LUT_WAIT: if (read_done_q) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
+        SOFT_LUT_REQ: if (rd_granted) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_LUT_WAIT);
+        SOFT_LUT_WAIT: if (read_done_q) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(SOFT_RUN);
         VECTOR_INIT: begin
           vector_offset<=0;active<=c.length<TILE ? c.length : 32'(TILE);
-          load_kind<=LD_A;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
+          load_kind<=LD_A;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
         end
         VECTOR_NEXT: if (vector_has_more) begin
           vector_offset<=vector_offset_next;
           active<=vector_next_active;
-          load_kind<=LD_A;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
-        end else if (vector_hadamard || add_s8) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
+          load_kind<=LD_A;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(LOAD_REQ);
+        end else if (vector_hadamard || add_s8) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DRAIN);
         else begin
           reduce_acc<=vector_max ? 32'sh8000_0000 : vector_min ? 32'sh7fff_ffff : 32'sd0;
-          reduce_index<=0;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_REDUCE);
+          reduce_index<=0;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(VECTOR_REDUCE);
         end
         VECTOR_REDUCE: begin
           reduce_acc<=reduce_next;
           if (reduce_index+1<TILE) reduce_index<=reduce_index+1;
-          else begin write_origin<=write_origin_next;write_total<=4;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
+          else begin write_origin<=write_origin_next;write_total<=4;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end
         FAILED: if (input_drain_ready) begin
           q_active<=0;q_valid<=0;
-          {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
+          {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(DONE);
         end
-        DONE: if (done_ready) {dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE);
-        default: begin error<=2'b10;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
+        DONE: if (done_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(IDLE);
+        default: begin error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end
       endcase
       if ((writeback_done && writeback_error) ||
           window_response_fault) begin
-        error<=2'b10;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
+        error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
       end
       if (SHARED_STORAGE_ENABLE && i_storage_error &&
           state!=IDLE && state!=FAILED && state!=DONE) begin
-        error<=2'b10;{dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
+        error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
       end
     end
   end
 
 `ifdef NPU_SIM_ASSERT
+  logic signed [31:0] soft_exp_previous;
+  logic signed [7:0] soft_out_previous;
+  always_ff @(posedge clk) begin
+    if (soft_exp_we) soft_exp_previous <= soft_exp_data;
+    if (soft_out_we) soft_out_previous <= soft_out_data;
+    if (rst_n && soft_exp_write_valid) assert(soft_lut_data === soft_exp_previous);
+    if (rst_n && soft_out_write_valid) assert(soft_out_data === soft_out_previous);
+  end
   logic [31:0] input_position[4],input_tap[4];
   logic writeback_metadata_stalled;
+  logic writeback_metadata_match;
+  logic previous_writeback_sink_fire;
+  assign writeback_metadata_match = writeback_metadata_valid &&
+      (!depthwise || writeback_metadata_slot == dw_result_read_slot);
   logic [31:0] previous_writeback_address;
   logic [$clog2(4*TILE+1)-1:0] previous_writeback_bytes;
   logic previous_writeback_last, previous_writeback_coalesce;
@@ -2328,7 +2515,19 @@ module vector_engine #(
   always @(posedge clk) begin
     if (!rst_n) begin
       writeback_metadata_stalled <= 1'b0;
+      previous_writeback_sink_fire <= 1'b0;
     end else begin
+      assert(writeback_accept_pending == previous_writeback_sink_fire);
+      assert(!(writeback_metadata_valid && writeback_accept_pending));
+      if (writeback_metadata_valid && state!=FAILED)
+        assert(writeback_request_valid && writeback_metadata_match);
+      if (state==TAP_CHECK) assert(dw_in_bounds == in_bounds);
+      if (state==DW_FINISH || state==OUTPUT_NEXT) begin
+        assert(channel_has_more == (channel_base+active<channels));
+        assert(channel_next == 16'(channel_base+active));
+      end
+      assert(window_fetch_phase == (state==OUTPUT_INIT || state==TAP_CHECK || state==WINDOW_WAIT || state==QUANT_STREAM || state==EXECUTE || state==EXECUTE_COMMIT || state==TAP_NEXT || state==QUANT_INIT || state==OUTPUT_NEXT || state==AVG_START || state==AVG_POWER_DELAY || state==AVG_POWER_CLAMP || state==AVG_POWER_STORE || state==AVG_WAIT || state==POOL_STORE || state==WRITE_PREP || state==DW_EXECUTE || state==DW_FINISH));
+      previous_writeback_sink_fire <= writeback_sink_fire;
       assert(ready == (state==IDLE));
       assert(done_valid == (state==DONE));
       assert(dma_cfg_valid == (state==CONFIGURE));
@@ -2662,6 +2861,9 @@ module vector_banked_writeback #(
   logic [COUNT_WIDTH-1:0] pending_bytes, total_bytes, written_bytes;
   logic pending_last;
   logic [7:0] payload_burst_length;
+  logic [ROW_WIDTH:0] beats_remaining;
+  logic [BUS_BYTES-1:0] first_mask, last_mask, final_mask;
+  logic [BUS_SHIFT-1:0] final_count;
   logic [BUS_SHIFT-1:0] lane_offset, first_bank;
   logic [COUNT_WIDTH:0] appended_bytes;
   logic append_compatible, append_fits, append_allowed;
@@ -2825,6 +3027,9 @@ module vector_banked_writeback #(
       payload_slot <= pending_slot;
       payload_address <= {pending_address[31:BUS_SHIFT], {BUS_SHIFT{1'b0}}};
       payload_burst_length <= 8'((pending_span >> BUS_SHIFT)-1'b1);
+      beats_remaining <= (ROW_WIDTH+1)'(pending_span >> BUS_SHIFT);
+      src_wmask <= first_mask;
+      last_mask <= final_mask;
       total_bytes <= pending_bytes;
       written_bytes <= '0;
       lane_offset <= pending_address[BUS_SHIFT-1:0];
@@ -2832,6 +3037,8 @@ module vector_banked_writeback #(
     end else if (data_fire) begin
       written_bytes <= written_bytes + COUNT_WIDTH'(beat_bytes);
       lane_offset <= '0;
+      beats_remaining <= beats_remaining - (ROW_WIDTH+1)'(1);
+      src_wmask <= beats_remaining==(ROW_WIDTH+1)'(2) ? last_mask : '1;
     end
   end
 
@@ -2847,10 +3054,13 @@ module vector_banked_writeback #(
   end
   assign src_wdata = output_rotation[BUS_SHIFT];
   assign src_wvalid = c_st==DATA;
+  assign final_count = pending_address[BUS_SHIFT-1:0] + BUS_SHIFT'(pending_bytes);
   for (genvar lane=0; lane<BUS_BYTES; lane++) begin : g_byte_mask
     logic [BUS_SHIFT-1:0] distance;
-    assign distance = BUS_SHIFT'(lane)-lane_offset;
-    assign src_wmask[lane] = BUS_SHIFT'(lane)>=lane_offset && remaining>ARITH_WIDTH'(distance);
+    assign distance = BUS_SHIFT'(lane)-pending_address[BUS_SHIFT-1:0];
+    assign first_mask[lane] = BUS_SHIFT'(lane)>=pending_address[BUS_SHIFT-1:0] &&
+        ARITH_WIDTH'(pending_bytes)>ARITH_WIDTH'(distance);
+    assign final_mask[lane] = final_count==0 || BUS_SHIFT'(lane)<final_count;
   end
   assign busy = c_st!=IDLE || pending_bytes!=0 || copy_active;
   assign done = c_st==RESPONSE && wr_done;
@@ -2872,7 +3082,14 @@ module vector_banked_writeback #(
     if (copy_word_fire) assert(appended_bytes<=(COUNT_WIDTH+1)'(CAPACITY));
     if (request_fire) assert(copy_last);
     if (c_st!=IDLE && pending_bytes!=0) assert(payload_slot!=pending_slot);
-    if (data_fire) assert(beat_bytes!=0);
+    if (data_fire) begin
+      assert(beat_bytes!=0);
+      assert(beats_remaining!=0);
+      for (int lane=0;lane<BUS_BYTES;lane++) begin
+        assert(src_wmask[lane] == (BUS_SHIFT'(lane)>=lane_offset &&
+            remaining>ARITH_WIDTH'(BUS_SHIFT'(lane)-lane_offset)));
+      end
+    end
   end
 `endif
 endmodule

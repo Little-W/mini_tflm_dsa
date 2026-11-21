@@ -1,0 +1,148 @@
+{
+  "passed": true,
+  "configuration": {
+    "tile": 16,
+    "bus_width": 64,
+    "window_lanes": 8,
+    "shared_quant": false,
+    "shared_storage": true,
+    "shared_bank_bytes": 8192,
+    "shared_bank_count": 7,
+    "shared_ia_banks": 2
+  },
+  "source_sha256": {
+    "rtl/npu/conv/vector_engine.sv": "cd3f7fd3d433a86f72c35148836b3d0f9025bc5ac2f207915fee06e0b646f2ef",
+    "rtl/npu/conv/vector_config_check.sv": "888bb1693c9299490e440ede569f0974abe3d7139189c91b08e89f2a54d7f710",
+    "rtl/npu/conv/vector_softmax.sv": "08c3ca2ab3ca8742428aeb7b2d14faeeca9a316df94c8abb05b2091ff4cf357f",
+    "test/vector_config_ranges/run.py": "4b839bc563e1ac7807a8601d0ceb64910cf36a24500e4bdfb39fa58e43e9f17d",
+    "test/vector_engine/run_window_error.py": "3e4d1f49335732afb3f5c7ca581edc1cfb1e958887b1c5966c6b4c66123113e2",
+    "test/vector_engine/window_error.cpp": "6409fbd42ecf8115e0c7261f19d486723a9dad0c1809330af546039113957db5",
+    "test/vector_engine/window_error_top.sv": "6bdf15b4c0ac0ee7414734a01db49b1d3cb8c35d9abcc054ad08e4012e090aa1",
+    "test/vector_engine/production_synthesis_cases.json": "6aceed95e3e845c9d3bc101f7fc4dc7413d18d2c82f4d8def2971f56137cf0cd",
+    "test/vector_softmax/run.py": "608978f4a3e149fe0827108c94a6b927f1083c46d06742cb5e43cecfa58e92d1",
+    "test/vector_softmax/main.cpp": "3f70c7bf76b57821d520fd2b2636370bf8750288172b891fe528bf4e54d23e26",
+    "test/vector_softmax/vector_softmax_test.sv": "b37d7f04449f57876d583512ed38dde8675fa160f676aea29145aeed9751c426"
+  },
+  "resources": {
+    "logic_lut_cells": 12132,
+    "distributed_ram_lut_sites_nominal": 176,
+    "shift_register_lut_sites_nominal": 0,
+    "lut_sites_nominal_before_packing": 12308,
+    "flip_flops": 6283,
+    "dsp48e1": 52,
+    "ramb18e1": 9,
+    "ramb36e1": 0
+  },
+  "register_paths": {
+    "longest_register_path_cells": 10,
+    "graph_nodes": 32546,
+    "visited_graph_nodes": 32546,
+    "graph_complete": true,
+    "combinational_cycle_nodes": [],
+    "unclassified_cell_types": {}
+  },
+  "production": {
+    "passed": true,
+    "cases": 615,
+    "outputs": 170668,
+    "add_cases": 143,
+    "add_outputs": 135758,
+    "softmax_cases": 273,
+    "softmax_outputs": 2188,
+    "test_case_cycles": 3258441,
+    "comparison_revision": "42a820c7",
+    "comparison_case_cycles": 3249476,
+    "case_cycle_increase": 8965,
+    "case_cycle_increase_percent": 0.2758906359056045,
+    "rtl_assertions": true,
+    "weight_prefetch_assertions": true
+  },
+  "softmax_registered": {
+    "passed": true,
+    "maximum_depths": [
+      1,
+      16,
+      256
+    ],
+    "cases": 130581,
+    "elements": 14717968,
+    "ubsan": true
+  },
+  "softmax_default_parameter_formal": {
+    "passed": true,
+    "profiles": 4,
+    "all_public_outputs_compared": true,
+    "inputs_constrained": false,
+    "reference_revision": "42a820c7"
+  },
+  "configuration_formal": {
+    "passed": true,
+    "proofs": 4,
+    "tiles": [
+      4,
+      16,
+      64
+    ],
+    "configuration_held_from_start_to_done": true,
+    "reference_revision": "42a820c7"
+  },
+  "window_error_recovery": {
+    "passed": true,
+    "bus_widths": [
+      32,
+      64
+    ],
+    "cases": 96,
+    "injected_errors": 48,
+    "recovery_tasks": 48,
+    "shared_quant": true
+  },
+  "banked_writeback": {
+    "passed": true,
+    "configurations": 9,
+    "requests": 11940,
+    "bytes": 721931,
+    "errors": 656,
+    "partial_cancels": 7,
+    "module_sha256": "9e18ff8db2bbeff8a5a030c35d17faacf487857c3555e2379495428112fc1f01"
+  },
+  "reports": {
+    "production": {
+      "path": "build/vector_soft_storage_production/summary.json",
+      "sha256": "b7fb83751b7e9c37e2929655a227f53ae11913ca7f50373158daa650c27e7db2"
+    },
+    "softmax_registered": {
+      "path": "build/vector_shared_read_softmax_registered/summary.json",
+      "sha256": "6ccd8b74cb779f8843c0c83039059c039df1f647d9865287b5881ec4d8d364f6"
+    },
+    "softmax_formal": {
+      "path": "build/vector_shared_read_softmax_formal/summary.json",
+      "sha256": "3643fafb15b1b76c3fc0349b43b528322a835ddd9f7e4d7f5acf809d6e1f1ff3"
+    },
+    "configuration_formal": {
+      "path": "build/vector_soft_storage_config_formal/summary.json",
+      "sha256": "ef9177a712aabeb02cef237497307dd05986e6ba5a41f7dfc3f40abc74a11b08"
+    },
+    "window_bus64": {
+      "path": "build/vector_soft_storage_window64/summary.json",
+      "sha256": "20ad39208822a118b8f287cfaa1f4ce21efe35a7cac5423d46e4d37927d24829"
+    },
+    "window_bus32": {
+      "path": "build/vector_soft_storage_window32/summary.json",
+      "sha256": "44acc503c4e3b290c931ca7ff9d2de9b94a5515c1e10562be39a22cd62f877c2"
+    },
+    "writeback": {
+      "path": "build/vector_shared_read_writeback/summary.json",
+      "sha256": "50afa3e4054a149b5154102231c28e9818077f25041de6953dc4de90022b233f"
+    },
+    "synthesis": {
+      "path": "build/vector_area_experiments/soft_storage/vector/metrics.json",
+      "sha256": "663e1053fc32747a56c49ba309ecb1fe350acce8ff7e33c58a46842854c2b4e0"
+    },
+    "synthesis_manifest": {
+      "path": "build/vector_area_experiments/soft_storage/vector/manifest.json",
+      "sha256": "ddb1e921db9a1655cc791126d2f5d146623a0c1ec3a10f87d3ccf9459419fced"
+    }
+  },
+  "scope": "生产实参下的向量模块独立映射与数值、协议、形式验证；完整 SoC 的资源及布局布线时序由对应整机测量确定。"
+}

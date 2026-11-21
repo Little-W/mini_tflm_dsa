@@ -5,7 +5,8 @@
 module vector_softmax #(
   parameter int MAX_DEPTH = 16,
   parameter int IW = MAX_DEPTH <= 1 ? 1 : $clog2(MAX_DEPTH),
-  parameter int unsigned MULTIPLIER_LATENCY = 0
+  parameter int unsigned MULTIPLIER_LATENCY = 0,
+  parameter bit INPUT_REGISTERED = 1'b0
 ) (
   input  wire logic clk, rst_n,
   input  wire logic start,
@@ -37,7 +38,7 @@ module vector_softmax #(
     IDLE, FIND_MAX, LUT_REQUEST, LUT_WAIT, NORMALIZE, RECIP_INIT,
     RECIP_ERROR, RECIP_UPDATE, RECIP_SCALE, OUTPUT_MULT, OUTPUT_STORE, FINISH,
     RECIP_INIT_WAIT, RECIP_ERROR_WAIT, RECIP_UPDATE_WAIT, RECIP_ROUND, MULTIPLY_WAIT, LUT_DRAIN,
-    NORMALIZE_COMMIT
+    NORMALIZE_COMMIT, MAX_READ, LUT_READ
   } state_t;
   state_t c_st, reciprocal_return;
   logic signed [31:0] reciprocal_q31;
@@ -243,19 +244,23 @@ module vector_softmax #(
               error <= 2'b01;
               c_st <= FINISH;
             end else begin
-              c_st <= FIND_MAX;
+              c_st <= INPUT_REGISTERED ? MAX_READ : FIND_MAX;
             end
           end
         end
+        // 同步输入端口在读取状态保存当前下标对应的字节。
+        MAX_READ: c_st <= FIND_MAX;
+        LUT_READ: c_st <= LUT_REQUEST;
         FIND_MAX: begin
           if (input_data > maximum) begin
             maximum <= input_data;
           end
           if ((CW'(index) + CW'(1)) < count) begin
             index <= index + IW'(1);
+            if (INPUT_REGISTERED) c_st <= MAX_READ;
           end else begin
             index <= '0;
-            c_st <= LUT_REQUEST;
+            c_st <= INPUT_REGISTERED ? LUT_READ : LUT_REQUEST;
           end
         end
         LUT_REQUEST: begin
@@ -270,7 +275,7 @@ module vector_softmax #(
               c_st <= FINISH;
             end else if ((CW'(index) + CW'(1)) < count) begin
               index <= index + IW'(1);
-              c_st <= LUT_REQUEST;
+              c_st <= INPUT_REGISTERED ? LUT_READ : LUT_REQUEST;
             end else begin
               c_st <= LUT_DRAIN;
             end

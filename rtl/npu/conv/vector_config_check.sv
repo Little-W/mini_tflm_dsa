@@ -24,6 +24,7 @@ module vector_config_check #(
   (* use_dsp="yes" *) logic [31:0] product_upper;
   wire [47:0] product_q={product_upper,multiply_low[15:0]};
   logic [15:0] range_dimension, range_padding;
+  logic [15:0] range_dimension_saved, range_padding_saved;
   logic [16:0] range_sum, range_carry;
   logic [17:0] range_compare, range_i_a, range_i_b;
   logic unused_range_carry;
@@ -73,9 +74,9 @@ module vector_config_check #(
   // 纵、横坐标按乘积阶段共用范围检查器，分别保存检查结果。
   assign range_dimension = phase == 3'd6 ? cfg.image.input_h : cfg.image.input_w;
   assign range_padding = phase == 3'd6 ? cfg.image.pad_top : cfg.image.pad_left;
-  assign range_sum = {1'b0, range_dimension} ^ {1'b0, range_padding} ^ ~product_q[16:0];
-  assign range_carry = ({1'b0, range_dimension} & {1'b0, range_padding}) |
-      (({1'b0, range_dimension} ^ {1'b0, range_padding}) & ~product_q[16:0]);
+  assign range_sum = {1'b0, range_dimension_saved} ^ {1'b0, range_padding_saved} ^ ~product_q[16:0];
+  assign range_carry = ({1'b0, range_dimension_saved} & {1'b0, range_padding_saved}) |
+      (({1'b0, range_dimension_saved} ^ {1'b0, range_padding_saved}) & ~product_q[16:0]);
   assign range_i_a = {1'b0, range_sum};
   assign range_i_b = {range_carry, 1'b0};
   parallel_prefix_add #(.p_width(18), .p_group_width(4)) u_range (
@@ -171,6 +172,8 @@ module vector_config_check #(
       end
       // 两个十六位乘积分别寄存，CAPTURE 状态合并结果并保持固定检查周期。
       CALCULATE: begin
+        range_dimension_saved<=range_dimension;
+        range_padding_saved<=range_padding;
         multiply_low<=multiply_a[15:0]*multiply_b;
         multiply_high<=multiply_a[31:16]*multiply_b;
         state<=CAPTURE;

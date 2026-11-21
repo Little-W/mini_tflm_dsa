@@ -22,15 +22,17 @@ from open_fpga_synth import run_stage
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--reference', default='4dee27ffec4dc891daf2681379f8b3fd27fd41f2')
     parser.add_argument('--stable-config', action='store_true', help='按照接口要求，在 start 至 done 期间保持 cfg')
     args = parser.parse_args()
+    source_root = args.source_root.resolve()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = out / 'reference.sv'
     current = out / 'current.sv'
     reference.write_bytes(read_rtl_source(args.reference + ':' + str(SOURCE), cwd=ROOT))
-    current.write_bytes((ROOT / SOURCE).read_bytes())
+    current.write_bytes((source_root / SOURCE).read_bytes())
     bounds = out / 'activation_bounds.sv'
     bounds.write_text('''module activation_bounds (
     input logic signed [31:0] minimum, maximum,
@@ -51,9 +53,11 @@ sat -verify -prove equal 1 -show-inputs -show-outputs
 ''')
     runs = [{'name': 'activation_bounds', 'input_bits': 64, 'input_constraints': None,
              **run_stage(script, script.with_suffix('.log'), dict(os.environ))}]
-    dependencies = [ROOT / 'rtl/npu/conv' / name
+    dependencies = [source_root / 'rtl/npu/conv' / name
                     for name in ('conv_im2col_pkg.sv', 'vector_engine_pkg.sv')]
-    dependencies.append(ROOT / 'rtl/common/parallel_prefix_add.sv')
+    dependencies.append(source_root / 'rtl/common/parallel_prefix_add.sv')
+    dependency_hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                         for path in dependencies}
     packages = ' '.join(shlex.quote(str(path)) for path in dependencies)
     wrapper = out / 'config_context.sv'
     wrapper.write_text('''module config_context #(
@@ -82,8 +86,15 @@ endmodule
     extra = shlex.quote(str(wrapper)) if args.stable_config else ''
     hide = '\n'.join(('rename -hide w:*fields_ok*',
                        'rename -hide w:*output_x_in_range',
-                       'rename -hide w:*output_y_in_range')) if args.stable_config else ''
-    induction = 4
+                       'rename -hide w:*output_y_in_range',
+                       'rename -hide w:*range_sum',
+                       'rename -hide w:*range_carry',
+                       'rename -hide w:*range_i_a',
+                       'rename -hide w:*range_i_b',
+                       'rename -hide w:*range_compare',
+                       'rename -hide w:*output_coordinate_in_range',
+                       'rename -hide w:*u_range.*')) if args.stable_config else ''
+    induction = 10
     for tile in (4, 16, 64):
         script = out / f'checker_tile{tile}.ys'
         script.write_text(f'''read_slang --top {top} -GTILE={tile} {packages} {shlex.quote(str(reference))} {extra}
@@ -107,11 +118,15 @@ equiv_status -assert
         runs.append({'name': f'checker_tile{tile}',
                      'input_constraints': 'cfg held from accepted start through done' if args.stable_config else None,
                      **run_stage(script, script.with_suffix('.log'), dict(os.environ))})
-    if current.read_bytes() != (ROOT / SOURCE).read_bytes():
+    if current.read_bytes() != (source_root / SOURCE).read_bytes():
         raise RuntimeError('验证期间配置检查器发生变化')
+    if any(hashlib.sha256(Path(name).read_bytes()).hexdigest()!=value
+           for name,value in dependency_hashes.items()):
+        raise RuntimeError('验证期间公共依赖发生变化')
     report = {'passed': True, 'reference': args.reference,
               'source_sha256': hashlib.sha256(current.read_bytes()).hexdigest(),
               'reference_sha256': hashlib.sha256(reference.read_bytes()).hexdigest(),
+              'dependency_sha256': dependency_hashes,
               'scope': '激活范围的全部64位输入及完整检查器的公开输出与寄存状态',
               'stable_config': args.stable_config,
               'runs': runs}

@@ -59,7 +59,7 @@ static std::vector<int8_t> table_reference(const std::vector<int8_t>& input,
 class Simulation {
  public:
   Vvector_softmax_test dut;
-  std::array<int8_t,256> input{},output{};
+  std::array<int8_t,512> input{},output{};
   std::array<int32_t,256> exponent{};
   const Table* table=nullptr;
   std::mt19937 bus_random{0x534d5831};
@@ -190,7 +190,7 @@ int main(int argc,char** argv) {
       }
     }
     // Exercise every signed input difference and both sides of each cutoff.
-    for (double scale:scales) {
+    if (TEST_MAX_DEPTH>=2) for (double scale:scales) {
       auto p=parameters(scale);
       for (int diff=0;diff<=255;diff++) {
         run_quantized(sim,{127,static_cast<int8_t>(127-diff)},p,"difference");
@@ -212,11 +212,13 @@ int main(int argc,char** argv) {
     tflite::PopulateSoftmaxVceTable(p,table.data());
     sim.run({},table,{},"zero_depth",1);
     sim.run(std::vector<int8_t>(TEST_MAX_DEPTH+1,0),table,{},"excess_depth",1);
-    sim.run({1,2,3},table,{},"read_error",2,1);
+    std::vector<int8_t> recovery_input(std::min(3,TEST_MAX_DEPTH));
+    for (unsigned i=0;i<recovery_input.size();i++) recovery_input[i]=static_cast<int8_t>(i+1);
+    sim.run(recovery_input,table,{},"read_error",2,std::min(1,TEST_MAX_DEPTH-1));
     Table negative=table;negative[0]=INT32_MIN;
-    sim.run({1,1},negative,{},"negative_exponential",2);
-    Table zero{};sim.run({1,2},zero,{},"zero_sum",1);
-    run_quantized(sim,{1,2,3},p,"recovery");
+    sim.run(std::vector<int8_t>(std::min(2,TEST_MAX_DEPTH),1),negative,{},"negative_exponential",2);
+    Table zero{};sim.run(recovery_input,zero,{},"zero_sum",1);
+    run_quantized(sim,recovery_input,p,"recovery");
     const unsigned model_cases=replay(sim,argc>1?argv[1]:"",argc>2?argv[2]:"");
     std::cout<<"{\"passed\":true,\"maximum_depth\":"<<TEST_MAX_DEPTH
              <<",\"cases\":"<<case_count<<",\"elements\":"<<element_count
