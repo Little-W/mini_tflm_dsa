@@ -22,9 +22,21 @@ def model(label, s):
     out += 'count_t ' + ','.join(names + limits) + ';\nlogic ' + ','.join(lasts) + ';\nlogic [3:0][CNT_W-1:0] actual_next;\n'
     for i, (n, lim) in enumerate(zip(names, limits)):
         out += f'assign {n}=values[{i}];\nassign {lim}=limits[{i}];\n'
-    if 'traversal_i_value' in s:
+    if 'kernel_count_next_reaches' in s:
+        # 从生产控制器提取遍历和边界实例，配置地址准备独立于此组合检查。
+        out += 'logic [3:0][CNT_W-1:0] traversal_i_value,traversal_o_next;\n'
+        out += ('logic column_value_covers_limit,column_next_equals_limit,\n'
+                'column_increment_wrap,column_below_limit,unused_column_equal;\n')
+        a = s.index('  assign traversal_i_value[0]')
+        b = s.index('  unsigned_compare #(.p_width(CNT_W)) u_first_group_limit', a)
+        out += s[a:b]
+        instance = re.search(r'  add_equal #\(\.p_width\(CNT_W\)\) u_column_next_equal \(.*?\n  \);', s, re.S)
+        assert instance
+        out += instance[0] + '\nassign column_increment_wrap = &load_col_in_group;\n'
+        out += 'assign actual_next=traversal_o_next;\n'
+    elif 'traversal_i_value' in s:
         a = s.index('  logic [3:0][CNT_W-1:0] traversal_i_value')
-        b = s.index('  function automatic count_t ceil_div_pow2', a)
+        b = s.index('  function automatic count_t ', a)
         out += s[a:b]
         out += 'assign actual_next=traversal_o_next;\n'
     else:
@@ -33,6 +45,8 @@ def model(label, s):
             assert m, n
             out += f'assign actual_next[{i}]=' + m[1] + ';\n'
     for n in lasts:
+        if 'kernel_count_next_reaches' in s and n != 'last_col_in_group':
+            continue
         m = re.search('    ' + n + '\\s*=\\s*(.*?);', s, re.S)
         assert m, n
         out += 'assign ' + n + '=' + m[1] + ';\n'
@@ -64,7 +78,7 @@ def main():
     for w in [1, 2, 5, 6, 8, 9, 16, 29, 32, 33, 65]:
         ys = out / f'arithmetic_w{w}.ys'
         log = ys.with_suffix('.log')
-        ys.write_text(f'read_slang --top comparison -GCNT_W={w} ' + shlex.join([str(sv), str(equal_helper)]) + '\nprep -top comparison -flatten\nsat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
+        ys.write_text(f'read_slang --top comparison -GCNT_W={w} ' + shlex.join([str(sv), str(equal_helper), str(ROOT / 'rtl/common/unsigned_compare.sv')]) + '\nprep -top comparison -flatten\nsat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
         execute(ys, log, 'SUCCESS!')
         report['arithmetic'].append({'width': w, 'passed': True, 'log_sha256': digest(log)})
         print('ARITHMETIC_PASS', w, flush=True)

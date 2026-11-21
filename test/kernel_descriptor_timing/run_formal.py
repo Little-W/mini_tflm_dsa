@@ -56,7 +56,7 @@ def main():
                 original_add = f'group_base_addr + {register};'
                 assert text.count(original_add) == 1
                 text = text.replace(original_add, 'group_base_addr + group_addr_step_active;', 1)
-                declaration_marker = '  function automatic count_t ceil_div_pow2'
+                declaration_marker = '  function automatic count_t '
                 assert text.count(declaration_marker) == 1
                 text = text.replace(declaration_marker, observation + '\n' + declaration_marker, 1)
             path.write_text(text)

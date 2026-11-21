@@ -72,12 +72,12 @@ def main():
     gate.write_text(observed['current'])
     source_hash = hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest()
     dependencies = [ROOT / 'rtl/common' / name for name in
-                    ('add_equal.sv', 'add3_equal.sv', 'parallel_prefix_add.sv')]
+                    ('add_equal.sv', 'add3_equal.sv', 'parallel_prefix_add.sv', 'unsigned_compare.sv')]
     dependency_hashes = {str(path.relative_to(ROOT)):
         hashlib.sha256(path.read_bytes()).hexdigest() for path in dependencies}
     profiles = []
     helpers = ' '.join(shlex.quote(str(ROOT / 'rtl/common' / name))
-                       for name in ('add_equal.sv', 'add3_equal.sv', 'parallel_prefix_add.sv'))
+                       for name in ('add_equal.sv', 'add3_equal.sv', 'parallel_prefix_add.sv', 'unsigned_compare.sv'))
     primitive_library_sha256 = None
     if args.fpga:
         import pyosys
@@ -95,7 +95,7 @@ def main():
         script = out / f"{name}.ys"
         params = f"-GSIZE={size} -GCOUNT_WIDTH={count}"
         if args.fpga:
-            params += ' -D SYNTHESIS -D YOSYS -D VERIFIC'
+            params += ' -D SYNTHESIS -D XILINX_FPGA -D YOSYS -D VERIFIC'
         script.write_text(
             f"read_slang --top kernel_loader_ctrl_ref {params} {shlex.quote(str(reference))} {helpers}\n"
             "prep -top kernel_loader_ctrl_ref -flatten\nrename kernel_loader_ctrl_ref gold\n"

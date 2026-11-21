@@ -111,6 +111,8 @@ module kernel_loader_ctrl #(
   localparam int p_issued_part_bits = 6;
   localparam int p_issued_parts = (TOTAL_CNT_W + p_issued_part_bits - 1) / p_issued_part_bits;
   logic [p_issued_parts-1:0] issued_chunk_carry_q;
+  localparam int p_issued_levels = $clog2(p_issued_parts);
+  logic [p_issued_parts-1:0] issued_prefix [0:p_issued_levels];
   logic [1:0] remaining_loads, remaining_sends;
   logic issued_zero, issued_one, loads_wrap, sends_wrap;
   logic load_count_reached, sent_count_covers_loads;
@@ -125,6 +127,24 @@ module kernel_loader_ctrl #(
   logic [REG_WIDTH-1:0] cfg_col_addr_step;
   logic [REG_WIDTH-1:0] cfg_row_addr_step;
   logic [REG_WIDTH-1:0] group_addr_step_next;
+  logic [REG_WIDTH-1:0] group_step_25_sum, group_step_25_carry;
+  logic [REG_WIDTH-1:0] group_step_25_fast, group_step_25;
+  logic unused_group_step_25_carry;
+
+  // 二十五倍步长先压缩三个移位项，最后进行一次完整模宽求和。
+  assign group_step_25_sum = (col_addr_step << 4) ^ (col_addr_step << 3) ^ col_addr_step;
+  assign group_step_25_carry = (((col_addr_step << 4) & (col_addr_step << 3)) |
+      ((col_addr_step << 4) & col_addr_step) | ((col_addr_step << 3) & col_addr_step)) << 1;
+  parallel_prefix_add #(.p_width(REG_WIDTH)) u_group_step_25 (
+      .i_a(group_step_25_sum), .i_b(group_step_25_carry), .i_carry(1'b0),
+      .o_sum(group_step_25_fast), .o_carry(unused_group_step_25_carry)
+  );
+  always_comb begin
+    case (^col_addr_step)
+      1'b0, 1'b1: group_step_25 = group_step_25_fast;
+      default: group_step_25 = (col_addr_step << 4) + (col_addr_step << 3) + col_addr_step;
+    endcase
+  end
   count_t last_group_width;
   count_t following_group_width;
   count_t row_last_equal_i_a, row_last_equal_i_b, row_last_equal_i_target;
@@ -154,6 +174,31 @@ module kernel_loader_ctrl #(
   logic [3:0][CNT_W-1:0] traversal_i_value, traversal_o_next;
   logic column_value_covers_limit, column_next_equals_limit;
   logic column_increment_wrap;
+  logic column_below_limit, first_group_below_limit, following_group_below_limit;
+  logic unused_column_equal, unused_first_group_equal, unused_following_group_equal;
+  logic unused_following_group_carry;
+  count_t following_group_index, following_group_fast;
+  logic [2:0][REG_WIDTH-1:0] cfg_dimension, cfg_rounded_fast, cfg_rounded;
+  logic [2:0] unused_cfg_round_carry;
+
+  assign cfg_dimension[0] = cfg_n;
+  assign cfg_dimension[1] = cfg_m;
+  assign cfg_dimension[2] = cfg_k;
+  // 配置维度先计算完整模宽的向上取整分子，再选择固定右移位数。
+  for (genvar dimension = 0; dimension < 3; dimension++) begin : g_cfg_round
+    parallel_prefix_add #(.p_width(REG_WIDTH)) u_round (
+        .i_a(cfg_dimension[dimension]),
+        .i_b(REG_WIDTH'(count_t'(SIZE)) - REG_WIDTH'(1)), .i_carry(1'b0),
+        .o_sum(cfg_rounded_fast[dimension]), .o_carry(unused_cfg_round_carry[dimension])
+    );
+    always_comb begin
+      case (^cfg_dimension[dimension])
+        1'b0, 1'b1: cfg_rounded[dimension] = cfg_rounded_fast[dimension];
+        default: cfg_rounded[dimension] = cfg_dimension[dimension] +
+            REG_WIDTH'(count_t'(SIZE)) - REG_WIDTH'(1);
+      endcase
+    end
+  end
   assign traversal_i_value[0] = load_col_in_group;
   assign traversal_i_value[1] = load_tile_row;
   assign traversal_i_value[2] = load_l2;
@@ -170,9 +215,39 @@ module kernel_loader_ctrl #(
   end
 
   // 列边界并行检查当前值和相邻值，单独保留计数回绕时的无符号比较结果。
-  kernel_count_compare #(.p_width(CNT_W), .p_chunk_width(4)) u_column_limit (
-      .i_lhs(load_col_in_group), .i_rhs(current_group_width),
-      .o_ge(column_value_covers_limit)
+  unsigned_compare #(.p_width(CNT_W)) u_column_limit (
+      .i_a(load_col_in_group), .i_b(current_group_width),
+      .o_less(column_below_limit), .o_equal(unused_column_equal)
+  );
+  assign column_value_covers_limit = !column_below_limit;
+
+  // 模宽递增的边界判断并行检查大小、相邻相等和回绕条件。
+  kernel_count_next_reaches #(.p_width(CNT_W)) u_row_limit (
+      .i_value(load_tile_row), .i_limit(tile_rows_total), .o_reaches(last_tile_row)
+  );
+  kernel_count_next_reaches #(.p_width(CNT_W)) u_group_limit (
+      .i_value(load_l2), .i_limit(l2_groups_total), .o_reaches(last_l2_group)
+  );
+  kernel_count_next_reaches #(.p_width(CNT_W)) u_repeat_limit (
+      .i_value(load_repeat), .i_limit(repeat_total), .o_reaches(last_repeat)
+  );
+  unsigned_compare #(.p_width(CNT_W)) u_first_group_limit (
+      .i_a(tile_cols_total), .i_b(w_reuse_total),
+      .o_less(first_group_below_limit), .o_equal(unused_first_group_equal)
+  );
+  parallel_prefix_add #(.p_width(CNT_W)) u_following_group_index (
+      .i_a(load_l2), .i_b(count_t'(2)), .i_carry(1'b0),
+      .o_sum(following_group_fast), .o_carry(unused_following_group_carry)
+  );
+  always_comb begin
+    case (^load_l2)
+      1'b0, 1'b1: following_group_index = following_group_fast;
+      default: following_group_index = load_l2 + count_t'(2);
+    endcase
+  end
+  unsigned_compare #(.p_width(CNT_W)) u_following_group_limit (
+      .i_a(following_group_index), .i_b(l2_groups_total),
+      .o_less(following_group_below_limit), .o_equal(unused_following_group_equal)
   );
   add_equal #(.p_width(CNT_W)) u_column_next_equal (
       .i_a(load_col_in_group), .i_b({CNT_W{1'b0}}), .i_target(current_group_width),
@@ -180,24 +255,22 @@ module kernel_loader_ctrl #(
   );
   assign column_increment_wrap = &load_col_in_group;
 
-  function automatic count_t ceil_div_pow2(input logic [REG_WIDTH-1:0] a,
-                                           input count_t pow2);
-    logic [REG_WIDTH-1:0] biased;
+  function automatic count_t divide_rounded_pow2(input logic [REG_WIDTH-1:0] biased,
+                                                input count_t pow2);
     begin
-      biased = a + REG_WIDTH'(pow2) - REG_WIDTH'(1);
       unique case (pow2)
-        count_t'(1):    ceil_div_pow2 = count_t'(biased);
-        count_t'(2):    ceil_div_pow2 = count_t'(biased >> 1);
-        count_t'(4):    ceil_div_pow2 = count_t'(biased >> 2);
-        count_t'(8):    ceil_div_pow2 = count_t'(biased >> 3);
-        count_t'(16):   ceil_div_pow2 = count_t'(biased >> 4);
-        count_t'(32):   ceil_div_pow2 = count_t'(biased >> 5);
-        count_t'(64):   ceil_div_pow2 = count_t'(biased >> 6);
-        count_t'(128):  ceil_div_pow2 = count_t'(biased >> 7);
-        count_t'(256):  ceil_div_pow2 = count_t'(biased >> 8);
-        count_t'(512):  ceil_div_pow2 = count_t'(biased >> 9);
-        count_t'(1024): ceil_div_pow2 = count_t'(biased >> 10);
-        default:        ceil_div_pow2 = count_t'(biased);
+        count_t'(1):    divide_rounded_pow2 = count_t'(biased);
+        count_t'(2):    divide_rounded_pow2 = count_t'(biased >> 1);
+        count_t'(4):    divide_rounded_pow2 = count_t'(biased >> 2);
+        count_t'(8):    divide_rounded_pow2 = count_t'(biased >> 3);
+        count_t'(16):   divide_rounded_pow2 = count_t'(biased >> 4);
+        count_t'(32):   divide_rounded_pow2 = count_t'(biased >> 5);
+        count_t'(64):   divide_rounded_pow2 = count_t'(biased >> 6);
+        count_t'(128):  divide_rounded_pow2 = count_t'(biased >> 7);
+        count_t'(256):  divide_rounded_pow2 = count_t'(biased >> 8);
+        count_t'(512):  divide_rounded_pow2 = count_t'(biased >> 9);
+        count_t'(1024): divide_rounded_pow2 = count_t'(biased >> 10);
+        default:        divide_rounded_pow2 = count_t'(biased);
       endcase
     end
   endfunction
@@ -206,9 +279,9 @@ module kernel_loader_ctrl #(
     ia_reuse_norm = (cfg_ia_reuse_num == 0) ? count_t'(1) : count_t'(cfg_ia_reuse_num);
     w_reuse_norm  = (cfg_w_reuse_num  == 0) ? count_t'(1) : count_t'(cfg_w_reuse_num);
 
-    cfg_tile_rows_total        = ceil_div_pow2(cfg_n, count_t'(SIZE));
-    cfg_tile_cols_total        = ceil_div_pow2(cfg_m, count_t'(SIZE));
-    cfg_output_row_tiles_total = ceil_div_pow2(cfg_k, count_t'(SIZE));
+    cfg_tile_rows_total        = divide_rounded_pow2(cfg_rounded[0], count_t'(SIZE));
+    cfg_tile_cols_total        = divide_rounded_pow2(cfg_rounded[1], count_t'(SIZE));
+    cfg_output_row_tiles_total = divide_rounded_pow2(cfg_rounded[2], count_t'(SIZE));
     cfg_l2_groups_total = count_t'(cfg_col_groups);
     cfg_repeat_total = count_t'(cfg_row_groups);
     if (cfg_tile_rows_total == 0) cfg_tile_rows_total = count_t'(1);
@@ -224,14 +297,14 @@ module kernel_loader_ctrl #(
     cfg_group_tail_cols = count_t'(cfg_col_tail_tiles);
     cfg_last_group_width = count_t'(cfg_col_tail_tiles);
 
-    if (tile_cols_total < w_reuse_total) begin
+    if (first_group_below_limit) begin
       first_group_width = tile_cols_total;
     end else begin
       first_group_width = w_reuse_total;
     end
     if (first_group_width == 0) first_group_width = count_t'(1);
 
-    if ((load_l2 + count_t'(2)) >= l2_groups_total) begin
+    if (!following_group_below_limit) begin
       following_group_width = last_group_width;
     end else begin
       following_group_width = w_reuse_total;
@@ -255,7 +328,7 @@ module kernel_loader_ctrl #(
       count_t'(4):    group_addr_step_next = col_addr_step << 2;
       count_t'(8):    group_addr_step_next = col_addr_step << 3;
       count_t'(16):   group_addr_step_next = col_addr_step << 4;
-      count_t'(25):   group_addr_step_next = (col_addr_step << 4) + (col_addr_step << 3) + col_addr_step;
+      count_t'(25):   group_addr_step_next = group_step_25;
       count_t'(32):   group_addr_step_next = col_addr_step << 5;
       count_t'(64):   group_addr_step_next = col_addr_step << 6;
       count_t'(128):  group_addr_step_next = col_addr_step << 7;
@@ -267,9 +340,6 @@ module kernel_loader_ctrl #(
 
     last_col_in_group = (current_group_width == '0) ||
         (!column_increment_wrap && (column_value_covers_limit || column_next_equals_limit));
-    last_tile_row     = (traversal_o_next[1] >= tile_rows_total);
-    last_l2_group     = (traversal_o_next[2] >= l2_groups_total);
-    last_repeat       = (traversal_o_next[3] >= repeat_total);
     final_load_done = load_done && all_loads_issued && load_count_reached;
 
     load_complete = all_loads_done;
@@ -481,6 +551,33 @@ module kernel_loader_ctrl #(
   assign sent_count = issued_count - total_count_t'(pending_sends);
   // 各组输入进位对应当前计数的低位全一条件，与完整计数在同一边沿更新。
   assign issued_chunk_carry_q[0] = 1'b1;
+  // 每组六位先独立判断，前缀按二叉层次归并，配置使能只参与最终更新。
+  for (genvar part = 0; part < p_issued_parts; part++) begin : g_issued_condition
+    localparam int p_low = part * p_issued_part_bits;
+    localparam int p_width = TOTAL_CNT_W - p_low < p_issued_part_bits ?
+        TOTAL_CNT_W - p_low : p_issued_part_bits;
+    (* keep = 1 *) logic part_all;
+    if (part == p_issued_parts-1) begin : g_unused
+      assign part_all = 1'b1;
+    end else if (part == 0) begin : g_low
+      assign part_all = !issued_count[0] && (&issued_count[p_width-1:1]);
+    end else begin : g_high
+      assign part_all = &issued_count[p_low +: p_width];
+    end
+    assign issued_prefix[0][part] = part_all;
+  end
+  for (genvar level = 0; level < p_issued_levels; level++) begin : g_issued_level
+    for (genvar part = 0; part < p_issued_parts; part++) begin : g_part
+      if ((part % (2 << level)) >= (1 << level)) begin : g_merge
+        localparam int p_left_end = (part / (2 << level)) * (2 << level) + (1 << level) - 1;
+        (* keep = 1 *) logic merged_all;
+        assign merged_all = issued_prefix[level][part] && issued_prefix[level][p_left_end];
+        assign issued_prefix[level+1][part] = merged_all;
+      end else begin : g_pass
+        assign issued_prefix[level+1][part] = issued_prefix[level][part];
+      end
+    end
+  end
   for (genvar part = 0; part < p_issued_parts; part++) begin : g_issued_part
     localparam int p_low = part * p_issued_part_bits;
     localparam int p_width = TOTAL_CNT_W - p_low < p_issued_part_bits ?
@@ -495,7 +592,7 @@ module kernel_loader_ctrl #(
           if (state == S_IDLE && cfg_valid)
             issued_chunk_carry_q[part] <= 1'b0;
           else if (state == S_RUN && dma_start)
-            issued_chunk_carry_q[part] <= !issued_count[0] && (&issued_count[p_low-1:1]);
+            issued_chunk_carry_q[part] <= issued_prefix[p_issued_levels][part-1];
         end
       end
     end
@@ -601,6 +698,34 @@ module kernel_count_compare #(
             (equal_tree[2*node+1] && greater_tree[2*node]);
     end
     assign o_ge = greater_tree[1] || equal_tree[1];
+endmodule
+
+// 完整模宽的加一边界比较，包含最大计数回绕至零的情况。
+module kernel_count_next_reaches #(
+    parameter int unsigned p_width = 32
+) (
+    input wire logic [p_width-1:0] i_value,
+    input wire logic [p_width-1:0] i_limit,
+    output logic o_reaches
+);
+    logic value_less, unused_value_equal, next_equal, reaches_binary;
+
+    unsigned_compare #(.p_width(p_width)) u_current_compare (
+        .i_a(i_value), .i_b(i_limit),
+        .o_less(value_less), .o_equal(unused_value_equal)
+    );
+    add_equal #(.p_width(p_width)) u_next_equal (
+        .i_a(i_value), .i_b({p_width{1'b0}}), .i_target(i_limit),
+        .i_carry_in(1'b1), .o_equal(next_equal)
+    );
+    assign reaches_binary = (i_limit == '0) ||
+        ((!(&i_value)) && (!value_less || next_equal));
+    always_comb begin
+        case (^{i_value, i_limit})
+            1'b0, 1'b1: o_reaches = reaches_binary;
+            default: o_reaches = (i_value + p_width'(1)) >= i_limit;
+        endcase
+    end
 endmodule
 
 `default_nettype wire

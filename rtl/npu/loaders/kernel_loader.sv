@@ -135,25 +135,29 @@ module kernel_loader #(
   logic managed_mode, prefetch_capture;
   logic comparison_equal;
   logic comparison_match_q, comparison_valid_q, comparison_ready;
+  logic comparison_stored_ready;
   logic comparison_from_candidate_q;
   logic prefetch_candidate_valid, prefetch_check_pending;
   logic [5*REG_WIDTH-1:0] candidate_fields, candidate_fields_q;
   logic [5*REG_WIDTH-1:0] candidate_equal_i_current, candidate_equal_i_saved;
   logic candidate_equal_o_equal;
-  logic comparison_metadata_equal, comparison_fixed_equal;
-  logic comparison_rows_equal, comparison_columns_equal;
+  logic comparison_metadata_equal;
+  // 各项比较独立完成，尾部尺寸的选择结果在最终汇合处参与判断。
+  (* keep = "true" *) logic comparison_fixed_equal;
+  (* keep = "true" *) logic comparison_rows_equal, comparison_columns_equal;
   logic [3*REG_WIDTH+2:0] metadata_equal_i_current, metadata_equal_i_saved;
   logic [REG_WIDTH-1:0] column_equal_i_a, column_equal_i_b, column_equal_i_c;
   logic [REG_WIDTH-1:0] column_equal_i_target;
-  logic column_equal_o_equal;
+  (* keep = "true" *) logic column_equal_o_equal;
   logic [REG_WIDTH-1:0] row_equal_i_a, row_equal_i_b, row_equal_i_target;
   logic row_equal_i_carry_in;
-  logic row_equal_o_equal;
+  (* keep = "true" *) logic row_equal_o_equal;
   logic [REG_WIDTH-1:0] address_equal_i_a, address_equal_i_b, address_equal_i_c;
   logic [REG_WIDTH-1:0] address_equal_i_target;
-  logic address_equal_o_equal;
+  (* keep = "true" *) logic address_equal_o_equal;
   localparam int p_count_width = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
   localparam int p_size_shift = $clog2(SIZE);
+  localparam int p_dimension_width = (SIZE < 1) ? 1 : $clog2(SIZE+1);
   logic demand_issue, prefetch_issue, demand_dma_start, prefetch_dma_start;
   logic cache_hit_fire, cache_hit_done, discard_fire;
   logic [1:0] response_slots_active;
@@ -161,6 +165,26 @@ module kernel_loader #(
   logic load_idle_i_request, load_idle_i_granted, load_idle_i_quiescent;
   logic load_idle_o_start, load_idle_o_idle;
   logic admission_o_request;
+  logic [1:0][REG_WIDTH-1:0] position_i_a, position_i_b, position_fast, position_sum;
+  logic [1:0] unused_position_carry;
+
+  assign position_i_a[0] = dma_p0;
+  assign position_i_a[1] = dma_q0;
+  assign position_i_b[0] = p0_base_q;
+  assign position_i_b[1] = q0_base_q;
+  // 块坐标与配置偏移独立求和，最终描述符选择完整结果。
+  for (genvar dimension = 0; dimension < 2; dimension++) begin : g_descriptor_position
+    parallel_prefix_add #(.p_width(REG_WIDTH)) u_position (
+        .i_a(position_i_a[dimension]), .i_b(position_i_b[dimension]), .i_carry(1'b0),
+        .o_sum(position_fast[dimension]), .o_carry(unused_position_carry[dimension])
+    );
+    always_comb begin
+      case (^{position_i_a[dimension], position_i_b[dimension]})
+        1'b0, 1'b1: position_sum[dimension] = position_fast[dimension];
+        default: position_sum[dimension] = position_i_a[dimension] + position_i_b[dimension];
+      endcase
+    end
+  end
 
   always_comb begin
     ctrl_descriptor = '0;
@@ -169,8 +193,8 @@ module kernel_loader #(
     ctrl_descriptor.tile_packed = tile_packed_q;
     ctrl_descriptor.base_addr = dma_tile_base_addr;
     ctrl_descriptor.row_stride = dma_row_stride_b;
-    ctrl_descriptor.p0 = dma_p0 + p0_base_q;
-    ctrl_descriptor.q0 = dma_q0 + q0_base_q;
+    ctrl_descriptor.p0 = position_sum[0];
+    ctrl_descriptor.q0 = position_sum[1];
     ctrl_descriptor.group = dma_group;
     ctrl_descriptor.rows = dma_rows_to_read;
     ctrl_descriptor.cols = dma_valid_cols;
@@ -230,6 +254,13 @@ module kernel_loader #(
   assign comparison_ready = comparison_valid_q &&
       ((prefetch_state == PF_EMPTY) == comparison_from_candidate_q) &&
       (prefetch_state != PF_EMPTY || candidate_equal_o_equal);
+  // 缓存与在途预取使用已保存描述符，接收资格直接选择其比较结果。
+  always_comb begin
+    case (^prefetch_state)
+      1'b0, 1'b1: comparison_stored_ready = comparison_valid_q && !comparison_from_candidate_q;
+      default: comparison_stored_ready = comparison_ready;
+    endcase
+  end
   assign candidate_equal_i_current = candidate_fields;
   assign candidate_equal_i_saved = candidate_fields_q;
 
@@ -271,10 +302,10 @@ module kernel_loader #(
       .i_target(address_equal_i_target), .o_equal(address_equal_o_equal)
   );
   assign ctrl_buf_load_ready = managed_mode ? !demand_confirmed : buf_load_ready;
-  assign cache_hit_fire = managed_mode && ctrl_load_req && comparison_ready && comparison_match_q &&
+  assign cache_hit_fire = managed_mode && ctrl_load_req && comparison_stored_ready && comparison_match_q &&
       (prefetch_state == PF_CACHED || (prefetch_state == PF_LOADING && buf_load_commit)) &&
       !cache_flush && !init_cfg;
-  assign discard_fire = managed_mode && ctrl_load_req && comparison_ready && !comparison_match_q &&
+  assign discard_fire = managed_mode && ctrl_load_req && comparison_stored_ready && !comparison_match_q &&
       prefetch_state == PF_CACHED && buf_discard_ready && !transfer_active && !cache_flush;
   assign buf_discard_head = discard_fire;
   assign demand_issue = managed_mode && ctrl_load_req && !transfer_active && !ext_dma_busy &&
@@ -368,6 +399,9 @@ module kernel_loader #(
         end
         if (prefetch_capture) begin
           prefetch_descriptor <= candidate_descriptor;
+          // 候选行列数在 1..SIZE 范围内，保存块内有效位并扩展至公开接口。
+          prefetch_descriptor.rows <= REG_WIDTH'(p_dimension_width'(candidate_descriptor.rows));
+          prefetch_descriptor.cols <= REG_WIDTH'(p_dimension_width'(candidate_descriptor.cols));
           prefetch_state <= PF_PENDING;
           prefetch_window_open <= 1'b0;
         end
@@ -800,10 +834,21 @@ module kernel_candidate_equal #(
     input  wire logic [p_width-1:0] i_saved,
     output logic o_equal
 );
+    function automatic int compare_levels(input int groups);
+        int nodes;
+        begin
+            compare_levels = 0;
+            nodes = groups;
+            while (nodes > 1) begin
+                nodes = (nodes + 5) / 6;
+                compare_levels++;
+            end
+        end
+    endfunction
+
     localparam int p_groups = (p_width + 2) / 3;
-    localparam int p_levels = (p_groups <= 1) ? 0 : $clog2(p_groups);
-    // 保留分组结果，限制字段相等比较的组合树高度。
-    (* keep = p_use_lut *) logic [p_groups-1:0] level_equal [0:p_levels];
+    localparam int p_levels = compare_levels(p_groups);
+    logic [p_groups-1:0] level_equal [0:p_levels];
 
     for (genvar group_index = 0; group_index < p_groups; group_index++) begin : g_leaf
         logic [2:0] current_bits, saved_bits;
@@ -835,7 +880,14 @@ module kernel_candidate_equal #(
                         assign merge_i_equal[child] = 1'b1;
                     end
                 end
-                assign merge_o_equal = &merge_i_equal;
+                if (p_children > 1) begin : g_merge
+                    // 第一层归并限制比较范围，后续层与接收控制共同化简。
+                    (* keep = p_use_lut && (level == 1) *) logic merged_equal;
+                    assign merged_equal = &merge_i_equal;
+                    assign merge_o_equal = merged_equal;
+                end else begin : g_pass
+                    assign merge_o_equal = merge_i_equal[0];
+                end
                 assign level_equal[level][node] = merge_o_equal;
             end else begin : g_padding
                 assign level_equal[level][node] = 1'b1;

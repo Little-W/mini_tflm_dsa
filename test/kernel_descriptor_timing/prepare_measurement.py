@@ -57,7 +57,8 @@ def main():
                               for path in dependencies + [ROOT / 'rtl/common/regfile.v',
                                                           ROOT / 'rtl/common/add_equal.sv',
                                                           ROOT / 'rtl/common/add3_equal.sv',
-                                                          ROOT / 'rtl/common/parallel_prefix_add.sv']},
+                                                          ROOT / 'rtl/common/parallel_prefix_add.sv',
+                                                          ROOT / 'rtl/common/unsigned_compare.sv']},
     }
     (out / 'input_manifest.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report))
