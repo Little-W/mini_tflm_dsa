@@ -1,0 +1,521 @@
+{
+  "design": "Vector PE group pooling, committed depthwise snapshots, staged AVG sign restoration and serial result byte writes",
+  "passed": true,
+  "candidate_source_sha256": "7aa9349cfa7c75e5c9832ae6bf0d677bb9da0cce6739f2d15f73f940059b40a7",
+  "source_sha256": {
+    "rtl/npu/conv/vector_engine.sv": "7aa9349cfa7c75e5c9832ae6bf0d677bb9da0cce6739f2d15f73f940059b40a7",
+    "test/vector_engine/main.cpp": "673347652273bfa23a734d2c66957a1a70935ab891c3d76538a78f5681531fbb"
+  },
+  "protected_source_sha256": {
+    "rtl/npu/conv/vector_writeback.sv": "8a04ed73fed51661bc0322b4a486d7fabe0693bc7ce745cd5687598b4dae8481",
+    "rtl/npu/buffers/vector_shared_store.sv": "4a33845a90a054cefcb33586fcbafb85df8c97b720f238cd69ef141c5a161fc0"
+  },
+  "functional": {
+    "production": {
+      "tile": 16,
+      "bus_width": 64,
+      "window_lanes": 8,
+      "shared_quant": false,
+      "shared_storage": true,
+      "shared_bank_bytes": 8192,
+      "shared_bank_count": 7,
+      "shared_ia_banks": 2,
+      "rtl_assertions": true,
+      "check_weight_prefetch": true,
+      "stable_stimulus": true,
+      "implementation": "official Xilinx primitive models",
+      "pe": 8,
+      "passed": true,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "case_cycle_sum": 3413667,
+      "executable_sha256": "de4eb6642e724eb5351665e4bc3954fccdbd0a5dda46f0ba7b5dd97d96e02894"
+    },
+    "generic": {
+      "tile": 16,
+      "bus_width": 32,
+      "window_lanes": 4,
+      "shared_quant": true,
+      "shared_storage": false,
+      "shared_bank_bytes": 4096,
+      "shared_bank_count": 8,
+      "shared_ia_banks": 1,
+      "rtl_assertions": true,
+      "check_weight_prefetch": false,
+      "stable_stimulus": true,
+      "implementation": "generic",
+      "pe": 16,
+      "passed": true,
+      "totals": {
+        "cases": 616,
+        "outputs": 170743,
+        "add_cases": 143,
+        "add_outputs": 135758,
+        "softmax_cases": 273,
+        "softmax_outputs": 2188
+      },
+      "case_cycle_sum": 3702101,
+      "executable_sha256": "aff2bd2628a4a8afd5a2416a6383ad24c934d24ee22c0475744b232dbffaa1cd"
+    }
+  },
+  "performance": {
+    "reference_revision": "0097b66ed57e1b8ef00e402e89dc5b274f1626be",
+    "identical_inputs_and_frontend": true,
+    "changed_source_files": [
+      "rtl/npu/conv/vector_engine.sv"
+    ],
+    "workload_cases": 24,
+    "reference_workload_cycles": 1064368,
+    "candidate_workload_cycles": 1066446,
+    "all_cases": 40,
+    "reference_all_cycles": 1066978,
+    "candidate_all_cycles": 1069062,
+    "cases": [
+      {
+        "name": "perf_dw_c16",
+        "reference_cycles": 4754,
+        "candidate_cycles": 4754,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 1424,
+        "write_bytes": 1024
+      },
+      {
+        "name": "perf_dw_c32",
+        "reference_cycles": 11234,
+        "candidate_cycles": 11234,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 2856,
+        "write_bytes": 2048
+      },
+      {
+        "name": "perf_dw_c64_s2",
+        "reference_cycles": 34545,
+        "candidate_cycles": 34549,
+        "cycle_change": 4,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 133321,
+        "write_bytes": 4096
+      },
+      {
+        "name": "perf_avg_c32",
+        "reference_cycles": 34576,
+        "candidate_cycles": 36496,
+        "cycle_change": 1920,
+        "reference_request_response_overlap": 709,
+        "candidate_request_response_overlap": 709,
+        "read_bytes": 2048,
+        "write_bytes": 2048
+      },
+      {
+        "name": "perf_max_c32",
+        "reference_cycles": 1703,
+        "candidate_cycles": 1735,
+        "cycle_change": 32,
+        "reference_request_response_overlap": 61,
+        "candidate_request_response_overlap": 91,
+        "read_bytes": 2048,
+        "write_bytes": 512
+      },
+      {
+        "name": "perf_mobile_dw_48_c8",
+        "reference_cycles": 126501,
+        "candidate_cycles": 126501,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 18664,
+        "write_bytes": 18432
+      },
+      {
+        "name": "perf_mobile_dw_48_c16_s2",
+        "reference_cycles": 51088,
+        "candidate_cycles": 51088,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 71056,
+        "write_bytes": 9216
+      },
+      {
+        "name": "perf_mobile_dw_24_c32",
+        "reference_cycles": 110988,
+        "candidate_cycles": 110988,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 54307,
+        "write_bytes": 18432
+      },
+      {
+        "name": "perf_dscnn_dw_25x5_c64",
+        "reference_cycles": 43108,
+        "candidate_cycles": 43108,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 27337,
+        "write_bytes": 8000
+      },
+      {
+        "name": "perf_mnist_max_28_c8",
+        "reference_cycles": 9717,
+        "candidate_cycles": 9717,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 6272,
+        "write_bytes": 1568
+      },
+      {
+        "name": "perf_mnist_max_14_c16",
+        "reference_cycles": 2254,
+        "candidate_cycles": 2303,
+        "cycle_change": 49,
+        "reference_request_response_overlap": 90,
+        "candidate_request_response_overlap": 90,
+        "read_bytes": 3136,
+        "write_bytes": 784
+      },
+      {
+        "name": "perf_global_avg_8x8_c64",
+        "reference_cycles": 4517,
+        "candidate_cycles": 4517,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 6136,
+        "write_bytes": 64
+      },
+      {
+        "name": "perf_global_avg_25x5_c64",
+        "reference_cycles": 8947,
+        "candidate_cycles": 9011,
+        "cycle_change": 64,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 11992,
+        "write_bytes": 64
+      },
+      {
+        "name": "perf_global_avg_16x16_c3",
+        "reference_cycles": 4202,
+        "candidate_cycles": 4202,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 3819,
+        "write_bytes": 3
+      },
+      {
+        "name": "perf_dot_s8",
+        "reference_cycles": 2222,
+        "candidate_cycles": 2222,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 3056,
+        "write_bytes": 4
+      },
+      {
+        "name": "perf_hadamard_s16",
+        "reference_cycles": 3118,
+        "candidate_cycles": 3118,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 5104,
+        "write_bytes": 4096
+      },
+      {
+        "name": "perf_add_resnet_16384",
+        "reference_cycles": 328832,
+        "candidate_cycles": 328832,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 49136,
+        "write_bytes": 16384
+      },
+      {
+        "name": "perf_add_resnet_8192",
+        "reference_cycles": 164456,
+        "candidate_cycles": 164456,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 24560,
+        "write_bytes": 8192
+      },
+      {
+        "name": "perf_add_resnet_4096",
+        "reference_cycles": 82268,
+        "candidate_cycles": 82268,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 12272,
+        "write_bytes": 4096
+      },
+      {
+        "name": "pipeline_dw_c16",
+        "reference_cycles": 4129,
+        "candidate_cycles": 4129,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 1360,
+        "write_bytes": 1024
+      },
+      {
+        "name": "pipeline_dw_k1_c16",
+        "reference_cycles": 795,
+        "candidate_cycles": 796,
+        "cycle_change": 1,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 720,
+        "write_bytes": 512
+      },
+      {
+        "name": "pipeline_dw_c64",
+        "reference_cycles": 16385,
+        "candidate_cycles": 16385,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 5440,
+        "write_bytes": 4096
+      },
+      {
+        "name": "pipeline_dw_c128_s2",
+        "reference_cycles": 12582,
+        "candidate_cycles": 12590,
+        "cycle_change": 8,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 65920,
+        "write_bytes": 2048
+      },
+      {
+        "name": "pipeline_dw_tail_c3",
+        "reference_cycles": 1447,
+        "candidate_cycles": 1447,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 22,
+        "candidate_request_response_overlap": 22,
+        "read_bytes": 225,
+        "write_bytes": 75
+      },
+      {
+        "name": "read_error",
+        "reference_cycles": 46,
+        "candidate_cycles": 46,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 17,
+        "write_bytes": 0
+      },
+      {
+        "name": "read_error_recovery",
+        "reference_cycles": 195,
+        "candidate_cycles": 195,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 92,
+        "write_bytes": 4
+      },
+      {
+        "name": "write_error",
+        "reference_cycles": 195,
+        "candidate_cycles": 195,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 92,
+        "write_bytes": 4
+      },
+      {
+        "name": "write_error_recovery",
+        "reference_cycles": 195,
+        "candidate_cycles": 195,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 92,
+        "write_bytes": 4
+      },
+      {
+        "name": "invalid_shift",
+        "reference_cycles": 130,
+        "candidate_cycles": 130,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 39,
+        "write_bytes": 0
+      },
+      {
+        "name": "shift_recovery",
+        "reference_cycles": 194,
+        "candidate_cycles": 195,
+        "cycle_change": 1,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 42,
+        "write_bytes": 3
+      },
+      {
+        "name": "parameter_read_error_5",
+        "reference_cycles": 130,
+        "candidate_cycles": 130,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 39,
+        "write_bytes": 0
+      },
+      {
+        "name": "parameter_read_recovery_5",
+        "reference_cycles": 194,
+        "candidate_cycles": 195,
+        "cycle_change": 1,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 42,
+        "write_bytes": 3
+      },
+      {
+        "name": "parameter_read_error_6",
+        "reference_cycles": 130,
+        "candidate_cycles": 130,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 39,
+        "write_bytes": 0
+      },
+      {
+        "name": "parameter_read_recovery_6",
+        "reference_cycles": 194,
+        "candidate_cycles": 195,
+        "cycle_change": 1,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 42,
+        "write_bytes": 3
+      },
+      {
+        "name": "parameter_read_error_7",
+        "reference_cycles": 130,
+        "candidate_cycles": 130,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 39,
+        "write_bytes": 0
+      },
+      {
+        "name": "parameter_read_recovery_7",
+        "reference_cycles": 194,
+        "candidate_cycles": 195,
+        "cycle_change": 1,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 42,
+        "write_bytes": 3
+      },
+      {
+        "name": "invalid_multiplier",
+        "reference_cycles": 130,
+        "candidate_cycles": 130,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 39,
+        "write_bytes": 0
+      },
+      {
+        "name": "multiplier_recovery",
+        "reference_cycles": 194,
+        "candidate_cycles": 195,
+        "cycle_change": 1,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 42,
+        "write_bytes": 3
+      },
+      {
+        "name": "window_read_error",
+        "reference_cycles": 165,
+        "candidate_cycles": 165,
+        "cycle_change": 0,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 42,
+        "write_bytes": 0
+      },
+      {
+        "name": "window_read_recovery",
+        "reference_cycles": 194,
+        "candidate_cycles": 195,
+        "cycle_change": 1,
+        "reference_request_response_overlap": 0,
+        "candidate_request_response_overlap": 0,
+        "read_bytes": 42,
+        "write_bytes": 3
+      }
+    ],
+    "workload_cycle_change_percent": 0.19523322760548467
+  },
+  "synthesis": {
+    "logic_lut_cells": 11315,
+    "distributed_ram_lut_sites_nominal": 176,
+    "lut_sites_nominal_before_packing": 11491,
+    "flip_flops": 6306,
+    "dsp48e1": 52,
+    "ramb18e1": 9,
+    "longest_register_path_cells": 10,
+    "graph_complete": true,
+    "graph_nodes": 31521,
+    "visited_graph_nodes": 31521,
+    "scope": "Standalone production vector_engine; device routing delays require implementation timing analysis"
+  },
+  "checks": [
+    "Independent integer outputs and memory bounds",
+    "AR/AW/W payload stability under backpressure",
+    "Read bursts remain within allocation and 4 KiB boundary",
+    "Window requests drain before task completion",
+    "Quantization input count and consecutive groups",
+    "MAC, quantization and writeback overlap",
+    "Coalesced write transaction and byte counts",
+    "Tail-channel concurrent window request and response acceptance",
+    "Weight prefetch address, payload and pause stability",
+    "Read/write error recovery and consecutive task reuse",
+    "Writeback accepts complete serial result storage",
+    "AVG full nine-bit signed restoration"
+  ],
+  "record_sha256": {
+    "production_summary": "d0e9e2b857ba08f994cdb3c58a98f7184041453d8c1ef9e6c6e80263f0f81d05",
+    "production_build": "35c103db76b22f24ac3b7150850aabade762d17939db50aa957139931d8b3b18",
+    "generic_summary": "f2cd8aaed51d34212d1975bcaf4558d0a704156bc3ae7b3c8177fc10d4cddd85",
+    "generic_build": "445c1ed19f3ce7c505d0ae745c1573d19e9627fccfe66a94ad0d7967cc55e43b",
+    "reference_performance": "83faeccd1c47414ba42bea46e171b6cb38a7a3add377f948b2c2c351cada2759",
+    "reference_build": "dad15b8f19f2a777a87e5c34e1e7afba769a60240469e621d4ac3b40aca2fd46",
+    "candidate_performance": "397a179eb7a391e099fc2ab734b46d14dc7cb99b23f98825e674542fea610e84",
+    "metrics": "aaab89d6dadc85458024f0708e7e9c1175cf45faa3ff447345e96aaf594444ce",
+    "synthesis_manifest": "5a095a1b917debd66e36e311c20bf9187e9e7e498df25318809433dbf27b4960"
+  }
+}

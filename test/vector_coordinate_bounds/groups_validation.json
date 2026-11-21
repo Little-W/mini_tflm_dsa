@@ -1,0 +1,83 @@
+{
+  "passed": true,
+  "source_sha256": "9afa2fa659087755f7f4c8e3d7e4cc51b34f373b2c7ece086b3263202f224153",
+  "reference_engine_sha256": "7aa9349cfa7c75e5c9832ae6bf0d677bb9da0cce6739f2d15f73f940059b40a7",
+  "source_unchanged_outside_helper": true,
+  "helper": "vector_coordinate_bound",
+  "formal": {
+    "passed": true,
+    "reference_revision": "0097b66ed57e1b8ef00e402e89dc5b274f1626be",
+    "source_sha256": "9afa2fa659087755f7f4c8e3d7e4cc51b34f373b2c7ece086b3263202f224153",
+    "helper_sha256": {
+      "reference": "4621c8b3c7ecba54dcedd761aff1928ff90c040ac5376dfb6d7ed018998dfc14",
+      "candidate": "399b5ed7afd9b58c7ea2da84084bc9f73b2d3b57e6c200276a49d0c85a2141f7"
+    },
+    "binary_proof": "All 34-bit coordinates and 16-bit limits; both implementations equal the signed integer range relation",
+    "inputs_constrained": false,
+    "strict_four_state_checks": 131080,
+    "test_sha256": "d7c7f6c3edc56acbe817efb7991957f8a7a8c56fd8f4d00cd6c7bb88aafbfed3",
+    "log_sha256": {
+      "formal.log": "871f51fb7fe4284d19711bc077b6bf0519e9cf09f5f1d5164d5a85eec9ed20b0",
+      "four_state_build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "four_state.log": "cb2edd96170a76af449cdee39f142d19ce190e876149c753674ed90a8b94ac04"
+    }
+  },
+  "synthesis": {
+    "logic_lut_cells": 11320,
+    "distributed_ram_lut_sites_nominal": 176,
+    "lut_sites_nominal_before_packing": 11496,
+    "flip_flops": 6306,
+    "dsp48e1": 52,
+    "ramb18e1": 9,
+    "longest_register_path_cells": 10,
+    "graph_nodes": 31549,
+    "visited_graph_nodes": 31549,
+    "graph_complete": true
+  },
+  "functional_equivalence": {
+    "reference_report": "test/vector_engine/serial_result_validation.json",
+    "production_tasks": 616,
+    "generic_tasks": 616,
+    "combined_output_comparisons": 341486,
+    "comparison_method": "Only the combinational coordinate helper differs; its complete binary input domain and strict four-state behavior match the verified engine helper"
+  },
+  "records": {
+    "/tmp/vector_opt_compare_groups_formal/summary.json": "a05cd2c879bde02c7f6cae81f2345b261c0330b63dc49039c698fb3c35afc119",
+    "/tmp/vector_opt_compare_groups_synth/vector/metrics.json": "db32c6fbb3a96a211990ee7eb6828c8622e54f77c9513c26450ac76abcf40c3d",
+    "/tmp/vector_opt_compare_groups_synth/vector/manifest.json": "6005fe0944def238539ed47f1e35d32c963181f76cf44472d1078054b7d2ce7c"
+  },
+  "production_exact_source_run": {
+    "passed": true,
+    "engine_sha256": "9afa2fa659087755f7f4c8e3d7e4cc51b34f373b2c7ece086b3263202f224153",
+    "totals": {
+      "cases": 616,
+      "outputs": 170743,
+      "add_cases": 143,
+      "add_outputs": 135758,
+      "softmax_cases": 273,
+      "softmax_outputs": 2188
+    },
+    "case_cycle_sum": 3413667,
+    "case_results_equal_to_reference": true,
+    "summary_sha256": "79c35231ad85a79f1ee525cbff64ed12de97e44dcb8fb14c41224bc62ac563dd",
+    "build_manifest_sha256": "c5b2ffefcac6cfe463df945610c1ee166f21f59cb9534545c27b491a82103c9d",
+    "executable_sha256": "1605637d35ee71be52b973d52a88a0ca7a0f514de969beb23cfc2199260639a2"
+  },
+  "performance_exact_source_run": {
+    "passed": true,
+    "engine_sha256": "9afa2fa659087755f7f4c8e3d7e4cc51b34f373b2c7ece086b3263202f224153",
+    "totals": {
+      "cases": 40,
+      "outputs": 103743,
+      "add_cases": 3,
+      "add_outputs": 28672,
+      "softmax_cases": 0,
+      "softmax_outputs": 0
+    },
+    "case_cycle_sum": 1069062,
+    "case_results_equal_to_reference": true,
+    "summary_sha256": "031fe36c68081834af41a473e381c010bf06d6df0981b83a62cfb34eea0f2b18",
+    "build_manifest_sha256": "c5b2ffefcac6cfe463df945610c1ee166f21f59cb9534545c27b491a82103c9d",
+    "executable_sha256": "1605637d35ee71be52b973d52a88a0ca7a0f514de969beb23cfc2199260639a2"
+  }
+}

@@ -363,6 +363,7 @@ module vector_engine #(
   logic [AVG_SCALE_BITS:0] avg_reciprocal_data;
   logic [AVG_SCALE_BITS-1:0] avg_numerator_q;
   logic [7:0] avg_estimate_q, avg_quotient_q, avg_magnitude_q;
+  logic signed [8:0] avg_signed_q;
   logic [AVG_SCALE_BITS:0] avg_check_q;
   logic signed [AVG_SCALE_BITS+1:0] avg_residual_q;
   logic [TAP_COUNT_W-1:0] avg_remainder_q;
@@ -1256,7 +1257,8 @@ module vector_engine #(
   assign dw_group_last = compute_index + TILE_INDEX_W'(PE_COUNT) >= TILE_INDEX_W'(active);
   assign dw_issue_fire = state==DW_EXECUTE && !window_response_fault && dw_in_bounds && input_ready[read_bank] && weight_data_ready;
   assign dw_tap_advance = state==DW_EXECUTE && (!dw_in_bounds || (dw_issue_fire && dw_group_last));
-  assign dw_snapshot_fire = state==DW_FINISH && !dw_snapshot_vld;
+  // 完成事件等待最后一次 PE 提交，整行快照由完整的累加存储提供。
+  assign dw_snapshot_fire = state==DW_FINISH && !dw_snapshot_vld && !dw_commit_vld;
   assign quant_req_valid = SHARED_QUANT_ENABLE && dw_snapshot_vld && dw_snapshot_data_ready &&
       !dw_result_reserved[dw_quant_next_slot] && state!=FAILED;
   assign quant_req_tag = dw_quant_next_slot;
@@ -1467,7 +1469,7 @@ module vector_engine #(
   assign avg_input_magnitude=32'(avg_unsigned_magnitude);
   assign avg_overestimate=avg_residual_q[AVG_SCALE_BITS+1];
   assign avg_twice_remainder={avg_remainder_q,1'b0};
-  assign avg_done=state==AVG_WAIT && avg_phase==4'd9;
+  assign avg_done=state==AVG_WAIT && avg_phase==4'd10;
   always_ff @(posedge clk) begin
     // 倒数平均运算先经过 QUANT_INIT，累加器选择和绝对值计算在进入乘法器前完成。
     if (state==QUANT_INIT && avg_pool && !avg_power_two)
@@ -1490,6 +1492,11 @@ module vector_engine #(
         avg_magnitude_q<=avg_quotient_q+8'(
             avg_twice_remainder>{1'b0,valid_taps} ||
             (avg_twice_remainder=={1'b0,valid_taps} && avg_quotient_q[0]));
+      end
+      // 符号恢复与激活范围比较分处两个寄存阶段，保存完整九位结果。
+      if (avg_phase==8) begin
+        avg_signed_q <= avg_negative ? -$signed({1'b0,avg_magnitude_q}) :
+            $signed({1'b0,avg_magnitude_q});
       end
       avg_phase<=avg_phase+1'b1;
     end
@@ -1873,9 +1880,8 @@ module vector_engine #(
   // 范围检查可以与该递增运算并行执行。
   wire signed [31:0] avg_power_result=avg_power_floor<$signed(c.activation_min[7:0]) ? c.activation_min :
       avg_power_floor>=$signed(c.activation_max[7:0]) ? c.activation_max : 32'($signed(rounding_result[7:0]));
-  wire signed [8:0] avg_signed=avg_negative ? -$signed({1'b0,avg_magnitude_q}) : $signed({1'b0,avg_magnitude_q});
-  wire signed [31:0] avg_div_result=avg_signed<pool_activation_min ? c.activation_min :
-      avg_signed>pool_activation_max ? c.activation_max : 32'(avg_signed);
+  wire signed [31:0] avg_div_result=avg_signed_q<pool_activation_min ? c.activation_min :
+      avg_signed_q>pool_activation_max ? c.activation_max : 32'(avg_signed_q);
   wire signed [9:0] add_adjusted=$signed(add_rounded[9:0])+$signed({{2{c.output_offset[7]}},c.output_offset[7:0]});
   // 十位加法结果与完整激活上下限比较，高位范围和低位大小并行判断。
   logic add_below_min, add_above_max;
@@ -1898,7 +1904,7 @@ module vector_engine #(
   always_ff @(posedge clk) begin
     if (state == ADD_CLAMP) serial_clamped_q <= add_clamped[7:0];
     else if (state == AVG_POWER_CLAMP) serial_clamped_q <= avg_power_result[7:0];
-    else if (state == AVG_WAIT && avg_phase == 4'd8) serial_clamped_q <= avg_div_result[7:0];
+    else if (state == AVG_WAIT && avg_phase == 4'd9) serial_clamped_q <= avg_div_result[7:0];
   end
 
   // 串行结果共用字节数据选择，每个存储项仅保留地址使能和并行结果选择。
@@ -1908,6 +1914,9 @@ module vector_engine #(
   logic [TILE_INDEX_W-1:0] result_serial_index;
   logic [7:0] result_serial_data;
   logic [7:0] result_common_data;
+  logic result_byte_pending;
+  logic [TILE_INDEX_W-1:0] result_byte_index;
+  logic [7:0] result_byte_data;
   assign result_background_write = soft_out_write_valid;
   assign result_background_index = TILE_INDEX_W'(soft_out_write_index);
   always_comb begin
@@ -1936,26 +1945,44 @@ module vector_engine #(
   // 字节写入来源互斥，各存储项共用已按写使能选择的数据。
   assign result_common_data = ({8{soft_out_write_valid}} & soft_out_data) |
       ({8{result_serial_write}} & result_serial_data);
+  // 串行字节的地址、数据和有效位同拍保存，下一边沿写入累加存储。
+  // 输出元数据在最后一个字节提交时准备，写回模块随后读取完整结果。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) result_byte_pending <= 1'b0;
+    else if (state==FAILED) result_byte_pending <= 1'b0;
+    else result_byte_pending <= result_background_write || result_serial_write;
+  end
+  always_ff @(posedge clk) begin
+    result_byte_index <= result_serial_write ? result_serial_index : result_background_index;
+    result_byte_data <= result_common_data;
+  end
+  // 极值池化按 PE 组提交，读取选择器与计算通道共用。
+  // 每个通道保留一个八位限幅器，当前组全部字节在同一边沿写入。
+  logic [7:0] pool_lane_value [PE_COUNT];
+  for (genvar lane=0;lane<PE_COUNT;lane++) begin : g_pool_lane_clamp
+    assign pool_lane_value[lane] = $signed(accum_lane[lane][7:0]) < $signed(c.activation_min[7:0]) ?
+        c.activation_min[7:0] : $signed(accum_lane[lane][7:0]) > $signed(c.activation_max[7:0]) ?
+        c.activation_max[7:0] : accum_lane[lane][7:0];
+  end
   for (genvar entry=0;entry<TILE;entry++) begin : g_result_write
     localparam int LANE_INDEX = entry % PE_COUNT;
     localparam int GROUP_BASE = entry - LANE_INDEX;
     logic write_enable;
     logic [7:0] write_value;
-    logic background_selected, serial_selected, pool_selected;
+    logic byte_selected, pool_selected;
     logic [7:0] pool_value;
-    assign background_selected = result_background_write && result_background_index == TILE_INDEX_W'(entry);
-    assign serial_selected = result_serial_write && result_serial_index == TILE_INDEX_W'(entry);
-    assign pool_selected = state == POOL_STORE && 32'(entry) < active;
-    assign pool_value = $signed(acc_buf[entry][7:0]) < $signed(c.activation_min[7:0]) ? c.activation_min[7:0] :
-        $signed(acc_buf[entry][7:0]) > $signed(c.activation_max[7:0]) ? c.activation_max[7:0] : acc_buf[entry][7:0];
-    assign write_enable = background_selected || serial_selected || pool_selected;
-    assign write_value = result_common_data | ({8{pool_selected}} & pool_value);
+    assign byte_selected = result_byte_pending && result_byte_index == TILE_INDEX_W'(entry);
+    assign pool_selected = state == POOL_STORE && 32'(entry) < active &&
+        compute_index == TILE_INDEX_W'(GROUP_BASE);
+    assign pool_value = pool_lane_value[LANE_INDEX];
+    assign write_enable = byte_selected || pool_selected;
+    assign write_value = ({8{result_byte_pending}} & result_byte_data) | ({8{pool_selected}} & pool_value);
     assign result_write_enable[entry] = write_enable;
     assign result_write_data[entry] = write_value;
   end
 
   // 完成的像素保存到独立存储行，量化读取期间，PE 继续累加下一像素。
-  // 当前提交结果直接写入对应通道，避免等待最后一次乘加更新工作累加寄存器。
+  // 最后一次计算先提交到累加存储，下一边沿读取整行并初始化下一像素。
   if (SHARED_STORAGE_ENABLE) begin : g_shared_snapshot
     logic read_pending, data_valid;
     assign o_ps_write_en = rst_n && dw_snapshot_fire && !i_storage_error;
@@ -1964,10 +1991,7 @@ module vector_engine #(
     assign o_ps_read_addr = '0;
     assign dw_snapshot_data_ready = data_valid || i_ps_read_valid;
     for (genvar entry=0;entry<TILE;entry++) begin : g_channel
-      localparam int p_lane = entry % PE_COUNT;
-      localparam int p_group = entry - p_lane;
-      assign o_ps_write_data[32*entry+:32] =
-          dw_commit_vld && dw_commit_index==TILE_INDEX_W'(p_group) ? pe_result[p_lane] : acc_buf[entry];
+      assign o_ps_write_data[32*entry+:32] = acc_buf[entry];
       assign quant_req_accumulator[entry] = $signed(i_ps_read_data[32*entry+:32]);
     end
     // 写入和读取分处相邻周期；RAM 输出保持有效，直到该像素的量化输入全部接收。
@@ -1998,13 +2022,8 @@ module vector_engine #(
     assign o_ps_write_addr = '0;
     assign o_ps_write_data = '0;
     for (genvar entry=0;entry<TILE;entry++) begin : g_channel
-      localparam int p_lane = entry % PE_COUNT;
-      localparam int p_group = entry - p_lane;
       always_ff @(posedge clk) begin
-        if (dw_snapshot_fire) begin
-          dw_snapshot[entry] <= dw_commit_vld && dw_commit_index==TILE_INDEX_W'(p_group) ?
-              pe_result[p_lane] : acc_buf[entry];
-        end
+        if (dw_snapshot_fire) dw_snapshot[entry] <= acc_buf[entry];
       end
     end
   end
@@ -2383,7 +2402,10 @@ module vector_engine #(
           end else if (!writeback_busy) begin
             if (avg_pool) begin
               if (valid_taps==0) begin error<=2'b01;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(AVG_START);
-            end else {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_STORE);
+            end else begin
+              compute_index <= '0;
+              {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(POOL_STORE);
+            end
           end
         end
         QUANT_STREAM: begin
@@ -2419,8 +2441,13 @@ module vector_engine #(
             write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);end
         end
         POOL_STORE: begin
-          write_origin<=write_origin_next;
-          write_total<=active;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+          if (32'(compute_index)+32'(PE_COUNT) < active) begin
+            compute_index <= compute_index + TILE_INDEX_W'(PE_COUNT);
+          end else begin
+            write_origin <= write_origin_next;
+            write_total <= active;
+            {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(WRITE_PREP);
+          end
         end
         WRITE_PREP: if (writeback_ready) begin
           if (spatial) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_NEXT);
@@ -2517,6 +2544,13 @@ module vector_engine #(
       writeback_metadata_stalled <= 1'b0;
       previous_writeback_sink_fire <= 1'b0;
     end else begin
+      if (state==AVG_WAIT && avg_phase==4'd9)
+        assert(avg_signed_q === (avg_negative ? -$signed({1'b0,avg_magnitude_q}) :
+            $signed({1'b0,avg_magnitude_q})));
+      if (writeback_sink_fire && !depthwise) assert(!result_byte_pending);
+      assert(!(result_background_write && result_serial_write));
+      if (state==POOL_STORE) assert(!result_byte_pending);
+      if (dw_snapshot_fire) assert(!dw_commit_vld);
       assert(writeback_accept_pending == previous_writeback_sink_fire);
       assert(!(writeback_metadata_valid && writeback_accept_pending));
       if (writeback_metadata_valid && state!=FAILED)
@@ -2658,8 +2692,11 @@ module vector_coordinate_bound (
   //! -----------
 
   logic [15:0] bit_generate, bit_propagate;
-  logic [5:0] group_generate, group_propagate;
-  logic [1:0] half_generate, half_propagate;
+  // 仅保存后级实际使用的分组边界，使十六位比较保持并行归并结构。
+  (* keep = 1 *) logic [5:0] group_generate;
+  logic [5:0] group_propagate;
+  (* keep = 1 *) logic [1:0] half_generate;
+  logic [1:0] half_propagate;
   logic coordinate_high_zero, coordinate_low_less;
 
   //! 1. 并行比较坐标与尺寸
@@ -2681,7 +2718,13 @@ module vector_coordinate_bound (
       end
     end
     assign group_generate[group_index] = |generate_terms;
-    assign group_propagate[group_index] = &bit_propagate[p_low +: p_bits];
+    if (group_index > 0) begin : g_propagate_boundary
+      (* keep = 1 *) logic propagate_value;
+      assign propagate_value = &bit_propagate[p_low +: p_bits];
+      assign group_propagate[group_index] = propagate_value;
+    end else begin : g_first_propagate
+      assign group_propagate[group_index] = &bit_propagate[p_low +: p_bits];
+    end
   end
   for (genvar half_index = 0; half_index < 2; half_index++) begin : g_half
     localparam int p_low = 3 * half_index;

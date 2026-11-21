@@ -422,6 +422,8 @@ int main(int argc,char**argv){
    auto pointwise=spatial(s,"pipeline_dw_k1_c16",0,4,8,16,1,1,1,1,0,-5,true,0,false,0,0,true);
    spatial(s,"pipeline_dw_c64",0,8,8,64,3,3,1,1,1,128,true,0,false,0,0,true);
    spatial(s,"pipeline_dw_c128_s2",0,8,8,128,3,3,2,1,1,-127,true,0,false,0,0,true);
+   // 尾通道窗口连续交替使用两个存储位置，覆盖请求与响应在同一边沿接收。
+   auto tail_overlap=spatial(s,"pipeline_dw_tail_c3",0,5,5,3,3,3,1,1,1,7);
    if(TEST_TILE_SIZE==16){
      require(aligned.monitor[8]==1024 && aligned.monitor[9]==64*(16/s.top.quant_lane_count-1),"continuous quantization input groups");
      require(aligned.monitor[10]>0 && aligned.monitor[12]>0,"depthwise compute quantization and write overlap");
@@ -429,9 +431,11 @@ int main(int argc,char**argv){
      require(aligned.writes==1024 && aligned.write_transactions==16,"coalesced depthwise writes preserve all output bytes");
      if(perf)require(pointwise.write_transactions==8 && pointwise.writes==512,"pointwise coalesced write count");
      require(aligned.monitor[17]>=2,"multiple outstanding window requests");
-     if(s.top.pe_count>=8)require(aligned.monitor[20]>0,"overlapping window request and response");
+     if(s.top.pe_count>=8)require(tail_overlap.monitor[20]>0,"overlapping window request and response");
    }
    if(!softmax_replay_path.empty())softmax_replay(s,softmax_replay_path);
+   // 性能任务结束后执行异常与恢复检查，覆盖权重观察器的完整状态条件。
+   if(perf)errors(s);
    s.top.final();
    std::printf("VECTOR_ENGINE_DMA_PASS cases=%u outputs=%llu add_cases=%u add_outputs=%llu softmax_cases=%u softmax_outputs=%llu\n",
      cases,(unsigned long long)outputs,add_cases,(unsigned long long)add_outputs,softmax_cases,(unsigned long long)softmax_outputs);return 0;
