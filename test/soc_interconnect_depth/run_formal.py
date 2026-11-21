@@ -76,6 +76,7 @@ def main():
     parser.add_argument('--reference-ref', default=REFERENCE)
     parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--reference-root', type=Path)
+    parser.add_argument('--write-overlaps', type=int, nargs='+', choices=(0, 1), default=[1])
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -96,7 +97,9 @@ def main():
                   rtl_source_sha256=hashlib.sha256(current_source).hexdigest(),
                   capacity_state_relation_compared=True,
                   invariant_runs=[], runs=[], passed=False)
-    for index, parameters in enumerate(profiles()):
+    configurations = [dict(parameters, p_cpu_ram_write_overlap=overlap)
+                      for parameters in profiles() for overlap in args.write_overlaps]
+    for index, parameters in enumerate(configurations):
         name = 'case' + str(index)
         options = ' '.join(f'-G{key}={value}' for key, value in parameters.items())
         has_flags = 'logic ram_read_full_q, ram_write_full_q;' in current_source.decode()

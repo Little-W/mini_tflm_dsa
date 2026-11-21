@@ -454,6 +454,10 @@ module soc_axi_interconnect #(
     wire ram_rd_owner_release = ram_rd_owner_q == OWNER_NPU ?
         (!npu_ram_ar_req || (cpu_ram_new_owner_req && !m_ram_arready)) :
         (!cpu_ram_pending || npu_ram_ar_req);
+    // 最后一笔写响应接收时，直接按当前所有者的请求决定是否让出通道。
+    wire ram_wr_owner_release = ram_wr_owner_q == OWNER_NPU ?
+        (!npu_ram_aw_req || (cpu_ram_aw_req && !m_ram_awready)) :
+        (!cpu_ram_aw_req || npu_ram_aw_req);
     wire ram_rd_yield = ram_rd_active_q && (ram_rd_owner_q == OWNER_CPU) && npu_ram_ar_req;
     wire ram_wr_yield = ram_wr_active_q && (ram_wr_owner_q == OWNER_CPU) && npu_ram_aw_req;
 
@@ -843,8 +847,7 @@ module soc_axi_interconnect #(
                     ram_wr_owner_q  <= ram_aw_from_npu ? OWNER_NPU : OWNER_CPU;
                 end
             end else if ((ram_wr_outs_q == WR_OUTS_W'(1)) && ram_b_hs &&
-                         !ram_aw_hs &&
-                         (!ram_wr_owner_aw_valid || ram_wr_other_waiting)) begin
+                         ram_wr_owner_release) begin
                 ram_wr_active_q <= 1'b0;
             end
 

@@ -1,63 +1,114 @@
 {
+  "scope": "Complete SoC AXI interconnect state, ports and write transactions",
+  "reference_commit": "fe0ed2325743c9b353b74377fbe7b4a1e9d19d64",
+  "source_sha256": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c",
   "formal": {
-    "reference_ref": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
-    "source_root": "/tmp/npu_soc_write_decode_r11/source",
+    "reference_ref": "/tmp/npu_soc_write_release/reference",
+    "source_root": "/tmp/npu_soc_write_release/current",
     "inputs_constrained": false,
     "scope": "Every state element and public output, including arbitrary handshake combinations",
     "source_sha256": {
-      "reference": "0132b5b3441c8a185baf9bd1c0df59750428c3ca396e6106a54cafa3fd5a63a5",
-      "current": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2"
+      "reference": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
+      "current": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c"
     },
-    "rtl_source_sha256": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
+    "rtl_source_sha256": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c",
     "capacity_state_relation_compared": true,
     "invariant_runs": [
       {
         "case": "case0",
         "passed": true,
-        "source_sha256": "b572a5af2f0949de142910e71bae160f950d2bdeee8b68007dd034fe875fa802",
-        "log_sha256": "6b9387f2a9cc87d1dbca920c678319e854f512876c5a69aa590f9d106ad610e9"
+        "source_sha256": "f6bd96b16d1092502f7e0fb87d713d1b74957bcdd523bff65a6de9d93dbf1701",
+        "log_sha256": "f45a8ff45abcb34724d838201713e8317df24fe7ff91018e1afe4d6c11a42bc4"
       },
       {
         "case": "case1",
         "passed": true,
-        "source_sha256": "f9caf2a52ccaef3a1767b09a0379a3c262ef681fb2fd83b623acea1a4bd4f1fe",
-        "log_sha256": "4a50ef3e28b6f0b21cc25c5a091676afe8a1623ffa1a8066fdc50a7331780b75"
+        "source_sha256": "c0fb523f4c0ff980ca6a9baea84bb9da868fee685b076f804ff75d311ba9ed03",
+        "log_sha256": "68fd712d4c330dcc23f8da9a155569665ab5744671d5600ca301586554fa1b94"
       },
       {
         "case": "case2",
         "passed": true,
-        "source_sha256": "abbe4d5083699f62ab8e2d7bd26e2ab274364448aa02e73f0c57df816980e0f3",
-        "log_sha256": "6d917c1ab56a18149b106fbc72baeef24b02f710b00307ef42f13d4fa98cc621"
+        "source_sha256": "73cb6302f10bb71a3ff9c068991193f24270ee90067334d5e50bd51a03343e60",
+        "log_sha256": "5e24aef5994f5412ef6bd4685646e09a8b4271e5a9934fa5528251130ae589c5"
       },
       {
         "case": "case3",
         "passed": true,
-        "source_sha256": "c7435f07c97260c16009b09d8855b59719710f9ef876652897babdceb3bdb15f",
-        "log_sha256": "6c5d997c71a982b6854bbfb7e5bc8b2184269ca57918328681fc4d8df6165da0"
+        "source_sha256": "7630ab5148970108e5a1dfa5e13c4aba6b9641e8998a0031c6ca0bab9e2cb4ef",
+        "log_sha256": "8e58b773e8859785004905a63ce5e3726de40ed28cb3c7dd943cf18d098ee563"
       },
       {
         "case": "case4",
         "passed": true,
-        "source_sha256": "7311dbe19ba1a2891f4c22ff2819b47c6f1e22ad13a2d144272bb002340c0447",
-        "log_sha256": "eb00fb51aa0b3f1b7825e62f19ef430cee0a5bdf7ccf043103f59fa9e786bcfd"
+        "source_sha256": "26f8d04bfb3336eabbd1039483baf7e7f2924249d20a86a13bdc4cf04287d9a4",
+        "log_sha256": "c726e84fe8277e3862d40ee339e7f908401267e3e9b9f3e56f6cde43583dd632"
       },
       {
         "case": "case5",
         "passed": true,
-        "source_sha256": "3e6b179e7d40a512db90f67eb29a1ac606fede7ae892ccdb715ff3f848665780",
-        "log_sha256": "dc560b75a7835c063b80a17b17641866051fc567a5e8650aa62c5f3730ad5b7b"
+        "source_sha256": "731e4fc11abaf13e89f3ae02583eaa0cfc9d59ff9266508c2185222dd355e85e",
+        "log_sha256": "a7aa6334c4e0b2ef37e63329a3a5bf14deac97b333576e22f9f35f4076a3f034"
       },
       {
         "case": "case6",
         "passed": true,
-        "source_sha256": "38206a2ac348ad5dbc9c8477520c1b879a9b9fd380a0247a02f30044bb987c1d",
-        "log_sha256": "876ae9809b78a6bf3f859317518e37eaff8aac0f23c3c95713c7e801dafb69d6"
+        "source_sha256": "e05909392bedf43c9cc941508a47933c28d0cc68ae0cf59609eeb3f5c9db9e97",
+        "log_sha256": "47364115c2035a25788ba8fbfa5937a5611752bd06412b2e8686f9b54bb82daa"
       },
       {
         "case": "case7",
         "passed": true,
-        "source_sha256": "9829adc851a359e5d4cba1d4c1fa92d640318918b9708f304efa753cd3602004",
-        "log_sha256": "26fc6f3e2b99ed39a0dc5e5b2d7159734c4557ab14fdccc777fb1fd3ef315677"
+        "source_sha256": "b63814879417b30694da021e3587602a27343d2e5b788c7dee0ca3187e949ec1",
+        "log_sha256": "466b4ba6fc7d40cba64f5fd088e7f84b72e8c995975c4b702616ee140a90a785"
+      },
+      {
+        "case": "case8",
+        "passed": true,
+        "source_sha256": "14cde19aaf73d7f6fdfe53dc09d1df42f3413042363e5f8c7100c6cfc8d6a277",
+        "log_sha256": "bb6678d10753a1712cf63d63b0a7d15455bc2fc317ca874c9d01daacbb2558e3"
+      },
+      {
+        "case": "case9",
+        "passed": true,
+        "source_sha256": "ecd3980c5dbe14b6d98e41d38ee59f30197280db26fc85d5b21feb8edfa5d81a",
+        "log_sha256": "bcec367de14bf602c1cce2f86f904883e9c87112e44632c8daf367e89abb02ad"
+      },
+      {
+        "case": "case10",
+        "passed": true,
+        "source_sha256": "5a105c411a20491efd15a8424136d9c9d7b6130304da5b9fb36730be6f708dc1",
+        "log_sha256": "bd85279d1920f96ff647af697e06c231ae55ece54ce208b2c853b0e0dd68c1c2"
+      },
+      {
+        "case": "case11",
+        "passed": true,
+        "source_sha256": "0521352557bb5dd2db7102a6b4593f0f6cbb8071a97f1c1543f1d4f638fdeb92",
+        "log_sha256": "7f5c3e7d9f031a990f1be3c3cbcdaf02b00ff7b73b937411eb24dabc19ff8b68"
+      },
+      {
+        "case": "case12",
+        "passed": true,
+        "source_sha256": "d4d176efdf077c258bdf1ef7fef28f4d4399686dfd6ea287fdfa97aae0639d7f",
+        "log_sha256": "265444842968c069f1f8a105b9f32388d60732a95c9ab5897d94800ac90b7f2a"
+      },
+      {
+        "case": "case13",
+        "passed": true,
+        "source_sha256": "54aa37ac7cea495fa9392607d4d3904f95006dfe50565db9b1f50a2a0ae37fc0",
+        "log_sha256": "9a65565ace233a2194cbe783188969ef9e6fc3875826d260e116ef44e7049542"
+      },
+      {
+        "case": "case14",
+        "passed": true,
+        "source_sha256": "3e7582a43d9fd5d060f70e7b5741d055f1e63b877a83e4182187d88680d7bde8",
+        "log_sha256": "92d3b6ffde91e496ca2167a6f092a8c41026f3a933f93052d506ef4014c77f30"
+      },
+      {
+        "case": "case15",
+        "passed": true,
+        "source_sha256": "5ef164a4c53e23a95347d6c0e391f67694070c84c7ac161f0e96059f739dd3af",
+        "log_sha256": "7090f57436cf2e1796745efbc54e453bc2ab6faddd5be9e95b91bbfc8fdd6712"
       }
     ],
     "runs": [
@@ -68,11 +119,12 @@
           "DATA_WIDTH": 32,
           "CPU_MEM_DP": 65536,
           "READ_OUTSTANDING": 1,
-          "WRITE_OUTSTANDING": 1
+          "WRITE_OUTSTANDING": 1,
+          "p_cpu_ram_write_overlap": 0
         },
         "passed": true,
-        "equivalent_bits": 580,
-        "log_sha256": "7af4f181d278160966772a99c75856e3d92d7de785d7a528575b94b8888a66b6"
+        "equivalent_bits": 593,
+        "log_sha256": "05ae564cd414839fc06ee928f300f8a1a8a81a93e7357e7c9009cacc611f5586"
       },
       {
         "case": "case1",
@@ -80,41 +132,100 @@
           "ADDR_WIDTH": 32,
           "DATA_WIDTH": 32,
           "CPU_MEM_DP": 65536,
-          "READ_OUTSTANDING": 4,
-          "WRITE_OUTSTANDING": 4
+          "READ_OUTSTANDING": 1,
+          "WRITE_OUTSTANDING": 1,
+          "p_cpu_ram_write_overlap": 1
         },
         "passed": true,
-        "equivalent_bits": 584,
-        "log_sha256": "a6e544dd59b554a34e477b024b04b2dfd60371034b88dc95bc09fe832c6e7de9"
+        "equivalent_bits": 593,
+        "log_sha256": "0ac0e27a87e5fcfae2394634898c76c973ca97bef604c34283b3fcb3d1561fc4"
       },
       {
         "case": "case2",
         "parameters": {
           "ADDR_WIDTH": 32,
-          "DATA_WIDTH": 64,
+          "DATA_WIDTH": 32,
           "CPU_MEM_DP": 65536,
-          "READ_OUTSTANDING": 1,
-          "WRITE_OUTSTANDING": 1
+          "READ_OUTSTANDING": 4,
+          "WRITE_OUTSTANDING": 4,
+          "p_cpu_ram_write_overlap": 0
         },
         "passed": true,
-        "equivalent_bits": 1108,
-        "log_sha256": "62217b3881855e13e44e5d3ea6a15d1f9acae1b63791732a98cb3489177491ec"
+        "equivalent_bits": 597,
+        "log_sha256": "c0e42cf32e1233180929152be6fd1ee93c2d9fe338c6b3d99a8fe3b0daf7eaea"
       },
       {
         "case": "case3",
         "parameters": {
           "ADDR_WIDTH": 32,
-          "DATA_WIDTH": 64,
+          "DATA_WIDTH": 32,
           "CPU_MEM_DP": 65536,
           "READ_OUTSTANDING": 4,
-          "WRITE_OUTSTANDING": 4
+          "WRITE_OUTSTANDING": 4,
+          "p_cpu_ram_write_overlap": 1
         },
         "passed": true,
-        "equivalent_bits": 1112,
-        "log_sha256": "57b21b9c03c88200e6f56681edfd54febd8546dbe86edebdfd32957b6f2be279"
+        "equivalent_bits": 597,
+        "log_sha256": "8df677ce349b4fa9889361e12b2793a7bd5f6c4746bb5ae5e4db8962c775bc69"
       },
       {
         "case": "case4",
+        "parameters": {
+          "ADDR_WIDTH": 32,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 65536,
+          "READ_OUTSTANDING": 1,
+          "WRITE_OUTSTANDING": 1,
+          "p_cpu_ram_write_overlap": 0
+        },
+        "passed": true,
+        "equivalent_bits": 992,
+        "log_sha256": "73b5755efa713e45093427d260d4f764d4829866afa4f107b6fb70f5ae7514bd"
+      },
+      {
+        "case": "case5",
+        "parameters": {
+          "ADDR_WIDTH": 32,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 65536,
+          "READ_OUTSTANDING": 1,
+          "WRITE_OUTSTANDING": 1,
+          "p_cpu_ram_write_overlap": 1
+        },
+        "passed": true,
+        "equivalent_bits": 1121,
+        "log_sha256": "020574f63f6529ecab0f8d69c13ff5e6e31185c1029a34dcf1f4468997bc517b"
+      },
+      {
+        "case": "case6",
+        "parameters": {
+          "ADDR_WIDTH": 32,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 65536,
+          "READ_OUTSTANDING": 4,
+          "WRITE_OUTSTANDING": 4,
+          "p_cpu_ram_write_overlap": 0
+        },
+        "passed": true,
+        "equivalent_bits": 996,
+        "log_sha256": "e44ad3b62dc7c91078d6d73ee44b133b22e1ed5f3fa2e4a5f3e6e012864e978a"
+      },
+      {
+        "case": "case7",
+        "parameters": {
+          "ADDR_WIDTH": 32,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 65536,
+          "READ_OUTSTANDING": 4,
+          "WRITE_OUTSTANDING": 4,
+          "p_cpu_ram_write_overlap": 1
+        },
+        "passed": true,
+        "equivalent_bits": 1125,
+        "log_sha256": "321ac96a659407768b9d110170824f047e2a5e225f9db597d13f025e1a13166f"
+      },
+      {
+        "case": "case8",
         "parameters": {
           "ADDR_WIDTH": 40,
           "DATA_WIDTH": 64,
@@ -122,14 +233,31 @@
           "READ_OUTSTANDING": 3,
           "WRITE_OUTSTANDING": 5,
           "CPU_RAM_BASE": 8195,
-          "NPU_AXIL_BASE": 268435456
+          "NPU_AXIL_BASE": 268435456,
+          "p_cpu_ram_write_overlap": 0
         },
         "passed": true,
-        "equivalent_bits": 1263,
-        "log_sha256": "221f2b2f4e1fbd5638e7e227151afd885189be4befff522091945f0cb28a3cc9"
+        "equivalent_bits": 1115,
+        "log_sha256": "715f69be2410182a3dca93b01541fdf8c1af64f3d4b20956bd045ec3823a41eb"
       },
       {
-        "case": "case5",
+        "case": "case9",
+        "parameters": {
+          "ADDR_WIDTH": 40,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 1031,
+          "READ_OUTSTANDING": 3,
+          "WRITE_OUTSTANDING": 5,
+          "CPU_RAM_BASE": 8195,
+          "NPU_AXIL_BASE": 268435456,
+          "p_cpu_ram_write_overlap": 1
+        },
+        "passed": true,
+        "equivalent_bits": 1276,
+        "log_sha256": "c636cc99db47d933395070e51a3e2b6b9f5241a23e10d76f39eb0361be7d6d8f"
+      },
+      {
+        "case": "case10",
         "parameters": {
           "ADDR_WIDTH": 64,
           "DATA_WIDTH": 64,
@@ -137,14 +265,31 @@
           "READ_OUTSTANDING": 3,
           "WRITE_OUTSTANDING": 5,
           "CPU_RAM_BASE": 0,
-          "NPU_AXIL_BASE": 0
+          "NPU_AXIL_BASE": 0,
+          "p_cpu_ram_write_overlap": 0
         },
         "passed": true,
-        "equivalent_bits": 1719,
-        "log_sha256": "42d7abe796962c399aa75fb4457604d78ec3574a8597590765bd18a6edd057bd"
+        "equivalent_bits": 1475,
+        "log_sha256": "b7e9d7786c460a7dcfd502ee1b480fbc9de59f14431b30cee4f2e0c737fcb9fb"
       },
       {
-        "case": "case6",
+        "case": "case11",
+        "parameters": {
+          "ADDR_WIDTH": 64,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 1,
+          "READ_OUTSTANDING": 3,
+          "WRITE_OUTSTANDING": 5,
+          "CPU_RAM_BASE": 0,
+          "NPU_AXIL_BASE": 0,
+          "p_cpu_ram_write_overlap": 1
+        },
+        "passed": true,
+        "equivalent_bits": 1732,
+        "log_sha256": "b8fceafc141811785e65d97b89b8820f7027a0604894a3aa52deeca9519824d8"
+      },
+      {
+        "case": "case12",
         "parameters": {
           "ADDR_WIDTH": 32,
           "DATA_WIDTH": 64,
@@ -152,14 +297,31 @@
           "READ_OUTSTANDING": 3,
           "WRITE_OUTSTANDING": 5,
           "CPU_RAM_BASE": -1048576,
-          "NPU_AXIL_BASE": 268435456
+          "NPU_AXIL_BASE": 268435456,
+          "p_cpu_ram_write_overlap": 0
         },
         "passed": true,
-        "equivalent_bits": 1111,
-        "log_sha256": "b243d912b6c4d9d4cd6069d9080feee924369393e41eb976b3b3feada54e6835"
+        "equivalent_bits": 995,
+        "log_sha256": "d89d9fe64d558f19655f8b16e9ceff22f1cd6fc41f9c6c65c3f3c9265d1be96d"
       },
       {
-        "case": "case7",
+        "case": "case13",
+        "parameters": {
+          "ADDR_WIDTH": 32,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 524288,
+          "READ_OUTSTANDING": 3,
+          "WRITE_OUTSTANDING": 5,
+          "CPU_RAM_BASE": -1048576,
+          "NPU_AXIL_BASE": 268435456,
+          "p_cpu_ram_write_overlap": 1
+        },
+        "passed": true,
+        "equivalent_bits": 1124,
+        "log_sha256": "3a7cd99861507a2ae2f57ae8e91e443ffbbb5f1b72a3b502c04bd3ff023ec457"
+      },
+      {
+        "case": "case14",
         "parameters": {
           "ADDR_WIDTH": 32,
           "DATA_WIDTH": 64,
@@ -167,121 +329,245 @@
           "READ_OUTSTANDING": 3,
           "WRITE_OUTSTANDING": 5,
           "CPU_RAM_BASE": 33554432,
-          "NPU_AXIL_BASE": 33554432
+          "NPU_AXIL_BASE": 33554432,
+          "p_cpu_ram_write_overlap": 0
         },
         "passed": true,
-        "equivalent_bits": 1111,
-        "log_sha256": "119aaf940b0762e1e90728e8f33ee36f3ad341f06ada355a2cf3dfc3f4dcca4e"
+        "equivalent_bits": 995,
+        "log_sha256": "3e64c64b4299e4f58320ff901f589c7881be920012e4d3a449a0ee23e9d589a6"
+      },
+      {
+        "case": "case15",
+        "parameters": {
+          "ADDR_WIDTH": 32,
+          "DATA_WIDTH": 64,
+          "CPU_MEM_DP": 1031,
+          "READ_OUTSTANDING": 3,
+          "WRITE_OUTSTANDING": 5,
+          "CPU_RAM_BASE": 33554432,
+          "NPU_AXIL_BASE": 33554432,
+          "p_cpu_ram_write_overlap": 1
+        },
+        "passed": true,
+        "equivalent_bits": 1124,
+        "log_sha256": "6c4f0081a46550d57ca1a19dfc78d6c389eaea10b4ba1315e8229f2a35f19d1d"
       }
     ],
     "passed": true,
-    "equivalent_bits": 8588
+    "equivalent_bits": 16450
   },
   "four_state": {
-    "passed": true,
-    "reference_revision": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
-    "cycles": 20001,
-    "public_outputs": [
-      "s0_axi_arready",
-      "s0_axi_rvalid",
-      "s0_axi_rdata",
-      "s0_axi_rresp",
-      "s0_axi_rlast",
-      "s0_axi_awready",
-      "s0_axi_wready",
-      "s0_axi_bvalid",
-      "s0_axi_bresp",
-      "s1_axi_arready",
-      "s1_axi_rvalid",
-      "s1_axi_rdata",
-      "s1_axi_rresp",
-      "s1_axi_rlast",
-      "s1_axi_awready",
-      "s1_axi_wready",
-      "s1_axi_bvalid",
-      "s1_axi_bresp",
-      "m_ram_arvalid",
-      "m_ram_araddr",
-      "m_ram_arcache",
-      "m_ram_arprot",
-      "m_ram_arlock",
-      "m_ram_arburst",
-      "m_ram_arlen",
-      "m_ram_arsize",
-      "m_ram_rready",
-      "m_ram_awvalid",
-      "m_ram_awaddr",
-      "m_ram_awcache",
-      "m_ram_awprot",
-      "m_ram_awlock",
-      "m_ram_awburst",
-      "m_ram_awlen",
-      "m_ram_awsize",
-      "m_ram_wvalid",
-      "m_ram_wdata",
-      "m_ram_wstrb",
-      "m_ram_wlast",
-      "m_ram_bready",
-      "m_npu_awaddr",
-      "m_npu_awprot",
-      "m_npu_awvalid",
-      "m_npu_wdata",
-      "m_npu_wstrb",
-      "m_npu_wvalid",
-      "m_npu_bready",
-      "m_npu_araddr",
-      "m_npu_arprot",
-      "m_npu_arvalid",
-      "m_npu_rready",
-      "m_uart_awaddr",
-      "m_uart_awprot",
-      "m_uart_awvalid",
-      "m_uart_wdata",
-      "m_uart_wstrb",
-      "m_uart_wvalid",
-      "m_uart_bready",
-      "m_uart_araddr",
-      "m_uart_arprot",
-      "m_uart_arvalid",
-      "m_uart_rready",
-      "m_ctrl_awaddr",
-      "m_ctrl_awprot",
-      "m_ctrl_awvalid",
-      "m_ctrl_wdata",
-      "m_ctrl_wstrb",
-      "m_ctrl_wvalid",
-      "m_ctrl_bready",
-      "m_ctrl_araddr",
-      "m_ctrl_arprot",
-      "m_ctrl_arvalid",
-      "m_ctrl_rready"
-    ],
-    "source_sha256": {
-      "reference": "0132b5b3441c8a185baf9bd1c0df59750428c3ca396e6106a54cafa3fd5a63a5",
-      "current": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2"
+    "0": {
+      "passed": true,
+      "reference_revision": "/tmp/npu_soc_write_release/reference",
+      "cycles": 20001,
+      "public_outputs": [
+        "s0_axi_arready",
+        "s0_axi_rvalid",
+        "s0_axi_rdata",
+        "s0_axi_rresp",
+        "s0_axi_rlast",
+        "s0_axi_awready",
+        "s0_axi_wready",
+        "s0_axi_bvalid",
+        "s0_axi_bresp",
+        "s1_axi_arready",
+        "s1_axi_rvalid",
+        "s1_axi_rdata",
+        "s1_axi_rresp",
+        "s1_axi_rlast",
+        "s1_axi_awready",
+        "s1_axi_wready",
+        "s1_axi_bvalid",
+        "s1_axi_bresp",
+        "m_ram_arvalid",
+        "m_ram_araddr",
+        "m_ram_arcache",
+        "m_ram_arprot",
+        "m_ram_arlock",
+        "m_ram_arburst",
+        "m_ram_arlen",
+        "m_ram_arsize",
+        "m_ram_rready",
+        "m_ram_awvalid",
+        "m_ram_awaddr",
+        "m_ram_awcache",
+        "m_ram_awprot",
+        "m_ram_awlock",
+        "m_ram_awburst",
+        "m_ram_awlen",
+        "m_ram_awsize",
+        "m_ram_wvalid",
+        "m_ram_wdata",
+        "m_ram_wstrb",
+        "m_ram_wlast",
+        "m_ram_bready",
+        "m_npu_awaddr",
+        "m_npu_awprot",
+        "m_npu_awvalid",
+        "m_npu_wdata",
+        "m_npu_wstrb",
+        "m_npu_wvalid",
+        "m_npu_bready",
+        "m_npu_araddr",
+        "m_npu_arprot",
+        "m_npu_arvalid",
+        "m_npu_rready",
+        "m_uart_awaddr",
+        "m_uart_awprot",
+        "m_uart_awvalid",
+        "m_uart_wdata",
+        "m_uart_wstrb",
+        "m_uart_wvalid",
+        "m_uart_bready",
+        "m_uart_araddr",
+        "m_uart_arprot",
+        "m_uart_arvalid",
+        "m_uart_rready",
+        "m_ctrl_awaddr",
+        "m_ctrl_awprot",
+        "m_ctrl_awvalid",
+        "m_ctrl_wdata",
+        "m_ctrl_wstrb",
+        "m_ctrl_wvalid",
+        "m_ctrl_bready",
+        "m_ctrl_araddr",
+        "m_ctrl_arprot",
+        "m_ctrl_arvalid",
+        "m_ctrl_rready"
+      ],
+      "write_overlap": 0,
+      "source_sha256": {
+        "reference": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
+        "current": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c"
+      },
+      "strict_four_state_comparison": true,
+      "simulator_type_conversion": "枚举类型转换为相同位宽逻辑及同值常量；所有表达式和时序块保持",
+      "simulation_source_sha256": {
+        "reference.sv": "e9c8acd45d5ffda2607ec45d57211f8df865f4a06fdb716f92432cee67a99f69",
+        "current.sv": "b7f3a03f52c2943b02d6efa4e5332f0f95344b1ef3bc2b6a8f084e0fd21b9975"
+      },
+      "testbench_sha256": "6ff1ff5adfc5eaea68d39073bb1482e21ae07195a888c5ccf1b6c74a06a8e0de",
+      "run_log_sha256": "95911812cfb8d4d6a9e278033fc716b7ea4f753804dfa2647f4e5fbe009d0a22",
+      "build_command": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/npu_soc_write_release/four_state0/simulation.vvp",
+        "/tmp/npu_soc_write_release/four_state0/reference.sv",
+        "/tmp/npu_soc_write_release/four_state0/current.sv",
+        "/tmp/npu_soc_write_release/four_state0/tb.sv"
+      ]
     },
-    "strict_four_state_comparison": true,
-    "simulator_type_conversion": "枚举类型转换为相同位宽逻辑及同值常量；所有表达式和时序块保持",
-    "simulation_source_sha256": {
-      "reference.sv": "ea8e7775540044aa829be78edb90fb77d5deaccada5f42eab7704ef4bd98df6d",
-      "current.sv": "3a4b479b7121810ce97b0a5d47a82fe1531c6e781f66afc37cb71ec966ff795a"
-    },
-    "testbench_sha256": "225dd5f8954a0703bdef5619eaec7fd7d25d29c7cb88ecb4689e648751769931",
-    "run_log_sha256": "b002514325abb17bb17aca4babde80a318343cb434333e01ba4a9c1c58fcc8da",
-    "build_command": [
-      "iverilog",
-      "-g2012",
-      "-s",
-      "tb",
-      "-o",
-      "/tmp/npu_soc_write_decode_r11/four_state/simulation.vvp",
-      "/tmp/npu_soc_write_decode_r11/four_state/reference.sv",
-      "/tmp/npu_soc_write_decode_r11/four_state/current.sv",
-      "/tmp/npu_soc_write_decode_r11/four_state/tb.sv"
-    ]
+    "1": {
+      "passed": true,
+      "reference_revision": "/tmp/npu_soc_write_release/reference",
+      "cycles": 20001,
+      "public_outputs": [
+        "s0_axi_arready",
+        "s0_axi_rvalid",
+        "s0_axi_rdata",
+        "s0_axi_rresp",
+        "s0_axi_rlast",
+        "s0_axi_awready",
+        "s0_axi_wready",
+        "s0_axi_bvalid",
+        "s0_axi_bresp",
+        "s1_axi_arready",
+        "s1_axi_rvalid",
+        "s1_axi_rdata",
+        "s1_axi_rresp",
+        "s1_axi_rlast",
+        "s1_axi_awready",
+        "s1_axi_wready",
+        "s1_axi_bvalid",
+        "s1_axi_bresp",
+        "m_ram_arvalid",
+        "m_ram_araddr",
+        "m_ram_arcache",
+        "m_ram_arprot",
+        "m_ram_arlock",
+        "m_ram_arburst",
+        "m_ram_arlen",
+        "m_ram_arsize",
+        "m_ram_rready",
+        "m_ram_awvalid",
+        "m_ram_awaddr",
+        "m_ram_awcache",
+        "m_ram_awprot",
+        "m_ram_awlock",
+        "m_ram_awburst",
+        "m_ram_awlen",
+        "m_ram_awsize",
+        "m_ram_wvalid",
+        "m_ram_wdata",
+        "m_ram_wstrb",
+        "m_ram_wlast",
+        "m_ram_bready",
+        "m_npu_awaddr",
+        "m_npu_awprot",
+        "m_npu_awvalid",
+        "m_npu_wdata",
+        "m_npu_wstrb",
+        "m_npu_wvalid",
+        "m_npu_bready",
+        "m_npu_araddr",
+        "m_npu_arprot",
+        "m_npu_arvalid",
+        "m_npu_rready",
+        "m_uart_awaddr",
+        "m_uart_awprot",
+        "m_uart_awvalid",
+        "m_uart_wdata",
+        "m_uart_wstrb",
+        "m_uart_wvalid",
+        "m_uart_bready",
+        "m_uart_araddr",
+        "m_uart_arprot",
+        "m_uart_arvalid",
+        "m_uart_rready",
+        "m_ctrl_awaddr",
+        "m_ctrl_awprot",
+        "m_ctrl_awvalid",
+        "m_ctrl_wdata",
+        "m_ctrl_wstrb",
+        "m_ctrl_wvalid",
+        "m_ctrl_bready",
+        "m_ctrl_araddr",
+        "m_ctrl_arprot",
+        "m_ctrl_arvalid",
+        "m_ctrl_rready"
+      ],
+      "write_overlap": 1,
+      "source_sha256": {
+        "reference": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
+        "current": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c"
+      },
+      "strict_four_state_comparison": true,
+      "simulator_type_conversion": "枚举类型转换为相同位宽逻辑及同值常量；所有表达式和时序块保持",
+      "simulation_source_sha256": {
+        "reference.sv": "e9c8acd45d5ffda2607ec45d57211f8df865f4a06fdb716f92432cee67a99f69",
+        "current.sv": "b7f3a03f52c2943b02d6efa4e5332f0f95344b1ef3bc2b6a8f084e0fd21b9975"
+      },
+      "testbench_sha256": "0da3a913f0f29228e9a6b16c1b620575062de423ffcc6b182d2477b7abd90543",
+      "run_log_sha256": "e5cc4709b07eb3ed48b414c2051e1e5dd8c8d08488fbb0bdabc8b61ed74c45df",
+      "build_command": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/npu_soc_write_release/four_state1/simulation.vvp",
+        "/tmp/npu_soc_write_release/four_state1/reference.sv",
+        "/tmp/npu_soc_write_release/four_state1/current.sv",
+        "/tmp/npu_soc_write_release/four_state1/tb.sv"
+      ]
+    }
   },
-  "write_protocol": {
-    "source_sha256": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
+  "transactions": {
+    "source_sha256": "57916e0277d22d184cf3b0a01087c04579837aa6ffd42291e58582ac05cb5e5c",
     "test_sha256": "0c5805b06090c8db8564abb4e202c51b02671ee7442995ad5269d2dbd8f7c617",
     "profiles": [
       {
@@ -371,548 +657,68 @@
     ],
     "passed": true
   },
-  "mapping": {
+  "synthesis": {
     "reference": {
       "resources": {
-        "logic_lut_cells": 661,
+        "logic_lut_cells": 634,
         "distributed_ram_lut_sites_nominal": 0,
         "shift_register_lut_sites_nominal": 0,
-        "lut_sites_nominal_before_packing": 661,
+        "lut_sites_nominal_before_packing": 634,
         "physical_lut_sites_after_placement": null,
-        "flip_flops": 225,
-        "dsp48e1": 3,
+        "flip_flops": 227,
+        "dsp48e1": 2,
         "ramb36e1": 0,
         "ramb18e1": 0,
         "carry4": 4,
         "unclassified_distributed_ram_types": [],
         "cell_counts": {
           "CARRY4": 4,
-          "DSP48E1": 3,
-          "FDCE": 207,
-          "FDPE": 18,
+          "DSP48E1": 2,
+          "FDCE": 211,
+          "FDPE": 16,
           "INV": 7,
-          "LUT1": 1,
-          "LUT2": 141,
-          "LUT3": 96,
-          "LUT4": 141,
-          "LUT5": 202,
-          "LUT6": 80,
-          "MUXF7": 10,
-          "MUXF8": 5
+          "LUT2": 120,
+          "LUT3": 145,
+          "LUT4": 169,
+          "LUT5": 161,
+          "LUT6": 39
         },
         "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
       },
-      "longest_register_path_cells": 9,
+      "longest_register_path_cells": 6,
       "graph_complete": true,
-      "metrics_sha256": "807844181db8f8f7f43bb7f38d7cdc8a289466dc3c621f5cf962aaf59fc5bb51"
+      "metrics_sha256": "d5d866161ce00c24781f47b4545854d643f8338dbdd5357ba02a39f1067be0b9"
     },
     "current": {
       "resources": {
-        "logic_lut_cells": 662,
+        "logic_lut_cells": 633,
         "distributed_ram_lut_sites_nominal": 0,
         "shift_register_lut_sites_nominal": 0,
-        "lut_sites_nominal_before_packing": 662,
+        "lut_sites_nominal_before_packing": 633,
         "physical_lut_sites_after_placement": null,
         "flip_flops": 227,
-        "dsp48e1": 3,
+        "dsp48e1": 2,
         "ramb36e1": 0,
         "ramb18e1": 0,
         "carry4": 4,
         "unclassified_distributed_ram_types": [],
         "cell_counts": {
           "CARRY4": 4,
-          "DSP48E1": 3,
+          "DSP48E1": 2,
           "FDCE": 211,
           "FDPE": 16,
-          "INV": 7,
-          "LUT1": 1,
-          "LUT2": 145,
-          "LUT3": 97,
-          "LUT4": 142,
-          "LUT5": 199,
-          "LUT6": 78,
-          "MUXF7": 6,
-          "MUXF8": 3
+          "INV": 8,
+          "LUT2": 123,
+          "LUT3": 143,
+          "LUT4": 167,
+          "LUT5": 160,
+          "LUT6": 40
         },
         "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
       },
-      "longest_register_path_cells": 9,
+      "longest_register_path_cells": 6,
       "graph_complete": true,
-      "metrics_sha256": "cb5dd09438754d27bb312576f0c1c29b9d83777479c2f1fb791de9898ffa8d40"
+      "metrics_sha256": "59829d342d23e325366b7c9acd82d0bdda31a2b743853d8010491259b1248970"
     }
-  },
-  "mapping_manifest": {
-    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
-    "family": "xc7",
-    "part": "xc7a200tfbg484-3",
-    "clock_period_ns": 6.666666666666667,
-    "cases": {
-      "reference": {
-        "top": "soc_axi_interconnect",
-        "configuration": "生产 CPU/NPU 互连的全部端口与内部状态",
-        "sources_sha256": {
-          "/tmp/npu_soc_write_decode_r11/formal/reference/soc_axi_interconnect.sv": "0132b5b3441c8a185baf9bd1c0df59750428c3ca396e6106a54cafa3fd5a63a5",
-          "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
-          "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
-          "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-          "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
-          "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
-          "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
-          "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
-        },
-        "parameters": {
-          "ADDR_WIDTH": 32,
-          "DATA_WIDTH": 64,
-          "CPU_MEM_DP": 65536,
-          "READ_OUTSTANDING": 4,
-          "WRITE_OUTSTANDING": 4
-        },
-        "stages": {
-          "01_elaborate": {
-            "elapsed_seconds": 1.42,
-            "peak_process_tree_rss_bytes": 150671360,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "01_elaborate.ys",
-            "log": "01_elaborate.log",
-            "script_sha256": "5fe533d3cda380d184a86cba7fbffb6012c4f17dff6592e4c462e33dde51d579",
-            "output_sha256": "7511d0830af99c1c5e22cf2c2b804c2a04d8f10fd3d29cfb8eb2373f88d31629"
-          },
-          "02a_pre_alu": {
-            "elapsed_seconds": 3.61,
-            "peak_process_tree_rss_bytes": 145715200,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02a_pre_alu.ys",
-            "log": "02a_pre_alu.log",
-            "script_sha256": "9c5c6cabc75f5c38e57b159fadb26c18ba3ffbe47f4f7277bc88bb974a5c8980",
-            "output_sha256": "c05503425906e2fba17ffe6bf5297e985262b86cb262a8c39b78654905d7ca54"
-          },
-          "02b_map_alu": {
-            "elapsed_seconds": 0.2,
-            "peak_process_tree_rss_bytes": 90112,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02b_map_alu.command.json",
-            "log": "02b_map_alu.log",
-            "script_sha256": "8d478cff9b0f7a8c5d07e48f3502859d367b3abefe6f4a41b79585531dc5a217",
-            "output_sha256": "697f856936e1f628d63c626cbd2ac4f398d97d2acfb0c9dc17f1bdb593e1e727",
-            "automatic_name_counter_sha256": "f9056ab8fd536a2cf8bc6208ac468d928c4b2308b79b0f1d2a0fe8c8000b6216"
-          },
-          "02_pre_lut": {
-            "elapsed_seconds": 2.01,
-            "peak_process_tree_rss_bytes": 143642624,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02_pre_lut.ys",
-            "log": "02_pre_lut.log",
-            "script_sha256": "97b14beb84392c6630c209d3e3768a5cc01b31d6263755c17c8e1d02b47fee53",
-            "output_sha256": "7bca18ae194af2b96577c3585d777aea37fd5bd667f46ba304dd9bc616f3fcea"
-          },
-          "03_map_lut": {
-            "elapsed_seconds": 3.81,
-            "peak_process_tree_rss_bytes": 183361536,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "03_map_lut.ys",
-            "log": "03_map_lut.log",
-            "script_sha256": "4357537c958e39e60b75f496b210701114486608d002e05ddbadb06251f34622",
-            "output_sha256": "571d7013e201df442733d82c8a5cde1bc7ffe8d9636726afe5f6592058a3fad9",
-            "mapped_verilog_sha256": "1bc877bda0b4539ae0ae7a3f040b2f8b0dab05a822f4196b382232fc6c9c650e"
-          }
-        },
-        "options": [
-          "-DSYNTHESIS=1",
-          "-GADDR_WIDTH=32",
-          "-GDATA_WIDTH=64",
-          "-GCPU_MEM_DP=65536",
-          "-GREAD_OUTSTANDING=4",
-          "-GWRITE_OUTSTANDING=4"
-        ],
-        "build_configuration": null,
-        "elapsed_seconds": 11.32,
-        "lut_cells": 661,
-        "flip_flops": 225,
-        "ramb36": 0,
-        "ramb18": 0,
-        "dsp": 3,
-        "carry4": 4,
-        "longest_combinational_path_cells": 11,
-        "longest_combinational_path": [
-          {
-            "cell": "$abc$52575$lut$aiger52574$1498",
-            "type": "LUT2"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$1504",
-            "type": "LUT6"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$1510",
-            "type": "LUT2"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$1512",
-            "type": "LUT2"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$1517",
-            "type": "LUT4"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$2010",
-            "type": "LUT2"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$2029",
-            "type": "LUT6"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$2035",
-            "type": "LUT5"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger$o2878",
-            "type": "LUT3"
-          },
-          {
-            "cell": "$abc$52575$lut$aiger52574$2039",
-            "type": "LUT2"
-          },
-          {
-            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$52870",
-            "type": "LUT6"
-          }
-        ],
-        "cell_counts": {
-          "CARRY4": 4,
-          "DSP48E1": 3,
-          "FDCE": 207,
-          "FDPE": 18,
-          "INV": 7,
-          "LUT1": 1,
-          "LUT2": 141,
-          "LUT3": 96,
-          "LUT4": 141,
-          "LUT5": 202,
-          "LUT6": 80,
-          "MUXF7": 10,
-          "MUXF8": 5
-        },
-        "resources": {
-          "logic_lut_cells": 661,
-          "distributed_ram_lut_sites_nominal": 0,
-          "shift_register_lut_sites_nominal": 0,
-          "lut_sites_nominal_before_packing": 661,
-          "physical_lut_sites_after_placement": null,
-          "flip_flops": 225,
-          "dsp48e1": 3,
-          "ramb36e1": 0,
-          "ramb18e1": 0,
-          "carry4": 4,
-          "unclassified_distributed_ram_types": [],
-          "cell_counts": {
-            "CARRY4": 4,
-            "DSP48E1": 3,
-            "FDCE": 207,
-            "FDPE": 18,
-            "INV": 7,
-            "LUT1": 1,
-            "LUT2": 141,
-            "LUT3": 96,
-            "LUT4": 141,
-            "LUT5": 202,
-            "LUT6": 80,
-            "MUXF7": 10,
-            "MUXF8": 5
-          },
-          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
-        },
-        "longest_register_path_cells": 9,
-        "register_path_requirement": {
-          "maximum_combinational_cells": 10,
-          "observed_combinational_cells": 9,
-          "graph_complete": true,
-          "met": true,
-          "scope": "Clocked storage outputs to synchronous data and control inputs",
-          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
-        },
-        "mapped_verilog": {
-          "file": "/tmp/npu_soc_write_decode_r11/measure/reference/mapped.v",
-          "sha256": "1bc877bda0b4539ae0ae7a3f040b2f8b0dab05a822f4196b382232fc6c9c650e",
-          "port_cells": "IBUF/OBUF",
-          "clock_buffers": "BUFG"
-        },
-        "wide_alu_mapping": {
-          "dsp_budget": 740,
-          "dsp_reserve": 0,
-          "existing_dsp_cells": 0,
-          "additional_dsp_cells": 3,
-          "resulting_dsp_cells": 3,
-          "minimum_width": 1,
-          "maximum_width": 48,
-          "candidate_cells": 3,
-          "selected": [
-            {
-              "cell": "$auto$alumacc.cc:578:replace_alu$3010",
-              "width": 32,
-              "rtl_signals": [
-                "u_read_step.incremented_addr"
-              ],
-              "cell_attribute": false
-            },
-            {
-              "cell": "$auto$alumacc.cc:578:replace_alu$3013",
-              "width": 32,
-              "rtl_signals": [
-                "u_write_step.incremented_addr"
-              ],
-              "cell_attribute": false
-            },
-            {
-              "cell": "$auto$alumacc.cc:578:replace_alu$3016",
-              "width": 32,
-              "rtl_signals": [
-                "g_first_write_step.u_first_write_step.incremented_addr"
-              ],
-              "cell_attribute": false
-            }
-          ],
-          "use_dsp_attributes": true,
-          "selection_rule": "Select arithmetic cells whose result or cell has RTL use_dsp=yes; preserve all other arithmetic and report complete mapped paths",
-          "automatic_name_counter": 3063,
-          "automatic_name_counter_sha256": "f9056ab8fd536a2cf8bc6208ac468d928c4b2308b79b0f1d2a0fe8c8000b6216",
-          "input_sha256": "c05503425906e2fba17ffe6bf5297e985262b86cb262a8c39b78654905d7ca54",
-          "output_sha256": "697f856936e1f628d63c626cbd2ac4f398d97d2acfb0c9dc17f1bdb593e1e727",
-          "lut_dependencies_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88"
-        }
-      },
-      "current": {
-        "top": "soc_axi_interconnect",
-        "configuration": "生产 CPU/NPU 互连的全部端口与内部状态",
-        "sources_sha256": {
-          "/tmp/npu_soc_write_decode_r11/formal/current/soc_axi_interconnect.sv": "e524e508a2ec8a46f6172d0eacb50d0967b72295bfe10d21d7c0b088a02b82e2",
-          "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
-          "rtl/common/add_equal.sv": "a4da54feb484a20b4a90a07953583d62d0ffba0e43618446d156ddf87ef85b0d",
-          "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-          "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
-          "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
-          "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-          "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
-          "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
-        },
-        "parameters": {
-          "ADDR_WIDTH": 32,
-          "DATA_WIDTH": 64,
-          "CPU_MEM_DP": 65536,
-          "READ_OUTSTANDING": 4,
-          "WRITE_OUTSTANDING": 4
-        },
-        "stages": {
-          "01_elaborate": {
-            "elapsed_seconds": 1.2,
-            "peak_process_tree_rss_bytes": 148406272,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "01_elaborate.ys",
-            "log": "01_elaborate.log",
-            "script_sha256": "c2ed20cdac8464826818e05d71ae63eeb14e5780e207a870ed55e5704298d8d5",
-            "output_sha256": "bc3ebb9616537b39a80db611fd9d11f4ad0e5fd5886a3ccee86df6acd255cafb"
-          },
-          "02a_pre_alu": {
-            "elapsed_seconds": 3.61,
-            "peak_process_tree_rss_bytes": 146034688,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02a_pre_alu.ys",
-            "log": "02a_pre_alu.log",
-            "script_sha256": "99e391a08782d5f9075d02dc5483542085b775e39ee94ef0736928f31d83c9f0",
-            "output_sha256": "6a3fa460ccd471ec2e7941fd697900f989d01ea674ea5a918f54c448162dc6b0"
-          },
-          "02b_map_alu": {
-            "elapsed_seconds": 0.2,
-            "peak_process_tree_rss_bytes": 40960,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02b_map_alu.command.json",
-            "log": "02b_map_alu.log",
-            "script_sha256": "21c6cb088912960013e71d6a8fb01c33c879e41494e38dc2119516beb51350cb",
-            "output_sha256": "b77e213cba9f84659b0c92f928610b245cc4ab4bb376cfaf90f598ab5684bf97",
-            "automatic_name_counter_sha256": "5977872248501960fb849b6b34a7c9a6327531ad25536d9ac381deea50b3bcc8"
-          },
-          "02_pre_lut": {
-            "elapsed_seconds": 1.8,
-            "peak_process_tree_rss_bytes": 152514560,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02_pre_lut.ys",
-            "log": "02_pre_lut.log",
-            "script_sha256": "1b035453dda0bea2383a7c52e18730b19b3c62b47665d9bf7527a43d90eeb138",
-            "output_sha256": "60b771f9285c019b59df41f67c26292135f35710ed721e8a120f5b64956e4cbc"
-          },
-          "03_map_lut": {
-            "elapsed_seconds": 3.61,
-            "peak_process_tree_rss_bytes": 183484416,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "03_map_lut.ys",
-            "log": "03_map_lut.log",
-            "script_sha256": "c77f0f17fc62030fd7b3d374df4536e9c8ae53d50b6579462c73c2dbf1a098cb",
-            "output_sha256": "9f68eb1ed36ee80aaebc5ce3cf399d48b8ada92f3521f27c99670c6b71f40685",
-            "mapped_verilog_sha256": "0efae5f2b06477bd094f3c559672f8870939eec5c2e5f19ae4973afef3d0d5c9"
-          }
-        },
-        "options": [
-          "-DSYNTHESIS=1",
-          "-GADDR_WIDTH=32",
-          "-GDATA_WIDTH=64",
-          "-GCPU_MEM_DP=65536",
-          "-GREAD_OUTSTANDING=4",
-          "-GWRITE_OUTSTANDING=4"
-        ],
-        "build_configuration": null,
-        "elapsed_seconds": 10.72,
-        "lut_cells": 662,
-        "flip_flops": 227,
-        "ramb36": 0,
-        "ramb18": 0,
-        "dsp": 3,
-        "carry4": 4,
-        "longest_combinational_path_cells": 9,
-        "longest_combinational_path": [
-          {
-            "cell": "$abc$52407$lut$aiger52406$1739",
-            "type": "LUT5"
-          },
-          {
-            "cell": "$abc$52407$lut$aiger52406$1744",
-            "type": "LUT5"
-          },
-          {
-            "cell": "$auto$abc_ops_reintegrate.cc:722:reintegrate$52729",
-            "type": "LUT4"
-          },
-          {
-            "cell": "$abc$52407$lut$aiger52406$1779",
-            "type": "LUT2"
-          },
-          {
-            "cell": "$abc$52407$lut$aiger52406$1792",
-            "type": "LUT2"
-          },
-          {
-            "cell": "$abc$52407$lut$aiger52406$1807",
-            "type": "LUT6"
-          },
-          {
-            "cell": "$abc$52407$lut$aiger52406$1817",
-            "type": "LUT6"
-          },
-          {
-            "cell": "$abc$52407$lut$aiger$o1481",
-            "type": "LUT3"
-          },
-          {
-            "cell": "$auto$xilinx_dffopt.cc:341:execute$53722",
-            "type": "LUT6"
-          }
-        ],
-        "cell_counts": {
-          "CARRY4": 4,
-          "DSP48E1": 3,
-          "FDCE": 211,
-          "FDPE": 16,
-          "INV": 7,
-          "LUT1": 1,
-          "LUT2": 145,
-          "LUT3": 97,
-          "LUT4": 142,
-          "LUT5": 199,
-          "LUT6": 78,
-          "MUXF7": 6,
-          "MUXF8": 3
-        },
-        "resources": {
-          "logic_lut_cells": 662,
-          "distributed_ram_lut_sites_nominal": 0,
-          "shift_register_lut_sites_nominal": 0,
-          "lut_sites_nominal_before_packing": 662,
-          "physical_lut_sites_after_placement": null,
-          "flip_flops": 227,
-          "dsp48e1": 3,
-          "ramb36e1": 0,
-          "ramb18e1": 0,
-          "carry4": 4,
-          "unclassified_distributed_ram_types": [],
-          "cell_counts": {
-            "CARRY4": 4,
-            "DSP48E1": 3,
-            "FDCE": 211,
-            "FDPE": 16,
-            "INV": 7,
-            "LUT1": 1,
-            "LUT2": 145,
-            "LUT3": 97,
-            "LUT4": 142,
-            "LUT5": 199,
-            "LUT6": 78,
-            "MUXF7": 6,
-            "MUXF8": 3
-          },
-          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
-        },
-        "longest_register_path_cells": 9,
-        "register_path_requirement": {
-          "maximum_combinational_cells": 10,
-          "observed_combinational_cells": 9,
-          "graph_complete": true,
-          "met": true,
-          "scope": "Clocked storage outputs to synchronous data and control inputs",
-          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
-        },
-        "mapped_verilog": {
-          "file": "/tmp/npu_soc_write_decode_r11/measure/current/mapped.v",
-          "sha256": "0efae5f2b06477bd094f3c559672f8870939eec5c2e5f19ae4973afef3d0d5c9",
-          "port_cells": "IBUF/OBUF",
-          "clock_buffers": "BUFG"
-        },
-        "wide_alu_mapping": {
-          "dsp_budget": 740,
-          "dsp_reserve": 0,
-          "existing_dsp_cells": 0,
-          "additional_dsp_cells": 3,
-          "resulting_dsp_cells": 3,
-          "minimum_width": 1,
-          "maximum_width": 48,
-          "candidate_cells": 3,
-          "selected": [
-            {
-              "cell": "$auto$alumacc.cc:578:replace_alu$3082",
-              "width": 32,
-              "rtl_signals": [
-                "u_read_step.incremented_addr"
-              ],
-              "cell_attribute": false
-            },
-            {
-              "cell": "$auto$alumacc.cc:578:replace_alu$3085",
-              "width": 32,
-              "rtl_signals": [
-                "u_write_step.incremented_addr"
-              ],
-              "cell_attribute": false
-            },
-            {
-              "cell": "$auto$alumacc.cc:578:replace_alu$3088",
-              "width": 32,
-              "rtl_signals": [
-                "g_first_write_step.u_first_write_step.incremented_addr"
-              ],
-              "cell_attribute": false
-            }
-          ],
-          "use_dsp_attributes": true,
-          "selection_rule": "Select arithmetic cells whose result or cell has RTL use_dsp=yes; preserve all other arithmetic and report complete mapped paths",
-          "automatic_name_counter": 3135,
-          "automatic_name_counter_sha256": "5977872248501960fb849b6b34a7c9a6327531ad25536d9ac381deea50b3bcc8",
-          "input_sha256": "6a3fa460ccd471ec2e7941fd697900f989d01ea674ea5a918f54c448162dc6b0",
-          "output_sha256": "b77e213cba9f84659b0c92f928610b245cc4ab4bb376cfaf90f598ab5684bf97",
-          "lut_dependencies_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88"
-        }
-      }
-    },
-    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
-    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
   }
 }
