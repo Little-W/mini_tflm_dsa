@@ -1,0 +1,31 @@
+{
+  "vector": {
+    "top": "vector_engine",
+    "sources": [
+      "rtl/npu/conv/conv_im2col_pkg.sv",
+      "rtl/npu/conv/vector_engine_pkg.sv",
+      "rtl/npu/conv/vector_config_check.sv",
+      "rtl/npu/conv/vector_writeback.sv",
+      "rtl/npu/conv/vector_round_shift.sv",
+      "rtl/npu/conv/vector_scalar_multiplier.sv",
+      "rtl/npu/conv/vector_pe.sv",
+      "rtl/npu/conv/vector_softmax.sv",
+      "rtl/npu/conv/vector_quant_params.sv",
+      "rtl/npu/conv/vector_engine.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GTILE=16",
+      "-GBUS_WIDTH=64",
+      "-GPE_COUNT=8",
+      "-GWINDOW_LANES=8",
+      "-GSHARED_STORAGE_ENABLE=1",
+      "-GSHARED_QUANT_ENABLE=0",
+      "-GSHARED_STORAGE_ADDR_WIDTH=12"
+    ],
+    "configuration": "16 通道、8 PE、64 位总线、共享权重、独立量化"
+  }
+}

@@ -13,6 +13,11 @@
 #include <tuple>
 #include <vector>
 
+#ifndef TEST_BUS_WIDTH
+#define TEST_BUS_WIDTH 32
+#endif
+static constexpr unsigned BUS_BYTES=TEST_BUS_WIDTH/8;
+
 static void require(bool value, const std::string &message) {
   if (!value) throw std::runtime_error(message);
 }
@@ -29,7 +34,8 @@ class Simulation {
   unsigned responses=0;
   bool random_wait=false, rhold=false, bhold=false;
   bool ar_stalled=false, aw_stalled=false, w_stalled=false;
-  std::tuple<uint32_t,uint32_t,uint32_t> old_ar,old_aw,old_w;
+  std::tuple<uint32_t,uint32_t,uint32_t> old_ar,old_aw;
+  std::tuple<uint64_t,uint32_t,uint32_t> old_w;
   std::mt19937 random{20261116};
   uint32_t output_base=0, output_bytes=32;
   uint64_t cycles=0, aw_count=0, b_count=0, written_bytes=0;
@@ -49,9 +55,9 @@ class Simulation {
     dut.m_axi_awready=writes.size()<8 && available();
     dut.m_axi_wready=!writes.empty() && available();
     if (!rhold && !reads.empty() && available()) {
-      auto burst=reads.front(); uint32_t word=0;
+      auto burst=reads.front(); uint64_t word=0;
       for (unsigned i=0;i<burst.bytes;i++)
-        word|=uint32_t(memory.at(burst.address+i))<<(((burst.address+i)&3)*8);
+        word|=uint64_t(memory.at(burst.address+i))<<(((burst.address+i)&(BUS_BYTES-1))*8);
       dut.m_axi_rdata=word; dut.m_axi_rresp=0;
       dut.m_axi_rlast=burst.remaining==1; rhold=true;
     }
@@ -61,7 +67,7 @@ class Simulation {
     dut.eval();
     auto ar=std::make_tuple(uint32_t(dut.m_axi_araddr),uint32_t(dut.m_axi_arlen),uint32_t(dut.m_axi_arsize));
     auto aw=std::make_tuple(uint32_t(dut.m_axi_awaddr),uint32_t(dut.m_axi_awlen),uint32_t(dut.m_axi_awsize));
-    auto wd=std::make_tuple(uint32_t(dut.m_axi_wdata),uint32_t(dut.m_axi_wstrb),uint32_t(dut.m_axi_wlast));
+    auto wd=std::make_tuple(uint64_t(dut.m_axi_wdata),uint32_t(dut.m_axi_wstrb),uint32_t(dut.m_axi_wlast));
     if (dut.rst_n) {
       if (ar_stalled) require(dut.m_axi_arvalid && ar==old_ar,"AR changed under backpressure");
       if (aw_stalled) require(dut.m_axi_awvalid && aw==old_aw,"AW changed under backpressure");
@@ -79,26 +85,26 @@ class Simulation {
     if (dut.m_axi_bvalid && dut.m_axi_bready) { --responses; bhold=false; ++b_count; }
     if (dut.m_axi_arvalid && dut.m_axi_arready) {
       uint32_t address=dut.m_axi_araddr, count=dut.m_axi_arlen+1, bytes=1u<<dut.m_axi_arsize;
-      require(dut.m_axi_arburst==1 && bytes<=4 && address%bytes==0,"invalid read descriptor");
+      require(dut.m_axi_arburst==1 && bytes<=BUS_BYTES && address%bytes==0,"invalid read descriptor");
       require((address&4095)+count*bytes<=4096,"AR crosses 4 KiB");
       for (uint32_t i=0;i<count*bytes;i++) require(readable(address+i),"read outside input or parameters");
       reads.push_back({address,count,bytes});
     }
     if (dut.m_axi_awvalid && dut.m_axi_awready) {
       uint32_t address=dut.m_axi_awaddr, count=dut.m_axi_awlen+1, bytes=1u<<dut.m_axi_awsize;
-      require(dut.m_axi_awburst==1 && bytes==4 && address%4==0,"invalid write descriptor");
+      require(dut.m_axi_awburst==1 && bytes==BUS_BYTES && address%BUS_BYTES==0,"invalid write descriptor");
       require((address&4095)+count*bytes<=4096,"AW crosses 4 KiB");
       writes.push_back({address,count,bytes}); ++aw_count;
     }
     if (dut.m_axi_wvalid && dut.m_axi_wready) {
       require(!writes.empty(),"W without AW"); auto &burst=writes.front();
       require(bool(dut.m_axi_wlast)==(burst.remaining==1),"incorrect WLAST");
-      for (unsigned i=0;i<4;i++) if (dut.m_axi_wstrb&(1u<<i)) {
+      for (unsigned i=0;i<BUS_BYTES;i++) if (dut.m_axi_wstrb&(1u<<i)) {
         uint32_t address=burst.address+i;
         require(address>=output_base && uint64_t(address)<uint64_t(output_base)+output_bytes,"write outside output");
-        memory.at(address)=uint8_t(dut.m_axi_wdata>>(8*i)); ++written_bytes;
+        memory.at(address)=uint8_t(uint64_t(dut.m_axi_wdata)>>(8*i)); ++written_bytes;
       }
-      burst.address+=4;
+      burst.address+=BUS_BYTES;
       if (--burst.remaining==0) { writes.pop_front(); ++responses; }
     }
     dut.clk=1; dut.eval(); Verilated::timeInc(1); ++cycles;
@@ -154,9 +160,9 @@ int main(int argc,char **argv) {
     simulation.dut.inject_inflight=inflight;
     for (unsigned random_wait=0;random_wait<2;random_wait++) {
       simulation.random_wait=random_wait;
-      for (unsigned offset=0;offset<4;offset++) {
+      for (unsigned offset=0;offset<BUS_BYTES;offset++) {
         Config config{};
-        config[0]=0; config[2]=0x1ffb; config[3]=0x10003; config[4]=0x60ffc+offset;
+        config[0]=0; config[2]=0x1ffb; config[3]=0x10003; config[4]=0x61000-BUS_BYTES+offset;
         config[5]=0x20000; config[6]=0x30000; config[7]=0x40000;
         config[9]=uint32_t(-128); config[10]=127;
         config[11]=config[14]=config[15]=config[16]=1;
