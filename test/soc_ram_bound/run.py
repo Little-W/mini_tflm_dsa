@@ -17,13 +17,14 @@ ROOT = Path(__file__).resolve().parents[2]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = ROOT / 'rtl/soc/soc_axi_ram.sv'
+    source = args.source_root / 'rtl/soc/soc_axi_ram.sv'
     pattern = r'    (?:wire|logic) rd_issue_oob.*?(?=    wire rd_issue_fault)'
     region = re.search(pattern, source.read_text(), re.S).group(0)
-    model_source = ROOT / 'test/models/soc_axi_ram.sv'
+    model_source = args.source_root / 'test/models/soc_axi_ram.sv'
     if re.search(pattern, model_source.read_text(), re.S).group(0) != region:
         raise RuntimeError('生产存储器与仿真存储器的越界计算不同')
     harness = out / 'formal.sv'

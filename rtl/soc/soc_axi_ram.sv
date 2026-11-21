@@ -324,7 +324,15 @@ module soc_axi_ram #(
         assign lower_keep_mask = 8'hff << rd_size_active_q;
         assign lower_carry = &(rd_byte_addr_q[7:0] | ~lower_keep_mask);
         if (p_capacity_bits > 8) begin : g_middle
-            assign middle_carry = &rd_byte_addr_q[p_capacity_bits-1:8];
+            localparam int p_middle_groups = (p_capacity_bits - 8 + 2) / 3;
+            (* keep = 1 *) logic [p_middle_groups-1:0] middle_full;
+            // 各组三位独立归约，再合并容量边界以下的连续进位条件。
+            for (genvar group_index = 0; group_index < p_middle_groups; group_index++) begin : g_group
+                localparam int p_low = 8 + 3 * group_index;
+                localparam int p_width = (p_capacity_bits - p_low < 3) ? p_capacity_bits - p_low : 3;
+                assign middle_full[group_index] = &rd_byte_addr_q[p_low +: p_width];
+            end
+            assign middle_carry = &middle_full;
         end else begin : g_no_middle
             assign middle_carry = 1'b1;
         end
@@ -359,7 +367,19 @@ module soc_axi_ram #(
     logic rd_issue_last;
     // 各来源的末拍条件并行比较，响应握手只选择已经形成的一位结果。
     assign rd_current_last = rd_beat_q == rd_len_active_q;
+`ifdef SYNTHESIS
+    (* keep = 1 *) logic [7:0] rd_following_bit_equal;
+    // 末拍等式按相邻位的进位一致性并行计算，响应选择不参与计数运算。
+    assign rd_following_bit_equal[0] = ~(rd_beat_q[0] ^ rd_len_active_q[0] ^ 1'b1);
+    for (genvar bit_index = 1; bit_index < 8; bit_index++) begin : g_following_last
+        assign rd_following_bit_equal[bit_index] =
+            ~((rd_beat_q[bit_index] ^ rd_len_active_q[bit_index]) ^
+              (rd_beat_q[bit_index-1] & ~rd_len_active_q[bit_index-1]));
+    end
+    assign rd_following_last = &rd_following_bit_equal;
+`else
     assign rd_following_last = (rd_beat_q + 8'd1) == rd_len_active_q;
+`endif
     assign rd_queue_last = rd_len_q[rd_rd_ptr_q] == 8'd0;
     assign rd_ar_last = s_axi_arlen == 8'd0;
     always_comb begin

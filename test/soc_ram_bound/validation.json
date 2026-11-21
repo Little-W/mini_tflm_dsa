@@ -1,12 +1,13 @@
 {
   "scope": "SoC AXI RAM bounds and read response selection",
-  "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
-  "model_sha256": "678d553af2a44f38ad1277366802e9458631635a68945ac590b507e52ceb90b4",
+  "source_sha256": "c61f0ccf19f576a32f9696adb02c17c55c2491eeab3f97373a18535afcbdf5e2",
+  "model_sha256": "d3f43ebad8326274afec5ddecfef1c9a630a5a8872aa294afd4961068471bd26",
+  "surrounding_source_unchanged": true,
   "combinational_proof": {
     "passed": true,
     "inputs_constrained": false,
-    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
-    "model_sha256": "678d553af2a44f38ad1277366802e9458631635a68945ac590b507e52ceb90b4",
+    "source_sha256": "c61f0ccf19f576a32f9696adb02c17c55c2491eeab3f97373a18535afcbdf5e2",
+    "model_sha256": "d3f43ebad8326274afec5ddecfef1c9a630a5a8872aa294afd4961068471bd26",
     "profiles": [
       {
         "address_width": 8,
@@ -372,24 +373,27 @@
   },
   "read_selection": {
     "passed": true,
-    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+    "source_sha256": "c61f0ccf19f576a32f9696adb02c17c55c2491eeab3f97373a18535afcbdf5e2",
     "test_source_sha256": "0add67dfda9bea2c77bfae8238b6b94fe58028765cb9d2708a42e3ee1fb2b024",
     "formal": {
       "passed": true,
       "input_bits": 35,
       "inputs_constrained": false,
       "synthesis_expression": true,
-      "log_sha256": "9303f9357662427a2510da263f66be6cf1cce0a8b61fe031fdc19e74cb3c4c49"
+      "log_sha256": "5d85a85ea7ac4c3f0230ea6adb8d6e62447d7004aa50b0fb6577dc40a4cc9925"
     },
     "four_state": {
       "passed": true,
       "comparisons": 100000,
-      "log_sha256": "9e8cca80624a12de142dc2b9d1e7fd00cec06ab2136210b6ddcc3ae2f0a16fb6"
+      "log_sha256": "680a9625993178da8315f2f2daa9cb51ee431de4f11343044a7fbe7cec95e8ef"
     }
   },
   "axi_protocol": {
-    "scope": "SoC AXI memory protocol",
+    "passed": true,
     "simulator": "Verilator 5.054 2026-11-01 rev v5.054",
+    "defines": [
+      "SYNTHESIS=1"
+    ],
     "runs": [
       {
         "first_read_latency": 1,
@@ -672,17 +676,14 @@
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8660 perf_beats=256 perf_intervals=291 no_random=0"
       }
     ],
-    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
-    "source_file": "/tmp/npu_soc_ram_r11/source/rtl/soc/soc_axi_ram.sv",
-    "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
-    "compile_jobs": 1
+    "report_sha256": "4d785a4451daecaf502380d0d0519a7abc04d0b1f2c95c9803e70dc677200973"
   },
   "synthesis": {
     "resources": {
-      "logic_lut_cells": 503,
+      "logic_lut_cells": 508,
       "distributed_ram_lut_sites_nominal": 68,
       "shift_register_lut_sites_nominal": 0,
-      "lut_sites_nominal_before_packing": 571,
+      "lut_sites_nominal_before_packing": 576,
       "physical_lut_sites_after_placement": null,
       "flip_flops": 198,
       "dsp48e1": 0,
@@ -694,225 +695,50 @@
         "CARRY4": 15,
         "FDRE": 192,
         "FDSE": 6,
-        "INV": 9,
-        "LUT2": 134,
-        "LUT3": 76,
-        "LUT4": 66,
-        "LUT5": 135,
-        "LUT6": 92,
-        "MUXF7": 18,
-        "MUXF8": 9,
+        "INV": 8,
+        "LUT1": 1,
+        "LUT2": 135,
+        "LUT3": 64,
+        "LUT4": 81,
+        "LUT5": 146,
+        "LUT6": 81,
         "RAM32M": 17,
         "RAMB36E1": 64
       },
       "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
     },
-    "longest_register_path_cells": 7,
+    "longest_register_path_cells": 6,
     "graph_complete": true,
-    "metrics_sha256": "fe5e957b7979e2a36a379184498857c0ad8a80b3898a3ddf9fb16c8b23ddcbdb"
-  },
-  "synthesis_manifest": {
-    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
-    "family": "xc7",
-    "part": "xc7a200tfbg484-3",
-    "clock_period_ns": 6.666666666666667,
-    "cases": {
-      "soc_ram": {
-        "top": "soc_axi_ram",
-        "configuration": "完整生产配置 CPU RAM，64 位物理存储与 256 KiB 容量",
-        "sources_sha256": {
-          "rtl/soc/soc_axi_ram.sv": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d"
-        },
-        "parameters": {
-          "DP": 32768,
-          "DW": 64,
-          "AW": 32,
-          "MEM_WORD_WIDTH": 64,
-          "INIT_EN": 0,
-          "READ_OUTSTANDING": 4,
-          "WRITE_OUTSTANDING": 4,
-          "READ_FIRST_LATENCY": 2
-        },
-        "stages": {
-          "01_elaborate": {
-            "elapsed_seconds": 1.21,
-            "peak_process_tree_rss_bytes": 148836352,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "01_elaborate.ys",
-            "log": "01_elaborate.log",
-            "script_sha256": "2058281f9f87573cfc0e2caecbde8583dc632c455a1dfafc0084b1e7439c0b1e",
-            "output_sha256": "6a29f2ed6cab9d44d81c05b5e7735f474bc1a807e9978a800a6dbe45bb967dae"
-          },
-          "02a_pre_alu": {
-            "elapsed_seconds": 4.42,
-            "peak_process_tree_rss_bytes": 150736896,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02a_pre_alu.ys",
-            "log": "02a_pre_alu.log",
-            "script_sha256": "830e39590328380cf8bca4b3e1ad0b63864d2a0ab5ae5f5d1ac63eb3605904d3",
-            "output_sha256": "2aa9b4a66286fa7938998b365414c2d5463d04ddc4a6b2c12a21dceba1fe9d39"
-          },
-          "02b_map_alu": {
-            "elapsed_seconds": 0.2,
-            "peak_process_tree_rss_bytes": 12288,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02b_map_alu.command.json",
-            "log": "02b_map_alu.log",
-            "script_sha256": "99efee22e07442e66fd7152d4be671deacdb3dbda6ba97ff606eb67207f854d2",
-            "output_sha256": "11545de6f1247721b8d336df2a8c865188937b9a9201760ba99d0569441988c3",
-            "automatic_name_counter_sha256": "e5cb8a612fc259bd6a644c98a322ba8630385257ebbc5d63f924fc40ff2b849c"
-          },
-          "02_pre_lut": {
-            "elapsed_seconds": 1.81,
-            "peak_process_tree_rss_bytes": 152895488,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02_pre_lut.ys",
-            "log": "02_pre_lut.log",
-            "script_sha256": "e96c714b8c20db5420cf2734fd102317174dc596d9eaa615ee463e95dc6510e1",
-            "output_sha256": "0a603296de0ae418d614742f63e335711029c37d18adabe10dbb4b4d6bc73eea"
-          },
-          "03_map_lut": {
-            "elapsed_seconds": 4.21,
-            "peak_process_tree_rss_bytes": 200740864,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "03_map_lut.ys",
-            "log": "03_map_lut.log",
-            "script_sha256": "ff16009b98dc3e2deb7191a3fff673db37e21b89a135e500443548246b142eda",
-            "output_sha256": "275dd6f42bb9872dea65faf89ccf789d109c2f8d1b3d3488e57000f229218dfd",
-            "mapped_verilog_sha256": "7094d4f6195cdf1aa2b23e3b8585c6415754bca5161d66f2181bacdd517bff2b"
-          }
-        },
-        "options": [
-          "-DSYNTHESIS=1",
-          "-DXILINX_FPGA=1",
-          "-GDP=32768",
-          "-GDW=64",
-          "-GAW=32",
-          "-GMEM_WORD_WIDTH=64",
-          "-GINIT_EN=0",
-          "-GREAD_OUTSTANDING=4",
-          "-GWRITE_OUTSTANDING=4",
-          "-GREAD_FIRST_LATENCY=2"
-        ],
-        "build_configuration": null,
-        "elapsed_seconds": 12.19,
-        "lut_cells": 503,
-        "flip_flops": 198,
-        "ramb36": 64,
-        "ramb18": 0,
-        "dsp": 0,
-        "carry4": 15,
-        "longest_combinational_path_cells": 7,
-        "longest_combinational_path": [
-          {
-            "cell": "$abc$75232$lut$not$aiger75231$9457",
-            "type": "INV"
-          },
-          {
-            "cell": "$auto$alumacc.cc:578:replace_alu$3913.genblk1.slice[0].genblk1.carry4",
-            "type": "CARRY4"
-          },
-          {
-            "cell": "$auto$alumacc.cc:578:replace_alu$3913.genblk1.slice[1].genblk1.carry4",
-            "type": "CARRY4"
-          },
-          {
-            "cell": "$abc$75232$lut$aiger75231$18740",
-            "type": "LUT4"
-          },
-          {
-            "cell": "$abc$75232$lut$aiger75231$18747",
-            "type": "LUT5"
-          },
-          {
-            "cell": "$abc$75232$lut$aiger75231$18755",
-            "type": "LUT5"
-          },
-          {
-            "cell": "$auto$xilinx_dffopt.cc:341:execute$76038",
-            "type": "LUT6"
-          }
-        ],
-        "cell_counts": {
-          "CARRY4": 15,
-          "FDRE": 192,
-          "FDSE": 6,
-          "INV": 9,
-          "LUT2": 134,
-          "LUT3": 76,
-          "LUT4": 66,
-          "LUT5": 135,
-          "LUT6": 92,
-          "MUXF7": 18,
-          "MUXF8": 9,
-          "RAM32M": 17,
-          "RAMB36E1": 64
-        },
-        "resources": {
-          "logic_lut_cells": 503,
-          "distributed_ram_lut_sites_nominal": 68,
-          "shift_register_lut_sites_nominal": 0,
-          "lut_sites_nominal_before_packing": 571,
-          "physical_lut_sites_after_placement": null,
-          "flip_flops": 198,
-          "dsp48e1": 0,
-          "ramb36e1": 64,
-          "ramb18e1": 0,
-          "carry4": 15,
-          "unclassified_distributed_ram_types": [],
-          "cell_counts": {
-            "CARRY4": 15,
-            "FDRE": 192,
-            "FDSE": 6,
-            "INV": 9,
-            "LUT2": 134,
-            "LUT3": 76,
-            "LUT4": 66,
-            "LUT5": 135,
-            "LUT6": 92,
-            "MUXF7": 18,
-            "MUXF8": 9,
-            "RAM32M": 17,
-            "RAMB36E1": 64
-          },
-          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
-        },
-        "longest_register_path_cells": 7,
-        "register_path_requirement": {
-          "maximum_combinational_cells": 10,
-          "observed_combinational_cells": 7,
-          "graph_complete": true,
-          "met": true,
-          "scope": "Clocked storage outputs to synchronous data and control inputs",
-          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
-        },
-        "mapped_verilog": {
-          "file": "/tmp/npu_soc_ram_r11/measure/soc_ram/mapped.v",
-          "sha256": "7094d4f6195cdf1aa2b23e3b8585c6415754bca5161d66f2181bacdd517bff2b",
-          "port_cells": "IBUF/OBUF",
-          "clock_buffers": "BUFG"
-        },
-        "wide_alu_mapping": {
-          "dsp_budget": 740,
-          "dsp_reserve": 0,
-          "existing_dsp_cells": 0,
-          "additional_dsp_cells": 0,
-          "resulting_dsp_cells": 0,
-          "minimum_width": 1,
-          "maximum_width": 48,
-          "candidate_cells": 0,
-          "selected": [],
-          "use_dsp_attributes": true,
-          "selection_rule": "Select arithmetic cells whose result or cell has RTL use_dsp=yes; preserve all other arithmetic and report complete mapped paths",
-          "automatic_name_counter": 4727,
-          "automatic_name_counter_sha256": "e5cb8a612fc259bd6a644c98a322ba8630385257ebbc5d63f924fc40ff2b849c",
-          "input_sha256": "2aa9b4a66286fa7938998b365414c2d5463d04ddc4a6b2c12a21dceba1fe9d39",
-          "output_sha256": "11545de6f1247721b8d336df2a8c865188937b9a9201760ba99d0569441988c3",
-          "lut_dependencies_sha256": "064560db8ee0e9466045a3e653eed2d77145ab3317f66ff482103eae03a01b88"
-        }
-      }
-    },
-    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
-    "timing": "Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings."
+    "metrics_sha256": "7e9895f10920b67a82fa5586ba4ec7ea6e2e5e3e436a2c155523dfe55248712b",
+    "mapped_netlist_sha256": "a597508ebc658a7618298f49074767e58c7df96d8d6e9b095312adbf0e1dbe9e",
+    "configuration": {
+      "top": "soc_axi_ram",
+      "sources": [
+        "rtl/soc/soc_axi_ram.sv"
+      ],
+      "options": [
+        "-DSYNTHESIS=1",
+        "-DXILINX_FPGA=1",
+        "-GDP=32768",
+        "-GDW=64",
+        "-GAW=32",
+        "-GMEM_WORD_WIDTH=64",
+        "-GINIT_EN=0",
+        "-GREAD_OUTSTANDING=4",
+        "-GWRITE_OUTSTANDING=4",
+        "-GREAD_FIRST_LATENCY=2"
+      ],
+      "parameters": {
+        "DP": 32768,
+        "DW": 64,
+        "AW": 32,
+        "MEM_WORD_WIDTH": 64,
+        "INIT_EN": 0,
+        "READ_OUTSTANDING": 4,
+        "WRITE_OUTSTANDING": 4,
+        "READ_FIRST_LATENCY": 2
+      },
+      "configuration": "完整生产配置 CPU RAM，64 位物理存储与 256 KiB 容量"
+    }
   }
 }

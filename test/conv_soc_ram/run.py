@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--first-read-latencies',type=int,nargs='+',default=[1,2,3,8,17])
     parser.add_argument('--baseline-commit', help='Run the unmodified RAM from this commit and retain its expected failure')
     parser.add_argument('--rtl-source', type=Path, default=ROOT/'test/models/soc_axi_ram.sv')
+    parser.add_argument('--synthesis', action='store_true', help='验证 SYNTHESIS 条件下的 RTL 分支')
     parser.add_argument('--out',type=Path,default=ROOT/'build/conv_soc_ram')
     args = parser.parse_args()
     if args.jobs < 1:
@@ -33,7 +34,8 @@ def main():
         raise SystemExit('Verilator is required; no model substitutes for this test')
     results = args.out.resolve()
     results.mkdir(parents=True, exist_ok=True)
-    report = {'scope': 'SoC AXI memory protocol', 'simulator': subprocess.check_output([sim, '--version'], text=True).strip(), 'runs': []}
+    report = {'scope': 'SoC AXI memory protocol', 'simulator': subprocess.check_output([sim, '--version'], text=True).strip(),
+              'defines': ['SYNTHESIS=1'] if args.synthesis else [], 'runs': []}
     stem = 'baseline' if args.baseline_commit else 'modified'
     configurations = [(1031, 4)] if args.baseline_commit else [(1031, 4), (1024, 1), (1031, 3)]
     all_pass = True
@@ -60,6 +62,8 @@ def main():
                 command = [sim, '--binary', '--timing', '--assert', '-Wall', '-Wno-fatal',
                            '--top-module', 'tb_soc_axi_ram_narrow', f'-GFIRST_LATENCY={latency}', f'-GDW={dw}', f'-GDP={dp}', f'-GOUTSTANDING={outstanding}',
                            '--Mdir', str(build), '-j', str(args.jobs), str(source), str(HERE / 'tb_soc_axi_ram_narrow.sv')]
+                if args.synthesis:
+                    command.append('-DSYNTHESIS=1')
                 with log.open('w') as stream:
                     built = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
                 if built.returncode:
@@ -89,6 +93,7 @@ def main():
                                            'warnings': warnings,
                                            'summary': next((line for line in output.splitlines() if 'SOC_RAM_NARROW_PASS' in line), output[-1000:])})
                     print(f'{stem} DW={dw} latency={latency} DP={dp} outstanding={outstanding} random={1-no_random}: {"PASS" if passed else "FAIL"}', flush=True)
+    report['passed'] = all_pass
     (results / f'{stem}_status.json').write_text(json.dumps(report, indent=2))
     return 0 if all_pass else 1
 

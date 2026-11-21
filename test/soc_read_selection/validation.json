@@ -1,24 +1,27 @@
 {
   "read_selection": {
     "passed": true,
-    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
+    "source_sha256": "c61f0ccf19f576a32f9696adb02c17c55c2491eeab3f97373a18535afcbdf5e2",
     "test_source_sha256": "0add67dfda9bea2c77bfae8238b6b94fe58028765cb9d2708a42e3ee1fb2b024",
     "formal": {
       "passed": true,
       "input_bits": 35,
       "inputs_constrained": false,
       "synthesis_expression": true,
-      "log_sha256": "9303f9357662427a2510da263f66be6cf1cce0a8b61fe031fdc19e74cb3c4c49"
+      "log_sha256": "5d85a85ea7ac4c3f0230ea6adb8d6e62447d7004aa50b0fb6577dc40a4cc9925"
     },
     "four_state": {
       "passed": true,
       "comparisons": 100000,
-      "log_sha256": "9e8cca80624a12de142dc2b9d1e7fd00cec06ab2136210b6ddcc3ae2f0a16fb6"
+      "log_sha256": "680a9625993178da8315f2f2daa9cb51ee431de4f11343044a7fbe7cec95e8ef"
     }
   },
   "axi_protocol": {
-    "scope": "SoC AXI memory protocol",
+    "passed": true,
     "simulator": "Verilator 5.054 2026-11-01 rev v5.054",
+    "defines": [
+      "SYNTHESIS=1"
+    ],
     "runs": [
       {
         "first_read_latency": 1,
@@ -301,9 +304,6 @@
         "summary": "SOC_RAM_NARROW_PASS first_latency=8 min_latency=8 max_latency=589 data_bits=64 dp=1031 outstanding=3 commands=336 beats=5301 error_beats=156 writes=2046 cycles=8660 perf_beats=256 perf_intervals=291 no_random=0"
       }
     ],
-    "source_sha256": "e387d73654cabecadfd040d3460853ac49ba41fe00ecb100e91e1a885603cc0d",
-    "source_file": "/tmp/npu_soc_ram_r11/source/rtl/soc/soc_axi_ram.sv",
-    "testbench_sha256": "d8337493b8fe8dd02aabd227c647e42c23ad4a1ff3dcf297352a19e634f02d20",
-    "compile_jobs": 1
+    "report_sha256": "4d785a4451daecaf502380d0d0519a7abc04d0b1f2c95c9803e70dc677200973"
   }
 }
