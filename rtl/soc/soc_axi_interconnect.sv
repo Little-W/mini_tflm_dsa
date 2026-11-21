@@ -293,10 +293,53 @@ module soc_axi_interconnect #(
         end
     endfunction
 
+    // 各目标保留独立选择位，写入资格直接使用地址窗口的比较结果。
+    function automatic logic [4:0] decode_cpu_flags(input logic [ADDR_WIDTH-1:0] addr);
+        logic [31:0] offset;
+        logic ram_selected;
+        begin
+            offset = addr[31:0] - CPU_RAM_BASE;
+            // 二次幂容量且起点按容量排列时，直接比较地址高位。
+            if (CPU_MEM_DP > 0 && (CPU_MEM_DP & (CPU_MEM_DP-1)) == 0 &&
+                CPU_RANGE_BITS <= 32 &&
+                (CPU_RAM_BASE & (32'(CPU_MEM_DP)*32'd4-32'd1)) == 32'd0) begin
+                ram_selected = ((addr[31:0] ^ CPU_RAM_BASE) >>
+                    CPU_RANGE_BITS) == 32'd0;
+            end else begin
+                ram_selected = ((CPU_RAM_BASE == 32'h0) || (addr[31:0] >= CPU_RAM_BASE)) &&
+                    (32'(offset[31:CPU_ADDR_LSB]) < 32'(CPU_MEM_DP));
+            end
+            if (ram_selected) begin
+                decode_cpu_flags = 5'b00001;
+            end else if (addr[31:28] == NPU_AXIL_BASE[31:28]) begin
+                decode_cpu_flags = 5'b00010;
+            end else if (addr[31:12] == UART_BASE[31:12]) begin
+                decode_cpu_flags = 5'b00100;
+            end else if (addr[31:28] == SOC_CTRL_BASE[31:28]) begin
+                decode_cpu_flags = 5'b01000;
+            end else begin
+                decode_cpu_flags = 5'b10000;
+            end
+        end
+    endfunction
+
     wire [31:0] s0_awaddr32 = s0_axi_awaddr[31:0];
     dest_e cpu_ar_dest;
     dest_e cpu_aw_dest;
     dest_e cpu_w_dest;
+    (* keep = 1 *) logic [4:0] cpu_aw_dest_flags;
+    logic [4:0] cpu_wr_dest_flags, cpu_w_dest_flags;
+    assign cpu_aw_dest_flags = decode_cpu_flags(s0_axi_awaddr);
+    assign cpu_wr_dest_flags = {cpu_wr_dest_q == D_ERR, cpu_wr_dest_q == D_CTRL,
+        cpu_wr_dest_q == D_UART, cpu_wr_dest_q == D_NPU, cpu_wr_dest_q == D_RAM};
+`ifdef SYNTHESIS
+    assign cpu_w_dest_flags = cpu_wr_active_q ? cpu_wr_dest_flags : cpu_aw_dest_flags;
+`else
+    // 四态仿真在保存目标与新地址之间按完整编码合并，再生成各目标资格。
+    assign cpu_w_dest_flags = {cpu_w_dest == D_ERR, cpu_w_dest == D_CTRL,
+        cpu_w_dest == D_UART, cpu_w_dest == D_NPU, cpu_w_dest == D_RAM};
+`endif
+
 
     always_comb begin
         cpu_ar_dest = decode_cpu_addr(s0_axi_araddr);
@@ -348,7 +391,7 @@ module soc_axi_interconnect #(
     wire cpu_issue_w_allowed = !cpu_block_new_req || cpu_wr_active_q;
     wire cpu_ram_aw_req = cpu_issue_aw_allowed && s0_axi_awvalid &&
                           (p_cpu_ram_write_overlap || !cpu_wr_active_q) &&
-                          (cpu_aw_dest == D_RAM);
+                          (cpu_aw_dest_flags[0]);
     wire npu_ram_aw_req = s1_axi_awvalid;
 
     wire ram_wr_owner_aw_valid = ram_wr_owner_q == OWNER_NPU ? npu_ram_aw_req :
@@ -434,7 +477,7 @@ module soc_axi_interconnect #(
     logic cpu_err_write_hs;
     // 错误地址同时接收地址与数据，直接使用本地响应容量计算接收条件。
     assign cpu_err_write_hs = cpu_issue_aw_allowed && s0_axi_awvalid &&
-        s0_axi_wvalid && !err_bvalid_q && (cpu_aw_dest == D_ERR) &&
+        s0_axi_wvalid && !err_bvalid_q && (cpu_aw_dest_flags[4]) &&
         (!cpu_wr_active_q || (cpu_wr_dest_q == D_ERR));
 
     always_comb begin
@@ -579,7 +622,7 @@ module soc_axi_interconnect #(
             m_ram_wlast  = s1_axi_wlast;
             s1_axi_wready = m_ram_wready;
         end else if (ram_w_from_cpu && (p_cpu_ram_write_overlap || cpu_wr_active_q)) begin
-            m_ram_wvalid = s0_axi_wvalid && (cpu_w_dest == D_RAM);
+            m_ram_wvalid = s0_axi_wvalid && (cpu_w_dest_flags[0]);
             m_ram_wdata  = DATA_WIDTH'(s0_axi_wdata) << (8*cpu_write_lane);
             m_ram_wstrb  = (DATA_WIDTH/8)'(s0_axi_wstrb) << cpu_write_lane;
             m_ram_wlast  = s0_axi_wlast;
@@ -598,18 +641,18 @@ module soc_axi_interconnect #(
         end
 
         if (cpu_issue_aw_allowed) begin
-            if (cpu_aw_dest == D_NPU) s0_axi_awready = m_npu_awready;
-            else if (cpu_aw_dest == D_UART) s0_axi_awready = m_uart_awready;
-            else if (cpu_aw_dest == D_CTRL) s0_axi_awready = m_ctrl_awready;
-            else if (cpu_aw_dest == D_ERR) s0_axi_awready = !err_bvalid_q;
+            if (cpu_aw_dest_flags[1]) s0_axi_awready = m_npu_awready;
+            else if (cpu_aw_dest_flags[2]) s0_axi_awready = m_uart_awready;
+            else if (cpu_aw_dest_flags[3]) s0_axi_awready = m_ctrl_awready;
+            else if (cpu_aw_dest_flags[4]) s0_axi_awready = !err_bvalid_q;
         end
 
         if (cpu_issue_w_allowed) begin
-            unique case (cpu_w_dest)
-                D_NPU:  s0_axi_wready = m_npu_wready;
-                D_UART: s0_axi_wready = m_uart_wready;
-                D_CTRL: s0_axi_wready = m_ctrl_wready;
-                D_ERR:  s0_axi_wready = !err_bvalid_q;
+            unique case (1'b1)
+                cpu_w_dest_flags[1]:  s0_axi_wready = m_npu_wready;
+                cpu_w_dest_flags[2]: s0_axi_wready = m_uart_wready;
+                cpu_w_dest_flags[3]: s0_axi_wready = m_ctrl_wready;
+                cpu_w_dest_flags[4]:  s0_axi_wready = !err_bvalid_q;
                 default: begin
                 end
             endcase
@@ -641,10 +684,10 @@ module soc_axi_interconnect #(
 
     assign m_npu_awaddr  = s0_awaddr32[15:0];
     assign m_npu_awprot  = s0_axi_awprot;
-    assign m_npu_awvalid = cpu_issue_aw_allowed && s0_axi_awvalid && (cpu_aw_dest == D_NPU);
+    assign m_npu_awvalid = cpu_issue_aw_allowed && s0_axi_awvalid && (cpu_aw_dest_flags[1]);
     assign m_npu_wdata   = s0_axi_wdata[31:0];
     assign m_npu_wstrb   = s0_axi_wstrb[3:0];
-    assign m_npu_wvalid  = cpu_issue_w_allowed && s0_axi_wvalid && (cpu_w_dest == D_NPU);
+    assign m_npu_wvalid  = cpu_issue_w_allowed && s0_axi_wvalid && (cpu_w_dest_flags[1]);
     assign m_npu_bready  = s0_axi_bready && cpu_wr_active_q && (cpu_wr_dest_q == D_NPU);
     assign m_npu_araddr  = cpu_arq_addr32[15:0];
     assign m_npu_arprot  = cpu_arq_prot;
@@ -653,10 +696,10 @@ module soc_axi_interconnect #(
 
     assign m_uart_awaddr  = s0_awaddr32;
     assign m_uart_awprot  = s0_axi_awprot;
-    assign m_uart_awvalid = cpu_issue_aw_allowed && s0_axi_awvalid && (cpu_aw_dest == D_UART);
+    assign m_uart_awvalid = cpu_issue_aw_allowed && s0_axi_awvalid && (cpu_aw_dest_flags[2]);
     assign m_uart_wdata   = s0_axi_wdata[31:0];
     assign m_uart_wstrb   = s0_axi_wstrb[3:0];
-    assign m_uart_wvalid  = cpu_issue_w_allowed && s0_axi_wvalid && (cpu_w_dest == D_UART);
+    assign m_uart_wvalid  = cpu_issue_w_allowed && s0_axi_wvalid && (cpu_w_dest_flags[2]);
     assign m_uart_bready  = s0_axi_bready && cpu_wr_active_q && (cpu_wr_dest_q == D_UART);
     assign m_uart_araddr  = cpu_arq_addr32;
     assign m_uart_arprot  = cpu_arq_prot;
@@ -665,10 +708,10 @@ module soc_axi_interconnect #(
 
     assign m_ctrl_awaddr  = s0_awaddr32;
     assign m_ctrl_awprot  = s0_axi_awprot;
-    assign m_ctrl_awvalid = cpu_issue_aw_allowed && s0_axi_awvalid && (cpu_aw_dest == D_CTRL);
+    assign m_ctrl_awvalid = cpu_issue_aw_allowed && s0_axi_awvalid && (cpu_aw_dest_flags[3]);
     assign m_ctrl_wdata   = s0_axi_wdata[31:0];
     assign m_ctrl_wstrb   = s0_axi_wstrb[3:0];
-    assign m_ctrl_wvalid  = cpu_issue_w_allowed && s0_axi_wvalid && (cpu_w_dest == D_CTRL);
+    assign m_ctrl_wvalid  = cpu_issue_w_allowed && s0_axi_wvalid && (cpu_w_dest_flags[3]);
     assign m_ctrl_bready  = s0_axi_bready && cpu_wr_active_q && (cpu_wr_dest_q == D_CTRL);
     assign m_ctrl_araddr  = cpu_arq_addr32;
     assign m_ctrl_arprot  = cpu_arq_prot;
@@ -750,12 +793,12 @@ module soc_axi_interconnect #(
             end else if (s0_axi_rvalid && s0_axi_rready && cpu_rd_dest_q == D_RAM) begin
                 cpu_ram_read_addr_q <= cpu_read_next_addr;
             end
-            if (cpu_aw_hs && cpu_aw_dest == D_RAM) begin
+            if (cpu_aw_hs && cpu_aw_dest_flags[0]) begin
                 cpu_ram_write_addr_q <= (p_cpu_ram_write_overlap && cpu_w_hs) ?
                     cpu_first_write_next_addr : s0_axi_awaddr;
                 cpu_ram_write_size_q <= s0_axi_awsize;
                 cpu_ram_write_burst_q <= s0_axi_awburst;
-            end else if (cpu_w_hs && cpu_w_dest == D_RAM) begin
+            end else if (cpu_w_hs && cpu_w_dest_flags[0]) begin
                 cpu_ram_write_addr_q <= cpu_write_next_addr;
             end
             if (cpu_arq_push) begin

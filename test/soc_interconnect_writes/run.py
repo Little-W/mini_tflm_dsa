@@ -19,10 +19,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--profiles',nargs='+',default=['64:0:4','32:0:4','64:1:4','32:1:4','64:0:1','32:0:1'])
+    parser.add_argument('--source-root',type=Path,default=ROOT)
+    parser.add_argument('--verilator',default='verilator')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True,exist_ok=False)
-    source = ROOT/'rtl/soc/soc_axi_interconnect.sv'
+    source = args.source_root/'rtl/soc/soc_axi_interconnect.sv'
     frozen = out/source.name
     shutil.copyfile(source,frozen)
     harness = out/'main.cpp'
@@ -37,7 +39,8 @@ def main():
         folder=out/f'd{width}_o{overlap}_n{outstanding}'
         folder.mkdir()
         objects=folder/'obj'
-        command=['verilator','--cc','--exe','--build','-j','1','-Wno-fatal','--assert',
+        command=[args.verilator,'--cc','--exe','--build','-j','1','-Wno-fatal','--assert',
+            '-DSYNTHESIS=1','-DXILINX_FPGA=1',
             '--top-module','soc_axi_interconnect','--Mdir',str(objects),
             f'-GDATA_WIDTH={width}','-GCPU_MEM_DP=65536','-Gp_cpu_read_overlap=0',f'-Gp_cpu_ram_write_overlap={overlap}',
             f'-GREAD_OUTSTANDING={outstanding}',f'-GWRITE_OUTSTANDING={outstanding}',

@@ -105,7 +105,7 @@ def main():
             invariant.write_text(capacity_invariant(current_source.decode(), parameters))
             invariant_script, invariant_log = out / (name + '_capacity.ys'), out / (name + '_capacity.log')
             invariant_script.write_text(
-                f'read_slang --top capacity_invariant {shlex.quote(str(invariant))}\n'
+                f'read_slang -D SYNTHESIS=1 -D XILINX_FPGA=1 --top capacity_invariant {shlex.quote(str(invariant))}\n'
                 'prep -top capacity_invariant -flatten\nasync2sync\nmemory_map\nopt -full\n'
                 'sat -seq 2 -tempinduct -maxsteps 5 -set-at 1 rst_n 0 -prove o_correct 1 -verify\n')
             with invariant_log.open('w') as stream:
@@ -136,7 +136,7 @@ def main():
                     raise ValueError('无法定位已证明的容量标志更新块')
                 observed = out / 'current_observed.sv'
                 observed.write_text(text)
-            commands += [f'read_slang --top soc_axi_interconnect {options} {shlex.quote(str(observed))}',
+            commands += [f'read_slang -D SYNTHESIS=1 -D XILINX_FPGA=1 --top soc_axi_interconnect {options} {shlex.quote(str(observed))}',
                          'prep -top soc_axi_interconnect -flatten', 'memory_map', 'async2sync', 'opt_clean',
                          f'rename soc_axi_interconnect {label}', f'design -stash {label}']
         commands += ['design -copy-from reference -as reference reference',
