@@ -1,0 +1,449 @@
+{
+  "passed": true,
+  "reference_commit": "9eef82afad829b6f791eb76c7302b542e5e53d12",
+  "source_sha256": {
+    "rtl/npu/loaders/kernel_loader.sv": "693df3b4fbe16c7378cf3050b4c0096af611462b7440f2b4d70834b5dc8b8b84",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "1647b76db08869e7e168b71e0d104c4a713546f39dfe97b69cb6176eed1ea5e1",
+    "rtl/npu/control/ps_window_scheduler.sv": "c9a65a0046880f98825092cd6130f86ad21b80b191f08f0ff20de1352f9f9e1a",
+    "test/kernel_issue_timing/run_formal.py": "527d4596dda084e9eb210b233d6648462e5cf1203eb462421eeb9fffed17d935",
+    "test/kernel_issue_timing/run_four_state.py": "6841cf860543ca617ffc89050882120c4377c57d595cc4ce4a8a61784e3becd9",
+    "test/kernel_prefetch/run.py": "ff88b84f02979375edeb5252dceffc5f40ea692f87baa8a05f19de32d6905c42"
+  },
+  "reference_sha256": {
+    "rtl/npu/loaders/kernel_loader.sv": "8df26d4641a49f4e128643cfc317014bf2fcab04fec11184dcf5529f773fdb2c",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "fa595322a7396f5793bd54ae886f55f3a375da19e1c3f99e4866b31f16737d13",
+    "rtl/npu/control/ps_window_scheduler.sv": "3c6ee15d4b51a3d3d8f8301c41b236045d603ff7399c0c074d3feb1932c21d8d"
+  },
+  "cycle_behavior_preserved": true,
+  "formal": [
+    {
+      "name": "controller_fpga",
+      "passed": true,
+      "inputs_constrained": false,
+      "state_and_outputs_every_cycle": true,
+      "profiles": [
+        {
+          "SIZE": 1,
+          "COUNT_WIDTH": 1,
+          "BUS_WIDTH": 32,
+          "passed": true,
+          "equivalent_bits": 927
+        },
+        {
+          "SIZE": 4,
+          "COUNT_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "passed": true,
+          "equivalent_bits": 1327
+        },
+        {
+          "SIZE": 16,
+          "COUNT_WIDTH": 29,
+          "BUS_WIDTH": 64,
+          "passed": true,
+          "equivalent_bits": 2196
+        },
+        {
+          "SIZE": 16,
+          "COUNT_WIDTH": 32,
+          "BUS_WIDTH": 64,
+          "passed": true,
+          "equivalent_bits": 2310
+        },
+        {
+          "SIZE": 16,
+          "COUNT_WIDTH": 33,
+          "BUS_WIDTH": 64,
+          "passed": true,
+          "equivalent_bits": 2350
+        }
+      ],
+      "profile_count": 5,
+      "equivalent_bits": 9110,
+      "report": "build/kernel_issue_r7/proof_flat_kernel_loader_ctrl_fpga/summary.json",
+      "sha256": "57277c8863894cbcb540fa8292e3023388dc70c5c377ac6acecfbd37908cd027"
+    },
+    {
+      "name": "loader_fpga",
+      "passed": true,
+      "inputs_constrained": false,
+      "state_and_outputs_every_cycle": true,
+      "profiles": [
+        {
+          "SIZE": 4,
+          "COUNT_WIDTH": 8,
+          "BUS_WIDTH": 32,
+          "passed": true,
+          "equivalent_bits": 4680
+        },
+        {
+          "SIZE": 16,
+          "COUNT_WIDTH": 29,
+          "BUS_WIDTH": 64,
+          "passed": true,
+          "equivalent_bits": 18932
+        }
+      ],
+      "profile_count": 2,
+      "equivalent_bits": 23612,
+      "report": "build/kernel_issue_r7/proof_eligible_kernel_loader_fpga/summary.json",
+      "sha256": "d275b9888f27859b500d488a02c440bf4492573515ea41a7373ce1b6de3e408b"
+    },
+    {
+      "name": "loader_generic",
+      "passed": true,
+      "inputs_constrained": false,
+      "state_and_outputs_every_cycle": true,
+      "profiles": [
+        {
+          "parameters": {
+            "SIZE": 4,
+            "COUNT_WIDTH": 8,
+            "BUS_WIDTH": 32,
+            "DATA_WIDTH": 16
+          },
+          "passed": true,
+          "equivalent_bits": 5022
+        },
+        {
+          "parameters": {
+            "SIZE": 16,
+            "COUNT_WIDTH": 32,
+            "BUS_WIDTH": 128,
+            "DATA_WIDTH": 16
+          },
+          "passed": true,
+          "equivalent_bits": 19611
+        }
+      ],
+      "profile_count": 2,
+      "equivalent_bits": 24633,
+      "report": "build/kernel_issue_r7/loader_formal_generic/summary.json",
+      "sha256": "047e911c5554756db4e4d1711948af4e0e43d9f4c804a7a7914607759a5f2f60"
+    },
+    {
+      "name": "scheduler_fpga",
+      "passed": true,
+      "inputs_constrained": false,
+      "state_and_outputs_every_cycle": true,
+      "profiles": [
+        {
+          "parameters": {
+            "SIZE": 1,
+            "FRAME_COUNT": 1,
+            "MAX_REUSE_TILES": 1
+          },
+          "passed": true,
+          "equivalent_bits": 1743
+        },
+        {
+          "parameters": {
+            "SIZE": 4,
+            "FRAME_COUNT": 3,
+            "MAX_REUSE_TILES": 4
+          },
+          "passed": true,
+          "equivalent_bits": 2113
+        },
+        {
+          "parameters": {
+            "SIZE": 16,
+            "FRAME_COUNT": 16,
+            "MAX_REUSE_TILES": 32
+          },
+          "passed": true,
+          "equivalent_bits": 3408
+        },
+        {
+          "parameters": {
+            "SIZE": 16,
+            "FRAME_COUNT": 16,
+            "MAX_REUSE_TILES": 0
+          },
+          "passed": true,
+          "equivalent_bits": 4600
+        },
+        {
+          "parameters": {
+            "SIZE": 16,
+            "FRAME_COUNT": 17,
+            "MAX_REUSE_TILES": 64
+          },
+          "passed": true,
+          "equivalent_bits": 3575
+        }
+      ],
+      "profile_count": 5,
+      "equivalent_bits": 15439,
+      "report": "build/kernel_issue_r7/scheduler_formal_fpga/summary.json",
+      "sha256": "dd5127becee2d1b8a65f4fdf6a6d8f3a6d0828089e161f0bebd69ae9b99d2f5d"
+    },
+    {
+      "name": "scheduler_generic",
+      "passed": true,
+      "inputs_constrained": false,
+      "state_and_outputs_every_cycle": true,
+      "profiles": [
+        {
+          "parameters": {
+            "SIZE": 1,
+            "FRAME_COUNT": 1,
+            "MAX_REUSE_TILES": 1
+          },
+          "passed": true,
+          "equivalent_bits": 2163
+        },
+        {
+          "parameters": {
+            "SIZE": 4,
+            "FRAME_COUNT": 3,
+            "MAX_REUSE_TILES": 4
+          },
+          "passed": true,
+          "equivalent_bits": 2504
+        },
+        {
+          "parameters": {
+            "SIZE": 16,
+            "FRAME_COUNT": 16,
+            "MAX_REUSE_TILES": 32
+          },
+          "passed": true,
+          "equivalent_bits": 3799
+        },
+        {
+          "parameters": {
+            "SIZE": 16,
+            "FRAME_COUNT": 16,
+            "MAX_REUSE_TILES": 0
+          },
+          "passed": true,
+          "equivalent_bits": 4991
+        },
+        {
+          "parameters": {
+            "SIZE": 16,
+            "FRAME_COUNT": 17,
+            "MAX_REUSE_TILES": 64
+          },
+          "passed": true,
+          "equivalent_bits": 3966
+        }
+      ],
+      "profile_count": 5,
+      "equivalent_bits": 17423,
+      "report": "build/kernel_issue_r7/scheduler_formal_generic/summary.json",
+      "sha256": "959f3e078b9eb0c16c76337fe9946a235b3c021dbbea8b24a99df6ffd15dfe3d"
+    }
+  ],
+  "numeric": [
+    {
+      "passed": true,
+      "parameters": {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 29
+      },
+      "cycles": 45050,
+      "logical_loads": 285,
+      "checked_values": 72960,
+      "dma_starts": 319,
+      "dma_completions": 319,
+      "prefetch_starts": 100,
+      "cache_hits": 66,
+      "cache_discards": 32,
+      "max_valid_slots": 2,
+      "max_dma_contexts": 2,
+      "overlapping_dma_starts": 12,
+      "flush_cases": 4,
+      "undefined_behavior_sanitizer": true,
+      "sanitized_translation_units": 10,
+      "binary_sha256": "7c6b31dc7a17cc0212a2c11cdf1949368b827f861e1a40b53eae7989ffe2fec7",
+      "report": "build/kernel_issue_r7/numeric_eligible_b32/summary.json",
+      "sha256": "f875e4056bc4c4b1cbf102e870897cf5d66d1318f58bebad9006644346ca314d"
+    },
+    {
+      "passed": true,
+      "parameters": {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29
+      },
+      "cycles": 29443,
+      "logical_loads": 285,
+      "checked_values": 72960,
+      "dma_starts": 312,
+      "dma_completions": 312,
+      "prefetch_starts": 100,
+      "cache_hits": 73,
+      "cache_discards": 25,
+      "max_valid_slots": 2,
+      "max_dma_contexts": 2,
+      "overlapping_dma_starts": 12,
+      "flush_cases": 4,
+      "undefined_behavior_sanitizer": true,
+      "sanitized_translation_units": 10,
+      "binary_sha256": "a8bdb25aaeb16f9d9e77684ff0d3be33bc7b7078a773d6a36e25850f81dcd806",
+      "report": "build/kernel_issue_r7/numeric_eligible_b64/summary.json",
+      "sha256": "7a44878f9954662d0663151615bea07e8caacf4f350f9600a4a8983c35349358"
+    }
+  ],
+  "four_state": {
+    "passed": true,
+    "strict_four_state": true,
+    "profiles": [
+      {
+        "width": 1,
+        "size": 1,
+        "passed": true,
+        "request_checks": 71680,
+        "traversal_checks": 4096,
+        "arithmetic_checks": 4096,
+        "log_sha256": "8d6fbb1ee4601492023a7d590fef09ae324f840b7dc8ac48404767eed2edb056"
+      },
+      {
+        "width": 29,
+        "size": 16,
+        "passed": true,
+        "request_checks": 71680,
+        "traversal_checks": 4096,
+        "arithmetic_checks": 4096,
+        "log_sha256": "55e49cda9d4719a7cccb78fc3597e1fde519c86f20c6cab0ad8a4ae24e1ba7b0"
+      },
+      {
+        "width": 33,
+        "size": 32,
+        "passed": true,
+        "request_checks": 71680,
+        "traversal_checks": 4096,
+        "arithmetic_checks": 4096,
+        "log_sha256": "5de198943c364535035d1d18a70183cd982c6f6c7a2132f42323c3f954fe956a"
+      }
+    ],
+    "checks": 239616,
+    "report": "build/kernel_issue_r7/four_state/summary.json",
+    "sha256": "b7405454cf9aa26db6dfc6a56ee7eaa2edc0569a595ae99b87b9c9d24badf083"
+  },
+  "synthesis": {
+    "kernel_loader": {
+      "parameters": {
+        "SIZE": 16,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 29,
+        "DATA_WIDTH": 16,
+        "BUS_WIDTH": 64
+      },
+      "wide_alu_dsp_budget": 740,
+      "rtl_dsp_attributes": true,
+      "register_path_limit": 10,
+      "cases": {
+        "reference": {
+          "resources": {
+            "logic_lut_cells": 4317,
+            "lut_sites_nominal_before_packing": 4317,
+            "flip_flops": 2337,
+            "dsp48e1": 13,
+            "ramb18e1": 16,
+            "ramb36e1": 0,
+            "carry4": 162
+          },
+          "longest_register_path_cells": 10,
+          "graph_complete": true,
+          "report": "build/kernel_issue_r7/synthesis/reference/metrics.json",
+          "sha256": "3764620c4c837162926b5689a9b9dd34d45d0ba8ffb1df4e7f947a5fba226797",
+          "manifest_sha256": "2fe2f4b6c82b55a0cc3439ad6513e5ec1adcb7366b7a16373e8397996bb5e03d"
+        },
+        "current": {
+          "resources": {
+            "logic_lut_cells": 4254,
+            "lut_sites_nominal_before_packing": 4254,
+            "flip_flops": 2337,
+            "dsp48e1": 21,
+            "ramb18e1": 16,
+            "ramb36e1": 0,
+            "carry4": 99
+          },
+          "longest_register_path_cells": 9,
+          "graph_complete": true,
+          "report": "build/kernel_issue_r7/synthesis/eligible/metrics.json",
+          "sha256": "2c242d1becae559ef02acd6b0a49a540e4576fe7d73dedfc0858ab47fb9072ad",
+          "manifest_sha256": "27c9254253da3b44fd859d35217ac6a591477e4e5620831ef11c48b55d3890cf"
+        }
+      }
+    },
+    "ps_window_scheduler": {
+      "parameters": {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32
+      },
+      "wide_alu_dsp_budget": 740,
+      "rtl_dsp_attributes": true,
+      "register_path_limit": 10,
+      "cases": {
+        "reference": {
+          "resources": {
+            "logic_lut_cells": 1289,
+            "lut_sites_nominal_before_packing": 1345,
+            "flip_flops": 966,
+            "dsp48e1": 7,
+            "ramb18e1": 0,
+            "ramb36e1": 2,
+            "carry4": 72
+          },
+          "longest_register_path_cells": 9,
+          "graph_complete": true,
+          "report": "build/kernel_issue_r7/synthesis/scheduler_reference/metrics.json",
+          "sha256": "e99fb8fe8ba189022e97a18e9253be3dd4a66a41667a0b331d4797a74ffa4daf",
+          "manifest_sha256": "5642d91603d8051ea6b1be7a0d83649a987cfd48a9edc6adcd48e55a0391c72c"
+        },
+        "current": {
+          "resources": {
+            "logic_lut_cells": 1258,
+            "lut_sites_nominal_before_packing": 1314,
+            "flip_flops": 966,
+            "dsp48e1": 10,
+            "ramb18e1": 0,
+            "ramb36e1": 2,
+            "carry4": 49
+          },
+          "longest_register_path_cells": 9,
+          "graph_complete": true,
+          "report": "build/kernel_issue_r7/synthesis/scheduler_arithmetic/metrics.json",
+          "sha256": "924759ec00346e4a946d9d4d5ed8683adf2fdf600259d18349b5c79ba91c87da",
+          "manifest_sha256": "e366b8e330a2fc06bcdc25337ab778664cb0caedc4c6e5039c2e6599fef46769"
+        }
+      }
+    }
+  },
+  "input_path_diagnostic": {
+    "scope": "人工输入起点至模块内部实际存储端口，不作为完整 SoC 寄存器路径统计",
+    "cases": {
+      "reference": {
+        "init_cfg": 8,
+        "load_weight_granted": 5,
+        "cache_flush": 9,
+        "cfg_command_mode": 1
+      },
+      "eligible": {
+        "init_cfg": 6,
+        "load_weight_granted": 3,
+        "cache_flush": 8,
+        "cfg_command_mode": 1
+      }
+    },
+    "report": "build/kernel_issue_r7/interface_path_diagnostic.json",
+    "sha256": "a98453c9aee55397d885193a8b5385a32fc4db891d3eaba467140a6aa29a8e01"
+  },
+  "totals": {
+    "formal_profiles": 19,
+    "equivalent_bits": 90217,
+    "numeric_configurations": 2,
+    "logical_loads": 570,
+    "checked_values": 145920,
+    "cycles": 74493,
+    "four_state_checks": 239616
+  }
+}

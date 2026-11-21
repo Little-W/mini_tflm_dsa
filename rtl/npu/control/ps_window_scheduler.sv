@@ -71,6 +71,11 @@ module ps_window_scheduler #(
     logic [ID_W-1:0] protected_id, resume_id, active_id;
     logic active_init, active_final;
     logic [31:0] active_q0, active_column, active_row, active_rows;
+    (* use_dsp = "yes" *) logic [31:0] active_q_next, reduction_last, stationary_rows_last;
+    // 预测和终止位置共享完整模宽算术，状态选择仅选择已计算的结果。
+    assign active_q_next = active_q0 + 32'(SIZE);
+    assign reduction_last = reduction - 32'd1;
+    assign stationary_rows_last = stationary_rows - 32'd1;
     // 帧资格、分组存在性和状态选择各自描述独立的组合关系。
     logic candidate_found;
     logic [ID_W-1:0] candidate_id, scanned_id, selected_id_q;
@@ -416,7 +421,7 @@ module ps_window_scheduler #(
                 prediction_direct_column = 32'(next_part_is_last ? column_after_part : next_column_tile) << SHIFT;
             end else if (phase == DRAINING && !active_final) begin
                 prediction_request = 1'b1;
-                prediction_direct_q = active_q0 + 32'(SIZE);
+                prediction_direct_q = active_q_next;
                 prediction_direct_column = active_column;
             end else begin
                 prediction_reads_frame = 1'b1;
@@ -497,7 +502,7 @@ module ps_window_scheduler #(
         end
         if (prediction_valid[1]) begin
             prediction_q_s1 <= prediction_reads_frame_q ?
-                (prediction_is_active_q ? active_q0 + 32'(SIZE) :
+                (prediction_is_active_q ? active_q_next :
                     32'(frame_k[prediction_frame_q]) << SHIFT) : prediction_q_direct_s1;
             prediction_column_s1 <= prediction_reads_frame_q ?
                 (prediction_is_active_q ? active_column :
@@ -559,8 +564,8 @@ module ps_window_scheduler #(
 
     always_ff @(posedge clk) begin
         if (phase == IDLE && start) begin
-            final_q0 <= ((reduction - 32'd1) >> SHIFT) << SHIFT;
-            final_column0 <= ((stationary_rows - 32'd1) >> SHIFT) << SHIFT;
+            final_q0 <= ((reduction_last) >> SHIFT) << SHIFT;
+            final_column0 <= ((stationary_rows_last) >> SHIFT) << SHIFT;
             final_k_count <= (reduction & 32'(SIZE-1)) == '0 ? (SHIFT+1)'(SIZE) : (SHIFT+1)'(reduction & 32'(SIZE-1));
             final_column_count <= (stationary_rows & 32'(SIZE-1)) == '0 ? (SHIFT+1)'(SIZE) :
                 (SHIFT+1)'(stationary_rows & 32'(SIZE-1));
