@@ -27,27 +27,28 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     source = ROOT / 'rtl/npu/writeback/vec_requant.sv'
     text = source.read_text()
-    names = ('remaining_words', 'load_advance', 'load_remainder_greater', 'load_has_more')
-    assignments = [re.search(r'\bassign\s+' + name + r'\s*=.*?;', text, re.S)[0] for name in names]
+    first = text.index('  // 末拍比较并行计算')
+    last = text.index('\n  // ----------------------------', first)
+    comparison = text[first:last]
     wrapper = out / 'load_completion.sv'
     wrapper.write_text('''module load_completion(
 input logic [31:0] quant_need_load_r, load_offset, beats_expect
 );
 localparam int REG_WIDTH = 32;
-logic [32:0] remaining_words, load_advance;
-logic load_remainder_greater, load_has_more;
+logic load_has_more;
 logic [31:0] next_offset;
 logic expected_more;
 assign next_offset = load_offset + beats_expect;
 assign expected_more = next_offset < quant_need_load_r;
-''' + '\n'.join(assignments) + '''
+''' + comparison + '''
 always_comb begin
     assert(load_has_more == expected_more);
 end
 endmodule
 ''')
     script = out / 'compare.ys'
-    script.write_text('read_verilog -formal -sv ' + shlex.quote(str(wrapper)) + '\n'
+    helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
+    script.write_text('read_slang --top load_completion ' + shlex.join([str(wrapper), str(helper)]) + '\n'
                       'prep -top load_completion\nflatten\nchformal -lower\nopt -full\n'
                       'sat -verify -prove-asserts -show-inputs\n')
     log = out / 'compare.log'
@@ -57,6 +58,7 @@ endmodule
     assert 'SAT proof finished - no model found: SUCCESS!' in log.read_text()
     result = {'passed': True, 'input_bits': 96, 'inputs_constrained': False,
               'register_width': 32, 'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+              'helper_sha256': hashlib.sha256(helper.read_bytes()).hexdigest(),
               'formal_wrapper_sha256': hashlib.sha256(wrapper.read_bytes()).hexdigest(),
               'log_sha256': hashlib.sha256(log.read_bytes()).hexdigest()}
     (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')

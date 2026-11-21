@@ -24,7 +24,8 @@ def sha(path):
 
 def run_formal(out):
     sources = [ROOT/'rtl/npu/writeback/requant_group_buffer.sv',
-               ROOT/'rtl/common/regfile.v', HERE/'buffer_proof.sv']
+               ROOT/'rtl/common/regfile.v', HERE/'buffer_proof.sv',
+               ROOT/'test/monitors/requant_group_buffer_observer.sv']
     hashes = {str(path.relative_to(ROOT)): sha(path) for path in sources}
     results = []
     for rows in (1, 3, 16, 512, 1024):
@@ -78,7 +79,9 @@ def run_simulation(out, args):
                ROOT/'rtl/npu/writeback/vec_requant.sv',
                ROOT/'rtl/npu/writeback/requant_compute_lane.sv',
                ROOT/'rtl/npu/writeback/requant_group_buffer.sv',
-               ROOT/'rtl/npu/conv/vector_scalar_multiplier.sv', ROOT/'rtl/common/regfile.v']
+               ROOT/'rtl/npu/conv/vector_scalar_multiplier.sv', ROOT/'rtl/common/regfile.v',
+               ROOT/'rtl/common/parallel_prefix_add.sv',
+               ROOT/'test/monitors/requant_group_buffer_observer.sv']
     checked = sources+[ROOT/'test/requant_time_share/main.cpp', Path(__file__).resolve()]
     hashes = {str(path.relative_to(ROOT)): sha(path) for path in checked}
     driver = prepare_driver(out)

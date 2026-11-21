@@ -50,9 +50,10 @@ def main():
     checked = out / 'checked.sv'
     checked.write_text(current.replace('\nendmodule', '\n' + '\n'.join(lines) + '\nendmodule', 1))
     sources = [ROOT / 'rtl/npu/buffers/ia_ps_shared_ram.sv', ROOT / 'rtl/common/regfile.v',
-               checked, reference, ROOT / 'test/ps_channels/tb_store.sv']
+               checked, reference, ROOT / 'test/ps_channels/tb_store.sv',
+               ROOT / 'rtl/common/parallel_prefix_add.sv']
     summary = {'reference': args.reference, 'source_sha256': {str(p.relative_to(ROOT)): digest(p) for p in
-               [ROOT / SOURCE, sources[0], sources[1], sources[4]]}, 'compared_outputs': outputs, 'runs': []}
+               [ROOT / SOURCE, sources[0], sources[1], sources[4], sources[5]]}, 'compared_outputs': outputs, 'runs': []}
     for profile in args.profiles:
         bank_bytes, banks = map(int, profile.split(':'))
         folder = out / f'b{bank_bytes}_n{banks}'

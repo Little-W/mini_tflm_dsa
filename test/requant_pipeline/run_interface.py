@@ -10,6 +10,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rtl_reference import read_rtl_source
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'monitors'))
+from sources import with_observers
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -24,8 +26,10 @@ def make_wrapper(source):
     declarations = []
     for line in header.splitlines():
         line = line.split("//", 1)[0].strip().rstrip(",")
-        match = re.match(r"(input|output)\s+logic\s+(signed\s+)?(\[[^]]+\]\s*)?(\w+)(\[[^]]+\])?(?:\s*=.*)?$", line)
+        match = re.match(r"(input|output)\s+(?:wire\s+)?logic\s+(signed\s+)?(\[[^]]+\]\s*)?(\w+)(\[[^]]+\])?(?:\s*=.*)?$", line)
         if not match:
+            if re.match(r'(input|output)\b', line):
+                raise RuntimeError('无法解析端口声明：' + line)
             continue
         direction, signed, width, name, unpacked = match.groups()
         if name == "mismatch":
@@ -35,8 +39,8 @@ def make_wrapper(source):
         else:
             outputs.append(name)
             declarations.append("logic " + (signed or "") + (width or "") + "ref_" + name + (unpacked or "") + ";")
-    if len(inputs) != 20 or len(outputs) != 18:
-        raise RuntimeError(f"Unexpected interface: {len(inputs)} inputs, {len(outputs)} outputs")
+    if not inputs or not outputs or len(outputs) > 32:
+        raise RuntimeError(f"接口数量不符合比较器容量：{len(inputs)} inputs, {len(outputs)} outputs")
     parameters = ".BUS_WIDTH(BUS_WIDTH), .VLEN(VLEN), .REG_WIDTH(REG_WIDTH), .MAX_IA_REUSE(MAX_IA_REUSE), .ENABLE_PER_CHANNEL(ENABLE_PER_CHANNEL), .ENABLE_IS_MODE(ENABLE_IS_MODE), .ENABLE_S16(ENABLE_S16)"
     body = header + "\n" + "\n".join(declarations) + "\n"
     body += "vec_requant #(" + parameters + ") u_current (\n" + ",\n".join("    ." + name + "(" + name + ")" for name in inputs + outputs) + "\n);\n"
@@ -54,7 +58,7 @@ def make_wrapper(source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--reference-rev", default="aa2ef9a")
+    parser.add_argument("--reference-rev", default="dde5e7c9")
     parser.add_argument("--bus-width", type=int, nargs="+", default=[32, 64])
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--jobs", type=int, default=2)
@@ -85,17 +89,20 @@ def main():
         model_file = out / "xilinx_primitives.sv"
         model_file.write_text("\n".join(models) + "\n")
         primitive_options = ["-DSYNTHESIS", str(model_file)]
-    result = {"implementation": "official Xilinx functional models" if args.xilinx else "generic", "reference_rev": args.reference_rev, "ports": ports, "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "runs": []}
+    result = {"implementation": "Yosys Xilinx 7-series functional models" if args.xilinx else "generic", "reference_rev": args.reference_rev, "ports": ports, "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "runs": []}
     result["shared_multiplier_sha256"] = hashlib.sha256(shared_source.read_bytes()).hexdigest()
+    rtl_sources = with_observers([source, ROOT / 'rtl/common/regfile.v', shared_source,
+        ROOT / 'rtl/npu/writeback/requant_group_buffer.sv', reference, wrapper])
+    result['input_sha256'] = {str(path): hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                              for path in rtl_sources}
     for bus in args.bus_width:
         folder = out / f"bus{bus}"
         folder.mkdir(exist_ok=True)
-        command = [args.verilator, "--cc", "--exe", "--build", "-j", str(args.jobs), "-Wno-fatal",
+        command = [args.verilator, "--cc", "--exe", "--build", "--assert", "-j", str(args.jobs), "-Wno-fatal",
                    "--top-module", "requant_interface_top", "--Mdir", str(folder / "obj"),
                    f"-GBUS_WIDTH={bus}", "-GVLEN=16", "-GMAX_IA_REUSE=32", "-GENABLE_S16=1",
                    "-CFLAGS", f"-std=c++17 -DTEST_BUS_WIDTH={bus}",
-                   str(source), str(ROOT / "rtl/common/regfile.v"),
-                   str(ROOT / "rtl/npu/conv/vector_scalar_multiplier.sv"), str(reference), str(wrapper),
+                   *map(str, rtl_sources),
                    *primitive_options, str(HERE / "interface_main.cpp")]
         with (folder / "build.log").open("w") as stream:
             completed = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
@@ -107,6 +114,9 @@ def main():
         if completed.returncode:
             raise RuntimeError("Interface comparison failed")
         result["runs"].append(json.loads(completed.stdout.strip().splitlines()[-1]))
+        if result['input_sha256'] != {str(path): hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                                      for path in rtl_sources}:
+            raise RuntimeError('验证期间输入源码发生变化')
         (out / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
 
 

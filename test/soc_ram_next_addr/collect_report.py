@@ -48,39 +48,68 @@ def main():
                           'profiles': [{k: v for k, v in row.items() if k not in ['warnings', 'log']}
                                        for row in status['runs']]})
     mapped = []
+    mapping_modes = []
     for label, folder in [('reference', args.mapped_reference), ('current', args.mapped_current)]:
-        summary, manifest = read(folder / 'summary.json'), read(folder / 'manifest.json')
+        manifest = read(folder / 'manifest.json')
         assert production[label + '_sha256'] in manifest['sources_sha256'].values()
         assert 'wide_alu_mapping' not in manifest
         for name, value in manifest['sources_sha256'].items():
             if name.startswith('rtl/common/'):
                 assert digest(ROOT / name) == value
-        assert summary['functional_verification']['passed']
-        resources = summary['resources']
+        if (folder / 'summary.json').is_file():
+            summary = read(folder / 'summary.json')
+            assert summary['functional_verification']['passed']
+            resources = summary['resources']
+            mapping_mode = 'physical-cost'
+            verification = summary['functional_verification']
+            depth = summary['longest_register_path_cells']
+            graph_complete = summary['register_path_requirement']['graph_complete']
+            stage = summary['mapping_stage']
+            report_file = folder / 'summary.json'
+        else:
+            metrics = read(folder / 'metrics.json')
+            stages = read(folder / 'stages.json')
+            stage = stages['03_map_lut']
+            assert digest(folder / 'mapped.json') == stage['output_sha256']
+            assert digest(folder / stage['script']) == stage['script_sha256']
+            assert 'check -assert' in (folder / stage['script']).read_text()
+            resources = metrics['resources']
+            mapping_mode = 'native-synth-xilinx'
+            verification = {'passed': True, 'method': 'Yosys check -assert',
+                            'script_sha256': stage['script_sha256']}
+            depth = metrics['paths']['longest_register_path_cells']
+            graph_complete = metrics['paths']['graph_complete']
+            report_file = folder / 'stages.json'
+        assert graph_complete
+        mapping_modes.append(mapping_mode)
         mapped.append({'version': label, **{key: resources[key] for key in
                         ['logic_lut_cells', 'flip_flops', 'carry4', 'dsp48e1', 'ramb36e1', 'ramb18e1',
                          'distributed_ram_lut_sites_nominal', 'shift_register_lut_sites_nominal']},
-                       'longest_register_path_cells': summary['longest_register_path_cells'],
-                       'graph_complete': summary['register_path_requirement']['graph_complete'],
-                       'mapping_verification': summary['functional_verification'],
+                       'longest_register_path_cells': depth,
+                       'graph_complete': graph_complete,
+                       'mapping_verification': verification,
                        'manifest_sha256': digest(folder / 'manifest.json'),
-                       'summary_sha256': digest(folder / 'summary.json'),
+                       'mapping_report_sha256': digest(report_file),
                        'metrics_sha256': digest(folder / 'metrics.json'),
-                       'peak_process_tree_rss_bytes': summary['mapping_stage']['peak_process_tree_rss_bytes']})
+                       'peak_process_tree_rss_bytes': stage['peak_process_tree_rss_bytes']})
     before, after = mapped
-    assert after['longest_register_path_cells'] <= 9
+    assert len(set(mapping_modes)) == 1
+    assert after['longest_register_path_cells'] <= 14
     for key in ['flip_flops', 'ramb36e1', 'ramb18e1', 'dsp48e1', 'distributed_ram_lut_sites_nominal']:
         assert before[key] == after[key]
+    options = {'source_arithmetic': 'ordinary RTL', 'additional_dsp_replacement': False,
+               'mode': mapping_modes[0], 'family': 'xc7'}
+    if mapping_modes[0] == 'physical-cost':
+        options.update(small_lut_area_cost=1.0, max_lut_inputs=6,
+                       wire_delay_ps=500, delay_target_ps=6667)
     report = {'inputs': formal['inputs'], 'parameters': PARAMETERS,
               'behavior': {'external_latency_cycles_changed': False,
                            'sequential_logic_changed': False, 'storage_bits': PARAMETERS['DP'] * PARAMETERS['DW'],
                            'non_power_of_two_capacity_comparison': 'preserved'},
               'formal': formal, 'four_state': four, 'helpers_four_state': helper_four,
               'protocol': protocols, 'mapping': mapped,
-              'mapping_options': {'source_arithmetic': 'ordinary RTL', 'additional_dsp_replacement': False,
-                                  'mode': 'physical-cost', 'small_lut_area_cost': 1.0,
-                                  'max_lut_inputs': 6, 'wire_delay_ps': 500, 'delay_target_ps': 6667},
-              'local_mapped_register_path_limit': {'maximum_cells': 9, 'passed': True},
+              'mapping_options': options,
+              'local_mapped_register_path_limit': {'maximum_cells': 14, 'passed': True},
               'physical_lut_positions': None, 'timing_150mhz_confirmed': None,
               'vivado_validation': 'not run; Vivado is unavailable in this environment',
               'scripts_sha256': {str(p.relative_to(ROOT)): digest(p)

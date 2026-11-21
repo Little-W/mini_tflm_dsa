@@ -1,0 +1,129 @@
+{
+  "frontend_depth14": {
+    "top": "conv_im2col_frontend",
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GLANES=4",
+      "-GBUS_WIDTH=64",
+      "-GCACHE_SETS=128",
+      "-GCACHE_WAYS=2",
+      "-GLINE_BYTES=16",
+      "-GREGISTER_CACHE_REQUEST=1"
+    ],
+    "sources": [
+      "rtl/npu/conv/conv_im2col_pkg.sv",
+      "rtl/npu/conv/conv_axi_read_guard.sv",
+      "rtl/npu/conv/conv_axi_read_mux.sv",
+      "rtl/npu/conv/conv_axi_span_reader.sv",
+      "rtl/npu/conv/conv_ia_tile_path.sv",
+      "rtl/npu/conv/conv_ia_write_adapter.sv",
+      "rtl/npu/conv/conv_im2col_frontend.sv",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv",
+      "rtl/npu/dma/axi_dual_block_dma.sv",
+      "rtl/npu/dma/axi_linear_block_dma.sv",
+      "rtl/npu/dma/axi_write_page_guard.sv",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv",
+      "rtl/npu/dma/cache/conv_read_cache.sv",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv",
+      "rtl/npu/dma/conv_window_queue.sv",
+      "rtl/npu/dma/operand_read_cache.sv"
+    ],
+    "configuration": "16行阵列、4个输出通道、64位总线、128组双路缓存、16字节缓存行、寄存请求配置"
+  },
+  "dma_stream_w8_l16": {
+    "top": "axi_dual_block_dma",
+    "sources": [
+      "rtl/npu/conv/conv_im2col_pkg.sv",
+      "rtl/npu/conv/conv_axi_read_guard.sv",
+      "rtl/npu/conv/conv_axi_read_mux.sv",
+      "rtl/npu/conv/conv_axi_span_reader.sv",
+      "rtl/npu/conv/conv_ia_tile_path.sv",
+      "rtl/npu/conv/conv_ia_write_adapter.sv",
+      "rtl/npu/conv/conv_im2col_frontend.sv",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv",
+      "rtl/npu/dma/axi_dual_block_dma.sv",
+      "rtl/npu/dma/axi_linear_block_dma.sv",
+      "rtl/npu/dma/axi_write_page_guard.sv",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv",
+      "rtl/npu/dma/cache/conv_read_cache.sv",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv",
+      "rtl/npu/dma/conv_window_queue.sv",
+      "rtl/npu/dma/operand_read_cache.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GSIZE=64",
+      "-GIM2COL_SIZE=16",
+      "-GBUS_WIDTH=64",
+      "-GDATA_LANES=8",
+      "-GWINDOW_LANES=8",
+      "-GCACHE_BLOCKS=4",
+      "-GCONV_CACHE_SETS=128",
+      "-GCONV_CACHE_WAYS=2",
+      "-GCONV_LINE_BYTES=16"
+    ],
+    "parameters": {
+      "SIZE": 64,
+      "IM2COL_SIZE": 16,
+      "BUS_WIDTH": 64,
+      "DATA_LANES": 8,
+      "WINDOW_LANES": 8,
+      "CACHE_BLOCKS": 4,
+      "CONV_CACHE_SETS": 128,
+      "CONV_CACHE_WAYS": 2,
+      "CONV_LINE_BYTES": 16
+    },
+    "configuration": "SIZE64/IM2COL16、8个窗口通道、64位总线、独立描述符准备、连续缓存请求、图像输出寄存、配置接收资格寄存"
+  },
+  "dma_stream_soc": {
+    "top": "axi_dual_block_dma",
+    "sources": [
+      "rtl/npu/conv/conv_im2col_pkg.sv",
+      "rtl/npu/conv/conv_axi_read_guard.sv",
+      "rtl/npu/conv/conv_axi_read_mux.sv",
+      "rtl/npu/conv/conv_axi_span_reader.sv",
+      "rtl/npu/conv/conv_ia_tile_path.sv",
+      "rtl/npu/conv/conv_ia_write_adapter.sv",
+      "rtl/npu/conv/conv_im2col_frontend.sv",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv",
+      "rtl/npu/dma/axi_dual_block_dma.sv",
+      "rtl/npu/dma/axi_linear_block_dma.sv",
+      "rtl/npu/dma/axi_write_page_guard.sv",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv",
+      "rtl/npu/dma/cache/conv_read_cache.sv",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv",
+      "rtl/npu/dma/conv_window_queue.sv",
+      "rtl/npu/dma/operand_read_cache.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GSIZE=64",
+      "-GIM2COL_SIZE=16",
+      "-GBUS_WIDTH=64",
+      "-GDATA_LANES=8",
+      "-GWINDOW_LANES=8",
+      "-GCACHE_BLOCKS=64",
+      "-GCONV_CACHE_SETS=16",
+      "-GCONV_CACHE_WAYS=2",
+      "-GCONV_LINE_BYTES=128"
+    ],
+    "parameters": {
+      "SIZE": 64,
+      "IM2COL_SIZE": 16,
+      "BUS_WIDTH": 64,
+      "DATA_LANES": 8,
+      "WINDOW_LANES": 8,
+      "CACHE_BLOCKS": 64,
+      "CONV_CACHE_SETS": 16,
+      "CONV_CACHE_WAYS": 2,
+      "CONV_LINE_BYTES": 128
+    },
+    "configuration": "SIZE64/IM2COL16、8个窗口通道、64位总线、独立描述符准备、连续缓存请求、图像输出寄存、配置接收资格寄存"
+  }
+}

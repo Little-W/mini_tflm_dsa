@@ -16,6 +16,28 @@ wire [31:0] conv_hits_raw=npu_top.u_block_dma_arbiter.tb_observer.conv_stat_hits
 wire [31:0] conv_misses_raw=npu_top.u_block_dma_arbiter.tb_observer.conv_stat_misses;
 wire [31:0] conv_read_bytes_raw=npu_top.u_block_dma_arbiter.tb_observer.conv_stat_read_bytes;
 
+// 帧模式资格自配置相位三起保持一致，容量检查与调度器使用同一结果。
+always @(posedge npu_top.clk) begin
+  if (npu_top.core_rst_n && npu_top.cfg_stage2_valid &&
+      npu_top.cfg_capacity_phase >= 3'd3) begin
+    assert (npu_top.use_frame_commands_s2 ===
+        (TB_FRAME_EXEC_ENABLED && (!npu_top.ps_long_capacity_fits ||
+         !npu_top.legacy_window_shape_s2 || npu_top.ps_control_q[1])))
+      else $fatal(1, "Frame mode differs at configuration consumption phase");
+  end
+end
+
+// 配置提交后的输出预留计数必须与当前运行模式及复用数一致。
+always @(posedge npu_top.clk) begin
+  if (npu_top.core_rst_n && !npu_top.cfg_stage2_valid) begin
+    assert (npu_top.output_reserve_banks ===
+        (npu_top.direct_final_stream ?
+         (32'(npu_top.ia_reuse_num_eff) + 32'(npu_top.DIRECT_OUTPUT_EXTRA_BANKS)) :
+         32'(npu_top.ia_reuse_num_eff)))
+      else $fatal(1, "Output reserve differs after configuration submission");
+  end
+end
+
 
 logic conv_count_active,conv_stats_started;
 logic [31:0] conv_stat_hits,conv_stat_misses,conv_stat_read_bytes,conv_stat_cycles;

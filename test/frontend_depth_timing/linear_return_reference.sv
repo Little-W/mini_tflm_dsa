@@ -1,0 +1,1130 @@
+/*
+ * axi_linear_block_dma -- native AXI4 linear read/write engine
+ * ======================================================
+ *
+ * This module is the shared AXI block DMA for accelerator memory traffic.
+ * Read and write commands are split into independent engines:
+ *
+ *   - read  engine: AXI AR/R, used by IA/kernel/bias/quant loaders
+ *   - write engine: AXI AW/W/B, used by OA writer
+ *
+ * The two engines can be active at the same time, allowing AXI full-duplex
+ * memory traffic without a protocol bridge.
+ */
+
+module axi_linear_block_dma #(
+    parameter int unsigned DATA_WIDTH   = 16,
+    parameter int unsigned SIZE         = 16,
+    parameter int unsigned BUS_WIDTH    = 32,
+    parameter int unsigned REG_WIDTH    = 32,
+    parameter int unsigned CACHE_BLOCKS = 4,
+    parameter int unsigned DMA_MAX_BYTES = 256 * (BUS_WIDTH / 8),
+    parameter int unsigned READ_OUTSTANDING = 4,
+    parameter int unsigned RD_CONTEXT_DEPTH = 4,
+    parameter int unsigned RD_TAG_WIDTH = 3,
+    parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING
+) (
+    input logic clk,
+    input logic rst_n,
+    input logic abort = 1'b0,
+
+    // ---- Read block command ----
+    input  logic                                   rd_start,
+    output logic                                   rd_start_ready,
+    input  logic [RD_TAG_WIDTH-1:0]                 rd_tag = '0,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_response_tag,
+    output logic [RD_TAG_WIDTH-1:0]                 rd_finish_tag,
+    input  logic                                   rd_linear_read_mode,
+    input  logic        [           REG_WIDTH-1:0] rd_base_addr,
+    input  logic        [           REG_WIDTH-1:0] rd_row_stride,
+    input  logic        [           REG_WIDTH-1:0] rd_rows_to_read,
+    input  logic        [           REG_WIDTH-1:0] rd_valid_cols,
+    input  logic        [                     7:0] rd_burst_len_m1,
+    input  logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] rd_slot_id,
+    input  logic                                   rd_use_16bits,
+    input  logic signed [           REG_WIDTH-1:0] rd_lhs_zp,
+    output logic                                   rd_busy,
+    output logic                                   rd_done,
+    output logic                                   rd_finish_beat,
+
+    // ---- Write block command ----
+    input  logic                            wr_start,
+    input  logic [           REG_WIDTH-1:0] wr_base_addr,
+    input  logic [           REG_WIDTH-1:0] wr_row_stride,
+    input  logic [           REG_WIDTH-1:0] wr_rows_to_write,
+    input  logic [                     7:0] wr_burst_len_m1,
+    output logic                            wr_busy,
+    output logic                            wr_done,
+
+    // ---- Write data stream ----
+    input  logic [  BUS_WIDTH-1:0] src_wdata,
+    input  logic [BUS_WIDTH/8-1:0] src_wmask,
+    input  logic                   src_wvalid,
+    output logic                   src_wready,
+
+    // ---- AXI4 master read address channel ----
+    output logic                   m_axi_arvalid,
+    input  logic                   m_axi_arready,
+    output logic [  REG_WIDTH-1:0] m_axi_araddr,
+    output logic [            7:0] m_axi_arlen,
+    output logic [            2:0] m_axi_arsize,
+    output logic [            1:0] m_axi_arburst,
+
+    // ---- AXI4 master read data channel ----
+    input  logic                   m_axi_rvalid,
+    output logic                   m_axi_rready,
+    input  logic [  BUS_WIDTH-1:0] m_axi_rdata,
+    input  logic [            1:0] m_axi_rresp,
+    input  logic                   m_axi_rlast,
+
+    // ---- AXI4 master write address channel ----
+    output logic                   m_axi_awvalid,
+    input  logic                   m_axi_awready,
+    output logic [  REG_WIDTH-1:0] m_axi_awaddr,
+    output logic [            7:0] m_axi_awlen,
+    output logic [            2:0] m_axi_awsize,
+    output logic [            1:0] m_axi_awburst,
+
+    // ---- AXI4 master write data channel ----
+    output logic                   m_axi_wvalid,
+    input  logic                   m_axi_wready,
+    output logic [  BUS_WIDTH-1:0] m_axi_wdata,
+    output logic [BUS_WIDTH/8-1:0] m_axi_wstrb,
+    output logic                   m_axi_wlast,
+
+    // ---- AXI4 master write response channel ----
+    input  logic                   m_axi_bvalid,
+    output logic                   m_axi_bready,
+    input  logic [            1:0] m_axi_bresp,
+
+    // ---- Read unpack output ----
+    output logic        [((CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS))-1:0] wr_slot,
+    output logic        [        $clog2(SIZE)-1:0] wr_row,
+    output logic        [        $clog2(SIZE)-1:0] wr_col_base,
+    output logic signed [          DATA_WIDTH-1:0] wr_data      [BUS_WIDTH/8],
+    output logic                                   wr_valid     [BUS_WIDTH/8],
+    output logic                                   wr_use_16bits,
+
+    // ---- Raw read stream for quant/bias-like users ----
+    output logic [   BUS_WIDTH-1:0] rd_raw_data,
+    output logic                    rd_raw_valid,
+    output logic [$clog2(SIZE)-1:0] rd_raw_row,
+    output logic [$clog2(SIZE)-1:0] rd_raw_col_base,
+
+    output logic rd_error,
+    output logic wr_error
+);
+
+    localparam int unsigned BYTE_PER_BEAT = BUS_WIDTH / 8;
+    localparam int unsigned MAX_BURST_BEATS = DMA_MAX_BYTES / BYTE_PER_BEAT;
+`ifdef NPU_SIM_ASSERT
+    initial begin
+        if (DMA_MAX_BYTES < BYTE_PER_BEAT || DMA_MAX_BYTES > 256 * BYTE_PER_BEAT ||
+            DMA_MAX_BYTES % BYTE_PER_BEAT != 0 ||
+            (DMA_MAX_BYTES & (DMA_MAX_BYTES - 1)) != 0 || MAX_BURST_BEATS > 256)
+            $fatal(1, "DMA_MAX_BYTES must contain a power-of-two count of 1 through 256 complete AXI beats");
+    end
+`endif
+
+    localparam int unsigned ELEM_PER_BEAT_S8 = BYTE_PER_BEAT;
+    localparam int unsigned ELEM_PER_BEAT_S16 = BYTE_PER_BEAT >> 1;
+    localparam int unsigned ADDR_LSB = $clog2(BYTE_PER_BEAT);
+    localparam int unsigned AXI_SIZE_VALUE = $clog2(BYTE_PER_BEAT);
+    localparam int unsigned RD_OUTS_MAX =
+        (READ_OUTSTANDING < 1) ? 1 : READ_OUTSTANDING;
+    localparam int unsigned RD_OUTS_W =
+        (RD_OUTS_MAX < 2) ? 1 : $clog2(RD_OUTS_MAX + 1);
+    localparam int unsigned WR_OUTS_MAX =
+        (WRITE_OUTSTANDING < 1) ? 1 : WRITE_OUTSTANDING;
+    localparam int unsigned WR_OUTS_W =
+        (WR_OUTS_MAX < 2) ? 1 : $clog2(WR_OUTS_MAX + 1);
+    localparam int unsigned ROW_CNT_W = (SIZE <= 1) ? 1 : $clog2(SIZE + 1);
+    localparam int unsigned BEAT_CNT_W = 9;
+    localparam bit SUPPORT_16BIT = (DATA_WIDTH > 8);
+    typedef logic [ROW_CNT_W-1:0] row_count_t;
+    // A segmented output descriptor can span 16 row tiles (256 rows).
+    localparam int unsigned WR_ROW_CNT_W = (ROW_CNT_W > 9) ? ROW_CNT_W : 9;
+    typedef logic [WR_ROW_CNT_W-1:0] write_row_count_t;
+    typedef logic [BEAT_CNT_W-1:0] beat_count_t;
+
+    wire rd_ar_hs = m_axi_arvalid && m_axi_arready;
+    wire rd_r_hs  = m_axi_rvalid && m_axi_rready;
+    wire rd_r_last_hs = rd_r_hs && m_axi_rlast;
+    wire wr_aw_hs = m_axi_awvalid && m_axi_awready;
+    wire wr_w_hs  = m_axi_wvalid && m_axi_wready;
+    wire wr_b_hs  = m_axi_bvalid && m_axi_bready;
+
+    // ---------------------------------------------------------------------
+    // Read command issue and ordered response contexts
+    // ---------------------------------------------------------------------
+    localparam int unsigned RD_CTX_DEPTH = (RD_CONTEXT_DEPTH < 1) ? 1 : RD_CONTEXT_DEPTH;
+    localparam int unsigned RD_CTX_PTR_W = (RD_CTX_DEPTH <= 1) ? 1 : $clog2(RD_CTX_DEPTH);
+    localparam int unsigned RD_CTX_CNT_W = $clog2(RD_CTX_DEPTH + 1);
+    localparam int unsigned RD_SLOT_W = (CACHE_BLOCKS <= 1) ? 1 : $clog2(CACHE_BLOCKS);
+    typedef logic [RD_CTX_PTR_W-1:0] context_ptr_t;
+    typedef logic [RD_CTX_CNT_W-1:0] context_count_t;
+    typedef struct packed {
+        logic [REG_WIDTH-1:0] row_stride;
+        row_count_t rows;
+        logic [REG_WIDTH-1:0] valid_cols;
+        logic [7:0] burst_len_m1;
+        logic [RD_SLOT_W-1:0] slot;
+        logic linear_read;
+        logic use_16bits;
+        logic signed [REG_WIDTH-1:0] zp;
+        logic [RD_TAG_WIDTH-1:0] tag;
+    } response_context_t;
+    typedef struct packed {
+        logic [REG_WIDTH-1:0] base_addr;
+        response_context_t response;
+    } read_context_t;
+
+    localparam int unsigned p_context_data_width = $bits(response_context_t) - RD_TAG_WIDTH;
+    logic [RD_TAG_WIDTH-1:0] rd_context_tag_q [RD_CTX_DEPTH];
+    logic context_storage_i_wr_en;
+    logic [RD_CTX_PTR_W-1:0] context_storage_i_wr_addr;
+    logic [p_context_data_width-1:0] context_storage_i_wr_data;
+    logic [0:0] context_storage_i_wr_mask;
+    logic [0:0] context_storage_i_rd_en;
+    logic [0:0][RD_CTX_PTR_W-1:0] context_storage_i_rd_addr;
+    logic [0:0][p_context_data_width-1:0] context_storage_o_rd_data;
+    logic [0:0] context_base_i_rd_en;
+    logic [0:0][RD_CTX_PTR_W-1:0] context_base_i_rd_addr;
+    logic [REG_WIDTH-1:0] context_base_i_wr_data;
+    logic [0:0][REG_WIDTH-1:0] context_base_o_rd_data;
+    response_context_t rd_head;
+    read_context_t rd_incoming;
+    context_ptr_t rd_context_head, rd_context_tail;
+    context_ptr_t rd_context_head_nxt, rd_context_tail_nxt;
+    context_ptr_t rd_context_head_plus_one, rd_context_tail_plus_one;
+    logic unused_context_head_carry, unused_context_tail_carry;
+    context_count_t rd_context_count;
+    context_count_t rd_context_increment, rd_context_decrement;
+    logic rd_context_nonempty_q, rd_context_space_q;
+    // 相邻计数并行计算，保存的资格与描述符计数在同一边沿更新。
+    assign rd_context_increment = rd_context_count + context_count_t'(1);
+    assign rd_context_decrement = rd_context_count - context_count_t'(1);
+    logic rd_issue_active;
+    logic [REG_WIDTH-1:0] rd_cfg_base_addr, rd_cfg_row_stride;
+    row_count_t rd_cfg_rows;
+    logic [7:0] rd_cfg_burst_len_m1;
+    logic rd_cfg_linear_read;
+    row_count_t rd_cmd_row_cnt;
+    logic [REG_WIDTH-1:0] rd_cmd_row_addr;
+    logic rd_arvalid_r;
+    logic [REG_WIDTH-1:0] rd_araddr_r;
+    logic [7:0] rd_arlen_r;
+    logic [REG_WIDTH-1:0] rd_follow_addr;
+    beat_count_t rd_follow_beats;
+    logic [RD_OUTS_W-1:0] rd_outstanding_cnt;
+    logic rd_pending_cmd_cross;
+
+    row_count_t rd_rsp_row_cnt;
+    logic [REG_WIDTH-1:0] rd_rsp_row_addr_cur, rd_rsp_row_addr_direct;
+    logic rd_rsp_from_context;
+    beat_count_t rd_rsp_beat_cnt;
+    logic [BUS_WIDTH-1:0] rd_rsp_prev_data, rd_rsp_data_r;
+    row_count_t rd_rsp_row_r;
+    logic [$clog2(SIZE)-1:0] rd_rsp_col_base_r;
+    logic rd_rsp_valid_r;
+    logic [RD_SLOT_W-1:0] rd_rsp_slot;
+    logic rd_rsp_use_16bits;
+    logic signed [REG_WIDTH-1:0] rd_rsp_zp;
+    logic [REG_WIDTH-1:0] rd_rsp_valid_cols;
+    logic rd_done_r, rd_response_error, rd_completed_error;
+    logic [BEAT_CNT_W-1:0] rsp_last_equal_i_a, rsp_last_equal_i_b;
+    logic [BEAT_CNT_W-1:0] rsp_last_equal_i_target;
+    logic rsp_last_equal_i_carry_in, rsp_last_equal_o_equal;
+    logic [ROW_CNT_W-1:0] rsp_row_equal_i_a, rsp_row_equal_i_b;
+    logic [ROW_CNT_W-1:0] rsp_row_equal_i_target;
+    logic rsp_row_equal_i_carry_in, rsp_row_equal_o_equal;
+    logic rd_rsp_last_without_cross, rd_rsp_last_with_cross;
+    logic rd_rsp_done;
+    wire rd_active = rd_context_nonempty_q;
+    wire rd_accept_start = rd_start && !abort && rd_start_ready;
+    wire rd_unaligned_mode = rd_cfg_base_addr[ADDR_LSB-1:0] != '0 ||
+                             rd_cfg_row_stride[ADDR_LSB-1:0] != '0;
+    wire [ADDR_LSB-1:0] rd_rsp_offset = rd_rsp_row_addr_cur[ADDR_LSB-1:0];
+    wire rd_rsp_cross = rd_rsp_offset != '0;
+    wire rd_rsp_emit = !rd_rsp_cross || rd_rsp_beat_cnt != '0;
+    // 两种字节排列分别判断最后一拍，行地址低位只选择已经完成的比较结果。
+    // 线性读取对应一个有效字，跨字读取再接收一拍以组成完整数据。
+    // 加一结果的各位进位条件并行比较，末拍和末行判断共用相同的算术结构。
+    assign rsp_last_equal_i_a = beat_count_t'(rd_head.burst_len_m1);
+    assign rsp_last_equal_i_b = beat_count_t'(1);
+    assign rsp_last_equal_i_target = rd_rsp_beat_cnt;
+    assign rsp_last_equal_i_carry_in = 1'b0;
+    assign rsp_row_equal_i_a = rd_rsp_row_cnt;
+    assign rsp_row_equal_i_b = row_count_t'(1);
+    assign rsp_row_equal_i_target = rd_head.rows;
+    assign rsp_row_equal_i_carry_in = 1'b0;
+
+    add_equal #(.p_width(BEAT_CNT_W)) u_rsp_last_equal (
+        .i_a(rsp_last_equal_i_a), .i_b(rsp_last_equal_i_b),
+        .i_target(rsp_last_equal_i_target), .i_carry_in(rsp_last_equal_i_carry_in),
+        .o_equal(rsp_last_equal_o_equal)
+    );
+
+    add_equal #(.p_width(ROW_CNT_W)) u_rsp_row_equal (
+        .i_a(rsp_row_equal_i_a), .i_b(rsp_row_equal_i_b),
+        .i_target(rsp_row_equal_i_target), .i_carry_in(rsp_row_equal_i_carry_in),
+        .o_equal(rsp_row_equal_o_equal)
+    );
+
+    assign rd_rsp_last_without_cross = rd_head.linear_read ?
+        (rd_rsp_beat_cnt == beat_count_t'(0)) :
+        (rd_rsp_beat_cnt == beat_count_t'(rd_head.burst_len_m1));
+    assign rd_rsp_last_with_cross = rd_head.linear_read ?
+        (rd_rsp_beat_cnt == beat_count_t'(1)) :
+        rsp_last_equal_o_equal;
+    // 末拍和末行条件并行准备，地址低位只选择对应的完成结果。
+    assign rd_rsp_done = rd_r_hs &&
+        (rd_rsp_cross ? rd_rsp_last_with_cross : rd_rsp_last_without_cross);
+    assign rd_finish_beat = rd_rsp_done && rsp_row_equal_o_equal;
+    wire rd_issue_last_ar = rd_issue_active && rd_ar_hs && rd_follow_beats == '0 &&
+                            rd_cmd_row_cnt == rd_cfg_rows;
+
+    assign {unused_context_head_carry, rd_context_head_plus_one} =
+        {1'b0, rd_context_head} + (RD_CTX_PTR_W+1)'(1);
+    assign {unused_context_tail_carry, rd_context_tail_plus_one} =
+        {1'b0, rd_context_tail} + (RD_CTX_PTR_W+1)'(1);
+    assign rd_context_head_nxt = rd_context_head == context_ptr_t'(RD_CTX_DEPTH-1) ?
+        '0 : rd_context_head_plus_one;
+    assign rd_context_tail_nxt = rd_context_tail == context_ptr_t'(RD_CTX_DEPTH-1) ?
+        '0 : rd_context_tail_plus_one;
+
+    // 描述符数据采用异步读取，命令标签独立复位，保持原有接收和响应周期。
+    assign context_storage_i_wr_en = rst_n && rd_accept_start;
+    assign context_storage_i_wr_addr = rd_context_tail;
+    assign context_storage_i_wr_data = rd_incoming.response[$bits(response_context_t)-1:RD_TAG_WIDTH];
+    assign context_storage_i_wr_mask = 1'b1;
+    assign context_storage_i_rd_en = 1'b1;
+    assign context_storage_i_rd_addr[0] = rd_context_head;
+    assign rd_head = {context_storage_o_rd_data[0], rd_context_tag_q[rd_context_head]};
+    // 下一描述符的基地址在当前描述符完成边沿读取，保持原有地址更新周期。
+    assign context_base_i_wr_data = rd_incoming.base_addr;
+    assign context_base_i_rd_en[0] = rst_n && rd_finish_beat &&
+        rd_context_count > context_count_t'(1);
+    assign context_base_i_rd_addr[0] = rd_context_head_nxt;
+    assign rd_rsp_row_addr_cur = rd_rsp_from_context ?
+        context_base_o_rd_data[0] : rd_rsp_row_addr_direct;
+
+    regfile #(
+        .p_data_width(p_context_data_width), .p_depth(RD_CTX_DEPTH),
+        .p_addr_width(RD_CTX_PTR_W), .p_write_unit(p_context_data_width),
+        .p_read_ports(1), .p_sync_read(1'b0)
+    ) u_context_storage (
+        .clk(clk), .i_wr_en(context_storage_i_wr_en), .i_wr_addr(context_storage_i_wr_addr),
+        .i_wr_data(context_storage_i_wr_data), .i_wr_mask(context_storage_i_wr_mask),
+        .i_rd_en(context_storage_i_rd_en), .i_rd_addr(context_storage_i_rd_addr),
+        .o_rd_data(context_storage_o_rd_data)
+    );
+
+    regfile #(
+        .p_data_width(REG_WIDTH), .p_depth(RD_CTX_DEPTH),
+        .p_addr_width(RD_CTX_PTR_W), .p_write_unit(REG_WIDTH),
+        .p_read_ports(1), .p_sync_read(1'b1), .p_ram_style("block")
+    ) u_context_base (
+        .clk(clk), .i_wr_en(context_storage_i_wr_en), .i_wr_addr(context_storage_i_wr_addr),
+        .i_wr_data(context_base_i_wr_data), .i_wr_mask(context_storage_i_wr_mask),
+        .i_rd_en(context_base_i_rd_en), .i_rd_addr(context_base_i_rd_addr),
+        .o_rd_data(context_base_o_rd_data)
+    );
+
+    always_comb begin
+        rd_incoming.base_addr = rd_base_addr;
+        rd_incoming.response.row_stride = rd_row_stride;
+        rd_incoming.response.rows = row_count_t'(rd_rows_to_read);
+        rd_incoming.response.valid_cols = rd_valid_cols == '0 ? REG_WIDTH'(SIZE) : rd_valid_cols;
+        rd_incoming.response.burst_len_m1 = rd_burst_len_m1;
+        rd_incoming.response.slot = rd_slot_id;
+        rd_incoming.response.linear_read = rd_linear_read_mode;
+        rd_incoming.response.use_16bits = SUPPORT_16BIT && rd_use_16bits;
+        rd_incoming.response.zp = rd_lhs_zp;
+        rd_incoming.response.tag = rd_tag;
+    end
+
+    assign rd_finish_tag = rd_head.tag;
+    assign rd_start_ready = (!rd_issue_active || rd_issue_last_ar) &&
+                            (rd_context_space_q || rd_finish_beat);
+    assign rd_busy = rd_active;
+    assign rd_done = rd_done_r;
+    assign rd_error = rd_done_r ? rd_completed_error : rd_response_error;
+    assign m_axi_arsize = 3'(AXI_SIZE_VALUE);
+    assign m_axi_arburst = 2'b01;
+    assign m_axi_arvalid = rd_arvalid_r && rd_outstanding_cnt < RD_OUTS_W'(RD_OUTS_MAX);
+    assign m_axi_araddr = rd_araddr_r;
+    assign m_axi_arlen = rd_arlen_r;
+    assign m_axi_rready = rd_active;
+    assign wr_slot = rd_rsp_slot;
+    assign wr_use_16bits = rd_rsp_use_16bits;
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            rd_context_head <= '0;
+            rd_context_tail <= '0;
+            rd_context_count <= '0;
+            rd_context_nonempty_q <= 1'b0;
+            rd_context_space_q <= 1'b1;
+        end else begin
+            if (rd_accept_start) begin
+                rd_context_tail <= rd_context_tail_nxt;
+            end
+            if (rd_finish_beat) rd_context_head <= rd_context_head_nxt;
+            unique case ({rd_accept_start,rd_finish_beat})
+                2'b10: begin
+                    rd_context_count <= rd_context_increment;
+                    rd_context_nonempty_q <= rd_context_increment != '0;
+                    rd_context_space_q <= rd_context_increment < context_count_t'(RD_CTX_DEPTH);
+                end
+                2'b01: begin
+                    rd_context_count <= rd_context_decrement;
+                    rd_context_nonempty_q <= rd_context_decrement != '0;
+                    rd_context_space_q <= rd_context_decrement < context_count_t'(RD_CTX_DEPTH);
+                end
+                default: ;
+            endcase
+        end
+    end
+
+    // 标签复位不影响数据阵列，新的描述符在同一接收边沿写入数据与标签。
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            for (int i=0; i<RD_CTX_DEPTH; i++) rd_context_tag_q[i] <= '0;
+        end else if (rd_accept_start) begin
+            rd_context_tag_q[rd_context_tail] <= rd_incoming.response.tag;
+        end
+    end
+
+    // AXI credits cover physical bursts from all accepted logical commands.
+    always_ff @(posedge clk) begin
+        if (!rst_n) rd_outstanding_cnt <= '0;
+        else begin
+            unique case ({rd_ar_hs,rd_r_last_hs})
+                2'b10: rd_outstanding_cnt <= rd_outstanding_cnt + 1'b1;
+                2'b01: rd_outstanding_cnt <= rd_outstanding_cnt - 1'b1;
+                default: ;
+            endcase
+        end
+    end
+
+    wire [REG_WIDTH-1:0] rd_first_ar_addr =
+        {rd_base_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}};
+    wire [BEAT_CNT_W-1:0] rd_first_beats = beat_count_t'(1) +
+        (rd_linear_read_mode ? beat_count_t'(0) : beat_count_t'(rd_burst_len_m1)) +
+        beat_count_t'(rd_base_addr[ADDR_LSB-1:0] != '0);
+    logic [REG_WIDTH-1:0] merge_i_stride_a, merge_i_stride_b, merge_i_stride_target;
+    logic merge_i_carry, merge_o_stride_equal;
+    assign merge_i_stride_a = REG_WIDTH'(rd_linear_read_mode ? 8'd0 : rd_burst_len_m1) << ADDR_LSB;
+    assign merge_i_stride_b = REG_WIDTH'(1) << ADDR_LSB;
+    assign merge_i_stride_target = rd_row_stride;
+    assign merge_i_carry = 1'b0;
+    add_equal #(.p_width(REG_WIDTH)) u_merge_stride_equal (
+        .i_a(merge_i_stride_a), .i_b(merge_i_stride_b), .i_target(merge_i_stride_target),
+        .i_carry_in(merge_i_carry), .o_equal(merge_o_stride_equal)
+    );
+    // 整字地址允许连续行合并，乘加直接计算行数乘以每行的实际拍数。
+    wire [REG_WIDTH-1:0] rd_merged_beats =
+        REG_WIDTH'(row_count_t'(rd_rows_to_read)) *
+        REG_WIDTH'(rd_linear_read_mode ? 8'd0 : rd_burst_len_m1) +
+        REG_WIDTH'(row_count_t'(rd_rows_to_read));
+    wire rd_merge_rows = rd_base_addr[ADDR_LSB-1:0] == '0 && merge_o_stride_equal &&
+        row_count_t'(rd_rows_to_read) > row_count_t'(1) &&
+        rd_merged_beats <= REG_WIDTH'(256);
+    wire [BEAT_CNT_W-1:0] rd_first_span_beats =
+        rd_merge_rows ? beat_count_t'(rd_merged_beats) : rd_first_beats;
+    localparam int unsigned p_follow_low_width = ADDR_LSB + BEAT_CNT_W;
+    logic [ADDR_LSB-1:0] rd_next_cmd_offset;
+    logic [REG_WIDTH-1:0] rd_next_cmd_addr;
+    beat_count_t rd_next_cmd_beats;
+    beat_count_t rd_next_row_beats;
+    logic [REG_WIDTH-1:0] rd_segment_addr [2];
+    beat_count_t rd_segment_remaining [2];
+    beat_count_t rd_segment_beats [2];
+    beat_count_t rd_segment_follow [2];
+    logic [7:0] rd_segment_len [2];
+    logic [REG_WIDTH-1:0] rd_segment_next_addr [2];
+
+    assign rd_next_cmd_offset = rd_cmd_row_addr[ADDR_LSB-1:0];
+    assign rd_next_cmd_addr = rd_follow_beats != '0 ? rd_follow_addr :
+        {rd_cmd_row_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}};
+    assign rd_next_row_beats = beat_count_t'(1) + (rd_cfg_linear_read ? beat_count_t'(0) :
+        beat_count_t'(rd_cfg_burst_len_m1)) + beat_count_t'(rd_next_cmd_offset != '0);
+    assign rd_next_cmd_beats = rd_follow_beats != '0 ? rd_follow_beats : rd_next_row_beats;
+    assign rd_segment_addr[0] = rd_first_ar_addr;
+    assign rd_segment_addr[1] = rd_next_cmd_addr;
+    assign rd_segment_remaining[0] = rd_first_span_beats;
+    assign rd_segment_remaining[1] = rd_next_cmd_beats;
+
+    for (genvar segment = 0; segment < 2; segment++) begin : g_read_segment
+        logic [12:0] page_beats;
+        beat_count_t limited_beats;
+        beat_count_t page_follow_beats, limit_follow_beats;
+        logic page_limited;
+        logic burst_limited;
+        localparam int unsigned p_address_candidates = 2;
+        logic [REG_WIDTH-1:0] prepared_address [p_address_candidates];
+
+        // 突发长度与页边界分别准备后续地址，最后只选择已经完成的地址。
+        assign page_beats = (13'd4096 - {1'b0, rd_segment_addr[segment][11:0]}) >> ADDR_LSB;
+        assign burst_limited = rd_segment_remaining[segment] > beat_count_t'(MAX_BURST_BEATS);
+        assign limited_beats = burst_limited ?
+            beat_count_t'(MAX_BURST_BEATS) : rd_segment_remaining[segment];
+        // 页限制与突发上限并行比较，后续拍数在选择本次长度之前完成计算。
+        assign page_limited = page_beats < 13'(MAX_BURST_BEATS) &&
+            13'(rd_segment_remaining[segment]) > page_beats;
+        assign page_follow_beats = rd_segment_remaining[segment] - beat_count_t'(page_beats);
+        assign limit_follow_beats = rd_segment_remaining[segment] - beat_count_t'(MAX_BURST_BEATS);
+        assign rd_segment_beats[segment] = page_limited ? beat_count_t'(page_beats) : limited_beats;
+        if (segment == 0) begin : g_first_address
+            // 普通首行与合并首行分别完成地址计算，合并条件只选择最终地址。
+            assign rd_segment_next_addr[segment] = rd_merge_rows ?
+                prepared_address[1] : prepared_address[0];
+            // 同样将首段剩余拍数分支提前计算，避免合并资格判定串接页比较。
+            beat_count_t follow_candidate [2];
+            for (genvar candidate = 0; candidate < 2; candidate++) begin : g_follow_candidate
+                beat_count_t remaining, page_follow, limit_follow;
+                logic page_limit, burst_limit;
+                assign remaining = candidate == 0 ? rd_first_beats : beat_count_t'(rd_merged_beats);
+                assign page_limit = page_beats < 13'(MAX_BURST_BEATS) && 13'(remaining) > page_beats;
+                assign burst_limit = remaining > beat_count_t'(MAX_BURST_BEATS);
+                assign page_follow = remaining - beat_count_t'(page_beats);
+                assign limit_follow = remaining - beat_count_t'(MAX_BURST_BEATS);
+                assign follow_candidate[candidate] = page_limit ? page_follow :
+                    (burst_limit ? limit_follow : beat_count_t'(0));
+            end
+            assign rd_segment_follow[segment] = rd_merge_rows ? follow_candidate[1] : follow_candidate[0];
+        end else begin : g_next_address
+            // 后续突发和新行地址分别完成页限制与加法，再由剩余拍数选择。
+            assign rd_segment_next_addr[segment] = rd_follow_beats != '0 ?
+                prepared_address[0] : prepared_address[1];
+            // 后续突发与新行各自计算页限制和剩余拍数，状态选择只控制最终结果。
+            beat_count_t follow_candidate [2];
+            for (genvar candidate = 0; candidate < 2; candidate++) begin : g_follow_candidate
+                logic [REG_WIDTH-1:0] address;
+                logic [12:0] remaining_page;
+                beat_count_t remaining, page_follow, limit_follow;
+                logic page_limit, burst_limit;
+                assign address = candidate == 0 ? rd_follow_addr :
+                    {rd_cmd_row_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}};
+                assign remaining = candidate == 0 ? rd_follow_beats : rd_next_row_beats;
+                assign remaining_page = (13'd4096 - {1'b0, address[11:0]}) >> ADDR_LSB;
+                assign page_limit = remaining_page < 13'(MAX_BURST_BEATS) &&
+                    13'(remaining) > remaining_page;
+                assign burst_limit = remaining > beat_count_t'(MAX_BURST_BEATS);
+                assign page_follow = remaining - beat_count_t'(remaining_page);
+                assign limit_follow = remaining - beat_count_t'(MAX_BURST_BEATS);
+                assign follow_candidate[candidate] = page_limit ? page_follow :
+                    (burst_limit ? limit_follow : beat_count_t'(0));
+            end
+            assign rd_segment_follow[segment] = rd_follow_beats != '0 ?
+                follow_candidate[0] : follow_candidate[1];
+        end
+
+        logic [7:0] remaining_len, page_len, page_last_full_word;
+        logic [12-ADDR_LSB-1:0] page_word_inverse;
+        logic page_byte_offset_nonzero;
+        logic unused_page_length_borrow;
+
+        // 页内末尾拍序号由地址逐位取反得到，非整字地址额外扣除一拍。
+        assign page_word_inverse = ~rd_segment_addr[segment][11:ADDR_LSB];
+        assign page_last_full_word = 8'(page_word_inverse);
+        assign page_byte_offset_nonzero = rd_segment_addr[segment][ADDR_LSB-1:0] != '0;
+        assign {unused_page_length_borrow, page_len} = {1'b0, page_last_full_word} -
+            {8'b0, page_byte_offset_nonzero};
+        if (segment == 0) begin : g_first_length
+            logic [7:0] length_candidate [2];
+            for (genvar candidate = 0; candidate < 2; candidate++) begin : g_candidate
+                beat_count_t remaining;
+                logic candidate_page_limit, candidate_burst_limit;
+                logic [7:0] candidate_remaining_len;
+                assign remaining = candidate == 0 ? rd_first_beats : beat_count_t'(rd_merged_beats);
+                assign candidate_page_limit = page_beats < 13'(MAX_BURST_BEATS) &&
+                    13'(remaining) > page_beats;
+                assign candidate_burst_limit = remaining > beat_count_t'(MAX_BURST_BEATS);
+                assign candidate_remaining_len[0] = ~remaining[0];
+                for (genvar bit_index = 1; bit_index < 8; bit_index++) begin : g_borrow
+                    assign candidate_remaining_len[bit_index] = remaining[bit_index] ^
+                        !(|remaining[bit_index-1:0]);
+                end
+                assign length_candidate[candidate] = candidate_page_limit ? page_len :
+                    (candidate_burst_limit ? 8'(MAX_BURST_BEATS-1) : candidate_remaining_len);
+            end
+            // 合并资格只在页限制、突发限制及减一运算完成后选择结果。
+            assign rd_segment_len[segment] = rd_merge_rows ? length_candidate[1] : length_candidate[0];
+        end else begin : g_next_length
+            assign rd_segment_len[segment] = page_limited ? page_len :
+                (burst_limited ? 8'(MAX_BURST_BEATS-1) : remaining_len);
+        end
+
+        // 剩余拍数的减一结果提前计算，最终长度只选择已经完成的三个候选值。
+        // 仅保留低八位，包含零拍数对应的模减法结果。
+        assign remaining_len[0] = ~rd_segment_remaining[segment][0];
+        for (genvar bit_index = 1; bit_index < 8; bit_index++) begin : g_length_borrow
+            logic lower_zero;
+            assign lower_zero = !(|rd_segment_remaining[segment][bit_index-1:0]);
+            assign remaining_len[bit_index] = rd_segment_remaining[segment][bit_index] ^ lower_zero;
+        end
+
+        for (genvar candidate = 0; candidate < p_address_candidates; candidate++) begin : g_prepared_address
+            beat_count_t candidate_remaining, candidate_limited;
+            logic candidate_page_limited;
+            logic [REG_WIDTH-1:0] burst_prepared_addr;
+            logic [REG_WIDTH-1:0] candidate_address, page_prepared_addr;
+            logic [12:0] candidate_page_beats;
+
+            if (segment == 0) begin : g_first_remaining
+                assign candidate_address = rd_segment_addr[segment];
+                assign candidate_remaining = candidate == 0 ? rd_first_beats : beat_count_t'(rd_merged_beats);
+            end else begin : g_next_remaining
+                assign candidate_address = candidate == 0 ? rd_follow_addr :
+                    {rd_cmd_row_addr[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}};
+                assign candidate_remaining = candidate == 0 ? rd_follow_beats : rd_next_row_beats;
+            end
+            if (segment == 0 && candidate == 1 && MAX_BURST_BEATS == 256) begin : g_merged_limit
+                // 合并条件已检查总拍数不超过256，最终选择仅使用满足该条件的地址。
+                assign candidate_limited = candidate_remaining;
+            end else begin : g_burst_limit
+                assign candidate_limited = candidate_remaining > beat_count_t'(MAX_BURST_BEATS) ?
+                    beat_count_t'(MAX_BURST_BEATS) : candidate_remaining;
+            end
+            assign candidate_page_beats = (13'd4096 - {1'b0, candidate_address[11:0]}) >> ADDR_LSB;
+            assign candidate_page_limited = candidate_page_beats < 13'(MAX_BURST_BEATS) &&
+                13'(candidate_remaining) > candidate_page_beats;
+
+            if (REG_WIDTH > 12) begin : g_page_upper
+                logic [REG_WIDTH-12-1:0] page_upper_next;
+                logic unused_page_upper_carry;
+
+                assign {unused_page_upper_carry, page_upper_next} =
+                    {1'b0, candidate_address[REG_WIDTH-1:12]} + (REG_WIDTH-12+1)'(1);
+                assign page_prepared_addr = candidate_address[ADDR_LSB-1:0] == '0 ?
+                    {page_upper_next, 12'b0} :
+                    {candidate_address[REG_WIDTH-1:12], {(12-ADDR_LSB){1'b1}},
+                     candidate_address[ADDR_LSB-1:0]};
+            end else begin : g_page_address
+                assign page_prepared_addr = candidate_address[ADDR_LSB-1:0] == '0 ?
+                    REG_WIDTH'(0) : {{(12-ADDR_LSB){1'b1}}, candidate_address[ADDR_LSB-1:0]};
+            end
+
+            if (REG_WIDTH > p_follow_low_width) begin : g_split_address
+                logic [p_follow_low_width:0] burst_address_low_sum;
+                logic [REG_WIDTH-p_follow_low_width-1:0] address_upper_next;
+                logic unused_address_upper_carry;
+
+                // 突发字节跨度只占地址低位，上部地址并行准备加一结果。
+                assign burst_address_low_sum = {1'b0, candidate_address[p_follow_low_width-1:0]} +
+                    ((p_follow_low_width+1)'(candidate_limited) << ADDR_LSB);
+                assign {unused_address_upper_carry, address_upper_next} =
+                    {1'b0, candidate_address[REG_WIDTH-1:p_follow_low_width]} +
+                    (REG_WIDTH-p_follow_low_width+1)'(1);
+                assign burst_prepared_addr = {
+                    burst_address_low_sum[p_follow_low_width] ? address_upper_next :
+                        candidate_address[REG_WIDTH-1:p_follow_low_width],
+                    burst_address_low_sum[p_follow_low_width-1:0]};
+                if (segment != 0 && p_follow_low_width <= 12) begin : g_page_carry
+                    logic page_crossed;
+                    if (p_follow_low_width == 12) begin : g_page_bit
+                        assign page_crossed = burst_address_low_sum[p_follow_low_width];
+                    end else begin : g_upper_page_bits
+                        assign page_crossed = burst_address_low_sum[p_follow_low_width] &&
+                            (&candidate_address[11:p_follow_low_width]);
+                    end
+                    // 恰好到达页边界时，页地址与加法结果相同，可共用页进位选择。
+                    assign prepared_address[candidate] = page_crossed ? page_prepared_addr : burst_prepared_addr;
+                end else begin : g_page_limit
+                    assign prepared_address[candidate] = candidate_page_limited ? page_prepared_addr : burst_prepared_addr;
+                end
+            end else begin : g_full_address
+                logic unused_address_carry;
+
+                assign {unused_address_carry, burst_prepared_addr} =
+                    {1'b0, candidate_address} +
+                    ((REG_WIDTH+1)'(candidate_limited) << ADDR_LSB);
+                assign prepared_address[candidate] = candidate_page_limited ? page_prepared_addr : burst_prepared_addr;
+            end
+        end
+    end
+
+    // A command remains in the issuer until its final external AR handshake.
+    // A following command can replace it on that edge while responses retain
+    // the earlier command's independent context at the FIFO head.
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            rd_issue_active <= 1'b0;
+            rd_arvalid_r <= 1'b0; rd_araddr_r <= '0; rd_arlen_r <= '0;
+        end else if (rd_accept_start) begin
+            rd_issue_active <= 1'b1;
+            rd_cfg_base_addr <= rd_base_addr;
+            rd_cfg_row_stride <= rd_row_stride;
+            rd_cfg_rows <= row_count_t'(rd_rows_to_read);
+            rd_cfg_burst_len_m1 <= rd_burst_len_m1;
+            rd_cfg_linear_read <= rd_linear_read_mode;
+            rd_arvalid_r <= row_count_t'(rd_rows_to_read) != '0;
+            rd_araddr_r <= rd_first_ar_addr;
+            rd_arlen_r <= rd_segment_len[0];
+            rd_follow_addr <= rd_segment_next_addr[0];
+            rd_follow_beats <= rd_segment_follow[0];
+            rd_cmd_row_cnt <= rd_merge_rows ? row_count_t'(rd_rows_to_read) : row_count_t'(1);
+            rd_cmd_row_addr <= rd_base_addr + rd_row_stride;
+            rd_pending_cmd_cross <= rd_base_addr[ADDR_LSB-1:0] != '0;
+        end else if (rd_issue_active) begin
+            if (rd_ar_hs) begin
+                rd_arvalid_r <= 1'b0;
+                rd_pending_cmd_cross <= 1'b0;
+                if (rd_issue_last_ar) rd_issue_active <= 1'b0;
+            end else if (!rd_arvalid_r && (!rd_unaligned_mode || rd_outstanding_cnt == '0) &&
+                         (rd_follow_beats != '0 || rd_cmd_row_cnt < rd_cfg_rows)) begin
+                rd_arvalid_r <= 1'b1;
+                rd_araddr_r <= rd_next_cmd_addr;
+                rd_arlen_r <= rd_segment_len[1];
+                rd_follow_addr <= rd_segment_next_addr[1];
+                rd_follow_beats <= rd_segment_follow[1];
+                if (rd_follow_beats == '0) begin
+                    rd_cmd_row_cnt <= rd_cmd_row_cnt + row_count_t'(1);
+                    rd_cmd_row_addr <= rd_cmd_row_addr + rd_cfg_row_stride;
+                end
+                rd_pending_cmd_cross <= rd_follow_beats == '0 && rd_next_cmd_offset != '0;
+            end
+        end
+    end
+
+    // Logical row progression uses the response head, independent of AR issue.
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            rd_rsp_row_cnt <= '0; rd_rsp_row_addr_direct <= '0; rd_rsp_from_context <= 1'b0;
+            rd_rsp_beat_cnt <= '0; rd_rsp_prev_data <= '0;
+            rd_done_r <= 1'b0; rd_response_error <= 1'b0; rd_completed_error <= 1'b0;
+        end else begin
+            rd_done_r <= rd_finish_beat;
+            if (rd_finish_beat) begin
+                rd_completed_error <= rd_response_error || m_axi_rresp[1];
+                rd_response_error <= 1'b0;
+                rd_rsp_row_cnt <= '0;
+                rd_rsp_beat_cnt <= '0;
+                rd_rsp_prev_data <= '0;
+                // 同步 RAM 输出与来源标志同时更新，同址读写保留写入前的基地址。
+                rd_rsp_from_context <= rd_context_count > context_count_t'(1);
+                if (rd_context_count <= context_count_t'(1)) begin
+                    rd_rsp_row_addr_direct <= rd_accept_start ? rd_base_addr : REG_WIDTH'(0);
+                end
+            end else if (!rd_active && rd_accept_start) begin
+                rd_rsp_row_cnt <= '0; rd_rsp_row_addr_direct <= rd_base_addr;
+                rd_rsp_from_context <= 1'b0;
+                rd_rsp_beat_cnt <= '0; rd_rsp_prev_data <= '0;
+                rd_response_error <= 1'b0;
+            end else if (rd_r_hs) begin
+                if (m_axi_rresp[1]) rd_response_error <= 1'b1;
+                rd_rsp_prev_data <= m_axi_rdata;
+                if (rd_rsp_done) begin
+                    rd_rsp_beat_cnt <= '0;
+                    rd_rsp_row_cnt <= rd_rsp_row_cnt + row_count_t'(1);
+                    rd_rsp_row_addr_direct <= rd_rsp_row_addr_cur + rd_head.row_stride;
+                    rd_rsp_from_context <= 1'b0;
+                end else rd_rsp_beat_cnt <= rd_rsp_beat_cnt + beat_count_t'(1);
+            end
+        end
+    end
+
+    beat_count_t rd_rsp_logical_beat_comb;
+    logic [$clog2(SIZE)-1:0] rd_rsp_col_base_comb;
+    logic [BUS_WIDTH-1:0] rd_rsp_aligned_data_comb;
+    logic [2*BUS_WIDTH-1:0] rd_rsp_joined_data;
+    logic [2*BUS_WIDTH-1:0] rd_rsp_shifted_data;
+
+    // 跨字读取先连接相邻两个总线字，再按字节偏移选择连续数据。
+    assign rd_rsp_joined_data = {m_axi_rdata, rd_rsp_prev_data};
+    assign rd_rsp_shifted_data = rd_rsp_joined_data >> {rd_rsp_offset, 3'b000};
+    always_comb begin
+        rd_rsp_logical_beat_comb = rd_head.linear_read ? beat_count_t'(rd_rsp_row_cnt) : rd_rsp_beat_cnt;
+        rd_rsp_aligned_data_comb = m_axi_rdata;
+        if (rd_rsp_cross) begin
+            if (!rd_head.linear_read)
+                rd_rsp_logical_beat_comb = rd_rsp_beat_cnt == '0 ? '0 : rd_rsp_beat_cnt - beat_count_t'(1);
+            rd_rsp_aligned_data_comb = rd_rsp_shifted_data[BUS_WIDTH-1:0];
+        end
+    end
+    assign rd_rsp_col_base_comb = rd_head.use_16bits ?
+        rd_rsp_logical_beat_comb[$clog2(SIZE)-1:0] << $clog2(ELEM_PER_BEAT_S16) :
+        rd_rsp_logical_beat_comb[$clog2(SIZE)-1:0] << $clog2(ELEM_PER_BEAT_S8);
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            rd_rsp_data_r <= '0; rd_rsp_row_r <= '0; rd_rsp_col_base_r <= '0;
+            rd_rsp_valid_r <= 1'b0; rd_rsp_slot <= '0; rd_rsp_use_16bits <= 1'b0;
+            rd_rsp_zp <= '0; rd_rsp_valid_cols <= '0; rd_response_tag <= '0;
+        end else begin
+            rd_rsp_valid_r <= rd_r_hs && rd_rsp_emit;
+            if (rd_r_hs) begin
+                rd_rsp_data_r <= rd_rsp_aligned_data_comb;
+                rd_rsp_row_r <= rd_head.linear_read ? '0 : rd_rsp_row_cnt;
+                rd_rsp_col_base_r <= rd_rsp_col_base_comb;
+                rd_rsp_slot <= rd_head.slot;
+                rd_rsp_use_16bits <= rd_head.use_16bits;
+                rd_rsp_zp <= rd_head.zp;
+                rd_rsp_valid_cols <= rd_head.valid_cols;
+                rd_response_tag <= rd_head.tag;
+            end
+        end
+    end
+
+    assign wr_row = rd_rsp_row_r[$clog2(SIZE)-1:0];
+    assign wr_col_base = rd_rsp_col_base_r;
+    assign rd_raw_data = rd_rsp_data_r;
+    assign rd_raw_valid = rd_rsp_valid_r;
+    assign rd_raw_row = rd_rsp_row_r[$clog2(SIZE)-1:0];
+    assign rd_raw_col_base = rd_rsp_col_base_r;
+    for (genvar lane = 0; lane < BYTE_PER_BEAT; lane++) begin : g_unpack_lane
+        logic [15:0] lane_data;
+        logic [DATA_WIDTH-1:0] adjusted_data;
+        logic lane_enabled;
+        logic lane_in_tile;
+        logic lane_in_data;
+
+        // 输入格式先选择统一的十六位数值，各通道共用一次零点相加。
+        if (lane < ELEM_PER_BEAT_S16) begin : g_s8_s16
+            assign lane_data = rd_rsp_use_16bits ? rd_rsp_data_r[16*lane+:16] :
+                {{8{rd_rsp_data_r[8*lane+7]}}, rd_rsp_data_r[8*lane+:8]};
+            assign lane_enabled = 1'b1;
+        end else begin : g_s8
+            assign lane_data = {{8{rd_rsp_data_r[8*lane+7]}}, rd_rsp_data_r[8*lane+:8]};
+            assign lane_enabled = !rd_rsp_use_16bits;
+        end
+        assign adjusted_data = DATA_WIDTH'(lane_data) + DATA_WIDTH'(rd_rsp_zp[15:0]);
+        if (REG_WIDTH > $clog2(SIZE) && lane < (1 << $clog2(SIZE))) begin : g_column_range
+            localparam int p_column_width = $clog2(SIZE);
+            logic [p_column_width:0] limit_low_delta;
+            logic limit_high_zero;
+
+            // 固定通道偏移先作用于有效长度，列地址直接参与低段比较。
+            assign limit_low_delta = {1'b0, rd_rsp_valid_cols[p_column_width-1:0]} -
+                (p_column_width+1)'(lane);
+            assign limit_high_zero = !(|rd_rsp_valid_cols[REG_WIDTH-1:p_column_width]);
+            // 有效输出已限定在当前块内，长度高段非零时覆盖全部块内通道。
+            assign lane_in_data = !limit_high_zero || (!limit_low_delta[p_column_width] &&
+                rd_rsp_col_base_r < limit_low_delta[p_column_width-1:0]);
+            if (lane < SIZE) begin : g_inside_tile
+                assign lane_in_tile = REG_WIDTH'(rd_rsp_col_base_r) < REG_WIDTH'(SIZE-lane);
+            end else begin : g_outside_tile
+                assign lane_in_tile = 1'b0;
+            end
+        end else begin : g_column_range_general
+            assign lane_in_tile = REG_WIDTH'(rd_rsp_col_base_r) + REG_WIDTH'(lane) < REG_WIDTH'(SIZE);
+            assign lane_in_data = REG_WIDTH'(rd_rsp_col_base_r + lane) < rd_rsp_valid_cols;
+        end
+        assign wr_valid[lane] = rd_rsp_valid_r && lane_enabled && lane_in_tile;
+        assign wr_data[lane] = wr_valid[lane] && lane_in_data ? adjusted_data : '0;
+    end
+
+    // ---------------------------------------------------------------------
+    // Write engine configuration/state
+    // ---------------------------------------------------------------------
+    logic [REG_WIDTH-1:0] wr_cfg_base_addr;
+    logic [REG_WIDTH-1:0] wr_cfg_row_stride;
+    write_row_count_t wr_cfg_rows;
+    logic [7:0] wr_cfg_burst_len_m1;
+    write_row_count_t wr_cmd_row_cnt;
+    logic [REG_WIDTH-1:0] wr_cmd_row_addr_cur;
+    beat_count_t wr_cmd_beat_cnt;
+    write_row_count_t wr_data_row_cnt;
+    logic [REG_WIDTH-1:0] wr_data_row_addr_cur;
+    beat_count_t wr_beat_cnt;
+    beat_count_t wr_segment_beat_cnt, wr_segment_last_beat;
+    logic [BUS_WIDTH-1:0] wr_tail_data;
+    logic [BUS_WIDTH/8-1:0] wr_tail_mask;
+    logic wr_active;
+    logic wr_data_active;
+    logic [WR_OUTS_W-1:0] wr_outstanding_cnt;
+    logic [WR_OUTS_W-1:0] wr_pending_data_cnt;
+    logic wr_done_r;
+    logic wr_error_r;
+    logic wr_pending_cmd_cross;
+    logic wr_abort;
+    logic wr_abort_hold_valid;
+    logic [BUS_WIDTH-1:0] wr_abort_hold_data;
+    logic [BUS_WIDTH/8-1:0] wr_abort_hold_mask;
+
+    // Preserve a stalled W beat across abort. Subsequent accepted AW bursts
+    // finish with zero byte enables, independent of the producer's progress.
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            wr_abort <= 1'b0;
+            wr_abort_hold_valid <= 1'b0;
+            wr_abort_hold_data <= '0;
+            wr_abort_hold_mask <= '0;
+        end else begin
+            if (abort) wr_abort <= 1'b1;
+            else if (!wr_active) wr_abort <= 1'b0;
+            if (abort && !wr_abort && m_axi_wvalid && !m_axi_wready) begin
+                wr_abort_hold_valid <= 1'b1;
+                wr_abort_hold_data <= m_axi_wdata;
+                wr_abort_hold_mask <= m_axi_wstrb;
+            end else if (wr_abort_hold_valid && wr_w_hs) begin
+                wr_abort_hold_valid <= 1'b0;
+            end
+        end
+    end
+
+    assign wr_busy  = wr_active;
+    assign wr_done  = wr_done_r;
+    assign wr_error = wr_error_r;
+
+    wire [BEAT_CNT_W-1:0] wr_cfg_burst_len_ext = BEAT_CNT_W'(wr_cfg_burst_len_m1);
+    wire [ADDR_LSB-1:0] wr_cmd_row_offset = wr_cmd_row_addr_cur[ADDR_LSB-1:0];
+    wire [ADDR_LSB-1:0] wr_row_offset = wr_data_row_addr_cur[ADDR_LSB-1:0];
+    wire wr_row_cross = (wr_row_offset != '0);
+    // 两种行结束位置分别比较，字节偏移仅选择已完成的比较结果。
+    wire wr_plain_row_end = wr_beat_cnt == wr_cfg_burst_len_ext;
+    wire wr_cross_row_end = wr_beat_cnt == (wr_cfg_burst_len_ext + BEAT_CNT_W'(1));
+    wire wr_row_end = wr_row_cross ? wr_cross_row_end : wr_plain_row_end;
+    wire [BEAT_CNT_W-1:0] wr_cmd_row_beats = wr_cfg_burst_len_ext + beat_count_t'(1)
+        + beat_count_t'(wr_cmd_row_offset != '0);
+    wire [REG_WIDTH-1:0] wr_cmd_segment_addr =
+        {wr_cmd_row_addr_cur[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
+        + (REG_WIDTH'(wr_cmd_beat_cnt) << ADDR_LSB);
+    wire [REG_WIDTH-1:0] wr_data_segment_addr =
+        {wr_data_row_addr_cur[REG_WIDTH-1:ADDR_LSB], {ADDR_LSB{1'b0}}}
+        + (REG_WIDTH'(wr_beat_cnt) << ADDR_LSB);
+    logic [REG_WIDTH-1:0] wr_segment_addr [2];
+    beat_count_t wr_remaining_last_beat [2];
+    beat_count_t wr_selected_last_beat [2];
+
+    assign wr_segment_addr[0] = wr_cmd_segment_addr;
+    assign wr_segment_addr[1] = wr_data_segment_addr;
+    assign wr_remaining_last_beat[0] = wr_cfg_burst_len_ext - wr_cmd_beat_cnt +
+        beat_count_t'(wr_cmd_row_offset != '0);
+    assign wr_remaining_last_beat[1] = wr_cfg_burst_len_ext - wr_beat_cnt + beat_count_t'(wr_row_cross);
+
+    for (genvar segment = 0; segment < 2; segment++) begin : g_write_segment
+        logic [12-ADDR_LSB-1:0] page_last_beat;
+        beat_count_t boundary_last_beat;
+        logic remaining_zero;
+        logic remaining_within_page;
+        logic remaining_within_burst;
+
+        // 总线字边界上的页内地址取反，即为页内可传输的末拍编号。
+        assign page_last_beat = ~wr_segment_addr[segment][11:ADDR_LSB];
+        assign remaining_zero = &wr_remaining_last_beat[segment];
+        assign remaining_within_page = 13'(wr_remaining_last_beat[segment]) <= 13'(page_last_beat);
+        assign remaining_within_burst = wr_remaining_last_beat[segment] < beat_count_t'(MAX_BURST_BEATS);
+        assign boundary_last_beat = 13'(page_last_beat) < 13'(MAX_BURST_BEATS-1) ?
+            beat_count_t'(page_last_beat) : beat_count_t'(MAX_BURST_BEATS-1);
+
+        // 直接选择末拍编号，并保留零剩余拍数时九位减一的回绕结果。
+        always_comb begin
+            wr_selected_last_beat[segment] = boundary_last_beat;
+            if (remaining_zero) begin
+                wr_selected_last_beat[segment] = '1;
+            end else if (remaining_within_page && remaining_within_burst) begin
+                wr_selected_last_beat[segment] = wr_remaining_last_beat[segment];
+            end
+        end
+    end
+    wire wr_tail_beat = wr_row_cross && wr_cross_row_end;
+    wire wr_need_src_beat = !wr_tail_beat;
+    wire wr_can_issue_aw = wr_active && !abort && !wr_abort &&
+                            (wr_cmd_row_cnt < wr_cfg_rows) &&
+                            (wr_outstanding_cnt < WR_OUTS_W'(WR_OUTS_MAX));
+    wire wr_can_start_data = wr_active && !wr_data_active &&
+                              (wr_pending_data_cnt != '0);
+    wire wr_segment_done = wr_w_hs && m_axi_wlast;
+
+    logic [BUS_WIDTH-1:0] wr_aligned_wdata;
+    logic [BUS_WIDTH/8-1:0] wr_aligned_wstrb;
+    logic [2*BUS_WIDTH-1:0] wr_shifted_data;
+    logic [2*BYTE_PER_BEAT-1:0] wr_shifted_mask;
+
+    // 同一次字节移位同时形成当前总线字和下一次传输保留的高位数据。
+    assign wr_shifted_data = {{BUS_WIDTH{1'b0}}, src_wdata} << {wr_row_offset, 3'b000};
+    assign wr_shifted_mask = {{BYTE_PER_BEAT{1'b0}}, src_wmask} << wr_row_offset;
+
+    always_comb begin
+        wr_aligned_wdata = src_wdata;
+        wr_aligned_wstrb = src_wmask;
+
+        if (wr_row_cross) begin
+            if (wr_tail_beat) begin
+                wr_aligned_wdata = wr_tail_data;
+                wr_aligned_wstrb = wr_tail_mask;
+            end else begin
+                wr_aligned_wdata =
+                    wr_shifted_data[BUS_WIDTH-1:0] | wr_tail_data;
+                wr_aligned_wstrb =
+                    wr_shifted_mask[BYTE_PER_BEAT-1:0] | wr_tail_mask;
+            end
+        end
+    end
+
+    assign m_axi_awsize  = 3'(AXI_SIZE_VALUE);
+    assign m_axi_awburst = 2'b01; // INCR
+    assign m_axi_wdata   = wr_abort_hold_valid ? wr_abort_hold_data :
+                          wr_abort ? '0 : wr_aligned_wdata;
+    assign m_axi_wstrb   = wr_abort_hold_valid ? wr_abort_hold_mask :
+                          wr_abort ? '0 : wr_aligned_wstrb;
+    assign m_axi_wvalid  = wr_active && wr_data_active &&
+                           (wr_abort || (wr_need_src_beat ? src_wvalid : 1'b1));
+    assign m_axi_wlast   = (wr_segment_beat_cnt == wr_segment_last_beat);
+    assign m_axi_bready  = wr_active;
+    assign src_wready    = wr_active && wr_data_active && !wr_abort &&
+                           wr_need_src_beat && m_axi_wready;
+
+    wire last_wr_b = wr_b_hs && (wr_outstanding_cnt == WR_OUTS_W'(1)) &&
+        (wr_cmd_row_cnt == wr_cfg_rows) && !m_axi_awvalid;
+    wire wr_abort_drained = wr_abort && !m_axi_awvalid &&
+        wr_outstanding_cnt == '0 && !wr_data_active && wr_pending_data_cnt == '0;
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            wr_done_r <= 1'b0;
+        end else begin
+            wr_done_r <= wr_active && (last_wr_b || wr_abort_drained);
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            wr_active           <= 1'b0;
+            wr_cfg_base_addr    <= '0;
+            wr_cfg_row_stride   <= '0;
+            wr_cfg_rows         <= '0;
+            wr_cfg_burst_len_m1 <= '0;
+            wr_error_r          <= 1'b0;
+        end else if (wr_start && !wr_active && !abort) begin
+            wr_active           <= 1'b1;
+            wr_cfg_base_addr    <= wr_base_addr;
+            wr_cfg_row_stride   <= wr_row_stride;
+            wr_cfg_rows         <= write_row_count_t'(wr_rows_to_write);
+            wr_cfg_burst_len_m1 <= wr_burst_len_m1;
+            wr_error_r          <= 1'b0;
+        end else begin
+            if (wr_b_hs && m_axi_bresp[1]) wr_error_r <= 1'b1;
+            if (wr_done_r) wr_active <= 1'b0;
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            m_axi_awvalid <= 1'b0;
+            m_axi_awaddr  <= '0;
+            m_axi_awlen   <= '0;
+            wr_cmd_row_cnt <= '0;
+            wr_cmd_row_addr_cur <= '0;
+            wr_cmd_beat_cnt <= '0;
+            wr_data_row_cnt <= '0;
+            wr_data_row_addr_cur <= '0;
+            wr_beat_cnt   <= '0;
+            wr_segment_beat_cnt <= '0;
+            wr_segment_last_beat <= '0;
+            wr_tail_data   <= '0;
+            wr_tail_mask   <= '0;
+            wr_data_active <= 1'b0;
+            wr_outstanding_cnt <= '0;
+            wr_pending_data_cnt <= '0;
+            wr_pending_cmd_cross <= 1'b0;
+        end else if (wr_start && !wr_active && !abort) begin
+            m_axi_awvalid <= 1'b0;
+            m_axi_awaddr  <= wr_base_addr;
+            m_axi_awlen   <= wr_burst_len_m1;
+            wr_cmd_row_cnt <= '0;
+            wr_cmd_row_addr_cur <= wr_base_addr;
+            wr_cmd_beat_cnt <= '0;
+            wr_data_row_cnt <= '0;
+            wr_data_row_addr_cur <= wr_base_addr;
+            wr_beat_cnt   <= '0;
+            wr_segment_beat_cnt <= '0;
+            wr_segment_last_beat <= '0;
+            wr_tail_data   <= '0;
+            wr_tail_mask   <= '0;
+            wr_data_active <= 1'b0;
+            wr_outstanding_cnt <= '0;
+            wr_pending_data_cnt <= '0;
+            wr_pending_cmd_cross <= 1'b0;
+        end else if (wr_active) begin
+            if (wr_done_r) begin
+                m_axi_awvalid <= 1'b0;
+                wr_data_active <= 1'b0;
+                wr_outstanding_cnt <= '0;
+                wr_pending_data_cnt <= '0;
+                wr_pending_cmd_cross <= 1'b0;
+            end else begin
+                if (wr_aw_hs) begin
+                    m_axi_awvalid <= 1'b0;
+                    if (wr_cmd_beat_cnt + beat_count_t'(m_axi_awlen) + beat_count_t'(1) == wr_cmd_row_beats) begin
+                        wr_cmd_row_cnt <= wr_cmd_row_cnt + write_row_count_t'(1);
+                        wr_cmd_row_addr_cur <= wr_cmd_row_addr_cur + wr_cfg_row_stride;
+                        wr_cmd_beat_cnt <= '0;
+                    end else begin
+                        wr_cmd_beat_cnt <= wr_cmd_beat_cnt + beat_count_t'(m_axi_awlen) + beat_count_t'(1);
+                    end
+                    wr_pending_cmd_cross <= 1'b0;
+                end else if (!m_axi_awvalid && wr_can_issue_aw) begin
+                    m_axi_awvalid <= 1'b1;
+                    m_axi_awaddr  <= wr_cmd_segment_addr;
+                    m_axi_awlen   <= 8'(wr_selected_last_beat[0]);
+                    wr_pending_cmd_cross <= (wr_cmd_beat_cnt == '0) && (wr_cmd_row_offset != '0);
+                end
+
+                unique case ({wr_aw_hs, wr_b_hs})
+                    2'b10: wr_outstanding_cnt <= wr_outstanding_cnt + 1'b1;
+                    2'b01: wr_outstanding_cnt <= wr_outstanding_cnt - 1'b1;
+                    default: wr_outstanding_cnt <= wr_outstanding_cnt;
+                endcase
+
+                // Accepted physical addresses and completed W bursts are
+                // counted independently from logical row progress.
+                unique case ({wr_aw_hs, wr_segment_done})
+                    2'b10: wr_pending_data_cnt <= wr_pending_data_cnt + 1'b1;
+                    2'b01: wr_pending_data_cnt <= wr_pending_data_cnt - 1'b1;
+                    default: wr_pending_data_cnt <= wr_pending_data_cnt;
+                endcase
+
+                if (wr_can_start_data) begin
+                    wr_data_active <= 1'b1;
+                    wr_segment_beat_cnt <= '0;
+                    wr_segment_last_beat <= wr_selected_last_beat[1];
+                end
+
+                if (wr_w_hs) begin
+                    if (wr_segment_done) begin
+                        wr_data_active <= 1'b0;
+                        wr_segment_beat_cnt <= '0;
+                    end else begin
+                        wr_segment_beat_cnt <= wr_segment_beat_cnt + beat_count_t'(1);
+                    end
+                    if (wr_need_src_beat && wr_row_cross) begin
+                        wr_tail_data <= wr_shifted_data[2*BUS_WIDTH-1:BUS_WIDTH];
+                        wr_tail_mask <= wr_shifted_mask[2*BYTE_PER_BEAT-1:BYTE_PER_BEAT];
+                    end
+                    if (wr_row_end) begin
+                        wr_beat_cnt   <= '0;
+                        wr_data_active <= 1'b0;
+                        wr_data_row_cnt <= wr_data_row_cnt + write_row_count_t'(1);
+                        wr_data_row_addr_cur <= wr_data_row_addr_cur + wr_cfg_row_stride;
+                        wr_tail_data   <= '0;
+                        wr_tail_mask   <= '0;
+                    end else begin
+                        wr_beat_cnt <= wr_beat_cnt + beat_count_t'(1);
+                    end
+                end
+
+            end
+        end else begin
+            m_axi_awvalid <= 1'b0;
+            wr_cmd_row_cnt <= '0;
+            wr_cmd_row_addr_cur <= '0;
+            wr_cmd_beat_cnt <= '0;
+            wr_data_row_cnt <= '0;
+            wr_data_row_addr_cur <= '0;
+            wr_beat_cnt   <= '0;
+            wr_segment_beat_cnt <= '0;
+            wr_segment_last_beat <= '0;
+            wr_tail_data   <= '0;
+            wr_tail_mask   <= '0;
+            wr_data_active <= 1'b0;
+            wr_outstanding_cnt <= '0;
+            wr_pending_data_cnt <= '0;
+            wr_pending_cmd_cross <= 1'b0;
+        end
+    end
+
+endmodule

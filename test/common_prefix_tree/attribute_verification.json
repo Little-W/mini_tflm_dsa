@@ -1,0 +1,117 @@
+{
+  "candidate": {
+    "reference_sha256": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8",
+    "candidate_sha256": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280",
+    "functional_text_unchanged_after_removing_attributes_and_retention_aliases": true,
+    "candidate": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/area_review/prefix_attributes/terminal_propagate.sv"
+  },
+  "binary_proofs_passed": true,
+  "binary_configurations": 68,
+  "four_state_equivalent": true,
+  "four_state_comparisons": 2226176,
+  "attributes": {
+    "preserved": "All generate nodes and propagate nodes with group >= 2**level",
+    "unpreserved": "Complete low-prefix propagation and duplicate group-carry aliases"
+  },
+  "existing_graph_analysis": {
+    "scope": "Static pruning count on the existing mapped graph with the candidate retention set applied as sinks; not a resynthesis measurement. Every sequential, memory, DSP and unknown cell remains a functional sink.",
+    "source_netlist": "/workspace/scratch/0f396cc9e13a/measurements/soc_depth14_round4/soc_top/mapped.json",
+    "removable_lut_cells": 495,
+    "removable_other_cells": {
+      "INV": 4
+    }
+  },
+  "implementation_measurement": {
+    "same_options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GTILE=16",
+      "-GBUS_WIDTH=64",
+      "-GPE_COUNT=8",
+      "-GWINDOW_LANES=8",
+      "-GSHARED_STORAGE_ENABLE=1",
+      "-GSHARED_QUANT_ENABLE=1",
+      "-GSHARED_STORAGE_ADDR_WIDTH=12"
+    ],
+    "changed_files": [
+      "rtl/common/parallel_prefix_add.sv"
+    ],
+    "inputs": {
+      "reference_folder": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round6/root_module_mapping/vector_engine",
+      "reference_sources_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+        "rtl/npu/conv/vector_config_check.sv": "94cf886d38520774ed5536c12952537a446fd340cee29ecbd3cfb862e7ae59af",
+        "rtl/npu/conv/vector_writeback.sv": "8a04ed73fed51661bc0322b4a486d7fabe0693bc7ce745cd5687598b4dae8481",
+        "rtl/npu/conv/vector_round_shift.sv": "bc7ebe8934fccdc28a5e37c626e9334146199f31350aab3f96e5b67d27c2f624",
+        "rtl/npu/conv/vector_scalar_multiplier.sv": "cb653aa087d808bfb9526b6a872d76d0b7caa05cab49466833567d04a3f373f3",
+        "rtl/npu/conv/vector_pe.sv": "5168001a2aee177bb0f771f0a4c58438359584732f22bd48cacbc357859d9206",
+        "rtl/npu/conv/vector_softmax.sv": "041beb3bef8331bffd816a41a0fd6bd6bbc880f6f6bf7c705ce5b9abbe71a8de",
+        "rtl/npu/conv/vector_quant_params.sv": "136150ca5086ef69a9b28b9bf811d550621e3a94c3f5bff7aefb6f02c51b18b2",
+        "rtl/npu/conv/vector_engine.sv": "b2ab12deb8b442429b0a1bb794f2b5d1b90efe23e48fc9d7802b0a37f53f92bb",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+      },
+      "candidate_sources_sha256": {
+        "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+        "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+        "rtl/npu/conv/vector_config_check.sv": "94cf886d38520774ed5536c12952537a446fd340cee29ecbd3cfb862e7ae59af",
+        "rtl/npu/conv/vector_writeback.sv": "8a04ed73fed51661bc0322b4a486d7fabe0693bc7ce745cd5687598b4dae8481",
+        "rtl/npu/conv/vector_round_shift.sv": "bc7ebe8934fccdc28a5e37c626e9334146199f31350aab3f96e5b67d27c2f624",
+        "rtl/npu/conv/vector_scalar_multiplier.sv": "cb653aa087d808bfb9526b6a872d76d0b7caa05cab49466833567d04a3f373f3",
+        "rtl/npu/conv/vector_pe.sv": "5168001a2aee177bb0f771f0a4c58438359584732f22bd48cacbc357859d9206",
+        "rtl/npu/conv/vector_softmax.sv": "041beb3bef8331bffd816a41a0fd6bd6bbc880f6f6bf7c705ce5b9abbe71a8de",
+        "rtl/npu/conv/vector_quant_params.sv": "136150ca5086ef69a9b28b9bf811d550621e3a94c3f5bff7aefb6f02c51b18b2",
+        "rtl/npu/conv/vector_engine.sv": "b2ab12deb8b442429b0a1bb794f2b5d1b90efe23e48fc9d7802b0a37f53f92bb",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+      },
+      "changed_files": [
+        "rtl/common/parallel_prefix_add.sv"
+      ],
+      "candidate_source_root": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/area_review/prefix_attributes/source"
+    },
+    "cases": {
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 14105,
+          "flip_flops": 8417,
+          "carry4": 746,
+          "ramb36e1": 0,
+          "ramb18e1": 1,
+          "dsp48e1": 14,
+          "distributed_ram_lut_sites_nominal": 0
+        },
+        "maximum_register_depth": 14
+      },
+      "candidate": {
+        "resources": {
+          "logic_lut_cells": 13935,
+          "flip_flops": 8417,
+          "carry4": 744,
+          "ramb36e1": 0,
+          "ramb18e1": 1,
+          "dsp48e1": 14,
+          "distributed_ram_lut_sites_nominal": 0
+        },
+        "maximum_register_depth": 13
+      }
+    }
+  },
+  "passed": true,
+  "production_sha256": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280",
+  "proof_summary": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/area_review/prefix_attributes/proof/summary.json",
+  "measurement_summary": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/area_review/prefix_attributes/measurement.json"
+}

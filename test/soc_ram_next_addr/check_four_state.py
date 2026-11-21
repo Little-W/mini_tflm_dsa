@@ -4,16 +4,18 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
-from common import REFERENCE, WIDTHS, digest, snapshot, miter
+from common import ROOT, REFERENCE, WIDTHS, digest, snapshot, miter
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference', default=REFERENCE)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     args = parser.parse_args()
     out = args.out.resolve()
-    functions, inputs = snapshot(out / 'inputs', args.reference)
+    functions, inputs = snapshot(out / 'inputs', args.reference, args.source_root, args.reference_root)
     model = out / 'miter.sv'
     model.write_text(miter(*functions))
     instances, reports = [], []

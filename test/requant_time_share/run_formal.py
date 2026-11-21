@@ -12,6 +12,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True);a=p.parse_args()
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
     sources=[ROOT/s for s in ['rtl/npu/writeback/requant_group_buffer.sv','rtl/common/regfile.v','test/requant_time_share/buffer_proof.sv']]
+    sources.append(ROOT/'test/monitors/requant_group_buffer_observer.sv')
     hashes={str(s.relative_to(ROOT)):sha(s) for s in sources};results=[]
     for rows in (1,3,16,512,1024):
         script=out/f'rows_{rows}.ys'

@@ -5,7 +5,7 @@ import json
 import math
 from pathlib import Path
 import subprocess
-from common import REFERENCE, digest, snapshot, helper_miter
+from common import ROOT, REFERENCE, digest, snapshot, helper_miter
 
 PROFILES = [(8, 8, 1), (8, 32, 3), (8, 64, 32), (8, 64, 64),
             (16, 24, 1031), (16, 128, 1024), (32, 64, 32768), (40, 1024, 32769)]
@@ -15,11 +15,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference', default=REFERENCE)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     args = parser.parse_args()
     out = args.out.resolve()
-    _, inputs = snapshot(out / 'inputs', args.reference)
+    _, inputs = snapshot(out / 'inputs', args.reference, args.source_root, args.reference_root)
     model = out / 'helper_miter.sv'
-    model.write_text(helper_miter(args.reference))
+    model.write_text(helper_miter(args.reference, args.source_root, args.reference_root))
     instances, reports = [], []
     count, maximum_result = len(PROFILES), max(dw // 8 + 2 for _, dw, _ in PROFILES)
     for index, (aw, dw, dp) in enumerate(PROFILES):

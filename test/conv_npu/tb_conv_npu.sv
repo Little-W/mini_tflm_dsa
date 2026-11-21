@@ -6,6 +6,12 @@
 `ifndef TB_BUS_WIDTH
 `define TB_BUS_WIDTH 32
 `endif
+`ifndef TB_NPU_ADDR_WIDTH
+`define TB_NPU_ADDR_WIDTH 19
+`endif
+`ifndef TB_VECTOR_PE_COUNT
+`define TB_VECTOR_PE_COUNT ((`TB_SIZE < 16) ? `TB_SIZE : 16)
+`endif
 `ifndef TB_READ_BEAT_CYCLES
 `define TB_READ_BEAT_CYCLES 1
 `endif
@@ -20,6 +26,9 @@
 `endif
 `ifndef TB_CONV_CACHE_SETS
 `define TB_CONV_CACHE_SETS 32
+`endif
+`ifndef TB_CONV_LINE_BYTES
+`define TB_CONV_LINE_BYTES 16
 `endif
 `ifndef TB_CONV_CACHE_POLICY
 `define TB_CONV_CACHE_POLICY 2
@@ -286,10 +295,11 @@ module tb_conv_npu;
     longint unsigned read_bytes,input_read_bytes,read_requests,write_bytes;
 
     npu_top #(.BUS_WIDTH(`TB_BUS_WIDTH),.SIZE(SIZE),.DATA_WIDTH(16),.WEIGHT_WIDTH(16),.IA_CACHE_BLOCKS(`TB_IA_CACHE_BLOCKS),.PS_FRAME_COUNT(`TB_PS_FRAME_COUNT),.AXI_READ_OUTSTANDING(4),
+        .ADDR_WIDTH(`TB_NPU_ADDR_WIDTH),.VECTOR_PE_COUNT(`TB_VECTOR_PE_COUNT),
         .SHARED_BANK_BYTES(`TB_SHARED_BANK_BYTES),.SHARED_BANK_COUNT(`TB_SHARED_BANK_COUNT),
         .DMA_MAX_BYTES(`TB_DMA_MAX_BYTES),
         .PS_STORAGE_ROWS(`TB_PS_STORAGE_ROWS),.OA_S16_FIFO_BANKS_MAX(`TB_OA_S16_FIFO_BANKS_MAX),
-        .CONV_CACHE_SETS(`TB_CONV_CACHE_SETS),.CONV_CACHE_WAYS(2),.CONV_LINE_BYTES(16),
+        .CONV_CACHE_SETS(`TB_CONV_CACHE_SETS),.CONV_CACHE_WAYS(2),.CONV_LINE_BYTES(`TB_CONV_LINE_BYTES),
         .CONV_CACHE_POLICY(`TB_CONV_CACHE_POLICY)) u_dut(
         .clk(clk),.rst_n(rst_n),.calc_start(calc_start),.sa_ready(sa_ready),.done_valid(done_valid),.done_ready(done_ready),.err_code(err_code),
         .cfg_operand_fetch64(1'b0),.cfg_16bits_ia(cfg[12][0]),.cfg_16x8(cfg[28][0]),.cfg_dataflow_mode(cfg[8][0]),

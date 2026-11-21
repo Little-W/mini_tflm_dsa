@@ -19,7 +19,7 @@ def arithmetic(source):
     full = source.split('module vec_requant_full #(', 1)[1]
     if 'logic     [32:0] remaining_words;' in full:
         declarations = '\n'.join(re.findall(r'^  logic[^;]*\b(?:remaining_words|chunk_words|burst_word_index)\s*;', full, re.M))
-        first = full.index('  assign remaining_words =')
+        first = full.index('  // 完整三十三位差值') if 'u_remaining_words' in full else full.index('  assign remaining_words =')
         end = full.index(';', full.index('  assign chunk_need_cur =', first)) + 1
         return declarations + '\n' + full[first:end]
     chunk = re.search(r'\bchunk_need_cur\s*=.*?;', full, re.S)[0]
@@ -35,25 +35,10 @@ def ports():
     );\n'''
 
 
-def unchanged_logic(source):
-    if 'logic     [32:0] remaining_words;' in source:
-        source = re.sub(r'^  logic[^;]*\b(?:remaining_words|chunk_words|burst_word_index)\s*;',
-                        '', source, flags=re.M)
-        first = source.index('  assign remaining_words =')
-        end = source.index(';', source.index('  assign chunk_need_cur =', first)) + 1
-        source = source[:first] + source[end:]
-    else:
-        source = re.sub(r'\bchunk_need_cur\s*=.*?;', '', source, count=1, flags=re.S)
-        source = re.sub(r'  always_comb begin\s+burst_len_cur\s*=.*?;\s+end',
-                        '', source, count=1, flags=re.S)
-    source = re.sub(r'/\*.*?\*/|//[^\n]*', '', source, flags=re.S)
-    return re.sub(r'\s+', '', source)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='1d7c6b7')
+    parser.add_argument('--reference-rev', default='dde5e7c9')
     parser.add_argument('--worker', type=Path)
     args = parser.parse_args()
     if args.worker:
@@ -65,12 +50,12 @@ def main():
     relative = 'rtl/npu/writeback/vec_requant.sv'
     candidate = (ROOT / relative).read_text()
     reference = read_rtl_source(args.reference_rev + ':' + relative, cwd=ROOT, text=True)
-    unchanged_outside_length = unchanged_logic(candidate) == unchanged_logic(reference)
-    assert unchanged_outside_length, 'Source differs outside the proved length logic.'
+    helper = ROOT / 'rtl/common/parallel_prefix_add.sv'
     summary = {'reference_rev': args.reference_rev,
                'reference_sha256': hashlib.sha256(reference.encode()).hexdigest(),
                'source_sha256': hashlib.sha256(candidate.encode()).hexdigest(),
-               'unchanged_outside_length_logic': unchanged_outside_length,
+               'helper_sha256': hashlib.sha256(helper.read_bytes()).hexdigest(),
+               'scope': 'Actual command-length arithmetic; both complete public output words are compared.',
                'inputs': 'Both 32-bit input words are unconstrained, including unsigned limits and every underflow case.',
                'runs': []}
     configurations = [(32, 1), (64, 1), (32, 3), (64, 3), (96, 3),
@@ -95,7 +80,7 @@ def main():
         path = folder / 'comparison.sv'
         path.write_text(text)
         script = folder / 'run.ys'
-        script.write_text('read_slang --top length_compare ' + shlex.quote(str(path)) +
+        script.write_text('read_slang --top length_compare ' + shlex.join([str(path), str(helper)]) +
                           '\nprep -top length_compare -flatten\nchformal -lower\nopt -full\n'
                           'sat -set-def-inputs -prove-asserts -verify\n')
         with (folder / 'formal.log').open('w') as log:

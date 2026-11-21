@@ -36,6 +36,7 @@ def main():
         root / "rtl/common/regfile.v",
         root / "rtl/common/add_equal.sv",
         root / "rtl/common/add3_equal.sv",
+        root / "rtl/common/parallel_prefix_add.sv",
     ]
     before = {str(path.relative_to(root)): digest(path) for path in sources}
     primitive_sources = []

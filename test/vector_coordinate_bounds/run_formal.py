@@ -24,17 +24,20 @@ def span(source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference-rev', default='2f06471c')
+    parser.add_argument('--reference-rev', default='dde5e7c9')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     reference = read_rtl_source(args.reference_rev + ':' + SOURCE, cwd=ROOT, text=True)
     candidate = (ROOT / SOURCE).read_text()
-    packages = [ROOT/'rtl/npu/conv/conv_im2col_pkg.sv', ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
+    packages = [ROOT/'rtl/npu/conv/conv_im2col_pkg.sv', ROOT/'rtl/npu/conv/vector_engine_pkg.sv',
+                ROOT/'rtl/common/parallel_prefix_add.sv']
+    dependency_hashes = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+                         for path in packages}
     header = '''module coordinate_bounds (
       input logic signed [33:0] input_x, input_y, input_origin_x,
       input vector_engine_pkg::vector_engine_cfg_t c,
-      output logic o_column_valid, o_row_valid
+      output logic o_column_valid, o_row_valid, o_current_valid
     );
       wire signed [33:0] next_column_x=input_x+$signed(34'(c.image.dilation_w));
       wire signed [33:0] next_row_y=input_y+$signed(34'(c.image.dilation_h));
@@ -43,11 +46,22 @@ def main():
     for label, source in [('reference', reference), ('candidate', candidate)]:
         first, last = span(source)
         path = out/(label+'.sv')
+        if 'vector_coordinate_bound u_input_column_bound' in source:
+            current_first = source.index('  vector_coordinate_bound u_input_column_bound')
+            current_end = source.index('  always_ff', current_first)
+            current_logic = 'logic input_column_in_bounds, input_row_in_bounds;\n' + source[current_first:current_end]
+            helper = re.search(r'^module vector_coordinate_bound\b.*?^endmodule', source, re.M | re.S)[0]
+        else:
+            current_logic = re.search(r'  assign in_bounds\s*=.*?;', source, re.S)[0]
+            helper = ''
         path.write_text(header+source[first:last]+'''
+          logic in_bounds;
+        '''+current_logic+'''
           assign o_column_valid = next_column_valid;
           assign o_row_valid = next_row_valid;
+          assign o_current_valid = in_bounds;
         endmodule
-        ''')
+        '''+helper+'\n')
         commands += ['read_slang --top coordinate_bounds ' + ' '.join(shlex.quote(str(p)) for p in packages+[path]),
                      'prep -top coordinate_bounds -flatten', 'opt -full',
                      'rename coordinate_bounds '+label, 'design -stash '+label]
@@ -63,12 +77,16 @@ def main():
                                 stdout=stream,stderr=subprocess.STDOUT,cwd=ROOT)
     report = {'reference_rev':args.reference_rev,
               'source_sha256':hashlib.sha256(candidate.encode()).hexdigest(),
+              'dependency_sha256':dependency_hashes,
               'reference_sha256':hashlib.sha256(reference.encode()).hexdigest(),
-              'proof_scope':'Both coordinate validity predicates extracted from vector_engine RTL',
+              'proof_scope':'Current coordinate and both next-coordinate validity predicates extracted from vector_engine RTL',
               'inputs_constrained':False,
               'coordinate_width':34,'dimension_width':16,
               'formal_log_sha256':hashlib.sha256(log.read_bytes()).hexdigest(),
               'passed':result.returncode==0 and 'Equivalence successfully proven' in log.read_text()}
+    if dependency_hashes != {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+                             for path in packages} or (ROOT/SOURCE).read_text() != candidate:
+        raise RuntimeError('验证期间坐标源码或公共依赖发生变化')
     (out/'summary.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report),flush=True)
     if not report['passed']:

@@ -1,0 +1,745 @@
+{
+  "passed": true,
+  "source_sha256": "aa5f400687a81064f97953216911684f4a57042e4f687528db8fe362d136aac0",
+  "behavior": {
+    "additional_pipeline_stages": 0,
+    "public_cycle_relationships_unchanged": true,
+    "tail_columns": "wr_valid is preserved; valid tile lanes beyond valid_cols return zero",
+    "qualification_capture": "rd_rsp_lane_in_data_r is reset to zero and updated together with column metadata on rd_r_hs"
+  },
+  "formal": {
+    "passed": true,
+    "inputs": {
+      "reference": {
+        "path": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/reference.sv",
+        "sha256": "7a22ff43b1d4f8f2c63cc01b1773533f1ea567530f05d7ba0e6ac5444ec088e2"
+      },
+      "candidate": {
+        "path": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/candidate.sv",
+        "sha256": "aa5f400687a81064f97953216911684f4a57042e4f687528db8fe362d136aac0"
+      }
+    },
+    "input_assumptions": [],
+    "relations": [
+      "Every registered lane qualification equals the reference expression of the captured column metadata on every cycle"
+    ],
+    "method": "Expose the actual lane_in_data of both implementations as proof outputs; compare every public output, shared clocked state, expanded memory, and every derived lane qualification",
+    "generated_source_sha256": {
+      "reference": "474f8b5e0c3e6ac3e0f5d1e0ab0f765f36f3615be608ed704af97ea0448f7dca",
+      "candidate": "f175afc96884b097afe73dbb71765c9da589b60dd1dfec5de9e0434a34d32067"
+    },
+    "complete_dma": {
+      "passed": true,
+      "inputs": {
+        "reference": {
+          "path": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/formal/reference_observed.sv",
+          "sha256": "474f8b5e0c3e6ac3e0f5d1e0ab0f765f36f3615be608ed704af97ea0448f7dca"
+        },
+        "current": {
+          "path": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/formal/candidate_observed.sv",
+          "sha256": "f175afc96884b097afe73dbb71765c9da589b60dd1dfec5de9e0434a34d32067"
+        }
+      },
+      "helper_sha256": {
+        "regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab"
+      },
+      "input_assumptions": [],
+      "scope": "Every public output, every shared clocked state, and expanded memories; all external input sequences",
+      "profiles": [
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1018,
+          "passed": true,
+          "script_sha256": "56107579ee05d675cf999dec580890864b9166c876924b60876246687fc311d6",
+          "log_sha256": "ae9ab39314fd4a4a70fa94d74c6f9d21419c9de16dccbaa6395a19fc248516d6"
+        },
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1500,
+          "passed": true,
+          "script_sha256": "905096db1075613b13d0009000ed8ccd44b6e8700d1e3cb944897fa4e740eb3e",
+          "log_sha256": "730433291dda5bab625f33ad1a1a1713b6affe1971627664d7e76312e0431d58"
+        },
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1022,
+          "passed": true,
+          "script_sha256": "ffa1d22bf19b796d0eaa94d6d153496cff6ce3e7c0858bc10bfc648c9d4e035e",
+          "log_sha256": "5a3b807182053b8443ae38a33df84f1ffd38b5ac93fb58e10474e4ef638ac92c"
+        },
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1504,
+          "passed": true,
+          "script_sha256": "fabae1324e6af5f4bdba8f3cddb2cd5aaf3c671327718cbddf967c0806e04a7d",
+          "log_sha256": "7d995530681f92a58c793697e79af96ee832f7250445d1c4082e3819f608fa08"
+        },
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1020,
+          "passed": true,
+          "script_sha256": "e84d182b0c8368cf8dc4900956e740fe5ab9ebd8ca8c10b6b7f0a314459647eb",
+          "log_sha256": "61a5a34764dfc9080a9a43f762c5ba57b82cd539badb269168d585a4df0a4c33"
+        },
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1502,
+          "passed": true,
+          "script_sha256": "a738c705b3e45b6874529bc7ae7af87ebf87f53b4005b6992c8b9579e1bc7869",
+          "log_sha256": "7f1076b27129e5322c749936d58b4fa340c19eb3e90e1b2e98e0e1106c563395"
+        },
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1024,
+          "passed": true,
+          "script_sha256": "e4981c83617c347d2322dc9b77385d45ebd7174d231f2f8dfa8d30bd4f66a371",
+          "log_sha256": "199c5bab7da2e99d0c7c2b2b53d7246b571af4d0f533c09e0c2beb41a04cfe9d"
+        },
+        {
+          "size": 16,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1506,
+          "passed": true,
+          "script_sha256": "7df87493dbabb7ef5ab9a72e144899df885791bb676fbcc819c4396223cdc8d7",
+          "log_sha256": "32595e2cf6f83ecefd3dd813a052a084165af3ff1f8d445631df7abb8ba395f4"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1294,
+          "passed": true,
+          "script_sha256": "ebaf0a3566c22c4027ab2044d52a84cafaa2c14da74d209ad439973e990420cc",
+          "log_sha256": "8b945b82ae69949537832ab6ef8e4cdef771db5070867201a373f8b4ad3bcc3f"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1776,
+          "passed": true,
+          "script_sha256": "343b74397fb93a0039582d561d43351d397d21384b0f899aee64b483ec6909fe",
+          "log_sha256": "cdd3b4bd82c1057d556357f08e993b3b51102210aa47c81af0aac61b7c4ed339"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1298,
+          "passed": true,
+          "script_sha256": "194d8c7d80638a00ce5e8ec6b90b75edf9e5ed2aae0c5259a77f2ae09a229920",
+          "log_sha256": "bbbcd589dabede175582f0417165d3a348ddbc5fc1b6eb886162b420d53a92d4"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1780,
+          "passed": true,
+          "script_sha256": "ba1566cf41a5f1682cd261574e560f1356f7d2a0834d57b837449231bd1b6267",
+          "log_sha256": "e09aef31df3644a1e7d9e3e44dd1aaf3b070feed429bd776d0f3a9a85fbb9eaf"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1296,
+          "passed": true,
+          "script_sha256": "84c6104eb552b75b11f7a731dc82e44185b2d8de1f1becabd725f4fcb1f77600",
+          "log_sha256": "fa78e1209a5415f3bd840b3759339d261cac26a9b4735fce05483cd7838d023e"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1778,
+          "passed": true,
+          "script_sha256": "be9a35a7b4bcfc0f48624445c5e4bee2f2e8c9a3cef214ac04c072d8213e0093",
+          "log_sha256": "3c84a066798b7d0d96585d98c9a8a178adfe0c6046533b14ce51e7368942e2bf"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1300,
+          "passed": true,
+          "script_sha256": "e9c9df8b512ee39afea2a8f97fa074f99b7411ec6df71a81e5d123d91c88e07d",
+          "log_sha256": "75130144c11de35edcd1729b395a568a9e885add8315d4f16d2cd807630b82ba"
+        },
+        {
+          "size": 16,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1782,
+          "passed": true,
+          "script_sha256": "b8ed3b3a620db7213e676f1c80693e4b1c80293b9ee291ae52552d3db6ea3300",
+          "log_sha256": "a0c17a15d90d997f78ba17a6bd33ee184a89f400ca4d982cda2e3189f5093b01"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1038,
+          "passed": true,
+          "script_sha256": "0ed98b8ddade27e54e59894a02c18d3f1188a39e7eb811086fd7c58bed715100",
+          "log_sha256": "fecc5c668629b172d8c698dc101567e1d25d96296f4d46d92d291406469357d9"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1526,
+          "passed": true,
+          "script_sha256": "eb622df38f7cf9706e0f736f4e8c2746a600800ce443102d635f75f8c4042305",
+          "log_sha256": "e247179a0018b5cadff740894d420332fee54ecc8ebcf7f0928d23a1d2f01f49"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1042,
+          "passed": true,
+          "script_sha256": "485b04ca1034d23dc8066785fa445eeca0b2ac718924fe88be68de05ead2c9f4",
+          "log_sha256": "2bada7ab61cf73020a38c6a8406a422d72597de99a2ed1296404a54389abb4c6"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1530,
+          "passed": true,
+          "script_sha256": "b9e18a5ad2c8bf0c23ef6bab508950f754b274acd4631fa194eaa0fcf2ed07da",
+          "log_sha256": "06a7573c29b92695459c58977b843fa8c92849637517823cc16590da2ebf6b2d"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1040,
+          "passed": true,
+          "script_sha256": "8202239c0f01909bb59cc6cc2c5fdb810788903ef4c285117a225f012f04d791",
+          "log_sha256": "801ded8c3d866c82c30b0990cf565897760c619677f81fad3bc99a7789886412"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1528,
+          "passed": true,
+          "script_sha256": "d31443d879f195f44c9faeed4561d2826b528f74292ab7726814d9f0b40b533f",
+          "log_sha256": "9c36e8b17afd5c5fb29415301f7d3534762f16bd0a38467b1763f9c76facb0e2"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1044,
+          "passed": true,
+          "script_sha256": "23763da4260b3ae081dc5452649b9cf49b2cf4231e7d81031fee85582c91da47",
+          "log_sha256": "7bedcbf899026ec8105375c6549ad7a902b7d2d0fad1d8a25635187b58029529"
+        },
+        {
+          "size": 64,
+          "bus_width": 32,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1532,
+          "passed": true,
+          "script_sha256": "cf117a01d9ef9992c70b8fea112bb01d4df227ec7fdbbdb62ac2ae159dec4327",
+          "log_sha256": "28e717fffdf78c9325b2ccea2ce7679e28f88fc71645630d75f0b462d5739803"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1314,
+          "passed": true,
+          "script_sha256": "52e85ba81bae09ff5a01c70b2d698b46a243132285fc5429ab8d1fafb32cc78f",
+          "log_sha256": "6039220bfd87c9c7fe9ed9132a61f539d7910b8610b9bfe54eabfb9516f52e26"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1802,
+          "passed": true,
+          "script_sha256": "f8160fd649b25f9e4705d030c0c2dbcdcff87232cc9b0a9827ecdcc31f921946",
+          "log_sha256": "fca2dd56326bafa7318529b198e3ef3a3828c70cfabaae66b1c5aefd7e8e02d5"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1318,
+          "passed": true,
+          "script_sha256": "65b4788b0e6e86ffd52e55c05d4fbb56e05caaf1470625eef9e774fea2d93d8e",
+          "log_sha256": "4afa06bc284cf0fa447bef032b80cfa87b3b6f0178e792a7acffa77290ebadf6"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 1,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1806,
+          "passed": true,
+          "script_sha256": "8402b2b4ef10a4b3bb897628fdb42b11a41c54c196c3ca2ad42e31645a1442c8",
+          "log_sha256": "b92f1e4419f38d4309149dc19edccd4e3e69ff135cb6bc2823d7bfdec0d71fa3"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 1,
+          "equivalent_bits": 1316,
+          "passed": true,
+          "script_sha256": "f0ac44435f32f516cedc97f19362520dcdcf3390723f959f4d7a2bb55becd14a",
+          "log_sha256": "a2f52412b2ad38c284e7354fa712b8be8ab52f1941500b19cfb668e8fe28c11a"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 1,
+          "read_context_depth": 4,
+          "equivalent_bits": 1804,
+          "passed": true,
+          "script_sha256": "044a39b78de060b1eae025ce51b971875928569436980df37297ef81eab429e1",
+          "log_sha256": "9354f27ac080a7827c234c7a870580a149133afd096d52da942ea54e5907ec93"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 1,
+          "equivalent_bits": 1320,
+          "passed": true,
+          "script_sha256": "0e77c1d896980bd2be9df03375ef9eeaeaea331ae1c8f7404679c997d35247e9",
+          "log_sha256": "6b461fb929b336bc3cae0468e1f922d502af1a23af11c8fd43f919db4e2ee490"
+        },
+        {
+          "size": 64,
+          "bus_width": 64,
+          "read_outstanding": 4,
+          "write_outstanding": 4,
+          "read_context_depth": 4,
+          "equivalent_bits": 1808,
+          "passed": true,
+          "script_sha256": "d30499551609ec76eed3a6944dd11608e29148badc643020d769d43057d290f9",
+          "log_sha256": "96c0144d714fd154ac492e6ac14fe16a34fc8b87e95c7884e4d38b127243dd80"
+        }
+      ]
+    }
+  },
+  "transactions": {
+    "passed": true,
+    "totals": {
+      "commands": 1324,
+      "bursts": 16216,
+      "beats": 97228,
+      "raw_words": 88408,
+      "outputs": 449248
+    },
+    "tests": [
+      {
+        "folder": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/read_b32",
+        "passed": true,
+        "outstanding": 4,
+        "dma_max_bytes": 1024,
+        "bus_width": 32,
+        "source_sha256": {
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/npu/dma/axi_linear_block_dma.sv": "aa5f400687a81064f97953216911684f4a57042e4f687528db8fe362d136aac0",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/linear_dma_4k_top.sv": "ed404a93b9613c3f60de1fcb5a6b2b34b28457c1fa3f7501eb25a7b939f5fc05",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/main.cpp": "2635e2b0935dfd6a02cc185d6cc27d818c1da24bfa2e40818661c4c2f03fd0eb",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/run.py": "671b05ac567182bf739efdbcaaa1c468edc679a7f280f5d38133081719acd314"
+        },
+        "sources_unchanged_during_build": true,
+        "binary_sha256": "c21e5164455df11e4fd0d2eaf000b267e035dde8cbc13a57f53c4a9918660f88",
+        "generate_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--assert",
+          "-Wno-fatal",
+          "--top-module",
+          "linear_dma_4k_top",
+          "--Mdir",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/read_b32/obj",
+          "--output-groups",
+          "0",
+          "--output-split",
+          "12000",
+          "-GREAD_OUTSTANDING=4",
+          "-GBUS_WIDTH=32",
+          "-GDMA_MAX_BYTES=1024",
+          "-CFLAGS",
+          "-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES=1024 -DTEST_BUS_WIDTH=32",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/npu/dma/axi_linear_block_dma.sv",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/regfile.v",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/add_equal.sv",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/linear_dma_4k_top.sv",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/main.cpp"
+        ],
+        "compile_command": [
+          "make",
+          "-C",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/read_b32/obj",
+          "-f",
+          "Vlinear_dma_4k_top.mk",
+          "-j",
+          "1",
+          "OPT_FAST=-O1",
+          "OPT_SLOW=-O0",
+          "OPT_GLOBAL=-O1",
+          "VK_PCH_I_FAST=",
+          "VK_PCH_I_SLOW=",
+          "CFG_CXXFLAGS_PCH=-E"
+        ],
+        "runs": [
+          {
+            "random": false,
+            "passed": true,
+            "returncode": 0,
+            "counters": {
+              "commands": 299,
+              "bursts": 3758,
+              "beats": 22178,
+              "raw_words": 21794,
+              "outputs": 77824,
+              "max_outstanding": 4,
+              "random": 0,
+              "cycles": 24030
+            }
+          },
+          {
+            "random": true,
+            "passed": true,
+            "returncode": 0,
+            "counters": {
+              "commands": 299,
+              "bursts": 3758,
+              "beats": 22178,
+              "raw_words": 21794,
+              "outputs": 77824,
+              "max_outstanding": 4,
+              "random": 1,
+              "cycles": 35171
+            }
+          }
+        ]
+      },
+      {
+        "folder": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/read_b64",
+        "passed": true,
+        "outstanding": 4,
+        "dma_max_bytes": 2048,
+        "bus_width": 64,
+        "source_sha256": {
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/npu/dma/axi_linear_block_dma.sv": "aa5f400687a81064f97953216911684f4a57042e4f687528db8fe362d136aac0",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/linear_dma_4k_top.sv": "ed404a93b9613c3f60de1fcb5a6b2b34b28457c1fa3f7501eb25a7b939f5fc05",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/main.cpp": "2635e2b0935dfd6a02cc185d6cc27d818c1da24bfa2e40818661c4c2f03fd0eb",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/run.py": "671b05ac567182bf739efdbcaaa1c468edc679a7f280f5d38133081719acd314"
+        },
+        "sources_unchanged_during_build": true,
+        "binary_sha256": "4300ab1fbf4040cb970e4ec0d70e168d27d020f934615646f75d4ae5fb7229ca",
+        "generate_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--assert",
+          "-Wno-fatal",
+          "--top-module",
+          "linear_dma_4k_top",
+          "--Mdir",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/read_b64/obj",
+          "--output-groups",
+          "0",
+          "--output-split",
+          "12000",
+          "-GREAD_OUTSTANDING=4",
+          "-GBUS_WIDTH=64",
+          "-GDMA_MAX_BYTES=2048",
+          "-CFLAGS",
+          "-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_DMA_MAX_BYTES=2048 -DTEST_BUS_WIDTH=64",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/npu/dma/axi_linear_block_dma.sv",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/regfile.v",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/source/rtl/common/add_equal.sv",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/linear_dma_4k_top.sv",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/linear_dma_4k/main.cpp"
+        ],
+        "compile_command": [
+          "make",
+          "-C",
+          "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/read_b64/obj",
+          "-f",
+          "Vlinear_dma_4k_top.mk",
+          "-j",
+          "1",
+          "OPT_FAST=-O1",
+          "OPT_SLOW=-O0",
+          "OPT_GLOBAL=-O1",
+          "VK_PCH_I_FAST=",
+          "VK_PCH_I_SLOW=",
+          "CFG_CXXFLAGS_PCH=-E"
+        ],
+        "runs": [
+          {
+            "random": false,
+            "passed": true,
+            "returncode": 0,
+            "counters": {
+              "commands": 363,
+              "bursts": 4350,
+              "beats": 26436,
+              "raw_words": 22410,
+              "outputs": 146800,
+              "max_outstanding": 4,
+              "random": 0,
+              "cycles": 35382
+            }
+          },
+          {
+            "random": true,
+            "passed": true,
+            "returncode": 0,
+            "counters": {
+              "commands": 363,
+              "bursts": 4350,
+              "beats": 26436,
+              "raw_words": 22410,
+              "outputs": 146800,
+              "max_outstanding": 4,
+              "random": 1,
+              "cycles": 50251
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "synthesis": {
+    "inputs": {
+      "reference": {
+        "path": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/reference.sv",
+        "sha256": "7a22ff43b1d4f8f2c63cc01b1773533f1ea567530f05d7ba0e6ac5444ec088e2"
+      },
+      "candidate": {
+        "path": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/linear_return_mask/candidate.sv",
+        "sha256": "aa5f400687a81064f97953216911684f4a57042e4f687528db8fe362d136aac0"
+      }
+    },
+    "parameters": {
+      "SIZE": 64,
+      "BUS_WIDTH": 64,
+      "CACHE_BLOCKS": 64,
+      "READ_OUTSTANDING": 4,
+      "WRITE_OUTSTANDING": 4,
+      "RD_CONTEXT_DEPTH": 4
+    },
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "part": "xc7a200tfbg484-3",
+    "family": "xc7",
+    "method": "synth_xilinx -top axi_linear_block_dma -family xc7 -noiopad -noclkbuf -flatten",
+    "scope": "Independent linear DMA; output depth starts at internal clocked storage and excludes external logic",
+    "cases": {
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 1896,
+          "distributed_ram_lut_sites_nominal": 56,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1952,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 742,
+          "dsp48e1": 1,
+          "ramb36e1": 0,
+          "ramb18e1": 1,
+          "carry4": 193,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 193,
+            "DSP48E1": 1,
+            "FDRE": 741,
+            "FDSE": 1,
+            "INV": 56,
+            "LUT2": 562,
+            "LUT3": 226,
+            "LUT4": 238,
+            "LUT5": 521,
+            "LUT6": 349,
+            "MUXF7": 68,
+            "MUXF8": 34,
+            "RAM32M": 14,
+            "RAMB18E1": 1
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "maximum_register_depth": 14,
+        "outputs": {
+          "rd_start_ready": 8,
+          "rd_busy": 0,
+          "rd_finish_beat": 7,
+          "rd_done": 0,
+          "rd_error": 1,
+          "m_axi_rready": 0,
+          "rd_raw_valid": 0,
+          "m_axi_arvalid": 1
+        },
+        "return_paths": {
+          "outputs": {
+            "wr_data": 8,
+            "wr_valid": 1,
+            "rd_raw_valid": 0,
+            "rd_raw_col_base": 0
+          },
+          "qualification_to_data": {
+            "rd_rsp_valid_cols": 8,
+            "rd_rsp_lane_in_data_r": 0
+          },
+          "receive_qualification": {
+            "D": 0,
+            "CE": 0
+          }
+        }
+      },
+      "candidate": {
+        "resources": {
+          "logic_lut_cells": 1812,
+          "distributed_ram_lut_sites_nominal": 56,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 1868,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 718,
+          "dsp48e1": 1,
+          "ramb36e1": 0,
+          "ramb18e1": 1,
+          "carry4": 193,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 193,
+            "DSP48E1": 1,
+            "FDRE": 717,
+            "FDSE": 1,
+            "INV": 56,
+            "LUT2": 571,
+            "LUT3": 174,
+            "LUT4": 248,
+            "LUT5": 436,
+            "LUT6": 383,
+            "MUXF7": 68,
+            "MUXF8": 34,
+            "RAM32M": 14,
+            "RAMB18E1": 1
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "maximum_register_depth": 14,
+        "outputs": {
+          "rd_start_ready": 8,
+          "rd_busy": 0,
+          "rd_finish_beat": 7,
+          "rd_done": 0,
+          "rd_error": 1,
+          "m_axi_rready": 0,
+          "rd_raw_valid": 0,
+          "m_axi_arvalid": 1
+        },
+        "return_paths": {
+          "outputs": {
+            "wr_data": 6,
+            "wr_valid": 1,
+            "rd_raw_valid": 0,
+            "rd_raw_col_base": 0
+          },
+          "qualification_to_data": {
+            "rd_rsp_valid_cols": 0,
+            "rd_rsp_lane_in_data_r": 2
+          },
+          "receive_qualification": {
+            "D": 9,
+            "CE": 1
+          }
+        }
+      }
+    }
+  },
+  "register_path_requirement": {
+    "maximum_cells": 14,
+    "measured_cells": 14,
+    "met": true
+  }
+}

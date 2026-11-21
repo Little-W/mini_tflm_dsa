@@ -17,7 +17,7 @@ def sha(path):
 
 def build(rtl, out, outstanding, args):
     out.mkdir(parents=True, exist_ok=True)
-    sources = [rtl, ROOT/'rtl/common/regfile.v', ROOT/'rtl/common/add_equal.sv',
+    sources = [rtl, args.source_root/'rtl/common/regfile.v', args.source_root/'rtl/common/add_equal.sv',
                Path(__file__).with_name('linear_dma_write_4k_top.sv'),
                Path(__file__).with_name('main.cpp'), Path(__file__).resolve()]
     hashes = {str(p): sha(p) for p in sources}
@@ -72,10 +72,13 @@ def main():
     parser.add_argument('--out', type=Path, default=ROOT/'build/linear_dma_write_4k')
     parser.add_argument('--outstanding', type=int, nargs='+', choices=[1, 4], default=[1, 4])
     parser.add_argument('--jobs', type=int, default=2)
+    parser.add_argument('--source-root', type=Path, default=ROOT,
+                        help='包含待验证 RTL 的独立源码目录')
     parser.add_argument('--reference-rtl', type=Path)
     parser.add_argument('--bus-width', type=int, choices=[32, 64], default=32)
     parser.add_argument('--dma-max-bytes', type=int, help='Optional physical burst limit; default: 256 bus beats')
     args = parser.parse_args()
+    args.source_root = args.source_root.resolve()
     if args.dma_max_bytes is None:
         args.dma_max_bytes = 256 * (args.bus_width // 8)
     if (args.dma_max_bytes < args.bus_width // 8 or args.dma_max_bytes > 256 * (args.bus_width // 8)
@@ -83,7 +86,7 @@ def main():
         parser.error("DMA limit must be 1 through 256 complete bus beats with a power-of-two byte length")
     args.out = args.out.resolve();args.out.mkdir(parents=True, exist_ok=True)
     records = []
-    rtl = ROOT/'rtl/npu/dma/axi_linear_block_dma.sv'
+    rtl = args.source_root/'rtl/npu/dma/axi_linear_block_dma.sv'
     for outstanding in args.outstanding:
         out = args.out/f'outs{outstanding}'
         binary = build(rtl, out, outstanding, args)

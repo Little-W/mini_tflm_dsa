@@ -21,6 +21,7 @@ def main():
         'rtl/npu/writeback/requant_group_buffer.sv','rtl/npu/conv/vector_scalar_multiplier.sv',
         'rtl/common/regfile.v','rtl/common/add_equal.sv','rtl/common/onehot_check.sv',
         'rtl/common/parallel_prefix_add.sv')]
+    sources.append(ROOT/'test/monitors/requant_group_buffer_observer.sv')
     sources += [HERE/'shared_quant_top.sv',HERE/'main.cpp']
     hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources+[Path(__file__)]}
     command=[args.verilator,'--cc','--exe','--build','-j','2','--assert','-Wno-fatal','-Wno-PINMISSING',

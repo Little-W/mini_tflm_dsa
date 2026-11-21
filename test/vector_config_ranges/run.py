@@ -50,8 +50,10 @@ sat -verify -prove equal 1 -show-inputs -show-outputs
 ''')
     runs = [{'name': 'activation_bounds', 'input_bits': 64, 'input_constraints': None,
              **run_stage(script, script.with_suffix('.log'), dict(os.environ))}]
-    packages = ' '.join(shlex.quote(str(ROOT / 'rtl/npu/conv' / name))
-                        for name in ('conv_im2col_pkg.sv', 'vector_engine_pkg.sv'))
+    dependencies = [ROOT / 'rtl/npu/conv' / name
+                    for name in ('conv_im2col_pkg.sv', 'vector_engine_pkg.sv')]
+    dependencies.append(ROOT / 'rtl/common/parallel_prefix_add.sv')
+    packages = ' '.join(shlex.quote(str(path)) for path in dependencies)
     for tile in (4, 16, 64):
         script = out / f'checker_tile{tile}.ys'
         script.write_text(f'''read_slang --top vector_config_check -GTILE={tile} {packages} {shlex.quote(str(reference))}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 from support import ROOT, check_sources
@@ -26,19 +27,41 @@ def main():
         raise RuntimeError("综合与形式验证的输入文件不同")
     check_sources(measurement["inputs"])
     expected = measurement["inputs"]["source_sha256"]
+    source_name = Path(measurement["inputs"].get("source_path", measurement["inputs"]["source"])).name
     tests = {}
     for name, test in functional["tests"].items():
         hashes = [value for path, value in test["source_sha256"].items()
-                  if Path(path).name == "ps_window_scheduler.sv"]
+                  if Path(path).name == source_name]
         if hashes != [expected] or not test["passed"]:
             raise RuntimeError(f"独立功能测试的调度器源码不同：{name}")
+        for helper, expected_helper in measurement["inputs"]["helper_sha256"].items():
+            helper_hashes = [value for path, value in test["source_sha256"].items()
+                             if Path(path).name == Path(helper).name]
+            if helper_hashes != [expected_helper]:
+                raise RuntimeError(f"独立功能测试的公共依赖不同：{name} {helper}")
         tests[name] = {key: value for key, value in test.items()
                        if key not in ("compile_command", "run_command", "source_sha256", "elapsed_seconds")}
         tests[name]["source_sha256"] = {Path(path).name: value
                                         for path, value in test["source_sha256"].items()}
+    derived_state_bits = {}
+    registered_relation_bits = {"reference": 0, "current": 0}
+    if "frame_open" in formal.get("additional_relation_outputs", []):
+        derived_state_bits["frame_open"] = measurement["parameters"]["FRAME_COUNT"]
+        for label in registered_relation_bits:
+            source_path = args.measurement / "inputs" / label / measurement["inputs"]["source"]
+            source_text = source_path.read_text()
+            if re.search(r"\bframe_open\s*(?:\[[^]]+\])?\s*<=", source_text):
+                registered_relation_bits[label] += derived_state_bits["frame_open"]
     result = {
         "passed": True, "synthesis": measurement,
-        "behavior": {"additional_pipeline_stages": 0, "registered_state_bits_added": 0,
+        "behavior": {"additional_pipeline_stages": 0,
+                     "derived_state_bits": derived_state_bits,
+                     "registered_relation_bits": registered_relation_bits,
+                     "registered_state_bits_added": registered_relation_bits["current"] -
+                         registered_relation_bits["reference"],
+                     "mapped_flip_flop_change":
+                         measurement["cases"]["current"]["resources"]["flip_flops"] -
+                         measurement["cases"]["reference"]["resources"]["flip_flops"],
                      "public_cycle_relationships_unchanged": True},
         "formal": formal,
         "functional": {"passed": True, "cases": functional["cases"],

@@ -22,12 +22,39 @@ def main():
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--build-timeout", type=int, default=7200)
+    parser.add_argument('--source-root', type=Path, default=ROOT,
+                        help='与完整 SoC 测量一致的固定 RTL 目录')
     args = parser.parse_args()
     sys.path.insert(0, str(ROOT / "scripts/fpga"))
-    from open_fpga_synth import production_configuration
+    from open_fpga_synth import CASES, production_configuration
     import pyosys
 
     configuration = production_configuration()
+    source_root = args.source_root.resolve()
+    if digest(source_root / configuration['path']) != configuration['sha256']:
+        raise RuntimeError('固定源码的生产配置与当前测试参数不同')
+    top_source = source_root / 'rtl/axi_top/npu_axil_top.sv'
+    line_match = re.search(r'parameter\s+(?:int\s+)?CONV_LINE_BYTES\s*=\s*(\d+)\s*,',
+                           top_source.read_text())
+    if line_match is None:
+        raise RuntimeError('无法读取生产顶层的缓存行长度')
+    cache_line_bytes = int(line_match[1])
+    soc_parameters = CASES['soc_top']['parameters']
+    soc_source = source_root / 'rtl/soc_top.sv'
+    address_match = re.search(r'parameter\s+AXI_ADDR_WIDTH\s*=\s*(\d+)\s*,', soc_source.read_text())
+    if address_match is None:
+        raise RuntimeError('无法读取完整 SoC 的地址宽度')
+    address_width = soc_parameters.get('NPU_ADDR_WIDTH',
+        soc_parameters.get('AXI_ADDR_WIDTH', int(address_match[1])))
+    vector_pe_count = soc_parameters['VECTOR_PE_COUNT']
+    ps_storage_rows = soc_parameters.get('PS_STORAGE_ROWS',
+        (3 * int(configuration['values']['SIZE']) - 1) *
+        (int(configuration['values']['PS_FRAME_COUNT']) + 1))
+    fifo_match = re.search(r'parameter\s+(?:int\s+(?:unsigned\s+)?)?OA_S16_FIFO_BANKS_MAX\s*=\s*(\d+)\s*,',
+                           soc_source.read_text())
+    if fifo_match is None:
+        raise RuntimeError('无法读取完整 SoC 的 INT16 写回 FIFO 容量')
+    oa_s16_fifo_banks_max = soc_parameters.get('OA_S16_FIFO_BANKS_MAX', int(fifo_match[1]))
     values = configuration["values"]
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -73,10 +100,15 @@ def main():
     wrapper.chmod(0o755)
     command = [sys.executable, str(ROOT / "test/conv_npu/run.py"),
                "--out", str(out / "npu"), "--verilator", str(wrapper),
+               '--source-root', str(source_root),
                "--jobs", str(args.jobs), "--sizes", values["SIZE"],
                "--build-timeout", str(args.build_timeout),
                "--bus-width", values["NPU_AXI_DATA_WIDTH"],
                "--cache-bytes", values["IM2COL_CACHE_BYTES"],
+               '--cache-line-bytes', str(cache_line_bytes),
+               '--address-width', str(address_width), '--vector-pe-count', str(vector_pe_count),
+               '--ps-storage-rows', str(ps_storage_rows),
+               '--oa-s16-fifo-banks-max', str(oa_s16_fifo_banks_max),
                "--shared-bank-bytes", values["SHARED_BANK_BYTES"],
                "--shared-bank-count", values["SHARED_BANK_COUNT"],
                "--ps-compress", "--force-raw", "--pool-bytes", values["PS_POOL_BYTES"]]
@@ -85,6 +117,11 @@ def main():
     report_path = out / "npu/summary.json"
     npu = json.loads(report_path.read_text()) if report_path.is_file() else {}
     report = dict(passed=result.returncode == 0 and npu.get("passed", False),
+                  source_root=str(source_root),
+                  cache_line_bytes=cache_line_bytes, cache_parameter_source_sha256=digest(top_source),
+                  address_width=address_width, vector_pe_count=vector_pe_count,
+                  ps_storage_rows=ps_storage_rows, oa_s16_fifo_banks_max=oa_s16_fifo_banks_max,
+                  soc_parameter_source_sha256=digest(soc_source),
                   configuration=configuration, simulation_defines=simulation_defines,
                   primitive_models=list(model_names),
                   observer_models=observer_models,

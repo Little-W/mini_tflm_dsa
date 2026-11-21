@@ -28,6 +28,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     sources = [ROOT/'rtl/npu/writeback/vec_s8_to_fifo.sv',
                ROOT/'rtl/common/regfile.v',
+               ROOT/'rtl/common/parallel_prefix_add.sv',
                ROOT/'rtl/npu/writeback/vec_s16_to_fifo.sv',
                Path(__file__).with_name('tb_writeback_bus.sv')]
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -38,7 +39,8 @@ def main() -> None:
         for filename in ('vec_s8_to_fifo.sv', 'vec_s16_to_fifo.sv'):
             original = read_rtl_source(f'{args.reference}:rtl/npu/writeback/{filename}', cwd=ROOT, text=True)
             renamed = original.replace('vec_s8_to_fifo', 'vec_s8_to_fifo_ref').replace(
-                'vec_s16_to_fifo', 'vec_s16_to_fifo_ref').replace('vec_s8_fifo_row_ram', 'vec_s8_fifo_row_ram_ref')
+                'vec_s16_to_fifo', 'vec_s16_to_fifo_ref').replace('vec_s8_fifo_row_ram', 'vec_s8_fifo_row_ram_ref').replace(
+                'fifo_bank_watermark', 'fifo_bank_watermark_ref')
             reference = args.out/(filename.removesuffix('.sv')+'_ref.sv')
             reference.write_text(renamed)
             reference_sources.append(reference)

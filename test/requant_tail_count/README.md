@@ -1,63 +1,33 @@
-# 量化尾部通道和行数计算
+# 量化尾部通道与复用组计数
 
-`vec_requant_full` 的块起点由块坐标左移得到。`VLEN` 为二的幂次且能由 `REG_WIDTH` 位表示时，尺寸高位与块编号的比较确定当前块是否完整、处于尾部或已经结束。尾部计数直接取尺寸的低位，其余参数配置使用完整的减法和饱和表达式。
+`vec_requant_full` 计算当前块的有效通道、有效行和复用组所需行数。块起点保留 32 位左移与截断语义。尺寸为二的幂且寄存器宽度足够时，高位比较与尾部低位选择并行完成；其他参数使用完整的饱和表达式。
 
-计算保留所有 32 位尺寸和块坐标的原有含义，块起点按现有 32 位结果截断。配置寄存器、通道使能、输入握手和十二级量化流水均保持原有采样边沿。
+复用组容量检查先将组起点、组容量和尺寸反码压缩为两项，再使用分组前缀进位判断边界。剩余行数与容量判断并行计算。块坐标、组边界和后续块位置保持相同的更新周期。
 
-## 功能验证
+## 算术证明
 
-参考提交为主分支中的 `2e17beb`。形式检查提取两份实际源码中的尾部计算，对两个 32 位尺寸及两个完整块坐标使用自由输入，比较全部 64 位通道数和行数输出。同时核对被证明表达式以外的全部逻辑保持相同。
+`run_formal.py` 提取实际生产表达式，对完整尺寸、块坐标、复用参数及模式使用无约束输入。比较结果包含有效通道数、行数、复用组行数、量化数量、参数索引、组内位置和全部块推进标志，最多比较 264 位结果。
 
-15 组算术参数全部通过 Yosys SAT，包含 `VLEN=1、2、3、7、16、32、1024、65536、131072、1073741824` 与 `REG_WIDTH=4、16、32、64` 的对应组合。这些参数覆盖幂次和非幂次通道数、窄寄存器容量、块起点左移截断、尺寸零值及无符号最大值。
+15 组参数覆盖 `VLEN=1、2、3、7、16、32、1024、65536、131072、1073741824` 与 `REG_WIDTH=4、16、32、64` 的对应组合，全部通过 SAT 证明。
 
-完整接口回归采用生产通道数，启用 `SYNTHESIS` 分支及 Xilinx 官方 `LUT6_2`、`DSP48E1` 模型。两份设计逐周期比较全部 18 个公开输出，包含无效周期的数据值。
+## 完整功能检查
 
-| 总线宽度 | 场景 | 比较周期 | 向量组数 | DMA 命令 | DMA 响应拍 |
-|---|---:|---:|---:|---:|---:|
-| 32 | 256 | 528,662 | 206,800 | 922 | 12,322 |
-| 64 | 256 | 528,662 | 209,001 | 958 | 6,496 |
+使用 64 位总线、16 个通道和 32 组 IA 复用，参考提交为 `dde5e7c9`。完整接口测试比较全部 22 个公开输出，覆盖有效周期和无效周期，共 256 个场景、528,662 个周期、209,001 组输出、958 条 DMA 命令和 6,496 个返回拍。
 
-## 综合和组合路径
+生产分时配置 `p_compute_lanes=4` 另完成 44,689 个周期、18,011 组输出和 576,352 个元素检查，覆盖 186 个组、7 次清空、6 次复位及 13 个满容量组。测试启用缓冲区观察断言。
 
-生产配置为 `BUS_WIDTH=64`、`VLEN=16`、`MAX_IA_REUSE=32`、`ENABLE_S16=1`，保留全部公开输出，采用相同的 Xilinx 七系列综合流程。
-
-| 项目 | 参考设计 | 当前设计 | 变化 |
-|---|---:|---:|---:|
-| 逻辑 LUT | 8,018 | 7,953 | −65 |
-| 触发器 | 7,040 | 7,013 | −27 |
-| CARRY4 | 419 | 390 | −29 |
-| DSP48E1 | 96 | 96 | 0 |
-| 分布式 RAM LUT | 1,120 | 1,120 | 0 |
-| SRL LUT | 192 | 192 | 0 |
-| RAMB18 / RAMB36 | 0 / 0 | 0 / 0 | 0 |
-| 通道使能寄存器的最长组合路径 | 15 | 9 | −6 |
-| 尾部通道数寄存器的最长组合路径 | 12 | 4 | −8 |
-| 从 `k_r` 到寄存器的最长组合路径 | 13 | 14 | +1 |
-| 全模块最长组合路径 | 15 | 15 | 0 |
-
-路径长度按实际网表中寄存器之间经过的组合单元数量计算。当前最长路径分别由装载偏移到状态寄存器，以及复用掩码到装载字数寄存器。`k_r` 的最长路径到达装载字数寄存器。完整 SoC 布局布线后的时序分析负责检查 150 MHz 目标。
-
-本次复用 `2e17beb` 的参考综合网表；输入源码、全部依赖、参数、原语模型和去除输出目录差异后的映射命令均已核对一致。`measurement.json` 保存源码摘要、综合统计、形式证明和完整接口结果。
+上述检查使用 Yosys 提供的 Xilinx 七系列功能模型。实际 RTL 通过算术和存储描述进行资源推断。完整 SoC 的资源与路径结果由整机综合报告给出。
 
 ## 复现
 
-从仓库根目录运行，环境中需提供带 slang 插件的 Yosys Python 模块和 Verilator。
-
 ```bash
-python test/requant_tail_count/run_formal.py \
-  --out build/requant_tail_count/formal
-python test/requant_pipeline/run_interface.py \
-  --out build/requant_tail_count/interface \
-  --reference-rev 2e17beb --bus-width 32 64 \
-  --verilator verilator-modern --jobs 1 --xilinx
-python test/requant_tail_count/prepare_measurement.py \
-  --out build/requant_tail_count/inputs
-python scripts/fpga/open_fpga_synth.py \
-  --case-config build/requant_tail_count/inputs/cases.json \
-  --cases reference tail_count \
-  --out build/requant_tail_count/synthesis
-python test/requant_tail_count/measure_paths.py \
-  --reference build/requant_tail_count/synthesis/reference \
-  --candidate build/requant_tail_count/synthesis/tail_count \
-  --out build/requant_tail_count/paths.json
+python3 test/requant_tail_count/run_formal.py --out /tmp/npu_requant_tail_count
+python3 test/requant_pipeline/run_interface.py \
+  --reference-rev dde5e7c9 --bus-width 64 --xilinx \
+  --verilator verilator --jobs 1 --out /tmp/npu_requant_interface
+python3 test/requant_time_share/run.py \
+  --xilinx --vlen 16 --lanes 4 --reuse 32 --bus 64 \
+  --verilator verilator --out /tmp/npu_requant_serial
 ```
+
+`measurement.json` 保存实际源码 SHA-256、形式证明和功能检查摘要。

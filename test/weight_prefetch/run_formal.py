@@ -49,7 +49,7 @@ def main():
     loader=ROOT/'rtl/npu/loaders/kernel_loader.sv'
     loader_control=ROOT/'rtl/npu/loaders/kernel_loader_ctrl.sv'
     loader_buffer=ROOT/'rtl/npu/loaders/kernel_loader_buffer.sv'
-    helpers=[ROOT/'rtl/common'/p for p in ['add3_equal.sv','add_equal.sv','regfile.v']]
+    helpers=[ROOT/'rtl/common'/p for p in ['add3_equal.sv','add_equal.sv','parallel_prefix_add.sv','regfile.v']]
     models=[TEST/(p+'.sv') for p in ['array_proof','producer_proof','ctrl_gating_proof','bridge_proof']]
     sources=[cell,array,controller,loader,loader_control,loader_buffer,*helpers,*models]
     hashes={str(p.relative_to(ROOT)):digest(p) for p in sources}

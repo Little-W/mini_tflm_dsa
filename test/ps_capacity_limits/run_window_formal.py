@@ -15,7 +15,9 @@ from rtl_reference import read_rtl_source
 
 
 def extract(text, name):
-    first = text.index('        wire [63:0] ps_output_column_tiles =')
+    first = (text.index('        logic [32:0] ps_column_sum;')
+             if '        logic [32:0] ps_column_sum;' in text else
+             text.index('        wire [63:0] ps_output_column_tiles ='))
     last = text.index('        wire [63:0] ps_live_frames =', first)
     return f'''module {name} #(
     parameter int REG_WIDTH=32, SIZE=16, CAP_FRAMES_W=5, W_REUSE_W=5
@@ -57,7 +59,8 @@ def main():
     assign o_equal = reference_count == candidate_count;
 endmodule
 ''')
-    files = [out / 'reference.sv', out / 'candidate.sv', harness]
+    files = [out / 'reference.sv', out / 'candidate.sv', harness,
+             ROOT / 'rtl/common/parallel_prefix_add.sv']
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     report = dict(reference=args.reference, source_sha256=digest(path), inputs_constrained=False, runs=[])
     profiles = [(width, size, 5, 5) for width in (4,16,32,64) for size in (1,3,16,32)]

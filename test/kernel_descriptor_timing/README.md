@@ -8,6 +8,10 @@
 
 `PF_EMPTY` 状态比较新预取候选，其他状态比较已保存的预取描述符。尾部分块条件分别检查行坐标和列组坐标，配置使用现有 `S_IDLE`、`S_INIT` 和 `S_RUN` 状态准备步长。列号比较使用平衡的相等与大小关系树。
 
+格式、打包方式、行跨度、分组和零点组成固定元数据，按三位一组检查相等关系，各层最多合并六个结果。行数与列数分别并行比较，在末端与固定元数据比较结果合并，尾部分块选择直接参与最后的匹配条件。
+
+DMA 地址的分组起点、行偏移和列偏移先压缩为两个操作数，再按三位分组计算前缀进位。完整地址按 `REG_WIDTH` 位处理回绕，数据包含未知值时保留原有加法表达式的四态传播。
+
 `port_descriptor` 在请求有效时提供 `issue_descriptor`；已经启动的传输使用 `active_descriptor`。所有描述符字段在实际接收边沿与请求、授权及缓冲区状态一致。
 
 ## 形式检查
@@ -18,11 +22,13 @@
 
 | SIZE | COUNT_WIDTH | BUS_WIDTH | 已证明的状态和输出位 |
 | ---: | ---: | ---: | ---: |
-| 4 | 8 | 32 | 4,582 |
-| 16 | 29 | 64 | 18,785 |
-| 16 | 32 | 128 | 19,079 |
+| 4 | 8 | 32 | 4,735 |
+| 16 | 29 | 64 | 18,938 |
+| 16 | 32 | 128 | 19,232 |
 
 控制器的递增和比较由 [权重遍历检查](../kernel_traversal_depth/README.md) 独立验证。脚本记录实际源文件、参考文件、证明脚本和日志的 SHA256。
+
+`run_control_formal.py` 对 `SIZE=4、8、16` 和 `COUNT_WIDTH=8、16、29、32` 的四组完整控制器配置进行等价检查。`check_address_four_state.py` 直接提取生产地址逻辑，检查 1、16、32、64 位四种宽度的随机输入、全零、全一和逐位未知值，共 85,456 次逐位比较。
 
 ## 数值检查
 
@@ -37,6 +43,11 @@ python test/kernel_descriptor_timing/run_acceptance_formal.py \
   --reference 422090be --out build/kernel_descriptor_acceptance
 python test/kernel_traversal_depth/run.py \
   --out build/kernel_traversal_depth
+python test/kernel_prefetch/run_control_formal.py \
+  --reference 3ca409fb --profiles 4:8 8:16 16:29 16:32 --seq 2 \
+  --out build/kernel_descriptor_control
+python test/kernel_descriptor_timing/check_address_four_state.py \
+  --out build/kernel_descriptor_address
 python test/kernel_prefetch/run.py \
   --bus-width 64 --count-width 29 --verilator verilator \
   --out build/kernel_descriptor_numeric

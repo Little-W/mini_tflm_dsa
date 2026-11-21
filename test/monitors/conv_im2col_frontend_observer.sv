@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 `ifndef SYNTHESIS
 /* verilator lint_off DECLFILENAME */
-module conv_im2col_frontend_observer;
+module conv_im2col_frontend_observer #(parameter int p_state_width = 5);
 
-// Mirror the RTL's explicit five-bit state order; hierarchical enum item
-// references trigger an internal fault in Verilator 5.040.
-localparam logic [4:0] OBS_IDLE = 5'd0, OBS_WAIT_WORD = 5'd19, OBS_ZERO_STREAM = 5'd21;
+// 观察器按状态寄存器宽度读取编码，统计编号保持与状态声明顺序一致。
+localparam logic [p_state_width-1:0] OBS_IDLE = p_state_width'(p_state_width == 22 ? 1 : 0);
+localparam logic [p_state_width-1:0] OBS_WAIT_WORD = p_state_width'(p_state_width == 22 ? (1 << 19) : 19);
+localparam logic [p_state_width-1:0] OBS_ZERO_STREAM = p_state_width'(p_state_width == 22 ? (1 << 21) : 21);
+
+function automatic int state_number(input logic [p_state_width-1:0] value);
+  state_number = int'(value);
+  if (p_state_width == 22) begin
+    state_number = 0;
+    for (int bit_index = 0; bit_index < p_state_width; bit_index++)
+      if (value[bit_index]) state_number = bit_index;
+  end
+endfunction
 
 wire [31:0] stat_hits=conv_im2col_frontend.u_cache.tb_observer.stat_hits;
 wire [31:0] stat_misses=conv_im2col_frontend.u_cache.tb_observer.stat_misses;
@@ -47,7 +57,7 @@ always @(posedge conv_im2col_frontend.clk) begin
     for (int index=0;index<32;index++) state_cycles[index]=0;
   end else if (profile_enabled || trace_enabled) begin
     profile_cycle++;
-    state_cycles[conv_im2col_frontend.state]++;
+    state_cycles[state_number(conv_im2col_frontend.state)]++;
     if (conv_im2col_frontend.state==OBS_IDLE) begin
       if (!conv_im2col_frontend.tile_valid) idle_no_valid++;
       if (!conv_im2col_frontend.tile_ready) idle_not_ready++;
@@ -115,6 +125,6 @@ final begin
   end
 end
 endmodule
-bind conv_im2col_frontend conv_im2col_frontend_observer tb_observer();
+bind conv_im2col_frontend conv_im2col_frontend_observer #(.p_state_width($bits(state))) tb_observer();
 /* verilator lint_on DECLFILENAME */
 `endif

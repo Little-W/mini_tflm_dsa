@@ -51,9 +51,12 @@ def main():
     parser.add_argument("--verilator", type=Path,
                         default=Path(shutil.which("verilator") or "verilator"))
     parser.add_argument("--reference-ref", help="Compare every public output with this Git revision")
+    parser.add_argument("--source-root", type=Path, default=ROOT,
+                        help="Read candidate RTL from this source snapshot")
     parser.add_argument("--no-contract-assert", action="store_true",
                         help="Exercise out-of-contract start/busy inputs")
     args = parser.parse_args()
+    args.source_root = args.source_root.resolve()
     args.build = args.build.resolve()
     args.out = args.out.resolve()
     args.build.mkdir(parents=True, exist_ok=True)
@@ -129,8 +132,10 @@ def main():
     config_path, vectors_path = args.build / "config.txt", args.build / "vectors.txt"
     config_path.write_text("\n".join(configs) + "\n")
     vectors_path.write_text("\n".join(vectors) + "\n")
-    sources = [ROOT / "rtl/npu/conv/conv_im2col_pkg.sv", ROOT / "rtl/common/onehot_check.sv",
-               ROOT / "rtl/npu/dma/cache/conv_next_use_predictor.sv", HERE / "predictor_tb.sv"]
+    sources = [args.source_root / "rtl/npu/conv/conv_im2col_pkg.sv",
+               args.source_root / "rtl/common/onehot_check.sv",
+               args.source_root / "rtl/common/parallel_prefix_add.sv",
+               args.source_root / "rtl/npu/dma/cache/conv_next_use_predictor.sv", HERE / "predictor_tb.sv"]
     if args.reference_ref:
         reference = args.build / "reference_predictor.sv"
         original = read_rtl_source(args.reference_ref +

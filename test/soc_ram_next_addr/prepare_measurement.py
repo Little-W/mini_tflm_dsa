@@ -20,6 +20,7 @@ def main():
                      'sources': [str(out / 'production' / label / 'soc_axi_ram.sv')],
                      'options': ['-D', 'SYNTHESIS=1', '-D', 'XILINX_FPGA=1'] +
                                 [f'-G{key}={value}' for key, value in PARAMETERS.items()],
+                     'parameters': PARAMETERS,
                      'configuration': '生产 SoC RAM，保留全部容量及 AXI 读写处理'}
              for label in ['reference', 'current']}
     (out / 'cases.json').write_text(json.dumps(cases, indent=2, ensure_ascii=False) + '\n')

@@ -1,21 +1,29 @@
 {
-  "design": "kernel_loader accepted descriptor and balanced traversal comparison",
+  "design": "权重描述符接收、独立行列比较和三操作数地址计算",
   "reference": "422090be",
   "source_sha256": {
-    "rtl/npu/loaders/kernel_loader.sv": "b5c9b2f290c6d7857b616bd4b4c5e55b6ff67ea457f34bcafa5e4ea40656a6e0",
-    "rtl/npu/loaders/kernel_loader_ctrl.sv": "bb57836884dd572b169f8db1f2290f916d7c130c64c66cb113313c50d029515b"
+    "rtl/npu/loaders/kernel_loader.sv": "04640dbe1bbafad10669f28ce8802613817892cc8c85ee303f8ede0a1b5fae7b",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "7c832fcfc4f7dc2d5f4344a5567ea90a1fbe7a23816b56cc22d2ba87c8f8a69f",
+    "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
+    "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+    "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+    "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+    "rtl/common/parallel_prefix_add.sv": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280",
+    "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+    "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+    "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
   },
   "accepted_descriptor_formal": {
     "passed": true,
     "reference": "422090be",
     "source_sha256": {
-      "rtl/npu/loaders/kernel_loader.sv": "b5c9b2f290c6d7857b616bd4b4c5e55b6ff67ea457f34bcafa5e4ea40656a6e0",
-      "rtl/npu/loaders/kernel_loader_ctrl.sv": "59594f1755b7ed35f891ed6424c98ff9cc651ce1d96857726b02dd4cdfd05f8b",
+      "rtl/npu/loaders/kernel_loader.sv": "04640dbe1bbafad10669f28ce8802613817892cc8c85ee303f8ede0a1b5fae7b",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "7c832fcfc4f7dc2d5f4344a5567ea90a1fbe7a23816b56cc22d2ba87c8f8a69f",
       "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
       "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
       "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
       "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-      "rtl/common/parallel_prefix_add.sv": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8",
+      "rtl/common/parallel_prefix_add.sv": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280",
       "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
       "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
       "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
@@ -29,169 +37,383 @@
         "count_width": 8,
         "bus_width": 32,
         "passed": true,
-        "compared_bits": 4582,
-        "script_sha256": "9bdc3cb72d2390ceff4bf4ca78333a4f7a06f0894507d57a20abdf5914aba9eb",
-        "log_sha256": "229a0ebf6efd2aed106d5999ca7fc249681a7079a3aee83583f2e38836bc57fa"
+        "compared_bits": 4735,
+        "script_sha256": "b9fbd7211dedb428d04a7a0798f5b096d5d6c9936eb48b6db6ce4e58b789e0dd",
+        "log_sha256": "2548fabe090bf2727475609ac4f31bbd94cf1652b158d1e590185137f32ceb79"
       },
       {
         "size": 16,
         "count_width": 29,
         "bus_width": 64,
         "passed": true,
-        "compared_bits": 18785,
-        "script_sha256": "f4fa01d4f680fe1efd37421a9fe54e02f525e64d9acd062bff6e95e3abfad41f",
-        "log_sha256": "dcb36001a5e08a08d440a36c1ef28c601b9e18bae43935e0c4d1d3e4af5c4708"
+        "compared_bits": 18938,
+        "script_sha256": "801f6e900d1e4492c0d79094c2934277faf8362d964ea7cd1edbd55e9132dd83",
+        "log_sha256": "ce3decf25a2e93c47d8b182937a84120ddd17357ec11f51691dd990070a19a16"
       },
       {
         "size": 16,
         "count_width": 32,
         "bus_width": 128,
         "passed": true,
-        "compared_bits": 19079,
-        "script_sha256": "e383e0fea50e1746ab8f554ffe3e1a14478296bbdd14dcaf28318d28de233e68",
-        "log_sha256": "7f1518b4de25cc7ed976764fb3a5a8e05563ed06a24021dc07da00794283418f"
+        "compared_bits": 19232,
+        "script_sha256": "03e5859b78a62532c8575a004de4345b16f62da12796d13f7d4bd36f1d052d61",
+        "log_sha256": "73e63b881f916171d6a5cbf81adaeed70ed7dfeb30da0cb689b8e2de074991d7"
       }
     ]
   },
   "current_controller_formal": {
     "passed": true,
-    "input_assumptions": [],
-    "source_sha256": {
-      "reference": "180ddf976b7d489a37ed83114216d7989bc09bd53443f0e59321cd3e16f8197b",
-      "candidate": "bb57836884dd572b169f8db1f2290f916d7c130c64c66cb113313c50d029515b"
-    },
-    "arithmetic": [
+    "reference": "3ca409fb",
+    "source_sha256": "7c832fcfc4f7dc2d5f4344a5567ea90a1fbe7a23816b56cc22d2ba87c8f8a69f",
+    "reference_sha256": "bb57836884dd572b169f8db1f2290f916d7c130c64c66cb113313c50d029515b",
+    "profiles": [
       {
-        "width": 1,
+        "size": 4,
+        "count_width": 8,
         "passed": true,
-        "log_sha256": "2e5809851380decd36ef5848ac2b6c5ddbd8b75025ce6b5ea3d61cd349dc79ac"
+        "equivalence_points": 1547
       },
       {
-        "width": 2,
+        "size": 8,
+        "count_width": 16,
         "passed": true,
-        "log_sha256": "f7284a864a164b5f67b1e44a147535b5483e05748d9818b12635375fac9d993c"
+        "equivalence_points": 2187
       },
       {
-        "width": 5,
+        "size": 16,
+        "count_width": 29,
         "passed": true,
-        "log_sha256": "ddf18ccd26f2a3b69a2c3927e8b64cd6f23762330217f5bd57abfb81f082af37"
+        "equivalence_points": 3229
       },
       {
-        "width": 6,
+        "size": 16,
+        "count_width": 32,
         "passed": true,
-        "log_sha256": "e036be320bfd1fd3ea48971c09e2bbf1bfb675435d32d0b38fd3d912c5afde68"
-      },
-      {
-        "width": 8,
-        "passed": true,
-        "log_sha256": "770c2378643ad9e9fd258347eb9daff70788b6a8ccd4e071a842f0a05a07c45a"
-      },
-      {
-        "width": 9,
-        "passed": true,
-        "log_sha256": "08353a91821a49c29e776d5b3f5cd055dc607394c6aed987253a53f8856ab908"
-      },
-      {
-        "width": 16,
-        "passed": true,
-        "log_sha256": "fad34f35a567a9267c072a6cc1829574dae9efe9d95143c27f767458b916988f"
-      },
-      {
-        "width": 29,
-        "passed": true,
-        "log_sha256": "d358d54a2edfe87e7cd5ac39a38d8437207fd68a5a4c829e24c0d6d45144b756"
-      },
-      {
-        "width": 32,
-        "passed": true,
-        "log_sha256": "366e9cf411c43427a75495fe69d7f07f3cc8c76b74e5c419c175428524145d7e"
-      },
-      {
-        "width": 33,
-        "passed": true,
-        "log_sha256": "8c29569c93de5cba023d8c21e5630c339921682dc2942229f03e0b6550b7e0d1"
-      },
-      {
-        "width": 65,
-        "passed": true,
-        "log_sha256": "d21b97fc6afcb89de0efcf9b1a9f28fc22f84ae0d7589ef57dbed7375c6605ad"
+        "equivalence_points": 3470
       }
     ],
-    "controller": [
-      {
-        "SIZE": 16,
-        "REG_WIDTH": 32,
-        "COUNT_WIDTH": 29,
-        "passed": true,
-        "equivalent_bits": 2627,
-        "log_sha256": "5432200b0e6b9a5ef41c6190ee4f5381651f566689bd1b61f789b95b8ed7d823"
-      },
-      {
-        "SIZE": 1,
-        "REG_WIDTH": 8,
-        "COUNT_WIDTH": 1,
-        "passed": true,
-        "equivalent_bits": 291,
-        "log_sha256": "3cc3c616a69c250eaf1d23a8b29965e983d4714f14d6178d94ca23a7fa269329"
-      },
-      {
-        "SIZE": 4,
-        "REG_WIDTH": 16,
-        "COUNT_WIDTH": 16,
-        "passed": true,
-        "equivalent_bits": 1425,
-        "log_sha256": "e6bbf54331412e1dba5f61d1e7146b11c39c94bf858bab494739641bfe3c118c"
-      },
-      {
-        "SIZE": 16,
-        "REG_WIDTH": 32,
-        "COUNT_WIDTH": 33,
-        "passed": true,
-        "equivalent_bits": 2872,
-        "log_sha256": "407c565aa5cd0ee3c9e2ad2f582dbca1369a0c42caea2d7a5f6adef9750d3dd0"
-      }
-    ],
-    "helper_sha256": {
-      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+    "fpga": false,
+    "primitive_library_sha256": null,
+    "dependency_sha256": {
       "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
-      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
-      "rtl/common/parallel_prefix_add.sv": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8",
-      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
-      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
-    }
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/parallel_prefix_add.sv": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280"
+    },
+    "derived_carry_part_bits": 6,
+    "inputs_constrained": false
   },
   "numeric": {
     "passed": true,
+    "cycles": 29443,
+    "dma_starts": 312,
+    "dma_completions": 312,
+    "prefetch_starts": 100,
+    "prefetch_captures": 103,
+    "cache_hits": 73,
+    "cache_discards": 25,
+    "logical_loads": 285,
+    "tiles_sent": 285,
+    "checked_values": 72960,
+    "kernel_ram_write_words": 45792,
+    "kernel_ram_read_words": 72960,
+    "dma_send_overlap_cycles": 1649,
+    "max_valid_slots": 2,
+    "default_disabled_tiles": 72,
+    "max_dma_contexts": 2,
+    "overlapping_dma_starts": 12,
+    "cached_hit_cases": 12,
+    "inflight_hit_cases": 4,
+    "pending_cases": 3,
+    "mismatch_cases": 11,
+    "delayed_prediction_cases": 2,
+    "flush_cases": 4,
+    "random_cases": 64,
+    "comparison_change_cases": 4,
+    "comparison_cancel_cases": 4,
+    "s8_tiles": 164,
+    "s16_tiles": 121,
+    "im2col_tiles": 109,
+    "tail_tiles": 238,
+    "flush_drain_cycles": 150,
+    "source_sha256": {
+      "test/kernel_prefetch/run.py": "96ac2aeb70d3d36cbdd90ac46732b33226b2e2e2e924c4cf5c7aae8bce0a91df",
+      "test/kernel_prefetch/tb.sv": "4f22a7d3a9af23ac3749eccd0232e07182ec41f85a50e600f47fdb5850072a00",
+      "test/kernel_prefetch/main.cpp": "b52728c399c586e16f9abeefe6d79717ef3be5fc0dffbda45ac2240280dd6695",
+      "rtl/npu/loaders/kernel_loader.sv": "04640dbe1bbafad10669f28ce8802613817892cc8c85ee303f8ede0a1b5fae7b",
+      "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "7c832fcfc4f7dc2d5f4344a5567ea90a1fbe7a23816b56cc22d2ba87c8f8a69f",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/parallel_prefix_add.sv": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280"
+    },
+    "binary_sha256": "8fbf25e64748bc34d42a13d88892c3d9a36f20783c1477027d88b8c13622718a",
+    "compile_command": [
+      "verilator",
+      "--cc",
+      "--exe",
+      "--build",
+      "-j",
+      "1",
+      "--assert",
+      "-Wno-fatal",
+      "--top-module",
+      "kernel_prefetch_tb",
+      "-GBUS_WIDTH=64",
+      "-GCOUNT_WIDTH=29",
+      "--Mdir",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round7/kernel_numeric/obj",
+      "--output-groups",
+      "0",
+      "--output-split",
+      "10000",
+      "--output-split-cfuncs",
+      "1000",
+      "-CFLAGS",
+      "-std=c++20 -O1 -fsanitize=undefined -fno-sanitize-recover=all -DTEST_BUS_WIDTH=64",
+      "-LDFLAGS",
+      "-fsanitize=undefined",
+      "-MAKEFLAGS",
+      "CXX=g++ OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f /workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round7/kernel_numeric/compile_rules.mk",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/kernel_prefetch/tb.sv",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/test/kernel_prefetch/main.cpp",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/npu/loaders/kernel_loader.sv",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/npu/loaders/kernel_loader_buffer.sv",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/npu/loaders/kernel_loader_ctrl.sv",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/common/regfile.v",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/common/add_equal.sv",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/common/add3_equal.sv",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv"
+    ],
+    "run_command": [
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round7/kernel_numeric/obj/Vkernel_prefetch_tb"
+    ],
+    "undefined_behavior_sanitizer": true,
+    "sanitized_translation_units": 10,
+    "fpga": false,
+    "primitive_library_sha256": null,
     "parameters": {
       "SIZE": 16,
       "DATA_WIDTH": 16,
       "BUS_WIDTH": 64,
       "COUNT_WIDTH": 29
     },
+    "compiler_version": "g++ (Debian 14.2.0-19) 14.2.0",
+    "verilator_version": "Verilator 5.054 2026-11-01 rev v5.054",
+    "elapsed_seconds": 32.709916114003136
+  },
+  "address_four_state": {
+    "passed": true,
+    "strict_four_state": true,
     "source_sha256": {
-      "test/kernel_prefetch/run.py": "91235d63efdb2053b1d884ca969ce9ef1eef004b9f6c450e3fec5a554c595c59",
-      "test/kernel_prefetch/tb.sv": "4f22a7d3a9af23ac3749eccd0232e07182ec41f85a50e600f47fdb5850072a00",
-      "test/kernel_prefetch/main.cpp": "b52728c399c586e16f9abeefe6d79717ef3be5fc0dffbda45ac2240280dd6695",
-      "rtl/npu/loaders/kernel_loader.sv": "b5c9b2f290c6d7857b616bd4b4c5e55b6ff67ea457f34bcafa5e4ea40656a6e0",
-      "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
-      "rtl/npu/loaders/kernel_loader_ctrl.sv": "59594f1755b7ed35f891ed6424c98ff9cc651ce1d96857726b02dd4cdfd05f8b",
-      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-      "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
-      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b"
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "7c832fcfc4f7dc2d5f4344a5567ea90a1fbe7a23816b56cc22d2ba87c8f8a69f",
+      "rtl/common/parallel_prefix_add.sv": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280"
     },
-    "cycles": 29443,
-    "dma_starts": 312,
-    "dma_completions": 312,
-    "prefetch_starts": 100,
-    "cache_hits": 73,
-    "cache_discards": 25,
-    "tiles_sent": 285,
-    "checked_values": 72960,
-    "dma_send_overlap_cycles": 1649,
-    "overlapping_dma_starts": 12,
-    "max_dma_contexts": 2,
-    "undefined_behavior_sanitizer": true,
-    "binary_sha256": "93ce92d7bc581765d75fbf1757039129d7be0758d692fd9f7caf1131e9c6d441"
+    "candidate_model_sha256": "2ef243ff070523f44b86d4c0ca8ea859f50346b4e3f38680f95d97f13c5a408f",
+    "testbench_sha256": "f4f276ed342aeb246bf1387b261b98337f1cfb9ff46404d31e9dddd39e34d20f",
+    "runs": [
+      {
+        "width": 1,
+        "checks": 20056,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "checks": 20776,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "checks": 21544,
+        "passed": true
+      },
+      {
+        "width": 64,
+        "checks": 23080,
+        "passed": true
+      }
+    ],
+    "checks": 85456,
+    "log_sha256": "3ee15c580aae79b4042d9f78a6fbdf83e2f21fbbe0031d0389544ad3919ab4a5"
+  },
+  "local_mapping": {
+    "top": "kernel_loader",
+    "configuration": "SIZE16 COUNT29 BUS64 complete kernel loader",
+    "sources_sha256": {
+      "rtl/npu/loaders/kernel_loader.sv": "04640dbe1bbafad10669f28ce8802613817892cc8c85ee303f8ede0a1b5fae7b",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "7c832fcfc4f7dc2d5f4344a5567ea90a1fbe7a23816b56cc22d2ba87c8f8a69f",
+      "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "746fd83d9dc5c704f6536b9521ab65ea825fa62065e1217e7758fddf92867280",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+    },
+    "parameters": {},
+    "stages": {
+      "01_elaborate": {
+        "elapsed_seconds": 2.01,
+        "peak_process_tree_rss_bytes": 164564992,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "01_elaborate.ys",
+        "log": "01_elaborate.log",
+        "script_sha256": "4347a766a4819df0e2e8a8fa937f7b7806215dd5f25abb335880050f082bae80",
+        "output_sha256": "5e01f36cf91bbb80f21b167de3780d36b8d9a95f62ccdbbe309c0703511755b0"
+      },
+      "02_pre_lut": {
+        "elapsed_seconds": 15.51,
+        "peak_process_tree_rss_bytes": 237801472,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "02_pre_lut.ys",
+        "log": "02_pre_lut.log",
+        "script_sha256": "f74eb177c43422d8ae7d6cf9da8c35277e0881927c61f7335155aa47f6af9f2b",
+        "output_sha256": "245bb4dc2395ac1b4aee1b40c707b3dd65fa93f90c82e69e30024590bcff444d"
+      },
+      "03_map_lut": {
+        "elapsed_seconds": 16.48,
+        "peak_process_tree_rss_bytes": 271818752,
+        "memory_sample_interval_seconds": 0.2,
+        "script": "03_map_lut.ys",
+        "log": "03_map_lut.log",
+        "script_sha256": "c632fc887358b606e5e6a61c7a9a24fa4ed0113f5111a07d373cde948fbcb86b",
+        "output_sha256": "2f16cb10ff8ff977f53d84f7282bcf6cd133fdf91fe1fa70598520dad2ea0f4b",
+        "mapped_verilog_sha256": "bdc348a4bc2e749f0feccf9d33c9b2aef0b15bb3955550813fe28c0870cac147"
+      }
+    },
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GCOUNT_WIDTH=29",
+      "-GBUS_WIDTH=64"
+    ],
+    "build_configuration": null,
+    "elapsed_seconds": 34.56,
+    "lut_cells": 3867,
+    "flip_flops": 2173,
+    "ramb36": 0,
+    "ramb18": 16,
+    "dsp": 0,
+    "carry4": 281,
+    "longest_combinational_path_cells": 13,
+    "longest_combinational_path": [
+      {
+        "cell": "$abc$205299$lut$not$aiger205298$5422",
+        "type": "INV"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[0].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[1].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[2].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[3].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[4].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[5].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[6].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$auto$alumacc.cc:578:replace_alu$9162.genblk1.slice[7].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$abc$205299$lut$aiger$o6336",
+        "type": "LUT5"
+      },
+      {
+        "cell": "$2584.genblk1.slice[2].genblk1.carry4",
+        "type": "CARRY4"
+      },
+      {
+        "cell": "$abc$205299$lut$aiger205298$22853",
+        "type": "LUT2"
+      },
+      {
+        "cell": "$auto$xilinx_dffopt.cc:341:execute$212455",
+        "type": "LUT6"
+      }
+    ],
+    "cell_counts": {
+      "CARRY4": 281,
+      "FDCE": 1792,
+      "FDPE": 16,
+      "FDRE": 363,
+      "FDSE": 2,
+      "INV": 52,
+      "LUT2": 661,
+      "LUT3": 1017,
+      "LUT4": 469,
+      "LUT5": 1005,
+      "LUT6": 715,
+      "MUXF7": 6,
+      "MUXF8": 3,
+      "RAMB18E1": 16
+    },
+    "resources": {
+      "logic_lut_cells": 3867,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 3867,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 2173,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 16,
+      "carry4": 281,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 281,
+        "FDCE": 1792,
+        "FDPE": 16,
+        "FDRE": 363,
+        "FDSE": 2,
+        "INV": 52,
+        "LUT2": 661,
+        "LUT3": 1017,
+        "LUT4": 469,
+        "LUT5": 1005,
+        "LUT6": 715,
+        "MUXF7": 6,
+        "MUXF8": 3,
+        "RAMB18E1": 16
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 13,
+    "register_path_requirement": {
+      "maximum_combinational_cells": 14,
+      "observed_combinational_cells": 13,
+      "graph_complete": true,
+      "met": true,
+      "scope": "Clocked storage outputs to synchronous data and control inputs",
+      "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+    },
+    "mapped_verilog": {
+      "file": "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round7/root_module_mapping/kernel_loader/mapped.v",
+      "sha256": "bdc348a4bc2e749f0feccf9d33c9b2aef0b15bb3955550813fe28c0870cac147",
+      "port_cells": "IBUF/OBUF",
+      "clock_buffers": "BUFG"
+    }
   }
 }

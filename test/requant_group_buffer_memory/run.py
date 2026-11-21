@@ -38,6 +38,7 @@ def main():
         source_root / "asic/rtl/smic40_sram_1r1w.sv",
         ROOT / "test/requant_group_buffer_memory/sram_functional.sv",
         ROOT / "test/requant_group_buffer_memory/tb_memory.sv",
+        ROOT / "test/monitors/requant_group_buffer_observer.sv",
         Path(__file__).resolve(),
     ]
     hashes = {str(path): sha(path) for path in sources}
@@ -49,12 +50,16 @@ def main():
         raise RuntimeError("Unexpected buffer module declaration")
     text = text.replace(declaration, "module requant_group_buffer_reference #(")
     reference.write_text("`undef ASIC_SRAM\n" + text + "\n`define ASIC_SRAM\n")
+    # 通用参考实例使用相同的五项断言，分别检查两条实际存储路径。
+    reference_observer = out / "requant_group_buffer_reference_observer.sv"
+    reference_observer.write_text(sources[5].read_text().replace(
+        "requant_group_buffer", "requant_group_buffer_reference"))
     objects = out / "obj"
     command = [
         args.verilator, "--binary", "--timing", "--assert", "-Wno-fatal", "--sv",
         "-DASIC_SRAM", "--top-module", "tb_requant_group_buffer_memory",
         "--Mdir", str(objects), "-j", str(args.jobs), "-O1",
-        *map(str, sources[:5]), str(reference),
+        *map(str, sources[:-1]), str(reference), str(reference_observer),
     ]
     run(command, out / "compile.log", source_root)
     binary = out / "simulation"
@@ -75,6 +80,7 @@ def main():
         "foundry_model_used": False,
         "source_sha256": hashes,
         "reference_sha256": sha(reference),
+        "reference_observer_sha256": sha(reference_observer),
         "binary_sha256": sha(binary),
         "verilator_version": subprocess.check_output([args.verilator, "--version"], text=True).strip(),
         "compile_command": command,

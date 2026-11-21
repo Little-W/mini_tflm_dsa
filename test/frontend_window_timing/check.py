@@ -18,7 +18,7 @@ INPUTS = {
         "row_base_pixel", "row_base_addr", "row_group_base", "window_next_tap",
         "window_next_pixel", "window_next_addr", "window_next_group_base",
         "tap_wrap_bytes", "tap_step_bytes", "next_row_pixel", "next_row_addr",
-        "next_row_group_base", "incoming_pixel_next")},
+        "next_row_group_base", "incoming_pixel_next", "addr", "word_addr")},
     **{name: "logic [15:0]" for name in (
         "window_next_kx", "last_kernel_col_q", "window_next_ch", "window_next_ky",
         "ch0_q", "kx0_q", "ky0_q")},
@@ -66,6 +66,9 @@ def digest(data):
 def extract(text):
     first = text.index("  // 描述符字段分组比较")
     end = text.index("  // 每个空间位置的首个有效卷积核位置", first)
+    position = text.find("  // 位置递增和保存值的匹配并行计算", first, end)
+    if position >= 0:
+        end = position
     selection = text.index("  always_comb begin\n    incoming_tap=tap0;", end)
     candidate_start = text.find("  // 各候选坐标和填充状态独立计算", end)
     if candidate_start >= 0:
@@ -76,7 +79,35 @@ def extract(text):
         start = text.index("  logic [3:0][32:0] incoming_tap_match_i_a")
         finish = text.index("  logic channel_descriptor_valid", start)
         declarations = text[start:finish]
-    return declarations + text[first:end] + text[selection:last]
+    preparation = ""
+    if "logic window_forward_allowed_q" in text:
+        declarations += "logic window_forward_allowed_q,window_backward_allowed_q,window_previous_allowed_q;\n"
+        preparation += "assign window_forward_allowed_q=window_next_kx<last_kernel_col_q;\n"
+        preparation += "assign window_backward_allowed_q=window_next_kx!=16'd0;\n"
+        preparation += "assign window_previous_allowed_q=c.kernel_w==16'd3 && window_next_kx==16'd0 && window_next_ky!=16'd0;\n"
+    group_range = text.find("  // 新分块列数只参与低位加法")
+    if group_range >= 0:
+        declarations += "logic [1:0] incoming_tile_group_fits;\n"
+        preparation += text[group_range:text.index("  assign incoming_tap_wrap", group_range)]
+    address = text.find("  logic [6:0][1:0][31:0] incoming_address_i_a")
+    if address >= 0:
+        address_end = text.index("  // 行、核位置和像素地址", address)
+        pair = text.find("  // 双核位置步长在配置准备期间保存", address, address_end)
+        if pair >= 0:
+            address_end = pair
+            declarations += "logic signed [COORD_W-1:0] tap_pair_dx;\nlogic [31:0] tap_pair_pixels,tap_pair_bytes;\n"
+            preparation += "assign tap_pair_dx=$signed(COORD_W'(tap_wrap_dx))+$signed(COORD_W'(c.dilation_w));\n"
+            preparation += "assign tap_pair_pixels=32'(tap_wrap_pixels)+32'(c.dilation_w);\n"
+            preparation += "assign tap_pair_bytes=tap_wrap_bytes+tap_step_bytes;\n"
+        declarations += text[address:address_end]
+        start = text.index("  // 七种地址候选依次为", address)
+        preparation += text[start:text.index("  for (genvar target = 0; target < 2; target++) begin : g_next_row_match", start)]
+    coordinate = text.find("  logic [6:0][COORD_W-1:0] candidate_coordinate_i_a")
+    if coordinate < 0:
+        coordinate = text.find("  logic [4:0][COORD_W-1:0] candidate_coordinate_i_a")
+    if coordinate >= 0:
+        preparation += text[coordinate:candidate_start]
+    return declarations + preparation + text[first:end] + text[selection:last]
 
 
 def unit(name, source):
@@ -121,7 +152,7 @@ def main():
         target.write_text(units[label] + registered(name))
         synthesis_cases[label + "_window_decode"] = dict(
             top=name + "_registered", options=[],
-            sources=[PACKAGE, "rtl/common/add_equal.sv", str(target)],
+            sources=[PACKAGE, "rtl/common/add_equal.sv", "rtl/common/parallel_prefix_add.sv", str(target)],
             configuration="16 列窗口候选选择，所有输入与输出使用相同寄存条件")
     ports = ",\n".join("input " + typ + " " + key for key, typ in INPUTS.items())
     connections = ",".join("." + key + "(" + key + ")" for key in INPUTS)
@@ -140,7 +171,8 @@ def main():
         script = out / (label + ".ys")
         log = out / (label + ".log")
         script.write_text("read_slang --top comparison " + f"-GSIZE={size} -GCACHE_POLICY={policy} " +
-            " ".join(shlex.quote(str(p)) for p in (ROOT/PACKAGE, ROOT/"rtl/common/add_equal.sv", proof)) +
+            " ".join(shlex.quote(str(p)) for p in (ROOT/PACKAGE, ROOT/"rtl/common/add_equal.sv",
+                ROOT/"rtl/common/parallel_prefix_add.sv", proof)) +
             "\nprep -top comparison -flatten\nsat -verify -prove equivalent 1 -show-inputs -show-outputs\n")
         with log.open("w") as stream:
             subprocess.run([sys.executable, str(ROOT/"scripts/fpga/open_fpga_synth.py"), "--worker", str(script)],

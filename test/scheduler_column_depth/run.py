@@ -17,17 +17,23 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=ROOT / "build/scheduler_column_depth/formal")
     parser.add_argument("--reference", default=REFERENCE)
+    parser.add_argument("--candidate", type=Path)
     parser.add_argument("--widths", nargs="+", type=int, default=list(range(1, 34)))
     parser.add_argument("--profiles", nargs="+", default=["1:1:1", "4:3:4", "16:16:32", "16:16:0", "16:17:64"])
+    parser.add_argument("--relation-nets", nargs="*", default=["frame_open"],
+                        help="作为额外输出证明的同步派生状态关系")
     args = parser.parse_args()
     if not args.widths or min(args.widths) < 1:
         parser.error("列计数器宽度必须大于零")
+    if any(re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", name) is None for name in args.relation_nets):
+        parser.error("状态关系名称应为顶层逻辑标识符")
     out = args.out.resolve()
-    _, paths, helpers, manifest = prepare_inputs(out, args.reference)
+    _, paths, helpers, manifest = prepare_inputs(out, args.reference, args.candidate)
     report = {
         "passed": False, "inputs": manifest, "input_assumptions": [],
-        "state_relation": "Every identically named register and every public output is compared; equal register states remain equal for every input sequence.",
+        "state_relation": "Every public output and every shared clocked state is compared; equal register states remain equal for every input sequence.",
         "memory_relation": "Both complete metadata memories and frame K memories are expanded and compared.",
+        "additional_relation_outputs": args.relation_nets,
         "increment_profiles": [], "scheduler_profiles": [],
     }
 
@@ -76,12 +82,19 @@ endmodule
             commands += [
                 f"read_slang -D SYNTHESIS=1 -D XILINX_FPGA=1 --top ps_window_scheduler "
                 f"-GSIZE={size} -GFRAME_COUNT={frames} -GMAX_REUSE_TILES={reuse} {sources}",
-                "prep -top ps_window_scheduler -flatten", "memory_map", "async2sync", "opt_clean",
+                "prep -top ps_window_scheduler -flatten", "memory_map", "opt_clean",
                 f"rename ps_window_scheduler {label}", f"design -stash {label}",
             ]
         commands += [
             "design -copy-from reference -as reference reference",
             "design -copy-from current -as current current",
+            "expose -dff -shared reference current",
+        ]
+        for name in args.relation_nets:
+            commands.append(f"expose reference/w:{name} current/w:{name}")
+        commands += [
+            "async2sync", "opt_clean",
+            "rename -hide reference/w:* current/w:*",
             "equiv_make reference current equivalent", "hierarchy -top equivalent",
             "equiv_simple -seq 1", "opt_clean", "equiv_induct -seq 2", "equiv_status -assert",
         ]

@@ -1,0 +1,163 @@
+{
+  "passed": true,
+  "source_sha256": {
+    "reference": "0fed201b03d6b337fae47479de7e92027757035017b7e67e779dfcc5de67dd42",
+    "candidate": "d4a6e90e99300e1789ddeacc10573bdaa721cdedcc4ecd926ab5987201b00f67"
+  },
+  "unchanged_generic_branches": true,
+  "binary_configurations": 40,
+  "complete_changed_branch_input_bits": 146,
+  "strict_four_state_comparisons": 1080320,
+  "formal_summary": "build/select_add_simd/formal/summary.json",
+  "measurement": {
+    "passed": true,
+    "source_sha256": {
+      "reference": "0fed201b03d6b337fae47479de7e92027757035017b7e67e779dfcc5de67dd42",
+      "candidate": "d4a6e90e99300e1789ddeacc10573bdaa721cdedcc4ecd926ab5987201b00f67"
+    },
+    "wrapper_sha256": "700a1f0042d7da1bae7b570d333dc911d65f0b06e275932773754c15dd9d6ef3",
+    "method": "synth_xilinx -top restore_bank -family xc7 -noiopad -noclkbuf -flatten",
+    "mapping_options": "default",
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "family": "xc7",
+    "part": "xc7a200tfbg484-3",
+    "clock_period_ns": 6.666666666666667,
+    "cases": {
+      "reference": {
+        "resources": {
+          "logic_lut_cells": 144,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 144,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 0,
+          "dsp48e1": 0,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 48,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "CARRY4": 48,
+            "LUT2": 144
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "input_to_output_cells": 4,
+        "dsp_settings": []
+      },
+      "candidate": {
+        "resources": {
+          "logic_lut_cells": 0,
+          "distributed_ram_lut_sites_nominal": 0,
+          "shift_register_lut_sites_nominal": 0,
+          "lut_sites_nominal_before_packing": 0,
+          "physical_lut_sites_after_placement": null,
+          "flip_flops": 0,
+          "dsp48e1": 4,
+          "ramb36e1": 0,
+          "ramb18e1": 0,
+          "carry4": 0,
+          "unclassified_distributed_ram_types": [],
+          "cell_counts": {
+            "DSP48E1": 4
+          },
+          "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+        },
+        "input_to_output_cells": 1,
+        "dsp_settings": [
+          {
+            "cell": "$auto$xilinx_dsp.cc:34:addDsp$2193",
+            "mode": "FOUR12",
+            "registers": {
+              "ACASCREG": 0,
+              "ADREG": 0,
+              "ALUMODEREG": 0,
+              "AREG": 0,
+              "BCASCREG": 0,
+              "BREG": 0,
+              "CARRYINREG": 0,
+              "CARRYINSELREG": 0,
+              "CREG": 0,
+              "DREG": 0,
+              "INMODEREG": 0,
+              "MREG": 0,
+              "OPMODEREG": 0,
+              "PREG": 0
+            }
+          },
+          {
+            "cell": "$auto$xilinx_dsp.cc:34:addDsp$2198",
+            "mode": "FOUR12",
+            "registers": {
+              "ACASCREG": 0,
+              "ADREG": 0,
+              "ALUMODEREG": 0,
+              "AREG": 0,
+              "BCASCREG": 0,
+              "BREG": 0,
+              "CARRYINREG": 0,
+              "CARRYINSELREG": 0,
+              "CREG": 0,
+              "DREG": 0,
+              "INMODEREG": 0,
+              "MREG": 0,
+              "OPMODEREG": 0,
+              "PREG": 0
+            }
+          },
+          {
+            "cell": "$auto$xilinx_dsp.cc:34:addDsp$2203",
+            "mode": "FOUR12",
+            "registers": {
+              "ACASCREG": 0,
+              "ADREG": 0,
+              "ALUMODEREG": 0,
+              "AREG": 0,
+              "BCASCREG": 0,
+              "BREG": 0,
+              "CARRYINREG": 0,
+              "CARRYINSELREG": 0,
+              "CREG": 0,
+              "DREG": 0,
+              "INMODEREG": 0,
+              "MREG": 0,
+              "OPMODEREG": 0,
+              "PREG": 0
+            }
+          },
+          {
+            "cell": "$auto$xilinx_dsp.cc:34:addDsp$2208",
+            "mode": "FOUR12",
+            "registers": {
+              "ACASCREG": 0,
+              "ADREG": 0,
+              "ALUMODEREG": 0,
+              "AREG": 0,
+              "BCASCREG": 0,
+              "BREG": 0,
+              "CARRYINREG": 0,
+              "CARRYINSELREG": 0,
+              "CREG": 0,
+              "DREG": 0,
+              "INMODEREG": 0,
+              "MREG": 0,
+              "OPMODEREG": 0,
+              "PREG": 0
+            }
+          }
+        ]
+      }
+    },
+    "mapped_binary_equivalence": {
+      "passed": true,
+      "input_bits": 137,
+      "output_bits": 256,
+      "proof_log_sha256": "26176447dfe93a964fbc6a02bdd146e9c26ac22c0eac5c1dacfc5ecec6092d1a"
+    },
+    "timing_scope": "Combinational input-to-output cell count; device delay and routing require implementation timing analysis."
+  },
+  "formal_tool_sha256": {
+    "test/select_add_simd/run.py": "b7eec345908969eddb0d501666004e7c6e2ac697ba86d6a6b3b2e3cdc35ae8c0",
+    "test/select_add_simd/measure.py": "8a145777f9badbf425e0d6cf0bc68639aa0787d6c75156a9e21678261a9d30b7"
+  }
+}

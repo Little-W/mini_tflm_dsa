@@ -122,6 +122,8 @@ def main():
                    str(source), str(ROOT / "rtl/common/regfile.v"),
                    str(ROOT / "rtl/npu/writeback/requant_compute_lane.sv"),
                    str(ROOT / "rtl/npu/writeback/requant_group_buffer.sv"),
+                   str(ROOT / "test/monitors/requant_group_buffer_observer.sv"),
+                   str(ROOT / "rtl/common/parallel_prefix_add.sv"),
                    str(ROOT / "rtl/npu/conv/vector_scalar_multiplier.sv"), str(reference), str(wrapper),
                    *primitive_options, str(driver)]
         with (folder / "build.log").open("w") as stream:

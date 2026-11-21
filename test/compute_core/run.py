@@ -36,6 +36,7 @@ def main():
                ROOT / 'rtl/npu/compute/bias_mux.sv', ROOT / 'rtl/npu/buffers/ps_buffer.sv',
                ROOT / 'rtl/common/pseudo_dual_port_ram.v',
                ROOT / 'rtl/common/regfile.v',
+               ROOT / 'rtl/common/parallel_prefix_add.sv',
                ROOT / 'rtl/npu/compute/ws_systolic_array.sv',
                ROOT / 'rtl/npu/compute/ws_systolic_cell.sv',
                ROOT / 'rtl/npu/ps_compact/ps_adaptive_codec.sv',

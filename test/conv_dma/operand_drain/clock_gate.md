@@ -17,6 +17,8 @@ python test/conv_dma/operand_drain/run_clock_gate.py \
 
 `XILINX_UNISIM_DIR` 应设为模型所在目录。只运行通用分支时使用 `--mode generic`，只运行 FPGA 分支时使用 `--mode xilinx`。`--verilator`、`--iverilog`、`--vvp` 可指定仿真程序，`--jobs` 控制 Verilator 编译并行度。
 
+`--source-root` 指定待检查的生产 RTL 目录，默认使用当前仓库。该选项可使时钟门控检查与完整 SoC 综合使用同一份固定源码。
+
 ## 结果
 
 输出目录按分支保存编译日志、运行日志和程序。`summary.json` 记录实际命令、源码与模型 SHA256、程序 SHA256、通过标记和编译期间源码是否保持不变。所选分支全部完成并通过后，汇总结果才为 `passed: true`。

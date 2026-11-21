@@ -18,6 +18,7 @@ def make_testbench(path, ports):
     lines = ['module tb_shared_write_stage;']
     lines += [f'    localparam int {name}={value};' for name, value in PARAMETERS.items()]
     for direction, kind, name, array in ports:
+        kind = re.sub(r'\bwire\s+', '', kind)
         names = [name] if direction == 'input' else ['reference_' + name, 'current_' + name]
         lines += [f'    {kind} {signal} {array};' for signal in names]
     for label, enabled in [('reference', 0), ('current', 1)]:
@@ -120,14 +121,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--verilator', default='verilator-modern')
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    source_root = args.source_root.resolve()
+    import helpers
+    helpers.ROOT = source_root
     wrapper, tb = out / 'cache_shared.sv', out / 'tb_shared_write_stage.sv'
     ports = make_wrapper(wrapper)
     outputs, commands = make_testbench(tb, ports)
-    sources = [ROOT / path for path in SOURCES] + [ROOT / 'rtl/common/regfile.v',
-               ROOT / 'rtl/common/pseudo_dual_port_ram.v', wrapper, tb]
+    sources = [source_root / path for path in SOURCES] + [source_root / 'rtl/common/regfile.v',
+               source_root / 'rtl/common/pseudo_dual_port_ram.v',
+               source_root / 'rtl/common/parallel_prefix_add.sv', wrapper, tb]
     hashes = {str(path): digest(path) for path in sources}
     command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal', '-j', '1',
                '--top-module', 'tb_shared_write_stage', '--Mdir', str(out / 'obj'), *map(str, sources)]

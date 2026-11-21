@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove every interconnect state element and public output for unrestricted inputs."""
+"""在不限制公开输入的条件下，证明互连全部状态与输出逐周期一致。"""
 import argparse
 import hashlib
 import json
@@ -36,6 +36,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference-ref', default=REFERENCE)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -43,11 +45,13 @@ def main():
     for label in ('reference', 'current'):
         path = out / label / SOURCE.name
         path.parent.mkdir(exist_ok=True)
-        content = (subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT)
-                   if label == 'reference' else (ROOT / SOURCE).read_bytes())
+        content = (((args.reference_root / SOURCE).read_bytes() if args.reference_root else
+                    subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT))
+                   if label == 'reference' else (args.source_root / SOURCE).read_bytes())
         path.write_bytes(content)
         snapshots[label] = path
-    report = dict(reference_ref=args.reference_ref, inputs_constrained=False,
+    report = dict(reference_ref=str(args.reference_root.resolve()) if args.reference_root else args.reference_ref,
+                  source_root=str(args.source_root.resolve()), inputs_constrained=False,
                   scope='Every state element and public output, including arbitrary handshake combinations',
                   source_sha256={name: digest(path) for name, path in snapshots.items()},
                   runs=[], passed=False)
@@ -78,7 +82,7 @@ def main():
                    equivalent_bits=int(match[1]), log_sha256=digest(log))
         report['runs'].append(row)
         print(json.dumps(row), flush=True)
-    if digest(ROOT / SOURCE) != report['source_sha256']['current']:
+    if digest(args.source_root / SOURCE) != report['source_sha256']['current']:
         raise RuntimeError('Source changed during verification')
     report['passed'] = True
     report['equivalent_bits'] = sum(row['equivalent_bits'] for row in report['runs'])

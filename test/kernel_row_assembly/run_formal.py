@@ -18,7 +18,7 @@ SOURCE = Path("rtl/npu/loaders/kernel_loader.sv")
 COMMON = tuple(Path(name) for name in (
     "rtl/npu/loaders/kernel_loader_ctrl.sv",
     "rtl/npu/loaders/kernel_loader_buffer.sv",
-    "rtl/common/regfile.v", "rtl/common/add_equal.sv", "rtl/common/add3_equal.sv"))
+    "rtl/common/regfile.v", "rtl/common/add_equal.sv", "rtl/common/add3_equal.sv", "rtl/common/parallel_prefix_add.sv"))
 ARITHMETIC = ((4, 8, 8), (4, 8, 24), (4, 8, 32), (6, 16, 64),
               (16, 16, 32), (16, 16, 64), (16, 16, 128))
 COMPLETE = ((4, 8, 32, 8), (16, 16, 64, 29))

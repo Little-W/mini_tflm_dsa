@@ -38,7 +38,7 @@ module window_dma_top (
   always_comb begin
     for(int i=0;i<4;i++)begin range_base[i]=0;range_end[i]=0;end
     range_base[0]=config_words[0];
-    range_end[0]=33'(config_words[0])+33'(config_words[1])*33'(config_words[2])*33'(config_words[3]);
+    range_end[0]=33'(config_words[0])+((33'(config_words[1])*33'(config_words[2])*33'(config_words[3]))<<config_words[15][1]);
     cfg='0;
     cfg.input_base=config_words[0];cfg.input_h=16'(config_words[1]);
     cfg.input_w=16'(config_words[2]);cfg.input_c=16'(config_words[3]);
@@ -49,6 +49,7 @@ module window_dma_top (
     cfg.input_offset=16'(config_words[12]);cfg.dilation_h=1;cfg.dilation_w=1;
     cfg.windowed=config_words[13][0];cfg.prefetch_enable=config_words[14][0];
     cfg.bypass_cache=config_words[15][0];
+    cfg.input_s16=config_words[15][1];
   end
   assign requests=dma.u_dma.tb_observer.win_stat_requests;
   assign completions=dma.u_dma.tb_observer.win_stat_completions;

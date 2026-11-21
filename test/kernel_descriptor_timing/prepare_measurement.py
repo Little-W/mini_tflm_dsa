@@ -56,7 +56,8 @@ def main():
         'dependency_sha256': {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
                               for path in dependencies + [ROOT / 'rtl/common/regfile.v',
                                                           ROOT / 'rtl/common/add_equal.sv',
-                                                          ROOT / 'rtl/common/add3_equal.sv']},
+                                                          ROOT / 'rtl/common/add3_equal.sv',
+                                                          ROOT / 'rtl/common/parallel_prefix_add.sv']},
     }
     (out / 'input_manifest.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report))

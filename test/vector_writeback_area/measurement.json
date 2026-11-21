@@ -5,7 +5,7 @@
   "family": "xc7",
   "reference_commit": "4dee27ffec4dc891daf2681379f8b3fd27fd41f2",
   "reference_sha256": "f86745e3fc93f5b3750d0376c864f73397b40f83d466659848813f2a5f85a674",
-  "source_sha256": "d3599bec597a0341394f9ae6fa2b2f84fa441b8737070468eb4eeeee0f53f4ee",
+  "source_sha256": "8a04ed73fed51661bc0322b4a486d7fabe0693bc7ce745cd5687598b4dae8481",
   "reference": {
     "lut_cells": 3806,
     "flip_flops": 1153,
@@ -16,7 +16,7 @@
     "longest_combinational_path_cells": 15
   },
   "current": {
-    "lut_cells": 1679,
+    "lut_cells": 1640,
     "flip_flops": 1186,
     "ramb36": 0,
     "ramb18": 0,
@@ -24,233 +24,19 @@
     "longest_register_path_cells": 8,
     "longest_combinational_path_cells": 10
   },
-  "reproduce": "python3 test/vector_writeback_area/measure.py --out build/vector_writeback_measurement",
-  "verification": {
-    "cycle_comparison": {
-      "passed": true,
-      "runs": [
-        {
-          "tile": 1,
-          "bus": 32,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 5591,
-          "beats": 5256,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "b089e61cfa17b3f4224bd0598bc19691223e1161f1781d70b002e96cb919dbf1"
-        },
-        {
-          "tile": 3,
-          "bus": 64,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 5647,
-          "beats": 6074,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "3af211307cad4ceb9745bfe63a15bee95d06d93b9bad9025fb5bdafd051685e9"
-        },
-        {
-          "tile": 15,
-          "bus": 64,
-          "byte_only": 0,
-          "cycles": 30000,
-          "accepted": 5444,
-          "beats": 12489,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "118940b633ca3d1e86f7fbec76570e66954eb838ca8c9a65935f548765695a0a"
-        },
-        {
-          "tile": 15,
-          "bus": 64,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 4310,
-          "beats": 11126,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "029652b157d41a9f5287daac4c67c3021b2cd446645b2b30d9d0985bfab97ca3"
-        },
-        {
-          "tile": 16,
-          "bus": 32,
-          "byte_only": 0,
-          "cycles": 30000,
-          "accepted": 3936,
-          "beats": 16226,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "dafefb236cf4a5a8505c3417283e396ff1b41cfdc1eeff12df667c600ab9a510"
-        },
-        {
-          "tile": 16,
-          "bus": 64,
-          "byte_only": 0,
-          "cycles": 30000,
-          "accepted": 5421,
-          "beats": 12977,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "2e4ef946d90c943fbbed9788e6e580670db5938289c4d737f181209733c3bb1a"
-        },
-        {
-          "tile": 16,
-          "bus": 128,
-          "byte_only": 0,
-          "cycles": 30000,
-          "accepted": 6420,
-          "beats": 9625,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "6af79355b8b48a28fcd433c05c1c4f84e071ec20a8fb4f113b2b211b16938475"
-        },
-        {
-          "tile": 16,
-          "bus": 32,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 3232,
-          "beats": 14665,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "31718be886a26390771a7653f21f3e4f3d9d5a27feb6cbc835a8695c9c4e16f2"
-        },
-        {
-          "tile": 16,
-          "bus": 64,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 4270,
-          "beats": 11408,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "0425bc71cd53ace096feaa4e6a14e545050b1863f92822be69432a5de50dc8ef"
-        },
-        {
-          "tile": 16,
-          "bus": 128,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 4996,
-          "beats": 8565,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "286ac196a6ce78a2e821f9905cb7805ea622debe2095ae24be57c774f0f2c963"
-        },
-        {
-          "tile": 32,
-          "bus": 64,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 3205,
-          "beats": 14736,
-          "resets": 8,
-          "passed": true,
-          "log_sha256": "102fa65b16c51e1701874e46da4d1c7b00e16cfd3262851d715b04f52c6f5809"
-        }
-      ],
-      "summary_sha256": "4d628a19ba9a0471bec7922dcca7e18cc67400ab21554f5b0dca11dd08a534bd"
-    },
-    "write_contents": {
-      "passed": true,
-      "runs": [
-        {
-          "bus_bits": 32,
-          "requests": 256,
-          "bytes": 4215,
-          "transactions": 151,
-          "responses": 151,
-          "errors": 8,
-          "cycles": 2532,
-          "passed": true,
-          "byte_only": 0
-        },
-        {
-          "bus_bits": 64,
-          "requests": 256,
-          "bytes": 3898,
-          "transactions": 148,
-          "responses": 148,
-          "errors": 8,
-          "cycles": 1795,
-          "passed": true,
-          "byte_only": 0
-        },
-        {
-          "bus_bits": 32,
-          "requests": 256,
-          "bytes": 4176,
-          "transactions": 205,
-          "responses": 205,
-          "errors": 12,
-          "cycles": 2937,
-          "passed": true,
-          "byte_only": 1
-        },
-        {
-          "bus_bits": 64,
-          "requests": 256,
-          "bytes": 3831,
-          "transactions": 205,
-          "responses": 205,
-          "errors": 12,
-          "cycles": 2209,
-          "passed": true,
-          "byte_only": 1
-        }
-      ],
-      "summary_sha256": "09b3582af05911118562e8298f533c42f3b5dad15042c429a683454105b790b0",
-      "request_bytes_minimum": 1
-    },
-    "corner_cases": {
-      "passed": true,
-      "runs": [
-        {
-          "tile": 16,
-          "bus": 64,
-          "byte_only": 0,
-          "cycles": 30000,
-          "accepted": 5569,
-          "beats": 12941,
-          "resets": 8,
-          "passed": true,
-          "corners": {
-            "carries": 6,
-            "zero": 166,
-            "zero_last": 9,
-            "grant_stalls": 666,
-            "data_stalls": 4421,
-            "errors": 443,
-            "flush": 904
-          },
-          "log_sha256": "fa9c765e0ded5b98a804b8dd66e7a388edd739a599ca2124e1c85d31911273f2"
-        },
-        {
-          "tile": 16,
-          "bus": 64,
-          "byte_only": 1,
-          "cycles": 30000,
-          "accepted": 4466,
-          "beats": 11199,
-          "resets": 8,
-          "passed": true,
-          "corners": {
-            "carries": 6,
-            "zero": 167,
-            "zero_last": 6,
-            "grant_stalls": 890,
-            "data_stalls": 3721,
-            "errors": 535,
-            "flush": 943
-          },
-          "log_sha256": "32b71349c8131d9f54d0c6d8b8574670436e5ef230b95280ea18dfc0ddf17638"
-        }
-      ],
-      "summary_sha256": "31d218e62c3df71f4b0b4c9230079aa0ec168fe99a42e28c20bb7be9925b3396",
-      "property": "Cycle-by-cycle equivalence and reset recovery",
-      "zero_length_liveness_checked": false
-    }
-  }
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/scripts/fpga/open_fpga_synth.py",
+    "--source-root",
+    "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round6/writeback_measure/inputs",
+    "--case-config",
+    "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round6/writeback_measure/inputs/cases.json",
+    "--cases",
+    "reference",
+    "current",
+    "--out",
+    "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/soc_depth14_round6/writeback_measure/synthesis",
+    "--lock-file",
+    "/tmp/npu_synthesis_20261121.lock"
+  ]
 }

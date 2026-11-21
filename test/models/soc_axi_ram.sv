@@ -212,9 +212,28 @@ module soc_axi_ram #(
     // Supported AXI transfers: FIXED and INCR, up to the physical bus width.
     // Unaligned first beats use the addressed byte lanes; subsequent INCR
     // beats begin on the transfer-size boundary, as required by AXI.
+    // 高位字节独立递增，组合边界避免字节内前缀与整地址进位重新串联。
+    function automatic logic [AW:0] axi_increment_high_bytes(input logic [AW:0] byte_addr);
+        logic [7:0] byte_value;
+        logic [7:0] byte_prefix;
+        begin
+            axi_increment_high_bytes = '0;
+            for (int byte_start=8; byte_start<=AW; byte_start+=8) begin
+                byte_value = 8'(byte_addr >> byte_start) ^ 8'h00;
+                for (int bit_index=0; bit_index<8; bit_index++) begin
+                    byte_prefix = (8'd1 << bit_index) - 8'd1;
+                    if (byte_start+bit_index <= AW) begin
+                        axi_increment_high_bytes[byte_start+bit_index] = byte_value[bit_index] ^
+                            (&(byte_value | ~byte_prefix));
+                    end
+                end
+            end
+        end
+    endfunction
+
     function automatic logic [AW:0] axi_next_addr(
         input logic [AW:0] byte_addr, input logic [2:0] size,
-        input logic [1:0] burst);
+        input logic [1:0] burst, input logic [AW:0] high_bytes_incremented);
         logic [7:0] low_keep_mask;
         logic [7:0] low_address;
         logic [7:0] low_carry_bits;
@@ -223,8 +242,6 @@ module soc_axi_ram #(
         logic [AW:0] incremented_addr;
         logic [AW:0] high_prefix_mask;
         logic [7:0] high_byte_address;
-        logic [7:0] high_byte_next;
-        logic [7:0] high_byte_prefix;
         logic high_byte_carry;
         begin
             // 步长最高为 128 字节，低于传输边界的地址位清零并退出进位判断。
@@ -242,17 +259,12 @@ module soc_axi_ram #(
                 high_prefix_mask = ((AW+1)'(1) << byte_start) - (AW+1)'(256);
                 // 异或零保持高位地址经过逻辑运算时的四态传播。
                 high_byte_address = 8'(byte_addr >> byte_start) ^ 8'h00;
-                for (int bit_index=0; bit_index<8; bit_index++) begin
-                    high_byte_prefix = (8'd1 << bit_index) - 8'd1;
-                    high_byte_next[bit_index] = high_byte_address[bit_index] ^
-                        (&(high_byte_address | ~high_byte_prefix));
-                end
                 high_byte_carry = (&low_carry_bits) &&
                     ((byte_addr & high_prefix_mask) == high_prefix_mask);
                 for (int bit_index=0; bit_index<8; bit_index++) begin
                     if (byte_start+bit_index <= AW)
                         incremented_addr[byte_start+bit_index] = high_byte_carry ?
-                            high_byte_next[bit_index] : high_byte_address[bit_index];
+                            high_bytes_incremented[byte_start+bit_index] : high_byte_address[bit_index];
                 end
             end
             axi_next_addr = (burst == 2'b00) ? byte_addr : incremented_addr;
@@ -322,6 +334,11 @@ module soc_axi_ram #(
         word_idx = byte_addr[ADDR_LSB + ADDR_BITS - 1:ADDR_LSB];
     endfunction
 
+    (* keep = "true" *) logic [AW:0] rd_high_bytes_incremented;
+    logic [AW:0] wr_high_bytes_incremented;
+    assign rd_high_bytes_incremented = axi_increment_high_bytes(rd_byte_addr_q);
+    assign wr_high_bytes_incremented = axi_increment_high_bytes(wr_byte_addr_q);
+
 `ifndef SYNTHESIS
     wire ram_rsp_delay_enabled = (ram_fixed_lat > 0) ||
                                  ((ddr_rand_lat_en != 0) && (ddr_rsp_max_lat > 0));
@@ -354,14 +371,27 @@ module soc_axi_ram #(
                                rd_pipe_beat ? (rd_beat_q + 8'd1) : rd_beat_q;
     wire [7:0] rd_issue_len = rd_pipe_cmd ? rd_pipe_cmd_len : rd_len_active_q;
     wire [AW:0] rd_issue_byte_addr = rd_pipe_cmd ? rd_pipe_cmd_byte_addr :
-        rd_pipe_beat ? axi_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q) : rd_byte_addr_q;
+        rd_pipe_beat ? axi_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q,rd_high_bytes_incremented) : rd_byte_addr_q;
     wire [WORD_ADDR_BITS:0] rd_issue_word_addr = rd_issue_byte_addr[AW:ADDR_LSB];
     // Compare against the actual word count, also for non-power-of-two RAMs.
     logic rd_issue_oob;
     // 二次幂容量只需检查高地址位；其余容量保留完整无符号比较。
-    assign rd_issue_oob = ((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0) ?
-        (|(rd_issue_word_addr >> $clog2(DP))) :
-        (rd_issue_word_addr >= (WORD_ADDR_BITS+1)'(DP));
+    if (((DP & (DP-1)) == 0) && ((WORD_ADDR_BITS+1)'(DP) != '0)) begin : g_read_power_bound
+        localparam int p_groups = (WORD_ADDR_BITS + 4) / 4;
+        logic [WORD_ADDR_BITS:0] high_address;
+        (* keep = 1 *) logic [p_groups-1:0] group_nonzero;
+        assign high_address = rd_issue_word_addr >> $clog2(DP);
+        // 各四位地址组独立判断，末级只归约组结果。
+        for (genvar group_i = 0; group_i < p_groups; group_i++) begin : g_group
+            localparam int p_low = 4 * group_i;
+            localparam int p_width = WORD_ADDR_BITS + 1 - p_low < 4 ?
+                WORD_ADDR_BITS + 1 - p_low : 4;
+            assign group_nonzero[group_i] = |high_address[p_low +: p_width];
+        end
+        assign rd_issue_oob = |group_nonzero;
+    end else begin : g_read_arbitrary_bound
+        assign rd_issue_oob = rd_issue_word_addr >= (WORD_ADDR_BITS+1)'(DP);
+    end
     wire rd_issue_fault = rd_issue_oob || (rd_pipe_cmd ? rd_pipe_cmd_bad : rd_cmd_error_q);
     wire rd_can_issue = rd_cmd_valid_q && rd_active_mature &&
                         (!s_axi_rvalid || rd_pipe_beat || rd_pipe_cmd) && r_rsp_delay_clear;
@@ -518,7 +548,7 @@ module soc_axi_ram #(
                     rd_error_accum_q <= 1'b0;
                 end else begin
                     rd_beat_q      <= rd_beat_q + 8'd1;
-                    rd_byte_addr_q <= axi_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q);
+                    rd_byte_addr_q <= axi_next_addr(rd_byte_addr_q,rd_size_active_q,rd_burst_active_q,rd_high_bytes_incremented);
 `ifndef SYNTHESIS
                     r_rsp_delay_q  <= 8'd0;
 `endif
@@ -642,7 +672,7 @@ module soc_axi_ram #(
                     wr_error_accum_q <= 1'b0;
                 end else begin
                     wr_beat_q <= wr_beat_q + 8'd1;
-                    wr_byte_addr_q <= axi_next_addr(wr_byte_addr_q,wr_size_active_q,wr_burst_active_q);
+                    wr_byte_addr_q <= axi_next_addr(wr_byte_addr_q,wr_size_active_q,wr_burst_active_q,wr_high_bytes_incremented);
                     wr_error_accum_q <= wr_error_next;
                 end
             end

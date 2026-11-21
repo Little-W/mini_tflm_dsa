@@ -15,6 +15,7 @@ def command(args,log):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--source-root',type=Path,default=ROOT,help='包含候选 RTL 的独立源码目录')
     p.add_argument('--verilator',default='verilator');p.add_argument('--out',type=Path,default=ROOT/'build/vector_engine')
     p.add_argument('--pes',type=int,nargs='+',help='parallel PE counts; default min(8, tile)');p.add_argument('--tile',type=int,default=16)
     p.add_argument('--jobs',type=int,default=1);p.add_argument('--perf',action='store_true');p.add_argument('--skip-build',action='store_true')
@@ -43,6 +44,8 @@ def main():
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/common/regfile.v',HERE/'vector_engine_dma_top.sv']
     import runpy
     svsrc = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](svsrc)
+    source_root=a.source_root.resolve()
+    svsrc=[source_root/f.relative_to(ROOT) if f.is_relative_to(ROOT/'rtl') else f for f in svsrc]
     primitive_options=[]
     primitive_sha256=None
     if a.xilinx:
@@ -78,7 +81,7 @@ def main():
         for src in csrc:
             deps=subprocess.check_output(list(map(str,['gcc',*cflags,'-MM','-MT','deps',src])),cwd=ROOT,text=True)
             sources.update((ROOT/x).resolve() for x in shlex.split(deps.replace('\\\n',' ').split(':',1)[1]))
-        source_sha={str(f.relative_to(ROOT)):hashlib.sha256(f.read_bytes()).hexdigest() for f in sources}
+        source_sha={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in sources}
         manifest=folder/'build.json'
         identity={'sha256':source_sha,'pe':pe,'tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,'cache_line_bytes':a.cache_line_bytes,
                   'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
@@ -98,7 +101,7 @@ def main():
             command(['make','-C',folder/'obj','-f','Vvector_engine_dma_top.mk','-j',a.jobs,
                      'OPT_FAST=-O1','OPT_SLOW=-O0','OPT_GLOBAL=-O1','VK_PCH_I_FAST=',
                      'VK_PCH_I_SLOW=','CFG_CXXFLAGS_PCH=-E'],folder/'build.log')
-            if any(hashlib.sha256((ROOT/n).read_bytes()).hexdigest()!=h for n,h in source_sha.items()):
+            if any(hashlib.sha256(Path(n).read_bytes()).hexdigest()!=h for n,h in source_sha.items()):
                 raise RuntimeError('Sources changed during compilation; rebuild required')
             manifest.write_text(json.dumps(identity,indent=2)+'\n')
         else:

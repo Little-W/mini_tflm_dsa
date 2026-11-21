@@ -316,7 +316,7 @@ def conv_window_cases(out,size,ref,pool_bytes,force_raw):
             allow_capacity_failure=not force_raw and bound>pool_bytes))
     return cases
 
-def source_files():
+def source_files(source_root=None):
     filelist=ROOT/'veri/flist/dut_axil.f'
     sources=[]
     includes=[]
@@ -330,6 +330,11 @@ def source_files():
                 HERE/'axi_memory.sv',HERE/'tb_conv_npu.sv']
     import runpy
     sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
+    source_root = ROOT if source_root is None else Path(source_root).resolve()
+    sources = [source_root / path.relative_to(ROOT) if path.is_relative_to(ROOT / 'rtl') else path
+               for path in sources]
+    includes = [source_root / path.relative_to(ROOT) if path.is_relative_to(ROOT / 'rtl') else path
+                for path in includes]
     tracked=list(dict.fromkeys(sources+[filelist,Path(__file__).resolve(),HERE/'simulator.vlt',
         ROOT/'veri/top_regression/host_tiling.py',ROOT/'veri/top_regression/gen_mem.py']))
     tracked += [p for directory in includes for p in sorted(directory.glob('*.svh'))]
@@ -338,16 +343,19 @@ def source_files():
 def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
           ps_compress=False,pool_bytes=16384,force_raw=False,lint_only=False,
           bus_width=None,shared_bank_bytes=2048,shared_bank_count=0,ps_frame_count=16,
-          build_timeout=7200):
+          build_timeout=7200,source_root=None,cache_line_bytes=16,
+          address_width=19,vector_pe_count=None,ps_storage_rows=0,oa_s16_fifo_banks_max=0):
     bus_width=axi_data_width(bus_width)
+    vector_pe_count = min(size, 16) if vector_pe_count is None else vector_pe_count
     if cache_sets is None:
-        cache_sets=selected_config()['IM2COL_CACHE_BYTES']//32
+        cache_sets=selected_config()['IM2COL_CACHE_BYTES']//(2*cache_line_bytes)
     if cache_sets<2 or cache_sets&(cache_sets-1):
         raise ValueError('Cache sets must be a power of two >=2')
     if shared_bank_bytes not in (2048,4096,8192) or shared_bank_count not in (0,6,7,8,9):
         raise ValueError('Shared RAM requires 2/4/8 KiB banks and 6..9 physical banks')
     out=Path(out).resolve()
-    sources,includes,tracked=source_files()
+    source_root = ROOT if source_root is None else Path(source_root).resolve()
+    sources,includes,tracked=source_files(source_root)
     out.mkdir(parents=True,exist_ok=True)
     rules=out/'compile_rules.mk'
     rules.write_text(
@@ -356,6 +364,9 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
         '$(VK_OBJS_SLOW): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_SLOW) -c -o $@ $<\n'
         '$(VK_GLOBAL_OBJS): %.o: %.cpp\n\t$(OBJCACHE) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(OPT_GLOBAL) -c -o $@ $<\n')
     defines=['-DNPU_SIM_ASSERT','-DCONV_ASSERT',f'-DTB_SIZE={size}',f'-DTB_CONV_CACHE_SETS={cache_sets}',f'-DTB_CONV_CACHE_POLICY={cache_policy}',
+             f'-DTB_CONV_LINE_BYTES={cache_line_bytes}',
+             f'-DTB_NPU_ADDR_WIDTH={address_width}',f'-DTB_VECTOR_PE_COUNT={vector_pe_count}',
+             f'-DTB_PS_STORAGE_ROWS={ps_storage_rows}',f'-DTB_OA_S16_FIFO_BANKS_MAX={oa_s16_fifo_banks_max}',
              f'-DTB_BUS_WIDTH={bus_width}',f'-DTB_SHARED_BANK_BYTES={shared_bank_bytes}',
              f'-DTB_SHARED_BANK_COUNT={shared_bank_count}',f'-DTB_PS_FRAME_COUNT={ps_frame_count}']
     if ps_compress:defines+=['-DGEMPACT_PS_COMPRESS=1',f'-DGEMMORA_PS_POOL_BYTES={pool_bytes}']
@@ -366,17 +377,21 @@ def build(out,size,verilator,jobs,cache_sets=None,cache_policy=3,
          *[f'-I{path}' for path in includes],*defines,'--Mdir',out/'obj','-j',jobs,
          '-CFLAGS','-std=c++20 -O1 --param ggc-min-expand=10 --param ggc-min-heapsize=32768',
          '-MAKEFLAGS',f'OPT_FAST=-O1 OPT_SLOW=-O0 OPT_GLOBAL=-O0 VM_DEFAULT_RULES=0 -f {rules}',HERE/'simulator.vlt',*sources]
-    before={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
+    def source_name(path):
+        return str(path.relative_to(source_root) if path.is_relative_to(source_root) else path.relative_to(ROOT))
+    before={source_name(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
     rc=command(cmd,out/'compile.log',timeout=build_timeout)
     text=(out/'compile.log').read_text()
     warnings={w:text.count('%Warning-'+w+':') for w in sorted(set(re.findall(r'%Warning-([^:]+):',text)))}
-    after={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
+    after={source_name(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in tracked}
     result={'returncode':rc,'warnings':warnings,'command':[str(v) for v in cmd],
             'size':size,'bus_width':bus_width,'shared_bank_bytes':shared_bank_bytes,
-            'shared_bank_count':shared_bank_count,'cache_sets':cache_sets,'cache_ways':2,'cache_line_bytes':16,'cache_data_bytes':cache_sets*32,'cache_policy':cache_policy,
+            'address_width':address_width,'vector_pe_count':vector_pe_count,
+            'ps_storage_rows':ps_storage_rows,'oa_s16_fifo_banks_max':oa_s16_fifo_banks_max,
+            'shared_bank_count':shared_bank_count,'cache_sets':cache_sets,'cache_ways':2,'cache_line_bytes':cache_line_bytes,'cache_data_bytes':cache_sets*2*cache_line_bytes,'cache_policy':cache_policy,
             'ps_compress':ps_compress,'pool_bytes':pool_bytes,'force_raw':force_raw,'lint_only':lint_only,
             'ps_frame_count':ps_frame_count,
-            'source_sha256':before,'sources_unchanged_during_build':before==after,
+            'source_sha256':before,'source_root':str(source_root),'sources_unchanged_during_build':before==after,
             'build_timeout_seconds':build_timeout}
     if rc==0 and not lint_only:
         result['binary_sha256']=hashlib.sha256((out/'obj/Vtb_conv_npu').read_bytes()).hexdigest()
@@ -406,6 +421,11 @@ def run_suite(binary,out,name,tasks,no_random=False,force_codec=False,timeout=30
 def main():
     a=argparse.ArgumentParser(description=__doc__);a.add_argument('--sizes',type=int,nargs='+',default=[4,8,16]);a.add_argument('--out',type=Path,default=ROOT/'build/conv_npu');a.add_argument('--verilator',default='verilator');a.add_argument('--jobs',type=int,default=1);a.add_argument('--cache-policy',type=int,choices=[0,1,2,3],default=3);a.add_argument('--cache-sets',type=int);a.add_argument('--smoke',action='store_true');a.add_argument('--skip-build',action='store_true');a.add_argument('--reuse-audit',action='store_true',help='Focused byte-level AXI reuse audit, including output-channel group replay')
     a.add_argument('--cache-bytes',type=int,help='Input cache capacity in bytes; defaults to IM2COL_CACHE_BYTES')
+    a.add_argument('--cache-line-bytes',type=int,choices=(16,32,64,128),default=16)
+    a.add_argument('--address-width',type=int,choices=range(16,33),default=19)
+    a.add_argument('--vector-pe-count',type=int)
+    a.add_argument('--ps-storage-rows',type=int,default=0)
+    a.add_argument('--oa-s16-fifo-banks-max',type=int,default=0)
     a.add_argument('--ps-compress',action='store_true')
     a.add_argument('--pool-bytes',type=int,default=16384)
     a.add_argument('--force-raw',action='store_true',help='Use RAW records in the shared compressed-store datapath')
@@ -415,6 +435,7 @@ def main():
     a.add_argument('--lint-only',action='store_true')
     a.add_argument('--keep-objects',action='store_true')
     a.add_argument('--build-timeout',type=int,default=7200)
+    a.add_argument('--source-root',type=Path,default=ROOT,help='与完整 SoC 测量一致的固定 RTL 目录')
     a.add_argument('--bus-width',type=int,choices=(32,64))
     a.add_argument('--shared-bank-bytes',type=int,choices=(2048,4096,8192))
     a.add_argument('--shared-bank-count',type=int,choices=(6,7,8,9))
@@ -426,7 +447,7 @@ def main():
     if x.cache_bytes is not None and (x.cache_bytes<512 or x.cache_bytes>65536 or x.cache_bytes&(x.cache_bytes-1)):
         a.error('--cache-bytes must be a power of two in 512..65536')
     if x.cache_sets is None:
-        x.cache_sets=(selected['IM2COL_CACHE_BYTES'] if x.cache_bytes is None else x.cache_bytes)//32
+        x.cache_sets=(selected['IM2COL_CACHE_BYTES'] if x.cache_bytes is None else x.cache_bytes)//(2*x.cache_line_bytes)
     x.bus_width=axi_data_width(x.bus_width)
     x.shared_bank_bytes=selected['SHARED_BANK_BYTES'] if x.shared_bank_bytes is None else x.shared_bank_bytes
     x.shared_bank_count=selected['SHARED_BANK_COUNT'] if x.shared_bank_count is None else x.shared_bank_count
@@ -441,7 +462,9 @@ def main():
             build(out/f's{size}',size,x.verilator,x.jobs,x.cache_sets,x.cache_policy,
                   x.ps_compress,x.pool_bytes,x.force_raw,True,bus_width=x.bus_width,
                   shared_bank_bytes=x.shared_bank_bytes,shared_bank_count=x.shared_bank_count,
-                  build_timeout=x.build_timeout)
+                  build_timeout=x.build_timeout,source_root=x.source_root,cache_line_bytes=x.cache_line_bytes,
+                  address_width=x.address_width,vector_pe_count=x.vector_pe_count,
+                  ps_storage_rows=x.ps_storage_rows,oa_s16_fifo_banks_max=x.oa_s16_fifo_banks_max)
         print('CONV_LINT_PASS',flush=True)
         return 0
     ref=make_reference(out)
@@ -458,13 +481,17 @@ def main():
         if x.skip_build:
             manifest=json.loads((sd/'build.json').read_text())
             requested={'size':size,'bus_width':x.bus_width,'shared_bank_bytes':x.shared_bank_bytes,
-                       'shared_bank_count':x.shared_bank_count,'cache_sets':x.cache_sets,'cache_ways':2,'cache_line_bytes':16,
+                       'address_width':x.address_width,
+                       'vector_pe_count':min(size,16) if x.vector_pe_count is None else x.vector_pe_count,
+                       'ps_storage_rows':x.ps_storage_rows,'oa_s16_fifo_banks_max':x.oa_s16_fifo_banks_max,
+                       'shared_bank_count':x.shared_bank_count,'cache_sets':x.cache_sets,'cache_ways':2,'cache_line_bytes':x.cache_line_bytes,
                        'cache_policy':x.cache_policy,'ps_compress':x.ps_compress,'pool_bytes':x.pool_bytes,
                        'force_raw':x.force_raw,'lint_only':False}
             if any(manifest.get(key)!=value for key,value in requested.items()):
                 raise RuntimeError('stale executable parameters: size/cache sets/ways/line/policy differ; omit --skip-build')
             for name,digest in manifest['source_sha256'].items():
-                if hashlib.sha256((ROOT/name).read_bytes()).hexdigest()!=digest:
+                source_path = x.source_root / name if name.startswith('rtl/') else ROOT / name
+                if hashlib.sha256(source_path.read_bytes()).hexdigest()!=digest:
                     raise RuntimeError(f'stale executable: {name} changed; omit --skip-build')
             binary=sd/'obj/Vtb_conv_npu'
             if hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest['binary_sha256']:
@@ -473,7 +500,10 @@ def main():
             binary=build(sd,size,x.verilator,x.jobs,cache_sets=x.cache_sets,cache_policy=x.cache_policy,
                          ps_compress=x.ps_compress,pool_bytes=x.pool_bytes,force_raw=x.force_raw,
                          bus_width=x.bus_width,shared_bank_bytes=x.shared_bank_bytes,
-                         shared_bank_count=x.shared_bank_count,build_timeout=x.build_timeout)
+                         shared_bank_count=x.shared_bank_count,build_timeout=x.build_timeout,
+                         source_root=x.source_root,cache_line_bytes=x.cache_line_bytes,
+                         address_width=x.address_width,vector_pe_count=x.vector_pe_count,
+                         ps_storage_rows=x.ps_storage_rows,oa_s16_fifo_banks_max=x.oa_s16_fifo_banks_max)
         if x.window_only:
             summary['cases'].append(run_suite(binary,sd,'conv2_windows',
                 conv_window_cases(sd,size,ref,x.pool_bytes,x.force_raw),True,x.force_codec))

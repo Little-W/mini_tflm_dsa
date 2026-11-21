@@ -41,6 +41,7 @@ def main():
     primitives.write_text('\n'.join(models) + '\n')
     rtl = [ROOT / 'rtl/npu/writeback/requant_compute_lane.sv',
            ROOT / 'rtl/npu/conv/vector_scalar_multiplier.sv',
+           ROOT / 'rtl/common/parallel_prefix_add.sv',
            ROOT / 'rtl/npu/writeback/vec_requant.sv']
     summary = {'passed': False, 'latency_enabled_edges': 12,
                'source_sha256': {str(path.relative_to(ROOT)): digest(path) for path in rtl},

@@ -53,8 +53,15 @@ def abstract_capture(text, target, expression):
 
 
 def capacity_module(text, name, sequential=False):
-    active = "    wire [31:0] active_ia_cache_blocks" + section(
-        text, "    wire [31:0] active_ia_cache_blocks", "    wire shared_ram_capacity_fault;")
+    active_parts = []
+    for field in ('active_ia_cache_blocks', 'active_ps_pool_bytes', 'active_ps_bank_count',
+                  'active_ps_bank_depth', 'shared_allocation_invalid'):
+        match = re.search(r'    wire (?:\[[^\n;]*?\] )?' + field + r'\s*=.*?;',
+                          text, flags=re.S)
+        if match is None:
+            raise ValueError('Expected allocation expression: ' + field)
+        active_parts.append(match[0])
+    active = '\n'.join(active_parts) + '\n'
     if 'active_ps_bank_count_q' in active:
         # 同拍保存的派生状态使用其已证明的银行状态关系表示。
         # 完整配置接收与复位关系由 test/ps_allocation_registration 验证。
@@ -74,6 +81,19 @@ def capacity_module(text, name, sequential=False):
     else:
         shape_start = "        wire legacy_window_shape_s2"
     shape = shape_start + section(text, shape_start, "        wire ctrl_calc_start")
+    if not sequential and 'logic use_frame_commands_s2;' in shape:
+        # 组合公式检查直接使用捕获值，实际相位关系由配置流水测试验证。
+        capture = (r"        always_ff @\(posedge clk or negedge core_rst_n\) begin\n"
+                   r"            if \(!core_rst_n\)\n"
+                   r"                use_frame_commands_s2 <= 1'b0;\n"
+                   r"            else if \(cfg_stage2_valid && cfg_capacity_phase == 3'd2\)\n"
+                   r"                use_frame_commands_s2 <= use_frame_commands_calc;\n"
+                   r"        end\n")
+        shape, count = re.subn(capture, "", shape)
+        if count != 1:
+            raise ValueError("Expected one frame-mode configuration capture")
+        shape = shape.replace('logic use_frame_commands_s2;',
+                              'wire use_frame_commands_s2 = use_frame_commands_calc;')
     if not sequential and 'frame_slice_tiles_calc' in shape:
         shape = abstract_capture(shape, 'frame_slice_tiles_s2', 'frame_slice_tiles_calc')
     bounds = "        wire [IA_REUSE_W-1:0] ext_r_small" + section(
@@ -131,7 +151,8 @@ def capacity_module(text, name, sequential=False):
     controls = ""
     if sequential:
         phase = "        assign cfg_stage2_fire =" + section(
-            text, "        assign cfg_stage2_fire =", "        // Validate tensor extents")
+            text, "        assign cfg_stage2_fire =",
+            "        always_ff @(posedge clk) begin\n            if (cfg_start_event)")
         invalid = "        logic ps_capacity_config_invalid;" + section(
             text, "        logic ps_capacity_config_invalid;",
             "        always_ff @(posedge clk or negedge core_rst_n)")
@@ -208,7 +229,8 @@ def main():
 endmodule
 """)
     sources += [formal, ROOT / "rtl/npu/control/ps_capacity_limits.sv",
-                ROOT / "rtl/common/onehot_check.sv"]
+                ROOT / "rtl/common/onehot_check.sv",
+                ROOT / "rtl/common/parallel_prefix_add.sv"]
     summary = {"reference_rev": args.reference_rev,
                "method": "SAT of expressions extracted from both npu_top revisions with arbitrary shared register state",
                "source_sha256": {str(top_path.relative_to(ROOT)): hashlib.sha256(top_path.read_bytes()).hexdigest()},

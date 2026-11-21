@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""在相同 xc7 综合设置下比较列计数器分组增量的资源与实际连接路径。"""
+"""在相同 xc7 综合设置下比较完整调度器的资源与实际连接路径。"""
 from __future__ import annotations
 
 import argparse
@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from support import ROOT, REFERENCE, PARAMETERS, check_sources, prepare_inputs
+from selection_paths import analyze_selection
 
 sys.path.insert(0, str(ROOT / "scripts/fpga"))
 from netlist_metrics import connected_paths, register_origins
@@ -19,10 +20,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=ROOT / "build/scheduler_column_depth/measurement")
     parser.add_argument("--reference", default=REFERENCE)
+    parser.add_argument("--candidate", type=Path)
     parser.add_argument("--lock-file", type=Path)
     args = parser.parse_args()
     out = args.out.resolve()
-    source_root, paths, _, manifest = prepare_inputs(out, args.reference)
+    source_root, paths, _, manifest = prepare_inputs(out, args.reference, args.candidate)
     options = ["-D", "SYNTHESIS=1", "-D", "XILINX_FPGA=1"] + [
         f"-G{name}={value}" for name, value in PARAMETERS.items()]
     cases = {label: {
@@ -78,6 +80,12 @@ def main():
             root_filter=lambda name, cell, port: origin(cell) == "next_column_tile [0]",
             sink_filter=lambda name, cell, port: port == "D" and origin(cell) == "prediction_column_s0 [28]")
         row["next_column_tile_0_to_prediction_column_s0_28"] = exact["longest_register_path_cells"]
+        selection = analyze_selection(folder)
+        (folder / "selection_paths.json").write_text(json.dumps(selection, indent=2) + "\n")
+        row["selection_paths"] = {
+            section: {name: entry["cells"] for name, entry in values.items()}
+            for section, values in selection.items()
+        }
         report["cases"][label] = row
     (out / "measurement.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))

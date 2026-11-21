@@ -27,7 +27,8 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    sources = [ROOT / "rtl/common/regfile.v", ROOT / "rtl/npu/writeback/vec_s8_to_fifo.sv",
+    sources = [ROOT / "rtl/common/regfile.v", ROOT / "rtl/common/parallel_prefix_add.sv",
+               ROOT / "rtl/npu/writeback/vec_s8_to_fifo.sv",
                ROOT / "rtl/npu/writeback/vec_s16_to_fifo.sv"]
     hashes = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     import pyosys

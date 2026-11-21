@@ -38,7 +38,7 @@ compare=[f'gold.{x} == gate.{x}' for x in states]+[f'gold_{name} == gate_{name}'
 src+='    assign equivalent = !rst_n || ('+' &&\n        '.join(compare)+');\n'
 src+='    assign bounds = !rst_n || (pending_loads <= 2 && pending_sends <= 3 && pending_loads <= pending_sends);\nendmodule\n'
 (p/'pending_control_proof.sv').write_text(src)
-(p/'control.ys').write_text(f'''read_slang -D SYNTHESIS=1 -D ASIC_SYNTHESIS=1 --top pending_control_proof {p/'pending_control_proof.sv'} {p/'control_reference.sv'} rtl/npu/loaders/kernel_loader_ctrl.sv rtl/common/add_equal.sv rtl/common/add3_equal.sv
+(p/'control.ys').write_text(f'''read_slang -D SYNTHESIS=1 -D ASIC_SYNTHESIS=1 --top pending_control_proof {p/'pending_control_proof.sv'} {p/'control_reference.sv'} rtl/npu/loaders/kernel_loader_ctrl.sv rtl/common/add_equal.sv rtl/common/add3_equal.sv rtl/common/parallel_prefix_add.sv
 prep -top pending_control_proof -flatten
 async2sync
 opt -full

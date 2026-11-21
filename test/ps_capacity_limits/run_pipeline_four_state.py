@@ -15,6 +15,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--reference',default='e379425d783c7a134e165eb180f0bbf6c0c1a4b0')
+    parser.add_argument('--reference-root',type=Path)
     parser.add_argument('--iverilog',default='iverilog')
     parser.add_argument('--vvp',default='vvp')
     args=parser.parse_args()
@@ -22,10 +23,12 @@ def main():
     out.mkdir(parents=True,exist_ok=True)
     source=(ROOT/TOP).read_text()
     sources=[out/'candidate.sv',out/'reference.sv',out/'harness.sv',out/'tb.sv',
-             ROOT/'rtl/npu/control/ps_capacity_limits.sv',ROOT/'rtl/common/onehot_check.sv']
+             ROOT/'rtl/npu/control/ps_capacity_limits.sv',ROOT/'rtl/common/onehot_check.sv',
+             ROOT/'rtl/common/parallel_prefix_add.sv']
     sources[0].write_text(capacity_module(source,'capacity_pipeline',sequential=True))
-    sources[1].write_text(capacity_module(read_rtl_source(f'{args.reference}:{TOP}',cwd=ROOT,text=True),
-                                        'capacity_reference'))
+    reference_text=((args.reference_root/TOP).read_text() if args.reference_root else
+                    read_rtl_source(f'{args.reference}:{TOP}',cwd=ROOT,text=True))
+    sources[1].write_text(capacity_module(reference_text,'capacity_reference'))
     sources[2].write_text(harness())
     declarations='\n'.join('    logic [31:0] i_'+field+" = '0;" for field in FIELDS)
     sources[3].write_text('''`timescale 1ns/1ps
@@ -97,7 +100,9 @@ module pipeline_tb #(parameter integer BANKS=7);
 endmodule
 ''')
     digest=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
-    report=dict(passed=False,reference=args.reference,source_sha256={str(TOP):digest(ROOT/TOP)},
+    report=dict(passed=False,reference=str(args.reference_root.resolve()) if args.reference_root else args.reference,
+                source_sha256={str(TOP):digest(ROOT/TOP)},
+                reference_source_sha256=hashlib.sha256(reference_text.encode()).hexdigest(),
                 generated_sha256={path.name:digest(path) for path in sources},runs=[])
     for banks in (6,7,9):
         binary=out/f'banks{banks}.vvp'

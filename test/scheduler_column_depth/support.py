@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("rtl/npu/control/ps_window_scheduler.sv")
 HELPERS = [Path("rtl/common") / name for name in
            ("onehot_check.sv", "parallel_prefix_add.sv", "regfile.v")]
-REFERENCE = "4dee27ffec4dc891daf2681379f8b3fd27fd41f2"
+REFERENCE = str(ROOT / "test/scheduler_column_depth/reference_scheduler.sv")
 PARAMETERS = {"SIZE": 16, "FRAME_COUNT": 16, "MAX_REUSE_TILES": 32}
 sys.path.insert(0, str(ROOT / "test"))
 from rtl_reference import read_rtl_source
@@ -21,13 +21,16 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def prepare_inputs(out, reference):
+def prepare_inputs(out, reference, candidate=None):
     out.mkdir(parents=True, exist_ok=True)
     source_root = out / "inputs"
     (source_root / "include").mkdir(parents=True, exist_ok=True)
+    reference_path = Path(reference)
+    candidate_path = (Path(candidate) if candidate is not None else ROOT / SOURCE).resolve()
     texts = {
-        "reference": read_rtl_source(f"{reference}:{SOURCE}", cwd=ROOT, text=True),
-        "current": (ROOT / SOURCE).read_text(),
+        "reference": reference_path.read_text() if reference_path.is_file() else
+            read_rtl_source(f"{reference}:{SOURCE}", cwd=ROOT, text=True),
+        "current": candidate_path.read_text(),
     }
     paths = {}
     for label, text in texts.items():
@@ -42,7 +45,10 @@ def prepare_inputs(out, reference):
         path.write_bytes((ROOT / name).read_bytes())
         helpers.append(path)
     manifest = {
-        "source": str(SOURCE), "reference_commit": reference,
+        "source": str(SOURCE),
+        "reference_commit": None if reference_path.is_file() else reference,
+        "reference_file": str(reference_path.resolve()) if reference_path.is_file() else None,
+        "source_path": str(candidate_path),
         "reference_sha256": digest(paths["reference"]),
         "source_sha256": digest(paths["current"]),
         "helper_sha256": {str(name): digest(ROOT / name) for name in HELPERS},
@@ -52,7 +58,7 @@ def prepare_inputs(out, reference):
 
 
 def check_sources(manifest):
-    if manifest["source_sha256"] != digest(ROOT / SOURCE):
+    if manifest["source_sha256"] != digest(Path(manifest.get("source_path", ROOT / SOURCE))):
         raise RuntimeError("验证期间调度器源文件发生变化")
     if manifest["helper_sha256"] != {str(name): digest(ROOT / name) for name in HELPERS}:
         raise RuntimeError("验证期间公共模块源文件发生变化")

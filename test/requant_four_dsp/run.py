@@ -42,7 +42,8 @@ def main() -> None:
     reference = out / 'reference.sv'
     reference.write_text(re.sub(r'\b(' + '|'.join(map(re.escape, module_names)) + r')\b',
                                 r'\1_reference', old))
-    sources = [source, reference, HERE / 'tb_four_dsp.sv']
+    sources = [source, reference, ROOT / 'rtl/common/parallel_prefix_add.sv',
+               HERE / 'tb_four_dsp.sv']
     options = []
     if args.mapped_candidate:
         for name, path in [('reference', args.mapped_reference), ('candidate', args.mapped_candidate)]:

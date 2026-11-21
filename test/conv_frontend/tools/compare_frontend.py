@@ -22,11 +22,14 @@ OUTPUTS = ('cfg_ready', 'tile_ready', 'wr_valid', 'wr_slot', 'wr_row', 'wr_col',
            'arvalid', 'araddr', 'arlen', 'arsize', 'arburst', 'rready')
 
 
-def compare_bench(source):
+def compare_bench(source, register_cache_request=None):
     match = re.search(r'conv_im2col_frontend\s+#\(.*?\)\s+dut\s*\(.*?\);', source, re.S)
     if match is None:
         raise ValueError('frontend instance missing')
     original = match.group(0)
+    if register_cache_request is not None:
+        original = original.replace('#(', "#(.REGISTER_CACHE_REQUEST(1'b" +
+                                    str(register_cache_request) + "),", 1)
     reference = original.replace('conv_im2col_frontend', 'reference_conv_im2col_frontend', 1)
     reference = reference.replace(' dut (', ' u_reference (', 1)
     declarations = ['integer compared_cycles=0;']
@@ -121,8 +124,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference-ref', default='f5b7573')
+    parser.add_argument('--candidate-source-root', type=Path, default=ROOT,
+                        help='包含候选 RTL 的独立源码目录')
     parser.add_argument('--verilator', default=shutil.which('verilator') or 'verilator')
     parser.add_argument('--lanes', nargs='+', type=int, choices=(1, 2, 4), default=[2, 4])
+    parser.add_argument('--register-cache-request', type=int, choices=(0, 1),
+                        help='显式选择两个比较实例的请求寄存配置')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -131,10 +138,16 @@ def main():
     reference.write_text(content.replace('module conv_im2col_frontend', 'module reference_conv_im2col_frontend', 1))
     common = runpy.run_path(str(HERE / 'run_rtl.py'))['FILES']
     common = [Path(path) for path in common if not str(path).startswith('tests/')]
+    candidate_root = args.candidate_source_root.resolve()
+    common = [candidate_root / path.relative_to(ROOT)
+              if path.is_relative_to(ROOT) and path.relative_to(ROOT).parts[0] == 'rtl' else path
+              for path in common]
     bench = out / 'tb_conv_im2col_frontend.sv'
-    bench.write_text(compare_bench(widen_memory((TEST_ROOT / 'tests/tb_conv_im2col_frontend.sv').read_text())))
+    bench.write_text(compare_bench(widen_memory((TEST_ROOT / 'tests/tb_conv_im2col_frontend.sv').read_text()),
+                                   args.register_cache_request))
     control = out / 'tb_conv_control.sv'
-    control.write_text(compare_bench((TEST_ROOT / 'tests/tb_conv_control.sv').read_text()))
+    control.write_text(compare_bench((TEST_ROOT / 'tests/tb_conv_control.sv').read_text(),
+                                     args.register_cache_request))
     simulator = args.verilator
     results = []
     cases = [(size, width, window, lanes) for lanes in args.lanes for size, width, window in

@@ -17,7 +17,9 @@ SOURCE='rtl/npu/conv/vector_engine.sv'
 
 
 def fragment(source):
-    marker='  logic [32:0] dma_range_size' if '  logic [32:0] dma_range_size' in source else '  // Parameter and cached-input phases configure'
+    marker=('  logic [32:0] dma_range_size' if '  logic [32:0] dma_range_size' in source else
+            '  // 四个末地址' if '  // 四个末地址' in source else
+            '  // Parameter and cached-input phases configure')
     a=source.index(marker);b=source.index('  assign rd_req',a)
     state=re.search(r'typedef enum logic \[5:0\].*?state_t;',source,re.S)[0]
     return '''module vector_range_decode (
@@ -25,6 +27,7 @@ def fragment(source):
       input vector_engine_pkg::vector_engine_cfg_t c,
       input logic dma_cfg_ready,spatial,global_pool,input_range_mode,depthwise,binary_vector,softmax_s8,
       input logic [63:0] input_bytes,weight_bytes,parameter_bytes,
+      input logic [32:0] checked_range_end [4],
       output logic dma_cfg_valid,dma_conv_enable,dma_range_enable,
       output conv_im2col_pkg::conv_cfg_t dma_conv_cfg,
       output logic [31:0] dma_range_base [4],
@@ -34,7 +37,7 @@ def fragment(source):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--out',type=Path,required=True)
-    p.add_argument('--reference-rev',default='2f06471c');args=p.parse_args()
+    p.add_argument('--reference-rev',default='dde5e7c9');args=p.parse_args()
     out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     ref=read_rtl_source(args.reference_rev+':'+SOURCE, cwd=ROOT, text=True)
     cand=(ROOT/SOURCE).read_text()

@@ -58,6 +58,7 @@ def main() -> int:
     parser.add_argument("--iverilog", default="iverilog")
     parser.add_argument("--vvp", default="vvp")
     parser.add_argument("--jobs", type=int, default=2)
+    parser.add_argument("--source-root", type=Path, default=ROOT, help="待验证 RTL 所在目录")
     parser.add_argument("--mode", choices=("generic", "xilinx", "all"), default="all")
     parser.add_argument("--unisim-dir", type=Path, help="Xilinx 官方 BUFGCE.v 和 glbl.v 所在目录")
     parser.add_argument("--out", type=Path, default=ROOT / "build/conv_dma/clock_gate")
@@ -84,14 +85,16 @@ def main() -> int:
         except FileNotFoundError as error:
             parser.error(str(error))
 
-    npu = ROOT / "rtl/npu"
+    source_root = args.source_root.resolve()
+    npu = source_root / "rtl/npu"
     packages = [npu / "conv/conv_im2col_pkg.sv", npu / "conv/vector_engine_pkg.sv"]
     sources = packages + [path for path in sorted(npu.rglob("*.sv")) if path not in packages]
     sources += sorted(npu.rglob("*.v"))
-    sources += sorted((ROOT / "rtl/common").glob("*.sv"))
-    sources += sorted((ROOT / "rtl/common").glob("*.v"))
-    sources += [ROOT / "rtl/axi_top/npu_axil_top.sv", ROOT / "rtl/axi_top/npu_axil_reg_if.sv",
+    sources += sorted((source_root / "rtl/common").glob("*.sv"))
+    sources += sorted((source_root / "rtl/common").glob("*.v"))
+    sources += [source_root / "rtl/axi_top/npu_axil_top.sv", source_root / "rtl/axi_top/npu_axil_reg_if.sv",
                 HERE / "tb_clock_gate_reset.sv"]
+    sources.append(ROOT / "test/monitors/requant_group_buffer_observer.sv")
     config = ROOT / "test/conv_npu/simulator.vlt"
     dependencies = sources + sorted(npu.rglob("*.svh")) + [config, Path(__file__).resolve()]
     output = args.out.resolve()
@@ -100,6 +103,7 @@ def main() -> int:
         "scope": "生产 npu_axil_top 的时钟门控：复位相位、单次唤醒和 AXI 应答等待",
         "simulators": simulators,
         "requested_modes": list(modes),
+        "source_root": str(source_root),
         "passed": False,
         "runs": [],
     }
@@ -111,13 +115,13 @@ def main() -> int:
         tracked_sources = dependencies + selected_models
         if mode == "xilinx":
             # 子模块计算与寄存器写入另由事务测试验证，本测试驱动门控的各项输入事件。
-            child_sources = [ROOT / "rtl/npu/top/npu_top.sv", ROOT / "rtl/axi_top/npu_axil_reg_if.sv"]
+            child_sources = [source_root / "rtl/npu/top/npu_top.sv", source_root / "rtl/axi_top/npu_axil_reg_if.sv"]
             shells = [folder / "npu_top_ports.sv", folder / "npu_axil_reg_if_ports.sv"]
             for source, destination in zip(child_sources, shells):
                 write_interface_shell(source, destination)
-            gate_sources = packages + shells + [ROOT / "rtl/axi_top/npu_axil_top.sv",
+            gate_sources = packages + shells + [source_root / "rtl/axi_top/npu_axil_top.sv",
                                                 HERE / "tb_clock_gate_reset.sv"] + models
-            tracked_sources = packages + child_sources + [ROOT / "rtl/axi_top/npu_axil_top.sv",
+            tracked_sources = packages + child_sources + [source_root / "rtl/axi_top/npu_axil_top.sv",
                               HERE / "tb_clock_gate_reset.sv", Path(__file__).resolve()] + models
         hashes = {str(path): sha256(path) for path in tracked_sources}
         if mode == "xilinx":

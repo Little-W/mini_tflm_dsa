@@ -20,9 +20,14 @@ def main():
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--jobs',type=int,default=2)
     parser.add_argument('--out',type=Path,default=ROOT/'build/conv_span_handoff')
+    parser.add_argument('--source-root',type=Path,default=ROOT,
+                        help='包含待验证 RTL 的独立源码目录')
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     sources=[ROOT/'rtl/npu/conv/conv_axi_span_reader.sv',HERE/'main.cpp',
              ROOT/'rtl/npu/conv/conv_axi_read_mux.sv',HERE/'read_mux.cpp',Path(__file__)]
+    sources=[args.source_root.resolve()/path.relative_to(ROOT)
+             if path.is_relative_to(ROOT) and path.relative_to(ROOT).parts[0]=='rtl'
+             else path for path in sources]
     before={str(path.relative_to(ROOT)):digest(path) for path in sources}
     build=[args.verilator,'--cc','--exe','--build','--assert','-DCONV_ASSERT','-Wno-fatal',
            '--top-module','conv_axi_span_reader','--Mdir',out/'obj','-j',args.jobs,

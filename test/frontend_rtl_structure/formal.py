@@ -22,7 +22,7 @@ COMMON = [
     'rtl/npu/conv/conv_axi_span_reader.sv',
     'rtl/common/onehot_check.sv',
     'rtl/common/add_equal.sv',
-    'rtl/common/add3_equal.sv',
+    'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv',
     'rtl/common/regfile.v',
 ]
 CASES = {
@@ -37,7 +37,7 @@ CASES = {
         'rtl/common/regfile.v', 'rtl/common/add_equal.sv'], {'BUS_WIDTH': 64}),
     'kernel64': ('kernel_loader', ['rtl/npu/loaders/kernel_loader.sv',
         'rtl/npu/loaders/kernel_loader_ctrl.sv', 'rtl/npu/loaders/kernel_loader_buffer.sv',
-        'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv'],
+        'rtl/common/regfile.v', 'rtl/common/add_equal.sv', 'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv'],
         {'SIZE': 16, 'DATA_WIDTH': 16, 'BUS_WIDTH': 64}),
 }
 CASES['kernel64_c29'] = ('kernel_loader', CASES['kernel64'][1],

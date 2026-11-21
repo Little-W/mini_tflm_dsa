@@ -18,6 +18,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     sources = [ROOT/'rtl/npu/writeback/vec_s8_to_fifo.sv', ROOT/'rtl/common/regfile.v',
+               ROOT/'rtl/common/parallel_prefix_add.sv',
                Path(__file__).with_name('watermark_formal.sv')]
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     results = []

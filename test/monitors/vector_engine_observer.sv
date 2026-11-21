@@ -255,4 +255,118 @@ bind vector_engine vector_tile_overlap_observer #(
   .p_load_wait(32'(LOAD_WAIT)), .p_load_weight(32'(LD_WEIGHT))
 ) tb_tile_overlap();
 
+
+// 消费周期直接检查真实引擎中的准备值，检查逻辑不参与生产状态更新。
+module vector_control_datapath_observer #(
+  parameter int p_tile=16, p_pe_count=8,
+  parameter int p_check=0, p_load_req=0, p_load_wait=0,
+  parameter int p_lut_req=0, p_lut_wait=0, p_soft_run=0,
+  parameter int p_execute=0, p_commit=0, p_vector_next=0, p_reduce=0,
+  parameter int p_load_bias=0, p_load_mult=0, p_load_shift=0
+);
+  import vector_engine_pkg::*;
+  logic parameter_valid, lut_valid, previous_execute, previous_valid;
+  logic [31:0] saved_stride, previous_state, previous_reduce_index;
+  logic saved_two_rows, saved_three_rows, saved_window_valid;
+  logic [7:0] saved_lut_index;
+  wire [31:0] reference_stride = vector_engine.c.shift_base - vector_engine.c.multiplier_base;
+  wire reference_two_rows = vector_engine.c.shift_base > vector_engine.c.multiplier_base;
+  wire reference_three_rows = vector_engine.c.bias_base != 0 &&
+      vector_engine.c.multiplier_base > vector_engine.c.bias_base && reference_two_rows &&
+      vector_engine.c.multiplier_base - vector_engine.c.bias_base == reference_stride;
+  wire parameter_phase = (32'(vector_engine.state) == p_load_req ||
+      32'(vector_engine.state) == p_load_wait) &&
+      (32'(vector_engine.load_kind) == p_load_bias || 32'(vector_engine.load_kind) == p_load_mult ||
+       32'(vector_engine.load_kind) == p_load_shift);
+  wire reduction_entry = 32'(vector_engine.state) == p_vector_next &&
+      !vector_engine.vector_has_more && vector_engine.c.op != VEC_HADAMARD && !vector_engine.add_s8;
+  longint unsigned parameter_cycles=0, lut_cycles=0, commit_cycles=0, reduce_cycles=0;
+
+  always @(posedge vector_engine.clk) begin
+    if (!vector_engine.rst_n) begin
+      parameter_valid <= 1'b0;
+      lut_valid <= 1'b0;
+      previous_execute <= 1'b0;
+      previous_valid <= 1'b0;
+      previous_state <= '0;
+      previous_reduce_index <= '0;
+      saved_stride <= '0;
+      saved_two_rows <= 1'b0;
+      saved_three_rows <= 1'b0;
+      saved_window_valid <= 1'b0;
+      saved_lut_index <= '0;
+    end else begin
+      previous_valid <= 1'b1;
+      previous_state <= 32'(vector_engine.state);
+      previous_reduce_index <= 32'(vector_engine.reduce_index);
+      previous_execute <= 32'(vector_engine.state) == p_execute;
+      if (32'(vector_engine.state) == p_check) begin
+        saved_stride <= reference_stride;
+        saved_two_rows <= reference_two_rows;
+        saved_three_rows <= reference_three_rows;
+        parameter_valid <= 1'b1;
+      end
+      if (parameter_valid) begin
+        assert (vector_engine.parameter_row_stride == saved_stride);
+        assert (vector_engine.parameter_two_rows == saved_two_rows);
+        assert (vector_engine.parameter_three_rows == saved_three_rows);
+      end
+      if (parameter_phase) begin
+        assert (parameter_valid);
+        assert (vector_engine.parameter_row_stride == reference_stride);
+        assert (vector_engine.parameter_two_rows == reference_two_rows);
+        assert (vector_engine.parameter_three_rows == reference_three_rows);
+        parameter_cycles <= parameter_cycles + 1;
+      end
+      if (32'(vector_engine.state) == p_soft_run && !vector_engine.soft_done &&
+          vector_engine.soft_lut_req_valid) begin
+        saved_lut_index <= vector_engine.soft_lut_index;
+        lut_valid <= 1'b1;
+      end
+      if (32'(vector_engine.state) == p_lut_req || 32'(vector_engine.state) == p_lut_wait) begin
+        assert (lut_valid);
+        assert (vector_engine.soft_lut_index_q == saved_lut_index);
+        assert (vector_engine.soft_lut_index_q == vector_engine.soft_lut_index);
+        assert (vector_engine.rd_base_addr ==
+            vector_engine.c.rhs_base + {22'd0, saved_lut_index, 2'b00});
+        lut_cycles <= lut_cycles + 1;
+      end
+      if (32'(vector_engine.state) == p_execute)
+        saved_window_valid <= vector_engine.next_window_valid;
+      if (32'(vector_engine.state) == p_commit) begin
+        assert (previous_execute);
+        assert (vector_engine.next_window_valid_q == saved_window_valid);
+        assert (vector_engine.next_window_valid_q == vector_engine.next_window_valid);
+        assert (vector_engine.compute_group_last_q ==
+            (vector_engine.compute_index + 32'(p_pe_count) >= vector_engine.active));
+        commit_cycles <= commit_cycles + 1;
+      end
+      if (32'(vector_engine.state) == p_reduce) begin
+        assert (32'(vector_engine.reduce_index) < p_tile);
+        assert (vector_engine.reduce_alu_i_rhs == vector_engine.acc_buf[vector_engine.reduce_index]);
+        assert (previous_valid && (previous_state == p_vector_next || previous_state == p_reduce));
+        if (previous_state == p_vector_next) assert (vector_engine.reduce_index == 0);
+        else assert (32'(vector_engine.reduce_index) == previous_reduce_index + 1);
+        reduce_cycles <= reduce_cycles + 1;
+      end
+    end
+  end
+  for (genvar entry=0; entry<p_tile; entry++) begin : g_accumulator_stable
+    always @(posedge vector_engine.clk) if (vector_engine.rst_n &&
+        (reduction_entry || 32'(vector_engine.state) == p_reduce)) begin
+      assert (!vector_engine.g_accumulator_write[entry].write_enable);
+    end
+  end
+  final $display("VECTOR_CONTROL_DATAPATH_PASS parameter_cycles=%0d lut_cycles=%0d commit_cycles=%0d reduce_cycles=%0d",
+      parameter_cycles, lut_cycles, commit_cycles, reduce_cycles);
+endmodule
+bind vector_engine vector_control_datapath_observer #(
+  .p_tile(TILE), .p_pe_count(PE_COUNT), .p_check(32'(CHECK)),
+  .p_load_req(32'(LOAD_REQ)), .p_load_wait(32'(LOAD_WAIT)),
+  .p_lut_req(32'(SOFT_LUT_REQ)), .p_lut_wait(32'(SOFT_LUT_WAIT)), .p_soft_run(32'(SOFT_RUN)),
+  .p_execute(32'(EXECUTE)), .p_commit(32'(EXECUTE_COMMIT)),
+  .p_vector_next(32'(VECTOR_NEXT)), .p_reduce(32'(VECTOR_REDUCE)),
+  .p_load_bias(32'(LD_BIAS)), .p_load_mult(32'(LD_MULT)), .p_load_shift(32'(LD_SHIFT))
+) tb_control_datapath();
+
 `endif

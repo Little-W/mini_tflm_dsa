@@ -28,6 +28,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--reference-rev", default="aa2ef9a3")
+    parser.add_argument("--source-root", type=Path, default=ROOT)
+    parser.add_argument("--reference-root", type=Path)
     parser.add_argument("--cases", nargs="+", choices=tuple(CASES), default=list(CASES))
     parser.add_argument("--worker", type=Path)
     args = parser.parse_args()
@@ -39,8 +41,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     paths = ["rtl/npu/loaders/ia_loader_ctrl.sv", "rtl/npu/loaders/ia_loader.sv",
              "rtl/npu/loaders/ia_loader_cache_mgr.sv"]
-    current_loader = (ROOT / paths[1]).read_text()
-    current_ctrl = (ROOT / paths[0]).read_text()
+    source_root = args.source_root.resolve()
+    current_loader = (source_root / paths[1]).read_text()
+    current_ctrl = (source_root / paths[0]).read_text()
     snapshots = {}
     for label in ("reference", "current"):
         folder = out / label
@@ -48,7 +51,8 @@ def main():
         snapshots[label] = []
         for name in paths:
             path = folder / Path(name).name
-            source = read_rtl_source(args.reference_rev + ":" + name, cwd=ROOT, text=True) if label == "reference" else (ROOT / name).read_text()
+            source = ((args.reference_root / name).read_text() if args.reference_root else
+                      read_rtl_source(args.reference_rev + ":" + name, cwd=ROOT, text=True)) if label == "reference" else (source_root / name).read_text()
             if (label == "reference" and name.endswith("/ia_loader_ctrl.sv") and
                     re.search(r"\bcfg_packed_k_tiles\b", current_ctrl) and
                     not re.search(r"\bcfg_packed_k_tiles\b", source)):
@@ -80,11 +84,16 @@ def main():
                                         "        REG_WIDTH'((formal_packed_reduction & REG_WIDTH'(SIZE - 1)) != 0);\nendmodule", 1)
             path.write_text(source)
             snapshots[label].append(path)
-    common = sorted(path for path in (ROOT / "rtl/common").rglob("*") if path.suffix in (".v", ".sv"))
+    common = sorted(path for path in (source_root / "rtl/common").rglob("*") if path.suffix in (".v", ".sv"))
+    common.append(source_root / "rtl/npu/compute/select_add.sv")
     summary = {
         "reference_rev": args.reference_rev,
         "method": "Yosys complete-state equivalence with simple SAT and temporal induction",
-        "source_sha256": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in paths},
+        "source_root": str(source_root),
+        "reference_root": str(args.reference_root.resolve()) if args.reference_root else None,
+        "source_sha256": {name: hashlib.sha256((source_root / name).read_bytes()).hexdigest() for name in paths},
+        "common_source_sha256": {str(path.relative_to(source_root)): hashlib.sha256(path.read_bytes()).hexdigest()
+                                  for path in common},
         "runs": [],
     }
     for label in args.cases:

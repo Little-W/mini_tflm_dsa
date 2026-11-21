@@ -26,6 +26,9 @@ def cases():
     result = {'production': dict(SIZE=16, BUS_WIDTH=64, DATA_WIDTH=16,
         CACHE_BLOCKS=32, EXTERNAL_RAM=1, COMPACT_S8=1, REG_WIDTH=32,
         p_compact_offset_width=9, defines=['SYNTHESIS', 'XILINX_FPGA'])}
+    for layout in (0, 1):
+        result[f'shared_layout{layout}'] = dict(result['production'],
+            p_dma_source_layout=layout, p_shared_write_stage=1)
     for size, bus, data, blocks, external in (
             (4, 32, 8, 2, 0), (8, 64, 16, 4, 0), (16, 8, 16, 32, 1),
             (16, 32, 16, 32, 1), (16, 64, 16, 32, 1),
@@ -49,20 +52,26 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference', default='437a8d81')
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     parser.add_argument('--cases', nargs='+', choices=tuple(cases()))
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT)
+    source_root = args.source_root.resolve()
+    original = ((args.reference_root / SOURCE).read_bytes() if args.reference_root else
+                read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT))
     reference = out / 'reference.sv'
     reference.write_bytes(original)
-    current = ROOT / SOURCE
+    current = out / 'current.sv'
+    current.write_bytes((source_root / SOURCE).read_bytes())
     model, model_info = prepare_models(out)
-    memories = [ROOT / 'rtl/common/regfile.v', ROOT / 'rtl/common/pseudo_dual_port_ram.v',
-                ROOT / 'rtl/npu/compute/select_add.sv']
-    hashes = {str(path.relative_to(ROOT)): digest(path) for path in [current, *memories]}
-    report = dict(passed=False, reference_commit=subprocess.check_output(
-        ['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip(),
+    memories = [source_root / 'rtl/common/regfile.v', source_root / 'rtl/common/pseudo_dual_port_ram.v',
+                source_root / 'rtl/npu/compute/select_add.sv']
+    hashes = {str(SOURCE): digest(current),
+              **{str(path.relative_to(source_root)): digest(path) for path in memories}}
+    report = dict(passed=False, reference_commit=(str(args.reference_root.resolve()) if args.reference_root else
+        subprocess.check_output(['git', 'rev-parse', args.reference], cwd=ROOT, text=True).strip()),
         source_sha256=hashes, reference_source_sha256=digest(reference),
         primitive_models=model_info, inputs_constrained=False, runs=[])
     selected = args.cases or list(cases())
@@ -104,7 +113,8 @@ def main():
         print(json.dumps(result), flush=True)
         if not result['passed']:
             raise RuntimeError('IA cache equivalence did not complete: ' + str(log))
-    if hashes != {str(path.relative_to(ROOT)): digest(path) for path in [current, *memories]}:
+    if hashes != {str(SOURCE): digest(source_root / SOURCE),
+                  **{str(path.relative_to(source_root)): digest(path) for path in memories}}:
         raise RuntimeError('Measured source changed during verification')
 
 

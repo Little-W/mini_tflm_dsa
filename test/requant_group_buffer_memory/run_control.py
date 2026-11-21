@@ -25,6 +25,7 @@ def main():
     sources = [source_root / "rtl/npu/writeback/requant_group_buffer.sv",
                source_root / "rtl/common/regfile.v",
                source_root / "test/requant_time_share/buffer_proof.sv",
+               ROOT / "test/monitors/requant_group_buffer_observer.sv",
                Path(__file__).resolve()]
     hashes = {str(path): sha(path) for path in sources}
     proof = out / "buffer_proof.sv"
@@ -52,7 +53,7 @@ def main():
         script = out / f"rows_{rows}.ys"
         script.write_text(
             f"read_slang --top requant_buffer_proof -Gp_rows={rows} "
-            + " ".join(map(str, [*sources[:2], proof]))
+            + " ".join(map(str, [*sources[:2], proof, sources[3]]))
             + "\nproc\nflatten\nopt -full\nmemory_map\nasync2sync\nchformal -lower\nopt -full\n"
               "sat -seq 2 -tempinduct -maxsteps 12 -set-at 1 rst_n 0 -set-assumes "
               "-prove-asserts -verify -timeout 60\n"

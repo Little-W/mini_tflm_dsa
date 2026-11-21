@@ -16,6 +16,12 @@
 #ifndef WINDOW_RESPONSE_INTERVAL
 #define WINDOW_RESPONSE_INTERVAL 3
 #endif
+#ifndef WINDOW_DESCRIPTOR_RESPONSE_INTERVAL
+#define WINDOW_DESCRIPTOR_RESPONSE_INTERVAL 3
+#endif
+#ifndef WINDOW_SINGLE_RESPONSE_INTERVAL
+#define WINDOW_SINGLE_RESPONSE_INTERVAL 1
+#endif
 
 static void check(bool value,const std::string& message) {
   if(!value) throw std::runtime_error(message);
@@ -48,8 +54,13 @@ class Simulation {
       int64_t y=int64_t(request.p/config[7])*config[8]-config[10]+tap/config[5];
       int64_t x=int64_t(request.p%config[7])*config[9]-config[11]+tap%config[5];
       int16_t value=0;
-      if(q<config[4]*config[5]*config[3] && y>=0 && x>=0 && y<config[1] && x<config[2])
-        value=int16_t(int8_t(memory.at(config[0]+(y*config[2]+x)*config[3]+channel)))+int32_t(config[12]);
+      if(q<config[4]*config[5]*config[3] && y>=0 && x>=0 && y<config[1] && x<config[2]) {
+        const unsigned element_bytes=(config[15]&2)?2:1;
+        const size_t address=config[0]+((y*config[2]+x)*config[3]+channel)*element_bytes;
+        if(element_bytes==2)
+          value=int16_t(uint16_t(memory.at(address))|(uint16_t(memory.at(address+1))<<8));
+        else value=int16_t(int8_t(memory.at(address)))+int32_t(config[12]);
+      }
       result.push_back(value);
     }
     return result;
@@ -139,7 +150,7 @@ class Simulation {
     if(arh) {
       uint32_t a=top.araddr,n=top.arlen+1,size=1u<<top.arsize;
       check(size<=4 && a%size==0 && (a&4095)+n*size<=4096,"invalid AXI read transfer");
-      check(a>=config[0] && uint64_t(a)+n*size<=uint64_t(config[0])+config[1]*config[2]*config[3],"AXI read outside input");
+      check(a>=config[0] && uint64_t(a)+n*size<=uint64_t(config[0])+uint64_t(config[1])*config[2]*config[3]*((config[15]&2)?2:1),"AXI read outside input");
       reads.push_back({a,n,size});
     }
     top.clk=1;top.eval();Verilated::timeInc(1);cycle++;top.clk=0;top.eval();
@@ -326,17 +337,29 @@ int main(int argc,char** argv) {
     check(s.elements-before==128*16,"continuous hit payload count");
     auto last=s.response_cycles.size();
     check(last-first==512,"continuous hit response count");
-    uint64_t maximum_interval=0;
-    for(size_t i=first+1;i<last;i++)
-      maximum_interval=std::max(maximum_interval,s.response_cycles[i]-s.response_cycles[i-1]);
-    check(maximum_interval<=WINDOW_RESPONSE_INTERVAL &&
-          s.response_cycles.back()-s.response_cycles[first]+1<=511*WINDOW_RESPONSE_INTERVAL+1,
+    uint64_t maximum_interval=0,maximum_word_interval=0,maximum_descriptor_interval=0;
+    unsigned stream_consecutive=0;
+    for(size_t i=first+1;i<last;i++) {
+      const uint64_t interval=s.response_cycles[i]-s.response_cycles[i-1];
+      maximum_interval=std::max(maximum_interval,interval);
+      stream_consecutive+=interval==1;
+      if((i-first)%4==0) maximum_descriptor_interval=std::max(maximum_descriptor_interval,interval);
+      else maximum_word_interval=std::max(maximum_word_interval,interval);
+      const uint64_t allowed_interval=(i-first)%4==0 ?
+        WINDOW_DESCRIPTOR_RESPONSE_INTERVAL : WINDOW_RESPONSE_INTERVAL;
+      check(interval<=allowed_interval,"resident response interval exceeded");
+    }
+    check(s.response_cycles.back()-s.response_cycles[first]+1<=
+          384*WINDOW_RESPONSE_INTERVAL+127*WINDOW_DESCRIPTOR_RESPONSE_INTERVAL+1,
           "hit stream exceeded the selected pipeline response interval");
     check(s.top.request_response_overlap>0,"requests did not overlap responses");
-    std::printf("CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=%llu cycles=%llu\n",
+    std::printf("CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 consecutive=%u maximum_interval=%llu word_interval=%llu descriptor_interval=%llu cycles=%llu\n",
+      stream_consecutive,
       static_cast<unsigned long long>(maximum_interval),
+      static_cast<unsigned long long>(maximum_word_interval),
+      static_cast<unsigned long long>(maximum_descriptor_interval),
       static_cast<unsigned long long>(s.response_cycles.back()-s.response_cycles[first]+1));
-    // 单拍窗口连续命中时，仲裁器与描述符队列每周期接收并返回一个请求。
+    // 暖缓存中的单拍窗口应逐周期返回，统计全部相邻响应间隔。
     std::vector<Request> short_hits;
     for(unsigned i=0;i<256;i++) short_hits.push_back({0,0,4,i%4});
     first=s.response_cycles.size();
@@ -344,9 +367,19 @@ int main(int argc,char** argv) {
     last=s.response_cycles.size();
     check(last-first==256,"single-beat window response count");
     unsigned consecutive=0;
-    for(size_t i=first+1;i<last;i++) consecutive+=s.response_cycles[i]==s.response_cycles[i-1]+1;
-    check(consecutive==255,"single-beat windows require consecutive responses");
-    std::printf("CASE single_beat_hits requests=256 consecutive=255 elements=1024\n");
+    uint64_t single_maximum_interval=0;
+    for(size_t i=first+1;i<last;i++) {
+      const uint64_t interval=s.response_cycles[i]-s.response_cycles[i-1];
+      consecutive+=interval==1;
+      single_maximum_interval=std::max(single_maximum_interval,interval);
+    }
+    check(single_maximum_interval<=WINDOW_SINGLE_RESPONSE_INTERVAL,
+          "single-beat window response interval exceeded");
+    if (WINDOW_SINGLE_RESPONSE_INTERVAL==1)
+      check(consecutive==255,"single-beat windows did not return every cycle");
+    std::printf("CASE single_beat_hits requests=256 consecutive=%u elements=1024 maximum_interval=%llu cycles=%llu\n",
+      consecutive, static_cast<unsigned long long>(single_maximum_interval),
+      static_cast<unsigned long long>(s.response_cycles.back()-s.response_cycles[first]+1));
     s.concurrent_ordinary(0);s.concurrent_ordinary(3);
     std::printf("CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2\n");
     s.cancel_window_reservations();s.ordinary_after_window_grant();
@@ -390,6 +423,37 @@ int main(int argc,char** argv) {
     check(s.expected.size()==4,"reset setup did not retain four requests");
     s.reset();s.configure(configuration(0x7ffb,3,3));s.run({{0,12,3,2},{10,0,16,1},{63,24,3,0}},true);
     std::printf("CASE reset_with_four_requests cancelled=4 recovery_requests=3\n");
+    // 十六位输入复用同一窗口接口，检查准备项与当前返回字的同拍转发。
+    auto wide_config=configuration(0x10000,16,1);
+    wide_config[12]=0;wide_config[15]=2;
+    s.random_memory=false;s.configure(wide_config);
+    s.run({{0,0,16,0}});
+    std::vector<Request> wide_hits;
+    for(unsigned i=0;i<128;i++) wide_hits.push_back({0,0,2,i%4});
+    first=s.response_cycles.size();s.run(wide_hits);last=s.response_cycles.size();
+    check(last-first==128,"s16 single-beat response count");
+    unsigned wide_consecutive=0;
+    for(size_t i=first+1;i<last;i++) {
+      check(s.response_cycles[i]-s.response_cycles[i-1]==1,"s16 single-beat response interval");
+      wide_consecutive++;
+    }
+    std::printf("CASE s16_single_beat_hits requests=128 consecutive=%u elements=256 maximum_interval=1 cycles=%llu\n",
+      wide_consecutive,(unsigned long long)(s.response_cycles.back()-s.response_cycles[first]+1));
+    s.random_memory=true;
+    std::vector<Request> wide_mixed;
+    for(unsigned i=0;i<96;i++)
+      wide_mixed.push_back({unsigned(s.random()%64),unsigned(s.random()%16),1+unsigned(s.random()%16),i%4});
+    s.run(wide_mixed,true);
+    std::printf("CASE s16_coordinates_backpressure requests=96\n");
+    s.configure(wide_config);s.inject_error=true;s.error_used=false;
+    s.run({{0,0,4,0,true},{1,0,7,1,true},{2,3,9,2,true},{3,4,12,3,true}});
+    check(s.error_used,"s16 read error was not injected");s.inject_error=false;
+    std::printf("CASE s16_read_error_drain requests=4 completions=4\n");
+    s.configure(wide_config);s.run({{0,0,16,0}});s.top.rsp_ready=0;
+    for(unsigned i=0;i<4;) {Request request{0,0,4,i};s.drive(request);if(s.tick(&request))i++;}
+    check(s.expected.size()==4,"s16 reset did not retain four descriptors");
+    s.reset();s.configure(wide_config);s.run({{0,0,4,0},{7,1,13,1},{63,15,4,2}},true);
+    std::printf("CASE s16_reset_recovery cancelled=4 recovery_requests=3\n");
     check(s.accepted==s.completed+s.cancelled,"accepted requests were lost");
     std::printf("WINDOW_DMA_PASS accepted=%llu completed=%llu cancelled=%llu payload_elements=%llu errors=%llu\n",
       (unsigned long long)s.accepted,(unsigned long long)s.completed,(unsigned long long)s.cancelled,

@@ -1,0 +1,261 @@
+{
+  "passed": true,
+  "production_top_sha256": "0b01d244e74be92bdf22295403137703c2d91c034850f3ce3e9f0b4ee93925dc",
+  "frame_configuration": {
+    "passed": true,
+    "reference": "aa0a169c7d4a514523e2fb50b5037bdca42c7340",
+    "source_sha256": {
+      "candidate": "0b01d244e74be92bdf22295403137703c2d91c034850f3ce3e9f0b4ee93925dc",
+      "reference": "045e756fc1ab89d53c35ef9a6ddd00561f71a2768463d65366bb3e67bff887f1",
+      "helper": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2"
+    },
+    "generated_sha256": {
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/round5_soc_timing/frame_formal_final/reference.sv": "825eeaa00456df8739cf27fb972fae624d5c1f1f24ccb8f232a86b4282bb7474",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/round5_soc_timing/frame_formal_final/candidate.sv": "6dc7dacdb4e8161c7f712260aebd03e6d70e647ef7ffcf4dc868eba1fbf8c264",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/build/round5_soc_timing/frame_formal_final/formal.sv": "fe367643c7f5466d9c9bd9b36d73c3f6e810bc0c4da388314743a8a8e2451ebb",
+      "/workspace/scratch/0f396cc9e13a/mini_tflm_dsa/rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2"
+    },
+    "scope": "实际相位计数、帧资格公式、目录行数计算和捕获；比较相位三至七的消费值、启动资格及提交后的帧模式",
+    "input_values_constrained": false,
+    "input_capture": "复用数和控制字在配置进入第二级时保存；行数、容量结果和分片分别在相位零、一、二保存",
+    "reset": "第一个采样周期复位，后续复位、输入和就绪信号任意",
+    "runs": [
+      {
+        "REG_WIDTH": 1,
+        "FRAME_EXEC_ENABLED": 0,
+        "passed": true,
+        "script_sha256": "a1e5b9db29a2c128a506ee0de051ca640df985188289d7a751836de066d43df9",
+        "log_sha256": "9ab5b759406b6a224b8f3863c4715ee6546ff45b18f4061a744804f5b534bc29"
+      },
+      {
+        "REG_WIDTH": 1,
+        "FRAME_EXEC_ENABLED": 1,
+        "passed": true,
+        "script_sha256": "5dae90e4105185b3e68e42873239354c3372fda22164f95e0b36b269ca3869fe",
+        "log_sha256": "6085fcb9e8301c69107645a3fd6eec5c9fcd0093fa0d8bd5f808aa11034b6976"
+      },
+      {
+        "REG_WIDTH": 8,
+        "FRAME_EXEC_ENABLED": 1,
+        "passed": true,
+        "script_sha256": "c6bdc26a3e942c967f081b72b291b4f872b0310a987e55c29dc846a25803dfbc",
+        "log_sha256": "ad435534b1015755ea41735d9473764064b86051c7df97d45bd378eb68cf511a"
+      },
+      {
+        "REG_WIDTH": 16,
+        "FRAME_EXEC_ENABLED": 1,
+        "passed": true,
+        "script_sha256": "2d1af765cd77ff6c054c9aab51739f6aab87a9e74e4c0606ba8493a4214cedaf",
+        "log_sha256": "e8486767a0a55a47cb9b451a0f85a6121cf18d15f41348f071e7872d650573f7"
+      },
+      {
+        "REG_WIDTH": 32,
+        "FRAME_EXEC_ENABLED": 0,
+        "passed": true,
+        "script_sha256": "8e48dd23fe0215162ebef309c8be309b3464b6ec8411ab9c5eee87de982fc4cb",
+        "log_sha256": "41246c501a8fcef9ef3b43e6be73eb35beed5d2ebd5895d6a3acab0a87cb515e"
+      },
+      {
+        "REG_WIDTH": 32,
+        "FRAME_EXEC_ENABLED": 1,
+        "passed": true,
+        "script_sha256": "65c62775d343c49d959cbe53e2b371a7718b8d2be399394ecf12b9c03799c74e",
+        "log_sha256": "d3ec222e4a1a07f4ff970d43f5defb6896d83bbbc6b503d9e471f8ee44e36e11"
+      }
+    ]
+  },
+  "output_control": {
+    "passed": true,
+    "reference": "aa0a169c7d4a514523e2fb50b5037bdca42c7340",
+    "source_sha256": {
+      "reference": "045e756fc1ab89d53c35ef9a6ddd00561f71a2768463d65366bb3e67bff887f1",
+      "candidate": "0b01d244e74be92bdf22295403137703c2d91c034850f3ce3e9f0b4ee93925dc",
+      "helper": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8"
+    },
+    "reserve_profiles": [
+      {
+        "REG_WIDTH": 1,
+        "SIZE": 4,
+        "passed": true,
+        "script_sha256": "ecd273639d253049fc5626a478c4fee2937866ff954d19af65aa9e746a7cb04b",
+        "log_sha256": "c6aad29562305bba604a148ac4cd9ba68bb87dd14dfbfefdfa44576f8494d55c"
+      },
+      {
+        "REG_WIDTH": 8,
+        "SIZE": 8,
+        "passed": true,
+        "script_sha256": "bb59095d15f1b33b12206486abe40643772aa270a3e29ecb8349ad551a59ce8e",
+        "log_sha256": "f806a02198606297962587d83b2c8ce9e1d98a0f9c9820089fa5797b63fd8bd6"
+      },
+      {
+        "REG_WIDTH": 16,
+        "SIZE": 16,
+        "passed": true,
+        "script_sha256": "fac3fb629a99e6d4afb95f91f57eb93499f3f8e08d6116e8098a6f4caeb73be2",
+        "log_sha256": "74c33a1fd29e5538b986896a5407a4073bda6f6735e4b3c90c77eb080f608bf0"
+      },
+      {
+        "REG_WIDTH": 32,
+        "SIZE": 16,
+        "passed": true,
+        "script_sha256": "1d2b88e7b90d9fd773631a4a2c9c44981582f379c90b3bbbb99a61c366937745",
+        "log_sha256": "c974032b30c78f66455491785c3db2cbc490964b7e2b1676d1576ba3d4ec2d13"
+      },
+      {
+        "REG_WIDTH": 32,
+        "SIZE": 32,
+        "passed": true,
+        "script_sha256": "4155f9fe045199b19073a94bd6f7ad64f16f43c660e4630e7b2d13549f226974",
+        "log_sha256": "52a8e085b065251a5efe07a96ffa4a954e513b7b4fab3fae2fdcacb1b6dd6e9a"
+      }
+    ],
+    "row_profiles": [
+      {
+        "row_width": 1,
+        "valid_width": 2,
+        "passed": true,
+        "script_sha256": "4ddf82ae20165ef6ecc9464dc062554f44a0f917ffb195fa8fcbe6a1f2437109",
+        "log_sha256": "378e034c5ad29d022c50c6febf2c5d73b5f6b252805ce0cf0071db495b9564e2"
+      },
+      {
+        "row_width": 2,
+        "valid_width": 3,
+        "passed": true,
+        "script_sha256": "baaf380d8106de4abd307bac75da5bb4a86a3c9acf7f86482a47f9a15b3cd083",
+        "log_sha256": "9a097ce21b203dd574128b8888019ae2047606f413f4eb3000daca5c66719a45"
+      },
+      {
+        "row_width": 4,
+        "valid_width": 5,
+        "passed": true,
+        "script_sha256": "0d97dce3dcd4ad0928338ccee0ac1fd0591d195c5de0eff06713e9f9c36a5899",
+        "log_sha256": "8f73c096547893f3ebc7b39c4a64917ad38d13ac137f151808128319a2f4d765"
+      },
+      {
+        "row_width": 5,
+        "valid_width": 6,
+        "passed": true,
+        "script_sha256": "a2df2ff31c9ce8319438ce29c65a532670cb33adc4a43e29951aa1d077adac5c",
+        "log_sha256": "e8ec58266b3dd26196907326309feaedcbe35b98c95f7faeb9cfefb32ab89f2f"
+      },
+      {
+        "row_width": 6,
+        "valid_width": 7,
+        "passed": true,
+        "script_sha256": "3e9e0e8d2381e670028e6cd8bfcf1dddbd0c1fe132cf6569e461b65b18bf705b",
+        "log_sha256": "dcd5c1eb999731c07d4be088376940ba907e3d50d62f97a88debdd34ab7a5322"
+      },
+      {
+        "row_width": 8,
+        "valid_width": 9,
+        "passed": true,
+        "script_sha256": "9561e57f1b7b56cf2c8b5f42a9be98aa87ed9d1d6cbc1798101dd7d4bb8b653d",
+        "log_sha256": "956ab5abd449eeff322f5cbdb6130b10a46dc5ecde90196ba5959c0df85cbe5a"
+      }
+    ],
+    "scope": "实际配置相位、预留计数计算和寄存赋值；比较配置提交后的预留值及全部相位和启动周期；偏置行状态比较覆盖全部组合输入",
+    "qualifications": "相位二和三保存的帧资格、直接输出资格为任意输入值；计算表达式保持原样",
+    "reset": "首周期复位，之后复位、背压及配置输入均任意",
+    "four_state": {
+      "passed": true,
+      "cycles": 20000,
+      "reserve_checks": 12845,
+      "row_checks": 120000,
+      "submissions": 1906,
+      "strict_case_equality": true,
+      "bench_sha256": "51ff6c5dc06a88f9e741397503c94ec23a7e13469c96ec440e844d66b808d844",
+      "log_sha256": "8e1d3d8cc9919d18aa7009aa48f295bdef766010cbf5d40c6ddceeaca4683389"
+    }
+  },
+  "strict_elaboration": {
+    "passed": true,
+    "top": "npu_top",
+    "frontend": "Slang",
+    "declarations_before_use_checked": true,
+    "manifest_sha256": "f2f7671b69401d4e31323dac049cd6df56b1250824a74cfffb5632f975c5b946",
+    "stages_sha256": "2d0de1f6a43dd96e10f4c8cd64e265b84ecf478e9d569293d3c44a0feca0a1b8",
+    "source_sha256": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/npu/conv/vector_engine_pkg.sv": "73c2bf4756dea123f75a7e0eeab3ec3722a3b11d0aaab9bf573ae0ac87bee227",
+      "rtl/npu/buffers/ia_ps_shared_ram.sv": "4d259a05be88d36372bc9e7114112f0acb9daa46db8fafae749cb6cd73ef21d5",
+      "rtl/npu/buffers/ps_buffer.sv": "4e762c788b756c352cb75e2fa8f02eb585edb8fa843cc04b789756a545780b37",
+      "rtl/npu/buffers/ps_buffer_fifo.sv": "810571feb5306f847a19b5402e75aecb487a9ba8ff5185f37f6d0a07eced9085",
+      "rtl/npu/buffers/vector_shared_store.sv": "4a33845a90a054cefcb33586fcbafb85df8c97b720f238cd69ef141c5a161fc0",
+      "rtl/npu/compute/accumulator_array.sv": "3b175589e1e8f05bd6da71ee7c3abe377f3e1184542bfca69abc9f2eb5e78bf0",
+      "rtl/npu/compute/bias_mux.sv": "7f5ed78ff21592c73b301aa695c2664d9eafb77194e60f578c53d23a3583b94f",
+      "rtl/npu/compute/compute_core.sv": "c1db0a72d038e3efb4e48ff99133e06bb3b8d8496efb54c56d612b9717472b12",
+      "rtl/npu/compute/data_setup.sv": "7a24e1ce5b84aa8d9c47aeb8cb6fa85ad70facad1075ba4493a0c557cec92786",
+      "rtl/npu/compute/de_diagonalizer.sv": "cd2790f96260ee6f9c8923975b5a1579ecd812d515ab94f9711b1f2a24257272",
+      "rtl/npu/compute/select_add.sv": "0fed201b03d6b337fae47479de7e92027757035017b7e67e779dfcc5de67dd42",
+      "rtl/npu/compute/shift_accumulator.sv": "104d5f624db4d79d880e7c2e0bc9699e560d22129d1301e85f1d6ec1e3d768df",
+      "rtl/npu/compute/ws_systolic_array.sv": "4b195baecea27702f4972e068f2714661cbf8237caaacfe725cfa16cd2525bb0",
+      "rtl/npu/compute/ws_systolic_cell.sv": "edd6953d4361000e1522318b96b37892127bae3fe9a9604ebb15a94e4f478c6a",
+      "rtl/npu/control/npu_controller.sv": "04ec05981bb49145fe5ef52cf4176a02b5877ed847323b2ef8845bf3fb8c7597",
+      "rtl/npu/control/ps_capacity_limits.sv": "d12894a7a56d725dd4149646868ac5a8c8e52bd92c51b2cfa0946238979b2d98",
+      "rtl/npu/control/ps_window_scheduler.sv": "329bff7a2ddc3ff387235dfea14f5638540479483e20a5668b5e63eb15de0a5d",
+      "rtl/npu/conv/conv_axi_read_guard.sv": "a1ef76f0e5f9252e311addf4fa0b54339cbb0498e91d7ef156cc37624dc68109",
+      "rtl/npu/conv/conv_axi_read_mux.sv": "1a22339597320f0327c28452d47053f2cb3eb40d0f37ed0a62f6ffdefc2f5de8",
+      "rtl/npu/conv/conv_axi_span_reader.sv": "db36f4fece10457ad2438a217a36681e1ba172d49328a4a0f3f345dcba77c3ed",
+      "rtl/npu/conv/conv_ia_tile_path.sv": "12bbca0c6c5025af77e4c92686929c5ad6dbde6eb63b6025aa6f808a2a403e28",
+      "rtl/npu/conv/conv_ia_write_adapter.sv": "01bb70b75b3f2ca821f1ea290bc99ff1b05c8ff6519647d47c0360460573527f",
+      "rtl/npu/conv/conv_im2col_frontend.sv": "ddf106023155daf005ebb055925500ad271f6ddb248920fd5f4a02ea9051386c",
+      "rtl/npu/conv/vector_config_check.sv": "94cf886d38520774ed5536c12952537a446fd340cee29ecbd3cfb862e7ae59af",
+      "rtl/npu/conv/vector_engine.sv": "17006e819a7bbdcf60036fab4d353895f00103ff4836bd70739c7526970091d2",
+      "rtl/npu/conv/vector_pe.sv": "5168001a2aee177bb0f771f0a4c58438359584732f22bd48cacbc357859d9206",
+      "rtl/npu/conv/vector_quant_params.sv": "136150ca5086ef69a9b28b9bf811d550621e3a94c3f5bff7aefb6f02c51b18b2",
+      "rtl/npu/conv/vector_round_shift.sv": "650a7c9da52d96d8353f3b7d38e11126ad94cb5139dabfb6fdf7b2374fe84535",
+      "rtl/npu/conv/vector_scalar_multiplier.sv": "cb653aa087d808bfb9526b6a872d76d0b7caa05cab49466833567d04a3f373f3",
+      "rtl/npu/conv/vector_softmax.sv": "041beb3bef8331bffd816a41a0fd6bd6bbc880f6f6bf7c705ce5b9abbe71a8de",
+      "rtl/npu/conv/vector_writeback.sv": "027c35d5ddaabf7f28a5a8cef055178c46535756236e43ccecb4157548d2e92f",
+      "rtl/npu/dma/axi_block_dma_arbiter.sv": "b1678587efb85e77e827e92f181dd185c8022b7a84457820f431e000d0c98b0a",
+      "rtl/npu/dma/axi_dual_block_dma.sv": "8771e91e2a8ce788431e3d4058c6f86f9c97309821f590726ceeca27b73e5ab2",
+      "rtl/npu/dma/axi_linear_block_dma.sv": "36edbe4931aa43822309b03fbf7dd39f15508f88a3aa27edf43a39239d150b22",
+      "rtl/npu/dma/axi_write_page_guard.sv": "b6a8ff0273cb4cef306fa604cc4c7e57bf6c0a413c60f2a2ae3110bc20e913f9",
+      "rtl/npu/dma/cache/conv_next_use_predictor.sv": "14f886b3d5c9df131e41c04d051cf6a87b321efb96e0cd752bdd9558c04ce4e5",
+      "rtl/npu/dma/cache/conv_read_cache.sv": "9a2c508e08352d9b99d1963ef16ea103d12257397b3abc694e7a574de00a781b",
+      "rtl/npu/dma/cache/conv_sdp_ram.sv": "9cc30e59f10f86986d19e228950d5cf3c56f24edb1c9baf0cc4241f846f41767",
+      "rtl/npu/dma/conv_window_queue.sv": "e36200dc3dd36e9d39670167ac5445260279bcd98b254b10a33f2341d1007d87",
+      "rtl/npu/dma/operand_read_cache.sv": "863026e928bd4c236c3a42b0e46aeb78d147119122e21aeb3ea2856f805bc981",
+      "rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
+      "rtl/npu/loaders/bias_loader_buffer.sv": "80cfb812099f3807f579d1a546f807f62e52ad8348191df9fce50c4940a135d7",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+      "rtl/npu/loaders/ia_buffer_wrapper.sv": "6099b6c1c9bab637ee3dcbdece239891e0961506efcb43cc05731756894425df",
+      "rtl/npu/loaders/ia_loader.sv": "ecf3dd5bbe75eafe83adf0c0a0715e893c669f560e538259d7b7666934a5d0da",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "47bc2f727c3571717f3ccfffc47db20549f5704ddeb8985b4c811de07876505d",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "8050d4fab713ac8dfa986c0f3802bf20ece93d0ce0da6c66d281ac600c009b1c",
+      "rtl/npu/loaders/kernel_loader.sv": "b5c9b2f290c6d7857b616bd4b4c5e55b6ff67ea457f34bcafa5e4ea40656a6e0",
+      "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "bb57836884dd572b169f8db1f2290f916d7c130c64c66cb113313c50d029515b",
+      "rtl/npu/ps_compact/ps_adaptive_codec.sv": "649ae5c94a31f81fae20919b922ffb6ae4b213acd1ba9823d022c0a4b96976d9",
+      "rtl/npu/ps_compact/ps_frame_store.sv": "5cb0d6db5352859f334d0c8e8659bbd3a76a3b4a068006645331245c2233dbde",
+      "rtl/npu/top/frame_address_prepare.sv": "b284c26d4cd901f36c5e95e6b600d1f9897a6e49863676e89aa53a8616932fce",
+      "rtl/npu/top/npu_top.sv": "0b01d244e74be92bdf22295403137703c2d91c034850f3ce3e9f0b4ee93925dc",
+      "rtl/npu/writeback/oa_writer.sv": "c68469622ba180fb54fb6161ef53916180601378125e7c1a72590819f9550eea",
+      "rtl/npu/writeback/requant_compute_lane.sv": "6fc57402088084ed5941a7143695d989f75479066a61c33b3d23ec71c23c7b0b",
+      "rtl/npu/writeback/requant_group_buffer.sv": "7b52358f31692a2471900b7224ac7356ef0f6991a0c853604b14d615ba66fbde",
+      "rtl/npu/writeback/vec_requant.sv": "4470647492500729aa344521c2abfdb71592dd523eb72527a88662f9f2ae89e2",
+      "rtl/npu/writeback/vec_requant_s64.sv": "beb897a79952c8c7b2995a64a8dece25eb6409ae4d20063fa3676d2a1d162b9f",
+      "rtl/npu/writeback/vec_s16_to_fifo.sv": "522f7031fb8a24b9f1c819f48a49ff63c0478d85d79dcc4209ec2e559382e927",
+      "rtl/npu/writeback/vec_s8_to_fifo.sv": "e51cbbd7269b47998b84f32ec0a5f9ce822eb566e7385a6baa0f6d41e72cf037",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+    },
+    "stage": {
+      "elapsed_seconds": 9.46,
+      "peak_process_tree_rss_bytes": 445988864,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "01_elaborate.ys",
+      "log": "01_elaborate.log",
+      "script_sha256": "e34dec02cb7b5ed239d1f5b54a0f7daf10231aa921cdba43bd0ba9519652fbf4",
+      "output_sha256": "61f5254236a3895eef6b03274e1c6920060ccaba2e83fd276e6bd609660d3430"
+    }
+  },
+  "public_task_start_cycle_changed": false,
+  "physical_timing_150mhz_confirmed": null,
+  "collector_sha256": "58bedb64cd9ef1334019057241e86ca4497f987a13c4ecd10a306b22f338f76f"
+}

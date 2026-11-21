@@ -24,7 +24,7 @@ def run_command(command, log, timeout=1200):
     return result.returncode
 
 
-def sources(tb, memory=False):
+def sources(tb, memory=False, source_root=ROOT):
     package=ROOT/'rtl/npu/conv/conv_im2col_pkg.sv'
     packages=[package,ROOT/'rtl/npu/conv/vector_engine_pkg.sv']
     result=packages+[p for p in sorted((ROOT/'rtl/npu/conv').rglob('*.sv')) if p not in packages]
@@ -33,6 +33,9 @@ def sources(tb, memory=False):
     result.append(tb)
     import runpy
     result = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](result)
+    result = [source_root / path.relative_to(ROOT)
+              if path.is_relative_to(ROOT) and path.relative_to(ROOT).parts[0] == 'rtl'
+              else path for path in result]
     return result
 
 
@@ -83,6 +86,8 @@ def main():
     parser.add_argument('--sizes',type=int,nargs='+',default=[4,16])
     parser.add_argument('--verilator',default='verilator')
     parser.add_argument('--jobs',type=int,default=2)
+    parser.add_argument('--source-root',type=Path,default=ROOT,
+                        help='包含待验证 RTL 的独立源码目录')
     parser.add_argument('--skip-build',action='store_true')
     parser.add_argument('--reuse-builds-root',type=Path,help='Optional compiled profiles, checked against all current RTL sources')
     parser.add_argument('--legacy-only',action='store_true')
@@ -99,7 +104,7 @@ def main():
         cases=[(f's{size}','tb_conv_dma',HERE/'tb_conv_dma.sv',size,True,'CONV_DMA_PASS') for size in args.sizes]
     for name,top,tb,size,memory,marker in cases:
         case_out=out/name;case_out.mkdir(exist_ok=True)
-        binary=build(case_out,top,sources(tb,memory),size,args)
+        binary=build(case_out,top,sources(tb,memory,args.source_root.resolve()),size,args)
         cmd=[binary]
         if memory:cmd.append('+MATRIX_TRACE='+str(case_out/'matrix_returns.csv'))
         rc=run_command(cmd,case_out/'run.log',timeout=180)

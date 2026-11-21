@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -94,6 +95,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--reference',default='e379425d783c7a134e165eb180f0bbf6c0c1a4b0')
+    parser.add_argument('--reference-root',type=Path)
     parser.add_argument('--bank-counts',type=int,nargs='+',default=[6,7,8,9])
     parser.add_argument('--bank-bytes',type=int,nargs='+',default=[2048,8192])
     args=parser.parse_args()
@@ -102,16 +104,23 @@ def main():
     source=(ROOT/TOP).read_text()
     digest=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
     sources=[out/'candidate.sv',out/'reference.sv',out/'formal.sv',
-             ROOT/'rtl/npu/control/ps_capacity_limits.sv',ROOT/'rtl/common/onehot_check.sv']
+             ROOT/'rtl/npu/control/ps_capacity_limits.sv',ROOT/'rtl/common/onehot_check.sv',
+             ROOT/'rtl/common/parallel_prefix_add.sv']
     sources[0].write_text(capacity_module(source,'capacity_pipeline',sequential=True))
-    sources[1].write_text(capacity_module(read_rtl_source(f'{args.reference}:{TOP}',cwd=ROOT,text=True),
-                                        'capacity_reference'))
+    reference_text=((args.reference_root/TOP).read_text() if args.reference_root else
+                    read_rtl_source(f'{args.reference}:{TOP}',cwd=ROOT,text=True))
+    sources[1].write_text(capacity_module(reference_text,'capacity_reference'))
     sources[2].write_text(harness())
-    report=dict(passed=False,reference=args.reference,source_sha256={str(TOP):digest(ROOT/TOP)},
+    def commit_phase(text):
+        expression=re.search(r'assign cfg_stage2_fire\s*=.*?;',text,flags=re.S)[0]
+        return int(re.search(r"cfg_capacity_phase\s*==\s*(?:3'd)?([0-7])",expression)[1])
+    report=dict(passed=False,reference=str(args.reference_root.resolve()) if args.reference_root else args.reference,
+                source_sha256={str(TOP):digest(ROOT/TOP)},
+                reference_source_sha256=hashlib.sha256(reference_text.encode()).hexdigest(),
                 generated_sha256={path.name:digest(path) for path in sources},
                 proof_scope='Actual configuration counter and captures; arbitrary fields latched at stage-2 entry',
                 reset_assumption='First sampled cycle has core_rst_n=0; later reset and ready inputs arbitrary',
-                configuration_extra_cycles=2,runs=[])
+                configuration_extra_cycles=commit_phase(source)-commit_phase(reference_text),runs=[])
     for banks in args.bank_counts:
         for bank_bytes in args.bank_bytes:
             folder=out/f'banks{banks}_bytes{bank_bytes}'

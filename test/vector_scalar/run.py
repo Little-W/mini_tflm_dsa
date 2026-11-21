@@ -41,7 +41,10 @@ def main():
     reference=out/'reference.sv'
     reference.write_text(old.replace('module vector_scalar_multiplier (','module vector_scalar_multiplier_reference ('))
     source_hash=hashlib.sha256(source.read_bytes()).hexdigest()
+    common=ROOT/'rtl/common/parallel_prefix_add.sv'
+    common_hash=hashlib.sha256(common.read_bytes()).hexdigest()
     summary={'source_sha256':source_hash,'reference_rev':'b8b34d5',
+        'parallel_prefix_add_sha256':common_hash,
         'reference_sha256':hashlib.sha256(old.encode()).hexdigest(),
         'primitive_library_sha256':hashlib.sha256(library.read_bytes()).hexdigest(),
         'latency_edges':2,'initiation_interval':1,'formal':[]}
@@ -56,7 +59,8 @@ def main():
         for label,top,path in (('reference','vector_scalar_multiplier_reference',reference),
                                ('candidate','vector_scalar_multiplier',source)):
             commands += ['read_verilog -formal -sv -D VERIFIC -D XILINX_FPGA '+
-                ' '.join(shlex.quote(str(p)) for p in (path,model_file))]
+                ' '.join(shlex.quote(str(p)) for p in
+                         (path,model_file,ROOT/'rtl/common/parallel_prefix_add.sv'))]
             if label=='candidate':commands += [f'chparam -set p_use_dsp {use_dsp} {top}']
             commands += ['prep -top '+top+' -flatten','wreduce','opt -full']
             if label == 'candidate' and 'module registered_multiplier_s32' in source.read_text():
@@ -80,7 +84,8 @@ def main():
         if not record['passed']:raise RuntimeError(log[-10000:])
     if args.simulate:
         cmd=[args.verilator,'--binary','--timing','--assert','-Wno-fatal','--top-module','tb_vector_scalar',
-            '-j','2','--Mdir',str(out/'obj'),str(source),str(reference),str(model_file),str(HERE/'tb_vector_scalar.sv')]
+            '-j','2','--Mdir',str(out/'obj'),str(source),str(reference),str(model_file),
+            str(ROOT/'rtl/common/parallel_prefix_add.sv'),str(HERE/'tb_vector_scalar.sv')]
         with (out/'compile.log').open('w') as stream:subprocess.run(cmd,stdout=stream,stderr=subprocess.STDOUT,check=True)
         result=subprocess.run([str(out/'obj/Vtb_vector_scalar')],capture_output=True,text=True,check=True)
         (out/'simulation.log').write_text(result.stdout+result.stderr)
@@ -97,7 +102,8 @@ def main():
             '--case-config',str(config),'--cases',*cases,'--out',str(out/'synthesis')]
         if args.lock_file:command+=['--lock-file',str(args.lock_file.resolve())]
         subprocess.run(command,check=True)
-    summary['passed']=hashlib.sha256(source.read_bytes()).hexdigest()==source_hash
+    summary['passed']=(hashlib.sha256(source.read_bytes()).hexdigest()==source_hash and
+                       hashlib.sha256(common.read_bytes()).hexdigest()==common_hash)
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
     if not summary['passed']:raise RuntimeError('Scalar RTL changed during verification')
 

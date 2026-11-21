@@ -164,6 +164,64 @@ module tb_operand_drain;
       else $fatal(1,"core clock toggled while gated");
   endtask
 
+  task automatic check_completion_fault;
+    int wait_cycles, accepted_before_fault;
+    logic [31:0] fault_status;
+
+    // 在 CSR 接受输出端施加背压，等待实际计算与排空产生完成事件。
+    force dut.u_npu_axil_reg_if.npu_done_ready=1'b0;
+    gemm();
+    wait_cycles=0;
+    while(!dut.u_npu_top.task_completion_pending)begin
+      @(negedge clk);wait_cycles++;
+      assert(wait_cycles<10000)else $fatal(1,"completion event timeout");
+    end
+    accepted_before_fault=done_handshakes;
+    repeat(3)begin
+      @(negedge clk);
+      assert(dut.u_npu_top.task_completion_pending && dut.npu_done_valid && npu_busy)
+        else $fatal(1,"completion backpressure pending=%0b valid=%0b busy=%0b ready=%0b core_ready=%0b",
+          dut.u_npu_top.task_completion_pending,dut.npu_done_valid,npu_busy,
+          dut.npu_done_ready,dut.u_npu_top.done_ready);
+      assert(!dut.u_npu_top.task_completion_accept && done_handshakes==accepted_before_fault)
+        else $fatal(1,"completion accepted during backpressure");
+    end
+
+    // 完成已等待接受时注入故障，所有正常完成接受条件必须同时禁止。
+    force dut.u_npu_axil_reg_if.npu_done_ready=1'b1;
+    force dut.u_npu_top.task_fault=1'b1;
+    #1;
+    assert(!dut.npu_done_valid && !dut.u_npu_top.task_completion_accept &&
+           !dut.u_npu_top.engine_i_done_ready)
+      else $fatal(1,"normal completion accepted on fault cycle");
+`ifdef GEMPACT_PS_COMPRESS
+    assert(!dut.u_npu_top.g_frame_schedule.u_scheduler.done_ready)
+      else $fatal(1,"frame completion accepted on fault cycle");
+`endif
+    if(!dut.u_npu_top.frame_mode_q)
+      assert(!dut.u_npu_top.u_npu_controller.done_ready)
+        else $fatal(1,"controller completion accepted on fault cycle");
+    @(posedge clk);#1;
+    assert(done_handshakes==accepted_before_fault && !dut.u_npu_top.task_completion_pending)
+      else $fatal(1,"fault cycle retained or accepted normal completion");
+    @(negedge clk);
+    release dut.u_npu_top.task_fault;
+    release dut.u_npu_axil_reg_if.npu_done_ready;
+
+    fault_status=0;wait_cycles=0;
+    while(!fault_status[2])begin
+      rd('h004,fault_status);wait_cycles++;
+      assert(wait_cycles<10000)else $fatal(1,"fault completion timeout");
+    end
+    assert(fault_status[4:3]!=0 && done_handshakes==accepted_before_fault+1)
+      else $fatal(1,"fault completion status or handshake count");
+    assert(external_reads==0 && memory.count==0 && !memory.rd_active)
+      else $fatal(1,"fault completion retained external traffic");
+    wr('h004,4);
+    await_gated();
+    $display("OPERAND_DRAIN_COMPLETION_FAULT_PASS held_cycles=3 blocked_events=1 error_completions=1");
+  endtask
+
   bit expect_red;
   int timeout,hold_flushes,hold_done,hold_edges;
   int expected[4];
@@ -234,10 +292,12 @@ module tb_operand_drain;
       await_gated();
       for(int i=0;i<16;i++)begin put_byte(A+32'(i),2);put_byte(B+32'(i),3);end
       gemm();await_done(2);assert(get_byte(GOUT)==48)else $fatal(1,"final GEMM stale data");await_gated();
-      assert(starts==3 && flushes==3 && done_handshakes==3 && external_reads==0)
+      check_completion_fault();
+      gemm();await_done(4);assert(get_byte(GOUT)==48)else $fatal(1,"GEMM after fault incorrect");await_gated();
+      assert(starts==5 && flushes==5 && done_handshakes==5 && external_reads==0)
         else $fatal(1,"job/drain accounting mismatch starts=%0d flushes=%0d done=%0d reads=%0d",
                     starts,flushes,done_handshakes,external_reads);
-      $display("OPERAND_DRAIN_PASS jobs=%0d flushes=%0d done_handshakes=%0d held_cycles=250 core_edges=%0d conv_outputs=4 read_bytes=%0d write_bytes=%0d",starts,flushes,done_handshakes,core_edges,read_bytes,write_bytes);
+      $display("OPERAND_DRAIN_PASS jobs=%0d flushes=%0d done_handshakes=%0d held_cycles=250 completion_backpressure_cycles=3 fault_blocked_events=1 core_edges=%0d conv_outputs=4 read_bytes=%0d write_bytes=%0d",starts,flushes,done_handshakes,core_edges,read_bytes,write_bytes);
       $finish;
     end
   end

@@ -12,9 +12,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference', default=REFERENCE)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     args = parser.parse_args()
     out = args.out.resolve()
-    functions, inputs = snapshot(out / 'inputs', args.reference)
+    functions, inputs = snapshot(out / 'inputs', args.reference, args.source_root, args.reference_root)
     model = out / 'miter.sv'
     model.write_text(miter(*functions))
     rows = []
@@ -33,7 +35,7 @@ def main():
         rows.append({'address_width': aw, 'result_width': aw + 1, 'passed': True,
                      'log_sha256': digest(log)})
     helper_model = out / 'helper_miter.sv'
-    helper_model.write_text(helper_miter(args.reference))
+    helper_model.write_text(helper_miter(args.reference, args.source_root, args.reference_root))
     helper_rows = []
     for aw, dw, dp in HELPER_PROFILES:
         script = out / f'aw{aw}_dw{dw}_dp{dp}.ys'

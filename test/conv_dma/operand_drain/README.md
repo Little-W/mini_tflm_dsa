@@ -1,32 +1,26 @@
-# 可选 operand cache 的任务退休回归
+# 操作数缓存排空与任务完成检查
 
-本目录仅保留当前生产 RTL 的可执行回归源码。输入、描述符、参考值都由 SV 过程
-即时生成，不依赖旧 RED/GREEN 结果、源码快照或内存文件。默认输出为
-`build/conv_dma/operand_drain/`。
+本目录在生产 AXI-Lite 封装中验证操作数缓存、DMA、计算控制和时钟门控。测试输入、描述符和参考值由 SystemVerilog 过程生成，默认输出目录为 `build/conv_dma/operand_drain/`。
 
-## 固定场景
+## 实际执行场景
 
-首任务是 s8 GEMM `k=1,n=16,m=1`，无 bias、per-tensor 量化，两个 operand 都以
-64 B 对齐且行 stride 为 64 B。可选外层 cache 按 64 B 分配；首四个 weight R beat
-已满足计算需求后，测试暂停剩下 12 个 R beat，同时允许 OA 写通道继续完成。
+首个任务为 INT8 GEMM，参数为 `k=1,n=16,m=1`，不使用偏置，采用逐张量量化。两个操作数的地址与行跨度均为 64 字节。测试通过 `npu_axil_top` 的 `OPERAND_CACHE_ENABLE` 参数启用缓存，并将 `cfg_operand_fetch64` 设为 1。缓存、DMA、控制器、AXI-Lite 和时钟门控均使用生产 RTL。
 
-AXI-Lite wrapper 没有公开可选 cache 参数，因此测试用 `defparam` 启用真实
-`OPERAND_CACHE_ENABLE`，并将 core 的 `cfg_operand_fetch64` 输入 force 为 1。
-cache、DMA、controller、AXI-Lite 和时钟门控均是生产 RTL，没有用替代数据通路。
+缓存按 64 字节分配。权重读取的前四拍满足计算需求后，测试保持剩余十二拍，同时允许输出写通道继续执行。内部计算完成后，测试继续保持尾部 250 个周期，并检查公开完成与任务接收信号保持无效、缓存状态保持稳定、内核时钟持续运行以及额外启动请求被拒绝。释放尾部后，只接受一次任务完成事件。
 
-内部计算/OA 完成后再保持尾部 250 周期，要求外部 DONE/READY 保持为 0，没有
-新任务/flush/bypass 变化，core 时钟仍有效；额外 START 被拒绝。释放尾部后只
-允许一次完成握手。随后运行真正的原图 IS Conv，再将同地址 A/B 换值执行 GEMM。
-三个任务之间验证真实 clock gate 关闭并重新唤醒；六个输出字节与直接计算值比较。
+随后执行真实卷积，再使用相同地址和更新后的输入数据执行 GEMM。各任务间检查内核时钟停止和重新唤醒，并比较计算结果。
 
-这个测试保护 `operand_read_cache.idle` 到 top 任务退休和 abort drain 的合同，
-不需要重新执行旧缺陷版本来判断当前 RTL 是否正确，也不计入 CPU 固件性能测试。
+第四个 GEMM 完成计算与排空后，测试将完成接口的接受信号保持无效三个周期，检查寄存的完成事件持续有效。随后在同一周期使完成接受信号与 `task_fault` 同时有效，检查公开正常完成、统一接受事件及子模块完成接受信号均被禁止。故障通过测试中的强制赋值注入，目的是检查完成与故障的优先顺序。错误完成被接受后，再执行第五个 GEMM，检查恢复后的结果与门控行为。
 
-```sh
+## 运行方法
+
+```bash
 python3 test/conv_dma/operand_drain/run.py \
   --out build/operand_drain --verilator verilator
 ```
 
-`build.json` 记录所有 RTL、testbench 和 `.svh` include 哈希。可用 `--skip-build`
-复用同目录构建；可选 `--reuse-build-root` 允许使用另一处本地构建。源列表不完整或
-哈希不同会拒绝复用。运行输出、完整日志和 `summary.json` 都写入本次 `--out`。
+`build.json` 记录 RTL、测试程序和 `.svh` 文件的 SHA-256。`--skip-build` 复用同目录的构建结果；`--reuse-build-root` 指定另一处本地构建。源码摘要与构建状态匹配时才允许复用。运行输出、完整日志和 `summary.json` 写入本次 `--out`。
+
+`--source-root` 可指定保存完整生产 RTL 的固定目录。测试程序仍取自当前仓库，构建摘要同时记录两处输入文件，并检查编译期间各文件保持不变。
+
+独立的时钟门控检查由 `run_clock_gate.py` 执行，覆盖通用分支与使用官方 UNISIM 模型的 FPGA 分支。具体参数见 [clock_gate.md](clock_gate.md)。

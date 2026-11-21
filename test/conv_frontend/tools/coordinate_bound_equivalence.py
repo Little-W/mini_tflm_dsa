@@ -15,10 +15,13 @@ SOURCE = ROOT / "rtl/npu/conv/conv_im2col_frontend.sv"
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--source-root", type=Path, default=ROOT)
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = SOURCE.read_text()
+    source_root = args.source_root.resolve()
+    source = source_root / "rtl/npu/conv/conv_im2col_frontend.sv"
+    current = source.read_text()
     start = current.index("  for (genvar axis = 0; axis < 7; axis++) begin : g_coordinate_bound")
     section = current[start:current.index("  // 数据字匹配", start)]
     model = out / "coordinate_bound.sv"
@@ -46,7 +49,8 @@ end
 """ + section + "\nassign equivalent=&axis_equal;\nendmodule\n")
     script = out / "prove.ys"
     script.write_text("read_slang --top coordinate_bound_proof " + shlex.quote(str(model)) + " " +
-                     shlex.quote(str(ROOT / "rtl/common/add_equal.sv")) + "\n"
+                     shlex.quote(str(source_root / "rtl/common/add_equal.sv")) + " " +
+                     shlex.quote(str(source_root / "rtl/common/parallel_prefix_add.sv")) + "\n"
                      "prep -top coordinate_bound_proof -flatten\nsat -verify -prove equivalent 1\n")
     log = out / "formal.log"
     with log.open("w") as stream:

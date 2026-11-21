@@ -13,6 +13,7 @@
 ../../test/monitors/npu_controller_observer.sv
 ../../test/monitors/npu_top_observer.sv
 ../../test/monitors/ps_window_scheduler_observer.sv
+../../test/monitors/requant_group_buffer_observer.sv
 ../../test/monitors/vec_s8_to_fifo_observer.sv
 ../../test/monitors/vector_engine_observer.sv
 ../../test/monitors/ws_systolic_array_observer.sv

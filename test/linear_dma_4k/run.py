@@ -16,6 +16,7 @@ def sha(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source-root', type=Path, default=ROOT, help='包含候选 RTL 的独立源码目录')
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--out', type=Path, default=ROOT/'build/linear_dma_4k')
     parser.add_argument('--outstanding', type=int, choices=[1, 4], default=4)
@@ -33,7 +34,9 @@ def main():
                ROOT/'rtl/common/add_equal.sv',
                ROOT/'test/linear_dma_4k/linear_dma_4k_top.sv',
                ROOT/'test/linear_dma_4k/main.cpp', Path(__file__).resolve()]
-    hashes = {str(p.relative_to(ROOT)): sha(p) for p in sources}
+    source_root = args.source_root.resolve()
+    sources = [source_root / p.relative_to(ROOT) if p.is_relative_to(ROOT / 'rtl') else p for p in sources]
+    hashes = {str(p): sha(p) for p in sources}
     generate = [args.verilator, '--cc', '--exe', '--assert', '-Wno-fatal',
                 '--top-module', 'linear_dma_4k_top', '--Mdir', str(out/'obj'),
                 '--output-groups', '0', '--output-split', '12000',
@@ -59,7 +62,7 @@ def main():
         records.append({'random': random, 'passed': result.returncode == 0 and 'LINEAR_DMA_4K_PASS' in result.stdout,
                         'returncode': result.returncode, 'counters': {k: int(v) for k, v in fields}})
         print(result.stdout.strip())
-    unchanged = hashes == {str(p.relative_to(ROOT)): sha(p) for p in sources}
+    unchanged = hashes == {str(p): sha(p) for p in sources}
     passed = unchanged and all(r['passed'] for r in records)
     (out/'summary.json').write_text(json.dumps({'passed': passed, 'outstanding': args.outstanding, 'dma_max_bytes': args.dma_max_bytes, 'bus_width': args.bus_width,
         'source_sha256': hashes, 'sources_unchanged_during_build': unchanged,

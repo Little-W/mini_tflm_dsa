@@ -1,84 +1,93 @@
 #!/usr/bin/env python3
-"""核对正式验证与综合源文件并保存偏置加载器测量摘要。"""
+"""核对偏置加载器的完整证明、四态检查、数值回归和实际映射源码。"""
 import argparse
 import hashlib
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCES = ('bias_loader.sv', 'bias_loader_ctrl.sv', 'bias_loader_buffer.sv')
+BUFFER = 'rtl/npu/loaders/bias_loader_buffer.sv'
 
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def read(path):
+    return json.loads(path.read_text())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--build', type=Path, required=True)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--formal', type=Path, required=True)
+    parser.add_argument('--four-state', type=Path, required=True)
+    parser.add_argument('--numeric', type=Path, required=True)
+    parser.add_argument('--mapping', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
-    base = args.build.resolve()
-    formal_path = base / 'formal_final/summary.json'
-    numeric_path = base / 'numeric/result.json'
-    formal = json.loads(formal_path.read_text())
-    numeric = json.loads(numeric_path.read_text())
-    if not formal['passed'] or not numeric['passed']:
-        raise RuntimeError('Verification did not complete successfully')
-    sources = {f'rtl/npu/loaders/{name}': digest(ROOT / 'rtl/npu/loaders' / name)
-               for name in SOURCES}
+    formal = read(args.formal / 'summary.json')
+    four = read(args.four_state / 'summary.json')
+    numeric = read(args.numeric / 'result.json')
+    metrics = read(args.mapping / 'metrics.json')
+    manifest = read(args.mapping / 'manifest.json')
+    if not all(report['passed'] for report in (formal, four, numeric)):
+        raise ValueError('验证结果未全部通过')
+    sources = formal['source_sha256']
     for name, value in sources.items():
-        if formal['source_sha256'][name] != value or numeric['source_sha256'][name] != value:
-            raise RuntimeError(f'Verification source differs: {name}')
+        if digest(args.source_root / name) != value or numeric['source_sha256'][name] != value:
+            raise ValueError('验证结果使用的源码不一致：' + name)
+        mapped = [v for k, v in manifest['sources_sha256'].items() if Path(k).name == Path(name).name]
+        if mapped != [value]:
+            raise ValueError('映射结果使用的源码不一致：' + name)
+    if four['source_sha256']['current'] != sources[BUFFER]:
+        raise ValueError('四态结果使用的缓冲区源码不一致')
+    if four['source_sha256']['helper'] != sources['rtl/common/parallel_prefix_add.sv']:
+        raise ValueError('四态结果使用的加法器源码不一致')
+    if not metrics['paths']['graph_complete']:
+        raise ValueError('映射组合图不完整')
     report = {
-        'reference_rev': formal['reference_rev'], 'source_sha256': sources,
-        'latency_change_cycles': 0, 'storage_capacity_change_bits': 0,
-        'formal': {'passed': True, 'profiles': formal['profiles'],
-                   'equivalent_bits_total': sum(p['equivalent_bits'] for p in formal['profiles']),
-                   'inputs_constrained': False, 'summary_sha256': digest(formal_path)},
-        'numeric': {'passed': True, 'case_count': numeric['case_count'],
-                    'cycles': sum(p['cycles'] for p in numeric['cases']),
-                    'dma_commands': sum(p['dma_commands'] for p in numeric['cases']),
-                    'summary_sha256': digest(numeric_path),
-                    'simulator_sha256': numeric['simulator_sha256']},
-        'synthesis': {},
+        'passed': True,
+        'reference_revision': formal['reference_rev'],
+        'source_sha256': sources,
+        'reference_source_sha256': formal['snapshot_sha256']['reference'],
+        'latency_change_cycles': 0,
+        'storage_capacity_change_bits': 0,
+        'formal': {
+            'passed': True, 'profiles': formal['profiles'],
+            'equivalent_bits_total': sum(p['equivalent_bits'] for p in formal['profiles']),
+            'inputs_constrained': False,
+            'summary_sha256': digest(args.formal / 'summary.json'),
+        },
+        'four_state': {
+            'passed': True, 'profiles': four['profiles'],
+            'checks': sum(p['checks'] for p in four['profiles']),
+            'strict_four_state_equivalence': four['strict_four_state_equivalence'],
+            'summary_sha256': digest(args.four_state / 'summary.json'),
+        },
+        'numeric': {
+            'passed': True, 'case_count': numeric['case_count'],
+            'cycles': sum(p['cycles'] for p in numeric['cases']),
+            'dma_commands': sum(p['dma_commands'] for p in numeric['cases']),
+            'summary_sha256': digest(args.numeric / 'result.json'),
+            'simulator_sha256': numeric['simulator_sha256'],
+        },
+        'mapping': {
+            'top': manifest['top'], 'options': manifest['options'],
+            'resources': metrics['resources'], 'graph_complete': True,
+            'longest_register_path_cells': metrics['paths']['longest_register_path_cells'],
+            'manifest_sha256': digest(args.mapping / 'manifest.json'),
+            'mapped_sha256': digest(args.mapping / 'mapped.json'),
+            'metrics_sha256': digest(args.mapping / 'metrics.json'),
+        },
+        'physical_timing_150mhz_confirmed': None,
+        'collector_sha256': digest(Path(__file__)),
     }
-    modes = {
-        'native': ('native', 'rows_native'),
-        'wide_alu_dsp_min8': ('dsp', 'rows_dsp'),
-        'wide_alu_dsp_min8_physical_cost': ('dsp_physical', 'rows_dsp_physical'),
-    }
-    for mode, folders in modes.items():
-        report['synthesis'][mode] = {}
-        for label, folder in zip(('reference', 'current'), folders):
-            path = base / folder / ('loader_' + label)
-            metrics = json.loads((path / 'metrics.json').read_text())
-            paths = json.loads((path / 'paths.json').read_text())
-            manifest = json.loads((path / 'manifest.json').read_text())
-            if not metrics['paths']['graph_complete']:
-                raise RuntimeError(f'Timing graph is incomplete: {path}')
-            expected = formal['snapshot_sha256'][label]
-            for name in SOURCES:
-                hashes = [value for key, value in manifest['sources_sha256'].items()
-                          if Path(key).name == name]
-                if hashes != [expected[name]]:
-                    raise RuntimeError(f'Synthesis source differs: {path}/{name}')
-            report['synthesis'][mode][label] = {
-                'resources': metrics['resources'],
-                'longest_register_path_cells': metrics['paths']['longest_register_path_cells'],
-                'register_sink_paths': {key: value['longest_path_cells']
-                                        for key, value in paths['register_sink_paths'].items()},
-                'output_paths': {key: value['longest_path_cells']
-                                 for key, value in paths['output_paths'].items()},
-                'mapped_sha256': digest(path / 'mapped.json'),
-                'metrics_sha256': digest(path / 'metrics.json'),
-                'paths_sha256': digest(path / 'paths.json'),
-                'manifest_sha256': digest(path / 'manifest.json'),
-            }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps({'passed': True, 'formal_bits': report['formal']['equivalent_bits_total'],
-                      'numeric': report['numeric']}, ensure_ascii=False))
+        'four_state_checks': report['four_state']['checks'], 'numeric_cases': numeric['case_count'],
+        'register_depth': report['mapping']['longest_register_path_cells']}))
 
 
 if __name__ == '__main__':

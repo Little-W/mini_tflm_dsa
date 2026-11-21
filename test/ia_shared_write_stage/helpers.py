@@ -8,7 +8,7 @@ from run_interface import port_declarations
 
 SOURCES = ['rtl/npu/loaders/ia_loader_cache_mgr.sv',
            'rtl/npu/buffers/ia_ps_shared_ram.sv', 'rtl/npu/compute/select_add.sv']
-PARAMETERS = dict(DATA_WIDTH=16, SIZE=16, BUS_WIDTH=64, REG_WIDTH=32,
+PARAMETERS = dict(DATA_WIDTH=16, SIZE=16, BUS_WIDTH=64, DMA_LANES=8, REG_WIDTH=32,
                   CACHE_BLOCKS=32, COMPACT_S8=1, EXTERNAL_RAM=1,
                   RAM_WORD_ADDR_WIDTH=12, p_compact_offset_width=9,
                   SLOT_BLOCKS=64, p_addr_width=12, p_bank_count_width=3)

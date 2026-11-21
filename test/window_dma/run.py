@@ -27,7 +27,16 @@ def main():
     parser.add_argument('--jobs',type=int,default=2)
     parser.add_argument('--reference-ref',help='Compare resident-stream cycles with this Git revision')
     parser.add_argument('--fpga', action='store_true', help='使用官方 FPGA 原语模型')
+    parser.add_argument('--source-root', type=Path, default=ROOT, help='包含候选 RTL 的独立源码目录')
+    parser.add_argument('--single-response-interval', type=int, default=1,
+                        help='单拍窗口允许的最大返回间隔，用于显式选择流水配置')
+    parser.add_argument('--descriptor-response-interval', type=int, default=3,
+                        help='连续窗口之间允许的最大返回间隔')
     args=parser.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
+    if args.single_response_interval < 1:
+        parser.error('--single-response-interval 必须为正整数')
+    if args.descriptor_response_interval < 1:
+        parser.error('--descriptor-response-interval 必须为正整数')
     conv=ROOT/'rtl/npu/conv'
     sources=[conv/'conv_im2col_pkg.sv',conv/'vector_engine_pkg.sv']
     sources += [p for p in sorted(conv.rglob('*.sv')) if p not in sources]
@@ -35,8 +44,13 @@ def main():
     sources += [ROOT/'rtl/common/pseudo_dual_port_ram.v',HERE/'window_dma_top.sv',HERE/'main.cpp']
     import runpy
     sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
+    source_root = args.source_root.resolve()
+    sources = [source_root / source.relative_to(ROOT)
+               if source.is_relative_to(ROOT) and source.relative_to(ROOT).parts[0] == 'rtl' else source
+               for source in sources]
     defines = []
-    cppflags = '-std=c++20'
+    cppflags = '-std=c++20 -DWINDOW_SINGLE_RESPONSE_INTERVAL=' + str(args.single_response_interval)
+    cppflags += ' -DWINDOW_DESCRIPTOR_RESPONSE_INTERVAL=' + str(args.descriptor_response_interval)
     if args.fpga:
         import pyosys
         library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
@@ -86,6 +100,8 @@ def main():
         command([folder/'obj/Vwindow_dma_top',f'+WINDOW_TRACE={trace}'],folder/'run.log')
         text=(folder/'run.log').read_text();assert 'WINDOW_DMA_PASS' in text
         result={'passed':True,'name':name,'source_sha256':hashes,'fpga':args.fpga,
+                'maximum_response_intervals':{'single_beat':args.single_response_interval,
+                    'within_descriptor':3,'descriptor_boundary':args.descriptor_response_interval},
                 'executable_sha256':hashlib.sha256((folder/'obj/Vwindow_dma_top').read_bytes()).hexdigest(),
                 'resident_stream_sha256':hashlib.sha256(trace.read_bytes()).hexdigest(),
                 'resident_stream_cycles':len(trace.read_text().splitlines()),
@@ -99,7 +115,7 @@ def main():
         reference_sources=[]
         reference=out/'reference'
         for source in sources:
-            relative = source.relative_to(ROOT) if source.is_relative_to(ROOT) else None
+            relative = source.relative_to(source_root) if source.is_relative_to(source_root) else None
             if relative is not None and relative.parts[0] == 'rtl':
                 revision_file=f'{args.reference_ref}:{relative}'
                 try:

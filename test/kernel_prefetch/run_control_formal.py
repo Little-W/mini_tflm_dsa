@@ -71,9 +71,13 @@ def main():
     gate = out / 'kernel_loader_ctrl_gate.sv'
     gate.write_text(observed['current'])
     source_hash = hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest()
+    dependencies = [ROOT / 'rtl/common' / name for name in
+                    ('add_equal.sv', 'add3_equal.sv', 'parallel_prefix_add.sv')]
+    dependency_hashes = {str(path.relative_to(ROOT)):
+        hashlib.sha256(path.read_bytes()).hexdigest() for path in dependencies}
     profiles = []
     helpers = ' '.join(shlex.quote(str(ROOT / 'rtl/common' / name))
-                       for name in ('add_equal.sv', 'add3_equal.sv'))
+                       for name in ('add_equal.sv', 'add3_equal.sv', 'parallel_prefix_add.sv'))
     primitive_library_sha256 = None
     if args.fpga:
         import pyosys
@@ -115,9 +119,13 @@ def main():
         print(json.dumps(profiles[-1]), flush=True)
     if source_hash != hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest():
         raise RuntimeError("Source changed during verification")
+    if dependency_hashes != {str(path.relative_to(ROOT)):
+            hashlib.sha256(path.read_bytes()).hexdigest() for path in dependencies}:
+        raise RuntimeError('验证期间辅助模块发生变化')
     report = dict(passed=True, reference=args.reference, source_sha256=source_hash,
                   reference_sha256=hashlib.sha256(original.encode()).hexdigest(), profiles=profiles,
                   fpga=args.fpga, primitive_library_sha256=primitive_library_sha256,
+                  dependency_sha256=dependency_hashes,
                   derived_carry_part_bits=carry_part_bits, inputs_constrained=False)
     assert source_hash == hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest()
     (out / "summary.json").write_text(json.dumps(report, indent=2) + "\n")

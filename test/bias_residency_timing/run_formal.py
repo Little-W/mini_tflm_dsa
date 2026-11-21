@@ -28,25 +28,31 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference-rev', default='bdd7109f')
+    parser.add_argument('--source-root', type=Path, default=ROOT)
+    parser.add_argument('--reference-root', type=Path)
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    hashes = {str(p): digest(ROOT / p) for p in SOURCES + [MEMORY, HELPER]}
+    source_root = args.source_root.resolve()
+    hashes = {str(p): digest(source_root / p) for p in SOURCES + [MEMORY, HELPER]}
     snapshots = {}
     for label in ('reference', 'current'):
         folder = out / label
         folder.mkdir(exist_ok=True)
         snapshots[label] = []
         for relative in SOURCES:
-            data = (read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT)
-                if label == 'reference' else (ROOT / relative).read_bytes())
+            data = (((args.reference_root / relative).read_bytes() if args.reference_root else
+                     read_rtl_source(f'{args.reference_rev}:{relative}', cwd=ROOT))
+                    if label == 'reference' else (source_root / relative).read_bytes())
             path = folder / relative.name
             path.write_bytes(data)
             snapshots[label].append(path)
     report = {
         'passed': False,
-        'reference_rev': subprocess.check_output(
-            ['git', 'rev-parse', args.reference_rev], cwd=ROOT, text=True).strip(),
+        'reference_rev': (str(args.reference_root.resolve()) if args.reference_root else
+                          subprocess.check_output(['git', 'rev-parse', args.reference_rev],
+                                                  cwd=ROOT, text=True).strip()),
+        'source_root': str(source_root),
         'source_sha256': hashes,
         'snapshot_sha256': {label: {p.name: digest(p) for p in paths}
                             for label, paths in snapshots.items()},
@@ -64,7 +70,7 @@ def main():
         for label, paths in snapshots.items():
             commands += [
                 f'read_slang --top bias_loader {options} ' +
-                ' '.join(shlex.quote(str(p)) for p in paths + [ROOT / MEMORY, ROOT / HELPER]),
+                ' '.join(shlex.quote(str(p)) for p in paths + [source_root / MEMORY, source_root / HELPER]),
                 'prep -top bias_loader -flatten', 'memory_map', 'async2sync',
                 'opt_clean', f'rename bias_loader {label}', f'design -stash {label}',
             ]
@@ -96,7 +102,7 @@ def main():
         print(json.dumps(case), flush=True)
         if not case['passed']:
             raise RuntimeError(f'Formal comparison did not complete: {log}')
-    if hashes != {str(p): digest(ROOT / p) for p in SOURCES + [MEMORY, HELPER]}:
+    if hashes != {str(p): digest(source_root / p) for p in SOURCES + [MEMORY, HELPER]}:
         raise RuntimeError('Sources changed during verification')
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

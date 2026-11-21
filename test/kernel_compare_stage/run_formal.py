@@ -15,7 +15,7 @@ SOURCE_PATHS = (
     'rtl/npu/loaders/kernel_loader_buffer.sv',
     'rtl/common/regfile.v',
     'rtl/common/add_equal.sv',
-    'rtl/common/add3_equal.sv',
+    'rtl/common/add3_equal.sv', 'rtl/common/parallel_prefix_add.sv',
 )
 OBSERVATION = '''
     logic initial_cycle = 1'b1;

@@ -33,14 +33,16 @@ def main():
             if scope == 'capacity':
                 cases[f'{scope}_{version}'] = {
                     'top': 'ps_frame_capacity_measure',
-                    'sources': [str(SOURCE), 'test/ps_raw_store/capacity.sv'],
+                    'sources': [str(SOURCE), 'rtl/common/parallel_prefix_add.sv',
+                                'test/ps_raw_store/capacity.sv'],
                     'options': [f'-GREFERENCE={int(version == "reference")}'],
                     'configuration': '14-bit initial row, 10-bit bank depth, 4-bit bank count, 32-bit row requests',
                 }
             else:
                 cases[f'{scope}_{version}'] = {
                     'top': 'ps_frame_store',
-                    'sources': [str(reference_source) if version == 'reference' else str(SOURCE)],
+                    'sources': [str(reference_source) if version == 'reference' else str(SOURCE),
+                                'rtl/common/parallel_prefix_add.sv'],
                     'options': ['-GMAX_FRAME_ROWS=512', '-GFRAME_COUNT=16', '-GPOOL_BYTES=49152',
                                 '-GBANK_BYTES=8192', '-GEXTERNAL_RAM=1'],
                     'configuration': '512 rows/frame, 16 frames, 49152-byte pool, 8192-byte banks',

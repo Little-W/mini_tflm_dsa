@@ -25,7 +25,8 @@ def main():
     original=read_rtl_source(args.reference_ref+':'+SOURCE, cwd=ROOT)
     reference=out/'reference.sv';reference.write_bytes(original)
     current=ROOT/SOURCE;regfile=ROOT/'rtl/common/regfile.v'
-    hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,regfile)}
+    prefix=ROOT/'rtl/common/parallel_prefix_add.sv'
+    hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,regfile,prefix)}
     summary={'passed':False,'reference_ref':args.reference_ref,'source_sha256':hashes,
              'reference_sha256':hashlib.sha256(original).hexdigest(),'inputs_constrained':False,
              'method':'complete-state SAT and temporal induction after removing only external RAM address outputs for fixed-layout comparison',
@@ -38,7 +39,7 @@ def main():
                      f'-GMAX_FRAME_ROWS={max_rows} -GRAM_ADDR_BITS={(banks*(bank_bytes//16)-1).bit_length()}')
             for variant,source in (('reference',reference),('current',current)):
                 option=options+(f' -Gp_fixed_ps_channels={int(fixed)}' if variant=='current' else '')
-                commands.extend([f'read_slang --top ps_frame_store {option} {shlex.quote(str(source))} {shlex.quote(str(regfile))}',
+                commands.extend([f'read_slang --top ps_frame_store {option} '+shlex.join(map(str,(source,regfile,prefix))),
                                  'prep -top ps_frame_store -flatten'])
                 if fixed:commands.extend(['delete w:ram_read_addr w:ram_write_addr','opt_clean'])
                 commands.extend(['memory_map','async2sync','opt_clean',f'rename ps_frame_store {variant}',f'design -stash {variant}'])
@@ -59,7 +60,7 @@ def main():
             summary['runs'].append(report)
             print(json.dumps(report),flush=True)
             if not report['passed']:raise RuntimeError(text[-8000:])
-    if hashes!={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,regfile)}:
+    if hashes!={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (current,regfile,prefix)}:
         raise RuntimeError('Source changed during control verification')
     summary['passed']=True
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
