@@ -150,6 +150,9 @@ module vector_engine #(
   logic [ACTIVE_COUNT_W-1:0] active;
   logic [TAP_COUNT_W-1:0] taps;
   logic [15:0] ox, oy;
+  (* use_dsp = "yes" *) logic [15:0] fetch_ox_next, ox_next, oy_next;
+  assign ox_next = ox + 16'd1;
+  assign oy_next = oy + 16'd1;
   logic [TAP_COUNT_W-1:0] kx,ky;
   logic [TAP_COUNT_W-1:0] kernel_last_column;
   logic [TAP_COUNT_W-1:0] tap, load_tap, valid_taps;
@@ -161,7 +164,8 @@ module vector_engine #(
   localparam int p_input_bank_rows = (INPUT_STORED_ELEMENTS+INPUT_BANKS-1)/INPUT_BANKS;
   localparam int p_input_row_width = p_input_bank_rows>1 ? $clog2(p_input_bank_rows) : 1;
   logic [31:0] vector_offset;
-  logic [16:0] channel_next_value;
+  (* use_dsp = "yes" *) logic [16:0] channel_next_value;
+  (* use_dsp = "yes" *) logic [31:0] channel_remaining;
   logic [15:0] channel_next;
   logic channel_has_more;
   logic [ACTIVE_COUNT_W:0] vector_low_sum;
@@ -419,6 +423,7 @@ module vector_engine #(
   logic [31:0] fetch_position;
   logic [TAP_COUNT_W-1:0] fetch_tap;
   logic [15:0] fetch_ox;
+  assign fetch_ox_next = fetch_ox + 16'd1;
   logic [TAP_COUNT_W-1:0] fetch_kx;
   logic signed [33:0] fetch_x, fetch_y, fetch_origin_x, fetch_origin_y;
   logic [33:0] coordinate_step_i_value [8], coordinate_step_i_delta [8];
@@ -498,17 +503,40 @@ module vector_engine #(
       ($signed(input_origin_y[16:0]) >= stride_y_min) &&
       ($signed(input_origin_y[16:0]) < stride_y_max);
 
+  // 配置增量的完整差值先由普通算术表达，寄存边沿分别保存各有效区间。
+  (* use_dsp = "yes" *) logic [15:0] dilation_x_negative;
+  (* use_dsp = "yes" *) logic signed [16:0] dilation_x_maximum;
+  (* use_dsp = "yes" *) logic [15:0] dilation_y_negative;
+  (* use_dsp = "yes" *) logic signed [16:0] dilation_y_maximum;
+  (* use_dsp = "yes" *) logic [15:0] stride_x_negative;
+  (* use_dsp = "yes" *) logic signed [16:0] stride_x_maximum;
+  (* use_dsp = "yes" *) logic [15:0] stride_y_negative;
+  (* use_dsp = "yes" *) logic signed [16:0] stride_y_maximum;
+  (* use_dsp = "yes" *) logic [15:0] output_last_column_next;
+  (* use_dsp = "yes" *) logic [15:0] padding_x_negative, padding_y_negative;
+  assign dilation_x_negative = 16'd0 - c.image.dilation_w;
+  assign dilation_x_maximum = $signed({1'b0, c.image.input_w}) - $signed({1'b0, c.image.dilation_w});
+  assign dilation_y_negative = 16'd0 - c.image.dilation_h;
+  assign dilation_y_maximum = $signed({1'b0, c.image.input_h}) - $signed({1'b0, c.image.dilation_h});
+  assign stride_x_negative = 16'd0 - c.image.stride_w;
+  assign stride_x_maximum = $signed({1'b0, c.image.input_w}) - $signed({1'b0, c.image.stride_w});
+  assign stride_y_negative = 16'd0 - c.image.stride_h;
+  assign stride_y_maximum = $signed({1'b0, c.image.input_h}) - $signed({1'b0, c.image.stride_h});
+  assign output_last_column_next = c.image.output_w - 16'd1;
+  assign padding_x_negative = 16'd0 - c.image.pad_left;
+  assign padding_y_negative = 16'd0 - c.image.pad_top;
+
   always_ff @(posedge clk) begin
     if (state == CHECK_WAIT && config_check_done) begin
-      dilation_x_min <= $signed({(|c.image.dilation_w), (16'd0 - c.image.dilation_w)});
-      dilation_x_max <= $signed({1'b0, c.image.input_w}) - $signed({1'b0, c.image.dilation_w});
-      dilation_y_min <= $signed({(|c.image.dilation_h), (16'd0 - c.image.dilation_h)});
-      dilation_y_max <= $signed({1'b0, c.image.input_h}) - $signed({1'b0, c.image.dilation_h});
-      stride_x_min <= $signed({(|c.image.stride_w), (16'd0 - c.image.stride_w)});
-      stride_x_max <= $signed({1'b0, c.image.input_w}) - $signed({1'b0, c.image.stride_w});
-      stride_y_min <= $signed({(|c.image.stride_h), (16'd0 - c.image.stride_h)});
-      stride_y_max <= $signed({1'b0, c.image.input_h}) - $signed({1'b0, c.image.stride_h});
-      output_last_column <= c.image.output_w - 16'd1;
+      dilation_x_min <= $signed({(|c.image.dilation_w), dilation_x_negative});
+      dilation_x_max <= dilation_x_maximum;
+      dilation_y_min <= $signed({(|c.image.dilation_h), dilation_y_negative});
+      dilation_y_max <= dilation_y_maximum;
+      stride_x_min <= $signed({(|c.image.stride_w), stride_x_negative});
+      stride_x_max <= stride_x_maximum;
+      stride_y_min <= $signed({(|c.image.stride_h), stride_y_negative});
+      stride_y_max <= stride_y_maximum;
+      output_last_column <= output_last_column_next;
     end
   end
   logic soft_ready, soft_done, soft_exp_we, soft_out_we;
@@ -665,6 +693,7 @@ module vector_engine #(
   assign q_below_min = !q_negative_overflow && (q_positive_overflow || q_before_offset_below);
   assign q_above_max = !q_positive_overflow && (q_negative_overflow || q_before_offset_above);
   assign channels = {16'd0,c.image.input_c};
+  assign channel_remaining = channels - 32'(channel_base);
   assign channel_next_value = {1'b0,channel_base} + 17'(active);
   always_ff @(posedge clk) begin
     channel_next <= channel_next_value[15:0];
@@ -1464,8 +1493,12 @@ module vector_engine #(
   );
   localparam int POOL_SUM_WIDTH=8+$clog2(POOL_MAX_TAPS);
   wire signed [POOL_SUM_WIDTH-1:0] avg_pool_sum=serial_acc_read_data[POOL_SUM_WIDTH-1:0];
+  (* use_dsp = "yes" *) logic [POOL_SUM_WIDTH-1:0] avg_negated_sum;
+  (* use_dsp = "yes" *) logic signed [AVG_SCALE_BITS+1:0] avg_residual_next;
+  assign avg_negated_sum = $unsigned(-avg_pool_sum);
+  assign avg_residual_next = $signed({2'b00,avg_numerator_q}) - $signed({1'b0,avg_check_q});
   wire [POOL_SUM_WIDTH-1:0] avg_unsigned_magnitude=avg_pool_sum<0 ?
-      $unsigned(-avg_pool_sum) : $unsigned(avg_pool_sum);
+      avg_negated_sum : $unsigned(avg_pool_sum);
   assign avg_input_magnitude=32'(avg_unsigned_magnitude);
   assign avg_overestimate=avg_residual_q[AVG_SCALE_BITS+1];
   assign avg_twice_remainder={avg_remainder_q,1'b0};
@@ -1479,8 +1512,7 @@ module vector_engine #(
     end else if (state==AVG_WAIT) begin
       if (avg_phase==1) avg_estimate_q<=8'(multiplier_product >> AVG_SCALE_BITS);
       if (avg_phase==4) avg_check_q<=(AVG_SCALE_BITS+1)'(multiplier_product);
-      if (avg_phase==5) avg_residual_q<=
-          $signed({2'b00,avg_numerator_q})-$signed({1'b0,avg_check_q});
+      if (avg_phase==5) avg_residual_q<=avg_residual_next;
       // 向上取整的倒数可使商增加一；修正后的余数小于 valid_taps，
       // 因而可由 TAP_COUNT_W 位完整保存。
       if (avg_phase==6) begin
@@ -2174,12 +2206,12 @@ module vector_engine #(
           fetch_position<=fetch_position_next;fetch_tap<=0;fetch_tap_offset<=0;fetch_kx<=0;
           if (fetch_ox==output_last_column) begin
             fetch_ox<=0;
-            fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+            fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
             fetch_origin_y<=$signed(coordinate_step_o_value[7]);
-            fetch_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+            fetch_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
             fetch_y<=$signed(coordinate_step_o_value[7]);
           end else begin
-            fetch_ox<=fetch_ox+1;
+            fetch_ox<=fetch_ox_next;
             fetch_origin_x<=$signed(coordinate_step_o_value[6]);
             fetch_x<=$signed(coordinate_step_o_value[6]);fetch_y<=fetch_origin_y;
           end
@@ -2227,13 +2259,13 @@ module vector_engine #(
         end
         CONFIGURE: if (dma_cfg_ready) {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(spatial ? TILE_INIT : VECTOR_INIT);
         TILE_INIT: begin
-          active<=channels-channel_base<TILE ? channels-channel_base : 32'(TILE);
+          active<=channel_remaining<TILE ? channel_remaining : 32'(TILE);
           position<=0;position_offset<=0;ox<=0;oy<=0;load_tap<=0;load_kind<=LD_WEIGHT;
-          input_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});input_origin_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
+          input_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});input_origin_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
           read_bank<=0;wf_bank<=0;window_received<=0;
           fetch_position<=0;fetch_tap<=0;fetch_tap_offset<=0;fetch_ox<=0;fetch_kx<=0;
-          fetch_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});fetch_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
-          fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});fetch_origin_y<=$signed({{18{(|c.image.pad_top)}}, (16'd0-c.image.pad_top)});
+          fetch_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});fetch_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
+          fetch_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});fetch_origin_y<=$signed({{18{(|c.image.pad_top)}}, padding_y_negative});
           {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(depthwise ? LOAD_REQ : OUTPUT_INIT);
         end
         LOAD_REQ: if (rd_granted) begin
@@ -2292,13 +2324,13 @@ module vector_engine #(
           if (position_next<32'(position_count)) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
-              ox<=0;oy<=oy+16'd1;
-              input_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
-              input_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+              ox<=0;oy<=oy_next;
+              input_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
+              input_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
               input_origin_y<=$signed(coordinate_step_o_value[3]);
               input_y<=$signed(coordinate_step_o_value[3]);
             end else begin
-              ox<=ox+16'd1;
+              ox<=ox_next;
               input_origin_x<=$signed(coordinate_step_o_value[2]);
               input_x<=$signed(coordinate_step_o_value[2]);
               input_y<=input_origin_y;
@@ -2458,10 +2490,10 @@ module vector_engine #(
           if (position_next<32'(position_count)) begin
             position<=position_next;position_offset<=position_offset_next;
             if (ox==output_last_column) begin
-              ox<=0;oy<=oy+1;input_origin_x<=$signed({{18{(|c.image.pad_left)}}, (16'd0-c.image.pad_left)});
+              ox<=0;oy<=oy_next;input_origin_x<=$signed({{18{(|c.image.pad_left)}}, padding_x_negative});
               input_origin_y<=$signed(coordinate_step_o_value[3]);
             end else begin
-              ox<=ox+1;input_origin_x<=$signed(coordinate_step_o_value[2]);
+              ox<=ox_next;input_origin_x<=$signed(coordinate_step_o_value[2]);
             end
             {window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(OUTPUT_INIT);
           end else if (channel_has_more) begin
@@ -2910,6 +2942,7 @@ module vector_banked_writeback #(
   logic [BUS_SHIFT-1:0] lane_offset, first_bank;
   logic [COUNT_WIDTH:0] appended_bytes;
   logic append_compatible, append_fits, append_allowed;
+  logic request_prepared, prepared_compatible, prepared_fits;
   logic publish_fire, request_fire, data_fire;
   logic copy_active, copy_word_fire, copy_cancel, copy_last;
   logic [ROW_WIDTH-1:0] copy_source_q, copy_row_q;
@@ -2937,8 +2970,9 @@ module vector_banked_writeback #(
   assign publish_fire = (c_st==IDLE || (c_st==RESPONSE && wr_done && !wr_error)) &&
       pending_bytes!=0 && (!copy_active || copy_cancel) &&
       (pending_last || flush || pending_bytes==COUNT_WIDTH'(CAPACITY) ||
-       (request_valid && (!append_compatible || !append_fits)));
-  assign append_allowed = !flush && !pending_last && append_compatible && append_fits && !publish_fire;
+       (request_valid && request_prepared && (!prepared_compatible || !prepared_fits)));
+  assign append_allowed = request_prepared && !flush && !pending_last &&
+      prepared_compatible && prepared_fits && !publish_fire;
   assign source_group = copy_active ? copy_source_q : '0;
   assign destination_row = copy_active ? copy_row_q : ROW_WIDTH'(pending_bytes >> BUS_SHIFT);
   assign destination_offset = copy_active ? copy_offset_q : BUS_SHIFT'(pending_bytes);
@@ -3018,6 +3052,20 @@ module vector_banked_writeback #(
   //! 3. 更新接收与事务状态
   //! ------------------------
 
+  // 请求保持有效期间先保存地址连续性与容量检查，复制循环只使用寄存结果。
+  // 提交或发布会改变待发缓冲的边界，随后为下一项请求重新计算接收资格。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) request_prepared <= 1'b0;
+    else if (flush || !request_valid || request_fire || publish_fire)
+      request_prepared <= 1'b0;
+    else if (!request_prepared) request_prepared <= 1'b1;
+  end
+  always_ff @(posedge clk) begin
+    if (!request_prepared && request_valid && !flush && !publish_fire) begin
+      prepared_compatible <= append_compatible;
+      prepared_fits <= append_fits;
+    end
+  end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       copy_active <= 1'b0;
@@ -3105,7 +3153,7 @@ module vector_banked_writeback #(
         ARITH_WIDTH'(pending_bytes)>ARITH_WIDTH'(distance);
     assign final_mask[lane] = final_count==0 || BUS_SHIFT'(lane)<final_count;
   end
-  assign busy = c_st!=IDLE || pending_bytes!=0 || copy_active;
+  assign busy = c_st!=IDLE || pending_bytes!=0 || copy_active || request_prepared;
   assign done = c_st==RESPONSE && wr_done;
   assign error = done && wr_error;
   assign wr_req = c_st==REQUEST;
@@ -3123,7 +3171,11 @@ module vector_banked_writeback #(
   always @(posedge clk) if (rst_n) begin
     assert(!(publish_fire && copy_word_fire));
     if (copy_word_fire) assert(appended_bytes<=(COUNT_WIDTH+1)'(CAPACITY));
-    if (request_fire) assert(copy_last);
+    if (request_fire) assert(request_prepared && copy_last);
+    if (request_prepared && request_valid && !flush) begin
+      assert(prepared_compatible == append_compatible);
+      assert(prepared_fits == append_fits);
+    end
     if (c_st!=IDLE && pending_bytes!=0) assert(payload_slot!=pending_slot);
     if (data_fire) begin
       assert(beat_bytes!=0);

@@ -33,7 +33,8 @@ struct Simulation {
     std::unordered_map<uint32_t, unsigned> written;
     uint64_t cycles = 0, accepted_bytes = 0, written_bytes = 0;
     unsigned requests = 0, transactions = 0, responses = 0, errors = 0;
-    unsigned grant_stalls = 0, data_stalls = 0, partial_cancels = 0;
+    unsigned grant_stalls = 0, data_stalls = 0, preparation_cancels = 0, partial_cancels = 0;
+    unsigned prepared_cycles = 0, copied_words = 0;
     unsigned remaining = 0, response_delay = 0;
     uint32_t address = 0;
     bool random_wait = false, data_stalled = false, request_stalled = false;
@@ -79,6 +80,8 @@ struct Simulation {
         dut.wr_done = response_delay == 1;
         dut.wr_error = dut.wr_done && transactions % 17 == 0;
         dut.eval();
+        if (dut.monitor_prepared) ++prepared_cycles;
+        if (dut.monitor_copy_word_fire) ++copied_words;
         if (dut.request_valid && dut.request_ready) {
             for (unsigned i = 0; i < dut.request_bytes; ++i) {
                 const uint32_t destination = uint32_t(dut.request_address) + i;
@@ -218,10 +221,24 @@ int main(int argc, char **argv) {
             if (index % 13 == 0) for (unsigned pause = 0; pause < 5; ++pause) s.tick();
         }
         s.drain(true);
+        // 准备状态的取消不接收字节，也不产生额外的写事务。
+        s.prepare(next, kCapacity, false, false, true);
+        require(!s.dut.request_ready, "准备完成前确认了请求");
+        s.tick();
+        require(s.dut.monitor_prepared && !s.dut.monitor_copy_active,
+                "请求准备状态不完整");
+        s.dut.request_valid = 0;
+        s.drain(true);
+        ++s.preparation_cancels;
         if (kCapacity > kBusBytes) {
             s.prepare(next, kCapacity, false, false, true);
             require(!s.dut.request_ready, "多拍请求提前完成接收");
-            s.tick();
+            const unsigned copied_before = s.copied_words;
+            for (unsigned wait = 0; !s.dut.monitor_copy_active; ++wait) {
+                require(wait < 8 && !s.dut.request_ready, "未进入部分字复制状态");
+                s.tick();
+            }
+            require(s.copied_words > copied_before, "部分请求取消未覆盖实际存储写入");
             s.dut.request_valid = 0;
             s.drain(true);
             ++s.partial_cancels;
@@ -231,12 +248,14 @@ int main(int argc, char **argv) {
         s.send(0xfffffffcu, std::min(kCapacity, 12u), false, false, true);
         s.drain();
         require(s.expected.size() == s.written.size(), "输出地址集合不完整");
-        require(s.errors && s.grant_stalls && s.data_stalls, "错误及暂停覆盖不足");
+        require(s.errors && s.grant_stalls && s.data_stalls && s.prepared_cycles,
+                "错误、暂停或准备状态覆盖不足");
         s.dut.final();
-        std::printf("VECTOR_BANKED_WRITEBACK_PASS tile=%u bus_bits=%u coalesce_bytes_only=%u requests=%u bytes=%llu transactions=%u responses=%u errors=%u grant_stalls=%u data_stalls=%u partial_cancels=%u cycles=%llu\n",
+        std::printf("VECTOR_BANKED_WRITEBACK_PASS tile=%u bus_bits=%u coalesce_bytes_only=%u requests=%u bytes=%llu transactions=%u responses=%u errors=%u grant_stalls=%u data_stalls=%u preparation_cancels=%u partial_cancels=%u prepared_cycles=%u copied_words=%u cycles=%llu\n",
                     kTile, TEST_BUS_WIDTH, TEST_COALESCE_BYTES_ONLY, s.requests, (unsigned long long)s.written_bytes,
                     s.transactions, s.responses, s.errors, s.grant_stalls, s.data_stalls,
-                    s.partial_cancels, (unsigned long long)s.cycles);
+                    s.preparation_cancels, s.partial_cancels, s.prepared_cycles, s.copied_words,
+                    (unsigned long long)s.cycles);
         return 0;
     } catch (const std::exception &error) {
         std::fprintf(stderr, "FAIL: %s\n", error.what());

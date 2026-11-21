@@ -37,6 +37,13 @@ module vector_config_check #(
   logic [63:0] selected_bytes,range_bytes_q;
   logic selected_enable,range_enable_q,range_size_ok;
   logic [32:0] range_end_q,output_end_q;
+  (* use_dsp = "yes" *) logic [33:0] range_output_distance, output_range_distance;
+  logic range_before_output, output_before_range;
+  // 扩展后的无符号差值保留完整借位，范围端点寄存后并行比较两种地址次序。
+  assign range_output_distance = {2'b00,cfg.output_base} - {1'b0,range_end_q};
+  assign output_range_distance = {2'b00,range_base_q} - {1'b0,output_end_q};
+  assign range_before_output = !range_output_distance[33];
+  assign output_before_range = !output_range_distance[33];
   logic [7:0] range_end_low;
   logic range_end_carry;
   (* use_dsp="yes" *) logic [24:0] range_end_high;
@@ -207,8 +214,7 @@ module vector_config_check #(
       end
       RANGE_COMPARE: begin
         if (range_enable_q && (!range_size_ok || range_end_q[32] ||
-            (range_index!=0 && !(range_end_q<={1'b0,cfg.output_base} ||
-                                 output_end_q<={1'b0,range_base_q})))) begin
+            (range_index!=0 && !(range_before_output || output_before_range)))) begin
           error<=1;state<=COMPLETE;
         end else begin
           if (range_index==0) output_end_q<=range_end_q;

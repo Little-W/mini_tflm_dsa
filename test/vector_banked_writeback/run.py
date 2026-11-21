@@ -32,7 +32,17 @@ def main():
     original = source.read_text()
     module = re.search(r'^module vector_banked_writeback\b.*?^endmodule', original, re.M | re.S)[0]
     helper = out / 'vector_banked_writeback.sv'
-    helper.write_text('`default_nettype none\n' + module + '\n`default_nettype wire\n')
+    # 观察实际准备与复制状态，分别检查准备取消和部分字复制取消。
+    observed_module = module.replace(
+        'input  logic clk, rst_n,',
+        'output logic monitor_prepared, monitor_copy_active, monitor_copy_word_fire,\n'
+        '  input  logic clk, rst_n,')
+    observed_module = observed_module.replace(
+        '\nendmodule',
+        '\n  assign monitor_prepared = request_prepared;\n'
+        '  assign monitor_copy_active = copy_active;\n'
+        '  assign monitor_copy_word_fire = copy_word_fire;\nendmodule')
+    helper.write_text('`default_nettype none\n' + observed_module + '\n`default_nettype wire\n')
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
     report = {'source_sha256': source_hash,
               'test_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
