@@ -28,14 +28,35 @@
         "DATA_WIDTH": 16,
         "equivalent_bits": 12895,
         "matrix_storage_bits": 12288
+      },
+      {
+        "SIZE": 32,
+        "DATA_WIDTH": 16,
+        "equivalent_bits": 50297,
+        "matrix_storage_bits": 49152,
+        "proof_groups": 16,
+        "output_bits": 512,
+        "state_and_storage_compared_before_output_groups": 49785
       }
     ],
-    "equivalent_bits": 20242,
-    "matrix_storage_bits": 19032,
+    "equivalent_bits": 70539,
+    "matrix_storage_bits": 68184,
     "inputs_constrained": false,
     "rtl_tokens_sha256": "b217403f4f602d4086648da405a5b07b2a4d7debdf2a8e8e05d62f97a63e6b36",
     "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/formal_completed.json",
-    "report_sha256": "6545aae6cbde353348ed615706c6e5206c223e66c6c05a954bc78ce7c1b66a86"
+    "report_sha256": "6545aae6cbde353348ed615706c6e5206c223e66c6c05a954bc78ce7c1b66a86",
+    "partitioned_proof": {
+      "passed": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/partitioned_32_16.json",
+      "report_sha256": "1f3bd9eb7de86eced9c64874067247a14cbd61c91150294f325194d661b0f9e6",
+      "inputs_constrained": false,
+      "complete_output_coverage": true,
+      "source_and_intermediate_sha256_checked": true,
+      "groups": 16,
+      "bits_per_group": 32,
+      "output_bits": 512,
+      "initial_state_comparison_bits": 49785
+    }
   },
   "numeric": {
     "profiles": [
@@ -189,11 +210,12 @@
     }
   },
   "test_sources_sha256": {
-    "test/kernel_row_storage/README.md": "7a99d733c7c4b912d2d8221675e55b35a6095d2197f531c268c33ead83af9040",
+    "test/kernel_row_storage/README.md": "b3ecc301210c6d7c3b058d3ac905698bb4713070140fa21f838d7f0cc409a6a0",
     "test/kernel_row_storage/run_formal.py": "868d813c06480cd4f1c3f03c30dfab90a8842f3178b3f9da8a54bb1f7b0f62bb",
     "test/kernel_row_storage/run_four_state.py": "6150289a8417c978d5c794ad45b5cb80276e7f51587c88116d5cdb770619bda3",
     "test/kernel_row_storage/run_numeric.py": "df173b567a1e1f31887cdc02a15c1a47025eaa92e6cbe42817b8d6d6d50352f6",
     "test/kernel_row_storage/synthesis_cases.json": "a2fb22f6423bb3c0efd3439b7e33ab32732ed7a6c919f73ad2ab2ed296d70a93",
-    "test/kernel_row_storage/tb_four_state.sv": "45470b94664e02ed4f8f3e76d28cfbff03a3c156c37ffe2aa4544f8537aed68c"
+    "test/kernel_row_storage/tb_four_state.sv": "45470b94664e02ed4f8f3e76d28cfbff03a3c156c37ffe2aa4544f8537aed68c",
+    "test/kernel_row_storage/run_partitioned.py": "293904486b55eb901a408f6955c689c2b4181a4186c10ccdc0235f9d72789d3d"
   }
 }

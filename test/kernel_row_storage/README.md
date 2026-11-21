@@ -6,7 +6,7 @@
 
 ## 已完成验证
 
-- 完整状态与存储证明覆盖 `SIZE/DATA_WIDTH` 为 `3/8`、`4/8`、`16/8`、`16/16` 的四组参数，共 20,242 个状态和输出位，其中矩阵存储为 19,032 位。三个物理槽位的每个矩阵元素均按行列位置对应，全部外部输入保持未约束。
+- 完整状态与存储证明覆盖 `SIZE/DATA_WIDTH` 为 `3/8`、`4/8`、`16/8`、`16/16`、`32/16` 的五组参数，共 70,539 个状态和输出比较位，其中矩阵存储为 68,184 位。三个物理槽位的每个矩阵元素均按行列位置对应，全部外部输入保持未约束。 `SIZE=32` 先证明全部存储和其余状态，再按数据位分成十六组，每组包含全部三十二个输出通道。各组沿用同一公共输入和已证明的存储对应关系，完整覆盖 512 个输出位。
 - 五组逐周期数值测试各执行 100,003 个周期，总计 500,015 个周期。参数包括 `SIZE=3/4/16/32`、`DATA_WIDTH=8/16`，比较全部公开控制输出和每个权重通道，覆盖两个预取槽位、加载与发送重叠、丢弃、清除及复位。
 - 相同五组参数的四态测试完成 709,565 次比较，包含未初始化读取、数据 X/Z、控制 X/Z、复位与十次同地址读写检查。
 - 完整 `kernel_loader` 在 `BUS_WIDTH=32/64/128`、`COUNT_WIDTH=29/33` 下完成 855 个权重块及 218,880 个权重值检查，覆盖 S8/S16、两路在途、预取命中、取消、尾块和清除恢复。
@@ -31,7 +31,8 @@
 ```bash
 mkdir -p build/kernel_row_storage_reference
 git archive cedf4ed3 rtl/common rtl/npu/loaders/kernel_loader_buffer.sv | tar -x -C build/kernel_row_storage_reference
-python3 test/kernel_row_storage/run_formal.py --source-root . --reference-root build/kernel_row_storage_reference --profiles 3:8 4:8 16:8 16:16 32:16 --out build/kernel_row_storage/formal
+python3 test/kernel_row_storage/run_formal.py --source-root . --reference-root build/kernel_row_storage_reference --profiles 3:8 4:8 16:8 16:16 --out build/kernel_row_storage/formal
+python3 test/kernel_row_storage/run_partitioned.py --source-root . --reference-root build/kernel_row_storage_reference --size 32 --width 16 --group-timeout 90 --out build/kernel_row_storage/partitioned_32_16
 python3 test/kernel_row_storage/run_numeric.py --source-root . --reference-root build/kernel_row_storage_reference --out build/kernel_row_storage/numeric
 python3 test/kernel_row_storage/run_four_state.py --source-root . --reference-root build/kernel_row_storage_reference --out build/kernel_row_storage/four_state
 python3 scripts/fpga/open_fpga_synth.py --source-root . --case-config test/kernel_row_storage/synthesis_cases.json --cases kernel_buffer --out build/kernel_row_storage/synthesis --wide-alu-dsp-budget 740 --rtl-dsp-attributes --max-register-path-cells 10
