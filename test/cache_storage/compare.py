@@ -27,6 +27,9 @@ def main():
     parser.add_argument("--jobs", type=int, default=2)
     parser.add_argument("--fpga", action="store_true", help="使用官方LUT模型检查FPGA配置逻辑")
     parser.add_argument("--cache-sets", type=int, default=8)
+    parser.add_argument("--read-width", type=int, choices=(32, 64, 128), default=32)
+    parser.add_argument("--source-root", type=Path, default=ROOT,
+                        help="从独立源码目录读取候选 RTL")
     parser.add_argument("--bus-widths", nargs="+", type=int, choices=(32, 64), default=[32, 64])
     parser.add_argument("--profiles", nargs="+", choices=("4x2", "4x1", "1x2"), default=["4x2", "4x1", "1x2"])
     args = parser.parse_args()
@@ -39,12 +42,6 @@ def main():
     old_file = out / "reference_cache.sv"
     old_file.write_text(old_text)
     template = (ROOT / "test/cache_pipeline/tb_cache_pipeline.sv").read_text()
-    template = template.replace("parameter int CACHE_WAYS=2", "parameter int CACHE_WAYS=2,\n    parameter int CACHE_SETS=8,\n    parameter int BUS_WIDTH=32")
-    template = template.replace(".SETS(8)", ".SETS(CACHE_SETS)")
-    template = template.replace("logic [31:0] araddr,rdata;", "logic [31:0] araddr;\n    logic [BUS_WIDTH-1:0] rdata;")
-    template = template.replace(".CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH)",
-                                ".CACHE_POLICY(3),.DEMAND_DEPTH(DEMAND_DEPTH),.BUS_WIDTH(BUS_WIDTH)")
-    template = template.replace("axi_counted_memory #(", "axi_counted_memory #(.BUS_WIDTH(BUS_WIDTH),")
     template = template.replace("logic [31:0] prefetch_addr=0;",
         "logic [31:0] prefetch_addr=0,prefetch_epoch=0;\n" +
         "    int prefetch_peak=0,prefetch_swaps=0,prefetch_overlap=0;")
@@ -93,7 +90,7 @@ def main():
     original = template[start:end]
     reference = original.replace("conv_read_cache #(", "reference_conv_read_cache #(").replace(") dut(", ") reference_dut(")
     reference = reference.replace(".*);", ",".join(f".{port}(reference_{port})" for port in OUTPUTS) + ",.*);")
-    declarations = "\n".join(f"    logic [{width-1}:0] reference_{port};" for port, width in OUTPUTS.items())
+    declarations = "\n".join(f"    logic [$bits({port})-1:0] reference_{port};" for port in OUTPUTS)
     always_ports = tuple(OUTPUTS)
     checks = "\n".join(f'        if ({port} !== reference_{port}) $fatal(1, "cache cycle mismatch {port} cycle=%0d", cycle);'
                        for port in always_ports)
@@ -125,16 +122,15 @@ def main():
     tb_file = out / "tb_cache_pipeline.sv"
     tb_file.write_text(template)
     memory = (ROOT / "test/conv_reuse/axi_counted_memory.sv").read_text()
-    memory = memory.replace("parameter int TRACK_BYTES=256", "parameter int TRACK_BYTES=256,\n    parameter int BUS_WIDTH=32")
-    memory = memory.replace("output logic [31:0] rdata", "output logic [BUS_WIDTH-1:0] rdata")
-    memory = memory.replace("!(arsize==0 || arsize==2)", "!(arsize==0 || arsize==2 || (BUS_WIDTH==64 && arsize==3))")
-    memory = memory.replace("b<4", "b<BUS_WIDTH/8").replace("(address&3)", "(address&32'(BUS_WIDTH/8-1))")
-    memory = memory.replace("rdata<=32'hbadacafe", "rdata<=BUS_WIDTH'(64'hbadacafebadacafe)")
     memory_file = out / "axi_counted_memory.sv"
     memory_file.write_text(memory)
     sources = [ROOT / "rtl/npu/dma/cache/conv_read_cache.sv", ROOT / "rtl/npu/dma/cache/conv_sdp_ram.sv",
                ROOT / "rtl/npu/conv/conv_axi_span_reader.sv", old_file, tb_file, memory_file]
     sources = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](sources)
+    candidate_root = args.source_root.resolve()
+    sources = [candidate_root / path.relative_to(ROOT)
+               if path.is_relative_to(ROOT) and path.relative_to(ROOT).parts[0] == "rtl" else path
+               for path in sources]
     if args.fpga:
         import pyosys
         library = Path(pyosys.__file__).parent / "share/xilinx/cells_sim.v"
@@ -150,6 +146,7 @@ def main():
             folder.mkdir(exist_ok=True)
             command = [args.verilator, "--binary", "--timing", "--assert", "-DNPU_SIM_ASSERT", "-Wno-fatal",
                        "--top-module", "tb_cache_pipeline", f"-GBUS_WIDTH={bus}", f"-GDEMAND_DEPTH={depth}",
+                       f"-GREAD_WIDTH={args.read_width}",
                        f"-GCACHE_WAYS={ways}", f"-GCACHE_SETS={args.cache_sets}", "--Mdir", str(folder / "obj"), "-j", str(args.jobs),
                        "--output-groups", "0", "--output-split", "12000", "-CFLAGS", "-std=c++20 -O1",
                        "-MAKEFLAGS", "OPT_FAST=-O1 OPT_SLOW=-O0 VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E",
@@ -162,7 +159,8 @@ def main():
                 raise RuntimeError(run.stdout[-4000:] + run.stderr)
             passed = next(line for line in run.stdout.splitlines() if line.startswith("CACHE_PIPELINE_PASS"))
             prefetch = next(line for line in run.stdout.splitlines() if line.startswith("PREFETCH_QUEUE_PASS"))
-            results.append({"bus_width": bus, "depth": depth, "ways": ways, "cache_sets": args.cache_sets, "result": passed,
+            results.append({"bus_width": bus, "read_width": args.read_width, "depth": depth, "ways": ways,
+                            "cache_sets": args.cache_sets, "result": passed,
                             "prefetch_queue": prefetch})
             print(f"COMPARE_PASS bus={bus} depth={depth} ways={ways}", flush=True)
             for temporary in (folder / "obj").iterdir():

@@ -50,6 +50,18 @@ def main():
               if 0<=(position//grouped.ow)*grouped.sh+(tap//grouped.kw)*grouped.dh-grouped.pt<grouped.h
               and 0<=(position%grouped.ow)*grouped.sw+(tap%grouped.kw)*grouped.dw-grouped.pl<grouped.w]
         jobs.append((grouped,values,plan,False,False))
+    # 矩形卷积同时覆盖非等长核、空洞、跨页输入和接近字节上界的偏移。
+    geometry=Config(9,10,5,2,3,5,10,sh=2,sw=1,dh=2,dw=2,pt=1,pl=2,
+                    offset=127,base=0x10ffd)
+    geometry_rng=random.Random(123)
+    values=[geometry_rng.randint(-15,15) for _ in range(geometry.h*geometry.w*geometry.cin)]
+    values[:3]=[-128,127,-1]
+    jobs.append((geometry,values,tile_plan(geometry,size,2,1),False,False))
+    plan=[Tile(position,reduction,1,index%8)
+          for index,(reduction,position) in enumerate(
+              (reduction,position) for reduction in range(0,geometry.red,size)
+              for position in range(geometry.positions))]
+    jobs.append((geometry,values,plan,False,False))
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('w') as f:
         f.write(f'{len(jobs)}\n')

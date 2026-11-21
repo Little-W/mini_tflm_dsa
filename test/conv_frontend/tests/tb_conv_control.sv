@@ -68,6 +68,12 @@ module tb_conv_control;
     @(negedge clk);tile_p0=p;tile_q0=q;tile_rows=rows;tile_slot=2;tile_valid=1;
     do @(posedge clk);while(!tile_ready);
     @(negedge clk);tile_valid=0;
+    // 描述符保存周期保持忙状态，下一次上升沿提交时产生错误脉冲。
+    if (dut.REGISTER_DESCRIPTOR) begin
+      if (error || tile_error || tile_done || !busy || wr_valid)
+        $fatal(1,"invalid descriptor capture status");
+      @(negedge clk);
+    end
     if(!error || !tile_error || tile_done || busy || wr_valid) $fatal(1,"invalid descriptor not rejected");
     @(negedge clk);
     if(tile_error || tile_done || !error || tile_ready) $fatal(1,"error status/pulse contract");

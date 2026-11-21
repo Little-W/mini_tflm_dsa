@@ -14,11 +14,11 @@ module conv_im2col_frontend #(
   parameter int NARROW_LANES=BUS_WIDTH/8,
   parameter int DMA_MAX_BYTES=256*(BUS_WIDTH/8),
   parameter int CACHE_POLICY=3,
-  parameter bit REGISTER_CACHE_REQUEST=1'b0,
+  parameter bit REGISTER_CACHE_REQUEST=1'b1,
   // 描述符准备、请求保存和响应队列分别选择寄存边界。
   parameter bit REGISTER_DESCRIPTOR=1'b1,
   parameter bit REGISTER_ROW_ADDRESS=REGISTER_DESCRIPTOR,
-  parameter int CACHE_RESPONSE_DEPTH=1,
+  parameter int CACHE_RESPONSE_DEPTH=2,
   parameter int CW=$clog2(SIZE),
   parameter int RW=$clog2(SIZE+1)
 ) (
@@ -140,12 +140,22 @@ module conv_im2col_frontend #(
   logic [5:0][p_saved_group_lanes:0] group_range_next;
   logic group_after_chunk;
   logic [31:0] p0, q0, tap0;
-  logic [32:0] next_group_q;
+  logic [32:0] next_group_q, skip_group_q;
+  logic [16:0] cfg_next_group_low, cfg_next_group_high;
+  logic [32:0] cfg_next_group, cfg_skip_group;
+  logic unused_cfg_skip_carry;
   logic [TILE_COUNT_W-1:0] row_idx, col_idx, rows_q, cols_q, active_cols_q;
   logic [TILE_COUNT_W-1:0] next_row_idx;
   logic row_last_q, next_row_last;
   logic unused_row_index_carry;
   logic [TILE_COUNT_W-1:0] col_remaining, active_remaining;
+  logic [LANES:0] active_lane_allowed_q, active_lane_update;
+  logic [LANES:0] column_lane_allowed_q, column_lane_update;
+  logic [2:0][TILE_COUNT_W-1:0] column_update_candidate;
+  logic [TILE_COUNT_W-1:0] column_update_value;
+  logic [2:0] active_update_select;
+  logic [2:0][TILE_COUNT_W-1:0] active_update_candidate;
+  logic [TILE_COUNT_W-1:0] active_update_value;
   logic past_active_q;
   logic narrow_output;
   logic [16:0] group_remaining;
@@ -167,13 +177,13 @@ module conv_im2col_frontend #(
   logic [32:0] coord_sum_x,coord_sum_y;
   logic [31:0] pixel_product,channel_product,group_base_addr;
   logic [16:0] channel_byte_offset;
-  logic [17:0] channel_addr_low;
-  logic [14:0] channel_addr_high_next;
   logic [31:0] channel_addr;
-  logic unused_channel_addr_carry;
   logic [31:0] tap_group_base,row_group_base,next_row_group_base,incoming_group_base;
   logic pad_q;
   logic [31:0] addr;
+  logic [4:0] address_update_select;
+  logic [31:0] address_update_value;
+  logic address_stream_write, address_column_advance, address_linear_tap;
   logic [p_cache_read_width-1:0] word_buf;
   logic [31:0] word_addr;
   logic word_valid;
@@ -194,16 +204,20 @@ module conv_im2col_frontend #(
   logic word_boundary;
   logic [LANES:0] chunk_selected;
   logic [LANES:0] step_word_boundary, step_saved_hit;
-  assign chunk_selected[0] = !(|chunk_lane_allowed);
+  localparam bit p_contiguous_chunk = LANES <= 8 && LANES <= (1 << TILE_COUNT_W);
+  assign chunk_selected[0] = p_contiguous_chunk ? !chunk_lane_allowed[0] : !(|chunk_lane_allowed);
   for (genvar step = 1; step <= LANES; step++) begin : g_chunk_selected
     if (step == LANES) begin : g_last
       assign chunk_selected[step] = chunk_lane_allowed[step-1];
+    end else if (p_contiguous_chunk) begin : g_contiguous
+      assign chunk_selected[step] = chunk_lane_allowed[step-1] && !chunk_lane_allowed[step];
     end else begin : g_lower
       assign chunk_selected[step] = chunk_lane_allowed[step-1] && !(|chunk_lane_allowed[LANES-1:step]);
     end
   end
   logic incoming_request, incoming_context, incoming_word_hit, finishing_tile;
-  logic incoming_same_position_fast, incoming_next_position_fast, incoming_next_tile_fast;
+  logic incoming_same_position_fast, incoming_next_tile_fast;
+  (* keep = 1 *) logic incoming_next_position_fast;
   logic incoming_position_same_tap, incoming_position_forward_tap, incoming_position_backward_tap;
   logic incoming_position_previous_row;
   logic incoming_skip_tap;
@@ -211,6 +225,8 @@ module conv_im2col_frontend #(
   logic window_forward_allowed_q, window_backward_allowed_q, window_previous_allowed_q;
   logic [31:0] window_next_p, window_next_q, window_next_pixel, window_next_addr, window_next_group_base;
   logic [31:0] window_next_tap;
+  logic [2:0][32:0] window_tap_target, window_tap_target_q;
+  logic [2:0] unused_window_tap_carry;
   logic [15:0] window_next_x, window_next_y, window_next_ch, window_next_kx, window_next_ky;
   logic [p_saved_group_lanes:0] window_next_channel_range;
   logic [1:0] incoming_tile_group_fits;
@@ -220,7 +236,7 @@ module conv_im2col_frontend #(
   logic signed [COORD_W-1:0] window_next_ix, window_next_iy;
   logic cache_port_valid;
   logic [31:0] cache_req_addr;
-  logic request_pending, cache_port_ready, request_bypass;
+  logic request_pending, cache_port_ready;
   logic [31:0] current_req_index, current_req_epoch;
   logic [31:0] request_addr_q, request_index_q, request_epoch_q;
   logic [15:0] request_y_q;
@@ -314,7 +330,9 @@ module conv_im2col_frontend #(
   logic signed [17:0] pf_y_wrap_delta;
   logic [15:0] pf_y_step;
   logic [31:0] pixel_bytes;
-  logic [31:0] cfg_pixel_bytes, cfg_line_pixels, cfg_pf_step, pf_step_base;
+  logic [31:0] cfg_pixel_bytes, cfg_line_pixels, pf_step_base;
+  localparam int p_prefetch_count_width = $clog2(LINE_BYTES + 2);
+  logic [p_prefetch_count_width-1:0] prefetch_line_pixels;
   logic pf_coordinate_valid;
   logic fragment_image_fits, pf_next_fragment;
   logic [4:0] current_q_div3;
@@ -384,9 +402,7 @@ module conv_im2col_frontend #(
   logic [5:0] incoming_fast_i_flags;
   logic [1:0] incoming_position_equal;
   logic incoming_q_equal;
-  logic [3:0][32:0] incoming_tap_match_i_a, incoming_tap_match_i_b;
-  logic [3:0][32:0] incoming_tap_match_i_target;
-  logic [3:0] incoming_tap_match_i_carry_in, incoming_tap_match_o_equal;
+  (* keep = 1 *) logic [3:0] incoming_tap_match_o_equal;
   logic [31:0] incoming_tile_match_i_a, incoming_tile_match_i_b, incoming_tile_match_i_target;
   logic incoming_tile_match_i_carry_in, incoming_tile_match_o_equal;
   logic signed [COORD_W-1:0] window_forward_ix, window_backward_ix, window_previous_iy;
@@ -402,35 +418,44 @@ module conv_im2col_frontend #(
     logic [31:0] position, reduction, group_index;
     logic [TILE_COUNT_W-1:0] rows, columns, active_columns;
     logic [SLOT_W-1:0] slot;
-    logic [32:0] next_group;
+    logic [32:0] next_group, skip_group;
     logic [31:0] tap, channel, kernel_x, kernel_y;
     logic signed [COORD_W-1:0] input_x, input_y;
     logic [31:0] pixel, address, group_address;
+    logic [31:0] address_delta;
+    logic address_carry;
     logic [15:0] output_x, output_y;
     logic [p_saved_group_lanes:0] channel_range;
     logic signed [COORD_W-1:0] coordinate_dx, coordinate_dy;
     logic coordinate_x_carry, coordinate_y_carry;
     logic [8:0] padding_select, padding_value;
-    logic [9:0] word_select, word_value;
+    logic [31-p_word_shift:0] word_address;
+    logic saved_word_valid;
   } prepared_tile_t;
   prepared_tile_t preparing_tile, prepared_tile_q, committing_tile;
   logic tile_prepared_valid, tile_capture, tile_commit;
   logic [p_cache_read_width-1:0] prepared_word_data;
   logic committing_saved_word_hit, committing_live_word_hit;
-  (* keep = 1 *) logic prepared_live_word_match;
+  (* keep = REGISTER_DESCRIPTOR *) logic prepared_live_word_match;
   logic [8:0] prepared_padding_select, prepared_padding_value;
-  (* keep = 1 *) logic [9:0] prepared_word_select;
-  logic [9:0] prepared_word_value;
+  (* keep = REGISTER_DESCRIPTOR *) logic [9:0] prepared_word_select;
   logic [9:0][1:0][31:0] prepared_address_candidate;
   logic [1:0][31:0] prepared_address;
-  logic [9:0][1:0] prepared_word_match;
+  logic [9:0][31:0] prepared_address_delta_candidate;
+  logic [9:0] prepared_address_carry_candidate;
+  logic [31:0] prepared_address_delta;
+  logic prepared_address_carry;
+  logic [1:0][31:0] committing_address;
+  logic [1:0] unused_committing_address_carry;
   logic signed [COORD_W-1:0] prepared_coordinate_x, prepared_coordinate_y;
   logic signed [COORD_W-1:0] prepared_coordinate_dx, prepared_coordinate_dy;
   logic [1:0] prepared_coordinate_carry;
   logic [1:0][COORD_W-1:0] committing_coordinate;
+  logic [1:0] committing_coordinate_valid;
   logic [1:0] unused_committing_coordinate_carry;
   logic [TILE_COUNT_W-1:0] prepared_columns, prepared_active_columns;
-  logic [32:0] prepared_next_group;
+  logic [32:0] prepared_next_group, prepared_skip_group;
+  logic unused_prepared_skip_carry;
   logic [32:0] prepared_group_i_a, prepared_group_i_b;
   logic prepared_group_i_carry, unused_prepared_group_carry;
 
@@ -491,13 +516,11 @@ module conv_im2col_frontend #(
     assign tile_rows_in_range = {1'b0, tile_p0} + 33'(tile_rows) <= {1'b0, position_count};
   end
 
-  // 通道偏移最多十七位，低位求和与高位加一并行，末端按低位进位选择。
+  // 通道偏移保持十七位范围，完整字节地址使用一次定宽求和。
+  (* use_dsp = "yes" *) logic [31:0] channel_address_sum;
   assign channel_byte_offset = c.input_s16 ? {ch_q, 1'b0} : {1'b0, ch_q};
-  assign channel_addr_low = {1'b0, group_base_addr[16:0]} + {1'b0, channel_byte_offset};
-  assign {unused_channel_addr_carry, channel_addr_high_next} =
-    {1'b0, group_base_addr[31:17]} + 16'd1;
-  assign channel_addr = {
-    channel_addr_low[17] ? channel_addr_high_next : group_base_addr[31:17], channel_addr_low[16:0]};
+  assign channel_address_sum = group_base_addr + {15'd0, channel_byte_offset};
+  assign channel_addr = channel_address_sum;
 
   // 末列判断随坐标寄存，连续输出周期直接使用已保存的比较结果。
   assign {unused_cfg_output_col_carry, cfg_last_output_col} = {1'b0, cfg.output_w} - 17'd1;
@@ -544,52 +567,22 @@ module conv_im2col_frontend #(
   assign bound_limit[5] = c.input_w;
   assign bound_limit[6] = c.input_h;
   for (genvar axis = 0; axis < 7; axis++) begin : g_coordinate_bound
-    logic [8:0] byte_low_sum, byte_high_zero, byte_high_one;
-    logic unused_coordinate_carry;
-    logic byte_low_before, byte_high_zero_before, byte_high_one_before;
-    logic low_carry, low_before, high_o_equal;
+    if (axis < 4 || !REGISTER_DESCRIPTOR) begin : g_evaluate
+    logic unused_coordinate_carry, unused_bound_equal;
 
-    // 高字节分别计算两种进位及边界关系，低字节只选择最终结果。
-    logic byte_low_i_carry;
-    assign byte_low_i_carry = 1'b0;
-    parallel_prefix_add #(.p_width(8), .p_group_width(4), .p_preserve_groups(1'b1)) u_byte_low_sum (
-      .i_a(bound_a[axis][7:0]), .i_b(bound_b[axis][7:0]), .i_carry(byte_low_i_carry),
-      .o_sum(byte_low_sum[7:0]), .o_carry(byte_low_sum[8])
-    );
-    assign byte_high_zero = {1'b0, bound_a[axis][15:8]} + {1'b0, bound_b[axis][15:8]};
-    // 两个九位补数之和取反，得到含固定进位的完整高字节和。
-    assign byte_high_one = ~(~{1'b0, bound_a[axis][15:8]} + ~{1'b0, bound_b[axis][15:8]});
-    logic coordinate_i_carry;
-    assign coordinate_i_carry = 1'b0;
-    // 完整坐标使用四位分组进位，范围判断保持独立的字节比较。
+    // 完整坐标求和后直接作无符号范围比较，高位和符号位同时参与检查。
     parallel_prefix_add #(.p_width(COORD_W), .p_group_width(4), .p_preserve_groups(1'b1)) u_coordinate_sum (
-      .i_a(bound_a[axis]), .i_b(bound_b[axis]), .i_carry(coordinate_i_carry),
+      .i_a(bound_a[axis]), .i_b(bound_b[axis]), .i_carry(1'b0),
       .o_sum(bound_sum[axis]), .o_carry(unused_coordinate_carry)
     );
-    assign byte_low_before = byte_low_sum[7:0] < bound_limit[axis][7:0];
-    assign byte_high_zero_before = byte_high_zero[7:0] < bound_limit[axis][15:8] ||
-      (byte_high_zero[7:0] == bound_limit[axis][15:8] && byte_low_before);
-    assign byte_high_one_before = byte_high_one[7:0] < bound_limit[axis][15:8] ||
-      (byte_high_one[7:0] == bound_limit[axis][15:8] && byte_low_before);
-    assign low_carry = byte_low_sum[8] ? byte_high_one[8] : byte_high_zero[8];
-    assign low_before = byte_low_sum[8] ? byte_high_one_before : byte_high_zero_before;
-    if (axis == 1 || axis == 3 || axis == 4 || axis == 6) begin : g_positive_step
-      // 正步长的高位全零，进位分别对应全零或全一的原坐标高位。
-      assign high_o_equal = low_carry ? (&bound_a[axis][COORD_W-1:16]) :
-        !(|bound_a[axis][COORD_W-1:16]);
-    end else begin : g_signed_step
-      logic [COORD_W-17:0] high_i_a, high_i_b, high_i_target;
-      logic high_i_carry_in;
-      assign high_i_a = bound_a[axis][COORD_W-1:16];
-      assign high_i_b = bound_b[axis][COORD_W-1:16];
-      assign high_i_target = '0;
-      assign high_i_carry_in = low_carry;
-      add_equal #(.p_width(COORD_W-16)) u_high_zero (
-        .i_a(high_i_a), .i_b(high_i_b), .i_target(high_i_target),
-        .i_carry_in(high_i_carry_in), .o_equal(high_o_equal)
-      );
+    unsigned_compare #(.p_width(COORD_W)) u_limit (
+      .i_a(bound_sum[axis]), .i_b(COORD_W'(bound_limit[axis])),
+      .o_less(bound_valid[axis]), .o_equal(unused_bound_equal)
+    );
+    end else begin : g_prepared_coordinate
+      assign bound_sum[axis] = '0;
+      assign bound_valid[axis] = 1'b0;
     end
-    assign bound_valid[axis] = high_o_equal && low_before;
   end
 
   // 数据字匹配比较读取范围以外的高位，字内偏移单独提供进位。
@@ -599,10 +592,7 @@ module conv_im2col_frontend #(
   assign next_word_i_b = next_tap_delta[31:p_word_shift];
   assign next_word_i_target = addr[31:p_word_shift];
   assign next_word_i_carry_in = next_word_low_sum[p_word_shift];
-  add_equal #(.p_width(32-p_word_shift)) u_next_word (
-    .i_a(next_word_i_a), .i_b(next_word_i_b), .i_target(next_word_i_target),
-    .i_carry_in(next_word_i_carry_in), .o_equal(next_word_o_equal)
-  );
+  assign next_word_o_equal = next_tap_addr[31:p_word_shift] == next_word_i_target;
   // 两种步长的低位进位并行计算，晚到的描述符比较只选择进位结果。
   assign incoming_step_low_sum = {1'b0, row_base_addr[p_word_shift-1:0]} + {1'b0, tap_step_bytes[p_word_shift-1:0]};
   assign incoming_wrap_low_sum = {1'b0, row_base_addr[p_word_shift-1:0]} + {1'b0, tap_wrap_bytes[p_word_shift-1:0]};
@@ -632,24 +622,12 @@ module conv_im2col_frontend #(
     assign byte_step = c.input_s16 ? {chunk_count, 1'b0} : {1'b0, chunk_count};
     if (LANES <= 8) begin : g_parallel_byte_step
       (* keep = 1 *) logic [LANES:0][p_step_width:0] low_for_step;
-      // 固定小步长按位生成进位，常量传播后每位只依赖少量地址位。
+      // 固定短步长保留完整进位，常量传播由普通无符号加法完成。
       function automatic logic [p_step_width:0] add_byte_step(
         input logic [p_step_width-1:0] value,
         input logic [p_step_width:0] amount
       );
-        logic [p_step_width:0] extended_value, sum;
-        logic [p_step_width+1:0] carry;
-        extended_value = {1'b0, value};
-        carry = '0;
-        for (int bit_index = 0; bit_index <= p_step_width; bit_index++) begin
-          sum[bit_index] = extended_value[bit_index] ^ amount[bit_index] ^ carry[bit_index];
-          carry[bit_index+1] = (extended_value[bit_index] && amount[bit_index]) ||
-            ((extended_value[bit_index] ^ amount[bit_index]) && carry[bit_index]);
-        end
-        case (^{value, amount})
-          1'b0, 1'b1: add_byte_step = sum;
-          default: add_byte_step = 'x;
-        endcase
+        add_byte_step = {1'b0, value} + amount;
       endfunction
       // 每种传输数量先计算低位地址，通道资格只选择完整候选。
       for (genvar step = 0; step <= LANES; step++) begin : g_step
@@ -694,22 +672,11 @@ module conv_im2col_frontend #(
     assign {unused_position_carry, next_q_current} = {1'b0, q_current} + 34'(chunk_count);
   end
 
-  if (CHUNK_COUNT_W < 16) begin : g_channel_position
-    logic [CHUNK_COUNT_W:0] channel_low;
-    logic [15-CHUNK_COUNT_W:0] channel_high_next;
-    logic unused_channel_carry;
-
-    // 通道索引与短步长相加，高位候选不等待传输通道数。
-    assign channel_low = {1'b0, ch_q[CHUNK_COUNT_W-1:0]} + {1'b0, chunk_count};
-    assign {unused_channel_carry, channel_high_next} =
-      {1'b0, ch_q[15:CHUNK_COUNT_W]} + (17-CHUNK_COUNT_W)'(1);
-    assign next_channel = {
-      channel_low[CHUNK_COUNT_W] ? channel_high_next : ch_q[15:CHUNK_COUNT_W],
-      channel_low[CHUNK_COUNT_W-1:0]};
-  end else begin : g_channel_position_wide
-    logic unused_channel_carry;
-    assign {unused_channel_carry, next_channel} = {1'b0, ch_q} + 17'(chunk_count);
-  end
+  // 通道递增直接描述为定宽加法，综合工具可以选择算术资源。
+  (* use_dsp = "yes" *) logic [16:0] channel_position_sum;
+  logic unused_channel_position_carry;
+  assign channel_position_sum = {1'b0, ch_q} + 17'(chunk_count);
+  assign {unused_channel_position_carry, next_channel} = channel_position_sum;
 
   logic [4:0][31:0] movement_i_a, movement_i_b, movement_o_sum;
   logic movement_i_carry;
@@ -767,12 +734,18 @@ module conv_im2col_frontend #(
         candidate == 5 ? ~tap_step_bytes : candidate == 6 ? ~tap_pair_bytes : tap_step_bytes;
       assign incoming_address_left[candidate][base] = incoming_address_i_a[candidate][base];
       assign incoming_address_right[candidate][base] = incoming_address_i_b[candidate][base];
+      if (!REGISTER_DESCRIPTOR) begin : g_direct_sum
       parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
         .i_a(incoming_address_left[candidate][base]), .i_b(incoming_address_right[candidate][base]),
         .i_carry(incoming_address_carry[candidate]), .o_sum(incoming_address_sum[candidate][base]),
         .o_carry(unused_incoming_address_carry[candidate][base])
       );
+      end else begin : g_saved_operands
+        assign incoming_address_sum[candidate][base] = '0;
+        assign unused_incoming_address_carry[candidate][base] = 1'b0;
+      end
     end
+    if (!REGISTER_DESCRIPTOR) begin : g_direct_word_match
     for (genvar target = 0; target < 2; target++) begin : g_word_match
       logic [p_word_shift:0] low_sum;
       logic [31-p_word_shift:0] high_i_a, high_i_b, high_i_target;
@@ -789,21 +762,14 @@ module conv_im2col_frontend #(
         .i_carry_in(high_i_carry), .o_equal(incoming_candidate_word_match[candidate][target])
       );
     end
+    end else begin : g_saved_word_match
+      assign incoming_candidate_word_match[candidate] = '0;
+    end
   end
   for (genvar target = 0; target < 2; target++) begin : g_next_row_match
-    logic [p_word_shift:0] low_sum;
-    logic [31-p_word_shift:0] high_i_a, high_i_b, high_i_target;
-    logic high_i_carry;
-    assign low_sum = {1'b0, row_base_addr[p_word_shift-1:0]} +
-      {1'b0, movement_i_b[0][p_word_shift-1:0]};
-    assign high_i_a = row_base_addr[31:p_word_shift];
-    assign high_i_b = movement_i_b[0][31:p_word_shift];
+    logic [31-p_word_shift:0] high_i_target;
     assign high_i_target = target == 0 ? word_addr[31:p_word_shift] : addr[31:p_word_shift];
-    assign high_i_carry = low_sum[p_word_shift];
-    add_equal #(.p_width(32-p_word_shift)) u_match (
-      .i_a(high_i_a), .i_b(high_i_b), .i_target(high_i_target),
-      .i_carry_in(high_i_carry), .o_equal(next_row_word_match[target])
-    );
+    assign next_row_word_match[target] = next_row_addr[31:p_word_shift] == high_i_target;
     assign incoming_window_word_match[target] = incoming_position_previous_row ? incoming_candidate_word_match[6][target] :
       incoming_position_forward_tap ? incoming_candidate_word_match[4][target] :
       incoming_position_backward_tap ? incoming_candidate_word_match[5][target] :
@@ -934,7 +900,7 @@ module conv_im2col_frontend #(
 
   // 请求和预取各共用一个计算端口，全部结果仍在原请求接收周期使用。
   assign retirement_input[0] = REGISTER_CACHE_REQUEST ?
-      (request_pending ? request_y_q : iy[15:0]) : request_y[15:0];
+      request_y_q : request_y[15:0];
   assign retirement_input[1] = prefetch_retire_pfa_q ? pfa_y[15:0] : pf0_y[15:0];
   for (genvar row_port = 0; row_port < 2; row_port++) begin : g_retirement_port
     logic [17:0] biased_row, retire_payload_row;
@@ -1002,6 +968,7 @@ module conv_im2col_frontend #(
   );
   logic [17:0] history_reduce_i_a, history_reduce_i_b, history_reduce_o_sum;
   logic [17:0] history_reduce_generate;
+  (* use_dsp = "yes" *) logic [18:0] history_reduce_full_sum;
   logic history_width_reached;
   logic unused_history_reduce_high;
 
@@ -1010,10 +977,8 @@ module conv_im2col_frontend #(
   assign history_reduce_generate = ({2'b0, last_x} & {2'b0, p_delta}) |
     (({2'b0, last_x} | {2'b0, p_delta}) & ~{2'b0, c.output_w});
   assign {unused_history_reduce_high, history_reduce_i_b} = {history_reduce_generate, 1'b1};
-  parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_reduced (
-    .i_a(history_reduce_i_a), .i_b(history_reduce_i_b), .i_carry(1'b0),
-    .o_sum(history_reduce_o_sum), .o_carry(unused_p_sum_reduced_carry)
-  );
+  assign history_reduce_full_sum = {1'b0, history_reduce_i_a} + {1'b0, history_reduce_i_b};
+  assign {unused_p_sum_reduced_carry, history_reduce_o_sum} = history_reduce_full_sum;
   assign p_sum_reduced = history_reduce_o_sum[16:0];
   assign history_width_reached = !history_reduce_o_sum[17];
   // 行尾等式直接压缩位置差和历史列数，逐位比较与坐标加减并行。
@@ -1153,17 +1118,76 @@ module conv_im2col_frontend #(
 
   assign incoming_tap_wrap = incoming_tap_wrap_q;
 
-  // 五位位置乘以 11 后右移五位，精确得到除三的商。
-  // 余数保留低两位；模四运算中减去三倍商等价于加上商。
-  logic [8:0] q_decode_scaled;
+  // 五位三通道解码使用完整的组合选择，同时输出商和余数。
+  function automatic logic [5:0] divide_three_5(input logic [4:0] value);
+    case (value)
+      5'd0: divide_three_5 = {4'd0, 2'd0};
+      5'd1: divide_three_5 = {4'd0, 2'd1};
+      5'd2: divide_three_5 = {4'd0, 2'd2};
+      5'd3: divide_three_5 = {4'd1, 2'd0};
+      5'd4: divide_three_5 = {4'd1, 2'd1};
+      5'd5: divide_three_5 = {4'd1, 2'd2};
+      5'd6: divide_three_5 = {4'd2, 2'd0};
+      5'd7: divide_three_5 = {4'd2, 2'd1};
+      5'd8: divide_three_5 = {4'd2, 2'd2};
+      5'd9: divide_three_5 = {4'd3, 2'd0};
+      5'd10: divide_three_5 = {4'd3, 2'd1};
+      5'd11: divide_three_5 = {4'd3, 2'd2};
+      5'd12: divide_three_5 = {4'd4, 2'd0};
+      5'd13: divide_three_5 = {4'd4, 2'd1};
+      5'd14: divide_three_5 = {4'd4, 2'd2};
+      5'd15: divide_three_5 = {4'd5, 2'd0};
+      5'd16: divide_three_5 = {4'd5, 2'd1};
+      5'd17: divide_three_5 = {4'd5, 2'd2};
+      5'd18: divide_three_5 = {4'd6, 2'd0};
+      5'd19: divide_three_5 = {4'd6, 2'd1};
+      5'd20: divide_three_5 = {4'd6, 2'd2};
+      5'd21: divide_three_5 = {4'd7, 2'd0};
+      5'd22: divide_three_5 = {4'd7, 2'd1};
+      5'd23: divide_three_5 = {4'd7, 2'd2};
+      5'd24: divide_three_5 = {4'd8, 2'd0};
+      5'd25: divide_three_5 = {4'd8, 2'd1};
+      5'd26: divide_three_5 = {4'd8, 2'd2};
+      5'd27: divide_three_5 = {4'd9, 2'd0};
+      5'd28: divide_three_5 = {4'd9, 2'd1};
+      5'd29: divide_three_5 = {4'd9, 2'd2};
+      5'd30: divide_three_5 = {4'd10, 2'd0};
+      5'd31: divide_three_5 = {4'd10, 2'd1};
+      default: divide_three_5 = 'x;
+    endcase
+  endfunction
+  logic [5:0] q_decode_value, k_decode_value;
   logic [3:0] q_decode_o_quotient;
   logic [1:0] q_decode_o_remainder;
-  assign q_decode_scaled = {1'b0, q0[4:0], 3'b000} +
-    {3'b000, q0[4:0], 1'b0} + {4'b0000, q0[4:0]};
-  assign q_decode_o_quotient = q_decode_scaled[8:5];
-  assign q_decode_o_remainder = q0[1:0] + q_decode_o_quotient[1:0];
+  assign q_decode_value = divide_three_5(q0[4:0]);
+  assign k_decode_value = divide_three_5(tap0[4:0]);
+  assign q_decode_o_quotient = q_decode_value[5:2];
+  assign q_decode_o_remainder = q_decode_value[1:0];
   assign current_q_div3 = {1'b0, q_decode_o_quotient};
   assign current_q_remainder = {q0[15:5], 3'b000, q_decode_o_remainder};
+
+  // 地址候选的算术在选择之前并行完成，保留完整三十二位模结果。
+  (* use_dsp = "yes" *) logic [4:0][31:0] incoming_pixel_candidate;
+  assign incoming_pixel_candidate[0] = window_next_pixel - tap_pair_pixels;
+  assign incoming_pixel_candidate[1] = window_next_pixel + 32'(c.dilation_w);
+  assign incoming_pixel_candidate[2] = window_next_pixel - 32'(c.dilation_w);
+  assign incoming_pixel_candidate[3] = row_base_pixel + tap_pair_pixels;
+  assign incoming_pixel_candidate[4] = row_base_pixel + (32'(c.dilation_w) << 1);
+
+  // 每级只保存当前阶段的算术结果，配置宽度扩展保持原有符号关系。
+  (* use_dsp = "yes" *) logic [1:0][32:0] coordinate_product_sum;
+  (* use_dsp = "yes" *) logic signed [COORD_W-1:0] coordinate_padded_x, coordinate_padded_y;
+  (* use_dsp = "yes" *) logic [31:0] group_channel_sum, group_address_sum;
+  (* use_dsp = "yes" *) logic [31:0] prefetch_channel_sum, prefetch_address_sum, prefetch_pixel_sum;
+  assign coordinate_product_sum[0] = {1'b0, coord_out_x} + {1'b0, coord_kernel_x};
+  assign coordinate_product_sum[1] = {1'b0, coord_out_y} + {1'b0, coord_kernel_y};
+  assign coordinate_padded_x = $signed(COORD_W'(coord_sum_x)) - $signed(COORD_W'(c.pad_left));
+  assign coordinate_padded_y = $signed(COORD_W'(coord_sum_y)) - $signed(COORD_W'(c.pad_top));
+  assign group_channel_sum = channel_product + 32'(c.group_offset);
+  assign group_address_sum = c.input_base + (group_channel_sum << c.input_s16);
+  assign prefetch_channel_sum = pf_channel_product + pf1_channel;
+  assign prefetch_address_sum = c.input_base + (prefetch_channel_sum << c.input_s16);
+  assign prefetch_pixel_sum = pf0_y * 32'(c.input_w) + pf0_x;
 
   // 描述符字段分组比较，步长和低位进位使用同一个接收条件。
   logic [2:0][32:0] incoming_compare_a, incoming_compare_b;
@@ -1189,29 +1213,28 @@ module conv_im2col_frontend #(
     (incoming_tap_wrap ? tap_wrap_bytes : tap_step_bytes);
   assign incoming_word_i_carry_in = !incoming_q_equal &&
     (incoming_tap_wrap ? incoming_wrap_low_sum[p_word_shift] : incoming_step_low_sum[p_word_shift]);
-  // 三列卷积在边缘跳过一个填充位置时，两个核位置的增量仍可直接递推。
-  // 核位置匹配直接检查各位进位一致性，描述符比较不经过串行加法器。
-  assign incoming_tap_match_i_a[0] = next_group_q;
-  assign incoming_tap_match_i_a[1] = {1'b0, window_next_q};
-  assign incoming_tap_match_i_a[2] = {1'b0, tile_q0};
-  assign incoming_tap_match_i_a[3] = {1'b0, tile_q0};
-  assign incoming_tap_match_i_b[0] = {17'd0, c.group_c};
-  assign incoming_tap_match_i_b[1] = {17'd0, c.group_c};
-  assign incoming_tap_match_i_b[2] = {17'd0, c.group_c};
-  assign incoming_tap_match_i_b[3] = {16'd0, c.group_c, 1'b0};
-  assign incoming_tap_match_i_target[0] = {1'b0, tile_q0};
-  assign incoming_tap_match_i_target[1] = {1'b0, tile_q0};
-  assign incoming_tap_match_i_target[2] = {1'b0, window_next_q};
-  assign incoming_tap_match_i_target[3] = {1'b0, window_next_q};
-  assign incoming_tap_match_i_carry_in = '0;
-  for (genvar match_index = 0; match_index < 4; match_index++) begin : g_incoming_tap_match
-    add_equal #(.p_width(33)) u_match (
-      .i_a(incoming_tap_match_i_a[match_index]),
-      .i_b(incoming_tap_match_i_b[match_index]),
-      .i_target(incoming_tap_match_i_target[match_index]),
-      .i_carry_in(incoming_tap_match_i_carry_in[match_index]),
-      .o_equal(incoming_tap_match_o_equal[match_index])
+  // 两个核位置的目标序号随描述符保存，后续接收直接比较目标序号。
+  assign incoming_tap_match_o_equal[0] = skip_group_q == {1'b0, tile_q0};
+  // 保存窗口时同时准备相邻核位置，描述符输入只执行等值比较。
+  for (genvar target = 0; target < 3; target++) begin : g_window_tap_target
+    logic [32:0] target_delta;
+    (* keep = 1 *) logic [10:0] target_group_equal;
+    (* keep = 1 *) logic [1:0] target_half_equal;
+    assign target_delta = target == 0 ? {17'd0, c.group_c} :
+      target == 1 ? ~{17'd0, c.group_c} : ~{16'd0, c.group_c, 1'b0};
+    parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
+      .i_a({1'b0, q0}), .i_b(target_delta), .i_carry(target != 0),
+      .o_sum(window_tap_target[target]), .o_carry(unused_window_tap_carry[target])
     );
+    for (genvar group_index = 0; group_index < 11; group_index++) begin : g_compare_group
+      logic [32:0] descriptor_target;
+      assign descriptor_target = {1'b0, tile_q0};
+      assign target_group_equal[group_index] = descriptor_target[group_index*3 +: 3] ==
+          window_tap_target_q[target][group_index*3 +: 3];
+    end
+    assign target_half_equal[0] = &target_group_equal[5:0];
+    assign target_half_equal[1] = &target_group_equal[10:6];
+    assign incoming_tap_match_o_equal[target+1] = &target_half_equal;
   end
   // 空间分块起点保留三十二位模加结果，溢出行为与描述符地址宽度一致。
   assign incoming_tile_match_i_a = p0;
@@ -1278,6 +1301,7 @@ module conv_im2col_frontend #(
       window_next_valid <= next_position < position_count;
       window_next_p <= next_position;
       window_next_q <= q0;
+      window_tap_target_q <= window_tap_target;
       window_next_tap <= tap0;
       window_next_ch <= ch0_q;
       window_next_kx <= kx0_q;
@@ -1309,6 +1333,8 @@ module conv_im2col_frontend #(
   assign candidate_coordinate_i_b[5] = COORD_W'(c.dilation_w) << 1;
   assign candidate_coordinate_i_b[6] = '0;
   assign candidate_coordinate_carry = 7'b0000110;
+  logic [6:0] candidate_coordinate_valid;
+  if (!REGISTER_DESCRIPTOR) begin : g_direct_candidate_geometry
   for (genvar source = 0; source < 7; source++) begin : g_candidate_coordinate
     logic [COORD_W-1:0] sum_i_a, sum_i_b;
     assign sum_i_a = candidate_coordinate_i_a[source];
@@ -1319,7 +1345,6 @@ module conv_im2col_frontend #(
     );
   end
 
-  logic [6:0] candidate_coordinate_valid;
   for (genvar axis = 0; axis < 7; axis++) begin : g_candidate_bound
     logic [15:0] coordinate_limit;
     logic [8:0] low_byte, high_zero, high_one;
@@ -1352,6 +1377,12 @@ module conv_im2col_frontend #(
     );
     assign candidate_coordinate_valid[axis] = high_equal &&
       (low_carry ? high_one_before : high_zero_before);
+  end
+  end else begin : g_saved_candidate_geometry
+    // 描述符保存坐标操作数，提交阶段共用两个坐标求和与范围检查。
+    assign candidate_coordinate_sum = '0;
+    assign unused_candidate_coordinate_carry = '0;
+    assign candidate_coordinate_valid = '0;
   end
 
   logic incoming_kx_last;
@@ -1419,19 +1450,19 @@ module conv_im2col_frontend #(
         incoming_kx=32'd1;incoming_ky={16'd0,window_next_ky}-32'd1;
         incoming_ix=window_forward_ix;
         incoming_iy=window_previous_iy;
-        incoming_pixel=window_next_pixel-tap_pair_pixels;
+        incoming_pixel=incoming_pixel_candidate[0];
         incoming_addr=incoming_address_sum[6][0];
         incoming_group_base=incoming_address_sum[6][1];
       end else if (incoming_position_forward_tap) begin
         incoming_tap=window_next_tap+32'd1;incoming_kx={16'd0,window_next_kx}+32'd1;
         incoming_ix=window_forward_ix;
-        incoming_pixel=window_next_pixel+32'(c.dilation_w);
+        incoming_pixel=incoming_pixel_candidate[1];
         incoming_addr=incoming_address_sum[4][0];
         incoming_group_base=incoming_address_sum[4][1];
       end else if (incoming_position_backward_tap) begin
         incoming_tap=window_next_tap-32'd1;incoming_kx={16'd0,window_next_kx}-32'd1;
         incoming_ix=window_backward_ix;
-        incoming_pixel=window_next_pixel-32'(c.dilation_w);
+        incoming_pixel=incoming_pixel_candidate[2];
         incoming_addr=incoming_address_sum[5][0];
         incoming_group_base=incoming_address_sum[5][1];
       end
@@ -1445,12 +1476,12 @@ module conv_im2col_frontend #(
       incoming_padding=incoming_skip_padding;
       if (kx0_q!=16'd0) begin
         incoming_kx=kx0-32'd1;incoming_ky=ky0+32'd1;
-        incoming_pixel=row_base_pixel+tap_pair_pixels;
+        incoming_pixel=incoming_pixel_candidate[3];
         incoming_addr=incoming_address_sum[3][0];
         incoming_group_base=incoming_address_sum[3][1];
       end else begin
         incoming_kx=32'd2;
-        incoming_pixel=row_base_pixel+(32'(c.dilation_w)<<1);
+        incoming_pixel=incoming_pixel_candidate[4];
         incoming_addr=incoming_address_sum[2][0];
         incoming_group_base=incoming_address_sum[2][1];
       end
@@ -1535,7 +1566,8 @@ module conv_im2col_frontend #(
   assign tile_ready_context = (state[$clog2(IDLE)] || finishing_tile) && cfg_prepare_phase==0 && configured && !error &&
                               !pred_busy && !pred_cfg_busy && !pred_cfg_pending && !cache_cfg_pending &&
                               !cache_hint_pending && address_step_phase==0;
-  assign tile_ready = tile_ready_context && !cfg_valid && (!tile_prepared_valid || tile_commit);
+  assign tile_ready = tile_ready_context && !cfg_valid &&
+      (!REGISTER_DESCRIPTOR || !tile_prepared_valid || tile_commit);
   assign busy = !cfg_ready;
   assign wr_valid = state[$clog2(STREAM)] || state[$clog2(ZERO_STREAM)] ||
                     (state[$clog2(WAIT_WORD)] && cache_rsp_valid && !cache_rsp_error);
@@ -1572,6 +1604,7 @@ module conv_im2col_frontend #(
 
   assign byte_offset_sum={2'b0,addr[p_word_shift-1:0]}+((p_word_shift+2)'(chunk_count)<<c.input_s16);
   if (LANES <= 8 && LANES <= p_cache_read_bytes) begin : g_short_word_advance
+    logic [LANES-1:0] crossing_lane;
     for (genvar step = 0; step <= LANES; step++) begin : g_step
       logic [p_word_shift+1:0] offset_sum;
       logic [31-p_word_shift:0] match_i_b;
@@ -1604,7 +1637,11 @@ module conv_im2col_frontend #(
       assign step_saved_hit[step] = state[$clog2(WAIT_WORD)] ? !step_word_boundary[step] :
         word_valid && word_addr[p_word_shift-1:0] == '0 && saved_word_equal;
     end
-    assign word_boundary = |(chunk_selected & step_word_boundary);
+    // 固定步长的跨字条件随通道号递增，任意有效通道越界即可确定跨字。
+    for (genvar lane = 0; lane < LANES; lane++) begin : g_crossing_lane
+      assign crossing_lane[lane] = chunk_lane_allowed[lane] && step_word_boundary[lane+1];
+    end
+    assign word_boundary = |crossing_lane;
     assign next_byte_saved_hit = |(chunk_selected & step_saved_hit);
   end else begin : g_wide_word_advance
     assign word_boundary = byte_offset_sum >= (p_word_shift+2)'(p_cache_read_bytes);
@@ -1623,11 +1660,11 @@ module conv_im2col_frontend #(
   if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_stream_remaining
     logic [LANES-1:0] column_after_lane, active_after_lane;
     for (genvar lane = 0; lane < LANES; lane++) begin : g_lane
-      assign column_after_lane[lane] = TILE_COUNT_W'(lane+1) < col_remaining;
-      assign active_after_lane[lane] = TILE_COUNT_W'(lane+1) < active_remaining;
+      assign column_after_lane[lane] = column_lane_allowed_q[lane+1];
+      assign active_after_lane[lane] = active_lane_allowed_q[lane+1];
     end
-    assign column_after_chunk = col_remaining != '0 && (&(~chunk_lane_allowed | column_after_lane));
-    assign active_after_chunk = active_remaining != '0 && (&(~chunk_lane_allowed | active_after_lane));
+    assign column_after_chunk = column_lane_allowed_q[0] && (&(~chunk_lane_allowed | column_after_lane));
+    assign active_after_chunk = active_lane_allowed_q[0] && (&(~chunk_lane_allowed | active_after_lane));
   end else begin : g_stream_remaining_wide
     assign column_after_chunk = TILE_COUNT_W'(chunk_count) < col_remaining;
     assign active_after_chunk = TILE_COUNT_W'(chunk_count) < active_remaining;
@@ -1646,12 +1683,7 @@ module conv_im2col_frontend #(
   logic channel_word_equal;
   assign channel_word_low_sum = {1'b0, group_base_addr[p_word_shift-1:0]} +
     {1'b0, channel_byte_offset[p_word_shift-1:0]};
-  add_equal #(.p_width(32-p_word_shift), .p_use_lut(1'b0)) u_channel_word (
-    .i_a(group_base_addr[31:p_word_shift]),
-    .i_b((32-p_word_shift)'(channel_byte_offset >> p_word_shift)),
-    .i_carry_in(channel_word_low_sum[p_word_shift]),
-    .i_target(word_addr[31:p_word_shift]), .o_equal(channel_word_equal)
-  );
+  assign channel_word_equal = channel_addr[31:p_word_shift] == word_addr[31:p_word_shift];
   assign channel_saved_hit = word_valid && word_addr[p_word_shift-1:0] == '0 && channel_word_equal;
   // 当前行最后一拍被接收时，下一行的地址已经由独立加法器准备完成。
   assign next_row_word_hit = state[$clog2(WAIT_WORD)] ? next_row_word_match[1] :
@@ -1693,12 +1725,11 @@ module conv_im2col_frontend #(
     else if (cfg_prepare_phase==2) cache_cfg_pending <= cfg_ok;
     else if (cache_config_valid && cache_cfg_ready) cache_cfg_pending <= 1'b0;
   end
-  // 可选请求寄存用于时序划分；直接模式复用缓存输入寄存级，连续命中每周期传输。
-  assign request_bypass = state[$clog2(FETCH)] && !request_pending;
-  assign cache_port_valid = REGISTER_CACHE_REQUEST ?
-      (request_pending || (request_bypass && !(current_word_hit))) : cache_req_valid;
+  // 请求地址、窗口索引和有效位同时寄存，缓存只接收已保存的完整请求。
+  // 输出接收旧请求的同一周期可保存新请求，停顿期间保持全部字段。
+  assign cache_port_valid = REGISTER_CACHE_REQUEST ? request_pending : cache_req_valid;
   assign cache_req_ready = REGISTER_CACHE_REQUEST ?
-      (request_bypass ? cache_port_ready : (!request_pending || cache_port_ready)) : cache_port_ready;
+      (!request_pending || cache_port_ready) : cache_port_ready;
   always_comb begin
     current_req_index = pixel_index;
     current_req_epoch = (epoch_o_sum[2]<<c.input_s16)>>$clog2(LINE_BYTES);
@@ -1709,7 +1740,7 @@ module conv_im2col_frontend #(
   end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) request_pending <= 1'b0;
-    else if (cache_req_ready) request_pending <= REGISTER_CACHE_REQUEST && cache_req_valid && !request_bypass;
+    else if (cache_req_ready) request_pending <= REGISTER_CACHE_REQUEST && cache_req_valid;
   end
   always_ff @(posedge clk) begin
     if (!request_pending || cache_port_ready) begin
@@ -1733,16 +1764,16 @@ module conv_im2col_frontend #(
     .cfg_geometry(pred_cfg_eligible),
     .cfg_windowed(c.windowed),.cfg_prefetch_enable(c.prefetch_enable),
     .req_valid(cache_port_valid),.req_ready(cache_port_ready),
-    .req_addr(REGISTER_CACHE_REQUEST ? (request_pending ? request_addr_q : addr) : cache_req_addr),
-    .req_geometry(request_pending ? request_geometry_q : geometry_tile),
-    .req_event_first(request_pending ? request_event_first_q :
-      (geometry_tile && (REGISTER_CACHE_REQUEST ? addr[3:0] == 4'd0 : cache_req_addr[3:0] == 4'd0))),
+    .req_addr(REGISTER_CACHE_REQUEST ? request_addr_q : cache_req_addr),
+    .req_geometry(REGISTER_CACHE_REQUEST ? request_geometry_q : geometry_tile),
+    .req_event_first(REGISTER_CACHE_REQUEST ? request_event_first_q :
+      (geometry_tile && cache_req_addr[3:0] == 4'd0)),
     .hint_valid(line_hint_valid),.hint_next(line_hint_rank),.hint_pending(cache_hint_pending),
-    .req_window_index_valid(request_pending ? request_index_valid_q : req_index_valid),
-    .req_window_index(REGISTER_CACHE_REQUEST ? (request_pending ? request_index_q : current_req_index) : req_index),
-    .req_window_epoch(REGISTER_CACHE_REQUEST ? (request_pending ? request_epoch_q : current_req_epoch) : req_epoch),
+    .req_window_index_valid(REGISTER_CACHE_REQUEST ? request_index_valid_q : req_index_valid),
+    .req_window_index(REGISTER_CACHE_REQUEST ? request_index_q : req_index),
+    .req_window_epoch(REGISTER_CACHE_REQUEST ? request_epoch_q : req_epoch),
     .req_window_retire(request_retire),
-    .req_window_progress(REGISTER_CACHE_REQUEST ? (request_pending ? request_progress_q : oy) : request_output_y),
+    .req_window_progress(REGISTER_CACHE_REQUEST ? request_progress_q : request_output_y),
     .prefetch_valid(pf_valid),.prefetch_ready(pf_ready),.prefetch_addr(pf_addr),
     .prefetch_window_index_valid(pf_index_valid),.prefetch_window_index(pf_index),
     .prefetch_window_epoch(pf_epoch),.prefetch_window_retire(
@@ -1765,6 +1796,12 @@ module conv_im2col_frontend #(
     .i_a(ix), .i_b(COORD_W'(1)), .i_carry(1'b0),
     .o_sum(ix_increment), .o_carry(unused_ix_increment_carry)
   );
+  logic [31:0] pixel_increment;
+  logic unused_pixel_increment_carry;
+  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_pixel_increment (
+    .i_a(pixel_index), .i_b(32'd1), .i_carry(1'b0),
+    .o_sum(pixel_increment), .o_carry(unused_pixel_increment_carry)
+  );
 
   // 各种通道来源并行计算组内范围，接收边沿只选择相应标志。
   assign group_range_channel[0] = 16'd0;
@@ -1783,7 +1820,8 @@ module conv_im2col_frontend #(
   assign group_end_i_target = {1'b0, c.group_c};
   assign group_end_i_carry_in = 1'b0;
   if (LANES <= 8) begin : g_group_end_by_lane
-    logic [LANES:0] step_o_equal, selected_end;
+    logic [LANES:0] step_o_equal;
+    (* keep = 1 *) logic [LANES:0] selected_end;
 
     // 各种通道数的组末关系提前计算，当前周期只选择最后有效通道。
     for (genvar step = 0; step <= LANES; step++) begin : g_step
@@ -1793,14 +1831,7 @@ module conv_im2col_frontend #(
       end else begin : g_remaining_boundary
         assign step_o_equal[step] = group_range_q[step-1] && !group_range_q[step];
       end
-      if (step == 0) begin : g_no_lane
-        assign selected_end[step] = !(|chunk_lane_allowed) && step_o_equal[step];
-      end else if (step < LANES) begin : g_has_later_lane
-        assign selected_end[step] = chunk_lane_allowed[step-1] &&
-            !(|chunk_lane_allowed[LANES-1:step]) && step_o_equal[step];
-      end else begin : g_final_lane
-        assign selected_end[step] = chunk_lane_allowed[step-1] && step_o_equal[step];
-      end
+      assign selected_end[step] = chunk_selected[step] && step_o_equal[step];
     end
     assign group_end_o_equal = |selected_end;
   end else begin : g_group_end_wide
@@ -1811,120 +1842,20 @@ module conv_im2col_frontend #(
   end
 
   if (LANES <= 8) begin : g_short_group_lane
-    logic [p_saved_group_lanes-1:0][15:0] cfg_group_last;
-    logic cfg_has_channel;
-    (* keep = 1 *) logic [p_saved_group_lanes-1:0] cfg_short_group;
-
-    assign cfg_has_channel = cfg.group_c != ch_q;
-    for (genvar offset = 0; offset < p_saved_group_lanes; offset++) begin : g_cfg_offset
-      logic [16:0] match_i_a, match_i_b, match_i_target;
-      logic match_i_carry, match_o_equal;
-      assign match_i_a = {1'b0, ch_q};
-      assign match_i_b = 17'(offset + 1);
-      assign match_i_target = {1'b0, cfg.group_c};
-      assign match_i_carry = 1'b0;
-      add_equal #(.p_width(17)) u_match (
-        .i_a(match_i_a), .i_b(match_i_b), .i_target(match_i_target),
-        .i_carry_in(match_i_carry), .o_equal(match_o_equal)
-      );
-      // 扩展位保留通道加偏移的溢出，范围匹配使用并行进位等式。
-      assign cfg_group_last[offset] = cfg.group_c - 16'(offset + 1);
-      always_comb begin
-        case (^{cfg.group_c, ch_q})
-          1'b0, 1'b1: cfg_short_group[offset] = match_o_equal;
-          // 含未知位的输入使用定宽减法，保持比较结果的四态传播。
-          default: cfg_short_group[offset] = cfg.group_c >= 16'(offset + 1) &&
-              ch_q == cfg_group_last[offset];
-        endcase
-      end
-    end
+    (* use_dsp = "yes" *) logic [16:0] configured_remaining;
+    assign configured_remaining = {1'b0, cfg.group_c} - {1'b0, ch_q};
     for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_cfg_lane
-      if (lane == 0) begin : g_any_channel
-        assign group_range_cfg[lane] = cfg_has_channel;
-      end else begin : g_remaining
-        assign group_range_cfg[lane] = cfg_has_channel && !(|cfg_short_group[lane-1:0]);
-      end
+      assign group_range_cfg[lane] = 17'(lane) < configured_remaining;
     end
+    // 每个通道来源只求一次剩余数量，所有常量通道边界共用其高位关系。
+    // 十七位模减保留通道超出组范围时的回绕值。
     for (genvar source = 0; source < 6; source++) begin : g_source
-      if (source == 5) begin : g_advancing_channel
-        logic [p_saved_group_lanes:0][15:0] step_i_target;
-        logic [LANES:0][p_saved_group_lanes:0] boundary_match, range_for_step;
-        logic [11:0] high_i_a, high_i_b;
-        logic [3:0] low_i_a;
-        logic low_i_carry_in;
-        assign high_i_a = ch_q[15:4];
-        assign high_i_b = 12'd0;
-        assign low_i_a = ch_q[3:0];
-        assign low_i_carry_in = 1'b0;
-        assign step_i_target[0] = c.group_c;
-        for (genvar boundary = 1; boundary <= p_saved_group_lanes; boundary++) begin : g_target
-          assign step_i_target[boundary] = group_last_channels_q[boundary-1];
-        end
-        for (genvar boundary = 0; boundary <= p_saved_group_lanes; boundary++) begin : g_boundary
-          logic [11:0] high_i_target;
-          logic [3:0] low_i_target;
-          logic high_i_carry_in, high_o_equal, high_gate;
-          assign high_i_target = step_i_target[boundary][15:4];
-          assign low_i_target = step_i_target[boundary][3:0];
-          assign high_i_carry_in = ch_q[3] && !step_i_target[boundary][3];
-          add_equal #(.p_width(12)) u_high (
-            .i_a(high_i_a), .i_b(high_i_b), .i_target(high_i_target),
-            .i_carry_in(high_i_carry_in), .o_equal(high_o_equal)
-          );
-          if (boundary == 0) begin : g_group_end
-            assign high_gate = high_o_equal;
-          end else begin : g_short_group
-            assign high_gate = high_o_equal && group_at_least_q[boundary];
-          end
-          for (genvar step = 0; step <= LANES; step++) begin : g_step
-            logic [3:0] low_i_b;
-            logic low_o_equal;
-            assign low_i_b = 4'(step);
-            add_equal #(.p_width(4)) u_low (
-              .i_a(low_i_a), .i_b(low_i_b), .i_target(low_i_target),
-              .i_carry_in(low_i_carry_in), .o_equal(low_o_equal)
-            );
-            assign boundary_match[step][boundary] = high_gate && low_o_equal;
-          end
-        end
-        for (genvar step = 0; step <= LANES; step++) begin : g_step_range
-          for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_lane
-            assign range_for_step[step][lane] = !(|boundary_match[step][lane:0]);
-          end
-        end
-        logic [LANES:0] step_select;
-        assign step_select[0] = !(|chunk_lane_allowed);
-        for (genvar step = 1; step <= LANES; step++) begin : g_selected_step
-          if (step == LANES) begin : g_last
-            assign step_select[step] = chunk_lane_allowed[step-1];
-          end else begin : g_has_later_lane
-            assign step_select[step] = chunk_lane_allowed[step-1] && !(|chunk_lane_allowed[LANES-1:step]);
-          end
-        end
-        // 最后有效通道形成独热选择，各种步长的范围按位并行归并。
-        always_comb begin
-          group_range_next[source] = '0;
-          for (int step = 0; step <= LANES; step++)
-            group_range_next[source] |= {(p_saved_group_lanes+1){step_select[step]}} & range_for_step[step];
-        end
-      end else begin : g_saved_channel
-        logic group_has_channel;
-        logic [p_saved_group_lanes-1:0] short_group;
-        assign group_has_channel = c.group_c != group_range_channel[source];
-        for (genvar boundary = 1; boundary <= p_saved_group_lanes; boundary++) begin : g_boundary
-          assign short_group[boundary-1] = group_at_least_q[boundary] &&
-            group_range_channel[source] == group_last_channels_q[boundary-1];
-        end
-        for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_lane
-          if (lane == 0) begin : g_any_channel
-            assign group_range_next[source][lane] = group_has_channel;
-          end else begin : g_remaining
-            assign group_range_next[source][lane] = group_has_channel && !(|short_group[lane-1:0]);
-          end
-        end
+      (* use_dsp = "yes" *) logic [16:0] remaining;
+      assign remaining = {1'b0, c.group_c} - {1'b0, group_range_channel[source]};
+      for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_lane
+        assign group_range_next[source][lane] = 17'(lane) < remaining;
       end
     end
-    // 范围标志与通道索引在同一边沿保存，输出和后续请求使用寄存结果。
     assign group_lane_allowed = group_range_q[LANES-1:0];
     assign group_after_chunk = group_range_q[0] &&
       (&(~chunk_lane_allowed | group_range_q[LANES:1]));
@@ -1981,24 +1912,12 @@ module conv_im2col_frontend #(
   // 每条通道直接检查字内偏移，常量边界同时覆盖八位和十六位输入。
   for (genvar lane = 0; lane < LANES; lane++) begin : g_word_lane
     (* keep = 1 *) logic allowed_s8, allowed_s16;
-    // 字内范围只有少量地址位，按位比较使常量边界独立于地址加法的进位。
+    // 字内偏移扩展一位后与固定边界比较，覆盖一个完整读取字。
     function automatic logic before_word_end(
       input logic [p_word_shift-1:0] value,
       input logic [p_word_shift:0] limit
     );
-      logic [p_word_shift:0] extended_value;
-      logic equal_prefix, lower_value;
-      extended_value = {1'b0, value};
-      equal_prefix = 1'b1;
-      lower_value = 1'b0;
-      for (int bit_index = p_word_shift; bit_index >= 0; bit_index--) begin
-        lower_value |= equal_prefix && !extended_value[bit_index] && limit[bit_index];
-        equal_prefix &= extended_value[bit_index] == limit[bit_index];
-      end
-      case (^{value, limit})
-        1'b0, 1'b1: before_word_end = lower_value;
-        default: before_word_end = 1'bx;
-      endcase
+      before_word_end = {1'b0, value} < limit;
     endfunction
     if (lane < p_cache_read_bytes) begin : g_s8
       assign allowed_s8 = before_word_end(addr[p_word_shift-1:0], (p_word_shift+1)'(p_cache_read_bytes-lane));
@@ -2013,17 +1932,11 @@ module conv_im2col_frontend #(
     assign word_lane_allowed[lane] = c.input_s16 ? allowed_s16 : allowed_s8;
     // 数据资格与列末位置并行计算，列计数只参与末级匹配。
     assign chunk_data_allowed[lane] = (!narrow_output || lane<NARROW_LANES) &&
-      (past_active_q || (group_lane_allowed[lane] && TILE_COUNT_W'(lane)<active_remaining)) &&
+      (past_active_q || (group_lane_allowed[lane] && active_lane_allowed_q[lane])) &&
       ((!state[$clog2(STREAM)] && !state[$clog2(WAIT_WORD)]) || word_lane_allowed[lane]);
     if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_complete_column
-      always_comb begin
-        case (^col_remaining)
-          1'b0, 1'b1: chunk_end_lane[lane] = chunk_data_allowed[lane] &&
-            col_remaining == TILE_COUNT_W'(lane+1);
-          default: chunk_end_lane[lane] = chunk_lane_allowed[lane] &&
-            col_remaining == TILE_COUNT_W'(lane+1);
-        endcase
-      end
+      // 连续范围在相邻两位之间由有效转为无效时，对应当前行的最后通道。
+      assign chunk_end_lane[lane] = chunk_lane_allowed[lane] && !column_lane_allowed_q[lane+1];
     end else begin : g_wrapped_column
       assign chunk_end_lane[lane] = chunk_lane_allowed[lane] &&
         col_remaining == TILE_COUNT_W'(lane+1);
@@ -2031,7 +1944,7 @@ module conv_im2col_frontend #(
   end
   if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_direct_chunk_end
     // 末通道可写即可完成当前行，无需等待通道数编码后再次比较。
-    assign chunk_reaches_end = col_remaining == '0 || (|chunk_end_lane);
+    assign chunk_reaches_end = !column_lane_allowed_q[0] || (|chunk_end_lane);
   end else begin : g_narrow_chunk_end
     assign chunk_reaches_end = TILE_COUNT_W'(chunk_count) == col_remaining;
   end
@@ -2056,7 +1969,7 @@ module conv_im2col_frontend #(
     chunk_count = '0;
     for (int lane=0;lane<LANES;lane++) begin
       // 描述符选择写入宽度；缓存字仍保留完整读取宽度供后续拍使用。
-      chunk_lane_allowed[lane] = chunk_data_allowed[lane] && TILE_COUNT_W'(lane)<col_remaining;
+      chunk_lane_allowed[lane] = chunk_data_allowed[lane] && column_lane_allowed_q[lane];
       if (chunk_lane_allowed[lane]) chunk_count=CHUNK_COUNT_W'(lane+1);
     end
   end
@@ -2064,9 +1977,14 @@ module conv_im2col_frontend #(
   // 字节移位仅选择当前自然地址分组内的有效数据，字尾由通道掩码限制。
   assign selected_word = stream_word >> (8*addr[p_word_shift-1:0]);
 
-  // 输出掩码直接归并后续通道资格，保持最高有效通道之前的所有位置有效。
+  // 各项范围均从零号通道连续有效，范围交集直接形成连续输出掩码。
+  // 列索引可能发生定宽回绕的参数组合保留逐通道后缀归并。
   for (genvar output_lane = 0; output_lane < LANES; output_lane++) begin : g_output_mask
-    assign wr_mask[output_lane] = |chunk_lane_allowed[LANES-1:output_lane];
+    if (p_contiguous_chunk) begin : g_contiguous
+      assign wr_mask[output_lane] = chunk_lane_allowed[output_lane];
+    end else begin : g_general
+      assign wr_mask[output_lane] = |chunk_lane_allowed[LANES-1:output_lane];
+    end
   end
   always_comb begin
     for (int l=0;l<LANES;l++) begin
@@ -2095,34 +2013,29 @@ module conv_im2col_frontend #(
     end
   end
   logic [31:0] cfg_base_step;
-  (* keep = 1 *) logic [31:0] cfg_stride_pf_step, cfg_dilation_pf_step;
-  logic [31:0] cfg_selected_pf_step;
   assign cfg_base_step = cfg.kernel_w == 16'd1 ? 32'(cfg.stride_w) : 32'(cfg.dilation_w);
-  // 两种步长独立计算行预读距离，卷积核宽度只选择最终结果。
+  // 配置接收时保存行内像素数与基础步长，准备周期再完成最大值比较。
   always_comb begin
     cfg_line_pixels = 32'd0;
-    cfg_stride_pf_step = 32'd0;
-    cfg_dilation_pf_step = 32'd0;
-    cfg_selected_pf_step = 32'd0;
     for (int count = 0; count <= LINE_BYTES; count++) begin
       cfg_line_pixels |= {32{cfg_line_select[count]}} & 32'(count+1);
-      cfg_stride_pf_step |= {32{cfg_line_select[count]}} &
-        (32'(cfg.stride_w) < 32'(count+1) ? 32'(count+1) : 32'(cfg.stride_w));
-      cfg_dilation_pf_step |= {32{cfg_line_select[count]}} &
-        (32'(cfg.dilation_w) < 32'(count+1) ? 32'(count+1) : 32'(cfg.dilation_w));
-      cfg_selected_pf_step |= {32{cfg_line_select[count]}} &
-        (cfg_base_step < 32'(count+1) ? 32'(count+1) : cfg_base_step);
     end
-    case (cfg.kernel_w == 16'd1)
-      1'b0: cfg_pf_step = cfg_dilation_pf_step;
-      1'b1: cfg_pf_step = cfg_stride_pf_step;
-      // 未知选择条件保持逐位合并后再比较的四态结果。
-      default: cfg_pf_step = cfg_selected_pf_step;
-    endcase
   end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      pixel_bytes<=0;pf_step_base<=1;
+      pf_step_base <= 32'd1;
+      prefetch_line_pixels <= '0;
+    end else if (cfg_valid && cfg_ready) begin
+      pf_step_base <= cfg_base_step;
+      prefetch_line_pixels <= p_prefetch_count_width'(cfg_line_pixels);
+    end else if (cfg_prepare_phase == 2'd1) begin
+      pf_step_base <= pf_step_base < 32'(prefetch_line_pixels) ?
+        32'(prefetch_line_pixels) : pf_step_base;
+    end
+  end
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      pixel_bytes<=0;
       retire_enabled_q<=0;short_pixel_q<=0;retire_shift_q<=0;retire_last_row_q<=0;
       window_index_valid_q<=0;window_index_shift_q<=0;
       second_last_row_q<=0;last_output_col_q<=0;second_last_col_q<=0;
@@ -2135,7 +2048,7 @@ module conv_im2col_frontend #(
       group_minus_four_q <= 16'hfffc;
       kernel_width_valid_q <= 1'b0;
     end else if (cfg_valid && cfg_ready) begin
-      pixel_bytes<=cfg_pixel_bytes;pf_step_base<=cfg_pf_step;
+      pixel_bytes<=cfg_pixel_bytes;
       retire_enabled_q<=stride_shape_o_valid;
       short_pixel_q<=cfg_pixel_bytes<LINE_BYTES;
       window_index_valid_q<=cfg.windowed && cfg.input_base[$clog2(LINE_BYTES)-1:0]==0 &&
@@ -2242,12 +2155,23 @@ module conv_im2col_frontend #(
     );
   end
 
-  // 下一预读横坐标先完成分组求和，边界选择不串接完整进位。
-  logic [31:0] prefetch_next_x;
-  logic unused_prefetch_x_carry;
+  // 两种横坐标并行计算，跨行起点在第一准备周期保存。
+  logic [31:0] prefetch_next_x, prefetch_wrapped_x, prefetch_wrap_base, prefetch_wrap_base_q;
+  logic [31:0] prefetch_wrap_i_a, prefetch_wrap_i_b;
+  logic [2:0] unused_prefetch_x_carry;
+  assign prefetch_wrap_i_a = 32'(pfa_x);
+  assign prefetch_wrap_i_b = ~{16'd0, c.input_w};
+  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_prefetch_wrap_base (
+    .i_a(prefetch_wrap_i_a), .i_b(prefetch_wrap_i_b), .i_carry(1'b1),
+    .o_sum(prefetch_wrap_base), .o_carry(unused_prefetch_x_carry[0])
+  );
   parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_prefetch_x (
     .i_a(32'(pfa_x)), .i_b(pf_step_q), .i_carry(1'b0),
-    .o_sum(prefetch_next_x), .o_carry(unused_prefetch_x_carry)
+    .o_sum(prefetch_next_x), .o_carry(unused_prefetch_x_carry[1])
+  );
+  parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_prefetch_wrapped_x (
+    .i_a(prefetch_wrap_base_q), .i_b(pf_step_q), .i_carry(1'b0),
+    .o_sum(prefetch_wrapped_x), .o_carry(unused_prefetch_x_carry[2])
   );
 
   // 较大通道数按缓存行预测后续像素，提前保存新进入卷积窗口的输入行。
@@ -2270,7 +2194,7 @@ module conv_im2col_frontend #(
     pf_x=prefetch_next_x;pf_y=pf_y_base_q;
     if (pf_x>=32'(c.input_w)) begin
       // 跨越输入行时保留横向余量，并预测下一输出行使用的同一核位置。
-      pf_x=pf_stream_lookahead ? pf_x-32'(c.input_w) : 32'd0;
+      pf_x=pf_stream_lookahead ? prefetch_wrapped_x : 32'd0;
       pf_y=pf_y_wrapped_q;
     end
     // 小通道片段按核行预测，换核行时保存相应的输入横坐标。
@@ -2336,12 +2260,13 @@ module conv_im2col_frontend #(
           pfa_rows <= !REGISTER_CACHE_REQUEST && incoming_context ? 32'(tile_rows) : 32'(rows_q);
           pfa_cols <= !REGISTER_CACHE_REQUEST && incoming_context ?
               (tile_cols=='0 ? 32'(SIZE) : 32'(tile_cols)) : 32'(cols_q);
-          pfa_ref_addr <= REGISTER_CACHE_REQUEST ? (request_pending ? request_addr_q : addr) : cache_req_addr;
-          pfa_ref_index <= REGISTER_CACHE_REQUEST ? (request_pending ? request_index_q : current_req_index) : req_index;
-          pfa_ref_epoch <= REGISTER_CACHE_REQUEST ? (request_pending ? request_epoch_q : current_req_epoch) : req_epoch;
-          pfa_ref_index_valid <= request_pending ? request_index_valid_q : req_index_valid;
+          pfa_ref_addr <= REGISTER_CACHE_REQUEST ? request_addr_q : cache_req_addr;
+          pfa_ref_index <= REGISTER_CACHE_REQUEST ? request_index_q : req_index;
+          pfa_ref_epoch <= REGISTER_CACHE_REQUEST ? request_epoch_q : req_epoch;
+          pfa_ref_index_valid <= REGISTER_CACHE_REQUEST ? request_index_valid_q : req_index_valid;
         end
         1: begin
+          prefetch_wrap_base_q <= prefetch_wrap_base;
           pf_y_delta_q <= pf_y_delta;
           pf_y_wrap_delta_q <= pf_y_wrap_delta;
           pf_distance_q <= pf_stream_lookahead ? 32'd4 :
@@ -2379,7 +2304,7 @@ module conv_im2col_frontend #(
           prefetch_phase <= 4;
         end
         4: begin
-          pf1_pixel <= pf0_y * 32'(c.input_w) + pf0_x;
+          pf1_pixel <= prefetch_pixel_sum;
           pf1_channel <= pf0_channel; pf1_epoch <= pf0_epoch; pf1_retire <= retirement_result[1];
           pf1_ref_addr <= pf0_ref_addr; pf1_ref_index <= pf0_ref_index;
           pf1_ref_epoch <= pf0_ref_epoch; pf1_ref_retire <= pf0_ref_retire;
@@ -2406,7 +2331,7 @@ module conv_im2col_frontend #(
   end
 
   always_comb begin
-    pf_address_calc=c.input_base+((pf_channel_product+pf1_channel)<<c.input_s16);
+    pf_address_calc=prefetch_address_sum;
     pf_index_valid=pf1_ref_index_valid; pf_index=pf1_pixel; pf_epoch=pf1_epoch;
     if (short_pixel_q)
       pf_index=pf1_pixel>>window_index_shift_q;
@@ -2445,6 +2370,10 @@ module conv_im2col_frontend #(
   parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_prepared_group (
     .i_a(prepared_group_i_a), .i_b(prepared_group_i_b), .i_carry(prepared_group_i_carry),
     .o_sum(prepared_next_group), .o_carry(unused_prepared_group_carry)
+  );
+  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_prepared_skip_group (
+    .i_a(prepared_group_i_a), .i_b({16'd0, c.group_c, 1'b0}), .i_carry(1'b0),
+    .o_sum(prepared_skip_group), .o_carry(unused_prepared_skip_carry)
   );
   // 坐标基址与步长在准备阶段保存，完整坐标求和在提交寄存器前完成。
   always_comb begin
@@ -2488,7 +2417,20 @@ module conv_im2col_frontend #(
       .o_sum(committing_coordinate[axis]), .o_carry(unused_committing_coordinate_carry[axis])
     );
   end
-  // 填充和字命中的候选值、选择条件分别保存，提交阶段只归并单比特结果。
+  for (genvar axis = 0; axis < 2; axis++) begin : g_commit_bound
+    if (REGISTER_DESCRIPTOR) begin : g_saved
+      logic unused_equal;
+      unsigned_compare #(.p_width(COORD_W)) u_limit (
+        .i_a(committing_coordinate[axis]),
+        .i_b(COORD_W'(axis == 0 ? c.input_w : c.input_h)),
+        .o_less(committing_coordinate_valid[axis]), .o_equal(unused_equal)
+      );
+    end else begin : g_direct
+      assign committing_coordinate_valid[axis] = 1'b0;
+    end
+  end
+  // 已保存窗口保留原填充标志，其余描述符统一检查提交坐标的边界。
+
   assign prepared_padding_value = {window_previous_padding, window_backward_padding,
     window_forward_padding, window_next_padding, next_row_padding, incoming_skip_padding,
     incoming_wrap_padding, incoming_step_padding, incoming_base_padding};
@@ -2524,51 +2466,98 @@ module conv_im2col_frontend #(
       prepared_word_select[0] = 1'b1;
     end
   end
-  // 地址候选与选择条件并行形成，末端按独热结果归并两类地址。
+  // 描述符寄存级保存已选择的两个基地址及共同增量，提交时共用两组加法器。
   assign prepared_address_candidate[0] = {row_group_base, row_base_addr};
-  assign prepared_address_candidate[1] = incoming_address_sum[0];
-  assign prepared_address_candidate[2] = incoming_address_sum[1];
-  assign prepared_address_candidate[3] = incoming_address_sum[2];
-  assign prepared_address_candidate[4] = incoming_address_sum[3];
+  assign prepared_address_candidate[1] = incoming_address_left[0];
+  assign prepared_address_candidate[2] = incoming_address_left[1];
+  assign prepared_address_candidate[3] = incoming_address_left[2];
+  assign prepared_address_candidate[4] = incoming_address_left[3];
   assign prepared_address_candidate[5] = {next_row_group_base, next_row_addr};
   assign prepared_address_candidate[6] = {window_next_group_base, window_next_addr};
-  assign prepared_address_candidate[7] = incoming_address_sum[4];
-  assign prepared_address_candidate[8] = incoming_address_sum[5];
-  assign prepared_address_candidate[9] = incoming_address_sum[6];
+  assign prepared_address_candidate[7] = incoming_address_left[4];
+  assign prepared_address_candidate[8] = incoming_address_left[5];
+  assign prepared_address_candidate[9] = incoming_address_left[6];
+  assign prepared_address_delta_candidate[0] = '0;
+  assign prepared_address_delta_candidate[1] = incoming_address_right[0][0];
+  assign prepared_address_delta_candidate[2] = incoming_address_right[1][0];
+  assign prepared_address_delta_candidate[3] = incoming_address_right[2][0];
+  assign prepared_address_delta_candidate[4] = incoming_address_right[3][0];
+  assign prepared_address_delta_candidate[5] = '0;
+  assign prepared_address_delta_candidate[6] = '0;
+  assign prepared_address_delta_candidate[7] = incoming_address_right[4][0];
+  assign prepared_address_delta_candidate[8] = incoming_address_right[5][0];
+  assign prepared_address_delta_candidate[9] = incoming_address_right[6][0];
+  assign prepared_address_carry_candidate = {incoming_address_carry[6:4], 2'b00,
+    incoming_address_carry[3:0], 1'b0};
   always_comb begin
     prepared_address = '0;
+    prepared_address_delta = '0;
+    prepared_address_carry = 1'b0;
     unique case (1'b1)
-      prepared_word_select[0]: prepared_address = prepared_address_candidate[0];
-      prepared_word_select[1]: prepared_address = prepared_address_candidate[1];
-      prepared_word_select[2]: prepared_address = prepared_address_candidate[2];
-      prepared_word_select[3]: prepared_address = prepared_address_candidate[3];
-      prepared_word_select[4]: prepared_address = prepared_address_candidate[4];
-      prepared_word_select[5]: prepared_address = prepared_address_candidate[5];
-      prepared_word_select[6]: prepared_address = prepared_address_candidate[6];
-      prepared_word_select[7]: prepared_address = prepared_address_candidate[7];
-      prepared_word_select[8]: prepared_address = prepared_address_candidate[8];
-      prepared_word_select[9]: prepared_address = prepared_address_candidate[9];
+      prepared_word_select[0]: begin
+        prepared_address = prepared_address_candidate[0];
+        prepared_address_delta = prepared_address_delta_candidate[0];
+        prepared_address_carry = prepared_address_carry_candidate[0];
+      end
+      prepared_word_select[1]: begin
+        prepared_address = prepared_address_candidate[1];
+        prepared_address_delta = prepared_address_delta_candidate[1];
+        prepared_address_carry = prepared_address_carry_candidate[1];
+      end
+      prepared_word_select[2]: begin
+        prepared_address = prepared_address_candidate[2];
+        prepared_address_delta = prepared_address_delta_candidate[2];
+        prepared_address_carry = prepared_address_carry_candidate[2];
+      end
+      prepared_word_select[3]: begin
+        prepared_address = prepared_address_candidate[3];
+        prepared_address_delta = prepared_address_delta_candidate[3];
+        prepared_address_carry = prepared_address_carry_candidate[3];
+      end
+      prepared_word_select[4]: begin
+        prepared_address = prepared_address_candidate[4];
+        prepared_address_delta = prepared_address_delta_candidate[4];
+        prepared_address_carry = prepared_address_carry_candidate[4];
+      end
+      prepared_word_select[5]: begin
+        prepared_address = prepared_address_candidate[5];
+        prepared_address_delta = prepared_address_delta_candidate[5];
+        prepared_address_carry = prepared_address_carry_candidate[5];
+      end
+      prepared_word_select[6]: begin
+        prepared_address = prepared_address_candidate[6];
+        prepared_address_delta = prepared_address_delta_candidate[6];
+        prepared_address_carry = prepared_address_carry_candidate[6];
+      end
+      prepared_word_select[7]: begin
+        prepared_address = prepared_address_candidate[7];
+        prepared_address_delta = prepared_address_delta_candidate[7];
+        prepared_address_carry = prepared_address_carry_candidate[7];
+      end
+      prepared_word_select[8]: begin
+        prepared_address = prepared_address_candidate[8];
+        prepared_address_delta = prepared_address_delta_candidate[8];
+        prepared_address_carry = prepared_address_carry_candidate[8];
+      end
+      prepared_word_select[9]: begin
+        prepared_address = prepared_address_candidate[9];
+        prepared_address_delta = prepared_address_delta_candidate[9];
+        prepared_address_carry = prepared_address_carry_candidate[9];
+      end
       default: ;
     endcase
   end
-  for (genvar target = 0; target < 2; target++) begin : g_prepared_word_target
-    logic [31-p_word_shift:0] target_address;
-    assign target_address = target == 0 ? word_addr[31:p_word_shift] : addr[31:p_word_shift];
-    assign prepared_word_match[0][target] = row_base_addr[31:p_word_shift] == target_address;
-    assign prepared_word_match[1][target] = incoming_candidate_word_match[0][target];
-    assign prepared_word_match[2][target] = incoming_candidate_word_match[1][target];
-    assign prepared_word_match[3][target] = incoming_candidate_word_match[2][target];
-    assign prepared_word_match[4][target] = incoming_candidate_word_match[3][target];
-    assign prepared_word_match[5][target] = next_row_word_match[target];
-    assign prepared_word_match[6][target] = window_next_addr[31:p_word_shift] == target_address;
-    assign prepared_word_match[7][target] = incoming_candidate_word_match[4][target];
-    assign prepared_word_match[8][target] = incoming_candidate_word_match[5][target];
-    assign prepared_word_match[9][target] = incoming_candidate_word_match[6][target];
-  end
-  for (genvar candidate = 0; candidate < 10; candidate++) begin : g_prepared_word_value
-    assign prepared_word_value[candidate] = finishing_tile && state[$clog2(WAIT_WORD)] ?
-      prepared_word_match[candidate][1] : word_valid && word_addr[p_word_shift-1:0] == '0 &&
-      prepared_word_match[candidate][0];
+  for (genvar address_port = 0; address_port < 2; address_port++) begin : g_commit_address
+    logic [31:0] address_i_a, address_i_b;
+    logic address_i_carry;
+
+    assign address_i_a = address_port == 0 ? prepared_tile_q.address : prepared_tile_q.group_address;
+    assign address_i_b = prepared_tile_q.address_delta;
+    assign address_i_carry = prepared_tile_q.address_carry;
+    parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
+      .i_a(address_i_a), .i_b(address_i_b), .i_carry(address_i_carry),
+      .o_sum(committing_address[address_port]), .o_carry(unused_committing_address_carry[address_port])
+    );
   end
   always_comb begin
     preparing_tile = '0;
@@ -2578,11 +2567,13 @@ module conv_im2col_frontend #(
     preparing_tile.coordinate_y_carry = prepared_coordinate_carry[1];
     preparing_tile.padding_select = prepared_padding_select;
     preparing_tile.padding_value = prepared_padding_value;
-    preparing_tile.word_select = prepared_word_select;
-    preparing_tile.word_value = prepared_word_value;
+    preparing_tile.word_address = finishing_tile && state[$clog2(WAIT_WORD)] ?
+      addr[31:p_word_shift] : word_addr[31:p_word_shift];
+    preparing_tile.saved_word_valid = (finishing_tile && state[$clog2(WAIT_WORD)]) ||
+      (word_valid && word_addr[p_word_shift-1:0] == '0);
     preparing_tile.invalid = !channel_descriptor_valid;
     preparing_tile.fast = incoming_fast;
-    preparing_tile.padding = incoming_padding;
+    preparing_tile.padding = REGISTER_DESCRIPTOR ? 1'b0 : incoming_padding;
     preparing_tile.word_hit = incoming_word_hit;
     preparing_tile.position = tile_p0;
     preparing_tile.reduction = tile_q0;
@@ -2593,6 +2584,7 @@ module conv_im2col_frontend #(
     preparing_tile.slot = tile_slot;
     preparing_tile.narrow_output = tile_narrow;
     preparing_tile.next_group = prepared_next_group;
+    preparing_tile.skip_group = prepared_skip_group;
     preparing_tile.geometry = pred_enabled && (CACHE_POLICY!=3 || !c.windowed) &&
       (tile_cols==0 || 32'(tile_cols)==SIZE) && tile_p0[3:0]==0 && tile_q0[3:0]==0 && tile_group<groups_q;
     preparing_tile.tap = incoming_tap;
@@ -2605,6 +2597,8 @@ module conv_im2col_frontend #(
     preparing_tile.pixel = incoming_pixel;
     preparing_tile.address = REGISTER_DESCRIPTOR ? prepared_address[0] : incoming_addr;
     preparing_tile.group_address = REGISTER_DESCRIPTOR ? prepared_address[1] : incoming_group_base;
+    preparing_tile.address_delta = prepared_address_delta;
+    preparing_tile.address_carry = prepared_address_carry;
     preparing_tile.channel_range = incoming_next_position_fast ? window_next_channel_range : group_range_next[1];
     preparing_tile.output_position_update = incoming_next_position_fast || incoming_next_tile_fast;
     preparing_tile.output_x = incoming_next_position_fast ? window_next_x : row_wrap ? 16'd0 : ox_q + 16'd1;
@@ -2613,19 +2607,25 @@ module conv_im2col_frontend #(
       row_wrap ? last_output_col_q == 16'd0 : row_next_o_equal;
   end
   assign tile_capture = tile_valid && tile_ready;
-  // 准备项可以在当前末拍提交，并在同一边沿接收后续描述符。
+  // 已准备描述符在空闲状态提交，当前分块的完成先经过状态寄存器。
   assign tile_commit = REGISTER_DESCRIPTOR ?
-    (tile_prepared_valid && !error && (state[$clog2(IDLE)] || finishing_tile)) : tile_capture;
-  // 当前末拍与准备项的数据字相同，可直接使用本周期返回的数据。
-  assign committing_saved_word_hit = |(prepared_tile_q.word_select & prepared_tile_q.word_value);
-  assign prepared_live_word_match = prepared_tile_q.address[31:p_word_shift] == addr[31:p_word_shift];
-  assign committing_live_word_hit = state[$clog2(WAIT_WORD)] && finishing_tile && prepared_live_word_match;
+    (tile_prepared_valid && !error && state[$clog2(IDLE)]) : tile_capture;
+  // 准备阶段保存数据字对应地址，提交阶段与已求和的描述符地址比较。
+  assign committing_saved_word_hit = prepared_tile_q.saved_word_valid &&
+      committing_address[0][31:p_word_shift] == prepared_tile_q.word_address;
+  // 字地址的加法等式与完整地址求和并行，命中判断直接使用已寄存的算术输入。
+  assign prepared_live_word_match = committing_address[0][31:p_word_shift] == word_addr[31:p_word_shift];
+  // 当前数据字也可供下一描述符复用，标签和有效位均来自已经完成的返回。
+  assign committing_live_word_hit = word_valid && prepared_live_word_match;
   always_comb begin
     committing_tile = REGISTER_DESCRIPTOR ? prepared_tile_q : preparing_tile;
     if (REGISTER_DESCRIPTOR) begin
+      committing_tile.address = committing_address[0];
+      committing_tile.group_address = committing_address[1];
       committing_tile.input_x = $signed(committing_coordinate[0]);
       committing_tile.input_y = $signed(committing_coordinate[1]);
-      committing_tile.padding = |(prepared_tile_q.padding_select & prepared_tile_q.padding_value);
+      committing_tile.padding = prepared_tile_q.padding_select[5] ?
+        prepared_tile_q.padding_value[5] : !(&committing_coordinate_valid);
       committing_tile.word_hit = committing_saved_word_hit || committing_live_word_hit;
     end
   end
@@ -2651,7 +2651,7 @@ module conv_im2col_frontend #(
     tile_commit && !committing_tile.invalid && committing_tile.fast : &channel_accept_i_flags;
   always_comb begin
     channel_update = ch_q;
-    case (1'b1)
+    unique case (1'b1)
       state[$clog2(WAIT_WORD)], state[$clog2(STREAM)], state[$clog2(ZERO_STREAM)]: begin
         if (!(state[$clog2(WAIT_WORD)] && cache_rsp_valid && cache_rsp_error) && wr_valid && wr_ready) begin
           if (chunk_reaches_end) begin
@@ -2685,44 +2685,41 @@ module conv_im2col_frontend #(
     endcase
   end
   // 行切换、组切换和通道递增先选择范围，写入握手只控制最终保存。
-  (* keep = 1 *) logic [p_saved_group_lanes:0] group_range_stream_value;
-  assign group_range_stream_value = chunk_reaches_end ? group_range_next[1] :
-    group_end_o_equal ? group_range_next[0] : group_range_next[5];
+  logic [p_saved_group_lanes:0] group_range_stream_value;
+  (* keep = 1 *) logic [p_saved_group_lanes:0] group_range_row_value;
+  (* keep = 1 *) logic [p_saved_group_lanes:0] group_range_restart_value;
+  (* keep = 1 *) logic [p_saved_group_lanes:0] group_range_advance_value;
+  assign group_range_row_value = {(p_saved_group_lanes+1){chunk_reaches_end}} & group_range_next[1];
+  assign group_range_restart_value = {(p_saved_group_lanes+1){!chunk_reaches_end && group_end_o_equal}} & group_range_next[0];
+  assign group_range_advance_value = {(p_saved_group_lanes+1){!chunk_reaches_end && !group_end_o_equal}} & group_range_next[5];
+  assign group_range_stream_value = group_range_row_value | group_range_restart_value | group_range_advance_value;
 
   // 流式范围的保存资格与三种候选值并行计算，返回有效只控制寄存器写入。
-  logic range_stream_allowed, range_context_write, range_decode_write;
-  (* keep = 1 *) logic [p_saved_group_lanes:0] range_context_value, range_decode_value;
+  logic range_stream_allowed, range_decode_write;
+  (* keep = 1 *) logic [p_saved_group_lanes:0] range_decode_value;
+  logic [3:0] range_update_select;
+  logic [p_saved_group_lanes:0] range_update_value;
   always_comb begin
     range_stream_allowed = 1'b0;
-    case (1'b1)
+    unique case (1'b1)
       state[$clog2(WAIT_WORD)], state[$clog2(STREAM)], state[$clog2(ZERO_STREAM)]: begin
         if (state[$clog2(WAIT_WORD)] && cache_rsp_valid && cache_rsp_error) begin
         end else if (wr_ready) begin
           if (chunk_reaches_end) begin
             if (row_last_q) begin
             end else range_stream_allowed = 1'b1;
-          end else if (past_active_q || TILE_COUNT_W'(chunk_count) >= active_remaining) begin
+          end else if (past_active_q || !active_after_chunk) begin
           end else range_stream_allowed = 1'b1;
         end
       end
       default: ;
     endcase
-    range_context_write = 1'b0;
-    range_context_value = group_range_stream_value;
-    if (cfg_valid && cfg_ready) begin
-      range_context_write = 1'b1;
-      range_context_value = group_range_cfg;
-    end else if (tile_commit) begin
-      range_context_value = committing_tile.channel_range;
-      if (committing_tile.invalid) begin
-      end else if (committing_tile.fast) range_context_write = 1'b1;
-    end else if (wr_valid && range_stream_allowed) range_context_write = 1'b1;
   end
   // 译码选择保持状态优先次序，其数据准备与配置及输出握手独立。
   always_comb begin
     range_decode_write = 1'b0;
     range_decode_value = group_range_next[4];
-    case (1'b1)
+    unique case (1'b1)
       state[$clog2(P_DECODE)], state[$clog2(P_START)], state[$clog2(P_WAIT)]: ;
       state[$clog2(Q_DECODE)]: begin
         if (q0 == 32'd0) begin
@@ -2743,10 +2740,21 @@ module conv_im2col_frontend #(
       default: ;
     endcase
   end
+  // 四类更新事件分别形成互斥选择，晚到的握手条件只经过末级归并。
+  assign range_update_select[0] = range_decode_write;
+  assign range_update_select[1] = !range_decode_write && cfg_valid && cfg_ready;
+  assign range_update_select[2] = !range_decode_write && !(cfg_valid && cfg_ready) &&
+      tile_commit && !committing_tile.invalid && committing_tile.fast;
+  assign range_update_select[3] = !range_decode_write && !(cfg_valid && cfg_ready) &&
+      !tile_commit && wr_valid && range_stream_allowed;
+  assign range_update_value =
+      ({(p_saved_group_lanes+1){range_update_select[0]}} & range_decode_value) |
+      ({(p_saved_group_lanes+1){range_update_select[1]}} & group_range_cfg) |
+      ({(p_saved_group_lanes+1){range_update_select[2]}} & committing_tile.channel_range) |
+      ({(p_saved_group_lanes+1){range_update_select[3]}} & group_range_stream_value);
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) group_range_q <= '0;
-    else if (range_decode_write) group_range_q <= range_decode_value;
-    else if (range_context_write) group_range_q <= range_context_value;
+    else if (|range_update_select) group_range_q <= range_update_value;
   end
 
   // 当前通道和新描述符并行准备，接收事件只选择最终数据。
@@ -2759,6 +2767,101 @@ module conv_im2col_frontend #(
     end
   end
 
+  // 配置通道数只作用于低十六位，高位递增与低位求和并行完成。
+  assign cfg_next_group_low = {1'b0, q0[15:0]} + {1'b0, cfg.group_c};
+  assign cfg_next_group_high = {1'b0, q0[31:16]} + 17'd1;
+  assign cfg_next_group = {
+    cfg_next_group_low[16] ? cfg_next_group_high : {1'b0, q0[31:16]},
+    cfg_next_group_low[15:0]};
+  parallel_prefix_add #(.p_width(33), .p_group_width(4), .p_preserve_groups(1'b1)) u_cfg_skip_group (
+    .i_a({1'b0, q0}), .i_b({16'd0, cfg.group_c, 1'b0}), .i_carry(1'b0),
+    .o_sum(cfg_skip_group), .o_carry(unused_cfg_skip_carry)
+  );
+
+  // 地址来源独立选择，流式写入资格只参与单比特选择和最终寄存。
+  assign address_stream_write = wr_valid && wr_ready && !tile_commit && !(cfg_valid && cfg_ready);
+  assign address_column_advance = !chunk_reaches_end && !past_active_q && active_after_chunk;
+  assign address_linear_tap = !coordinate_address_valid && !current_coordinate_valid && !tap_wrap &&
+    !pad_q && c.group_c == c.input_c && c.group_offset == 16'd0 && c.dilation_w == 16'd1 &&
+    ix_step_below_limit;
+  assign address_update_select[0] = !state[$clog2(ADDRESS_CHANNEL)] && !(cfg_valid && cfg_ready) &&
+    tile_commit && !committing_tile.invalid && committing_tile.fast;
+  assign address_update_select[1] = address_stream_write && chunk_reaches_end && !row_last_q &&
+    row_base_valid && !geometry_tile;
+  assign address_update_select[2] = address_stream_write && address_column_advance &&
+    group_end_o_equal && coordinate_address_valid;
+  assign address_update_select[3] = address_stream_write && address_column_advance &&
+    (!group_end_o_equal || address_linear_tap);
+  assign address_update_select[4] = state[$clog2(ADDRESS_CHANNEL)];
+  assign address_update_value = ({32{address_update_select[0]}} & committing_tile.address) |
+    ({32{address_update_select[1]}} & next_row_addr) |
+    ({32{address_update_select[2]}} & next_tap_addr) |
+    ({32{address_update_select[3]}} & next_byte_addr) |
+    ({32{address_update_select[4]}} & channel_addr);
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) addr <= 32'd0;
+    else if (|address_update_select) addr <= address_update_value;
+  end
+
+  // 有效列数量与逐通道范围在同一边沿更新，运行期直接读取范围寄存器。
+  assign active_update_select[0] = !(cfg_valid && cfg_ready) && tile_commit && !committing_tile.invalid;
+  assign active_update_select[1] = address_stream_write && chunk_reaches_end && !row_last_q;
+  assign active_update_select[2] = address_stream_write && !chunk_reaches_end;
+  assign active_update_candidate[0] = committing_tile.active_columns;
+  assign active_update_candidate[1] = active_cols_q;
+  assign active_update_candidate[2] = active_remaining - TILE_COUNT_W'(chunk_count);
+  assign active_update_value =
+      ({TILE_COUNT_W{active_update_select[0]}} & active_update_candidate[0]) |
+      ({TILE_COUNT_W{active_update_select[1]}} & active_update_candidate[1]) |
+      ({TILE_COUNT_W{active_update_select[2]}} & active_update_candidate[2]);
+  assign column_update_candidate[0] = committing_tile.columns;
+  assign column_update_candidate[1] = cols_q;
+  assign column_update_candidate[2] = col_remaining - TILE_COUNT_W'(chunk_count);
+  assign column_update_value =
+      ({TILE_COUNT_W{active_update_select[0]}} & column_update_candidate[0]) |
+      ({TILE_COUNT_W{active_update_select[1]}} & column_update_candidate[1]) |
+      ({TILE_COUNT_W{active_update_select[2]}} & column_update_candidate[2]);
+  for (genvar lane = 0; lane <= LANES; lane++) begin : g_active_lane_update
+    logic [2:0] candidate_allowed, column_allowed;
+    for (genvar source = 0; source < 3; source++) begin : g_source
+      if (source == 2 && LANES <= 8) begin : g_step
+        logic [LANES:0] active_allowed, remaining_allowed;
+        // 各种传输长度提前计算范围，末通道选择只参与最后归并。
+        for (genvar step = 0; step <= LANES; step++) begin : g_length
+          logic [TILE_COUNT_W-1:0] active_count, remaining_count;
+          assign active_count = active_remaining - TILE_COUNT_W'(step);
+          assign remaining_count = col_remaining - TILE_COUNT_W'(step);
+          assign active_allowed[step] = TILE_COUNT_W'(lane) < active_count;
+          assign remaining_allowed[step] = TILE_COUNT_W'(lane) < remaining_count;
+        end
+        assign candidate_allowed[source] = |(chunk_selected & active_allowed);
+        assign column_allowed[source] = |(chunk_selected & remaining_allowed);
+      end else begin : g_count
+        assign candidate_allowed[source] = TILE_COUNT_W'(lane) < active_update_candidate[source];
+        assign column_allowed[source] = TILE_COUNT_W'(lane) < column_update_candidate[source];
+      end
+    end
+    assign active_lane_update[lane] = |(active_update_select & candidate_allowed);
+    assign column_lane_update[lane] = |(active_update_select & column_allowed);
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) column_lane_allowed_q[lane] <= $unsigned(TILE_COUNT_W'(lane)) < $unsigned(TILE_COUNT_W'(SIZE));
+      else if (|active_update_select) column_lane_allowed_q[lane] <= column_lane_update[lane];
+    end
+  end
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) col_remaining <= TILE_COUNT_W'(SIZE);
+    else if (|active_update_select) col_remaining <= column_update_value;
+  end
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      active_remaining <= '0;
+      active_lane_allowed_q <= '0;
+    end else if (|active_update_select) begin
+      active_remaining <= active_update_value;
+      active_lane_allowed_q <= active_lane_update;
+    end
+  end
+
   // 保存前端配置、描述符和坐标状态。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -2767,19 +2870,19 @@ module conv_im2col_frontend #(
       reduction_len<=0; position_count<=0; tensor_bytes<=0;
       position_high_minus_one_q <= '1;
       next_group_q <= 33'd0;
+      skip_group_q <= 33'd0;
       p0<=0; q0<=0; tap0<=0; row_idx<=0; col_idx<=0; rows_q<=0; cols_q<=TILE_COUNT_W'(SIZE);active_cols_q<=0;
       row_last_q <= 1'b0;
       row_wrap_q <= 1'b0;
       tap_wrap_q <= 1'b0;
       incoming_tap_wrap_q <= 1'b0;
-      col_remaining <= TILE_COUNT_W'(SIZE);
-      active_remaining <= '0;
+
       past_active_q <= 1'b1;
       narrow_output <= 1'b0;
       ox_q <= 16'(0); oy_q <= 16'(0); ky_q <= 16'(0); kx_q <= 16'(0); ky0_q <= 16'(0); kx0_q <= 16'(0); ch0_q <= 16'(0);
 
       tap_group_base<=0;row_group_base<=0;
-      q_current<=0; ix <= COORD_W'(0); iy <= COORD_W'(0); pixel_index <= 32'(0); pad_q<=0; addr<=0;
+      q_current<=0; ix <= COORD_W'(0); iy <= COORD_W'(0); pixel_index <= 32'(0); pad_q<=0;
       word_buf<=0; word_addr<=0; word_valid<=0; addr_word_hit_q<=0; slot_q<=0;
       group_q<=0;groups_q<=0;geometry_tile<=0;line_hint_valid<=0;line_hint_rank<=32'hffff_ffff;
       p_cache_valid<=0;last_p_valid<=0;last_p<=0;last_p_limit<=0;last_y<=0;last_x<=0;
@@ -2814,13 +2917,16 @@ module conv_im2col_frontend #(
       end
       if (pred_done) begin line_hint_valid<=1;line_hint_rank<=pred_rank;end
       if (pred_start) line_hint_valid<=0;
-      if (cfg_valid && cfg_ready) begin
+      // 配置、描述符提交与各运行状态互斥选择，公共写条件只参与末级组合。
+      unique case (1'b1)
+        (cfg_valid && cfg_ready): begin
         row_wrap_q <= cfg.output_w != 16'd0 && ox_q == cfg_last_output_col;
         tap_wrap_q <= cfg.kernel_w != 16'd0 && kx_q == cfg_last_kernel_col;
         incoming_tap_wrap_q <= cfg.kernel_w != 16'd0 && kx0_q == cfg_last_kernel_col;
         c<=cfg; configured<=0; error<=!cfg_basic_valid;
 
-        next_group_q <= {1'b0, q0} + 33'(cfg.group_c);
+        next_group_q <= cfg_next_group;
+        skip_group_q <= cfg_skip_group;
         word_valid<=0; addr_word_hit_q<=0; reduction_len<=0;
         fragment_image_fits<=0;
         position_count<=0; tensor_bytes<=0;
@@ -2835,18 +2941,19 @@ module conv_im2col_frontend #(
         row_step_bytes<=32'((64'(cfg.stride_w)*64'(cfg.input_c))<<cfg.input_s16);
         tap_step_bytes<=32'((64'(cfg.dilation_w)*64'(cfg.input_c))<<cfg.input_s16);
         group_bytes<=32'(cfg.group_c)<<cfg.input_s16;
-      end else if (tile_commit) begin
+        end
+        tile_commit: begin
         if (committing_tile.invalid) begin
           tile_error<=1; error<=1; state<=IDLE;
         end else begin
           p0<=committing_tile.position; q0<=committing_tile.reduction;
           q_current<={1'b0,committing_tile.reduction};
           next_group_q <= committing_tile.next_group;
+          skip_group_q <= committing_tile.skip_group;
           row_last_q <= committing_tile.rows == TILE_COUNT_W'(1);
           rows_q<=committing_tile.rows; cols_q<=committing_tile.columns;
-          col_remaining <= committing_tile.columns;
           active_cols_q <= committing_tile.active_columns;
-          active_remaining <= committing_tile.active_columns;
+
           past_active_q <= 1'b0;
           row_idx<=0; col_idx<=0; slot_q<=committing_tile.slot;
           narrow_output <= committing_tile.narrow_output;
@@ -2865,7 +2972,7 @@ module conv_im2col_frontend #(
             tap_wrap_q<=kernel_width_valid_q && committing_tile.kernel_last;
             incoming_tap_wrap_q<=kernel_width_valid_q && committing_tile.kernel_last;
             ix<=committing_tile.input_x; iy<=committing_tile.input_y;
-            pixel_index<=committing_tile.pixel; addr<=committing_tile.address; addr_word_hit_q<=committing_tile.word_hit;
+            pixel_index<=committing_tile.pixel;  addr_word_hit_q<=committing_tile.word_hit;
             if (REGISTER_DESCRIPTOR && committing_saved_word_hit) begin
               word_buf <= prepared_word_data;
               word_addr <= {committing_tile.address[31:p_word_shift],{p_word_shift{1'b0}}};
@@ -2882,8 +2989,9 @@ module conv_im2col_frontend #(
             else state<=cache_req_ready ? WAIT_WORD : FETCH;
           end else state<=P_DECODE;
         end
-      end else case (1'b1)
-        state[$clog2(WAIT_WORD)], state[$clog2(STREAM)], state[$clog2(ZERO_STREAM)]: begin
+        end
+        (!tile_commit && (state[$clog2(WAIT_WORD)] || state[$clog2(STREAM)] ||
+                          state[$clog2(ZERO_STREAM)])): begin
           if (state[$clog2(WAIT_WORD)] && cache_rsp_valid && cache_rsp_error) begin
             error<=1;tile_error<=1;state<=IDLE;
           end else if (wr_valid && wr_ready) begin
@@ -2891,8 +2999,7 @@ module conv_im2col_frontend #(
             if (row_last_q) begin tile_done<=1; state<=IDLE; end
             else begin
               row_idx<=next_row_idx; row_last_q<=next_row_last; col_idx<=0; q_current<={1'b0,q0};
-               col_remaining <= cols_q;
-               active_remaining <= active_cols_q;
+
                past_active_q <= 1'b0;
               ky_q <= 16'(ky0); kx_q <= 16'(kx0); tap_wrap_q <= kernel_width_valid_q && (16'(kx0) == last_kernel_col_q);
 
@@ -2903,7 +3010,7 @@ module conv_im2col_frontend #(
               end
               if (row_base_valid && !geometry_tile) begin
                 ix <= COORD_W'(next_row_ix);iy <= COORD_W'(next_row_iy);pixel_index <= 32'(next_row_pixel);
-                addr<=next_row_addr; addr_word_hit_q<=next_row_word_hit;pad_q<=next_row_padding;coordinate_address_valid<=1;
+                 addr_word_hit_q<=next_row_word_hit;pad_q<=next_row_padding;coordinate_address_valid<=1;
                 tap_group_base<=next_row_group_base;row_group_base<=next_row_group_base;
                 row_base_ix <= COORD_W'(next_row_ix);row_base_iy <= COORD_W'(next_row_iy);
                 row_base_pixel <= 32'(next_row_pixel);row_base_addr<=next_row_addr;
@@ -2919,11 +3026,10 @@ module conv_im2col_frontend #(
           end else begin
             col_idx<=col_idx+TILE_COUNT_W'(chunk_count); q_current<=next_q_current;
             // 填充列同样推进计数，保留原有定宽减法的回绕结果。
-            col_remaining <= col_remaining - TILE_COUNT_W'(chunk_count);
-             active_remaining <= active_remaining - TILE_COUNT_W'(chunk_count);
+
              // 仅在写入握手时推进；到达有效尾部后保持，直到下一行或描述符。
-             past_active_q <= past_active_q || TILE_COUNT_W'(chunk_count)>=active_remaining;
-             if (past_active_q || TILE_COUNT_W'(chunk_count)>=active_remaining) state<=ZERO_STREAM;
+             past_active_q <= past_active_q || !active_after_chunk;
+             if (past_active_q || !active_after_chunk) state<=ZERO_STREAM;
             else if (group_end_o_equal) begin
 
 
@@ -2937,7 +3043,7 @@ module conv_im2col_frontend #(
                   tap_wrap_q <= kernel_width_valid_q && tap_next_o_equal;
                 end
                 ix <= COORD_W'(next_tap_ix);iy <= COORD_W'(next_tap_iy);pixel_index <= 32'(next_tap_pixel);
-                addr<=next_tap_addr; addr_word_hit_q<=next_tap_saved_hit;pad_q<=next_tap_padding;tap_group_base<=next_tap_addr;
+                 addr_word_hit_q<=next_tap_saved_hit;pad_q<=next_tap_padding;tap_group_base<=next_tap_addr;
                 if (next_tap_padding) state<=ZERO_STREAM;
                 else if (next_word_o_equal && !pad_q) state<=STREAM;
                 else state<=FETCH;
@@ -2958,7 +3064,7 @@ module conv_im2col_frontend #(
                 kx_q <= 16'(kx+1); tap_wrap_q <= kernel_width_valid_q && tap_next_o_equal;
                 if (!pad_q && c.group_c==c.input_c && c.group_offset==0 && c.dilation_w==1 &&
                     ix_step_below_limit) begin
-                  ix <= $signed(ix_increment);pixel_index <= 32'(pixel_index+1);addr<=next_byte_addr; addr_word_hit_q<=next_byte_saved_hit;
+                  ix <= $signed(ix_increment);pixel_index <= pixel_increment; addr_word_hit_q<=next_byte_saved_hit;
                   if (!word_boundary) state<=STREAM;
                 else if (stream_next_request && cache_req_ready) state<=WAIT_WORD;
                 else state<=FETCH;
@@ -2967,9 +3073,9 @@ module conv_im2col_frontend #(
             end else begin
 
 
-              if (pad_q) begin addr<=next_byte_addr; addr_word_hit_q<=next_byte_saved_hit;state<=ZERO_STREAM;end
+              if (pad_q) begin  addr_word_hit_q<=next_byte_saved_hit;state<=ZERO_STREAM;end
               else begin
-                addr<=next_byte_addr; addr_word_hit_q<=next_byte_saved_hit;
+                 addr_word_hit_q<=next_byte_saved_hit;
                 if (!word_boundary) state<=STREAM;
                 else if (stream_next_request && cache_req_ready) state<=WAIT_WORD;
                 else state<=FETCH;
@@ -2978,9 +3084,6 @@ module conv_im2col_frontend #(
           end
         end
         end
-        default: ;
-      endcase
-      case (1'b1)
         state[$clog2(P_DECODE)]: if (p_fast_valid) begin
           oy_q <= 16'(p_fast_y);ox_q <= 16'(p_fast_x); row_wrap_q <= p_fast_wrap;state<=Q_DECODE;
           last_p_valid<=1;last_p<=p0;last_p_limit<=p0+32'(c.output_w);last_y<=16'(p_fast_y);last_x<=16'(p_fast_x);
@@ -3037,28 +3140,13 @@ module conv_im2col_frontend #(
             incoming_tap_wrap_q <= kernel_width_valid_q && (16'(tap0&(32'(c.kernel_w)-1)) == last_kernel_col_q);
             state<=COORD;
           end else if (c.kernel_w==3 && tap0<9) begin
-            if (tap0<3) begin
-              ky_q <= 16'(0);
-              ky0_q <= 16'(0);
-              kx_q <= 16'(tap0);
-              tap_wrap_q <= kernel_width_valid_q && (16'(tap0) == last_kernel_col_q);
-              kx0_q <= 16'(tap0);
-              incoming_tap_wrap_q <= kernel_width_valid_q && (16'(tap0) == last_kernel_col_q);
-            end else if (tap0<6) begin
-              ky_q <= 16'(1);
-              ky0_q <= 16'(1);
-              kx_q <= 16'(tap0-3);
-              tap_wrap_q <= kernel_width_valid_q && (16'(tap0-3) == last_kernel_col_q);
-              kx0_q <= 16'(tap0-3);
-              incoming_tap_wrap_q <= kernel_width_valid_q && (16'(tap0-3) == last_kernel_col_q);
-            end else begin
-              ky_q <= 16'(2);
-              ky0_q <= 16'(2);
-              kx_q <= 16'(tap0-6);
-              tap_wrap_q <= kernel_width_valid_q && (16'(tap0-6) == last_kernel_col_q);
-              kx0_q <= 16'(tap0-6);
-              incoming_tap_wrap_q <= kernel_width_valid_q && (16'(tap0-6) == last_kernel_col_q);
-            end
+            // 三列卷积核的行列由同一完整组合译码得到。
+            ky_q <= 16'(k_decode_value[5:2]);
+            ky0_q <= 16'(k_decode_value[5:2]);
+            kx_q <= 16'(k_decode_value[1:0]);
+            kx0_q <= 16'(k_decode_value[1:0]);
+            tap_wrap_q <= kernel_width_valid_q && (16'(k_decode_value[1:0]) == last_kernel_col_q);
+            incoming_tap_wrap_q <= kernel_width_valid_q && (16'(k_decode_value[1:0]) == last_kernel_col_q);
             state<=COORD;
           end else state<=K_START;
         end
@@ -3085,14 +3173,14 @@ module conv_im2col_frontend #(
           state<=COORD_SUM;
         end
         state[$clog2(COORD_SUM)]: begin
-          coord_sum_x<={1'b0,coord_out_x}+{1'b0,coord_kernel_x};
-          coord_sum_y<={1'b0,coord_out_y}+{1'b0,coord_kernel_y};
+          coord_sum_x<=coordinate_product_sum[0];
+          coord_sum_y<=coordinate_product_sum[1];
           state<=COORD_PAD;
         end
         state[$clog2(COORD_PAD)]: begin
           current_coordinate_valid<=1;
-          ix<=$signed(COORD_W'(coord_sum_x))-$signed(COORD_W'(c.pad_left));
-          iy<=$signed(COORD_W'(coord_sum_y))-$signed(COORD_W'(c.pad_top));
+          ix<=coordinate_padded_x;
+          iy<=coordinate_padded_y;
           state<=ADDRESS;
         end
         state[$clog2(ADDRESS)]: begin
@@ -3116,11 +3204,11 @@ module conv_im2col_frontend #(
           state<=ADDRESS_BASE;
         end
         state[$clog2(ADDRESS_BASE)]: begin
-          group_base_addr<=c.input_base+((channel_product+32'(c.group_offset))<<c.input_s16);
+          group_base_addr<=group_address_sum;
           state<=ADDRESS_CHANNEL;
         end
         state[$clog2(ADDRESS_CHANNEL)]: begin
-          addr<=channel_addr; addr_word_hit_q<=channel_saved_hit;
+           addr_word_hit_q<=channel_saved_hit;
           tap_group_base<=group_base_addr;
           coordinate_address_valid<=1;
           if (col_idx==0) begin
@@ -3134,7 +3222,7 @@ module conv_im2col_frontend #(
           if (current_word_hit) state<=STREAM;
           else if (cache_req_ready) state<=WAIT_WORD;
         end
-        state[$clog2(IDLE)], state[$clog2(WAIT_WORD)], state[$clog2(STREAM)], state[$clog2(ZERO_STREAM)]: ;
+        (state[$clog2(IDLE)] && !(cfg_valid && cfg_ready) && !tile_commit): ;
         default: begin state<=IDLE; configured<=0; error<=1; end
       endcase
     end
@@ -3148,6 +3236,9 @@ module conv_im2col_frontend #(
 `endif
 `ifdef NPU_SIM_ASSERT
   initial forever @(posedge clk) if (rst_n) begin
+    assert ($onehot(state));
+    if (p_contiguous_chunk)
+      assert ((chunk_lane_allowed & (chunk_lane_allowed + 1'b1)) == '0);
     if (wr_valid) begin
       assert (wr_mask!='0 && chunk_count!=0);
       assert (col_idx+TILE_COUNT_W'(chunk_count)<=cols_q && row_idx<rows_q);

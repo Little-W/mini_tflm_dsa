@@ -22,7 +22,7 @@ OUTPUTS = ('cfg_ready', 'tile_ready', 'wr_valid', 'wr_slot', 'wr_row', 'wr_col',
            'arvalid', 'araddr', 'arlen', 'arsize', 'arburst', 'rready')
 
 
-def compare_bench(source, register_cache_request=None):
+def compare_bench(source, register_cache_request=None, register_descriptor=None, cache_response_depth=None):
     match = re.search(r'conv_im2col_frontend\s+#\(.*?\)\s+dut\s*\(.*?\);', source, re.S)
     if match is None:
         raise ValueError('frontend instance missing')
@@ -30,6 +30,12 @@ def compare_bench(source, register_cache_request=None):
     if register_cache_request is not None:
         original = original.replace('#(', "#(.REGISTER_CACHE_REQUEST(1'b" +
                                     str(register_cache_request) + "),", 1)
+    if register_descriptor is not None:
+        original = original.replace('#(', "#(.REGISTER_DESCRIPTOR(1'b" +
+                                    str(register_descriptor) + "),", 1)
+    if cache_response_depth is not None:
+        original = original.replace('#(', '#(.CACHE_RESPONSE_DEPTH(' +
+                                    str(cache_response_depth) + '),', 1)
     reference = original.replace('conv_im2col_frontend', 'reference_conv_im2col_frontend', 1)
     reference = reference.replace(' dut (', ' u_reference (', 1)
     declarations = ['integer compared_cycles=0;']
@@ -52,13 +58,18 @@ def compare_bench(source, register_cache_request=None):
     scalar = [name for name in OUTPUTS if name != 'wr_data']
     lhs = ','.join(current[name] for name in scalar)
     rhs = ','.join('ref_' + name for name in scalar)
+    differences = '\n'.join(
+        f'      if ({current[name]} !== ref_{name}) $display("{name} actual=%h expected=%h", '
+        f'{current[name]}, ref_{name});' for name in scalar)
     check = f'''
 always @(posedge clk) begin
   #1;
   if (rst_n) begin
     compared_cycles++;
-    if ({{{lhs}}} !== {{{rhs}}})
+    if ({{{lhs}}} !== {{{rhs}}}) begin
+{differences}
       $fatal(1,"frontend public output mismatch cycle=%0d",compared_cycles);
+    end
     for (int lane=0; lane<$size({current['wr_data']}); lane++)
       if ({current['wr_data']}[lane] !== ref_wr_data[lane])
         $fatal(1,"frontend write data mismatch cycle=%0d lane=%0d",compared_cycles,lane);
@@ -92,10 +103,22 @@ def run(command, log, timeout=240):
                        stderr=subprocess.STDOUT, check=True, timeout=timeout)
 
 
-def reviewed_warnings(log):
+def reviewed_warnings(log, register_descriptor=None):
     warnings = [line for line in log.read_text().splitlines() if line.startswith('%Warning')]
     reviewed = {'UNUSEDSIGNAL', 'UNUSEDPARAM', 'BLKSEQ', 'PROCASSINIT', 'SYNCASYNCNET'}
     def expected_constant_count(line):
+        frontend = re.match(r"%Warning-CMPCONST: (.*(?:conv_im2col_frontend|reference_frontend)\.sv):(\d+):", line)
+        if frontend is not None:
+            statement = Path(frontend[1]).read_text().splitlines()[int(frontend[2]) - 1].strip()
+            # 输出通道数超过小尺寸分块时，最大通道索引与窄计数器的比较恒为假。
+            return statement in {
+                "(past_active_q || (group_lane_allowed[lane] && TILE_COUNT_W'(lane)<active_remaining)) &&",
+                "assign candidate_allowed[source] = TILE_COUNT_W'(lane) < active_update_candidate[source];",
+                "assign column_allowed[source] = TILE_COUNT_W'(lane) < column_update_candidate[source];",
+                "assign active_allowed[step] = TILE_COUNT_W'(lane) < active_count;",
+                "assign remaining_allowed[step] = TILE_COUNT_W'(lane) < remaining_count;",
+                "if (!rst_n) column_lane_allowed_q[lane] <= $unsigned(TILE_COUNT_W'(lane)) < $unsigned(TILE_COUNT_W'(SIZE));",
+            }
         match = re.match(r"%Warning-CMPCONST: (.*conv_read_cache\.sv):(\d+):", line)
         if match is None:
             return False
@@ -109,9 +132,19 @@ def reviewed_warnings(log):
             "assert(response_count<=DQ_CW'(DEMAND_DEPTH));",
         }
 
+    def expected_reference_ready_feedback(line):
+        # 参考版本在直接接收模式仍保留恒为零的描述符有效寄存器。
+        # 复位后的直接接收状态不使用该反馈，仅允许对应参考实例的结构诊断。
+        if register_descriptor != 0:
+            return False
+        match = re.match(r"%Warning-UNOPTFLAT: (.*reference_frontend\.sv):(\d+):", line)
+        return match is not None and line.endswith("u_reference.tile_ready'") and \
+            Path(match[1]).read_text().splitlines()[int(match[2])-1].strip() == "output logic tile_ready,"
+
     unexpected = [line for line in warnings
                   if line.split(':', 1)[0].removeprefix('%Warning-') not in reviewed
                   and not expected_constant_count(line)
+                  and not expected_reference_ready_feedback(line)
                   and not (line.startswith('%Warning-PINMISSING:') and
                            '/rtl/npu/conv/conv_ia_tile_path.sv:' in line and
                            line.endswith("pin: 'wr_last'"))]
@@ -124,16 +157,30 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference-ref', default='f5b7573')
+    parser.add_argument('--reference-source-root', type=Path,
+                        help='包含固定参考 RTL 的独立源码目录')
     parser.add_argument('--candidate-source-root', type=Path, default=ROOT,
                         help='包含候选 RTL 的独立源码目录')
     parser.add_argument('--verilator', default=shutil.which('verilator') or 'verilator')
-    parser.add_argument('--lanes', nargs='+', type=int, choices=(1, 2, 4), default=[2, 4])
+    parser.add_argument('--lanes', nargs='+', type=int, choices=(1, 2, 4, 8, 16), default=[2, 4])
+    parser.add_argument('--sizes', nargs='+', type=int, choices=(4, 8, 16), default=[4, 8, 16])
+    parser.add_argument('--cache-sets', type=int, default=16)
+    parser.add_argument('--line-bytes', type=int, default=16)
+    parser.add_argument('--narrow-mode', type=int, choices=(0, 1, 2), default=0,
+                        help='0 为宽输出，1 为窄输出，2 为逐分块交替')
+    parser.add_argument('--fpga', action='store_true', help='启用 XILINX_FPGA 配置')
     parser.add_argument('--register-cache-request', type=int, choices=(0, 1),
                         help='显式选择两个比较实例的请求寄存配置')
+    parser.add_argument('--register-descriptor', type=int, choices=(0, 1),
+                        help='显式选择两个比较实例的描述符寄存配置')
+    parser.add_argument('--cache-response-depth', type=int,
+                        help='显式选择两个比较实例的缓存响应队列深度')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    content = read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True)
+    content = ((args.reference_source_root.resolve() / SOURCE).read_text()
+               if args.reference_source_root else
+               read_rtl_source(f'{args.reference_ref}:{SOURCE}', cwd=ROOT, text=True))
     reference = out / 'reference_frontend.sv'
     reference.write_text(content.replace('module conv_im2col_frontend', 'module reference_conv_im2col_frontend', 1))
     common = runpy.run_path(str(HERE / 'run_rtl.py'))['FILES']
@@ -144,14 +191,14 @@ def main():
               for path in common]
     bench = out / 'tb_conv_im2col_frontend.sv'
     bench.write_text(compare_bench(widen_memory((TEST_ROOT / 'tests/tb_conv_im2col_frontend.sv').read_text()),
-                                   args.register_cache_request))
+                                   args.register_cache_request, args.register_descriptor, args.cache_response_depth))
     control = out / 'tb_conv_control.sv'
     control.write_text(compare_bench((TEST_ROOT / 'tests/tb_conv_control.sv').read_text(),
-                                     args.register_cache_request))
+                                     args.register_cache_request, args.register_descriptor, args.cache_response_depth))
     simulator = args.verilator
     results = []
     cases = [(size, width, window, lanes) for lanes in args.lanes for size, width, window in
-             [(4, 32, 0), (8, 64, 0), (16, 64, 0), (16, 64, 1)]]
+             [(4, 32, 0), (8, 64, 0), (16, 64, 0), (16, 64, 1)] if size in args.sizes]
     compile_options = ['--output-groups', '0', '--output-split', '12000', '-CFLAGS', '-std=c++20 -O1',
                        '-MAKEFLAGS', 'OPT_FAST=-O1 OPT_SLOW=-O0 VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E']
     for size, width, window, lanes in cases:
@@ -163,10 +210,12 @@ def main():
         sources = [*common, reference, bench]
         hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
         run([simulator, '--binary', '--timing', '--assert', '-DNPU_SIM_ASSERT', '-DCONV_ASSERT', '-Wno-fatal',
-             '--top-module', top, f'-GSIZE={size}', f'-GBUS_WIDTH={width}', f'-GLANES={lanes}', '-GCACHE_SETS=16',
+             *(['-DXILINX_FPGA=1'] if args.fpga else []),
+             '--top-module', top, f'-GSIZE={size}', f'-GBUS_WIDTH={width}', f'-GLANES={lanes}',
+             f'-GCACHE_SETS={args.cache_sets}', f'-GLINE_BYTES={args.line_bytes}', f'-GNARROW_MODE={args.narrow_mode}',
              f"-GWINDOWED=1'b{window}", f"-GPREFETCH=1'b{window}", '--Mdir', case / 'obj', '-j', '2',
              *compile_options, *sources], case / 'build.log')
-        warnings = reviewed_warnings(case / 'build.log')
+        warnings = reviewed_warnings(case / 'build.log', args.register_descriptor)
         run([case / 'obj' / f'V{top}', f'+VECTORS={vectors}'], case / 'run.log')
         output = (case / 'run.log').read_text()
         if 'RTL_FRONTEND_PASS' not in output or 'FRONTEND_COMPARE_PASS' not in output:
@@ -185,9 +234,10 @@ def main():
     case.mkdir(exist_ok=True)
     top = 'tb_conv_control'
     run([simulator, '--binary', '--timing', '--assert', '-DNPU_SIM_ASSERT', '-DCONV_ASSERT', '-Wno-fatal',
+         *(['-DXILINX_FPGA=1'] if args.fpga else []),
          '--top-module', top, '--Mdir', case / 'obj', '-j', '2', *compile_options,
          *common, reference, control], case / 'build.log')
-    warnings = reviewed_warnings(case / 'build.log')
+    warnings = reviewed_warnings(case / 'build.log', args.register_descriptor)
     run([case / 'obj' / f'V{top}'], case / 'run.log')
     output = (case / 'run.log').read_text()
     if 'RTL_CONTROL_PASS' not in output or 'FRONTEND_COMPARE_PASS' not in output:
@@ -197,7 +247,13 @@ def main():
     for temporary in (case / 'obj').iterdir():
         if temporary.suffix in ('.o', '.gch'):
             temporary.unlink()
-    report = {'passed': True, 'reference_ref': args.reference_ref, 'configurations': results}
+    report = {'passed': True, 'reference_ref': None if args.reference_source_root else args.reference_ref,
+              'reference_source_root': str(args.reference_source_root.resolve()) if args.reference_source_root else None,
+              'register_cache_request': args.register_cache_request,
+              'register_descriptor': args.register_descriptor, 'cache_sets': args.cache_sets,
+              'cache_response_depth': args.cache_response_depth,
+              'line_bytes': args.line_bytes, 'narrow_mode': args.narrow_mode, 'fpga': args.fpga,
+              'configurations': results}
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     print('FRONTEND_COMPARISON_PASS', out / 'summary.json')
 
