@@ -4,7 +4,8 @@
 module vec_s16_to_fifo #(
     parameter int unsigned VLEN  = 16,
     parameter int unsigned BANKS = 16,
-    parameter int unsigned BUS_WIDTH = 32
+    parameter int unsigned BUS_WIDTH = 32,
+    parameter bit p_precomputed_watermark = 1'b0
 ) (
     input  wire logic                         clk,
     input  wire logic                         rst_n,
@@ -13,6 +14,7 @@ module vec_s16_to_fifo #(
     input  wire logic [VLEN*16-1:0]           in_vec_s16,
     output logic                         oa_fifo_req,
     input  wire logic [31:0]                  reserve_banks,
+    input  wire logic [31:0]                  i_ready_bank_threshold,
     input  wire logic [$clog2(VLEN)-1:0]      vec_valid_num_col,
     output logic                         output_valid,
     input  wire logic                         output_ready,
@@ -87,9 +89,11 @@ module vec_s16_to_fifo #(
     assign watermark_i_ready_banks = ready_bank_count_q;
     assign watermark_i_partial_write = write_ptr != '0;
     assign fifo_full_flag = write_bank_blocked || next_write_bank_blocked || watermark_o_full;
-    fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH)) u_watermark (
+    fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH),
+        .p_precomputed_threshold(p_precomputed_watermark)) u_watermark (
         .i_reserve(watermark_i_reserve), .i_ready_banks(watermark_i_ready_banks),
-        .i_partial_write(watermark_i_partial_write), .o_full(watermark_o_full)
+        .i_partial_write(watermark_i_partial_write),
+        .i_ready_threshold(BANK_COUNT_WIDTH'(i_ready_bank_threshold)), .o_full(watermark_o_full)
     );
 
     always_comb begin
