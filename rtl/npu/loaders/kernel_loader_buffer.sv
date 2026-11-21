@@ -36,6 +36,7 @@ module kernel_loader_buffer #(
     localparam int p_row_width = DATA_WIDTH * SIZE;
     localparam int p_depth = p_storage_slots * SIZE;
     localparam int p_addr_width = $clog2(p_depth);
+    localparam bit p_row_storage = SIZE > 1 && (SIZE & (SIZE-1)) == 0;
 
     logic wr_slot, rd_slot;
     logic [p_slot_count-1:0] slot_reserved, slot_loaded;
@@ -66,6 +67,9 @@ module kernel_loader_buffer #(
     logic [DATA_WIDTH-1:0] column_i_wr_data [SIZE];
     logic column_i_wr_mask;
     logic [DATA_WIDTH-1:0] column_o_rd_data [SIZE];
+    logic [DATA_WIDTH-1:0] row_storage_data [SIZE];
+    logic [p_index_width-1:0] saved_read_column;
+    logic [p_index_width-1:0] row_output_index [SIZE];
 
     //! 1. 输入与发送地址
     //! --------------------
@@ -79,8 +83,8 @@ module kernel_loader_buffer #(
         (p_valid_width'(row_idx_q) + p_valid_width'(1)) : load_valid_cols[row_slot_q];
     assign read_column = send_prefetch ? p_index_width'(SIZE - 1) : emit_col_idx;
 
-    // 按列保存权重，每列使用一个写端口和一个同步读端口。
-    // 同步读取与输出列号同时保存，组合旋转生成阵列要求的对角排列。
+    // 输入行和发送位置共用槽位控制，各存储布局保存相同的矩阵元素。
+    // 输出列号与同步读取同时更新，生成阵列要求的对角排列。
     assign column_i_wr_en = row_valid_q && slot_reserved[row_slot_q] && !cache_flush;
     assign column_i_wr_addr = p_addr_width'(slot_storage[row_slot_q] * SIZE) + p_addr_width'(row_idx_q);
     assign column_i_wr_mask = 1'b1;
@@ -97,8 +101,13 @@ module kernel_loader_buffer #(
         assign output_bank[column] = (output_bank_ext[column] >= (p_index_width+1)'(SIZE)) ?
             p_index_width'(output_bank_ext[column] - (p_index_width+1)'(SIZE)) :
             p_index_width'(output_bank_ext[column]);
-        assign weight_out[column] = output_lane_valid_q[column] ?
-            $signed(column_o_rd_data[output_bank[column]]) : '0;
+        if (p_row_storage) begin : g_row_output
+            assign row_output_index[column] = p_index_width'(column) + (output_column_q - saved_read_column);
+            assign weight_out[column] = output_lane_valid_q[column] ? $signed(row_storage_data[row_output_index[column]]) : '0;
+        end else begin : g_column_output
+            assign weight_out[column] = output_lane_valid_q[column] ?
+                $signed(column_o_rd_data[output_bank[column]]) : '0;
+        end
     end
 
     //! 2. 输入寄存与槽位管理
@@ -219,33 +228,77 @@ module kernel_loader_buffer #(
         end
     end
 
-    //! 3. 输出与列存储器
-    //! --------------------
+    //! 3. 输出与权重存储器
+    //! ----------------------
 
     assign load_slot_id = wr_slot;
     assign load_ready = !cache_flush && !slot_reserved[wr_slot];
     assign weight_data_valid = !cache_flush && slot_loaded[rd_slot] && !send_active && !send_pending && !send_prefetch;
     assign discard_ready = weight_data_valid;
 
-    for (genvar column = 0; column < SIZE; column++) begin : g_column_ram
-        regfile #(
-            .p_data_width(DATA_WIDTH),
-            .p_depth(p_depth),
-            .p_addr_width(p_addr_width),
-            .p_write_unit(DATA_WIDTH),
-            .p_sync_read(1'b1),
-            .p_ram_style("block")
-        ) u_column (
-            .clk(clk),
-            .i_wr_en(column_i_wr_en),
-            .i_wr_addr(column_i_wr_addr),
-            .i_wr_data(column_i_wr_data[column]),
-            .i_wr_mask(column_i_wr_mask),
-            .i_rd_en(column_i_rd_en),
-            .i_rd_addr(column_i_rd_addr[column]),
-            .o_rd_data(column_o_rd_data[column])
-        );
+    if (p_row_storage) begin : g_row_storage
+        // 保存实际存储器读取位置，保持读取使能含未知值时的输出选择语义。
+        always_ff @(posedge clk) begin
+            if (!rst_n || cache_flush) begin
+                saved_read_column <= '0;
+            end else if (send_pending) begin
+            end else if (emit_fire) begin
+                case (^{rst_n, cache_flush})
+                    1'b0, 1'b1: saved_read_column <= read_column;
+                    default: begin
+                        if (column_i_rd_en) saved_read_column <= read_column;
+                    end
+                endcase
+            end
+        end
+        // 每个输出通道保存一行，写入完整行后按列同步读取。
+        // 窄读宽写由数组端口行为描述，读写地址分别使用当前物理槽位。
+        for (genvar row_index = 0; row_index < SIZE; row_index++) begin : g_row
+            (* ram_style = "block" *) logic [DATA_WIDTH-1:0] mem [0:p_depth-1];
+            logic row_write_en;
+            logic [DATA_WIDTH-1:0] read_data;
+            logic [p_index_width-1:0] read_element;
+            logic [p_addr_width-1:0] read_address;
+            assign row_storage_data[row_index] = read_data;
+            assign row_write_en = column_i_wr_en && row_idx_q == p_index_width'(row_index);
+            assign read_element = read_column + p_index_width'(row_index);
+            assign read_address = {active_storage, read_element};
+            always_ff @(posedge clk) begin
+                if (row_write_en) begin
+                    for (int element = 0; element < SIZE; element++) begin
+                        mem[{slot_storage[row_slot_q], p_index_width'(element)}] <=
+                            row_data_vec_q[element*DATA_WIDTH+:DATA_WIDTH];
+                    end
+                end
+            end
+            always_ff @(posedge clk) begin
+                if (column_i_rd_en) begin
+                    read_data <= mem[read_address];
+                end
+            end
+        end
+    end else begin : g_column_storage
+        for (genvar column = 0; column < SIZE; column++) begin : g_column_ram
+            regfile #(
+                .p_data_width(DATA_WIDTH),
+                .p_depth(p_depth),
+                .p_addr_width(p_addr_width),
+                .p_write_unit(DATA_WIDTH),
+                .p_sync_read(1'b1),
+                .p_ram_style("block")
+            ) u_column (
+                .clk(clk),
+                .i_wr_en(column_i_wr_en),
+                .i_wr_addr(column_i_wr_addr),
+                .i_wr_data(column_i_wr_data[column]),
+                .i_wr_mask(column_i_wr_mask),
+                .i_rd_en(column_i_rd_en),
+                .i_rd_addr(column_i_rd_addr[column]),
+                .o_rd_data(column_o_rd_data[column])
+            );
+        end
     end
+
 endmodule
 
 `default_nettype wire

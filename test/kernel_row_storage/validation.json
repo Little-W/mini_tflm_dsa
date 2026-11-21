@@ -1,0 +1,199 @@
+{
+  "passed": true,
+  "reference_commit": "cedf4ed3",
+  "rtl_sha256": "9bf7de9e5f62a78f5761fb45780a87b1fde724cff11685cfa5bfb76272b8dd70",
+  "reference_rtl_sha256": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
+  "formal": {
+    "profiles": [
+      {
+        "SIZE": 3,
+        "DATA_WIDTH": 8,
+        "equivalent_bits": 341,
+        "matrix_storage_bits": 216
+      },
+      {
+        "SIZE": 4,
+        "DATA_WIDTH": 8,
+        "equivalent_bits": 511,
+        "matrix_storage_bits": 384
+      },
+      {
+        "SIZE": 16,
+        "DATA_WIDTH": 8,
+        "equivalent_bits": 6495,
+        "matrix_storage_bits": 6144
+      },
+      {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "equivalent_bits": 12895,
+        "matrix_storage_bits": 12288
+      }
+    ],
+    "equivalent_bits": 20242,
+    "matrix_storage_bits": 19032,
+    "inputs_constrained": false,
+    "rtl_tokens_sha256": "b217403f4f602d4086648da405a5b07b2a4d7debdf2a8e8e05d62f97a63e6b36",
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/formal_completed.json",
+    "report_sha256": "6545aae6cbde353348ed615706c6e5206c223e66c6c05a954bc78ce7c1b66a86"
+  },
+  "numeric": {
+    "profiles": [
+      {
+        "SIZE": 3,
+        "DATA_WIDTH": 8,
+        "cycles": 100003
+      },
+      {
+        "SIZE": 4,
+        "DATA_WIDTH": 16,
+        "cycles": 100003
+      },
+      {
+        "SIZE": 16,
+        "DATA_WIDTH": 8,
+        "cycles": 100003
+      },
+      {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "cycles": 100003
+      },
+      {
+        "SIZE": 32,
+        "DATA_WIDTH": 16,
+        "cycles": 100003
+      }
+    ],
+    "cycles": 500015,
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/numeric.json",
+    "report_sha256": "a761253d1e9e1931375ce330a1872e010cfbc176ecadf2a122e50e4fb0af94e8"
+  },
+  "four_state": {
+    "profiles": [
+      {
+        "SIZE": 3,
+        "DATA_WIDTH": 8,
+        "checks": 53053,
+        "collision_checks": 2
+      },
+      {
+        "SIZE": 4,
+        "DATA_WIDTH": 16,
+        "checks": 59040,
+        "collision_checks": 2
+      },
+      {
+        "SIZE": 16,
+        "DATA_WIDTH": 8,
+        "checks": 146016,
+        "collision_checks": 2
+      },
+      {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "checks": 146016,
+        "collision_checks": 2
+      },
+      {
+        "SIZE": 32,
+        "DATA_WIDTH": 16,
+        "checks": 305440,
+        "collision_checks": 2
+      }
+    ],
+    "checks": 709565,
+    "collision_checks": 10,
+    "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/four_state.json",
+    "report_sha256": "f65280ea62e1b72e9a52d51c498f7badcbe82c55822c7257a92da1abbfffff16"
+  },
+  "kernel_integration": [
+    {
+      "parameters": {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 29
+      },
+      "passed": true,
+      "checked_values": 72960,
+      "cycles": 45050,
+      "tiles_sent": 285,
+      "max_dma_contexts": 2,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/kernel_bus32.json",
+      "report_sha256": "2c37e926a9a16547bbb3a3aaedd4ea70e4012eb1e715cc6f902f72a17614b873"
+    },
+    {
+      "parameters": {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29
+      },
+      "passed": true,
+      "checked_values": 72960,
+      "cycles": 29443,
+      "tiles_sent": 285,
+      "max_dma_contexts": 2,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/kernel_bus64.json",
+      "report_sha256": "fc6b1d670e2251a2585afdb3792dd0bc350220a9d61781ee8ab18f855654a10b"
+    },
+    {
+      "parameters": {
+        "SIZE": 16,
+        "DATA_WIDTH": 16,
+        "BUS_WIDTH": 128,
+        "COUNT_WIDTH": 33
+      },
+      "passed": true,
+      "checked_values": 72960,
+      "cycles": 21204,
+      "tiles_sent": 285,
+      "max_dma_contexts": 2,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/kernel_bus128.json",
+      "report_sha256": "cbd06cda462fb47d7874b08849e4e6640aa5c6cc0ad40bf3183becea766ea72e"
+    }
+  ],
+  "synthesis": {
+    "parameters": {
+      "SIZE": 16,
+      "DATA_WIDTH": 16
+    },
+    "reference": {
+      "logic_lut_cells": 994,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 994,
+      "flip_flops": 332,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 16,
+      "maximum_register_path_cells": 7,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/reference_metrics.json",
+      "report_sha256": "83d6b8aabbc7320439f5113e1cb666bd3cc1ec8771e3c3bcc3db33fe0586066c"
+    },
+    "current": {
+      "logic_lut_cells": 365,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 365,
+      "flip_flops": 328,
+      "dsp48e1": 0,
+      "ramb36e1": 64,
+      "ramb18e1": 0,
+      "maximum_register_path_cells": 5,
+      "graph_complete": true,
+      "report": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/build/kernel_row_storage/results/current_metrics.json",
+      "report_sha256": "b37817d95b7b5f7a52b375e240ed87a32edd139c44213eda8cdceca6e2a4a499"
+    }
+  },
+  "test_sources_sha256": {
+    "test/kernel_row_storage/README.md": "7a99d733c7c4b912d2d8221675e55b35a6095d2197f531c268c33ead83af9040",
+    "test/kernel_row_storage/run_formal.py": "868d813c06480cd4f1c3f03c30dfab90a8842f3178b3f9da8a54bb1f7b0f62bb",
+    "test/kernel_row_storage/run_four_state.py": "6150289a8417c978d5c794ad45b5cb80276e7f51587c88116d5cdb770619bda3",
+    "test/kernel_row_storage/run_numeric.py": "df173b567a1e1f31887cdc02a15c1a47025eaa92e6cbe42817b8d6d6d50352f6",
+    "test/kernel_row_storage/synthesis_cases.json": "a2fb22f6423bb3c0efd3439b7e33ab32732ed7a6c919f73ad2ab2ed296d70a93",
+    "test/kernel_row_storage/tb_four_state.sv": "45470b94664e02ed4f8f3e76d28cfbff03a3c156c37ffe2aa4544f8537aed68c"
+  }
+}

@@ -60,7 +60,7 @@ module kernel_prefetch_tb #(
     assign dbg_loaded_count=dut.u_ctrl.loaded_count;
     assign dbg_sent_count=dut.u_ctrl.sent_count;
     for(genvar bank=0;bank<16;bank=bank+1) begin : g_monitor
-        assign dbg_ram_write_en[bank]=dut.u_buf.g_column_ram[bank].u_column.i_wr_en;
+        assign dbg_ram_write_en[bank]=dut.u_buf.column_i_wr_en;
         assign dbg_ram_read_en[bank]=dut.u_buf.emit_fire && !cache_flush;
     end
 endmodule

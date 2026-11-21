@@ -1,0 +1,21 @@
+{
+  "kernel_buffer": {
+    "top": "kernel_loader_buffer",
+    "sources": [
+      "rtl/npu/loaders/kernel_loader_buffer.sv"
+    ],
+    "options": [
+      "-D",
+      "SYNTHESIS=1",
+      "-D",
+      "XILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GDATA_WIDTH=16"
+    ],
+    "parameters": {
+      "SIZE": 16,
+      "DATA_WIDTH": 16
+    },
+    "configuration": "同步行存储与对角权重读取"
+  }
+}
