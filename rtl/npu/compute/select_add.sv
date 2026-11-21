@@ -41,11 +41,21 @@ module select_add #(
             end
         end else if (p_use_dsp && p_width >= 17 && p_width <= 48) begin : g_inferred_sum
             (* use_dsp = "yes" *) logic signed [p_width-1:0] arithmetic_sum;
+            logic signed [p_width-1:0] enabled_rhs;
 
-            // 选择操作数后执行完整定宽加法，宽算术由综合工具推断为 DSP。
-            // 使能仅选择输出，保持暂停期间的输入直通行为。
-            assign arithmetic_sum = i_lhs + selected_rhs;
-            assign o_sum = i_add_enable ? arithmetic_sum : i_lhs;
+            // 关闭加法时选择零操作数，共用一次完整模加和输入选择逻辑。
+            assign enabled_rhs = i_add_enable ? selected_rhs : '0;
+            assign arithmetic_sum = i_lhs + enabled_rhs;
+`ifdef SYNTHESIS
+            assign o_sum = arithmetic_sum;
+`else
+            // 四态仿真保留直通数据中的已知位以及未知使能的条件合并行为。
+            always_comb begin
+                o_sum = arithmetic_sum;
+                if (i_add_enable !== 1'b1)
+                    o_sum = i_add_enable ? i_lhs + selected_rhs : i_lhs;
+            end
+`endif
         end else begin : g_single
             localparam int p_low_width = (p_width <= 16) ? p_width :
                 ((p_width <= 32) ? 16 : (p_width+1)/2);

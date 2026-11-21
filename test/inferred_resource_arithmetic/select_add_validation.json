@@ -1,0 +1,642 @@
+{
+  "passed": true,
+  "formal_and_simulation": {
+    "passed": true,
+    "reference_ref": "364e2ac7",
+    "source_sha256": "7666adf571cc7267a9cbde09f7d9eb2e46bb3538481f3603b784f0bf9775e631",
+    "reference_sha256": "a8bab6351a274c3b80e5158ed44caa6ad0051fc1442b3e8ad9d9d1a1abdf6c20",
+    "test_sha256": "05526a07b6cdb36e087633f33894b1dd88e6171331d321c836272a8e04fc07b1",
+    "four_state_helper_sha256": "b7eec345908969eddb0d501666004e7c6e2ac697ba86d6a6b3b2e3cdc35ae8c0",
+    "formal_synthesis_defined": true,
+    "functional_inputs_constrained": false,
+    "binary_cases": [
+      {
+        "width": 1,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "cb49c5c5fa10bc520c4f001802ade9818168fd5122075cd4f005151e98aee14f"
+      },
+      {
+        "width": 1,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "6ba6dea6c2f7a9c40fb76298f9a6d1446441c7c067f3fb9c3610ebd1c2e3f722"
+      },
+      {
+        "width": 1,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "12b9b9074d600ddb845753dd5b6d1ba660cbfb7c092a48f653019004c9d2d81d"
+      },
+      {
+        "width": 1,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "699c1094e848f234044198d620c7451300116346726bab4e158876ee46c3b82c"
+      },
+      {
+        "width": 8,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "76b19186ada763efa0d07c3de57c2b31c448ed5a1a4bf15e851e24aff1015f2a"
+      },
+      {
+        "width": 8,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "6da5f505f11df9845bbfc5e6e90dc92e24652c955f6fa20e66073867e3291dc6"
+      },
+      {
+        "width": 8,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "5600d56c02ac3ffa6fc81a88daf39686ea9abe4ec388b4d8ef1def935dd8ea5f"
+      },
+      {
+        "width": 8,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "86a66e0940547bd4175c229e8ac2b64419dce6f257c2c0e69448b30df6a1a515"
+      },
+      {
+        "width": 12,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "bfd13968b80cb13e865568bf4f6ecb98cdafb25b140ea7e43f065ad971878fd3"
+      },
+      {
+        "width": 12,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "ecf51fb8e56a99abf94b5ff3aced4b6938cacc51f61b8a3b9cac32f60ca176f5"
+      },
+      {
+        "width": 12,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "7090c7fdda4654fe73ea8a2c8a6f983807e843b841fcd6c5f41d3c188564e979"
+      },
+      {
+        "width": 12,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "3569e3d9f4ab24f57208b7b092ccb7a676a6357c82c4a196543cab89889b6523"
+      },
+      {
+        "width": 16,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "e361475f5de4d87ee9160504ea25fbcff8f167370ac16deae82e95354f327fbf"
+      },
+      {
+        "width": 16,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "cff0f170f0f51b6de23fab210604889f320df063197d73e25b3393875ace0a15"
+      },
+      {
+        "width": 16,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "fe2da5dda0d15613e0238efa3d093418e727d2ec5667c65f4b9c360c798a8c5d"
+      },
+      {
+        "width": 16,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "c8f31ee4d8c60534b084bf7b7d8bdc04548cad489e52a9a24117983e2c10c62e"
+      },
+      {
+        "width": 17,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "fd5327bc0bd43c4787bf767f98a76eefb01ac9d7106323248db53ba41944bbd9"
+      },
+      {
+        "width": 17,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "11e07c83cca9b297233e3e3c16ad385abf4ce639e15227c8ce7b30846f5ed615"
+      },
+      {
+        "width": 17,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "cee5123dc8bfedd7e39cb48c787cf0d2518417dc1ec27d640f2c94c3c9ab365a"
+      },
+      {
+        "width": 17,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "b5dbc07aefba05f55da8cd96651c6b36dd1cff721e6bfc577d4b8e9335bb8550"
+      },
+      {
+        "width": 24,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "0369412deb818268ef93ed8b1ba007f7ea0022920f5942164f22a112550ebb90"
+      },
+      {
+        "width": 24,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "d80e106b6baba35ab8e3ea6c6763f0f3f3861f054cd5156a7fcdb13fb65bdd31"
+      },
+      {
+        "width": 24,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "c42c9855c56e404be82fe9aebfe6476e02417f56ae68fe6b03898865e32dfaa3"
+      },
+      {
+        "width": 24,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "492e92118515b4027d78c427707074654b8e770d505d0afaf099b554d43144b8"
+      },
+      {
+        "width": 32,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "d720da8f8506f37f7d4a2b5c5cae9cea6c311b67d93e427171d1127ddc2e1099"
+      },
+      {
+        "width": 32,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "cb9fbf85d01acbbf10956e28d3dd17b69638533fc719504f3c4b37bc8b275183"
+      },
+      {
+        "width": 32,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "de65451c7e1146c294e52d34c160b9ed484f2011588ea58764ab974999c49113"
+      },
+      {
+        "width": 32,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "b5feb73c2e0b3838fe90c7ae77cd18b0becd9e605c92b0562be3371b34b4dbbb"
+      },
+      {
+        "width": 48,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "4602cb70a70d9d34ea02880096e37410044334124f37dcf0381a9e4d1b11e721"
+      },
+      {
+        "width": 48,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "f2156205b10a9b3f3007ee0a0c945fd240829b718318696319a46e0bc1021914"
+      },
+      {
+        "width": 48,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "1b1270ed97fd94c4b0b87cd233f35a2b43af1f37a9a939156a7b53a8e9d385f6"
+      },
+      {
+        "width": 48,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "d162c129ffda1f69231123b55c2e15eeeef72b0561a6440831ec65590b3ac99f"
+      },
+      {
+        "width": 64,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "41d99fa0e2f3b61dac7c42f64fa2d4e6f503091f70e5a6c4a29a388754ba696c"
+      },
+      {
+        "width": 64,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "845bdb511da9922e59af41a5679929bb4592f9a8ada864fb89943edeb0a2e388"
+      },
+      {
+        "width": 64,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "4c0725773cbf9e651687a5e7a0c13daa85acea76dc6bd680a7ce45f53cecdb78"
+      },
+      {
+        "width": 64,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "b8dd0b39732adb4bebf45ce5737a6dec441a8724fe088aa14be1ca218945a80e"
+      },
+      {
+        "width": 128,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "add8085479761c51167749d18f2b5a1758b5952508bd6d5ac507af86fb22e2a4"
+      },
+      {
+        "width": 128,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "5a26dde17f4abf34414dd723d9f2b44b79053af85a763395ad83d53b84b9c93f"
+      },
+      {
+        "width": 128,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "passed": true,
+        "log_sha256": "fce6882a91bc7d761fb9cb26c6ccd22f84c80569280f0257fb4402afd8bccac3"
+      },
+      {
+        "width": 128,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "passed": true,
+        "log_sha256": "0f29a5480af7d4c50603a10957bdb5e73c2c23e12a45069f13886b2188b828cd"
+      }
+    ],
+    "four_state_cases": [
+      {
+        "width": 1,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 896,
+        "passed": true
+      },
+      {
+        "width": 1,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 896,
+        "passed": true
+      },
+      {
+        "width": 1,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 896,
+        "passed": true
+      },
+      {
+        "width": 1,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 896,
+        "passed": true
+      },
+      {
+        "width": 8,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 6272,
+        "passed": true
+      },
+      {
+        "width": 8,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 6272,
+        "passed": true
+      },
+      {
+        "width": 8,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 6272,
+        "passed": true
+      },
+      {
+        "width": 8,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 6272,
+        "passed": true
+      },
+      {
+        "width": 12,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 9344,
+        "passed": true
+      },
+      {
+        "width": 12,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 9344,
+        "passed": true
+      },
+      {
+        "width": 12,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 9344,
+        "passed": true
+      },
+      {
+        "width": 12,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 9344,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 12416,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 12416,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 12416,
+        "passed": true
+      },
+      {
+        "width": 16,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 12416,
+        "passed": true
+      },
+      {
+        "width": 17,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 13184,
+        "passed": true
+      },
+      {
+        "width": 17,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 13184,
+        "passed": true
+      },
+      {
+        "width": 17,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 13184,
+        "passed": true
+      },
+      {
+        "width": 17,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 13184,
+        "passed": true
+      },
+      {
+        "width": 24,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 18560,
+        "passed": true
+      },
+      {
+        "width": 24,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 18560,
+        "passed": true
+      },
+      {
+        "width": 24,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 18560,
+        "passed": true
+      },
+      {
+        "width": 24,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 18560,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 24704,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 24704,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 24704,
+        "passed": true
+      },
+      {
+        "width": 32,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 24704,
+        "passed": true
+      },
+      {
+        "width": 48,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 36992,
+        "passed": true
+      },
+      {
+        "width": 48,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 36992,
+        "passed": true
+      },
+      {
+        "width": 48,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 36992,
+        "passed": true
+      },
+      {
+        "width": 48,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 36992,
+        "passed": true
+      },
+      {
+        "width": 64,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 49280,
+        "passed": true
+      },
+      {
+        "width": 64,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 49280,
+        "passed": true
+      },
+      {
+        "width": 64,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 49280,
+        "passed": true
+      },
+      {
+        "width": 64,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 49280,
+        "passed": true
+      },
+      {
+        "width": 128,
+        "use_dsp": 0,
+        "split_12bit": 0,
+        "comparisons": 98432,
+        "passed": true
+      },
+      {
+        "width": 128,
+        "use_dsp": 0,
+        "split_12bit": 1,
+        "comparisons": 98432,
+        "passed": true
+      },
+      {
+        "width": 128,
+        "use_dsp": 1,
+        "split_12bit": 0,
+        "comparisons": 98432,
+        "passed": true
+      },
+      {
+        "width": 128,
+        "use_dsp": 1,
+        "split_12bit": 1,
+        "comparisons": 98432,
+        "passed": true
+      }
+    ],
+    "four_state_comparisons": 1080320,
+    "four_state_log_sha256": "352652188a81db3ede3d93d9261e3bb9fe93e01254f74709523397bbf6f161c4"
+  },
+  "independent_synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 64,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 64,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 130,
+        "dsp48e1": 1,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "DSP48E1": 1,
+          "FDRE": 130,
+          "LUT3": 32,
+          "LUT4": 32
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 3,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "metrics_sha256": "ca0e7558df2410d3b4e2dadcfada348029aa1cf5caa533bc10ba77249691791c"
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 32,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 32,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 130,
+        "dsp48e1": 1,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "DSP48E1": 1,
+          "FDRE": 130,
+          "LUT4": 32
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 2,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "metrics_sha256": "6bdfb4d584f7c8b169542aa311106ee0e968aa8c825d563064f6b58cbd89be3a"
+    }
+  }
+}
