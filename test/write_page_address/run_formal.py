@@ -32,6 +32,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--reference-ref', default=REFERENCE)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -40,7 +41,7 @@ def main():
         path = out / label / SOURCE.name
         path.parent.mkdir(exist_ok=True)
         content = (subprocess.check_output(['git', 'show', f'{args.reference_ref}:{SOURCE}'], cwd=ROOT)
-                   if label == 'reference' else (ROOT / SOURCE).read_bytes())
+                   if label == 'reference' else (args.source_root / SOURCE).read_bytes())
         path.write_bytes(content)
         snapshots[label] = path
     report = dict(reference_ref=args.reference_ref, inputs_constrained=False,
@@ -52,7 +53,7 @@ def main():
         options = ' '.join(f'-G{key}={value}' for key, value in parameters.items())
         commands = []
         for label, path in snapshots.items():
-            commands += [f'read_slang --top axi_write_page_guard {options} {shlex.quote(str(path))}',
+            commands += [f'read_slang -D SYNTHESIS=1 --top axi_write_page_guard {options} {shlex.quote(str(path))}',
                          'prep -top axi_write_page_guard -flatten', 'async2sync', 'opt_clean',
                          f'rename axi_write_page_guard {label}', f'design -stash {label}']
         commands += ['design -copy-from reference -as reference reference',
@@ -74,7 +75,7 @@ def main():
                    equivalent_bits=int(match[1]), log_sha256=digest(log))
         report['runs'].append(row)
         print(json.dumps(row), flush=True)
-    if digest(ROOT / SOURCE) != report['source_sha256']['current']:
+    if digest(args.source_root / SOURCE) != report['source_sha256']['current']:
         raise RuntimeError('Source changed during verification')
     report['passed'] = True
     report['equivalent_bits'] = sum(row['equivalent_bits'] for row in report['runs'])

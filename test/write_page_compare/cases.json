@@ -1,0 +1,28 @@
+{
+  "page32": {
+    "top": "write_page_measure",
+    "sources": [
+      "rtl/npu/dma/axi_write_page_guard.sv",
+      "test/write_page_compare/measure.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GDATA_W=32"
+    ],
+    "configuration": "Registered input and output boundaries; complete write page guard"
+  },
+  "page64": {
+    "top": "write_page_measure",
+    "sources": [
+      "rtl/npu/dma/axi_write_page_guard.sv",
+      "test/write_page_compare/measure.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GDATA_W=64"
+    ],
+    "configuration": "Registered input and output boundaries; complete write page guard"
+  }
+}

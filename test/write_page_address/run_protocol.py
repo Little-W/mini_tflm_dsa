@@ -21,12 +21,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--verilator', default='verilator-modern')
+    parser.add_argument('--rtl-source', type=Path, default=RTL)
     args = parser.parse_args()
+    rtl = args.rtl_source.resolve()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     env['MAKEFLAGS'] = 'OPT_FAST=-O1 OPT_SLOW=-O0 VK_PCH_I_FAST= VK_PCH_I_SLOW= CFG_CXXFLAGS_PCH=-E'
-    hashes = {str(path.relative_to(ROOT)): digest(path) for path in (RTL, DRIVER)}
+    hashes = {'rtl': digest(rtl), 'driver': digest(DRIVER)}
     report = dict(source_sha256=hashes, configurations=[], passed=False)
     for width in (32, 64):
         for outstanding in (1, 4):
@@ -37,7 +39,7 @@ def main():
                        '--Mdir', str(folder / 'obj'), '-j', '1', f'-GDATA_W={width}',
                        f'-GWRITE_OUTSTANDING={outstanding}', '-CFLAGS',
                        f'-std=c++20 -DTEST_DATA_W={width} -DTEST_OUTSTANDING={outstanding}',
-                       str(RTL), str(DRIVER)]
+                       str(rtl), str(DRIVER)]
             with (folder / 'build.log').open('w') as stream:
                 subprocess.run(command, cwd=ROOT, env=env, stdout=stream,
                                stderr=subprocess.STDOUT, check=True)
@@ -45,12 +47,12 @@ def main():
                         if line.startswith('%Warning')]
             reviewed = {'UNUSEDSIGNAL', 'UNUSEDPARAM', 'SYNCASYNCNET'}
             # 单个在途事务时，原有计数范围断言对一位计数器恒成立。
-            assertion_line = next(index for index, line in enumerate(RTL.read_text().splitlines(), 1)
+            assertion_line = next(index for index, line in enumerate(rtl.read_text().splitlines(), 1)
                                   if 'assert(direct_outstanding <= ' in line)
             unexpected = [line for line in warnings
                           if line.split(':', 1)[0].removeprefix('%Warning-') not in reviewed
                           and not (outstanding == 1 and line.startswith('%Warning-CMPCONST:')
-                                   and f'{RTL}:{assertion_line}:' in line)]
+                                   and f'{rtl}:{assertion_line}:' in line)]
             if unexpected:
                 raise RuntimeError(f'Unreviewed lint diagnostics: {unexpected}')
             binary = folder / 'obj/Vaxi_write_page_guard'
@@ -77,7 +79,7 @@ def main():
             for path in binary.parent.iterdir():
                 if path.is_file() and path != binary:
                     path.unlink()
-    if hashes != {str(path.relative_to(ROOT)): digest(path) for path in (RTL, DRIVER)}:
+    if hashes != {'rtl': digest(rtl), 'driver': digest(DRIVER)}:
         raise RuntimeError('Source changed during verification')
     report['passed'] = True
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')

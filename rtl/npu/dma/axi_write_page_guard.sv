@@ -89,18 +89,46 @@ module axi_write_page_guard #(
         assign address_nxt = address_q + (ADDR_W'(segment_beats) << SIZE);
     end
 
-    // 长度字段表示最后一拍，页内字序号直接与该字段相加即可判断是否跨页。
+    // 长度字段与页内剩余字数并行比较，最高地址组独立判断是否保留整页余量。
     if (SIZE <= 4 && ADDR_W >= 12) begin : g_direct_page
         localparam int p_word_bits = 12 - SIZE;
         logic [p_word_bits:0] last_word;
-        logic unaligned;
+        logic [7:0] remaining_words;
+        logic unaligned, upper_full;
+        (* keep = 1 *) logic [2:0] length_less, length_equal;
+        (* keep = 1 *) logic lower_allowed;
         if (SIZE == 0) begin : g_byte_bus
             assign unaligned = 1'b0;
         end else begin : g_word_bus
             assign unaligned = |s_awaddr[SIZE-1:0];
         end
+        if (SIZE < 4) begin : g_upper_words
+            assign upper_full = &s_awaddr[11:SIZE+8];
+        end else begin : g_full_length
+            assign upper_full = 1'b1;
+        end
+        assign remaining_words = ~s_awaddr[SIZE+:8];
+        for (genvar group_index = 0; group_index < 3; group_index++) begin : g_length
+            localparam int p_low = group_index * 3;
+            localparam int p_bits = group_index == 2 ? 2 : 3;
+            assign length_less[group_index] =
+                s_awlen[p_low+:p_bits] < remaining_words[p_low+:p_bits];
+            assign length_equal[group_index] =
+                s_awlen[p_low+:p_bits] == remaining_words[p_low+:p_bits];
+        end
+        assign lower_allowed = length_less[0] || (length_equal[0] && !unaligned);
+        always_comb begin
+            page_local = !upper_full || length_less[2] ||
+                (length_equal[2] && length_less[1]) ||
+                (length_equal[2] && length_equal[1] && lower_allowed);
+`ifndef SYNTHESIS
+            // 四态输入采用完整模加表达式，保留部分未知地址的传播结果。
+            if ((^{s_awaddr[11:0], s_awlen}) === 1'bx)
+                page_local = !(last_word[p_word_bits] ||
+                    (unaligned && (&last_word[p_word_bits-1:0])));
+`endif
+        end
         assign last_word = (p_word_bits+1)'(s_awaddr[11:SIZE]) + (p_word_bits+1)'(s_awlen);
-        assign page_local = !(last_word[p_word_bits] || (unaligned && (&last_word[p_word_bits-1:0])));
     end else begin : g_direct_wide_transfer
         assign page_local = ({1'b0,s_awaddr[11:0]} + ((13'(s_awlen)+13'd1)<<SIZE)) <= 13'd4096;
     end
