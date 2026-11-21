@@ -4,6 +4,8 @@ module soc_axi_interconnect #(
     parameter int unsigned CPU_MEM_DP = 524288,
     parameter int unsigned READ_OUTSTANDING = 4,
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
+    // 关闭时，CPU 读响应释放事务后再发出下一条地址。
+    parameter bit p_cpu_read_overlap = 1'b1,
     parameter logic [31:0] CPU_RAM_BASE  = 32'h0000_0000,
     parameter logic [31:0] NPU_AXIL_BASE = 32'h1000_0000,
     parameter logic [31:0] UART_BASE     = 32'h0200_0000,
@@ -185,6 +187,7 @@ module soc_axi_interconnect #(
 
     localparam int unsigned CPU_ADDR_LSB = 2;
     localparam int unsigned CPU_ADDR_BITS = (CPU_MEM_DP <= 1) ? 1 : $clog2(CPU_MEM_DP);
+    localparam int unsigned CPU_RANGE_BITS = CPU_ADDR_LSB + ((CPU_MEM_DP <= 1) ? 0 : $clog2(CPU_MEM_DP));
     localparam int unsigned RD_OUTS_DEPTH = (READ_OUTSTANDING < 1) ? 1 : READ_OUTSTANDING;
     localparam int unsigned WR_OUTS_DEPTH = (WRITE_OUTSTANDING < 1) ? 1 : WRITE_OUTSTANDING;
     localparam int unsigned RD_OUTS_W = (RD_OUTS_DEPTH < 2) ? 1 : $clog2(RD_OUTS_DEPTH + 1);
@@ -210,9 +213,12 @@ module soc_axi_interconnect #(
     logic [7:0]            cpu_arq_len_q [2];
     logic [2:0]            cpu_arq_size_q [2];
     dest_e                 cpu_arq_dest_q [2];
+    logic [4:0]           cpu_arq_dest_flags_q [2];
     logic                  cpu_arq_rd_sel_q;
     logic                  cpu_arq_wr_sel_q;
     logic [1:0]            cpu_arq_count_q;
+    logic cpu_arq_valid_q;
+    logic ram_read_full_q, ram_write_full_q;
 
     // PicoRV32 and its instruction cache retain their 32-bit data path.
     // AXI narrow transfers select the corresponding lanes of the shared bus.
@@ -227,16 +233,23 @@ module soc_axi_interconnect #(
     wire [31:0] cpu_read_lane = (32'(cpu_ram_read_addr_q) & (DATA_WIDTH/8-1)) & ~32'd3;
     wire [31:0] cpu_write_lane = (32'(cpu_write_beat_addr) & (DATA_WIDTH/8-1)) & ~32'd3;
 
-    function automatic [ADDR_WIDTH-1:0] cpu_next_addr(
-        input logic [ADDR_WIDTH-1:0] addr, input logic [2:0] size,
-        input logic [1:0] burst);
-        logic [ADDR_WIDTH-1:0] step;
-        begin
-            step = ADDR_WIDTH'(1) << size;
-            cpu_next_addr = burst == 2'b00 ? addr :
-                (addr & ~(step - 1'b1)) + step;
-        end
-    endfunction
+    logic [ADDR_WIDTH-1:0] cpu_read_next_addr;
+    logic [ADDR_WIDTH-1:0] cpu_write_next_addr;
+    logic [ADDR_WIDTH-1:0] cpu_first_write_next_addr;
+
+    // 当前地址与首拍地址分别准备下一拍地址，握手只选择保存哪个结果。
+    soc_axi_step_address #(.p_width(ADDR_WIDTH)) u_read_step (
+        .i_addr(cpu_ram_read_addr_q), .i_size(cpu_ram_read_size_q),
+        .i_burst(cpu_ram_read_burst_q), .o_addr(cpu_read_next_addr)
+    );
+    soc_axi_step_address #(.p_width(ADDR_WIDTH)) u_write_step (
+        .i_addr(cpu_ram_write_addr_q), .i_size(cpu_ram_write_size_q),
+        .i_burst(cpu_ram_write_burst_q), .o_addr(cpu_write_next_addr)
+    );
+    soc_axi_step_address #(.p_width(ADDR_WIDTH)) u_first_write_step (
+        .i_addr(s0_axi_awaddr), .i_size(s0_axi_awsize),
+        .i_burst(s0_axi_awburst), .o_addr(cpu_first_write_next_addr)
+    );
 
 `ifdef NPU_SIM_ASSERT
     initial begin
@@ -247,10 +260,20 @@ module soc_axi_interconnect #(
 
     function automatic dest_e decode_cpu_addr(input logic [ADDR_WIDTH-1:0] addr);
         logic [31:0] offset;
+        logic ram_selected;
         begin
             offset = addr[31:0] - CPU_RAM_BASE;
-            if (((CPU_RAM_BASE == 32'h0) || (addr[31:0] >= CPU_RAM_BASE)) &&
-                (32'(offset[31:CPU_ADDR_LSB]) < 32'(CPU_MEM_DP))) begin
+            // 二次幂容量且起点按容量排列时，直接比较地址高位。
+            if (CPU_MEM_DP > 0 && (CPU_MEM_DP & (CPU_MEM_DP-1)) == 0 &&
+                CPU_RANGE_BITS <= 32 &&
+                (CPU_RAM_BASE & (32'(CPU_MEM_DP)*32'd4-32'd1)) == 32'd0) begin
+                ram_selected = ((addr[31:0] ^ CPU_RAM_BASE) >>
+                    CPU_RANGE_BITS) == 32'd0;
+            end else begin
+                ram_selected = ((CPU_RAM_BASE == 32'h0) || (addr[31:0] >= CPU_RAM_BASE)) &&
+                    (32'(offset[31:CPU_ADDR_LSB]) < 32'(CPU_MEM_DP));
+            end
+            if (ram_selected) begin
                 decode_cpu_addr = D_RAM;
             end else if (addr[31:28] == NPU_AXIL_BASE[31:28]) begin
                 decode_cpu_addr = D_NPU;
@@ -277,7 +300,7 @@ module soc_axi_interconnect #(
 
     wire cpu_block_new_req = npu_bus_lock;
     wire cpu_arq_full  = cpu_arq_count_q == 2'd2;
-    wire cpu_arq_valid = cpu_arq_count_q != 2'd0;
+    wire cpu_arq_valid = cpu_arq_valid_q;
     wire cpu_arq_push  = s0_axi_arvalid && s0_axi_arready;
     wire [ADDR_WIDTH-1:0] cpu_arq_addr = cpu_arq_rd_sel_q ? cpu_arq_addr_q[1] :
                                                              cpu_arq_addr_q[0];
@@ -296,21 +319,23 @@ module soc_axi_interconnect #(
     dest_e cpu_arq_dest;
     assign cpu_arq_dest = cpu_arq_rd_sel_q ? cpu_arq_dest_q[1] :
                                              cpu_arq_dest_q[0];
+    wire [4:0] cpu_arq_dest_flags = cpu_arq_rd_sel_q ? cpu_arq_dest_flags_q[1] :
+                                                                  cpu_arq_dest_flags_q[0];
     wire [31:0] cpu_arq_addr32 = cpu_arq_addr[31:0];
 
     wire cpu_r_last_hs = s0_axi_rvalid && s0_axi_rready && s0_axi_rlast;
-    wire cpu_rd_issue_avail = !cpu_rd_active_q || cpu_r_last_hs;
+    wire cpu_rd_issue_avail = !cpu_rd_active_q || (p_cpu_read_overlap && cpu_r_last_hs);
     wire cpu_issue_ar_allowed = !cpu_block_new_req;
     wire cpu_ram_ar_req = cpu_issue_ar_allowed && cpu_arq_valid && cpu_rd_issue_avail &&
-                          (cpu_arq_dest == D_RAM);
+                          cpu_arq_dest_flags[0];
     wire cpu_npu_ar_req = cpu_issue_ar_allowed && cpu_arq_valid && cpu_rd_issue_avail &&
-                          (cpu_arq_dest == D_NPU);
+                          cpu_arq_dest_flags[1];
     wire cpu_uart_ar_req = cpu_issue_ar_allowed && cpu_arq_valid && cpu_rd_issue_avail &&
-                           (cpu_arq_dest == D_UART);
+                           cpu_arq_dest_flags[2];
     wire cpu_ctrl_ar_req = cpu_issue_ar_allowed && cpu_arq_valid && cpu_rd_issue_avail &&
-                           (cpu_arq_dest == D_CTRL);
+                           cpu_arq_dest_flags[3];
     wire cpu_err_ar_req = cpu_issue_ar_allowed && cpu_arq_valid && cpu_rd_issue_avail &&
-                          (cpu_arq_dest == D_ERR) &&
+                          cpu_arq_dest_flags[4] &&
                           !err_rvalid_q;
     wire npu_ram_ar_req = s1_axi_arvalid;
     wire cpu_issue_aw_allowed = !cpu_block_new_req;
@@ -344,9 +369,10 @@ module soc_axi_interconnect #(
     logic cpu_mmio_last_valid;
     logic ram_rd_start_valid;
     wire cpu_ram_pending = cpu_issue_ar_allowed && cpu_arq_valid &&
-        (cpu_arq_dest == D_RAM);
+        cpu_arq_dest_flags[0];
     wire cpu_ram_new_owner_req = cpu_ram_pending &&
-        (!cpu_rd_active_q || (cpu_rd_active_q && s0_axi_rready && cpu_mmio_last_valid));
+        (!cpu_rd_active_q || (p_cpu_read_overlap && cpu_rd_active_q &&
+                             s0_axi_rready && cpu_mmio_last_valid));
     wire ram_rd_start_cpu = cpu_ram_new_owner_req &&
         (!npu_ram_ar_req || (ram_rd_owner_q == OWNER_NPU));
     wire ram_rd_start_npu = npu_ram_ar_req &&
@@ -366,10 +392,10 @@ module soc_axi_interconnect #(
         ram_rd_start_valid = 1'b0;
         if (ram_rd_start_npu) begin
             ram_rd_start_valid = npu_ram_ar_req &&
-                (ram_rd_outs_q != RD_OUTS_W'(RD_OUTS_DEPTH));
+                !ram_read_full_q;
         end else if (ram_rd_start_cpu) begin
             ram_rd_start_valid = cpu_ram_new_owner_req &&
-                (ram_rd_outs_q != RD_OUTS_W'(RD_OUTS_DEPTH));
+                !ram_read_full_q;
         end
     end
 
@@ -385,8 +411,8 @@ module soc_axi_interconnect #(
     wire ram_r_last_hs = m_ram_rvalid && m_ram_rready && m_ram_rlast;
     wire ram_aw_hs = m_ram_awvalid && m_ram_awready;
     wire ram_b_hs = m_ram_bvalid && m_ram_bready;
-    wire ram_rd_slot_avail = (ram_rd_outs_q != RD_OUTS_W'(RD_OUTS_DEPTH)) || ram_r_last_hs;
-    wire ram_wr_slot_avail = (ram_wr_outs_q != WR_OUTS_W'(WR_OUTS_DEPTH)) || ram_b_hs;
+    wire ram_rd_slot_avail = !ram_read_full_q || ram_r_last_hs;
+    wire ram_wr_slot_avail = !ram_write_full_q || ram_b_hs;
     wire cpu_ram_ar_hs = ram_ar_hs && ram_ar_from_cpu;
     wire cpu_npu_ar_hs = cpu_npu_ar_req && m_npu_arready;
     wire cpu_uart_ar_hs = cpu_uart_ar_req && m_uart_arready;
@@ -644,6 +670,38 @@ module soc_axi_interconnect #(
 
 
 
+    // 容量标志随计数更新，仲裁直接读取标志；加减回绕仍按原计数宽度处理。
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            cpu_arq_valid_q <= 1'b0;
+            ram_read_full_q <= 1'b0;
+            ram_write_full_q <= 1'b0;
+            for (int entry = 0; entry < 2; entry++) cpu_arq_dest_flags_q[entry] <= 5'b10000;
+        end else begin
+            // 地址进入队列时保存目的端口译码，发送时只选择队首标志。
+            if (cpu_arq_push) begin
+                cpu_arq_dest_flags_q[cpu_arq_wr_sel_q] <= {
+                    cpu_ar_dest == D_ERR, cpu_ar_dest == D_CTRL, cpu_ar_dest == D_UART,
+                    cpu_ar_dest == D_NPU, cpu_ar_dest == D_RAM};
+            end
+            case ({cpu_arq_push, cpu_arq_pop})
+                2'b10: cpu_arq_valid_q <= cpu_arq_count_q != 2'd3;
+                2'b01: cpu_arq_valid_q <= cpu_arq_count_q != 2'd1;
+                default: begin end
+            endcase
+            case ({ram_ar_hs, ram_r_last_hs})
+                2'b10: ram_read_full_q <= ram_rd_outs_q == RD_OUTS_W'(RD_OUTS_DEPTH-1);
+                2'b01: ram_read_full_q <= ram_rd_outs_q == RD_OUTS_W'(RD_OUTS_DEPTH+1);
+                default: begin end
+            endcase
+            case ({ram_aw_hs, ram_b_hs})
+                2'b10: ram_write_full_q <= ram_wr_outs_q == WR_OUTS_W'(WR_OUTS_DEPTH-1);
+                2'b01: ram_write_full_q <= ram_wr_outs_q == WR_OUTS_W'(WR_OUTS_DEPTH+1);
+                default: begin end
+            endcase
+        end
+    end
+
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             ram_rd_active_q <= 1'b0;
@@ -683,17 +741,15 @@ module soc_axi_interconnect #(
                 cpu_ram_read_size_q <= cpu_arq_size;
                 cpu_ram_read_burst_q <= cpu_arq_burst;
             end else if (s0_axi_rvalid && s0_axi_rready && cpu_rd_dest_q == D_RAM) begin
-                cpu_ram_read_addr_q <= cpu_next_addr(cpu_ram_read_addr_q,
-                    cpu_ram_read_size_q,cpu_ram_read_burst_q);
+                cpu_ram_read_addr_q <= cpu_read_next_addr;
             end
             if (cpu_aw_hs && cpu_aw_dest == D_RAM) begin
                 cpu_ram_write_addr_q <= cpu_w_hs ?
-                    cpu_next_addr(s0_axi_awaddr,s0_axi_awsize,s0_axi_awburst) : s0_axi_awaddr;
+                    cpu_first_write_next_addr : s0_axi_awaddr;
                 cpu_ram_write_size_q <= s0_axi_awsize;
                 cpu_ram_write_burst_q <= s0_axi_awburst;
             end else if (cpu_w_hs && cpu_w_dest == D_RAM) begin
-                cpu_ram_write_addr_q <= cpu_next_addr(cpu_ram_write_addr_q,
-                    cpu_ram_write_size_q,cpu_ram_write_burst_q);
+                cpu_ram_write_addr_q <= cpu_write_next_addr;
             end
             if (cpu_arq_push) begin
                 cpu_arq_addr_q[cpu_arq_wr_sel_q]  <= s0_axi_araddr;
@@ -782,4 +838,23 @@ module soc_axi_interconnect #(
         end
     end
 
+endmodule
+
+// AXI 递增地址先清除传输边界以下的位，再加上本拍字节数。
+module soc_axi_step_address #(
+    parameter int unsigned p_width = 32
+) (
+    input wire logic [p_width-1:0] i_addr,
+    input wire logic [2:0] i_size,
+    input wire logic [1:0] i_burst,
+    output logic [p_width-1:0] o_addr
+);
+    logic [p_width-1:0] step;
+    logic [p_width-1:0] aligned_addr;
+    (* use_dsp = "yes" *) logic [p_width-1:0] incremented_addr;
+
+    assign step = p_width'(1) << i_size;
+    assign aligned_addr = i_addr & ~(step - 1'b1);
+    assign incremented_addr = aligned_addr + step;
+    assign o_addr = i_burst == 2'b00 ? i_addr : incremented_addr;
 endmodule

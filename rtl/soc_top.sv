@@ -583,6 +583,7 @@ module soc_top #(
         .ADDR_WIDTH(REG_WIDTH),
         .DATA_WIDTH(BUS_WIDTH),
         .CPU_MEM_DP(CPU_MEM_DP),
+        .p_cpu_read_overlap(1'b0),
         .READ_OUTSTANDING(AXI_READ_OUTSTANDING),
         .WRITE_OUTSTANDING(AXI_WRITE_OUTSTANDING),
         .CPU_RAM_BASE(CPU_RAM_BASE),
