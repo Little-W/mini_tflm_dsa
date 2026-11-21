@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "source_sha256": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
+  "source_sha256": "a6618b61549be21a463c8ebd90f2e4377236f05bf5a02749c09aba3544ab3295",
   "shared_write_formal": {
     "passed": true,
     "properties": 5,
@@ -55,5 +55,94 @@
     "source_sha256": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
     "proof_sha256": "ece07b43bf9fae362b29bcf98f783dea7e4d954cacff23096bfa48ea251cdfb4",
     "log_sha256": "1cd7dd074f9824b2b1241555b12f1627259d452429f9f9f070fa72ca8266bbed"
+  },
+  "full_loader_valid_data": {
+    "passed": true,
+    "inputs_constrained": false,
+    "source_sha256": {
+      "reference": {
+        "rtl/npu/loaders/ia_loader.sv": "e5ade915d8d7f2d702864030328541f0111f743f57ae81e0ddf14f5725e738ef",
+        "rtl/npu/loaders/ia_loader_ctrl.sv": "b1799d6cda920422fa94d048f4431a3d9b11999418ff079b698fc4f03c72321a",
+        "rtl/npu/loaders/ia_loader_cache_mgr.sv": "a6618b61549be21a463c8ebd90f2e4377236f05bf5a02749c09aba3544ab3295",
+        "rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
+      },
+      "current": {
+        "rtl/npu/loaders/ia_loader.sv": "11728e88721a5c22f6c68a3851d8c3f475105d8c15438ce2d745e365a0fb916e",
+        "rtl/npu/loaders/ia_loader_ctrl.sv": "1eddaf30f07961db71c47d98cceb5be3aa8bd4fa81f0f7dfb069947c2c8cca2d",
+        "rtl/npu/loaders/ia_loader_cache_mgr.sv": "a6618b61549be21a463c8ebd90f2e4377236f05bf5a02749c09aba3544ab3295",
+        "rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
+        "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+        "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+        "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+        "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+        "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+        "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+        "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+        "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
+      }
+    },
+    "runs": [
+      {
+        "name": "production",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 64,
+          "COUNT_WIDTH": 29,
+          "CACHE_BLOCKS": 32,
+          "EXTERNAL_RAM": 1,
+          "ORDERED_JOB": 1,
+          "PS_FRAME_COUNT": 16,
+          "p_dma_source_layout": 1,
+          "p_shared_write_stage": 1
+        },
+        "passed": true,
+        "equivalent_bits": 12303,
+        "script_sha256": "12336907a04d53aa0c7f5be2253f40fb60c79a8793dd6e1da27abdeabd045a58",
+        "log_sha256": "6e57aa222c4c5d7cc3f413084bdf29357b56336e49b8176d8816eed20becabf2"
+      },
+      {
+        "name": "generic",
+        "parameters": {
+          "SIZE": 16,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "CACHE_BLOCKS": 4,
+          "EXTERNAL_RAM": 1,
+          "ORDERED_JOB": 0
+        },
+        "passed": true,
+        "equivalent_bits": 10118,
+        "script_sha256": "d27dbb368ac9310f1a2c8cc29d93df6926812979a1bdee8db928640066d72a94",
+        "log_sha256": "5ec41e2bd48a91d277003325f5cfc46ee1ecdfc08aeac774301a7dfce9abdd20"
+      },
+      {
+        "name": "small",
+        "parameters": {
+          "SIZE": 4,
+          "BUS_WIDTH": 32,
+          "COUNT_WIDTH": 8,
+          "CACHE_BLOCKS": 2,
+          "EXTERNAL_RAM": 0,
+          "ORDERED_JOB": 1
+        },
+        "passed": true,
+        "equivalent_bits": 5999,
+        "script_sha256": "cdada7b38cfc0c19fbbdb447062d018e658a4f8375f5433a34281b75719a52e5",
+        "log_sha256": "f6d536b609e4b5e3ae3de1f7640369db62233cdf141b89a8c044b1c672b521ca"
+      }
+    ],
+    "write_payload_when_enabled": true,
+    "wrapper_sha256": {
+      "reference": "7a4f1f302e4bcadc9bb27fa6b75dba6d17ef824a6353eb4c7175706a69ef9cdc",
+      "current": "7a4f1f302e4bcadc9bb27fa6b75dba6d17ef824a6353eb4c7175706a69ef9cdc"
+    }
   }
 }

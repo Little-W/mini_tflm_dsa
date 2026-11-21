@@ -18,7 +18,9 @@ module ia_loader_ctrl #(
     parameter int unsigned PS_FRAME_COUNT = SIZE,
     parameter bit p_precomputed_packed_tiles = 1'b0,
     parameter bit p_precomputed_frame_rows = 1'b0,
-    parameter bit p_precomputed_slot_mask = 1'b0
+    parameter bit p_precomputed_slot_mask = 1'b0,
+    parameter bit p_indexed_slot_rows = 1'b0,
+    parameter bit p_parallel_request_match = 1'b0
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -97,6 +99,9 @@ module ia_loader_ctrl #(
     output logic [REG_WIDTH-1:0]        request_base_addr,
     output logic [REG_WIDTH-1:0]        request_p0,
     output logic [REG_WIDTH-1:0]        request_q0,
+    input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_base = '0,
+    input  logic [REG_WIDTH-$clog2(SIZE)-1:0] request_q0_target = '0,
+    output logic                        request_q0_matches,
     output logic [REG_WIDTH-1:0]        request_group,
     output logic [REG_WIDTH-1:0]        request_rows,
     output logic [REG_WIDTH-1:0]        request_cols,
@@ -110,6 +115,10 @@ module ia_loader_ctrl #(
     output logic                              cache_l1_is_init,     // L1 组 is_init 标记
     output logic                              cache_l1_calc_done,   // L1 组 calc_done 标记
     output logic [$clog2(SIZE + 1)-1:0]       cache_slot_rows [SLOT_BLOCKS], // 每 slot 有效行数
+    // 索引接口保留三个独立读地址，表数据由同一写端口更新。
+    input logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0]
+        cache_row_index [3] = '{default:'0},
+    (* keep = p_indexed_slot_rows *) output logic [$clog2(SIZE+1)-1:0] cache_row_value [3],
     input  logic                              cache_tile_done,      // 单 tile 输出完成
     input  logic                              cache_l1_done         // L1 组全部输出完成
 );
@@ -521,7 +530,7 @@ module ia_loader_ctrl #(
   // 下一个要发送的 slot（用于 blk_busy 管理）
   assign next_rd_slot = (SLOT_BLOCKS <= 1) ? '0 : ((rd_slot_base + SLOT_W'(ia_idx + 1)) & slot_mask);
 
-  logic [ROW_CNT_W-1:0] slot_rows_reg [SLOT_BLOCKS];
+  (* ram_style = "distributed" *) logic [ROW_CNT_W-1:0] slot_rows_reg [SLOT_BLOCKS];
 
   // =====================================================================
   // L2 行基地址
@@ -828,6 +837,26 @@ module ia_loader_ctrl #(
   assign request_base_addr = computed_tile_base;
   assign request_p0 = load_cursor_p0;
   assign request_q0 = REG_WIDTH'(prefetch_active ? next_l1_idx : tile_col_idx) << LOG2_SIZE;
+
+  // 请求列总是按分块宽度移位；三个来源先比较高位，再选择完整比较结果。
+  if (p_parallel_request_match) begin : g_request_q0_match
+    localparam int unsigned p_coordinate_width = REG_WIDTH - LOG2_SIZE;
+    (* keep = 1 *) logic current_equal, following_equal, first_equal;
+    add_equal #(.p_width(p_coordinate_width)) u_current_equal (
+        .i_a(p_coordinate_width'(tile_col_idx)), .i_b(request_q0_base),
+        .i_target(request_q0_target), .i_carry_in(1'b0), .o_equal(current_equal)
+    );
+    add_equal #(.p_width(p_coordinate_width)) u_following_equal (
+        .i_a(p_coordinate_width'(l1_idx_next)), .i_b(request_q0_base),
+        .i_target(request_q0_target), .i_carry_in(1'b0), .o_equal(following_equal)
+    );
+    assign first_equal = request_q0_base == request_q0_target;
+    assign request_q0_matches = prefetch_active ?
+        (is_last_l1_group ? first_equal : following_equal) : current_equal;
+  end else begin : g_unused_request_match
+    assign request_q0_matches = 1'b0;
+  end
+
   assign request_group = REG_WIDTH'(prefetch_active ? next_w_group_idx : w_group_idx);
   assign request_rows = load_rows_cur;
   assign request_cols = load_cols_cur;
@@ -1054,13 +1083,18 @@ module ia_loader_ctrl #(
   assign ps_frame_init = is_first_tile;
   assign ps_frame_final = is_last_l1_group;
 
-  // 将内部状态暴露给 cache_mgr
-  generate
-    for (genvar gi = 0; gi < SLOT_BLOCKS; gi++) begin : g_cache_out
-      assign cache_slot_rows[gi] = slot_rows_reg[gi];
-
+  // 三个异步读端口直接选择存储条目，写端口只在分块完成时更新。
+  if (p_indexed_slot_rows) begin : g_indexed_rows
+    for (genvar port_index = 0; port_index < 3; port_index++) begin : g_read
+      assign cache_row_value[port_index] = slot_rows_reg[cache_row_index[port_index]];
     end
-  endgenerate
+    assign cache_slot_rows = '{default:'0};
+  end else begin : g_parallel_rows
+    assign cache_row_value = '{default:'0};
+    for (genvar slot_index = 0; slot_index < SLOT_BLOCKS; slot_index++) begin : g_slot
+      assign cache_slot_rows[slot_index] = slot_rows_reg[slot_index];
+    end
+  end
 
   // =====================================================================
   // ia_data_valid — 组合逻辑

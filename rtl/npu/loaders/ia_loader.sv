@@ -436,6 +436,8 @@ module ia_loader #(
     logic                                   cache_l1_is_init;
     logic                                   cache_l1_calc_done;
     logic        [           ROW_CNT_W-1:0] cache_slot_rows     [ SLOT_BLOCKS];
+    logic [CACHE_SLOT_W-1:0] cache_row_index [3];
+    logic [ROW_CNT_W-1:0] cache_row_value [3];
     logic                                   cache_tile_done;
     logic                                   cache_l1_done;
     logic                                   cache_l1_start_q;
@@ -510,6 +512,7 @@ module ia_loader #(
     logic [CACHE_SLOT_W-1:0] request_lookup_slot_q, prefetch_lookup_slot_q;
     logic request_lookup_valid, prefetch_lookup_valid;
     logic request_lookup_match;
+    logic request_q0_matches;
     logic request_lookup_ready;
     (* keep = 1 *) logic request_tag_match;
 
@@ -629,13 +632,7 @@ module ia_loader #(
             .i_target(request_p0_equal_i_target),
             .o_equal(request_p0_equal_o_equal)
         );
-        ia_ordered_coordinate_equal #(
-            .p_width(REG_WIDTH), .p_low_width(LOG2_SIZE)
-        ) u_request_q0_equal (
-            .i_a(request_q0_equal_i_a_full), .i_b(request_q0_equal_i_b_full),
-            .i_target(request_q0_equal_i_target),
-            .o_equal(request_q0_equal_o_equal)
-        );
+        assign request_q0_equal_o_equal = request_q0_matches;
         logic request_rows_match;
         logic request_slot_match;
         logic request_filter_ready;
@@ -934,7 +931,9 @@ module ia_loader #(
         .PS_FRAME_COUNT(PS_FRAME_COUNT),
         .p_precomputed_packed_tiles(1'b1),
         .p_precomputed_frame_rows(1'b1),
-        .p_precomputed_slot_mask(1'b1)
+        .p_precomputed_slot_mask(1'b1),
+        .p_indexed_slot_rows(1'b1),
+        .p_parallel_request_match(ORDERED_JOB)
     ) u_ctrl (
         .clk  (clk),
         .rst_n(rst_n),
@@ -1004,6 +1003,9 @@ module ia_loader #(
         .request_valid(ctrl_request_valid),
         .request_base_addr(request_base_addr),
         .request_p0(request_p0), .request_q0(request_q0), .request_group(request_group),
+        .request_q0_base(q0_base_q[REG_WIDTH-1:LOG2_SIZE]),
+        .request_q0_target(request_lookup_q[$clog2(SIZE + 1) +: REG_WIDTH-LOG2_SIZE]),
+        .request_q0_matches(request_q0_matches),
         .request_rows(request_rows), .request_cols(request_cols),
         .request_burst_len_m1(request_burst_len_m1), .request_slot(request_slot),
 
@@ -1013,6 +1015,7 @@ module ia_loader #(
         .cache_l1_is_init   (cache_l1_is_init),
         .cache_l1_calc_done (cache_l1_calc_done),
         .cache_slot_rows    (cache_slot_rows),
+        .cache_row_index(cache_row_index), .cache_row_value(cache_row_value),
         .cache_tile_done    (cache_tile_done),
         .cache_l1_done      (cache_l1_done)
     );
@@ -1127,7 +1130,8 @@ module ia_loader #(
         .p_compact_offset_width((DATA_WIDTH == 16) ? 9 : DATA_WIDTH),
         .p_dma_source_layout(p_dma_source_layout),
         .p_shared_write_stage(p_shared_write_stage),
-        .p_precomputed_slot_mask(1'b1)
+        .p_precomputed_slot_mask(1'b1),
+        .p_indexed_slot_rows(1'b1)
     ) u_cache_mgr (
         .clk  (clk),
         .rst_n(rst_n),
@@ -1156,6 +1160,7 @@ module ia_loader #(
         .l1_is_init   (cache_l1_is_init_q),
         .l1_calc_done (cache_l1_calc_done_q),
         .slot_rows    (cache_slot_rows),
+        .row_table_index(cache_row_index), .row_table_value(cache_row_value),
         .tile_done    (cache_tile_done),
         .l1_done      (cache_l1_done),
         .ia_tile_start(ia_tile_start),
@@ -1173,7 +1178,13 @@ endmodule
 module ia_ordered_coordinate_equal #(
     parameter int unsigned p_width = 32,
     parameter int unsigned p_low_width = 4,
+`ifdef ASIC_SYNTHESIS
     parameter bit p_use_lut = 1'b0
+`elsif XILINX_FPGA
+    parameter bit p_use_lut = 1'b1
+`else
+    parameter bit p_use_lut = 1'b0
+`endif
 ) (
     input  logic [p_width-1:0] i_a,
     input  logic [p_width-1:0] i_b,
@@ -1185,10 +1196,6 @@ module ia_ordered_coordinate_equal #(
 
     localparam int unsigned p_high_width = p_width - p_low_width;
     logic carry_in;
-    logic [p_high_width-1:0] carry_needed;
-    logic [p_high_width-1:0] carry_generated;
-    logic [p_high_width-1:0] carry_expected;
-    logic unused_final_carry;
 
     //! 1. 计算坐标进位条件
     //! -------------------
@@ -1205,15 +1212,12 @@ module ia_ordered_coordinate_equal #(
     end else begin : g_no_low_carry
         assign carry_in = 1'b0;
     end
-    // 目标和值给出每一位所需的进位，各位与相邻低位并行检查。
-    assign carry_needed = i_a[p_width-1:p_low_width] ^ i_b[p_width-1:p_low_width] ^ i_target;
-    assign carry_generated =
-        (i_a[p_width-1:p_low_width] & i_b[p_width-1:p_low_width]) |
-        ((i_a[p_width-1:p_low_width] | i_b[p_width-1:p_low_width]) & ~i_target);
-    assign {unused_final_carry, carry_expected} = {carry_generated, carry_in};
-
     //! 2. 生成坐标比较结果
     //! -------------------
 
-    assign o_equal = (carry_needed == carry_expected);
+    // 相邻两位的进位一致性并行计算，公共比较器保留每位实际计算结果。
+    add_equal #(.p_width(p_high_width), .p_use_lut(p_use_lut)) u_high_equal (
+        .i_a(i_a[p_width-1:p_low_width]), .i_b(i_b[p_width-1:p_low_width]),
+        .i_target(i_target), .i_carry_in(carry_in), .o_equal(o_equal)
+    );
 endmodule

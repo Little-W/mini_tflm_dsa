@@ -20,6 +20,7 @@ module ia_loader_cache_mgr #(
     // 在写命令寄存级提前选择第二个物理存储块的数据。
     parameter bit p_shared_write_stage = 1'b0,
     parameter bit p_precomputed_slot_mask = 1'b0,
+    parameter bit p_indexed_slot_rows = 1'b0,
     localparam int unsigned SLOT_BLOCKS =
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS
 ) (
@@ -56,6 +57,8 @@ module ia_loader_cache_mgr #(
     input  logic                              l1_is_init,      // L1组 is_init 标记
     input  logic                              l1_calc_done,    // L1组 calc_done 标记
     input  logic [$clog2(SIZE + 1)-1:0]       slot_rows [SLOT_BLOCKS], // 每 slot 有效行数
+    output logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] row_table_index [3],
+    input logic [$clog2(SIZE+1)-1:0] row_table_value [3] = '{default:'0},
     output logic                              tile_done,       // 单 tile 输出完成
     output logic                              l1_done,         // L1组全部输出完成
     output logic                              ia_tile_start,   // 单 tile 首行到达输出端
@@ -448,6 +451,12 @@ module ia_loader_cache_mgr #(
   logic [SLOT_W-1:0]   next_issue_slot_now;
   logic [SLOT_W-1:0] next_issue_slot, start_next_slot;
   logic [ROW_CNT_W-1:0] start_next_rows, active_next_rows;
+  logic issue_row_is_last;
+  // 行末直接检查加一等式，输入位进位和比较并行求解。
+  add_equal #(.p_width(ROW_CNT_W)) u_issue_row_end (
+    .i_a(issue_row_idx_r), .i_b(ROW_CNT_W'(0)), .i_carry_in(1'b1),
+    .i_target(issue_rows_r), .o_equal(issue_row_is_last)
+  );
   // 起始组和正在发送的组并行读取下一槽行数，状态选择只位于末级。
   // 固定加一的每一位只取决于低位全一条件，起始槽和当前槽并行计算。
   for (genvar bit_index = 0; bit_index < SLOT_W; bit_index++) begin : g_next_slot
@@ -464,14 +473,23 @@ module ia_loader_cache_mgr #(
           (issue_slot_r[bit_index] ^ (&issue_slot_r[bit_index-1:0]));
     end
   end
-  assign start_next_rows = ROW_CNT_W'(slot_rows[(start_next_slot - slot_base) & slot_mask]);
-  assign active_next_rows = ROW_CNT_W'(slot_rows[(next_issue_slot - slot_base) & slot_mask]);
+  assign row_table_index[0] = (l1_slot_start - slot_base) & slot_mask;
+  assign row_table_index[1] = (start_next_slot - slot_base) & slot_mask;
+  assign row_table_index[2] = (next_issue_slot - slot_base) & slot_mask;
+  if (p_indexed_slot_rows) begin : g_indexed_rows
+    assign slot_rows_start_now = row_table_value[0];
+    assign start_next_rows = row_table_value[1];
+    assign active_next_rows = row_table_value[2];
+  end else begin : g_parallel_rows
+    assign slot_rows_start_now = ROW_CNT_W'(slot_rows[row_table_index[0]]);
+    assign start_next_rows = ROW_CNT_W'(slot_rows[row_table_index[1]]);
+    assign active_next_rows = ROW_CNT_W'(slot_rows[row_table_index[2]]);
+  end
 
   always_comb begin
     start_issue_now   = l1_start && !l1_issue_active;
     issue_slot_now    = start_issue_now ? l1_slot_start : issue_slot_r;
     issue_row_idx_now = start_issue_now ? '0 : issue_row_idx_r;
-    slot_rows_start_now = ROW_CNT_W'(slot_rows[(l1_slot_start - slot_base) & slot_mask]);
     l1_slot_end_now   = start_issue_now ? l1_slot_end : l1_slot_end_r;
     next_issue_slot_now = (SLOT_BLOCKS <= 1) ? '0 : ((issue_slot_now + SLOT_W'(1)) & slot_mask);
     slot_rows_next_now = start_issue_now ? start_next_rows : active_next_rows;
@@ -555,7 +573,7 @@ module ia_loader_cache_mgr #(
 
       // col0 发射调度
       if (l1_issue_active && !issue_gap_active) begin
-        if ((issue_row_idx_r + ROW_CNT_W'(1)) == issue_rows_r) begin
+        if (issue_row_is_last) begin
           // 当前 tile 最后一行在 col0 发射
           if (issue_slot_r == l1_slot_end_r) begin
             // L1 最后一个 tile 的最后一行

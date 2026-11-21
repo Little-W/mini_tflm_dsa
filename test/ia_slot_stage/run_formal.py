@@ -72,7 +72,7 @@ def main():
         for label in ('reference', 'current'):
             commands += ['read_slang --top ia_loader_valid ' + shlex.join(options + list(map(str, paths[label] + [wrappers[label]]))),
                 'prep -top ia_loader_valid -flatten', 'memory_map', 'async2sync', 'opt_clean',
-                'rename -hide w:*ram_port_wr_data* w:*ram_shared_wr_data* w:raw_port_data w:raw_shared_data',
+                'rename -hide w:*ram_port_wr_data* w:*ram_shared_wr_data* w:raw_port_data w:raw_shared_data w:*cache_slot_rows* w:*u_cache_mgr.slot_rows',
                 'rename ia_loader_valid ' + label, 'design -stash ' + label]
         commands += ['design -copy-from reference -as reference reference',
             'design -copy-from current -as current current',
