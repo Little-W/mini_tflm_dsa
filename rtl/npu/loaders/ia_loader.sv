@@ -208,8 +208,18 @@ module ia_loader #(
 
     // 配置接收时先求出下一列分块的有效宽度，供后续预取描述符生成使用。
     // 减法保留 REG_WIDTH 位模运算；二的幂尺寸只保存尾部所需的有效低位。
-    assign next_remaining_cols = cfg_global_reduction -
-        (cfg_q0_base + REG_WIDTH'(SIZE));
+    logic [REG_WIDTH-1:0] next_cols_inverse, next_cols_constant;
+    logic [REG_WIDTH-1:0] next_cols_sum, next_cols_carry;
+    logic unused_next_cols_carry;
+    assign next_cols_inverse = ~cfg_q0_base;
+    assign next_cols_constant = REG_WIDTH'(1) - REG_WIDTH'(SIZE);
+    assign next_cols_sum = cfg_global_reduction ^ next_cols_inverse ^ next_cols_constant;
+    assign next_cols_carry = ((cfg_global_reduction & next_cols_inverse) |
+        (cfg_global_reduction & next_cols_constant) | (next_cols_inverse & next_cols_constant)) << 1;
+    parallel_prefix_add #(.p_width(REG_WIDTH), .p_preserve_groups(1'b1)) u_next_cols (
+        .i_a(next_cols_sum), .i_b(next_cols_carry), .i_carry(1'b0),
+        .o_sum(next_remaining_cols), .o_carry(unused_next_cols_carry)
+    );
     if ((SIZE > 1) && ((SIZE & (SIZE - 1)) == 0) && (REG_WIDTH > LOG2_SIZE)) begin : g_prefetch_tail
         assign next_cols_comb = (|next_remaining_cols[REG_WIDTH-1:LOG2_SIZE]) ?
             REG_WIDTH'(SIZE) : REG_WIDTH'(next_remaining_cols[LOG2_SIZE-1:0]);
