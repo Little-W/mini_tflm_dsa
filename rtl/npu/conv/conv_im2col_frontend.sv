@@ -241,6 +241,7 @@ module conv_im2col_frontend #(
     end
   end
   logic incoming_request, incoming_context, incoming_word_hit, finishing_tile;
+  logic descriptor_response_forward;
   logic incoming_same_position_fast, incoming_next_tile_fast;
   (* keep = 1 *) logic incoming_next_position_fast;
   logic incoming_position_same_tap, incoming_position_forward_tap, incoming_position_backward_tap;
@@ -1771,8 +1772,10 @@ module conv_im2col_frontend #(
   end
   assign cfg_ready = (&cfg_idle_group_clear) && cache_cfg_ready && !cache_hint_pending && !tile_prepared_valid;
   assign finishing_tile=wr_valid && wr_ready && wr_last;
+  // 寄存描述符在空闲阶段接收，数据字来自已完成的缓存返回寄存器。
+  assign descriptor_response_forward = !REGISTER_DESCRIPTOR && finishing_tile && state[$clog2(WAIT_WORD)];
   // 描述符就绪的静态条件共用，配置有效只参与最终接收选择。
-  assign tile_ready_context = (state[$clog2(IDLE)] || finishing_tile) && cfg_prepare_phase==0 && configured && !error &&
+  assign tile_ready_context = (state[$clog2(IDLE)] || (!REGISTER_DESCRIPTOR && finishing_tile)) && cfg_prepare_phase==0 && configured && !error &&
                               !pred_busy && !pred_cfg_busy && !pred_cfg_pending && !cache_cfg_pending &&
                               !cache_hint_pending && address_step_phase==0;
   assign tile_ready = tile_ready_context && !cfg_valid &&
@@ -1938,9 +1941,9 @@ module conv_im2col_frontend #(
   assign next_row_request = !REGISTER_ROW_ADDRESS && wr_valid && wr_ready && chunk_reaches_end && !row_last_q &&
       row_base_valid && !geometry_tile && !next_row_padding && !next_row_word_hit;
   assign incoming_word_hit = incoming_next_position_fast || incoming_next_tile_fast || incoming_skip_tap ?
-    (finishing_tile && state[$clog2(WAIT_WORD)] ? incoming_advanced_word_match[1] :
+    (descriptor_response_forward ? incoming_advanced_word_match[1] :
       word_valid && word_addr[p_word_shift-1:0] == '0 && incoming_advanced_word_match[0]) :
-    (finishing_tile && state[$clog2(WAIT_WORD)] ? incoming_live_word_o_equal :
+    (descriptor_response_forward ? incoming_live_word_o_equal :
       (word_valid && word_addr[p_word_shift-1:0] == '0 && incoming_word_o_equal));
   assign incoming_request=!REGISTER_CACHE_REQUEST && !REGISTER_DESCRIPTOR && tile_valid && tile_ready && incoming_fast && !incoming_padding &&
     !incoming_word_hit && tile_rows!=0 && 32'(tile_rows)<=SIZE && 32'(tile_cols)<=SIZE &&
@@ -2878,9 +2881,9 @@ module conv_im2col_frontend #(
     preparing_tile.row_wrap = row_wrap;
     preparing_tile.padding_select = prepared_padding_select;
     preparing_tile.padding_value = prepared_padding_value;
-    preparing_tile.word_address = finishing_tile && state[$clog2(WAIT_WORD)] ?
+    preparing_tile.word_address = descriptor_response_forward ?
       addr[31:p_word_shift] : word_addr[31:p_word_shift];
-    preparing_tile.saved_word_valid = (finishing_tile && state[$clog2(WAIT_WORD)]) ||
+    preparing_tile.saved_word_valid = (descriptor_response_forward) ||
       (word_valid && word_addr[p_word_shift-1:0] == '0);
     preparing_tile.invalid = !channel_descriptor_valid;
     preparing_tile.fast = incoming_fast;
@@ -2966,7 +2969,7 @@ module conv_im2col_frontend #(
     if (tile_capture) begin
       prepared_tile_q <= preparing_tile;
       // 命中数据随准备项保存，后续窗口更新缓存字不会改变该描述符的内容。
-      prepared_word_data <= finishing_tile && state[$clog2(WAIT_WORD)] ? cache_rsp_data : word_buf;
+      prepared_word_data <= descriptor_response_forward ? cache_rsp_data : word_buf;
     end
   end
 

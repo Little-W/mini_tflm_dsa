@@ -51,6 +51,7 @@ def module(text, name):
 {PORTS}
  output logic[20:0]result,output logic invariant);
 {enum}
+ logic descriptor_response_forward;
  st_t state;
  assign state=st_t'(22'b1<<state_index);
  typedef struct packed {{logic[15:0]group_c,input_c,group_offset,dilation_w;}} cfg_t;
