@@ -1,41 +1,27 @@
 {
   "passed": true,
-  "source_sha256": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
+  "source_sha256": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
   "shared_write_formal": {
     "passed": true,
-    "source_sha256": {
-      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/loaders/ia_loader_cache_mgr.sv": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
-      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/buffers/ia_ps_shared_ram.sv": "4d259a05be88d36372bc9e7114112f0acb9daa46db8fafae749cb6cd73ef21d5",
-      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
-      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
-      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
-      "/workspace/scratch/9625a7463d70/dma_study/ia5_write_formal/xilinx_dsp48e1.sv": "06c0afa55249f4a5c8ca1bd8fae0e7d870ae423928f1fd32ba53833cacbf1b1e",
-      "/workspace/scratch/9625a7463d70/dma_study/ia5_write_formal/cache_shared.sv": "1db2dba0726e03d47b08b324fd6346b0dc680aff9038aa1b8b64179fedcdd3ac"
-    },
-    "primitive_models": {
-      "library": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/cells_sim.v",
-      "library_sha256": "5cdd8f9212f2c89bbc2c0ef93f42181a30d6756d944e6657219d4492b8d63c4b",
-      "models": [
-        "DSP48E1"
-      ],
-      "models_sha256": "06c0afa55249f4a5c8ca1bd8fae0e7d870ae423928f1fd32ba53833cacbf1b1e",
-      "scope": "Functional models with specify timing annotations removed"
-    },
-    "input_assumptions": [
-      "rst_n=0 at the first sampled edge"
-    ],
+    "properties": 5,
     "reset_base_steps": 2,
     "induction_steps": 1,
-    "properties": 5,
-    "log_sha256": "9ee193f3238a41045bb06d64644321ef8be8e4bd98e7a733ecba9e39f08f4af5",
-    "script_sha256": "fc81a8449cae6bb864c1ccdc742fb3f19b41ba83e484709b2429017f1738334f"
+    "source_sha256": {
+      "/workspace/scratch/9625a7463d70/dma_study/ia_iteration7/current/rtl/npu/loaders/ia_loader_cache_mgr.sv": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
+      "/workspace/scratch/9625a7463d70/dma_study/ia_iteration7/current/rtl/npu/buffers/ia_ps_shared_ram.sv": "4d259a05be88d36372bc9e7114112f0acb9daa46db8fafae749cb6cd73ef21d5",
+      "/workspace/scratch/9625a7463d70/dma_study/ia_iteration7/current/rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "/workspace/scratch/9625a7463d70/dma_study/ia7_write_formal/xilinx_dsp48e1.sv": "06c0afa55249f4a5c8ca1bd8fae0e7d870ae423928f1fd32ba53833cacbf1b1e",
+      "/workspace/scratch/9625a7463d70/dma_study/ia7_write_formal/cache_shared.sv": "1db2dba0726e03d47b08b324fd6346b0dc680aff9038aa1b8b64179fedcdd3ac"
+    }
   },
   "four_state": {
     "passed": true,
     "samples": 100004,
-    "comparisons": 357976,
-    "source_sha256": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
-    "source_path": "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/loaders/ia_loader_cache_mgr.sv",
+    "comparisons": 188990,
+    "source_sha256": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
+    "source_path": "/workspace/scratch/9625a7463d70/dma_study/ia_iteration7/current/rtl/npu/loaders/ia_loader_cache_mgr.sv",
     "payload_states": [
       "0",
       "1",
@@ -46,18 +32,19 @@
   "receive_write": {
     "passed": true,
     "source_sha256": {
-      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
       "rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
       "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
       "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
-      "test/ia_shared/receive_write_tb.sv": "94da2b22f7c9efe927946ad2c8846431d92b686875a076ae06beef8831f33ba9"
+      "test/ia_shared/receive_write_tb.sv": "7080cd3c4c043e27f209e065ca976987945444af8b30df6df8ad7830d9ed5812"
     },
     "xilinx_fpga": true,
     "input_lanes": 8,
     "column_positions": 16,
     "exhaustive_byte_offset_pairs": 65536,
     "random_write_cycles": 20000,
-    "hold_cycles_checked": true
+    "idle_command_cycles_checked": true,
+    "inactive_addresses_and_masks_held": true
   },
   "layout_formal": {
     "passed": true,
@@ -65,8 +52,8 @@
     "input_constraints": [],
     "column_positions": 16,
     "input_lanes": 8,
-    "source_sha256": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
+    "source_sha256": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
     "proof_sha256": "ece07b43bf9fae362b29bcf98f783dea7e4d954cacff23096bfa48ea251cdfb4",
-    "log_sha256": "1f7de5845fea54c71ca1409c4352aa76c67ddfe52426521f94870847bcf318c9"
+    "log_sha256": "1cd7dd074f9824b2b1241555b12f1627259d452429f9f9f070fa72ca8266bbed"
   }
 }

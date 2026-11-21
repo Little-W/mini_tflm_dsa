@@ -228,120 +228,49 @@ module ia_loader_cache_mgr #(
     end
 
     if (p_shared_write_stage && SIZE == 16 && DATA_WIDTH == 16) begin : g_port_write_stage
-      // 每个端口独立保存原始通道和列起点，数据排列在写命令寄存器之后完成。
-      // 独立的保存使能保证单端口写入时，另一个端口的数据继续保持。
-      for (genvar port_index = 0; port_index < 2; port_index++) begin : g_port
-        logic [255:0] input_data, input_data_q, wide_source, wide_row;
-        logic [15:0] input_mask, input_mask_q;
-        logic [3:0] column_q;
+      logic [255:0] input_data, input_data_q, wide_source, wide_row;
+      logic [15:0] input_mask, input_mask_q, row_mask;
+      logic [3:0] column_q;
+      logic [7:0] empty_byte_q;
+      logic compact_q;
+      logic [127:0] compact_source, compact_row, compact_data;
 
-        for (genvar lane = 0; lane < 16; lane++) begin : g_lane
-          if (lane < DMA_LANES) begin : g_input
-            assign input_data[lane*16 +: 16] = wr_data[lane];
-            assign input_mask[lane] = wr_valid[lane];
-          end else begin : g_padding
-            assign input_data[lane*16 +: 16] = 16'd0;
-            assign input_mask[lane] = 1'b0;
-          end
-          assign wide_source[lane*16 +: 16] = input_mask_q[lane] ?
-              input_data_q[lane*16 +: 16] : 16'd0;
+      // 两个写端口共用同一拍输入，原始数据与格式每拍保存。
+      // 端口写使能、地址和字节掩码共同决定本拍实际写入的内容。
+      for (genvar lane = 0; lane < 16; lane++) begin : g_lane
+        if (lane < DMA_LANES) begin : g_input
+          assign input_data[lane*16 +: 16] = wr_data[lane];
+          assign input_mask[lane] = wr_valid[lane];
+          assign compact_source[lane*8 +: 8] = input_data_q[lane*16 +: 8] + empty_byte_q;
+        end else begin : g_padding
+          assign input_data[lane*16 +: 16] = 16'd0;
+          assign input_mask[lane] = 1'b0;
+          assign compact_source[lane*8 +: 8] = 8'd0;
         end
-        assign wide_row = wide_source << (int'(column_q) * 16);
-        always_ff @(posedge clk) begin
-          if (write_en[port_index]) begin
-            input_data_q <= input_data;
-            input_mask_q <= input_mask;
-            column_q <= wr_col_base;
-          end
-        end
-        if (port_index == 0) begin : g_first_port
-          logic [7:0] empty_byte_q;
-          logic compact_q;
-          logic [127:0] compact_source, compact_row, compact_data;
-          logic [15:0] row_mask;
-
-          for (genvar lane = 0; lane < 16; lane++) begin : g_byte
-            if (lane < DMA_LANES) begin : g_input
-              assign compact_source[lane*8 +: 8] =
-                  input_data_q[lane*16 +: 8] + empty_byte_q;
-            end else begin : g_padding
-              assign compact_source[lane*8 +: 8] = 8'd0;
-            end
-            assign compact_data[lane*8 +: 8] = row_mask[lane] ?
-                compact_row[lane*8 +: 8] : empty_byte_q;
-          end
-          assign row_mask = input_mask_q << column_q;
-          assign compact_row = compact_source << (int'(column_q) * 8);
-          assign ram_port_wr_data[port_index] = compact_q ? compact_data : wide_row[127:0];
-          always_ff @(posedge clk) begin
-            if (write_en[port_index]) begin
-              empty_byte_q <= compact_empty_byte;
-              compact_q <= compact_mode;
-            end
-          end
-        end else begin : g_second_port
-          assign ram_port_wr_data[port_index] = wide_row[255:128];
-        end
+        assign wide_source[lane*16 +: 16] = input_mask_q[lane] ?
+            input_data_q[lane*16 +: 16] : 16'd0;
+        assign compact_data[lane*8 +: 8] = row_mask[lane] ?
+            compact_row[lane*8 +: 8] : empty_byte_q;
       end
+      always_ff @(posedge clk) begin
+        input_data_q <= input_data;
+        input_mask_q <= input_mask;
+        column_q <= wr_col_base;
+        empty_byte_q <= compact_empty_byte;
+        compact_q <= compact_mode;
+      end
+      assign wide_row = wide_source << (int'(column_q) * 16);
+      assign row_mask = input_mask_q << column_q;
+      assign compact_row = compact_source << (int'(column_q) * 8);
+      assign ram_port_wr_data[0] = compact_q ? compact_data : wide_row[127:0];
+      assign ram_port_wr_data[1] = wide_row[255:128];
+      assign ram_shared_wr_data = ram_port_wr_en[1] ? ram_port_wr_data[1] : ram_port_wr_data[0];
     end else begin : g_port_data_register
       for (genvar port_index = 0; port_index < 2; port_index++) begin : g_port
         always_ff @(posedge clk) begin
           if (write_en[port_index]) ram_port_wr_data[port_index] <= write_data[port_index];
         end
       end
-    end
-
-    if (p_shared_write_stage && SIZE == 16 && DATA_WIDTH == 16) begin : g_shared_write_stage
-      logic [255:0] shared_input_data, shared_input_data_q;
-      logic [15:0] shared_input_mask, shared_input_mask_q;
-      logic [3:0] shared_column_q;
-      logic [7:0] shared_empty_byte_q;
-      logic shared_compact_q, shared_second_port_q;
-      logic [255:0] shared_wide_source, shared_wide_row;
-      logic [127:0] shared_compact_source, shared_compact_row;
-      logic [15:0] shared_row_mask;
-      logic [127:0] compact_shared_data, wide_shared_data, first_port_data;
-
-      // 原始通道和排列参数在写命令边沿保存，字节恢复与列移位使用寄存后的输入。
-      for (genvar lane = 0; lane < 16; lane++) begin : g_input
-        if (lane < DMA_LANES) begin : g_source
-          assign shared_input_data[lane*16 +: 16] = wr_data[lane];
-          assign shared_input_mask[lane] = wr_valid[lane];
-          assign shared_compact_source[lane*8 +: 8] =
-              shared_input_data_q[lane*16 +: 8] + shared_empty_byte_q;
-        end else begin : g_padding
-          assign shared_input_data[lane*16 +: 16] = 16'd0;
-          assign shared_input_mask[lane] = 1'b0;
-          assign shared_compact_source[lane*8 +: 8] = 8'd0;
-        end
-        assign shared_wide_source[lane*16 +: 16] = shared_input_mask_q[lane] ?
-            shared_input_data_q[lane*16 +: 16] : 16'd0;
-        assign compact_shared_data[lane*8 +: 8] = shared_row_mask[lane] ?
-            shared_compact_row[lane*8 +: 8] : shared_empty_byte_q;
-      end
-      assign shared_wide_row = shared_wide_source << (int'(shared_column_q) * 16);
-      assign shared_compact_row = shared_compact_source << (int'(shared_column_q) * 8);
-      assign shared_row_mask = shared_input_mask_q << shared_column_q;
-      assign wide_shared_data = shared_second_port_q ? shared_wide_row[255:128] : shared_wide_row[127:0];
-      assign first_port_data = shared_compact_q ? compact_shared_data : shared_wide_row[127:0];
-      always_comb begin
-        case (shared_compact_q)
-          1'b0: ram_shared_wr_data = wide_shared_data;
-          1'b1: ram_shared_wr_data = compact_shared_data;
-          default: ram_shared_wr_data = shared_second_port_q ? shared_wide_row[255:128] : first_port_data;
-        endcase
-      end
-      always_ff @(posedge clk) begin
-        if (|write_en) begin
-          shared_input_data_q <= shared_input_data;
-          shared_input_mask_q <= shared_input_mask;
-          shared_column_q <= wr_col_base;
-          shared_empty_byte_q <= compact_empty_byte;
-          shared_compact_q <= compact_mode;
-          shared_second_port_q <= write_en[1];
-        end
-      end
-    end else begin : g_general_write_stage
       assign ram_shared_wr_data = '0;
     end
 

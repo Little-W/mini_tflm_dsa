@@ -48,7 +48,8 @@ module conv_window_queue #(
   logic active,failed,accept,retire,launch,response_fire;
   logic [p_active_width-1:0] active_count;
   logic active_retire;
-  logic descriptor_available,descriptor_prepared,descriptor_read_available;
+  (* keep = 1 *) logic descriptor_available, descriptor_multiple;
+  logic descriptor_prepared, descriptor_read_available;
   logic [PTR_W-1:0] descriptor_read_index;
   logic descriptor_forward,descriptor_forward_valid;
   (* keep = 1 *) logic descriptor_current_cols_valid, descriptor_next_cols_valid;
@@ -85,13 +86,14 @@ module conv_window_queue #(
                    (count<COUNT_W'(DEPTH) || retire);
   assign accept=req_valid && req_ready;
   // 已发送窗口可以分别占用前端和输出寄存器，队首保持到外部末拍接收。
-  logic [p_frontend_outstanding:0][PTR_W-1:0] pending_position;
-  assign pending_position[0] = head;
-  for (genvar position = 1; position <= p_frontend_outstanding; position++) begin : g_pending_position
-    assign pending_position[position] = increment(pending_position[position-1]);
+  // 待发送位置随启动事件保存，与完成队首和在途计数分别更新。
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) present <= '0;
+    else if (configure) present <= '0;
+    else if (launch || (retire && !active)) present <= increment(present);
   end
-  assign present = pending_position[active_count];
   assign descriptor_available = count > COUNT_W'(active_count);
+  assign descriptor_multiple = count > (COUNT_W'(active_count) + COUNT_W'(1));
   // 准备项始终占用队列位置，显式非空条件使空闲配置与前端发送保持互斥。
   assign frontend_valid=enable && !configure && !failed && !frontend_error && busy &&
     (active_count < p_active_width'(p_frontend_outstanding) || active_retire) && descriptor_prepared;
@@ -100,9 +102,10 @@ module conv_window_queue #(
   // 发送当前准备项的同时读取下一项，连续单拍窗口可以逐周期接收。
   // 同周期接收的新条目直接保存到返回寄存器，存储器继续保持先读后写语义。
   assign descriptor_read_index=launch ? increment(present) : present;
-  assign descriptor_read_available=launch ?
-      count>(COUNT_W'(active_count)+COUNT_W'(1)) : descriptor_available;
-  assign descriptor_forward=accept && !descriptor_read_available && descriptor_read_index==tail;
+  // 两个数量比较独立完成，启动事件只决定是否消耗唯一的待发送项。
+  assign descriptor_read_available = descriptor_multiple || (!launch && descriptor_available);
+  // 没有未发送描述符时，读取位置就是接收位置；新接收数据直接写入准备寄存器。
+  assign descriptor_forward = accept && !descriptor_read_available;
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       descriptor_prepared<=1'b0;
@@ -111,7 +114,7 @@ module conv_window_queue #(
       descriptor_prepared<=1'b0;
       descriptor_forward_valid<=1'b0;
     end else begin
-      descriptor_prepared<=descriptor_read_available || descriptor_forward;
+      descriptor_prepared <= descriptor_read_available || accept;
       descriptor_forward_valid<=descriptor_forward;
     end
   end

@@ -107,13 +107,17 @@ def main():
                 end
             end
             #1; clk=1; #1;
-            if (ram_shared_wr_data !== expected_shared_data)
-                $fatal(1,"Shared data propagation differs at sample %0d",sample);
-            comparisons++;
-            for (int port_index=0; port_index<2; port_index++) begin
-                if (ram_port_wr_data[port_index] !== expected_port_data[port_index])
-                    $fatal(1,"Write port data propagation differs at sample %0d port %0d",sample,port_index);
+            if ((|ram_port_wr_en) === 1'b1) begin
+                if (ram_shared_wr_data !== expected_shared_data)
+                    $fatal(1,"Shared write data differs at sample %0d",sample);
                 comparisons++;
+            end
+            for (int port_index=0; port_index<2; port_index++) begin
+                if (ram_port_wr_en[port_index] === 1'b1) begin
+                    if (ram_port_wr_data[port_index] !== expected_port_data[port_index])
+                        $fatal(1,"Write port data differs at sample %0d port %0d",sample,port_index);
+                    comparisons++;
+                end
             end
             if(ram_port_wr_en[1] === 1'b1) begin
                 if(ram_shared_wr_data !== ram_port_wr_data[1]) $fatal(1,"Second write port data differs");

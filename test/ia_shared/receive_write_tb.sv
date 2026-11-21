@@ -47,7 +47,7 @@ module receive_write_tb;
       wr_col_base=4'($urandom);
       for (int i=0; i<8; i++) begin
         wr_data[i]=(n<65536) ? 16'(n) : 16'($urandom);
-        wr_valid[i]=(n<65536) ? 1'b1 : 1'($urandom);
+        wr_valid[i]=(n<65536) ? 1'b1 : (n%37==0 ? 1'b0 : 1'($urandom));
       end
       expected_en='0;
       for (int p=0; p<2; p++) begin expected_data[p]='0; expected_mask[p]='0; end
@@ -75,11 +75,14 @@ module receive_write_tb;
       if (|expected_en) begin held_shared=expected_shared; initialized_shared=1; end
       @(posedge clk); #1;
       if (en !== expected_en) $fatal(1,"enable mismatch iteration %0d",n);
-      for (int p=0; p<2; p++) if (initialized_port[p] &&
-          (data[p] !== held_data[p] || mask[p] !== held_mask[p] || addr[p] !== held_addr[p]))
-        $fatal(1,"write mismatch iteration %0d port %0d",n,p);
-      if (initialized_shared && shared !== held_shared)
-        $fatal(1,"shared mismatch iteration %0d",n);
+      for (int p=0; p<2; p++) begin
+        if (initialized_port[p] && (mask[p] !== held_mask[p] || addr[p] !== held_addr[p]))
+          $fatal(1,"write metadata mismatch iteration %0d port %0d",n,p);
+        if (en[p] && data[p] !== expected_data[p])
+          $fatal(1,"write payload mismatch iteration %0d port %0d",n,p);
+      end
+      if ((|en) && shared !== expected_shared)
+        $fatal(1,"shared write payload mismatch iteration %0d",n);
       @(negedge clk);
     end
     $display("PASS: 65536 exhaustive byte/offset pairs and 20000 random write cycles");

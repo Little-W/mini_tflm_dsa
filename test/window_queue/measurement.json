@@ -1,0 +1,363 @@
+{
+  "passed": true,
+  "numeric": {
+    "passed": true,
+    "source_sha256": {
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv": "5e7a2e87325b62660e38713a3d98b67697d8356e5945c71f62da6055591e1ef4",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp": "272ec8300ac9e54b2a4373a31bb64453b15f1475e4c53c03cbfaccbdcc22f889"
+    },
+    "cases": [
+      {
+        "depth": 2,
+        "lanes": 4,
+        "outstanding": 1,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=2 lanes=4 outstanding=1 random=0 accepted=512 retired=512 launches=512 consecutive=495 peak=1 idle=1 finish=511 stalls=63 errors=0 cycles=577",
+          "WINDOW_QUEUE_PASS depth=2 lanes=4 outstanding=1 random=1 accepted=4000 retired=4000 launches=3994 consecutive=113 peak=1 idle=78 finish=3916 stalls=12291 errors=8 cycles=21837"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=2",
+          "-GWINDOW_LANES=4",
+          "-Gp_frontend_outstanding=1",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth2_lanes4_outstanding1/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=2 -DTEST_LANES=4 -DTEST_OUTSTANDING=1",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 2,
+        "lanes": 4,
+        "outstanding": 2,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=2 lanes=4 outstanding=2 random=0 accepted=512 retired=512 launches=512 consecutive=503 peak=2 idle=1 finish=503 stalls=39 errors=0 cycles=553",
+          "WINDOW_QUEUE_PASS depth=2 lanes=4 outstanding=2 random=1 accepted=4000 retired=4000 launches=3999 consecutive=507 peak=2 idle=172 finish=484 stalls=9388 errors=8 cycles=17930"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=2",
+          "-GWINDOW_LANES=4",
+          "-Gp_frontend_outstanding=2",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth2_lanes4_outstanding2/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=2 -DTEST_LANES=4 -DTEST_OUTSTANDING=2",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 3,
+        "lanes": 16,
+        "outstanding": 1,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=3 lanes=16 outstanding=1 random=0 accepted=512 retired=512 launches=512 consecutive=495 peak=1 idle=1 finish=511 stalls=62 errors=0 cycles=577",
+          "WINDOW_QUEUE_PASS depth=3 lanes=16 outstanding=1 random=1 accepted=4000 retired=4000 launches=3985 consecutive=184 peak=1 idle=10 finish=3975 stalls=12354 errors=8 cycles=21913"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=3",
+          "-GWINDOW_LANES=16",
+          "-Gp_frontend_outstanding=1",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth3_lanes16_outstanding1/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=3 -DTEST_LANES=16 -DTEST_OUTSTANDING=1",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 3,
+        "lanes": 16,
+        "outstanding": 2,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=3 lanes=16 outstanding=2 random=0 accepted=512 retired=512 launches=512 consecutive=503 peak=2 idle=1 finish=510 stalls=31 errors=0 cycles=546",
+          "WINDOW_QUEUE_PASS depth=3 lanes=16 outstanding=2 random=1 accepted=4000 retired=4000 launches=3992 consecutive=435 peak=2 idle=17 finish=3778 stalls=8388 errors=8 cycles=16496"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=3",
+          "-GWINDOW_LANES=16",
+          "-Gp_frontend_outstanding=2",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth3_lanes16_outstanding2/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=3 -DTEST_LANES=16 -DTEST_OUTSTANDING=2",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 4,
+        "lanes": 16,
+        "outstanding": 1,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=4 lanes=16 outstanding=1 random=0 accepted=512 retired=512 launches=512 consecutive=495 peak=1 idle=1 finish=511 stalls=61 errors=0 cycles=577",
+          "WINDOW_QUEUE_PASS depth=4 lanes=16 outstanding=1 random=1 accepted=4000 retired=4000 launches=3976 consecutive=156 peak=1 idle=9 finish=3967 stalls=12356 errors=8 cycles=21837"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=4",
+          "-GWINDOW_LANES=16",
+          "-Gp_frontend_outstanding=1",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth4_lanes16_outstanding1/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=4 -DTEST_LANES=16 -DTEST_OUTSTANDING=1",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 4,
+        "lanes": 16,
+        "outstanding": 2,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=4 lanes=16 outstanding=2 random=0 accepted=512 retired=512 launches=512 consecutive=503 peak=2 idle=1 finish=510 stalls=30 errors=0 cycles=546",
+          "WINDOW_QUEUE_PASS depth=4 lanes=16 outstanding=2 random=1 accepted=4000 retired=4000 launches=3985 consecutive=552 peak=2 idle=9 finish=3962 stalls=8538 errors=8 cycles=16668"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=4",
+          "-GWINDOW_LANES=16",
+          "-Gp_frontend_outstanding=2",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth4_lanes16_outstanding2/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=4 -DTEST_LANES=16 -DTEST_OUTSTANDING=2",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 7,
+        "lanes": 16,
+        "outstanding": 1,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=7 lanes=16 outstanding=1 random=0 accepted=512 retired=512 launches=512 consecutive=495 peak=1 idle=1 finish=511 stalls=58 errors=0 cycles=577",
+          "WINDOW_QUEUE_PASS depth=7 lanes=16 outstanding=1 random=1 accepted=4000 retired=4000 launches=3953 consecutive=149 peak=1 idle=9 finish=3944 stalls=12455 errors=8 cycles=22002"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=7",
+          "-GWINDOW_LANES=16",
+          "-Gp_frontend_outstanding=1",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth7_lanes16_outstanding1/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=7 -DTEST_LANES=16 -DTEST_OUTSTANDING=1",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      },
+      {
+        "depth": 7,
+        "lanes": 16,
+        "outstanding": 2,
+        "passed": true,
+        "results": [
+          "WINDOW_QUEUE_PASS depth=7 lanes=16 outstanding=2 random=0 accepted=512 retired=512 launches=512 consecutive=503 peak=2 idle=1 finish=510 stalls=27 errors=0 cycles=546",
+          "WINDOW_QUEUE_PASS depth=7 lanes=16 outstanding=2 random=1 accepted=4000 retired=4000 launches=3961 consecutive=529 peak=2 idle=9 finish=3943 stalls=8175 errors=8 cycles=16327"
+        ],
+        "command": [
+          "/home/agent/.local/bin/verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--timing",
+          "--assert",
+          "-DNPU_SIM_ASSERT",
+          "-Wno-fatal",
+          "--top-module",
+          "conv_window_queue",
+          "-GDEPTH=7",
+          "-GWINDOW_LANES=16",
+          "-Gp_frontend_outstanding=2",
+          "--Mdir",
+          "/workspace/scratch/9625a7463d70/dma_study/queue_numeric_final/depth7_lanes16_outstanding2/obj",
+          "-j",
+          "2",
+          "-CFLAGS",
+          "-std=c++20 -O1 -DTEST_DEPTH=7 -DTEST_LANES=16 -DTEST_OUTSTANDING=2",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/dma/conv_window_queue.sv",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/window_queue/main.cpp"
+        ]
+      }
+    ]
+  },
+  "formal": {
+    "passed": true,
+    "source_sha256": "5e7a2e87325b62660e38713a3d98b67697d8356e5945c71f62da6055591e1ef4",
+    "input_constraints": [
+      "rst_n=0 at the first sampled edge"
+    ],
+    "properties": [
+      "occupancy",
+      "frontend_capacity",
+      "pending_position",
+      "request_tail",
+      "forward_condition",
+      "prepared_available",
+      "busy_count"
+    ],
+    "runs": [
+      {
+        "depth": 2,
+        "outstanding": 1,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 2,
+        "outstanding": 2,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 3,
+        "outstanding": 1,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 3,
+        "outstanding": 2,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 4,
+        "outstanding": 1,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 4,
+        "outstanding": 2,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 7,
+        "outstanding": 1,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 7,
+        "outstanding": 2,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 8,
+        "outstanding": 1,
+        "passed": true,
+        "induction_steps": 1
+      },
+      {
+        "depth": 8,
+        "outstanding": 2,
+        "passed": true,
+        "induction_steps": 1
+      }
+    ]
+  }
+}

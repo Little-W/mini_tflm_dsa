@@ -3,9 +3,9 @@
   "inputs_constrained": false,
   "source_sha256": {
     "reference": {
-      "rtl/npu/loaders/ia_loader.sv": "12999d7d24510d192ff3a4571c1a10e8e8ce299e1f7b2b1ca1272dc92b8bec2a",
-      "rtl/npu/loaders/ia_loader_ctrl.sv": "8050d4fab713ac8dfa986c0f3802bf20ece93d0ce0da6c66d281ac600c009b1c",
-      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "958b54cebc4261343c04df2c38f25e817a5d323492846a6f6a76b1cddc5d3509",
+      "rtl/npu/loaders/ia_loader.sv": "995e8739a673ed59f6bbaa1243ced5e436226a8480c968da168ce4aed78f81f4",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "04ef736eea9f7ca82d61eb8313db46cd5181919df2cc02dd171f74bc3a92e326",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
       "rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
       "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
       "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
@@ -19,8 +19,8 @@
     "current": {
       "rtl/npu/loaders/ia_loader.sv": "995e8739a673ed59f6bbaa1243ced5e436226a8480c968da168ce4aed78f81f4",
       "rtl/npu/loaders/ia_loader_ctrl.sv": "04ef736eea9f7ca82d61eb8313db46cd5181919df2cc02dd171f74bc3a92e326",
-      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
-      "rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "89fc20eea728324419851d18d990e82382488d1942aef97fe98c45f03751300d",
+      "rtl/npu/compute/select_add.sv": "a8bab6351a274c3b80e5158ed44caa6ad0051fc1442b3e8ad9d9d1a1abdf6c20",
       "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
       "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
       "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
@@ -46,9 +46,9 @@
         "p_shared_write_stage": 1
       },
       "passed": true,
-      "equivalent_bits": 14038,
-      "script_sha256": "70d820900183a3a5c2b07e44de041f1b569ba4cb9b8a481a0f9fdd6d96d5aecc",
-      "log_sha256": "b35621706bbf1beb6c36eb7ece477587addaa95c5a40411469205e76d5966ee6"
+      "equivalent_bits": 11469,
+      "script_sha256": "b27aea6a3b5d4d0b61c40f505a735bbf6ac860baa2837835dca4f7455523fe2e",
+      "log_sha256": "a6f2677e934b8182f547bd18fc8ea4d00a0952765fdb2a2be8b9f24bac1bf463"
     },
     {
       "name": "generic",
@@ -61,9 +61,9 @@
         "ORDERED_JOB": 0
       },
       "passed": true,
-      "equivalent_bits": 10054,
-      "script_sha256": "def87aa9f05050e95cc40bc1f4d9685f3b30bb93ea71533849444e3e7ff04032",
-      "log_sha256": "5b3f667768544832c3d0ce9bcbcb5926d767cdb371f4596cbc4d84f83fad66d1"
+      "equivalent_bits": 10143,
+      "script_sha256": "e5852c385849efe0f91ff86c8235bb5ee03585744fde2abb540615aacf4bdd3d",
+      "log_sha256": "31229cfdd45780cc3dc001eeef6fb6f94a86a2ede3884e88534899a56ac3d98f"
     },
     {
       "name": "small",
@@ -76,38 +76,43 @@
         "ORDERED_JOB": 1
       },
       "passed": true,
-      "equivalent_bits": 5960,
-      "script_sha256": "43cd6219821b65d18f5f919b4b10ae0731ffc7fcc61db80069885f35cd287436",
-      "log_sha256": "d60050c97cbb149e85b96bf64540510c81e7cc84b6e8593ebb48d70120dd17e3"
+      "equivalent_bits": 6127,
+      "script_sha256": "2afc913ad87d85a46d9e2ebc12832ca214173c90a4d157f83b1a053c801bd889",
+      "log_sha256": "603cf5ff2c9b25e0556878d41efdd529c932754c8e0428daaf6622cbe5aa27c0"
     }
   ],
+  "write_payload_when_enabled": true,
+  "wrapper_sha256": {
+    "reference": "7a4f1f302e4bcadc9bb27fa6b75dba6d17ef824a6353eb4c7175706a69ef9cdc",
+    "current": "7a4f1f302e4bcadc9bb27fa6b75dba6d17ef824a6353eb4c7175706a69ef9cdc"
+  },
   "synthesis": {
     "resources": {
-      "logic_lut_cells": 6455,
+      "logic_lut_cells": 5552,
       "distributed_ram_lut_sites_nominal": 0,
       "shift_register_lut_sites_nominal": 0,
-      "lut_sites_nominal_before_packing": 6455,
+      "lut_sites_nominal_before_packing": 5552,
       "physical_lut_sites_after_placement": null,
-      "flip_flops": 3137,
+      "flip_flops": 2847,
       "dsp48e1": 16,
       "ramb36e1": 2,
       "ramb18e1": 1,
-      "carry4": 274,
+      "carry4": 258,
       "unclassified_distributed_ram_types": [],
       "cell_counts": {
-        "CARRY4": 274,
+        "CARRY4": 258,
         "DSP48E1": 16,
         "FDCE": 2061,
         "FDPE": 88,
-        "FDRE": 988,
+        "FDRE": 698,
         "INV": 178,
-        "LUT2": 1346,
-        "LUT3": 1202,
-        "LUT4": 1349,
-        "LUT5": 1532,
-        "LUT6": 1026,
-        "MUXF7": 4,
-        "MUXF8": 2,
+        "LUT2": 1113,
+        "LUT3": 1171,
+        "LUT4": 933,
+        "LUT5": 1306,
+        "LUT6": 1029,
+        "MUXF7": 7,
+        "MUXF8": 1,
         "RAMB18E1": 1,
         "RAMB36E1": 2
       },
@@ -120,6 +125,7 @@
       "met": false,
       "scope": "Clocked storage outputs to synchronous data and control inputs",
       "timing_frequency_validation": "Requires primitive and routing delays for the target device"
-    }
+    },
+    "mapping": "xc7; only RTL use_dsp=yes arithmetic mapped to DSP"
   }
 }

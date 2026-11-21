@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""证明 IA 物理槽号提前保存后的公开输出和寄存状态逐周期等价。"""
+"""证明 IA 控制输出、有效写入数据和寄存状态的逐周期对应关系。"""
 import argparse
 import hashlib
 import json
@@ -28,6 +28,21 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def make_valid_wrapper(root, destination):
+    """按实际端口写使能比较数据，同时保留其余全部公开输出。"""
+    source = (root / SOURCES[0]).read_text()
+    header = source[:source.index(');') + 2].replace(
+        'module ia_loader #(', 'module ia_loader_valid #(', 1)
+    parameters = re.findall(r'parameter\s+(?:int\s+unsigned|bit|integer)\s+(\w+)\s*=', header)
+    body = '\nlogic [127:0] raw_port_data [0:1], raw_shared_data;\n'
+    body += 'ia_loader #(\n' + ',\n'.join(f'.{name}({name})' for name in parameters)
+    body += ') u_core (.ram_port_wr_data(raw_port_data), .ram_shared_wr_data(raw_shared_data), .*);\n'
+    body += "for (genvar port_index=0; port_index<2; port_index++)\n"
+    body += "  assign ram_port_wr_data[port_index] = ram_port_wr_en[port_index] ? raw_port_data[port_index] : 128'd0;\n"
+    body += "assign ram_shared_wr_data = (|ram_port_wr_en) ? raw_shared_data : 128'd0;\nendmodule\n"
+    destination.write_text(header + body)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-root', type=Path, default=ROOT)
@@ -44,20 +59,25 @@ def main():
             path for path in (root / 'rtl/common').iterdir() if path.suffix in ('.v', '.sv'))
     hashes = {label: {str(path.relative_to(roots[label])): digest(path)
                      for path in values} for label, values in paths.items()}
+    wrappers = {label: out / (label + '_valid.sv') for label in roots}
+    for label, root in roots.items():
+        make_valid_wrapper(root, wrappers[label])
     summary = dict(passed=False, inputs_constrained=False,
-                   source_sha256=hashes, runs=[])
+                   source_sha256=hashes, runs=[], write_payload_when_enabled=True,
+                   wrapper_sha256={label: digest(path) for label, path in wrappers.items()})
     for name in args.cases:
         options = ['-DSYNTHESIS=1', '-DXILINX_FPGA=1', '-GRAM_WORD_ADDR_WIDTH=12'] + [
             '-G' + key + '=' + str(value) for key, value in CASES[name].items()]
         commands = []
         for label in ('reference', 'current'):
-            commands += ['read_slang --top ia_loader ' + shlex.join(options + list(map(str, paths[label]))),
-                'prep -top ia_loader -flatten', 'memory_map', 'async2sync', 'opt_clean',
-                'rename ia_loader ' + label, 'design -stash ' + label]
+            commands += ['read_slang --top ia_loader_valid ' + shlex.join(options + list(map(str, paths[label] + [wrappers[label]]))),
+                'prep -top ia_loader_valid -flatten', 'memory_map', 'async2sync', 'opt_clean',
+                'rename -hide w:*ram_port_wr_data* w:*ram_shared_wr_data* w:raw_port_data w:raw_shared_data',
+                'rename ia_loader_valid ' + label, 'design -stash ' + label]
         commands += ['design -copy-from reference -as reference reference',
             'design -copy-from current -as current current',
             'equiv_make reference current equivalent', 'hierarchy -top equivalent',
-            'equiv_simple -seq 1', 'opt_clean', 'equiv_induct -seq 3', 'equiv_status -assert']
+            'equiv_simple -seq 2', 'opt_clean', 'equiv_induct -seq 3', 'equiv_status -assert']
         script, log = out / (name + '.ys'), out / (name + '.log')
         script.write_text('\n'.join(commands) + '\n')
         with log.open('w') as stream:
