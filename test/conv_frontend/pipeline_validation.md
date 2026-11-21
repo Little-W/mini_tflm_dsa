@@ -20,7 +20,7 @@
 
 保存字标签按三个比特分组比较。字命中状态使用地址更新的互斥事件独立保存，响应、配置、通道更新和描述符提交分别选择完整命中结果。配置只在空闲状态接收，运行期更新直接使用对应状态和传输条件；直接描述符模式保留末拍提交优先次序。
 
-预取横坐标的核行片段与跨步窗口共用一组完整加法，模式先选择对应步长。预取纵坐标以及配置阶段的行间和抽头像素步长各自经过已有寄存器。宽算术采用普通可综合表达式及 `use_dsp` 属性。RTL 保留所有配置位宽和算术结果，不实例化器件算术或存储原语。
+预取横坐标的核行片段与跨步窗口共用一组完整加法，模式先选择对应步长。预取纵坐标以及配置阶段的行间和抽头像素步长各自经过已有寄存器。历史横坐标和两个退休行位置的完整进位结果也使用独立算术表达式。FPGA 综合分支采用普通加法及 `use_dsp` 属性，事件仿真和通用分支保留分组进位表达式；两种表示在完整二态输入上等价。宽算术采用普通可综合表达式及 `use_dsp` 属性。RTL 保留所有配置位宽和算术结果，不实例化器件算术或存储原语。
 
 八位输入在配置允许的偏移范围 −127 至 128 内形成完整九位有符号和值，再符号扩展为十六位输出。
 
@@ -51,6 +51,8 @@
 | 历史查询保存 | 9 种索引移位，逐周期命中及命中坐标通过复位检查和无界归纳 |
 | 缓存字输出状态 | 55 处状态赋值共同保存输出类别；无界归纳和 20,001 个四态周期通过 |
 | 八位输入修正 | 配置允许范围内的完整二态输入证明，以及 524,288 次 RTL 数值检查通过 |
+| 短位宽完整加法 | 18、19 位完整结果的综合分支输入证明通过；通用、FPGA 和 ASIC 事件配置共 60,000 次四态检查通过 |
+| 综合表达式逐周期比较 | 生产配置普通及窗口预取模式共 84 项、378,733 周期，通过 |
 | 固定短步长加法 | 2 至 9 位输入、完整进位结果的 8 组证明通过 |
 | 五位除三 | 32 个二态输入、1,024 个四态输入及完整输入证明通过 |
 | 缓存标签与协议 | 两种路数和三种行宽的标签证明通过；生产深度 1、2 的协议测试通过 |
@@ -59,7 +61,7 @@
 
 ## 综合结果
 
-采用生产参数和 JSON 中记录的固定依赖版本进行独立 `xc7` 映射，仅对 RTL 中标有 `use_dsp="yes"` 的算术执行 DSP 映射：逻辑 LUT 为 9,330，分布式存储占用的标称 LUT 为 376，总计 9,706，触发器为 5,952，DSP 为 113，RAMB18 为 9。完整连接图得到的寄存器间最长组合路径为 14 个单元，位于该依赖版本的缓存内部；前端自身的最长路径为 13 个单元。目标为 10 级，150 MHz 需要目标器件的综合、布局布线和静态时序分析结果确认。
+采用生产参数和 JSON 中记录的固定依赖版本进行独立 `xc7` 映射，仅对 RTL 中标有 `use_dsp="yes"` 的算术执行 DSP 映射：逻辑 LUT 为 9,215，分布式存储占用的标称 LUT 为 376，总计 9,591，触发器为 5,952，DSP 为 116，RAMB18 为 9。完整连接图得到的寄存器间最长组合路径为 13 个单元。目标为 10 级，150 MHz 需要目标器件的综合、布局布线和静态时序分析结果确认。
 
 源码散列、配置、各项结果和综合统计保存在 [pipeline_validation.json](pipeline_validation.json)。
 
@@ -85,8 +87,11 @@ python3 test/conv_frontend/tools/check_word_state.py --source-root . --reference
 python3 test/conv_frontend/tools/check_history_delta.py --source-root . --out build/frontend_history_position
 python3 test/conv_frontend/tools/check_position_snapshot.py --source-root . --out build/frontend_position_snapshot
 python3 test/conv_frontend/tools/check_s8_formatter.py --source-root . --reference-root /path/to/fixed_reference --out build/frontend_s8_formatter
+python3 test/conv_frontend/tools/check_short_sums.py --source-root . --out build/frontend_short_sums
 python3 test/conv_frontend/tools/check_small_decode.py --out build/frontend_divide_three
 python3 test/cache_storage/check_tag_stage.py --out build/cache_tag_stage
 ```
 
 `compare_frontend.py` 的 `--reference-source-root` 参数指定固定参考源码。`check_descriptor_padding.py` 的 `--reference-root` 参数指定含独立坐标候选检查的参考源码。各项测试通过 `--source-root` 选择待测源码目录。
+
+`compare_frontend.py --fpga --synthesis` 在两个比较实例上启用综合条件，同时保持测试观察模块、数值检查和接口比较有效。

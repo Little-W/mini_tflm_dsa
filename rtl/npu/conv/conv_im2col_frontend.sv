@@ -95,6 +95,18 @@ module conv_im2col_frontend #(
   function automatic logic state_uses_word(input st_t next_state);
     state_uses_word = next_state[$clog2(STREAM)] || next_state[$clog2(WAIT_WORD)];
   endfunction
+  // FPGA 综合使用完整算术结果；事件仿真保留分组进位的四态传播。
+`ifdef ASIC_SYNTHESIS
+  localparam bit p_short_sum_dsp = 1'b0;
+`elsif SYNTHESIS
+`ifdef XILINX_FPGA
+  localparam bit p_short_sum_dsp = 1'b1;
+`else
+  localparam bit p_short_sum_dsp = 1'b0;
+`endif
+`else
+  localparam bit p_short_sum_dsp = 1'b0;
+`endif
   conv_cfg_t c;
   logic configured, cfg_ok, cfg_basic_valid, cfg_basic_saved;
   logic [1:0] cfg_prepare_phase;
@@ -950,10 +962,17 @@ module conv_im2col_frontend #(
     assign retire_i_b = {1'b0, retire_bias_q};
     assign retire_i_carry = 1'b0;
     // 行偏移使用四位分组进位，移位使用缓存已有的接收寄存级。
-    parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1)) u_row_bias (
-      .i_a(retire_i_a), .i_b(retire_i_b), .i_carry(retire_i_carry),
-      .o_sum(biased_row), .o_carry(unused_row_carry)
-    );
+    if (p_short_sum_dsp) begin : g_row_bias_arithmetic
+      (* use_dsp = "yes" *) logic [18:0] arithmetic_result;
+      assign arithmetic_result = {1'b0, retire_i_a} + {1'b0, retire_i_b} +
+          {{18{1'b0}}, retire_i_carry};
+      assign {unused_row_carry, biased_row} = arithmetic_result;
+    end else begin : g_row_bias_prefix
+      parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1)) u_row_bias (
+        .i_a(retire_i_a), .i_b(retire_i_b), .i_carry(retire_i_carry),
+        .o_sum(biased_row), .o_carry(unused_row_carry)
+      );
+    end
     assign limit_reached = retire_all_bounded_q ||
       (!retire_no_bound_q && retirement_input[row_port] >= retire_compare_q);
     assign retire_payload_row = limit_reached ? {2'b0, retire_last_row_q} : biased_row;
@@ -1045,10 +1064,16 @@ module conv_im2col_frontend #(
     else if (cfg_valid && cfg_ready) p_wrap_target_q <= {cfg.output_w[14:0], 1'b0} - 16'd1;
   end
   assign p_delta = REGISTER_DESCRIPTOR ? p_history_delta_q[15:0] : 16'(p_decode - last_p);
-  parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_sum (
-    .i_a({1'b0, last_x}), .i_b({1'b0, p_delta}), .i_carry(1'b0),
-    .o_sum(p_sum), .o_carry(unused_p_sum_carry)
-  );
+  if (p_short_sum_dsp) begin : g_history_arithmetic
+    (* use_dsp = "yes" *) logic [17:0] arithmetic_result;
+    assign arithmetic_result = {2'b0, last_x} + {2'b0, p_delta};
+    assign {unused_p_sum_carry, p_sum} = arithmetic_result;
+  end else begin : g_history_prefix
+    parallel_prefix_add #(.p_width(17), .p_group_width(4), .p_preserve_groups(1'b1)) u_history_sum (
+      .i_a({1'b0, last_x}), .i_b({1'b0, p_delta}), .i_carry(1'b0),
+      .o_sum(p_sum), .o_carry(unused_p_sum_carry)
+    );
+  end
   logic [17:0] history_reduce_i_a, history_reduce_i_b, history_reduce_o_sum;
   logic [17:0] history_reduce_generate;
   (* use_dsp = "yes" *) logic [18:0] history_reduce_full_sum;

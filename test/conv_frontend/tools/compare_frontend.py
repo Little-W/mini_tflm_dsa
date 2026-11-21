@@ -169,6 +169,7 @@ def main():
     parser.add_argument('--narrow-mode', type=int, choices=(0, 1, 2), default=0,
                         help='0 为宽输出，1 为窄输出，2 为逐分块交替')
     parser.add_argument('--fpga', action='store_true', help='启用 XILINX_FPGA 配置')
+    parser.add_argument('--synthesis', action='store_true', help='验证 SYNTHESIS 条件下的 RTL 表达式')
     parser.add_argument('--register-cache-request', type=int, choices=(0, 1),
                         help='显式选择两个比较实例的请求寄存配置')
     parser.add_argument('--register-descriptor', type=int, choices=(0, 1),
@@ -189,6 +190,16 @@ def main():
     common = [candidate_root / path.relative_to(ROOT)
               if path.is_relative_to(ROOT) and path.relative_to(ROOT).parts[0] == 'rtl' else path
               for path in common]
+    if args.synthesis:
+        monitor_root = out / 'synthesis_monitors'
+        monitor_root.mkdir(exist_ok=True)
+        for index, path in enumerate(common):
+            if path.is_relative_to(ROOT / 'test/monitors'):
+                monitor = monitor_root / path.name
+                # 验证观察模块保持启用，生产源码使用完整综合条件。
+                monitor.write_text('`undef SYNTHESIS\n' + path.read_text() +
+                                   '\n`define SYNTHESIS 1\n')
+                common[index] = monitor
     bench = out / 'tb_conv_im2col_frontend.sv'
     bench.write_text(compare_bench(widen_memory((TEST_ROOT / 'tests/tb_conv_im2col_frontend.sv').read_text()),
                                    args.register_cache_request, args.register_descriptor, args.cache_response_depth))
@@ -211,6 +222,7 @@ def main():
         hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
         run([simulator, '--binary', '--timing', '--assert', '-DNPU_SIM_ASSERT', '-DCONV_ASSERT', '-Wno-fatal',
              *(['-DXILINX_FPGA=1'] if args.fpga else []),
+             *(['-DSYNTHESIS=1'] if args.synthesis else []),
              '--top-module', top, f'-GSIZE={size}', f'-GBUS_WIDTH={width}', f'-GLANES={lanes}',
              f'-GCACHE_SETS={args.cache_sets}', f'-GLINE_BYTES={args.line_bytes}', f'-GNARROW_MODE={args.narrow_mode}',
              f"-GWINDOWED=1'b{window}", f"-GPREFETCH=1'b{window}", '--Mdir', case / 'obj', '-j', '2',
@@ -235,6 +247,7 @@ def main():
     top = 'tb_conv_control'
     run([simulator, '--binary', '--timing', '--assert', '-DNPU_SIM_ASSERT', '-DCONV_ASSERT', '-Wno-fatal',
          *(['-DXILINX_FPGA=1'] if args.fpga else []),
+         *(['-DSYNTHESIS=1'] if args.synthesis else []),
          '--top-module', top, '--Mdir', case / 'obj', '-j', '2', *compile_options,
          *common, reference, control], case / 'build.log')
     warnings = reviewed_warnings(case / 'build.log', args.register_descriptor)
@@ -252,7 +265,7 @@ def main():
               'register_cache_request': args.register_cache_request,
               'register_descriptor': args.register_descriptor, 'cache_sets': args.cache_sets,
               'cache_response_depth': args.cache_response_depth,
-              'line_bytes': args.line_bytes, 'narrow_mode': args.narrow_mode, 'fpga': args.fpga,
+              'line_bytes': args.line_bytes, 'narrow_mode': args.narrow_mode, 'fpga': args.fpga, 'synthesis': args.synthesis,
               'configurations': results}
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     print('FRONTEND_COMPARISON_PASS', out / 'summary.json')
