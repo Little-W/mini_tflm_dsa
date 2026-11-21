@@ -1121,9 +1121,22 @@ module vec_requant_full #(
   assign dma_start = dma_start_hskd;
   assign dma_is_write = 1'b0;
   assign dma_linear_read_mode = 1'b0;
+  localparam int p_dma_address_width = REG_WIDTH > 32 ? REG_WIDTH : 32;
+  (* use_dsp = "yes" *) logic [p_dma_address_width-1:0] dma_element_offset;
+  logic [p_dma_address_width-1:0] dma_byte_offset;
+  (* use_dsp = "yes" *) logic [p_dma_address_width-1:0] dma_multiplier_address;
+  (* use_dsp = "yes" *) logic [p_dma_address_width-1:0] dma_shift_address;
+  (* use_dsp = "yes" *) logic [31:0] load_next_offset;
+
+  // 两类量化参数共用元素偏移，基地址分别相加后再选择，保持完整表达式位宽。
+  assign dma_element_offset = quant_tile_idx_load_r * VLEN + load_offset;
+  assign dma_byte_offset = dma_element_offset * BYTES_PER_WORD;
+  assign dma_multiplier_address = mul_base_r + dma_byte_offset;
+  assign dma_shift_address = sh_base_r + dma_byte_offset;
+  assign load_next_offset = load_offset + REG_WIDTH'(beats_expect);
   assign dma_base_addr_cur = (load_phase == PH_MUL)
-                           ? (mul_base_r + (quant_tile_idx_load_r * VLEN + load_offset) * BYTES_PER_WORD)
-                           : (sh_base_r  + (quant_tile_idx_load_r * VLEN + load_offset) * BYTES_PER_WORD);
+                           ? REG_WIDTH'(dma_multiplier_address)
+                           : REG_WIDTH'(dma_shift_address);
   assign dma_base_addr = cmd_base_addr_r;
   assign dma_row_stride = REG_WIDTH'(REG_WIDTH / 8);
   assign dma_rows_to_read = REG_WIDTH'(1);
@@ -1534,7 +1547,7 @@ module vec_requant_full #(
 
                 if (load_phase == PH_MUL) begin
                   if (load_has_more) begin
-                    load_offset <= load_offset + REG_WIDTH'(beats_expect);
+                    load_offset <= load_next_offset;
                   end else begin
                     // mul 收满 -> 切到 shift，下一拍会去发 shift 的命令
                     load_phase  <= PH_SHIFT;
@@ -1542,7 +1555,7 @@ module vec_requant_full #(
                   end
                 end else begin
                   if (load_has_more) begin
-                    load_offset <= load_offset + REG_WIDTH'(beats_expect);
+                    load_offset <= load_next_offset;
                   end else begin
                     // shift 也收满，参数就绪：同时锁存 lane_need，并根据当拍 row_consume_valid 决定是否直接进 COMPUTE
                     quant_params_valid <= 1'b1;
