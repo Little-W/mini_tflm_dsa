@@ -224,12 +224,14 @@ module axi_block_dma_arbiter #(
 
     localparam int BYTE_PER_BEAT = BUS_WIDTH / 8;
 
-    logic local_abort, transfer_abort, bus_error_event;
+    logic local_abort, dma_abort, transfer_abort, bus_error_event;
+    logic response_error_pending, completed_error;
 
-    // 错误响应在本地立即阻止新命令，已接收的总线事务继续排空。
-    // 选择寄存上报时，顶层控制从下一周期接收错误状态。
+    // 错误响应有效时即停止接收新命令，接收资格不经过返回通道的就绪逻辑。
+    // 错误上报仍以真实响应握手为准，已接收事务继续排空。
     if (p_register_bus_error) begin : g_registered_bus_error
-        assign local_abort = abort || bus_error_event;
+        assign local_abort = abort || response_error_pending || completed_error;
+        assign dma_abort = abort || bus_error_event;
         assign transfer_abort = abort || bus_error;
         always_ff @(posedge clk) begin
             if (!rst_n) bus_error <= 1'b0;
@@ -237,6 +239,7 @@ module axi_block_dma_arbiter #(
         end
     end else begin : g_direct_bus_error
         assign local_abort = abort;
+        assign dma_abort = abort;
         assign transfer_abort = abort;
         assign bus_error = bus_error_event;
     end
@@ -617,10 +620,14 @@ module axi_block_dma_arbiter #(
     // 写授予占用期间保持非空闲，开始资格不再经生产者组合信号返回空闲判断。
     assign idle = !rd_active && rd_grant_client == C_NONE &&
                   !rd_dma_busy && !wr_dma_busy && !rd_dma_start_q && !wr_active;
-    // 写响应资格和完成错误提前计算，读写就绪同时直接参与末级错误判断。
+    // 响应错误资格与命令完成错误并行计算，响应握手只控制错误上报。
+    assign response_error_pending = (m_axi_rvalid && m_axi_rresp[1]) ||
+        (m_axi_bvalid && m_axi_bresp[1]);
+    assign completed_error = (rd_dma_done && dma_rd_error) ||
+        (wr_dma_done && dma_wr_error);
     assign bus_error_event = (m_axi_rvalid && m_axi_rready && m_axi_rresp[1]) ||
         (m_axi_bvalid && m_axi_bready && m_axi_bresp[1]) ||
-        (rd_dma_done && dma_rd_error) || (wr_dma_done && dma_wr_error);
+        completed_error;
     logic rd_dma_linear_read_mode_q;
     logic rd_dma_im2col_q;
     logic [31:0] rd_dma_p0_q, rd_dma_q0_q, rd_dma_group_q;
@@ -697,12 +704,12 @@ module axi_block_dma_arbiter #(
         .win_req_p0,.win_req_q0,.win_req_cols,.win_req_tag,
         .win_rsp_valid,.win_rsp_ready,.win_rsp_tag,.win_rsp_col,.win_rsp_data,.win_rsp_mask,
         .win_rsp_last,.win_rsp_error,.win_busy,
-        .abort(local_abort),
+        .abort(dma_abort),
         .conv_cfg_valid(dma_conv_cfg_valid), .conv_cfg_ready(dma_conv_cfg_ready),
         .conv_enable, .dma_range_enable, .conv_cfg,
         .conv_sched_r, .conv_sched_groups, .conv_range_base, .conv_range_end,
         .conv_error, .conv_busy,
-        .rd_start           (rd_dma_start_q),
+        .rd_start           (rd_dma_start_q && !local_abort),
         .rd_tag             (rd_dma_tag_q),
         .rd_start_ready     (rd_dma_start_ready),
         .rd_response_tag    (rd_dma_response_tag),

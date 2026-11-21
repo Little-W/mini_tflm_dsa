@@ -20,7 +20,10 @@ module dma_abort_top #(
   output logic [7:0] arlen, awlen,
   output logic [BUS_WIDTH-1:0] wdata,
   output logic [BUS_WIDTH/8-1:0] wstrb,
-  output logic wlast
+  output logic wlast,
+  output logic buffer_valid, buffer_ready, buffer_last,
+  output logic [BUS_WIDTH-1:0] buffer_data,
+  output logic [BUS_WIDTH/8-1:0] buffer_mask
 );
   logic oa_granted, dw_granted, oa_done, dw_done, dw_error;
   logic oa_source_ready, dw_source_ready;
@@ -29,6 +32,12 @@ module dma_abort_top #(
   assign write_done = owner_dw ? dw_done && !dw_error : oa_done;
   assign write_done_raw = owner_dw ? dw_done : oa_done;
   assign write_error_raw = owner_dw && dw_error;
+  // 比较写缓冲接收顺序与外部 AXI 接收顺序，覆盖中止时已经保存的数据。
+  assign buffer_valid = dut.u_dma.linear_wvalid;
+  assign buffer_ready = dut.u_dma.linear_wready;
+  assign buffer_data = dut.u_dma.linear_wdata;
+  assign buffer_mask = dut.u_dma.linear_wstrb;
+  assign buffer_last = dut.u_dma.linear_wlast;
   axi_block_dma_arbiter #(
     .DATA_WIDTH(DATA_WIDTH), .KERNEL_WIDTH(8), .SIZE(SIZE), .DMA_SIZE(DMA_SIZE),
     .CACHE_BLOCKS(CACHE_BLOCKS),

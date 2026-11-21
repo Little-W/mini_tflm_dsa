@@ -3,6 +3,7 @@
 #include "verilated.h"
 #include <cstdint>
 #include <cstdio>
+#include <deque>
 #include <stdexcept>
 
 #ifndef TEST_BUS_WIDTH
@@ -27,6 +28,9 @@ struct Simulation {
   unsigned write_left=0, accepted=0, written=0, completed=0, errors=0, addresses=0;
   unsigned raw_completed=0, error_completions=0;
   unsigned read_addresses=0, read_completions=0;
+  struct WriteBeat {uint64_t data; uint32_t mask; bool last;};
+  std::deque<WriteBeat> buffered_beats;
+  bool source_handshake=false;
   uint64_t held_data=0;
   uint32_t held_mask=0, held_last=0;
   void step() {
@@ -38,6 +42,7 @@ struct Simulation {
     dut.bvalid=response_release && response_pending;
     dut.source_data=(TEST_BUS_WIDTH==64 ? UINT64_C(0xc0d1e2f391827364) : UINT64_C(0x91827364)) + accepted;
     dut.eval();
+    source_handshake=dut.source_valid && dut.source_ready;
     observed_grant=dut.write_granted;
     if (stalled) require(dut.wvalid && dut.wdata==held_data && dut.wstrb==held_mask &&
                          dut.wlast==held_last, "W response changed while stalled");
@@ -48,7 +53,9 @@ struct Simulation {
       if (dut.write_done) ++completed;
       if (dut.write_done_raw) ++raw_completed;
       if (dut.write_error_raw) ++error_completions;
-      if (dut.source_valid && dut.source_ready) ++accepted;
+      if (source_handshake) ++accepted;
+      if (dut.buffer_valid && dut.buffer_ready)
+        buffered_beats.push_back({dut.buffer_data,dut.buffer_mask,bool(dut.buffer_last)});
       if (dut.rvalid && dut.rready) {read_pending=false;++read_completions;}
       if (dut.bvalid && dut.bready) response_pending=false;
       if (dut.wvalid && dut.wready) {
@@ -56,8 +63,10 @@ struct Simulation {
         require(bool(dut.wlast)==(write_left==1), "W last differs from AW length");
         if (!fault_latched && !external_abort)
           require(dut.wstrb==ByteMask, "live transfer lost byte enables");
-        if (fault_latched && written>0)
-          require(dut.wstrb==0, "aborted transfer consumed new source data");
+        require(!buffered_beats.empty(), "W beat has no buffered predecessor");
+        const WriteBeat expected=buffered_beats.front();buffered_beats.pop_front();
+        require(dut.wdata==expected.data && dut.wstrb==expected.mask &&
+                bool(dut.wlast)==expected.last, "W beat differs from buffered order");
         ++written;
         if (--write_left==0) response_pending=true;
       }
@@ -93,7 +102,10 @@ struct Simulation {
       step();
       quiet_cycles=(dut.idle && !dut.bus_error && !read_pending && !write_left &&
                     !response_pending) ? quiet_cycles+1 : 0;
-      if (quiet_cycles==3) return;
+      if (quiet_cycles==3) {
+        require(buffered_beats.empty(), "DMA retained a buffered write after draining");
+        return;
+      }
     }
     throw std::runtime_error("DMA drain timeout");
   }
@@ -115,8 +127,10 @@ int main(int argc, char** argv) {
           require(!s.observed_grant && s.addresses==0,"read error accepted a new write command");
           s.dut.write_req=0;s.dut.write_start=0;
         } else s.write();
+        const unsigned accepted_before_fault=s.accepted;
         if (mode==1) {s.dut.rresp=2;s.read_release=true;s.write_release=true;s.step();
-          require(s.accepted==1 && s.written==1,"same-cycle R error and W transfer lost source handshake");}
+          require(s.source_handshake && s.accepted==accepted_before_fault+1 && s.written==1,
+                  "same-cycle R error and W transfer lost source handshake");}
         else if (mode==2) {s.dut.rresp=2;s.read_release=true;s.step();}
         else if (mode==3) {s.external_abort=true;s.read_release=true;s.step();}
         else if (mode==4 || mode==6 || mode==7) {
@@ -126,14 +140,17 @@ int main(int argc, char** argv) {
           s.dut.bresp=mode==7 ? 2 : 0;
           s.read_release=true;s.response_release=mode!=4;s.step();
         }
+        const unsigned accepted_at_fault=s.accepted;
         s.drain();
         require(s.addresses==(mode==5?0u:1u) && s.written==(mode==5?0u:4u),
                 "accepted write transaction did not drain");
         require(s.completed==(mode==0?1u:0u),"incorrect successful completion after error or abort");
         require(s.raw_completed==(mode==0?1u:0u) && s.error_completions==0,
                 "aborted owner published a completion");
-        if (mode==1) require(s.accepted==1,"source data accepted after read error");
-        if (mode==2 || mode==3) require(s.accepted==0,"stalled source consumed after abort");
+        if (mode==1 || mode==2)
+          require(s.accepted==accepted_at_fault,"source data accepted after read error");
+        if (mode==3)
+          require(s.accepted==accepted_before_fault,"source data accepted after external abort");
         if (mode==0 || mode==4 || mode==6 || mode==7) require(s.accepted==4,"normal source beat count differs");
         s.dut.source_valid=0;s.external_abort=false;s.fault_latched=false;
         s.dut.rresp=0;s.dut.bresp=0;s.read_release=false;
