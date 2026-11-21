@@ -20,6 +20,8 @@ def main() -> int:
     parser.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--jobs', type=int, default=2)
+    parser.add_argument('--verilator', default='verilator')
+    parser.add_argument('--fpga', action='store_true')
     args = parser.parse_args()
     root, out = args.repo.resolve(), args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -28,9 +30,11 @@ def main() -> int:
              'rtl/npu/loaders/bias_loader_buffer.sv', 'rtl/common/regfile.v',
              'rtl/common/parallel_prefix_add.sv']
     sources = {name: digest(root / name) for name in names}
-    command = ['verilator', '--binary', '--timing', '--assert', '-Wno-fatal',
+    command = [args.verilator, '--binary', '--timing', '--assert', '-Wno-fatal',
                '--top-module', 'tb_bias_loader_reuse', '-j', str(args.jobs),
                '--Mdir', str(out / 'obj')] + [str(root / name) for name in names]
+    if args.fpga:
+        command += ['-DSYNTHESIS=1', '-DXILINX_FPGA=1']
     with (out / 'build.log').open('w') as log:
         build = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
     if build.returncode:
@@ -43,7 +47,7 @@ def main() -> int:
              for line in output.splitlines() if line.startswith('BIAS_REUSE_PASS ')]
     unchanged = sources == {name: digest(root / name) for name in names}
     passed = run.returncode == 0 and 'BIAS_LOADER_REUSE_PASS' in output and unchanged
-    result = {'passed': passed, 'case_count': len(cases), 'cases': cases,
+    result = {'passed': passed, 'case_count': len(cases), 'cases': cases, 'fpga': args.fpga,
               'source_sha256': sources, 'sources_unchanged': unchanged,
               'build_command': command, 'build_returncode': build.returncode,
               'run_returncode': run.returncode,
