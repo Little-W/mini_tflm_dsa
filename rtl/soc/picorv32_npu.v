@@ -1257,6 +1257,8 @@ module picorv32 #(
 	(* use_dsp = "yes" *) wire [31:0] sequential_address_sum = selected_fetch_pc + (compressed_instr ? 32'd2 : 32'd4);
 	(* use_dsp = "yes" *) wire [31:0] jump_address_sum = selected_fetch_pc + decoded_imm_j;
 	(* use_dsp = "yes" *) wire [31:0] branch_address_sum = reg_pc + decoded_imm;
+	// 访存指令共用保存操作数与立即数的完整地址加法。
+	(* use_dsp = "yes" *) wire [31:0] memory_address_sum = reg_op1 + decoded_imm;
 
 	generate if (TWO_CYCLE_ALU) begin
 		always @(posedge clk) begin
@@ -1898,7 +1900,7 @@ module picorv32 #(
 							trace_valid <= 1;
 							trace_data <= (irq_active ? TRACE_IRQ : 0) | TRACE_ADDR | ((reg_op1 + decoded_imm) & 32'hffffffff);
 						end
-						reg_op1 <= reg_op1 + decoded_imm;
+						reg_op1 <= memory_address_sum;
 						set_mem_do_wdata = 1;
 					end
 					if (!mem_do_prefetch && mem_done) begin
@@ -1926,7 +1928,7 @@ module picorv32 #(
 							trace_valid <= 1;
 							trace_data <= (irq_active ? TRACE_IRQ : 0) | TRACE_ADDR | ((reg_op1 + decoded_imm) & 32'hffffffff);
 						end
-						reg_op1 <= reg_op1 + decoded_imm;
+						reg_op1 <= memory_address_sum;
 						set_mem_do_rdata = 1;
 					end
 					if (!mem_do_prefetch && mem_done) begin

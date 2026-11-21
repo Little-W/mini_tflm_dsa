@@ -1,0 +1,114 @@
+{
+  "passed": true,
+  "reference_commit": "cedf4ed33661a53c8194eca1d484cdc2279d7549",
+  "source_sha256": "61e73b91809b6f5aee006ed2260f63602eeb37161e6054f7c0d2f7b5a58c23e1",
+  "reference_source_sha256": "3f233771fb124b7159d036ec44a9c7b4254cf5594020198f5418f54612036844",
+  "test_source_sha256": "724243062d0b95e0e6fc87a408539b0796acbe1094bd30d8dcbc49ab3620005d",
+  "formal_helper_sha256": "b7ffacb72fee11fb7d2265b956d19f26578d629cb8f91853d9c9557a5a6a7e72",
+  "formal": {
+    "passed": true,
+    "profiles": [
+      {
+        "passed": true,
+        "profile": 0,
+        "parameters": {
+          "ENABLE_COUNTERS": 1,
+          "ENABLE_COUNTERS64": 0,
+          "ENABLE_REGS_16_31": 1,
+          "ENABLE_REGS_DUALPORT": 1,
+          "TWO_STAGE_SHIFT": 1,
+          "BARREL_SHIFTER": 0,
+          "COMPRESSED_ISA": 0,
+          "CATCH_MISALIGN": 1,
+          "CATCH_ILLINSN": 1,
+          "ENABLE_MUL": 1,
+          "ENABLE_FAST_MUL": 0,
+          "ENABLE_DIV": 1,
+          "ENABLE_IRQ": 0,
+          "PROGADDR_RESET": 0,
+          "STACKADDR": 262144,
+          "TWO_CYCLE_ALU": 0,
+          "TWO_CYCLE_COMPARE": 0
+        },
+        "equivalent_bits": 3174,
+        "log_sha256": "085f6fea1fbd1d6a344e22f36b7634e388976f3b813f0160d911e1e8f5fdd2e4"
+      },
+      {
+        "passed": true,
+        "profile": 1,
+        "parameters": {
+          "ENABLE_COUNTERS": 1,
+          "ENABLE_COUNTERS64": 1,
+          "ENABLE_REGS_16_31": 1,
+          "ENABLE_REGS_DUALPORT": 1,
+          "TWO_STAGE_SHIFT": 1,
+          "BARREL_SHIFTER": 0,
+          "COMPRESSED_ISA": 1,
+          "CATCH_MISALIGN": 1,
+          "CATCH_ILLINSN": 1,
+          "ENABLE_MUL": 1,
+          "ENABLE_FAST_MUL": 0,
+          "ENABLE_DIV": 1,
+          "ENABLE_IRQ": 1,
+          "PROGADDR_RESET": 0,
+          "STACKADDR": 262144,
+          "TWO_CYCLE_ALU": 0,
+          "TWO_CYCLE_COMPARE": 0
+        },
+        "equivalent_bits": 3559,
+        "log_sha256": "d967a5efa404818b1a1ff59629110310027510f82ebfd03746bd0d7d79774cf5"
+      },
+      {
+        "passed": true,
+        "profile": 2,
+        "parameters": {
+          "ENABLE_COUNTERS": 1,
+          "ENABLE_COUNTERS64": 0,
+          "ENABLE_REGS_16_31": 1,
+          "ENABLE_REGS_DUALPORT": 1,
+          "TWO_STAGE_SHIFT": 1,
+          "BARREL_SHIFTER": 0,
+          "COMPRESSED_ISA": 0,
+          "CATCH_MISALIGN": 1,
+          "CATCH_ILLINSN": 1,
+          "ENABLE_MUL": 1,
+          "ENABLE_FAST_MUL": 0,
+          "ENABLE_DIV": 1,
+          "ENABLE_IRQ": 0,
+          "PROGADDR_RESET": 0,
+          "STACKADDR": 262144,
+          "TWO_CYCLE_ALU": 1,
+          "TWO_CYCLE_COMPARE": 1
+        },
+        "equivalent_bits": 3179,
+        "log_sha256": "000466a85954939003e2c54c2d359bf5a3fadf3fa24d97385148b6a7c8b2136e"
+      },
+      {
+        "passed": true,
+        "profile": 3,
+        "parameters": {
+          "ENABLE_COUNTERS": 0,
+          "ENABLE_COUNTERS64": 0,
+          "ENABLE_REGS_16_31": 0,
+          "ENABLE_REGS_DUALPORT": 0,
+          "TWO_STAGE_SHIFT": 1,
+          "BARREL_SHIFTER": 0,
+          "COMPRESSED_ISA": 0,
+          "CATCH_MISALIGN": 1,
+          "CATCH_ILLINSN": 1,
+          "ENABLE_MUL": 0,
+          "ENABLE_FAST_MUL": 0,
+          "ENABLE_DIV": 0,
+          "ENABLE_IRQ": 0,
+          "PROGADDR_RESET": 0,
+          "STACKADDR": 262144,
+          "TWO_CYCLE_ALU": 0,
+          "TWO_CYCLE_COMPARE": 0
+        },
+        "equivalent_bits": 1612,
+        "log_sha256": "a37d89527c45c7b68c862a095e7cd4281f1de8119c3ab68fc43ea2b1953d91da"
+      }
+    ],
+    "input_constraints": []
+  }
+}
