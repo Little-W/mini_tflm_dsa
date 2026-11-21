@@ -86,7 +86,9 @@ module conv_next_use_predictor (
   logic [15:0] h_mask_q, w_mask_q;
   logic [32:0] y_pad_q, x_pad_q;
   logic [31:0] channel_q, current_pb_q, current_local_q, current_group_q;
-  logic [15:0] ky_q, kx_q;
+  // An enabled configuration has 1 <= kh*kw <= 25; active indices are below
+  // their nonzero kernel dimensions, so five bits retain every issued tap.
+  logic [4:0] ky_q, kx_q;
   logic [4:0] tap_index_q;
   logic issue_complete;
   logic [31:0] best_q;
@@ -271,11 +273,11 @@ module conv_next_use_predictor (
         pipe_valid <= {pipe_valid[5:0],!issue_complete};
         pipe_last <= {pipe_last[5:0],!issue_complete && last_tap};
         if (!issue_complete) begin
-          mul_y_s0<=32'(ky_q)*32'(dh_q);mul_x_s0<=32'(kx_q)*32'(dw_q);
+          mul_y_s0<=32'(21'(ky_q)*21'(dh_q));mul_x_s0<=32'(21'(kx_q)*21'(dw_q));
           tap_s0<=tap_index_q;tap_index_q<=tap_index_q+5'd1;
           if (last_tap) issue_complete<=1;
-          else if (kx_q==kw_q-16'd1) begin kx_q<=0;ky_q<=ky_q+16'd1;end
-          else kx_q<=kx_q+16'd1;
+          else if (kx_q==kw_q-16'd1) begin kx_q<=0;ky_q<=ky_q+5'd1;end
+          else kx_q<=kx_q+5'd1;
         end
         if (pipe_valid[0]) begin
           oy_s1<=oy_s0[15:0];ox_s1<=ox_s0[15:0];tap_s1<=tap_s0;

@@ -3,6 +3,10 @@
 /* verilator lint_off DECLFILENAME */
 module conv_im2col_frontend_observer;
 
+// Mirror the RTL's explicit five-bit state order; hierarchical enum item
+// references trigger an internal fault in Verilator 5.040.
+localparam logic [4:0] OBS_IDLE = 5'd0, OBS_WAIT_WORD = 5'd19, OBS_ZERO_STREAM = 5'd21;
+
 wire [31:0] stat_hits=conv_im2col_frontend.u_cache.tb_observer.stat_hits;
 wire [31:0] stat_misses=conv_im2col_frontend.u_cache.tb_observer.stat_misses;
 wire [31:0] stat_read_bytes=conv_im2col_frontend.u_cache.tb_observer.stat_read_bytes;
@@ -44,7 +48,7 @@ always @(posedge conv_im2col_frontend.clk) begin
   end else if (profile_enabled || trace_enabled) begin
     profile_cycle++;
     state_cycles[conv_im2col_frontend.state]++;
-    if (conv_im2col_frontend.state==conv_im2col_frontend.IDLE) begin
+    if (conv_im2col_frontend.state==OBS_IDLE) begin
       if (!conv_im2col_frontend.tile_valid) idle_no_valid++;
       if (!conv_im2col_frontend.tile_ready) idle_not_ready++;
       if (conv_im2col_frontend.cache_hint_pending) idle_cache_hint++;
@@ -59,14 +63,14 @@ always @(posedge conv_im2col_frontend.clk) begin
       cache_requests++;
     if (conv_im2col_frontend.cache_port_valid && !conv_im2col_frontend.cache_port_ready)
       request_stalls++;
-    if (conv_im2col_frontend.state==conv_im2col_frontend.WAIT_WORD &&
+    if (conv_im2col_frontend.state==OBS_WAIT_WORD &&
         !conv_im2col_frontend.cache_rsp_valid) response_waits++;
     if (conv_im2col_frontend.wr_valid && !conv_im2col_frontend.wr_ready) response_holds++;
     if (conv_im2col_frontend.wr_valid && conv_im2col_frontend.wr_ready) begin
       output_beats++;
       if (previous_output) consecutive_outputs++;
       if (conv_im2col_frontend.narrow_output) narrow_beats++;
-      if (conv_im2col_frontend.state==conv_im2col_frontend.ZERO_STREAM) padding_beats++;
+      if (conv_im2col_frontend.state==OBS_ZERO_STREAM) padding_beats++;
       if (waiting_first_response) begin
         first_response_cycles+=profile_cycle-descriptor_start;
         if (profile_cycle-descriptor_start>first_response_max)

@@ -3,6 +3,9 @@
 // A requested 16-byte sector finishes while its 64-byte allocation is held.
 // The production AXI-Lite wrapper supplies the actual clock-gating logic.
 module tb_operand_drain;
+`ifdef XILINX_FPGA
+  glbl glbl();
+`endif
   localparam int WORDS=16384;
   localparam logic [31:0] A=32'h1000, B=32'h2000, GOUT=32'h7000;
   localparam logic [31:0] CI=32'h3003, CW=32'h4001, CO=32'h6003;
@@ -68,6 +71,19 @@ module tb_operand_drain;
 
   int starts=0,done_handshakes=0,flushes=0;
   int external_reads=0;
+  int core_edges=0;
+  time core_last_rise;
+  bit core_saw_rise=0;
+  always @(posedge dut.npu_core_clk) begin
+    if (clk !== 1'b1 || ($time % 10) != 5)
+      $fatal(1,"partial or unexpected core clock rising edge at %0t",$time);
+    core_edges++;
+    core_last_rise=$time;
+    core_saw_rise=1;
+  end
+  always @(negedge dut.npu_core_clk)
+    if (core_saw_rise && $time-core_last_rise != 5)
+      $fatal(1,"short or extended core clock high pulse at %0t",$time);
   always @(posedge clk) if(rst_n) begin
     if(dut.u_npu_top.cfg_start_event) starts++;
     if(dut.npu_done_valid && dut.npu_done_ready) done_handshakes++;
@@ -139,12 +155,17 @@ module tb_operand_drain;
     wr('h004,4);
   endtask
   task automatic await_gated;
+    int idle_edges;
     repeat(12)@(negedge clk);
     assert(!dut.npu_clk_gate_en)else $fatal(1,"clock did not gate after drained task");
+    idle_edges=core_edges;
+    repeat(5) @(negedge clk);
+    assert(core_edges==idle_edges && dut.npu_core_clk===1'b0)
+      else $fatal(1,"core clock toggled while gated");
   endtask
 
   bit expect_red;
-  int timeout,hold_flushes,hold_done;
+  int timeout,hold_flushes,hold_done,hold_edges;
   int expected[4];
   logic [31:0] status;
   initial begin
@@ -165,7 +186,7 @@ module tb_operand_drain;
       assert((acc%((oc==0)?4:8))==0)else $fatal(1,"reference requires exact scaling");
       expected[p*2+oc]=acc/((oc==0)?4:8);
     end
-    repeat(8)@(negedge clk);rst_n=1;repeat(8)@(negedge clk);
+    repeat(15)@(negedge clk);rst_n=1;repeat(8)@(negedge clk);
     gemm();
     timeout=0;
     while(!(hold_tail && dut.u_npu_top.controller_done_valid))begin
@@ -191,6 +212,7 @@ module tb_operand_drain;
       $display("OPERAND_DRAIN_RED_REPRODUCED starts=%0d flushes=%0d remaining_beats=%0d",starts,flushes,memory.rd_left);
       $finish;
     end else begin
+      hold_edges=core_edges;
       repeat(250)begin
         @(negedge clk);
         assert(!dut.npu_done_valid && !dut.npu_sa_ready && npu_busy)
@@ -200,6 +222,7 @@ module tb_operand_drain;
         assert(flushes==hold_flushes && starts==1 && done_handshakes==hold_done)
           else $fatal(1,"job side effect while suffix held");
       end
+      assert(core_edges-hold_edges==250) else $fatal(1,"missing core clock edges during held drain");
       wr('h000,1,2'b10); // Active task: duplicate START must not cause a flush.
       @(negedge clk);release_tail=1;
       await_done(0);await_gated();
@@ -214,7 +237,7 @@ module tb_operand_drain;
       assert(starts==3 && flushes==3 && done_handshakes==3 && external_reads==0)
         else $fatal(1,"job/drain accounting mismatch starts=%0d flushes=%0d done=%0d reads=%0d",
                     starts,flushes,done_handshakes,external_reads);
-      $display("OPERAND_DRAIN_PASS jobs=%0d flushes=%0d done_handshakes=%0d held_cycles=250 conv_outputs=4 read_bytes=%0d write_bytes=%0d",starts,flushes,done_handshakes,read_bytes,write_bytes);
+      $display("OPERAND_DRAIN_PASS jobs=%0d flushes=%0d done_handshakes=%0d held_cycles=250 core_edges=%0d conv_outputs=4 read_bytes=%0d write_bytes=%0d",starts,flushes,done_handshakes,core_edges,read_bytes,write_bytes);
       $finish;
     end
   end

@@ -81,6 +81,25 @@ module predictor_tb;
       end
       $display("PREDICTOR_CASE_PASS case=%0d enabled=%0d vectors=%0d",ci,fields[20],fields[21]);
     end
+`ifndef NPU_SIM_ASSERT
+    // Override a live request and retry starts while busy; compare every output
+    // against the untouched reference, including configuration interruptions.
+    @(negedge clk);
+    cfg.kernel_h=25; cfg.kernel_w=1; cfg.dilation_h=65535;
+    cfg_valid=1; start=1;
+    @(negedge clk); cfg_valid=0; start=0;
+    while (cfg_busy) @(negedge clk);
+    if (!enabled) $fatal(1,"stress configuration not enabled");
+    start=1;
+    repeat (12) @(negedge clk);
+    cfg_valid=1;
+    @(negedge clk); cfg_valid=0; start=0;
+    while (cfg_busy) @(negedge clk);
+    start=1;
+    repeat (40) @(negedge clk);
+    start=0;
+    $display("PREDICTOR_INTERRUPT_STRESS_PASS");
+`endif
     $fclose(config_fd);$fclose(vectors_fd);
     $display("PREDICTOR_PASS cases=%0d enabled_cases=%0d disabled_cases=%0d vectors=%0d max_tap_latency=%0d",
       cases,enabled_cases,disabled_cases,total_vectors,maximum_latency);

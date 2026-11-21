@@ -125,8 +125,11 @@ module window_error_top #(
     end else begin
       if (fault_target && response_allow && win_rsp_valid && win_rsp_ready) begin
         assert(window_requests==2 && window_completions==1);
-        if (inject_inflight) assert(SHARED_QUANT_ENABLE && engine.dw_shared_inflight!=0);
-        else assert(engine.u_writeback.pending_bytes!=0 && !wr_granted);
+        if (inject_inflight) begin
+          assert(SHARED_QUANT_ENABLE && engine.dw_shared_inflight!=0);
+        end else begin
+          assert(engine.u_writeback.pending_bytes!=0 && !wr_granted);
+        end
         injected_errors<=injected_errors+1;
       end
       if (wr_start && engine.tb_observer.is_FAILED) begin

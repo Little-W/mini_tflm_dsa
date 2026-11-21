@@ -51,6 +51,8 @@ def main():
     parser.add_argument("--verilator", type=Path,
                         default=Path(shutil.which("verilator") or "verilator"))
     parser.add_argument("--reference-ref", help="Compare every public output with this Git revision")
+    parser.add_argument("--no-contract-assert", action="store_true",
+                        help="Exercise out-of-contract start/busy inputs")
     args = parser.parse_args()
     args.build = args.build.resolve()
     args.out = args.out.resolve()
@@ -75,6 +77,11 @@ def main():
         ("stride_h_not_power_of_two", {"stride_h": 3}),
         ("stride_w_not_power_of_two", {"stride_w": 3}),
         ("kernel_tap_limit", {"kernel_h": 6, "kernel_w": 5}),
+        ("kernel_zero_h", {"kernel_h": 0}),
+        ("kernel_zero_w", {"kernel_w": 0}),
+        ("kernel_max_h", {"kernel_h": 65535, "kernel_w": 1}),
+        ("kernel_max_w", {"kernel_h": 1, "kernel_w": 65535}),
+        ("kernel_max_product", {"kernel_h": 65535, "kernel_w": 65535}),
         ("rank_block_span_overflow", {"groups": 1 << 30}),
         ("rank_total_overflow", {"output_h": 65535, "output_w": 65535}),
         ("zero_dilation", {"dilation_h": 0}), ("zero_groups", {"groups": 0}),
@@ -84,6 +91,10 @@ def main():
         cases.append(disabled_case(name, replace(base, **changes)))
     cases.append(disabled_case("explicit_bypass", base, bypass=True))
     boundaries = [
+        ("kernel_25_by_1", replace(base, kernel_h=25, kernel_w=1, groups=2,
+            dilation_h=65535, dilation_w=65535), (0, 1, 7), (0, 7)),
+        ("kernel_1_by_25", replace(base, kernel_h=1, kernel_w=25, groups=2,
+            dilation_h=65535, dilation_w=65535), (0, 7), (0, 1, 7)),
         ("large_padding_dilation", replace(base, input_h=16, input_w=16,
             kernel_h=5, kernel_w=5, output_h=3, output_w=3,
             dilation_h=65535, dilation_w=65535, pad_top=65535, pad_left=65535,
@@ -152,7 +163,8 @@ def main():
     source_hashes = {relative(path): sha256(path) for path in sources + [Path(__file__), HERE / "geometry_oracle.py"]}
     obj_dir = args.build / "obj_dir"
     binary = obj_dir / "Vpredictor_tb"
-    command([args.verilator, "--binary", "--timing", "--assert", "-DCONV_ASSERT", "-DNPU_SIM_ASSERT", "-Wno-fatal",
+    assertion_defines = ["-DCONV_ASSERT"] + ([] if args.no_contract_assert else ["-DNPU_SIM_ASSERT"])
+    command([args.verilator, "--binary", "--timing", "--assert", *assertion_defines, "-Wno-fatal",
              "--top-module", "predictor_tb", "--Mdir", obj_dir, "-j", "2", *sources],
             args.build / "build.log")
     command([binary, f"+CONFIG={config_path}", f"+VECTORS={vectors_path}", f"+CASES={len(cases)}"],
