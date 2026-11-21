@@ -1,0 +1,394 @@
+{
+  "reference_commit": "4dee27ffec4dc891daf2681379f8b3fd27fd41f2",
+  "top": "soc_top",
+  "source_sha256": {
+    "rtl/npu/conv/conv_im2col_frontend.sv": "da0ee19122ff884f855d8f009a4bf2579893a7bef4a85abd2a7c43b473c695ae",
+    "rtl/npu/dma/cache/conv_read_cache.sv": "9681455256f2dd991b9eb716efa1ce5f8e23e6e92a2bf965a91291e41443e670",
+    "rtl/npu/dma/cache/conv_next_use_predictor.sv": "a387a762037be53a9c2f56dfdb8baa7676116922c68c457140436d501a667a15"
+  },
+  "analysis_script_sha256": "6292faa7b9c793bd0fc3170e30b8d3fc2cb46ded49dc96d9f6c45d88fe933d94",
+  "reference_netlist_sha256": "8aec0f312a8b41c4ca6b9d59ca8dff22a8b2e5cb522297446219da163a98d737",
+  "current_netlist_sha256": "adf6857ee47abc5d9ad62b67c7b3555a71c3129a4f04fadbcc5607e186ed6aaf",
+  "reference_pre_lut_sha256": "6b2746dac8632107742bf6c0fb6023e9f68d3a7d0b11fc0dcee3cc28b7a33f4a",
+  "current_pre_lut_sha256": "f7345b14f57052de6aaee57d5993fa52ee6cd2dcfb216462aaac5d331a96ac09",
+  "comparison": {
+    "descriptor_q0_to_demand_word_matches": {
+      "reference": {
+        "path_exists": true,
+        "longest_combinational_cells": 27,
+        "startpoint": {
+          "cell": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.g_descriptor[1].u_value.mem.0.0",
+          "type": "RAMB18E1",
+          "port": "DOADO",
+          "net": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.descriptor_o_rd_data[33]",
+          "detail": "synchronous block RAM output",
+          "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/brams_xc6v_map.v:245.4-257.3",
+          "register_origin": null
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$244989",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2963800$aiger$o146878",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:650.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.demand_word_matches_q"
+        },
+        "cell_types": {
+          "LUT6": 6,
+          "CARRY4": 11,
+          "LUT2": 2,
+          "LUT5": 2,
+          "LUT4": 3,
+          "LUT3": 3
+        },
+        "target_register": "demand_word_matches_q",
+        "target_port": "D",
+        "selected_endpoint_register_count": 1
+      },
+      "current": {
+        "path_exists": true,
+        "longest_combinational_cells": 19,
+        "startpoint": {
+          "cell": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.g_descriptor[1].u_value.mem.0.0",
+          "type": "RAMB18E1",
+          "port": "DOADO",
+          "net": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.descriptor_o_rd_data[43]",
+          "detail": "synchronous block RAM output",
+          "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/brams_xc6v_map.v:245.4-257.3",
+          "register_origin": null
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$242699",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2938518$aiger$o146755",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:665.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.demand_word_matches_q"
+        },
+        "cell_types": {
+          "LUT5": 5,
+          "LUT2": 3,
+          "LUT4": 1,
+          "LUT6": 8,
+          "MUXF7": 1,
+          "MUXF8": 1
+        },
+        "target_register": "demand_word_matches_q",
+        "target_port": "D",
+        "selected_endpoint_register_count": 1
+      },
+      "combinational_cell_reduction": 8
+    },
+    "descriptor_q0_to_work_word_matches": {
+      "reference": {
+        "path_exists": true,
+        "longest_combinational_cells": 28,
+        "startpoint": {
+          "cell": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.g_descriptor[1].u_value.mem.0.0",
+          "type": "RAMB18E1",
+          "port": "DOADO",
+          "net": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.descriptor_o_rd_data[33]",
+          "detail": "synchronous block RAM output",
+          "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/brams_xc6v_map.v:245.4-257.3",
+          "register_origin": null
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$244988",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2963800$aiger$o145966",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:650.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_word_matches_q"
+        },
+        "cell_types": {
+          "LUT6": 7,
+          "CARRY4": 11,
+          "LUT2": 2,
+          "LUT5": 2,
+          "LUT4": 3,
+          "LUT3": 1,
+          "MUXF7": 1,
+          "MUXF8": 1
+        },
+        "target_register": "work_word_matches_q",
+        "target_port": "D",
+        "selected_endpoint_register_count": 1
+      },
+      "current": {
+        "path_exists": true,
+        "longest_combinational_cells": 18,
+        "startpoint": {
+          "cell": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.g_descriptor[1].u_value.mem.0.0",
+          "type": "RAMB18E1",
+          "port": "DOADO",
+          "net": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.descriptor_o_rd_data[43]",
+          "detail": "synchronous block RAM output",
+          "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/brams_xc6v_map.v:245.4-257.3",
+          "register_origin": null
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$242698",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2938518$aiger$o205965",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:665.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_word_matches_q"
+        },
+        "cell_types": {
+          "LUT5": 4,
+          "LUT2": 5,
+          "LUT4": 4,
+          "LUT6": 3,
+          "LUT3": 2
+        },
+        "target_register": "work_word_matches_q",
+        "target_port": "D",
+        "selected_endpoint_register_count": 1
+      },
+      "combinational_cell_reduction": 10
+    },
+    "descriptor_q0": {
+      "reference": {
+        "path_exists": true,
+        "longest_combinational_cells": 28,
+        "startpoint": {
+          "cell": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.g_descriptor[1].u_value.mem.0.0",
+          "type": "RAMB18E1",
+          "port": "DOADO",
+          "net": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.descriptor_o_rd_data[33]",
+          "detail": "synchronous block RAM output",
+          "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/brams_xc6v_map.v:245.4-257.3",
+          "register_origin": null
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$244988",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2963800$aiger$o145966",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:650.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_word_matches_q"
+        },
+        "cell_types": {
+          "LUT6": 7,
+          "CARRY4": 11,
+          "LUT2": 2,
+          "LUT5": 2,
+          "LUT4": 3,
+          "LUT3": 1,
+          "MUXF7": 1,
+          "MUXF8": 1
+        }
+      },
+      "current": {
+        "path_exists": true,
+        "longest_combinational_cells": 21,
+        "startpoint": {
+          "cell": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.g_descriptor[1].u_value.mem.0.0",
+          "type": "RAMB18E1",
+          "port": "DOADO",
+          "net": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.descriptor_o_rd_data[43]",
+          "detail": "synchronous block RAM output",
+          "source": "/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/brams_xc6v_map.v:245.4-257.3",
+          "register_origin": null
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$242654",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2938518$aiger$o212088",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:665.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_request [55]"
+        },
+        "cell_types": {
+          "LUT5": 4,
+          "LUT2": 7,
+          "LUT4": 3,
+          "LUT6": 3,
+          "CARRY4": 4
+        }
+      },
+      "combinational_cell_reduction": 7
+    },
+    "descriptor_queue": {
+      "reference": {
+        "path_exists": true,
+        "longest_combinational_cells": 28,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$230341",
+          "type": "FDCE",
+          "port": "Q",
+          "net": "$techmap2997190$abc$2963800$lut$aiger$o327738.A[4]",
+          "detail": "register output",
+          "source": "rtl/npu/dma/conv_window_queue.sv:93.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.descriptor_forward_valid"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$244988",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2963800$aiger$o145966",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:650.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_word_matches_q"
+        },
+        "cell_types": {
+          "LUT6": 7,
+          "CARRY4": 11,
+          "LUT2": 2,
+          "LUT5": 2,
+          "LUT4": 3,
+          "LUT3": 1,
+          "MUXF7": 1,
+          "MUXF8": 1
+        }
+      },
+      "current": {
+        "path_exists": true,
+        "longest_combinational_cells": 23,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$227103",
+          "type": "FDCE",
+          "port": "Q",
+          "net": "$techmap2972239$abc$2938518$lut$aiger$o326390.A[1]",
+          "detail": "register output",
+          "source": "rtl/npu/dma/conv_window_queue.sv:55.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.u_window_queue.busy"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$242654",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2938518$aiger$o212088",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:665.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_request [55]"
+        },
+        "cell_types": {
+          "LUT6": 2,
+          "LUT2": 4,
+          "LUT5": 5,
+          "CARRY4": 10,
+          "LUT3": 1,
+          "LUT4": 1
+        }
+      },
+      "combinational_cell_reduction": 5
+    },
+    "frontend": {
+      "reference": {
+        "path_exists": true,
+        "longest_combinational_cells": 28,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$408034",
+          "type": "FDCE",
+          "port": "Q",
+          "net": "$techmap3044029$abc$2963800$lut$aiger$o14195.A[0]",
+          "detail": "register output",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:1696.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.c [196]"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$244988",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2963800$aiger$o145966",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:650.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_word_matches_q"
+        },
+        "cell_types": {
+          "LUT6": 7,
+          "CARRY4": 11,
+          "LUT2": 2,
+          "LUT5": 2,
+          "LUT4": 3,
+          "LUT3": 1,
+          "MUXF7": 1,
+          "MUXF8": 1
+        }
+      },
+      "current": {
+        "path_exists": true,
+        "longest_combinational_cells": 25,
+        "startpoint": {
+          "cell": "$auto$ff.cc:337:slice$252984",
+          "type": "FDCE",
+          "port": "Q",
+          "net": "$techmap2973533$abc$2938518$lut$aiger$o24626.A[1]",
+          "detail": "register output",
+          "source": "rtl/npu/conv/conv_im2col_frontend.sv:1758.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.row_wrap_q"
+        },
+        "endpoint": {
+          "cell": "$auto$ff.cc:337:slice$242697",
+          "type": "FDRE",
+          "port": "D",
+          "net": "$abc$2938518$aiger$o211346",
+          "category": "data",
+          "source": "rtl/npu/dma/cache/conv_read_cache.sv:665.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+          "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_request [0]"
+        },
+        "cell_types": {
+          "LUT3": 2,
+          "LUT2": 2,
+          "CARRY4": 11,
+          "LUT4": 4,
+          "LUT5": 5,
+          "LUT6": 1
+        }
+      },
+      "combinational_cell_reduction": 3
+    }
+  },
+  "placed_routed_timing_measured": false,
+  "remaining_longest_path": {
+    "combinational_cells": 25,
+    "startpoint": {
+      "cell": "$auto$ff.cc:337:slice$252984",
+      "type": "FDCE",
+      "port": "Q",
+      "net": "$techmap2973533$abc$2938518$lut$aiger$o24626.A[1]",
+      "detail": "register output",
+      "source": "rtl/npu/conv/conv_im2col_frontend.sv:1758.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:31.41-31.97",
+      "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.row_wrap_q"
+    },
+    "endpoint": {
+      "cell": "$auto$ff.cc:337:slice$242697",
+      "type": "FDRE",
+      "port": "D",
+      "net": "$abc$2938518$aiger$o211346",
+      "category": "data",
+      "source": "rtl/npu/dma/cache/conv_read_cache.sv:665.3|/home/agent/.local/lib/python3.12/site-packages/pyosys/share/xilinx/ff_map.v:68.41-68.95",
+      "register_origin": "u_npu_axil_top.u_npu_top.u_block_dma_arbiter.u_dma.g_im2col.u_frontend.u_cache.g_window.u_window.work_request [0]"
+    },
+    "endpoint_field": "work_request.in_range",
+    "cell_types": {
+      "LUT3": 2,
+      "LUT2": 2,
+      "CARRY4": 11,
+      "LUT4": 4,
+      "LUT5": 5,
+      "LUT6": 1
+    },
+    "arithmetic": [
+      {
+        "source": "rtl/npu/conv/conv_im2col_frontend.sv",
+        "line": 546,
+        "expression": "next_row_addr = row_base_addr + (row_wrap ? row_wrap_bytes : row_step_bytes)",
+        "carry4_cells": 8
+      },
+      {
+        "source": "rtl/npu/dma/cache/conv_read_cache.sv",
+        "line": 628,
+        "expression": "req_addr >= base_q",
+        "carry4_cells": 3
+      }
+    ]
+  }
+}

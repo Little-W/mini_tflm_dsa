@@ -169,7 +169,33 @@
   },
   "verification_script_sha256": {
     "test/frontend_window_timing/check.py": "8179c8b48f9e23b125ff807798dfe9690bcbdaafe37a7e45e51980ba6b3ae851",
-    "test/frontend_window_timing/paths.py": "9cdce9eb6592c6828200815027957c8415ac48bfc4457169b671f9142be12bf3",
+    "test/frontend_window_timing/paths.py": "6292faa7b9c793bd0fc3170e30b8d3fc2cb46ded49dc96d9f6c45d88fe933d94",
     "test/conv_frontend/tools/compare_frontend.py": "fc4c256fc63276cf8d8eff2352910e90b0f2af5197a45a4c0db368ab2d0d8442"
+  },
+  "soc_paths": {
+    "descriptor_q0_to_demand_word_matches": {
+      "reference_cells": 27,
+      "current_cells": 19
+    },
+    "descriptor_q0_to_work_word_matches": {
+      "reference_cells": 28,
+      "current_cells": 18
+    },
+    "descriptor_q0": {
+      "reference_cells": 28,
+      "current_cells": 21
+    },
+    "descriptor_queue": {
+      "reference_cells": 28,
+      "current_cells": 23
+    },
+    "frontend": {
+      "reference_cells": 28,
+      "current_cells": 25
+    }
+  },
+  "soc_netlist_sha256": {
+    "reference": "8aec0f312a8b41c4ca6b9d59ca8dff22a8b2e5cb522297446219da163a98d737",
+    "current": "adf6857ee47abc5d9ad62b67c7b3555a71c3129a4f04fadbcc5607e186ed6aaf"
   }
 }

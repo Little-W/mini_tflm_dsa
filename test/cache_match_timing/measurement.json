@@ -114,7 +114,10 @@
           "work_word_matches_q",
           "demand_word_matches_q"
         ],
-        "mapped_sha256": "16343e87a1b37ba05c47860f61268b7a90ed69cf0e564b0df5b059713241059e"
+        "mapped_sha256": "16343e87a1b37ba05c47860f61268b7a90ed69cf0e564b0df5b059713241059e",
+        "distributed_ram_lut_sites_nominal": 140,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3742
       },
       "candidate_cache_d1": {
         "lut_cells": 3615,
@@ -131,7 +134,10 @@
         "req_valid_endpoints": [
           "demand_word_matches_q"
         ],
-        "mapped_sha256": "d7c006ccabd4c307ece0fc6a69f68c2363d16ecb79fd8b269e5bb029cd2e5ef4"
+        "mapped_sha256": "d7c006ccabd4c307ece0fc6a69f68c2363d16ecb79fd8b269e5bb029cd2e5ef4",
+        "distributed_ram_lut_sites_nominal": 140,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 3755
       },
       "reference_cache_d4": {
         "lut_cells": 3768,
@@ -149,7 +155,10 @@
           "demand_word_matches_q",
           "work_word_matches_q"
         ],
-        "mapped_sha256": "62edb86996a1bb4687d4e5081a1b442bd6154ebfaae1b68386a12c4b0009edff"
+        "mapped_sha256": "62edb86996a1bb4687d4e5081a1b442bd6154ebfaae1b68386a12c4b0009edff",
+        "distributed_ram_lut_sites_nominal": 252,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 4020
       },
       "candidate_cache_d4": {
         "lut_cells": 3670,
@@ -166,7 +175,10 @@
         "req_valid_endpoints": [
           "demand_word_matches_q"
         ],
-        "mapped_sha256": "e66a1f37c2647715e7da65ffad295e781671957a8c4658643c0c09e1214aa62d"
+        "mapped_sha256": "e66a1f37c2647715e7da65ffad295e781671957a8c4658643c0c09e1214aa62d",
+        "distributed_ram_lut_sites_nominal": 340,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 4010
       }
     },
     "clock_period_ns": 6.667,
@@ -175,5 +187,19 @@
   "verification_script_sha256": {
     "test/cache_match_timing/check.py": "400c1155ed43c12a3f91e32ab871db5f7fad2e2eaf4280fd7ac2f73063d4b4db",
     "test/cache_match_timing/paths.py": "451873b9612bff6f6d3fadd282b4e8587e86342293e578c6656a5ffe29374604"
+  },
+  "soc_paths": {
+    "descriptor_q0_to_demand_word_matches": {
+      "reference_cells": 27,
+      "current_cells": 19
+    },
+    "descriptor_q0_to_work_word_matches": {
+      "reference_cells": 28,
+      "current_cells": 18
+    }
+  },
+  "soc_netlist_sha256": {
+    "reference": "8aec0f312a8b41c4ca6b9d59ca8dff22a8b2e5cb522297446219da163a98d737",
+    "current": "adf6857ee47abc5d9ad62b67c7b3555a71c3129a4f04fadbcc5607e186ed6aaf"
   }
 }

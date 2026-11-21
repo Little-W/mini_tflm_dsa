@@ -45,7 +45,7 @@ python test/frontend_window_timing/paths.py --scope window-decode \
 
 | 项目 | 原版本 | 当前版本 |
 |---|---:|---:|
-| LUT 单元数 | 2,456 | 2,527 |
+| 逻辑 LUT 单元数 | 2,456 | 2,527 |
 | 寄存器数 | 1,584 | 1,584 |
 | 寄存器间最长组合单元数 | 19 | 17 |
 | `tile_q0` 至输出的最长组合单元数 | 19 | 12 |
@@ -54,3 +54,21 @@ python test/frontend_window_timing/paths.py --scope window-decode \
 完整前端数值测试通过 2,171,907 个周期的输出比较，控制测试通过 23 项检查。DMA 测试处理 678 个请求，其中 674 个完成、4 个由复位取消；检查 5,481 个输出元素。连续命中测试的 520 行逐周期记录一致。
 
 `measurement.json` 保存源码摘要、验证结果和结构测量。表中 LUT 数量仅属于上述局部逻辑，组合单元数包含实际连接的 LUT 与进位单元。150 MHz 时序结果需使用完整设计的器件延迟和布线报告确定。
+
+`paths.py` 的默认模式读取完整 SoC 网表，检查描述符队列和整个图像前端的最长路径，并单独固定 `descriptor[1]` RAM 到 `demand_word_matches_q/D`、`work_word_matches_q/D` 的终点。`--reference-report` 接收同一脚本生成的原版本结果，`--summary-out` 保存起点、终点、组合单元数及两版本的简明比较。
+
+## 完整 SoC 连接路径
+
+`soc_paths.json` 保存同一映射流程、同一分析脚本及相同起止点筛选条件下的完整 SoC 测量。
+
+| 范围 | 原版本组合单元数 | 当前版本组合单元数 |
+|---|---:|---:|
+| q0 描述符 RAM 至 `demand_word_matches_q/D` | 27 | 19 |
+| q0 描述符 RAM 至 `work_word_matches_q/D` | 28 | 18 |
+| q0 描述符 RAM 至任意前端终点 | 28 | 21 |
+| 完整描述符队列至任意前端终点 | 28 | 23 |
+| 整个图像前端 | 28 | 25 |
+
+两个固定匹配终点的当前路径均不经过 `CARRY4`。前端当前最长路径从 `row_wrap_q` 到缓存 `work_request.in_range`，也到需求队列保存的同一范围标志。该路径包含 `next_row_addr` 的 32 位地址加法和 `req_addr >= base_q` 的范围比较，共经过 11 个 `CARRY4` 与 14 个 LUT。
+
+上述结果来自完整映射网表的实际连接。器件布局、布线延迟及 150 MHz 的建立时间仍由原生时序分析确定。
