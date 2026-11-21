@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""验证八通道 IA 写入在全部列起点、紧凑格式和宽格式下的数据保持。"""
+"""验证八通道 IA 在全部列起点、紧凑格式和宽格式下的有效写命令。"""
 import argparse
 import hashlib
 import json
@@ -44,7 +44,7 @@ def main():
         raise RuntimeError('IA receive write comparison did not complete: ' + str(out / 'run.log'))
     report = {'passed': True, 'source_sha256': hashes, 'xilinx_fpga': args.fpga,
               'input_lanes': 8, 'column_positions': 16, 'exhaustive_byte_offset_pairs': 65536,
-              'random_write_cycles': 20000, 'hold_cycles_checked': True}
+              'random_write_cycles': 20000, 'idle_command_cycles_checked': True, 'inactive_addresses_and_masks_held': True}
     (out / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     for path in (out / 'obj').iterdir():
         if path.suffix in ('.o', '.gch'):

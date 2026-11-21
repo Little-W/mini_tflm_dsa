@@ -267,8 +267,12 @@ module conv_im2col_frontend #(
   logic [31:0] line_hint_rank;
 
   logic [3:0] p_cache_valid;
-  logic [31:0] p_cache_key[4];
-  logic [15:0] p_cache_y[4],p_cache_x[4];
+  // 四项历史数据共用一个异步读端口，有效位独立复位。
+  (* ram_style = "distributed" *) logic [63:0] p_cache_data [4];
+  logic [63:0] p_cache_write_data;
+  logic p_cache_write_enable;
+  logic [31:0] p_cache_key;
+  logic [15:0] p_cache_y, p_cache_x;
   logic last_p_valid;
   logic [31:0] last_p,last_p_limit;
   logic [15:0] last_y,last_x;
@@ -420,6 +424,9 @@ module conv_im2col_frontend #(
     logic [SLOT_W-1:0] slot;
     logic [32:0] next_group, skip_group;
     logic [31:0] tap, channel, kernel_x, kernel_y;
+    logic signed [2:0] tap_delta, kernel_x_delta, kernel_y_delta;
+    logic [31:0] pixel_delta;
+    logic pixel_carry;
     logic signed [COORD_W-1:0] input_x, input_y;
     logic [31:0] pixel, address, group_address;
     logic [31:0] address_delta;
@@ -453,6 +460,12 @@ module conv_im2col_frontend #(
   logic [1:0][COORD_W-1:0] committing_coordinate;
   logic [1:0] committing_coordinate_valid;
   logic [1:0] unused_committing_coordinate_carry;
+  logic [31:0] prepared_tap_base, prepared_kernel_x_base, prepared_kernel_y_base, prepared_pixel_base;
+  logic signed [2:0] prepared_tap_delta, prepared_kernel_x_delta, prepared_kernel_y_delta;
+  logic [31:0] prepared_pixel_delta;
+  logic prepared_pixel_carry;
+  (* use_dsp = "yes" *) logic [31:0] committing_tap, committing_kernel_x, committing_kernel_y, committing_pixel;
+
   logic [TILE_COUNT_W-1:0] prepared_columns, prepared_active_columns;
   logic [32:0] prepared_next_group, prepared_skip_group;
   logic unused_prepared_skip_carry;
@@ -934,6 +947,17 @@ module conv_im2col_frontend #(
   // 解码行尾在减去输出宽度之前检查模加法等式，与坐标结果并行。
   assign p_decode = p0;
   assign p_cache_select = 2'(p_decode >> CW);
+  assign {p_cache_key, p_cache_y, p_cache_x} = p_cache_data[p_cache_select];
+  assign p_cache_write_enable = rst_n && !(cfg_valid && cfg_ready) && !tile_commit &&
+      ((state[$clog2(P_DECODE)] && p_fast_valid) ||
+       (state[$clog2(P_WAIT)] && decode_index == p0));
+  assign p_cache_write_data = state[$clog2(P_DECODE)] ?
+      {p0, 16'(p_fast_y), 16'(p_fast_x)} : {p0, 16'(decode_outer), 16'(decode_inner)};
+  // 只有解码成功才更新有效项，未使用的数据不需要复位写端口。
+  always_ff @(posedge clk) begin
+    if (p_cache_write_enable) p_cache_data[p_cache_select] <= p_cache_write_data;
+  end
+
   // 三个解码范围的末项检查并行进行，控制结果不等待计数器加一。
   assign decode_end_i_target[0] = {16'd0, c.output_w};
   assign decode_end_i_target[1] = {16'd0, c.group_c};
@@ -1013,9 +1037,9 @@ module conv_im2col_frontend #(
       p_fast_x=p_decode&{16'd0,last_output_col_q};
       p_fast_wrap=p_fast_x=={16'd0,last_output_col_q};
     end
-    else if (p_cache_valid[p_cache_select] && p_cache_key[p_cache_select]==p_decode) begin
-      p_fast_valid=1;p_fast_y=32'(p_cache_y[p_cache_select]);p_fast_x=32'(p_cache_x[p_cache_select]);
-      p_fast_wrap = c.output_w != 16'd0 && p_cache_x[p_cache_select] == last_output_col_q;
+    else if (p_cache_valid[p_cache_select] && p_cache_key==p_decode) begin
+      p_fast_valid=1;p_fast_y=32'(p_cache_y);p_fast_x=32'(p_cache_x);
+      p_fast_wrap = c.output_w != 16'd0 && p_cache_x == last_output_col_q;
     end else if (last_p_valid && p_decode>=last_p && p_decode<=last_p_limit) begin
       p_fast_valid=1;p_fast_y=32'(last_y);p_fast_x=32'(p_sum);
       // 模和值等于目标时，历史列数与目标的关系直接给出最高位进位。
@@ -1386,6 +1410,7 @@ module conv_im2col_frontend #(
   end
 
   logic incoming_kx_last;
+  if (!REGISTER_DESCRIPTOR) begin : g_direct_kernel_end
   logic [3:0][15:0] incoming_kernel_i_a, incoming_kernel_i_target;
   logic [15:0] incoming_kernel_i_b;
   logic incoming_kernel_i_carry;
@@ -1412,6 +1437,37 @@ module conv_im2col_frontend #(
     incoming_next_tile_fast ? incoming_base_kx_last : incoming_skip_tap ? incoming_skip_kx_last :
     !incoming_q_equal ? (incoming_tap_wrap ? last_kernel_col_q == 16'd0 : incoming_kernel_o_equal[2]) :
     incoming_base_kx_last;
+
+  end else begin : g_saved_kernel_end
+    assign incoming_kx_last = 1'b0;
+  end
+
+  logic committing_kernel_last;
+  if (REGISTER_DESCRIPTOR) begin : g_commit_kernel_end
+    (* keep = 1 *) logic [5:0] kernel_group_equal;
+    for (genvar group_index = 0; group_index < 6; group_index++) begin : g_group
+      localparam int p_first = group_index * 3;
+      localparam int p_width = 16 - p_first < 3 ? 16 - p_first : 3;
+      assign kernel_group_equal[group_index] =
+          committing_kernel_x[p_first +: p_width] == last_kernel_col_q[p_first +: p_width];
+    end
+    // 末列判断使用已经保存的核坐标，描述符选择不进入等值归并。
+    assign committing_kernel_last = &kernel_group_equal;
+  end else begin : g_direct_commit_kernel_end
+    assign committing_kernel_last = 1'b0;
+  end
+
+  logic [15:0] kernel_decode_mask, kernel_decode_column;
+  (* keep = 1 *) logic [7:0] kernel_decode_column_equal;
+  logic kernel_decode_last;
+  assign kernel_decode_mask = c.kernel_w - 16'd1;
+  assign kernel_decode_column = tap0[15:0] & kernel_decode_mask;
+  // 两位掩码坐标与目标同时比较，各组独立后再归并。
+  for (genvar group_index = 0; group_index < 8; group_index++) begin : g_kernel_decode_end
+    assign kernel_decode_column_equal[group_index] =
+        kernel_decode_column[group_index*2 +: 2] == last_kernel_col_q[group_index*2 +: 2];
+  end
+  assign kernel_decode_last = &kernel_decode_column_equal;
 
   // 各候选坐标和填充状态独立计算，晚到的描述符仅选择计算结果。
   // 高位检查保留完整的有符号坐标范围，低十六位比较有效图像尺寸。
@@ -2466,6 +2522,77 @@ module conv_im2col_frontend #(
       prepared_word_select[0] = 1'b1;
     end
   end
+  // 描述符只保存所选坐标的起点和增量，提交阶段共用四组模加法运算。
+  // 核行列的增量范围为负二至正二，像素增量保持完整三十二位回绕语义。
+  always_comb begin
+    prepared_tap_base = tap0;
+    prepared_kernel_x_base = kx0;
+    prepared_kernel_y_base = ky0;
+    prepared_pixel_base = row_base_pixel;
+    if (incoming_next_position_fast) begin
+      prepared_tap_base = window_next_tap;
+      prepared_kernel_x_base = {16'd0, window_next_kx};
+      prepared_kernel_y_base = {16'd0, window_next_ky};
+      prepared_pixel_base = window_next_pixel;
+    end else if (incoming_next_tile_fast) begin
+      prepared_pixel_base = next_row_pixel;
+    end
+    prepared_tap_delta = 3'sd0;
+    prepared_kernel_x_delta = 3'sd0;
+    prepared_kernel_y_delta = 3'sd0;
+    prepared_pixel_delta = 32'd0;
+    prepared_pixel_carry = 1'b0;
+    unique case (1'b1)
+      prepared_word_select[1]: begin
+        prepared_tap_delta = 3'sd1;
+        prepared_kernel_x_delta = 3'sd1;
+        prepared_pixel_delta = {16'd0, c.dilation_w};
+      end
+      prepared_word_select[2]: begin
+        prepared_tap_delta = 3'sd1;
+        prepared_kernel_x_base = 32'd0;
+        prepared_kernel_y_delta = 3'sd1;
+        prepared_pixel_delta = 32'(tap_wrap_pixels);
+      end
+      prepared_word_select[3]: begin
+        prepared_tap_delta = 3'sd2;
+        prepared_kernel_x_base = 32'd0;
+        prepared_kernel_x_delta = 3'sd2;
+        prepared_pixel_delta = {16'd0, c.dilation_w} << 1;
+      end
+      prepared_word_select[4]: begin
+        prepared_tap_delta = 3'sd2;
+        prepared_kernel_x_delta = -3'sd1;
+        prepared_kernel_y_delta = 3'sd1;
+        prepared_pixel_delta = tap_pair_pixels;
+      end
+      prepared_word_select[7]: begin
+        prepared_tap_delta = 3'sd1;
+        prepared_kernel_x_delta = 3'sd1;
+        prepared_pixel_delta = {16'd0, c.dilation_w};
+      end
+      prepared_word_select[8]: begin
+        prepared_tap_delta = -3'sd1;
+        prepared_kernel_x_delta = -3'sd1;
+        prepared_pixel_delta = ~{16'd0, c.dilation_w};
+        prepared_pixel_carry = 1'b1;
+      end
+      prepared_word_select[9]: begin
+        prepared_tap_delta = -3'sd2;
+        prepared_kernel_x_base = 32'd0;
+        prepared_kernel_x_delta = 3'sd1;
+        prepared_kernel_y_delta = -3'sd1;
+        prepared_pixel_delta = ~tap_pair_pixels;
+        prepared_pixel_carry = 1'b1;
+      end
+      default: ;
+    endcase
+  end
+  assign committing_tap = prepared_tile_q.tap + 32'($signed(prepared_tile_q.tap_delta));
+  assign committing_kernel_x = prepared_tile_q.kernel_x + 32'($signed(prepared_tile_q.kernel_x_delta));
+  assign committing_kernel_y = prepared_tile_q.kernel_y + 32'($signed(prepared_tile_q.kernel_y_delta));
+  assign committing_pixel = prepared_tile_q.pixel + prepared_tile_q.pixel_delta + 32'(prepared_tile_q.pixel_carry);
+
   // 描述符寄存级保存已选择的两个基地址及共同增量，提交时共用两组加法器。
   assign prepared_address_candidate[0] = {row_group_base, row_base_addr};
   assign prepared_address_candidate[1] = incoming_address_left[0];
@@ -2587,14 +2714,19 @@ module conv_im2col_frontend #(
     preparing_tile.skip_group = prepared_skip_group;
     preparing_tile.geometry = pred_enabled && (CACHE_POLICY!=3 || !c.windowed) &&
       (tile_cols==0 || 32'(tile_cols)==SIZE) && tile_p0[3:0]==0 && tile_q0[3:0]==0 && tile_group<groups_q;
-    preparing_tile.tap = incoming_tap;
+    preparing_tile.tap = REGISTER_DESCRIPTOR ? prepared_tap_base : incoming_tap;
+    preparing_tile.tap_delta = prepared_tap_delta;
+    preparing_tile.kernel_x_delta = prepared_kernel_x_delta;
+    preparing_tile.kernel_y_delta = prepared_kernel_y_delta;
+    preparing_tile.pixel_delta = prepared_pixel_delta;
+    preparing_tile.pixel_carry = prepared_pixel_carry;
     preparing_tile.channel = incoming_ch;
-    preparing_tile.kernel_x = incoming_kx;
-    preparing_tile.kernel_y = incoming_ky;
+    preparing_tile.kernel_x = REGISTER_DESCRIPTOR ? prepared_kernel_x_base : incoming_kx;
+    preparing_tile.kernel_y = REGISTER_DESCRIPTOR ? prepared_kernel_y_base : incoming_ky;
     preparing_tile.kernel_last = incoming_kx_last;
     preparing_tile.input_x = REGISTER_DESCRIPTOR ? prepared_coordinate_x : incoming_ix;
     preparing_tile.input_y = REGISTER_DESCRIPTOR ? prepared_coordinate_y : incoming_iy;
-    preparing_tile.pixel = incoming_pixel;
+    preparing_tile.pixel = REGISTER_DESCRIPTOR ? prepared_pixel_base : incoming_pixel;
     preparing_tile.address = REGISTER_DESCRIPTOR ? prepared_address[0] : incoming_addr;
     preparing_tile.group_address = REGISTER_DESCRIPTOR ? prepared_address[1] : incoming_group_base;
     preparing_tile.address_delta = prepared_address_delta;
@@ -2613,7 +2745,7 @@ module conv_im2col_frontend #(
   // 准备阶段保存数据字对应地址，提交阶段与已求和的描述符地址比较。
   assign committing_saved_word_hit = prepared_tile_q.saved_word_valid &&
       committing_address[0][31:p_word_shift] == prepared_tile_q.word_address;
-  // 字地址的加法等式与完整地址求和并行，命中判断直接使用已寄存的算术输入。
+  // 提交地址与当前已保存的数据字地址比较，命中结果在提交边沿使用。
   assign prepared_live_word_match = committing_address[0][31:p_word_shift] == word_addr[31:p_word_shift];
   // 当前数据字也可供下一描述符复用，标签和有效位均来自已经完成的返回。
   assign committing_live_word_hit = word_valid && prepared_live_word_match;
@@ -2624,6 +2756,11 @@ module conv_im2col_frontend #(
       committing_tile.group_address = committing_address[1];
       committing_tile.input_x = $signed(committing_coordinate[0]);
       committing_tile.input_y = $signed(committing_coordinate[1]);
+      committing_tile.kernel_last = committing_kernel_last;
+      committing_tile.tap = committing_tap;
+      committing_tile.kernel_x = committing_kernel_x;
+      committing_tile.kernel_y = committing_kernel_y;
+      committing_tile.pixel = committing_pixel;
       committing_tile.padding = prepared_tile_q.padding_select[5] ?
         prepared_tile_q.padding_value[5] : !(&committing_coordinate_valid);
       committing_tile.word_hit = committing_saved_word_hit || committing_live_word_hit;
@@ -2891,7 +3028,6 @@ module conv_im2col_frontend #(
       row_step_bytes<=0;tap_step_bytes<=0;row_wrap_bytes<=0;tap_wrap_bytes<=0;group_bytes<=0;
       row_base_valid<=0;coordinate_address_valid<=0;row_coordinate_valid<=0;current_coordinate_valid<=0;
       row_base_ix <= COORD_W'(0);row_base_iy <= COORD_W'(0);row_base_pixel <= 32'(0);row_base_addr<=0;
-      for (int t=0;t<4;t++) begin p_cache_key[t]<=0;p_cache_y[t]<=0;p_cache_x[t]<=0;end
     end else begin
       tile_done<=finishing_tile; tile_error<=0;
       if (state[$clog2(WAIT_WORD)] && wr_valid && wr_ready) begin
@@ -3087,8 +3223,7 @@ module conv_im2col_frontend #(
         state[$clog2(P_DECODE)]: if (p_fast_valid) begin
           oy_q <= 16'(p_fast_y);ox_q <= 16'(p_fast_x); row_wrap_q <= p_fast_wrap;state<=Q_DECODE;
           last_p_valid<=1;last_p<=p0;last_p_limit<=p0+32'(c.output_w);last_y<=16'(p_fast_y);last_x<=16'(p_fast_x);
-          p_cache_valid[p_cache_select]<=1;p_cache_key[p_cache_select]<=p0;
-          p_cache_y[p_cache_select]<=16'(p_fast_y);p_cache_x[p_cache_select]<=16'(p_fast_x);
+          p_cache_valid[p_cache_select]<=1;
         end else state<=P_START;
         state[$clog2(P_START)]: begin decode_index<=0;decode_outer<=0;decode_inner<=0;state<=P_WAIT;end
         state[$clog2(P_WAIT)]: if (decode_index==p0) begin
@@ -3097,8 +3232,7 @@ module conv_im2col_frontend #(
           row_wrap_q <= c.output_w != 16'd0 && (16'(decode_inner) == last_output_col_q);
           state<=Q_DECODE;
           last_p_valid<=1;last_p<=p0;last_p_limit<=p0+32'(c.output_w);last_y<=16'(decode_outer);last_x<=16'(decode_inner);
-          p_cache_valid[p_cache_select]<=1;p_cache_key[p_cache_select]<=p0;
-          p_cache_y[p_cache_select]<=16'(decode_outer);p_cache_x[p_cache_select]<=16'(decode_inner);
+          p_cache_valid[p_cache_select]<=1;
         end else begin
           decode_index<=decode_index+1;
           if (decode_end_o_equal[0]) begin decode_inner<=0;decode_outer<=decode_outer+1;end
@@ -3134,10 +3268,10 @@ module conv_im2col_frontend #(
         state[$clog2(K_DECODE)]: begin
           if (kernel_shape_o_valid) begin
             ky_q <= 16'(tap0>>power_shift(32'(c.kernel_w)));ky0_q <= 16'(tap0>>power_shift(32'(c.kernel_w)));
-            kx_q <= 16'(tap0&(32'(c.kernel_w)-1));
-            tap_wrap_q <= kernel_width_valid_q && (16'(tap0&(32'(c.kernel_w)-1)) == last_kernel_col_q);
-            kx0_q <= 16'(tap0&(32'(c.kernel_w)-1));
-            incoming_tap_wrap_q <= kernel_width_valid_q && (16'(tap0&(32'(c.kernel_w)-1)) == last_kernel_col_q);
+            kx_q <= kernel_decode_column;
+            tap_wrap_q <= kernel_width_valid_q && (kernel_decode_last);
+            kx0_q <= kernel_decode_column;
+            incoming_tap_wrap_q <= kernel_width_valid_q && (kernel_decode_last);
             state<=COORD;
           end else if (c.kernel_w==3 && tap0<9) begin
             // 三列卷积核的行列由同一完整组合译码得到。

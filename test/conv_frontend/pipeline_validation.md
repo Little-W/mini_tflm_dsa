@@ -14,6 +14,8 @@
 
 准备阶段选择行地址、分组地址和共同增量，提交阶段使用两组完整地址加法。输入坐标同样保存基坐标与增量，提交时完成两个坐标的求和和范围检查。已保存的窗口保留其填充标志。寄存描述符分支只生成实际使用的坐标候选；直接描述符分支保留独立候选计算。
 
+核位置、核行列与像素编号分别保存基值和增量，在提交阶段共用四组模加法，核末列根据提交的核列值判断。四个历史坐标条目使用一组可推断的分布式存储，分别保存位置键和行列坐标，有效位随配置清除。
+
 通道范围由完整十七位剩余数量生成，配置和执行上下文分别提前保存。输出掩码使用连续通道范围，末列位置通过相邻列资格位确定。五位除三译码同时产生商和余数，供三通道和三列卷积核的坐标解码使用。
 
 宽算术采用普通可综合表达式及 `use_dsp` 属性。RTL 保留所有配置位宽和算术结果，不实例化器件算术或存储原语。
@@ -33,6 +35,8 @@
 | 坐标范围 | 描述符寄存开关和两种算术配置，共 4 组证明通过 |
 | 提交填充判断 | 两种算术配置的完整输入证明通过 |
 | 地址更新与保存字命中 | 地址更新 4 组证明；保存字命中 6 组复位检查和无界归纳通过 |
+| 描述符共享运算 | 四组结果共 128 位，完整输入证明通过 |
+| 历史坐标存储 | 四个 64 位条目的有效数据通过复位检查和无界归纳 |
 | 五位除三 | 32 个二态输入、1,024 个四态输入及完整输入证明通过 |
 | 缓存标签与协议 | 两种路数和三种行宽的标签证明通过；生产深度 1、2 的协议测试通过 |
 
@@ -40,7 +44,7 @@
 
 ## 综合结果
 
-采用生产参数进行独立 `xc7` 映射，仅对 RTL 中标有 `use_dsp="yes"` 的算术执行 DSP 映射：逻辑 LUT 为 10,214，分布式存储占用的标称 LUT 为 332，总计 10,546，触发器为 6,255，DSP 为 104，RAMB18 为 9。完整连接图得到的寄存器间最长组合路径为 15 个单元，尚未满足 10 级要求。150 MHz 需要目标器件的综合、布局布线和静态时序分析结果确认。
+采用生产参数进行独立 `xc7` 映射，仅对 RTL 中标有 `use_dsp="yes"` 的算术执行 DSP 映射：逻辑 LUT 为 9,870，分布式存储占用的标称 LUT 为 364，总计 10,234，触发器为 6,037，DSP 为 103，RAMB18 为 9。完整连接图得到的寄存器间最长组合路径为 14 个单元，尚未满足 10 级要求。150 MHz 需要目标器件的综合、布局布线和静态时序分析结果确认。
 
 源码散列、配置、各项结果和综合统计保存在 [pipeline_validation.json](pipeline_validation.json)。
 
@@ -55,6 +59,7 @@ python3 test/conv_frontend/tools/check_chunk_mask.py --out build/frontend_mask
 python3 test/conv_frontend/tools/check_coordinate_bounds.py --out build/frontend_coordinates
 python3 test/conv_frontend/tools/check_frontend_address.py --out build/frontend_address
 python3 test/conv_frontend/tools/check_saved_word.py --out build/frontend_saved_word
+python3 test/conv_frontend/tools/check_descriptor_shared.py --out build/frontend_descriptor_shared
 python3 test/conv_frontend/tools/check_small_decode.py --out build/frontend_divide_three
 python3 test/cache_storage/check_tag_stage.py --out build/cache_tag_stage
 ```

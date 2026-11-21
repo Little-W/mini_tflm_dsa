@@ -13,20 +13,23 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--jobs", type=int, default=2)
+    parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--out", type=Path, default=ROOT / "build/window_queue")
     args = parser.parse_args()
     out = args.out.resolve()
-    sources = [ROOT / "rtl/common/regfile.v", ROOT / "rtl/npu/dma/conv_window_queue.sv",
+    sources = [args.source_root.resolve() / "rtl/common/regfile.v", args.source_root.resolve() / "rtl/npu/dma/conv_window_queue.sv",
                Path(__file__).with_name("main.cpp")]
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}
     cases = []
-    for depth, lanes in ((2, 4), (3, 16), (4, 16), (7, 16)):
-        folder = out / f"depth{depth}_lanes{lanes}"
+    for depth, lanes, outstanding in ((depth, lanes, outstanding)
+            for depth, lanes in ((2, 4), (3, 16), (4, 16), (7, 16))
+            for outstanding in (1, 2)):
+        folder = out / f"depth{depth}_lanes{lanes}_outstanding{outstanding}"
         folder.mkdir(parents=True, exist_ok=True)
-        command = [args.verilator, "--cc", "--exe", "--build", "--assert", "-Wno-fatal",
+        command = [args.verilator, "--cc", "--exe", "--build", "--timing", "--assert", "-DNPU_SIM_ASSERT", "-Wno-fatal",
                    "--top-module", "conv_window_queue", f"-GDEPTH={depth}",
-                   f"-GWINDOW_LANES={lanes}", "--Mdir", str(folder / "obj"),
-                   "-j", str(args.jobs), "-CFLAGS", f"-std=c++20 -O1 -DTEST_DEPTH={depth} -DTEST_LANES={lanes}",
+                   f"-GWINDOW_LANES={lanes}", f"-Gp_frontend_outstanding={outstanding}", "--Mdir", str(folder / "obj"),
+                   "-j", str(args.jobs), "-CFLAGS", f"-std=c++20 -O1 -DTEST_DEPTH={depth} -DTEST_LANES={lanes} -DTEST_OUTSTANDING={outstanding}",
                    *map(str, sources)]
         with (folder / "compile.log").open("w") as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
@@ -36,7 +39,7 @@ def main():
         result.check_returncode()
         if result.stdout.count("WINDOW_QUEUE_PASS") != 2:
             raise RuntimeError("窗口队列测试结果不完整")
-        cases.append(dict(depth=depth, lanes=lanes, passed=True, results=result.stdout.splitlines(),
+        cases.append(dict(depth=depth, lanes=lanes, outstanding=outstanding, passed=True, results=result.stdout.splitlines(),
                           command=command))
     if hashes != {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources}:
         raise RuntimeError("测试期间源码发生变化")
