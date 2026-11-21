@@ -24,10 +24,12 @@ def main():
     p.add_argument('--bus-width',type=int,choices=(32,64),default=32)
     p.add_argument('--window-lanes',type=int,choices=(4,8,16),help='window response element count; default follows bus bytes')
     p.add_argument('--shared-quant',action='store_true',help='connect the production matrix quantization pipeline')
+    p.add_argument('--shared-storage',action='store_true',help='store DW weights and completed INT32 rows in the production shared RAM')
     p.add_argument('--xilinx',action='store_true',help='simulate the official Xilinx primitive models')
     p.add_argument('--prepared',type=Path,help='prepared model directory containing nearest-even Add tensors')
     p.add_argument('--softmax-replay',type=Path,help='Softmax tables and original model tensors')
     a=p.parse_args();a.pes=a.pes or [min(8,a.tile)];a.window_lanes=a.window_lanes or a.bus_width//8
+    if a.shared_storage and a.tile!=16:p.error('--shared-storage requires --tile 16')
     out=a.out.resolve();out.mkdir(parents=True,exist_ok=True)
     csrc=[HERE/'reference.c',HERE/'reference_add.c']
     conv=ROOT/'rtl/npu/conv'
@@ -37,6 +39,7 @@ def main():
     svsrc += [ROOT/'rtl/npu/writeback'/name for name in
               ('vec_requant.sv','requant_compute_lane.sv','requant_group_buffer.sv')]
     svsrc += [HERE/'shared_quant_model.sv']
+    svsrc += [ROOT/'rtl/npu/buffers'/name for name in ('ia_ps_shared_ram.sv','vector_shared_store.sv')]
     svsrc += [ROOT/'rtl/common/pseudo_dual_port_ram.v',ROOT/'rtl/common/regfile.v',HERE/'vector_engine_dma_top.sv']
     import runpy
     svsrc = runpy.run_path(str(ROOT / "test/monitors/sources.py"))["with_observers"](svsrc)
@@ -58,7 +61,7 @@ def main():
     cflags=['-std=c11','-O2','-Wall','-Wextra','-Werror']
     result={'verification':'RTL engine + production DMA; independent signed-integer nearest-even reference','tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,
             'cache_line_bytes':a.cache_line_bytes,'cache_bytes':2*a.cache_sets*a.cache_line_bytes,
-            'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,
+            'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
             'implementation':'official Xilinx primitive models' if a.xilinx else 'generic',
             'primitive_library_sha256':primitive_sha256,
             'verilator':subprocess.check_output([a.verilator,'--version'],text=True).strip(),'runs':[]}
@@ -78,7 +81,7 @@ def main():
         source_sha={str(f.relative_to(ROOT)):hashlib.sha256(f.read_bytes()).hexdigest() for f in sources}
         manifest=folder/'build.json'
         identity={'sha256':source_sha,'pe':pe,'tile':a.tile,'cache_sets':a.cache_sets,'cache_policy':a.cache_policy,'cache_line_bytes':a.cache_line_bytes,
-                  'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,
+                  'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
                   'xilinx':a.xilinx,'primitive_library_sha256':primitive_sha256}
         if not a.skip_build:
             for i,src in enumerate(csrc):
@@ -88,7 +91,7 @@ def main():
             command([a.verilator,'--cc','--exe','--assert','--top-module','vector_engine_dma_top','-Wno-fatal',
                      '-Wno-PINMISSING',f'-GTILE={a.tile}',f'-GPE_COUNT={pe}',f'-GCACHE_SETS={a.cache_sets}',f'-GCACHE_POLICY={a.cache_policy}',
                      f'-GCACHE_LINE_BYTES={a.cache_line_bytes}',f'-GBUS_WIDTH={a.bus_width}',f'-GWINDOW_LANES={a.window_lanes}',
-                     f'-GSHARED_QUANT_ENABLE={int(a.shared_quant)}','--Mdir',folder/'obj',
+                     f'-GSHARED_QUANT_ENABLE={int(a.shared_quant)}',f'-GSHARED_STORAGE_ENABLE={int(a.shared_storage)}','--Mdir',folder/'obj',
                      '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
                      '-CFLAGS',f'-std=c++17 --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_TILE_SIZE={a.tile} -DTEST_BUS_WIDTH={a.bus_width}',
                      '-LDFLAGS',lib,ROOT/'test/conv_npu/simulator.vlt',*svsrc,*primitive_options,HERE/'main.cpp'],folder/'verilate.log')

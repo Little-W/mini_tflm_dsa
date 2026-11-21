@@ -68,6 +68,32 @@ python3 test/vector_engine/run.py --bus-width 64 --pes 8 --jobs 2 --xilinx --out
 内存服务按总线字节数处理窄读、写字节使能和总线背压，逐字节检查输出范围。
 十六字节写入在 32 位和 64 位总线上分别包含四个和两个传输周期。
 
+## 共享权重与部分和存储
+
+`--shared-storage` 设置 `SHARED_STORAGE_ENABLE=1`，要求 `TILE=16`。测试连接生产使用的
+`vector_shared_store` 与 `ia_ps_channel_ram`，包含八个 4096 字节的存储块。
+当前任务使用一个 IA 存储块保存权重，四个 PS 端口共同保存一行 16 个 INT32 累加值。
+权重接口每次读取 128 位，按字节掩码写入；部分和接口每次读取或写入 512 位。
+两类读取均在请求上升沿之后返回数据。
+
+共享配置将完成的像素写入 PS 行，下一周期读取该行，再提交量化。
+量化直接使用 RAM 保持的返回数据。PE 工作累加寄存器 `acc_buf` 继续处理当前像素，
+并服务池化、向量归约与 Softmax。关闭共享配置时，权重和完成像素保存在模块的本地存储中。
+
+```sh
+python3 test/vector_engine/run.py --bus-width 64 --window-lanes 16 --pes 16 \
+  --shared-quant --shared-storage --cache-line-bytes 128 --cache-sets 32 \
+  --jobs 2 --out build/vector_shared_storage_pe16
+python3 test/vector_engine/run.py --bus-width 32 --window-lanes 4 --pes 8 \
+  --shared-storage --jobs 2 --out build/vector_shared_storage_pe8_local
+```
+
+两种共享存储配置使用相同的功能测试，逐元素比较输出，检查权重读取对应的卷积核位置、
+有效通道数、完整部分和数据、读取返回周期，以及任务完成前的访问排空。
+本地单路量化配置还检查同一 RAM 返回行在多个周期内连续提供各通道输入。
+日志中的 `VECTOR_SHARED_STORAGE_CHECK` 分别报告权重写入字节数、读取次数、
+部分和写入次数和返回次数。`build.json` 与 `summary.json` 保存共享存储参数及构建信息。
+
 ## 结果写入选择与参数存储
 
 串行结果先共享字节数据与地址选择，再由各存储项产生写使能；Hadamard 的

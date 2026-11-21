@@ -98,6 +98,10 @@ module window_error_top #(
   vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT),
     .WINDOW_LANES(WINDOW_LANES),.QUANT_LANES(QUANT_LANES),.SHARED_QUANT_ENABLE(SHARED_QUANT_ENABLE)) engine(
     .win_rsp_valid(engine_response_valid),.win_rsp_ready(engine_response_ready),
+    .o_weight_read_en(),.o_weight_read_addr(),.i_weight_read_valid(1'b0),.i_weight_read_data(128'd0),
+    .o_weight_write_en(),.o_weight_write_addr(),.o_weight_write_data(),.o_weight_write_mask(),
+    .o_ps_read_en(),.o_ps_read_addr(),.i_ps_read_valid(1'b0),.i_ps_read_data(512'd0),
+    .o_ps_write_en(),.o_ps_write_addr(),.o_ps_write_data(),.i_storage_error(1'b0),
     .win_rsp_error(engine_response_error),.*);
   if (SHARED_QUANT_ENABLE) begin : g_shared_quant
     logic quant_backend_ready, quant_request_allow;

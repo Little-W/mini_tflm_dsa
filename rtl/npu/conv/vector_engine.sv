@@ -8,6 +8,8 @@ module vector_engine #(
   parameter int WINDOW_LANES = 4,
   parameter bit SHARED_QUANT_ENABLE = 1'b0,
   parameter int QUANT_LANES = SHARED_QUANT_ENABLE ? TILE : 1,
+  parameter bit SHARED_STORAGE_ENABLE = 1'b0,
+  parameter int SHARED_STORAGE_ADDR_WIDTH = 12,
   parameter int MAX_TAPS = 49,
   parameter int POOL_MAX_TAPS = 256
 ) (
@@ -49,6 +51,24 @@ module vector_engine #(
   input logic quant_rsp_valid = 1'b0,
   input logic quant_rsp_tag = 1'b0,
   input logic signed [7:0] quant_rsp_data[TILE] = '{default:8'sd0},
+
+  // 权重地址以 16 字节为单位，部分和地址以 64 字节为单位；读取在下一周期返回。
+  output logic o_weight_read_en,
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_weight_read_addr,
+  input logic i_weight_read_valid = 1'b0,
+  input logic [127:0] i_weight_read_data = '0,
+  output logic o_weight_write_en,
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_weight_write_addr,
+  output logic [127:0] o_weight_write_data,
+  output logic [15:0] o_weight_write_mask,
+  output logic o_ps_read_en,
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_ps_read_addr,
+  input logic i_ps_read_valid = 1'b0,
+  input logic [511:0] i_ps_read_data = '0,
+  output logic o_ps_write_en,
+  output logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_ps_write_addr,
+  output logic [511:0] o_ps_write_data,
+  input logic i_storage_error = 1'b0,
 
   output logic rd_req, rd_start,
   input logic rd_granted,
@@ -123,7 +143,7 @@ module vector_engine #(
   logic [31:0] fetch_tap_offset, position_offset, pool_byte_offset;
   logic signed [15:0] input_buf [DMA_SIZE], rhs_buf [TILE];
   logic signed [15:0] input_bank_data [INPUT_BANKS];
-  logic weights_i_wr_en;
+  logic weights_i_wr_en, weights_i_rd_en;
   logic weight_row_last_fire;
   logic parameter_row_last_fire;
   logic [1:0] parameter_rows_remaining;
@@ -186,7 +206,7 @@ module vector_engine #(
   logic dw_issue_fire, dw_commit_vld, dw_group_last, dw_tap_advance;
   logic [TILE_INDEX_W-1:0] dw_commit_index;
   logic dw_snapshot_fire, dw_snapshot_vld, dw_quant_start, dw_quant_last_issue;
-  logic signed [31:0] dw_snapshot [TILE];
+  logic dw_snapshot_data_ready;
   logic [31:0] dw_snapshot_address;
   logic dw_snapshot_last;
   logic dw_quant_input_active, dw_quant_slot, dw_quant_next_slot;
@@ -775,13 +795,13 @@ module vector_engine #(
     endcase
   end
   assign dw_group_last = compute_index + TILE_INDEX_W'(PE_COUNT) >= TILE_INDEX_W'(active);
-  assign dw_issue_fire = state==DW_EXECUTE && in_bounds && input_ready[read_bank];
+  assign dw_issue_fire = state==DW_EXECUTE && in_bounds && input_ready[read_bank] &&
+      (!SHARED_STORAGE_ENABLE || i_weight_read_valid);
   assign dw_tap_advance = state==DW_EXECUTE && (!in_bounds || (dw_issue_fire && dw_group_last));
   assign dw_snapshot_fire = state==DW_FINISH && !dw_snapshot_vld;
-  assign quant_req_valid = SHARED_QUANT_ENABLE && dw_snapshot_vld &&
+  assign quant_req_valid = SHARED_QUANT_ENABLE && dw_snapshot_vld && dw_snapshot_data_ready &&
       !dw_result_reserved[dw_quant_next_slot] && state!=FAILED;
   assign quant_req_tag = dw_quant_next_slot;
-  assign quant_req_accumulator = dw_snapshot;
   assign quant_req_offset = c.output_offset;
   assign quant_req_minimum = c.activation_min;
   assign quant_req_maximum = c.activation_max;
@@ -790,7 +810,8 @@ module vector_engine #(
   end
   assign dw_shared_fire = quant_req_valid && quant_req_ready;
   assign dw_quant_start = SHARED_QUANT_ENABLE ? dw_shared_fire :
-      dw_snapshot_vld && !dw_quant_input_active && !dw_result_reserved[dw_quant_next_slot] && state!=FAILED;
+      dw_snapshot_vld && dw_snapshot_data_ready && !dw_quant_input_active &&
+      !dw_result_reserved[dw_quant_next_slot] && state!=FAILED;
   assign dw_quant_last_issue = SHARED_QUANT_ENABLE ? dw_shared_fire :
       dw_quant_input_active && q_issue+1'b1>=q_count;
   assign dw_quant_complete = SHARED_QUANT_ENABLE ? quant_rsp_valid :
@@ -822,6 +843,9 @@ module vector_engine #(
   assign {unused_weight_tap_carry, weight_tap_nxt} = {1'b0, tap} + (TAP_COUNT_W+1)'(1);
   assign weights_i_rd_tap = (state == OUTPUT_INIT || state == DW_FINISH) ? 32'd0 :
       weight_tap_advance ? 32'(weight_tap_nxt) : 32'(tap);
+  // 同步读取提前准备当前或下一卷积核位置；加载权重期间不发起共享 RAM 读取。
+  assign weights_i_rd_en = !SHARED_STORAGE_ENABLE || (rst_n && depthwise && !i_storage_error &&
+      (state==OUTPUT_INIT || state==DW_EXECUTE || state==DW_FINISH));
   for (genvar channel = 0; channel < TILE; channel++) begin : g_weight_channel
     localparam int p_dma_lane = channel % BUS_BYTES;
     assign weights_i_wr_mask[channel] = rd_valid[p_dma_lane] &&
@@ -829,11 +853,27 @@ module vector_engine #(
     assign weights_i_wr_data[8*channel+:8] = rd_data[p_dma_lane][7:0];
     assign weight_tap_data[channel] = $signed(weights_o_rd_data[8*channel+:8]);
   end
-  vector_weight_store #(.p_channels(TILE), .p_depth(MAX_TAPS)) u_weights (
-      .clk(clk), .i_wr_en(weights_i_wr_en), .i_wr_tap(weights_i_wr_tap),
-      .i_wr_mask(weights_i_wr_mask), .i_wr_data(weights_i_wr_data),
-      .i_rd_tap(weights_i_rd_tap), .o_rd_data(weights_o_rd_data)
-  );
+  if (SHARED_STORAGE_ENABLE) begin : g_shared_weights
+    assign o_weight_read_en = weights_i_rd_en;
+    assign o_weight_read_addr = SHARED_STORAGE_ADDR_WIDTH'(weights_i_rd_tap);
+    assign o_weight_write_en = weights_i_wr_en && !i_storage_error;
+    assign o_weight_write_addr = SHARED_STORAGE_ADDR_WIDTH'(weights_i_wr_tap);
+    assign o_weight_write_data = 128'(weights_i_wr_data);
+    assign o_weight_write_mask = 16'(weights_i_wr_mask);
+    assign weights_o_rd_data = (8*TILE)'(i_weight_read_data);
+  end else begin : g_private_weights
+    vector_weight_store #(.p_channels(TILE), .p_depth(MAX_TAPS)) u_weights (
+        .clk(clk), .i_wr_en(weights_i_wr_en), .i_wr_tap(weights_i_wr_tap),
+        .i_wr_mask(weights_i_wr_mask), .i_wr_data(weights_i_wr_data),
+        .i_rd_tap(weights_i_rd_tap), .o_rd_data(weights_o_rd_data)
+    );
+    assign o_weight_read_en = 1'b0;
+    assign o_weight_read_addr = '0;
+    assign o_weight_write_en = 1'b0;
+    assign o_weight_write_addr = '0;
+    assign o_weight_write_data = '0;
+    assign o_weight_write_mask = '0;
+  end
 
   // 操作码在 EXECUTE 更新；操作数独立等待写出允许后接收，下一周期提交结果。
   for (genvar lane = 0; lane < PE_COUNT; lane++) begin : g_pe
@@ -1322,15 +1362,57 @@ module vector_engine #(
     end
   end
 
-  // 已完成像素独立保存，量化读取期间，PE 可以继续累加下一像素。
-  // 最后一次乘加与快照在同一边沿完成，当前提交结果直接进入对应通道。
-  for (genvar entry=0;entry<TILE;entry++) begin : g_dw_snapshot
-    localparam int p_lane = entry % PE_COUNT;
-    localparam int p_group = entry - p_lane;
-    always_ff @(posedge clk) begin
-      if (dw_snapshot_fire) begin
-        dw_snapshot[entry] <= dw_commit_vld && dw_commit_index==TILE_INDEX_W'(p_group) ?
-            pe_result[p_lane] : acc_buf[entry];
+  // 完成的像素保存到独立存储行，量化读取期间，PE 继续累加下一像素。
+  // 当前提交结果直接写入对应通道，避免等待最后一次乘加更新工作累加寄存器。
+  if (SHARED_STORAGE_ENABLE) begin : g_shared_snapshot
+    logic read_pending, data_valid;
+    assign o_ps_write_en = rst_n && dw_snapshot_fire && !i_storage_error;
+    assign o_ps_write_addr = '0;
+    assign o_ps_read_en = read_pending && state!=FAILED && !i_storage_error;
+    assign o_ps_read_addr = '0;
+    assign dw_snapshot_data_ready = data_valid || i_ps_read_valid;
+    for (genvar entry=0;entry<TILE;entry++) begin : g_channel
+      localparam int p_lane = entry % PE_COUNT;
+      localparam int p_group = entry - p_lane;
+      assign o_ps_write_data[32*entry+:32] =
+          dw_commit_vld && dw_commit_index==TILE_INDEX_W'(p_group) ? pe_result[p_lane] : acc_buf[entry];
+      assign quant_req_accumulator[entry] = $signed(i_ps_read_data[32*entry+:32]);
+    end
+    // 写入和读取分处相邻周期；RAM 输出保持有效，直到该像素的量化输入全部接收。
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) begin
+        read_pending <= 1'b0;
+        data_valid <= 1'b0;
+      end else if ((state==IDLE && start) || state==FAILED) begin
+        read_pending <= 1'b0;
+        data_valid <= 1'b0;
+      end else begin
+        if (o_ps_read_en) read_pending <= 1'b0;
+        if (i_ps_read_valid) data_valid <= 1'b1;
+        if (dw_snapshot_fire) begin
+          read_pending <= 1'b1;
+          data_valid <= 1'b0;
+        end
+        if (dw_quant_last_issue) data_valid <= 1'b0;
+      end
+    end
+  end else begin : g_private_snapshot
+    logic signed [31:0] dw_snapshot[TILE];
+    assign dw_snapshot_data_ready = 1'b1;
+    assign quant_req_accumulator = dw_snapshot;
+    assign o_ps_read_en = 1'b0;
+    assign o_ps_read_addr = '0;
+    assign o_ps_write_en = 1'b0;
+    assign o_ps_write_addr = '0;
+    assign o_ps_write_data = '0;
+    for (genvar entry=0;entry<TILE;entry++) begin : g_channel
+      localparam int p_lane = entry % PE_COUNT;
+      localparam int p_group = entry - p_lane;
+      always_ff @(posedge clk) begin
+        if (dw_snapshot_fire) begin
+          dw_snapshot[entry] <= dw_commit_vld && dw_commit_index==TILE_INDEX_W'(p_group) ?
+              pe_result[p_lane] : acc_buf[entry];
+        end
       end
     end
   end
@@ -1454,7 +1536,7 @@ module vector_engine #(
           q_count <= TILE_INDEX_W'(active);
           q_issue <= '0;
         end else if (dw_quant_input_active) begin
-          q_accumulator <= dw_snapshot[$clog2(TILE)'(q_issue)];
+          q_accumulator <= quant_req_accumulator[$clog2(TILE)'(q_issue)];
           q_multiplier <= params_o_multiplier;
           q_right_0 <= params_o_right_shift;
           q_index_0 <= q_issue;
@@ -1787,7 +1869,8 @@ module vector_engine #(
           else begin write_origin<=write_origin_next;write_total<=4;state<=WRITE_PREP;end
         end
         FAILED: if (!rd_busy && !wr_busy && !win_busy && !writeback_busy &&
-                    dw_shared_inflight==0 && dma_cfg_ready) begin
+                    dw_shared_inflight==0 && dma_cfg_ready &&
+                    (!SHARED_STORAGE_ENABLE || (!i_weight_read_valid && !i_ps_read_valid))) begin
           q_active<=0;q_valid<=0;
           input_ready<=0;state<=DONE;
         end
@@ -1796,6 +1879,10 @@ module vector_engine #(
       endcase
       if ((writeback_done && writeback_error) ||
           (window_response_fire && win_rsp_last && (win_rsp_error || !window_count_o_equal))) begin
+        error<=2'b10;state<=FAILED;
+      end
+      if (SHARED_STORAGE_ENABLE && i_storage_error &&
+          state!=IDLE && state!=FAILED && state!=DONE) begin
         error<=2'b10;state<=FAILED;
       end
     end

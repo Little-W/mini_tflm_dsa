@@ -214,7 +214,8 @@ def main():
             arrays=record["declared_arrays"]
             selected=[shape for name,shape in arrays.items() if name=="vector_engine.weight_buf" or
                       ("g_weight_channel[" in name and name.endswith(".u_bank.data")) or
-                      name == "vector_engine.u_weights.u_storage.mem"]
+                      name in {"vector_engine.u_weights.u_storage.mem",
+                               "vector_engine.g_private_weights.u_weights.u_storage.mem"}]
             if not selected:
                 raise RuntimeError("Vector weight storage was not found")
             return sum(math.prod(shape["dimensions"])*shape["element_bits"] for shape in selected)

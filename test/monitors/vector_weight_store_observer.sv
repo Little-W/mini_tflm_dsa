@@ -8,6 +8,8 @@ module vector_weight_issue_observer #(
     input logic rst_n,
     input logic i_execute,
     input logic i_depthwise,
+    input logic [31:0] i_active,
+    input logic i_read_en,
     input logic i_wr_en,
     input logic [31:0] i_wr_tap,
     input logic [p_channels-1:0] i_wr_mask,
@@ -22,21 +24,24 @@ module vector_weight_issue_observer #(
     longint unsigned checked_weights;
 
     always @(posedge clk) begin
-        sampled_read_tap <= i_rd_tap;
+        if (i_read_en) sampled_read_tap <= i_rd_tap;
         if (!rst_n) begin
             checked_issues <= 0;
             checked_weights <= 0;
         end else if (i_execute && i_depthwise) begin
             assert(sampled_read_tap == i_current_tap);
             for (int channel = 0; channel < p_channels; channel++) begin
-                if (i_current_tap < p_depth) begin
-                    assert(i_weight_data[8*channel+:8] === reference_memory[channel][i_current_tap]);
-                end else begin
-                    assert(i_weight_data[8*channel+:8] == 8'd0);
+                // 未使用的通道不参与本次计算，存储内容由后续任务重新写入。
+                if (channel < i_active) begin
+                    if (i_current_tap < p_depth) begin
+                        assert(i_weight_data[8*channel+:8] === reference_memory[channel][i_current_tap]);
+                    end else begin
+                        assert(i_weight_data[8*channel+:8] == 8'd0);
+                    end
                 end
             end
             checked_issues <= checked_issues + 1;
-            checked_weights <= checked_weights + p_channels;
+            checked_weights <= checked_weights + 64'(i_active);
         end
         if (i_wr_en && i_wr_tap < p_depth) begin
             for (int channel = 0; channel < p_channels; channel++) begin
@@ -53,6 +58,7 @@ endmodule
 
 bind vector_engine vector_weight_issue_observer #(.p_channels(TILE), .p_depth(MAX_TAPS)) weight_rows_observer (
     .clk(clk), .rst_n(rst_n), .i_execute(dw_issue_fire), .i_depthwise(depthwise),
+    .i_active(32'(active)), .i_read_en(weights_i_rd_en),
     .i_wr_en(weights_i_wr_en), .i_wr_tap(weights_i_wr_tap),
     .i_wr_mask(weights_i_wr_mask), .i_wr_data(weights_i_wr_data),
     .i_rd_tap(weights_i_rd_tap), .i_current_tap(32'(tap)), .i_weight_data(weights_o_rd_data)

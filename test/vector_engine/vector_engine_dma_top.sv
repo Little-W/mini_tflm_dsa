@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 8), CACHE_SETS=128, CACHE_POLICY=3, CACHE_LINE_BYTES=16, BUS_WIDTH=32,
-  WINDOW_LANES=BUS_WIDTH/8, SHARED_QUANT_ENABLE=0, QUANT_LANES=(SHARED_QUANT_ENABLE ? TILE : 1))(
+  WINDOW_LANES=BUS_WIDTH/8, SHARED_QUANT_ENABLE=0, QUANT_LANES=(SHARED_QUANT_ENABLE ? TILE : 1),
+  parameter bit SHARED_STORAGE_ENABLE=1'b0, parameter int SHARED_STORAGE_ADDR_WIDTH=12)(
   input logic clk,rst_n,start,done_ready,
   input logic [31:0] config_words[40],
   output logic [31:0] pe_count,
@@ -80,8 +81,104 @@ module vector_engine_dma_top #(parameter int TILE=16, PE_COUNT=(TILE<8 ? TILE : 
   logic [TILE-1:0] quant_req_mask;
   logic signed [31:0] quant_req_offset,quant_req_minimum,quant_req_maximum;
   logic signed [7:0] quant_rsp_data[TILE];
+  logic o_weight_read_en,o_weight_write_en,i_weight_read_valid;
+  logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_weight_read_addr,o_weight_write_addr;
+  logic [127:0] o_weight_write_data,i_weight_read_data;
+  logic [15:0] o_weight_write_mask;
+  logic o_ps_read_en,o_ps_write_en,i_ps_read_valid,i_storage_error;
+  logic [SHARED_STORAGE_ADDR_WIDTH-1:0] o_ps_read_addr,o_ps_write_addr;
+  logic [511:0] o_ps_write_data,i_ps_read_data;
   vector_engine #(.TILE(TILE),.DMA_SIZE(DMA_SIZE),.PE_COUNT(PE_COUNT),.BUS_WIDTH(BUS_WIDTH),
-    .WINDOW_LANES(WINDOW_LANES),.QUANT_LANES(QUANT_LANES),.SHARED_QUANT_ENABLE(SHARED_QUANT_ENABLE)) engine(.*);
+    .WINDOW_LANES(WINDOW_LANES),.QUANT_LANES(QUANT_LANES),.SHARED_QUANT_ENABLE(SHARED_QUANT_ENABLE),
+    .SHARED_STORAGE_ENABLE(SHARED_STORAGE_ENABLE),.SHARED_STORAGE_ADDR_WIDTH(SHARED_STORAGE_ADDR_WIDTH)) engine(.*);
+  if (SHARED_STORAGE_ENABLE) begin : g_shared_storage
+    logic storage_active,storage_cfg_valid,storage_idle,adapter_error,ram_error;
+    logic [1:0] ia_read_en,ia_write_en;
+    logic [SHARED_STORAGE_ADDR_WIDTH-1:0] ia_read_addr[2],ia_write_addr[2];
+    logic [127:0] ia_read_data[2],ia_write_data[2],ia_shared_write_data;
+    logic [15:0] ia_write_mask[2];
+    logic [3:0] ps_read_en,ps_write_en;
+    logic [SHARED_STORAGE_ADDR_WIDTH-1:0] ps_read_addr[4],ps_write_addr[4];
+    logic [127:0] ps_read_data[4],ps_write_data[4];
+    logic [511:0] expected_snapshot;
+    logic previous_weight_read,previous_ps_read;
+    longint unsigned weight_write_bytes,weight_reads,snapshot_writes,snapshot_reads;
+
+    assign storage_cfg_valid=start && ready;
+    assign i_storage_error=adapter_error || ram_error;
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) storage_active<=1'b0;
+      else if (storage_cfg_valid) storage_active<=1'b1;
+      else if (done_valid && done_ready) storage_active<=1'b0;
+    end
+    vector_shared_store #(.p_bank_bytes(4096),.p_total_bytes(32768),
+      .p_addr_width(SHARED_STORAGE_ADDR_WIDTH),.p_bank_count_width(4),.p_fixed_ps_channels(1'b1)) u_store (
+      .clk,.rst_n,.i_cfg_valid(storage_cfg_valid),.i_cfg_ia_banks(4'd1),
+      .i_enable(storage_active),.i_flush(1'b0),.o_idle(storage_idle),.o_error(adapter_error),
+      .i_weight_read_en(o_weight_read_en),.i_weight_read_addr(o_weight_read_addr),
+      .o_weight_read_valid(i_weight_read_valid),.o_weight_read_data(i_weight_read_data),
+      .i_weight_write_en(o_weight_write_en),.i_weight_write_addr(o_weight_write_addr),
+      .i_weight_write_data(o_weight_write_data),.i_weight_write_mask(o_weight_write_mask),
+      .i_ps_read_en(o_ps_read_en),.i_ps_read_addr(o_ps_read_addr),
+      .o_ps_read_valid(i_ps_read_valid),.o_ps_read_data(i_ps_read_data),
+      .i_ps_write_en(o_ps_write_en),.i_ps_write_addr(o_ps_write_addr),.i_ps_write_data(o_ps_write_data),
+      .o_ia_read_en(ia_read_en),.o_ia_write_en(ia_write_en),
+      .o_ia_read_addr(ia_read_addr),.o_ia_write_addr(ia_write_addr),
+      .i_ia_read_data(ia_read_data),.o_ia_write_data(ia_write_data),.o_ia_write_mask(ia_write_mask),
+      .o_ia_shared_write_data(ia_shared_write_data),
+      .o_ps_read_en(ps_read_en),.o_ps_write_en(ps_write_en),
+      .o_ps_read_addr(ps_read_addr),.o_ps_write_addr(ps_write_addr),
+      .i_ps_read_data(ps_read_data),.o_ps_write_data(ps_write_data));
+    ia_ps_channel_ram #(.p_bank_bytes(4096),.p_total_bytes(32768),
+      .p_addr_width(SHARED_STORAGE_ADDR_WIDTH),.p_bank_count_width(4)) u_ram (
+      .clk,.rst_n,.i_cfg_valid(storage_cfg_valid),.i_cfg_ia_banks(4'd1),.o_capacity_fault(ram_error),
+      .i_ia_read_en(ia_read_en),.i_ia_write_en(ia_write_en),
+      .i_ia_read_addr(ia_read_addr),.i_ia_write_addr(ia_write_addr),
+      .o_ia_read_data(ia_read_data),.i_ia_write_data(ia_write_data),
+      .i_ia_shared_write_data(ia_shared_write_data),.i_ia_write_mask(ia_write_mask),
+      .i_ps_read_en(ps_read_en),.i_ps_write_en(ps_write_en),
+      .i_ps_read_addr(ps_read_addr),.i_ps_write_addr(ps_write_addr),
+      .o_ps_read_data(ps_read_data),.i_ps_write_data(ps_write_data));
+
+    // 使用实际共享 RAM 检查同步返回、整行部分和、写掩码及任务完成前的访问排空。
+    initial begin
+      assert(TILE==16);
+      weight_write_bytes=0;weight_reads=0;snapshot_writes=0;snapshot_reads=0;
+    end
+    always @(posedge clk) begin
+      if (!rst_n || storage_cfg_valid) begin
+        previous_weight_read<=1'b0;
+        previous_ps_read<=1'b0;
+      end else begin
+        assert(i_weight_read_valid==previous_weight_read);
+        assert(i_ps_read_valid==previous_ps_read);
+        previous_weight_read<=o_weight_read_en;
+        previous_ps_read<=o_ps_read_en;
+        assert(!i_storage_error);
+        if (o_weight_write_en)
+          weight_write_bytes<=weight_write_bytes+64'($countones(o_weight_write_mask));
+        if (o_weight_read_en) weight_reads<=weight_reads+1;
+        if (o_ps_write_en) begin
+          assert(!o_ps_read_en);
+          expected_snapshot<=o_ps_write_data;
+          snapshot_writes<=snapshot_writes+1;
+        end
+        if (i_ps_read_valid) begin
+          assert(i_ps_read_data==expected_snapshot);
+          snapshot_reads<=snapshot_reads+1;
+        end
+        if (done_valid) assert(storage_idle);
+      end
+    end
+    final $display("VECTOR_SHARED_STORAGE_CHECK weight_bytes=%0d weight_reads=%0d snapshot_writes=%0d snapshot_reads=%0d",
+      weight_write_bytes,weight_reads,snapshot_writes,snapshot_reads);
+  end else begin : g_private_storage
+    assign i_weight_read_valid=1'b0;
+    assign i_weight_read_data='0;
+    assign i_ps_read_valid=1'b0;
+    assign i_ps_read_data='0;
+    assign i_storage_error=1'b0;
+  end
   if (SHARED_QUANT_ENABLE) begin : g_shared_quant
     vector_shared_quant_test #(.TILE(TILE),.BUS_WIDTH(BUS_WIDTH)) u_quant (.*);
   end else begin : g_scalar_quant
