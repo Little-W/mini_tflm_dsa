@@ -137,6 +137,9 @@ module vector_engine #(
     };
   endfunction
   state_t state;
+  (* keep = 1 *) logic state_failed;
+  // 失败状态的完整译码供中止控制共用，避免逐位译码进入跨模块握手。
+  assign state_failed = state == FAILED;
   logic window_fetch_phase;
   load_t load_kind;
   vector_engine_cfg_t c;
@@ -181,6 +184,7 @@ module vector_engine #(
   logic vector_has_more, vector_has_more_comb;
   logic [TILE_INDEX_W-1:0] compute_index, quant_index, reduce_index;
   logic compute_group_last_q;
+  logic pool_pixel_has_more_q;
   logic [31:0] fetch_tap_offset, position_offset, pool_byte_offset;
   (* use_dsp = "yes" *) logic [31:0] fetch_position_next, fetch_tap_offset_next;
   (* use_dsp = "yes" *) logic [31:0] position_offset_next, pool_byte_offset_next, vector_offset_next;
@@ -205,7 +209,7 @@ module vector_engine #(
   logic [31:0] weights_i_wr_tap, weights_i_rd_tap;
   logic [TILE-1:0] weights_i_wr_mask;
   logic [8*TILE-1:0] weights_i_wr_data, weights_o_rd_data;
-  logic weight_data_ready;
+  logic weight_data_ready, shared_weight_write_pending;
   logic [SHARED_STORAGE_ADDR_WIDTH-1:0] weight_data_tap;
   logic weight_tap_advance;
   logic [TAP_COUNT_W-1:0] weight_tap_nxt;
@@ -308,7 +312,7 @@ module vector_engine #(
         depthwise ? dw_result_bytes[dw_result_read_slot][word_index] : word_value[7:0]};
   end
   assign writeback_request_valid = depthwise ?
-      (dw_result_ready[dw_result_read_slot] && state!=FAILED) : state==WRITE_PREP;
+      (dw_result_ready[dw_result_read_slot] && !state_failed) : state==WRITE_PREP;
   assign writeback_request_address = depthwise ? dw_result_address[dw_result_read_slot] : write_origin;
   assign writeback_request_bytes = depthwise ? $clog2(4*TILE+1)'(dw_result_count[dw_result_read_slot]) :
       $clog2(4*TILE+1)'(write_total);
@@ -326,7 +330,7 @@ module vector_engine #(
   end
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) writeback_metadata_valid <= 1'b0;
-    else if (state==CHECK || state==FAILED || writeback_sink_fire)
+    else if (state==CHECK || state_failed || writeback_sink_fire)
       writeback_metadata_valid <= 1'b0;
     else if (writeback_metadata_capture) writeback_metadata_valid <= 1'b1;
   end
@@ -351,7 +355,7 @@ module vector_engine #(
     .request_byte_output(byte_output),.result_words(writeback_words),
     .request_coalesce(writeback_metadata_coalesce),
     .request_last(writeback_metadata_last),
-    .flush(state==FAILED),
+    .flush(state_failed),
     .busy(writeback_busy_raw),.done(writeback_done),.error(writeback_error),
     .wr_req,.wr_start,.wr_granted,.wr_base_addr,.wr_row_stride,.wr_rows_to_write,
     .wr_burst_len_m1,.src_wdata,.src_wmask,.src_wvalid,.src_wready,.wr_done(write_response_done_q),.wr_error(write_response_error_q));
@@ -419,7 +423,8 @@ module vector_engine #(
   logic window_response_count_ok_q;
   logic [1:0] window_response_tag;
   logic input_response_pending;
-  logic [WINDOW_LANES-1:0] window_bank_valid;
+  logic [WINDOW_LANES-1:0] window_bank_valid, window_bank_valid_next;
+  logic window_write_pending;
   logic [31:0] fetch_position;
   logic [TAP_COUNT_W-1:0] fetch_tap;
   logic [15:0] fetch_ox;
@@ -779,15 +784,15 @@ module vector_engine #(
   assign window_fetch_advance=window_request_fire ||
     (window_fetch_enabled && fetch_position<32'(position_count) && !window_fetch_in_bounds);
   assign input_reservations_clear = (state == CHECK) || (state == TILE_INIT) ||
-      (state == FAILED && input_drain_ready);
+      (state_failed && input_drain_ready);
   assign input_response_pending = p_input_bank_storage &&
-      (window_response_last_q || (|window_bank_valid));
+      (window_response_last_q || window_write_pending);
   assign input_drain_ready = !rd_busy && !read_done_q && !wr_busy && !win_busy &&
-      !input_response_pending && !writeback_busy &&
+      !input_response_pending && !writeback_busy && !shared_weight_write_pending &&
       dw_shared_inflight == 0 && dma_cfg_ready &&
       (!SHARED_STORAGE_ENABLE || (!i_weight_read_valid && !i_ps_read_valid));
   assign input_ready_clear_all = (state == CHECK) || (state == TILE_INIT) ||
-      (state == FAILED && input_drain_ready);
+      (state_failed && input_drain_ready);
   assign input_ready_release = (dw_issue_fire && dw_group_last) ||
       (state == EXECUTE_COMMIT && compute_group_last_q && !global_pool && spatial);
 
@@ -876,9 +881,13 @@ module vector_engine #(
 
   // 执行周期保存通道组末项判断，提交周期直接使用该条件。
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) compute_group_last_q <= 1'b0;
-    else if (state == EXECUTE)
+    if (!rst_n) begin
+      compute_group_last_q <= 1'b0;
+      pool_pixel_has_more_q <= 1'b0;
+    end else if (state == EXECUTE) begin
       compute_group_last_q <= compute_index + 32'(PE_COUNT) >= active;
+      pool_pixel_has_more_q <= pool_pixel + 1 < pool_pixels;
+    end
   end
 
   // 四个末地址已在检查阶段按当前配置分配槽位。
@@ -1289,7 +1298,7 @@ module vector_engine #(
   // 完成事件等待最后一次 PE 提交，整行快照由完整的累加存储提供。
   assign dw_snapshot_fire = state==DW_FINISH && !dw_snapshot_vld && !dw_commit_vld;
   assign quant_req_valid = SHARED_QUANT_ENABLE && dw_snapshot_vld && dw_snapshot_data_ready &&
-      !dw_result_reserved[dw_quant_next_slot] && state!=FAILED;
+      !dw_result_reserved[dw_quant_next_slot] && !state_failed;
   assign quant_req_tag = dw_quant_next_slot;
   assign quant_req_offset = c.output_offset;
   assign quant_req_minimum = c.activation_min;
@@ -1300,7 +1309,7 @@ module vector_engine #(
   assign dw_shared_fire = quant_req_valid && quant_req_ready;
   assign dw_quant_start = SHARED_QUANT_ENABLE ? dw_shared_fire :
       dw_snapshot_vld && dw_snapshot_data_ready && !dw_quant_input_active &&
-      !dw_result_reserved[dw_quant_next_slot] && state!=FAILED;
+      !dw_result_reserved[dw_quant_next_slot] && !state_failed;
   assign dw_quant_last_issue = SHARED_QUANT_ENABLE ? dw_shared_fire :
       dw_quant_input_active && q_issue+1'b1>=q_count;
   assign dw_quant_complete = SHARED_QUANT_ENABLE ? quant_rsp_valid :
@@ -1359,21 +1368,53 @@ module vector_engine #(
     logic [SHARED_STORAGE_ADDR_WIDTH-1:0] prefetch_tap, return_tap, saved_tap;
     logic [127:0] saved_data;
     logic saved_valid, return_matches, saved_matches;
+    logic write_capture, write_valid_q;
+    logic [SHARED_STORAGE_ADDR_WIDTH-1:0] write_tap_q;
+    logic [127:0] write_data_q;
+    logic [15:0] write_mask_q;
+    localparam int TAG_GROUPS = (SHARED_STORAGE_ADDR_WIDTH+2)/3;
+    (* keep = 1 *) logic [TAG_GROUPS-1:0] return_match_groups, saved_match_groups;
+    logic [SHARED_STORAGE_ADDR_WIDTH-1:0] current_tap;
+
+    // 每组分别比较三个地址位，再合并有效标志，保留并行的权重标签比较。
+    assign current_tap = SHARED_STORAGE_ADDR_WIDTH'(tap);
+    for (genvar group=0;group<TAG_GROUPS;group++) begin : g_tag_match
+      localparam int LOW = 3*group;
+      localparam int WIDTH = SHARED_STORAGE_ADDR_WIDTH-LOW<3 ?
+          SHARED_STORAGE_ADDR_WIDTH-LOW : 3;
+      assign return_match_groups[group] = return_tap[LOW+:WIDTH] == current_tap[LOW+:WIDTH];
+      assign saved_match_groups[group] = saved_tap[LOW+:WIDTH] == current_tap[LOW+:WIDTH];
+    end
 
     // 当前权重和下一核位置并行保留。预取地址只取决于已保存的核位置，
     // 当前输入是否就绪以及是否发射均不参与共享存储器的地址选择。
     assign prefetch_tap = (state == OUTPUT_INIT || state == DW_FINISH || tap_last_modulo) ?
         '0 : SHARED_STORAGE_ADDR_WIDTH'(weight_tap_nxt);
-    assign return_matches = i_weight_read_valid && return_tap == SHARED_STORAGE_ADDR_WIDTH'(tap);
-    assign saved_matches = saved_valid && saved_tap == SHARED_STORAGE_ADDR_WIDTH'(tap);
+    assign return_matches = i_weight_read_valid && (&return_match_groups);
+    assign saved_matches = saved_valid && (&saved_match_groups);
     assign weight_data_ready = return_matches || saved_matches;
     assign weight_data_tap = return_matches ? return_tap : saved_tap;
     assign o_weight_read_en = weights_i_rd_en;
     assign o_weight_read_addr = prefetch_tap;
-    assign o_weight_write_en = weights_i_wr_en && !i_storage_error;
-    assign o_weight_write_addr = SHARED_STORAGE_ADDR_WIDTH'(weights_i_wr_tap);
-    assign o_weight_write_data = 128'(weights_i_wr_data);
-    assign o_weight_write_mask = 16'(weights_i_wr_mask);
+    // 线性响应的地址、数据和有效字节同拍保存，每个周期提交一组权重。
+    // 错误状态停止发布，排空条件同时等待已经保存的写请求。
+    assign write_capture = weights_i_wr_en && (|weights_i_wr_mask);
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) write_valid_q <= 1'b0;
+      else write_valid_q <= write_capture && !i_storage_error && !state_failed;
+    end
+    always_ff @(posedge clk) begin
+      if (write_capture) begin
+        write_tap_q <= SHARED_STORAGE_ADDR_WIDTH'(weights_i_wr_tap);
+        write_data_q <= 128'(weights_i_wr_data);
+        write_mask_q <= 16'(weights_i_wr_mask);
+      end
+    end
+    assign shared_weight_write_pending = write_valid_q;
+    assign o_weight_write_en = write_valid_q && !i_storage_error && !state_failed;
+    assign o_weight_write_addr = write_tap_q;
+    assign o_weight_write_data = write_data_q;
+    assign o_weight_write_mask = write_mask_q;
     assign weights_o_rd_data = (8*TILE)'(return_matches ? i_weight_read_data : saved_data);
 
     // 返回地址与同步 RAM 请求同拍保存；首次返回可直接供发射使用，
@@ -1389,13 +1430,14 @@ module vector_engine #(
       if (!rst_n) begin
         saved_valid <= 1'b0;
       end else if ((state == CHECK) || state == TILE_INIT ||
-                   state == OUTPUT_INIT || state == FAILED) begin
+                   state == OUTPUT_INIT || state_failed) begin
         saved_valid <= 1'b0;
       end else if (return_matches) begin
         saved_valid <= 1'b1;
       end
     end
   end else begin : g_private_weights
+    assign shared_weight_write_pending = 1'b0;
     vector_weight_store #(.p_channels(TILE), .p_depth(MAX_TAPS)) u_weights (
         .clk(clk), .i_wr_en(weights_i_wr_en), .i_wr_tap(weights_i_wr_tap),
         .i_wr_mask(weights_i_wr_mask), .i_wr_data(weights_i_wr_data),
@@ -1454,7 +1496,7 @@ module vector_engine #(
       add_operand<=32'(add_next_lhs_offset);
   end
 
-  // 串行运算按任务操作码选择累加存储地址；归约使用独立的提前读取寄存器。
+  // 标量量化、平均池化和向量归约共用累加数组的串行读取端口。
   logic [TILE_INDEX_W-1:0] serial_acc_read_index;
   logic signed [31:0] serial_acc_read_data;
   logic signed [31:0] softmax_i_exp_rdata;
@@ -1462,6 +1504,9 @@ module vector_engine #(
     serial_acc_read_index = quant_index;
     if (depthwise) begin
       serial_acc_read_index = q_issue;
+    end else if (!spatial) begin
+      serial_acc_read_index = state == VECTOR_REDUCE ?
+          reduce_index + TILE_INDEX_W'(1) : '0;
     end
   end
   assign serial_acc_read_data = acc_buf[serial_acc_read_index];
@@ -1480,9 +1525,9 @@ module vector_engine #(
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) reduce_rhs_q <= '0;
     else if (state == VECTOR_NEXT && !vector_has_more && !vector_hadamard && !add_s8)
-      reduce_rhs_q <= acc_buf[0];
+      reduce_rhs_q <= serial_acc_read_data;
     else if (state == VECTOR_REDUCE && reduce_index + 1 < TILE)
-      reduce_rhs_q <= acc_buf[reduce_index + TILE_INDEX_W'(1)];
+      reduce_rhs_q <= serial_acc_read_data;
   end
   assign reduce_alu_i_max = vector_max;
   assign reduce_alu_i_min = vector_min;
@@ -1589,11 +1634,12 @@ module vector_engine #(
   wire [WINDOW_BANK_W-1:0] window_first_bank=WINDOW_BANK_W'(input_response_base)+WINDOW_BANK_W'(win_rsp_col);
   for (genvar bank=0;bank<WINDOW_LANES;bank++) begin : g_window_bank
     wire [WINDOW_BANK_W-1:0] source_lane=WINDOW_BANK_W'(bank)-window_first_bank;
+    assign window_bank_valid_next[bank] = window_write_valid[source_lane];
     if (p_input_bank_storage) begin : g_registered_write
       always_ff @(posedge clk) begin
         if (!rst_n) window_bank_valid[bank] <= 1'b0;
         else begin
-          window_bank_valid[bank] <= window_write_valid[source_lane];
+          window_bank_valid[bank] <= window_bank_valid_next[bank];
           if (window_write_valid[source_lane]) window_bank_index[bank] <= window_write_index[source_lane];
         end
       end
@@ -1604,6 +1650,11 @@ module vector_engine #(
     if (!p_input_bank_storage) begin : g_direct_data
       assign window_bank_data[bank]=win_rsp_data[source_lane];
     end
+  end
+  // 保存本拍写入是否非空，排空控制直接使用与各银行有效位同拍的汇总标志。
+  always_ff @(posedge clk) begin
+    if (!rst_n) window_write_pending <= 1'b0;
+    else window_write_pending <= |window_bank_valid_next;
   end
   for (genvar lane=0;lane<BUS_BYTES;lane++) begin : g_dma_write_address
     wire [INPUT_INDEX_W:0] column_sum={1'b0,rd_col_base}+(INPUT_INDEX_W+1)'(lane);
@@ -1848,7 +1899,7 @@ module vector_engine #(
   logic accumulator_init_fire, accumulator_bias_selected;
   logic signed [31:0] accumulator_init_data;
   assign accumulator_compute_fire = (state == EXECUTE_COMMIT && (!vector_hadamard || !writeback_busy)) ||
-      (dw_commit_vld && state!=FAILED && !dw_snapshot_fire);
+      (dw_commit_vld && !state_failed && !dw_snapshot_fire);
   assign accumulator_init_fire = state == OUTPUT_INIT || state == VECTOR_INIT || dw_snapshot_fire;
   assign accumulator_bias_selected = depthwise && (state == OUTPUT_INIT || dw_snapshot_fire);
   always_comb begin
@@ -1981,7 +2032,7 @@ module vector_engine #(
   // 输出元数据在最后一个字节提交时准备，写回模块随后读取完整结果。
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) result_byte_pending <= 1'b0;
-    else if (state==FAILED) result_byte_pending <= 1'b0;
+    else if (state_failed) result_byte_pending <= 1'b0;
     else result_byte_pending <= result_background_write || result_serial_write;
   end
   always_ff @(posedge clk) begin
@@ -2019,7 +2070,7 @@ module vector_engine #(
     logic read_pending, data_valid;
     assign o_ps_write_en = rst_n && dw_snapshot_fire && !i_storage_error;
     assign o_ps_write_addr = '0;
-    assign o_ps_read_en = read_pending && state!=FAILED && !i_storage_error;
+    assign o_ps_read_en = read_pending && !state_failed && !i_storage_error;
     assign o_ps_read_addr = '0;
     assign dw_snapshot_data_ready = data_valid || i_ps_read_valid;
     for (genvar entry=0;entry<TILE;entry++) begin : g_channel
@@ -2031,7 +2082,7 @@ module vector_engine #(
       if (!rst_n) begin
         read_pending <= 1'b0;
         data_valid <= 1'b0;
-      end else if ((state==CHECK) || state==FAILED) begin
+      end else if ((state==CHECK) || state_failed) begin
         read_pending <= 1'b0;
         data_valid <= 1'b0;
       end else begin
@@ -2064,7 +2115,7 @@ module vector_engine #(
   for (genvar slot=0;slot<2;slot++) begin : g_dw_result_slot
     for (genvar entry=0;entry<TILE;entry++) begin : g_channel
       always_ff @(posedge clk) begin
-        if (rst_n && depthwise && state!=FAILED) begin
+        if (rst_n && depthwise && !state_failed) begin
           if (SHARED_QUANT_ENABLE && quant_rsp_valid && quant_rsp_tag==1'(slot) && entry<dw_result_count[slot])
             dw_result_bytes[slot][entry] <= quant_rsp_data[entry];
           else if (!SHARED_QUANT_ENABLE && q_valid[6] &&
@@ -2093,7 +2144,7 @@ module vector_engine #(
         dw_result_address[slot] <= '0;
         dw_result_count[slot] <= '0;
       end
-    end else if ((state==CHECK) || state==FAILED) begin
+    end else if ((state==CHECK) || state_failed) begin
       dw_commit_vld <= 1'b0;
       dw_snapshot_vld <= 1'b0;
       dw_quant_input_active <= 1'b0;
@@ -2172,7 +2223,7 @@ module vector_engine #(
       fetch_tap_offset<=0;position_offset<=0;pool_byte_offset<=0;
     end else begin
       // 量化流水独立于空间位置状态运行，连续像素可在同一流水内交叠。
-      if (depthwise && !SHARED_QUANT_ENABLE && state!=IDLE && state!=FAILED && state!=DONE) begin
+      if (depthwise && !SHARED_QUANT_ENABLE && state!=IDLE && !state_failed && state!=DONE) begin
         q_active <= dw_quant_input_active || (|q_valid) || dw_quant_start;
         q_valid <= {q_valid[5:0],dw_quant_input_active};
         if (dw_quant_start) begin
@@ -2365,7 +2416,7 @@ module vector_engine #(
           if (!compute_group_last_q) compute_index<=compute_index+32'(PE_COUNT);
           else if (global_pool) begin
             pool_byte_offset<=pool_byte_offset_next;
-            if (pool_pixel+1<pool_pixels) begin
+            if (pool_pixel_has_more_q) begin
               pool_pixel<=pool_pixel+1;pool_input_index<=pool_input_index+(INPUT_INDEX_W+1)'(active);
               compute_index<=0;
             end
@@ -2546,7 +2597,7 @@ module vector_engine #(
         error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
       end
       if (SHARED_STORAGE_ENABLE && i_storage_error &&
-          state!=IDLE && state!=FAILED && state!=DONE) begin
+          state!=IDLE && !state_failed && state!=DONE) begin
         error<=2'b10;{window_fetch_phase,dma_cfg_valid,rd_req,ready,done_valid,state}<=state_control_value(FAILED);
       end
     end
@@ -2582,10 +2633,21 @@ module vector_engine #(
       if (writeback_sink_fire && !depthwise) assert(!result_byte_pending);
       assert(!(result_background_write && result_serial_write));
       if (state==POOL_STORE) assert(!result_byte_pending);
+      if (p_input_bank_storage) assert(window_write_pending == (|window_bank_valid));
+      if (SHARED_STORAGE_ENABLE && o_weight_write_en) begin
+        assert(!o_weight_read_en);
+        assert(|o_weight_write_mask);
+      end
+      if (state==EXECUTE_COMMIT && global_pool)
+        assert(pool_pixel_has_more_q == (pool_pixel+1<pool_pixels));
+      if (state==VECTOR_NEXT && !vector_has_more && !vector_hadamard && !add_s8)
+        assert(serial_acc_read_data === acc_buf[0]);
+      if (state==VECTOR_REDUCE && reduce_index+1<TILE)
+        assert(serial_acc_read_data === acc_buf[reduce_index+TILE_INDEX_W'(1)]);
       if (dw_snapshot_fire) assert(!dw_commit_vld);
       assert(writeback_accept_pending == previous_writeback_sink_fire);
       assert(!(writeback_metadata_valid && writeback_accept_pending));
-      if (writeback_metadata_valid && state!=FAILED)
+      if (writeback_metadata_valid && !state_failed)
         assert(writeback_request_valid && writeback_metadata_match);
       if (state==TAP_CHECK) assert(dw_in_bounds == in_bounds);
       if (state==DW_FINISH || state==OUTPUT_NEXT) begin
@@ -2605,7 +2667,7 @@ module vector_engine #(
         assert(writeback_metadata_coalesce ==
             (depthwise && channels==32'(dw_result_count[dw_result_read_slot])));
       end
-      if (writeback_metadata_stalled && state != FAILED) begin
+      if (writeback_metadata_stalled && !state_failed) begin
         assert(writeback_request_valid && writeback_metadata_match);
         assert(writeback_metadata_address == previous_writeback_address);
         assert(writeback_metadata_bytes == previous_writeback_bytes);

@@ -30,12 +30,14 @@ def main():
     p.add_argument('--shared-bank-count',type=int,choices=range(6,10),default=8,help='共享存储的物理银行数量')
     p.add_argument('--shared-ia-banks',type=int,choices=range(1,5),default=1,help='向量任务分配给输入数据的银行数量')
     p.add_argument('--check-weight-prefetch',action='store_true',help='检查共享权重预取的地址、数据和任务切换')
+    p.add_argument('--check-weight-write-stage',action='store_true',help='检查共享权重写入的单周期寄存、末拍与错误取消')
     p.add_argument('--rtl-assertions',action='store_true',help='启用 RTL 内部的控制和数据有效性断言')
     p.add_argument('--stable-stimulus',action='store_true',help='使用独立随机数生成器确定数据与尺寸，使其不受总线等待周期影响')
     p.add_argument('--xilinx',action='store_true',help='simulate the official Xilinx primitive models')
     p.add_argument('--prepared',type=Path,help='prepared model directory containing nearest-even Add tensors')
     p.add_argument('--softmax-replay',type=Path,help='Softmax tables and original model tensors')
     a=p.parse_args();a.pes=a.pes or [min(8,a.tile)];a.window_lanes=a.window_lanes or a.bus_width//8
+    if a.check_weight_write_stage:a.check_weight_prefetch=True
     if a.shared_storage and a.tile!=16:p.error('--shared-storage requires --tile 16')
     if a.shared_storage and a.shared_ia_banks+5>a.shared_bank_count:p.error('共享存储需同时容纳输入、权重和四个部分和银行')
     if a.check_weight_prefetch and not a.shared_storage:p.error('--check-weight-prefetch requires --shared-storage')
@@ -76,6 +78,7 @@ def main():
             'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
             'shared_bank_bytes':a.shared_bank_bytes,'shared_bank_count':a.shared_bank_count,'shared_ia_banks':a.shared_ia_banks,
             'check_weight_prefetch':a.check_weight_prefetch,
+            'check_weight_write_stage':a.check_weight_write_stage,
             'rtl_assertions':a.rtl_assertions,
             'stable_stimulus':a.stable_stimulus,
             'implementation':'official Xilinx primitive models' if a.xilinx else 'generic',
@@ -100,6 +103,7 @@ def main():
                   'bus_width':a.bus_width,'window_lanes':a.window_lanes,'shared_quant':a.shared_quant,'shared_storage':a.shared_storage,
                   'shared_bank_bytes':a.shared_bank_bytes,'shared_bank_count':a.shared_bank_count,'shared_ia_banks':a.shared_ia_banks,
                   'check_weight_prefetch':a.check_weight_prefetch,
+                  'check_weight_write_stage':a.check_weight_write_stage,
                   'rtl_assertions':a.rtl_assertions,
                   'xilinx':a.xilinx,'primitive_library_sha256':primitive_sha256}
         if not a.skip_build:
@@ -116,6 +120,7 @@ def main():
                      '--output-groups','0','--output-split','12000','--output-split-cfuncs','200',
                      '-CFLAGS',f'-std=c++{20 if a.rtl_assertions else 17} --param=ggc-min-expand=5 --param=ggc-min-heapsize=4096 -DTEST_TILE_SIZE={a.tile} -DTEST_BUS_WIDTH={a.bus_width}',
                      '-LDFLAGS',lib,ROOT/'test/conv_npu/simulator.vlt',*svsrc,*primitive_options,
+                     *(['-DVECTOR_CHECK_REGISTERED_WRITE=1'] if a.check_weight_write_stage else []),
                      *(['-DNPU_SIM_ASSERT=1','--timing'] if a.rtl_assertions else []),HERE/'main.cpp'],folder/'verilate.log')
             command(['make','-C',folder/'obj','-f','Vvector_engine_dma_top.mk','-j',a.jobs,
                      'OPT_FAST=-O1','OPT_SLOW=-O0','OPT_GLOBAL=-O1','VK_PCH_I_FAST=',
