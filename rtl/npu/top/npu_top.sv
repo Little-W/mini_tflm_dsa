@@ -536,6 +536,7 @@ module npu_top #(
     logic [511:0] engine_o_ps_write_data, engine_i_ps_read_data;
     logic engine_i_ps_read_valid, engine_i_storage_error;
     logic engine_i_done_ready;
+    logic shared_ram_capacity_fault;
     assign engine_i_done_ready = done_ready && run_vector && vector_shared_store_o_idle;
     assign engine_i_storage_error = vector_shared_store_o_error || shared_ram_capacity_fault;
     logic [31:0] shared_ia_banks_q;
@@ -557,7 +558,6 @@ module npu_top #(
     wire [31:0] active_ps_bank_depth = SHARED_RAM_ENABLED ?
         32'(SHARED_BANK_BYTES / 16) : active_ps_pool_bytes >> 6;
     wire shared_allocation_invalid = shared_allocation_invalid_q;
-    wire shared_ram_capacity_fault;
     logic [1:0] ia_ram_write_en, ia_ram_read_en;
     logic [SHARED_IA_ADDR_WIDTH-1:0] ia_ram_write_addr [0:1], ia_ram_read_addr [0:1];
     logic [127:0] ia_ram_write_data [0:1], ia_ram_read_data [0:1];
