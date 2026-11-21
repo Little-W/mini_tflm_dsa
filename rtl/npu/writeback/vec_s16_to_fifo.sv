@@ -34,6 +34,7 @@ module vec_s16_to_fifo #(
     localparam int BANK_COUNT_WIDTH = (BANKS <= 1) ? 1 : $clog2(BANKS + 1);
     localparam int MEM_DEPTH = BANKS * VLEN;
     localparam int MEM_ADDR_W = (MEM_DEPTH <= 1) ? 1 : $clog2(MEM_DEPTH);
+    localparam int p_column_mask_width = (1 << BEAT_WIDTH) * ELEMENTS_PER_BEAT;
 
     logic [COUNT_WIDTH-1:0] bank_count[0:BANKS-1];
     logic [BANKS-1:0] bank_ready;
@@ -44,7 +45,11 @@ module vec_s16_to_fifo #(
     logic [PTR_WIDTH-1:0] write_ptr;
     logic [PTR_WIDTH-1:0] read_ptr;
     logic [BEAT_WIDTH-1:0] beat_idx;
-    logic [$clog2(VLEN)-1:0] vec_valid_num_col_q;
+    logic [COUNT_WIDTH-1:0] configured_col_count;
+    logic [COUNT_WIDTH-1:0] configured_last_beat;
+    logic [COUNT_WIDTH-1:0] last_beat_idx_q;
+    logic [p_column_mask_width-1:0] configured_columns;
+    logic [p_column_mask_width-1:0] valid_columns_q;
     logic stream_active;
     logic data_valid;
     logic ram_read_valid_q;
@@ -67,10 +72,14 @@ module vec_s16_to_fifo #(
         in_valid ? COUNT_WIDTH'(write_ptr + 1'b1) : COUNT_WIDTH'(write_ptr);
     wire read_bank_ready = bank_ready[read_bank] && (bank_count[read_bank] != '0);
     wire start_stream = !stream_active && read_bank_ready;
-    wire [COUNT_WIDTH-1:0] output_col_count =
-        COUNT_WIDTH'(vec_valid_num_col_q) + COUNT_WIDTH'(1);
-    wire [COUNT_WIDTH-1:0] last_beat_idx_cur =
-        (output_col_count == '0) ? '0 : ((output_col_count - 1'b1) >> ELEMENT_SHIFT);
+    // 接收列配置时保存各列有效位和末拍索引，输出阶段只选择当前拍。
+    assign configured_col_count = COUNT_WIDTH'(vec_valid_num_col) + COUNT_WIDTH'(1);
+    assign configured_last_beat = (configured_col_count == '0) ? '0 :
+        ((configured_col_count - 1'b1) >> ELEMENT_SHIFT);
+    for (genvar column = 0; column < p_column_mask_width; column++) begin : g_column_mask
+        assign configured_columns[column] = column < int'(configured_col_count);
+    end
+    wire [COUNT_WIDTH-1:0] last_beat_idx_cur = last_beat_idx_q;
     wire output_fire = output_ready && output_valid;
     wire last_beat_in_row = output_fire &&
         (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur);
@@ -105,9 +114,10 @@ module vec_s16_to_fifo #(
         output_mask = '0;
         if (stream_active && data_valid) begin
             output_data = ram_rd_data[int'(beat_idx)*BUS_WIDTH +: BUS_WIDTH];
-            for (int lane = 0; lane < ELEMENTS_PER_BEAT; ++lane)
+            for (int lane = 0; lane < ELEMENTS_PER_BEAT; ++lane) begin
                 output_mask[lane*2+:2] =
-                    (int'(beat_idx)*ELEMENTS_PER_BEAT + lane < int'(output_col_count)) ? 2'b11 : 2'b00;
+                    {2{valid_columns_q[int'(beat_idx)*ELEMENTS_PER_BEAT + lane]}};
+            end
         end
     end
 
@@ -133,7 +143,8 @@ module vec_s16_to_fifo #(
             write_ptr <= '0;
             read_ptr <= '0;
             beat_idx <= '0;
-            vec_valid_num_col_q <= '0;
+            last_beat_idx_q <= '0;
+            valid_columns_q <= {{(p_column_mask_width-1){1'b0}}, 1'b1};
             stream_active <= 1'b0;
             data_valid <= 1'b0;
             ram_read_valid_q <= 1'b0;
@@ -165,16 +176,16 @@ module vec_s16_to_fifo #(
                 read_ptr <= '0;
                 beat_idx <= '0;
                 active_read_count_q <= bank_count[read_bank];
-                vec_valid_num_col_q <= vec_valid_num_col;
+                last_beat_idx_q <= configured_last_beat;
+                valid_columns_q <= configured_columns;
 
             end else if (stream_active && !data_valid && ram_read_valid_q) begin
                 data_valid <= 1'b1;
             end else if (stream_active && (read_ptr == '0) &&
                          (beat_idx == '0) && !output_ready) begin
-                // A ready bank can be selected before oa_writer advances to
-                // that tile. Keep its tail-column metadata synchronized until
-                // the first beat is actually accepted.
-                vec_valid_num_col_q <= vec_valid_num_col;
+                // 首拍等待期间继续接收该输出块的列配置，首拍接收后保持整行配置。
+                last_beat_idx_q <= configured_last_beat;
+                valid_columns_q <= configured_columns;
             end else if (output_fire) begin
                 if (last_row_in_bank) begin
                     stream_active <= 1'b0;

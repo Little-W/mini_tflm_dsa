@@ -1,0 +1,263 @@
+{
+  "passed": true,
+  "source_sha256": "9dc338809f1b2675585f7e1723e076bb715aca27f2f20fd345e829a2134902d1",
+  "reference": "0097b66e",
+  "formal": {
+    "reference": "0097b66e",
+    "source_sha256": "9dc338809f1b2675585f7e1723e076bb715aca27f2f20fd345e829a2134902d1",
+    "reference_sha256": "95214c205cf7c4019cc91e82ae40ee186dfa7280b5c13b596a85c51a7b277433",
+    "common_source_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+    "arithmetic_source_sha256": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+    "functional_inputs_constrained": false,
+    "initial_reset_cycle": 1,
+    "memory_read_data_constrained": false,
+    "method": "inductive_equivalence",
+    "proven_state_invariants": [
+      "write_bank < BANKS",
+      "read_bank < BANKS"
+    ],
+    "comparison": "全部公开输出、数据存储读写端口及配置计算关系",
+    "runs": [
+      {
+        "vlen": 2,
+        "banks": 1,
+        "bus_width": 16,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "3d6773a16e0011c9d739e65fb672b80b52660679366b3fba1d9ccc81e8e7c4ff"
+      },
+      {
+        "vlen": 3,
+        "banks": 2,
+        "bus_width": 32,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "497d70cfff01a212acfd90b4635454d7421fd496d7d72f7ccc71d93709669e07"
+      },
+      {
+        "vlen": 4,
+        "banks": 3,
+        "bus_width": 64,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "f5e45b3db1d45a85cb8df94dda9265f015205f8f12bcb9aaf9244a7d0f6f9186"
+      },
+      {
+        "vlen": 5,
+        "banks": 3,
+        "bus_width": 32,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "6853c61bf14215c80cef0b7d423e1383fb3d969ea09aef5933741f2f0807bb18"
+      },
+      {
+        "vlen": 8,
+        "banks": 4,
+        "bus_width": 32,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "48a2918a5b8ad10b0387f0602e7885e0459671b5f6b43439c924a84164154f7e"
+      },
+      {
+        "vlen": 16,
+        "banks": 4,
+        "bus_width": 64,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "011f1d6c7f5fdff14597ba4e6f66dc373ebe6d2ad8a840bb09b82d90776dfa11"
+      },
+      {
+        "vlen": 16,
+        "banks": 3,
+        "bus_width": 32,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "cb354a08c86ab72684a4f6022b244a775eee0c990625655d1439a17ceb10eae2"
+      },
+      {
+        "vlen": 16,
+        "banks": 4,
+        "bus_width": 128,
+        "reset_base_case_passed": true,
+        "unbounded_induction_passed": true,
+        "passed": true,
+        "log_sha256": "1ec67799ba0a17a52f29573292cea73ab45b44c5966909e5940253647794e0a1"
+      }
+    ],
+    "passed": true
+  },
+  "four_state": {
+    "reference": "0097b66e",
+    "source_sha256": "9dc338809f1b2675585f7e1723e076bb715aca27f2f20fd345e829a2134902d1",
+    "reference_sha256": "95214c205cf7c4019cc91e82ae40ee186dfa7280b5c13b596a85c51a7b277433",
+    "common_source_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+    "arithmetic_source_sha256": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+    "functional_inputs_constrained": false,
+    "initial_reset_cycle": 1,
+    "memory_read_data_constrained": false,
+    "method": "four_state",
+    "proven_state_invariants": [
+      "write_bank < BANKS",
+      "read_bank < BANKS"
+    ],
+    "comparison": "全部公开输出、数据存储读写端口及配置计算关系",
+    "runs": [
+      {
+        "vlen": 2,
+        "banks": 1,
+        "bus_width": 16,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "6c143d1940613fb578046d610b7a4d8cf26e343e75d0144bd36e2f31ceb2de2c"
+      },
+      {
+        "vlen": 3,
+        "banks": 2,
+        "bus_width": 32,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "fa047e37618a95b24a1de167cff727347d54f89781da7971f95a3e73f3d70fee"
+      },
+      {
+        "vlen": 4,
+        "banks": 3,
+        "bus_width": 64,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "d47f052d32f323c6609d49ea99942ce92ff9383c1d2f3865a70313013fb688a9"
+      },
+      {
+        "vlen": 5,
+        "banks": 3,
+        "bus_width": 32,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "cf8e6180ce3de4227021d0dd342ab3368dc9ce63cd2a17975094e42a9be00ac8"
+      },
+      {
+        "vlen": 8,
+        "banks": 4,
+        "bus_width": 32,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "cd524c03b9230773c972f90231393e9328a328e5be40ac78908bccb0dbb9a02f"
+      },
+      {
+        "vlen": 16,
+        "banks": 4,
+        "bus_width": 64,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "29318bc2e493640ea01fff47ea76ab9d39f2920a475c83c5e76a8f70c505cd6e"
+      },
+      {
+        "vlen": 16,
+        "banks": 3,
+        "bus_width": 32,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "1353fd15d49b917592daa7d65a121a59146a6fd7ce1a5624dddf8f294dc616c4"
+      },
+      {
+        "vlen": 16,
+        "banks": 4,
+        "bus_width": 128,
+        "cycles": 20000,
+        "four_state_checks": 40001,
+        "passed": true,
+        "log_sha256": "78bc4d9dfb43d16552fb14d0b16fc55262771a20d4ed144f39342e5b1d6ba39d"
+      }
+    ],
+    "passed": true
+  },
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 238,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 238,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 56,
+        "dsp48e1": 0,
+        "ramb36e1": 4,
+        "ramb18e1": 0,
+        "carry4": 6,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 6,
+          "FDRE": 56,
+          "INV": 7,
+          "LUT2": 19,
+          "LUT3": 9,
+          "LUT4": 24,
+          "LUT5": 163,
+          "LUT6": 23,
+          "RAMB36E1": 4
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 6,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "metrics_sha256": "b52958c0680fcee96a2892dd83ecd1ca2aeb1eff1d52e77264327b4e1e876e1d"
+    },
+    "current": {
+      "resources": {
+        "logic_lut_cells": 250,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 250,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 71,
+        "dsp48e1": 0,
+        "ramb36e1": 4,
+        "ramb18e1": 0,
+        "carry4": 7,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 7,
+          "FDRE": 70,
+          "FDSE": 1,
+          "INV": 7,
+          "LUT2": 20,
+          "LUT3": 11,
+          "LUT4": 21,
+          "LUT5": 168,
+          "LUT6": 30,
+          "RAMB36E1": 4
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "register_path_requirement": {
+        "maximum_combinational_cells": 10,
+        "observed_combinational_cells": 6,
+        "graph_complete": true,
+        "met": true,
+        "scope": "Clocked storage outputs to synchronous data and control inputs",
+        "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+      },
+      "metrics_sha256": "e0aff1b8433ca0763001c155595eced044ec13a63bd667721e99ec12a4b19403"
+    }
+  },
+  "test_sha256": "f5837bb055edb301b4ed1c55b740d7be193b539e8f36b83617f0a1247778197f"
+}
