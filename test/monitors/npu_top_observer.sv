@@ -28,13 +28,24 @@ always @(posedge npu_top.clk) begin
 end
 
 // 配置提交后的输出预留计数必须与当前运行模式及复用数一致。
+wire [31:0] expected_s8_reserve = npu_top.direct_final_stream ?
+    (32'(npu_top.ia_reuse_num_eff) + 32'(npu_top.DIRECT_OUTPUT_EXTRA_BANKS)) :
+    32'(npu_top.ia_reuse_num_eff);
 always @(posedge npu_top.clk) begin
   if (npu_top.core_rst_n && !npu_top.cfg_stage2_valid) begin
-    assert (npu_top.output_reserve_banks ===
-        (npu_top.direct_final_stream ?
-         (32'(npu_top.ia_reuse_num_eff) + 32'(npu_top.DIRECT_OUTPUT_EXTRA_BANKS)) :
-         32'(npu_top.ia_reuse_num_eff)))
+    assert (32'(npu_top.output_reserve_banks) ===
+        (expected_s8_reserve >= 32'(npu_top.OA_FIFO_BANKS) ?
+         32'(npu_top.OA_FIFO_BANKS) : expected_s8_reserve))
       else $fatal(1, "Output reserve differs after configuration submission");
+    assert (32'(npu_top.output_s16_reserve_banks) ===
+        (32'(npu_top.ia_reuse_num_eff) >= 32'(npu_top.OA_S16_FIFO_BANKS) ?
+         32'(npu_top.OA_S16_FIFO_BANKS) : 32'(npu_top.ia_reuse_num_eff)))
+      else $fatal(1, "INT16 output reserve differs after configuration submission");
+  end
+  if (npu_top.core_rst_n && npu_top.operand_loader_flush_q) begin
+    assert (!npu_top.init_cfg_ia && !npu_top.init_cfg_weight &&
+        !npu_top.send_ia_trigger && !npu_top.send_weight_trigger && !npu_top.weight_commit)
+      else $fatal(1, "Operand cache clear overlaps operand initialization or transfer");
   end
 end
 

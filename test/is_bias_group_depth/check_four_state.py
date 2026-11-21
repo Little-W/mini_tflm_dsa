@@ -19,8 +19,10 @@ def main():
     current = source.read_text()
     original = read_rtl_source(args.reference + ':rtl/npu/top/npu_top.sv', cwd=ROOT, text=True)
     modules = out / 'arithmetic.sv'
-    modules.write_text((extract(original, 'reference') + extract(current, 'candidate'))
-                       .replace('localparam int unsigned', 'localparam integer'))
+    modules.write_text(((ROOT / 'rtl/common/unsigned_compare.sv').read_text() +
+                       extract(original, 'reference') + extract(current, 'candidate'))
+                       .replace('localparam int unsigned', 'localparam integer')
+                       .replace('parameter int unsigned', 'parameter integer'))
     results = []
     for width, count in ((16,8), (32,10), (64,20)):
         bits = width + 2*count

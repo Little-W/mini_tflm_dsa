@@ -105,7 +105,7 @@ def main():
     digest=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
     sources=[out/'candidate.sv',out/'reference.sv',out/'formal.sv',
              ROOT/'rtl/npu/control/ps_capacity_limits.sv',ROOT/'rtl/common/onehot_check.sv',
-             ROOT/'rtl/common/parallel_prefix_add.sv']
+             ROOT/'rtl/common/parallel_prefix_add.sv', ROOT/'rtl/common/unsigned_compare.sv']
     sources[0].write_text(capacity_module(source,'capacity_pipeline',sequential=True))
     reference_text=((args.reference_root/TOP).read_text() if args.reference_root else
                     read_rtl_source(f'{args.reference}:{TOP}',cwd=ROOT,text=True))
