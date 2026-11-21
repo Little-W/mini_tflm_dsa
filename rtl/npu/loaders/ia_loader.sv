@@ -606,6 +606,10 @@ module ia_loader #(
         end
     end
 
+    (* use_dsp = "yes" *) logic [CACHE_SLOT_W-1:0] request_slot_sum;
+
+    // 完整槽号模加独立完成，后续掩码与查询比较共用同一结果。
+    assign request_slot_sum = request_slot + cache_slot_base_q;
     assign request_p0_absolute = request_p0 + p0_base_q;
     assign request_q0_absolute = request_q0 + q0_base_q;
 
@@ -637,7 +641,7 @@ module ia_loader #(
         request_descriptor.group = request_group;
         request_descriptor.burst = request_burst_len_m1;
         request_descriptor.use16 = cfg_use_16bits;
-        request_descriptor.slot = (request_slot + cache_slot_base_q) & cache_slot_mask;
+        request_descriptor.slot = request_slot_sum & cache_slot_mask;
         dma_descriptor = prefetch_start ? prefetch_dma_descriptor : demand_descriptor;
     end
 
