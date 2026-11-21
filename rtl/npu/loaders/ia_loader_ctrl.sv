@@ -461,7 +461,7 @@ module ia_loader_ctrl #(
   logic is_last_col_tile, is_last_row_tile, is_first_tile;
   assign is_last_col_tile = (tile_col_idx == last_col_tile_idx);
   assign is_last_row_tile = (tile_row_idx == count_t'(vertical_tile_num - REG_WIDTH'(1)));
-  assign is_first_tile    = (l1_idx == 0);
+  // 首列标志与列计数器同时更新，部分和帧直接读取保存结果。
 
   logic load_is_last_row_tile;
   logic [LOAD_CNT_W-1:0] load_ia_cursor_cnt;
@@ -1004,6 +1004,7 @@ module ia_loader_ctrl #(
     if (!rst_n) begin
       l2_idx <= '0;
       l1_idx <= '0;
+      is_first_tile <= 1'b1;
       l1_idx_next <= count_t'(1);
       w_group_idx <= '0;
       w_cnt  <= '0;
@@ -1011,6 +1012,7 @@ module ia_loader_ctrl #(
     end else if (state == S_INIT) begin
       l2_idx <= '0;
       l1_idx <= '0;
+      is_first_tile <= 1'b1;
       l1_idx_next <= count_t'(1);
       w_group_idx <= '0;
       w_cnt  <= '0;
@@ -1027,9 +1029,11 @@ module ia_loader_ctrl #(
           w_cnt <= '0;
           if (!is_last_l1_group) begin
             l1_idx <= l1_idx + 1;
+            is_first_tile <= &l1_idx;
             l1_idx_next <= l1_idx_next + 1;
           end else begin
             l1_idx <= '0;
+            is_first_tile <= 1'b1;
             l1_idx_next <= count_t'(1);
             if (!is_last_w_group) begin
               w_group_idx <= w_group_idx + 1;
