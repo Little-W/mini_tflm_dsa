@@ -104,7 +104,7 @@ def helper_miter(reference, source_root=ROOT, reference_root=None):
         for name in ['rd_issue_oob', 'wr_active_oob', 'wr_lane_first', 'wr_lane_end',
                      'wr_transfer_block', 'wr_legal_lanes']:
             body = re.sub(r'\b' + name + r'\b', label + '_' + name, body)
-        body = re.sub(r'\bg_read_(power|arbitrary)_bound\b',
+        body = re.sub(r'\bg_read_(power|arbitrary|predicted)_bound\b',
                       lambda match: label + '_' + match[0], body)
         sections.append(body)
     return '''module helper_miter #(parameter AW=32,DW=64,DP=32768)(
@@ -114,6 +114,12 @@ def helper_miter(reference, source_root=ROOT, reference_root=None):
     localparam BYTEW=DW/8;
     localparam ADDR_LSB=BYTEW<=1 ? 0 : $clog2(BYTEW);
     localparam WORD_ADDR_BITS=AW-ADDR_LSB;
+    // 本模型检查静止地址的完整容量范围，地址推进由地址模型单独检查。
+    wire [AW:0] rd_byte_addr_q=(AW+1)'(rd_issue_word_addr) << ADDR_LSB;
+    wire [AW:0] rd_pipe_cmd_byte_addr='0;
+    wire rd_pipe_cmd=1'b0,rd_pipe_beat=1'b0;
+    wire [2:0] rd_size_active_q=3'd0;
+    wire [1:0] rd_burst_active_q=2'd0;
 ''' + '\n'.join(sections) + '''
     assign reference_result={reference_rd_issue_oob,reference_wr_active_oob,reference_wr_legal_lanes};
     assign current_result={current_rd_issue_oob,current_wr_active_oob,current_wr_legal_lanes};
