@@ -56,12 +56,19 @@ module conv_next_use_predictor (
   logic [15:0] cfg_partial_a, cfg_partial_b;
   (* use_dsp="yes" *) logic [31:0] cfg_partial_product;
   logic [63:0] cfg_product_accumulator, cfg_product;
+  logic [47:0] cfg_accumulate_addend;
+  (* use_dsp = "yes" *) logic [47:0] cfg_accumulated_upper;
   wire cfg_product_start = cfg_phase>=1 && cfg_phase<=4 &&
       cfg_multiply_phase==0 && !cfg_product_done &&
       (cfg_phase!=1 || (cfg_basic_q && cfg_taps_q!=0 && cfg_taps_q<=25));
   logic [32:0] cfg_block_round, cfg_block_round_q;
   logic [32:0] cfg_round_sum, cfg_round_carry;
   logic unused_cfg_round_carry;
+
+  // 各部分积共用高四十八位加法，低十六位在累加期间保持原值。
+  assign cfg_accumulate_addend = cfg_multiply_phase == 4'd8 ?
+      {cfg_partial_product, 16'd0} : {16'd0, cfg_partial_product};
+  assign cfg_accumulated_upper = cfg_product_accumulator[63:16] + cfg_accumulate_addend;
 
   // 取整偏移压缩为两个操作数，再并行计算四位分组进位。
   assign cfg_round_sum = ~({1'b0, cfg_points_q} ^ {1'b0, block_rows_q});
@@ -148,11 +155,11 @@ module conv_next_use_predictor (
           cfg_multiply_phase <= 3;
         end
         4,6: begin
-          cfg_product_accumulator <= cfg_product_accumulator + {16'd0,cfg_partial_product,16'd0};
+          cfg_product_accumulator <= {cfg_accumulated_upper, cfg_product_accumulator[15:0]};
           cfg_multiply_phase <= cfg_multiply_phase + 1'b1;
         end
         8: begin
-          cfg_product <= cfg_product_accumulator + {cfg_partial_product,32'd0};
+          cfg_product <= {cfg_accumulated_upper, cfg_product_accumulator[15:0]};
           cfg_product_done <= 1'b1;
           cfg_multiply_phase <= 0;
         end
