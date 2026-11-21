@@ -26,7 +26,7 @@ file mkdir $out_dir
 
 set part_name xc7a200tfbg484-3
 set top_name  soc_top
-set clock_period_ns 6.667
+set clock_period_ns [expr {1000.0 / 150.0}]
 set_param general.maxThreads 2
 set synth_generics {
     SIZE=16 BUS_WIDTH=64 IA_CACHE_BLOCKS=4 IM2COL_CACHE_BYTES=4096
@@ -91,6 +91,7 @@ read_verilog -sv $rtl_files
 read_xdc $xdc_file
 
 synth_design -top $top_name -part $part_name -generic $synth_generics -flatten_hierarchy rebuilt
+soc_reports::define_core_clock 150.0
 
 soc_reports::write $out_dir
 write_checkpoint -force [file join $out_dir soc_top_synth.dcp]
@@ -100,12 +101,8 @@ soc_reports::check_array $out_dir 16
 
 if {$pin_xdc ne ""} {
     read_xdc $pin_xdc
-    set main_clock [get_clocks -quiet -of_objects [get_ports clk]]
-    if {[llength $main_clock] != 1} { error "Expected one clock on soc_top.clk" }
-    set actual_period [timing_checks::finite_number [get_property PERIOD $main_clock] "SoC clock period"]
-    if {$actual_period <= 0 || $actual_period > 6.667001} {
-        error "The SoC clock period exceeds the 6.667 ns requirement"
-    }
+    # 所有外部约束载入后施加精确的目标频率，随后保存定义与工具显示值。
+    soc_reports::define_core_clock 150.0
     opt_design
     place_design
     phys_opt_design

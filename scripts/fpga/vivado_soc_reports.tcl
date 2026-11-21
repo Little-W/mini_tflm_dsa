@@ -5,13 +5,233 @@ source [file join [file dirname [file normalize [info script]]] .. .. fpga vivad
 namespace eval soc_reports {
     variable dsp_check_dir [file normalize [file join [file dirname [info script]] .. .. test pe_dsp_boundary]]
     variable unique_timing_helper [file normalize [file join [file dirname [info script]] .. .. fpga vivado tflm_ai_dsa_soc scripts vivado_unique_timing_paths.tcl]]
+    variable metrics_dir [file dirname [file normalize [info script]]]
+    variable native_clock_definition [dict create]
 }
 source [file join $soc_reports::dsp_check_dir check_vivado.tcl]
 
 proc soc_reports::dependency_sources {} {
     variable dsp_check_dir
     variable unique_timing_helper
-    return [list [file join $dsp_check_dir check_vivado.tcl] [file join $dsp_check_dir check.py] $unique_timing_helper]
+    variable metrics_dir
+    return [list [file join $dsp_check_dir check_vivado.tcl] [file join $dsp_check_dir check.py] \
+        $unique_timing_helper [file join $metrics_dir netlist_metrics.py] [file join $metrics_dir lut_dependencies.py]]
+}
+
+proc soc_reports::graph_record {stream args} {
+    foreach value $args {
+        if {[regexp {[\t\r\n]} $value]} { error "Connectivity fields must not contain tabs or newlines" }
+    }
+    puts $stream [join $args \t]
+}
+
+proc soc_reports::pin_net {pin} {
+    # 统一跨层次的导线名称，使父子层次的连接进入同一个位级图节点。
+    set nets [get_nets -segments -top_net_of_hierarchical_group -of_objects $pin]
+    if {[llength $nets] > 1} { error "A scalar pin has more than one canonical net: $pin" }
+    if {[llength $nets] == 0} { return "" }
+    return [get_property NAME [lindex $nets 0]]
+}
+
+proc soc_reports::soc_instance {} {
+    set cells [get_cells -hierarchical -filter {REF_NAME == soc_top || ORIG_REF_NAME == soc_top}]
+    if {[llength $cells] != 1} { error "Expected one complete soc_top instance" }
+    return $cells
+}
+
+proc soc_reports::write_connectivity {directory prefix} {
+    set stream [open [file join $directory ${prefix}_connectivity.tsv] w]
+    try {
+        graph_record $stream format vivado_connectivity_v1
+        # 原生设计覆盖全部 SoC；板级设计覆盖完整 SoC 实例及其全部边界引脚。
+        set all_cells [get_cells -hierarchical -filter {IS_PRIMITIVE == 1 || IS_BLACKBOX == 1}]
+        if {$prefix eq "soc_top"} {
+            set design_name [get_property NAME [current_design]]
+            if {$design_name ne "soc_top"} { error "Native connectivity requires soc_top as the current design" }
+            set cells $all_cells
+            set ports [get_ports]
+            set port_name_property NAME
+            graph_record $stream scope soc_top top $design_name 0
+        } else {
+            set scope [soc_instance]
+            set scope_name [get_property NAME $scope]
+            set cells [list]
+            foreach cell $all_cells {
+                # 综合工具可将供电常量移到板级，保留这些固定驱动的定义。
+                if {[string first ${scope_name}/ [get_property NAME $cell]] == 0 ||
+                    [get_property REF_NAME $cell] in {VCC GND}} { lappend cells $cell }
+            }
+            set ports [get_pins -of_objects $scope]
+            set port_name_property REF_PIN_NAME
+            graph_record $stream scope soc_top instance $scope_name [expr {[llength $all_cells] - [llength $cells]}]
+        }
+        # 不限制单元或端点数量；黑盒与无法解释的 SoC 单元由后续检查明确拒绝。
+        if {[llength $cells] == 0} { error "No primitive cells were found for complete connectivity export" }
+        set pin_count 0
+        set seen_cells [dict create]
+        foreach cell $cells {
+            set name [get_property NAME $cell]
+            if {[dict exists $seen_cells $name]} { error "Duplicate primitive cell: $name" }
+            dict set seen_cells $name 1
+            set kind [get_property REF_NAME $cell]
+            set blackbox [get_property IS_BLACKBOX $cell]
+            if {$blackbox ni {0 1}} { error "Missing primitive black-box status: $name" }
+            set pins [get_pins -of_objects $cell]
+            if {[llength $pins] == 0} { error "Primitive cell has no enumerated pins: $name" }
+            graph_record $stream cell $name $kind $blackbox [llength $pins]
+            set parameters {}
+            if {[regexp {^LUT([1-6]|6_2)$} $kind]} { set parameters {INIT} }
+            if {$kind eq "DSP48E1"} {
+                set parameters {AREG ACASCREG BREG BCASCREG CREG DREG ADREG MREG PREG \
+                    INMODEREG OPMODEREG ALUMODEREG CARRYINREG CARRYINSELREG \
+                    A_INPUT B_INPUT USE_MULT USE_DPORT USE_SIMD}
+            }
+            foreach parameter $parameters {
+                set value [get_property $parameter $cell]
+                if {$value eq ""} { error "Missing primitive parameter $name/$parameter" }
+                graph_record $stream parameter $name $parameter $value
+            }
+            # 记录可选输入反相属性，防止将具有反相控制的 DSP 解释为固定 ALU 模式。
+            if {$kind eq "DSP48E1"} {
+                set properties [list_property $cell]
+                foreach parameter {IS_OPMODE_INVERTED IS_INMODE_INVERTED} {
+                    if {$parameter in $properties} {
+                        graph_record $stream parameter $name $parameter [get_property $parameter $cell]
+                    }
+                }
+            }
+            foreach pin $pins {
+                graph_record $stream pin $name [get_property REF_PIN_NAME $pin] \
+                    [get_property DIRECTION $pin] [pin_net $pin]
+                incr pin_count
+            }
+        }
+        foreach port $ports {
+            graph_record $stream port [get_property $port_name_property $port] [get_property DIRECTION $port] [pin_net $port]
+        }
+        # 完成记录独立列出原语、引脚和端口数量；部分输出不会被当作完整图。
+        graph_record $stream complete [llength $cells] $pin_count [llength $ports]
+    } finally {
+        close $stream
+    }
+}
+
+proc soc_reports::define_core_clock {frequency_mhz} {
+    variable native_clock_definition
+    set frequency [timing_checks::finite_number $frequency_mhz "SoC clock frequency"]
+    if {$frequency <= 0} { error "SoC clock frequency must be positive" }
+    set ports [get_ports clk]
+    if {[llength $ports] != 1} { error "Expected one native SoC clock port" }
+    set period [expr {1000.0 / $frequency}]
+    create_clock -name clk -period $period $ports
+    set native_clock_definition [dict create object [get_property NAME $ports] \
+        frequency_mhz $frequency period_ns $period]
+}
+
+proc soc_reports::clocks_at_object {object} {
+    set clocks [get_clocks -of_objects $object]
+    if {[llength $clocks] == 0} {
+        set nets [get_nets -segments -of_objects $object]
+        if {[llength $nets] != 0} { set clocks [get_clocks -of_objects $nets] }
+    }
+    return [lsort -unique $clocks]
+}
+
+proc soc_reports::write_core_clock {directory prefix} {
+    variable native_clock_definition
+    set fields {clock period_ns object clock_kind definition_frequency_mhz definition_period_ns \
+        source_pin source_cell source_ref soc_clock_pin same_source master_clock master_period_ns \
+        master_is_generated multiply_by divide_by mmcm_input_period_ns mmcm_feedback_multiplier \
+        mmcm_input_divider mmcm_output_divider}
+    set stream [open [file join $directory ${prefix}_core_clock.tsv] w]
+    try {
+        puts $stream [join $fields \t]
+        set values [dict create]
+        if {$prefix eq "soc_top"} {
+            set objects [get_ports clk]
+            if {[llength $objects] != 1} { error "Expected one SoC core clock object" }
+            set clocks [clocks_at_object $objects]
+            if {[llength $clocks] != 1} { error "Expected one native SoC clock" }
+            if {[get_property IS_GENERATED $clocks] ne "0"} { error "Native SoC clock must be primary" }
+            dict set values clock_kind primary
+            dict set values same_source 1
+            dict set values source_pin [get_property NAME $objects]
+            dict set values soc_clock_pin [get_property NAME $objects]
+            if {[dict exists $native_clock_definition object] &&
+                [dict get $native_clock_definition object] eq [get_property NAME $objects]} {
+                dict set values definition_frequency_mhz [dict get $native_clock_definition frequency_mhz]
+                dict set values definition_period_ns [dict get $native_clock_definition period_ns]
+            }
+        } else {
+            # 通过模块类型寻找 SoC，沿其时钟输入反向寻找实际 MMCM 输出。
+            set soc_cells [soc_instance]
+            set soc_pins [get_pins -of_objects $soc_cells -filter {REF_PIN_NAME == clk}]
+            if {[llength $soc_pins] != 1} { error "Expected one SoC clock input pin" }
+            set fanin_names [get_property NAME [all_fanin -flat $soc_pins]]
+            set candidates [list]
+            foreach cell [get_cells -hierarchical -filter {REF_NAME == MMCME2_ADV || REF_NAME == MMCME2_BASE}] {
+                foreach pin [get_pins -of_objects $cell -filter {DIRECTION == OUT && REF_PIN_NAME =~ CLKOUT*}] {
+                    if {[get_property NAME $pin] in $fanin_names} { lappend candidates [list $cell $pin] }
+                }
+            }
+            if {[llength $candidates] != 1} { error "Expected one MMCM output driving the SoC clock" }
+            lassign [lindex $candidates 0] cell objects
+            set clocks [get_clocks -of_objects $objects]
+            if {[llength $clocks] != 1} { error "Expected one clock at the MMCM output" }
+            if {[get_property IS_GENERATED $clocks] ne "1"} { error "MMCM output clock must be generated" }
+            set source_name [get_property NAME $objects]
+            if {$source_name ni [get_property SOURCE_PINS $clocks]} {
+                error "Generated clock source does not match the selected MMCM output"
+            }
+            set sink_clocks [clocks_at_object $soc_pins]
+            if {[llength $sink_clocks] != 1 ||
+                [get_property NAME $sink_clocks] ne [get_property NAME $clocks]} {
+                error "SoC clock input and MMCM output do not share one timing clock"
+            }
+            set master [get_clocks [get_property MASTER_CLOCK $clocks]]
+            if {[llength $master] != 1} { error "Expected one MMCM master clock" }
+            set input_pins [list]
+            foreach pin [get_pins -of_objects $cell -filter {REF_PIN_NAME == CLKIN1 || REF_PIN_NAME == CLKIN2}] {
+                set input_clocks [clocks_at_object $pin]
+                if {[llength $input_clocks] == 1 &&
+                    [get_property NAME $input_clocks] eq [get_property NAME $master]} {
+                    lappend input_pins $pin
+                }
+            }
+            if {[llength $input_pins] != 1} { error "Expected one MMCM input associated with its master clock" }
+            set input_period_property [get_property REF_PIN_NAME $input_pins]_PERIOD
+            if {![regexp {^CLKOUT([0-6])B?$} [get_property REF_PIN_NAME $objects] -> output_index]} {
+                error "Unsupported MMCM clock output pin"
+            }
+            set output_divider_property CLKOUT${output_index}_DIVIDE
+            if {$output_index == 0} { append output_divider_property _F }
+            dict set values clock_kind mmcm
+            dict set values same_source 1
+            dict set values source_pin $source_name
+            dict set values source_cell [get_property NAME $cell]
+            dict set values source_ref [get_property REF_NAME $cell]
+            dict set values soc_clock_pin [get_property NAME $soc_pins]
+            dict set values master_clock [get_property NAME $master]
+            dict set values master_period_ns [get_property PERIOD $master]
+            dict set values master_is_generated [get_property IS_GENERATED $master]
+            dict set values multiply_by [get_property MULTIPLY_BY $clocks]
+            dict set values divide_by [get_property DIVIDE_BY $clocks]
+            dict set values mmcm_input_period_ns [get_property $input_period_property $cell]
+            dict set values mmcm_feedback_multiplier [get_property CLKFBOUT_MULT_F $cell]
+            dict set values mmcm_input_divider [get_property DIVCLK_DIVIDE $cell]
+            dict set values mmcm_output_divider [get_property $output_divider_property $cell]
+        }
+        dict set values clock [get_property NAME $clocks]
+        dict set values period_ns [get_property PERIOD $clocks]
+        dict set values object [get_property NAME $objects]
+        set row [list]
+        foreach field $fields {
+            lappend row [expr {[dict exists $values $field] ? [dict get $values $field] : ""}]
+        }
+        graph_record $stream {*}$row
+    } finally {
+        close $stream
+    }
 }
 
 proc soc_reports::check_array {directory {size 16}} {
@@ -97,6 +317,12 @@ proc soc_reports::write {directory {prefix soc_top}} {
     report_utilization -hierarchical -file [file join $directory ${prefix}_utilization_hier.rpt]
     report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
         -file [file join $directory ${prefix}_timing_summary.rpt]
+    # 导出失败会保留缺少完成记录的文件，结果汇总据此禁止确认组合深度目标。
+    foreach procedure {write_connectivity write_core_clock} {
+        if {[catch {$procedure $directory $prefix} message]} {
+            puts "Measurement unavailable ($procedure): $message"
+        }
+    }
     unique_timing_paths::write [file join $directory ${prefix}_timing_paths.rpt] max
     unique_timing_paths::write [file join $directory ${prefix}_hold_paths.rpt] min
     write_module_paths $directory $prefix

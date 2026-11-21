@@ -477,10 +477,10 @@ def register_path_requirement(paths, maximum=9):
             'timing_frequency_validation': 'Requires primitive and routing delays for the target device'}
 
 
-def analyze(module, **path_options):
+def analyze(module, maximum_register_path_cells=9, **path_options):
     paths = connected_paths(module, **path_options)
     return {'resources': resources(module['cells']), 'paths': paths,
-            'register_path_requirement': register_path_requirement(paths)}
+            'register_path_requirement': register_path_requirement(paths, maximum_register_path_cells)}
 
 
 def main():
@@ -491,6 +491,10 @@ def main():
     parser.add_argument('--register-origins', type=Path, help='pre_lut.il containing original register signal names')
     parser.add_argument('--path-limit', type=int, default=20)
     parser.add_argument('--group-limit', type=int, default=12)
+    parser.add_argument('--max-register-path-cells', type=int, default=9,
+                        help='Maximum permitted mapped combinational cells between clocked storage boundaries')
+    parser.add_argument('--require-register-path-limit', action='store_true',
+                        help='Return failure if the complete graph does not confirm the specified limit')
     parser.add_argument('--minimum-path-cells', type=int, default=0,
                         help='Filter reported paths; the complete graph still determines the maximum depth')
     args = parser.parse_args()
@@ -501,11 +505,14 @@ def main():
         for name, origin in register_origins(args.register_origins).items():
             if name in module['cells']:
                 module['cells'][name].setdefault('attributes', {})['fpga_register_origin'] = origin
-    result = analyze(module, limit=args.path_limit, group_limit=args.group_limit,
+    result = analyze(module, maximum_register_path_cells=args.max_register_path_cells,
+                     limit=args.path_limit, group_limit=args.group_limit,
                      minimum_path_cells=args.minimum_path_cells)
     args.out.write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result['resources'], indent=2))
     print('longest_register_path_cells', result['paths']['longest_register_path_cells'])
+    if args.require_register_path_limit and result['register_path_requirement']['met'] is not True:
+        raise SystemExit(1)
 
 
 if __name__ == '__main__':

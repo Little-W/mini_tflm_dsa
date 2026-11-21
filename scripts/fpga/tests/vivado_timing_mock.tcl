@@ -50,6 +50,21 @@ proc vivado_timing_mock::default_report {} {
     return $report
 }
 
+proc vivado_timing_mock::default_timing_summary {} {
+    set headers {WNS(ns) TNS(ns) {TNS Failing Endpoints} {TNS Total Endpoints} \
+        WHS(ns) THS(ns) {THS Failing Endpoints} {THS Total Endpoints} \
+        WPWS(ns) TPWS(ns) {TPWS Failing Endpoints} {TPWS Total Endpoints}}
+    set labels ""
+    set rules ""
+    set values ""
+    foreach header $headers value {0.667 0.000 0 200 0.125 0.000 0 200 0.250 0.000 0 400} {
+        append labels [format "%24s  " $header]
+        append rules [format "%24s  " ------------------------]
+        append values [format "%24s  " $value]
+    }
+    return " | Design Timing Summary\n$labels\n$rules\n$values\n"
+}
+
 proc vivado_timing_mock::reset {} {
     variable events
     variable clocks
@@ -57,7 +72,7 @@ proc vivado_timing_mock::reset {} {
     variable selected_checks
     variable options
     set events [list]
-    set clocks [dict create soc_clk 6.667]
+    set clocks [dict create soc_clk [expr {1000.0/150.0}]]
     set paths [dict create]
     set selected_checks [list]
     set options [dict create fully_routed 1 routing_errors 0 \
@@ -65,7 +80,7 @@ proc vivado_timing_mock::reset {} {
         input_ports [list clk] output_ports [list] \
         half_rise_fall [list] half_fall_rise [list] \
         drc_failures [list] no_drc_checks 0 max_path_query_limit 0 \
-        check_report [default_report] \
+        check_report [default_report] timing_summary [default_timing_summary] \
         xdc "create_clock -name soc_clk -period 6.667 \[get_ports clk\]\n"]
     add_path setup_default max endpoint_default/D 0.667 soc_clk soc_clk 6.667
     add_path hold_default min endpoint_default/D 0.125 soc_clk soc_clk 0.0
@@ -101,6 +116,24 @@ proc vivado_timing_mock::report_file {arguments} {
         puts $stream "VIVADO COMMAND SIMULATION: synthetic report, no device implementation."
         close $stream
     }
+}
+
+proc report_timing_summary {args} {
+    vivado_timing_mock::record report_timing_summary {*}$args
+    set text [dict get $::vivado_timing_mock::options timing_summary]
+    set path [vivado_timing_mock::option $args -file]
+    if {$path ne ""} {
+        set stream [open $path w]
+        puts $stream $text
+        close $stream
+    }
+    return $text
+}
+
+proc report_pulse_width {args} {
+    vivado_timing_mock::record report_pulse_width {*}$args
+    vivado_timing_mock::validate_options $args {-file} {-all_violators}
+    vivado_timing_mock::report_file $args
 }
 
 proc vivado_timing_mock::save_events {path} {

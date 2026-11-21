@@ -170,6 +170,19 @@ puts TIMING_COMMAND_MODEL_PASS
                 self.assertEqual(values['passed'], '0')
                 self.assertIn('incomplete or erroneous routing', result.stderr)
 
+    def test_complete_pulse_statistics_and_missing_summary(self):
+        cases = (
+            ('pulse_violation', 'vivado_timing_mock::set_option timing_summary '
+             '[string map {0.250 -0.250} [vivado_timing_mock::default_timing_summary]]\n'),
+            ('missing_global_summary', set_option('timing_summary', 'Unavailable')),
+        )
+        for name, configuration in cases:
+            with self.subTest(name=name):
+                output, _, result = self.run_helper(name, configuration, success=False)
+                self.assertEqual(self.status_values(output)['complete_global_timing'], '0')
+                self.assertEqual(self.status_values(output)['passed'], '0')
+                self.assertIn('Complete setup, hold or pulse-width statistics', result.stderr)
+
     def test_drc_severity_selection(self):
         for severity, rule in (('fatal', 'DRC_FATAL'), ('error', 'DRC_ERROR'), ('critical_warning', 'DRC_CRITICAL')):
             with self.subTest(severity=severity):

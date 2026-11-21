@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 """Check netlist analysis against small circuits with explicit hardware paths."""
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 from netlist_metrics import analyze, connected_paths, dsp_alu_low_bit_dependencies, register_path_requirement, resources
@@ -60,6 +65,42 @@ class MetricsTest(unittest.TestCase):
     def test_incomplete_path_requirement(self):
         result = register_path_requirement({'longest_register_path_cells': 0, 'graph_complete': False})
         self.assertIsNone(result['met'])
+
+    def test_complete_soc_fourteen_cell_requirement(self):
+        for length in (13, 14, 15):
+            cells = {'first': flop(1, '0')}
+            for index in range(length):
+                cells[f'logic_{index}'] = cell('LUT1', {'I0': [index + 1]}, {'O': [index + 2]})
+            cells['last'] = flop(length + 3, length + 1)
+            result = analyze({'cells': cells, 'netnames': {}}, maximum_register_path_cells=14,
+                             limit=0, group_limit=0)
+            requirement = result['register_path_requirement']
+            self.assertEqual(requirement['observed_combinational_cells'], length)
+            self.assertEqual(requirement['maximum_combinational_cells'], 14)
+            self.assertEqual(requirement['met'], length < 15)
+
+    def test_command_can_require_complete_register_path_limit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for length, unknown, expected in ((14, False, 0), (15, False, 1), (1, True, 1)):
+                cells = {'first': flop(1, '0')}
+                for index in range(length):
+                    cells[f'logic_{index}'] = cell(
+                        'UNSUPPORTED' if unknown else 'LUT1',
+                        {'I0': [index + 1]}, {'O': [index + 2]}, {'INIT': 1})
+                cells['last'] = flop(length + 3, length + 1)
+                source = folder / 'netlist.json'
+                source.write_text(json.dumps({'modules': {'test': {'cells': cells, 'netnames': {}}}}))
+                output = folder / 'result.json'
+                command = [sys.executable, str(Path(__file__).with_name('netlist_metrics.py')),
+                           str(source), '--top', 'test', '--out', str(output),
+                           '--path-limit', '0', '--group-limit', '0',
+                           '--max-register-path-cells', '14', '--require-register-path-limit']
+                process = subprocess.run(command, capture_output=True, text=True, check=False)
+                self.assertEqual(process.returncode, expected, process.stderr)
+                self.assertTrue(output.is_file())
+                result = json.loads(output.read_text())['register_path_requirement']
+                self.assertIs(result['met'], None if unknown else length <= 14)
 
     def test_reporting_limits_preserve_complete_graph_maximum(self):
         cells = {'first': flop(1, '0')}

@@ -1,5 +1,6 @@
 # 布线完成后检查内部时序覆盖；完整端点统计以 Vivado 时序摘要为准。
 namespace eval timing_checks {
+    variable results_helper [file normalize [file join [file dirname [info script]] .. .. .. .. scripts fpga vivado_soc_results.py]]
     variable required_checks {
         no_clock unconstrained_internal_endpoints generated_clocks loops latch_loops
     }
@@ -48,8 +49,11 @@ proc timing_checks::internal_check_counts {report} {
 
 proc timing_checks::check_implementation {out_dir} {
     variable required_checks
+    variable results_helper
     file mkdir $out_dir
     set failures [list]
+    # 任何中途缺失数据或 Tcl 错误都保留明确的未通过状态。
+    write_text [file join $out_dir implementation_checks.tsv] "check\tvalue\ncompleted\t0\npassed\t0"
 
     set fully_routed [report_route_status -boolean_check ROUTED_FULLY]
     set route_errors [report_route_status -boolean_check ERRORS_IN_ROUTES]
@@ -128,10 +132,20 @@ proc timing_checks::check_implementation {out_dir} {
             if {$slack < 0} { lappend failures "The design has negative $delay_type timing slack ($slack ns)" }
         }
     }
+    # 完整设计统计同时覆盖建立、保持及脉宽，任一统计缺失均不能确认时序。
+    set global_report [file join $out_dir global_timing_summary.rpt]
+    report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose -file $global_report
+    report_pulse_width -all_violators -file [file join $out_dir pulse_width_violations.rpt]
+    set global_status [catch {exec python3 $results_helper check-timing --report $global_report \
+        --out [file join $out_dir global_timing_checks.json]} global_message]
+    if {$global_status} {
+        lappend failures "Complete setup, hold or pulse-width statistics are missing or do not satisfy timing: $global_message"
+    }
     set status_lines [list "check\tvalue" "fully_routed\t$fully_routed" \
         "routing_errors\t$route_errors" "severe_drc_violations\t[llength $severe_violations]" \
         "clocks\t[llength $clocks]" "setup_endpoints\tunavailable" "hold_endpoints\tunavailable" \
         "clocks_with_setup_paths\t$setup_count" "clocks_with_hold_paths\t$hold_count" \
+        "complete_global_timing\t[expr {!$global_status}]" "completed\t1" \
         "passed\t[expr {[llength $failures] == 0}]"]
     write_text [file join $out_dir implementation_checks.tsv] [join $status_lines \n]
     if {[llength $failures] != 0} { error [join $failures \n] }

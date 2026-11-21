@@ -157,7 +157,7 @@ class ResultsTests(unittest.TestCase):
         self.assertEqual(value['timing']['max']['tns_ns'], -81810.898)
         self.assertEqual(value['timing']['max']['endpoints'], 144664)
         self.assertEqual(value['timing']['max']['sample']['sampled_paths'], 1)
-        self.assertIsNone(value['status']['all_connected_paths_within_nine_levels'])
+        self.assertIsNone(value['status']['all_connected_paths_within_limit'])
 
     def test_module_reports_select_distinct_endpoints_within_each_scope(self):
         runner = self.work / 'modules.tcl'
@@ -246,6 +246,26 @@ proc get_files {args} { return [lindex $args end] }
 proc get_ips {args} { return clk_wiz_0 }
 proc vivado_timing_mock::prior_get_property {property object} {
     if {$property eq "STATUS"} { return Complete }
+    if {$property eq "NAME"} { return $object }
+    if {$property eq "IS_GENERATED"} { return [expr {$object eq "soc_clk"}] }
+    if {$object eq "soc_clk"} {
+        switch -- $property {
+            SOURCE_PINS { return clocking/generator/CLKOUT2 }
+            MASTER_CLOCK { return oscillator }
+            MULTIPLY_BY { return 3 }
+            DIVIDE_BY { return 1 }
+        }
+    }
+    if {$object eq "clocking/generator"} {
+        switch -- $property {
+            REF_NAME { return MMCME2_ADV }
+            CLKIN1_PERIOD { return 20.000 }
+            CLKFBOUT_MULT_F { return 18.000 }
+            DIVCLK_DIVIDE { return 1 }
+            CLKOUT2_DIVIDE { return 6 }
+        }
+    }
+    if {$property eq "REF_PIN_NAME"} { return [lindex [split $object /] end] }
     if {[string match "*ws_cell/mac" $object]} {
         switch -- $property {
             NAME { return $object }
@@ -258,6 +278,12 @@ proc vivado_timing_mock::prior_get_property {property object} {
     return ""
 }
 proc get_cells {args} {
+    if {$args eq {-hierarchical -filter {REF_NAME == soc_top || ORIG_REF_NAME == soc_top}}} {
+        return processor
+    }
+    if {$args eq {-hierarchical -filter {REF_NAME == MMCME2_ADV || REF_NAME == MMCME2_BASE}}} {
+        return clocking/generator
+    }
     set result [list]
     for {set row 0} {$row < 16} {incr row} {
         for {set column 0} {$column < 16} {incr column} {
@@ -266,14 +292,35 @@ proc get_cells {args} {
     }
     return $result
 }
-proc get_pins {args} { return [list] }
+proc get_pins {args} {
+    if {$args eq {-of_objects processor -filter {REF_PIN_NAME == clk}}} { return processor/clk }
+    if {$args eq {-of_objects clocking/generator -filter {DIRECTION == OUT && REF_PIN_NAME =~ CLKOUT*}}} {
+        return clocking/generator/CLKOUT2
+    }
+    if {$args eq {-of_objects clocking/generator -filter {REF_PIN_NAME == CLKIN1 || REF_PIN_NAME == CLKIN2}}} {
+        return {clocking/generator/CLKIN1 clocking/generator/CLKIN2}
+    }
+    return [list]
+}
+rename get_clocks get_clocks_timing_model
+proc get_clocks {args} {
+    if {$args eq "oscillator" || $args eq {-of_objects clocking/generator/CLKIN1}} { return oscillator }
+    if {$args eq {-of_objects clocking/generator/CLKIN2}} { return {} }
+    return [get_clocks_timing_model {*}$args]
+}
+proc get_nets {args} { return {} }
+proc all_fanin {args} {
+    if {$args ne {-flat processor/clk}} { error "Unexpected clock fan-in query" }
+    return {clocking/generator/CLKOUT2 clocking/buffer/I}
+}
+vivado_timing_mock::set_clock oscillator 20.000
 foreach command {set_param create_project set_property read_verilog read_xdc synth_design opt_design place_design phys_opt_design route_design write_checkpoint} {
     proc $command {args} [format {vivado_timing_mock::record %s {*}$args; return} $command]
 }
 foreach command {add_files generate_target export_ip_user_files update_compile_order launch_runs wait_on_run open_run} {
     proc $command {args} [format {vivado_timing_mock::record %s {*}$args; return} $command]
 }
-foreach command {report_timing_summary report_high_fanout_nets report_design_analysis} {
+foreach command {report_high_fanout_nets report_design_analysis} {
     proc $command {args} { vivado_timing_mock::report_file $args }
 }
 proc report_timing {args} {
@@ -302,7 +349,8 @@ source $entry
             environment['VIVADO_RUN_IMPL'] = '1'
         process = subprocess.run(arguments, cwd=ROOT, env=environment,
                                  text=True, capture_output=True, timeout=60)
-        self.assertEqual(process.returncode == 0, not fail_route, process.stdout + process.stderr)
+        # 本模型使用 58,210 个 Slice LUT；实现目标检查必须以非零状态结束。
+        self.assertEqual(process.returncode == 0, not routed, process.stdout + process.stderr)
         if board:
             output = output / 'reports'
         directory = output / 'routed' if routed else output
@@ -312,11 +360,11 @@ source $entry
         value, output = self.run_native_flow()
         self.assertFalse(value['status']['slice_luts_within_limit'])
         self.assertIsNone(value['status']['timing_150mhz_confirmed'])
-        self.assertTrue(value['status']['observed_endpoint_paths_within_nine_levels'])
-        self.assertIsNone(value['status']['all_connected_paths_within_nine_levels'])
-        self.assertIsNone(value['timing']['max']['tns_ns'])
+        self.assertIsNone(value['status']['all_connected_paths_within_limit'])
+        self.assertFalse(value['status']['connectivity_complete'])
+        self.assertEqual(value['timing']['max']['tns_ns'], 0)
         self.assertGreater(value['timing']['max']['sample']['sampled_paths'], 0)
-        self.assertIn('sampled', value['logic_level_scope'])
+        self.assertIn('完整连通图', value['logic_level_scope'])
         self.assertEqual(value['configuration']['vivado_version'], 'command_model')
         manifest = json.loads((output / 'source_manifest.json').read_text())
         names = [row['relative_path'] for row in manifest['inputs']]
@@ -332,6 +380,7 @@ source $entry
         value, _ = self.run_native_flow(routed=True)
         self.assertTrue(value['status']['timing_150mhz_confirmed'])
         self.assertFalse(value['status']['slice_luts_within_limit'])
+        self.assertFalse(value['status']['all_targets_met'])
 
     def test_failed_routing_still_records_measured_values(self):
         value, _ = self.run_native_flow(routed=True, fail_route=True)

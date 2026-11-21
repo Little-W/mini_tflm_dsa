@@ -327,6 +327,10 @@ def main():
     parser.add_argument('--cases', nargs='+', default=list(DEFAULT_CASES), help='Case names: ' + ', '.join(CASES))
     parser.add_argument('--source-root', type=Path, default=ROOT, help='Repository or worktree containing RTL')
     parser.add_argument('--case-config', type=Path, help='JSON mapping additional case names to top/options/sources/configuration')
+    parser.add_argument('--max-register-path-cells', type=int, default=9,
+                        help='Maximum permitted mapped combinational cells between clocked storage boundaries')
+    parser.add_argument('--require-register-path-limit', action='store_true',
+                        help='Return failure unless every complete register-path graph satisfies the specified limit')
     parser.add_argument('--worker', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--lock-file', type=Path, help='Serialize synthesis jobs using this advisory lock')
     parser.add_argument('--resume', action='store_true', help='Reuse completed stages with identical inputs and scripts')
@@ -348,6 +352,8 @@ def main():
     if args.worker:
         worker(args.worker)
         return
+    if args.require_register_path_limit and args.through != 'mapped':
+        parser.error('--require-register-path-limit requires a complete mapped design')
     if args.reuse_pre_alu_from and (args.reuse_elaboration_from or args.wide_alu_dsp_budget is None):
         parser.error('--reuse-pre-alu-from requires a DSP budget and replaces --reuse-elaboration-from')
     if args.wide_alu_dsp_budget is not None and (args.wide_alu_dsp_budget < 0 or args.wide_alu_dsp_reserve < 0
@@ -388,7 +394,7 @@ def main():
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     result = {'tool': yosys.yosys_maybe_version(), 'family': 'xc7', 'part': 'xc7a200tfbg484-3',
-              'clock_period_ns': 6.667, 'cases': {},
+              'clock_period_ns': 1000.0 / 150.0, 'cases': {},
               'method': 'synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph',
               'timing': 'Clock period is the requested implementation constraint. Structural cell depth does not supply device or routing delay. metrics.json records connected register paths and primitive register settings.'}
     env = os.environ.copy()
@@ -556,7 +562,8 @@ def main():
         if unmapped:
             raise RuntimeError(f'Unmapped cells remain in {name}: {unmapped}')
         path = logic_depth(design['modules'][top]['cells'])
-        metrics = analyze(design['modules'][top])
+        metrics = analyze(design['modules'][top],
+                          maximum_register_path_cells=args.max_register_path_cells)
         (folder / 'metrics.json').write_text(json.dumps(metrics, indent=2) + '\n')
         result['cases'][name] = {
             'top': top, 'configuration': case['configuration'], 'sources_sha256': source_hash,
@@ -581,6 +588,13 @@ def main():
         (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
         print(name, json.dumps({k: result['cases'][name][k] for k in
               ('lut_cells', 'flip_flops', 'ramb36', 'ramb18', 'dsp', 'longest_combinational_path_cells')}), flush=True)
+    if args.require_register_path_limit:
+        failures = {name: entry['register_path_requirement']
+                    for name, entry in result['cases'].items()
+                    if entry['register_path_requirement']['met'] is not True}
+        if failures:
+            print(json.dumps({'register_path_limit_failures': failures}), file=sys.stderr)
+            raise SystemExit(1)
 
 if __name__ == '__main__':
     main()
