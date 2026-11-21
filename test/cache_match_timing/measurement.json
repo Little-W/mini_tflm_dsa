@@ -1,0 +1,179 @@
+{
+  "passed": true,
+  "reference_commit": "4dee27ffec4dc891daf2681379f8b3fd27fd41f2",
+  "source_sha256": {
+    "rtl/npu/dma/cache/conv_read_cache.sv": "9681455256f2dd991b9eb716efa1ce5f8e23e6e92a2bf965a91291e41443e670"
+  },
+  "formal": {
+    "passed": true,
+    "cases": [
+      {
+        "demand_depth": 1,
+        "set_index_width": 1,
+        "passed": true,
+        "constraints": {
+          "request_head": 0
+        },
+        "log_sha256": "d1b28ae4ffb358582f7106034b51a700b8798ae6f24610296a0f85950fd730fc"
+      },
+      {
+        "demand_depth": 1,
+        "set_index_width": 7,
+        "passed": true,
+        "constraints": {
+          "request_head": 0
+        },
+        "log_sha256": "9be47d2927f1f99773dc43aa1a8e6622525ca5ec24fb392b6b9c4c02c101ac04"
+      },
+      {
+        "demand_depth": 2,
+        "set_index_width": 1,
+        "passed": true,
+        "constraints": {},
+        "log_sha256": "49e97ef4d8ffd57d8ac120ffdb6d0fcfde7d84ca083bf69f75b03dd5e7954ab8"
+      },
+      {
+        "demand_depth": 2,
+        "set_index_width": 7,
+        "passed": true,
+        "constraints": {},
+        "log_sha256": "aafa665397fcae5903c69fdaa145854632ef10c5493ebe5b6ff11ecbb8daf30f"
+      },
+      {
+        "demand_depth": 4,
+        "set_index_width": 7,
+        "passed": true,
+        "constraints": {},
+        "log_sha256": "bbafd0e373516271e07da4101f72d1294bc498dd4f7b604087b18614e1525f5d"
+      },
+      {
+        "demand_depth": 8,
+        "set_index_width": 7,
+        "passed": true,
+        "constraints": {},
+        "log_sha256": "9cd3d8213eac37377d4c6340d154da42252b4e426e80b864edded054d1103ebf"
+      }
+    ],
+    "compared_outputs": [
+      "lookup_read_request",
+      "lookup_read_set",
+      "lookup_read_word",
+      "work_word_matches_q",
+      "demand_word_matches_q"
+    ]
+  },
+  "dma_window": {
+    "passed": true,
+    "fpga": true,
+    "resident_stream_cycle_equivalent": true,
+    "comparison_cycles": 520,
+    "resident_stream_sha256": "dd374ccc635e9100bb99320478834661bbc90cd7f72d252fb949dd95564c56cb",
+    "accepted_requests": 678,
+    "completed_requests": 674,
+    "cancelled_requests": 4,
+    "payload_elements": 5481,
+    "expected_errors": 19,
+    "consecutive_hit_interval_cycles": 1,
+    "tests": [
+      "CASE consecutive_hits requests=128 beats=512 elements=2048 peak=4 maximum_interval=1 cycles=512",
+      "CASE single_beat_hits requests=256 consecutive=255 elements=1024",
+      "CASE ordinary_window_concurrent same_cycle=1 reserved_cycles=3 ordinary_completions=2 window_completions=2",
+      "CASE registered_window_grant withdrawal=1 abort=1 configuration=1 ordinary_after_grant=1",
+      "CASE random_coordinates_backpressure requests=240 peak=4",
+      "CASE read_error_drain requests=4 completions=4",
+      "CASE error_reconfigure_recovery requests=3",
+      "CASE invalid_descriptor_order requests=4 completions=4",
+      "CASE invalid_cols cols=0 requests=4 completions=4",
+      "CASE invalid_cols cols=17 requests=4 completions=4",
+      "CASE invalid_cols cols=32 requests=4 completions=4",
+      "CASE invalid_cols cols=33 requests=4 completions=4",
+      "CASE pending_configuration drained=4 recovery_requests=3",
+      "CASE configuration_before_first_ar stalled_cycles=24 old_requests=1 recovery_requests=1",
+      "CASE configuration_at_burst_boundary pending_windows_at_last_r=1 old_requests=4 recovery_requests=1",
+      "CASE reset_with_four_requests cancelled=4 recovery_requests=3",
+      "WINDOW_DMA_PASS accepted=678 completed=674 cancelled=4 payload_elements=5481 errors=19"
+    ]
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "scope": "完整 conv_windowed_cache 模块",
+    "cases": {
+      "reference_cache_d1": {
+        "lut_cells": 3602,
+        "flip_flops": 1920,
+        "ramb18": 25,
+        "ramb36": 0,
+        "dsp": 0,
+        "longest_register_path_cells": 12,
+        "longest_match_register_path_cells": 11,
+        "input_to_match_register_path_cells": {
+          "req_valid": 7,
+          "req_addr": 6
+        },
+        "req_valid_endpoints": [
+          "work_word_matches_q",
+          "demand_word_matches_q"
+        ],
+        "mapped_sha256": "16343e87a1b37ba05c47860f61268b7a90ed69cf0e564b0df5b059713241059e"
+      },
+      "candidate_cache_d1": {
+        "lut_cells": 3615,
+        "flip_flops": 1920,
+        "ramb18": 25,
+        "ramb36": 0,
+        "dsp": 0,
+        "longest_register_path_cells": 12,
+        "longest_match_register_path_cells": 7,
+        "input_to_match_register_path_cells": {
+          "req_valid": 2,
+          "req_addr": 7
+        },
+        "req_valid_endpoints": [
+          "demand_word_matches_q"
+        ],
+        "mapped_sha256": "d7c006ccabd4c307ece0fc6a69f68c2363d16ecb79fd8b269e5bb029cd2e5ef4"
+      },
+      "reference_cache_d4": {
+        "lut_cells": 3768,
+        "flip_flops": 1776,
+        "ramb18": 25,
+        "ramb36": 0,
+        "dsp": 0,
+        "longest_register_path_cells": 13,
+        "longest_match_register_path_cells": 12,
+        "input_to_match_register_path_cells": {
+          "req_valid": 6,
+          "req_addr": 6
+        },
+        "req_valid_endpoints": [
+          "demand_word_matches_q",
+          "work_word_matches_q"
+        ],
+        "mapped_sha256": "62edb86996a1bb4687d4e5081a1b442bd6154ebfaae1b68386a12c4b0009edff"
+      },
+      "candidate_cache_d4": {
+        "lut_cells": 3670,
+        "flip_flops": 1776,
+        "ramb18": 25,
+        "ramb36": 0,
+        "dsp": 0,
+        "longest_register_path_cells": 12,
+        "longest_match_register_path_cells": 9,
+        "input_to_match_register_path_cells": {
+          "req_valid": 3,
+          "req_addr": 7
+        },
+        "req_valid_endpoints": [
+          "demand_word_matches_q"
+        ],
+        "mapped_sha256": "e66a1f37c2647715e7da65ffad295e781671957a8c4658643c0c09e1214aa62d"
+      }
+    },
+    "clock_period_ns": 6.667,
+    "placed_routed_timing_measured": false
+  },
+  "verification_script_sha256": {
+    "test/cache_match_timing/check.py": "400c1155ed43c12a3f91e32ab871db5f7fad2e2eaf4280fd7ac2f73063d4b4db",
+    "test/cache_match_timing/paths.py": "451873b9612bff6f6d3fadd282b4e8587e86342293e578c6656a5ffe29374604"
+  }
+}

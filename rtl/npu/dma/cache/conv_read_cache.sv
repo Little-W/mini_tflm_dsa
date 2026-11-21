@@ -580,6 +580,9 @@ module conv_windowed_cache #(
   logic lookup_snapshot_valid, lookup_ready;
   logic work_lookup_ready, demand_lookup_ready;
   logic work_word_matches_q, demand_word_matches_q;
+  logic [1:0] lookup_head_matches, lookup_input_matches;
+  logic lookup_next_work_match;
+  logic lookup_idle_demand_match, lookup_pop_work_match;
   logic [READ_WIDTH-1:0] response_queue_data[DEMAND_DEPTH];
   logic response_queue_error[DEMAND_DEPTH];
   logic [DQ_AW-1:0] request_head, request_tail, response_head, response_tail;
@@ -645,15 +648,28 @@ module conv_windowed_cache #(
   end else begin : g_retire_value
     assign retire_decode_output = retire_decode_input;
   end
+  // 各个队列位置先比较字地址，最后根据队列状态选择一位结果。
+  assign lookup_head_matches = {request_queue[request_head].address[31:2] == work_request.address[31:2],
+                                request_queue[request_head].address[31:2] == demand_addr[31:2]};
+  assign lookup_next_work_match =
+      request_queue[DQ_AW'(request_head + DQ_AW'(1))].address[31:2] == work_request.address[31:2];
+  assign lookup_input_matches = {incoming_request.address[31:2] == work_request.address[31:2],
+                                 incoming_request.address[31:2] == demand_addr[31:2]};
+  assign lookup_idle_demand_match = request_count == 0 ? lookup_input_matches[0] : lookup_head_matches[0];
+  assign lookup_pop_work_match = (request_count == 0 && lookup_input_matches[1]) ||
+      (request_count == DQ_CW'(1) && ((req_valid && lookup_input_matches[1]) ||
+                                     (!req_valid && lookup_head_matches[1]))) ||
+      (request_count > DQ_CW'(1) && lookup_next_work_match);
   // 地址范围结果随接收描述保存，出队时只选择已保存的一位状态。
   // 队首描述与标签、数据预读同步更新，命中控制使用同一周期的寄存信息。
   always_ff @(posedge clk) begin
     work_request <= lookup_read_request;
     // 工作请求与预读字地址在同一边沿更新，比较结果同时保存。
-    work_word_matches_q <= lookup_read_word == lookup_read_request.address[31:2];
-    // 缺失请求仅在工作请求出队时更新，比较使用当前边沿之后的请求地址。
-    demand_word_matches_q <= req_fire ? lookup_read_word == work_request.address[31:2] :
-        lookup_read_word == demand_addr[31:2];
+    work_word_matches_q <= fg_state != FG_MISS || lookup_idle_demand_match;
+    // 缺失状态只使用需求字地址，普通请求按出队状态选择匹配结果。
+    demand_word_matches_q <= fg_state == FG_MISS ?
+        (!req_fire || demand_addr[31:2] == work_request.address[31:2]) :
+        (req_fire ? lookup_pop_work_match : lookup_idle_demand_match);
   end
   assign work_range = work_request.in_range;
   assign work_valid=request_count!=0;
