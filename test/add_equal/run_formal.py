@@ -19,14 +19,20 @@ MITER = """module add_equal_proof #(
 );
     logic [p_width-1:0] reference_sum;
     logic unused_reference_carry;
-    logic candidate_equal;
-    add_equal #(.p_width(p_width)) u_compare (
+    logic [2:0] candidate_equal;
+    add_equal #(.p_width(p_width)) u_default (
         .i_a(i_a), .i_b(i_b), .i_target(i_target),
-        .i_carry_in(i_carry_in), .o_equal(candidate_equal)
+        .i_carry_in(i_carry_in), .o_equal(candidate_equal[0])
     );
+    for (genvar mode = 0; mode < 2; mode++) begin : g_explicit_mode
+        add_equal #(.p_width(p_width), .p_use_lut(1'(mode))) u_compare (
+            .i_a(i_a), .i_b(i_b), .i_target(i_target),
+            .i_carry_in(i_carry_in), .o_equal(candidate_equal[mode+1])
+        );
+    end
     assign {unused_reference_carry, reference_sum} =
         {1'b0, i_a} + {1'b0, i_b} + {{p_width{1'b0}}, i_carry_in};
-    assign o_equivalent = (candidate_equal == (reference_sum == i_target));
+    assign o_equivalent = (candidate_equal == {3{reference_sum == i_target}});
 endmodule
 """
 
@@ -49,18 +55,21 @@ def main():
         "inputs_constrained": False,
         "runs": [],
     }
-    for width in WIDTHS:
-        script = out / f"width_{width}.ys"
-        log = out / f"width_{width}.log"
+    for width, fpga in ((width, mode) for width in WIDTHS for mode in (0, 1)):
+        script = out / f"width_{width}_fpga{fpga}.ys"
+        log = out / f"width_{width}_fpga{fpga}.log"
         script.write_text("read_slang --top add_equal_proof -Gp_width=" + str(width) + " " +
+                          ("-D XILINX_FPGA=1 " if fpga else "") +
                           shlex.quote(str(snapshot)) + " " + shlex.quote(str(miter)) + "\n" +
                           "prep -top add_equal_proof -flatten\n" +
+                          "check -assert\n" +
                           "sat -verify -prove o_equivalent 1 -show-inputs -show-outputs\n")
         with log.open("w") as stream:
             process = subprocess.run([sys.executable, str(ROOT / "scripts/fpga/open_fpga_synth.py"),
                                       "--worker", str(script)], stdout=stream, stderr=subprocess.STDOUT)
         passed = process.returncode == 0 and "SAT proof finished - no model found: SUCCESS!" in log.read_text()
-        result = {"width": width, "unconstrained_input_bits": 3 * width + 1,
+        result = {"width": width, "xilinx_fpga": bool(fpga), "preserve_modes": ["default", 0, 1],
+                  "unconstrained_input_bits": 3 * width + 1,
                   "passed": passed, "log_sha256": hashlib.sha256(log.read_bytes()).hexdigest()}
         summary["runs"].append(result)
         summary["passed"] = all(run["passed"] for run in summary["runs"])

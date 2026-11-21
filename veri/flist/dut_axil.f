@@ -57,6 +57,7 @@
 ../../rtl/common/add_equal.sv
 ../../rtl/common/add3_equal.sv
 ../../rtl/common/parallel_prefix_add.sv
+../../rtl/common/unsigned_compare.sv
 ../../rtl/common/onehot_check.sv
 ../../rtl/npu/writeback/vec_requant.sv
 ../../rtl/npu/writeback/requant_compute_lane.sv

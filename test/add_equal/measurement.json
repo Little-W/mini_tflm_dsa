@@ -1,0 +1,61 @@
+{
+  "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+  "method": "Registered input/output synthesis with identical Yosys xc7 mapping options",
+  "source_sha256": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+  "results": [
+    {
+      "case": "w17_ref0_keep0",
+      "logic_lut_cells": 35,
+      "flip_flops": 53,
+      "register_path_cells": 4
+    },
+    {
+      "case": "w17_ref0_keep1",
+      "logic_lut_cells": 30,
+      "flip_flops": 53,
+      "register_path_cells": 4
+    },
+    {
+      "case": "w17_ref1_keep0",
+      "logic_lut_cells": 35,
+      "flip_flops": 53,
+      "register_path_cells": 4
+    },
+    {
+      "case": "w32_ref0_keep0",
+      "logic_lut_cells": 75,
+      "flip_flops": 98,
+      "register_path_cells": 5
+    },
+    {
+      "case": "w32_ref0_keep1",
+      "logic_lut_cells": 63,
+      "flip_flops": 98,
+      "register_path_cells": 5
+    },
+    {
+      "case": "w32_ref1_keep0",
+      "logic_lut_cells": 75,
+      "flip_flops": 98,
+      "register_path_cells": 5
+    },
+    {
+      "case": "w64_ref0_keep0",
+      "logic_lut_cells": 149,
+      "flip_flops": 194,
+      "register_path_cells": 6
+    },
+    {
+      "case": "w64_ref0_keep1",
+      "logic_lut_cells": 81,
+      "flip_flops": 194,
+      "register_path_cells": 5
+    },
+    {
+      "case": "w64_ref1_keep0",
+      "logic_lut_cells": 149,
+      "flip_flops": 194,
+      "register_path_cells": 6
+    }
+  ]
+}
