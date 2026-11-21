@@ -181,7 +181,8 @@ module kernel_loader #(
     candidate_descriptor.rows = prefetch_rows;
     candidate_descriptor.cols = prefetch_valid_cols;
     issue_descriptor = prefetch_issue ? prefetch_descriptor : ctrl_descriptor;
-    port_descriptor = dma_start ? issue_descriptor :
+    // 请求期间先选好待发描述符，授予只控制接收边沿。
+    port_descriptor = load_weight_req ? issue_descriptor :
         transfer_active ? active_descriptor : issue_descriptor;
   end
 
@@ -425,7 +426,7 @@ module kernel_loader #(
     );
     assign descriptor_burst[descriptor] = burst_o_length_m1;
   end
-  assign dma_burst_len_m1 = (!dma_start && transfer_active) ? descriptor_burst[2] :
+  assign dma_burst_len_m1 = (!load_weight_req && transfer_active) ? descriptor_burst[2] :
       (prefetch_issue ? descriptor_burst[1] : descriptor_burst[0]);
 
 	  assign ext_dma_start            = dma_start;

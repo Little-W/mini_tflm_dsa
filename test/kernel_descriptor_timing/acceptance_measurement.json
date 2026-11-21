@@ -1,0 +1,197 @@
+{
+  "design": "kernel_loader accepted descriptor and balanced traversal comparison",
+  "reference": "422090be",
+  "source_sha256": {
+    "rtl/npu/loaders/kernel_loader.sv": "b5c9b2f290c6d7857b616bd4b4c5e55b6ff67ea457f34bcafa5e4ea40656a6e0",
+    "rtl/npu/loaders/kernel_loader_ctrl.sv": "bb57836884dd572b169f8db1f2290f916d7c130c64c66cb113313c50d029515b"
+  },
+  "accepted_descriptor_formal": {
+    "passed": true,
+    "reference": "422090be",
+    "source_sha256": {
+      "rtl/npu/loaders/kernel_loader.sv": "b5c9b2f290c6d7857b616bd4b4c5e55b6ff67ea457f34bcafa5e4ea40656a6e0",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "59594f1755b7ed35f891ed6424c98ff9cc651ce1d96857726b02dd4cdfd05f8b",
+      "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+    },
+    "reference_sha256": "567c4786e2b83c78651e4f80381a770bf8f4859a0e8ccbef0914b9d14df926c2",
+    "inputs_constrained": false,
+    "scope": "All sequential state and control outputs; full descriptor payload on ext_dma_start.",
+    "runs": [
+      {
+        "size": 4,
+        "count_width": 8,
+        "bus_width": 32,
+        "passed": true,
+        "compared_bits": 4582,
+        "script_sha256": "9bdc3cb72d2390ceff4bf4ca78333a4f7a06f0894507d57a20abdf5914aba9eb",
+        "log_sha256": "229a0ebf6efd2aed106d5999ca7fc249681a7079a3aee83583f2e38836bc57fa"
+      },
+      {
+        "size": 16,
+        "count_width": 29,
+        "bus_width": 64,
+        "passed": true,
+        "compared_bits": 18785,
+        "script_sha256": "f4fa01d4f680fe1efd37421a9fe54e02f525e64d9acd062bff6e95e3abfad41f",
+        "log_sha256": "dcb36001a5e08a08d440a36c1ef28c601b9e18bae43935e0c4d1d3e4af5c4708"
+      },
+      {
+        "size": 16,
+        "count_width": 32,
+        "bus_width": 128,
+        "passed": true,
+        "compared_bits": 19079,
+        "script_sha256": "e383e0fea50e1746ab8f554ffe3e1a14478296bbdd14dcaf28318d28de233e68",
+        "log_sha256": "7f1518b4de25cc7ed976764fb3a5a8e05563ed06a24021dc07da00794283418f"
+      }
+    ]
+  },
+  "current_controller_formal": {
+    "passed": true,
+    "input_assumptions": [],
+    "source_sha256": {
+      "reference": "180ddf976b7d489a37ed83114216d7989bc09bd53443f0e59321cd3e16f8197b",
+      "candidate": "bb57836884dd572b169f8db1f2290f916d7c130c64c66cb113313c50d029515b"
+    },
+    "arithmetic": [
+      {
+        "width": 1,
+        "passed": true,
+        "log_sha256": "2e5809851380decd36ef5848ac2b6c5ddbd8b75025ce6b5ea3d61cd349dc79ac"
+      },
+      {
+        "width": 2,
+        "passed": true,
+        "log_sha256": "f7284a864a164b5f67b1e44a147535b5483e05748d9818b12635375fac9d993c"
+      },
+      {
+        "width": 5,
+        "passed": true,
+        "log_sha256": "ddf18ccd26f2a3b69a2c3927e8b64cd6f23762330217f5bd57abfb81f082af37"
+      },
+      {
+        "width": 6,
+        "passed": true,
+        "log_sha256": "e036be320bfd1fd3ea48971c09e2bbf1bfb675435d32d0b38fd3d912c5afde68"
+      },
+      {
+        "width": 8,
+        "passed": true,
+        "log_sha256": "770c2378643ad9e9fd258347eb9daff70788b6a8ccd4e071a842f0a05a07c45a"
+      },
+      {
+        "width": 9,
+        "passed": true,
+        "log_sha256": "08353a91821a49c29e776d5b3f5cd055dc607394c6aed987253a53f8856ab908"
+      },
+      {
+        "width": 16,
+        "passed": true,
+        "log_sha256": "fad34f35a567a9267c072a6cc1829574dae9efe9d95143c27f767458b916988f"
+      },
+      {
+        "width": 29,
+        "passed": true,
+        "log_sha256": "d358d54a2edfe87e7cd5ac39a38d8437207fd68a5a4c829e24c0d6d45144b756"
+      },
+      {
+        "width": 32,
+        "passed": true,
+        "log_sha256": "366e9cf411c43427a75495fe69d7f07f3cc8c76b74e5c419c175428524145d7e"
+      },
+      {
+        "width": 33,
+        "passed": true,
+        "log_sha256": "8c29569c93de5cba023d8c21e5630c339921682dc2942229f03e0b6550b7e0d1"
+      },
+      {
+        "width": 65,
+        "passed": true,
+        "log_sha256": "d21b97fc6afcb89de0efcf9b1a9f28fc22f84ae0d7589ef57dbed7375c6605ad"
+      }
+    ],
+    "controller": [
+      {
+        "SIZE": 16,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 29,
+        "passed": true,
+        "equivalent_bits": 2627,
+        "log_sha256": "5432200b0e6b9a5ef41c6190ee4f5381651f566689bd1b61f789b95b8ed7d823"
+      },
+      {
+        "SIZE": 1,
+        "REG_WIDTH": 8,
+        "COUNT_WIDTH": 1,
+        "passed": true,
+        "equivalent_bits": 291,
+        "log_sha256": "3cc3c616a69c250eaf1d23a8b29965e983d4714f14d6178d94ca23a7fa269329"
+      },
+      {
+        "SIZE": 4,
+        "REG_WIDTH": 16,
+        "COUNT_WIDTH": 16,
+        "passed": true,
+        "equivalent_bits": 1425,
+        "log_sha256": "e6bbf54331412e1dba5f61d1e7146b11c39c94bf858bab494739641bfe3c118c"
+      },
+      {
+        "SIZE": 16,
+        "REG_WIDTH": 32,
+        "COUNT_WIDTH": 33,
+        "passed": true,
+        "equivalent_bits": 2872,
+        "log_sha256": "407c565aa5cd0ee3c9e2ad2f582dbca1369a0c42caea2d7a5f6adef9750d3dd0"
+      }
+    ],
+    "helper_sha256": {
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "52440e11170bb1397859bf6a777069a426d493877406631deee4c15113a498f8",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3"
+    }
+  },
+  "numeric": {
+    "passed": true,
+    "parameters": {
+      "SIZE": 16,
+      "DATA_WIDTH": 16,
+      "BUS_WIDTH": 64,
+      "COUNT_WIDTH": 29
+    },
+    "source_sha256": {
+      "test/kernel_prefetch/run.py": "91235d63efdb2053b1d884ca969ce9ef1eef004b9f6c450e3fec5a554c595c59",
+      "test/kernel_prefetch/tb.sv": "4f22a7d3a9af23ac3749eccd0232e07182ec41f85a50e600f47fdb5850072a00",
+      "test/kernel_prefetch/main.cpp": "b52728c399c586e16f9abeefe6d79717ef3be5fc0dffbda45ac2240280dd6695",
+      "rtl/npu/loaders/kernel_loader.sv": "b5c9b2f290c6d7857b616bd4b4c5e55b6ff67ea457f34bcafa5e4ea40656a6e0",
+      "rtl/npu/loaders/kernel_loader_buffer.sv": "6eee7299ac77123aa404437981b1ccde6e998eacc44ecbd31ca4094f6801f88d",
+      "rtl/npu/loaders/kernel_loader_ctrl.sv": "59594f1755b7ed35f891ed6424c98ff9cc651ce1d96857726b02dd4cdfd05f8b",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/add_equal.sv": "a14363f350a6819f242eaa2219a7233c1fa555b5f2a2bf19201b635311fbf1ab",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b"
+    },
+    "cycles": 29443,
+    "dma_starts": 312,
+    "dma_completions": 312,
+    "prefetch_starts": 100,
+    "cache_hits": 73,
+    "cache_discards": 25,
+    "tiles_sent": 285,
+    "checked_values": 72960,
+    "dma_send_overlap_cycles": 1649,
+    "overlapping_dma_starts": 12,
+    "max_dma_contexts": 2,
+    "undefined_behavior_sanitizer": true,
+    "binary_sha256": "93ce92d7bc581765d75fbf1757039129d7be0758d692fd9f7caf1131e9c6d441"
+  }
+}

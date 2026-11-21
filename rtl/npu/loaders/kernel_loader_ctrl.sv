@@ -560,8 +560,9 @@ module kernel_count_compare #(
     localparam int p_compare_width = p_chunk_width;
     localparam int p_chunks = (p_width + p_compare_width - 1) / p_compare_width;
     localparam int p_leaves = 1 << $clog2(p_chunks);
-    logic [2*p_leaves-1:1] equal_tree;
-    logic [2*p_leaves-1:1] greater_tree;
+    // 保留相邻区间的比较节点，完整层次合并时仍按平衡树计算。
+    (* keep = 1 *) logic [2*p_leaves-1:1] equal_tree;
+    (* keep = 1 *) logic [2*p_leaves-1:1] greater_tree;
 
     for (genvar part = 0; part < p_leaves; part++) begin : g_compare
         if (part < p_chunks) begin : g_value
