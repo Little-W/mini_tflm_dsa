@@ -4,13 +4,9 @@
 执行加法或输出左操作数。结果按 `2^p_width` 取模。模块不保存状态，输入到
 输出为组合逻辑；原有接收边沿、有效标志和复位处理由调用模块保持。
 
-模块使用普通条件表达式选择右操作数，通过算术表达式描述定宽求和。
-32 位配置将低 16 位求和与高 16 位的两种进位结果并行计算，随后由低半字
-进位选择高半字结果。综合工具负责映射进位与选择资源。
+模块使用普通条件表达式选择右操作数，通过定宽算术描述求和。`p_use_dsp=1` 且位宽为 17 至 48 时，对完整加法结果使用 `use_dsp` 属性，由综合工具推断 DSP。通用实现将低位求和与高位的两种进位结果并行计算，再选择高位结果。
 
-`p_width=48` 且 `p_split_12bit=1` 时，四个 12 位通道分别执行模加；
-其他配置使用一个完整位宽的运算通道。`p_use_dsp` 的两种取值使用相同的
-可综合 RTL，FPGA 与 ASIC 保持相同的算术行为。
+`p_width=48` 且 `p_split_12bit=1` 时，四个 12 位通道分别执行模加；其他配置使用一个完整位宽的运算通道。两种实现保持相同的算术和使能旁路行为。
 
 ## 形式验证
 
@@ -37,7 +33,8 @@ INT16、逐通道量化、尾块和 INT16 输出。内存比较检查输出值�
 
 ```sh
 python3 scripts/fpga/open_fpga_synth.py --case-config test/select_add/cases.json \
-  --cases select_add_reference select_add_candidate --out build/select_add_resources
+  --cases select_add_reference select_add_candidate --out build/select_add_resources \
+  --rtl-dsp-attributes --wide-alu-dsp-budget 740
 ```
 
 测量文件在两种表达式两端加入相同的寄存器，形成可以统计的寄存器间路径。
@@ -51,7 +48,7 @@ python3 scripts/fpga/open_fpga_synth.py --case-config test/select_add/cases.json
 | 实现 | 逻辑 LUT | CARRY4 | DSP | 最长寄存器间组合单元数 |
 |---|---:|---:|---:|---:|
 | 两个候选加法及结果选择 | 96 | 16 | 0 | 10 |
-| 分段进位选择 | 66 | 13 | 0 | 7 |
+| 选择操作数后推断加法 | 64 | 0 | 1 | 3 |
 
 完整 SoC 可以共享各通道的控制逻辑，其资源总数由全设计综合统计。
 组合单元数描述逻辑结构，150 MHz 时钟要求使用器件布局布线后的延迟分析。

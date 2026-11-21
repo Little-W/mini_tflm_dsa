@@ -1,6 +1,7 @@
 {
+  "passed": true,
   "source_sha256": {
-    "rtl/npu/compute/select_add.sv": "0fed201b03d6b337fae47479de7e92027757035017b7e67e779dfcc5de67dd42",
+    "rtl/npu/compute/select_add.sv": "a8bab6351a274c3b80e5158ed44caa6ad0051fc1442b3e8ad9d9d1a1abdf6c20",
     "test/select_add/select_add_formal.sv": "1792fe4ada03c1e339d17318d9da450d6b7122984b2a7d220930af585db8d862"
   },
   "formal": {
@@ -8,7 +9,7 @@
     "latency_cycles": 0,
     "properties_per_width": 3,
     "source_sha256": {
-      "rtl/npu/compute/select_add.sv": "0fed201b03d6b337fae47479de7e92027757035017b7e67e779dfcc5de67dd42",
+      "rtl/npu/compute/select_add.sv": "a8bab6351a274c3b80e5158ed44caa6ad0051fc1442b3e8ad9d9d1a1abdf6c20",
       "test/select_add/select_add_formal.sv": "1792fe4ada03c1e339d17318d9da450d6b7122984b2a7d220930af585db8d862"
     },
     "runs": [
@@ -46,99 +47,57 @@
     "passed": true
   },
   "mapping": {
-    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
-    "part": "xc7a200tfbg484-3",
-    "cases": {
-      "select_add_reference": {
-        "lut_cells": 96,
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 96,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 96,
+        "physical_lut_sites_after_placement": null,
         "flip_flops": 130,
+        "dsp48e1": 0,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
         "carry4": 16,
-        "dsp": 0,
-        "longest_register_path_cells": 10,
-        "register_path_requirement": {
-          "maximum_combinational_cells": 14,
-          "observed_combinational_cells": 10,
-          "graph_complete": true,
-          "met": true,
-          "scope": "Clocked storage outputs to synchronous data and control inputs",
-          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 16,
+          "FDRE": 130,
+          "LUT2": 64,
+          "LUT5": 32
         },
-        "stages": {
-          "01_elaborate": {
-            "elapsed_seconds": 1.4,
-            "peak_process_tree_rss_bytes": 144162816,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "01_elaborate.ys",
-            "log": "01_elaborate.log",
-            "script_sha256": "826be7b8d4561be1bad553e6ea35b651cf3609777e729e501221aa3c864d237e",
-            "output_sha256": "a88b450164e96e87c7ce18659c2da15caf6b812254f31305614772d16ecc997a"
-          },
-          "02_pre_lut": {
-            "elapsed_seconds": 4.02,
-            "peak_process_tree_rss_bytes": 144113664,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02_pre_lut.ys",
-            "log": "02_pre_lut.log",
-            "script_sha256": "60cc0cb2d9603417328c01add2b0a6e49b0c6bb10de23ce4a6e6bb95a968796d",
-            "output_sha256": "e8e6b96ca005ae3700a82ab11fefaadbe0e395f6d6b959970b8116eb80de1fdc"
-          },
-          "03_map_lut": {
-            "elapsed_seconds": 3.23,
-            "peak_process_tree_rss_bytes": 171126784,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "03_map_lut.ys",
-            "log": "03_map_lut.log",
-            "script_sha256": "4f496a76d0798711d8e6eed2feea635d43d186f42488bc44ae43af737ab458aa",
-            "output_sha256": "93140ab8772ac04fc7feba6e318998b79b523ef2c5034f28700d42a9139d8936",
-            "mapped_verilog_sha256": "97598b21894b02a0d3973538006a1609119e60225783affac16f9b2a163cae27"
-          }
-        }
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
       },
-      "select_add_candidate": {
-        "lut_cells": 66,
+      "graph_complete": true,
+      "longest_register_path_cells": 10,
+      "metrics_sha256": "45f6733830ea0fd9e616ee87ec9a574c6dc27639238730f3e3fb954bccd0f92d",
+      "manifest_sha256": "a0341fb86a902394aadce2aeee7a23a96bda3c4ddf400a6733efb1e585361856"
+    },
+    "candidate": {
+      "resources": {
+        "logic_lut_cells": 64,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 64,
+        "physical_lut_sites_after_placement": null,
         "flip_flops": 130,
-        "carry4": 13,
-        "dsp": 0,
-        "longest_register_path_cells": 7,
-        "register_path_requirement": {
-          "maximum_combinational_cells": 14,
-          "observed_combinational_cells": 7,
-          "graph_complete": true,
-          "met": true,
-          "scope": "Clocked storage outputs to synchronous data and control inputs",
-          "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+        "dsp48e1": 1,
+        "ramb36e1": 0,
+        "ramb18e1": 0,
+        "carry4": 0,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "DSP48E1": 1,
+          "FDRE": 130,
+          "LUT3": 32,
+          "LUT4": 32
         },
-        "stages": {
-          "01_elaborate": {
-            "elapsed_seconds": 1.2,
-            "peak_process_tree_rss_bytes": 153231360,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "01_elaborate.ys",
-            "log": "01_elaborate.log",
-            "script_sha256": "f939f270b15934dc510de9b5de7f01fba5da4aa00d4f58ef1f3da8d237734fc0",
-            "output_sha256": "9e5f05a374fbb48b219ee4c98a9d6e14d208c76fffafdfd72da497fd51e640d4"
-          },
-          "02_pre_lut": {
-            "elapsed_seconds": 3.81,
-            "peak_process_tree_rss_bytes": 150695936,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "02_pre_lut.ys",
-            "log": "02_pre_lut.log",
-            "script_sha256": "805b9af0fe4b43dea3be05fe9fa5d017aaa895377df0226cc271d3fda3069630",
-            "output_sha256": "e43c02301963bb2809b5902d63cdc4f0f97b4bdba1a28867f68f704f9b58ca08"
-          },
-          "03_map_lut": {
-            "elapsed_seconds": 2.62,
-            "peak_process_tree_rss_bytes": 171225088,
-            "memory_sample_interval_seconds": 0.2,
-            "script": "03_map_lut.ys",
-            "log": "03_map_lut.log",
-            "script_sha256": "1b8d42760c75008f0361fb407e5427a00583d2d864bfd11183741120e4977bc7",
-            "output_sha256": "3957a040b031a6c54a9a075674aca4e4d3754103b114e675b779242bfd518ab0",
-            "mapped_verilog_sha256": "f96def5f9818461419951314c744d4c56faa87157b0c62a4986bba4fa29588f2"
-          }
-        }
-      }
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "graph_complete": true,
+      "longest_register_path_cells": 3,
+      "metrics_sha256": "ca0e7558df2410d3b4e2dadcfada348029aa1cf5caa533bc10ba77249691791c",
+      "manifest_sha256": "56813ff9c68ec77dc07e87bc565597130de1826a1a074821021eb5122b45c70e"
     }
   }
 }
