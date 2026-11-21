@@ -26,7 +26,19 @@ def main():
     word_start = text.index('  for (genvar lane = 0; lane < LANES; lane++) begin : g_word_lane')
     word_stop = text.index('  if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_direct_chunk_end', word_start)
     word = text[word_start:word_stop]
-    end_stop = text.index('  // 偏移高字节', word_stop)
+    word_context = ''
+    if 'word_mask_for_address' in text:
+        mask_function = re.search(
+            r'  function automatic logic \[LANES-1:0\] word_mask_for_address\(.*?  endfunction',
+            text, re.S).group()
+        word_context += mask_function + '\n'
+        word_context += '    assign word_lane_allowed = word_mask_for_address(addr, input_s16);\n'
+    if 'word_output_q' in word:
+        state_function = re.search(
+            r'  function automatic logic state_uses_word\(.*?  endfunction', text, re.S).group()
+        word_context += state_function.replace('input st_t next_state', 'input logic [21:0] next_state') + '\n'
+        word_context += '    wire word_output_q = state_uses_word(state);\n'
+    end_stop = text.index('  end\n', word_stop) + len('  end\n')
     chunk_end = text[word_stop:end_stop]
     output_start = text.index('  for (genvar output_lane = 0; output_lane < LANES; output_lane++) begin : g_output_mask')
     output_stop = text.index('  always_comb begin', output_start)
@@ -82,7 +94,7 @@ def main():
         else assign reference_selected[step]=chunk_lane_allowed[step-1] &&
             !(|chunk_lane_allowed[LANES-1:step]);
     end
-''' + selection + word + chunk_end + output + '''
+''' + word_context + selection + word + chunk_end + output + '''
     assign reference_reaches_end = TILE_COUNT_W'(chunk_count) == col_remaining;
     assign equivalent=(wr_mask==reference_mask) && (chunk_selected==reference_selected) &&
         (chunk_reaches_end==reference_reaches_end);
@@ -91,7 +103,9 @@ endmodule
     result = {'passed': True, 'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
               'proof_sha256': hashlib.sha256(proof.read_bytes()).hexdigest(),
               'range_invariants': ['group flags form a continuous prefix',
-                                   'active flags are stored with their column count'],
+                                   'active flags are stored with their column count',
+                                   'word flags match the stored address and format',
+                                   'word output class matches the stored state'],
               'input_constraints': [], 'runs': []}
     for size in (2, 4, 8, 16):
         for lanes in (1, 2, 4, 8, 16):

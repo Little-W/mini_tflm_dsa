@@ -14,13 +14,15 @@
 
 准备阶段选择行地址和分组地址，并保存独热操作类型。提交阶段根据操作类型选择当前任务的固定步长，使用两组完整地址加法。输入坐标同样保存基坐标，提交时选择对应步长并完成两个坐标的求和和范围检查。已保存的窗口保留其填充标志。寄存描述符分支只生成实际使用的坐标候选；直接描述符分支保留独立候选计算。
 
-核位置、核行列与像素编号分别保存基值，提交阶段根据同一操作类型选择增量，并共用四组模加法，核末列根据提交的核列值判断。四个历史坐标条目使用一组可推断的分布式存储，分别保存位置键和行列坐标，有效位随配置清除。
+核位置、核行列与像素编号分别保存基值，提交阶段根据同一操作类型选择增量，并共用四组模加法，核末列根据提交的核列值判断。四个历史坐标条目使用一组可推断的分布式存储，分别保存位置键和行列坐标，有效位随配置清除。寄存描述符与请求模式在描述符提交边沿保存历史命中和行列坐标，执行解码使用该保存结果；历史表写入时，保存结果同步更新。位置差使用完整三十三位结果，描述符提交时保存，历史位置更新时归零。历史行末保留三十二位位置溢出条件。
 
-通道范围由完整十七位剩余数量生成，配置和执行上下文分别提前保存。描述符准备使用同一份十七位剩余通道数判断完整分块与尾部分块，窗口上下文单独保存该数量。通道、分组偏移和本次数量共用一组十八位加法生成下一通道位置。输出掩码使用连续通道范围，末列位置通过相邻列资格位确定。固定短步长地址采用逐位和值表达，完整进位保留到高位地址选择。行末、有效列余量和跨字判断各保留完整计算结果，供输出状态选择使用。五位除三译码同时产生商和余数，供三通道和三列卷积核的坐标解码使用。
+通道范围由完整十七位剩余数量生成，配置和执行上下文分别提前保存。描述符准备使用同一份十七位剩余通道数判断完整分块与尾部分块，窗口上下文单独保存该数量。通道、分组偏移和本次数量共用一组十八位加法生成下一通道位置。输出掩码使用连续通道范围，末列位置通过相邻列资格位确定。固定短步长地址采用逐位和值表达，完整进位保留到高位地址选择。行末、有效列余量和跨字判断各保留完整计算结果，供输出状态选择使用。缓存字输出状态与主状态在同一条寄存赋值中保存，通道资格直接使用该状态标志。五位除三译码同时产生商和余数，供三通道和三列卷积核的坐标解码使用。
 
 保存字标签按三个比特分组比较。字命中状态使用地址更新的互斥事件独立保存，响应、配置、通道更新和描述符提交分别选择完整命中结果。配置只在空闲状态接收，运行期更新直接使用对应状态和传输条件；直接描述符模式保留末拍提交优先次序。
 
 预取横坐标的核行片段与跨步窗口共用一组完整加法，模式先选择对应步长。预取纵坐标以及配置阶段的行间和抽头像素步长各自经过已有寄存器。宽算术采用普通可综合表达式及 `use_dsp` 属性。RTL 保留所有配置位宽和算术结果，不实例化器件算术或存储原语。
+
+八位输入在配置允许的偏移范围 −127 至 128 内形成完整九位有符号和值，再符号扩展为十六位输出。
 
 ## 已执行的检查
 
@@ -45,6 +47,10 @@
 | 操作类型及完整结果 | 33、35、40 位坐标共三组证明，覆盖地址、坐标、像素和核位置及独热选择；采用同一任务的配置系数 |
 | 描述符共享运算 | 四组结果共 128 位，完整输入证明通过 |
 | 历史坐标存储 | 四个 64 位条目的有效数据通过复位检查和无界归纳 |
+| 历史位置差和行末 | 完整 33 位差值、32 位模行末及溢出条件、两项 16 位模相等关系通过复位检查和无界归纳 |
+| 历史查询保存 | 9 种索引移位，逐周期命中及命中坐标通过复位检查和无界归纳 |
+| 缓存字输出状态 | 55 处状态赋值共同保存输出类别；无界归纳和 20,001 个四态周期通过 |
+| 八位输入修正 | 配置允许范围内的完整二态输入证明，以及 524,288 次 RTL 数值检查通过 |
 | 固定短步长加法 | 2 至 9 位输入、完整进位结果的 8 组证明通过 |
 | 五位除三 | 32 个二态输入、1,024 个四态输入及完整输入证明通过 |
 | 缓存标签与协议 | 两种路数和三种行宽的标签证明通过；生产深度 1、2 的协议测试通过 |
@@ -53,7 +59,7 @@
 
 ## 综合结果
 
-采用生产参数进行独立 `xc7` 映射，仅对 RTL 中标有 `use_dsp="yes"` 的算术执行 DSP 映射：逻辑 LUT 为 9,483，分布式存储占用的标称 LUT 为 364，总计 9,847，触发器为 5,937，DSP 为 111，RAMB18 为 9。完整连接图得到的寄存器间最长组合路径为 13 个单元，尚未满足 10 级要求。150 MHz 需要目标器件的综合、布局布线和静态时序分析结果确认。
+采用生产参数和 JSON 中记录的固定依赖版本进行独立 `xc7` 映射，仅对 RTL 中标有 `use_dsp="yes"` 的算术执行 DSP 映射：逻辑 LUT 为 9,330，分布式存储占用的标称 LUT 为 376，总计 9,706，触发器为 5,952，DSP 为 113，RAMB18 为 9。完整连接图得到的寄存器间最长组合路径为 14 个单元，位于该依赖版本的缓存内部；前端自身的最长路径为 13 个单元。目标为 10 级，150 MHz 需要目标器件的综合、布局布线和静态时序分析结果确认。
 
 源码散列、配置、各项结果和综合统计保存在 [pipeline_validation.json](pipeline_validation.json)。
 
@@ -75,6 +81,10 @@ python3 test/conv_frontend/tools/check_epoch_shared.py --reference-root /path/to
 python3 test/conv_frontend/tools/check_frontend_event_domains.py --source-root . --reference-root /path/to/fixed_reference --out build/frontend_event_domains
 python3 test/conv_frontend/tools/check_prefetch_shared.py --source-root . --reference-root /path/to/fixed_reference --out build/frontend_prefetch_shared
 python3 test/conv_frontend/tools/check_short_address_sum.py --source-root . --out build/frontend_short_address
+python3 test/conv_frontend/tools/check_word_state.py --source-root . --reference-root /path/to/fixed_reference --out build/frontend_word_state
+python3 test/conv_frontend/tools/check_history_delta.py --source-root . --out build/frontend_history_position
+python3 test/conv_frontend/tools/check_position_snapshot.py --source-root . --out build/frontend_position_snapshot
+python3 test/conv_frontend/tools/check_s8_formatter.py --source-root . --reference-root /path/to/fixed_reference --out build/frontend_s8_formatter
 python3 test/conv_frontend/tools/check_small_decode.py --out build/frontend_divide_three
 python3 test/cache_storage/check_tag_stage.py --out build/cache_tag_stage
 ```

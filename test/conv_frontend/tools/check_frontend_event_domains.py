@@ -130,6 +130,18 @@ def main():
     if re.search(r'\bstate\s*\[.*?\]\s*(?:<=|=)', current):
         raise RuntimeError('Partial state assignment')
     assignments = re.findall(r'\bstate\s*<=\s*([^;]+);', current)
+    paired_assignments = re.findall(
+        r'\{word_output_q,\s*state\}\s*<=\s*\{state_uses_word\((.*?)\),\s*(.*?)\};',
+        current)
+    for class_value, state_value in paired_assignments:
+        if re.sub(r'\s+', '', class_value) != re.sub(r'\s+', '', state_value):
+            raise RuntimeError('State output class assignment')
+    if paired_assignments:
+        if assignments:
+            raise RuntimeError('Mixed state assignment forms')
+        assignments = [state_value for _, state_value in paired_assignments]
+        if len(paired_assignments) != len(re.findall(r'\{word_output_q,\s*state\}\s*<=', current)):
+            raise RuntimeError('State output class coverage')
     if not assignments or assignments[0] != 'IDLE':
         raise RuntimeError('State reset')
     for rhs in assignments:
