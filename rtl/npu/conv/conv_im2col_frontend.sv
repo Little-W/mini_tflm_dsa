@@ -137,6 +137,8 @@ module conv_im2col_frontend #(
     end
   end
   logic [5:0][15:0] group_range_channel;
+  (* use_dsp = "yes" *) logic [16:0] initial_group_remaining;
+  logic [16:0] window_group_remaining_q;
   logic [5:0][p_saved_group_lanes:0] group_range_next;
   logic group_after_chunk;
   logic [31:0] p0, q0, tap0;
@@ -424,20 +426,15 @@ module conv_im2col_frontend #(
     logic [SLOT_W-1:0] slot;
     logic [32:0] next_group, skip_group;
     logic [31:0] tap, channel, kernel_x, kernel_y;
-    logic signed [2:0] tap_delta, kernel_x_delta, kernel_y_delta;
-    logic [31:0] pixel_delta;
-    logic pixel_carry;
     logic signed [COORD_W-1:0] input_x, input_y;
     logic [31:0] pixel, address, group_address;
-    logic [31:0] address_delta;
-    logic address_carry;
     logic [15:0] output_x, output_y;
     logic [p_saved_group_lanes:0] channel_range;
-    logic signed [COORD_W-1:0] coordinate_dx, coordinate_dy;
-    logic coordinate_x_carry, coordinate_y_carry;
     logic [8:0] padding_select, padding_value;
     logic [31-p_word_shift:0] word_address;
     logic saved_word_valid;
+    logic [9:0] operation;
+    logic row_wrap;
   } prepared_tile_t;
   prepared_tile_t preparing_tile, prepared_tile_q, committing_tile;
   logic tile_prepared_valid, tile_capture, tile_commit;
@@ -446,24 +443,22 @@ module conv_im2col_frontend #(
   (* keep = REGISTER_DESCRIPTOR *) logic prepared_live_word_match;
   logic [8:0] prepared_padding_select, prepared_padding_value;
   (* keep = REGISTER_DESCRIPTOR *) logic [9:0] prepared_word_select;
-  logic [9:0][1:0][31:0] prepared_address_candidate;
   logic [1:0][31:0] prepared_address;
-  logic [9:0][31:0] prepared_address_delta_candidate;
-  logic [9:0] prepared_address_carry_candidate;
-  logic [31:0] prepared_address_delta;
-  logic prepared_address_carry;
+  logic [31:0] committing_address_delta;
+  logic committing_address_carry;
   logic [1:0][31:0] committing_address;
   logic [1:0] unused_committing_address_carry;
   logic signed [COORD_W-1:0] prepared_coordinate_x, prepared_coordinate_y;
-  logic signed [COORD_W-1:0] prepared_coordinate_dx, prepared_coordinate_dy;
-  logic [1:0] prepared_coordinate_carry;
+  logic signed [COORD_W-1:0] committing_coordinate_dx, committing_coordinate_dy;
+  logic [1:0] committing_coordinate_carry;
   logic [1:0][COORD_W-1:0] committing_coordinate;
   logic [1:0] committing_coordinate_valid;
   logic [1:0] unused_committing_coordinate_carry;
   logic [31:0] prepared_tap_base, prepared_kernel_x_base, prepared_kernel_y_base, prepared_pixel_base;
-  logic signed [2:0] prepared_tap_delta, prepared_kernel_x_delta, prepared_kernel_y_delta;
-  logic [31:0] prepared_pixel_delta;
-  logic prepared_pixel_carry;
+  logic signed [2:0] committing_tap_delta, committing_kernel_x_delta, committing_kernel_y_delta;
+  logic [31:0] committing_pixel_delta, committing_kernel_x_base;
+  logic [9:0] committing_operation;
+  logic committing_pixel_carry;
   (* use_dsp = "yes" *) logic [31:0] committing_tap, committing_kernel_x, committing_kernel_y, committing_pixel;
 
   logic [TILE_COUNT_W-1:0] prepared_columns, prepared_active_columns;
@@ -1104,14 +1099,22 @@ module conv_im2col_frontend #(
     assign incoming_group_fits = 32'(cols_q) <= 32'(c.group_c) - ch0;
   end
 
-  // 新分块列数只参与低位加法，高位大小和相邻关系并行计算。
+  // 当前组的剩余通道数共用一次扩展减法，窗口上下文保存对应剩余值。
+  assign initial_group_remaining = {1'b0, c.group_c} - {1'b0, ch0_q};
   for (genvar source = 0; source < 2; source++) begin : g_tile_group_range
     logic [15:0] first_channel;
     logic [16:0] requested_columns;
-
     assign first_channel = source == 0 ? window_next_ch : ch0_q;
     assign requested_columns = tile_cols == '0 ? 17'(SIZE) : 17'(tile_cols);
-    if (TILE_COUNT_W < 16) begin : g_split
+    if (TILE_COUNT_W < 16 && RW <= TILE_COUNT_W) begin : g_remaining
+      logic [16:0] remaining;
+      (* keep = 1 *) logic full_tile_fits, explicit_tile_fits;
+      assign remaining = source == 0 ? window_group_remaining_q : initial_group_remaining;
+      // 缺省列数与显式列数分别检查，列数选择只作用于最终范围标志。
+      assign full_tile_fits = !remaining[16] && 17'(SIZE) <= remaining;
+      assign explicit_tile_fits = !remaining[16] && 17'(tile_cols) <= remaining;
+      assign incoming_tile_group_fits[source] = tile_cols == '0 ? full_tile_fits : explicit_tile_fits;
+    end else if (TILE_COUNT_W < 16) begin : g_split
       localparam int p_high_w = 16 - TILE_COUNT_W;
       logic [TILE_COUNT_W:0] column_end_low;
       logic high_before, high_equal, low_within;
@@ -1136,7 +1139,7 @@ module conv_im2col_frontend #(
         (high_equal && !column_end_low[TILE_COUNT_W] && low_within);
     end else begin : g_wide
       assign incoming_tile_group_fits[source] =
-        {1'b0, first_channel} + requested_columns <= {1'b0, c.group_c};
+          {1'b0, first_channel} + requested_columns <= {1'b0, c.group_c};
     end
   end
 
@@ -1328,6 +1331,7 @@ module conv_im2col_frontend #(
       window_tap_target_q <= window_tap_target;
       window_next_tap <= tap0;
       window_next_ch <= ch0_q;
+      window_group_remaining_q <= initial_group_remaining;
       window_next_kx <= kx0_q;
       window_forward_allowed_q <= kx0_q < last_kernel_col_q;
       window_backward_allowed_q <= kx0_q != 16'd0;
@@ -1460,7 +1464,7 @@ module conv_im2col_frontend #(
   logic [15:0] kernel_decode_mask, kernel_decode_column;
   (* keep = 1 *) logic [7:0] kernel_decode_column_equal;
   logic kernel_decode_last;
-  assign kernel_decode_mask = c.kernel_w - 16'd1;
+  assign kernel_decode_mask = last_kernel_col_q;
   assign kernel_decode_column = tap0[15:0] & kernel_decode_mask;
   // 两位掩码坐标与目标同时比较，各组独立后再归并。
   for (genvar group_index = 0; group_index < 8; group_index++) begin : g_kernel_decode_end
@@ -1907,7 +1911,11 @@ module conv_im2col_frontend #(
     // 十七位模减保留通道超出组范围时的回绕值。
     for (genvar source = 0; source < 6; source++) begin : g_source
       (* use_dsp = "yes" *) logic [16:0] remaining;
-      assign remaining = {1'b0, c.group_c} - {1'b0, group_range_channel[source]};
+      if (source == 1) begin : g_initial
+        assign remaining = initial_group_remaining;
+      end else begin : g_other
+        assign remaining = {1'b0, c.group_c} - {1'b0, group_range_channel[source]};
+      end
       for (genvar lane = 0; lane <= p_saved_group_lanes; lane++) begin : g_lane
         assign group_range_next[source][lane] = 17'(lane) < remaining;
       end
@@ -2154,26 +2162,13 @@ module conv_im2col_frontend #(
   assign epoch_i_b[4] = {16'd0, c.group_offset};
   assign epoch_i_carry = 1'b0;
   for (genvar candidate = 0; candidate < 5; candidate++) begin : g_epoch_candidate
-    if (candidate == 3 && LANES <= 8) begin : g_stream_steps
-      logic [LANES:0][17:0] step_sum;
-      logic [17:0] selected_sum;
-      for (genvar step = 0; step <= LANES; step++) begin : g_step
-        logic [17:0] sum_i_a, sum_i_b;
-        logic unused_sum_carry;
-        assign sum_i_a = {2'b0, c.group_offset} ^ {2'b0, ch_q} ^ 18'(step);
-        assign sum_i_b = (({2'b0, c.group_offset} & {2'b0, ch_q}) |
-          (({2'b0, c.group_offset} | {2'b0, ch_q}) & 18'(step))) << 1;
-        parallel_prefix_add #(.p_width(18), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
-          .i_a(sum_i_a), .i_b(sum_i_b), .i_carry(1'b0),
-          .o_sum(step_sum[step]), .o_carry(unused_sum_carry)
-        );
-      end
-      always_comb begin
-        selected_sum = '0;
-        for (int step = 0; step <= LANES; step++)
-          selected_sum |= {18{chunk_selected[step]}} & step_sum[step];
-      end
-      assign epoch_o_sum[candidate] = {14'd0, selected_sum};
+    if (candidate == 3 && LANES <= 8) begin : g_stream_shared
+      (* use_dsp = "yes" *) logic [17:0] channel_sum;
+
+      // 通道起点、组内偏移和本拍数量共用一组进位保存加法。
+      // 两个十六位操作数和至多八个通道的数量需要十八位结果。
+      assign channel_sum = epoch_i_a[candidate][17:0] + epoch_i_b[candidate][17:0];
+      assign epoch_o_sum[candidate] = {14'd0, channel_sum};
       assign unused_epoch_carry[candidate] = 1'b0;
     end else begin : g_general
       parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
@@ -2431,43 +2426,58 @@ module conv_im2col_frontend #(
     .i_a(prepared_group_i_a), .i_b({16'd0, c.group_c, 1'b0}), .i_carry(1'b0),
     .o_sum(prepared_skip_group), .o_carry(unused_prepared_skip_carry)
   );
-  // 坐标基址与步长在准备阶段保存，完整坐标求和在提交寄存器前完成。
+  // 准备项保存坐标起点与操作类型，提交时使用当前任务的步长。
+  // 配置只在没有准备项时更新，因此步长在描述符接收至提交期间保持。
   always_comb begin
     prepared_coordinate_x = row_base_ix;
     prepared_coordinate_y = row_base_iy;
-    prepared_coordinate_dx = '0;
-    prepared_coordinate_dy = '0;
-    prepared_coordinate_carry = '0;
     if (incoming_next_position_fast) begin
       prepared_coordinate_x = window_next_ix;
       prepared_coordinate_y = window_next_iy;
-      if (incoming_position_previous_row) begin
-        prepared_coordinate_dx = COORD_W'(c.dilation_w);
-        prepared_coordinate_dy = ~COORD_W'(c.dilation_h);
-        prepared_coordinate_carry[1] = 1'b1;
-      end else if (incoming_position_forward_tap) begin
-        prepared_coordinate_dx = COORD_W'(c.dilation_w);
-      end else if (incoming_position_backward_tap) begin
-        prepared_coordinate_dx = ~COORD_W'(c.dilation_w);
-        prepared_coordinate_carry[0] = 1'b1;
-      end
-    end else if (incoming_next_tile_fast) begin
-      prepared_coordinate_dx = row_wrap ? COORD_W'(row_wrap_dx) : COORD_W'(c.stride_w);
-      prepared_coordinate_dy = row_wrap ? COORD_W'(c.stride_h) : '0;
-    end else if (incoming_skip_tap) begin
-      prepared_coordinate_dx = kx0_q != 16'd0 ? tap_pair_dx : COORD_W'(c.dilation_w) << 1;
-      prepared_coordinate_dy = kx0_q != 16'd0 ? COORD_W'(c.dilation_h) : '0;
-    end else if (!incoming_q_equal) begin
-      prepared_coordinate_dx = incoming_tap_wrap ? COORD_W'(tap_wrap_dx) : COORD_W'(c.dilation_w);
-      prepared_coordinate_dy = incoming_tap_wrap ? COORD_W'(c.dilation_h) : '0;
     end
+  end
+  assign committing_operation = prepared_tile_q.operation;
+  always_comb begin
+    committing_coordinate_dx = '0;
+    committing_coordinate_dy = '0;
+    committing_coordinate_carry = '0;
+    unique case (1'b1)
+      committing_operation[1], committing_operation[7]: begin
+        committing_coordinate_dx = COORD_W'(c.dilation_w);
+      end
+      committing_operation[2]: begin
+        committing_coordinate_dx = COORD_W'(tap_wrap_dx);
+        committing_coordinate_dy = COORD_W'(c.dilation_h);
+      end
+      committing_operation[3]: begin
+        committing_coordinate_dx = COORD_W'(c.dilation_w) << 1;
+      end
+      committing_operation[4]: begin
+        committing_coordinate_dx = tap_pair_dx;
+        committing_coordinate_dy = COORD_W'(c.dilation_h);
+      end
+      committing_operation[5]: begin
+        committing_coordinate_dx = prepared_tile_q.row_wrap ? COORD_W'(row_wrap_dx) : COORD_W'(c.stride_w);
+        committing_coordinate_dy = prepared_tile_q.row_wrap ? COORD_W'(c.stride_h) : '0;
+      end
+      committing_operation[8]: begin
+        committing_coordinate_dx = ~COORD_W'(c.dilation_w);
+        committing_coordinate_carry[0] = 1'b1;
+      end
+      committing_operation[9]: begin
+        committing_coordinate_dx = COORD_W'(c.dilation_w);
+        committing_coordinate_dy = ~COORD_W'(c.dilation_h);
+        committing_coordinate_carry[1] = 1'b1;
+      end
+      default: ;
+    endcase
   end
   for (genvar axis = 0; axis < 2; axis++) begin : g_commit_coordinate
     logic [COORD_W-1:0] coordinate_i_a, coordinate_i_b;
     logic coordinate_i_carry;
     assign coordinate_i_a = axis == 0 ? prepared_tile_q.input_x : prepared_tile_q.input_y;
-    assign coordinate_i_b = axis == 0 ? prepared_tile_q.coordinate_dx : prepared_tile_q.coordinate_dy;
-    assign coordinate_i_carry = axis == 0 ? prepared_tile_q.coordinate_x_carry : prepared_tile_q.coordinate_y_carry;
+    assign coordinate_i_b = axis == 0 ? committing_coordinate_dx : committing_coordinate_dy;
+    assign coordinate_i_carry = committing_coordinate_carry[axis];
     parallel_prefix_add #(.p_width(COORD_W), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
       .i_a(coordinate_i_a), .i_b(coordinate_i_b), .i_carry(coordinate_i_carry),
       .o_sum(committing_coordinate[axis]), .o_carry(unused_committing_coordinate_carry[axis])
@@ -2522,8 +2532,7 @@ module conv_im2col_frontend #(
       prepared_word_select[0] = 1'b1;
     end
   end
-  // 描述符只保存所选坐标的起点和增量，提交阶段共用四组模加法运算。
-  // 核行列的增量范围为负二至正二，像素增量保持完整三十二位回绕语义。
+  // 核位置与像素保存完整起点，提交阶段由操作类型选择任务内固定步长。
   always_comb begin
     prepared_tap_base = tap0;
     prepared_kernel_x_base = kx0;
@@ -2537,139 +2546,88 @@ module conv_im2col_frontend #(
     end else if (incoming_next_tile_fast) begin
       prepared_pixel_base = next_row_pixel;
     end
-    prepared_tap_delta = 3'sd0;
-    prepared_kernel_x_delta = 3'sd0;
-    prepared_kernel_y_delta = 3'sd0;
-    prepared_pixel_delta = 32'd0;
-    prepared_pixel_carry = 1'b0;
+  end
+  always_comb begin
+    committing_kernel_x_base = prepared_tile_q.kernel_x;
+    committing_tap_delta = 3'sd0;
+    committing_kernel_x_delta = 3'sd0;
+    committing_kernel_y_delta = 3'sd0;
+    committing_pixel_delta = 32'd0;
+    committing_pixel_carry = 1'b0;
     unique case (1'b1)
-      prepared_word_select[1]: begin
-        prepared_tap_delta = 3'sd1;
-        prepared_kernel_x_delta = 3'sd1;
-        prepared_pixel_delta = {16'd0, c.dilation_w};
+      committing_operation[1]: begin
+        committing_tap_delta = 3'sd1;
+        committing_kernel_x_delta = 3'sd1;
+        committing_pixel_delta = {16'd0, c.dilation_w};
       end
-      prepared_word_select[2]: begin
-        prepared_tap_delta = 3'sd1;
-        prepared_kernel_x_base = 32'd0;
-        prepared_kernel_y_delta = 3'sd1;
-        prepared_pixel_delta = 32'(tap_wrap_pixels);
+      committing_operation[2]: begin
+        committing_tap_delta = 3'sd1;
+        committing_kernel_x_base = 32'd0;
+        committing_kernel_y_delta = 3'sd1;
+        committing_pixel_delta = 32'(tap_wrap_pixels);
       end
-      prepared_word_select[3]: begin
-        prepared_tap_delta = 3'sd2;
-        prepared_kernel_x_base = 32'd0;
-        prepared_kernel_x_delta = 3'sd2;
-        prepared_pixel_delta = {16'd0, c.dilation_w} << 1;
+      committing_operation[3]: begin
+        committing_tap_delta = 3'sd2;
+        committing_kernel_x_base = 32'd0;
+        committing_kernel_x_delta = 3'sd2;
+        committing_pixel_delta = {16'd0, c.dilation_w} << 1;
       end
-      prepared_word_select[4]: begin
-        prepared_tap_delta = 3'sd2;
-        prepared_kernel_x_delta = -3'sd1;
-        prepared_kernel_y_delta = 3'sd1;
-        prepared_pixel_delta = tap_pair_pixels;
+      committing_operation[4]: begin
+        committing_tap_delta = 3'sd2;
+        committing_kernel_x_delta = -3'sd1;
+        committing_kernel_y_delta = 3'sd1;
+        committing_pixel_delta = tap_pair_pixels;
       end
-      prepared_word_select[7]: begin
-        prepared_tap_delta = 3'sd1;
-        prepared_kernel_x_delta = 3'sd1;
-        prepared_pixel_delta = {16'd0, c.dilation_w};
+      committing_operation[7]: begin
+        committing_tap_delta = 3'sd1;
+        committing_kernel_x_delta = 3'sd1;
+        committing_pixel_delta = {16'd0, c.dilation_w};
       end
-      prepared_word_select[8]: begin
-        prepared_tap_delta = -3'sd1;
-        prepared_kernel_x_delta = -3'sd1;
-        prepared_pixel_delta = ~{16'd0, c.dilation_w};
-        prepared_pixel_carry = 1'b1;
+      committing_operation[8]: begin
+        committing_tap_delta = -3'sd1;
+        committing_kernel_x_delta = -3'sd1;
+        committing_pixel_delta = ~{16'd0, c.dilation_w};
+        committing_pixel_carry = 1'b1;
       end
-      prepared_word_select[9]: begin
-        prepared_tap_delta = -3'sd2;
-        prepared_kernel_x_base = 32'd0;
-        prepared_kernel_x_delta = 3'sd1;
-        prepared_kernel_y_delta = -3'sd1;
-        prepared_pixel_delta = ~tap_pair_pixels;
-        prepared_pixel_carry = 1'b1;
+      committing_operation[9]: begin
+        committing_tap_delta = -3'sd2;
+        committing_kernel_x_base = 32'd0;
+        committing_kernel_x_delta = 3'sd1;
+        committing_kernel_y_delta = -3'sd1;
+        committing_pixel_delta = ~tap_pair_pixels;
+        committing_pixel_carry = 1'b1;
       end
       default: ;
     endcase
   end
-  assign committing_tap = prepared_tile_q.tap + 32'($signed(prepared_tile_q.tap_delta));
-  assign committing_kernel_x = prepared_tile_q.kernel_x + 32'($signed(prepared_tile_q.kernel_x_delta));
-  assign committing_kernel_y = prepared_tile_q.kernel_y + 32'($signed(prepared_tile_q.kernel_y_delta));
-  assign committing_pixel = prepared_tile_q.pixel + prepared_tile_q.pixel_delta + 32'(prepared_tile_q.pixel_carry);
+  assign committing_tap = prepared_tile_q.tap + 32'($signed(committing_tap_delta));
+  assign committing_kernel_x = committing_kernel_x_base + 32'($signed(committing_kernel_x_delta));
+  assign committing_kernel_y = prepared_tile_q.kernel_y + 32'($signed(committing_kernel_y_delta));
+  assign committing_pixel = prepared_tile_q.pixel + committing_pixel_delta + 32'(committing_pixel_carry);
 
-  // 描述符寄存级保存已选择的两个基地址及共同增量，提交时共用两组加法器。
-  assign prepared_address_candidate[0] = {row_group_base, row_base_addr};
-  assign prepared_address_candidate[1] = incoming_address_left[0];
-  assign prepared_address_candidate[2] = incoming_address_left[1];
-  assign prepared_address_candidate[3] = incoming_address_left[2];
-  assign prepared_address_candidate[4] = incoming_address_left[3];
-  assign prepared_address_candidate[5] = {next_row_group_base, next_row_addr};
-  assign prepared_address_candidate[6] = {window_next_group_base, window_next_addr};
-  assign prepared_address_candidate[7] = incoming_address_left[4];
-  assign prepared_address_candidate[8] = incoming_address_left[5];
-  assign prepared_address_candidate[9] = incoming_address_left[6];
-  assign prepared_address_delta_candidate[0] = '0;
-  assign prepared_address_delta_candidate[1] = incoming_address_right[0][0];
-  assign prepared_address_delta_candidate[2] = incoming_address_right[1][0];
-  assign prepared_address_delta_candidate[3] = incoming_address_right[2][0];
-  assign prepared_address_delta_candidate[4] = incoming_address_right[3][0];
-  assign prepared_address_delta_candidate[5] = '0;
-  assign prepared_address_delta_candidate[6] = '0;
-  assign prepared_address_delta_candidate[7] = incoming_address_right[4][0];
-  assign prepared_address_delta_candidate[8] = incoming_address_right[5][0];
-  assign prepared_address_delta_candidate[9] = incoming_address_right[6][0];
-  assign prepared_address_carry_candidate = {incoming_address_carry[6:4], 2'b00,
-    incoming_address_carry[3:0], 1'b0};
+  // 两个地址共用同一来源，操作类型决定提交时的地址增量。
   always_comb begin
-    prepared_address = '0;
-    prepared_address_delta = '0;
-    prepared_address_carry = 1'b0;
+    prepared_address = {row_group_base, row_base_addr};
+    if (incoming_next_position_fast)
+      prepared_address = {window_next_group_base, window_next_addr};
+    else if (incoming_next_tile_fast)
+      prepared_address = {next_row_group_base, next_row_addr};
+  end
+  always_comb begin
+    committing_address_delta = '0;
+    committing_address_carry = 1'b0;
     unique case (1'b1)
-      prepared_word_select[0]: begin
-        prepared_address = prepared_address_candidate[0];
-        prepared_address_delta = prepared_address_delta_candidate[0];
-        prepared_address_carry = prepared_address_carry_candidate[0];
+      committing_operation[1], committing_operation[7]: committing_address_delta = tap_step_bytes;
+      committing_operation[2]: committing_address_delta = tap_wrap_bytes;
+      committing_operation[3]: committing_address_delta = tap_step_bytes << 1;
+      committing_operation[4]: committing_address_delta = tap_pair_bytes;
+      committing_operation[8]: begin
+        committing_address_delta = ~tap_step_bytes;
+        committing_address_carry = 1'b1;
       end
-      prepared_word_select[1]: begin
-        prepared_address = prepared_address_candidate[1];
-        prepared_address_delta = prepared_address_delta_candidate[1];
-        prepared_address_carry = prepared_address_carry_candidate[1];
-      end
-      prepared_word_select[2]: begin
-        prepared_address = prepared_address_candidate[2];
-        prepared_address_delta = prepared_address_delta_candidate[2];
-        prepared_address_carry = prepared_address_carry_candidate[2];
-      end
-      prepared_word_select[3]: begin
-        prepared_address = prepared_address_candidate[3];
-        prepared_address_delta = prepared_address_delta_candidate[3];
-        prepared_address_carry = prepared_address_carry_candidate[3];
-      end
-      prepared_word_select[4]: begin
-        prepared_address = prepared_address_candidate[4];
-        prepared_address_delta = prepared_address_delta_candidate[4];
-        prepared_address_carry = prepared_address_carry_candidate[4];
-      end
-      prepared_word_select[5]: begin
-        prepared_address = prepared_address_candidate[5];
-        prepared_address_delta = prepared_address_delta_candidate[5];
-        prepared_address_carry = prepared_address_carry_candidate[5];
-      end
-      prepared_word_select[6]: begin
-        prepared_address = prepared_address_candidate[6];
-        prepared_address_delta = prepared_address_delta_candidate[6];
-        prepared_address_carry = prepared_address_carry_candidate[6];
-      end
-      prepared_word_select[7]: begin
-        prepared_address = prepared_address_candidate[7];
-        prepared_address_delta = prepared_address_delta_candidate[7];
-        prepared_address_carry = prepared_address_carry_candidate[7];
-      end
-      prepared_word_select[8]: begin
-        prepared_address = prepared_address_candidate[8];
-        prepared_address_delta = prepared_address_delta_candidate[8];
-        prepared_address_carry = prepared_address_carry_candidate[8];
-      end
-      prepared_word_select[9]: begin
-        prepared_address = prepared_address_candidate[9];
-        prepared_address_delta = prepared_address_delta_candidate[9];
-        prepared_address_carry = prepared_address_carry_candidate[9];
+      committing_operation[9]: begin
+        committing_address_delta = ~tap_pair_bytes;
+        committing_address_carry = 1'b1;
       end
       default: ;
     endcase
@@ -2679,8 +2637,8 @@ module conv_im2col_frontend #(
     logic address_i_carry;
 
     assign address_i_a = address_port == 0 ? prepared_tile_q.address : prepared_tile_q.group_address;
-    assign address_i_b = prepared_tile_q.address_delta;
-    assign address_i_carry = prepared_tile_q.address_carry;
+    assign address_i_b = committing_address_delta;
+    assign address_i_carry = committing_address_carry;
     parallel_prefix_add #(.p_width(32), .p_group_width(4), .p_preserve_groups(1'b1)) u_sum (
       .i_a(address_i_a), .i_b(address_i_b), .i_carry(address_i_carry),
       .o_sum(committing_address[address_port]), .o_carry(unused_committing_address_carry[address_port])
@@ -2688,10 +2646,8 @@ module conv_im2col_frontend #(
   end
   always_comb begin
     preparing_tile = '0;
-    preparing_tile.coordinate_dx = prepared_coordinate_dx;
-    preparing_tile.coordinate_dy = prepared_coordinate_dy;
-    preparing_tile.coordinate_x_carry = prepared_coordinate_carry[0];
-    preparing_tile.coordinate_y_carry = prepared_coordinate_carry[1];
+    preparing_tile.operation = prepared_word_select;
+    preparing_tile.row_wrap = row_wrap;
     preparing_tile.padding_select = prepared_padding_select;
     preparing_tile.padding_value = prepared_padding_value;
     preparing_tile.word_address = finishing_tile && state[$clog2(WAIT_WORD)] ?
@@ -2715,11 +2671,6 @@ module conv_im2col_frontend #(
     preparing_tile.geometry = pred_enabled && (CACHE_POLICY!=3 || !c.windowed) &&
       (tile_cols==0 || 32'(tile_cols)==SIZE) && tile_p0[3:0]==0 && tile_q0[3:0]==0 && tile_group<groups_q;
     preparing_tile.tap = REGISTER_DESCRIPTOR ? prepared_tap_base : incoming_tap;
-    preparing_tile.tap_delta = prepared_tap_delta;
-    preparing_tile.kernel_x_delta = prepared_kernel_x_delta;
-    preparing_tile.kernel_y_delta = prepared_kernel_y_delta;
-    preparing_tile.pixel_delta = prepared_pixel_delta;
-    preparing_tile.pixel_carry = prepared_pixel_carry;
     preparing_tile.channel = incoming_ch;
     preparing_tile.kernel_x = REGISTER_DESCRIPTOR ? prepared_kernel_x_base : incoming_kx;
     preparing_tile.kernel_y = REGISTER_DESCRIPTOR ? prepared_kernel_y_base : incoming_ky;
@@ -2729,8 +2680,6 @@ module conv_im2col_frontend #(
     preparing_tile.pixel = REGISTER_DESCRIPTOR ? prepared_pixel_base : incoming_pixel;
     preparing_tile.address = REGISTER_DESCRIPTOR ? prepared_address[0] : incoming_addr;
     preparing_tile.group_address = REGISTER_DESCRIPTOR ? prepared_address[1] : incoming_group_base;
-    preparing_tile.address_delta = prepared_address_delta;
-    preparing_tile.address_carry = prepared_address_carry;
     preparing_tile.channel_range = incoming_next_position_fast ? window_next_channel_range : group_range_next[1];
     preparing_tile.output_position_update = incoming_next_position_fast || incoming_next_tile_fast;
     preparing_tile.output_x = incoming_next_position_fast ? window_next_x : row_wrap ? 16'd0 : ox_q + 16'd1;

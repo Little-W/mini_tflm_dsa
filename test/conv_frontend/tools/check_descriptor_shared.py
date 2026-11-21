@@ -34,6 +34,11 @@ logic [31:0] prepared_tap_base,prepared_kernel_x_base,prepared_kernel_y_base,pre
 logic signed [2:0] prepared_tap_delta,prepared_kernel_x_delta,prepared_kernel_y_delta;
 logic prepared_pixel_carry;
 logic [31:0] committing_tap,committing_kernel_x,committing_kernel_y,committing_pixel;
+logic [9:0] committing_operation;
+logic [31:0] committing_kernel_x_base,committing_pixel_delta;
+logic signed [2:0] committing_tap_delta,committing_kernel_x_delta,committing_kernel_y_delta;
+logic committing_pixel_carry;
+assign committing_operation=prepared_word_select;
 """
 HISTORY_HEADER = """module history_proof (
  input logic clk,rst_n,cfg_valid,cfg_ready,tile_commit,p_fast_valid,
@@ -91,7 +96,9 @@ def main():
     stop = text.index('  always_comb begin\n    prepared_tap_base =', start)
     select = text[start:stop]
     start = stop
-    stop = text.index('  // 描述符寄存级保存已选择的两个基地址', start)
+    address_marker = ('  // 两个地址共用同一来源' if '  // 两个地址共用同一来源' in text
+                      else '  // 描述符寄存级保存已选择的两个基地址')
+    stop = text.index(address_marker, start)
     shared = text[start:stop]
     for field in ('tap_delta', 'kernel_x_delta', 'kernel_y_delta', 'pixel_delta', 'pixel_carry'):
         shared = shared.replace('prepared_tile_q.' + field, 'prepared_' + field)
