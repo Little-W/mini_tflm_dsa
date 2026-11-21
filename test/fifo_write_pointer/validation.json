@@ -1,0 +1,163 @@
+{
+  "formal": {
+    "reference": "415a70a",
+    "source_sha256": {
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/writeback/vec_s8_to_fifo.sv": "6c29a08bb2d80392ae86f859df06b4636ae07080b0697d5da60477f7cbe67559",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
+    },
+    "reference_sha256": "e51cbbd7269b47998b84f32ec0a5f9ce822eb566e7385a6baa0f6d41e72cf037",
+    "inputs_constrained": false,
+    "data_ram_inputs_constrained": false,
+    "compared": "全部公开输出、数据存储地址和使能、存储写数据、有效银行计数及写指针关系",
+    "method": "先归纳证明实际指针更新与独热状态关系，再将该关系代入完整模块作时序等价检查",
+    "pointer_runs": [
+      {
+        "banks": 1,
+        "passed": true,
+        "log_sha256": "9b3de461addda1b3779ff46d4d7bb7f86b609e19aeaaf8f0e171f8e42e1f15ff"
+      },
+      {
+        "banks": 2,
+        "passed": true,
+        "log_sha256": "cda89c2a7d3c52269243ea3c342fda203d6cf82ef48467ffce1e6980b839db12"
+      },
+      {
+        "banks": 3,
+        "passed": true,
+        "log_sha256": "fbe85b8ad83f1ecc22d0e151db5e4bdeba6fc34b7b56e2d5c9b23daf0c76b348"
+      },
+      {
+        "banks": 8,
+        "passed": true,
+        "log_sha256": "e799472e09650470a50b3e46a7a5f07ac0f75553e6b510aee5b236198dd84223"
+      },
+      {
+        "banks": 16,
+        "passed": true,
+        "log_sha256": "3f8a44d85008f50083e6b0096f3ab1fc2c3da69c1c56b5f9cf91a404d36b4797"
+      },
+      {
+        "banks": 32,
+        "passed": true,
+        "log_sha256": "8eea277edcf6ed2a7ebb98e2076fd6a5bd838a7a657c16d52a8166258672b13f"
+      },
+      {
+        "banks": 64,
+        "passed": true,
+        "log_sha256": "b59e11f057996184355642393df195f3491c7d22cdca617a8c7cb3e7a21cd0c2"
+      },
+      {
+        "banks": 32,
+        "passed": true,
+        "log_sha256": "1b45521bb808a7b751560fef5c1602e6be324f4bde011eb88550e431f4593f50"
+      },
+      {
+        "banks": 8,
+        "passed": true,
+        "log_sha256": "dd49784f87f185f4157372f122081391a9c33a427109e8a9d997a1359854605d"
+      }
+    ],
+    "runs": [
+      {
+        "vlen": 16,
+        "banks": 1,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 934,
+        "passed": true,
+        "log_sha256": "dc912be2b702e6585d9ed134fb44003c1276ad9766c2cc03b32f575831993e6c"
+      },
+      {
+        "vlen": 16,
+        "banks": 2,
+        "bus_width": 32,
+        "cyclic": 1,
+        "equivalent_bits": 623,
+        "passed": true,
+        "log_sha256": "b73646f98432064aa26fd5e61c4da98820ca5df2074845582e3bb25b96e0f9c8"
+      },
+      {
+        "vlen": 16,
+        "banks": 3,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 988,
+        "passed": true,
+        "log_sha256": "eea42e2c4722261e8cc4537bd045ef83a0e3de353b455d1bcf1604ac37f44fe4"
+      },
+      {
+        "vlen": 16,
+        "banks": 8,
+        "bus_width": 32,
+        "cyclic": 1,
+        "equivalent_bits": 757,
+        "passed": true,
+        "log_sha256": "ab1fad81f8a1b9a49772512a6ff97bbe01ba78f5d715447a01adc9c47b9f5ae8"
+      },
+      {
+        "vlen": 16,
+        "banks": 16,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 1233,
+        "passed": true,
+        "log_sha256": "d6f73c705e11534fe341dda64549712ec4586e36590d8a48b9513f6e153adb0d"
+      },
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 1472,
+        "passed": true,
+        "log_sha256": "6e965740ae2b9329465a079e84fa5daa17de99692af010089537574cdb5ed659"
+      },
+      {
+        "vlen": 16,
+        "banks": 64,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 1934,
+        "passed": true,
+        "log_sha256": "3d7270afd2158c7a2323e6433cbc86e8dcab33fc30c3735b694398a9a0bb0acc"
+      },
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic": 0,
+        "equivalent_bits": 906,
+        "passed": true,
+        "log_sha256": "538a070f42663e7a2a429ed83fd0cf293f7c9968d8ab8385d8233c19fddc3297"
+      },
+      {
+        "vlen": 8,
+        "banks": 8,
+        "bus_width": 32,
+        "cyclic": 0,
+        "equivalent_bits": 407,
+        "passed": true,
+        "log_sha256": "3d3922dbb4dcd83ed7226ebf7ed4cae283ef49ce5776562722136690af880562"
+      }
+    ],
+    "passed": true
+  },
+  "four_state": {
+    "passed": true,
+    "cycles": 20000,
+    "profiles": [
+      1,
+      2,
+      3,
+      8,
+      16,
+      32,
+      64
+    ],
+    "comparisons": 560000,
+    "source_sha256": "6c29a08bb2d80392ae86f859df06b4636ae07080b0697d5da60477f7cbe67559",
+    "model_sha256": "10827244930f3e60dc5c0dd369058410588f4bd1aa4da80642ecc3ed2c26c1ba",
+    "testbench_sha256": "18805cd99f04d5c18c963891c1529db28c50258d3af7aef07bc16cded191e308"
+  }
+}
