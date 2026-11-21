@@ -1663,6 +1663,8 @@ module npu_top #(
         logic direct_output_cfg;
         logic [p_s8_reserve_width-1:0] output_reserve_banks;
         logic [p_s16_reserve_width-1:0] output_s16_reserve_banks;
+        logic [p_s8_reserve_width-1:0] output_s8_ready_threshold;
+        logic [p_s16_reserve_width-1:0] output_s16_ready_threshold;
         wire [31:0] output_reserve_uncapped = (!use_frame_commands_s2 && direct_output_cfg) ?
             output_reserve_calc : 32'(cfg_ia_reuse_eff_s2);
         wire [31:0] output_s16_reserve_uncapped = 32'(cfg_ia_reuse_eff_s2);
@@ -1685,6 +1687,8 @@ module npu_top #(
                 ia_reuse_num_eff <= REG_WIDTH'(1);
                 output_reserve_banks <= p_s8_reserve_width'(1);
                 output_s16_reserve_banks <= p_s16_reserve_width'(1);
+                output_s8_ready_threshold <= p_s8_reserve_width'(OA_FIFO_BANKS-1);
+                output_s16_ready_threshold <= p_s16_reserve_width'(OA_S16_FIFO_BANKS-1);
                 w_reuse_num_eff <= REG_WIDTH'(1);
                 is_bias_group_rows_target <= IS_BIAS_VALID_W'(SIZE);
             end else if (cfg_stage2_fire) begin
@@ -1706,6 +1710,15 @@ module npu_top #(
                     p_s8_reserve_width'(OA_FIFO_BANKS) : p_s8_reserve_width'(output_reserve_uncapped);
                 output_s16_reserve_banks <= (output_s16_reserve_uncapped >= 32'(OA_S16_FIFO_BANKS)) ?
                     p_s16_reserve_width'(OA_S16_FIFO_BANKS) : p_s16_reserve_width'(output_s16_reserve_uncapped);
+                // 预留数量和空闲阈值在同一配置边沿保存，运行期不再执行容量减法。
+                output_s8_ready_threshold <= output_reserve_uncapped == 32'd0 ?
+                    p_s8_reserve_width'(OA_FIFO_BANKS-1) :
+                    output_reserve_uncapped >= 32'(OA_FIFO_BANKS) ? '0 :
+                    p_s8_reserve_width'(32'(OA_FIFO_BANKS) - output_reserve_uncapped);
+                output_s16_ready_threshold <= output_s16_reserve_uncapped == 32'd0 ?
+                    p_s16_reserve_width'(OA_S16_FIFO_BANKS-1) :
+                    output_s16_reserve_uncapped >= 32'(OA_S16_FIFO_BANKS) ? '0 :
+                    p_s16_reserve_width'(32'(OA_S16_FIFO_BANKS) - output_s16_reserve_uncapped);
                 w_reuse_num_eff <= cfg_w_reuse_eff_s2;
                 is_bias_group_rows_target <= cfg_bias_rows_target_s2;
             end
@@ -3190,7 +3203,8 @@ module npu_top #(
         .BANKS(OA_FIFO_BANKS),
         .ENABLE_TRANSPOSE(ENABLE_IS_MODE),
         // 任务配置只在控制器和帧调度器均空闲时更新，合并输出期间保持方向。
-        .p_cyclic_storage(1'b1)
+        .p_cyclic_storage(1'b1),
+        .p_precomputed_watermark(1'b1)
     ) u_vec_s8_to_fifo (
         .clk              (clk),
         .rst_n            (core_rst_n),
@@ -3204,6 +3218,7 @@ module npu_top #(
         .coalesce_rows    (REG_WIDTH'(oa_coalesce_rows)),
         .coalesce_cols    (REG_WIDTH'(oa_coalesce_cols)),
         .reserve_banks    (32'(output_reserve_banks)),
+        .i_ready_bank_threshold(32'(output_s8_ready_threshold)),
         .vec_valid_num_col(fifo_vec_valid_num_col),
         .vec_valid_num_row(fifo_vec_valid_num_row),
         .output_valid     (fifo_s8_output_valid),
@@ -3224,7 +3239,8 @@ module npu_top #(
 `else
     vec_s16_to_fifo #(.BUS_WIDTH(BUS_WIDTH),
         .VLEN (SIZE),
-        .BANKS(OA_S16_FIFO_BANKS)
+        .BANKS(OA_S16_FIFO_BANKS),
+        .p_precomputed_watermark(1'b1)
     ) u_vec_s16_to_fifo (
         .clk              (clk),
         .rst_n            (core_rst_n),
@@ -3233,6 +3249,7 @@ module npu_top #(
         .in_vec_s16       (in_vec_s16),
         .oa_fifo_req      (fifo_s16_output_req),
         .reserve_banks    (32'(output_s16_reserve_banks)),
+        .i_ready_bank_threshold(32'(output_s16_ready_threshold)),
         .vec_valid_num_col(fifo_vec_valid_num_col),
         .output_valid     (fifo_s16_output_valid),
         .output_ready     (fifo_output_ready && run_16x8),

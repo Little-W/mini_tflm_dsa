@@ -6,7 +6,8 @@ module vec_s8_to_fifo_full #(
     parameter integer BUS_WIDTH = 32,
     parameter integer ENABLE_TRANSPOSE = 1,
     // 启用时，合并输出从开始到完成期间须保持 transpose_mode。
-    parameter bit p_cyclic_storage = 1'b0
+    parameter bit p_cyclic_storage = 1'b0,
+    parameter bit p_precomputed_watermark = 1'b0
 ) (
     input  wire                 clk,
     input  wire                 rst_n,
@@ -21,6 +22,7 @@ module vec_s8_to_fifo_full #(
     input  wire [31:0]          coalesce_rows,
     input  wire [31:0]          coalesce_cols,
     input  wire [          31:0] reserve_banks,
+    input  wire [31:0] i_ready_bank_threshold,
     input  wire [$clog2(VLEN)-1:0] vec_valid_num_col,
     input  wire [$clog2(VLEN)-1:0] vec_valid_num_row,
     output wire                 output_valid,
@@ -295,9 +297,11 @@ module vec_s8_to_fifo_full #(
   assign watermark_i_ready_banks = ready_bank_count_q;
   assign watermark_i_partial_write = write_ptr != '0;
   assign fifo_watermark_full = watermark_o_full;
-  fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH)) u_watermark (
+  fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH),
+      .p_precomputed_threshold(p_precomputed_watermark)) u_watermark (
       .i_reserve(watermark_i_reserve), .i_ready_banks(watermark_i_ready_banks),
-      .i_partial_write(watermark_i_partial_write), .o_full(watermark_o_full)
+      .i_partial_write(watermark_i_partial_write),
+      .i_ready_threshold(BANK_COUNT_WIDTH'(i_ready_bank_threshold)), .o_full(watermark_o_full)
   );
 
   assign fifo_full_flag = write_bank_blocked || fifo_watermark_full ||
@@ -629,7 +633,8 @@ endmodule
 module vec_s8_to_fifo_linear #(
     parameter integer VLEN  = 16,
     parameter integer BANKS = 16,
-    parameter integer BUS_WIDTH = 32
+    parameter integer BUS_WIDTH = 32,
+    parameter bit p_precomputed_watermark = 1'b0
 ) (
     input  wire                 clk,
     input  wire                 rst_n,
@@ -638,6 +643,7 @@ module vec_s8_to_fifo_linear #(
     input  wire [   VLEN*8-1:0] in_vec_s8,
     output logic                oa_fifo_req,
     input  wire [          31:0] reserve_banks,
+    input  wire [31:0] i_ready_bank_threshold,
     input  wire [$clog2(VLEN)-1:0] vec_valid_num_col,
     input  wire [$clog2(VLEN)-1:0] vec_valid_num_row,
     output wire                 output_valid,
@@ -725,9 +731,11 @@ module vec_s8_to_fifo_linear #(
   assign watermark_i_ready_banks = ready_bank_count_q;
   assign watermark_i_partial_write = write_ptr != '0;
   assign fifo_watermark_full = watermark_o_full;
-  fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH)) u_watermark (
+  fifo_bank_watermark #(.p_banks(BANKS), .p_count_width(BANK_COUNT_WIDTH),
+      .p_precomputed_threshold(p_precomputed_watermark)) u_watermark (
       .i_reserve(watermark_i_reserve), .i_ready_banks(watermark_i_ready_banks),
-      .i_partial_write(watermark_i_partial_write), .o_full(watermark_o_full)
+      .i_partial_write(watermark_i_partial_write),
+      .i_ready_threshold(BANK_COUNT_WIDTH'(i_ready_bank_threshold)), .o_full(watermark_o_full)
   );
 
   assign fifo_full_flag = write_bank_blocked || next_write_bank_blocked || fifo_watermark_full;
@@ -853,7 +861,8 @@ module vec_s8_to_fifo #(
     parameter integer BUS_WIDTH = 32,
     parameter integer ENABLE_TRANSPOSE = 1,
     // 启用时，合并输出从开始到完成期间须保持 transpose_mode。
-    parameter bit p_cyclic_storage = 1'b0
+    parameter bit p_cyclic_storage = 1'b0,
+    parameter bit p_precomputed_watermark = 1'b0
 ) (
     input  wire                 clk,
     input  wire                 rst_n,
@@ -867,6 +876,7 @@ module vec_s8_to_fifo #(
     input  wire [31:0]          coalesce_rows,
     input  wire [31:0]          coalesce_cols,
     input  wire [          31:0] reserve_banks,
+    input  wire [31:0] i_ready_bank_threshold,
     input  wire [$clog2(VLEN)-1:0] vec_valid_num_col,
     input  wire [$clog2(VLEN)-1:0] vec_valid_num_row,
     output wire                 output_valid,
@@ -883,7 +893,8 @@ module vec_s8_to_fifo #(
       vec_s8_to_fifo_linear #(
         .VLEN (VLEN),
         .BANKS(BANKS),
-        .BUS_WIDTH(BUS_WIDTH)
+        .BUS_WIDTH(BUS_WIDTH),
+        .p_precomputed_watermark(p_precomputed_watermark)
       ) u_linear (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -892,6 +903,7 @@ module vec_s8_to_fifo #(
         .in_vec_s8        (in_vec_s8),
         .oa_fifo_req      (oa_fifo_req),
         .reserve_banks    (reserve_banks),
+        .i_ready_bank_threshold(i_ready_bank_threshold),
         .vec_valid_num_col(vec_valid_num_col),
         .vec_valid_num_row(vec_valid_num_row),
         .output_valid     (output_valid),
@@ -943,7 +955,8 @@ module vec_s8_to_fifo #(
         .BANKS(BANKS),
         .BUS_WIDTH(BUS_WIDTH),
         .ENABLE_TRANSPOSE(ENABLE_TRANSPOSE),
-        .p_cyclic_storage(p_cyclic_storage)
+        .p_cyclic_storage(p_cyclic_storage),
+        .p_precomputed_watermark(p_precomputed_watermark)
       ) u_full (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -958,6 +971,7 @@ module vec_s8_to_fifo #(
         .coalesce_rows    (coalesce_rows),
         .coalesce_cols    (coalesce_cols),
         .reserve_banks    (reserve_banks),
+        .i_ready_bank_threshold(i_ready_bank_threshold),
         .vec_valid_num_col(vec_valid_num_col),
         .vec_valid_num_row(vec_valid_num_row),
         .output_valid     (inner_valid),
@@ -1023,14 +1037,24 @@ endmodule
 // 普通预留量与两个饱和值并行比较，写入位置仅参与最后一级进位。
 module fifo_bank_watermark #(
     parameter int p_banks = 16,
-    parameter int p_count_width = (p_banks <= 1) ? 1 : $clog2(p_banks + 1)
+    parameter int p_count_width = (p_banks <= 1) ? 1 : $clog2(p_banks + 1),
+    parameter bit p_precomputed_threshold = 1'b0
 ) (
     input  wire logic [31:0] i_reserve,
     input  wire logic [p_count_width-1:0] i_ready_banks,
     input  wire logic i_partial_write,
+    input  wire logic [p_count_width-1:0] i_ready_threshold,
     output logic o_full
 );
-    if (p_banks > 0 && p_count_width >= $clog2(p_banks+1)) begin : g_parallel_compare
+    if (p_precomputed_threshold) begin : g_precomputed_threshold
+        logic count_overflow, ready_above, ready_at;
+
+        // 配置阶段已经保存可用银行阈值，运行期间只比较完整占用数量。
+        assign count_overflow = i_partial_write && (&i_ready_banks);
+        assign ready_above = i_ready_banks > i_ready_threshold;
+        assign ready_at = i_ready_banks == i_ready_threshold;
+        assign o_full = !count_overflow && (ready_above || (i_partial_write && ready_at));
+    end else if (p_banks > 0 && p_count_width >= $clog2(p_banks+1)) begin : g_parallel_compare
         localparam int p_sum_width = p_count_width + 1;
         localparam logic [p_sum_width-1:0] p_negative_capacity = ~p_sum_width'(p_banks);
         logic [p_sum_width-1:0] ready_count, reserve_count;

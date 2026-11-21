@@ -25,7 +25,7 @@ def assignments(source: str, name: str) -> list[str]:
     return values
 
 
-def make_harness(source: str, reference: str) -> str:
+def make_harness(source: str, reference: str, precomputed: bool = False) -> str:
     definitions = []
     for name in ("p_s8_reserve_width", "p_s16_reserve_width"):
         definitions.append(re.search(r"localparam int unsigned " + name + r"\s*=.*?;", source, re.S)[0])
@@ -36,7 +36,7 @@ def make_harness(source: str, reference: str) -> str:
     new_s8 = assignments(source, "output_reserve_banks")
     new_s16 = assignments(source, "output_s16_reserve_banks")
     definitions_text = "\n    ".join(definitions)
-    return f"""module reservation_formal #(
+    text = f"""module reservation_formal #(
     parameter integer REG_WIDTH = 32,
     parameter integer OA_FIFO_BANKS = 32,
     parameter integer OA_S16_FIFO_BANKS = 4,
@@ -95,24 +95,48 @@ def make_harness(source: str, reference: str) -> str:
         32'(output_s16_reserve_banks) == expected_s16;
 endmodule
 """
+    if precomputed:
+        # 保存阈值的赋值直接取自顶层，证明覆盖任意配置提交和计数编码。
+        for precision, width in (("s8", "p_s8_reserve_width"), ("s16", "p_s16_reserve_width")):
+            name = f"output_{precision}_ready_threshold"
+            reset, capture = assignments(source, name)
+            text = text.replace("    always_ff @(posedge clk or negedge core_rst_n) begin",
+                                f"    logic [{width}-1:0] {name};\n"
+                                "    always_ff @(posedge clk or negedge core_rst_n) begin")
+            text = text.replace("        if (!core_rst_n) begin",
+                                f"        if (!core_rst_n) begin\n            {name} <= {reset};")
+            text = text.replace("        end else if (cfg_stage2_fire) begin",
+                                f"        end else if (cfg_stage2_fire) begin\n            {name} <= {capture};")
+            count_width = "S8_COUNT_WIDTH" if precision == "s8" else "S16_COUNT_WIDTH"
+            banks = "OA_FIFO_BANKS" if precision == "s8" else "OA_S16_FIFO_BANKS"
+            old = f"fifo_bank_watermark #(.p_banks({banks})) u_{precision}_actual ("
+            new = (f"fifo_bank_watermark #(.p_banks({banks}), .p_precomputed_threshold(1'b1)) "
+                   f"u_{precision}_actual (\n        .i_ready_threshold({count_width}'({name})),")
+            if text.count(old) != 1:
+                raise ValueError("无法定位实际 FIFO 容量实例")
+            text = text.replace(old, new)
+    return text
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--reference", default="415a70a")
+    parser.add_argument("--precomputed-threshold", action="store_true")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     source = (ROOT / TOP).read_text()
     reference = read_rtl_source(f"{args.reference}:{TOP}", cwd=ROOT, text=True)
     harness = out / "formal.sv"
-    harness.write_text(make_harness(source, reference))
+    harness.write_text(make_harness(source, reference, args.precomputed_threshold))
     sources = [harness, ROOT / "rtl/npu/writeback/vec_s8_to_fifo.sv",
                ROOT / "rtl/common/parallel_prefix_add.sv", ROOT / "rtl/common/regfile.v"]
     digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     before = {str(p): digest(p) for p in sources}
     report = dict(reference=args.reference, source_sha256=digest(ROOT / TOP),
+                  precomputed_threshold=args.precomputed_threshold,
+                  fifo_source_sha256=digest(ROOT / "rtl/npu/writeback/vec_s8_to_fifo.sv"),
                   proof_scope="实际配置表达式和有效预留寄存器；全部计数与部分写入编码",
                   reset="首个采样周期复位；其余配置、复位、计数和握手输入任意", runs=[])
     profiles = [(4,1,1), (8,2,2), (16,3,1), (32,4,4), (32,5,3),

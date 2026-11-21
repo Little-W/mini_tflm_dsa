@@ -1,0 +1,279 @@
+{
+  "configuration": {
+    "reference": "415a70a",
+    "source_sha256": "7b923e7262a65f8546b489b19a4592e23541f89d6baa5be143334e54e2acd377",
+    "precomputed_threshold": true,
+    "fifo_source_sha256": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+    "proof_scope": "实际配置表达式和有效预留寄存器；全部计数与部分写入编码",
+    "reset": "首个采样周期复位；其余配置、复位、计数和握手输入任意",
+    "runs": [
+      {
+        "register_width": 4,
+        "s8_banks": 1,
+        "s16_banks": 1,
+        "passed": true,
+        "log_sha256": "85aba8c9cf6526be631990d31c66324502c07353f9eca8e78246470a9d966a15"
+      },
+      {
+        "register_width": 8,
+        "s8_banks": 2,
+        "s16_banks": 2,
+        "passed": true,
+        "log_sha256": "faae2aa2331df336a2a3549310ff3673ec2c6850dfdb5d965772276b45a77305"
+      },
+      {
+        "register_width": 16,
+        "s8_banks": 3,
+        "s16_banks": 1,
+        "passed": true,
+        "log_sha256": "d97c141c8923a3054f70a58916159e1201bc615b1cd6850ce8252bb9b69bbf71"
+      },
+      {
+        "register_width": 32,
+        "s8_banks": 4,
+        "s16_banks": 4,
+        "passed": true,
+        "log_sha256": "d61064aa0d10df1993dade491c48a2b82c17c298f66832f079dd68c72db3d5d8"
+      },
+      {
+        "register_width": 32,
+        "s8_banks": 5,
+        "s16_banks": 3,
+        "passed": true,
+        "log_sha256": "2009a29f926bb0896821ec1cc54ebf87b510389f69c3ee11a8663e9e167f7f07"
+      },
+      {
+        "register_width": 32,
+        "s8_banks": 16,
+        "s16_banks": 4,
+        "passed": true,
+        "log_sha256": "04ee40baced72cbad61457464b5df58325bb2f2a43d68ba6f95cfabd1e5f2a89"
+      },
+      {
+        "register_width": 32,
+        "s8_banks": 31,
+        "s16_banks": 5,
+        "passed": true,
+        "log_sha256": "3e23e23ffbe497a443aad9a6290664e8f3604e2039254761b7b0c329d36b790b"
+      },
+      {
+        "register_width": 32,
+        "s8_banks": 32,
+        "s16_banks": 4,
+        "passed": true,
+        "log_sha256": "fa1c9771120b58a97de26deda6c9546cac245b7a2058a91c79e1c9fb12886852"
+      },
+      {
+        "register_width": 32,
+        "s8_banks": 64,
+        "s16_banks": 8,
+        "passed": true,
+        "log_sha256": "a313ac7e414c3214f7d35778d2f9c19fe6e346e1b8a6bca1af909805d32e336e"
+      },
+      {
+        "register_width": 40,
+        "s8_banks": 96,
+        "s16_banks": 16,
+        "passed": true,
+        "log_sha256": "bc0080202b96c88a30f5aa7badb3942b4810bed779289d871de8c4a3d91ef912"
+      },
+      {
+        "register_width": 64,
+        "s8_banks": 128,
+        "s16_banks": 32,
+        "passed": true,
+        "log_sha256": "fc18d51dc55a37730c05ef00ca22177fb79b74c82d79b8c01a5291864afcff60"
+      },
+      {
+        "register_width": 64,
+        "s8_banks": 256,
+        "s16_banks": 64,
+        "passed": true,
+        "log_sha256": "7867eeaafad4fe2c25d8d302f72c0cd0036b9880ea0168bd38d38fdc089f0b32"
+      },
+      {
+        "register_width": 32,
+        "s8_banks": 512,
+        "s16_banks": 4,
+        "passed": true,
+        "log_sha256": "506fe9cbc5a58f0cb959db20fa296efc2d294dde56bfa1d7c73959b40d0103cf"
+      }
+    ],
+    "passed": true
+  },
+  "fifo_interfaces": {
+    "source_sha256": {
+      "rtl/npu/writeback/vec_s8_to_fifo.sv": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+      "rtl/npu/writeback/vec_s16_to_fifo.sv": "95214c205cf7c4019cc91e82ae40ee186dfa7280b5c13b596a85c51a7b277433",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
+    },
+    "inputs_constrained": false,
+    "comparison": "全部公开输出和共同状态；完整 FIFO 存储端口与数据",
+    "runs": [
+      {
+        "top": "vec_s8_to_fifo_full",
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic_storage": 1,
+        "equivalent_bits": 1307,
+        "passed": true,
+        "log_sha256": "e3ccbbd14c1a536a2137c9b0611d8126c10bf4565a0332a70423d529f119218e"
+      },
+      {
+        "top": "vec_s8_to_fifo_full",
+        "vlen": 16,
+        "banks": 3,
+        "bus_width": 32,
+        "cyclic_storage": 1,
+        "equivalent_bits": 629,
+        "passed": true,
+        "log_sha256": "1d36f5253a6133a1600673c0b8dd4a7f5a6f67cbcf044f996ab599d16da3ccbf"
+      },
+      {
+        "top": "vec_s8_to_fifo_full",
+        "vlen": 8,
+        "banks": 4,
+        "bus_width": 32,
+        "cyclic_storage": 0,
+        "equivalent_bits": 306,
+        "passed": true,
+        "log_sha256": "8f04246cb88265ffaf856b47e116518ae7a2e866837ba9799acc0ab880c4685f"
+      },
+      {
+        "top": "vec_s8_to_fifo_linear",
+        "vlen": 16,
+        "banks": 8,
+        "bus_width": 64,
+        "cyclic_storage": 0,
+        "equivalent_bits": 16699,
+        "passed": true,
+        "log_sha256": "089e7dd55d6c7a660db37ca24f1fd98ef7fe2114801edfaf1045ffb4ed38892d"
+      },
+      {
+        "top": "vec_s16_to_fifo",
+        "vlen": 16,
+        "banks": 4,
+        "bus_width": 64,
+        "cyclic_storage": 0,
+        "equivalent_bits": 16793,
+        "passed": true,
+        "log_sha256": "1d839bd26d3feaa347db640120c0ba8f36f4cd8bc0a5b65e0d08974c76785781"
+      }
+    ],
+    "passed": true
+  },
+  "default_parameter": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/writeback/vec_s8_to_fifo.sv": "6e272b537ee757dc5e18f52aefb8a7aad600e68ea4cf2f48da7de304c5a701c1",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+      "test/writeback_bus/watermark_formal.sv": "a1f3ce979e7f35b47077c29ac8fb802372c5ef5d712fa4640d3d72d7fe425021"
+    },
+    "cases": [
+      {
+        "banks": 1,
+        "passed": true
+      },
+      {
+        "banks": 2,
+        "passed": true
+      },
+      {
+        "banks": 3,
+        "passed": true
+      },
+      {
+        "banks": 4,
+        "passed": true
+      },
+      {
+        "banks": 5,
+        "passed": true
+      },
+      {
+        "banks": 16,
+        "passed": true
+      },
+      {
+        "banks": 24,
+        "passed": true
+      },
+      {
+        "banks": 31,
+        "passed": true
+      },
+      {
+        "banks": 32,
+        "passed": true
+      },
+      {
+        "banks": 48,
+        "passed": true
+      },
+      {
+        "banks": 64,
+        "passed": true
+      },
+      {
+        "banks": 96,
+        "passed": true
+      },
+      {
+        "banks": 128,
+        "passed": true
+      },
+      {
+        "banks": 192,
+        "passed": true
+      },
+      {
+        "banks": 256,
+        "passed": true
+      }
+    ],
+    "inputs": "All 32-bit reservation values and all count/partial-write encodings; no assumptions"
+  },
+  "synthesis": {
+    "parameters": {
+      "VLEN": 16,
+      "BANKS": 32,
+      "BUS_WIDTH": 64,
+      "p_cyclic_storage": 1,
+      "p_precomputed_watermark": 1
+    },
+    "resources": {
+      "logic_lut_cells": 1149,
+      "distributed_ram_lut_sites_nominal": 60,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1209,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 165,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 8,
+      "carry4": 106,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 106,
+        "FDRE": 163,
+        "FDSE": 2,
+        "INV": 30,
+        "LUT2": 162,
+        "LUT3": 413,
+        "LUT4": 144,
+        "LUT5": 344,
+        "LUT6": 86,
+        "MUXF7": 4,
+        "MUXF8": 2,
+        "RAM32M": 15,
+        "RAMB18E1": 8
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "longest_register_path_cells": 10,
+    "physical_timing_measured": false
+  }
+}
