@@ -152,15 +152,17 @@ endmodule
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--reference", default="0097b66e")
     parser.add_argument("--four-state", action="store_true")
     args = parser.parse_args()
+    source_root = args.source_root.resolve()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    current = (ROOT / SOURCE).read_text()
+    current = (source_root / SOURCE).read_text()
     reference = subprocess.check_output(
         ["git", "show", f"{args.reference}:{SOURCE.as_posix()}"], cwd=ROOT, text=True)
-    helpers = (ROOT / COMMON).read_text()
+    helpers = (source_root / COMMON).read_text()
     watermark = re.search(r"module fifo_bank_watermark\b.*?endmodule", helpers, re.S)[0]
     common = out / "watermark.sv"
     common.write_text(watermark + "\n")
@@ -171,10 +173,10 @@ def main():
             transformed = transformed.replace("module vec_s16_to_fifo", f"module {label}_fifo", 1)
         sources[label] = out / (label + ".sv")
         sources[label].write_text(transformed)
-    report = {"reference": args.reference, "source_sha256": digest(ROOT / SOURCE),
+    report = {"reference": args.reference, "source_sha256": digest(source_root / SOURCE),
               "reference_sha256": hashlib.sha256(reference.encode()).hexdigest(),
-              "common_source_sha256": digest(ROOT / COMMON),
-              "arithmetic_source_sha256": digest(ROOT / ARITHMETIC),
+              "common_source_sha256": digest(source_root / COMMON),
+              "arithmetic_source_sha256": digest(source_root / ARITHMETIC),
               "functional_inputs_constrained": False, "initial_reset_cycle": 1,
               "memory_read_data_constrained": False, "method": "four_state" if args.four_state else "inductive_equivalence",
               "proven_state_invariants": ["write_bank < BANKS", "read_bank < BANKS"],
@@ -190,7 +192,7 @@ def main():
             binary = folder / "simulation"
             with log.open("w") as stream:
                 subprocess.run(["iverilog", "-g2012", "-s", "tb", "-o", str(binary),
-                                *map(str, sources.values()), str(common), str(ROOT / ARITHMETIC), str(bench)],
+                                *map(str, sources.values()), str(common), str(source_root / ARITHMETIC), str(bench)],
                                stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=60)
                 subprocess.run(["vvp", str(binary)], stdout=stream, stderr=subprocess.STDOUT,
                                check=True, timeout=120)
@@ -202,7 +204,7 @@ def main():
             commands = []
             for label, path in sources.items():
                 commands += [f"read_slang --top vec_s16_to_fifo -GVLEN={vlen} -GBANKS={banks} "
-                             f"-GBUS_WIDTH={bus} " + shlex.join([str(path), str(common), str(ROOT / ARITHMETIC)]),
+                             f"-GBUS_WIDTH={bus} " + shlex.join([str(path), str(common), str(source_root / ARITHMETIC)]),
                              "prep -top vec_s16_to_fifo -flatten", "async2sync", "memory_map", "opt -full",
                              "expose vec_s16_to_fifo/w:formal_columns vec_s16_to_fifo/w:formal_last_beat "
                              "vec_s16_to_fifo/w:formal_state vec_s16_to_fifo/w:formal_bank_counts",
@@ -229,9 +231,9 @@ def main():
         row.update(passed=True, log_sha256=digest(log))
         report["runs"].append(row)
         print(json.dumps(row), flush=True)
-    if (report["source_sha256"] != digest(ROOT / SOURCE) or
-            report["common_source_sha256"] != digest(ROOT / COMMON) or
-            report["arithmetic_source_sha256"] != digest(ROOT / ARITHMETIC)):
+    if (report["source_sha256"] != digest(source_root / SOURCE) or
+            report["common_source_sha256"] != digest(source_root / COMMON) or
+            report["arithmetic_source_sha256"] != digest(source_root / ARITHMETIC)):
         raise RuntimeError("检查期间源文件发生变化")
     report["passed"] = True
     (out / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")

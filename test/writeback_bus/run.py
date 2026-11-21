@@ -20,19 +20,21 @@ ROOT = Path(__file__).resolve().parents[2]
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     parser.add_argument('--bus-width', type=int, choices=(32, 64), required=True)
     parser.add_argument('--verilator', default='verilator')
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--reference', help='Compare every output cycle with this git revision')
     args = parser.parse_args()
+    source_root = args.source_root.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
-    sources = [ROOT/'rtl/npu/writeback/vec_s8_to_fifo.sv',
-               ROOT/'rtl/common/regfile.v',
-               ROOT/'rtl/common/parallel_prefix_add.sv',
-               ROOT/'rtl/npu/writeback/vec_s16_to_fifo.sv',
-               Path(__file__).with_name('tb_writeback_bus.sv')]
-    hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-              for p in sources}
+    source_paths = {name: source_root/name for name in
+                    ('rtl/npu/writeback/vec_s8_to_fifo.sv', 'rtl/common/regfile.v',
+                     'rtl/common/parallel_prefix_add.sv', 'rtl/npu/writeback/vec_s16_to_fifo.sv')}
+    source_paths['test/writeback_bus/tb_writeback_bus.sv'] = Path(__file__).with_name('tb_writeback_bus.sv')
+    sources = list(source_paths.values())
+    hashes = {name: hashlib.sha256(path.read_bytes()).hexdigest()
+              for name, path in source_paths.items()}
     reference_hashes = {}
     reference_sources = []
     if args.reference:
@@ -59,7 +61,7 @@ def main() -> None:
     result = dict(passed=run.returncode == 0 and match is not None,
                   bus_width=args.bus_width, returncode=run.returncode,
                   command=command, source_sha256=hashes, reference=args.reference, reference_sha256=reference_hashes,
-                  sources_unchanged=all(hashlib.sha256((ROOT/p).read_bytes()).hexdigest() == h
+                  sources_unchanged=all(hashlib.sha256(source_paths[p].read_bytes()).hexdigest() == h
                                         for p, h in hashes.items()))
     if match:
         result.update(cases=int(match[2]), checked_bytes=int(match[3]))

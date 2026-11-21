@@ -54,6 +54,8 @@ module vec_s16_to_fifo #(
     logic data_valid;
     logic ram_read_valid_q;
     logic [VLEN*16-1:0] ram_rd_data;
+    (* keep = 1 *) logic [BUS_WIDTH-1:0] selected_read_data;
+    (* keep = 1 *) logic [BUS_WIDTH/8-1:0] selected_read_mask;
     logic [MEM_ADDR_W-1:0] ram_wr_addr;
     logic [MEM_ADDR_W-1:0] ram_rd_addr;
     logic [PTR_WIDTH-1:0] next_read_row;
@@ -110,14 +112,17 @@ module vec_s16_to_fifo #(
         ram_wr_addr = MEM_ADDR_W'((int'(write_bank) * VLEN) + int'(write_ptr));
         ram_rd_addr = MEM_ADDR_W'((int'(read_bank) * VLEN) + int'(next_read_row));
 
+        // 当前拍的数据和字节使能并行选择，输出资格在选择完成后合并。
+        selected_read_data = ram_rd_data[int'(beat_idx)*BUS_WIDTH +: BUS_WIDTH];
+        for (int lane = 0; lane < ELEMENTS_PER_BEAT; ++lane) begin
+            selected_read_mask[lane*2+:2] =
+                {2{valid_columns_q[int'(beat_idx)*ELEMENTS_PER_BEAT + lane]}};
+        end
         output_data = '0;
         output_mask = '0;
         if (stream_active && data_valid) begin
-            output_data = ram_rd_data[int'(beat_idx)*BUS_WIDTH +: BUS_WIDTH];
-            for (int lane = 0; lane < ELEMENTS_PER_BEAT; ++lane) begin
-                output_mask[lane*2+:2] =
-                    {2{valid_columns_q[int'(beat_idx)*ELEMENTS_PER_BEAT + lane]}};
-            end
+            output_data = selected_read_data;
+            output_mask = selected_read_mask;
         end
     end
 
