@@ -1,0 +1,16 @@
+{
+  "capacity": {
+    "top": "ps_frame_capacity_measure",
+    "sources": [
+      "rtl/npu/ps_compact/ps_frame_store.sv",
+      "rtl/common/parallel_prefix_add.sv",
+      "test/ps_raw_store/capacity.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GREFERENCE=0"
+    ],
+    "configuration": "Registered complete capacity check, initial14 words10 banks4, unrestricted inputs"
+  }
+}

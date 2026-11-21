@@ -390,12 +390,30 @@ module ps_frame_store_capacity #(
             assign carry_bits = (initial_row & row_count) |
                 ((initial_row | row_count) & inverted_capacity);
             assign {unused_high_carry, shifted_carry} = {carry_bits, 1'b0};
-            parallel_prefix_add #(
-                .p_width(p_rows_width+1), .p_group_width(4), .p_preserve_groups(1'b1)
-            ) u_end_compare (
-                .i_a(sum_bits), .i_b(shifted_carry), .i_carry(1'b0),
-                .o_sum(unused_row_sum), .o_carry(exceeds_capacity)
-            );
+`ifdef ASIC_SYNTHESIS
+            localparam bit p_capacity_dsp = 1'b0;
+`elsif SYNTHESIS
+`ifdef XILINX_FPGA
+            localparam bit p_capacity_dsp = p_rows_width >= 8;
+`else
+            localparam bit p_capacity_dsp = 1'b0;
+`endif
+`else
+            localparam bit p_capacity_dsp = 1'b0;
+`endif
+            if (p_capacity_dsp) begin : g_complete_sum
+                (* use_dsp = "yes" *) logic [p_rows_width+1:0] complete_sum;
+                // 容量条件使用完整进位结果，三操作数先形成并行和值及进位。
+                assign complete_sum = {1'b0, sum_bits} + {1'b0, shifted_carry};
+                assign {exceeds_capacity, unused_row_sum} = complete_sum;
+            end else begin : g_prefix_sum
+                parallel_prefix_add #(
+                    .p_width(p_rows_width+1), .p_group_width(4), .p_preserve_groups(1'b1)
+                ) u_end_compare (
+                    .i_a(sum_bits), .i_b(shifted_carry), .i_carry(1'b0),
+                    .o_sum(unused_row_sum), .o_carry(exceeds_capacity)
+                );
+            end
             assign request_fits[request] = !(|requested_rows[request][31:p_rows_width]) &&
                 !exceeds_capacity;
         end
