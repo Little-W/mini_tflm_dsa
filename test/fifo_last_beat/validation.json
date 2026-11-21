@@ -1,0 +1,248 @@
+{
+  "formal": {
+    "reference": "415a70a",
+    "source_sha256": {
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/npu/writeback/vec_s8_to_fifo.sv": "6c29a08bb2d80392ae86f859df06b4636ae07080b0697d5da60477f7cbe67559",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "/workspace/scratch/9625a7463d70/mini_tflm_dsa/rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
+    },
+    "reference_sha256": "e51cbbd7269b47998b84f32ec0a5f9ce822eb566e7385a6baa0f6d41e72cf037",
+    "inputs_constrained": false,
+    "data_ram_inputs_constrained": false,
+    "compared": "全部公开输出、数据存储地址和使能、存储写数据、有效银行计数及末拍保存状态",
+    "method": "比较末拍寄存值与原始表达式，并逐状态归纳证明完整模块的等价性",
+    "runs": [
+      {
+        "vlen": 16,
+        "banks": 1,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 934,
+        "passed": true,
+        "log_sha256": "edf829012fabd3e6594775817f8c219dc9ed7a5a8bc7fa59600855ce5aa460ef"
+      },
+      {
+        "vlen": 16,
+        "banks": 2,
+        "bus_width": 32,
+        "cyclic": 1,
+        "equivalent_bits": 623,
+        "passed": true,
+        "log_sha256": "43492ca9cbf6652267495c124507a2f81e34fe65fb88fd9151f2a0a4028aa95a"
+      },
+      {
+        "vlen": 16,
+        "banks": 3,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 988,
+        "passed": true,
+        "log_sha256": "f1bd017d5011aef848428dc83e3e119beaa04dc216540160cb79f6a4b1cacbde"
+      },
+      {
+        "vlen": 16,
+        "banks": 8,
+        "bus_width": 32,
+        "cyclic": 1,
+        "equivalent_bits": 757,
+        "passed": true,
+        "log_sha256": "94e6dda95d5f78bd0a0a75e9fcd280a5b829391a1c6eb68bfc31f4301d3de4c3"
+      },
+      {
+        "vlen": 16,
+        "banks": 16,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 1233,
+        "passed": true,
+        "log_sha256": "40e431ca5361833c095ff6bd6173c1caa99e309be8d44981dd64764284235ad7"
+      },
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 1472,
+        "passed": true,
+        "log_sha256": "cbde028f2ef9f1668baa5aa1c4b18722c93de6195088332d458236ff7ec0dc78"
+      },
+      {
+        "vlen": 16,
+        "banks": 64,
+        "bus_width": 64,
+        "cyclic": 1,
+        "equivalent_bits": 1934,
+        "passed": true,
+        "log_sha256": "c9a597982d6940fbfb3e9d7ef39f42e0f610a24c163b43d4bcf3113f547a8078"
+      },
+      {
+        "vlen": 16,
+        "banks": 32,
+        "bus_width": 64,
+        "cyclic": 0,
+        "equivalent_bits": 906,
+        "passed": true,
+        "log_sha256": "5c0783a6229c3e99d0829318d809f8e5126c3cf8346901c13ba0128869209e23"
+      },
+      {
+        "vlen": 8,
+        "banks": 8,
+        "bus_width": 32,
+        "cyclic": 0,
+        "equivalent_bits": 407,
+        "passed": true,
+        "log_sha256": "6e5a8078a10d15a6232f2a4ad6c101c2e37517c71542669d26ab0859c74fc555"
+      }
+    ],
+    "passed": true
+  },
+  "four_state": {
+    "passed": true,
+    "cycles": 20000,
+    "profiles": [
+      [
+        8,
+        32
+      ],
+      [
+        8,
+        64
+      ],
+      [
+        16,
+        32
+      ],
+      [
+        16,
+        64
+      ],
+      [
+        16,
+        128
+      ],
+      [
+        32,
+        32
+      ],
+      [
+        32,
+        64
+      ]
+    ],
+    "comparisons": 700000,
+    "source_sha256": "6c29a08bb2d80392ae86f859df06b4636ae07080b0697d5da60477f7cbe67559",
+    "reference_sha256": "e51cbbd7269b47998b84f32ec0a5f9ce822eb566e7385a6baa0f6d41e72cf037",
+    "testbench_sha256": "712efba71ac3e9c04e1a93337104edd22f04f40e47b47739544a6f2a75c0500b",
+    "log_sha256": "6cb1936379bab1cbb7cc8a3d1c4a9a13a6b03fdd937bbe6dfd910638e78bf8b9"
+  },
+  "mapping": {
+    "source_metrics_sha256": "e0f948979244d0960b2f89a95f69fc371b9c24c9b9f4a7e1c9ac811a44730eb7",
+    "resources": {
+      "logic_lut_cells": 1160,
+      "distributed_ram_lut_sites_nominal": 60,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 1220,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 165,
+      "dsp48e1": 0,
+      "ramb36e1": 0,
+      "ramb18e1": 8,
+      "carry4": 106,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 106,
+        "FDRE": 163,
+        "FDSE": 2,
+        "INV": 31,
+        "LUT2": 156,
+        "LUT3": 405,
+        "LUT4": 155,
+        "LUT5": 365,
+        "LUT6": 79,
+        "RAM32M": 15,
+        "RAMB18E1": 8
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "register_path_requirement": {
+      "maximum_combinational_cells": 10,
+      "observed_combinational_cells": 10,
+      "graph_complete": true,
+      "met": true,
+      "scope": "Clocked storage outputs to synchronous data and control inputs",
+      "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+    }
+  },
+  "capacity": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/writeback/vec_s8_to_fifo.sv": "538e03f355da9ac19e4fb90943ca8e709000514aed69c8d6afc583079911b2dc",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+      "test/writeback_bus/watermark_formal.sv": "a1f3ce979e7f35b47077c29ac8fb802372c5ef5d712fa4640d3d72d7fe425021"
+    },
+    "cases": [
+      {
+        "banks": 1,
+        "passed": true
+      },
+      {
+        "banks": 2,
+        "passed": true
+      },
+      {
+        "banks": 3,
+        "passed": true
+      },
+      {
+        "banks": 4,
+        "passed": true
+      },
+      {
+        "banks": 5,
+        "passed": true
+      },
+      {
+        "banks": 16,
+        "passed": true
+      },
+      {
+        "banks": 24,
+        "passed": true
+      },
+      {
+        "banks": 31,
+        "passed": true
+      },
+      {
+        "banks": 32,
+        "passed": true
+      },
+      {
+        "banks": 48,
+        "passed": true
+      },
+      {
+        "banks": 64,
+        "passed": true
+      },
+      {
+        "banks": 96,
+        "passed": true
+      },
+      {
+        "banks": 128,
+        "passed": true
+      },
+      {
+        "banks": 192,
+        "passed": true
+      },
+      {
+        "banks": 256,
+        "passed": true
+      }
+    ],
+    "inputs": "All 32-bit reservation values and all count/partial-write encodings; no assumptions"
+  }
+}

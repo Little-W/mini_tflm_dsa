@@ -22,7 +22,7 @@ def main():
                Path(__file__).with_name('watermark_formal.sv')]
     hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
     results = []
-    for banks in (1, 2, 3, 4, 5, 16, 31, 32, 64):
+    for banks in (1, 2, 3, 4, 5, 16, 24, 31, 32, 48, 64, 96, 128, 192, 256):
         script = out/f'banks{banks}.ys'
         script.write_text(f'read_slang --top fifo_watermark_formal -Gp_banks={banks} ' +
             ' '.join(shlex.quote(str(p)) for p in sources) + '\n' +

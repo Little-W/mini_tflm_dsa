@@ -52,8 +52,10 @@ module vec_s8_to_fifo_full #(
   reg [BANKS-1:0] bank_ready;
   reg [BANK_COUNT_WIDTH-1:0] ready_bank_count_q;
   reg [COUNT_WIDTH-1:0] active_read_count_q;
+  logic [COUNT_WIDTH-1:0] last_beat_idx_q;
 
   reg [BANK_WIDTH-1:0]  write_bank;
+  logic [BANKS-1:0] write_bank_mask_q;
   reg [BANK_WIDTH-1:0]  read_bank;
   reg [PTR_WIDTH-1:0]   write_ptr;
   reg [PTR_WIDTH-1:0]   read_ptr;
@@ -193,8 +195,15 @@ module vec_s8_to_fifo_full #(
     end
   endfunction
 
-  wire write_bank_blocked = bank_ready[write_bank];
-  wire next_write_bank_blocked = bank_ready[next_bank(write_bank)];
+  logic [BANKS-1:0] next_write_bank_mask;
+  if (BANKS == 1) begin : g_single_write_bank
+    assign next_write_bank_mask = 1'b1;
+  end else begin : g_multiple_write_banks
+    assign next_write_bank_mask = {write_bank_mask_q[BANKS-2:0], write_bank_mask_q[BANKS-1]};
+  end
+  // 写入银行同时保存独热位置，相邻银行的阻塞判断只需并行选择与归并。
+  wire write_bank_blocked = |(bank_ready & write_bank_mask_q);
+  wire next_write_bank_blocked = |(bank_ready & next_write_bank_mask);
 `ifdef NPU_SIM_ASSERT
   if (BANKS > 32) begin : g_check_write_capacity
     initial forever @(posedge clk) begin
@@ -207,6 +216,11 @@ module vec_s8_to_fifo_full #(
   // A temporary valid gap can appear between cached IA slots.  Only the
   // explicit tile_done marker is allowed to publish a bank to the writer.
   wire finish_write_bank = in_valid && in_tile_done;
+  always_ff @(posedge clk) begin
+    if (!rst_n) write_bank_mask_q <= {{(BANKS-1){1'b0}}, 1'b1};
+    else if (finish_write_bank && !write_bank_blocked)
+      write_bank_mask_q <= next_write_bank_mask;
+  end
   wire [COUNT_WIDTH-1:0] write_rows_next =
       in_valid ? (COUNT_WIDTH'(write_ptr) + COUNT_WIDTH'(1)) : COUNT_WIDTH'(write_ptr);
   assign co_selected_row_last = co_row_limit_q >= co_bank_count;
@@ -249,8 +263,22 @@ module vec_s8_to_fifo_full #(
       transpose_mode_tmp ? active_read_count
                          : (COUNT_WIDTH'(vec_valid_num_col_tmp) + COUNT_WIDTH'(1));
   wire read_bank_ready = bank_ready[read_bank] && (read_bank_count != '0);
-  wire [COUNT_WIDTH-1:0] last_beat_idx_cur =
-      (output_col_count == '0) ? '0 : ((output_col_count - COUNT_WIDTH'(1)) >> BYTE_SHIFT);
+  function automatic [COUNT_WIDTH-1:0] last_beat_index(
+      input logic transpose,
+      input logic [COUNT_WIDTH-1:0] read_count,
+      input logic [$clog2(VLEN)-1:0] column_limit
+  );
+    logic [COUNT_WIDTH-1:0] column_count;
+    begin
+      column_count = transpose ? read_count :
+          (COUNT_WIDTH'(column_limit) + COUNT_WIDTH'(1));
+      last_beat_index = (column_count == '0) ? '0 :
+          ((column_count - COUNT_WIDTH'(1)) >> BYTE_SHIFT);
+    end
+  endfunction
+
+  // 保存行列配置时同时计算末拍位置，输出释放判断直接使用已保存的结果。
+  wire [COUNT_WIDTH-1:0] last_beat_idx_cur = last_beat_idx_q;
   wire output_fire = output_ready && output_valid;
   wire last_beat_in_row = output_fire &&
                           (COUNT_WIDTH'(beat_idx) == last_beat_idx_cur);
@@ -444,6 +472,7 @@ module vec_s8_to_fifo_full #(
       oa_fifo_req  <= 1'b0;
       ready_bank_count_q <= '0;
       active_read_count_q <= '0;
+      last_beat_idx_q <= '0;
     end else begin
       oa_fifo_req <= coalesce_enable ? (ready_bank_count_q != 0 && co_tiles != 0 && !co_active)
                                      : (read_bank_ready && !stream_active);
@@ -485,11 +514,13 @@ module vec_s8_to_fifo_full #(
         beat_idx      <= '0;
         read_ptr      <= '0;
         active_read_count_q <= read_bank_count;
+        last_beat_idx_q <= last_beat_index(transpose_mode_eff, read_bank_count, vec_valid_num_col);
         vec_valid_num_col_tmp <= vec_valid_num_col;
         vec_valid_num_row_tmp <= vec_valid_num_row;
         transpose_mode_tmp <= transpose_mode_eff;
 
       end else if (stream_active && (read_ptr == '0) && (beat_idx == '0) && !output_ready) begin
+        last_beat_idx_q <= last_beat_index(transpose_mode_eff, active_read_count_q, vec_valid_num_col);
         vec_valid_num_col_tmp <= vec_valid_num_col;
         vec_valid_num_row_tmp <= vec_valid_num_row;
         transpose_mode_tmp <= transpose_mode_eff;
@@ -500,6 +531,7 @@ module vec_s8_to_fifo_full #(
           read_ptr      <= '0;
           beat_idx      <= '0;
           active_read_count_q <= '0;
+          last_beat_idx_q <= last_beat_index(transpose_mode_tmp, '0, vec_valid_num_col_tmp);
           read_bank <= next_bank(read_bank);
           if (!(finish_write_bank && !write_bank_blocked)) begin
             ready_bank_count_q <= ready_bank_count_q - BANK_COUNT_WIDTH'(1);
@@ -1022,7 +1054,16 @@ module fifo_bank_watermark #(
             (i_partial_write && i_ready_banks == p_count_width'(p_banks-1));
         assign saturated_full = (|i_ready_banks) || i_partial_write;
         assign reserve_zero = i_reserve == 32'd0;
-        assign reserve_saturated = i_reserve >= 32'(p_banks);
+        localparam int p_capacity_bits = $clog2(p_banks+1);
+        localparam int p_capacity_low_bit = $clog2(p_banks & -p_banks);
+        localparam int p_capacity_prefix = p_banks >> p_capacity_low_bit;
+        if ((p_capacity_prefix & (p_capacity_prefix+1)) == 0 && p_capacity_bits <= 32) begin : g_prefix_capacity
+            // 容量为连续高位一和低位零时，比较仅需高位非零与有效位归约。
+            assign reserve_saturated = (|(i_reserve >> p_capacity_bits)) ||
+                (&i_reserve[p_capacity_bits-1:p_capacity_low_bit]);
+        end else begin : g_arbitrary_capacity
+            assign reserve_saturated = i_reserve >= 32'(p_banks);
+        end
         // 部分写入使计数回绕时，保持有限位宽占用计数的结果。
         assign count_overflow = i_partial_write && (&i_ready_banks);
         assign o_full = !count_overflow && ((reserve_zero && zero_full) ||
