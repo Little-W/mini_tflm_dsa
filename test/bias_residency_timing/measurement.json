@@ -1,8 +1,8 @@
 {
   "passed": true,
   "source_sha256": {
-    "rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
-    "rtl/npu/loaders/bias_loader_ctrl.sv": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+    "rtl/npu/loaders/bias_loader.sv": "bcc6a2a65e510283016b40da10c31c80509e45fa9a4a20a88b11a8e3ede69666",
+    "rtl/npu/loaders/bias_loader_ctrl.sv": "cffd7d12425784cd8415c8ec566eedb4b57eb8c21d456dc933619c2138b94760",
     "rtl/npu/loaders/bias_loader_buffer.sv": "bd25acfc4029e8bba6469e38f241aa00063a05aefc6e78292cd7952e70f979b3",
     "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
     "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
@@ -13,8 +13,8 @@
     "reference_rev": "415a70a48caded2797fb6c4aaf383d2bee1bde8d",
     "source_root": "/workspace/scratch/9625a7463d70/mini_tflm_dsa",
     "source_sha256": {
-      "rtl/npu/loaders/bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
-      "rtl/npu/loaders/bias_loader_ctrl.sv": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+      "rtl/npu/loaders/bias_loader.sv": "bcc6a2a65e510283016b40da10c31c80509e45fa9a4a20a88b11a8e3ede69666",
+      "rtl/npu/loaders/bias_loader_ctrl.sv": "cffd7d12425784cd8415c8ec566eedb4b57eb8c21d456dc933619c2138b94760",
       "rtl/npu/loaders/bias_loader_buffer.sv": "bd25acfc4029e8bba6469e38f241aa00063a05aefc6e78292cd7952e70f979b3",
       "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
       "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c"
@@ -26,8 +26,8 @@
         "bias_loader_buffer.sv": "931dfa9c066de41188302c0b8ab60ae658713eae3f3475938e7a607dcf000548"
       },
       "current": {
-        "bias_loader.sv": "f313a2ac06a8ef6b11a4c42a6f249c1d3f32ef40e32cee68a63fce6858ea5fca",
-        "bias_loader_ctrl.sv": "956d6d59c1f1668ad2e8121d47dd227e1509a2bb044ce568c38e2956cb94d987",
+        "bias_loader.sv": "bcc6a2a65e510283016b40da10c31c80509e45fa9a4a20a88b11a8e3ede69666",
+        "bias_loader_ctrl.sv": "cffd7d12425784cd8415c8ec566eedb4b57eb8c21d456dc933619c2138b94760",
         "bias_loader_buffer.sv": "bd25acfc4029e8bba6469e38f241aa00063a05aefc6e78292cd7952e70f979b3"
       }
     },
@@ -40,8 +40,8 @@
         "GROUP_BLOCKS_MAX": 1,
         "passed": true,
         "equivalent_bits": 1262,
-        "script_sha256": "57fb06132fabd3ec4445acd027b8adf64aef21653d3c6b22ad32c9bbfd670a11",
-        "log_sha256": "0b2a98c0869e5da6dddaf2d8e3d95683eded4c64f8f676f11cd2a94820c876a9"
+        "script_sha256": "517c981ea90f2ceb324a9e5c5e5168d6a9688f22c68b1a476d1ef3b0f894ff82",
+        "log_sha256": "648023cfcce340fb14df33294cb52d27f5c8fd44838f0460577b826c7491ff1c"
       },
       {
         "SIZE": 16,
@@ -50,8 +50,8 @@
         "GROUP_BLOCKS_MAX": 4,
         "passed": true,
         "equivalent_bits": 6292,
-        "script_sha256": "61efdc8dd4867d74e0ed0b4998d935fb6668b58fbe3761e7826ca8950d36d616",
-        "log_sha256": "06a5cc31554919423c7de275e647fd16c03a99122730e3b3e19fa54d39760948"
+        "script_sha256": "55bea2042e22a4d842dfa2d3f3c6d3cff070d4ebd3a1a6a8435659a52add5d37",
+        "log_sha256": "2a54908b78c8c1dbdabaa1aa2acd1edf0db732c8d4ca07f43c5703dc7b65a4cf"
       },
       {
         "SIZE": 16,
@@ -60,8 +60,8 @@
         "GROUP_BLOCKS_MAX": 32,
         "passed": true,
         "equivalent_bits": 35640,
-        "script_sha256": "6df237fd9b0ad63a77ca90406332879cd4f742e05f091b5b0b7f0a319c0def3f",
-        "log_sha256": "139957e4dd0d72c48939844e74e26fabb55da816c5da220e755d1874331c09a6"
+        "script_sha256": "6c297a193ce19038e393681307f108fcf1d745e8e5ff7b7e591fe3111b21904b",
+        "log_sha256": "1124c75b949d4d14e55c6ba19967a5735ba44199f9e32abcb506f7b804850b12"
       },
       {
         "SIZE": 16,
@@ -70,8 +70,8 @@
         "GROUP_BLOCKS_MAX": 32,
         "passed": true,
         "equivalent_bits": 35669,
-        "script_sha256": "c0d7fc0b4b4d6817207856283d93a5d3c8d0c716121f830b3c69f3a83a2fadb3",
-        "log_sha256": "fc1ce7dbd129f884598e40048c194625b72c14bb129cfaf5024559cf9e8efdcb"
+        "script_sha256": "ce35b21506b292a1683d0b18873ad489196780dc47f87998fedc58a9f06e759e",
+        "log_sha256": "48d7c70412d4b769e34e9006872c2e240cd42c7f5c9c3c13f32758ab606d866c"
       },
       {
         "SIZE": 16,
@@ -80,8 +80,8 @@
         "GROUP_BLOCKS_MAX": 32,
         "passed": true,
         "equivalent_bits": 35669,
-        "script_sha256": "388531de87c9b28ed74b96b0f31ebe4f479f049e7a6ebdfabb0fbb77ff25275b",
-        "log_sha256": "edd65d57d8ee89bee923a3039efbf68a286203c3cd4f22cde76b9d0b82938e67"
+        "script_sha256": "307997f761a94c83989fa0dba3fe651ce4a17bf489461db7c243524927c8e6e7",
+        "log_sha256": "f7b7e50d66649eb8b01948c1ed660e616e8ec00199588f2b71978053bf764c4a"
       },
       {
         "SIZE": 16,
@@ -90,8 +90,8 @@
         "GROUP_BLOCKS_MAX": 1,
         "passed": true,
         "equivalent_bits": 3957,
-        "script_sha256": "718a9deb28b81b4b43010581f97f9a2b9811b4c6d325f60cd185830b0b02d67e",
-        "log_sha256": "0a2a491692163f2efc8ce46f87ad65bebc5ba6289471af74e59a2b7a4cd6f6d8"
+        "script_sha256": "8236e0b9b4822c4b85bf8f8e45ea5d40f4083763915e64a5c5cf93f243dd20a9",
+        "log_sha256": "0121f873ea8bc9d7dcc3ec229cfa28a4b33d8373a4bd2f6422cdb96e179cf98c"
       }
     ]
   },
@@ -230,34 +230,41 @@
   },
   "mapping": {
     "resources": {
-      "logic_lut_cells": 953,
+      "logic_lut_cells": 928,
       "distributed_ram_lut_sites_nominal": 0,
       "shift_register_lut_sites_nominal": 0,
-      "lut_sites_nominal_before_packing": 953,
+      "lut_sites_nominal_before_packing": 928,
       "physical_lut_sites_after_placement": null,
       "flip_flops": 1227,
-      "dsp48e1": 10,
+      "dsp48e1": 12,
       "ramb36e1": 1,
       "ramb18e1": 0,
-      "carry4": 43,
+      "carry4": 28,
       "unclassified_distributed_ram_types": [],
       "cell_counts": {
-        "CARRY4": 43,
-        "DSP48E1": 10,
+        "CARRY4": 28,
+        "DSP48E1": 12,
         "FDCE": 711,
         "FDPE": 3,
         "FDRE": 513,
-        "INV": 49,
-        "LUT2": 209,
-        "LUT3": 235,
-        "LUT4": 174,
-        "LUT5": 169,
-        "LUT6": 166,
+        "INV": 45,
+        "LUT2": 172,
+        "LUT3": 228,
+        "LUT4": 172,
+        "LUT5": 182,
+        "LUT6": 174,
         "RAMB36E1": 1
       },
       "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
     },
-    "graph_complete": true,
-    "longest_register_path_cells": 9
+    "longest_register_path_cells": 8,
+    "physical_timing_measured": false,
+    "parameters": {
+      "SIZE": 16,
+      "BUS_WIDTH": 64,
+      "REG_WIDTH": 32,
+      "COUNT_WIDTH": 29,
+      "GROUP_BLOCKS_MAX": 32
+    }
   }
 }
