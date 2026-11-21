@@ -18,6 +18,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--worker', type=Path)
+    parser.add_argument('--source-root', type=Path, default=ROOT)
     args = parser.parse_args()
     if args.worker:
         from pyosys import libyosys
@@ -25,7 +26,7 @@ def main() -> None:
         return
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    source = ROOT / 'rtl/npu/writeback/vec_requant.sv'
+    source = args.source_root / 'rtl/npu/writeback/vec_requant.sv'
     import pyosys
     library = Path(pyosys.__file__).parent / 'share/xilinx/cells_sim.v'
     models = []
@@ -52,7 +53,7 @@ endmodule
     summary = {'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
                'primitive_library_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
                'input_bits': 100, 'inputs_constrained': False, 'runs': []}
-    for name, defines in [('fpga', '-D SYNTHESIS'), ('generic', '-D SYNTHESIS -D ASIC_SYNTHESIS')]:
+    for name, defines in [('fpga', '-D SYNTHESIS -D XILINX_FPGA'), ('generic', '-D SYNTHESIS -D ASIC_SYNTHESIS')]:
         script = out / (name + '.ys')
         script.write_text('read_slang --top activation_compare_formal ' + defines + ' ' +
                           ' '.join(shlex.quote(str(p)) for p in (source, wrapper, model_file)) + '\n'

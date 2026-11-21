@@ -2349,17 +2349,25 @@ module requant_activation_compare (
     //! -----------------
 
     logic [1:0] bound_less;
+`ifdef ASIC_SYNTHESIS
+    localparam bit p_comparison_dsp = 1'b0;
+`elsif SYNTHESIS
+`ifdef XILINX_FPGA
+    localparam bit p_comparison_dsp = 1'b1;
+`else
+    localparam bit p_comparison_dsp = 1'b0;
+`endif
+`else
+    localparam bit p_comparison_dsp = 1'b0;
+`endif
 
-    //! 1. 并行比较数据分组
+    //! 1. 形成边界比较条件
     //! -------------------
 
-    // 八位分组独立计算大小与相等关系，最高四位按有符号数解释。
-    // 分组输出形成组合边界，高位相等条件与各组大小关系并行合并。
+    // 两个边界分别产生严格大小关系，FPGA 分支保存完整符号扩展差值。
+    // 通用分支独立比较各个八位数据组，再合并高位优先关系。
     for (genvar bound_index = 0; bound_index < 2; bound_index++) begin : g_bound
         logic [35:0] lhs, rhs;
-        (* keep = 1 *) logic [4:0] equal_group, greater_group;
-        logic [4:0] greater_selected;
-        logic greater_or_equal;
 
         if (bound_index == 0) begin : g_minimum
             assign lhs = i_value;
@@ -2368,23 +2376,33 @@ module requant_activation_compare (
             assign lhs = {{4{i_maximum[31]}}, i_maximum};
             assign rhs = i_value;
         end
-        for (genvar group_index = 0; group_index < 5; group_index++) begin : g_group
-            localparam int p_group_width = (group_index == 4) ? 4 : 8;
+        if (p_comparison_dsp) begin : g_complete_difference
+            (* use_dsp = "yes" *) logic [36:0] difference;
+            // 两侧符号扩展一位，完整差值的符号直接给出严格小于关系。
+            assign difference = {lhs[35], lhs} - {rhs[35], rhs};
+            assign bound_less[bound_index] = difference[36];
+        end else begin : g_grouped_comparison
+            (* keep = 1 *) logic [4:0] equal_group, greater_group;
+            logic [4:0] greater_selected;
+            logic greater_or_equal;
+            for (genvar group_index = 0; group_index < 5; group_index++) begin : g_group
+                localparam int p_group_width = (group_index == 4) ? 4 : 8;
 
-            assign equal_group[group_index] =
-                lhs[8*group_index +: p_group_width] == rhs[8*group_index +: p_group_width];
-            if (group_index == 4) begin : g_signed
-                assign greater_group[group_index] = $signed(lhs[35:32]) > $signed(rhs[35:32]);
-                assign greater_selected[group_index] = greater_group[group_index];
-            end else begin : g_unsigned
-                assign greater_group[group_index] =
-                    lhs[8*group_index +: 8] > rhs[8*group_index +: 8];
-                assign greater_selected[group_index] = greater_group[group_index] &
-                    (&equal_group[4:group_index+1]);
+                assign equal_group[group_index] =
+                    lhs[8*group_index +: p_group_width] == rhs[8*group_index +: p_group_width];
+                if (group_index == 4) begin : g_signed
+                    assign greater_group[group_index] = $signed(lhs[35:32]) > $signed(rhs[35:32]);
+                    assign greater_selected[group_index] = greater_group[group_index];
+                end else begin : g_unsigned
+                    assign greater_group[group_index] =
+                        lhs[8*group_index +: 8] > rhs[8*group_index +: 8];
+                    assign greater_selected[group_index] = greater_group[group_index] &
+                        (&equal_group[4:group_index+1]);
+                end
             end
+            assign greater_or_equal = (|greater_selected) | (&equal_group);
+            assign bound_less[bound_index] = !greater_or_equal;
         end
-        assign greater_or_equal = (|greater_selected) | (&equal_group);
-        assign bound_less[bound_index] = !greater_or_equal;
     end
 
     //! 2. 输出比较结果

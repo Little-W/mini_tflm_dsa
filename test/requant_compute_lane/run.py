@@ -24,6 +24,8 @@ def main():
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--variants', nargs='+', choices=('generic', 'fpga', 'mapped'), default=['generic', 'fpga'])
     parser.add_argument('--mapped', type=Path)
+    parser.add_argument('--arithmetic-source', type=Path,
+                        default=ROOT / 'rtl/npu/writeback/vec_requant.sv')
     args = parser.parse_args()
     if 'mapped' in args.variants and args.mapped is None:
         parser.error('--mapped is required for the mapped variant')
@@ -39,12 +41,12 @@ def main():
               for name in primitive_names]
     primitives = out / 'xilinx_primitives.sv'
     primitives.write_text('\n'.join(models) + '\n')
-    rtl = [ROOT / 'rtl/npu/writeback/requant_compute_lane.sv',
-           ROOT / 'rtl/npu/conv/vector_scalar_multiplier.sv',
-           ROOT / 'rtl/common/parallel_prefix_add.sv',
-           ROOT / 'rtl/npu/writeback/vec_requant.sv']
+    names = ['rtl/npu/writeback/requant_compute_lane.sv',
+             'rtl/npu/conv/vector_scalar_multiplier.sv',
+             'rtl/common/parallel_prefix_add.sv', 'rtl/npu/writeback/vec_requant.sv']
+    rtl = [ROOT / name for name in names[:-1]] + [args.arithmetic_source.resolve()]
     summary = {'passed': False, 'latency_enabled_edges': 12,
-               'source_sha256': {str(path.relative_to(ROOT)): digest(path) for path in rtl},
+               'source_sha256': {name: digest(path) for name, path in zip(names, rtl)},
                'primitive_library_sha256': digest(library), 'cases': {}}
     for variant in args.variants:
         case = out / variant
@@ -72,7 +74,7 @@ def main():
                                     'executable_sha256': digest(binary), 'log_sha256': digest(log)}
         if variant == 'mapped':
             summary['cases'][variant]['mapped_sha256'] = digest(args.mapped)
-        if summary['source_sha256'] != {str(path.relative_to(ROOT)): digest(path) for path in rtl}:
+        if summary['source_sha256'] != {name: digest(path) for name, path in zip(names, rtl)}:
             raise RuntimeError('The RTL sources changed during the test')
     summary['passed'] = True
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
