@@ -17,6 +17,8 @@ def range_module(name, source, arithmetic):
     start = source.index('  if (LANES <= 8) begin : g_short_group_lane')
     stop = source.index('  end else if (LANES <= 32768) begin : g_group_lane_range', start)
     actual = source[start:stop] + '\n  end\n'
+    if '`ifdef ASIC_SYNTHESIS\n  localparam bit p_short_sum_dsp' in source:
+        actual = source[source.index('`ifdef ASIC_SYNTHESIS\n  localparam bit p_short_sum_dsp'):source.index('  conv_cfg_t c;')] + actual
     return '''module ''' + name + ''' #(
     parameter int LANES=8,
     parameter int p_saved_group_lanes=LANES>4 ? 8 : 4
@@ -37,6 +39,8 @@ def range_module(name, source, arithmetic):
     logic group_after_chunk;
     logic [15:0] next_channel;
     logic [16:0] channel_position_sum;
+    logic [16:0] initial_group_remaining;
+    assign initial_group_remaining={1'b0,c.group_c};
     logic unused_channel_position_carry;
     logic [CHUNK_COUNT_W-1:0] chunk_count;
     assign c.group_c=group_c;
@@ -107,7 +111,7 @@ endmodule
         for fpga in (0, 1):
             name = f'l{lanes}_f{fpga}'
             script, log = out / (name + '.ys'), out / (name + '.log')
-            script.write_text('read_slang --top channel_ranges_proof -GLANES=' + str(lanes) + ' ' +
+            script.write_text('read_slang --top channel_ranges_proof -DSYNTHESIS=1 -GLANES=' + str(lanes) + ' ' +
                 ('-DXILINX_FPGA=1 ' if fpga else '') + shlex.join(map(str, sources)) + '\n' +
                 'prep -top channel_ranges_proof -flatten\ncheck -assert\n' +
                 'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')

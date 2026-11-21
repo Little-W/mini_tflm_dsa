@@ -26,7 +26,7 @@ def main():
     word_start = text.index('  for (genvar lane = 0; lane < LANES; lane++) begin : g_word_lane')
     word_stop = text.index('  if (TILE_COUNT_W >= CHUNK_COUNT_W) begin : g_direct_chunk_end', word_start)
     word = text[word_start:word_stop]
-    word_context = ''
+    word_context = text[text.index('`ifdef ASIC_SYNTHESIS\n  localparam bit p_short_sum_dsp'):text.index('  conv_cfg_t c;')]
     if 'word_mask_for_address' in text:
         mask_function = re.search(
             r'  function automatic logic \[LANES-1:0\] word_mask_for_address\(.*?  endfunction',
@@ -68,6 +68,7 @@ def main():
     config_t c;
     logic [LANES-1:0] group_lane_allowed, word_lane_allowed, chunk_end_lane;
     logic [LANES-1:0] chunk_data_allowed, chunk_lane_allowed;
+    logic [LANES-1:0] lane_context_allowed,word_lane_s8,word_lane_s16,chunk_end_s8,chunk_end_s16;
     logic [LANES:0] active_lane_allowed_q, column_lane_allowed_q;
     logic [CHUNK_COUNT_W-1:0] chunk_count;
     assign c.input_s16=input_s16;
@@ -109,17 +110,18 @@ endmodule
               'input_constraints': [], 'runs': []}
     for size in (2, 4, 8, 16):
         for lanes in (1, 2, 4, 8, 16):
-            name = f's{size}_l{lanes}'
-            script, log = out / (name + '.ys'), out / (name + '.log')
-            script.write_text('read_slang --top chunk_mask_proof -GSIZE=' + str(size) +
-                ' -GLANES=' + str(lanes) + ' ' + shlex.quote(str(proof)) + '\n' +
-                'prep -top chunk_mask_proof -flatten\ncheck -assert\n' +
-                'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
-            with log.open('w') as stream:
-                subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
-                                '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT, check=True)
-            assert 'SUCCESS' in log.read_text(), log
-            result['runs'].append({'size': size, 'lanes': lanes, 'passed': True})
+            for fpga in (0, 1):
+                name = f's{size}_l{lanes}_f{fpga}'
+                script, log = out / (name + '.ys'), out / (name + '.log')
+                script.write_text('read_slang --top chunk_mask_proof -DSYNTHESIS=1 '+('-DXILINX_FPGA=1 ' if fpga else '')+'-GSIZE=' + str(size) +
+                    ' -GLANES=' + str(lanes) + ' ' + shlex.quote(str(proof)) + '\n' +
+                    'prep -top chunk_mask_proof -flatten\ncheck -assert\n' +
+                    'sat -verify -prove equivalent 1 -show-inputs -show-outputs\n')
+                with log.open('w') as stream:
+                    subprocess.run([sys.executable, str(ROOT / 'scripts/fpga/open_fpga_synth.py'),
+                                    '--worker', str(script)], stdout=stream, stderr=subprocess.STDOUT, check=True)
+                assert 'SUCCESS' in log.read_text(), log
+                result['runs'].append({'size': size, 'lanes': lanes, 'xilinx_fpga': bool(fpga), 'passed': True})
     tb = out / 'tb_four_state.sv'
     tb.write_text('''module tb_four_state;
     reg [21:0] state;

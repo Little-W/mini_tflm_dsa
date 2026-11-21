@@ -39,6 +39,8 @@ def main():
  logic[32:0]p_history_delta_q,history_delta_full,reference_limit_sum,reference_delta;
  logic[16:0]history_limit_low_sum;
  logic history_range_valid;
+ logic[16:0]history_limit_i_a,history_limit_i_b;
+ logic history_limit_o_less,unused_history_limit_equal;
  wire tile_commit=event_choice==2;
  wire p_cache_write_enable=rst_n&&event_choice==3;
  assign committing_tile={invalid,position};
@@ -72,7 +74,7 @@ def main():
    (p_sum_last_o_equal==(reference_sum==last_output_col_q));
 endmodule
 ''')
-    ys.write_text('read_slang --top proof '+shlex.join([str(sv),str(args.source_root/'rtl/common/add_equal.sv')])+
+    ys.write_text('read_slang --top proof -DSYNTHESIS=1 -DXILINX_FPGA=1 '+shlex.join([str(sv),str(args.source_root/'rtl/common/add_equal.sv'),str(args.source_root/'rtl/common/unsigned_compare.sv')])+
                   '\nprep -top proof -flatten\nasync2sync\nopt\ncheck -assert\n'
                   'sat -seq 2 -set-at 1 rst_n 0 -prove-skip 1 -prove equivalent 1 -verify\n'
                   'sat -seq 1 -tempinduct-inductonly -maxsteps 1 -prove equivalent 1 -verify\n')
@@ -85,6 +87,7 @@ endmodule
             'position_and_width_constraints':[],'formal_domain':'all binary input and state values',
             'event_scope':'Configuration, valid or invalid descriptor commit, and history storage are mutually exclusive.',
             'event_relationship_proof':'check_frontend_event_domains.py','position_update_sites':2,'history_update_sites':3,
+            'synthesis_configuration':['SYNTHESIS=1','XILINX_FPGA=1'],
             'properties':['33-bit position difference','32-bit modulo upper bound and overflow','forward history range','two 16-bit modulo row-end equalities'],
             'log_sha256':hashlib.sha256(log.read_bytes()).hexdigest()}
     (args.out/'summary.json').write_text(json.dumps(report,indent=2)+'\n');print('HISTORY_DELTA_PASS',report)
