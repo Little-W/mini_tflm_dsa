@@ -25,7 +25,10 @@ def simulation_source(text, name):
         return 'typedef logic' + (width or '') + ' ' + typename + ';\n' + '\n'.join(values)
     text = re.sub(r'typedef\s+enum\s+logic(\s*\[[^\]]+\])?\s*\{([^}]+)\}\s*(\w+)\s*;',
                   unpack, text)
-    return re.sub(r'\bmodule\s+soc_axi_interconnect\b', 'module ' + name, text, count=1)
+    for module in re.findall(r'\bmodule\s+(\w+)\b', text):
+        renamed = name if module == 'soc_axi_interconnect' else name + '_' + module
+        text = re.sub(r'\b' + re.escape(module) + r'\b', renamed, text)
+    return text
 
 
 def main():

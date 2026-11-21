@@ -6,6 +6,8 @@ module soc_axi_interconnect #(
     parameter int unsigned WRITE_OUTSTANDING = READ_OUTSTANDING,
     // 关闭时，CPU 读响应释放事务后再发出下一条地址。
     parameter bit p_cpu_read_overlap = 1'b1,
+    // 关闭时，CPU RAM 写数据使用已接收并保存的地址。
+    parameter bit p_cpu_ram_write_overlap = 1'b1,
     parameter logic [31:0] CPU_RAM_BASE  = 32'h0000_0000,
     parameter logic [31:0] NPU_AXIL_BASE = 32'h1000_0000,
     parameter logic [31:0] UART_BASE     = 32'h0200_0000,
@@ -228,7 +230,7 @@ module soc_axi_interconnect #(
     logic [ADDR_WIDTH-1:0] cpu_ram_write_addr_q;
     logic [2:0] cpu_ram_write_size_q;
     logic [1:0] cpu_ram_write_burst_q;
-    wire [ADDR_WIDTH-1:0] cpu_write_beat_addr = cpu_wr_active_q ?
+    wire [ADDR_WIDTH-1:0] cpu_write_beat_addr = (cpu_wr_active_q || !p_cpu_ram_write_overlap) ?
         cpu_ram_write_addr_q : s0_axi_awaddr;
     wire [31:0] cpu_read_lane = (32'(cpu_ram_read_addr_q) & (DATA_WIDTH/8-1)) & ~32'd3;
     wire [31:0] cpu_write_lane = (32'(cpu_write_beat_addr) & (DATA_WIDTH/8-1)) & ~32'd3;
@@ -246,10 +248,14 @@ module soc_axi_interconnect #(
         .i_addr(cpu_ram_write_addr_q), .i_size(cpu_ram_write_size_q),
         .i_burst(cpu_ram_write_burst_q), .o_addr(cpu_write_next_addr)
     );
-    soc_axi_step_address #(.p_width(ADDR_WIDTH)) u_first_write_step (
-        .i_addr(s0_axi_awaddr), .i_size(s0_axi_awsize),
-        .i_burst(s0_axi_awburst), .o_addr(cpu_first_write_next_addr)
-    );
+    if (p_cpu_ram_write_overlap) begin : g_first_write_step
+        soc_axi_step_address #(.p_width(ADDR_WIDTH)) u_first_write_step (
+            .i_addr(s0_axi_awaddr), .i_size(s0_axi_awsize),
+            .i_burst(s0_axi_awburst), .o_addr(cpu_first_write_next_addr)
+        );
+    end else begin : g_registered_write_step
+        assign cpu_first_write_next_addr = '0;
+    end
 
 `ifdef NPU_SIM_ASSERT
     initial begin
@@ -341,6 +347,7 @@ module soc_axi_interconnect #(
     wire cpu_issue_aw_allowed = !cpu_block_new_req;
     wire cpu_issue_w_allowed = !cpu_block_new_req || cpu_wr_active_q;
     wire cpu_ram_aw_req = cpu_issue_aw_allowed && s0_axi_awvalid &&
+                          (p_cpu_ram_write_overlap || !cpu_wr_active_q) &&
                           (cpu_aw_dest == D_RAM);
     wire npu_ram_aw_req = s1_axi_awvalid;
 
@@ -571,7 +578,7 @@ module soc_axi_interconnect #(
             m_ram_wstrb  = s1_axi_wstrb;
             m_ram_wlast  = s1_axi_wlast;
             s1_axi_wready = m_ram_wready;
-        end else if (ram_w_from_cpu) begin
+        end else if (ram_w_from_cpu && (p_cpu_ram_write_overlap || cpu_wr_active_q)) begin
             m_ram_wvalid = s0_axi_wvalid && (cpu_w_dest == D_RAM);
             m_ram_wdata  = DATA_WIDTH'(s0_axi_wdata) << (8*cpu_write_lane);
             m_ram_wstrb  = (DATA_WIDTH/8)'(s0_axi_wstrb) << cpu_write_lane;
@@ -744,7 +751,7 @@ module soc_axi_interconnect #(
                 cpu_ram_read_addr_q <= cpu_read_next_addr;
             end
             if (cpu_aw_hs && cpu_aw_dest == D_RAM) begin
-                cpu_ram_write_addr_q <= cpu_w_hs ?
+                cpu_ram_write_addr_q <= (p_cpu_ram_write_overlap && cpu_w_hs) ?
                     cpu_first_write_next_addr : s0_axi_awaddr;
                 cpu_ram_write_size_q <= s0_axi_awsize;
                 cpu_ram_write_burst_q <= s0_axi_awburst;
@@ -854,7 +861,7 @@ module soc_axi_step_address #(
     (* use_dsp = "yes" *) logic [p_width-1:0] incremented_addr;
 
     assign step = p_width'(1) << i_size;
-    assign aligned_addr = i_addr & ~(step - 1'b1);
+    assign aligned_addr = i_addr & ({p_width{1'b1}} << i_size);
     assign incremented_addr = aligned_addr + step;
     assign o_addr = i_burst == 2'b00 ? i_addr : incremented_addr;
 endmodule
