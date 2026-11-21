@@ -1,0 +1,131 @@
+{
+  "passed": true,
+  "reference": "4dee27ffec4dc891daf2681379f8b3fd27fd41f2",
+  "reference_sha256": "f81ce1b0b52bc961f91c4ec7f68927e956fabe248761521067bfe61cb1ad313c",
+  "source_sha256": "a09f63b760dbe59c80646c74b9acb3feb2d65f25cc5aedaa44a23277f6ec5f54",
+  "input_constraints": null,
+  "scope": "全部 IA 请求组合、行地址与字节掩码；保留端口零优先级",
+  "runs": [
+    {
+      "row_bits": 7,
+      "passed": true,
+      "elapsed_seconds": 0.2,
+      "peak_process_tree_rss_bytes": 90112,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "row7.ys",
+      "log": "row7.log"
+    },
+    {
+      "row_bits": 8,
+      "passed": true,
+      "elapsed_seconds": 0.2,
+      "peak_process_tree_rss_bytes": 90112,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "row8.ys",
+      "log": "row8.log"
+    },
+    {
+      "row_bits": 9,
+      "passed": true,
+      "elapsed_seconds": 0.2,
+      "peak_process_tree_rss_bytes": 90112,
+      "memory_sample_interval_seconds": 0.2,
+      "script": "row9.ys",
+      "log": "row9.log"
+    }
+  ],
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "parameters": [
+      "-Gp_bank_bytes=8192",
+      "-Gp_total_bytes=57344",
+      "-Gp_shared_write_stage=1"
+    ],
+    "resources": {
+      "reference": {
+        "lut_cells": 2061,
+        "flip_flops": 13,
+        "ramb36": 26,
+        "ramb18": 0,
+        "dsp": 0,
+        "longest_combinational_path_cells": 10,
+        "longest_register_path_cells": 8
+      },
+      "current": {
+        "lut_cells": 2059,
+        "flip_flops": 13,
+        "ramb36": 26,
+        "ramb18": 0,
+        "dsp": 0,
+        "longest_combinational_path_cells": 9,
+        "longest_register_path_cells": 8
+      }
+    }
+  },
+  "memory_verification": {
+    "passed": true,
+    "source_sha256": {
+      "rtl/npu/buffers/ia_ps_shared_ram.sv": "a09f63b760dbe59c80646c74b9acb3feb2d65f25cc5aedaa44a23277f6ec5f54",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "test/ps_channels/tb_memory.sv": "ef52f09087705a296b495ac32634b6d0331fec22329c8f921bbab633aa98c9e2"
+    },
+    "profiles": [
+      {
+        "banks": 6,
+        "bank_bytes": 2048,
+        "cycles": 21796,
+        "checked_bytes": 735904,
+        "read_checks": 45994,
+        "write_checks": 39971,
+        "fault_events": 5622,
+        "configurations": 5932,
+        "simultaneous_ps": 2448,
+        "mixed_accesses": 13258,
+        "passed": true,
+        "total_bytes": 12288
+      },
+      {
+        "banks": 8,
+        "bank_bytes": 4096,
+        "cycles": 26630,
+        "checked_bytes": 928544,
+        "read_checks": 58034,
+        "write_checks": 44844,
+        "fault_events": 4700,
+        "configurations": 5017,
+        "simultaneous_ps": 4467,
+        "mixed_accesses": 14165,
+        "passed": true,
+        "total_bytes": 32768
+      },
+      {
+        "banks": 7,
+        "bank_bytes": 8192,
+        "cycles": 27332,
+        "checked_bytes": 916832,
+        "read_checks": 57302,
+        "write_checks": 43362,
+        "fault_events": 5559,
+        "configurations": 5867,
+        "simultaneous_ps": 5356,
+        "mixed_accesses": 13350,
+        "passed": true,
+        "total_bytes": 57344
+      },
+      {
+        "banks": 9,
+        "bank_bytes": 8192,
+        "cycles": 33990,
+        "checked_bytes": 1167712,
+        "read_checks": 72982,
+        "write_checks": 47283,
+        "fault_events": 4744,
+        "configurations": 5065,
+        "simultaneous_ps": 7996,
+        "mixed_accesses": 14088,
+        "passed": true,
+        "total_bytes": 73728
+      }
+    ]
+  }
+}

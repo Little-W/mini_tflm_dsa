@@ -453,6 +453,15 @@ module ia_ps_channel_ram #(
     logic [p_row_bits-1:0] ia_bank_write_addr [p_max_ia_banks];
     logic [127:0] ia_bank_write_data [p_max_ia_banks], ia_bank_read_data [p_max_ia_banks];
     logic [15:0] ia_bank_write_mask [p_max_ia_banks];
+    logic ia_row_address_equal [2][2];
+
+    // 各对行地址独立比较，晚到的端口请求仅选择匹配结果。
+    for (genvar read_port = 0; read_port < 2; read_port++) begin : g_ia_row_compare
+        for (genvar write_port = 0; write_port < 2; write_port++) begin : g_write
+            assign ia_row_address_equal[read_port][write_port] =
+                ia_read_row[read_port] == ia_write_row[write_port];
+        end
+    end
 
     for (genvar port_index = 0; port_index < 2; port_index++) begin : g_ia_address
         logic [p_addr_width-1:0] read_row_full, write_row_full;
@@ -494,6 +503,7 @@ module ia_ps_channel_ram #(
     for (genvar bank = 0; bank < p_max_ia_banks; bank++) begin : g_ia_route
         logic [1:0] read_request, write_request;
         logic read_port_one, write_port_one, collision;
+        logic [3:0] collision_terms;
         for (genvar port_index = 0; port_index < 2; port_index++) begin : g_request
             assign read_request[port_index] = access_enabled && i_ia_read_en[port_index] &&
                 ia_read_range[port_index] && ia_read_bank[port_index] == p_ia_bank_bits'(bank);
@@ -506,8 +516,15 @@ module ia_ps_channel_ram #(
         assign ia_bank_write_addr[bank] = write_port_one ? ia_write_row[1] : ia_write_row[0];
         assign ia_bank_write_data[bank] = write_port_one ? i_ia_write_data[1] : i_ia_write_data[0];
         assign ia_bank_write_mask[bank] = write_port_one ? i_ia_write_mask[1] : i_ia_write_mask[0];
-        assign collision = (|read_request) && (|write_request) && (|ia_bank_write_mask[bank]) &&
-            ia_bank_read_addr[bank] == ia_bank_write_addr[bank];
+        for (genvar read_port = 0; read_port < 2; read_port++) begin : g_collision_read
+            for (genvar write_port = 0; write_port < 2; write_port++) begin : g_collision_write
+                assign collision_terms[2*read_port+write_port] =
+                    (read_port == 0 ? read_request[0] : read_port_one) &&
+                    (write_port == 0 ? write_request[0] : write_port_one) &&
+                    (|i_ia_write_mask[write_port]) && ia_row_address_equal[read_port][write_port];
+            end
+        end
+        assign collision = |collision_terms;
         assign ia_bank_read_en[bank] = |read_request;
         assign ia_bank_write_en[bank] = (|write_request) && !collision;
         assign ia_bank_fault[bank] = collision || (&read_request) || (&write_request);
