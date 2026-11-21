@@ -17,7 +17,8 @@ module ia_loader_ctrl #(
         ((COMPACT_S8 != 0) && (DATA_WIDTH == 16)) ? 2 * CACHE_BLOCKS : CACHE_BLOCKS,
     parameter int unsigned PS_FRAME_COUNT = SIZE,
     parameter bit p_precomputed_packed_tiles = 1'b0,
-    parameter bit p_precomputed_frame_rows = 1'b0
+    parameter bit p_precomputed_frame_rows = 1'b0,
+    parameter bit p_precomputed_slot_mask = 1'b0
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -25,6 +26,7 @@ module ia_loader_ctrl #(
     // ---- 来自 top：配置参数（已锁存）----
     input  logic                        cfg_compact = 1'b0,
     input  logic [31:0]                  cfg_cache_blocks = 32'd0,
+    input logic [((SLOT_BLOCKS <= 1) ? 1 : $clog2(SLOT_BLOCKS))-1:0] cfg_slot_mask = '0,
     input  logic                        cfg_valid,       // 参数有效（INIT 状态）
     input  logic [REG_WIDTH-1:0]        cfg_k,
     input  logic [REG_WIDTH-1:0]        cfg_n,
@@ -125,7 +127,8 @@ module ia_loader_ctrl #(
   localparam int CNT_W         = (COUNT_WIDTH < 1) ? 1 : COUNT_WIDTH;
   typedef logic [CNT_W-1:0] count_t;
   wire [31:0] active_cache_blocks = cfg_cache_blocks == 0 ? 32'(CACHE_BLOCKS) : cfg_cache_blocks;
-  wire [SLOT_W-1:0] slot_mask =
+  // 上层可在配置边沿保存槽位掩码，所有运行阶段复用同一映射。
+  wire [SLOT_W-1:0] slot_mask = p_precomputed_slot_mask ? cfg_slot_mask :
       ((COMPACT_S8 != 0) && (DATA_WIDTH == 16) && cfg_compact)
       ? SLOT_W'((active_cache_blocks << 1) - 1) : SLOT_W'(active_cache_blocks - 1);
 
@@ -317,7 +320,10 @@ module ia_loader_ctrl #(
   assign r_cur_cnt = r_cur[LOAD_CNT_W-1:0];
   assign w_cnt_narrow = w_cnt[W_CNT_W-1:0];
   assign w_cur_narrow = w_cur[W_CNT_W-1:0];
-  assign ia_iter_last_narrow = ((ia_idx_cnt + LOAD_CNT_W'(1)) == r_cur_cnt);
+  add_equal #(.p_width(LOAD_CNT_W)) u_ia_iteration_end (
+    .i_a(ia_idx_cnt), .i_b(LOAD_CNT_W'(0)), .i_target(r_cur_cnt),
+    .i_carry_in(1'b1), .o_equal(ia_iter_last_narrow)
+  );
   assign w_iter_last_narrow = ((w_cnt_narrow + W_CNT_W'(1)) == w_cur_narrow);
   assign ia_iter_last = ia_iter_last_narrow;
   assign w_iter_last  = w_iter_last_narrow;
@@ -523,6 +529,9 @@ module ia_loader_ctrl #(
   logic [REG_WIDTH-1:0] l2_row_base;
   logic                 l2_group_retire;
 
+  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] l2_row_base_advanced;
+  assign l2_row_base_advanced = l2_row_base + l2_group_row_step_b;
+
   assign l2_group_retire = (state == S_SEND || state == S_LOAD) && cache_tile_done &&
                            ia_iter_last &&
                            w_iter_last &&
@@ -537,7 +546,7 @@ module ia_loader_ctrl #(
       l2_row_base <= cfg_lhs_base;
       l2_tile_row_base <= '0;
     end else if (l2_group_retire) begin
-      l2_row_base <= l2_row_base + l2_group_row_step_b;
+      l2_row_base <= l2_row_base_advanced;
       l2_tile_row_base <= l2_tile_row_base + count_t'(cfg_ia_reuse_num);
     end
   end
@@ -552,17 +561,19 @@ module ia_loader_ctrl #(
       ((cfg_tile_packed ? 2*LOG2_SIZE : LOG2_SIZE) + (cfg_use_16bits ? 1 : 0));
   always_comb begin
     if (next_group_advances_l2)
-      next_l2_row_base = l2_row_base + l2_group_row_step_b;
+      next_l2_row_base = l2_row_base_advanced;
     else
       next_l2_row_base = l2_row_base;
   end
 
-  logic [REG_WIDTH-1:0] computed_tile_base;
+  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] computed_tile_base;
+  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] load_row_base_advanced;
   logic [REG_WIDTH-1:0] load_cursor_row_base;
   logic [REG_WIDTH-1:0] load_cursor_p0;
   wire [REG_WIDTH-1:0] next_group_p0 =
       (REG_WIDTH'(l2_tile_row_base) +
        (next_group_advances_l2 ? cfg_ia_reuse_num : REG_WIDTH'(0))) << LOG2_SIZE;
+  assign load_row_base_advanced = load_cursor_row_base + tile_row_step_b;
   assign computed_tile_base = load_cursor_row_base +
                               (prefetch_active ? pf_tile_col_byte_offset : tile_col_byte_offset);
 
@@ -898,7 +909,7 @@ module ia_loader_ctrl #(
       end else if ((state == S_LOAD || state == S_SEND) && tl_tile_done) begin
         load_tiles_done     <= load_tiles_done + 1;
         load_ia_cursor      <= load_ia_cursor + 1;
-        load_cursor_row_base <= load_cursor_row_base + tile_row_step_b;
+        load_cursor_row_base <= load_row_base_advanced;
         load_cursor_p0       <= load_cursor_p0 + REG_WIDTH'(SIZE);
       end
     end

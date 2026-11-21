@@ -1,0 +1,125 @@
+{
+  "passed": true,
+  "inputs_constrained": false,
+  "source_sha256": {
+    "reference": {
+      "rtl/npu/loaders/ia_loader.sv": "12999d7d24510d192ff3a4571c1a10e8e8ce299e1f7b2b1ca1272dc92b8bec2a",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "8050d4fab713ac8dfa986c0f3802bf20ece93d0ce0da6c66d281ac600c009b1c",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "958b54cebc4261343c04df2c38f25e817a5d323492846a6f6a76b1cddc5d3509",
+      "rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+      "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
+    },
+    "current": {
+      "rtl/npu/loaders/ia_loader.sv": "995e8739a673ed59f6bbaa1243ced5e436226a8480c968da168ce4aed78f81f4",
+      "rtl/npu/loaders/ia_loader_ctrl.sv": "04ef736eea9f7ca82d61eb8313db46cd5181919df2cc02dd171f74bc3a92e326",
+      "rtl/npu/loaders/ia_loader_cache_mgr.sv": "80dd11f66865f95df7817a192cddc59da3b914fcb8e53c346d2f5acf329600a6",
+      "rtl/npu/compute/select_add.sv": "efa1fceb048e0afda48b167248d06951878ca5a56fc261d08bf6171e44542c29",
+      "rtl/common/add3_equal.sv": "53ee30ce1bdf3b9e76290f74d9f65bc48f92376d17a3e40b280fe991b6aaac8b",
+      "rtl/common/add_equal.sv": "0610ce18017b411000d7ebee7d87357d9e1ac1e87e9d95875da561bfbc331c3a",
+      "rtl/common/onehot_check.sv": "1a69c6421c3266c8a04a35c82bf9c409cb562d8abd471fe001b2e681c1e8f1f2",
+      "rtl/common/parallel_prefix_add.sv": "dc6c09015834dbabe8da4964a094352977e8ee9f9b02a2349cbcadb4bbb5616c",
+      "rtl/common/pseudo_dual_port_ram.v": "1308f5b0bce738f1982b53dddef490c25250460b24f180c51a84246275efcbfa",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "rtl/common/single_port_ram.v": "af8a690fd2a187185ab8335d51b300233ad1c96f29b84810632ce00422d894e3",
+      "rtl/common/unsigned_compare.sv": "083cb853fe854fc46493dd6800288c5b7e102d1ed87bd54e6044fff1bdfe8ca7"
+    }
+  },
+  "runs": [
+    {
+      "name": "production",
+      "parameters": {
+        "SIZE": 16,
+        "BUS_WIDTH": 64,
+        "COUNT_WIDTH": 29,
+        "CACHE_BLOCKS": 32,
+        "EXTERNAL_RAM": 1,
+        "ORDERED_JOB": 1,
+        "PS_FRAME_COUNT": 16,
+        "p_dma_source_layout": 1,
+        "p_shared_write_stage": 1
+      },
+      "passed": true,
+      "equivalent_bits": 14038,
+      "script_sha256": "70d820900183a3a5c2b07e44de041f1b569ba4cb9b8a481a0f9fdd6d96d5aecc",
+      "log_sha256": "b35621706bbf1beb6c36eb7ece477587addaa95c5a40411469205e76d5966ee6"
+    },
+    {
+      "name": "generic",
+      "parameters": {
+        "SIZE": 16,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 8,
+        "CACHE_BLOCKS": 4,
+        "EXTERNAL_RAM": 1,
+        "ORDERED_JOB": 0
+      },
+      "passed": true,
+      "equivalent_bits": 10054,
+      "script_sha256": "def87aa9f05050e95cc40bc1f4d9685f3b30bb93ea71533849444e3e7ff04032",
+      "log_sha256": "5b3f667768544832c3d0ce9bcbcb5926d767cdb371f4596cbc4d84f83fad66d1"
+    },
+    {
+      "name": "small",
+      "parameters": {
+        "SIZE": 4,
+        "BUS_WIDTH": 32,
+        "COUNT_WIDTH": 8,
+        "CACHE_BLOCKS": 2,
+        "EXTERNAL_RAM": 0,
+        "ORDERED_JOB": 1
+      },
+      "passed": true,
+      "equivalent_bits": 5960,
+      "script_sha256": "43cd6219821b65d18f5f919b4b10ae0731ffc7fcc61db80069885f35cd287436",
+      "log_sha256": "d60050c97cbb149e85b96bf64540510c81e7cc84b6e8593ebb48d70120dd17e3"
+    }
+  ],
+  "synthesis": {
+    "resources": {
+      "logic_lut_cells": 6455,
+      "distributed_ram_lut_sites_nominal": 0,
+      "shift_register_lut_sites_nominal": 0,
+      "lut_sites_nominal_before_packing": 6455,
+      "physical_lut_sites_after_placement": null,
+      "flip_flops": 3137,
+      "dsp48e1": 16,
+      "ramb36e1": 2,
+      "ramb18e1": 1,
+      "carry4": 274,
+      "unclassified_distributed_ram_types": [],
+      "cell_counts": {
+        "CARRY4": 274,
+        "DSP48E1": 16,
+        "FDCE": 2061,
+        "FDPE": 88,
+        "FDRE": 988,
+        "INV": 178,
+        "LUT2": 1346,
+        "LUT3": 1202,
+        "LUT4": 1349,
+        "LUT5": 1532,
+        "LUT6": 1026,
+        "MUXF7": 4,
+        "MUXF8": 2,
+        "RAMB18E1": 1,
+        "RAMB36E1": 2
+      },
+      "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+    },
+    "register_path_requirement": {
+      "maximum_combinational_cells": 10,
+      "observed_combinational_cells": 11,
+      "graph_complete": true,
+      "met": false,
+      "scope": "Clocked storage outputs to synchronous data and control inputs",
+      "timing_frequency_validation": "Requires primitive and routing delays for the target device"
+    }
+  }
+}

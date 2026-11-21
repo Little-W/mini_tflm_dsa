@@ -3,9 +3,10 @@
 `BUS_WIDTH=64`、`DATA_WIDTH=16` 时，实际 `axi_dual_block_dma` 在第一次复位采样之后的每个周期满足以下关系，包括输出无效的周期：
 
 1. `wr_use_16bits=0` 时，`wr_col_base[2:0]=0`。
-2. `wr_use_16bits=1` 时，`wr_valid[7:4]=0`。
+2. 线性 S16 读取每拍最多输出四个有效通道。
+3. `WINDOW_LANES=4` 的 im2col 每拍最多输出四个有效通道；`WINDOW_LANES=8` 的宽 im2col 可以在任意列起点输出八个有效通道。
 
-生产配置使用 `SIZE=64`、`IM2COL_SIZE=16`，输入激活端保留列起点低四位。`SIZE=16` 的独立配置也验证相同性质。S16 的列起点仍可取任意低位，保留非窗口 im2col 的逐列及不等长度通道输出。
+生产配置使用 `SIZE=64`、`IM2COL_SIZE=16` 和 `WINDOW_LANES=8`，输入激活端保留列起点低四位。`SIZE=16` 和 `WINDOW_LANES=4` 的独立配置也参与检查。输入激活缓存的八通道排列支持全部十六种列起点，保留非窗口 im2col 的逐列及不等长度通道输出。
 
 ## 证明范围
 
@@ -19,7 +20,18 @@
 
 ```sh
 python3 test/dma_source_layout/prove.py \
-  --sizes 16 64 --out /tmp/dma_source_layout
+  --sizes 16 64 --window-lanes 4 8 --out /tmp/dma_source_layout
 ```
 
-两种配置均通过复位起始检查和一步归纳。`measurement.json` 包含配置、原始源码及测试副本的 SHA-256、性质、外部输入条件和日志摘要。可将这些关系用于生产 DMA 专用参数；通用缓存接口继续支持任意合法列起点和完整输入通道。
+四种配置执行复位起始检查和一步归纳。`measurement.json` 包含配置、原始源码及测试副本的 SHA-256、性质、外部输入条件和日志摘要。
+
+## 八通道缓存写入排列
+
+```sh
+python3 test/dma_source_layout/cache_layout_formal.py \
+  --out /tmp/cache_layout_formal
+```
+
+该证明提取 `ia_loader_cache_mgr` 实际的紧凑字节与宽数据排列表达式，与完整行移位进行组合 SAT 比较。128 位宽输入、64 位紧凑输入及四位列起点均不受约束，覆盖全部十六种起点与八个输入通道。越过第十五列的元素按行宽截断，保存的写掩码决定每个字节是否写入。
+
+`test/ia_shared/receive_write_tb.sv` 进一步对实际模块执行 65,536 个字节/偏移组合和 20,000 个随机写周期，检查任意列起点、两种存储格式、完整八通道掩码、寄存写命令及共享存储写数据。

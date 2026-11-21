@@ -31,6 +31,7 @@ PROPERTIES = '''
     (* keep *) logic layout_linear_s8_aligned, layout_linear_s16_lanes;
     assign layout_s8_aligned = wr_use_16bits || !(|wr_col_base[2:0]);
     assign layout_s16_lanes = !wr_use_16bits ||
+        (WINDOW_LANES > 4 && fe_output_valid && !fe_output_window) ||
         !(wr_valid[4] || wr_valid[5] || wr_valid[6] || wr_valid[7]);
     assign layout_linear_s8_aligned = linear_use_16bits || !(|linear_col[2:0]);
     assign layout_linear_s16_lanes = !linear_use_16bits ||
@@ -46,6 +47,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--sizes', type=int, nargs='+', default=(16, 64))
+    parser.add_argument('--window-lanes', type=int, nargs='+', choices=(4, 8), default=(4, 8))
     args = parser.parse_args()
     out = args.out.resolve()
     snapshots = out / 'sources'
@@ -77,18 +79,18 @@ def main():
         'initial_state': 'arbitrary defined values before the first reset clock',
         'properties': {
             's8': 'wr_use_16bits == 0 implies wr_col_base[2:0] == 0',
-            's16': 'wr_use_16bits == 1 implies wr_valid[7:4] == 0',
+            's16': 'wr_use_16bits == 1 implies wr_valid[7:4] == 0 unless the output is wide im2col',
             'qualification': 'every cycle following the first reset clock, including invalid output cycles',
         },
         'profiles': [],
     }
-    for size in args.sizes:
+    for size, lanes in ((size, lanes) for size in args.sizes for lanes in args.window_lanes):
         if size < 8:
             raise ValueError('The production-layout proof requires SIZE >= 8')
-        folder = out / f'size_{size}'
+        folder = out / f'size_{size}_lanes_{lanes}'
         folder.mkdir(exist_ok=True)
         script = folder / 'run.ys'
-        options = f'-GSIZE={size} -GIM2COL_SIZE=16 -GBUS_WIDTH=64 -GDATA_WIDTH=16 -GREG_WIDTH=32'
+        options = f'-GSIZE={size} -GIM2COL_SIZE=16 -GBUS_WIDTH=64 -GDATA_WIDTH=16 -GREG_WIDTH=32 -GWINDOW_LANES={lanes}'
         script.write_text(
             f'read_slang --top {TOP} -D SYNTHESIS=1 -D XILINX_FPGA=1 '
             '-D YOSYS=1 -D VERIFIC=1 ' + options + ' ' +
@@ -114,7 +116,7 @@ def main():
         passed = (result.returncode == 0 and 'Induction step proven: SUCCESS!' in text
                   and 'SAT proof finished - no model found: SUCCESS!' in text)
         entry = {
-            'SIZE': size, 'IM2COL_SIZE': 16, 'BUS_WIDTH': 64, 'DATA_WIDTH': 16,
+            'SIZE': size, 'IM2COL_SIZE': 16, 'BUS_WIDTH': 64, 'DATA_WIDTH': 16, 'WINDOW_LANES': lanes,
             'passed': passed, 'reset_base_steps': 2, 'induction_steps': 1,
             'script_sha256': sha(script.read_bytes()),
             'log_sha256': sha(log.read_bytes()),
