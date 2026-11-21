@@ -5,6 +5,7 @@ module vector_weight_prefetch_observer #(
     parameter int p_addr_width = 10,
     parameter int p_depth = 49,
     parameter int p_idle = 0,
+    parameter int p_check = 0,
     parameter int p_execute = 0,
     parameter int p_output_init = 0,
     parameter int p_tile_init = 0,
@@ -18,7 +19,7 @@ module vector_weight_prefetch_observer #(
     longint unsigned tap_advances, task_starts, failure_cycles, checked_returns;
 
     wire execute = 32'(vector_engine.state) == p_execute;
-    wire clear_context = (32'(vector_engine.state) == p_idle && vector_engine.start) ||
+    wire clear_context = 32'(vector_engine.state) == p_check ||
         32'(vector_engine.state) == p_output_init || 32'(vector_engine.state) == p_tile_init ||
         32'(vector_engine.state) == p_failed;
 
@@ -111,7 +112,7 @@ endmodule
 
 bind vector_engine vector_weight_prefetch_observer #(
     .p_addr_width(SHARED_STORAGE_ADDR_WIDTH), .p_depth(MAX_TAPS),
-    .p_idle(32'(IDLE)), .p_execute(32'(DW_EXECUTE)), .p_output_init(32'(OUTPUT_INIT)),
+    .p_idle(32'(IDLE)), .p_check(32'(CHECK)), .p_execute(32'(DW_EXECUTE)), .p_output_init(32'(OUTPUT_INIT)),
     .p_tile_init(32'(TILE_INIT)), .p_failed(32'(FAILED))
 ) tb_weight_prefetch_observer();
 /* verilator lint_on DECLFILENAME */

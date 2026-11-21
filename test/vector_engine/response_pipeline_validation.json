@@ -1,0 +1,52 @@
+{
+  "files": {
+    "rtl/npu/conv/vector_engine.sv": "08f7ff0c297ab5ce1a7ce865c53cbe59e0c8242a7ffe66fb41a2866708195e0a",
+    "rtl/npu/conv/vector_scalar_multiplier.sv": "3b4609172954db18338546728f1a5eaa7ee9ec53ad3b593ec44c9bef6ce36556",
+    "test/vector_weight_prefetch/observer.sv": "08855ca4a26a19ff21d06a67ce79564a5e80b85b9be1737fbe70bfd772d3392a",
+    "test/vector_engine/run_window_error.py": "7e701cfa4eafa035b7d80a2f0f56be91c07d453815960106a55c2dafed781788",
+    "test/vector_scalar_dsp_pair/run.py": "cdc627ff023efffb3ecd7801a88a3b56d9ff4cd32a1add03fb8ddc78230ff381",
+    "test/vector_scalar_dsp_pair/tb_four_state.sv": "e0a182f832f9aebf1dd212b82a2659bd9e1286e9155fb99f4d0941538ddf218c",
+    "test/vector_scalar_dsp_pair/README.md": "94c101c3134be6d15ce85b431a81507a83e2f6f8f0f551e9909ed48016d00a8e"
+  },
+  "reports": {
+    "build/vector_final_r16_production/summary.json": "97ec537b0d4c37b94cb9d3b9a1d6837aceab6a6fd2f79d803cfd0e70a172786f",
+    "build/vector_final_r16_production/pe8/build.json": "03aecc48ecdda99503c5d0e56a8a2c58bbe8fc4bba9ffb27383186177c015b44",
+    "build/vector_area_experiments/final_r16/vector/metrics.json": "e7dd1e988dc539b0b6897766071fdb5ce23036d9b0465d4c10161afdb07eb799",
+    "build/vector_area_experiments/final_r16/vector/manifest.json": "4ce2b85abf0666c67d63e259169feda7caf77581179e42aa95d1e2afed2edabd",
+    "build/vector_r16_window_errors/summary.json": "b09d9daf8654dc6dedef4efb6637944a6b67f60437f72689d492d12eaac26d2d",
+    "build/vector_scalar_dsp_pair/enable_proof/summary.json": "93da2b3429c6c06f6695e6ae118125f2dfcfe8e56daea31786d23f5a812ddbae",
+    "build/vector_scalar_dsp_pair/proof/summary.json": "b79d53cd29179912e73e32117e4a88b3c2f01be0a911e3717bd67fd0fe200076"
+  },
+  "production_parameters": {
+    "TILE": 16,
+    "PE_COUNT": 8,
+    "BUS_WIDTH": 64,
+    "WINDOW_LANES": 8,
+    "SHARED_QUANT": false,
+    "shared_bank_bytes": 8192,
+    "shared_bank_count": 7,
+    "shared_ia_banks": 2
+  },
+  "validation": {
+    "combined_production_cases": 615,
+    "combined_production_output_checks": 170668,
+    "terminal_window_error_tasks": 32,
+    "injected_errors": 16,
+    "recovery_tasks": 16,
+    "scalar_full_module_formal_configurations": 8,
+    "scalar_four_state_samples": 23091,
+    "scalar_four_state_checks": 184728,
+    "scalar_numeric_checks": 1134340
+  },
+  "standalone_synthesis": {
+    "logic_lut": 12838,
+    "nominal_lut": 12894,
+    "ff": 6685,
+    "dsp": 52,
+    "ramb18": 9,
+    "longest_register_path_cells": 10,
+    "graph_complete": true,
+    "clock_period_ns_requested": 6.666666666666667
+  },
+  "snapshot": "/workspace/scratch/9625a7463d70/vector_final_r16_snapshot"
+}
