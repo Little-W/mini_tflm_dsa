@@ -166,7 +166,8 @@ source [lindex $argv 0]
 source [lindex $argv 1]
 vivado_timing_mock::clear_paths
 set ::cells [list soc/u_picorv32/pc soc/u_picorv32/state \
-    soc/u_block_dma_arbiter/request soc/u_cpu_axi_write_pingpong/valid]
+    soc/u_block_dma_arbiter/request soc/u_cpu_axi_write_pingpong/valid \
+    soc/g_frame_schedule.u_scheduler/column soc/g_shared_ia_ps.g_channels.u_ram/fault]
 proc get_cells {args} {
     set filter [vivado_timing_mock::option $args -filter]
     if {![regexp {^IS_SEQUENTIAL == 1 && NAME =~ (.*)$} $filter -> pattern]} {
@@ -186,6 +187,8 @@ foreach {name delay endpoint slack levels} {
     dma_max max soc/u_block_dma_arbiter/request/D -0.5 11
     dma_min min soc/u_block_dma_arbiter/request/D 0.2 3
     axi_max max soc/u_cpu_axi_write_pingpong/valid/D -0.2 8
+    scheduler_max max soc/g_frame_schedule.u_scheduler/column/D -0.1 7
+    shared_max max soc/g_shared_ia_ps.g_channels.u_ram/fault/D -0.3 9
 } {
     vivado_timing_mock::add_path $name $delay $endpoint $slack soc_clk soc_clk 6.667
     dict set ::vivado_timing_mock::paths $name LOGIC_LEVELS $levels
@@ -207,8 +210,8 @@ soc_reports::write_module_paths [lindex $argv 2] fpga_top 2
         self.assertEqual([row['endpoint'] for row in cpu],
                          ['soc/u_picorv32/pc/D', 'soc/u_picorv32/state/D'])
         self.assertEqual([row['slack_ns'] for row in cpu], ['-2.0', '-1.0'])
-        self.assertEqual({row['scope'] for row in rows}, {'cpu', 'dma', 'axi'})
-        self.assertEqual(len(rows), 6)
+        self.assertEqual({row['scope'] for row in rows}, {'cpu', 'dma', 'axi', 'scheduler', 'shared_storage'})
+        self.assertEqual(len(rows), 8)
         self.assertTrue(all(row['clock'] == 'soc_clk' for row in rows))
         self.assertEqual(next(row for row in rows if row['scope'] == 'axi')['endpoint'],
                          'soc/u_cpu_axi_write_pingpong/valid/D')

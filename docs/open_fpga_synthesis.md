@@ -44,7 +44,7 @@ vivado -mode batch -source scripts/fpga/vivado_synth_fpga.tcl \
 
 除整个设计的时序汇总外，报告还保存以下诊断数据：
 
-- `fpga_top_module_endpoints.tsv` 与 `fpga_top_module_paths.rpt`：分别对 CPU、AXI、寄存器控制、DMA、im2col、向量、计算阵列、量化、输入装载、权重装载和部分和存储，选取最多二十个不同终点的建立时间路径及保持时间路径。
+- `fpga_top_module_endpoints.tsv` 与 `fpga_top_module_paths.rpt`：分别对 CPU、AXI、寄存器与 NPU 控制、帧调度、DMA、im2col、向量、计算阵列、量化、输入装载、权重装载、部分和存储及共享存储，选取最多二十个不同终点的建立时间路径及保持时间路径。
 - `fpga_top_logic_levels.rpt`：最差一万条建立时间路径的组合级数分布。
 - `fpga_top_high_fanout.rpt`：高扇出连接及负载信息。
 

@@ -44,7 +44,8 @@ proc soc_reports::write_module_paths {directory prefix {count 20}} {
     set scopes [dict create \
         cpu {*u_picorv32/*} \
         axi {*g_npu_axi_timing_buffer* *u_cpu_axi_read_pingpong/* *u_cpu_axi_write_pingpong/* *u_axi_sim_ram/*} \
-        control {*u_npu_axil_reg_if/*} \
+        control {*u_npu_axil_reg_if/* *u_npu_controller/* *u_frame_address/*} \
+        scheduler {*g_frame_schedule*u_scheduler/*} \
         dma {*u_block_dma_arbiter/*} \
         im2col {*g_im2col.u_frontend/*} \
         vector {*g_vector_engine.u_engine/*} \
@@ -52,7 +53,8 @@ proc soc_reports::write_module_paths {directory prefix {count 20}} {
         requant {*u_vec_requant/*} \
         ia_loader {*u_ia_loader/*} \
         kernel_loader {*u_kernel_loader/*} \
-        ps_storage {*u_ps_buffer/*}]
+        ps_storage {*u_ps_buffer/*} \
+        shared_storage {*g_shared_ia_ps* *u_vector_shared_store/*}]
     set table [open [file join $directory ${prefix}_module_endpoints.tsv] w]
     set report [open [file join $directory ${prefix}_module_paths.rpt] w]
     try {
