@@ -66,9 +66,17 @@ module conv_axi_read_guard #(
     // Share the word-address comparisons across every byte in each range.
     for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation_mask
         wire base_present = base_q[allocation] != 0;
-        wire after_base_word = addr_q[32:BUS_SHIFT] > {1'b0,base_q[allocation][31:BUS_SHIFT]};
+        localparam int p_word_width = 33 - BUS_SHIFT;
+        (* use_dsp = "yes" *) logic [p_word_width:0] base_word_difference;
+        (* use_dsp = "yes" *) logic [p_word_width:0] end_word_difference;
+        // 字范围比较保留扩展借位，四个分配区间并行产生边界条件。
+        assign base_word_difference = {2'b00,base_q[allocation][31:BUS_SHIFT]} -
+            {1'b0,addr_q[32:BUS_SHIFT]};
+        assign end_word_difference = {1'b0,addr_q[32:BUS_SHIFT]} -
+            {1'b0,end_q[allocation][32:BUS_SHIFT]};
+        wire after_base_word = base_word_difference[p_word_width];
         wire at_base_word = addr_q[32:BUS_SHIFT] == {1'b0,base_q[allocation][31:BUS_SHIFT]};
-        wire before_end_word = addr_q[32:BUS_SHIFT] < end_q[allocation][32:BUS_SHIFT];
+        wire before_end_word = end_word_difference[p_word_width];
         wire at_end_word = addr_q[32:BUS_SHIFT] == end_q[allocation][32:BUS_SHIFT];
         for (genvar byte_lane=0; byte_lane<BUS_BYTES; byte_lane++) begin : g_byte_lane
             wire after_base_byte, before_end_byte;
@@ -126,10 +134,14 @@ module conv_axi_read_guard #(
         // 保留33位地址运算的回绕语义；32位地址配置会将此项化简为零。
         assign request_end_wrap = (&request_addr_ext[32:12]) && (&request_last_word[p_page_word_w-1:0]);
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
-            // 结束地址是开区间端点。页号和页内末字并行比较，避免完整地址加法后再比较。
+            (* use_dsp = "yes" *) logic [33:0] base_difference;
+            (* use_dsp = "yes" *) logic [21:0] page_difference;
+            assign base_difference = {1'b0,request_addr_ext} - {2'b00,base_q[allocation]};
+            assign page_difference = {1'b0,request_addr_ext[32:12]} - {1'b0,end_q[allocation][32:12]};
+            // 结束地址是开区间端点，页号借位与页内末字同时计算。
             assign fast_allocation[allocation] = base_q[allocation] != 0 &&
-                request_addr_ext >= {1'b0, base_q[allocation]} &&
-                (request_end_wrap || request_addr_ext[32:12] < end_q[allocation][32:12] ||
+                !base_difference[33] &&
+                (request_end_wrap || page_difference[21] ||
                  (request_addr_ext[32:12] == end_q[allocation][32:12] &&
                   request_last_word < {1'b0, end_q[allocation][11:BUS_SHIFT]}));
         end
@@ -139,8 +151,12 @@ module conv_axi_read_guard #(
         assign request_end = request_addr_ext + ((33'(s_arlen) + 33'd1) << BUS_SHIFT);
         assign request_page_fits = {1'b0, s_araddr[11:0]} + ((13'(s_arlen) + 13'd1) << BUS_SHIFT) <= 13'd4096;
         for (genvar allocation=0; allocation<4; allocation++) begin : g_allocation
+            (* use_dsp = "yes" *) logic [33:0] base_difference;
+            (* use_dsp = "yes" *) logic [33:0] end_difference;
+            assign base_difference = {1'b0,request_addr_ext} - {2'b00,base_q[allocation]};
+            assign end_difference = {1'b0,end_q[allocation]} - {1'b0,request_end};
             assign fast_allocation[allocation] = base_q[allocation] != 0 &&
-                request_addr_ext >= {1'b0, base_q[allocation]} && request_end <= end_q[allocation];
+                !base_difference[33] && !end_difference[33];
         end
     end
 
