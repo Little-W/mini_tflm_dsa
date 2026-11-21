@@ -2,7 +2,7 @@
 
 本项目使用 Yosys、Slang 和 ABC 将 RTL 转换为 Xilinx 7 系列器件单元。脚本支持独立模块、完整 NPU 和包含 PicoRV32、片上存储器、AXI 互连及 UART 的完整 SoC。综合结果用于比较硬件结构与资源数量；150 MHz 工作频率由目标器件的布局布线时序报告检查。
 
-完整 SoC 同时检查三个目标：合法布局中的物理 LUT 位置不超过 45,000，最长寄存器间组合路径不超过 15 个组合单元，以及目标器件在 6.667 ns 周期下满足时序要求。物理 LUT 总数包含逻辑、分布式 RAM 和 SRL 使用的位置。每轮独立保存源码、参数、工具与结果摘要，分别记录面积、组合级数和布线后时序的检查状态。
+完整 SoC 的实现目标为物理 LUT 位置不超过 50,000，并在目标器件上满足 150 MHz 的建立时间与保持时间要求。物理 LUT 总数包含逻辑、分布式 RAM 和 SRL 使用的位置。组合路径的结构级数用于定位连续进位、比较与选择逻辑；实际时序同时包含单元延迟和布线延迟。每轮独立保存源码、参数、工具与结果摘要，分别记录面积、组合级数和布线后时序的检查状态。
 
 ## 环境与运行
 
@@ -29,6 +29,26 @@ python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
 ```
 
 `--source-root` 指定需要测量的仓库工作目录，`--out` 指定结果目录。每轮测量应使用独立结果目录，综合期间保持被测 RTL 不变。脚本在开始和结束时核对源码 SHA-256。
+
+## 原生 Vivado 完整 SoC 测量
+
+板级入口使用 `fpga_top`、`xc7a200tfbg484-3` 和 150 MHz 核心时钟，执行综合、布局与布线，并保存原生资源及建立时间、保持时间报告。
+
+```sh
+NPU_CONFIG="$PWD/config/npu_fpga.mk" VIVADO_RUN_IMPL=1 VIVADO_JOBS=8 \
+vivado -mode batch -source scripts/fpga/vivado_synth_fpga.tcl \
+  -tclargs build/vivado_150mhz xc7a200tfbg484-3 16 4 65536 0
+```
+
+布线结果位于 `build/vivado_150mhz/reports/routed`。`measurement.json` 默认检查总 Slice LUT 是否不超过 50,000，统计包含 LUT RAM 和 SRL 的占用。`timing_150mhz_confirmed` 结合完整布线状态、时序约束及建立时间和保持时间检查计算。
+
+除整个设计的时序汇总外，报告还保存以下诊断数据：
+
+- `fpga_top_module_endpoints.tsv` 与 `fpga_top_module_paths.rpt`：分别对 CPU、AXI、寄存器控制、DMA、im2col、向量、计算阵列、量化、输入装载、权重装载和部分和存储，选取最多二十个不同终点的建立时间路径及保持时间路径。
+- `fpga_top_logic_levels.rpt`：最差一万条建立时间路径的组合级数分布。
+- `fpga_top_high_fanout.rpt`：高扇出连接及负载信息。
+
+模块范围可以重叠。建立时间和保持时间的全设计 WNS、TNS 与失败终点数量取自原生汇总报告；结构级数样本用于定位后续需要调整的逻辑。
 
 ## 完整 SoC 配置
 
@@ -64,7 +84,7 @@ python3 scripts/fpga/open_fpga_synth.py --cases soc_top \
 
 各测量项自动包含 `rtl/common/` 下的 `.v` 和 `.sv` 文件，供 regfile 等公共模块使用。
 
-RTL 使用普通运算符描述选择、比较和布尔逻辑，未显式实例化 LUT 或 MUXF。当前直接使用的器件原语包括 `DSP48E1`、`FDRE` 和 `BUFGCE`。脚本从所安装 Yosys 的 `cells_sim.v` 和 `cells_xtra.v` 提取实际引用的原语定义，保留参数、端口和功能模型；Slang 展开时按黑盒导入这些器件实例，随后加载完整 Xilinx 单元库进行技术映射。技术映射还可生成 LUT、MUXF、CARRY、存储器和触发器原语。
+RTL 使用普通运算符描述选择、比较、算术和布尔逻辑，通过数组描述存储器。LUT、BRAM、DSP 和触发器均由综合工具推断。FPGA 时钟门控使用 `BUFGCE`，通用实现采用低电平锁存使能的门控结构，供 ASIC 流程进行时钟门控映射。脚本从所安装 Yosys 的 `cells_sim.v` 和 `cells_xtra.v` 提取实际引用的器件原语定义，保留参数、端口和功能模型；Slang 展开时导入这些定义，随后加载完整 Xilinx 单元库进行技术映射。
 
 生成的 `xilinx_primitives.sv`、所选原语名称和工具库的 SHA-256 随测量结果保存。功能仿真使用相同版本的原始 Xilinx 功能模型。
 
@@ -264,7 +284,7 @@ python3 scripts/fpga/tests/test_lut_remapping.py --out build/lut_remapping_valid
 | `lut_sites_nominal_before_packing` | 上述三项之和 |
 | `physical_lut_sites_after_placement` | 合法布局后的物理 LUT 位置数量；单独综合阶段为空 |
 
-`RAM32M` 和 `RAM64M` 各需要四个 LUT 存储位置，`RAM64X1D` 需要两个，`SRL16E` 和 `SRLC32E` 各需要一个。打包过程可以把满足条件的逻辑函数放入同一个 LUT，也可能为连接增加 LUT 单元。因此，完整 SoC 的 45,000 LUT 目标使用合法布局后的物理占用检查。
+`RAM32M` 和 `RAM64M` 各需要四个 LUT 存储位置，`RAM64X1D` 需要两个，`SRL16E` 和 `SRLC32E` 各需要一个。打包过程可以把满足条件的逻辑函数放入同一个 LUT，也可能为连接增加 LUT 单元。因此，完整 SoC 的 50,000 LUT 目标使用合法布局后的物理占用检查。
 
 ## 布局与布线
 
@@ -272,7 +292,7 @@ python3 scripts/fpga/tests/test_lut_remapping.py --out build/lut_remapping_valid
 它依次执行打包、普通 LUT 配对、带寄存器的 LUT 配对、混合配对和进位
 LUT 配对，再完成合法布局与逻辑引脚检查。各次配对核对功能单元内容，
 最终 `resources.json` 保存 `physical_lut_positions`、
-`placement_complete`、`pin_mapping_passed` 和 45,000 位置限制的检查结果。
+`placement_complete`、`pin_mapping_passed` 及该次测量所用位置限制的检查结果。
 
 ```sh
 python3 test/soc_rtl_optimization/run_physical.py \
@@ -681,7 +701,7 @@ python3 scripts/fpga/module_resources.py \
 
 `graph_complete` 表示分析器是否识别全部相关单元且不存在组合环路。`longest_register_path_cells` 是结构级数，包含进位单元及可能存在的未寄存 DSP 运算。它不包含单元延迟或连线延迟。完整 SoC 必须使用器件、封装、速度等级和全部所用单元的有效时序模型检查 6.667 ns 要求。
 
-`register_path_requirement` 保存 15 个组合单元的限制、实际最长路径以及检查结果。路径图完整时，`met` 按实际单元数是否不超过 15 计算；路径图未完成时该字段为空。同步数据输入和使能等同步控制输入均纳入检查。报告同时保留完整起止点、逐单元连接及 LUT、CARRY、DSP 等类型，供各模块缩短实际组合路径。该字段表示结构级数要求；150 MHz 通过状态由完整目标器件模型和布线后的 setup、hold 检查确定。
+`register_path_requirement` 保存结构级数检查所用的阈值、实际最长路径以及检查结果。路径图完整时，`met` 根据实际单元数与阈值计算；路径图未完成时该字段为空。同步数据输入和使能等同步控制输入均纳入检查。报告同时保留完整起止点、逐单元连接及 LUT、CARRY、DSP 等类型，供各模块缩短实际组合路径。结构级数用于分析组合逻辑；150 MHz 通过状态由完整目标器件模型和布线后的 setup、hold 检查确定。
 
 可单独分析已保存的网表：
 

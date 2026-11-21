@@ -15,8 +15,7 @@ proc soc_reports::dependency_sources {} {
 }
 
 proc soc_reports::check_array {directory {size 16}} {
-    # Record the inferred DSP cascade without enforcing a logic-depth target;
-    # routed 150 MHz setup and hold timing are the acceptance criteria.
+    # 记录综合推断的 DSP 级联，使用布线后 150 MHz 建立与保持时间检查频率。
     pe_dsp_boundary::check [file join $directory pe_dsp_boundary] \
         {*u_compute_core/u_systolic_array/*} $size 100000 100000
 }
@@ -40,6 +39,56 @@ proc soc_reports::snapshot {directory helper metadata sources include_dirs} {
     return $manifest
 }
 
+proc soc_reports::write_module_paths {directory prefix {count 20}} {
+    # 每组保存不同终点的最差路径，使各模块都能参与下一轮时序分析。
+    set scopes [dict create \
+        cpu {*u_picorv32/*} \
+        axi {*g_npu_axi_timing_buffer* *u_cpu_axi_read_pingpong/* *u_cpu_axi_write_pingpong/* *u_axi_sim_ram/*} \
+        control {*u_npu_axil_reg_if/*} \
+        dma {*u_block_dma_arbiter/*} \
+        im2col {*g_im2col.u_frontend/*} \
+        vector {*g_vector_engine.u_engine/*} \
+        compute {*u_compute_core/*} \
+        requant {*u_vec_requant/*} \
+        ia_loader {*u_ia_loader/*} \
+        kernel_loader {*u_kernel_loader/*} \
+        ps_storage {*u_ps_buffer/*}]
+    set table [open [file join $directory ${prefix}_module_endpoints.tsv] w]
+    set report [open [file join $directory ${prefix}_module_paths.rpt] w]
+    try {
+        puts $table "scope\tdelay_type\tclock\tclock_period_ns\tstartpoint\tendpoint\tslack_ns\tlogic_levels"
+        puts $report "Vivado per-module timing samples; at most $count distinct endpoints per delay type."
+        puts $report "Scopes can overlap. Global setup and hold results remain in the timing summary."
+        dict for {scope patterns} $scopes {
+            set sinks {}
+            foreach pattern $patterns {
+                foreach cell [get_cells -hierarchical -quiet -filter "IS_SEQUENTIAL == 1 && NAME =~ $pattern"] {
+                    lappend sinks $cell
+                }
+            }
+            set sinks [lsort -unique $sinks]
+            puts $report "\nScope: $scope; sequential cells: [llength $sinks]"
+            if {[llength $sinks] == 0} { continue }
+            foreach delay_type {max min} {
+                set paths [get_timing_paths -delay_type $delay_type -to $sinks \
+                    -nworst 1 -max_paths $count -no_report_unconstrained]
+                foreach path $paths {
+                    set clock [get_property ENDPOINT_CLOCK $path]
+                    set values [list $scope $delay_type [get_property NAME $clock] \
+                        [get_property PERIOD $clock] [get_property STARTPOINT_PIN $path] \
+                        [get_property ENDPOINT_PIN $path] [get_property SLACK $path] \
+                        [get_property LOGIC_LEVELS $path]]
+                    puts $table [join $values \t]
+                    puts $report "\n[unique_timing_paths::detail [report_timing -of_objects $path -return_string]]"
+                }
+            }
+        }
+    } finally {
+        close $table
+        close $report
+    }
+}
+
 proc soc_reports::write {directory {prefix soc_top}} {
     file mkdir $directory
     report_utilization -file [file join $directory ${prefix}_utilization.rpt]
@@ -48,6 +97,10 @@ proc soc_reports::write {directory {prefix soc_top}} {
         -file [file join $directory ${prefix}_timing_summary.rpt]
     unique_timing_paths::write [file join $directory ${prefix}_timing_paths.rpt] max
     unique_timing_paths::write [file join $directory ${prefix}_hold_paths.rpt] min
+    write_module_paths $directory $prefix
+    # 统计最差一万条建立时间路径的组合级数分布；该表保留明确的采样范围。
+    report_design_analysis -logic_level_distribution -logic_level_dist_paths 10000 \
+        -file [file join $directory ${prefix}_logic_levels.rpt]
     report_high_fanout_nets -fanout_greater_than 100 -max_nets 200 \
         -file [file join $directory ${prefix}_high_fanout.rpt]
     # 限量样本只用于诊断；完整的 WNS/TNS 和端点数量以原生汇总报告为准。

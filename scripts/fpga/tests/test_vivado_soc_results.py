@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """用人工构造的报告和 Tcl 命令模型检查原生 Vivado 测量流程。"""
+import csv
 import importlib.util
 import json
 import os
@@ -119,6 +120,26 @@ class ResultsTests(unittest.TestCase):
         self.assertIsNone(sample['max']['maximum_observed_logic_levels'])
         self.assertIsNone(sample['min']['worst_sampled_path'])
 
+    def test_total_slice_lut_limit_includes_memory_and_exact_limit(self):
+        manifest = self.work / 'manifest.json'
+        manifest.write_text(json.dumps(dict(inputs=[], metadata={}, git={})))
+        (self.work / 'soc_top_endpoints.tsv').write_text(
+            'delay_type\tclock\tstartpoint\tendpoint\tslack_ns\tlogic_levels\n')
+        for count in (49999, 50000, 50001):
+            with self.subTest(count=count):
+                report = UTILIZATION.replace('58,210', str(count)).replace(
+                    '56,075', str(count - 2135))
+                (self.work / 'soc_top_utilization.rpt').write_text(report)
+                value = results.summarize(manifest, self.work, 'synthesized')
+                self.assertEqual(value['requirements']['slice_luts_maximum'], 50000)
+                self.assertEqual(value['status']['slice_luts_within_limit'], count <= 50000)
+                self.assertIsNone(value['status']['timing_150mhz_confirmed'])
+        custom = results.summarize(manifest, self.work, 'synthesized', max_slice_luts=60000)
+        self.assertTrue(custom['status']['slice_luts_within_limit'])
+        self.assertEqual(custom['requirements']['slice_luts_maximum'], 60000)
+        with self.assertRaises(ValueError):
+            results.summarize(manifest, self.work, 'synthesized', max_slice_luts=0)
+
     def test_summary_does_not_derive_global_metrics_from_sample(self):
         manifest = self.work / 'manifest.json'
         manifest.write_text(json.dumps(dict(inputs=[], metadata={}, git={})))
@@ -137,6 +158,63 @@ class ResultsTests(unittest.TestCase):
         self.assertEqual(value['timing']['max']['endpoints'], 144664)
         self.assertEqual(value['timing']['max']['sample']['sampled_paths'], 1)
         self.assertIsNone(value['status']['all_connected_paths_within_nine_levels'])
+
+    def test_module_reports_select_distinct_endpoints_within_each_scope(self):
+        runner = self.work / 'modules.tcl'
+        runner.write_text('''
+source [lindex $argv 0]
+source [lindex $argv 1]
+vivado_timing_mock::clear_paths
+set ::cells [list soc/u_picorv32/pc soc/u_picorv32/state \
+    soc/u_block_dma_arbiter/request soc/u_cpu_axi_write_pingpong/valid]
+proc get_cells {args} {
+    set filter [vivado_timing_mock::option $args -filter]
+    if {![regexp {^IS_SEQUENTIAL == 1 && NAME =~ (.*)$} $filter -> pattern]} {
+        error "Expected a sequential-cell scope filter"
+    }
+    set selected {}
+    foreach cell $::cells {
+        if {[string match $pattern $cell]} { lappend selected $cell }
+    }
+    return $selected
+}
+foreach {name delay endpoint slack levels} {
+    cpu_worst max soc/u_picorv32/pc/D -2.0 18
+    cpu_same_endpoint max soc/u_picorv32/pc/D -1.5 17
+    cpu_other_endpoint max soc/u_picorv32/state/D -1.0 12
+    cpu_hold min soc/u_picorv32/pc/D 0.1 2
+    dma_max max soc/u_block_dma_arbiter/request/D -0.5 11
+    dma_min min soc/u_block_dma_arbiter/request/D 0.2 3
+    axi_max max soc/u_cpu_axi_write_pingpong/valid/D -0.2 8
+} {
+    vivado_timing_mock::add_path $name $delay $endpoint $slack soc_clk soc_clk 6.667
+    dict set ::vivado_timing_mock::paths $name LOGIC_LEVELS $levels
+}
+proc report_timing {args} {
+    set name [vivado_timing_mock::option $args -of_objects]
+    return "Slack (MET) : [get_property SLACK $name] ns\\n  Source: [get_property STARTPOINT_PIN $name]\\n  Destination: [get_property ENDPOINT_PIN $name]\\n"
+}
+soc_reports::write_module_paths [lindex $argv 2] fpga_top 2
+''')
+        process = subprocess.run([
+            'tclsh', str(runner), str(ROOT / 'scripts/fpga/tests/vivado_timing_mock.tcl'),
+            str(ROOT / 'scripts/fpga/vivado_soc_reports.tcl'), str(self.work),
+        ], text=True, capture_output=True, timeout=15)
+        self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
+        with (self.work / 'fpga_top_module_endpoints.tsv').open() as stream:
+            rows = list(csv.DictReader(stream, delimiter='\t'))
+        cpu = [row for row in rows if row['scope'] == 'cpu' and row['delay_type'] == 'max']
+        self.assertEqual([row['endpoint'] for row in cpu],
+                         ['soc/u_picorv32/pc/D', 'soc/u_picorv32/state/D'])
+        self.assertEqual([row['slack_ns'] for row in cpu], ['-2.0', '-1.0'])
+        self.assertEqual({row['scope'] for row in rows}, {'cpu', 'dma', 'axi'})
+        self.assertEqual(len(rows), 6)
+        self.assertTrue(all(row['clock'] == 'soc_clk' for row in rows))
+        self.assertEqual(next(row for row in rows if row['scope'] == 'axi')['endpoint'],
+                         'soc/u_cpu_axi_write_pingpong/valid/D')
+        report = (self.work / 'fpga_top_module_paths.rpt').read_text()
+        self.assertIn('Scope: im2col; sequential cells: 0', report)
+        self.assertIn('soc/u_block_dma_arbiter/request/D', report)
 
     def run_native_flow(self, *, routed=False, fail_route=False, board=False):
         mock = ROOT / 'scripts/fpga/tests/vivado_timing_mock.tcl'
@@ -192,7 +270,7 @@ foreach command {set_param create_project set_property read_verilog read_xdc syn
 foreach command {add_files generate_target export_ip_user_files update_compile_order launch_runs wait_on_run open_run} {
     proc $command {args} [format {vivado_timing_mock::record %s {*}$args; return} $command]
 }
-foreach command {report_timing_summary report_high_fanout_nets} {
+foreach command {report_timing_summary report_high_fanout_nets report_design_analysis} {
     proc $command {args} { vivado_timing_mock::report_file $args }
 }
 proc report_timing {args} {
@@ -263,6 +341,9 @@ source $entry
         self.assertEqual(value['configuration']['core_clock_mhz'], '150.000')
         self.assertEqual(value['configuration']['synthesis_directive'], 'PerformanceOptimized')
         self.assertTrue((output / 'fpga_top_endpoints.tsv').exists())
+        self.assertTrue((output / 'fpga_top_module_endpoints.tsv').exists())
+        self.assertTrue((output / 'fpga_top_module_paths.rpt').exists())
+        self.assertTrue((output / 'fpga_top_logic_levels.rpt').exists())
         self.assertTrue((output / 'pe_dsp_boundary/dsp_b_cascade.json').exists())
         self.assertIsNone(value['status']['timing_150mhz_confirmed'])
 

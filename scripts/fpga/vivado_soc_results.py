@@ -180,7 +180,9 @@ def timing_summary(text):
     return result
 
 
-def summarize(manifest, directory, stage, prefix='soc_top'):
+def summarize(manifest, directory, stage, prefix='soc_top', max_slice_luts=50000):
+    if max_slice_luts < 1:
+        raise ValueError('Maximum Slice LUT count must be positive')
     inputs = verify(manifest)
     directory = Path(directory)
     resources = utilization((directory / f'{prefix}_utilization.rpt').read_text())
@@ -197,9 +199,9 @@ def summarize(manifest, directory, stage, prefix='soc_top'):
                   source_manifest_sha256=digest(manifest), inputs_unchanged=True,
                   configuration=inputs['metadata'], git=inputs['git'], resources=resources,
                   timing=timing, implementation_checks=implementation,
-                  requirements=dict(slice_luts_maximum=45000, clock_period_ns_maximum=6.667,
+                  requirements=dict(slice_luts_maximum=max_slice_luts, clock_period_ns_maximum=6.667,
                                     combinational_logic_levels_maximum=None),
-                  status=dict(slice_luts_within_limit=resources['slice_luts'] <= 45000,
+                  status=dict(slice_luts_within_limit=resources['slice_luts'] <= max_slice_luts,
                                observed_endpoint_paths_within_nine_levels=
                                (max(item['maximum_observed_logic_levels'] for item in sampled.values()) <= 9
                                 if all(item['maximum_observed_logic_levels'] is not None
@@ -231,6 +233,8 @@ def main():
     report.add_argument('--directory', required=True, type=Path)
     report.add_argument('--stage', required=True, choices=('synthesized', 'routed'))
     report.add_argument('--prefix', choices=('soc_top', 'fpga_top'), default='soc_top')
+    report.add_argument('--max-slice-luts', type=int, default=50000,
+                        help='Maximum total Slice LUT count, including LUT RAM and SRL')
     args = parser.parse_args()
     if args.command == 'snapshot':
         value = snapshot(args.inputs, args.out)
@@ -239,7 +243,8 @@ def main():
         value = verify(args.manifest)
         print(json.dumps(dict(inputs=len(value['inputs']), unchanged=True)))
     else:
-        value = summarize(args.manifest, args.directory, args.stage, args.prefix)
+        value = summarize(args.manifest, args.directory, args.stage, args.prefix,
+                          args.max_slice_luts)
         print(json.dumps(dict(resources=value['resources'], status=value['status'])))
 
 

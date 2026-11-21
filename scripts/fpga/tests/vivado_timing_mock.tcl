@@ -259,8 +259,9 @@ proc get_timing_paths {args} {
     set ordered [list]
     dict for {name properties} $::vivado_timing_mock::paths {
         if {[dict get $properties DELAY_TYPE] ne $delay} { continue }
+        set endpoint_cell [join [lrange [split [dict get $properties ENDPOINT_PIN] /] 0 end-1] /]
         if {$capture ne "" && [dict get $properties ENDPOINT_CLOCK] ni $capture &&
-            [dict get $properties ENDPOINT_PIN] ni $capture} { continue }
+            [dict get $properties ENDPOINT_PIN] ni $capture && $endpoint_cell ni $capture} { continue }
         if {$launch ne "" && [dict get $properties STARTPOINT_CLOCK] ni $launch &&
             [dict get $properties STARTPOINT_PIN] ni $launch} { continue }
         set slack [dict get $properties SLACK]
