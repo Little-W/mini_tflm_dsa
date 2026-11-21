@@ -442,14 +442,29 @@ module axi_dual_block_dma #(
         .rd_raw_data, .rd_raw_valid, .rd_raw_row, .rd_raw_col_base
     );
 
+    logic buffered_wvalid, buffered_wready, buffered_wlast;
+    logic [BUS_WIDTH-1:0] buffered_wdata;
+    logic [BUS_WIDTH/8-1:0] buffered_wstrb;
+    logic write_guard_core_idle;
+
+    // 写数据和字节使能一起保存，源端就绪只由本地寄存容量决定。
+    dma_register_buffer #(.p_width(BUS_WIDTH+BUS_WIDTH/8+1)) u_write_data_buffer (
+        .clk, .rst_n,
+        .i_valid(linear_wvalid), .o_ready(linear_wready),
+        .i_data({linear_wdata,linear_wstrb,linear_wlast}),
+        .o_valid(buffered_wvalid), .i_ready(buffered_wready),
+        .o_data({buffered_wdata,buffered_wstrb,buffered_wlast})
+    );
+    assign write_guard_idle = write_guard_core_idle && !buffered_wvalid;
+
     axi_write_page_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH),
         .WRITE_OUTSTANDING(WRITE_OUTSTANDING)) u_write_guard (
         .clk, .rst_n,
         .s_awvalid(linear_awvalid), .s_awready(linear_awready),
         .s_awaddr(linear_awaddr), .s_awlen(linear_awlen),
         .s_awsize(linear_awsize), .s_awburst(linear_awburst),
-        .s_wvalid(linear_wvalid), .s_wready(linear_wready),
-        .s_wdata(linear_wdata), .s_wstrb(linear_wstrb), .s_wlast(linear_wlast),
+        .s_wvalid(buffered_wvalid), .s_wready(buffered_wready),
+        .s_wdata(buffered_wdata), .s_wstrb(buffered_wstrb), .s_wlast(buffered_wlast),
         .s_bvalid(linear_bvalid), .s_bready(linear_bready), .s_bresp(linear_bresp),
         .m_awvalid(m_axi_awvalid), .m_awready(m_axi_awready),
         .m_awaddr(m_axi_awaddr), .m_awlen(m_axi_awlen),
@@ -457,7 +472,7 @@ module axi_dual_block_dma #(
         .m_wvalid(m_axi_wvalid), .m_wready(m_axi_wready),
         .m_wdata(m_axi_wdata), .m_wstrb(m_axi_wstrb), .m_wlast(m_axi_wlast),
         .m_bvalid(m_axi_bvalid), .m_bready(m_axi_bready), .m_bresp(m_axi_bresp),
-        .idle(write_guard_idle)
+        .idle(write_guard_core_idle)
     );
 
     generate if (CONV_SUPPORTED) begin : g_im2col
@@ -484,13 +499,29 @@ module axi_dual_block_dma #(
         // Conv's ordinary matrix reads also need allocation-tail clipping.
         // The im2col span reader already emits exact legal byte/word transfers.
         logic read_mux_i_arvalid, read_mux_o_arvalid;
+        logic buffered_arvalid, buffered_arready, read_guard_core_idle;
+        logic [REG_WIDTH-1:0] buffered_araddr;
+        logic [7:0] buffered_arlen;
+        logic [2:0] buffered_arsize;
+        logic [1:0] buffered_arburst;
+
+        // 完整读地址先进入寄存队列，分配范围和页边界检查从寄存输出开始。
+        dma_register_buffer #(.p_width(REG_WIDTH+13)) u_read_address_buffer (
+            .clk, .rst_n,
+            .i_valid(linear_arvalid), .o_ready(linear_arready),
+            .i_data({linear_araddr,linear_arlen,linear_arsize,linear_arburst}),
+            .o_valid(buffered_arvalid), .i_ready(buffered_arready),
+            .o_data({buffered_araddr,buffered_arlen,buffered_arsize,buffered_arburst})
+        );
+        assign guard_idle = read_guard_core_idle && !buffered_arvalid;
+
         conv_axi_read_guard #(.ADDR_W(REG_WIDTH), .DATA_W(BUS_WIDTH),
             .SPLIT_GEMM_4K(1'b1), .READ_OUTSTANDING(READ_OUTSTANDING)) u_read_guard (
             .clk, .rst_n, .enable(job_read_guard), .cfg_valid(cfg_fire),
             .cfg_base(conv_range_base), .cfg_end(conv_range_end),
-            .s_arvalid(linear_arvalid), .s_arready(linear_arready),
-            .s_araddr(linear_araddr), .s_arlen(linear_arlen),
-            .s_arsize(linear_arsize), .s_arburst(linear_arburst),
+            .s_arvalid(buffered_arvalid), .s_arready(buffered_arready),
+            .s_araddr(buffered_araddr), .s_arlen(buffered_arlen),
+            .s_arsize(buffered_arsize), .s_arburst(buffered_arburst),
             .s_rvalid(linear_rvalid), .s_rready(linear_rready),
             .s_rdata(linear_rdata), .s_rresp(linear_rresp), .s_rlast(linear_rlast),
             .m_arvalid(guard_arvalid), .o_arb_arvalid(read_mux_i_arvalid), .m_arready(guard_arready),
@@ -498,7 +529,7 @@ module axi_dual_block_dma #(
             .m_arsize(guard_arsize), .m_arburst(guard_arburst),
             .m_rvalid(guard_rvalid), .m_rready(guard_rready),
             .m_rdata(guard_rdata), .m_rresp(guard_rresp), .m_rlast(guard_rlast),
-            .idle(guard_idle)
+            .idle(read_guard_core_idle)
         );
         // 保护模式的请求参与通道仲裁，直通模式的地址有效信号直接送往总线。
         assign m_axi_arvalid = job_read_guard ? read_mux_o_arvalid : guard_arvalid;
@@ -567,5 +598,55 @@ module axi_dual_block_dma #(
         if (!wr_busy) assert(write_guard_idle);
     end
 `endif
+endmodule
+
+// 两项寄存队列，输出数据与上下游容量信号均由寄存器直接提供。
+// 连续发送时每拍可接收下一项；下游暂停后可额外保存一项完整数据。
+module dma_register_buffer #(
+    parameter int unsigned p_width = 1
+) (
+    input wire logic clk,
+    input wire logic rst_n,
+    input wire logic i_valid,
+    output logic o_ready,
+    input wire logic [p_width-1:0] i_data,
+    output logic o_valid,
+    input wire logic i_ready,
+    output logic [p_width-1:0] o_data
+);
+    logic head_valid, tail_valid;
+    logic [p_width-1:0] head_data, tail_data;
+    logic accept_input, accept_output;
+
+    assign o_ready = !tail_valid;
+    assign o_valid = head_valid;
+    assign o_data = head_data;
+    assign accept_input = i_valid && o_ready;
+    assign accept_output = o_valid && i_ready;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            head_valid <= 1'b0;
+            tail_valid <= 1'b0;
+        end else if (accept_output) begin
+            head_valid <= tail_valid || accept_input;
+            tail_valid <= 1'b0;
+        end else if (accept_input) begin
+            head_valid <= 1'b1;
+            tail_valid <= head_valid;
+        end
+    end
+
+    // 数据寄存器随接收事件更新，有效标志控制复位后的可见内容。
+    always_ff @(posedge clk) begin
+        if (accept_output && tail_valid) begin
+            head_data <= tail_data;
+        end else if (accept_input && (!head_valid || accept_output)) begin
+            head_data <= i_data;
+        end
+        if (accept_input && head_valid && !accept_output) begin
+            tail_data <= i_data;
+        end
+    end
 endmodule
 
