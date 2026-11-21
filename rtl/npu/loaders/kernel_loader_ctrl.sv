@@ -134,6 +134,35 @@ module kernel_loader_ctrl #(
   count_t column_last_equal_i_target;
   logic column_last_equal_o_equal;
 
+  logic [3:0][CNT_W-1:0] traversal_i_value, traversal_o_next;
+  logic column_value_covers_limit, column_next_equals_limit;
+  logic column_increment_wrap;
+  assign traversal_i_value[0] = load_col_in_group;
+  assign traversal_i_value[1] = load_tile_row;
+  assign traversal_i_value[2] = load_l2;
+  assign traversal_i_value[3] = load_repeat;
+  // 四个遍历维度独立递增，边界比较和状态更新共用完整模宽结果。
+  for (genvar dimension = 0; dimension < 4; dimension++) begin : g_traversal_next
+    if (dimension == 0) begin : g_parallel
+      kernel_count_increment #(.p_width(CNT_W)) u_increment (
+        .i_value(traversal_i_value[dimension]), .o_next(traversal_o_next[dimension])
+      );
+    end else begin : g_increment
+      assign traversal_o_next[dimension] = traversal_i_value[dimension] + count_t'(1);
+    end
+  end
+
+  // 列边界并行检查当前值和相邻值，单独保留计数回绕时的无符号比较结果。
+  kernel_count_compare #(.p_width(CNT_W), .p_chunk_width(4)) u_column_limit (
+      .i_lhs(load_col_in_group), .i_rhs(current_group_width),
+      .o_ge(column_value_covers_limit)
+  );
+  add_equal #(.p_width(CNT_W)) u_column_next_equal (
+      .i_a(load_col_in_group), .i_b({CNT_W{1'b0}}), .i_target(current_group_width),
+      .i_carry_in(1'b1), .o_equal(column_next_equals_limit)
+  );
+  assign column_increment_wrap = &load_col_in_group;
+
   function automatic count_t ceil_div_pow2(input logic [REG_WIDTH-1:0] a,
                                            input count_t pow2);
     logic [REG_WIDTH-1:0] biased;
@@ -219,10 +248,11 @@ module kernel_loader_ctrl #(
       default:          group_addr_step_next = col_addr_step;
     endcase
 
-    last_col_in_group = (load_col_in_group + count_t'(1) >= current_group_width);
-    last_tile_row     = (load_tile_row + count_t'(1) >= tile_rows_total);
-    last_l2_group     = (load_l2 + count_t'(1) >= l2_groups_total);
-    last_repeat       = (load_repeat + count_t'(1) >= repeat_total);
+    last_col_in_group = (current_group_width == '0) ||
+        (!column_increment_wrap && (column_value_covers_limit || column_next_equals_limit));
+    last_tile_row     = (traversal_o_next[1] >= tile_rows_total);
+    last_l2_group     = (traversal_o_next[2] >= l2_groups_total);
+    last_repeat       = (traversal_o_next[3] >= repeat_total);
     final_load_done = load_done && all_loads_issued && load_count_reached;
 
     load_complete = all_loads_done;
@@ -382,19 +412,19 @@ module kernel_loader_ctrl #(
             if (last_col_in_group && last_tile_row && last_l2_group && last_repeat)
               all_loads_issued <= 1'b1;
             if (!last_col_in_group) begin
-              load_col_in_group <= load_col_in_group + 1'b1;
+              load_col_in_group <= traversal_o_next[0];
               col_addr_offset   <= col_addr_offset + col_addr_step;
             end else begin
               load_col_in_group <= '0;
               col_addr_offset   <= '0;
               if (!last_tile_row) begin
-                load_tile_row   <= load_tile_row + 1'b1;
+                load_tile_row   <= traversal_o_next[1];
                 row_addr_offset <= row_addr_offset + row_addr_step;
               end else begin
                 load_tile_row   <= '0;
                 row_addr_offset <= '0;
                 if (!last_l2_group) begin
-                  load_l2             <= load_l2 + 1'b1;
+                  load_l2             <= traversal_o_next[2];
                   group_base_col      <= group_base_col + current_group_width;
                   current_group_width <= following_group_width;
                   group_base_addr     <= group_base_addr + group_addr_step_q;
@@ -404,7 +434,7 @@ module kernel_loader_ctrl #(
                   current_group_width <= first_group_width;
                   group_base_addr     <= base_addr_reg;
                   if (!last_repeat) begin
-                    load_repeat <= load_repeat + 1'b1;
+                    load_repeat <= traversal_o_next[3];
                   end
                 end
               end
