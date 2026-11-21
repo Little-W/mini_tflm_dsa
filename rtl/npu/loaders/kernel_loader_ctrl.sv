@@ -92,7 +92,7 @@ module kernel_loader_ctrl #(
   count_t load_l2;
   count_t load_col_in_group;
   count_t group_base_col;
-  count_t load_tile_col;
+  (* use_dsp = "yes" *) count_t load_tile_col;
   total_count_t loaded_count;
   total_count_t sent_count;
   logic [1:0] pending_loads;
@@ -171,7 +171,16 @@ module kernel_loader_ctrl #(
     endcase
   end
 
-  logic [3:0][CNT_W-1:0] traversal_i_value, traversal_o_next;
+  logic [3:0][CNT_W-1:0] traversal_i_value;
+  (* use_dsp = "yes" *) logic [3:0][CNT_W-1:0] traversal_o_next;
+  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] column_offset_increment;
+  (* use_dsp = "yes" *) logic [REG_WIDTH-1:0] row_offset_increment, group_address_increment;
+  (* use_dsp = "yes" *) count_t group_column_increment;
+  // 地址和分组递增在接收条件之前并行计算，保留完整模宽。
+  assign column_offset_increment = col_addr_offset + col_addr_step;
+  assign row_offset_increment = row_addr_offset + row_addr_step;
+  assign group_column_increment = group_base_col + current_group_width;
+  assign group_address_increment = group_base_addr + group_addr_step_q;
   logic column_value_covers_limit, column_next_equals_limit;
   logic column_increment_wrap;
   logic column_below_limit, first_group_below_limit, following_group_below_limit;
@@ -401,6 +410,26 @@ module kernel_loader_ctrl #(
       .o_equal(column_last_equal_o_equal)
   );
 
+  (* keep = "true" *) logic advance_row, advance_group, advance_repeat;
+  // 行、分组和重复次数的更新资格独立准备，请求接收只控制寄存使能。
+  always_comb begin
+    advance_row = 1'b0;
+    advance_group = 1'b0;
+    advance_repeat = 1'b0;
+    if (!last_col_in_group) begin
+    end else begin
+      advance_row = 1'b1;
+      if (!last_tile_row) begin
+      end else begin
+        advance_group = 1'b1;
+        if (!last_l2_group) begin
+        end else if (!last_repeat) begin
+          advance_repeat = 1'b1;
+        end
+      end
+    end
+  end
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state               <= S_IDLE;
@@ -500,31 +529,35 @@ module kernel_loader_ctrl #(
               all_loads_issued <= 1'b1;
             if (!last_col_in_group) begin
               load_col_in_group <= traversal_o_next[0];
-              col_addr_offset   <= col_addr_offset + col_addr_step;
+              col_addr_offset <= column_offset_increment;
             end else begin
               load_col_in_group <= '0;
-              col_addr_offset   <= '0;
+              col_addr_offset <= '0;
+            end
+            if (advance_row) begin
               if (!last_tile_row) begin
-                load_tile_row   <= traversal_o_next[1];
-                row_addr_offset <= row_addr_offset + row_addr_step;
+                load_tile_row <= traversal_o_next[1];
+                row_addr_offset <= row_offset_increment;
               end else begin
-                load_tile_row   <= '0;
+                load_tile_row <= '0;
                 row_addr_offset <= '0;
-                if (!last_l2_group) begin
-                  load_l2             <= traversal_o_next[2];
-                  group_base_col      <= group_base_col + current_group_width;
-                  current_group_width <= following_group_width;
-                  group_base_addr     <= group_base_addr + group_addr_step_q;
-                end else begin
-                  load_l2             <= '0;
-                  group_base_col      <= '0;
-                  current_group_width <= first_group_width;
-                  group_base_addr     <= base_addr_reg;
-                  if (!last_repeat) begin
-                    load_repeat <= traversal_o_next[3];
-                  end
-                end
               end
+            end
+            if (advance_group) begin
+              if (!last_l2_group) begin
+                load_l2 <= traversal_o_next[2];
+                group_base_col <= group_column_increment;
+                current_group_width <= following_group_width;
+                group_base_addr <= group_address_increment;
+              end else begin
+                load_l2 <= '0;
+                group_base_col <= '0;
+                current_group_width <= first_group_width;
+                group_base_addr <= base_addr_reg;
+              end
+            end
+            if (advance_repeat) begin
+              load_repeat <= traversal_o_next[3];
             end
           end
 

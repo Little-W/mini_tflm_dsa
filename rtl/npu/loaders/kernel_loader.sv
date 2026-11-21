@@ -159,6 +159,11 @@ module kernel_loader #(
   localparam int p_size_shift = $clog2(SIZE);
   localparam int p_dimension_width = (SIZE < 1) ? 1 : $clog2(SIZE+1);
   logic demand_issue, prefetch_issue, demand_dma_start, prefetch_dma_start;
+  logic cache_data_available, demand_data_available;
+  (* keep = "true" *) logic managed_request_available, selected_request_available;
+  (* keep = "true" *) logic managed_prefetch_available, selected_prefetch;
+  logic request_permitted;
+  (* keep = "true" *) logic managed_grant_ready, unmanaged_grant_ready;
   logic cache_hit_fire, cache_hit_done, discard_fire;
   logic [1:0] response_slots_active;
   logic response_accept;
@@ -313,13 +318,45 @@ module kernel_loader #(
       !cache_flush && !init_cfg;
   assign prefetch_issue = managed_mode && prefetch_state == PF_PENDING && !command_waiting &&
       !ctrl_load_req && !transfer_active && !ext_dma_busy && buf_load_ready && !cache_flush && !init_cfg;
-  assign load_weight_req = !cache_flush &&
-      (managed_mode ? (demand_issue || prefetch_issue) : ctrl_load_req);
-  assign ctrl_load_granted = cache_hit_fire ||
-      (load_weight_granted && !cache_flush && (!managed_mode || demand_issue));
+  // 传输类型与后台资格提前选择，配置和清除只参与最后的请求屏蔽。
+  assign managed_prefetch_available = prefetch_state == PF_PENDING && !command_waiting &&
+      !ctrl_load_req && !transfer_active && !ext_dma_busy && buf_load_ready;
+  assign managed_request_available = (ctrl_load_req && demand_data_available) || managed_prefetch_available;
+  assign selected_request_available = managed_mode ? managed_request_available : ctrl_load_req;
+  assign selected_prefetch = managed_mode && managed_prefetch_available;
+  assign request_permitted = !cache_flush && (!managed_mode || !init_cfg);
+  always_comb begin
+    load_weight_req = selected_request_available && request_permitted;
+`ifndef SYNTHESIS
+    // 未知模式继续使用接口选择的四态语义。
+    if ((^managed_mode) === 1'bx) begin
+      load_weight_req = !cache_flush &&
+          (managed_mode ? (demand_issue || prefetch_issue) : ctrl_load_req);
+    end
+`endif
+  end
+  // 缓存命中和实际 DMA 授予先合并资格，配置与清除只参与末级接收选择。
+  assign cache_data_available = comparison_stored_ready && comparison_match_q &&
+      (prefetch_state == PF_CACHED || (prefetch_state == PF_LOADING && buf_load_commit));
+  assign demand_data_available = !transfer_active && !ext_dma_busy && buf_load_ready &&
+      (prefetch_state == PF_EMPTY || prefetch_state == PF_PENDING);
+  assign managed_grant_ready = managed_mode && ctrl_load_req &&
+      (cache_data_available || (load_weight_granted && demand_data_available));
+  assign unmanaged_grant_ready = load_weight_granted && !managed_mode;
+  assign ctrl_load_granted = !cache_flush &&
+      (unmanaged_grant_ready || (managed_grant_ready && !init_cfg));
   assign dma_start = load_idle_o_start;
-  assign prefetch_dma_start = dma_start && managed_mode && prefetch_issue;
-  assign demand_dma_start = dma_start && !prefetch_dma_start;
+  always_comb begin
+    prefetch_dma_start = dma_start && selected_prefetch;
+    demand_dma_start = dma_start && !selected_prefetch;
+`ifndef SYNTHESIS
+    // 控制输入含未知位时按逐级接收表达式传播四态结果。
+    if ((^{dma_start, managed_mode, cache_flush, init_cfg}) === 1'bx) begin
+      prefetch_dma_start = dma_start && managed_mode && prefetch_issue;
+      demand_dma_start = dma_start && !prefetch_dma_start;
+    end
+`endif
+  end
   assign buf_load_start = dma_start;
   assign response_accept = response_slots_active[ext_dma_wr_slot] && !cache_flush &&
       (!managed_mode || !transfer_discard);

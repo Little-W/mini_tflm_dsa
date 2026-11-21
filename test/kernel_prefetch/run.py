@@ -21,24 +21,26 @@ def main():
     parser.add_argument("--bus-width", type=int, choices=(32,64,128), default=64)
     parser.add_argument("--count-width", type=int, default=29)
     parser.add_argument("--rtl", type=Path, help="待验证的 kernel_loader.sv 源文件")
+    parser.add_argument("--source-root", type=Path, help="加载器与公共 RTL 所在的固定源码目录")
     parser.add_argument("--reuse-build", action="store_true")
     parser.add_argument("--fpga", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
+    source_root = args.source_root.resolve() if args.source_root else root
     test = root / "test/kernel_prefetch"
     out = args.out.resolve()
     obj = out / "obj"
     obj.mkdir(parents=True, exist_ok=True)
     sources = [
         Path(__file__).resolve(), test / "tb.sv", test / "main.cpp",
-        args.rtl.resolve() if args.rtl else root / "rtl/npu/loaders/kernel_loader.sv",
-        root / "rtl/npu/loaders/kernel_loader_buffer.sv",
-        root / "rtl/npu/loaders/kernel_loader_ctrl.sv",
-        root / "rtl/common/regfile.v",
-        root / "rtl/common/add_equal.sv",
-        root / "rtl/common/add3_equal.sv",
-        root / "rtl/common/parallel_prefix_add.sv",
-        root / "rtl/common/unsigned_compare.sv",
+        args.rtl.resolve() if args.rtl else source_root / "rtl/npu/loaders/kernel_loader.sv",
+        source_root / "rtl/npu/loaders/kernel_loader_buffer.sv",
+        source_root / "rtl/npu/loaders/kernel_loader_ctrl.sv",
+        source_root / "rtl/common/regfile.v",
+        source_root / "rtl/common/add_equal.sv",
+        source_root / "rtl/common/add3_equal.sv",
+        source_root / "rtl/common/parallel_prefix_add.sv",
+        source_root / "rtl/common/unsigned_compare.sv",
     ]
     def source_key(path):
         return str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
