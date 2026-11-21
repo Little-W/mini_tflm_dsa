@@ -45,7 +45,10 @@ def graph_parameter(value):
 
 def connectivity(path):
     """读取全部原语引脚，核对导出数量后建立与开源综合相同的位级连接图。"""
-    records = list(csv.reader(Path(path).read_text().splitlines(), delimiter='\t', quoting=csv.QUOTE_NONE))
+    content = Path(path).read_text()
+    if not content.endswith('\n'):
+        raise ValueError('Connectivity export did not finish')
+    records = list(csv.reader(content.splitlines(), delimiter='\t', quoting=csv.QUOTE_NONE))
     if not records or records[0] != ['format', 'vivado_connectivity_v1']:
         raise ValueError('Missing complete connectivity format header')
     if len(records[-1]) != 4 or records[-1][0] != 'complete':
@@ -445,7 +448,7 @@ def core_clock(path):
 
 
 def summarize(manifest, directory, stage, prefix='soc_top', max_slice_luts=50000,
-              max_register_path_cells=14):
+              max_register_path_cells=10):
     if max_slice_luts < 1:
         raise ValueError('Maximum Slice LUT count must be positive')
     if max_register_path_cells < 0:
@@ -521,7 +524,7 @@ def main():
     report.add_argument('--prefix', choices=('soc_top', 'fpga_top'), default='soc_top')
     report.add_argument('--max-slice-luts', type=int, default=50000,
                         help='Maximum total Slice LUT count, including LUT RAM and SRL')
-    report.add_argument('--max-register-path-cells', type=int, default=14)
+    report.add_argument('--max-register-path-cells', type=int, default=10)
     timing_command = commands.add_parser('check-timing')
     timing_command.add_argument('--report', type=Path, required=True)
     timing_command.add_argument('--out', type=Path, required=True)

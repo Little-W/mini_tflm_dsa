@@ -8,13 +8,70 @@ import subprocess
 import sys
 import tempfile
 
-from map_wide_alu import next_autoidx, retain_as_carry, select_cells
+from map_wide_alu import next_autoidx, retain_as_carry, select_attribute_cells, select_cells
 
 
 def cell(kind, inputs, outputs, width=32, preg=0):
     ports = {'A': inputs, 'B': ['0'] * width, 'Y': outputs}
     return {'type': kind, 'parameters': {'Y_WIDTH': width, 'PREG': preg},
             'connections': ports, 'port_directions': {'A': 'input', 'B': 'input', 'Y': 'output'}}
+
+
+class SelectAttributeAluTests(unittest.TestCase):
+    def test_constant_expression_string_attribute(self):
+        for value in ('yes', 'YES', '011110010110010101110011',
+                      '00000000011110010110010101110011'):
+            with self.subTest(value=value):
+                module = {'cells': {'sum': cell('$alu', [1], [2], width=36)},
+                          'netnames': {'result': {'bits': [2], 'attributes': {'use_dsp': value}}}}
+                self.assertEqual(select_attribute_cells(module, 1)['additional_dsp_cells'], 1)
+
+    def test_unmarked_or_non_dsp_constant_attributes(self):
+        for value in ('no', '0110111001101111', '01111001011001010111xxxx', 1, '',
+                      '01110011011010010110110101100100'):
+            with self.subTest(value=value):
+                alu = cell('$alu', [1], [2])
+                alu['attributes'] = {'use_dsp': value}
+                self.assertEqual(select_attribute_cells({'cells': {'sum': alu}}, 0)['selected'], [])
+
+    def test_encoded_cell_attribute(self):
+        alu = cell('$alu', [1], [2])
+        alu['attributes'] = {'use_dsp': '011110010110010101110011'}
+        self.assertEqual(select_attribute_cells({'cells': {'sum': alu}}, 1)['additional_dsp_cells'], 1)
+
+    def test_only_result_attribute_requests_dsp(self):
+        module = {'cells': {'requested': cell('$alu', [1], [2]),
+                            'ordinary': cell('$alu', [1], [3])},
+                  'netnames': {'sum': {'bits': [2], 'attributes': {'use_dsp': 'yes'}},
+                               'other': {'bits': [3], 'attributes': {'use_dsp': 'no'}}}}
+        report = select_attribute_cells(module, 2)
+        self.assertEqual([item['cell'] for item in report['selected']], ['requested'])
+        self.assertEqual(report['selected'][0]['rtl_signals'], ['sum'])
+
+    def test_marked_arithmetic_can_be_consecutive(self):
+        first, second = cell('$alu', [1], [2]), cell('$alu', [2], [3])
+        first['attributes'] = {'use_dsp': 'yes'}
+        second['attributes'] = {'use_dsp': 'YES'}
+        report = select_attribute_cells({'cells': {'first': first, 'second': second}}, 2)
+        self.assertEqual(report['additional_dsp_cells'], 2)
+
+    def test_budget_includes_existing_multipliers_and_reserve(self):
+        alu = cell('$alu', [1], [2])
+        alu['attributes'] = {'use_dsp': 'yes'}
+        module = {'cells': {'adder': alu, 'multiplier': cell('DSP48E1', [3], [4])}}
+        with self.assertRaisesRegex(ValueError, 'budget'):
+            select_attribute_cells(module, 2, reserve=1)
+
+    def test_unmarked_arithmetic_keeps_ordinary_implementation(self):
+        module = {'cells': {'adder': cell('$alu', [1], [2])},
+                  'netnames': {'constant': {'bits': ['0'], 'attributes': {'use_dsp': 'yes'}}}}
+        self.assertEqual(select_attribute_cells(module, 0)['selected'], [])
+
+    def test_wide_marked_operation_is_reported(self):
+        alu = cell('$alu', [1], [2], width=64)
+        alu['attributes'] = {'use_dsp': 'yes'}
+        with self.assertRaisesRegex(ValueError, 'width'):
+            select_attribute_cells({'cells': {'wide': alu}}, 2)
 
 
 class SelectWideAluTests(unittest.TestCase):

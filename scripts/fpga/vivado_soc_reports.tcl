@@ -39,12 +39,39 @@ proc soc_reports::soc_instance {} {
     return $cells
 }
 
+proc soc_reports::primitive_leaves {cells} {
+    # 复合存储原语由其内部叶级单元表示，每条导线只保留一个输出驱动。
+    set names [dict create]
+    set containers [dict create]
+    foreach cell $cells {
+        set name [get_property NAME $cell]
+        if {[dict exists $names $name]} { error "Duplicate primitive cell: $name" }
+        dict set names $name $cell
+    }
+    dict for {name cell} $names {
+        set parent $name
+        while {[set separator [string last / $parent]] >= 0} {
+            set parent [string range $parent 0 [expr {$separator - 1}]]
+            if {[dict exists $names $parent]} { dict set containers $parent 1 }
+        }
+    }
+    set leaves [list]
+    dict for {name cell} $names {
+        if {![dict exists $containers $name]} { lappend leaves $cell }
+    }
+    return $leaves
+}
+
 proc soc_reports::write_connectivity {directory prefix} {
-    set stream [open [file join $directory ${prefix}_connectivity.tsv] w]
+    set destination [file join $directory ${prefix}_connectivity.tsv]
+    set temporary ${destination}.tmp
+    # 当前测量开始时移除已有结果；完整记录写入并关闭后再发布本次文件。
+    file delete -force $destination $temporary
+    set stream [open $temporary w]
     try {
         graph_record $stream format vivado_connectivity_v1
         # 原生设计覆盖全部 SoC；板级设计覆盖完整 SoC 实例及其全部边界引脚。
-        set all_cells [get_cells -hierarchical -filter {IS_PRIMITIVE == 1 || IS_BLACKBOX == 1}]
+        set all_cells [primitive_leaves [get_cells -hierarchical -filter {IS_PRIMITIVE == 1 || IS_BLACKBOX == 1}]]
         if {$prefix eq "soc_top"} {
             set design_name [get_property NAME [current_design]]
             if {$design_name ne "soc_top"} { error "Native connectivity requires soc_top as the current design" }
@@ -89,6 +116,10 @@ proc soc_reports::write_connectivity {directory prefix} {
             foreach parameter $parameters {
                 set value [get_property $parameter $cell]
                 if {$value eq ""} { error "Missing primitive parameter $name/$parameter" }
+                if {$parameter eq "USE_DPORT"} {
+                    if {![string is boolean -strict $value]} { error "Invalid boolean parameter $name/$parameter" }
+                    set value [expr {$value ? "TRUE" : "FALSE"}]
+                }
                 graph_record $stream parameter $name $parameter $value
             }
             # 记录可选输入反相属性，防止将具有反相控制的 DSP 解释为固定 ALU 模式。
@@ -111,8 +142,12 @@ proc soc_reports::write_connectivity {directory prefix} {
         }
         # 完成记录独立列出原语、引脚和端口数量；部分输出不会被当作完整图。
         graph_record $stream complete [llength $cells] $pin_count [llength $ports]
-    } finally {
         close $stream
+        set stream ""
+        file rename -force $temporary $destination
+    } finally {
+        if {$stream ne ""} { close $stream }
+        file delete -force $temporary
     }
 }
 
@@ -317,7 +352,7 @@ proc soc_reports::write {directory {prefix soc_top}} {
     report_utilization -hierarchical -file [file join $directory ${prefix}_utilization_hier.rpt]
     report_timing_summary -delay_type min_max -report_unconstrained -check_timing_verbose \
         -file [file join $directory ${prefix}_timing_summary.rpt]
-    # 导出失败会保留缺少完成记录的文件，结果汇总据此禁止确认组合深度目标。
+    # 连接图仅在完整写入后发布；结果汇总保留测量缺失状态。
     foreach procedure {write_connectivity write_core_clock} {
         if {[catch {$procedure $directory $prefix} message]} {
             puts "Measurement unavailable ($procedure): $message"

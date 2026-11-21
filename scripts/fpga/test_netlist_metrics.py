@@ -51,16 +51,16 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(path['path'][0]['cell'], 'merge')
         self.assertTrue(filtered['graph_complete'])
 
-    def test_nine_cell_requirement(self):
-        for length in (8, 9, 10):
+    def test_ten_cell_requirement(self):
+        for length in (9, 10, 11):
             cells = {'first': flop(1, '0')}
             for index in range(length):
                 cells[f'logic_{index}'] = cell('LUT1', {'I0': [index + 1]}, {'O': [index + 2]})
             cells['last'] = flop(length + 3, length + 1)
             requirement = self.measure(cells)['register_path_requirement']
             self.assertEqual(requirement['observed_combinational_cells'], length)
-            self.assertEqual(requirement['maximum_combinational_cells'], 9)
-            self.assertEqual(requirement['met'], length <= 9)
+            self.assertEqual(requirement['maximum_combinational_cells'], 10)
+            self.assertEqual(requirement['met'], length <= 10)
 
     def test_incomplete_path_requirement(self):
         result = register_path_requirement({'longest_register_path_cells': 0, 'graph_complete': False})
@@ -104,17 +104,17 @@ class MetricsTest(unittest.TestCase):
 
     def test_reporting_limits_preserve_complete_graph_maximum(self):
         cells = {'first': flop(1, '0')}
-        for index in range(10):
+        for index in range(11):
             cells[f'logic_{index}'] = cell('LUT1', {'I0': [index + 1]}, {'O': [index + 2]})
-        cells['long'] = flop(20, 11)
+        cells['long'] = flop(20, 12)
         cells['short'] = flop(21, 2)
         module = {'cells': cells, 'netnames': {}}
-        for options in ({'limit': 0, 'group_limit': 0}, {'minimum_path_cells': 11}):
+        for options in ({'limit': 0, 'group_limit': 0}, {'minimum_path_cells': 12}):
             result = analyze(module, **options)
             self.assertEqual(result['paths']['register_to_register_paths'], [])
-            self.assertEqual(result['paths']['longest_register_path_cells'], 10)
+            self.assertEqual(result['paths']['longest_register_path_cells'], 11)
             self.assertFalse(result['register_path_requirement']['met'])
-            self.assertEqual(result['paths']['endpoint_port_maximum_depth_histogram'], {1: 1, 10: 1})
+            self.assertEqual(result['paths']['endpoint_port_maximum_depth_histogram'], {1: 1, 11: 1})
 
     def test_minimum_path_cells_filters_only_reported_paths(self):
         module = {'cells': {'first': flop(1, '0'),
@@ -243,7 +243,7 @@ class MetricsTest(unittest.TestCase):
                 self.assertEqual(fanout['register_path_groups'][0]['maximum_pin_fanout'], 1)
 
     def test_dsp_arithmetic_plus_lut_limit(self):
-        for length in (8, 9):
+        for length in (9, 10):
             cells = {'dsp': cell('DSP48E1', {'A': [50], 'B': [51], 'CLK': [100]},
                                  {'P': [1]}, {'PREG': 0, 'AREG': 1, 'BREG': 1})}
             for index in range(length):
@@ -251,7 +251,32 @@ class MetricsTest(unittest.TestCase):
             cells['last'] = flop(80, length + 1)
             result = self.measure(cells)
             self.assertEqual(result['paths']['longest_register_path_cells'], length + 1)
-            self.assertEqual(result['register_path_requirement']['met'], length == 8)
+            self.assertEqual(result['register_path_requirement']['met'], length == 9)
+
+    def test_dsp_boolean_parameter_representations(self):
+        for value, enabled in ((0, False), (1, True), (False, False), (True, True),
+                               ('FALSE', False), ('TRUE', True), ('0', False), ('1', True),
+                               ('00000000', False), ('00000001', True)):
+            with self.subTest(value=value):
+                cells = {'first': flop(1, '0'),
+                         'dsp': cell('DSP48E1', {'D': [1], 'CLK': [100]}, {'P': [2]},
+                                     {'USE_DPORT': value, 'PREG': 0}), 'last': flop(3, 2)}
+                self.assertEqual(self.measure(cells)['paths']['longest_register_path_cells'], int(enabled))
+        for value in (2, -1, 'UNKNOWN', '10', ''):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, 'boolean primitive parameter'):
+                    self.measure({'dsp': cell('DSP48E1', {'D': [1]}, {'P': [2]}, {'USE_DPORT': value})})
+
+    def test_leaf_lut_ram_address_dependencies(self):
+        for kind, address in (('RAMS32', 'ADR0'), ('RAMD32', 'RADR0')):
+            with self.subTest(kind=kind):
+                cells = {'first': flop(1, '0'),
+                         'ram': cell(kind, {address: [1], 'I': ['0'], 'WE': ['1'], 'CLK': [100]}, {'O': [2]}),
+                         'logic': cell('LUT1', {'I0': [2]}, {'O': [3]}), 'last': flop(4, 3)}
+                path = self.measure(cells)['paths']['register_to_register_paths'][0]
+                self.assertEqual(path['combinational_cells'], 2)
+                self.assertEqual(path['startpoint']['cell'], 'first')
+                self.assertEqual([step['cell'] for step in path['path']], ['ram', 'logic'])
 
     def test_dsp_combination_between_two_registered_boundaries(self):
         cells = {'first_dsp': cell('DSP48E1', {'A': [1], 'B': [2], 'CLK': [100]},
