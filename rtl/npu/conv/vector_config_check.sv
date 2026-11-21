@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Sequential descriptor validation. The caller holds cfg stable through done.
+// 按阶段检查描述符；调用方在 done 有效前保持 cfg 稳定。
 module vector_config_check #(
   parameter int TILE=16,
   parameter int MAX_TAPS=49,
@@ -28,12 +28,18 @@ module vector_config_check #(
   logic [17:0] range_x_compare, range_y_compare;
   logic output_x_in_range, output_y_in_range;
   logic fields_ok,spatial,depthwise,binary_vector,add_s8,softmax_s8;
+  logic activation_range_ok;
   logic [31:0] selected_base,range_base_q;
   logic [63:0] selected_bytes,range_bytes_q;
   logic selected_enable,range_enable_q,range_size_ok;
   logic [32:0] range_end_q,output_end_q;
   logic [7:0] range_end_low;
   logic range_end_carry;
+  // 两端均为有效 INT8 值时，仅比较低八位的有符号次序。
+  assign activation_range_ok =
+      (cfg.activation_min[31:8] == {24{cfg.activation_min[7]}}) &&
+      (cfg.activation_max[31:8] == {24{cfg.activation_max[7]}}) &&
+      ($signed(cfg.activation_min[7:0]) <= $signed(cfg.activation_max[7:0]));
   assign ready=state==IDLE;
   assign done=state==COMPLETE;
   assign spatial=cfg.op<=MINPOOL_S8;
@@ -77,8 +83,7 @@ module vector_config_check #(
         kernel_count<=32'(depthwise ? MAX_TAPS : POOL_MAX_TAPS) &&
         cfg.image.stride_h!=0 && cfg.image.stride_w!=0 &&
         cfg.image.dilation_h!=0 && cfg.image.dilation_w!=0 && !cfg.image.input_s16 && !cfg.vector_s16 &&
-        weight_bytes[63:32]==0 && cfg.activation_min>=-128 && cfg.activation_max<=127 &&
-        cfg.activation_min<=cfg.activation_max;
+        weight_bytes[63:32]==0 && activation_range_ok;
       if (depthwise) begin
         fields_ok=fields_ok && cfg.image.input_offset>=-127 && cfg.image.input_offset<=128 &&
           cfg.output_offset>=-128 && cfg.output_offset<=127 &&
@@ -104,7 +109,7 @@ module vector_config_check #(
         cfg.add.left_shift>=0 && cfg.add.left_shift<=22 &&
         cfg.add.output_shift>=-31 && cfg.add.output_shift<=30 &&
         cfg.output_offset>=-128 && cfg.output_offset<=127 &&
-        cfg.activation_min>=-128 && cfg.activation_max<=127 && cfg.activation_min<=cfg.activation_max;
+        activation_range_ok;
     end
   end
   always_comb begin
@@ -150,8 +155,7 @@ module vector_config_check #(
           state<=FIELDS;
         end
       end
-      // Independent registered 16-bit products avoid an unregistered DSP
-      // cascade. CAPTURE combines them without changing validation latency.
+      // 两个十六位乘积分别寄存，CAPTURE 状态合并结果并保持固定检查周期。
       CALCULATE: begin
         multiply_low<=multiply_a[15:0]*multiply_b;
         multiply_high<=multiply_a[31:16]*multiply_b;
