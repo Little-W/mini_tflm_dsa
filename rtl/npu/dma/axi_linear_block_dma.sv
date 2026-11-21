@@ -871,7 +871,29 @@ module axi_linear_block_dma #(
     logic [2*BYTE_PER_BEAT-1:0] wr_shifted_mask;
 
     // 同一字节旋转同时准备当前字和后续保留字，再按字节位置分配两部分。
-    if (BYTE_PER_BEAT > 1 && BYTE_PER_BEAT == (1 << ADDR_LSB)) begin : g_write_rotation
+    if (ADDR_LSB > 2 && BYTE_PER_BEAT == (1 << ADDR_LSB)) begin : g_grouped_write_shift
+        (* keep = 1 *) logic [2*BUS_WIDTH-1:0] low_shifted_data;
+        (* keep = 1 *) logic [2*BYTE_PER_BEAT-1:0] low_shifted_mask;
+        logic [2*BUS_WIDTH-1:0] complete_shifted_data;
+        logic [2*BYTE_PER_BEAT-1:0] complete_shifted_mask;
+        // 低两位先选择四种字节偏移，高位只选择已经形成的部分结果。
+        assign low_shifted_data = {{BUS_WIDTH{1'b0}}, src_wdata} << {wr_row_offset[1:0], 3'b000};
+        assign low_shifted_mask = {{BYTE_PER_BEAT{1'b0}}, src_wmask} << wr_row_offset[1:0];
+        assign complete_shifted_data = low_shifted_data << {wr_row_offset[ADDR_LSB-1:2], 5'b00000};
+        assign complete_shifted_mask = low_shifted_mask << {wr_row_offset[ADDR_LSB-1:2], 2'b00};
+        always_comb begin
+            case (^wr_row_offset)
+                1'b0, 1'b1: begin
+                    wr_shifted_data = complete_shifted_data;
+                    wr_shifted_mask = complete_shifted_mask;
+                end
+                default: begin
+                    wr_shifted_data = {{BUS_WIDTH{1'b0}}, src_wdata} << {wr_row_offset, 3'b000};
+                    wr_shifted_mask = {{BYTE_PER_BEAT{1'b0}}, src_wmask} << wr_row_offset;
+                end
+            endcase
+        end
+    end else if (BYTE_PER_BEAT > 1 && BYTE_PER_BEAT == (1 << ADDR_LSB)) begin : g_write_rotation
         logic [2*BUS_WIDTH-1:0] repeated_data;
         logic [2*BYTE_PER_BEAT-1:0] repeated_mask;
         logic [BUS_WIDTH-1:0] rotated_data;
