@@ -214,8 +214,12 @@ module npu_axil_reg_if #(
     wire ctrl_start_commit = write_commit && !npu_busy_q && npu_sa_ready && (wr_word_addr == REG_CTRL) && wr_strb[0] && wr_data[0];
 
     localparam int p_read_addr_width = $clog2(REG_IM2COL_CACHE_BYTES + 1);
+    localparam int p_read_group_bits = 4;
+    localparam int p_read_group_count = 1 << (p_read_addr_width - p_read_group_bits);
     logic [AXIL_DATA_WIDTH-1:0] read_data_next;
     logic [AXIL_DATA_WIDTH-1:0] read_words [0:(1 << p_read_addr_width)-1];
+    logic [AXIL_DATA_WIDTH-1:0] read_group_data [0:p_read_group_count-1];
+    logic [AXIL_DATA_WIDTH-1:0] read_selected_data;
     wire [31:0] shared_ia_banks_next = apply_wstrb(cfg_shared_ia_banks, wr_data, wr_strb);
     wire shared_allocation_valid = SHARED_CAPABLE && shared_ia_banks_next < 32 &&
         SHARED_IA_BANK_MASK[shared_ia_banks_next[4:0]];
@@ -252,99 +256,121 @@ module npu_axil_reg_if #(
         end
     endfunction
 
-    // 静态读回字表按二进制地址选择，完整地址检查保留未匹配地址的零值。
+    // 读回字表保持各寄存器的位布局，未使用的地址返回零值。
     always_comb begin
         for (int word = 0; word < (1 << p_read_addr_width); word++) begin
             read_words[word] = '0;
         end
-        read_words[REG_CTRL][10:9] = {cfg_rhs_tile_packed, cfg_lhs_tile_packed};
-        read_words[REG_CTRL][8] = cfg_vector_enable;
-        read_words[REG_CTRL][7:1] = {cfg_conv.bypass_cache, cfg_conv_enable, cfg_16x8, irq_enable, cfg_dataflow_mode,
+        read_words[p_read_addr_width'(REG_CTRL)][10:9] = {cfg_rhs_tile_packed, cfg_lhs_tile_packed};
+        read_words[p_read_addr_width'(REG_CTRL)][8] = cfg_vector_enable;
+        read_words[p_read_addr_width'(REG_CTRL)][7:1] = {cfg_conv.bypass_cache, cfg_conv_enable, cfg_16x8, irq_enable, cfg_dataflow_mode,
                                     use_per_channel, cfg_16bits_ia};
-        read_words[REG_VECTOR_OP] = {23'b0, cfg_vector_s16, 4'b0, cfg_vector_op};
-        read_words[REG_MATRIX_CAPS] = {8'(MATRIX_SIZE), 8'(MATRIX_PS_FRAMES),
+        read_words[p_read_addr_width'(REG_VECTOR_OP)] = {23'b0, cfg_vector_s16, 4'b0, cfg_vector_op};
+        read_words[p_read_addr_width'(REG_MATRIX_CAPS)] = {8'(MATRIX_SIZE), 8'(MATRIX_PS_FRAMES),
                                       8'(MATRIX_IA_CACHE_BLOCKS),
                                       8'((MATRIX_LAYOUT_CAPABLE ? 3 : 0) |
                                          (MATRIX_IS_CAPABLE ? 4 : 0))};
-        read_words[REG_MATRIX_PS_ROWS] = MATRIX_PS_ROWS;
-        read_words[REG_MATRIX_OUTPUT_BANKS] = {16'(MATRIX_S16_BANKS), 16'(MATRIX_S8_BANKS)};
-        read_words[REG_DMA_MAX_BYTES] = DMA_MAX_BYTES;
-        read_words[REG_AXI_DATA_BITS] = AXI_DATA_BITS;
-        read_words[REG_VECTOR_LENGTH] = cfg_vector_length;
-        read_words[REG_VECTOR_CAPS] = VECTOR_ENGINE_CAPABLE ?
+        read_words[p_read_addr_width'(REG_MATRIX_PS_ROWS)] = MATRIX_PS_ROWS;
+        read_words[p_read_addr_width'(REG_MATRIX_OUTPUT_BANKS)] = {16'(MATRIX_S16_BANKS), 16'(MATRIX_S8_BANKS)};
+        read_words[p_read_addr_width'(REG_DMA_MAX_BYTES)] = DMA_MAX_BYTES;
+        read_words[p_read_addr_width'(REG_AXI_DATA_BITS)] = AXI_DATA_BITS;
+        read_words[p_read_addr_width'(REG_VECTOR_LENGTH)] = cfg_vector_length;
+        read_words[p_read_addr_width'(REG_VECTOR_CAPS)] = VECTOR_ENGINE_CAPABLE ?
             {8'd1, 8'(DW_MAX_TAPS), 8'(VECTOR_PE_COUNT), 8'h7f} : 32'd0;
-        read_words[REG_VECTOR_CYCLES] = 32'd0;
-        read_words[REG_VECTOR_COMPUTE] = 32'd0;
-        read_words[REG_VECTOR_DMA_WAIT] = 32'd0;
-        read_words[REG_SOFTMAX_MAX_DEPTH] = VECTOR_ENGINE_CAPABLE ? 32'(SOFTMAX_MAX_DEPTH) : 32'd0;
-        read_words[REG_POOL_MAX_TAPS] = VECTOR_ENGINE_CAPABLE ? 32'(POOL_MAX_TAPS) : 32'd0;
-        read_words[REG_ADD_INPUT1_MULT] = cfg_add_input1_multiplier;
-        read_words[REG_ADD_INPUT1_SHIFT] = cfg_add_input1_shift;
-        read_words[REG_ADD_INPUT2_MULT] = cfg_add_input2_multiplier;
-        read_words[REG_ADD_INPUT2_SHIFT] = cfg_add_input2_shift;
-        read_words[REG_ADD_LEFT_SHIFT] = cfg_add_left_shift;
-        read_words[REG_STATUS][7:0] = status_bits[7:0];
-        read_words[REG_WB_DATA] = last_done_data;
-        read_words[REG_LHS_BASE] = lhs_base;
-        read_words[REG_RHS_BASE] = rhs_base;
-        read_words[REG_DST_BASE] = dst_base;
-        read_words[REG_BIAS_BASE] = bias_base;
-        read_words[REG_K] = k;
-        read_words[REG_N] = n;
-        read_words[REG_M] = m;
-        read_words[REG_LHS_STRIDE_B] = lhs_row_stride_b;
-        read_words[REG_RHS_STRIDE_B] = rhs_col_stride_b;
-        read_words[REG_DST_STRIDE_B] = dst_row_stride_b;
-        read_words[REG_LHS_ZP] = lhs_zp;
-        read_words[REG_RHS_ZP] = rhs_zp;
-        read_words[REG_DST_ZP] = dst_zp;
-        read_words[REG_Q_MULT] = q_mult_pt;
-        read_words[REG_Q_SHIFT] = q_shift_pt;
-        read_words[REG_ACT_MIN] = act_min;
-        read_words[REG_ACT_MAX] = act_max;
-        read_words[REG_IA_REUSE] = cfg_ia_reuse_num;
-        read_words[REG_W_REUSE] = cfg_w_reuse_num;
-        read_words[REG_DATAFLOW][0] = cfg_dataflow_mode;
-        read_words[REG_ROW_GROUPS] = cfg_row_groups;
-        read_words[REG_ROW_TAIL_TILES] = cfg_row_tail_tiles;
-        read_words[REG_COL_GROUPS] = cfg_col_groups;
-        read_words[REG_COL_TAIL_TILES] = cfg_col_tail_tiles;
-        read_words[REG_CONFIG_ABI] = 32'd2;
-        read_words[REG_PS_CONTROL] = cfg_ps_control;
-        read_words[REG_PS_CAPS] = PS_CAPS;
-        read_words[REG_PS_COMMANDS] = 32'd0;
-        read_words[REG_PS_PRESSURE] = 32'd0;
-        read_words[REG_PS_EARLY_FINISH] = 32'd0;
-        read_words[REG_PS_POOL_BYTES] = SHARED_CAPABLE ?
+        read_words[p_read_addr_width'(REG_VECTOR_CYCLES)] = 32'd0;
+        read_words[p_read_addr_width'(REG_VECTOR_COMPUTE)] = 32'd0;
+        read_words[p_read_addr_width'(REG_VECTOR_DMA_WAIT)] = 32'd0;
+        read_words[p_read_addr_width'(REG_SOFTMAX_MAX_DEPTH)] = VECTOR_ENGINE_CAPABLE ? 32'(SOFTMAX_MAX_DEPTH) : 32'd0;
+        read_words[p_read_addr_width'(REG_POOL_MAX_TAPS)] = VECTOR_ENGINE_CAPABLE ? 32'(POOL_MAX_TAPS) : 32'd0;
+        read_words[p_read_addr_width'(REG_ADD_INPUT1_MULT)] = cfg_add_input1_multiplier;
+        read_words[p_read_addr_width'(REG_ADD_INPUT1_SHIFT)] = cfg_add_input1_shift;
+        read_words[p_read_addr_width'(REG_ADD_INPUT2_MULT)] = cfg_add_input2_multiplier;
+        read_words[p_read_addr_width'(REG_ADD_INPUT2_SHIFT)] = cfg_add_input2_shift;
+        read_words[p_read_addr_width'(REG_ADD_LEFT_SHIFT)] = cfg_add_left_shift;
+        read_words[p_read_addr_width'(REG_STATUS)][7:0] = status_bits[7:0];
+        read_words[p_read_addr_width'(REG_WB_DATA)] = last_done_data;
+        read_words[p_read_addr_width'(REG_LHS_BASE)] = lhs_base;
+        read_words[p_read_addr_width'(REG_RHS_BASE)] = rhs_base;
+        read_words[p_read_addr_width'(REG_DST_BASE)] = dst_base;
+        read_words[p_read_addr_width'(REG_BIAS_BASE)] = bias_base;
+        read_words[p_read_addr_width'(REG_K)] = k;
+        read_words[p_read_addr_width'(REG_N)] = n;
+        read_words[p_read_addr_width'(REG_M)] = m;
+        read_words[p_read_addr_width'(REG_LHS_STRIDE_B)] = lhs_row_stride_b;
+        read_words[p_read_addr_width'(REG_RHS_STRIDE_B)] = rhs_col_stride_b;
+        read_words[p_read_addr_width'(REG_DST_STRIDE_B)] = dst_row_stride_b;
+        read_words[p_read_addr_width'(REG_LHS_ZP)] = lhs_zp;
+        read_words[p_read_addr_width'(REG_RHS_ZP)] = rhs_zp;
+        read_words[p_read_addr_width'(REG_DST_ZP)] = dst_zp;
+        read_words[p_read_addr_width'(REG_Q_MULT)] = q_mult_pt;
+        read_words[p_read_addr_width'(REG_Q_SHIFT)] = q_shift_pt;
+        read_words[p_read_addr_width'(REG_ACT_MIN)] = act_min;
+        read_words[p_read_addr_width'(REG_ACT_MAX)] = act_max;
+        read_words[p_read_addr_width'(REG_IA_REUSE)] = cfg_ia_reuse_num;
+        read_words[p_read_addr_width'(REG_W_REUSE)] = cfg_w_reuse_num;
+        read_words[p_read_addr_width'(REG_DATAFLOW)][0] = cfg_dataflow_mode;
+        read_words[p_read_addr_width'(REG_ROW_GROUPS)] = cfg_row_groups;
+        read_words[p_read_addr_width'(REG_ROW_TAIL_TILES)] = cfg_row_tail_tiles;
+        read_words[p_read_addr_width'(REG_COL_GROUPS)] = cfg_col_groups;
+        read_words[p_read_addr_width'(REG_COL_TAIL_TILES)] = cfg_col_tail_tiles;
+        read_words[p_read_addr_width'(REG_CONFIG_ABI)] = 32'd2;
+        read_words[p_read_addr_width'(REG_PS_CONTROL)] = cfg_ps_control;
+        read_words[p_read_addr_width'(REG_PS_CAPS)] = PS_CAPS;
+        read_words[p_read_addr_width'(REG_PS_COMMANDS)] = 32'd0;
+        read_words[p_read_addr_width'(REG_PS_PRESSURE)] = 32'd0;
+        read_words[p_read_addr_width'(REG_PS_EARLY_FINISH)] = 32'd0;
+        read_words[p_read_addr_width'(REG_PS_POOL_BYTES)] = SHARED_CAPABLE ?
             32'(SHARED_TOTAL_BYTES) - cfg_shared_ia_banks * 32'(SHARED_BANK_BYTES) : 32'(PS_POOL_BYTES);
-        read_words[REG_IA_CACHE_BYTES] = SHARED_CAPABLE ?
+        read_words[p_read_addr_width'(REG_IA_CACHE_BYTES)] = SHARED_CAPABLE ?
             cfg_shared_ia_banks * 32'(SHARED_BANK_BYTES) : 32'(IA_CACHE_BYTES);
-        read_words[REG_IM2COL_CACHE_BYTES] = CONV_CAPABLE ? 32'(CONV_CACHE_BYTES) : 32'd0;
-        read_words[REG_SHARED_TOTAL_BYTES] = SHARED_CAPABLE ? 32'(SHARED_TOTAL_BYTES) : 32'd0;
-        read_words[REG_SHARED_BANK_BYTES] = SHARED_CAPABLE ? 32'(SHARED_BANK_BYTES) : 32'd0;
-        read_words[REG_SHARED_IA_BANKS] = cfg_shared_ia_banks;
-        read_words[REG_SHARED_IA_BANK_MASK] = SHARED_CAPABLE ? SHARED_IA_BANK_MASK : 32'd0;
-        read_words[REG_PS_DIRECTORY_ROWS] = SHARED_CAPABLE ? 32'(PS_DIRECTORY_ROWS) : 32'd0;
-        read_words[12'h01d] = cfg_conv.input_base;
-        read_words[12'h01e] = {cfg_conv.input_w, cfg_conv.input_h};
-        read_words[12'h01f] = {cfg_conv.group_c, cfg_conv.input_c};
-        read_words[12'h020] = {16'b0, cfg_conv.group_offset};
-        read_words[12'h021] = {cfg_conv.kernel_w, cfg_conv.kernel_h};
-        read_words[12'h022] = {cfg_conv.output_w, cfg_conv.output_h};
-        read_words[12'h023] = {cfg_conv.stride_w, cfg_conv.stride_h};
-        read_words[12'h024] = {cfg_conv.dilation_w, cfg_conv.dilation_h};
-        read_words[12'h025] = {cfg_conv.pad_left, cfg_conv.pad_top};
-        read_words[12'h026] = {{16{cfg_conv.input_offset[15]}}, cfg_conv.input_offset};
-        read_words[12'h027] = CONV_CAPABLE ?
+        read_words[p_read_addr_width'(REG_IM2COL_CACHE_BYTES)] = CONV_CAPABLE ? 32'(CONV_CACHE_BYTES) : 32'd0;
+        read_words[p_read_addr_width'(REG_SHARED_TOTAL_BYTES)] = SHARED_CAPABLE ? 32'(SHARED_TOTAL_BYTES) : 32'd0;
+        read_words[p_read_addr_width'(REG_SHARED_BANK_BYTES)] = SHARED_CAPABLE ? 32'(SHARED_BANK_BYTES) : 32'd0;
+        read_words[p_read_addr_width'(REG_SHARED_IA_BANKS)] = cfg_shared_ia_banks;
+        read_words[p_read_addr_width'(REG_SHARED_IA_BANK_MASK)] = SHARED_CAPABLE ? SHARED_IA_BANK_MASK : 32'd0;
+        read_words[p_read_addr_width'(REG_PS_DIRECTORY_ROWS)] = SHARED_CAPABLE ? 32'(PS_DIRECTORY_ROWS) : 32'd0;
+        read_words[p_read_addr_width'(12'h01d)] = cfg_conv.input_base;
+        read_words[p_read_addr_width'(12'h01e)] = {cfg_conv.input_w, cfg_conv.input_h};
+        read_words[p_read_addr_width'(12'h01f)] = {cfg_conv.group_c, cfg_conv.input_c};
+        read_words[p_read_addr_width'(12'h020)] = {16'b0, cfg_conv.group_offset};
+        read_words[p_read_addr_width'(12'h021)] = {cfg_conv.kernel_w, cfg_conv.kernel_h};
+        read_words[p_read_addr_width'(12'h022)] = {cfg_conv.output_w, cfg_conv.output_h};
+        read_words[p_read_addr_width'(12'h023)] = {cfg_conv.stride_w, cfg_conv.stride_h};
+        read_words[p_read_addr_width'(12'h024)] = {cfg_conv.dilation_w, cfg_conv.dilation_h};
+        read_words[p_read_addr_width'(12'h025)] = {cfg_conv.pad_left, cfg_conv.pad_top};
+        read_words[p_read_addr_width'(12'h026)] = {{16{cfg_conv.input_offset[15]}}, cfg_conv.input_offset};
+        read_words[p_read_addr_width'(12'h027)] = CONV_CAPABLE ?
             (32'h0001_0003 | (CONV_IS_CAPABLE ? 32'h0000_0004 : 32'b0)) : 32'b0;
-        read_words[12'h028] = 32'd0;
-        read_words[12'h029] = 32'd0;
-        read_words[12'h02a] = 32'd0;
-        read_words[12'h02b] = 32'd0;
-        read_words[REG_ID] = NPU_ID;
+        read_words[p_read_addr_width'(12'h028)] = 32'd0;
+        read_words[p_read_addr_width'(12'h029)] = 32'd0;
+        read_words[p_read_addr_width'(12'h02a)] = 32'd0;
+        read_words[p_read_addr_width'(12'h02b)] = 32'd0;
+        read_words[p_read_addr_width'(REG_ID)] = NPU_ID;
+    end
+
+    // 每组包含十六个读回字，组内由低位地址选择。
+    for (genvar group_index = 0; group_index < p_read_group_count; group_index++) begin : g_read_group
+        assign read_group_data[group_index] = read_words[
+            {(p_read_addr_width-p_read_group_bits)'(group_index),
+             rd_word_addr[p_read_group_bits-1:0]}];
+    end
+
+    // 高位地址的比较条件互斥，直接选择对应组的数据。
+    always_comb begin
+        read_selected_data = '0;
+        for (int group_index = 0; group_index < p_read_group_count; group_index++) begin
+            if (rd_word_addr[p_read_addr_width-1:p_read_group_bits] ==
+                (p_read_addr_width-p_read_group_bits)'(group_index)) begin
+                read_selected_data = read_group_data[group_index];
+            end
+        end
+    end
+
+    // 完整地址有效时才采用选择结果；越界地址及未知地址保持默认零值。
+    always_comb begin
         read_data_next = '0;
         if (32'(rd_word_addr) < (32'd1 << p_read_addr_width)) begin
-            read_data_next = read_words[rd_word_addr[p_read_addr_width-1:0]];
+            read_data_next = read_selected_data;
         end
     end
 

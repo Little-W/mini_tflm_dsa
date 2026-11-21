@@ -17,40 +17,65 @@ def normalize(text):
     return re.sub(r'\s+', '', text)
 
 
+def read_assignments(source):
+    """提取寄存器地址与赋值表达式，兼容直接读表和分组读表。"""
+    constants = {name: int(value, 16) for name, value in
+                 re.findall(r"localparam logic \[11:0\] (\w+)\s*=\s*12'h([0-9a-f]+)", source)}
+    entries = []
+    if '        case (rd_word_addr)' in source:
+        first = source.index('        case (rd_word_addr)')
+        block = source[first:source.index('        endcase', first)]
+        labels = list(re.finditer(r"^            (REG_\w+|12'h[0-9a-f]+):", block, re.M))
+        for index, label in enumerate(labels):
+            address = int(label[1][4:], 16) if label[1].startswith("12'h") else constants[label[1]]
+            body = block[label.end():labels[index+1].start() if index+1 < len(labels)
+                         else block.index('            default:')]
+            for suffix, expression in re.findall(r'read_data_next(\[[^\]]+\])?\s*=\s*(.*?);', body, re.S):
+                entries.append((address, normalize(suffix), normalize(expression)))
+    else:
+        pattern = r"read_words\[(?:p_read_addr_width'\()?" \
+                  r"(REG_\w+|12'h[0-9a-f]+)\)?\](\[[^\]]+\])?\s*=\s*(.*?);"
+        for label, suffix, expression in re.findall(pattern, source, re.S):
+            address = int(label[4:], 16) if label.startswith("12'h") else constants[label]
+            entries.append((address, normalize(suffix), normalize(expression)))
+    if not entries:
+        raise ValueError('源码未包含可识别的寄存器读回赋值')
+    return constants, sorted(entries)
+
+
+def read_selection(source):
+    """直接使用生产源码中的声明和选择逻辑生成四态检查模块。"""
+    first = source.index('    localparam int p_read_addr_width')
+    stop = source.index('    wire [31:0] shared_ia_banks_next', first)
+    declarations = source[first:stop]
+    last_assignment = list(re.finditer(r'read_words\[[^;]+?\]\s*(?:\[[^\]]+\])?\s*=.*?;', source, re.S))[-1]
+    table_end = source.index('\n    end', last_assignment.end()) + len('\n    end')
+    sequential = source.index('    always_ff @(posedge clk or negedge rst_n)', table_end)
+    return declarations, source[table_end:sequential]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--reference', default='c7088884')
+    parser.add_argument('--baseline-ref', '--reference', dest='reference', default='4dee27ff')
+    parser.add_argument('--source', type=Path, default=ROOT / SOURCE)
+    parser.add_argument('--iverilog', default='iverilog')
+    parser.add_argument('--vvp', default='vvp')
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    original = read_rtl_source(f'{args.reference}:{SOURCE}', cwd=ROOT, text=True)
-    current = (ROOT / SOURCE).read_text()
-    constants = {name: int(value, 16) for name, value in
-                 re.findall(r"localparam logic \[11:0\] (\w+)\s*=\s*12'h([0-9a-f]+)", original)}
-    first = original.index('        case (rd_word_addr)')
-    block = original[first:original.index('        endcase', first)]
-    entries = list(re.finditer(r"^            (REG_\w+|12'h[0-9a-f]+):", block, re.M))
-    addresses = []
-    assignments = 0
-    for index, entry in enumerate(entries):
-        label = entry[1]
-        value = int(label[4:], 16) if label.startswith("12'h") else constants[label]
-        addresses.append(value)
-        body = block[entry.end():entries[index+1].start() if index+1 < len(entries)
-                     else block.index('            default:')]
-        for assignment in re.findall(r'read_data_next(?:\[[^\]]+\])?\s*=.*?;', body, re.S):
-            converted = assignment.replace('read_data_next', f'read_words[{label}]')
-            assert normalize(converted) in normalize(current), label
-            assignments += 1
-    actual_labels = re.findall(r"read_words\[(REG_\w+|12'h[0-9a-f]+)\]", current)
-    actual_addresses = {int(label[4:], 16) if label.startswith("12'h") else constants[label]
-                        for label in actual_labels}
-    assert actual_addresses == set(addresses)
-    first = current.index("        read_data_next = '0;")
-    end = current.index('\n    end', first)
-    selection = current[first:end]
-    assert 'case' not in selection and 'read_words[rd_word_addr[p_read_addr_width-1:0]]' in selection
+    (out / 'summary.json').write_text(json.dumps({'passed': False}) + '\n')
+    reference = subprocess.check_output(
+        ['git', 'rev-parse', '--verify', '--end-of-options', f'{args.reference}^{{commit}}'],
+        cwd=ROOT, text=True).strip()
+    original = read_rtl_source(f'{reference}:{SOURCE}', cwd=ROOT, text=True)
+    current = args.source.read_text()
+    _, reference_assignments = read_assignments(original)
+    constants, current_assignments = read_assignments(current)
+    assert current_assignments == reference_assignments, '寄存器地址或赋值表达式不一致'
+    addresses = sorted({address for address, _, _ in reference_assignments})
+    assignments = len(reference_assignments)
+    declarations, selection = read_selection(current)
     results = []
     for width in (32, 64):
         folder = out / f'data{width}'
@@ -63,10 +88,11 @@ def main():
                          for address in addresses)
         tb = folder / 'tb.sv'
         tb.write_text(f'''module tb;
-    localparam integer p_read_addr_width = 7;
+    localparam integer AXIL_DATA_WIDTH = {width};
+    localparam logic [11:0] REG_IM2COL_CACHE_BYTES = 12'd{constants['REG_IM2COL_CACHE_BYTES']};
     logic [11:0] rd_word_addr;
-    logic [{width-1}:0] read_words [0:127];
-    logic [{width-1}:0] reference_data, read_data_next;
+    logic [{width-1}:0] reference_data;
+{declarations}
     always_comb begin
         reference_data = '0;
         case (rd_word_addr)
@@ -74,9 +100,7 @@ def main():
             default: begin end
         endcase
     end
-    always_comb begin
 {selection}
-    end
     initial begin
         for (integer word = 0; word < 128; word++) read_words[word] = '0;
         for (integer sample = 0; sample < 11264; sample++) begin
@@ -100,9 +124,9 @@ def main():
 endmodule
 ''')
         with (folder / 'compile.log').open('w') as stream:
-            subprocess.run(['iverilog', '-g2012', '-s', 'tb', '-o', str(folder / 'sim'), str(tb)],
+            subprocess.run([args.iverilog, '-g2012', '-s', 'tb', '-o', str(folder / 'sim'), str(tb)],
                            stdout=stream, stderr=subprocess.STDOUT, check=True)
-        result = subprocess.run(['vvp', str(folder / 'sim')], text=True, capture_output=True, check=True)
+        result = subprocess.run([args.vvp, str(folder / 'sim')], text=True, capture_output=True, check=True)
         (folder / 'run.log').write_text(result.stdout + result.stderr)
         assert 'AXIL_READ_FOUR_STATE_PASS' in result.stdout
         results.append({'data_width': width, 'samples': 11264, 'passed': True})
@@ -152,15 +176,19 @@ module tb;
 endmodule
 """)
     with (out / 'bank_compile.log').open('w') as stream:
-        subprocess.run(['iverilog', '-g2012', '-s', 'tb', '-o', str(out / 'bank_sim'), str(bank_tb)],
+        subprocess.run([args.iverilog, '-g2012', '-s', 'tb', '-o', str(out / 'bank_sim'), str(bank_tb)],
                        stdout=stream, stderr=subprocess.STDOUT, check=True)
-    bank_run = subprocess.run(['vvp', str(out / 'bank_sim')], text=True, capture_output=True, check=True)
+    bank_run = subprocess.run([args.vvp, str(out / 'bank_sim')], text=True, capture_output=True, check=True)
     (out / 'bank_run.log').write_text(bank_run.stdout + bank_run.stderr)
     assert 'AXIL_BANK_FOUR_STATE_PASS' in bank_run.stdout
+    assert current == args.source.read_text(), '测试期间源码发生变化'
     (out / 'summary.json').write_text(json.dumps({'passed': True, 'profiles': results,
         'address_states': ['0', '1', 'x', 'z'], 'data_states': ['0', '1', 'x', 'z'],
         'decoded_addresses': len(addresses), 'unchanged_word_assignments': assignments,
         'bank_masks': masks, 'bank_samples': 100004,
+        'reference_commit': reference, 'source_file': str(args.source.resolve()),
+        'sources_unchanged': True,
+        'runner_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'source_sha256': hashlib.sha256(current.encode()).hexdigest(),
         'reference_sha256': hashlib.sha256(original.encode()).hexdigest()}, indent=2) + '\n')
 

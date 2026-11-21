@@ -1,0 +1,116 @@
+{
+  "passed": true,
+  "run_time": "2026-11-21T13:47:37.319600+08:00",
+  "reference_commit": "4dee27ffec4dc891daf2681379f8b3fd27fd41f2",
+  "source_sha256": {
+    "reference": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/axi_top/npu_axil_reg_if.sv": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf"
+    },
+    "current": {
+      "rtl/npu/conv/conv_im2col_pkg.sv": "078b751dd24ed1145ae9479ec84ae2d96e30cc8299a4cf68b063a2a8c68a36ac",
+      "rtl/axi_top/npu_axil_reg_if.sv": "14897220db7399d7a81e1b0e2946963eb509eaefdfcc38cdaa1fdd17cfb1d579"
+    }
+  },
+  "runner_sha256": "2638b61df1747a9d113b0631806936b813f61bc1856c55d682a5c27056a7acaf",
+  "parameters": {
+    "AXI_DATA_BITS": 64,
+    "CONV_IS_CAPABLE": 1,
+    "VECTOR_ENGINE_CAPABLE": 1,
+    "VECTOR_PE_COUNT": 16,
+    "MATRIX_S16_BANKS": 4,
+    "PS_CAPS": 17825847,
+    "PS_POOL_BYTES": 49152,
+    "IA_CACHE_BYTES": 2048,
+    "SHARED_TOTAL_BYTES": 57344,
+    "SHARED_BANK_BYTES": 8192,
+    "SHARED_IA_BANK_MASK": 6
+  },
+  "sources_unchanged": true,
+  "equivalence": {
+    "passed": true,
+    "proven_points": 5743,
+    "unproven_points": 0,
+    "method": "read_slang; proc; memory; async2sync; equiv_make; equiv_simple -seq 2; equiv_induct -seq 4; equiv_status -assert",
+    "log_sha256": "df9469ea6969223aa5ab5d32b112567194262993babf4bb1f3c3e8e90415d478"
+  },
+  "synthesis": {
+    "tool": "Yosys 0.71+40 (git sha1 83320dc12, Release, GNU /opt/rh/gcc-toolset-14/root/usr/bin/c++ 14.2.1) [github.com/YosysHQ/yosys at mmicko/fix_ci]",
+    "method": "synth_xilinx -noiopad -noclkbuf -flatten; mapped combinational cell graph",
+    "resources": {
+      "reference": {
+        "lut_cells": 962,
+        "flip_flops": 1357,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "longest_combinational_path_cells": 6,
+        "longest_register_path_cells": 5
+      },
+      "current": {
+        "lut_cells": 918,
+        "flip_flops": 1357,
+        "ramb36": 0,
+        "ramb18": 0,
+        "dsp": 0,
+        "longest_combinational_path_cells": 6,
+        "longest_register_path_cells": 5
+      }
+    },
+    "resources_within_reference": true
+  },
+  "four_state": {
+    "passed": true,
+    "profiles": [
+      {
+        "data_width": 32,
+        "samples": 11264,
+        "passed": true
+      },
+      {
+        "data_width": 64,
+        "samples": 11264,
+        "passed": true
+      }
+    ],
+    "address_states": [
+      "0",
+      "1",
+      "x",
+      "z"
+    ],
+    "data_states": [
+      "0",
+      "1",
+      "x",
+      "z"
+    ],
+    "decoded_addresses": 75,
+    "unchanged_word_assignments": 77,
+    "bank_masks": [
+      2,
+      6,
+      18,
+      130,
+      32770,
+      2147483650,
+      4294967295
+    ],
+    "bank_samples": 100004,
+    "sources_unchanged": true,
+    "runner_sha256": "2be6549be56e25e322290058ccaadbaad3d7d10f4abc95ff8fff54e307408829",
+    "source_sha256": "14897220db7399d7a81e1b0e2946963eb509eaefdfcc38cdaa1fdd17cfb1d579",
+    "reference_sha256": "e4679060aa14a83d2bfb53795ec516002b1c1b7431e311c110042a73548b65cf"
+  },
+  "transactions": {
+    "executed": true,
+    "passed": true,
+    "profiles": 23,
+    "register_reads": 2898,
+    "register_writes": 759,
+    "rejected_writes": 482,
+    "checks": 20193,
+    "undefined_behavior_sanitizer": true,
+    "sources_unchanged": true
+  }
+}
