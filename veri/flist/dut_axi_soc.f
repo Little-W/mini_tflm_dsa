@@ -1,4 +1,4 @@
-../../picorv32/picorv32.v
+../../rtl/soc/picorv32_npu.v
 ../../picorv32/picosoc/simpleuart.v
 -f ../flist/dut_axil.f
 ../../rtl/soc/pico_native_to_axi.sv

@@ -1,0 +1,254 @@
+{
+  "passed": true,
+  "upstream_commit": "ef203c2b0a3fb793280f5114941416c425c5b461",
+  "reference_sha256_verified": true,
+  "source_sha256": {
+    "reference": "0836050971b3c6cdd28ac3b1e5719a67fb645161912bef1e472e63995ceb0622",
+    "current": "7aec277b929114148655ce34d841a84dfe265ce7fb5aad049c7ab6d94f996e27"
+  },
+  "source_paths": {
+    "reference": "picorv32/picorv32.v",
+    "current": "rtl/soc/picorv32_npu.v"
+  },
+  "requested_stages": [
+    "formal",
+    "execution",
+    "measure"
+  ],
+  "stages": {
+    "formal": {
+      "passed": true,
+      "profiles": [
+        {
+          "passed": true,
+          "profile": 0,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 2724,
+          "log_sha256": "ee6cecc259b376675c72ef3d1ac1fc4221e824a63aff90d865a09d55562b9d79"
+        },
+        {
+          "passed": true,
+          "profile": 1,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 1,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 1,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 1,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 3045,
+          "log_sha256": "b1d273eda72fb88fce661f7600b216dfcf02ffe67756a8670368194f13aa681c"
+        },
+        {
+          "passed": true,
+          "profile": 2,
+          "parameters": {
+            "ENABLE_COUNTERS": 1,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 1,
+            "ENABLE_REGS_DUALPORT": 1,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 1,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 1,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 1,
+            "TWO_CYCLE_COMPARE": 1
+          },
+          "equivalent_bits": 2727,
+          "log_sha256": "f966d146b163ca5a6a2a627355c7da003ae96baff7c220e08e96f47a93ae6e98"
+        },
+        {
+          "passed": true,
+          "profile": 3,
+          "parameters": {
+            "ENABLE_COUNTERS": 0,
+            "ENABLE_COUNTERS64": 0,
+            "ENABLE_REGS_16_31": 0,
+            "ENABLE_REGS_DUALPORT": 0,
+            "TWO_STAGE_SHIFT": 1,
+            "BARREL_SHIFTER": 0,
+            "COMPRESSED_ISA": 0,
+            "CATCH_MISALIGN": 1,
+            "CATCH_ILLINSN": 1,
+            "ENABLE_MUL": 0,
+            "ENABLE_FAST_MUL": 0,
+            "ENABLE_DIV": 0,
+            "ENABLE_IRQ": 0,
+            "PROGADDR_RESET": 0,
+            "STACKADDR": 262144,
+            "TWO_CYCLE_ALU": 0,
+            "TWO_CYCLE_COMPARE": 0
+          },
+          "equivalent_bits": 1388,
+          "log_sha256": "cd740dcc360fcc274109ca6eb4d1e3df93b6901ebc6766974e9ef03730e24e92"
+        }
+      ],
+      "input_constraints": []
+    },
+    "execution": {
+      "passed": true,
+      "strict_four_state": true,
+      "program": {
+        "words": 1538,
+        "loops": 100,
+        "expected_sum": 5050,
+        "expected_marker": 85,
+        "subroutine_offset": 6144,
+        "sha256": "96f063a78bfd9ccfa61862a9350bf08a65e48e20313e7f457876ef08cd3bb984"
+      },
+      "profiles": [
+        {
+          "passed": true,
+          "reset_address": 0,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "ee9f3cee30c91451a379b49bb170bbea4cb48661fba108226e85b3743bf979e2",
+          "log_sha256": "3d7af360e6a6f9162af69662a3e59474b6562a0fa9b481741f3fa6c2860e0cd4"
+        },
+        {
+          "passed": true,
+          "reset_address": 4294963200,
+          "cycles": 4898,
+          "instruction_fetches": 717,
+          "transactions": 720,
+          "checks": 4898,
+          "stability_checks": 3258,
+          "sum": 5050,
+          "marker": 85,
+          "binary_sha256": "1598b4664d158134f1dd3e7a8792d0becf9ad1fc8278a648192dbf86a5b0bdfd",
+          "log_sha256": "cd8eecf89cc592c35b52c0eb9331d49fee7030b8bd2337ea5b0ee59570aaa755"
+        }
+      ],
+      "reference_modules_renamed": [
+        "picorv32",
+        "picorv32_axi",
+        "picorv32_axi_adapter",
+        "picorv32_pcpi_div",
+        "picorv32_pcpi_fast_mul",
+        "picorv32_pcpi_mul",
+        "picorv32_regs",
+        "picorv32_wb"
+      ],
+      "testbench_sha256": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
+    },
+    "measure": {
+      "passed": true,
+      "maximum_register_path_cells": 10,
+      "cases": {
+        "reference": {
+          "resources": {
+            "logic_lut_cells": 1536,
+            "distributed_ram_lut_sites_nominal": 48,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 1584,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 1002,
+            "dsp48e1": 0,
+            "ramb36e1": 0,
+            "ramb18e1": 0,
+            "carry4": 158,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 158,
+              "FDRE": 986,
+              "FDSE": 16,
+              "INV": 146,
+              "LUT2": 348,
+              "LUT3": 188,
+              "LUT4": 240,
+              "LUT5": 563,
+              "LUT6": 197,
+              "RAM32M": 12
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "graph_complete": true,
+          "longest_register_path_cells": 11,
+          "metrics_sha256": "e0aea36ab2feff21046c85a13c005a396327ae26ac9d5d45ff73f17413b03b49",
+          "manifest_sha256": "ba83201204759c5d7993a390e487acef8eb50991f595dd394b5217f65a7d56d1"
+        },
+        "current": {
+          "resources": {
+            "logic_lut_cells": 1473,
+            "distributed_ram_lut_sites_nominal": 48,
+            "shift_register_lut_sites_nominal": 0,
+            "lut_sites_nominal_before_packing": 1521,
+            "physical_lut_sites_after_placement": null,
+            "flip_flops": 1002,
+            "dsp48e1": 3,
+            "ramb36e1": 0,
+            "ramb18e1": 0,
+            "carry4": 134,
+            "unclassified_distributed_ram_types": [],
+            "cell_counts": {
+              "CARRY4": 134,
+              "DSP48E1": 3,
+              "FDRE": 986,
+              "FDSE": 16,
+              "INV": 146,
+              "LUT2": 289,
+              "LUT3": 189,
+              "LUT4": 243,
+              "LUT5": 556,
+              "LUT6": 196,
+              "RAM32M": 12
+            },
+            "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+          },
+          "graph_complete": true,
+          "longest_register_path_cells": 10,
+          "metrics_sha256": "76dca228cd5717d877130f50c4518e30812aa0172238642c725bb9ad9d470fd1",
+          "manifest_sha256": "bb31535e7c5b48c63a736e38eecc4dc2759496b6dcb97c2b0cb6c79028d3afed"
+        }
+      }
+    }
+  },
+  "source_unchanged": true,
+  "test_sha256": {
+    "test/pico_pc_arithmetic/run.py": "b7ffacb72fee11fb7d2265b956d19f26578d629cb8f91853d9c9557a5a6a7e72",
+    "test/pico_pc_arithmetic/tb_execution.sv": "b18c99e6c084a422d4f05eebf22146f3b28e7b61c796566acdfb477024b3eea7"
+  },
+  "result_directory": "build/pico_pc_arithmetic_final"
+}
