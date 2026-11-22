@@ -123,6 +123,7 @@ module ps_window_scheduler #(
     logic [FRAME_COUNT-1:0] candidate_eligible, candidate_after_cursor;
     logic [FRAME_COUNT-1:0] candidate_select;
     logic candidate_exists, candidate_after_exists;
+    logic [FRAME_COUNT-1:0] candidate_live_after, candidate_open_after;
     logic [ID_W-1:0] eligible_first_id, after_first_id;
     logic [TILE_W:0] column_tiles, remaining_columns;
     logic [TILE_W:0] incoming_column_tiles;
@@ -330,7 +331,16 @@ module ps_window_scheduler #(
 
 
     // 候选集合分别编码，状态和扫描起点在末端选择编号。
-    assign candidate_exists = |candidate_eligible;
+    // 完成事件先计算帧目录的后继状态，存在性资格与目录在同一边沿保存。
+    always_comb begin
+        candidate_live_after = live;
+        candidate_live_after[active_id] = !active_final;
+        candidate_open_after = frame_open;
+        if (active_init) begin
+            for (int unsigned frame_index = 0; frame_index < FRAME_COUNT; frame_index++)
+                candidate_open_after[frame_index] = 32'(frame_index) < opened_after_init;
+        end
+    end
     assign candidate_after_exists = |candidate_after_cursor;
     ps_scheduler_priority #(.p_frames(FRAME_COUNT), .p_id_width(ID_W)) u_eligible_priority (
         .i_eligible(candidate_eligible), .o_id(eligible_first_id)
@@ -626,6 +636,7 @@ module ps_window_scheduler #(
             cursor_mask <= '1;
             frame_open <= '0;
             live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
+            candidate_exists <= 1'b0;
             protected_id <= '0; resume_id <= '0;
             command_active <= 1'b0; active_id <= '0;
             active_init <= 1'b0; active_final <= 1'b0;
@@ -650,6 +661,7 @@ module ps_window_scheduler #(
                 // 帧目标数量在 PREPARE_TARGET 保存后供所有命令和预测阶段使用。
                 target <= '0;
                 live <= '0; protected_valid <= 1'b0; resume_valid <= 1'b0;
+                candidate_exists <= 1'b0;
                 command_active <= 1'b0;
 
                 if (config_error != 0 || incoming_dimensions_invalid || incoming_reuse_invalid ||
@@ -676,6 +688,7 @@ module ps_window_scheduler #(
                     end else next_row_part <= next_row_part + (ROW_PART_W+1)'(1);
                 end
                 live[active_id] <= !active_final;
+                candidate_exists <= |(candidate_live_after & candidate_open_after);
                 if (active_final) begin
                     if (protected_valid && protected_id == active_id) protected_valid <= 1'b0;
                 end else begin
@@ -706,12 +719,13 @@ module ps_window_scheduler #(
             end else if (phase == PREPARE_TARGET) begin
                 target <= next_target;
                 phase <= OPENING;
-            end else if (phase == SWEEPING && !command_active && !candidate_found) begin
+            end else if (phase == SWEEPING && !command_active && !candidate_exists) begin
                 opened <= '0;
                 cursor_mask <= '1;
                 frame_open <= '0;
                 protected_valid <= 1'b0; resume_valid <= 1'b0;
                 live <= '0;
+                candidate_exists <= 1'b0;
                 if (next_column_tile == column_tiles) begin
                     row_base <= row_advance_o_sum;
                     stream_rows_remaining <= next_stream_rows_remaining;

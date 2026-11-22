@@ -1,0 +1,22 @@
+{
+  "scheduler": {
+    "top": "ps_scheduler_pressure_measure",
+    "sources": [
+      "rtl/npu/control/ps_window_scheduler.sv",
+      "test/scheduler_pressure_state/measure.sv"
+    ],
+    "options": [
+      "-DSYNTHESIS=1",
+      "-DXILINX_FPGA=1",
+      "-GSIZE=16",
+      "-GFRAME_COUNT=16",
+      "-GMAX_REUSE_TILES=32"
+    ],
+    "parameters": {
+      "SIZE": 16,
+      "FRAME_COUNT": 16,
+      "MAX_REUSE_TILES": 32
+    },
+    "configuration": "生产帧调度器完整公开输出与真实保存状态"
+  }
+}

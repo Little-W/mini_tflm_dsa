@@ -1,0 +1,201 @@
+{
+  "passed": true,
+  "reference_commit": "9d75f75a",
+  "source_sha256": {
+    "rtl/npu/control/ps_window_scheduler.sv": "cd3cb48f2df54754e191a36c61ab1cae8d38cc3abc71d106a05c520d5f6c8daa"
+  },
+  "reference_rtl_sha256": "76ee3ee9ab21b51f80582471b7b66151ed4cdcebb7250d6edb1b899f2f414dbd",
+  "formal": {
+    "common_state_bits": 7987,
+    "all_public_outputs": true,
+    "unconstrained_external_inputs": true,
+    "profiles": [
+      {
+        "parameters": {
+          "SIZE": 4,
+          "FRAME_COUNT": 4,
+          "MAX_REUSE_TILES": 4
+        },
+        "common_state_bits": 1280,
+        "added_state_bits": 1
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 16,
+          "MAX_REUSE_TILES": 32
+        },
+        "common_state_bits": 2288,
+        "added_state_bits": 1
+      },
+      {
+        "parameters": {
+          "SIZE": 4,
+          "FRAME_COUNT": 2,
+          "MAX_REUSE_TILES": 0
+        },
+        "common_state_bits": 1532,
+        "added_state_bits": 1
+      },
+      {
+        "parameters": {
+          "SIZE": 8,
+          "FRAME_COUNT": 4,
+          "MAX_REUSE_TILES": 1
+        },
+        "common_state_bits": 1251,
+        "added_state_bits": 1
+      },
+      {
+        "parameters": {
+          "SIZE": 16,
+          "FRAME_COUNT": 8,
+          "MAX_REUSE_TILES": 16
+        },
+        "common_state_bits": 1636,
+        "added_state_bits": 1
+      }
+    ],
+    "report": {
+      "path": "/tmp/timing_analysis_control_r14a/published_formal/summary.json",
+      "sha256": "2297ec2bc634d323256d54815bb7e580ce7a9c9921d1af66e3974d6268c0d3ac"
+    }
+  },
+  "invariant": {
+    "relation": "candidate_exists == |(live & frame_open)",
+    "reset_and_one_step_unbounded_induction": true,
+    "profiles": [
+      "4:4:4",
+      "16:16:32",
+      "4:2:0",
+      "8:4:1",
+      "16:8:16",
+      "4:3:4",
+      "16:17:32"
+    ],
+    "report": {
+      "path": "/tmp/timing_analysis_control_r14a/final_invariant/summary.json",
+      "sha256": "ceda56b3e2ad4e02e50c533c5fa404af125ac0a61ad5bc73f4e85a1b86a1464a"
+    }
+  },
+  "four_state": {
+    "strict_case_equality": true,
+    "all_public_outputs_and_saved_relation": true,
+    "comparisons": 348248,
+    "four_state_cycles": 114496,
+    "profiles": [
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 4,
+        "mode": "XILINX_FPGA",
+        "checks": 92064,
+        "four_state_cycles": 28624,
+        "accepted_commands": 5255,
+        "completed_commands": 5369,
+        "pressure_checks": 584
+      },
+      {
+        "SIZE": 4,
+        "FRAME_COUNT": 4,
+        "MAX_REUSE_TILES": 4,
+        "mode": "ASIC_SYNTHESIS",
+        "checks": 92064,
+        "four_state_cycles": 28624,
+        "accepted_commands": 5255,
+        "completed_commands": 5369,
+        "pressure_checks": 584
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "XILINX_FPGA",
+        "checks": 82060,
+        "four_state_cycles": 28624,
+        "accepted_commands": 4158,
+        "completed_commands": 4248,
+        "pressure_checks": 512
+      },
+      {
+        "SIZE": 16,
+        "FRAME_COUNT": 16,
+        "MAX_REUSE_TILES": 32,
+        "mode": "ASIC_SYNTHESIS",
+        "checks": 82060,
+        "four_state_cycles": 28624,
+        "accepted_commands": 4158,
+        "completed_commands": 4248,
+        "pressure_checks": 512
+      }
+    ],
+    "report": {
+      "path": "/tmp/timing_analysis_control_r14a/final_four_state/summary.json",
+      "sha256": "c301075fd0887b3c1a9ff92f2b7c7cefc70c9f484472f597fa4f792ec4b61c4c"
+    }
+  },
+  "functional": {
+    "SIZE": 16,
+    "FRAME_COUNT": 16,
+    "MAX_REUSE_TILES": 0,
+    "fpga": true,
+    "undefined_behavior_sanitizer": true,
+    "cases": 975,
+    "commands": 182426,
+    "report": {
+      "path": "/tmp/timing_analysis_control_r14a/saved_numeric/summary.json",
+      "sha256": "1fc8b190caf808dcbeced7d6e5530b3655c031da19d294bd17b08933ce91872b"
+    }
+  },
+  "measurement": {
+    "SIZE": 16,
+    "FRAME_COUNT": 16,
+    "MAX_REUSE_TILES": 32,
+    "reference": {
+      "logic_lut": 1134,
+      "ram_lut": 56,
+      "nominal_lut": 1190,
+      "flip_flops": 915,
+      "dsp": 13,
+      "ramb36": 2,
+      "max_register_path": 9,
+      "graph_complete": true,
+      "report": {
+        "path": "/tmp/timing_analysis_control_r14a/measure/scheduler_reference/metrics.json",
+        "sha256": "45894f8df877d45fb6ef9ec6beead7017b4d6f4141843023d92f01b8436b13e5"
+      }
+    },
+    "current": {
+      "logic_lut": 1161,
+      "ram_lut": 56,
+      "nominal_lut": 1217,
+      "flip_flops": 917,
+      "dsp": 13,
+      "ramb36": 2,
+      "max_register_path": 9,
+      "graph_complete": true,
+      "report": {
+        "path": "/tmp/timing_analysis_control_r14a/measure/scheduler_saved/metrics.json",
+        "sha256": "bf3fa62cd102027be3a4ff10d51d3c91ca80aa948ceebd77b7f6fca4a7d882fa"
+      }
+    },
+    "target_paths": {
+      "reference_live_to_control": 8,
+      "current_live_to_control_connected": false,
+      "current_saved_exists_to_control": 5,
+      "current_into_saved_exists": 8,
+      "report": {
+        "path": "/tmp/timing_analysis_control_r14a/measure/saved_selected_paths.json",
+        "sha256": "83bf2f60728e28e154bfc36886931143a3fbf66703a9f7d6c3e4cdd840e7ad6b"
+      }
+    }
+  },
+  "structural_equivalence": {
+    "path": "/tmp/timing_analysis_control_r14a/source_identity.json",
+    "sha256": "d4c9c0b86ef906a8a6d9f80c308a46e4f72b30c6cbc5f0d5b7c88e1419cc8c92"
+  },
+  "proof_exit_status": {
+    "path": "/tmp/timing_analysis_control_r14a/exit_status_check/summary.json",
+    "sha256": "04a81a8a8822553fab8660751e4fdb47ad4c810037de09ba3691c03a19feb70c"
+  }
+}
