@@ -455,6 +455,7 @@ module ia_ps_channel_ram #(
     logic [p_ia_bank_bits-1:0] ia_return_bank_q [2];
     logic [p_row_bits-1:0] ia_read_row [2], ia_write_row [2];
     logic [p_max_ia_banks-1:0] ia_bank_read_en, ia_bank_write_en;
+    (* keep = 1 *) logic [p_max_ia_banks-1:0] ia_bank_read_eligible, ia_bank_write_eligible;
     logic [p_row_bits-1:0] ia_bank_read_addr [p_max_ia_banks];
     logic [p_row_bits-1:0] ia_bank_write_addr [p_max_ia_banks];
     logic [127:0] ia_bank_write_data [p_max_ia_banks], ia_bank_read_data [p_max_ia_banks];
@@ -531,8 +532,10 @@ module ia_ps_channel_ram #(
             end
         end
         assign collision = |collision_terms;
-        assign ia_bank_read_en[bank] = memory_access_enabled && (|read_request);
-        assign ia_bank_write_en[bank] = memory_access_enabled && (|write_request) && !collision;
+        assign ia_bank_read_eligible[bank] = |read_request;
+        assign ia_bank_write_eligible[bank] = (|write_request) && !collision;
+        assign ia_bank_read_en[bank] = memory_access_enabled && ia_bank_read_eligible[bank];
+        assign ia_bank_write_en[bank] = memory_access_enabled && ia_bank_write_eligible[bank];
         assign ia_bank_fault[bank] = collision || (&read_request) || (&write_request);
     end
 
@@ -540,6 +543,8 @@ module ia_ps_channel_ram #(
     //! -----------------------
 
     logic [3:0] ps_read_fire, ps_write_fire;
+    logic [3:0] ps_read_eligible, ps_write_eligible;
+    (* keep = 1 *) logic [p_max_ia_banks-1:0] ps_read_selection_eligible [4], ps_write_selection_eligible [4];
     logic [3:0] ps_fixed_read_match, ps_fixed_write_match;
     logic [p_addr_width-1:0] ps_fixed_read_addr [4], ps_fixed_write_addr [4];
     logic [p_max_ia_banks-1:0] ps_read_select [4], ps_write_select [4];
@@ -551,9 +556,10 @@ module ia_ps_channel_ram #(
     for (genvar channel = 0; channel < 4; channel++) begin : g_ps_address
         assign ps_read_range[channel] = i_ps_read_addr[channel] < ps_limit;
         assign ps_write_range[channel] = i_ps_write_addr[channel] < ps_limit;
-        assign ps_read_fire[channel] = memory_access_enabled && i_ps_read_en[channel] && ps_read_range[channel];
-        assign ps_write_fire[channel] = memory_access_enabled && i_ps_write_en[channel] && ps_write_range[channel] &&
-            !ps_collision[channel];
+        assign ps_read_eligible[channel] = i_ps_read_en[channel] && ps_read_range[channel];
+        assign ps_write_eligible[channel] = i_ps_write_en[channel] && ps_write_range[channel] && !ps_collision[channel];
+        assign ps_read_fire[channel] = memory_access_enabled && ps_read_eligible[channel];
+        assign ps_write_fire[channel] = memory_access_enabled && ps_write_eligible[channel];
         assign ps_collision[channel] = i_ps_read_en[channel] && i_ps_write_en[channel] &&
             ps_read_range[channel] && ps_write_range[channel] &&
             i_ps_read_addr[channel] == i_ps_write_addr[channel];
@@ -580,15 +586,21 @@ module ia_ps_channel_ram #(
             endcase
         end
         for (genvar bank = 1; bank < p_max_ia_banks; bank++) begin : g_shared_select
-            assign ps_read_select[channel][bank] = ps_read_fire[channel] &&
+            assign ps_read_selection_eligible[channel][bank] = ps_read_eligible[channel] &&
                 ((ia_banks_q == p_bank_count_width'(1) && (i_ps_read_addr[channel] >> p_chunk_bits) == p_addr_width'(bank-1)) ||
                  (bank >= 2 && ia_banks_q == p_bank_count_width'(2) && (i_ps_read_addr[channel] >> p_chunk_bits) == p_addr_width'(bank-2)));
-            assign ps_write_select[channel][bank] = ps_write_fire[channel] &&
+            assign ps_write_selection_eligible[channel][bank] = ps_write_eligible[channel] &&
                 ((ia_banks_q == p_bank_count_width'(1) && (i_ps_write_addr[channel] >> p_chunk_bits) == p_addr_width'(bank-1)) ||
                  (bank >= 2 && ia_banks_q == p_bank_count_width'(2) && (i_ps_write_addr[channel] >> p_chunk_bits) == p_addr_width'(bank-2)));
         end
-        assign ps_read_select[channel][0] = ps_read_fire[channel] && ps_fixed_read_match[channel];
-        assign ps_write_select[channel][0] = ps_write_fire[channel] && ps_fixed_write_match[channel];
+        assign ps_read_selection_eligible[channel][0] = ps_read_eligible[channel] && ps_fixed_read_match[channel];
+        for (genvar bank = 0; bank < p_max_ia_banks; bank++) begin : g_read_selection_enable
+            assign ps_read_select[channel][bank] = memory_access_enabled && ps_read_selection_eligible[channel][bank];
+        end
+        assign ps_write_selection_eligible[channel][0] = ps_write_eligible[channel] && ps_fixed_write_match[channel];
+        for (genvar bank = 0; bank < p_max_ia_banks; bank++) begin : g_write_selection_enable
+            assign ps_write_select[channel][bank] = memory_access_enabled && ps_write_selection_eligible[channel][bank];
+        end
         assign o_ps_read_data[channel] = ps_segment_read_data[channel][ps_return_select_q[channel]];
         always_ff @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
@@ -642,13 +654,19 @@ module ia_ps_channel_ram #(
         end
         for (genvar channel = 0; channel < 4; channel++) begin : g_channel
             logic ram_i_wr_en, ram_i_rd_en;
+            (* keep = 1 *) logic ram_write_eligible, ram_read_eligible;
             logic [p_chunk_bits-1:0] ram_i_wr_addr, ram_i_rd_addr;
             logic [127:0] ram_i_wr_data, ram_o_rd_data;
             logic [15:0] ram_i_wr_mask;
-            assign ram_i_wr_en = (ia_bank_write_en[bank] &&
-                ia_bank_write_addr[bank][p_row_bits-1:p_chunk_bits] == 2'(channel)) || ps_write_select[channel][bank];
-            assign ram_i_rd_en = (ia_bank_read_en[bank] &&
-                ia_bank_read_addr[bank][p_row_bits-1:p_chunk_bits] == 2'(channel)) || ps_read_select[channel][bank];
+            // 地址分段和端口资格先并行计算，统一访问条件在物理 RAM 使能端合并。
+            assign ram_write_eligible = (ia_bank_write_eligible[bank] &&
+                ia_bank_write_addr[bank][p_row_bits-1:p_chunk_bits] == 2'(channel)) ||
+                ps_write_selection_eligible[channel][bank];
+            assign ram_i_wr_en = memory_access_enabled && ram_write_eligible;
+            assign ram_read_eligible = (ia_bank_read_eligible[bank] &&
+                ia_bank_read_addr[bank][p_row_bits-1:p_chunk_bits] == 2'(channel)) ||
+                ps_read_selection_eligible[channel][bank];
+            assign ram_i_rd_en = memory_access_enabled && ram_read_eligible;
             assign ram_i_wr_addr = ia_selected ? ia_bank_write_addr[bank][p_chunk_bits-1:0] :
                 i_ps_write_addr[channel][p_chunk_bits-1:0];
             assign ram_i_rd_addr = ia_selected ? ia_bank_read_addr[bank][p_chunk_bits-1:0] :

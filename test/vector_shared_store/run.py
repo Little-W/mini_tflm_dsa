@@ -19,6 +19,7 @@ def digest(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--source-root", type=Path, default=ROOT)
     parser.add_argument("--verilator", default="verilator")
     parser.add_argument("--profiles", nargs="+", default=[
         f"{size}:{banks}:{fixed}:1"
@@ -30,12 +31,15 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    sources = [ROOT / "rtl/npu/buffers/vector_shared_store.sv",
-               ROOT / "rtl/npu/buffers/ia_ps_shared_ram.sv",
-               ROOT / "rtl/common/regfile.v",
+    source_root = args.source_root.resolve()
+    sources = [source_root / "rtl/npu/buffers/vector_shared_store.sv",
+               source_root / "rtl/npu/buffers/ia_ps_shared_ram.sv",
+               source_root / "rtl/common/regfile.v",
                ROOT / "test/vector_shared_store/tb_vector_shared_store.sv"]
     tracked = sources + [Path(__file__).resolve()]
-    hashes = {str(path.relative_to(ROOT)): digest(path) for path in tracked}
+    def source_name(path):
+        return str(path.relative_to(source_root) if path.is_relative_to(source_root) else path.relative_to(ROOT))
+    hashes = {source_name(path): digest(path) for path in tracked}
     summary = {"passed": False, "source_sha256": hashes, "profiles": [],
                "verilator_version": subprocess.check_output([args.verilator, "--version"], text=True).strip()}
     for profile in args.profiles:
@@ -65,7 +69,7 @@ def main():
                   "compile_command": command, "binary_sha256": digest(binary)}
         summary["profiles"].append(report)
         print(json.dumps({"profile": profile, **counts}), flush=True)
-    if hashes != {str(path.relative_to(ROOT)): digest(path) for path in tracked}:
+    if hashes != {source_name(path): digest(path) for path in tracked}:
         raise RuntimeError("运行期间源文件发生变化")
     summary["passed"] = True
     (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")

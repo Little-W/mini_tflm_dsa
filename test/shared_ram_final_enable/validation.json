@@ -1,0 +1,473 @@
+{
+  "passed": true,
+  "source_sha256": "50c3631577826a8eca0d9c50b9735b46b3d3f20cf61c61beb2c7509f4c418cce",
+  "reference_revision": "9d75f75a34b5d0d57fffe0eb6f7d5a29769308d6",
+  "reference_sha256": "4d259a05be88d36372bc9e7114112f0acb9daa46db8fafae749cb6cd73ef21d5",
+  "formal_profiles": [
+    {
+      "bank_bytes": 2048,
+      "banks": 6,
+      "shared_write_stage": 0,
+      "passed": true,
+      "log_sha256": "2f3b320f69b0f7d214f8b7b4552c19506ef9401bb5daa615b31dbe76e61f6a9f"
+    },
+    {
+      "bank_bytes": 2048,
+      "banks": 6,
+      "shared_write_stage": 1,
+      "passed": true,
+      "log_sha256": "ff6e475ce7705b81c868fc51d3292b0425669e58e547ed5147fa59222e84d07f"
+    },
+    {
+      "bank_bytes": 2048,
+      "banks": 8,
+      "shared_write_stage": 0,
+      "passed": true,
+      "log_sha256": "a9cad56c760eb976ea32d355747a955b1f1855c404f1ac33dfd6e9ced8ef3454"
+    },
+    {
+      "bank_bytes": 2048,
+      "banks": 8,
+      "shared_write_stage": 1,
+      "passed": true,
+      "log_sha256": "285b8ac53f6ee2d37dd054bef070bc1b4611b46911442d843f8885567cdb8d95"
+    },
+    {
+      "bank_bytes": 8192,
+      "banks": 7,
+      "shared_write_stage": 0,
+      "passed": true,
+      "log_sha256": "5e566f60fe2e95d09c3c62f54d6e2fa47441f70c6bdc2194ed40cd6d9b4925c9"
+    },
+    {
+      "bank_bytes": 8192,
+      "banks": 7,
+      "shared_write_stage": 1,
+      "passed": true,
+      "log_sha256": "4205e789dcc77019c46ae3d2be49b3b86c765e47e94e9ab26e6aa4e6aac87b06"
+    },
+    {
+      "bank_bytes": 8192,
+      "banks": 9,
+      "shared_write_stage": 0,
+      "passed": true,
+      "log_sha256": "7ef90a25adf82f4e7031c6777d4d42c249dbe510dbb2197d7cab55d5615da046"
+    },
+    {
+      "bank_bytes": 8192,
+      "banks": 9,
+      "shared_write_stage": 1,
+      "passed": true,
+      "log_sha256": "d2c6498d10018e17ed6e50c5f1c74820483067a525243a73878834f5b58618bf"
+    }
+  ],
+  "constraints": "First sampled cycle reset; all subsequent resets and inputs free",
+  "four_state_profiles": 4,
+  "four_state_cycles_per_profile": 8192,
+  "four_state_comparisons": 65536,
+  "test_sha256": "230d601d5f8209c5000ec42f6694f7626181a9f96665c12d0eec7ff3d07df7e9",
+  "helper_sha256": "3bba462f2abee7dfcb90df486d4d5bf7a3f23feebcaa44760275ec2a65f136d5",
+  "four_state_log_sha256": "8a03f380ad9af7ce3b0e7f81762bdc46827c55cec4d30c89a1c633d92efee4f7",
+  "numeric": {
+    "source_sha256": {
+      "rtl/npu/buffers/vector_shared_store.sv": "47c6a4431b2d74d4bdde2bb0247103d6ea189d635cf15b5b3948c598c4fe0e1b",
+      "rtl/npu/buffers/ia_ps_shared_ram.sv": "50c3631577826a8eca0d9c50b9735b46b3d3f20cf61c61beb2c7509f4c418cce",
+      "rtl/common/regfile.v": "2f0c41452d49c274e176bf27c4a24e064a141623793bac269e536bc20af90f67",
+      "test/vector_shared_store/tb_vector_shared_store.sv": "1878f227de67647af2fad0fe6234780c84ef175917c0126ac21936ec15984ba5",
+      "test/vector_shared_store/run.py": "e86a3dae59806de3681a35f51c718c8ab733623a7884c739e2c3969b3d653ea1"
+    },
+    "profiles": [
+      {
+        "passed": true,
+        "parameters": {
+          "bank_bytes": 2048,
+          "banks": 6,
+          "fixed_ps_channels": true,
+          "shared_write_stage": true,
+          "random_cycles_per_allocation": 2000
+        },
+        "counts": {
+          "cycles": 4926,
+          "reads": 12075,
+          "bytes": 193200,
+          "writes": 11369,
+          "concurrent_reads": 1430,
+          "concurrent_writes": 1243,
+          "simultaneous_rw": 1720,
+          "faults": 16,
+          "configurations": 36,
+          "flushes": 2,
+          "host_writes": 4
+        },
+        "compile_command": [
+          "/home/agent/.local/bin/verilator",
+          "--binary",
+          "--timing",
+          "-j",
+          "1",
+          "--top-module",
+          "tb_vector_shared_store",
+          "--Mdir",
+          "/tmp/npu_shared_ram_final_enable/numeric/b2048_n6_f1_s1/obj",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O0 OPT_SLOW=-O0",
+          "-Gp_bank_bytes=2048",
+          "-Gp_banks=6",
+          "-Gp_fixed_ps_channels=1",
+          "-Gp_shared_write_stage=1",
+          "-Gp_cycles=2000",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/vector_shared_store.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/ia_ps_shared_ram.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/vector_shared_store/tb_vector_shared_store.sv"
+        ],
+        "binary_sha256": "073f8d93cce54d0c26b06f7d1e71a927e0fb2847348b6dc48b61fe05bdb5b642"
+      },
+      {
+        "passed": true,
+        "parameters": {
+          "bank_bytes": 2048,
+          "banks": 7,
+          "fixed_ps_channels": true,
+          "shared_write_stage": false,
+          "random_cycles_per_allocation": 2000
+        },
+        "counts": {
+          "cycles": 4926,
+          "reads": 12075,
+          "bytes": 193200,
+          "writes": 11369,
+          "concurrent_reads": 1430,
+          "concurrent_writes": 1243,
+          "simultaneous_rw": 1720,
+          "faults": 16,
+          "configurations": 36,
+          "flushes": 2,
+          "host_writes": 4
+        },
+        "compile_command": [
+          "/home/agent/.local/bin/verilator",
+          "--binary",
+          "--timing",
+          "-j",
+          "1",
+          "--top-module",
+          "tb_vector_shared_store",
+          "--Mdir",
+          "/tmp/npu_shared_ram_final_enable/numeric/b2048_n7_f1_s0/obj",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O0 OPT_SLOW=-O0",
+          "-Gp_bank_bytes=2048",
+          "-Gp_banks=7",
+          "-Gp_fixed_ps_channels=1",
+          "-Gp_shared_write_stage=0",
+          "-Gp_cycles=2000",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/vector_shared_store.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/ia_ps_shared_ram.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/vector_shared_store/tb_vector_shared_store.sv"
+        ],
+        "binary_sha256": "7ce9861a3527065770db9db07f302fdcd7654e8f86aef13025eec6444e7dc6fe"
+      },
+      {
+        "passed": true,
+        "parameters": {
+          "bank_bytes": 2048,
+          "banks": 8,
+          "fixed_ps_channels": true,
+          "shared_write_stage": true,
+          "random_cycles_per_allocation": 2000
+        },
+        "counts": {
+          "cycles": 8020,
+          "reads": 19739,
+          "bytes": 315824,
+          "writes": 17385,
+          "concurrent_reads": 2475,
+          "concurrent_writes": 1866,
+          "simultaneous_rw": 2597,
+          "faults": 23,
+          "configurations": 51,
+          "flushes": 3,
+          "host_writes": 6
+        },
+        "compile_command": [
+          "/home/agent/.local/bin/verilator",
+          "--binary",
+          "--timing",
+          "-j",
+          "1",
+          "--top-module",
+          "tb_vector_shared_store",
+          "--Mdir",
+          "/tmp/npu_shared_ram_final_enable/numeric/b2048_n8_f1_s1/obj",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O0 OPT_SLOW=-O0",
+          "-Gp_bank_bytes=2048",
+          "-Gp_banks=8",
+          "-Gp_fixed_ps_channels=1",
+          "-Gp_shared_write_stage=1",
+          "-Gp_cycles=2000",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/vector_shared_store.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/ia_ps_shared_ram.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/vector_shared_store/tb_vector_shared_store.sv"
+        ],
+        "binary_sha256": "fc7e08ecc7d3b67927cf00a48318445beb82f2abf3c4d8304abea3e6ce1e6b75"
+      },
+      {
+        "passed": true,
+        "parameters": {
+          "bank_bytes": 4096,
+          "banks": 6,
+          "fixed_ps_channels": true,
+          "shared_write_stage": true,
+          "random_cycles_per_allocation": 2000
+        },
+        "counts": {
+          "cycles": 5694,
+          "reads": 14157,
+          "bytes": 226512,
+          "writes": 12743,
+          "concurrent_reads": 1815,
+          "concurrent_writes": 1488,
+          "simultaneous_rw": 1748,
+          "faults": 16,
+          "configurations": 36,
+          "flushes": 2,
+          "host_writes": 4
+        },
+        "compile_command": [
+          "/home/agent/.local/bin/verilator",
+          "--binary",
+          "--timing",
+          "-j",
+          "1",
+          "--top-module",
+          "tb_vector_shared_store",
+          "--Mdir",
+          "/tmp/npu_shared_ram_final_enable/numeric/b4096_n6_f1_s1/obj",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O0 OPT_SLOW=-O0",
+          "-Gp_bank_bytes=4096",
+          "-Gp_banks=6",
+          "-Gp_fixed_ps_channels=1",
+          "-Gp_shared_write_stage=1",
+          "-Gp_cycles=2000",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/vector_shared_store.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/ia_ps_shared_ram.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/vector_shared_store/tb_vector_shared_store.sv"
+        ],
+        "binary_sha256": "3ce50f67f86f8a08d21447cdf23af80d715cab0892909daabf71878dd45743c4"
+      },
+      {
+        "passed": true,
+        "parameters": {
+          "bank_bytes": 4096,
+          "banks": 9,
+          "fixed_ps_channels": true,
+          "shared_write_stage": true,
+          "random_cycles_per_allocation": 2000
+        },
+        "counts": {
+          "cycles": 9812,
+          "reads": 24301,
+          "bytes": 388816,
+          "writes": 19872,
+          "concurrent_reads": 3332,
+          "concurrent_writes": 2259,
+          "simultaneous_rw": 2624,
+          "faults": 23,
+          "configurations": 51,
+          "flushes": 3,
+          "host_writes": 6
+        },
+        "compile_command": [
+          "/home/agent/.local/bin/verilator",
+          "--binary",
+          "--timing",
+          "-j",
+          "1",
+          "--top-module",
+          "tb_vector_shared_store",
+          "--Mdir",
+          "/tmp/npu_shared_ram_final_enable/numeric/b4096_n9_f1_s1/obj",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O0 OPT_SLOW=-O0",
+          "-Gp_bank_bytes=4096",
+          "-Gp_banks=9",
+          "-Gp_fixed_ps_channels=1",
+          "-Gp_shared_write_stage=1",
+          "-Gp_cycles=2000",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/vector_shared_store.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/ia_ps_shared_ram.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/vector_shared_store/tb_vector_shared_store.sv"
+        ],
+        "binary_sha256": "9fc11d01c193a8aed3601e2351577878924444e02a3478f49b000f41d65c1564"
+      },
+      {
+        "passed": true,
+        "parameters": {
+          "bank_bytes": 8192,
+          "banks": 7,
+          "fixed_ps_channels": true,
+          "shared_write_stage": true,
+          "random_cycles_per_allocation": 2000
+        },
+        "counts": {
+          "cycles": 7230,
+          "reads": 17875,
+          "bytes": 286000,
+          "writes": 15670,
+          "concurrent_reads": 2590,
+          "concurrent_writes": 2037,
+          "simultaneous_rw": 1770,
+          "faults": 16,
+          "configurations": 36,
+          "flushes": 2,
+          "host_writes": 4
+        },
+        "compile_command": [
+          "/home/agent/.local/bin/verilator",
+          "--binary",
+          "--timing",
+          "-j",
+          "1",
+          "--top-module",
+          "tb_vector_shared_store",
+          "--Mdir",
+          "/tmp/npu_shared_ram_final_enable/numeric/b8192_n7_f1_s1/obj",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O0 OPT_SLOW=-O0",
+          "-Gp_bank_bytes=8192",
+          "-Gp_banks=7",
+          "-Gp_fixed_ps_channels=1",
+          "-Gp_shared_write_stage=1",
+          "-Gp_cycles=2000",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/vector_shared_store.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/ia_ps_shared_ram.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/vector_shared_store/tb_vector_shared_store.sv"
+        ],
+        "binary_sha256": "f42831ca303ae396717e6ef7317e49a035c3a21c37cdd24fef4e3ca3e909e892"
+      },
+      {
+        "passed": true,
+        "parameters": {
+          "bank_bytes": 8192,
+          "banks": 8,
+          "fixed_ps_channels": true,
+          "shared_write_stage": true,
+          "random_cycles_per_allocation": 2000
+        },
+        "counts": {
+          "cycles": 13396,
+          "reads": 33157,
+          "bytes": 530512,
+          "writes": 24802,
+          "concurrent_reads": 5161,
+          "concurrent_writes": 3065,
+          "simultaneous_rw": 2631,
+          "faults": 23,
+          "configurations": 51,
+          "flushes": 3,
+          "host_writes": 6
+        },
+        "compile_command": [
+          "/home/agent/.local/bin/verilator",
+          "--binary",
+          "--timing",
+          "-j",
+          "1",
+          "--top-module",
+          "tb_vector_shared_store",
+          "--Mdir",
+          "/tmp/npu_shared_ram_final_enable/numeric/b8192_n8_f1_s1/obj",
+          "-MAKEFLAGS",
+          "OPT_FAST=-O0 OPT_SLOW=-O0",
+          "-Gp_bank_bytes=8192",
+          "-Gp_banks=8",
+          "-Gp_fixed_ps_channels=1",
+          "-Gp_shared_write_stage=1",
+          "-Gp_cycles=2000",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/vector_shared_store.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/npu/buffers/ia_ps_shared_ram.sv",
+          "/tmp/npu_shared_ram_final_enable/final_source/rtl/common/regfile.v",
+          "/workspace/scratch/9625a7463d70/mini_tflm_dsa/test/vector_shared_store/tb_vector_shared_store.sv"
+        ],
+        "binary_sha256": "90a35fd4579f87a850389142e582b900ddb0cac1784c40c7af93f81ce3b10a84"
+      }
+    ],
+    "result_sha256": "cb877dd6478ee591fa4b60214a95e8037c67ecb7025f30a16218c3606343044f"
+  },
+  "synthesis": {
+    "reference": {
+      "resources": {
+        "logic_lut_cells": 1990,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 1990,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 13,
+        "dsp48e1": 0,
+        "ramb36e1": 26,
+        "ramb18e1": 0,
+        "carry4": 8,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 8,
+          "FDCE": 12,
+          "FDPE": 1,
+          "INV": 17,
+          "LUT2": 64,
+          "LUT3": 1524,
+          "LUT4": 76,
+          "LUT5": 72,
+          "LUT6": 254,
+          "RAMB36E1": 26
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 8,
+      "graph_complete": true
+    },
+    "final": {
+      "resources": {
+        "logic_lut_cells": 2007,
+        "distributed_ram_lut_sites_nominal": 0,
+        "shift_register_lut_sites_nominal": 0,
+        "lut_sites_nominal_before_packing": 2007,
+        "physical_lut_sites_after_placement": null,
+        "flip_flops": 13,
+        "dsp48e1": 0,
+        "ramb36e1": 26,
+        "ramb18e1": 0,
+        "carry4": 8,
+        "unclassified_distributed_ram_types": [],
+        "cell_counts": {
+          "CARRY4": 8,
+          "FDCE": 12,
+          "FDPE": 1,
+          "INV": 17,
+          "LUT2": 78,
+          "LUT3": 1542,
+          "LUT4": 66,
+          "LUT5": 132,
+          "LUT6": 189,
+          "MUXF7": 2,
+          "RAMB36E1": 26
+        },
+        "counting_method": "Each LUT primitive is counted once before packing; LUT RAM and SRL use their architectural LUT storage requirements. Packing may combine compatible logic LUTs or insert routing LUTs. A placed design supplies physical_lut_sites_after_placement."
+      },
+      "longest_register_path_cells": 8,
+      "graph_complete": true
+    }
+  },
+  "access_enable_to_memory": {
+    "reference_cells": 5,
+    "current_cells": 2,
+    "graph_complete": true
+  }
+}
